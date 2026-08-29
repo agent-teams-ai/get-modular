@@ -45,8 +45,8 @@ the only authorities.
 
 ## Corrections applied
 
-- Extension Foundation ADR-0015 was prepared to supersede the earlier
-  extraction timing gate without weakening its retained safeguards.
+- Extension Foundation ADR-0015 was prepared and accepted to supersede the
+  earlier extraction timing gate without weakening its retained safeguards.
 - `instantiate` was narrowed to optional host-commanded construction and cannot
   imply activation.
 - Distinct module, capability, implementation, and slot identities became
@@ -59,8 +59,13 @@ the only authorities.
 - OD-001 must resolve npm ownership and the initial package graph.
 - OD-002 must freeze canonical bytes and digest vectors.
 - OD-003 must freeze compatibility, diagnostics, and resource limits.
-- Extension Foundation PR #30 must merge before its extraction authorization is
-  treated as accepted upstream authority.
+
+## Resolved prerequisite
+
+Extension Foundation PR #30 merged on 2026-08-29 as
+`e72079034e946e24c7f06a6ef87d9a494be8a882`. Its extraction authorization is
+now accepted upstream authority and is recorded as a new immutable source-map
+observation; the earlier proposed observations remain historical evidence.
 
 No production module implementation was reviewed in this bootstrap because no
 production package existed yet.

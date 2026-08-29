@@ -28,6 +28,17 @@ sources:
     paths:
       - docs/decisions/0015-authorize-get-modular-semantic-extraction.md
       - docs/qualification/module-system-v1-productization/module-authoring-measurement-proof.md
+  - id: extension-foundation-extraction-authorization-final
+    repository: https://github.com/agent-teams-ai/extension-foundation
+    revision: e72079034e946e24c7f06a6ef87d9a494be8a882
+    status: accepted-authority-at-observation
+    observedAt: 2026-08-29
+    pullRequest: https://github.com/agent-teams-ai/extension-foundation/pull/30
+    paths:
+      - docs/decisions/0013-first-consumer-module-semantics-before-foundation-extraction.md
+      - docs/decisions/0014-product-local-module-authoring-composition-and-generation-guardrails.md
+      - docs/decisions/0015-authorize-get-modular-semantic-extraction.md
+      - docs/qualification/module-system-v1-productization/module-authoring-measurement-proof.md
   - id: universal-module-qualification
     repository: https://github.com/agent-teams-ai/extension-foundation
     revision: b1597fabab5b4f0b5e5060cfe594d6cc056b623d
