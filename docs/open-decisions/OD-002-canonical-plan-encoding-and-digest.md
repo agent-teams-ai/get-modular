@@ -1,11 +1,13 @@
 ---
 id: OD-002
 type: open-decision
-status: open
+status: resolved
 owner: architecture
 summary: Defines portable canonical plan bytes, digest domain separation, and compatibility behavior.
+resolved_by: ADR-0004
 related:
   - ADR-0001
+  - ADR-0004
 ---
 
 # OD-002: Canonical plan encoding and digest
@@ -45,6 +47,7 @@ immutable composition plan.
 
 ## Resolution
 
-Open. Canonical JSON is the working recommendation because it minimizes custom
-codec risk, but the exact profile must be proven by independent vectors before
-production code depends on its digest.
+Resolved by ADR-0004. V1 uses RFC 8785 JCS over a closed
+`get-modular.plan-content` envelope and SHA-256 with external digest spelling
+`gm-plan:v1:sha-256:<hex>`. Accepted contract artifacts and independent vectors
+are integrity-protected by the repository V1 contract gate.

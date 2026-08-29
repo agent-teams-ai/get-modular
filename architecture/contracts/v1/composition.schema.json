@@ -1,0 +1,385 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://get-modular.dev/contracts/v1/composition.schema.json",
+  "title": "Get Modular V1 composition contract",
+  "oneOf": [
+    {"$ref": "#/$defs/moduleDeclaration"},
+    {"$ref": "#/$defs/compositionProfile"},
+    {"$ref": "#/$defs/compositionPlan"},
+    {"$ref": "#/$defs/planContentEnvelope"}
+  ],
+  "$defs": {
+    "portableId": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:/[a-z][a-z0-9]*(?:-[a-z0-9]+)*)+$"
+    },
+    "localToken": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "fieldToken": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z][A-Za-z0-9]*$"
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["family", "familyVersion", "token"],
+      "properties": {
+        "family": {"const": "exact"},
+        "familyVersion": {"const": 1},
+        "token": {"$ref": "#/$defs/portableId"}
+      }
+    },
+    "owner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority", "path"],
+      "properties": {
+        "authority": {"$ref": "#/$defs/localToken"},
+        "path": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {"$ref": "#/$defs/localToken"}
+        }
+      }
+    },
+    "providedCapability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capabilityId", "compatibility"],
+      "properties": {
+        "capabilityId": {"$ref": "#/$defs/portableId"},
+        "compatibility": {"$ref": "#/$defs/compatibility"}
+      }
+    },
+    "requiredCardinality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {"kind": {"const": "required"}}
+    },
+    "optionalCardinality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {"kind": {"const": "optional"}}
+    },
+    "manyCardinality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "min", "max", "order"],
+      "properties": {
+        "kind": {"const": "many"},
+        "min": {"type": "integer", "minimum": 0, "maximum": 1024},
+        "max": {"type": "integer", "minimum": 1, "maximum": 1024},
+        "order": {"const": "profile"}
+      }
+    },
+    "dependencySlot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slotId", "capabilityId", "compatibility", "cardinality"],
+      "properties": {
+        "slotId": {"$ref": "#/$defs/localToken"},
+        "capabilityId": {"$ref": "#/$defs/portableId"},
+        "compatibility": {"$ref": "#/$defs/compatibility"},
+        "cardinality": {
+          "oneOf": [
+            {"$ref": "#/$defs/requiredCardinality"},
+            {"$ref": "#/$defs/optionalCardinality"},
+            {"$ref": "#/$defs/manyCardinality"}
+          ]
+        }
+      }
+    },
+    "moduleDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "schemaVersion",
+        "moduleId",
+        "implementationId",
+        "owner",
+        "provides",
+        "slots"
+      ],
+      "properties": {
+        "kind": {"const": "get-modular.module-declaration"},
+        "schemaVersion": {"const": 1},
+        "moduleId": {"$ref": "#/$defs/portableId"},
+        "implementationId": {"$ref": "#/$defs/portableId"},
+        "owner": {"$ref": "#/$defs/owner"},
+        "provides": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {"$ref": "#/$defs/providedCapability"}
+        },
+        "slots": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {"$ref": "#/$defs/dependencySlot"}
+        }
+      }
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["moduleId", "implementationId"],
+      "properties": {
+        "moduleId": {"$ref": "#/$defs/portableId"},
+        "implementationId": {"$ref": "#/$defs/portableId"}
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["consumerImplementationId", "slotId", "providerImplementationIds"],
+      "properties": {
+        "consumerImplementationId": {"$ref": "#/$defs/portableId"},
+        "slotId": {"$ref": "#/$defs/localToken"},
+        "providerImplementationIds": {
+          "type": "array",
+          "maxItems": 1024,
+          "items": {"$ref": "#/$defs/portableId"}
+        }
+      }
+    },
+    "compositionProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "schemaVersion", "profileId", "roots", "selections", "bindings"],
+      "properties": {
+        "kind": {"const": "get-modular.composition-profile"},
+        "schemaVersion": {"const": 1},
+        "profileId": {"$ref": "#/$defs/portableId"},
+        "roots": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1024,
+          "items": {"$ref": "#/$defs/portableId"}
+        },
+        "selections": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4096,
+          "items": {"$ref": "#/$defs/selection"}
+        },
+        "bindings": {
+          "type": "array",
+          "maxItems": 65536,
+          "items": {"$ref": "#/$defs/binding"}
+        }
+      }
+    },
+    "planBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "consumerImplementationId",
+        "slotId",
+        "capabilityId",
+        "compatibility",
+        "providerImplementationIds"
+      ],
+      "properties": {
+        "consumerImplementationId": {"$ref": "#/$defs/portableId"},
+        "slotId": {"$ref": "#/$defs/localToken"},
+        "capabilityId": {"$ref": "#/$defs/portableId"},
+        "compatibility": {"$ref": "#/$defs/compatibility"},
+        "providerImplementationIds": {
+          "type": "array",
+          "maxItems": 1024,
+          "items": {"$ref": "#/$defs/portableId"}
+        }
+      }
+    },
+    "compositionPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "schemaVersion",
+        "profileId",
+        "roots",
+        "selections",
+        "bindings",
+        "dependencyOrder"
+      ],
+      "properties": {
+        "kind": {"const": "get-modular.composition-plan"},
+        "schemaVersion": {"const": 1},
+        "profileId": {"$ref": "#/$defs/portableId"},
+        "roots": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1024,
+          "items": {"$ref": "#/$defs/portableId"}
+        },
+        "selections": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4096,
+          "items": {"$ref": "#/$defs/selection"}
+        },
+        "bindings": {
+          "type": "array",
+          "maxItems": 65536,
+          "items": {"$ref": "#/$defs/planBinding"}
+        },
+        "dependencyOrder": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4096,
+          "items": {"$ref": "#/$defs/portableId"}
+        }
+      }
+    },
+    "planContentEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "protocolVersion",
+        "canonicalization",
+        "hashAlgorithm",
+        "plan"
+      ],
+      "properties": {
+        "kind": {"const": "get-modular.plan-content"},
+        "protocolVersion": {"const": 1},
+        "canonicalization": {"const": "RFC8785"},
+        "hashAlgorithm": {"const": "SHA-256"},
+        "plan": {"$ref": "#/$defs/compositionPlan"}
+      }
+    },
+    "pathSegment": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": {"const": "field"},
+            "value": {"$ref": "#/$defs/fieldToken"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": {"const": "index"},
+            "value": {"type": "integer", "minimum": 0, "maximum": 65535}
+          }
+        }
+      ]
+    },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "phase", "path", "coordinate", "details"],
+      "properties": {
+        "code": {
+          "enum": [
+            "decode.invalid-json",
+            "decode.duplicate-key",
+            "input.limit-exceeded",
+            "schema.unsupported-version",
+            "schema.unknown-field",
+            "schema.invalid-value",
+            "schema.non-plain-value",
+            "identity.invalid",
+            "declaration.duplicate-implementation",
+            "declaration.duplicate-capability",
+            "declaration.duplicate-slot",
+            "profile.duplicate-root",
+            "profile.unknown-root",
+            "profile.duplicate-selection",
+            "profile.unknown-module",
+            "profile.unknown-implementation",
+            "profile.implementation-mismatch",
+            "profile.missing-selection",
+            "profile.unreachable-selection",
+            "binding.duplicate",
+            "binding.missing",
+            "binding.unknown-consumer",
+            "binding.unknown-slot",
+            "binding.unknown-provider",
+            "binding.provider-not-selected",
+            "binding.cardinality",
+            "binding.capability-missing",
+            "binding.compatibility-mismatch",
+            "graph.cycle",
+            "output.canonicalization-failed",
+            "diagnostics.truncated"
+          ]
+        },
+        "phase": {
+          "enum": ["decode", "schema", "declaration", "profile", "binding", "graph", "output"]
+        },
+        "path": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {"$ref": "#/$defs/pathSegment"}
+        },
+        "coordinate": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "moduleId": {"$ref": "#/$defs/portableId"},
+            "implementationId": {"$ref": "#/$defs/portableId"},
+            "slotId": {"$ref": "#/$defs/localToken"},
+            "providerImplementationId": {"$ref": "#/$defs/portableId"}
+          }
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "enum": [
+                "invalid-json",
+                "duplicate-key",
+                "unknown-field",
+                "invalid-type",
+                "invalid-format",
+                "unsupported-version",
+                "non-plain-value",
+                "duplicate",
+                "missing",
+                "unknown",
+                "mismatch",
+                "unreachable",
+                "cycle",
+                "canonicalization"
+              ]
+            },
+            "limitName": {"$ref": "#/$defs/fieldToken"},
+            "limit": {"type": "integer", "minimum": 0, "maximum": 16777216},
+            "actual": {"type": "integer", "minimum": 0, "maximum": 16777217},
+            "omitted": {"type": "integer", "minimum": 1, "maximum": 262144},
+            "expectedCardinality": {"enum": ["required", "optional", "many"]},
+            "actualCardinality": {"type": "integer", "minimum": 0, "maximum": 1025},
+            "expectedCompatibility": {"$ref": "#/$defs/compatibility"},
+            "actualCompatibility": {"$ref": "#/$defs/compatibility"},
+            "component": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 4096,
+              "items": {"$ref": "#/$defs/portableId"}
+            }
+          }
+        }
+      }
+    }
+  }
+}

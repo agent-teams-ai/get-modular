@@ -1,11 +1,13 @@
 ---
 id: OD-003
 type: open-decision
-status: open
+status: resolved
 owner: architecture
 summary: Selects the closed V1 compatibility grammar, diagnostic contract, and numeric resource limits required before implementation.
+resolved_by: ADR-0005
 related:
   - ADR-0001
+  - ADR-0005
   - GM-REQ-V1
   - OD-002
 ---
@@ -48,3 +50,11 @@ not an accepted algorithm or numeric profile.
 The resolving ADR must include canonical fixtures, boundary tests, deterministic
 diagnostic snapshots, complexity measurements, and explicit conditions for
 raising any limit without changing semantic compatibility.
+
+## Resolution
+
+Resolved by ADR-0005. V1 admits only exact compatibility, uses a closed ordered
+diagnostic catalog capped at 256 records, and fixes
+`get-modular/resource-profile/v1-standard`. QUAL-V1-CONTRACT records the
+multi-critic decision evidence, current product inventory, and executable graph
+boundary fixtures.

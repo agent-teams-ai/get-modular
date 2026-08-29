@@ -21,9 +21,14 @@ summary: Canonical navigation for Get Modular architecture and evidence.
 ## Normative contracts
 
 - [Module System V1 requirements](requirements/module-system-v1.md)
+- [V1 composition schema](../architecture/contracts/v1/composition.schema.json)
+- [V1 resource profile](../architecture/contracts/v1/resource-profile.json)
+- [V1 diagnostic catalog](../architecture/contracts/v1/diagnostic-catalog.json)
+- [V1 canonical vectors](../architecture/contracts/v1/canonical-vectors.json)
 - [Requirement traceability](traceability/module-system-v1.yaml)
 
 ## Evidence
 
 - [Source map](provenance/source-map.yaml)
 - [Five-critic bootstrap review](qualification/bootstrap-five-critic-review.md)
+- [V1 contract council and resource profile](qualification/v1-contract-council-and-resource-profile.md)
