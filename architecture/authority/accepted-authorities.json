@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "algorithm": "sha256-bytes",
+  "authorities": [
+    {
+      "id": "ARCH-SYSTEM-BOUNDARY",
+      "type": "architecture",
+      "path": "docs/architecture/system-boundary.md",
+      "immutableDigest": "sha256:794e2950761785d7267ae18997cec231115efa85f54445c36c18cdad857cedb8"
+    },
+    {
+      "id": "GM-REQ-V1",
+      "type": "requirements",
+      "path": "docs/requirements/module-system-v1.md",
+      "immutableDigest": "sha256:b6d2e4ba0cbba1d8aa8991c1ffe400cdbf08108970d722909aa831e99af73c60"
+    }
+  ]
+}

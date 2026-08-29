@@ -1,4 +1,5 @@
 schemaVersion: 1
+implementationBlockers: [OD-001, OD-002, OD-003]
 requirements:
   GM-REQ-001:
     authorities: [ADR-0001, ARCH-SYSTEM-BOUNDARY]

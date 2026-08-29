@@ -15,6 +15,6 @@ in this repository govern Get Modular. Open decisions are tracked separately as
 implementation blockers and never become authority before resolution.
 
 `pnpm governance:check` validates exact revisions, safe evidence paths,
-accepted-requirement immutability, and bidirectional requirement-to-source
-traceability. It intentionally does not promote an external source to local
-authority.
+accepted-authority immutability, implementation blockers, and bidirectional
+requirement-to-source traceability. It intentionally does not promote an
+external source to local authority.

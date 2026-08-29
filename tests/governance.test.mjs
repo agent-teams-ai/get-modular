@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 import {
   requirementIdsFromMarkdown,
+  validateAcceptedAuthorityCatalog,
+  validateAuthorityLedger,
+  validateBlockedImplementation,
   validateSourceMap,
   validateTraceability,
 } from "../architecture/checks/governance.mjs";
@@ -27,6 +31,7 @@ test("traceability is closed and bidirectional", () => {
     blockerIds: new Set(["OD-001"]),
     traceability: {
       schemaVersion: 1,
+      implementationBlockers: ["OD-001"],
       requirements: {
         "GM-REQ-001": {
           authorities: ["ADR-0001"],
@@ -47,6 +52,7 @@ test("missing reverse traceability fails closed", () => {
     blockerIds: new Set(),
     traceability: {
       schemaVersion: 1,
+      implementationBlockers: [],
       requirements: {
         "GM-REQ-001": { authorities: ["ADR-0001"], provenance: ["source-a"] },
       },
@@ -58,6 +64,7 @@ test("missing reverse traceability fails closed", () => {
 test("unknown authorities and non-open blockers fail closed", () => {
   const base = {
     schemaVersion: 1,
+    implementationBlockers: ["OD-001"],
     requirements: {
       "GM-REQ-001": { authorities: ["ADR-9999"], provenance: ["source-a"] },
     },
@@ -87,6 +94,64 @@ test("unknown authorities and non-open blockers fail closed", () => {
       },
     },
   }), /unknown or non-open blocker OD-002/u);
+
+  assert.throws(() => validateTraceability({
+    requirementIds: new Set(["GM-REQ-001"]),
+    sources: new Set(["source-a"]),
+    authorityIds: new Set(["ADR-0001"]),
+    blockerIds: new Set(["OD-001"]),
+    traceability: {
+      ...base,
+      implementationBlockers: [],
+      requirements: {
+        "GM-REQ-001": { authorities: ["ADR-0001"], provenance: ["source-a"] },
+      },
+    },
+  }), /implementation blockers do not match/u);
+});
+
+test("authority mutation and unauthorized promotion fail closed", async () => {
+  const bytes = "accepted architecture\n";
+  const ledger = {
+    schemaVersion: 1,
+    algorithm: "sha256-bytes",
+    authorities: [{
+      id: "ARCH-ONE",
+      type: "architecture",
+      path: "docs/architecture/one.md",
+      immutableDigest: `sha256:${createHash("sha256").update(bytes).digest("hex")}`,
+    }],
+  };
+  const authorities = await validateAuthorityLedger({ ledger, readBytes: async () => bytes });
+  validateAcceptedAuthorityCatalog({
+    documents: [{ id: "ARCH-ONE", type: "architecture", status: "accepted" }],
+    ledgerAuthorities: authorities,
+  });
+  await assert.rejects(
+    validateAuthorityLedger({ ledger, readBytes: async () => "mutated\n" }),
+    /differs from accepted authority/u,
+  );
+  assert.throws(() => validateAcceptedAuthorityCatalog({
+    documents: [
+      { id: "ARCH-ONE", type: "architecture", status: "accepted" },
+      { id: "ARCH-TWO", type: "architecture", status: "accepted" },
+    ],
+    ledgerAuthorities: authorities,
+  }), /do not match the immutable authority ledger/u);
+});
+
+test("open decisions block production artifacts and qualification claims", () => {
+  const blockerIds = new Set(["OD-001"]);
+  assert.throws(() => validateBlockedImplementation({
+    blockerIds,
+    productionPackages: ["packages/core"],
+    qualifiedDocuments: [],
+  }), /production packages are blocked/u);
+  assert.throws(() => validateBlockedImplementation({
+    blockerIds,
+    productionPackages: [],
+    qualifiedDocuments: ["QUAL-V1"],
+  }), /qualification claims are blocked/u);
 });
 
 test("mutable revisions and unsafe paths fail closed", () => {
@@ -101,4 +166,17 @@ test("mutable revisions and unsafe paths fail closed", () => {
       paths: ["../secret"],
     }],
   }), /non-exact revision/u);
+
+  assert.throws(() => validateSourceMap({
+    ...sourceMap,
+    sources: [{ ...sourceMap.sources[0], observedAt: "2026-02-30" }],
+  }), /invalid observation date/u);
+  assert.throws(() => validateSourceMap({
+    ...sourceMap,
+    sources: [{ ...sourceMap.sources[0], observedAt: "2025-02-29" }],
+  }), /invalid observation date/u);
+  assert.doesNotThrow(() => validateSourceMap({
+    ...sourceMap,
+    sources: [{ ...sourceMap.sources[0], observedAt: "2024-02-29" }],
+  }));
 });
