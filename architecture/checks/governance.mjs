@@ -80,17 +80,24 @@ export function validateAcceptedAuthorityCatalog({ documents, ledgerAuthorities 
   }
 }
 
-export function validateBlockedImplementation({ blockerIds, productionPackages, qualifiedDocuments }) {
+export function validateBlockedImplementation({ blockerIds, productionArtifacts, qualifiedDocuments }) {
   if (blockerIds.size === 0) return;
-  if (productionPackages.length > 0) {
-    fail(`production packages are blocked by open decisions: ${[...blockerIds].sort().join(", ")}`);
+  if (productionArtifacts.length > 0) {
+    fail(`production artifacts are blocked by open decisions: ${[...blockerIds].sort().join(", ")}`);
   }
   if (qualifiedDocuments.length > 0) {
     fail(`qualification claims are blocked by open decisions: ${[...blockerIds].sort().join(", ")}`);
   }
 }
 
-export function validateTraceability({ requirementIds, sources, authorityIds, blockerIds, traceability }) {
+export function validateTraceability({
+  requirementIds,
+  sources,
+  authorityIds,
+  decisionIds,
+  blockerIds,
+  traceability,
+}) {
   if (traceability?.schemaVersion !== 1) fail("unsupported traceability schema");
   const mappedRequirements = traceability.requirements ?? {};
   const mappedSources = traceability.sources ?? {};
@@ -103,6 +110,15 @@ export function validateTraceability({ requirementIds, sources, authorityIds, bl
   const sourceIds = [...sources].sort();
   if (JSON.stringify(Object.keys(mappedSources).sort()) !== JSON.stringify(sourceIds)) {
     fail("traceability sources do not match the provenance source map");
+  }
+
+  const declaredDecisions = Array.isArray(traceability.decisionCatalog)
+    ? traceability.decisionCatalog
+    : [];
+  if (declaredDecisions.some(value => typeof value !== "string")
+    || new Set(declaredDecisions).size !== declaredDecisions.length
+    || !sameStrings(declaredDecisions, decisionIds)) {
+    fail("decision catalog does not match the open-decision documents");
   }
 
   const declaredBlockers = Array.isArray(traceability.implementationBlockers)
@@ -182,6 +198,21 @@ export function requirementIdsFromMarkdown(markdown) {
   return new Set(ids);
 }
 
+export function validateDecisionResolutions(documents) {
+  const byId = new Map(documents.map(metadata => [metadata.id, metadata]));
+  for (const decision of documents.filter(metadata => metadata.type === "open-decision")) {
+    if (decision.status === "open") continue;
+    if (decision.status !== "resolved") fail(`${decision.id} has an invalid open-decision status`);
+    const resolver = byId.get(decision.resolved_by);
+    if (resolver?.type !== "adr" || resolver.status !== "accepted") {
+      fail(`${decision.id} must resolve through an accepted ADR`);
+    }
+    if (!Array.isArray(resolver.related) || !resolver.related.includes(decision.id)) {
+      fail(`${decision.id} resolver ${resolver.id} must reference the resolved decision`);
+    }
+  }
+}
+
 async function read(relativePath) {
   return readFile(resolve(root, relativePath), "utf8");
 }
@@ -210,25 +241,52 @@ async function governanceDocumentCatalog() {
   return documents;
 }
 
-async function productionPackagePaths() {
-  const paths = [];
-  let entries;
+async function filesBelow(relativeDirectory) {
+  const files = [];
+  let entries = [];
   try {
-    entries = await readdir(resolve(root, "packages"), { withFileTypes: true });
+    entries = await readdir(resolve(root, relativeDirectory), { withFileTypes: true });
   } catch (error) {
-    if (error?.code === "ENOENT") return paths;
+    if (error?.code === "ENOENT") return files;
     throw error;
   }
   for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    try {
-      await read(`packages/${entry.name}/package.json`);
-      paths.push(`packages/${entry.name}`);
-    } catch (error) {
-      if (error?.code !== "ENOENT") throw error;
+    const path = `${relativeDirectory}/${entry.name}`;
+    if (entry.isDirectory()) files.push(...await filesBelow(path));
+    else if (entry.isFile()) files.push(path);
+  }
+  return files;
+}
+
+async function productionArtifactPaths() {
+  const artifacts = [];
+  const rootPackage = JSON.parse(await read("package.json"));
+  for (const field of ["bin", "exports", "main", "module", "types", "typings"]) {
+    if (rootPackage[field] !== undefined) artifacts.push(`package.json#${field}`);
+  }
+
+  const excludedDirectories = new Set([
+    ".agents",
+    ".git",
+    ".github",
+    "architecture",
+    "docs",
+    "examples",
+    "node_modules",
+    "scripts",
+    "spikes",
+    "tests",
+  ]);
+  for (const entry of await readdir(root, { withFileTypes: true })) {
+    if (entry.isDirectory() && !excludedDirectories.has(entry.name)) {
+      artifacts.push(...(await filesBelow(entry.name)).filter(path => (
+        path.endsWith("/package.json") || /\.[cm]?[jt]sx?$/u.test(path)
+      )));
+    } else if (entry.isFile() && /^(?:index|main|mod)\.[cm]?[jt]sx?$/u.test(entry.name)) {
+      artifacts.push(entry.name);
     }
   }
-  return paths;
+  return artifacts.sort(compareStrings);
 }
 
 async function main() {
@@ -237,6 +295,7 @@ async function main() {
     readBytes: read,
   });
   const documents = await governanceDocumentCatalog();
+  validateDecisionResolutions([...documents.values()]);
   validateAcceptedAuthorityCatalog({
     documents: [...documents.values()],
     ledgerAuthorities,
@@ -257,12 +316,15 @@ async function main() {
         .filter(metadata => metadata.type === "adr" && metadata.status === "accepted")
         .map(metadata => metadata.id),
     ]),
+    decisionIds: new Set([...documents.values()]
+      .filter(metadata => metadata.type === "open-decision")
+      .map(metadata => metadata.id)),
     blockerIds,
     traceability,
   });
   validateBlockedImplementation({
     blockerIds,
-    productionPackages: await productionPackagePaths(),
+    productionArtifacts: await productionArtifactPaths(),
     qualifiedDocuments: [...documents.values()]
       .filter(metadata => metadata.type === "qualification" && metadata.status === "qualified")
       .map(metadata => metadata.id),

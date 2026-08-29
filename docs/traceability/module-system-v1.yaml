@@ -1,4 +1,5 @@
 schemaVersion: 1
+decisionCatalog: [OD-001, OD-002, OD-003]
 implementationBlockers: [OD-001, OD-002, OD-003]
 requirements:
   GM-REQ-001:

@@ -36,6 +36,15 @@
       }
     },
     {
+      "if": {"properties": {"type": {"const": "qualification"}}, "required": ["type"]},
+      "then": {
+        "properties": {
+          "id": {"type": "string", "pattern": "^QUAL-[A-Z0-9-]+$"},
+          "status": {"enum": ["reviewed", "qualified", "superseded"]}
+        }
+      }
+    },
+    {
       "if": {
         "properties": {"type": {"const": "adr"}, "status": {"const": "accepted"}},
         "required": ["type", "status"]

@@ -6,6 +6,7 @@ import {
   validateAcceptedAuthorityCatalog,
   validateAuthorityLedger,
   validateBlockedImplementation,
+  validateDecisionResolutions,
   validateSourceMap,
   validateTraceability,
 } from "../architecture/checks/governance.mjs";
@@ -28,9 +29,11 @@ test("traceability is closed and bidirectional", () => {
     requirementIds: requirementIdsFromMarkdown("### GM-REQ-001: One\n"),
     sources,
     authorityIds: new Set(["ADR-0001"]),
+    decisionIds: new Set(["OD-001"]),
     blockerIds: new Set(["OD-001"]),
     traceability: {
       schemaVersion: 1,
+      decisionCatalog: ["OD-001"],
       implementationBlockers: ["OD-001"],
       requirements: {
         "GM-REQ-001": {
@@ -49,9 +52,11 @@ test("missing reverse traceability fails closed", () => {
     requirementIds: new Set(["GM-REQ-001"]),
     sources: new Set(["source-a"]),
     authorityIds: new Set(["ADR-0001"]),
+    decisionIds: new Set(),
     blockerIds: new Set(),
     traceability: {
       schemaVersion: 1,
+      decisionCatalog: [],
       implementationBlockers: [],
       requirements: {
         "GM-REQ-001": { authorities: ["ADR-0001"], provenance: ["source-a"] },
@@ -64,6 +69,7 @@ test("missing reverse traceability fails closed", () => {
 test("unknown authorities and non-open blockers fail closed", () => {
   const base = {
     schemaVersion: 1,
+    decisionCatalog: ["OD-001"],
     implementationBlockers: ["OD-001"],
     requirements: {
       "GM-REQ-001": { authorities: ["ADR-9999"], provenance: ["source-a"] },
@@ -74,6 +80,7 @@ test("unknown authorities and non-open blockers fail closed", () => {
     requirementIds: new Set(["GM-REQ-001"]),
     sources: new Set(["source-a"]),
     authorityIds: new Set(["ADR-0001"]),
+    decisionIds: new Set(["OD-001"]),
     blockerIds: new Set(["OD-001"]),
     traceability: base,
   }), /unknown or non-accepted authority ADR-9999/u);
@@ -82,6 +89,7 @@ test("unknown authorities and non-open blockers fail closed", () => {
     requirementIds: new Set(["GM-REQ-001"]),
     sources: new Set(["source-a"]),
     authorityIds: new Set(["ADR-0001"]),
+    decisionIds: new Set(["OD-001"]),
     blockerIds: new Set(["OD-001"]),
     traceability: {
       ...base,
@@ -99,6 +107,7 @@ test("unknown authorities and non-open blockers fail closed", () => {
     requirementIds: new Set(["GM-REQ-001"]),
     sources: new Set(["source-a"]),
     authorityIds: new Set(["ADR-0001"]),
+    decisionIds: new Set(["OD-001"]),
     blockerIds: new Set(["OD-001"]),
     traceability: {
       ...base,
@@ -144,14 +153,28 @@ test("open decisions block production artifacts and qualification claims", () =>
   const blockerIds = new Set(["OD-001"]);
   assert.throws(() => validateBlockedImplementation({
     blockerIds,
-    productionPackages: ["packages/core"],
+    productionArtifacts: ["packages/group/core/package.json", "src/index.ts"],
     qualifiedDocuments: [],
-  }), /production packages are blocked/u);
+  }), /production artifacts are blocked/u);
   assert.throws(() => validateBlockedImplementation({
     blockerIds,
-    productionPackages: [],
+    productionArtifacts: [],
     qualifiedDocuments: ["QUAL-V1"],
   }), /qualification claims are blocked/u);
+});
+
+test("resolved decisions require an accepted reciprocal ADR", () => {
+  assert.doesNotThrow(() => validateDecisionResolutions([
+    { id: "OD-001", type: "open-decision", status: "resolved", resolved_by: "ADR-0002" },
+    { id: "ADR-0002", type: "adr", status: "accepted", related: ["OD-001"] },
+  ]));
+  assert.throws(() => validateDecisionResolutions([
+    { id: "OD-001", type: "open-decision", status: "resolved", resolved_by: "ADR-9999" },
+  ]), /must resolve through an accepted ADR/u);
+  assert.throws(() => validateDecisionResolutions([
+    { id: "OD-001", type: "open-decision", status: "resolved", resolved_by: "ADR-0002" },
+    { id: "ADR-0002", type: "adr", status: "accepted", related: [] },
+  ]), /must reference the resolved decision/u);
 });
 
 test("mutable revisions and unsafe paths fail closed", () => {
