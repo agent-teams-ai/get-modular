@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "type", "status", "owner", "summary"],
+  "properties": {
+    "id": {"type": "string", "minLength": 1},
+    "type": {"enum": ["adr", "architecture", "index", "open-decision", "qualification", "requirements"]},
+    "status": {"type": "string", "minLength": 1},
+    "owner": {"type": "string", "minLength": 1},
+    "summary": {"type": "string", "minLength": 1},
+    "approved_by": {"type": "string", "minLength": 1},
+    "accepted_at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "resolved_by": {"type": "string", "minLength": 1},
+    "supersedes": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "superseded_by": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "related": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"type": {"const": "adr"}}, "required": ["type"]},
+      "then": {
+        "properties": {
+          "id": {"type": "string", "pattern": "^ADR-[0-9]{4}$"},
+          "status": {"enum": ["accepted", "proposed", "superseded"]}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"type": {"const": "open-decision"}}, "required": ["type"]},
+      "then": {
+        "properties": {
+          "id": {"type": "string", "pattern": "^OD-[0-9]{3}$"},
+          "status": {"enum": ["open", "resolved"]}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"type": {"const": "qualification"}}, "required": ["type"]},
+      "then": {
+        "properties": {
+          "id": {"type": "string", "pattern": "^QUAL-[A-Z0-9-]+$"},
+          "status": {"enum": ["reviewed", "qualified", "superseded"]}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"type": {"const": "adr"}, "status": {"const": "accepted"}},
+        "required": ["type", "status"]
+      },
+      "then": {
+        "required": ["approved_by", "accepted_at"],
+        "properties": {
+          "approved_by": {"type": "string", "minLength": 1},
+          "accepted_at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"type": {"const": "open-decision"}, "status": {"const": "resolved"}},
+        "required": ["type", "status"]
+      },
+      "then": {
+        "required": ["resolved_by"],
+        "properties": {"resolved_by": {"type": "string", "minLength": 1}}
+      }
+    },
+    {
+      "if": {
+        "properties": {"type": {"const": "adr"}, "status": {"const": "superseded"}},
+        "required": ["type", "status"]
+      },
+      "then": {
+        "required": ["superseded_by"],
+        "properties": {
+          "superseded_by": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    }
+  ]
+}

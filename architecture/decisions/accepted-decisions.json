@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "algorithm": "sha256",
+  "decisions": [
+    {
+      "id": "ADR-0001",
+      "path": "docs/decisions/0001-product-neutral-deterministic-module-composition.md",
+      "immutableDigest": "sha256:7d47c332144bef2193cd7b4902d061b043e1c342a8516877edd9d42f925bc0c1"
+    }
+  ]
+}

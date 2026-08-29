@@ -1,0 +1,15 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "rangeStrategy": "pin",
+  "dependencyDashboard": true,
+  "packageRules": [
+    {
+      "matchPackageNames": [
+        "@agent-teams/docs-protocol",
+        "@agent-teams/engineering-foundation"
+      ],
+      "groupName": "agent teams foundation cohort"
+    }
+  ]
+}
