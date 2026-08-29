@@ -28,7 +28,7 @@ function uniqueStrings(values, label) {
   return values;
 }
 
-export function validateTraceability({ requirementIds, sources, traceability }) {
+export function validateTraceability({ requirementIds, sources, authorityIds, blockerIds, traceability }) {
   if (traceability?.schemaVersion !== 1) fail("unsupported traceability schema");
   const mappedRequirements = traceability.requirements ?? {};
   const mappedSources = traceability.sources ?? {};
@@ -46,7 +46,19 @@ export function validateTraceability({ requirementIds, sources, traceability }) 
   const derivedReverse = new Map(sourceIds.map(id => [id, []]));
   for (const requirementId of expectedRequirements) {
     const mapping = mappedRequirements[requirementId];
-    uniqueStrings(mapping?.authorities, `${requirementId}.authorities`);
+    for (const authorityId of uniqueStrings(mapping?.authorities, `${requirementId}.authorities`)) {
+      if (!authorityIds.has(authorityId)) {
+        fail(`${requirementId} references unknown or non-accepted authority ${authorityId}`);
+      }
+    }
+    const requirementBlockers = mapping?.blockers === undefined
+      ? []
+      : uniqueStrings(mapping.blockers, `${requirementId}.blockers`);
+    for (const blockerId of requirementBlockers) {
+      if (!blockerIds.has(blockerId)) {
+        fail(`${requirementId} references unknown or non-open blocker ${blockerId}`);
+      }
+    }
     for (const sourceId of uniqueStrings(mapping?.provenance, `${requirementId}.provenance`)) {
       if (!derivedReverse.has(sourceId)) fail(`${requirementId} references unknown source ${sourceId}`);
       derivedReverse.get(sourceId).push(requirementId);
@@ -103,6 +115,24 @@ async function read(relativePath) {
   return readFile(resolve(root, relativePath), "utf8");
 }
 
+async function governanceDocumentCatalog() {
+  const documents = new Map();
+  for (const directory of ["docs/architecture", "docs/decisions", "docs/open-decisions", "docs/requirements"]) {
+    for (const filename of await readdir(resolve(root, directory))) {
+      if (!filename.endsWith(".md")) continue;
+      const markdown = await read(`${directory}/${filename}`);
+      const match = markdown.match(/^---\n([\s\S]*?)\n---/u);
+      if (!match) fail(`${directory}/${filename} has no metadata`);
+      const metadata = parse(match[1]);
+      if (typeof metadata?.id !== "string" || documents.has(metadata.id)) {
+        fail(`governance document IDs must be unique strings: ${directory}/${filename}`);
+      }
+      documents.set(metadata.id, metadata);
+    }
+  }
+  return documents;
+}
+
 async function main() {
   const authority = JSON.parse(await read("architecture/authority/accepted-requirements.json"));
   if (authority.schemaVersion !== 1 || authority.algorithm !== "sha256-bytes") {
@@ -119,17 +149,10 @@ async function main() {
     if (digest !== entry.immutableDigest) fail(`${entry.id} differs from accepted authority`);
   }
 
-  const acceptedRequirementIds = new Set();
-  for (const filename of await readdir(resolve(root, "docs/requirements"))) {
-    if (!filename.endsWith(".md")) continue;
-    const markdown = await read(`docs/requirements/${filename}`);
-    const match = markdown.match(/^---\n([\s\S]*?)\n---/u);
-    if (!match) fail(`${filename} has no metadata`);
-    const metadata = parse(match[1]);
-    if (metadata.type === "requirements" && metadata.status === "accepted") {
-      acceptedRequirementIds.add(metadata.id);
-    }
-  }
+  const documents = await governanceDocumentCatalog();
+  const acceptedRequirementIds = new Set([...documents.values()]
+    .filter(metadata => metadata.type === "requirements" && metadata.status === "accepted")
+    .map(metadata => metadata.id));
   if (JSON.stringify([...acceptedRequirementIds].sort()) !== JSON.stringify([...authorityIds].sort())) {
     fail("accepted requirement documents do not match the immutable authority ledger");
   }
@@ -140,6 +163,13 @@ async function main() {
   validateTraceability({
     requirementIds: requirementIdsFromMarkdown(requirementsMarkdown),
     sources: validateSourceMap(sourceMap),
+    authorityIds: new Set([...documents.values()]
+      .filter(metadata => ["adr", "architecture", "requirements"].includes(metadata.type)
+        && metadata.status === "accepted")
+      .map(metadata => metadata.id)),
+    blockerIds: new Set([...documents.values()]
+      .filter(metadata => metadata.type === "open-decision" && metadata.status === "open")
+      .map(metadata => metadata.id)),
     traceability,
   });
   process.stdout.write("Get Modular governance check passed.\n");

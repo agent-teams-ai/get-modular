@@ -19,16 +19,20 @@ requirements:
     authorities: [ADR-0001]
     provenance: [extension-foundation-main, extension-foundation-extraction-authorization, extension-foundation-extraction-authorization-reconciled, extension-foundation-extraction-authorization-final, universal-module-qualification, module-authoring-measurement-proof-final, module-dogfooding-qualification]
   GM-REQ-007:
-    authorities: [OD-002]
+    authorities: [GM-REQ-V1]
+    blockers: [OD-002]
     provenance: [extension-foundation-main, extension-foundation-extraction-authorization, extension-foundation-extraction-authorization-reconciled, extension-foundation-extraction-authorization-final, universal-module-qualification, module-authoring-measurement-proof-final]
   GM-REQ-008:
-    authorities: [ADR-0001, OD-003]
+    authorities: [ADR-0001, GM-REQ-V1]
+    blockers: [OD-003]
     provenance: [extension-foundation-main, extension-foundation-extraction-authorization, extension-foundation-extraction-authorization-reconciled, extension-foundation-extraction-authorization-final, universal-module-qualification, module-authoring-measurement-proof-final]
   GM-REQ-009:
-    authorities: [OD-002]
+    authorities: [GM-REQ-V1]
+    blockers: [OD-002]
     provenance: [extension-foundation-main, extension-foundation-extraction-authorization, extension-foundation-extraction-authorization-reconciled, extension-foundation-extraction-authorization-final, universal-module-qualification, module-authoring-measurement-proof-final]
   GM-REQ-010:
-    authorities: [ADR-0001, OD-003]
+    authorities: [ADR-0001, GM-REQ-V1]
+    blockers: [OD-003]
     provenance: [extension-foundation-main, extension-foundation-extraction-authorization, extension-foundation-extraction-authorization-reconciled, extension-foundation-extraction-authorization-final, universal-module-qualification, module-authoring-measurement-proof-final]
   GM-REQ-011:
     authorities: [ARCH-SYSTEM-BOUNDARY]
