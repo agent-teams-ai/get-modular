@@ -1,7 +1,7 @@
 ---
 id: QUAL-BOOTSTRAP-FIVE-CRITICS
 type: qualification
-status: qualified
+status: reviewed
 owner: architecture
 summary: Records independent boundary, API, lifecycle, governance, and delivery criticism of the Get Modular bootstrap.
 related:
@@ -20,6 +20,11 @@ On 2026-08-29 five isolated hosted workers reviewed the proposed split with
 3. lifecycle and security authority;
 4. Docs Protocol, governance, and provenance;
 5. practical delivery, packages, and adoption.
+
+This record summarizes corroborating review, not independently portable
+qualification evidence. The original hosted sessions are not part of the
+repository evidence bundle, so accepted decisions and executable checks remain
+the only authorities.
 
 ## Consensus
 
@@ -53,6 +58,7 @@ On 2026-08-29 five isolated hosted workers reviewed the proposed split with
 
 - OD-001 must resolve npm ownership and the initial package graph.
 - OD-002 must freeze canonical bytes and digest vectors.
+- OD-003 must freeze compatibility, diagnostics, and resource limits.
 - Extension Foundation PR #30 must merge before its extraction authorization is
   treated as accepted upstream authority.
 

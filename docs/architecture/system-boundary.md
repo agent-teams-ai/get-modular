@@ -46,7 +46,9 @@ flowchart TB
 
 ## Extension Foundation owns
 
-- plugin artifact, publisher, installation, and generation identities;
+- plugin artifact, publisher, installation, and
+  `ExtensionArtifactGenerationId` identities used only for extension
+  distribution and admission lineage;
 - OCI distribution, provenance, signatures, admission, and revocation;
 - permissions declarations, isolation contracts, quarantine, updates,
   retirement, and plugin state custody.
@@ -60,11 +62,16 @@ Modular declarations.
 - product capability contracts and domain invariants;
 - authorization, grants, entitlements, and desired state;
 - target-local executable imports and literal loader tables;
-- candidate preparation, readiness, generations, and Active Head publication;
+- candidate preparation, readiness, `CandidateGenerationId`,
+  `RuntimeGenerationId`, and Active Head publication;
 - routing, fencing, drain, cleanup, recovery, and reconciliation.
 
 No Get Modular API may become a service locator or a second lifecycle
 authority. Registration order is never business semantics.
+
+An `ExtensionArtifactGenerationId` is never a product candidate or runtime
+generation and cannot authorize routing. Product generation identities are
+allocated and interpreted only by the owning host.
 
 ## Composition rule
 

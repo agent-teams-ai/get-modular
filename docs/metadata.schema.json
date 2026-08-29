@@ -12,6 +12,8 @@
     "approved_by": {"type": "string", "minLength": 1},
     "accepted_at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
     "resolved_by": {"type": "string", "minLength": 1},
+    "supersedes": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "superseded_by": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
     "related": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
   },
   "allOf": [
@@ -54,6 +56,18 @@
       "then": {
         "required": ["resolved_by"],
         "properties": {"resolved_by": {"type": "string", "minLength": 1}}
+      }
+    },
+    {
+      "if": {
+        "properties": {"type": {"const": "adr"}, "status": {"const": "superseded"}},
+        "required": ["type", "status"]
+      },
+      "then": {
+        "required": ["superseded_by"],
+        "properties": {
+          "superseded_by": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+        }
       }
     }
   ]

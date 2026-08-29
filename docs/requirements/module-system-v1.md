@@ -8,6 +8,7 @@ related:
   - ADR-0001
   - OD-001
   - OD-002
+  - OD-003
 ---
 
 # Module System V1 requirements
@@ -66,6 +67,10 @@ V1 compatibility MUST be a closed, versioned algorithm over serializable data.
 Declarations MUST NOT provide executable compatibility callbacks. Unsupported
 compatibility families and schema versions MUST fail closed.
 
+The accepted V1 compatibility profile MUST fix the supported families,
+versions, and comparison algorithm before implementation. Until OD-003 is
+resolved, no package may claim GM-REQ-008 conformance.
+
 ### GM-REQ-009: Immutable plan and digest
 
 A successful compilation MUST return an immutable plan and a domain-separated
@@ -78,6 +83,10 @@ generation state.
 Failures MUST use stable machine-readable codes, bounded paths, deterministic
 ordering, and redacted details. V1 MUST define limits for declarations, slots,
 edges, contributions, identifier lengths, diagnostic count, and graph depth.
+
+The accepted V1 resource profile MUST provide every numeric limit and the
+diagnostic ordering and redaction rules before implementation. Until OD-003 is
+resolved, no package may claim GM-REQ-010 conformance.
 
 ## Runtime boundary
 

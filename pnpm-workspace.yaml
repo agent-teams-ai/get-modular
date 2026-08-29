@@ -6,6 +6,7 @@ catalogMode: strict
 catalog:
   cspell: 10.0.1
   markdownlint-cli2: 0.23.2
+  yaml: 2.9.0
 
 minimumReleaseAge: 1440
 minimumReleaseAgeStrict: true

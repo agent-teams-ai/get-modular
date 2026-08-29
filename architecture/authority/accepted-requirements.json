@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "algorithm": "sha256-bytes",
+  "requirements": [
+    {
+      "id": "GM-REQ-V1",
+      "path": "docs/requirements/module-system-v1.md",
+      "immutableDigest": "sha256:b6d2e4ba0cbba1d8aa8991c1ffe400cdbf08108970d722909aa831e99af73c60"
+    }
+  ]
+}

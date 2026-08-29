@@ -35,7 +35,7 @@ sources:
     observedAt: 2026-08-29
     pullRequest: https://github.com/agent-teams-ai/extension-foundation/pull/28
     paths:
-      - docs/qualification/universal-module-extension-qualification/
+      - docs/qualification/universal-module-extension-system/
   - id: module-authoring-measurement-proof-final
     repository: https://github.com/agent-teams-ai/extension-foundation
     revision: c75654370d0c00bbd1ca7dd71e3ba983bf6c5007
@@ -51,7 +51,7 @@ sources:
     observedAt: 2026-08-29
     pullRequest: https://github.com/agent-teams-ai/extension-foundation/pull/29
     paths:
-      - docs/architecture/module-dogfooding-boundary.md
+      - docs/architecture/module-system-dogfooding.md
 authorityRules:
   - Draft evidence can challenge a decision but cannot authorize production scope.
   - Accepted Get Modular ADRs and requirements are the local authority.
