@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "algorithm": "sha256-bytes",
+  "artifacts": [
+    {
+      "id": "GM-V1-CANONICALIZATION-VECTORS",
+      "path": "architecture/qualification/v1/canonicalization-vectors.json",
+      "immutableDigest": "sha256:1c5c5f5fe252051ce5eabe660f6930e5fb8dab473bd442fe1ab85c84e1ecf85c"
+    },
+    {
+      "id": "GM-V1-DECODER-VECTORS",
+      "path": "architecture/qualification/v1/decoder-vectors.json",
+      "immutableDigest": "sha256:5d0e5b02435488849d6b7b397dd899890a1c6d0e4d8eefbd2616d604fb2e54ca"
+    },
+    {
+      "id": "GM-V1-DIAGNOSTIC-CONTRACT",
+      "path": "architecture/qualification/v1/diagnostic-contract.json",
+      "immutableDigest": "sha256:9a708b1d4bb736b7edb3b3e836789d971646ae95ebf786aca8aeb90c6f64004e"
+    },
+    {
+      "id": "GM-V1-DIAGNOSTIC-SNAPSHOTS",
+      "path": "architecture/qualification/v1/diagnostic-snapshots.json",
+      "immutableDigest": "sha256:0b266cc605257e8541726c790e55f97b595572c10c438e4656dcf998b4df39d7"
+    },
+    {
+      "id": "GM-V1-NORMALIZATION-VECTORS",
+      "path": "architecture/qualification/v1/normalization-vectors.json",
+      "immutableDigest": "sha256:481a54dc4d15fa6c1cb92a6841183ecdbe477b25cc9312c22d3eb4b66c3c4f8c"
+    },
+    {
+      "id": "GM-V1-RESOURCE-BOUNDARY-VECTORS",
+      "path": "architecture/qualification/v1/resource-boundary-vectors.json",
+      "immutableDigest": "sha256:6b41df69cc794fcc0a6b9ed6557ae156f70dc485d2b3082df2b580be391d09cc"
+    }
+  ]
+}

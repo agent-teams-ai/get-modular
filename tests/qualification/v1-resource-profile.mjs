@@ -1,4 +1,6 @@
 import { performance } from "node:perf_hooks";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 export function chainGraph(nodeCount) {
   return Array.from({ length: nodeCount }, (_, index) => (
@@ -48,31 +50,63 @@ export function dependencyOrder(graph) {
   }
 
   const ready = [];
+  const pushReady = value => {
+    ready.push(value);
+    let index = ready.length - 1;
+    while (index > 0) {
+      const parent = Math.floor((index - 1) / 2);
+      if (ready[parent] <= ready[index]) break;
+      [ready[parent], ready[index]] = [ready[index], ready[parent]];
+      index = parent;
+    }
+  };
+  const popReady = () => {
+    const first = ready[0];
+    const last = ready.pop();
+    if (ready.length > 0) {
+      ready[0] = last;
+      let index = 0;
+      for (;;) {
+        const left = (index * 2) + 1;
+        const right = left + 1;
+        let smallest = index;
+        if (left < ready.length && ready[left] < ready[smallest]) smallest = left;
+        if (right < ready.length && ready[right] < ready[smallest]) smallest = right;
+        if (smallest === index) break;
+        [ready[index], ready[smallest]] = [ready[smallest], ready[index]];
+        index = smallest;
+      }
+    }
+    return first;
+  };
   for (let index = 0; index < indegree.length; index += 1) {
-    if (indegree[index] === 0) ready.push(index);
+    if (indegree[index] === 0) pushReady(index);
   }
-  ready.sort((left, right) => left - right);
 
   const order = [];
-  for (let cursor = 0; cursor < ready.length; cursor += 1) {
-    const provider = ready[cursor];
+  while (ready.length > 0) {
+    const provider = popReady();
     order.push(provider);
     for (const consumer of dependents[provider]) {
       indegree[consumer] -= 1;
-      if (indegree[consumer] === 0) ready.push(consumer);
+      if (indegree[consumer] === 0) pushReady(consumer);
     }
   }
   return { acyclic: order.length === graph.length, order };
 }
 
 export function boundedDiagnosticSummary(total, limit) {
+  if (total <= limit) {
+    return {
+      retained: Array.from({ length: total }, (_, index) => index),
+      truncation: null,
+    };
+  }
   const retained = Array.from(
-    { length: Math.min(total, limit - 1) },
+    { length: limit - 1 },
     (_, index) => index,
   );
-  return total > retained.length
-    ? { retained, truncation: { omitted: total - retained.length } }
-    : { retained, truncation: null };
+  return { retained, truncation: { omitted: total - retained.length } };
 }
 
 export function measureResourceFixtures() {
@@ -100,6 +134,7 @@ export function measureResourceFixtures() {
   return measurements;
 }
 
-if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
+if (process.argv[1]
+  && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   process.stdout.write(`${JSON.stringify(measureResourceFixtures(), null, 2)}\n`);
 }

@@ -4,6 +4,19 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 
+import canonicalize from "canonicalize";
+import { canonicalize as canonicalizeOracle } from "json-canonicalize";
+
+import {
+  createSchemaValidators,
+  validateCanonicalizationQualification,
+  validateDecoderQualification,
+  validateDiagnosticQualification,
+  validateNormalizationQualification,
+  validateQualificationLedger,
+  validateResourceBoundaryQualification,
+} from "./v1-qualification.mjs";
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
 const CONTRACT_PATH = /^architecture\/contracts\/v1\/[a-z0-9.-]+\.json$/u;
@@ -85,6 +98,11 @@ export function validateContractCoherence({ schema, catalog, profile, vectors })
   for (const vector of vectors?.positive ?? []) {
     const parsed = JSON.parse(vector.canonicalUtf8);
     if (!same(parsed, vector.envelope)) fail(`${vector.name} canonical bytes decode differently`);
+    const canonical = canonicalize(vector.envelope);
+    const differential = canonicalizeOracle(vector.envelope);
+    if (canonical !== differential || canonical !== vector.canonicalUtf8) {
+      fail(`${vector.name} is not independently reproducible RFC 8785 output`);
+    }
     const digest = createHash("sha256").update(vector.canonicalUtf8, "utf8").digest("hex");
     if (vector.digest !== `gm-plan:v1:sha-256:${digest}`) {
       fail(`${vector.name} has an invalid digest`);
@@ -123,13 +141,68 @@ async function main() {
     readBytes: read,
     listedPaths,
   });
+
+  const qualificationDirectory = "architecture/qualification/v1";
+  const qualificationLedgerPath = "architecture/authority/v1-qualification-ledger.json";
+  const qualificationLedgerBytes = await read(qualificationLedgerPath);
+  const qualificationLedgerDigest = `sha256:${createHash("sha256")
+    .update(qualificationLedgerBytes).digest("hex")}`;
+  const qualificationDecision = await readFile(
+    resolve(root, "docs/decisions/0007-require-executable-v1-conformance-amendments.md"),
+    "utf8",
+  );
+  if (!qualificationDecision.includes(
+    `anchored as\n\`${qualificationLedgerDigest}\`.`,
+  )) {
+    fail("V1 qualification ledger is not anchored by ADR-0007");
+  }
+  const qualificationPaths = (await readdir(resolve(root, qualificationDirectory)))
+    .filter(filename => filename.endsWith(".json"))
+    .map(filename => `${qualificationDirectory}/${filename}`);
+  await validateQualificationLedger({
+    ledger: JSON.parse(qualificationLedgerBytes),
+    readBytes: read,
+    listedPaths: qualificationPaths,
+  });
+
+  const schema = await readJson(`${directory}/composition.schema.json`);
+  const catalog = await readJson(`${directory}/diagnostic-catalog.json`);
+  const profile = await readJson(`${directory}/resource-profile.json`);
   validateContractCoherence({
-    schema: await readJson(`${directory}/composition.schema.json`),
-    catalog: await readJson(`${directory}/diagnostic-catalog.json`),
-    profile: await readJson(`${directory}/resource-profile.json`),
+    schema,
+    catalog,
+    profile,
     vectors: await readJson(`${directory}/canonical-vectors.json`),
   });
-  process.stdout.write("Get Modular V1 contract check passed.\n");
+  const validators = createSchemaValidators(schema);
+  const diagnosticContract = await readJson(
+    `${qualificationDirectory}/diagnostic-contract.json`,
+  );
+  validateCanonicalizationQualification(await readJson(
+    `${qualificationDirectory}/canonicalization-vectors.json`,
+  ));
+  validateDecoderQualification(
+    await readJson(`${qualificationDirectory}/decoder-vectors.json`),
+    { maxDepth: profile.limits.jsonDepth },
+  );
+  validateDiagnosticQualification({
+    contract: diagnosticContract,
+    snapshots: await readJson(`${qualificationDirectory}/diagnostic-snapshots.json`),
+    catalog,
+    profile,
+    coordinateFields: Object.keys(schema.$defs.diagnostic.properties.coordinate.properties),
+    validateDiagnostic: validators.validateDiagnostic,
+  });
+  validateNormalizationQualification({
+    vectors: await readJson(`${qualificationDirectory}/normalization-vectors.json`),
+    validateDocument: validators.validateDocument,
+  });
+  validateResourceBoundaryQualification({
+    vectors: await readJson(`${qualificationDirectory}/resource-boundary-vectors.json`),
+    profile,
+    contract: diagnosticContract,
+  });
+  process.stdout.write("Get Modular V1 contract and qualification checks passed.\n");
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

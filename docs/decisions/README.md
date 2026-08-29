@@ -10,7 +10,7 @@ summary: Index of Get Modular architecture decisions.
 
 ## Proposed decisions
 
-None.
+- [ADR-0007: Require executable V1 conformance amendments](0007-require-executable-v1-conformance-amendments.md)
 
 ## Accepted decisions
 
@@ -19,6 +19,7 @@ None.
 - [ADR-0003: Select public package identity and initial topology](0003-select-public-package-identity-and-initial-topology.md)
 - [ADR-0004: Freeze V1 portable composition contract and plan digest](0004-freeze-v1-portable-composition-contract-and-plan-digest.md)
 - [ADR-0005: Freeze V1 compatibility diagnostics and resource profile](0005-freeze-v1-compatibility-diagnostics-and-resource-profile.md)
+- [ADR-0006: Clarify V1 compiler normalization and entry points](0006-clarify-v1-compiler-normalization-and-entry-points.md)
 
 ## Superseded decisions
 

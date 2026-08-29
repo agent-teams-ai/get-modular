@@ -55,10 +55,10 @@
     ],
     "conformance": {
       "status": "not-claimed",
-      "rationale": "No production module has been materialized, so structural conformance cannot yet be proven.",
+      "rationale": "No packed production module has passed the complete structural and runtime evidence matrix yet.",
       "activation_triggers": [
-        "OD-001 is resolved by an accepted ADR",
-        "the first production module is materialized"
+        "the first production module is materialized",
+        "the packed production package passes every required evidence gate"
       ],
       "required_evidence": [
         "source-dependency policy and deterministic validator",
@@ -67,7 +67,8 @@
         "rejection of cross-feature deep imports",
         "rejection of undeclared dependency edges and cycles",
         "rejection of empty ceremonial layers",
-        "rejection of undeclared module ownership exceptions"
+        "rejection of undeclared module ownership exceptions",
+        "packed artifact conformance on the supported runtime matrix"
       ]
     }
   }

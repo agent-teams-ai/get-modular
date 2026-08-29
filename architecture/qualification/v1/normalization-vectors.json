@@ -1,0 +1,218 @@
+{
+  "kind": "get-modular.normalization-vectors",
+  "vectorVersion": 1,
+  "cases": [
+    {
+      "name": "branching-multi-root-many-order-and-input-permutations",
+      "declarations": [
+        {
+          "kind": "get-modular.module-declaration",
+          "schemaVersion": 1,
+          "moduleId": "example/app",
+          "implementationId": "example/app/default",
+          "owner": {"authority": "example", "path": ["app"]},
+          "provides": [],
+          "slots": [
+            {
+              "slotId": "database",
+              "capabilityId": "example/database-access",
+              "compatibility": {
+                "family": "exact",
+                "familyVersion": 1,
+                "token": "example/database-access/v1"
+              },
+              "cardinality": {"kind": "required"}
+            },
+            {
+              "slotId": "logs",
+              "capabilityId": "example/log-sink",
+              "compatibility": {
+                "family": "exact",
+                "familyVersion": 1,
+                "token": "example/log-sink/v1"
+              },
+              "cardinality": {"kind": "many", "min": 2, "max": 2, "order": "profile"}
+            }
+          ]
+        },
+        {
+          "kind": "get-modular.module-declaration",
+          "schemaVersion": 1,
+          "moduleId": "example/database",
+          "implementationId": "example/database/default",
+          "owner": {"authority": "example", "path": ["database"]},
+          "provides": [
+            {
+              "capabilityId": "example/database-access",
+              "compatibility": {
+                "family": "exact",
+                "familyVersion": 1,
+                "token": "example/database-access/v1"
+              }
+            }
+          ],
+          "slots": []
+        },
+        {
+          "kind": "get-modular.module-declaration",
+          "schemaVersion": 1,
+          "moduleId": "example/log-console",
+          "implementationId": "example/log-console/default",
+          "owner": {"authority": "example", "path": ["log-console"]},
+          "provides": [
+            {
+              "capabilityId": "example/log-sink",
+              "compatibility": {
+                "family": "exact",
+                "familyVersion": 1,
+                "token": "example/log-sink/v1"
+              }
+            }
+          ],
+          "slots": []
+        },
+        {
+          "kind": "get-modular.module-declaration",
+          "schemaVersion": 1,
+          "moduleId": "example/log-file",
+          "implementationId": "example/log-file/default",
+          "owner": {"authority": "example", "path": ["log-file"]},
+          "provides": [
+            {
+              "capabilityId": "example/log-sink",
+              "compatibility": {
+                "family": "exact",
+                "familyVersion": 1,
+                "token": "example/log-sink/v1"
+              }
+            }
+          ],
+          "slots": []
+        },
+        {
+          "kind": "get-modular.module-declaration",
+          "schemaVersion": 1,
+          "moduleId": "example/standalone",
+          "implementationId": "example/standalone/default",
+          "owner": {"authority": "example", "path": ["standalone"]},
+          "provides": [],
+          "slots": []
+        }
+      ],
+      "declarationOrders": [
+        [
+          "example/app/default",
+          "example/database/default",
+          "example/log-console/default",
+          "example/log-file/default",
+          "example/standalone/default"
+        ],
+        [
+          "example/standalone/default",
+          "example/log-file/default",
+          "example/log-console/default",
+          "example/database/default",
+          "example/app/default"
+        ]
+      ],
+      "equivalentProfiles": [
+        {
+          "kind": "get-modular.composition-profile",
+          "schemaVersion": 1,
+          "profileId": "example/default",
+          "roots": ["example/standalone", "example/app"],
+          "selections": [
+            {"moduleId": "example/standalone", "implementationId": "example/standalone/default"},
+            {"moduleId": "example/log-file", "implementationId": "example/log-file/default"},
+            {"moduleId": "example/app", "implementationId": "example/app/default"},
+            {"moduleId": "example/database", "implementationId": "example/database/default"},
+            {"moduleId": "example/log-console", "implementationId": "example/log-console/default"}
+          ],
+          "bindings": [
+            {
+              "consumerImplementationId": "example/app/default",
+              "slotId": "logs",
+              "providerImplementationIds": ["example/log-file/default", "example/log-console/default"]
+            },
+            {
+              "consumerImplementationId": "example/app/default",
+              "slotId": "database",
+              "providerImplementationIds": ["example/database/default"]
+            }
+          ]
+        },
+        {
+          "kind": "get-modular.composition-profile",
+          "schemaVersion": 1,
+          "profileId": "example/default",
+          "roots": ["example/app", "example/standalone"],
+          "selections": [
+            {"moduleId": "example/app", "implementationId": "example/app/default"},
+            {"moduleId": "example/database", "implementationId": "example/database/default"},
+            {"moduleId": "example/log-console", "implementationId": "example/log-console/default"},
+            {"moduleId": "example/log-file", "implementationId": "example/log-file/default"},
+            {"moduleId": "example/standalone", "implementationId": "example/standalone/default"}
+          ],
+          "bindings": [
+            {
+              "consumerImplementationId": "example/app/default",
+              "slotId": "database",
+              "providerImplementationIds": ["example/database/default"]
+            },
+            {
+              "consumerImplementationId": "example/app/default",
+              "slotId": "logs",
+              "providerImplementationIds": ["example/log-file/default", "example/log-console/default"]
+            }
+          ]
+        }
+      ],
+      "expectedPlan": {
+        "kind": "get-modular.composition-plan",
+        "schemaVersion": 1,
+        "profileId": "example/default",
+        "roots": ["example/app", "example/standalone"],
+        "selections": [
+          {"moduleId": "example/app", "implementationId": "example/app/default"},
+          {"moduleId": "example/database", "implementationId": "example/database/default"},
+          {"moduleId": "example/log-console", "implementationId": "example/log-console/default"},
+          {"moduleId": "example/log-file", "implementationId": "example/log-file/default"},
+          {"moduleId": "example/standalone", "implementationId": "example/standalone/default"}
+        ],
+        "bindings": [
+          {
+            "consumerImplementationId": "example/app/default",
+            "slotId": "database",
+            "capabilityId": "example/database-access",
+            "compatibility": {
+              "family": "exact",
+              "familyVersion": 1,
+              "token": "example/database-access/v1"
+            },
+            "providerImplementationIds": ["example/database/default"]
+          },
+          {
+            "consumerImplementationId": "example/app/default",
+            "slotId": "logs",
+            "capabilityId": "example/log-sink",
+            "compatibility": {
+              "family": "exact",
+              "familyVersion": 1,
+              "token": "example/log-sink/v1"
+            },
+            "providerImplementationIds": ["example/log-file/default", "example/log-console/default"]
+          }
+        ],
+        "dependencyOrder": [
+          "example/database/default",
+          "example/log-console/default",
+          "example/log-file/default",
+          "example/app/default",
+          "example/standalone/default"
+        ]
+      },
+      "canonicalUtf8": "{\"canonicalization\":\"RFC8785\",\"hashAlgorithm\":\"SHA-256\",\"kind\":\"get-modular.plan-content\",\"plan\":{\"bindings\":[{\"capabilityId\":\"example/database-access\",\"compatibility\":{\"family\":\"exact\",\"familyVersion\":1,\"token\":\"example/database-access/v1\"},\"consumerImplementationId\":\"example/app/default\",\"providerImplementationIds\":[\"example/database/default\"],\"slotId\":\"database\"},{\"capabilityId\":\"example/log-sink\",\"compatibility\":{\"family\":\"exact\",\"familyVersion\":1,\"token\":\"example/log-sink/v1\"},\"consumerImplementationId\":\"example/app/default\",\"providerImplementationIds\":[\"example/log-file/default\",\"example/log-console/default\"],\"slotId\":\"logs\"}],\"dependencyOrder\":[\"example/database/default\",\"example/log-console/default\",\"example/log-file/default\",\"example/app/default\",\"example/standalone/default\"],\"kind\":\"get-modular.composition-plan\",\"profileId\":\"example/default\",\"roots\":[\"example/app\",\"example/standalone\"],\"schemaVersion\":1,\"selections\":[{\"implementationId\":\"example/app/default\",\"moduleId\":\"example/app\"},{\"implementationId\":\"example/database/default\",\"moduleId\":\"example/database\"},{\"implementationId\":\"example/log-console/default\",\"moduleId\":\"example/log-console\"},{\"implementationId\":\"example/log-file/default\",\"moduleId\":\"example/log-file\"},{\"implementationId\":\"example/standalone/default\",\"moduleId\":\"example/standalone\"}]},\"protocolVersion\":1}",
+      "digest": "gm-plan:v1:sha-256:203c6e09bf28258a6d863a2dd0084ff3b6d5e863eb8d14192905e154f0b33bfd"
+    }
+  ]
+}

@@ -58,14 +58,16 @@ gate.
 
 `pnpm architecture:feature-module-profile` verifies the pinned standard,
 repository mapping, local authorities, navigation, gate wiring, and explicit
-conformance state. `pnpm governance:check` continues to reject production
-artifacts while open decisions block implementation. Both commands run through
-the complete repository gate, and profile binding also runs in the fast gate.
+conformance state. `pnpm governance:check` rejects production artifacts only
+while open decisions block implementation. Both commands run through the
+complete repository gate, and profile binding also runs in the fast gate.
 
 ## Conformance is not claimed
 
-Adoption fixes the rules; it does not prove that nonexistent production modules
-follow them. With the first production package, the repository must add a
-deterministic source-dependency policy plus positive and negative fixtures for
-every structural rule listed in the profile. Only a later accepted decision may
-promote the profile from `not-claimed` to a conformance claim.
+Adoption fixes the rules; it does not prove that a production module follows
+them. `not-claimed` does not prohibit source implementation. With the first
+production package, the repository must add a deterministic source-dependency
+policy plus positive and negative fixtures for every structural rule listed in
+the profile, then execute the packed artifact on the supported runtime matrix.
+Only a later accepted decision may promote the profile from `not-claimed` to a
+conformance claim.

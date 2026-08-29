@@ -1,0 +1,184 @@
+{
+  "kind": "get-modular.decoder-vectors",
+  "vectorVersion": 1,
+  "bomPolicy": "reject",
+  "cases": [
+    {
+      "name": "plain-object",
+      "sourceEncoding": "utf8-text",
+      "source": "{}",
+      "decoderOutcome": "accepted"
+    },
+    {
+      "name": "leading-and-trailing-json-whitespace",
+      "sourceEncoding": "utf8-text",
+      "source": " \t\r\n{} \t\r\n",
+      "decoderOutcome": "accepted"
+    },
+    {
+      "name": "utf8-bom",
+      "sourceEncoding": "hex-bytes",
+      "source": "efbbbf7b7d",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "invalid-utf8-continuation",
+      "sourceEncoding": "hex-bytes",
+      "source": "c328",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "overlong-utf8",
+      "sourceEncoding": "hex-bytes",
+      "source": "c0af",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "truncated-utf8",
+      "sourceEncoding": "hex-bytes",
+      "source": "e282",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "utf8-encoded-surrogate",
+      "sourceEncoding": "hex-bytes",
+      "source": "eda080",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "duplicate-object-key",
+      "sourceEncoding": "utf8-text",
+      "source": "{\"kind\":1,\"kind\":2}",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.duplicate-key"
+    },
+    {
+      "name": "nested-duplicate-object-key",
+      "sourceEncoding": "utf8-text",
+      "source": "{\"outer\":{\"value\":1,\"value\":2}}",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.duplicate-key"
+    },
+    {
+      "name": "escape-equivalent-duplicate-key",
+      "sourceEncoding": "utf8-text",
+      "source": "{\"a\":1,\"\\u0061\":2}",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.duplicate-key"
+    },
+    {
+      "name": "same-key-in-different-objects",
+      "sourceEncoding": "utf8-text",
+      "source": "{\"left\":{\"value\":1},\"right\":{\"value\":2}}",
+      "decoderOutcome": "accepted"
+    },
+    {
+      "name": "line-comment",
+      "sourceEncoding": "utf8-text",
+      "source": "{//comment\n}",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "block-comment",
+      "sourceEncoding": "utf8-text",
+      "source": "{/*comment*/}",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "trailing-comma",
+      "sourceEncoding": "utf8-text",
+      "source": "{\"value\":1,}",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "empty-document",
+      "sourceEncoding": "utf8-text",
+      "source": "",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "multiple-root-values",
+      "sourceEncoding": "utf8-text",
+      "source": "{}{}",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "incomplete-document",
+      "sourceEncoding": "utf8-text",
+      "source": "{\"value\":1",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "leading-zero-number",
+      "sourceEncoding": "utf8-text",
+      "source": "{\"value\":01}",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "trailing-decimal-point",
+      "sourceEncoding": "utf8-text",
+      "source": "{\"value\":1.}",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "raw-control-character",
+      "sourceEncoding": "utf8-text",
+      "source": "{\"value\":\"line\nbreak\"}",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "prototype-property-is-data-before-schema-validation",
+      "sourceEncoding": "utf8-text",
+      "source": "{\"__proto__\":{\"polluted\":true}}",
+      "decoderOutcome": "accepted",
+      "semanticDiagnosticCode": "schema.unknown-field"
+    },
+    {
+      "name": "valid-surrogate-pair-escape",
+      "sourceEncoding": "utf8-text",
+      "source": "{\"value\":\"\\ud83d\\ude00\"}",
+      "decoderOutcome": "accepted"
+    },
+    {
+      "name": "json-depth-at-limit",
+      "sourceEncoding": "utf8-text",
+      "source": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[0]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+      "decoderOutcome": "accepted"
+    },
+    {
+      "name": "json-depth-over-limit",
+      "sourceEncoding": "utf8-text",
+      "source": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[0]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "input.limit-exceeded"
+    },
+    {
+      "name": "lone-surrogate-escape",
+      "sourceEncoding": "utf8-text",
+      "source": "{\"value\":\"\\ud800\"}",
+      "decoderOutcome": "accepted",
+      "semanticDiagnosticCode": "schema.invalid-value"
+    },
+    {
+      "name": "negative-zero",
+      "sourceEncoding": "utf8-text",
+      "source": "{\"schemaVersion\":-0}",
+      "decoderOutcome": "accepted",
+      "semanticDiagnosticCode": "schema.invalid-value"
+    }
+  ]
+}

@@ -6,9 +6,21 @@ settings:
 
 catalogs:
   default:
+    ajv:
+      specifier: 8.20.0
+      version: 8.20.0
+    canonicalize:
+      specifier: 4.0.0
+      version: 4.0.0
     cspell:
       specifier: 10.0.1
       version: 10.0.1
+    json-canonicalize:
+      specifier: 3.0.0
+      version: 3.0.0
+    jsonc-parser:
+      specifier: 3.3.1
+      version: 3.3.1
     markdownlint-cli2:
       specifier: 0.23.2
       version: 0.23.2
@@ -26,9 +38,21 @@ importers:
       '@agent-teams/engineering-foundation':
         specifier: 0.21.0
         version: 0.21.0(supports-color@8.1.1)
+      ajv:
+        specifier: 'catalog:'
+        version: 8.20.0
+      canonicalize:
+        specifier: 'catalog:'
+        version: 4.0.0
       cspell:
         specifier: 'catalog:'
         version: 10.0.1
+      json-canonicalize:
+        specifier: 'catalog:'
+        version: 3.0.0
+      jsonc-parser:
+        specifier: 'catalog:'
+        version: 3.3.1
       markdownlint-cli2:
         specifier: 'catalog:'
         version: 0.23.2(supports-color@8.1.1)
@@ -561,6 +585,11 @@ packages:
     resolution: {integrity: sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==}
     engines: {node: '>=8'}
 
+  canonicalize@4.0.0:
+    resolution: {integrity: sha512-FEdXzwWs+N3rZqEqpqleiY9M1A6IAf9oo1zHFABnLW9FcJ/jzsu+G/Ks3Hq3FglmPKe80GeGBw8ZXLEnwPB0vQ==}
+    engines: {node: '>=18'}
+    hasBin: true
+
   ccount@2.0.1:
     resolution: {integrity: sha512-eyrF0jiFpY+3drT6383f1qhkbGsLSifNAjA61IUjZjmLCWjItY6LB9ft9YhoDgwfmclB2zhu51Lc7+95b8NRAg==}
 
@@ -830,6 +859,10 @@ packages:
   js-yaml@5.2.2:
     resolution: {integrity: sha512-dayzUzKkJ1MkuUtZglSebU43utNXH0OWQByK9rKOOuYIO8M5TV1y+n8ALMdG0rdzBnfNkOmZEqrURepb0ejqBw==}
     hasBin: true
+
+  json-canonicalize@3.0.0:
+    resolution: {integrity: sha512-PW21BtLiKRV7gJcT8jf2X4UNN2AF4c1TYEVug1wAWRQSGBJj7fL+v4NgOkIo54SCBPFDyqzMcOJNhjwywCIBuw==}
+    engines: {node: '>=8.5'}
 
   json-schema-traverse@1.0.0:
     resolution: {integrity: sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug==}
@@ -1705,6 +1738,8 @@ snapshots:
     dependencies:
       fill-range: 7.1.1
 
+  canonicalize@4.0.0: {}
+
   ccount@2.0.1: {}
 
   chalk-template@1.1.2:
@@ -1969,6 +2004,8 @@ snapshots:
   js-yaml@5.2.2:
     dependencies:
       argparse: 2.0.1
+
+  json-canonicalize@3.0.0: {}
 
   json-schema-traverse@1.0.0: {}
 

@@ -6,7 +6,6 @@ import {
   PROFILE_DOCUMENT_PATH,
   PROFILE_PATH,
   validateFeatureModuleStandardProfile,
-  validatePreConformanceArtifacts,
 } from "../architecture/checks/feature-module-standard-profile.mjs";
 
 const profile = JSON.parse(await readFile(PROFILE_PATH, "utf8"));
@@ -66,17 +65,6 @@ test("rejects premature conformance claims and weakened evidence", () => {
   const missingEvidence = clone(profile);
   missingEvidence.adoption.conformance.required_evidence.pop();
   assert.throws(() => validate({ profile: missingEvidence }), /conformance evidence does not match/u);
-});
-
-test("blocks production artifacts until structural conformance is activated", () => {
-  assert.doesNotThrow(() => validatePreConformanceArtifacts({
-    conformanceStatus: "not-claimed",
-    productionArtifacts: [],
-  }));
-  assert.throws(() => validatePreConformanceArtifacts({
-    conformanceStatus: "not-claimed",
-    productionArtifacts: ["packages/core/src/index.ts"],
-  }), /production artifacts require structural conformance/u);
 });
 
 test("requires explicit owned deviation records", () => {

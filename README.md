@@ -20,6 +20,19 @@ Get Modular is intentionally independent from
 The two neutral cores do not depend on each other. A product-owned adapter may
 consume both.
 
+## V1 packages
+
+- `@get-modular/core` is the only production dependency. It owns portable
+  declarations, validation, deterministic compilation, plans, digests, and
+  diagnostics.
+- `@get-modular/conformance` is a development-only conformance suite for core,
+  alternative implementations, and adapters. Applications do not install it at
+  runtime.
+
+`conformance` uses the conventional protocol-testing meaning: independently
+owned fixtures prove that an implementation follows the contract. The
+conformance package may depend on core; core never depends on conformance.
+
 ## Start here
 
 - [Documentation index](docs/README.md)

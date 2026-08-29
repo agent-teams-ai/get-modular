@@ -89,6 +89,36 @@ Package registry verification on 2026-08-30 identified `canonicalize@4.0.0`
 `json-canonicalize@3.0.0` (MIT) as the differential oracle. Neither is a public
 contract or a production dependency yet.
 
+## Exact-SHA adversarial review
+
+Three independent hosted reviewers examined PR head
+`be10802fa8e90a9608b7512019d6c9d825a782c8` with `gpt-5.6-sol`, `ultra`, and
+fast execution. Security, architecture, and real-world developer-experience
+reviews independently found the same contract gaps:
+
+- plan-array and topological tie-breaks were narrative rather than executable;
+- `many` allowed an invalid range and duplicate provider ambiguity;
+- diagnostics did not form an exact discriminated algebra;
+- the raw-byte compiler boundary and resource units were not fully specified;
+- canonical checks hashed supplied text without independently producing JCS;
+- the feature profile made the first production package impossible to admit.
+
+ADR-0006 closes the semantic entry-point, normalization, cardinality, and
+accounting rules. ADR-0007 adds immutable qualification artifacts, two
+independent JCS oracles, strict decoder vectors, complete diagnostic snapshots,
+exact boundary-plus-one cases, and the staged production-admission rule. The
+new checks contain deliberate mutation tests so a weakened artifact or
+validator fails CI.
+
+A separate hosted parser review rejected every candidate as a direct raw-byte
+drop-in. `jsonc-parser@3.3.1` (MIT, zero runtime dependencies) is admitted only
+as the first internal spike candidate through `createScanner` and `visit`.
+Production use requires fatal UTF-8 decoding, iterative depth preflight,
+decoded-key duplicate detection, surrogate and string-byte validation, bounded
+redacted diagnostics, two-pass materialization, browser-worker execution, and
+fuzz or differential evidence. Its fault-tolerant `parse` object builder is
+forbidden at the untrusted boundary.
+
 ## Reversal conditions
 
 Revisit the decisions only when evidence shows at least one of:

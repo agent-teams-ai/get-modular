@@ -1,0 +1,48 @@
+{
+  "kind": "get-modular.diagnostic-snapshots",
+  "vectorVersion": 1,
+  "snapshots": [
+    {"name": "invalid-json", "diagnostic": {"code": "decode.invalid-json", "phase": "decode", "path": [], "coordinate": {}, "details": {"reason": "invalid-json"}}},
+    {"name": "duplicate-key", "diagnostic": {"code": "decode.duplicate-key", "phase": "decode", "path": [{"kind": "field", "value": "kind"}], "coordinate": {}, "details": {"reason": "duplicate-key"}}},
+    {"name": "raw-document-limit", "diagnostic": {"code": "input.limit-exceeded", "phase": "decode", "path": [], "coordinate": {}, "details": {"limitName": "rawDocumentBytes", "limit": 1048576, "actual": 1048577}}},
+    {"name": "unsupported-version", "diagnostic": {"code": "schema.unsupported-version", "phase": "schema", "path": [{"kind": "field", "value": "schemaVersion"}], "coordinate": {}, "details": {"reason": "unsupported-version"}}},
+    {"name": "unknown-field", "diagnostic": {"code": "schema.unknown-field", "phase": "schema", "path": [{"kind": "field", "value": "unknown"}], "coordinate": {}, "details": {"reason": "unknown-field"}}},
+    {"name": "invalid-value", "diagnostic": {"code": "schema.invalid-value", "phase": "schema", "path": [{"kind": "field", "value": "schemaVersion"}], "coordinate": {}, "details": {"reason": "invalid-type"}}},
+    {"name": "non-plain-value", "diagnostic": {"code": "schema.non-plain-value", "phase": "schema", "path": [{"kind": "index", "value": 0}], "coordinate": {}, "details": {"reason": "non-plain-value"}}},
+    {"name": "invalid-identity", "diagnostic": {"code": "identity.invalid", "phase": "schema", "path": [{"kind": "field", "value": "implementationId"}], "coordinate": {}, "details": {"reason": "invalid-format"}}},
+    {"name": "duplicate-implementation", "diagnostic": {"code": "declaration.duplicate-implementation", "phase": "declaration", "path": [], "coordinate": {"implementationId": "example/app/default"}, "details": {"reason": "duplicate"}}},
+    {"name": "duplicate-capability", "diagnostic": {"code": "declaration.duplicate-capability", "phase": "declaration", "path": [{"kind": "field", "value": "provides"}, {"kind": "index", "value": 1}], "coordinate": {"implementationId": "example/app/default"}, "details": {"reason": "duplicate"}}},
+    {"name": "duplicate-slot", "diagnostic": {"code": "declaration.duplicate-slot", "phase": "declaration", "path": [{"kind": "field", "value": "slots"}, {"kind": "index", "value": 1}], "coordinate": {"implementationId": "example/app/default", "slotId": "database"}, "details": {"reason": "duplicate"}}},
+    {"name": "duplicate-root", "diagnostic": {"code": "profile.duplicate-root", "phase": "profile", "path": [], "coordinate": {"moduleId": "example/app"}, "details": {"reason": "duplicate"}}},
+    {"name": "unknown-root", "diagnostic": {"code": "profile.unknown-root", "phase": "profile", "path": [], "coordinate": {"moduleId": "example/missing"}, "details": {"reason": "unknown"}}},
+    {"name": "duplicate-selection", "diagnostic": {"code": "profile.duplicate-selection", "phase": "profile", "path": [], "coordinate": {"moduleId": "example/app"}, "details": {"reason": "duplicate"}}},
+    {"name": "unknown-module", "diagnostic": {"code": "profile.unknown-module", "phase": "profile", "path": [], "coordinate": {"moduleId": "example/missing"}, "details": {"reason": "unknown"}}},
+    {"name": "unknown-implementation", "diagnostic": {"code": "profile.unknown-implementation", "phase": "profile", "path": [], "coordinate": {"implementationId": "example/app/missing"}, "details": {"reason": "unknown"}}},
+    {"name": "implementation-mismatch", "diagnostic": {"code": "profile.implementation-mismatch", "phase": "profile", "path": [], "coordinate": {"moduleId": "example/app", "implementationId": "example/other/default"}, "details": {"reason": "mismatch"}}},
+    {"name": "missing-selection", "diagnostic": {"code": "profile.missing-selection", "phase": "profile", "path": [], "coordinate": {"moduleId": "example/app"}, "details": {"reason": "missing"}}},
+    {"name": "unreachable-selection", "diagnostic": {"code": "profile.unreachable-selection", "phase": "profile", "path": [], "coordinate": {"moduleId": "example/unused", "implementationId": "example/unused/default"}, "details": {"reason": "unreachable"}}},
+    {"name": "duplicate-provider", "diagnostic": {"code": "binding.duplicate", "phase": "binding", "path": [], "coordinate": {"implementationId": "example/app/default", "slotId": "database", "providerImplementationId": "example/database/default"}, "details": {"reason": "duplicate"}}},
+    {"name": "missing-binding", "diagnostic": {"code": "binding.missing", "phase": "binding", "path": [], "coordinate": {"implementationId": "example/app/default", "slotId": "database"}, "details": {"reason": "missing"}}},
+    {"name": "unknown-consumer", "diagnostic": {"code": "binding.unknown-consumer", "phase": "binding", "path": [], "coordinate": {"implementationId": "example/missing/default"}, "details": {"reason": "unknown"}}},
+    {"name": "unknown-slot", "diagnostic": {"code": "binding.unknown-slot", "phase": "binding", "path": [], "coordinate": {"implementationId": "example/app/default", "slotId": "missing"}, "details": {"reason": "unknown"}}},
+    {"name": "unknown-provider", "diagnostic": {"code": "binding.unknown-provider", "phase": "binding", "path": [], "coordinate": {"implementationId": "example/app/default", "slotId": "database", "providerImplementationId": "example/missing/default"}, "details": {"reason": "unknown"}}},
+    {"name": "provider-not-selected", "diagnostic": {"code": "binding.provider-not-selected", "phase": "binding", "path": [], "coordinate": {"implementationId": "example/app/default", "slotId": "database", "providerImplementationId": "example/database/default"}, "details": {"reason": "mismatch"}}},
+    {"name": "invalid-cardinality", "diagnostic": {"code": "binding.cardinality", "phase": "binding", "path": [], "coordinate": {"implementationId": "example/app/default", "slotId": "database"}, "details": {"expectedCardinality": "required", "actualCardinality": 0}}},
+    {"name": "capability-missing", "diagnostic": {"code": "binding.capability-missing", "phase": "binding", "path": [], "coordinate": {"implementationId": "example/app/default", "slotId": "database", "providerImplementationId": "example/database/default"}, "details": {"reason": "missing"}}},
+    {"name": "compatibility-mismatch", "diagnostic": {"code": "binding.compatibility-mismatch", "phase": "binding", "path": [], "coordinate": {"implementationId": "example/app/default", "slotId": "database", "providerImplementationId": "example/database/default"}, "details": {"expectedCompatibility": {"family": "exact", "familyVersion": 1, "token": "example/database-access/v1"}, "actualCompatibility": {"family": "exact", "familyVersion": 1, "token": "example/database-access/v2"}}}},
+    {"name": "cycle", "diagnostic": {"code": "graph.cycle", "phase": "graph", "path": [], "coordinate": {}, "details": {"component": ["example/app/default", "example/database/default"]}}},
+    {"name": "canonicalization-failed", "diagnostic": {"code": "output.canonicalization-failed", "phase": "output", "path": [], "coordinate": {}, "details": {"reason": "canonicalization"}}},
+    {"name": "truncated", "diagnostic": {"code": "diagnostics.truncated", "phase": "output", "path": [], "coordinate": {}, "details": {"omitted": 2}}}
+  ],
+  "orderingCases": [
+    {
+      "name": "phase-code-and-coordinate-order",
+      "input": ["cycle", "missing-binding-z", "missing-binding-a", "invalid-value"],
+      "diagnostics": {
+        "missing-binding-a": {"code": "binding.missing", "phase": "binding", "path": [], "coordinate": {"implementationId": "example/app/a", "slotId": "database"}, "details": {"reason": "missing"}},
+        "missing-binding-z": {"code": "binding.missing", "phase": "binding", "path": [], "coordinate": {"implementationId": "example/app/z", "slotId": "database"}, "details": {"reason": "missing"}}
+      },
+      "expected": ["invalid-value", "missing-binding-a", "missing-binding-z", "cycle"]
+    }
+  ]
+}

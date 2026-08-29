@@ -1,0 +1,39 @@
+{
+  "kind": "get-modular.canonicalization-vectors",
+  "vectorVersion": 1,
+  "cases": [
+    {
+      "name": "object-key-order",
+      "value": {"z": 0, "a": 1, "m": 2},
+      "canonicalUtf8": "{\"a\":1,\"m\":2,\"z\":0}"
+    },
+    {
+      "name": "string-escaping",
+      "value": {"value": "line\nquote\"backslash\\tab\tcontrol\u0001"},
+      "canonicalUtf8": "{\"value\":\"line\\nquote\\\"backslash\\\\tab\\tcontrol\\u0001\"}"
+    },
+    {
+      "name": "unicode-property-order",
+      "value": {
+        "1": "one",
+        "\r": "cr",
+        "\u0080": "control",
+        "\u00f6": "latin",
+        "\u20ac": "euro",
+        "\ud83d\ude00": "emoji",
+        "\ufb33": "hebrew"
+      },
+      "canonicalUtf8": "{\"\\r\":\"cr\",\"1\":\"one\",\"\u0080\":\"control\",\"\u00f6\":\"latin\",\"\u20ac\":\"euro\",\"\ud83d\ude00\":\"emoji\",\"\ufb33\":\"hebrew\"}"
+    },
+    {
+      "name": "rfc-number-serialization",
+      "value": {"numbers": [333333333.3333333, 1e+30, 4.5, 0.002, 1e-27]},
+      "canonicalUtf8": "{\"numbers\":[333333333.3333333,1e+30,4.5,0.002,1e-27]}"
+    },
+    {
+      "name": "safe-integer-boundaries",
+      "value": {"maximum": 9007199254740991, "minimum": -9007199254740991, "zero": 0},
+      "canonicalUtf8": "{\"maximum\":9007199254740991,\"minimum\":-9007199254740991,\"zero\":0}"
+    }
+  ]
+}

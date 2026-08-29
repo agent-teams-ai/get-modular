@@ -1,0 +1,296 @@
+{
+  "kind": "get-modular.diagnostic-contract",
+  "contractVersion": 1,
+  "coordinateFieldOrder": [
+    "moduleId",
+    "implementationId",
+    "slotId",
+    "providerImplementationId"
+  ],
+  "comparator": {
+    "missingCoordinate": "before-present",
+    "identifierOrder": "ascii-code-unit",
+    "pathKindOrder": ["field", "index"],
+    "fieldOrder": "ascii-code-unit",
+    "indexOrder": "numeric-ascending",
+    "detailsOrder": "rfc8785-utf8"
+  },
+  "pathPolicyByCode": {
+    "decode.invalid-json": "empty",
+    "decode.duplicate-key": "structural",
+    "input.limit-exceeded": "limit-specific",
+    "schema.unsupported-version": "structural",
+    "schema.unknown-field": "structural",
+    "schema.invalid-value": "structural",
+    "schema.non-plain-value": "structural",
+    "identity.invalid": "structural",
+    "declaration.duplicate-implementation": "empty",
+    "declaration.duplicate-capability": "structural",
+    "declaration.duplicate-slot": "structural",
+    "profile.duplicate-root": "empty",
+    "profile.unknown-root": "empty",
+    "profile.duplicate-selection": "empty",
+    "profile.unknown-module": "empty",
+    "profile.unknown-implementation": "empty",
+    "profile.implementation-mismatch": "empty",
+    "profile.missing-selection": "empty",
+    "profile.unreachable-selection": "empty",
+    "binding.duplicate": "empty",
+    "binding.missing": "empty",
+    "binding.unknown-consumer": "empty",
+    "binding.unknown-slot": "empty",
+    "binding.unknown-provider": "empty",
+    "binding.provider-not-selected": "empty",
+    "binding.cardinality": "empty",
+    "binding.capability-missing": "empty",
+    "binding.compatibility-mismatch": "empty",
+    "graph.cycle": "empty",
+    "output.canonicalization-failed": "empty",
+    "diagnostics.truncated": "empty"
+  },
+  "limitPathPolicies": {
+    "rawDocumentBytes": "empty",
+    "aggregateRawBytes": "empty",
+    "jsonDepth": "structural",
+    "aggregateStringBytes": "empty",
+    "identifierBytes": "structural",
+    "ownerPathSegments": "structural",
+    "declarations": "empty",
+    "capabilitiesPerDeclaration": "structural",
+    "slotsPerDeclaration": "structural",
+    "totalCapabilities": "empty",
+    "totalSlots": "empty",
+    "roots": "structural",
+    "selections": "structural",
+    "bindings": "structural",
+    "graphEdges": "empty",
+    "providersPerManySlot": "structural",
+    "graphDepth": "empty",
+    "diagnostics": "empty",
+    "diagnosticPathSegments": "empty"
+  },
+  "limitPhases": {
+    "rawDocumentBytes": "decode",
+    "aggregateRawBytes": "decode",
+    "jsonDepth": "decode",
+    "aggregateStringBytes": "decode",
+    "identifierBytes": "schema",
+    "ownerPathSegments": "declaration",
+    "declarations": "declaration",
+    "capabilitiesPerDeclaration": "declaration",
+    "slotsPerDeclaration": "declaration",
+    "totalCapabilities": "declaration",
+    "totalSlots": "declaration",
+    "roots": "profile",
+    "selections": "profile",
+    "bindings": "profile",
+    "graphEdges": "graph",
+    "providersPerManySlot": "binding",
+    "graphDepth": "graph",
+    "diagnostics": "output",
+    "diagnosticPathSegments": "output"
+  },
+  "variants": [
+    {
+      "code": "decode.invalid-json",
+      "phases": ["decode"],
+      "coordinate": {"required": [], "allowed": []},
+      "details": {"required": ["reason"], "reasonValues": ["invalid-json"]}
+    },
+    {
+      "code": "decode.duplicate-key",
+      "phases": ["decode"],
+      "coordinate": {"required": [], "allowed": []},
+      "details": {"required": ["reason"], "reasonValues": ["duplicate-key"]}
+    },
+    {
+      "code": "input.limit-exceeded",
+      "phases": ["decode", "schema", "declaration", "profile", "binding", "graph", "output"],
+      "coordinate": {"required": [], "allowed": []},
+      "details": {"required": ["limitName", "limit", "actual"]}
+    },
+    {
+      "code": "schema.unsupported-version",
+      "phases": ["schema"],
+      "coordinate": {"required": [], "allowed": []},
+      "details": {"required": ["reason"], "reasonValues": ["unsupported-version"]}
+    },
+    {
+      "code": "schema.unknown-field",
+      "phases": ["schema"],
+      "coordinate": {"required": [], "allowed": []},
+      "details": {"required": ["reason"], "reasonValues": ["unknown-field"]}
+    },
+    {
+      "code": "schema.invalid-value",
+      "phases": ["schema"],
+      "coordinate": {"required": [], "allowed": []},
+      "details": {"required": ["reason"], "reasonValues": ["invalid-type", "invalid-format"]}
+    },
+    {
+      "code": "schema.non-plain-value",
+      "phases": ["schema"],
+      "coordinate": {"required": [], "allowed": []},
+      "details": {"required": ["reason"], "reasonValues": ["non-plain-value"]}
+    },
+    {
+      "code": "identity.invalid",
+      "phases": ["schema"],
+      "coordinate": {"required": [], "allowed": []},
+      "details": {"required": ["reason"], "reasonValues": ["invalid-format"]}
+    },
+    {
+      "code": "declaration.duplicate-implementation",
+      "phases": ["declaration"],
+      "coordinate": {"required": ["implementationId"], "allowed": ["implementationId"]},
+      "details": {"required": ["reason"], "reasonValues": ["duplicate"]}
+    },
+    {
+      "code": "declaration.duplicate-capability",
+      "phases": ["declaration"],
+      "coordinate": {"required": ["implementationId"], "allowed": ["implementationId"]},
+      "details": {"required": ["reason"], "reasonValues": ["duplicate"]}
+    },
+    {
+      "code": "declaration.duplicate-slot",
+      "phases": ["declaration"],
+      "coordinate": {"required": ["implementationId", "slotId"], "allowed": ["implementationId", "slotId"]},
+      "details": {"required": ["reason"], "reasonValues": ["duplicate"]}
+    },
+    {
+      "code": "profile.duplicate-root",
+      "phases": ["profile"],
+      "coordinate": {"required": ["moduleId"], "allowed": ["moduleId"]},
+      "details": {"required": ["reason"], "reasonValues": ["duplicate"]}
+    },
+    {
+      "code": "profile.unknown-root",
+      "phases": ["profile"],
+      "coordinate": {"required": ["moduleId"], "allowed": ["moduleId"]},
+      "details": {"required": ["reason"], "reasonValues": ["unknown"]}
+    },
+    {
+      "code": "profile.duplicate-selection",
+      "phases": ["profile"],
+      "coordinate": {"required": ["moduleId"], "allowed": ["moduleId"]},
+      "details": {"required": ["reason"], "reasonValues": ["duplicate"]}
+    },
+    {
+      "code": "profile.unknown-module",
+      "phases": ["profile"],
+      "coordinate": {"required": ["moduleId"], "allowed": ["moduleId"]},
+      "details": {"required": ["reason"], "reasonValues": ["unknown"]}
+    },
+    {
+      "code": "profile.unknown-implementation",
+      "phases": ["profile"],
+      "coordinate": {"required": ["implementationId"], "allowed": ["implementationId"]},
+      "details": {"required": ["reason"], "reasonValues": ["unknown"]}
+    },
+    {
+      "code": "profile.implementation-mismatch",
+      "phases": ["profile"],
+      "coordinate": {"required": ["moduleId", "implementationId"], "allowed": ["moduleId", "implementationId"]},
+      "details": {"required": ["reason"], "reasonValues": ["mismatch"]}
+    },
+    {
+      "code": "profile.missing-selection",
+      "phases": ["profile"],
+      "coordinate": {"required": ["moduleId"], "allowed": ["moduleId"]},
+      "details": {"required": ["reason"], "reasonValues": ["missing"]}
+    },
+    {
+      "code": "profile.unreachable-selection",
+      "phases": ["profile"],
+      "coordinate": {"required": ["moduleId", "implementationId"], "allowed": ["moduleId", "implementationId"]},
+      "details": {"required": ["reason"], "reasonValues": ["unreachable"]}
+    },
+    {
+      "code": "binding.duplicate",
+      "phases": ["binding"],
+      "coordinate": {
+        "required": ["implementationId", "slotId"],
+        "allowed": ["implementationId", "slotId", "providerImplementationId"]
+      },
+      "details": {"required": ["reason"], "reasonValues": ["duplicate"]}
+    },
+    {
+      "code": "binding.missing",
+      "phases": ["binding"],
+      "coordinate": {"required": ["implementationId", "slotId"], "allowed": ["implementationId", "slotId"]},
+      "details": {"required": ["reason"], "reasonValues": ["missing"]}
+    },
+    {
+      "code": "binding.unknown-consumer",
+      "phases": ["binding"],
+      "coordinate": {"required": ["implementationId"], "allowed": ["implementationId"]},
+      "details": {"required": ["reason"], "reasonValues": ["unknown"]}
+    },
+    {
+      "code": "binding.unknown-slot",
+      "phases": ["binding"],
+      "coordinate": {"required": ["implementationId", "slotId"], "allowed": ["implementationId", "slotId"]},
+      "details": {"required": ["reason"], "reasonValues": ["unknown"]}
+    },
+    {
+      "code": "binding.unknown-provider",
+      "phases": ["binding"],
+      "coordinate": {
+        "required": ["providerImplementationId"],
+        "allowed": ["implementationId", "slotId", "providerImplementationId"]
+      },
+      "details": {"required": ["reason"], "reasonValues": ["unknown"]}
+    },
+    {
+      "code": "binding.provider-not-selected",
+      "phases": ["binding"],
+      "coordinate": {
+        "required": ["providerImplementationId"],
+        "allowed": ["implementationId", "slotId", "providerImplementationId"]
+      },
+      "details": {"required": ["reason"], "reasonValues": ["mismatch"]}
+    },
+    {
+      "code": "binding.cardinality",
+      "phases": ["binding"],
+      "coordinate": {"required": ["implementationId", "slotId"], "allowed": ["implementationId", "slotId"]},
+      "details": {"required": ["expectedCardinality", "actualCardinality"]}
+    },
+    {
+      "code": "binding.capability-missing",
+      "phases": ["binding"],
+      "coordinate": {
+        "required": ["implementationId", "slotId", "providerImplementationId"],
+        "allowed": ["implementationId", "slotId", "providerImplementationId"]
+      },
+      "details": {"required": ["reason"], "reasonValues": ["missing"]}
+    },
+    {
+      "code": "binding.compatibility-mismatch",
+      "phases": ["binding"],
+      "coordinate": {
+        "required": ["implementationId", "slotId", "providerImplementationId"],
+        "allowed": ["implementationId", "slotId", "providerImplementationId"]
+      },
+      "details": {"required": ["expectedCompatibility", "actualCompatibility"]}
+    },
+    {
+      "code": "graph.cycle",
+      "phases": ["graph"],
+      "coordinate": {"required": [], "allowed": []},
+      "details": {"required": ["component"]}
+    },
+    {
+      "code": "output.canonicalization-failed",
+      "phases": ["output"],
+      "coordinate": {"required": [], "allowed": []},
+      "details": {"required": ["reason"], "reasonValues": ["canonicalization"]}
+    },
+    {
+      "code": "diagnostics.truncated",
+      "phases": ["output"],
+      "coordinate": {"required": [], "allowed": []},
+      "details": {"required": ["omitted"]}
+    }
+  ]
+}

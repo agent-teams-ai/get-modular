@@ -1,0 +1,57 @@
+{
+  "kind": "get-modular.resource-boundary-vectors",
+  "vectorVersion": 1,
+  "cases": [
+    {"limitName": "rawDocumentBytes", "unit": "bytes-per-document", "phase": "decode", "at": 1048576, "over": 1048577, "overOutcome": "input.limit-exceeded"},
+    {"limitName": "aggregateRawBytes", "unit": "bytes-per-call", "phase": "decode", "at": 16777216, "over": 16777217, "overOutcome": "input.limit-exceeded"},
+    {"limitName": "jsonDepth", "unit": "root-inclusive-containers", "phase": "decode", "at": 32, "over": 33, "overOutcome": "input.limit-exceeded"},
+    {"limitName": "aggregateStringBytes", "unit": "utf8-key-and-string-value-bytes-per-call", "phase": "decode", "at": 8388608, "over": 8388609, "overOutcome": "input.limit-exceeded"},
+    {"limitName": "identifierBytes", "unit": "utf8-bytes-per-identifier", "phase": "schema", "at": 128, "over": 129, "overOutcome": "input.limit-exceeded"},
+    {"limitName": "ownerPathSegments", "unit": "segments-per-owner-path", "phase": "declaration", "at": 8, "over": 9, "overOutcome": "input.limit-exceeded"},
+    {"limitName": "declarations", "unit": "documents-per-call", "phase": "declaration", "at": 4096, "over": 4097, "overOutcome": "input.limit-exceeded"},
+    {"limitName": "capabilitiesPerDeclaration", "unit": "capabilities-per-declaration", "phase": "declaration", "at": 64, "over": 65, "overOutcome": "input.limit-exceeded"},
+    {"limitName": "slotsPerDeclaration", "unit": "slots-per-declaration", "phase": "declaration", "at": 128, "over": 129, "overOutcome": "input.limit-exceeded"},
+    {"limitName": "totalCapabilities", "unit": "capabilities-per-call", "phase": "declaration", "at": 65536, "over": 65537, "overOutcome": "input.limit-exceeded"},
+    {"limitName": "totalSlots", "unit": "slots-per-call", "phase": "declaration", "at": 65536, "over": 65537, "overOutcome": "input.limit-exceeded"},
+    {"limitName": "roots", "unit": "roots-per-profile", "phase": "profile", "at": 1024, "over": 1025, "overOutcome": "input.limit-exceeded"},
+    {"limitName": "selections", "unit": "selections-per-profile", "phase": "profile", "at": 4096, "over": 4097, "overOutcome": "input.limit-exceeded"},
+    {"limitName": "bindings", "unit": "bindings-per-profile", "phase": "profile", "at": 65536, "over": 65537, "overOutcome": "input.limit-exceeded"},
+    {"limitName": "graphEdges", "unit": "provider-references-per-selected-graph", "phase": "graph", "at": 262144, "over": 262145, "overOutcome": "input.limit-exceeded"},
+    {"limitName": "providersPerManySlot", "unit": "unique-provider-ids-per-many-binding", "phase": "binding", "at": 1024, "over": 1025, "overOutcome": "input.limit-exceeded"},
+    {"limitName": "graphDepth", "unit": "implementations-on-longest-path", "phase": "graph", "at": 2048, "over": 2049, "overOutcome": "input.limit-exceeded"},
+    {"limitName": "diagnostics", "unit": "records-per-result", "phase": "output", "at": 256, "over": 257, "overOutcome": "diagnostics.truncated"},
+    {"limitName": "diagnosticPathSegments", "unit": "segments-per-diagnostic-path", "phase": "output", "at": 32, "over": 33, "overOutcome": "input.limit-exceeded"}
+  ],
+  "semanticCases": [
+    {
+      "name": "many-range-is-inclusive",
+      "cardinality": {"kind": "many", "min": 2, "max": 4, "order": "profile"},
+      "acceptedProviderCounts": [2, 3, 4],
+      "rejectedProviderCounts": [0, 1, 5],
+      "diagnosticCode": "binding.cardinality"
+    },
+    {
+      "name": "many-min-cannot-exceed-max",
+      "cardinality": {"kind": "many", "min": 4, "max": 2, "order": "profile"},
+      "diagnosticCode": "schema.invalid-value"
+    },
+    {
+      "name": "provider-ids-are-unique-within-one-binding",
+      "providerImplementationIds": ["example/provider/default", "example/provider/default"],
+      "diagnosticCode": "binding.duplicate"
+    },
+    {
+      "name": "diagnostic-cap-is-not-truncated",
+      "failureCount": 256,
+      "retained": 256,
+      "omitted": 0
+    },
+    {
+      "name": "diagnostic-cap-plus-one-reserves-final-record",
+      "failureCount": 257,
+      "retained": 255,
+      "omitted": 2,
+      "diagnosticCode": "diagnostics.truncated"
+    }
+  ]
+}

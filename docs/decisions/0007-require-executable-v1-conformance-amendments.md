@@ -1,0 +1,211 @@
+---
+id: ADR-0007
+type: adr
+status: proposed
+owner: architecture
+summary: Adds discriminated diagnostics, independent canonicalization checks, exact boundary vectors, and the corrected deterministic complexity target before V1 implementation.
+related:
+  - ADR-0004
+  - ADR-0005
+  - ADR-0006
+  - GM-REQ-V1
+  - OD-002
+  - OD-003
+---
+
+# ADR-0007: Require executable V1 conformance amendments
+
+## Context
+
+Independent security, architecture, and developer-experience reviews of the
+accepted V1 contract found that several narrative guarantees were not yet
+executable. The base schema closes diagnostic code names but does not constrain
+each code's phase, coordinate, path, and detail shape. Existing canonical
+vectors hash checked-in text without independently proving RFC 8785 output.
+Resource tests exercise representative graphs but do not cover every exact
+limit and limit-plus-one outcome. The deterministic topological tie-break and
+raw-byte entry point are now clarified by ADR-0006, but their evidence must be
+portable and independently consumable before production packages claim V1
+conformance.
+
+The accepted artifacts under `architecture/contracts/v1` remain immutable.
+This successor decision adds a versioned qualification layer instead of
+rewriting ADR-0004, ADR-0005, or their contract ledger.
+
+## Decision
+
+### Additive qualification authority
+
+The artifacts under `architecture/qualification/v1` are normative amendments
+when read together with the immutable base contract. Their byte identities are
+recorded in `architecture/authority/v1-qualification-ledger.json`, anchored as
+`sha256:c0138caf9143f0b70c5b632326656ce2f7a5f4a6e9ddb8cf2d66c3d43a43661f`.
+
+The repository gate must validate both ledgers. A future revision creates a new
+artifact version and successor ADR; it never mutates an accepted ledger or
+artifact in place.
+
+### Closed diagnostic algebra
+
+`diagnostic-contract.json` is the discriminant authority for every V1
+diagnostic code. For each code it fixes:
+
+- allowed phase or the exact limit-to-phase mapping;
+- required and allowed semantic-coordinate fields;
+- empty, structural, or limit-specific path policy;
+- exact detail keys and any closed reason values;
+- the total comparator for phase, code, coordinate, path, and RFC 8785 detail
+  bytes.
+
+`diagnostic-snapshots.json` contains one complete valid record for every code
+and ordering permutations. Unknown codes, phases, coordinate fields, detail
+fields, or reason values fail conformance. Empty path policy means exactly an
+empty array. Structural path policy means at least one validated path segment.
+Limit-specific policy is selected only by `details.limitName`.
+
+The diagnostic definition embedded in `composition.schema.json` remains a base
+shape. Where it is less restrictive, the standalone diagnostic contract is the
+normative refinement. Implementations must satisfy both.
+
+### Independent canonicalization and normalization
+
+Every canonical vector is recomputed by two independent development-only RFC
+8785 implementations, initially `canonicalize` and `json-canonicalize`. Both
+must equal the checked-in UTF-8 string byte for byte before SHA-256 is checked.
+Neither package type or API enters `@get-modular/core`.
+
+`canonicalization-vectors.json` covers object ordering, JSON escaping, Unicode
+property ordering, RFC number spelling, and safe-integer boundaries.
+`normalization-vectors.json` covers declaration and profile permutations,
+multiple roots, branching dependencies, explicit `many` order, the
+lexicographically smallest topological order, canonical envelope bytes, and the
+domain-separated digest.
+
+The deterministic heap tie-break in ADR-0006 changes the implementation target
+from the simplified bound in ADR-0005 to:
+
+```text
+O(B + (V + E) log V + D log K)
+```
+
+`B` is the admitted raw input bytes, `V` selected implementations, `E` provider
+references, `D` candidate diagnostics, and `K` the fixed diagnostic cap. A
+future linear ready-set implementation is allowed only when it preserves the
+same exact order.
+
+### Decoder and resource boundaries
+
+`decoder-vectors.json` fixes one-document framing, strict UTF-8, duplicate-key
+rejection, comments, trailing commas, trailing root values, and malformed byte
+sequences. A UTF-8 BOM is rejected. Lone-surrogate escapes and negative zero
+are valid JSON tokens but fail later semantic validation.
+
+The first decoder spike uses `jsonc-parser` only through `createScanner` and
+`visit`, behind a replaceable internal adapter. It checks bytes and fatal UTF-8
+first, performs an iterative depth preflight before the library's recursive
+visitor, keeps one decoded-key set per open object, validates surrogate pairing
+and saturating string counters, and materializes values only in a second pass
+after the complete batch succeeds. `jsonc-parser.parse`, parser error text, and
+package types cannot enter the public API. If the browser/worker, fuzz, boundary,
+or redaction gates fail, the fallback is a small independently reviewed
+iterative scanner under the same vectors, not a weakened contract.
+
+`resource-boundary-vectors.json` covers every named V1 limit at the accepted
+value and at value plus one. It also fixes inclusive `many` ranges, rejects
+`min > max`, rejects duplicate provider identities, and distinguishes 256
+ordinary diagnostics from the 257-failure truncation case. The phrase
+"container-count limits" in ADR-0006 means the explicitly named structural
+limits only; V1 introduces no unnamed container-count limit.
+
+These vectors are contract evidence, not a substitute for executing the same
+cases against a production subject. A package may be implemented while the
+repository profile remains `not-claimed`, but it cannot claim V1 conformance or
+be published as conforming until every applicable vector executes against the
+packed artifact on the supported runtime matrix.
+
+### Conformance subject and runtime matrix
+
+`@get-modular/conformance` exposes fixtures plus one structural subject and
+runner boundary:
+
+```ts
+interface V1ConformanceSubject {
+  compileCompositionV1(input: {
+    readonly declarations: readonly unknown[];
+    readonly profile: unknown;
+  }): Promise<CompileCompositionV1Result>;
+
+  compileCompositionJsonV1(input: {
+    readonly declarations: readonly Uint8Array[];
+    readonly profile: Uint8Array;
+  }): Promise<CompileCompositionV1Result>;
+}
+
+declare function runV1Conformance(input: {
+  readonly subjectLabel: string;
+  readonly subject: V1ConformanceSubject;
+}): Promise<V1ConformanceReport>;
+```
+
+The report contains the contract version, subject label supplied by the caller,
+case IDs, pass or fail status, bounded failure evidence, and aggregate counts.
+It contains no credentials, absolute paths, stack traces, or implementation
+objects. The runner does not discover implementations, load plugins, or create
+a lifecycle authority. Core remains independent from conformance.
+
+The first V1 conformance claim requires the same packed subject and vectors on:
+
+- Node.js 24 on Linux, macOS, and Windows;
+- the Chromium build pinned by the repository's exact browser-test dependency,
+  in a browser window;
+- the same pinned Chromium build in a dedicated worker.
+
+The report records Node, operating-system, browser, and package versions.
+Electron is covered by the Node and Chromium surfaces plus one packed smoke on
+the exact Electron release used by a Desktop product. A future WASM or
+non-JavaScript implementation must run the portable vector subset through its
+own adapter before making a claim. Runtime coverage is a publication and
+conformance gate, not a blocker to writing the first source package.
+
+### Product navigation and production admission
+
+`owner.authority` is allocated by the owning product or repository;
+`owner.path` is a logical feature route, not a filesystem path. Get Modular
+validates their portable syntax but does not resolve source files. Build tooling
+may generate an AI-readable inventory by joining declarations with the
+product's package catalog. The generated inventory is derived navigation, not
+an identity authority, registry, or runtime discovery mechanism. Collisions in
+`(moduleId, implementationId)` remain compiler failures regardless of inventory
+source.
+
+The repository's `not-claimed` feature-profile state means only that structural
+conformance has not yet been proven. It must not prohibit creation of the first
+production package. Open implementation decisions remain enforced separately
+by the governance gate. Promotion to a conformance claim requires production
+source boundaries, positive and negative fixtures, packed-artifact execution,
+and an accepted promotion decision.
+
+## Consequences
+
+- Implementers receive exact byte, graph, diagnostic, and runner handoff rules
+  without adding a loader, DI container, plugin host, or lifecycle framework.
+- Independent JCS libraries and executable vectors reduce correlated oracle
+  mistakes, at the cost of development-only dependencies and more CI work.
+- The first package can now be built under an honest `not-claimed` state, while
+  publication remains fail-closed on cross-runtime conformance.
+- Owner metadata stays product-neutral; source navigation remains a generated
+  product concern rather than leaking repository paths into portable plans.
+
+## Rejected alternatives
+
+- Modify accepted ADRs or the base contract ledger. That would erase history
+  and violate immutable decision custody.
+- Let the core generate expected conformance values. A shared defect could make
+  implementation and tests agree incorrectly.
+- Keep diagnostics as an open object keyed only by code. Different cores could
+  expose different phases, coordinates, details, or sensitive values.
+- Require structural conformance before any production file exists. That makes
+  the first implementation impossible to admit and confuses evidence state with
+  source admission.
+- Claim every JavaScript host from Node-only CI. Portability is accepted only
+  after the packed subject executes on the declared matrix.

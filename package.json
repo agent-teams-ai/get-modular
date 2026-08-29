@@ -42,7 +42,11 @@
   "devDependencies": {
     "@agent-teams/docs-protocol": "0.4.1",
     "@agent-teams/engineering-foundation": "0.21.0",
+    "ajv": "catalog:",
+    "canonicalize": "catalog:",
     "cspell": "catalog:",
+    "json-canonicalize": "catalog:",
+    "jsonc-parser": "catalog:",
     "markdownlint-cli2": "catalog:",
     "yaml": "catalog:"
   }

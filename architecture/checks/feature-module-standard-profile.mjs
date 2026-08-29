@@ -1,4 +1,4 @@
-import { access, readFile, readdir } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -52,8 +52,8 @@ const EXPECTED_ENFORCEMENT = Object.freeze([
 ]);
 
 const EXPECTED_TRIGGERS = Object.freeze([
-  "OD-001 is resolved by an accepted ADR",
   "the first production module is materialized",
+  "the packed production package passes every required evidence gate",
 ]);
 
 const EXPECTED_EVIDENCE = Object.freeze([
@@ -64,6 +64,7 @@ const EXPECTED_EVIDENCE = Object.freeze([
   "rejection of undeclared dependency edges and cycles",
   "rejection of empty ceremonial layers",
   "rejection of undeclared module ownership exceptions",
+  "packed artifact conformance on the supported runtime matrix",
 ]);
 
 function assert(condition, message) {
@@ -95,35 +96,6 @@ function scriptCommands(script) {
   if (typeof script !== "string") return [];
   return script.split("&&")
     .map(command => command.trim().replace(/^pnpm\s+/u, ""));
-}
-
-export function validatePreConformanceArtifacts({ conformanceStatus, productionArtifacts }) {
-  if (conformanceStatus === "not-claimed" && productionArtifacts.length > 0) {
-    throw new Error(
-      `FEATURE_MODULE_PROFILE_INVALID: production artifacts require structural conformance: ${productionArtifacts.join(", ")}`,
-    );
-  }
-}
-
-async function productionArtifactsBelow(repositoryRoot, relativeDirectory) {
-  let entries;
-  try {
-    entries = await readdir(resolve(repositoryRoot, relativeDirectory), { withFileTypes: true });
-  } catch (error) {
-    if (error?.code === "ENOENT") return [];
-    throw error;
-  }
-  const artifacts = [];
-  for (const entry of entries) {
-    const relativePath = `${relativeDirectory}/${entry.name}`;
-    if (entry.isDirectory()) {
-      artifacts.push(...await productionArtifactsBelow(repositoryRoot, relativePath));
-    } else if (entry.isFile()
-      && (entry.name === "package.json" || /\.[cm]?[jt]sx?$/u.test(entry.name))) {
-      artifacts.push(relativePath);
-    }
-  }
-  return artifacts.toSorted();
 }
 
 export function validateFeatureModuleStandardProfile({
@@ -201,7 +173,7 @@ export function validateFeatureModuleStandardProfile({
     ["status", "rationale", "activation_triggers", "required_evidence"],
     "conformance");
   assert(adoption.conformance.status === "not-claimed",
-    "conformance status must remain not-claimed before production topology exists");
+    "conformance status must remain not-claimed before packed evidence exists");
   assert(typeof adoption.conformance.rationale === "string"
     && adoption.conformance.rationale.length > 0, "conformance rationale must be non-empty");
   equalJson(adoption.conformance.activation_triggers, EXPECTED_TRIGGERS,
@@ -248,14 +220,6 @@ export async function checkFeatureModuleStandardProfile(repositoryRoot = process
     docsIndex,
     agentInstructions,
     packageJson: JSON.parse(packageSource),
-  });
-  const productionArtifacts = (await Promise.all(
-    profile.adoption.scope.production_roots
-      .map(productionRoot => productionArtifactsBelow(repositoryRoot, productionRoot)),
-  )).flat().toSorted();
-  validatePreConformanceArtifacts({
-    conformanceStatus: profile.adoption.conformance.status,
-    productionArtifacts,
   });
   await Promise.all(authorities.map(authority => access(resolve(repositoryRoot, authority))));
 }
