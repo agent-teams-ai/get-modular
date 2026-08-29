@@ -6,6 +6,11 @@
       "id": "ADR-0001",
       "path": "docs/decisions/0001-product-neutral-deterministic-module-composition.md",
       "immutableDigest": "sha256:7d47c332144bef2193cd7b4902d061b043e1c342a8516877edd9d42f925bc0c1"
+    },
+    {
+      "id": "ADR-0002",
+      "path": "docs/decisions/0002-adopt-organization-feature-module-standard-v1.md",
+      "immutableDigest": "sha256:e3426f28d22681a1a909eeafae1b3dfc8fc9b7c5d6983778d980b0acbaf5f461"
     }
   ]
 }

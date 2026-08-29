@@ -3,10 +3,11 @@
 Read these sources before changing this repository:
 
 1. [System boundary](docs/architecture/system-boundary.md)
-2. [Accepted decisions](docs/decisions/README.md)
-3. [Open decisions](docs/open-decisions/README.md)
-4. [Normative requirements](docs/requirements/module-system-v1.md)
-5. [Provenance map](docs/provenance/source-map.yaml)
+2. [Feature Module Standard profile](docs/architecture/feature-module-standard.md)
+3. [Accepted decisions](docs/decisions/README.md)
+4. [Open decisions](docs/open-decisions/README.md)
+5. [Normative requirements](docs/requirements/module-system-v1.md)
+6. [Provenance map](docs/provenance/source-map.yaml)
 
 Use `pnpm check:changed` while editing, `pnpm check:fast` before handoff, and
 `pnpm check` as the complete gate.

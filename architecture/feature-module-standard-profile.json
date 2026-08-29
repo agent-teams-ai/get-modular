@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "standard": {
+    "id": "agent-teams.feature-module-standard",
+    "version": "v1",
+    "repository": "agent-teams-ai/.github",
+    "path": "docs/architecture/feature-module-standard/v1.md",
+    "git_blob_sha": "d0bfff2033faf544fe65268c1dcdfd524d093015",
+    "sha256": "851653f96643cf0466b67ab22963661976b00de44840fa3144a48a8c054f95fa"
+  },
+  "adoption": {
+    "status": "adopted",
+    "owner": "architecture",
+    "profile_document": "ARCH-FEATURE-MODULE-STANDARD",
+    "decision": "ADR-0002",
+    "scope": {
+      "production_roots": ["packages"],
+      "module_roots": ["packages"],
+      "application_roots": [],
+      "excluded_roots": ["architecture", "docs", "tests"]
+    },
+    "mapping": {
+      "production_module": "packages/*",
+      "source_root": "packages/*/src",
+      "feature_root": "packages/*/src/features/*",
+      "module_composition": "packages/*/src/composition",
+      "public_entrypoint": "packages/*/src/index.ts",
+      "test_root": "packages/*/tests",
+      "application_roots": []
+    },
+    "extensions": [
+      {
+        "id": "typescript-module-composition",
+        "authority": "docs/requirements/module-system-v1.md"
+      },
+      {
+        "id": "package-identity-and-topology",
+        "authority": "docs/open-decisions/OD-001-public-package-identity-and-topology.md"
+      },
+      {
+        "id": "repository-dependency-policy",
+        "authority": "architecture/foundation/dependency-declarations.yaml"
+      }
+    ],
+    "deviations": [],
+    "enforcement": [
+      {
+        "command": "architecture:feature-module-profile",
+        "evidence": "profile-binding"
+      },
+      {
+        "command": "governance:check",
+        "evidence": "pre-production-artifact-guard"
+      }
+    ],
+    "conformance": {
+      "status": "not-claimed",
+      "rationale": "No production module has been materialized, so structural conformance cannot yet be proven.",
+      "activation_triggers": [
+        "OD-001 is resolved by an accepted ADR",
+        "the first production module is materialized"
+      ],
+      "required_evidence": [
+        "source-dependency policy and deterministic validator",
+        "one valid fixture for every materialized module role",
+        "rejection of production behavior outside a feature",
+        "rejection of cross-feature deep imports",
+        "rejection of undeclared dependency edges and cycles",
+        "rejection of empty ceremonial layers",
+        "rejection of undeclared module ownership exceptions"
+      ]
+    }
+  }
+}
