@@ -11,6 +11,7 @@ summary: Canonical navigation for Get Modular architecture and evidence.
 ## Architecture
 
 - [System boundary](architecture/system-boundary.md)
+- [Feature Module Standard profile](architecture/feature-module-standard.md)
 
 ## Governance
 

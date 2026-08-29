@@ -15,6 +15,7 @@ None.
 ## Accepted decisions
 
 - [ADR-0001: Product-neutral deterministic module composition](0001-product-neutral-deterministic-module-composition.md)
+- [ADR-0002: Adopt organization Feature Module Standard v1](0002-adopt-organization-feature-module-standard-v1.md)
 
 ## Superseded decisions
 

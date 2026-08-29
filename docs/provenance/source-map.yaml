@@ -63,6 +63,15 @@ sources:
     pullRequest: https://github.com/agent-teams-ai/extension-foundation/pull/29
     paths:
       - docs/architecture/module-system-dogfooding.md
+  - id: organization-feature-module-standard-v1
+    repository: https://github.com/agent-teams-ai/.github
+    revision: eef92e7fd40f538b4e9ba03e01bbd4e2d23f12f2
+    status: accepted-authority-at-observation
+    observedAt: 2026-08-29
+    paths:
+      - docs/architecture/feature-module-standard/v1.md
+      - docs/decisions/0004-versioned-feature-module-standard.md
+      - governance/feature-module-standard.json
 authorityRules:
   - Draft evidence can challenge a decision but cannot authorize production scope.
   - Accepted Get Modular ADRs and requirements are the local authority.

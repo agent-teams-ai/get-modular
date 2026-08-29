@@ -15,9 +15,9 @@
     "url": "git+https://github.com/agent-teams-ai/get-modular.git"
   },
   "scripts": {
-    "check": "pnpm foundation:check && pnpm docs:protocol:check && pnpm governance:check && pnpm governance:test",
+    "check": "pnpm foundation:check && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm governance:check && pnpm governance:test",
     "check:changed": "agent-teams-foundation agent-workflow changed --consumer .",
-    "check:fast": "pnpm foundation:check && pnpm docs:check",
+    "check:fast": "pnpm foundation:check && pnpm architecture:feature-module-profile && pnpm docs:check",
     "docs:changed": "pnpm docs:check && pnpm docs:quality",
     "docs:check": "agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml",
     "docs:doctor": "agent-teams-docs doctor --consumer . --profile architecture/foundation/docs-protocol.yaml",
@@ -31,12 +31,14 @@
     "foundation:assert-registry": "agent-teams-foundation assert-registry",
     "foundation:check": "agent-teams-foundation check && pnpm foundation:assert-dev-only && pnpm foundation:assert-registry",
     "foundation:status": "agent-teams-foundation status",
+    "architecture:feature-module-profile": "node architecture/checks/feature-module-standard-profile.mjs",
+    "architecture:feature-module-profile:test": "node --test tests/feature-module-standard-profile.test.mjs",
     "governance:check": "node architecture/checks/governance.mjs",
     "governance:test": "node --test tests/governance.test.mjs"
   },
   "devDependencies": {
-    "@agent-teams/docs-protocol": "0.3.2",
-    "@agent-teams/engineering-foundation": "0.20.0",
+    "@agent-teams/docs-protocol": "0.4.1",
+    "@agent-teams/engineering-foundation": "0.21.0",
     "cspell": "catalog:",
     "markdownlint-cli2": "catalog:",
     "yaml": "catalog:"
