@@ -11,6 +11,11 @@
       "id": "ADR-0002",
       "path": "docs/decisions/0002-adopt-organization-feature-module-standard-v1.md",
       "immutableDigest": "sha256:e3426f28d22681a1a909eeafae1b3dfc8fc9b7c5d6983778d980b0acbaf5f461"
+    },
+    {
+      "id": "ADR-0003",
+      "path": "docs/decisions/0003-select-public-package-identity-and-initial-topology.md",
+      "immutableDigest": "sha256:f92da995243a9f60e79b758e17209a17d91603d7059636ba07bf036ecf9eb5e1"
     }
   ]
 }

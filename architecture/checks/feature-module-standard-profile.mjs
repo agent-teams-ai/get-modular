@@ -38,7 +38,7 @@ const EXPECTED_EXTENSIONS = Object.freeze([
   },
   {
     id: "package-identity-and-topology",
-    authority: "docs/open-decisions/OD-001-public-package-identity-and-topology.md",
+    authority: "docs/decisions/0003-select-public-package-identity-and-initial-topology.md",
   },
   {
     id: "repository-dependency-policy",

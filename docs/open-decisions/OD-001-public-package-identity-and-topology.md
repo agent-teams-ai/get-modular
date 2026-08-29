@@ -1,11 +1,13 @@
 ---
 id: OD-001
 type: open-decision
-status: open
+status: resolved
 owner: architecture
 summary: Selects the npm identity and initial package boundaries without premature fragmentation.
+resolved_by: ADR-0003
 related:
   - ADR-0001
+  - ADR-0003
 ---
 
 # OD-001: Public package identity and topology
@@ -48,5 +50,7 @@ direction without creating forwarding-only packages.
 
 ## Resolution
 
-Open. The working recommendation is option 1, but no package is published until
-identity ownership and packed artifact evidence are complete.
+Resolved by `ADR-0003`. Use `@get-modular/core` and development-only
+`@get-modular/conformance`. Add another package only after an accepted decision
+proves an independent dependency or lifecycle boundary. Registry publication is
+still prohibited until authenticated ownership of `@get-modular` is verified.
