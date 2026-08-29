@@ -38,14 +38,15 @@ Get Modular is a library repository, so it has no application roots. Root
 qualification tooling and are outside production-module scope. No production
 package or empty feature layout is created by this adoption.
 
-Package identities and final package boundaries remain owned by `OD-001` until
-an accepted ADR resolves that decision.
+Package identities and initial package boundaries are owned by `ADR-0003`, which
+resolves `OD-001` while retaining npm namespace verification as a publication
+gate.
 
 ## Local extensions
 
 - TypeScript declarations, deterministic compilation, immutable plans, and
   closed dependency objects follow `GM-REQ-V1`.
-- Package identity and physical topology follow `OD-001` and cannot be inferred
+- Package identity and physical topology follow `ADR-0003` and cannot be inferred
   by a generator.
 - Repository dependencies follow the exact pnpm and development-only rules in
   `architecture/foundation/dependency-declarations.yaml`.
