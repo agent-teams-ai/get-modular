@@ -1,0 +1,42 @@
+schemaVersion: 1
+repository:
+  url: https://github.com/agent-teams-ai/get-modular
+sources:
+  - id: extension-foundation-main
+    repository: https://github.com/agent-teams-ai/extension-foundation
+    revision: 4738aa329196f9d0c50a14edfcbe454d2cca0b98
+    status: accepted-authority-at-observation
+    observedAt: 2026-08-29
+    paths:
+      - docs/decisions/0013-first-consumer-module-semantics-before-foundation-extraction.md
+      - docs/decisions/0014-product-local-module-authoring-composition-and-generation-guardrails.md
+      - docs/qualification/module-system-v1-productization/
+  - id: extension-foundation-extraction-authorization
+    repository: https://github.com/agent-teams-ai/extension-foundation
+    revision: 8cbadeb402c06a686b001a667968a6216c0a0154
+    status: proposed-upstream-authority
+    observedAt: 2026-08-29
+    pullRequest: https://github.com/agent-teams-ai/extension-foundation/pull/30
+    paths:
+      - docs/decisions/0015-authorize-get-modular-semantic-extraction.md
+  - id: universal-module-qualification
+    repository: https://github.com/agent-teams-ai/extension-foundation
+    revision: b1597fabab5b4f0b5e5060cfe594d6cc056b623d
+    status: draft-evidence
+    observedAt: 2026-08-29
+    pullRequest: https://github.com/agent-teams-ai/extension-foundation/pull/28
+    paths:
+      - docs/qualification/universal-module-extension-qualification/
+  - id: module-dogfooding-qualification
+    repository: https://github.com/agent-teams-ai/extension-foundation
+    revision: e41f7da7ac4b04086c8f1d664389ab423464c264
+    status: draft-evidence
+    observedAt: 2026-08-29
+    pullRequest: https://github.com/agent-teams-ai/extension-foundation/pull/29
+    paths:
+      - docs/architecture/module-dogfooding-boundary.md
+authorityRules:
+  - Draft evidence can challenge a decision but cannot authorize production scope.
+  - Accepted Get Modular ADRs and requirements are the local authority.
+  - External revisions are immutable observations and are never floating branch references.
+  - A changed external head requires a new observation, not mutation of historical evidence.

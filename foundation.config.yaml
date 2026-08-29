@@ -1,0 +1,12 @@
+schemaVersion: 1
+project:
+  id: get-modular
+capabilities:
+  documentation.local-references:
+    configPath: architecture/foundation/documentation-local-references.yaml
+  governance.architecture-decisions:
+    configPath: architecture/foundation/governance-architecture-decisions.yaml
+  repository.agent-workflow:
+    configPath: architecture/foundation/repository-agent-workflow.yaml
+  workspace.dependency-declarations:
+    configPath: architecture/foundation/dependency-declarations.yaml

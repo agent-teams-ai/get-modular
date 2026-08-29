@@ -1,0 +1,16 @@
+schemaVersion: 1
+packageManager:
+  kind: pnpm
+  workspaceManifest: pnpm-workspace.yaml
+policies:
+  externalDependencies: catalog
+  catalogVersions: exact
+  internalDependencies: workspace-protocol
+  reservedScopes:
+    - "@get-modular/"
+  developmentOnlyPackages:
+    - cspell
+    - markdownlint-cli2
+  exactRegistryDevelopmentOnlyPackages:
+    - "@agent-teams/docs-protocol"
+    - "@agent-teams/engineering-foundation"
