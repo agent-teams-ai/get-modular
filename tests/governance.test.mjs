@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import {
+  productionArtifactPaths,
   requirementIdsFromMarkdown,
   validateAcceptedAuthorityCatalog,
   validateAuthorityLedger,
@@ -161,6 +165,27 @@ test("open decisions block production artifacts and qualification claims", () =>
     productionArtifacts: [],
     qualifiedDocuments: ["QUAL-V1"],
   }), /qualification claims are blocked/u);
+});
+
+test("production artifact discovery fails closed across repository layouts", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-governance-"));
+  try {
+    await writeFile(join(fixture, "package.json"), JSON.stringify({ private: true, files: ["compiler.js"] }));
+    await writeFile(join(fixture, "compiler.ts"), "export const compiler = true;\n");
+    await mkdir(join(fixture, "scripts"));
+    await writeFile(join(fixture, "scripts/compiler.ts"), "export const compiler = true;\n");
+    await mkdir(join(fixture, "examples/core"), { recursive: true });
+    await writeFile(join(fixture, "examples/core/package.json"), JSON.stringify({ private: true }));
+
+    assert.deepEqual(await productionArtifactPaths(fixture), [
+      "compiler.ts",
+      "examples/core/package.json",
+      "package.json#files",
+      "scripts/compiler.ts",
+    ]);
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
 });
 
 test("resolved decisions require an accepted reciprocal ADR", () => {

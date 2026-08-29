@@ -241,27 +241,28 @@ async function governanceDocumentCatalog() {
   return documents;
 }
 
-async function filesBelow(relativeDirectory) {
+async function filesBelow(repositoryRoot, relativeDirectory) {
   const files = [];
   let entries = [];
   try {
-    entries = await readdir(resolve(root, relativeDirectory), { withFileTypes: true });
+    entries = await readdir(resolve(repositoryRoot, relativeDirectory), { withFileTypes: true });
   } catch (error) {
     if (error?.code === "ENOENT") return files;
     throw error;
   }
   for (const entry of entries) {
     const path = `${relativeDirectory}/${entry.name}`;
-    if (entry.isDirectory()) files.push(...await filesBelow(path));
+    if (entry.isDirectory()) files.push(...await filesBelow(repositoryRoot, path));
     else if (entry.isFile()) files.push(path);
   }
   return files;
 }
 
-async function productionArtifactPaths() {
+export async function productionArtifactPaths(repositoryRoot = root) {
   const artifacts = [];
-  const rootPackage = JSON.parse(await read("package.json"));
-  for (const field of ["bin", "exports", "main", "module", "types", "typings"]) {
+  const rootPackage = JSON.parse(await readFile(resolve(repositoryRoot, "package.json"), "utf8"));
+  if (rootPackage.private !== true) artifacts.push("package.json#private");
+  for (const field of ["bin", "exports", "files", "main", "module", "types", "typings"]) {
     if (rootPackage[field] !== undefined) artifacts.push(`package.json#${field}`);
   }
 
@@ -271,18 +272,15 @@ async function productionArtifactPaths() {
     ".github",
     "architecture",
     "docs",
-    "examples",
     "node_modules",
-    "scripts",
-    "spikes",
     "tests",
   ]);
-  for (const entry of await readdir(root, { withFileTypes: true })) {
+  for (const entry of await readdir(repositoryRoot, { withFileTypes: true })) {
     if (entry.isDirectory() && !excludedDirectories.has(entry.name)) {
-      artifacts.push(...(await filesBelow(entry.name)).filter(path => (
+      artifacts.push(...(await filesBelow(repositoryRoot, entry.name)).filter(path => (
         path.endsWith("/package.json") || /\.[cm]?[jt]sx?$/u.test(path)
       )));
-    } else if (entry.isFile() && /^(?:index|main|mod)\.[cm]?[jt]sx?$/u.test(entry.name)) {
+    } else if (entry.isFile() && /\.[cm]?[jt]sx?$/u.test(entry.name)) {
       artifacts.push(entry.name);
     }
   }
@@ -324,7 +322,7 @@ async function main() {
   });
   validateBlockedImplementation({
     blockerIds,
-    productionArtifacts: await productionArtifactPaths(),
+    productionArtifacts: await productionArtifactPaths(root),
     qualifiedDocuments: [...documents.values()]
       .filter(metadata => metadata.type === "qualification" && metadata.status === "qualified")
       .map(metadata => metadata.id),
