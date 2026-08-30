@@ -995,6 +995,7 @@ export function validateStaticConformanceProtocol({
       fail(`${descriptor.caseId} must contain one exact complete failure result`);
     }
     const diagnostics = descriptor.expected.diagnostics;
+    const normalizedCandidateKeys = new Set();
     validateResolvedResultCodeDisposition({
       result: descriptor.expected,
       contract,
@@ -1019,6 +1020,17 @@ export function validateStaticConformanceProtocol({
         label,
         { invocationPrefixLength: prefixLength },
       );
+      const normalizedCandidate = canonicalize({
+        code: diagnostic.code,
+        phase: diagnostic.phase,
+        path: diagnostic.path,
+        coordinate: diagnostic.coordinate,
+        details: diagnostic.details,
+      });
+      if (normalizedCandidateKeys.has(normalizedCandidate)) {
+        fail(`${label} duplicates a normalized diagnostic candidate`);
+      }
+      normalizedCandidateKeys.add(normalizedCandidate);
     }
     if (!same(diagnostics, diagnostics.toSorted(compare))) {
       fail(`${descriptor.caseId} diagnostics are not in exact normative order`);
@@ -1849,6 +1861,12 @@ export function validateNormalizationQualification({ vectors, validateDocument }
     const implementationIds = vector.declarations
       .map(declaration => declaration.implementationId)
       .sort(compareAscii);
+    if (!Array.isArray(vector.declarationOrders) || vector.declarationOrders.length === 0) {
+      fail(`${vector.name} requires at least one declaration permutation`);
+    }
+    if (!Array.isArray(vector.equivalentProfiles) || vector.equivalentProfiles.length === 0) {
+      fail(`${vector.name} requires at least one equivalent profile`);
+    }
     for (const order of vector.declarationOrders) {
       exactStringSet(order, implementationIds, `${vector.name} declaration permutation`);
     }

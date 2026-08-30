@@ -767,6 +767,15 @@ test("normalization qualification rejects order and canonical-byte drift", async
   const wrongCanonicalBytes = clone(vectors);
   wrongCanonicalBytes.cases[0].canonicalUtf8 += " ";
   assert.throws(() => validate(wrongCanonicalBytes), /accepted RFC 8785 value/u);
+
+  const missingPermutationEvidence = clone(vectors);
+  missingPermutationEvidence.cases[0].declarationOrders = [];
+  missingPermutationEvidence.cases[0].equivalentProfiles = [];
+  assert.throws(() => validate(missingPermutationEvidence), /requires at least one/u);
+
+  const missingProfileEvidence = clone(vectors);
+  missingProfileEvidence.cases[0].equivalentProfiles = [];
+  assert.throws(() => validate(missingProfileEvidence), /requires at least one equivalent profile/u);
 });
 
 test("resource and decoder qualification reject expectation drift", async () => {

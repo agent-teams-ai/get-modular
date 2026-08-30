@@ -106,6 +106,19 @@ test("bounded diagnostic protocol fixes prefixes, coordinates, barriers, and sup
     validateDocument,
     validateDiagnostic,
   }));
+  const duplicateCandidateProtocol = clone(manifest.staticConformanceProtocol);
+  const duplicateCandidate = duplicateCandidateProtocol.cases
+    .find(descriptor => descriptor.caseId === "diag.object.semantic-coordinate.v1");
+  duplicateCandidate.expected.diagnostics.push(
+    clone(duplicateCandidate.expected.diagnostics[0]),
+  );
+  assert.throws(() => validateStaticConformanceProtocol({
+    protocol: duplicateCandidateProtocol,
+    contract,
+    catalog,
+    validateDocument,
+    validateDiagnostic,
+  }), /duplicates a normalized diagnostic candidate/u);
   const emission = contract.boundedEmissionProtocol;
   assert.equal(emission.maximumPathSegments, 32);
   assert.deepEqual(emission.invocationPrefixes.rawDeclaration, [

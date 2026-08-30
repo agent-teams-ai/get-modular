@@ -54,7 +54,7 @@ precedence.
 
 After acceptance, the qualification artifacts become normative amendments
 when read together with the immutable base contract.
-Their byte identities are recorded in
+The qualification ledger records their exact byte identities:
 The exact qualification ledger `architecture/authority/v1-qualification-ledger.json`
 is anchored as
 `sha256:5c6a29b30bb7503d62eedfdf72aeaaf0d73fca52e54854a81752fb174c5cfaa2`.
