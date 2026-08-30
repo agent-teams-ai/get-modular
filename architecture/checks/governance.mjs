@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { access, readFile, readdir } from "node:fs/promises";
+import { lstat, readFile, readdir } from "node:fs/promises";
 import { dirname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
@@ -13,6 +13,10 @@ export { productionArtifactPaths } from "./production-artifacts.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
+const ARCHITECTURE_AUTHORITY_PATH = /^docs\/architecture\/[^/]+\.md$/u;
+const REQUIREMENTS_AUTHORITY_PATH = /^docs\/requirements\/[^/]+\.md$/u;
+const QUALIFICATION_DOCUMENT_PATH = /^docs\/qualification\/[^/]+\.md$/u;
+const DECISION_DOCUMENT_PATH = /^docs\/decisions\/[^/]+\.md$/u;
 const REVISION = /^[a-f0-9]{40}$/u;
 const REQUIREMENT = /^GM-REQ-[0-9]{3}$/u;
 const SAFE_RELATIVE_PATH = /^(?![\\/])(?!.*(?:^|[\\/])\.\.(?:[\\/]|$))[^\\]+$/u;
@@ -35,8 +39,39 @@ const QUALIFICATION_CLAIM_STATUSES = new Set([
   "runtime-conformant",
 ]);
 
+export const ACCEPTED_AUTHORITY_LEDGER_PATH =
+  "architecture/authority/accepted-authorities.json";
+export const ACCEPTED_AUTHORITY_LEDGER_DIGEST =
+  "sha256:9ba074210704a20f6a3ef7486f3cf2ec7435fb0fc5552cca210b6d3d5d73f077";
+export const ACCEPTED_AUTHORITY_LEDGER_ANCHOR =
+  `The accepted authority ledger \`${ACCEPTED_AUTHORITY_LEDGER_PATH}\` is anchored as `
+  + `\`${ACCEPTED_AUTHORITY_LEDGER_DIGEST}\`.`;
+
 function fail(message) {
   throw new Error(`GOVERNANCE_CHECK_FAILED: ${message}`);
+}
+
+function exactKeys(value, expectedKeys, label) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)
+    || JSON.stringify(Object.keys(value).sort()) !== JSON.stringify([...expectedKeys].sort())) {
+    fail(`${label} must contain exactly: ${expectedKeys.join(", ")}`);
+  }
+}
+
+function digestBytes(bytes, label) {
+  if (typeof bytes !== "string" && !ArrayBuffer.isView(bytes)) {
+    fail(`${label} bytes are missing`);
+  }
+  return `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+}
+
+function safeRepositoryPath(value) {
+  return typeof value === "string"
+    && SAFE_RELATIVE_PATH.test(value)
+    && !value.includes("\0")
+    && !value.includes("\n")
+    && !value.includes("\r")
+    && value.split("/").every(segment => segment !== "" && segment !== "." && segment !== "..");
 }
 
 function uniqueStrings(values, label) {
@@ -66,25 +101,45 @@ function validCalendarDate(value) {
 }
 
 export async function validateAuthorityLedger({ ledger, readBytes }) {
+  exactKeys(ledger, ["schemaVersion", "algorithm", "authorities"],
+    "accepted authority ledger");
   if (ledger?.schemaVersion !== 1 || ledger.algorithm !== "sha256-bytes") {
     fail("unsupported accepted-authorities schema");
   }
   const authorities = new Map();
   for (const entry of ledger.authorities ?? []) {
+    exactKeys(entry, ["id", "type", "path", "immutableDigest"],
+      `accepted authority ${entry?.id ?? "<unknown>"}`);
     if (typeof entry?.id !== "string" || authorities.has(entry.id)) {
       fail("accepted authority IDs must be unique strings");
     }
     if (!["architecture", "requirements"].includes(entry.type)) {
       fail(`${entry.id} has an unsupported accepted authority type`);
     }
-    if (!SAFE_RELATIVE_PATH.test(entry.path ?? "")) fail(`${entry.id} has an unsafe authority path`);
+    const authorityPath = entry.type === "architecture"
+      ? ARCHITECTURE_AUTHORITY_PATH
+      : REQUIREMENTS_AUTHORITY_PATH;
+    if (!authorityPath.test(entry.path ?? "")) {
+      fail(`${entry.id} has an invalid ${entry.type} authority path`);
+    }
     if (!SHA256.test(entry.immutableDigest ?? "")) fail(`${entry.id} has an invalid authority digest`);
-    const digest = `sha256:${createHash("sha256").update(await readBytes(entry.path)).digest("hex")}`;
+    const digest = digestBytes(await readBytes(entry.path), `${entry.id} authority`);
     if (digest !== entry.immutableDigest) fail(`${entry.id} differs from accepted authority`);
     authorities.set(entry.id, entry.type);
   }
   if (authorities.size === 0) fail("accepted authority ledger must not be empty");
   return authorities;
+}
+
+export function validateAuthorityLedgerCustody({ ledgerBytes, decisionMarkdown }) {
+  const digest = digestBytes(ledgerBytes, "accepted authority ledger");
+  if (digest !== ACCEPTED_AUTHORITY_LEDGER_DIGEST) {
+    fail(`accepted authority ledger must remain ${ACCEPTED_AUTHORITY_LEDGER_DIGEST}`);
+  }
+  if (typeof decisionMarkdown !== "string"
+    || !decisionMarkdown.includes(ACCEPTED_AUTHORITY_LEDGER_ANCHOR)) {
+    fail("ADR-0007 is missing the exact accepted authority ledger anchor");
+  }
 }
 
 export function validateAcceptedAuthorityCatalog({ documents, ledgerAuthorities }) {
@@ -109,10 +164,25 @@ export function validateBlockedImplementation({ blockerIds, productionArtifacts,
   }
 }
 
+function documentSource(documentSources, id, pathPattern, label) {
+  const source = documentSources?.get?.(id);
+  if (!source || !safeRepositoryPath(source.path) || !pathPattern.test(source.path)) {
+    fail(`${label} must be a governed in-repository Markdown document`);
+  }
+  digestBytes(source.bytes, label);
+  return source;
+}
+
+export function qualificationClaimAnchor({ id, path, digest }) {
+  return `The exact qualification document bytes for \`${id}\` at \`${path}\` `
+    + `are anchored as \`${digest}\`.`;
+}
+
 export async function validateQualificationClaims({
   documents,
   productionArtifacts,
-  evidenceExists,
+  documentSources,
+  evidenceFile,
 }) {
   const byId = new Map(documents.map(document => [document.id, document]));
   const qualifications = documents.filter(document => document.type === "qualification");
@@ -126,7 +196,7 @@ export async function validateQualificationClaims({
     QUALIFICATION_CLAIM_STATUSES.has(document.status)
   ));
   for (const claim of claims) {
-    if (!SAFE_RELATIVE_PATH.test(claim.subject ?? "")
+    if (!safeRepositoryPath(claim.subject)
       || !claim.subject.startsWith("packages/")
       || claim.subject.endsWith("/")) {
       fail(`${claim.id} must identify a production subject below packages`);
@@ -135,38 +205,87 @@ export async function validateQualificationClaims({
       fail(`${claim.id} cannot claim ${claim.status} without its production subject`);
     }
 
-    const evidence = uniqueStrings(claim.evidence, `${claim.id}.evidence`);
-    for (const path of evidence) {
-      if (!SAFE_RELATIVE_PATH.test(path)) fail(`${claim.id} has an unsafe evidence path`);
-      if (!await evidenceExists(path)) fail(`${claim.id} references missing evidence ${path}`);
-    }
+    const claimSource = documentSource(
+      documentSources,
+      claim.id,
+      QUALIFICATION_DOCUMENT_PATH,
+      `${claim.id} qualification claim`,
+    );
+
+    let promotionSource;
 
     if (claim.status === "source-admitted") {
       if (claim.promotion_decision !== undefined) {
         fail(`${claim.id} source admission must not masquerade as a conformance promotion`);
       }
-      continue;
+    } else {
+      const promotion = byId.get(claim.promotion_decision);
+      if (promotion?.type !== "adr" || promotion.status !== "accepted") {
+        fail(`${claim.id} requires an accepted promotion decision`);
+      }
+      if (!Array.isArray(promotion.related) || !promotion.related.includes(claim.id)) {
+        fail(`${claim.id} promotion decision must reference the qualification claim`);
+      }
+      promotionSource = documentSource(
+        documentSources,
+        promotion.id,
+        DECISION_DOCUMENT_PATH,
+        `${claim.id} promotion decision`,
+      );
+
+      const prerequisiteStatus = claim.status === "structural-conformant"
+        ? "source-admitted"
+        : "structural-conformant";
+      const related = Array.isArray(claim.related) ? claim.related : [];
+      const prerequisite = related
+        .map(id => byId.get(id))
+        .find(document => document?.type === "qualification"
+          && document.status === prerequisiteStatus
+          && document.subject === claim.subject);
+      if (!prerequisite) {
+        fail(`${claim.id} requires a related ${prerequisiteStatus} claim for the same subject`);
+      }
     }
 
-    const promotion = byId.get(claim.promotion_decision);
-    if (promotion?.type !== "adr" || promotion.status !== "accepted") {
-      fail(`${claim.id} requires an accepted promotion decision`);
+    if (!Array.isArray(claim.evidence) || claim.evidence.length === 0) {
+      fail(`${claim.id}.evidence must be a non-empty evidence identity array`);
     }
-    if (!Array.isArray(promotion.related) || !promotion.related.includes(claim.id)) {
-      fail(`${claim.id} promotion decision must reference the qualification claim`);
+    const evidencePaths = new Set();
+    for (const entry of claim.evidence) {
+      exactKeys(entry, ["path", "digest"], `${claim.id} evidence identity`);
+      if (!safeRepositoryPath(entry.path)) fail(`${claim.id} has an unsafe evidence path`);
+      if (evidencePaths.has(entry.path)) fail(`${claim.id}.evidence contains duplicate paths`);
+      evidencePaths.add(entry.path);
+      if (!SHA256.test(entry.digest ?? "")) fail(`${claim.id} has an invalid evidence digest`);
+      if (entry.path === claimSource.path || entry.path === promotionSource?.path) {
+        fail(`${claim.id} evidence cannot create self or circular custody`);
+      }
+      const file = await evidenceFile?.(entry.path);
+      if (file?.kind === "missing" || file === undefined || file === null) {
+        fail(`${claim.id} references missing evidence ${entry.path}`);
+      }
+      if (file.kind !== "regular") {
+        fail(`${claim.id} evidence must be a regular in-repository file: ${entry.path}`);
+      }
+      const actualDigest = digestBytes(file.bytes, `${claim.id} evidence ${entry.path}`);
+      if (actualDigest !== entry.digest) {
+        fail(`${claim.id} evidence differs from ${entry.digest}: ${entry.path}`);
+      }
     }
 
-    const prerequisiteStatus = claim.status === "structural-conformant"
-      ? "source-admitted"
-      : "structural-conformant";
-    const related = Array.isArray(claim.related) ? claim.related : [];
-    const prerequisite = related
-      .map(id => byId.get(id))
-      .find(document => document?.type === "qualification"
-        && document.status === prerequisiteStatus
-        && document.subject === claim.subject);
-    if (!prerequisite) {
-      fail(`${claim.id} requires a related ${prerequisiteStatus} claim for the same subject`);
+    if (promotionSource) {
+      const claimDigest = digestBytes(claimSource.bytes, `${claim.id} qualification claim`);
+      const anchor = qualificationClaimAnchor({
+        id: claim.id,
+        path: claimSource.path,
+        digest: claimDigest,
+      });
+      const promotionMarkdown = typeof promotionSource.bytes === "string"
+        ? promotionSource.bytes
+        : Buffer.from(promotionSource.bytes).toString("utf8");
+      if (!promotionMarkdown.includes(anchor)) {
+        fail(`${claim.id} promotion decision is missing its exact qualification bytes anchor`);
+      }
     }
   }
   return claims.map(claim => claim.id);
@@ -299,8 +418,13 @@ async function read(relativePath) {
   return readFile(resolve(root, relativePath), "utf8");
 }
 
+async function readBytes(relativePath) {
+  return readFile(resolve(root, relativePath));
+}
+
 async function governanceDocumentCatalog() {
   const documents = new Map();
+  const documentSources = new Map();
   for (const directory of [
     "docs/architecture",
     "docs/decisions",
@@ -310,7 +434,9 @@ async function governanceDocumentCatalog() {
   ]) {
     for (const filename of await readdir(resolve(root, directory))) {
       if (!filename.endsWith(".md")) continue;
-      const markdown = await read(`${directory}/${filename}`);
+      const path = `${directory}/${filename}`;
+      const bytes = await readBytes(path);
+      const markdown = bytes.toString("utf8");
       const match = markdown.match(/^---\n([\s\S]*?)\n---/u);
       if (!match) fail(`${directory}/${filename} has no metadata`);
       const metadata = parse(match[1]);
@@ -318,17 +444,25 @@ async function governanceDocumentCatalog() {
         fail(`governance document IDs must be unique strings: ${directory}/${filename}`);
       }
       documents.set(metadata.id, metadata);
+      documentSources.set(metadata.id, { path, bytes });
     }
   }
-  return documents;
+  return { documents, documentSources };
 }
 
 async function main() {
-  const ledgerAuthorities = await validateAuthorityLedger({
-    ledger: JSON.parse(await read("architecture/authority/accepted-authorities.json")),
-    readBytes: read,
+  const ledgerBytes = await readBytes(ACCEPTED_AUTHORITY_LEDGER_PATH);
+  validateAuthorityLedgerCustody({
+    ledgerBytes,
+    decisionMarkdown: await read(
+      "docs/decisions/0007-require-executable-v1-conformance-amendments.md",
+    ),
   });
-  const documents = await governanceDocumentCatalog();
+  const ledgerAuthorities = await validateAuthorityLedger({
+    ledger: JSON.parse(ledgerBytes.toString("utf8")),
+    readBytes,
+  });
+  const { documents, documentSources } = await governanceDocumentCatalog();
   validateDecisionResolutions([...documents.values()]);
   validateAcceptedAuthorityCatalog({
     documents: [...documents.values()],
@@ -364,10 +498,21 @@ async function main() {
   const claimDocuments = await validateQualificationClaims({
     documents: [...documents.values()],
     productionArtifacts,
-    evidenceExists: path => access(resolve(root, path)).then(() => true, error => {
-      if (error?.code === "ENOENT") return false;
-      throw error;
-    }),
+    documentSources,
+    evidenceFile: async path => {
+      const absolutePath = resolve(root, path);
+      let status;
+      try {
+        status = await lstat(absolutePath);
+      } catch (error) {
+        if (["ENOENT", "ENOTDIR"].includes(error?.code)) return { kind: "missing" };
+        throw error;
+      }
+      if (!status.isFile()) {
+        return { kind: status.isSymbolicLink() ? "symlink" : "non-regular" };
+      }
+      return { kind: "regular", bytes: await readFile(absolutePath) };
+    },
   });
   validateBlockedImplementation({
     blockerIds,

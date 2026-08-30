@@ -2,16 +2,15 @@ import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const PRODUCTION_SOURCE = /\.[cm]?[jt]sx?$/u;
-const EXCLUDED_DIRECTORIES = new Set([
+const NON_PRODUCTION_DIRECTORIES = new Set([
   ".agents",
   ".codex",
-  ".git",
   ".github",
   "architecture",
   "docs",
-  "node_modules",
   "tests",
 ]);
+const UNTRACKED_DIRECTORIES = new Set([".git", "node_modules"]);
 
 function compareStrings(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
@@ -21,7 +20,7 @@ function isProductionArtifactName(path) {
   return path.endsWith("/package.json") || PRODUCTION_SOURCE.test(path);
 }
 
-async function filesBelow(repositoryRoot, relativeDirectory) {
+async function filesBelow(repositoryRoot, relativeDirectory, includeProductionFiles) {
   const files = [];
   let entries = [];
   try {
@@ -32,9 +31,11 @@ async function filesBelow(repositoryRoot, relativeDirectory) {
   }
   for (const entry of entries) {
     const path = `${relativeDirectory}/${entry.name}`;
-    if (entry.isDirectory()) {
-      files.push(...await filesBelow(repositoryRoot, path));
-    } else if ((entry.isFile() || entry.isSymbolicLink()) && isProductionArtifactName(path)) {
+    if (entry.isSymbolicLink()) {
+      files.push(path);
+    } else if (entry.isDirectory()) {
+      files.push(...await filesBelow(repositoryRoot, path, includeProductionFiles));
+    } else if (includeProductionFiles && entry.isFile() && isProductionArtifactName(path)) {
       files.push(path);
     }
   }
@@ -54,9 +55,16 @@ export async function productionArtifactPaths(repositoryRoot = process.cwd()) {
   }
 
   for (const entry of await readdir(repositoryRoot, { withFileTypes: true })) {
-    if (entry.isDirectory() && !EXCLUDED_DIRECTORIES.has(entry.name)) {
-      artifacts.push(...await filesBelow(repositoryRoot, entry.name));
-    } else if ((entry.isFile() || entry.isSymbolicLink()) && PRODUCTION_SOURCE.test(entry.name)) {
+    if (UNTRACKED_DIRECTORIES.has(entry.name)) continue;
+    if (entry.isSymbolicLink()) {
+      artifacts.push(entry.name);
+    } else if (entry.isDirectory()) {
+      artifacts.push(...await filesBelow(
+        repositoryRoot,
+        entry.name,
+        !NON_PRODUCTION_DIRECTORIES.has(entry.name),
+      ));
+    } else if (entry.isFile() && PRODUCTION_SOURCE.test(entry.name)) {
       artifacts.push(entry.name);
     }
   }

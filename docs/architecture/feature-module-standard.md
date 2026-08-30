@@ -99,10 +99,22 @@ Qualification records therefore use distinct, ordered states:
   the same subject, packed-artifact runtime evidence, and an accepted reciprocal
   promotion decision.
 
-Every claim names its production subject and checked-in evidence paths.
-Structural and runtime promotion decisions must name the qualification record,
-so an unrelated accepted ADR cannot authorize a claim. A `reviewed` record is
-evidence or analysis only and makes no admission or conformance claim.
+Every claim names its production subject and carries closed evidence identities
+with exactly `path` and `digest`. Each digest is lowercase
+`sha256:<64hex>` over the file's exact bytes. Evidence must be a regular
+checked-in repository file; symlinks, missing files, paths outside the
+repository, and digest drift fail closed.
+
+Structural and runtime claims name the same-subject prerequisite claim in
+`related`. Their accepted reciprocal promotion ADR must name the qualification
+record and contain the exact sentence
+``The exact qualification document bytes for `QUAL-...` at
+`docs/qualification/...md` are anchored as `sha256:<64hex>`.`` using the
+claim document's actual path and byte digest. This is deliberately one-way: the
+claim names its promotion ADR but does not hash it, avoiding circular custody.
+Anchoring the claim bytes also binds its subject, prerequisite relationship,
+and evidence digests. A `reviewed` record is evidence or analysis only and
+makes no admission or conformance claim.
 
 The repository is currently `pre-production`. Structural conformance and
 runtime conformance are independently `not-claimed`. A future production
