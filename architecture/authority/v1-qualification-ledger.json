@@ -5,22 +5,22 @@
     {
       "id": "GM-V1-CANONICALIZATION-VECTORS",
       "path": "architecture/qualification/v1/canonicalization-vectors.json",
-      "immutableDigest": "sha256:1c5c5f5fe252051ce5eabe660f6930e5fb8dab473bd442fe1ab85c84e1ecf85c"
+      "immutableDigest": "sha256:df4241321f2dfc8dc33ec5a4e957828ef325403370b8b72205cc184e8625e65d"
     },
     {
       "id": "GM-V1-DECODER-VECTORS",
       "path": "architecture/qualification/v1/decoder-vectors.json",
-      "immutableDigest": "sha256:5d0e5b02435488849d6b7b397dd899890a1c6d0e4d8eefbd2616d604fb2e54ca"
+      "immutableDigest": "sha256:b8e175a70eda372c7ec8d5c2fe5d625ea363a7c1ca1f12efc3a352a5c168db62"
     },
     {
       "id": "GM-V1-DIAGNOSTIC-CONTRACT",
       "path": "architecture/qualification/v1/diagnostic-contract.json",
-      "immutableDigest": "sha256:9a708b1d4bb736b7edb3b3e836789d971646ae95ebf786aca8aeb90c6f64004e"
+      "immutableDigest": "sha256:c564d6afaf53bd13a15afed079832a86ba2304e666058e9e5d44895db0a7eb3a"
     },
     {
       "id": "GM-V1-DIAGNOSTIC-SNAPSHOTS",
       "path": "architecture/qualification/v1/diagnostic-snapshots.json",
-      "immutableDigest": "sha256:0b266cc605257e8541726c790e55f97b595572c10c438e4656dcf998b4df39d7"
+      "immutableDigest": "sha256:5f024082607af64782421b33b0d90e55dbabe4194be71010e6308efea567b41e"
     },
     {
       "id": "GM-V1-NORMALIZATION-VECTORS",
@@ -28,9 +28,14 @@
       "immutableDigest": "sha256:481a54dc4d15fa6c1cb92a6841183ecdbe477b25cc9312c22d3eb4b66c3c4f8c"
     },
     {
+      "id": "GM-V1-QUALIFICATION-CASE-MANIFEST",
+      "path": "architecture/qualification/v1/qualification-case-manifest.json",
+      "immutableDigest": "sha256:8e78905296c88c598098b277ef875203c285b46e799641d2d119d1fc9d3e2782"
+    },
+    {
       "id": "GM-V1-RESOURCE-BOUNDARY-VECTORS",
       "path": "architecture/qualification/v1/resource-boundary-vectors.json",
-      "immutableDigest": "sha256:6b41df69cc794fcc0a6b9ed6557ae156f70dc485d2b3082df2b580be391d09cc"
+      "immutableDigest": "sha256:09fee6d274d8d695266357e299e5bcffd9ba6e77b2fa11b377270a3d5184d944"
     }
   ]
 }

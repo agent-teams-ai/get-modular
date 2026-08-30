@@ -5,60 +5,153 @@
   "cases": [
     {
       "name": "plain-object",
+      "category": "json.valid-baseline",
       "sourceEncoding": "utf8-text",
       "source": "{}",
       "decoderOutcome": "accepted"
     },
     {
       "name": "leading-and-trailing-json-whitespace",
+      "category": "json.valid-whitespace",
       "sourceEncoding": "utf8-text",
       "source": " \t\r\n{} \t\r\n",
       "decoderOutcome": "accepted"
     },
     {
       "name": "utf8-bom",
+      "category": "encoding.utf8-bom",
       "sourceEncoding": "hex-bytes",
       "source": "efbbbf7b7d",
       "decoderOutcome": "rejected",
       "diagnosticCode": "decode.invalid-json"
     },
     {
-      "name": "invalid-utf8-continuation",
+      "name": "invalid-utf8-unexpected-continuation",
+      "category": "encoding.utf8-unexpected-continuation",
       "sourceEncoding": "hex-bytes",
-      "source": "c328",
+      "source": "228022",
       "decoderOutcome": "rejected",
       "diagnosticCode": "decode.invalid-json"
     },
     {
       "name": "overlong-utf8",
+      "category": "encoding.utf8-overlong-two-byte",
       "sourceEncoding": "hex-bytes",
-      "source": "c0af",
+      "source": "22c0af22",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "invalid-utf8-continuation",
+      "category": "encoding.utf8-invalid-second-byte",
+      "sourceEncoding": "hex-bytes",
+      "source": "22c32822",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "truncated-utf8-two-byte",
+      "category": "encoding.utf8-truncated-two-byte",
+      "sourceEncoding": "hex-bytes",
+      "source": "22c222",
       "decoderOutcome": "rejected",
       "diagnosticCode": "decode.invalid-json"
     },
     {
       "name": "truncated-utf8",
+      "category": "encoding.utf8-truncated-three-byte",
       "sourceEncoding": "hex-bytes",
-      "source": "e282",
+      "source": "22e28222",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "truncated-utf8-four-byte",
+      "category": "encoding.utf8-truncated-four-byte",
+      "sourceEncoding": "hex-bytes",
+      "source": "22f09f9822",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "overlong-utf8-three-byte",
+      "category": "encoding.utf8-overlong-three-byte",
+      "sourceEncoding": "hex-bytes",
+      "source": "22e0808022",
       "decoderOutcome": "rejected",
       "diagnosticCode": "decode.invalid-json"
     },
     {
       "name": "utf8-encoded-surrogate",
+      "category": "encoding.utf8-surrogate",
       "sourceEncoding": "hex-bytes",
-      "source": "eda080",
+      "source": "22eda08022",
       "decoderOutcome": "rejected",
       "diagnosticCode": "decode.invalid-json"
     },
     {
-      "name": "duplicate-object-key",
-      "sourceEncoding": "utf8-text",
-      "source": "{\"kind\":1,\"kind\":2}",
+      "name": "overlong-utf8-four-byte",
+      "category": "encoding.utf8-overlong-four-byte",
+      "sourceEncoding": "hex-bytes",
+      "source": "22f080808022",
       "decoderOutcome": "rejected",
-      "diagnosticCode": "decode.duplicate-key"
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "utf8-above-unicode-maximum",
+      "category": "encoding.utf8-above-unicode-maximum",
+      "sourceEncoding": "hex-bytes",
+      "source": "22f490808022",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "utf8-forbidden-high-lead",
+      "category": "encoding.utf8-forbidden-high-lead",
+      "sourceEncoding": "hex-bytes",
+      "source": "22f580808022",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "invalid-utf8-third-byte",
+      "category": "encoding.utf8-invalid-third-byte",
+      "sourceEncoding": "hex-bytes",
+      "source": "22e2822822",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "invalid-utf8-fourth-byte",
+      "category": "encoding.utf8-invalid-fourth-byte",
+      "sourceEncoding": "hex-bytes",
+      "source": "22f09f982822",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "valid-utf8-multibyte-control",
+      "category": "encoding.utf8-valid-multibyte-control",
+      "sourceEncoding": "hex-bytes",
+      "source": "22c2a2e282acf09f988022",
+      "decoderOutcome": "accepted"
+    },
+    {
+      "name": "duplicate-object-key",
+      "category": "json.duplicate-key-successor",
+      "sourceEncoding": "utf8-text",
+      "source": "{\"kind\":\"get-modular.module-declaration\",\"schemaVersion\":1,\"moduleId\":\"example/module\",\"moduleId\":\"example/duplicate\",\"implementationId\":\"example/module/default\",\"owner\":{\"authority\":\"example\",\"path\":[\"module\"]},\"provides\":[],\"slots\":[]}",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.duplicate-key",
+      "repair": {
+        "span": ",\"moduleId\":\"example/duplicate\"",
+        "replacement": ""
+      },
+      "repairedSource": "{\"kind\":\"get-modular.module-declaration\",\"schemaVersion\":1,\"moduleId\":\"example/module\",\"implementationId\":\"example/module/default\",\"owner\":{\"authority\":\"example\",\"path\":[\"module\"]},\"provides\":[],\"slots\":[]}"
     },
     {
       "name": "nested-duplicate-object-key",
+      "category": "json.duplicate-key-nested",
       "sourceEncoding": "utf8-text",
       "source": "{\"outer\":{\"value\":1,\"value\":2}}",
       "decoderOutcome": "rejected",
@@ -66,6 +159,7 @@
     },
     {
       "name": "escape-equivalent-duplicate-key",
+      "category": "json.duplicate-key-escape-equivalent",
       "sourceEncoding": "utf8-text",
       "source": "{\"a\":1,\"\\u0061\":2}",
       "decoderOutcome": "rejected",
@@ -73,12 +167,14 @@
     },
     {
       "name": "same-key-in-different-objects",
+      "category": "json.valid-key-scope",
       "sourceEncoding": "utf8-text",
       "source": "{\"left\":{\"value\":1},\"right\":{\"value\":2}}",
       "decoderOutcome": "accepted"
     },
     {
       "name": "line-comment",
+      "category": "json.line-comment",
       "sourceEncoding": "utf8-text",
       "source": "{//comment\n}",
       "decoderOutcome": "rejected",
@@ -86,6 +182,7 @@
     },
     {
       "name": "block-comment",
+      "category": "json.block-comment",
       "sourceEncoding": "utf8-text",
       "source": "{/*comment*/}",
       "decoderOutcome": "rejected",
@@ -93,6 +190,7 @@
     },
     {
       "name": "trailing-comma",
+      "category": "json.trailing-comma",
       "sourceEncoding": "utf8-text",
       "source": "{\"value\":1,}",
       "decoderOutcome": "rejected",
@@ -100,6 +198,7 @@
     },
     {
       "name": "empty-document",
+      "category": "json.empty-document",
       "sourceEncoding": "utf8-text",
       "source": "",
       "decoderOutcome": "rejected",
@@ -107,6 +206,7 @@
     },
     {
       "name": "multiple-root-values",
+      "category": "json.multiple-root-values",
       "sourceEncoding": "utf8-text",
       "source": "{}{}",
       "decoderOutcome": "rejected",
@@ -114,6 +214,7 @@
     },
     {
       "name": "incomplete-document",
+      "category": "json.incomplete-document",
       "sourceEncoding": "utf8-text",
       "source": "{\"value\":1",
       "decoderOutcome": "rejected",
@@ -121,6 +222,7 @@
     },
     {
       "name": "leading-zero-number",
+      "category": "json.leading-zero-number",
       "sourceEncoding": "utf8-text",
       "source": "{\"value\":01}",
       "decoderOutcome": "rejected",
@@ -128,6 +230,7 @@
     },
     {
       "name": "trailing-decimal-point",
+      "category": "json.trailing-decimal-point",
       "sourceEncoding": "utf8-text",
       "source": "{\"value\":1.}",
       "decoderOutcome": "rejected",
@@ -135,6 +238,7 @@
     },
     {
       "name": "raw-control-character",
+      "category": "json.raw-control-character",
       "sourceEncoding": "utf8-text",
       "source": "{\"value\":\"line\nbreak\"}",
       "decoderOutcome": "rejected",
@@ -142,25 +246,34 @@
     },
     {
       "name": "prototype-property-is-data-before-schema-validation",
+      "category": "semantic.unknown-field-successor",
       "sourceEncoding": "utf8-text",
-      "source": "{\"__proto__\":{\"polluted\":true}}",
+      "source": "{\"kind\":\"get-modular.module-declaration\",\"schemaVersion\":1,\"moduleId\":\"example/module\",\"implementationId\":\"example/module/default\",\"owner\":{\"authority\":\"example\",\"path\":[\"module\"]},\"provides\":[],\"slots\":[],\"__proto__\":{\"polluted\":true}}",
       "decoderOutcome": "accepted",
-      "semanticDiagnosticCode": "schema.unknown-field"
+      "semanticDiagnosticCode": "schema.unknown-field",
+      "repair": {
+        "span": ",\"__proto__\":{\"polluted\":true}",
+        "replacement": ""
+      },
+      "repairedSource": "{\"kind\":\"get-modular.module-declaration\",\"schemaVersion\":1,\"moduleId\":\"example/module\",\"implementationId\":\"example/module/default\",\"owner\":{\"authority\":\"example\",\"path\":[\"module\"]},\"provides\":[],\"slots\":[]}"
     },
     {
       "name": "valid-surrogate-pair-escape",
+      "category": "json.valid-surrogate-pair-escape",
       "sourceEncoding": "utf8-text",
-      "source": "{\"value\":\"\\ud83d\\ude00\"}",
+      "source": "\"\\ud83d\\ude00\"",
       "decoderOutcome": "accepted"
     },
     {
       "name": "json-depth-at-limit",
+      "category": "resource.json-depth-at-limit",
       "sourceEncoding": "utf8-text",
       "source": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[0]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
       "decoderOutcome": "accepted"
     },
     {
       "name": "json-depth-over-limit",
+      "category": "resource.json-depth-over-limit",
       "sourceEncoding": "utf8-text",
       "source": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[0]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
       "decoderOutcome": "rejected",
@@ -168,17 +281,29 @@
     },
     {
       "name": "lone-surrogate-escape",
+      "category": "semantic.terminal-high-surrogate-successor",
       "sourceEncoding": "utf8-text",
-      "source": "{\"value\":\"\\ud800\"}",
+      "source": "{\"kind\":\"get-modular.module-declaration\",\"schemaVersion\":1,\"moduleId\":\"example/module\",\"implementationId\":\"example/module/default\",\"owner\":{\"authority\":\"example\",\"path\":[\"module\\ud800\"]},\"provides\":[],\"slots\":[]}",
       "decoderOutcome": "accepted",
-      "semanticDiagnosticCode": "schema.invalid-value"
+      "semanticDiagnosticCode": "schema.invalid-value",
+      "repair": {
+        "span": "\\ud800",
+        "replacement": ""
+      },
+      "repairedSource": "{\"kind\":\"get-modular.module-declaration\",\"schemaVersion\":1,\"moduleId\":\"example/module\",\"implementationId\":\"example/module/default\",\"owner\":{\"authority\":\"example\",\"path\":[\"module\"]},\"provides\":[],\"slots\":[]}"
     },
     {
       "name": "negative-zero",
+      "category": "semantic.negative-zero-successor",
       "sourceEncoding": "utf8-text",
-      "source": "{\"schemaVersion\":-0}",
+      "source": "{\"kind\":\"get-modular.module-declaration\",\"schemaVersion\":1,\"moduleId\":\"example/module\",\"implementationId\":\"example/module/default\",\"owner\":{\"authority\":\"example\",\"path\":[\"module\"]},\"provides\":[],\"slots\":[{\"slotId\":\"dependency\",\"capabilityId\":\"example/capability\",\"compatibility\":{\"family\":\"exact\",\"familyVersion\":1,\"token\":\"example/capability/v1\"},\"cardinality\":{\"kind\":\"many\",\"min\":-0,\"max\":1,\"order\":\"profile\"}}]}",
       "decoderOutcome": "accepted",
-      "semanticDiagnosticCode": "schema.invalid-value"
+      "semanticDiagnosticCode": "schema.invalid-value",
+      "repair": {
+        "span": "-0",
+        "replacement": "0"
+      },
+      "repairedSource": "{\"kind\":\"get-modular.module-declaration\",\"schemaVersion\":1,\"moduleId\":\"example/module\",\"implementationId\":\"example/module/default\",\"owner\":{\"authority\":\"example\",\"path\":[\"module\"]},\"provides\":[],\"slots\":[{\"slotId\":\"dependency\",\"capabilityId\":\"example/capability\",\"compatibility\":{\"family\":\"exact\",\"familyVersion\":1,\"token\":\"example/capability/v1\"},\"cardinality\":{\"kind\":\"many\",\"min\":0,\"max\":1,\"order\":\"profile\"}}]}"
     }
   ]
 }

@@ -13,6 +13,7 @@ import {
   validateDecoderQualification,
   validateDiagnosticQualification,
   validateNormalizationQualification,
+  validateQualificationCaseManifest,
   validateQualificationLedger,
   validateResourceBoundaryQualification,
 } from "./v1-qualification.mjs";
@@ -168,22 +169,34 @@ async function main() {
   const schema = await readJson(`${directory}/composition.schema.json`);
   const catalog = await readJson(`${directory}/diagnostic-catalog.json`);
   const profile = await readJson(`${directory}/resource-profile.json`);
+  const acceptedCanonicalVectors = await readJson(`${directory}/canonical-vectors.json`);
   validateContractCoherence({
     schema,
     catalog,
     profile,
-    vectors: await readJson(`${directory}/canonical-vectors.json`),
+    vectors: acceptedCanonicalVectors,
   });
   const validators = createSchemaValidators(schema);
   const diagnosticContract = await readJson(
     `${qualificationDirectory}/diagnostic-contract.json`,
   );
-  validateCanonicalizationQualification(await readJson(
+  const canonicalizationVectors = await readJson(
     `${qualificationDirectory}/canonicalization-vectors.json`,
-  ));
+  );
+  const decoderVectors = await readJson(`${qualificationDirectory}/decoder-vectors.json`);
+  validateQualificationCaseManifest({
+    manifest: await readJson(`${qualificationDirectory}/qualification-case-manifest.json`),
+    decoderVectors,
+    canonicalizationVectors,
+    acceptedCanonicalVectors,
+  });
+  validateCanonicalizationQualification(canonicalizationVectors);
   validateDecoderQualification(
-    await readJson(`${qualificationDirectory}/decoder-vectors.json`),
-    { maxDepth: profile.limits.jsonDepth },
+    decoderVectors,
+    {
+      maxDepth: profile.limits.jsonDepth,
+      validateDocument: validators.validateDocument,
+    },
   );
   validateDiagnosticQualification({
     contract: diagnosticContract,
@@ -201,6 +214,10 @@ async function main() {
     vectors: await readJson(`${qualificationDirectory}/resource-boundary-vectors.json`),
     profile,
     contract: diagnosticContract,
+    catalog,
+    validateDiagnostic: validators.validateDiagnostic,
+    maximumOmitted: schema.$defs.diagnostic.properties.details
+      .properties.omitted.maximum,
   });
   process.stdout.write("Get Modular V1 contract and qualification checks passed.\n");
 }

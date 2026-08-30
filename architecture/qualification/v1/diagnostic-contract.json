@@ -11,9 +11,31 @@
     "missingCoordinate": "before-present",
     "identifierOrder": "ascii-code-unit",
     "pathKindOrder": ["field", "index"],
+    "pathPrefixOrder": "shorter-first",
     "fieldOrder": "ascii-code-unit",
     "indexOrder": "numeric-ascending",
-    "detailsOrder": "rfc8785-utf8"
+    "detailsOrder": "rfc8785-utf8",
+    "sccArrayOrder": "lexicographic-members-shorter-prefix-first",
+    "evidenceAxes": [
+      "phase",
+      "code",
+      "coordinate.moduleId.presence",
+      "coordinate.moduleId.value",
+      "coordinate.implementationId.presence",
+      "coordinate.implementationId.value",
+      "coordinate.slotId.presence",
+      "coordinate.slotId.value",
+      "coordinate.providerImplementationId.presence",
+      "coordinate.providerImplementationId.value",
+      "path.kind",
+      "path.field-value",
+      "path.index-value",
+      "path.length",
+      "path.later-kind",
+      "path.later-field-value",
+      "path.later-index-value",
+      "details.rfc8785"
+    ]
   },
   "pathPolicyByCode": {
     "decode.invalid-json": "empty",
@@ -184,7 +206,7 @@
     {
       "code": "profile.unknown-implementation",
       "phases": ["profile"],
-      "coordinate": {"required": ["implementationId"], "allowed": ["implementationId"]},
+      "coordinate": {"required": ["implementationId"], "allowed": ["moduleId", "implementationId"]},
       "details": {"required": ["reason"], "reasonValues": ["unknown"]}
     },
     {
