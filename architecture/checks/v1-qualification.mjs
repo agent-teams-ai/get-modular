@@ -12,6 +12,7 @@ const DECODER_CASE_TUPLES_SHA256 =
 const CANONICAL_CASE_TUPLES_SHA256 =
   "sha256:ae527070f5b3b2b1429ae734a6b4d62d684faf0c517f2b47c304a92564569be3";
 const QUALIFICATION_PATH = /^architecture\/qualification\/v1\/[a-z0-9.-]+\.json$/u;
+const QUALIFICATION_ARTIFACT_ID = /^GM-V1-[A-Z0-9]+(?:-[A-Z0-9]+)*$/u;
 const PATH_POLICIES = new Set(["empty", "structural", "limit-specific"]);
 const PHASE_ORDER_AUTHORITY = [
   "decode", "schema", "declaration", "profile", "binding", "graph", "output",
@@ -260,6 +261,13 @@ const PREREQUISITE_CASE_AUTHORITY = Object.freeze([
     suppressedCodes: [],
   },
 ]);
+const CANDIDATE_GENERATION_AUTHORITY = Object.freeze({
+  policy: "closed-normalize-before-deduplicate",
+  candidateKey: ["code", "phase", "path", "coordinate", "details"],
+  duplicateHandling: "drop-duplicate-normalized-candidate",
+  occurrenceHandling: "all-input-occurrences-are-counted-before-normalization",
+  ordering: "normative-comparator-after-candidate-deduplication",
+});
 const STATIC_CASE_IDS_AUTHORITY = Object.freeze([
   "diag.raw.multi-document-independent.v1",
   "diag.raw.hostile-profile-key.v1",
@@ -384,13 +392,9 @@ const RESOURCE_FIXTURE_AUTHORITY = Object.freeze({
 const COMPARATOR_EVIDENCE_AXES = [
   "phase",
   "code",
-  "coordinate.moduleId.presence",
   "coordinate.moduleId.value",
-  "coordinate.implementationId.presence",
   "coordinate.implementationId.value",
-  "coordinate.slotId.presence",
   "coordinate.slotId.value",
-  "coordinate.providerImplementationId.presence",
   "coordinate.providerImplementationId.value",
   "path.kind",
   "path.field-value",
@@ -446,19 +450,36 @@ function objectKeys(value, label) {
 }
 
 export async function validateQualificationLedger({ ledger, readBytes, listedPaths }) {
+  if (ledger === null || typeof ledger !== "object" || Array.isArray(ledger)
+    || JSON.stringify(Object.keys(ledger).sort())
+      !== JSON.stringify(["algorithm", "artifacts", "schemaVersion"])) {
+    fail("qualification ledger has an invalid closed shape");
+  }
   if (ledger?.schemaVersion !== 1 || ledger.algorithm !== "sha256-bytes") {
     fail("unsupported V1 qualification ledger");
   }
   const ids = new Set();
+  const pathSet = new Set();
   const paths = [];
   for (const artifact of ledger.artifacts ?? []) {
-    if (typeof artifact?.id !== "string" || ids.has(artifact.id)) {
+    if (artifact === null || typeof artifact !== "object" || Array.isArray(artifact)
+      || JSON.stringify(Object.keys(artifact).sort())
+        !== JSON.stringify(["id", "immutableDigest", "path"])) {
+      fail("qualification artifact has an invalid closed shape");
+    }
+    if (typeof artifact?.id !== "string"
+      || !QUALIFICATION_ARTIFACT_ID.test(artifact.id)
+      || ids.has(artifact.id)) {
       fail("qualification artifact IDs must be unique strings");
     }
     ids.add(artifact.id);
     if (!QUALIFICATION_PATH.test(artifact.path ?? "")) {
       fail(`${artifact.id} has an invalid qualification path`);
     }
+    if (pathSet.has(artifact.path)) {
+      fail("qualification artifact paths must be unique");
+    }
+    pathSet.add(artifact.path);
     if (!SHA256.test(artifact.immutableDigest ?? "")) {
       fail(`${artifact.id} has an invalid digest`);
     }
@@ -468,6 +489,9 @@ export async function validateQualificationLedger({ ledger, readBytes, listedPat
       fail(`${artifact.id} differs from the qualification ledger`);
     }
     paths.push(artifact.path);
+  }
+  if (!Array.isArray(listedPaths) || new Set(listedPaths).size !== listedPaths.length) {
+    fail("qualification ledger directory listing must contain unique paths");
   }
   if (paths.length === 0 || !same([...paths].sort(), [...listedPaths].sort())) {
     fail("qualification ledger does not match its artifact directory");
@@ -1402,11 +1426,15 @@ export function validateDiagnosticQualification({
     fail("diagnostic limit path policies contradict the independent authority");
   }
   if (!same(objectKeys(contract.prerequisiteCatalog, "diagnostic prerequisite catalog")
-    .sort(compareAscii), ["diagnostics", "exactCases", "factModel", "limits", "policy"])) {
+    .sort(compareAscii), ["candidateGeneration", "diagnostics", "exactCases", "factModel", "limits", "policy"])) {
     fail("diagnostic prerequisite catalog has an invalid shape");
   }
   if (contract.prerequisiteCatalog.policy !== "closed-bounded-facts-no-predicates") {
     fail("diagnostic prerequisite catalog must be closed data");
+  }
+  if (!same(contract.prerequisiteCatalog.candidateGeneration,
+    CANDIDATE_GENERATION_AUTHORITY)) {
+    fail("diagnostic candidate generation does not use the closed normalized-key policy");
   }
   const factModel = contract.prerequisiteCatalog.factModel;
   if (!same(factModel, {
@@ -1536,6 +1564,9 @@ export function validateDiagnosticQualification({
     if (variant.coordinate.allowed.some(field => !knownCoordinateFields.has(field))
       || variant.coordinate.required.some(field => !variant.coordinate.allowed.includes(field))) {
       fail(`${variant.code} has an invalid coordinate contract`);
+    }
+    if (!same(variant.coordinate.required, variant.coordinate.allowed)) {
+      fail(`${variant.code} must use one canonical coordinate shape`);
     }
     if (variant.phases.length === 0
       || variant.phases.some(phase => !catalog.ordering.phases.includes(phase))) {

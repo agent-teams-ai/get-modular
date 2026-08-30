@@ -58,13 +58,9 @@
     "evidenceAxes": [
       "phase",
       "code",
-      "coordinate.moduleId.presence",
       "coordinate.moduleId.value",
-      "coordinate.implementationId.presence",
       "coordinate.implementationId.value",
-      "coordinate.slotId.presence",
       "coordinate.slotId.value",
-      "coordinate.providerImplementationId.presence",
       "coordinate.providerImplementationId.value",
       "path.kind",
       "path.field-value",
@@ -110,6 +106,13 @@
   },
   "prerequisiteCatalog": {
     "policy": "closed-bounded-facts-no-predicates",
+    "candidateGeneration": {
+      "policy": "closed-normalize-before-deduplicate",
+      "candidateKey": ["code", "phase", "path", "coordinate", "details"],
+      "duplicateHandling": "drop-duplicate-normalized-candidate",
+      "occurrenceHandling": "all-input-occurrences-are-counted-before-normalization",
+      "ordering": "normative-comparator-after-candidate-deduplication"
+    },
     "factModel": {
       "states": ["valid", "invalid", "unavailable"],
       "eligibility": {"allPrerequisitesValid":"candidate-eligible","anyPrerequisiteInvalidOrUnavailable":"candidate-suppressed","independentCandidates":"continue","ordering":"normative-comparator-after-eligibility"},
@@ -370,7 +373,7 @@
     {
       "code": "profile.unknown-implementation",
       "phases": ["profile"],
-      "coordinate": {"required": ["implementationId"], "allowed": ["moduleId", "implementationId"]},
+      "coordinate": {"required": ["moduleId", "implementationId"], "allowed": ["moduleId", "implementationId"]},
       "details": {"required": ["reason"], "reasonValues": ["unknown"]}
     },
     {
@@ -395,7 +398,7 @@
       "code": "binding.duplicate",
       "phases": ["binding"],
       "coordinate": {
-        "required": ["implementationId", "slotId"],
+        "required": ["implementationId", "slotId", "providerImplementationId"],
         "allowed": ["implementationId", "slotId", "providerImplementationId"]
       },
       "details": {"required": ["reason"], "reasonValues": ["duplicate"]}
@@ -422,7 +425,7 @@
       "code": "binding.unknown-provider",
       "phases": ["binding"],
       "coordinate": {
-        "required": ["providerImplementationId"],
+        "required": ["implementationId", "slotId", "providerImplementationId"],
         "allowed": ["implementationId", "slotId", "providerImplementationId"]
       },
       "details": {"required": ["reason"], "reasonValues": ["unknown"]}
@@ -431,7 +434,7 @@
       "code": "binding.provider-not-selected",
       "phases": ["binding"],
       "coordinate": {
-        "required": ["providerImplementationId"],
+        "required": ["implementationId", "slotId", "providerImplementationId"],
         "allowed": ["implementationId", "slotId", "providerImplementationId"]
       },
       "details": {"required": ["reason"], "reasonValues": ["mismatch"]}

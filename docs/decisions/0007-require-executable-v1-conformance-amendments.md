@@ -13,7 +13,7 @@ related:
   - OD-003
 ---
 
-<!-- cspell:words Eadj Einput Evalid -->
+<!-- cspell:words Eadj Einput Evalid Sobject -->
 
 # ADR-0007: Require executable V1 conformance amendments
 
@@ -55,8 +55,9 @@ precedence.
 After acceptance, the qualification artifacts become normative amendments
 when read together with the immutable base contract.
 Their byte identities are recorded in
-`architecture/authority/v1-qualification-ledger.json`, anchored as
-`sha256:240b898e65d3618be0e2a9edf89227e4f8b453e1100bece147fde1c8ef27ae9c`.
+The exact qualification ledger `architecture/authority/v1-qualification-ledger.json`
+is anchored as
+`sha256:987955020524ff16f3899ffb5e7d6008f26f97a1b070fb1ab5b632fdc3628663`.
 
 `qualification-case-manifest.json` records decoder and canonicalization case
 categories, exact source, repair, and canonical byte identities, and the mapping
@@ -77,7 +78,7 @@ artifact in place.
 diagnostic code. For each code it fixes:
 
 - allowed phase or the exact limit-to-phase mapping;
-- required and allowed semantic-coordinate fields;
+- one exact required semantic-coordinate shape for every emitted code;
 - empty, structural, or limit-specific path policy;
 - exact detail keys and any closed reason values;
 - the total comparator for phase, code, coordinate, path, and RFC 8785 detail
@@ -86,9 +87,9 @@ diagnostic code. For each code it fixes:
 `diagnostic-snapshots.json` contains one complete valid record for every code
 and ordering permutations. It executes every adjacent phase and code rank. The
 total comparator covers phase, code, every
-coordinate field's absence or presence and value, every path segment's kind and
-value, path-prefix length, and decisive differences at path positions one, two,
-and the maximum supported depth. Exact nested and Unicode cases pin the RFC
+coordinate field's value, every path segment's kind and value, path-prefix
+length, and decisive differences at path positions one, two, and the maximum
+supported depth. Exact nested and Unicode cases pin the RFC
 8785 UTF-8 detail bytes. Every
 ordering operand must pass both the accepted base diagnostic schema and this
 refinement. Axis witnesses keep all higher axes equal, and dominance witnesses
@@ -127,10 +128,12 @@ failure and rejects the compiler Promise; it is never converted into a
 diagnostic result. This decision adds neither a public fault-injection API nor
 a serialized rejection shape.
 
-The `profile.unknown-implementation` refinement continues to require
-`implementationId` and permits normalized `moduleId` as optional context. That
-closed optional field lets the comparator exercise both absent and present
-`moduleId` operands without making either operand invalid.
+The `profile.unknown-implementation` refinement requires both `moduleId` and
+`implementationId`. Binding-provider diagnostics require the complete
+`implementationId`, `slotId`, and `providerImplementationId` tuple. Every
+other emitted code also uses one exact coordinate shape: `allowed` and
+`required` are identical. This prevents equivalent invalid inputs from being
+serialized with different coordinate sets and changing top-K retention.
 
 Diagnostic phases classify and sort records; they are not global stop
 barriers. The V1 compiler evaluates a closed prerequisite table whose facts are
@@ -150,6 +153,14 @@ independent candidates. Missing, unknown, duplicate, unbounded, or remapped
 entries fail qualification. The table contains no executable predicates,
 expressions, extension mechanism, defaults, or configurable rule language; it
 is a closed V1 generation oracle.
+
+Candidate generation is also closed. All input occurrences are counted before
+semantic normalization. A candidate is identified by the ordered semantic key
+`code`, `phase`, `path`, `coordinate`, and `details`; duplicate normalized
+candidates are emitted once, and only then are records ordered by the
+normative comparator and passed to the bounded collector. Thus repeated
+provider occurrences cannot change output cardinality unless they produce a
+distinct normalized candidate.
 
 Three exact cases fix the overlapping behavior that the code-to-group mapping
 alone cannot determine. A duplicate module selection does not suppress an
@@ -230,13 +241,16 @@ The deterministic heap tie-break and complete input accounting change the
 implementation target from the simplified bound in ADR-0005 to:
 
 ```text
-O(B + J + (V + Eadj) log V + D log K)
+O(B + J + Sobject + (V + Eadj) log V + D log K)
 ```
 
 `B` is admitted raw input bytes and is zero for the object entry point. `J` is
 every admitted JSON value occurrence across all supplied declaration and
-profile values. `V` is selected implementations, `D` candidate diagnostics,
-and `K` the fixed diagnostic cap. `Einput` and validation of all supplied
+profile values. `Sobject` is the metered UTF-16 code-unit work for object-entry
+keys and string values, counted per occurrence and bounded by the aggregate
+string limit; it is zero for the raw-byte entry point. `V` is selected
+implementations, `D` candidate diagnostics, and `K` the fixed diagnostic cap.
+`Einput` and validation of all supplied
 declarations are bounded by `J` and the named structural limits. A future
 linear ready-set implementation is allowed only when it preserves the same
 exact order.

@@ -30,6 +30,13 @@ function same(left, right) {
   return isDeepStrictEqual(left, right);
 }
 
+export function qualificationLedgerAnchor(digest) {
+  return "The exact qualification ledger `architecture/authority/"
+    + "v1-qualification-ledger.json`\nis anchored as\n`"
+    + digest
+    + "`.";
+}
+
 export async function validateContractLedger({ ledger, readBytes, listedPaths }) {
   if (ledger?.schemaVersion !== 1 || ledger.algorithm !== "sha256-bytes") {
     fail("unsupported accepted-contracts ledger");
@@ -152,9 +159,7 @@ async function main() {
     resolve(root, "docs/decisions/0007-require-executable-v1-conformance-amendments.md"),
     "utf8",
   );
-  if (!qualificationDecision.includes(
-    `anchored as\n\`${qualificationLedgerDigest}\`.`,
-  )) {
+  if (!qualificationDecision.includes(qualificationLedgerAnchor(qualificationLedgerDigest))) {
     fail("V1 qualification ledger is not anchored by ADR-0007");
   }
   const qualificationPaths = (await readdir(resolve(root, qualificationDirectory)))

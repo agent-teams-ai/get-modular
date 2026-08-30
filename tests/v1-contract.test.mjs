@@ -84,6 +84,9 @@ test("diagnostic prerequisites are closed for every code and named limit", async
   assert.doesNotThrow(() => validate(contract));
 
   for (const mutate of [
+    value => { value.prerequisiteCatalog.candidateGeneration.policy = "first-wins"; },
+    value => { value.prerequisiteCatalog.candidateGeneration.candidateKey.pop(); },
+    value => { value.prerequisiteCatalog.candidateGeneration.occurrenceHandling = "dedupe-first"; },
     value => { value.prerequisiteCatalog.diagnostics.pop(); },
     value => { value.prerequisiteCatalog.diagnostics[0].code = "unknown.code"; },
     value => { value.prerequisiteCatalog.diagnostics[1].code
@@ -417,7 +420,7 @@ test("qualification ledger rejects changed artifact bytes", async () => {
     schemaVersion: 1,
     algorithm: "sha256-bytes",
     artifacts: [{
-      id: "EXAMPLE",
+      id: "GM-V1-EXAMPLE",
       path: "architecture/qualification/v1/example.json",
       immutableDigest: `sha256:${digest}`,
     }],
@@ -432,6 +435,19 @@ test("qualification ledger rejects changed artifact bytes", async () => {
     readBytes: async () => Buffer.from("changed", "utf8"),
     listedPaths: ["architecture/qualification/v1/example.json"],
   }), /differs from the qualification ledger/u);
+
+  for (const mutant of [
+    { ...ledger, extra: true },
+    { ...ledger, artifacts: [{ ...ledger.artifacts[0], extra: true }] },
+    { ...ledger, artifacts: [{ ...ledger.artifacts[0], id: "EXAMPLE" }] },
+    { ...ledger, artifacts: [ledger.artifacts[0], { ...ledger.artifacts[0], id: "GM-V1-OTHER" }] },
+  ]) {
+    await assert.rejects(() => validateQualificationLedger({
+      ledger: mutant,
+      readBytes: async () => bytes,
+      listedPaths: ["architecture/qualification/v1/example.json"],
+    }));
+  }
 });
 
 async function runDiagnosticRefinementMutations() {
@@ -543,11 +559,19 @@ async function runDiagnosticRefinementMutations() {
     "case folding must fail the ASCII code-unit field-value witness",
   );
 
-  const invalidRefinementOperand = clone(snapshots);
-  invalidRefinementOperand.orderingCases
-    .find(vector => vector.axis === "coordinate.moduleId.presence")
-    .operands[1].override.coordinate.providerImplementationId = "example/provider/default";
-  assert.throws(() => validate(invalidRefinementOperand), /forbidden coordinate/u);
+  const missingCanonicalCoordinate = clone(snapshots);
+  delete missingCanonicalCoordinate.snapshots
+    .find(snapshot => snapshot.name === "unknown-implementation")
+    .diagnostic.coordinate.moduleId;
+  assert.throws(() => validate(missingCanonicalCoordinate), /missing coordinate\.moduleId/u);
+
+  const permissiveCoordinateVariant = clone(contract);
+  const unknownImplementation = permissiveCoordinateVariant.variants
+    .find(variant => variant.code === "profile.unknown-implementation");
+  unknownImplementation.coordinate.allowed = ["moduleId", "implementationId"];
+  unknownImplementation.coordinate.required = ["implementationId"];
+  assert.throws(() => validate(snapshots, permissiveCoordinateVariant),
+    /canonical coordinate shape/u);
 
   const assertAdjacencyRefinesOperand = (snapshotName, invalidReason) => {
     const adjacencyMutation = clone(snapshots);
@@ -573,7 +597,7 @@ async function runDiagnosticRefinementMutations() {
 
   const falseDominance = clone(snapshots);
   falseDominance.orderingCases
-    .find(vector => vector.axis === "coordinate.moduleId.presence")
+    .find(vector => vector.axis === "coordinate.moduleId.value")
     .opposedLaterAxis = "details.rfc8785";
   assert.throws(() => validate(falseDominance), /does not prove dominance/u);
 

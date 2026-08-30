@@ -17,7 +17,7 @@
     {"name": "unknown-root", "diagnostic": {"code": "profile.unknown-root", "phase": "profile", "path": [], "coordinate": {"moduleId": "example/missing"}, "details": {"reason": "unknown"}}},
     {"name": "duplicate-selection", "diagnostic": {"code": "profile.duplicate-selection", "phase": "profile", "path": [], "coordinate": {"moduleId": "example/app"}, "details": {"reason": "duplicate"}}},
     {"name": "unknown-module", "diagnostic": {"code": "profile.unknown-module", "phase": "profile", "path": [], "coordinate": {"moduleId": "example/missing"}, "details": {"reason": "unknown"}}},
-    {"name": "unknown-implementation", "diagnostic": {"code": "profile.unknown-implementation", "phase": "profile", "path": [], "coordinate": {"implementationId": "example/app/missing"}, "details": {"reason": "unknown"}}},
+    {"name": "unknown-implementation", "diagnostic": {"code": "profile.unknown-implementation", "phase": "profile", "path": [], "coordinate": {"moduleId": "example/app", "implementationId": "example/app/missing"}, "details": {"reason": "unknown"}}},
     {"name": "implementation-mismatch", "diagnostic": {"code": "profile.implementation-mismatch", "phase": "profile", "path": [], "coordinate": {"moduleId": "example/app", "implementationId": "example/other/default"}, "details": {"reason": "mismatch"}}},
     {"name": "missing-selection", "diagnostic": {"code": "profile.missing-selection", "phase": "profile", "path": [], "coordinate": {"moduleId": "example/app"}, "details": {"reason": "missing"}}},
     {"name": "unreachable-selection", "diagnostic": {"code": "profile.unreachable-selection", "phase": "graph", "path": [], "coordinate": {"moduleId": "example/unused", "implementationId": "example/unused/default"}, "details": {"reason": "unreachable"}}},
@@ -55,16 +55,6 @@
       "opposedLaterAxis": "path.field-value"
     },
     {
-      "name": "module-coordinate-presence-dominates-implementation",
-      "axis": "coordinate.moduleId.presence",
-      "operands": [
-        {"name": "module-absent", "snapshot": "unknown-implementation", "override": {"coordinate": {"implementationId": "example/z/default"}}},
-        {"name": "module-present", "snapshot": "unknown-implementation", "override": {"coordinate": {"moduleId": "example/app", "implementationId": "example/a/default"}}}
-      ],
-      "expected": ["module-absent", "module-present"],
-      "opposedLaterAxis": "coordinate.implementationId.value"
-    },
-    {
       "name": "module-coordinate-value-dominates-implementation",
       "axis": "coordinate.moduleId.value",
       "operands": [
@@ -73,16 +63,6 @@
       ],
       "expected": ["module-a", "module-z"],
       "opposedLaterAxis": "coordinate.implementationId.value"
-    },
-    {
-      "name": "implementation-coordinate-presence-dominates-slot",
-      "axis": "coordinate.implementationId.presence",
-      "operands": [
-        {"name": "implementation-absent", "snapshot": "unknown-provider", "override": {"coordinate": {"slotId": "z", "providerImplementationId": "example/provider/default"}}},
-        {"name": "implementation-present", "snapshot": "unknown-provider", "override": {"coordinate": {"implementationId": "example/app/default", "slotId": "a", "providerImplementationId": "example/provider/default"}}}
-      ],
-      "expected": ["implementation-absent", "implementation-present"],
-      "opposedLaterAxis": "coordinate.slotId.value"
     },
     {
       "name": "implementation-coordinate-value-dominates-slot",
@@ -95,16 +75,6 @@
       "opposedLaterAxis": "coordinate.slotId.value"
     },
     {
-      "name": "slot-coordinate-presence-dominates-provider",
-      "axis": "coordinate.slotId.presence",
-      "operands": [
-        {"name": "slot-absent", "snapshot": "unknown-provider", "override": {"coordinate": {"implementationId": "example/app/default", "providerImplementationId": "example/z/default"}}},
-        {"name": "slot-present", "snapshot": "unknown-provider", "override": {"coordinate": {"implementationId": "example/app/default", "slotId": "a", "providerImplementationId": "example/a/default"}}}
-      ],
-      "expected": ["slot-absent", "slot-present"],
-      "opposedLaterAxis": "coordinate.providerImplementationId.value"
-    },
-    {
       "name": "slot-coordinate-value-dominates-provider",
       "axis": "coordinate.slotId.value",
       "operands": [
@@ -113,15 +83,6 @@
       ],
       "expected": ["slot-a", "slot-z"],
       "opposedLaterAxis": "coordinate.providerImplementationId.value"
-    },
-    {
-      "name": "provider-coordinate-presence",
-      "axis": "coordinate.providerImplementationId.presence",
-      "operands": [
-        {"name": "provider-absent", "snapshot": "duplicate-provider", "override": {"coordinate": {"implementationId": "example/app/default", "slotId": "database"}}},
-        {"name": "provider-present", "snapshot": "duplicate-provider"}
-      ],
-      "expected": ["provider-absent", "provider-present"]
     },
     {
       "name": "provider-coordinate-value",
