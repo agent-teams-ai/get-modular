@@ -1,9 +1,12 @@
-import { access, readFile } from "node:fs/promises";
+import { access, readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parse } from "yaml";
 
 export const PROFILE_PATH = "architecture/feature-module-standard-profile.json";
 export const PROFILE_DOCUMENT_PATH = "docs/architecture/feature-module-standard.md";
+export const SOURCE_DEPENDENCY_POLICY_PATH =
+  "architecture/foundation/source-dependencies.yaml";
 
 const EXPECTED_STANDARD = Object.freeze({
   id: "agent-teams.feature-module-standard",
@@ -96,6 +99,55 @@ function scriptCommands(script) {
   if (typeof script !== "string") return [];
   return script.split("&&")
     .map(command => command.trim().replace(/^pnpm\s+/u, ""));
+}
+
+async function pathsBelow(repositoryRoot, relativeDirectory) {
+  let entries;
+  try {
+    entries = await readdir(resolve(repositoryRoot, relativeDirectory), { withFileTypes: true });
+  } catch (error) {
+    if (error?.code === "ENOENT") return [];
+    throw error;
+  }
+
+  const paths = [];
+  for (const entry of entries) {
+    const path = `${relativeDirectory}/${entry.name}`;
+    if (entry.isDirectory()) paths.push(...await pathsBelow(repositoryRoot, path));
+    else paths.push(path);
+  }
+  return paths;
+}
+
+export async function productionPackagePaths(repositoryRoot = process.cwd()) {
+  return (await pathsBelow(repositoryRoot, "packages")).toSorted();
+}
+
+export function validateFirstProductionPackageAdmission({
+  productionPaths,
+  foundationConfig,
+  packageJson,
+  sourceDependencyPolicyPresent,
+}) {
+  assert(Array.isArray(productionPaths)
+    && productionPaths.every(path => safeRelativePath(path) && path.startsWith("packages/")),
+  "production package paths must be safe paths below packages");
+  if (productionPaths.length === 0) return undefined;
+
+  const capability = foundationConfig?.capabilities?.["architecture.source-dependencies"];
+  exactKeys(capability, ["configPath"], "architecture.source-dependencies capability");
+  assert(capability.configPath === SOURCE_DEPENDENCY_POLICY_PATH,
+    `architecture.source-dependencies must use ${SOURCE_DEPENDENCY_POLICY_PATH}`);
+  assert(sourceDependencyPolicyPresent,
+    `first production package requires ${SOURCE_DEPENDENCY_POLICY_PATH}`);
+
+  const completeCommands = scriptCommands(packageJson.scripts?.check);
+  const fastCommands = scriptCommands(packageJson.scripts?.["check:fast"]);
+  assert(completeCommands.includes("foundation:check"),
+    "complete gate must execute the Foundation source-dependency capability");
+  assert(fastCommands.includes("foundation:check"),
+    "fast gate must execute the Foundation source-dependency capability");
+  return capability.configPath;
 }
 
 export function validateFeatureModuleStandardProfile({
@@ -206,20 +258,42 @@ export function validateFeatureModuleStandardProfile({
 }
 
 export async function checkFeatureModuleStandardProfile(repositoryRoot = process.cwd()) {
-  const [profileSource, document, docsIndex, agentInstructions, packageSource] = await Promise.all([
+  const [
+    profileSource,
+    document,
+    docsIndex,
+    agentInstructions,
+    packageSource,
+    foundationConfigSource,
+    productionPaths,
+  ] = await Promise.all([
     readFile(resolve(repositoryRoot, PROFILE_PATH), "utf8"),
     readFile(resolve(repositoryRoot, PROFILE_DOCUMENT_PATH), "utf8"),
     readFile(resolve(repositoryRoot, "docs/README.md"), "utf8"),
     readFile(resolve(repositoryRoot, "AGENTS.md"), "utf8"),
     readFile(resolve(repositoryRoot, "package.json"), "utf8"),
+    readFile(resolve(repositoryRoot, "foundation.config.yaml"), "utf8"),
+    productionPackagePaths(repositoryRoot),
   ]);
   const profile = JSON.parse(profileSource);
+  const packageJson = JSON.parse(packageSource);
   const authorities = validateFeatureModuleStandardProfile({
     profile,
     document,
     docsIndex,
     agentInstructions,
-    packageJson: JSON.parse(packageSource),
+    packageJson,
+  });
+  const policyPresent = await access(resolve(repositoryRoot, SOURCE_DEPENDENCY_POLICY_PATH))
+    .then(() => true, error => {
+      if (error?.code === "ENOENT") return false;
+      throw error;
+    });
+  validateFirstProductionPackageAdmission({
+    productionPaths,
+    foundationConfig: parse(foundationConfigSource),
+    packageJson,
+    sourceDependencyPolicyPresent: policyPresent,
   });
   await Promise.all(authorities.map(authority => access(resolve(repositoryRoot, authority))));
 }

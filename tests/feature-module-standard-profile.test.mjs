@@ -1,11 +1,16 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
   PROFILE_DOCUMENT_PATH,
   PROFILE_PATH,
+  SOURCE_DEPENDENCY_POLICY_PATH,
+  productionPackagePaths,
   validateFeatureModuleStandardProfile,
+  validateFirstProductionPackageAdmission,
 } from "../architecture/checks/feature-module-standard-profile.mjs";
 
 const profile = JSON.parse(await readFile(PROFILE_PATH, "utf8"));
@@ -110,3 +115,58 @@ test("keeps the profile reachable for humans and agents", () => {
     ),
   }), /agent navigation must route/u);
 });
+
+test("keeps an empty pre-production repository honestly not-claimed", () => {
+  assert.equal(validateFirstProductionPackageAdmission({
+    productionPaths: [],
+    foundationConfig: { schemaVersion: 1 },
+    packageJson,
+    sourceDependencyPolicyPresent: false,
+  }), undefined);
+});
+
+test("first production package requires the Foundation source-dependency gate", () => {
+  const input = {
+    productionPaths: ["packages/core/src/index.ts"],
+    foundationConfig: { schemaVersion: 1 },
+    packageJson,
+    sourceDependencyPolicyPresent: false,
+  };
+  assert.throws(() => validateFirstProductionPackageAdmission(input),
+    /architecture\.source-dependencies capability/u);
+
+  const configured = clone(input);
+  configured.foundationConfig.capabilities = {
+    "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
+  };
+  assert.throws(() => validateFirstProductionPackageAdmission(configured),
+    /first production package requires/u);
+
+  configured.sourceDependencyPolicyPresent = true;
+  assert.equal(
+    validateFirstProductionPackageAdmission(configured),
+    SOURCE_DEPENDENCY_POLICY_PATH,
+  );
+
+  const missingFastGate = clone(configured);
+  missingFastGate.packageJson.scripts["check:fast"] = "pnpm docs:check";
+  assert.throws(() => validateFirstProductionPackageAdmission(missingFastGate),
+    /fast gate must execute/u);
+});
+
+test("production package discovery is deterministic and does not require packages to exist",
+  async () => {
+    const fixture = await mkdtemp(join(tmpdir(), "get-modular-profile-"));
+    try {
+      assert.deepEqual(await productionPackagePaths(fixture), []);
+      await mkdir(join(fixture, "packages", "core", "src"), { recursive: true });
+      await writeFile(join(fixture, "packages", "core", "package.json"), "{}\n");
+      await writeFile(join(fixture, "packages", "core", "src", "index.ts"), "export {};\n");
+      assert.deepEqual(await productionPackagePaths(fixture), [
+        "packages/core/package.json",
+        "packages/core/src/index.ts",
+      ]);
+    } finally {
+      await rm(fixture, { recursive: true, force: true });
+    }
+  });

@@ -62,6 +62,16 @@ conformance state. `pnpm governance:check` rejects production artifacts only
 while open decisions block implementation. Both commands run through the
 complete repository gate, and profile binding also runs in the fast gate.
 
+The profile gate is also the pre-production bootstrap interlock. With no path
+below `packages`, it permits the honest `not-claimed` state without ceremonial
+configuration. The first production package must atomically enable Engineering
+Foundation's `architecture.source-dependencies` capability at
+`architecture/foundation/source-dependencies.yaml`. Foundation then owns source
+classification and dependency enforcement; this repository does not implement
+a second dependency checker. The same materializing change must add the
+positive and negative structural fixtures listed below before making a
+conformance claim.
+
 ## Conformance is not claimed
 
 Adoption fixes the rules; it does not prove that a production module follows
