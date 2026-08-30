@@ -16,11 +16,22 @@ const CASE_AUTHORITY = [
   "all-selected-modules-are-roots",
   "branching-transitive-multi-root",
   "cycle-is-composition-failure-not-activation",
+  "duplicate-provider-binding-is-graph-inert",
   "invalid-reference-suppresses-only-dependent-reachability",
   "parallel-slots-preserve-references-and-deduplicate-adjacency",
   "provider-as-root-does-not-reach-consumer",
+  "same-module-alternative-is-legal-and-unselected-inert",
   "selected-unreachable-has-no-hidden-root",
+  "unreachable-invalid-consumer-remains-provably-unreachable",
+  "unrelated-cycle-survives-invalid-binding",
   "unselected-declaration-and-binding-are-graph-inert",
+];
+
+const ORACLE_MUTANTS = [
+  ["global-suppression", "unreachable-invalid-consumer-remains-provably-unreachable"],
+  ["cycle-suppression", "unrelated-cycle-survives-invalid-binding"],
+  ["duplicate-outcome", "duplicate-provider-binding-is-graph-inert"],
+  ["module-ID-uniqueness", "same-module-alternative-is-legal-and-unselected-inert"],
 ];
 
 function exactUniqueStrings(values, label) {
@@ -113,12 +124,14 @@ function dependencyOrder(nodes, adjacency) {
   return order.length === nodes.length ? order : null;
 }
 
-function deriveCase(vector) {
+function deriveCase(vector, mutant = null) {
   const declarations = vector.declarations.map(([moduleId, implementationId]) => ({
     moduleId,
     implementationId,
   }));
-  exactUniqueStrings(declarations.map(value => value.moduleId), `${vector.name} module IDs`);
+  if (mutant === "module-ID-uniqueness") {
+    exactUniqueStrings(declarations.map(value => value.moduleId), `${vector.name} module IDs`);
+  }
   exactUniqueStrings(declarations.map(value => value.implementationId),
     `${vector.name} implementation IDs`);
   exactUniqueStrings(vector.selected, `${vector.name} selections`);
@@ -133,6 +146,9 @@ function deriveCase(vector) {
     assert.ok(declarationByImplementation.has(implementationId),
       `${vector.name} selects an unknown implementation`);
   }
+  exactUniqueStrings(selected.map(implementationId => (
+    declarationByImplementation.get(implementationId).moduleId
+  )), `${vector.name} selected module IDs`);
   const selectedByModule = new Map(selected.map(implementationId => {
     const declaration = declarationByImplementation.get(implementationId);
     return [declaration.moduleId, implementationId];
@@ -144,13 +160,34 @@ function deriveCase(vector) {
   const diagnostics = [];
   const Evalid = [];
   for (const [consumer, slot, providers] of selectedBindings) {
-    const unknownProviders = providers.filter(provider => !declarationByImplementation.has(provider));
-    const unselectedProviders = providers.filter(provider => (
+    const providerSet = new Set();
+    const duplicateProviders = new Set();
+    for (const provider of providers) {
+      if (providerSet.has(provider)) duplicateProviders.add(provider);
+      providerSet.add(provider);
+    }
+    const unknownProviders = [...providerSet]
+      .filter(provider => !declarationByImplementation.has(provider));
+    const unselectedProviders = [...providerSet].filter(provider => (
       declarationByImplementation.has(provider) && !selectedSet.has(provider)
     ));
-    if (unknownProviders.length > 0 || unselectedProviders.length > 0) {
+    const duplicateFailure = duplicateProviders.size > 0 && mutant !== "duplicate-outcome";
+    if (duplicateFailure || unknownProviders.length > 0 || unselectedProviders.length > 0) {
       invalidConsumers.add(consumer);
-      for (const provider of unknownProviders) {
+      for (const provider of [...duplicateProviders].sort(compareAscii)) {
+        diagnostics.push({
+          code: "binding.duplicate",
+          phase: "binding",
+          path: [],
+          coordinate: {
+            implementationId: consumer,
+            slotId: slot,
+            providerImplementationId: provider,
+          },
+          details: { reason: "duplicate" },
+        });
+      }
+      for (const provider of unknownProviders.sort(compareAscii)) {
         diagnostics.push({
           code: "binding.unknown-provider",
           phase: "binding",
@@ -161,6 +198,19 @@ function deriveCase(vector) {
             providerImplementationId: provider,
           },
           details: { reason: "unknown" },
+        });
+      }
+      for (const provider of unselectedProviders.sort(compareAscii)) {
+        diagnostics.push({
+          code: "binding.provider-not-selected",
+          phase: "binding",
+          path: [],
+          coordinate: {
+            implementationId: consumer,
+            slotId: slot,
+            providerImplementationId: provider,
+          },
+          details: { reason: "mismatch" },
         });
       }
       continue;
@@ -180,7 +230,8 @@ function deriveCase(vector) {
   assert.ok(rootImplementations.every(Boolean), `${vector.name} has an unresolved root`);
   const reached = new Set(rootImplementations);
   const pending = [...rootImplementations];
-  let incompleteReachedFrontier = false;
+  let incompleteReachedFrontier = mutant === "global-suppression"
+    && invalidConsumers.size > 0;
   while (pending.length > 0) {
     const consumer = pending.pop();
     if (invalidConsumers.has(consumer)) incompleteReachedFrontier = true;
@@ -208,12 +259,9 @@ function deriveCase(vector) {
       });
     }
   }
-  diagnostics.sort((left, right) => (
-    compareAscii(left.phase, right.phase) || compareAscii(left.code, right.code)
-      || compareAscii(JSON.stringify(left.coordinate), JSON.stringify(right.coordinate))
-  ));
-
-  const cycles = deriveCycles(selected, Eadj);
+  const cycles = mutant === "cycle-suppression" && invalidConsumers.size > 0
+    ? []
+    : deriveCycles(selected, Eadj);
   if (cycles.length > 0) {
     for (const component of cycles) {
       diagnostics.push({
@@ -225,6 +273,18 @@ function deriveCase(vector) {
       });
     }
   }
+  const diagnosticRanks = new Map([
+    "binding.duplicate",
+    "binding.unknown-provider",
+    "binding.provider-not-selected",
+    "profile.unreachable-selection",
+    "graph.cycle",
+  ].map((code, index) => [code, index]));
+  diagnostics.sort((left, right) => (
+    diagnosticRanks.get(left.code) - diagnosticRanks.get(right.code)
+      || compareAscii(JSON.stringify(left.coordinate), JSON.stringify(right.coordinate))
+      || compareAscii(JSON.stringify(left.details), JSON.stringify(right.details))
+  ));
 
   return {
     resourceDeclarations: declarations.length,
@@ -260,7 +320,7 @@ function validateGraphSemantics(graph) {
   });
   assert.deepEqual(graph.edgePopulations, {
     Einput: "provider entries on selected-consumer bindings before validation",
-    Evalid: "provider entries on bindings that pass selected-reference validation",
+    Evalid: "provider references that survive complete binding validation",
     Eadj: "distinct valid provider-to-consumer endpoint pairs",
   });
   assert.deepEqual(graph.permutationAxes, ["declarations", "bindings", "roots", "nodes", "edges"]);
@@ -280,6 +340,10 @@ function validateGraphSemantics(graph) {
 
 const vectors = JSON.parse(await readFile(
   new URL("../../architecture/qualification/v1/normalization-vectors.json", import.meta.url),
+  "utf8",
+));
+const resourceVectors = JSON.parse(await readFile(
+  new URL("../../architecture/qualification/v1/resource-boundary-vectors.json", import.meta.url),
   "utf8",
 ));
 
@@ -309,4 +373,40 @@ test("bounded graph evidence rejects semantic and oracle mutations", () => {
     mutate(candidate);
     assert.throws(() => validateGraphSemantics(candidate));
   }
+});
+
+test("bounded graph evidence kills the confirmed graph oracle mutants", () => {
+  for (const [mutant, caseName] of ORACLE_MUTANTS) {
+    const vector = vectors.graphSemantics.cases.find(item => item.name === caseName);
+    assert.ok(vector, `${mutant} vector is present`);
+    assert.throws(() => assert.deepEqual(deriveCase(vector, mutant), vector.expected), mutant);
+  }
+});
+
+test("duplicate provider vector has the exact binding.duplicate outcome", () => {
+  const duplicateProviderCase = resourceVectors.semanticCases.find(item => (
+    item.name === "provider-ids-are-unique-within-one-binding"
+  ));
+  assert.deepEqual(duplicateProviderCase, {
+    name: "provider-ids-are-unique-within-one-binding",
+    providerImplementationIds: ["example/provider/default", "example/provider/default"],
+    diagnosticCode: "binding.duplicate",
+  });
+  assert.equal(resourceVectors.profileV2.providerCounting.duplicateProviderOutcome,
+    "binding.duplicate");
+
+  const vector = vectors.graphSemantics.cases.find(item => (
+    item.name === "duplicate-provider-binding-is-graph-inert"
+  ));
+  assert.deepEqual(deriveCase(vector).diagnostics, [{
+    code: "binding.duplicate",
+    phase: "binding",
+    path: [],
+    coordinate: {
+      implementationId: "x/a-i",
+      slotId: "self",
+      providerImplementationId: "x/a-i",
+    },
+    details: { reason: "duplicate" },
+  }]);
 });

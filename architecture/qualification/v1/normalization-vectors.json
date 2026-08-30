@@ -221,7 +221,7 @@
     "directions": {"rootClosure": "consumer-to-provider", "adjacency": "provider-to-consumer", "dependencyOrder": "provider-before-consumer"},
     "edgePopulations": {
       "Einput": "provider entries on selected-consumer bindings before validation",
-      "Evalid": "provider entries on bindings that pass selected-reference validation",
+      "Evalid": "provider references that survive complete binding validation",
       "Eadj": "distinct valid provider-to-consumer endpoint pairs"
     },
     "permutationAxes": ["declarations", "bindings", "roots", "nodes", "edges"],
@@ -273,6 +273,30 @@
         "declarations": [["x/a", "x/a-i"], ["x/b", "x/b-i"]], "selected": ["x/b-i", "x/a-i"], "roots": ["x/a"],
         "bindings": [["x/b-i", "needs-a", ["x/a-i"]], ["x/a-i", "needs-b", ["x/b-i"]]],
         "expected": {"resourceDeclarations": 2, "selected": ["x/a-i", "x/b-i"], "Einput": 2, "Evalid": [["x/a-i", "needs-b", "x/b-i"], ["x/b-i", "needs-a", "x/a-i"]], "Eadj": [["x/a-i", "x/b-i"], ["x/b-i", "x/a-i"]], "rootClosure": ["x/a-i", "x/b-i"], "unreachableSuppressed": [], "dependencyOrder": null, "cycles": [["x/a-i", "x/b-i"]], "diagnostics": [{"code": "graph.cycle", "phase": "graph", "path": [], "coordinate": {}, "details": {"component": ["x/a-i", "x/b-i"]}}]}
+      },
+      {
+        "name": "duplicate-provider-binding-is-graph-inert",
+        "declarations": [["x/a", "x/a-i"]], "selected": ["x/a-i"], "roots": ["x/a"],
+        "bindings": [["x/a-i", "self", ["x/a-i", "x/a-i"]]],
+        "expected": {"resourceDeclarations": 1, "selected": ["x/a-i"], "Einput": 2, "Evalid": [], "Eadj": [], "rootClosure": ["x/a-i"], "unreachableSuppressed": [], "dependencyOrder": null, "cycles": [], "diagnostics": [{"code": "binding.duplicate", "phase": "binding", "path": [], "coordinate": {"implementationId": "x/a-i", "slotId": "self", "providerImplementationId": "x/a-i"}, "details": {"reason": "duplicate"}}]}
+      },
+      {
+        "name": "unreachable-invalid-consumer-remains-provably-unreachable",
+        "declarations": [["x/a", "x/a-i"], ["x/b", "x/b-i"]], "selected": ["x/b-i", "x/a-i"], "roots": ["x/a"],
+        "bindings": [["x/b-i", "missing", ["x/missing-i"]]],
+        "expected": {"resourceDeclarations": 2, "selected": ["x/a-i", "x/b-i"], "Einput": 1, "Evalid": [], "Eadj": [], "rootClosure": ["x/a-i"], "unreachableSuppressed": [], "dependencyOrder": null, "cycles": [], "diagnostics": [{"code": "binding.unknown-provider", "phase": "binding", "path": [], "coordinate": {"implementationId": "x/b-i", "slotId": "missing", "providerImplementationId": "x/missing-i"}, "details": {"reason": "unknown"}}, {"code": "profile.unreachable-selection", "phase": "graph", "path": [], "coordinate": {"moduleId": "x/b", "implementationId": "x/b-i"}, "details": {"reason": "unreachable"}}]}
+      },
+      {
+        "name": "unrelated-cycle-survives-invalid-binding",
+        "declarations": [["x/bad", "x/bad-i"], ["x/a", "x/a-i"], ["x/b", "x/b-i"]], "selected": ["x/b-i", "x/bad-i", "x/a-i"], "roots": ["x/bad"],
+        "bindings": [["x/bad-i", "broken", ["x/missing-i"]], ["x/b-i", "needs-a", ["x/a-i"]], ["x/a-i", "needs-b", ["x/b-i"]]],
+        "expected": {"resourceDeclarations": 3, "selected": ["x/a-i", "x/b-i", "x/bad-i"], "Einput": 3, "Evalid": [["x/a-i", "needs-b", "x/b-i"], ["x/b-i", "needs-a", "x/a-i"]], "Eadj": [["x/a-i", "x/b-i"], ["x/b-i", "x/a-i"]], "rootClosure": ["x/bad-i"], "unreachableSuppressed": ["x/a-i", "x/b-i"], "dependencyOrder": null, "cycles": [["x/a-i", "x/b-i"]], "diagnostics": [{"code": "binding.unknown-provider", "phase": "binding", "path": [], "coordinate": {"implementationId": "x/bad-i", "slotId": "broken", "providerImplementationId": "x/missing-i"}, "details": {"reason": "unknown"}}, {"code": "graph.cycle", "phase": "graph", "path": [], "coordinate": {}, "details": {"component": ["x/a-i", "x/b-i"]}}]}
+      },
+      {
+        "name": "same-module-alternative-is-legal-and-unselected-inert",
+        "declarations": [["x/service", "x/service-a-i"], ["x/service", "x/service-b-i"], ["x/db", "x/db-i"]], "selected": ["x/service-a-i", "x/db-i"], "roots": ["x/service"],
+        "bindings": [["x/service-b-i", "ghost", ["x/service-b-i"]], ["x/service-a-i", "database", ["x/db-i"]]],
+        "expected": {"resourceDeclarations": 3, "selected": ["x/db-i", "x/service-a-i"], "Einput": 1, "Evalid": [["x/service-a-i", "database", "x/db-i"]], "Eadj": [["x/db-i", "x/service-a-i"]], "rootClosure": ["x/db-i", "x/service-a-i"], "unreachableSuppressed": [], "dependencyOrder": ["x/db-i", "x/service-a-i"], "cycles": [], "diagnostics": []}
       }
     ]
   }
