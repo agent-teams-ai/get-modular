@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -11,7 +11,10 @@ import {
   validateFeatureModuleStandardProfile,
   validateFirstProductionPackageAdmission,
 } from "../architecture/checks/feature-module-standard-profile.mjs";
-import { productionArtifactPaths } from "../architecture/checks/production-artifacts.mjs";
+import {
+  productionArtifactPaths,
+  productionArtifactSymlinkPaths,
+} from "../architecture/checks/production-artifacts.mjs";
 
 const profile = JSON.parse(await readFile(PROFILE_PATH, "utf8"));
 const document = await readFile(PROFILE_DOCUMENT_PATH, "utf8");
@@ -193,6 +196,17 @@ test("first production package cannot use a no-op Foundation alias", () => {
   }), /foundation:check must execute agent-teams-foundation check/u);
 });
 
+test("first production package rejects a package symlink", () => {
+  assert.throws(() => validateFirstProductionPackageAdmission({
+    productionArtifacts: ["packages/core/linked"],
+    productionArtifactSymlinks: ["packages/core/linked"],
+    admission: { ...profile.adoption.admission, status: "source-admitted" },
+    foundationConfig: { schemaVersion: 1 },
+    packageJson,
+    sourceDependencyPolicyPresent: true,
+  }), /must not be symlinks/u);
+});
+
 test("production source outside packages cannot bypass first-package admission", () => {
   assert.throws(() => validateFirstProductionPackageAdmission({
     productionArtifacts: ["src/compiler.ts"],
@@ -222,4 +236,18 @@ test("production artifact discovery is repository-wide and deterministic",
     } finally {
       await rm(fixture, { recursive: true, force: true });
     }
-  });
+});
+
+test("production package symlink discovery does not follow targets", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-profile-symlink-"));
+  try {
+    await writeFile(join(fixture, "package.json"), "{\"private\":true}\n");
+    await mkdir(join(fixture, "packages", "core"), { recursive: true });
+    await mkdir(join(fixture, "docs", "target"), { recursive: true });
+    await writeFile(join(fixture, "docs", "target", "index.ts"), "export {};\n");
+    await symlink("../../docs/target", join(fixture, "packages", "core", "linked"), "dir");
+    assert.deepEqual(await productionArtifactSymlinkPaths(fixture), ["packages/core/linked"]);
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});

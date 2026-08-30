@@ -5,6 +5,7 @@ import { parse } from "yaml";
 
 import {
   productionArtifactPaths,
+  productionArtifactSymlinkPaths,
   productionArtifactsOutsidePackages,
 } from "./production-artifacts.mjs";
 
@@ -120,10 +121,14 @@ export function validateFirstProductionPackageAdmission({
   foundationConfig,
   packageJson,
   sourceDependencyPolicyPresent,
+  productionArtifactSymlinks = [],
 }) {
   assert(Array.isArray(productionArtifacts)
     && productionArtifacts.every(path => safeRelativePath(path)),
   "production artifacts must be safe repository-relative paths");
+  assert(Array.isArray(productionArtifactSymlinks)
+    && productionArtifactSymlinks.length === 0,
+  `production artifacts must not be symlinks: ${productionArtifactSymlinks.join(", ")}`);
   const misplacedArtifacts = productionArtifactsOutsidePackages(productionArtifacts);
   assert(misplacedArtifacts.length === 0,
     `production artifacts must be below packages: ${misplacedArtifacts.join(", ")}`);
@@ -288,6 +293,7 @@ export async function checkFeatureModuleStandardProfile(repositoryRoot = process
     packageSource,
     foundationConfigSource,
     productionArtifacts,
+    productionArtifactSymlinks,
   ] = await Promise.all([
     readFile(resolve(repositoryRoot, PROFILE_PATH), "utf8"),
     readFile(resolve(repositoryRoot, PROFILE_DOCUMENT_PATH), "utf8"),
@@ -296,6 +302,7 @@ export async function checkFeatureModuleStandardProfile(repositoryRoot = process
     readFile(resolve(repositoryRoot, "package.json"), "utf8"),
     readFile(resolve(repositoryRoot, "foundation.config.yaml"), "utf8"),
     productionArtifactPaths(repositoryRoot),
+    productionArtifactSymlinkPaths(repositoryRoot),
   ]);
   const profile = JSON.parse(profileSource);
   const packageJson = JSON.parse(packageSource);
@@ -317,6 +324,7 @@ export async function checkFeatureModuleStandardProfile(repositoryRoot = process
     foundationConfig: parse(foundationConfigSource),
     packageJson,
     sourceDependencyPolicyPresent: policyPresent,
+    productionArtifactSymlinks,
   });
   await Promise.all(authorities.map(authority => access(resolve(repositoryRoot, authority))));
 }

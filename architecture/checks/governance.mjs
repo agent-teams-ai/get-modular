@@ -1,17 +1,22 @@
 import { createHash } from "node:crypto";
-import { lstat, readFile, readdir } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { lstat, readFile, readdir, realpath } from "node:fs/promises";
 import { dirname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { parse } from "yaml";
 
 import {
   productionArtifactPaths,
+  productionArtifactSymlinkPaths,
   productionArtifactsOutsidePackages,
 } from "./production-artifacts.mjs";
 
-export { productionArtifactPaths } from "./production-artifacts.mjs";
+export { productionArtifactPaths, productionArtifactSymlinkPaths } from
+  "./production-artifacts.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const execFileAsync = promisify(execFile);
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
 const ARCHITECTURE_AUTHORITY_PATH = /^docs\/architecture\/[^/]+\.md$/u;
 const REQUIREMENTS_AUTHORITY_PATH = /^docs\/requirements\/[^/]+\.md$/u;
@@ -39,6 +44,7 @@ const QUALIFICATION_CLAIM_STATUSES = new Set([
   "structural-conformant",
   "runtime-conformant",
 ]);
+const WINDOWS_DEVICE_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/iu;
 
 export const ACCEPTED_AUTHORITY_LEDGER_PATH =
   "architecture/authority/accepted-authorities.json";
@@ -69,8 +75,13 @@ function digestBytes(bytes, label) {
 function safeRepositoryPath(value) {
   return typeof value === "string"
     && SAFE_RELATIVE_PATH.test(value)
+    && !/^[A-Za-z]:[\\/]/u.test(value)
     && !NON_PORTABLE_PATH_CHARACTERS.test(value)
-    && value.split("/").every(segment => segment !== "" && segment !== "." && segment !== "..");
+    && value.split("/").every(segment => segment !== ""
+      && segment !== "."
+      && segment !== ".."
+      && !/[. ]$/u.test(segment)
+      && !WINDOWS_DEVICE_NAME.test(segment));
 }
 
 function uniqueStrings(values, label) {
@@ -263,8 +274,8 @@ export async function validateQualificationClaims({
       if (file?.kind === "missing" || file === undefined || file === null) {
         fail(`${claim.id} references missing evidence ${entry.path}`);
       }
-      if (file.kind !== "regular") {
-        fail(`${claim.id} evidence must be a regular in-repository file: ${entry.path}`);
+      if (file.kind !== "regular" || file.tracked !== true) {
+        fail(`${claim.id} evidence must be a regular in-repository file with tracked Git identity: ${entry.path}`);
       }
       const actualDigest = digestBytes(file.bytes, `${claim.id} evidence ${entry.path}`);
       if (actualDigest !== entry.digest) {
@@ -288,6 +299,26 @@ export async function validateQualificationClaims({
     }
   }
   return claims.map(claim => claim.id);
+}
+
+export function validateQualificationProfileConsistency({ profile, documents }) {
+  const claims = new Map(
+    documents
+      .filter(document => QUALIFICATION_CLAIM_STATUSES.has(document.status))
+      .map(document => [document.status, document]),
+  );
+  const expected = {
+    structural: claims.has("structural-conformant")
+      ? "structural-conformant" : "not-claimed",
+    runtime: claims.has("runtime-conformant")
+      ? "runtime-conformant" : "not-claimed",
+  };
+  for (const claim of ["structural", "runtime"]) {
+    const actual = profile?.adoption?.conformance?.[claim]?.status;
+    if (actual !== expected[claim]) {
+      fail(`profile ${claim} conformance disagrees with qualification claims`);
+    }
+  }
 }
 
 export function validateTraceability({
@@ -449,6 +480,50 @@ async function governanceDocumentCatalog() {
   return { documents, documentSources };
 }
 
+export async function readTrackedEvidence(relativePath, repositoryRoot = root) {
+  if (!safeRepositoryPath(relativePath)) return { kind: "unsafe" };
+  const parts = relativePath.split("/");
+  let current = repositoryRoot;
+  let status;
+  for (const [index, part] of parts.entries()) {
+    current = resolve(current, part);
+    try {
+      status = await lstat(current);
+    } catch (error) {
+      if (["ENOENT", "ENOTDIR"].includes(error?.code)) return { kind: "missing" };
+      throw error;
+    }
+    if (status.isSymbolicLink()) return { kind: "symlink" };
+    if (index < parts.length - 1 && !status.isDirectory()) {
+      return { kind: "non-regular" };
+    }
+  }
+  if (!status?.isFile()) return { kind: "non-regular" };
+
+  const repositoryRealPath = await realpath(repositoryRoot);
+  const evidenceRealPath = await realpath(current);
+  if (evidenceRealPath !== repositoryRealPath
+    && !evidenceRealPath.startsWith(`${repositoryRealPath}${sep}`)) {
+    return { kind: "outside" };
+  }
+
+  let indexOutput;
+  try {
+    ({ stdout: indexOutput } = await execFileAsync(
+      "git",
+      ["ls-files", "--error-unmatch", "--stage", "--", relativePath],
+      { cwd: repositoryRoot },
+    ));
+  } catch (error) {
+    if (error?.code === 1) return { kind: "untracked" };
+    throw error;
+  }
+  if (!/^(?:100644|100755) [a-f0-9]{40} 0\t/u.test(indexOutput)) {
+    return { kind: "untracked" };
+  }
+  return { kind: "regular", tracked: true, bytes: await readFile(current) };
+}
+
 async function main() {
   const ledgerBytes = await readBytes(ACCEPTED_AUTHORITY_LEDGER_PATH);
   validateAuthorityLedgerCustody({
@@ -490,28 +565,26 @@ async function main() {
     traceability,
   });
   const productionArtifacts = await productionArtifactPaths(root);
+  const productionArtifactSymlinks = await productionArtifactSymlinkPaths(root);
   const misplacedArtifacts = productionArtifactsOutsidePackages(productionArtifacts);
   if (misplacedArtifacts.length > 0) {
     fail(`production artifacts must be below packages: ${misplacedArtifacts.join(", ")}`);
   }
+  if (productionArtifactSymlinks.length > 0) {
+    fail(`production artifacts must not be symlinks: ${productionArtifactSymlinks.join(", ")}`);
+  }
+  const profile = JSON.parse(await read("architecture/feature-module-standard-profile.json"));
   const claimDocuments = await validateQualificationClaims({
     documents: [...documents.values()],
     productionArtifacts,
     documentSources,
     evidenceFile: async path => {
-      const absolutePath = resolve(root, path);
-      let status;
-      try {
-        status = await lstat(absolutePath);
-      } catch (error) {
-        if (["ENOENT", "ENOTDIR"].includes(error?.code)) return { kind: "missing" };
-        throw error;
-      }
-      if (!status.isFile()) {
-        return { kind: status.isSymbolicLink() ? "symlink" : "non-regular" };
-      }
-      return { kind: "regular", bytes: await readFile(absolutePath) };
+      return readTrackedEvidence(path);
     },
+  });
+  validateQualificationProfileConsistency({
+    profile,
+    documents: [...documents.values()],
   });
   validateBlockedImplementation({
     blockerIds,

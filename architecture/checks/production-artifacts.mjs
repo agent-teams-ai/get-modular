@@ -42,8 +42,32 @@ async function filesBelow(repositoryRoot, relativeDirectory, includeProductionFi
   return files;
 }
 
+async function symlinksBelow(repositoryRoot, relativeDirectory) {
+  const symlinks = [];
+  let entries = [];
+  try {
+    entries = await readdir(resolve(repositoryRoot, relativeDirectory), { withFileTypes: true });
+  } catch (error) {
+    if (error?.code === "ENOENT") return symlinks;
+    throw error;
+  }
+  for (const entry of entries) {
+    const path = `${relativeDirectory}/${entry.name}`;
+    if (entry.isSymbolicLink()) {
+      symlinks.push(path);
+    } else if (entry.isDirectory()) {
+      symlinks.push(...await symlinksBelow(repositoryRoot, path));
+    }
+  }
+  return symlinks;
+}
+
 export function productionArtifactsOutsidePackages(productionArtifacts) {
   return productionArtifacts.filter(path => !path.startsWith("packages/"));
+}
+
+export async function productionArtifactSymlinkPaths(repositoryRoot = process.cwd()) {
+  return (await symlinksBelow(repositoryRoot, "packages")).sort(compareStrings);
 }
 
 export async function productionArtifactPaths(repositoryRoot = process.cwd()) {

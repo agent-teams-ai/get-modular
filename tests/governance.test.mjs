@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import test from "node:test";
 import {
   ACCEPTED_AUTHORITY_LEDGER_ANCHOR,
@@ -10,6 +12,7 @@ import {
   ACCEPTED_AUTHORITY_LEDGER_PATH,
   productionArtifactPaths,
   qualificationClaimAnchor,
+  readTrackedEvidence,
   requirementIdsFromMarkdown,
   validateAcceptedAuthorityCatalog,
   validateAuthorityLedger,
@@ -17,6 +20,7 @@ import {
   validateBlockedImplementation,
   validateDecisionResolutions,
   validateQualificationClaims,
+  validateQualificationProfileConsistency,
   validateSourceMap,
   validateTraceability,
 } from "../architecture/checks/governance.mjs";
@@ -25,6 +29,7 @@ import { productionArtifactsOutsidePackages } from
 
 const digest = bytes => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const evidenceIdentity = (path, bytes) => ({ path, digest: digest(bytes) });
+const execFileAsync = promisify(execFile);
 
 const sourceMap = {
   schemaVersion: 1,
@@ -309,7 +314,7 @@ test("qualification claims require ordered admission, evidence, and promotion", 
     });
   }
   const evidenceFile = async path => evidenceBytes.has(path)
-    ? { kind: "regular", bytes: evidenceBytes.get(path) }
+    ? { kind: "regular", tracked: true, bytes: evidenceBytes.get(path) }
     : { kind: "missing" };
   assert.deepEqual(await validateQualificationClaims({
     documents,
@@ -387,6 +392,7 @@ test("qualification custody rejects path-only, mutable, circular, and non-file e
   const documents = [source, claim, promotion];
   const evidenceFile = async path => ({
     kind: "regular",
+    tracked: true,
     bytes: path === "evidence/source.json" ? "source evidence\n" : evidenceBytes,
   });
   const validate = (overrides = {}) => validateQualificationClaims({
@@ -417,11 +423,15 @@ test("qualification custody rejects path-only, mutable, circular, and non-file e
   }
   await assert.rejects(validate({ evidenceFile: async () => ({ kind: "symlink" }) }),
     /must be a regular in-repository file/u);
+  await assert.rejects(validate({
+    evidenceFile: async () => ({ kind: "regular", tracked: false, bytes: evidenceBytes }),
+  }), /tracked Git identity/u);
   await assert.rejects(validate({ evidenceFile: async () => ({ kind: "missing" }) }),
     /references missing evidence/u);
   await assert.rejects(validate({
     evidenceFile: async path => ({
       kind: "regular",
+      tracked: true,
       bytes: path === "evidence/source.json" ? "source evidence\n" : "changed bytes\n",
     }),
   }), /evidence differs from sha256:/u);
@@ -511,6 +521,76 @@ test("qualification states cannot collapse source, structural, and runtime claim
       }],
     ]),
   }), /requires a related structural-conformant claim/u);
+});
+
+test("qualification claims and the authoritative profile cannot disagree", () => {
+  const profile = {
+    adoption: {
+      conformance: {
+        structural: { status: "not-claimed" },
+        runtime: { status: "not-claimed" },
+      },
+    },
+  };
+  assert.doesNotThrow(() => validateQualificationProfileConsistency({
+    profile,
+    documents: [],
+  }));
+  assert.throws(() => validateQualificationProfileConsistency({
+    profile,
+    documents: [{ status: "structural-conformant" }],
+  }), /structural conformance disagrees/u);
+  assert.throws(() => validateQualificationProfileConsistency({
+    profile: {
+      adoption: {
+        conformance: {
+          structural: { status: "structural-conformant" },
+          runtime: { status: "not-claimed" },
+        },
+      },
+    },
+    documents: [],
+  }), /structural conformance disagrees/u);
+  assert.doesNotThrow(() => validateQualificationProfileConsistency({
+    profile: {
+      adoption: {
+        conformance: {
+          structural: { status: "structural-conformant" },
+          runtime: { status: "runtime-conformant" },
+        },
+      },
+    },
+    documents: [
+      { status: "structural-conformant" },
+      { status: "runtime-conformant" },
+    ],
+  }));
+});
+
+test("tracked evidence custody rejects untracked files and every symlink component", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-evidence-custody-"));
+  try {
+    await execFileAsync("git", ["init", "--quiet"], { cwd: fixture });
+    await mkdir(join(fixture, "evidence"), { recursive: true });
+    await writeFile(join(fixture, "evidence", "tracked.json"), "tracked\n");
+    await writeFile(join(fixture, "evidence", "untracked.json"), "untracked\n");
+    await execFileAsync("git", ["add", "--", "evidence/tracked.json"], { cwd: fixture });
+    await symlink("evidence", join(fixture, "linked"), "dir");
+
+    assert.deepEqual(await readTrackedEvidence("evidence/tracked.json", fixture), {
+      kind: "regular",
+      tracked: true,
+      bytes: Buffer.from("tracked\n"),
+    });
+    assert.deepEqual(await readTrackedEvidence("evidence/untracked.json", fixture), {
+      kind: "untracked",
+    });
+    assert.deepEqual(await readTrackedEvidence("linked/tracked.json", fixture), {
+      kind: "symlink",
+    });
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
 });
 
 test("production artifact discovery fails closed across repository layouts", async () => {
