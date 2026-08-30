@@ -98,7 +98,10 @@
   },
   "limitPathPolicies": {
     "rawDocumentBytes": "empty",
+    "declarationRawDocumentBytes": "structural",
+    "profileRawDocumentBytes": "structural",
     "aggregateRawBytes": "empty",
+    "jsonValueOccurrences": "empty",
     "jsonDepth": "structural",
     "aggregateStringBytes": "empty",
     "identifierBytes": "structural",
@@ -119,7 +122,10 @@
   },
   "limitPhases": {
     "rawDocumentBytes": "decode",
+    "declarationRawDocumentBytes": "decode",
+    "profileRawDocumentBytes": "decode",
     "aggregateRawBytes": "decode",
+    "jsonValueOccurrences": "schema",
     "jsonDepth": "decode",
     "aggregateStringBytes": "decode",
     "identifierBytes": "schema",

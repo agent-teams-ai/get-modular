@@ -262,10 +262,11 @@ function independentCounts(recipe) {
 
 export async function qualifyResourceProfileV2({ generateLimitFixture, meterLimitFixture }) {
   const readJson = relative => readFile(new URL(relative, import.meta.url), "utf8").then(JSON.parse);
-  const [profile, historical, vectors] = await Promise.all([
+  const [profile, historical, vectors, diagnosticContract] = await Promise.all([
     readJson("../../../architecture/qualification/v1/resource-profile-v2.json"),
     readJson("../../../architecture/contracts/v1/resource-profile.json"),
     readJson("../../../architecture/qualification/v1/resource-boundary-vectors.json"),
+    readJson("../../../architecture/qualification/v1/diagnostic-contract.json"),
   ]);
   assert.equal(profile.profileVersion, 2);
   assert.equal("rawDocumentBytes" in profile.limits, false);
@@ -281,6 +282,10 @@ export async function qualifyResourceProfileV2({ generateLimitFixture, meterLimi
     assert.equal(vector.at, profile.limits[vector.limitName]);
     assert.equal(vector.over, vector.at + 1);
     assert.ok(vector.phase && vector.unit);
+    assert.equal(diagnosticContract.limitPhases[vector.limitName], vector.phase);
+    assert.ok(["empty", "structural"].includes(
+      diagnosticContract.limitPathPolicies[vector.limitName],
+    ));
     for (const expected of [vector.at, vector.over]) {
       const boundary = generateLimitFixture(vector, expected);
       assert.equal(meterLimitFixture(vector, boundary), expected);

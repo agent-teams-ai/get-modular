@@ -131,7 +131,10 @@ const PATH_POLICY_AUTHORITY = Object.freeze({
 });
 const LIMIT_PATH_POLICY_AUTHORITY = Object.freeze({
   rawDocumentBytes: "empty",
+  declarationRawDocumentBytes: "structural",
+  profileRawDocumentBytes: "structural",
   aggregateRawBytes: "empty",
+  jsonValueOccurrences: "empty",
   jsonDepth: "structural",
   aggregateStringBytes: "empty",
   identifierBytes: "structural",
@@ -910,9 +913,9 @@ export function validateDiagnosticQualification({
   if (!same(contract.pathPolicyByCode, PATH_POLICY_AUTHORITY)) {
     fail("diagnostic code path policies contradict the independent authority");
   }
-  exactStringSet(Object.keys(contract.limitPhases), Object.keys(profile.limits),
+  exactStringSet(Object.keys(contract.limitPhases), Object.keys(LIMIT_PATH_POLICY_AUTHORITY),
     "diagnostic limit phases");
-  exactStringSet(Object.keys(contract.limitPathPolicies), Object.keys(profile.limits),
+  exactStringSet(Object.keys(contract.limitPathPolicies), Object.keys(LIMIT_PATH_POLICY_AUTHORITY),
     "diagnostic limit path policies");
   if (!same(contract.limitPathPolicies, LIMIT_PATH_POLICY_AUTHORITY)) {
     fail("diagnostic limit path policies contradict the independent authority");
