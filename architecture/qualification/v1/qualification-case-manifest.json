@@ -96,17 +96,17 @@
       "jcs.unicode-property-order"
     ],
     "cases": [
-      {"name": "object-key-order", "category": "jcs.object-key-order", "canonicalUtf8BytesSha256": "sha256:c36d3015784a7163bca85c476e0454d16c6b34df33d45d28cdffb3da02251e73"},
-      {"name": "string-escaping", "category": "jcs.string-escaping", "canonicalUtf8BytesSha256": "sha256:a02ec05624fd5619b8550e6666c9955c36ca3c74c2a1ba02f8ba20aac455a261"},
-      {"name": "unicode-property-order", "category": "jcs.unicode-property-order", "canonicalUtf8BytesSha256": "sha256:7acda2e26c017c1fb18e67f65ff99a86905e900cf60fef6d6b754e60e7ac5746"},
-      {"name": "rfc-number-serialization", "category": "jcs.number-serialization", "canonicalUtf8BytesSha256": "sha256:7c892d3452ad85ad65857a43e8dcac93b79475d2334fc3e85bac5c599142c158"},
-      {"name": "safe-integer-boundaries", "category": "jcs.safe-integer-boundaries", "canonicalUtf8BytesSha256": "sha256:6c2ebfc38ada26e6c5cac0887ce0571e3fe2bdd108725e1364e1dc23b6cfd0e0"}
+      {"name": "object-key-order", "category": "jcs.object-key-order", "valueJsonUtf8Sha256": "sha256:31c561e4320267251d8eebe0fe0d5bc8bf43b3f907e941b78ed7b8ba51f376bb", "canonicalUtf8BytesSha256": "sha256:c36d3015784a7163bca85c476e0454d16c6b34df33d45d28cdffb3da02251e73"},
+      {"name": "string-escaping", "category": "jcs.string-escaping", "valueJsonUtf8Sha256": "sha256:a02ec05624fd5619b8550e6666c9955c36ca3c74c2a1ba02f8ba20aac455a261", "canonicalUtf8BytesSha256": "sha256:a02ec05624fd5619b8550e6666c9955c36ca3c74c2a1ba02f8ba20aac455a261"},
+      {"name": "unicode-property-order", "category": "jcs.unicode-property-order", "valueJsonUtf8Sha256": "sha256:46c45ba53f743a26500039e01f9c3331f942ac67f049a711b0d176770f624ef0", "canonicalUtf8BytesSha256": "sha256:7acda2e26c017c1fb18e67f65ff99a86905e900cf60fef6d6b754e60e7ac5746"},
+      {"name": "rfc-number-serialization", "category": "jcs.number-serialization", "valueJsonUtf8Sha256": "sha256:7c892d3452ad85ad65857a43e8dcac93b79475d2334fc3e85bac5c599142c158", "canonicalUtf8BytesSha256": "sha256:7c892d3452ad85ad65857a43e8dcac93b79475d2334fc3e85bac5c599142c158"},
+      {"name": "safe-integer-boundaries", "category": "jcs.safe-integer-boundaries", "valueJsonUtf8Sha256": "sha256:6c2ebfc38ada26e6c5cac0887ce0571e3fe2bdd108725e1364e1dc23b6cfd0e0", "canonicalUtf8BytesSha256": "sha256:6c2ebfc38ada26e6c5cac0887ce0571e3fe2bdd108725e1364e1dc23b6cfd0e0"}
     ]
   },
   "acceptedCanonicalNegativeSuccessors": [
-    {"acceptedName": "duplicate-object-key", "acceptedFaultIdentity": "duplicate-key:$:kind", "diagnosticCode": "decode.duplicate-key", "decoderCase": "duplicate-object-key", "successorCategory": "json.duplicate-key-successor"},
-    {"acceptedName": "lone-surrogate", "acceptedFaultIdentity": "lone-surrogate:$.profileId@8", "diagnosticCode": "schema.invalid-value", "decoderCase": "lone-surrogate-escape", "successorCategory": "semantic.terminal-high-surrogate-successor"},
-    {"acceptedName": "negative-zero", "acceptedFaultIdentity": "negative-zero:$.schemaVersion", "diagnosticCode": "schema.invalid-value", "decoderCase": "negative-zero", "successorCategory": "semantic.negative-zero-successor"},
-    {"acceptedName": "unknown-field", "acceptedFaultIdentity": "unknown-field:$:unknown", "diagnosticCode": "schema.unknown-field", "decoderCase": "prototype-property-is-data-before-schema-validation", "successorCategory": "semantic.unknown-field-successor"}
+    {"acceptedName": "duplicate-object-key", "faultFamily": "duplicate-key", "acceptedFaultIdentity": "duplicate-key:$:kind", "diagnosticCode": "decode.duplicate-key", "decoderCase": "duplicate-object-key", "successorCategory": "json.duplicate-key-successor", "successorFaultIdentity": "duplicate-key:$:moduleId", "repairIdentity": "sha256:ebeaba02aa16885f89b5cb1f990fb7e88a281af2e981b0ff3e72a6f64ee8f20d"},
+    {"acceptedName": "lone-surrogate", "faultFamily": "lone-surrogate", "acceptedFaultIdentity": "lone-surrogate:$.profileId@8", "diagnosticCode": "schema.invalid-value", "decoderCase": "lone-surrogate-escape", "successorCategory": "semantic.terminal-high-surrogate-successor", "successorFaultIdentity": "lone-surrogate:$.owner.path[0]@6", "repairIdentity": "sha256:2d7ac36708c3325f758ab4affe00194b91a81fd12479531a6a9a967d98a02773"},
+    {"acceptedName": "negative-zero", "faultFamily": "negative-zero", "acceptedFaultIdentity": "negative-zero:$.schemaVersion", "diagnosticCode": "schema.invalid-value", "decoderCase": "negative-zero", "successorCategory": "semantic.negative-zero-successor", "successorFaultIdentity": "negative-zero:$.slots[0].cardinality.min", "repairIdentity": "sha256:73aa27365aee200ab9e8a5d0c580fc35a8c9f716db19e8d967fa5cbf8854b690"},
+    {"acceptedName": "unknown-field", "faultFamily": "unknown-field", "acceptedFaultIdentity": "unknown-field:$:unknown", "diagnosticCode": "schema.unknown-field", "decoderCase": "prototype-property-is-data-before-schema-validation", "successorCategory": "semantic.unknown-field-successor", "successorFaultIdentity": "unknown-field:$:__proto__", "repairIdentity": "sha256:dc904f7ad9e87c9014f739bdd35e125562fd51e87ef9e15202d788cdd1b85bc7"}
   ]
 }

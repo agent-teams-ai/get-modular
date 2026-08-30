@@ -58,6 +58,35 @@ function boundedChunks(count, createChunk) {
   return chunks;
 }
 
+const MAXIMUM_AGGREGATE_STRING_CHUNK_BYTES = 1048576;
+
+function aggregateStringChunk(byteCount) {
+  const key = "é";
+  const keyBytes = Buffer.byteLength(key, "utf8");
+  const valuePrefix = "€";
+  const valuePrefixBytes = Buffer.byteLength(valuePrefix, "utf8");
+  const remaining = byteCount - keyBytes - valuePrefixBytes;
+  if (remaining < 0) {
+    throw new TypeError("aggregate string chunk cannot contain its multibyte key and value");
+  }
+  const value = `${valuePrefix}${"😀".repeat(Math.floor(remaining / 4))}${
+    "a".repeat(remaining % 4)
+  }`;
+  return { [key]: value };
+}
+
+function aggregateStringFixture(byteCount) {
+  const chunkCount = Math.ceil(byteCount / MAXIMUM_AGGREGATE_STRING_CHUNK_BYTES);
+  const baseChunkBytes = Math.floor(byteCount / chunkCount);
+  const largerChunks = byteCount % chunkCount;
+  return {
+    decodedObjects: Array.from(
+      { length: chunkCount },
+      (_, index) => aggregateStringChunk(baseChunkBytes + (index < largerChunks ? 1 : 0)),
+    ),
+  };
+}
+
 export function generateLimitFixture(vector, count) {
   requireNonNegativeSafeInteger(count, `${vector.limitName} fixture count`);
   switch (vector.fixtureShape) {
@@ -70,7 +99,7 @@ export function generateLimitFixture(vector, count) {
       for (let index = 0; index < count; index += 1) value = [value];
       return { value };
     }
-    case "string-values": return { strings: boundedChunks(count, length => "a".repeat(length)) };
+    case "decoded-object-key-and-string-values": return aggregateStringFixture(count);
     case "portable-id": return { identifier: "a".repeat(count) };
     case "owner-path": return { owner: { path: countedItems(count) } };
     case "declarations": return { declarations: countedItems(count) };
@@ -110,8 +139,14 @@ export function meterLimitFixture(vector, fixture) {
       }
       return depth;
     }
-    case "string-values": return fixture.strings.reduce(
-      (total, value) => total + Buffer.byteLength(value, "utf8"), 0,
+    case "decoded-object-key-and-string-values": return fixture.decodedObjects.reduce(
+      (total, value) => total + Object.entries(value).reduce(
+        (objectTotal, [key, stringValue]) => objectTotal
+          + Buffer.byteLength(key, "utf8")
+          + Buffer.byteLength(stringValue, "utf8"),
+        0,
+      ),
+      0,
     );
     case "portable-id": return Buffer.byteLength(fixture.identifier, "utf8");
     case "owner-path": return fixture.owner.path.length;
@@ -144,9 +179,14 @@ export function mutateLimitFixtureOffByOne(vector, fixture) {
       document: new Uint8Array(fixture.document.byteLength + 1),
     };
     case "json-depth": return { value: [fixture.value] };
-    case "utf8-string-bytes": return {
-      strings: [`${fixture.strings[0]}a`, ...fixture.strings.slice(1)],
-    };
+    case "utf8-string-bytes": {
+      if (vector.fixtureShape === "portable-id") {
+        return { identifier: `${fixture.identifier}a` };
+      }
+      const [first, ...rest] = fixture.decodedObjects;
+      const [[key, value]] = Object.entries(first);
+      return { decodedObjects: [{ [key]: `${value}a` }, ...rest] };
+    }
     case "item-count": return {
       owner: { path: new Array(fixture.owner.path.length + 1) },
     };
@@ -544,6 +584,7 @@ export function measureResourceFixtures({
     DEFAULT_MAXIMUM_OMITTED,
   );
   measurements.diagnosticStorm = {
+    qualificationScope: "static-fixture-oracle-no-production-subject",
     candidates: 65536,
     retained: diagnosticStorm.retained.length,
     omitted: diagnosticStorm.truncation.omitted,

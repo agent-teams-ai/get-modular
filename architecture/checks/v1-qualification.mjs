@@ -7,6 +7,10 @@ import { canonicalize as canonicalizeOracle } from "json-canonicalize";
 import { createScanner, getLocation, SyntaxKind, visit } from "jsonc-parser";
 
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
+const DECODER_CASE_TUPLES_SHA256 =
+  "sha256:8c3181fec3af89c3bb3466aa889e604ae3b621a1700658bed17d20e19a3a808d";
+const CANONICAL_CASE_TUPLES_SHA256 =
+  "sha256:ae527070f5b3b2b1429ae734a6b4d62d684faf0c517f2b47c304a92564569be3";
 const QUALIFICATION_PATH = /^architecture\/qualification\/v1\/[a-z0-9.-]+\.json$/u;
 const PATH_POLICIES = new Set(["empty", "structural", "limit-specific"]);
 const PHASE_ORDER_AUTHORITY = [
@@ -77,14 +81,20 @@ const CANONICAL_CATEGORY_AUTHORITY = new Map([
   ["safe-integer-boundaries", "jcs.safe-integer-boundaries"],
 ]);
 const ACCEPTED_SUCCESSOR_AUTHORITY = new Map([
-  ["duplicate-object-key", ["duplicate-object-key", "json.duplicate-key-successor",
-    "duplicate-key:$:kind"]],
-  ["lone-surrogate", ["lone-surrogate-escape", "semantic.terminal-high-surrogate-successor",
-    "lone-surrogate:$.profileId@8"]],
-  ["negative-zero", ["negative-zero", "semantic.negative-zero-successor",
-    "negative-zero:$.schemaVersion"]],
-  ["unknown-field", ["prototype-property-is-data-before-schema-validation",
-    "semantic.unknown-field-successor", "unknown-field:$:unknown"]],
+  ["duplicate-object-key", ["duplicate-key", "duplicate-object-key",
+    "json.duplicate-key-successor", "duplicate-key:$:kind", "duplicate-key:$:moduleId",
+    "sha256:ebeaba02aa16885f89b5cb1f990fb7e88a281af2e981b0ff3e72a6f64ee8f20d"]],
+  ["lone-surrogate", ["lone-surrogate", "lone-surrogate-escape",
+    "semantic.terminal-high-surrogate-successor", "lone-surrogate:$.profileId@8",
+    "lone-surrogate:$.owner.path[0]@6",
+    "sha256:2d7ac36708c3325f758ab4affe00194b91a81fd12479531a6a9a967d98a02773"]],
+  ["negative-zero", ["negative-zero", "negative-zero", "semantic.negative-zero-successor",
+    "negative-zero:$.schemaVersion", "negative-zero:$.slots[0].cardinality.min",
+    "sha256:73aa27365aee200ab9e8a5d0c580fc35a8c9f716db19e8d967fa5cbf8854b690"]],
+  ["unknown-field", ["unknown-field", "prototype-property-is-data-before-schema-validation",
+    "semantic.unknown-field-successor", "unknown-field:$:unknown",
+    "unknown-field:$:__proto__",
+    "sha256:dc904f7ad9e87c9014f739bdd35e125562fd51e87ef9e15202d788cdd1b85bc7"]],
 ]);
 const PATH_POLICY_AUTHORITY = Object.freeze({
   "decode.invalid-json": "empty",
@@ -159,7 +169,7 @@ const RESOURCE_FIXTURE_AUTHORITY = Object.freeze({
   rawDocumentBytes: ["raw-bytes", "single-document"],
   aggregateRawBytes: ["raw-bytes", "document-batch"],
   jsonDepth: ["json-depth", "nested-arrays"],
-  aggregateStringBytes: ["utf8-string-bytes", "string-values"],
+  aggregateStringBytes: ["utf8-string-bytes", "decoded-object-key-and-string-values"],
   identifierBytes: ["utf8-string-bytes", "portable-id"],
   ownerPathSegments: ["item-count", "owner-path"],
   declarations: ["item-count", "declarations"],
@@ -196,6 +206,12 @@ const COMPARATOR_EVIDENCE_AXES = [
   "path.later-index-value",
   "details.rfc8785",
 ];
+const DETAIL_CANONICALIZATION_BYTES_AUTHORITY = new Map([
+  ["nested-compatibility-details",
+    "7b2261637475616c436f6d7061746962696c697479223a7b2266616d696c79223a226578616374222c2266616d696c7956657273696f6e223a312c22746f6b656e223a226578616d706c652f612f7631227d2c226578706563746564436f6d7061746962696c697479223a7b2266616d696c79223a226578616374222c2266616d696c7956657273696f6e223a312c22746f6b656e223a226578616d706c652f7a2f7631227d7d"],
+  ["unicode-detail-bytes",
+    "7b2261223a7b225c72223a226c696e655c6e222c22c3b6223a22e282ac227d2c227a223a22f09f9880227d"],
+]);
 
 function fail(message) {
   throw new Error(`V1_QUALIFICATION_CHECK_FAILED: ${message}`);
@@ -279,6 +295,69 @@ function decoderSourceBytes(vector) {
   fail(`${vector.name ?? "decoder vector"} has an invalid source encoding`);
 }
 
+function jsonValueIdentity(value) {
+  return sha256Bytes(Buffer.from(JSON.stringify(value), "utf8"));
+}
+
+function repairIdentity(vector) {
+  if (vector.repair === undefined) return null;
+  return sha256Bytes(Buffer.from(JSON.stringify({
+    faultIdentity: vector.repair.faultIdentity,
+    span: vector.repair.span,
+    replacement: vector.repair.replacement,
+    repairedSourceBytesSha256: sha256Bytes(Buffer.from(vector.repairedSource, "utf8")),
+  }), "utf8"));
+}
+
+function decoderCaseAuthorityRecord(vector) {
+  const bytes = decoderSourceBytes(vector);
+  let decodedValueJsonSha256 = null;
+  if (vector.decoderOutcome === "accepted") {
+    let text;
+    try {
+      text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+      decodedValueJsonSha256 = jsonValueIdentity(JSON.parse(text));
+    } catch {
+      fail(`${vector.name} cannot produce its fixed accepted input identity`);
+    }
+  }
+  return {
+    name: vector.name,
+    category: vector.category,
+    sourceEncoding: vector.sourceEncoding,
+    sourceBytesSha256: sha256Bytes(bytes),
+    decoderOutcome: vector.decoderOutcome,
+    diagnosticCode: vector.diagnosticCode ?? null,
+    semanticDiagnosticCode: vector.semanticDiagnosticCode ?? null,
+    decodedValueJsonSha256,
+    repair: vector.repair === undefined ? null : {
+      faultIdentity: vector.repair.faultIdentity,
+      span: vector.repair.span,
+      replacement: vector.repair.replacement,
+      repairedSourceBytesSha256: sha256Bytes(Buffer.from(vector.repairedSource, "utf8")),
+      repairedValueJsonSha256: jsonValueIdentity(JSON.parse(vector.repairedSource)),
+    },
+  };
+}
+
+function canonicalCaseAuthorityRecord(vector) {
+  return {
+    name: vector.name,
+    category: vector.category,
+    valueJsonUtf8Sha256: jsonValueIdentity(vector.value),
+    canonicalUtf8BytesSha256: sha256Bytes(Buffer.from(vector.canonicalUtf8, "utf8")),
+  };
+}
+
+function validateCaseTupleAuthority(vectors, recordForCase, expectedDigest, label) {
+  const digest = sha256Bytes(Buffer.from(JSON.stringify(
+    (vectors.cases ?? []).map(recordForCase),
+  ), "utf8"));
+  if (digest !== expectedDigest) {
+    fail(`${label} source, input, or output tuple contradicts the independent fixed authority`);
+  }
+}
+
 function validateClosedManifestSection({
   section,
   vectors,
@@ -345,6 +424,18 @@ export function validateQualificationCaseManifest({
     ])) {
     fail("unsupported qualification case manifest");
   }
+  validateCaseTupleAuthority(
+    decoderVectors,
+    decoderCaseAuthorityRecord,
+    DECODER_CASE_TUPLES_SHA256,
+    "decoder case",
+  );
+  validateCaseTupleAuthority(
+    canonicalizationVectors,
+    canonicalCaseAuthorityRecord,
+    CANONICAL_CASE_TUPLES_SHA256,
+    "canonicalization case",
+  );
   validateClosedManifestSection({
     section: manifest.decoder,
     vectors: decoderVectors,
@@ -386,8 +477,14 @@ export function validateQualificationCaseManifest({
   }
   for (const entry of manifest.canonicalization.cases) {
     if (!same(objectKeys(entry, `manifest canonicalization case ${entry.name}`)
-      .sort(compareAscii), ["canonicalUtf8BytesSha256", "category", "name"])) {
+      .sort(compareAscii), [
+      "canonicalUtf8BytesSha256", "category", "name", "valueJsonUtf8Sha256",
+    ])) {
       fail(`${entry.name} has an invalid canonical-byte binding shape`);
+    }
+    const vector = canonicalizationVectors.cases.find(candidate => candidate.name === entry.name);
+    if (entry.valueJsonUtf8Sha256 !== jsonValueIdentity(vector.value)) {
+      fail(`${entry.name} differs from its exact input-value binding`);
     }
   }
 
@@ -407,7 +504,10 @@ export function validateQualificationCaseManifest({
       "acceptedName",
       "decoderCase",
       "diagnosticCode",
+      "faultFamily",
+      "repairIdentity",
       "successorCategory",
+      "successorFaultIdentity",
     ]) || mapping.diagnosticCode !== accepted.diagnosticCode) {
       fail(`${accepted.name} has an invalid successor mapping`);
     }
@@ -415,9 +515,12 @@ export function validateQualificationCaseManifest({
     if (authority === undefined
       || acceptedNegativeFaultIdentity(accepted) !== mapping.acceptedFaultIdentity
       || !same([
+        mapping.faultFamily,
         mapping.decoderCase,
         mapping.successorCategory,
         mapping.acceptedFaultIdentity,
+        mapping.successorFaultIdentity,
+        mapping.repairIdentity,
       ], authority)) {
       fail(`${accepted.name} contradicts the accepted fault successor authority`);
     }
@@ -427,6 +530,10 @@ export function validateQualificationCaseManifest({
       || successorCode !== accepted.diagnosticCode
       || successor.category !== mapping.successorCategory
       || successor.repair === undefined
+      || successor.repair.faultIdentity !== mapping.successorFaultIdentity
+      || repairIdentity(successor) !== mapping.repairIdentity
+      || !mapping.acceptedFaultIdentity.startsWith(`${mapping.faultFamily}:`)
+      || !mapping.successorFaultIdentity.startsWith(`${mapping.faultFamily}:`)
       || !successor.category.endsWith("successor")) {
       fail(`${accepted.name} is not mapped to one complete repaired successor case`);
     }
@@ -653,12 +760,12 @@ function deriveCyclicSccs(nodes, edges, nodeOrder, edgeOrder) {
   exactStringSet(nodeOrder, nodes, "SCC traversal node permutation");
   exactStringSet(edgeOrder, edges.map(edge => edge.id), "SCC traversal edge permutation");
   const edgeById = new Map(edges.map(edge => [edge.id, edge]));
-  const forward = new Map(nodes.map(node => [node, []]));
-  const reverse = new Map(nodes.map(node => [node, []]));
+  const forward = new Map(nodes.map(node => [node, new Set()]));
+  const reverse = new Map(nodes.map(node => [node, new Set()]));
   for (const edgeId of edgeOrder) {
     const edge = edgeById.get(edgeId);
-    forward.get(edge.from).push(edge.to);
-    reverse.get(edge.to).push(edge.from);
+    forward.get(edge.from).add(edge.to);
+    reverse.get(edge.to).add(edge.from);
   }
   const finish = [];
   const visited = new Set();
@@ -668,7 +775,7 @@ function deriveCyclicSccs(nodes, edges, nodeOrder, edgeOrder) {
     const stack = [{ node: root, next: 0 }];
     while (stack.length > 0) {
       const frame = stack.at(-1);
-      const neighbors = forward.get(frame.node);
+      const neighbors = [...forward.get(frame.node)];
       if (frame.next < neighbors.length) {
         const neighbor = neighbors[frame.next];
         frame.next += 1;
@@ -730,7 +837,7 @@ export function validateDiagnosticQualification({
     indexOrder: "numeric-ascending",
     detailsOrder: "rfc8785-utf8",
     sccArrayOrder: "lexicographic-members-shorter-prefix-first",
-    minimumLaterDifferenceSegmentIndex: 3,
+    requiredDecisivePathPositions: [1, 2, profile.limits.diagnosticPathSegments],
     evidenceAxes: COMPARATOR_EVIDENCE_AXES,
   })) {
     fail("diagnostic comparator policy is not the closed normative policy");
@@ -803,6 +910,7 @@ export function validateDiagnosticQualification({
   exactStringSet(orderingCases.map(orderingCase => orderingCase.axis),
     COMPARATOR_EVIDENCE_AXES, "diagnostic comparator evidence axes");
   const orderingNames = new Set();
+  const decisivePathPositions = new Set();
   const compare = createDiagnosticComparator({ contract, catalog });
   for (const orderingCase of orderingCases) {
     if (typeof orderingCase.name !== "string" || orderingNames.has(orderingCase.name)) {
@@ -844,10 +952,10 @@ export function validateDiagnosticQualification({
       || compare(right.diagnostic, right.diagnostic) !== 0) {
       fail(`${orderingCase.name} does not isolate ${orderingCase.axis} in both directions`);
     }
-    if (["path.later-kind", "path.later-field-value", "path.later-index-value"]
-      .includes(orderingCase.axis)
-      && comparePathWithAxis(left.diagnostic.path, right.diagnostic.path).segmentIndex < 3) {
-      fail(`${orderingCase.name} must differ only after at least three path segments`);
+    if (orderingCase.axis.startsWith("path.")) {
+      decisivePathPositions.add(
+        comparePathWithAxis(left.diagnostic.path, right.diagnostic.path).segmentIndex + 1,
+      );
     }
     const decisiveIndex = evidence.components.findIndex(component => component.order !== 0);
     const later = evidence.components.slice(decisiveIndex + 1);
@@ -868,6 +976,30 @@ export function validateDiagnosticQualification({
       if (!same(ordered.map(entry => entry.name), orderingCase.expected)) {
         fail(`${orderingCase.name} has an invalid expected diagnostic order`);
       }
+    }
+  }
+  if (!same([...decisivePathPositions].sort((left, right) => left - right), [
+    1, 2, profile.limits.diagnosticPathSegments,
+  ])) {
+    fail("comparator evidence must decide at exact path positions 1, 2, and maximum depth");
+  }
+
+  const detailCases = snapshots.detailCanonicalizationCases ?? [];
+  exactStringSet(
+    detailCases.map(detailCase => detailCase.name),
+    [...DETAIL_CANONICALIZATION_BYTES_AUTHORITY.keys()],
+    "diagnostic detail canonicalization cases",
+  );
+  for (const detailCase of detailCases) {
+    if (!same(objectKeys(detailCase, `${detailCase.name} detail case`).sort(compareAscii), [
+      "canonicalUtf8Hex", "details", "name",
+    ])) {
+      fail(`${detailCase.name} has an invalid exact detail-byte shape`);
+    }
+    const actual = canonicalDetailBytes(detailCase.details, detailCase.name).toString("hex");
+    const authoritative = DETAIL_CANONICALIZATION_BYTES_AUTHORITY.get(detailCase.name);
+    if (detailCase.canonicalUtf8Hex !== authoritative || actual !== authoritative) {
+      fail(`${detailCase.name} differs from its independent exact RFC 8785 detail bytes`);
     }
   }
 
@@ -907,10 +1039,16 @@ export function validateDiagnosticQualification({
     const nodeSet = new Set(sccCase.nodes);
     exactStringSet(sccCase.edges.map(edge => edge.id), sccCase.edges.map(edge => edge.id),
       `${sccCase.name} graph edge IDs`);
-    if (sccCase.edges.some(edge => !nodeSet.has(edge.from) || !nodeSet.has(edge.to))
-      || new Set(sccCase.edges.map(edge => `${edge.from}\0${edge.to}`)).size
-        !== sccCase.edges.length) {
-      fail(`${sccCase.name} has invalid or duplicate directed edges`);
+    if (sccCase.edges.some(edge => !nodeSet.has(edge.from) || !nodeSet.has(edge.to))) {
+      fail(`${sccCase.name} has an invalid directed edge endpoint`);
+    }
+    const parallelEdges = sccCase.edges.filter(edge => (
+      edge.from === "example/z/default" && edge.to === "example/b/default"
+    ));
+    if (!same(parallelEdges.map(edge => edge.id).sort(compareAscii), [
+      "z-to-b", "z-to-b-parallel",
+    ])) {
+      fail(`${sccCase.name} must contain the closed legal parallel-edge witness`);
     }
     if ((sccCase.permutations?.length ?? 0) < 3) {
       fail(`${sccCase.name} lacks traversal and input permutations`);
@@ -1383,6 +1521,12 @@ function valueFaultIdentities(value) {
   return faults.sort(compareAscii);
 }
 
+function schemaFaultIdentities(errors) {
+  return (errors ?? []).map(error => (
+    `schema:${error.keyword}:${error.instancePath || "$"}:${canonicalize(error.params)}`
+  )).sort(compareAscii);
+}
+
 function exactDocumentFaultIdentities(text, validateDocument) {
   const duplicateFaults = duplicateKeyFaultIdentities(text);
   const value = JSON.parse(text);
@@ -1413,9 +1557,7 @@ function exactDocumentFaultIdentities(text, validateDocument) {
       }
     }
   }
-  if (!validateDocument(normalized)) {
-    faults.push("schema-fault:$:document");
-  }
+  if (!validateDocument(normalized)) faults.push(...schemaFaultIdentities(validateDocument.errors));
   return faults.sort(compareAscii);
 }
 
@@ -1516,6 +1658,13 @@ export function validateDecoderQualification(
       || result.diagnosticCode !== vector.diagnosticCode) {
       fail(`${vector.name} has an invalid strict-decoder expectation`);
     }
+    if (vector.name === "utf8-bom"
+      && (vector.sourceEncoding !== "hex-bytes"
+        || vector.source !== "efbbbf7b7d"
+        || result.outcome !== "rejected"
+        || result.diagnosticCode !== "decode.invalid-json")) {
+      fail("UTF-8 BOM evidence must use the exact hex bytes and fatal rejection outcome");
+    }
     if (vector.category?.startsWith("encoding.utf8-")
       && vector.category !== "encoding.utf8-bom") {
       if (vector.category === "encoding.utf8-valid-multibyte-control") {
@@ -1528,7 +1677,8 @@ export function validateDecoderQualification(
           "eof-truncated-utf8-three-byte": "22e282",
           "eof-truncated-utf8-four-byte": "22f09f98",
         }[vector.name];
-        if (vector.source !== eofBytes || bytes.at(-1) === 0x22
+        if (vector.sourceEncoding !== "hex-bytes"
+          || vector.source !== eofBytes || bytes.at(-1) === 0x22
           || result.outcome !== "rejected") {
           fail(`${vector.name} is not a true EOF-truncated UTF-8 witness`);
         }
@@ -1575,12 +1725,24 @@ export function validateDecoderQualification(
   if (names.size !== DECODER_CATEGORY_AUTHORITY.size) {
     fail("decoder qualification does not cover the closed category authority");
   }
+  validateCaseTupleAuthority(
+    vectors,
+    decoderCaseAuthorityRecord,
+    DECODER_CASE_TUPLES_SHA256,
+    "decoder case",
+  );
 }
 
 export function validateCanonicalizationQualification(vectors) {
   if (!Array.isArray(vectors.cases) || vectors.cases.length < 5) {
     fail("canonicalization qualification requires edge vectors");
   }
+  validateCaseTupleAuthority(
+    vectors,
+    canonicalCaseAuthorityRecord,
+    CANONICAL_CASE_TUPLES_SHA256,
+    "canonicalization case",
+  );
   const names = new Set();
   for (const vector of vectors.cases) {
     if (typeof vector.name !== "string" || names.has(vector.name)) {

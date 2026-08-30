@@ -16,7 +16,7 @@
     "indexOrder": "numeric-ascending",
     "detailsOrder": "rfc8785-utf8",
     "sccArrayOrder": "lexicographic-members-shorter-prefix-first",
-    "minimumLaterDifferenceSegmentIndex": 3,
+    "requiredDecisivePathPositions": [1, 2, 32],
     "evidenceAxes": [
       "phase",
       "code",

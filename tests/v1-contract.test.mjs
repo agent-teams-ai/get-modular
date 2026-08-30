@@ -38,6 +38,7 @@ const readJson = async relativePath => JSON.parse(
 );
 const execFileAsync = promisify(execFile);
 const clone = value => structuredClone(value);
+const sha256Identity = bytes => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 let sharedValidators;
 const schemaValidators = schema => {
   sharedValidators ??= createSchemaValidators(schema);
@@ -51,6 +52,10 @@ test("resource qualification CLI emits JSON through a cross-platform entrypoint"
   const report = JSON.parse(stdout);
   assert.equal(report.chainAtDepthLimit.nodes, 2048);
   assert.equal(report.diagnosticStorm.retained, 255);
+  assert.equal(
+    report.diagnosticStorm.qualificationScope,
+    "static-fixture-oracle-no-production-subject",
+  );
 });
 
 test("diagnostic refinement and total comparator reject targeted mutations",
@@ -151,6 +156,41 @@ test("every named resource limit has executable at and plus-one fixtures", async
       meterLimitFixture(vector, mutatedFixture),
       vector.at + 1,
       `${family} off-by-one fixture mutation must be detected by the oracle`,
+    );
+  }
+});
+
+test("aggregate string bytes count every decoded UTF-8 key and value occurrence", async () => {
+  const vectors = await readJson("architecture/qualification/v1/resource-boundary-vectors.json");
+  const vector = vectors.cases.find(candidate => candidate.limitName === "aggregateStringBytes");
+  for (const expected of [vector.at, vector.over]) {
+    const fixture = generateLimitFixture(vector, expected);
+    const entries = fixture.decodedObjects.flatMap(value => Object.entries(value));
+    assert.equal(entries.length, fixture.decodedObjects.length);
+    assert.ok(entries.length > 1);
+    assert.ok(entries.every(([key, value]) => (
+      Buffer.byteLength(key, "utf8") > key.length
+      && Buffer.byteLength(value, "utf8") > value.length
+    )));
+    assert.equal(meterLimitFixture(vector, fixture), expected);
+
+    const utf16CodeUnitMutant = entries.reduce(
+      (total, [key, value]) => total + key.length + value.length,
+      0,
+    );
+    const stringValueOnlyMutant = entries.reduce(
+      (total, [, value]) => total + Buffer.byteLength(value, "utf8"),
+      0,
+    );
+    assert.notEqual(
+      utf16CodeUnitMutant,
+      expected,
+      "UTF-16 code-unit counting must fail the aggregate UTF-8 boundary fixture",
+    );
+    assert.notEqual(
+      stringValueOnlyMutant,
+      expected,
+      "omitting decoded object-key occurrences must fail the aggregate UTF-8 boundary fixture",
     );
   }
 });
@@ -298,7 +338,7 @@ async function runDiagnosticRefinementMutations() {
 
   const reversedDirectedEdge = clone(snapshots);
   const directedEdge = reversedDirectedEdge.sccGraphCases[0].edges
-    .find(edge => edge.id === "z-to-b");
+    .find(edge => edge.id === "b-to-c");
   [directedEdge.from, directedEdge.to] = [directedEdge.to, directedEdge.from];
   assert.throws(() => validate(reversedDirectedEdge), /derives different SCC membership/u);
 
@@ -306,6 +346,15 @@ async function runDiagnosticRefinementMutations() {
   missingSelfCycle.sccGraphCases[0].edges
     .find(edge => edge.id === "a-self").to = "example/f/default";
   assert.throws(() => validate(missingSelfCycle), /derives different SCC membership/u);
+
+  const missingParallelEdge = clone(snapshots);
+  missingParallelEdge.sccGraphCases[0].edges = missingParallelEdge.sccGraphCases[0].edges
+    .filter(edge => edge.id !== "z-to-b-parallel");
+  for (const permutation of missingParallelEdge.sccGraphCases[0].permutations) {
+    permutation.edgeOrder = permutation.edgeOrder
+      .filter(edgeId => edgeId !== "z-to-b-parallel");
+  }
+  assert.throws(() => validate(missingParallelEdge), /legal parallel-edge witness/u);
 
   const swappedPhaseRanks = clone(catalog);
   [swappedPhaseRanks.ordering.phases[0], swappedPhaseRanks.ordering.phases[1]] = [
@@ -333,13 +382,26 @@ async function runDiagnosticRefinementMutations() {
     validateDiagnostic,
   }), /code-rank authority/u);
 
-  const twoSegmentComparatorEvidence = clone(snapshots);
-  for (const orderingCase of twoSegmentComparatorEvidence.orderingCases.filter(
-    vector => vector.axis.startsWith("path.later-"),
+  const skipsMaximumPathPosition = clone(snapshots);
+  for (const orderingCase of skipsMaximumPathPosition.orderingCases.filter(
+    vector => ["path.later-field-value", "path.later-index-value"].includes(vector.axis),
   )) {
-    for (const operand of orderingCase.operands) operand.override.path = operand.override.path.slice(0, 2);
+    for (const operand of orderingCase.operands) {
+      operand.override.path = operand.override.path.slice(-2);
+    }
   }
-  assert.throws(() => validate(twoSegmentComparatorEvidence), /path\.later/u);
+  assert.throws(() => validate(skipsMaximumPathPosition), /exact path positions/u);
+
+  const shallowDetailJcs = clone(snapshots);
+  const nestedDetails = shallowDetailJcs.detailCanonicalizationCases
+    .find(detailCase => detailCase.name === "nested-compatibility-details");
+  nestedDetails.details = { actual: 2, limit: 1 };
+  assert.throws(() => validate(shallowDetailJcs), /exact RFC 8785 detail bytes/u);
+
+  const changedUnicodeDetail = clone(snapshots);
+  changedUnicodeDetail.detailCanonicalizationCases
+    .find(detailCase => detailCase.name === "unicode-detail-bytes").details.z = "😃";
+  assert.throws(() => validate(changedUnicodeDetail), /exact RFC 8785 detail bytes/u);
 
   const detailsCase = snapshots.orderingCases
     .find(vector => vector.axis === "details.rfc8785");
@@ -470,6 +532,53 @@ test("resource and decoder qualification reject expectation drift", async () => 
     .find(vector => vector.name === "overlong-utf8").source = "22c0af0a22";
   assert.throws(() => validateDecoder(extraJsonFaultInsideFraming), /isolate its authoritative/u);
 
+  const swappedCommentSources = clone(decoder);
+  const swappedCommentManifest = clone(manifest);
+  const lineComment = swappedCommentSources.cases.find(vector => vector.name === "line-comment");
+  const blockComment = swappedCommentSources.cases.find(vector => vector.name === "block-comment");
+  [lineComment.source, blockComment.source] = [blockComment.source, lineComment.source];
+  for (const vector of [lineComment, blockComment]) {
+    swappedCommentManifest.decoder.cases.find(entry => entry.name === vector.name)
+      .sourceBytesSha256 = sha256Identity(Buffer.from(vector.source, "utf8"));
+  }
+  assert.throws(() => validateManifest(
+    swappedCommentManifest, swappedCommentSources, canonicalization,
+  ), /independent fixed authority/u);
+
+  const emptyBomBytes = clone(decoder);
+  const emptyBomManifest = clone(manifest);
+  emptyBomBytes.cases.find(vector => vector.name === "utf8-bom").source = "";
+  emptyBomManifest.decoder.cases.find(entry => entry.name === "utf8-bom")
+    .sourceBytesSha256 = sha256Identity(Buffer.alloc(0));
+  assert.throws(() => validateDecoder(emptyBomBytes), /BOM evidence/u);
+  assert.throws(() => validateManifest(
+    emptyBomManifest, emptyBomBytes, canonicalization,
+  ), /independent fixed authority/u);
+
+  const textEncodedBom = clone(decoder);
+  const textBom = textEncodedBom.cases.find(vector => vector.name === "utf8-bom");
+  textBom.sourceEncoding = "utf8-text";
+  textBom.source = "\ufeff{}";
+  assert.throws(() => validateDecoder(textEncodedBom), /BOM evidence/u);
+
+  const textEncodedEofTruncation = clone(decoder);
+  textEncodedEofTruncation.cases
+    .find(vector => vector.name === "eof-truncated-utf8-three-byte")
+    .sourceEncoding = "utf8-text";
+  assert.throws(() => validateDecoder(textEncodedEofTruncation),
+    /strict-decoder expectation|true EOF-truncated/u);
+
+  const swappedSemanticRepairTuples = clone(decoder);
+  const loneTuple = swappedSemanticRepairTuples.cases
+    .find(vector => vector.name === "lone-surrogate-escape");
+  const negativeTuple = swappedSemanticRepairTuples.cases
+    .find(vector => vector.name === "negative-zero");
+  for (const field of ["source", "repair", "repairedSource"]) {
+    [loneTuple[field], negativeTuple[field]] = [negativeTuple[field], loneTuple[field]];
+  }
+  assert.throws(() => validateDecoder(swappedSemanticRepairTuples),
+    /bound semantic fault|fixed authority|repair/u);
+
   const missingManifestCategory = clone(manifest);
   missingManifestCategory.decoder.categories.pop();
   assert.throws(() => validateManifest(missingManifestCategory), /manifest categories/u);
@@ -488,7 +597,7 @@ test("resource and decoder qualification reject expectation drift", async () => 
   }
   assert.throws(() => validateManifest(
     swappedDecoderManifest, swappedDecoderCategories, canonicalization,
-  ), /independent category authority/u);
+  ), /independent (?:category|fixed) authority/u);
 
   const wrongAcceptedSuccessor = clone(manifest);
   wrongAcceptedSuccessor.acceptedCanonicalNegativeSuccessors[1].decoderCase = "negative-zero";
@@ -508,12 +617,36 @@ test("resource and decoder qualification reject expectation drift", async () => 
   }
   assert.throws(() => validateManifest(
     swappedCanonicalManifest, decoder, swappedCanonicalCategories,
-  ), /independent category authority/u);
+  ), /independent (?:category|fixed) authority/u);
+
+  const swappedCanonicalTuples = clone(canonicalization);
+  const swappedCanonicalTupleManifest = clone(manifest);
+  const objectOrder = swappedCanonicalTuples.cases
+    .find(vector => vector.name === "object-key-order");
+  const stringEscaping = swappedCanonicalTuples.cases
+    .find(vector => vector.name === "string-escaping");
+  for (const field of ["value", "canonicalUtf8"]) {
+    [objectOrder[field], stringEscaping[field]] = [stringEscaping[field], objectOrder[field]];
+  }
+  for (const vector of [objectOrder, stringEscaping]) {
+    const entry = swappedCanonicalTupleManifest.canonicalization.cases
+      .find(candidate => candidate.name === vector.name);
+    entry.valueJsonUtf8Sha256 = sha256Identity(
+      Buffer.from(JSON.stringify(vector.value), "utf8"),
+    );
+    entry.canonicalUtf8BytesSha256 = sha256Identity(
+      Buffer.from(vector.canonicalUtf8, "utf8"),
+    );
+  }
+  assert.throws(() => validateManifest(
+    swappedCanonicalTupleManifest, decoder, swappedCanonicalTuples,
+  ),
+    /independent fixed authority/u);
 
   const alreadyCanonicalObjectOrder = clone(canonicalization);
   alreadyCanonicalObjectOrder.cases[0].value = { a: 1, m: 2, z: 0 };
   assert.throws(() => validateCanonicalizationQualification(alreadyCanonicalObjectOrder),
-    /already in canonical property order/u);
+    /fixed authority|already in canonical property order/u);
 });
 
 test("bounded top-K uses the normative comparator across exact permutations", async () => {
@@ -583,15 +716,21 @@ test("bounded top-K uses the normative comparator across exact permutations", as
     "ignoring candidates after K+1 must fail the reverse 258 late-replacement witness",
   );
 
-  const saturation = runDiagnosticCollectorCase({
-    count: 264,
-    permutation: { kind: "ascending" },
-    template: collectorVectors.candidateTemplate,
-    limit: collectorVectors.limit,
-    maximumOmitted: 8,
-    compareDiagnostics,
-  });
-  assert.deepEqual(saturation.truncation, { omitted: 8 });
-  assert.equal(saturation.failureCount, 263);
-  assert.equal(saturation.failureCountSaturated, true);
+  for (const [maximumOmitted, count] of [
+    [8, 264],
+    [collectorVectors.maximumOmitted, 262400],
+  ]) {
+    const saturation = runDiagnosticCollectorCase({
+      count,
+      permutation: { kind: "ascending" },
+      template: collectorVectors.candidateTemplate,
+      limit: collectorVectors.limit,
+      maximumOmitted,
+      compareDiagnostics,
+    });
+    assert.deepEqual(saturation.truncation, { omitted: maximumOmitted });
+    assert.equal(saturation.failureCount, (collectorVectors.limit - 1) + maximumOmitted);
+    assert.equal(saturation.failureCountSaturated, true);
+    assert.equal(saturation.peakRetained, collectorVectors.limit);
+  }
 });

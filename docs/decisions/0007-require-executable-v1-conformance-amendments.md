@@ -43,14 +43,16 @@ production-conformance claim. If this decision is accepted, they become
 normative amendments when read together with the immutable base contract.
 Their byte identities are recorded in
 `architecture/authority/v1-qualification-ledger.json`, anchored as
-`sha256:5109af5268785c887b53c58a74caf310787a953aa89ba0dc57b4b6c9798e3570`.
+`sha256:6f9625a3ba44837b6c03ab7a76192cc907636e476f110d07aa4cbd32b93848de`.
 
 `qualification-case-manifest.json` records decoder and canonicalization case
 categories, exact source, repair, and canonical byte identities, and the mapping
 from every immutable base canonical-negative name to its complete successor
-case. A closed development-only checker independently fixes category semantics
-and each accepted fault identity-to-successor binding, so relabeling manifest
-rows and refreshing hashes cannot self-certify changed evidence.
+case. A closed development-only checker fixes the allowed category and accepted
+fault-to-successor tuples and verifies artifacts whose byte identities are
+recorded in the separate ledger; it does not create, repair, or replace
+authority. Relabeling manifest rows and refreshing hashes cannot self-certify
+changed evidence.
 
 The repository gate must validate both ledgers. A future revision creates a new
 artifact version and successor ADR; it never mutates an accepted ledger or
@@ -72,8 +74,9 @@ diagnostic code. For each code it fixes:
 and ordering permutations. It executes every adjacent phase and code rank. The
 total comparator covers phase, code, every
 coordinate field's absence or presence and value, every path segment's kind and
-value, path-prefix length and later segments, including a first difference only
-after three equal segments, and RFC 8785 detail bytes. Every
+value, path-prefix length, and decisive differences at path positions one, two,
+and the maximum supported depth. Exact nested and Unicode cases pin the RFC
+8785 UTF-8 detail bytes. Every
 ordering operand must pass both the accepted base diagnostic schema and this
 refinement. Axis witnesses keep all higher axes equal, and dominance witnesses
 make a lower axis oppose the decisive higher axis. Unknown codes, phases,
@@ -86,9 +89,11 @@ structural policy, and an absent policy always fails.
 A `graph.cycle` component contains unique implementation IDs in ascending ASCII
 order. Qualification derives components independently from directed graph-edge
 fixtures, including a self-cycle, reciprocal multi-member cycles, a one-way
-non-cycle, and disjoint components. Node, edge, and traversal permutations must
-derive the same membership. Component arrays use lexicographic member-array
-order with a shorter equal prefix first.
+non-cycle, and disjoint components. Parallel edges with distinct IDs and equal
+endpoints are legal and are deduplicated when adjacency is derived. Every node,
+edge, and traversal permutation, including the parallel edge, must derive the
+same membership. Component arrays use lexicographic member-array order with a
+shorter equal prefix first.
 
 The diagnostic definition embedded in `composition.schema.json` remains a base
 shape. Where it is less restrictive, the standalone diagnostic contract is the
@@ -141,11 +146,10 @@ validation.
 Every repaired negative binds one exact fault identity and has exactly one
 semantic fault before its exact one-span byte repair and zero afterward. The
 repaired result must pass the accepted schema and semantic checks. The
-negative-zero case uses a numeric field where positive
-zero is valid, and the lone-surrogate evidence includes a high surrogate at the
-end of a string. A targeted mutation for each guarantee must fail for that
-guarantee; an unrelated schema defect in both the source and repair cannot
-satisfy the evidence.
+negative-zero case uses a numeric field where positive zero is valid, and the
+lone-surrogate evidence includes a high surrogate at the end of a string. An
+unrelated schema defect in both the source and repair cannot satisfy the
+evidence.
 
 The first decoder spike uses `jsonc-parser` only through `createScanner` and
 `visit`, behind a replaceable internal adapter. It checks bytes and fatal UTF-8
@@ -160,8 +164,13 @@ iterative scanner under the same vectors, not a weakened contract.
 `resource-boundary-vectors.json` covers every named V1 limit at the accepted
 value and at value plus one. Development-only qualification constructs bounded
 fixtures for every row and meters the resulting structure with an independent
-oracle; targeted off-by-one mutations cover every fixture family. This proves
-fixture construction and oracle expectations, not packed-subject enforcement.
+oracle. These outcomes are static qualification of fixture construction and
+oracle expectations; they are not production-subject execution or
+packed-subject enforcement. The aggregate-string boundary fixtures contain
+repeated decoded object-key and string-value occurrences with multi-byte Unicode
+scalars at both the accepted 8 MiB limit and limit plus one. Their oracle counts
+the UTF-8 bytes of every key and value occurrence; explicit UTF-16-code-unit and
+value-only mutations must disagree with both boundaries.
 It also fixes inclusive `many` ranges and semantically rejects `min > max`
 without changing the immutable accepted schema, rejects duplicate provider
 identities, and distinguishes 256
