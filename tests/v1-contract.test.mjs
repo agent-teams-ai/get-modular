@@ -62,6 +62,44 @@ test("resource qualification CLI emits JSON through a cross-platform entrypoint"
 test("diagnostic refinement and total comparator reject targeted mutations",
   runDiagnosticRefinementMutations);
 
+test("diagnostic prerequisites are closed for every code and named limit", async () => {
+  const [schema, catalog, profile, contract, snapshots] = await Promise.all([
+    readJson("architecture/contracts/v1/composition.schema.json"),
+    readJson("architecture/contracts/v1/diagnostic-catalog.json"),
+    readJson("architecture/contracts/v1/resource-profile.json"),
+    readJson("architecture/qualification/v1/diagnostic-contract.json"),
+    readJson("architecture/qualification/v1/diagnostic-snapshots.json"),
+  ]);
+  const { validateDiagnostic } = schemaValidators(schema);
+  const validate = value => validateDiagnosticQualification({
+    contract: value,
+    snapshots,
+    catalog,
+    profile,
+    coordinateFields: Object.keys(schema.$defs.diagnostic.properties.coordinate.properties),
+    validateDiagnostic,
+  });
+  assert.doesNotThrow(() => validate(contract));
+
+  for (const mutate of [
+    value => { value.prerequisiteCatalog.diagnostics.pop(); },
+    value => { value.prerequisiteCatalog.diagnostics[0].code = "unknown.code"; },
+    value => { value.prerequisiteCatalog.diagnostics[1].code
+      = value.prerequisiteCatalog.diagnostics[0].code; },
+    value => { value.prerequisiteCatalog.diagnostics[0].prerequisiteGroup = "decode.other"; },
+    value => { value.prerequisiteCatalog.limits.pop(); },
+    value => { value.prerequisiteCatalog.limits[0].limitName = "unknownLimit"; },
+    value => { value.prerequisiteCatalog.limits[1].limitName
+      = value.prerequisiteCatalog.limits[0].limitName; },
+    value => { value.prerequisiteCatalog.limits[0].suppressionScope = "batch"; },
+    value => { value.prerequisiteCatalog.executableRule = "evaluate()"; },
+  ]) {
+    const candidate = clone(contract);
+    mutate(candidate);
+    assert.throws(() => validate(candidate));
+  }
+});
+
 test("canonical vector bytes and digest are independently reproducible", async () => {
   const vectors = await readJson("architecture/contracts/v1/canonical-vectors.json");
   const [vector] = vectors.positive;

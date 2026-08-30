@@ -153,6 +153,63 @@ const LIMIT_PATH_POLICY_AUTHORITY = Object.freeze({
   diagnostics: "empty",
   diagnosticPathSegments: "empty",
 });
+const DIAGNOSTIC_PREREQUISITE_AUTHORITY = Object.freeze({
+  "decode.invalid-json": ["decode.document", "document"],
+  "decode.duplicate-key": ["decode.document-keys", "document"],
+  "input.limit-exceeded": ["resource.selected-limit", "limit"],
+  "schema.unsupported-version": ["schema.document", "document"],
+  "schema.unknown-field": ["schema.document", "document"],
+  "schema.invalid-value": ["schema.document", "document"],
+  "schema.non-plain-value": ["schema.document", "document"],
+  "identity.invalid": ["schema.identity", "document"],
+  "declaration.duplicate-implementation": ["declaration.identity-census", "declaration"],
+  "declaration.duplicate-capability": ["declaration.capabilities", "declaration"],
+  "declaration.duplicate-slot": ["declaration.slots", "declaration"],
+  "profile.duplicate-root": ["profile.roots", "profile"],
+  "profile.unknown-root": ["profile.roots", "profile"],
+  "profile.duplicate-selection": ["profile.selections", "profile"],
+  "profile.unknown-module": ["profile.selections", "profile"],
+  "profile.unknown-implementation": ["profile.selections", "profile"],
+  "profile.implementation-mismatch": ["profile.selections", "profile"],
+  "profile.missing-selection": ["profile.selection-census", "profile"],
+  "profile.unreachable-selection": ["graph.reachability-frontier", "graph"],
+  "binding.duplicate": ["binding.slot-frontier", "binding"],
+  "binding.missing": ["binding.slot-frontier", "binding"],
+  "binding.unknown-consumer": ["binding.consumer", "binding"],
+  "binding.unknown-slot": ["binding.slot", "binding"],
+  "binding.unknown-provider": ["binding.provider", "binding"],
+  "binding.provider-not-selected": ["binding.provider-selection", "binding"],
+  "binding.cardinality": ["binding.cardinality", "binding"],
+  "binding.capability-missing": ["binding.capability", "binding"],
+  "binding.compatibility-mismatch": ["binding.compatibility", "binding"],
+  "graph.cycle": ["graph.strongly-connected-components", "graph"],
+  "output.canonicalization-failed": ["output.canonical-plan", "output"],
+  "diagnostics.truncated": ["output.diagnostic-collector", "output"],
+});
+const LIMIT_PREREQUISITE_AUTHORITY = Object.freeze({
+  rawDocumentBytes: ["decode.raw-document-bytes", "document"],
+  declarationRawDocumentBytes: ["decode.declaration-document-bytes", "document"],
+  profileRawDocumentBytes: ["decode.profile-document-bytes", "document"],
+  aggregateRawBytes: ["decode.aggregate-raw-bytes", "batch"],
+  jsonValueOccurrences: ["schema.value-occurrences", "batch"],
+  jsonDepth: ["decode.document-depth", "document"],
+  aggregateStringBytes: ["decode.aggregate-string-bytes", "batch"],
+  identifierBytes: ["schema.identifier-bytes", "document"],
+  ownerPathSegments: ["declaration.owner-path", "declaration"],
+  declarations: ["declaration.batch-count", "batch"],
+  capabilitiesPerDeclaration: ["declaration.capability-count", "declaration"],
+  slotsPerDeclaration: ["declaration.slot-count", "declaration"],
+  totalCapabilities: ["declaration.total-capabilities", "batch"],
+  totalSlots: ["declaration.total-slots", "batch"],
+  roots: ["profile.root-count", "profile"],
+  selections: ["profile.selection-count", "profile"],
+  bindings: ["profile.binding-count", "profile"],
+  graphEdges: ["graph.edge-count", "graph"],
+  providersPerManySlot: ["binding.provider-count", "binding"],
+  graphDepth: ["graph.depth", "graph"],
+  diagnostics: ["output.diagnostic-count", "output"],
+  diagnosticPathSegments: ["output.diagnostic-path", "output"],
+});
 const MALFORMED_UTF8_AUTHORITY = new Map([
   ["invalid-utf8-unexpected-continuation", "80"],
   ["overlong-utf8", "c0af"],
@@ -919,6 +976,38 @@ export function validateDiagnosticQualification({
     "diagnostic limit path policies");
   if (!same(contract.limitPathPolicies, LIMIT_PATH_POLICY_AUTHORITY)) {
     fail("diagnostic limit path policies contradict the independent authority");
+  }
+  if (!same(objectKeys(contract.prerequisiteCatalog, "diagnostic prerequisite catalog")
+    .sort(compareAscii), ["diagnostics", "limits", "policy"])) {
+    fail("diagnostic prerequisite catalog has an invalid shape");
+  }
+  if (contract.prerequisiteCatalog.policy !== "closed-data-no-executable-predicates") {
+    fail("diagnostic prerequisite catalog must be closed data");
+  }
+  const diagnosticPrerequisites = contract.prerequisiteCatalog?.diagnostics ?? [];
+  exactStringSequence(diagnosticPrerequisites.map(entry => entry.code), CODE_ORDER_AUTHORITY,
+    "diagnostic prerequisite catalog");
+  for (const entry of diagnosticPrerequisites) {
+    if (!same(objectKeys(entry, `diagnostic prerequisite ${entry.code}`).sort(compareAscii), [
+      "code", "prerequisiteGroup", "suppressionScope",
+    ])) fail(`${entry.code} has an invalid prerequisite record shape`);
+    if (!same([entry.prerequisiteGroup, entry.suppressionScope],
+      DIAGNOSTIC_PREREQUISITE_AUTHORITY[entry.code])) {
+      fail(`${entry.code} contradicts the independent prerequisite authority`);
+    }
+  }
+  const limitPrerequisites = contract.prerequisiteCatalog?.limits ?? [];
+  const limitNames = Object.keys(LIMIT_PREREQUISITE_AUTHORITY);
+  exactStringSequence(limitPrerequisites.map(entry => entry.limitName), limitNames,
+    "resource-limit prerequisite catalog");
+  for (const entry of limitPrerequisites) {
+    if (!same(objectKeys(entry, `limit prerequisite ${entry.limitName}`).sort(compareAscii), [
+      "limitName", "prerequisiteGroup", "suppressionScope",
+    ])) fail(`${entry.limitName} has an invalid prerequisite record shape`);
+    if (!same([entry.prerequisiteGroup, entry.suppressionScope],
+      LIMIT_PREREQUISITE_AUTHORITY[entry.limitName])) {
+      fail(`${entry.limitName} contradicts the independent prerequisite authority`);
+    }
   }
   for (const policy of Object.values(contract.pathPolicyByCode)) {
     if (!PATH_POLICIES.has(policy)) fail(`unknown diagnostic path policy ${policy}`);
