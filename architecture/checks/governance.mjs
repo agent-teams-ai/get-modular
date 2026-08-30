@@ -17,6 +17,7 @@ const ARCHITECTURE_AUTHORITY_PATH = /^docs\/architecture\/[^/]+\.md$/u;
 const REQUIREMENTS_AUTHORITY_PATH = /^docs\/requirements\/[^/]+\.md$/u;
 const QUALIFICATION_DOCUMENT_PATH = /^docs\/qualification\/[^/]+\.md$/u;
 const DECISION_DOCUMENT_PATH = /^docs\/decisions\/[^/]+\.md$/u;
+const NON_PORTABLE_PATH_CHARACTERS = /[<>:"|?*\u0000-\u001f]/u;
 const REVISION = /^[a-f0-9]{40}$/u;
 const REQUIREMENT = /^GM-REQ-[0-9]{3}$/u;
 const SAFE_RELATIVE_PATH = /^(?![\\/])(?!.*(?:^|[\\/])\.\.(?:[\\/]|$))[^\\]+$/u;
@@ -68,9 +69,7 @@ function digestBytes(bytes, label) {
 function safeRepositoryPath(value) {
   return typeof value === "string"
     && SAFE_RELATIVE_PATH.test(value)
-    && !value.includes("\0")
-    && !value.includes("\n")
-    && !value.includes("\r")
+    && !NON_PORTABLE_PATH_CHARACTERS.test(value)
     && value.split("/").every(segment => segment !== "" && segment !== "." && segment !== "..");
 }
 

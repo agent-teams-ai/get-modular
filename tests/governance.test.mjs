@@ -402,7 +402,13 @@ test("qualification custody rejects path-only, mutable, circular, and non-file e
       ? { ...document, evidence: ["evidence/structural.json"] }
       : document),
   }), /evidence identity must contain exactly/u);
-  for (const path of ["../outside.json", "/outside.json", "evidence/../outside.json"]) {
+  for (const path of [
+    "../outside.json",
+    "/outside.json",
+    "C:/outside.json",
+    "C:outside.json",
+    "evidence/../outside.json",
+  ]) {
     await assert.rejects(validate({
       documents: documents.map(document => document.id === claim.id
         ? { ...document, evidence: [{ ...document.evidence[0], path }] }
