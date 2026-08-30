@@ -10,17 +10,17 @@
     {
       "id": "GM-V1-DECODER-VECTORS",
       "path": "architecture/qualification/v1/decoder-vectors.json",
-      "immutableDigest": "sha256:b8e175a70eda372c7ec8d5c2fe5d625ea363a7c1ca1f12efc3a352a5c168db62"
+      "immutableDigest": "sha256:94d981c9193bd14cd61f5fbe3d7539dd7631f350cf7c3e36b57f731c674f3b1c"
     },
     {
       "id": "GM-V1-DIAGNOSTIC-CONTRACT",
       "path": "architecture/qualification/v1/diagnostic-contract.json",
-      "immutableDigest": "sha256:c564d6afaf53bd13a15afed079832a86ba2304e666058e9e5d44895db0a7eb3a"
+      "immutableDigest": "sha256:5abd221d67871113c60fda9ce6519337a27789889c781f5509e60042cc101a80"
     },
     {
       "id": "GM-V1-DIAGNOSTIC-SNAPSHOTS",
       "path": "architecture/qualification/v1/diagnostic-snapshots.json",
-      "immutableDigest": "sha256:5f024082607af64782421b33b0d90e55dbabe4194be71010e6308efea567b41e"
+      "immutableDigest": "sha256:101a3499f47500c55c1c4a3c0df3b0e08df3b889d9f12c5f0acc4684015a3b9a"
     },
     {
       "id": "GM-V1-NORMALIZATION-VECTORS",
@@ -30,12 +30,12 @@
     {
       "id": "GM-V1-QUALIFICATION-CASE-MANIFEST",
       "path": "architecture/qualification/v1/qualification-case-manifest.json",
-      "immutableDigest": "sha256:8e78905296c88c598098b277ef875203c285b46e799641d2d119d1fc9d3e2782"
+      "immutableDigest": "sha256:dfe3dcadffaefac9b7ee78f85b0f86efae67e837a53fd99add37b20028da49de"
     },
     {
       "id": "GM-V1-RESOURCE-BOUNDARY-VECTORS",
       "path": "architecture/qualification/v1/resource-boundary-vectors.json",
-      "immutableDigest": "sha256:09fee6d274d8d695266357e299e5bcffd9ba6e77b2fa11b377270a3d5184d944"
+      "immutableDigest": "sha256:493a90f17eb7cc4907167d2fe0e4ffc24a1cb39aa4c111160626aeb906db603c"
     }
   ]
 }

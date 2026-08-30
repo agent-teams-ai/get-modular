@@ -177,8 +177,8 @@
       "name": "path-later-kind-dominates-details",
       "axis": "path.later-kind",
       "operands": [
-        {"name": "later-field", "snapshot": "invalid-value", "override": {"path": [{"kind": "field", "value": "root"}, {"kind": "field", "value": "z"}], "details": {"reason": "invalid-type"}}},
-        {"name": "later-index", "snapshot": "invalid-value", "override": {"path": [{"kind": "field", "value": "root"}, {"kind": "index", "value": 0}], "details": {"reason": "invalid-format"}}}
+        {"name": "later-field", "snapshot": "invalid-value", "override": {"path": [{"kind": "field", "value": "root"}, {"kind": "index", "value": 0}, {"kind": "field", "value": "branch"}, {"kind": "field", "value": "z"}], "details": {"reason": "invalid-type"}}},
+        {"name": "later-index", "snapshot": "invalid-value", "override": {"path": [{"kind": "field", "value": "root"}, {"kind": "index", "value": 0}, {"kind": "field", "value": "branch"}, {"kind": "index", "value": 0}], "details": {"reason": "invalid-format"}}}
       ],
       "expected": ["later-field", "later-index"],
       "opposedLaterAxis": "details.rfc8785"
@@ -187,8 +187,8 @@
       "name": "path-later-field-value-dominates-details",
       "axis": "path.later-field-value",
       "operands": [
-        {"name": "later-a", "snapshot": "invalid-value", "override": {"path": [{"kind": "field", "value": "root"}, {"kind": "field", "value": "a"}], "details": {"reason": "invalid-type"}}},
-        {"name": "later-z", "snapshot": "invalid-value", "override": {"path": [{"kind": "field", "value": "root"}, {"kind": "field", "value": "z"}], "details": {"reason": "invalid-format"}}}
+        {"name": "later-a", "snapshot": "invalid-value", "override": {"path": [{"kind": "field", "value": "root"}, {"kind": "index", "value": 0}, {"kind": "field", "value": "branch"}, {"kind": "field", "value": "a"}], "details": {"reason": "invalid-type"}}},
+        {"name": "later-z", "snapshot": "invalid-value", "override": {"path": [{"kind": "field", "value": "root"}, {"kind": "index", "value": 0}, {"kind": "field", "value": "branch"}, {"kind": "field", "value": "z"}], "details": {"reason": "invalid-format"}}}
       ],
       "expected": ["later-a", "later-z"],
       "opposedLaterAxis": "details.rfc8785"
@@ -197,8 +197,8 @@
       "name": "path-later-index-value-dominates-details",
       "axis": "path.later-index-value",
       "operands": [
-        {"name": "later-two", "snapshot": "invalid-value", "override": {"path": [{"kind": "field", "value": "root"}, {"kind": "index", "value": 2}], "details": {"reason": "invalid-type"}}},
-        {"name": "later-ten", "snapshot": "invalid-value", "override": {"path": [{"kind": "field", "value": "root"}, {"kind": "index", "value": 10}], "details": {"reason": "invalid-format"}}}
+        {"name": "later-two", "snapshot": "invalid-value", "override": {"path": [{"kind": "field", "value": "root"}, {"kind": "index", "value": 0}, {"kind": "field", "value": "branch"}, {"kind": "index", "value": 2}], "details": {"reason": "invalid-type"}}},
+        {"name": "later-ten", "snapshot": "invalid-value", "override": {"path": [{"kind": "field", "value": "root"}, {"kind": "index", "value": 0}, {"kind": "field", "value": "branch"}, {"kind": "index", "value": 10}], "details": {"reason": "invalid-format"}}}
       ],
       "expected": ["later-two", "later-ten"],
       "opposedLaterAxis": "details.rfc8785"
@@ -213,20 +213,35 @@
       "expected": ["actual-ten", "actual-two"]
     }
   ],
-  "sccOrderingCases": [
+  "rankAdjacency": {
+    "phases": [["decode", "schema"], ["schema", "declaration"], ["declaration", "profile"], ["profile", "binding"], ["binding", "graph"], ["graph", "output"]],
+    "codes": [
+      ["decode.invalid-json", "decode.duplicate-key"], ["decode.duplicate-key", "input.limit-exceeded"], ["input.limit-exceeded", "schema.unsupported-version"], ["schema.unsupported-version", "schema.unknown-field"], ["schema.unknown-field", "schema.invalid-value"], ["schema.invalid-value", "schema.non-plain-value"], ["schema.non-plain-value", "identity.invalid"], ["identity.invalid", "declaration.duplicate-implementation"], ["declaration.duplicate-implementation", "declaration.duplicate-capability"], ["declaration.duplicate-capability", "declaration.duplicate-slot"], ["declaration.duplicate-slot", "profile.duplicate-root"], ["profile.duplicate-root", "profile.unknown-root"], ["profile.unknown-root", "profile.duplicate-selection"], ["profile.duplicate-selection", "profile.unknown-module"], ["profile.unknown-module", "profile.unknown-implementation"], ["profile.unknown-implementation", "profile.implementation-mismatch"], ["profile.implementation-mismatch", "profile.missing-selection"], ["profile.missing-selection", "profile.unreachable-selection"], ["profile.unreachable-selection", "binding.duplicate"], ["binding.duplicate", "binding.missing"], ["binding.missing", "binding.unknown-consumer"], ["binding.unknown-consumer", "binding.unknown-slot"], ["binding.unknown-slot", "binding.unknown-provider"], ["binding.unknown-provider", "binding.provider-not-selected"], ["binding.provider-not-selected", "binding.cardinality"], ["binding.cardinality", "binding.capability-missing"], ["binding.capability-missing", "binding.compatibility-mismatch"], ["binding.compatibility-mismatch", "graph.cycle"], ["graph.cycle", "output.canonicalization-failed"], ["output.canonicalization-failed", "diagnostics.truncated"]
+    ]
+  },
+  "sccGraphCases": [
     {
-      "name": "multiple-disjoint-components",
-      "input": [
-        ["example/z/default"],
-        ["example/b/default", "example/c/default"],
-        ["example/a/default"],
-        ["example/d/default", "example/e/default"]
+      "name": "directed-disjoint-components",
+      "nodes": ["example/a/default", "example/b/default", "example/c/default", "example/d/default", "example/e/default", "example/f/default", "example/g/default", "example/z/default"],
+      "edges": [
+        {"id": "a-self", "from": "example/a/default", "to": "example/a/default"},
+        {"id": "b-to-c", "from": "example/b/default", "to": "example/c/default"},
+        {"id": "c-to-b", "from": "example/c/default", "to": "example/b/default"},
+        {"id": "d-to-e", "from": "example/d/default", "to": "example/e/default"},
+        {"id": "e-to-d", "from": "example/e/default", "to": "example/d/default"},
+        {"id": "f-to-g", "from": "example/f/default", "to": "example/g/default"},
+        {"id": "z-to-b", "from": "example/z/default", "to": "example/b/default"},
+        {"id": "z-to-c", "from": "example/z/default", "to": "example/c/default"}
+      ],
+      "permutations": [
+        {"nodeOrder": ["example/a/default", "example/b/default", "example/c/default", "example/d/default", "example/e/default", "example/f/default", "example/g/default", "example/z/default"], "edgeOrder": ["a-self", "b-to-c", "c-to-b", "d-to-e", "e-to-d", "f-to-g", "z-to-b", "z-to-c"]},
+        {"nodeOrder": ["example/z/default", "example/g/default", "example/f/default", "example/e/default", "example/d/default", "example/c/default", "example/b/default", "example/a/default"], "edgeOrder": ["z-to-c", "z-to-b", "f-to-g", "e-to-d", "d-to-e", "c-to-b", "b-to-c", "a-self"]},
+        {"nodeOrder": ["example/d/default", "example/a/default", "example/g/default", "example/c/default", "example/z/default", "example/e/default", "example/b/default", "example/f/default"], "edgeOrder": ["c-to-b", "a-self", "z-to-c", "z-to-b", "e-to-d", "f-to-g", "b-to-c", "d-to-e"]}
       ],
       "expected": [
         ["example/a/default"],
         ["example/b/default", "example/c/default"],
-        ["example/d/default", "example/e/default"],
-        ["example/z/default"]
+        ["example/d/default", "example/e/default"]
       ]
     }
   ]

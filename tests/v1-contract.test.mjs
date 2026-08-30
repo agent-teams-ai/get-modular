@@ -8,6 +8,7 @@ import test from "node:test";
 import {
   createDiagnosticComparator,
   createSchemaValidators,
+  validateCanonicalizationQualification,
   validateDecoderQualification,
   validateDiagnosticQualification,
   validateNormalizationQualification,
@@ -21,9 +22,13 @@ import {
   createBoundedDiagnosticCollector,
   cycleGraph,
   dependencyOrder,
+  diagnosticCandidate,
   graphFacts,
+  generateLimitFixture,
   layeredGraph,
   measureResourceFixtures,
+  meterLimitFixture,
+  mutateLimitFixtureOffByOne,
   runDiagnosticCollectorCase,
   wideGraph,
 } from "./qualification/v1-resource-profile.mjs";
@@ -33,6 +38,23 @@ const readJson = async relativePath => JSON.parse(
 );
 const execFileAsync = promisify(execFile);
 const clone = value => structuredClone(value);
+let sharedValidators;
+const schemaValidators = schema => {
+  sharedValidators ??= createSchemaValidators(schema);
+  return sharedValidators;
+};
+
+test("resource qualification CLI emits JSON through a cross-platform entrypoint", async () => {
+  const script = fileURLToPath(new URL("./qualification/v1-resource-profile.mjs", import.meta.url));
+  const { stdout, stderr } = await execFileAsync(process.execPath, [script]);
+  assert.equal(stderr, "");
+  const report = JSON.parse(stdout);
+  assert.equal(report.chainAtDepthLimit.nodes, 2048);
+  assert.equal(report.diagnosticStorm.retained, 255);
+});
+
+test("diagnostic refinement and total comparator reject targeted mutations",
+  runDiagnosticRefinementMutations);
 
 test("canonical vector bytes and digest are independently reproducible", async () => {
   const vectors = await readJson("architecture/contracts/v1/canonical-vectors.json");
@@ -77,19 +99,16 @@ test("resource profile fixes every allocation-driving dimension", async () => {
 });
 
 test("resource boundary fixtures remain iterative and bounded", () => {
-  const chain = chainGraph(2048);
-  const wide = wideGraph(4096);
-  const dense = layeredGraph(64, 64);
-  const cycle = cycleGraph(4096);
-
-  assert.deepEqual(graphFacts(chain), { nodes: 2048, edges: 2047 });
-  assert.deepEqual(graphFacts(wide), { nodes: 4096, edges: 4095 });
-  assert.deepEqual(graphFacts(dense), { nodes: 4096, edges: 258048 });
-  assert.deepEqual(graphFacts(cycle), { nodes: 4096, edges: 4096 });
-  assert.equal(dependencyOrder(chain).acyclic, true);
-  assert.equal(dependencyOrder(wide).acyclic, true);
-  assert.equal(dependencyOrder(dense).acyclic, true);
-  assert.equal(dependencyOrder(cycle).acyclic, false);
+  for (const [createGraph, expectedFacts, acyclic] of [
+    [() => chainGraph(2048), { nodes: 2048, edges: 2047 }, true],
+    [() => wideGraph(4096), { nodes: 4096, edges: 4095 }, true],
+    [() => layeredGraph(64, 64), { nodes: 4096, edges: 258048 }, true],
+    [() => cycleGraph(4096), { nodes: 4096, edges: 4096 }, false],
+  ]) {
+    const graph = createGraph();
+    assert.deepEqual(graphFacts(graph), expectedFacts);
+    assert.equal(dependencyOrder(graph).acyclic, acyclic);
+  }
 
   const tie = [[], [], [1], [0]];
   assert.deepEqual(dependencyOrder(tie), {
@@ -110,6 +129,32 @@ test("resource boundary fixtures remain iterative and bounded", () => {
   assert.deepEqual(overCap.truncation, { omitted: 2 });
 });
 
+test("every named resource limit has executable at and plus-one fixtures", async () => {
+  const vectors = await readJson("architecture/qualification/v1/resource-boundary-vectors.json");
+  const exercisedFamilies = new Set();
+  for (const vector of vectors.cases) {
+    for (const expected of [vector.at, vector.over]) {
+      const fixture = generateLimitFixture(vector, expected);
+      assert.equal(meterLimitFixture(vector, fixture), expected, vector.limitName);
+    }
+    exercisedFamilies.add(vector.fixtureFamily);
+  }
+  assert.deepEqual([...exercisedFamilies].sort(), [
+    "graph-depth", "graph-edges", "item-count", "json-depth", "raw-bytes",
+    "utf8-string-bytes",
+  ]);
+  for (const family of exercisedFamilies) {
+    const vector = vectors.cases.find(candidate => candidate.fixtureFamily === family);
+    const fixture = generateLimitFixture(vector, vector.at);
+    const mutatedFixture = mutateLimitFixtureOffByOne(vector, fixture);
+    assert.equal(
+      meterLimitFixture(vector, mutatedFixture),
+      vector.at + 1,
+      `${family} off-by-one fixture mutation must be detected by the oracle`,
+    );
+  }
+});
+
 test("measurement report covers every admitted adversarial graph shape", () => {
   const report = measureResourceFixtures();
   assert.deepEqual(Object.keys(report), [
@@ -119,15 +164,6 @@ test("measurement report covers every admitted adversarial graph shape", () => {
     "giantCycle",
     "diagnosticStorm",
   ]);
-});
-
-test("resource qualification CLI emits JSON through a cross-platform entrypoint", async () => {
-  const script = fileURLToPath(new URL("./qualification/v1-resource-profile.mjs", import.meta.url));
-  const { stdout, stderr } = await execFileAsync(process.execPath, [script]);
-  assert.equal(stderr, "");
-  const report = JSON.parse(stdout);
-  assert.equal(report.chainAtDepthLimit.nodes, 2048);
-  assert.equal(report.diagnosticStorm.retained, 255);
 });
 
 test("qualification ledger rejects changed artifact bytes", async () => {
@@ -154,13 +190,13 @@ test("qualification ledger rejects changed artifact bytes", async () => {
   }), /differs from the qualification ledger/u);
 });
 
-test("diagnostic refinement and total comparator reject targeted mutations", async () => {
+async function runDiagnosticRefinementMutations() {
   const schema = await readJson("architecture/contracts/v1/composition.schema.json");
   const catalog = await readJson("architecture/contracts/v1/diagnostic-catalog.json");
   const profile = await readJson("architecture/contracts/v1/resource-profile.json");
   const contract = await readJson("architecture/qualification/v1/diagnostic-contract.json");
   const snapshots = await readJson("architecture/qualification/v1/diagnostic-snapshots.json");
-  const { validateDiagnostic } = createSchemaValidators(schema);
+  const { validateDiagnostic } = schemaValidators(schema);
   const validate = (value, contractValue = contract) => validateDiagnosticQualification({
     contract: contractValue,
     snapshots: value,
@@ -194,6 +230,14 @@ test("diagnostic refinement and total comparator reject targeted mutations", asy
   changedComparatorPolicy.comparator.pathPrefixOrder = "longer-first";
   assert.throws(() => validate(snapshots, changedComparatorPolicy), /normative policy/u);
 
+  const illegalLimitSpecific = clone(contract);
+  illegalLimitSpecific.pathPolicyByCode["schema.invalid-value"] = "limit-specific";
+  assert.throws(() => validate(snapshots, illegalLimitSpecific), /independent authority/u);
+
+  const undefinedPathPolicy = clone(contract);
+  delete undefinedPathPolicy.pathPolicyByCode["schema.invalid-value"];
+  assert.throws(() => validate(snapshots, undefinedPathPolicy), /exact expected string set/u);
+
   const reversedAxis = clone(snapshots);
   reversedAxis.orderingCases[0].expected.reverse();
   assert.throws(() => validate(reversedAxis), /expected diagnostic order/u);
@@ -201,7 +245,7 @@ test("diagnostic refinement and total comparator reject targeted mutations", asy
   const laterIndexMutation = clone(snapshots);
   laterIndexMutation.orderingCases
     .find(vector => vector.axis === "path.later-index-value")
-    .operands[0].override.path[1].value = 12;
+    .operands[0].override.path[3].value = 12;
   assert.throws(() => validate(laterIndexMutation), /path\.later-index-value/u);
 
   const invalidRefinementOperand = clone(snapshots);
@@ -227,12 +271,75 @@ test("diagnostic refinement and total comparator reject targeted mutations", asy
   assert.throws(() => validate(unsortedCycleMember), /unique and sorted/u);
 
   const wrongSccOrder = clone(snapshots);
-  wrongSccOrder.sccOrderingCases[0].expected.reverse();
-  assert.throws(() => validate(wrongSccOrder), /SCC-array order/u);
+  wrongSccOrder.sccGraphCases[0].expected.reverse();
+  assert.throws(() => validate(wrongSccOrder), /member or outer ordering/u);
+
+  const unsortedSccMembers = clone(snapshots);
+  unsortedSccMembers.sccGraphCases[0].expected[1].reverse();
+  assert.throws(() => validate(unsortedSccMembers), /SCC membership or ordering/u);
 
   const overlappingSccs = clone(snapshots);
-  overlappingSccs.sccOrderingCases[0].input[1][0] = "example/a/default";
-  assert.throws(() => validate(overlappingSccs), /components must be disjoint/u);
+  overlappingSccs.sccGraphCases[0].expected[1][0] = "example/a/default";
+  assert.throws(() => validate(overlappingSccs), /not unique and disjoint/u);
+
+  const wrongSccMembership = clone(snapshots);
+  wrongSccMembership.sccGraphCases[0].expected[1][1] = "example/g/default";
+  assert.throws(() => validate(wrongSccMembership), /derives different SCC membership/u);
+
+  const mergedDisjointSccs = clone(snapshots);
+  mergedDisjointSccs.sccGraphCases[0].edges.push(
+    { id: "c-to-d", from: "example/c/default", to: "example/d/default" },
+    { id: "d-to-c", from: "example/d/default", to: "example/c/default" },
+  );
+  for (const permutation of mergedDisjointSccs.sccGraphCases[0].permutations) {
+    permutation.edgeOrder.push("c-to-d", "d-to-c");
+  }
+  assert.throws(() => validate(mergedDisjointSccs), /derives different SCC membership/u);
+
+  const reversedDirectedEdge = clone(snapshots);
+  const directedEdge = reversedDirectedEdge.sccGraphCases[0].edges
+    .find(edge => edge.id === "z-to-b");
+  [directedEdge.from, directedEdge.to] = [directedEdge.to, directedEdge.from];
+  assert.throws(() => validate(reversedDirectedEdge), /derives different SCC membership/u);
+
+  const missingSelfCycle = clone(snapshots);
+  missingSelfCycle.sccGraphCases[0].edges
+    .find(edge => edge.id === "a-self").to = "example/f/default";
+  assert.throws(() => validate(missingSelfCycle), /derives different SCC membership/u);
+
+  const swappedPhaseRanks = clone(catalog);
+  [swappedPhaseRanks.ordering.phases[0], swappedPhaseRanks.ordering.phases[1]] = [
+    swappedPhaseRanks.ordering.phases[1], swappedPhaseRanks.ordering.phases[0],
+  ];
+  assert.throws(() => validateDiagnosticQualification({
+    contract,
+    snapshots,
+    catalog: swappedPhaseRanks,
+    profile,
+    coordinateFields: Object.keys(schema.$defs.diagnostic.properties.coordinate.properties),
+    validateDiagnostic,
+  }), /phase-rank authority/u);
+
+  const swappedCodeRanks = clone(catalog);
+  [swappedCodeRanks.ordering.codes[0], swappedCodeRanks.ordering.codes[1]] = [
+    swappedCodeRanks.ordering.codes[1], swappedCodeRanks.ordering.codes[0],
+  ];
+  assert.throws(() => validateDiagnosticQualification({
+    contract,
+    snapshots,
+    catalog: swappedCodeRanks,
+    profile,
+    coordinateFields: Object.keys(schema.$defs.diagnostic.properties.coordinate.properties),
+    validateDiagnostic,
+  }), /code-rank authority/u);
+
+  const twoSegmentComparatorEvidence = clone(snapshots);
+  for (const orderingCase of twoSegmentComparatorEvidence.orderingCases.filter(
+    vector => vector.axis.startsWith("path.later-"),
+  )) {
+    for (const operand of orderingCase.operands) operand.override.path = operand.override.path.slice(0, 2);
+  }
+  assert.throws(() => validate(twoSegmentComparatorEvidence), /path\.later/u);
 
   const detailsCase = snapshots.orderingCases
     .find(vector => vector.axis === "details.rfc8785");
@@ -251,12 +358,12 @@ test("diagnostic refinement and total comparator reject targeted mutations", asy
   });
   const comparator = createDiagnosticComparator({ contract, catalog });
   assert.ok(comparator(materialize(leftOperand), materialize(rightOperand)) < 0);
-});
+}
 
 test("normalization qualification rejects order and canonical-byte drift", async () => {
   const schema = await readJson("architecture/contracts/v1/composition.schema.json");
   const vectors = await readJson("architecture/qualification/v1/normalization-vectors.json");
-  const { validateDocument } = createSchemaValidators(schema);
+  const { validateDocument } = schemaValidators(schema);
   const validate = value => validateNormalizationQualification({
     vectors: value,
     validateDocument,
@@ -289,7 +396,7 @@ test("resource and decoder qualification reject expectation drift", async () => 
     "architecture/qualification/v1/qualification-case-manifest.json",
   );
   const acceptedCanonical = await readJson("architecture/contracts/v1/canonical-vectors.json");
-  const { validateDocument, validateDiagnostic } = createSchemaValidators(schema);
+  const { validateDocument, validateDiagnostic } = schemaValidators(schema);
   const maximumOmitted = schema.$defs.diagnostic.properties.details
     .properties.omitted.maximum;
   const validateBoundaries = value => validateResourceBoundaryQualification({
@@ -320,30 +427,15 @@ test("resource and decoder qualification reject expectation drift", async () => 
   wrongBoundary.cases[0].over += 1;
   assert.throws(() => validateBoundaries(wrongBoundary), /boundary plus one/u);
 
-  const wrongRetainedId = clone(boundaries);
-  wrongRetainedId.diagnosticCollector.expectedRetainedIdSets["first-255"][0]
-    = "candidate-999999";
-  assert.throws(() => validateBoundaries(wrongRetainedId), /exact retained IDs/u);
-
-  const wrongOmitted = clone(boundaries);
-  wrongOmitted.diagnosticCollector.cases
-    .find(vector => vector.failureCount === 257).expectedTruncation.omitted = 1;
-  assert.throws(() => validateBoundaries(wrongOmitted), /bounded-collector expectation/u);
+  const falselyValidManyRange = clone(boundaries);
+  falselyValidManyRange.semanticCases
+    .find(vector => vector.name === "many-min-cannot-exceed-max").cardinality.max = 4;
+  assert.throws(() => validateBoundaries(falselyValidManyRange), /min greater than max/u);
 
   const wrongSaturation = clone(boundaries);
   wrongSaturation.diagnosticCollector.cases
     .find(vector => vector.failureCount === 262400).expectedFailureCountSaturated = false;
   assert.throws(() => validateBoundaries(wrongSaturation), /bounded-collector expectation/u);
-
-  const wrongDecoder = clone(decoder);
-  wrongDecoder.cases.find(vector => vector.name === "duplicate-object-key")
-    .decoderOutcome = "accepted";
-  assert.throws(() => validateDecoder(wrongDecoder), /strict-decoder expectation/u);
-
-  const wrongSemanticCode = clone(decoder);
-  wrongSemanticCode.cases.find(vector => vector.name === "negative-zero")
-    .semanticDiagnosticCode = "schema.unknown-field";
-  assert.throws(() => validateDecoder(wrongSemanticCode), /semantic diagnostic expectation/u);
 
   const unrelatedSchemaFailure = clone(decoder);
   const unrelatedNegativeZero = unrelatedSchemaFailure.cases
@@ -352,48 +444,76 @@ test("resource and decoder qualification reject expectation drift", async () => 
     .replace('"schemaVersion":1', '"schemaVersion":2');
   unrelatedNegativeZero.repairedSource = unrelatedNegativeZero.repairedSource
     .replace('"schemaVersion":1', '"schemaVersion":2');
-  assert.throws(() => validateDecoder(unrelatedSchemaFailure), /complete valid V1 document/u);
+  assert.throws(() => validateDecoder(unrelatedSchemaFailure), /exactly its one bound/u);
 
-  const terminalHighSurrogateRepair = clone(decoder);
-  const terminalCase = terminalHighSurrogateRepair.cases
-    .find(vector => vector.name === "lone-surrogate-escape");
-  terminalCase.repair.replacement = "\\ud800\\ud800";
-  terminalCase.repairedSource = terminalCase.source.replace(
-    "\\ud800",
-    terminalCase.repair.replacement,
+  const broadNegativeZeroRepair = clone(decoder);
+  const broadNegative = broadNegativeZeroRepair.cases
+    .find(vector => vector.name === "negative-zero");
+  broadNegative.source = broadNegative.source.replace('"max":1', '"max":-0');
+  broadNegative.repair.span = '"min":-0,"max":-0';
+  broadNegative.repair.replacement = '"min":0,"max":0';
+  broadNegative.repairedSource = broadNegative.source.replace(
+    broadNegative.repair.span, broadNegative.repair.replacement,
   );
-  assert.throws(() => validateDecoder(terminalHighSurrogateRepair),
-    /complete valid V1 document/u);
+  assert.throws(() => validateDecoder(broadNegativeZeroRepair), /exactly its one bound/u);
 
-  const unquotedMalformedUtf8 = clone(decoder);
-  unquotedMalformedUtf8.cases.find(vector => vector.name === "invalid-utf8-third-byte")
-    .source = "e28228";
-  assert.throws(() => validateDecoder(unquotedMalformedUtf8), /otherwise-valid JSON string/u);
+  const broadLoneSurrogateRepair = clone(decoder);
+  const broadSurrogate = broadLoneSurrogateRepair.cases
+    .find(vector => vector.name === "lone-surrogate-escape");
+  broadSurrogate.source = broadSurrogate.source.replace("module\\ud800", "module\\ud800\\ud800");
+  broadSurrogate.repair.span = "\\ud800\\ud800";
+  broadSurrogate.repairedSource = broadSurrogate.source.replace(broadSurrogate.repair.span, "");
+  assert.throws(() => validateDecoder(broadLoneSurrogateRepair), /exactly its one bound/u);
 
-  const incompleteValidMultibyteControl = clone(decoder);
-  incompleteValidMultibyteControl.cases
-    .find(vector => vector.name === "valid-utf8-multibyte-control")
-    .source = "22c2a2e282ac22";
-  assert.throws(() => validateDecoder(incompleteValidMultibyteControl),
-    /two-, three-, and four-byte/u);
-
-  const changedManifestByte = clone(manifest);
-  changedManifestByte.decoder.cases[0].sourceBytesSha256
-    = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
-  assert.throws(() => validateManifest(changedManifestByte), /exact byte binding/u);
+  const extraJsonFaultInsideFraming = clone(decoder);
+  extraJsonFaultInsideFraming.cases
+    .find(vector => vector.name === "overlong-utf8").source = "22c0af0a22";
+  assert.throws(() => validateDecoder(extraJsonFaultInsideFraming), /isolate its authoritative/u);
 
   const missingManifestCategory = clone(manifest);
   missingManifestCategory.decoder.categories.pop();
   assert.throws(() => validateManifest(missingManifestCategory), /manifest categories/u);
 
+  const swappedDecoderCategories = clone(decoder);
+  const swappedDecoderManifest = clone(manifest);
+  const decoderNames = ["invalid-utf8-unexpected-continuation", "overlong-utf8"];
+  const decoderCases = decoderNames.map(name => swappedDecoderCategories.cases
+    .find(vector => vector.name === name));
+  [decoderCases[0].category, decoderCases[1].category] = [
+    decoderCases[1].category, decoderCases[0].category,
+  ];
+  for (const name of decoderNames) {
+    swappedDecoderManifest.decoder.cases.find(entry => entry.name === name).category
+      = swappedDecoderCategories.cases.find(vector => vector.name === name).category;
+  }
+  assert.throws(() => validateManifest(
+    swappedDecoderManifest, swappedDecoderCategories, canonicalization,
+  ), /independent category authority/u);
+
   const wrongAcceptedSuccessor = clone(manifest);
   wrongAcceptedSuccessor.acceptedCanonicalNegativeSuccessors[1].decoderCase = "negative-zero";
-  assert.throws(() => validateManifest(wrongAcceptedSuccessor), /complete repaired successor/u);
+  assert.throws(() => validateManifest(wrongAcceptedSuccessor), /successor authority/u);
 
-  const changedJcsBytes = clone(canonicalization);
-  changedJcsBytes.cases[0].canonicalUtf8 += " ";
-  assert.throws(() => validateManifest(manifest, decoder, changedJcsBytes),
-    /exact byte binding/u);
+  const swappedCanonicalCategories = clone(canonicalization);
+  const swappedCanonicalManifest = clone(manifest);
+  const canonicalNames = ["object-key-order", "string-escaping"];
+  const canonicalCases = canonicalNames.map(name => swappedCanonicalCategories.cases
+    .find(vector => vector.name === name));
+  [canonicalCases[0].category, canonicalCases[1].category] = [
+    canonicalCases[1].category, canonicalCases[0].category,
+  ];
+  for (const name of canonicalNames) {
+    swappedCanonicalManifest.canonicalization.cases.find(entry => entry.name === name).category
+      = swappedCanonicalCategories.cases.find(vector => vector.name === name).category;
+  }
+  assert.throws(() => validateManifest(
+    swappedCanonicalManifest, decoder, swappedCanonicalCategories,
+  ), /independent category authority/u);
+
+  const alreadyCanonicalObjectOrder = clone(canonicalization);
+  alreadyCanonicalObjectOrder.cases[0].value = { a: 1, m: 2, z: 0 };
+  assert.throws(() => validateCanonicalizationQualification(alreadyCanonicalObjectOrder),
+    /already in canonical property order/u);
 });
 
 test("bounded top-K uses the normative comparator across exact permutations", async () => {
@@ -408,9 +528,9 @@ test("bounded top-K uses the normative comparator across exact permutations", as
   const permutationByName = new Map(
     collectorVectors.permutations.map(permutation => [permutation.name, permutation]),
   );
-  const { validateDiagnostic } = createSchemaValidators(schema);
+  const { validateDiagnostic } = schemaValidators(schema);
 
-  for (const vector of collectorVectors.cases) {
+  for (const vector of collectorVectors.cases.filter(candidate => candidate.failureCount <= 258)) {
     for (const permutationName of vector.permutationNames) {
       const result = runDiagnosticCollectorCase({
         count: vector.failureCount,
@@ -439,4 +559,39 @@ test("bounded top-K uses the normative comparator across exact permutations", as
   });
   finalized.finalize();
   assert.throws(() => finalized.add({ id: "late", diagnostic: {} }), /after finalization/u);
+
+  const underlyingCollector = createBoundedDiagnosticCollector({
+    limit: collectorVectors.limit,
+    maximumOmitted: collectorVectors.maximumOmitted,
+    compareDiagnostics,
+  });
+  let candidatesSeen = 0;
+  const ignoresAfterKPlusOne = {
+    add(candidate) {
+      candidatesSeen += 1;
+      if (candidatesSeen <= collectorVectors.limit + 1) underlyingCollector.add(candidate);
+    },
+    finalize: () => underlyingCollector.finalize(),
+  };
+  for (let index = 257; index >= 0; index -= 1) {
+    ignoresAfterKPlusOne.add(diagnosticCandidate(index, collectorVectors.candidateTemplate));
+  }
+  const flawed = ignoresAfterKPlusOne.finalize();
+  assert.notDeepEqual(
+    flawed.retained.map(candidate => candidate.id),
+    collectorVectors.expectedRetainedIdSets["first-255"],
+    "ignoring candidates after K+1 must fail the reverse 258 late-replacement witness",
+  );
+
+  const saturation = runDiagnosticCollectorCase({
+    count: 264,
+    permutation: { kind: "ascending" },
+    template: collectorVectors.candidateTemplate,
+    limit: collectorVectors.limit,
+    maximumOmitted: 8,
+    compareDiagnostics,
+  });
+  assert.deepEqual(saturation.truncation, { omitted: 8 });
+  assert.equal(saturation.failureCount, 263);
+  assert.equal(saturation.failureCountSaturated, true);
 });

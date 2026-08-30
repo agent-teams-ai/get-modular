@@ -42,6 +42,128 @@ export function graphFacts(graph) {
   };
 }
 
+function countedItems(count) {
+  requireNonNegativeSafeInteger(count, "resource fixture count");
+  return new Array(count);
+}
+
+function boundedChunks(count, createChunk) {
+  const chunkSize = Math.min(count, 1048576);
+  if (chunkSize === 0) return [];
+  const fullChunk = createChunk(chunkSize);
+  const fullCount = Math.floor(count / chunkSize);
+  const chunks = new Array(fullCount).fill(fullChunk);
+  const remainder = count % chunkSize;
+  if (remainder > 0) chunks.push(createChunk(remainder));
+  return chunks;
+}
+
+export function generateLimitFixture(vector, count) {
+  requireNonNegativeSafeInteger(count, `${vector.limitName} fixture count`);
+  switch (vector.fixtureShape) {
+    case "single-document": return { document: new Uint8Array(count) };
+    case "document-batch": return {
+      documents: boundedChunks(count, length => new Uint8Array(length)),
+    };
+    case "nested-arrays": {
+      let value = 0;
+      for (let index = 0; index < count; index += 1) value = [value];
+      return { value };
+    }
+    case "string-values": return { strings: boundedChunks(count, length => "a".repeat(length)) };
+    case "portable-id": return { identifier: "a".repeat(count) };
+    case "owner-path": return { owner: { path: countedItems(count) } };
+    case "declarations": return { declarations: countedItems(count) };
+    case "provides": return { declaration: { provides: countedItems(count) } };
+    case "slots": return { declaration: { slots: countedItems(count) } };
+    case "aggregate-provides": return { declarations: [{ provides: countedItems(count) }] };
+    case "aggregate-slots": return { declarations: [{ slots: countedItems(count) }] };
+    case "roots": return { profile: { roots: countedItems(count) } };
+    case "selections": return { profile: { selections: countedItems(count) } };
+    case "bindings": return { profile: { bindings: countedItems(count) } };
+    case "provider-edges": return {
+      bindings: [{ providerImplementationIds: countedItems(count) }],
+    };
+    case "providers": return {
+      binding: { providerImplementationIds: Array.from({ length: count }, (_, index) => index) },
+    };
+    case "dependency-chain": return { graph: chainGraph(count) };
+    case "diagnostics": return { diagnostics: countedItems(count) };
+    case "diagnostic-path": return { diagnostic: { path: countedItems(count) } };
+    default: throw new TypeError(`unknown resource fixture shape ${vector.fixtureShape}`);
+  }
+}
+
+export function meterLimitFixture(vector, fixture) {
+  switch (vector.fixtureShape) {
+    case "single-document": return fixture.document.byteLength;
+    case "document-batch": return fixture.documents.reduce(
+      (total, document) => total + document.byteLength, 0,
+    );
+    case "nested-arrays": {
+      let depth = 0;
+      let value = fixture.value;
+      while (Array.isArray(value)) {
+        depth += 1;
+        if (value.length !== 1) throw new TypeError("depth fixture must have one child");
+        [value] = value;
+      }
+      return depth;
+    }
+    case "string-values": return fixture.strings.reduce(
+      (total, value) => total + Buffer.byteLength(value, "utf8"), 0,
+    );
+    case "portable-id": return Buffer.byteLength(fixture.identifier, "utf8");
+    case "owner-path": return fixture.owner.path.length;
+    case "declarations": return fixture.declarations.length;
+    case "provides": return fixture.declaration.provides.length;
+    case "slots": return fixture.declaration.slots.length;
+    case "aggregate-provides": return fixture.declarations.reduce(
+      (total, declaration) => total + declaration.provides.length, 0,
+    );
+    case "aggregate-slots": return fixture.declarations.reduce(
+      (total, declaration) => total + declaration.slots.length, 0,
+    );
+    case "roots": return fixture.profile.roots.length;
+    case "selections": return fixture.profile.selections.length;
+    case "bindings": return fixture.profile.bindings.length;
+    case "provider-edges": return fixture.bindings.reduce(
+      (total, binding) => total + binding.providerImplementationIds.length, 0,
+    );
+    case "providers": return new Set(fixture.binding.providerImplementationIds).size;
+    case "dependency-chain": return fixture.graph.length;
+    case "diagnostics": return fixture.diagnostics.length;
+    case "diagnostic-path": return fixture.diagnostic.path.length;
+    default: throw new TypeError(`unknown resource fixture shape ${vector.fixtureShape}`);
+  }
+}
+
+export function mutateLimitFixtureOffByOne(vector, fixture) {
+  switch (vector.fixtureFamily) {
+    case "raw-bytes": return {
+      document: new Uint8Array(fixture.document.byteLength + 1),
+    };
+    case "json-depth": return { value: [fixture.value] };
+    case "utf8-string-bytes": return {
+      strings: [`${fixture.strings[0]}a`, ...fixture.strings.slice(1)],
+    };
+    case "item-count": return {
+      owner: { path: new Array(fixture.owner.path.length + 1) },
+    };
+    case "graph-edges": return {
+      bindings: [{
+        providerImplementationIds: new Array(
+          fixture.bindings[0].providerImplementationIds.length + 1,
+        ),
+      }],
+    };
+    case "graph-depth": return {
+      graph: [...fixture.graph, [fixture.graph.length - 1]],
+    };
+    default: throw new TypeError(`unknown resource fixture family ${vector.fixtureFamily}`);
+  }
+}
+
 export function dependencyOrder(graph) {
   const dependents = Array.from({ length: graph.length }, () => []);
   const indegree = graph.map(dependencies => dependencies.length);
@@ -390,13 +512,14 @@ export function measureResourceFixtures({
   diagnosticCandidateTemplate = DEFAULT_DIAGNOSTIC_CANDIDATE_TEMPLATE,
 } = {}) {
   const fixtures = {
-    chainAtDepthLimit: chainGraph(2048),
-    wideAtDeclarationLimit: wideGraph(4096),
-    layeredDense: layeredGraph(64, 64),
-    giantCycle: cycleGraph(4096),
+    chainAtDepthLimit: () => chainGraph(2048),
+    wideAtDeclarationLimit: () => wideGraph(4096),
+    layeredDense: () => layeredGraph(64, 64),
+    giantCycle: () => cycleGraph(4096),
   };
   const measurements = {};
-  for (const [name, graph] of Object.entries(fixtures)) {
+  for (const [name, createGraph] of Object.entries(fixtures)) {
+    const graph = createGraph();
     const started = performance.now();
     const result = dependencyOrder(graph);
     measurements[name] = {

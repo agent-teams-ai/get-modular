@@ -4,11 +4,178 @@ import { isDeepStrictEqual } from "node:util";
 import Ajv2020 from "ajv/dist/2020.js";
 import canonicalize from "canonicalize";
 import { canonicalize as canonicalizeOracle } from "json-canonicalize";
-import { createScanner, SyntaxKind, visit } from "jsonc-parser";
+import { createScanner, getLocation, SyntaxKind, visit } from "jsonc-parser";
 
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
 const QUALIFICATION_PATH = /^architecture\/qualification\/v1\/[a-z0-9.-]+\.json$/u;
 const PATH_POLICIES = new Set(["empty", "structural", "limit-specific"]);
+const PHASE_ORDER_AUTHORITY = [
+  "decode", "schema", "declaration", "profile", "binding", "graph", "output",
+];
+const CODE_ORDER_AUTHORITY = [
+  "decode.invalid-json", "decode.duplicate-key", "input.limit-exceeded",
+  "schema.unsupported-version", "schema.unknown-field", "schema.invalid-value",
+  "schema.non-plain-value", "identity.invalid", "declaration.duplicate-implementation",
+  "declaration.duplicate-capability", "declaration.duplicate-slot", "profile.duplicate-root",
+  "profile.unknown-root", "profile.duplicate-selection", "profile.unknown-module",
+  "profile.unknown-implementation", "profile.implementation-mismatch",
+  "profile.missing-selection", "profile.unreachable-selection", "binding.duplicate",
+  "binding.missing", "binding.unknown-consumer", "binding.unknown-slot",
+  "binding.unknown-provider", "binding.provider-not-selected", "binding.cardinality",
+  "binding.capability-missing", "binding.compatibility-mismatch", "graph.cycle",
+  "output.canonicalization-failed", "diagnostics.truncated",
+];
+const DECODER_CATEGORY_AUTHORITY = new Map([
+  ["plain-object", "json.valid-baseline"],
+  ["leading-and-trailing-json-whitespace", "json.valid-whitespace"],
+  ["utf8-bom", "encoding.utf8-bom"],
+  ["invalid-utf8-unexpected-continuation", "encoding.utf8-unexpected-continuation"],
+  ["overlong-utf8", "encoding.utf8-overlong-two-byte"],
+  ["invalid-utf8-continuation", "encoding.utf8-invalid-second-byte"],
+  ["invalid-continuation-before-delimiter-two-byte",
+    "encoding.utf8-invalid-continuation-before-delimiter-two-byte"],
+  ["invalid-continuation-before-delimiter-three-byte",
+    "encoding.utf8-invalid-continuation-before-delimiter-three-byte"],
+  ["invalid-continuation-before-delimiter-four-byte",
+    "encoding.utf8-invalid-continuation-before-delimiter-four-byte"],
+  ["eof-truncated-utf8-two-byte", "encoding.utf8-eof-truncated-two-byte"],
+  ["eof-truncated-utf8-three-byte", "encoding.utf8-eof-truncated-three-byte"],
+  ["eof-truncated-utf8-four-byte", "encoding.utf8-eof-truncated-four-byte"],
+  ["overlong-utf8-three-byte", "encoding.utf8-overlong-three-byte"],
+  ["utf8-encoded-surrogate", "encoding.utf8-surrogate"],
+  ["overlong-utf8-four-byte", "encoding.utf8-overlong-four-byte"],
+  ["utf8-above-unicode-maximum", "encoding.utf8-above-unicode-maximum"],
+  ["utf8-forbidden-high-lead", "encoding.utf8-forbidden-high-lead"],
+  ["invalid-utf8-third-byte", "encoding.utf8-invalid-third-byte"],
+  ["invalid-utf8-fourth-byte", "encoding.utf8-invalid-fourth-byte"],
+  ["valid-utf8-multibyte-control", "encoding.utf8-valid-multibyte-control"],
+  ["duplicate-object-key", "json.duplicate-key-successor"],
+  ["nested-duplicate-object-key", "json.duplicate-key-nested"],
+  ["escape-equivalent-duplicate-key", "json.duplicate-key-escape-equivalent"],
+  ["same-key-in-different-objects", "json.valid-key-scope"],
+  ["line-comment", "json.line-comment"],
+  ["block-comment", "json.block-comment"],
+  ["trailing-comma", "json.trailing-comma"],
+  ["empty-document", "json.empty-document"],
+  ["multiple-root-values", "json.multiple-root-values"],
+  ["incomplete-document", "json.incomplete-document"],
+  ["leading-zero-number", "json.leading-zero-number"],
+  ["trailing-decimal-point", "json.trailing-decimal-point"],
+  ["raw-control-character", "json.raw-control-character"],
+  ["prototype-property-is-data-before-schema-validation", "semantic.unknown-field-successor"],
+  ["valid-surrogate-pair-escape", "json.valid-surrogate-pair-escape"],
+  ["json-depth-at-limit", "resource.json-depth-at-limit"],
+  ["json-depth-over-limit", "resource.json-depth-over-limit"],
+  ["lone-surrogate-escape", "semantic.terminal-high-surrogate-successor"],
+  ["negative-zero", "semantic.negative-zero-successor"],
+]);
+const CANONICAL_CATEGORY_AUTHORITY = new Map([
+  ["object-key-order", "jcs.object-key-order"],
+  ["string-escaping", "jcs.string-escaping"],
+  ["unicode-property-order", "jcs.unicode-property-order"],
+  ["rfc-number-serialization", "jcs.number-serialization"],
+  ["safe-integer-boundaries", "jcs.safe-integer-boundaries"],
+]);
+const ACCEPTED_SUCCESSOR_AUTHORITY = new Map([
+  ["duplicate-object-key", ["duplicate-object-key", "json.duplicate-key-successor",
+    "duplicate-key:$:kind"]],
+  ["lone-surrogate", ["lone-surrogate-escape", "semantic.terminal-high-surrogate-successor",
+    "lone-surrogate:$.profileId@8"]],
+  ["negative-zero", ["negative-zero", "semantic.negative-zero-successor",
+    "negative-zero:$.schemaVersion"]],
+  ["unknown-field", ["prototype-property-is-data-before-schema-validation",
+    "semantic.unknown-field-successor", "unknown-field:$:unknown"]],
+]);
+const PATH_POLICY_AUTHORITY = Object.freeze({
+  "decode.invalid-json": "empty",
+  "decode.duplicate-key": "structural",
+  "input.limit-exceeded": "limit-specific",
+  "schema.unsupported-version": "structural",
+  "schema.unknown-field": "structural",
+  "schema.invalid-value": "structural",
+  "schema.non-plain-value": "structural",
+  "identity.invalid": "structural",
+  "declaration.duplicate-implementation": "empty",
+  "declaration.duplicate-capability": "structural",
+  "declaration.duplicate-slot": "structural",
+  "profile.duplicate-root": "empty",
+  "profile.unknown-root": "empty",
+  "profile.duplicate-selection": "empty",
+  "profile.unknown-module": "empty",
+  "profile.unknown-implementation": "empty",
+  "profile.implementation-mismatch": "empty",
+  "profile.missing-selection": "empty",
+  "profile.unreachable-selection": "empty",
+  "binding.duplicate": "empty",
+  "binding.missing": "empty",
+  "binding.unknown-consumer": "empty",
+  "binding.unknown-slot": "empty",
+  "binding.unknown-provider": "empty",
+  "binding.provider-not-selected": "empty",
+  "binding.cardinality": "empty",
+  "binding.capability-missing": "empty",
+  "binding.compatibility-mismatch": "empty",
+  "graph.cycle": "empty",
+  "output.canonicalization-failed": "empty",
+  "diagnostics.truncated": "empty",
+});
+const LIMIT_PATH_POLICY_AUTHORITY = Object.freeze({
+  rawDocumentBytes: "empty",
+  aggregateRawBytes: "empty",
+  jsonDepth: "structural",
+  aggregateStringBytes: "empty",
+  identifierBytes: "structural",
+  ownerPathSegments: "structural",
+  declarations: "empty",
+  capabilitiesPerDeclaration: "structural",
+  slotsPerDeclaration: "structural",
+  totalCapabilities: "empty",
+  totalSlots: "empty",
+  roots: "structural",
+  selections: "structural",
+  bindings: "structural",
+  graphEdges: "empty",
+  providersPerManySlot: "structural",
+  graphDepth: "empty",
+  diagnostics: "empty",
+  diagnosticPathSegments: "empty",
+});
+const MALFORMED_UTF8_AUTHORITY = new Map([
+  ["invalid-utf8-unexpected-continuation", "80"],
+  ["overlong-utf8", "c0af"],
+  ["invalid-utf8-continuation", "c328"],
+  ["invalid-continuation-before-delimiter-two-byte", "c2"],
+  ["invalid-continuation-before-delimiter-three-byte", "e282"],
+  ["invalid-continuation-before-delimiter-four-byte", "f09f98"],
+  ["overlong-utf8-three-byte", "e08080"],
+  ["utf8-encoded-surrogate", "eda080"],
+  ["overlong-utf8-four-byte", "f0808080"],
+  ["utf8-above-unicode-maximum", "f4908080"],
+  ["utf8-forbidden-high-lead", "f5808080"],
+  ["invalid-utf8-third-byte", "e28228"],
+  ["invalid-utf8-fourth-byte", "f09f9828"],
+]);
+const RESOURCE_FIXTURE_AUTHORITY = Object.freeze({
+  rawDocumentBytes: ["raw-bytes", "single-document"],
+  aggregateRawBytes: ["raw-bytes", "document-batch"],
+  jsonDepth: ["json-depth", "nested-arrays"],
+  aggregateStringBytes: ["utf8-string-bytes", "string-values"],
+  identifierBytes: ["utf8-string-bytes", "portable-id"],
+  ownerPathSegments: ["item-count", "owner-path"],
+  declarations: ["item-count", "declarations"],
+  capabilitiesPerDeclaration: ["item-count", "provides"],
+  slotsPerDeclaration: ["item-count", "slots"],
+  totalCapabilities: ["item-count", "aggregate-provides"],
+  totalSlots: ["item-count", "aggregate-slots"],
+  roots: ["item-count", "roots"],
+  selections: ["item-count", "selections"],
+  bindings: ["item-count", "bindings"],
+  graphEdges: ["graph-edges", "provider-edges"],
+  providersPerManySlot: ["item-count", "providers"],
+  graphDepth: ["graph-depth", "dependency-chain"],
+  diagnostics: ["item-count", "diagnostics"],
+  diagnosticPathSegments: ["item-count", "diagnostic-path"],
+});
 const COMPARATOR_EVIDENCE_AXES = [
   "phase",
   "code",
@@ -117,6 +284,7 @@ function validateClosedManifestSection({
   vectors,
   digestField,
   bytesForVector,
+  categoryAuthority,
   label,
 }) {
   if (section?.categoryPolicy !== "closed"
@@ -146,6 +314,10 @@ function validateClosedManifestSection({
   for (let index = 0; index < vectorCases.length; index += 1) {
     const vector = vectorCases[index];
     const entry = manifestCases[index];
+    if (categoryAuthority.get(vector.name) !== vector.category
+      || categoryAuthority.size !== vectorCases.length) {
+      fail(`${label} case ${vector.name} contradicts the independent category authority`);
+    }
     if (entry.category !== vector.category || !section.categories.includes(vector.category)) {
       fail(`${label} case ${vector.name} has an unbound category`);
     }
@@ -178,6 +350,7 @@ export function validateQualificationCaseManifest({
     vectors: decoderVectors,
     digestField: "sourceBytesSha256",
     bytesForVector: decoderSourceBytes,
+    categoryAuthority: DECODER_CATEGORY_AUTHORITY,
     label: "decoder",
   });
   validateClosedManifestSection({
@@ -185,6 +358,7 @@ export function validateQualificationCaseManifest({
     vectors: canonicalizationVectors,
     digestField: "canonicalUtf8BytesSha256",
     bytesForVector: vector => Buffer.from(vector.canonicalUtf8, "utf8"),
+    categoryAuthority: CANONICAL_CATEGORY_AUTHORITY,
     label: "canonicalization",
   });
 
@@ -229,16 +403,29 @@ export function validateQualificationCaseManifest({
     const accepted = acceptedNegatives[index];
     const mapping = mappings[index];
     if (!same(objectKeys(mapping, `${accepted.name} successor mapping`).sort(compareAscii), [
+      "acceptedFaultIdentity",
       "acceptedName",
       "decoderCase",
       "diagnosticCode",
+      "successorCategory",
     ]) || mapping.diagnosticCode !== accepted.diagnosticCode) {
       fail(`${accepted.name} has an invalid successor mapping`);
+    }
+    const authority = ACCEPTED_SUCCESSOR_AUTHORITY.get(accepted.name);
+    if (authority === undefined
+      || acceptedNegativeFaultIdentity(accepted) !== mapping.acceptedFaultIdentity
+      || !same([
+        mapping.decoderCase,
+        mapping.successorCategory,
+        mapping.acceptedFaultIdentity,
+      ], authority)) {
+      fail(`${accepted.name} contradicts the accepted fault successor authority`);
     }
     const successor = decoderByName.get(mapping.decoderCase);
     const successorCode = successor?.diagnosticCode ?? successor?.semanticDiagnosticCode;
     if (successor === undefined || mappedCases.has(successor.name)
       || successorCode !== accepted.diagnosticCode
+      || successor.category !== mapping.successorCategory
       || successor.repair === undefined
       || !successor.category.endsWith("successor")) {
       fail(`${accepted.name} is not mapped to one complete repaired successor case`);
@@ -272,9 +459,13 @@ function validateWith(validator, value, label) {
 
 function pathPolicyFor(diagnostic, contract) {
   const policy = contract.pathPolicyByCode[diagnostic.code];
-  return policy === "limit-specific"
+  const resolved = policy === "limit-specific"
     ? contract.limitPathPolicies[diagnostic.details.limitName]
     : policy;
+  if (resolved !== "empty" && resolved !== "structural") {
+    fail(`${diagnostic.code} has no executable exact path policy`);
+  }
+  return resolved;
 }
 
 function validateDiagnosticAgainstContract(diagnostic, contract, variantByCode, label) {
@@ -330,6 +521,7 @@ function comparePathWithAxis(left, right) {
     if (kindDifference !== 0) {
       return {
         axis: index === 0 ? "path.kind" : "path.later-kind",
+        segmentIndex: index,
         order: kindDifference,
       };
     }
@@ -343,12 +535,14 @@ function comparePathWithAxis(left, right) {
             ? "path.later-field-value"
             : "path.later-index-value"
           : leftSegment.kind === "field" ? "path.field-value" : "path.index-value",
+        segmentIndex: index,
         order: valueDifference,
       };
     }
   }
   return {
     axis: "path.length",
+    segmentIndex: length,
     order: left.length - right.length,
   };
 }
@@ -455,6 +649,65 @@ function compareStringArrays(left, right) {
   return left.length - right.length;
 }
 
+function deriveCyclicSccs(nodes, edges, nodeOrder, edgeOrder) {
+  exactStringSet(nodeOrder, nodes, "SCC traversal node permutation");
+  exactStringSet(edgeOrder, edges.map(edge => edge.id), "SCC traversal edge permutation");
+  const edgeById = new Map(edges.map(edge => [edge.id, edge]));
+  const forward = new Map(nodes.map(node => [node, []]));
+  const reverse = new Map(nodes.map(node => [node, []]));
+  for (const edgeId of edgeOrder) {
+    const edge = edgeById.get(edgeId);
+    forward.get(edge.from).push(edge.to);
+    reverse.get(edge.to).push(edge.from);
+  }
+  const finish = [];
+  const visited = new Set();
+  for (const root of nodeOrder) {
+    if (visited.has(root)) continue;
+    visited.add(root);
+    const stack = [{ node: root, next: 0 }];
+    while (stack.length > 0) {
+      const frame = stack.at(-1);
+      const neighbors = forward.get(frame.node);
+      if (frame.next < neighbors.length) {
+        const neighbor = neighbors[frame.next];
+        frame.next += 1;
+        if (!visited.has(neighbor)) {
+          visited.add(neighbor);
+          stack.push({ node: neighbor, next: 0 });
+        }
+      } else {
+        finish.push(frame.node);
+        stack.pop();
+      }
+    }
+  }
+  const assigned = new Set();
+  const components = [];
+  for (let index = finish.length - 1; index >= 0; index -= 1) {
+    const root = finish[index];
+    if (assigned.has(root)) continue;
+    const component = [];
+    const stack = [root];
+    assigned.add(root);
+    while (stack.length > 0) {
+      const node = stack.pop();
+      component.push(node);
+      for (const neighbor of reverse.get(node)) {
+        if (!assigned.has(neighbor)) {
+          assigned.add(neighbor);
+          stack.push(neighbor);
+        }
+      }
+    }
+    component.sort(compareAscii);
+    const cyclic = component.length > 1
+      || edges.some(edge => edge.from === component[0] && edge.to === component[0]);
+    if (cyclic) components.push(component);
+  }
+  return components.sort(compareStringArrays);
+}
+
 export function validateDiagnosticQualification({
   contract,
   snapshots,
@@ -477,18 +730,33 @@ export function validateDiagnosticQualification({
     indexOrder: "numeric-ascending",
     detailsOrder: "rfc8785-utf8",
     sccArrayOrder: "lexicographic-members-shorter-prefix-first",
+    minimumLaterDifferenceSegmentIndex: 3,
     evidenceAxes: COMPARATOR_EVIDENCE_AXES,
   })) {
     fail("diagnostic comparator policy is not the closed normative policy");
   }
+  exactStringSequence(catalog.ordering.phases, PHASE_ORDER_AUTHORITY,
+    "diagnostic phase-rank authority");
+  exactStringSequence(catalog.ordering.codes, CODE_ORDER_AUTHORITY,
+    "diagnostic code-rank authority");
   exactStringSet(Object.keys(contract.pathPolicyByCode), catalog.ordering.codes,
     "diagnostic path policies");
+  if (!same(contract.pathPolicyByCode, PATH_POLICY_AUTHORITY)) {
+    fail("diagnostic code path policies contradict the independent authority");
+  }
   exactStringSet(Object.keys(contract.limitPhases), Object.keys(profile.limits),
     "diagnostic limit phases");
   exactStringSet(Object.keys(contract.limitPathPolicies), Object.keys(profile.limits),
     "diagnostic limit path policies");
+  if (!same(contract.limitPathPolicies, LIMIT_PATH_POLICY_AUTHORITY)) {
+    fail("diagnostic limit path policies contradict the independent authority");
+  }
   for (const policy of Object.values(contract.pathPolicyByCode)) {
     if (!PATH_POLICIES.has(policy)) fail(`unknown diagnostic path policy ${policy}`);
+  }
+  if (Object.entries(contract.pathPolicyByCode)
+    .some(([code, policy]) => (policy === "limit-specific") !== (code === "input.limit-exceeded"))) {
+    fail("limit-specific path policy is legal only for input.limit-exceeded");
   }
   for (const policy of Object.values(contract.limitPathPolicies)) {
     if (!PATH_POLICIES.has(policy) || policy === "limit-specific") {
@@ -576,6 +844,11 @@ export function validateDiagnosticQualification({
       || compare(right.diagnostic, right.diagnostic) !== 0) {
       fail(`${orderingCase.name} does not isolate ${orderingCase.axis} in both directions`);
     }
+    if (["path.later-kind", "path.later-field-value", "path.later-index-value"]
+      .includes(orderingCase.axis)
+      && comparePathWithAxis(left.diagnostic.path, right.diagnostic.path).segmentIndex < 3) {
+      fail(`${orderingCase.name} must differ only after at least three path segments`);
+    }
     const decisiveIndex = evidence.components.findIndex(component => component.order !== 0);
     const later = evidence.components.slice(decisiveIndex + 1);
     if (orderingCase.opposedLaterAxis === undefined) {
@@ -598,46 +871,78 @@ export function validateDiagnosticQualification({
     }
   }
 
-  const sccCases = snapshots.sccOrderingCases ?? [];
-  if (sccCases.length !== 1 || sccCases[0].name !== "multiple-disjoint-components") {
-    fail("SCC ordering evidence must contain the one closed multi-component case");
+  const adjacency = snapshots.rankAdjacency;
+  if (!same(objectKeys(adjacency, "diagnostic rank adjacency").sort(compareAscii), [
+    "codes", "phases",
+  ])) {
+    fail("diagnostic rank adjacency has an invalid shape");
+  }
+  const adjacentPairs = values => values.slice(0, -1).map((value, index) => [
+    value, values[index + 1],
+  ]);
+  if (!same(adjacency.phases, adjacentPairs(PHASE_ORDER_AUTHORITY))
+    || !same(adjacency.codes, adjacentPairs(CODE_ORDER_AUTHORITY))) {
+    fail("diagnostic rank adjacency does not cover every adjacent rank");
+  }
+  const neutral = { path: [], coordinate: {}, details: {} };
+  for (const [leftPhase, rightPhase] of adjacency.phases) {
+    if (compare(
+      { ...neutral, phase: leftPhase, code: CODE_ORDER_AUTHORITY[0] },
+      { ...neutral, phase: rightPhase, code: CODE_ORDER_AUTHORITY[0] },
+    ) >= 0) fail(`phase adjacency ${leftPhase}/${rightPhase} is not executable`);
+  }
+  for (const [leftCode, rightCode] of adjacency.codes) {
+    if (compare(
+      { ...neutral, phase: PHASE_ORDER_AUTHORITY[0], code: leftCode },
+      { ...neutral, phase: PHASE_ORDER_AUTHORITY[0], code: rightCode },
+    ) >= 0) fail(`code adjacency ${leftCode}/${rightCode} is not executable`);
+  }
+
+  const sccCases = snapshots.sccGraphCases ?? [];
+  if (sccCases.length !== 1 || sccCases[0].name !== "directed-disjoint-components") {
+    fail("SCC evidence must contain the one closed executable graph case");
   }
   for (const sccCase of sccCases) {
-    const input = sccCase.input ?? [];
-    if (input.length < 4 || !input.some(component => component.length === 1)
-      || !input.some(component => component.length > 1)) {
-      fail(`${sccCase.name} lacks self-cycle and multi-member SCC evidence`);
+    exactStringSet(sccCase.nodes, sccCase.nodes, `${sccCase.name} graph nodes`);
+    const nodeSet = new Set(sccCase.nodes);
+    exactStringSet(sccCase.edges.map(edge => edge.id), sccCase.edges.map(edge => edge.id),
+      `${sccCase.name} graph edge IDs`);
+    if (sccCase.edges.some(edge => !nodeSet.has(edge.from) || !nodeSet.has(edge.to))
+      || new Set(sccCase.edges.map(edge => `${edge.from}\0${edge.to}`)).size
+        !== sccCase.edges.length) {
+      fail(`${sccCase.name} has invalid or duplicate directed edges`);
     }
-    const serialized = new Set();
-    const allMembers = new Set();
-    for (const [index, component] of input.entries()) {
-      const diagnostic = {
-        code: "graph.cycle",
-        phase: "graph",
-        path: [],
-        coordinate: {},
-        details: { component },
-      };
-      validateWith(validateDiagnostic, diagnostic, `${sccCase.name}.input[${index}]`);
-      validateDiagnosticAgainstContract(
-        diagnostic,
-        contract,
-        variantByCode,
-        `${sccCase.name}.input[${index}]`,
-      );
-      const key = JSON.stringify(component);
-      if (serialized.has(key)) fail(`${sccCase.name} contains a duplicate SCC`);
-      serialized.add(key);
-      for (const member of component) {
-        if (allMembers.has(member)) {
-          fail(`${sccCase.name} SCC components must be disjoint`);
-        }
-        allMembers.add(member);
-      }
+    if ((sccCase.permutations?.length ?? 0) < 3) {
+      fail(`${sccCase.name} lacks traversal and input permutations`);
     }
     if (!same([...sccCase.expected].sort(compareStringArrays), sccCase.expected)
-      || !same([...input].sort(compareStringArrays), sccCase.expected)) {
-      fail(`${sccCase.name} has an invalid deterministic SCC-array order`);
+      || !sccCase.expected.some(component => component.length === 1)
+      || !sccCase.expected.some(component => component.length > 1)) {
+      fail(`${sccCase.name} has invalid SCC member or outer ordering`);
+    }
+    const members = sccCase.expected.flat();
+    if (new Set(members).size !== members.length) {
+      fail(`${sccCase.name} expected SCC membership is not unique and disjoint`);
+    }
+    for (const [index, permutation] of sccCase.permutations.entries()) {
+      const derived = deriveCyclicSccs(
+        sccCase.nodes,
+        sccCase.edges,
+        permutation.nodeOrder,
+        permutation.edgeOrder,
+      );
+      if (!same(derived, sccCase.expected)) {
+        fail(`${sccCase.name} permutation ${index} derives different SCC membership or ordering`);
+      }
+    }
+    for (const [index, component] of sccCase.expected.entries()) {
+      const diagnostic = {
+        code: "graph.cycle", phase: "graph", path: [], coordinate: {}, details: { component },
+      };
+      validateWith(validateDiagnostic, diagnostic, `${sccCase.name}.expected[${index}]`);
+      validateDiagnosticAgainstContract(
+        diagnostic, contract, variantByCode, `${sccCase.name}.expected[${index}]`,
+      );
     }
   }
 }
@@ -786,6 +1091,10 @@ export function validateResourceBoundaryQualification({
     if (typeof vector.unit !== "string" || vector.unit.length === 0) {
       fail(`${vector.limitName} has no measurement unit`);
     }
+    const fixtureAuthority = RESOURCE_FIXTURE_AUTHORITY[vector.limitName];
+    if (!same([vector.fixtureFamily, vector.fixtureShape], fixtureAuthority)) {
+      fail(`${vector.limitName} has no authoritative executable fixture construction`);
+    }
   }
   const semanticByName = new Map(
     (vectors.semanticCases ?? []).map(vector => [vector.name, vector]),
@@ -802,8 +1111,29 @@ export function validateResourceBoundaryQualification({
     || !same(range.rejectedProviderCounts, [0, 1, 5])) {
     fail("many cardinality boundaries are incomplete");
   }
+  const qualifiesMany = (cardinality, providerCount) => (
+    cardinality?.kind === "many"
+      && Number.isSafeInteger(cardinality.min)
+      && Number.isSafeInteger(cardinality.max)
+      && cardinality.min >= 0
+      && cardinality.min <= cardinality.max
+      && providerCount >= cardinality.min
+      && providerCount <= cardinality.max
+  );
+  for (const count of range.acceptedProviderCounts) {
+    if (!qualifiesMany(range.cardinality, count)) {
+      fail("many inclusive-range oracle rejects an accepted provider count");
+    }
+  }
+  for (const count of range.rejectedProviderCounts) {
+    if (qualifiesMany(range.cardinality, count)) {
+      fail("many inclusive-range oracle accepts a rejected provider count");
+    }
+  }
   const invalidRange = semanticByName.get("many-min-cannot-exceed-max").cardinality;
-  if (invalidRange.min <= invalidRange.max) fail("invalid many range vector is not invalid");
+  if (invalidRange.min <= invalidRange.max || qualifiesMany(invalidRange, invalidRange.min)) {
+    fail("independent many semantic oracle did not reject min greater than max");
+  }
   const providers = semanticByName.get(
     "provider-ids-are-unique-within-one-binding",
   ).providerImplementationIds;
@@ -886,6 +1216,7 @@ export function validateResourceBoundaryQualification({
     ["diagnostic-cap-is-not-truncated", 256, ["ascending", "reverse", "stride-73"]],
     ["diagnostic-cap-plus-one-reserves-final-record", 257,
       ["ascending", "reverse", "stride-73"]],
+    ["diagnostic-late-replacement-after-k-plus-one", 258, ["reverse"]],
     ["diagnostic-omitted-at-schema-maximum", 262399, ["ascending"]],
     ["diagnostic-omitted-saturates-above-schema-maximum", 262400, ["ascending"]],
   ];
@@ -969,19 +1300,136 @@ function strictDecode(bytes, bomPolicy, maxDepth) {
   return { outcome: "accepted", text };
 }
 
-function stringHasLoneSurrogate(value) {
+function loneSurrogateIndexes(value) {
+  const indexes = [];
   for (let index = 0; index < value.length; index += 1) {
     const code = value.charCodeAt(index);
     if (code >= 0xd800 && code <= 0xdbff) {
-      if (index + 1 >= value.length) return true;
+      if (index + 1 >= value.length) {
+        indexes.push(index);
+        continue;
+      }
       const next = value.charCodeAt(index + 1);
-      if (next < 0xdc00 || next > 0xdfff) return true;
-      index += 1;
+      if (next < 0xdc00 || next > 0xdfff) indexes.push(index);
+      else index += 1;
     } else if (code >= 0xdc00 && code <= 0xdfff) {
-      return true;
+      indexes.push(index);
     }
   }
-  return false;
+  return indexes;
+}
+
+function stringHasLoneSurrogate(value) {
+  return loneSurrogateIndexes(value).length > 0;
+}
+
+function pathString(segments) {
+  return segments.reduce((path, segment) => (
+    typeof segment === "number" ? `${path}[${segment}]` : `${path}.${segment}`
+  ), "$");
+}
+
+function duplicateKeyFaultIdentities(text) {
+  const scopes = [];
+  const faults = [];
+  visit(text, {
+    onObjectBegin: () => scopes.push(new Set()),
+    onObjectProperty: (property, offset) => {
+      const scope = scopes.at(-1);
+      if (scope.has(property)) {
+        const location = getLocation(text, offset);
+        faults.push(`duplicate-key:${pathString(location.path.slice(0, -1))}:${property}`);
+      }
+      scope.add(property);
+    },
+    onObjectEnd: () => scopes.pop(),
+  }, { disallowComments: true, allowTrailingComma: false, allowEmptyContent: false });
+  return faults;
+}
+
+function valueFaultIdentities(value) {
+  const faults = [];
+  const pending = [{ value, path: [] }];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (typeof current.value === "number" && Object.is(current.value, -0)) {
+      faults.push(`negative-zero:${pathString(current.path)}`);
+      continue;
+    }
+    if (typeof current.value === "string") {
+      for (const index of loneSurrogateIndexes(current.value)) {
+        faults.push(`lone-surrogate:${pathString(current.path)}@${index}`);
+      }
+      continue;
+    }
+    if (current.value === null || typeof current.value !== "object") continue;
+    if (Array.isArray(current.value)) {
+      for (let index = current.value.length - 1; index >= 0; index -= 1) {
+        pending.push({ value: current.value[index], path: [...current.path, index] });
+      }
+      continue;
+    }
+    const keys = Object.keys(current.value);
+    for (let index = keys.length - 1; index >= 0; index -= 1) {
+      const key = keys[index];
+      for (const surrogateIndex of loneSurrogateIndexes(key)) {
+        faults.push(
+          `lone-surrogate-key:${pathString(current.path)}:${key}@${surrogateIndex}`,
+        );
+      }
+      pending.push({ value: current.value[key], path: [...current.path, key] });
+    }
+  }
+  return faults.sort(compareAscii);
+}
+
+function exactDocumentFaultIdentities(text, validateDocument) {
+  const duplicateFaults = duplicateKeyFaultIdentities(text);
+  const value = JSON.parse(text);
+  const faults = [...duplicateFaults, ...valueFaultIdentities(value)];
+  const normalized = structuredClone(value);
+  const pending = [normalized];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (current === null || typeof current !== "object") continue;
+    for (const key of Object.keys(current)) {
+      const item = current[key];
+      if (typeof item === "number" && Object.is(item, -0)) current[key] = 0;
+      else if (typeof item === "string" && stringHasLoneSurrogate(item)) {
+        current[key] = item.replace(/[\ud800-\udfff]/gu, "");
+      } else if (item !== null && typeof item === "object") pending.push(item);
+    }
+  }
+  const allowedRootKeys = normalized.kind === "get-modular.module-declaration"
+    ? new Set([
+      "kind", "schemaVersion", "moduleId", "implementationId", "owner", "provides", "slots",
+    ])
+    : undefined;
+  if (allowedRootKeys !== undefined) {
+    for (const key of Object.keys(normalized)) {
+      if (!allowedRootKeys.has(key)) {
+        faults.push(`unknown-field:$:${key}`);
+        delete normalized[key];
+      }
+    }
+  }
+  if (!validateDocument(normalized)) {
+    faults.push("schema-fault:$:document");
+  }
+  return faults.sort(compareAscii);
+}
+
+function acceptedNegativeFaultIdentity(vector) {
+  const duplicateFaults = duplicateKeyFaultIdentities(vector.rawJson);
+  if (duplicateFaults.length === 1) return duplicateFaults[0];
+  const value = JSON.parse(vector.rawJson);
+  const valueFaults = valueFaultIdentities(value);
+  if (valueFaults.length === 1) return valueFaults[0];
+  if (vector.name === "unknown-field") {
+    const unknownKeys = Object.keys(value).filter(key => !["kind", "schemaVersion"].includes(key));
+    if (unknownKeys.length === 1) return `unknown-field:$:${unknownKeys[0]}`;
+  }
+  fail(`${vector.name} does not isolate one accepted canonical fault identity`);
 }
 
 function semanticDiagnosticForText(text, validateDocument) {
@@ -1012,13 +1460,19 @@ function semanticDiagnosticForText(text, validateDocument) {
     : "schema.invalid-value";
 }
 
-function repairedDecoderSource(vector) {
+function repairedDecoderSource(vector, validateDocument) {
   if (vector.sourceEncoding !== "utf8-text"
     || typeof vector.repair?.span !== "string"
     || vector.repair.span.length === 0
     || typeof vector.repair.replacement !== "string"
+    || typeof vector.repair.faultIdentity !== "string"
     || typeof vector.repairedSource !== "string") {
     fail(`${vector.name} has invalid exact repair metadata`);
+  }
+  if (!same(objectKeys(vector.repair, `${vector.name} repair`).sort(compareAscii), [
+    "faultIdentity", "replacement", "span",
+  ])) {
+    fail(`${vector.name} repair metadata must bind one exact fault identity`);
   }
   const first = vector.source.indexOf(vector.repair.span);
   if (first < 0 || vector.source.indexOf(vector.repair.span, first + 1) >= 0) {
@@ -1028,6 +1482,13 @@ function repairedDecoderSource(vector) {
     + vector.source.slice(first + vector.repair.span.length);
   if (repaired !== vector.repairedSource || repaired === vector.source) {
     fail(`${vector.name} repair does not produce the exact repaired bytes`);
+  }
+  const beforeFaults = exactDocumentFaultIdentities(vector.source, validateDocument);
+  if (!same(beforeFaults, [vector.repair.faultIdentity])) {
+    fail(`${vector.name} must contain exactly its one bound semantic fault before repair: ${JSON.stringify(beforeFaults)}`);
+  }
+  if (exactDocumentFaultIdentities(repaired, validateDocument).length !== 0) {
+    fail(`${vector.name} must contain zero semantic faults after repair`);
   }
   return repaired;
 }
@@ -1046,6 +1507,9 @@ export function validateDecoderQualification(
       fail("decoder vector names must be unique strings");
     }
     names.add(vector.name);
+    if (DECODER_CATEGORY_AUTHORITY.get(vector.name) !== vector.category) {
+      fail(`${vector.name} contradicts the independent decoder category authority`);
+    }
     const bytes = decoderSourceBytes(vector);
     const result = strictDecode(bytes, vectors.bomPolicy, maxDepth);
     if (result.outcome !== vector.decoderOutcome
@@ -1054,16 +1518,34 @@ export function validateDecoderQualification(
     }
     if (vector.category?.startsWith("encoding.utf8-")
       && vector.category !== "encoding.utf8-bom") {
-      if (bytes[0] !== 0x22 || bytes.at(-1) !== 0x22) {
-        fail(`${vector.name} must exercise UTF-8 inside an otherwise-valid JSON string`);
-      }
       if (vector.category === "encoding.utf8-valid-multibyte-control") {
         if (vector.source !== "22c2a2e282acf09f988022" || result.outcome !== "accepted") {
           fail("valid UTF-8 control must cover exact two-, three-, and four-byte scalars");
         }
+      } else if (vector.category.includes("eof-truncated")) {
+        const eofBytes = {
+          "eof-truncated-utf8-two-byte": "22c2",
+          "eof-truncated-utf8-three-byte": "22e282",
+          "eof-truncated-utf8-four-byte": "22f09f98",
+        }[vector.name];
+        if (vector.source !== eofBytes || bytes.at(-1) === 0x22
+          || result.outcome !== "rejected") {
+          fail(`${vector.name} is not a true EOF-truncated UTF-8 witness`);
+        }
       } else if (result.outcome !== "rejected"
         || result.diagnosticCode !== "decode.invalid-json") {
         fail(`${vector.name} does not reject its malformed UTF-8 class`);
+      } else {
+        const malformedHex = MALFORMED_UTF8_AUTHORITY.get(vector.name);
+        if (malformedHex === undefined || vector.source !== `22${malformedHex}22`) {
+          fail(`${vector.name} does not isolate its authoritative malformed UTF-8 sequence`);
+        }
+        const scalarRepair = Buffer.concat([
+          bytes.subarray(0, 1), Buffer.from("c2a2", "hex"), bytes.subarray(bytes.length - 1),
+        ]);
+        if (strictDecode(scalarRepair, vectors.bomPolicy, maxDepth).outcome !== "accepted") {
+          fail(`${vector.name} is not otherwise-valid JSON after one valid-scalar repair`);
+        }
       }
     }
     if (vector.semanticDiagnosticCode !== undefined) {
@@ -1076,7 +1558,7 @@ export function validateDecoderQualification(
       }
     }
     if (vector.repair !== undefined || vector.repairedSource !== undefined) {
-      const repairedSource = repairedDecoderSource(vector);
+      const repairedSource = repairedDecoderSource(vector, validateDocument);
       const repaired = strictDecode(
         Buffer.from(repairedSource, "utf8"),
         vectors.bomPolicy,
@@ -1090,7 +1572,9 @@ export function validateDecoderQualification(
       fail(`${vector.name} semantic evidence has no exact valid repair`);
     }
   }
-  if (names.size < 12) fail("decoder qualification lacks adversarial coverage");
+  if (names.size !== DECODER_CATEGORY_AUTHORITY.size) {
+    fail("decoder qualification does not cover the closed category authority");
+  }
 }
 
 export function validateCanonicalizationQualification(vectors) {
@@ -1103,6 +1587,16 @@ export function validateCanonicalizationQualification(vectors) {
       fail("canonicalization vector names must be unique strings");
     }
     names.add(vector.name);
+    if (CANONICAL_CATEGORY_AUTHORITY.get(vector.name) !== vector.category) {
+      fail(`${vector.name} contradicts the independent canonical category authority`);
+    }
     assertCanonical(vector.value, vector.canonicalUtf8, vector.name);
+    if (vector.name === "object-key-order"
+      && JSON.stringify(vector.value) === vector.canonicalUtf8) {
+      fail("object-key-order input is already in canonical property order");
+    }
+  }
+  if (names.size !== CANONICAL_CATEGORY_AUTHORITY.size) {
+    fail("canonicalization qualification does not cover the closed category authority");
   }
 }

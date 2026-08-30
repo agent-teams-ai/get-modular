@@ -50,26 +50,50 @@
       "diagnosticCode": "decode.invalid-json"
     },
     {
-      "name": "truncated-utf8-two-byte",
-      "category": "encoding.utf8-truncated-two-byte",
+      "name": "invalid-continuation-before-delimiter-two-byte",
+      "category": "encoding.utf8-invalid-continuation-before-delimiter-two-byte",
       "sourceEncoding": "hex-bytes",
       "source": "22c222",
       "decoderOutcome": "rejected",
       "diagnosticCode": "decode.invalid-json"
     },
     {
-      "name": "truncated-utf8",
-      "category": "encoding.utf8-truncated-three-byte",
+      "name": "invalid-continuation-before-delimiter-three-byte",
+      "category": "encoding.utf8-invalid-continuation-before-delimiter-three-byte",
       "sourceEncoding": "hex-bytes",
       "source": "22e28222",
       "decoderOutcome": "rejected",
       "diagnosticCode": "decode.invalid-json"
     },
     {
-      "name": "truncated-utf8-four-byte",
-      "category": "encoding.utf8-truncated-four-byte",
+      "name": "invalid-continuation-before-delimiter-four-byte",
+      "category": "encoding.utf8-invalid-continuation-before-delimiter-four-byte",
       "sourceEncoding": "hex-bytes",
       "source": "22f09f9822",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "eof-truncated-utf8-two-byte",
+      "category": "encoding.utf8-eof-truncated-two-byte",
+      "sourceEncoding": "hex-bytes",
+      "source": "22c2",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "eof-truncated-utf8-three-byte",
+      "category": "encoding.utf8-eof-truncated-three-byte",
+      "sourceEncoding": "hex-bytes",
+      "source": "22e282",
+      "decoderOutcome": "rejected",
+      "diagnosticCode": "decode.invalid-json"
+    },
+    {
+      "name": "eof-truncated-utf8-four-byte",
+      "category": "encoding.utf8-eof-truncated-four-byte",
+      "sourceEncoding": "hex-bytes",
+      "source": "22f09f98",
       "decoderOutcome": "rejected",
       "diagnosticCode": "decode.invalid-json"
     },
@@ -144,6 +168,7 @@
       "decoderOutcome": "rejected",
       "diagnosticCode": "decode.duplicate-key",
       "repair": {
+        "faultIdentity": "duplicate-key:$:moduleId",
         "span": ",\"moduleId\":\"example/duplicate\"",
         "replacement": ""
       },
@@ -252,6 +277,7 @@
       "decoderOutcome": "accepted",
       "semanticDiagnosticCode": "schema.unknown-field",
       "repair": {
+        "faultIdentity": "unknown-field:$:__proto__",
         "span": ",\"__proto__\":{\"polluted\":true}",
         "replacement": ""
       },
@@ -287,6 +313,7 @@
       "decoderOutcome": "accepted",
       "semanticDiagnosticCode": "schema.invalid-value",
       "repair": {
+        "faultIdentity": "lone-surrogate:$.owner.path[0]@6",
         "span": "\\ud800",
         "replacement": ""
       },
@@ -300,6 +327,7 @@
       "decoderOutcome": "accepted",
       "semanticDiagnosticCode": "schema.invalid-value",
       "repair": {
+        "faultIdentity": "negative-zero:$.slots[0].cardinality.min",
         "span": "-0",
         "replacement": "0"
       },

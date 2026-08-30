@@ -43,13 +43,14 @@ production-conformance claim. If this decision is accepted, they become
 normative amendments when read together with the immutable base contract.
 Their byte identities are recorded in
 `architecture/authority/v1-qualification-ledger.json`, anchored as
-`sha256:f965409c61285211d48de70cf4a2f4763f59040412355f4a3cec82a3774fa8b0`.
+`sha256:5109af5268785c887b53c58a74caf310787a953aa89ba0dc57b4b6c9798e3570`.
 
-`qualification-case-manifest.json` is the one closed authority for decoder and
-canonicalization case categories, their exact source, repair, and canonical
-byte identities, and the mapping from every immutable base canonical-negative
-name to its complete successor case. Checkers and mutation tests consume that
-manifest rather than maintaining competing category or mapping lists.
+`qualification-case-manifest.json` records decoder and canonicalization case
+categories, exact source, repair, and canonical byte identities, and the mapping
+from every immutable base canonical-negative name to its complete successor
+case. A closed development-only checker independently fixes category semantics
+and each accepted fault identity-to-successor binding, so relabeling manifest
+rows and refreshing hashes cannot self-certify changed evidence.
 
 The repository gate must validate both ledgers. A future revision creates a new
 artifact version and successor ADR; it never mutates an accepted ledger or
@@ -68,22 +69,26 @@ diagnostic code. For each code it fixes:
   bytes.
 
 `diagnostic-snapshots.json` contains one complete valid record for every code
-and ordering permutations. The total comparator covers phase, code, every
+and ordering permutations. It executes every adjacent phase and code rank. The
+total comparator covers phase, code, every
 coordinate field's absence or presence and value, every path segment's kind and
-value, path-prefix length and later segments, and RFC 8785 detail bytes. Every
+value, path-prefix length and later segments, including a first difference only
+after three equal segments, and RFC 8785 detail bytes. Every
 ordering operand must pass both the accepted base diagnostic schema and this
 refinement. Axis witnesses keep all higher axes equal, and dominance witnesses
 make a lower axis oppose the decisive higher axis. Unknown codes, phases,
 coordinate fields, detail fields, or reason values fail conformance. Empty path
 policy means exactly an empty array. Structural path policy means at least one
-validated path segment. Limit-specific policy is selected only by
-`details.limitName`.
+validated path segment. Only `input.limit-exceeded` may select a limit-specific
+policy through `details.limitName`; every other code executes its exact empty or
+structural policy, and an absent policy always fails.
 
 A `graph.cycle` component contains unique implementation IDs in ascending ASCII
-order. One diagnostic represents one strongly connected component, including a
-self-cycle. Arrays of disjoint components use lexicographic member-array order
-with a shorter equal prefix first, so input or traversal permutations cannot
-change SCC reporting.
+order. Qualification derives components independently from directed graph-edge
+fixtures, including a self-cycle, reciprocal multi-member cycles, a one-way
+non-cycle, and disjoint components. Node, edge, and traversal permutations must
+derive the same membership. Component arrays use lexicographic member-array
+order with a shorter equal prefix first.
 
 The diagnostic definition embedded in `composition.schema.json` remains a base
 shape. Where it is less restrictive, the standalone diagnostic contract is the
@@ -124,15 +129,19 @@ same exact order.
 
 `decoder-vectors.json` fixes one-document framing, strict UTF-8, duplicate-key
 rejection, comments, trailing commas, trailing root values, and malformed byte
-sequences. Every malformed UTF-8 category is exercised inside an
-otherwise-valid JSON string, alongside an accepted control containing valid
-two-, three-, and four-byte scalars. A UTF-8 BOM is rejected. Lone-surrogate
+sequences. Every malformed non-EOF UTF-8 category is exercised inside a JSON
+string; replacing only the authoritative malformed sequence with one valid
+scalar must make JSON syntax valid. Separate true two-, three-, and four-byte
+EOF truncations cannot be otherwise-valid framed JSON, but still execute fatal
+UTF-8 before JSON parsing. An accepted control contains valid two-, three-, and
+four-byte scalars. A UTF-8 BOM is rejected. Lone-surrogate
 escapes and negative zero are valid JSON tokens but fail later semantic
 validation.
 
-Every semantic negative is a complete otherwise-valid V1 document with an
-exact one-span byte repair whose result must pass the accepted schema and
-semantic checks. The negative-zero case uses a numeric field where positive
+Every repaired negative binds one exact fault identity and has exactly one
+semantic fault before its exact one-span byte repair and zero afterward. The
+repaired result must pass the accepted schema and semantic checks. The
+negative-zero case uses a numeric field where positive
 zero is valid, and the lone-surrogate evidence includes a high surrogate at the
 end of a string. A targeted mutation for each guarantee must fail for that
 guarantee; an unrelated schema defect in both the source and repair cannot
@@ -149,8 +158,13 @@ or redaction gates fail, the fallback is a small independently reviewed
 iterative scanner under the same vectors, not a weakened contract.
 
 `resource-boundary-vectors.json` covers every named V1 limit at the accepted
-value and at value plus one. It also fixes inclusive `many` ranges, rejects
-`min > max`, rejects duplicate provider identities, and distinguishes 256
+value and at value plus one. Development-only qualification constructs bounded
+fixtures for every row and meters the resulting structure with an independent
+oracle; targeted off-by-one mutations cover every fixture family. This proves
+fixture construction and oracle expectations, not packed-subject enforcement.
+It also fixes inclusive `many` ranges and semantically rejects `min > max`
+without changing the immutable accepted schema, rejects duplicate provider
+identities, and distinguishes 256
 ordinary diagnostics from the 257-failure truncation case. The phrase
 "container-count limits" in ADR-0006 means the explicitly named structural
 limits only; V1 introduces no unnamed container-count limit.
@@ -159,7 +173,9 @@ Bounded diagnostic evidence streams structured diagnostics through the one
 normative comparator and retains at most `K` candidates. It fixes the exact
 retained evidence IDs across ascending, reverse, and stride permutations: 256
 failures retain all 256 without truncation, while 257 retain the first 255 and
-report `omitted: 2`. Additional cases fix the exact omitted value at its schema
+report `omitted: 2`. A reverse-order 258 case requires replacement after
+`K + 1`, so collectors that stop considering later candidates fail. Additional
+cases fix the exact omitted value at its schema
 maximum and its saturating behavior above that maximum.
 
 These vectors are contract evidence, not a substitute for executing the same
