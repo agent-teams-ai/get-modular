@@ -20,7 +20,7 @@
     {"name": "unknown-implementation", "diagnostic": {"code": "profile.unknown-implementation", "phase": "profile", "path": [], "coordinate": {"implementationId": "example/app/missing"}, "details": {"reason": "unknown"}}},
     {"name": "implementation-mismatch", "diagnostic": {"code": "profile.implementation-mismatch", "phase": "profile", "path": [], "coordinate": {"moduleId": "example/app", "implementationId": "example/other/default"}, "details": {"reason": "mismatch"}}},
     {"name": "missing-selection", "diagnostic": {"code": "profile.missing-selection", "phase": "profile", "path": [], "coordinate": {"moduleId": "example/app"}, "details": {"reason": "missing"}}},
-    {"name": "unreachable-selection", "diagnostic": {"code": "profile.unreachable-selection", "phase": "profile", "path": [], "coordinate": {"moduleId": "example/unused", "implementationId": "example/unused/default"}, "details": {"reason": "unreachable"}}},
+    {"name": "unreachable-selection", "diagnostic": {"code": "profile.unreachable-selection", "phase": "graph", "path": [], "coordinate": {"moduleId": "example/unused", "implementationId": "example/unused/default"}, "details": {"reason": "unreachable"}}},
     {"name": "duplicate-provider", "diagnostic": {"code": "binding.duplicate", "phase": "binding", "path": [], "coordinate": {"implementationId": "example/app/default", "slotId": "database", "providerImplementationId": "example/database/default"}, "details": {"reason": "duplicate"}}},
     {"name": "missing-binding", "diagnostic": {"code": "binding.missing", "phase": "binding", "path": [], "coordinate": {"implementationId": "example/app/default", "slotId": "database"}, "details": {"reason": "missing"}}},
     {"name": "unknown-consumer", "diagnostic": {"code": "binding.unknown-consumer", "phase": "binding", "path": [], "coordinate": {"implementationId": "example/missing/default"}, "details": {"reason": "unknown"}}},
@@ -234,6 +234,18 @@
       ["decode.invalid-json", "decode.duplicate-key"], ["decode.duplicate-key", "input.limit-exceeded"], ["input.limit-exceeded", "schema.unsupported-version"], ["schema.unsupported-version", "schema.unknown-field"], ["schema.unknown-field", "schema.invalid-value"], ["schema.invalid-value", "schema.non-plain-value"], ["schema.non-plain-value", "identity.invalid"], ["identity.invalid", "declaration.duplicate-implementation"], ["declaration.duplicate-implementation", "declaration.duplicate-capability"], ["declaration.duplicate-capability", "declaration.duplicate-slot"], ["declaration.duplicate-slot", "profile.duplicate-root"], ["profile.duplicate-root", "profile.unknown-root"], ["profile.unknown-root", "profile.duplicate-selection"], ["profile.duplicate-selection", "profile.unknown-module"], ["profile.unknown-module", "profile.unknown-implementation"], ["profile.unknown-implementation", "profile.implementation-mismatch"], ["profile.implementation-mismatch", "profile.missing-selection"], ["profile.missing-selection", "profile.unreachable-selection"], ["profile.unreachable-selection", "binding.duplicate"], ["binding.duplicate", "binding.missing"], ["binding.missing", "binding.unknown-consumer"], ["binding.unknown-consumer", "binding.unknown-slot"], ["binding.unknown-slot", "binding.unknown-provider"], ["binding.unknown-provider", "binding.provider-not-selected"], ["binding.provider-not-selected", "binding.cardinality"], ["binding.cardinality", "binding.capability-missing"], ["binding.capability-missing", "binding.compatibility-mismatch"], ["binding.compatibility-mismatch", "graph.cycle"], ["graph.cycle", "output.canonicalization-failed"], ["output.canonicalization-failed", "diagnostics.truncated"]
     ]
   },
+  "rejectedProtocolMutants": [
+    {"name": "caller-index-after-identity", "rule": "normalized-coordinate-after-identity"},
+    {"name": "raw-prefix-excluded-from-limit", "rule": "prefix-inclusive-32-segment-cap"},
+    {"name": "hostile-key-echo", "rule": "stop-before-unknown-key"},
+    {"name": "hostile-key-hash", "rule": "never-transform-unknown-key"},
+    {"name": "hostile-key-truncation-marker", "rule": "never-mark-unknown-key"},
+    {"name": "global-phase-barrier", "rule": "independent-facts-continue"},
+    {"name": "invalid-binding-unreachable-cascade", "rule": "suppress-local-derivative"},
+    {"name": "unreachable-profile-phase", "rule": "unreachable-is-graph-phase"},
+    {"name": "unreachable-without-binding-prerequisite", "rule": "unreachable-requires-valid-bindings"},
+    {"name": "plan-with-diagnostics", "rule": "failure-forbids-plan-and-digest"}
+  ],
   "sccGraphCases": [
     {
       "name": "directed-disjoint-components",

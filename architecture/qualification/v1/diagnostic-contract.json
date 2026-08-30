@@ -38,6 +38,31 @@
       "details.rfc8785"
     ]
   },
+  "boundedEmissionProtocol": {
+    "maximumIndex": 65535,
+    "maximumPathSegments": 32,
+    "invocationPrefixes": {
+      "rawDeclaration": [{"kind": "field", "value": "declarations"}, {"kind": "index", "source": "document-ordinal"}],
+      "rawProfile": [{"kind": "field", "value": "profile"}],
+      "objectDeclaration": [{"kind": "field", "value": "declarations"}, {"kind": "index", "source": "array-ordinal-before-identity"}],
+      "objectProfile": [{"kind": "field", "value": "profile"}]
+    },
+    "prefixSegmentsCountTowardMaximum": true,
+    "pathPolicyComposition": {"basePolicyScope": "document-local", "order": ["derive-safe-local-path", "stop-before-unknown-key", "prepend-invocation-prefix", "clip-to-32"], "structuralMayBeSatisfiedByInvocationPrefix": true},
+    "beforeIdentity": "invocation-prefix-and-schema-known-structural-position-only",
+    "afterIdentity": "normalized-semantic-coordinate-replaces-caller-order",
+    "allowedPathTokens": "invocation-roots-schema-known-fields-and-bounded-indexes-only",
+    "unknownKey": "stop-before-key-never-echo-hash-or-truncate-spelling",
+    "clipping": "retain-first-32-safe-segments-without-marker"
+  },
+  "failureEvaluationProtocol": {
+    "phases": "classification-and-sort-only",
+    "prerequisites": "fact-local",
+    "independentFactsContinue": true,
+    "failedPrerequisite": "suppress-dependent-derivatives-only",
+    "unreachableSelection": {"phase": "graph", "requires": ["valid-root", "valid-selections", "valid-reachability-bindings"]},
+    "failureResult": {"required": ["ok", "diagnostics"], "forbidden": ["plan", "digest"]}
+  },
   "pathPolicyByCode": {
     "decode.invalid-json": "empty",
     "decode.duplicate-key": "structural",
@@ -224,7 +249,7 @@
     },
     {
       "code": "profile.unreachable-selection",
-      "phases": ["profile"],
+      "phases": ["graph"],
       "coordinate": {"required": ["moduleId", "implementationId"], "allowed": ["moduleId", "implementationId"]},
       "details": {"required": ["reason"], "reasonValues": ["unreachable"]}
     },
