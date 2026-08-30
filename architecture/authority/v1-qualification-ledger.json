@@ -15,7 +15,7 @@
     {
       "id": "GM-V1-DIAGNOSTIC-CONTRACT",
       "path": "architecture/qualification/v1/diagnostic-contract.json",
-      "immutableDigest": "sha256:e3f3258d15d6c59e9a2abdfc3a4cd50e00e464691d67fd7485c953153c7742ed"
+      "immutableDigest": "sha256:08d225b0bcf366553e9dfda5095f4b39de004473c10e123aeddd9c49fd7b927b"
     },
     {
       "id": "GM-V1-DIAGNOSTIC-SNAPSHOTS",

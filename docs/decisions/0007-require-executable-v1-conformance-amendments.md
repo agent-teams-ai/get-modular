@@ -57,7 +57,7 @@ when read together with the immutable base contract.
 Their byte identities are recorded in
 The exact qualification ledger `architecture/authority/v1-qualification-ledger.json`
 is anchored as
-`sha256:987955020524ff16f3899ffb5e7d6008f26f97a1b070fb1ab5b632fdc3628663`.
+`sha256:5c6a29b30bb7503d62eedfdf72aeaaf0d73fca52e54854a81752fb174c5cfaa2`.
 
 `qualification-case-manifest.json` records decoder and canonicalization case
 categories, exact source, repair, and canonical byte identities, and the mapping
