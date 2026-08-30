@@ -8,6 +8,7 @@ import test from "node:test";
 import {
   createDiagnosticComparator,
   createSchemaValidators,
+  jsonValueIdentity,
   validateCanonicalizationQualification,
   validateDecoderQualification,
   validateDiagnosticQualification,
@@ -67,6 +68,36 @@ test("canonical vector bytes and digest are independently reproducible", async (
   assert.deepEqual(JSON.parse(vector.canonicalUtf8), vector.envelope);
   const digest = createHash("sha256").update(vector.canonicalUtf8, "utf8").digest("hex");
   assert.equal(vector.digest, `gm-plan:v1:sha-256:${digest}`);
+});
+
+test("qualification JSON identity preserves negative zero, types, and structure", async () => {
+  const decoder = await readJson("architecture/qualification/v1/decoder-vectors.json");
+  const negativeZero = decoder.cases.find(vector => vector.name === "negative-zero");
+  const decoded = JSON.parse(negativeZero.source);
+  const repaired = JSON.parse(negativeZero.repairedSource);
+  const decodedMinimum = decoded.slots[0].cardinality.min;
+  const repairedMinimum = repaired.slots[0].cardinality.min;
+
+  assert.ok(Object.is(decodedMinimum, -0));
+  assert.ok(Object.is(repairedMinimum, 0));
+  assert.ok(!Object.is(repairedMinimum, -0));
+  assert.notEqual(jsonValueIdentity(decoded), jsonValueIdentity(repaired));
+
+  const collapseNegativeZeroMutant = clone(decoded);
+  collapseNegativeZeroMutant.slots[0].cardinality.min = 0;
+  assert.equal(jsonValueIdentity(collapseNegativeZeroMutant), jsonValueIdentity(repaired));
+  assert.notEqual(
+    jsonValueIdentity(collapseNegativeZeroMutant),
+    jsonValueIdentity(decoded),
+    "collapsing -0 to 0 must fail the accepted decoded-value identity",
+  );
+
+  assert.equal(
+    jsonValueIdentity({ z: [1, true], a: { nested: null } }),
+    jsonValueIdentity({ a: { nested: null }, z: [1, true] }),
+  );
+  assert.notEqual(jsonValueIdentity([1]), jsonValueIdentity({ 0: 1 }));
+  assert.notEqual(jsonValueIdentity(1), jsonValueIdentity("1"));
 });
 
 test("diagnostic schema and catalog expose the same closed code set", async () => {
@@ -237,14 +268,24 @@ async function runDiagnosticRefinementMutations() {
   const contract = await readJson("architecture/qualification/v1/diagnostic-contract.json");
   const snapshots = await readJson("architecture/qualification/v1/diagnostic-snapshots.json");
   const { validateDiagnostic } = schemaValidators(schema);
-  const validate = (value, contractValue = contract) => validateDiagnosticQualification({
+  const validate = (
+    value,
+    contractValue = contract,
+    diagnosticValidator = validateDiagnostic,
+  ) => validateDiagnosticQualification({
     contract: contractValue,
     snapshots: value,
     catalog,
     profile,
     coordinateFields: Object.keys(schema.$defs.diagnostic.properties.coordinate.properties),
-    validateDiagnostic,
+    validateDiagnostic: diagnosticValidator,
   });
+  const materialize = (snapshotSet, operand) => ({
+    ...structuredClone(snapshotSet.snapshots
+      .find(snapshot => snapshot.name === operand.snapshot).diagnostic),
+    ...structuredClone(operand.override),
+  });
+  const comparator = createDiagnosticComparator({ contract, catalog });
   assert.doesNotThrow(() => validate(snapshots));
 
   const wrongPhase = clone(snapshots);
@@ -288,11 +329,74 @@ async function runDiagnosticRefinementMutations() {
     .operands[0].override.path[3].value = 12;
   assert.throws(() => validate(laterIndexMutation), /path\.later-index-value/u);
 
+  const asciiFieldWitness = clone(snapshots);
+  const fieldValueCase = asciiFieldWitness.orderingCases
+    .find(vector => vector.axis === "path.field-value");
+  fieldValueCase.operands = [
+    {
+      name: "field-Z",
+      snapshot: "invalid-value",
+      override: {
+        path: [{ kind: "field", value: "Z" }],
+        details: { reason: "invalid-type" },
+      },
+    },
+    {
+      name: "field-a",
+      snapshot: "invalid-value",
+      override: {
+        path: [{ kind: "field", value: "a" }],
+        details: { reason: "invalid-format" },
+      },
+    },
+  ];
+  fieldValueCase.expected = ["field-Z", "field-a"];
+  assert.doesNotThrow(() => validate(asciiFieldWitness));
+  const [fieldZ, fieldA] = fieldValueCase.operands
+    .map(operand => materialize(asciiFieldWitness, operand));
+  assert.ok(comparator(fieldZ, fieldA) < 0);
+  const foldFieldValues = diagnostic => ({
+    ...diagnostic,
+    path: diagnostic.path.map(segment => segment.kind === "field"
+      ? { ...segment, value: segment.value.toLowerCase() }
+      : segment),
+  });
+  const caseFoldingComparatorMutant = (left, right) => comparator(
+    foldFieldValues(left),
+    foldFieldValues(right),
+  );
+  assert.ok(
+    caseFoldingComparatorMutant(fieldZ, fieldA) > 0,
+    "case folding must fail the ASCII code-unit field-value witness",
+  );
+
   const invalidRefinementOperand = clone(snapshots);
   invalidRefinementOperand.orderingCases
     .find(vector => vector.axis === "coordinate.moduleId.presence")
     .operands[1].override.coordinate.providerImplementationId = "example/provider/default";
   assert.throws(() => validate(invalidRefinementOperand), /forbidden coordinate/u);
+
+  const assertAdjacencyRefinesOperand = (snapshotName, invalidReason) => {
+    const adjacencyMutation = clone(snapshots);
+    const target = adjacencyMutation.snapshots
+      .find(snapshot => snapshot.name === snapshotName).diagnostic;
+    let targetValidations = 0;
+    const mutateOnAdjacencyValidation = diagnostic => {
+      const valid = validateDiagnostic(diagnostic);
+      if (diagnostic === target) {
+        targetValidations += 1;
+        if (targetValidations === 2) diagnostic.details.reason = invalidReason;
+      }
+      return valid;
+    };
+    assert.throws(
+      () => validate(adjacencyMutation, contract, mutateOnAdjacencyValidation),
+      /invalid reason/u,
+    );
+    assert.equal(targetValidations, 2);
+  };
+  assertAdjacencyRefinesOperand("invalid-json", "duplicate-key");
+  assertAdjacencyRefinesOperand("duplicate-key", "invalid-json");
 
   const falseDominance = clone(snapshots);
   falseDominance.orderingCases
@@ -410,16 +514,10 @@ async function runDiagnosticRefinementMutations() {
     Buffer.from(JSON.stringify(leftOperand.override.details), "utf8"),
     Buffer.from(JSON.stringify(rightOperand.override.details), "utf8"),
   ) > 0, "ordinary JSON serialization must oppose the RFC 8785 witness");
-  const snapshotByName = new Map(snapshots.snapshots.map(snapshot => [
-    snapshot.name,
-    snapshot.diagnostic,
-  ]));
-  const materialize = operand => ({
-    ...structuredClone(snapshotByName.get(operand.snapshot)),
-    ...structuredClone(operand.override),
-  });
-  const comparator = createDiagnosticComparator({ contract, catalog });
-  assert.ok(comparator(materialize(leftOperand), materialize(rightOperand)) < 0);
+  assert.ok(comparator(
+    materialize(snapshots, leftOperand),
+    materialize(snapshots, rightOperand),
+  ) < 0);
 }
 
 test("normalization qualification rejects order and canonical-byte drift", async () => {
@@ -662,8 +760,11 @@ test("bounded top-K uses the normative comparator across exact permutations", as
     collectorVectors.permutations.map(permutation => [permutation.name, permutation]),
   );
   const { validateDiagnostic } = schemaValidators(schema);
+  let exactSchemaMaximum;
 
-  for (const vector of collectorVectors.cases.filter(candidate => candidate.failureCount <= 258)) {
+  for (const vector of collectorVectors.cases.filter(candidate => (
+    candidate.failureCount <= 258 || candidate.failureCount === 262399
+  ))) {
     for (const permutationName of vector.permutationNames) {
       const result = runDiagnosticCollectorCase({
         count: vector.failureCount,
@@ -682,6 +783,7 @@ test("bounded top-K uses the normative comparator across exact permutations", as
       assert.equal(result.failureCountSaturated, vector.expectedFailureCountSaturated);
       assert.equal(result.peakRetained, vector.expectedPeakRetained);
       assert.ok(result.retained.every(candidate => validateDiagnostic(candidate.diagnostic)));
+      if (vector.failureCount === 262399) exactSchemaMaximum = result;
     }
   }
 
@@ -716,6 +818,7 @@ test("bounded top-K uses the normative comparator across exact permutations", as
     "ignoring candidates after K+1 must fail the reverse 258 late-replacement witness",
   );
 
+  let aboveSchemaMaximum;
   for (const [maximumOmitted, count] of [
     [8, 264],
     [collectorVectors.maximumOmitted, 262400],
@@ -732,5 +835,19 @@ test("bounded top-K uses the normative comparator across exact permutations", as
     assert.equal(saturation.failureCount, (collectorVectors.limit - 1) + maximumOmitted);
     assert.equal(saturation.failureCountSaturated, true);
     assert.equal(saturation.peakRetained, collectorVectors.limit);
+    if (count === 262400) aboveSchemaMaximum = saturation;
   }
+  assert.deepEqual([
+    {
+      failureCount: exactSchemaMaximum.failureCount,
+      failureCountSaturated: exactSchemaMaximum.failureCountSaturated,
+    },
+    {
+      failureCount: aboveSchemaMaximum.failureCount,
+      failureCountSaturated: aboveSchemaMaximum.failureCountSaturated,
+    },
+  ], [
+    { failureCount: 262399, failureCountSaturated: false },
+    { failureCount: 262399, failureCountSaturated: true },
+  ], "premature saturation at the exact omitted-count maximum must fail");
 });

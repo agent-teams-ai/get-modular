@@ -8,7 +8,7 @@ import { createScanner, getLocation, SyntaxKind, visit } from "jsonc-parser";
 
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
 const DECODER_CASE_TUPLES_SHA256 =
-  "sha256:8c3181fec3af89c3bb3466aa889e604ae3b621a1700658bed17d20e19a3a808d";
+  "sha256:0f83006107baea631c295fcb45f809a6678958822c91f883d6867aa977f6f541";
 const CANONICAL_CASE_TUPLES_SHA256 =
   "sha256:ae527070f5b3b2b1429ae734a6b4d62d684faf0c517f2b47c304a92564569be3";
 const QUALIFICATION_PATH = /^architecture\/qualification\/v1\/[a-z0-9.-]+\.json$/u;
@@ -295,7 +295,65 @@ function decoderSourceBytes(vector) {
   fail(`${vector.name ?? "decoder vector"} has an invalid source encoding`);
 }
 
-function jsonValueIdentity(value) {
+function jsonValueIdentityNode(value, ancestors) {
+  if (value === null) return ["null"];
+  if (typeof value === "boolean") return ["boolean", value];
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) fail("JSON value identity received a non-finite number");
+    return ["number", Object.is(value, -0) ? "-0" : String(value)];
+  }
+  if (typeof value === "string") return ["string", value];
+  if (typeof value !== "object") fail("JSON value identity received a non-JSON value");
+  if (ancestors.has(value)) fail("JSON value identity received a cyclic value");
+
+  ancestors.add(value);
+  try {
+    if (Array.isArray(value)) {
+      const ownKeys = Reflect.ownKeys(value).filter(key => key !== "length");
+      if (ownKeys.length !== value.length) {
+        fail("JSON value identity received a sparse or extended array");
+      }
+      const children = [];
+      for (let index = 0; index < value.length; index += 1) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+        if (descriptor === undefined
+          || descriptor.enumerable !== true
+          || !Object.hasOwn(descriptor, "value")) {
+          fail("JSON value identity received a non-data array element");
+        }
+        children.push(jsonValueIdentityNode(descriptor.value, ancestors));
+      }
+      return ["array", children];
+    }
+
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+      fail("JSON value identity received a non-plain object");
+    }
+    const keys = Reflect.ownKeys(value);
+    if (keys.some(key => typeof key !== "string")) {
+      fail("JSON value identity received a symbol-keyed object");
+    }
+    const entries = keys.toSorted(compareAscii).map(key => {
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (descriptor.enumerable !== true || !Object.hasOwn(descriptor, "value")) {
+        fail("JSON value identity received a non-data object property");
+      }
+      return [key, jsonValueIdentityNode(descriptor.value, ancestors)];
+    });
+    return ["object", entries];
+  } finally {
+    ancestors.delete(value);
+  }
+}
+
+// Private qualification hash preimage only; this is neither JCS nor a public serialization.
+export function jsonValueIdentity(value) {
+  const taggedTree = jsonValueIdentityNode(value, new Set());
+  return sha256Bytes(Buffer.from(JSON.stringify(taggedTree), "utf8"));
+}
+
+function manifestValueJsonUtf8Sha256(value) {
   return sha256Bytes(Buffer.from(JSON.stringify(value), "utf8"));
 }
 
@@ -344,7 +402,7 @@ function canonicalCaseAuthorityRecord(vector) {
   return {
     name: vector.name,
     category: vector.category,
-    valueJsonUtf8Sha256: jsonValueIdentity(vector.value),
+    valueJsonUtf8Sha256: manifestValueJsonUtf8Sha256(vector.value),
     canonicalUtf8BytesSha256: sha256Bytes(Buffer.from(vector.canonicalUtf8, "utf8")),
   };
 }
@@ -483,7 +541,7 @@ export function validateQualificationCaseManifest({
       fail(`${entry.name} has an invalid canonical-byte binding shape`);
     }
     const vector = canonicalizationVectors.cases.find(candidate => candidate.name === entry.name);
-    if (entry.valueJsonUtf8Sha256 !== jsonValueIdentity(vector.value)) {
+    if (entry.valueJsonUtf8Sha256 !== manifestValueJsonUtf8Sha256(vector.value)) {
       fail(`${entry.name} differs from its exact input-value binding`);
     }
   }
@@ -1016,18 +1074,35 @@ export function validateDiagnosticQualification({
     || !same(adjacency.codes, adjacentPairs(CODE_ORDER_AUTHORITY))) {
     fail("diagnostic rank adjacency does not cover every adjacent rank");
   }
-  const neutral = { path: [], coordinate: {}, details: {} };
+  const diagnosticByCode = new Map(
+    [...snapshotByName.values()].map(diagnostic => [diagnostic.code, diagnostic]),
+  );
+  const diagnosticByPhase = new Map(PHASE_ORDER_AUTHORITY.map(phase => [
+    phase,
+    CODE_ORDER_AUTHORITY
+      .map(code => diagnosticByCode.get(code))
+      .find(diagnostic => diagnostic.phase === phase),
+  ]));
+  const executeAdjacentComparison = (left, right, label) => {
+    validateWith(validateDiagnostic, left, `${label}.left`);
+    validateDiagnosticAgainstContract(left, contract, variantByCode, `${label}.left`);
+    validateWith(validateDiagnostic, right, `${label}.right`);
+    validateDiagnosticAgainstContract(right, contract, variantByCode, `${label}.right`);
+    if (compare(left, right) >= 0) fail(`${label} is not executable`);
+  };
   for (const [leftPhase, rightPhase] of adjacency.phases) {
-    if (compare(
-      { ...neutral, phase: leftPhase, code: CODE_ORDER_AUTHORITY[0] },
-      { ...neutral, phase: rightPhase, code: CODE_ORDER_AUTHORITY[0] },
-    ) >= 0) fail(`phase adjacency ${leftPhase}/${rightPhase} is not executable`);
+    executeAdjacentComparison(
+      diagnosticByPhase.get(leftPhase),
+      diagnosticByPhase.get(rightPhase),
+      `phase adjacency ${leftPhase}/${rightPhase}`,
+    );
   }
   for (const [leftCode, rightCode] of adjacency.codes) {
-    if (compare(
-      { ...neutral, phase: PHASE_ORDER_AUTHORITY[0], code: leftCode },
-      { ...neutral, phase: PHASE_ORDER_AUTHORITY[0], code: rightCode },
-    ) >= 0) fail(`code adjacency ${leftCode}/${rightCode} is not executable`);
+    executeAdjacentComparison(
+      diagnosticByCode.get(leftCode),
+      diagnosticByCode.get(rightCode),
+      `code adjacency ${leftCode}/${rightCode}`,
+    );
   }
 
   const sccCases = snapshots.sccGraphCases ?? [];
