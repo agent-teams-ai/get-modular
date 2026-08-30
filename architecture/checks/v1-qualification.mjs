@@ -479,6 +479,7 @@ export function validateQualificationCaseManifest({
       "decoder",
       "kind",
       "manifestVersion",
+      "staticConformanceProtocol",
     ])) {
     fail("unsupported qualification case manifest");
   }
@@ -1098,9 +1099,12 @@ export function validateDiagnosticQualification({
     );
   }
   for (const [leftCode, rightCode] of adjacency.codes) {
+    const left = diagnosticByCode.get(leftCode);
+    const right = diagnosticByCode.get(rightCode);
+    if (left.phase !== right.phase) continue;
     executeAdjacentComparison(
-      diagnosticByCode.get(leftCode),
-      diagnosticByCode.get(rightCode),
+      left,
+      right,
       `code adjacency ${leftCode}/${rightCode}`,
     );
   }

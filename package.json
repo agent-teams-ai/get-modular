@@ -15,7 +15,7 @@
     "url": "git+https://github.com/agent-teams-ai/get-modular.git"
   },
   "scripts": {
-    "check": "pnpm foundation:check && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm contracts:check && pnpm contracts:test && pnpm governance:check && pnpm governance:test",
+    "check": "pnpm foundation:check && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm contracts:check && pnpm contracts:test && pnpm qualification:v1-diagnostics-protocol && pnpm governance:check && pnpm governance:test",
     "check:changed": "agent-teams-foundation agent-workflow changed --consumer .",
     "check:fast": "pnpm foundation:check && pnpm architecture:feature-module-profile && pnpm docs:check",
     "docs:changed": "pnpm docs:check && pnpm docs:quality",
@@ -37,7 +37,8 @@
     "architecture:feature-module-profile:test": "node --test tests/feature-module-standard-profile.test.mjs",
     "governance:check": "node architecture/checks/governance.mjs",
     "governance:test": "node --test tests/governance.test.mjs",
-    "qualification:v1-resource-profile": "node tests/qualification/v1-resource-profile.mjs"
+    "qualification:v1-resource-profile": "node tests/qualification/v1-resource-profile.mjs",
+    "qualification:v1-diagnostics-protocol": "node --test tests/qualification/v1-diagnostics-protocol.mjs"
   },
   "devDependencies": {
     "@agent-teams/docs-protocol": "0.4.1",
