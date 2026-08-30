@@ -29,6 +29,13 @@ const CODE_ORDER_AUTHORITY = [
   "binding.capability-missing", "binding.compatibility-mismatch", "graph.cycle",
   "output.canonicalization-failed", "diagnostics.truncated",
 ];
+const RESERVED_NON_EMITTABLE_CODE_ORDER_AUTHORITY = ["output.canonicalization-failed"];
+const RESERVED_NON_EMITTABLE_CODE_SET = new Set(
+  RESERVED_NON_EMITTABLE_CODE_ORDER_AUTHORITY,
+);
+const EMITTABLE_CODE_ORDER_AUTHORITY = CODE_ORDER_AUTHORITY.filter(
+  code => !RESERVED_NON_EMITTABLE_CODE_SET.has(code),
+);
 const DECODER_CATEGORY_AUTHORITY = new Map([
   ["plain-object", "json.valid-baseline"],
   ["leading-and-trailing-json-whitespace", "json.valid-whitespace"],
@@ -126,7 +133,6 @@ const PATH_POLICY_AUTHORITY = Object.freeze({
   "binding.capability-missing": "empty",
   "binding.compatibility-mismatch": "empty",
   "graph.cycle": "empty",
-  "output.canonicalization-failed": "empty",
   "diagnostics.truncated": "empty",
 });
 const LIMIT_PATH_POLICY_AUTHORITY = Object.freeze({
@@ -202,7 +208,6 @@ const DIAGNOSTIC_PREREQUISITE_AUTHORITY = Object.freeze({
   "binding.capability-missing": ["binding.capability", "binding", ["document.schema-valid", "binding.consumer-census-complete", "binding.slot-census-complete", "binding.provider-census-complete"]],
   "binding.compatibility-mismatch": ["binding.compatibility", "binding", ["document.schema-valid", "binding.consumer-census-complete", "binding.slot-census-complete", "binding.provider-census-complete"]],
   "graph.cycle": ["graph.strongly-connected-components", "graph", ["graph.selected-node-census-complete", "graph.positive-edge-subgraph-complete"]],
-  "output.canonicalization-failed": ["output.canonical-plan", "output", ["output.plan-eligible"]],
   "diagnostics.truncated": ["output.diagnostic-collector", "output", ["output.diagnostic-stream-complete"]],
 });
 const LIMIT_PREREQUISITE_AUTHORITY = Object.freeze({
@@ -268,6 +273,78 @@ const STATIC_CASE_IDS_AUTHORITY = Object.freeze([
   "diag.object.independent-scc-with-invalid-edge.v1",
   "diag.raw.prefix-inclusive-clipping.v1",
 ]);
+const FUTURE_PACKED_SUBJECT_EVIDENCE_MINIMUM_AUTHORITY = Object.freeze({
+  purpose: "minimum-bindings-only-not-report-schema-api-runner-or-attestation",
+  subject: "one-exact-packed-archive",
+  bindingRequirements: {
+    packedArchiveSha256:
+      "exact-sha256-of-packed-archive-bytes-not-package-name-or-version",
+    acceptedContractLedgerIdentity:
+      "exact-sha256-identity-of-accepted-contract-ledger-bytes",
+    acceptedQualificationLedgerIdentity:
+      "exact-sha256-identity-of-accepted-qualification-ledger-bytes",
+    compilerEntrypoint: "one-exact-closed-entrypoint",
+    runtimeExactVersion: "exact-runtime-version-no-range-or-channel",
+    operatingSystemExactVersion: "exact-operating-system-version",
+    operatingSystemExactBuild: "exact-operating-system-build",
+    architecture: "exact-runtime-architecture",
+    browserExactBuild: "required-only-when-browser-is-applicable",
+    electronExactRelease: "required-only-for-electron",
+    electronEmbeddedNodeExactVersion: "required-only-for-electron",
+    electronEmbeddedChromiumExactBuild: "required-only-for-electron",
+    executionRealm: "exact-closed-realm-for-matrix-case",
+    matrixCaseId: "one-exact-closed-matrix-case-id",
+  },
+  compilerEntrypoints: ["compileCompositionV1", "compileCompositionJsonV1"],
+  matrixCases: [
+    {
+      caseId: "node-24-linux",
+      runtimeFamily: "node-24",
+      operatingSystemFamily: "linux",
+      executionRealm: "node-main",
+      applicableExtraBindings: [],
+    },
+    {
+      caseId: "node-24-macos",
+      runtimeFamily: "node-24",
+      operatingSystemFamily: "macos",
+      executionRealm: "node-main",
+      applicableExtraBindings: [],
+    },
+    {
+      caseId: "node-24-windows",
+      runtimeFamily: "node-24",
+      operatingSystemFamily: "windows",
+      executionRealm: "node-main",
+      applicableExtraBindings: [],
+    },
+    {
+      caseId: "chromium-window",
+      runtimeFamily: "chromium",
+      operatingSystemFamily: "repository-pinned-browser-host",
+      executionRealm: "window",
+      applicableExtraBindings: ["browserExactBuild"],
+    },
+    {
+      caseId: "chromium-dedicated-worker",
+      runtimeFamily: "chromium",
+      operatingSystemFamily: "repository-pinned-browser-host",
+      executionRealm: "dedicated-worker",
+      applicableExtraBindings: ["browserExactBuild"],
+    },
+    {
+      caseId: "electron-desktop-smoke",
+      runtimeFamily: "electron",
+      operatingSystemFamily: "repository-pinned-desktop-host",
+      executionRealm: "electron-main-and-renderer-smoke",
+      applicableExtraBindings: [
+        "electronExactRelease",
+        "electronEmbeddedNodeExactVersion",
+        "electronEmbeddedChromiumExactBuild",
+      ],
+    },
+  ],
+});
 const MALFORMED_UTF8_AUTHORITY = new Map([
   ["invalid-utf8-unexpected-continuation", "80"],
   ["overlong-utf8", "c0af"],
@@ -583,6 +660,12 @@ function validateClosedManifestSection({
   }
 }
 
+export function validateFuturePackedSubjectEvidenceMinimum(minimum) {
+  if (!same(minimum, FUTURE_PACKED_SUBJECT_EVIDENCE_MINIMUM_AUTHORITY)) {
+    fail("future packed-subject evidence minimum is not the closed minimum-binding authority");
+  }
+}
+
 export function validateQualificationCaseManifest({
   manifest,
   decoderVectors,
@@ -605,6 +688,9 @@ export function validateQualificationCaseManifest({
     ])) {
     fail("unsupported qualification case manifest");
   }
+  validateFuturePackedSubjectEvidenceMinimum(
+    manifest.staticConformanceProtocol?.futurePackedSubjectEvidenceMinimum,
+  );
   validateCaseTupleAuthority(
     decoderVectors,
     decoderCaseAuthorityRecord,
@@ -765,6 +851,22 @@ function validateSchemaValidCompanion(companion, validateDocument, label) {
   validateWith(validateDocument, companion.profile, `${label}.profile`);
 }
 
+export function validateResolvedResultCodeDisposition({ result, contract, label = "resolved result" }) {
+  if (result === null || typeof result !== "object" || !Array.isArray(result.diagnostics)) {
+    fail(`${label} has no diagnostic array for code-disposition qualification`);
+  }
+  const emittable = new Set(contract?.codeDisposition?.emittable ?? []);
+  const reserved = new Set(contract?.codeDisposition?.reservedNonEmittable ?? []);
+  for (const diagnostic of result.diagnostics) {
+    if (reserved.has(diagnostic?.code)) {
+      fail(`${label} contains reserved-non-emittable code ${diagnostic.code}`);
+    }
+    if (!emittable.has(diagnostic?.code)) {
+      fail(`${label} contains a code outside the closed emittable partition`);
+    }
+  }
+}
+
 export function validateStaticConformanceProtocol({
   protocol,
   contract,
@@ -776,10 +878,12 @@ export function validateStaticConformanceProtocol({
     fail("static conformance requires accepted base-schema validators");
   }
   if (!same(objectKeys(protocol, "static conformance protocol").sort(compareAscii), [
-    "authority", "cases", "descriptorPolicy", "futureReportDataShape", "generators",
+    "authority", "cases", "descriptorPolicy", "futurePackedSubjectEvidenceMinimum",
+    "generators",
   ]) || protocol.authority !== "static-expectations-never-executed-evidence") {
     fail("static conformance protocol has an invalid closed shape");
   }
+  validateFuturePackedSubjectEvidenceMinimum(protocol.futurePackedSubjectEvidenceMinimum);
   if (!same(protocol.descriptorPolicy, {
     caseId: "stable-unique",
     entryPoints: ["compileCompositionV1", "compileCompositionJsonV1"],
@@ -867,6 +971,11 @@ export function validateStaticConformanceProtocol({
       fail(`${descriptor.caseId} must contain one exact complete failure result`);
     }
     const diagnostics = descriptor.expected.diagnostics;
+    validateResolvedResultCodeDisposition({
+      result: descriptor.expected,
+      contract,
+      label: `${descriptor.caseId}.expected`,
+    });
     for (const [index, diagnostic] of diagnostics.entries()) {
       const label = `${descriptor.caseId}.expected.diagnostics[${index}]`;
       validateWith(validateDiagnostic, diagnostic, label);
@@ -1199,6 +1308,67 @@ export function validateDiagnosticQualification({
   if (contract?.kind !== "get-modular.diagnostic-contract" || contract.contractVersion !== 1) {
     fail("unsupported diagnostic refinement contract");
   }
+  if (!same(objectKeys(contract, "diagnostic refinement contract").sort(compareAscii), [
+    "boundedEmissionProtocol",
+    "codeDisposition",
+    "comparator",
+    "contractVersion",
+    "coordinateFieldOrder",
+    "failureEvaluationProtocol",
+    "kind",
+    "limitPathPolicies",
+    "limitPhases",
+    "pathPolicyByCode",
+    "prerequisiteCatalog",
+    "variants",
+  ])) {
+    fail("diagnostic refinement contract has an invalid closed shape");
+  }
+  if (!same(objectKeys(contract.codeDisposition, "diagnostic code disposition")
+    .sort(compareAscii), ["emittable", "policy", "reservedNonEmittable"])
+    || contract.codeDisposition.policy
+      !== "closed-ordered-partition-of-immutable-base-catalog") {
+    fail("diagnostic code disposition is not the closed immutable-catalog partition");
+  }
+  exactStringSequence(
+    contract.codeDisposition.emittable,
+    EMITTABLE_CODE_ORDER_AUTHORITY,
+    "emittable diagnostic code disposition",
+  );
+  exactStringSequence(
+    contract.codeDisposition.reservedNonEmittable,
+    RESERVED_NON_EMITTABLE_CODE_ORDER_AUTHORITY,
+    "reserved-non-emittable diagnostic code disposition",
+  );
+  exactStringSet(
+    [...contract.codeDisposition.emittable, ...contract.codeDisposition.reservedNonEmittable],
+    CODE_ORDER_AUTHORITY,
+    "diagnostic code-disposition partition",
+  );
+  if (!same(contract.failureEvaluationProtocol, {
+    phases: "classification-and-sort-only",
+    prerequisites: "fact-local",
+    independentFactsContinue: true,
+    failedPrerequisite: "suppress-dependent-derivatives-only",
+    unreachableSelection: {
+      phase: "graph",
+      requires: ["valid-root", "valid-selections", "valid-reachability-bindings"],
+    },
+    failureResult: {
+      required: ["ok", "diagnostics"],
+      forbidden: ["plan", "digest"],
+      reservedCode: "successor-qualification-failure",
+    },
+    internalFailure: {
+      kinds: ["canonicalizer", "hash", "platform"],
+      outcome: "reject-promise",
+      diagnosticEmission: "forbidden",
+      publicFaultInjection: "forbidden",
+      serializedRejectionShape: "forbidden",
+    },
+  })) {
+    fail("diagnostic failure evaluation does not reject closed internal failures");
+  }
   exactStringSequence(contract.coordinateFieldOrder, coordinateFields,
     "diagnostic coordinate order");
   if (!same(contract.comparator, {
@@ -1219,7 +1389,7 @@ export function validateDiagnosticQualification({
     "diagnostic phase-rank authority");
   exactStringSequence(catalog.ordering.codes, CODE_ORDER_AUTHORITY,
     "diagnostic code-rank authority");
-  exactStringSet(Object.keys(contract.pathPolicyByCode), catalog.ordering.codes,
+  exactStringSet(Object.keys(contract.pathPolicyByCode), EMITTABLE_CODE_ORDER_AUTHORITY,
     "diagnostic path policies");
   if (!same(contract.pathPolicyByCode, PATH_POLICY_AUTHORITY)) {
     fail("diagnostic code path policies contradict the independent authority");
@@ -1255,7 +1425,9 @@ export function validateDiagnosticQualification({
   const factIds = PREREQUISITE_FACT_AUTHORITY.map(fact => fact.factId);
   const factIdSet = new Set(factIds);
   const diagnosticPrerequisites = contract.prerequisiteCatalog?.diagnostics ?? [];
-  exactStringSequence(diagnosticPrerequisites.map(entry => entry.code), CODE_ORDER_AUTHORITY,
+  exactStringSequence(
+    diagnosticPrerequisites.map(entry => entry.code),
+    EMITTABLE_CODE_ORDER_AUTHORITY,
     "diagnostic prerequisite catalog");
   for (const entry of diagnosticPrerequisites) {
     if (!same(objectKeys(entry, `diagnostic prerequisite ${entry.code}`).sort(compareAscii), [
@@ -1350,7 +1522,7 @@ export function validateDiagnosticQualification({
   }
 
   const variants = contract.variants ?? [];
-  exactStringSet(variants.map(variant => variant.code), catalog.ordering.codes,
+  exactStringSet(variants.map(variant => variant.code), EMITTABLE_CODE_ORDER_AUTHORITY,
     "diagnostic variants");
   const variantByCode = new Map(variants.map(variant => [variant.code, variant]));
   const knownCoordinateFields = new Set(contract.coordinateFieldOrder);
@@ -1382,7 +1554,7 @@ export function validateDiagnosticQualification({
     snapshotByName.set(snapshot.name, snapshot.diagnostic);
     snapshotCodes.push(snapshot.diagnostic.code);
   }
-  exactStringSet(snapshotCodes, catalog.ordering.codes, "diagnostic snapshots");
+  exactStringSet(snapshotCodes, EMITTABLE_CODE_ORDER_AUTHORITY, "diagnostic snapshots");
 
   const orderingCases = snapshots.orderingCases ?? [];
   exactStringSet(orderingCases.map(orderingCase => orderingCase.axis),
@@ -1491,7 +1663,7 @@ export function validateDiagnosticQualification({
     value, values[index + 1],
   ]);
   if (!same(adjacency.phases, adjacentPairs(PHASE_ORDER_AUTHORITY))
-    || !same(adjacency.codes, adjacentPairs(CODE_ORDER_AUTHORITY))) {
+    || !same(adjacency.codes, adjacentPairs(EMITTABLE_CODE_ORDER_AUTHORITY))) {
     fail("diagnostic rank adjacency does not cover every adjacent rank");
   }
   const diagnosticByCode = new Map(
@@ -1499,7 +1671,7 @@ export function validateDiagnosticQualification({
   );
   const diagnosticByPhase = new Map(PHASE_ORDER_AUTHORITY.map(phase => [
     phase,
-    CODE_ORDER_AUTHORITY
+    EMITTABLE_CODE_ORDER_AUTHORITY
       .map(code => diagnosticByCode.get(code))
       .find(diagnostic => diagnostic.phase === phase),
   ]));

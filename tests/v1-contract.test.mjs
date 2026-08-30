@@ -15,7 +15,9 @@ import {
   validateNormalizationQualification,
   validateQualificationCaseManifest,
   validateQualificationLedger,
+  validateResolvedResultCodeDisposition,
   validateResourceBoundaryQualification,
+  validateStaticConformanceProtocol,
 } from "../architecture/checks/v1-qualification.mjs";
 import {
   boundedDiagnosticSummary,
@@ -109,6 +111,127 @@ test("diagnostic prerequisites are closed for every code and named limit", async
     const candidate = clone(contract);
     mutate(candidate);
     assert.throws(() => validate(candidate));
+  }
+});
+
+test("reserved base diagnostic code cannot be indirectly reactivated", async () => {
+  const [schema, catalog, profile, contract, snapshots, boundaries, manifest] =
+    await Promise.all([
+      readJson("architecture/contracts/v1/composition.schema.json"),
+      readJson("architecture/contracts/v1/diagnostic-catalog.json"),
+      readJson("architecture/contracts/v1/resource-profile.json"),
+      readJson("architecture/qualification/v1/diagnostic-contract.json"),
+      readJson("architecture/qualification/v1/diagnostic-snapshots.json"),
+      readJson("architecture/qualification/v1/resource-boundary-vectors.json"),
+      readJson("architecture/qualification/v1/qualification-case-manifest.json"),
+    ]);
+  const { validateDocument, validateDiagnostic } = schemaValidators(schema);
+  const reservedDiagnostic = {
+    code: "output.canonicalization-failed",
+    phase: "output",
+    path: [],
+    coordinate: {},
+    details: { reason: "canonicalization" },
+  };
+  const validateDiagnostics = (contractValue = contract, snapshotsValue = snapshots) => (
+    validateDiagnosticQualification({
+      contract: contractValue,
+      snapshots: snapshotsValue,
+      catalog,
+      profile,
+      coordinateFields: Object.keys(schema.$defs.diagnostic.properties.coordinate.properties),
+      validateDiagnostic,
+    })
+  );
+  assert.doesNotThrow(() => validateDiagnostics());
+  assert.deepEqual(contract.codeDisposition.reservedNonEmittable,
+    ["output.canonicalization-failed"]);
+  assert.deepEqual(
+    contract.codeDisposition.emittable.toSorted(),
+    catalog.ordering.codes
+      .filter(code => code !== "output.canonicalization-failed")
+      .toSorted(),
+  );
+
+  const dispositionReactivation = clone(contract);
+  dispositionReactivation.codeDisposition.emittable.push("output.canonicalization-failed");
+  dispositionReactivation.codeDisposition.reservedNonEmittable = [];
+  assert.throws(() => validateDiagnostics(dispositionReactivation), /code disposition/u);
+
+  const prerequisiteReactivation = clone(contract);
+  prerequisiteReactivation.prerequisiteCatalog.diagnostics.splice(-1, 0, {
+    code: "output.canonicalization-failed",
+    prerequisiteGroup: "output.canonical-plan",
+    prerequisites: ["output.plan-eligible"],
+    suppressionScope: "output",
+  });
+  assert.throws(() => validateDiagnostics(prerequisiteReactivation), /prerequisite catalog/u);
+
+  const pathPolicyReactivation = clone(contract);
+  pathPolicyReactivation.pathPolicyByCode["output.canonicalization-failed"] = "empty";
+  assert.throws(() => validateDiagnostics(pathPolicyReactivation), /path policies/u);
+
+  const variantReactivation = clone(contract);
+  variantReactivation.variants.splice(-1, 0, {
+    code: "output.canonicalization-failed",
+    phases: ["output"],
+    coordinate: { required: [], allowed: [] },
+    details: { required: ["reason"], reasonValues: ["canonicalization"] },
+  });
+  assert.throws(() => validateDiagnostics(variantReactivation), /diagnostic variants/u);
+
+  const snapshotReactivation = clone(snapshots);
+  snapshotReactivation.snapshots.splice(-1, 0, {
+    name: "canonicalization-failed",
+    diagnostic: reservedDiagnostic,
+  });
+  assert.throws(() => validateDiagnostics(contract, snapshotReactivation),
+    /unknown diagnostic code/u);
+
+  const adjacencyReactivation = clone(snapshots);
+  adjacencyReactivation.rankAdjacency.codes.splice(-1, 1,
+    ["graph.cycle", "output.canonicalization-failed"],
+    ["output.canonicalization-failed", "diagnostics.truncated"]);
+  assert.throws(() => validateDiagnostics(contract, adjacencyReactivation), /rank adjacency/u);
+
+  const collectorReactivation = clone(boundaries);
+  collectorReactivation.diagnosticCollector.candidateTemplate.code =
+    "output.canonicalization-failed";
+  assert.throws(() => validateResourceBoundaryQualification({
+    vectors: collectorReactivation,
+    profile,
+    contract,
+    catalog,
+    validateDiagnostic,
+    maximumOmitted: schema.$defs.diagnostic.properties.details.properties.omitted.maximum,
+  }), /unknown diagnostic code/u);
+
+  const staticCaseReactivation = clone(manifest.staticConformanceProtocol);
+  staticCaseReactivation.cases[0].expected.diagnostics[0] = reservedDiagnostic;
+  assert.throws(() => validateStaticConformanceProtocol({
+    protocol: staticCaseReactivation,
+    contract,
+    catalog,
+    validateDocument,
+    validateDiagnostic,
+  }), /reserved-non-emittable/u);
+
+  assert.throws(() => validateResolvedResultCodeDisposition({
+    result: { ok: false, diagnostics: [reservedDiagnostic] },
+    contract,
+  }), /reserved-non-emittable/u);
+
+  for (const mutate of [
+    value => { value.failureEvaluationProtocol.internalFailure.kinds.pop(); },
+    value => { value.failureEvaluationProtocol.internalFailure.outcome = "diagnostic-result"; },
+    value => { value.failureEvaluationProtocol.internalFailure.publicFaultInjection = "allowed"; },
+    value => {
+      value.failureEvaluationProtocol.internalFailure.serializedRejectionShape = "object";
+    },
+  ]) {
+    const candidate = clone(contract);
+    mutate(candidate);
+    assert.throws(() => validateDiagnostics(candidate), /internal failures/u);
   }
 });
 

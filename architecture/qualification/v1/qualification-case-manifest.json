@@ -128,17 +128,34 @@
       {"caseId": "diag.object.independent-scc-with-invalid-edge.v1", "entryPoint": "compileCompositionV1", "input": {"declarations":[{"kind":"get-modular.module-declaration","schemaVersion":1,"moduleId":"example/a","implementationId":"example/a/default","owner":{"authority":"example","path":["a"]},"provides":[{"capabilityId":"example/a-api","compatibility":{"family":"exact","familyVersion":1,"token":"example/a-api/v1"}}],"slots":[{"slotId":"b","capabilityId":"example/b-api","compatibility":{"family":"exact","familyVersion":1,"token":"example/b-api/v1"},"cardinality":{"kind":"required"}}]},{"kind":"get-modular.module-declaration","schemaVersion":1,"moduleId":"example/b","implementationId":"example/b/default","owner":{"authority":"example","path":["b"]},"provides":[{"capabilityId":"example/b-api","compatibility":{"family":"exact","familyVersion":1,"token":"example/b-api/v1"}}],"slots":[{"slotId":"a","capabilityId":"example/a-api","compatibility":{"family":"exact","familyVersion":1,"token":"example/a-api/v1"},"cardinality":{"kind":"required"}}]},{"kind":"get-modular.module-declaration","schemaVersion":1,"moduleId":"example/c","implementationId":"example/c/default","owner":{"authority":"example","path":["c"]},"provides":[],"slots":[{"slotId":"d","capabilityId":"example/d-api","compatibility":{"family":"exact","familyVersion":1,"token":"example/d-api/v1"},"cardinality":{"kind":"required"}}]}],"profile":{"kind":"get-modular.composition-profile","schemaVersion":1,"profileId":"example/scc","roots":["example/a","example/c"],"selections":[{"moduleId":"example/a","implementationId":"example/a/default"},{"moduleId":"example/b","implementationId":"example/b/default"},{"moduleId":"example/c","implementationId":"example/c/default"}],"bindings":[{"consumerImplementationId":"example/a/default","slotId":"b","providerImplementationIds":["example/b/default"]},{"consumerImplementationId":"example/b/default","slotId":"a","providerImplementationIds":["example/a/default"]},{"consumerImplementationId":"example/c/default","slotId":"d","providerImplementationIds":["example/missing/default"]}]}}, "schemaValidCompanion": {"declarations":[{"kind":"get-modular.module-declaration","schemaVersion":1,"moduleId":"example/a","implementationId":"example/a/default","owner":{"authority":"example","path":["a"]},"provides":[{"capabilityId":"example/a-api","compatibility":{"family":"exact","familyVersion":1,"token":"example/a-api/v1"}}],"slots":[{"slotId":"b","capabilityId":"example/b-api","compatibility":{"family":"exact","familyVersion":1,"token":"example/b-api/v1"},"cardinality":{"kind":"required"}}]},{"kind":"get-modular.module-declaration","schemaVersion":1,"moduleId":"example/b","implementationId":"example/b/default","owner":{"authority":"example","path":["b"]},"provides":[{"capabilityId":"example/b-api","compatibility":{"family":"exact","familyVersion":1,"token":"example/b-api/v1"}}],"slots":[{"slotId":"a","capabilityId":"example/a-api","compatibility":{"family":"exact","familyVersion":1,"token":"example/a-api/v1"},"cardinality":{"kind":"required"}}]}],"profile":{"kind":"get-modular.composition-profile","schemaVersion":1,"profileId":"example/scc","roots":["example/a"],"selections":[{"moduleId":"example/a","implementationId":"example/a/default"},{"moduleId":"example/b","implementationId":"example/b/default"}],"bindings":[{"consumerImplementationId":"example/a/default","slotId":"b","providerImplementationIds":["example/b/default"]},{"consumerImplementationId":"example/b/default","slotId":"a","providerImplementationIds":["example/a/default"]}]}}, "expected":{"ok":false,"diagnostics":[{"code":"binding.unknown-provider","phase":"binding","path":[],"coordinate":{"implementationId":"example/c/default","slotId":"d","providerImplementationId":"example/missing/default"},"details":{"reason":"unknown"}},{"code":"graph.cycle","phase":"graph","path":[],"coordinate":{},"details":{"component":["example/a/default","example/b/default"]}}]}},
       {"caseId": "diag.raw.prefix-inclusive-clipping.v1", "entryPoint": "compileCompositionJsonV1", "generatorId": "get-modular/generator/diagnostic-prefix-clip/v1", "expected": {"ok": false, "diagnostics": [{"code":"input.limit-exceeded","phase":"decode","path":[{"kind":"field","value":"declarations"},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0},{"kind":"index","value":0}],"coordinate":{},"details":{"limitName":"jsonDepth","limit":32,"actual":33}}]}}
     ],
-    "futureReportDataShape": {
-      "purpose": "data-shape-only-no-runner-api-attestation-or-instance",
-      "additionalProperties": false,
-      "required": ["packedPackageDigest", "acceptedContractLedger", "acceptedQualificationLedger", "entryPoint", "runtimeIdentity"],
-      "properties": {
-        "packedPackageDigest": {"format": "sha256-bytes"},
-        "acceptedContractLedger": {"format": "sha256-bytes"},
-        "acceptedQualificationLedger": {"format": "sha256-bytes"},
-        "entryPoint": {"enum": ["compileCompositionV1", "compileCompositionJsonV1"]},
-        "runtimeIdentity": {"additionalProperties": false, "required": ["runtimeName", "runtimeVersion", "operatingSystem", "architecture"], "properties": {"runtimeName":{"enum":["node","chromium-window","chromium-dedicated-worker","electron"]},"runtimeVersion":{"type":"exact-string"},"operatingSystem":{"enum":["linux","macos","windows"]},"architecture":{"type":"exact-string"}}}
-      }
+    "futurePackedSubjectEvidenceMinimum": {
+      "purpose": "minimum-bindings-only-not-report-schema-api-runner-or-attestation",
+      "subject": "one-exact-packed-archive",
+      "bindingRequirements": {
+        "packedArchiveSha256": "exact-sha256-of-packed-archive-bytes-not-package-name-or-version",
+        "acceptedContractLedgerIdentity": "exact-sha256-identity-of-accepted-contract-ledger-bytes",
+        "acceptedQualificationLedgerIdentity": "exact-sha256-identity-of-accepted-qualification-ledger-bytes",
+        "compilerEntrypoint": "one-exact-closed-entrypoint",
+        "runtimeExactVersion": "exact-runtime-version-no-range-or-channel",
+        "operatingSystemExactVersion": "exact-operating-system-version",
+        "operatingSystemExactBuild": "exact-operating-system-build",
+        "architecture": "exact-runtime-architecture",
+        "browserExactBuild": "required-only-when-browser-is-applicable",
+        "electronExactRelease": "required-only-for-electron",
+        "electronEmbeddedNodeExactVersion": "required-only-for-electron",
+        "electronEmbeddedChromiumExactBuild": "required-only-for-electron",
+        "executionRealm": "exact-closed-realm-for-matrix-case",
+        "matrixCaseId": "one-exact-closed-matrix-case-id"
+      },
+      "compilerEntrypoints": ["compileCompositionV1", "compileCompositionJsonV1"],
+      "matrixCases": [
+        {"caseId":"node-24-linux","runtimeFamily":"node-24","operatingSystemFamily":"linux","executionRealm":"node-main","applicableExtraBindings":[]},
+        {"caseId":"node-24-macos","runtimeFamily":"node-24","operatingSystemFamily":"macos","executionRealm":"node-main","applicableExtraBindings":[]},
+        {"caseId":"node-24-windows","runtimeFamily":"node-24","operatingSystemFamily":"windows","executionRealm":"node-main","applicableExtraBindings":[]},
+        {"caseId":"chromium-window","runtimeFamily":"chromium","operatingSystemFamily":"repository-pinned-browser-host","executionRealm":"window","applicableExtraBindings":["browserExactBuild"]},
+        {"caseId":"chromium-dedicated-worker","runtimeFamily":"chromium","operatingSystemFamily":"repository-pinned-browser-host","executionRealm":"dedicated-worker","applicableExtraBindings":["browserExactBuild"]},
+        {"caseId":"electron-desktop-smoke","runtimeFamily":"electron","operatingSystemFamily":"repository-pinned-desktop-host","executionRealm":"electron-main-and-renderer-smoke","applicableExtraBindings":["electronExactRelease","electronEmbeddedNodeExactVersion","electronEmbeddedChromiumExactBuild"]}
+      ]
     }
   }
 }

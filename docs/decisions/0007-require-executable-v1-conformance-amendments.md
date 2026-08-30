@@ -38,14 +38,25 @@ rewriting ADR-0004, ADR-0005, or their contract ledger.
 
 ### Additive qualification authority
 
-While this decision is proposed, the artifacts under
-`architecture/qualification/v1` are draft qualification evidence. They do not
-amend the accepted base contract, promote the baseline, or authorize a
-production-conformance claim. If this decision is accepted, they become
-normative amendments when read together with the immutable base contract.
+The accepted authority ledger `architecture/authority/accepted-authorities.json` is anchored as `sha256:9ba074210704a20f6a3ef7486f3cf2ec7435fb0fc5552cca210b6d3d5d73f077`.
+While this decision is proposed, it and the artifacts under
+`architecture/qualification/v1` have no authority. They are draft
+qualification evidence and do not amend the accepted base contract, promote
+the baseline, or authorize a production-conformance claim.
+
+If this decision is accepted, its precedence is explicitly scoped. Only its
+named diagnostic disposition and refinement, resource-profile-v2 rules,
+normalization and complexity rules, static and future packed-evidence rules,
+and prospective authoring-helper semantics override conflicting base wording
+on those same named subjects. Every unnamed base subject remains unchanged;
+file presence, chronology, or a broad reading of "successor" grants no wider
+precedence.
+
+After acceptance, the qualification artifacts become normative amendments
+when read together with the immutable base contract.
 Their byte identities are recorded in
 `architecture/authority/v1-qualification-ledger.json`, anchored as
-`sha256:9a25637de36a970a57d8f0165f479b270296c0b60a6ac050d19f614b826ee9e0`.
+`sha256:240b898e65d3618be0e2a9edf89227e4f8b453e1100bece147fde1c8ef27ae9c`.
 
 `qualification-case-manifest.json` records decoder and canonicalization case
 categories, exact source, repair, and canonical byte identities, and the mapping
@@ -100,6 +111,21 @@ shorter equal prefix first.
 The diagnostic definition embedded in `composition.schema.json` remains a base
 shape. Where it is less restrictive, the standalone diagnostic contract is the
 normative refinement. Implementations must satisfy both.
+
+The immutable base schema enum, diagnostic catalog, detail catalog, and code
+rank remain byte-identical. The successor `codeDisposition` is a closed ordered
+partition of that immutable code catalog. Every base code appears exactly once:
+all active codes are `emittable`, while
+`output.canonicalization-failed` is exactly `reserved-non-emittable` in V1.
+It has no active prerequisite, path policy, variant, snapshot, static case,
+executable comparator adjacency, or collector-candidate role. Its immutable
+rank is historical catalog data only and cannot reactivate it.
+
+Any resolved compiler result containing the reserved code fails successor
+qualification. A canonicalizer, hash, or platform failure is an internal
+failure and rejects the compiler Promise; it is never converted into a
+diagnostic result. This decision adds neither a public fault-injection API nor
+a serialized rejection shape.
 
 The `profile.unknown-implementation` refinement continues to require
 `implementationId` and permits normalized `moduleId` as optional context. That
@@ -331,31 +357,70 @@ diagnostic, including raw invocation-prefix composition, so an invalid empty
 profile or a diagnostic that merely resembles the refinement cannot qualify.
 
 This decision does not publish a TypeScript subject interface, runner function,
-package API, report instance, or attestation. Those boundaries require the first
-packed production subject and a separate compatibility decision. A future
-execution report must at minimum bind one packed-package byte digest, the exact
-accepted base-contract ledger identity, the exact accepted qualification-ledger
-identity, one compiler entry point, and a closed runtime identity. It contains
-no arbitrary caller label, credentials, absolute paths, stack traces,
-implementation objects, or copied actual subject output.
+package API, report schema, report instance, or attestation. Those boundaries
+require the first packed production subject and a separate compatibility
+decision. `futurePackedSubjectEvidenceMinimum` is only a closed list of minimum
+bindings; it is explicitly not a report schema, API, runner, attestation, or
+evidence instance. It contains no JSON Schema keywords and permits no arbitrary
+caller labels.
+
+Future packed evidence must bind the SHA-256 of the exact packed archive bytes,
+not a package name or version; the exact accepted contract-ledger and
+qualification-ledger identities; one exact compiler entry point; the exact
+runtime version; the exact operating-system version and build; the exact
+architecture; the execution realm; and one closed matrix case ID. Browser cases
+also bind the applicable exact browser build. The Electron case also binds the
+exact Electron release and its embedded exact Node and Chromium identities.
+These are prospective minimum bindings, not current report instances, and do
+not permit credentials, absolute paths, stack traces, implementation objects,
+or copied actual subject output.
 
 `@get-modular/conformance` remains the planned development-only owner of
 fixtures and future packed-subject execution. `@get-modular/core` remains
 independent from it. Neither package is created in this decision.
 
-The first V1 conformance claim requires the same packed subject and vectors on:
+The first V1 conformance claim requires the same packed subject and vectors in
+these six stable closed cases:
 
-- Node.js 24 on Linux, macOS, and Windows;
-- the Chromium build pinned by the repository's exact browser-test dependency,
-  in a browser window;
-- the same pinned Chromium build in a dedicated worker.
+- `node-24-linux`;
+- `node-24-macos`;
+- `node-24-windows`;
+- `chromium-window`;
+- `chromium-dedicated-worker`; and
+- `electron-desktop-smoke`.
 
-Future reports record exact Node, operating-system, browser, architecture, and
-package identities. Electron is covered by the Node and Chromium surfaces plus
-one packed smoke on the exact Electron release used by a Desktop product. A
-future WASM or non-JavaScript implementation must run the portable vector subset
-through its own adapter before making a claim. Runtime coverage is a publication
-and conformance gate, not a claim made by the current static evidence.
+The Chromium cases use the repository-pinned exact browser build in a window
+and a dedicated worker. The Electron case is one packed Desktop smoke covering
+its declared main and renderer realms. A future WASM or non-JavaScript
+implementation must run the portable vector subset through its own adapter
+before making a claim. Runtime coverage is a publication and conformance gate,
+not a claim made by the current static evidence.
+
+### Prospective authoring-helper closure
+
+This decision closes future authoring-helper semantics without implementing a
+package. The V1 package root has exactly four helper exports: `defineModule`,
+`required`, `optional`, and `many`. It has no aliases, slot builders, overloads,
+or defaults. `required()` and `optional()` accept no arguments and each return a
+fresh mutable plain object containing exactly `{kind: "required"}` or
+`{kind: "optional"}`. `many` accepts only `many({min, max})` and returns a fresh
+mutable plain object containing exactly
+`{kind: "many", min, max, order: "profile"}`.
+
+The helpers perform no validation, normalization, branding, cloning, freezing,
+registration, or defaulting. `defineModule(x)` performs no read and returns the
+exact `x` reference. `many` uses direct ordinary property access for `min` and
+`max`; null, undefined, or hostile getters may therefore naturally throw, while
+ordinary invalid numeric values pass through unchanged. The compiler remains
+the sole runtime validator. Any V2 behavior uses explicit versioned exports and
+does not overload or silently change these V1 exports.
+
+The first packed implementation must add NodeNext, Bundler, JavaScript, and
+`checkJs` inference tests, direct runtime helper tests, and compiler-handoff
+tests for these exact semantics. It must also add a 1000-declaration typecheck
+benchmark. Those are mandatory future packed-subject gates, not current
+executed evidence, and this decision creates no production package to simulate
+them.
 
 ### Product navigation and production admission
 

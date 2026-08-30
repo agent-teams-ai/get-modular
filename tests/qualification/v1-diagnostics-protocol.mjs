@@ -4,6 +4,7 @@ import test from "node:test";
 
 import {
   createSchemaValidators,
+  validateFuturePackedSubjectEvidenceMinimum,
   validateStaticConformanceProtocol,
 } from "../../architecture/checks/v1-qualification.mjs";
 
@@ -146,7 +147,23 @@ test("bounded diagnostic protocol fixes prefixes, coordinates, barriers, and sup
   assert.deepEqual(evaluation.failureResult, {
     required: ["ok", "diagnostics"],
     forbidden: ["plan", "digest"],
+    reservedCode: "successor-qualification-failure",
   });
+  assert.deepEqual(evaluation.internalFailure, {
+    kinds: ["canonicalizer", "hash", "platform"],
+    outcome: "reject-promise",
+    diagnosticEmission: "forbidden",
+    publicFaultInjection: "forbidden",
+    serializedRejectionShape: "forbidden",
+  });
+  assert.deepEqual(contract.codeDisposition.reservedNonEmittable,
+    ["output.canonicalization-failed"]);
+  assert.ok(!contract.codeDisposition.emittable.includes("output.canonicalization-failed"));
+  assert.deepEqual(
+    [...contract.codeDisposition.emittable, ...contract.codeDisposition.reservedNonEmittable]
+      .toSorted(),
+    [...catalog.ordering.codes].toSorted(),
+  );
   const factModel = contract.prerequisiteCatalog.factModel;
   assert.deepEqual(factModel.states, ["valid", "invalid", "unavailable"]);
   assert.equal(factModel.maximumPrerequisitesPerCandidate, 4);
@@ -398,26 +415,74 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     mutations[mutant.name](candidate);
     assert.throws(() => validate(candidate), mutant.name);
   }
+
+  const reservedStaticResult = clone(protocol);
+  reservedStaticResult.cases[0].expected.diagnostics[0] = {
+    code: "output.canonicalization-failed",
+    phase: "output",
+    path: [],
+    coordinate: {},
+    details: { reason: "canonicalization" },
+  };
+  assert.throws(() => validate(reservedStaticResult), /reserved-non-emittable/u);
 });
 
 
-test("future report evidence is a closed data shape, not an execution record", async () => {
+test("future packed evidence minimum is closed and is not a report shape", async () => {
   const manifest = await readJson(
     "architecture/qualification/v1/qualification-case-manifest.json",
   );
-  const shape = manifest.staticConformanceProtocol.futureReportDataShape;
-  assert.equal(shape.purpose, "data-shape-only-no-runner-api-attestation-or-instance");
-  assert.equal(shape.additionalProperties, false);
-  assert.deepEqual(shape.required, [
-    "packedPackageDigest", "acceptedContractLedger", "acceptedQualificationLedger",
-    "entryPoint", "runtimeIdentity",
-  ]);
-  assert.deepEqual(keys(shape.properties), [...shape.required].sort());
-  assert.deepEqual(shape.properties.entryPoint.enum, [
+  const minimum = manifest.staticConformanceProtocol.futurePackedSubjectEvidenceMinimum;
+  assert.doesNotThrow(() => validateFuturePackedSubjectEvidenceMinimum(minimum));
+  assert.equal(
+    minimum.purpose,
+    "minimum-bindings-only-not-report-schema-api-runner-or-attestation",
+  );
+  assert.equal(minimum.subject, "one-exact-packed-archive");
+  assert.deepEqual(minimum.compilerEntrypoints, [
     "compileCompositionV1", "compileCompositionJsonV1",
   ]);
-  assert.equal(shape.properties.runtimeIdentity.additionalProperties, false);
-  assert.ok(!Object.hasOwn(shape, "runner"));
-  assert.ok(!Object.hasOwn(shape, "attestation"));
-  assert.ok(!Object.hasOwn(shape, "instances"));
+  assert.deepEqual(minimum.matrixCases.map(value => value.caseId), [
+    "node-24-linux",
+    "node-24-macos",
+    "node-24-windows",
+    "chromium-window",
+    "chromium-dedicated-worker",
+    "electron-desktop-smoke",
+  ]);
+  assert.match(minimum.bindingRequirements.packedArchiveSha256, /archive-bytes-not-package/u);
+  assert.deepEqual(
+    minimum.matrixCases.find(value => value.caseId === "chromium-window")
+      .applicableExtraBindings,
+    ["browserExactBuild"],
+  );
+  assert.deepEqual(
+    minimum.matrixCases.find(value => value.caseId === "electron-desktop-smoke")
+      .applicableExtraBindings,
+    [
+      "electronExactRelease",
+      "electronEmbeddedNodeExactVersion",
+      "electronEmbeddedChromiumExactBuild",
+    ],
+  );
+  assert.ok(!Object.hasOwn(minimum, "runner"));
+  assert.ok(!Object.hasOwn(minimum, "attestation"));
+  assert.ok(!Object.hasOwn(minimum, "instances"));
+
+  for (const mutate of [
+    value => { value.required = ["packedArchiveSha256"]; },
+    value => { value.callerLabel = "nightly"; },
+    value => { value.instances = [{ status: "passed" }]; },
+    value => {
+      value.bindingRequirements.packedArchiveSha256 = "package-name-and-version";
+    },
+    value => { delete value.bindingRequirements.operatingSystemExactBuild; },
+    value => { value.matrixCases[0].caseId = "node-latest-linux"; },
+    value => { value.matrixCases[3].applicableExtraBindings = []; },
+    value => { value.matrixCases[5].applicableExtraBindings.pop(); },
+  ]) {
+    const candidate = clone(minimum);
+    mutate(candidate);
+    assert.throws(() => validateFuturePackedSubjectEvidenceMinimum(candidate));
+  }
 });

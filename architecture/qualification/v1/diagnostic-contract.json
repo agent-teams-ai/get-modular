@@ -1,6 +1,44 @@
 {
   "kind": "get-modular.diagnostic-contract",
   "contractVersion": 1,
+  "codeDisposition": {
+    "policy": "closed-ordered-partition-of-immutable-base-catalog",
+    "emittable": [
+      "decode.invalid-json",
+      "decode.duplicate-key",
+      "input.limit-exceeded",
+      "schema.unsupported-version",
+      "schema.unknown-field",
+      "schema.invalid-value",
+      "schema.non-plain-value",
+      "identity.invalid",
+      "declaration.duplicate-implementation",
+      "declaration.duplicate-capability",
+      "declaration.duplicate-slot",
+      "profile.duplicate-root",
+      "profile.unknown-root",
+      "profile.duplicate-selection",
+      "profile.unknown-module",
+      "profile.unknown-implementation",
+      "profile.implementation-mismatch",
+      "profile.missing-selection",
+      "profile.unreachable-selection",
+      "binding.duplicate",
+      "binding.missing",
+      "binding.unknown-consumer",
+      "binding.unknown-slot",
+      "binding.unknown-provider",
+      "binding.provider-not-selected",
+      "binding.cardinality",
+      "binding.capability-missing",
+      "binding.compatibility-mismatch",
+      "graph.cycle",
+      "diagnostics.truncated"
+    ],
+    "reservedNonEmittable": [
+      "output.canonicalization-failed"
+    ]
+  },
   "coordinateFieldOrder": [
     "moduleId",
     "implementationId",
@@ -61,7 +99,14 @@
     "independentFactsContinue": true,
     "failedPrerequisite": "suppress-dependent-derivatives-only",
     "unreachableSelection": {"phase": "graph", "requires": ["valid-root", "valid-selections", "valid-reachability-bindings"]},
-    "failureResult": {"required": ["ok", "diagnostics"], "forbidden": ["plan", "digest"]}
+    "failureResult": {"required": ["ok", "diagnostics"], "forbidden": ["plan", "digest"], "reservedCode": "successor-qualification-failure"},
+    "internalFailure": {
+      "kinds": ["canonicalizer", "hash", "platform"],
+      "outcome": "reject-promise",
+      "diagnosticEmission": "forbidden",
+      "publicFaultInjection": "forbidden",
+      "serializedRejectionShape": "forbidden"
+    }
   },
   "prerequisiteCatalog": {
     "policy": "closed-bounded-facts-no-predicates",
@@ -119,7 +164,6 @@
       {"code":"binding.capability-missing","prerequisiteGroup":"binding.capability","prerequisites":["document.schema-valid","binding.consumer-census-complete","binding.slot-census-complete","binding.provider-census-complete"],"suppressionScope":"binding"},
       {"code":"binding.compatibility-mismatch","prerequisiteGroup":"binding.compatibility","prerequisites":["document.schema-valid","binding.consumer-census-complete","binding.slot-census-complete","binding.provider-census-complete"],"suppressionScope":"binding"},
       {"code":"graph.cycle","prerequisiteGroup":"graph.strongly-connected-components","prerequisites":["graph.selected-node-census-complete","graph.positive-edge-subgraph-complete"],"suppressionScope":"graph"},
-      {"code":"output.canonicalization-failed","prerequisiteGroup":"output.canonical-plan","prerequisites":["output.plan-eligible"],"suppressionScope":"output"},
       {"code":"diagnostics.truncated","prerequisiteGroup":"output.diagnostic-collector","prerequisites":["output.diagnostic-stream-complete"],"suppressionScope":"output"}
     ],
     "limits": [
@@ -182,7 +226,6 @@
     "binding.capability-missing": "empty",
     "binding.compatibility-mismatch": "empty",
     "graph.cycle": "empty",
-    "output.canonicalization-failed": "empty",
     "diagnostics.truncated": "empty"
   },
   "limitPathPolicies": {
@@ -422,12 +465,6 @@
       "phases": ["graph"],
       "coordinate": {"required": [], "allowed": []},
       "details": {"required": ["component"]}
-    },
-    {
-      "code": "output.canonicalization-failed",
-      "phases": ["output"],
-      "coordinate": {"required": [], "allowed": []},
-      "details": {"required": ["reason"], "reasonValues": ["canonicalization"]}
     },
     {
       "code": "diagnostics.truncated",
