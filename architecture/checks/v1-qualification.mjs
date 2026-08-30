@@ -1984,6 +1984,9 @@ export function validateResourceBoundaryQualification({
   ]) || !Number.isSafeInteger(template.decimalWidth) || template.decimalWidth < 1) {
     fail("bounded diagnostic collector has an invalid structured candidate template");
   }
+  if (!contract.codeDisposition.emittable.includes(template.code)) {
+    fail("bounded diagnostic collector uses a reserved or unknown candidate code");
+  }
   const variantByCode = new Map(contract.variants.map(variant => [variant.code, variant]));
   const firstCandidate = diagnosticCollectorCandidate(template, 0);
   const lastCandidate = diagnosticCollectorCandidate(template, 262399);

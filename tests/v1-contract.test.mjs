@@ -204,7 +204,7 @@ test("reserved base diagnostic code cannot be indirectly reactivated", async () 
     catalog,
     validateDiagnostic,
     maximumOmitted: schema.$defs.diagnostic.properties.details.properties.omitted.maximum,
-  }), /unknown diagnostic code/u);
+  }), /reserved or unknown candidate code/u);
 
   const staticCaseReactivation = clone(manifest.staticConformanceProtocol);
   staticCaseReactivation.cases[0].expected.diagnostics[0] = reservedDiagnostic;
