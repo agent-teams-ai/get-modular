@@ -244,6 +244,9 @@
     {"name": "invalid-binding-unreachable-cascade", "rule": "suppress-local-derivative"},
     {"name": "unreachable-profile-phase", "rule": "unreachable-is-graph-phase"},
     {"name": "unreachable-without-binding-prerequisite", "rule": "unreachable-requires-valid-bindings"},
+    {"name": "duplicate-selection-suppresses-mismatch", "rule": "overlapping-failures-remain-independent"},
+    {"name": "incomplete-identity-census-emits-negative", "rule": "negative-claims-require-complete-census"},
+    {"name": "invalid-independent-edge-suppresses-scc", "rule": "positive-scc-remains-independent"},
     {"name": "plan-with-diagnostics", "rule": "failure-forbids-plan-and-digest"}
   ],
   "sccGraphCases": [

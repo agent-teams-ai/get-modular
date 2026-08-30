@@ -87,6 +87,18 @@ test("diagnostic prerequisites are closed for every code and named limit", async
     value => { value.prerequisiteCatalog.diagnostics[1].code
       = value.prerequisiteCatalog.diagnostics[0].code; },
     value => { value.prerequisiteCatalog.diagnostics[0].prerequisiteGroup = "decode.other"; },
+    value => { value.prerequisiteCatalog.factModel.facts[0].factId = "batch.other"; },
+    value => { value.prerequisiteCatalog.exactCases[0].factStates
+      ["profile.selection-uniqueness"] = "valid"; },
+    value => { value.prerequisiteCatalog.diagnostics
+      .find(entry => entry.code === "profile.implementation-mismatch")
+      .prerequisites.push("profile.selection-uniqueness"); },
+    value => { value.prerequisiteCatalog.diagnostics
+      .find(entry => entry.code === "profile.unknown-implementation")
+      .prerequisites.pop(); },
+    value => { value.prerequisiteCatalog.diagnostics
+      .find(entry => entry.code === "graph.cycle")
+      .prerequisites.push("binding.reached-frontier-complete"); },
     value => { value.prerequisiteCatalog.limits.pop(); },
     value => { value.prerequisiteCatalog.limits[0].limitName = "unknownLimit"; },
     value => { value.prerequisiteCatalog.limits[1].limitName
@@ -615,11 +627,37 @@ test("resource and decoder qualification reject expectation drift", async () => 
     decoderVectors: decoderValue,
     canonicalizationVectors: canonicalizationValue,
     acceptedCanonicalVectors: acceptedCanonical,
+    diagnosticContract: contract,
+    diagnosticCatalog: catalog,
+    validateDocument,
+    validateDiagnostic,
   });
 
   assert.doesNotThrow(() => validateBoundaries(boundaries));
   assert.doesNotThrow(() => validateDecoder(decoder));
   assert.doesNotThrow(() => validateManifest(manifest));
+
+  const rawLocatorRemoved = clone(manifest);
+  rawLocatorRemoved.staticConformanceProtocol.cases[0]
+    .expected.diagnostics[0].path = [];
+  assert.throws(() => validateManifest(rawLocatorRemoved), /raw invocation locator/u);
+
+  const invalidCompanionProfile = clone(manifest);
+  invalidCompanionProfile.staticConformanceProtocol.cases[0]
+    .schemaValidCompanion.profile.roots = [];
+  assert.throws(() => validateManifest(invalidCompanionProfile), /base schema/u);
+
+  const invalidStaticRefinement = clone(manifest);
+  invalidStaticRefinement.staticConformanceProtocol.cases[0]
+    .expected.diagnostics[0].details.reason = "unknown";
+  assert.throws(() => validateManifest(invalidStaticRefinement), /invalid reason/u);
+
+  const missingOverlapOutcome = clone(manifest);
+  missingOverlapOutcome.staticConformanceProtocol.cases
+    .find(value => value.caseId === "diag.object.duplicate-selection-with-mismatch.v1")
+    .expected.diagnostics.pop();
+  assert.throws(() => validateManifest(missingOverlapOutcome),
+    /exact prerequisite outcome/u);
 
   const wrongBoundary = clone(boundaries);
   wrongBoundary.cases[0].over += 1;

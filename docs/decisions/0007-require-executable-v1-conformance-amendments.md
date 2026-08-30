@@ -45,7 +45,7 @@ production-conformance claim. If this decision is accepted, they become
 normative amendments when read together with the immutable base contract.
 Their byte identities are recorded in
 `architecture/authority/v1-qualification-ledger.json`, anchored as
-`sha256:4529d4e5135313b27860df1aa40646e8794db914ad373265dc22f347392a6e4c`.
+`sha256:9a25637de36a970a57d8f0165f479b270296c0b60a6ac050d19f614b826ee9e0`.
 
 `qualification-case-manifest.json` records decoder and canonicalization case
 categories, exact source, repair, and canonical byte identities, and the mapping
@@ -115,10 +115,25 @@ derivatives are suppressed. Every emitted diagnostic prevents successful plan
 and digest output.
 
 The qualification contract maps every diagnostic code and every named resource
-limit to fixed prerequisite-group IDs and one suppression scope. Missing,
-unknown, duplicate, or remapped entries fail qualification. The table contains
-no executable predicates, expressions, extension mechanism, or configurable
-rule language; it is a closed V1 generation oracle.
+limit to fixed prerequisite-group IDs, an ordered list of at most four required
+facts, and one suppression scope. The fact vocabulary is closed and bounded;
+each fact has one fixed scope and one of `valid`, `invalid`, or `unavailable`.
+A candidate is eligible only when all of its required facts are valid. Invalid
+or unavailable requirements suppress that candidate without stopping
+independent candidates. Missing, unknown, duplicate, unbounded, or remapped
+entries fail qualification. The table contains no executable predicates,
+expressions, extension mechanism, defaults, or configurable rule language; it
+is a closed V1 generation oracle.
+
+Three exact cases fix the overlapping behavior that the code-to-group mapping
+alone cannot determine. A duplicate module selection does not suppress an
+independently provable implementation mismatch on one of its rows. An invalid
+implementation-identity census suppresses a negative
+`profile.unknown-implementation` claim while retaining the positive duplicate
+implementation failure. An invalid unrelated binding frontier does not
+suppress a positively proven SCC from the valid-edge subgraph. The checker
+executes the complete fact-state partitions for these cases and rejects
+prerequisite mutations that change any eligible or suppressed code.
 
 Raw documents are admitted independently after batch-wide resource preflight.
 A failed declaration document cannot contribute schema or semantic facts, but
@@ -140,11 +155,16 @@ Before a portable implementation identity is valid, declaration diagnostics
 may use the bounded invocation ordinal. After identity is valid, semantic
 coordinates replace caller ordering. Raw declaration paths begin with
 `declarations/<document-ordinal>` and raw profile paths begin with `profile`;
-those prefixes count toward the 32-segment cap. Paths contain only invocation
-roots, schema-known field names, and bounded indices. Unknown keys, raw values,
-parser text, credentials, absolute paths, transformed hashes of hostile values,
-and truncation markers are never emitted. Batch-wide aggregate failures retain
-an empty path because no one document is their truthful locator.
+those prefixes count toward the 32-segment cap. Code path policies apply to the
+document-local path before that raw prefix is prepended. Consequently,
+`decode.invalid-json` retains its exact empty local-path policy while its emitted
+raw diagnostic preserves the non-empty invocation locator. Static expectations
+are validated against the accepted base diagnostic schema and the refinement
+after this composition is reversed. Paths contain only invocation roots,
+schema-known field names, and bounded indices. Unknown keys, raw values, parser
+text, credentials, absolute paths, transformed hashes of hostile values, and
+truncation markers are never emitted. Batch-wide aggregate failures retain an
+empty path because no one document is their truthful locator.
 
 All eligible candidates are streamed through the normative comparator. The
 collector continues after `K + 1`; for at most 256 candidates it returns every
@@ -300,6 +320,15 @@ one complete inline input or closed bounded generator ID, and one exact complete
 result. Partial, code-only, pattern, alternate, and subject-derived expectations
 are prohibited. Raw inline inputs are the exact UTF-8 declaration/profile bytes
 without caller-side normalization.
+
+Every inline negative also carries one complete companion world whose
+declarations and profile pass the accepted base schema. Companion profiles obey
+the accepted non-empty `roots` and `selections` constraints; they are positive
+schema controls, not alternate expected results. The bounded raw depth generator
+likewise includes one valid companion declaration and a one-root profile that
+selects it. The checker validates every companion and every exact expected
+diagnostic, including raw invocation-prefix composition, so an invalid empty
+profile or a diagnostic that merely resembles the refinement cannot qualify.
 
 This decision does not publish a TypeScript subject interface, runner function,
 package API, report instance, or attestation. Those boundaries require the first

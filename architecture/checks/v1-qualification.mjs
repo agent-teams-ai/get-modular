@@ -153,63 +153,121 @@ const LIMIT_PATH_POLICY_AUTHORITY = Object.freeze({
   diagnostics: "empty",
   diagnosticPathSegments: "empty",
 });
+const PREREQUISITE_FACT_AUTHORITY = Object.freeze([
+  { factId: "batch.raw-bytes-admitted", scope: "batch" },
+  { factId: "document.raw-bytes-admitted", scope: "document" },
+  { factId: "document.decoded", scope: "document" },
+  { factId: "document.schema-valid", scope: "document" },
+  { factId: "declaration.identity-census-complete", scope: "batch" },
+  { factId: "declaration.module-census-complete", scope: "batch" },
+  { factId: "profile.root-census-complete", scope: "profile" },
+  { factId: "profile.selection-census-complete", scope: "profile" },
+  { factId: "profile.selection-uniqueness", scope: "profile" },
+  { factId: "binding.consumer-census-complete", scope: "binding" },
+  { factId: "binding.slot-census-complete", scope: "binding" },
+  { factId: "binding.provider-census-complete", scope: "binding" },
+  { factId: "binding.reached-frontier-complete", scope: "graph" },
+  { factId: "graph.selected-node-census-complete", scope: "graph" },
+  { factId: "graph.positive-edge-subgraph-complete", scope: "graph" },
+  { factId: "output.plan-eligible", scope: "output" },
+  { factId: "output.diagnostic-stream-complete", scope: "output" },
+]);
 const DIAGNOSTIC_PREREQUISITE_AUTHORITY = Object.freeze({
-  "decode.invalid-json": ["decode.document", "document"],
-  "decode.duplicate-key": ["decode.document-keys", "document"],
-  "input.limit-exceeded": ["resource.selected-limit", "limit"],
-  "schema.unsupported-version": ["schema.document", "document"],
-  "schema.unknown-field": ["schema.document", "document"],
-  "schema.invalid-value": ["schema.document", "document"],
-  "schema.non-plain-value": ["schema.document", "document"],
-  "identity.invalid": ["schema.identity", "document"],
-  "declaration.duplicate-implementation": ["declaration.identity-census", "declaration"],
-  "declaration.duplicate-capability": ["declaration.capabilities", "declaration"],
-  "declaration.duplicate-slot": ["declaration.slots", "declaration"],
-  "profile.duplicate-root": ["profile.roots", "profile"],
-  "profile.unknown-root": ["profile.roots", "profile"],
-  "profile.duplicate-selection": ["profile.selections", "profile"],
-  "profile.unknown-module": ["profile.selections", "profile"],
-  "profile.unknown-implementation": ["profile.selections", "profile"],
-  "profile.implementation-mismatch": ["profile.selections", "profile"],
-  "profile.missing-selection": ["profile.selection-census", "profile"],
-  "profile.unreachable-selection": ["graph.reachability-frontier", "graph"],
-  "binding.duplicate": ["binding.slot-frontier", "binding"],
-  "binding.missing": ["binding.slot-frontier", "binding"],
-  "binding.unknown-consumer": ["binding.consumer", "binding"],
-  "binding.unknown-slot": ["binding.slot", "binding"],
-  "binding.unknown-provider": ["binding.provider", "binding"],
-  "binding.provider-not-selected": ["binding.provider-selection", "binding"],
-  "binding.cardinality": ["binding.cardinality", "binding"],
-  "binding.capability-missing": ["binding.capability", "binding"],
-  "binding.compatibility-mismatch": ["binding.compatibility", "binding"],
-  "graph.cycle": ["graph.strongly-connected-components", "graph"],
-  "output.canonicalization-failed": ["output.canonical-plan", "output"],
-  "diagnostics.truncated": ["output.diagnostic-collector", "output"],
+  "decode.invalid-json": ["decode.document", "document", ["document.raw-bytes-admitted"]],
+  "decode.duplicate-key": ["decode.document-keys", "document", ["document.raw-bytes-admitted"]],
+  "input.limit-exceeded": ["resource.selected-limit", "limit", []],
+  "schema.unsupported-version": ["schema.document", "document", ["document.decoded"]],
+  "schema.unknown-field": ["schema.document", "document", ["document.decoded"]],
+  "schema.invalid-value": ["schema.document", "document", ["document.decoded"]],
+  "schema.non-plain-value": ["schema.document", "document", ["document.decoded"]],
+  "identity.invalid": ["schema.identity", "document", ["document.decoded"]],
+  "declaration.duplicate-implementation": ["declaration.identity-census", "declaration", ["document.schema-valid"]],
+  "declaration.duplicate-capability": ["declaration.capabilities", "declaration", ["document.schema-valid"]],
+  "declaration.duplicate-slot": ["declaration.slots", "declaration", ["document.schema-valid"]],
+  "profile.duplicate-root": ["profile.roots", "profile", ["document.schema-valid"]],
+  "profile.unknown-root": ["profile.roots", "profile", ["document.schema-valid", "declaration.module-census-complete"]],
+  "profile.duplicate-selection": ["profile.selections", "profile", ["document.schema-valid"]],
+  "profile.unknown-module": ["profile.selections", "profile", ["document.schema-valid", "declaration.module-census-complete"]],
+  "profile.unknown-implementation": ["profile.selections", "profile", ["document.schema-valid", "declaration.identity-census-complete"]],
+  "profile.implementation-mismatch": ["profile.selections", "profile", ["document.schema-valid", "declaration.identity-census-complete"]],
+  "profile.missing-selection": ["profile.selection-census", "profile", ["document.schema-valid", "declaration.module-census-complete", "profile.selection-census-complete"]],
+  "profile.unreachable-selection": ["graph.reachability-frontier", "graph", ["profile.root-census-complete", "profile.selection-census-complete", "binding.reached-frontier-complete", "graph.selected-node-census-complete"]],
+  "binding.duplicate": ["binding.slot-frontier", "binding", ["document.schema-valid", "binding.consumer-census-complete", "binding.slot-census-complete"]],
+  "binding.missing": ["binding.slot-frontier", "binding", ["document.schema-valid", "binding.consumer-census-complete", "binding.slot-census-complete"]],
+  "binding.unknown-consumer": ["binding.consumer", "binding", ["document.schema-valid", "declaration.identity-census-complete"]],
+  "binding.unknown-slot": ["binding.slot", "binding", ["document.schema-valid", "declaration.identity-census-complete", "binding.consumer-census-complete"]],
+  "binding.unknown-provider": ["binding.provider", "binding", ["document.schema-valid", "declaration.identity-census-complete", "binding.consumer-census-complete", "binding.slot-census-complete"]],
+  "binding.provider-not-selected": ["binding.provider-selection", "binding", ["document.schema-valid", "binding.provider-census-complete", "profile.selection-census-complete"]],
+  "binding.cardinality": ["binding.cardinality", "binding", ["document.schema-valid", "binding.consumer-census-complete", "binding.slot-census-complete"]],
+  "binding.capability-missing": ["binding.capability", "binding", ["document.schema-valid", "binding.consumer-census-complete", "binding.slot-census-complete", "binding.provider-census-complete"]],
+  "binding.compatibility-mismatch": ["binding.compatibility", "binding", ["document.schema-valid", "binding.consumer-census-complete", "binding.slot-census-complete", "binding.provider-census-complete"]],
+  "graph.cycle": ["graph.strongly-connected-components", "graph", ["graph.selected-node-census-complete", "graph.positive-edge-subgraph-complete"]],
+  "output.canonicalization-failed": ["output.canonical-plan", "output", ["output.plan-eligible"]],
+  "diagnostics.truncated": ["output.diagnostic-collector", "output", ["output.diagnostic-stream-complete"]],
 });
 const LIMIT_PREREQUISITE_AUTHORITY = Object.freeze({
-  rawDocumentBytes: ["decode.raw-document-bytes", "document"],
-  declarationRawDocumentBytes: ["decode.declaration-document-bytes", "document"],
-  profileRawDocumentBytes: ["decode.profile-document-bytes", "document"],
-  aggregateRawBytes: ["decode.aggregate-raw-bytes", "batch"],
-  jsonValueOccurrences: ["schema.value-occurrences", "batch"],
-  jsonDepth: ["decode.document-depth", "document"],
-  aggregateStringBytes: ["decode.aggregate-string-bytes", "batch"],
-  identifierBytes: ["schema.identifier-bytes", "document"],
-  ownerPathSegments: ["declaration.owner-path", "declaration"],
-  declarations: ["declaration.batch-count", "batch"],
-  capabilitiesPerDeclaration: ["declaration.capability-count", "declaration"],
-  slotsPerDeclaration: ["declaration.slot-count", "declaration"],
-  totalCapabilities: ["declaration.total-capabilities", "batch"],
-  totalSlots: ["declaration.total-slots", "batch"],
-  roots: ["profile.root-count", "profile"],
-  selections: ["profile.selection-count", "profile"],
-  bindings: ["profile.binding-count", "profile"],
-  graphEdges: ["graph.edge-count", "graph"],
-  providersPerManySlot: ["binding.provider-count", "binding"],
-  graphDepth: ["graph.depth", "graph"],
-  diagnostics: ["output.diagnostic-count", "output"],
-  diagnosticPathSegments: ["output.diagnostic-path", "output"],
+  rawDocumentBytes: ["decode.raw-document-bytes", "document", []],
+  declarationRawDocumentBytes: ["decode.declaration-document-bytes", "document", []],
+  profileRawDocumentBytes: ["decode.profile-document-bytes", "document", []],
+  aggregateRawBytes: ["decode.aggregate-raw-bytes", "batch", []],
+  jsonValueOccurrences: ["schema.value-occurrences", "batch", ["batch.raw-bytes-admitted"]],
+  jsonDepth: ["decode.document-depth", "document", ["document.raw-bytes-admitted"]],
+  aggregateStringBytes: ["decode.aggregate-string-bytes", "batch", ["batch.raw-bytes-admitted"]],
+  identifierBytes: ["schema.identifier-bytes", "document", ["document.decoded"]],
+  ownerPathSegments: ["declaration.owner-path", "declaration", ["document.decoded"]],
+  declarations: ["declaration.batch-count", "batch", ["batch.raw-bytes-admitted"]],
+  capabilitiesPerDeclaration: ["declaration.capability-count", "declaration", ["document.decoded"]],
+  slotsPerDeclaration: ["declaration.slot-count", "declaration", ["document.decoded"]],
+  totalCapabilities: ["declaration.total-capabilities", "batch", ["batch.raw-bytes-admitted"]],
+  totalSlots: ["declaration.total-slots", "batch", ["batch.raw-bytes-admitted"]],
+  roots: ["profile.root-count", "profile", ["document.decoded"]],
+  selections: ["profile.selection-count", "profile", ["document.decoded"]],
+  bindings: ["profile.binding-count", "profile", ["document.decoded"]],
+  graphEdges: ["graph.edge-count", "graph", ["profile.selection-census-complete"]],
+  providersPerManySlot: ["binding.provider-count", "binding", ["binding.consumer-census-complete", "binding.slot-census-complete"]],
+  graphDepth: ["graph.depth", "graph", ["graph.selected-node-census-complete", "graph.positive-edge-subgraph-complete"]],
+  diagnostics: ["output.diagnostic-count", "output", ["output.diagnostic-stream-complete"]],
+  diagnosticPathSegments: ["output.diagnostic-path", "output", ["output.diagnostic-stream-complete"]],
 });
+const PREREQUISITE_CASE_AUTHORITY = Object.freeze([
+  {
+    caseId: "diag.object.duplicate-selection-with-mismatch.v1",
+    invalidFacts: ["profile.selection-uniqueness"],
+    unavailableFacts: [],
+    candidateCodes: ["profile.duplicate-selection", "profile.implementation-mismatch"],
+    eligibleCodes: ["profile.duplicate-selection", "profile.implementation-mismatch"],
+    suppressedCodes: [],
+  },
+  {
+    caseId: "diag.object.negative-census-suppression.v1",
+    invalidFacts: ["declaration.identity-census-complete"],
+    unavailableFacts: [],
+    candidateCodes: ["declaration.duplicate-implementation", "profile.unknown-implementation"],
+    eligibleCodes: ["declaration.duplicate-implementation"],
+    suppressedCodes: ["profile.unknown-implementation"],
+  },
+  {
+    caseId: "diag.object.independent-scc-with-invalid-edge.v1",
+    invalidFacts: ["binding.reached-frontier-complete"],
+    unavailableFacts: [],
+    candidateCodes: ["binding.unknown-provider", "graph.cycle"],
+    eligibleCodes: ["binding.unknown-provider", "graph.cycle"],
+    suppressedCodes: [],
+  },
+]);
+const STATIC_CASE_IDS_AUTHORITY = Object.freeze([
+  "diag.raw.multi-document-independent.v1",
+  "diag.raw.hostile-profile-key.v1",
+  "diag.object.pre-identity-index.v1",
+  "diag.object.semantic-coordinate.v1",
+  "diag.object.independent-declaration-and-graph.v1",
+  "diag.object.invalid-binding-suppresses-unreachable.v1",
+  "diag.object.valid-prerequisites-unreachable.v1",
+  "diag.object.duplicate-selection-with-mismatch.v1",
+  "diag.object.negative-census-suppression.v1",
+  "diag.object.independent-scc-with-invalid-edge.v1",
+  "diag.raw.prefix-inclusive-clipping.v1",
+]);
 const MALFORMED_UTF8_AUTHORITY = new Map([
   ["invalid-utf8-unexpected-continuation", "80"],
   ["overlong-utf8", "c0af"],
@@ -530,6 +588,10 @@ export function validateQualificationCaseManifest({
   decoderVectors,
   canonicalizationVectors,
   acceptedCanonicalVectors,
+  diagnosticContract,
+  diagnosticCatalog,
+  validateDocument,
+  validateDiagnostic,
 }) {
   if (manifest?.kind !== "get-modular.qualification-case-manifest"
     || manifest.manifestVersion !== 1
@@ -658,6 +720,187 @@ export function validateQualificationCaseManifest({
     }
     mappedCases.add(successor.name);
   }
+  const staticValidationInputs = [
+    diagnosticContract, diagnosticCatalog, validateDocument, validateDiagnostic,
+  ];
+  if (staticValidationInputs.some(value => value !== undefined)) {
+    if (staticValidationInputs.some(value => value === undefined)) {
+      fail("static conformance validation inputs must be supplied together");
+    }
+    validateStaticConformanceProtocol({
+      protocol: manifest.staticConformanceProtocol,
+      contract: diagnosticContract,
+      catalog: diagnosticCatalog,
+      validateDocument,
+      validateDiagnostic,
+    });
+  }
+}
+
+function staticInvocationPrefixLength(descriptor, diagnostic, contract) {
+  if (descriptor.entryPoint !== "compileCompositionJsonV1") return 0;
+  const [first, second] = diagnostic.path;
+  if (same(first, { kind: "field", value: "declarations" })
+    && second?.kind === "index") {
+    const documentCount = descriptor.input?.declarationsUtf8?.length
+      ?? contract.boundedEmissionProtocol.maximumIndex + 1;
+    if (second.value >= documentCount) {
+      fail(`${descriptor.caseId} uses an out-of-range raw declaration locator`);
+    }
+    return 2;
+  }
+  if (same(first, { kind: "field", value: "profile" })) return 1;
+  return 0;
+}
+
+function validateSchemaValidCompanion(companion, validateDocument, label) {
+  if (!same(objectKeys(companion, label).sort(compareAscii), ["declarations", "profile"])
+    || !Array.isArray(companion.declarations)
+    || companion.declarations.length === 0) {
+    fail(`${label} must be one complete non-empty companion world`);
+  }
+  for (const [index, declaration] of companion.declarations.entries()) {
+    validateWith(validateDocument, declaration, `${label}.declarations[${index}]`);
+  }
+  validateWith(validateDocument, companion.profile, `${label}.profile`);
+}
+
+export function validateStaticConformanceProtocol({
+  protocol,
+  contract,
+  catalog,
+  validateDocument,
+  validateDiagnostic,
+}) {
+  if (typeof validateDocument !== "function" || typeof validateDiagnostic !== "function") {
+    fail("static conformance requires accepted base-schema validators");
+  }
+  if (!same(objectKeys(protocol, "static conformance protocol").sort(compareAscii), [
+    "authority", "cases", "descriptorPolicy", "futureReportDataShape", "generators",
+  ]) || protocol.authority !== "static-expectations-never-executed-evidence") {
+    fail("static conformance protocol has an invalid closed shape");
+  }
+  if (!same(protocol.descriptorPolicy, {
+    caseId: "stable-unique",
+    entryPoints: ["compileCompositionV1", "compileCompositionJsonV1"],
+    input: "exactly-one-complete-inline-input-or-closed-generator-id",
+    schemaValidCompanion: "required-for-every-inline-input",
+    rawInlineEncoding: "UTF-8 bytes of declarationsUtf8 and profileUtf8 without transformation",
+    expected: "one-exact-complete-result",
+    forbiddenExpectationForms: ["partial", "code-only", "pattern", "alternate", "subject-derived"],
+    forbiddenInstanceFields: ["status", "actual", "timestamp", "callerLabel", "runtime", "reportId"],
+  })) {
+    fail("static descriptor policy is not the closed companion-world policy");
+  }
+  if (!same(protocol.generators, [{
+    generatorId: "get-modular/generator/diagnostic-prefix-clip/v1",
+    parameterless: true,
+    algorithm: "one raw declaration document containing 33 nested single-element arrays around null, one schema-valid companion declaration, and a schema-valid one-root V1 profile selecting the companion",
+    bounds: {
+      declarationDocuments: 2,
+      attemptedLocalSegments: 33,
+      emittedPathSegments: 32,
+    },
+  }])) {
+    fail("static generators are not the one closed bounded construction");
+  }
+  const cases = protocol.cases ?? [];
+  exactStringSequence(cases.map(descriptor => descriptor.caseId), STATIC_CASE_IDS_AUTHORITY,
+    "static conformance cases");
+  const generatorIds = new Set(protocol.generators.map(generator => generator.generatorId));
+  const variantByCode = new Map(contract.variants.map(variant => [variant.code, variant]));
+  const compare = createDiagnosticComparator({ contract, catalog });
+  const diagnosticPrerequisites = new Map(
+    contract.prerequisiteCatalog.diagnostics.map(entry => [entry.code, entry]),
+  );
+  const limitPrerequisites = new Map(
+    contract.prerequisiteCatalog.limits.map(entry => [entry.limitName, entry]),
+  );
+  const exactPrerequisiteCases = new Map(
+    contract.prerequisiteCatalog.exactCases.map(entry => [entry.caseId, entry]),
+  );
+
+  for (const descriptor of cases) {
+    const hasInput = Object.hasOwn(descriptor, "input");
+    const hasGenerator = Object.hasOwn(descriptor, "generatorId");
+    if (hasInput === hasGenerator
+      || !/^diag\.[a-z0-9.-]+\.v1$/u.test(descriptor.caseId ?? "")
+      || !protocol.descriptorPolicy.entryPoints.includes(descriptor.entryPoint)) {
+      fail(`${descriptor.caseId ?? "static case"} has an invalid identity or input source`);
+    }
+    const expectedKeys = hasInput
+      ? ["caseId", "entryPoint", "expected", "input", "schemaValidCompanion"]
+      : ["caseId", "entryPoint", "expected", "generatorId"];
+    if (!same(objectKeys(descriptor, descriptor.caseId).sort(compareAscii),
+      expectedKeys.sort(compareAscii))) {
+      fail(`${descriptor.caseId} has an invalid exact descriptor shape`);
+    }
+    if (hasGenerator && !generatorIds.has(descriptor.generatorId)) {
+      fail(`${descriptor.caseId} uses an unknown generator`);
+    }
+    if (hasInput) {
+      const inputKeys = descriptor.entryPoint === "compileCompositionV1"
+        ? ["declarations", "profile"]
+        : ["declarationsUtf8", "profileUtf8"];
+      if (!same(objectKeys(descriptor.input, `${descriptor.caseId}.input`)
+        .sort(compareAscii), inputKeys.sort(compareAscii))) {
+        fail(`${descriptor.caseId} has an invalid exact inline input`);
+      }
+      validateSchemaValidCompanion(
+        descriptor.schemaValidCompanion,
+        validateDocument,
+        `${descriptor.caseId}.schemaValidCompanion`,
+      );
+      if (descriptor.entryPoint === "compileCompositionV1") {
+        validateWith(validateDocument, descriptor.input.profile, `${descriptor.caseId}.profile`);
+      } else if (!Array.isArray(descriptor.input.declarationsUtf8)
+        || descriptor.input.declarationsUtf8.some(value => typeof value !== "string")
+        || typeof descriptor.input.profileUtf8 !== "string") {
+        fail(`${descriptor.caseId} raw input is not exact UTF-8 text data`);
+      }
+    }
+    if (!same(objectKeys(descriptor.expected, `${descriptor.caseId}.expected`)
+      .sort(compareAscii), ["diagnostics", "ok"])
+      || descriptor.expected.ok !== false
+      || !Array.isArray(descriptor.expected.diagnostics)
+      || descriptor.expected.diagnostics.length === 0) {
+      fail(`${descriptor.caseId} must contain one exact complete failure result`);
+    }
+    const diagnostics = descriptor.expected.diagnostics;
+    for (const [index, diagnostic] of diagnostics.entries()) {
+      const label = `${descriptor.caseId}.expected.diagnostics[${index}]`;
+      validateWith(validateDiagnostic, diagnostic, label);
+      const prefixLength = staticInvocationPrefixLength(descriptor, diagnostic, contract);
+      const prerequisite = diagnostic.code === "input.limit-exceeded"
+        ? limitPrerequisites.get(diagnostic.details.limitName)
+        : diagnosticPrerequisites.get(diagnostic.code);
+      if (descriptor.entryPoint === "compileCompositionJsonV1"
+        && prerequisite?.suppressionScope === "document"
+        && prefixLength === 0) {
+        fail(`${label} omits its raw invocation locator`);
+      }
+      validateDiagnosticAgainstContract(
+        diagnostic,
+        contract,
+        variantByCode,
+        label,
+        { invocationPrefixLength: prefixLength },
+      );
+    }
+    if (!same(diagnostics, diagnostics.toSorted(compare))) {
+      fail(`${descriptor.caseId} diagnostics are not in exact normative order`);
+    }
+    const prerequisiteCase = exactPrerequisiteCases.get(descriptor.caseId);
+    if (prerequisiteCase !== undefined
+      && !same(diagnostics.map(diagnostic => diagnostic.code), prerequisiteCase.eligibleCodes)) {
+      fail(`${descriptor.caseId} does not bind its exact prerequisite outcome`);
+    }
+  }
+  for (const caseId of exactPrerequisiteCases.keys()) {
+    if (!STATIC_CASE_IDS_AUTHORITY.includes(caseId)) {
+      fail(`${caseId} has no exact static companion case`);
+    }
+  }
 }
 
 function assertCanonical(value, expected, label) {
@@ -694,7 +937,13 @@ function pathPolicyFor(diagnostic, contract) {
   return resolved;
 }
 
-function validateDiagnosticAgainstContract(diagnostic, contract, variantByCode, label) {
+function validateDiagnosticAgainstContract(
+  diagnostic,
+  contract,
+  variantByCode,
+  label,
+  { invocationPrefixLength = 0 } = {},
+) {
   const variant = variantByCode.get(diagnostic.code);
   if (variant === undefined) fail(`${label} uses an unknown diagnostic code`);
   if (!variant.phases.includes(diagnostic.phase)) {
@@ -715,11 +964,16 @@ function validateDiagnosticAgainstContract(diagnostic, contract, variantByCode, 
     && !variant.details.reasonValues.includes(diagnostic.details.reason)) {
     fail(`${label} has an invalid reason for ${diagnostic.code}`);
   }
+  const localPath = diagnostic.path.slice(invocationPrefixLength);
   const pathPolicy = pathPolicyFor(diagnostic, contract);
-  if (pathPolicy === "empty" && diagnostic.path.length !== 0) {
+  if (pathPolicy === "empty" && localPath.length !== 0) {
     fail(`${label} must use an empty path`);
   }
-  if (pathPolicy === "structural" && diagnostic.path.length === 0) {
+  const prefixCanSatisfyStructural = invocationPrefixLength > 0
+    && contract.boundedEmissionProtocol
+      .pathPolicyComposition.structuralMayBeSatisfiedByInvocationPrefix === true;
+  if (pathPolicy === "structural" && localPath.length === 0
+    && !prefixCanSatisfyStructural) {
     fail(`${label} must use a structural path`);
   }
   if (diagnostic.code === "input.limit-exceeded") {
@@ -978,22 +1232,42 @@ export function validateDiagnosticQualification({
     fail("diagnostic limit path policies contradict the independent authority");
   }
   if (!same(objectKeys(contract.prerequisiteCatalog, "diagnostic prerequisite catalog")
-    .sort(compareAscii), ["diagnostics", "limits", "policy"])) {
+    .sort(compareAscii), ["diagnostics", "exactCases", "factModel", "limits", "policy"])) {
     fail("diagnostic prerequisite catalog has an invalid shape");
   }
-  if (contract.prerequisiteCatalog.policy !== "closed-data-no-executable-predicates") {
+  if (contract.prerequisiteCatalog.policy !== "closed-bounded-facts-no-predicates") {
     fail("diagnostic prerequisite catalog must be closed data");
   }
+  const factModel = contract.prerequisiteCatalog.factModel;
+  if (!same(factModel, {
+    states: ["valid", "invalid", "unavailable"],
+    eligibility: {
+      allPrerequisitesValid: "candidate-eligible",
+      anyPrerequisiteInvalidOrUnavailable: "candidate-suppressed",
+      independentCandidates: "continue",
+      ordering: "normative-comparator-after-eligibility",
+    },
+    maximumPrerequisitesPerCandidate: 4,
+    facts: PREREQUISITE_FACT_AUTHORITY,
+  })) {
+    fail("diagnostic prerequisite fact model contradicts the closed bounded authority");
+  }
+  const factIds = PREREQUISITE_FACT_AUTHORITY.map(fact => fact.factId);
+  const factIdSet = new Set(factIds);
   const diagnosticPrerequisites = contract.prerequisiteCatalog?.diagnostics ?? [];
   exactStringSequence(diagnosticPrerequisites.map(entry => entry.code), CODE_ORDER_AUTHORITY,
     "diagnostic prerequisite catalog");
   for (const entry of diagnosticPrerequisites) {
     if (!same(objectKeys(entry, `diagnostic prerequisite ${entry.code}`).sort(compareAscii), [
-      "code", "prerequisiteGroup", "suppressionScope",
+      "code", "prerequisiteGroup", "prerequisites", "suppressionScope",
     ])) fail(`${entry.code} has an invalid prerequisite record shape`);
-    if (!same([entry.prerequisiteGroup, entry.suppressionScope],
+    if (!same([entry.prerequisiteGroup, entry.suppressionScope, entry.prerequisites],
       DIAGNOSTIC_PREREQUISITE_AUTHORITY[entry.code])) {
       fail(`${entry.code} contradicts the independent prerequisite authority`);
+    }
+    if (entry.prerequisites.length > factModel.maximumPrerequisitesPerCandidate
+      || entry.prerequisites.some(factId => !factIdSet.has(factId))) {
+      fail(`${entry.code} uses an unknown or unbounded prerequisite`);
     }
   }
   const limitPrerequisites = contract.prerequisiteCatalog?.limits ?? [];
@@ -1002,11 +1276,64 @@ export function validateDiagnosticQualification({
     "resource-limit prerequisite catalog");
   for (const entry of limitPrerequisites) {
     if (!same(objectKeys(entry, `limit prerequisite ${entry.limitName}`).sort(compareAscii), [
-      "limitName", "prerequisiteGroup", "suppressionScope",
+      "limitName", "prerequisiteGroup", "prerequisites", "suppressionScope",
     ])) fail(`${entry.limitName} has an invalid prerequisite record shape`);
-    if (!same([entry.prerequisiteGroup, entry.suppressionScope],
+    if (!same([entry.prerequisiteGroup, entry.suppressionScope, entry.prerequisites],
       LIMIT_PREREQUISITE_AUTHORITY[entry.limitName])) {
       fail(`${entry.limitName} contradicts the independent prerequisite authority`);
+    }
+    if (entry.prerequisites.length > factModel.maximumPrerequisitesPerCandidate
+      || entry.prerequisites.some(factId => !factIdSet.has(factId))) {
+      fail(`${entry.limitName} uses an unknown or unbounded prerequisite`);
+    }
+  }
+  const prerequisiteCases = contract.prerequisiteCatalog.exactCases ?? [];
+  exactStringSequence(
+    prerequisiteCases.map(entry => entry.caseId),
+    PREREQUISITE_CASE_AUTHORITY.map(entry => entry.caseId),
+    "prerequisite exact cases",
+  );
+  const prerequisiteByCode = new Map(
+    diagnosticPrerequisites.map(entry => [entry.code, entry.prerequisites]),
+  );
+  for (let index = 0; index < prerequisiteCases.length; index += 1) {
+    const entry = prerequisiteCases[index];
+    const authority = PREREQUISITE_CASE_AUTHORITY[index];
+    if (!same(objectKeys(entry, `prerequisite exact case ${entry.caseId}`).sort(compareAscii), [
+      "candidateCodes", "caseId", "eligibleCodes", "factStates", "suppressedCodes",
+    ])) {
+      fail(`${entry.caseId} has an invalid exact prerequisite case shape`);
+    }
+    const stateKeys = objectKeys(entry.factStates, `${entry.caseId}.factStates`);
+    exactStringSet(stateKeys, factIds, `${entry.caseId} fact-state partition`);
+    if (stateKeys.some(factId => !factModel.states.includes(entry.factStates[factId]))) {
+      fail(`${entry.caseId} uses an unknown fact state`);
+    }
+    const expectedFactStates = Object.fromEntries(factIds.map(factId => [
+      factId,
+      authority.invalidFacts.includes(factId)
+        ? "invalid"
+        : authority.unavailableFacts.includes(factId) ? "unavailable" : "valid",
+    ]));
+    if (!same(entry.factStates, expectedFactStates)
+      || !same(entry.candidateCodes, authority.candidateCodes)
+      || !same(entry.eligibleCodes, authority.eligibleCodes)
+      || !same(entry.suppressedCodes, authority.suppressedCodes)) {
+      fail(`${entry.caseId} contradicts the independent exact prerequisite authority`);
+    }
+    const eligibleCodes = [];
+    const suppressedCodes = [];
+    for (const code of entry.candidateCodes) {
+      const prerequisites = prerequisiteByCode.get(code);
+      if (prerequisites === undefined) fail(`${entry.caseId} names an unknown candidate code`);
+      const target = prerequisites.every(factId => entry.factStates[factId] === "valid")
+        ? eligibleCodes
+        : suppressedCodes;
+      target.push(code);
+    }
+    if (!same(eligibleCodes, entry.eligibleCodes)
+      || !same(suppressedCodes, entry.suppressedCodes)) {
+      fail(`${entry.caseId} does not execute its exact eligibility outcome`);
     }
   }
   for (const policy of Object.values(contract.pathPolicyByCode)) {

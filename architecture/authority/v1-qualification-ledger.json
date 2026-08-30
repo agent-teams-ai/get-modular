@@ -15,12 +15,12 @@
     {
       "id": "GM-V1-DIAGNOSTIC-CONTRACT",
       "path": "architecture/qualification/v1/diagnostic-contract.json",
-      "immutableDigest": "sha256:d6161401e0809d2180aa807be623eeacb29e42d2254249b45af21ba7ec92019e"
+      "immutableDigest": "sha256:44f0807d0b3e79bc8fa3266be2ec75c15e601537d4d3033bcfffc7cc575c3aaa"
     },
     {
       "id": "GM-V1-DIAGNOSTIC-SNAPSHOTS",
       "path": "architecture/qualification/v1/diagnostic-snapshots.json",
-      "immutableDigest": "sha256:b1f1764197708ea91f377fd0d0ea8abcfd57fbc0b30d39ef22b63a2f9cbe5d2d"
+      "immutableDigest": "sha256:32e859e9f65b83cc0e755fc5117dd811df0617702379964c030173d622b37666"
     },
     {
       "id": "GM-V1-NORMALIZATION-VECTORS",
@@ -30,7 +30,7 @@
     {
       "id": "GM-V1-QUALIFICATION-CASE-MANIFEST",
       "path": "architecture/qualification/v1/qualification-case-manifest.json",
-      "immutableDigest": "sha256:98ddb8324082aaf364b43d87e49e088f9ee19db184786bb5007ab978f8122852"
+      "immutableDigest": "sha256:f50dc45f4200a689ba32225c074326430d8b6aeffc5e48778216aa5c7bc125e3"
     },
     {
       "id": "GM-V1-RESOURCE-BOUNDARY-VECTORS",

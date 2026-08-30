@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
+import {
+  createSchemaValidators,
+  validateStaticConformanceProtocol,
+} from "../../architecture/checks/v1-qualification.mjs";
+
 const readJson = async relativePath => JSON.parse(
   await readFile(new URL(`../../${relativePath}`, import.meta.url), "utf8"),
 );
@@ -43,6 +48,7 @@ function validateDescriptor(descriptor, generatorIds, knownFields) {
   assert.notEqual(hasInput, hasGenerator, `${descriptor.caseId} must select one input source`);
   assert.deepEqual(keys(descriptor), [
     "caseId", "entryPoint", hasInput ? "input" : "generatorId", "expected",
+    ...(hasInput ? ["schemaValidCompanion"] : []),
   ].sort());
   assert.match(descriptor.caseId, /^diag\.[a-z0-9.-]+\.v1$/u);
   assert.ok(["compileCompositionV1", "compileCompositionJsonV1"]
@@ -55,6 +61,10 @@ function validateDescriptor(descriptor, generatorIds, knownFields) {
         ? ["declarations", "profile"]
         : ["declarationsUtf8", "profileUtf8"],
     );
+    assert.deepEqual(keys(descriptor.schemaValidCompanion), ["declarations", "profile"]);
+    assert.ok(descriptor.schemaValidCompanion.declarations.length > 0);
+    assert.ok(descriptor.schemaValidCompanion.profile.roots.length > 0);
+    assert.ok(descriptor.schemaValidCompanion.profile.selections.length > 0);
   }
   assert.deepEqual(keys(descriptor.expected), exactResultKeys);
   assert.equal(descriptor.expected.ok, false);
@@ -80,12 +90,21 @@ function validateDescriptor(descriptor, generatorIds, knownFields) {
 }
 
 test("bounded diagnostic protocol fixes prefixes, coordinates, barriers, and suppression", async () => {
-  const [contract, snapshots, manifest, schema] = await Promise.all([
+  const [contract, snapshots, manifest, schema, catalog] = await Promise.all([
     readJson("architecture/qualification/v1/diagnostic-contract.json"),
     readJson("architecture/qualification/v1/diagnostic-snapshots.json"),
     readJson("architecture/qualification/v1/qualification-case-manifest.json"),
     readJson("architecture/contracts/v1/composition.schema.json"),
+    readJson("architecture/contracts/v1/diagnostic-catalog.json"),
   ]);
+  const { validateDocument, validateDiagnostic } = createSchemaValidators(schema);
+  assert.doesNotThrow(() => validateStaticConformanceProtocol({
+    protocol: manifest.staticConformanceProtocol,
+    contract,
+    catalog,
+    validateDocument,
+    validateDiagnostic,
+  }));
   const emission = contract.boundedEmissionProtocol;
   assert.equal(emission.maximumPathSegments, 32);
   assert.deepEqual(emission.invocationPrefixes.rawDeclaration, [
@@ -128,6 +147,17 @@ test("bounded diagnostic protocol fixes prefixes, coordinates, barriers, and sup
     required: ["ok", "diagnostics"],
     forbidden: ["plan", "digest"],
   });
+  const factModel = contract.prerequisiteCatalog.factModel;
+  assert.deepEqual(factModel.states, ["valid", "invalid", "unavailable"]);
+  assert.equal(factModel.maximumPrerequisitesPerCandidate, 4);
+  assert.deepEqual(factModel.eligibility, {
+    allPrerequisitesValid: "candidate-eligible",
+    anyPrerequisiteInvalidOrUnavailable: "candidate-suppressed",
+    independentCandidates: "continue",
+    ordering: "normative-comparator-after-eligibility",
+  });
+  assert.equal(new Set(factModel.facts.map(value => value.factId)).size,
+    factModel.facts.length);
   const unreachableVariant = contract.variants
     .find(variant => variant.code === "profile.unreachable-selection");
   assert.deepEqual(unreachableVariant.phases, ["graph"]);
@@ -204,6 +234,23 @@ test("bounded diagnostic protocol fixes prefixes, coordinates, barriers, and sup
   const suppressed = byId.get("diag.object.invalid-binding-suppresses-unreachable.v1")
     .expected.diagnostics;
   assert.deepEqual(suppressed.map(value => value.code), ["binding.unknown-provider"]);
+  assert.deepEqual(byId.get("diag.object.duplicate-selection-with-mismatch.v1")
+    .expected.diagnostics.map(value => value.code), [
+    "profile.duplicate-selection", "profile.implementation-mismatch",
+  ]);
+  assert.deepEqual(byId.get("diag.object.negative-census-suppression.v1")
+    .expected.diagnostics.map(value => value.code), [
+    "declaration.duplicate-implementation",
+  ]);
+  assert.deepEqual(byId.get("diag.object.independent-scc-with-invalid-edge.v1")
+    .expected.diagnostics.map(value => value.code), [
+    "binding.unknown-provider", "graph.cycle",
+  ]);
+  assert.ok(protocol.cases.filter(descriptor => Object.hasOwn(descriptor, "input"))
+    .every(descriptor => (
+      descriptor.schemaValidCompanion.profile.roots.length > 0
+      && descriptor.schemaValidCompanion.profile.selections.length > 0
+    )));
   assert.ok(protocol.cases.every(descriptor => (
     !Object.hasOwn(descriptor.expected, "plan")
     && !Object.hasOwn(descriptor.expected, "digest")
@@ -217,6 +264,9 @@ test("bounded diagnostic protocol fixes prefixes, coordinates, barriers, and sup
       "never-mark-unknown-key", "independent-facts-continue",
       "suppress-local-derivative", "unreachable-is-graph-phase",
       "unreachable-requires-valid-bindings", "failure-forbids-plan-and-digest",
+      "overlapping-failures-remain-independent",
+      "negative-claims-require-complete-census",
+      "positive-scc-remains-independent",
     ]),
   );
 });
@@ -239,6 +289,7 @@ test("static descriptors reject incomplete, alternate, instance, and leaking mut
     value => { value.status = "passed"; },
     value => { value.actualOutput = value.expected; },
     value => { value.generatorId = protocol.generators[0].generatorId; },
+    value => { delete value.schemaValidCompanion; },
     value => { value.expected.plan = {}; },
     value => { value.expected.diagnostics[0].path.push({ kind: "field", value: "password" }); },
   ]) {
@@ -248,17 +299,27 @@ test("static descriptors reject incomplete, alternate, instance, and leaking mut
   }
 });
 test("diagnostic protocol rejects every named cascade, barrier, redaction, and clipping mutant", async () => {
-  const [manifest, snapshots, schema] = await Promise.all([
+  const [manifest, snapshots, schema, contract, catalog] = await Promise.all([
     readJson("architecture/qualification/v1/qualification-case-manifest.json"),
     readJson("architecture/qualification/v1/diagnostic-snapshots.json"),
     readJson("architecture/contracts/v1/composition.schema.json"),
+    readJson("architecture/qualification/v1/diagnostic-contract.json"),
+    readJson("architecture/contracts/v1/diagnostic-catalog.json"),
   ]);
+  const { validateDocument, validateDiagnostic } = createSchemaValidators(schema);
   const protocol = manifest.staticConformanceProtocol;
   const knownFields = collectSchemaFields(schema);
   knownFields.add("declarations");
   knownFields.add("profile");
   const generators = new Set(protocol.generators.map(value => value.generatorId));
   const validate = value => {
+    validateStaticConformanceProtocol({
+      protocol: value,
+      contract,
+      catalog,
+      validateDocument,
+      validateDiagnostic,
+    });
     for (const descriptor of value.cases) {
       validateDescriptor(descriptor, generators, knownFields);
     }
@@ -280,6 +341,18 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
       .expected.diagnostics.map(value => value.code), ["binding.unknown-provider"]);
     assert.equal(byId.get("diag.object.valid-prerequisites-unreachable.v1")
       .expected.diagnostics[0].phase, "graph");
+    assert.deepEqual(byId.get("diag.object.duplicate-selection-with-mismatch.v1")
+      .expected.diagnostics.map(value => value.code), [
+      "profile.duplicate-selection", "profile.implementation-mismatch",
+    ]);
+    assert.deepEqual(byId.get("diag.object.negative-census-suppression.v1")
+      .expected.diagnostics.map(value => value.code), [
+      "declaration.duplicate-implementation",
+    ]);
+    assert.deepEqual(byId.get("diag.object.independent-scc-with-invalid-edge.v1")
+      .expected.diagnostics.map(value => value.code), [
+      "binding.unknown-provider", "graph.cycle",
+    ]);
   };
   assert.doesNotThrow(() => validate(protocol));
 
@@ -289,7 +362,7 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
   const mutations = {
     "caller-index-after-identity": value => value.cases[3]
       .expected.diagnostics[0].path.push({ kind: "index", value: 0 }),
-    "raw-prefix-excluded-from-limit": value => value.cases[7]
+    "raw-prefix-excluded-from-limit": value => value.cases[10]
       .expected.diagnostics[0].path.splice(0, 2),
     "hostile-key-echo": value => value.cases[1]
       .expected.diagnostics[0].path.push({ kind: "field", value: "password=DO-NOT-EMIT" }),
@@ -305,6 +378,17 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     },
     "unreachable-without-binding-prerequisite": value => value.cases[5]
       .expected.diagnostics.push(clone(unreachable)),
+    "duplicate-selection-suppresses-mismatch": value => value.cases
+      .find(candidate => (
+        candidate.caseId === "diag.object.duplicate-selection-with-mismatch.v1"
+      )).expected.diagnostics.pop(),
+    "incomplete-identity-census-emits-negative": value => value.cases
+      .find(candidate => candidate.caseId === "diag.object.negative-census-suppression.v1")
+      .expected.diagnostics.push(clone(snapshots.snapshots
+        .find(candidate => candidate.name === "unknown-implementation").diagnostic)),
+    "invalid-independent-edge-suppresses-scc": value => value.cases
+      .find(candidate => candidate.caseId === "diag.object.independent-scc-with-invalid-edge.v1")
+      .expected.diagnostics.pop(),
     "plan-with-diagnostics": value => {
       value.cases[0].expected.plan = {};
     },
