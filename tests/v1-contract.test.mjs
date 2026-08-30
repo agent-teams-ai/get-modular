@@ -19,6 +19,7 @@ import {
   validateResourceBoundaryQualification,
   validateStaticConformanceProtocol,
 } from "../architecture/checks/v1-qualification.mjs";
+import { validateContractLedger } from "../architecture/checks/v1-contract.mjs";
 import {
   boundedDiagnosticSummary,
   chainGraph,
@@ -447,6 +448,37 @@ test("qualification ledger rejects changed artifact bytes", async () => {
       readBytes: async () => bytes,
       listedPaths: ["architecture/qualification/v1/example.json"],
     }));
+  }
+});
+
+test("accepted contract ledger rejects unknown fields and malformed artifacts", async () => {
+  const bytes = Buffer.from("accepted", "utf8");
+  const ledger = {
+    schemaVersion: 1,
+    algorithm: "sha256-bytes",
+    artifacts: [{
+      id: "GM-V1-EXAMPLE",
+      path: "architecture/contracts/v1/example.json",
+      immutableDigest: sha256Identity(bytes),
+    }],
+  };
+  const readBytes = async () => bytes;
+  await assert.doesNotReject(() => validateContractLedger({
+    ledger,
+    readBytes,
+    listedPaths: ["architecture/contracts/v1/example.json"],
+  }));
+
+  for (const mutant of [
+    { ...ledger, unexpected: true },
+    { ...ledger, artifacts: [{ ...ledger.artifacts[0], unexpected: true }] },
+    { ...ledger, artifacts: { ...ledger.artifacts } },
+  ]) {
+    await assert.rejects(() => validateContractLedger({
+      ledger: mutant,
+      readBytes,
+      listedPaths: ["architecture/contracts/v1/example.json"],
+    }), /must contain exactly|artifacts must be an array/u);
   }
 });
 

@@ -30,6 +30,13 @@ function same(left, right) {
   return isDeepStrictEqual(left, right);
 }
 
+function exactKeys(value, expectedKeys, label) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)
+    || JSON.stringify(Object.keys(value).sort()) !== JSON.stringify([...expectedKeys].sort())) {
+    fail(`${label} must contain exactly: ${expectedKeys.join(", ")}`);
+  }
+}
+
 export function qualificationLedgerAnchor(digest) {
   return "The exact qualification ledger `architecture/authority/"
     + "v1-qualification-ledger.json`\nis anchored as\n`"
@@ -38,12 +45,17 @@ export function qualificationLedgerAnchor(digest) {
 }
 
 export async function validateContractLedger({ ledger, readBytes, listedPaths }) {
+  exactKeys(ledger, ["algorithm", "artifacts", "schemaVersion"], "accepted-contracts ledger");
   if (ledger?.schemaVersion !== 1 || ledger.algorithm !== "sha256-bytes") {
     fail("unsupported accepted-contracts ledger");
+  }
+  if (!Array.isArray(ledger.artifacts)) {
+    fail("accepted-contracts ledger artifacts must be an array");
   }
   const paths = [];
   const ids = new Set();
   for (const artifact of ledger.artifacts ?? []) {
+    exactKeys(artifact, ["id", "immutableDigest", "path"], "contract artifact");
     if (typeof artifact?.id !== "string" || ids.has(artifact.id)) {
       fail("contract artifact IDs must be unique strings");
     }

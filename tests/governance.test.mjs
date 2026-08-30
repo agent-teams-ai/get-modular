@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
+import Ajv2020 from "ajv/dist/2020.js";
 import {
   ACCEPTED_AUTHORITY_LEDGER_ANCHOR,
   ACCEPTED_AUTHORITY_LEDGER_DIGEST,
@@ -42,6 +43,30 @@ const sourceMap = {
     paths: ["docs/evidence.md"],
   }],
 };
+
+test("metadata schema matches runtime Windows-safe path rules", async () => {
+  const schema = JSON.parse(await readFile("docs/metadata.schema.json", "utf8"));
+  const validate = new Ajv2020({ allErrors: true, strict: true }).compile(schema);
+  const validDocument = {
+    id: "QUAL-EXAMPLE",
+    type: "qualification",
+    status: "source-admitted",
+    owner: "architecture",
+    summary: "source admission example",
+    subject: "packages/core",
+    evidence: [{ path: "evidence/source.json", digest: digest("source") }],
+  };
+  assert.equal(validate(validDocument), true);
+
+  for (const [field, value] of [
+    ["subject", "packages/CON"],
+    ["evidence", [{ path: "evidence/", digest: digest("source") }]],
+  ]) {
+    const invalidDocument = { ...validDocument, [field]: value };
+    assert.equal(validate(invalidDocument), false, `${field} must reject non-portable paths`);
+    validate.errors = null;
+  }
+});
 
 test("traceability is closed and bidirectional", () => {
   const sources = validateSourceMap(sourceMap);
