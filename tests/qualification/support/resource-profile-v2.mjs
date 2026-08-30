@@ -237,9 +237,10 @@ export function meterCompositionResources({ declarations, profile }) {
 
 const sha256 = bytes => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 export function observeDenseProfile(fixture, limits) {
-  const declarationDocuments = fixture.declarations.map(value => Buffer.from(JSON.stringify(value)));
-  const profileDocument = Buffer.from(JSON.stringify(fixture.profile));
-  const declarationCorpus = Buffer.from(JSON.stringify(fixture.declarations));
+  const declarationDocuments = fixture.declarations.map(value =>
+    Buffer.from(JSON.stringify(value), "utf8"));
+  const profileDocument = Buffer.from(JSON.stringify(fixture.profile), "utf8");
+  const declarationCorpus = Buffer.from(JSON.stringify(fixture.declarations), "utf8");
   return { ...meterCompositionResources(fixture),
     ...meterRawResources(declarationDocuments, profileDocument, limits),
     ...meterJsonResources([...fixture.declarations, fixture.profile], limits),
@@ -329,9 +330,37 @@ export async function qualifyResourceProfileV2({ generateLimitFixture, meterLimi
     aggregateRawBytes: 5 });
   const recipe = vectors.profileV2.p500;
   const fixture = generateDenseProfile(recipe);
-  assert.deepEqual(independentlyGenerateDenseProfile(recipe), fixture);
-  const observed = observeDenseProfile(fixture, profile.limits);
-  assert.deepEqual(observed, recipe.expected);
+  const independentFixture = independentlyGenerateDenseProfile(recipe);
+  assert.deepEqual(independentFixture, fixture);
+  const observeAndAssert = (candidate, generatorLabel) => {
+    const observation = observeDenseProfile(candidate, profile.limits);
+    assert.deepEqual(observation, recipe.expected,
+      `${generatorLabel} serialized UTF-8 observation must match checked-in P500 expectations`);
+    return observation;
+  };
+  const observed = observeAndAssert(fixture, "primary P500 generator");
+  const independentObserved = observeAndAssert(independentFixture,
+    "independent P500 generator");
+
+  const reverseInsertionOrder = value => Object.fromEntries(
+    Object.entries(value).reverse(),
+  );
+  const insertionOrderMutant = {
+    declarations: [reverseInsertionOrder(independentFixture.declarations[0]),
+      ...independentFixture.declarations.slice(1)],
+    profile: reverseInsertionOrder(independentFixture.profile),
+  };
+  assert.deepEqual(insertionOrderMutant, independentFixture,
+    "the deliberate P500 mutant must change insertion order only");
+  const mutantObserved = observeDenseProfile(insertionOrderMutant, profile.limits);
+  assert.equal(mutantObserved.declarationCorpusBytes,
+    independentObserved.declarationCorpusBytes);
+  assert.notEqual(mutantObserved.declarationCorpusSha256,
+    independentObserved.declarationCorpusSha256);
+  assert.equal(mutantObserved.profileBytes, independentObserved.profileBytes);
+  assert.notEqual(mutantObserved.profileSha256, independentObserved.profileSha256);
+  assert.throws(() => observeAndAssert(insertionOrderMutant, "P500 insertion-order mutant"),
+    /serialized UTF-8 observation must match checked-in P500 expectations/u);
   for (const [name, expected] of Object.entries(independentCounts(recipe))) {
     assert.equal(observed[name], expected);
   }
