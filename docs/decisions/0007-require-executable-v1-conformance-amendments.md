@@ -13,6 +13,8 @@ related:
   - OD-003
 ---
 
+<!-- cspell:words Eadj Einput Evalid -->
+
 # ADR-0007: Require executable V1 conformance amendments
 
 ## Context
@@ -43,7 +45,7 @@ production-conformance claim. If this decision is accepted, they become
 normative amendments when read together with the immutable base contract.
 Their byte identities are recorded in
 `architecture/authority/v1-qualification-ledger.json`, anchored as
-`sha256:6f9625a3ba44837b6c03ab7a76192cc907636e476f110d07aa4cbd32b93848de`.
+`sha256:4529d4e5135313b27860df1aa40646e8794db914ad373265dc22f347392a6e4c`.
 
 `qualification-case-manifest.json` records decoder and canonicalization case
 categories, exact source, repair, and canonical byte identities, and the mapping
@@ -104,6 +106,53 @@ The `profile.unknown-implementation` refinement continues to require
 closed optional field lets the comparator exercise both absent and present
 `moduleId` operands without making either operand invalid.
 
+Diagnostic phases classify and sort records; they are not global stop
+barriers. The V1 compiler evaluates a closed prerequisite table whose facts are
+internally `valid`, `invalid`, or `unavailable`. An invalid fact emits its one
+closed diagnostic. An unavailable fact emits nothing because a prerequisite
+failed. Independent documents and facts continue, while only dependent
+derivatives are suppressed. Every emitted diagnostic prevents successful plan
+and digest output.
+
+The qualification contract maps every diagnostic code and every named resource
+limit to fixed prerequisite-group IDs and one suppression scope. Missing,
+unknown, duplicate, or remapped entries fail qualification. The table contains
+no executable predicates, expressions, extension mechanism, or configurable
+rule language; it is a closed V1 generation oracle.
+
+Raw documents are admitted independently after batch-wide resource preflight.
+A failed declaration document cannot contribute schema or semantic facts, but
+other declarations and the profile continue. Negative absence claims require a
+complete relevant identity or key census. Valid binding edges require the
+consumer, slot, provider selection, capability, and compatibility facts to be
+valid. Positively proven cycles remain reportable despite unrelated invalid
+edges.
+
+Root reachability traverses from each selected root consumer to its selected
+providers. `profile.unreachable-selection` is graph-phase evidence even though
+its historical code prefix is `profile`. It is emitted only when roots and
+selections resolve uniquely and every reached consumer has a complete valid
+outgoing-binding frontier. An incomplete reached frontier suppresses every
+currently unproved unreachable conclusion, while independent binding failures
+and positively proven strongly connected components remain eligible.
+
+Before a portable implementation identity is valid, declaration diagnostics
+may use the bounded invocation ordinal. After identity is valid, semantic
+coordinates replace caller ordering. Raw declaration paths begin with
+`declarations/<document-ordinal>` and raw profile paths begin with `profile`;
+those prefixes count toward the 32-segment cap. Paths contain only invocation
+roots, schema-known field names, and bounded indices. Unknown keys, raw values,
+parser text, credentials, absolute paths, transformed hashes of hostile values,
+and truncation markers are never emitted. Batch-wide aggregate failures retain
+an empty path because no one document is their truthful locator.
+
+All eligible candidates are streamed through the normative comparator. The
+collector continues after `K + 1`; for at most 256 candidates it returns every
+record, and for 257 or more it returns the first 255 plus
+`diagnostics.truncated`. Its `omitted` value is the saturating count of all
+eligible candidates that were not retained. Suppressed derivatives never
+affect that count.
+
 ### Independent canonicalization and normalization
 
 Every canonical vector is recomputed by two independent development-only RFC
@@ -118,17 +167,33 @@ multiple roots, branching dependencies, explicit `many` order, the
 lexicographically smallest topological order, canonical envelope bytes, and the
 domain-separated digest.
 
-The deterministic heap tie-break in ADR-0006 changes the implementation target
-from the simplified bound in ADR-0005 to:
+Reachability and execution ordering use opposite views of one validated
+binding world. Root closure follows consumer to provider. SCC traversal and
+dependency ordering use distinct provider-to-consumer adjacency, so providers
+precede consumers. Unselected declarations still count toward input-resource
+limits but are inert for binding, reachability, and plan validation. The
+qualification layer distinguishes:
+
+- `Einput`: every provider-list occurrence on a selected-consumer binding,
+  counted before semantic validation;
+- `Evalid`: provider references that survive complete binding validation;
+- `Eadj`: distinct valid provider-to-consumer endpoint pairs used by graph
+  traversal, SCCs, and topological ordering.
+
+The deterministic heap tie-break and complete input accounting change the
+implementation target from the simplified bound in ADR-0005 to:
 
 ```text
-O(B + (V + E) log V + D log K)
+O(B + J + (V + Eadj) log V + D log K)
 ```
 
-`B` is the admitted raw input bytes, `V` selected implementations, `E` provider
-references, `D` candidate diagnostics, and `K` the fixed diagnostic cap. A
-future linear ready-set implementation is allowed only when it preserves the
-same exact order.
+`B` is admitted raw input bytes and is zero for the object entry point. `J` is
+every admitted JSON value occurrence across all supplied declaration and
+profile values. `V` is selected implementations, `D` candidate diagnostics,
+and `K` the fixed diagnostic cap. `Einput` and validation of all supplied
+declarations are bounded by `J` and the named structural limits. A future
+linear ready-set implementation is allowed only when it preserves the same
+exact order.
 
 ### Decoder and resource boundaries
 
@@ -161,22 +226,56 @@ package types cannot enter the public API. If the browser/worker, fuzz, boundary
 or redaction gates fail, the fallback is a small independently reviewed
 iterative scanner under the same vectors, not a weakened contract.
 
-`resource-boundary-vectors.json` covers every named V1 limit at the accepted
+`resource-profile-v2.json` is the complete flat successor resource authority
+for Composition V1. It retains profile ID
+`get-modular/resource-profile/v1-standard`, uses `profileVersion: 2`, preserves
+every unaffected version-1 value, replaces the uniform `rawDocumentBytes` with
+`declarationRawDocumentBytes: 1,048,576` and
+`profileRawDocumentBytes: 8,388,608`, and adds
+`jsonValueOccurrences: 2,097,152`. It is not an overlay, inheritance document,
+or negotiable runtime profile. The immutable version-1 artifact remains
+historical evidence.
+
+For resource diagnostics only, version 2 takes precedence over conflicting
+version-1 wording in ADR-0005 and ADR-0006 after this decision and its exact
+qualification ledger bytes are accepted. File presence, chronology, or merge
+order never activates the successor profile. Declaration/profile raw limits are
+decode-phase and document-local. `aggregateRawBytes` remains decode-phase with
+an empty path. `jsonValueOccurrences` is schema-phase for both entry points with
+an empty path because its population is the shared decoded value model even
+when the raw adapter meters it before materialization.
+
+Value-occurrence admission counts every root, container, and scalar occurrence
+across all supplied declaration and profile values. Unknown and wrong-type
+values count before schema rejection; shared references count per occurrence; a
+cycle back-reference counts once and then stops descent; sparse-array length
+consumes attempted positions before density rejection. Accessors, symbols,
+non-enumerable properties, and extended-array properties are rejected without
+invoking a getter. The trusted object entry point does not claim safety against
+hostile Proxy traps. The preflight is iterative, and every over-limit `actual`
+value saturates at `limit + 1`.
+
+`resource-boundary-vectors.json` covers every profile-v2 limit at the accepted
 value and at value plus one. Development-only qualification constructs bounded
-fixtures for every row and meters the resulting structure with an independent
-oracle. These outcomes are static qualification of fixture construction and
-oracle expectations; they are not production-subject execution or
-packed-subject enforcement. The aggregate-string boundary fixtures contain
-repeated decoded object-key and string-value occurrences with multi-byte Unicode
-scalars at both the accepted 8 MiB limit and limit plus one. Their oracle counts
-the UTF-8 bytes of every key and value occurrence; explicit UTF-16-code-unit and
-value-only mutations must disagree with both boundaries.
-It also fixes inclusive `many` ranges and semantically rejects `min > max`
-without changing the immutable accepted schema, rejects duplicate provider
-identities, and distinguishes 256
-ordinary diagnostics from the 257-failure truncation case. The phrase
-"container-count limits" in ADR-0006 means the explicitly named structural
-limits only; V1 introduces no unnamed container-count limit.
+fixtures for every row and meters the resulting structure with independent
+oracles. These outcomes qualify fixture construction and oracle expectations;
+they are not production-subject execution, packed enforcement, or a latency
+claim. Aggregate-string fixtures count UTF-8 bytes of every decoded object-key
+and string-value occurrence. Explicit UTF-16-code-unit and value-only mutations
+must disagree with both boundaries.
+
+The same evidence fixes inclusive `many` ranges, rejects `min > max`, rejects
+duplicate provider identities, and counts `providersPerManySlot` from provider
+list occurrences before duplicate rejection. It distinguishes 256 ordinary
+diagnostics from the 257-failure truncation case. The phrase "container-count
+limits" in ADR-0006 means only the explicitly named structural limits.
+
+One closed deterministic mixed-cardinality P500 generator must produce a valid,
+acyclic, fully reachable profile that exceeds the historical 1 MiB profile
+document limit and remains below every version-2 limit. Two independent
+generators reproduce its exact counts, UTF-8 byte sizes, and SHA-256 identities.
+Bounded P100 and P1000 observations are sizing evidence only. Expanded
+megabyte-scale JSON and elapsed-time conformance thresholds are prohibited.
 
 Bounded diagnostic evidence streams structured diagnostics through the one
 normative comparator and retains at most `K` candidates. It fixes the exact
@@ -193,35 +292,27 @@ repository profile remains `not-claimed`, but it cannot claim V1 conformance or
 be published as conforming until every applicable vector executes against the
 packed artifact on the supported runtime matrix.
 
-### Conformance subject and runtime matrix
+### Static conformance protocol and future runtime matrix
 
-`@get-modular/conformance` exposes fixtures plus one structural subject and
-runner boundary:
+The qualification case manifest defines static expectations, not executed
+evidence. Every case has one stable unique ID, one compiler entry point, exactly
+one complete inline input or closed bounded generator ID, and one exact complete
+result. Partial, code-only, pattern, alternate, and subject-derived expectations
+are prohibited. Raw inline inputs are the exact UTF-8 declaration/profile bytes
+without caller-side normalization.
 
-```ts
-interface V1ConformanceSubject {
-  compileCompositionV1(input: {
-    readonly declarations: readonly unknown[];
-    readonly profile: unknown;
-  }): Promise<CompileCompositionV1Result>;
+This decision does not publish a TypeScript subject interface, runner function,
+package API, report instance, or attestation. Those boundaries require the first
+packed production subject and a separate compatibility decision. A future
+execution report must at minimum bind one packed-package byte digest, the exact
+accepted base-contract ledger identity, the exact accepted qualification-ledger
+identity, one compiler entry point, and a closed runtime identity. It contains
+no arbitrary caller label, credentials, absolute paths, stack traces,
+implementation objects, or copied actual subject output.
 
-  compileCompositionJsonV1(input: {
-    readonly declarations: readonly Uint8Array[];
-    readonly profile: Uint8Array;
-  }): Promise<CompileCompositionV1Result>;
-}
-
-declare function runV1Conformance(input: {
-  readonly subjectLabel: string;
-  readonly subject: V1ConformanceSubject;
-}): Promise<V1ConformanceReport>;
-```
-
-The report contains the contract version, subject label supplied by the caller,
-case IDs, pass or fail status, bounded failure evidence, and aggregate counts.
-It contains no credentials, absolute paths, stack traces, or implementation
-objects. The runner does not discover implementations, load plugins, or create
-a lifecycle authority. Core remains independent from conformance.
+`@get-modular/conformance` remains the planned development-only owner of
+fixtures and future packed-subject execution. `@get-modular/core` remains
+independent from it. Neither package is created in this decision.
 
 The first V1 conformance claim requires the same packed subject and vectors on:
 
@@ -230,12 +321,12 @@ The first V1 conformance claim requires the same packed subject and vectors on:
   in a browser window;
 - the same pinned Chromium build in a dedicated worker.
 
-The report records Node, operating-system, browser, and package versions.
-Electron is covered by the Node and Chromium surfaces plus one packed smoke on
-the exact Electron release used by a Desktop product. A future WASM or
-non-JavaScript implementation must run the portable vector subset through its
-own adapter before making a claim. Runtime coverage is a publication and
-conformance gate, not a blocker to writing the first source package.
+Future reports record exact Node, operating-system, browser, architecture, and
+package identities. Electron is covered by the Node and Chromium surfaces plus
+one packed smoke on the exact Electron release used by a Desktop product. A
+future WASM or non-JavaScript implementation must run the portable vector subset
+through its own adapter before making a claim. Runtime coverage is a publication
+and conformance gate, not a claim made by the current static evidence.
 
 ### Product navigation and production admission
 
@@ -248,6 +339,11 @@ an identity authority, registry, or runtime discovery mechanism. Collisions in
 `(moduleId, implementationId)` remain compiler failures regardless of inventory
 source.
 
+This decision does not define `defineProfile`, profile-fragment merge semantics,
+desired-state rollout, or a portable inventory format. Those remain
+product-owned until real authoring and runtime consumers prove a common
+boundary.
+
 The repository's `not-claimed` feature-profile state means only that structural
 conformance has not yet been proven. It must not prohibit creation of the first
 production package. Open implementation decisions remain enforced separately
@@ -255,10 +351,23 @@ by the governance gate. Promotion to a conformance claim requires production
 source boundaries, positive and negative fixtures, packed-artifact execution,
 and an accepted promotion decision.
 
+Before any path exists below `packages`, the feature-profile gate permits this
+pre-production state without an empty source policy or ceremonial package. The
+first materializing change must atomically enable Engineering Foundation's
+`architecture.source-dependencies` capability at
+`architecture/foundation/source-dependencies.yaml`. The profile gate fails
+closed if package content appears without that binding or policy file. The
+Foundation capability remains the sole source parser and dependency-policy
+engine; Get Modular does not duplicate it. Positive and negative structural
+fixtures are added with that first package and are required before structural
+conformance can be claimed. Packed runtime evidence remains a later, separate
+promotion gate.
+
 ## Consequences
 
-- Implementers receive exact byte, graph, diagnostic, and runner handoff rules
-  without adding a loader, DI container, plugin host, or lifecycle framework.
+- Implementers receive exact byte, graph, diagnostic, resource, and static-case
+  handoff rules without adding a runner, loader, DI container, plugin host, or
+  lifecycle framework.
 - Independent JCS libraries and executable vectors reduce correlated oracle
   mistakes, at the cost of development-only dependencies and more CI work.
 - The first package can now be built under an honest `not-claimed` state, while
@@ -277,5 +386,8 @@ and an accepted promotion decision.
 - Require structural conformance before any production file exists. That makes
   the first implementation impossible to admit and confuses evidence state with
   source admission.
+- Publish a runner or subject interface before a packed implementation exists.
+  Static expectations cannot prove that an unimplemented API is usable or
+  portable.
 - Claim every JavaScript host from Node-only CI. Portability is accepted only
   after the packed subject executes on the declared matrix.
