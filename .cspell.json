@@ -11,6 +11,9 @@
     "Codex",
     "Cordis",
     "Cosign",
+    "Eadj",
+    "Einput",
+    "Evalid",
     "Extism",
     "JCS",
     "ORAS",
@@ -20,6 +23,7 @@
     "cutover",
     "dogfooding",
     "getmodular",
+    "parameterless",
     "productization",
     "protectable",
     "xhigh"

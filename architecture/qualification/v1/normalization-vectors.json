@@ -214,5 +214,66 @@
       "canonicalUtf8": "{\"canonicalization\":\"RFC8785\",\"hashAlgorithm\":\"SHA-256\",\"kind\":\"get-modular.plan-content\",\"plan\":{\"bindings\":[{\"capabilityId\":\"example/database-access\",\"compatibility\":{\"family\":\"exact\",\"familyVersion\":1,\"token\":\"example/database-access/v1\"},\"consumerImplementationId\":\"example/app/default\",\"providerImplementationIds\":[\"example/database/default\"],\"slotId\":\"database\"},{\"capabilityId\":\"example/log-sink\",\"compatibility\":{\"family\":\"exact\",\"familyVersion\":1,\"token\":\"example/log-sink/v1\"},\"consumerImplementationId\":\"example/app/default\",\"providerImplementationIds\":[\"example/log-file/default\",\"example/log-console/default\"],\"slotId\":\"logs\"}],\"dependencyOrder\":[\"example/database/default\",\"example/log-console/default\",\"example/log-file/default\",\"example/app/default\",\"example/standalone/default\"],\"kind\":\"get-modular.composition-plan\",\"profileId\":\"example/default\",\"roots\":[\"example/app\",\"example/standalone\"],\"schemaVersion\":1,\"selections\":[{\"implementationId\":\"example/app/default\",\"moduleId\":\"example/app\"},{\"implementationId\":\"example/database/default\",\"moduleId\":\"example/database\"},{\"implementationId\":\"example/log-console/default\",\"moduleId\":\"example/log-console\"},{\"implementationId\":\"example/log-file/default\",\"moduleId\":\"example/log-file\"},{\"implementationId\":\"example/standalone/default\",\"moduleId\":\"example/standalone\"}]},\"protocolVersion\":1}",
       "digest": "gm-plan:v1:sha-256:203c6e09bf28258a6d863a2dd0084ff3b6d5e863eb8d14192905e154f0b33bfd"
     }
-  ]
+  ],
+  "graphSemantics": {
+    "kind": "get-modular.bounded-graph-semantics",
+    "oracleVersion": 1,
+    "directions": {"rootClosure": "consumer-to-provider", "adjacency": "provider-to-consumer", "dependencyOrder": "provider-before-consumer"},
+    "edgePopulations": {
+      "Einput": "provider entries on selected-consumer bindings before validation",
+      "Evalid": "provider entries on bindings that pass selected-reference validation",
+      "Eadj": "distinct valid provider-to-consumer endpoint pairs"
+    },
+    "permutationAxes": ["declarations", "bindings", "roots", "nodes", "edges"],
+    "semanticBoundary": {"meaning": "composition-graph-only", "activationOrder": null, "lifecycleEvents": []},
+    "cases": [
+      {
+        "name": "branching-transitive-multi-root",
+        "declarations": [["x/app", "x/app-i"], ["x/api", "x/api-i"], ["x/db", "x/db-i"], ["x/log", "x/log-i"], ["x/solo", "x/solo-i"], ["x/disabled", "x/disabled-i"]],
+        "selected": ["x/log-i", "x/app-i", "x/solo-i", "x/db-i", "x/api-i"], "roots": ["x/solo", "x/app"],
+        "bindings": [["x/app-i", "route", ["x/api-i"]], ["x/disabled-i", "ghost", ["x/app-i"]], ["x/api-i", "store", ["x/db-i"]], ["x/app-i", "logs", ["x/log-i"]]],
+        "expected": {"resourceDeclarations": 6, "selected": ["x/api-i", "x/app-i", "x/db-i", "x/log-i", "x/solo-i"], "Einput": 3, "Evalid": [["x/api-i", "store", "x/db-i"], ["x/app-i", "logs", "x/log-i"], ["x/app-i", "route", "x/api-i"]], "Eadj": [["x/api-i", "x/app-i"], ["x/db-i", "x/api-i"], ["x/log-i", "x/app-i"]], "rootClosure": ["x/api-i", "x/app-i", "x/db-i", "x/log-i", "x/solo-i"], "unreachableSuppressed": [], "dependencyOrder": ["x/db-i", "x/api-i", "x/log-i", "x/app-i", "x/solo-i"], "cycles": [], "diagnostics": []}
+      },
+      {
+        "name": "all-selected-modules-are-roots",
+        "declarations": [["x/a", "x/a-i"], ["x/b", "x/b-i"], ["x/c", "x/c-i"]], "selected": ["x/b-i", "x/c-i", "x/a-i"], "roots": ["x/c", "x/a", "x/b"],
+        "bindings": [["x/b-i", "needs-c", ["x/c-i"]], ["x/a-i", "needs-b", ["x/b-i"]]],
+        "expected": {"resourceDeclarations": 3, "selected": ["x/a-i", "x/b-i", "x/c-i"], "Einput": 2, "Evalid": [["x/a-i", "needs-b", "x/b-i"], ["x/b-i", "needs-c", "x/c-i"]], "Eadj": [["x/b-i", "x/a-i"], ["x/c-i", "x/b-i"]], "rootClosure": ["x/a-i", "x/b-i", "x/c-i"], "unreachableSuppressed": [], "dependencyOrder": ["x/c-i", "x/b-i", "x/a-i"], "cycles": [], "diagnostics": []}
+      },
+      {
+        "name": "provider-as-root-does-not-reach-consumer",
+        "declarations": [["x/app", "x/app-i"], ["x/db", "x/db-i"]], "selected": ["x/app-i", "x/db-i"], "roots": ["x/db"], "bindings": [["x/app-i", "database", ["x/db-i"]]],
+        "expected": {"resourceDeclarations": 2, "selected": ["x/app-i", "x/db-i"], "Einput": 1, "Evalid": [["x/app-i", "database", "x/db-i"]], "Eadj": [["x/db-i", "x/app-i"]], "rootClosure": ["x/db-i"], "unreachableSuppressed": [], "dependencyOrder": ["x/db-i", "x/app-i"], "cycles": [], "diagnostics": [{"code": "profile.unreachable-selection", "phase": "graph", "path": [], "coordinate": {"moduleId": "x/app", "implementationId": "x/app-i"}, "details": {"reason": "unreachable"}}]}
+      },
+      {
+        "name": "unselected-declaration-and-binding-are-graph-inert",
+        "declarations": [["x/app", "x/app-i"], ["x/active", "x/active-i"], ["x/disabled", "x/disabled-i"]], "selected": ["x/active-i", "x/app-i"], "roots": ["x/app"],
+        "bindings": [["x/disabled-i", "ghost", ["x/app-i"]], ["x/app-i", "active", ["x/active-i"]]],
+        "expected": {"resourceDeclarations": 3, "selected": ["x/active-i", "x/app-i"], "Einput": 1, "Evalid": [["x/app-i", "active", "x/active-i"]], "Eadj": [["x/active-i", "x/app-i"]], "rootClosure": ["x/active-i", "x/app-i"], "unreachableSuppressed": [], "dependencyOrder": ["x/active-i", "x/app-i"], "cycles": [], "diagnostics": []}
+      },
+      {
+        "name": "selected-unreachable-has-no-hidden-root",
+        "declarations": [["x/app", "x/app-i"], ["x/orphan", "x/orphan-i"]], "selected": ["x/orphan-i", "x/app-i"], "roots": ["x/app"], "bindings": [],
+        "expected": {"resourceDeclarations": 2, "selected": ["x/app-i", "x/orphan-i"], "Einput": 0, "Evalid": [], "Eadj": [], "rootClosure": ["x/app-i"], "unreachableSuppressed": [], "dependencyOrder": ["x/app-i", "x/orphan-i"], "cycles": [], "diagnostics": [{"code": "profile.unreachable-selection", "phase": "graph", "path": [], "coordinate": {"moduleId": "x/orphan", "implementationId": "x/orphan-i"}, "details": {"reason": "unreachable"}}]}
+      },
+      {
+        "name": "invalid-reference-suppresses-only-dependent-reachability",
+        "declarations": [["x/app", "x/app-i"], ["x/good", "x/good-i"], ["x/orphan", "x/orphan-i"]], "selected": ["x/good-i", "x/orphan-i", "x/app-i"], "roots": ["x/app"],
+        "bindings": [["x/app-i", "providers", ["x/good-i", "x/missing-i"]]],
+        "expected": {"resourceDeclarations": 3, "selected": ["x/app-i", "x/good-i", "x/orphan-i"], "Einput": 2, "Evalid": [], "Eadj": [], "rootClosure": ["x/app-i"], "unreachableSuppressed": ["x/good-i", "x/orphan-i"], "dependencyOrder": null, "cycles": [], "diagnostics": [{"code": "binding.unknown-provider", "phase": "binding", "path": [], "coordinate": {"implementationId": "x/app-i", "slotId": "providers", "providerImplementationId": "x/missing-i"}, "details": {"reason": "unknown"}}]}
+      },
+      {
+        "name": "parallel-slots-preserve-references-and-deduplicate-adjacency",
+        "declarations": [["x/app", "x/app-i"], ["x/db", "x/db-i"]], "selected": ["x/db-i", "x/app-i"], "roots": ["x/app"],
+        "bindings": [["x/app-i", "secondary", ["x/db-i"]], ["x/app-i", "primary", ["x/db-i"]]],
+        "expected": {"resourceDeclarations": 2, "selected": ["x/app-i", "x/db-i"], "Einput": 2, "Evalid": [["x/app-i", "primary", "x/db-i"], ["x/app-i", "secondary", "x/db-i"]], "Eadj": [["x/db-i", "x/app-i"]], "rootClosure": ["x/app-i", "x/db-i"], "unreachableSuppressed": [], "dependencyOrder": ["x/db-i", "x/app-i"], "cycles": [], "diagnostics": []}
+      },
+      {
+        "name": "cycle-is-composition-failure-not-activation",
+        "declarations": [["x/a", "x/a-i"], ["x/b", "x/b-i"]], "selected": ["x/b-i", "x/a-i"], "roots": ["x/a"],
+        "bindings": [["x/b-i", "needs-a", ["x/a-i"]], ["x/a-i", "needs-b", ["x/b-i"]]],
+        "expected": {"resourceDeclarations": 2, "selected": ["x/a-i", "x/b-i"], "Einput": 2, "Evalid": [["x/a-i", "needs-b", "x/b-i"], ["x/b-i", "needs-a", "x/a-i"]], "Eadj": [["x/a-i", "x/b-i"], ["x/b-i", "x/a-i"]], "rootClosure": ["x/a-i", "x/b-i"], "unreachableSuppressed": [], "dependencyOrder": null, "cycles": [["x/a-i", "x/b-i"]], "diagnostics": [{"code": "graph.cycle", "phase": "graph", "path": [], "coordinate": {}, "details": {"component": ["x/a-i", "x/b-i"]}}]}
+      }
+    ]
+  }
 }
