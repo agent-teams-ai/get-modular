@@ -1,0 +1,28 @@
+{
+  "kind": "get-modular.resource-profile",
+  "profileId": "get-modular/resource-profile/v1-standard",
+  "profileVersion": 2,
+  "limits": {
+    "declarationRawDocumentBytes": 1048576,
+    "profileRawDocumentBytes": 8388608,
+    "aggregateRawBytes": 16777216,
+    "jsonValueOccurrences": 2097152,
+    "jsonDepth": 32,
+    "aggregateStringBytes": 8388608,
+    "identifierBytes": 128,
+    "ownerPathSegments": 8,
+    "declarations": 4096,
+    "capabilitiesPerDeclaration": 64,
+    "slotsPerDeclaration": 128,
+    "totalCapabilities": 65536,
+    "totalSlots": 65536,
+    "roots": 1024,
+    "selections": 4096,
+    "bindings": 65536,
+    "graphEdges": 262144,
+    "providersPerManySlot": 1024,
+    "graphDepth": 2048,
+    "diagnostics": 256,
+    "diagnosticPathSegments": 32
+  }
+}

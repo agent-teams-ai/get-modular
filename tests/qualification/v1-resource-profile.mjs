@@ -47,15 +47,20 @@ function countedItems(count) {
   return new Array(count);
 }
 
-function boundedChunks(count, createChunk) {
-  const chunkSize = Math.min(count, 1048576);
-  if (chunkSize === 0) return [];
-  const fullChunk = createChunk(chunkSize);
-  const fullCount = Math.floor(count / chunkSize);
-  const chunks = new Array(fullCount).fill(fullChunk);
-  const remainder = count % chunkSize;
-  if (remainder > 0) chunks.push(createChunk(remainder));
-  return chunks;
+function jsonDocument(byteCount) {
+  if (byteCount < 2) throw new RangeError("a valid padded JSON document needs two bytes");
+  return Buffer.from(`{}${" ".repeat(byteCount - 2)}`, "utf8");
+}
+
+function rawDocumentBatch(byteCount) {
+  const maximum = 1048576;
+  const count = Math.ceil(byteCount / maximum);
+  if (count === 0) return [];
+  const base = Math.floor(byteCount / count);
+  const larger = byteCount % count;
+  return Array.from({ length: count }, (_, index) => (
+    jsonDocument(base + (index < larger ? 1 : 0))
+  ));
 }
 
 const MAXIMUM_AGGREGATE_STRING_CHUNK_BYTES = 1048576;
@@ -90,10 +95,13 @@ function aggregateStringFixture(byteCount) {
 export function generateLimitFixture(vector, count) {
   requireNonNegativeSafeInteger(count, `${vector.limitName} fixture count`);
   switch (vector.fixtureShape) {
-    case "single-document": return { document: new Uint8Array(count) };
+    case "single-document":
+    case "declaration-document":
+    case "profile-document": return { document: jsonDocument(count) };
     case "document-batch": return {
-      documents: boundedChunks(count, length => new Uint8Array(length)),
+      documents: rawDocumentBatch(count),
     };
+    case "json-value-occurrences": return { value: new Array(count - 1).fill(null) };
     case "nested-arrays": {
       let value = 0;
       for (let index = 0; index < count; index += 1) value = [value];
@@ -125,7 +133,10 @@ export function generateLimitFixture(vector, count) {
 
 export function meterLimitFixture(vector, fixture) {
   switch (vector.fixtureShape) {
-    case "single-document": return fixture.document.byteLength;
+    case "single-document":
+    case "declaration-document":
+    case "profile-document": return fixture.document.byteLength;
+    case "json-value-occurrences": return fixture.value.length + 1;
     case "document-batch": return fixture.documents.reduce(
       (total, document) => total + document.byteLength, 0,
     );
@@ -165,7 +176,7 @@ export function meterLimitFixture(vector, fixture) {
     case "provider-edges": return fixture.bindings.reduce(
       (total, binding) => total + binding.providerImplementationIds.length, 0,
     );
-    case "providers": return new Set(fixture.binding.providerImplementationIds).size;
+    case "providers": return fixture.binding.providerImplementationIds.length;
     case "dependency-chain": return fixture.graph.length;
     case "diagnostics": return fixture.diagnostics.length;
     case "diagnostic-path": return fixture.diagnostic.path.length;
@@ -175,9 +186,11 @@ export function meterLimitFixture(vector, fixture) {
 
 export function mutateLimitFixtureOffByOne(vector, fixture) {
   switch (vector.fixtureFamily) {
-    case "raw-bytes": return {
-      document: new Uint8Array(fixture.document.byteLength + 1),
-    };
+    case "raw-bytes": return fixture.document
+      ? { document: Buffer.concat([fixture.document, Buffer.from(" ")]) }
+      : { documents: [...fixture.documents.slice(0, -1), Buffer.concat([
+        fixture.documents.at(-1), Buffer.from(" "),
+      ])] };
     case "json-depth": return { value: [fixture.value] };
     case "utf8-string-bytes": {
       if (vector.fixtureShape === "portable-id") {
@@ -608,5 +621,7 @@ export function measureResourceFixtures({
 
 if (process.argv[1]
   && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  const { qualifyResourceProfileV2 } = await import("./support/resource-profile-v2.mjs");
+  await qualifyResourceProfileV2({ generateLimitFixture, meterLimitFixture });
   process.stdout.write(`${JSON.stringify(measureResourceFixtures(), null, 2)}\n`);
 }
