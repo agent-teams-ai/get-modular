@@ -1,8 +1,15 @@
 import { createHash } from "node:crypto";
-import { readFile, readdir } from "node:fs/promises";
+import { access, readFile, readdir } from "node:fs/promises";
 import { dirname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
+
+import {
+  productionArtifactPaths,
+  productionArtifactsOutsidePackages,
+} from "./production-artifacts.mjs";
+
+export { productionArtifactPaths } from "./production-artifacts.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
@@ -14,6 +21,18 @@ const SOURCE_STATUSES = new Set([
   "draft-evidence",
   "proposed-upstream-authority",
   "qualified-no-go-evidence",
+]);
+const QUALIFICATION_STATUSES = new Set([
+  "reviewed",
+  "source-admitted",
+  "structural-conformant",
+  "runtime-conformant",
+  "superseded",
+]);
+const QUALIFICATION_CLAIM_STATUSES = new Set([
+  "source-admitted",
+  "structural-conformant",
+  "runtime-conformant",
 ]);
 
 function fail(message) {
@@ -80,14 +99,77 @@ export function validateAcceptedAuthorityCatalog({ documents, ledgerAuthorities 
   }
 }
 
-export function validateBlockedImplementation({ blockerIds, productionArtifacts, qualifiedDocuments }) {
+export function validateBlockedImplementation({ blockerIds, productionArtifacts, claimDocuments }) {
   if (blockerIds.size === 0) return;
   if (productionArtifacts.length > 0) {
     fail(`production artifacts are blocked by open decisions: ${[...blockerIds].sort().join(", ")}`);
   }
-  if (qualifiedDocuments.length > 0) {
+  if (claimDocuments.length > 0) {
     fail(`qualification claims are blocked by open decisions: ${[...blockerIds].sort().join(", ")}`);
   }
+}
+
+export async function validateQualificationClaims({
+  documents,
+  productionArtifacts,
+  evidenceExists,
+}) {
+  const byId = new Map(documents.map(document => [document.id, document]));
+  const qualifications = documents.filter(document => document.type === "qualification");
+  for (const qualification of qualifications) {
+    if (!QUALIFICATION_STATUSES.has(qualification.status)) {
+      fail(`${qualification.id} has an unsupported qualification status`);
+    }
+  }
+
+  const claims = qualifications.filter(document => (
+    QUALIFICATION_CLAIM_STATUSES.has(document.status)
+  ));
+  for (const claim of claims) {
+    if (!SAFE_RELATIVE_PATH.test(claim.subject ?? "")
+      || !claim.subject.startsWith("packages/")
+      || claim.subject.endsWith("/")) {
+      fail(`${claim.id} must identify a production subject below packages`);
+    }
+    if (!productionArtifacts.some(path => path.startsWith(`${claim.subject}/`))) {
+      fail(`${claim.id} cannot claim ${claim.status} without its production subject`);
+    }
+
+    const evidence = uniqueStrings(claim.evidence, `${claim.id}.evidence`);
+    for (const path of evidence) {
+      if (!SAFE_RELATIVE_PATH.test(path)) fail(`${claim.id} has an unsafe evidence path`);
+      if (!await evidenceExists(path)) fail(`${claim.id} references missing evidence ${path}`);
+    }
+
+    if (claim.status === "source-admitted") {
+      if (claim.promotion_decision !== undefined) {
+        fail(`${claim.id} source admission must not masquerade as a conformance promotion`);
+      }
+      continue;
+    }
+
+    const promotion = byId.get(claim.promotion_decision);
+    if (promotion?.type !== "adr" || promotion.status !== "accepted") {
+      fail(`${claim.id} requires an accepted promotion decision`);
+    }
+    if (!Array.isArray(promotion.related) || !promotion.related.includes(claim.id)) {
+      fail(`${claim.id} promotion decision must reference the qualification claim`);
+    }
+
+    const prerequisiteStatus = claim.status === "structural-conformant"
+      ? "source-admitted"
+      : "structural-conformant";
+    const related = Array.isArray(claim.related) ? claim.related : [];
+    const prerequisite = related
+      .map(id => byId.get(id))
+      .find(document => document?.type === "qualification"
+        && document.status === prerequisiteStatus
+        && document.subject === claim.subject);
+    if (!prerequisite) {
+      fail(`${claim.id} requires a related ${prerequisiteStatus} claim for the same subject`);
+    }
+  }
+  return claims.map(claim => claim.id);
 }
 
 export function validateTraceability({
@@ -241,52 +323,6 @@ async function governanceDocumentCatalog() {
   return documents;
 }
 
-async function filesBelow(repositoryRoot, relativeDirectory) {
-  const files = [];
-  let entries = [];
-  try {
-    entries = await readdir(resolve(repositoryRoot, relativeDirectory), { withFileTypes: true });
-  } catch (error) {
-    if (error?.code === "ENOENT") return files;
-    throw error;
-  }
-  for (const entry of entries) {
-    const path = `${relativeDirectory}/${entry.name}`;
-    if (entry.isDirectory()) files.push(...await filesBelow(repositoryRoot, path));
-    else if (entry.isFile()) files.push(path);
-  }
-  return files;
-}
-
-export async function productionArtifactPaths(repositoryRoot = root) {
-  const artifacts = [];
-  const rootPackage = JSON.parse(await readFile(resolve(repositoryRoot, "package.json"), "utf8"));
-  if (rootPackage.private !== true) artifacts.push("package.json#private");
-  for (const field of ["bin", "exports", "files", "main", "module", "types", "typings"]) {
-    if (rootPackage[field] !== undefined) artifacts.push(`package.json#${field}`);
-  }
-
-  const excludedDirectories = new Set([
-    ".agents",
-    ".git",
-    ".github",
-    "architecture",
-    "docs",
-    "node_modules",
-    "tests",
-  ]);
-  for (const entry of await readdir(repositoryRoot, { withFileTypes: true })) {
-    if (entry.isDirectory() && !excludedDirectories.has(entry.name)) {
-      artifacts.push(...(await filesBelow(repositoryRoot, entry.name)).filter(path => (
-        path.endsWith("/package.json") || /\.[cm]?[jt]sx?$/u.test(path)
-      )));
-    } else if (entry.isFile() && /\.[cm]?[jt]sx?$/u.test(entry.name)) {
-      artifacts.push(entry.name);
-    }
-  }
-  return artifacts.sort(compareStrings);
-}
-
 async function main() {
   const ledgerAuthorities = await validateAuthorityLedger({
     ledger: JSON.parse(await read("architecture/authority/accepted-authorities.json")),
@@ -320,12 +356,23 @@ async function main() {
     blockerIds,
     traceability,
   });
+  const productionArtifacts = await productionArtifactPaths(root);
+  const misplacedArtifacts = productionArtifactsOutsidePackages(productionArtifacts);
+  if (misplacedArtifacts.length > 0) {
+    fail(`production artifacts must be below packages: ${misplacedArtifacts.join(", ")}`);
+  }
+  const claimDocuments = await validateQualificationClaims({
+    documents: [...documents.values()],
+    productionArtifacts,
+    evidenceExists: path => access(resolve(root, path)).then(() => true, error => {
+      if (error?.code === "ENOENT") return false;
+      throw error;
+    }),
+  });
   validateBlockedImplementation({
     blockerIds,
-    productionArtifacts: await productionArtifactPaths(root),
-    qualifiedDocuments: [...documents.values()]
-      .filter(metadata => metadata.type === "qualification" && metadata.status === "qualified")
-      .map(metadata => metadata.id),
+    productionArtifacts,
+    claimDocuments,
   });
   process.stdout.write("Get Modular governance check passed.\n");
 }

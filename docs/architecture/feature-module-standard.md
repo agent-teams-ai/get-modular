@@ -58,26 +58,54 @@ gate.
 
 `pnpm architecture:feature-module-profile` verifies the pinned standard,
 repository mapping, local authorities, navigation, gate wiring, and explicit
-conformance state. `pnpm governance:check` rejects production artifacts only
-while open decisions block implementation. Both commands run through the
-complete repository gate, and profile binding also runs in the fast gate.
+qualification states. `pnpm governance:check` uses the same repository-wide
+production-artifact inventory. It always rejects production artifacts outside
+`packages` and separately blocks every production artifact while an open
+implementation decision exists. Both commands run through the complete
+repository gate, and profile binding also runs in the fast gate.
 
-The profile gate is also the pre-production bootstrap interlock. With no path
-below `packages`, it permits the honest `not-claimed` state without ceremonial
-configuration. The first production package must atomically enable Engineering
-Foundation's `architecture.source-dependencies` capability at
-`architecture/foundation/source-dependencies.yaml`. Foundation then owns source
-classification and dependency enforcement; this repository does not implement
-a second dependency checker. The same materializing change must add the
-positive and negative structural fixtures listed below before making a
-conformance claim.
+## Source admission
 
-## Conformance is not claimed
+With an empty production-artifact inventory, the profile must remain
+`pre-production`; governance and qualification tooling do not count as
+production. The first production package must atomically:
 
-Adoption fixes the rules; it does not prove that a production module follows
-them. `not-claimed` does not prohibit source implementation. With the first
-production package, the repository must add a deterministic source-dependency
-policy plus positive and negative fixtures for every structural rule listed in
-the profile, then execute the packed artifact on the supported runtime matrix.
-Only a later accepted decision may promote the profile from `not-claimed` to a
-conformance claim.
+- keep every production artifact below `packages`;
+- change the admission state to `source-admitted`;
+- enable Engineering Foundation's `architecture.source-dependencies`
+  capability at `architecture/foundation/source-dependencies.yaml`; and
+- execute the pinned `@agent-teams/engineering-foundation` `0.21.0` command
+  `agent-teams-foundation check` through both the complete and fast gates.
+
+The gate resolves the checked-in `foundation:check` script to that actual
+Foundation command, so replacing the script with a successful no-op cannot
+admit source. Foundation remains the sole source classifier and dependency
+policy engine; Get Modular does not parse imports or implement a second source
+dependency checker.
+
+`source-admitted` means only that production location and source-dependency
+policy are enforced. It is not structural or runtime conformance.
+
+## Qualification states
+
+Adoption fixes the rules but does not prove a production module follows them.
+Qualification records therefore use distinct, ordered states:
+
+- `source-admitted` binds evidence to an existing subject below `packages`;
+- `structural-conformant` additionally requires a related source-admission
+  claim, positive and negative structural evidence, and an accepted reciprocal
+  promotion decision; and
+- `runtime-conformant` additionally requires a related structural claim for
+  the same subject, packed-artifact runtime evidence, and an accepted reciprocal
+  promotion decision.
+
+Every claim names its production subject and checked-in evidence paths.
+Structural and runtime promotion decisions must name the qualification record,
+so an unrelated accepted ADR cannot authorize a claim. A `reviewed` record is
+evidence or analysis only and makes no admission or conformance claim.
+
+The repository is currently `pre-production`. Structural conformance and
+runtime conformance are independently `not-claimed`. A future production
+package may be source-admitted without either conformance claim; structural
+evidence cannot stand in for packed runtime execution, and packed runtime
+execution cannot bypass source admission or structural qualification.

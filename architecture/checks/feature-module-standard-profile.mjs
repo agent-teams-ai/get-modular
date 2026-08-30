@@ -1,12 +1,25 @@
-import { access, readFile, readdir } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
+
+import {
+  productionArtifactPaths,
+  productionArtifactsOutsidePackages,
+} from "./production-artifacts.mjs";
 
 export const PROFILE_PATH = "architecture/feature-module-standard-profile.json";
 export const PROFILE_DOCUMENT_PATH = "docs/architecture/feature-module-standard.md";
 export const SOURCE_DEPENDENCY_POLICY_PATH =
   "architecture/foundation/source-dependencies.yaml";
+
+const FOUNDATION_ADMISSION = Object.freeze({
+  package: "@agent-teams/engineering-foundation",
+  version: "0.21.0",
+  command: "agent-teams-foundation check",
+  capability: "architecture.source-dependencies",
+  policy: SOURCE_DEPENDENCY_POLICY_PATH,
+});
 
 const EXPECTED_STANDARD = Object.freeze({
   id: "agent-teams.feature-module-standard",
@@ -54,12 +67,7 @@ const EXPECTED_ENFORCEMENT = Object.freeze([
   { command: "governance:check", evidence: "pre-production-artifact-guard" },
 ]);
 
-const EXPECTED_TRIGGERS = Object.freeze([
-  "the first production module is materialized",
-  "the packed production package passes every required evidence gate",
-]);
-
-const EXPECTED_EVIDENCE = Object.freeze([
+const EXPECTED_STRUCTURAL_EVIDENCE = Object.freeze([
   "source-dependency policy and deterministic validator",
   "one valid fixture for every materialized module role",
   "rejection of production behavior outside a feature",
@@ -67,7 +75,12 @@ const EXPECTED_EVIDENCE = Object.freeze([
   "rejection of undeclared dependency edges and cycles",
   "rejection of empty ceremonial layers",
   "rejection of undeclared module ownership exceptions",
+  "accepted promotion decision binding the production subject and structural evidence",
+]);
+
+const EXPECTED_RUNTIME_EVIDENCE = Object.freeze([
   "packed artifact conformance on the supported runtime matrix",
+  "accepted promotion decision binding the packed subject and runtime evidence",
 ]);
 
 function assert(condition, message) {
@@ -101,45 +114,42 @@ function scriptCommands(script) {
     .map(command => command.trim().replace(/^pnpm\s+/u, ""));
 }
 
-async function pathsBelow(repositoryRoot, relativeDirectory) {
-  let entries;
-  try {
-    entries = await readdir(resolve(repositoryRoot, relativeDirectory), { withFileTypes: true });
-  } catch (error) {
-    if (error?.code === "ENOENT") return [];
-    throw error;
-  }
-
-  const paths = [];
-  for (const entry of entries) {
-    const path = `${relativeDirectory}/${entry.name}`;
-    if (entry.isDirectory()) paths.push(...await pathsBelow(repositoryRoot, path));
-    else paths.push(path);
-  }
-  return paths;
-}
-
-export async function productionPackagePaths(repositoryRoot = process.cwd()) {
-  return (await pathsBelow(repositoryRoot, "packages")).toSorted();
-}
-
 export function validateFirstProductionPackageAdmission({
-  productionPaths,
+  productionArtifacts,
+  admission,
   foundationConfig,
   packageJson,
   sourceDependencyPolicyPresent,
 }) {
-  assert(Array.isArray(productionPaths)
-    && productionPaths.every(path => safeRelativePath(path) && path.startsWith("packages/")),
-  "production package paths must be safe paths below packages");
-  if (productionPaths.length === 0) return undefined;
+  assert(Array.isArray(productionArtifacts)
+    && productionArtifacts.every(path => safeRelativePath(path)),
+  "production artifacts must be safe repository-relative paths");
+  const misplacedArtifacts = productionArtifactsOutsidePackages(productionArtifacts);
+  assert(misplacedArtifacts.length === 0,
+    `production artifacts must be below packages: ${misplacedArtifacts.join(", ")}`);
+  if (productionArtifacts.length === 0) {
+    assert(admission?.status === "pre-production",
+      "an empty production inventory must remain pre-production");
+    return undefined;
+  }
 
-  const capability = foundationConfig?.capabilities?.["architecture.source-dependencies"];
-  exactKeys(capability, ["configPath"], "architecture.source-dependencies capability");
+  assert(admission?.status === "source-admitted",
+    "the first production package must declare source-admitted status");
+  equalJson(admission.foundation, FOUNDATION_ADMISSION, "Foundation admission binding");
+
+  const capability = foundationConfig?.capabilities?.[FOUNDATION_ADMISSION.capability];
+  exactKeys(capability, ["configPath"], `${FOUNDATION_ADMISSION.capability} capability`);
   assert(capability.configPath === SOURCE_DEPENDENCY_POLICY_PATH,
-    `architecture.source-dependencies must use ${SOURCE_DEPENDENCY_POLICY_PATH}`);
+    `${FOUNDATION_ADMISSION.capability} must use ${SOURCE_DEPENDENCY_POLICY_PATH}`);
   assert(sourceDependencyPolicyPresent,
     `first production package requires ${SOURCE_DEPENDENCY_POLICY_PATH}`);
+
+  assert(packageJson.devDependencies?.[FOUNDATION_ADMISSION.package]
+    === FOUNDATION_ADMISSION.version,
+  `${FOUNDATION_ADMISSION.package} must remain pinned to ${FOUNDATION_ADMISSION.version}`);
+  const foundationCommands = scriptCommands(packageJson.scripts?.["foundation:check"]);
+  assert(foundationCommands.includes(FOUNDATION_ADMISSION.command),
+    `foundation:check must execute ${FOUNDATION_ADMISSION.command}`);
 
   const completeCommands = scriptCommands(packageJson.scripts?.check);
   const fastCommands = scriptCommands(packageJson.scripts?.["check:fast"]);
@@ -173,6 +183,7 @@ export function validateFeatureModuleStandardProfile({
     "extensions",
     "deviations",
     "enforcement",
+    "admission",
     "conformance",
   ], "adoption");
   assert(adoption.status === "adopted", "adoption status must be adopted");
@@ -221,17 +232,28 @@ export function validateFeatureModuleStandardProfile({
   assert(fastCommands.includes("architecture:feature-module-profile"),
     "fast gate must include profile binding");
 
-  exactKeys(adoption.conformance,
-    ["status", "rationale", "activation_triggers", "required_evidence"],
-    "conformance");
-  assert(adoption.conformance.status === "not-claimed",
-    "conformance status must remain not-claimed before packed evidence exists");
-  assert(typeof adoption.conformance.rationale === "string"
-    && adoption.conformance.rationale.length > 0, "conformance rationale must be non-empty");
-  equalJson(adoption.conformance.activation_triggers, EXPECTED_TRIGGERS,
-    "conformance activation triggers");
-  equalJson(adoption.conformance.required_evidence, EXPECTED_EVIDENCE,
-    "conformance evidence");
+  exactKeys(adoption.admission, ["status", "production_root", "foundation"], "admission");
+  assert(["pre-production", "source-admitted"].includes(adoption.admission.status),
+    "admission status must be pre-production or source-admitted");
+  assert(adoption.admission.production_root === "packages",
+    "admission production root must be packages");
+  exactKeys(adoption.admission.foundation, Object.keys(FOUNDATION_ADMISSION),
+    "Foundation admission binding");
+  equalJson(adoption.admission.foundation, FOUNDATION_ADMISSION, "Foundation admission binding");
+
+  exactKeys(adoption.conformance, ["structural", "runtime"], "conformance");
+  for (const [claim, expectedEvidence] of [
+    ["structural", EXPECTED_STRUCTURAL_EVIDENCE],
+    ["runtime", EXPECTED_RUNTIME_EVIDENCE],
+  ]) {
+    const state = adoption.conformance[claim];
+    exactKeys(state, ["status", "rationale", "required_evidence"], `${claim} conformance`);
+    assert(state.status === "not-claimed",
+      `${claim} conformance must remain not-claimed before promotion`);
+    assert(typeof state.rationale === "string" && state.rationale.length > 0,
+      `${claim} conformance rationale must be non-empty`);
+    equalJson(state.required_evidence, expectedEvidence, `${claim} conformance evidence`);
+  }
 
   const canonicalUrl = `https://github.com/${EXPECTED_STANDARD.repository}/blob/`
     + `eef92e7fd40f538b4e9ba03e01bbd4e2d23f12f2/${EXPECTED_STANDARD.path}`;
@@ -240,7 +262,7 @@ export function validateFeatureModuleStandardProfile({
     "# Get Modular Feature Module Standard Profile",
     "## Scope mapping",
     "## Local extensions",
-    "## Conformance is not claimed",
+    "## Qualification states",
     EXPECTED_STANDARD.id,
     EXPECTED_STANDARD.sha256,
     canonicalUrl,
@@ -265,7 +287,7 @@ export async function checkFeatureModuleStandardProfile(repositoryRoot = process
     agentInstructions,
     packageSource,
     foundationConfigSource,
-    productionPaths,
+    productionArtifacts,
   ] = await Promise.all([
     readFile(resolve(repositoryRoot, PROFILE_PATH), "utf8"),
     readFile(resolve(repositoryRoot, PROFILE_DOCUMENT_PATH), "utf8"),
@@ -273,7 +295,7 @@ export async function checkFeatureModuleStandardProfile(repositoryRoot = process
     readFile(resolve(repositoryRoot, "AGENTS.md"), "utf8"),
     readFile(resolve(repositoryRoot, "package.json"), "utf8"),
     readFile(resolve(repositoryRoot, "foundation.config.yaml"), "utf8"),
-    productionPackagePaths(repositoryRoot),
+    productionArtifactPaths(repositoryRoot),
   ]);
   const profile = JSON.parse(profileSource);
   const packageJson = JSON.parse(packageSource);
@@ -290,7 +312,8 @@ export async function checkFeatureModuleStandardProfile(repositoryRoot = process
       throw error;
     });
   validateFirstProductionPackageAdmission({
-    productionPaths,
+    productionArtifacts,
+    admission: profile.adoption.admission,
     foundationConfig: parse(foundationConfigSource),
     packageJson,
     sourceDependencyPolicyPresent: policyPresent,
