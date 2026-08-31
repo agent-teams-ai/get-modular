@@ -75,6 +75,18 @@ replaceable mechanics.
   treats it as owning Host state, cancellation, readiness, generations,
   cutover, drain, rollback, or recovery.
 
+### Precedence
+
+When accepted, this decision supersedes ADR-0007 only for the runtime dependency
+status of `canonicalize`. ADR-0007's checked-in canonical bytes, differential
+oracle requirement, and prohibition on package types or errors crossing the
+Core boundary remain authoritative. `canonicalize@4.0.0` may become a private
+production adapter only after the required Node, browser-window, and worker
+qualification passes; until then Core uses an owned implementation behind the
+same private port. `json-canonicalize` remains development-only. A later package
+version or a different adapter requires its own exact-version qualification and
+cannot inherit this admission.
+
 ## Consequences
 
 - Most high-risk semantics remain visible, testable, and portable ordinary code.
