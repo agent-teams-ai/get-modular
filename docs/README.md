@@ -12,6 +12,7 @@ summary: Canonical navigation for Get Modular architecture and evidence.
 
 - [System boundary](architecture/system-boundary.md)
 - [Feature Module Standard profile](architecture/feature-module-standard.md)
+- [Internal engine self-composition proposal](decisions/0008-bounded-internal-engine-self-composition.md) - proposed build-time self-use, not implemented or accepted.
 
 ## Governance
 
