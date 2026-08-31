@@ -5,6 +5,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import test from "node:test";
+import canonicalize from "canonicalize";
 import {
   createDiagnosticComparator,
   createSchemaValidators,
@@ -43,6 +44,18 @@ const readJson = async relativePath => JSON.parse(
 const execFileAsync = promisify(execFile);
 const clone = value => structuredClone(value);
 const sha256Identity = bytes => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+const refreshPlanEvidence = vector => {
+  const envelope = {
+    canonicalization: "RFC8785",
+    hashAlgorithm: "SHA-256",
+    kind: "get-modular.plan-content",
+    plan: vector.expectedPlan,
+    protocolVersion: 1,
+  };
+  vector.canonicalUtf8 = canonicalize(envelope);
+  vector.digest = `gm-plan:v1:sha-256:${createHash("sha256")
+    .update(vector.canonicalUtf8, "utf8").digest("hex")}`;
+};
 let sharedValidators;
 const schemaValidators = schema => {
   sharedValidators ??= createSchemaValidators(schema);
@@ -828,6 +841,51 @@ test("normalization qualification rejects order and canonical-byte drift", async
   const mismatchedPlanProfileId = clone(vectors);
   mismatchedPlanProfileId.cases[0].equivalentProfiles[0].profileId = "example/other";
   assert.throws(() => validate(mismatchedPlanProfileId), /profile ID differs/u);
+
+  const unreachableSelection = clone(vectors);
+  const unreachableCase = unreachableSelection.cases[0];
+  for (const profile of unreachableCase.equivalentProfiles) profile.roots = ["example/app"];
+  unreachableCase.expectedPlan.roots = ["example/app"];
+  refreshPlanEvidence(unreachableCase);
+  assert.throws(() => validate(unreachableSelection), /unreachable implementation/u);
+
+  const duplicateDeclarationSlot = clone(vectors);
+  duplicateDeclarationSlot.cases[0].declarations[0].slots.push(
+    clone(duplicateDeclarationSlot.cases[0].declarations[0].slots[0]),
+  );
+  assert.throws(() => validate(duplicateDeclarationSlot), /duplicate slot IDs/u);
+
+  const duplicateDeclarationCapability = clone(vectors);
+  duplicateDeclarationCapability.cases[0].declarations[1].provides.push(
+    clone(duplicateDeclarationCapability.cases[0].declarations[1].provides[0]),
+  );
+  assert.throws(() => validate(duplicateDeclarationCapability), /duplicate capability IDs/u);
+
+  const cyclicProfile = clone(vectors);
+  const cyclicCase = cyclicProfile.cases[0];
+  const app = cyclicCase.declarations.find(
+    declaration => declaration.implementationId === "example/app/default",
+  );
+  const databaseCapability = cyclicCase.declarations.find(
+    declaration => declaration.implementationId === "example/database/default",
+  ).provides[0];
+  app.provides.push(clone(databaseCapability));
+  for (const profile of cyclicCase.equivalentProfiles) {
+    profile.roots.push("example/database");
+    profile.bindings.find(binding => binding.slotId === "database")
+      .providerImplementationIds = ["example/app/default"];
+  }
+  cyclicCase.expectedPlan.roots = ["example/app", "example/database", "example/standalone"];
+  cyclicCase.expectedPlan.bindings.find(binding => binding.slotId === "database")
+    .providerImplementationIds = ["example/app/default"];
+  cyclicCase.expectedPlan.dependencyOrder = [
+    "example/database/default",
+    "example/log-console/default",
+    "example/log-file/default",
+    "example/standalone/default",
+  ];
+  refreshPlanEvidence(cyclicCase);
+  assert.throws(() => validate(cyclicProfile), /minimum deterministic dependency order/u);
 });
 
 test("resource and decoder qualification reject expectation drift", async () => {

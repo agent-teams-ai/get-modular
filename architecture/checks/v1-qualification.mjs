@@ -1829,10 +1829,24 @@ function minimumDependencyOrder(plan) {
       }
     }
   }
-  return result;
+  return result.length === ids.length ? result : null;
 }
 
 function validateNormalizationProfileSemantics(profile, declarations, label) {
+  const implementationIds = declarations.map(declaration => declaration.implementationId);
+  if (new Set(implementationIds).size !== implementationIds.length) {
+    fail(`${label} declarations contain duplicate implementation IDs`);
+  }
+  for (const declaration of declarations) {
+    const slotIds = declaration.slots.map(slot => slot.slotId);
+    if (new Set(slotIds).size !== slotIds.length) {
+      fail(`${label} declarations contain duplicate slot IDs`);
+    }
+    const capabilityIds = declaration.provides.map(capability => capability.capabilityId);
+    if (new Set(capabilityIds).size !== capabilityIds.length) {
+      fail(`${label} declarations contain duplicate capability IDs`);
+    }
+  }
   const declarationsByImplementation = new Map(
     declarations.map(declaration => [declaration.implementationId, declaration]),
   );
@@ -1901,6 +1915,23 @@ function validateNormalizationProfileSemantics(profile, declarations, label) {
         fail(`${label} is missing a binding for a selected slot`);
       }
     }
+  }
+  const reachable = new Set(profile.roots.map(root => selectedByModule.get(root)));
+  const pending = [...reachable];
+  while (pending.length > 0) {
+    const consumerImplementationId = pending.pop();
+    for (const { binding } of bindingsByCoordinate.values()) {
+      if (binding.consumerImplementationId !== consumerImplementationId) continue;
+      for (const providerImplementationId of binding.providerImplementationIds) {
+        if (!reachable.has(providerImplementationId)) {
+          reachable.add(providerImplementationId);
+          pending.push(providerImplementationId);
+        }
+      }
+    }
+  }
+  if (reachable.size !== selectedByImplementation.size) {
+    fail(`${label} selects an unreachable implementation`);
   }
   return declarationsByImplementation;
 }
