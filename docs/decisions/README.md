@@ -10,7 +10,7 @@ summary: Index of Get Modular architecture decisions.
 
 ## Proposed decisions
 
-None.
+- [ADR-0008: Bounded internal engine self-composition](0008-bounded-internal-engine-self-composition.md)
 
 ## Accepted decisions
 
