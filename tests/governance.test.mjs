@@ -60,12 +60,90 @@ test("metadata schema matches runtime Windows-safe path rules", async () => {
 
   for (const [field, value] of [
     ["subject", "packages/CON"],
+    ["subject", "packages/CON.\u2028x"],
+    ["subject", "packages/CON.\u2029x"],
     ["evidence", [{ path: "evidence/", digest: digest("source") }]],
+    ["evidence", [{ path: "evidence/CON.\u2028x", digest: digest("source") }]],
+    ["evidence", [{ path: "evidence/CON.\u2029x", digest: digest("source") }]],
   ]) {
     const invalidDocument = { ...validDocument, [field]: value };
     assert.equal(validate(invalidDocument), false, `${field} must reject non-portable paths`);
     validate.errors = null;
   }
+});
+
+test("qualification claims cannot be silently demoted", async () => {
+  const claim = {
+    id: "QUAL-STRUCTURAL",
+    type: "qualification",
+    status: "structural-conformant",
+    subject: "packages/core",
+    evidence: [evidenceIdentity("evidence/structural.json", "structural\n")],
+    promotion_decision: "ADR-0010",
+    related: ["QUAL-SOURCE"],
+  };
+  const source = {
+    id: "QUAL-SOURCE",
+    type: "qualification",
+    status: "source-admitted",
+    subject: "packages/core",
+    evidence: [evidenceIdentity("evidence/source.json", "source\n")],
+  };
+  const promotion = {
+    id: "ADR-0010",
+    type: "adr",
+    status: "accepted",
+    related: [claim.id],
+  };
+  const claimSource = {
+    path: "docs/qualification/structural.md",
+    bytes: "structural qualification bytes\n",
+  };
+  const documentSources = new Map([
+    [source.id, { path: "docs/qualification/source.md", bytes: "source qualification bytes\n" }],
+    [claim.id, claimSource],
+    [promotion.id, {
+      path: "docs/decisions/0010-structural.md",
+      bytes: qualificationClaimAnchor({
+        id: claim.id,
+        path: claimSource.path,
+        digest: digest(claimSource.bytes),
+      }),
+    }],
+  ]);
+  const evidenceFile = async path => ({
+    kind: "regular",
+    tracked: true,
+    bytes: path.endsWith("source.json") ? "source\n" : "structural\n",
+  });
+  const validate = documents => validateQualificationClaims({
+    documents,
+    productionArtifacts: ["packages/core/src/index.ts"],
+    documentSources,
+    evidenceFile,
+  });
+
+  await assert.rejects(validate([
+    { ...claim, status: "reviewed" },
+    source,
+    promotion,
+  ]), /cannot retain a conformance claim or promotion anchor/u);
+  await assert.rejects(validate([
+    {
+      id: claim.id,
+      type: "qualification",
+      status: "reviewed",
+      owner: "architecture",
+      summary: "demoted claim",
+    },
+    source,
+    promotion,
+  ]), /cannot retain a conformance claim or promotion anchor/u);
+  await assert.rejects(validate([
+    { ...claim, status: "superseded" },
+    source,
+    promotion,
+  ]), /superseded claim must name a successor/u);
 });
 
 test("traceability is closed and bidirectional", () => {

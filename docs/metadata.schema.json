@@ -105,6 +105,33 @@
     },
     {
       "if": {
+        "properties": {"type": {"const": "qualification"}, "status": {"const": "reviewed"}},
+        "required": ["type", "status"]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {"required": ["subject"]},
+            {"required": ["evidence"]},
+            {"required": ["promotion_decision"]}
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"type": {"const": "qualification"}, "status": {"const": "superseded"}},
+        "required": ["type", "status"]
+      },
+      "then": {
+        "required": ["superseded_by"],
+        "properties": {
+          "superseded_by": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    },
+    {
+      "if": {
         "properties": {"type": {"const": "adr"}, "status": {"const": "accepted"}},
         "required": ["type", "status"]
       },

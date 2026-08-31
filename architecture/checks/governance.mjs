@@ -44,7 +44,7 @@ const QUALIFICATION_CLAIM_STATUSES = new Set([
   "structural-conformant",
   "runtime-conformant",
 ]);
-const WINDOWS_DEVICE_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/iu;
+const WINDOWS_DEVICE_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.[^/]*)?$/iu;
 
 export const ACCEPTED_AUTHORITY_LEDGER_PATH =
   "architecture/authority/accepted-authorities.json";
@@ -183,6 +183,24 @@ function documentSource(documentSources, id, pathPattern, label) {
   return source;
 }
 
+function qualificationClaimAnchorPresent({ qualification, documentSources }) {
+  const source = documentSources?.get?.(qualification.id);
+  if (!source || !QUALIFICATION_DOCUMENT_PATH.test(source.path ?? "")) return false;
+  const claimDigest = digestBytes(source.bytes, `${qualification.id} qualification record`);
+  const anchor = qualificationClaimAnchor({
+    id: qualification.id,
+    path: source.path,
+    digest: claimDigest,
+  });
+  return [...(documentSources?.values?.() ?? [])].some(candidate => {
+    if (!DECISION_DOCUMENT_PATH.test(candidate?.path ?? "")) return false;
+    const markdown = typeof candidate.bytes === "string"
+      ? candidate.bytes
+      : Buffer.from(candidate.bytes ?? []).toString("utf8");
+    return markdown.includes(anchor);
+  });
+}
+
 export function qualificationClaimAnchor({ id, path, digest }) {
   return `The exact qualification document bytes for \`${id}\` at \`${path}\` `
     + `are anchored as \`${digest}\`.`;
@@ -199,6 +217,31 @@ export async function validateQualificationClaims({
   for (const qualification of qualifications) {
     if (!QUALIFICATION_STATUSES.has(qualification.status)) {
       fail(`${qualification.id} has an unsupported qualification status`);
+    }
+
+    const hasClaimFields = ["subject", "evidence", "promotion_decision"]
+      .some(field => qualification[field] !== undefined);
+    const hasPromotionAnchor = qualificationClaimAnchorPresent({
+      qualification,
+      documentSources,
+    });
+    if (qualification.status === "reviewed" && (hasClaimFields || hasPromotionAnchor)) {
+      fail(`${qualification.id} reviewed record cannot retain a conformance claim or promotion anchor`);
+    }
+    if (qualification.status === "superseded" && (hasClaimFields || hasPromotionAnchor)) {
+      const successors = qualification.superseded_by;
+      if (!Array.isArray(successors) || successors.length === 0) {
+        fail(`${qualification.id} superseded claim must name a successor`);
+      }
+      for (const successorId of successors) {
+        const successor = byId.get(successorId);
+        if (successor?.type !== "qualification"
+          || !QUALIFICATION_CLAIM_STATUSES.has(successor.status)
+          || (qualification.subject !== undefined
+            && successor.subject !== qualification.subject)) {
+          fail(`${qualification.id} has an invalid qualification successor ${successorId}`);
+        }
+      }
     }
   }
 
