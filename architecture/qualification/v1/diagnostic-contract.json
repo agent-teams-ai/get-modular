@@ -170,7 +170,6 @@
       {"code":"diagnostics.truncated","prerequisiteGroup":"output.diagnostic-collector","prerequisites":["output.diagnostic-stream-complete"],"suppressionScope":"output"}
     ],
     "limits": [
-      {"limitName":"rawDocumentBytes","prerequisiteGroup":"decode.raw-document-bytes","prerequisites":[],"suppressionScope":"document"},
       {"limitName":"declarationRawDocumentBytes","prerequisiteGroup":"decode.declaration-document-bytes","prerequisites":[],"suppressionScope":"document"},
       {"limitName":"profileRawDocumentBytes","prerequisiteGroup":"decode.profile-document-bytes","prerequisites":[],"suppressionScope":"document"},
       {"limitName":"aggregateRawBytes","prerequisiteGroup":"decode.aggregate-raw-bytes","prerequisites":[],"suppressionScope":"batch"},
@@ -232,7 +231,6 @@
     "diagnostics.truncated": "empty"
   },
   "limitPathPolicies": {
-    "rawDocumentBytes": "empty",
     "declarationRawDocumentBytes": "structural",
     "profileRawDocumentBytes": "structural",
     "aggregateRawBytes": "empty",
@@ -256,7 +254,6 @@
     "diagnosticPathSegments": "empty"
   },
   "limitPhases": {
-    "rawDocumentBytes": "decode",
     "declarationRawDocumentBytes": "decode",
     "profileRawDocumentBytes": "decode",
     "aggregateRawBytes": "decode",

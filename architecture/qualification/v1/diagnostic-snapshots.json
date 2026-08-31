@@ -4,7 +4,7 @@
   "snapshots": [
     {"name": "invalid-json", "diagnostic": {"code": "decode.invalid-json", "phase": "decode", "path": [], "coordinate": {}, "details": {"reason": "invalid-json"}}},
     {"name": "duplicate-key", "diagnostic": {"code": "decode.duplicate-key", "phase": "decode", "path": [{"kind": "field", "value": "kind"}], "coordinate": {}, "details": {"reason": "duplicate-key"}}},
-    {"name": "raw-document-limit", "diagnostic": {"code": "input.limit-exceeded", "phase": "decode", "path": [], "coordinate": {}, "details": {"limitName": "rawDocumentBytes", "limit": 1048576, "actual": 1048577}}},
+    {"name": "aggregate-raw-limit", "diagnostic": {"code": "input.limit-exceeded", "phase": "decode", "path": [], "coordinate": {}, "details": {"limitName": "aggregateRawBytes", "limit": 16777216, "actual": 16777217}}},
     {"name": "unsupported-version", "diagnostic": {"code": "schema.unsupported-version", "phase": "schema", "path": [{"kind": "field", "value": "schemaVersion"}], "coordinate": {}, "details": {"reason": "unsupported-version"}}},
     {"name": "unknown-field", "diagnostic": {"code": "schema.unknown-field", "phase": "schema", "path": [{"kind": "field", "value": "unknown"}], "coordinate": {}, "details": {"reason": "unknown-field"}}},
     {"name": "invalid-value", "diagnostic": {"code": "schema.invalid-value", "phase": "schema", "path": [{"kind": "field", "value": "schemaVersion"}], "coordinate": {}, "details": {"reason": "invalid-type"}}},
@@ -39,7 +39,7 @@
       "axis": "phase",
       "operands": [
         {"name": "earlier-phase", "snapshot": "invalid-value"},
-        {"name": "later-phase", "snapshot": "raw-document-limit", "override": {"phase": "graph", "details": {"limitName": "graphEdges", "limit": 262144, "actual": 262145}}}
+        {"name": "later-phase", "snapshot": "aggregate-raw-limit", "override": {"phase": "graph", "details": {"limitName": "graphEdges", "limit": 262144, "actual": 262145}}}
       ],
       "expected": ["earlier-phase", "later-phase"],
       "opposedLaterAxis": "code"
@@ -167,8 +167,8 @@
       "name": "details-use-rfc8785-key-order-and-utf8-bytes",
       "axis": "details.rfc8785",
       "operands": [
-        {"name": "actual-ten", "snapshot": "raw-document-limit", "override": {"details": {"limitName": "rawDocumentBytes", "limit": 1, "actual": 10}}},
-        {"name": "actual-two", "snapshot": "raw-document-limit", "override": {"details": {"actual": 2, "limit": 1, "limitName": "rawDocumentBytes"}}}
+        {"name": "actual-ten", "snapshot": "aggregate-raw-limit", "override": {"details": {"limitName": "aggregateRawBytes", "limit": 1, "actual": 10}}},
+        {"name": "actual-two", "snapshot": "aggregate-raw-limit", "override": {"details": {"actual": 2, "limit": 1, "limitName": "aggregateRawBytes"}}}
       ],
       "expected": ["actual-ten", "actual-two"]
     }

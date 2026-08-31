@@ -523,6 +523,25 @@ async function runDiagnosticRefinementMutations() {
   const comparator = createDiagnosticComparator({ contract, catalog });
   assert.doesNotThrow(() => validate(snapshots));
 
+  const retiredLimit = clone(snapshots);
+  retiredLimit.snapshots.find(snapshot => snapshot.name === "aggregate-raw-limit")
+    .diagnostic.details.limitName = "rawDocumentBytes";
+  assert.throws(() => validate(retiredLimit), /limit|phase/u);
+  for (const mutate of [
+    value => { value.limitPhases.rawDocumentBytes = "decode"; },
+    value => { value.limitPathPolicies.rawDocumentBytes = "empty"; },
+    value => { value.prerequisiteCatalog.limits.unshift({
+      limitName: "rawDocumentBytes",
+      prerequisiteGroup: "decode.raw-document-bytes",
+      prerequisites: [],
+      suppressionScope: "document",
+    }); },
+  ]) {
+    const reactivated = clone(contract);
+    mutate(reactivated);
+    assert.throws(() => validate(snapshots, reactivated), /limit/u);
+  }
+
   const cycle = snapshots.snapshots.find(snapshot => snapshot.name === "cycle").diagnostic;
   const shorterCycle = {
     ...clone(cycle),
@@ -784,6 +803,16 @@ test("normalization qualification rejects order and canonical-byte drift", async
     validateDocument,
   });
   assert.doesNotThrow(() => validate(vectors));
+
+  const manyDeclaration = clone(vectors.cases[0].declarations
+    .find(declaration => declaration.slots.some(slot => slot.cardinality.kind === "many")));
+  const manySlot = manyDeclaration.slots.find(slot => slot.cardinality.kind === "many");
+  manySlot.cardinality.min = 0;
+  manySlot.cardinality.max = 1;
+  assert.equal(validateDocument(manyDeclaration), true);
+  manySlot.cardinality.max = 0;
+  assert.equal(validateDocument(manyDeclaration), false,
+    "min <= max does not override the base schema max >= 1");
 
   const wrongOrder = clone(vectors);
   const order = wrongOrder.cases[0].expectedPlan.dependencyOrder;

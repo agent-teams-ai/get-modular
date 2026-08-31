@@ -1,9 +1,11 @@
 ---
 id: ADR-0007
 type: adr
-status: proposed
+status: accepted
 owner: architecture
-summary: Adds discriminated diagnostics, independent canonicalization checks, exact boundary vectors, and the corrected deterministic complexity target before V1 implementation.
+summary: Adds discriminated diagnostics, differential canonicalization checks, exact boundary vectors, and the corrected deterministic complexity target before V1 implementation.
+approved_by: product-owner
+accepted_at: 2026-08-31
 related:
   - ADR-0004
   - ADR-0005
@@ -39,12 +41,12 @@ rewriting ADR-0004, ADR-0005, or their contract ledger.
 ### Additive qualification authority
 
 The accepted authority ledger `architecture/authority/accepted-authorities.json` is anchored as `sha256:9ba074210704a20f6a3ef7486f3cf2ec7435fb0fc5552cca210b6d3d5d73f077`.
-While this decision is proposed, it and the artifacts under
-`architecture/qualification/v1` have no authority. They are draft
-qualification evidence and do not amend the accepted base contract, promote
-the baseline, or authorize a production-conformance claim.
+Before acceptance, this decision and the artifacts under
+`architecture/qualification/v1` were draft qualification evidence without
+authority. Product-owner approval on 2026-08-31 accepts this decision and its
+exact ledger below; it does not authorize a production-conformance claim.
 
-If this decision is accepted, its precedence is explicitly scoped. Only its
+This decision's precedence is explicitly scoped. Only its
 named diagnostic disposition and refinement, resource-profile-v2 rules,
 normalization and complexity rules, static and future packed-evidence rules,
 and prospective authoring-helper semantics override conflicting base wording
@@ -52,12 +54,12 @@ on those same named subjects. Every unnamed base subject remains unchanged;
 file presence, chronology, or a broad reading of "successor" grants no wider
 precedence.
 
-After acceptance, the qualification artifacts become normative amendments
+The qualification artifacts are normative amendments
 when read together with the immutable base contract.
 The qualification ledger records their exact byte identities:
 The exact qualification ledger `architecture/authority/v1-qualification-ledger.json`
 is anchored as
-`sha256:5c6a29b30bb7503d62eedfdf72aeaaf0d73fca52e54854a81752fb174c5cfaa2`.
+`sha256:ce0bb1f1896557099f5ed57e4f71a4c406fdb087770b66ee0c7b47c786917d1c`.
 
 `qualification-case-manifest.json` records decoder and canonicalization case
 categories, exact source, repair, and canonical byte identities, and the mapping
@@ -216,10 +218,13 @@ affect that count.
 
 ### Independent canonicalization and normalization
 
-Every canonical vector is recomputed by two independent development-only RFC
+Every canonical vector is recomputed by two development-only RFC
 8785 implementations, initially `canonicalize` and `json-canonicalize`. Both
 must equal the checked-in UTF-8 string byte for byte before SHA-256 is checked.
 Neither package type or API enters `@get-modular/core`.
+These are differential checks, not independent primitive-serialization proof:
+both libraries use JavaScript serialization primitives. Fixed RFC golden bytes
+and targeted mutations remain necessary to detect correlated mistakes.
 
 `canonicalization-vectors.json` covers object ordering, JSON escaping, Unicode
 property ordering, RFC number spelling, and safe-integer boundaries.
@@ -285,7 +290,9 @@ The first decoder spike uses `jsonc-parser` only through `createScanner` and
 first, performs an iterative depth preflight before the library's recursive
 visitor, keeps one decoded-key set per open object, validates surrogate pairing
 and saturating string counters, and materializes values only in a second pass
-after the complete batch succeeds. `jsonc-parser.parse`, parser error text, and
+after batch-wide resource preflight and that document's admission succeed.
+An invalid document suppresses only its dependent facts, not other admitted
+documents. `jsonc-parser.parse`, parser error text, and
 package types cannot enter the public API. If the browser/worker, fuzz, boundary,
 or redaction gates fail, the fallback is a small independently reviewed
 iterative scanner under the same vectors, not a weakened contract.
@@ -333,6 +340,9 @@ duplicate provider identities, and counts `providersPerManySlot` from provider
 list occurrences before duplicate rejection. It distinguishes 256 ordinary
 diagnostics from the 257-failure truncation case. The phrase "container-count
 limits" in ADR-0006 means only the explicitly named structural limits.
+The base schema still requires `max >= 1`; ADR-0006's `0 <= min <= max`
+is an additional constraint, not a replacement for that bound. A helper may
+construct `{min: 0, max: 0}` as inert data, but compiler admission rejects it.
 
 One closed deterministic mixed-cardinality P500 generator must produce a valid,
 acyclic, fully reachable profile that exceeds the historical 1 MiB profile
@@ -480,7 +490,7 @@ promotion gate.
 - Implementers receive exact byte, graph, diagnostic, resource, and static-case
   handoff rules without adding a runner, loader, DI container, plugin host, or
   lifecycle framework.
-- Independent JCS libraries and executable vectors reduce correlated oracle
+- Differential JCS checks and fixed executable vectors reduce correlated oracle
   mistakes, at the cost of development-only dependencies and more CI work.
 - The first package can now be built under an honest `not-claimed` state, while
   publication remains fail-closed on cross-runtime conformance.

@@ -15,12 +15,12 @@
     {
       "id": "GM-V1-DIAGNOSTIC-CONTRACT",
       "path": "architecture/qualification/v1/diagnostic-contract.json",
-      "immutableDigest": "sha256:08d225b0bcf366553e9dfda5095f4b39de004473c10e123aeddd9c49fd7b927b"
+      "immutableDigest": "sha256:3f7d8a7a4a5a9d7b54f72d5e0915df3e437ab056107ab50294fa65a8e69b6c94"
     },
     {
       "id": "GM-V1-DIAGNOSTIC-SNAPSHOTS",
       "path": "architecture/qualification/v1/diagnostic-snapshots.json",
-      "immutableDigest": "sha256:901168c8d430e30242ebe8e4983bed65ce92e0723288bb29253f4f3775ce7065"
+      "immutableDigest": "sha256:c7806cca2e72bd04374b2c0d7a4a1c59da806f96abc54b9339eb53c13f4d5eda"
     },
     {
       "id": "GM-V1-NORMALIZATION-VECTORS",

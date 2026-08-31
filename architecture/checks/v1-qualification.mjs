@@ -137,7 +137,6 @@ const PATH_POLICY_AUTHORITY = Object.freeze({
   "diagnostics.truncated": "empty",
 });
 const LIMIT_PATH_POLICY_AUTHORITY = Object.freeze({
-  rawDocumentBytes: "empty",
   declarationRawDocumentBytes: "structural",
   profileRawDocumentBytes: "structural",
   aggregateRawBytes: "empty",
@@ -212,7 +211,6 @@ const DIAGNOSTIC_PREREQUISITE_AUTHORITY = Object.freeze({
   "diagnostics.truncated": ["output.diagnostic-collector", "output", ["output.diagnostic-stream-complete"]],
 });
 const LIMIT_PREREQUISITE_AUTHORITY = Object.freeze({
-  rawDocumentBytes: ["decode.raw-document-bytes", "document", []],
   declarationRawDocumentBytes: ["decode.declaration-document-bytes", "document", []],
   profileRawDocumentBytes: ["decode.profile-document-bytes", "document", []],
   aggregateRawBytes: ["decode.aggregate-raw-bytes", "batch", []],
@@ -2079,6 +2077,10 @@ export function validateResourceBoundaryQualification({
   validateDiagnostic,
   maximumOmitted = 262144,
 }) {
+  // This entry point preserves historical v1 fixture evidence, not active v2 admission.
+  if (profile?.profileVersion !== 1) {
+    fail("historical resource boundary qualification requires profile version 1");
+  }
   if (vectors?.kind !== "get-modular.resource-boundary-vectors"
     || vectors.vectorVersion !== 1) {
     fail("unsupported resource boundary vectors");
@@ -2091,7 +2093,10 @@ export function validateResourceBoundaryQualification({
     if (vector.at !== limit || vector.over !== limit + 1) {
       fail(`${vector.limitName} must cover the exact boundary and boundary plus one`);
     }
-    if (vector.phase !== contract.limitPhases[vector.limitName]) {
+    const historicalPhase = vector.limitName === "rawDocumentBytes"
+      ? "decode"
+      : contract.limitPhases[vector.limitName];
+    if (vector.phase !== historicalPhase) {
       fail(`${vector.limitName} uses the wrong diagnostic phase`);
     }
     const expectedOutcome = vector.limitName === "diagnostics"
