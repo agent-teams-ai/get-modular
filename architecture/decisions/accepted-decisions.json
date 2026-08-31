@@ -36,6 +36,11 @@
       "id": "ADR-0007",
       "path": "docs/decisions/0007-require-executable-v1-conformance-amendments.md",
       "immutableDigest": "sha256:b9689a965dbc5fabcfdf2916b7701cf5f44c69dcb50d21e0ec3b5ccd557455ea"
+    },
+    {
+      "id": "ADR-0008",
+      "path": "docs/decisions/0008-bounded-internal-engine-self-composition.md",
+      "immutableDigest": "sha256:8b13fe2f1fa190cbca2e47ed1e30a9b2caaf1455b2ca0560eda64babc5d37582"
     }
   ]
 }

@@ -1,9 +1,11 @@
 ---
 id: ADR-0008
 type: adr
-status: proposed
+status: accepted
 owner: architecture
-summary: Proposes internal engine self-use with non-recursive bootstrap and independent conformance.
+summary: Requires first-core internal self-composition with non-recursive bootstrap and independent conformance.
+approved_by: product-owner
+accepted_at: 2026-08-31
 related:
   - ADR-0001
   - ADR-0003
@@ -23,12 +25,11 @@ outcomes; none substitutes for that goal.
 
 At the reviewed PR4 revision `b21193808d4413b9852869fcd65138bbdb1faefa`,
 Get Modular has accepted contracts and qualification code but no production
-packages. This proposed ADR describes the architecture of the first production
+packages. This decision describes the architecture of the first production
 core, not a later migration. It does not claim working self-use or change
 accepted ADRs. Pure algorithms may be implemented while the build path is being
 completed, but a handwritten production composition is not an interim release
-target. The first distributed core requires acceptance of this proposal and the
-implementation evidence below.
+target. The first distributed core requires the implementation evidence below.
 
 ## Options
 
@@ -110,7 +111,7 @@ cohesive responsibilities, not one module per helper:
 | Compiler facade | The two accepted entry points and their orchestration | Consumer of closed internal ports |
 | Diagnostic rules and algorithm helpers | Normative comparison, bounded collection, graph helpers and counters | Ordinary feature-owned code; not separately pluggable merely to enlarge the graph |
 
-These are proposed boundaries, not fixed public module names or a required count.
+These are initial boundaries, not fixed public module names or a required count.
 The first implementation confirms them against actual dependencies. Shared
 diagnostic rules have one owner and explicit internal APIs; do not force cycles
 into this diagram or invent a global utility container.
@@ -209,7 +210,7 @@ construction checks detect missing or extra factory dependencies. Do not write
 another source dependency parser or equate every import with a module edge.
 
 Generated wiring is disposable derived output, never hand-edited authority.
-The proposed default is generation during the build from current source, without
+The default is generation during the build from current source, without
 committing the generated file. One coherent build uses the same clean source
 snapshot, profile, emitter, lockfile, and pinned toolchain for both stages. It
 regenerates in a disposable directory and compares exact bytes; it must not
@@ -323,8 +324,8 @@ The stage0 seed is qualification machinery and is not a second release owner.
 3. Before the first core release, add the finite private emitter and generated
    stage1 assembly for those same implementations. Run independent packed
    qualification against direct and generated subjects during this slice.
-4. Release only stage1 after this ADR is accepted and all evidence below is
-   recorded. No product runtime, plugin bridge, generic DI framework, separate
+4. Release only stage1 after all evidence below is recorded. No product runtime,
+   plugin bridge, generic DI framework, separate
    product consumer, or post-release migration is required for this work.
 
 Seven focused acceptance groups, using existing test infrastructure:
@@ -387,7 +388,7 @@ whichever is larger. Breaching a budget requires measurement and an owner review
 not silent expansion of the privileged kernel.
 
 No additional full research cycle or new campaign protocol is required by this
-proposal. Exact feature names and build-tool paths are implementation details;
+decision. Exact feature names and build-tool paths are implementation details;
 public API changes, new package boundaries, runtime self-bootstrap, or making
 normative validators optional require a separate owner decision.
 
@@ -400,7 +401,7 @@ normative validators optional require a separate owner decision.
   still require independent tests, and no measured delivery/performance gain is
   claimed yet. This cost is accepted to avoid a later composition-root migration.
 - The earlier Extension Foundation campaign-model work remains retained evidence,
-  not code to import or another implementation gate. This proposal does not
+  not code to import or another implementation gate. This decision does not
   delete that evidence or transfer its ownership.
 
 ## Rejected alternatives
