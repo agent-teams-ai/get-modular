@@ -64,14 +64,14 @@ shape without evaluating executable code or guessing from object structure.
 ### Precedence
 
 When accepted, this decision supersedes ADR-0007 only for the prospective rule
-that a changed pre-1.0 authoring-helper generation must use parallel versioned
-exports. Before 1.0, a changed helper or compiler contract replaces the one
-current unversioned export set in a coordinated package and first-party consumer
-migration. The replacement still requires a successor decision, a new evidence
-ledger, and all applicable packed-subject gates before publication. ADR-0007's
-existing helper semantics and immutable qualification artifacts remain the
-authority for the contract they record; this decision neither mutates them nor
-relabels them as evidence for the replacement contract.
+that a changed pre-1.0 helper or compiler export contract must use parallel
+versioned exports. Before 1.0, a changed helper or compiler contract replaces
+the one current unversioned export set in a coordinated package and first-party
+consumer migration. The replacement still requires a successor decision, a new
+evidence ledger, and all applicable packed-subject gates before publication.
+ADR-0007's existing helper semantics and immutable qualification artifacts
+remain the authority for the contract they record; this decision neither mutates
+them nor relabels them as evidence for the replacement contract.
 
 ## Consequences
 
