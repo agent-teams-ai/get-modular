@@ -59,17 +59,21 @@ replaceable mechanics.
   existing Engineering Foundation testing boundary. Pin seeds, preserve replay
   data, and convert every minimized defect into a literal regression fixture.
   Generated agreement never becomes the expected-value oracle.
+- Implement object snapshotting, deep freezing, graph traversal, deterministic
+  ordering, bounded diagnostic collection, the four authoring helpers, and the
+  private finite emitter as owned ordinary TypeScript. These mechanics encode
+  accepted semantics or are too small for a generic library to reduce the
+  adapter and qualification cost.
 - Do not use Graphology, Ajv, Zod, Cordis, Effect, Awilix, Inversify, tsyringe,
   or Avvio in Core. Ajv may continue as independent development schema evidence.
-- `@deepseek-ai/cordis@4.0.2` is additionally disqualified as Product Host
-  lifecycle or resource authority by the reproduced exporter-disposal ownership
-  defect. A newer exact release may be reconsidered only as a private
-  non-authoritative Host adapter after the reproducer and product cleanup policy
-  pass.
-- `AsyncDisposableStack` may be qualified as a target-local Product Host
-  primitive for reverse asynchronous cleanup. It is not part of Core and does
-  not own Host state, cancellation, readiness, generations, cutover, drain,
-  rollback, or recovery.
+- `@deepseek-ai/cordis@4.0.2` is not used in Core. Its reproduced
+  exporter-disposal ownership defect remains external Host-qualification
+  evidence, not a Get Modular lifecycle decision. Each Product Host owns any
+  later qualification of a newer exact release behind its private adapter.
+- `AsyncDisposableStack` is outside Core. Product Hosts may qualify it as a
+  target-local reverse-cleanup primitive, but Get Modular neither selects it nor
+  treats it as owning Host state, cancellation, readiness, generations,
+  cutover, drain, rollback, or recovery.
 
 ## Consequences
 

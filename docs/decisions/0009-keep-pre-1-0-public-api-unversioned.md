@@ -45,9 +45,11 @@ shape without evaluating executable code or guessing from object structure.
   changes; they do not dictate production symbol names.
 - Inert JSON records retain one numeric `schemaVersion` discriminator. It is a
   data-migration guard, not a request to keep multiple engine APIs alive.
-  Authoring helpers populate it, ordinary TypeScript authors do not select it,
-  and no second value is introduced without a concrete persisted-data migration
-  requirement and a successor decision.
+  Declaration and profile authors, or product-owned generation tooling, supply
+  the one current literal value. The four authoring helpers do not read,
+  default, or alter `schemaVersion`; their accepted pass-through semantics stay
+  unchanged. No second value is introduced without a concrete persisted-data
+  migration requirement and a successor decision.
 - Capability compatibility tokens are product-owned semantic identities. The
   core does not require `/v1`, `/v2`, or another generation suffix in those
   tokens.
