@@ -10,7 +10,8 @@ summary: Index of Get Modular architecture decisions.
 
 ## Proposed decisions
 
-None.
+- [ADR-0009: Keep pre-1.0 public API unversioned](0009-keep-pre-1-0-public-api-unversioned.md)
+- [ADR-0010: Select replaceable primitives for the first core implementation](0010-select-replaceable-primitives-for-the-first-core-implementation.md)
 
 ## Accepted decisions
 
