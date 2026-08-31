@@ -62,14 +62,18 @@ Stage0 compiles a closed internal engine profile. A private, finite build-time
 emitter translates the resulting plan into ordinary static imports and typed
 factory calls. The emitted wiring constructs stage1 from the same feature
 implementations. Stage1 is a composition result, not another algorithm.
+Stage0 remains one short literal assembly file: no branches, defaults,
+validation, orchestration policy, dynamic lookup, or duplicated semantic logic.
 
 Qualification records a private construction witness for each root: selected
-factory identity, provided slot, consumed slots, and dependency edges actually
-invoked. Require the stage0 witness, selected plan, and stage1 witness to agree.
-This witness is observation around closed typed factories, not another resolver,
-runtime registry, or public API. A mutation that changes a selected factory or
-edge must change the witness and fail the comparison; generating wiring and then
-not calling it cannot pass promotion.
+factory identity, provided slot, consumed slots, dependency edges, and the
+identity of the constructed object supplied to each consumer. Require the stage0
+witness, selected plan, and stage1 witness to agree. The witness observes closed
+typed factories and consumer injection; it is not another resolver, runtime
+registry, or public API. A controlled replacement must change both the witness
+and behavior observed through the public compiler boundary. Generating wiring,
+calling a selected factory only for instrumentation, and then using a hidden
+direct import cannot pass promotion.
 
 ```mermaid
 flowchart TB
@@ -117,6 +121,13 @@ ambient singleton or ad hoc root and wrapped as a module later. Pure algorithms,
 value objects, and helpers remain ordinary feature-owned libraries; using the
 module architecture from the beginning does not mean making every function a
 module.
+
+Port ownership follows the use case rather than the assembly mechanism. A
+required driven port belongs to the consuming feature. A provided capability
+contract belongs to the feature that owns that capability. Its adapter, factory,
+and declaration remain beside that implementation. Only the private composition
+root owns the selected binding. Neither an emitter nor a central catalog may
+become a second owner of a port or capability identity.
 
 Factories receive closed typed dependencies. Algorithms do not resolve services
 or depend on their own module declarations, profiles, framework contexts, or
@@ -172,10 +183,24 @@ container. IDs never become source fragments, paths, or import specifiers.
 Unknown IDs, missing bindings, extra selections, and unsupported shapes fail
 the build. TypeScript checks the emitted closed dependency objects.
 
+The allowlist maps owner-local typed handles to literal imports and factories. It
+cannot use a string-keyed factory map, public barrel, `resolve(id)`, `eval`, or
+runtime `import()`. Hostile but valid identities such as `node/fs`,
+`constructor`, and `prototype` remain opaque data and never become code,
+property lookup keys, paths, or comments.
+
 The allowlist imports feature-owned declaration and factory handles; it must not
 repeat raw identity strings or redefine ownership. Aggregation is permitted in
 the private composition layer, but declaration identity remains beside its
 feature implementation and has one authority.
+
+The compiler facade and other composed consumers may import neighboring features
+only through type-only ports and curated internal surfaces. They cannot import a
+selected concrete implementation, its barrel, or a global resolver. Mechanical
+source checks enforce `composition -> features`, never the reverse; adapters may
+depend on owned ports, while ports cannot depend on adapters. Factory dependency
+keys must exactly match declared slots. This prevents the generated plan from
+becoming decorative metadata around handwritten construction.
 
 The declarations, selected plan nodes, literal bindings, and emitted construction
 must agree. Source import topology is not identical to capability wiring:
@@ -192,22 +217,37 @@ overwrite the subject and then compare the file with itself. An input manifest
 binds the observed inputs, so an unchanged plan digest alone cannot conceal a
 changed implementation. A previous release is not a required seed.
 
-Promotion uses separate fresh output and compiler-cache roots for stage0 and
-stage1. A pinned read-only dependency store may be shared, but no cached plan,
-wiring, compiled stage output, or generated file counts as evidence for another
-stage. The gate removes or poisons prior output before the clean-build test.
-Network access is disabled and the environment is reduced to an explicit
-allowlist; lockfile mutation fails the build.
+Promotion uses separate fresh temporary, dependency-tree, output, incremental,
+and compiler-cache roots for stage0 and stage1. A pinned integrity-checked
+read-only package store may be shared, but no cached plan, wiring, compiled stage
+output, generated file, or `.tsbuildinfo` counts as evidence for another stage.
+The gate removes or poisons prior output before the clean-build test. Network
+access is disabled and the environment is reduced to an explicit allowlist;
+lockfile mutation fails the build.
 
-The input manifest covers the transitive source closure reached by both roots,
-declarations and profile, feature-owned bindings, emitter and templates,
-`package.json`, lockfile, relevant TypeScript configuration, exact Node, pnpm,
-and TypeScript identities, allowed environment, and target platform. An
-implementation change must change this manifest even when the plan is stable.
+An independently produced canonical `SourceManifest` covers every admitted build
+input. Paths are normalized POSIX-relative strings sorted by ASCII bytes. Each
+file records SHA-256 of exact bytes, size, and executable bit; symlinks, device
+files, undeclared generated input, and untracked build input are rejected. The
+inventory includes the transitive source closure reached by both roots,
+declarations and profile, feature-owned bindings, allowlist, emitter and
+templates, package/workspace manifests, lockfile, registry configuration,
+relevant TypeScript configuration and build scripts, and independent obligation
+inventory. The source closure inventory is computed outside the candidate
+compiler so that it cannot omit its own changed input.
+
+A separate `BuildContext` records exact Node, pnpm, and TypeScript identities,
+explicit environment names and values, and the canonical release-builder target.
+Platform-neutral source identity is therefore not confused with the environment
+that produced an archive. An implementation change must change the source
+manifest even when the plan is stable.
+
 Wiring bytes use UTF-8 with LF, deterministic import/factory ordering, relative
 literal imports, and no timestamps, absolute paths, locale, or target-specific
 text. At least two independent clean workspaces reproduce the normalized plan,
-manifest, and wiring; supported operating systems run the same focused gate.
+source manifest, and wiring. One pinned canonical builder packs the release;
+supported operating systems execute the same already-packed archive rather than
+claiming byte-identical package creation across different platforms.
 
 ### No self-bootstrap on caller requests
 
@@ -249,11 +289,21 @@ one directly assembled and one generated. Only the generated stage1 subject is
 eligible for the release artifact. Qualification packaging does not add a
 stage0 public export or make bootstrap code distributable.
 
+The canonical builder packs stage1 once. Qualification and publication use those
+exact archive bytes; there is no repack after promotion. One immutable private
+attestation binds the archive SHA-256, source manifest, build context, P0/P1,
+W0/W1, construction witnesses, selected plans, and independent packed-vector
+results. Instrumentation must either already exist behind a private inert hook in
+the same packed bytes or prove a zero-byte-delta transformation. A witness from a
+temporary subject cannot certify a different release tarball.
+
 Before the first production release, stage0 is qualification-only and no
 handwritten core assembly is distributed. Once stage1 is the accepted release
 subject, a failed self-composition build fails visibly; recovery is a deliberate
-source revert to the last known-good generated assembly. Do not silently fall
-back to stage0 and report successful stage1 evidence.
+revert to an exact known-good source and toolchain snapshot followed by cold
+regeneration and repeated qualification. Generated wiring is never restored as an
+authority. Do not silently fall back to stage0 and report successful stage1
+evidence.
 
 Feature paths may move without changing a stable internal semantic identity.
 Changing that identity is a deliberate migration that updates the own profile,
@@ -277,7 +327,7 @@ The stage0 seed is qualification machinery and is not a second release owner.
    recorded. No product runtime, plugin bridge, generic DI framework, separate
    product consumer, or post-release migration is required for this work.
 
-Six focused acceptance groups, using existing test infrastructure:
+Seven focused acceptance groups, using existing test infrastructure:
 
 - Clean bootstrap succeeds with generated wiring absent; stage0 imports do not
   reach stage1. Separate fresh stage roots, a poisoned-output test, the closed
@@ -287,8 +337,10 @@ Six focused acceptance groups, using existing test infrastructure:
   obligation even when declarations, profile, and bindings all omit it.
 - A missing mandatory validator, extra factory, unknown ID, or mismatched slot
   fails construction checks; a controlled valid binding change demonstrably
-  changes the called factory and construction witness. Stage0 witness, plan, and
-  stage1 witness agree. Compiling and ignoring the plan fails this test.
+  changes public compiler behavior, the injected object identity, and the
+  construction witness. Stage0 witness, plan, and stage1 witness agree. Hidden
+  concrete imports, compiling and ignoring the plan, or calling a factory only
+  for instrumentation fail this test.
 - Own declaration permutations preserve plan/digest/wiring bytes; explicit
   ordered dependencies retain their profile order. Two cold workspaces reproduce
   normalized outputs; supported targets use existing CI. A scale fixture checks
@@ -301,15 +353,38 @@ Six focused acceptance groups, using existing test infrastructure:
   generic `resolve`/service lookup, absolute path, or new public internal-module
   surface. Optional exclusions, a path rename, a partial migration, and a source
   revert recovery drill preserve one release owner and deterministic evidence.
+- The canonical builder packs once; qualification executes that exact archive on
+  every supported runtime target. Archive digest and all construction evidence
+  are covered by one attestation. Tarball inspection and inert-import smoke prove
+  that bootstrap, profile, emitter, allowlist, conformance code, development
+  dependencies, source maps with private paths, and top-level import side effects
+  do not leak.
 
 Planning estimate within the first core delivery, after the initial feature
-factories exist: about 600-1,200 changed lines for internal declarations, private
-build glue, and focused tests, with generated output counted separately. This is
-low-confidence sizing, not a correctness ceiling or a compiler estimate.
-Reassess before adding a second solver, generic emitter, new package, or a
-substantially larger change. If real components do not form a useful graph, or
-the build path has no demonstrated maintenance value, stop implementation and
-return an owner decision with evidence; do not ship A as the production core.
+factories exist: about 2,000-4,000 handwritten changed lines for internal
+declarations, private build glue, manifests, qualification, archive evidence,
+and focused tests, with generated output counted separately. Deliver this as
+bounded dependency-safe PRs rather than one proof mega-PR. Reassess before adding
+a second solver, generic emitter, new package, or a substantially larger change.
+If real components do not form a useful graph, the qualification code grows past
+twice the production self-composition code, or the build path has no demonstrated
+maintenance value, stop implementation and return an owner decision with
+evidence; do not ship A as the production core.
+
+Fast pull-request gates cover types, source boundaries, focused semantics,
+deterministic generation, stage smoke, and packed Node execution. Promotion gates
+add both independent subjects, resource and operating-system/runtime matrices,
+two cold reproductions, tarball audit, archive attestation, frozen lockfile, and
+offline build. Do not repeat promotion-scale matrices on every source edit.
+
+Build failures emit stable private error codes plus phase, module, implementation,
+slot, expected and actual binding, manifest/plan/witness digests, and the first
+wiring difference. CI retains a structured JSON diagnostic artifact without
+secrets or absolute paths. The fast daily gate should remain at most twice the
+direct-build baseline, promotion at most three times it, generated stage1 runtime
+overhead at most five percent, and tarball growth at most three percent or 10 KiB,
+whichever is larger. Breaching a budget requires measurement and an owner review,
+not silent expansion of the privileged kernel.
 
 No additional full research cycle or new campaign protocol is required by this
 proposal. Exact feature names and build-tool paths are implementation details;
@@ -358,6 +433,15 @@ TypeScript build. They agreed that C remains viable only with a bounded kernel,
 independent mandatory evidence, actual construction witnesses, isolated build
 roots, and explicit seed provenance. Their agreement is still review evidence,
 not implementation evidence or an acceptance decision.
+
+Five additional exact-SHA hosted critics reviewed the first-core requirement from
+bootstrap, Clean Architecture, delivery, security, and long-term maintenance
+perspectives. They supported C conditionally and identified two release-blocking
+risks: decorative composition that does not control behavior, and evidence that
+does not identify the exact published archive. The source-boundary, behavioral
+mutation, object-identity witness, pack-once attestation, input inventory,
+recovery, debugging, and complexity constraints above incorporate those findings.
+Their review still does not accept this ADR or replace implementation evidence.
 
 [Dagger's real component processor](https://github.com/google/dagger/blob/4fbc045d2ba8d65e28b23bef84a42068702a4a9e/dagger-compiler/main/java/dagger/internal/codegen/DelegateComponentProcessor.java)
 uses a generated Dagger injector to wire its own validation, generation, and
