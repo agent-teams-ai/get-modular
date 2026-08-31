@@ -809,6 +809,25 @@ test("normalization qualification rejects order and canonical-byte drift", async
     clone(firstCase.equivalentProfiles[0].bindings[0]),
   );
   assert.throws(() => validate(duplicateBindingEvidence), /duplicate binding coordinates/u);
+
+  const missingRequiredBinding = clone(vectors);
+  const missingBindingCase = missingRequiredBinding.cases[0];
+  for (const profile of missingBindingCase.equivalentProfiles) {
+    profile.bindings = profile.bindings.filter(binding => binding.slotId !== "database");
+  }
+  missingBindingCase.expectedPlan.bindings = missingBindingCase.expectedPlan.bindings
+    .filter(binding => binding.slotId !== "database");
+  assert.throws(() => validate(missingRequiredBinding), /missing a binding/u);
+
+  const wrongProviderCapability = clone(vectors);
+  wrongProviderCapability.cases[0].equivalentProfiles[0].bindings
+    .find(binding => binding.slotId === "database")
+    .providerImplementationIds = ["example/log-file/default"];
+  assert.throws(() => validate(wrongProviderCapability), /does not satisfy its slot/u);
+
+  const mismatchedPlanProfileId = clone(vectors);
+  mismatchedPlanProfileId.cases[0].equivalentProfiles[0].profileId = "example/other";
+  assert.throws(() => validate(mismatchedPlanProfileId), /profile ID differs/u);
 });
 
 test("resource and decoder qualification reject expectation drift", async () => {

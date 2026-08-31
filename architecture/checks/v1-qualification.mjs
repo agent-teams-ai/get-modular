@@ -1832,9 +1832,82 @@ function minimumDependencyOrder(plan) {
   return result;
 }
 
-function normalizedProfileBindings(profile, declarations) {
+function validateNormalizationProfileSemantics(profile, declarations, label) {
   const declarationsByImplementation = new Map(
     declarations.map(declaration => [declaration.implementationId, declaration]),
+  );
+  const selectedByImplementation = new Map();
+  const selectedByModule = new Map();
+  for (const selection of profile.selections) {
+    const declaration = declarationsByImplementation.get(selection.implementationId);
+    if (declaration === undefined) {
+      fail(`${label} selects an unknown implementation`);
+    }
+    if (declaration.moduleId !== selection.moduleId) {
+      fail(`${label} selection does not match its implementation declaration`);
+    }
+    if (selectedByImplementation.has(selection.implementationId)
+      || selectedByModule.has(selection.moduleId)) {
+      fail(`${label} selects an implementation or module more than once`);
+    }
+    selectedByImplementation.set(selection.implementationId, declaration);
+    selectedByModule.set(selection.moduleId, selection.implementationId);
+  }
+  if (new Set(profile.roots).size !== profile.roots.length) {
+    fail(`${label} contains duplicate roots`);
+  }
+  for (const root of profile.roots) {
+    if (!selectedByModule.has(root)) fail(`${label} root is not selected`);
+  }
+
+  const bindingsByCoordinate = new Map();
+  for (const binding of profile.bindings) {
+    const consumer = selectedByImplementation.get(binding.consumerImplementationId);
+    if (consumer === undefined) fail(`${label} binding has an unselected consumer`);
+    const slot = consumer.slots.find(candidate => candidate.slotId === binding.slotId);
+    if (slot === undefined) fail(`${label} binding references an unknown slot`);
+    const coordinate = `${binding.consumerImplementationId}\u0000${binding.slotId}`;
+    if (bindingsByCoordinate.has(coordinate)) {
+      fail(`${label} contains duplicate binding coordinates`);
+    }
+    bindingsByCoordinate.set(coordinate, { binding, slot });
+    if (new Set(binding.providerImplementationIds).size
+      !== binding.providerImplementationIds.length) {
+      fail(`${label} binding contains duplicate provider implementation IDs`);
+    }
+    const providerCount = binding.providerImplementationIds.length;
+    if ((slot.cardinality.kind === "required" && providerCount !== 1)
+      || (slot.cardinality.kind === "optional" && providerCount > 1)
+      || (slot.cardinality.kind === "many"
+        && (providerCount < slot.cardinality.min || providerCount > slot.cardinality.max))) {
+      fail(`${label} binding violates slot cardinality`);
+    }
+    for (const providerImplementationId of binding.providerImplementationIds) {
+      const provider = selectedByImplementation.get(providerImplementationId);
+      if (provider === undefined) fail(`${label} binding has an unselected provider`);
+      const capability = provider.provides.find(candidate => (
+        candidate.capabilityId === slot.capabilityId
+          && same(candidate.compatibility, slot.compatibility)
+      ));
+      if (capability === undefined) {
+        fail(`${label} binding provider does not satisfy its slot`);
+      }
+    }
+  }
+  for (const [implementationId, declaration] of selectedByImplementation) {
+    for (const slot of declaration.slots) {
+      const coordinate = `${implementationId}\u0000${slot.slotId}`;
+      if (!bindingsByCoordinate.has(coordinate)) {
+        fail(`${label} is missing a binding for a selected slot`);
+      }
+    }
+  }
+  return declarationsByImplementation;
+}
+
+function normalizedProfileBindings(profile, declarations) {
+  const declarationsByImplementation = validateNormalizationProfileSemantics(
+    profile, declarations, "normalization vector",
   );
   const coordinates = new Set();
   return profile.bindings.map(binding => {
@@ -1919,6 +1992,9 @@ export function validateNormalizationQualification({ vectors, validateDocument }
     }
     for (const profile of vector.equivalentProfiles) {
       validateWith(validateDocument, profile, `${vector.name} profile`);
+      if (profile.profileId !== vector.expectedPlan.profileId) {
+        fail(`${vector.name} profile ID differs from the expected plan`);
+      }
       if (!same([...profile.roots].sort(compareAscii), vector.expectedPlan.roots)
         || !same([...profile.selections].sort((left, right) => (
           compareAscii(left.moduleId, right.moduleId)
