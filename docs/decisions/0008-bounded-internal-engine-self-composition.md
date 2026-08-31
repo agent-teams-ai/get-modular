@@ -23,10 +23,12 @@ outcomes; none substitutes for that goal.
 
 At the reviewed PR4 revision `b21193808d4413b9852869fcd65138bbdb1faefa`,
 Get Modular has accepted contracts and qualification code but no production
-packages. This proposed ADR describes a future path. It does not claim working
-self-use, change accepted ADRs, or block the already authorized ordinary core
-implementation. Production self-composition needs acceptance of this proposal
-and the implementation evidence below before becoming the distributed default.
+packages. This proposed ADR describes the architecture of the first production
+core, not a later migration. It does not claim working self-use or change
+accepted ADRs. Pure algorithms may be implemented while the build path is being
+completed, but a handwritten production composition is not an interim release
+target. The first distributed core requires acceptance of this proposal and the
+implementation evidence below.
 
 ## Options
 
@@ -36,9 +38,11 @@ and the implementation evidence below before becoming the distributed default.
 | B: in-memory staged construction | A directly assembled compiler plans a second instance, constructed from that plan | Genuine self-use, but adds initialization, cached-instance, failure, and concurrency concerns |
 | C: build-time static self-composition | A directly assembled compiler plans the real components; private tooling emits their static wiring | Genuine self-use without a runtime container; adds a finite emitter and reproducible-build obligations |
 
-Recommend C as the target, reached after a working ordinary core. A is an
-explicit intermediate or fallback result, not a renamed success for C. B is not
-the baseline. No choice requires a new package, public generator, or DI runtime.
+Recommend C as the required architecture of the first production core. A is an
+explicit implementation checkpoint only, not a releasable fallback or a renamed
+success for C. If C proves unjustified or infeasible, pause the release and
+return to the owner with evidence instead of silently shipping A. B is not the
+baseline. No choice requires a new package, public generator, or DI runtime.
 The result is internal self-composition assembly, not compiler self-hosting,
 trusting-trust mitigation, or proof of reproducible binaries.
 
@@ -106,6 +110,13 @@ These are proposed boundaries, not fixed public module names or a required count
 The first implementation confirms them against actual dependencies. Shared
 diagnostic rules have one owner and explicit internal APIs; do not force cycles
 into this diagram or invent a global utility container.
+
+Every cohesive compiler feature intended for stage1 starts with its owner-local
+ports, pure factory, and inert declaration. It is not implemented first as an
+ambient singleton or ad hoc root and wrapped as a module later. Pure algorithms,
+value objects, and helpers remain ordinary feature-owned libraries; using the
+module architecture from the beginning does not mean making every function a
+module.
 
 Factories receive closed typed dependencies. Algorithms do not resolve services
 or depend on their own module declarations, profiles, framework contexts, or
@@ -238,10 +249,11 @@ one directly assembled and one generated. Only the generated stage1 subject is
 eligible for the release artifact. Qualification packaging does not add a
 stage0 public export or make bootstrap code distributable.
 
-Before promotion, ordinary static core remains the release path. After promotion,
-a failed self-composition build fails visibly; recovery is a deliberate source
-revert to the last known-good assembly. Do not silently fall back to stage0 and
-report successful stage1 evidence.
+Before the first production release, stage0 is qualification-only and no
+handwritten core assembly is distributed. Once stage1 is the accepted release
+subject, a failed self-composition build fails visibly; recovery is a deliberate
+source revert to the last known-good generated assembly. Do not silently fall
+back to stage0 and report successful stage1 evidence.
 
 Feature paths may move without changing a stable internal semantic identity.
 Changing that identity is a deliberate migration that updates the own profile,
@@ -252,16 +264,18 @@ The stage0 seed is qualification machinery and is not a second release owner.
 
 ## Delivery and acceptance
 
-1. Implement the ordinary core and independent packed-artifact checks under the
-   existing accepted decisions. Self-use adds no prerequisite to that work.
-2. Describe the actual internal components with their own declarations/profile.
-   Compile that real internal graph. If construction remains handwritten, report
-   A only. Do not create a separate manifest-verification framework first.
-3. In one bounded increment, add the private emitter and stage1 assembly for
-   those same components. No production runtime, plugin bridge, generic DI
-   framework, or separate product consumer is required for this internal slice.
-4. Promote stage1 only after this ADR is accepted and the following evidence is
-   recorded. Internal self-use is not a second production adopter for stable 1.0.
+1. In the first core slice, implement cohesive feature logic with owner-local
+   ports, factories, and inert declarations. Add the minimal direct stage0 root
+   in the same delivery; do not introduce a temporary production composition.
+2. Assemble the closed own profile and compile the real internal graph as soon
+   as the first useful dependency edge exists. This is checkpoint A for feedback,
+   but it cannot become the release artifact or a stable public architecture.
+3. Before the first core release, add the finite private emitter and generated
+   stage1 assembly for those same implementations. Run independent packed
+   qualification against direct and generated subjects during this slice.
+4. Release only stage1 after this ADR is accepted and all evidence below is
+   recorded. No product runtime, plugin bridge, generic DI framework, separate
+   product consumer, or post-release migration is required for this work.
 
 Six focused acceptance groups, using existing test infrastructure:
 
@@ -288,13 +302,14 @@ Six focused acceptance groups, using existing test infrastructure:
   surface. Optional exclusions, a path rename, a partial migration, and a source
   revert recovery drill preserve one release owner and deterministic evidence.
 
-Planning estimate after the ordinary core/factories exist: about 600-1,200 changed
-lines for internal declarations, private build glue, and focused tests, with
-generated output counted separately. This is low-confidence sizing, not a
-correctness ceiling or a compiler estimate. Reassess before adding a second
-solver, generic emitter, new package, or a substantially larger change. If real
-components do not form a useful graph, or the extra build path has no demonstrated
-maintenance benefit, stop at A and retain the static core without claiming C.
+Planning estimate within the first core delivery, after the initial feature
+factories exist: about 600-1,200 changed lines for internal declarations, private
+build glue, and focused tests, with generated output counted separately. This is
+low-confidence sizing, not a correctness ceiling or a compiler estimate.
+Reassess before adding a second solver, generic emitter, new package, or a
+substantially larger change. If real components do not form a useful graph, or
+the build path has no demonstrated maintenance value, stop implementation and
+return an owner decision with evidence; do not ship A as the production core.
 
 No additional full research cycle or new campaign protocol is required by this
 proposal. Exact feature names and build-tool paths are implementation details;
@@ -303,11 +318,12 @@ normative validators optional require a separate owner decision.
 
 ## Consequences
 
-- The engine can exercise its own declaration and binding model on real compiler
-  components while keeping consumer startup ordinary and deterministic.
+- The first production engine exercises its own declaration and binding model on
+  real compiler components while keeping consumer startup ordinary and deterministic.
 - Small pure features remain reusable without the internal self-use machinery.
-- A private emitter and two roots add maintenance cost; shared bugs still require
-  independent tests, and no measured delivery/performance gain is claimed yet.
+- A private emitter and two roots add cost to the first core delivery; shared bugs
+  still require independent tests, and no measured delivery/performance gain is
+  claimed yet. This cost is accepted to avoid a later composition-root migration.
 - The earlier Extension Foundation campaign-model work remains retained evidence,
   not code to import or another implementation gate. This proposal does not
   delete that evidence or transfer its ownership.
@@ -332,7 +348,7 @@ Six read-only hosted workers reviewed the same PR4 revision with
 `gpt-5.6-sol`, `xhigh`, and fast service on 2026-08-31. Four recommended C, one B,
 and one A. The industry worker retained only a short final summary; its vote is
 not treated as detailed independent evidence. The bootstrap critic's objections
-motivate the direct seed, drift checks, and explicit A fallback above. Agreement
+motivate the direct seed, drift checks, and explicit A checkpoint above. Agreement
 between models is not proof and does not grant implementation authority.
 
 Five follow-up hosted critics then examined pinned real project sources from
