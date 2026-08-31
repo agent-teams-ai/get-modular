@@ -39,20 +39,33 @@ and the implementation evidence below before becoming the distributed default.
 Recommend C as the target, reached after a working ordinary core. A is an
 explicit intermediate or fallback result, not a renamed success for C. B is not
 the baseline. No choice requires a new package, public generator, or DI runtime.
+The result is internal self-composition assembly, not compiler self-hosting,
+trusting-trust mitigation, or proof of reproducible binaries.
 
 ## Decision
 
-### One implementation, two assembly paths
+### One semantic implementation, two assembly roots
 
 Use the same pure feature implementations in both paths. A small handwritten
 bootstrap root constructs an ordinary working compiler, called stage0 here.
 It is not a reduced validator, a second graph solver, the qualification oracle,
-or a downloaded previous Get Modular release.
+or a downloaded previous Get Modular release. It is honestly a second assembly
+root, but not a second operational authority: the closed internal profile is the
+single statement of the intended stage1 graph, and stage0 exists only to produce
+that graph from a clean source checkout.
 
 Stage0 compiles a closed internal engine profile. A private, finite build-time
 emitter translates the resulting plan into ordinary static imports and typed
 factory calls. The emitted wiring constructs stage1 from the same feature
 implementations. Stage1 is a composition result, not another algorithm.
+
+Qualification records a private construction witness for each root: selected
+factory identity, provided slot, consumed slots, and dependency edges actually
+invoked. Require the stage0 witness, selected plan, and stage1 witness to agree.
+This witness is observation around closed typed factories, not another resolver,
+runtime registry, or public API. A mutation that changes a selected factory or
+edge must change the witness and fail the comparison; generating wiring and then
+not calling it cannot pass promotion.
 
 ```mermaid
 flowchart TB
@@ -106,6 +119,27 @@ Construction order and the normative algorithm's control flow are distinct.
 All mandatory validation, snapshot, resource-limit, and diagnostic obligations
 remain enforced by the accepted contract, regardless of internal composition.
 
+An independent conformance-owned promotion inventory maps accepted requirement
+identities to mandatory evidence and negative mutations. It is not runtime
+configuration and does not grant implementations. Deleting a mandatory rule
+from its declaration, profile, and binding together must still fail conformance.
+This intentional independent duplication prevents the engine from validating
+the disappearance of its own obligation. Optional composition semantics that do
+not occur naturally in the own graph remain covered by independent vectors; do
+not invent fake internal modules merely to claim complete self-use.
+
+### Bounded privileged kernel
+
+The self-composed surface is the real internal construction graph of cohesive
+compiler features. The following substrate remains deliberately privileged and
+outside that graph: the pinned TypeScript build toolchain, the direct stage0
+root, selection of the one closed own profile, the finite emitter and literal
+binding allowlist, module loading and public entrypoint invocation, and the
+independent conformance harness. Expanding this budget requires a new decision.
+This is the same honest boundary seen in mature extension systems: first-party
+features can exercise the extension model while the host, loader, and resolver
+remain kernel responsibilities.
+
 ### Build-only machinery and package boundary
 
 The core owner owns private bootstrap, profile, and emitter tooling beside the
@@ -127,6 +161,11 @@ container. IDs never become source fragments, paths, or import specifiers.
 Unknown IDs, missing bindings, extra selections, and unsupported shapes fail
 the build. TypeScript checks the emitted closed dependency objects.
 
+The allowlist imports feature-owned declaration and factory handles; it must not
+repeat raw identity strings or redefine ownership. Aggregation is permitted in
+the private composition layer, but declaration identity remains beside its
+feature implementation and has one authority.
+
 The declarations, selected plan nodes, literal bindings, and emitted construction
 must agree. Source import topology is not identical to capability wiring:
 Engineering Foundation remains the import-boundary engine, while focused
@@ -141,6 +180,23 @@ regenerates in a disposable directory and compares exact bytes; it must not
 overwrite the subject and then compare the file with itself. An input manifest
 binds the observed inputs, so an unchanged plan digest alone cannot conceal a
 changed implementation. A previous release is not a required seed.
+
+Promotion uses separate fresh output and compiler-cache roots for stage0 and
+stage1. A pinned read-only dependency store may be shared, but no cached plan,
+wiring, compiled stage output, or generated file counts as evidence for another
+stage. The gate removes or poisons prior output before the clean-build test.
+Network access is disabled and the environment is reduced to an explicit
+allowlist; lockfile mutation fails the build.
+
+The input manifest covers the transitive source closure reached by both roots,
+declarations and profile, feature-owned bindings, emitter and templates,
+`package.json`, lockfile, relevant TypeScript configuration, exact Node, pnpm,
+and TypeScript identities, allowed environment, and target platform. An
+implementation change must change this manifest even when the plan is stable.
+Wiring bytes use UTF-8 with LF, deterministic import/factory ordering, relative
+literal imports, and no timestamps, absolute paths, locale, or target-specific
+text. At least two independent clean workspaces reproduce the normalized plan,
+manifest, and wiring; supported operating systems run the same focused gate.
 
 ### No self-bootstrap on caller requests
 
@@ -176,10 +232,23 @@ from W0 produces P1; the same pinned emitter produces W1 in a separate location.
 Require exact P0/P1, digest, and W0/W1 equality. This is a consistency check, not
 a cryptographic correctness proof or an unbounded fixed-point loop.
 
+The conformance owner runs the same independent vectors against two temporary,
+hash-identified qualification subjects with the same public compiler boundary:
+one directly assembled and one generated. Only the generated stage1 subject is
+eligible for the release artifact. Qualification packaging does not add a
+stage0 public export or make bootstrap code distributable.
+
 Before promotion, ordinary static core remains the release path. After promotion,
 a failed self-composition build fails visibly; recovery is a deliberate source
 revert to the last known-good assembly. Do not silently fall back to stage0 and
 report successful stage1 evidence.
+
+Feature paths may move without changing a stable internal semantic identity.
+Changing that identity is a deliberate migration that updates the own profile,
+binding handle, and independent promotion inventory together. During partial
+migration, each release construction edge has exactly one owner: generated
+stage1 wiring or one opaque handwritten adapter behind a closed port, never both.
+The stage0 seed is qualification machinery and is not a second release owner.
 
 ## Delivery and acceptance
 
@@ -197,21 +266,27 @@ report successful stage1 evidence.
 Six focused acceptance groups, using existing test infrastructure:
 
 - Clean bootstrap succeeds with generated wiring absent; stage0 imports do not
-  reach stage1. Damaged or stale output cannot be reused as valid build evidence.
+  reach stage1. Separate fresh stage roots, a poisoned-output test, the closed
+  environment, and the complete input manifest prevent stale evidence reuse.
 - Stage0 and stage1 both pass independent positive/negative vectors and packed
-  public-API checks. Equal own plans do not replace those checks.
+  public-API checks. The independent mandatory inventory detects removal of an
+  obligation even when declarations, profile, and bindings all omit it.
 - A missing mandatory validator, extra factory, unknown ID, or mismatched slot
   fails construction checks; a controlled valid binding change demonstrably
-  changes the called factory. Compiling and ignoring the plan fails this test.
+  changes the called factory and construction witness. Stage0 witness, plan, and
+  stage1 witness agree. Compiling and ignoring the plan fails this test.
 - Own declaration permutations preserve plan/digest/wiring bytes; explicit
-  ordered dependencies retain their profile order. Repeat on supported targets
-  using existing CI, not a separate campaign infrastructure.
+  ordered dependencies retain their profile order. Two cold workspaces reproduce
+  normalized outputs; supported targets use existing CI. A scale fixture checks
+  bounded growth at 100 cohesive modules without creating production modules.
 - Concurrent calls and immediate caller mutation preserve snapshots and isolate
   request state for both entry points; calls perform no own-profile compilation
   or new component assembly. Required compiler invariants remain non-optional.
 - Runtime package, public types, import graph, and generation output contain no
   development-only dependency, executable discovery, arbitrary code interpolation,
-  or new public internal-module surface.
+  generic `resolve`/service lookup, absolute path, or new public internal-module
+  surface. Optional exclusions, a path rename, a partial migration, and a source
+  revert recovery drill preserve one release owner and deterministic evidence.
 
 Planning estimate after the ordinary core/factories exist: about 600-1,200 changed
 lines for internal declarations, private build glue, and focused tests, with
@@ -260,6 +335,14 @@ not treated as detailed independent evidence. The bootstrap critic's objections
 motivate the direct seed, drift checks, and explicit A fallback above. Agreement
 between models is not proof and does not grant implementation authority.
 
+Five follow-up hosted critics then examined pinned real project sources from
+Dagger, the Rust compiler, Bazel, Gradle, VS Code, Backstage, Eclipse Equinox,
+and the current
+TypeScript build. They agreed that C remains viable only with a bounded kernel,
+independent mandatory evidence, actual construction witnesses, isolated build
+roots, and explicit seed provenance. Their agreement is still review evidence,
+not implementation evidence or an acceptance decision.
+
 [Dagger's real component processor](https://github.com/google/dagger/blob/4fbc045d2ba8d65e28b23bef84a42068702a4a9e/dagger-compiler/main/java/dagger/internal/codegen/DelegateComponentProcessor.java)
 uses a generated Dagger injector to wire its own validation, generation, and
 processing components. That supports internal generated composition as a real
@@ -271,3 +354,20 @@ separates seed, rebuilt compiler, and same-result stages. The limited lesson is
 an explicit acyclic build and recovery path. Get Modular compiles declarations
 to plans, not a programming language to machine code; Rust's full build system
 and correctness claims are not adopted.
+
+[Bazel's bootstrap entrypoint](https://github.com/bazelbuild/bazel/blob/c823f5a565d1ace5c42b1715af9bd4182abde29a/compile.sh)
+demonstrates a finite seed-to-self-build path and explicit bootstrap outputs,
+while its broader environment and distribution inputs are cautions rather than
+build-isolation guidance. [Gradle's root settings](https://github.com/gradle/gradle/blob/438758aeb8fcbae1c0e2e62b756d4adbc7a35574/settings.gradle.kts)
+show a layered build-logic DAG without turning product modules into build plugins.
+
+[VS Code's extension service](https://github.com/microsoft/vscode/blob/400d86be5f490c331817a72e85870f6337652574/src/vs/workbench/services/extensions/common/abstractExtensionService.ts),
+[Backstage's frontend app model](https://github.com/backstage/backstage/blob/ee97130ef6751077f50f7fb8a2ad0322a0db8df2/docs/frontend-system/architecture/10-app.md),
+and [Equinox's module container](https://github.com/eclipse-equinox/equinox/blob/8a7ab003ebc825eae73d4fb2b23f760013ae299e/bundles/org.eclipse.osgi/container/src/org/eclipse/osgi/container/ModuleContainer.java)
+all retain privileged host/resolver responsibilities while real first-party
+features use their extension abstractions. Get Modular adopts that boundedness,
+not their runtime activation, mutable registries, unload, or service lookup.
+
+The [current TypeScript build](https://github.com/microsoft/TypeScript/blob/9a8581c393a38961489cc8409ae4dfbe97fc25ece/Herebyfile.mjs)
+uses the Go toolchain for its native compiler. It supplies useful generated-file
+provenance patterns but is not evidence of TypeScript compiler self-hosting.
