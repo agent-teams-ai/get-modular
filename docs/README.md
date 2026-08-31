@@ -11,6 +11,7 @@ summary: Canonical navigation for Get Modular architecture and evidence.
 ## Architecture
 
 - [System boundary](architecture/system-boundary.md)
+- [Current implementation contract](architecture/current-contract.md)
 - [Feature Module Standard profile](architecture/feature-module-standard.md)
 - [Internal engine self-composition](decisions/0008-bounded-internal-engine-self-composition.md) - accepted build-time self-use architecture; implementation evidence remains pending.
 
@@ -19,14 +20,18 @@ summary: Canonical navigation for Get Modular architecture and evidence.
 - [Accepted decisions](decisions/README.md)
 - [Open decisions](open-decisions/README.md)
 
-## Normative contracts
+## Current contract and immutable evidence
 
-- [Module System V1 requirements](requirements/module-system-v1.md)
-- [V1 composition schema](../architecture/contracts/v1/composition.schema.json)
-- [V1 resource profile](../architecture/contracts/v1/resource-profile.json)
-- [V1 diagnostic catalog](../architecture/contracts/v1/diagnostic-catalog.json)
-- [V1 canonical vectors](../architecture/contracts/v1/canonical-vectors.json)
+- [Module System requirements and immutable evidence](requirements/module-system-v1.md)
+- [Composition schema evidence](../architecture/contracts/v1/composition.schema.json)
+- [Effective resource profile evidence](../architecture/qualification/v1/resource-profile-v2.json)
+- [Diagnostic catalog evidence](../architecture/contracts/v1/diagnostic-catalog.json)
+- [Canonical vectors evidence](../architecture/contracts/v1/canonical-vectors.json)
 - [Requirement traceability](traceability/module-system-v1.yaml)
+
+The `V1` and `v2` path names above are historical evidence identifiers, not
+parallel public API or selectable runtime profiles. The current effective
+resource policy is the single profile described in the current contract.
 
 ## Evidence
 

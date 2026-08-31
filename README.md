@@ -20,7 +20,7 @@ Get Modular is intentionally independent from
 The two neutral cores do not depend on each other. A product-owned adapter may
 consume both.
 
-## V1 packages
+## Packages
 
 - `@get-modular/core` is the only production dependency. It owns portable
   declarations, validation, deterministic compilation, plans, digests, and
@@ -32,6 +32,13 @@ consume both.
 `conformance` uses the conventional protocol-testing meaning: independently
 owned fixtures prove that an implementation follows the contract. The
 conformance package may depend on core; core never depends on conformance.
+
+Before 1.0 there is one current public API surface. It uses unversioned
+TypeScript names; `schemaVersion` is only an inert data-format discriminator.
+The repository's historical qualification files retain `V1` and `v2` labels so
+their immutable evidence identities remain auditable. Those labels do not mean
+that applications must support parallel API generations. See the
+[current contract](docs/architecture/current-contract.md).
 
 ## Start here
 
