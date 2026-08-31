@@ -472,13 +472,14 @@ test("accepted contract ledger rejects unknown fields and malformed artifacts", 
   for (const mutant of [
     { ...ledger, unexpected: true },
     { ...ledger, artifacts: [{ ...ledger.artifacts[0], unexpected: true }] },
+    { ...ledger, artifacts: [{ ...ledger.artifacts[0], id: "" }] },
     { ...ledger, artifacts: { ...ledger.artifacts } },
   ]) {
     await assert.rejects(() => validateContractLedger({
       ledger: mutant,
       readBytes,
       listedPaths: ["architecture/contracts/v1/example.json"],
-    }), /must contain exactly|artifacts must be an array/u);
+    }), /must contain exactly|artifacts must be an array|canonical GM-V1/u);
   }
 });
 
@@ -508,6 +509,18 @@ async function runDiagnosticRefinementMutations() {
   });
   const comparator = createDiagnosticComparator({ contract, catalog });
   assert.doesNotThrow(() => validate(snapshots));
+
+  const cycle = snapshots.snapshots.find(snapshot => snapshot.name === "cycle").diagnostic;
+  const shorterCycle = {
+    ...clone(cycle),
+    details: { component: ["example/a/default"] },
+  };
+  const longerCycle = {
+    ...clone(cycle),
+    details: { component: ["example/a/default", "example/b/default"] },
+  };
+  assert.ok(comparator(shorterCycle, longerCycle) < 0);
+  assert.ok(comparator(longerCycle, shorterCycle) > 0);
 
   const wrongPhase = clone(snapshots);
   wrongPhase.snapshots[0].diagnostic.phase = "schema";
@@ -776,6 +789,26 @@ test("normalization qualification rejects order and canonical-byte drift", async
   const missingProfileEvidence = clone(vectors);
   missingProfileEvidence.cases[0].equivalentProfiles = [];
   assert.throws(() => validate(missingProfileEvidence), /requires at least one equivalent profile/u);
+
+  const duplicatePermutationEvidence = clone(vectors);
+  duplicatePermutationEvidence.cases[0].declarationOrders = [
+    duplicatePermutationEvidence.cases[0].declarationOrders[0],
+  ];
+  assert.throws(() => validate(duplicatePermutationEvidence), /distinct declaration permutations/u);
+
+  const duplicateProfileEvidence = clone(vectors);
+  duplicateProfileEvidence.cases[0].equivalentProfiles = [
+    duplicateProfileEvidence.cases[0].equivalentProfiles[0],
+  ];
+  assert.throws(() => validate(duplicateProfileEvidence), /distinct equivalent profiles/u);
+
+  const duplicateBindingEvidence = clone(vectors);
+  const firstCase = duplicateBindingEvidence.cases[0];
+  firstCase.expectedPlan.bindings.push(clone(firstCase.expectedPlan.bindings[0]));
+  firstCase.equivalentProfiles[0].bindings.push(
+    clone(firstCase.equivalentProfiles[0].bindings[0]),
+  );
+  assert.throws(() => validate(duplicateBindingEvidence), /duplicate binding coordinates/u);
 });
 
 test("resource and decoder qualification reject expectation drift", async () => {

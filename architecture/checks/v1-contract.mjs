@@ -21,6 +21,7 @@ import {
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
 const CONTRACT_PATH = /^architecture\/contracts\/v1\/[a-z0-9.-]+\.json$/u;
+const CONTRACT_ARTIFACT_ID = /^GM-V1-[A-Z0-9]+(?:-[A-Z0-9]+)*$/u;
 
 function fail(message) {
   throw new Error(`V1_CONTRACT_CHECK_FAILED: ${message}`);
@@ -56,8 +57,9 @@ export async function validateContractLedger({ ledger, readBytes, listedPaths })
   const ids = new Set();
   for (const artifact of ledger.artifacts ?? []) {
     exactKeys(artifact, ["id", "immutableDigest", "path"], "contract artifact");
-    if (typeof artifact?.id !== "string" || ids.has(artifact.id)) {
-      fail("contract artifact IDs must be unique strings");
+    if (typeof artifact?.id !== "string" || !CONTRACT_ARTIFACT_ID.test(artifact.id)
+      || ids.has(artifact.id)) {
+      fail("contract artifact IDs must be unique canonical GM-V1 strings");
     }
     ids.add(artifact.id);
     if (!CONTRACT_PATH.test(artifact.path ?? "")) {

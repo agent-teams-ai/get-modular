@@ -1206,10 +1206,7 @@ function diagnosticComparisonEvidence(left, right, contract, catalog) {
   components.push(comparePathWithAxis(left.path, right.path));
   components.push({
     axis: "details.rfc8785",
-    order: Buffer.compare(
-      canonicalDetailBytes(left.details, "left diagnostic"),
-      canonicalDetailBytes(right.details, "right diagnostic"),
-    ),
+    order: compareDiagnosticDetails(left, right),
   });
   const decisive = components.find(component => component.order !== 0);
   return {
@@ -1238,10 +1235,7 @@ export function createDiagnosticComparator({ contract, catalog }) {
     }
     const path = comparePathWithAxis(left.path, right.path).order;
     if (path !== 0) return path;
-    return Buffer.compare(
-      canonicalDetailBytes(left.details, "left diagnostic"),
-      canonicalDetailBytes(right.details, "right diagnostic"),
-    );
+    return compareDiagnosticDetails(left, right);
   };
 }
 
@@ -1272,6 +1266,16 @@ function compareStringArrays(left, right) {
     if (difference !== 0) return difference;
   }
   return left.length - right.length;
+}
+
+function compareDiagnosticDetails(left, right) {
+  if (left.code === "graph.cycle" && right.code === "graph.cycle") {
+    return compareStringArrays(left.details.component, right.details.component);
+  }
+  return Buffer.compare(
+    canonicalDetailBytes(left.details, "left diagnostic"),
+    canonicalDetailBytes(right.details, "right diagnostic"),
+  );
 }
 
 function deriveCyclicSccs(nodes, edges, nodeOrder, edgeOrder) {
@@ -1832,10 +1836,26 @@ function normalizedProfileBindings(profile, declarations) {
   const declarationsByImplementation = new Map(
     declarations.map(declaration => [declaration.implementationId, declaration]),
   );
+  const coordinates = new Set();
   return profile.bindings.map(binding => {
     const declaration = declarationsByImplementation.get(binding.consumerImplementationId);
     const slot = declaration?.slots.find(candidate => candidate.slotId === binding.slotId);
     if (slot === undefined) fail("normalization vector references an unknown slot");
+    const coordinate = `${binding.consumerImplementationId}\u0000${binding.slotId}`;
+    if (coordinates.has(coordinate)) {
+      fail("normalization vector contains duplicate binding coordinates");
+    }
+    coordinates.add(coordinate);
+    if (new Set(binding.providerImplementationIds).size !== binding.providerImplementationIds.length) {
+      fail("normalization vector contains duplicate provider implementation IDs");
+    }
+    const providerCount = binding.providerImplementationIds.length;
+    if ((slot.cardinality.kind === "required" && providerCount !== 1)
+      || (slot.cardinality.kind === "optional" && providerCount > 1)
+      || (slot.cardinality.kind === "many"
+        && (providerCount < slot.cardinality.min || providerCount > slot.cardinality.max))) {
+      fail("normalization vector binding violates slot cardinality");
+    }
     return {
       consumerImplementationId: binding.consumerImplementationId,
       slotId: binding.slotId,
@@ -1847,6 +1867,18 @@ function normalizedProfileBindings(profile, declarations) {
     compareAscii(left.consumerImplementationId, right.consumerImplementationId)
       || compareAscii(left.slotId, right.slotId)
   ));
+}
+
+function validatePlanBindings(bindings, label) {
+  const coordinates = new Set();
+  for (const binding of bindings) {
+    const coordinate = `${binding.consumerImplementationId}\u0000${binding.slotId}`;
+    if (coordinates.has(coordinate)) fail(`${label} contains duplicate binding coordinates`);
+    coordinates.add(coordinate);
+    if (new Set(binding.providerImplementationIds).size !== binding.providerImplementationIds.length) {
+      fail(`${label} contains duplicate provider implementation IDs`);
+    }
+  }
 }
 
 export function validateNormalizationQualification({ vectors, validateDocument }) {
@@ -1867,6 +1899,21 @@ export function validateNormalizationQualification({ vectors, validateDocument }
     if (!Array.isArray(vector.equivalentProfiles) || vector.equivalentProfiles.length === 0) {
       fail(`${vector.name} requires at least one equivalent profile`);
     }
+    const declarationOrderKeys = vector.declarationOrders.map(order => JSON.stringify(order));
+    if (implementationIds.length > 1 && new Set(declarationOrderKeys).size < 2) {
+      fail(`${vector.name} requires distinct declaration permutations`);
+    }
+    const profilePermutationKeys = vector.equivalentProfiles.map(profile => JSON.stringify({
+      roots: profile.roots,
+      selections: profile.selections,
+      bindings: profile.bindings,
+    }));
+    const hasProfilePermutationSurface = vector.expectedPlan.roots.length > 1
+      || vector.expectedPlan.selections.length > 1
+      || vector.expectedPlan.bindings.length > 1;
+    if (hasProfilePermutationSurface && new Set(profilePermutationKeys).size < 2) {
+      fail(`${vector.name} requires distinct equivalent profiles`);
+    }
     for (const order of vector.declarationOrders) {
       exactStringSet(order, implementationIds, `${vector.name} declaration permutation`);
     }
@@ -1882,6 +1929,7 @@ export function validateNormalizationQualification({ vectors, validateDocument }
         fail(`${vector.name} profile does not normalize to the expected plan`);
       }
     }
+    validatePlanBindings(vector.expectedPlan.bindings, `${vector.name} expected plan`);
     if (!same(minimumDependencyOrder(vector.expectedPlan), vector.expectedPlan.dependencyOrder)) {
       fail(`${vector.name} does not use the minimum deterministic dependency order`);
     }

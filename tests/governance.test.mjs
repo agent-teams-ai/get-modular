@@ -561,9 +561,20 @@ test("qualification claims and the authoritative profile cannot disagree", () =>
     profile,
     documents: [],
   }));
-  assert.throws(() => validateQualificationProfileConsistency({
+  assert.doesNotThrow(() => validateQualificationProfileConsistency({
     profile,
-    documents: [{ status: "structural-conformant" }],
+    documents: [{ type: "architecture", status: "structural-conformant" }],
+  }));
+  assert.throws(() => validateQualificationProfileConsistency({
+    profile: {
+      adoption: {
+        conformance: {
+          structural: { status: "structural-conformant" },
+          runtime: { status: "not-claimed" },
+        },
+      },
+    },
+    documents: [{ type: "architecture", status: "structural-conformant" }],
   }), /structural conformance disagrees/u);
   assert.throws(() => validateQualificationProfileConsistency({
     profile: {
@@ -586,8 +597,8 @@ test("qualification claims and the authoritative profile cannot disagree", () =>
       },
     },
     documents: [
-      { status: "structural-conformant" },
-      { status: "runtime-conformant" },
+      { type: "qualification", status: "structural-conformant" },
+      { type: "qualification", status: "runtime-conformant" },
     ],
   }));
 });

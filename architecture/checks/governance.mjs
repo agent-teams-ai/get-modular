@@ -304,7 +304,8 @@ export async function validateQualificationClaims({
 export function validateQualificationProfileConsistency({ profile, documents }) {
   const claims = new Map(
     documents
-      .filter(document => QUALIFICATION_CLAIM_STATUSES.has(document.status))
+      .filter(document => document.type === "qualification"
+        && QUALIFICATION_CLAIM_STATUSES.has(document.status))
       .map(document => [document.status, document]),
   );
   const expected = {

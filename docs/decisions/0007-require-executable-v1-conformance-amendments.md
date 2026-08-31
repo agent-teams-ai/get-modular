@@ -72,6 +72,10 @@ The repository gate must validate both ledgers. A future revision creates a new
 artifact version and successor ADR; it never mutates an accepted ledger or
 artifact in place.
 
+Accepted V1 contract artifact IDs use the repository-local canonical form
+`GM-V1-<UPPERCASE-COMPONENT>(-<UPPERCASE-COMPONENT>)*`. The form is an
+auditability rule for ledger identity, not a runtime module-ID grammar.
+
 ### Closed diagnostic algebra
 
 `diagnostic-contract.json` is the discriminant authority for every V1
