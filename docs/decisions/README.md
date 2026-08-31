@@ -10,7 +10,7 @@ summary: Index of Get Modular architecture decisions.
 
 ## Proposed decisions
 
-- [ADR-0008: Bounded internal engine self-composition](0008-bounded-internal-engine-self-composition.md)
+None.
 
 ## Accepted decisions
 
@@ -21,6 +21,7 @@ summary: Index of Get Modular architecture decisions.
 - [ADR-0005: Freeze V1 compatibility diagnostics and resource profile](0005-freeze-v1-compatibility-diagnostics-and-resource-profile.md)
 - [ADR-0006: Clarify V1 compiler normalization and entry points](0006-clarify-v1-compiler-normalization-and-entry-points.md)
 - [ADR-0007: Require executable V1 conformance amendments](0007-require-executable-v1-conformance-amendments.md)
+- [ADR-0008: Bounded internal engine self-composition](0008-bounded-internal-engine-self-composition.md)
 
 ## Superseded decisions
 
