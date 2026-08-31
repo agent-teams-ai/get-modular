@@ -78,10 +78,12 @@ replaceable mechanics.
 ### Precedence
 
 When accepted, this decision supersedes ADR-0007 only for the runtime dependency
-status of `canonicalize`. ADR-0007's checked-in canonical bytes, differential
-oracle requirement, and prohibition on package types or errors crossing the
-Core boundary remain authoritative. `canonicalize@4.0.0` may become a private
-production adapter only after the required Node, browser-window, and worker
+status of `canonicalize` and its prohibition on that package API entering Core.
+The exact `canonicalize@4.0.0` API may be invoked only inside the qualified
+private adapter; no package value, type, API surface, or error crosses that
+adapter boundary into semantic code or public exports. ADR-0007's checked-in
+canonical bytes and differential-oracle requirement remain authoritative. The
+adapter is admitted only after the required Node, browser-window, and worker
 qualification passes; until then Core uses an owned implementation behind the
 same private port. `json-canonicalize` remains development-only. A later package
 version or a different adapter requires its own exact-version qualification and
