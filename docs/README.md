@@ -13,6 +13,7 @@ summary: Canonical navigation for Get Modular architecture and evidence.
 - [System boundary](architecture/system-boundary.md)
 - [Current implementation contract](architecture/current-contract.md)
 - [Feature Module Standard profile](architecture/feature-module-standard.md)
+- [MVP implementation roadmap](architecture/mvp-implementation-roadmap.md)
 - [Internal engine self-composition](decisions/0008-bounded-internal-engine-self-composition.md) - accepted build-time self-use architecture; implementation evidence remains pending.
 - [Self-composition evidence and release custody](decisions/0011-define-private-self-composition-evidence-and-release-custody.md) - proposed private qualification protocol for the first packed Core.
 
