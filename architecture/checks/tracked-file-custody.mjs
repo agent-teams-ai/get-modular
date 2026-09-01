@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
-import { lstat, readFile, realpath } from "node:fs/promises";
+import { constants } from "node:fs";
+import { lstat, open, realpath } from "node:fs/promises";
 import { resolve, sep } from "node:path";
 import { promisify } from "node:util";
 
@@ -50,6 +51,29 @@ async function inspectWorkingTreePath(relativePath, repositoryRoot) {
     return { kind: "outside" };
   }
   return { kind: "regular", path: current };
+}
+
+async function readWorkingTreeRegularFile(relativePath, repositoryRoot) {
+  const before = await inspectWorkingTreePath(relativePath, repositoryRoot);
+  if (before.kind !== "regular") return before;
+
+  let handle;
+  try {
+    handle = await open(before.path, constants.O_RDONLY | constants.O_NOFOLLOW);
+    const status = await handle.stat();
+    if (!status.isFile()) return { kind: "non-regular" };
+    const bytes = await handle.readFile();
+    const after = await inspectWorkingTreePath(relativePath, repositoryRoot);
+    if (after.kind !== "regular") return after;
+    return { kind: "regular", bytes };
+  } catch (error) {
+    if (["ELOOP", "ENOENT", "ENOTDIR"].includes(error?.code)) {
+      return { kind: error.code === "ELOOP" ? "symlink" : "missing" };
+    }
+    throw error;
+  } finally {
+    await handle?.close();
+  }
 }
 
 async function runGit(repositoryRoot, args) {
@@ -115,14 +139,14 @@ async function exactIndexEntry(relativePath, repositoryRoot) {
 // Navigation reads intentionally observe the working tree so local edits are visible.
 // They prove only that the path is a tracked, in-repository regular file.
 export async function inspectTrackedWorkingTreeRegularFile(relativePath, repositoryRoot) {
-  const workingTree = await inspectWorkingTreePath(relativePath, repositoryRoot);
+  const workingTree = await readWorkingTreeRegularFile(relativePath, repositoryRoot);
   if (workingTree.kind !== "regular") return workingTree;
   const indexEntry = await exactIndexEntry(relativePath, repositoryRoot);
   if (indexEntry.kind !== "regular") return { kind: indexEntry.kind };
   return {
     kind: "regular",
     tracked: true,
-    bytes: await readFile(workingTree.path),
+    bytes: workingTree.bytes,
   };
 }
 
@@ -144,13 +168,12 @@ export async function inspectAcceptedAuthorityFile(
   repositoryRoot,
   { afterIndexLookup } = {},
 ) {
-  const workingTree = await inspectWorkingTreePath(relativePath, repositoryRoot);
+  const workingTree = await readWorkingTreeRegularFile(relativePath, repositoryRoot);
   if (workingTree.kind !== "regular") return workingTree;
-  const workingTreeBytes = await readFile(workingTree.path);
   const indexEntry = await exactIndexEntry(relativePath, repositoryRoot);
   if (indexEntry.kind !== "regular") return { kind: indexEntry.kind };
   const { stdout: bytes } = await runGit(repositoryRoot, ["cat-file", "blob", indexEntry.oid]);
-  if (!workingTreeBytes.equals(bytes)) return { kind: "working-tree-diverged" };
+  if (!workingTree.bytes.equals(bytes)) return { kind: "working-tree-diverged" };
   await afterIndexLookup?.({ oid: indexEntry.oid, path: relativePath });
   return {
     kind: "regular",

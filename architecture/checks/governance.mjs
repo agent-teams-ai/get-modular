@@ -497,7 +497,7 @@ async function readBytes(relativePath) {
   return readFile(resolve(root, relativePath));
 }
 
-async function governanceDocumentCatalog() {
+export async function governanceDocumentCatalog(repositoryRoot = root) {
   const documents = new Map();
   const documentSources = new Map();
   for (const directory of [
@@ -507,10 +507,14 @@ async function governanceDocumentCatalog() {
     "docs/qualification",
     "docs/requirements",
   ]) {
-    for (const filename of await readdir(resolve(root, directory))) {
+    for (const filename of await readdir(resolve(repositoryRoot, directory))) {
       if (!filename.endsWith(".md")) continue;
       const path = `${directory}/${filename}`;
-      const bytes = await readBytes(path);
+      const bytes = await readAcceptedAuthorityFile(
+        path,
+        repositoryRoot,
+        "governed document",
+      );
       const markdown = bytes.toString("utf8");
       const match = markdown.match(/^---\n([\s\S]*?)\n---/u);
       if (!match) fail(`${directory}/${filename} has no metadata`);
@@ -554,14 +558,15 @@ async function main() {
     ledgerAuthorities,
   });
 
-  const requirementsMarkdown = await read("docs/requirements/module-system-v1.md");
   const sourceMap = parse(await read("docs/provenance/source-map.yaml"));
   const traceability = parse(await read("docs/traceability/module-system-v1.yaml"));
   const blockerIds = new Set([...documents.values()]
     .filter(metadata => metadata.type === "open-decision" && metadata.status === "open")
     .map(metadata => metadata.id));
   validateTraceability({
-    requirementIds: requirementIdsFromMarkdown(requirementsMarkdown),
+    requirementIds: requirementIdsFromMarkdown(
+      documentSources.get("GM-REQ-V1").bytes.toString("utf8"),
+    ),
     sources: validateSourceMap(sourceMap),
     authorityIds: new Set([
       ...ledgerAuthorities.keys(),

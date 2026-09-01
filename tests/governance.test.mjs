@@ -11,6 +11,7 @@ import {
   ACCEPTED_AUTHORITY_LEDGER_ANCHOR,
   ACCEPTED_AUTHORITY_LEDGER_DIGEST,
   ACCEPTED_AUTHORITY_LEDGER_PATH,
+  governanceDocumentCatalog,
   productionArtifactPaths,
   qualificationClaimAnchor,
   inspectTrackedNavigationFile,
@@ -817,6 +818,43 @@ test("accepted authority custody rejects intent-to-add index entries", async () 
     await assert.rejects(
       readAcceptedAuthorityFile("intent [1].json", fixture, "accepted artifact"),
       /TRACKED_FILE_CUSTODY_FAILED.*intent-to-add/u,
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("governance catalog rejects an untracked accepted ADR", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-untracked-adr-"));
+  try {
+    await execFileAsync("git", ["init", "--quiet"], { cwd: fixture });
+    for (const directory of [
+      "docs/architecture",
+      "docs/decisions",
+      "docs/open-decisions",
+      "docs/qualification",
+      "docs/requirements",
+    ]) {
+      await mkdir(join(fixture, directory), { recursive: true });
+    }
+    await writeFile(join(fixture, "docs/decisions/9999-untracked.md"), [
+      "---",
+      "id: ADR-9999",
+      "type: adr",
+      "status: accepted",
+      "owner: attacker",
+      "approved_by: attacker",
+      "accepted_at: 2026-09-01",
+      "summary: Untracked authority must not enter the catalog.",
+      "---",
+      "",
+      "# Untracked",
+      "",
+    ].join("\n"));
+
+    await assert.rejects(
+      governanceDocumentCatalog(fixture),
+      /TRACKED_FILE_CUSTODY_FAILED.*untracked/u,
     );
   } finally {
     await rm(fixture, { recursive: true, force: true });
