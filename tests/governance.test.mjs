@@ -36,6 +36,7 @@ import {
 } from "../architecture/checks/node-version.mjs";
 import {
   captureGitIndexSnapshot,
+  historicalFileVersions,
   inspectIndexSnapshotFile,
   readIndexSnapshotFile,
   inspectAcceptedAuthorityFile,
@@ -926,6 +927,27 @@ test("open-decision history is complete and non-decreasing", async () => {
     history,
     documents: decisions.slice(0, -1),
   }), /must match the governed open-decision records/u);
+});
+
+test("open-decision history rejects a shallow repository witness", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-shallow-history-"));
+  const clonePath = join(fixture, "clone");
+  try {
+    await execFileAsync("git", [
+      "clone",
+      "--quiet",
+      "--depth=1",
+      "--no-local",
+      resolve("."),
+      clonePath,
+    ]);
+    await assert.rejects(
+      historicalFileVersions(OPEN_DECISION_HISTORY_PATH, clonePath),
+      /complete non-shallow Git history/u,
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
 });
 
 test("accepted authority custody rejects intent-to-add index entries", async () => {

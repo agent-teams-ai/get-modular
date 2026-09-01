@@ -268,6 +268,13 @@ export async function readIndexSnapshotFile(snapshot, relativePath, label, optio
 
 export async function historicalFileVersions(relativePath, repositoryRoot) {
   if (!safeRepositoryPath(relativePath)) throw new TypeError("unsafe historical file path");
+  const { stdout: shallowBytes } = await runGit(repositoryRoot, [
+    "rev-parse",
+    "--is-shallow-repository",
+  ]);
+  if (shallowBytes.toString("utf8").trim() !== "false") {
+    throw new Error("historical custody requires a complete non-shallow Git history");
+  }
   let commits;
   try {
     const { stdout } = await runGit(repositoryRoot, [
