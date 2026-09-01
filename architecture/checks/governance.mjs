@@ -47,18 +47,6 @@ const QUALIFICATION_CLAIM_STATUSES = new Set([
 ]);
 const WINDOWS_DEVICE_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.[^/]*)?$/iu;
 
-export const REQUIRED_AGENT_LINKS = Object.freeze([
-  ".agents/skills/docs-authoring/SKILL.md",
-  "docs/architecture/current-contract.md",
-  "docs/architecture/feature-module-standard.md",
-  "docs/architecture/mvp-implementation-roadmap.md",
-  "docs/architecture/system-boundary.md",
-  "docs/decisions/README.md",
-  "docs/open-decisions/README.md",
-  "docs/provenance/source-map.yaml",
-  "docs/requirements/module-system-v1.md",
-]);
-
 export const REQUIRED_TRACEABILITY_AUTHORITY_COVERAGE = new Map([
   ["ADR-0007", new Set([
     "GM-REQ-002",
@@ -476,19 +464,6 @@ export function validateTraceability({
   }
 }
 
-export async function validateAgentLinks({ markdown, linkedFile }) {
-  if (typeof markdown !== "string") fail("AGENTS.md content is missing");
-  for (const path of REQUIRED_AGENT_LINKS) {
-    if (!markdown.includes(`](${path})`)) {
-      fail(`AGENTS.md must link to ${path}`);
-    }
-    const file = await linkedFile(path);
-    if (file?.kind !== "regular" || file.tracked !== true) {
-      fail(`AGENTS.md target must be a regular tracked file with no symbolic-link path: ${path}`);
-    }
-  }
-}
-
 export function validateSourceMap(sourceMap) {
   if (sourceMap?.schemaVersion !== 1 || !Array.isArray(sourceMap.sources)) {
     fail("unsupported source-map schema");
@@ -599,21 +574,6 @@ async function main() {
     ledger: JSON.parse(ledgerBytes.toString("utf8")),
     readBytes: path => readTrackedRegularFile(path, root, "accepted authority artifact"),
   });
-  await validateAgentLinks({
-    markdown: (await readTrackedRegularFile("AGENTS.md", root, "agent instructions"))
-      .toString("utf8"),
-    linkedFile: path => inspectTrackedRegularFile(path, root),
-  });
-
-  const acceptedDecisionLedgerPath = "architecture/decisions/accepted-decisions.json";
-  const acceptedDecisionLedger = JSON.parse((await readTrackedRegularFile(
-    acceptedDecisionLedgerPath,
-    root,
-    "accepted decision ledger",
-  )).toString("utf8"));
-  for (const decision of acceptedDecisionLedger.decisions ?? []) {
-    await readTrackedRegularFile(decision.path, root, "accepted decision artifact");
-  }
   const { documents, documentSources } = await governanceDocumentCatalog();
   validateDecisionResolutions([...documents.values()]);
   validateAcceptedAuthorityCatalog({

@@ -613,18 +613,25 @@ Within it, accepted resource limits and correctness are supported; recorded
 time, memory, archive size and structural counters remain sizing observations,
 not portable latency, throughput or memory promises.
 
-Phase 5 also updates the governed operator/adapter section of
-`docs/architecture/current-contract.md`. It explains identity and namespace
-ownership, complete-profile construction, ordered-many bindings, entrypoint and
-carrier selection, diagnostic and omission handling, supported scale shapes,
-evidence identities, and when invalidated cases must be rerun. It shows that a
-Product Host may consult its authorized literal factory table only after
-successful compilation and must not edit a plan or infer authorization,
-readiness, activation, retry, routing or recovery from Core output. It includes
-support-data capture and escalation guidance for cases outside the envelope
-without turning Get Modular into an operational authority. This reuses the
-existing governed architecture document and does not invent a new Docs Protocol
-record type.
+Phase 5 records the support envelope in one machine-verified promotion artifact
+owned by the accepted release-custody decision. That artifact is the sole
+authority for the retained archive identity, executed matrix, supported cells
+and explicit exclusions. A human operator/adapter guide may be generated from
+that artifact and linked from `docs/architecture/current-contract.md`, but the
+guide and the mutable current-contract navigation are derived views: they do not
+own archive identity, support state or release eligibility.
+
+The derived guide explains identity and namespace ownership, complete-profile
+construction, ordered-many bindings, entrypoint and carrier selection,
+diagnostic and omission handling, supported scale shapes, evidence identities,
+and when invalidated cases must be rerun. It shows that a Product Host may
+consult its authorized literal factory table only after successful compilation
+and must not edit a plan or infer authorization, readiness, activation, retry,
+routing or recovery from Core output. It includes support-data capture and
+escalation guidance for cases outside the envelope without turning Get Modular
+into an operational authority. Before the promotion artifact exists, neither
+the guide nor current-contract navigation may claim a distributable support
+envelope.
 
 ### Phase 5 implementation
 
@@ -675,11 +682,12 @@ record type.
    `reviewed` evidence until separate accepted reciprocal promotion decisions
    anchor their exact bytes in the order required by the Feature Module
    Standard. A runner result cannot promote itself.
-10. Generate the closed support envelope from the same retained archive and
-    evidence identities, then update the operator/adapter section of
-    `docs/architecture/current-contract.md` with its supported and unsupported
-    cases explicit. A measurement observation cannot silently expand the
-    envelope or become a compatibility threshold.
+10. Generate the closed support envelope in the machine-verified promotion
+    artifact from the same retained archive and evidence identities. Generate
+    the operator/adapter guide from that artifact and link the derived view from
+    `docs/architecture/current-contract.md`. A mutable guide, navigation page or
+    measurement observation cannot become support authority, silently expand
+    the envelope or establish a compatibility threshold.
 
 ### Phase 5 exit criteria
 
@@ -694,9 +702,10 @@ becoming compatibility thresholds. Unresolved raw-carrier research cells do not
 enter conformance. The private conformance runner is deterministic and cannot
 install modules, scan files, derive expected results from Core, authorize
 execution or promote its own qualification records. The closed support envelope
-and the operator/adapter section of `docs/architecture/current-contract.md`
-identify the exact retained archive, agree with the executed matrix, and state
-every unsupported case without claiming Product Host operations.
+in the machine-verified promotion artifact identifies the exact retained
+archive, agrees with the executed matrix, and states every unsupported case
+without claiming Product Host operations. Its derived operator/adapter guide
+must reproduce that state without becoming a second authority.
 
 ## Phase 6: first product dogfooding
 

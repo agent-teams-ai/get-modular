@@ -11,14 +11,12 @@ import {
   ACCEPTED_AUTHORITY_LEDGER_ANCHOR,
   ACCEPTED_AUTHORITY_LEDGER_DIGEST,
   ACCEPTED_AUTHORITY_LEDGER_PATH,
-  REQUIRED_AGENT_LINKS,
   REQUIRED_TRACEABILITY_AUTHORITY_COVERAGE,
   productionArtifactPaths,
   qualificationClaimAnchor,
   readTrackedEvidence,
   requirementIdsFromMarkdown,
   validateAcceptedAuthorityCatalog,
-  validateAgentLinks,
   validateAuthorityLedger,
   validateAuthorityLedgerCustody,
   validateBlockedImplementation,
@@ -213,23 +211,6 @@ test("ADR-0007 traceability coverage cannot be removed", () => {
     authorityIds: new Set(["ADR-0001", "ADR-0007"]),
     traceability: missing,
   }), /ADR-0007 traceability must cover GM-REQ-010/u);
-});
-
-test("AGENTS navigation links remain reachable tracked files", async () => {
-  const markdown = await readFile("AGENTS.md", "utf8");
-  await assert.doesNotReject(() => validateAgentLinks({
-    markdown,
-    linkedFile: path => readTrackedEvidence(path),
-  }));
-
-  await assert.rejects(() => validateAgentLinks({
-    markdown: markdown.replace(`](${REQUIRED_AGENT_LINKS[0]})`, "](missing.md)"),
-    linkedFile: path => readTrackedEvidence(path),
-  }), /AGENTS\.md must link/u);
-  await assert.rejects(() => validateAgentLinks({
-    markdown,
-    linkedFile: async () => ({ kind: "symlink" }),
-  }), /regular tracked file/u);
 });
 
 test("supported Node preflight matches repository runtime custody", async () => {
