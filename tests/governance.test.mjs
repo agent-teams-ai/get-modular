@@ -11,6 +11,7 @@ import {
   ACCEPTED_AUTHORITY_LEDGER_ANCHOR,
   ACCEPTED_AUTHORITY_LEDGER_DIGEST,
   ACCEPTED_AUTHORITY_LEDGER_PATH,
+  OPEN_DECISION_HISTORY_PATH,
   governanceDocumentCatalog,
   productionArtifactPaths,
   qualificationClaimAnchor,
@@ -20,6 +21,7 @@ import {
   validateAuthorityLedger,
   validateAuthorityLedgerCustody,
   validateBlockedImplementation,
+  validateDecisionHistory,
   validateDecisionResolutions,
   validateQualificationClaims,
   validateQualificationProfileConsistency,
@@ -33,6 +35,9 @@ import {
   SUPPORTED_NODE_RANGE,
 } from "../architecture/checks/node-version.mjs";
 import {
+  captureGitIndexSnapshot,
+  inspectIndexSnapshotFile,
+  readIndexSnapshotFile,
   inspectAcceptedAuthorityFile,
   readAcceptedAuthorityFile,
 } from "../architecture/checks/tracked-file-custody.mjs";
@@ -803,6 +808,126 @@ test("tracked navigation and accepted authority custody use distinct byte source
   }
 });
 
+test("governance catalog rejects AD/AM split states from one index snapshot", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-governance-snapshot-"));
+  try {
+    await execFileAsync("git", ["init", "--quiet"], { cwd: fixture });
+    await mkdir(join(fixture, "docs", "open-decisions"), { recursive: true });
+    await mkdir(join(fixture, "docs", "requirements"), { recursive: true });
+    const openPath = join(fixture, "docs", "open-decisions", "OD-001-example.md");
+    const requirementPath = join(fixture, "docs", "requirements", "example.md");
+    const openBytes = [
+      "---",
+      "id: OD-001",
+      "type: open-decision",
+      "status: open",
+      "owner: architecture",
+      "summary: Snapshot fixture.",
+      "---",
+      "",
+    ].join("\n");
+    const requirementBytes = [
+      "---",
+      "id: GM-REQ-TEST",
+      "type: requirements",
+      "status: accepted",
+      "owner: architecture",
+      "summary: Snapshot fixture.",
+      "---",
+      "",
+    ].join("\n");
+    await writeFile(openPath, openBytes);
+    await writeFile(requirementPath, requirementBytes);
+    await execFileAsync("git", ["add", "--", "docs"], { cwd: fixture });
+
+    await rm(openPath);
+    await writeFile(requirementPath, `${requirementBytes}unstaged mutation\n`);
+    const snapshot = await captureGitIndexSnapshot(fixture);
+    await assert.rejects(
+      governanceDocumentCatalog(fixture, snapshot),
+      /TRACKED_FILE_CUSTODY_FAILED.*OD-001-example\.md \(missing\)/u,
+    );
+
+    await writeFile(openPath, openBytes);
+    await assert.rejects(
+      governanceDocumentCatalog(fixture, snapshot),
+      /TRACKED_FILE_CUSTODY_FAILED.*example\.md \(working-tree-diverged\)/u,
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("qualification evidence uses index blobs and rejects unstaged bytes", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-qualification-snapshot-"));
+  try {
+    await execFileAsync("git", ["init", "--quiet"], { cwd: fixture });
+    await mkdir(join(fixture, "evidence"), { recursive: true });
+    const evidencePath = "evidence/source.json";
+    await writeFile(join(fixture, evidencePath), "index evidence\n");
+    await execFileAsync("git", ["add", "--", evidencePath], { cwd: fixture });
+    const snapshot = await captureGitIndexSnapshot(fixture);
+    await writeFile(join(fixture, evidencePath), "unstaged evidence\n");
+
+    assert.deepEqual(await inspectIndexSnapshotFile(snapshot, evidencePath), {
+      kind: "working-tree-diverged",
+    });
+    await assert.rejects(
+      readIndexSnapshotFile(snapshot, evidencePath, "qualification evidence"),
+      /TRACKED_FILE_CUSTODY_FAILED.*working-tree-diverged/u,
+    );
+
+    const claim = {
+      id: "QUAL-SOURCE",
+      type: "qualification",
+      status: "source-admitted",
+      subject: "packages/core",
+      evidence: [evidenceIdentity(evidencePath, "index evidence\n")],
+    };
+    await assert.rejects(validateQualificationClaims({
+      documents: [claim],
+      productionArtifacts: ["packages/core/src/index.ts"],
+      documentSources: new Map([[claim.id, {
+        path: "docs/qualification/source.md",
+        bytes: "source claim bytes\n",
+      }]]),
+      evidenceFile: path => inspectIndexSnapshotFile(snapshot, path),
+    }), /evidence must be a regular in-repository file/u);
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("open-decision history is complete and non-decreasing", async () => {
+  const history = JSON.parse(await readFile(OPEN_DECISION_HISTORY_PATH, "utf8"));
+  const decisions = history.recordedDecisionIds.map(id => ({
+    id,
+    type: "open-decision",
+    status: "open",
+  }));
+  assert.deepEqual(validateDecisionHistory({
+    history,
+    historicalHistories: [{
+      schemaVersion: 1,
+      recordedDecisionIds: history.recordedDecisionIds.slice(0, -1),
+    }],
+    documents: decisions,
+  }), new Set(history.recordedDecisionIds));
+
+  assert.throws(() => validateDecisionHistory({
+    history: {
+      schemaVersion: 1,
+      recordedDecisionIds: history.recordedDecisionIds.slice(0, -1),
+    },
+    historicalHistories: [history],
+    documents: decisions.slice(0, -1),
+  }), /cannot remove previously recorded OD-006/u);
+  assert.throws(() => validateDecisionHistory({
+    history,
+    documents: decisions.slice(0, -1),
+  }), /must match the governed open-decision records/u);
+});
+
 test("accepted authority custody rejects intent-to-add index entries", async () => {
   const fixture = await mkdtemp(join(tmpdir(), "get-modular-intent-to-add-"));
   try {
@@ -949,16 +1074,32 @@ test("production artifact discovery inventories symlinks without following them"
 
 test("resolved decisions require an accepted reciprocal ADR", () => {
   assert.doesNotThrow(() => validateDecisionResolutions([
-    { id: "OD-001", type: "open-decision", status: "resolved", resolved_by: "ADR-0002" },
+    {
+      id: "OD-001",
+      type: "open-decision",
+      status: "resolved",
+      resolved_by: "ADR-0002",
+      related: ["ADR-0002"],
+    },
     { id: "ADR-0002", type: "adr", status: "accepted", related: ["OD-001"] },
   ]));
   assert.throws(() => validateDecisionResolutions([
     { id: "OD-001", type: "open-decision", status: "resolved", resolved_by: "ADR-9999" },
   ]), /must resolve through an accepted ADR/u);
   assert.throws(() => validateDecisionResolutions([
-    { id: "OD-001", type: "open-decision", status: "resolved", resolved_by: "ADR-0002" },
+    {
+      id: "OD-001",
+      type: "open-decision",
+      status: "resolved",
+      resolved_by: "ADR-0002",
+      related: ["ADR-0002"],
+    },
     { id: "ADR-0002", type: "adr", status: "accepted", related: [] },
   ]), /must reference the resolved decision/u);
+  assert.throws(() => validateDecisionResolutions([
+    { id: "OD-001", type: "open-decision", status: "resolved", resolved_by: "ADR-0002" },
+    { id: "ADR-0002", type: "adr", status: "accepted", related: ["OD-001"] },
+  ]), /must reference its resolver ADR-0002/u);
 });
 
 test("mutable revisions and unsafe paths fail closed", () => {

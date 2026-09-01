@@ -11,6 +11,7 @@ const WINDOWS_DEVICE_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.[^/]*)?$
 const GIT_OBJECT_ID = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u;
 const REGULAR_FILE_MODE = /^(?:100644|100755)$/u;
 const MAX_GIT_OUTPUT_BYTES = 16 * 1024 * 1024;
+const INDEX_SNAPSHOT_VERSION = 1;
 
 function safeRepositoryPath(value) {
   return typeof value === "string"
@@ -134,6 +135,183 @@ async function exactIndexEntry(relativePath, repositoryRoot) {
     throw error;
   }
   return parseExactIndexEntry(output, relativePath);
+}
+
+function parseIndexSnapshot(output) {
+  if (!Buffer.isBuffer(output)) throw new TypeError("Git index snapshot must be bytes");
+  const entries = new Map();
+  let offset = 0;
+  while (offset < output.length) {
+    const terminator = output.indexOf(0, offset);
+    if (terminator < 0) throw new Error("invalid unterminated Git index snapshot");
+    const record = output.subarray(offset, terminator);
+    offset = terminator + 1;
+    const tab = record.indexOf(0x09);
+    if (tab < 0) throw new Error("invalid Git index snapshot entry");
+    const match = /^(\S+) (\S+) (\S+)$/u.exec(record.subarray(0, tab).toString("ascii"));
+    if (!match) throw new Error("invalid Git index snapshot header");
+    const pathBytes = record.subarray(tab + 1);
+    const path = pathBytes.toString("utf8");
+    if (!Buffer.from(path, "utf8").equals(pathBytes) || !safeRepositoryPath(path)) {
+      throw new Error("Git index snapshot contains an unsafe or non-UTF-8 path");
+    }
+    const [, mode, oid, stage] = match;
+    let entry;
+    if (!GIT_OBJECT_ID.test(oid)) {
+      entry = { kind: "invalid-index-entry" };
+    } else if (/^0+$/u.test(oid)) {
+      entry = { kind: "intent-to-add" };
+    } else if (stage !== "0" || !REGULAR_FILE_MODE.test(mode)) {
+      entry = { kind: "non-regular" };
+    } else {
+      entry = { kind: "regular", mode, oid };
+    }
+    if (entries.has(path)) entry = { kind: "non-regular" };
+    entries.set(path, entry);
+  }
+  return entries;
+}
+
+function parseNulPaths(output) {
+  if (!Buffer.isBuffer(output)) throw new TypeError("Git path listing must be bytes");
+  if (output.length === 0) return [];
+  if (output.at(-1) !== 0) throw new Error("invalid unterminated Git path listing");
+  const paths = [];
+  let offset = 0;
+  while (offset < output.length) {
+    const terminator = output.indexOf(0, offset);
+    const pathBytes = output.subarray(offset, terminator);
+    offset = terminator + 1;
+    const path = pathBytes.toString("utf8");
+    if (!Buffer.from(path, "utf8").equals(pathBytes) || !safeRepositoryPath(path)) {
+      throw new Error("Git path listing contains an unsafe or non-UTF-8 path");
+    }
+    paths.push(path);
+  }
+  return paths;
+}
+
+export async function captureGitIndexSnapshot(repositoryRoot) {
+  const { stdout } = await runGit(repositoryRoot, [
+    "--literal-pathspecs",
+    "ls-files",
+    "--stage",
+    "-z",
+  ]);
+  return Object.freeze({
+    version: INDEX_SNAPSHOT_VERSION,
+    repositoryRoot,
+    entries: parseIndexSnapshot(stdout),
+  });
+}
+
+export function indexSnapshotPaths(snapshot) {
+  if (snapshot?.version !== INDEX_SNAPSHOT_VERSION || !(snapshot.entries instanceof Map)) {
+    throw new TypeError("invalid Git index snapshot");
+  }
+  return [...snapshot.entries.keys()];
+}
+
+export async function untrackedPathsInScope(snapshot, pathspecs) {
+  const { stdout } = await runGit(snapshot.repositoryRoot, [
+    "--literal-pathspecs",
+    "ls-files",
+    "--others",
+    "--exclude-standard",
+    "-z",
+    "--",
+    ...pathspecs,
+  ]);
+  return parseNulPaths(stdout);
+}
+
+export async function inspectIndexSnapshotFile(
+  snapshot,
+  relativePath,
+  { afterIndexLookup } = {},
+) {
+  if (!safeRepositoryPath(relativePath)) return { kind: "unsafe" };
+  const indexEntry = snapshot?.entries?.get(relativePath);
+  if (!indexEntry) {
+    const workingTree = await readWorkingTreeRegularFile(relativePath, snapshot.repositoryRoot);
+    return workingTree.kind === "regular" ? { kind: "untracked" } : workingTree;
+  }
+  if (indexEntry.kind !== "regular") return { kind: indexEntry.kind };
+  const workingTree = await readWorkingTreeRegularFile(relativePath, snapshot.repositoryRoot);
+  if (workingTree.kind !== "regular") return workingTree;
+  const { stdout: bytes } = await runGit(snapshot.repositoryRoot, [
+    "cat-file",
+    "blob",
+    indexEntry.oid,
+  ]);
+  if (!workingTree.bytes.equals(bytes)) return { kind: "working-tree-diverged" };
+  await afterIndexLookup?.({ oid: indexEntry.oid, path: relativePath });
+  return {
+    kind: "regular",
+    tracked: true,
+    oid: indexEntry.oid,
+    bytes,
+  };
+}
+
+export async function readIndexSnapshotFile(snapshot, relativePath, label, options) {
+  const file = await inspectIndexSnapshotFile(snapshot, relativePath, options);
+  if (file.kind !== "regular" || file.tracked !== true) {
+    throw new Error(
+      `TRACKED_FILE_CUSTODY_FAILED: ${label} must be a regular file from the captured Git index `
+      + `whose working-tree bytes match that snapshot and whose path has no symbolic link: `
+      + `${relativePath} (${file.kind})`,
+    );
+  }
+  return file.bytes;
+}
+
+export async function historicalFileVersions(relativePath, repositoryRoot) {
+  if (!safeRepositoryPath(relativePath)) throw new TypeError("unsafe historical file path");
+  let commits;
+  try {
+    const { stdout } = await runGit(repositoryRoot, [
+      "log",
+      "-z",
+      "--format=%H",
+      "HEAD",
+      "--",
+      relativePath,
+    ]);
+    commits = parseNulPaths(stdout);
+  } catch (error) {
+    if (error?.code === 128) return [];
+    throw error;
+  }
+  const versions = [];
+  for (const commit of commits) {
+    const { stdout: entryBytes } = await runGit(repositoryRoot, [
+      "ls-tree",
+      "-z",
+      commit,
+      "--",
+      relativePath,
+    ]);
+    if (entryBytes.length === 0) continue;
+    if (entryBytes.at(-1) !== 0 || entryBytes.indexOf(0) !== entryBytes.length - 1) {
+      throw new Error(`historical custody file is not regular at ${commit}: ${relativePath}`);
+    }
+    const record = entryBytes.subarray(0, -1);
+    const tab = record.indexOf(0x09);
+    const header = tab < 0 ? "" : record.subarray(0, tab).toString("ascii");
+    const match = /^(\S+) (\S+) (\S+)$/u.exec(header);
+    const pathBytes = tab < 0 ? Buffer.alloc(0) : record.subarray(tab + 1);
+    if (!match
+      || !REGULAR_FILE_MODE.test(match[1])
+      || match[2] !== "blob"
+      || !GIT_OBJECT_ID.test(match[3])
+      || !pathBytes.equals(Buffer.from(relativePath, "utf8"))) {
+      throw new Error(`historical custody file is not regular at ${commit}: ${relativePath}`);
+    }
+    const { stdout: bytes } = await runGit(repositoryRoot, ["cat-file", "blob", match[3]]);
+    versions.push(bytes);
+  }
+  return versions;
 }
 
 // Navigation reads intentionally observe the working tree so local edits are visible.

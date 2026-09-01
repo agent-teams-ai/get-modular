@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { readFile, readdir } from "node:fs/promises";
 import { dirname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
@@ -10,8 +9,13 @@ import {
   productionArtifactsOutsidePackages,
 } from "./production-artifacts.mjs";
 import {
+  captureGitIndexSnapshot,
+  historicalFileVersions,
+  indexSnapshotPaths,
+  inspectIndexSnapshotFile,
   inspectTrackedWorkingTreeRegularFile,
-  readAcceptedAuthorityFile,
+  readIndexSnapshotFile,
+  untrackedPathsInScope,
 } from "./tracked-file-custody.mjs";
 
 export { productionArtifactPaths, productionArtifactSymlinkPaths } from
@@ -23,6 +27,8 @@ const ARCHITECTURE_AUTHORITY_PATH = /^docs\/architecture\/[^/]+\.md$/u;
 const REQUIREMENTS_AUTHORITY_PATH = /^docs\/requirements\/[^/]+\.md$/u;
 const QUALIFICATION_DOCUMENT_PATH = /^docs\/qualification\/[^/]+\.md$/u;
 const DECISION_DOCUMENT_PATH = /^docs\/decisions\/[^/]+\.md$/u;
+const GOVERNED_DOCUMENT_PATH = /^docs\/(?:architecture|decisions|open-decisions|qualification|requirements)\/[^/]+\.md$/u;
+const OPEN_DECISION_ID = /^OD-[0-9]{3}$/u;
 const NON_PORTABLE_PATH_CHARACTERS = /[<>:"|?*\u0000-\u001f]/u;
 const REVISION = /^[a-f0-9]{40}$/u;
 const REQUIREMENT = /^GM-REQ-[0-9]{3}$/u;
@@ -49,6 +55,8 @@ const WINDOWS_DEVICE_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.[^/]*)?$
 
 export const ACCEPTED_AUTHORITY_LEDGER_PATH =
   "architecture/authority/accepted-authorities.json";
+export const OPEN_DECISION_HISTORY_PATH =
+  "architecture/decisions/open-decision-history.json";
 export const ACCEPTED_AUTHORITY_LEDGER_DIGEST =
   "sha256:9ba074210704a20f6a3ef7486f3cf2ec7435fb0fc5552cca210b6d3d5d73f077";
 export const ACCEPTED_AUTHORITY_LEDGER_ANCHOR =
@@ -474,6 +482,45 @@ export function requirementIdsFromMarkdown(markdown) {
   return new Set(ids);
 }
 
+function decisionIdsFromHistory(history, label) {
+  exactKeys(history, ["schemaVersion", "recordedDecisionIds"], label);
+  if (history.schemaVersion !== 1) fail(`${label} has an unsupported schema`);
+  const ids = history.recordedDecisionIds;
+  if (!Array.isArray(ids) || ids.length === 0
+    || ids.some(id => typeof id !== "string" || !OPEN_DECISION_ID.test(id))
+    || new Set(ids).size !== ids.length) {
+    fail(`${label} must contain unique open-decision IDs`);
+  }
+  const sorted = [...ids].sort(compareStrings);
+  if (JSON.stringify(ids) !== JSON.stringify(sorted)) {
+    fail(`${label} open-decision IDs must be sorted`);
+  }
+  return new Set(ids);
+}
+
+export function validateDecisionHistory({ history, historicalHistories = [], documents }) {
+  const recordedIds = decisionIdsFromHistory(history, "open-decision history");
+  for (const [index, historical] of historicalHistories.entries()) {
+    const historicalIds = decisionIdsFromHistory(
+      historical,
+      `historical open-decision history ${index + 1}`,
+    );
+    for (const id of historicalIds) {
+      if (!recordedIds.has(id)) {
+        fail(`open-decision history cannot remove previously recorded ${id}`);
+      }
+    }
+  }
+
+  const currentIds = new Set(documents
+    .filter(document => document.type === "open-decision")
+    .map(document => document.id));
+  if (!sameStrings(recordedIds, currentIds)) {
+    fail("open-decision history must match the governed open-decision records");
+  }
+  return recordedIds;
+}
+
 export function validateDecisionResolutions(documents) {
   const byId = new Map(documents.map(metadata => [metadata.id, metadata]));
   for (const decision of documents.filter(metadata => metadata.type === "open-decision")) {
@@ -483,50 +530,47 @@ export function validateDecisionResolutions(documents) {
     if (resolver?.type !== "adr" || resolver.status !== "accepted") {
       fail(`${decision.id} must resolve through an accepted ADR`);
     }
+    if (!Array.isArray(decision.related) || !decision.related.includes(resolver.id)) {
+      fail(`${decision.id} must reference its resolver ${resolver.id}`);
+    }
     if (!Array.isArray(resolver.related) || !resolver.related.includes(decision.id)) {
       fail(`${decision.id} resolver ${resolver.id} must reference the resolved decision`);
     }
   }
 }
 
-async function read(relativePath) {
-  return readFile(resolve(root, relativePath), "utf8");
-}
-
-async function readBytes(relativePath) {
-  return readFile(resolve(root, relativePath));
-}
-
-export async function governanceDocumentCatalog(repositoryRoot = root) {
+export async function governanceDocumentCatalog(repositoryRoot = root, suppliedSnapshot) {
+  const snapshot = suppliedSnapshot ?? await captureGitIndexSnapshot(repositoryRoot);
   const documents = new Map();
   const documentSources = new Map();
-  for (const directory of [
+  const directories = [
     "docs/architecture",
     "docs/decisions",
     "docs/open-decisions",
     "docs/qualification",
     "docs/requirements",
-  ]) {
-    for (const filename of await readdir(resolve(repositoryRoot, directory))) {
-      if (!filename.endsWith(".md")) continue;
-      const path = `${directory}/${filename}`;
-      const bytes = await readAcceptedAuthorityFile(
-        path,
-        repositoryRoot,
-        "governed document",
-      );
-      const markdown = bytes.toString("utf8");
-      const match = markdown.match(/^---\n([\s\S]*?)\n---/u);
-      if (!match) fail(`${directory}/${filename} has no metadata`);
-      const metadata = parse(match[1]);
-      if (typeof metadata?.id !== "string" || documents.has(metadata.id)) {
-        fail(`governance document IDs must be unique strings: ${directory}/${filename}`);
-      }
-      documents.set(metadata.id, metadata);
-      documentSources.set(metadata.id, { path, bytes });
-    }
+  ];
+  const untracked = (await untrackedPathsInScope(snapshot, directories))
+    .filter(path => GOVERNED_DOCUMENT_PATH.test(path));
+  if (untracked.length > 0) {
+    fail(`TRACKED_FILE_CUSTODY_FAILED: governed documents must not be untracked: ${untracked.sort(compareStrings).join(", ")}`);
   }
-  return { documents, documentSources };
+  const paths = indexSnapshotPaths(snapshot)
+    .filter(path => GOVERNED_DOCUMENT_PATH.test(path))
+    .sort(compareStrings);
+  for (const path of paths) {
+    const bytes = await readIndexSnapshotFile(snapshot, path, "governed document");
+    const markdown = bytes.toString("utf8");
+    const match = markdown.match(/^---\n([\s\S]*?)\n---/u);
+    if (!match) fail(`${path} has no metadata`);
+    const metadata = parse(match[1]);
+    if (typeof metadata?.id !== "string" || documents.has(metadata.id)) {
+      fail(`governance document IDs must be unique strings: ${path}`);
+    }
+    documents.set(metadata.id, metadata);
+    documentSources.set(metadata.id, { path, bytes });
+  }
+  return { documents, documentSources, snapshot };
 }
 
 export async function inspectTrackedNavigationFile(relativePath, repositoryRoot = root) {
@@ -534,32 +578,61 @@ export async function inspectTrackedNavigationFile(relativePath, repositoryRoot 
 }
 
 async function main() {
-  const ledgerBytes = await readAcceptedAuthorityFile(
+  const snapshot = await captureGitIndexSnapshot(root);
+  const readGovernanceInput = (path, label) => readIndexSnapshotFile(
+    snapshot,
+    path,
+    label,
+  );
+  const ledgerBytes = await readGovernanceInput(
     ACCEPTED_AUTHORITY_LEDGER_PATH,
-    root,
     "accepted authority ledger",
   );
   validateAuthorityLedgerCustody({
     ledgerBytes,
-    decisionMarkdown: (await readAcceptedAuthorityFile(
+    decisionMarkdown: (await readGovernanceInput(
       "docs/decisions/0007-require-executable-v1-conformance-amendments.md",
-      root,
       "ADR-0007",
     )).toString("utf8"),
   });
   const ledgerAuthorities = await validateAuthorityLedger({
     ledger: JSON.parse(ledgerBytes.toString("utf8")),
-    readBytes: path => readAcceptedAuthorityFile(path, root, "accepted authority artifact"),
+    readBytes: path => readGovernanceInput(path, "accepted authority artifact"),
   });
-  const { documents, documentSources } = await governanceDocumentCatalog();
+  const { documents, documentSources } = await governanceDocumentCatalog(root, snapshot);
+  const historyBytes = await readGovernanceInput(
+    OPEN_DECISION_HISTORY_PATH,
+    "open-decision history",
+  );
+  const historicalHistories = (await historicalFileVersions(
+    OPEN_DECISION_HISTORY_PATH,
+    root,
+  )).map((bytes, index) => {
+    try {
+      return JSON.parse(bytes.toString("utf8"));
+    } catch {
+      fail(`historical open-decision history ${index + 1} is not valid JSON`);
+    }
+  });
+  const decisionIds = validateDecisionHistory({
+    history: JSON.parse(historyBytes.toString("utf8")),
+    historicalHistories,
+    documents: [...documents.values()],
+  });
   validateDecisionResolutions([...documents.values()]);
   validateAcceptedAuthorityCatalog({
     documents: [...documents.values()],
     ledgerAuthorities,
   });
 
-  const sourceMap = parse(await read("docs/provenance/source-map.yaml"));
-  const traceability = parse(await read("docs/traceability/module-system-v1.yaml"));
+  const sourceMap = parse((await readGovernanceInput(
+    "docs/provenance/source-map.yaml",
+    "provenance source map",
+  )).toString("utf8"));
+  const traceability = parse((await readGovernanceInput(
+    "docs/traceability/module-system-v1.yaml",
+    "traceability catalog",
+  )).toString("utf8"));
   const blockerIds = new Set([...documents.values()]
     .filter(metadata => metadata.type === "open-decision" && metadata.status === "open")
     .map(metadata => metadata.id));
@@ -574,9 +647,7 @@ async function main() {
         .filter(metadata => metadata.type === "adr" && metadata.status === "accepted")
         .map(metadata => metadata.id),
     ]),
-    decisionIds: new Set([...documents.values()]
-      .filter(metadata => metadata.type === "open-decision")
-      .map(metadata => metadata.id)),
+    decisionIds,
     blockerIds,
     traceability,
   });
@@ -589,13 +660,16 @@ async function main() {
   if (productionArtifactSymlinks.length > 0) {
     fail(`production artifacts must not be symlinks: ${productionArtifactSymlinks.join(", ")}`);
   }
-  const profile = JSON.parse(await read("architecture/feature-module-standard-profile.json"));
+  const profile = JSON.parse((await readGovernanceInput(
+    "architecture/feature-module-standard-profile.json",
+    "Feature Module Standard profile",
+  )).toString("utf8"));
   const claimDocuments = await validateQualificationClaims({
     documents: [...documents.values()],
     productionArtifacts,
     documentSources,
     evidenceFile: async path => {
-      return inspectTrackedNavigationFile(path);
+      return inspectIndexSnapshotFile(snapshot, path);
     },
   });
   validateQualificationProfileConsistency({
