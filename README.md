@@ -1,5 +1,7 @@
 # Get Modular
 
+<img width="1774" height="887" alt="image" src="https://github.com/user-attachments/assets/9ab97f61-ff66-4a78-aacd-09bbc59145d5" />
+
 Get Modular is a product-neutral TypeScript module composition toolkit. It
 turns inert module declarations and an explicit profile into a deterministic,
 immutable composition plan. Product hosts retain authorization, executable
