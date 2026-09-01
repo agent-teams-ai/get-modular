@@ -613,13 +613,18 @@ Within it, accepted resource limits and correctness are supported; recorded
 time, memory, archive size and structural counters remain sizing observations,
 not portable latency, throughput or memory promises.
 
-Phase 5 records the support envelope in one machine-verified promotion artifact
-owned by the accepted release-custody decision. That artifact is the sole
+Phase 5 records the support envelope in the closed `supportEnvelope` section of
+the private `QualificationReport` defined by the accepted release-custody
+decision. The private `ReleaseAttestation` binds that report digest to the
+retained archive and terminal promotion result. Together they are the sole
 authority for the retained archive identity, executed matrix, supported cells
-and explicit exclusions. A human operator/adapter guide may be generated from
-that artifact and linked from `docs/architecture/current-contract.md`, but the
-guide and the mutable current-contract navigation are derived views: they do not
-own archive identity, support state or release eligibility.
+and explicit exclusions; no separate support or promotion record may repeat
+that state. Phase 5 generates `docs/generated/core-support-envelope.md`
+byte-for-byte from `QualificationReport.supportEnvelope`, verifies the generated
+view against the same report, and links it from
+`docs/architecture/current-contract.md`. The generated guide and mutable
+current-contract navigation are derived views: they do not own archive
+identity, support state or release eligibility.
 
 The derived guide explains identity and namespace ownership, complete-profile
 construction, ordered-many bindings, entrypoint and carrier selection,
@@ -848,8 +853,10 @@ cross-consumer claim.
 
 ### Publication promotion checkpoint
 
-1. Create one machine-checked promotion manifest owned by the accepted release
-   custody decision. It binds exact source head, accepted authority digests,
+1. Complete the one machine-checked `ReleaseAttestation` owned by the accepted
+   release-custody decision; this is the Phase 8 promotion manifest, not a
+   second wrapper or authority. It binds exact source head, the digest of the
+   `QualificationReport` and its `supportEnvelope`, accepted authority digests,
    toolchain/runtime identities, pack-once archive SHA-256, every command/result
    identity, reviewer/arbitration records and terminal promotion status.
 2. Reuse that exact retained archive and bind the already executed Phase 5
