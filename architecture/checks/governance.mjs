@@ -10,8 +10,8 @@ import {
   productionArtifactsOutsidePackages,
 } from "./production-artifacts.mjs";
 import {
-  inspectTrackedRegularFile,
-  readTrackedRegularFile,
+  inspectTrackedWorkingTreeRegularFile,
+  readAcceptedAuthorityFile,
 } from "./tracked-file-custody.mjs";
 
 export { productionArtifactPaths, productionArtifactSymlinkPaths } from
@@ -552,19 +552,19 @@ async function governanceDocumentCatalog() {
   return { documents, documentSources };
 }
 
-export async function readTrackedEvidence(relativePath, repositoryRoot = root) {
-  return inspectTrackedRegularFile(relativePath, repositoryRoot);
+export async function inspectTrackedNavigationFile(relativePath, repositoryRoot = root) {
+  return inspectTrackedWorkingTreeRegularFile(relativePath, repositoryRoot);
 }
 
 async function main() {
-  const ledgerBytes = await readTrackedRegularFile(
+  const ledgerBytes = await readAcceptedAuthorityFile(
     ACCEPTED_AUTHORITY_LEDGER_PATH,
     root,
     "accepted authority ledger",
   );
   validateAuthorityLedgerCustody({
     ledgerBytes,
-    decisionMarkdown: (await readTrackedRegularFile(
+    decisionMarkdown: (await readAcceptedAuthorityFile(
       "docs/decisions/0007-require-executable-v1-conformance-amendments.md",
       root,
       "ADR-0007",
@@ -572,7 +572,7 @@ async function main() {
   });
   const ledgerAuthorities = await validateAuthorityLedger({
     ledger: JSON.parse(ledgerBytes.toString("utf8")),
-    readBytes: path => readTrackedRegularFile(path, root, "accepted authority artifact"),
+    readBytes: path => readAcceptedAuthorityFile(path, root, "accepted authority artifact"),
   });
   const { documents, documentSources } = await governanceDocumentCatalog();
   validateDecisionResolutions([...documents.values()]);
@@ -618,7 +618,7 @@ async function main() {
     productionArtifacts,
     documentSources,
     evidenceFile: async path => {
-      return readTrackedEvidence(path);
+      return inspectTrackedNavigationFile(path);
     },
   });
   validateQualificationProfileConsistency({

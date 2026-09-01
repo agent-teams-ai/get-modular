@@ -1,4 +1,4 @@
-import { resolve } from "node:path";
+import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 export const SUPPORTED_NODE_RANGE = ">=24.18.0 <25";
@@ -18,7 +18,16 @@ export function assertSupportedNodeVersion(version = process.versions.node) {
   }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+export function isDirectExecution(moduleUrl, entryPath = process.argv[1]) {
+  if (!entryPath) return false;
+  try {
+    return realpathSync(entryPath) === realpathSync(fileURLToPath(moduleUrl));
+  } catch {
+    return false;
+  }
+}
+
+if (isDirectExecution(import.meta.url)) {
   assertSupportedNodeVersion();
   process.stdout.write(`Node ${process.versions.node} satisfies ${SUPPORTED_NODE_RANGE}.\n`);
 }

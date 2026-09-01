@@ -17,7 +17,7 @@ import {
   validateQualificationLedger,
   validateResourceBoundaryQualification,
 } from "./v1-qualification.mjs";
-import { readTrackedRegularFile } from "./tracked-file-custody.mjs";
+import { readAcceptedAuthorityFile } from "./tracked-file-custody.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
@@ -137,7 +137,7 @@ export function validateContractCoherence({ schema, catalog, profile, vectors })
 }
 
 async function read(relativePath) {
-  return readTrackedRegularFile(relativePath, root, "accepted V1 ledger or artifact");
+  return readAcceptedAuthorityFile(relativePath, root, "accepted V1 ledger or artifact");
 }
 
 async function readJson(relativePath) {
@@ -149,7 +149,7 @@ async function main() {
   const ledgerPath = "architecture/authority/accepted-contracts.json";
   const ledgerBytes = await read(ledgerPath);
   const ledgerDigest = `sha256:${createHash("sha256").update(ledgerBytes).digest("hex")}`;
-  const resolvingDecision = (await readTrackedRegularFile(
+  const resolvingDecision = (await readAcceptedAuthorityFile(
     "docs/decisions/0005-freeze-v1-compatibility-diagnostics-and-resource-profile.md",
     root,
     "ADR-0005",
@@ -171,7 +171,7 @@ async function main() {
   const qualificationLedgerBytes = await read(qualificationLedgerPath);
   const qualificationLedgerDigest = `sha256:${createHash("sha256")
     .update(qualificationLedgerBytes).digest("hex")}`;
-  const qualificationDecision = (await readTrackedRegularFile(
+  const qualificationDecision = (await readAcceptedAuthorityFile(
     "docs/decisions/0007-require-executable-v1-conformance-amendments.md",
     root,
     "ADR-0007",

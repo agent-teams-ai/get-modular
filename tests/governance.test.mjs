@@ -3,7 +3,7 @@ import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
 import Ajv2020 from "ajv/dist/2020.js";
@@ -14,7 +14,7 @@ import {
   REQUIRED_TRACEABILITY_AUTHORITY_COVERAGE,
   productionArtifactPaths,
   qualificationClaimAnchor,
-  readTrackedEvidence,
+  inspectTrackedNavigationFile,
   requirementIdsFromMarkdown,
   validateAcceptedAuthorityCatalog,
   validateAuthorityLedger,
@@ -28,11 +28,14 @@ import {
 } from "../architecture/checks/governance.mjs";
 import {
   assertSupportedNodeVersion,
+  isDirectExecution,
   isSupportedNodeVersion,
   SUPPORTED_NODE_RANGE,
 } from "../architecture/checks/node-version.mjs";
-import { readTrackedRegularFile } from
-  "../architecture/checks/tracked-file-custody.mjs";
+import {
+  inspectAcceptedAuthorityFile,
+  readAcceptedAuthorityFile,
+} from "../architecture/checks/tracked-file-custody.mjs";
 import { productionArtifactsOutsidePackages } from
   "../architecture/checks/production-artifacts.mjs";
 
@@ -234,6 +237,35 @@ test("supported Node preflight matches repository runtime custody", async () => 
   assert.equal(packageJson.scripts["check:changed"],
     "agent-teams-foundation agent-workflow changed --consumer .");
   assert.equal(packageJson.scripts["precheck:changed"], "pnpm runtime:preflight");
+});
+
+test("Node preflight recognizes a symlinked direct entry in a subprocess", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-node-preflight-"));
+  try {
+    const preflightPath = resolve("architecture/checks/node-version.mjs");
+    const aliasedPath = join(fixture, "node-preflight-alias.mjs");
+    await symlink(preflightPath, aliasedPath, "file");
+
+    assert.equal(isDirectExecution(new URL(
+      "../architecture/checks/node-version.mjs",
+      import.meta.url,
+    ).href, aliasedPath), true);
+
+    if (isSupportedNodeVersion(process.versions.node)) {
+      const { stdout } = await execFileAsync(process.execPath, [aliasedPath]);
+      assert.match(stdout, /satisfies/u);
+    } else {
+      await assert.rejects(
+        execFileAsync(process.execPath, [aliasedPath]),
+        error => {
+          assert.match(error.stderr, /NODE_VERSION_PREFLIGHT_FAILED/u);
+          return true;
+        },
+      );
+    }
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
 });
 
 test("missing reverse traceability fails closed", () => {
@@ -747,41 +779,126 @@ test("qualification claims and the authoritative profile cannot disagree", () =>
   }));
 });
 
-test("tracked evidence custody rejects untracked files and every symlink component", async () => {
+test("tracked navigation and accepted authority custody use distinct byte sources", async () => {
   const fixture = await mkdtemp(join(tmpdir(), "get-modular-evidence-custody-"));
   try {
     await execFileAsync("git", ["init", "--quiet"], { cwd: fixture });
     await mkdir(join(fixture, "evidence"), { recursive: true });
-    await writeFile(join(fixture, "evidence", "tracked.json"), "tracked\n");
+    await writeFile(join(fixture, "evidence", "tracked.json"), "index bytes\n");
+    await writeFile(join(fixture, "evidence", "literal[1].json"), "literal index bytes\n");
+    await writeFile(join(fixture, "evidence", "literal1.json"), "pathspec decoy\n");
     await writeFile(join(fixture, "evidence", "untracked.json"), "untracked\n");
-    await execFileAsync("git", ["add", "--", "evidence/tracked.json"], { cwd: fixture });
+    await execFileAsync("git", [
+      "add",
+      "--",
+      "evidence/tracked.json",
+      "evidence/literal[1].json",
+      "evidence/literal1.json",
+    ], { cwd: fixture });
+    await writeFile(join(fixture, "evidence", "tracked.json"), "working tree bytes\n");
+    await writeFile(join(fixture, "evidence", "literal[1].json"), "literal working bytes\n");
     await symlink("evidence", join(fixture, "linked"), "dir");
     await symlink("evidence/tracked.json", join(fixture, "linked-file.json"), "file");
 
-    assert.deepEqual(await readTrackedEvidence("evidence/tracked.json", fixture), {
+    assert.deepEqual(await inspectTrackedNavigationFile("evidence/tracked.json", fixture), {
       kind: "regular",
       tracked: true,
-      bytes: Buffer.from("tracked\n"),
+      bytes: Buffer.from("working tree bytes\n"),
     });
-    assert.deepEqual(await readTrackedEvidence("evidence/untracked.json", fixture), {
+    const accepted = await inspectAcceptedAuthorityFile("evidence/tracked.json", fixture);
+    assert.equal(accepted.kind, "regular");
+    assert.equal(accepted.tracked, true);
+    assert.match(accepted.oid, /^[a-f0-9]{40}$/u);
+    assert.deepEqual(accepted.bytes, Buffer.from("index bytes\n"));
+
+    const literal = await inspectAcceptedAuthorityFile("evidence/literal[1].json", fixture);
+    assert.equal(literal.kind, "regular");
+    assert.deepEqual(literal.bytes, Buffer.from("literal index bytes\n"));
+    assert.deepEqual(await inspectTrackedNavigationFile("evidence/untracked.json", fixture), {
       kind: "untracked",
     });
-    assert.deepEqual(await readTrackedEvidence("linked/tracked.json", fixture), {
+    assert.deepEqual(await inspectTrackedNavigationFile("linked/tracked.json", fixture), {
       kind: "symlink",
     });
-    assert.deepEqual(await readTrackedEvidence("linked-file.json", fixture), {
+    assert.deepEqual(await inspectTrackedNavigationFile("linked-file.json", fixture), {
       kind: "symlink",
     });
     await assert.rejects(
-      readTrackedRegularFile("evidence/untracked.json", fixture, "accepted artifact"),
+      readAcceptedAuthorityFile("evidence/untracked.json", fixture, "accepted artifact"),
       /TRACKED_FILE_CUSTODY_FAILED.*untracked/u,
     );
     await assert.rejects(
-      readTrackedRegularFile("linked-file.json", fixture, "accepted artifact"),
+      readAcceptedAuthorityFile("linked-file.json", fixture, "accepted artifact"),
       /TRACKED_FILE_CUSTODY_FAILED.*symlink/u,
     );
   } finally {
     await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("accepted authority custody rejects intent-to-add index entries", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-intent-to-add-"));
+  try {
+    await execFileAsync("git", ["init", "--quiet"], { cwd: fixture });
+    await writeFile(join(fixture, "intent [1].json"), "unstaged intent bytes\n");
+    await execFileAsync("git", ["add", "--intent-to-add", "--", "intent [1].json"], {
+      cwd: fixture,
+    });
+
+    assert.deepEqual(await inspectAcceptedAuthorityFile("intent [1].json", fixture), {
+      kind: "intent-to-add",
+    });
+    await assert.rejects(
+      readAcceptedAuthorityFile("intent [1].json", fixture, "accepted artifact"),
+      /TRACKED_FILE_CUSTODY_FAILED.*intent-to-add/u,
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("accepted authority custody supports SHA-256 Git object IDs", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-sha256-custody-"));
+  try {
+    await execFileAsync("git", ["init", "--quiet", "--object-format=sha256"], {
+      cwd: fixture,
+    });
+    await writeFile(join(fixture, "authority.json"), "sha256 index bytes\n");
+    await execFileAsync("git", ["add", "--", "authority.json"], { cwd: fixture });
+
+    const accepted = await inspectAcceptedAuthorityFile("authority.json", fixture);
+    assert.equal(accepted.kind, "regular");
+    assert.match(accepted.oid, /^[a-f0-9]{64}$/u);
+    assert.deepEqual(accepted.bytes, Buffer.from("sha256 index bytes\n"));
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("accepted authority bytes survive a deterministic leaf replacement race", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-custody-race-"));
+  const external = await mkdtemp(join(tmpdir(), "get-modular-custody-external-"));
+  try {
+    const relativePath = "evidence/authority.json";
+    const authorityPath = join(fixture, relativePath);
+    const externalPath = join(external, "replacement.json");
+    await execFileAsync("git", ["init", "--quiet"], { cwd: fixture });
+    await mkdir(join(fixture, "evidence"), { recursive: true });
+    await writeFile(authorityPath, "accepted index bytes\n");
+    await writeFile(externalPath, "external replacement bytes\n");
+    await execFileAsync("git", ["add", "--", relativePath], { cwd: fixture });
+
+    const accepted = await inspectAcceptedAuthorityFile(relativePath, fixture, {
+      afterIndexLookup: async () => {
+        await rm(authorityPath);
+        await symlink(externalPath, authorityPath, "file");
+      },
+    });
+    assert.equal(accepted.kind, "regular");
+    assert.deepEqual(accepted.bytes, Buffer.from("accepted index bytes\n"));
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+    await rm(external, { recursive: true, force: true });
   }
 });
 
