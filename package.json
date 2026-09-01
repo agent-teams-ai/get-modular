@@ -15,9 +15,9 @@
     "url": "git+https://github.com/agent-teams-ai/get-modular.git"
   },
   "scripts": {
-    "check": "pnpm foundation:check && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm contracts:check && pnpm contracts:test && pnpm qualification:resource-profile && pnpm qualification:v1-diagnostics-protocol && pnpm qualification:v1-graph-semantics && pnpm governance:check && pnpm governance:test",
+    "check": "pnpm runtime:preflight && pnpm foundation:check && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm contracts:check && pnpm contracts:test && pnpm qualification:resource-profile && pnpm qualification:v1-diagnostics-protocol && pnpm qualification:v1-graph-semantics && pnpm governance:check && pnpm governance:test",
     "check:changed": "agent-teams-foundation agent-workflow changed --consumer .",
-    "check:fast": "pnpm foundation:check && pnpm architecture:feature-module-profile && pnpm docs:check",
+    "check:fast": "pnpm runtime:preflight && pnpm foundation:check && pnpm architecture:feature-module-profile && pnpm docs:check",
     "docs:changed": "pnpm docs:check && pnpm docs:quality",
     "docs:check": "agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml",
     "docs:doctor": "agent-teams-docs doctor --consumer . --profile architecture/foundation/docs-protocol.yaml",
@@ -39,7 +39,9 @@
     "governance:test": "node --test tests/governance.test.mjs",
     "qualification:resource-profile": "node tests/qualification/v1-resource-profile.mjs",
     "qualification:v1-diagnostics-protocol": "node --test tests/qualification/v1-diagnostics-protocol.mjs",
-    "qualification:v1-graph-semantics": "node --test tests/qualification/v1-graph-semantics.mjs"
+    "qualification:v1-graph-semantics": "node --test tests/qualification/v1-graph-semantics.mjs",
+    "precheck:changed": "pnpm runtime:preflight",
+    "runtime:preflight": "node architecture/checks/node-version.mjs"
   },
   "devDependencies": {
     "@agent-teams/docs-protocol": "0.4.1",

@@ -1,9 +1,7 @@
 import { createHash } from "node:crypto";
-import { execFile } from "node:child_process";
-import { lstat, readFile, readdir, realpath } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { dirname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { promisify } from "node:util";
 import { parse } from "yaml";
 
 import {
@@ -11,12 +9,15 @@ import {
   productionArtifactSymlinkPaths,
   productionArtifactsOutsidePackages,
 } from "./production-artifacts.mjs";
+import {
+  inspectTrackedRegularFile,
+  readTrackedRegularFile,
+} from "./tracked-file-custody.mjs";
 
 export { productionArtifactPaths, productionArtifactSymlinkPaths } from
   "./production-artifacts.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const execFileAsync = promisify(execFile);
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
 const ARCHITECTURE_AUTHORITY_PATH = /^docs\/architecture\/[^/]+\.md$/u;
 const REQUIREMENTS_AUTHORITY_PATH = /^docs\/requirements\/[^/]+\.md$/u;
@@ -45,6 +46,31 @@ const QUALIFICATION_CLAIM_STATUSES = new Set([
   "runtime-conformant",
 ]);
 const WINDOWS_DEVICE_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.[^/]*)?$/iu;
+
+export const REQUIRED_AGENT_LINKS = Object.freeze([
+  ".agents/skills/docs-authoring/SKILL.md",
+  "docs/architecture/current-contract.md",
+  "docs/architecture/feature-module-standard.md",
+  "docs/architecture/mvp-implementation-roadmap.md",
+  "docs/architecture/system-boundary.md",
+  "docs/decisions/README.md",
+  "docs/open-decisions/README.md",
+  "docs/provenance/source-map.yaml",
+  "docs/requirements/module-system-v1.md",
+]);
+
+export const REQUIRED_TRACEABILITY_AUTHORITY_COVERAGE = new Map([
+  ["ADR-0007", new Set([
+    "GM-REQ-002",
+    "GM-REQ-003",
+    "GM-REQ-006",
+    "GM-REQ-007",
+    "GM-REQ-009",
+    "GM-REQ-010",
+    "GM-REQ-015",
+    "GM-REQ-016",
+  ])],
+]);
 
 export const ACCEPTED_AUTHORITY_LEDGER_PATH =
   "architecture/authority/accepted-authorities.json";
@@ -372,6 +398,7 @@ export function validateTraceability({
   decisionIds,
   blockerIds,
   traceability,
+  requiredAuthorityCoverage = new Map(),
 }) {
   if (traceability?.schemaVersion !== 1) fail("unsupported traceability schema");
   const mappedRequirements = traceability.requirements ?? {};
@@ -406,12 +433,16 @@ export function validateTraceability({
   }
 
   const derivedReverse = new Map(sourceIds.map(id => [id, []]));
+  const derivedAuthorityCoverage = new Map();
   for (const requirementId of expectedRequirements) {
     const mapping = mappedRequirements[requirementId];
     for (const authorityId of uniqueStrings(mapping?.authorities, `${requirementId}.authorities`)) {
       if (!authorityIds.has(authorityId)) {
         fail(`${requirementId} references unknown or non-accepted authority ${authorityId}`);
       }
+      const coverage = derivedAuthorityCoverage.get(authorityId) ?? new Set();
+      coverage.add(requirementId);
+      derivedAuthorityCoverage.set(authorityId, coverage);
     }
     const requirementBlockers = mapping?.blockers === undefined
       ? []
@@ -427,11 +458,33 @@ export function validateTraceability({
     }
   }
 
+  for (const [authorityId, requiredRequirements] of requiredAuthorityCoverage) {
+    const actual = derivedAuthorityCoverage.get(authorityId) ?? new Set();
+    for (const requirementId of requiredRequirements) {
+      if (!actual.has(requirementId)) {
+        fail(`${authorityId} traceability must cover ${requirementId}`);
+      }
+    }
+  }
+
   for (const sourceId of sourceIds) {
     const declared = uniqueStrings(mappedSources[sourceId], `sources.${sourceId}`).sort();
     const derived = derivedReverse.get(sourceId).sort();
     if (JSON.stringify(declared) !== JSON.stringify(derived)) {
       fail(`reverse traceability mismatch for ${sourceId}`);
+    }
+  }
+}
+
+export async function validateAgentLinks({ markdown, linkedFile }) {
+  if (typeof markdown !== "string") fail("AGENTS.md content is missing");
+  for (const path of REQUIRED_AGENT_LINKS) {
+    if (!markdown.includes(`](${path})`)) {
+      fail(`AGENTS.md must link to ${path}`);
+    }
+    const file = await linkedFile(path);
+    if (file?.kind !== "regular" || file.tracked !== true) {
+      fail(`AGENTS.md target must be a regular tracked file with no symbolic-link path: ${path}`);
     }
   }
 }
@@ -525,61 +578,42 @@ async function governanceDocumentCatalog() {
 }
 
 export async function readTrackedEvidence(relativePath, repositoryRoot = root) {
-  if (!safeRepositoryPath(relativePath)) return { kind: "unsafe" };
-  const parts = relativePath.split("/");
-  let current = repositoryRoot;
-  let status;
-  for (const [index, part] of parts.entries()) {
-    current = resolve(current, part);
-    try {
-      status = await lstat(current);
-    } catch (error) {
-      if (["ENOENT", "ENOTDIR"].includes(error?.code)) return { kind: "missing" };
-      throw error;
-    }
-    if (status.isSymbolicLink()) return { kind: "symlink" };
-    if (index < parts.length - 1 && !status.isDirectory()) {
-      return { kind: "non-regular" };
-    }
-  }
-  if (!status?.isFile()) return { kind: "non-regular" };
-
-  const repositoryRealPath = await realpath(repositoryRoot);
-  const evidenceRealPath = await realpath(current);
-  if (evidenceRealPath !== repositoryRealPath
-    && !evidenceRealPath.startsWith(`${repositoryRealPath}${sep}`)) {
-    return { kind: "outside" };
-  }
-
-  let indexOutput;
-  try {
-    ({ stdout: indexOutput } = await execFileAsync(
-      "git",
-      ["ls-files", "--error-unmatch", "--stage", "--", relativePath],
-      { cwd: repositoryRoot },
-    ));
-  } catch (error) {
-    if (error?.code === 1) return { kind: "untracked" };
-    throw error;
-  }
-  if (!/^(?:100644|100755) [a-f0-9]{40} 0\t/u.test(indexOutput)) {
-    return { kind: "untracked" };
-  }
-  return { kind: "regular", tracked: true, bytes: await readFile(current) };
+  return inspectTrackedRegularFile(relativePath, repositoryRoot);
 }
 
 async function main() {
-  const ledgerBytes = await readBytes(ACCEPTED_AUTHORITY_LEDGER_PATH);
+  const ledgerBytes = await readTrackedRegularFile(
+    ACCEPTED_AUTHORITY_LEDGER_PATH,
+    root,
+    "accepted authority ledger",
+  );
   validateAuthorityLedgerCustody({
     ledgerBytes,
-    decisionMarkdown: await read(
+    decisionMarkdown: (await readTrackedRegularFile(
       "docs/decisions/0007-require-executable-v1-conformance-amendments.md",
-    ),
+      root,
+      "ADR-0007",
+    )).toString("utf8"),
   });
   const ledgerAuthorities = await validateAuthorityLedger({
     ledger: JSON.parse(ledgerBytes.toString("utf8")),
-    readBytes,
+    readBytes: path => readTrackedRegularFile(path, root, "accepted authority artifact"),
   });
+  await validateAgentLinks({
+    markdown: (await readTrackedRegularFile("AGENTS.md", root, "agent instructions"))
+      .toString("utf8"),
+    linkedFile: path => inspectTrackedRegularFile(path, root),
+  });
+
+  const acceptedDecisionLedgerPath = "architecture/decisions/accepted-decisions.json";
+  const acceptedDecisionLedger = JSON.parse((await readTrackedRegularFile(
+    acceptedDecisionLedgerPath,
+    root,
+    "accepted decision ledger",
+  )).toString("utf8"));
+  for (const decision of acceptedDecisionLedger.decisions ?? []) {
+    await readTrackedRegularFile(decision.path, root, "accepted decision artifact");
+  }
   const { documents, documentSources } = await governanceDocumentCatalog();
   validateDecisionResolutions([...documents.values()]);
   validateAcceptedAuthorityCatalog({
@@ -607,6 +641,7 @@ async function main() {
       .map(metadata => metadata.id)),
     blockerIds,
     traceability,
+    requiredAuthorityCoverage: REQUIRED_TRACEABILITY_AUTHORITY_COVERAGE,
   });
   const productionArtifacts = await productionArtifactPaths(root);
   const productionArtifactSymlinks = await productionArtifactSymlinkPaths(root);

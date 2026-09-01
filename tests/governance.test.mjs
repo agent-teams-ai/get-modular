@@ -11,11 +11,14 @@ import {
   ACCEPTED_AUTHORITY_LEDGER_ANCHOR,
   ACCEPTED_AUTHORITY_LEDGER_DIGEST,
   ACCEPTED_AUTHORITY_LEDGER_PATH,
+  REQUIRED_AGENT_LINKS,
+  REQUIRED_TRACEABILITY_AUTHORITY_COVERAGE,
   productionArtifactPaths,
   qualificationClaimAnchor,
   readTrackedEvidence,
   requirementIdsFromMarkdown,
   validateAcceptedAuthorityCatalog,
+  validateAgentLinks,
   validateAuthorityLedger,
   validateAuthorityLedgerCustody,
   validateBlockedImplementation,
@@ -25,6 +28,13 @@ import {
   validateSourceMap,
   validateTraceability,
 } from "../architecture/checks/governance.mjs";
+import {
+  assertSupportedNodeVersion,
+  isSupportedNodeVersion,
+  SUPPORTED_NODE_RANGE,
+} from "../architecture/checks/node-version.mjs";
+import { readTrackedRegularFile } from
+  "../architecture/checks/tracked-file-custody.mjs";
 import { productionArtifactsOutsidePackages } from
   "../architecture/checks/production-artifacts.mjs";
 
@@ -168,6 +178,81 @@ test("traceability is closed and bidirectional", () => {
       sources: { "source-a": ["GM-REQ-001"] },
     },
   });
+});
+
+test("ADR-0007 traceability coverage cannot be removed", () => {
+  const requirementIds = new Set([
+    ...REQUIRED_TRACEABILITY_AUTHORITY_COVERAGE.get("ADR-0007"),
+  ]);
+  const requirements = Object.fromEntries([...requirementIds].map(id => [id, {
+    authorities: ["ADR-0007"],
+    provenance: ["source-a"],
+  }]));
+  const traceability = {
+    schemaVersion: 1,
+    decisionCatalog: [],
+    implementationBlockers: [],
+    requirements,
+    sources: { "source-a": [...requirementIds] },
+  };
+  const input = {
+    requirementIds,
+    sources: new Set(["source-a"]),
+    authorityIds: new Set(["ADR-0007"]),
+    decisionIds: new Set(),
+    blockerIds: new Set(),
+    traceability,
+    requiredAuthorityCoverage: REQUIRED_TRACEABILITY_AUTHORITY_COVERAGE,
+  };
+  assert.doesNotThrow(() => validateTraceability(input));
+
+  const missing = structuredClone(traceability);
+  missing.requirements["GM-REQ-010"].authorities = ["ADR-0001"];
+  assert.throws(() => validateTraceability({
+    ...input,
+    authorityIds: new Set(["ADR-0001", "ADR-0007"]),
+    traceability: missing,
+  }), /ADR-0007 traceability must cover GM-REQ-010/u);
+});
+
+test("AGENTS navigation links remain reachable tracked files", async () => {
+  const markdown = await readFile("AGENTS.md", "utf8");
+  await assert.doesNotReject(() => validateAgentLinks({
+    markdown,
+    linkedFile: path => readTrackedEvidence(path),
+  }));
+
+  await assert.rejects(() => validateAgentLinks({
+    markdown: markdown.replace(`](${REQUIRED_AGENT_LINKS[0]})`, "](missing.md)"),
+    linkedFile: path => readTrackedEvidence(path),
+  }), /AGENTS\.md must link/u);
+  await assert.rejects(() => validateAgentLinks({
+    markdown,
+    linkedFile: async () => ({ kind: "symlink" }),
+  }), /regular tracked file/u);
+});
+
+test("supported Node preflight matches repository runtime custody", async () => {
+  for (const version of ["24.18.0", "v24.18.0", "24.18.1", "24.99.0"]) {
+    assert.equal(isSupportedNodeVersion(version), true, version);
+    assert.doesNotThrow(() => assertSupportedNodeVersion(version));
+  }
+  for (const version of ["24.17.9", "24.18.0-rc.1", "25.0.0", "23.99.0", "invalid"]) {
+    assert.equal(isSupportedNodeVersion(version), false, version);
+    assert.throws(() => assertSupportedNodeVersion(version), /NODE_VERSION_PREFLIGHT_FAILED/u);
+  }
+
+  const packageJson = JSON.parse(await readFile("package.json", "utf8"));
+  assert.equal(packageJson.engines.node, SUPPORTED_NODE_RANGE);
+  assert.equal(await readFile(".node-version", "utf8"), "24.18.0\n");
+  assert.equal(packageJson.scripts["runtime:preflight"],
+    "node architecture/checks/node-version.mjs");
+  for (const script of ["check", "check:fast"]) {
+    assert.match(packageJson.scripts[script], /^pnpm runtime:preflight && /u, script);
+  }
+  assert.equal(packageJson.scripts["check:changed"],
+    "agent-teams-foundation agent-workflow changed --consumer .");
+  assert.equal(packageJson.scripts["precheck:changed"], "pnpm runtime:preflight");
 });
 
 test("missing reverse traceability fails closed", () => {
@@ -690,6 +775,7 @@ test("tracked evidence custody rejects untracked files and every symlink compone
     await writeFile(join(fixture, "evidence", "untracked.json"), "untracked\n");
     await execFileAsync("git", ["add", "--", "evidence/tracked.json"], { cwd: fixture });
     await symlink("evidence", join(fixture, "linked"), "dir");
+    await symlink("evidence/tracked.json", join(fixture, "linked-file.json"), "file");
 
     assert.deepEqual(await readTrackedEvidence("evidence/tracked.json", fixture), {
       kind: "regular",
@@ -702,6 +788,17 @@ test("tracked evidence custody rejects untracked files and every symlink compone
     assert.deepEqual(await readTrackedEvidence("linked/tracked.json", fixture), {
       kind: "symlink",
     });
+    assert.deepEqual(await readTrackedEvidence("linked-file.json", fixture), {
+      kind: "symlink",
+    });
+    await assert.rejects(
+      readTrackedRegularFile("evidence/untracked.json", fixture, "accepted artifact"),
+      /TRACKED_FILE_CUSTODY_FAILED.*untracked/u,
+    );
+    await assert.rejects(
+      readTrackedRegularFile("linked-file.json", fixture, "accepted artifact"),
+      /TRACKED_FILE_CUSTODY_FAILED.*symlink/u,
+    );
   } finally {
     await rm(fixture, { recursive: true, force: true });
   }

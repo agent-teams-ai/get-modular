@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFile, readdir } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
@@ -17,6 +17,7 @@ import {
   validateQualificationLedger,
   validateResourceBoundaryQualification,
 } from "./v1-qualification.mjs";
+import { readTrackedRegularFile } from "./tracked-file-custody.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
@@ -136,11 +137,11 @@ export function validateContractCoherence({ schema, catalog, profile, vectors })
 }
 
 async function read(relativePath) {
-  return readFile(resolve(root, relativePath));
+  return readTrackedRegularFile(relativePath, root, "accepted V1 ledger or artifact");
 }
 
 async function readJson(relativePath) {
-  return JSON.parse(await readFile(resolve(root, relativePath), "utf8"));
+  return JSON.parse((await read(relativePath)).toString("utf8"));
 }
 
 async function main() {
@@ -148,10 +149,11 @@ async function main() {
   const ledgerPath = "architecture/authority/accepted-contracts.json";
   const ledgerBytes = await read(ledgerPath);
   const ledgerDigest = `sha256:${createHash("sha256").update(ledgerBytes).digest("hex")}`;
-  const resolvingDecision = await readFile(
-    resolve(root, "docs/decisions/0005-freeze-v1-compatibility-diagnostics-and-resource-profile.md"),
-    "utf8",
-  );
+  const resolvingDecision = (await readTrackedRegularFile(
+    "docs/decisions/0005-freeze-v1-compatibility-diagnostics-and-resource-profile.md",
+    root,
+    "ADR-0005",
+  )).toString("utf8");
   if (!resolvingDecision.includes(`The accepted contract ledger is anchored as\n\`${ledgerDigest}\`.`)) {
     fail("accepted contract ledger is not anchored by ADR-0005");
   }
@@ -169,10 +171,11 @@ async function main() {
   const qualificationLedgerBytes = await read(qualificationLedgerPath);
   const qualificationLedgerDigest = `sha256:${createHash("sha256")
     .update(qualificationLedgerBytes).digest("hex")}`;
-  const qualificationDecision = await readFile(
-    resolve(root, "docs/decisions/0007-require-executable-v1-conformance-amendments.md"),
-    "utf8",
-  );
+  const qualificationDecision = (await readTrackedRegularFile(
+    "docs/decisions/0007-require-executable-v1-conformance-amendments.md",
+    root,
+    "ADR-0007",
+  )).toString("utf8");
   if (!qualificationDecision.includes(qualificationLedgerAnchor(qualificationLedgerDigest))) {
     fail("V1 qualification ledger is not anchored by ADR-0007");
   }
