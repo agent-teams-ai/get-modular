@@ -178,14 +178,14 @@ than satisfied by synthetic output.
 1. Verify the selected base and accepted-decision precedence. Do not use a
    stale PR head or treat a proposed ADR as authority. The unversioned public
    naming map is conditional on acceptance of ADR-0009.
-2. Create the derived, non-authoritative
-   `architecture/qualification/core-preflight-report.json` and its fail-closed
-   `architecture/checks/core-preflight.mjs` verifier. The closed report records
-   `kind`, schema version, exact base SHA, accepted-ledger digests, existing
-   evidence/check paths and open decision blockers. The verifier recomputes all
-   referenced identities; the report never replaces accepted ledgers, turns a
-   proposed ADR into an active blocker or imports proposed ADR-0011 obligations
-   as current requirements.
+2. Produce the required non-authoritative Phase 0 report as a PR/CI artifact
+   after the exact head exists. Reuse the existing Foundation, governance,
+   contract and qualification gates; the report records exact base/head SHA,
+   accepted-ledger identities, executed commands and active open-decision
+   blockers. Do not add a committed checksum snapshot of checkers, tests,
+   proposals or package scripts, a second validator for accepted authority, or
+   another command in `check:fast`. Git identifies the source tree and the
+   accepted ledgers identify authority and evidence.
 3. Close accepted-contract preflight gaps before public Core work: accepted
    authority pins, the accepted raw-byte boundary, duplicate-key policy, total
    diagnostic ordering and canonicalization evidence. A composition profile
@@ -232,15 +232,15 @@ than satisfied by synthetic output.
 
 ### Phase 0 exit criteria
 
-- the derived preflight report and checker exist, are digest-bound to accepted
-  ledgers and contain no unresolved accepted-contract P0/P1;
+- the exact-head Phase 0 PR/CI report identifies the accepted ledgers, executed
+  gates and active blockers and contains no unresolved accepted-contract P0/P1;
 - exact source custody and ADR precedence are recorded;
 - no production package or public barrel exists yet;
 - accepted-claim mapping and the evidence-only raw-carrier matrix are checked;
 - every actual open-decision blocker and its mutation fixtures execute in the
   complete governance gate;
-- the same preflight succeeds in a fresh disposable checkout at the recorded
-  SHA; cold artifact recovery remains a later phase gate;
+- the existing complete gate succeeds in a fresh disposable checkout at the
+  reported exact head; cold artifact recovery remains a later phase gate;
 - OD-004 is resolved by an accepted ADR or successor decision before package
   carrier/export freeze, and OD-005 is resolved the same way before unresolved
   raw-carrier behavior enters the public entrypoint;
