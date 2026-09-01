@@ -429,6 +429,22 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     assert.throws(() => validate(candidate), mutant.name);
   }
 
+  const contextuallyUnknownKeyLeak = clone(protocol);
+  const hostileProfile = contextuallyUnknownKeyLeak.cases.find(descriptor => (
+    descriptor.caseId === "diag.raw.hostile-profile-key.v1"
+  ));
+  const hostileInput = hostileProfile.input.profileUtf8;
+  hostileProfile.input.profileUtf8 = hostileInput.replace(
+    '"password=DO-NOT-EMIT":true',
+    '"moduleId":true',
+  );
+  assert.notEqual(hostileProfile.input.profileUtf8, hostileInput);
+  hostileProfile.expected.diagnostics[0].path.push({ kind: "field", value: "moduleId" });
+  assert.throws(
+    () => validate(contextuallyUnknownKeyLeak),
+    /must stop before an unknown field/u,
+  );
+
   const reservedStaticResult = clone(protocol);
   reservedStaticResult.cases[0].expected.diagnostics[0] = {
     code: "output.canonicalization-failed",

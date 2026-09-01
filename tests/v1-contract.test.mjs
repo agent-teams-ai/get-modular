@@ -804,6 +804,41 @@ test("normalization qualification rejects order and canonical-byte drift", async
   });
   assert.doesNotThrow(() => validate(vectors));
 
+  const inertUnselectedConsumerBinding = clone(vectors);
+  const inertCase = inertUnselectedConsumerBinding.cases[0];
+  const disabledImplementationId = "example/disabled/default";
+  inertCase.declarations.push({
+    kind: "get-modular.module-declaration",
+    schemaVersion: 1,
+    moduleId: "example/disabled",
+    implementationId: disabledImplementationId,
+    owner: { authority: "example", path: ["disabled"] },
+    provides: [],
+    slots: [],
+  });
+  inertCase.declarationOrders.forEach((order, index) => {
+    if (index === 0) order.push(disabledImplementationId);
+    else order.unshift(disabledImplementationId);
+  });
+  for (const profile of inertCase.equivalentProfiles) {
+    profile.bindings.push({
+      consumerImplementationId: disabledImplementationId,
+      slotId: "unknown-slot-is-inert",
+      providerImplementationIds: ["example/unknown-provider/default"],
+    });
+  }
+  assert.doesNotThrow(() => validate(inertUnselectedConsumerBinding));
+
+  const unknownConsumerBinding = clone(inertUnselectedConsumerBinding);
+  const unknownCase = unknownConsumerBinding.cases[0];
+  unknownCase.declarations = unknownCase.declarations.filter(declaration => (
+    declaration.implementationId !== disabledImplementationId
+  ));
+  for (const order of unknownCase.declarationOrders) {
+    order.splice(order.indexOf(disabledImplementationId), 1);
+  }
+  assert.throws(() => validate(unknownConsumerBinding), /binding has an unknown consumer/u);
+
   const manyDeclaration = clone(vectors.cases[0].declarations
     .find(declaration => declaration.slots.some(slot => slot.cardinality.kind === "many")));
   const manySlot = manyDeclaration.slots.find(slot => slot.cardinality.kind === "many");

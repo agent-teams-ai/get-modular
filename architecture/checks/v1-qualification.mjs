@@ -861,6 +861,82 @@ function staticInvocationPrefixLength(descriptor, diagnostic, contract) {
   return 0;
 }
 
+function decodeStaticJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+}
+
+function staticInputDocuments(descriptor) {
+  if (descriptor.entryPoint === "compileCompositionJsonV1") {
+    return [
+      ...(descriptor.input?.declarationsUtf8 ?? []).map((text, index) => ({
+        prefix: [
+          { kind: "field", value: "declarations" },
+          { kind: "index", value: index },
+        ],
+        value: decodeStaticJson(text),
+      })),
+      {
+        prefix: [{ kind: "field", value: "profile" }],
+        value: decodeStaticJson(descriptor.input?.profileUtf8),
+      },
+    ];
+  }
+  return [
+    ...(descriptor.input?.declarations ?? []).map((value, index) => ({
+      prefix: [
+        { kind: "field", value: "declarations" },
+        { kind: "index", value: index },
+      ],
+      value,
+    })),
+    { prefix: [{ kind: "field", value: "profile" }], value: descriptor.input?.profile },
+  ];
+}
+
+function structuralPathFromJsonPointer(value, pointer) {
+  if (pointer === "") return [];
+  if (typeof pointer !== "string" || !pointer.startsWith("/")) {
+    fail("schema validator returned an invalid instance path");
+  }
+  const path = [];
+  let current = value;
+  for (const encodedToken of pointer.slice(1).split("/")) {
+    const token = encodedToken.replaceAll("~1", "/").replaceAll("~0", "~");
+    if (Array.isArray(current)) {
+      const index = Number(token);
+      if (!Number.isSafeInteger(index) || index < 0) {
+        fail("schema validator returned an invalid array instance path");
+      }
+      path.push({ kind: "index", value: index });
+      current = current[index];
+    } else {
+      path.push({ kind: "field", value: token });
+      current = current?.[token];
+    }
+  }
+  return path;
+}
+
+function staticUnknownFieldParentPaths(descriptor, validateDocument) {
+  const paths = [];
+  for (const document of staticInputDocuments(descriptor)) {
+    if (document.value === undefined || validateDocument(document.value)) continue;
+    const errors = validateDocument.errors ?? [];
+    for (const error of errors) {
+      if (error.keyword !== "additionalProperties") continue;
+      paths.push([
+        ...document.prefix,
+        ...structuralPathFromJsonPointer(document.value, error.instancePath),
+      ]);
+    }
+  }
+  return paths;
+}
+
 function validateSchemaValidCompanion(companion, validateDocument, label) {
   if (!same(objectKeys(companion, label).sort(compareAscii), ["declarations", "profile"])
     || !Array.isArray(companion.declarations)
@@ -993,6 +1069,11 @@ export function validateStaticConformanceProtocol({
       fail(`${descriptor.caseId} must contain one exact complete failure result`);
     }
     const diagnostics = descriptor.expected.diagnostics;
+    const unknownFieldParentPaths = diagnostics.some(diagnostic => (
+      diagnostic.code === "schema.unknown-field"
+    ))
+      ? staticUnknownFieldParentPaths(descriptor, validateDocument)
+      : [];
     const normalizedCandidateKeys = new Set();
     validateResolvedResultCodeDisposition({
       result: descriptor.expected,
@@ -1018,6 +1099,10 @@ export function validateStaticConformanceProtocol({
         label,
         { invocationPrefixLength: prefixLength },
       );
+      if (diagnostic.code === "schema.unknown-field"
+        && !unknownFieldParentPaths.some(path => same(path, diagnostic.path))) {
+        fail(`${label} must stop before an unknown field`);
+      }
       const normalizedCandidate = canonicalize({
         code: diagnostic.code,
         phase: diagnostic.phase,
@@ -1874,8 +1959,12 @@ function validateNormalizationProfileSemantics(profile, declarations, label) {
 
   const bindingsByCoordinate = new Map();
   for (const binding of profile.bindings) {
+    const declaredConsumer = declarationsByImplementation.get(
+      binding.consumerImplementationId,
+    );
+    if (declaredConsumer === undefined) fail(`${label} binding has an unknown consumer`);
     const consumer = selectedByImplementation.get(binding.consumerImplementationId);
-    if (consumer === undefined) fail(`${label} binding has an unselected consumer`);
+    if (consumer === undefined) continue;
     const slot = consumer.slots.find(candidate => candidate.slotId === binding.slotId);
     if (slot === undefined) fail(`${label} binding references an unknown slot`);
     const coordinate = `${binding.consumerImplementationId}\u0000${binding.slotId}`;
@@ -1938,8 +2027,14 @@ function normalizedProfileBindings(profile, declarations) {
   const declarationsByImplementation = validateNormalizationProfileSemantics(
     profile, declarations, "normalization vector",
   );
+  const selectedImplementationIds = new Set(
+    profile.selections.map(selection => selection.implementationId),
+  );
+  const selectedBindings = profile.bindings.filter(binding => (
+    selectedImplementationIds.has(binding.consumerImplementationId)
+  ));
   const coordinates = new Set();
-  return profile.bindings.map(binding => {
+  return selectedBindings.map(binding => {
     const declaration = declarationsByImplementation.get(binding.consumerImplementationId);
     const slot = declaration?.slots.find(candidate => candidate.slotId === binding.slotId);
     if (slot === undefined) fail("normalization vector references an unknown slot");
