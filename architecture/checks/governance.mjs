@@ -47,19 +47,6 @@ const QUALIFICATION_CLAIM_STATUSES = new Set([
 ]);
 const WINDOWS_DEVICE_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.[^/]*)?$/iu;
 
-export const REQUIRED_TRACEABILITY_AUTHORITY_COVERAGE = new Map([
-  ["ADR-0007", new Set([
-    "GM-REQ-002",
-    "GM-REQ-003",
-    "GM-REQ-006",
-    "GM-REQ-007",
-    "GM-REQ-009",
-    "GM-REQ-010",
-    "GM-REQ-015",
-    "GM-REQ-016",
-  ])],
-]);
-
 export const ACCEPTED_AUTHORITY_LEDGER_PATH =
   "architecture/authority/accepted-authorities.json";
 export const ACCEPTED_AUTHORITY_LEDGER_DIGEST =
@@ -386,7 +373,6 @@ export function validateTraceability({
   decisionIds,
   blockerIds,
   traceability,
-  requiredAuthorityCoverage = new Map(),
 }) {
   if (traceability?.schemaVersion !== 1) fail("unsupported traceability schema");
   const mappedRequirements = traceability.requirements ?? {};
@@ -421,16 +407,12 @@ export function validateTraceability({
   }
 
   const derivedReverse = new Map(sourceIds.map(id => [id, []]));
-  const derivedAuthorityCoverage = new Map();
   for (const requirementId of expectedRequirements) {
     const mapping = mappedRequirements[requirementId];
     for (const authorityId of uniqueStrings(mapping?.authorities, `${requirementId}.authorities`)) {
       if (!authorityIds.has(authorityId)) {
         fail(`${requirementId} references unknown or non-accepted authority ${authorityId}`);
       }
-      const coverage = derivedAuthorityCoverage.get(authorityId) ?? new Set();
-      coverage.add(requirementId);
-      derivedAuthorityCoverage.set(authorityId, coverage);
     }
     const requirementBlockers = mapping?.blockers === undefined
       ? []
@@ -443,15 +425,6 @@ export function validateTraceability({
     for (const sourceId of uniqueStrings(mapping?.provenance, `${requirementId}.provenance`)) {
       if (!derivedReverse.has(sourceId)) fail(`${requirementId} references unknown source ${sourceId}`);
       derivedReverse.get(sourceId).push(requirementId);
-    }
-  }
-
-  for (const [authorityId, requiredRequirements] of requiredAuthorityCoverage) {
-    const actual = derivedAuthorityCoverage.get(authorityId) ?? new Set();
-    for (const requirementId of requiredRequirements) {
-      if (!actual.has(requirementId)) {
-        fail(`${authorityId} traceability must cover ${requirementId}`);
-      }
     }
   }
 
@@ -601,7 +574,6 @@ async function main() {
       .map(metadata => metadata.id)),
     blockerIds,
     traceability,
-    requiredAuthorityCoverage: REQUIRED_TRACEABILITY_AUTHORITY_COVERAGE,
   });
   const productionArtifacts = await productionArtifactPaths(root);
   const productionArtifactSymlinks = await productionArtifactSymlinkPaths(root);

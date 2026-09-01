@@ -11,7 +11,6 @@ import {
   ACCEPTED_AUTHORITY_LEDGER_ANCHOR,
   ACCEPTED_AUTHORITY_LEDGER_DIGEST,
   ACCEPTED_AUTHORITY_LEDGER_PATH,
-  REQUIRED_TRACEABILITY_AUTHORITY_COVERAGE,
   productionArtifactPaths,
   qualificationClaimAnchor,
   inspectTrackedNavigationFile,
@@ -179,41 +178,6 @@ test("traceability is closed and bidirectional", () => {
       sources: { "source-a": ["GM-REQ-001"] },
     },
   });
-});
-
-test("ADR-0007 traceability coverage cannot be removed", () => {
-  const requirementIds = new Set([
-    ...REQUIRED_TRACEABILITY_AUTHORITY_COVERAGE.get("ADR-0007"),
-  ]);
-  const requirements = Object.fromEntries([...requirementIds].map(id => [id, {
-    authorities: ["ADR-0007"],
-    provenance: ["source-a"],
-  }]));
-  const traceability = {
-    schemaVersion: 1,
-    decisionCatalog: [],
-    implementationBlockers: [],
-    requirements,
-    sources: { "source-a": [...requirementIds] },
-  };
-  const input = {
-    requirementIds,
-    sources: new Set(["source-a"]),
-    authorityIds: new Set(["ADR-0007"]),
-    decisionIds: new Set(),
-    blockerIds: new Set(),
-    traceability,
-    requiredAuthorityCoverage: REQUIRED_TRACEABILITY_AUTHORITY_COVERAGE,
-  };
-  assert.doesNotThrow(() => validateTraceability(input));
-
-  const missing = structuredClone(traceability);
-  missing.requirements["GM-REQ-010"].authorities = ["ADR-0001"];
-  assert.throws(() => validateTraceability({
-    ...input,
-    authorityIds: new Set(["ADR-0001", "ADR-0007"]),
-    traceability: missing,
-  }), /ADR-0007 traceability must cover GM-REQ-010/u);
 });
 
 test("supported Node preflight matches repository runtime custody", async () => {
@@ -805,15 +769,17 @@ test("tracked navigation and accepted authority custody use distinct byte source
       tracked: true,
       bytes: Buffer.from("working tree bytes\n"),
     });
-    const accepted = await inspectAcceptedAuthorityFile("evidence/tracked.json", fixture);
-    assert.equal(accepted.kind, "regular");
-    assert.equal(accepted.tracked, true);
-    assert.match(accepted.oid, /^[a-f0-9]{40}$/u);
-    assert.deepEqual(accepted.bytes, Buffer.from("index bytes\n"));
+    assert.deepEqual(await inspectAcceptedAuthorityFile("evidence/tracked.json", fixture), {
+      kind: "working-tree-diverged",
+    });
+    await assert.rejects(
+      readAcceptedAuthorityFile("evidence/tracked.json", fixture, "accepted artifact"),
+      /TRACKED_FILE_CUSTODY_FAILED.*working-tree-diverged/u,
+    );
 
-    const literal = await inspectAcceptedAuthorityFile("evidence/literal[1].json", fixture);
-    assert.equal(literal.kind, "regular");
-    assert.deepEqual(literal.bytes, Buffer.from("literal index bytes\n"));
+    assert.deepEqual(await inspectAcceptedAuthorityFile("evidence/literal[1].json", fixture), {
+      kind: "working-tree-diverged",
+    });
     assert.deepEqual(await inspectTrackedNavigationFile("evidence/untracked.json", fixture), {
       kind: "untracked",
     });

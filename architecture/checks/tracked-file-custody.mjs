@@ -146,10 +146,12 @@ export async function inspectAcceptedAuthorityFile(
 ) {
   const workingTree = await inspectWorkingTreePath(relativePath, repositoryRoot);
   if (workingTree.kind !== "regular") return workingTree;
+  const workingTreeBytes = await readFile(workingTree.path);
   const indexEntry = await exactIndexEntry(relativePath, repositoryRoot);
   if (indexEntry.kind !== "regular") return { kind: indexEntry.kind };
-  await afterIndexLookup?.({ oid: indexEntry.oid, path: relativePath });
   const { stdout: bytes } = await runGit(repositoryRoot, ["cat-file", "blob", indexEntry.oid]);
+  if (!workingTreeBytes.equals(bytes)) return { kind: "working-tree-diverged" };
+  await afterIndexLookup?.({ oid: indexEntry.oid, path: relativePath });
   return {
     kind: "regular",
     tracked: true,
@@ -163,7 +165,8 @@ export async function readAcceptedAuthorityFile(relativePath, repositoryRoot, la
   if (file.kind !== "regular" || file.tracked !== true) {
     throw new Error(
       `TRACKED_FILE_CUSTODY_FAILED: ${label} must be a regular tracked index file `
-      + `with no symbolic-link path: ${relativePath} (${file.kind})`,
+      + `whose working-tree bytes match the index and whose path has no symbolic link: `
+      + `${relativePath} (${file.kind})`,
     );
   }
   return file.bytes;

@@ -184,7 +184,8 @@ than satisfied by synthetic output.
    accepted-ledger identities, executed commands and active open-decision
    blockers. Do not add a committed checksum snapshot of checkers, tests,
    proposals or package scripts, a second validator for accepted authority, or
-   another command in `check:fast`. Git identifies the source tree and the
+   another Phase 0 report command in `check:fast`. General environment and
+   repository gates remain applicable. Git identifies the source tree and the
    accepted ledgers identify authority and evidence.
 3. Close accepted-contract preflight gaps before public Core work: accepted
    authority pins, the accepted raw-byte boundary, duplicate-key policy, total
