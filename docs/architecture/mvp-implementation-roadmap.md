@@ -6,6 +6,7 @@ owner: architecture
 summary: Phased implementation roadmap for the reusable Get Modular Core, conformance package, and first product dogfooding.
 related:
   - ADR-0001
+  - ADR-0003
   - ADR-0004
   - ADR-0005
   - ADR-0006
@@ -14,6 +15,7 @@ related:
   - ADR-0009
   - ADR-0010
   - ADR-0011
+  - ARCH-FEATURE-MODULE-STANDARD
   - ARCH-SYSTEM-BOUNDARY
   - GM-REQ-V1
 ---
@@ -24,9 +26,10 @@ This document is the implementation roadmap, not a replacement for an
 accepted ADR. It deliberately describes the order and evidence required to
 build the first reusable Core. It does not accept new public API, change an
 accepted decision, or claim that a qualification fixture is production code.
-ADR-0009, ADR-0010 and ADR-0011 are proposed inputs on the selected base unless
-their acceptance is independently present in that exact base; this roadmap does
-not promote them by reference.
+ADR-0009, ADR-0010 and ADR-0011 are conditional candidate decisions on the
+selected base unless their accepted successors are present. They do not enter
+accepted authority, the open-decision blocker catalog or executable governance
+until accepted through the repository decision flow.
 
 The MVP goal is:
 
@@ -36,7 +39,8 @@ flowchart LR
     Declarations --> Compiler["Pure deterministic compiler"]
     Compiler --> Plan["Immutable plan + digest"]
     Plan --> Conformance["Independent conformance"]
-    Conformance --> Consumer["One real product adapter"]
+    Conformance --> Core["Qualified Core 0.x"]
+    Conformance -. later adoption .-> Consumer["One real product adapter"]
     Consumer --> Second["Second consumer verdict"]
 ```
 
@@ -68,22 +72,21 @@ published as compatibility aliases.
 
 ## Common phase protocol
 
-Every phase follows this protocol. A phase cannot enter implementation only
-because a plan sounds plausible.
+Every phase uses evidence and review proportional to the changed risk. A phase
+cannot enter implementation only because a plan sounds plausible, but ordinary
+bounded work does not require a full research campaign.
 
 ```mermaid
 flowchart TB
-    D["4 independent design workers"] --> S["2 synthesis workers"]
-    S --> C["Phase contract"]
-    C --> R["6 phase critics"]
-    R --> I["Bounded implementation workers"]
-    I --> G["Focused gates"]
-    G --> X["4 exact-SHA reviewers"]
-    X --> F["Parallel remediation workers"]
-    F --> A["2 final arbiters"]
-    A --> CP["Checkpoint or BLOCKED"]
-    F -->|new commit| G
-    X -->|P0/P1| C
+    C["Phase contract"] --> K["Risk classification"]
+    K --> I["Bounded implementation"]
+    I --> G["Applicable focused gates"]
+    G --> X["Risk-proportionate exact-SHA review"]
+    X --> CP["Checkpoint or BLOCKED"]
+    K -->|authority, security or public surface| D["Independent design and critics"]
+    D --> C
+    X -->|confirmed finding| F["Owned remediation"]
+    F --> G
 ```
 
 ### Worker rules
@@ -93,17 +96,20 @@ flowchart TB
    manifest and may change without changing product architecture. The active
    campaign follows the operator's hosted-runtime policy and records those
    identities in each phase report.
-2. The four design workers have different roles: algorithm/correctness,
-   security/adversarial input, real-world TypeScript DX, and Clean
-   Architecture/DDD/evolution. They return alternatives, evidence, costs,
-   failure modes and reversal conditions.
-3. The two synthesis workers produce an evidence matrix, not a vote count. A
-   disagreement becomes an explicit decision or a blocker in the phase
-   contract.
-4. The phase contract states inputs, outputs, owners, non-goals, invariants,
-   files, tests, limits, acceptance and stop criteria. It is reviewed by six
-   critics before coding starts. Confirmed P0-P2 findings are split into
-   independent remediation lanes and fixed in parallel where ownership allows.
+2. A phase contract states inputs, outputs, owners, non-goals, invariants,
+   files, tests, limits, acceptance and stop criteria. It assigns one of three
+   risk classes: ordinary bounded change, cross-boundary change, or
+   authority/security/public-surface change.
+3. Independent design roles cover algorithm/correctness, security/adversarial
+   input, real-world TypeScript DX, and Clean Architecture/DDD/evolution when
+   the risk class requires them. Synthesis produces an evidence matrix, not a
+   vote count; disagreement becomes an explicit decision or blocker.
+4. The `4 design -> 2 synthesis -> 6 critics -> 4 exact-SHA reviews -> 2
+   arbiters` fan-out used to qualify this roadmap is a campaign profile for
+   high-risk authority work, not a mandatory staffing rule for every future
+   implementation PR. Ordinary work uses focused checks and at least one
+   independent exact-head review; public contracts, security boundaries and
+   publication use the full independent profile.
 5. Each coding worker has a separate workspace and file ownership. Research
    fixtures, production-like code and generated evidence never share an
    unmarked directory. Read-only workers do not commit.
@@ -118,12 +124,14 @@ flowchart TB
 
 ### Required phase report
 
-Each phase leaves a report containing:
+Each phase leaves a report containing the applicable items below. A field whose
+subject does not exist yet is recorded as `not-applicable` with a reason rather
+than satisfied by synthetic output.
 
 - exact base and head SHA, worker IDs and ownership map;
 - alternatives, evidence sources and rejected patterns;
 - changed LOC split into production-like, test and disposable evidence;
-- commands, platform matrix, test output and packed-consumer result;
+- commands, applicable platform matrix, test output and packed-consumer result;
 - P0-P3 findings, remediation history and reviewer verdicts;
 - explicit `GO`, `CONDITIONAL` or `BLOCKED` result and reversal conditions.
 
@@ -138,7 +146,10 @@ Each phase leaves a report containing:
 - canonical schema, resource profile, diagnostic catalog and vectors;
 - accepted authority and qualification ledgers already present in the selected
   source;
-- open ADR-0009/0010/0011 blockers, clearly separated from accepted authority.
+- conditional ADR-0009/0010/0011 candidates, clearly separated from accepted
+  authority and active open-decision blockers;
+- planned governed decisions for package carrier/resolution and unresolved
+  raw-input carrier and duplicate-binding semantics.
 
 ### Phase 0 implementation
 
@@ -150,35 +161,44 @@ Each phase leaves a report containing:
    `architecture/checks/core-preflight.mjs` verifier. The closed report records
    `kind`, schema version, exact base SHA, accepted-ledger digests, existing
    evidence/check paths and open decision blockers. The verifier recomputes all
-   referenced identities; the report never replaces accepted ledgers or imports
-   proposed ADR-0011 obligations as current requirements.
+   referenced identities; the report never replaces accepted ledgers, turns a
+   proposed ADR into an active blocker or imports proposed ADR-0011 obligations
+   as current requirements.
 3. Close accepted-contract preflight gaps before public Core work: accepted
-   authority pins, one raw-byte boundary, duplicate-key policy, raw-carrier
-   rules, total diagnostic ordering and canonicalization evidence. A composition
-   profile root may use a closed `ProfileId`/root-selection coordinate; runtime
+   authority pins, the accepted raw-byte boundary, duplicate-key policy, total
+   diagnostic ordering and canonicalization evidence. A composition profile
+   root may use a closed `ProfileId`/root-selection coordinate; runtime
    activation, generation, readiness and routing identities remain Product Host
    concerns and never enter Core plans or diagnostics.
-4. Keep `not-claimed`, `source-admitted`, `structural-conformant`,
-   `runtime-conformant` and `release-ready` as distinct states. Qualification
-   folders are not a runtime registry.
+4. Keep `not-claimed`, `source-admitted`, `structural-conformant` and
+   `runtime-conformant` as distinct qualification states. Release eligibility
+   is a phase-report result until an accepted custody decision defines a
+   machine-readable release state. Qualification folders are not a runtime
+   registry.
 5. Map every currently accepted normative claim to its accepted ledger entry,
    existing evidence or named implementation gate. Proposed-decision work stays
    an open blocker, not a manufactured obligation row. Existing synthetic
    artifacts are not silently promoted.
-6. Close a raw-carrier matrix before admitting the mandatory raw entrypoint. It
-   must state
-   accepted/rejected carriers, view offsets, snapshot timing, aliasing,
-   transfer/detachment, shared/resizable backing stores, cross-realm values and
-   exact failure classification.
-7. Demonstrate source custody and rollback in a fresh disposable checkout.
+6. Build a raw-carrier research matrix that derives only behavior already fixed
+   by accepted ADR-0006/0007. Mark every unresolved view-offset, aliasing,
+   transfer/detachment, shared/resizable storage, cross-realm or exact failure
+   disposition as undecided. Before such a cell can gate the mandatory raw
+   entrypoint, create `OD-005-raw-input-carrier-semantics` and resolve it
+   through an accepted successor ADR plus executable ledger evidence.
+7. Create `OD-006-duplicate-binding-record-diagnostics` before assigning a
+   diagnostic code, coordinates or suppression behavior to repeated records for
+   one `(implementationId, slotId)`. Resolve it through an accepted successor
+   ADR and executable ledger evidence before that case enters the compiler.
+8. Demonstrate source custody and rollback in a fresh disposable checkout.
    Record the selected SHA and retained content identities, run the same
    preflight, discard that checkout and recreate it at the selected SHA. Never
    use `reset --hard` or `clean` against a contributor checkout as evidence.
-8. Extend the complete governance gate with positive and negative fixtures for
-   every open implementation decision: ADR-0009 blocks an unversioned public
-   barrel, ADR-0010 blocks production primitive selection, and ADR-0011 blocks
-   release-custody claims. A proposed ADR cannot pass through roadmap wording.
-9. Verify that the existing `qualification:resource-profile` executable
+9. Create `OD-004-package-carrier-and-resolution-policy` before freezing
+   package type, export conditions or supported resolver modes. Governance
+   blocks on OD-004/OD-005 only after their open-decision records exist. Keep
+   ADR-0009/0010/0011 as conditional roadmap choices until accepted; only their
+   accepted decisions may add mutation fixtures or checkpoint requirements.
+10. Verify that the existing `qualification:resource-profile` executable
    generator/oracle proof remains wired into the complete repository gate. A
    declared but orphaned script is not Phase 0 evidence, and its historical
    filename does not create a versioned public command.
@@ -189,13 +209,18 @@ Each phase leaves a report containing:
   ledgers and contain no unresolved accepted-contract P0/P1;
 - exact source custody and ADR precedence are recorded;
 - no production package or public barrel exists yet;
-- accepted-claim mapping and the raw-carrier matrix are checked;
-- open-decision blockers and their mutation fixtures execute in the complete
-  governance gate;
+- accepted-claim mapping and the evidence-only raw-carrier matrix are checked;
+- every actual open-decision blocker and its mutation fixtures execute in the
+  complete governance gate;
 - a clean rollback to the selected SHA is demonstrated in a disposable
   checkout;
-- ADR-0009 is either accepted with a checked naming map or the public package
-   remains not created and Phase 1 is blocked.
+- OD-004 is accepted before package carrier/export freeze, and OD-005 is
+  accepted before unresolved raw-carrier behavior enters the public entrypoint;
+- OD-006 is accepted before duplicate binding-record behavior enters the
+  compiler;
+- the target unversioned surface requires accepted ADR-0009 or a successor.
+  Until then the accepted contract remains authority and the target public
+  milestone is `CONDITIONAL`, not a manufactured governance blocker.
 
 ### Non-goals
 
@@ -209,19 +234,29 @@ as the first Core behavior. A package shell or declaration-only facade is not
 an implementation deliverable.
 
 Phases 1-4 are one atomic first-Core checkpoint, not four independently
-mergeable releases. Phase 1 may prepare private package/source boundaries;
-Phase 2 supplies inert authoring data, Phase 3 the private semantic compiler and
-Phase 4 the complete public result plus digest. Only then does Phase 1 freeze
-exports and pack the archive. This dependency order prevents an empty public
-shell while allowing bounded implementation lanes.
+mergeable releases. Their acyclic construction order is:
+
+```text
+Phase 1 private package/source setup
+  -> Phase 2 inert declarations
+  -> Phase 3 private semantic compiler
+  -> Phase 4 stage1 plan/digest implementation
+  -> Phase 1 export freeze and pack-once archive
+  -> Phase 4 packed qualification
+  -> joint Phase 1-4 checkpoint
+```
+
+This order prevents an empty public shell and prevents packed qualification from
+depending on a Phase 4 exit that already assumes the archive exists.
 
 ### Phase 1 implementation
 
-1. Do not materialize a production package or public barrel until ADR-0009 (or
-   its accepted successor) supplies naming authority. When materialized, create
-   `@get-modular/core` with a curated public barrel and feature-owned internal
-   folders. Keep domain semantics independent from Foundation, Docs Protocol,
-   DI containers and plugin runtime types.
+1. Materialize the private Core package/source boundary under the accepted
+   topology, but do not freeze the target unversioned public barrel until
+   ADR-0009 or a successor is accepted. If it remains proposed, accepted API
+   authority continues to govern and the target release stays `CONDITIONAL`;
+   private implementation work is not blocked. Keep domain semantics independent
+   from Foundation, Docs Protocol, DI containers and plugin runtime types.
 2. Preserve ADR-0003's public development-only
    `@get-modular/conformance` identity without creating an empty package. Its
    substantive vectors, fixtures and packed-consumer tooling may be published
@@ -235,7 +270,8 @@ shell while allowing bounded implementation lanes.
    declaration-only placeholders; authoring helpers retain the deliberately
    pass-through behavior accepted by ADR-0007. Both trusted-object and
    untrusted-byte entrypoints are mandatory; the raw entrypoint materializes
-   only after Phase 0 proves its carrier boundary and otherwise blocks exit.
+   only after OD-005 and its accepted successor close every unresolved carrier
+   behavior required by that public boundary.
 4. Promote the first production package atomically to `source-admitted`: add
    the pinned `architecture/foundation/source-dependencies.yaml`, enable the
    Engineering Foundation source-dependency capability, add positive and
@@ -246,9 +282,8 @@ shell while allowing bounded implementation lanes.
    consumers. Add default-deny export/deep-import tests, tarball allowlist and
    declaration-leakage audits, and inert import smoke tests. Do not repack in
    platform matrix jobs.
-6. Do not infer an ESM/CommonJS policy from this roadmap. Freeze and test package
-   type, export conditions and supported resolution modes only after an accepted
-   packaging decision supplies that authority.
+6. Resolve OD-004 before freezing package type, export conditions and supported
+   resolution modes. Do not infer an ESM/CommonJS policy from this roadmap.
 7. Before freezing the public TypeScript surface, run the exact archive through
    NodeNext, Bundler, JavaScript and `checkJs` consumers at 100, 500 and 1000
    declarations with recorded compiler identity, timing, peak memory and
@@ -335,6 +370,11 @@ qualified canonical bytes and digest required by the accepted contract.
 - bounded paths, redacted hostile values, top-K diagnostics and saturating
   omission count.
 
+Repeated binding records for one `(implementationId, slotId)` remain outside
+the admitted semantic domain until OD-006 and its accepted successor define the
+exact diagnostic and suppression behavior. Fixtures may demonstrate candidate
+behavior but cannot make it compiler authority.
+
 Phase 3 accepts, stores, returns and invokes no factory, callback, function,
 loader, executable handle or product code. Product-owned literal factory tables
 remain outside Core and may be used only after a complete successful public
@@ -343,10 +383,10 @@ ambiguity or impact semantics require a successor contract and are not inferred
 from the current schema.
 
 The canonical detail-byte comparator used by diagnostic ordering is qualified
-behind its private boundary in this phase. Selecting a production primitive is
-blocked until ADR-0010, or an accepted successor, supplies authority; the
-semantic compiler cannot inherit ordering or error behavior from a candidate
-library.
+behind its private boundary in this phase. An owned private implementation may
+proceed behind the port; selecting an external production adapter or dependency
+requires accepted ADR-0010 or a successor. The semantic compiler cannot inherit
+ordering or error behavior from a candidate library.
 
 The first substantive compiler slice also introduces the owner-local
 declarations, ports and factories plus ADR-0008's minimal direct stage0 root.
@@ -382,10 +422,10 @@ own finite internal components without a runtime bootstrap loop.
 
 ### Phase 4 implementation
 
-1. Use the accepted canonicalization boundary and qualified adapter. Do not call
-   a local helper RFC 8785/JCS without independent vectors proving the exact
-   required subset. Production primitive selection remains blocked until
-   ADR-0010, or an accepted successor, supplies authority.
+1. Use the accepted canonicalization boundary and a qualified private adapter.
+   Do not call a local helper RFC 8785/JCS without independent vectors proving
+   the exact required subset. An owned primitive may implement the port; an
+   external production dependency requires accepted ADR-0010 or a successor.
 2. Encode only normalized semantic plan data, selected implementations,
    bindings, order, profile and compatibility data. Exclude source ordinals,
    executable closures and host custody state.
@@ -416,11 +456,10 @@ own finite internal components without a runtime bootstrap loop.
    emitter calls or component assembly on caller requests. Only pack-once
    stage1 is distributable; stage0, own profile and emitter stay outside the
    runtime closure.
-8. Treat completion as two states. `qualification-only` may use accepted
-   ADR-0008 evidence. `release-eligible` additionally requires accepted
-   ADR-0011 (or a successor) and its source snapshot, toolchain, pack-once,
-   splice/archive-swap rejection and cold rollback gates. Governance records the
-   blocker while that authority is proposed.
+8. Treat completion as two phase-report outcomes. `qualification-only` may use
+   accepted ADR-0008 evidence. The candidate release-custody path adds ADR-0011
+   obligations only after that ADR or a successor is accepted. While it remains
+   proposed, no governance blocker or custody claim is synthesized.
 9. Record non-SLO P100/P500/P1000 sparse/dense canonical byte size, digest time,
    peak memory and concurrent-call observations. Phase 5 owns portable
    performance budgets and release-scale qualification.
@@ -442,12 +481,13 @@ imply publication readiness.
 
 ### Phase 4 release-eligible exit
 
-Release eligibility additionally requires accepted ADR-0010/0011 authorities
-or accepted successors. Their governed gates select the production primitives
-and independently reject tampered evidence bindings, source/evidence splicing,
-archive swaps and failed cold rollback while preserving one pack-once stage1
-archive. Until both decisions and gates exist, governance reports the release
-checkpoint as `BLOCKED`, not as a failed qualification result.
+The target external-adapter and release-custody path becomes eligible only after
+ADR-0010/0011 or accepted successors supply authority. Their governed gates may
+then select production dependencies and reject tampered evidence bindings,
+source/evidence splicing, archive swaps and failed cold rollback while
+preserving one pack-once stage1 archive. Before acceptance the target path is a
+roadmap-level `CONDITIONAL` outcome, not a synthesized governance blocker and
+not a failed qualification result.
 
 ## Phase 5: conformance and scale proof
 
@@ -473,8 +513,10 @@ checkpoint as `BLOCKED`, not as a failed qualification result.
    shapes at 10/100/500/1000 modules and the accepted declaration limit. Pin the
    generator seed, runtime/toolchain, machine class, warmup, sample count and
    statistic. Record parse/normalize/compile/digest time, structural operation
-   counters, peak live memory, input/output byte size and retained diagnostics;
-   set reviewed regression budgets before a scale GO. Packed archive size is
+   counters, peak live memory, input/output byte size and retained diagnostics.
+   Enforce accepted resource limits and deterministic structural-operation
+   bounds. Time and memory remain observational sizing evidence; numeric
+   performance thresholds require a successor decision. Packed archive size is
    measured once for the retained archive, not once per profile.
 5. Run the mandatory packed TypeScript consumers: NodeNext, Bundler, JavaScript,
    `checkJs`, helper runtime/handoff and the 1000-declaration typecheck case.
@@ -491,28 +533,39 @@ checkpoint as `BLOCKED`, not as a failed qualification result.
 8. Keep focused gates small for ordinary changes. Run the closed six-case,
    packed-consumer and scale matrix only for promotion/release evidence, while
    preserving one exact pack-once subject across the distribution.
+9. Bind source admission, structural evidence and packed runtime evidence to the
+   same package subject. Structural and runtime qualification records remain
+   `reviewed` evidence until separate accepted reciprocal promotion decisions
+   anchor their exact bytes in the order required by the Feature Module
+   Standard. A runner result cannot promote itself.
 
 ### Phase 5 exit criteria
 
 Every applicable Core obligation maps to an executed vector against the exact
 packed subject; a future gate cannot satisfy Phase 5 exit. The closed six-case
-matrix, raw-carrier matrix, TypeScript consumers and reviewed scale budgets pass
-without mandatory skips. The private conformance runner is deterministic and
-cannot install modules, scan files, derive expected results from Core or
-authorize execution.
+matrix, accepted raw-carrier vectors, TypeScript consumers and reviewed scale
+evidence pass without mandatory skips. Accepted resource limits and structural
+operation bounds pass; timing and memory observations are recorded without
+becoming compatibility thresholds. Unresolved raw-carrier research cells do
+not enter conformance. The private conformance runner is deterministic and
+cannot install modules, scan files, derive expected results from Core,
+authorize execution or promote its own qualification records.
 
 ## Phase 6: first product dogfooding
 
 **Purpose:** prove that the public contract reduces real wiring without
-rewriting product domain APIs.
+rewriting product domain APIs. This product-adoption checkpoint may follow a
+qualified Core `0.x` publication; it is not a prerequisite for that publication.
 
 ### Phase 6 implementation
 
-1. Admit a consumer seam only through a repository-resolvable record containing
-   the exact consumer source SHA, owning product decision/API, approved feature
-   boundary, Product Host owner and exact packed Core archive digest. Agent
-   Runtime capability composition is the first candidate, not authority by
-   roadmap text; it enters only when its exact source proves the seam.
+1. Before coding, the consumer repository accepts its own adoption contract and
+   evidence location. That contract binds the exact consumer source SHA, owning
+   product decision/API, approved feature boundary, Product Host owner and exact
+   packed Core archive digest. Get Modular retains only a content-addressed
+   reference to that consumer-owned record; this roadmap does not invent a
+   universal adoption schema. Agent Runtime capability composition is the first
+   candidate, not authority by roadmap text.
 2. A product anti-corruption adapter maps authorized product configuration into
    inert declarations and one complete profile, then calls Core. It never
    creates, edits, reorders or substitutes a plan. Credentials, executable
@@ -562,14 +615,14 @@ or dynamic runtime replacement a dependency of the first Core release.
 
 ### Phase 7 implementation
 
-This phase is a design and qualification boundary, not a production plugin
-runtime.
+This phase is a parallel, non-gating design reservation, not a production plugin
+runtime and not a prerequisite for the Core `0.x` release checkpoint.
 
-Because no real extension consumer is admitted yet, this phase uses only design
-review plus one bounded disposable qualification model. It does not start a
-production coding wave, add a package dependency or implement a registry,
-loader, lifecycle engine or update service. A real consumer and separate phase
-contract are required before that scope begins.
+Because no real extension consumer is admitted yet, this phase records only
+negative Core-boundary invariants and owner handoffs. It does not start a
+production coding wave, add a package dependency, add a Get Modular
+qualification gate or implement a registry, loader, lifecycle engine or update
+service. A real consumer and accepted owner decisions are required first.
 
 - A runtime Module is a composition/lifecycle unit. A Plugin Artifact is a
   distribution, trust and update envelope. One artifact may provide multiple
@@ -585,65 +638,54 @@ contract are required before that scope begins.
 - Registry, artifact, signature and update tools remain replaceable Extension
   Foundation adapter candidates; this reservation phase selects none of them.
   Core sees admitted inert declarations, not registry or signature APIs.
-- Because Core intentionally omits artifact lineage, Product Host owns an
-  external correlation record binding publisher/artifact digest, artifact and
-  contribution generation, module/implementation IDs, authorized literal
-  factory identity, grants, PlanDigest and Host generation. Stale or swapped
-  executable code fails before activation even when declarations are equal.
-- Record the reproduced Cordis version `4.0.2` disposer-ownership defect as a
-  version-pinned `NO-GO` before considering Cordis. A later qualification requires
-  an admitted local report with reproducer/digest and a newer exact candidate
-  passing cleanup, leak, cancellation and compatibility spikes. Cordis can at
-  most provide scoped resource ownership; process/tenant security isolation,
-  graph semantics, readiness, generations and recovery remain elsewhere.
-- Model future enable/disable as two coordinated, recoverable transactions.
-  Extension Foundation prepares verified artifact state; Product Host validates
-  admission/grants, compiles a new complete profile, plans impact, drains,
-  generation-fences cutover, records activation and retires old resources. Use
-  idempotent receipts, deadlines and rollback for crash/timeout/partial failure.
-  Disable removes contributions from desired state; artifact retirement and
-  uninstall occur only after no live generation references them, and uninstall
-  never deletes user data implicitly. Hot unload is not promised by Core MVP.
+- Product Host owns executable correlation, grants, generation fencing,
+  cutover, rollback and retirement. Extension Foundation owns artifact trust,
+  installation and update custody. Their exact records and transactions require
+  accepted owner decisions; this roadmap does not define them.
+- Proposed ADR-0010 records a not-yet-admitted Cordis `4.0.2` defect report. Until
+  an owning Host repository retains a local reproducer and an accepted decision
+  classifies an exact candidate, Cordis is `unselected`, not a Get Modular
+  `NO-GO`. Any later Cordis adapter may own scoped resources only; it cannot
+  own Core semantics or provide process/tenant isolation.
+- Dynamic enable/disable, drain, generation cutover, crash recovery, uninstall
+  and user-data retention stay deferred to Product Host and Extension Foundation
+  decisions. Hot unload is not promised by Core MVP.
 - Keep artifact/module/publisher/installation/contribution/Host-generation
   identities separate. Atomicity for an artifact contributing several modules
   is a named future decision, not an accidental registration-order behavior.
 
-Phase 7 creates
-`architecture/qualification/extension-boundary-reservation.json`, a checked,
-non-authoritative inventory with one row per deferred capability: owner,
-input/output identity, prerequisite decision, evidence path/digest, current
-status and forbidden Core dependency. The fail-closed
-`architecture/checks/extension-boundary-reservation.mjs` command is wired as
-`qualification:extension-boundary` into the complete gate. Its one disposable
-test model runs handoff/mutation cases for verified-not-authorized,
-permission-not-grant, stale generation, swapped factory, revocation race,
-failed cutover, rollback and retirement ordering. It measures bounded manifest,
-permission and contribution expansion at 100/500/1000 modules before Core input;
-composition scale evidence alone does not prove extension admission.
+Phase 7 leaves a docs-only owner-handoff table with each deferred capability,
+owning repository, prerequisite decision and forbidden Core dependency. Future
+Extension Foundation and Product Host qualification may reference Core
+declarations, but Get Modular does not mirror their lifecycle or security gates.
 
 ### Phase 7 exit criteria
 
-The checked reservation inventory and synthetic boundary gate make the split
-between Core declarations, Product Host authority/lifecycle and Extension
-Foundation trust/custody executable. No plugin loader, registry, signature
-verifier, hot-unload path or runtime replacement enters Core MVP. Every deferred
-capability has a named owner, identity handoff, prerequisite decision and
-evidence gate; the current Cordis result remains fail-closed `NO-GO`. Exit ends
-the reservation task and does not authorize production extension work.
+The owner-handoff table makes the negative split between Core declarations,
+Product Host authority/lifecycle and Extension Foundation trust/custody
+explicit. No plugin loader, registry, signature verifier, hot-unload path or
+runtime replacement enters Core MVP. Exit neither gates Core publication nor
+authorizes production extension work.
 
 ## Phase 8: release checkpoint
 
 **Purpose:** prove that the implemented checkpoint is reviewable, reproducible
 and reversible before publication or merge.
 
+Core `0.x` may enter this checkpoint after Phases 1-5. Phase 6 has its own later
+product-adoption checkpoint; Phase 7 is parallel and non-gating. Two independent
+production adapters remain required only for a stable cross-consumer claim.
+
 ### Bounded PR merge checkpoint
 
 1. Run local check, typecheck, lint, docs protocol, source custody and focused
    tests/mutants for the changed invariant. Run broader gates only when the PR
    changes their subject or authority.
-2. Run four final exact-SHA reviews after the last commit, then two independent
-   arbiters over those findings. Any changed SHA invalidates the affected
-   reviews and arbitration.
+2. Select exact-head review by risk: at least one independent reviewer for an
+   ordinary bounded change, two perspectives for a cross-boundary change, and
+   four reviewers plus two independent arbiters for authority, security,
+   public-surface or publication changes. Any changed SHA invalidates the
+   affected review and arbitration.
 3. Keep PRs near 2,000 changed LOC when the invariant boundary permits. Do not
    split one invariant merely to satisfy a number.
 4. Merge only with explicit owner approval, a clean exact-head check and a
@@ -665,12 +707,16 @@ and reversible before publication or merge.
    archive/evidence substitution. A written rollback procedure alone cannot
    satisfy promotion.
 4. Verify all release-required decision blockers, registry namespace ownership
-   and reviewed scale regression disposition against the same manifest.
+   and reviewed scale evidence disposition against the same manifest. A
+   conformance claim additionally requires same-subject source admission plus
+   accepted structural and runtime reciprocal promotion decisions; otherwise
+   publication must remain explicitly non-conformant and cannot advertise Core
+   conformance.
 5. Publish the API map, architecture map, evidence ledger, known limitations,
    rollback procedure and upgrade notes.
 6. The product owner approves the public surface and promotion; the release
    publisher executes the accepted custody protocol. Registry read-back must
-   reproduce the exact published archive digest. A missing second consumer
+   reproduce the exact published archive digest. Zero or one production adapter
    limits the release to `0.x`; it cannot support a stable or cross-consumer
    claim.
 
@@ -697,5 +743,6 @@ Return `BLOCKED` instead of guessing when:
 - a public API is stabilized from one synthetic consumer only;
 - hosted workers repeatedly fail without verifiable output.
 
-The first stable checkpoint is a small Core compiler plus conformance evidence
-and one real adapter. It is not the completion of the full plugin ecosystem.
+The first complete `0.x` Core checkpoint is a small compiler plus conformance
+evidence. The first product-adoption checkpoint adds one real adapter. Neither
+is completion of the plugin ecosystem or evidence for a stable 1.0 claim.
