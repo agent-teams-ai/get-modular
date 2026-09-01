@@ -2,6 +2,23 @@ import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const PRODUCTION_SOURCE = /\.[cm]?[jt]sx?$/u;
+const PRIVATE_IMPLEMENTATION_PACKAGE_NAMES = new Set([
+  "@get-modular/conformance",
+  "@get-modular/core",
+]);
+const PACKAGE_MANIFEST = /^packages\/[^/]+\/package\.json$/u;
+const PUBLICATION_FIELDS = Object.freeze([
+  "bin",
+  "browser",
+  "exports",
+  "files",
+  "main",
+  "module",
+  "publishConfig",
+  "types",
+  "typesVersions",
+  "typings",
+]);
 const NON_PRODUCTION_DIRECTORIES = new Set([
   ".agents",
   ".codex",
@@ -64,6 +81,38 @@ async function symlinksBelow(repositoryRoot, relativeDirectory) {
 
 export function productionArtifactsOutsidePackages(productionArtifacts) {
   return productionArtifacts.filter(path => !path.startsWith("packages/"));
+}
+
+async function defaultReadPackageManifest(path, repositoryRoot) {
+  return JSON.parse(await readFile(resolve(repositoryRoot, path), "utf8"));
+}
+
+export async function productionArtifactsBlockedByOpenDecisions(
+  productionArtifacts,
+  {
+    repositoryRoot = process.cwd(),
+    readPackageManifest = defaultReadPackageManifest,
+  } = {},
+) {
+  const privatePackageRoots = new Set();
+  for (const path of productionArtifacts.filter(candidate => PACKAGE_MANIFEST.test(candidate))) {
+    let manifest;
+    try {
+      manifest = await readPackageManifest(path, repositoryRoot);
+    } catch {
+      continue;
+    }
+    const hasPublicationField = PUBLICATION_FIELDS.some(field => manifest?.[field] !== undefined);
+    if (PRIVATE_IMPLEMENTATION_PACKAGE_NAMES.has(manifest?.name)
+      && manifest.private === true
+      && !hasPublicationField) {
+      privatePackageRoots.add(path.slice(0, -"/package.json".length));
+    }
+  }
+
+  return productionArtifacts.filter(path => ![...privatePackageRoots].some(packageRoot => (
+    path === `${packageRoot}/package.json` || path.startsWith(`${packageRoot}/`)
+  )));
 }
 
 export async function productionArtifactSymlinkPaths(repositoryRoot = process.cwd()) {

@@ -211,6 +211,9 @@ async function main() {
     decoderVectors,
     canonicalizationVectors,
     acceptedCanonicalVectors,
+    diagnosticContract,
+    diagnosticCatalog: catalog,
+    ...validators,
   });
   validateCanonicalizationQualification(canonicalizationVectors);
   validateDecoderQualification(

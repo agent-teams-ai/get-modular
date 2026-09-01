@@ -84,10 +84,17 @@ public API, release candidate, or conformance claim.
 The supported resolution surface is the package root through ESM import and the
 matching TypeScript declaration target. CommonJS `require`, deep imports,
 package-manifest imports, and unknown subpaths are unsupported and MUST fail
-rather than find a compatibility fallback. Additional condition names such as
+rather than find a compatibility fallback. Additional runtime condition names
+such as
 `browser` or `development` MUST NOT select another target: when the ordinary
 ESM `import` condition remains active they resolve to the same retained
-JavaScript target. A condition-specific implementation is forbidden.
+JavaScript target. The declaration-only `types` condition is the explicit
+exception to that
+same-target assertion. Running Node with `--conditions=types` is unsupported and
+MUST be a negative case: resolution selects `./dist/index.d.ts`, Node fails
+before evaluating package JavaScript, and resolution does not fall through to
+`./dist/index.js` or any alternate build. A condition-specific JavaScript
+implementation is forbidden.
 
 Browser, dedicated-worker, and Electron qualification may use a product-owned
 loader or import-map adapter, but the adapter MUST resolve the public package
@@ -118,8 +125,12 @@ against the private non-publishable qualification subject covering:
 - one retained archive identity and full build provenance;
 - Node ESM execution and supported TypeScript NodeNext/Bundler consumers;
 - negative `require`, deep-import, package-manifest, and unknown-subpath cases;
-- condition-injection cases proving that every applicable additional condition
-  resolves the same retained JavaScript target and never an alternate build;
+- runtime condition-injection cases proving that every tested additional
+  condition other than `types` resolves the same retained JavaScript target and
+  never an alternate build;
+- a distinct Node `--conditions=types` negative case proving that the
+  declaration target is selected and runtime loading fails before package
+  JavaScript evaluation; this case is excluded from same-target assertions;
 - browser window, dedicated worker, and required Electron resolution through
   the public root;
 - declaration and archive leakage mutations;

@@ -68,6 +68,14 @@ a JavaScript default export. Omit `main`, `module`, package-level `types`,
 `typings`, `typesVersions`, `require`, outer `default`, `node`, `browser`,
 development/production conditions, and subpath exports.
 
+Runtime condition injection has one explicit exception to the same-JavaScript-
+target rule. Extra runtime conditions such as `browser` and `development` must
+still select `./dist/index.js`, but `types` is declaration-only. Node
+`--conditions=types` is an unsupported negative case that selects
+`./dist/index.d.ts` and must fail before package JavaScript evaluation, without
+falling through to `./dist/index.js` or another build. It is excluded from
+runtime same-target assertions.
+
 Disposable Node and TypeScript observations support this direction, but one
 prototype archive included `src/**` and its browser fixture bypassed package
 exports. Those observations prove feasibility only and cannot close this
@@ -82,8 +90,11 @@ decision or authorize publication.
 - Fresh consumers execute the public root with Node ESM and typecheck it with
   every supported TypeScript/module-resolution pair.
 - Negative consumers prove rejection of CommonJS `require`, deep imports,
-  `package.json` access, and unknown subpaths. Condition-injection consumers
-  prove that extra conditions never select an alternate target.
+  `package.json` access, and unknown subpaths. Runtime condition-injection
+  consumers other than `types` prove that extra conditions select the retained
+  JavaScript target and never an alternate build. A separate Node
+  `--conditions=types` consumer proves declaration-target selection followed by
+  failure before package JavaScript evaluation; it is not a same-target case.
 - Browser window, dedicated worker, and required Electron evidence import the
   same retained archive through the supported public root carrier.
 - Declaration-surface and archive-content audits reject product, Foundation,

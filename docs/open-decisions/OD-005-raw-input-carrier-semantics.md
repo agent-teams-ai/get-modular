@@ -34,20 +34,32 @@ shared storage, accessors, cycles, or caller mutation.
   snapshot and can observe mixed concurrent writes.
 - A valid offset view copies only its currently visible elements, not the whole
   backing buffer.
-- Cross-realm identity is checked by intrinsic brand and usable state, not by a
-  same-realm `instanceof` test.
+- Raw-view identity is checked by intrinsic brand and usable state, not by a
+  same-realm `instanceof` test. Object admission does not infer an originating
+  realm from a `null` prototype.
 - Resource accounting counts the admitted snapshot and preserves the accepted
   occurrence rules, saturation, and diagnostic bounds.
 
 ## Candidate direction
 
-The trusted-object entry point admits ordinary current-realm records with that
-realm's exact `Object.prototype` or a `null` prototype and dense current-realm
-ordinary arrays with that realm's exact intrinsic array prototype. It inspects
-own property descriptors only, admits own enumerable data properties, and
-rejects cross-realm objects, accessors, symbols, non-enumerables apart from the
-intrinsic array `length`, extended or sparse arrays, custom prototypes, and
-cycles. Shared acyclic references are copied and counted per occurrence.
+The trusted-object entry point admits a record when its observed prototype is
+either the current realm's exact `Object.prototype` or `null`, and admits dense
+current-realm ordinary arrays with that realm's exact intrinsic array
+prototype. A `null` prototype has no observable realm provenance, so this is an
+explicit realm-neutral rule: a cross-realm null-prototype record is admitted
+when every descriptor and graph rule passes, without being described as
+same-realm. Records with another realm's `Object.prototype` and cross-realm
+arrays are rejected. The entry point inspects own property descriptors only,
+admits own enumerable data properties, and rejects accessors, symbols,
+non-enumerables apart from the intrinsic array `length`, extended or sparse
+arrays, custom prototypes, and cycles. Shared acyclic references are copied and
+counted per occurrence.
+
+This observable-prototype rule does not make the trusted-object entry point a
+hostile-input boundary. A `null` prototype is not proof that a value is
+non-Proxy or safe, and prototype, key, or descriptor inspection can invoke
+Proxy traps. Product boundaries must send untrusted or possibly proxied values
+through the raw-byte entry point.
 
 The raw entry point admits a genuine, currently usable, non-shared `Uint8Array`
 view, including cross-realm values, subclasses, non-zero offsets, and currently
@@ -68,9 +80,11 @@ evidence and make no Firefox, Safari, or release-runtime claim.
   ordering, path, coordinate, closed reasons, prerequisites, and suppression.
 - Raw-byte vectors cover same/cross realm, subclass, offset, resizable,
   detached, out-of-bounds, shared/growable shared, and caller mutation cases.
-- Object vectors cover accessors without invocation, symbols, non-enumerables,
-  custom and cross-realm prototypes, sparse/extended arrays, cycles, shared DAG
-  references, and mutation immediately after invocation.
+- Object vectors cover same-realm records with both allowed prototypes,
+  admitted cross-realm null-prototype records, rejected cross-realm
+  `Object.prototype` records and arrays, accessors without getter invocation,
+  symbols, non-enumerables, custom prototypes, sparse/extended arrays, cycles,
+  shared DAG references, and mutation immediately after invocation.
 - Every successful vector proves that later mutation, resize, detach, transfer,
   or concurrent shared writes cannot alter the owned admitted snapshot.
 - Evidence executes against the real entry points in every mandatory runtime and

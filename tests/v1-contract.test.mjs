@@ -142,7 +142,8 @@ test("reserved base diagnostic code cannot be indirectly reactivated", async () 
       readJson("architecture/qualification/v1/resource-boundary-vectors.json"),
       readJson("architecture/qualification/v1/qualification-case-manifest.json"),
     ]);
-  const { validateDocument, validateDiagnostic } = schemaValidators(schema);
+  const validators = schemaValidators(schema);
+  const { validateDocument, validateDiagnostic } = validators;
   const reservedDiagnostic = {
     code: "output.canonicalization-failed",
     phase: "output",
@@ -229,8 +230,7 @@ test("reserved base diagnostic code cannot be indirectly reactivated", async () 
     protocol: staticCaseReactivation,
     contract,
     catalog,
-    validateDocument,
-    validateDiagnostic,
+    ...validators,
   }), /reserved-non-emittable/u);
 
   assert.throws(() => validateResolvedResultCodeDisposition({
@@ -968,7 +968,8 @@ test("resource and decoder qualification reject expectation drift", async () => 
     "architecture/qualification/v1/qualification-case-manifest.json",
   );
   const acceptedCanonical = await readJson("architecture/contracts/v1/canonical-vectors.json");
-  const { validateDocument, validateDiagnostic } = schemaValidators(schema);
+  const validators = schemaValidators(schema);
+  const { validateDocument, validateDiagnostic } = validators;
   const maximumOmitted = schema.$defs.diagnostic.properties.details
     .properties.omitted.maximum;
   const validateBoundaries = value => validateResourceBoundaryQualification({
@@ -991,13 +992,19 @@ test("resource and decoder qualification reject expectation drift", async () => 
     acceptedCanonicalVectors: acceptedCanonical,
     diagnosticContract: contract,
     diagnosticCatalog: catalog,
-    validateDocument,
-    validateDiagnostic,
+    ...validators,
   });
 
   assert.doesNotThrow(() => validateBoundaries(boundaries));
   assert.doesNotThrow(() => validateDecoder(decoder));
   assert.doesNotThrow(() => validateManifest(manifest));
+
+  assert.throws(() => validateQualificationCaseManifest({
+    manifest,
+    decoderVectors: decoder,
+    canonicalizationVectors: canonicalization,
+    acceptedCanonicalVectors: acceptedCanonical,
+  }), /static conformance requires accepted base-schema validators/u);
 
   const rawLocatorRemoved = clone(manifest);
   rawLocatorRemoved.staticConformanceProtocol.cases[0]
@@ -1026,6 +1033,22 @@ test("resource and decoder qualification reject expectation drift", async () => 
   maskedDuplicate.details = { reason: "invalid-type" };
   maskedDuplicateDiagnostics.push(maskedDuplicate);
   assert.throws(() => validateManifest(maskedDuplicateKey), /masks a raw decode failure/u);
+
+  const falseSchemaDiagnostic = clone(manifest);
+  const unsupportedVersion = falseSchemaDiagnostic.staticConformanceProtocol.cases[0]
+    .expected.diagnostics.find(diagnostic => (
+      diagnostic.code === "schema.unsupported-version"
+    ));
+  unsupportedVersion.code = "schema.invalid-value";
+  unsupportedVersion.details = { reason: "invalid-format" };
+  assert.throws(() => validateManifest(falseSchemaDiagnostic), /base-schema expectations/u);
+
+  const wrongDuplicateKeyTerminal = clone(manifest);
+  const duplicateKey = wrongDuplicateKeyTerminal.staticConformanceProtocol.cases[0]
+    .expected.diagnostics.find(diagnostic => diagnostic.code === "decode.duplicate-key");
+  duplicateKey.path.at(-1).value = "schemaVersion";
+  assert.throws(() => validateManifest(wrongDuplicateKeyTerminal),
+    /masks a raw decode failure/u);
 
   const missingOverlapOutcome = clone(manifest);
   missingOverlapOutcome.staticConformanceProtocol.cases

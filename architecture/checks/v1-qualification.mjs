@@ -697,6 +697,8 @@ export function validateQualificationCaseManifest({
   diagnosticCatalog,
   validateDocument,
   validateDiagnostic,
+  validateModuleDeclaration,
+  validateCompositionProfile,
 }) {
   if (manifest?.kind !== "get-modular.qualification-case-manifest"
     || manifest.manifestVersion !== 1
@@ -828,21 +830,15 @@ export function validateQualificationCaseManifest({
     }
     mappedCases.add(successor.name);
   }
-  const staticValidationInputs = [
-    diagnosticContract, diagnosticCatalog, validateDocument, validateDiagnostic,
-  ];
-  if (staticValidationInputs.some(value => value !== undefined)) {
-    if (staticValidationInputs.some(value => value === undefined)) {
-      fail("static conformance validation inputs must be supplied together");
-    }
-    validateStaticConformanceProtocol({
-      protocol: manifest.staticConformanceProtocol,
-      contract: diagnosticContract,
-      catalog: diagnosticCatalog,
-      validateDocument,
-      validateDiagnostic,
-    });
-  }
+  validateStaticConformanceProtocol({
+    protocol: manifest.staticConformanceProtocol,
+    contract: diagnosticContract,
+    catalog: diagnosticCatalog,
+    validateDocument,
+    validateDiagnostic,
+    validateModuleDeclaration,
+    validateCompositionProfile,
+  });
 }
 
 function staticInvocationPrefixLength(descriptor, diagnostic, contract) {
@@ -895,7 +891,7 @@ function pathStartsWith(path, prefix) {
     && prefix.every((segment, index) => same(path[index], segment));
 }
 
-function validateStaticRawDecodeSuppression(descriptor, diagnostics) {
+function validateStaticRawDecodeSuppression(descriptor, diagnostics, compare) {
   for (const document of staticRawInputDocuments(descriptor)) {
     const decoded = strictDecode(
       Buffer.from(document.text, "utf8"),
@@ -906,38 +902,150 @@ function validateStaticRawDecodeSuppression(descriptor, diagnostics) {
     const scoped = diagnostics.filter(diagnostic => (
       pathStartsWith(diagnostic.path, document.prefix)
     ));
-    if (scoped.length !== 1 || scoped[0].code !== decoded.diagnosticCode) {
+    const localPaths = decoded.diagnosticCode === "decode.duplicate-key"
+      ? [...new Map(decoded.diagnosticPaths.map(pathValue => (
+        [canonicalize(pathValue), pathValue]
+      ))).values()]
+      : [[]];
+    const expected = localPaths.map(pathValue => ({
+      code: decoded.diagnosticCode,
+      phase: "decode",
+      path: [
+        ...document.prefix,
+        ...pathValue.map(segment => (typeof segment === "number"
+          ? { kind: "index", value: segment }
+          : { kind: "field", value: segment })),
+      ],
+      coordinate: {},
+      details: {
+        reason: decoded.diagnosticCode === "decode.duplicate-key"
+          ? "duplicate-key"
+          : "invalid-json",
+      },
+    })).toSorted(compare);
+    if (!same(scoped, expected)) {
       fail(`${descriptor.caseId} masks a raw decode failure with a derivative diagnostic`);
     }
   }
 }
 
 function staticInputDocuments(descriptor) {
+  if (descriptor.input === undefined) return [];
   if (descriptor.entryPoint === "compileCompositionJsonV1") {
     return [
-      ...(descriptor.input?.declarationsUtf8 ?? []).map((text, index) => ({
+      ...(descriptor.input.declarationsUtf8 ?? []).map((text, index) => ({
         prefix: [
           { kind: "field", value: "declarations" },
           { kind: "index", value: index },
         ],
+        documentType: "module-declaration",
         value: decodeStaticJson(text),
       })),
       {
         prefix: [{ kind: "field", value: "profile" }],
-        value: decodeStaticJson(descriptor.input?.profileUtf8),
+        documentType: "composition-profile",
+        value: decodeStaticJson(descriptor.input.profileUtf8),
       },
     ];
   }
   return [
-    ...(descriptor.input?.declarations ?? []).map((value, index) => ({
+    ...(descriptor.input.declarations ?? []).map((value, index) => ({
       prefix: [
         { kind: "field", value: "declarations" },
         { kind: "index", value: index },
       ],
+      documentType: "module-declaration",
       value,
     })),
-    { prefix: [{ kind: "field", value: "profile" }], value: descriptor.input?.profile },
+    {
+      prefix: [{ kind: "field", value: "profile" }],
+      documentType: "composition-profile",
+      value: descriptor.input.profile,
+    },
   ];
+}
+
+const STATIC_SCHEMA_CODES = new Set([
+  "schema.unsupported-version",
+  "schema.unknown-field",
+  "schema.invalid-value",
+  "schema.non-plain-value",
+]);
+
+function schemaDiagnostic(code, pathValue, reason) {
+  return {
+    code,
+    phase: "schema",
+    path: pathValue,
+    coordinate: {},
+    details: { reason },
+  };
+}
+
+function staticSchemaDiagnostics(document, validator) {
+  const { prefix, value } = document;
+  if (value === undefined) return [];
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return [schemaDiagnostic("schema.invalid-value", prefix, "invalid-type")];
+  }
+  if (Object.hasOwn(value, "schemaVersion") && value.schemaVersion !== 1) {
+    return [schemaDiagnostic(
+      "schema.unsupported-version",
+      [...prefix, { kind: "field", value: "schemaVersion" }],
+      "unsupported-version",
+    )];
+  }
+  if (validator(value)) return [];
+  const errors = validator.errors ?? [];
+  const additionalPropertyParents = errors
+    .filter(error => error.keyword === "additionalProperties")
+    .map(error => [
+      ...prefix,
+      ...structuralPathFromJsonPointer(value, error.instancePath),
+    ]);
+  if (additionalPropertyParents.length > 0) {
+    const uniqueParents = new Map(additionalPropertyParents.map(pathValue => (
+      [canonicalize(pathValue), pathValue]
+    )));
+    return [...uniqueParents.values()].map(pathValue => (
+      schemaDiagnostic("schema.unknown-field", pathValue, "unknown-field")
+    ));
+  }
+  const candidates = errors
+    .filter(error => error.keyword !== "oneOf")
+    .map(error => schemaDiagnostic(
+      "schema.invalid-value",
+      [
+        ...prefix,
+        ...structuralPathFromJsonPointer(value, error.instancePath),
+      ],
+      error.keyword === "type" ? "invalid-type" : "invalid-format",
+    ));
+  return [...new Map(candidates.map(candidate => (
+    [canonicalize(candidate), candidate]
+  ))).values()];
+}
+
+function validateStaticSchemaExpectations({
+  descriptor,
+  diagnostics,
+  validateModuleDeclaration,
+  validateCompositionProfile,
+  compare,
+}) {
+  for (const document of staticInputDocuments(descriptor)) {
+    const validator = document.documentType === "module-declaration"
+      ? validateModuleDeclaration
+      : validateCompositionProfile;
+    const expected = staticSchemaDiagnostics(document, validator).toSorted(compare);
+    const actual = diagnostics.filter(diagnostic => (
+      STATIC_SCHEMA_CODES.has(diagnostic.code)
+      && pathStartsWith(diagnostic.path, document.prefix)
+    ));
+    if (!same(actual, expected)) {
+      fail(`${descriptor.caseId} has false or incomplete base-schema expectations`);
+    }
+  }
 }
 
 function structuralPathFromJsonPointer(value, pointer) {
@@ -1014,8 +1122,13 @@ export function validateStaticConformanceProtocol({
   catalog,
   validateDocument,
   validateDiagnostic,
+  validateModuleDeclaration,
+  validateCompositionProfile,
 }) {
-  if (typeof validateDocument !== "function" || typeof validateDiagnostic !== "function") {
+  if (typeof validateDocument !== "function"
+    || typeof validateDiagnostic !== "function"
+    || typeof validateModuleDeclaration !== "function"
+    || typeof validateCompositionProfile !== "function") {
     fail("static conformance requires accepted base-schema validators");
   }
   if (!same(objectKeys(protocol, "static conformance protocol").sort(compareAscii), [
@@ -1161,7 +1274,14 @@ export function validateStaticConformanceProtocol({
     if (!same(diagnostics, diagnostics.toSorted(compare))) {
       fail(`${descriptor.caseId} diagnostics are not in exact normative order`);
     }
-    validateStaticRawDecodeSuppression(descriptor, diagnostics);
+    validateStaticRawDecodeSuppression(descriptor, diagnostics, compare);
+    validateStaticSchemaExpectations({
+      descriptor,
+      diagnostics,
+      validateModuleDeclaration,
+      validateCompositionProfile,
+      compare,
+    });
     const prerequisiteCase = exactPrerequisiteCases.get(descriptor.caseId);
     if (prerequisiteCase !== undefined
       && !same(diagnostics.map(diagnostic => diagnostic.code), prerequisiteCase.eligibleCodes)) {
@@ -1189,7 +1309,20 @@ export function createSchemaValidators(schema) {
     $schema: "https://json-schema.org/draft/2020-12/schema",
     $ref: `${schema.$id}#/$defs/diagnostic`,
   });
-  return { validateDocument, validateDiagnostic };
+  const validateModuleDeclaration = ajv.compile({
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    $ref: `${schema.$id}#/$defs/moduleDeclaration`,
+  });
+  const validateCompositionProfile = ajv.compile({
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    $ref: `${schema.$id}#/$defs/compositionProfile`,
+  });
+  return {
+    validateDocument,
+    validateDiagnostic,
+    validateModuleDeclaration,
+    validateCompositionProfile,
+  };
 }
 
 function validateWith(validator, value, label) {
@@ -2433,17 +2566,8 @@ function strictDecode(bytes, bomPolicy, maxDepth) {
       depth -= 1;
     }
   }
-  const objectKeyStack = [];
-  let duplicate = false;
   const parseErrors = [];
   visit(text, {
-    onObjectBegin: () => objectKeyStack.push(new Set()),
-    onObjectProperty: property => {
-      const keys = objectKeyStack.at(-1);
-      if (keys.has(property)) duplicate = true;
-      keys.add(property);
-    },
-    onObjectEnd: () => objectKeyStack.pop(),
     onError: error => parseErrors.push(error),
   }, {
     disallowComments: true,
@@ -2453,8 +2577,13 @@ function strictDecode(bytes, bomPolicy, maxDepth) {
   if (parseErrors.length > 0) {
     return { outcome: "rejected", diagnosticCode: "decode.invalid-json" };
   }
-  if (duplicate) {
-    return { outcome: "rejected", diagnosticCode: "decode.duplicate-key" };
+  const diagnosticPaths = duplicateKeyPaths(text);
+  if (diagnosticPaths.length > 0) {
+    return {
+      outcome: "rejected",
+      diagnosticCode: "decode.duplicate-key",
+      diagnosticPaths,
+    };
   }
   return { outcome: "accepted", text };
 }
@@ -2488,22 +2617,28 @@ function pathString(segments) {
   ), "$");
 }
 
-function duplicateKeyFaultIdentities(text) {
+function duplicateKeyPaths(text) {
   const scopes = [];
-  const faults = [];
+  const paths = [];
   visit(text, {
     onObjectBegin: () => scopes.push(new Set()),
     onObjectProperty: (property, offset) => {
       const scope = scopes.at(-1);
       if (scope.has(property)) {
         const location = getLocation(text, offset);
-        faults.push(`duplicate-key:${pathString(location.path.slice(0, -1))}:${property}`);
+        paths.push([...location.path.slice(0, -1), property]);
       }
       scope.add(property);
     },
     onObjectEnd: () => scopes.pop(),
   }, { disallowComments: true, allowTrailingComma: false, allowEmptyContent: false });
-  return faults;
+  return paths;
+}
+
+function duplicateKeyFaultIdentities(text) {
+  return duplicateKeyPaths(text).map(pathValue => (
+    `duplicate-key:${pathString(pathValue.slice(0, -1))}:${pathValue.at(-1)}`
+  ));
 }
 
 function valueFaultIdentities(value) {

@@ -98,13 +98,12 @@ test("bounded diagnostic protocol fixes prefixes, coordinates, barriers, and sup
     readJson("architecture/contracts/v1/composition.schema.json"),
     readJson("architecture/contracts/v1/diagnostic-catalog.json"),
   ]);
-  const { validateDocument, validateDiagnostic } = createSchemaValidators(schema);
+  const validators = createSchemaValidators(schema);
   assert.doesNotThrow(() => validateStaticConformanceProtocol({
     protocol: manifest.staticConformanceProtocol,
     contract,
     catalog,
-    validateDocument,
-    validateDiagnostic,
+    ...validators,
   }));
   const duplicateCandidateProtocol = clone(manifest.staticConformanceProtocol);
   const duplicateCandidate = duplicateCandidateProtocol.cases
@@ -116,8 +115,7 @@ test("bounded diagnostic protocol fixes prefixes, coordinates, barriers, and sup
     protocol: duplicateCandidateProtocol,
     contract,
     catalog,
-    validateDocument,
-    validateDiagnostic,
+    ...validators,
   }), /duplicates a normalized diagnostic candidate/u);
   const emission = contract.boundedEmissionProtocol;
   assert.equal(emission.maximumPathSegments, 32);
@@ -336,7 +334,7 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     readJson("architecture/qualification/v1/diagnostic-contract.json"),
     readJson("architecture/contracts/v1/diagnostic-catalog.json"),
   ]);
-  const { validateDocument, validateDiagnostic } = createSchemaValidators(schema);
+  const validators = createSchemaValidators(schema);
   const protocol = manifest.staticConformanceProtocol;
   const knownFields = collectSchemaFields(schema);
   knownFields.add("declarations");
@@ -347,8 +345,7 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
       protocol: value,
       contract,
       catalog,
-      validateDocument,
-      validateDiagnostic,
+      ...validators,
     });
     for (const descriptor of value.cases) {
       validateDescriptor(descriptor, generators, knownFields);

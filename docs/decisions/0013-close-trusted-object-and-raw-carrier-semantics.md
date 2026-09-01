@@ -50,13 +50,18 @@ failed admission publishes no partial snapshot.
 
 ### Trusted-object entry point
 
-An admitted record has prototype exactly the current entry-point realm's
-`Object.prototype` or `null`. An admitted array is a genuine ordinary array
-with the current entry-point realm's intrinsic array prototype. Inspection uses
-own property descriptors and never reads a value through a getter. Cross-realm
-records and arrays are rejected because ECMAScript exposes no reliable
-originating-realm identity for ordinary objects. A cross-realm caller uses the
-realm-neutral raw-byte entry point instead.
+An admitted record's observed prototype is either exactly the current
+entry-point realm's `Object.prototype` or `null`. The `null` case is
+deliberately realm-neutral: `null` carries no originating-realm identity, so a
+null-prototype record is admitted regardless of the realm in which it was
+created when all descriptor and graph rules below pass. The adapter MUST NOT
+claim that such a record is same-realm. An admitted array is a genuine ordinary
+array with the current entry-point realm's intrinsic array prototype.
+Inspection uses own property descriptors and never reads a value through a
+getter. Records whose prototype is another realm's `Object.prototype` and
+cross-realm arrays are rejected. A cross-realm caller that cannot supply a
+cooperative null-prototype record uses the realm-neutral raw-byte entry point
+instead.
 
 Records admit only own enumerable string-keyed data properties. Arrays admit
 only a normal nonnegative `length` data property and own enumerable data
@@ -75,7 +80,10 @@ and validated independently; snapshot identity is not observable in the
 normalized compiler model. Sparse array length and every attempted occurrence
 are charged before density rejection, preserving ADR-0007 resource precedence.
 Hostile Proxy safety is not claimed; product boundaries MUST NOT label
-untrusted executable objects as trusted object input.
+untrusted executable objects as trusted object input. In particular, observing
+a `null` prototype is not proof that a value is non-Proxy, same-realm, or safe:
+prototype, key, and descriptor inspection can invoke Proxy traps. Values that
+may be hostile or proxied MUST cross the raw-byte boundary instead.
 
 ### Raw entry point
 
@@ -150,9 +158,10 @@ The closed case inventory covers:
   transitions, detachment, transfer, shared and growable shared storage;
 - caller mutation, resize, detach, transfer, and realm teardown immediately
   after invocation and before compilation continues;
-- records with both allowed prototypes, same-realm arrays, rejected cross-realm
-  records and arrays, every rejected descriptor/property category,
-  sparse/extended arrays, cycles, and repeated DAG references;
+- same-realm records with both allowed prototypes, cross-realm null-prototype
+  records, same-realm arrays, rejected cross-realm `Object.prototype` records
+  and arrays, every rejected descriptor/property category, sparse/extended
+  arrays, cycles, and repeated DAG references;
 - limit and limit-plus-one resource cases, multi-document independence,
   diagnostic ordering, top-K behavior, and safe path prefixes;
 - mutations that retain caller storage, await before copying, use
@@ -170,9 +179,10 @@ cross-subject, or subject-derived evidence.
 
 - Semantic compilation is deterministic with respect to the invocation-time
   snapshot rather than later caller mutation.
-- Cross-realm and offset byte views work without broadening the byte domain;
-  cross-realm object graphs use that raw boundary rather than an unverifiable
-  trusted-object claim.
+- Cross-realm and offset byte views work without broadening the byte domain.
+  Cross-realm ordinary-prototype object graphs use that raw boundary; a
+  null-prototype record is admitted by observable shape without an
+  unverifiable originating-realm claim.
 - Shared byte storage is explicitly unsupported instead of pretending a normal
   copy is atomic.
 - Trusted objects remain an efficiency API for cooperative callers, not a safe
@@ -189,5 +199,8 @@ cross-subject, or subject-derived evidence.
   snapshot with no atomicity guarantee.
 - Retain caller objects or views until the async compiler needs them. Results
   then depend on mutation timing.
+- Require a null-prototype record to be current-realm. ECMAScript exposes no
+  realm provenance through a `null` prototype, so that rule cannot be
+  implemented or independently verified.
 - Reuse `decode.invalid-json` or `schema.invalid-value` for carrier failures.
   Those codes claim facts that do not exist before a byte carrier is admitted.
