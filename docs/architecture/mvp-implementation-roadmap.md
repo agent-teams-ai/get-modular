@@ -24,9 +24,9 @@ This document is the implementation roadmap, not a replacement for an
 accepted ADR. It deliberately describes the order and evidence required to
 build the first reusable Core. It does not accept new public API, change an
 accepted decision, or claim that a qualification fixture is production code.
-ADR-0010 and ADR-0011 are proposed inputs on the selected base unless their
-acceptance is independently present in that exact base; this roadmap does not
-promote them by reference.
+ADR-0009, ADR-0010 and ADR-0011 are proposed inputs on the selected base unless
+their acceptance is independently present in that exact base; this roadmap does
+not promote them by reference.
 
 The MVP goal is:
 
@@ -156,9 +156,10 @@ Each phase leaves a report containing:
    `runtime-conformant` and `release-ready` as distinct states. Qualification
    folders are not a runtime registry.
 4. Confirm that every normative claim has one row in a machine-checked atomic
-   obligation ledger. Each row names an exact vector/checker and subject, or a
-   future gate with owner and phase. Existing synthetic artifacts are not
-   silently promoted.
+   obligation ledger. Each row names accepted authority, owner, an exact
+   vector/checker and subject, or a future gate with owner and phase. A closed
+   row also records its positive vector, killed negative mutation and evidence
+   path plus digest. Existing synthetic artifacts are not silently promoted.
 5. Close a raw-carrier matrix before admitting a raw entrypoint. It must state
    accepted/rejected carriers, view offsets, snapshot timing, aliasing,
    transfer/detachment, shared/resizable backing stores, cross-realm values and
@@ -166,7 +167,7 @@ Each phase leaves a report containing:
 6. Demonstrate source custody and rollback in a fresh disposable checkout.
    Record the selected SHA and retained content identities, run the same
    preflight, discard that checkout and recreate it at the selected SHA. Never
-  use `reset --hard` or `clean` against a contributor checkout as evidence.
+   use `reset --hard` or `clean` against a contributor checkout as evidence.
 
 ### Phase 0 exit criteria
 
@@ -178,7 +179,7 @@ Each phase leaves a report containing:
 - a clean rollback to the selected SHA is demonstrated in a disposable
   checkout;
 - ADR-0009 is either accepted with a checked naming map or the public package
-remains not created and Phase 1 is blocked.
+   remains not created and Phase 1 is blocked.
 
 ### Non-goals
 
@@ -276,39 +277,72 @@ modules.
 Synthetic provider, consumer, optional provider and ordered-contribution modules
 compile in the authoring fixtures. An author can find module owner, binding and
 composition root without editing a central registry. Missing, duplicate,
-ambiguous and not-selected dependencies are explicit and graph-inert. A
+incompatible and not-selected dependencies are explicit and graph-inert. A
 100/500/1000-declaration authoring gate records owner/binding/root navigation,
 edit loci and typecheck budgets without executing declarations.
 
 ## Phase 3: normalization and deterministic graph compiler
 
-**Purpose:** implement the semantic core:
-`declarations + complete profile -> immutable plan | bounded diagnostics`.
+**Purpose:** implement the private semantic compiler seam:
+`declarations + complete profile -> normalized plan | bounded diagnostics`.
+The public successful compiler result does not exist until Phase 4 attaches the
+qualified canonical bytes and digest required by the accepted contract.
 
 ### Required semantics
 
-- closed validation of declarations, profiles, IDs, ownership, compatibility,
-  scopes and cardinality;
+- closed validation of declarations, profiles, IDs, owner syntax, exact
+  compatibility, selections, bindings and cardinality;
 - resource preflight before unbounded allocation or traversal;
 - root closure following consumer-to-provider edges, with provider-to-consumer
-  execution order;
+  dependency order that carries no activation or lifecycle meaning;
 - stable SCC cycle members and stable order independent of input enumeration;
-- deterministic missing, duplicate, ambiguous, incompatible and unreachable
-  diagnostics for the complete input profile;
+- deterministic unknown, missing-selection, duplicate, not-selected,
+  incompatible, cardinality, cycle and unreachable diagnostics defined by the
+  accepted catalog for the complete input profile;
 - no first-row/last-row winner, fallback provider or registration-order
   meaning;
 - bounded paths, redacted hostile values, top-K diagnostics and saturating
   omission count.
 
+Phase 3 accepts, stores, returns and invokes no factory, callback, function,
+loader, executable handle or product code. Product-owned literal factory tables
+remain outside Core and may be used only after a complete successful public
+compile result exists. Core-owned enable/disable, scope, priority, generic
+ambiguity or impact semantics require a successor contract and are not inferred
+from the current schema.
+
+The canonical detail-byte comparator used by diagnostic ordering is qualified
+behind its private boundary in this phase. Selecting a production primitive is
+blocked until ADR-0010, or an accepted successor, supplies authority; the
+semantic compiler cannot inherit ordering or error behavior from a candidate
+library.
+
+The first substantive compiler slice also introduces the owner-local
+declarations, ports and factories plus ADR-0008's minimal direct stage0 root.
+The finite emitter and generated stage1 remain Phase 4 work.
+
 ### Phase 3 exit criteria
 
-At least the following vectors execute: zero/one/many providers, missing and
-duplicate records, duplicate providers, unknown provider, incompatible family,
-cycle, multi-root, unreachable selection, omitted root/provider, optional
-absence, ordered contributions, resource limits and all input permutations.
+One named subject gate invokes the actual internal compiler seam through every
+admitted object/raw entrypoint and compares complete results with independent
+expectations. Static vector/oracle validation is a prerequisite and cannot
+satisfy this gate. The gate covers:
 
-No activation factory is called before complete graph validation. Equivalent
-inputs produce the same semantic plan and diagnostics.
+- required-one, optional-zero/one and bounded-many at zero/min/interior/max;
+- missing, duplicate, unknown, not-selected, incompatible, cardinality,
+  no-fallback, cycle, multi-root and unreachable cases;
+- every accepted at-limit and plus-one resource case, maximum-depth, dense-edge,
+  giant-cycle and diagnostic-storm fixtures;
+- correctness-only P100/P500/P1000 sparse and dense worlds, iterative traversal,
+  stack safety, retained-diagnostic bounds and structural operation counters;
+- exhaustive equivalent permutations for bounded tiny graphs and pinned,
+  reproducible independent/joint shuffles at P100/P500/P1000. Ordered-many
+  provider arrays are semantic and are never shuffled as an equivalence; a
+  changed provider order must change the later plan and digest.
+
+Every diagnostic result excludes a plan and digest. No Core input/output type or
+packed dependency accepts executable values. The private normalized seam is not
+exported as a temporary public API.
 
 ## Phase 4: immutable plan, canonical bytes and self-composition
 
@@ -319,27 +353,62 @@ own finite internal components without a runtime bootstrap loop.
 
 1. Use the accepted canonicalization boundary and qualified adapter. Do not call
    a local helper RFC 8785/JCS without independent vectors proving the exact
-   required subset.
+   required subset. Production primitive selection remains blocked until
+   ADR-0010, or an accepted successor, supplies authority.
 2. Encode only normalized semantic plan data, selected implementations,
    bindings, order, profile and compatibility data. Exclude source ordinals,
    executable closures and host custody state.
 3. Hash exact canonical bytes with domain-separated SHA-256 only after encoding
-   is qualified. A digest mismatch fails closed.
-4. Implement ADR-0008's bounded self-composition: handwritten stage0 uses the
-   real graph semantics, emits finite private stage1 wiring, and stage1 wires
-   the same implementations. This is build-time composition, not recursive
-   compiler self-hosting and not a public generator.
-5. Bind self-composition evidence to complete inputs, toolchain identity,
-   plan/wiring bytes, construction witness, pack-once artifact and rollback
-   record when the corresponding custody decision is accepted. Until then,
-   keep this as qualification-only evidence and do not claim release custody.
+   is qualified. Equivalent permutations retain the same bytes/digest; a valid
+   semantic change succeeds with new bytes/digest; invalid input returns only
+   diagnostics. A stale or tampered plan/digest pair is rejected only by the
+   named private evidence/custody verifier, never by an invented public Core
+   authorization API.
+4. Prove deep runtime immutability: plain JSON-compatible records/arrays,
+   iterative deep freeze, no accessors or class instances, no retained aliases
+   to caller input, strict-mode mutation rejection, and stable canonical
+   bytes/digest after a process or structured-clone round trip.
+5. Stop at ADR-0008 checkpoint A before building the emitter. Compile at least
+   two natural dependency edges, prove one behavior-changing replacement,
+   measure three representative changes and their authoritative edit loci, and
+   report production, qualification and generated LOC separately. Continue only
+   after explicit owner GO; stop if the natural graph or complexity budget does
+   not justify self-composition.
+6. After checkpoint A GO, implement ADR-0008's bounded self-composition:
+   handwritten stage0 uses the real graph semantics, emits finite private
+   stage1 wiring, and stage1 wires the same implementations. This is build-time
+   composition, not recursive compiler self-hosting and not a public generator.
+7. Use clean, isolated and poisoned stage/cache/output roots. Prove exact
+   P0/P1 plan-and-digest equality, exact W0/W1 equality, independently observed
+   construction witnesses, a binding replacement that changes public behavior,
+   no hidden concrete-import fallback, and zero own-profile compilation,
+   emitter calls or component assembly on caller requests. Only pack-once
+   stage1 is distributable; stage0, own profile and emitter stay outside the
+   runtime closure.
+8. Treat completion as two states. `qualification-only` may use accepted
+   ADR-0008 evidence. `release-eligible` additionally requires accepted
+   ADR-0011 (or a successor) and its source snapshot, toolchain, pack-once,
+   splice/archive-swap rejection and cold rollback gates. Governance records the
+   blocker while that authority is proposed.
+9. Record non-SLO P100/P500/P1000 sparse/dense canonical byte size, digest time,
+   peak memory and concurrent-call observations. Phase 5 owns portable
+   performance budgets and release-scale qualification.
 
 ### Phase 4 exit criteria
 
-Reordered equivalent graphs produce identical canonical bytes and digest.
-Mutation vectors change the digest and are rejected. Stage0 and stage1 have
-isolated outputs, no runtime registry, no hidden fallback and no public
-generator. The plan remains serializable across processes.
+One named subject gate proves all Phase 4 invariants against the packed Core
+subject. Reordered equivalent graphs produce identical canonical bytes/digest;
+valid semantic changes produce different valid bytes/digest; invalid inputs
+produce diagnostics only; and a private independent verifier rejects tampered
+evidence bindings. Nested mutation, alias and cross-process tests prove the plan
+is deeply immutable and serializable.
+
+The finite construction gate proves clean bootstrap with stage1 absent,
+isolated/poisoned roots, P0/P1 and W0/W1 equality, behavioral replacement,
+independent witnesses, caller-time no-bootstrap, pack-once stage1-only closure
+and exact-source cold rollback. Phase 4 reports `qualification-only` until the
+production primitive and release-custody decisions are accepted and executed;
+it cannot imply publication readiness.
 
 ## Phase 5: conformance and scale proof
 
