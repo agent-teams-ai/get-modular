@@ -19,14 +19,15 @@ This document is the navigation and implementation guide for the current
 pre-1.0 contract. It does not replace an accepted ADR or mutate immutable
 qualification artifacts.
 
-## One active contract
+## Accepted contract and proposed public naming
 
-Get Modular has one current contract and one current public API surface. It does
-not publish parallel `V1`, `V2`, or `V3` TypeScript APIs while it is pre-1.0.
-The intended public names are the unversioned names described by ADR-0009, such
-as `compileComposition`, `compileCompositionJson`, `ModuleDeclaration`,
-`CompositionProfile`, `CompositionPlan`, `Diagnostic`, `PlanDigest`,
-`defineModule`, `required`, `optional`, and `many`.
+Get Modular has one accepted contract and no production package yet. The
+accepted contract currently names `compileCompositionV1` and
+`compileCompositionJsonV1`. ADR-0009 proposes replacing those names with one
+unversioned pre-1.0 public surface, including `compileComposition`,
+`compileCompositionJson`, `ModuleDeclaration`, `CompositionProfile`,
+`CompositionPlan`, `Diagnostic`, `PlanDigest`, `defineModule`, `required`,
+`optional`, and `many`.
 
 ADR-0009 and ADR-0010 remain proposed until they pass the repository's governed
 acceptance flow. Until then, no public production package may silently choose
@@ -50,12 +51,12 @@ The following are deliberately different concepts:
 | `familyVersion: 1` | Version of the closed capability-compatibility family | No |
 | `profileVersion: 2` | Revision of the measured qualification artifact | No |
 | `V1` in a path or evidence ID | Immutable historical contract evidence | No |
-| `V1` in a future TypeScript export | Forbidden before 1.0 | Yes, and forbidden |
+| `V1` in a future TypeScript export | Accepted contract name until ADR-0009 or a successor is accepted | Yes |
 
 Applications do not select a resource profile by filename or version. The
-current implementation uses one effective resource policy. An older profile
-remains only as immutable historical evidence and is not a second runtime
-option.
+current qualification contract uses one effective resource policy. An older
+profile remains only as immutable historical evidence and is not a second
+runtime option.
 
 ## Effective resource policy
 
@@ -81,7 +82,7 @@ evidence filenames retain their historical names for custody and traceability.
 ```mermaid
 flowchart LR
     Evidence["Immutable qualification evidence"] --> Contract["One current contract"]
-    Contract --> Core["One current Core API"]
+    Contract --> Core["One accepted Core contract"]
     Core --> Host["Product-owned host"]
     History["V1/v2 labels"] -. historical identity only .-> Evidence
 ```
@@ -120,6 +121,6 @@ their own refinements.
 
 Never rename or edit accepted evidence solely to remove a historical version
 label. A change to current semantics requires a successor decision, a new
-ledger, and new executable evidence. The current public API remains one
-unversioned surface until a concrete requirement proves that concurrent public
-generations are necessary.
+ledger, and new executable evidence. If ADR-0009 or a successor is accepted,
+the target public API becomes one unversioned pre-1.0 surface until a concrete
+requirement proves that concurrent public generations are necessary.

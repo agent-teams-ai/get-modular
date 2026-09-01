@@ -63,15 +63,21 @@ shape without evaluating executable code or guessing from object structure.
 
 ### Precedence
 
-When accepted, this decision supersedes ADR-0007 only for the prospective rule
-that a changed pre-1.0 helper or compiler export contract must use parallel
-versioned exports. Before 1.0, a changed helper or compiler contract replaces
-the one current unversioned export set in a coordinated package and first-party
-consumer migration. The replacement still requires a successor decision, a new
-evidence ledger, and all applicable packed-subject gates before publication.
-ADR-0007's existing helper semantics and immutable qualification artifacts
-remain the authority for the contract they record; this decision neither mutates
-them nor relabels them as evidence for the replacement contract.
+When accepted, this decision supersedes ADR-0004 and ADR-0006 only for the
+prospective TypeScript compiler export names `compileCompositionV1` and
+`compileCompositionJsonV1`. It supersedes ADR-0007 only for its prospective
+requirement to publish parallel versioned helper or compiler exports. The
+unversioned naming map in this decision then becomes the only public naming
+authority; the accepted validation, result, graph, diagnostic, resource,
+canonicalization and digest semantics remain unchanged.
+
+Before 1.0, a changed helper or compiler contract replaces the one current
+unversioned export set in a coordinated package and first-party consumer
+migration. The replacement still requires a successor decision, a new evidence
+ledger, and all applicable packed-subject gates before publication. Existing
+helper semantics and immutable qualification artifacts remain authority for the
+contract they record; this decision neither mutates them nor relabels them as
+evidence for the replacement contract.
 
 ## Consequences
 

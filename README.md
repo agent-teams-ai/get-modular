@@ -33,12 +33,13 @@ consume both.
 owned fixtures prove that an implementation follows the contract. The
 conformance package may depend on core; core never depends on conformance.
 
-Before 1.0 there is one current public API surface. It uses unversioned
-TypeScript names; `schemaVersion` is only an inert data-format discriminator.
-The repository's historical qualification files retain `V1` and `v2` labels so
-their immutable evidence identities remain auditable. Those labels do not mean
-that applications must support parallel API generations. See the
-[current contract](docs/architecture/current-contract.md).
+No production package exists yet. ADR-0009 proposes one unversioned pre-1.0
+public API surface; until that decision is accepted, the versioned names in the
+accepted contract remain authority and no public barrel may claim otherwise.
+`schemaVersion` is an inert data-format discriminator. Historical qualification
+files retain `V1` and `v2` labels so their immutable evidence identities remain
+auditable; those labels do not by themselves require parallel application API
+generations. See the [current contract](docs/architecture/current-contract.md).
 
 ## Start here
 
