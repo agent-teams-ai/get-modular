@@ -209,20 +209,6 @@ than satisfied by synthetic output.
     generator/oracle proof remains wired into the complete repository gate. A
     declared but orphaned script is not Phase 0 evidence, and its historical
     filename does not create a versioned public command.
-11. Before Phase 5 may create structural or runtime conformance evidence, pin a
-    Docs Protocol and Engineering Foundation authoring toolchain whose declared
-    identity strategy can create the accepted `QUAL-*` records. Prove both
-    `docs:new --dry-run` and apply paths with positive and mutation fixtures. If
-    no released pinned version supports that identity, this is an explicit
-    Phase 0 dependency on a bounded Engineering Foundation capability, not a
-    reason to add files manually or relax the accepted identity. Then establish
-    the governed qualification-record path required by the Feature Module
-    Standard: declare its document type/template/index in the adopted profile
-    and make the repository profile checker transition-aware. The checker must
-    continue to require `not-claimed` while no governed qualification and
-    reciprocal promotion records exist, then accept only the ordered,
-    same-subject states proved by those records. A runner cannot promote its own
-    output.
 
 ### Phase 0 exit criteria
 
@@ -233,10 +219,6 @@ than satisfied by synthetic output.
 - accepted-claim mapping and the evidence-only raw-carrier matrix are checked;
 - every actual open-decision blocker and its mutation fixtures execute in the
   complete governance gate;
-- the pinned writer creates `QUAL-*` records through tested dry-run and apply
-  paths, and the governed qualification-record authoring path plus
-  transition-aware Feature Module Standard checker are executable before any
-  later phase can claim `structural-conformant` or `runtime-conformant`;
 - the same preflight succeeds in a fresh disposable checkout at the recorded
   SHA; cold artifact recovery remains a later phase gate;
 - OD-004 is resolved by an accepted ADR or successor decision before package
@@ -537,6 +519,30 @@ not a failed qualification result.
 
 **Purpose:** make correctness reusable for every future consumer.
 
+### Phase 5 entry gates
+
+Before creating structural or runtime conformance evidence, pin a Docs Protocol
+and Engineering Foundation authoring toolchain whose declared identity strategy
+can create the accepted `QUAL-*` records. Prove both `docs:new --dry-run` and
+apply paths with positive and mutation fixtures. If no released pinned version
+supports that identity, Phase 5 is blocked on a bounded Engineering Foundation
+capability; Phases 1-4 may still build and qualify Core while conformance remains
+`not-claimed`. Manual files and relaxed identities are not substitutes.
+
+Declare the qualification document type/template/index in the adopted profile
+and make the repository profile checker transition-aware. It must require
+`not-claimed` until governed qualification and reciprocal promotion records
+exist, then accept only their ordered same-subject states. A runner cannot
+promote its own output.
+
+Evidence reuse is disabled unless an accepted custody decision owns one closed
+reuse key. The key binds the exact subject/archive and source/authority ledgers;
+entrypoint, vectors and case definition; evidence schema, generator,
+runner/verifier and command; toolchain/runtime, OS build, architecture and realm;
+browser/Electron identities, matrix configuration and accepted freshness policy.
+Changing any component invalidates the case. Before such a decision exists,
+rerun rather than infer equivalence from a partial key.
+
 ### Phase 5 implementation
 
 1. Put implementation-independent vectors and fixtures in the separate
@@ -564,11 +570,10 @@ not a failed qualification result.
    observational sizing evidence until a successor decision defines an
    independent counter taxonomy and finite thresholds. Packed archive size is
    measured once for the retained archive, not once per profile.
-5. Bind and reuse the Phase 1 packed-consumer evidence when subject archive,
-   toolchain, case definition and command identities are unchanged. Run the
-   helper runtime/handoff case and any mandatory consumer or
-   1000-declaration typecheck case not already proved there; rerun only
-   invalidated cases.
+5. Bind and reuse the Phase 1 packed-consumer evidence only through the complete
+   Phase 5 reuse key. Run the helper runtime/handoff case and any mandatory
+   consumer or 1000-declaration typecheck case not already proved there; rerun
+   every invalidated case.
 6. Differentially compare object and raw adapters only over their admitted
    equivalence domain. Include snapshot-before-await, caller mutation,
    `ArrayBufferView` offsets, transfer/detachment, shared/resizable storage and
@@ -746,15 +751,15 @@ cross-consumer claim.
    identity, reviewer/arbitration records and terminal promotion status.
 2. Reuse that exact retained archive and bind the already executed Phase 5
    conformance, mutation, packed-consumer, six-runtime-case, TypeScript and scale
-   evidence. Rerun only a case invalidated by changed subject, authority,
-   evidence schema, generator, verifier, command, matrix configuration,
-   toolchain/runtime identity or an accepted freshness policy. Do not rebuild
-   between qualification, platform jobs and publication; no mandatory case may
-   skip or be replaced by stale evidence.
-3. Execute the cold offline recovery drill from the retained source/toolchain
-   capsule, regenerate the same stage1 archive, prove stage0 is absent and reject
-   archive/evidence substitution. A written rollback procedure alone cannot
-   satisfy promotion.
+   evidence through the same complete reuse key. Rerun every invalidated case.
+   Do not rebuild between qualification, platform jobs and publication; no
+   mandatory case may skip or be replaced by stale evidence.
+3. Inject a failing source or build state, restore the exact known-good source
+   and toolchain snapshot, then cold-regenerate stage1 and repeat qualification.
+   Prove stage0 is absent, reject archive/evidence substitution and confirm that
+   the original retained pack-once archive remains the publication subject; the
+   recovery output is equality evidence, not a replacement. A clean rebuild or
+   written rollback procedure alone cannot satisfy promotion.
 4. Verify all release-required decision blockers, registry namespace ownership
    and reviewed scale evidence disposition against the same manifest. A
    conformance claim additionally requires same-subject source admission plus
@@ -772,10 +777,12 @@ cross-consumer claim.
 ### Phase 8 exit criteria
 
 The exact reviewed head has reproducible evidence appropriate to the selected
-merge or publication state, a documented rollback path, no unresolved P0/P1,
-and an explicit owner decision. Every decision blocker required by that state
-is mechanically closed. A failed gate leaves only that checkpoint blocked
-rather than silently promoting partial evidence or rerunning unrelated work.
+merge or publication state, no unresolved P0/P1 and an explicit owner decision.
+A merge-only checkpoint has a documented narrow revert path. Publication has an
+executed injected-failure rollback and repeated cold qualification against the
+retained pack-once subject. Every decision blocker required by that state is
+mechanically closed. A failed gate leaves only that checkpoint blocked rather than silently
+promoting partial evidence or rerunning unrelated work.
 
 ## Global stop conditions
 
