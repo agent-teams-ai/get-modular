@@ -70,10 +70,13 @@ future artifact categories:
 4. a successor mutation manifest and closed checker that reject every named
    semantic, ordering, prerequisite, resource, and evidence mutation;
 5. checker results for the exact proposed artifacts, without substituting
-   subject-derived expectations; and
+   subject-derived expectations;
 6. a new immutable successor qualification ledger binding the exact bytes of
-   items 1 through 5, plus an accepted-authority ledger update that names the
-   accepted ADR and that successor ledger.
+   items 1 through 5; and
+7. a new versioned successor accepted-authority ledger and schema, anchored by
+   the governed acceptance transaction, that carries forward every current
+   authority byte-for-byte and adds the accepted ADR and successor qualification
+   ledger without editing or weakening the existing ledger.
 
 None of those successor artifacts or ledger entries exists merely because this
 proposal names them. Until they exist, are reviewed, and are accepted together,

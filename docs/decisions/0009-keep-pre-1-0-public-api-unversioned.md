@@ -28,13 +28,27 @@ shape without evaluating executable code or guessing from object structure.
 
 ## Decision
 
-- Before 1.0, `@get-modular/core` exposes one current public API. Public
-  TypeScript functions and types do not carry generation suffixes. Use names
-  such as `compileComposition`, `compileCompositionJson`,
-  `CompileCompositionResult`, `ModuleDeclaration`, `CompositionProfile`,
-  `CompositionPlan`, `Diagnostic`, and `PlanDigest`.
-- Keep the already accepted unversioned authoring-helper names `defineModule`,
-  `required`, `optional`, and `many`.
+- Before 1.0, `@get-modular/core` exposes one current public API. Its exhaustive
+  runtime value exports are `compileComposition`, `compileCompositionJson`,
+  `defineModule`, `required`, `optional`, and `many`. Its exhaustive type exports
+  are `CompileCompositionResult`, `ModuleDeclaration`, `CompositionProfile`,
+  `CompositionPlan`, `Diagnostic`, and `PlanDigest`. No other root export is
+  admitted without a successor decision and packed declaration-surface evidence.
+- The closed naming map is:
+
+  | Accepted evidence name | Proposed public name |
+  | --- | --- |
+  | `compileCompositionV1` | `compileComposition` |
+  | `compileCompositionJsonV1` | `compileCompositionJson` |
+  | `CompileCompositionV1Result` | `CompileCompositionResult` |
+  | `ModuleDeclarationV1` | `ModuleDeclaration` |
+  | `CompositionProfileV1` | `CompositionProfile` |
+  | `CompositionPlanV1` | `CompositionPlan` |
+  | `DiagnosticV1` | `Diagnostic` |
+  | `PlanDigestV1` | `PlanDigest` |
+
+  The already accepted authoring-helper names `defineModule`, `required`,
+  `optional`, and `many` remain unchanged.
 - Do not publish parallel `V1`, `V2`, or `V3` exports, versioned package entry
   points, compatibility aliases, or multiple compiler implementations during
   pre-1.0 development. A breaking change replaces the current 0.x contract and
@@ -63,13 +77,13 @@ shape without evaluating executable code or guessing from object structure.
 
 ### Precedence
 
-When accepted, this decision supersedes ADR-0004 and ADR-0006 only for the
-prospective TypeScript compiler export names `compileCompositionV1` and
-`compileCompositionJsonV1`. It supersedes ADR-0007 only for its prospective
-requirement to publish parallel versioned helper or compiler exports. The
-unversioned naming map in this decision then becomes the only public naming
-authority; the accepted validation, result, graph, diagnostic, resource,
-canonicalization and digest semantics remain unchanged.
+When accepted, this decision supersedes ADR-0004 and ADR-0006 only for every
+prospective TypeScript name in the closed map above. It supersedes ADR-0007 only
+for its prospective requirement to publish parallel versioned helper or
+compiler exports. The exhaustive unversioned export set in this decision then
+becomes the only public naming authority; the accepted validation, result,
+graph, diagnostic, resource, canonicalization and digest semantics remain
+unchanged.
 
 Before 1.0, a changed helper or compiler contract replaces the one current
 unversioned export set in a coordinated package and first-party consumer

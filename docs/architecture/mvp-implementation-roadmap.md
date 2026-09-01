@@ -456,7 +456,11 @@ satisfy this gate. The gate covers:
 
 Every diagnostic result excludes a plan and digest. No Core input/output type or
 packed dependency accepts executable values. The private normalized seam is not
-exported as a temporary public API.
+exported as a temporary public API. Before ADR-0013 or a successor is accepted,
+it is the only permitted product Core compiler checkpoint: neither carrier may
+appear in the production package. The separately governed non-publishable
+qualification subject allowed by OD-005 may implement candidate carrier
+entrypoints only to produce the evidence required to resolve that decision.
 
 ## Phase 4: immutable plan, canonical bytes and self-composition
 

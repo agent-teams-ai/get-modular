@@ -50,10 +50,13 @@ failed admission publishes no partial snapshot.
 
 ### Trusted-object entry point
 
-An admitted record has prototype exactly `Object.prototype` of its own realm or
-`null`. An admitted array is a genuine ordinary array with that realm's
-intrinsic array prototype. Inspection uses own property descriptors and never
-reads a value through a getter.
+An admitted record has prototype exactly the current entry-point realm's
+`Object.prototype` or `null`. An admitted array is a genuine ordinary array
+with the current entry-point realm's intrinsic array prototype. Inspection uses
+own property descriptors and never reads a value through a getter. Cross-realm
+records and arrays are rejected because ECMAScript exposes no reliable
+originating-realm identity for ordinary objects. A cross-realm caller uses the
+realm-neutral raw-byte entry point instead.
 
 Records admit only own enumerable string-keyed data properties. Arrays admit
 only a normal nonnegative `length` data property and own enumerable data
@@ -132,9 +135,13 @@ chronology does not activate the proposal.
 
 Acceptance requires a successor diagnostic contract, snapshot set, closed case
 manifest, recipe manifest, mutation manifest, checker, results, and immutable
-qualification ledger. Each case binds a stable ID, exact entry point, complete
-input or closed generator recipe, exact complete expected result, runtime
-identity, and observed result.
+qualification ledger. A private non-publishable qualification subject provides
+the candidate entrypoints before acceptance; it is not production or public API.
+One closed subject-evidence key binds the exact source tree and subject bytes,
+subject digest, runner and checker bytes and digests, command, toolchain,
+operating system, architecture, realm, and every result. Each case binds that
+key, a stable ID, exact candidate entry point, complete input or closed generator
+recipe, exact complete expected result, runtime identity, and observed result.
 
 The closed case inventory covers:
 
@@ -143,9 +150,9 @@ The closed case inventory covers:
   transitions, detachment, transfer, shared and growable shared storage;
 - caller mutation, resize, detach, transfer, and realm teardown immediately
   after invocation and before compilation continues;
-- records with both allowed prototypes, cross-realm records and arrays, every
-  rejected descriptor/property category, sparse/extended arrays, cycles, and
-  repeated DAG references;
+- records with both allowed prototypes, same-realm arrays, rejected cross-realm
+  records and arrays, every rejected descriptor/property category,
+  sparse/extended arrays, cycles, and repeated DAG references;
 - limit and limit-plus-one resource cases, multi-document independence,
   diagnostic ordering, top-K behavior, and safe path prefixes;
 - mutations that retain caller storage, await before copying, use
@@ -153,16 +160,19 @@ The closed case inventory covers:
   getter, deduplicate shared references, miss a cycle, or emit a decoder
   derivative after carrier failure.
 
-Mandatory release runtimes execute the same retained vectors against the real
-entry points. Node or Chromium-only observations cannot qualify other runtimes.
-The checker rejects missing, duplicate, substituted, unexecuted, or
-subject-derived evidence.
+After acceptance, mandatory release runtimes execute the same retained vectors
+against the production entrypoints and bind the production subject through the
+same evidence-key schema. Node or Chromium-only observations cannot qualify
+other runtimes. The checker rejects missing, duplicate, substituted, unexecuted,
+cross-subject, or subject-derived evidence.
 
 ## Consequences
 
 - Semantic compilation is deterministic with respect to the invocation-time
   snapshot rather than later caller mutation.
-- Cross-realm and offset views work without broadening the byte domain.
+- Cross-realm and offset byte views work without broadening the byte domain;
+  cross-realm object graphs use that raw boundary rather than an unverifiable
+  trusted-object claim.
 - Shared byte storage is explicitly unsupported instead of pretending a normal
   copy is atomic.
 - Trusted objects remain an efficiency API for cooperative callers, not a safe

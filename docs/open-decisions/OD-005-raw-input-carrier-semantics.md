@@ -41,12 +41,13 @@ shared storage, accessors, cycles, or caller mutation.
 
 ## Candidate direction
 
-The trusted-object entry point admits ordinary records with `Object.prototype`
-or `null` prototypes and dense ordinary arrays with the intrinsic array
-prototype. It inspects own property descriptors only, admits own enumerable data
-properties, and rejects accessors, symbols, non-enumerables, extended or sparse
-arrays, custom prototypes, and cycles. Shared acyclic references are copied and
-counted per occurrence.
+The trusted-object entry point admits ordinary current-realm records with that
+realm's exact `Object.prototype` or a `null` prototype and dense current-realm
+ordinary arrays with that realm's exact intrinsic array prototype. It inspects
+own property descriptors only, admits own enumerable data properties, and
+rejects cross-realm objects, accessors, symbols, non-enumerables apart from the
+intrinsic array `length`, extended or sparse arrays, custom prototypes, and
+cycles. Shared acyclic references are copied and counted per occurrence.
 
 The raw entry point admits a genuine, currently usable, non-shared `Uint8Array`
 view, including cross-realm values, subclasses, non-zero offsets, and currently
@@ -65,11 +66,11 @@ evidence and make no Firefox, Safari, or release-runtime claim.
   prototype, cycle, shared-reference, and resource-precedence rules.
 - One successor diagnostic member defines raw-carrier failure code, phase,
   ordering, path, coordinate, closed reasons, prerequisites, and suppression.
-- Executable vectors cover same/cross realm, subclass, offset, resizable,
+- Raw-byte vectors cover same/cross realm, subclass, offset, resizable,
   detached, out-of-bounds, shared/growable shared, and caller mutation cases.
 - Object vectors cover accessors without invocation, symbols, non-enumerables,
-  custom prototypes, sparse/extended arrays, cycles, shared DAG references, and
-  mutation immediately after invocation.
+  custom and cross-realm prototypes, sparse/extended arrays, cycles, shared DAG
+  references, and mutation immediately after invocation.
 - Every successful vector proves that later mutation, resize, detach, transfer,
   or concurrent shared writes cannot alter the owned admitted snapshot.
 - Evidence executes against the real entry points in every mandatory runtime and
@@ -77,6 +78,9 @@ evidence and make no Firefox, Safari, or release-runtime claim.
 
 ## Resolution
 
-Open. ADR-0013 is a proposed resolution and MUST NOT authorize raw-entry or
-trusted-object implementation until it is accepted with successor diagnostics
-and executable evidence.
+Open. ADR-0013 is a proposed resolution. Before acceptance, private
+non-publishable qualification entrypoints MAY implement the proposed boundary
+solely to produce independent executable evidence. They are not production
+entrypoints, public API, or conformance claims. Production exposure remains
+blocked until the decision is accepted with successor diagnostics and evidence;
+the production subject must then rerun the same closed suite.

@@ -73,25 +73,33 @@ qualification assets, repository configuration, conformance tooling, private
 adapter APIs, and source maps whose sources are not admitted by the allowlist
 are excluded.
 
-One retained archive is packed once from a hermetic source checkout. Its exact
-bytes, SHA-256, npm integrity, package manifest, file inventory, source commit,
-Node/npm/pnpm/TypeScript identities, and build command are recorded before
-consumer tests. Every mandatory consumer installs that same archive. Repacking
-per platform or per consumer is forbidden.
+Before acceptance, one private non-publishable qualification subject is packed
+once from a hermetic source checkout. Its exact bytes, SHA-256, npm integrity,
+package manifest, file inventory, source commit, Node/npm/pnpm/TypeScript
+identities, and build command are recorded before consumer tests. Every
+mandatory acceptance consumer installs that same archive. Repacking per platform
+or per consumer is forbidden. This subject does not create a production package,
+public API, release candidate, or conformance claim.
 
 The supported resolution surface is the package root through ESM import and the
 matching TypeScript declaration target. CommonJS `require`, deep imports,
-package-manifest imports, unknown subpaths, or alternate conditions are
-unsupported and MUST fail rather than find a compatibility fallback.
+package-manifest imports, and unknown subpaths are unsupported and MUST fail
+rather than find a compatibility fallback. Additional condition names such as
+`browser` or `development` MUST NOT select another target: when the ordinary
+ESM `import` condition remains active they resolve to the same retained
+JavaScript target. A condition-specific implementation is forbidden.
 
 Browser, dedicated-worker, and Electron qualification may use a product-owned
 loader or import-map adapter, but the adapter MUST resolve the public package
 root from the retained archive. A test that maps directly to a private `dist`
 path does not prove this package contract.
 
-Before publication, the release flow rehashes the retained archive, uploads
-those bytes, downloads the registry artifact, and proves byte identity or an
-explicitly specified registry-envelope identity before making a release claim.
+After acceptance, the production package MUST rerun the same closed packed
+suite. Before publication, the release flow rehashes the retained production
+archive, uploads those bytes, downloads the registry tarball, and proves its
+SHA-256 is exactly equal to the retained archive SHA-256 before making a release
+claim. Registry metadata or an outer envelope cannot substitute for inner
+tarball byte identity.
 
 ### Precedence
 
@@ -104,21 +112,25 @@ accepts ADR-0009 nor creates a public symbol.
 ## Acceptance evidence
 
 Acceptance requires a closed machine-readable manifest and independent checker
-covering:
+against the private non-publishable qualification subject covering:
 
 - exact export-map bytes and exhaustive archive allowlist;
 - one retained archive identity and full build provenance;
 - Node ESM execution and supported TypeScript NodeNext/Bundler consumers;
-- negative `require`, deep-import, package-manifest, unknown-subpath, and
-  forbidden-condition cases;
+- negative `require`, deep-import, package-manifest, and unknown-subpath cases;
+- condition-injection cases proving that every applicable additional condition
+  resolves the same retained JavaScript target and never an alternate build;
 - browser window, dedicated worker, and required Electron resolution through
   the public root;
 - declaration and archive leakage mutations;
 - publish-time rehash and registry read-back before publication eligibility.
 
-Every case binds a stable ID, the retained archive hash, exact consumer input,
-toolchain identity, command, expected result, and observed result. No current
-disposable archive or direct `dist` browser mapping satisfies these gates.
+Every case binds a stable ID, the retained archive hash, exact source tree,
+runner/checker identity, exact consumer input, toolchain and platform identity,
+command, expected result, and observed result. No current disposable archive or
+direct `dist` browser mapping satisfies these gates. Acceptance authorizes the
+carrier contract only; the later production archive remains ineligible for
+publication until it passes the same suite and release custody.
 
 ## Consequences
 

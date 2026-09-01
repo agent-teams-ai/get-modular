@@ -82,7 +82,8 @@ decision or authorize publication.
 - Fresh consumers execute the public root with Node ESM and typecheck it with
   every supported TypeScript/module-resolution pair.
 - Negative consumers prove rejection of CommonJS `require`, deep imports,
-  `package.json` access, unknown subpaths, and forbidden conditions.
+  `package.json` access, and unknown subpaths. Condition-injection consumers
+  prove that extra conditions never select an alternate target.
 - Browser window, dedicated worker, and required Electron evidence import the
   same retained archive through the supported public root carrier.
 - Declaration-surface and archive-content audits reject product, Foundation,
@@ -92,5 +93,9 @@ decision or authorize publication.
 
 ## Resolution
 
-Open. ADR-0012 is a proposed resolution and MUST NOT authorize package creation
-or publication until it is accepted with the required packed evidence.
+Open. ADR-0012 is a proposed resolution. Before acceptance, a private,
+non-publishable qualification subject MAY pack the proposed carrier under the
+qualification fixture boundary solely to produce reviewable evidence. It is not
+a production package, public export authority, conformance claim, or publication
+candidate. Production package creation, public exposure, and publication remain
+blocked until the decision is accepted with the required packed evidence.

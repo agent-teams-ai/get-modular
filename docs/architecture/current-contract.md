@@ -123,9 +123,11 @@ These are small contract gates, not a reason to redesign the architecture:
    behavior, including detached, shared, resizable, offset, and subclass cases.
 
 The first graph slice must not invent semantics for items 4 and 5. A private
-object-based compiler checkpoint may proceed after accepted-authority preflight
-while excluding repeated binding records. Public packaging, raw decoding, and
-production dependency adapters remain gated by their corresponding decisions.
+normalized-value semantic compiler checkpoint may proceed after
+accepted-authority preflight while excluding repeated binding records. It is
+not either proposed carrier adapter and cannot claim trusted-object or raw-byte
+admission. Public packaging, both carrier adapters, raw decoding, and production
+dependency adapters remain gated by their corresponding decisions.
 
 ## Historical evidence rule
 
