@@ -52,7 +52,7 @@ for those concerns.
 
 ## MVP boundary
 
-| Required for the first Core | Reserved, but not required for Core MVP |
+| Required for qualified Core 0.x | Later checkpoint or reserved capability |
 | --- | --- |
 | One public `@get-modular/core` package after the naming authority gate | Dynamic runtime plugin installation |
 | Inert module declarations and complete profiles | Hot unload and live replacement |
@@ -60,15 +60,16 @@ for those concerns.
 | Normalization, graph validation and immutable plan | Process/WASM plugin hosts |
 | Bounded deterministic diagnostics and digest | Frontend Module Federation loader |
 | Public development-only `@get-modular/conformance` identity after its own surface gate | Managed catalog and registry service |
-| One real product-owned composition adapter | Runtime readiness and generation engine |
+| Pack-once Core subject and independent conformance | First product-owned composition adapter; runtime readiness and generation engine |
 
-Public names remain unversioned before 1.0. Historical `v1`/`v2` paths,
-schema discriminators and evidence IDs are lineage only and are never exposed
-as parallel public API generations. This rule is not itself an authority for
-package exports: until ADR-0009 (or a successor) is accepted on the exact
+The target public names are unversioned before 1.0. Historical `v1`/`v2` paths,
+schema discriminators and evidence IDs are lineage only and do not by
+themselves require parallel public API generations. This roadmap is not naming
+authority: until ADR-0009 (or a successor) is accepted on the exact
 implementation base, no unversioned public barrel or published package may be
-materialized. Existing `v1` names remain qualification lineage and are not
-published as compatibility aliases.
+materialized. Existing accepted names remain contract authority in the
+meantime; historical names are not automatically published as compatibility
+aliases.
 
 ## Common phase protocol
 
@@ -108,8 +109,9 @@ flowchart TB
    arbiters` fan-out used to qualify this roadmap is a campaign profile for
    high-risk authority work, not a mandatory staffing rule for every future
    implementation PR. Ordinary work uses focused checks and at least one
-   independent exact-head review; public contracts, security boundaries and
-   publication use the full independent profile.
+   independent exact-head review. A bounded public-surface change uses two
+   independent perspectives plus owner approval; authority decisions, security
+   boundaries and publication use the full independent profile.
 5. Each coding worker has a separate workspace and file ownership. Research
    fixtures, production-like code and generated evidence never share an
    unmarked directory. Read-only workers do not commit.
@@ -177,8 +179,10 @@ than satisfied by synthetic output.
    registry.
 5. Map every currently accepted normative claim to its accepted ledger entry,
    existing evidence or named implementation gate. Proposed-decision work stays
-   an open blocker, not a manufactured obligation row. Existing synthetic
-   artifacts are not silently promoted.
+   conditional roadmap work, not a manufactured obligation row or active
+   blocker. Only active open-decision records discovered from the governed
+   catalog enter the blocker set. Existing synthetic artifacts are not silently
+   promoted.
 6. Build a raw-carrier research matrix that derives only behavior already fixed
    by accepted ADR-0006/0007. Mark every unresolved view-offset, aliasing,
    transfer/detachment, shared/resizable storage, cross-realm or exact failure
@@ -189,15 +193,18 @@ than satisfied by synthetic output.
    diagnostic code, coordinates or suppression behavior to repeated records for
    one `(implementationId, slotId)`. Resolve it through an accepted successor
    ADR and executable ledger evidence before that case enters the compiler.
-8. Demonstrate source custody and rollback in a fresh disposable checkout.
-   Record the selected SHA and retained content identities, run the same
-   preflight, discard that checkout and recreate it at the selected SHA. Never
-   use `reset --hard` or `clean` against a contributor checkout as evidence.
+8. Record the selected SHA and retained content identities, then run the same
+   preflight in one fresh disposable checkout. Defer cold regeneration and
+   rollback rehearsal until stage0 or a retained release artifact exists in
+   Phase 4 or Phase 8. Never use `reset --hard` or `clean` against a contributor
+   checkout as evidence.
 9. Create `OD-004-package-carrier-and-resolution-policy` before freezing
    package type, export conditions or supported resolver modes. Governance
-   blocks on OD-004/OD-005 only after their open-decision records exist. Keep
-   ADR-0009/0010/0011 as conditional roadmap choices until accepted; only their
-   accepted decisions may add mutation fixtures or checkpoint requirements.
+   derives blockers only from the active open-decision catalog, not from this
+   roadmap's planned identifiers. After OD-004/OD-005/OD-006 records exist, they
+   enter that normal catalog-driven path. Keep ADR-0009/0010/0011 as conditional
+   roadmap choices until accepted; only their accepted decisions may add
+   mutation fixtures or checkpoint requirements.
 10. Verify that the existing `qualification:resource-profile` executable
    generator/oracle proof remains wired into the complete repository gate. A
    declared but orphaned script is not Phase 0 evidence, and its historical
@@ -212,8 +219,8 @@ than satisfied by synthetic output.
 - accepted-claim mapping and the evidence-only raw-carrier matrix are checked;
 - every actual open-decision blocker and its mutation fixtures execute in the
   complete governance gate;
-- a clean rollback to the selected SHA is demonstrated in a disposable
-  checkout;
+- the same preflight succeeds in a fresh disposable checkout at the recorded
+  SHA; cold artifact recovery remains a later phase gate;
 - OD-004 is accepted before package carrier/export freeze, and OD-005 is
   accepted before unresolved raw-carrier behavior enters the public entrypoint;
 - OD-006 is accepted before duplicate binding-record behavior enters the
@@ -241,8 +248,8 @@ Phase 1 private package/source setup
   -> Phase 2 inert declarations
   -> Phase 3 private semantic compiler
   -> Phase 4 stage1 plan/digest implementation
-  -> Phase 1 export freeze and pack-once archive
-  -> Phase 4 packed qualification
+  -> Phase 1 export freeze and two hash-identified qualification subjects
+  -> Phase 4 direct/generated packed qualification
   -> joint Phase 1-4 checkpoint
 ```
 
@@ -278,16 +285,18 @@ depending on a Phase 4 exit that already assumes the archive exists.
    negative structural fixtures, and wire the real Foundation check into
    `check:fast` and `check`. Structural and runtime conformance remain separate
    promotion states.
-5. Pack one hash-identified archive and fan that same archive out to disposable
-   consumers. Add default-deny export/deep-import tests, tarball allowlist and
-   declaration-leakage audits, and inert import smoke tests. Do not repack in
-   platform matrix jobs.
+5. Pack two temporary, separately hash-identified qualification subjects with
+   the same public compiler boundary: direct stage0 assembly and generated
+   stage1 assembly. Run default-deny export/deep-import tests, tarball allowlist,
+   declaration-leakage audits and inert import smoke tests against both. Only
+   generated stage1 is retained as the pack-once distribution candidate; never
+   repack either subject inside a platform job.
 6. Resolve OD-004 before freezing package type, export conditions and supported
    resolution modes. Do not infer an ESM/CommonJS policy from this roadmap.
-7. Before freezing the public TypeScript surface, run the exact archive through
-   NodeNext, Bundler, JavaScript and `checkJs` consumers at 100, 500 and 1000
-   declarations with recorded compiler identity, timing, peak memory and
-   inference/error assertions.
+7. Before freezing the public TypeScript surface, run both exact qualification
+   subjects through NodeNext, Bundler, JavaScript and `checkJs` consumers at 100,
+   500 and 1000 declarations with recorded compiler identity, timing, peak
+   memory and inference/error assertions.
 
 ### Phase 1 exit criteria
 
@@ -439,45 +448,61 @@ own finite internal components without a runtime bootstrap loop.
    iterative deep freeze, no accessors or class instances, no retained aliases
    to caller input, strict-mode mutation rejection, and stable canonical
    bytes/digest after a process or structured-clone round trip.
-5. Stop at ADR-0008 checkpoint A before building the emitter. Compile at least
-   two natural dependency edges, prove one behavior-changing replacement,
-   measure three representative changes and their authoritative edit loci, and
-   report production, qualification and generated LOC separately. Continue only
-   after explicit owner GO; stop if the natural graph or complexity budget does
-   not justify self-composition.
-6. After checkpoint A GO, implement ADR-0008's bounded self-composition:
-   handwritten stage0 uses the real graph semantics, emits finite private
-   stage1 wiring, and stage1 wires the same implementations. This is build-time
-   composition, not recursive compiler self-hosting and not a public generator.
-7. Use clean, isolated and poisoned stage/cache/output roots. Prove exact
+5. At accepted ADR-0008 checkpoint A, compile the real closed own profile as
+   soon as the first useful dependency edge exists and report production,
+   qualification and generated LOC separately. Prove one controlled
+   behavior-changing binding replacement before release. The stronger two-edge,
+   three-change and explicit owner `GO` checkpoint applies only after ADR-0011
+   or a successor is accepted; until then it is candidate evidence, not an
+   emitter veto.
+6. Resolve the closed dependency-record representation before any stage0/stage1
+   construction claim. Accepted ADR-0008 forbids hostile identities as property
+   lookup keys but requires factory keys to match slots; ADR-0011 proposes the
+   null-prototype own-key refinement. Construction qualification therefore
+   requires accepted ADR-0011 or a successor that closes this exact seam. No
+   ordinary object, inherited lookup or thenable assimilation is permitted.
+7. After item 6 is resolved, implement ADR-0008's bounded self-composition in
+   its accepted delivery order: handwritten stage0 uses the real graph
+   semantics, emits finite private stage1 wiring, and stage1 wires the same
+   implementations. This is build-time composition, not recursive compiler
+   self-hosting and not a public generator. An explicit owner `GO` before this
+   step is required only if accepted authority adds that condition.
+8. Use clean, isolated and poisoned stage/cache/output roots. Prove exact
    P0/P1 plan-and-digest equality, exact W0/W1 equality, independently observed
    construction witnesses, a binding replacement that changes public behavior,
    no hidden concrete-import fallback, and zero own-profile compilation,
    emitter calls or component assembly on caller requests. Only pack-once
    stage1 is distributable; stage0, own profile and emitter stay outside the
    runtime closure.
-8. Treat completion as two phase-report outcomes. `qualification-only` may use
-   accepted ADR-0008 evidence. The candidate release-custody path adds ADR-0011
-   obligations only after that ADR or a successor is accepted. While it remains
-   proposed, no governance blocker or custody claim is synthesized.
-9. Record non-SLO P100/P500/P1000 sparse/dense canonical byte size, digest time,
-   peak memory and concurrent-call observations. Phase 5 owns portable
-   performance budgets and release-scale qualification.
+9. Treat completion as two phase-report outcomes. `qualification-only` may use
+   accepted plan/digest evidence without a construction claim. A self-composed
+   construction claim additionally requires the accepted item 6 refinement.
+   Release custody additionally requires accepted custody authority; while
+   ADR-0011 remains proposed, its broader protocol creates neither a governance
+   blocker nor a custody claim.
+10. Record non-SLO P100/P500/P1000 sparse/dense canonical byte size, digest time,
+   peak memory and concurrent-call observations. Phase 5 owns portable sizing
+   evidence and release-scale qualification, not new performance thresholds.
 
 ### Phase 4 qualification exit
 
-One named subject gate proves semantic/digest invariants and deep immutability
-against the packed Core subject. Reordered equivalent graphs produce identical
-canonical bytes/digest; valid semantic changes produce different valid bytes/
-digest; invalid inputs produce diagnostics only; and nested mutation, alias and
+One named gate proves semantic/digest invariants and deep immutability against
+the direct subject before a construction claim and against both temporary
+hash-identified subjects after item 6 is accepted. Both use the same public
+compiler boundary. Reordered equivalent graphs produce identical canonical
+bytes/digest; valid semantic changes produce different valid bytes/digest;
+invalid inputs produce diagnostics only; and nested mutation, alias and
 cross-process tests prove a plain immutable plan. This gate does not require or
-invent ADR-0011 custody records.
+invent release-custody records.
 
-The accepted ADR-0008 finite-construction gate proves clean bootstrap with
+After the item 6 authority closes the dependency-record seam, the accepted
+ADR-0008 finite-construction gate proves clean bootstrap with
 stage1 absent, isolated/poisoned roots, P0/P1 and W0/W1 equality, behavioral
 replacement, independent construction witnesses, caller-time no-bootstrap and
-stage1-only runtime closure. Passing it yields `qualification-only` and cannot
-imply publication readiness.
+stage1-only runtime closure. Direct and generated packed subjects pass the same
+independent vectors and public-API checks; only generated stage1 may be retained
+for distribution. Passing yields `qualification-only` and cannot imply
+publication readiness.
 
 ### Phase 4 release-eligible exit
 
@@ -503,20 +528,22 @@ not a failed qualification result.
    decision accepts it.
 2. Cover positive, negative, mutation, permutation, malformed input, resource
    limits, omitted modules, cycles, compatibility and diagnostic redaction.
-3. Execute the same content-addressed packed subject and exact vectors in all
-   six accepted cases: Node 24 on Linux/macOS/Windows, pinned Chromium window
-   and dedicated worker, and the pinned Electron main/renderer smoke. A skipped
-   or unavailable mandatory case blocks the conformance claim; it is never
-   success evidence.
+3. Execute the same independent vector and packed public-API suite against the
+   separately hash-identified direct and generated qualification subjects.
+   Execute the retained generated stage1 subject and exact vectors in all six
+   accepted cases: Node 24 on Linux/macOS/Windows, pinned Chromium window and
+   dedicated worker, and the pinned Electron main/renderer smoke. A skipped or
+   unavailable mandatory case blocks the conformance claim; it is never success
+   evidence.
 4. Define reproducible scale worlds instead of using module count alone. Cover
    sparse, dense, maximum-depth/cycle, diagnostic-storm and maximum-identity
    shapes at 10/100/500/1000 modules and the accepted declaration limit. Pin the
    generator seed, runtime/toolchain, machine class, warmup, sample count and
    statistic. Record parse/normalize/compile/digest time, structural operation
    counters, peak live memory, input/output byte size and retained diagnostics.
-   Enforce accepted resource limits and deterministic structural-operation
-   bounds. Time and memory remain observational sizing evidence; numeric
-   performance thresholds require a successor decision. Packed archive size is
+   Enforce accepted resource limits. Structural counters, time and memory remain
+   observational sizing evidence until a successor decision defines an
+   independent counter taxonomy and finite thresholds. Packed archive size is
    measured once for the retained archive, not once per profile.
 5. Run the mandatory packed TypeScript consumers: NodeNext, Bundler, JavaScript,
    `checkJs`, helper runtime/handoff and the 1000-declaration typecheck case.
@@ -541,15 +568,17 @@ not a failed qualification result.
 
 ### Phase 5 exit criteria
 
-Every applicable Core obligation maps to an executed vector against the exact
-packed subject; a future gate cannot satisfy Phase 5 exit. The closed six-case
-matrix, accepted raw-carrier vectors, TypeScript consumers and reviewed scale
-evidence pass without mandatory skips. Accepted resource limits and structural
-operation bounds pass; timing and memory observations are recorded without
-becoming compatibility thresholds. Unresolved raw-carrier research cells do
-not enter conformance. The private conformance runner is deterministic and
-cannot install modules, scan files, derive expected results from Core,
-authorize execution or promote its own qualification records.
+Every applicable Core obligation maps to an executed vector against both exact
+packed qualification subjects where ADR-0008 requires parity and against the
+retained generated stage1 subject for the release-only matrix; a future gate
+cannot satisfy Phase 5 exit. The closed six-case matrix, accepted raw-carrier
+vectors, dual-subject public-API checks, TypeScript consumers and reviewed scale
+evidence pass without mandatory skips. Accepted resource limits pass;
+structural counters, timing and memory observations are recorded without
+becoming compatibility thresholds. Unresolved raw-carrier research cells do not
+enter conformance. The private conformance runner is deterministic and cannot
+install modules, scan files, derive expected results from Core, authorize
+execution or promote its own qualification records.
 
 ## Phase 6: first product dogfooding
 
@@ -682,10 +711,10 @@ production adapters remain required only for a stable cross-consumer claim.
    tests/mutants for the changed invariant. Run broader gates only when the PR
    changes their subject or authority.
 2. Select exact-head review by risk: at least one independent reviewer for an
-   ordinary bounded change, two perspectives for a cross-boundary change, and
-   four reviewers plus two independent arbiters for authority, security,
-   public-surface or publication changes. Any changed SHA invalidates the
-   affected review and arbitration.
+   ordinary bounded change; two perspectives plus owner approval for a bounded
+   public-surface or cross-boundary change; and four reviewers plus two
+   independent arbiters for authority decisions, security boundaries or actual
+   publication. Any changed SHA invalidates the affected review and arbitration.
 3. Keep PRs near 2,000 changed LOC when the invariant boundary permits. Do not
    split one invariant merely to satisfy a number.
 4. Merge only with explicit owner approval, a clean exact-head check and a
@@ -698,10 +727,12 @@ production adapters remain required only for a stable cross-consumer claim.
    custody decision. It binds exact source head, accepted authority digests,
    toolchain/runtime identities, pack-once archive SHA-256, every command/result
    identity, reviewer/arbitration records and terminal promotion status.
-2. Reuse that exact retained archive and execute complete conformance, mutation,
-   packed-consumer, all six named runtime cases, TypeScript and reviewed scale
-   gates. Do not rebuild between qualification, platform jobs and publication;
-   no mandatory case may skip.
+2. Reuse that exact retained archive and bind the already executed Phase 5
+   conformance, mutation, packed-consumer, six-runtime-case, TypeScript and scale
+   evidence. Rerun only a case invalidated by changed subject, authority,
+   toolchain/runtime identity or an accepted freshness policy. Do not rebuild
+   between qualification, platform jobs and publication; no mandatory case may
+   skip or be replaced by stale evidence.
 3. Execute the cold offline recovery drill from the retained source/toolchain
    capsule, regenerate the same stage1 archive, prove stage0 is absent and reject
    archive/evidence substitution. A written rollback procedure alone cannot
@@ -740,7 +771,8 @@ Return `BLOCKED` instead of guessing when:
 - a worker uses a stale base, edits another lane or loses dirty state;
 - generic glue exceeds 30% of a production-like consumer slice without a
   demonstrated safety benefit;
-- a public API is stabilized from one synthetic consumer only;
+- a stable or cross-consumer API claim is made without two independent
+  production adapters;
 - hosted workers repeatedly fail without verifiable output.
 
 The first complete `0.x` Core checkpoint is a small compiler plus conformance
