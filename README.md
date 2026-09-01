@@ -20,7 +20,7 @@ Get Modular is intentionally independent from
 The two neutral cores do not depend on each other. A product-owned adapter may
 consume both.
 
-## V1 packages
+## Packages
 
 - `@get-modular/core` is the only production dependency. It owns portable
   declarations, validation, deterministic compilation, plans, digests, and
@@ -32,6 +32,14 @@ consume both.
 `conformance` uses the conventional protocol-testing meaning: independently
 owned fixtures prove that an implementation follows the contract. The
 conformance package may depend on core; core never depends on conformance.
+
+No production package exists yet. ADR-0009 proposes one unversioned pre-1.0
+public API surface; until that decision is accepted, the versioned names in the
+accepted contract remain authority and no public barrel may claim otherwise.
+`schemaVersion` is an inert data-format discriminator. Historical qualification
+files retain `V1` and `v2` labels so their immutable evidence identities remain
+auditable; those labels do not by themselves require parallel application API
+generations. See the [current contract](docs/architecture/current-contract.md).
 
 ## Start here
 
