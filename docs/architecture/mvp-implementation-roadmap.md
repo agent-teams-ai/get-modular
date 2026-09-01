@@ -50,17 +50,21 @@ for those concerns.
 
 | Required for the first Core | Reserved, but not required for Core MVP |
 | --- | --- |
-| Unversioned public package `@get-modular/core` | Dynamic runtime plugin installation |
+| One public `@get-modular/core` package after the naming authority gate | Dynamic runtime plugin installation |
 | Inert module declarations and complete profiles | Hot unload and live replacement |
 | `required`, `optional`, bounded ordered `many` | Cordis as a Host resource adapter |
 | Normalization, graph validation and immutable plan | Process/WASM plugin hosts |
 | Bounded deterministic diagnostics and digest | Frontend Module Federation loader |
-| Separate test-only `@get-modular/conformance` | Managed catalog and registry service |
+| Separate private/test-only `@get-modular/conformance` evidence package | Managed catalog and registry service |
 | One real product-owned composition adapter | Runtime readiness and generation engine |
 
 Public names remain unversioned before 1.0. Historical `v1`/`v2` paths,
 schema discriminators and evidence IDs are lineage only and are never exposed
-as parallel public API generations.
+as parallel public API generations. This rule is not itself an authority for
+package exports: until ADR-0009 (or a successor) is accepted on the exact
+implementation base, no unversioned public barrel or published package may be
+materialized. Existing `v1` names remain qualification lineage and are not
+published as compatibility aliases.
 
 ## Common phase protocol
 
@@ -132,28 +136,49 @@ Each phase leaves a report containing:
 - exact selected PR/base SHA;
 - accepted ADRs and current requirements;
 - canonical schema, resource profile, diagnostic catalog and vectors;
-- current H0 remediation report and ADR-0008/0011 obligations.
+- a repository-resolvable H0 evidence ledger, with stable ID, path, digest,
+  owner and status vocabulary; if it is absent, Phase 0 is blocked;
+- ADR-0008 obligations and proposed ADR-0011 obligations, clearly marked as
+  proposed until accepted on this exact base.
 
 ### Phase 0 implementation
 
-1. Verify the selected base, accepted-decision precedence and the single
-   unversioned public naming map. Do not use a stale PR head.
-2. Close the current H0 gaps before public Core work: one root-owned activation
-   identity, authenticated authority pins, one raw-byte boundary, duplicate-key
-   policy, raw-carrier rules, total diagnostic ordering and canonicalization
-   evidence.
+1. Verify the selected base and accepted-decision precedence. Do not use a
+   stale PR head or treat a proposed ADR as authority. The unversioned public
+   naming map is conditional on acceptance of ADR-0009.
+2. Close the H0 gaps before public Core work: accepted authority pins, one
+   raw-byte boundary, duplicate-key policy, raw-carrier rules, total
+   diagnostic ordering and canonicalization evidence. A composition profile
+   root may use a closed `ProfileId`/root-selection coordinate; runtime
+   activation, generation, readiness and routing identities remain Product
+   Host concerns and never enter Core plans or diagnostics.
 3. Keep `not-claimed`, `source-admitted`, `structural-conformant`,
    `runtime-conformant` and `release-ready` as distinct states. Qualification
    folders are not a runtime registry.
-4. Confirm that every normative claim has a vector or is explicitly marked as
-   a future gate. Existing synthetic artifacts are not silently promoted.
+4. Confirm that every normative claim has one row in a machine-checked atomic
+   obligation ledger. Each row names an exact vector/checker and subject, or a
+   future gate with owner and phase. Existing synthetic artifacts are not
+   silently promoted.
+5. Close a raw-carrier matrix before admitting a raw entrypoint. It must state
+   accepted/rejected carriers, view offsets, snapshot timing, aliasing,
+   transfer/detachment, shared/resizable backing stores, cross-realm values and
+   exact failure classification.
+6. Demonstrate source custody and rollback in a fresh disposable checkout.
+   Record the selected SHA and retained content identities, run the same
+   preflight, discard that checkout and recreate it at the selected SHA. Never
+  use `reset --hard` or `clean` against a contributor checkout as evidence.
 
 ### Phase 0 exit criteria
 
 - no unresolved H0 P0/P1 blocks the next phase;
+- the H0 ledger is present, digest-bound and has no unresolved P0/P1;
 - exact source custody and ADR precedence are recorded;
 - no production package or public barrel exists yet;
-- a clean rollback to the selected SHA is demonstrated.
+- the atomic obligation ledger and raw-carrier matrix are checked;
+- a clean rollback to the selected SHA is demonstrated in a disposable
+  checkout;
+- ADR-0009 is either accepted with a checked naming map or the public package
+remains not created and Phase 1 is blocked.
 
 ### Non-goals
 
@@ -162,29 +187,52 @@ changes are implemented here.
 
 ## Phase 1: package topology and public boundary
 
-**Purpose:** give waiting consumers a small reusable package boundary without
-pretending the engine already exists.
+**Purpose:** establish the package boundary at the same substantive checkpoint
+as the first Core behavior. A package shell or declaration-only facade is not
+an implementation deliverable.
 
 ### Phase 1 implementation
 
-1. Create `@get-modular/core` with a curated public barrel and feature-owned
-   internal folders. Keep domain semantics independent from Foundation, Docs
-   Protocol, DI containers and plugin runtime types.
-2. Create `@get-modular/conformance` only for vectors, fixtures, mutation
-   helpers and test runners. It must not be a runtime dependency of Core or a
-   second authority.
-3. Freeze one export map for `ModuleDeclaration`, `CompositionProfile`,
-   `CompositionPlan`, `Diagnostic`, `PlanDigest`, `defineModule`,
-   `required`, `optional`, `many` and `compileComposition`. Add raw entrypoints
-   only when Phase 0 proves their boundary.
-4. Verify package `exports`, `types`, ESM, browser/Node conditions and packed
-   consumers on Linux, macOS and Windows.
+1. Do not materialize a production package or public barrel until ADR-0009 (or
+   its accepted successor) supplies naming authority. When materialized, create
+   `@get-modular/core` with a curated public barrel and feature-owned internal
+   folders. Keep domain semantics independent from Foundation, Docs Protocol,
+   DI containers and plugin runtime types.
+2. Keep `@get-modular/conformance` private/test-only: vectors, fixtures and
+   mutation helpers are allowed, but no public runner, subject interface,
+   report schema or attestation protocol is exported before its separate
+   accepted decision and a real packed subject.
+3. Freeze one export map only after the first substantive compiler behavior is
+   present. `ModuleDeclaration`, `CompositionProfile`, `CompositionPlan`,
+   `Diagnostic`, `PlanDigest`, `defineModule`, `required`, `optional`, `many`
+   and `compileComposition` must be executable, not throwing, passthrough,
+   no-op or declaration-only placeholders. Add raw entrypoints only when Phase
+   0 proves their carrier boundary.
+4. Promote the first production package atomically to `source-admitted`: add
+   the pinned `architecture/foundation/source-dependencies.yaml`, enable the
+   Engineering Foundation source-dependency capability, add positive and
+   negative structural fixtures, and wire the real Foundation check into
+   `check:fast` and `check`. Structural and runtime conformance remain separate
+   promotion states.
+5. Pack one hash-identified archive and fan that same archive out to disposable
+   consumers. Add default-deny export/deep-import tests, tarball allowlist and
+   declaration-leakage audits, and inert import smoke tests. Do not repack in
+   platform matrix jobs.
+6. Make the initial carrier policy explicit: the first public artifact is
+   ESM-only unless a separate accepted decision introduces a dual-package
+   contract. Tooling must not imply CommonJS support.
+7. Before freezing the public TypeScript surface, run the exact archive through
+   NodeNext, Bundler, JavaScript and `checkJs` consumers at 100, 500 and 1000
+   declarations with recorded compiler identity, timing, peak memory and
+   inference/error assertions.
 
 ### Phase 1 exit criteria
 
-Two disposable TypeScript consumers compile through the public barrel only.
-No Core API exposes a container, resolver, registry, Context/Fiber, filesystem
-path, executable factory, transport DTO or versioned name.
+Two disposable TypeScript consumers compile through the public barrel only and
+the exact archive passes the named resolver/type-scale gates. No Core API
+exposes a container, resolver, registry, Context/Fiber, filesystem path,
+executable factory, transport DTO or versioned name. A package shell without
+substantive behavior cannot pass this phase.
 
 ### Stop criteria
 
@@ -199,28 +247,38 @@ modules.
 
 ### Phase 2 implementation
 
-1. A module owns its serializable branded ID and declaration. There is no global
-   ID list and no repeated untyped string literals in consumer code.
+1. A module co-locates its serializable branded ID and plain-data declaration.
+   Product/repository admission allocates and authorizes the namespace; the ID
+   is not authentication, an import path or an executable lookup key. There is
+   no global ID list and no repeated untyped string literals in consumer code.
 2. Feature-local contracts and adapters stay beside their feature. A shared
    contract is extracted only after a second real consumer proves the same
    boundary.
 3. `required`, `optional` and `many` express cardinality. `many` has explicit
    `min`, `max` and `order`; registration order is never semantic.
-4. A declaration is inert metadata plus a typed activation factory. Discovery
-   and graph validation never execute factories.
-5. A profile groups modules and explicit bindings by product/context and
-   expresses desired state. Disabled roots/providers yield deterministic
-   diagnostics and impact information, not hidden fallback.
-6. Pure DI uses consumer-owned capability ports and explicit factory arguments.
-   No generic `resolve()`, service locator, global mutable container or
-   dependency bag.
+4. A Core declaration is inert plain data only. A feature may co-locate a
+   separate product-owned typed factory and port, but Core compilation never
+   receives, imports, discovers or invokes that factory.
+5. A profile is a complete compilation snapshot produced by a Product Host
+   adapter from host-authorized desired state. Core has no disabled flag,
+   rollout state or impact authority; removal and replacement are expressed by
+   compiling a new complete profile. There is no hidden fallback.
+6. Pure DI uses consumer-owned capability ports and explicit factory arguments
+   outside Core's declaration/compiler boundary. No generic `resolve()`,
+   service locator, global mutable container, dependency bag, inherited-property
+   lookup or thenable assimilation.
+7. Authoring helpers are pass-through constructors, not validators: they retain
+   explicit keys and values, while the compiler alone validates cardinality,
+   compatibility and closed profile rules.
 
 ### Phase 2 exit criteria
 
 Synthetic provider, consumer, optional provider and ordered-contribution modules
 compile in the authoring fixtures. An author can find module owner, binding and
 composition root without editing a central registry. Missing, duplicate,
-ambiguous and disabled dependencies are explicit and graph-inert.
+ambiguous and not-selected dependencies are explicit and graph-inert. A
+100/500/1000-declaration authoring gate records owner/binding/root navigation,
+edit loci and typecheck budgets without executing declarations.
 
 ## Phase 3: normalization and deterministic graph compiler
 
@@ -235,8 +293,8 @@ ambiguous and disabled dependencies are explicit and graph-inert.
 - root closure following consumer-to-provider edges, with provider-to-consumer
   execution order;
 - stable SCC cycle members and stable order independent of input enumeration;
-- deterministic missing, duplicate, ambiguous, incompatible, unreachable and
-  disabled diagnostics;
+- deterministic missing, duplicate, ambiguous, incompatible and unreachable
+  diagnostics for the complete input profile;
 - no first-row/last-row winner, fallback provider or registration-order
   meaning;
 - bounded paths, redacted hostile values, top-K diagnostics and saturating
@@ -246,8 +304,8 @@ ambiguous and disabled dependencies are explicit and graph-inert.
 
 At least the following vectors execute: zero/one/many providers, missing and
 duplicate records, duplicate providers, unknown provider, incompatible family,
-cycle, multi-root, unreachable selection, disabled root, optional absence,
-ordered contributions, resource limits and all input permutations.
+cycle, multi-root, unreachable selection, omitted root/provider, optional
+absence, ordered contributions, resource limits and all input permutations.
 
 No activation factory is called before complete graph validation. Equivalent
 inputs produce the same semantic plan and diagnostics.
@@ -290,9 +348,10 @@ generator. The plan remains serializable across processes.
 ### Phase 5 implementation
 
 1. Put implementation-independent vectors and fixtures in the separate
-   conformance package. Keep Core as the only semantic authority.
+   conformance package. Keep Core as the only semantic authority; a future
+   runner/subject/report protocol remains private until separately accepted.
 2. Cover positive, negative, mutation, permutation, malformed input, resource
-   limits, disabled modules, cycles, compatibility and diagnostic redaction.
+   limits, omitted modules, cycles, compatibility and diagnostic redaction.
 3. Measure profiles with 10, 100, 500 and 1000 modules: parse/normalize/
    compile/digest time, allocations, bounded diagnostics and packed size.
 4. Run Node/browser and Linux/macOS/Windows matrices. Unsupported carrier or
