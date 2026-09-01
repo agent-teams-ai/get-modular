@@ -71,6 +71,26 @@ materialized. Existing accepted names remain contract authority in the
 meantime; historical names are not automatically published as compatibility
 aliases.
 
+### Roadmap qualification language
+
+The labels below are phase-report outcomes, not new Feature Module Standard
+qualification states, public API, or lifecycle authority. They do not collapse
+`source-admitted`, `structural-conformant`, `runtime-conformant`, publication,
+or product adoption:
+
+| Outcome | Evidence established | Evidence not established |
+| --- | --- | --- |
+| `direct-semantics-qualified` | A temporary, hash-identified direct subject passes the independent public-boundary semantics, diagnostic, plan/digest and immutability gates. | Generated construction, release custody, publication, or product adoption. |
+| `self-composed-qualified` | In addition to direct qualification, ADR-0008's finite stage0-to-profile-to-emitter-to-stage1 path controls construction, direct/generated parity and witnesses pass, and generated stage1 passes the same public-boundary gates. | Release custody, publication, Feature Module Standard promotion, or product adoption. |
+| `release-eligible` | The retained self-composed stage1 archive also satisfies every accepted decision, conformance, support-envelope, custody and promotion gate applicable to the requested release state. | Actual publication, registry read-back, stable 1.0, or a product-adoption claim. |
+
+`direct-semantics-qualified` is useful prerequisite evidence, but accepted
+ADR-0008 does not permit it to replace self-composition for the first released
+Core. `release-eligible` means that the exact retained archive may enter the
+publication checkpoint; it is not a synonym for published or conformant. While
+required custody authority remains proposed, release eligibility remains
+`CONDITIONAL` even when the two earlier outcomes pass.
+
 ## Common phase protocol
 
 Every phase uses evidence and review proportional to the changed risk. A phase
@@ -257,6 +277,14 @@ Phase 1 private package/source setup
 This order prevents an empty public shell and prevents packed qualification from
 depending on a Phase 4 exit that already assumes the archive exists.
 
+Atomic applies to release qualification and promotion, not to review size.
+Implement Phases 1-4 as dependency-safe, private vertical PRs that normally
+change no more than roughly 2,000 LOC each, including the focused tests and
+evidence needed for that slice. Each PR must deliver testable behavior and a
+narrow revert path, but it remains unpublished and cannot claim an independent
+phase release or partial Core qualification. Keep one invariant together when a
+smaller split would make it unverifiable.
+
 ### Phase 1 implementation
 
 1. Materialize the private Core package/source boundary under the accepted
@@ -316,8 +344,8 @@ lifecycle ownership.
 
 ## Phase 2: declarations, profiles and capability slots
 
-**Purpose:** make module authoring local, typed and navigable at hundreds of
-modules.
+**Purpose:** make module authoring local and typed at hundreds of modules, and
+rehearse navigation workflows that a real product must later prove in Phase 6.
 
 ### Phase 2 implementation
 
@@ -350,19 +378,23 @@ modules.
 ### Phase 2 exit criteria
 
 Synthetic provider, consumer, optional provider and ordered-contribution modules
-compile in the authoring fixtures. An author can find module owner, binding and
-composition root without editing a central registry. Missing, duplicate,
-incompatible and not-selected dependencies are explicit and graph-inert. A
-100/500/1000-declaration authoring gate records owner/binding/root navigation,
-edit loci, complete-profile construction and change workflows, and typecheck
-budgets without executing declarations.
+compile in the authoring fixtures. Missing, duplicate, incompatible and
+not-selected dependencies are explicit and graph-inert. A 100/500/1000-
+declaration authoring gate records fixture-local owner/binding/root lookup
+steps, edited paths, complete-profile construction, change workflows and
+typecheck budgets without executing declarations. This synthetic record proves
+only that the API and measurement method can exercise those workflows. It
+cannot claim real product owner/root navigation, authoritative edit loci, or a
+product change-workflow budget; the phase report marks those product claims
+`not-applicable` until the admitted real slice proves them in Phase 6.
 
 ## Phase 3: normalization and deterministic graph compiler
 
 **Purpose:** implement the private semantic compiler seam:
 `declarations + complete profile -> normalized plan | bounded diagnostics`.
 The public successful compiler result does not exist until Phase 4 attaches the
-qualified canonical bytes and digest required by the accepted contract.
+immutable plan and digest required by the accepted contract. Canonical bytes
+remain a private intermediate and evidence input.
 
 ### Required semantics
 
@@ -430,6 +462,13 @@ exported as a temporary public API.
 **Purpose:** make the plan reproducible and prove that Core can construct its
 own finite internal components without a runtime bootstrap loop.
 
+Canonical bytes are a private compiler intermediate used to derive the accepted
+public digest and private evidence used to compare exact results. The public
+compile result remains the accepted immutable plan plus digest; it does not
+return canonical bytes, require a consumer to retain them, or create a public
+byte-verification API. Qualification and custody tooling may retain and compare
+those bytes privately when binding the exact subject and evidence.
+
 ### Phase 4 implementation
 
 1. Use the accepted canonicalization boundary and a qualified private adapter.
@@ -475,12 +514,13 @@ own finite internal components without a runtime bootstrap loop.
    emitter calls or component assembly on caller requests. Only pack-once
    stage1 is distributable; stage0, own profile and emitter stay outside the
    runtime closure.
-9. Treat completion as two phase-report outcomes. `qualification-only` may use
-   accepted plan/digest evidence without a construction claim. A self-composed
-   construction claim additionally requires the accepted item 6 refinement.
-   Release custody additionally requires accepted custody authority; while
-   ADR-0011 remains proposed, its broader protocol creates neither a governance
-   blocker nor a custody claim.
+9. Treat completion as distinct phase-report outcomes. A direct subject may
+   become `direct-semantics-qualified` using accepted plan/digest evidence
+   without a construction claim. `self-composed-qualified` additionally
+   requires the accepted item 6 refinement and the complete ADR-0008 finite
+   construction proof. Release custody is separate again; while ADR-0011
+   remains proposed, its broader protocol creates neither a governance blocker
+   nor a custody claim.
 10. Record non-SLO P100/P500/P1000 sparse/dense canonical byte size, digest time,
    peak memory and concurrent-call observations. Phase 5 owns portable sizing
    evidence and release-scale qualification, not new performance thresholds.
@@ -502,8 +542,9 @@ stage1 absent, isolated/poisoned roots, P0/P1 and W0/W1 equality, behavioral
 replacement, independent construction witnesses, caller-time no-bootstrap and
 stage1-only runtime closure. Direct and generated packed subjects pass the same
 independent vectors and public-API checks; only generated stage1 may be retained
-for distribution. Passing yields `qualification-only` and cannot imply
-publication readiness.
+for distribution. Passing the direct gate yields
+`direct-semantics-qualified`; passing the construction and parity gate yields
+`self-composed-qualified`. Neither can imply publication readiness.
 
 ### Phase 4 release-eligible exit
 
@@ -551,6 +592,39 @@ architecture and realm; browser release/build; Electron release plus its embedde
 Node and Chromium identities; matrix configuration and accepted freshness
 policy. Changing any component invalidates the case. Before such a decision
 exists, rerun rather than infer equivalence from a partial key.
+
+### Scale support envelope and operator guidance
+
+Phase 5 publishes an explicit Core `0.x` support envelope with the retained
+archive. The correctness envelope is closed over:
+
+- the object and admitted raw-byte entrypoints, accepted carrier cells, and
+  accepted resource limits;
+- sparse, dense, maximum-depth/cycle, diagnostic-storm and maximum-identity
+  worlds at 10/100/500/1000 modules and the accepted declaration limit;
+- the six required Node, Chromium and Electron cases, including the recorded
+  runtime, operating-system, architecture and realm identities; and
+- concurrent/repeated-call isolation, bounded diagnostics, canonical plan and
+  digest correctness, and packed-consumer/typecheck cases.
+
+Inputs above accepted resource limits, unresolved raw-carrier cells, skipped
+runtime cases, and Product Host lifecycle behavior are outside that envelope.
+Within it, accepted resource limits and correctness are supported; recorded
+time, memory, archive size and structural counters remain sizing observations,
+not portable latency, throughput or memory promises.
+
+Phase 5 also updates the governed operator/adapter section of
+`docs/architecture/current-contract.md`. It explains identity and namespace
+ownership, complete-profile construction, ordered-many bindings, entrypoint and
+carrier selection, diagnostic and omission handling, supported scale shapes,
+evidence identities, and when invalidated cases must be rerun. It shows that a
+Product Host may consult its authorized literal factory table only after
+successful compilation and must not edit a plan or infer authorization,
+readiness, activation, retry, routing or recovery from Core output. It includes
+support-data capture and escalation guidance for cases outside the envelope
+without turning Get Modular into an operational authority. This reuses the
+existing governed architecture document and does not invent a new Docs Protocol
+record type.
 
 ### Phase 5 implementation
 
@@ -601,6 +675,11 @@ exists, rerun rather than infer equivalence from a partial key.
    `reviewed` evidence until separate accepted reciprocal promotion decisions
    anchor their exact bytes in the order required by the Feature Module
    Standard. A runner result cannot promote itself.
+10. Generate the closed support envelope from the same retained archive and
+    evidence identities, then update the operator/adapter section of
+    `docs/architecture/current-contract.md` with its supported and unsupported
+    cases explicit. A measurement observation cannot silently expand the
+    envelope or become a compatibility threshold.
 
 ### Phase 5 exit criteria
 
@@ -614,7 +693,10 @@ structural counters, timing and memory observations are recorded without
 becoming compatibility thresholds. Unresolved raw-carrier research cells do not
 enter conformance. The private conformance runner is deterministic and cannot
 install modules, scan files, derive expected results from Core, authorize
-execution or promote its own qualification records.
+execution or promote its own qualification records. The closed support envelope
+and the operator/adapter section of `docs/architecture/current-contract.md`
+identify the exact retained archive, agree with the executed matrix, and state
+every unsupported case without claiming Product Host operations.
 
 ## Phase 6: first product dogfooding
 
@@ -652,7 +734,10 @@ qualified Core `0.x` publication; it is not a prerequisite for that publication.
    replace/cardinality/path-move operations, typecheck cost, missing-dependency
    remediation, deterministic outcomes and deletion cost. Generic glue over 30%
    or ordinary changes exceeding four authoritative loci block extraction
-   unless a measured safety invariant justifies them.
+   unless a measured safety invariant justifies them. This is the first gate
+   that may convert Phase 2's synthetic navigation and edit-locus rehearsal into
+   a real product claim; it reruns the measurements against the admitted slice's
+   actual owners, roots, files and composition adapter.
 7. Run the real admitted slice plus product-shaped 100/500/1000 authoring and
    compile fixtures from the exact packed Core. These fixtures exercise scale;
    they do not invent product features or replace the real behavior proof.
