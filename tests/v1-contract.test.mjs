@@ -1014,6 +1014,19 @@ test("resource and decoder qualification reject expectation drift", async () => 
     .expected.diagnostics[0].details.reason = "unknown";
   assert.throws(() => validateManifest(invalidStaticRefinement), /invalid reason/u);
 
+  const maskedDuplicateKey = clone(manifest);
+  const maskedDuplicateDiagnostics = maskedDuplicateKey.staticConformanceProtocol.cases[0]
+    .expected.diagnostics;
+  const duplicateIndex = maskedDuplicateDiagnostics.findIndex(diagnostic => (
+    diagnostic.code === "decode.duplicate-key"
+  ));
+  const [maskedDuplicate] = maskedDuplicateDiagnostics.splice(duplicateIndex, 1);
+  maskedDuplicate.code = "schema.invalid-value";
+  maskedDuplicate.phase = "schema";
+  maskedDuplicate.details = { reason: "invalid-type" };
+  maskedDuplicateDiagnostics.push(maskedDuplicate);
+  assert.throws(() => validateManifest(maskedDuplicateKey), /masks a raw decode failure/u);
+
   const missingOverlapOutcome = clone(manifest);
   missingOverlapOutcome.staticConformanceProtocol.cases
     .find(value => value.caseId === "diag.object.duplicate-selection-with-mismatch.v1")

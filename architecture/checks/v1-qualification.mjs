@@ -862,10 +862,53 @@ function staticInvocationPrefixLength(descriptor, diagnostic, contract) {
 }
 
 function decodeStaticJson(text) {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return undefined;
+  if (typeof text !== "string") return undefined;
+  const decoded = strictDecode(
+    Buffer.from(text, "utf8"),
+    "reject",
+    Number.MAX_SAFE_INTEGER,
+  );
+  return decoded.outcome === "accepted" ? JSON.parse(decoded.text) : undefined;
+}
+
+function staticRawInputDocuments(descriptor) {
+  if (descriptor.entryPoint !== "compileCompositionJsonV1" || descriptor.input === undefined) {
+    return [];
+  }
+  return [
+    ...(descriptor.input?.declarationsUtf8 ?? []).map((text, index) => ({
+      prefix: [
+        { kind: "field", value: "declarations" },
+        { kind: "index", value: index },
+      ],
+      text,
+    })),
+    {
+      prefix: [{ kind: "field", value: "profile" }],
+      text: descriptor.input?.profileUtf8,
+    },
+  ];
+}
+
+function pathStartsWith(path, prefix) {
+  return path.length >= prefix.length
+    && prefix.every((segment, index) => same(path[index], segment));
+}
+
+function validateStaticRawDecodeSuppression(descriptor, diagnostics) {
+  for (const document of staticRawInputDocuments(descriptor)) {
+    const decoded = strictDecode(
+      Buffer.from(document.text, "utf8"),
+      "reject",
+      Number.MAX_SAFE_INTEGER,
+    );
+    if (decoded.outcome === "accepted") continue;
+    const scoped = diagnostics.filter(diagnostic => (
+      pathStartsWith(diagnostic.path, document.prefix)
+    ));
+    if (scoped.length !== 1 || scoped[0].code !== decoded.diagnosticCode) {
+      fail(`${descriptor.caseId} masks a raw decode failure with a derivative diagnostic`);
+    }
   }
 }
 
@@ -1118,6 +1161,7 @@ export function validateStaticConformanceProtocol({
     if (!same(diagnostics, diagnostics.toSorted(compare))) {
       fail(`${descriptor.caseId} diagnostics are not in exact normative order`);
     }
+    validateStaticRawDecodeSuppression(descriptor, diagnostics);
     const prerequisiteCase = exactPrerequisiteCases.get(descriptor.caseId);
     if (prerequisiteCase !== undefined
       && !same(diagnostics.map(diagnostic => diagnostic.code), prerequisiteCase.eligibleCodes)) {
