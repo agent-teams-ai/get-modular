@@ -178,9 +178,10 @@ Each phase leaves a report containing:
    every open implementation decision: ADR-0009 blocks an unversioned public
    barrel, ADR-0010 blocks production primitive selection, and ADR-0011 blocks
    release-custody claims. A proposed ADR cannot pass through roadmap wording.
-9. Wire the existing `qualification:v1-resource-profile` executable generator/
-   oracle proof into the complete repository gate. A declared but orphaned
-   script is not Phase 0 evidence.
+9. Verify that the existing `qualification:resource-profile` executable
+   generator/oracle proof remains wired into the complete repository gate. A
+   declared but orphaned script is not Phase 0 evidence, and its historical
+   filename does not create a versioned public command.
 
 ### Phase 0 exit criteria
 
