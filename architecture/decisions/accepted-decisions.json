@@ -16,6 +16,31 @@
       "id": "ADR-0003",
       "path": "docs/decisions/0003-select-public-package-identity-and-initial-topology.md",
       "immutableDigest": "sha256:f92da995243a9f60e79b758e17209a17d91603d7059636ba07bf036ecf9eb5e1"
+    },
+    {
+      "id": "ADR-0004",
+      "path": "docs/decisions/0004-freeze-v1-portable-composition-contract-and-plan-digest.md",
+      "immutableDigest": "sha256:fd44a38d3a54c12ace0b99ea0df13356e7797f61607c09d103c0adb47cc8af12"
+    },
+    {
+      "id": "ADR-0005",
+      "path": "docs/decisions/0005-freeze-v1-compatibility-diagnostics-and-resource-profile.md",
+      "immutableDigest": "sha256:6e677e0683b9212f632c4ab6efad2d759dd6d46b5e8245b221beac54447f7083"
+    },
+    {
+      "id": "ADR-0006",
+      "path": "docs/decisions/0006-clarify-v1-compiler-normalization-and-entry-points.md",
+      "immutableDigest": "sha256:d7e68857eff650804e3c292850e8420ec7c1feb80b8750609a8461533556b7b7"
+    },
+    {
+      "id": "ADR-0007",
+      "path": "docs/decisions/0007-require-executable-v1-conformance-amendments.md",
+      "immutableDigest": "sha256:b9689a965dbc5fabcfdf2916b7701cf5f44c69dcb50d21e0ec3b5ccd557455ea"
+    },
+    {
+      "id": "ADR-0008",
+      "path": "docs/decisions/0008-bounded-internal-engine-self-composition.md",
+      "immutableDigest": "sha256:8b13fe2f1fa190cbca2e47ed1e30a9b2caaf1455b2ca0560eda64babc5d37582"
     }
   ]
 }

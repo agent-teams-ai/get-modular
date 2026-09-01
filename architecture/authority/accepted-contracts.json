@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "algorithm": "sha256-bytes",
+  "artifacts": [
+    {
+      "id": "GM-V1-CANONICAL-VECTORS",
+      "path": "architecture/contracts/v1/canonical-vectors.json",
+      "immutableDigest": "sha256:6c46cf7056d8cd1bc9df675bb356d60b8ad191cf2d212240fa995b8c315697b3"
+    },
+    {
+      "id": "GM-V1-COMPOSITION-SCHEMA",
+      "path": "architecture/contracts/v1/composition.schema.json",
+      "immutableDigest": "sha256:2b4ad547782fa36748fa937f8fe9896da3c022c3e78e68c8edc06c47ffe36562"
+    },
+    {
+      "id": "GM-V1-DIAGNOSTIC-CATALOG",
+      "path": "architecture/contracts/v1/diagnostic-catalog.json",
+      "immutableDigest": "sha256:d59875576b4619dd01713bf108db14144030e30d8f0245e35f80c73563a4ca96"
+    },
+    {
+      "id": "GM-V1-RESOURCE-PROFILE",
+      "path": "architecture/contracts/v1/resource-profile.json",
+      "immutableDigest": "sha256:7900fdba888dd4895168bba8c0dc5a886e17687e39f39d614a88c84c739aad6d"
+    }
+  ]
+}

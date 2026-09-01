@@ -1,0 +1,239 @@
+{
+  "kind": "get-modular.diagnostic-snapshots",
+  "vectorVersion": 1,
+  "snapshots": [
+    {"name": "invalid-json", "diagnostic": {"code": "decode.invalid-json", "phase": "decode", "path": [], "coordinate": {}, "details": {"reason": "invalid-json"}}},
+    {"name": "duplicate-key", "diagnostic": {"code": "decode.duplicate-key", "phase": "decode", "path": [{"kind": "field", "value": "kind"}], "coordinate": {}, "details": {"reason": "duplicate-key"}}},
+    {"name": "aggregate-raw-limit", "diagnostic": {"code": "input.limit-exceeded", "phase": "decode", "path": [], "coordinate": {}, "details": {"limitName": "aggregateRawBytes", "limit": 16777216, "actual": 16777217}}},
+    {"name": "unsupported-version", "diagnostic": {"code": "schema.unsupported-version", "phase": "schema", "path": [{"kind": "field", "value": "schemaVersion"}], "coordinate": {}, "details": {"reason": "unsupported-version"}}},
+    {"name": "unknown-field", "diagnostic": {"code": "schema.unknown-field", "phase": "schema", "path": [{"kind": "field", "value": "unknown"}], "coordinate": {}, "details": {"reason": "unknown-field"}}},
+    {"name": "invalid-value", "diagnostic": {"code": "schema.invalid-value", "phase": "schema", "path": [{"kind": "field", "value": "schemaVersion"}], "coordinate": {}, "details": {"reason": "invalid-type"}}},
+    {"name": "non-plain-value", "diagnostic": {"code": "schema.non-plain-value", "phase": "schema", "path": [{"kind": "index", "value": 0}], "coordinate": {}, "details": {"reason": "non-plain-value"}}},
+    {"name": "invalid-identity", "diagnostic": {"code": "identity.invalid", "phase": "schema", "path": [{"kind": "field", "value": "implementationId"}], "coordinate": {}, "details": {"reason": "invalid-format"}}},
+    {"name": "duplicate-implementation", "diagnostic": {"code": "declaration.duplicate-implementation", "phase": "declaration", "path": [], "coordinate": {"implementationId": "example/app/default"}, "details": {"reason": "duplicate"}}},
+    {"name": "duplicate-capability", "diagnostic": {"code": "declaration.duplicate-capability", "phase": "declaration", "path": [{"kind": "field", "value": "provides"}, {"kind": "index", "value": 1}], "coordinate": {"implementationId": "example/app/default"}, "details": {"reason": "duplicate"}}},
+    {"name": "duplicate-slot", "diagnostic": {"code": "declaration.duplicate-slot", "phase": "declaration", "path": [{"kind": "field", "value": "slots"}, {"kind": "index", "value": 1}], "coordinate": {"implementationId": "example/app/default", "slotId": "database"}, "details": {"reason": "duplicate"}}},
+    {"name": "duplicate-root", "diagnostic": {"code": "profile.duplicate-root", "phase": "profile", "path": [], "coordinate": {"moduleId": "example/app"}, "details": {"reason": "duplicate"}}},
+    {"name": "unknown-root", "diagnostic": {"code": "profile.unknown-root", "phase": "profile", "path": [], "coordinate": {"moduleId": "example/missing"}, "details": {"reason": "unknown"}}},
+    {"name": "duplicate-selection", "diagnostic": {"code": "profile.duplicate-selection", "phase": "profile", "path": [], "coordinate": {"moduleId": "example/app"}, "details": {"reason": "duplicate"}}},
+    {"name": "unknown-module", "diagnostic": {"code": "profile.unknown-module", "phase": "profile", "path": [], "coordinate": {"moduleId": "example/missing"}, "details": {"reason": "unknown"}}},
+    {"name": "unknown-implementation", "diagnostic": {"code": "profile.unknown-implementation", "phase": "profile", "path": [], "coordinate": {"moduleId": "example/app", "implementationId": "example/app/missing"}, "details": {"reason": "unknown"}}},
+    {"name": "implementation-mismatch", "diagnostic": {"code": "profile.implementation-mismatch", "phase": "profile", "path": [], "coordinate": {"moduleId": "example/app", "implementationId": "example/other/default"}, "details": {"reason": "mismatch"}}},
+    {"name": "missing-selection", "diagnostic": {"code": "profile.missing-selection", "phase": "profile", "path": [], "coordinate": {"moduleId": "example/app"}, "details": {"reason": "missing"}}},
+    {"name": "unreachable-selection", "diagnostic": {"code": "profile.unreachable-selection", "phase": "graph", "path": [], "coordinate": {"moduleId": "example/unused", "implementationId": "example/unused/default"}, "details": {"reason": "unreachable"}}},
+    {"name": "duplicate-provider", "diagnostic": {"code": "binding.duplicate", "phase": "binding", "path": [], "coordinate": {"implementationId": "example/app/default", "slotId": "database", "providerImplementationId": "example/database/default"}, "details": {"reason": "duplicate"}}},
+    {"name": "missing-binding", "diagnostic": {"code": "binding.missing", "phase": "binding", "path": [], "coordinate": {"implementationId": "example/app/default", "slotId": "database"}, "details": {"reason": "missing"}}},
+    {"name": "unknown-consumer", "diagnostic": {"code": "binding.unknown-consumer", "phase": "binding", "path": [], "coordinate": {"implementationId": "example/missing/default"}, "details": {"reason": "unknown"}}},
+    {"name": "unknown-slot", "diagnostic": {"code": "binding.unknown-slot", "phase": "binding", "path": [], "coordinate": {"implementationId": "example/app/default", "slotId": "missing"}, "details": {"reason": "unknown"}}},
+    {"name": "unknown-provider", "diagnostic": {"code": "binding.unknown-provider", "phase": "binding", "path": [], "coordinate": {"implementationId": "example/app/default", "slotId": "database", "providerImplementationId": "example/missing/default"}, "details": {"reason": "unknown"}}},
+    {"name": "provider-not-selected", "diagnostic": {"code": "binding.provider-not-selected", "phase": "binding", "path": [], "coordinate": {"implementationId": "example/app/default", "slotId": "database", "providerImplementationId": "example/database/default"}, "details": {"reason": "mismatch"}}},
+    {"name": "invalid-cardinality", "diagnostic": {"code": "binding.cardinality", "phase": "binding", "path": [], "coordinate": {"implementationId": "example/app/default", "slotId": "database"}, "details": {"expectedCardinality": "required", "actualCardinality": 0}}},
+    {"name": "capability-missing", "diagnostic": {"code": "binding.capability-missing", "phase": "binding", "path": [], "coordinate": {"implementationId": "example/app/default", "slotId": "database", "providerImplementationId": "example/database/default"}, "details": {"reason": "missing"}}},
+    {"name": "compatibility-mismatch", "diagnostic": {"code": "binding.compatibility-mismatch", "phase": "binding", "path": [], "coordinate": {"implementationId": "example/app/default", "slotId": "database", "providerImplementationId": "example/database/default"}, "details": {"expectedCompatibility": {"family": "exact", "familyVersion": 1, "token": "example/database-access/v1"}, "actualCompatibility": {"family": "exact", "familyVersion": 1, "token": "example/database-access/v2"}}}},
+    {"name": "cycle", "diagnostic": {"code": "graph.cycle", "phase": "graph", "path": [], "coordinate": {}, "details": {"component": ["example/app/default", "example/database/default"]}}},
+    {"name": "truncated", "diagnostic": {"code": "diagnostics.truncated", "phase": "output", "path": [], "coordinate": {}, "details": {"omitted": 2}}}
+  ],
+  "orderingCases": [
+    {
+      "name": "phase-dominates-code",
+      "axis": "phase",
+      "operands": [
+        {"name": "earlier-phase", "snapshot": "invalid-value"},
+        {"name": "later-phase", "snapshot": "aggregate-raw-limit", "override": {"phase": "graph", "details": {"limitName": "graphEdges", "limit": 262144, "actual": 262145}}}
+      ],
+      "expected": ["earlier-phase", "later-phase"],
+      "opposedLaterAxis": "code"
+    },
+    {
+      "name": "code-dominates-path",
+      "axis": "code",
+      "operands": [
+        {"name": "earlier-code", "snapshot": "unsupported-version", "override": {"path": [{"kind": "field", "value": "z"}]}},
+        {"name": "later-code", "snapshot": "invalid-value", "override": {"path": [{"kind": "field", "value": "a"}]}}
+      ],
+      "expected": ["earlier-code", "later-code"],
+      "opposedLaterAxis": "path.field-value"
+    },
+    {
+      "name": "module-coordinate-value-dominates-implementation",
+      "axis": "coordinate.moduleId.value",
+      "operands": [
+        {"name": "module-a", "snapshot": "unknown-implementation", "override": {"coordinate": {"moduleId": "example/a", "implementationId": "example/z/default"}}},
+        {"name": "module-z", "snapshot": "unknown-implementation", "override": {"coordinate": {"moduleId": "example/z", "implementationId": "example/a/default"}}}
+      ],
+      "expected": ["module-a", "module-z"],
+      "opposedLaterAxis": "coordinate.implementationId.value"
+    },
+    {
+      "name": "implementation-coordinate-value-dominates-slot",
+      "axis": "coordinate.implementationId.value",
+      "operands": [
+        {"name": "implementation-a", "snapshot": "unknown-provider", "override": {"coordinate": {"implementationId": "example/a/default", "slotId": "z", "providerImplementationId": "example/provider/default"}}},
+        {"name": "implementation-z", "snapshot": "unknown-provider", "override": {"coordinate": {"implementationId": "example/z/default", "slotId": "a", "providerImplementationId": "example/provider/default"}}}
+      ],
+      "expected": ["implementation-a", "implementation-z"],
+      "opposedLaterAxis": "coordinate.slotId.value"
+    },
+    {
+      "name": "slot-coordinate-value-dominates-provider",
+      "axis": "coordinate.slotId.value",
+      "operands": [
+        {"name": "slot-a", "snapshot": "unknown-provider", "override": {"coordinate": {"implementationId": "example/app/default", "slotId": "a", "providerImplementationId": "example/z/default"}}},
+        {"name": "slot-z", "snapshot": "unknown-provider", "override": {"coordinate": {"implementationId": "example/app/default", "slotId": "z", "providerImplementationId": "example/a/default"}}}
+      ],
+      "expected": ["slot-a", "slot-z"],
+      "opposedLaterAxis": "coordinate.providerImplementationId.value"
+    },
+    {
+      "name": "provider-coordinate-value",
+      "axis": "coordinate.providerImplementationId.value",
+      "operands": [
+        {"name": "provider-a", "snapshot": "duplicate-provider", "override": {"coordinate": {"implementationId": "example/app/default", "slotId": "database", "providerImplementationId": "example/a/default"}}},
+        {"name": "provider-z", "snapshot": "duplicate-provider", "override": {"coordinate": {"implementationId": "example/app/default", "slotId": "database", "providerImplementationId": "example/z/default"}}}
+      ],
+      "expected": ["provider-a", "provider-z"]
+    },
+    {
+      "name": "path-kind-dominates-details",
+      "axis": "path.kind",
+      "operands": [
+        {"name": "field-path", "snapshot": "invalid-value", "override": {"path": [{"kind": "field", "value": "z"}], "details": {"reason": "invalid-type"}}},
+        {"name": "index-path", "snapshot": "invalid-value", "override": {"path": [{"kind": "index", "value": 0}], "details": {"reason": "invalid-format"}}}
+      ],
+      "expected": ["field-path", "index-path"],
+      "opposedLaterAxis": "details.rfc8785"
+    },
+    {
+      "name": "path-field-value-dominates-details",
+      "axis": "path.field-value",
+      "operands": [
+        {"name": "field-a", "snapshot": "invalid-value", "override": {"path": [{"kind": "field", "value": "a"}], "details": {"reason": "invalid-type"}}},
+        {"name": "field-z", "snapshot": "invalid-value", "override": {"path": [{"kind": "field", "value": "z"}], "details": {"reason": "invalid-format"}}}
+      ],
+      "expected": ["field-a", "field-z"],
+      "opposedLaterAxis": "details.rfc8785"
+    },
+    {
+      "name": "path-index-value-is-numeric-and-dominates-details",
+      "axis": "path.index-value",
+      "operands": [
+        {"name": "index-two", "snapshot": "invalid-value", "override": {"path": [{"kind": "index", "value": 2}], "details": {"reason": "invalid-type"}}},
+        {"name": "index-ten", "snapshot": "invalid-value", "override": {"path": [{"kind": "index", "value": 10}], "details": {"reason": "invalid-format"}}}
+      ],
+      "expected": ["index-two", "index-ten"],
+      "opposedLaterAxis": "details.rfc8785"
+    },
+    {
+      "name": "path-prefix-length-dominates-details",
+      "axis": "path.length",
+      "operands": [
+        {"name": "shorter-path", "snapshot": "invalid-value", "override": {"path": [{"kind": "field", "value": "root"}], "details": {"reason": "invalid-type"}}},
+        {"name": "longer-path", "snapshot": "invalid-value", "override": {"path": [{"kind": "field", "value": "root"}, {"kind": "index", "value": 0}], "details": {"reason": "invalid-format"}}}
+      ],
+      "expected": ["shorter-path", "longer-path"],
+      "opposedLaterAxis": "details.rfc8785"
+    },
+    {
+      "name": "path-later-kind-dominates-details",
+      "axis": "path.later-kind",
+      "operands": [
+        {"name": "later-field", "snapshot": "invalid-value", "override": {"path": [{"kind": "field", "value": "root"}, {"kind": "field", "value": "z"}], "details": {"reason": "invalid-type"}}},
+        {"name": "later-index", "snapshot": "invalid-value", "override": {"path": [{"kind": "field", "value": "root"}, {"kind": "index", "value": 0}], "details": {"reason": "invalid-format"}}}
+      ],
+      "expected": ["later-field", "later-index"],
+      "opposedLaterAxis": "details.rfc8785"
+    },
+    {
+      "name": "path-later-field-value-dominates-details",
+      "axis": "path.later-field-value",
+      "operands": [
+        {"name": "later-a", "snapshot": "invalid-value", "override": {"path": [{"kind":"field","value":"p00"},{"kind":"index","value":1},{"kind":"field","value":"p02"},{"kind":"index","value":3},{"kind":"field","value":"p04"},{"kind":"index","value":5},{"kind":"field","value":"p06"},{"kind":"index","value":7},{"kind":"field","value":"p08"},{"kind":"index","value":9},{"kind":"field","value":"p10"},{"kind":"index","value":11},{"kind":"field","value":"p12"},{"kind":"index","value":13},{"kind":"field","value":"p14"},{"kind":"index","value":15},{"kind":"field","value":"p16"},{"kind":"index","value":17},{"kind":"field","value":"p18"},{"kind":"index","value":19},{"kind":"field","value":"p20"},{"kind":"index","value":21},{"kind":"field","value":"p22"},{"kind":"index","value":23},{"kind":"field","value":"p24"},{"kind":"index","value":25},{"kind":"field","value":"p26"},{"kind":"index","value":27},{"kind":"field","value":"p28"},{"kind":"index","value":29},{"kind":"field","value":"p30"},{"kind":"field","value":"a"}], "details": {"reason": "invalid-type"}}},
+        {"name": "later-z", "snapshot": "invalid-value", "override": {"path": [{"kind":"field","value":"p00"},{"kind":"index","value":1},{"kind":"field","value":"p02"},{"kind":"index","value":3},{"kind":"field","value":"p04"},{"kind":"index","value":5},{"kind":"field","value":"p06"},{"kind":"index","value":7},{"kind":"field","value":"p08"},{"kind":"index","value":9},{"kind":"field","value":"p10"},{"kind":"index","value":11},{"kind":"field","value":"p12"},{"kind":"index","value":13},{"kind":"field","value":"p14"},{"kind":"index","value":15},{"kind":"field","value":"p16"},{"kind":"index","value":17},{"kind":"field","value":"p18"},{"kind":"index","value":19},{"kind":"field","value":"p20"},{"kind":"index","value":21},{"kind":"field","value":"p22"},{"kind":"index","value":23},{"kind":"field","value":"p24"},{"kind":"index","value":25},{"kind":"field","value":"p26"},{"kind":"index","value":27},{"kind":"field","value":"p28"},{"kind":"index","value":29},{"kind":"field","value":"p30"},{"kind":"field","value":"z"}], "details": {"reason": "invalid-format"}}}
+      ],
+      "expected": ["later-a", "later-z"],
+      "opposedLaterAxis": "details.rfc8785"
+    },
+    {
+      "name": "path-later-index-value-dominates-details",
+      "axis": "path.later-index-value",
+      "operands": [
+        {"name": "later-two", "snapshot": "invalid-value", "override": {"path": [{"kind":"field","value":"p00"},{"kind":"index","value":1},{"kind":"field","value":"p02"},{"kind":"index","value":3},{"kind":"field","value":"p04"},{"kind":"index","value":5},{"kind":"field","value":"p06"},{"kind":"index","value":7},{"kind":"field","value":"p08"},{"kind":"index","value":9},{"kind":"field","value":"p10"},{"kind":"index","value":11},{"kind":"field","value":"p12"},{"kind":"index","value":13},{"kind":"field","value":"p14"},{"kind":"index","value":15},{"kind":"field","value":"p16"},{"kind":"index","value":17},{"kind":"field","value":"p18"},{"kind":"index","value":19},{"kind":"field","value":"p20"},{"kind":"index","value":21},{"kind":"field","value":"p22"},{"kind":"index","value":23},{"kind":"field","value":"p24"},{"kind":"index","value":25},{"kind":"field","value":"p26"},{"kind":"index","value":27},{"kind":"field","value":"p28"},{"kind":"index","value":29},{"kind":"field","value":"p30"},{"kind":"index","value":2}], "details": {"reason": "invalid-type"}}},
+        {"name": "later-ten", "snapshot": "invalid-value", "override": {"path": [{"kind":"field","value":"p00"},{"kind":"index","value":1},{"kind":"field","value":"p02"},{"kind":"index","value":3},{"kind":"field","value":"p04"},{"kind":"index","value":5},{"kind":"field","value":"p06"},{"kind":"index","value":7},{"kind":"field","value":"p08"},{"kind":"index","value":9},{"kind":"field","value":"p10"},{"kind":"index","value":11},{"kind":"field","value":"p12"},{"kind":"index","value":13},{"kind":"field","value":"p14"},{"kind":"index","value":15},{"kind":"field","value":"p16"},{"kind":"index","value":17},{"kind":"field","value":"p18"},{"kind":"index","value":19},{"kind":"field","value":"p20"},{"kind":"index","value":21},{"kind":"field","value":"p22"},{"kind":"index","value":23},{"kind":"field","value":"p24"},{"kind":"index","value":25},{"kind":"field","value":"p26"},{"kind":"index","value":27},{"kind":"field","value":"p28"},{"kind":"index","value":29},{"kind":"field","value":"p30"},{"kind":"index","value":10}], "details": {"reason": "invalid-format"}}}
+      ],
+      "expected": ["later-two", "later-ten"],
+      "opposedLaterAxis": "details.rfc8785"
+    },
+    {
+      "name": "details-use-rfc8785-key-order-and-utf8-bytes",
+      "axis": "details.rfc8785",
+      "operands": [
+        {"name": "actual-ten", "snapshot": "aggregate-raw-limit", "override": {"details": {"limitName": "aggregateRawBytes", "limit": 1, "actual": 10}}},
+        {"name": "actual-two", "snapshot": "aggregate-raw-limit", "override": {"details": {"actual": 2, "limit": 1, "limitName": "aggregateRawBytes"}}}
+      ],
+      "expected": ["actual-ten", "actual-two"]
+    }
+  ],
+  "detailCanonicalizationCases": [
+    {
+      "name": "nested-compatibility-details",
+      "details": {
+        "expectedCompatibility": {"token": "example/z/v1", "familyVersion": 1, "family": "exact"},
+        "actualCompatibility": {"token": "example/a/v1", "family": "exact", "familyVersion": 1}
+      },
+      "canonicalUtf8Hex": "7b2261637475616c436f6d7061746962696c697479223a7b2266616d696c79223a226578616374222c2266616d696c7956657273696f6e223a312c22746f6b656e223a226578616d706c652f612f7631227d2c226578706563746564436f6d7061746962696c697479223a7b2266616d696c79223a226578616374222c2266616d696c7956657273696f6e223a312c22746f6b656e223a226578616d706c652f7a2f7631227d7d"
+    },
+    {
+      "name": "unicode-detail-bytes",
+      "details": {"z": "😀", "a": {"ö": "€", "\r": "line\n"}},
+      "canonicalUtf8Hex": "7b2261223a7b225c72223a226c696e655c6e222c22c3b6223a22e282ac227d2c227a223a22f09f9880227d"
+    }
+  ],
+  "rankAdjacency": {
+    "phases": [["decode", "schema"], ["schema", "declaration"], ["declaration", "profile"], ["profile", "binding"], ["binding", "graph"], ["graph", "output"]],
+    "codes": [
+      ["decode.invalid-json", "decode.duplicate-key"], ["decode.duplicate-key", "input.limit-exceeded"], ["input.limit-exceeded", "schema.unsupported-version"], ["schema.unsupported-version", "schema.unknown-field"], ["schema.unknown-field", "schema.invalid-value"], ["schema.invalid-value", "schema.non-plain-value"], ["schema.non-plain-value", "identity.invalid"], ["identity.invalid", "declaration.duplicate-implementation"], ["declaration.duplicate-implementation", "declaration.duplicate-capability"], ["declaration.duplicate-capability", "declaration.duplicate-slot"], ["declaration.duplicate-slot", "profile.duplicate-root"], ["profile.duplicate-root", "profile.unknown-root"], ["profile.unknown-root", "profile.duplicate-selection"], ["profile.duplicate-selection", "profile.unknown-module"], ["profile.unknown-module", "profile.unknown-implementation"], ["profile.unknown-implementation", "profile.implementation-mismatch"], ["profile.implementation-mismatch", "profile.missing-selection"], ["profile.missing-selection", "profile.unreachable-selection"], ["profile.unreachable-selection", "binding.duplicate"], ["binding.duplicate", "binding.missing"], ["binding.missing", "binding.unknown-consumer"], ["binding.unknown-consumer", "binding.unknown-slot"], ["binding.unknown-slot", "binding.unknown-provider"], ["binding.unknown-provider", "binding.provider-not-selected"], ["binding.provider-not-selected", "binding.cardinality"], ["binding.cardinality", "binding.capability-missing"], ["binding.capability-missing", "binding.compatibility-mismatch"], ["binding.compatibility-mismatch", "graph.cycle"], ["graph.cycle", "diagnostics.truncated"]
+    ]
+  },
+  "rejectedProtocolMutants": [
+    {"name": "caller-index-after-identity", "rule": "normalized-coordinate-after-identity"},
+    {"name": "raw-prefix-excluded-from-limit", "rule": "prefix-inclusive-32-segment-cap"},
+    {"name": "hostile-key-echo", "rule": "stop-before-unknown-key"},
+    {"name": "hostile-key-hash", "rule": "never-transform-unknown-key"},
+    {"name": "hostile-key-truncation-marker", "rule": "never-mark-unknown-key"},
+    {"name": "global-phase-barrier", "rule": "independent-facts-continue"},
+    {"name": "invalid-binding-unreachable-cascade", "rule": "suppress-local-derivative"},
+    {"name": "unreachable-profile-phase", "rule": "unreachable-is-graph-phase"},
+    {"name": "unreachable-without-binding-prerequisite", "rule": "unreachable-requires-valid-bindings"},
+    {"name": "duplicate-selection-suppresses-mismatch", "rule": "overlapping-failures-remain-independent"},
+    {"name": "incomplete-identity-census-emits-negative", "rule": "negative-claims-require-complete-census"},
+    {"name": "invalid-independent-edge-suppresses-scc", "rule": "positive-scc-remains-independent"},
+    {"name": "plan-with-diagnostics", "rule": "failure-forbids-plan-and-digest"}
+  ],
+  "sccGraphCases": [
+    {
+      "name": "directed-disjoint-components",
+      "nodes": ["example/a/default", "example/b/default", "example/c/default", "example/d/default", "example/e/default", "example/f/default", "example/g/default", "example/z/default"],
+      "edges": [
+        {"id": "a-self", "from": "example/a/default", "to": "example/a/default"},
+        {"id": "b-to-c", "from": "example/b/default", "to": "example/c/default"},
+        {"id": "c-to-b", "from": "example/c/default", "to": "example/b/default"},
+        {"id": "d-to-e", "from": "example/d/default", "to": "example/e/default"},
+        {"id": "e-to-d", "from": "example/e/default", "to": "example/d/default"},
+        {"id": "f-to-g", "from": "example/f/default", "to": "example/g/default"},
+        {"id": "z-to-b", "from": "example/z/default", "to": "example/b/default"},
+        {"id": "z-to-b-parallel", "from": "example/z/default", "to": "example/b/default"},
+        {"id": "z-to-c", "from": "example/z/default", "to": "example/c/default"}
+      ],
+      "permutations": [
+        {"nodeOrder": ["example/a/default", "example/b/default", "example/c/default", "example/d/default", "example/e/default", "example/f/default", "example/g/default", "example/z/default"], "edgeOrder": ["a-self", "b-to-c", "c-to-b", "d-to-e", "e-to-d", "f-to-g", "z-to-b", "z-to-b-parallel", "z-to-c"]},
+        {"nodeOrder": ["example/z/default", "example/g/default", "example/f/default", "example/e/default", "example/d/default", "example/c/default", "example/b/default", "example/a/default"], "edgeOrder": ["z-to-c", "z-to-b-parallel", "z-to-b", "f-to-g", "e-to-d", "d-to-e", "c-to-b", "b-to-c", "a-self"]},
+        {"nodeOrder": ["example/d/default", "example/a/default", "example/g/default", "example/c/default", "example/z/default", "example/e/default", "example/b/default", "example/f/default"], "edgeOrder": ["c-to-b", "a-self", "z-to-c", "z-to-b", "e-to-d", "f-to-g", "z-to-b-parallel", "b-to-c", "d-to-e"]}
+      ],
+      "expected": [
+        ["example/a/default"],
+        ["example/b/default", "example/c/default"],
+        ["example/d/default", "example/e/default"]
+      ]
+    }
+  ]
+}

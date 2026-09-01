@@ -1,0 +1,53 @@
+{
+  "kind": "get-modular.canonical-vectors",
+  "vectorVersion": 1,
+  "positive": [
+    {
+      "name": "single-root-empty-bindings",
+      "envelope": {
+        "kind": "get-modular.plan-content",
+        "protocolVersion": 1,
+        "canonicalization": "RFC8785",
+        "hashAlgorithm": "SHA-256",
+        "plan": {
+          "kind": "get-modular.composition-plan",
+          "schemaVersion": 1,
+          "profileId": "example/default",
+          "roots": ["example/activity"],
+          "selections": [
+            {
+              "moduleId": "example/activity",
+              "implementationId": "example/activity/default"
+            }
+          ],
+          "bindings": [],
+          "dependencyOrder": ["example/activity/default"]
+        }
+      },
+      "canonicalUtf8": "{\"canonicalization\":\"RFC8785\",\"hashAlgorithm\":\"SHA-256\",\"kind\":\"get-modular.plan-content\",\"plan\":{\"bindings\":[],\"dependencyOrder\":[\"example/activity/default\"],\"kind\":\"get-modular.composition-plan\",\"profileId\":\"example/default\",\"roots\":[\"example/activity\"],\"schemaVersion\":1,\"selections\":[{\"implementationId\":\"example/activity/default\",\"moduleId\":\"example/activity\"}]},\"protocolVersion\":1}",
+      "digest": "gm-plan:v1:sha-256:fd345e7a3ccefcf40631ebfcb56813858e68258812c19776d817330c5e2c0e78"
+    }
+  ],
+  "negative": [
+    {
+      "name": "duplicate-object-key",
+      "rawJson": "{\"kind\":\"get-modular.composition-profile\",\"kind\":\"duplicate\"}",
+      "diagnosticCode": "decode.duplicate-key"
+    },
+    {
+      "name": "lone-surrogate",
+      "rawJson": "{\"profileId\":\"example/\\ud800\"}",
+      "diagnosticCode": "schema.invalid-value"
+    },
+    {
+      "name": "negative-zero",
+      "rawJson": "{\"schemaVersion\":-0}",
+      "diagnosticCode": "schema.invalid-value"
+    },
+    {
+      "name": "unknown-field",
+      "rawJson": "{\"kind\":\"get-modular.composition-profile\",\"unknown\":true}",
+      "diagnosticCode": "schema.unknown-field"
+    }
+  ]
+}

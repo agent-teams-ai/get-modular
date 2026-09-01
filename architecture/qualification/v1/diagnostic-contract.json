@@ -1,0 +1,476 @@
+{
+  "kind": "get-modular.diagnostic-contract",
+  "contractVersion": 1,
+  "codeDisposition": {
+    "policy": "closed-ordered-partition-of-immutable-base-catalog",
+    "emittable": [
+      "decode.invalid-json",
+      "decode.duplicate-key",
+      "input.limit-exceeded",
+      "schema.unsupported-version",
+      "schema.unknown-field",
+      "schema.invalid-value",
+      "schema.non-plain-value",
+      "identity.invalid",
+      "declaration.duplicate-implementation",
+      "declaration.duplicate-capability",
+      "declaration.duplicate-slot",
+      "profile.duplicate-root",
+      "profile.unknown-root",
+      "profile.duplicate-selection",
+      "profile.unknown-module",
+      "profile.unknown-implementation",
+      "profile.implementation-mismatch",
+      "profile.missing-selection",
+      "profile.unreachable-selection",
+      "binding.duplicate",
+      "binding.missing",
+      "binding.unknown-consumer",
+      "binding.unknown-slot",
+      "binding.unknown-provider",
+      "binding.provider-not-selected",
+      "binding.cardinality",
+      "binding.capability-missing",
+      "binding.compatibility-mismatch",
+      "graph.cycle",
+      "diagnostics.truncated"
+    ],
+    "reservedNonEmittable": [
+      "output.canonicalization-failed"
+    ]
+  },
+  "coordinateFieldOrder": [
+    "moduleId",
+    "implementationId",
+    "slotId",
+    "providerImplementationId"
+  ],
+  "comparator": {
+    "missingCoordinate": "before-present",
+    "identifierOrder": "ascii-code-unit",
+    "pathKindOrder": ["field", "index"],
+    "pathPrefixOrder": "shorter-first",
+    "fieldOrder": "ascii-code-unit",
+    "indexOrder": "numeric-ascending",
+    "detailsOrder": "rfc8785-utf8",
+    "sccArrayOrder": "lexicographic-members-shorter-prefix-first",
+    "requiredDecisivePathPositions": [1, 2, 32],
+    "evidenceAxes": [
+      "phase",
+      "code",
+      "coordinate.moduleId.value",
+      "coordinate.implementationId.value",
+      "coordinate.slotId.value",
+      "coordinate.providerImplementationId.value",
+      "path.kind",
+      "path.field-value",
+      "path.index-value",
+      "path.length",
+      "path.later-kind",
+      "path.later-field-value",
+      "path.later-index-value",
+      "details.rfc8785"
+    ]
+  },
+  "boundedEmissionProtocol": {
+    "maximumIndex": 65535,
+    "maximumPathSegments": 32,
+    "invocationPrefixes": {
+      "rawDeclaration": [{"kind": "field", "value": "declarations"}, {"kind": "index", "source": "document-ordinal"}],
+      "rawProfile": [{"kind": "field", "value": "profile"}],
+      "objectDeclaration": [{"kind": "field", "value": "declarations"}, {"kind": "index", "source": "array-ordinal-before-identity"}],
+      "objectProfile": [{"kind": "field", "value": "profile"}]
+    },
+    "prefixSegmentsCountTowardMaximum": true,
+    "pathPolicyComposition": {"basePolicyScope": "document-local", "order": ["derive-safe-local-path", "stop-before-unknown-key", "prepend-invocation-prefix", "clip-to-32"], "structuralMayBeSatisfiedByInvocationPrefix": true},
+    "beforeIdentity": "invocation-prefix-and-schema-known-structural-position-only",
+    "afterIdentity": "normalized-semantic-coordinate-replaces-caller-order",
+    "allowedPathTokens": "invocation-roots-schema-known-fields-and-bounded-indexes-only",
+    "unknownKey": "stop-before-key-never-echo-hash-or-truncate-spelling",
+    "clipping": "retain-first-32-safe-segments-without-marker"
+  },
+  "failureEvaluationProtocol": {
+    "phases": "classification-and-sort-only",
+    "prerequisites": "fact-local",
+    "independentFactsContinue": true,
+    "failedPrerequisite": "suppress-dependent-derivatives-only",
+    "unreachableSelection": {"phase": "graph", "requires": ["valid-root", "valid-selections", "valid-reachability-bindings"]},
+    "failureResult": {"required": ["ok", "diagnostics"], "forbidden": ["plan", "digest"], "reservedCode": "successor-qualification-failure"},
+    "internalFailure": {
+      "kinds": ["canonicalizer", "hash", "platform"],
+      "outcome": "reject-promise",
+      "diagnosticEmission": "forbidden",
+      "publicFaultInjection": "forbidden",
+      "serializedRejectionShape": "forbidden"
+    }
+  },
+  "prerequisiteCatalog": {
+    "policy": "closed-bounded-facts-no-predicates",
+    "candidateGeneration": {
+      "policy": "closed-normalize-before-deduplicate",
+      "candidateKey": ["code", "phase", "path", "coordinate", "details"],
+      "duplicateHandling": "drop-duplicate-normalized-candidate",
+      "occurrenceHandling": "all-input-occurrences-are-counted-before-normalization",
+      "ordering": "normative-comparator-after-candidate-deduplication"
+    },
+    "factModel": {
+      "states": ["valid", "invalid", "unavailable"],
+      "eligibility": {"allPrerequisitesValid":"candidate-eligible","anyPrerequisiteInvalidOrUnavailable":"candidate-suppressed","independentCandidates":"continue","ordering":"normative-comparator-after-eligibility"},
+      "maximumPrerequisitesPerCandidate": 4,
+      "facts": [
+        {"factId":"batch.raw-bytes-admitted","scope":"batch"},
+        {"factId":"document.raw-bytes-admitted","scope":"document"},
+        {"factId":"document.decoded","scope":"document"},
+        {"factId":"document.schema-valid","scope":"document"},
+        {"factId":"declaration.identity-census-complete","scope":"batch"},
+        {"factId":"declaration.module-census-complete","scope":"batch"},
+        {"factId":"profile.root-census-complete","scope":"profile"},
+        {"factId":"profile.selection-census-complete","scope":"profile"},
+        {"factId":"profile.selection-uniqueness","scope":"profile"},
+        {"factId":"binding.consumer-census-complete","scope":"binding"},
+        {"factId":"binding.slot-census-complete","scope":"binding"},
+        {"factId":"binding.provider-census-complete","scope":"binding"},
+        {"factId":"binding.reached-frontier-complete","scope":"graph"},
+        {"factId":"graph.selected-node-census-complete","scope":"graph"},
+        {"factId":"graph.positive-edge-subgraph-complete","scope":"graph"},
+        {"factId":"output.plan-eligible","scope":"output"},
+        {"factId":"output.diagnostic-stream-complete","scope":"output"}
+      ]
+    },
+    "diagnostics": [
+      {"code":"decode.invalid-json","prerequisiteGroup":"decode.document","prerequisites":["document.raw-bytes-admitted"],"suppressionScope":"document"},
+      {"code":"decode.duplicate-key","prerequisiteGroup":"decode.document-keys","prerequisites":["document.raw-bytes-admitted"],"suppressionScope":"document"},
+      {"code":"input.limit-exceeded","prerequisiteGroup":"resource.selected-limit","prerequisites":[],"suppressionScope":"limit"},
+      {"code":"schema.unsupported-version","prerequisiteGroup":"schema.document","prerequisites":["document.decoded"],"suppressionScope":"document"},
+      {"code":"schema.unknown-field","prerequisiteGroup":"schema.document","prerequisites":["document.decoded"],"suppressionScope":"document"},
+      {"code":"schema.invalid-value","prerequisiteGroup":"schema.document","prerequisites":["document.decoded"],"suppressionScope":"document"},
+      {"code":"schema.non-plain-value","prerequisiteGroup":"schema.document","prerequisites":["document.decoded"],"suppressionScope":"document"},
+      {"code":"identity.invalid","prerequisiteGroup":"schema.identity","prerequisites":["document.decoded"],"suppressionScope":"document"},
+      {"code":"declaration.duplicate-implementation","prerequisiteGroup":"declaration.identity-census","prerequisites":["document.schema-valid"],"suppressionScope":"declaration"},
+      {"code":"declaration.duplicate-capability","prerequisiteGroup":"declaration.capabilities","prerequisites":["document.schema-valid"],"suppressionScope":"declaration"},
+      {"code":"declaration.duplicate-slot","prerequisiteGroup":"declaration.slots","prerequisites":["document.schema-valid"],"suppressionScope":"declaration"},
+      {"code":"profile.duplicate-root","prerequisiteGroup":"profile.roots","prerequisites":["document.schema-valid"],"suppressionScope":"profile"},
+      {"code":"profile.unknown-root","prerequisiteGroup":"profile.roots","prerequisites":["document.schema-valid","declaration.module-census-complete"],"suppressionScope":"profile"},
+      {"code":"profile.duplicate-selection","prerequisiteGroup":"profile.selections","prerequisites":["document.schema-valid"],"suppressionScope":"profile"},
+      {"code":"profile.unknown-module","prerequisiteGroup":"profile.selections","prerequisites":["document.schema-valid","declaration.module-census-complete"],"suppressionScope":"profile"},
+      {"code":"profile.unknown-implementation","prerequisiteGroup":"profile.selections","prerequisites":["document.schema-valid","declaration.identity-census-complete"],"suppressionScope":"profile"},
+      {"code":"profile.implementation-mismatch","prerequisiteGroup":"profile.selections","prerequisites":["document.schema-valid","declaration.identity-census-complete"],"suppressionScope":"profile"},
+      {"code":"profile.missing-selection","prerequisiteGroup":"profile.selection-census","prerequisites":["document.schema-valid","declaration.module-census-complete","profile.selection-census-complete"],"suppressionScope":"profile"},
+      {"code":"profile.unreachable-selection","prerequisiteGroup":"graph.reachability-frontier","prerequisites":["profile.root-census-complete","profile.selection-census-complete","binding.reached-frontier-complete","graph.selected-node-census-complete"],"suppressionScope":"graph"},
+      {"code":"binding.duplicate","prerequisiteGroup":"binding.slot-frontier","prerequisites":["document.schema-valid","binding.consumer-census-complete","binding.slot-census-complete"],"suppressionScope":"binding"},
+      {"code":"binding.missing","prerequisiteGroup":"binding.slot-frontier","prerequisites":["document.schema-valid","binding.consumer-census-complete","binding.slot-census-complete"],"suppressionScope":"binding"},
+      {"code":"binding.unknown-consumer","prerequisiteGroup":"binding.consumer","prerequisites":["document.schema-valid","declaration.identity-census-complete"],"suppressionScope":"binding"},
+      {"code":"binding.unknown-slot","prerequisiteGroup":"binding.slot","prerequisites":["document.schema-valid","declaration.identity-census-complete","binding.consumer-census-complete"],"suppressionScope":"binding"},
+      {"code":"binding.unknown-provider","prerequisiteGroup":"binding.provider","prerequisites":["document.schema-valid","declaration.identity-census-complete","binding.consumer-census-complete","binding.slot-census-complete"],"suppressionScope":"binding"},
+      {"code":"binding.provider-not-selected","prerequisiteGroup":"binding.provider-selection","prerequisites":["document.schema-valid","binding.provider-census-complete","profile.selection-census-complete"],"suppressionScope":"binding"},
+      {"code":"binding.cardinality","prerequisiteGroup":"binding.cardinality","prerequisites":["document.schema-valid","binding.consumer-census-complete","binding.slot-census-complete"],"suppressionScope":"binding"},
+      {"code":"binding.capability-missing","prerequisiteGroup":"binding.capability","prerequisites":["document.schema-valid","binding.consumer-census-complete","binding.slot-census-complete","binding.provider-census-complete"],"suppressionScope":"binding"},
+      {"code":"binding.compatibility-mismatch","prerequisiteGroup":"binding.compatibility","prerequisites":["document.schema-valid","binding.consumer-census-complete","binding.slot-census-complete","binding.provider-census-complete"],"suppressionScope":"binding"},
+      {"code":"graph.cycle","prerequisiteGroup":"graph.strongly-connected-components","prerequisites":["graph.selected-node-census-complete","graph.positive-edge-subgraph-complete"],"suppressionScope":"graph"},
+      {"code":"diagnostics.truncated","prerequisiteGroup":"output.diagnostic-collector","prerequisites":["output.diagnostic-stream-complete"],"suppressionScope":"output"}
+    ],
+    "limits": [
+      {"limitName":"declarationRawDocumentBytes","prerequisiteGroup":"decode.declaration-document-bytes","prerequisites":[],"suppressionScope":"document"},
+      {"limitName":"profileRawDocumentBytes","prerequisiteGroup":"decode.profile-document-bytes","prerequisites":[],"suppressionScope":"document"},
+      {"limitName":"aggregateRawBytes","prerequisiteGroup":"decode.aggregate-raw-bytes","prerequisites":[],"suppressionScope":"batch"},
+      {"limitName":"jsonValueOccurrences","prerequisiteGroup":"schema.value-occurrences","prerequisites":["batch.raw-bytes-admitted"],"suppressionScope":"batch"},
+      {"limitName":"jsonDepth","prerequisiteGroup":"decode.document-depth","prerequisites":["document.raw-bytes-admitted"],"suppressionScope":"document"},
+      {"limitName":"aggregateStringBytes","prerequisiteGroup":"decode.aggregate-string-bytes","prerequisites":["batch.raw-bytes-admitted"],"suppressionScope":"batch"},
+      {"limitName":"identifierBytes","prerequisiteGroup":"schema.identifier-bytes","prerequisites":["document.decoded"],"suppressionScope":"document"},
+      {"limitName":"ownerPathSegments","prerequisiteGroup":"declaration.owner-path","prerequisites":["document.decoded"],"suppressionScope":"declaration"},
+      {"limitName":"declarations","prerequisiteGroup":"declaration.batch-count","prerequisites":["batch.raw-bytes-admitted"],"suppressionScope":"batch"},
+      {"limitName":"capabilitiesPerDeclaration","prerequisiteGroup":"declaration.capability-count","prerequisites":["document.decoded"],"suppressionScope":"declaration"},
+      {"limitName":"slotsPerDeclaration","prerequisiteGroup":"declaration.slot-count","prerequisites":["document.decoded"],"suppressionScope":"declaration"},
+      {"limitName":"totalCapabilities","prerequisiteGroup":"declaration.total-capabilities","prerequisites":["batch.raw-bytes-admitted"],"suppressionScope":"batch"},
+      {"limitName":"totalSlots","prerequisiteGroup":"declaration.total-slots","prerequisites":["batch.raw-bytes-admitted"],"suppressionScope":"batch"},
+      {"limitName":"roots","prerequisiteGroup":"profile.root-count","prerequisites":["document.decoded"],"suppressionScope":"profile"},
+      {"limitName":"selections","prerequisiteGroup":"profile.selection-count","prerequisites":["document.decoded"],"suppressionScope":"profile"},
+      {"limitName":"bindings","prerequisiteGroup":"profile.binding-count","prerequisites":["document.decoded"],"suppressionScope":"profile"},
+      {"limitName":"graphEdges","prerequisiteGroup":"graph.edge-count","prerequisites":["profile.selection-census-complete"],"suppressionScope":"graph"},
+      {"limitName":"providersPerManySlot","prerequisiteGroup":"binding.provider-count","prerequisites":["binding.consumer-census-complete","binding.slot-census-complete"],"suppressionScope":"binding"},
+      {"limitName":"graphDepth","prerequisiteGroup":"graph.depth","prerequisites":["graph.selected-node-census-complete","graph.positive-edge-subgraph-complete"],"suppressionScope":"graph"},
+      {"limitName":"diagnostics","prerequisiteGroup":"output.diagnostic-count","prerequisites":["output.diagnostic-stream-complete"],"suppressionScope":"output"},
+      {"limitName":"diagnosticPathSegments","prerequisiteGroup":"output.diagnostic-path","prerequisites":["output.diagnostic-stream-complete"],"suppressionScope":"output"}
+    ],
+    "exactCases": [
+      {"caseId":"diag.object.duplicate-selection-with-mismatch.v1","factStates":{"batch.raw-bytes-admitted":"valid","document.raw-bytes-admitted":"valid","document.decoded":"valid","document.schema-valid":"valid","declaration.identity-census-complete":"valid","declaration.module-census-complete":"valid","profile.root-census-complete":"valid","profile.selection-census-complete":"valid","profile.selection-uniqueness":"invalid","binding.consumer-census-complete":"valid","binding.slot-census-complete":"valid","binding.provider-census-complete":"valid","binding.reached-frontier-complete":"valid","graph.selected-node-census-complete":"valid","graph.positive-edge-subgraph-complete":"valid","output.plan-eligible":"valid","output.diagnostic-stream-complete":"valid"},"candidateCodes":["profile.duplicate-selection","profile.implementation-mismatch"],"eligibleCodes":["profile.duplicate-selection","profile.implementation-mismatch"],"suppressedCodes":[]},
+      {"caseId":"diag.object.negative-census-suppression.v1","factStates":{"batch.raw-bytes-admitted":"valid","document.raw-bytes-admitted":"valid","document.decoded":"valid","document.schema-valid":"valid","declaration.identity-census-complete":"invalid","declaration.module-census-complete":"valid","profile.root-census-complete":"valid","profile.selection-census-complete":"valid","profile.selection-uniqueness":"valid","binding.consumer-census-complete":"valid","binding.slot-census-complete":"valid","binding.provider-census-complete":"valid","binding.reached-frontier-complete":"valid","graph.selected-node-census-complete":"valid","graph.positive-edge-subgraph-complete":"valid","output.plan-eligible":"valid","output.diagnostic-stream-complete":"valid"},"candidateCodes":["declaration.duplicate-implementation","profile.unknown-implementation"],"eligibleCodes":["declaration.duplicate-implementation"],"suppressedCodes":["profile.unknown-implementation"]},
+      {"caseId":"diag.object.independent-scc-with-invalid-edge.v1","factStates":{"batch.raw-bytes-admitted":"valid","document.raw-bytes-admitted":"valid","document.decoded":"valid","document.schema-valid":"valid","declaration.identity-census-complete":"valid","declaration.module-census-complete":"valid","profile.root-census-complete":"valid","profile.selection-census-complete":"valid","profile.selection-uniqueness":"valid","binding.consumer-census-complete":"valid","binding.slot-census-complete":"valid","binding.provider-census-complete":"valid","binding.reached-frontier-complete":"invalid","graph.selected-node-census-complete":"valid","graph.positive-edge-subgraph-complete":"valid","output.plan-eligible":"valid","output.diagnostic-stream-complete":"valid"},"candidateCodes":["binding.unknown-provider","graph.cycle"],"eligibleCodes":["binding.unknown-provider","graph.cycle"],"suppressedCodes":[]}
+    ]
+  },
+  "pathPolicyByCode": {
+    "decode.invalid-json": "empty",
+    "decode.duplicate-key": "structural",
+    "input.limit-exceeded": "limit-specific",
+    "schema.unsupported-version": "structural",
+    "schema.unknown-field": "structural",
+    "schema.invalid-value": "structural",
+    "schema.non-plain-value": "structural",
+    "identity.invalid": "structural",
+    "declaration.duplicate-implementation": "empty",
+    "declaration.duplicate-capability": "structural",
+    "declaration.duplicate-slot": "structural",
+    "profile.duplicate-root": "empty",
+    "profile.unknown-root": "empty",
+    "profile.duplicate-selection": "empty",
+    "profile.unknown-module": "empty",
+    "profile.unknown-implementation": "empty",
+    "profile.implementation-mismatch": "empty",
+    "profile.missing-selection": "empty",
+    "profile.unreachable-selection": "empty",
+    "binding.duplicate": "empty",
+    "binding.missing": "empty",
+    "binding.unknown-consumer": "empty",
+    "binding.unknown-slot": "empty",
+    "binding.unknown-provider": "empty",
+    "binding.provider-not-selected": "empty",
+    "binding.cardinality": "empty",
+    "binding.capability-missing": "empty",
+    "binding.compatibility-mismatch": "empty",
+    "graph.cycle": "empty",
+    "diagnostics.truncated": "empty"
+  },
+  "limitPathPolicies": {
+    "declarationRawDocumentBytes": "structural",
+    "profileRawDocumentBytes": "structural",
+    "aggregateRawBytes": "empty",
+    "jsonValueOccurrences": "empty",
+    "jsonDepth": "structural",
+    "aggregateStringBytes": "empty",
+    "identifierBytes": "structural",
+    "ownerPathSegments": "structural",
+    "declarations": "empty",
+    "capabilitiesPerDeclaration": "structural",
+    "slotsPerDeclaration": "structural",
+    "totalCapabilities": "empty",
+    "totalSlots": "empty",
+    "roots": "structural",
+    "selections": "structural",
+    "bindings": "structural",
+    "graphEdges": "empty",
+    "providersPerManySlot": "structural",
+    "graphDepth": "empty",
+    "diagnostics": "empty",
+    "diagnosticPathSegments": "empty"
+  },
+  "limitPhases": {
+    "declarationRawDocumentBytes": "decode",
+    "profileRawDocumentBytes": "decode",
+    "aggregateRawBytes": "decode",
+    "jsonValueOccurrences": "schema",
+    "jsonDepth": "decode",
+    "aggregateStringBytes": "decode",
+    "identifierBytes": "schema",
+    "ownerPathSegments": "declaration",
+    "declarations": "declaration",
+    "capabilitiesPerDeclaration": "declaration",
+    "slotsPerDeclaration": "declaration",
+    "totalCapabilities": "declaration",
+    "totalSlots": "declaration",
+    "roots": "profile",
+    "selections": "profile",
+    "bindings": "profile",
+    "graphEdges": "graph",
+    "providersPerManySlot": "binding",
+    "graphDepth": "graph",
+    "diagnostics": "output",
+    "diagnosticPathSegments": "output"
+  },
+  "variants": [
+    {
+      "code": "decode.invalid-json",
+      "phases": ["decode"],
+      "coordinate": {"required": [], "allowed": []},
+      "details": {"required": ["reason"], "reasonValues": ["invalid-json"]}
+    },
+    {
+      "code": "decode.duplicate-key",
+      "phases": ["decode"],
+      "coordinate": {"required": [], "allowed": []},
+      "details": {"required": ["reason"], "reasonValues": ["duplicate-key"]}
+    },
+    {
+      "code": "input.limit-exceeded",
+      "phases": ["decode", "schema", "declaration", "profile", "binding", "graph", "output"],
+      "coordinate": {"required": [], "allowed": []},
+      "details": {"required": ["limitName", "limit", "actual"]}
+    },
+    {
+      "code": "schema.unsupported-version",
+      "phases": ["schema"],
+      "coordinate": {"required": [], "allowed": []},
+      "details": {"required": ["reason"], "reasonValues": ["unsupported-version"]}
+    },
+    {
+      "code": "schema.unknown-field",
+      "phases": ["schema"],
+      "coordinate": {"required": [], "allowed": []},
+      "details": {"required": ["reason"], "reasonValues": ["unknown-field"]}
+    },
+    {
+      "code": "schema.invalid-value",
+      "phases": ["schema"],
+      "coordinate": {"required": [], "allowed": []},
+      "details": {"required": ["reason"], "reasonValues": ["invalid-type", "invalid-format"]}
+    },
+    {
+      "code": "schema.non-plain-value",
+      "phases": ["schema"],
+      "coordinate": {"required": [], "allowed": []},
+      "details": {"required": ["reason"], "reasonValues": ["non-plain-value"]}
+    },
+    {
+      "code": "identity.invalid",
+      "phases": ["schema"],
+      "coordinate": {"required": [], "allowed": []},
+      "details": {"required": ["reason"], "reasonValues": ["invalid-format"]}
+    },
+    {
+      "code": "declaration.duplicate-implementation",
+      "phases": ["declaration"],
+      "coordinate": {"required": ["implementationId"], "allowed": ["implementationId"]},
+      "details": {"required": ["reason"], "reasonValues": ["duplicate"]}
+    },
+    {
+      "code": "declaration.duplicate-capability",
+      "phases": ["declaration"],
+      "coordinate": {"required": ["implementationId"], "allowed": ["implementationId"]},
+      "details": {"required": ["reason"], "reasonValues": ["duplicate"]}
+    },
+    {
+      "code": "declaration.duplicate-slot",
+      "phases": ["declaration"],
+      "coordinate": {"required": ["implementationId", "slotId"], "allowed": ["implementationId", "slotId"]},
+      "details": {"required": ["reason"], "reasonValues": ["duplicate"]}
+    },
+    {
+      "code": "profile.duplicate-root",
+      "phases": ["profile"],
+      "coordinate": {"required": ["moduleId"], "allowed": ["moduleId"]},
+      "details": {"required": ["reason"], "reasonValues": ["duplicate"]}
+    },
+    {
+      "code": "profile.unknown-root",
+      "phases": ["profile"],
+      "coordinate": {"required": ["moduleId"], "allowed": ["moduleId"]},
+      "details": {"required": ["reason"], "reasonValues": ["unknown"]}
+    },
+    {
+      "code": "profile.duplicate-selection",
+      "phases": ["profile"],
+      "coordinate": {"required": ["moduleId"], "allowed": ["moduleId"]},
+      "details": {"required": ["reason"], "reasonValues": ["duplicate"]}
+    },
+    {
+      "code": "profile.unknown-module",
+      "phases": ["profile"],
+      "coordinate": {"required": ["moduleId"], "allowed": ["moduleId"]},
+      "details": {"required": ["reason"], "reasonValues": ["unknown"]}
+    },
+    {
+      "code": "profile.unknown-implementation",
+      "phases": ["profile"],
+      "coordinate": {"required": ["moduleId", "implementationId"], "allowed": ["moduleId", "implementationId"]},
+      "details": {"required": ["reason"], "reasonValues": ["unknown"]}
+    },
+    {
+      "code": "profile.implementation-mismatch",
+      "phases": ["profile"],
+      "coordinate": {"required": ["moduleId", "implementationId"], "allowed": ["moduleId", "implementationId"]},
+      "details": {"required": ["reason"], "reasonValues": ["mismatch"]}
+    },
+    {
+      "code": "profile.missing-selection",
+      "phases": ["profile"],
+      "coordinate": {"required": ["moduleId"], "allowed": ["moduleId"]},
+      "details": {"required": ["reason"], "reasonValues": ["missing"]}
+    },
+    {
+      "code": "profile.unreachable-selection",
+      "phases": ["graph"],
+      "coordinate": {"required": ["moduleId", "implementationId"], "allowed": ["moduleId", "implementationId"]},
+      "details": {"required": ["reason"], "reasonValues": ["unreachable"]}
+    },
+    {
+      "code": "binding.duplicate",
+      "phases": ["binding"],
+      "coordinate": {
+        "required": ["implementationId", "slotId", "providerImplementationId"],
+        "allowed": ["implementationId", "slotId", "providerImplementationId"]
+      },
+      "details": {"required": ["reason"], "reasonValues": ["duplicate"]}
+    },
+    {
+      "code": "binding.missing",
+      "phases": ["binding"],
+      "coordinate": {"required": ["implementationId", "slotId"], "allowed": ["implementationId", "slotId"]},
+      "details": {"required": ["reason"], "reasonValues": ["missing"]}
+    },
+    {
+      "code": "binding.unknown-consumer",
+      "phases": ["binding"],
+      "coordinate": {"required": ["implementationId"], "allowed": ["implementationId"]},
+      "details": {"required": ["reason"], "reasonValues": ["unknown"]}
+    },
+    {
+      "code": "binding.unknown-slot",
+      "phases": ["binding"],
+      "coordinate": {"required": ["implementationId", "slotId"], "allowed": ["implementationId", "slotId"]},
+      "details": {"required": ["reason"], "reasonValues": ["unknown"]}
+    },
+    {
+      "code": "binding.unknown-provider",
+      "phases": ["binding"],
+      "coordinate": {
+        "required": ["implementationId", "slotId", "providerImplementationId"],
+        "allowed": ["implementationId", "slotId", "providerImplementationId"]
+      },
+      "details": {"required": ["reason"], "reasonValues": ["unknown"]}
+    },
+    {
+      "code": "binding.provider-not-selected",
+      "phases": ["binding"],
+      "coordinate": {
+        "required": ["implementationId", "slotId", "providerImplementationId"],
+        "allowed": ["implementationId", "slotId", "providerImplementationId"]
+      },
+      "details": {"required": ["reason"], "reasonValues": ["mismatch"]}
+    },
+    {
+      "code": "binding.cardinality",
+      "phases": ["binding"],
+      "coordinate": {"required": ["implementationId", "slotId"], "allowed": ["implementationId", "slotId"]},
+      "details": {"required": ["expectedCardinality", "actualCardinality"]}
+    },
+    {
+      "code": "binding.capability-missing",
+      "phases": ["binding"],
+      "coordinate": {
+        "required": ["implementationId", "slotId", "providerImplementationId"],
+        "allowed": ["implementationId", "slotId", "providerImplementationId"]
+      },
+      "details": {"required": ["reason"], "reasonValues": ["missing"]}
+    },
+    {
+      "code": "binding.compatibility-mismatch",
+      "phases": ["binding"],
+      "coordinate": {
+        "required": ["implementationId", "slotId", "providerImplementationId"],
+        "allowed": ["implementationId", "slotId", "providerImplementationId"]
+      },
+      "details": {"required": ["expectedCompatibility", "actualCompatibility"]}
+    },
+    {
+      "code": "graph.cycle",
+      "phases": ["graph"],
+      "coordinate": {"required": [], "allowed": []},
+      "details": {"required": ["component"]}
+    },
+    {
+      "code": "diagnostics.truncated",
+      "phases": ["output"],
+      "coordinate": {"required": [], "allowed": []},
+      "details": {"required": ["omitted"]}
+    }
+  ]
+}

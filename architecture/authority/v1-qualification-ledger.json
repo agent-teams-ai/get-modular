@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "algorithm": "sha256-bytes",
+  "artifacts": [
+    {
+      "id": "GM-V1-CANONICALIZATION-VECTORS",
+      "path": "architecture/qualification/v1/canonicalization-vectors.json",
+      "immutableDigest": "sha256:df4241321f2dfc8dc33ec5a4e957828ef325403370b8b72205cc184e8625e65d"
+    },
+    {
+      "id": "GM-V1-DECODER-VECTORS",
+      "path": "architecture/qualification/v1/decoder-vectors.json",
+      "immutableDigest": "sha256:94d981c9193bd14cd61f5fbe3d7539dd7631f350cf7c3e36b57f731c674f3b1c"
+    },
+    {
+      "id": "GM-V1-DIAGNOSTIC-CONTRACT",
+      "path": "architecture/qualification/v1/diagnostic-contract.json",
+      "immutableDigest": "sha256:3f7d8a7a4a5a9d7b54f72d5e0915df3e437ab056107ab50294fa65a8e69b6c94"
+    },
+    {
+      "id": "GM-V1-DIAGNOSTIC-SNAPSHOTS",
+      "path": "architecture/qualification/v1/diagnostic-snapshots.json",
+      "immutableDigest": "sha256:c7806cca2e72bd04374b2c0d7a4a1c59da806f96abc54b9339eb53c13f4d5eda"
+    },
+    {
+      "id": "GM-V1-NORMALIZATION-VECTORS",
+      "path": "architecture/qualification/v1/normalization-vectors.json",
+      "immutableDigest": "sha256:64f97efa285f05924305f3b32d6b55f9fc5924950db55c2ed3938bbd11c81b99"
+    },
+    {
+      "id": "GM-V1-QUALIFICATION-CASE-MANIFEST",
+      "path": "architecture/qualification/v1/qualification-case-manifest.json",
+      "immutableDigest": "sha256:25896f00963d6e206aa754b094ef4fa7946ef7acfd108eded6de6b9480ec423b"
+    },
+    {
+      "id": "GM-V1-RESOURCE-BOUNDARY-VECTORS",
+      "path": "architecture/qualification/v1/resource-boundary-vectors.json",
+      "immutableDigest": "sha256:e33d0890b4b6a398b2f79c262ab5ec79dde02ac7ef7600e321dd32b42dc8a24d"
+    },
+    {
+      "id": "GM-V1-RESOURCE-PROFILE-V2",
+      "path": "architecture/qualification/v1/resource-profile-v2.json",
+      "immutableDigest": "sha256:9cc605e8a5b6b9553c4c12c1355eaf033daae8b7ecf000f7a159d88262c0674c"
+    }
+  ]
+}

@@ -1,13 +1,20 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
   PROFILE_DOCUMENT_PATH,
   PROFILE_PATH,
+  SOURCE_DEPENDENCY_POLICY_PATH,
   validateFeatureModuleStandardProfile,
-  validatePreConformanceArtifacts,
+  validateFirstProductionPackageAdmission,
 } from "../architecture/checks/feature-module-standard-profile.mjs";
+import {
+  productionArtifactPaths,
+  productionArtifactSymlinkPaths,
+} from "../architecture/checks/production-artifacts.mjs";
 
 const profile = JSON.parse(await readFile(PROFILE_PATH, "utf8"));
 const document = await readFile(PROFILE_DOCUMENT_PATH, "utf8");
@@ -59,24 +66,31 @@ test("rejects silent scope, mapping, and authority drift", () => {
 });
 
 test("rejects premature conformance claims and weakened evidence", () => {
-  const claimed = clone(profile);
-  claimed.adoption.conformance.status = "conformant";
-  assert.throws(() => validate({ profile: claimed }), /must remain not-claimed/u);
+  for (const [claim, status] of [
+    ["structural", "structural-conformant"],
+    ["runtime", "runtime-conformant"],
+  ]) {
+    const claimed = clone(profile);
+    claimed.adoption.conformance[claim].status = status;
+    assert.throws(() => validate({ profile: claimed }),
+      new RegExp(`${claim} conformance must remain not-claimed`, "u"));
+  }
 
   const missingEvidence = clone(profile);
-  missingEvidence.adoption.conformance.required_evidence.pop();
-  assert.throws(() => validate({ profile: missingEvidence }), /conformance evidence does not match/u);
+  missingEvidence.adoption.conformance.structural.required_evidence.pop();
+  assert.throws(() => validate({ profile: missingEvidence }),
+    /structural conformance evidence does not match/u);
 });
 
-test("blocks production artifacts until structural conformance is activated", () => {
-  assert.doesNotThrow(() => validatePreConformanceArtifacts({
-    conformanceStatus: "not-claimed",
-    productionArtifacts: [],
-  }));
-  assert.throws(() => validatePreConformanceArtifacts({
-    conformanceStatus: "not-claimed",
-    productionArtifacts: ["packages/core/src/index.ts"],
-  }), /production artifacts require structural conformance/u);
+test("keeps source admission distinct from structural and runtime conformance", () => {
+  const changed = clone(profile);
+  changed.adoption.admission.status = "source-admitted";
+  assert.doesNotThrow(() => validate({ profile: changed }));
+  assert.equal(changed.adoption.conformance.structural.status, "not-claimed");
+  assert.equal(changed.adoption.conformance.runtime.status, "not-claimed");
+
+  changed.adoption.admission.foundation.command = "node -e 'process.exit(0)'";
+  assert.throws(() => validate({ profile: changed }), /Foundation admission binding/u);
 });
 
 test("requires explicit owned deviation records", () => {
@@ -121,4 +135,119 @@ test("keeps the profile reachable for humans and agents", () => {
       "docs/architecture/other.md",
     ),
   }), /agent navigation must route/u);
+});
+
+test("keeps an empty pre-production repository honestly not-claimed", () => {
+  assert.equal(validateFirstProductionPackageAdmission({
+    productionArtifacts: [],
+    admission: profile.adoption.admission,
+    foundationConfig: { schemaVersion: 1 },
+    packageJson,
+    sourceDependencyPolicyPresent: false,
+  }), undefined);
+});
+
+test("first production package requires the Foundation source-dependency gate", () => {
+  const input = {
+    productionArtifacts: ["packages/core/src/index.ts"],
+    admission: {
+      ...profile.adoption.admission,
+      status: "source-admitted",
+    },
+    foundationConfig: { schemaVersion: 1 },
+    packageJson,
+    sourceDependencyPolicyPresent: false,
+  };
+  assert.throws(() => validateFirstProductionPackageAdmission(input),
+    /architecture\.source-dependencies capability/u);
+
+  const configured = clone(input);
+  configured.foundationConfig.capabilities = {
+    "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
+  };
+  assert.throws(() => validateFirstProductionPackageAdmission(configured),
+    /first production package requires/u);
+
+  configured.sourceDependencyPolicyPresent = true;
+  assert.equal(
+    validateFirstProductionPackageAdmission(configured),
+    SOURCE_DEPENDENCY_POLICY_PATH,
+  );
+
+  const missingFastGate = clone(configured);
+  missingFastGate.packageJson.scripts["check:fast"] = "pnpm docs:check";
+  assert.throws(() => validateFirstProductionPackageAdmission(missingFastGate),
+    /fast gate must execute/u);
+});
+
+test("first production package cannot use a no-op Foundation alias", () => {
+  const packageWithNoOp = clone(packageJson);
+  packageWithNoOp.scripts["foundation:check"] = "node -e 'process.exit(0)'";
+  assert.throws(() => validateFirstProductionPackageAdmission({
+    productionArtifacts: ["packages/core/src/index.ts"],
+    admission: { ...profile.adoption.admission, status: "source-admitted" },
+    foundationConfig: {
+      capabilities: {
+        "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
+      },
+    },
+    packageJson: packageWithNoOp,
+    sourceDependencyPolicyPresent: true,
+  }), /foundation:check must execute agent-teams-foundation check/u);
+});
+
+test("first production package rejects a package symlink", () => {
+  assert.throws(() => validateFirstProductionPackageAdmission({
+    productionArtifacts: ["packages/core/linked"],
+    productionArtifactSymlinks: ["packages/core/linked"],
+    admission: { ...profile.adoption.admission, status: "source-admitted" },
+    foundationConfig: { schemaVersion: 1 },
+    packageJson,
+    sourceDependencyPolicyPresent: true,
+  }), /must not be symlinks/u);
+});
+
+test("production source outside packages cannot bypass first-package admission", () => {
+  assert.throws(() => validateFirstProductionPackageAdmission({
+    productionArtifacts: ["src/compiler.ts"],
+    admission: { ...profile.adoption.admission, status: "source-admitted" },
+    foundationConfig: { schemaVersion: 1 },
+    packageJson,
+    sourceDependencyPolicyPresent: false,
+  }), /production artifacts must be below packages: src\/compiler\.ts/u);
+});
+
+test("production artifact discovery is repository-wide and deterministic",
+  async () => {
+    const fixture = await mkdtemp(join(tmpdir(), "get-modular-profile-"));
+    try {
+      await writeFile(join(fixture, "package.json"), "{\"private\":true}\n");
+      assert.deepEqual(await productionArtifactPaths(fixture), []);
+      await mkdir(join(fixture, "packages", "core", "src"), { recursive: true });
+      await writeFile(join(fixture, "packages", "core", "package.json"), "{}\n");
+      await writeFile(join(fixture, "packages", "core", "src", "index.ts"), "export {};\n");
+      await mkdir(join(fixture, "src"));
+      await writeFile(join(fixture, "src", "compiler.ts"), "export {};\n");
+      assert.deepEqual(await productionArtifactPaths(fixture), [
+        "packages/core/package.json",
+        "packages/core/src/index.ts",
+        "src/compiler.ts",
+      ]);
+    } finally {
+      await rm(fixture, { recursive: true, force: true });
+    }
+});
+
+test("production package symlink discovery does not follow targets", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-profile-symlink-"));
+  try {
+    await writeFile(join(fixture, "package.json"), "{\"private\":true}\n");
+    await mkdir(join(fixture, "packages", "core"), { recursive: true });
+    await mkdir(join(fixture, "docs", "target"), { recursive: true });
+    await writeFile(join(fixture, "docs", "target", "index.ts"), "export {};\n");
+    await symlink("../../docs/target", join(fixture, "packages", "core", "linked"), "dir");
+    assert.deepEqual(await productionArtifactSymlinkPaths(fixture), ["packages/core/linked"]);
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
 });

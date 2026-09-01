@@ -9,7 +9,11 @@ policies:
   reservedScopes:
     - "@get-modular/"
   developmentOnlyPackages:
+    - ajv
+    - canonicalize
     - cspell
+    - json-canonicalize
+    - jsonc-parser
     - markdownlint-cli2
   exactRegistryDevelopmentOnlyPackages:
     - "@agent-teams/docs-protocol"
