@@ -209,15 +209,20 @@ than satisfied by synthetic output.
     generator/oracle proof remains wired into the complete repository gate. A
     declared but orphaned script is not Phase 0 evidence, and its historical
     filename does not create a versioned public command.
-11. Before Phase 5 may create structural or runtime conformance evidence,
-    establish the governed qualification-record path required by the Feature
-    Module Standard: declare its document type/template/index in the adopted
-    Docs Protocol profile, add positive and mutation fixtures, and make the
-    repository profile checker transition-aware. The checker must continue to
-    require `not-claimed` while no governed qualification and reciprocal
-    promotion records exist, then accept only the ordered, same-subject states
-    proved by those records. Manually added files and a runner that promotes its
-    own output are not valid substitutes.
+11. Before Phase 5 may create structural or runtime conformance evidence, pin a
+    Docs Protocol and Engineering Foundation authoring toolchain whose declared
+    identity strategy can create the accepted `QUAL-*` records. Prove both
+    `docs:new --dry-run` and apply paths with positive and mutation fixtures. If
+    no released pinned version supports that identity, this is an explicit
+    Phase 0 dependency on a bounded Engineering Foundation capability, not a
+    reason to add files manually or relax the accepted identity. Then establish
+    the governed qualification-record path required by the Feature Module
+    Standard: declare its document type/template/index in the adopted profile
+    and make the repository profile checker transition-aware. The checker must
+    continue to require `not-claimed` while no governed qualification and
+    reciprocal promotion records exist, then accept only the ordered,
+    same-subject states proved by those records. A runner cannot promote its own
+    output.
 
 ### Phase 0 exit criteria
 
@@ -228,9 +233,10 @@ than satisfied by synthetic output.
 - accepted-claim mapping and the evidence-only raw-carrier matrix are checked;
 - every actual open-decision blocker and its mutation fixtures execute in the
   complete governance gate;
-- the governed qualification-record authoring path and transition-aware Feature
-  Module Standard checker are executable before any later phase can claim
-  `structural-conformant` or `runtime-conformant`;
+- the pinned writer creates `QUAL-*` records through tested dry-run and apply
+  paths, and the governed qualification-record authoring path plus
+  transition-aware Feature Module Standard checker are executable before any
+  later phase can claim `structural-conformant` or `runtime-conformant`;
 - the same preflight succeeds in a fresh disposable checkout at the recorded
   SHA; cold artifact recovery remains a later phase gate;
 - OD-004 is resolved by an accepted ADR or successor decision before package
@@ -314,8 +320,8 @@ depending on a Phase 4 exit that already assumes the archive exists.
 ### Phase 1 exit criteria
 
 After Phases 2-4 provide the complete substantive compiler, two disposable
-TypeScript consumers compile through the public barrel only and the exact
-archive passes the named resolver/type-scale gates. No Core API
+TypeScript consumers compile through the public barrel only and both exact
+qualification archives pass the named resolver/type-scale gates. No Core API
 exposes a container, resolver, registry, Context/Fiber, filesystem path,
 executable factory, transport DTO or versioned name. A package shell without
 substantive behavior cannot pass this phase.
@@ -558,8 +564,11 @@ not a failed qualification result.
    observational sizing evidence until a successor decision defines an
    independent counter taxonomy and finite thresholds. Packed archive size is
    measured once for the retained archive, not once per profile.
-5. Run the mandatory packed TypeScript consumers: NodeNext, Bundler, JavaScript,
-   `checkJs`, helper runtime/handoff and the 1000-declaration typecheck case.
+5. Bind and reuse the Phase 1 packed-consumer evidence when subject archive,
+   toolchain, case definition and command identities are unchanged. Run the
+   helper runtime/handoff case and any mandatory consumer or
+   1000-declaration typecheck case not already proved there; rerun only
+   invalidated cases.
 6. Differentially compare object and raw adapters only over their admitted
    equivalence domain. Include snapshot-before-await, caller mutation,
    `ArrayBufferView` offsets, transfer/detachment, shared/resizable storage and
@@ -650,21 +659,21 @@ A proven second independent consumer permits a cross-consumer extraction claim;
 `second-consumer-not-admitted` is an honest `CONDITIONAL` outcome that blocks a
 stable or cross-consumer claim rather than pretending two-consumer evidence.
 
-## Phase 7: extension/plugin reservation
+## Reserved Phase 7: extension/plugin boundary
 
 **Purpose:** reserve the extension boundary without making plugin distribution
 or dynamic runtime replacement a dependency of the first Core release.
 
-### Phase 7 implementation
+This reserved slot is not a current implementation phase, deliverable or exit
+gate. It does not block the Core `0.x` release checkpoint.
 
-This phase is a parallel, non-gating design reservation, not a production plugin
-runtime and not a prerequisite for the Core `0.x` release checkpoint.
-
-Because no real extension consumer is admitted yet, this phase records only
-negative Core-boundary invariants and owner handoffs. It does not start a
-production coding wave, add a package dependency, add a Get Modular
+Because no real extension consumer is admitted yet, the roadmap records only
+negative Core-boundary invariants. It does not create an owner-handoff artifact,
+start a production coding wave, add a package dependency, add a Get Modular
 qualification gate or implement a registry, loader, lifecycle engine or update
-service. A real consumer and accepted owner decisions are required first.
+service. The accepted system boundary remains the ownership authority. A real
+consumer and accepted owner decisions are required before a consumer-owned
+handoff record or implementation phase exists.
 
 - A runtime Module is a composition/lifecycle unit. A Plugin Artifact is a
   distribution, trust and update envelope. One artifact may provide multiple
@@ -696,18 +705,10 @@ service. A real consumer and accepted owner decisions are required first.
   identities separate. Atomicity for an artifact contributing several modules
   is a named future decision, not an accidental registration-order behavior.
 
-Phase 7 leaves a docs-only owner-handoff table with each deferred capability,
-owning repository, prerequisite decision and forbidden Core dependency. Future
-Extension Foundation and Product Host qualification may reference Core
+Future Extension Foundation and Product Host qualification may reference Core
 declarations, but Get Modular does not mirror their lifecycle or security gates.
-
-### Phase 7 exit criteria
-
-The owner-handoff table makes the negative split between Core declarations,
-Product Host authority/lifecycle and Extension Foundation trust/custody
-explicit. No plugin loader, registry, signature verifier, hot-unload path or
-runtime replacement enters Core MVP. Exit neither gates Core publication nor
-authorizes production extension work.
+No plugin loader, registry, signature verifier, hot-unload path or runtime
+replacement enters Core MVP.
 
 ## Phase 8: release checkpoint
 
@@ -715,8 +716,9 @@ authorizes production extension work.
 and reversible before publication or merge.
 
 Core `0.x` may enter this checkpoint after Phases 1-5. Phase 6 has its own later
-product-adoption checkpoint; Phase 7 is parallel and non-gating. Two independent
-production adapters remain required only for a stable cross-consumer claim.
+product-adoption checkpoint; the reserved Phase 7 slot has no gate. Two
+independent production adapters remain required only for a stable
+cross-consumer claim.
 
 ### Bounded PR merge checkpoint
 
@@ -727,7 +729,9 @@ production adapters remain required only for a stable cross-consumer claim.
    ordinary bounded change; two perspectives plus owner approval for a bounded
    public-surface or cross-boundary change; and four reviewers plus two
    independent arbiters for authority decisions, security boundaries or actual
-   publication. Any changed SHA invalidates the affected review and arbitration.
+   publication. Any changed SHA invalidates every prior exact-SHA review and its
+   associated arbitration; focused re-review is permitted for the affected
+   scope, but it must review the new exact head.
 3. Keep PRs near 2,000 changed LOC when the invariant boundary permits. Do not
    split one invariant merely to satisfy a number.
 4. Merge only with explicit owner approval, a clean exact-head check and a
@@ -743,6 +747,7 @@ production adapters remain required only for a stable cross-consumer claim.
 2. Reuse that exact retained archive and bind the already executed Phase 5
    conformance, mutation, packed-consumer, six-runtime-case, TypeScript and scale
    evidence. Rerun only a case invalidated by changed subject, authority,
+   evidence schema, generator, verifier, command, matrix configuration,
    toolchain/runtime identity or an accepted freshness policy. Do not rebuild
    between qualification, platform jobs and publication; no mandatory case may
    skip or be replaced by stale evidence.
