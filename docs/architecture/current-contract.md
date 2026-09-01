@@ -10,6 +10,12 @@ related:
   - ADR-0007
   - ADR-0009
   - ADR-0010
+  - ADR-0012
+  - ADR-0013
+  - ADR-0014
+  - OD-004
+  - OD-005
+  - OD-006
   - GM-REQ-V1
 ---
 
@@ -105,17 +111,21 @@ These are small contract gates, not a reason to redesign the architecture:
 2. Accept ADR-0010 before admitting any selected production dependency adapter.
    Until then, keep external canonicalization and scanner packages behind
    development-only qualification and use the same private ports.
-3. Add a successor diagnostic refinement for duplicate binding records, because
-   the existing `binding.duplicate` coordinate describes a duplicate provider
-   but not two records for one `(implementationId, slotId)`.
-4. Add a successor raw-input refinement for the accepted byte-carrier domain
-   and synchronous snapshot behavior, including detached, shared, resizable,
-   offset, and subclass cases.
+3. Resolve OD-004 and accept ADR-0012 or a successor before publishing the first
+   package carrier. The proposal is an ESM-only root export with one exact
+   TypeScript and JavaScript resolution path; it is not accepted yet.
+4. Resolve OD-006 and accept ADR-0014 or a successor before implementing
+   duplicate binding-record behavior. The existing `binding.duplicate`
+   coordinate describes a duplicate provider but not two records for one
+   `(implementationId, slotId)`.
+5. Resolve OD-005 and accept ADR-0013 or a successor before exposing raw input.
+   The proposal closes the accepted byte-carrier domain and synchronous snapshot
+   behavior, including detached, shared, resizable, offset, and subclass cases.
 
-The first graph slice must not invent semantics for items 3 and 4. The first
-object-based internal checkpoint may proceed after the authority and package
-admission steps, while raw decoding and public adapter choices remain gated by
-their own refinements.
+The first graph slice must not invent semantics for items 4 and 5. A private
+object-based compiler checkpoint may proceed after accepted-authority preflight
+while excluding repeated binding records. Public packaging, raw decoding, and
+production dependency adapters remain gated by their corresponding decisions.
 
 ## Historical evidence rule
 

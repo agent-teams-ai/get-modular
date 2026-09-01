@@ -15,7 +15,9 @@ while an active blocker remains.
 
 ## Active
 
-None.
+- [OD-004: Package carrier and resolution policy](OD-004-package-carrier-and-resolution-policy.md)
+- [OD-005: Raw input carrier semantics](OD-005-raw-input-carrier-semantics.md)
+- [OD-006: Duplicate binding-record diagnostics](OD-006-duplicate-binding-record-diagnostics.md)
 
 ## Resolved
 
