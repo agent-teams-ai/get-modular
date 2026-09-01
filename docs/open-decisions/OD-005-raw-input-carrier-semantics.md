@@ -11,6 +11,8 @@ related:
   - GM-REQ-V1
 ---
 
+<!-- cspell:words enumerables -->
+
 # OD-005: Raw input carrier semantics
 
 ## Decision required

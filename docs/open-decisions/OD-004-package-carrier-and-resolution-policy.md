@@ -11,6 +11,8 @@ related:
   - ADR-0012
 ---
 
+<!-- cspell:words subpaths -->
+
 # OD-004: Package carrier and resolution policy
 
 ## Decision required

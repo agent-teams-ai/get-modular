@@ -11,6 +11,8 @@ related:
   - OD-004
 ---
 
+<!-- cspell:words subpaths -->
+
 # ADR-0012: Select an ESM-only root package carrier
 
 ## Context
