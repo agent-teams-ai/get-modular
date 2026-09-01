@@ -206,9 +206,18 @@ than satisfied by synthetic output.
    roadmap choices until accepted; only their accepted decisions may add
    mutation fixtures or checkpoint requirements.
 10. Verify that the existing `qualification:resource-profile` executable
-   generator/oracle proof remains wired into the complete repository gate. A
-   declared but orphaned script is not Phase 0 evidence, and its historical
-   filename does not create a versioned public command.
+    generator/oracle proof remains wired into the complete repository gate. A
+    declared but orphaned script is not Phase 0 evidence, and its historical
+    filename does not create a versioned public command.
+11. Before Phase 5 may create structural or runtime conformance evidence,
+    establish the governed qualification-record path required by the Feature
+    Module Standard: declare its document type/template/index in the adopted
+    Docs Protocol profile, add positive and mutation fixtures, and make the
+    repository profile checker transition-aware. The checker must continue to
+    require `not-claimed` while no governed qualification and reciprocal
+    promotion records exist, then accept only the ordered, same-subject states
+    proved by those records. Manually added files and a runner that promotes its
+    own output are not valid substitutes.
 
 ### Phase 0 exit criteria
 
@@ -219,12 +228,16 @@ than satisfied by synthetic output.
 - accepted-claim mapping and the evidence-only raw-carrier matrix are checked;
 - every actual open-decision blocker and its mutation fixtures execute in the
   complete governance gate;
+- the governed qualification-record authoring path and transition-aware Feature
+  Module Standard checker are executable before any later phase can claim
+  `structural-conformant` or `runtime-conformant`;
 - the same preflight succeeds in a fresh disposable checkout at the recorded
   SHA; cold artifact recovery remains a later phase gate;
-- OD-004 is accepted before package carrier/export freeze, and OD-005 is
-  accepted before unresolved raw-carrier behavior enters the public entrypoint;
-- OD-006 is accepted before duplicate binding-record behavior enters the
-  compiler;
+- OD-004 is resolved by an accepted ADR or successor decision before package
+  carrier/export freeze, and OD-005 is resolved the same way before unresolved
+  raw-carrier behavior enters the public entrypoint;
+- OD-006 is resolved by an accepted ADR or successor decision before duplicate
+  binding-record behavior enters the compiler;
 - the target unversioned surface requires accepted ADR-0009 or a successor.
   Until then the accepted contract remains authority and the target public
   milestone is `CONDITIONAL`, not a manufactured governance blocker.
