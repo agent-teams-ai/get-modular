@@ -529,6 +529,14 @@ supports that identity, Phase 5 is blocked on a bounded Engineering Foundation
 capability; Phases 1-4 may still build and qualify Core while conformance remains
 `not-claimed`. Manual files and relaxed identities are not substitutes.
 
+The Engineering Foundation repository owns that authoring capability and ships
+it through a separately reviewed package release. Its acceptance evidence is an
+exact package version and digest plus successful Get Modular dry-run, apply and
+mutation fixtures. Get Modular does not add a local writer or private identity
+fallback. Until that release is published and pinned, qualified Core `0.x` and
+its publication checkpoint are explicitly `CONDITIONAL`; the private Phases 1-4
+Core checkpoint remains implementable.
+
 Declare the qualification document type/template/index in the adopted profile
 and make the repository profile checker transition-aware. It must require
 `not-claimed` until governed qualification and reciprocal promotion records
@@ -537,11 +545,12 @@ promote its own output.
 
 Evidence reuse is disabled unless an accepted custody decision owns one closed
 reuse key. The key binds the exact subject/archive and source/authority ledgers;
-entrypoint, vectors and case definition; evidence schema, generator,
-runner/verifier and command; toolchain/runtime, OS build, architecture and realm;
-browser/Electron identities, matrix configuration and accepted freshness policy.
-Changing any component invalidates the case. Before such a decision exists,
-rerun rather than infer equivalence from a partial key.
+entrypoint, vectors and closed matrix case ID; evidence schema, generator,
+runner/verifier and command; toolchain and runtime; OS version and build,
+architecture and realm; browser release/build; Electron release plus its embedded
+Node and Chromium identities; matrix configuration and accepted freshness
+policy. Changing any component invalidates the case. Before such a decision
+exists, rerun rather than infer equivalence from a partial key.
 
 ### Phase 5 implementation
 
