@@ -71,11 +71,11 @@ because a plan sounds plausible.
 flowchart TB
     D["4 independent design workers"] --> S["2 synthesis workers"]
     S --> C["Phase contract"]
-    C --> R["4 contract critics"]
+    C --> R["6 phase critics"]
     R --> I["Bounded implementation workers"]
     I --> G["Focused gates"]
     G --> X["4 exact-SHA reviewers"]
-    X --> F["Fix confirmed P0-P2"]
+    X --> F["Parallel remediation workers"]
     F --> A["2 final arbiters"]
     A --> CP["Checkpoint or BLOCKED"]
     F -->|new commit| G
@@ -86,7 +86,9 @@ flowchart TB
 
 1. Research, planning and review workers use hosted subscription runtime with
    `gpt-5.6-sol`, `xhigh`, fast tier. Coding workers use the same model with
-   `medium`, fast tier. At most 15 workers run concurrently.
+   `medium`, fast tier. At most 16 workers run concurrently. This reasoning
+   split is mandatory: implementation workers remain `medium`, while
+   architecture and review workers use `xhigh`.
 2. The four design workers have different roles: algorithm/correctness,
    security/adversarial input, real-world TypeScript DX, and Clean
    Architecture/DDD/evolution. They return alternatives, evidence, costs,
@@ -95,8 +97,9 @@ flowchart TB
    disagreement becomes an explicit decision or a blocker in the phase
    contract.
 4. The phase contract states inputs, outputs, owners, non-goals, invariants,
-   files, tests, limits, acceptance and stop criteria. It is reviewed by four
-   critics before coding starts.
+   files, tests, limits, acceptance and stop criteria. It is reviewed by six
+   critics before coding starts. Confirmed P0-P2 findings are split into
+   independent remediation lanes and fixed in parallel where ownership allows.
 5. Each coding worker has a separate workspace and file ownership. Research
    fixtures, production-like code and generated evidence never share an
    unmarked directory. Read-only workers do not commit.
