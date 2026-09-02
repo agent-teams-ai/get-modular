@@ -442,6 +442,29 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     /must stop before an unknown field/u,
   );
 
+  const schemaInvalidSemanticCascade = clone(protocol);
+  const mixedCase = schemaInvalidSemanticCascade.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.independent-declaration-and-graph.v1"
+  ));
+  mixedCase.input.declarations[2].schemaVersion = 2;
+  mixedCase.expected.diagnostics.unshift({
+    code: "schema.unsupported-version",
+    phase: "schema",
+    path: [
+      { kind: "field", value: "declarations" },
+      { kind: "index", value: 2 },
+      { kind: "field", value: "schemaVersion" },
+    ],
+    coordinate: {},
+    details: { reason: "unsupported-version" },
+  });
+  assert.throws(() => validateStaticConformanceProtocol({
+    protocol: schemaInvalidSemanticCascade,
+    contract,
+    catalog,
+    ...validators,
+  }), /schema-invalid declaration/u);
+
   const reservedStaticResult = clone(protocol);
   reservedStaticResult.cases[0].expected.diagnostics[0] = {
     code: "output.canonicalization-failed",

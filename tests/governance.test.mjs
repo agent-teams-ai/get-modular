@@ -461,6 +461,21 @@ test("open-decision artifact admission is manifest-bound and fail-closed", async
       [field]: {},
     }), [manifestPath, sourcePath], field);
   }
+
+  const nestedManifestPath = "packages/engine/nested/package.json";
+  const nestedSourcePath = "packages/engine/nested/index.ts";
+  const manifests = new Map([
+    [manifestPath, { name: "@get-modular/core", private: true }],
+    [nestedManifestPath, { name: "@get-modular/public-addon", exports: "./index.ts" }],
+  ]);
+  assert.deepEqual(await productionArtifactsBlockedByOpenDecisions([
+    manifestPath,
+    sourcePath,
+    nestedManifestPath,
+    nestedSourcePath,
+  ], {
+    readPackageManifest: async path => manifests.get(path),
+  }), [nestedManifestPath, nestedSourcePath]);
 });
 
 test("qualification claims require ordered admission, evidence, and promotion", async () => {
@@ -1120,17 +1135,32 @@ test("accepted authority bytes survive a deterministic leaf replacement race", a
 test("production artifact discovery fails closed across repository layouts", async () => {
   const fixture = await mkdtemp(join(tmpdir(), "get-modular-governance-"));
   try {
-    await writeFile(join(fixture, "package.json"), JSON.stringify({ private: true, files: ["compiler.js"] }));
+    await writeFile(join(fixture, "package.json"), JSON.stringify({
+      private: true,
+      browser: "./browser.js",
+      files: ["compiler.js"],
+      publishConfig: { access: "public" },
+      typesVersions: { "*": { "*": ["types/*"] } },
+    }));
     await writeFile(join(fixture, "compiler.ts"), "export const compiler = true;\n");
     await mkdir(join(fixture, "scripts"));
     await writeFile(join(fixture, "scripts/compiler.ts"), "export const compiler = true;\n");
     await mkdir(join(fixture, "examples/core"), { recursive: true });
     await writeFile(join(fixture, "examples/core/package.json"), JSON.stringify({ private: true }));
+    await mkdir(join(fixture, "docs/carrier"), { recursive: true });
+    await writeFile(join(fixture, "docs/carrier/package.json"), JSON.stringify({
+      private: false,
+      exports: "./index.js",
+    }));
 
     assert.deepEqual(await productionArtifactPaths(fixture), [
       "compiler.ts",
+      "docs/carrier/package.json",
       "examples/core/package.json",
+      "package.json#browser",
       "package.json#files",
+      "package.json#publishConfig",
+      "package.json#typesVersions",
       "scripts/compiler.ts",
     ]);
   } finally {
@@ -1149,6 +1179,17 @@ test("production artifact discovery inventories symlinks without following them"
     await symlink("../../docs/target", join(fixture, "packages", "core", "linked"), "dir");
     await symlink("target", join(fixture, "docs", "outside-linked"), "dir");
     await symlink("docs/target", join(fixture, "node_modules"), "dir");
+    await mkdir(join(fixture, "packages", "core", "node_modules", "@get-modular"), {
+      recursive: true,
+    });
+    await symlink("../../..", join(
+      fixture,
+      "packages",
+      "core",
+      "node_modules",
+      "@get-modular",
+      "core",
+    ), "dir");
 
     const artifacts = await productionArtifactPaths(fixture);
     assert.deepEqual(artifacts, ["docs/outside-linked", "packages/core/linked"]);

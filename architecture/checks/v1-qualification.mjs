@@ -1048,6 +1048,43 @@ function validateStaticSchemaExpectations({
   }
 }
 
+function validateStaticSchemaSuppression({
+  descriptor,
+  diagnostics,
+  diagnosticPrerequisites,
+  validateModuleDeclaration,
+  validateCompositionProfile,
+}) {
+  const documents = staticInputDocuments(descriptor);
+  const invalidDeclarations = documents.filter(document => (
+    document.documentType === "module-declaration"
+    && staticSchemaDiagnostics(document, validateModuleDeclaration).length > 0
+  ));
+  const profileInvalid = documents.some(document => (
+    document.documentType === "composition-profile"
+    && staticSchemaDiagnostics(document, validateCompositionProfile).length > 0
+  ));
+
+  for (const diagnostic of diagnostics) {
+    const prerequisite = diagnosticPrerequisites.get(diagnostic.code);
+    if (!prerequisite?.prerequisites.includes("document.schema-valid")) continue;
+    if ((diagnostic.code.startsWith("profile.") || diagnostic.code.startsWith("binding."))
+      && profileInvalid) {
+      fail(`${descriptor.caseId} emits ${diagnostic.code} from a schema-invalid profile`);
+    }
+    if (!diagnostic.code.startsWith("declaration.")) continue;
+    const refersToInvalidDeclaration = invalidDeclarations.some(({ value }) => (
+      (typeof diagnostic.coordinate.implementationId === "string"
+        && diagnostic.coordinate.implementationId === value?.implementationId)
+      || (typeof diagnostic.coordinate.moduleId === "string"
+        && diagnostic.coordinate.moduleId === value?.moduleId)
+    ));
+    if (refersToInvalidDeclaration) {
+      fail(`${descriptor.caseId} emits ${diagnostic.code} from a schema-invalid declaration`);
+    }
+  }
+}
+
 function structuralPathFromJsonPointer(value, pointer) {
   if (pointer === "") return [];
   if (typeof pointer !== "string" || !pointer.startsWith("/")) {
@@ -1281,6 +1318,13 @@ export function validateStaticConformanceProtocol({
       validateModuleDeclaration,
       validateCompositionProfile,
       compare,
+    });
+    validateStaticSchemaSuppression({
+      descriptor,
+      diagnostics,
+      diagnosticPrerequisites,
+      validateModuleDeclaration,
+      validateCompositionProfile,
     });
     const prerequisiteCase = exactPrerequisiteCases.get(descriptor.caseId);
     if (prerequisiteCase !== undefined

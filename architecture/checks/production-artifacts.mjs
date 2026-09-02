@@ -47,12 +47,15 @@ async function filesBelow(repositoryRoot, relativeDirectory, includeProductionFi
     throw error;
   }
   for (const entry of entries) {
+    if (entry.isDirectory() && UNTRACKED_DIRECTORIES.has(entry.name)) continue;
     const path = `${relativeDirectory}/${entry.name}`;
     if (entry.isSymbolicLink()) {
       files.push(path);
     } else if (entry.isDirectory()) {
       files.push(...await filesBelow(repositoryRoot, path, includeProductionFiles));
-    } else if (includeProductionFiles && entry.isFile() && isProductionArtifactName(path)) {
+    } else if (entry.isFile()
+      && (path.endsWith("/package.json")
+        || (includeProductionFiles && isProductionArtifactName(path)))) {
       files.push(path);
     }
   }
@@ -69,6 +72,7 @@ async function symlinksBelow(repositoryRoot, relativeDirectory) {
     throw error;
   }
   for (const entry of entries) {
+    if (entry.isDirectory() && UNTRACKED_DIRECTORIES.has(entry.name)) continue;
     const path = `${relativeDirectory}/${entry.name}`;
     if (entry.isSymbolicLink()) {
       symlinks.push(path);
@@ -94,6 +98,9 @@ export async function productionArtifactsBlockedByOpenDecisions(
     readPackageManifest = defaultReadPackageManifest,
   } = {},
 ) {
+  const packageRoots = productionArtifacts
+    .filter(path => path.endsWith("/package.json"))
+    .map(path => path.slice(0, -"/package.json".length));
   const privatePackageRoots = new Set();
   for (const path of productionArtifacts.filter(candidate => PACKAGE_MANIFEST.test(candidate))) {
     let manifest;
@@ -110,9 +117,14 @@ export async function productionArtifactsBlockedByOpenDecisions(
     }
   }
 
-  return productionArtifacts.filter(path => ![...privatePackageRoots].some(packageRoot => (
-    path === `${packageRoot}/package.json` || path.startsWith(`${packageRoot}/`)
-  )));
+  return productionArtifacts.filter(path => {
+    const owningPackageRoot = packageRoots
+      .filter(packageRoot => (
+        path === `${packageRoot}/package.json` || path.startsWith(`${packageRoot}/`)
+      ))
+      .sort((left, right) => right.length - left.length)[0];
+    return owningPackageRoot === undefined || !privatePackageRoots.has(owningPackageRoot);
+  });
 }
 
 export async function productionArtifactSymlinkPaths(repositoryRoot = process.cwd()) {
@@ -123,7 +135,7 @@ export async function productionArtifactPaths(repositoryRoot = process.cwd()) {
   const artifacts = [];
   const rootPackage = JSON.parse(await readFile(resolve(repositoryRoot, "package.json"), "utf8"));
   if (rootPackage.private !== true) artifacts.push("package.json#private");
-  for (const field of ["bin", "exports", "files", "main", "module", "types", "typings"]) {
+  for (const field of PUBLICATION_FIELDS) {
     if (rootPackage[field] !== undefined) artifacts.push(`package.json#${field}`);
   }
 
