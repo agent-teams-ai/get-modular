@@ -393,7 +393,10 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     mutate(generatorMutation.cases.find(descriptor => (
       descriptor.caseId === "diag.raw.prefix-inclusive-clipping.v1"
     )));
-    assert.throws(() => validate(generatorMutation), /closed raw-depth generator/u);
+    assert.throws(
+      () => validate(generatorMutation),
+      /raw decode failure|raw resource diagnostic/u,
+    );
   }
 
   const truthfulInlineDepth = clone(protocol);
@@ -418,6 +421,40 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     details: { limitName: "jsonDepth", limit: 32, actual: 33 },
   }];
   assert.doesNotThrow(() => validate(truthfulInlineDepth));
+
+  const fabricatedResource = clone(protocol);
+  fabricatedResource.cases.find(descriptor => (
+    descriptor.caseId === "diag.raw.hostile-profile-key.v1"
+  )).expected.diagnostics.unshift({
+    code: "input.limit-exceeded",
+    phase: "decode",
+    path: [],
+    coordinate: {},
+    details: {
+      limitName: "aggregateStringBytes",
+      limit: resourceProfile.limits.aggregateStringBytes,
+      actual: resourceProfile.limits.aggregateStringBytes + 1,
+    },
+  });
+  assert.throws(
+    () => validate(fabricatedResource),
+    /false or incomplete raw resource diagnostic/u,
+  );
+
+  const fabricatedTruncation = clone(truthfulInlineDepth);
+  fabricatedTruncation.cases.find(descriptor => (
+    descriptor.caseId === "diag.raw.hostile-profile-key.v1"
+  )).expected.diagnostics.push({
+    code: "diagnostics.truncated",
+    phase: "output",
+    path: [],
+    coordinate: {},
+    details: { omitted: 1 },
+  });
+  assert.throws(
+    () => validate(fabricatedTruncation),
+    /without an executable collector witness/u,
+  );
 
   const falseSchemaAfterDepthFailure = clone(truthfulInlineDepth);
   falseSchemaAfterDepthFailure.cases.find(descriptor => (

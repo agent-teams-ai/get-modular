@@ -892,6 +892,46 @@ function staticRawInputDocuments(descriptor) {
   ];
 }
 
+function materializeStaticGenerator(descriptor) {
+  if (descriptor.generatorId !== "get-modular/generator/diagnostic-prefix-clip/v1") {
+    fail(`${descriptor.caseId} uses an unsupported static generator`);
+  }
+  const companionDeclaration = {
+    kind: "get-modular.module-declaration",
+    schemaVersion: 1,
+    moduleId: "example/generated-root",
+    implementationId: "example/generated-root/default",
+    owner: { authority: "example", path: ["generated-root"] },
+    provides: [],
+    slots: [],
+  };
+  const companionProfile = {
+    kind: "get-modular.composition-profile",
+    schemaVersion: 1,
+    profileId: "example/generated-profile",
+    roots: [companionDeclaration.moduleId],
+    selections: [{
+      moduleId: companionDeclaration.moduleId,
+      implementationId: companionDeclaration.implementationId,
+    }],
+    bindings: [],
+  };
+  return {
+    ...descriptor,
+    input: {
+      declarationsUtf8: [
+        `${"[".repeat(33)}null${"]".repeat(33)}`,
+        JSON.stringify(companionDeclaration),
+      ],
+      profileUtf8: JSON.stringify(companionProfile),
+    },
+    schemaValidCompanion: {
+      declarations: [companionDeclaration],
+      profile: companionProfile,
+    },
+  };
+}
+
 function pathStartsWith(path, prefix) {
   return path.length >= prefix.length
     && prefix.every((segment, index) => same(path[index], segment));
@@ -920,20 +960,26 @@ function validateStaticRawDecodeSuppression(
   contract,
 ) {
   const documents = staticRawInputDocuments(descriptor);
-  if (documents.length === 0) return;
   const { limits } = resourceProfile;
   const maximumPathSegments = contract.boundedEmissionProtocol.maximumPathSegments;
+  const expectedLimitDiagnostics = [];
+  const actualLimitDiagnostics = diagnostics.filter(diagnostic => (
+    diagnostic.code === "input.limit-exceeded"
+  ));
+  if (diagnostics.some(diagnostic => diagnostic.code === "diagnostics.truncated")) {
+    fail(`${descriptor.caseId} claims truncation without an executable collector witness`);
+  }
   const aggregateBytes = documents.reduce((total, document) => (
     total + Buffer.byteLength(document.text, "utf8")
   ), 0);
   if (aggregateBytes > limits.aggregateRawBytes) {
-    const expected = [staticLimitDiagnostic({
+    expectedLimitDiagnostics.push(staticLimitDiagnostic({
       prefix: [],
       limitName: "aggregateRawBytes",
       limit: limits.aggregateRawBytes,
       actual: limits.aggregateRawBytes + 1,
-    }, maximumPathSegments)];
-    if (!same(diagnostics, expected)) {
+    }, maximumPathSegments));
+    if (!same(diagnostics, expectedLimitDiagnostics)) {
       fail(`${descriptor.caseId} contradicts the aggregate raw-byte preflight`);
     }
     return;
@@ -945,16 +991,17 @@ function validateStaticRawDecodeSuppression(
       : "profileRawDocumentBytes";
     const limit = limits[limitName];
     if (bytes.length > limit) {
-      const expected = [staticLimitDiagnostic({
+      const expected = staticLimitDiagnostic({
         prefix: document.prefix,
         limitName,
         limit,
         actual: limit + 1,
-      }, maximumPathSegments)];
+      }, maximumPathSegments);
+      expectedLimitDiagnostics.push(expected);
       const scoped = diagnostics.filter(diagnostic => (
         pathStartsWith(diagnostic.path, document.prefix)
       ));
-      if (!same(scoped, expected)) {
+      if (!same(scoped, [expected])) {
         fail(`${descriptor.caseId} contradicts the raw document byte preflight`);
       }
       continue;
@@ -997,9 +1044,18 @@ function validateStaticRawDecodeSuppression(
             : "invalid-json",
         },
       })).toSorted(compare);
+    if (decoded.diagnosticCode === "input.limit-exceeded") {
+      expectedLimitDiagnostics.push(...expected);
+    }
     if (!same(scoped, expected)) {
       fail(`${descriptor.caseId} masks a raw decode failure with a derivative diagnostic`);
     }
+  }
+  if (!same(
+    actualLimitDiagnostics,
+    expectedLimitDiagnostics.toSorted(compare),
+  )) {
+    fail(`${descriptor.caseId} contains a false or incomplete raw resource diagnostic`);
   }
 }
 
@@ -1738,6 +1794,9 @@ export function validateStaticConformanceProtocol({
     if (hasGenerator && !generatorIds.has(descriptor.generatorId)) {
       fail(`${descriptor.caseId} uses an unknown generator`);
     }
+    const executableDescriptor = hasGenerator
+      ? materializeStaticGenerator(descriptor)
+      : descriptor;
     if (hasInput) {
       const inputKeys = descriptor.entryPoint === "compileCompositionV1"
         ? ["declarations", "profile"]
@@ -1760,6 +1819,12 @@ export function validateStaticConformanceProtocol({
         || typeof descriptor.input.profileUtf8 !== "string")) {
         fail(`${descriptor.caseId} raw input is not exact UTF-8 text data`);
       }
+    } else {
+      validateSchemaValidCompanion(
+        executableDescriptor.schemaValidCompanion,
+        validateDocument,
+        `${descriptor.caseId}.generatedSchemaValidCompanion`,
+      );
     }
     if (!same(objectKeys(descriptor.expected, `${descriptor.caseId}.expected`)
       .sort(compareAscii), ["diagnostics", "ok"])
@@ -1769,32 +1834,10 @@ export function validateStaticConformanceProtocol({
       fail(`${descriptor.caseId} must contain one exact complete failure result`);
     }
     const diagnostics = descriptor.expected.diagnostics;
-    if (hasGenerator) {
-      const maximumPathSegments = contract.boundedEmissionProtocol.maximumPathSegments;
-      const expectedGeneratorResult = {
-        ok: false,
-        diagnostics: [staticLimitDiagnostic({
-          prefix: [
-            { kind: "field", value: "declarations" },
-            { kind: "index", value: 0 },
-          ],
-          limitName: "jsonDepth",
-          limit: resourceProfile.limits.jsonDepth,
-          actual: resourceProfile.limits.jsonDepth + 1,
-          localPath: Array.from(
-            { length: resourceProfile.limits.jsonDepth },
-            () => 0,
-          ),
-        }, maximumPathSegments)],
-      };
-      if (!same(descriptor.expected, expectedGeneratorResult)) {
-        fail(`${descriptor.caseId} contradicts the closed raw-depth generator`);
-      }
-    }
     const unknownFieldParentPaths = diagnostics.some(diagnostic => (
       diagnostic.code === "schema.unknown-field"
     ))
-      ? staticUnknownFieldParentPaths(descriptor, validateDocument, resourceProfile)
+      ? staticUnknownFieldParentPaths(executableDescriptor, validateDocument, resourceProfile)
       : [];
     const normalizedCandidateKeys = new Set();
     validateResolvedResultCodeDisposition({
@@ -1805,7 +1848,11 @@ export function validateStaticConformanceProtocol({
     for (const [index, diagnostic] of diagnostics.entries()) {
       const label = `${descriptor.caseId}.expected.diagnostics[${index}]`;
       validateWith(validateDiagnostic, diagnostic, label);
-      const prefixLength = staticInvocationPrefixLength(descriptor, diagnostic, contract);
+      const prefixLength = staticInvocationPrefixLength(
+        executableDescriptor,
+        diagnostic,
+        contract,
+      );
       const prerequisite = diagnostic.code === "input.limit-exceeded"
         ? limitPrerequisites.get(diagnostic.details.limitName)
         : diagnosticPrerequisites.get(diagnostic.code);
@@ -1841,14 +1888,14 @@ export function validateStaticConformanceProtocol({
       fail(`${descriptor.caseId} diagnostics are not in exact normative order`);
     }
     validateStaticRawDecodeSuppression(
-      descriptor,
+      executableDescriptor,
       diagnostics,
       compare,
       resourceProfile,
       contract,
     );
     validateStaticSchemaExpectations({
-      descriptor,
+      descriptor: executableDescriptor,
       diagnostics,
       validateModuleDeclaration,
       validateCompositionProfile,
@@ -1856,7 +1903,7 @@ export function validateStaticConformanceProtocol({
       resourceProfile,
     });
     validateStaticSchemaSuppression({
-      descriptor,
+      descriptor: executableDescriptor,
       diagnostics,
       diagnosticPrerequisites,
       validateModuleDeclaration,

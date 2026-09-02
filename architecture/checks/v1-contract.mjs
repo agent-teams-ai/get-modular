@@ -223,7 +223,7 @@ async function main() {
   validateDecoderQualification(
     decoderVectors,
     {
-      maxDepth: profile.limits.jsonDepth,
+      maxDepth: effectiveResourceProfile.limits.jsonDepth,
       validateDocument: validators.validateDocument,
     },
   );
@@ -231,7 +231,7 @@ async function main() {
     contract: diagnosticContract,
     snapshots: await readJson(`${qualificationDirectory}/diagnostic-snapshots.json`),
     catalog,
-    profile,
+    profile: effectiveResourceProfile,
     coordinateFields: Object.keys(schema.$defs.diagnostic.properties.coordinate.properties),
     validateDiagnostic: validators.validateDiagnostic,
   });
