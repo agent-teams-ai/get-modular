@@ -1407,11 +1407,9 @@ function staticIndependentSemanticDiagnostics({
 }) {
   const diagnostics = [];
   const validDeclarations = [];
-  let declarationCensusComplete = true;
   for (const document of documents) {
     if (document.documentType !== "module-declaration") continue;
     if (!validateModuleDeclaration(document.value)) {
-      declarationCensusComplete = false;
       continue;
     }
     validDeclarations.push(document);
@@ -1445,22 +1443,20 @@ function staticIndependentSemanticDiagnostics({
       }
     }
   }
-  if (declarationCensusComplete) {
-    const groups = new Map();
-    for (const document of validDeclarations) {
-      const id = document.value.implementationId;
-      groups.set(id, (groups.get(id) ?? 0) + 1);
-    }
-    for (const [implementationId, count] of groups) {
-      if (count > 1) {
-        diagnostics.push({
-          code: "declaration.duplicate-implementation",
-          phase: "declaration",
-          path: [],
-          coordinate: { implementationId },
-          details: { reason: "duplicate" },
-        });
-      }
+  const groups = new Map();
+  for (const document of validDeclarations) {
+    const id = document.value.implementationId;
+    groups.set(id, (groups.get(id) ?? 0) + 1);
+  }
+  for (const [implementationId, count] of groups) {
+    if (count > 1) {
+      diagnostics.push({
+        code: "declaration.duplicate-implementation",
+        phase: "declaration",
+        path: [],
+        coordinate: { implementationId },
+        details: { reason: "duplicate" },
+      });
     }
   }
   const profileDocument = documents.find(document => (
@@ -1492,7 +1488,9 @@ function staticIndependentSemanticDiagnostics({
       }
     }
   }
-  return diagnostics;
+  return [...new Map(diagnostics.map(diagnostic => (
+    [canonicalize(diagnostic), diagnostic]
+  ))).values()];
 }
 
 function staticIdentityInvalidPaths(document, validator) {

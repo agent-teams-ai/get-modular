@@ -599,6 +599,133 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
   semanticCollectorCase.expected.diagnostics.at(-1).details.omitted = 3;
   assert.doesNotThrow(() => validate(semanticCollectorLimit));
 
+  const mixedCensusCollectorLimit = clone(schemaCollectorLimit);
+  const mixedCensusCollectorCase = mixedCensusCollectorLimit.cases.find(descriptor => (
+    descriptor.caseId === "diag.raw.hostile-profile-key.v1"
+  ));
+  const cleanDuplicateDeclaration = clone(protocol.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.semantic-coordinate.v1"
+  )).input.declarations[0]);
+  cleanDuplicateDeclaration.moduleId = "example/duplicate";
+  cleanDuplicateDeclaration.implementationId = "example/duplicate/default";
+  cleanDuplicateDeclaration.owner.path = ["duplicate"];
+  mixedCensusCollectorCase.input.declarationsUtf8.push(
+    JSON.stringify(cleanDuplicateDeclaration),
+    JSON.stringify(cleanDuplicateDeclaration),
+  );
+  mixedCensusCollectorCase.expected.diagnostics.at(-1).details.omitted = 3;
+  assert.doesNotThrow(() => validate(mixedCensusCollectorLimit));
+
+  const cleanRootDeclaration = clone(protocol.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.semantic-coordinate.v1"
+  )).input.declarations[0]);
+  const duplicateSlotTemplate = clone(protocol.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.invalid-binding-suppresses-unreachable.v1"
+  )).input.declarations[0].slots[0]);
+  duplicateSlotTemplate.slotId = "dependency";
+  duplicateSlotTemplate.cardinality = { kind: "optional" };
+  for (const duplicateKind of ["capability", "slot"]) {
+    const normalizedCandidateLimit = clone(protocol);
+    const normalizedCandidateCase = normalizedCandidateLimit.cases.find(descriptor => (
+      descriptor.caseId === "diag.object.semantic-coordinate.v1"
+    ));
+    const makeDeclaration = suffix => {
+      const moduleId = `example/a-${suffix}`;
+      const implementationId = `${moduleId}/default`;
+      return {
+        kind: "get-modular.module-declaration",
+        schemaVersion: 1,
+        moduleId,
+        implementationId,
+        owner: { authority: "example", path: [`a-${suffix}`] },
+        provides: duplicateKind === "capability"
+          ? [
+              {
+                capabilityId: "example/shared",
+                compatibility: {
+                  family: "exact",
+                  familyVersion: 1,
+                  token: "example/shared/v1",
+                },
+              },
+              {
+                capabilityId: "example/shared",
+                compatibility: {
+                  family: "exact",
+                  familyVersion: 1,
+                  token: "example/shared/v1",
+                },
+              },
+            ]
+          : [],
+        slots: duplicateKind === "slot"
+          ? [clone(duplicateSlotTemplate), clone(duplicateSlotTemplate)]
+          : [],
+      };
+    };
+    const distinctDeclarations = Array.from(
+      { length: 255 },
+      (_, index) => makeDeclaration(String(index).padStart(3, "0")),
+    );
+    const repeatedDeclaration = makeDeclaration("z-late");
+    normalizedCandidateCase.input = {
+      declarations: [
+        cleanRootDeclaration,
+        ...distinctDeclarations,
+        repeatedDeclaration,
+        clone(repeatedDeclaration),
+      ],
+      profile: {
+        kind: "get-modular.composition-profile",
+        schemaVersion: 1,
+        profileId: "example/collector",
+        roots: [cleanRootDeclaration.moduleId],
+        selections: [{
+          moduleId: cleanRootDeclaration.moduleId,
+          implementationId: cleanRootDeclaration.implementationId,
+        }],
+        bindings: [],
+      },
+    };
+    normalizedCandidateCase.schemaValidCompanion = clone(normalizedCandidateCase.input);
+    const duplicateCode = duplicateKind === "capability"
+      ? "declaration.duplicate-capability"
+      : "declaration.duplicate-slot";
+    normalizedCandidateCase.expected = {
+      ok: false,
+      diagnostics: [
+        {
+          code: "declaration.duplicate-implementation",
+          phase: "declaration",
+          path: [],
+          coordinate: { implementationId: repeatedDeclaration.implementationId },
+          details: { reason: "duplicate" },
+        },
+        ...distinctDeclarations.slice(0, 254).map(declaration => ({
+          code: duplicateCode,
+          phase: "declaration",
+          path: [
+            { kind: "field", value: duplicateKind === "capability" ? "provides" : "slots" },
+            { kind: "index", value: 1 },
+          ],
+          coordinate: {
+            implementationId: declaration.implementationId,
+            ...(duplicateKind === "slot" ? { slotId: duplicateSlotTemplate.slotId } : {}),
+          },
+          details: { reason: "duplicate" },
+        })),
+        {
+          code: "diagnostics.truncated",
+          phase: "output",
+          path: [],
+          coordinate: {},
+          details: { omitted: 2 },
+        },
+      ],
+    };
+    assert.doesNotThrow(() => validate(normalizedCandidateLimit));
+  }
+
   const contextualDepth = clone(protocol);
   const contextualDepthCase = contextualDepth.cases.find(descriptor => (
     descriptor.caseId === "diag.raw.hostile-profile-key.v1"
