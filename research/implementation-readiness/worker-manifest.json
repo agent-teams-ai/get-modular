@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "task": "implementation-readiness-api-authoring",
+  "repository": "agent-teams-ai/get-modular",
+  "baseSha": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418",
+  "branch": "research/implementation-readiness-api-authoring",
+  "productionCodeAllowed": false,
+  "acceptedAdrMutationAllowed": false,
+  "networkAccess": "disabled",
+  "serviceTier": "default",
+  "workerModel": "gpt-5.6-sol",
+  "researchReasoningEffort": "xhigh",
+  "fixtureCodingReasoningEffort": "medium",
+  "stages": [
+    {
+      "id": "track-a-readiness",
+      "status": "planned",
+      "workerCount": 10,
+      "ownership": "read-only research"
+    },
+    {
+      "id": "track-b-api-authoring",
+      "status": "planned",
+      "workerCount": 8,
+      "ownership": "disposable qualification fixtures only"
+    },
+    {
+      "id": "oss-reference",
+      "status": "planned",
+      "workerCount": 6,
+      "ownership": "read-only research"
+    },
+    {
+      "id": "integrators",
+      "status": "planned",
+      "workerCount": 4,
+      "ownership": "evidence synthesis"
+    },
+    {
+      "id": "dispute-critics",
+      "status": "planned",
+      "workerCount": "adaptive",
+      "ownership": "read-only targeted criticism"
+    },
+    {
+      "id": "final-review",
+      "status": "planned",
+      "workerCount": 6,
+      "ownership": "exact-head read-only review"
+    }
+  ],
+  "notes": [
+    "Historical V1 labels remain evidence lineage and are not silently rewritten.",
+    "Proposed ADR-0009 through ADR-0016 remain non-authoritative.",
+    "Production Core, public API, runtime engine and plugin host are out of scope."
+  ]
+}
