@@ -31,6 +31,9 @@ Node, TypeScript, bundlers, browsers, or Electron.
 
 - One archive and one root entry point are authoritative. Package conditions
   MUST NOT select different semantic implementations.
+- Core is ESM-only with one implementation. CommonJS `require()` resolves that
+  same ESM file through `require(esm)`; deep imports, `package.json` imports,
+  environment-specific branches, and undeclared subpaths fail closed.
 - TypeScript declarations and JavaScript runtime files resolve from the same
   root export. Package-level compatibility aliases MUST NOT create a second
   resolution authority.
@@ -56,23 +59,26 @@ Use an ESM package with only this root export shape:
       "import": {
         "types": "./dist/index.d.ts",
         "default": "./dist/index.js"
-      }
+      },
+      "default": "./dist/index.js"
     }
   }
 }
 ```
 
-The nested `default` is a resolver fallback inside `import`; it does not create
-a JavaScript default export. Omit `main`, `module`, package-level `types`,
-`typings`, `typesVersions`, `require`, outer `default`, `node`, `browser`,
+The nested `default` is a resolver fallback inside `import`; the sibling
+top-level `default` lets `require(esm)` reach the same file. Neither creates a
+JavaScript default export. Omit `main`, `module`, package-level `types`,
+`typings`, `typesVersions`, a `require` condition, `node`, `browser`,
 development/production conditions, and subpath exports.
 
 Runtime condition injection has one explicit exception to the same-JavaScript-
 target rule. Extra runtime conditions such as `browser` and `development` must
-still select `./dist/index.js`, but `types` is declaration-only. Node
-`--conditions=types` is an unsupported negative case that selects
+still select `./dist/index.js`, but `types` is declaration-only. Node ESM
+`import` with `--conditions=types` is an unsupported negative case that selects
 `./dist/index.d.ts` and must fail before package JavaScript evaluation, without
-falling through to `./dist/index.js` or another build. It is excluded from
+falling through to `./dist/index.js` or another build; `require()` under that
+flag resolves the sibling `default` target as expected. Both are excluded from
 runtime same-target assertions.
 
 Disposable Node and TypeScript observations support this direction, but one
@@ -88,12 +94,16 @@ decision or authorize publication.
   manifest bytes, file inventory, toolchain identities, and source commit.
 - Fresh consumers execute the public root with Node ESM and typecheck it with
   every supported TypeScript/module-resolution pair.
-- Negative consumers prove rejection of CommonJS `require`, deep imports,
-  `package.json` access, and unknown subpaths. Runtime condition-injection
+- A CommonJS consumer proves that `require()` returns the same module instance
+  as `import`. Negative consumers prove rejection of deep imports,
+  `package.json` access, and unknown subpaths, and `ERR_REQUIRE_ESM` on a
+  runtime without `require(esm)`. Runtime condition-injection
   consumers other than `types` prove that extra conditions select the retained
-  JavaScript target and never an alternate build. A separate Node
+  JavaScript target and never an alternate build. A separate Node ESM
   `--conditions=types` consumer proves declaration-target selection followed by
-  failure before package JavaScript evaluation; it is not a same-target case.
+  failure before package JavaScript evaluation, and its `require()` counterpart
+  proves that the sibling `default` target still loads; neither is a
+  same-target case.
 - Browser window, dedicated worker, and required Electron evidence import the
   same retained archive through the supported public root carrier.
 - Declaration-surface and archive-content audits reject product, Foundation,
@@ -110,5 +120,6 @@ Open. ADR-0012 is a proposed resolution. Before acceptance, a private,
 non-publishable qualification subject MAY pack the proposed carrier under the
 qualification fixture boundary solely to produce reviewable evidence. It is not
 a production package, public export authority, conformance claim, or publication
-candidate. Production package creation, public exposure, and publication remain
-blocked until the decision is accepted with the required packed evidence.
+candidate. Publication-capable package creation, public exposure, and
+publication remain blocked until the decision is accepted with the required
+packed evidence.

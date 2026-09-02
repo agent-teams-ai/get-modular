@@ -16,7 +16,6 @@ summary: Index of Get Modular architecture decisions.
 - [ADR-0012: Select an ESM-only root package carrier](0012-select-esm-only-root-package-carrier.md)
 - [ADR-0013: Close trusted-object and raw-carrier semantics](0013-close-trusted-object-and-raw-carrier-semantics.md)
 - [ADR-0014: Close duplicate binding-record semantics](0014-close-duplicate-binding-record-semantics.md)
-- [ADR-0015: Block publication surfaces and runtime claims while decisions stay open](0015-block-publication-surfaces-and-runtime-claims-while-decisions-stay-open.md)
 
 ## Accepted decisions
 
@@ -28,6 +27,7 @@ summary: Index of Get Modular architecture decisions.
 - [ADR-0006: Clarify V1 compiler normalization and entry points](0006-clarify-v1-compiler-normalization-and-entry-points.md)
 - [ADR-0007: Require executable V1 conformance amendments](0007-require-executable-v1-conformance-amendments.md)
 - [ADR-0008: Bounded internal engine self-composition](0008-bounded-internal-engine-self-composition.md)
+- [ADR-0015: Block publication surfaces and runtime claims while decisions stay open](0015-block-publication-surfaces-and-runtime-claims-while-decisions-stay-open.md)
 
 ## Superseded decisions
 

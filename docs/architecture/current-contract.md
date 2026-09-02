@@ -106,6 +106,12 @@ admission, signatures, isolation, updates, and plugin state.
 No historical evidence label grants a second authority, runtime discovery,
 container, lifecycle, plugin, or authorization behavior.
 
+The source layout of `packages/core` MUST follow the adopted organization Feature
+Module Standard v1 through the local
+[profile](feature-module-standard.md): feature-owned slices under
+`packages/core/src/features/*`, a private composition root, and one curated
+public entry point.
+
 ## Required closure before corresponding implementation
 
 These are small contract gates, not a reason to redesign the architecture:
@@ -131,13 +137,19 @@ These are small contract gates, not a reason to redesign the architecture:
    catalog, diagnostic contract, snapshot set, checker, and qualification
    ledger. Two separate generations would duplicate those artifacts.
 
-The first graph slice must not invent semantics for items 4 and 5. Proposed
-ADR-0015 would permit a private normalized-value semantic compiler checkpoint
-under `packages/core` while excluding repeated binding records and every public
-carrier. Until ADR-0015 or another successor is accepted, ADR-0003's stricter
-deferral remains authoritative and the governance gate rejects production
-package source. Public packaging, both carrier adapters, raw decoding and
-production dependency adapters remain gated by their corresponding decisions.
+The first graph slice must not invent semantics for items 4 and 5. A private
+normalized-value semantic compiler checkpoint may proceed after
+accepted-authority preflight while excluding repeated binding records. That
+checkpoint lives in `packages/core` as a `private: true` package with no
+publication field, under the rule recorded by accepted ADR-0015 as the
+successor to the ADR-0003 deferral sentence; the governance gate admits that
+source and keeps blocking publication surfaces and runtime claims. Inside that
+checkpoint repeated binding-record inputs stay outside the claimed domain, and
+the ADR-0014 semantics may be demonstrated only in fixtures until ADR-0014 is
+accepted. It is not
+either proposed carrier adapter and cannot claim trusted-object or raw-byte
+admission. Public packaging, both carrier adapters, raw decoding, and production
+dependency adapters remain gated by their corresponding decisions.
 
 ## Historical requirement wording
 

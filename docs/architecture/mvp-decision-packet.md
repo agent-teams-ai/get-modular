@@ -31,22 +31,17 @@ Scores are directional: confidence and reliability are higher when better;
 complexity is higher when harder. LOC estimates include focused evidence, not
 the semantic compiler itself.
 
-## Decisions required before the first Core checkpoint
+## Resolved prerequisite for the first Core checkpoint
 
 ### D1: production-source admission while implementation blockers are open
 
-Accepted ADR-0003 currently blocks production package creation until its
-implementation blockers are resolved. The roadmap cannot silently reinterpret
-that rule.
+Accepted ADR-0015 selected private, non-publishable, manifest-bound source under
+the package identities accepted by ADR-0003. Public exports, publication and
+conformance claims remain blocked while their owning decisions are open. The
+first production source still requires the explicit product-owner start record
+defined by ADR-0015. This item is no longer a choice in this packet.
 
-| Option | Confidence | Reliability | Complexity | Approximate change | Consequence |
-| --- | ---: | ---: | ---: | ---: | --- |
-| Keep the current fail-closed rule | 8/10 | 10/10 | 3/10 | 20-60 LOC | No production source until every blocker closes; strongest authority continuity, slowest first slice. |
-| Accept ADR-0015 or a narrow successor allowing private, non-publishable, manifest-bound source | 9/10 | 9/10 | 5/10 | 120-250 LOC | Recommended. Enables implementation evidence while publication, public exports and conformance claims remain blocked. |
-| Build a duplicate qualification-only implementation | 4/10 | 7/10 | 8/10 | 500-1,200 LOC | Avoids production source but creates throwaway authority and drift risk. |
-
-**Stop point:** before creating `packages/core` or any equivalent production
-source. The selected rule requires an accepted successor decision.
+## Decisions required before the first Core public checkpoint
 
 ### D2: pre-1.0 public symbol names
 
@@ -145,8 +140,8 @@ integration.
 
 ## Recommended approval order
 
-1. D1, so a private substantive implementation can exist without weakening
-   publication gates.
+1. Record the ADR-0015 product-owner start decision before the first private
+   production source.
 2. D4 and D5 atomically, because their new diagnostics require one generation
    2 schema, catalog, snapshot, checker and qualification-ledger transaction.
 3. D2 and D3 before freezing or exposing the packed public boundary.

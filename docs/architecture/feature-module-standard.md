@@ -60,12 +60,10 @@ gate.
 repository mapping, local authorities, navigation, gate wiring, and explicit
 qualification states. `pnpm governance:check` uses the same repository-wide
 production-artifact inventory. It always rejects production artifacts outside
-`packages`. Under the current accepted authority, an active implementation
-blocker also rejects production package source and qualification promotion.
-Proposed ADR-0015 would admit only private, non-publishable source in an accepted
-package identity; that behavior must not enter the gate before the decision is
-accepted. Both commands run through the complete repository gate, and profile
-binding also runs in the fast gate.
+`packages`. Accepted ADR-0015 admits only private, non-publishable source in an
+accepted package identity while active open decisions continue to block public
+surfaces, qualification promotion and publication. Both commands run through
+the complete repository gate, and profile binding also runs in the fast gate.
 
 ## Source admission
 

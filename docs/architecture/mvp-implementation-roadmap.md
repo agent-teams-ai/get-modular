@@ -33,8 +33,9 @@ This document is the implementation roadmap, not a replacement for an
 accepted ADR. It deliberately describes the order and evidence required to
 build the first reusable Core. It does not accept new public API, change an
 accepted decision, or claim that a qualification fixture is production code.
-ADR-0009 to ADR-0015 are proposed decisions on the selected base unless their
-accepted successors are present. They do not enter accepted authority, the
+ADR-0009 to ADR-0014 are proposed decisions on the selected base unless their
+accepted successors are present; ADR-0015 is accepted. The proposed decisions
+do not enter accepted authority, the
 open-decision blocker catalog or executable governance until accepted through
 the repository decision flow.
 
@@ -86,7 +87,7 @@ alone.
 
 | Milestone | Proposed decisions required | Blocked without them |
 | --- | --- | --- |
-| M1 `direct-semantics-qualified` through the private normalized seam | ADR-0015 or another accepted successor to ADR-0003 | Private package source and the first executable subject |
+| M1 `direct-semantics-qualified` on Node through the object entrypoint | None; accepted ADR-0015 already lets the gate admit private `packages/core` source | Private package source and the first executable subject |
 | M2 raw entrypoint and carriers | ADR-0013 and ADR-0014 together as one diagnostic generation 2 transaction: successor schema enum, catalog rank, diagnostic contract, snapshots, checker and ledger, because ADR-0007 keeps the base enum and code rank byte-identical | Raw decoding exposure, carrier admission and duplicate binding-record behavior |
 | M3 public barrel and package carrier | ADR-0009 and ADR-0012 | Public names, export map and any packed publication candidate |
 | M3 emitter and generated stage1 | ADR-0011 or a narrower successor that closes only the dependency-record seam | `self-composed-qualified` and every release custody claim |
@@ -94,10 +95,11 @@ alone.
 A private, unpublished `0.x` archive may remain `not-claimed` while it is used
 for bounded implementation evidence. Publication and the first conformance
 claim both require the six runtime cases mandated by ADR-0007 and ADR-0008.
-The bootstrap sequence is therefore: accept ADR-0015 or another narrow
-successor, materialize private `packages/core`, reach M1 on Node, prepare the
-diagnostic generation 2 transaction in parallel with M1, then proceed to M2
-and M3 in that order.
+The bootstrap sequence is therefore: record the
+product-owner start decision required by ADR-0015 in this bootstrap sequence or
+in a decision record and reference it from the first private package pull
+request, materialize private `packages/core`, reach M1 on Node, prepare the diagnostic generation 2
+transaction in parallel with M1, then proceed to M2 and M3 in that order.
 
 ### Roadmap qualification language
 
@@ -164,7 +166,7 @@ the evidence and review affected by that change.
 - canonical schema, resource profile, diagnostic catalog and vectors;
 - accepted authority and qualification ledgers already present in the selected
   source;
-- proposed ADR-0009 to ADR-0015 candidates, clearly separated from accepted
+- proposed ADR-0009 to ADR-0014 candidates, clearly separated from accepted
   authority and active open-decision blockers;
 - the governed open decisions OD-004, OD-005 and OD-006 for package
   carrier/resolution, raw-input carrier semantics and duplicate binding-record
@@ -224,9 +226,10 @@ the evidence and review affected by that change.
    type, export conditions, supported resolver modes or install-time script
    behavior. Proposed ADR-0012 is the current candidate. Governance derives
    blockers only from the active open-decision catalog, not from this roadmap's
-   identifiers. Keep ADR-0009 through ADR-0015 as conditional roadmap choices
-   until accepted; only accepted decisions may add decision-specific mutation
-   fixtures or checkpoint requirements.
+   identifiers; OD-004, OD-005 and OD-006 already follow that catalog-driven
+   path. Keep ADR-0009 to ADR-0014 as proposed roadmap choices until accepted;
+   only their accepted decisions may add mutation fixtures or checkpoint
+   requirements.
 10. Verify that the executable resource-profile generator/oracle proof remains
     covered by `contracts:test` in the complete repository gate. The separate
     `qualification:resource-profile` command invokes the same proof for focused
@@ -289,12 +292,18 @@ smaller split would make it unverifiable.
 
 ### Phase 1 implementation
 
-1. Do not materialize production package source while accepted ADR-0003's
-   implementation blockers remain active. A successor may permit private,
-   manifest-bound source while continuing to block publication, but the roadmap
-   cannot select that policy. Proposed ADR-0015 is the current candidate. After
-   authority closes, keep domain semantics independent from Foundation, Docs
-   Protocol, DI containers and plugin runtime types.
+1. Materialize the private Core package/source boundary under the accepted
+   topology, but do not freeze the target unversioned public barrel until
+   ADR-0009 or a successor is accepted. If it remains proposed, accepted API
+   authority continues to govern and the target release stays `CONDITIONAL`;
+   private implementation work is not blocked: accepted ADR-0015 lets the
+   governance gate admit private package identities, and the first production
+   source still waits for the product-owner start decision that ADR-0015
+   requires. Structure the package as feature-owned slices under
+   `packages/core/src/features/*` exactly as the adopted [Feature Module Standard profile](feature-module-standard.md)
+   maps the organization standard ([canonical document](https://github.com/agent-teams-ai/.github/blob/eef92e7fd40f538b4e9ba03e01bbd4e2d23f12f2/docs/architecture/feature-module-standard/v1.md),
+   revision `eef92e7`). Keep domain semantics independent from Foundation,
+   Docs Protocol, DI containers and plugin runtime types.
 2. Preserve ADR-0003's public development-only
    `@get-modular/conformance` identity without creating an empty package. Its
    substantive vectors, fixtures and packed-consumer tooling may be published
@@ -351,13 +360,16 @@ discovery or a second identity authority.
 ### Phase 2 implementation
 
 1. A module co-locates its serializable wire-format ID and plain-data
-   declaration. Branding follows successful compiler validation.
+   declaration inside its feature-owned slice, following the adopted
+   [Feature Module Standard profile](feature-module-standard.md). Branding
+   follows successful compiler validation.
    Product/repository admission allocates and authorizes the namespace; the ID
    is not authentication, an import path or an executable lookup key. There is
    no handwritten or authoritative global ID registry. A deterministic derived
    inventory may support navigation but is never runtime discovery or identity
    authority.
-2. Feature-local contracts and adapters stay beside their feature. A shared
+2. Feature-local contracts and adapters stay beside their feature, in the
+   role-oriented layout the Feature Module Standard v1 defines. A shared
    contract is extracted only after a second real consumer proves the same
    boundary.
 3. `required`, `optional` and `many` express cardinality. `many` has explicit
@@ -416,7 +428,11 @@ remain a private intermediate and evidence input.
 Repeated binding records for one `(implementationId, slotId)` remain outside
 the admitted semantic domain until OD-006 and its accepted successor define the
 exact diagnostic and suppression behavior. Fixtures may demonstrate candidate
-behavior but cannot make it compiler authority.
+behavior but cannot make it compiler authority. The private M1 compiler keeps
+repeated-record inputs outside its claimed domain; any candidate implementation
+of the ADR-0014 semantics lives in fixtures under `tests/` until ADR-0014 is
+accepted; this placement is stricter than accepted ADR-0015 requires and keeps
+OD-006 unexposed and unclaimed.
 
 Phase 3 accepts, stores, returns and invokes no factory, callback, function,
 loader, executable handle or product code. Product-owned literal factory tables
@@ -562,6 +578,88 @@ eligibility or invent report and attestation schemas.
 
 **Purpose:** make accepted Core behavior reusable as independent evidence without
 inventing a public runner or release protocol.
+
+### Phase 5 entry gates
+
+Before creating structural or runtime conformance evidence, pin a Docs Protocol
+and Engineering Foundation authoring toolchain whose declared identity strategy
+can create qualification records under a governed identity. The two
+historical `QUAL-*` records keep their identities as immutable evidence; the
+identity grammar and placement for new records are selected together with that
+toolchain and must be visible to the governance gate before use. Prove both
+`docs:new --dry-run` and apply paths with positive and mutation fixtures. If no
+released pinned version supports that identity, Phase 5 is blocked on a bounded
+Engineering Foundation capability; Phases 1-4 may still build and qualify Core
+while conformance remains `not-claimed`. Manual files and relaxed identities
+are not substitutes.
+
+The Engineering Foundation repository owns that authoring capability and ships
+it through a separately reviewed package release. Its acceptance evidence is an
+exact package version and digest plus successful Get Modular dry-run, apply and
+mutation fixtures. Get Modular does not add a local writer or private identity
+fallback. Until that release is published and pinned, qualified Core `0.x` and
+its publication checkpoint are explicitly `CONDITIONAL`; the private Phases 1-4
+Core checkpoint remains implementable.
+
+Declare the qualification document type/template/index in the adopted profile
+and make the repository profile checker transition-aware. It must require
+`not-claimed` until governed qualification and reciprocal promotion records
+exist, then accept only their ordered same-subject states. A runner cannot
+promote its own output.
+
+Evidence reuse is disabled unless an accepted custody decision owns one closed
+reuse key. The key binds the exact subject/archive and source/authority ledgers;
+entrypoint, vectors and closed matrix case ID; evidence schema, generator,
+runner/verifier and command; toolchain and runtime; OS version and build,
+architecture and realm; browser release/build; Electron release plus its embedded
+Node and Chromium identities; matrix configuration and accepted freshness
+policy. Changing any component invalidates the case. Before such a decision
+exists, rerun rather than infer equivalence from a partial key.
+
+### Scale support envelope and operator guidance
+
+Phase 5 publishes an explicit Core `0.x` support envelope with the retained
+archive. The correctness envelope is closed over:
+
+- the object and admitted raw-byte entrypoints, accepted carrier cells, and
+  accepted resource limits;
+- sparse, dense, maximum-depth/cycle, diagnostic-storm and maximum-identity
+  worlds at 10/100/500/1000 modules and the accepted declaration limit;
+- the six required Node, Chromium and Electron cases, including the recorded
+  runtime, operating-system, architecture and realm identities; and
+- concurrent/repeated-call isolation, bounded diagnostics, canonical plan and
+  digest correctness, and packed-consumer/typecheck cases.
+
+Inputs above accepted resource limits, unresolved raw-carrier cells, skipped
+runtime cases, and Product Host lifecycle behavior are outside that envelope.
+Within it, accepted resource limits and correctness are supported; recorded
+time, memory, archive size and structural counters remain sizing observations,
+not portable latency, throughput or memory promises.
+
+Phase 5 records the support envelope in the closed `supportEnvelope` section of
+the private `QualificationReport` defined by the accepted release-custody
+decision. The private `ReleaseAttestation` binds that report digest to the
+retained archive and terminal promotion result. Together they are the sole
+authority for the retained archive identity, executed matrix, supported cells
+and explicit exclusions; no separate support or promotion record may repeat
+that state. Phase 5 generates `docs/generated/core-support-envelope.md`
+byte-for-byte from `QualificationReport.supportEnvelope`, verifies the generated
+view against the same report, and links it from
+`docs/architecture/current-contract.md`. The generated guide and mutable
+current-contract navigation are derived views: they do not own archive
+identity, support state or release eligibility.
+
+The derived guide explains identity and namespace ownership, complete-profile
+construction, ordered-many bindings, entrypoint and carrier selection,
+diagnostic and omission handling, supported scale shapes, evidence identities,
+and when invalidated cases must be rerun. It shows that a Product Host may
+consult its authorized literal factory table only after successful compilation
+and must not edit a plan or infer authorization, readiness, activation, retry,
+routing or recovery from Core output. It includes support-data capture and
+escalation guidance for cases outside the envelope without turning Get Modular
+into an operational authority. Before the promotion artifact exists, neither
+the guide nor current-contract navigation may claim a distributable support
+envelope.
 
 ### Phase 5 implementation
 
