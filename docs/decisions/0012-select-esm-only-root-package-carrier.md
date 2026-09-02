@@ -96,6 +96,19 @@ before evaluating package JavaScript, and resolution does not fall through to
 `./dist/index.js` or any alternate build. A condition-specific JavaScript
 implementation is forbidden.
 
+The supported TypeScript resolution pairs are `nodenext` and `node16` in an
+ESM context (`"type": "module"` or `.mts`) and `bundler`. Unsupported and
+therefore negative cases are `nodenext` and `node16` in a CommonJS context
+(`.cts` or `"type": "commonjs"`, which fail with TS2307), `node10`, which
+TypeScript 7 removed, and `classic`. Node `require()` of the package root fails
+with `ERR_PACKAGE_PATH_NOT_EXPORTED` even on Node 24, where `require(esm)` is
+otherwise available, because no `require` or outer `default` condition exists.
+CommonJS hosts such as a Jest or ts-jest CommonJS project load Core through
+their ESM mode or `await import()`. A sibling `default` condition pointing at
+the same ESM file would keep one implementation and one module instance while
+enabling `require(esm)`; it is a possible additive successor step once a real
+CommonJS consumer exists, not part of this decision.
+
 Browser, dedicated-worker, and Electron qualification may use a product-owned
 loader or import-map adapter, but the adapter MUST resolve the public package
 root from the retained archive. A test that maps directly to a private `dist`
@@ -123,8 +136,12 @@ against the private non-publishable qualification subject covering:
 
 - exact export-map bytes and exhaustive archive allowlist;
 - one retained archive identity and full build provenance;
-- Node ESM execution and supported TypeScript NodeNext/Bundler consumers;
-- negative `require`, deep-import, package-manifest, and unknown-subpath cases;
+- Node ESM execution and the supported TypeScript `nodenext`, `node16`, and
+  `bundler` ESM-context consumers, plus negative `nodenext` and `node16`
+  CommonJS-context consumers;
+- negative `require` cases, including Node 24 `require(esm)` failing with
+  `ERR_PACKAGE_PATH_NOT_EXPORTED`, and negative deep-import, package-manifest,
+  and unknown-subpath cases;
 - runtime condition-injection cases proving that every tested additional
   condition other than `types` resolves the same retained JavaScript target and
   never an alternate build;
@@ -147,6 +164,8 @@ publication until it passes the same suite and release custody.
 
 - Consumers get one obvious import path and one semantic implementation.
 - Core does not carry CommonJS or environment-conditional maintenance cost.
+- `require()` and CommonJS TypeScript contexts are unsupported by design; hosts
+  that cannot use ESM load Core through `await import()`.
 - Package-internal files remain private and can move without creating accidental
   compatibility obligations.
 - Browsers may still need product-owned resolution adapters because bare npm

@@ -13,7 +13,7 @@ related:
   - OD-006
 ---
 
-<!-- cspell:words coprime unshuffled xorshift -->
+<!-- cspell:words coprime Durstenfeld unshuffled xorshift -->
 
 # ADR-0014: Close duplicate binding-record semantics
 
@@ -73,23 +73,38 @@ future artifact categories:
    subject-derived expectations;
 6. a new immutable successor qualification ledger binding the exact bytes of
    items 1 through 5; and
-7. a new versioned successor accepted-authority ledger and schema, anchored by
-   the governed acceptance transaction, that carries forward every current
-   authority byte-for-byte and adds the accepted ADR and successor qualification
-   ledger without editing or weakening the existing ledger.
+7. registration of the accepted ADR in
+   `architecture/decisions/accepted-decisions.json`, with the new successor
+   contract and qualification ledgers anchored by a separate umbrella decision
+   that freezes diagnostic generation 2 for ADR-0013 and this decision together; the accepted-authority ledger
+   `architecture/authority/accepted-authorities.json` and every existing ledger
+   remain byte-identical.
 
 None of those successor artifacts or ledger entries exists merely because this
 proposal names them. Until they exist, are reviewed, and are accepted together,
 ADR-0005, ADR-0007, and their existing artifact bytes remain the only authority.
+
+ADR-0013 adds `input.invalid-byte-carrier` under the same constraints. Because
+ADR-0007 requires the immutable base schema enum, diagnostic catalog, and code
+rank to remain byte-identical, both codes enter one diagnostic generation 2
+together: a successor `composition.schema.json` enum, a successor catalog with
+the complete rank of 33 codes, the successor contract, snapshots, and checker.
+In that rank `input.invalid-byte-carrier` is first and
+`binding.duplicate-record` immediately precedes `binding.duplicate`.
 
 ### Repeated coordinate and diagnostic
 
 A repeated binding-record group exists when a schema-admitted profile contains
 more than one binding record with the same
 `(consumerImplementationId, slotId)`. The binding-coordinate census is
-independent of declaration lookup. If the profile or either coordinate field is
-not structurally admitted, the semantic uniqueness fact is unavailable and no
-duplicate-record diagnostic is emitted.
+independent of declaration lookup and of selection: every schema-admitted
+record is counted, so two records for a declared but unselected consumer are
+still a repeated group and fail closed. This is a deliberate asymmetry with the
+accepted rule that a single record for an unselected consumer is graph-inert.
+Uniqueness is a structural property of the profile, like
+`profile.duplicate-root`, not a row-local lookup. If the profile or either
+coordinate field is not structurally admitted, the semantic uniqueness fact is
+unavailable and no duplicate-record diagnostic is emitted.
 
 Emit exactly one normalized diagnostic for each repeated coordinate:
 
@@ -159,7 +174,7 @@ The exact additive diagnostic prerequisite-catalog row is:
 ```json
 {
   "code": "binding.duplicate-record",
-  "prerequisiteGroup": "binding.record-uniqueness",
+  "prerequisiteGroup": "binding.record-census",
   "prerequisites": [
     "document.schema-valid",
     "binding.record-coordinate-census-complete"
@@ -169,7 +184,9 @@ The exact additive diagnostic prerequisite-catalog row is:
 ```
 
 The prerequisite order is normative and contains two entries, below the
-accepted maximum of four. The `binding.record-uniqueness` fact is not a
+accepted maximum of four. The group name `binding.record-census` is
+deliberately distinct from the fact ID `binding.record-uniqueness`, so group
+and fact namespaces do not overlap. The `binding.record-uniqueness` fact is not a
 prerequisite to its own diagnostic: consistent with ADR-0007, its `invalid`
 state creates the closed failure candidate, while the ordered prerequisites
 establish that the census from which that positive duplicate claim is made is
@@ -179,8 +196,10 @@ extension point, or configurable rule.
 
 The occurrence rules for the new scoped fact are:
 
-- zero occurrences is handled by accepted `binding.missing` when the selected
-  declared slot requires a record;
+- zero occurrences at a declared slot of a selected consumer is handled by
+  accepted `binding.missing`, including `optional` slots and `many` slots with
+  `min: 0`, because ADR-0006 encodes legal absence as an empty provider list
+  and never as an omitted record;
 - one occurrence makes record uniqueness valid;
 - more than one occurrence makes it invalid and emits
   `binding.duplicate-record`;
@@ -259,10 +278,12 @@ compiler entry point, and either one exact complete inline input or one closed
 bounded `generatorId` plus parameters. Each materialized row must contain the
 exact complete expected result, including every diagnostic in order and the
 absence of plan and digest; code-only, partial, pattern, alternate, and
-subject-derived expectations are forbidden. Generated rows must additionally
-record their exact input and expected-result SHA-256 identities. The recipe
-manifest must close each generator's parameter domain, enumeration order,
-identity-token table, resource source, and outcome oracle. The checker must
+subject-derived expectations are forbidden. Each bounded generator records one
+SHA-256 digest over its materialized case stream plus the row count, in the
+same way the accepted decoder and canonicalization case tuples are pinned;
+per-row digests are not required. The recipe manifest must close each
+generator's parameter domain, enumeration order, identity-token table, resource
+source, and outcome oracle. The checker must
 reject missing, duplicate, extra, or reordered generated case IDs.
 
 The closed proposed case and generator inventory is:
@@ -271,12 +292,34 @@ The closed proposed case and generator inventory is:
 | --- | --- | --- |
 | Cardinality and occurrence count | `od006.cardinality.v1` | Cartesian product of `required`, `optional`, and `many(min=1,max=2)`; two and three records; and `valid-identical`, `valid-conflicting`, and `one-row-cardinality-invalid`. The identity-token table fixes one consumer, one slot, and three selected compatible providers. Every expansion returns exactly one `binding.duplicate-record`, plus only the exact row-local cardinality candidate implied by the selected row recipe, and no plan or digest. |
 | Row-local failures | `od006.row-failures.v1` | One repeated group with the fault in each record position for `binding.duplicate`, `binding.unknown-provider`, `binding.provider-not-selected`, `binding.cardinality` under and over bounds, `binding.capability-missing`, and `binding.compatibility-mismatch`. The complete expected result contains the duplicate-record candidate plus the accepted normalized row-local candidates; equal candidates deduplicate only after occurrence accounting. |
-| Independent lookup and graph suppression | stable cases `od006.overlap.unknown-consumer.v1`, `od006.overlap.unknown-slot.v1`, `od006.graph.reached-incomplete-independent-scc.v1`, and `od006.graph.unreached-invalid-frontier.v1` | Each case has an exact inline declaration/profile world. Expected results respectively retain the independently provable accepted lookup failure, retain the unknown-slot failure, retain an SCC proved without the invalid group while suppressing unproved reachability, and retain reachability conclusions whose proof never traverses the invalid frontier. No invalid-group edge appears. |
+| Independent lookup and graph suppression | stable cases `od006.overlap.unknown-consumer.v1`, `od006.overlap.unknown-slot.v1`, `od006.overlap.unselected-consumer.v1`, `od006.graph.reached-incomplete-independent-scc.v1`, and `od006.graph.unreached-invalid-frontier.v1` | Each case has an exact inline declaration/profile world. Expected results respectively retain the independently provable accepted lookup failure, retain the unknown-slot failure, return exactly one `binding.duplicate-record` and no plan for two records of a declared but unselected consumer, retain an SCC proved without the invalid group while suppressing unproved reachability, and retain reachability conclusions whose proof never traverses the invalid frontier. No invalid-group edge appears. |
 | Record/provider permutations | `od006.permutations.exhaustive.v1` | For every cardinality and row-failure source case, enumerate every unique outer record permutation and every unique within-row provider permutation. Derived case IDs append zero-based fixed-width permutation ranks. Each exact complete result equals its source case; no sampling or seed is used. |
 | Diagnostic ordering | `od006.ordering.axes.v1` and `od006.ordering.seeded-shuffle.v1` | The axes generator materializes exact inline worlds for phase dominance, the two new code-rank adjacencies, and cross-coordinate ASCII ordering while accepted snapshots continue to own unchanged path/detail axes. The shuffle generator applies unsigned 32-bit xorshift `(13,17,5)` Fisher-Yates with seed `0x4f440006` to the closed axes inputs; its expected ordered results are identical to the unshuffled cases. |
 | Bounded collector | `od006.collector.v1` | Distinct repeated coordinates at `N=256`, `257`, and `258`, presented in ascending, reverse, and coprime-stride order. Exact outcomes are all 256 ordinary records for 256; first 255 plus `diagnostics.truncated {"omitted":2}` for 257; and first 255 plus `{"omitted":3}` for 258. All presentations retain the same comparator-selected records for their `N`. |
 | Resource accounting | `od006.resources.v1` | For each of `bindings`, `graphEdges`, and `providersPerManySlot`, materialize the exact accepted profile-v2 limit and limit-plus-one input with repeated records. Expected complete outcomes use the accepted limit diagnostic and suppression rules, count all occurrences before normalization, and identify the exact profile-v2 row from which the numeric boundary was read. |
 | Mutations | `od006.mutations.v1` | Stable mutation IDs cover overloaded `binding.duplicate`, changed new-code rank, changed prerequisite order/group/scope, missing or remapped successor facts, per-occurrence output, array-index path, winner selection, row merge/concatenation/intersection/sort/fallback, invalid-edge leakage, independent-fact suppression, collector stop at `K + 1`, and resource deduplication before counting. Every row binds its unique `mutationId`, target kind, source artifact or case ID and SHA-256, exact JSON-pointer or byte transformation or complete mutant bytes and SHA-256, checker entry point, and exact rejection outcome. |
+
+The seeded shuffle recipe is closed by this pseudocode; the recipe manifest
+carries the same definition and its materialized stream digest:
+
+```text
+state = 0x4f440006 >>> 0
+next():
+  state ^= (state << 13) >>> 0
+  state ^= state >>> 17
+  state ^= (state << 5) >>> 0
+  return state >>> 0
+shuffle(list):                 # Durstenfeld, descending
+  for i = length(list) - 1 down to 1:
+    j = next() % (i + 1)
+    swap list[i], list[j]
+```
+
+One generator stream is used per case and is reseeded with the constant before
+each case. The lists are shuffled in this fixed order: `declarations`, then
+`roots`, then `selections`, then `bindings`. `providerImplementationIds` inside
+a record are never shuffled because their order is semantic for `many`. The
+modulo reduction is deliberate: the recipe needs determinism, not uniformity.
 
 The identity-token table and the exact inline worlds belong in the future case
 and recipe manifests, not as disposable generator code copied into this ADR.
