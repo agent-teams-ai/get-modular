@@ -448,8 +448,9 @@ re-exports exactly the accepted compiler entry points bound to the stage0
 facade plus the authoring helpers and public types from
 `features/authoring/internal.ts`, with the same names and types that
 `src/index.ts` exports from M3, and nothing else. It is built by
-`tsconfig.stage0.json` and, for the variant subjects, by
-`tsconfig.qualification.json`, never by the production `tsconfig.json`; it
+`tsconfig.stage0.json`; `tsconfig.qualification.json` also compiles it because
+that build includes all of `self-composition/`; the production `tsconfig.json`
+never does; it
 is never packed into the distributed archive, and it is
 the module against which the M1 harness, the checkpoint A test, and the direct
 half of every dual-subject gate run. The variant direct subject has the same
