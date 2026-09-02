@@ -228,6 +228,17 @@ Because classification and copying execute no caller-observable step, the
 visible length cannot change between the two in single-threaded JavaScript;
 shared storage, the only concurrent writer, is rejected before copying.
 
+The procedure is portable by construction. It uses only ECMAScript intrinsics
+that every supported runtime provides. Production code MUST NOT use `Buffer`,
+`node:*` built-in modules, `process`, or any other platform-specific API for
+classification, copying, or snapshotting; a Node `Buffer` is admitted only
+because it is a genuine `Uint8Array`, never because the code recognizes it.
+Node is only the environment in which the development-only oracle and the
+acceptance evidence execute, not a dependency of the adapter. The runtime boundary that
+the first private package declares in `architecture/foundation/source-dependencies.yaml`
+MUST allow no built-in modules and no packages, so that the Foundation gate
+rejects any platform dependency mechanically once that file exists.
+
 #### Resource preflight before allocation
 
 The visible length is read once through `lengthOf` and compared with the
@@ -325,10 +336,11 @@ chronology does not activate the proposal.
 Acceptance requires a successor diagnostic contract, snapshot set, closed case
 manifest, recipe manifest, mutation manifest, checker, results, and immutable
 qualification ledger. Following ADR-0007, which was itself accepted on static
-artifacts, those successor artifacts plus a development-only Node oracle under
-`tests/qualification` are sufficient to accept this decision. That oracle is
-qualification tooling that meters and classifies fixtures; it is not a compiler
-fixture and does not implement composition semantics. The six-case runtime
+artifacts, those successor artifacts plus the development-only qualification
+tooling under `tests/qualification` (the oracle), executed on Node, are
+sufficient to accept this decision. That tooling meters and classifies
+fixtures; it is not a compiler fixture and does not implement composition
+semantics. The six-case runtime
 matrix is the conformance-claim and publication gate, not an acceptance
 prerequisite. The candidate entrypoints that execute the case inventory live in
 the private `packages/core` subject admitted by the governance gate; it is not
