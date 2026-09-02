@@ -37,9 +37,11 @@ the semantic compiler itself.
 
 Accepted ADR-0015 selected private, non-publishable, manifest-bound source under
 the package identities accepted by ADR-0003. Public exports, publication and
-conformance claims remain blocked while their owning decisions are open. The
-first production source still requires the explicit product-owner start record
-defined by ADR-0015. This item is no longer a choice in this packet.
+`runtime-conformant` claims remain blocked while their owning decisions are
+open. `source-admitted` and `structural-conformant` custody may proceed without
+claiming unresolved runtime semantics. The first production source still
+requires the explicit product-owner start record defined by ADR-0015. This item
+is no longer a choice in this packet.
 
 ## Decisions required before the first Core public checkpoint
 
