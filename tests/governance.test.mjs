@@ -35,6 +35,7 @@ import {
   SUPPORTED_NODE_RANGE,
 } from "../architecture/checks/node-version.mjs";
 import {
+  assertGitIndexSnapshotCurrent,
   captureGitIndexSnapshot,
   historicalFileVersions,
   inspectIndexSnapshotFile,
@@ -902,6 +903,24 @@ test("governance catalog rejects decisions staged after its index snapshot", asy
   }
 });
 
+test("index snapshot custody rejects staged file-mode changes", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-index-mode-"));
+  try {
+    await initFixtureRepository(fixture);
+    await writeFile(join(fixture, "tracked.txt"), "tracked\n");
+    await git(fixture, "add", "--", "tracked.txt");
+    const snapshot = await captureGitIndexSnapshot(fixture);
+
+    await git(fixture, "update-index", "--chmod=+x", "--", "tracked.txt");
+    await assert.rejects(
+      assertGitIndexSnapshotCurrent(snapshot),
+      /TRACKED_FILE_CUSTODY_FAILED: Git index changed after snapshot/u,
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
 test("qualification evidence uses index blobs and rejects unstaged bytes", async () => {
   const fixture = await mkdtemp(join(tmpdir(), "get-modular-qualification-snapshot-"));
   try {
@@ -1191,6 +1210,27 @@ test("production artifact discovery fails closed across repository layouts", asy
       "package.json#typesVersions",
       "scripts/compiler.ts",
     ]);
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("production artifact discovery rejects staged artifacts hidden from the working tree", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-hidden-production-"));
+  try {
+    await initFixtureRepository(fixture);
+    await mkdir(join(fixture, "packages", "core", "src"), { recursive: true });
+    await writeFile(join(fixture, "package.json"), "{\"private\":true}\n");
+    const sourcePath = "packages/core/src/index.ts";
+    await writeFile(join(fixture, sourcePath), "export {};\n");
+    await git(fixture, "add", "--", "package.json", sourcePath);
+    const snapshot = await captureGitIndexSnapshot(fixture);
+    await rm(join(fixture, sourcePath));
+
+    await assert.rejects(
+      productionArtifactPaths(fixture, snapshot),
+      /TRACKED_FILE_CUSTODY_FAILED: production artifact.*\(missing\)/u,
+    );
   } finally {
     await rm(fixture, { recursive: true, force: true });
   }

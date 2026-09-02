@@ -251,7 +251,9 @@ export async function assertGitIndexSnapshotCurrent(snapshot) {
   for (const path of expectedPaths) {
     const expected = snapshot.entries.get(path);
     const observed = current.entries.get(path);
-    if (expected?.kind !== observed?.kind || expected?.oid !== observed?.oid) {
+    if (expected?.kind !== observed?.kind
+      || expected?.mode !== observed?.mode
+      || expected?.oid !== observed?.oid) {
       throw new Error("TRACKED_FILE_CUSTODY_FAILED: Git index changed after snapshot");
     }
   }

@@ -660,7 +660,7 @@ async function main() {
     blockerIds,
     traceability,
   });
-  const productionArtifacts = await productionArtifactPaths(root);
+  const productionArtifacts = await productionArtifactPaths(root, snapshot);
   const productionArtifactSymlinks = await productionArtifactSymlinkPaths(root);
   const misplacedArtifacts = productionArtifactsOutsidePackages(productionArtifacts);
   if (misplacedArtifacts.length > 0) {
@@ -690,6 +690,7 @@ async function main() {
     productionArtifacts,
     claimDocuments: claimDocuments.map(id => documents.get(id)),
   });
+  await assertGitIndexSnapshotCurrent(snapshot);
   process.stdout.write("Get Modular governance check passed.\n");
 }
 
