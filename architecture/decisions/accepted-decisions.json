@@ -41,6 +41,11 @@
       "id": "ADR-0008",
       "path": "docs/decisions/0008-bounded-internal-engine-self-composition.md",
       "immutableDigest": "sha256:8b13fe2f1fa190cbca2e47ed1e30a9b2caaf1455b2ca0560eda64babc5d37582"
+    },
+    {
+      "id": "ADR-0015",
+      "path": "docs/decisions/0015-block-publication-surfaces-and-runtime-claims-while-decisions-stay-open.md",
+      "immutableDigest": "sha256:fd2e86235378ae8640039d07a699baff9505c94857519b43b4456bd1aac134e8"
     }
   ]
 }

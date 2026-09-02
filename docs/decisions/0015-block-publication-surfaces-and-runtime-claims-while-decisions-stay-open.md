@@ -1,9 +1,11 @@
 ---
 id: ADR-0015
 type: adr
-status: proposed
+status: accepted
 owner: architecture
 summary: Narrows open-decision blocking to publication surfaces and runtime-conformance claims so private Core source may proceed.
+approved_by: product-owner
+accepted_at: 2026-09-02
 related:
   - ADR-0003
   - ADR-0007
@@ -47,8 +49,8 @@ This identifier is repository-local. The "ADR-0015" cited by ADR-0001 and the
 bootstrap review belongs to the Extension Foundation repository and is a
 different decision.
 
-Until this decision is accepted, the quoted ADR-0003 sentence remains the
-textual authority even though the executable gate already admits private
+Before this decision was accepted, the quoted ADR-0003 sentence remained the
+textual authority even though the executable gate already admitted private
 package identities; acceptance aligns the accepted text with the gate rather
 than changing the gate.
 
@@ -86,9 +88,25 @@ and continue to block the public package surface, both carrier adapters, raw
 decoding exposure, and duplicate binding-record behavior exactly as the current
 contract describes.
 
+### Architecture and start condition
+
+Private source admitted under this decision MUST follow the adopted
+organization Feature Module Standard v1: the local profile in
+`docs/architecture/feature-module-standard.md` and the canonical document
+`agent-teams-ai/.github/docs/architecture/feature-module-standard/v1.md` at
+revision `eef92e7` (blob `d0bfff20`), exactly as pinned in
+`architecture/feature-module-standard-profile.json`. Feature-owned slices under
+`packages/core/src/features/*`, owner-local ports and factories, and the
+private composition root are the structural authority for that source.
+
+Accepting this decision does not start implementation. The first production
+source lands only through an explicit product-owner decision recorded in the
+review of the first private package pull request; until then the admitted
+package identities stay empty and the gate merely permits them.
+
 ### Precedence
 
-When accepted, this decision supersedes ADR-0003 only for its single deferral
+This decision supersedes ADR-0003 only for its single deferral
 sentence quoted in the context above. ADR-0003's package identities, topology,
 namespace verification, and publication prohibition remain unchanged. This
 decision does not accept ADR-0009, ADR-0012, ADR-0013, or ADR-0014, does not
