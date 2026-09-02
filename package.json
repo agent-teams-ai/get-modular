@@ -52,6 +52,7 @@
     "json-canonicalize": "catalog:",
     "jsonc-parser": "catalog:",
     "markdownlint-cli2": "catalog:",
+    "typescript": "catalog:",
     "yaml": "catalog:"
   }
 }

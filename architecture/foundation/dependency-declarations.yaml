@@ -15,6 +15,7 @@ policies:
     - json-canonicalize
     - jsonc-parser
     - markdownlint-cli2
+    - typescript
   exactRegistryDevelopmentOnlyPackages:
     - "@agent-teams/docs-protocol"
     - "@agent-teams/engineering-foundation"
