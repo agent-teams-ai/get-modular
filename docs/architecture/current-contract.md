@@ -13,6 +13,7 @@ related:
   - ADR-0012
   - ADR-0013
   - ADR-0014
+  - ADR-0015
   - OD-004
   - OD-005
   - OD-006
@@ -121,13 +122,51 @@ These are small contract gates, not a reason to redesign the architecture:
 5. Resolve OD-005 and accept ADR-0013 or a successor before exposing raw input.
    The proposal closes the accepted byte-carrier domain and synchronous snapshot
    behavior, including detached, shared, resizable, offset, and subclass cases.
+6. Resolve ADR-0013 and ADR-0014 through one diagnostic generation 2
+   transaction. ADR-0007 keeps the accepted schema enum, diagnostic catalog, and
+   code rank byte-identical, so a new diagnostic code needs a successor schema,
+   catalog, diagnostic contract, snapshot set, checker, and qualification
+   ledger. Two separate generations would duplicate those artifacts.
 
 The first graph slice must not invent semantics for items 4 and 5. A private
 normalized-value semantic compiler checkpoint may proceed after
-accepted-authority preflight while excluding repeated binding records. It is
-not either proposed carrier adapter and cannot claim trusted-object or raw-byte
+accepted-authority preflight while excluding repeated binding records. That
+checkpoint lives in `packages/core` as a `private: true` package with no
+publication field, under the rule recorded by proposed ADR-0015 as the
+successor to the ADR-0003 deferral sentence; the governance gate admits that
+source and keeps blocking publication surfaces and runtime claims. It is not
+either proposed carrier adapter and cannot claim trusted-object or raw-byte
 admission. Public packaging, both carrier adapters, raw decoding, and production
 dependency adapters remain gated by their corresponding decisions.
+
+## Historical requirement wording
+
+GM-REQ-008 and GM-REQ-010 still read "Until OD-003 is resolved, no package may
+claim ... conformance." OD-003 was resolved by accepted ADR-0005, and the
+requirements document is digest-pinned in the accepted authority ledger, so the
+sentence is not edited. Treat that condition as satisfied: the remaining
+conformance gates are the ones ADR-0007 and this document describe.
+
+## Toolchain
+
+The private Core toolchain is pinned in the repository rather than chosen per
+package:
+
+- TypeScript `7.0.2`, the npm `latest` release of 2026-07-08, is pinned exactly
+  in the `pnpm-workspace.yaml` catalog and declared development-only.
+- `tsconfig.base.json` extends
+  `@agent-teams/engineering-foundation/presets/typescript/node.json` and adds
+  `isolatedModules`, `isolatedDeclarations`, `erasableSyntaxOnly`,
+  `declaration`, `types: []`, and `skipLibCheck`. Package configurations extend it with `rootDir`, `outDir`, and
+  `include`.
+- Relative imports use `.js` specifiers in source. Do not enable
+  `rewriteRelativeImportExtensions`: it rewrites emitted JavaScript but leaves
+  `.ts` specifiers inside emitted declaration files.
+- Tests run with `node --test` and an explicit glob against the built `dist`
+  output; the build is `tsc -p` for the package configuration.
+- The `core:typecheck`, `core:build`, and `core:test` scripts and their place
+  in `check:fast` and `check` arrive with the first private package, not
+  before.
 
 ## Historical evidence rule
 

@@ -16,6 +16,7 @@ summary: Index of Get Modular architecture decisions.
 - [ADR-0012: Select an ESM-only root package carrier](0012-select-esm-only-root-package-carrier.md)
 - [ADR-0013: Close trusted-object and raw-carrier semantics](0013-close-trusted-object-and-raw-carrier-semantics.md)
 - [ADR-0014: Close duplicate binding-record semantics](0014-close-duplicate-binding-record-semantics.md)
+- [ADR-0015: Block publication surfaces and runtime claims while decisions stay open](0015-block-publication-surfaces-and-runtime-claims-while-decisions-stay-open.md)
 
 ## Accepted decisions
 

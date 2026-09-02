@@ -15,9 +15,16 @@ related:
   - ADR-0009
   - ADR-0010
   - ADR-0011
+  - ADR-0012
+  - ADR-0013
+  - ADR-0014
+  - ADR-0015
   - ARCH-FEATURE-MODULE-STANDARD
   - ARCH-SYSTEM-BOUNDARY
   - GM-REQ-V1
+  - OD-004
+  - OD-005
+  - OD-006
 ---
 
 # MVP implementation roadmap
@@ -26,10 +33,10 @@ This document is the implementation roadmap, not a replacement for an
 accepted ADR. It deliberately describes the order and evidence required to
 build the first reusable Core. It does not accept new public API, change an
 accepted decision, or claim that a qualification fixture is production code.
-ADR-0009, ADR-0010 and ADR-0011 are conditional candidate decisions on the
-selected base unless their accepted successors are present. They do not enter
-accepted authority, the open-decision blocker catalog or executable governance
-until accepted through the repository decision flow.
+ADR-0009 to ADR-0015 are proposed decisions on the selected base unless their
+accepted successors are present. They do not enter accepted authority, the
+open-decision blocker catalog or executable governance until accepted through
+the repository decision flow.
 
 The MVP goal is:
 
@@ -70,6 +77,26 @@ implementation base, no unversioned public barrel or published package may be
 materialized. Existing accepted names remain contract authority in the
 meantime; historical names are not automatically published as compatibility
 aliases.
+
+### Critical path of proposed decisions
+
+The milestones below name the proposed decisions each one depends on. A
+milestone that lists no proposed decision may proceed on accepted authority
+alone.
+
+| Milestone | Proposed decisions required | Blocked without them |
+| --- | --- | --- |
+| M1 `direct-semantics-qualified` on Node through the object entrypoint | None for semantics; ADR-0015 or its accepted successor to ADR-0003 so accepted text matches the gate, which already admits private `packages/core` source | Private package source and the first executable subject |
+| M2 raw entrypoint and carriers | ADR-0013 and ADR-0014 together as one diagnostic generation 2 transaction: successor schema enum, catalog rank, diagnostic contract, snapshots, checker and ledger, because ADR-0007 keeps the base enum and code rank byte-identical | Raw decoding exposure, carrier admission and duplicate binding-record behavior |
+| M3 public barrel and package carrier | ADR-0009 and ADR-0012 | Public names, export map and any packed publication candidate |
+| M3 emitter and generated stage1 | ADR-0011 or a narrower successor that closes only the dependency-record seam | `self-composed-qualified` and every release custody claim |
+
+Publication of a `0.x` archive as `not-claimed` does not require the six
+runtime cases; the first conformance claim does (ADR-0007, sections on
+publication and runtime coverage). The bootstrap sequence is therefore: accept
+ADR-0015 so accepted text matches the gate that already admits private package
+identities, materialize private `packages/core`, reach M1 on Node, prepare the diagnostic generation 2
+transaction in parallel with M1, then proceed to M2 and M3 in that order.
 
 ### Roadmap qualification language
 
@@ -168,10 +195,12 @@ than satisfied by synthetic output.
 - canonical schema, resource profile, diagnostic catalog and vectors;
 - accepted authority and qualification ledgers already present in the selected
   source;
-- conditional ADR-0009/0010/0011 candidates, clearly separated from accepted
+- proposed ADR-0009 to ADR-0015 candidates, clearly separated from accepted
   authority and active open-decision blockers;
-- planned governed decisions for package carrier/resolution and unresolved
-  raw-input carrier and duplicate-binding semantics.
+- the governed open decisions OD-004, OD-005 and OD-006 for package
+  carrier/resolution, raw-input carrier semantics and duplicate binding-record
+  diagnostics, with proposed ADR-0012, ADR-0013 and ADR-0014 as their candidate
+  resolutions.
 
 ### Phase 0 implementation
 
@@ -207,25 +236,28 @@ than satisfied by synthetic output.
 6. Build a raw-carrier research matrix that derives only behavior already fixed
    by accepted ADR-0006/0007. Mark every unresolved view-offset, aliasing,
    transfer/detachment, shared/resizable storage, cross-realm or exact failure
-   disposition as undecided. Before such a cell can gate the mandatory raw
-   entrypoint, create `OD-005-raw-input-carrier-semantics` and resolve it
-   through an accepted successor ADR plus executable ledger evidence.
-7. Create `OD-006-duplicate-binding-record-diagnostics` before assigning a
-   diagnostic code, coordinates or suppression behavior to repeated records for
-   one `(implementationId, slotId)`. Resolve it through an accepted successor
-   ADR and executable ledger evidence before that case enters the compiler.
+   disposition as undecided. `OD-005-raw-input-carrier-semantics` exists and
+   proposed ADR-0013 is its candidate resolution; before such a cell can gate
+   the mandatory raw entrypoint, resolve OD-005 through an accepted successor
+   ADR plus executable ledger evidence.
+7. `OD-006-duplicate-binding-record-diagnostics` exists and proposed ADR-0014
+   is its candidate resolution. Do not assign a diagnostic code, coordinates or
+   suppression behavior to repeated records for one `(implementationId,
+   slotId)` until OD-006 is resolved through an accepted successor ADR and
+   executable ledger evidence; only then may that case enter the compiler.
 8. Record the selected SHA and retained content identities, then run the same
    preflight in one fresh disposable checkout. Defer cold regeneration and
    rollback rehearsal until stage0 or a retained release artifact exists in
    Phase 4 or Phase 8. Never use `reset --hard` or `clean` against a contributor
    checkout as evidence.
-9. Create `OD-004-package-carrier-and-resolution-policy` before freezing
-   package type, export conditions or supported resolver modes. Governance
-   derives blockers only from the active open-decision catalog, not from this
-   roadmap's planned identifiers. After OD-004/OD-005/OD-006 records exist, they
-   enter that normal catalog-driven path. Keep ADR-0009/0010/0011 as conditional
-   roadmap choices until accepted; only their accepted decisions may add
-   mutation fixtures or checkpoint requirements.
+9. `OD-004-package-carrier-and-resolution-policy` exists and proposed ADR-0012
+   is its candidate resolution. Do not freeze package type, export conditions
+   or supported resolver modes before OD-004 is resolved. Governance derives
+   blockers only from the active open-decision catalog, not from this roadmap's
+   identifiers; OD-004, OD-005 and OD-006 already follow that catalog-driven
+   path. Keep ADR-0009 to ADR-0015 as proposed roadmap choices until accepted;
+   only their accepted decisions may add mutation fixtures or checkpoint
+   requirements.
 10. Verify that the existing `qualification:resource-profile` executable
     generator/oracle proof remains wired into the complete repository gate. A
     declared but orphaned script is not Phase 0 evidence, and its historical
@@ -292,8 +324,10 @@ smaller split would make it unverifiable.
    topology, but do not freeze the target unversioned public barrel until
    ADR-0009 or a successor is accepted. If it remains proposed, accepted API
    authority continues to govern and the target release stays `CONDITIONAL`;
-   private implementation work is not blocked. Keep domain semantics independent
-   from Foundation, Docs Protocol, DI containers and plugin runtime types.
+   private implementation work is not blocked once the governance gate admits
+   private package identities under ADR-0015 or its accepted successor to
+   ADR-0003. Keep domain semantics independent from Foundation, Docs Protocol,
+   DI containers and plugin runtime types.
 2. Preserve ADR-0003's public development-only
    `@get-modular/conformance` identity without creating an empty package. Its
    substantive vectors, fixtures and packed-consumer tooling may be published
@@ -915,6 +949,7 @@ Return `BLOCKED` instead of guessing when:
   production adapters;
 - hosted workers repeatedly fail without verifiable output.
 
-The first complete `0.x` Core checkpoint is a small compiler plus conformance
-evidence. The first product-adoption checkpoint adds one real adapter. Neither
+The first complete `0.x` Core checkpoint is a bounded compiler, the ADR-0008
+self-composition evidence and conformance evidence. The first product-adoption
+checkpoint adds one real adapter. Neither
 is completion of the plugin ecosystem or evidence for a stable 1.0 claim.

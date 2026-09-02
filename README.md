@@ -24,7 +24,7 @@ consume both.
 
 ## Packages
 
-- `@get-modular/core` is the only production dependency. It owns portable
+- `@get-modular/core` will be the only production dependency. It owns portable
   declarations, validation, deterministic compilation, plans, digests, and
   diagnostics.
 - `@get-modular/conformance` is a development-only conformance suite for core,
