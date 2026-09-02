@@ -1062,92 +1062,377 @@ function validateStaticSchemaSuppression({
   const validDeclarations = declarationDocuments.filter(document => (
     document.value !== undefined
     && staticSchemaDiagnostics(document, validateModuleDeclaration).length === 0
-  )).map(document => document.value);
-  const invalidDeclarations = declarationDocuments.length - validDeclarations.length;
-  const profileInvalid = documents.some(document => (
-    document.documentType === "composition-profile"
-    && (document.value === undefined
-      || staticSchemaDiagnostics(document, validateCompositionProfile).length > 0)
   ));
+  const invalidDeclarations = declarationDocuments.length - validDeclarations.length;
+  const profileDocument = documents.find(document => (
+    document.documentType === "composition-profile"
+  ));
+  const profileInvalid = profileDocument?.value === undefined
+    || staticSchemaDiagnostics(profileDocument, validateCompositionProfile).length > 0;
+  const implementationIds = validDeclarations.map(document => (
+    document.value.implementationId
+  ));
+  const context = {
+    descriptor,
+    declarations: validDeclarations,
+    profile: profileInvalid ? undefined : profileDocument.value,
+    identityCensusComplete: invalidDeclarations === 0 && !hasDuplicate(implementationIds),
+    moduleCensusComplete: invalidDeclarations === 0,
+  };
 
   for (const diagnostic of diagnostics) {
     const prerequisite = diagnosticPrerequisites.get(diagnostic.code);
-    if (!prerequisite?.prerequisites.includes("document.schema-valid")) continue;
-    if ((diagnostic.code.startsWith("profile.") || diagnostic.code.startsWith("binding."))
-      && profileInvalid) {
-      fail(`${descriptor.caseId} emits ${diagnostic.code} from a schema-invalid profile`);
+    if (prerequisite?.prerequisites.includes("declaration.identity-census-complete")
+      && !context.identityCensusComplete) {
+      fail(`${descriptor.caseId} emits ${diagnostic.code} without a complete declaration identity census`);
     }
-    if (diagnostic.code.startsWith("declaration.")
-      && !declarationDiagnosticHasValidSource(diagnostic, validDeclarations)) {
-      fail(`${descriptor.caseId} emits ${diagnostic.code} without a schema-valid declaration source`);
+    if (prerequisite?.prerequisites.includes("declaration.module-census-complete")
+      && !context.moduleCensusComplete) {
+      fail(`${descriptor.caseId} emits ${diagnostic.code} without a complete declaration module census`);
     }
-    if (diagnostic.code.startsWith("binding.")
-      && !bindingDiagnosticHasValidSource(diagnostic, validDeclarations)) {
-      fail(`${descriptor.caseId} emits ${diagnostic.code} without schema-valid binding facts`);
+    if (isStaticSemanticDiagnosticCode(diagnostic.code)
+      && !staticSemanticDiagnosticHasWitness(diagnostic, context)) {
+      fail(`${descriptor.caseId} emits ${diagnostic.code} without a truthful semantic witness`);
     }
   }
+}
 
-  if (invalidDeclarations === 0) return;
-  for (const diagnostic of diagnostics) {
-    const prerequisite = diagnosticPrerequisites.get(diagnostic.code);
-    const requiresCompleteDeclarationCensus = prerequisite?.prerequisites.some(factId => (
-      factId === "declaration.identity-census-complete"
-      || factId === "declaration.module-census-complete"
-    ));
-    if (requiresCompleteDeclarationCensus) {
-      fail(`${descriptor.caseId} emits ${diagnostic.code} without a complete declaration census`);
-    }
-  }
+function isStaticSemanticDiagnosticCode(code) {
+  return code === "identity.invalid"
+    || code.startsWith("declaration.")
+    || code.startsWith("profile.")
+    || code.startsWith("binding.")
+    || code.startsWith("graph.");
 }
 
 function hasDuplicate(values) {
   return new Set(values).size !== values.length;
 }
 
-function declarationDiagnosticHasValidSource(diagnostic, declarations) {
-  const implementationId = diagnostic.coordinate.implementationId;
-  if (diagnostic.code === "declaration.duplicate-implementation") {
-    return declarations.filter(declaration => (
-      declaration.implementationId === implementationId
-    )).length > 1;
-  }
-  const declaration = declarations.find(candidate => (
-    candidate.implementationId === implementationId
-  ));
-  if (declaration === undefined) return false;
-  if (diagnostic.code === "declaration.duplicate-capability") {
-    return hasDuplicate(declaration.provides.map(value => value.capabilityId));
-  }
-  if (diagnostic.code === "declaration.duplicate-slot") {
-    return hasDuplicate(declaration.slots.map(value => value.slotId));
-  }
-  return false;
+function countValue(values, expected) {
+  return values.filter(value => value === expected).length;
 }
 
-function bindingDiagnosticHasValidSource(diagnostic, declarations) {
-  if (diagnostic.code === "binding.unknown-consumer") return true;
-  const consumer = declarations.find(declaration => (
-    declaration.implementationId === diagnostic.coordinate.implementationId
+function declarationValues(context) {
+  return context.declarations.map(document => document.value);
+}
+
+function declarationsWithImplementation(context, implementationId) {
+  return context.declarations.filter(document => (
+    document.value.implementationId === implementationId
   ));
-  if (consumer === undefined) return false;
+}
 
-  const slotId = diagnostic.coordinate.slotId;
-  const slot = typeof slotId === "string"
-    ? consumer.slots.find(candidate => candidate.slotId === slotId)
-    : undefined;
-  if (diagnostic.code === "binding.unknown-slot") return slot === undefined;
-  if (typeof slotId === "string" && slot === undefined) return false;
+function uniqueDeclaration(context, implementationId) {
+  const matches = declarationsWithImplementation(context, implementationId);
+  return matches.length === 1 ? matches[0].value : undefined;
+}
 
-  if ([
-    "binding.capability-missing",
-    "binding.compatibility-mismatch",
-    "binding.provider-not-selected",
-  ].includes(diagnostic.code)) {
-    return declarations.some(declaration => (
-      declaration.implementationId === diagnostic.coordinate.providerImplementationId
-    ));
+function localDeclarationDiagnosticPath(context, diagnostic, document) {
+  if (context.descriptor.entryPoint !== "compileCompositionJsonV1") {
+    return diagnostic.path;
   }
-  return true;
+  return pathStartsWith(diagnostic.path, document.prefix)
+    ? diagnostic.path.slice(document.prefix.length)
+    : undefined;
+}
+
+function duplicateDeclarationMemberWitness(context, diagnostic, field, coordinateValue) {
+  return declarationsWithImplementation(
+    context,
+    diagnostic.coordinate.implementationId,
+  ).some(document => {
+    const pathValue = localDeclarationDiagnosticPath(context, diagnostic, document);
+    if (pathValue?.length !== 2
+      || !same(pathValue[0], { kind: "field", value: field })
+      || pathValue[1].kind !== "index") {
+      return false;
+    }
+    const index = pathValue[1].value;
+    const member = document.value[field][index];
+    if (member === undefined) return false;
+    const identity = field === "provides" ? member.capabilityId : member.slotId;
+    if (coordinateValue !== undefined && identity !== coordinateValue) return false;
+    return document.value[field].slice(0, index).some(candidate => (
+      (field === "provides" ? candidate.capabilityId : candidate.slotId) === identity
+    ));
+  });
+}
+
+function profileBindingRows(profile, diagnostic, { requireProvider = false } = {}) {
+  if (profile === undefined) return [];
+  return profile.bindings.filter(binding => (
+    binding.consumerImplementationId === diagnostic.coordinate.implementationId
+    && (diagnostic.coordinate.slotId === undefined
+      || binding.slotId === diagnostic.coordinate.slotId)
+    && (!requireProvider
+      || binding.providerImplementationIds.includes(
+        diagnostic.coordinate.providerImplementationId,
+      ))
+  ));
+}
+
+function selectedImplementationIds(profile) {
+  return new Set(profile?.selections.map(selection => selection.implementationId) ?? []);
+}
+
+function slotForDiagnostic(context, diagnostic) {
+  const consumer = uniqueDeclaration(context, diagnostic.coordinate.implementationId);
+  if (consumer === undefined) return undefined;
+  const matches = consumer.slots.filter(slot => slot.slotId === diagnostic.coordinate.slotId);
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
+function cardinalityMatchesSlot(cardinality, count) {
+  if (cardinality.kind === "required") return count === 1;
+  if (cardinality.kind === "optional") return count <= 1;
+  return count >= cardinality.min && count <= cardinality.max;
+}
+
+function cardinalityMatchesDiagnostic(cardinality, count, details) {
+  return !cardinalityMatchesSlot(cardinality, count)
+    && details.expectedCardinality === cardinality.kind
+    && details.actualCardinality === count;
+}
+
+function selectedDeclarationGraph(context) {
+  const { profile } = context;
+  if (profile === undefined) return undefined;
+  const byModule = new Map();
+  const byImplementation = new Map();
+  for (const selection of profile.selections) {
+    if (byModule.has(selection.moduleId)
+      || byImplementation.has(selection.implementationId)) {
+      return undefined;
+    }
+    const declaration = uniqueDeclaration(context, selection.implementationId);
+    if (declaration === undefined || declaration.moduleId !== selection.moduleId) {
+      return undefined;
+    }
+    byModule.set(selection.moduleId, declaration);
+    byImplementation.set(selection.implementationId, declaration);
+  }
+  return { byModule, byImplementation };
+}
+
+function bindingPositiveProviders(binding, consumer, selected) {
+  const slots = consumer.slots.filter(slot => slot.slotId === binding.slotId);
+  if (slots.length !== 1) return [];
+  const [slot] = slots;
+  return binding.providerImplementationIds.filter(providerId => {
+    const provider = selected.byImplementation.get(providerId);
+    return provider !== undefined && provider.provides.some(capability => (
+      capability.capabilityId === slot.capabilityId
+      && same(capability.compatibility, slot.compatibility)
+    ));
+  });
+}
+
+function reachableSelectedImplementations(context) {
+  const { profile } = context;
+  const selected = selectedDeclarationGraph(context);
+  if (profile === undefined || selected === undefined || hasDuplicate(profile.roots)) {
+    return undefined;
+  }
+  const roots = profile.roots.map(moduleId => selected.byModule.get(moduleId));
+  if (roots.some(root => root === undefined)) return undefined;
+  const reachable = new Set(roots.map(root => root.implementationId));
+  const pending = [...reachable];
+  while (pending.length > 0) {
+    const consumerId = pending.pop();
+    const consumer = selected.byImplementation.get(consumerId);
+    if (hasDuplicate(consumer.slots.map(slot => slot.slotId))) return undefined;
+    const rows = profile.bindings.filter(binding => (
+      binding.consumerImplementationId === consumerId
+    ));
+    if (rows.some(binding => !consumer.slots.some(slot => slot.slotId === binding.slotId))) {
+      return undefined;
+    }
+    for (const slot of consumer.slots) {
+      const slotRows = rows.filter(binding => binding.slotId === slot.slotId);
+      if (slotRows.length !== 1) return undefined;
+      const [binding] = slotRows;
+      if (hasDuplicate(binding.providerImplementationIds)
+        || !cardinalityMatchesSlot(slot.cardinality, binding.providerImplementationIds.length)) {
+        return undefined;
+      }
+      const providers = bindingPositiveProviders(binding, consumer, selected);
+      if (providers.length !== binding.providerImplementationIds.length) return undefined;
+      for (const providerId of providers) {
+        if (!reachable.has(providerId)) {
+          reachable.add(providerId);
+          pending.push(providerId);
+        }
+      }
+    }
+  }
+  return reachable;
+}
+
+function cyclicSelectedComponents(context) {
+  const { profile } = context;
+  const selected = selectedDeclarationGraph(context);
+  if (profile === undefined || selected === undefined) return undefined;
+  const edgePairs = new Map();
+  for (const binding of profile.bindings) {
+    const consumer = selected.byImplementation.get(binding.consumerImplementationId);
+    if (consumer === undefined) continue;
+    for (const providerId of bindingPositiveProviders(binding, consumer, selected)) {
+      const key = `${providerId}\u0000${binding.consumerImplementationId}`;
+      edgePairs.set(key, {
+        id: key,
+        from: providerId,
+        to: binding.consumerImplementationId,
+      });
+    }
+  }
+  const nodes = [...selected.byImplementation.keys()].sort(compareAscii);
+  const edges = [...edgePairs.values()].sort((left, right) => compareAscii(left.id, right.id));
+  return deriveCyclicSccs(nodes, edges, nodes, edges.map(edge => edge.id));
+}
+
+function staticSemanticDiagnosticHasWitness(diagnostic, context) {
+  const declarations = declarationValues(context);
+  const { profile } = context;
+  switch (diagnostic.code) {
+    case "declaration.duplicate-implementation":
+      return countValue(
+        declarations.map(declaration => declaration.implementationId),
+        diagnostic.coordinate.implementationId,
+      ) > 1;
+    case "declaration.duplicate-capability":
+      return duplicateDeclarationMemberWitness(context, diagnostic, "provides");
+    case "declaration.duplicate-slot":
+      return duplicateDeclarationMemberWitness(
+        context, diagnostic, "slots", diagnostic.coordinate.slotId,
+      );
+    case "profile.duplicate-root":
+      return profile !== undefined
+        && countValue(profile.roots, diagnostic.coordinate.moduleId) > 1;
+    case "profile.unknown-root":
+      return profile !== undefined
+        && profile.roots.includes(diagnostic.coordinate.moduleId)
+        && !declarations.some(declaration => (
+          declaration.moduleId === diagnostic.coordinate.moduleId
+        ));
+    case "profile.duplicate-selection":
+      return profile !== undefined
+        && countValue(
+          profile.selections.map(selection => selection.moduleId),
+          diagnostic.coordinate.moduleId,
+        ) > 1;
+    case "profile.unknown-module":
+      return profile !== undefined
+        && profile.selections.some(selection => (
+          selection.moduleId === diagnostic.coordinate.moduleId
+        ))
+        && !declarations.some(declaration => (
+          declaration.moduleId === diagnostic.coordinate.moduleId
+        ));
+    case "profile.unknown-implementation":
+      return profile !== undefined
+        && profile.selections.some(selection => (
+          selection.moduleId === diagnostic.coordinate.moduleId
+          && selection.implementationId === diagnostic.coordinate.implementationId
+        ))
+        && uniqueDeclaration(context, diagnostic.coordinate.implementationId) === undefined;
+    case "profile.implementation-mismatch": {
+      if (profile === undefined) return false;
+      const declaration = uniqueDeclaration(context, diagnostic.coordinate.implementationId);
+      return declaration !== undefined
+        && declaration.moduleId !== diagnostic.coordinate.moduleId
+        && profile.selections.some(selection => (
+          selection.moduleId === diagnostic.coordinate.moduleId
+          && selection.implementationId === diagnostic.coordinate.implementationId
+        ));
+    }
+    case "profile.missing-selection":
+      return profile !== undefined
+        && profile.roots.includes(diagnostic.coordinate.moduleId)
+        && !profile.selections.some(selection => (
+          selection.moduleId === diagnostic.coordinate.moduleId
+        ));
+    case "profile.unreachable-selection": {
+      if (profile === undefined) return false;
+      const reachable = reachableSelectedImplementations(context);
+      return reachable !== undefined
+        && profile.selections.some(selection => (
+          selection.moduleId === diagnostic.coordinate.moduleId
+          && selection.implementationId === diagnostic.coordinate.implementationId
+        ))
+        && !reachable.has(diagnostic.coordinate.implementationId);
+    }
+    case "binding.duplicate":
+      return slotForDiagnostic(context, diagnostic) !== undefined
+        && profileBindingRows(profile, diagnostic, { requireProvider: true }).some(binding => (
+          countValue(
+            binding.providerImplementationIds,
+            diagnostic.coordinate.providerImplementationId,
+          ) > 1
+        ));
+    case "binding.missing":
+      return profile !== undefined
+        && slotForDiagnostic(context, diagnostic) !== undefined
+        && selectedImplementationIds(profile).has(diagnostic.coordinate.implementationId)
+        && profileBindingRows(profile, diagnostic).length === 0;
+    case "binding.unknown-consumer":
+      return profileBindingRows(profile, diagnostic).length > 0
+        && uniqueDeclaration(context, diagnostic.coordinate.implementationId) === undefined;
+    case "binding.unknown-slot":
+      return profileBindingRows(profile, diagnostic).length > 0
+        && uniqueDeclaration(context, diagnostic.coordinate.implementationId) !== undefined
+        && slotForDiagnostic(context, diagnostic) === undefined;
+    case "binding.unknown-provider":
+      return profileBindingRows(profile, diagnostic, { requireProvider: true }).length > 0
+        && slotForDiagnostic(context, diagnostic) !== undefined
+        && uniqueDeclaration(context, diagnostic.coordinate.providerImplementationId) === undefined;
+    case "binding.provider-not-selected":
+      return profileBindingRows(profile, diagnostic, { requireProvider: true }).length > 0
+        && uniqueDeclaration(context, diagnostic.coordinate.providerImplementationId) !== undefined
+        && !selectedImplementationIds(profile).has(
+          diagnostic.coordinate.providerImplementationId,
+        );
+    case "binding.cardinality": {
+      const slot = slotForDiagnostic(context, diagnostic);
+      return slot !== undefined && profileBindingRows(profile, diagnostic).some(binding => (
+        cardinalityMatchesDiagnostic(
+          slot.cardinality,
+          binding.providerImplementationIds.length,
+          diagnostic.details,
+        )
+      ));
+    }
+    case "binding.capability-missing": {
+      const slot = slotForDiagnostic(context, diagnostic);
+      const provider = uniqueDeclaration(context, diagnostic.coordinate.providerImplementationId);
+      return slot !== undefined && provider !== undefined
+        && selectedImplementationIds(profile).has(provider.implementationId)
+        && profileBindingRows(profile, diagnostic, { requireProvider: true }).length > 0
+        && !provider.provides.some(capability => (
+          capability.capabilityId === slot.capabilityId
+        ));
+    }
+    case "binding.compatibility-mismatch": {
+      const slot = slotForDiagnostic(context, diagnostic);
+      const provider = uniqueDeclaration(context, diagnostic.coordinate.providerImplementationId);
+      return slot !== undefined && provider !== undefined
+        && selectedImplementationIds(profile).has(provider.implementationId)
+        && profileBindingRows(profile, diagnostic, { requireProvider: true }).length > 0
+        && same(diagnostic.details.expectedCompatibility, slot.compatibility)
+        && provider.provides.some(capability => (
+          capability.capabilityId === slot.capabilityId
+          && same(capability.compatibility, diagnostic.details.actualCompatibility)
+          && !same(capability.compatibility, slot.compatibility)
+        ));
+    }
+    case "graph.cycle": {
+      const components = cyclicSelectedComponents(context);
+      return components !== undefined
+        && components.some(component => same(component, diagnostic.details.component));
+    }
+    default:
+      return false;
+  }
 }
 
 function structuralPathFromJsonPointer(value, pointer) {

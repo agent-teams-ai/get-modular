@@ -463,7 +463,7 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     contract,
     catalog,
     ...validators,
-  }), /schema-valid declaration source/u);
+  }), /truthful semantic witness/u);
 
   const invalidDeclarationWithoutIdentity = clone(schemaInvalidSemanticCascade);
   delete invalidDeclarationWithoutIdentity.cases.find(descriptor => (
@@ -474,7 +474,7 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     contract,
     catalog,
     ...validators,
-  }), /schema-valid declaration source/u);
+  }), /truthful semantic witness/u);
 
   const collidingInvalidDeclaration = clone(protocol);
   const collisionCase = collidingInvalidDeclaration.cases.find(descriptor => (
@@ -537,7 +537,7 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     contract,
     catalog,
     ...validators,
-  }), /complete declaration census/u);
+  }), /complete declaration identity census/u);
 
   const rawDecodeIncompleteCensus = clone(protocol);
   const rawCensusCase = rawDecodeIncompleteCensus.cases.find(descriptor => (
@@ -561,7 +561,7 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     contract,
     catalog,
     ...validators,
-  }), /complete declaration census/u);
+  }), /complete declaration identity census/u);
 
   const schemaInvalidBindingConsumer = clone(protocol);
   const bindingCase = schemaInvalidBindingConsumer.cases.find(descriptor => (
@@ -584,7 +584,7 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     contract,
     catalog,
     ...validators,
-  }), /schema-valid binding facts/u);
+  }), /complete declaration identity census/u);
 
   const invalidBindingCardinality = clone(protocol);
   const cardinalityCase = invalidBindingCardinality.cases.find(descriptor => (
@@ -617,7 +617,7 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     contract,
     catalog,
     ...validators,
-  }), /schema-valid binding facts/u);
+  }), /truthful semantic witness/u);
 
   const independentBindingCardinality = clone(protocol);
   const independentCardinalityCase = independentBindingCardinality.cases.find(descriptor => (
@@ -656,6 +656,254 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     catalog,
     ...validators,
   }));
+
+  const falseUnknownProvider = clone(protocol);
+  const falseUnknownProviderCase = falseUnknownProvider.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.invalid-binding-suppresses-unreachable.v1"
+  ));
+  falseUnknownProviderCase.input.profile.bindings[0].providerImplementationIds = [
+    "example/b/default",
+  ];
+  falseUnknownProviderCase.expected.diagnostics[0].coordinate.providerImplementationId =
+    "example/b/default";
+  assert.throws(() => validateStaticConformanceProtocol({
+    protocol: falseUnknownProvider,
+    contract,
+    catalog,
+    ...validators,
+  }), /truthful semantic witness/u);
+
+  for (const cardinality of [
+    { kind: "required" },
+    { kind: "optional" },
+    { kind: "many", min: 0, max: 2, order: "profile" },
+  ]) {
+    const falseCardinality = clone(protocol);
+    const falseCardinalityCase = falseCardinality.cases.find(descriptor => (
+      descriptor.caseId === "diag.object.invalid-binding-suppresses-unreachable.v1"
+    ));
+    falseCardinalityCase.input.declarations[0].slots[0].cardinality = cardinality;
+    falseCardinalityCase.input.profile.bindings[0].providerImplementationIds = [
+      "example/b/default",
+    ];
+    falseCardinalityCase.expected.diagnostics = [{
+      code: "binding.cardinality",
+      phase: "binding",
+      path: [],
+      coordinate: { implementationId: "example/a/default", slotId: "b" },
+      details: {
+        expectedCardinality: cardinality.kind,
+        actualCardinality: 0,
+      },
+    }];
+    assert.throws(() => validateStaticConformanceProtocol({
+      protocol: falseCardinality,
+      contract,
+      catalog,
+      ...validators,
+    }), /truthful semantic witness/u);
+  }
+
+  const falseObjectDuplicateRoot = clone(protocol);
+  const falseObjectDuplicateRootCase = falseObjectDuplicateRoot.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.valid-prerequisites-unreachable.v1"
+  ));
+  falseObjectDuplicateRootCase.expected.diagnostics = [{
+    code: "profile.duplicate-root",
+    phase: "profile",
+    path: [],
+    coordinate: { moduleId: "example/a" },
+    details: { reason: "duplicate" },
+  }];
+  assert.throws(() => validateStaticConformanceProtocol({
+    protocol: falseObjectDuplicateRoot,
+    contract,
+    catalog,
+    ...validators,
+  }), /truthful semantic witness/u);
+
+  const falseRawDuplicateRoot = clone(protocol);
+  const falseRawDuplicateRootCase = falseRawDuplicateRoot.cases.find(descriptor => (
+    descriptor.caseId === "diag.raw.multi-document-independent.v1"
+  ));
+  falseRawDuplicateRootCase.expected.diagnostics.push({
+    code: "profile.duplicate-root",
+    phase: "profile",
+    path: [{ kind: "field", value: "profile" }],
+    coordinate: { moduleId: "example/root" },
+    details: { reason: "duplicate" },
+  });
+  assert.throws(() => validateStaticConformanceProtocol({
+    protocol: falseRawDuplicateRoot,
+    contract,
+    catalog,
+    ...validators,
+  }), /truthful semantic witness/u);
+
+  const invalidRawProfileReachability = clone(protocol);
+  const invalidRawProfileCase = invalidRawProfileReachability.cases.find(descriptor => (
+    descriptor.caseId === "diag.raw.hostile-profile-key.v1"
+  ));
+  invalidRawProfileCase.input.profileUtf8 = "{";
+  invalidRawProfileCase.expected.diagnostics = [
+    {
+      code: "decode.invalid-json",
+      phase: "decode",
+      path: [{ kind: "field", value: "profile" }],
+      coordinate: {},
+      details: { reason: "invalid-json" },
+    },
+    {
+      code: "profile.unreachable-selection",
+      phase: "graph",
+      path: [],
+      coordinate: {
+        moduleId: "example/root",
+        implementationId: "example/root/default",
+      },
+      details: { reason: "unreachable" },
+    },
+  ];
+  assert.throws(() => validateStaticConformanceProtocol({
+    protocol: invalidRawProfileReachability,
+    contract,
+    catalog,
+    ...validators,
+  }), /truthful semantic witness/u);
+
+  const collidingIdentityCensus = clone(protocol);
+  const collidingIdentityCase = collidingIdentityCensus.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.semantic-coordinate.v1"
+  ));
+  collidingIdentityCase.input.declarations.push(
+    clone(collidingIdentityCase.input.declarations[0]),
+  );
+  collidingIdentityCase.expected.diagnostics.unshift({
+    code: "declaration.duplicate-implementation",
+    phase: "declaration",
+    path: [],
+    coordinate: { implementationId: "example/root/default" },
+    details: { reason: "duplicate" },
+  });
+  assert.throws(() => validateStaticConformanceProtocol({
+    protocol: collidingIdentityCensus,
+    contract,
+    catalog,
+    ...validators,
+  }), /complete declaration identity census/u);
+
+  for (const duplicateFirst of [true, false]) {
+    const collidingDeclarationOrder = clone(protocol);
+    const collidingDeclarationCase = collidingDeclarationOrder.cases.find(descriptor => (
+      descriptor.caseId === "diag.object.independent-declaration-and-graph.v1"
+    ));
+    const duplicateDeclaration = clone(collidingDeclarationCase.input.declarations[2]);
+    const cleanDeclaration = { ...clone(duplicateDeclaration), provides: [] };
+    collidingDeclarationCase.input.declarations = [
+      ...collidingDeclarationCase.input.declarations.slice(0, 2),
+      ...(duplicateFirst
+        ? [duplicateDeclaration, cleanDeclaration]
+        : [cleanDeclaration, duplicateDeclaration]),
+    ];
+    collidingDeclarationCase.expected.diagnostics.unshift({
+      code: "declaration.duplicate-implementation",
+      phase: "declaration",
+      path: [],
+      coordinate: { implementationId: "example/c/default" },
+      details: { reason: "duplicate" },
+    });
+    assert.doesNotThrow(() => validateStaticConformanceProtocol({
+      protocol: collidingDeclarationOrder,
+      contract,
+      catalog,
+      ...validators,
+    }));
+  }
+
+  const wrongDuplicateSlotCoordinate = clone(protocol);
+  const wrongSlotCase = wrongDuplicateSlotCoordinate.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.independent-declaration-and-graph.v1"
+  ));
+  const slotTemplate = clone(protocol.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.invalid-binding-suppresses-unreachable.v1"
+  )).input.declarations[0].slots[0]);
+  wrongSlotCase.input.declarations[2].provides = [];
+  wrongSlotCase.input.declarations[2].slots = [
+    { ...clone(slotTemplate), slotId: "x" },
+    { ...clone(slotTemplate), slotId: "x" },
+    { ...clone(slotTemplate), slotId: "y" },
+  ];
+  wrongSlotCase.expected.diagnostics[0] = {
+    code: "declaration.duplicate-slot",
+    phase: "declaration",
+    path: [
+      { kind: "field", value: "slots" },
+      { kind: "index", value: 2 },
+    ],
+    coordinate: { implementationId: "example/c/default", slotId: "y" },
+    details: { reason: "duplicate" },
+  };
+  assert.throws(() => validateStaticConformanceProtocol({
+    protocol: wrongDuplicateSlotCoordinate,
+    contract,
+    catalog,
+    ...validators,
+  }), /truthful semantic witness/u);
+
+  const independentProviderSelection = clone(protocol);
+  const independentProviderCase = independentProviderSelection.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.semantic-coordinate.v1"
+  ));
+  const providerDeclaration = clone(protocol.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.invalid-binding-suppresses-unreachable.v1"
+  )).input.declarations[1]);
+  independentProviderCase.input.declarations.push(providerDeclaration);
+  independentProviderCase.input.profile.bindings[0].providerImplementationIds = [
+    providerDeclaration.implementationId,
+  ];
+  independentProviderCase.expected.diagnostics.push({
+    code: "binding.provider-not-selected",
+    phase: "binding",
+    path: [],
+    coordinate: {
+      implementationId: "example/consumer/default",
+      slotId: "database",
+      providerImplementationId: providerDeclaration.implementationId,
+    },
+    details: { reason: "mismatch" },
+  });
+  assert.doesNotThrow(() => validateStaticConformanceProtocol({
+    protocol: independentProviderSelection,
+    contract,
+    catalog,
+    ...validators,
+  }));
+
+  const invalidCycleComponent = clone(protocol);
+  const invalidCycleCase = invalidCycleComponent.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.independent-scc-with-invalid-edge.v1"
+  ));
+  invalidCycleCase.input.declarations[0].schemaVersion = 2;
+  invalidCycleCase.expected.diagnostics = [
+    {
+      code: "schema.unsupported-version",
+      phase: "schema",
+      path: [
+        { kind: "field", value: "declarations" },
+        { kind: "index", value: 0 },
+        { kind: "field", value: "schemaVersion" },
+      ],
+      coordinate: {},
+      details: { reason: "unsupported-version" },
+    },
+    invalidCycleCase.expected.diagnostics.at(-1),
+  ];
+  assert.throws(() => validateStaticConformanceProtocol({
+    protocol: invalidCycleComponent,
+    contract,
+    catalog,
+    ...validators,
+  }), /truthful semantic witness/u);
 
   const reservedStaticResult = clone(protocol);
   reservedStaticResult.cases[0].expected.diagnostics[0] = {
