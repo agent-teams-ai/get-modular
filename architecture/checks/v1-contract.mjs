@@ -206,6 +206,9 @@ async function main() {
     `${qualificationDirectory}/canonicalization-vectors.json`,
   );
   const decoderVectors = await readJson(`${qualificationDirectory}/decoder-vectors.json`);
+  const effectiveResourceProfile = await readJson(
+    `${qualificationDirectory}/resource-profile-v2.json`,
+  );
   validateQualificationCaseManifest({
     manifest: await readJson(`${qualificationDirectory}/qualification-case-manifest.json`),
     decoderVectors,
@@ -213,6 +216,7 @@ async function main() {
     acceptedCanonicalVectors,
     diagnosticContract,
     diagnosticCatalog: catalog,
+    resourceProfile: effectiveResourceProfile,
     ...validators,
   });
   validateCanonicalizationQualification(canonicalizationVectors);

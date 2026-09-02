@@ -91,14 +91,15 @@ function validateDescriptor(descriptor, generatorIds, knownFields) {
 }
 
 test("bounded diagnostic protocol fixes prefixes, coordinates, barriers, and suppression", async () => {
-  const [contract, snapshots, manifest, schema, catalog] = await Promise.all([
+  const [contract, snapshots, manifest, schema, catalog, resourceProfile] = await Promise.all([
     readJson("architecture/qualification/v1/diagnostic-contract.json"),
     readJson("architecture/qualification/v1/diagnostic-snapshots.json"),
     readJson("architecture/qualification/v1/qualification-case-manifest.json"),
     readJson("architecture/contracts/v1/composition.schema.json"),
     readJson("architecture/contracts/v1/diagnostic-catalog.json"),
+    readJson("architecture/qualification/v1/resource-profile-v2.json"),
   ]);
-  const validators = createSchemaValidators(schema);
+  const validators = { ...createSchemaValidators(schema), resourceProfile };
   assert.doesNotThrow(() => validateStaticConformanceProtocol({
     protocol: manifest.staticConformanceProtocol,
     contract,
@@ -327,14 +328,15 @@ test("static descriptors reject incomplete, alternate, instance, and leaking mut
   }
 });
 test("diagnostic protocol rejects every named cascade, barrier, redaction, and clipping mutant", async () => {
-  const [manifest, snapshots, schema, contract, catalog] = await Promise.all([
+  const [manifest, snapshots, schema, contract, catalog, resourceProfile] = await Promise.all([
     readJson("architecture/qualification/v1/qualification-case-manifest.json"),
     readJson("architecture/qualification/v1/diagnostic-snapshots.json"),
     readJson("architecture/contracts/v1/composition.schema.json"),
     readJson("architecture/qualification/v1/diagnostic-contract.json"),
     readJson("architecture/contracts/v1/diagnostic-catalog.json"),
+    readJson("architecture/qualification/v1/resource-profile-v2.json"),
   ]);
-  const validators = createSchemaValidators(schema);
+  const validators = { ...createSchemaValidators(schema), resourceProfile };
   const protocol = manifest.staticConformanceProtocol;
   const knownFields = collectSchemaFields(schema);
   knownFields.add("declarations");
@@ -382,6 +384,55 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     ]);
   };
   assert.doesNotThrow(() => validate(protocol));
+
+  for (const mutate of [
+    value => { value.expected.diagnostics[0].path[2].value = 1; },
+    value => { value.expected.diagnostics[0].details.actual = 34; },
+  ]) {
+    const generatorMutation = clone(protocol);
+    mutate(generatorMutation.cases.find(descriptor => (
+      descriptor.caseId === "diag.raw.prefix-inclusive-clipping.v1"
+    )));
+    assert.throws(() => validate(generatorMutation), /closed raw-depth generator/u);
+  }
+
+  const truthfulInlineDepth = clone(protocol);
+  const truthfulInlineDepthCase = truthfulInlineDepth.cases.find(descriptor => (
+    descriptor.caseId === "diag.raw.hostile-profile-key.v1"
+  ));
+  truthfulInlineDepthCase.input.declarationsUtf8 = [
+    `${"[".repeat(33)}null${"]".repeat(33)}`,
+  ];
+  truthfulInlineDepthCase.input.profileUtf8 = JSON.stringify(
+    truthfulInlineDepthCase.schemaValidCompanion.profile,
+  );
+  truthfulInlineDepthCase.expected.diagnostics = [{
+    code: "input.limit-exceeded",
+    phase: "decode",
+    path: [
+      { kind: "field", value: "declarations" },
+      { kind: "index", value: 0 },
+      ...Array.from({ length: 30 }, () => ({ kind: "index", value: 0 })),
+    ],
+    coordinate: {},
+    details: { limitName: "jsonDepth", limit: 32, actual: 33 },
+  }];
+  assert.doesNotThrow(() => validate(truthfulInlineDepth));
+
+  const falseSchemaAfterDepthFailure = clone(truthfulInlineDepth);
+  falseSchemaAfterDepthFailure.cases.find(descriptor => (
+    descriptor.caseId === "diag.raw.hostile-profile-key.v1"
+  )).expected.diagnostics = [{
+    code: "schema.invalid-value",
+    phase: "schema",
+    path: [
+      { kind: "field", value: "declarations" },
+      { kind: "index", value: 0 },
+    ],
+    coordinate: {},
+    details: { reason: "invalid-type" },
+  }];
+  assert.throws(() => validate(falseSchemaAfterDepthFailure), /raw decode failure/u);
 
   const unreachable = clone(protocol.cases.find(descriptor => (
     descriptor.caseId === "diag.object.valid-prerequisites-unreachable.v1"
@@ -960,6 +1011,43 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     ...validators,
   }), /truthful semantic witness/u);
 
+  const cardinalityInvalidCycle = clone(protocol);
+  const cardinalityInvalidCycleCase = cardinalityInvalidCycle.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.independent-declaration-and-graph.v1"
+  ));
+  cardinalityInvalidCycleCase.input = clone(independentSccCase.schemaValidCompanion);
+  cardinalityInvalidCycleCase.schemaValidCompanion = clone(
+    independentSccCase.schemaValidCompanion,
+  );
+  cardinalityInvalidCycleCase.input.declarations[0].slots[0].cardinality = {
+    kind: "many",
+    min: 2,
+    max: 2,
+    order: "profile",
+  };
+  cardinalityInvalidCycleCase.expected = {
+    ok: false,
+    diagnostics: [
+      {
+        code: "binding.cardinality",
+        phase: "binding",
+        path: [],
+        coordinate: {
+          implementationId: "example/a/default",
+          slotId: "b",
+        },
+        details: { expectedCardinality: "many", actualCardinality: 1 },
+      },
+      clone(independentSccCase.expected.diagnostics.at(-1)),
+    ],
+  };
+  assert.throws(() => validateStaticConformanceProtocol({
+    protocol: cardinalityInvalidCycle,
+    contract,
+    catalog,
+    ...validators,
+  }), /truthful semantic witness/u);
+
   const unresolvedRepeatedBinding = clone(protocol);
   const repeatedBindingCase = unresolvedRepeatedBinding.cases.find(descriptor => (
     descriptor.caseId === "diag.object.independent-declaration-and-graph.v1"
@@ -1156,6 +1244,25 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
   ];
   assert.doesNotThrow(() => validateStaticConformanceProtocol({
     protocol: invalidIdentityWitness,
+    contract,
+    catalog,
+    ...validators,
+  }));
+
+  const invalidObjectProfile = clone(protocol);
+  const invalidObjectProfileCase = invalidObjectProfile.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.invalid-binding-suppresses-unreachable.v1"
+  ));
+  invalidObjectProfileCase.input.profile = null;
+  invalidObjectProfileCase.expected.diagnostics = [{
+    code: "schema.invalid-value",
+    phase: "schema",
+    path: [{ kind: "field", value: "profile" }],
+    coordinate: {},
+    details: { reason: "invalid-type" },
+  }];
+  assert.doesNotThrow(() => validateStaticConformanceProtocol({
+    protocol: invalidObjectProfile,
     contract,
     catalog,
     ...validators,

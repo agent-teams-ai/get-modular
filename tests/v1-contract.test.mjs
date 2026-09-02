@@ -132,7 +132,8 @@ test("diagnostic prerequisites are closed for every code and named limit", async
 });
 
 test("reserved base diagnostic code cannot be indirectly reactivated", async () => {
-  const [schema, catalog, profile, contract, snapshots, boundaries, manifest] =
+  const [schema, catalog, profile, contract, snapshots, boundaries, manifest,
+    effectiveResourceProfile] =
     await Promise.all([
       readJson("architecture/contracts/v1/composition.schema.json"),
       readJson("architecture/contracts/v1/diagnostic-catalog.json"),
@@ -141,6 +142,7 @@ test("reserved base diagnostic code cannot be indirectly reactivated", async () 
       readJson("architecture/qualification/v1/diagnostic-snapshots.json"),
       readJson("architecture/qualification/v1/resource-boundary-vectors.json"),
       readJson("architecture/qualification/v1/qualification-case-manifest.json"),
+      readJson("architecture/qualification/v1/resource-profile-v2.json"),
     ]);
   const validators = schemaValidators(schema);
   const { validateDocument, validateDiagnostic } = validators;
@@ -230,6 +232,7 @@ test("reserved base diagnostic code cannot be indirectly reactivated", async () 
     protocol: staticCaseReactivation,
     contract,
     catalog,
+    resourceProfile: effectiveResourceProfile,
     ...validators,
   }), /reserved-non-emittable/u);
 
@@ -967,6 +970,9 @@ test("resource and decoder qualification reject expectation drift", async () => 
   const manifest = await readJson(
     "architecture/qualification/v1/qualification-case-manifest.json",
   );
+  const effectiveResourceProfile = await readJson(
+    "architecture/qualification/v1/resource-profile-v2.json",
+  );
   const acceptedCanonical = await readJson("architecture/contracts/v1/canonical-vectors.json");
   const validators = schemaValidators(schema);
   const { validateDocument, validateDiagnostic } = validators;
@@ -992,6 +998,7 @@ test("resource and decoder qualification reject expectation drift", async () => 
     acceptedCanonicalVectors: acceptedCanonical,
     diagnosticContract: contract,
     diagnosticCatalog: catalog,
+    resourceProfile: effectiveResourceProfile,
     ...validators,
   });
 

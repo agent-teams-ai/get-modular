@@ -695,6 +695,7 @@ export function validateQualificationCaseManifest({
   acceptedCanonicalVectors,
   diagnosticContract,
   diagnosticCatalog,
+  resourceProfile,
   validateDocument,
   validateDiagnostic,
   validateModuleDeclaration,
@@ -834,6 +835,7 @@ export function validateQualificationCaseManifest({
     protocol: manifest.staticConformanceProtocol,
     contract: diagnosticContract,
     catalog: diagnosticCatalog,
+    resourceProfile,
     validateDocument,
     validateDiagnostic,
     validateModuleDeclaration,
@@ -857,12 +859,14 @@ function staticInvocationPrefixLength(descriptor, diagnostic, contract) {
   return 0;
 }
 
-function decodeStaticJson(text) {
+function decodeStaticJson(text, maxBytes, maxDepth) {
   if (typeof text !== "string") return undefined;
+  const bytes = Buffer.from(text, "utf8");
+  if (bytes.length > maxBytes) return undefined;
   const decoded = strictDecode(
-    Buffer.from(text, "utf8"),
+    bytes,
     "reject",
-    Number.MAX_SAFE_INTEGER,
+    maxDepth,
   );
   return decoded.outcome === "accepted" ? JSON.parse(decoded.text) : undefined;
 }
@@ -877,10 +881,12 @@ function staticRawInputDocuments(descriptor) {
         { kind: "field", value: "declarations" },
         { kind: "index", value: index },
       ],
+      documentType: "module-declaration",
       text,
     })),
     {
       prefix: [{ kind: "field", value: "profile" }],
+      documentType: "composition-profile",
       text: descriptor.input?.profileUtf8,
     },
   ];
@@ -891,12 +897,72 @@ function pathStartsWith(path, prefix) {
     && prefix.every((segment, index) => same(path[index], segment));
 }
 
-function validateStaticRawDecodeSuppression(descriptor, diagnostics, compare) {
-  for (const document of staticRawInputDocuments(descriptor)) {
+function staticLimitDiagnostic({ prefix, limitName, limit, actual, localPath = [] }, maximum) {
+  return {
+    code: "input.limit-exceeded",
+    phase: "decode",
+    path: [
+      ...prefix,
+      ...localPath.map(segment => (typeof segment === "number"
+        ? { kind: "index", value: segment }
+        : { kind: "field", value: segment })),
+    ].slice(0, maximum),
+    coordinate: {},
+    details: { limitName, limit, actual },
+  };
+}
+
+function validateStaticRawDecodeSuppression(
+  descriptor,
+  diagnostics,
+  compare,
+  resourceProfile,
+  contract,
+) {
+  const documents = staticRawInputDocuments(descriptor);
+  if (documents.length === 0) return;
+  const { limits } = resourceProfile;
+  const maximumPathSegments = contract.boundedEmissionProtocol.maximumPathSegments;
+  const aggregateBytes = documents.reduce((total, document) => (
+    total + Buffer.byteLength(document.text, "utf8")
+  ), 0);
+  if (aggregateBytes > limits.aggregateRawBytes) {
+    const expected = [staticLimitDiagnostic({
+      prefix: [],
+      limitName: "aggregateRawBytes",
+      limit: limits.aggregateRawBytes,
+      actual: limits.aggregateRawBytes + 1,
+    }, maximumPathSegments)];
+    if (!same(diagnostics, expected)) {
+      fail(`${descriptor.caseId} contradicts the aggregate raw-byte preflight`);
+    }
+    return;
+  }
+  for (const document of documents) {
+    const bytes = Buffer.from(document.text, "utf8");
+    const limitName = document.documentType === "module-declaration"
+      ? "declarationRawDocumentBytes"
+      : "profileRawDocumentBytes";
+    const limit = limits[limitName];
+    if (bytes.length > limit) {
+      const expected = [staticLimitDiagnostic({
+        prefix: document.prefix,
+        limitName,
+        limit,
+        actual: limit + 1,
+      }, maximumPathSegments)];
+      const scoped = diagnostics.filter(diagnostic => (
+        pathStartsWith(diagnostic.path, document.prefix)
+      ));
+      if (!same(scoped, expected)) {
+        fail(`${descriptor.caseId} contradicts the raw document byte preflight`);
+      }
+      continue;
+    }
     const decoded = strictDecode(
-      Buffer.from(document.text, "utf8"),
+      bytes,
       "reject",
-      Number.MAX_SAFE_INTEGER,
+      limits.jsonDepth,
     );
     if (decoded.outcome === "accepted") continue;
     const scoped = diagnostics.filter(diagnostic => (
@@ -906,47 +972,61 @@ function validateStaticRawDecodeSuppression(descriptor, diagnostics, compare) {
       ? [...new Map(decoded.diagnosticPaths.map(pathValue => (
         [canonicalize(pathValue), pathValue]
       ))).values()]
-      : [[]];
-    const expected = localPaths.map(pathValue => ({
-      code: decoded.diagnosticCode,
-      phase: "decode",
-      path: [
-        ...document.prefix,
-        ...pathValue.map(segment => (typeof segment === "number"
-          ? { kind: "index", value: segment }
-          : { kind: "field", value: segment })),
-      ],
-      coordinate: {},
-      details: {
-        reason: decoded.diagnosticCode === "decode.duplicate-key"
-          ? "duplicate-key"
-          : "invalid-json",
-      },
-    })).toSorted(compare);
+      : [decoded.diagnosticPath ?? []];
+    const expected = decoded.diagnosticCode === "input.limit-exceeded"
+      ? [staticLimitDiagnostic({
+        prefix: document.prefix,
+        limitName: "jsonDepth",
+        limit: limits.jsonDepth,
+        actual: decoded.actual,
+        localPath: localPaths[0],
+      }, maximumPathSegments)]
+      : localPaths.map(pathValue => ({
+        code: decoded.diagnosticCode,
+        phase: "decode",
+        path: [
+          ...document.prefix,
+          ...pathValue.map(segment => (typeof segment === "number"
+            ? { kind: "index", value: segment }
+            : { kind: "field", value: segment })),
+        ],
+        coordinate: {},
+        details: {
+          reason: decoded.diagnosticCode === "decode.duplicate-key"
+            ? "duplicate-key"
+            : "invalid-json",
+        },
+      })).toSorted(compare);
     if (!same(scoped, expected)) {
       fail(`${descriptor.caseId} masks a raw decode failure with a derivative diagnostic`);
     }
   }
 }
 
-function staticInputDocuments(descriptor) {
+function staticInputDocuments(descriptor, resourceProfile) {
   if (descriptor.input === undefined) return [];
   if (descriptor.entryPoint === "compileCompositionJsonV1") {
-    return [
-      ...(descriptor.input.declarationsUtf8 ?? []).map((text, index) => ({
-        prefix: [
-          { kind: "field", value: "declarations" },
-          { kind: "index", value: index },
-        ],
-        documentType: "module-declaration",
-        value: decodeStaticJson(text),
-      })),
-      {
-        prefix: [{ kind: "field", value: "profile" }],
-        documentType: "composition-profile",
-        value: decodeStaticJson(descriptor.input.profileUtf8),
-      },
-    ];
+    const documents = staticRawInputDocuments(descriptor);
+    const aggregateBytes = documents.reduce((total, document) => (
+      total + Buffer.byteLength(document.text, "utf8")
+    ), 0);
+    const aggregateAdmitted = aggregateBytes <= resourceProfile.limits.aggregateRawBytes;
+    return documents.map(document => {
+      const limitName = document.documentType === "module-declaration"
+        ? "declarationRawDocumentBytes"
+        : "profileRawDocumentBytes";
+      return {
+        prefix: document.prefix,
+        documentType: document.documentType,
+        value: aggregateAdmitted
+          ? decodeStaticJson(
+            document.text,
+            resourceProfile.limits[limitName],
+            resourceProfile.limits.jsonDepth,
+          )
+          : undefined,
+      };
+    });
   }
   return [
     ...(descriptor.input.declarations ?? []).map((value, index) => ({
@@ -1049,8 +1129,9 @@ function validateStaticSchemaExpectations({
   validateModuleDeclaration,
   validateCompositionProfile,
   compare,
+  resourceProfile,
 }) {
-  for (const document of staticInputDocuments(descriptor)) {
+  for (const document of staticInputDocuments(descriptor, resourceProfile)) {
     const validator = document.documentType === "module-declaration"
       ? validateModuleDeclaration
       : validateCompositionProfile;
@@ -1071,8 +1152,9 @@ function validateStaticSchemaSuppression({
   diagnosticPrerequisites,
   validateModuleDeclaration,
   validateCompositionProfile,
+  resourceProfile,
 }) {
-  const documents = staticInputDocuments(descriptor);
+  const documents = staticInputDocuments(descriptor, resourceProfile);
   const declarationDocuments = documents.filter(document => (
     document.documentType === "module-declaration"
   ));
@@ -1270,6 +1352,9 @@ function bindingPositiveProviders(binding, consumer, selected) {
   const slots = consumer.slots.filter(slot => slot.slotId === binding.slotId);
   if (slots.length !== 1 || hasDuplicate(binding.providerImplementationIds)) return [];
   const [slot] = slots;
+  if (!cardinalityMatchesSlot(slot.cardinality, binding.providerImplementationIds.length)) {
+    return [];
+  }
   const providers = [];
   for (const providerId of binding.providerImplementationIds) {
     const provider = selected.byImplementation.get(providerId);
@@ -1518,9 +1603,9 @@ function structuralPathFromJsonPointer(value, pointer) {
   return path;
 }
 
-function staticUnknownFieldParentPaths(descriptor, validateDocument) {
+function staticUnknownFieldParentPaths(descriptor, validateDocument, resourceProfile) {
   const paths = [];
-  for (const document of staticInputDocuments(descriptor)) {
+  for (const document of staticInputDocuments(descriptor, resourceProfile)) {
     if (document.value === undefined || validateDocument(document.value)) continue;
     const errors = validateDocument.errors ?? [];
     for (const error of errors) {
@@ -1566,6 +1651,7 @@ export function validateStaticConformanceProtocol({
   protocol,
   contract,
   catalog,
+  resourceProfile,
   validateDocument,
   validateDiagnostic,
   validateModuleDeclaration,
@@ -1576,6 +1662,16 @@ export function validateStaticConformanceProtocol({
     || typeof validateModuleDeclaration !== "function"
     || typeof validateCompositionProfile !== "function") {
     fail("static conformance requires accepted base-schema validators");
+  }
+  if (resourceProfile?.kind !== "get-modular.resource-profile"
+    || resourceProfile.profileId !== "get-modular/resource-profile/v1-standard"
+    || resourceProfile.profileVersion !== 2
+    || !["declarationRawDocumentBytes", "profileRawDocumentBytes", "aggregateRawBytes",
+      "jsonDepth"].every(limitName => (
+      Number.isSafeInteger(resourceProfile.limits?.[limitName])
+      && resourceProfile.limits[limitName] > 0
+    ))) {
+    fail("static conformance requires the one effective resource profile");
   }
   if (!same(objectKeys(protocol, "static conformance protocol").sort(compareAscii), [
     "authority", "cases", "descriptorPolicy", "futurePackedSubjectEvidenceMinimum",
@@ -1655,11 +1751,13 @@ export function validateStaticConformanceProtocol({
         validateDocument,
         `${descriptor.caseId}.schemaValidCompanion`,
       );
-      if (descriptor.entryPoint === "compileCompositionV1") {
-        validateWith(validateDocument, descriptor.input.profile, `${descriptor.caseId}.profile`);
-      } else if (!Array.isArray(descriptor.input.declarationsUtf8)
+      if (descriptor.entryPoint === "compileCompositionV1"
+        && !Array.isArray(descriptor.input.declarations)) {
+        fail(`${descriptor.caseId} object input declarations are not an exact array`);
+      } else if (descriptor.entryPoint === "compileCompositionJsonV1"
+        && (!Array.isArray(descriptor.input.declarationsUtf8)
         || descriptor.input.declarationsUtf8.some(value => typeof value !== "string")
-        || typeof descriptor.input.profileUtf8 !== "string") {
+        || typeof descriptor.input.profileUtf8 !== "string")) {
         fail(`${descriptor.caseId} raw input is not exact UTF-8 text data`);
       }
     }
@@ -1671,10 +1769,32 @@ export function validateStaticConformanceProtocol({
       fail(`${descriptor.caseId} must contain one exact complete failure result`);
     }
     const diagnostics = descriptor.expected.diagnostics;
+    if (hasGenerator) {
+      const maximumPathSegments = contract.boundedEmissionProtocol.maximumPathSegments;
+      const expectedGeneratorResult = {
+        ok: false,
+        diagnostics: [staticLimitDiagnostic({
+          prefix: [
+            { kind: "field", value: "declarations" },
+            { kind: "index", value: 0 },
+          ],
+          limitName: "jsonDepth",
+          limit: resourceProfile.limits.jsonDepth,
+          actual: resourceProfile.limits.jsonDepth + 1,
+          localPath: Array.from(
+            { length: resourceProfile.limits.jsonDepth },
+            () => 0,
+          ),
+        }, maximumPathSegments)],
+      };
+      if (!same(descriptor.expected, expectedGeneratorResult)) {
+        fail(`${descriptor.caseId} contradicts the closed raw-depth generator`);
+      }
+    }
     const unknownFieldParentPaths = diagnostics.some(diagnostic => (
       diagnostic.code === "schema.unknown-field"
     ))
-      ? staticUnknownFieldParentPaths(descriptor, validateDocument)
+      ? staticUnknownFieldParentPaths(descriptor, validateDocument, resourceProfile)
       : [];
     const normalizedCandidateKeys = new Set();
     validateResolvedResultCodeDisposition({
@@ -1720,13 +1840,20 @@ export function validateStaticConformanceProtocol({
     if (!same(diagnostics, diagnostics.toSorted(compare))) {
       fail(`${descriptor.caseId} diagnostics are not in exact normative order`);
     }
-    validateStaticRawDecodeSuppression(descriptor, diagnostics, compare);
+    validateStaticRawDecodeSuppression(
+      descriptor,
+      diagnostics,
+      compare,
+      resourceProfile,
+      contract,
+    );
     validateStaticSchemaExpectations({
       descriptor,
       diagnostics,
       validateModuleDeclaration,
       validateCompositionProfile,
       compare,
+      resourceProfile,
     });
     validateStaticSchemaSuppression({
       descriptor,
@@ -1734,6 +1861,7 @@ export function validateStaticConformanceProtocol({
       diagnosticPrerequisites,
       validateModuleDeclaration,
       validateCompositionProfile,
+      resourceProfile,
     });
     const prerequisiteCase = exactPrerequisiteCases.get(descriptor.caseId);
     if (prerequisiteCase !== undefined
@@ -3013,7 +3141,12 @@ function strictDecode(bytes, bomPolicy, maxDepth) {
     if (token === SyntaxKind.OpenBraceToken || token === SyntaxKind.OpenBracketToken) {
       depth += 1;
       if (depth > maxDepth) {
-        return { outcome: "rejected", diagnosticCode: "input.limit-exceeded" };
+        return {
+          outcome: "rejected",
+          diagnosticCode: "input.limit-exceeded",
+          diagnosticPath: getLocation(text, scanner.getTokenOffset()).path,
+          actual: maxDepth + 1,
+        };
       }
     } else if (token === SyntaxKind.CloseBraceToken || token === SyntaxKind.CloseBracketToken) {
       depth -= 1;
