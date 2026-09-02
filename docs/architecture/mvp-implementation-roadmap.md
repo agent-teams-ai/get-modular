@@ -230,7 +230,8 @@ the evidence and review affected by that change.
    behavior. Proposed ADR-0012 is the current candidate. Governance derives
    blockers only from the active open-decision catalog, not from this roadmap's
    identifiers; OD-004, OD-005 and OD-006 already follow that catalog-driven
-   path. Keep ADR-0009 to ADR-0014 as proposed roadmap choices until accepted;
+   path. Keep ADR-0009 to ADR-0014 and ADR-0016 as proposed roadmap choices
+   until accepted;
    only their accepted decisions may add mutation fixtures or checkpoint
    requirements.
 10. Verify that the executable resource-profile generator/oracle proof remains
@@ -337,16 +338,19 @@ smaller split would make it unverifiable.
    resolution modes. Do not infer an ESM/CommonJS policy from this roadmap.
 7. Before freezing the public TypeScript surface, run the retained generated
    stage1 subject through the four TypeScript consumer modes required by
-   ADR-0007 and one deterministic 1000-declaration typecheck fixture. The
-   direct subject shares the same declaration output and is covered by the
-   independent vectors instead of a second consumer matrix. Portable
-   performance measurements belong to Phase 5.
+   ADR-0007 and one deterministic 1000-declaration typecheck fixture. ADR-0007
+   requires that matrix for the first packed implementation, not for every
+   subject; the direct subject passes the audits in item 5 and the independent
+   vectors instead of a second consumer matrix. Portable performance
+   measurements belong to Phase 5.
 
 ### Phase 1 exit criteria
 
 After Phases 2-4 provide the complete substantive compiler, two disposable
-TypeScript consumers compile through the public barrel only and both exact
-qualification archives pass the named resolver/type-scale gates. No Core API
+TypeScript consumers compile through the public barrel only, the retained
+generated stage1 archive passes the named resolver/type-scale gates, and the
+direct archive passes the same export, deep-import, declaration-leakage and
+inert-import audits. No Core API
 exposes a container, resolver, registry, Context/Fiber, filesystem path,
 executable factory, transport DTO or versioned name. A package shell without
 substantive behavior cannot pass this phase.

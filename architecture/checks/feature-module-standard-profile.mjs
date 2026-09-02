@@ -63,7 +63,7 @@ const EXPECTED_EXTENSIONS = Object.freeze([
   },
   {
     id: "internal-self-composition",
-    authority: "docs/architecture/self-composition-implementation-guide.md",
+    authority: "docs/decisions/0008-bounded-internal-engine-self-composition.md",
   },
 ]);
 

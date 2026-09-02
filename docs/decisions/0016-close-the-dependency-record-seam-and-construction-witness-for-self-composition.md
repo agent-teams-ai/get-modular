@@ -9,6 +9,7 @@ related:
   - ADR-0010
   - ADR-0011
   - ADR-0015
+  - ARCH-FEATURE-MODULE-STANDARD
   - ARCH-SELF-COMPOSITION-GUIDE
   - ARCH-MVP-IMPLEMENTATION-ROADMAP
 ---
@@ -27,17 +28,17 @@ code, property lookup keys, paths, or comments." Read together for a record
 keyed by slot identifiers, those two sentences leave the representation of the
 dependency record undecided. Proposed ADR-0011 resolves it with a
 null-prototype own-key refinement as one part of a much wider release-custody
-protocol, and the roadmap therefore makes every construction claim wait for
-that whole protocol.
+protocol, and the roadmap, before this decision, made every construction
+claim wait for that whole protocol.
 
 ADR-0008 also requires a construction witness that records "the identity of
 the constructed object supplied to each consumer" and states that
 instrumentation "must either already exist behind a private inert hook in the
 same packed bytes or prove a zero-byte-delta transformation." That wording
 implies runtime instrumentation of every factory call inside the distributed
-package, which conflicts with the Feature Module Standard rule that feature
-factories stay plain typed constructors and with the tarball audit that
-excludes qualification code from the runtime closure.
+package, which sits uneasily with the Feature Module Standard expectation of a
+narrow typed factory surface and with the tarball audit that excludes
+qualification code from the runtime closure.
 
 The self-composition implementation guide needs both seams closed before the
 first private package lands, and it needs them closed without the hermetic
@@ -55,8 +56,8 @@ then implementations follow it as the candidate rule and claim nothing.
   declared slot identifiers of that feature. Own declarations choose slot
   identifiers from the identifier-safe subset of the accepted `localToken`
   grammar, lowercase ASCII letters and digits starting with a letter,
-  excluding every own or inherited property name of `Object.prototype` and
-  the name `then`, so that every key is a plain property name with no
+  excluding every own property name of `Object.prototype` and the name
+  `then`, so that every key is a plain property name with no
   prototype or thenable collision. The witness checker rejects an own
   declaration whose slot identifier violates this subset.
 - The emitter writes each key from the feature-owned declaration handle in the
@@ -91,18 +92,37 @@ then implementations follow it as the candidate rule and claim nothing.
 
 ### Precedence
 
-When accepted, this decision supersedes ADR-0008 only for two clauses: the
+When accepted, this decision supersedes ADR-0008 only for three clauses: the
 requirement that a construction witness records the identity of each
-constructed object supplied to a consumer, and the instrumentation clause that
-permits an inert hook in the packed bytes or a zero-byte-delta transformation.
-It refines, without contradicting, the two dependency-key sentences quoted in
-the context. Every other requirement of ADR-0008 remains unchanged, including
-stage0/stage1 plan and wiring equality, the finite emitter, the allowlist, the
-isolated build roots and the reversal rule.
+constructed object supplied to a consumer; the instrumentation clause that
+permits an inert hook in the packed bytes or a zero-byte-delta transformation;
+and the acceptance sentence that requires a controlled binding change to
+demonstrate a changed injected object identity, which under this decision
+must instead alter the digest observed through the public boundary and the
+static witness. It also narrows one sentence: ADR-0008's rule that identities
+"never become code, property lookup keys, paths, or comments" applies to
+caller-supplied identities; an own slot identifier from the identifier-safe
+subset may appear as an object-literal key in generated wiring and in the
+handwritten stage0 root, and no other identity may. The descriptive phrase
+"object-identity witness" in ADR-0008's research basis is not normative. Every
+other requirement of ADR-0008 remains unchanged, including stage0/stage1 plan
+and wiring equality, the finite emitter, the allowlist, the isolated build
+roots and the reversal rule.
 
 This decision does not accept ADR-0011. ADR-0011's null-prototype refinement
 becomes unnecessary for own dependency records; its release-custody protocol
 remains a separate proposed decision.
+
+#### Relation to ADR-0011
+
+Three parts of proposed ADR-0011 are incompatible with this decision and must
+be removed or rewritten before ADR-0011 can be accepted alongside it: the
+`ConstructionWitness` record that proves reference identity through
+conformance-owned wrappers, the null-prototype closed dependency record for
+hostile slot names, and the checkpoint A requirement of at least two natural
+dependency edges. After that revision ADR-0011 keeps only the source manifest,
+build context, qualification report, release attestation, hermetic build and
+custody protocol.
 
 ### Relation to the MVP decision packet
 

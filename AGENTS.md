@@ -19,9 +19,10 @@ Use `pnpm check:changed` while editing, `pnpm check:fast` before handoff, and
 Use [.agents/skills/docs-authoring/SKILL.md](.agents/skills/docs-authoring/SKILL.md) for documentation.
 <!-- agent-teams-docs:route/v1 end -->
 
-Documentation is governed by the Agent Teams Docs Protocol. Create governed
-records through `pnpm docs:new` and do not edit accepted decisions
-retroactively.
+Documentation is governed by the Agent Teams Docs Protocol. Create ADR and
+open-decision records through `pnpm docs:new`; qualification records are
+hand-written and validated by `docs:check` and `governance:check`. Do not edit
+accepted decisions retroactively.
 
 Production code must remain independent from Engineering Foundation, Docs
 Protocol, Extension Foundation, DI containers, product types, and plugin

@@ -14,6 +14,7 @@ related:
   - ADR-0013
   - ADR-0014
   - ADR-0015
+  - ADR-0016
   - OD-004
   - OD-005
   - OD-006
@@ -112,6 +113,11 @@ slot identities as ordinary inherited property lookup keys.
 | Null-prototype frozen record with descriptor-only construction | 8/10 | 8/10 | 5/10 | 250-550 LOC | Compact and ergonomic; must prove keys such as `__proto__`, `constructor` and `then` remain inert. |
 | Frozen ordered entry tuples with a typed lookup helper | 9/10 | 9/10 | 6/10 | 350-700 LOC | Recommended. Slightly more ceremony, but no property-key ambiguity and deterministic serialization. |
 | Read-only `Map` behind a private adapter | 7/10 | 8/10 | 5/10 | 250-550 LOC | Good internal ergonomics, weaker plain-data and cross-process evidence. |
+
+Proposed ADR-0016 selects a fourth form, a typed object literal keyed by
+identifier-safe own slot identifiers with `Map` lookups for every identity,
+and pairs it with a static generated-wiring witness. If ADR-0016 is accepted it
+resolves this item and supersedes the recommendation above.
 
 **Stop point:** before stage0 emits or stage1 consumes a dependency record. An
 accepted narrow successor must select one representation and its hostile-key
