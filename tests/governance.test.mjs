@@ -3,7 +3,7 @@ import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
 import Ajv2020 from "ajv/dist/2020.js";
@@ -11,26 +11,52 @@ import {
   ACCEPTED_AUTHORITY_LEDGER_ANCHOR,
   ACCEPTED_AUTHORITY_LEDGER_DIGEST,
   ACCEPTED_AUTHORITY_LEDGER_PATH,
+  OPEN_DECISION_HISTORY_PATH,
+  governanceDocumentCatalog,
   productionArtifactPaths,
   qualificationClaimAnchor,
-  readTrackedEvidence,
+  inspectTrackedNavigationFile,
   requirementIdsFromMarkdown,
   validateAcceptedAuthorityCatalog,
   validateAuthorityLedger,
   validateAuthorityLedgerCustody,
   validateBlockedImplementation,
+  validateDecisionHistory,
   validateDecisionResolutions,
   validateQualificationClaims,
   validateQualificationProfileConsistency,
   validateSourceMap,
   validateTraceability,
 } from "../architecture/checks/governance.mjs";
-import { productionArtifactsOutsidePackages } from
-  "../architecture/checks/production-artifacts.mjs";
+import {
+  assertSupportedNodeVersion,
+  isDirectExecution,
+  isSupportedNodeVersion,
+  SUPPORTED_NODE_RANGE,
+} from "../architecture/checks/node-version.mjs";
+import {
+  captureGitIndexSnapshot,
+  historicalFileVersions,
+  inspectIndexSnapshotFile,
+  readIndexSnapshotFile,
+  inspectAcceptedAuthorityFile,
+  readAcceptedAuthorityFile,
+} from "../architecture/checks/tracked-file-custody.mjs";
+import {
+  productionArtifactsBlockedByOpenDecisions,
+  productionArtifactsOutsidePackages,
+} from "../architecture/checks/production-artifacts.mjs";
 
 const digest = bytes => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const evidenceIdentity = (path, bytes) => ({ path, digest: digest(bytes) });
 const execFileAsync = promisify(execFile);
+const git = (cwd, ...args) => execFileAsync("git", args, { cwd });
+async function initFixtureRepository(fixture) {
+  await git(fixture, "init", "--quiet", "--initial-branch=main");
+  await git(fixture, "config", "user.email", "fixture@example.invalid");
+  await git(fixture, "config", "user.name", "Fixture");
+  await git(fixture, "config", "commit.gpgsign", "false");
+}
 
 const sourceMap = {
   schemaVersion: 1,
@@ -168,6 +194,58 @@ test("traceability is closed and bidirectional", () => {
       sources: { "source-a": ["GM-REQ-001"] },
     },
   });
+});
+
+test("supported Node preflight matches repository runtime custody", async () => {
+  for (const version of ["24.18.0", "v24.18.0", "24.18.1", "24.99.0"]) {
+    assert.equal(isSupportedNodeVersion(version), true, version);
+    assert.doesNotThrow(() => assertSupportedNodeVersion(version));
+  }
+  for (const version of ["24.17.9", "24.18.0-rc.1", "25.0.0", "23.99.0", "invalid"]) {
+    assert.equal(isSupportedNodeVersion(version), false, version);
+    assert.throws(() => assertSupportedNodeVersion(version), /NODE_VERSION_PREFLIGHT_FAILED/u);
+  }
+
+  const packageJson = JSON.parse(await readFile("package.json", "utf8"));
+  assert.equal(packageJson.engines.node, SUPPORTED_NODE_RANGE);
+  assert.equal(await readFile(".node-version", "utf8"), "24.18.0\n");
+  assert.equal(packageJson.scripts["runtime:preflight"],
+    "node architecture/checks/node-version.mjs");
+  for (const script of ["check", "check:fast"]) {
+    assert.match(packageJson.scripts[script], /^pnpm runtime:preflight && /u, script);
+  }
+  assert.equal(packageJson.scripts["check:changed"],
+    "agent-teams-foundation agent-workflow changed --consumer .");
+  assert.equal(packageJson.scripts["precheck:changed"], "pnpm runtime:preflight");
+});
+
+test("Node preflight recognizes a symlinked direct entry in a subprocess", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-node-preflight-"));
+  try {
+    const preflightPath = resolve("architecture/checks/node-version.mjs");
+    const aliasedPath = join(fixture, "node-preflight-alias.mjs");
+    await symlink(preflightPath, aliasedPath, "file");
+
+    assert.equal(isDirectExecution(new URL(
+      "../architecture/checks/node-version.mjs",
+      import.meta.url,
+    ).href, aliasedPath), true);
+
+    if (isSupportedNodeVersion(process.versions.node)) {
+      const { stdout } = await execFileAsync(process.execPath, [aliasedPath]);
+      assert.match(stdout, /satisfies/u);
+    } else {
+      await assert.rejects(
+        execFileAsync(process.execPath, [aliasedPath]),
+        error => {
+          assert.match(error.stderr, /NODE_VERSION_PREFLIGHT_FAILED/u);
+          return true;
+        },
+      );
+    }
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
 });
 
 test("missing reverse traceability fails closed", () => {
@@ -316,18 +394,95 @@ test("accepted authority custody closes ledger shape, paths, bytes, and ADR anch
   }
 });
 
-test("open decisions block production artifacts and qualification claims", () => {
+test("open decisions admit private package source but block publication and runtime claims", async () => {
   const blockerIds = new Set(["OD-001"]);
-  assert.throws(() => validateBlockedImplementation({
+  const manifests = new Map([
+    ["packages/engine/package.json", { name: "@get-modular/core", private: true }],
+  ]);
+  const readPackageManifest = async path => manifests.get(path);
+  const privateArtifacts = [
+    "packages/engine/package.json",
+    "packages/engine/src/features/compiler/normalized-compiler.ts",
+    "packages/engine/src/index.ts",
+    "packages/engine/tests/normalized-compiler.test.ts",
+  ];
+
+  await assert.doesNotReject(validateBlockedImplementation({
     blockerIds,
-    productionArtifacts: ["packages/group/core/package.json", "src/index.ts"],
-    claimDocuments: [],
-  }), /production artifacts are blocked/u);
-  assert.throws(() => validateBlockedImplementation({
+    productionArtifacts: privateArtifacts,
+    claimDocuments: [
+      { id: "QUAL-SOURCE", status: "source-admitted" },
+      { id: "QUAL-STRUCTURAL", status: "structural-conformant" },
+    ],
+    readPackageManifest,
+  }));
+
+  await assert.rejects(validateBlockedImplementation({
     blockerIds,
-    productionArtifacts: [],
-    claimDocuments: ["QUAL-V1"],
-  }), /qualification claims are blocked/u);
+    productionArtifacts: privateArtifacts,
+    claimDocuments: [{ id: "QUAL-RUNTIME", status: "runtime-conformant" }],
+    readPackageManifest,
+  }), /runtime-conformance claims are blocked/u);
+
+  for (const manifest of [
+    { name: "@get-modular/core", private: false },
+    { name: "@get-modular/core", private: true, exports: { ".": "./dist/index.js" } },
+    { name: "@get-modular/unknown", private: true },
+  ]) {
+    manifests.set("packages/engine/package.json", manifest);
+    await assert.rejects(validateBlockedImplementation({
+      blockerIds,
+      productionArtifacts: privateArtifacts,
+      claimDocuments: [],
+      readPackageManifest,
+    }), /public or publication-capable artifacts are blocked/u);
+  }
+});
+
+test("open-decision artifact admission is manifest-bound and fail-closed", async () => {
+  const manifestPath = "packages/engine/package.json";
+  const sourcePath = "packages/engine/src/index.ts";
+  const classify = (artifacts, manifest) => productionArtifactsBlockedByOpenDecisions(
+    artifacts,
+    { readPackageManifest: async () => manifest },
+  );
+
+  for (const name of ["@get-modular/core", "@get-modular/conformance"]) {
+    assert.deepEqual(await classify([manifestPath, sourcePath], {
+      name,
+      private: true,
+    }), []);
+  }
+  assert.deepEqual(await classify([sourcePath], {
+    name: "@get-modular/core",
+    private: true,
+  }), [sourcePath]);
+
+  for (const field of [
+    "bin", "browser", "exports", "files", "main", "module", "publishConfig", "types",
+    "typesVersions", "typings",
+  ]) {
+    assert.deepEqual(await classify([manifestPath, sourcePath], {
+      name: "@get-modular/core",
+      private: true,
+      [field]: {},
+    }), [manifestPath, sourcePath], field);
+  }
+
+  const nestedManifestPath = "packages/engine/nested/package.json";
+  const nestedSourcePath = "packages/engine/nested/index.ts";
+  const manifests = new Map([
+    [manifestPath, { name: "@get-modular/core", private: true }],
+    [nestedManifestPath, { name: "@get-modular/public-addon", exports: "./index.ts" }],
+  ]);
+  assert.deepEqual(await productionArtifactsBlockedByOpenDecisions([
+    manifestPath,
+    sourcePath,
+    nestedManifestPath,
+    nestedSourcePath,
+  ], {
+    readPackageManifest: async path => manifests.get(path),
+  }), [nestedManifestPath, nestedSourcePath]);
 });
 
 test("qualification claims require ordered admission, evidence, and promotion", async () => {
@@ -681,46 +836,453 @@ test("qualification claims and the authoritative profile cannot disagree", () =>
   }));
 });
 
-test("tracked evidence custody rejects untracked files and every symlink component", async () => {
+test("tracked navigation and accepted authority custody use distinct byte sources", async () => {
   const fixture = await mkdtemp(join(tmpdir(), "get-modular-evidence-custody-"));
   try {
     await execFileAsync("git", ["init", "--quiet"], { cwd: fixture });
     await mkdir(join(fixture, "evidence"), { recursive: true });
-    await writeFile(join(fixture, "evidence", "tracked.json"), "tracked\n");
+    await writeFile(join(fixture, "evidence", "tracked.json"), "index bytes\n");
+    await writeFile(join(fixture, "evidence", "literal[1].json"), "literal index bytes\n");
+    await writeFile(join(fixture, "evidence", "literal1.json"), "pathspec decoy\n");
     await writeFile(join(fixture, "evidence", "untracked.json"), "untracked\n");
-    await execFileAsync("git", ["add", "--", "evidence/tracked.json"], { cwd: fixture });
+    await execFileAsync("git", [
+      "add",
+      "--",
+      "evidence/tracked.json",
+      "evidence/literal[1].json",
+      "evidence/literal1.json",
+    ], { cwd: fixture });
+    await writeFile(join(fixture, "evidence", "tracked.json"), "working tree bytes\n");
+    await writeFile(join(fixture, "evidence", "literal[1].json"), "literal working bytes\n");
     await symlink("evidence", join(fixture, "linked"), "dir");
+    await symlink("evidence/tracked.json", join(fixture, "linked-file.json"), "file");
 
-    assert.deepEqual(await readTrackedEvidence("evidence/tracked.json", fixture), {
+    assert.deepEqual(await inspectTrackedNavigationFile("evidence/tracked.json", fixture), {
       kind: "regular",
       tracked: true,
-      bytes: Buffer.from("tracked\n"),
+      bytes: Buffer.from("working tree bytes\n"),
     });
-    assert.deepEqual(await readTrackedEvidence("evidence/untracked.json", fixture), {
+    assert.deepEqual(await inspectAcceptedAuthorityFile("evidence/tracked.json", fixture), {
+      kind: "working-tree-diverged",
+    });
+    await assert.rejects(
+      readAcceptedAuthorityFile("evidence/tracked.json", fixture, "accepted artifact"),
+      /TRACKED_FILE_CUSTODY_FAILED.*working-tree-diverged/u,
+    );
+
+    assert.deepEqual(await inspectAcceptedAuthorityFile("evidence/literal[1].json", fixture), {
+      kind: "working-tree-diverged",
+    });
+    assert.deepEqual(await inspectTrackedNavigationFile("evidence/untracked.json", fixture), {
       kind: "untracked",
     });
-    assert.deepEqual(await readTrackedEvidence("linked/tracked.json", fixture), {
+    assert.deepEqual(await inspectTrackedNavigationFile("linked/tracked.json", fixture), {
       kind: "symlink",
     });
+    assert.deepEqual(await inspectTrackedNavigationFile("linked-file.json", fixture), {
+      kind: "symlink",
+    });
+    await assert.rejects(
+      readAcceptedAuthorityFile("evidence/untracked.json", fixture, "accepted artifact"),
+      /TRACKED_FILE_CUSTODY_FAILED.*untracked/u,
+    );
+    await assert.rejects(
+      readAcceptedAuthorityFile("linked-file.json", fixture, "accepted artifact"),
+      /TRACKED_FILE_CUSTODY_FAILED.*symlink/u,
+    );
   } finally {
     await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("governance catalog rejects AD/AM split states from one index snapshot", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-governance-snapshot-"));
+  try {
+    await execFileAsync("git", ["init", "--quiet"], { cwd: fixture });
+    await mkdir(join(fixture, "docs", "open-decisions"), { recursive: true });
+    await mkdir(join(fixture, "docs", "requirements"), { recursive: true });
+    const openPath = join(fixture, "docs", "open-decisions", "OD-001-example.md");
+    const requirementPath = join(fixture, "docs", "requirements", "example.md");
+    const openBytes = [
+      "---",
+      "id: OD-001",
+      "type: open-decision",
+      "status: open",
+      "owner: architecture",
+      "summary: Snapshot fixture.",
+      "---",
+      "",
+    ].join("\n");
+    const requirementBytes = [
+      "---",
+      "id: GM-REQ-TEST",
+      "type: requirements",
+      "status: accepted",
+      "owner: architecture",
+      "summary: Snapshot fixture.",
+      "---",
+      "",
+    ].join("\n");
+    await writeFile(openPath, openBytes);
+    await writeFile(requirementPath, requirementBytes);
+    await execFileAsync("git", ["add", "--", "docs"], { cwd: fixture });
+
+    await rm(openPath);
+    await writeFile(requirementPath, `${requirementBytes}unstaged mutation\n`);
+    const snapshot = await captureGitIndexSnapshot(fixture);
+    await assert.rejects(
+      governanceDocumentCatalog(fixture, snapshot),
+      /TRACKED_FILE_CUSTODY_FAILED.*OD-001-example\.md \(missing\)/u,
+    );
+
+    await writeFile(openPath, openBytes);
+    await assert.rejects(
+      governanceDocumentCatalog(fixture, snapshot),
+      /TRACKED_FILE_CUSTODY_FAILED.*example\.md \(working-tree-diverged\)/u,
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("qualification evidence uses index blobs and rejects unstaged bytes", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-qualification-snapshot-"));
+  try {
+    await execFileAsync("git", ["init", "--quiet"], { cwd: fixture });
+    await mkdir(join(fixture, "evidence"), { recursive: true });
+    const evidencePath = "evidence/source.json";
+    await writeFile(join(fixture, evidencePath), "index evidence\n");
+    await execFileAsync("git", ["add", "--", evidencePath], { cwd: fixture });
+    const snapshot = await captureGitIndexSnapshot(fixture);
+    await writeFile(join(fixture, evidencePath), "unstaged evidence\n");
+
+    assert.deepEqual(await inspectIndexSnapshotFile(snapshot, evidencePath), {
+      kind: "working-tree-diverged",
+    });
+    await assert.rejects(
+      readIndexSnapshotFile(snapshot, evidencePath, "qualification evidence"),
+      /TRACKED_FILE_CUSTODY_FAILED.*working-tree-diverged/u,
+    );
+
+    const claim = {
+      id: "QUAL-SOURCE",
+      type: "qualification",
+      status: "source-admitted",
+      subject: "packages/core",
+      evidence: [evidenceIdentity(evidencePath, "index evidence\n")],
+    };
+    await assert.rejects(validateQualificationClaims({
+      documents: [claim],
+      productionArtifacts: ["packages/core/src/index.ts"],
+      documentSources: new Map([[claim.id, {
+        path: "docs/qualification/source.md",
+        bytes: "source claim bytes\n",
+      }]]),
+      evidenceFile: path => inspectIndexSnapshotFile(snapshot, path),
+    }), /evidence must be a regular in-repository file/u);
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("open-decision history is complete and non-decreasing", async () => {
+  const history = JSON.parse(await readFile(OPEN_DECISION_HISTORY_PATH, "utf8"));
+  const decisions = history.recordedDecisionIds.map(id => ({
+    id,
+    type: "open-decision",
+    status: "open",
+  }));
+  assert.deepEqual(validateDecisionHistory({
+    history,
+    historicalHistories: [{
+      schemaVersion: 1,
+      recordedDecisionIds: history.recordedDecisionIds.slice(0, -1),
+    }],
+    documents: decisions,
+  }), new Set(history.recordedDecisionIds));
+
+  assert.throws(() => validateDecisionHistory({
+    history: {
+      schemaVersion: 1,
+      recordedDecisionIds: history.recordedDecisionIds.slice(0, -1),
+    },
+    historicalHistories: [history],
+    documents: decisions.slice(0, -1),
+  }), /cannot remove previously recorded OD-006/u);
+  assert.throws(() => validateDecisionHistory({
+    history,
+    documents: decisions.slice(0, -1),
+  }), /must match the governed open-decision records/u);
+});
+
+test("open-decision history rejects a shallow repository witness", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-shallow-history-"));
+  const clonePath = join(fixture, "clone");
+  try {
+    await execFileAsync("git", [
+      "clone",
+      "--quiet",
+      "--depth=1",
+      "--no-local",
+      resolve("."),
+      clonePath,
+    ]);
+    await assert.rejects(
+      historicalFileVersions(OPEN_DECISION_HISTORY_PATH, clonePath),
+      /complete non-shallow Git history/u,
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("accepted authority custody rejects intent-to-add index entries", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-intent-to-add-"));
+  try {
+    await execFileAsync("git", ["init", "--quiet"], { cwd: fixture });
+    await writeFile(join(fixture, "intent [1].json"), "unstaged intent bytes\n");
+    await execFileAsync("git", ["add", "--intent-to-add", "--", "intent [1].json"], {
+      cwd: fixture,
+    });
+
+    assert.deepEqual(await inspectAcceptedAuthorityFile("intent [1].json", fixture), {
+      kind: "intent-to-add",
+    });
+    await assert.rejects(
+      readAcceptedAuthorityFile("intent [1].json", fixture, "accepted artifact"),
+      /TRACKED_FILE_CUSTODY_FAILED.*intent-to-add/u,
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("open-decision history rejects an unborn HEAD witness", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-unborn-history-"));
+  try {
+    await initFixtureRepository(fixture);
+    await mkdir(dirname(join(fixture, OPEN_DECISION_HISTORY_PATH)), { recursive: true });
+    await writeFile(
+      join(fixture, OPEN_DECISION_HISTORY_PATH),
+      JSON.stringify({ schemaVersion: 1, recordedDecisionIds: ["OD-001"] }),
+    );
+    await git(fixture, "add", "--", OPEN_DECISION_HISTORY_PATH);
+
+    await assert.rejects(
+      historicalFileVersions(OPEN_DECISION_HISTORY_PATH, fixture),
+      /committed HEAD; an unborn branch has no history/u,
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("historical custody follows every merge parent instead of simplified history", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-full-history-"));
+  try {
+    await initFixtureRepository(fixture);
+    const historyPath = "history.json";
+    const versions = [
+      JSON.stringify({ schemaVersion: 1, recordedDecisionIds: ["OD-001"] }),
+      JSON.stringify({ schemaVersion: 1, recordedDecisionIds: ["OD-001", "OD-002"] }),
+    ];
+    await writeFile(join(fixture, historyPath), versions[0]);
+    await git(fixture, "add", "--", historyPath);
+    await git(fixture, "commit", "--quiet", "-m", "record OD-001");
+    await git(fixture, "checkout", "--quiet", "-b", "side");
+    await writeFile(join(fixture, historyPath), versions[1]);
+    await git(fixture, "add", "--", historyPath);
+    await git(fixture, "commit", "--quiet", "-m", "record OD-002");
+    await git(fixture, "checkout", "--quiet", "main");
+    await git(fixture, "merge", "--quiet", "--no-ff", "-s", "ours", "-m", "discard side", "side");
+
+    const observed = (await historicalFileVersions(historyPath, fixture))
+      .map(bytes => bytes.toString("utf8"));
+    assert.deepEqual(new Set(observed), new Set(versions));
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("index snapshot custody rejects intent-to-add and empty-blob entries", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-snapshot-intent-"));
+  try {
+    await initFixtureRepository(fixture);
+    await writeFile(join(fixture, "regular.txt"), "regular index bytes\n");
+    await writeFile(join(fixture, "intent.txt"), "unstaged intent bytes\n");
+    await writeFile(join(fixture, "empty.txt"), "");
+    await git(fixture, "add", "--", "regular.txt", "empty.txt");
+    await git(fixture, "add", "--intent-to-add", "--", "intent.txt");
+
+    const snapshot = await captureGitIndexSnapshot(fixture);
+    assert.equal((await inspectIndexSnapshotFile(snapshot, "regular.txt")).kind, "regular");
+    assert.deepEqual(await inspectIndexSnapshotFile(snapshot, "intent.txt"), {
+      kind: "intent-to-add",
+    });
+    assert.deepEqual(await inspectIndexSnapshotFile(snapshot, "empty.txt"), {
+      kind: "intent-to-add",
+    });
+    for (const relativePath of ["intent.txt", "empty.txt"]) {
+      await assert.rejects(
+        readIndexSnapshotFile(snapshot, relativePath, "governed input"),
+        /TRACKED_FILE_CUSTODY_FAILED.*intent-to-add/u,
+      );
+    }
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("index snapshot custody ignores GIT_* overrides and enforces the repository top level", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-hermetic-git-"));
+  const foreign = await mkdtemp(join(tmpdir(), "get-modular-foreign-git-"));
+  const savedEnvironment = Object.fromEntries(
+    ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"].map(name => [name, process.env[name]]),
+  );
+  try {
+    await initFixtureRepository(fixture);
+    await initFixtureRepository(foreign);
+    await writeFile(join(fixture, "own.txt"), "own index bytes\n");
+    await git(fixture, "add", "--", "own.txt");
+    await writeFile(join(foreign, "foreign.txt"), "foreign index bytes\n");
+    await git(foreign, "add", "--", "foreign.txt");
+
+    process.env.GIT_DIR = join(foreign, ".git");
+    process.env.GIT_WORK_TREE = foreign;
+    process.env.GIT_INDEX_FILE = join(foreign, ".git", "index");
+    const snapshot = await captureGitIndexSnapshot(fixture);
+    assert.deepEqual([...snapshot.entries.keys()], ["own.txt"]);
+
+    await mkdir(join(fixture, "nested"), { recursive: true });
+    await assert.rejects(
+      captureGitIndexSnapshot(join(fixture, "nested")),
+      /TRACKED_FILE_CUSTODY_FAILED: Git top level .* is not the repository root/u,
+    );
+    await assert.rejects(
+      historicalFileVersions("own.txt", join(fixture, "nested")),
+      /is not the repository root/u,
+    );
+  } finally {
+    for (const [name, value] of Object.entries(savedEnvironment)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+    await rm(fixture, { recursive: true, force: true });
+    await rm(foreign, { recursive: true, force: true });
+  }
+});
+
+test("governance catalog rejects an untracked accepted ADR", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-untracked-adr-"));
+  try {
+    await execFileAsync("git", ["init", "--quiet"], { cwd: fixture });
+    for (const directory of [
+      "docs/architecture",
+      "docs/decisions",
+      "docs/open-decisions",
+      "docs/qualification",
+      "docs/requirements",
+    ]) {
+      await mkdir(join(fixture, directory), { recursive: true });
+    }
+    await writeFile(join(fixture, "docs/decisions/9999-untracked.md"), [
+      "---",
+      "id: ADR-9999",
+      "type: adr",
+      "status: accepted",
+      "owner: attacker",
+      "approved_by: attacker",
+      "accepted_at: 2026-09-01",
+      "summary: Untracked authority must not enter the catalog.",
+      "---",
+      "",
+      "# Untracked",
+      "",
+    ].join("\n"));
+
+    await assert.rejects(
+      governanceDocumentCatalog(fixture),
+      /TRACKED_FILE_CUSTODY_FAILED.*untracked/u,
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("accepted authority custody supports SHA-256 Git object IDs", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-sha256-custody-"));
+  try {
+    await execFileAsync("git", ["init", "--quiet", "--object-format=sha256"], {
+      cwd: fixture,
+    });
+    await writeFile(join(fixture, "authority.json"), "sha256 index bytes\n");
+    await execFileAsync("git", ["add", "--", "authority.json"], { cwd: fixture });
+
+    const accepted = await inspectAcceptedAuthorityFile("authority.json", fixture);
+    assert.equal(accepted.kind, "regular");
+    assert.match(accepted.oid, /^[a-f0-9]{64}$/u);
+    assert.deepEqual(accepted.bytes, Buffer.from("sha256 index bytes\n"));
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("accepted authority bytes survive a deterministic leaf replacement race", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-custody-race-"));
+  const external = await mkdtemp(join(tmpdir(), "get-modular-custody-external-"));
+  try {
+    const relativePath = "evidence/authority.json";
+    const authorityPath = join(fixture, relativePath);
+    const externalPath = join(external, "replacement.json");
+    await execFileAsync("git", ["init", "--quiet"], { cwd: fixture });
+    await mkdir(join(fixture, "evidence"), { recursive: true });
+    await writeFile(authorityPath, "accepted index bytes\n");
+    await writeFile(externalPath, "external replacement bytes\n");
+    await execFileAsync("git", ["add", "--", relativePath], { cwd: fixture });
+
+    const accepted = await inspectAcceptedAuthorityFile(relativePath, fixture, {
+      afterIndexLookup: async () => {
+        await rm(authorityPath);
+        await symlink(externalPath, authorityPath, "file");
+      },
+    });
+    assert.equal(accepted.kind, "regular");
+    assert.deepEqual(accepted.bytes, Buffer.from("accepted index bytes\n"));
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+    await rm(external, { recursive: true, force: true });
   }
 });
 
 test("production artifact discovery fails closed across repository layouts", async () => {
   const fixture = await mkdtemp(join(tmpdir(), "get-modular-governance-"));
   try {
-    await writeFile(join(fixture, "package.json"), JSON.stringify({ private: true, files: ["compiler.js"] }));
+    await writeFile(join(fixture, "package.json"), JSON.stringify({
+      private: true,
+      browser: "./browser.js",
+      files: ["compiler.js"],
+      publishConfig: { access: "public" },
+      typesVersions: { "*": { "*": ["types/*"] } },
+    }));
     await writeFile(join(fixture, "compiler.ts"), "export const compiler = true;\n");
     await mkdir(join(fixture, "scripts"));
     await writeFile(join(fixture, "scripts/compiler.ts"), "export const compiler = true;\n");
     await mkdir(join(fixture, "examples/core"), { recursive: true });
     await writeFile(join(fixture, "examples/core/package.json"), JSON.stringify({ private: true }));
+    await mkdir(join(fixture, "docs/carrier"), { recursive: true });
+    await writeFile(join(fixture, "docs/carrier/package.json"), JSON.stringify({
+      private: false,
+      exports: "./index.js",
+    }));
 
     assert.deepEqual(await productionArtifactPaths(fixture), [
       "compiler.ts",
+      "docs/carrier/package.json",
       "examples/core/package.json",
+      "package.json#browser",
       "package.json#files",
+      "package.json#publishConfig",
+      "package.json#typesVersions",
       "scripts/compiler.ts",
     ]);
   } finally {
@@ -739,6 +1301,17 @@ test("production artifact discovery inventories symlinks without following them"
     await symlink("../../docs/target", join(fixture, "packages", "core", "linked"), "dir");
     await symlink("target", join(fixture, "docs", "outside-linked"), "dir");
     await symlink("docs/target", join(fixture, "node_modules"), "dir");
+    await mkdir(join(fixture, "packages", "core", "node_modules", "@get-modular"), {
+      recursive: true,
+    });
+    await symlink("../../..", join(
+      fixture,
+      "packages",
+      "core",
+      "node_modules",
+      "@get-modular",
+      "core",
+    ), "dir");
 
     const artifacts = await productionArtifactPaths(fixture);
     assert.deepEqual(artifacts, ["docs/outside-linked", "packages/core/linked"]);
@@ -750,16 +1323,32 @@ test("production artifact discovery inventories symlinks without following them"
 
 test("resolved decisions require an accepted reciprocal ADR", () => {
   assert.doesNotThrow(() => validateDecisionResolutions([
-    { id: "OD-001", type: "open-decision", status: "resolved", resolved_by: "ADR-0002" },
+    {
+      id: "OD-001",
+      type: "open-decision",
+      status: "resolved",
+      resolved_by: "ADR-0002",
+      related: ["ADR-0002"],
+    },
     { id: "ADR-0002", type: "adr", status: "accepted", related: ["OD-001"] },
   ]));
   assert.throws(() => validateDecisionResolutions([
     { id: "OD-001", type: "open-decision", status: "resolved", resolved_by: "ADR-9999" },
   ]), /must resolve through an accepted ADR/u);
   assert.throws(() => validateDecisionResolutions([
-    { id: "OD-001", type: "open-decision", status: "resolved", resolved_by: "ADR-0002" },
+    {
+      id: "OD-001",
+      type: "open-decision",
+      status: "resolved",
+      resolved_by: "ADR-0002",
+      related: ["ADR-0002"],
+    },
     { id: "ADR-0002", type: "adr", status: "accepted", related: [] },
   ]), /must reference the resolved decision/u);
+  assert.throws(() => validateDecisionResolutions([
+    { id: "OD-001", type: "open-decision", status: "resolved", resolved_by: "ADR-0002" },
+    { id: "ADR-0002", type: "adr", status: "accepted", related: ["OD-001"] },
+  ]), /must reference its resolver ADR-0002/u);
 });
 
 test("mutable revisions and unsafe paths fail closed", () => {

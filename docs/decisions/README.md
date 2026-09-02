@@ -13,6 +13,10 @@ summary: Index of Get Modular architecture decisions.
 - [ADR-0009: Keep pre-1.0 public API unversioned](0009-keep-pre-1-0-public-api-unversioned.md)
 - [ADR-0010: Select replaceable primitives for the first core implementation](0010-select-replaceable-primitives-for-the-first-core-implementation.md)
 - [ADR-0011: Define private self-composition evidence and release custody](0011-define-private-self-composition-evidence-and-release-custody.md)
+- [ADR-0012: Select an ESM-only root package carrier](0012-select-esm-only-root-package-carrier.md)
+- [ADR-0013: Close trusted-object and raw-carrier semantics](0013-close-trusted-object-and-raw-carrier-semantics.md)
+- [ADR-0014: Close duplicate binding-record semantics](0014-close-duplicate-binding-record-semantics.md)
+- [ADR-0015: Block publication surfaces and runtime claims while decisions stay open](0015-block-publication-surfaces-and-runtime-claims-while-decisions-stay-open.md)
 
 ## Accepted decisions
 

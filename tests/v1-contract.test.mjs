@@ -132,7 +132,8 @@ test("diagnostic prerequisites are closed for every code and named limit", async
 });
 
 test("reserved base diagnostic code cannot be indirectly reactivated", async () => {
-  const [schema, catalog, profile, contract, snapshots, boundaries, manifest] =
+  const [schema, catalog, profile, contract, snapshots, boundaries, manifest,
+    effectiveResourceProfile] =
     await Promise.all([
       readJson("architecture/contracts/v1/composition.schema.json"),
       readJson("architecture/contracts/v1/diagnostic-catalog.json"),
@@ -141,8 +142,10 @@ test("reserved base diagnostic code cannot be indirectly reactivated", async () 
       readJson("architecture/qualification/v1/diagnostic-snapshots.json"),
       readJson("architecture/qualification/v1/resource-boundary-vectors.json"),
       readJson("architecture/qualification/v1/qualification-case-manifest.json"),
+      readJson("architecture/qualification/v1/resource-profile-v2.json"),
     ]);
-  const { validateDocument, validateDiagnostic } = schemaValidators(schema);
+  const validators = schemaValidators(schema);
+  const { validateDocument, validateDiagnostic } = validators;
   const reservedDiagnostic = {
     code: "output.canonicalization-failed",
     phase: "output",
@@ -229,8 +232,8 @@ test("reserved base diagnostic code cannot be indirectly reactivated", async () 
     protocol: staticCaseReactivation,
     contract,
     catalog,
-    validateDocument,
-    validateDiagnostic,
+    resourceProfile: effectiveResourceProfile,
+    ...validators,
   }), /reserved-non-emittable/u);
 
   assert.throws(() => validateResolvedResultCodeDisposition({
@@ -804,6 +807,41 @@ test("normalization qualification rejects order and canonical-byte drift", async
   });
   assert.doesNotThrow(() => validate(vectors));
 
+  const inertUnselectedConsumerBinding = clone(vectors);
+  const inertCase = inertUnselectedConsumerBinding.cases[0];
+  const disabledImplementationId = "example/disabled/default";
+  inertCase.declarations.push({
+    kind: "get-modular.module-declaration",
+    schemaVersion: 1,
+    moduleId: "example/disabled",
+    implementationId: disabledImplementationId,
+    owner: { authority: "example", path: ["disabled"] },
+    provides: [],
+    slots: [],
+  });
+  inertCase.declarationOrders.forEach((order, index) => {
+    if (index === 0) order.push(disabledImplementationId);
+    else order.unshift(disabledImplementationId);
+  });
+  for (const profile of inertCase.equivalentProfiles) {
+    profile.bindings.push({
+      consumerImplementationId: disabledImplementationId,
+      slotId: "unknown-slot-is-inert",
+      providerImplementationIds: ["example/unknown-provider/default"],
+    });
+  }
+  assert.doesNotThrow(() => validate(inertUnselectedConsumerBinding));
+
+  const unknownConsumerBinding = clone(inertUnselectedConsumerBinding);
+  const unknownCase = unknownConsumerBinding.cases[0];
+  unknownCase.declarations = unknownCase.declarations.filter(declaration => (
+    declaration.implementationId !== disabledImplementationId
+  ));
+  for (const order of unknownCase.declarationOrders) {
+    order.splice(order.indexOf(disabledImplementationId), 1);
+  }
+  assert.throws(() => validate(unknownConsumerBinding), /binding has an unknown consumer/u);
+
   const manyDeclaration = clone(vectors.cases[0].declarations
     .find(declaration => declaration.slots.some(slot => slot.cardinality.kind === "many")));
   const manySlot = manyDeclaration.slots.find(slot => slot.cardinality.kind === "many");
@@ -932,8 +970,12 @@ test("resource and decoder qualification reject expectation drift", async () => 
   const manifest = await readJson(
     "architecture/qualification/v1/qualification-case-manifest.json",
   );
+  const effectiveResourceProfile = await readJson(
+    "architecture/qualification/v1/resource-profile-v2.json",
+  );
   const acceptedCanonical = await readJson("architecture/contracts/v1/canonical-vectors.json");
-  const { validateDocument, validateDiagnostic } = schemaValidators(schema);
+  const validators = schemaValidators(schema);
+  const { validateDocument, validateDiagnostic } = validators;
   const maximumOmitted = schema.$defs.diagnostic.properties.details
     .properties.omitted.maximum;
   const validateBoundaries = value => validateResourceBoundaryQualification({
@@ -956,13 +998,20 @@ test("resource and decoder qualification reject expectation drift", async () => 
     acceptedCanonicalVectors: acceptedCanonical,
     diagnosticContract: contract,
     diagnosticCatalog: catalog,
-    validateDocument,
-    validateDiagnostic,
+    resourceProfile: effectiveResourceProfile,
+    ...validators,
   });
 
   assert.doesNotThrow(() => validateBoundaries(boundaries));
   assert.doesNotThrow(() => validateDecoder(decoder));
   assert.doesNotThrow(() => validateManifest(manifest));
+
+  assert.throws(() => validateQualificationCaseManifest({
+    manifest,
+    decoderVectors: decoder,
+    canonicalizationVectors: canonicalization,
+    acceptedCanonicalVectors: acceptedCanonical,
+  }), /static conformance requires accepted base-schema validators/u);
 
   const rawLocatorRemoved = clone(manifest);
   rawLocatorRemoved.staticConformanceProtocol.cases[0]
@@ -978,6 +1027,38 @@ test("resource and decoder qualification reject expectation drift", async () => 
   invalidStaticRefinement.staticConformanceProtocol.cases[0]
     .expected.diagnostics[0].details.reason = "unknown";
   assert.throws(() => validateManifest(invalidStaticRefinement), /invalid reason/u);
+
+  const maskedDuplicateKey = clone(manifest);
+  const maskedDuplicateDiagnostics = maskedDuplicateKey.staticConformanceProtocol.cases[0]
+    .expected.diagnostics;
+  const duplicateIndex = maskedDuplicateDiagnostics.findIndex(diagnostic => (
+    diagnostic.code === "decode.duplicate-key"
+  ));
+  const [maskedDuplicate] = maskedDuplicateDiagnostics.splice(duplicateIndex, 1);
+  maskedDuplicate.code = "schema.invalid-value";
+  maskedDuplicate.phase = "schema";
+  maskedDuplicate.details = { reason: "invalid-type" };
+  maskedDuplicateDiagnostics.push(maskedDuplicate);
+  assert.throws(
+    () => validateManifest(maskedDuplicateKey),
+    /raw decode failure|raw resource diagnostic/u,
+  );
+
+  const falseSchemaDiagnostic = clone(manifest);
+  const unsupportedVersion = falseSchemaDiagnostic.staticConformanceProtocol.cases[0]
+    .expected.diagnostics.find(diagnostic => (
+      diagnostic.code === "schema.unsupported-version"
+    ));
+  unsupportedVersion.code = "schema.invalid-value";
+  unsupportedVersion.details = { reason: "invalid-format" };
+  assert.throws(() => validateManifest(falseSchemaDiagnostic), /base-schema expectations/u);
+
+  const wrongDuplicateKeyTerminal = clone(manifest);
+  const duplicateKey = wrongDuplicateKeyTerminal.staticConformanceProtocol.cases[0]
+    .expected.diagnostics.find(diagnostic => diagnostic.code === "decode.duplicate-key");
+  duplicateKey.path.at(-1).value = "schemaVersion";
+  assert.throws(() => validateManifest(wrongDuplicateKeyTerminal),
+    /raw decode failure|raw resource diagnostic/u);
 
   const missingOverlapOutcome = clone(manifest);
   missingOverlapOutcome.staticConformanceProtocol.cases

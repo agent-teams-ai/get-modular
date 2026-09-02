@@ -1,0 +1,11 @@
+{
+  "extends": "@agent-teams/engineering-foundation/presets/typescript/node.json",
+  "compilerOptions": {
+    "isolatedModules": true,
+    "isolatedDeclarations": true,
+    "erasableSyntaxOnly": true,
+    "declaration": true,
+    "types": [],
+    "skipLibCheck": true
+  }
+}

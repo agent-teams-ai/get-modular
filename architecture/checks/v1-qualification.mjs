@@ -13,6 +13,34 @@ const CANONICAL_CASE_TUPLES_SHA256 =
   "sha256:ae527070f5b3b2b1429ae734a6b4d62d684faf0c517f2b47c304a92564569be3";
 const QUALIFICATION_PATH = /^architecture\/qualification\/v1\/[a-z0-9.-]+\.json$/u;
 const QUALIFICATION_ARTIFACT_ID = /^GM-V1-[A-Z0-9]+(?:-[A-Z0-9]+)*$/u;
+const EFFECTIVE_RESOURCE_PROFILE_AUTHORITY = Object.freeze({
+  kind: "get-modular.resource-profile",
+  profileId: "get-modular/resource-profile/v1-standard",
+  profileVersion: 2,
+  limits: {
+    declarationRawDocumentBytes: 1048576,
+    profileRawDocumentBytes: 8388608,
+    aggregateRawBytes: 16777216,
+    jsonValueOccurrences: 2097152,
+    jsonDepth: 32,
+    aggregateStringBytes: 8388608,
+    identifierBytes: 128,
+    ownerPathSegments: 8,
+    declarations: 4096,
+    capabilitiesPerDeclaration: 64,
+    slotsPerDeclaration: 128,
+    totalCapabilities: 65536,
+    totalSlots: 65536,
+    roots: 1024,
+    selections: 4096,
+    bindings: 65536,
+    graphEdges: 262144,
+    providersPerManySlot: 1024,
+    graphDepth: 2048,
+    diagnostics: 256,
+    diagnosticPathSegments: 32,
+  },
+});
 const PATH_POLICIES = new Set(["empty", "structural", "limit-specific"]);
 const PHASE_ORDER_AUTHORITY = [
   "decode", "schema", "declaration", "profile", "binding", "graph", "output",
@@ -695,8 +723,12 @@ export function validateQualificationCaseManifest({
   acceptedCanonicalVectors,
   diagnosticContract,
   diagnosticCatalog,
+  resourceProfile,
+  schema,
   validateDocument,
   validateDiagnostic,
+  validateModuleDeclaration,
+  validateCompositionProfile,
 }) {
   if (manifest?.kind !== "get-modular.qualification-case-manifest"
     || manifest.manifestVersion !== 1
@@ -828,21 +860,17 @@ export function validateQualificationCaseManifest({
     }
     mappedCases.add(successor.name);
   }
-  const staticValidationInputs = [
-    diagnosticContract, diagnosticCatalog, validateDocument, validateDiagnostic,
-  ];
-  if (staticValidationInputs.some(value => value !== undefined)) {
-    if (staticValidationInputs.some(value => value === undefined)) {
-      fail("static conformance validation inputs must be supplied together");
-    }
-    validateStaticConformanceProtocol({
-      protocol: manifest.staticConformanceProtocol,
-      contract: diagnosticContract,
-      catalog: diagnosticCatalog,
-      validateDocument,
-      validateDiagnostic,
-    });
-  }
+  validateStaticConformanceProtocol({
+    protocol: manifest.staticConformanceProtocol,
+    contract: diagnosticContract,
+    catalog: diagnosticCatalog,
+    resourceProfile,
+    schema,
+    validateDocument,
+    validateDiagnostic,
+    validateModuleDeclaration,
+    validateCompositionProfile,
+  });
 }
 
 function staticInvocationPrefixLength(descriptor, diagnostic, contract) {
@@ -859,6 +887,1125 @@ function staticInvocationPrefixLength(descriptor, diagnostic, contract) {
   }
   if (same(first, { kind: "field", value: "profile" })) return 1;
   return 0;
+}
+
+function decodeStaticJson(text, maxBytes, maxDepth) {
+  if (typeof text !== "string") return undefined;
+  const bytes = Buffer.from(text, "utf8");
+  if (bytes.length > maxBytes) return undefined;
+  const decoded = strictDecode(
+    bytes,
+    "reject",
+    maxDepth,
+  );
+  return decoded.outcome === "accepted" ? JSON.parse(decoded.text) : undefined;
+}
+
+function* iterateStaticRawInputDocuments(descriptor) {
+  if (descriptor.entryPoint !== "compileCompositionJsonV1" || descriptor.input === undefined) {
+    return;
+  }
+  for (const [index, text] of (descriptor.input?.declarationsUtf8 ?? []).entries()) {
+    yield {
+      prefix: [
+        { kind: "field", value: "declarations" },
+        { kind: "index", value: index },
+      ],
+      documentType: "module-declaration",
+      text,
+    };
+  }
+  yield {
+    prefix: [{ kind: "field", value: "profile" }],
+    documentType: "composition-profile",
+    text: descriptor.input?.profileUtf8,
+  };
+}
+
+function staticRawInputDocuments(descriptor) {
+  return [...iterateStaticRawInputDocuments(descriptor)];
+}
+
+function staticObjectInputDocuments(descriptor) {
+  if (descriptor.entryPoint !== "compileCompositionV1" || descriptor.input === undefined) {
+    return [];
+  }
+  return [
+    ...(descriptor.input.declarations ?? []).map((value, index) => ({
+      prefix: [
+        { kind: "field", value: "declarations" },
+        { kind: "index", value: index },
+      ],
+      documentType: "module-declaration",
+      value,
+    })),
+    {
+      prefix: [{ kind: "field", value: "profile" }],
+      documentType: "composition-profile",
+      value: descriptor.input.profile,
+    },
+  ];
+}
+
+function materializeStaticGenerator(descriptor) {
+  if (descriptor.generatorId !== "get-modular/generator/diagnostic-prefix-clip/v1") {
+    fail(`${descriptor.caseId} uses an unsupported static generator`);
+  }
+  const companionDeclaration = {
+    kind: "get-modular.module-declaration",
+    schemaVersion: 1,
+    moduleId: "example/generated-root",
+    implementationId: "example/generated-root/default",
+    owner: { authority: "example", path: ["generated-root"] },
+    provides: [],
+    slots: [],
+  };
+  const companionProfile = {
+    kind: "get-modular.composition-profile",
+    schemaVersion: 1,
+    profileId: "example/generated-profile",
+    roots: [companionDeclaration.moduleId],
+    selections: [{
+      moduleId: companionDeclaration.moduleId,
+      implementationId: companionDeclaration.implementationId,
+    }],
+    bindings: [],
+  };
+  return {
+    ...descriptor,
+    input: {
+      declarationsUtf8: [
+        `${"[".repeat(33)}null${"]".repeat(33)}`,
+        JSON.stringify(companionDeclaration),
+      ],
+      profileUtf8: JSON.stringify(companionProfile),
+    },
+    schemaValidCompanion: {
+      declarations: [companionDeclaration],
+      profile: companionProfile,
+    },
+  };
+}
+
+function expandSchemaCandidates(candidates, schema) {
+  const expanded = [];
+  const pending = [...candidates];
+  while (pending.length > 0) {
+    const candidate = pending.pop();
+    if (candidate?.$ref?.startsWith("#/$defs/")) {
+      pending.push(schema.$defs[candidate.$ref.slice("#/$defs/".length)]);
+    } else if (Array.isArray(candidate?.oneOf)) {
+      pending.push(...candidate.oneOf);
+    } else if (candidate !== undefined) {
+      expanded.push(candidate);
+    }
+  }
+  return expanded;
+}
+
+function safeStaticDocumentPath(pathValue, documentType, schema, maximumIndex) {
+  let candidates = expandSchemaCandidates([
+    schema.$defs[documentType === "module-declaration"
+      ? "moduleDeclaration"
+      : "compositionProfile"],
+  ], schema);
+  const safe = [];
+  for (const segment of pathValue) {
+    const next = expandSchemaCandidates(candidates.flatMap(candidate => (
+      typeof segment === "number"
+        ? candidate.type === "array" ? [candidate.items] : []
+        : candidate.type === "object"
+          && candidate.properties !== undefined
+          && Object.hasOwn(candidate.properties, segment)
+          ? [candidate.properties[segment]]
+          : []
+    )), schema);
+    if (typeof segment === "number") {
+      if (!Number.isSafeInteger(segment) || segment < 0 || segment > maximumIndex) break;
+      safe.push(segment);
+      if (next.length > 0) candidates = next;
+      continue;
+    }
+    if (next.length === 0) break;
+    safe.push(segment);
+    candidates = next;
+  }
+  return safe;
+}
+
+function addSaturated(actual, increment, limit) {
+  return actual > limit ? actual : Math.min(limit + 1, actual + increment);
+}
+
+function meterStaticJsonResources(values, limits) {
+  const result = {
+    aggregateStringBytes: 0,
+    jsonValueOccurrences: 0,
+  };
+  const stack = [...values];
+  while (stack.length > 0) {
+    const value = stack.pop();
+    result.jsonValueOccurrences = addSaturated(
+      result.jsonValueOccurrences,
+      1,
+      limits.jsonValueOccurrences,
+    );
+    if (typeof value === "string") {
+      result.aggregateStringBytes = addSaturated(
+        result.aggregateStringBytes,
+        Buffer.byteLength(value, "utf8"),
+        limits.aggregateStringBytes,
+      );
+    } else if (Array.isArray(value)) {
+      for (let index = value.length - 1; index >= 0; index -= 1) {
+        stack.push(value[index]);
+      }
+    } else if (value !== null && typeof value === "object") {
+      for (const [key, child] of Object.entries(value)) {
+        result.aggregateStringBytes = addSaturated(
+          result.aggregateStringBytes,
+          Buffer.byteLength(key, "utf8"),
+          limits.aggregateStringBytes,
+        );
+        stack.push(child);
+      }
+    }
+  }
+  return result;
+}
+
+function createStaticDiagnosticCollector(compare, limit, maximumOmitted = 262144) {
+  const retained = [];
+  let count = 0;
+  const maximumCount = (limit - 1) + maximumOmitted;
+  const add = diagnostic => {
+    count = Math.min(maximumCount, count + 1);
+    let low = 0;
+    let high = retained.length;
+    while (low < high) {
+      const middle = Math.floor((low + high) / 2);
+      if (compare(retained[middle], diagnostic) <= 0) low = middle + 1;
+      else high = middle;
+    }
+    retained.splice(low, 0, diagnostic);
+    if (retained.length > limit) retained.pop();
+  };
+  const result = () => {
+    if (count <= limit) return retained;
+    const ordinary = retained.slice(0, limit - 1);
+    return [...ordinary, {
+      code: "diagnostics.truncated",
+      phase: "output",
+      path: [],
+      coordinate: {},
+      details: { omitted: Math.min(maximumOmitted, count - ordinary.length) },
+    }];
+  };
+  return { add, count: () => count, result };
+}
+
+function pathStartsWith(path, prefix) {
+  return path.length >= prefix.length
+    && prefix.every((segment, index) => same(path[index], segment));
+}
+
+function staticLimitDiagnostic({
+  prefix,
+  limitName,
+  limit,
+  actual,
+  localPath = [],
+  phase = "decode",
+}, maximum) {
+  return {
+    code: "input.limit-exceeded",
+    phase,
+    path: [
+      ...prefix,
+      ...localPath.map(segment => (typeof segment === "number"
+        ? { kind: "index", value: segment }
+        : { kind: "field", value: segment })),
+    ].slice(0, maximum),
+    coordinate: {},
+    details: { limitName, limit, actual },
+  };
+}
+
+function validateStaticRawDecodeSuppression(
+  descriptor,
+  diagnostics,
+  compare,
+  resourceProfile,
+  contract,
+  schema,
+  validateModuleDeclaration,
+  validateCompositionProfile,
+) {
+  const { limits } = resourceProfile;
+  const maximumPathSegments = contract.boundedEmissionProtocol.maximumPathSegments;
+  const collector = createStaticDiagnosticCollector(compare, limits.diagnostics);
+  const rawDocumentCount = descriptor.entryPoint === "compileCompositionJsonV1"
+    ? (descriptor.input?.declarationsUtf8?.length ?? 0) + 1
+    : 0;
+  const decodedDocuments = descriptor.entryPoint === "compileCompositionV1"
+    ? staticObjectInputDocuments(descriptor)
+    : [];
+  let aggregateBytes = 0;
+  for (const document of iterateStaticRawInputDocuments(descriptor)) {
+    aggregateBytes = addSaturated(
+      aggregateBytes,
+      Buffer.byteLength(document.text, "utf8"),
+      limits.aggregateRawBytes,
+    );
+  }
+  if (aggregateBytes > limits.aggregateRawBytes) {
+    const expected = [staticLimitDiagnostic({
+      prefix: [],
+      limitName: "aggregateRawBytes",
+      limit: limits.aggregateRawBytes,
+      actual: limits.aggregateRawBytes + 1,
+    }, maximumPathSegments)];
+    if (!same(diagnostics, expected)) {
+      fail(`${descriptor.caseId} contradicts the aggregate raw-byte preflight`);
+    }
+    return;
+  }
+  for (const document of iterateStaticRawInputDocuments(descriptor)) {
+    const bytes = Buffer.from(document.text, "utf8");
+    const limitName = document.documentType === "module-declaration"
+      ? "declarationRawDocumentBytes"
+      : "profileRawDocumentBytes";
+    const limit = limits[limitName];
+    if (bytes.length > limit) {
+      collector.add(staticLimitDiagnostic({
+        prefix: document.prefix,
+        limitName,
+        limit,
+        actual: limit + 1,
+      }, maximumPathSegments));
+      continue;
+    }
+    const decoded = strictDecode(
+      bytes,
+      "reject",
+      limits.jsonDepth,
+    );
+    if (decoded.outcome === "accepted") {
+      decodedDocuments.push({ ...document, value: JSON.parse(decoded.text) });
+      continue;
+    }
+    const localPaths = decoded.diagnosticCode === "decode.duplicate-key"
+      ? [...new Map(decoded.diagnosticPaths.map(pathValue => (
+        [canonicalize(pathValue), pathValue]
+      ))).values()]
+      : [decoded.diagnosticPath ?? []];
+    const safeLocalPaths = localPaths.map(pathValue => (
+      safeStaticDocumentPath(
+        pathValue,
+        document.documentType,
+        schema,
+        contract.boundedEmissionProtocol.maximumIndex,
+      )
+    ));
+    const uniqueSafeLocalPaths = [...new Map(safeLocalPaths.map(pathValue => (
+      [canonicalize(pathValue), pathValue]
+    ))).values()];
+    const expected = decoded.diagnosticCode === "input.limit-exceeded"
+      ? [staticLimitDiagnostic({
+        prefix: document.prefix,
+        limitName: "jsonDepth",
+        limit: limits.jsonDepth,
+        actual: decoded.actual,
+        localPath: uniqueSafeLocalPaths[0],
+      }, maximumPathSegments)]
+      : uniqueSafeLocalPaths.map(pathValue => ({
+        code: decoded.diagnosticCode,
+        phase: "decode",
+        path: [
+          ...document.prefix,
+          ...pathValue.map(segment => (typeof segment === "number"
+            ? { kind: "index", value: segment }
+            : { kind: "field", value: segment })),
+        ],
+        coordinate: {},
+        details: {
+          reason: decoded.diagnosticCode === "decode.duplicate-key"
+            ? "duplicate-key"
+            : "invalid-json",
+        },
+      })).toSorted(compare);
+    for (const diagnostic of expected) collector.add(diagnostic);
+  }
+
+  const expectedDocumentCount = rawDocumentCount || decodedDocuments.length;
+  if (collector.count() === 0 && decodedDocuments.length === expectedDocumentCount) {
+    const metered = meterStaticJsonResources(
+      decodedDocuments.map(document => document.value),
+      limits,
+    );
+    for (const limitName of ["aggregateStringBytes", "jsonValueOccurrences"]) {
+      if (metered[limitName] > limits[limitName]) {
+        collector.add(staticLimitDiagnostic({
+          prefix: [],
+          limitName,
+          limit: limits[limitName],
+          actual: limits[limitName] + 1,
+          phase: limitName === "jsonValueOccurrences" ? "schema" : "decode",
+        }, maximumPathSegments));
+      }
+    }
+  }
+
+  const truncation = diagnostics.find(diagnostic => diagnostic.code === "diagnostics.truncated");
+  if (truncation !== undefined) {
+    for (const document of decodedDocuments) {
+      const validator = document.documentType === "module-declaration"
+        ? validateModuleDeclaration
+        : validateCompositionProfile;
+      for (const diagnostic of staticSchemaDiagnostics(document, validator)) {
+        collector.add(diagnostic);
+      }
+    }
+    for (const diagnostic of staticIndependentSemanticDiagnostics({
+      descriptor,
+      documents: decodedDocuments,
+      validateModuleDeclaration,
+      validateCompositionProfile,
+      maximumPathSegments,
+    })) {
+      collector.add(diagnostic);
+    }
+    if (collector.count() <= limits.diagnostics) {
+      fail(`${descriptor.caseId} claims truncation without enough executable candidates`);
+    }
+    const expected = collector.result();
+    if (!same(diagnostics, expected)) {
+      fail(`${descriptor.caseId} contradicts the executable bounded collector`);
+    }
+    return;
+  }
+
+  const rawCodes = new Set([
+    "decode.invalid-json",
+    "decode.duplicate-key",
+    "input.limit-exceeded",
+  ]);
+  const actual = diagnostics.filter(diagnostic => rawCodes.has(diagnostic.code));
+  if (!same(actual, collector.result())) {
+    fail(`${descriptor.caseId} contains a false or incomplete raw resource diagnostic`);
+  }
+}
+
+function staticInputDocuments(descriptor, resourceProfile) {
+  if (descriptor.input === undefined) return [];
+  let documents;
+  if (descriptor.entryPoint === "compileCompositionJsonV1") {
+    const rawDocuments = staticRawInputDocuments(descriptor);
+    const aggregateBytes = rawDocuments.reduce((total, document) => (
+      total + Buffer.byteLength(document.text, "utf8")
+    ), 0);
+    const aggregateAdmitted = aggregateBytes <= resourceProfile.limits.aggregateRawBytes;
+    documents = rawDocuments.map(document => {
+      const limitName = document.documentType === "module-declaration"
+        ? "declarationRawDocumentBytes"
+        : "profileRawDocumentBytes";
+      return {
+        prefix: document.prefix,
+        documentType: document.documentType,
+        value: aggregateAdmitted
+          ? decodeStaticJson(
+            document.text,
+            resourceProfile.limits[limitName],
+            resourceProfile.limits.jsonDepth,
+          )
+          : undefined,
+      };
+    });
+  } else {
+    documents = staticObjectInputDocuments(descriptor);
+  }
+  if (documents.every(document => document.value !== undefined)) {
+    const metered = meterStaticJsonResources(
+      documents.map(document => document.value),
+      resourceProfile.limits,
+    );
+    if (metered.aggregateStringBytes > resourceProfile.limits.aggregateStringBytes
+      || metered.jsonValueOccurrences > resourceProfile.limits.jsonValueOccurrences) {
+      return documents.map(document => ({ ...document, value: undefined }));
+    }
+  }
+  return documents;
+}
+
+const STATIC_SCHEMA_CODES = new Set([
+  "schema.unsupported-version",
+  "schema.unknown-field",
+  "schema.invalid-value",
+  "schema.non-plain-value",
+]);
+
+function schemaDiagnostic(code, pathValue, reason) {
+  return {
+    code,
+    phase: "schema",
+    path: pathValue,
+    coordinate: {},
+    details: { reason },
+  };
+}
+
+function staticSchemaDiagnostics(document, validator) {
+  const { prefix, value } = document;
+  if (value === undefined) return [];
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return [schemaDiagnostic("schema.invalid-value", prefix, "invalid-type")];
+  }
+  if (Object.hasOwn(value, "schemaVersion") && value.schemaVersion !== 1) {
+    return [schemaDiagnostic(
+      "schema.unsupported-version",
+      [...prefix, { kind: "field", value: "schemaVersion" }],
+      "unsupported-version",
+    )];
+  }
+  if (validator(value)) return [];
+  const errors = validator.errors ?? [];
+  const additionalPropertyParents = errors
+    .filter(error => error.keyword === "additionalProperties")
+    .map(error => [
+      ...prefix,
+      ...structuralPathFromJsonPointer(value, error.instancePath),
+    ]);
+  if (additionalPropertyParents.length > 0) {
+    const uniqueParents = new Map(additionalPropertyParents.map(pathValue => (
+      [canonicalize(pathValue), pathValue]
+    )));
+    return [...uniqueParents.values()].map(pathValue => (
+      schemaDiagnostic("schema.unknown-field", pathValue, "unknown-field")
+    ));
+  }
+  const candidates = errors
+    .filter(error => error.keyword !== "oneOf")
+    .map(error => schemaDiagnostic(
+      "schema.invalid-value",
+      [
+        ...prefix,
+        ...structuralPathFromJsonPointer(value, error.instancePath),
+      ],
+      error.keyword === "type" ? "invalid-type" : "invalid-format",
+    ));
+  return [...new Map(candidates.map(candidate => (
+    [canonicalize(candidate), candidate]
+  ))).values()];
+}
+
+function staticIndependentSemanticDiagnostics({
+  descriptor,
+  documents,
+  validateModuleDeclaration,
+  validateCompositionProfile,
+  maximumPathSegments,
+}) {
+  const diagnostics = [];
+  const validDeclarations = [];
+  for (const document of documents) {
+    if (document.documentType !== "module-declaration") continue;
+    if (!validateModuleDeclaration(document.value)) {
+      continue;
+    }
+    validDeclarations.push(document);
+    const prefix = descriptor.entryPoint === "compileCompositionJsonV1"
+      ? document.prefix
+      : [];
+    for (const [field, code, coordinateField] of [
+      ["provides", "declaration.duplicate-capability", undefined],
+      ["slots", "declaration.duplicate-slot", "slotId"],
+    ]) {
+      const seen = new Set();
+      for (const [index, member] of document.value[field].entries()) {
+        const identity = field === "provides" ? member.capabilityId : member.slotId;
+        if (seen.has(identity)) {
+          diagnostics.push({
+            code,
+            phase: "declaration",
+            path: [
+              ...prefix,
+              { kind: "field", value: field },
+              { kind: "index", value: index },
+            ].slice(0, maximumPathSegments),
+            coordinate: {
+              implementationId: document.value.implementationId,
+              ...(coordinateField === undefined ? {} : { [coordinateField]: identity }),
+            },
+            details: { reason: "duplicate" },
+          });
+        }
+        seen.add(identity);
+      }
+    }
+  }
+  const groups = new Map();
+  for (const document of validDeclarations) {
+    const id = document.value.implementationId;
+    groups.set(id, (groups.get(id) ?? 0) + 1);
+  }
+  for (const [implementationId, count] of groups) {
+    if (count > 1) {
+      diagnostics.push({
+        code: "declaration.duplicate-implementation",
+        phase: "declaration",
+        path: [],
+        coordinate: { implementationId },
+        details: { reason: "duplicate" },
+      });
+    }
+  }
+  const profileDocument = documents.find(document => (
+    document.documentType === "composition-profile"
+  ));
+  if (profileDocument !== undefined && validateCompositionProfile(profileDocument.value)) {
+    const prefix = descriptor.entryPoint === "compileCompositionJsonV1"
+      ? profileDocument.prefix
+      : [];
+    for (const [values, code] of [
+      [profileDocument.value.roots, "profile.duplicate-root"],
+      [profileDocument.value.selections.map(selection => selection.moduleId),
+        "profile.duplicate-selection"],
+    ]) {
+      const emitted = new Set();
+      const seen = new Set();
+      for (const moduleId of values) {
+        if (seen.has(moduleId) && !emitted.has(moduleId)) {
+          diagnostics.push({
+            code,
+            phase: "profile",
+            path: prefix,
+            coordinate: { moduleId },
+            details: { reason: "duplicate" },
+          });
+          emitted.add(moduleId);
+        }
+        seen.add(moduleId);
+      }
+    }
+  }
+  return [...new Map(diagnostics.map(diagnostic => (
+    [canonicalize(diagnostic), diagnostic]
+  ))).values()];
+}
+
+function staticIdentityInvalidPaths(document, validator) {
+  const { prefix, value } = document;
+  if (value === undefined || value === null || typeof value !== "object"
+    || Array.isArray(value) || validator(value)) {
+    return [];
+  }
+  return (validator.errors ?? [])
+    .filter(error => (
+      /^#\/\$defs\/(?:portableId|localToken)\/(?:minLength|maxLength|pattern)$/u
+        .test(error.schemaPath)
+    ))
+    .map(error => [
+      ...prefix,
+      ...structuralPathFromJsonPointer(value, error.instancePath),
+    ]);
+}
+
+function validateStaticSchemaExpectations({
+  descriptor,
+  diagnostics,
+  validateModuleDeclaration,
+  validateCompositionProfile,
+  compare,
+  resourceProfile,
+}) {
+  if (diagnostics.some(diagnostic => diagnostic.code === "diagnostics.truncated")) return;
+  for (const document of staticInputDocuments(descriptor, resourceProfile)) {
+    const validator = document.documentType === "module-declaration"
+      ? validateModuleDeclaration
+      : validateCompositionProfile;
+    const expected = staticSchemaDiagnostics(document, validator).toSorted(compare);
+    const actual = diagnostics.filter(diagnostic => (
+      STATIC_SCHEMA_CODES.has(diagnostic.code)
+      && pathStartsWith(diagnostic.path, document.prefix)
+    ));
+    if (!same(actual, expected)) {
+      fail(`${descriptor.caseId} has false or incomplete base-schema expectations`);
+    }
+  }
+}
+
+function validateStaticSchemaSuppression({
+  descriptor,
+  diagnostics,
+  diagnosticPrerequisites,
+  validateModuleDeclaration,
+  validateCompositionProfile,
+  resourceProfile,
+}) {
+  if (diagnostics.some(diagnostic => diagnostic.code === "diagnostics.truncated")) return;
+  const documents = staticInputDocuments(descriptor, resourceProfile);
+  const declarationDocuments = documents.filter(document => (
+    document.documentType === "module-declaration"
+  ));
+  const validDeclarations = declarationDocuments.filter(document => (
+    document.value !== undefined
+    && staticSchemaDiagnostics(document, validateModuleDeclaration).length === 0
+  ));
+  const invalidDeclarations = declarationDocuments.length - validDeclarations.length;
+  const profileDocument = documents.find(document => (
+    document.documentType === "composition-profile"
+  ));
+  const profileInvalid = profileDocument?.value === undefined
+    || staticSchemaDiagnostics(profileDocument, validateCompositionProfile).length > 0;
+  const implementationIds = validDeclarations.map(document => (
+    document.value.implementationId
+  ));
+  const identityInvalidPaths = new Set(documents.flatMap(document => {
+    const validator = document.documentType === "module-declaration"
+      ? validateModuleDeclaration
+      : validateCompositionProfile;
+    return staticIdentityInvalidPaths(document, validator).map(pathValue => (
+      canonicalize(pathValue)
+    ));
+  }));
+  const context = {
+    descriptor,
+    declarations: validDeclarations,
+    profile: profileInvalid ? undefined : profileDocument.value,
+    identityInvalidPaths,
+    identityCensusComplete: invalidDeclarations === 0 && !hasDuplicate(implementationIds),
+    moduleCensusComplete: invalidDeclarations === 0,
+  };
+  if (context.profile !== undefined && hasDuplicate(context.profile.bindings.map(binding => (
+    `${binding.consumerImplementationId}\u0000${binding.slotId}`
+  )))) {
+    fail(`${descriptor.caseId} uses a repeated binding coordinate before its semantics are accepted`);
+  }
+
+  for (const diagnostic of diagnostics) {
+    const prerequisite = diagnosticPrerequisites.get(diagnostic.code);
+    if (prerequisite?.prerequisites.includes("declaration.identity-census-complete")
+      && !context.identityCensusComplete) {
+      fail(`${descriptor.caseId} emits ${diagnostic.code} without a complete declaration identity census`);
+    }
+    if (prerequisite?.prerequisites.includes("declaration.module-census-complete")
+      && !context.moduleCensusComplete) {
+      fail(`${descriptor.caseId} emits ${diagnostic.code} without a complete declaration module census`);
+    }
+    if (isStaticSemanticDiagnosticCode(diagnostic.code)
+      && !staticSemanticDiagnosticHasWitness(diagnostic, context)) {
+      fail(`${descriptor.caseId} emits ${diagnostic.code} without a truthful semantic witness`);
+    }
+  }
+}
+
+function isStaticSemanticDiagnosticCode(code) {
+  return code === "identity.invalid"
+    || code.startsWith("declaration.")
+    || code.startsWith("profile.")
+    || code.startsWith("binding.")
+    || code.startsWith("graph.");
+}
+
+function hasDuplicate(values) {
+  return new Set(values).size !== values.length;
+}
+
+function countValue(values, expected) {
+  return values.filter(value => value === expected).length;
+}
+
+function declarationValues(context) {
+  return context.declarations.map(document => document.value);
+}
+
+function declarationsWithImplementation(context, implementationId) {
+  return context.declarations.filter(document => (
+    document.value.implementationId === implementationId
+  ));
+}
+
+function uniqueDeclaration(context, implementationId) {
+  const matches = declarationsWithImplementation(context, implementationId);
+  return matches.length === 1 ? matches[0].value : undefined;
+}
+
+function localDeclarationDiagnosticPath(context, diagnostic, document) {
+  if (context.descriptor.entryPoint !== "compileCompositionJsonV1") {
+    return diagnostic.path;
+  }
+  return pathStartsWith(diagnostic.path, document.prefix)
+    ? diagnostic.path.slice(document.prefix.length)
+    : undefined;
+}
+
+function duplicateDeclarationMemberWitness(context, diagnostic, field, coordinateValue) {
+  return declarationsWithImplementation(
+    context,
+    diagnostic.coordinate.implementationId,
+  ).some(document => {
+    const pathValue = localDeclarationDiagnosticPath(context, diagnostic, document);
+    if (pathValue?.length !== 2
+      || !same(pathValue[0], { kind: "field", value: field })
+      || pathValue[1].kind !== "index") {
+      return false;
+    }
+    const index = pathValue[1].value;
+    const member = document.value[field][index];
+    if (member === undefined) return false;
+    const identity = field === "provides" ? member.capabilityId : member.slotId;
+    if (coordinateValue !== undefined && identity !== coordinateValue) return false;
+    return document.value[field].slice(0, index).some(candidate => (
+      (field === "provides" ? candidate.capabilityId : candidate.slotId) === identity
+    ));
+  });
+}
+
+function profileBindingRows(profile, diagnostic, { requireProvider = false } = {}) {
+  if (profile === undefined) return [];
+  return profile.bindings.filter(binding => (
+    binding.consumerImplementationId === diagnostic.coordinate.implementationId
+    && (diagnostic.coordinate.slotId === undefined
+      || binding.slotId === diagnostic.coordinate.slotId)
+    && (!requireProvider
+      || binding.providerImplementationIds.includes(
+        diagnostic.coordinate.providerImplementationId,
+      ))
+  ));
+}
+
+function selectedImplementationIds(profile) {
+  return new Set(profile?.selections.map(selection => selection.implementationId) ?? []);
+}
+
+function slotForDiagnostic(context, diagnostic) {
+  const consumer = uniqueDeclaration(context, diagnostic.coordinate.implementationId);
+  if (consumer === undefined) return undefined;
+  const matches = consumer.slots.filter(slot => slot.slotId === diagnostic.coordinate.slotId);
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
+function cardinalityMatchesSlot(cardinality, count) {
+  if (cardinality.kind === "required") return count === 1;
+  if (cardinality.kind === "optional") return count <= 1;
+  return count >= cardinality.min && count <= cardinality.max;
+}
+
+function cardinalityMatchesDiagnostic(cardinality, count, details) {
+  return !cardinalityMatchesSlot(cardinality, count)
+    && details.expectedCardinality === cardinality.kind
+    && details.actualCardinality === count;
+}
+
+function selectedDeclarationGraph(context) {
+  const { profile } = context;
+  if (profile === undefined) return undefined;
+  const byModule = new Map();
+  const byImplementation = new Map();
+  for (const selection of profile.selections) {
+    if (byModule.has(selection.moduleId)
+      || byImplementation.has(selection.implementationId)) {
+      return undefined;
+    }
+    const declaration = uniqueDeclaration(context, selection.implementationId);
+    if (declaration === undefined || declaration.moduleId !== selection.moduleId) {
+      return undefined;
+    }
+    byModule.set(selection.moduleId, declaration);
+    byImplementation.set(selection.implementationId, declaration);
+  }
+  return { byModule, byImplementation };
+}
+
+function positivelyResolvedSelectedGraph(context) {
+  const { profile } = context;
+  if (profile === undefined) return undefined;
+  const moduleIds = profile.selections.map(selection => selection.moduleId);
+  const implementationIds = profile.selections.map(selection => selection.implementationId);
+  const byModule = new Map();
+  const byImplementation = new Map();
+  for (const selection of profile.selections) {
+    if (countValue(moduleIds, selection.moduleId) !== 1
+      || countValue(implementationIds, selection.implementationId) !== 1) {
+      continue;
+    }
+    const declaration = uniqueDeclaration(context, selection.implementationId);
+    if (declaration === undefined || declaration.moduleId !== selection.moduleId) continue;
+    byModule.set(selection.moduleId, declaration);
+    byImplementation.set(selection.implementationId, declaration);
+  }
+  return { byModule, byImplementation };
+}
+
+function bindingPositiveProviders(binding, consumer, selected) {
+  const slots = consumer.slots.filter(slot => slot.slotId === binding.slotId);
+  if (slots.length !== 1 || hasDuplicate(binding.providerImplementationIds)) return [];
+  const [slot] = slots;
+  if (!cardinalityMatchesSlot(slot.cardinality, binding.providerImplementationIds.length)) {
+    return [];
+  }
+  const providers = [];
+  for (const providerId of binding.providerImplementationIds) {
+    const provider = selected.byImplementation.get(providerId);
+    if (provider === undefined) return [];
+    const capabilities = provider.provides.filter(capability => (
+      capability.capabilityId === slot.capabilityId
+    ));
+    if (capabilities.length !== 1
+      || !same(capabilities[0].compatibility, slot.compatibility)) {
+      return [];
+    }
+    providers.push(providerId);
+  }
+  return providers;
+}
+
+function reachableSelectedImplementations(context) {
+  const { profile } = context;
+  const selected = selectedDeclarationGraph(context);
+  if (profile === undefined || selected === undefined || hasDuplicate(profile.roots)) {
+    return undefined;
+  }
+  const roots = profile.roots.map(moduleId => selected.byModule.get(moduleId));
+  if (roots.some(root => root === undefined)) return undefined;
+  const reachable = new Set(roots.map(root => root.implementationId));
+  const pending = [...reachable];
+  while (pending.length > 0) {
+    const consumerId = pending.pop();
+    const consumer = selected.byImplementation.get(consumerId);
+    if (hasDuplicate(consumer.slots.map(slot => slot.slotId))) return undefined;
+    const rows = profile.bindings.filter(binding => (
+      binding.consumerImplementationId === consumerId
+    ));
+    if (rows.some(binding => !consumer.slots.some(slot => slot.slotId === binding.slotId))) {
+      return undefined;
+    }
+    for (const slot of consumer.slots) {
+      const slotRows = rows.filter(binding => binding.slotId === slot.slotId);
+      if (slotRows.length !== 1) return undefined;
+      const [binding] = slotRows;
+      if (hasDuplicate(binding.providerImplementationIds)
+        || !cardinalityMatchesSlot(slot.cardinality, binding.providerImplementationIds.length)) {
+        return undefined;
+      }
+      const providers = bindingPositiveProviders(binding, consumer, selected);
+      if (providers.length !== binding.providerImplementationIds.length) return undefined;
+      for (const providerId of providers) {
+        if (!reachable.has(providerId)) {
+          reachable.add(providerId);
+          pending.push(providerId);
+        }
+      }
+    }
+  }
+  return reachable;
+}
+
+function cyclicSelectedComponents(context) {
+  const { profile } = context;
+  const selected = positivelyResolvedSelectedGraph(context);
+  if (profile === undefined || selected === undefined) return undefined;
+  const edgePairs = new Map();
+  for (const binding of profile.bindings) {
+    const consumer = selected.byImplementation.get(binding.consumerImplementationId);
+    if (consumer === undefined) continue;
+    for (const providerId of bindingPositiveProviders(binding, consumer, selected)) {
+      const key = `${providerId}\u0000${binding.consumerImplementationId}`;
+      edgePairs.set(key, {
+        id: key,
+        from: providerId,
+        to: binding.consumerImplementationId,
+      });
+    }
+  }
+  const nodes = [...selected.byImplementation.keys()].sort(compareAscii);
+  const edges = [...edgePairs.values()].sort((left, right) => compareAscii(left.id, right.id));
+  return deriveCyclicSccs(nodes, edges, nodes, edges.map(edge => edge.id));
+}
+
+function staticSemanticDiagnosticHasWitness(diagnostic, context) {
+  const declarations = declarationValues(context);
+  const { profile } = context;
+  switch (diagnostic.code) {
+    case "identity.invalid":
+      return context.identityInvalidPaths.has(canonicalize(diagnostic.path));
+    case "declaration.duplicate-implementation":
+      return countValue(
+        declarations.map(declaration => declaration.implementationId),
+        diagnostic.coordinate.implementationId,
+      ) > 1;
+    case "declaration.duplicate-capability":
+      return duplicateDeclarationMemberWitness(context, diagnostic, "provides");
+    case "declaration.duplicate-slot":
+      return duplicateDeclarationMemberWitness(
+        context, diagnostic, "slots", diagnostic.coordinate.slotId,
+      );
+    case "profile.duplicate-root":
+      return profile !== undefined
+        && countValue(profile.roots, diagnostic.coordinate.moduleId) > 1;
+    case "profile.unknown-root":
+      return profile !== undefined
+        && profile.roots.includes(diagnostic.coordinate.moduleId)
+        && !declarations.some(declaration => (
+          declaration.moduleId === diagnostic.coordinate.moduleId
+        ));
+    case "profile.duplicate-selection":
+      return profile !== undefined
+        && countValue(
+          profile.selections.map(selection => selection.moduleId),
+          diagnostic.coordinate.moduleId,
+        ) > 1;
+    case "profile.unknown-module":
+      return profile !== undefined
+        && profile.selections.some(selection => (
+          selection.moduleId === diagnostic.coordinate.moduleId
+        ))
+        && !declarations.some(declaration => (
+          declaration.moduleId === diagnostic.coordinate.moduleId
+        ));
+    case "profile.unknown-implementation":
+      return profile !== undefined
+        && profile.selections.some(selection => (
+          selection.moduleId === diagnostic.coordinate.moduleId
+          && selection.implementationId === diagnostic.coordinate.implementationId
+        ))
+        && uniqueDeclaration(context, diagnostic.coordinate.implementationId) === undefined;
+    case "profile.implementation-mismatch": {
+      if (profile === undefined) return false;
+      const declaration = uniqueDeclaration(context, diagnostic.coordinate.implementationId);
+      return declaration !== undefined
+        && declaration.moduleId !== diagnostic.coordinate.moduleId
+        && profile.selections.some(selection => (
+          selection.moduleId === diagnostic.coordinate.moduleId
+          && selection.implementationId === diagnostic.coordinate.implementationId
+        ));
+    }
+    case "profile.missing-selection":
+      return profile !== undefined
+        && profile.roots.includes(diagnostic.coordinate.moduleId)
+        && !profile.selections.some(selection => (
+          selection.moduleId === diagnostic.coordinate.moduleId
+        ));
+    case "profile.unreachable-selection": {
+      if (profile === undefined) return false;
+      const reachable = reachableSelectedImplementations(context);
+      return reachable !== undefined
+        && profile.selections.some(selection => (
+          selection.moduleId === diagnostic.coordinate.moduleId
+          && selection.implementationId === diagnostic.coordinate.implementationId
+        ))
+        && !reachable.has(diagnostic.coordinate.implementationId);
+    }
+    case "binding.duplicate":
+      return slotForDiagnostic(context, diagnostic) !== undefined
+        && profileBindingRows(profile, diagnostic, { requireProvider: true }).some(binding => (
+          countValue(
+            binding.providerImplementationIds,
+            diagnostic.coordinate.providerImplementationId,
+          ) > 1
+        ));
+    case "binding.missing":
+      return profile !== undefined
+        && slotForDiagnostic(context, diagnostic) !== undefined
+        && selectedImplementationIds(profile).has(diagnostic.coordinate.implementationId)
+        && profileBindingRows(profile, diagnostic).length === 0;
+    case "binding.unknown-consumer":
+      return profileBindingRows(profile, diagnostic).length > 0
+        && uniqueDeclaration(context, diagnostic.coordinate.implementationId) === undefined;
+    case "binding.unknown-slot":
+      return profileBindingRows(profile, diagnostic).length > 0
+        && uniqueDeclaration(context, diagnostic.coordinate.implementationId) !== undefined
+        && uniqueDeclaration(context, diagnostic.coordinate.implementationId).slots
+          .filter(slot => slot.slotId === diagnostic.coordinate.slotId).length === 0;
+    case "binding.unknown-provider":
+      return profileBindingRows(profile, diagnostic, { requireProvider: true }).length > 0
+        && slotForDiagnostic(context, diagnostic) !== undefined
+        && uniqueDeclaration(context, diagnostic.coordinate.providerImplementationId) === undefined;
+    case "binding.provider-not-selected":
+      return profileBindingRows(profile, diagnostic, { requireProvider: true }).length > 0
+        && uniqueDeclaration(context, diagnostic.coordinate.providerImplementationId) !== undefined
+        && !selectedImplementationIds(profile).has(
+          diagnostic.coordinate.providerImplementationId,
+        );
+    case "binding.cardinality": {
+      const slot = slotForDiagnostic(context, diagnostic);
+      return slot !== undefined && profileBindingRows(profile, diagnostic).some(binding => (
+        cardinalityMatchesDiagnostic(
+          slot.cardinality,
+          binding.providerImplementationIds.length,
+          diagnostic.details,
+        )
+      ));
+    }
+    case "binding.capability-missing": {
+      const slot = slotForDiagnostic(context, diagnostic);
+      const provider = uniqueDeclaration(context, diagnostic.coordinate.providerImplementationId);
+      return slot !== undefined && provider !== undefined
+        && profileBindingRows(profile, diagnostic, { requireProvider: true }).length > 0
+        && !provider.provides.some(capability => (
+          capability.capabilityId === slot.capabilityId
+        ));
+    }
+    case "binding.compatibility-mismatch": {
+      const slot = slotForDiagnostic(context, diagnostic);
+      const provider = uniqueDeclaration(context, diagnostic.coordinate.providerImplementationId);
+      return slot !== undefined && provider !== undefined
+        && profileBindingRows(profile, diagnostic, { requireProvider: true }).length > 0
+        && same(diagnostic.details.expectedCompatibility, slot.compatibility)
+        && provider.provides.some(capability => (
+          capability.capabilityId === slot.capabilityId
+          && same(capability.compatibility, diagnostic.details.actualCompatibility)
+          && !same(capability.compatibility, slot.compatibility)
+        ));
+    }
+    case "graph.cycle": {
+      const components = cyclicSelectedComponents(context);
+      return components !== undefined
+        && components.some(component => same(component, diagnostic.details.component));
+    }
+    default:
+      return false;
+  }
+}
+
+function structuralPathFromJsonPointer(value, pointer) {
+  if (pointer === "") return [];
+  if (typeof pointer !== "string" || !pointer.startsWith("/")) {
+    fail("schema validator returned an invalid instance path");
+  }
+  const path = [];
+  let current = value;
+  for (const encodedToken of pointer.slice(1).split("/")) {
+    const token = encodedToken.replaceAll("~1", "/").replaceAll("~0", "~");
+    if (Array.isArray(current)) {
+      const index = Number(token);
+      if (!Number.isSafeInteger(index) || index < 0) {
+        fail("schema validator returned an invalid array instance path");
+      }
+      path.push({ kind: "index", value: index });
+      current = current[index];
+    } else {
+      path.push({ kind: "field", value: token });
+      current = current?.[token];
+    }
+  }
+  return path;
+}
+
+function staticUnknownFieldParentPaths(descriptor, validateDocument, resourceProfile) {
+  const paths = [];
+  for (const document of staticInputDocuments(descriptor, resourceProfile)) {
+    if (document.value === undefined || validateDocument(document.value)) continue;
+    const errors = validateDocument.errors ?? [];
+    for (const error of errors) {
+      if (error.keyword !== "additionalProperties") continue;
+      paths.push([
+        ...document.prefix,
+        ...structuralPathFromJsonPointer(document.value, error.instancePath),
+      ]);
+    }
+  }
+  return paths;
 }
 
 function validateSchemaValidCompanion(companion, validateDocument, label) {
@@ -893,11 +2040,22 @@ export function validateStaticConformanceProtocol({
   protocol,
   contract,
   catalog,
+  resourceProfile,
+  schema,
   validateDocument,
   validateDiagnostic,
+  validateModuleDeclaration,
+  validateCompositionProfile,
 }) {
-  if (typeof validateDocument !== "function" || typeof validateDiagnostic !== "function") {
+  if (schema?.$defs === undefined
+    || typeof validateDocument !== "function"
+    || typeof validateDiagnostic !== "function"
+    || typeof validateModuleDeclaration !== "function"
+    || typeof validateCompositionProfile !== "function") {
     fail("static conformance requires accepted base-schema validators");
+  }
+  if (!same(resourceProfile, EFFECTIVE_RESOURCE_PROFILE_AUTHORITY)) {
+    fail("static conformance requires the one effective resource profile");
   }
   if (!same(objectKeys(protocol, "static conformance protocol").sort(compareAscii), [
     "authority", "cases", "descriptorPolicy", "futurePackedSubjectEvidenceMinimum",
@@ -964,6 +2122,9 @@ export function validateStaticConformanceProtocol({
     if (hasGenerator && !generatorIds.has(descriptor.generatorId)) {
       fail(`${descriptor.caseId} uses an unknown generator`);
     }
+    const executableDescriptor = hasGenerator
+      ? materializeStaticGenerator(descriptor)
+      : descriptor;
     if (hasInput) {
       const inputKeys = descriptor.entryPoint === "compileCompositionV1"
         ? ["declarations", "profile"]
@@ -977,13 +2138,21 @@ export function validateStaticConformanceProtocol({
         validateDocument,
         `${descriptor.caseId}.schemaValidCompanion`,
       );
-      if (descriptor.entryPoint === "compileCompositionV1") {
-        validateWith(validateDocument, descriptor.input.profile, `${descriptor.caseId}.profile`);
-      } else if (!Array.isArray(descriptor.input.declarationsUtf8)
+      if (descriptor.entryPoint === "compileCompositionV1"
+        && !Array.isArray(descriptor.input.declarations)) {
+        fail(`${descriptor.caseId} object input declarations are not an exact array`);
+      } else if (descriptor.entryPoint === "compileCompositionJsonV1"
+        && (!Array.isArray(descriptor.input.declarationsUtf8)
         || descriptor.input.declarationsUtf8.some(value => typeof value !== "string")
-        || typeof descriptor.input.profileUtf8 !== "string") {
+        || typeof descriptor.input.profileUtf8 !== "string")) {
         fail(`${descriptor.caseId} raw input is not exact UTF-8 text data`);
       }
+    } else {
+      validateSchemaValidCompanion(
+        executableDescriptor.schemaValidCompanion,
+        validateDocument,
+        `${descriptor.caseId}.generatedSchemaValidCompanion`,
+      );
     }
     if (!same(objectKeys(descriptor.expected, `${descriptor.caseId}.expected`)
       .sort(compareAscii), ["diagnostics", "ok"])
@@ -993,6 +2162,11 @@ export function validateStaticConformanceProtocol({
       fail(`${descriptor.caseId} must contain one exact complete failure result`);
     }
     const diagnostics = descriptor.expected.diagnostics;
+    const unknownFieldParentPaths = diagnostics.some(diagnostic => (
+      diagnostic.code === "schema.unknown-field"
+    ))
+      ? staticUnknownFieldParentPaths(executableDescriptor, validateDocument, resourceProfile)
+      : [];
     const normalizedCandidateKeys = new Set();
     validateResolvedResultCodeDisposition({
       result: descriptor.expected,
@@ -1002,7 +2176,11 @@ export function validateStaticConformanceProtocol({
     for (const [index, diagnostic] of diagnostics.entries()) {
       const label = `${descriptor.caseId}.expected.diagnostics[${index}]`;
       validateWith(validateDiagnostic, diagnostic, label);
-      const prefixLength = staticInvocationPrefixLength(descriptor, diagnostic, contract);
+      const prefixLength = staticInvocationPrefixLength(
+        executableDescriptor,
+        diagnostic,
+        contract,
+      );
       const prerequisite = diagnostic.code === "input.limit-exceeded"
         ? limitPrerequisites.get(diagnostic.details.limitName)
         : diagnosticPrerequisites.get(diagnostic.code);
@@ -1018,6 +2196,10 @@ export function validateStaticConformanceProtocol({
         label,
         { invocationPrefixLength: prefixLength },
       );
+      if (diagnostic.code === "schema.unknown-field"
+        && !unknownFieldParentPaths.some(path => same(path, diagnostic.path))) {
+        fail(`${label} must stop before an unknown field`);
+      }
       const normalizedCandidate = canonicalize({
         code: diagnostic.code,
         phase: diagnostic.phase,
@@ -1033,6 +2215,32 @@ export function validateStaticConformanceProtocol({
     if (!same(diagnostics, diagnostics.toSorted(compare))) {
       fail(`${descriptor.caseId} diagnostics are not in exact normative order`);
     }
+    validateStaticRawDecodeSuppression(
+      executableDescriptor,
+      diagnostics,
+      compare,
+      resourceProfile,
+      contract,
+      schema,
+      validateModuleDeclaration,
+      validateCompositionProfile,
+    );
+    validateStaticSchemaExpectations({
+      descriptor: executableDescriptor,
+      diagnostics,
+      validateModuleDeclaration,
+      validateCompositionProfile,
+      compare,
+      resourceProfile,
+    });
+    validateStaticSchemaSuppression({
+      descriptor: executableDescriptor,
+      diagnostics,
+      diagnosticPrerequisites,
+      validateModuleDeclaration,
+      validateCompositionProfile,
+      resourceProfile,
+    });
     const prerequisiteCase = exactPrerequisiteCases.get(descriptor.caseId);
     if (prerequisiteCase !== undefined
       && !same(diagnostics.map(diagnostic => diagnostic.code), prerequisiteCase.eligibleCodes)) {
@@ -1060,7 +2268,21 @@ export function createSchemaValidators(schema) {
     $schema: "https://json-schema.org/draft/2020-12/schema",
     $ref: `${schema.$id}#/$defs/diagnostic`,
   });
-  return { validateDocument, validateDiagnostic };
+  const validateModuleDeclaration = ajv.compile({
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    $ref: `${schema.$id}#/$defs/moduleDeclaration`,
+  });
+  const validateCompositionProfile = ajv.compile({
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    $ref: `${schema.$id}#/$defs/compositionProfile`,
+  });
+  return {
+    schema,
+    validateDocument,
+    validateDiagnostic,
+    validateModuleDeclaration,
+    validateCompositionProfile,
+  };
 }
 
 function validateWith(validator, value, label) {
@@ -1874,8 +3096,12 @@ function validateNormalizationProfileSemantics(profile, declarations, label) {
 
   const bindingsByCoordinate = new Map();
   for (const binding of profile.bindings) {
+    const declaredConsumer = declarationsByImplementation.get(
+      binding.consumerImplementationId,
+    );
+    if (declaredConsumer === undefined) fail(`${label} binding has an unknown consumer`);
     const consumer = selectedByImplementation.get(binding.consumerImplementationId);
-    if (consumer === undefined) fail(`${label} binding has an unselected consumer`);
+    if (consumer === undefined) continue;
     const slot = consumer.slots.find(candidate => candidate.slotId === binding.slotId);
     if (slot === undefined) fail(`${label} binding references an unknown slot`);
     const coordinate = `${binding.consumerImplementationId}\u0000${binding.slotId}`;
@@ -1938,8 +3164,14 @@ function normalizedProfileBindings(profile, declarations) {
   const declarationsByImplementation = validateNormalizationProfileSemantics(
     profile, declarations, "normalization vector",
   );
+  const selectedImplementationIds = new Set(
+    profile.selections.map(selection => selection.implementationId),
+  );
+  const selectedBindings = profile.bindings.filter(binding => (
+    selectedImplementationIds.has(binding.consumerImplementationId)
+  ));
   const coordinates = new Set();
-  return profile.bindings.map(binding => {
+  return selectedBindings.map(binding => {
     const declaration = declarationsByImplementation.get(binding.consumerImplementationId);
     const slot = declaration?.slots.find(candidate => candidate.slotId === binding.slotId);
     if (slot === undefined) fail("normalization vector references an unknown slot");
@@ -2288,23 +3520,19 @@ function strictDecode(bytes, bomPolicy, maxDepth) {
     if (token === SyntaxKind.OpenBraceToken || token === SyntaxKind.OpenBracketToken) {
       depth += 1;
       if (depth > maxDepth) {
-        return { outcome: "rejected", diagnosticCode: "input.limit-exceeded" };
+        return {
+          outcome: "rejected",
+          diagnosticCode: "input.limit-exceeded",
+          diagnosticPath: getLocation(text, scanner.getTokenOffset()).path,
+          actual: maxDepth + 1,
+        };
       }
     } else if (token === SyntaxKind.CloseBraceToken || token === SyntaxKind.CloseBracketToken) {
       depth -= 1;
     }
   }
-  const objectKeyStack = [];
-  let duplicate = false;
   const parseErrors = [];
   visit(text, {
-    onObjectBegin: () => objectKeyStack.push(new Set()),
-    onObjectProperty: property => {
-      const keys = objectKeyStack.at(-1);
-      if (keys.has(property)) duplicate = true;
-      keys.add(property);
-    },
-    onObjectEnd: () => objectKeyStack.pop(),
     onError: error => parseErrors.push(error),
   }, {
     disallowComments: true,
@@ -2314,8 +3542,13 @@ function strictDecode(bytes, bomPolicy, maxDepth) {
   if (parseErrors.length > 0) {
     return { outcome: "rejected", diagnosticCode: "decode.invalid-json" };
   }
-  if (duplicate) {
-    return { outcome: "rejected", diagnosticCode: "decode.duplicate-key" };
+  const diagnosticPaths = duplicateKeyPaths(text);
+  if (diagnosticPaths.length > 0) {
+    return {
+      outcome: "rejected",
+      diagnosticCode: "decode.duplicate-key",
+      diagnosticPaths,
+    };
   }
   return { outcome: "accepted", text };
 }
@@ -2349,22 +3582,28 @@ function pathString(segments) {
   ), "$");
 }
 
-function duplicateKeyFaultIdentities(text) {
+function duplicateKeyPaths(text) {
   const scopes = [];
-  const faults = [];
+  const paths = [];
   visit(text, {
     onObjectBegin: () => scopes.push(new Set()),
     onObjectProperty: (property, offset) => {
       const scope = scopes.at(-1);
       if (scope.has(property)) {
         const location = getLocation(text, offset);
-        faults.push(`duplicate-key:${pathString(location.path.slice(0, -1))}:${property}`);
+        paths.push([...location.path.slice(0, -1), property]);
       }
       scope.add(property);
     },
     onObjectEnd: () => scopes.pop(),
   }, { disallowComments: true, allowTrailingComma: false, allowEmptyContent: false });
-  return faults;
+  return paths;
+}
+
+function duplicateKeyFaultIdentities(text) {
+  return duplicateKeyPaths(text).map(pathValue => (
+    `duplicate-key:${pathString(pathValue.slice(0, -1))}:${pathValue.at(-1)}`
+  ));
 }
 
 function valueFaultIdentities(value) {

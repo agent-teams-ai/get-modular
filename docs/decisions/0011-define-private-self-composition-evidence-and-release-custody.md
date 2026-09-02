@@ -154,8 +154,13 @@ encoding. The envelope is closed over these records:
 | `SourceManifest` | Immutable source-snapshot digest plus every admitted source, configuration, script, template, lockfile, package, and obligation input |
 | `BuildContext` | Cryptographic identities of Node, pnpm, TypeScript, builder target, read-only dependency store, and the explicit environment |
 | `ConstructionWitness` | Root, logical binding coordinates, selected factory, produced capability, consumed slots, and independently observed injection |
-| `QualificationReport` | Exact subject archive, contract and qualification ledgers, closed case inventory, exact results, and exact runtime matrix identities |
-| `ReleaseAttestation` | Digests of every record above, P0/P1, W0/W1, selected plans, archive bytes, verifier version, and one terminal pass/fail state |
+| `QualificationReport` | Exact subject archive, contract and qualification ledgers, closed case inventory, exact results, exact runtime matrix identities, and one closed `supportEnvelope` containing supported cells and explicit exclusions |
+| `ReleaseAttestation` | Digests of every record above, including `QualificationReport.supportEnvelope`, P0/P1, W0/W1, selected plans, archive bytes, verifier version, and one terminal pass/fail state; this same record is the Phase 8 promotion manifest |
+
+No separate support manifest or promotion wrapper may repeat these fields. The
+mandatory `docs/generated/core-support-envelope.md` operator view is generated
+from `QualificationReport.supportEnvelope` and verified byte-for-byte against
+that section. It is navigation, not release or support authority.
 
 Every record carries one common `SubjectEvidenceKey` derived from canonical
 pre-key projections of the exact archive, source snapshot, build context,
