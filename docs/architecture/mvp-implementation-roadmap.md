@@ -34,7 +34,8 @@ accepted ADR. It deliberately describes the order and evidence required to
 build the first reusable Core. It does not accept new public API, change an
 accepted decision, or claim that a qualification fixture is production code.
 ADR-0009 to ADR-0014 are proposed decisions on the selected base unless their
-accepted successors are present; ADR-0015 is accepted. They do not enter accepted authority, the
+accepted successors are present; ADR-0015 is accepted. The proposed decisions
+do not enter accepted authority, the
 open-decision blocker catalog or executable governance until accepted through
 the repository decision flow.
 
@@ -329,7 +330,7 @@ smaller split would make it unverifiable.
    source still waits for the product-owner start decision that ADR-0015
    requires. Structure the package as feature-owned slices under
    `packages/core/src/features/*` exactly as the adopted [Feature Module Standard profile](feature-module-standard.md)
-   maps the organization standard ([canonical document](https://github.com/agent-teams-ai/.github/blob/main/docs/architecture/feature-module-standard/v1.md),
+   maps the organization standard ([canonical document](https://github.com/agent-teams-ai/.github/blob/eef92e7fd40f538b4e9ba03e01bbd4e2d23f12f2/docs/architecture/feature-module-standard/v1.md),
    revision `eef92e7`). Keep domain semantics independent from Foundation,
    Docs Protocol, DI containers and plugin runtime types.
 2. Preserve ADR-0003's public development-only
@@ -456,11 +457,10 @@ remain a private intermediate and evidence input.
 Repeated binding records for one `(implementationId, slotId)` remain outside
 the admitted semantic domain until OD-006 and its accepted successor define the
 exact diagnostic and suppression behavior. Fixtures may demonstrate candidate
-behavior but cannot make it compiler authority. The private M1 compiler
-implements the semantics proposed by ADR-0014 as candidate behavior behind a
-flag in its internal diagnostic table: the harness excludes repeated-record
-inputs from every claim, and accepting ADR-0014 changes only that flag, not the
-implementation.
+behavior but cannot make it compiler authority. The private M1 compiler keeps
+repeated-record inputs outside its claimed domain; any candidate implementation
+of the ADR-0014 semantics lives in fixtures under `tests/` until ADR-0014 is
+accepted, so accepted ADR-0015 and OD-006 are not bypassed.
 
 Phase 3 accepts, stores, returns and invokes no factory, callback, function,
 loader, executable handle or product code. Product-owned literal factory tables
@@ -613,12 +613,12 @@ not a failed qualification result.
 
 Before creating structural or runtime conformance evidence, pin a Docs Protocol
 and Engineering Foundation authoring toolchain whose declared identity strategy
-can create qualification records. New records use the `qualification.<slug>`
-identity grammar and the `docs/qualification/<slug>/README.md` placement that
-the adopted authoring profile already declares; the two historical `QUAL-*`
-records keep their identities as immutable evidence. Prove both
+can create qualification records under a governed identity. The two
+historical `QUAL-*` records keep their identities as immutable evidence; the
+identity grammar and placement for new records are selected together with that
+toolchain and must be visible to the governance gate before use. Prove both
 `docs:new --dry-run` and apply paths with positive and mutation fixtures. If no
-released pinned version supports that grammar, Phase 5 is blocked on a bounded
+released pinned version supports that identity, Phase 5 is blocked on a bounded
 Engineering Foundation capability; Phases 1-4 may still build and qualify Core
 while conformance remains `not-claimed`. Manual files and relaxed identities
 are not substitutes.

@@ -233,10 +233,11 @@ that every supported runtime provides. Production code MUST NOT use `Buffer`,
 `node:*` built-in modules, `process`, or any other platform-specific API for
 classification, copying, or snapshotting; a Node `Buffer` is admitted only
 because it is a genuine `Uint8Array`, never because the code recognizes it.
-The development-only Node oracle is the environment in which acceptance
-evidence executes, not a dependency of the adapter. The `core.runtime` boundary
-in the repository's `source-dependencies.yaml` declares no built-ins and no
-packages, so the Foundation gate rejects any platform dependency mechanically.
+Node is only the environment in which the development-only oracle and the
+acceptance evidence execute, not a dependency of the adapter. The runtime boundary that
+the first private package declares in `architecture/foundation/source-dependencies.yaml`
+MUST allow no built-in modules and no packages, so that the Foundation gate
+rejects any platform dependency mechanically once that file exists.
 
 #### Resource preflight before allocation
 
@@ -335,9 +336,9 @@ chronology does not activate the proposal.
 Acceptance requires a successor diagnostic contract, snapshot set, closed case
 manifest, recipe manifest, mutation manifest, checker, results, and immutable
 qualification ledger. Following ADR-0007, which was itself accepted on static
-artifacts, those successor artifacts plus a development-only Node oracle under
-`tests/qualification` are sufficient to accept this decision. That oracle is
-qualification tooling that meters and classifies fixtures; it is not a compiler
+artifacts, those successor artifacts plus development-only qualification
+tooling under `tests/qualification`, the oracle, executed on Node are
+sufficient to accept this decision. That tooling meters and classifies fixtures; it is not a compiler
 fixture and does not implement composition semantics. The six-case runtime
 matrix is the conformance-claim and publication gate, not an acceptance
 prerequisite. The candidate entrypoints that execute the case inventory live in

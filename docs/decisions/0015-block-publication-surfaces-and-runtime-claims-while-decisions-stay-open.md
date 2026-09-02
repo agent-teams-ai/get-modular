@@ -93,16 +93,19 @@ contract describes.
 Private source admitted under this decision MUST follow the adopted
 organization Feature Module Standard v1: the local profile in
 `docs/architecture/feature-module-standard.md` and the canonical document
-`agent-teams-ai/.github/docs/architecture/feature-module-standard/v1.md` at
-revision `eef92e7` (blob `d0bfff20`), exactly as pinned in
-`architecture/feature-module-standard-profile.json`. Feature-owned slices under
+`agent-teams-ai/.github/docs/architecture/feature-module-standard/v1.md`,
+whose blob `d0bfff20` and content digest are pinned in
+`architecture/feature-module-standard-profile.json` and whose observed
+revision `eef92e7` is recorded in `docs/provenance/source-map.yaml`. Feature-owned slices under
 `packages/core/src/features/*`, owner-local ports and factories, and the
 private composition root are the structural authority for that source.
 
 Accepting this decision does not start implementation. The first production
-source lands only through an explicit product-owner decision recorded in the
-review of the first private package pull request; until then the admitted
-package identities stay empty and the gate merely permits them.
+source lands only after the product owner records an explicit start decision
+in the repository, in the roadmap bootstrap sequence or in a decision record,
+so that the condition is visible to governed documents rather than only to
+pull-request review; until then the admitted package identities stay empty and
+the gate merely permits them.
 
 ### Precedence
 

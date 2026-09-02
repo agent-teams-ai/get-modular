@@ -96,11 +96,13 @@ such as
 ESM `import` condition remains active they resolve to the same retained
 JavaScript target. The declaration-only `types` condition is the explicit
 exception to that
-same-target assertion. Running Node with `--conditions=types` is unsupported and
-MUST be a negative case: resolution selects `./dist/index.d.ts`, Node fails
-before evaluating package JavaScript, and resolution does not fall through to
-`./dist/index.js` or any alternate build. A condition-specific JavaScript
-implementation is forbidden.
+same-target assertion. Running Node ESM `import` with `--conditions=types` is
+unsupported and MUST be a negative case: resolution selects `./dist/index.d.ts`,
+Node fails before evaluating package JavaScript, and resolution does not fall
+through to `./dist/index.js` or any alternate build. `require()` under the same
+flag never consults the `import` branch and resolves the sibling `default`
+target; that outcome is expected and is not part of the negative case. A
+condition-specific JavaScript implementation is forbidden.
 
 The supported TypeScript resolution pairs are `nodenext` and `node16` in an
 ESM context (`"type": "module"` or `.mts`), `nodenext` in a CommonJS context
@@ -110,8 +112,10 @@ negative cases are `node16` in a CommonJS context, which reports TS1479 because
 that mode predates `require(esm)`, `node10`, which TypeScript 7 removed, and
 `classic`. Node 24 `require()` of the package root resolves the sibling
 `default` target and returns the same module instance as `import`; CommonJS
-hosts such as a Jest or ts-jest CommonJS project therefore load Core directly,
-and older runtimes without `require(esm)` use `await import()`.
+hosts whose module loader delegates to Node's `require(esm)` therefore load
+Core directly. Hosts with their own CommonJS runtime, such as Jest without
+`--experimental-vm-modules`, and older runtimes without `require(esm)` use
+`await import()`.
 
 Browser, dedicated-worker, and Electron qualification may use a product-owned
 loader or import-map adapter, but the adapter MUST resolve the public package
@@ -150,9 +154,11 @@ against the private non-publishable qualification subject covering:
 - runtime condition-injection cases proving that every tested additional
   condition other than `types` resolves the same retained JavaScript target and
   never an alternate build;
-- a distinct Node `--conditions=types` negative case proving that the
-  declaration target is selected and runtime loading fails before package
-  JavaScript evaluation; this case is excluded from same-target assertions;
+- a distinct Node ESM `import` `--conditions=types` negative case proving that
+  the declaration target is selected and runtime loading fails before package
+  JavaScript evaluation, plus the matching `require()` case proving that the
+  sibling `default` target still loads; both are excluded from same-target
+  assertions;
 - browser window, dedicated worker, and required Electron resolution through
   the public root;
 - declaration and archive leakage mutations;
@@ -188,8 +194,8 @@ publication until it passes the same suite and release custody.
   Multiple resolution authorities make consumer behavior harder to predict. The
   sibling `default` condition is the one deliberate exception: it names the
   same file as the `import` branch and adds no second implementation.
-- Keep the package `import`-only. It excludes every CommonJS host, including
-  Jest and ts-jest projects, even on runtimes that support `require(esm)`.
+- Keep the package `import`-only. It excludes every CommonJS host that relies
+  on Node's `require(esm)`, even on runtimes that support it.
 - Export `dist/**` or `package.json`. That turns internal layout into public API.
 - Treat a browser import map to `dist/index.js` as root-export evidence. It
   bypasses the contract being qualified.
