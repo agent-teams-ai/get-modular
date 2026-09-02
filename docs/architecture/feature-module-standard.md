@@ -60,7 +60,10 @@ gate.
   is the form that composition takes, not a separate mechanism. Fixed library
   imports inside a feature, such as diagnostics and graph helpers, use the first
   mechanism. The third mechanism, a runtime activation plan, is not used inside
-  the Core.
+  the Core. The build-only directory `packages/*/self-composition` holds the
+  direct stage0 root, the own profile, the allowlist and the emitter beside
+  the build configuration, outside the mapped `source_root`; this extension
+  covers it and no third package exists.
 - No deviation from organization `v1` is declared.
 
 ## Enforcement

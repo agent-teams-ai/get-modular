@@ -111,8 +111,10 @@ container, lifecycle, plugin, or authorization behavior.
 The source layout of `packages/core` MUST follow the adopted organization Feature
 Module Standard v1 through the local
 [profile](feature-module-standard.md): feature-owned slices under
-`packages/core/src/features/*`, a private composition root, and one curated
-public entry point. The
+`packages/core/src/features/*`, a private composition root, and, once ADR-0009
+is accepted, one curated public entry point at `src/index.ts`; until then the
+only entry is the qualification-only `self-composition/stage0-entry.ts` named
+by the guide. The
 [self-composition implementation guide](self-composition-implementation-guide.md)
 names the own feature inventory, the feature skeleton, the build topology and
 the emitter contract that implementation follows.

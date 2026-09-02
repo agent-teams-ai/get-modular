@@ -524,10 +524,10 @@ those bytes privately when binding the exact subject and evidence.
 5. At accepted ADR-0008 checkpoint A, compile the real closed own profile as
    soon as the first useful dependency edge exists and report production,
    qualification and generated LOC separately. Prove one controlled
-   behavior-changing binding replacement before release. The stronger two-edge,
-   three-change and explicit owner `GO` checkpoint applies only after ADR-0011
-   or a successor is accepted; until then it is candidate evidence, not an
-   emitter veto.
+   behavior-changing binding replacement before release. A stronger
+   multi-edge or explicit owner `GO` checkpoint applies only if a later
+   accepted decision adds it; until then the single-edge replacement is
+   candidate evidence, not an emitter veto.
 6. Stop before any stage0/stage1 construction claim until an accepted successor
    reconciles ADR-0008's closed dependency record with its prohibition on using
    hostile valid identities as property-lookup keys. The roadmap does not select
