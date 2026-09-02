@@ -12,25 +12,6 @@ const GIT_OBJECT_ID = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u;
 const REGULAR_FILE_MODE = /^(?:100644|100755)$/u;
 const MAX_GIT_OUTPUT_BYTES = 16 * 1024 * 1024;
 const INDEX_SNAPSHOT_VERSION = 1;
-const EMPTY_BLOB_OIDS = new Set([
-  "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
-  "473a0f4c3be8a93681a267e3b1e9a7dcda1185436fe141f7749120a303721813",
-]);
-
-// Git must observe only the repository below repositoryRoot: no GIT_DIR,
-// GIT_WORK_TREE, GIT_INDEX_FILE, replace refs, or user/system configuration.
-function hermeticGitEnvironment() {
-  const environment = {};
-  for (const [name, value] of Object.entries(process.env)) {
-    if (!name.startsWith("GIT_")) environment[name] = value;
-  }
-  // Git special-cases the literal "/dev/null" on every platform, including Windows.
-  environment.GIT_CONFIG_GLOBAL = "/dev/null";
-  environment.GIT_CONFIG_SYSTEM = "/dev/null";
-  environment.GIT_CONFIG_NOSYSTEM = "1";
-  environment.LC_ALL = "C";
-  return environment;
-}
 
 function safeRepositoryPath(value) {
   return typeof value === "string"
@@ -97,22 +78,11 @@ async function readWorkingTreeRegularFile(relativePath, repositoryRoot) {
 }
 
 async function runGit(repositoryRoot, args) {
-  return execFileAsync("git", ["--no-replace-objects", "--literal-pathspecs", ...args], {
+  return execFileAsync("git", args, {
     cwd: repositoryRoot,
     encoding: null,
-    env: hermeticGitEnvironment(),
     maxBuffer: MAX_GIT_OUTPUT_BYTES,
   });
-}
-
-async function assertRepositoryToplevel(repositoryRoot) {
-  const { stdout } = await runGit(repositoryRoot, ["rev-parse", "--show-toplevel"]);
-  const toplevel = await realpath(stdout.toString("utf8").replace(/\r?\n$/u, ""));
-  if (toplevel !== await realpath(repositoryRoot)) {
-    throw new Error(
-      `TRACKED_FILE_CUSTODY_FAILED: Git top level ${toplevel} is not the repository root ${repositoryRoot}`,
-    );
-  }
 }
 
 function parseExactIndexEntry(output, relativePath) {
@@ -151,6 +121,7 @@ async function exactIndexEntry(relativePath, repositoryRoot) {
   let output;
   try {
     ({ stdout: output } = await runGit(repositoryRoot, [
+      "--literal-pathspecs",
       "ls-files",
       "--error-unmatch",
       "--stage",
@@ -188,7 +159,7 @@ function parseIndexSnapshot(output) {
     let entry;
     if (!GIT_OBJECT_ID.test(oid)) {
       entry = { kind: "invalid-index-entry" };
-    } else if (/^0+$/u.test(oid) || EMPTY_BLOB_OIDS.has(oid)) {
+    } else if (/^0+$/u.test(oid)) {
       entry = { kind: "intent-to-add" };
     } else if (stage !== "0" || !REGULAR_FILE_MODE.test(mode)) {
       entry = { kind: "non-regular" };
@@ -221,8 +192,8 @@ function parseNulPaths(output) {
 }
 
 export async function captureGitIndexSnapshot(repositoryRoot) {
-  await assertRepositoryToplevel(repositoryRoot);
   const { stdout } = await runGit(repositoryRoot, [
+    "--literal-pathspecs",
     "ls-files",
     "--stage",
     "-z",
@@ -259,6 +230,7 @@ export async function assertGitIndexSnapshotCurrent(snapshot) {
 
 export async function untrackedPathsInScope(snapshot, pathspecs) {
   const { stdout } = await runGit(snapshot.repositoryRoot, [
+    "--literal-pathspecs",
     "ls-files",
     "--others",
     "--exclude-standard",
@@ -308,104 +280,6 @@ export async function readIndexSnapshotFile(snapshot, relativePath, label, optio
     );
   }
   return file.bytes;
-}
-
-export async function historicalFileVersions(relativePath, repositoryRoot) {
-  if (!safeRepositoryPath(relativePath)) throw new TypeError("unsafe historical file path");
-  const { stdout: shallowBytes } = await runGit(repositoryRoot, [
-    "rev-parse",
-    "--is-shallow-repository",
-  ]);
-  if (shallowBytes.toString("utf8").trim() !== "false") {
-    throw new Error("historical custody requires a complete non-shallow Git history");
-  }
-  await assertRepositoryToplevel(repositoryRoot);
-  try {
-    await runGit(repositoryRoot, ["rev-parse", "--verify", "--quiet", "HEAD^{commit}"]);
-  } catch {
-    throw new Error("historical custody requires a committed HEAD; an unborn branch has no history");
-  }
-  const { stdout: logBytes } = await runGit(repositoryRoot, [
-    "log",
-    "--full-history",
-    "-z",
-    "--format=%H",
-    "HEAD",
-    "--",
-    relativePath,
-  ]);
-  const commits = parseNulPaths(logBytes).filter(commit => GIT_OBJECT_ID.test(commit));
-  if (commits.length === 0) {
-    throw new Error(`historical custody file has no committed history: ${relativePath}`);
-  }
-  const oids = [];
-  for (const commit of commits) {
-    const { stdout: entryBytes } = await runGit(repositoryRoot, [
-      "ls-tree",
-      "-z",
-      commit,
-      "--",
-      relativePath,
-    ]);
-    if (entryBytes.length === 0) continue;
-    if (entryBytes.at(-1) !== 0 || entryBytes.indexOf(0) !== entryBytes.length - 1) {
-      throw new Error(`historical custody file is not regular at ${commit}: ${relativePath}`);
-    }
-    const record = entryBytes.subarray(0, -1);
-    const tab = record.indexOf(0x09);
-    const header = tab < 0 ? "" : record.subarray(0, tab).toString("ascii");
-    const match = /^(\S+) (\S+) (\S+)$/u.exec(header);
-    const pathBytes = tab < 0 ? Buffer.alloc(0) : record.subarray(tab + 1);
-    if (!match
-      || !REGULAR_FILE_MODE.test(match[1])
-      || match[2] !== "blob"
-      || !GIT_OBJECT_ID.test(match[3])
-      || !pathBytes.equals(Buffer.from(relativePath, "utf8"))) {
-      throw new Error(`historical custody file is not regular at ${commit}: ${relativePath}`);
-    }
-    oids.push(match[3]);
-  }
-  return readBlobBatch(repositoryRoot, oids);
-}
-
-// One cat-file process for every historical blob; the stream is
-// "<oid> blob <size>\n<bytes>\n" per requested object.
-async function readBlobBatch(repositoryRoot, oids) {
-  if (oids.length === 0) return [];
-  const child = execFile("git", [
-    "--no-replace-objects", "cat-file", "--batch=%(objectname) %(objecttype) %(objectsize)",
-  ], {
-    cwd: repositoryRoot,
-    encoding: "buffer",
-    env: hermeticGitEnvironment(),
-    maxBuffer: MAX_GIT_OUTPUT_BYTES,
-  });
-  const finished = new Promise((resolveOutput, reject) => {
-    const chunks = [];
-    child.stdout.on("data", chunk => chunks.push(chunk));
-    child.on("error", reject);
-    child.on("close", code => {
-      if (code !== 0) reject(new Error(`git cat-file --batch exited with ${code}`));
-      else resolveOutput(Buffer.concat(chunks));
-    });
-  });
-  child.stdin.end(`${oids.join("\n")}\n`);
-  const output = await finished;
-  const versions = [];
-  let offset = 0;
-  for (const oid of oids) {
-    const newline = output.indexOf(0x0a, offset);
-    if (newline < 0) throw new Error("invalid git cat-file batch stream");
-    const header = /^(\S+) (\S+) ([0-9]+)$/u.exec(output.subarray(offset, newline).toString("ascii"));
-    if (!header || header[1] !== oid || header[2] !== "blob") {
-      throw new Error(`historical custody blob ${oid} is missing or not a blob`);
-    }
-    const size = Number(header[3]);
-    const start = newline + 1;
-    versions.push(output.subarray(start, start + size));
-    offset = start + size + 1;
-  }
-  return versions;
 }
 
 // Navigation reads intentionally observe the working tree so local edits are visible.

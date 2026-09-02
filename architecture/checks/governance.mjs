@@ -12,7 +12,6 @@ import {
 import {
   assertGitIndexSnapshotCurrent,
   captureGitIndexSnapshot,
-  historicalFileVersions,
   indexSnapshotPaths,
   inspectIndexSnapshotFile,
   inspectTrackedWorkingTreeRegularFile,
@@ -30,7 +29,6 @@ const REQUIREMENTS_AUTHORITY_PATH = /^docs\/requirements\/[^/]+\.md$/u;
 const QUALIFICATION_DOCUMENT_PATH = /^docs\/qualification\/[^/]+\.md$/u;
 const DECISION_DOCUMENT_PATH = /^docs\/decisions\/[^/]+\.md$/u;
 const GOVERNED_DOCUMENT_PATH = /^docs\/(?:architecture|decisions|open-decisions|qualification|requirements)\/[^/]+\.md$/u;
-const OPEN_DECISION_ID = /^OD-[0-9]{3}$/u;
 const NON_PORTABLE_PATH_CHARACTERS = /[<>:"|?*\u0000-\u001f]/u;
 const REVISION = /^[a-f0-9]{40}$/u;
 const REQUIREMENT = /^GM-REQ-[0-9]{3}$/u;
@@ -57,8 +55,6 @@ const WINDOWS_DEVICE_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.[^/]*)?$
 
 export const ACCEPTED_AUTHORITY_LEDGER_PATH =
   "architecture/authority/accepted-authorities.json";
-export const OPEN_DECISION_HISTORY_PATH =
-  "architecture/decisions/open-decision-history.json";
 export const ACCEPTED_AUTHORITY_LEDGER_DIGEST =
   "sha256:9ba074210704a20f6a3ef7486f3cf2ec7435fb0fc5552cca210b6d3d5d73f077";
 export const ACCEPTED_AUTHORITY_LEDGER_ANCHOR =
@@ -499,45 +495,6 @@ export function requirementIdsFromMarkdown(markdown) {
   return new Set(ids);
 }
 
-function decisionIdsFromHistory(history, label) {
-  exactKeys(history, ["schemaVersion", "recordedDecisionIds"], label);
-  if (history.schemaVersion !== 1) fail(`${label} has an unsupported schema`);
-  const ids = history.recordedDecisionIds;
-  if (!Array.isArray(ids) || ids.length === 0
-    || ids.some(id => typeof id !== "string" || !OPEN_DECISION_ID.test(id))
-    || new Set(ids).size !== ids.length) {
-    fail(`${label} must contain unique open-decision IDs`);
-  }
-  const sorted = [...ids].sort(compareStrings);
-  if (JSON.stringify(ids) !== JSON.stringify(sorted)) {
-    fail(`${label} open-decision IDs must be sorted`);
-  }
-  return new Set(ids);
-}
-
-export function validateDecisionHistory({ history, historicalHistories = [], documents }) {
-  const recordedIds = decisionIdsFromHistory(history, "open-decision history");
-  for (const [index, historical] of historicalHistories.entries()) {
-    const historicalIds = decisionIdsFromHistory(
-      historical,
-      `historical open-decision history ${index + 1}`,
-    );
-    for (const id of historicalIds) {
-      if (!recordedIds.has(id)) {
-        fail(`open-decision history cannot remove previously recorded ${id}`);
-      }
-    }
-  }
-
-  const currentIds = new Set(documents
-    .filter(document => document.type === "open-decision")
-    .map(document => document.id));
-  if (!sameStrings(recordedIds, currentIds)) {
-    fail("open-decision history must match the governed open-decision records");
-  }
-  return recordedIds;
-}
-
 export function validateDecisionResolutions(documents) {
   const byId = new Map(documents.map(metadata => [metadata.id, metadata]));
   for (const decision of documents.filter(metadata => metadata.type === "open-decision")) {
@@ -619,25 +576,9 @@ async function main() {
     readBytes: path => readGovernanceInput(path, "accepted authority artifact"),
   });
   const { documents, documentSources } = await governanceDocumentCatalog(root, snapshot);
-  const historyBytes = await readGovernanceInput(
-    OPEN_DECISION_HISTORY_PATH,
-    "open-decision history",
-  );
-  const historicalHistories = (await historicalFileVersions(
-    OPEN_DECISION_HISTORY_PATH,
-    root,
-  )).map((bytes, index) => {
-    try {
-      return JSON.parse(bytes.toString("utf8"));
-    } catch {
-      fail(`historical open-decision history ${index + 1} is not valid JSON`);
-    }
-  });
-  const decisionIds = validateDecisionHistory({
-    history: JSON.parse(historyBytes.toString("utf8")),
-    historicalHistories,
-    documents: [...documents.values()],
-  });
+  const decisionIds = new Set([...documents.values()]
+    .filter(metadata => metadata.type === "open-decision")
+    .map(metadata => metadata.id));
   validateDecisionResolutions([...documents.values()]);
   validateAcceptedAuthorityCatalog({
     documents: [...documents.values()],

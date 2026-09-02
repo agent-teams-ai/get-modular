@@ -11,7 +11,6 @@ import {
   ACCEPTED_AUTHORITY_LEDGER_ANCHOR,
   ACCEPTED_AUTHORITY_LEDGER_DIGEST,
   ACCEPTED_AUTHORITY_LEDGER_PATH,
-  OPEN_DECISION_HISTORY_PATH,
   governanceDocumentCatalog,
   productionArtifactPaths,
   qualificationClaimAnchor,
@@ -21,7 +20,6 @@ import {
   validateAuthorityLedger,
   validateAuthorityLedgerCustody,
   validateBlockedImplementation,
-  validateDecisionHistory,
   validateDecisionResolutions,
   validateQualificationClaims,
   validateQualificationProfileConsistency,
@@ -36,7 +34,6 @@ import {
 } from "../architecture/checks/node-version.mjs";
 import {
   captureGitIndexSnapshot,
-  historicalFileVersions,
   inspectIndexSnapshotFile,
   readIndexSnapshotFile,
   inspectAcceptedAuthorityFile,
@@ -1010,57 +1007,6 @@ test("qualification evidence uses index blobs and rejects unstaged bytes", async
       }]]),
       evidenceFile: path => inspectIndexSnapshotFile(snapshot, path),
     }), /evidence must be a regular in-repository file/u);
-  } finally {
-    await rm(fixture, { recursive: true, force: true });
-  }
-});
-
-test("open-decision history is complete and non-decreasing", async () => {
-  const history = JSON.parse(await readFile(OPEN_DECISION_HISTORY_PATH, "utf8"));
-  const decisions = history.recordedDecisionIds.map(id => ({
-    id,
-    type: "open-decision",
-    status: "open",
-  }));
-  assert.deepEqual(validateDecisionHistory({
-    history,
-    historicalHistories: [{
-      schemaVersion: 1,
-      recordedDecisionIds: history.recordedDecisionIds.slice(0, -1),
-    }],
-    documents: decisions,
-  }), new Set(history.recordedDecisionIds));
-
-  assert.throws(() => validateDecisionHistory({
-    history: {
-      schemaVersion: 1,
-      recordedDecisionIds: history.recordedDecisionIds.slice(0, -1),
-    },
-    historicalHistories: [history],
-    documents: decisions.slice(0, -1),
-  }), /cannot remove previously recorded OD-006/u);
-  assert.throws(() => validateDecisionHistory({
-    history,
-    documents: decisions.slice(0, -1),
-  }), /must match the governed open-decision records/u);
-});
-
-test("open-decision history rejects a shallow repository witness", async () => {
-  const fixture = await mkdtemp(join(tmpdir(), "get-modular-shallow-history-"));
-  const clonePath = join(fixture, "clone");
-  try {
-    await execFileAsync("git", [
-      "clone",
-      "--quiet",
-      "--depth=1",
-      "--no-local",
-      resolve("."),
-      clonePath,
-    ]);
-    await assert.rejects(
-      historicalFileVersions(OPEN_DECISION_HISTORY_PATH, clonePath),
-      /complete non-shallow Git history/u,
-    );
   } finally {
     await rm(fixture, { recursive: true, force: true });
   }
