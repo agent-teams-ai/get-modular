@@ -49,6 +49,7 @@ import { productionArtifactsOutsidePackages } from
 
 const digest = bytes => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const evidenceIdentity = (path, bytes) => ({ path, digest: digest(bytes) });
+const EMPTY_BLOB_OID = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391";
 const execFileAsync = promisify(execFile);
 const git = (cwd, ...args) => execFileAsync("git", args, { cwd });
 async function initFixtureRepository(fixture) {
@@ -904,11 +905,11 @@ test("governance catalog rejects decisions staged after its index snapshot", asy
   }
 });
 
-test("index snapshot custody rejects staged file-mode changes", async () => {
+test("index snapshot custody rejects staged file-mode changes for an empty file", async () => {
   const fixture = await mkdtemp(join(tmpdir(), "get-modular-index-mode-"));
   try {
     await initFixtureRepository(fixture);
-    await writeFile(join(fixture, "tracked.txt"), "tracked\n");
+    await writeFile(join(fixture, "tracked.txt"), "");
     await git(fixture, "add", "--", "tracked.txt");
     const snapshot = await captureGitIndexSnapshot(fixture);
 
@@ -1034,7 +1035,7 @@ test("accepted authority custody rejects intent-to-add index entries", async () 
   }
 });
 
-test("index snapshot custody rejects intent-to-add and empty-blob entries", async () => {
+test("index snapshot custody distinguishes intent-to-add from staged empty files", async () => {
   const fixture = await mkdtemp(join(tmpdir(), "get-modular-snapshot-intent-"));
   try {
     await initFixtureRepository(fixture);
@@ -1049,15 +1050,30 @@ test("index snapshot custody rejects intent-to-add and empty-blob entries", asyn
     assert.deepEqual(await inspectIndexSnapshotFile(snapshot, "intent.txt"), {
       kind: "intent-to-add",
     });
-    assert.deepEqual(await inspectIndexSnapshotFile(snapshot, "empty.txt"), {
-      kind: "intent-to-add",
-    });
-    for (const relativePath of ["intent.txt", "empty.txt"]) {
-      await assert.rejects(
-        readIndexSnapshotFile(snapshot, relativePath, "governed input"),
-        /TRACKED_FILE_CUSTODY_FAILED.*intent-to-add/u,
-      );
-    }
+    assert.equal((await inspectIndexSnapshotFile(snapshot, "empty.txt")).kind, "regular");
+    assert.equal((await readIndexSnapshotFile(snapshot, "empty.txt", "governed input")).length, 0);
+    await assert.rejects(
+      readIndexSnapshotFile(snapshot, "intent.txt", "governed input"),
+      /TRACKED_FILE_CUSTODY_FAILED.*intent-to-add/u,
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("index snapshot custody rejects intent-to-add becoming fully staged", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-index-intent-transition-"));
+  try {
+    await initFixtureRepository(fixture);
+    await writeFile(join(fixture, "intent.txt"), "");
+    await git(fixture, "add", "--intent-to-add", "--", "intent.txt");
+    const snapshot = await captureGitIndexSnapshot(fixture);
+
+    await git(fixture, "add", "--", "intent.txt");
+    await assert.rejects(
+      assertGitIndexSnapshotCurrent(snapshot),
+      /TRACKED_FILE_CUSTODY_FAILED: Git index changed after snapshot/u,
+    );
   } finally {
     await rm(fixture, { recursive: true, force: true });
   }
@@ -1248,6 +1264,29 @@ test("production artifact discovery inventories staged symlinks hidden from the 
     await git(fixture, "add", "--", "package.json", linkPath);
     const snapshot = await captureGitIndexSnapshot(fixture);
     await rm(join(fixture, linkPath));
+
+    assert.deepEqual(await productionArtifactPaths(fixture, snapshot), [linkPath]);
+    assert.deepEqual(await productionArtifactSymlinkPaths(fixture, snapshot), [linkPath]);
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("production artifact discovery inventories an empty-blob staged symlink", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-empty-symlink-"));
+  try {
+    await initFixtureRepository(fixture);
+    await writeFile(join(fixture, "package.json"), "{\"private\":true}\n");
+    await git(fixture, "add", "--", "package.json");
+    const linkPath = "packages/core/hidden-link";
+    await git(
+      fixture,
+      "update-index",
+      "--add",
+      "--cacheinfo",
+      `120000,${EMPTY_BLOB_OID},${linkPath}`,
+    );
+    const snapshot = await captureGitIndexSnapshot(fixture);
 
     assert.deepEqual(await productionArtifactPaths(fixture, snapshot), [linkPath]);
     assert.deepEqual(await productionArtifactSymlinkPaths(fixture, snapshot), [linkPath]);

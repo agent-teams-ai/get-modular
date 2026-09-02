@@ -13,10 +13,7 @@ const REGULAR_FILE_MODE = /^(?:100644|100755)$/u;
 const SYMBOLIC_LINK_MODE = "120000";
 const MAX_GIT_OUTPUT_BYTES = 16 * 1024 * 1024;
 const INDEX_SNAPSHOT_VERSION = 1;
-const EMPTY_BLOB_OIDS = new Set([
-  "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
-  "473a0f4c3be8a93681a267e3b1e9a7dcda1185436fe141f7749120a303721813",
-]);
+const INTENT_TO_ADD_FLAG = 0x20000000;
 
 // Git must observe only the repository below repositoryRoot: no GIT_DIR,
 // GIT_WORK_TREE, GIT_INDEX_FILE, replace refs, or user/system configuration.
@@ -116,38 +113,29 @@ async function assertRepositoryToplevel(repositoryRoot) {
   }
 }
 
+function classifyIndexEntry({ mode, oid, stage, flags }) {
+  const identity = { mode, oid, stage, flags };
+  if (!GIT_OBJECT_ID.test(oid) || !/^[0-3]$/u.test(stage)) {
+    return { kind: "invalid-index-entry", ...identity };
+  }
+  if (stage !== "0") return { kind: "non-regular", ...identity };
+  if (mode === SYMBOLIC_LINK_MODE) return { kind: "symlink", ...identity };
+  const numericFlags = Number.parseInt(flags, 16);
+  if (/^0+$/u.test(oid) || (numericFlags & INTENT_TO_ADD_FLAG) !== 0) {
+    return { kind: "intent-to-add", ...identity };
+  }
+  if (!REGULAR_FILE_MODE.test(mode)) return { kind: "non-regular", ...identity };
+  return { kind: "regular", ...identity };
+}
+
 function parseExactIndexEntry(output, relativePath) {
-  if (!Buffer.isBuffer(output) || output.length === 0) {
+  try {
+    const entries = parseIndexSnapshot(output);
+    if (entries.size !== 1) return { kind: "invalid-index-entry" };
+    return entries.get(relativePath) ?? { kind: "invalid-index-entry" };
+  } catch {
     return { kind: "invalid-index-entry" };
   }
-  const terminator = output.indexOf(0);
-  if (terminator < 0 || output.indexOf(0, terminator + 1) >= 0) {
-    return { kind: "invalid-index-entry" };
-  }
-  const record = output.subarray(0, terminator);
-  const debug = output.subarray(terminator + 1).toString("ascii");
-  const flagsMatch = /\n  size: [0-9]+\tflags: ([a-f0-9]+)\n$/u.exec(debug);
-  if (!flagsMatch) return { kind: "invalid-index-entry" };
-  const tab = record.indexOf(0x09);
-  if (tab < 0) return { kind: "invalid-index-entry" };
-  const header = record.subarray(0, tab).toString("ascii");
-  const match = /^(\S+) (\S+) (\S+)$/u.exec(header);
-  if (!match) return { kind: "invalid-index-entry" };
-  const [, mode, oid, stage] = match;
-  if (!record.subarray(tab + 1).equals(Buffer.from(relativePath, "utf8"))) {
-    return { kind: "invalid-index-entry" };
-  }
-  if (!GIT_OBJECT_ID.test(oid)) return { kind: "invalid-index-entry" };
-  const flags = Number.parseInt(flagsMatch[1], 16);
-  if (/^0+$/u.test(oid) || (flags & 0x20000000) !== 0) {
-    return { kind: "intent-to-add" };
-  }
-  if (stage !== "0") {
-    return { kind: "non-regular" };
-  }
-  if (mode === SYMBOLIC_LINK_MODE) return { kind: "symlink", mode, oid };
-  if (!REGULAR_FILE_MODE.test(mode)) return { kind: "non-regular" };
-  return { kind: "regular", mode, oid };
 }
 
 async function exactIndexEntry(relativePath, repositoryRoot) {
@@ -177,7 +165,6 @@ function parseIndexSnapshot(output) {
     const terminator = output.indexOf(0, offset);
     if (terminator < 0) throw new Error("invalid unterminated Git index snapshot");
     const record = output.subarray(offset, terminator);
-    offset = terminator + 1;
     const tab = record.indexOf(0x09);
     if (tab < 0) throw new Error("invalid Git index snapshot entry");
     const match = /^(\S+) (\S+) (\S+)$/u.exec(record.subarray(0, tab).toString("ascii"));
@@ -188,22 +175,26 @@ function parseIndexSnapshot(output) {
       throw new Error("Git index snapshot contains an unsafe or non-UTF-8 path");
     }
     const [, mode, oid, stage] = match;
-    let entry;
-    if (!GIT_OBJECT_ID.test(oid)) {
-      entry = { kind: "invalid-index-entry" };
-    } else if (/^0+$/u.test(oid) || EMPTY_BLOB_OIDS.has(oid)) {
-      entry = { kind: "intent-to-add" };
-    } else if (stage !== "0") {
-      entry = { kind: "non-regular" };
-    } else if (mode === SYMBOLIC_LINK_MODE) {
-      entry = { kind: "symlink", mode, oid };
-    } else if (!REGULAR_FILE_MODE.test(mode)) {
-      entry = { kind: "non-regular" };
-    } else {
-      entry = { kind: "regular", mode, oid };
+    const debugStart = terminator + 1;
+    const sizeMarker = output.indexOf(Buffer.from("\n  size: ", "ascii"), debugStart);
+    const nextTerminator = output.indexOf(0, debugStart);
+    if (sizeMarker < 0 || (nextTerminator >= 0 && nextTerminator < sizeMarker)) {
+      throw new Error("invalid Git index snapshot debug entry");
     }
-    if (entries.has(path)) entry = { kind: "non-regular" };
-    entries.set(path, entry);
+    const debugPrefix = output.subarray(debugStart, sizeMarker).toString("ascii");
+    if (!debugPrefix.startsWith("  ctime: ")) {
+      throw new Error("invalid Git index snapshot debug prefix");
+    }
+    const debugEnd = output.indexOf(0x0a, sizeMarker + 1);
+    if (debugEnd < 0) throw new Error("invalid unterminated Git index snapshot debug entry");
+    const sizeAndFlags = output.subarray(sizeMarker + 1, debugEnd + 1).toString("ascii");
+    const flagsMatch = /^  size: [0-9]+\tflags: ([a-f0-9]+)\n$/u.exec(sizeAndFlags);
+    if (!flagsMatch || flagsMatch[1].length > 8) {
+      throw new Error("invalid Git index snapshot flags");
+    }
+    offset = debugEnd + 1;
+    if (entries.has(path)) throw new Error("duplicate path in Git index snapshot");
+    entries.set(path, classifyIndexEntry({ mode, oid, stage, flags: flagsMatch[1] }));
   }
   return entries;
 }
@@ -232,6 +223,7 @@ export async function captureGitIndexSnapshot(repositoryRoot) {
   const { stdout } = await runGit(repositoryRoot, [
     "ls-files",
     "--stage",
+    "--debug",
     "-z",
   ]);
   return Object.freeze({
@@ -265,7 +257,9 @@ export async function assertGitIndexSnapshotCurrent(snapshot) {
     const observed = current.entries.get(path);
     if (expected?.kind !== observed?.kind
       || expected?.mode !== observed?.mode
-      || expected?.oid !== observed?.oid) {
+      || expected?.oid !== observed?.oid
+      || expected?.stage !== observed?.stage
+      || expected?.flags !== observed?.flags) {
       throw new Error("TRACKED_FILE_CUSTODY_FAILED: Git index changed after snapshot");
     }
   }
