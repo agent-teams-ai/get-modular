@@ -20,7 +20,8 @@ related:
 Close the physical package contract for `@get-modular/core` before creating or
 publishing its first production archive. The decision must define the module
 format, root export conditions, declaration resolution, allowed archive
-contents, supported consumer modes, and negative resolution behavior.
+contents, supported consumer modes, negative resolution behavior, and whether
+any install-time lifecycle script is permitted.
 
 ADR-0003 owns package identity and topology. ADR-0009 proposes the public symbol
 names. Neither decision fixes how one packed archive exposes those symbols to
@@ -30,8 +31,6 @@ Node, TypeScript, bundlers, browsers, or Electron.
 
 - One archive and one root entry point are authoritative. Package conditions
   MUST NOT select different semantic implementations.
-- Core is ESM-only. CommonJS `require`, deep imports, `package.json` imports,
-  environment-specific branches, and undeclared subpaths fail closed.
 - TypeScript declarations and JavaScript runtime files resolve from the same
   root export. Package-level compatibility aliases MUST NOT create a second
   resolution authority.
@@ -99,6 +98,9 @@ decision or authorize publication.
   same retained archive through the supported public root carrier.
 - Declaration-surface and archive-content audits reject product, Foundation,
   conformance, test, source, and private adapter leakage.
+- The accepted manifest policy explicitly permits or rejects `preinstall`,
+  `install`, `postinstall`, `prepare` and equivalent executable lifecycle hooks,
+  with a negative fixture for the selected rule.
 - Publish-time rehash and registry read-back reproduce the retained archive
   identity before any release claim.
 

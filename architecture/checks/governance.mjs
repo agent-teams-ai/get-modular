@@ -6,10 +6,10 @@ import { parse } from "yaml";
 import {
   productionArtifactPaths,
   productionArtifactSymlinkPaths,
-  productionArtifactsBlockedByOpenDecisions,
   productionArtifactsOutsidePackages,
 } from "./production-artifacts.mjs";
 import {
+  assertGitIndexSnapshotCurrent,
   captureGitIndexSnapshot,
   historicalFileVersions,
   indexSnapshotPaths,
@@ -178,23 +178,14 @@ export async function validateBlockedImplementation({
   blockerIds,
   productionArtifacts,
   claimDocuments,
-  readPackageManifest,
-  repositoryRoot = process.cwd(),
 }) {
   if (blockerIds.size === 0) return;
-  const blockedArtifacts = await productionArtifactsBlockedByOpenDecisions(
-    productionArtifacts,
-    { readPackageManifest, repositoryRoot },
-  );
-  if (blockedArtifacts.length > 0) {
-    fail(`public or publication-capable artifacts are blocked by open decisions: `
-      + `${blockedArtifacts.join(", ")} (${[...blockerIds].sort().join(", ")})`);
+  if (productionArtifacts.length > 0) {
+    fail(`production artifacts are blocked by open decisions: `
+      + `${productionArtifacts.join(", ")} (${[...blockerIds].sort().join(", ")})`);
   }
-  const runtimeClaims = claimDocuments.filter(document => (
-    document.status === "runtime-conformant"
-  ));
-  if (runtimeClaims.length > 0) {
-    fail(`runtime-conformance claims are blocked by open decisions: `
+  if (claimDocuments.length > 0) {
+    fail(`qualification claims are blocked by open decisions: `
       + `${[...blockerIds].sort().join(", ")}`);
   }
 }
@@ -557,6 +548,7 @@ export function validateDecisionResolutions(documents) {
 
 export async function governanceDocumentCatalog(repositoryRoot = root, suppliedSnapshot) {
   const snapshot = suppliedSnapshot ?? await captureGitIndexSnapshot(repositoryRoot);
+  await assertGitIndexSnapshotCurrent(snapshot);
   const documents = new Map();
   const documentSources = new Map();
   const directories = [
@@ -586,6 +578,7 @@ export async function governanceDocumentCatalog(repositoryRoot = root, suppliedS
     documents.set(metadata.id, metadata);
     documentSources.set(metadata.id, { path, bytes });
   }
+  await assertGitIndexSnapshotCurrent(snapshot);
   return { documents, documentSources, snapshot };
 }
 
@@ -696,7 +689,6 @@ async function main() {
     blockerIds,
     productionArtifacts,
     claimDocuments: claimDocuments.map(id => documents.get(id)),
-    repositoryRoot: root,
   });
   process.stdout.write("Get Modular governance check passed.\n");
 }
