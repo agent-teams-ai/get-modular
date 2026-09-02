@@ -1039,7 +1039,10 @@ test("resource and decoder qualification reject expectation drift", async () => 
   maskedDuplicate.phase = "schema";
   maskedDuplicate.details = { reason: "invalid-type" };
   maskedDuplicateDiagnostics.push(maskedDuplicate);
-  assert.throws(() => validateManifest(maskedDuplicateKey), /masks a raw decode failure/u);
+  assert.throws(
+    () => validateManifest(maskedDuplicateKey),
+    /raw decode failure|raw resource diagnostic/u,
+  );
 
   const falseSchemaDiagnostic = clone(manifest);
   const unsupportedVersion = falseSchemaDiagnostic.staticConformanceProtocol.cases[0]
@@ -1055,7 +1058,7 @@ test("resource and decoder qualification reject expectation drift", async () => 
     .expected.diagnostics.find(diagnostic => diagnostic.code === "decode.duplicate-key");
   duplicateKey.path.at(-1).value = "schemaVersion";
   assert.throws(() => validateManifest(wrongDuplicateKeyTerminal),
-    /masks a raw decode failure/u);
+    /raw decode failure|raw resource diagnostic/u);
 
   const missingOverlapOutcome = clone(manifest);
   missingOverlapOutcome.staticConformanceProtocol.cases

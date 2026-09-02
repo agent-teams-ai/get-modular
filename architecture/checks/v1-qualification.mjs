@@ -696,6 +696,7 @@ export function validateQualificationCaseManifest({
   diagnosticContract,
   diagnosticCatalog,
   resourceProfile,
+  schema,
   validateDocument,
   validateDiagnostic,
   validateModuleDeclaration,
@@ -836,6 +837,7 @@ export function validateQualificationCaseManifest({
     contract: diagnosticContract,
     catalog: diagnosticCatalog,
     resourceProfile,
+    schema,
     validateDocument,
     validateDiagnostic,
     validateModuleDeclaration,
@@ -932,15 +934,106 @@ function materializeStaticGenerator(descriptor) {
   };
 }
 
+function expandSchemaCandidates(candidates, schema) {
+  const expanded = [];
+  const pending = [...candidates];
+  while (pending.length > 0) {
+    const candidate = pending.pop();
+    if (candidate?.$ref?.startsWith("#/$defs/")) {
+      pending.push(schema.$defs[candidate.$ref.slice("#/$defs/".length)]);
+    } else if (Array.isArray(candidate?.oneOf)) {
+      pending.push(...candidate.oneOf);
+    } else if (candidate !== undefined) {
+      expanded.push(candidate);
+    }
+  }
+  return expanded;
+}
+
+function safeStaticDocumentPath(pathValue, documentType, schema) {
+  let candidates = expandSchemaCandidates([
+    schema.$defs[documentType === "module-declaration"
+      ? "moduleDeclaration"
+      : "compositionProfile"],
+  ], schema);
+  const safe = [];
+  for (const segment of pathValue) {
+    const next = expandSchemaCandidates(candidates.flatMap(candidate => (
+      typeof segment === "number"
+        ? candidate.type === "array" ? [candidate.items] : []
+        : candidate.type === "object" && candidate.properties?.[segment] !== undefined
+          ? [candidate.properties[segment]]
+          : []
+    )), schema);
+    if (typeof segment === "number") {
+      safe.push(segment);
+      if (next.length > 0) candidates = next;
+      continue;
+    }
+    if (next.length === 0) break;
+    safe.push(segment);
+    candidates = next;
+  }
+  return safe;
+}
+
+function addSaturated(actual, increment, limit) {
+  return actual > limit ? actual : Math.min(limit + 1, actual + increment);
+}
+
+function meterStaticJsonResources(values, limits) {
+  const result = {
+    aggregateStringBytes: 0,
+    jsonValueOccurrences: 0,
+  };
+  const stack = [...values];
+  while (stack.length > 0) {
+    const value = stack.pop();
+    result.jsonValueOccurrences = addSaturated(
+      result.jsonValueOccurrences,
+      1,
+      limits.jsonValueOccurrences,
+    );
+    if (typeof value === "string") {
+      result.aggregateStringBytes = addSaturated(
+        result.aggregateStringBytes,
+        Buffer.byteLength(value, "utf8"),
+        limits.aggregateStringBytes,
+      );
+    } else if (Array.isArray(value)) {
+      for (let index = value.length - 1; index >= 0; index -= 1) {
+        stack.push(value[index]);
+      }
+    } else if (value !== null && typeof value === "object") {
+      for (const [key, child] of Object.entries(value)) {
+        result.aggregateStringBytes = addSaturated(
+          result.aggregateStringBytes,
+          Buffer.byteLength(key, "utf8"),
+          limits.aggregateStringBytes,
+        );
+        stack.push(child);
+      }
+    }
+  }
+  return result;
+}
+
 function pathStartsWith(path, prefix) {
   return path.length >= prefix.length
     && prefix.every((segment, index) => same(path[index], segment));
 }
 
-function staticLimitDiagnostic({ prefix, limitName, limit, actual, localPath = [] }, maximum) {
+function staticLimitDiagnostic({
+  prefix,
+  limitName,
+  limit,
+  actual,
+  localPath = [],
+  phase = "decode",
+}, maximum) {
   return {
     code: "input.limit-exceeded",
-    phase: "decode",
+    phase,
     path: [
       ...prefix,
       ...localPath.map(segment => (typeof segment === "number"
@@ -958,28 +1051,26 @@ function validateStaticRawDecodeSuppression(
   compare,
   resourceProfile,
   contract,
+  schema,
+  validateModuleDeclaration,
+  validateCompositionProfile,
 ) {
   const documents = staticRawInputDocuments(descriptor);
   const { limits } = resourceProfile;
   const maximumPathSegments = contract.boundedEmissionProtocol.maximumPathSegments;
-  const expectedLimitDiagnostics = [];
-  const actualLimitDiagnostics = diagnostics.filter(diagnostic => (
-    diagnostic.code === "input.limit-exceeded"
-  ));
-  if (diagnostics.some(diagnostic => diagnostic.code === "diagnostics.truncated")) {
-    fail(`${descriptor.caseId} claims truncation without an executable collector witness`);
-  }
+  const derived = [];
+  const decodedDocuments = [];
   const aggregateBytes = documents.reduce((total, document) => (
     total + Buffer.byteLength(document.text, "utf8")
   ), 0);
   if (aggregateBytes > limits.aggregateRawBytes) {
-    expectedLimitDiagnostics.push(staticLimitDiagnostic({
+    derived.push(staticLimitDiagnostic({
       prefix: [],
       limitName: "aggregateRawBytes",
       limit: limits.aggregateRawBytes,
       actual: limits.aggregateRawBytes + 1,
     }, maximumPathSegments));
-    if (!same(diagnostics, expectedLimitDiagnostics)) {
+    if (!same(diagnostics, derived)) {
       fail(`${descriptor.caseId} contradicts the aggregate raw-byte preflight`);
     }
     return;
@@ -991,19 +1082,12 @@ function validateStaticRawDecodeSuppression(
       : "profileRawDocumentBytes";
     const limit = limits[limitName];
     if (bytes.length > limit) {
-      const expected = staticLimitDiagnostic({
+      derived.push(staticLimitDiagnostic({
         prefix: document.prefix,
         limitName,
         limit,
         actual: limit + 1,
-      }, maximumPathSegments);
-      expectedLimitDiagnostics.push(expected);
-      const scoped = diagnostics.filter(diagnostic => (
-        pathStartsWith(diagnostic.path, document.prefix)
-      ));
-      if (!same(scoped, [expected])) {
-        fail(`${descriptor.caseId} contradicts the raw document byte preflight`);
-      }
+      }, maximumPathSegments));
       continue;
     }
     const decoded = strictDecode(
@@ -1011,24 +1095,27 @@ function validateStaticRawDecodeSuppression(
       "reject",
       limits.jsonDepth,
     );
-    if (decoded.outcome === "accepted") continue;
-    const scoped = diagnostics.filter(diagnostic => (
-      pathStartsWith(diagnostic.path, document.prefix)
-    ));
+    if (decoded.outcome === "accepted") {
+      decodedDocuments.push({ ...document, value: JSON.parse(decoded.text) });
+      continue;
+    }
     const localPaths = decoded.diagnosticCode === "decode.duplicate-key"
       ? [...new Map(decoded.diagnosticPaths.map(pathValue => (
         [canonicalize(pathValue), pathValue]
       ))).values()]
       : [decoded.diagnosticPath ?? []];
+    const safeLocalPaths = localPaths.map(pathValue => (
+      safeStaticDocumentPath(pathValue, document.documentType, schema)
+    ));
     const expected = decoded.diagnosticCode === "input.limit-exceeded"
       ? [staticLimitDiagnostic({
         prefix: document.prefix,
         limitName: "jsonDepth",
         limit: limits.jsonDepth,
         actual: decoded.actual,
-        localPath: localPaths[0],
+        localPath: safeLocalPaths[0],
       }, maximumPathSegments)]
-      : localPaths.map(pathValue => ({
+      : safeLocalPaths.map(pathValue => ({
         code: decoded.diagnosticCode,
         phase: "decode",
         path: [
@@ -1044,30 +1131,76 @@ function validateStaticRawDecodeSuppression(
             : "invalid-json",
         },
       })).toSorted(compare);
-    if (decoded.diagnosticCode === "input.limit-exceeded") {
-      expectedLimitDiagnostics.push(...expected);
-    }
-    if (!same(scoped, expected)) {
-      fail(`${descriptor.caseId} masks a raw decode failure with a derivative diagnostic`);
+    derived.push(...expected);
+  }
+
+  if (derived.length === 0 && decodedDocuments.length === documents.length) {
+    const metered = meterStaticJsonResources(
+      decodedDocuments.map(document => document.value),
+      limits,
+    );
+    for (const limitName of ["aggregateStringBytes", "jsonValueOccurrences"]) {
+      if (metered[limitName] > limits[limitName]) {
+        derived.push(staticLimitDiagnostic({
+          prefix: [],
+          limitName,
+          limit: limits[limitName],
+          actual: limits[limitName] + 1,
+          phase: limitName === "jsonValueOccurrences" ? "schema" : "decode",
+        }, maximumPathSegments));
+      }
     }
   }
-  if (!same(
-    actualLimitDiagnostics,
-    expectedLimitDiagnostics.toSorted(compare),
-  )) {
+
+  const truncation = diagnostics.find(diagnostic => diagnostic.code === "diagnostics.truncated");
+  if (truncation !== undefined) {
+    const schemaCandidates = decodedDocuments.flatMap(document => {
+      const validator = document.documentType === "module-declaration"
+        ? validateModuleDeclaration
+        : validateCompositionProfile;
+      return staticSchemaDiagnostics(document, validator);
+    });
+    const candidates = [...derived, ...schemaCandidates].toSorted(compare);
+    if (candidates.length <= limits.diagnostics) {
+      fail(`${descriptor.caseId} claims truncation without enough executable candidates`);
+    }
+    const retained = candidates.slice(0, limits.diagnostics - 1);
+    const expected = [...retained, {
+      code: "diagnostics.truncated",
+      phase: "output",
+      path: [],
+      coordinate: {},
+      details: {
+        omitted: Math.min(262144, candidates.length - retained.length),
+      },
+    }];
+    if (!same(diagnostics, expected)) {
+      fail(`${descriptor.caseId} contradicts the executable bounded collector`);
+    }
+    return;
+  }
+
+  const rawCodes = new Set([
+    "decode.invalid-json",
+    "decode.duplicate-key",
+    "input.limit-exceeded",
+  ]);
+  const actual = diagnostics.filter(diagnostic => rawCodes.has(diagnostic.code));
+  if (!same(actual, derived.toSorted(compare))) {
     fail(`${descriptor.caseId} contains a false or incomplete raw resource diagnostic`);
   }
 }
 
 function staticInputDocuments(descriptor, resourceProfile) {
   if (descriptor.input === undefined) return [];
+  let documents;
   if (descriptor.entryPoint === "compileCompositionJsonV1") {
-    const documents = staticRawInputDocuments(descriptor);
-    const aggregateBytes = documents.reduce((total, document) => (
+    const rawDocuments = staticRawInputDocuments(descriptor);
+    const aggregateBytes = rawDocuments.reduce((total, document) => (
       total + Buffer.byteLength(document.text, "utf8")
     ), 0);
     const aggregateAdmitted = aggregateBytes <= resourceProfile.limits.aggregateRawBytes;
-    return documents.map(document => {
+    documents = rawDocuments.map(document => {
       const limitName = document.documentType === "module-declaration"
         ? "declarationRawDocumentBytes"
         : "profileRawDocumentBytes";
@@ -1083,22 +1216,34 @@ function staticInputDocuments(descriptor, resourceProfile) {
           : undefined,
       };
     });
+  } else {
+    documents = [
+      ...(descriptor.input.declarations ?? []).map((value, index) => ({
+        prefix: [
+          { kind: "field", value: "declarations" },
+          { kind: "index", value: index },
+        ],
+        documentType: "module-declaration",
+        value,
+      })),
+      {
+        prefix: [{ kind: "field", value: "profile" }],
+        documentType: "composition-profile",
+        value: descriptor.input.profile,
+      },
+    ];
   }
-  return [
-    ...(descriptor.input.declarations ?? []).map((value, index) => ({
-      prefix: [
-        { kind: "field", value: "declarations" },
-        { kind: "index", value: index },
-      ],
-      documentType: "module-declaration",
-      value,
-    })),
-    {
-      prefix: [{ kind: "field", value: "profile" }],
-      documentType: "composition-profile",
-      value: descriptor.input.profile,
-    },
-  ];
+  if (documents.every(document => document.value !== undefined)) {
+    const metered = meterStaticJsonResources(
+      documents.map(document => document.value),
+      resourceProfile.limits,
+    );
+    if (metered.aggregateStringBytes > resourceProfile.limits.aggregateStringBytes
+      || metered.jsonValueOccurrences > resourceProfile.limits.jsonValueOccurrences) {
+      return documents.map(document => ({ ...document, value: undefined }));
+    }
+  }
+  return documents;
 }
 
 const STATIC_SCHEMA_CODES = new Set([
@@ -1708,12 +1853,14 @@ export function validateStaticConformanceProtocol({
   contract,
   catalog,
   resourceProfile,
+  schema,
   validateDocument,
   validateDiagnostic,
   validateModuleDeclaration,
   validateCompositionProfile,
 }) {
-  if (typeof validateDocument !== "function"
+  if (schema?.$defs === undefined
+    || typeof validateDocument !== "function"
     || typeof validateDiagnostic !== "function"
     || typeof validateModuleDeclaration !== "function"
     || typeof validateCompositionProfile !== "function") {
@@ -1893,6 +2040,9 @@ export function validateStaticConformanceProtocol({
       compare,
       resourceProfile,
       contract,
+      schema,
+      validateModuleDeclaration,
+      validateCompositionProfile,
     );
     validateStaticSchemaExpectations({
       descriptor: executableDescriptor,
@@ -1946,6 +2096,7 @@ export function createSchemaValidators(schema) {
     $ref: `${schema.$id}#/$defs/compositionProfile`,
   });
   return {
+    schema,
     validateDocument,
     validateDiagnostic,
     validateModuleDeclaration,

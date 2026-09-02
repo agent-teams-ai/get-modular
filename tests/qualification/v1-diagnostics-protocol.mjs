@@ -453,7 +453,134 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
   });
   assert.throws(
     () => validate(fabricatedTruncation),
-    /without an executable collector witness/u,
+    /without enough executable candidates/u,
+  );
+
+  const aggregateStringLimit = clone(protocol);
+  const aggregateStringCase = aggregateStringLimit.cases.find(descriptor => (
+    descriptor.caseId === "diag.raw.hostile-profile-key.v1"
+  ));
+  aggregateStringCase.input.declarationsUtf8 = Array.from(
+    { length: 9 },
+    () => JSON.stringify("a".repeat(1_000_000)),
+  );
+  aggregateStringCase.input.profileUtf8 = JSON.stringify(
+    aggregateStringCase.schemaValidCompanion.profile,
+  );
+  aggregateStringCase.expected.diagnostics = [{
+    code: "input.limit-exceeded",
+    phase: "decode",
+    path: [],
+    coordinate: {},
+    details: {
+      limitName: "aggregateStringBytes",
+      limit: resourceProfile.limits.aggregateStringBytes,
+      actual: resourceProfile.limits.aggregateStringBytes + 1,
+    },
+  }];
+  assert.doesNotThrow(() => validate(aggregateStringLimit));
+
+  const valueOccurrenceLimit = clone(protocol);
+  const valueOccurrenceCase = valueOccurrenceLimit.cases.find(descriptor => (
+    descriptor.caseId === "diag.raw.hostile-profile-key.v1"
+  ));
+  const valueOccurrenceDocument = `[${Array.from(
+    { length: 200_000 },
+    () => "null",
+  ).join(",")}]`;
+  valueOccurrenceCase.input.declarationsUtf8 = Array.from(
+    { length: 11 },
+    () => valueOccurrenceDocument,
+  );
+  valueOccurrenceCase.input.profileUtf8 = JSON.stringify(
+    valueOccurrenceCase.schemaValidCompanion.profile,
+  );
+  valueOccurrenceCase.expected.diagnostics = [{
+    code: "input.limit-exceeded",
+    phase: "schema",
+    path: [],
+    coordinate: {},
+    details: {
+      limitName: "jsonValueOccurrences",
+      limit: resourceProfile.limits.jsonValueOccurrences,
+      actual: resourceProfile.limits.jsonValueOccurrences + 1,
+    },
+  }];
+  assert.doesNotThrow(() => validate(valueOccurrenceLimit));
+
+  const collectorLimit = clone(protocol);
+  const collectorCase = collectorLimit.cases.find(descriptor => (
+    descriptor.caseId === "diag.raw.hostile-profile-key.v1"
+  ));
+  collectorCase.input.declarationsUtf8 = Array.from({ length: 257 }, () => "{");
+  collectorCase.input.profileUtf8 = JSON.stringify(
+    collectorCase.schemaValidCompanion.profile,
+  );
+  collectorCase.expected.diagnostics = [
+    ...Array.from({ length: 255 }, (_, index) => ({
+      code: "decode.invalid-json",
+      phase: "decode",
+      path: [
+        { kind: "field", value: "declarations" },
+        { kind: "index", value: index },
+      ],
+      coordinate: {},
+      details: { reason: "invalid-json" },
+    })),
+    {
+      code: "diagnostics.truncated",
+      phase: "output",
+      path: [],
+      coordinate: {},
+      details: { omitted: 2 },
+    },
+  ];
+  assert.doesNotThrow(() => validate(collectorLimit));
+
+  const contextualDepth = clone(protocol);
+  const contextualDepthCase = contextualDepth.cases.find(descriptor => (
+    descriptor.caseId === "diag.raw.hostile-profile-key.v1"
+  ));
+  contextualDepthCase.input.profileUtf8 = `{"moduleId":${
+    "[".repeat(32)
+  }null${"]".repeat(32)}}`;
+  contextualDepthCase.expected.diagnostics = [{
+    code: "input.limit-exceeded",
+    phase: "decode",
+    path: [{ kind: "field", value: "profile" }],
+    coordinate: {},
+    details: { limitName: "jsonDepth", limit: 32, actual: 33 },
+  }];
+  assert.doesNotThrow(() => validate(contextualDepth));
+  contextualDepthCase.expected.diagnostics[0].path.push({
+    kind: "field",
+    value: "moduleId",
+  });
+  assert.throws(
+    () => validate(contextualDepth),
+    /raw resource diagnostic|raw decode failure/u,
+  );
+
+  const contextualDuplicate = clone(protocol);
+  const contextualDuplicateCase = contextualDuplicate.cases.find(descriptor => (
+    descriptor.caseId === "diag.raw.hostile-profile-key.v1"
+  ));
+  contextualDuplicateCase.input.profileUtf8 = '{"secret":1,"secret":2}';
+  contextualDuplicateCase.expected.diagnostics = [{
+    code: "decode.duplicate-key",
+    phase: "decode",
+    path: [{ kind: "field", value: "profile" }],
+    coordinate: {},
+    details: { reason: "duplicate-key" },
+  }];
+  assert.doesNotThrow(() => validate(contextualDuplicate));
+  contextualDuplicateCase.expected.diagnostics[0].path.push({
+    kind: "field",
+    value: "secret",
+  });
+  assert.throws(
+    () => validate(contextualDuplicate),
+    /raw resource diagnostic|raw decode failure/u,
   );
 
   const falseSchemaAfterDepthFailure = clone(truthfulInlineDepth);
@@ -469,7 +596,10 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     coordinate: {},
     details: { reason: "invalid-type" },
   }];
-  assert.throws(() => validate(falseSchemaAfterDepthFailure), /raw decode failure/u);
+  assert.throws(
+    () => validate(falseSchemaAfterDepthFailure),
+    /raw decode failure|raw resource diagnostic/u,
+  );
 
   const unreachable = clone(protocol.cases.find(descriptor => (
     descriptor.caseId === "diag.object.valid-prerequisites-unreachable.v1"
