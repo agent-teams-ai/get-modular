@@ -93,8 +93,9 @@ alone.
 | M3 emitter and generated stage1 | ADR-0011 or a narrower successor that closes only the dependency-record seam | `self-composed-qualified` and every release custody claim |
 
 A private, unpublished `0.x` archive may remain `not-claimed` while it is used
-for bounded implementation evidence. Publication and the first conformance
-claim both require the six runtime cases mandated by ADR-0007 and ADR-0008.
+for bounded implementation evidence. Publication and the first
+`runtime-conformant` claim both require the six runtime cases mandated by
+ADR-0007 and ADR-0008.
 The bootstrap sequence is therefore: record the
 product-owner start decision required by ADR-0015 in this bootstrap sequence or
 in a decision record and reference it from the first private package pull
