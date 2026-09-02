@@ -879,6 +879,227 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     ...validators,
   }));
 
+  const duplicateProviderCycle = clone(protocol);
+  const duplicateProviderCycleCase = duplicateProviderCycle.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.independent-declaration-and-graph.v1"
+  ));
+  const independentSccCase = protocol.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.independent-scc-with-invalid-edge.v1"
+  ));
+  duplicateProviderCycleCase.input = clone(independentSccCase.input);
+  duplicateProviderCycleCase.schemaValidCompanion = clone(
+    independentSccCase.schemaValidCompanion,
+  );
+  duplicateProviderCycleCase.expected = clone(independentSccCase.expected);
+  duplicateProviderCycleCase.input.declarations[0].slots[0].cardinality = {
+    kind: "many",
+    min: 1,
+    max: 2,
+    order: "profile",
+  };
+  duplicateProviderCycleCase.input.profile.bindings[0].providerImplementationIds = [
+    "example/b/default",
+    "example/b/default",
+  ];
+  duplicateProviderCycleCase.expected.diagnostics.unshift({
+    code: "binding.duplicate",
+    phase: "binding",
+    path: [],
+    coordinate: {
+      implementationId: "example/a/default",
+      slotId: "b",
+      providerImplementationId: "example/b/default",
+    },
+    details: { reason: "duplicate" },
+  });
+  assert.throws(() => validateStaticConformanceProtocol({
+    protocol: duplicateProviderCycle,
+    contract,
+    catalog,
+    ...validators,
+  }), /truthful semantic witness/u);
+
+  const independentCycleWithCollidingNode = clone(protocol);
+  const collidingNodeCase = independentCycleWithCollidingNode.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.independent-declaration-and-graph.v1"
+  ));
+  collidingNodeCase.input = clone(independentSccCase.input);
+  collidingNodeCase.schemaValidCompanion = clone(independentSccCase.schemaValidCompanion);
+  collidingNodeCase.expected = clone(independentSccCase.expected);
+  collidingNodeCase.input.declarations.push(clone(collidingNodeCase.input.declarations[2]));
+  collidingNodeCase.expected.diagnostics = [
+    {
+      code: "declaration.duplicate-implementation",
+      phase: "declaration",
+      path: [],
+      coordinate: { implementationId: "example/c/default" },
+      details: { reason: "duplicate" },
+    },
+    collidingNodeCase.expected.diagnostics.at(-1),
+  ];
+  assert.doesNotThrow(() => validateStaticConformanceProtocol({
+    protocol: independentCycleWithCollidingNode,
+    contract,
+    catalog,
+    ...validators,
+  }));
+
+  const duplicateSlotIsNotUnknown = clone(protocol);
+  const duplicateSlotCase = duplicateSlotIsNotUnknown.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.invalid-binding-suppresses-unreachable.v1"
+  ));
+  duplicateSlotCase.input.declarations[0].slots.push(
+    clone(duplicateSlotCase.input.declarations[0].slots[0]),
+  );
+  duplicateSlotCase.expected.diagnostics = [
+    {
+      code: "declaration.duplicate-slot",
+      phase: "declaration",
+      path: [
+        { kind: "field", value: "slots" },
+        { kind: "index", value: 1 },
+      ],
+      coordinate: { implementationId: "example/a/default", slotId: "b" },
+      details: { reason: "duplicate" },
+    },
+    {
+      code: "binding.unknown-slot",
+      phase: "binding",
+      path: [],
+      coordinate: { implementationId: "example/a/default", slotId: "b" },
+      details: { reason: "unknown" },
+    },
+  ];
+  assert.throws(() => validateStaticConformanceProtocol({
+    protocol: duplicateSlotIsNotUnknown,
+    contract,
+    catalog,
+    ...validators,
+  }), /truthful semantic witness/u);
+
+  const unselectedCapabilityFailure = clone(protocol);
+  const capabilityCase = unselectedCapabilityFailure.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.invalid-binding-suppresses-unreachable.v1"
+  ));
+  capabilityCase.input.profile.selections.pop();
+  capabilityCase.input.profile.bindings[0].providerImplementationIds = ["example/b/default"];
+  capabilityCase.input.declarations[1].provides = [];
+  capabilityCase.expected.diagnostics = [
+    {
+      code: "binding.provider-not-selected",
+      phase: "binding",
+      path: [],
+      coordinate: {
+        implementationId: "example/a/default",
+        slotId: "b",
+        providerImplementationId: "example/b/default",
+      },
+      details: { reason: "mismatch" },
+    },
+    {
+      code: "binding.capability-missing",
+      phase: "binding",
+      path: [],
+      coordinate: {
+        implementationId: "example/a/default",
+        slotId: "b",
+        providerImplementationId: "example/b/default",
+      },
+      details: { reason: "missing" },
+    },
+  ];
+  assert.doesNotThrow(() => validateStaticConformanceProtocol({
+    protocol: unselectedCapabilityFailure,
+    contract,
+    catalog,
+    ...validators,
+  }));
+
+  const unselectedCompatibilityFailure = clone(protocol);
+  const compatibilityCase = unselectedCompatibilityFailure.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.invalid-binding-suppresses-unreachable.v1"
+  ));
+  compatibilityCase.input.profile.selections.pop();
+  compatibilityCase.input.profile.bindings[0].providerImplementationIds = ["example/b/default"];
+  compatibilityCase.input.declarations[1].provides[0].compatibility.token = "example/b-api/v2";
+  compatibilityCase.expected.diagnostics = [
+    {
+      code: "binding.provider-not-selected",
+      phase: "binding",
+      path: [],
+      coordinate: {
+        implementationId: "example/a/default",
+        slotId: "b",
+        providerImplementationId: "example/b/default",
+      },
+      details: { reason: "mismatch" },
+    },
+    {
+      code: "binding.compatibility-mismatch",
+      phase: "binding",
+      path: [],
+      coordinate: {
+        implementationId: "example/a/default",
+        slotId: "b",
+        providerImplementationId: "example/b/default",
+      },
+      details: {
+        expectedCompatibility: {
+          family: "exact",
+          familyVersion: 1,
+          token: "example/b-api/v1",
+        },
+        actualCompatibility: {
+          family: "exact",
+          familyVersion: 1,
+          token: "example/b-api/v2",
+        },
+      },
+    },
+  ];
+  assert.doesNotThrow(() => validateStaticConformanceProtocol({
+    protocol: unselectedCompatibilityFailure,
+    contract,
+    catalog,
+    ...validators,
+  }));
+
+  const invalidIdentityWitness = clone(protocol);
+  const invalidIdentityCase = invalidIdentityWitness.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.invalid-binding-suppresses-unreachable.v1"
+  ));
+  invalidIdentityCase.input.declarations[0].implementationId = "INVALID";
+  invalidIdentityCase.expected.diagnostics = [
+    {
+      code: "schema.invalid-value",
+      phase: "schema",
+      path: [
+        { kind: "field", value: "declarations" },
+        { kind: "index", value: 0 },
+        { kind: "field", value: "implementationId" },
+      ],
+      coordinate: {},
+      details: { reason: "invalid-format" },
+    },
+    {
+      code: "identity.invalid",
+      phase: "schema",
+      path: [
+        { kind: "field", value: "declarations" },
+        { kind: "index", value: 0 },
+        { kind: "field", value: "implementationId" },
+      ],
+      coordinate: {},
+      details: { reason: "invalid-format" },
+    },
+  ];
+  assert.doesNotThrow(() => validateStaticConformanceProtocol({
+    protocol: invalidIdentityWitness,
+    contract,
+    catalog,
+    ...validators,
+  }));
+
   const invalidCycleComponent = clone(protocol);
   const invalidCycleCase = invalidCycleComponent.cases.find(descriptor => (
     descriptor.caseId === "diag.object.independent-scc-with-invalid-edge.v1"

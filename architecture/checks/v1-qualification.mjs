@@ -1026,6 +1026,23 @@ function staticSchemaDiagnostics(document, validator) {
   ))).values()];
 }
 
+function staticIdentityInvalidPaths(document, validator) {
+  const { prefix, value } = document;
+  if (value === undefined || value === null || typeof value !== "object"
+    || Array.isArray(value) || validator(value)) {
+    return [];
+  }
+  return (validator.errors ?? [])
+    .filter(error => (
+      /^#\/\$defs\/(?:portableId|localToken)\/(?:minLength|maxLength|pattern)$/u
+        .test(error.schemaPath)
+    ))
+    .map(error => [
+      ...prefix,
+      ...structuralPathFromJsonPointer(value, error.instancePath),
+    ]);
+}
+
 function validateStaticSchemaExpectations({
   descriptor,
   diagnostics,
@@ -1072,10 +1089,19 @@ function validateStaticSchemaSuppression({
   const implementationIds = validDeclarations.map(document => (
     document.value.implementationId
   ));
+  const identityInvalidPaths = new Set(documents.flatMap(document => {
+    const validator = document.documentType === "module-declaration"
+      ? validateModuleDeclaration
+      : validateCompositionProfile;
+    return staticIdentityInvalidPaths(document, validator).map(pathValue => (
+      canonicalize(pathValue)
+    ));
+  }));
   const context = {
     descriptor,
     declarations: validDeclarations,
     profile: profileInvalid ? undefined : profileDocument.value,
+    identityInvalidPaths,
     identityCensusComplete: invalidDeclarations === 0 && !hasDuplicate(implementationIds),
     moduleCensusComplete: invalidDeclarations === 0,
   };
@@ -1215,9 +1241,29 @@ function selectedDeclarationGraph(context) {
   return { byModule, byImplementation };
 }
 
+function positivelyResolvedSelectedGraph(context) {
+  const { profile } = context;
+  if (profile === undefined) return undefined;
+  const moduleIds = profile.selections.map(selection => selection.moduleId);
+  const implementationIds = profile.selections.map(selection => selection.implementationId);
+  const byModule = new Map();
+  const byImplementation = new Map();
+  for (const selection of profile.selections) {
+    if (countValue(moduleIds, selection.moduleId) !== 1
+      || countValue(implementationIds, selection.implementationId) !== 1) {
+      continue;
+    }
+    const declaration = uniqueDeclaration(context, selection.implementationId);
+    if (declaration === undefined || declaration.moduleId !== selection.moduleId) continue;
+    byModule.set(selection.moduleId, declaration);
+    byImplementation.set(selection.implementationId, declaration);
+  }
+  return { byModule, byImplementation };
+}
+
 function bindingPositiveProviders(binding, consumer, selected) {
   const slots = consumer.slots.filter(slot => slot.slotId === binding.slotId);
-  if (slots.length !== 1) return [];
+  if (slots.length !== 1 || hasDuplicate(binding.providerImplementationIds)) return [];
   const [slot] = slots;
   return binding.providerImplementationIds.filter(providerId => {
     const provider = selected.byImplementation.get(providerId);
@@ -1271,7 +1317,7 @@ function reachableSelectedImplementations(context) {
 
 function cyclicSelectedComponents(context) {
   const { profile } = context;
-  const selected = selectedDeclarationGraph(context);
+  const selected = positivelyResolvedSelectedGraph(context);
   if (profile === undefined || selected === undefined) return undefined;
   const edgePairs = new Map();
   for (const binding of profile.bindings) {
@@ -1295,6 +1341,8 @@ function staticSemanticDiagnosticHasWitness(diagnostic, context) {
   const declarations = declarationValues(context);
   const { profile } = context;
   switch (diagnostic.code) {
+    case "identity.invalid":
+      return context.identityInvalidPaths.has(canonicalize(diagnostic.path));
     case "declaration.duplicate-implementation":
       return countValue(
         declarations.map(declaration => declaration.implementationId),
@@ -1381,7 +1429,8 @@ function staticSemanticDiagnosticHasWitness(diagnostic, context) {
     case "binding.unknown-slot":
       return profileBindingRows(profile, diagnostic).length > 0
         && uniqueDeclaration(context, diagnostic.coordinate.implementationId) !== undefined
-        && slotForDiagnostic(context, diagnostic) === undefined;
+        && uniqueDeclaration(context, diagnostic.coordinate.implementationId).slots
+          .filter(slot => slot.slotId === diagnostic.coordinate.slotId).length === 0;
     case "binding.unknown-provider":
       return profileBindingRows(profile, diagnostic, { requireProvider: true }).length > 0
         && slotForDiagnostic(context, diagnostic) !== undefined
@@ -1406,7 +1455,6 @@ function staticSemanticDiagnosticHasWitness(diagnostic, context) {
       const slot = slotForDiagnostic(context, diagnostic);
       const provider = uniqueDeclaration(context, diagnostic.coordinate.providerImplementationId);
       return slot !== undefined && provider !== undefined
-        && selectedImplementationIds(profile).has(provider.implementationId)
         && profileBindingRows(profile, diagnostic, { requireProvider: true }).length > 0
         && !provider.provides.some(capability => (
           capability.capabilityId === slot.capabilityId
@@ -1416,7 +1464,6 @@ function staticSemanticDiagnosticHasWitness(diagnostic, context) {
       const slot = slotForDiagnostic(context, diagnostic);
       const provider = uniqueDeclaration(context, diagnostic.coordinate.providerImplementationId);
       return slot !== undefined && provider !== undefined
-        && selectedImplementationIds(profile).has(provider.implementationId)
         && profileBindingRows(profile, diagnostic, { requireProvider: true }).length > 0
         && same(diagnostic.details.expectedCompatibility, slot.compatibility)
         && provider.provides.some(capability => (
