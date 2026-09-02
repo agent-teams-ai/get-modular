@@ -3,7 +3,7 @@ import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
 import Ajv2020 from "ajv/dist/2020.js";
@@ -50,6 +50,13 @@ import {
 const digest = bytes => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const evidenceIdentity = (path, bytes) => ({ path, digest: digest(bytes) });
 const execFileAsync = promisify(execFile);
+const git = (cwd, ...args) => execFileAsync("git", args, { cwd });
+async function initFixtureRepository(fixture) {
+  await git(fixture, "init", "--quiet", "--initial-branch=main");
+  await git(fixture, "config", "user.email", "fixture@example.invalid");
+  await git(fixture, "config", "user.name", "Fixture");
+  await git(fixture, "config", "commit.gpgsign", "false");
+}
 
 const sourceMap = {
   schemaVersion: 1,
@@ -1047,6 +1054,121 @@ test("accepted authority custody rejects intent-to-add index entries", async () 
     );
   } finally {
     await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("open-decision history rejects an unborn HEAD witness", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-unborn-history-"));
+  try {
+    await initFixtureRepository(fixture);
+    await mkdir(dirname(join(fixture, OPEN_DECISION_HISTORY_PATH)), { recursive: true });
+    await writeFile(
+      join(fixture, OPEN_DECISION_HISTORY_PATH),
+      JSON.stringify({ schemaVersion: 1, recordedDecisionIds: ["OD-001"] }),
+    );
+    await git(fixture, "add", "--", OPEN_DECISION_HISTORY_PATH);
+
+    await assert.rejects(
+      historicalFileVersions(OPEN_DECISION_HISTORY_PATH, fixture),
+      /committed HEAD; an unborn branch has no history/u,
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("historical custody follows every merge parent instead of simplified history", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-full-history-"));
+  try {
+    await initFixtureRepository(fixture);
+    const historyPath = "history.json";
+    const versions = [
+      JSON.stringify({ schemaVersion: 1, recordedDecisionIds: ["OD-001"] }),
+      JSON.stringify({ schemaVersion: 1, recordedDecisionIds: ["OD-001", "OD-002"] }),
+    ];
+    await writeFile(join(fixture, historyPath), versions[0]);
+    await git(fixture, "add", "--", historyPath);
+    await git(fixture, "commit", "--quiet", "-m", "record OD-001");
+    await git(fixture, "checkout", "--quiet", "-b", "side");
+    await writeFile(join(fixture, historyPath), versions[1]);
+    await git(fixture, "add", "--", historyPath);
+    await git(fixture, "commit", "--quiet", "-m", "record OD-002");
+    await git(fixture, "checkout", "--quiet", "main");
+    await git(fixture, "merge", "--quiet", "--no-ff", "-s", "ours", "-m", "discard side", "side");
+
+    const observed = (await historicalFileVersions(historyPath, fixture))
+      .map(bytes => bytes.toString("utf8"));
+    assert.deepEqual(new Set(observed), new Set(versions));
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("index snapshot custody rejects intent-to-add and empty-blob entries", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-snapshot-intent-"));
+  try {
+    await initFixtureRepository(fixture);
+    await writeFile(join(fixture, "regular.txt"), "regular index bytes\n");
+    await writeFile(join(fixture, "intent.txt"), "unstaged intent bytes\n");
+    await writeFile(join(fixture, "empty.txt"), "");
+    await git(fixture, "add", "--", "regular.txt", "empty.txt");
+    await git(fixture, "add", "--intent-to-add", "--", "intent.txt");
+
+    const snapshot = await captureGitIndexSnapshot(fixture);
+    assert.equal((await inspectIndexSnapshotFile(snapshot, "regular.txt")).kind, "regular");
+    assert.deepEqual(await inspectIndexSnapshotFile(snapshot, "intent.txt"), {
+      kind: "intent-to-add",
+    });
+    assert.deepEqual(await inspectIndexSnapshotFile(snapshot, "empty.txt"), {
+      kind: "intent-to-add",
+    });
+    for (const relativePath of ["intent.txt", "empty.txt"]) {
+      await assert.rejects(
+        readIndexSnapshotFile(snapshot, relativePath, "governed input"),
+        /TRACKED_FILE_CUSTODY_FAILED.*intent-to-add/u,
+      );
+    }
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("index snapshot custody ignores GIT_* overrides and enforces the repository top level", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-hermetic-git-"));
+  const foreign = await mkdtemp(join(tmpdir(), "get-modular-foreign-git-"));
+  const savedEnvironment = Object.fromEntries(
+    ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"].map(name => [name, process.env[name]]),
+  );
+  try {
+    await initFixtureRepository(fixture);
+    await initFixtureRepository(foreign);
+    await writeFile(join(fixture, "own.txt"), "own index bytes\n");
+    await git(fixture, "add", "--", "own.txt");
+    await writeFile(join(foreign, "foreign.txt"), "foreign index bytes\n");
+    await git(foreign, "add", "--", "foreign.txt");
+
+    process.env.GIT_DIR = join(foreign, ".git");
+    process.env.GIT_WORK_TREE = foreign;
+    process.env.GIT_INDEX_FILE = join(foreign, ".git", "index");
+    const snapshot = await captureGitIndexSnapshot(fixture);
+    assert.deepEqual([...snapshot.entries.keys()], ["own.txt"]);
+
+    await mkdir(join(fixture, "nested"), { recursive: true });
+    await assert.rejects(
+      captureGitIndexSnapshot(join(fixture, "nested")),
+      /TRACKED_FILE_CUSTODY_FAILED: Git top level .* is not the repository root/u,
+    );
+    await assert.rejects(
+      historicalFileVersions("own.txt", join(fixture, "nested")),
+      /is not the repository root/u,
+    );
+  } finally {
+    for (const [name, value] of Object.entries(savedEnvironment)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+    await rm(fixture, { recursive: true, force: true });
+    await rm(foreign, { recursive: true, force: true });
   }
 });
 
