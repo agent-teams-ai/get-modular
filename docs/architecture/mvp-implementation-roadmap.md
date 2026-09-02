@@ -19,7 +19,9 @@ related:
   - ADR-0013
   - ADR-0014
   - ADR-0015
+  - ADR-0016
   - ARCH-FEATURE-MODULE-STANDARD
+  - ARCH-SELF-COMPOSITION-GUIDE
   - ARCH-SYSTEM-BOUNDARY
   - GM-REQ-V1
   - OD-004
@@ -33,8 +35,8 @@ This document is the implementation roadmap, not a replacement for an
 accepted ADR. It deliberately describes the order and evidence required to
 build the first reusable Core. It does not accept new public API, change an
 accepted decision, or claim that a qualification fixture is production code.
-ADR-0009 to ADR-0014 are proposed decisions on the selected base unless their
-accepted successors are present; ADR-0015 is accepted. The proposed decisions
+ADR-0009 to ADR-0014 and ADR-0016 are proposed decisions on the selected base
+unless their accepted successors are present; ADR-0015 is accepted. The proposed decisions
 do not enter accepted authority, the
 open-decision blocker catalog or executable governance until accepted through
 the repository decision flow.
@@ -90,7 +92,7 @@ alone.
 | M1 `direct-semantics-qualified` on Node through the object entrypoint | None; accepted ADR-0015 already lets the gate admit private `packages/core` source | Private package source and the first executable subject |
 | M2 raw entrypoint and carriers | ADR-0013 and ADR-0014 together as one diagnostic generation 2 transaction: successor schema enum, catalog rank, diagnostic contract, snapshots, checker and ledger, because ADR-0007 keeps the base enum and code rank byte-identical | Raw decoding exposure, carrier admission and duplicate binding-record behavior |
 | M3 public barrel and package carrier | ADR-0009 and ADR-0012 | Public names, export map and any packed publication candidate |
-| M3 emitter and generated stage1 | ADR-0011 or a narrower successor that closes only the dependency-record seam | `self-composed-qualified` and every release custody claim |
+| M3 emitter and generated stage1 | ADR-0016 for the dependency-record seam and the construction witness; ADR-0011 or a narrower successor only for release custody | `self-composed-qualified` and every release custody claim |
 
 A private, unpublished `0.x` archive may remain `not-claimed` while it is used
 for bounded implementation evidence. Publication and the first
@@ -228,7 +230,8 @@ the evidence and review affected by that change.
    behavior. Proposed ADR-0012 is the current candidate. Governance derives
    blockers only from the active open-decision catalog, not from this roadmap's
    identifiers; OD-004, OD-005 and OD-006 already follow that catalog-driven
-   path. Keep ADR-0009 to ADR-0014 as proposed roadmap choices until accepted;
+   path. Keep ADR-0009 to ADR-0014 and ADR-0016 as proposed roadmap choices
+   until accepted;
    only their accepted decisions may add mutation fixtures or checkpoint
    requirements.
 10. Verify that the executable resource-profile generator/oracle proof remains
@@ -333,16 +336,21 @@ smaller split would make it unverifiable.
    repack either subject inside a platform job.
 6. Resolve OD-004 before freezing package type, export conditions and supported
    resolution modes. Do not infer an ESM/CommonJS policy from this roadmap.
-7. Before freezing the public TypeScript surface, run both exact qualification
-   subjects through the four TypeScript consumer modes required by ADR-0007 and
-   one deterministic 1000-declaration typecheck fixture. Portable performance
+7. Before freezing the public TypeScript surface, run the retained generated
+   stage1 subject through the four TypeScript consumer modes required by
+   ADR-0007 and one deterministic 1000-declaration typecheck fixture. ADR-0007
+   requires that matrix for the first packed implementation, not for every
+   subject; the direct subject passes the audits in item 5 and the independent
+   vectors instead of a second consumer matrix. Portable performance
    measurements belong to Phase 5.
 
 ### Phase 1 exit criteria
 
 After Phases 2-4 provide the complete substantive compiler, two disposable
-TypeScript consumers compile through the public barrel only and both exact
-qualification archives pass the named resolver/type-scale gates. No Core API
+TypeScript consumers compile through the public barrel only, the retained
+generated stage1 archive passes the named resolver/type-scale gates, and the
+direct archive passes the same export, deep-import, declaration-leakage and
+inert-import audits. No Core API
 exposes a container, resolver, registry, Context/Fiber, filesystem path,
 executable factory, transport DTO or versioned name. A package shell without
 substantive behavior cannot pass this phase.
@@ -449,8 +457,10 @@ requires accepted ADR-0010 or a successor. The semantic compiler cannot inherit
 ordering or error behavior from a candidate library.
 
 The first substantive compiler slice also introduces the owner-local
-declarations, ports and factories plus ADR-0008's minimal direct stage0 root.
-The finite emitter and generated stage1 remain Phase 4 work.
+declarations, ports and factories plus ADR-0008's minimal direct stage0 root,
+exactly as the [self-composition implementation guide](self-composition-implementation-guide.md)
+lays them out: the own feature inventory, the feature skeleton and the single
+composition root. The finite emitter and generated stage1 remain Phase 4 work.
 
 ### Phase 3 exit criteria
 
@@ -514,14 +524,17 @@ those bytes privately when binding the exact subject and evidence.
 5. At accepted ADR-0008 checkpoint A, compile the real closed own profile as
    soon as the first useful dependency edge exists and report production,
    qualification and generated LOC separately. Prove one controlled
-   behavior-changing binding replacement before release. The stronger two-edge,
-   three-change and explicit owner `GO` checkpoint applies only after ADR-0011
-   or a successor is accepted; until then it is candidate evidence, not an
-   emitter veto.
+   behavior-changing binding replacement before release. A stronger
+   multi-edge or explicit owner `GO` checkpoint applies only if a later
+   accepted decision adds it; until then the single-edge replacement is
+   candidate evidence, not an emitter veto.
 6. Stop before any stage0/stage1 construction claim until an accepted successor
    reconciles ADR-0008's closed dependency record with its prohibition on using
    hostile valid identities as property-lookup keys. The roadmap does not select
-   a representation.
+   a representation. Proposed ADR-0016 is that successor candidate: typed
+   slot-keyed dependency records and a static generated-wiring witness, which
+   the self-composition implementation guide applies as a candidate rule until
+   ADR-0016 is accepted.
 7. After item 6 is resolved, implement ADR-0008's bounded self-composition in
    its accepted delivery order: handwritten stage0 uses the real graph
    semantics, emits finite private stage1 wiring, and stage1 wires the same
@@ -529,8 +542,9 @@ those bytes privately when binding the exact subject and evidence.
    self-hosting and not a public generator. An explicit owner `GO` before this
    step is required only if accepted authority adds that condition.
 8. Use clean, isolated and poisoned stage/cache/output roots. Prove exact
-   P0/P1 plan-and-digest equality, exact W0/W1 equality, independently observed
-   construction witnesses, a binding replacement that changes public behavior,
+   P0/P1 plan-and-digest equality, exact W0/W1 equality, construction witnesses
+   in the form the accepted item 6 successor defines, a binding replacement that
+   changes public behavior,
    no hidden concrete-import fallback, and zero own-profile compilation,
    emitter calls or component assembly on caller requests. Only pack-once
    stage1 is distributable; stage0, own profile and emitter stay outside the
@@ -583,31 +597,19 @@ inventing a public runner or release protocol.
 
 ### Phase 5 entry gates
 
-Before creating structural or runtime conformance evidence, pin a Docs Protocol
-and Engineering Foundation authoring toolchain whose declared identity strategy
-can create qualification records under a governed identity. The two
-historical `QUAL-*` records keep their identities as immutable evidence; the
-identity grammar and placement for new records are selected together with that
-toolchain and must be visible to the governance gate before use. Prove both
-`docs:new --dry-run` and apply paths with positive and mutation fixtures. If no
-released pinned version supports that identity, Phase 5 is blocked on a bounded
-Engineering Foundation capability; Phases 1-4 may still build and qualify Core
-while conformance remains `not-claimed`. Manual files and relaxed identities
-are not substitutes.
+Qualification records are governed by `docs/metadata.schema.json` and by the
+governance gate, which validates every `QUAL-*` record, its evidence digests
+and its promotion state regardless of the tool that wrote the file. The two
+historical `QUAL-*` records keep their identities as immutable evidence and
+new records follow the same identity pattern. Authoring-tool support for that
+identity is welcome but is not an entry gate: a hand-written record that
+passes the gate is valid evidence, and no external package release blocks
+Phase 5.
 
-The Engineering Foundation repository owns that authoring capability and ships
-it through a separately reviewed package release. Its acceptance evidence is an
-exact package version and digest plus successful Get Modular dry-run, apply and
-mutation fixtures. Get Modular does not add a local writer or private identity
-fallback. Until that release is published and pinned, qualified Core `0.x` and
-its publication checkpoint are explicitly `CONDITIONAL`; the private Phases 1-4
-Core checkpoint remains implementable.
-
-Declare the qualification document type/template/index in the adopted profile
-and make the repository profile checker transition-aware. It must require
-`not-claimed` until governed qualification and reciprocal promotion records
-exist, then accept only their ordered same-subject states. A runner cannot
-promote its own output.
+Make the repository profile checker transition-aware before the first claim.
+It must require `not-claimed` until governed qualification and reciprocal
+promotion records exist, then accept only their ordered same-subject states. A
+runner cannot promote its own output.
 
 Evidence reuse is disabled unless an accepted custody decision owns one closed
 reuse key. The key binds the exact subject/archive and source/authority ledgers;

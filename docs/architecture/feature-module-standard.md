@@ -52,6 +52,18 @@ gate.
   `architecture/foundation/dependency-declarations.yaml`.
 - Engineering Foundation and Docs Protocol remain development tooling. Their
   runtime or types cannot enter a public package surface.
+- Internal self-composition follows accepted ADR-0008; the
+  [self-composition implementation guide](self-composition-implementation-guide.md)
+  owns its implementation mapping. Every edge of the own graph uses the
+  standard's second mechanism, a consumer-owned port whose provider is selected
+  by module composition through the own profile; the plan-then-apply emitter
+  is the form that composition takes, not a separate mechanism. Fixed library
+  imports inside a feature, such as diagnostics and graph helpers, use the first
+  mechanism. The third mechanism, a runtime activation plan, is not used inside
+  the Core. The build-only directory `packages/*/self-composition` holds the
+  direct stage0 root, the own profile, the allowlist and the emitter beside
+  the build configuration, outside the mapped `source_root`; this extension
+  covers it and no third package exists.
 - No deviation from organization `v1` is declared.
 
 ## Enforcement

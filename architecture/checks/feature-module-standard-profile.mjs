@@ -61,6 +61,10 @@ const EXPECTED_EXTENSIONS = Object.freeze([
     id: "repository-dependency-policy",
     authority: "architecture/foundation/dependency-declarations.yaml",
   },
+  {
+    id: "internal-self-composition",
+    authority: "docs/decisions/0008-bounded-internal-engine-self-composition.md",
+  },
 ]);
 
 const EXPECTED_ENFORCEMENT = Object.freeze([
