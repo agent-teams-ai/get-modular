@@ -28,9 +28,8 @@ Accepted ADR-0007 states the opposite for implementation work: "A package may
 be implemented while the repository profile remains `not-claimed`, but it
 cannot claim V1 conformance or be published as conforming until every
 applicable vector executes against the packed artifact on the supported runtime
-matrix." The MVP implementation roadmap and the current-contract guide likewise
-promise that private implementation work is not blocked while proposed
-decisions remain open.
+matrix." The conflict between two accepted texts must be resolved explicitly;
+the fail-closed ADR-0003 reading remains in force until then.
 
 The three currently active decisions, OD-004, OD-005, and OD-006, are resolved
 only by proposed ADR-0012, ADR-0013, and ADR-0014. ADR-0012 requires a packed
@@ -47,16 +46,10 @@ This identifier is repository-local. The "ADR-0015" cited by ADR-0001 and the
 bootstrap review belongs to the Extension Foundation repository and is a
 different decision.
 
-Until this decision is accepted, the quoted ADR-0003 sentence remains the
-textual authority even though the executable gate already admits private
-package identities; acceptance aligns the accepted text with the gate rather
-than changing the gate.
-
-The executable governance gate in `architecture/checks/governance.mjs` and
-`architecture/checks/production-artifacts.mjs` already distinguishes private
-source from publication-capable artifacts. This decision records that
-distinction as authority so that accepted text, navigation, and the gate say
-the same thing.
+Until this decision is accepted, the quoted ADR-0003 sentence remains authority
+and the executable governance gate stays fail-closed. Acceptance would authorize
+the narrow private-source distinction below and require the gate, navigation and
+accepted text to change together.
 
 ## Decision
 
@@ -97,12 +90,12 @@ qualification ledgers, or conformance requirements of ADR-0007.
 
 ## Consequences
 
-- Private Core implementation can start under `packages/core` without
+- After acceptance, private Core implementation can start under `packages/core` without
   publishing anything, and the evidence that closes OD-004, OD-005, and OD-006
   can come from that one subject instead of a second copy.
-- Accepted text, the open-decision index, the roadmap, and the executable gate
-  agree on what an open decision blocks.
-- The gate no longer proves by construction that no source exists; review must
+- Accepted text, the open-decision index, the roadmap and the executable gate
+  will agree on what an open decision blocks.
+- After acceptance, the gate no longer proves by construction that no source exists; review must
   confirm that admitted private source stays outside the semantics owned by an
   active open decision.
 - Publication and conformance claims remain mechanically impossible until the

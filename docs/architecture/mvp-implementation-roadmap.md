@@ -86,7 +86,7 @@ alone.
 
 | Milestone | Proposed decisions required | Blocked without them |
 | --- | --- | --- |
-| M1 `direct-semantics-qualified` on Node through the object entrypoint | None for semantics; ADR-0015 or its accepted successor to ADR-0003 so accepted text matches the gate, which already admits private `packages/core` source | Private package source and the first executable subject |
+| M1 `direct-semantics-qualified` through the private normalized seam | ADR-0015 or another accepted successor to ADR-0003 | Private package source and the first executable subject |
 | M2 raw entrypoint and carriers | ADR-0013 and ADR-0014 together as one diagnostic generation 2 transaction: successor schema enum, catalog rank, diagnostic contract, snapshots, checker and ledger, because ADR-0007 keeps the base enum and code rank byte-identical | Raw decoding exposure, carrier admission and duplicate binding-record behavior |
 | M3 public barrel and package carrier | ADR-0009 and ADR-0012 | Public names, export map and any packed publication candidate |
 | M3 emitter and generated stage1 | ADR-0011 or a narrower successor that closes only the dependency-record seam | `self-composed-qualified` and every release custody claim |
@@ -94,9 +94,9 @@ alone.
 Publication of a `0.x` archive as `not-claimed` does not require the six
 runtime cases; the first conformance claim does (ADR-0007, sections on
 publication and runtime coverage). The bootstrap sequence is therefore: accept
-ADR-0015 so accepted text matches the gate that already admits private package
-identities, materialize private `packages/core`, reach M1 on Node, prepare the diagnostic generation 2
-transaction in parallel with M1, then proceed to M2 and M3 in that order.
+ADR-0015 or another narrow successor, materialize private `packages/core`, reach
+M1 on Node, prepare the diagnostic generation 2 transaction in parallel with
+M1, then proceed to M2 and M3 in that order.
 
 ### Roadmap qualification language
 

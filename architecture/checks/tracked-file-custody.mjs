@@ -12,6 +12,25 @@ const GIT_OBJECT_ID = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u;
 const REGULAR_FILE_MODE = /^(?:100644|100755)$/u;
 const MAX_GIT_OUTPUT_BYTES = 16 * 1024 * 1024;
 const INDEX_SNAPSHOT_VERSION = 1;
+const EMPTY_BLOB_OIDS = new Set([
+  "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+  "473a0f4c3be8a93681a267e3b1e9a7dcda1185436fe141f7749120a303721813",
+]);
+
+// Git must observe only the repository below repositoryRoot: no GIT_DIR,
+// GIT_WORK_TREE, GIT_INDEX_FILE, replace refs, or user/system configuration.
+function hermeticGitEnvironment() {
+  const environment = {};
+  for (const [name, value] of Object.entries(process.env)) {
+    if (!name.startsWith("GIT_")) environment[name] = value;
+  }
+  // Git special-cases the literal "/dev/null" on every platform, including Windows.
+  environment.GIT_CONFIG_GLOBAL = "/dev/null";
+  environment.GIT_CONFIG_SYSTEM = "/dev/null";
+  environment.GIT_CONFIG_NOSYSTEM = "1";
+  environment.LC_ALL = "C";
+  return environment;
+}
 
 function safeRepositoryPath(value) {
   return typeof value === "string"
@@ -78,11 +97,22 @@ async function readWorkingTreeRegularFile(relativePath, repositoryRoot) {
 }
 
 async function runGit(repositoryRoot, args) {
-  return execFileAsync("git", args, {
+  return execFileAsync("git", ["--no-replace-objects", "--literal-pathspecs", ...args], {
     cwd: repositoryRoot,
     encoding: null,
+    env: hermeticGitEnvironment(),
     maxBuffer: MAX_GIT_OUTPUT_BYTES,
   });
+}
+
+async function assertRepositoryToplevel(repositoryRoot) {
+  const { stdout } = await runGit(repositoryRoot, ["rev-parse", "--show-toplevel"]);
+  const toplevel = await realpath(stdout.toString("utf8").replace(/\r?\n$/u, ""));
+  if (toplevel !== await realpath(repositoryRoot)) {
+    throw new Error(
+      `TRACKED_FILE_CUSTODY_FAILED: Git top level ${toplevel} is not the repository root ${repositoryRoot}`,
+    );
+  }
 }
 
 function parseExactIndexEntry(output, relativePath) {
@@ -121,7 +151,6 @@ async function exactIndexEntry(relativePath, repositoryRoot) {
   let output;
   try {
     ({ stdout: output } = await runGit(repositoryRoot, [
-      "--literal-pathspecs",
       "ls-files",
       "--error-unmatch",
       "--stage",
@@ -159,7 +188,7 @@ function parseIndexSnapshot(output) {
     let entry;
     if (!GIT_OBJECT_ID.test(oid)) {
       entry = { kind: "invalid-index-entry" };
-    } else if (/^0+$/u.test(oid)) {
+    } else if (/^0+$/u.test(oid) || EMPTY_BLOB_OIDS.has(oid)) {
       entry = { kind: "intent-to-add" };
     } else if (stage !== "0" || !REGULAR_FILE_MODE.test(mode)) {
       entry = { kind: "non-regular" };
@@ -192,8 +221,8 @@ function parseNulPaths(output) {
 }
 
 export async function captureGitIndexSnapshot(repositoryRoot) {
+  await assertRepositoryToplevel(repositoryRoot);
   const { stdout } = await runGit(repositoryRoot, [
-    "--literal-pathspecs",
     "ls-files",
     "--stage",
     "-z",
@@ -230,7 +259,6 @@ export async function assertGitIndexSnapshotCurrent(snapshot) {
 
 export async function untrackedPathsInScope(snapshot, pathspecs) {
   const { stdout } = await runGit(snapshot.repositoryRoot, [
-    "--literal-pathspecs",
     "ls-files",
     "--others",
     "--exclude-standard",

@@ -38,9 +38,10 @@ unversioned pre-1.0 public surface, including `compileComposition`,
 
 ADR-0009 and ADR-0010 remain proposed until they pass the repository's governed
 acceptance flow. Until then, no public production package may silently choose
-between the proposed and accepted naming or dependency policies. Pure
-implementation work may use private names and owned primitives, but the first
-public barrel must follow one explicitly accepted map.
+between the proposed and accepted naming or dependency policies. Private
+qualification work may use private names and owned primitives; production
+package source still requires the authority closure described below, and the
+first public barrel must follow one explicitly accepted map.
 
 ## What the version labels mean
 
@@ -128,16 +129,13 @@ These are small contract gates, not a reason to redesign the architecture:
    catalog, diagnostic contract, snapshot set, checker, and qualification
    ledger. Two separate generations would duplicate those artifacts.
 
-The first graph slice must not invent semantics for items 4 and 5. A private
-normalized-value semantic compiler checkpoint may proceed after
-accepted-authority preflight while excluding repeated binding records. That
-checkpoint lives in `packages/core` as a `private: true` package with no
-publication field, under the rule recorded by proposed ADR-0015 as the
-successor to the ADR-0003 deferral sentence; the governance gate admits that
-source and keeps blocking publication surfaces and runtime claims. It is not
-either proposed carrier adapter and cannot claim trusted-object or raw-byte
-admission. Public packaging, both carrier adapters, raw decoding, and production
-dependency adapters remain gated by their corresponding decisions.
+The first graph slice must not invent semantics for items 4 and 5. Proposed
+ADR-0015 would permit a private normalized-value semantic compiler checkpoint
+under `packages/core` while excluding repeated binding records and every public
+carrier. Until ADR-0015 or another successor is accepted, ADR-0003's stricter
+deferral remains authoritative and the governance gate rejects production
+package source. Public packaging, both carrier adapters, raw decoding and
+production dependency adapters remain gated by their corresponding decisions.
 
 ## Historical requirement wording
 
