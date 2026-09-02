@@ -10,6 +10,7 @@ import {
   productionArtifactsOutsidePackages,
 } from "./production-artifacts.mjs";
 import {
+  assertGitIndexSnapshotCurrent,
   captureGitIndexSnapshot,
   historicalFileVersions,
   indexSnapshotPaths,
@@ -557,6 +558,7 @@ export function validateDecisionResolutions(documents) {
 
 export async function governanceDocumentCatalog(repositoryRoot = root, suppliedSnapshot) {
   const snapshot = suppliedSnapshot ?? await captureGitIndexSnapshot(repositoryRoot);
+  await assertGitIndexSnapshotCurrent(snapshot);
   const documents = new Map();
   const documentSources = new Map();
   const directories = [
@@ -586,6 +588,7 @@ export async function governanceDocumentCatalog(repositoryRoot = root, suppliedS
     documents.set(metadata.id, metadata);
     documentSources.set(metadata.id, { path, bytes });
   }
+  await assertGitIndexSnapshotCurrent(snapshot);
   return { documents, documentSources, snapshot };
 }
 

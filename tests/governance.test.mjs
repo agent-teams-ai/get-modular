@@ -945,6 +945,36 @@ test("governance catalog rejects AD/AM split states from one index snapshot", as
   }
 });
 
+test("governance catalog rejects decisions staged after its index snapshot", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-governance-late-stage-"));
+  try {
+    await execFileAsync("git", ["init", "--quiet"], { cwd: fixture });
+    await mkdir(join(fixture, "docs/open-decisions"), { recursive: true });
+    const snapshot = await captureGitIndexSnapshot(fixture);
+    const decisionPath = "docs/open-decisions/OD-999-late.md";
+    await writeFile(join(fixture, decisionPath), [
+      "---",
+      "id: OD-999",
+      "type: open-decision",
+      "status: open",
+      "owner: architecture",
+      "summary: Late staged decision.",
+      "---",
+      "",
+      "# Late staged decision",
+      "",
+    ].join("\n"));
+    await execFileAsync("git", ["add", "--", decisionPath], { cwd: fixture });
+
+    await assert.rejects(
+      governanceDocumentCatalog(fixture, snapshot),
+      /TRACKED_FILE_CUSTODY_FAILED: Git index changed after snapshot/u,
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
 test("qualification evidence uses index blobs and rejects unstaged bytes", async () => {
   const fixture = await mkdtemp(join(tmpdir(), "get-modular-qualification-snapshot-"));
   try {

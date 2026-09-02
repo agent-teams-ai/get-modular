@@ -241,6 +241,22 @@ export function indexSnapshotPaths(snapshot) {
   return [...snapshot.entries.keys()];
 }
 
+export async function assertGitIndexSnapshotCurrent(snapshot) {
+  const expectedPaths = indexSnapshotPaths(snapshot);
+  const current = await captureGitIndexSnapshot(snapshot.repositoryRoot);
+  const currentPaths = indexSnapshotPaths(current);
+  if (expectedPaths.length !== currentPaths.length) {
+    throw new Error("TRACKED_FILE_CUSTODY_FAILED: Git index changed after snapshot");
+  }
+  for (const path of expectedPaths) {
+    const expected = snapshot.entries.get(path);
+    const observed = current.entries.get(path);
+    if (expected?.kind !== observed?.kind || expected?.oid !== observed?.oid) {
+      throw new Error("TRACKED_FILE_CUSTODY_FAILED: Git index changed after snapshot");
+    }
+  }
+}
+
 export async function untrackedPathsInScope(snapshot, pathspecs) {
   const { stdout } = await runGit(snapshot.repositoryRoot, [
     "ls-files",
