@@ -228,6 +228,16 @@ Because classification and copying execute no caller-observable step, the
 visible length cannot change between the two in single-threaded JavaScript;
 shared storage, the only concurrent writer, is rejected before copying.
 
+The procedure is portable by construction. It uses only ECMAScript intrinsics
+that every supported runtime provides. Production code MUST NOT use `Buffer`,
+`node:*` built-in modules, `process`, or any other platform-specific API for
+classification, copying, or snapshotting; a Node `Buffer` is admitted only
+because it is a genuine `Uint8Array`, never because the code recognizes it.
+The development-only Node oracle is the environment in which acceptance
+evidence executes, not a dependency of the adapter. The `core.runtime` boundary
+in the repository's `source-dependencies.yaml` declares no built-ins and no
+packages, so the Foundation gate rejects any platform dependency mechanically.
+
 #### Resource preflight before allocation
 
 The visible length is read once through `lengthOf` and compared with the

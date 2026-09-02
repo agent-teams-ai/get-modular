@@ -87,8 +87,13 @@ evidence and make no Firefox, Safari, or release-runtime claim.
   shared DAG references, and mutation immediately after invocation.
 - Every successful vector proves that later mutation, resize, detach, transfer,
   or concurrent shared writes cannot alter the owned admitted snapshot.
-- Evidence executes against the real entry points in every mandatory runtime and
-  binds exact inputs, expected outcomes, runtime identities, and results.
+- Acceptance evidence executes the successor vectors through a development-only
+  Node oracle and the private `packages/core` candidate entrypoints, binding
+  exact inputs, expected outcomes, runtime identities, and results. Execution
+  on every mandatory runtime is the conformance-claim and publication gate
+  defined by ADR-0007, not an acceptance prerequisite. The normative procedure
+  uses only ECMAScript intrinsics, so acceptance on Node makes no Node-specific
+  claim.
 
 ## Resolution
 
