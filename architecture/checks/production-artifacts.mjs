@@ -8,6 +8,11 @@ import {
 } from "./tracked-file-custody.mjs";
 
 const PRODUCTION_SOURCE = /\.[cm]?[jt]sx?$/u;
+const PRIVATE_IMPLEMENTATION_PACKAGE_NAMES = new Set([
+  "@get-modular/conformance",
+  "@get-modular/core",
+]);
+const PACKAGE_MANIFEST = /^packages\/[^/]+\/package\.json$/u;
 const PUBLICATION_FIELDS = Object.freeze([
   "bin",
   "browser",
@@ -93,6 +98,46 @@ async function symlinksBelow(repositoryRoot, relativeDirectory) {
 
 export function productionArtifactsOutsidePackages(productionArtifacts) {
   return productionArtifacts.filter(path => !path.startsWith("packages/"));
+}
+
+async function defaultReadPackageManifest(path, repositoryRoot) {
+  return JSON.parse(await readFile(resolve(repositoryRoot, path), "utf8"));
+}
+
+export async function productionArtifactsBlockedByOpenDecisions(
+  productionArtifacts,
+  {
+    repositoryRoot = process.cwd(),
+    readPackageManifest = defaultReadPackageManifest,
+  } = {},
+) {
+  const packageRoots = productionArtifacts
+    .filter(path => path.endsWith("/package.json"))
+    .map(path => path.slice(0, -"/package.json".length));
+  const privatePackageRoots = new Set();
+  for (const path of productionArtifacts.filter(candidate => PACKAGE_MANIFEST.test(candidate))) {
+    let manifest;
+    try {
+      manifest = await readPackageManifest(path, repositoryRoot);
+    } catch {
+      continue;
+    }
+    const hasPublicationField = PUBLICATION_FIELDS.some(field => manifest?.[field] !== undefined);
+    if (PRIVATE_IMPLEMENTATION_PACKAGE_NAMES.has(manifest?.name)
+      && manifest.private === true
+      && !hasPublicationField) {
+      privatePackageRoots.add(path.slice(0, -"/package.json".length));
+    }
+  }
+
+  return productionArtifacts.filter(path => {
+    const owningPackageRoot = packageRoots
+      .filter(packageRoot => (
+        path === `${packageRoot}/package.json` || path.startsWith(`${packageRoot}/`)
+      ))
+      .sort((left, right) => right.length - left.length)[0];
+    return owningPackageRoot === undefined || !privatePackageRoots.has(owningPackageRoot);
+  });
 }
 
 export async function productionArtifactSymlinkPaths(repositoryRoot = process.cwd(), indexSnapshot) {

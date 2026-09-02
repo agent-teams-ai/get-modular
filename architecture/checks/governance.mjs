@@ -6,6 +6,7 @@ import { parse } from "yaml";
 import {
   productionArtifactPaths,
   productionArtifactSymlinkPaths,
+  productionArtifactsBlockedByOpenDecisions,
   productionArtifactsOutsidePackages,
 } from "./production-artifacts.mjs";
 import {
@@ -178,14 +179,23 @@ export async function validateBlockedImplementation({
   blockerIds,
   productionArtifacts,
   claimDocuments,
+  readPackageManifest,
+  repositoryRoot = process.cwd(),
 }) {
   if (blockerIds.size === 0) return;
-  if (productionArtifacts.length > 0) {
-    fail(`production artifacts are blocked by open decisions: `
-      + `${productionArtifacts.join(", ")} (${[...blockerIds].sort().join(", ")})`);
+  const blockedArtifacts = await productionArtifactsBlockedByOpenDecisions(
+    productionArtifacts,
+    { readPackageManifest, repositoryRoot },
+  );
+  if (blockedArtifacts.length > 0) {
+    fail(`public or publication-capable artifacts are blocked by open decisions: `
+      + `${blockedArtifacts.join(", ")} (${[...blockerIds].sort().join(", ")})`);
   }
-  if (claimDocuments.length > 0) {
-    fail(`qualification claims are blocked by open decisions: `
+  const runtimeClaims = claimDocuments.filter(document => (
+    document.status === "runtime-conformant"
+  ));
+  if (runtimeClaims.length > 0) {
+    fail(`runtime-conformance claims are blocked by open decisions: `
       + `${[...blockerIds].sort().join(", ")}`);
   }
 }
@@ -689,6 +699,11 @@ async function main() {
     blockerIds,
     productionArtifacts,
     claimDocuments: claimDocuments.map(id => documents.get(id)),
+    readPackageManifest: async path => JSON.parse((await readGovernanceInput(
+      path,
+      "private implementation package manifest",
+    )).toString("utf8")),
+    repositoryRoot: root,
   });
   await assertGitIndexSnapshotCurrent(snapshot);
   process.stdout.write("Get Modular governance check passed.\n");

@@ -473,9 +473,10 @@ gate covers:
 
 Every diagnostic result excludes a plan and digest. No input or output accepts
 executable values. The private normalized seam is not exported as a temporary
-public API and cannot enter production package source while ADR-0003's blockers
-remain active. A separately governed non-publishable qualification subject may
-implement candidate carriers only to produce evidence for OD-005.
+public API. Accepted ADR-0015 permits it inside a manifest-bound private package
+after the explicit product-owner start record, but it cannot expose or claim
+semantics owned by active open decisions. Candidate carriers remain
+non-publishable and may produce evidence for OD-005 only.
 
 ## Phase 4: immutable plan, canonical bytes and self-composition
 

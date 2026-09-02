@@ -20,6 +20,7 @@ import {
 import {
   assertGitIndexSnapshotCurrent,
   captureGitIndexSnapshot,
+  indexSnapshotPaths,
   readIndexSnapshotFile,
 } from "./tracked-file-custody.mjs";
 
@@ -83,6 +84,17 @@ export async function validateContractLedger({ ledger, readBytes, listedPaths })
   if (paths.length === 0 || !same([...paths].sort(), [...listedPaths].sort())) {
     fail("accepted-contracts ledger does not match the V1 contract directory");
   }
+}
+
+export async function listLedgerJsonPaths({ repositoryRoot, snapshot, directory }) {
+  const paths = new Set((await readdir(resolve(repositoryRoot, directory)))
+    .filter(filename => filename.endsWith(".json"))
+    .map(filename => `${directory}/${filename}`));
+  const directJsonPath = new RegExp(`^${directory.replaceAll("/", "\\/")}\\/[^/]+\\.json$`, "u");
+  for (const path of indexSnapshotPaths(snapshot)) {
+    if (directJsonPath.test(path)) paths.add(path);
+  }
+  return [...paths].sort();
 }
 
 export function validateContractCoherence({ schema, catalog, profile, vectors }) {
@@ -158,9 +170,7 @@ async function main() {
   if (!resolvingDecision.includes(`The accepted contract ledger is anchored as\n\`${ledgerDigest}\`.`)) {
     fail("accepted contract ledger is not anchored by ADR-0005");
   }
-  const listedPaths = (await readdir(resolve(root, directory)))
-    .filter(filename => filename.endsWith(".json"))
-    .map(filename => `${directory}/${filename}`);
+  const listedPaths = await listLedgerJsonPaths({ repositoryRoot: root, snapshot, directory });
   await validateContractLedger({
     ledger: JSON.parse(ledgerBytes),
     readBytes: read,
@@ -178,9 +188,11 @@ async function main() {
   if (!qualificationDecision.includes(qualificationLedgerAnchor(qualificationLedgerDigest))) {
     fail("V1 qualification ledger is not anchored by ADR-0007");
   }
-  const qualificationPaths = (await readdir(resolve(root, qualificationDirectory)))
-    .filter(filename => filename.endsWith(".json"))
-    .map(filename => `${qualificationDirectory}/${filename}`);
+  const qualificationPaths = await listLedgerJsonPaths({
+    repositoryRoot: root,
+    snapshot,
+    directory: qualificationDirectory,
+  });
   await validateQualificationLedger({
     ledger: JSON.parse(qualificationLedgerBytes),
     readBytes: read,

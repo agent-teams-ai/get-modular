@@ -44,7 +44,10 @@ import {
   inspectAcceptedAuthorityFile,
   readAcceptedAuthorityFile,
 } from "../architecture/checks/tracked-file-custody.mjs";
-import { productionArtifactsOutsidePackages } from
+import {
+  productionArtifactsBlockedByOpenDecisions,
+  productionArtifactsOutsidePackages,
+} from
   "../architecture/checks/production-artifacts.mjs";
 
 const digest = bytes => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
@@ -395,24 +398,95 @@ test("accepted authority custody closes ledger shape, paths, bytes, and ADR anch
   }
 });
 
-test("open decisions block production artifacts and qualification claims", async () => {
+test("open decisions admit private package source but block publication and runtime claims", async () => {
   const blockerIds = new Set(["OD-001"]);
-  const productionArtifacts = [
+  const manifests = new Map([
+    ["packages/engine/package.json", { name: "@get-modular/core", private: true }],
+  ]);
+  const readPackageManifest = async path => manifests.get(path);
+  const privateArtifacts = [
     "packages/engine/package.json",
     "packages/engine/src/features/compiler/normalized-compiler.ts",
+    "packages/engine/src/index.ts",
+    "packages/engine/tests/normalized-compiler.test.ts",
   ];
 
-  await assert.rejects(validateBlockedImplementation({
+  await assert.doesNotReject(validateBlockedImplementation({
     blockerIds,
-    productionArtifacts,
-    claimDocuments: [],
-  }), /production artifacts are blocked/u);
+    productionArtifacts: privateArtifacts,
+    claimDocuments: [
+      { id: "QUAL-SOURCE", status: "source-admitted" },
+      { id: "QUAL-STRUCTURAL", status: "structural-conformant" },
+    ],
+    readPackageManifest,
+  }));
 
   await assert.rejects(validateBlockedImplementation({
     blockerIds,
-    productionArtifacts: [],
-    claimDocuments: [{ id: "QUAL-SOURCE", status: "source-admitted" }],
-  }), /qualification claims are blocked/u);
+    productionArtifacts: privateArtifacts,
+    claimDocuments: [{ id: "QUAL-RUNTIME", status: "runtime-conformant" }],
+    readPackageManifest,
+  }), /runtime-conformance claims are blocked/u);
+
+  for (const manifest of [
+    { name: "@get-modular/core", private: false },
+    { name: "@get-modular/core", private: true, exports: { ".": "./dist/index.js" } },
+    { name: "@get-modular/unknown", private: true },
+  ]) {
+    manifests.set("packages/engine/package.json", manifest);
+    await assert.rejects(validateBlockedImplementation({
+      blockerIds,
+      productionArtifacts: privateArtifacts,
+      claimDocuments: [],
+      readPackageManifest,
+    }), /public or publication-capable artifacts are blocked/u);
+  }
+});
+
+test("open-decision artifact admission is manifest-bound and fail-closed", async () => {
+  const manifestPath = "packages/engine/package.json";
+  const sourcePath = "packages/engine/src/index.ts";
+  const classify = (artifacts, manifest) => productionArtifactsBlockedByOpenDecisions(
+    artifacts,
+    { readPackageManifest: async () => manifest },
+  );
+
+  for (const name of ["@get-modular/core", "@get-modular/conformance"]) {
+    assert.deepEqual(await classify([manifestPath, sourcePath], {
+      name,
+      private: true,
+    }), []);
+  }
+  assert.deepEqual(await classify([sourcePath], {
+    name: "@get-modular/core",
+    private: true,
+  }), [sourcePath]);
+
+  for (const field of [
+    "bin", "browser", "exports", "files", "main", "module", "publishConfig", "types",
+    "typesVersions", "typings",
+  ]) {
+    assert.deepEqual(await classify([manifestPath, sourcePath], {
+      name: "@get-modular/core",
+      private: true,
+      [field]: {},
+    }), [manifestPath, sourcePath], field);
+  }
+
+  const nestedManifestPath = "packages/engine/nested/package.json";
+  const nestedSourcePath = "packages/engine/nested/index.ts";
+  const manifests = new Map([
+    [manifestPath, { name: "@get-modular/core", private: true }],
+    [nestedManifestPath, { name: "@get-modular/public-addon", exports: "./index.ts" }],
+  ]);
+  assert.deepEqual(await productionArtifactsBlockedByOpenDecisions([
+    manifestPath,
+    sourcePath,
+    nestedManifestPath,
+    nestedSourcePath,
+  ], {
+    readPackageManifest: async path => manifests.get(path),
+  }), [nestedManifestPath, nestedSourcePath]);
 });
 
 test("qualification claims require ordered admission, evidence, and promotion", async () => {
