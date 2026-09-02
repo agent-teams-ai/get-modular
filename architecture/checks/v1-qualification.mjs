@@ -1056,13 +1056,18 @@ function validateStaticSchemaSuppression({
   validateCompositionProfile,
 }) {
   const documents = staticInputDocuments(descriptor);
-  const invalidDeclarations = documents.filter(document => (
+  const declarationDocuments = documents.filter(document => (
     document.documentType === "module-declaration"
-    && staticSchemaDiagnostics(document, validateModuleDeclaration).length > 0
   ));
+  const validDeclarations = declarationDocuments.filter(document => (
+    document.value !== undefined
+    && staticSchemaDiagnostics(document, validateModuleDeclaration).length === 0
+  )).map(document => document.value);
+  const invalidDeclarations = declarationDocuments.length - validDeclarations.length;
   const profileInvalid = documents.some(document => (
     document.documentType === "composition-profile"
-    && staticSchemaDiagnostics(document, validateCompositionProfile).length > 0
+    && (document.value === undefined
+      || staticSchemaDiagnostics(document, validateCompositionProfile).length > 0)
   ));
 
   for (const diagnostic of diagnostics) {
@@ -1072,19 +1077,17 @@ function validateStaticSchemaSuppression({
       && profileInvalid) {
       fail(`${descriptor.caseId} emits ${diagnostic.code} from a schema-invalid profile`);
     }
-    if (!diagnostic.code.startsWith("declaration.")) continue;
-    const refersToInvalidDeclaration = invalidDeclarations.some(({ value }) => (
-      (typeof diagnostic.coordinate.implementationId === "string"
-        && diagnostic.coordinate.implementationId === value?.implementationId)
-      || (typeof diagnostic.coordinate.moduleId === "string"
-        && diagnostic.coordinate.moduleId === value?.moduleId)
-    ));
-    if (refersToInvalidDeclaration) {
-      fail(`${descriptor.caseId} emits ${diagnostic.code} from a schema-invalid declaration`);
+    if (diagnostic.code.startsWith("declaration.")
+      && !declarationDiagnosticHasValidSource(diagnostic, validDeclarations)) {
+      fail(`${descriptor.caseId} emits ${diagnostic.code} without a schema-valid declaration source`);
+    }
+    if (diagnostic.code.startsWith("binding.")
+      && !bindingDiagnosticHasValidSource(diagnostic, validDeclarations)) {
+      fail(`${descriptor.caseId} emits ${diagnostic.code} without schema-valid binding facts`);
     }
   }
 
-  if (invalidDeclarations.length === 0) return;
+  if (invalidDeclarations === 0) return;
   for (const diagnostic of diagnostics) {
     const prerequisite = diagnosticPrerequisites.get(diagnostic.code);
     const requiresCompleteDeclarationCensus = prerequisite?.prerequisites.some(factId => (
@@ -1095,6 +1098,56 @@ function validateStaticSchemaSuppression({
       fail(`${descriptor.caseId} emits ${diagnostic.code} without a complete declaration census`);
     }
   }
+}
+
+function hasDuplicate(values) {
+  return new Set(values).size !== values.length;
+}
+
+function declarationDiagnosticHasValidSource(diagnostic, declarations) {
+  const implementationId = diagnostic.coordinate.implementationId;
+  if (diagnostic.code === "declaration.duplicate-implementation") {
+    return declarations.filter(declaration => (
+      declaration.implementationId === implementationId
+    )).length > 1;
+  }
+  const declaration = declarations.find(candidate => (
+    candidate.implementationId === implementationId
+  ));
+  if (declaration === undefined) return false;
+  if (diagnostic.code === "declaration.duplicate-capability") {
+    return hasDuplicate(declaration.provides.map(value => value.capabilityId));
+  }
+  if (diagnostic.code === "declaration.duplicate-slot") {
+    return hasDuplicate(declaration.slots.map(value => value.slotId));
+  }
+  return false;
+}
+
+function bindingDiagnosticHasValidSource(diagnostic, declarations) {
+  if (diagnostic.code === "binding.unknown-consumer") return true;
+  const consumer = declarations.find(declaration => (
+    declaration.implementationId === diagnostic.coordinate.implementationId
+  ));
+  if (consumer === undefined) return false;
+
+  const slotId = diagnostic.coordinate.slotId;
+  const slot = typeof slotId === "string"
+    ? consumer.slots.find(candidate => candidate.slotId === slotId)
+    : undefined;
+  if (diagnostic.code === "binding.unknown-slot") return slot === undefined;
+  if (typeof slotId === "string" && slot === undefined) return false;
+
+  if ([
+    "binding.capability-missing",
+    "binding.compatibility-mismatch",
+    "binding.provider-not-selected",
+  ].includes(diagnostic.code)) {
+    return declarations.some(declaration => (
+      declaration.implementationId === diagnostic.coordinate.providerImplementationId
+    ));
+  }
+  return true;
 }
 
 function structuralPathFromJsonPointer(value, pointer) {

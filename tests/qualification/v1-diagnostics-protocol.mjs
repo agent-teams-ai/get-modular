@@ -463,7 +463,45 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     contract,
     catalog,
     ...validators,
-  }), /schema-invalid declaration/u);
+  }), /schema-valid declaration source/u);
+
+  const invalidDeclarationWithoutIdentity = clone(schemaInvalidSemanticCascade);
+  delete invalidDeclarationWithoutIdentity.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.independent-declaration-and-graph.v1"
+  )).input.declarations[2].implementationId;
+  assert.throws(() => validateStaticConformanceProtocol({
+    protocol: invalidDeclarationWithoutIdentity,
+    contract,
+    catalog,
+    ...validators,
+  }), /schema-valid declaration source/u);
+
+  const collidingInvalidDeclaration = clone(protocol);
+  const collisionCase = collidingInvalidDeclaration.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.independent-declaration-and-graph.v1"
+  ));
+  collisionCase.input.declarations.push({
+    ...clone(collisionCase.input.declarations[2]),
+    schemaVersion: 2,
+    provides: [],
+  });
+  collisionCase.expected.diagnostics.unshift({
+    code: "schema.unsupported-version",
+    phase: "schema",
+    path: [
+      { kind: "field", value: "declarations" },
+      { kind: "index", value: 3 },
+      { kind: "field", value: "schemaVersion" },
+    ],
+    coordinate: {},
+    details: { reason: "unsupported-version" },
+  });
+  assert.doesNotThrow(() => validateStaticConformanceProtocol({
+    protocol: collidingInvalidDeclaration,
+    contract,
+    catalog,
+    ...validators,
+  }));
 
   const incompleteDeclarationCensus = clone(protocol);
   const censusCase = incompleteDeclarationCensus.cases.find(descriptor => (
@@ -501,6 +539,30 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     ...validators,
   }), /complete declaration census/u);
 
+  const rawDecodeIncompleteCensus = clone(protocol);
+  const rawCensusCase = rawDecodeIncompleteCensus.cases.find(descriptor => (
+    descriptor.caseId === "diag.raw.multi-document-independent.v1"
+  ));
+  const rawProfile = JSON.parse(rawCensusCase.input.profileUtf8);
+  rawProfile.selections[0].implementationId = "example/root/missing";
+  rawCensusCase.input.profileUtf8 = JSON.stringify(rawProfile);
+  rawCensusCase.expected.diagnostics.push({
+    code: "profile.unknown-implementation",
+    phase: "profile",
+    path: [{ kind: "field", value: "profile" }],
+    coordinate: {
+      moduleId: "example/root",
+      implementationId: "example/root/missing",
+    },
+    details: { reason: "unknown" },
+  });
+  assert.throws(() => validateStaticConformanceProtocol({
+    protocol: rawDecodeIncompleteCensus,
+    contract,
+    catalog,
+    ...validators,
+  }), /complete declaration census/u);
+
   const schemaInvalidBindingConsumer = clone(protocol);
   const bindingCase = schemaInvalidBindingConsumer.cases.find(descriptor => (
     descriptor.caseId === "diag.object.invalid-binding-suppresses-unreachable.v1"
@@ -522,7 +584,78 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     contract,
     catalog,
     ...validators,
-  }), /complete declaration census/u);
+  }), /schema-valid binding facts/u);
+
+  const invalidBindingCardinality = clone(protocol);
+  const cardinalityCase = invalidBindingCardinality.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.invalid-binding-suppresses-unreachable.v1"
+  ));
+  cardinalityCase.input.declarations[0].schemaVersion = 2;
+  cardinalityCase.input.profile.bindings[0].providerImplementationIds = [];
+  cardinalityCase.expected.diagnostics = [
+    {
+      code: "schema.unsupported-version",
+      phase: "schema",
+      path: [
+        { kind: "field", value: "declarations" },
+        { kind: "index", value: 0 },
+        { kind: "field", value: "schemaVersion" },
+      ],
+      coordinate: {},
+      details: { reason: "unsupported-version" },
+    },
+    {
+      code: "binding.cardinality",
+      phase: "binding",
+      path: [],
+      coordinate: { implementationId: "example/a/default", slotId: "b" },
+      details: { expectedCardinality: "required", actualCardinality: 0 },
+    },
+  ];
+  assert.throws(() => validateStaticConformanceProtocol({
+    protocol: invalidBindingCardinality,
+    contract,
+    catalog,
+    ...validators,
+  }), /schema-valid binding facts/u);
+
+  const independentBindingCardinality = clone(protocol);
+  const independentCardinalityCase = independentBindingCardinality.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.invalid-binding-suppresses-unreachable.v1"
+  ));
+  independentCardinalityCase.input.declarations.push({
+    ...clone(independentCardinalityCase.input.declarations[1]),
+    schemaVersion: 2,
+    moduleId: "example/unrelated",
+    implementationId: "example/unrelated/default",
+  });
+  independentCardinalityCase.input.profile.bindings[0].providerImplementationIds = [];
+  independentCardinalityCase.expected.diagnostics = [
+    {
+      code: "schema.unsupported-version",
+      phase: "schema",
+      path: [
+        { kind: "field", value: "declarations" },
+        { kind: "index", value: 2 },
+        { kind: "field", value: "schemaVersion" },
+      ],
+      coordinate: {},
+      details: { reason: "unsupported-version" },
+    },
+    {
+      code: "binding.cardinality",
+      phase: "binding",
+      path: [],
+      coordinate: { implementationId: "example/a/default", slotId: "b" },
+      details: { expectedCardinality: "required", actualCardinality: 0 },
+    },
+  ];
+  assert.doesNotThrow(() => validateStaticConformanceProtocol({
+    protocol: independentBindingCardinality,
+    contract,
+    catalog,
+    ...validators,
+  }));
 
   const reservedStaticResult = clone(protocol);
   reservedStaticResult.cases[0].expected.diagnostics[0] = {
