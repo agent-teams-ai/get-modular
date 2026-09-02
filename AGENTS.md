@@ -5,11 +5,12 @@ Read these sources before changing this repository:
 1. [System boundary](docs/architecture/system-boundary.md)
 2. [Current implementation contract](docs/architecture/current-contract.md)
 3. [MVP implementation roadmap](docs/architecture/mvp-implementation-roadmap.md)
-4. [Feature Module Standard profile](docs/architecture/feature-module-standard.md)
-5. [Accepted decisions](docs/decisions/README.md)
-6. [Open decisions](docs/open-decisions/README.md)
-7. [Normative requirements](docs/requirements/module-system-v1.md)
-8. [Provenance map](docs/provenance/source-map.yaml)
+4. [Self-composition implementation guide](docs/architecture/self-composition-implementation-guide.md)
+5. [Feature Module Standard profile](docs/architecture/feature-module-standard.md)
+6. [Accepted decisions](docs/decisions/README.md)
+7. [Open decisions](docs/open-decisions/README.md)
+8. [Normative requirements](docs/requirements/module-system-v1.md)
+9. [Provenance map](docs/provenance/source-map.yaml)
 
 Use `pnpm check:changed` while editing, `pnpm check:fast` before handoff, and
 `pnpm check` as the complete gate.

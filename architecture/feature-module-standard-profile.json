@@ -40,6 +40,10 @@
       {
         "id": "repository-dependency-policy",
         "authority": "architecture/foundation/dependency-declarations.yaml"
+      },
+      {
+        "id": "internal-self-composition",
+        "authority": "docs/architecture/self-composition-implementation-guide.md"
       }
     ],
     "deviations": [],
