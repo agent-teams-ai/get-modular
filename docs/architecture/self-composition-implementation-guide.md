@@ -336,7 +336,8 @@ Rules:
 - `factory.ts` exports one pure `create<Feature>(deps)` function. It receives
   closed typed dependencies, returns the provided port, keeps no module-level
   state, and performs no discovery.
-- The facade imports only port types of its neighbors. It never imports a
+- The facade imports only port types and identity constants of its
+  neighbors. It never imports a
   concrete implementation, a barrel, a registry, or a resolver.
 - No feature exports a barrel over its whole directory. The module's curated
   public surface is `packages/core/src/index.ts` alone once it exists in M3;
@@ -422,7 +423,7 @@ handwritten stage0 root `packages/core/self-composition/stage0.ts`, in
 `dependencyOrder`, or in its qualification counterpart
 `self-composition/stage0.variant.ts`, an equally short literal root that binds
 the witness variant and that only the qualification build sees, and nowhere
-else outside `tests/`. That file is the "checked internal graph"
+else outside `tests/`. The stage0 root is the "checked internal graph"
 checkpoint that ADR-0008 allows as an explicit implementation checkpoint and
 forbids as a release: a test compiles the own declarations and the own profile
 through the direct subject's accepted entry points and proves that the plan's
@@ -446,13 +447,15 @@ subject therefore has its own entry file,
 re-exports exactly the accepted compiler entry points bound to the stage0
 facade plus the authoring helpers and public types from
 `features/authoring/internal.ts`, with the same names and types that
-`src/index.ts` exports from M3, and nothing else. It is built only by
-`tsconfig.stage0.json`, is never packed into the distributed archive, and is
+`src/index.ts` exports from M3, and nothing else. It is built by
+`tsconfig.stage0.json` and, for the variant subjects, by
+`tsconfig.qualification.json`, never by the production `tsconfig.json`; it
+is never packed into the distributed archive, and it is
 the module against which the M1 harness, the checkpoint A test, and the direct
 half of every dual-subject gate run. The variant direct subject has the same
 shape: `self-composition/stage0-entry.variant.ts` imports
 `stage0.variant.ts` and re-exports the same names, and only the qualification
-build sees it. Until M3 it is therefore the only curated
+build sees it. Until M3 `stage0-entry.ts` is therefore the only curated
 entry point of the package, and it exists for qualification alone; the curated
 public entry point `src/index.ts` appears together with the generated root.
 Both subjects expose the same accepted entry points, so the same independent
@@ -472,8 +475,10 @@ packages/core/
     own-profile.ts             imports every feature's declaration constant and defines the own profile as data
     stage0.variant.ts          handwritten literal root bound to the witness variant, qualification only
     stage0-entry.variant.ts    variant direct subject entry, qualification only
+    stage1-entry.variant.ts    variant generated subject entry: imports the variant generated root, qualification only
     own-profile.variant.ts     the variant profile as data, qualification only
     allowlist.ts               build-time map from declaration constants to typed import handles, M3
+    allowlist.variant.ts       qualification allowlist: imports allowlist.ts and adds the witness-variant entry, qualification only
     emit.ts                    the finite emitter and its input manifest, M3
   src/
     features/
@@ -503,8 +508,9 @@ packages/core/
                                outDir dist-qualification
 ```
 
-The three output directories and the two generated files are listed in
-`.gitignore` and never committed.
+The first private package must list the three output directories and the two
+generated files in `.gitignore`; today the root `.gitignore` lists only
+`dist/`. None of them is ever committed.
 
 The direct subject and the generated subject differ in the file that
 constructs the facade, the entry file that re-exports it, the build
@@ -541,9 +547,15 @@ production build as a fatal error. The qualification build writes only to
 production root and output are isolated from every variant run, as ADR-0008
 requires for stage roots. Both variant subjects, the direct one built from
 `stage0.variant.ts` through `stage0-entry.variant.ts` and the generated one
-built from `stage1.variant.ts`, come from this one configuration; the layout
+built from `stage1.variant.ts` through `self-composition/stage1-entry.variant.ts`,
+which imports `../src/composition/generated/stage1.variant.js` and re-exports
+the same accepted entry points, come from this one configuration; the layout
 of `dist-qualification/` differs from `dist/` and takes no part in the W0/W1
-comparison, which compares emitted wiring bytes.
+comparison, which compares emitted wiring bytes. The two variant subjects
+share that one output root because they are witness subjects, not promotion
+subjects; the separate output, cache and incremental roots that ADR-0008
+requires for stage0 and stage1 apply to the direct and generated promotion
+subjects, which keep `dist-stage0/` and `dist/` isolated.
 
 #### Packing the qualification subjects
 
@@ -557,11 +569,13 @@ results live there, while `packages/core/tests/` holds only feature tests and
 the witness variant), never from the package manifest. The tool copies the
 built output into a disposable staging directory created under the
 operating-system temporary root, outside the repository tree, and writes there
-a candidate manifest whose export map is the one proposed by ADR-0012, which
-OD-004 and ADR-0012 permit for a private, non-publishable qualification
-subject. The staging must be outside the tree because the governance gate
-scans the working tree and rejects any manifest with a publication field
-inside it; only the hash records of the packing results come back under
+a candidate manifest, which OD-004 and ADR-0012 permit for a private,
+non-publishable qualification subject; for the generated candidate the export
+map is the one proposed by ADR-0012, and the direct candidate manifest points
+its targets at the stage0-entry build. The staging must be outside the tree
+because the governance gate scans the working tree and rejects any package
+manifest outside `packages/` and any manifest with a publication field that is
+not inside a private accepted package; only the hash records of the packing results come back under
 `tests/qualification/`. The direct staging holds `dist-stage0/src/features/**`,
 `dist-stage0/self-composition/stage0.js` and `stage0-entry.js` with their
 `.d.ts` files, and nothing else from `self-composition/`; its manifest points
@@ -593,7 +607,10 @@ admitted by the governance gate; the Foundation source-dependency policy gives
 it its own boundary that may import features and their declarations but that
 no feature may import. The same policy records the three allowed
 cross-feature edges, a provider's `ports.ts`, a provider's identity constants,
-and a library owner's `internal.ts`.
+and a library owner's `internal.ts`. The qualification boundary additionally
+allows the single edge from `src/composition/generated/stage1.variant.ts` to
+`tests/features/**` inside the qualification build only; the production
+boundary has no such edge.
 
 ### Feature Module Standard classification
 
@@ -633,8 +650,12 @@ The emitter is finite and private. Its inputs are:
   it never enters `src`, it never repeats identity strings, and it never
   derives a path from an identity. It may hold entries for implementations
   that the own profile does not select, such as the adapter admitted after
-  ADR-0010; the qualification build adds the witness-variant entry on top of
-  it.
+  ADR-0010. The witness-variant entry lives in
+  `self-composition/allowlist.variant.ts`, which imports the base allowlist and
+  adds the one entry that points into `tests/`; only the qualification build
+  sees that file, so neither the stage0 build nor the production build pulls
+  `tests/` into its program, and `emit.ts` receives the allowlist as an
+  argument instead of importing one.
 
 Its output is one ECMAScript module with these properties:
 
@@ -709,7 +730,8 @@ instruments production code:
    `canonicalizer` slots to it, whose canonical bytes carry a fixed prefix.
    The variant direct subject is `stage0.variant.ts` through
    `stage0-entry.variant.ts`; the variant generated subject is
-   `stage1.variant.ts` emitted from the variant plan. The plan digest MUST
+   `stage1.variant.ts` emitted from the variant plan and exposed through
+   `stage1-entry.variant.ts`. The plan digest MUST
    change between the two profiles in both subjects and MUST be equal across
    subjects for the same profile.
 
