@@ -95,8 +95,9 @@ alone.
 Publication of a `0.x` archive as `not-claimed` does not require the six
 runtime cases; the first conformance claim does (ADR-0007, sections on
 publication and runtime coverage). The bootstrap sequence is therefore: record the
-product-owner start decision required by ADR-0015 in the first private package
-pull request, materialize private `packages/core`, reach M1 on Node, prepare the diagnostic generation 2
+product-owner start decision required by ADR-0015 in this bootstrap sequence or
+in a decision record and reference it from the first private package pull
+request, materialize private `packages/core`, reach M1 on Node, prepare the diagnostic generation 2
 transaction in parallel with M1, then proceed to M2 and M3 in that order.
 
 ### Roadmap qualification language

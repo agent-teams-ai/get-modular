@@ -42,8 +42,9 @@ enter a production compiler. Reading open decisions as blockers of every
 production source file therefore created a cycle: the subject needed to close
 or operationalize a decision could only come from source that the decision
 forbade. The only escape would have been to write the compiler first as a test
-fixture and then again under `packages/`, which the roadmap and ADR-0008 both
-reject.
+fixture and then again under `packages/`, doubling the implementation and
+mixing research fixtures with production-like code, which the roadmap's
+fixture-separation rule discourages.
 
 This identifier is repository-local. The "ADR-0015" cited by ADR-0001 and the
 bootstrap review belongs to the Extension Foundation repository and is a
@@ -82,11 +83,14 @@ While any open decision remains active:
   under its historical `implementationBlockers` key; the key name is lineage
   only and the gate rejects any mismatch with the governed catalog.
 
-Private source admitted under this decision must not implement semantics that
-an active open decision still owns. OD-004, OD-005, and OD-006 remain active
-and continue to block the public package surface, both carrier adapters, raw
-decoding exposure, and duplicate binding-record behavior exactly as the current
-contract describes.
+Private source admitted under this decision must not expose or claim semantics
+that an active open decision still owns. Candidate entrypoints or fixtures that
+exist only to produce acceptance evidence for such a decision are not exposed
+semantics; they stay out of every public surface and every claim until the
+decision is accepted. OD-004, OD-005, and OD-006 remain active and continue to
+block the public package surface, both carrier adapters, raw decoding exposure,
+and duplicate binding-record behavior exactly as the current contract
+describes.
 
 ### Architecture and start condition
 
@@ -124,16 +128,17 @@ qualification ledgers, or conformance requirements of ADR-0007.
 - Accepted text, the open-decision index, the roadmap, and the executable gate
   agree on what an open decision blocks.
 - The gate no longer proves by construction that no source exists; review must
-  confirm that admitted private source stays outside the semantics owned by an
-  active open decision.
+  confirm that admitted private source neither exposes nor claims semantics
+  owned by an active open decision.
 - Publication and conformance claims remain mechanically impossible until the
   active decisions are resolved.
 
 ## Rejected alternatives
 
 - Keep the compiler as a fixture under `tests/` until all three decisions are
-  accepted. This writes the compiler twice and violates the roadmap rule that
-  research fixtures and production-like code never share an unmarked directory.
+  accepted. This writes the compiler twice and works against the roadmap rule
+  that research fixtures and production-like code never share an unmarked
+  directory.
 - Accept ADR-0012, ADR-0013, and ADR-0014 before any source exists. Their
   acceptance evidence requires an executable subject, so this ordering cannot
   terminate.

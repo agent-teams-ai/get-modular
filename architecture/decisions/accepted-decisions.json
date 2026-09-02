@@ -45,7 +45,7 @@
     {
       "id": "ADR-0015",
       "path": "docs/decisions/0015-block-publication-surfaces-and-runtime-claims-while-decisions-stay-open.md",
-      "immutableDigest": "sha256:a3a8f9d7a34859d16960a866a841e04d3020610b8279404ad8283536e731d0f8"
+      "immutableDigest": "sha256:cda4d6eaff1bf1fdbcb6d591e54e22537284cd67cdbdc1fce2742620de76b4d7"
     }
   ]
 }

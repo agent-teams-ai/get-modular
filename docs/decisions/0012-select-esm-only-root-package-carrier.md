@@ -109,8 +109,8 @@ ESM context (`"type": "module"` or `.mts`), `nodenext` in a CommonJS context
 (`.cts` or `"type": "commonjs"`) on TypeScript 5.8 or later, where the
 compiler models `require(esm)`, and `bundler`. Unsupported and therefore
 negative cases are `node16` in a CommonJS context, which reports TS1479 because
-that mode predates `require(esm)`, `node10`, which TypeScript 7 removed, and
-`classic`. Node 24 `require()` of the package root resolves the sibling
+that mode predates `require(esm)`, and `node10` and `classic`, which
+TypeScript 7 removed. Node 24 `require()` of the package root resolves the sibling
 `default` target and returns the same module instance as `import`; CommonJS
 hosts whose module loader delegates to Node's `require(esm)` therefore load
 Core directly. Hosts with their own CommonJS runtime, such as Jest without
@@ -156,9 +156,9 @@ against the private non-publishable qualification subject covering:
   never an alternate build;
 - a distinct Node ESM `import` `--conditions=types` negative case proving that
   the declaration target is selected and runtime loading fails before package
-  JavaScript evaluation, plus the matching `require()` case proving that the
-  sibling `default` target still loads; both are excluded from same-target
-  assertions;
+  JavaScript evaluation, asserting the exact pre-evaluation failure code rather
+  than any failure, plus the matching `require()` case proving that the sibling
+  `default` target still loads; both are excluded from same-target assertions;
 - browser window, dedicated worker, and required Electron resolution through
   the public root;
 - declaration and archive leakage mutations;

@@ -336,10 +336,11 @@ chronology does not activate the proposal.
 Acceptance requires a successor diagnostic contract, snapshot set, closed case
 manifest, recipe manifest, mutation manifest, checker, results, and immutable
 qualification ledger. Following ADR-0007, which was itself accepted on static
-artifacts, those successor artifacts plus development-only qualification
-tooling under `tests/qualification`, the oracle, executed on Node are
-sufficient to accept this decision. That tooling meters and classifies fixtures; it is not a compiler
-fixture and does not implement composition semantics. The six-case runtime
+artifacts, those successor artifacts plus the development-only qualification
+tooling under `tests/qualification` (the oracle), executed on Node, are
+sufficient to accept this decision. That tooling meters and classifies
+fixtures; it is not a compiler fixture and does not implement composition
+semantics. The six-case runtime
 matrix is the conformance-claim and publication gate, not an acceptance
 prerequisite. The candidate entrypoints that execute the case inventory live in
 the private `packages/core` subject admitted by the governance gate; it is not

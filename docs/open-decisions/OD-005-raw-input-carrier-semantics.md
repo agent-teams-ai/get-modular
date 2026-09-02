@@ -3,7 +3,7 @@ id: OD-005
 type: open-decision
 status: open
 owner: architecture
-summary: Closes trusted-object admission and raw byte-carrier snapshot behavior before compiler implementation.
+summary: Closes trusted-object admission and raw byte-carrier snapshot behavior before raw-input exposure.
 related:
   - ADR-0006
   - ADR-0007
