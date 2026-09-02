@@ -13,6 +13,7 @@ import {
   ACCEPTED_AUTHORITY_LEDGER_PATH,
   OPEN_DECISION_HISTORY_PATH,
   governanceDocumentCatalog,
+  productionArtifactSymlinkPaths,
   productionArtifactPaths,
   qualificationClaimAnchor,
   inspectTrackedNavigationFile,
@@ -1231,6 +1232,25 @@ test("production artifact discovery rejects staged artifacts hidden from the wor
       productionArtifactPaths(fixture, snapshot),
       /TRACKED_FILE_CUSTODY_FAILED: production artifact.*\(missing\)/u,
     );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("production artifact discovery inventories staged symlinks hidden from the working tree", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-hidden-symlink-"));
+  try {
+    await initFixtureRepository(fixture);
+    await mkdir(join(fixture, "packages", "core"), { recursive: true });
+    await writeFile(join(fixture, "package.json"), "{\"private\":true}\n");
+    const linkPath = "packages/core/hidden-link";
+    await symlink("outside", join(fixture, linkPath));
+    await git(fixture, "add", "--", "package.json", linkPath);
+    const snapshot = await captureGitIndexSnapshot(fixture);
+    await rm(join(fixture, linkPath));
+
+    assert.deepEqual(await productionArtifactPaths(fixture, snapshot), [linkPath]);
+    assert.deepEqual(await productionArtifactSymlinkPaths(fixture, snapshot), [linkPath]);
   } finally {
     await rm(fixture, { recursive: true, force: true });
   }

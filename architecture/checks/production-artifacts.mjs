@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 
 import {
   indexSnapshotPaths,
+  indexSnapshotSymlinkPaths,
   readIndexSnapshotFile,
 } from "./tracked-file-custody.mjs";
 
@@ -94,8 +95,14 @@ export function productionArtifactsOutsidePackages(productionArtifacts) {
   return productionArtifacts.filter(path => !path.startsWith("packages/"));
 }
 
-export async function productionArtifactSymlinkPaths(repositoryRoot = process.cwd()) {
-  return (await symlinksBelow(repositoryRoot, "packages")).sort(compareStrings);
+export async function productionArtifactSymlinkPaths(repositoryRoot = process.cwd(), indexSnapshot) {
+  const paths = new Set(await symlinksBelow(repositoryRoot, "packages"));
+  if (indexSnapshot) {
+    for (const path of indexSnapshotSymlinkPaths(indexSnapshot)) {
+      if (path.startsWith("packages/")) paths.add(path);
+    }
+  }
+  return [...paths].sort(compareStrings);
 }
 
 export async function productionArtifactPaths(repositoryRoot = process.cwd(), indexSnapshot) {
@@ -127,6 +134,7 @@ export async function productionArtifactPaths(repositoryRoot = process.cwd(), in
   }
 
   if (indexSnapshot) {
+    for (const path of indexSnapshotSymlinkPaths(indexSnapshot)) artifacts.add(path);
     for (const path of indexSnapshotPaths(indexSnapshot)) {
       if (!isTrackedProductionArtifactPath(path)) continue;
       await readIndexSnapshotFile(indexSnapshot, path, "production artifact");

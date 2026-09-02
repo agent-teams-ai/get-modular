@@ -10,6 +10,7 @@ const SAFE_RELATIVE_PATH = /^(?![\\/])(?!.*(?:^|[\\/])\.\.(?:[\\/]|$))[^\\]+$/u;
 const WINDOWS_DEVICE_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.[^/]*)?$/iu;
 const GIT_OBJECT_ID = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u;
 const REGULAR_FILE_MODE = /^(?:100644|100755)$/u;
+const SYMBOLIC_LINK_MODE = "120000";
 const MAX_GIT_OUTPUT_BYTES = 16 * 1024 * 1024;
 const INDEX_SNAPSHOT_VERSION = 1;
 const EMPTY_BLOB_OIDS = new Set([
@@ -141,9 +142,11 @@ function parseExactIndexEntry(output, relativePath) {
   if (/^0+$/u.test(oid) || (flags & 0x20000000) !== 0) {
     return { kind: "intent-to-add" };
   }
-  if (stage !== "0" || !REGULAR_FILE_MODE.test(mode)) {
+  if (stage !== "0") {
     return { kind: "non-regular" };
   }
+  if (mode === SYMBOLIC_LINK_MODE) return { kind: "symlink", mode, oid };
+  if (!REGULAR_FILE_MODE.test(mode)) return { kind: "non-regular" };
   return { kind: "regular", mode, oid };
 }
 
@@ -190,7 +193,11 @@ function parseIndexSnapshot(output) {
       entry = { kind: "invalid-index-entry" };
     } else if (/^0+$/u.test(oid) || EMPTY_BLOB_OIDS.has(oid)) {
       entry = { kind: "intent-to-add" };
-    } else if (stage !== "0" || !REGULAR_FILE_MODE.test(mode)) {
+    } else if (stage !== "0") {
+      entry = { kind: "non-regular" };
+    } else if (mode === SYMBOLIC_LINK_MODE) {
+      entry = { kind: "symlink", mode, oid };
+    } else if (!REGULAR_FILE_MODE.test(mode)) {
       entry = { kind: "non-regular" };
     } else {
       entry = { kind: "regular", mode, oid };
@@ -239,6 +246,11 @@ export function indexSnapshotPaths(snapshot) {
     throw new TypeError("invalid Git index snapshot");
   }
   return [...snapshot.entries.keys()];
+}
+
+export function indexSnapshotSymlinkPaths(snapshot) {
+  return indexSnapshotPaths(snapshot)
+    .filter(path => snapshot.entries.get(path)?.kind === "symlink");
 }
 
 export async function assertGitIndexSnapshotCurrent(snapshot) {

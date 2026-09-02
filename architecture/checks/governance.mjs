@@ -661,7 +661,7 @@ async function main() {
     traceability,
   });
   const productionArtifacts = await productionArtifactPaths(root, snapshot);
-  const productionArtifactSymlinks = await productionArtifactSymlinkPaths(root);
+  const productionArtifactSymlinks = await productionArtifactSymlinkPaths(root, snapshot);
   const misplacedArtifacts = productionArtifactsOutsidePackages(productionArtifacts);
   if (misplacedArtifacts.length > 0) {
     fail(`production artifacts must be below packages: ${misplacedArtifacts.join(", ")}`);

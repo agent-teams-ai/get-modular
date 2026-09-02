@@ -227,10 +227,10 @@ the evidence and review affected by that change.
    identifiers. Keep ADR-0009 through ADR-0015 as conditional roadmap choices
    until accepted; only accepted decisions may add decision-specific mutation
    fixtures or checkpoint requirements.
-10. Verify that the existing `qualification:resource-profile` executable
-    generator/oracle proof remains wired into the complete repository gate. A
-    declared but orphaned script is not Phase 0 evidence, and its historical
-    filename does not create a versioned public command.
+10. Verify that the executable resource-profile generator/oracle proof remains
+    covered by `contracts:test` in the complete repository gate. The separate
+    `qualification:resource-profile` command invokes the same proof for focused
+    runs; its historical filename does not create a versioned public command.
 
 ### Phase 0 exit criteria
 

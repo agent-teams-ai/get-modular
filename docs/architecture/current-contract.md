@@ -82,8 +82,10 @@ including separate declaration and profile raw-byte limits and
 `jsonValueOccurrences`.
 
 The complete repository gate runs the effective resource qualification through
-the unversioned command `pnpm qualification:resource-profile`. The test and
-evidence filenames retain their historical names for custody and traceability.
+`contracts:test`, which invokes the same executable proof as the separately
+available unversioned command `pnpm qualification:resource-profile`. The test
+and evidence filenames retain their historical names for custody and
+traceability.
 
 ## Implementation boundary
 
