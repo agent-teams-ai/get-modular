@@ -586,6 +586,19 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
   ];
   assert.doesNotThrow(() => validate(schemaCollectorLimit));
 
+  const semanticCollectorLimit = clone(schemaCollectorLimit);
+  const semanticCollectorCase = semanticCollectorLimit.cases.find(descriptor => (
+    descriptor.caseId === "diag.raw.hostile-profile-key.v1"
+  ));
+  const duplicateCapabilityDeclaration = protocol.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.independent-declaration-and-graph.v1"
+  )).input.declarations[2];
+  semanticCollectorCase.input.declarationsUtf8.push(
+    JSON.stringify(duplicateCapabilityDeclaration),
+  );
+  semanticCollectorCase.expected.diagnostics.at(-1).details.omitted = 3;
+  assert.doesNotThrow(() => validate(semanticCollectorLimit));
+
   const contextualDepth = clone(protocol);
   const contextualDepthCase = contextualDepth.cases.find(descriptor => (
     descriptor.caseId === "diag.raw.hostile-profile-key.v1"

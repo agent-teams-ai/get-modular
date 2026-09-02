@@ -1266,6 +1266,15 @@ function validateStaticRawDecodeSuppression(
         collector.add(diagnostic);
       }
     }
+    for (const diagnostic of staticIndependentSemanticDiagnostics({
+      descriptor,
+      documents: decodedDocuments,
+      validateModuleDeclaration,
+      validateCompositionProfile,
+      maximumPathSegments,
+    })) {
+      collector.add(diagnostic);
+    }
     if (collector.count() <= limits.diagnostics) {
       fail(`${descriptor.caseId} claims truncation without enough executable candidates`);
     }
@@ -1387,6 +1396,103 @@ function staticSchemaDiagnostics(document, validator) {
   return [...new Map(candidates.map(candidate => (
     [canonicalize(candidate), candidate]
   ))).values()];
+}
+
+function staticIndependentSemanticDiagnostics({
+  descriptor,
+  documents,
+  validateModuleDeclaration,
+  validateCompositionProfile,
+  maximumPathSegments,
+}) {
+  const diagnostics = [];
+  const validDeclarations = [];
+  let declarationCensusComplete = true;
+  for (const document of documents) {
+    if (document.documentType !== "module-declaration") continue;
+    if (!validateModuleDeclaration(document.value)) {
+      declarationCensusComplete = false;
+      continue;
+    }
+    validDeclarations.push(document);
+    const prefix = descriptor.entryPoint === "compileCompositionJsonV1"
+      ? document.prefix
+      : [];
+    for (const [field, code, coordinateField] of [
+      ["provides", "declaration.duplicate-capability", undefined],
+      ["slots", "declaration.duplicate-slot", "slotId"],
+    ]) {
+      const seen = new Set();
+      for (const [index, member] of document.value[field].entries()) {
+        const identity = field === "provides" ? member.capabilityId : member.slotId;
+        if (seen.has(identity)) {
+          diagnostics.push({
+            code,
+            phase: "declaration",
+            path: [
+              ...prefix,
+              { kind: "field", value: field },
+              { kind: "index", value: index },
+            ].slice(0, maximumPathSegments),
+            coordinate: {
+              implementationId: document.value.implementationId,
+              ...(coordinateField === undefined ? {} : { [coordinateField]: identity }),
+            },
+            details: { reason: "duplicate" },
+          });
+        }
+        seen.add(identity);
+      }
+    }
+  }
+  if (declarationCensusComplete) {
+    const groups = new Map();
+    for (const document of validDeclarations) {
+      const id = document.value.implementationId;
+      groups.set(id, (groups.get(id) ?? 0) + 1);
+    }
+    for (const [implementationId, count] of groups) {
+      if (count > 1) {
+        diagnostics.push({
+          code: "declaration.duplicate-implementation",
+          phase: "declaration",
+          path: [],
+          coordinate: { implementationId },
+          details: { reason: "duplicate" },
+        });
+      }
+    }
+  }
+  const profileDocument = documents.find(document => (
+    document.documentType === "composition-profile"
+  ));
+  if (profileDocument !== undefined && validateCompositionProfile(profileDocument.value)) {
+    const prefix = descriptor.entryPoint === "compileCompositionJsonV1"
+      ? profileDocument.prefix
+      : [];
+    for (const [values, code] of [
+      [profileDocument.value.roots, "profile.duplicate-root"],
+      [profileDocument.value.selections.map(selection => selection.moduleId),
+        "profile.duplicate-selection"],
+    ]) {
+      const emitted = new Set();
+      const seen = new Set();
+      for (const moduleId of values) {
+        if (seen.has(moduleId) && !emitted.has(moduleId)) {
+          diagnostics.push({
+            code,
+            phase: "profile",
+            path: prefix,
+            coordinate: { moduleId },
+            details: { reason: "duplicate" },
+          });
+          emitted.add(moduleId);
+        }
+        seen.add(moduleId);
+      }
+    }
+  }
+  return diagnostics;
 }
 
 function staticIdentityInvalidPaths(document, validator) {
