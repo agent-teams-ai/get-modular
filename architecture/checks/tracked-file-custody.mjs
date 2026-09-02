@@ -13,7 +13,10 @@ const REGULAR_FILE_MODE = /^(?:100644|100755)$/u;
 const SYMBOLIC_LINK_MODE = "120000";
 const MAX_GIT_OUTPUT_BYTES = 16 * 1024 * 1024;
 const INDEX_SNAPSHOT_VERSION = 1;
-const INTENT_TO_ADD_FLAG = 0x20000000;
+const EMPTY_BLOB_OIDS = new Set([
+  "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+  "473a0f4c3be8a93681a267e3b1e9a7dcda1185436fe141f7749120a303721813",
+]);
 
 // Git must observe only the repository below repositoryRoot: no GIT_DIR,
 // GIT_WORK_TREE, GIT_INDEX_FILE, replace refs, or user/system configuration.
@@ -113,51 +116,16 @@ async function assertRepositoryToplevel(repositoryRoot) {
   }
 }
 
-function classifyIndexEntry({ mode, oid, stage, flags }) {
-  const identity = { mode, oid, stage, flags };
-  if (!GIT_OBJECT_ID.test(oid) || !/^[0-3]$/u.test(stage)) {
-    return { kind: "invalid-index-entry", ...identity };
-  }
-  if (stage !== "0") return { kind: "non-regular", ...identity };
-  if (mode === SYMBOLIC_LINK_MODE) return { kind: "symlink", ...identity };
-  const numericFlags = Number.parseInt(flags, 16);
-  if (/^0+$/u.test(oid) || (numericFlags & INTENT_TO_ADD_FLAG) !== 0) {
-    return { kind: "intent-to-add", ...identity };
-  }
-  if (!REGULAR_FILE_MODE.test(mode)) return { kind: "non-regular", ...identity };
-  return { kind: "regular", ...identity };
-}
-
-function parseExactIndexEntry(output, relativePath) {
+async function exactIndexEntry(relativePath, repositoryRoot) {
   try {
-    const entries = parseIndexSnapshot(output);
-    if (entries.size !== 1) return { kind: "invalid-index-entry" };
-    return entries.get(relativePath) ?? { kind: "invalid-index-entry" };
+    const snapshot = await captureGitIndexSnapshot(repositoryRoot);
+    return snapshot.entries.get(relativePath) ?? { kind: "untracked" };
   } catch {
     return { kind: "invalid-index-entry" };
   }
 }
 
-async function exactIndexEntry(relativePath, repositoryRoot) {
-  let output;
-  try {
-    ({ stdout: output } = await runGit(repositoryRoot, [
-      "ls-files",
-      "--error-unmatch",
-      "--stage",
-      "--debug",
-      "-z",
-      "--",
-      relativePath,
-    ]));
-  } catch (error) {
-    if (error?.code === 1) return { kind: "untracked" };
-    throw error;
-  }
-  return parseExactIndexEntry(output, relativePath);
-}
-
-function parseIndexSnapshot(output) {
+function parseStagedIndexEntries(output) {
   if (!Buffer.isBuffer(output)) throw new TypeError("Git index snapshot must be bytes");
   const entries = new Map();
   let offset = 0;
@@ -175,28 +143,113 @@ function parseIndexSnapshot(output) {
       throw new Error("Git index snapshot contains an unsafe or non-UTF-8 path");
     }
     const [, mode, oid, stage] = match;
-    const debugStart = terminator + 1;
-    const sizeMarker = output.indexOf(Buffer.from("\n  size: ", "ascii"), debugStart);
-    const nextTerminator = output.indexOf(0, debugStart);
-    if (sizeMarker < 0 || (nextTerminator >= 0 && nextTerminator < sizeMarker)) {
-      throw new Error("invalid Git index snapshot debug entry");
+    offset = terminator + 1;
+    if (!GIT_OBJECT_ID.test(oid) || !/^[0-3]$/u.test(stage)) {
+      throw new Error("invalid Git index snapshot identity");
     }
-    const debugPrefix = output.subarray(debugStart, sizeMarker).toString("ascii");
-    if (!debugPrefix.startsWith("  ctime: ")) {
-      throw new Error("invalid Git index snapshot debug prefix");
-    }
-    const debugEnd = output.indexOf(0x0a, sizeMarker + 1);
-    if (debugEnd < 0) throw new Error("invalid unterminated Git index snapshot debug entry");
-    const sizeAndFlags = output.subarray(sizeMarker + 1, debugEnd + 1).toString("ascii");
-    const flagsMatch = /^  size: [0-9]+\tflags: ([a-f0-9]+)\n$/u.exec(sizeAndFlags);
-    if (!flagsMatch || flagsMatch[1].length > 8) {
-      throw new Error("invalid Git index snapshot flags");
-    }
-    offset = debugEnd + 1;
     if (entries.has(path)) throw new Error("duplicate path in Git index snapshot");
-    entries.set(path, classifyIndexEntry({ mode, oid, stage, flags: flagsMatch[1] }));
+    entries.set(path, { mode, oid, stage });
   }
   return entries;
+}
+
+function parseMaterializedTree(output) {
+  if (!Buffer.isBuffer(output)) throw new TypeError("Git tree listing must be bytes");
+  const entries = new Map();
+  let offset = 0;
+  while (offset < output.length) {
+    const terminator = output.indexOf(0, offset);
+    if (terminator < 0) throw new Error("invalid unterminated Git tree listing");
+    const record = output.subarray(offset, terminator);
+    offset = terminator + 1;
+    const tab = record.indexOf(0x09);
+    if (tab < 0) throw new Error("invalid Git tree listing entry");
+    const match = /^(\S+) (\S+) (\S+)$/u.exec(record.subarray(0, tab).toString("ascii"));
+    if (!match) throw new Error("invalid Git tree listing header");
+    const pathBytes = record.subarray(tab + 1);
+    const path = pathBytes.toString("utf8");
+    if (!Buffer.from(path, "utf8").equals(pathBytes) || !safeRepositoryPath(path)) {
+      throw new Error("Git tree listing contains an unsafe or non-UTF-8 path");
+    }
+    const [, mode, type, oid] = match;
+    if (!/^[0-7]{6}$/u.test(mode) || !GIT_OBJECT_ID.test(oid) || entries.has(path)) {
+      throw new Error("invalid or duplicate Git tree identity");
+    }
+    entries.set(path, { mode, type, oid });
+  }
+  return entries;
+}
+
+function parseRawIndexDiff(output) {
+  if (!Buffer.isBuffer(output)) throw new TypeError("Git index diff must be bytes");
+  const entries = new Map();
+  let offset = 0;
+  while (offset < output.length) {
+    const headerEnd = output.indexOf(0, offset);
+    if (headerEnd < 0) throw new Error("invalid unterminated Git index diff header");
+    const header = output.subarray(offset, headerEnd).toString("ascii");
+    const match = /^:(\S+) (\S+) (\S+) (\S+) ([A-Z])$/u.exec(header);
+    if (!match) throw new Error("invalid Git index diff header");
+    const pathEnd = output.indexOf(0, headerEnd + 1);
+    if (pathEnd < 0) throw new Error("invalid unterminated Git index diff path");
+    const pathBytes = output.subarray(headerEnd + 1, pathEnd);
+    const path = pathBytes.toString("utf8");
+    if (!Buffer.from(path, "utf8").equals(pathBytes) || !safeRepositoryPath(path)) {
+      throw new Error("Git index diff contains an unsafe or non-UTF-8 path");
+    }
+    const [, oldMode, newMode, oldOid, newOid, status] = match;
+    if (!/^[0-7]{6}$/u.test(oldMode) || !/^[0-7]{6}$/u.test(newMode)
+      || !GIT_OBJECT_ID.test(oldOid) || !GIT_OBJECT_ID.test(newOid)
+      || entries.has(path)) {
+      throw new Error("invalid or duplicate Git index diff identity");
+    }
+    entries.set(path, { oldMode, newMode, oldOid, newOid, status });
+    offset = pathEnd + 1;
+  }
+  return entries;
+}
+
+function materializeIndexEntries(stagedEntries, headEntries, diffEntries) {
+  const entries = new Map();
+  const unmatchedDiffPaths = new Set(diffEntries.keys());
+  for (const [path, entry] of stagedEntries) {
+    if (entry.stage !== "0") throw new Error("Git index snapshot contains an unmerged entry");
+    if (!REGULAR_FILE_MODE.test(entry.mode) && entry.mode !== SYMBOLIC_LINK_MODE) {
+      throw new Error("Git index snapshot contains an unsupported file mode");
+    }
+    const headEntry = headEntries.get(path);
+    const diffEntry = diffEntries.get(path);
+    const matchesHead = headEntry?.type === "blob"
+      && headEntry.mode === entry.mode
+      && headEntry.oid === entry.oid;
+    const matchesDiff = diffEntry?.status !== "D"
+      && diffEntry?.newMode === entry.mode
+      && diffEntry?.newOid === entry.oid;
+    if (!matchesHead && !matchesDiff) {
+      if (!REGULAR_FILE_MODE.test(entry.mode) || !EMPTY_BLOB_OIDS.has(entry.oid)) {
+        throw new Error("Git index snapshot differs from its HEAD and materialized diff");
+      }
+      entries.set(path, { kind: "intent-to-add", ...entry });
+      continue;
+    }
+    if (diffEntry) unmatchedDiffPaths.delete(path);
+    entries.set(path, {
+      kind: entry.mode === SYMBOLIC_LINK_MODE ? "symlink" : "regular",
+      ...entry,
+    });
+  }
+  for (const path of unmatchedDiffPaths) {
+    if (diffEntries.get(path)?.status !== "D") {
+      throw new Error("Git index snapshot omits materialized diff paths");
+    }
+  }
+  return entries;
+}
+
+function parseTreeOid(output) {
+  const oid = output.toString("ascii").replace(/\r?\n$/u, "");
+  if (!GIT_OBJECT_ID.test(oid)) throw new Error("invalid materialized Git tree identity");
+  return oid;
 }
 
 function parseNulPaths(output) {
@@ -220,16 +273,33 @@ function parseNulPaths(output) {
 
 export async function captureGitIndexSnapshot(repositoryRoot) {
   await assertRepositoryToplevel(repositoryRoot);
-  const { stdout } = await runGit(repositoryRoot, [
-    "ls-files",
-    "--stage",
-    "--debug",
-    "-z",
+  let headTreeOid = null;
+  let headTreeBytes = Buffer.alloc(0);
+  try {
+    const { stdout } = await runGit(repositoryRoot, [
+      "rev-parse", "--verify", "--quiet", "HEAD^{tree}",
+    ]);
+    headTreeOid = parseTreeOid(stdout);
+    ({ stdout: headTreeBytes } = await runGit(repositoryRoot, [
+      "ls-tree", "--full-tree", "-r", "-z", headTreeOid,
+    ]));
+  } catch (error) {
+    if (error?.code !== 1) throw error;
+  }
+  const { stdout: stagedBytes } = await runGit(repositoryRoot, ["ls-files", "--stage", "-z"]);
+  const { stdout: diffBytes } = await runGit(repositoryRoot, [
+    "diff", "--cached", "--raw", "--no-abbrev", "--no-renames",
+    "--ita-invisible-in-index", "-z",
   ]);
   return Object.freeze({
     version: INDEX_SNAPSHOT_VERSION,
     repositoryRoot,
-    entries: parseIndexSnapshot(stdout),
+    headTreeOid,
+    entries: materializeIndexEntries(
+      parseStagedIndexEntries(stagedBytes),
+      parseMaterializedTree(headTreeBytes),
+      parseRawIndexDiff(diffBytes),
+    ),
   });
 }
 
@@ -249,7 +319,7 @@ export async function assertGitIndexSnapshotCurrent(snapshot) {
   const expectedPaths = indexSnapshotPaths(snapshot);
   const current = await captureGitIndexSnapshot(snapshot.repositoryRoot);
   const currentPaths = indexSnapshotPaths(current);
-  if (expectedPaths.length !== currentPaths.length) {
+  if (snapshot.headTreeOid !== current.headTreeOid || expectedPaths.length !== currentPaths.length) {
     throw new Error("TRACKED_FILE_CUSTODY_FAILED: Git index changed after snapshot");
   }
   for (const path of expectedPaths) {
@@ -258,8 +328,7 @@ export async function assertGitIndexSnapshotCurrent(snapshot) {
     if (expected?.kind !== observed?.kind
       || expected?.mode !== observed?.mode
       || expected?.oid !== observed?.oid
-      || expected?.stage !== observed?.stage
-      || expected?.flags !== observed?.flags) {
+      || expected?.stage !== observed?.stage) {
       throw new Error("TRACKED_FILE_CUSTODY_FAILED: Git index changed after snapshot");
     }
   }

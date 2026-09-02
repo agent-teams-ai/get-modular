@@ -1278,6 +1278,9 @@ test("production artifact discovery inventories an empty-blob staged symlink", a
     await initFixtureRepository(fixture);
     await writeFile(join(fixture, "package.json"), "{\"private\":true}\n");
     await git(fixture, "add", "--", "package.json");
+    await writeFile(join(fixture, "empty-object"), "");
+    await git(fixture, "hash-object", "-w", "--", "empty-object");
+    await rm(join(fixture, "empty-object"));
     const linkPath = "packages/core/hidden-link";
     await git(
       fixture,
