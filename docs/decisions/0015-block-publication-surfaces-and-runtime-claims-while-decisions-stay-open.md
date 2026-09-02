@@ -100,9 +100,10 @@ organization Feature Module Standard v1: the local profile in
 `agent-teams-ai/.github/docs/architecture/feature-module-standard/v1.md`,
 whose blob `d0bfff20` and content digest are pinned in
 `architecture/feature-module-standard-profile.json` and whose observed
-revision `eef92e7` is recorded in `docs/provenance/source-map.yaml`. Feature-owned slices under
-`packages/core/src/features/*`, owner-local ports and factories, and the
-private composition root are the structural authority for that source.
+revision `eef92e7` is recorded in `docs/provenance/source-map.yaml`.
+Feature-owned slices under `packages/core/src/features/*`, owner-local ports
+and factories, and the private composition root are the structural authority
+for that source.
 
 Accepting this decision does not start implementation. The first production
 source lands only after the product owner records an explicit start decision

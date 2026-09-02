@@ -461,7 +461,8 @@ exact diagnostic and suppression behavior. Fixtures may demonstrate candidate
 behavior but cannot make it compiler authority. The private M1 compiler keeps
 repeated-record inputs outside its claimed domain; any candidate implementation
 of the ADR-0014 semantics lives in fixtures under `tests/` until ADR-0014 is
-accepted, so accepted ADR-0015 and OD-006 are not bypassed.
+accepted; this placement is stricter than accepted ADR-0015 requires and keeps
+OD-006 unexposed and unclaimed.
 
 Phase 3 accepts, stores, returns and invokes no factory, callback, function,
 loader, executable handle or product code. Product-owned literal factory tables
