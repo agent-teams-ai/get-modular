@@ -61,7 +61,7 @@
       "if": {"properties": {"type": {"const": "qualification"}}, "required": ["type"]},
       "then": {
         "properties": {
-          "id": {"type": "string", "pattern": "^QUAL-[A-Z0-9-]+$"},
+          "id": {"type": "string", "pattern": "^(?:QUAL-[A-Z0-9-]+|qualification(?:\\.[a-z][a-z0-9-]*){1,3})$"},
           "status": {
             "enum": [
               "reviewed",

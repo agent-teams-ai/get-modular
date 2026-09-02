@@ -103,6 +103,12 @@ admission, signatures, isolation, updates, and plugin state.
 No historical evidence label grants a second authority, runtime discovery,
 container, lifecycle, plugin, or authorization behavior.
 
+The source layout of `packages/core` follows the adopted organization Feature
+Module Standard v1 through the local
+[profile](feature-module-standard.md): feature-owned slices under
+`packages/core/src/features/*`, a private composition root, and one curated
+public entry point.
+
 ## Required closure before corresponding implementation
 
 These are small contract gates, not a reason to redesign the architecture:
@@ -132,9 +138,12 @@ The first graph slice must not invent semantics for items 4 and 5. A private
 normalized-value semantic compiler checkpoint may proceed after
 accepted-authority preflight while excluding repeated binding records. That
 checkpoint lives in `packages/core` as a `private: true` package with no
-publication field, under the rule recorded by proposed ADR-0015 as the
+publication field, under the rule recorded by accepted ADR-0015 as the
 successor to the ADR-0003 deferral sentence; the governance gate admits that
-source and keeps blocking publication surfaces and runtime claims. It is not
+source and keeps blocking publication surfaces and runtime claims. Inside that
+checkpoint the repeated binding-record semantics proposed by ADR-0014 exist
+only as candidate behavior behind an internal flag and are excluded from every
+claim until ADR-0014 is accepted. It is not
 either proposed carrier adapter and cannot claim trusted-object or raw-byte
 admission. Public packaging, both carrier adapters, raw decoding, and production
 dependency adapters remain gated by their corresponding decisions.

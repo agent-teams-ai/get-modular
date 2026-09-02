@@ -33,8 +33,8 @@ This document is the implementation roadmap, not a replacement for an
 accepted ADR. It deliberately describes the order and evidence required to
 build the first reusable Core. It does not accept new public API, change an
 accepted decision, or claim that a qualification fixture is production code.
-ADR-0009 to ADR-0015 are proposed decisions on the selected base unless their
-accepted successors are present. They do not enter accepted authority, the
+ADR-0009 to ADR-0014 are proposed decisions on the selected base unless their
+accepted successors are present; ADR-0015 is accepted. They do not enter accepted authority, the
 open-decision blocker catalog or executable governance until accepted through
 the repository decision flow.
 
@@ -86,16 +86,16 @@ alone.
 
 | Milestone | Proposed decisions required | Blocked without them |
 | --- | --- | --- |
-| M1 `direct-semantics-qualified` on Node through the object entrypoint | None for semantics; ADR-0015 or its accepted successor to ADR-0003 so accepted text matches the gate, which already admits private `packages/core` source | Private package source and the first executable subject |
+| M1 `direct-semantics-qualified` on Node through the object entrypoint | None; accepted ADR-0015 already lets the gate admit private `packages/core` source | Private package source and the first executable subject |
 | M2 raw entrypoint and carriers | ADR-0013 and ADR-0014 together as one diagnostic generation 2 transaction: successor schema enum, catalog rank, diagnostic contract, snapshots, checker and ledger, because ADR-0007 keeps the base enum and code rank byte-identical | Raw decoding exposure, carrier admission and duplicate binding-record behavior |
 | M3 public barrel and package carrier | ADR-0009 and ADR-0012 | Public names, export map and any packed publication candidate |
 | M3 emitter and generated stage1 | ADR-0011 or a narrower successor that closes only the dependency-record seam | `self-composed-qualified` and every release custody claim |
 
 Publication of a `0.x` archive as `not-claimed` does not require the six
 runtime cases; the first conformance claim does (ADR-0007, sections on
-publication and runtime coverage). The bootstrap sequence is therefore: accept
-ADR-0015 so accepted text matches the gate that already admits private package
-identities, materialize private `packages/core`, reach M1 on Node, prepare the diagnostic generation 2
+publication and runtime coverage). The bootstrap sequence is therefore: record the
+product-owner start decision required by ADR-0015 in the first private package
+pull request, materialize private `packages/core`, reach M1 on Node, prepare the diagnostic generation 2
 transaction in parallel with M1, then proceed to M2 and M3 in that order.
 
 ### Roadmap qualification language
@@ -195,7 +195,7 @@ than satisfied by synthetic output.
 - canonical schema, resource profile, diagnostic catalog and vectors;
 - accepted authority and qualification ledgers already present in the selected
   source;
-- proposed ADR-0009 to ADR-0015 candidates, clearly separated from accepted
+- proposed ADR-0009 to ADR-0014 candidates, clearly separated from accepted
   authority and active open-decision blockers;
 - the governed open decisions OD-004, OD-005 and OD-006 for package
   carrier/resolution, raw-input carrier semantics and duplicate binding-record
@@ -255,7 +255,7 @@ than satisfied by synthetic output.
    or supported resolver modes before OD-004 is resolved. Governance derives
    blockers only from the active open-decision catalog, not from this roadmap's
    identifiers; OD-004, OD-005 and OD-006 already follow that catalog-driven
-   path. Keep ADR-0009 to ADR-0015 as proposed roadmap choices until accepted;
+   path. Keep ADR-0009 to ADR-0014 as proposed roadmap choices until accepted;
    only their accepted decisions may add mutation fixtures or checkpoint
    requirements.
 10. Verify that the existing `qualification:resource-profile` executable
@@ -324,10 +324,14 @@ smaller split would make it unverifiable.
    topology, but do not freeze the target unversioned public barrel until
    ADR-0009 or a successor is accepted. If it remains proposed, accepted API
    authority continues to govern and the target release stays `CONDITIONAL`;
-   private implementation work is not blocked once the governance gate admits
-   private package identities under ADR-0015 or its accepted successor to
-   ADR-0003. Keep domain semantics independent from Foundation, Docs Protocol,
-   DI containers and plugin runtime types.
+   private implementation work is not blocked: accepted ADR-0015 lets the
+   governance gate admit private package identities, and the first production
+   source still waits for the product-owner start decision that ADR-0015
+   requires. Structure the package as feature-owned slices under
+   `packages/core/src/features/*` exactly as the adopted [Feature Module Standard profile](feature-module-standard.md)
+   maps the organization standard ([canonical document](https://github.com/agent-teams-ai/.github/blob/main/docs/architecture/feature-module-standard/v1.md),
+   revision `eef92e7`). Keep domain semantics independent from Foundation,
+   Docs Protocol, DI containers and plugin runtime types.
 2. Preserve ADR-0003's public development-only
    `@get-modular/conformance` identity without creating an empty package. Its
    substantive vectors, fixtures and packed-consumer tooling may be published
@@ -384,11 +388,13 @@ rehearse navigation workflows that a real product must later prove in Phase 6.
 
 ### Phase 2 implementation
 
-1. A module co-locates its serializable branded ID and plain-data declaration.
+1. A module co-locates its serializable branded ID and plain-data declaration
+   inside its feature-owned slice, following the adopted [Feature Module Standard profile](feature-module-standard.md).
    Product/repository admission allocates and authorizes the namespace; the ID
    is not authentication, an import path or an executable lookup key. There is
    no global ID list and no repeated untyped string literals in consumer code.
-2. Feature-local contracts and adapters stay beside their feature. A shared
+2. Feature-local contracts and adapters stay beside their feature, in the
+   role-oriented layout the Feature Module Standard v1 defines. A shared
    contract is extracted only after a second real consumer proves the same
    boundary.
 3. `required`, `optional` and `many` express cardinality. `many` has explicit
@@ -450,7 +456,11 @@ remain a private intermediate and evidence input.
 Repeated binding records for one `(implementationId, slotId)` remain outside
 the admitted semantic domain until OD-006 and its accepted successor define the
 exact diagnostic and suppression behavior. Fixtures may demonstrate candidate
-behavior but cannot make it compiler authority.
+behavior but cannot make it compiler authority. The private M1 compiler
+implements the semantics proposed by ADR-0014 as candidate behavior behind a
+flag in its internal diagnostic table: the harness excludes repeated-record
+inputs from every claim, and accepting ADR-0014 changes only that flag, not the
+implementation.
 
 Phase 3 accepts, stores, returns and invokes no factory, callback, function,
 loader, executable handle or product code. Product-owned literal factory tables
@@ -603,11 +613,15 @@ not a failed qualification result.
 
 Before creating structural or runtime conformance evidence, pin a Docs Protocol
 and Engineering Foundation authoring toolchain whose declared identity strategy
-can create the accepted `QUAL-*` records. Prove both `docs:new --dry-run` and
-apply paths with positive and mutation fixtures. If no released pinned version
-supports that identity, Phase 5 is blocked on a bounded Engineering Foundation
-capability; Phases 1-4 may still build and qualify Core while conformance remains
-`not-claimed`. Manual files and relaxed identities are not substitutes.
+can create qualification records. New records use the `qualification.<slug>`
+identity grammar and the `docs/qualification/<slug>/README.md` placement that
+the adopted authoring profile already declares; the two historical `QUAL-*`
+records keep their identities as immutable evidence. Prove both
+`docs:new --dry-run` and apply paths with positive and mutation fixtures. If no
+released pinned version supports that grammar, Phase 5 is blocked on a bounded
+Engineering Foundation capability; Phases 1-4 may still build and qualify Core
+while conformance remains `not-claimed`. Manual files and relaxed identities
+are not substitutes.
 
 The Engineering Foundation repository owns that authoring capability and ships
 it through a separately reviewed package release. Its acceptance evidence is an

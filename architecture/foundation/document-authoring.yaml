@@ -29,3 +29,11 @@ authoring:
       heading: {kind: id-colon-title}
       reachability: {kind: manual-fixed-index, indexPath: docs/open-decisions/README.md}
       allowedOwnerIds: [architecture, architecture/tooling]
+    - type: qualification
+      initialStatus: reviewed
+      identity: {kind: explicit, format: qualified, grammar: {prefixSegments: [qualification], minSuffixSegments: 1, maxSuffixSegments: 3}}
+      placement: {kind: qualified-leaf-index, root: docs/qualification, requiredBasename: README.md}
+      template: {kind: fenced-markdown-body, path: docs/templates/qualification.md}
+      heading: {kind: title}
+      reachability: {kind: not-required, reason: qualification records are linked by hand from the docs/README.md evidence section}
+      allowedOwnerIds: [architecture, architecture/tooling]
