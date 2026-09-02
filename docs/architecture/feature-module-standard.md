@@ -60,10 +60,9 @@ gate.
 repository mapping, local authorities, navigation, gate wiring, and explicit
 qualification states. `pnpm governance:check` uses the same repository-wide
 production-artifact inventory. It always rejects production artifacts outside
-`packages`. While an implementation decision remains open, it admits source
-only inside a private package identity accepted by ADR-0003 whose manifest has
-no publication field. Public or publication-capable artifacts and
-`runtime-conformant` claims remain blocked. `source-admitted` and
+`packages`. Accepted ADR-0015 admits source only inside a private accepted
+package whose manifest has no publication field. Public or publication-capable
+artifacts and `runtime-conformant` claims remain blocked. `source-admitted` and
 `structural-conformant` describe source custody and may proceed without claiming
 unresolved runtime semantics. Both commands run through the complete repository
 gate, and profile binding also runs in the fast gate.

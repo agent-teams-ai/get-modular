@@ -38,9 +38,10 @@ unversioned pre-1.0 public surface, including `compileComposition`,
 
 ADR-0009 and ADR-0010 remain proposed until they pass the repository's governed
 acceptance flow. Until then, no public production package may silently choose
-between the proposed and accepted naming or dependency policies. Pure
-implementation work may use private names and owned primitives, but the first
-public barrel must follow one explicitly accepted map.
+between the proposed and accepted naming or dependency policies. Private
+qualification work may use private names and owned primitives; production
+package source still requires the authority closure described below, and the
+first public barrel must follow one explicitly accepted map.
 
 ## What the version labels mean
 
@@ -81,8 +82,10 @@ including separate declaration and profile raw-byte limits and
 `jsonValueOccurrences`.
 
 The complete repository gate runs the effective resource qualification through
-the unversioned command `pnpm qualification:resource-profile`. The test and
-evidence filenames retain their historical names for custody and traceability.
+`contracts:test`, which invokes the same executable proof as the separately
+available unversioned command `pnpm qualification:resource-profile`. The test
+and evidence filenames retain their historical names for custody and
+traceability.
 
 ## Implementation boundary
 

@@ -10,6 +10,7 @@ import {
   productionArtifactsOutsidePackages,
 } from "./production-artifacts.mjs";
 import {
+  assertGitIndexSnapshotCurrent,
   captureGitIndexSnapshot,
   historicalFileVersions,
   indexSnapshotPaths,
@@ -557,6 +558,7 @@ export function validateDecisionResolutions(documents) {
 
 export async function governanceDocumentCatalog(repositoryRoot = root, suppliedSnapshot) {
   const snapshot = suppliedSnapshot ?? await captureGitIndexSnapshot(repositoryRoot);
+  await assertGitIndexSnapshotCurrent(snapshot);
   const documents = new Map();
   const documentSources = new Map();
   const directories = [
@@ -586,6 +588,7 @@ export async function governanceDocumentCatalog(repositoryRoot = root, suppliedS
     documents.set(metadata.id, metadata);
     documentSources.set(metadata.id, { path, bytes });
   }
+  await assertGitIndexSnapshotCurrent(snapshot);
   return { documents, documentSources, snapshot };
 }
 
@@ -667,8 +670,8 @@ async function main() {
     blockerIds,
     traceability,
   });
-  const productionArtifacts = await productionArtifactPaths(root);
-  const productionArtifactSymlinks = await productionArtifactSymlinkPaths(root);
+  const productionArtifacts = await productionArtifactPaths(root, snapshot);
+  const productionArtifactSymlinks = await productionArtifactSymlinkPaths(root, snapshot);
   const misplacedArtifacts = productionArtifactsOutsidePackages(productionArtifacts);
   if (misplacedArtifacts.length > 0) {
     fail(`production artifacts must be below packages: ${misplacedArtifacts.join(", ")}`);
@@ -696,8 +699,13 @@ async function main() {
     blockerIds,
     productionArtifacts,
     claimDocuments: claimDocuments.map(id => documents.get(id)),
+    readPackageManifest: async path => JSON.parse((await readGovernanceInput(
+      path,
+      "private implementation package manifest",
+    )).toString("utf8")),
     repositoryRoot: root,
   });
+  await assertGitIndexSnapshotCurrent(snapshot);
   process.stdout.write("Get Modular governance check passed.\n");
 }
 

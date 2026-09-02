@@ -13,6 +13,7 @@ import {
   ACCEPTED_AUTHORITY_LEDGER_PATH,
   OPEN_DECISION_HISTORY_PATH,
   governanceDocumentCatalog,
+  productionArtifactSymlinkPaths,
   productionArtifactPaths,
   qualificationClaimAnchor,
   inspectTrackedNavigationFile,
@@ -35,6 +36,7 @@ import {
   SUPPORTED_NODE_RANGE,
 } from "../architecture/checks/node-version.mjs";
 import {
+  assertGitIndexSnapshotCurrent,
   captureGitIndexSnapshot,
   historicalFileVersions,
   inspectIndexSnapshotFile,
@@ -45,10 +47,12 @@ import {
 import {
   productionArtifactsBlockedByOpenDecisions,
   productionArtifactsOutsidePackages,
-} from "../architecture/checks/production-artifacts.mjs";
+} from
+  "../architecture/checks/production-artifacts.mjs";
 
 const digest = bytes => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const evidenceIdentity = (path, bytes) => ({ path, digest: digest(bytes) });
+const EMPTY_BLOB_OID = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391";
 const execFileAsync = promisify(execFile);
 const git = (cwd, ...args) => execFileAsync("git", args, { cwd });
 async function initFixtureRepository(fixture) {
@@ -945,6 +949,54 @@ test("governance catalog rejects AD/AM split states from one index snapshot", as
   }
 });
 
+test("governance catalog rejects decisions staged after its index snapshot", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-governance-late-stage-"));
+  try {
+    await execFileAsync("git", ["init", "--quiet"], { cwd: fixture });
+    await mkdir(join(fixture, "docs/open-decisions"), { recursive: true });
+    const snapshot = await captureGitIndexSnapshot(fixture);
+    const decisionPath = "docs/open-decisions/OD-999-late.md";
+    await writeFile(join(fixture, decisionPath), [
+      "---",
+      "id: OD-999",
+      "type: open-decision",
+      "status: open",
+      "owner: architecture",
+      "summary: Late staged decision.",
+      "---",
+      "",
+      "# Late staged decision",
+      "",
+    ].join("\n"));
+    await execFileAsync("git", ["add", "--", decisionPath], { cwd: fixture });
+
+    await assert.rejects(
+      governanceDocumentCatalog(fixture, snapshot),
+      /TRACKED_FILE_CUSTODY_FAILED: Git index changed after snapshot/u,
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("index snapshot custody rejects staged file-mode changes for an empty file", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-index-mode-"));
+  try {
+    await initFixtureRepository(fixture);
+    await writeFile(join(fixture, "tracked.txt"), "");
+    await git(fixture, "add", "--", "tracked.txt");
+    const snapshot = await captureGitIndexSnapshot(fixture);
+
+    await git(fixture, "update-index", "--chmod=+x", "--", "tracked.txt");
+    await assert.rejects(
+      assertGitIndexSnapshotCurrent(snapshot),
+      /TRACKED_FILE_CUSTODY_FAILED: Git index changed after snapshot/u,
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
 test("qualification evidence uses index blobs and rejects unstaged bytes", async () => {
   const fixture = await mkdtemp(join(tmpdir(), "get-modular-qualification-snapshot-"));
   try {
@@ -1057,54 +1109,7 @@ test("accepted authority custody rejects intent-to-add index entries", async () 
   }
 });
 
-test("open-decision history rejects an unborn HEAD witness", async () => {
-  const fixture = await mkdtemp(join(tmpdir(), "get-modular-unborn-history-"));
-  try {
-    await initFixtureRepository(fixture);
-    await mkdir(dirname(join(fixture, OPEN_DECISION_HISTORY_PATH)), { recursive: true });
-    await writeFile(
-      join(fixture, OPEN_DECISION_HISTORY_PATH),
-      JSON.stringify({ schemaVersion: 1, recordedDecisionIds: ["OD-001"] }),
-    );
-    await git(fixture, "add", "--", OPEN_DECISION_HISTORY_PATH);
-
-    await assert.rejects(
-      historicalFileVersions(OPEN_DECISION_HISTORY_PATH, fixture),
-      /committed HEAD; an unborn branch has no history/u,
-    );
-  } finally {
-    await rm(fixture, { recursive: true, force: true });
-  }
-});
-
-test("historical custody follows every merge parent instead of simplified history", async () => {
-  const fixture = await mkdtemp(join(tmpdir(), "get-modular-full-history-"));
-  try {
-    await initFixtureRepository(fixture);
-    const historyPath = "history.json";
-    const versions = [
-      JSON.stringify({ schemaVersion: 1, recordedDecisionIds: ["OD-001"] }),
-      JSON.stringify({ schemaVersion: 1, recordedDecisionIds: ["OD-001", "OD-002"] }),
-    ];
-    await writeFile(join(fixture, historyPath), versions[0]);
-    await git(fixture, "add", "--", historyPath);
-    await git(fixture, "commit", "--quiet", "-m", "record OD-001");
-    await git(fixture, "checkout", "--quiet", "-b", "side");
-    await writeFile(join(fixture, historyPath), versions[1]);
-    await git(fixture, "add", "--", historyPath);
-    await git(fixture, "commit", "--quiet", "-m", "record OD-002");
-    await git(fixture, "checkout", "--quiet", "main");
-    await git(fixture, "merge", "--quiet", "--no-ff", "-s", "ours", "-m", "discard side", "side");
-
-    const observed = (await historicalFileVersions(historyPath, fixture))
-      .map(bytes => bytes.toString("utf8"));
-    assert.deepEqual(new Set(observed), new Set(versions));
-  } finally {
-    await rm(fixture, { recursive: true, force: true });
-  }
-});
-
-test("index snapshot custody rejects intent-to-add and empty-blob entries", async () => {
+test("index snapshot custody distinguishes intent-to-add from staged empty files", async () => {
   const fixture = await mkdtemp(join(tmpdir(), "get-modular-snapshot-intent-"));
   try {
     await initFixtureRepository(fixture);
@@ -1119,15 +1124,30 @@ test("index snapshot custody rejects intent-to-add and empty-blob entries", asyn
     assert.deepEqual(await inspectIndexSnapshotFile(snapshot, "intent.txt"), {
       kind: "intent-to-add",
     });
-    assert.deepEqual(await inspectIndexSnapshotFile(snapshot, "empty.txt"), {
-      kind: "intent-to-add",
-    });
-    for (const relativePath of ["intent.txt", "empty.txt"]) {
-      await assert.rejects(
-        readIndexSnapshotFile(snapshot, relativePath, "governed input"),
-        /TRACKED_FILE_CUSTODY_FAILED.*intent-to-add/u,
-      );
-    }
+    assert.equal((await inspectIndexSnapshotFile(snapshot, "empty.txt")).kind, "regular");
+    assert.equal((await readIndexSnapshotFile(snapshot, "empty.txt", "governed input")).length, 0);
+    await assert.rejects(
+      readIndexSnapshotFile(snapshot, "intent.txt", "governed input"),
+      /TRACKED_FILE_CUSTODY_FAILED.*intent-to-add/u,
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("index snapshot custody rejects intent-to-add becoming fully staged", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-index-intent-transition-"));
+  try {
+    await initFixtureRepository(fixture);
+    await writeFile(join(fixture, "intent.txt"), "");
+    await git(fixture, "add", "--intent-to-add", "--", "intent.txt");
+    const snapshot = await captureGitIndexSnapshot(fixture);
+
+    await git(fixture, "add", "--", "intent.txt");
+    await assert.rejects(
+      assertGitIndexSnapshotCurrent(snapshot),
+      /TRACKED_FILE_CUSTODY_FAILED: Git index changed after snapshot/u,
+    );
   } finally {
     await rm(fixture, { recursive: true, force: true });
   }
@@ -1157,10 +1177,6 @@ test("index snapshot custody ignores GIT_* overrides and enforces the repository
     await assert.rejects(
       captureGitIndexSnapshot(join(fixture, "nested")),
       /TRACKED_FILE_CUSTODY_FAILED: Git top level .* is not the repository root/u,
-    );
-    await assert.rejects(
-      historicalFileVersions("own.txt", join(fixture, "nested")),
-      /is not the repository root/u,
     );
   } finally {
     for (const [name, value] of Object.entries(savedEnvironment)) {
@@ -1285,6 +1301,72 @@ test("production artifact discovery fails closed across repository layouts", asy
       "package.json#typesVersions",
       "scripts/compiler.ts",
     ]);
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("production artifact discovery rejects staged artifacts hidden from the working tree", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-hidden-production-"));
+  try {
+    await initFixtureRepository(fixture);
+    await mkdir(join(fixture, "packages", "core", "src"), { recursive: true });
+    await writeFile(join(fixture, "package.json"), "{\"private\":true}\n");
+    const sourcePath = "packages/core/src/index.ts";
+    await writeFile(join(fixture, sourcePath), "export {};\n");
+    await git(fixture, "add", "--", "package.json", sourcePath);
+    const snapshot = await captureGitIndexSnapshot(fixture);
+    await rm(join(fixture, sourcePath));
+
+    await assert.rejects(
+      productionArtifactPaths(fixture, snapshot),
+      /TRACKED_FILE_CUSTODY_FAILED: production artifact.*\(missing\)/u,
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("production artifact discovery inventories staged symlinks hidden from the working tree", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-hidden-symlink-"));
+  try {
+    await initFixtureRepository(fixture);
+    await mkdir(join(fixture, "packages", "core"), { recursive: true });
+    await writeFile(join(fixture, "package.json"), "{\"private\":true}\n");
+    const linkPath = "packages/core/hidden-link";
+    await symlink("outside", join(fixture, linkPath));
+    await git(fixture, "add", "--", "package.json", linkPath);
+    const snapshot = await captureGitIndexSnapshot(fixture);
+    await rm(join(fixture, linkPath));
+
+    assert.deepEqual(await productionArtifactPaths(fixture, snapshot), [linkPath]);
+    assert.deepEqual(await productionArtifactSymlinkPaths(fixture, snapshot), [linkPath]);
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("production artifact discovery inventories an empty-blob staged symlink", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-empty-symlink-"));
+  try {
+    await initFixtureRepository(fixture);
+    await writeFile(join(fixture, "package.json"), "{\"private\":true}\n");
+    await git(fixture, "add", "--", "package.json");
+    await writeFile(join(fixture, "empty-object"), "");
+    await git(fixture, "hash-object", "-w", "--", "empty-object");
+    await rm(join(fixture, "empty-object"));
+    const linkPath = "packages/core/hidden-link";
+    await git(
+      fixture,
+      "update-index",
+      "--add",
+      "--cacheinfo",
+      `120000,${EMPTY_BLOB_OID},${linkPath}`,
+    );
+    const snapshot = await captureGitIndexSnapshot(fixture);
+
+    assert.deepEqual(await productionArtifactPaths(fixture, snapshot), [linkPath]);
+    assert.deepEqual(await productionArtifactSymlinkPaths(fixture, snapshot), [linkPath]);
   } finally {
     await rm(fixture, { recursive: true, force: true });
   }

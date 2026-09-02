@@ -21,7 +21,9 @@ Define exactly which JavaScript values the trusted-object and raw compiler
 entry points admit, when caller-owned input is snapshotted, and how invalid raw
 carriers fail. TypeScript types do not protect the runtime boundary from values
 created in another realm, subclassed views, detached or resized buffers,
-shared storage, accessors, cycles, or caller mutation.
+shared storage, accessors, cycles, or caller mutation. The decision covers the
+top-level invocation record and declaration collection as well as individual
+records, arrays and byte views.
 
 ## Constraints
 
@@ -30,8 +32,6 @@ shared storage, accessors, cycles, or caller mutation.
 - Semantic code receives only owned values; it never retains caller objects,
   arrays, views, or buffers.
 - Validation MUST NOT invoke getters or trust inherited properties.
-- Shared storage is rejected because copying it does not provide an atomic
-  snapshot and can observe mixed concurrent writes.
 - A valid offset view copies only its currently visible elements, not the whole
   backing buffer.
 - Raw-view identity is checked by intrinsic brand and usable state, not by a

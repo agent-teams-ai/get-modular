@@ -17,7 +17,12 @@ import {
   validateQualificationLedger,
   validateResourceBoundaryQualification,
 } from "./v1-qualification.mjs";
-import { readAcceptedAuthorityFile } from "./tracked-file-custody.mjs";
+import {
+  assertGitIndexSnapshotCurrent,
+  captureGitIndexSnapshot,
+  indexSnapshotPaths,
+  readIndexSnapshotFile,
+} from "./tracked-file-custody.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
@@ -81,6 +86,17 @@ export async function validateContractLedger({ ledger, readBytes, listedPaths })
   }
 }
 
+export async function listLedgerJsonPaths({ repositoryRoot, snapshot, directory }) {
+  const paths = new Set((await readdir(resolve(repositoryRoot, directory)))
+    .filter(filename => filename.endsWith(".json"))
+    .map(filename => `${directory}/${filename}`));
+  const directJsonPath = new RegExp(`^${directory.replaceAll("/", "\\/")}\\/[^/]+\\.json$`, "u");
+  for (const path of indexSnapshotPaths(snapshot)) {
+    if (directJsonPath.test(path)) paths.add(path);
+  }
+  return [...paths].sort();
+}
+
 export function validateContractCoherence({ schema, catalog, profile, vectors }) {
   if (schema?.$defs?.diagnostic?.properties?.code?.enum === undefined) {
     fail("composition schema has no closed diagnostic code set");
@@ -136,30 +152,25 @@ export function validateContractCoherence({ schema, catalog, profile, vectors })
   }
 }
 
-async function read(relativePath) {
-  return readAcceptedAuthorityFile(relativePath, root, "accepted V1 ledger or artifact");
-}
-
-async function readJson(relativePath) {
-  return JSON.parse((await read(relativePath)).toString("utf8"));
-}
-
 async function main() {
+  const snapshot = await captureGitIndexSnapshot(root);
+  const read = relativePath => readIndexSnapshotFile(
+    snapshot,
+    relativePath,
+    "accepted V1 ledger or artifact",
+  );
+  const readJson = async relativePath => JSON.parse((await read(relativePath)).toString("utf8"));
   const directory = "architecture/contracts/v1";
   const ledgerPath = "architecture/authority/accepted-contracts.json";
   const ledgerBytes = await read(ledgerPath);
   const ledgerDigest = `sha256:${createHash("sha256").update(ledgerBytes).digest("hex")}`;
-  const resolvingDecision = (await readAcceptedAuthorityFile(
+  const resolvingDecision = (await read(
     "docs/decisions/0005-freeze-v1-compatibility-diagnostics-and-resource-profile.md",
-    root,
-    "ADR-0005",
   )).toString("utf8");
   if (!resolvingDecision.includes(`The accepted contract ledger is anchored as\n\`${ledgerDigest}\`.`)) {
     fail("accepted contract ledger is not anchored by ADR-0005");
   }
-  const listedPaths = (await readdir(resolve(root, directory)))
-    .filter(filename => filename.endsWith(".json"))
-    .map(filename => `${directory}/${filename}`);
+  const listedPaths = await listLedgerJsonPaths({ repositoryRoot: root, snapshot, directory });
   await validateContractLedger({
     ledger: JSON.parse(ledgerBytes),
     readBytes: read,
@@ -171,17 +182,17 @@ async function main() {
   const qualificationLedgerBytes = await read(qualificationLedgerPath);
   const qualificationLedgerDigest = `sha256:${createHash("sha256")
     .update(qualificationLedgerBytes).digest("hex")}`;
-  const qualificationDecision = (await readAcceptedAuthorityFile(
+  const qualificationDecision = (await read(
     "docs/decisions/0007-require-executable-v1-conformance-amendments.md",
-    root,
-    "ADR-0007",
   )).toString("utf8");
   if (!qualificationDecision.includes(qualificationLedgerAnchor(qualificationLedgerDigest))) {
     fail("V1 qualification ledger is not anchored by ADR-0007");
   }
-  const qualificationPaths = (await readdir(resolve(root, qualificationDirectory)))
-    .filter(filename => filename.endsWith(".json"))
-    .map(filename => `${qualificationDirectory}/${filename}`);
+  const qualificationPaths = await listLedgerJsonPaths({
+    repositoryRoot: root,
+    snapshot,
+    directory: qualificationDirectory,
+  });
   await validateQualificationLedger({
     ledger: JSON.parse(qualificationLedgerBytes),
     readBytes: read,
@@ -248,6 +259,7 @@ async function main() {
     maximumOmitted: schema.$defs.diagnostic.properties.details
       .properties.omitted.maximum,
   });
+  await assertGitIndexSnapshotCurrent(snapshot);
   process.stdout.write("Get Modular V1 contract and qualification checks passed.\n");
 }
 

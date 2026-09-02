@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import test from "node:test";
@@ -20,7 +22,12 @@ import {
   validateResourceBoundaryQualification,
   validateStaticConformanceProtocol,
 } from "../architecture/checks/v1-qualification.mjs";
-import { validateContractLedger } from "../architecture/checks/v1-contract.mjs";
+import {
+  listLedgerJsonPaths,
+  validateContractLedger,
+} from "../architecture/checks/v1-contract.mjs";
+import { captureGitIndexSnapshot } from
+  "../architecture/checks/tracked-file-custody.mjs";
 import {
   boundedDiagnosticSummary,
   chainGraph,
@@ -42,6 +49,7 @@ const readJson = async relativePath => JSON.parse(
   await readFile(new URL(`../${relativePath}`, import.meta.url), "utf8"),
 );
 const execFileAsync = promisify(execFile);
+const git = (cwd, ...args) => execFileAsync("git", args, { cwd });
 const clone = value => structuredClone(value);
 const sha256Identity = bytes => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const refreshPlanEvidence = vector => {
@@ -464,6 +472,35 @@ test("qualification ledger rejects changed artifact bytes", async () => {
       readBytes: async () => bytes,
       listedPaths: ["architecture/qualification/v1/example.json"],
     }));
+  }
+});
+
+test("ledger membership includes staged JSON hidden from the working tree", async t => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-v1-ledger-"));
+  t.after(() => rm(fixture, { recursive: true, force: true }));
+  await git(fixture, "init", "--quiet", "--initial-branch=main");
+  for (const directory of [
+    "architecture/contracts/v1",
+    "architecture/qualification/v1",
+  ]) {
+    await mkdir(join(fixture, directory), { recursive: true });
+    const relativePath = `${directory}/hidden-staged.json`;
+    await writeFile(join(fixture, relativePath), "{}\n");
+    await git(fixture, "add", "--", relativePath);
+  }
+  const snapshot = await captureGitIndexSnapshot(fixture);
+
+  for (const directory of [
+    "architecture/contracts/v1",
+    "architecture/qualification/v1",
+  ]) {
+    const relativePath = `${directory}/hidden-staged.json`;
+    await rm(join(fixture, relativePath));
+    assert.deepEqual(await listLedgerJsonPaths({
+      repositoryRoot: fixture,
+      snapshot,
+      directory,
+    }), [relativePath]);
   }
 });
 

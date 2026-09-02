@@ -15,7 +15,7 @@
     "url": "git+https://github.com/agent-teams-ai/get-modular.git"
   },
   "scripts": {
-    "check": "pnpm runtime:preflight && pnpm foundation:check && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm contracts:check && pnpm contracts:test && pnpm qualification:resource-profile && pnpm qualification:v1-diagnostics-protocol && pnpm qualification:v1-graph-semantics && pnpm governance:check && pnpm governance:test",
+    "check": "pnpm runtime:preflight && pnpm foundation:check && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm contracts:check && pnpm contracts:test && pnpm qualification:v1-diagnostics-protocol && pnpm qualification:v1-graph-semantics && pnpm governance:check && pnpm governance:test",
     "check:changed": "agent-teams-foundation agent-workflow changed --consumer .",
     "check:fast": "pnpm runtime:preflight && pnpm foundation:check && pnpm architecture:feature-module-profile && pnpm docs:check",
     "docs:changed": "pnpm docs:check && pnpm docs:quality",

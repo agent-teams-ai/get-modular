@@ -1,6 +1,12 @@
 import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
+import {
+  indexSnapshotPaths,
+  indexSnapshotSymlinkPaths,
+  readIndexSnapshotFile,
+} from "./tracked-file-custody.mjs";
+
 const PRODUCTION_SOURCE = /\.[cm]?[jt]sx?$/u;
 const PRIVATE_IMPLEMENTATION_PACKAGE_NAMES = new Set([
   "@get-modular/conformance",
@@ -35,6 +41,13 @@ function compareStrings(left, right) {
 
 function isProductionArtifactName(path) {
   return path.endsWith("/package.json") || PRODUCTION_SOURCE.test(path);
+}
+
+function isTrackedProductionArtifactPath(path) {
+  if (path.endsWith("/package.json")) return true;
+  if (!PRODUCTION_SOURCE.test(path)) return false;
+  const [topLevel] = path.split("/");
+  return !NON_PRODUCTION_DIRECTORIES.has(topLevel);
 }
 
 async function filesBelow(repositoryRoot, relativeDirectory, includeProductionFiles) {
@@ -127,31 +140,51 @@ export async function productionArtifactsBlockedByOpenDecisions(
   });
 }
 
-export async function productionArtifactSymlinkPaths(repositoryRoot = process.cwd()) {
-  return (await symlinksBelow(repositoryRoot, "packages")).sort(compareStrings);
+export async function productionArtifactSymlinkPaths(repositoryRoot = process.cwd(), indexSnapshot) {
+  const paths = new Set(await symlinksBelow(repositoryRoot, "packages"));
+  if (indexSnapshot) {
+    for (const path of indexSnapshotSymlinkPaths(indexSnapshot)) {
+      if (path.startsWith("packages/")) paths.add(path);
+    }
+  }
+  return [...paths].sort(compareStrings);
 }
 
-export async function productionArtifactPaths(repositoryRoot = process.cwd()) {
-  const artifacts = [];
-  const rootPackage = JSON.parse(await readFile(resolve(repositoryRoot, "package.json"), "utf8"));
-  if (rootPackage.private !== true) artifacts.push("package.json#private");
+export async function productionArtifactPaths(repositoryRoot = process.cwd(), indexSnapshot) {
+  const artifacts = new Set();
+  const rootPackageBytes = indexSnapshot
+    ? await readIndexSnapshotFile(indexSnapshot, "package.json", "root package manifest")
+    : await readFile(resolve(repositoryRoot, "package.json"));
+  const rootPackage = JSON.parse(rootPackageBytes.toString("utf8"));
+  if (rootPackage.private !== true) artifacts.add("package.json#private");
   for (const field of PUBLICATION_FIELDS) {
-    if (rootPackage[field] !== undefined) artifacts.push(`package.json#${field}`);
+    if (rootPackage[field] !== undefined) artifacts.add(`package.json#${field}`);
   }
 
   for (const entry of await readdir(repositoryRoot, { withFileTypes: true })) {
     if (UNTRACKED_DIRECTORIES.has(entry.name)) continue;
     if (entry.isSymbolicLink()) {
-      artifacts.push(entry.name);
+      artifacts.add(entry.name);
     } else if (entry.isDirectory()) {
-      artifacts.push(...await filesBelow(
+      for (const path of await filesBelow(
         repositoryRoot,
         entry.name,
         !NON_PRODUCTION_DIRECTORIES.has(entry.name),
-      ));
+      )) {
+        artifacts.add(path);
+      }
     } else if (entry.isFile() && PRODUCTION_SOURCE.test(entry.name)) {
-      artifacts.push(entry.name);
+      artifacts.add(entry.name);
     }
   }
-  return artifacts.sort(compareStrings);
+
+  if (indexSnapshot) {
+    for (const path of indexSnapshotSymlinkPaths(indexSnapshot)) artifacts.add(path);
+    for (const path of indexSnapshotPaths(indexSnapshot)) {
+      if (!isTrackedProductionArtifactPath(path)) continue;
+      await readIndexSnapshotFile(indexSnapshot, path, "production artifact");
+      artifacts.add(path);
+    }
+  }
+  return [...artifacts].sort(compareStrings);
 }
