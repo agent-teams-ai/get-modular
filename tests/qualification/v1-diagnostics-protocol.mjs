@@ -480,6 +480,17 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
   }];
   assert.doesNotThrow(() => validate(aggregateStringLimit));
 
+  const objectAggregateStringLimit = clone(aggregateStringLimit);
+  const objectAggregateStringCase = objectAggregateStringLimit.cases.find(descriptor => (
+    descriptor.caseId === "diag.raw.hostile-profile-key.v1"
+  ));
+  objectAggregateStringCase.entryPoint = "compileCompositionV1";
+  objectAggregateStringCase.input = {
+    declarations: Array.from({ length: 9 }, () => "a".repeat(1_000_000)),
+    profile: clone(objectAggregateStringCase.schemaValidCompanion.profile),
+  };
+  assert.doesNotThrow(() => validate(objectAggregateStringLimit));
+
   const valueOccurrenceLimit = clone(protocol);
   const valueOccurrenceCase = valueOccurrenceLimit.cases.find(descriptor => (
     descriptor.caseId === "diag.raw.hostile-profile-key.v1"
@@ -507,6 +518,18 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     },
   }];
   assert.doesNotThrow(() => validate(valueOccurrenceLimit));
+
+  const objectValueOccurrenceLimit = clone(valueOccurrenceLimit);
+  const objectValueOccurrenceCase = objectValueOccurrenceLimit.cases.find(descriptor => (
+    descriptor.caseId === "diag.raw.hostile-profile-key.v1"
+  ));
+  const sharedValueOccurrenceDocument = JSON.parse(valueOccurrenceDocument);
+  objectValueOccurrenceCase.entryPoint = "compileCompositionV1";
+  objectValueOccurrenceCase.input = {
+    declarations: Array.from({ length: 11 }, () => sharedValueOccurrenceDocument),
+    profile: clone(objectValueOccurrenceCase.schemaValidCompanion.profile),
+  };
+  assert.doesNotThrow(() => validate(objectValueOccurrenceLimit));
 
   const collectorLimit = clone(protocol);
   const collectorCase = collectorLimit.cases.find(descriptor => (
@@ -537,6 +560,32 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
   ];
   assert.doesNotThrow(() => validate(collectorLimit));
 
+  const schemaCollectorLimit = clone(collectorLimit);
+  const schemaCollectorCase = schemaCollectorLimit.cases.find(descriptor => (
+    descriptor.caseId === "diag.raw.hostile-profile-key.v1"
+  ));
+  schemaCollectorCase.input.declarationsUtf8 = Array.from({ length: 257 }, () => "null");
+  schemaCollectorCase.expected.diagnostics = [
+    ...Array.from({ length: 255 }, (_, index) => ({
+      code: "schema.invalid-value",
+      phase: "schema",
+      path: [
+        { kind: "field", value: "declarations" },
+        { kind: "index", value: index },
+      ],
+      coordinate: {},
+      details: { reason: "invalid-type" },
+    })),
+    {
+      code: "diagnostics.truncated",
+      phase: "output",
+      path: [],
+      coordinate: {},
+      details: { omitted: 2 },
+    },
+  ];
+  assert.doesNotThrow(() => validate(schemaCollectorLimit));
+
   const contextualDepth = clone(protocol);
   const contextualDepthCase = contextualDepth.cases.find(descriptor => (
     descriptor.caseId === "diag.raw.hostile-profile-key.v1"
@@ -565,7 +614,7 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
   const contextualDuplicateCase = contextualDuplicate.cases.find(descriptor => (
     descriptor.caseId === "diag.raw.hostile-profile-key.v1"
   ));
-  contextualDuplicateCase.input.profileUtf8 = '{"secret":1,"secret":2}';
+  contextualDuplicateCase.input.profileUtf8 = '{"constructor":1,"constructor":2}';
   contextualDuplicateCase.expected.diagnostics = [{
     code: "decode.duplicate-key",
     phase: "decode",
@@ -576,12 +625,53 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
   assert.doesNotThrow(() => validate(contextualDuplicate));
   contextualDuplicateCase.expected.diagnostics[0].path.push({
     kind: "field",
-    value: "secret",
+    value: "constructor",
   });
   assert.throws(
     () => validate(contextualDuplicate),
     /raw resource diagnostic|raw decode failure/u,
   );
+
+  const collapsedDuplicates = clone(protocol);
+  const collapsedDuplicateCase = collapsedDuplicates.cases.find(descriptor => (
+    descriptor.caseId === "diag.raw.hostile-profile-key.v1"
+  ));
+  collapsedDuplicateCase.input.profileUtf8 =
+    '{"secretA":1,"secretA":2,"secretB":1,"secretB":2}';
+  collapsedDuplicateCase.expected.diagnostics = [{
+    code: "decode.duplicate-key",
+    phase: "decode",
+    path: [{ kind: "field", value: "profile" }],
+    coordinate: {},
+    details: { reason: "duplicate-key" },
+  }];
+  assert.doesNotThrow(() => validate(collapsedDuplicates));
+
+  const oversizedLocalIndex = clone(protocol);
+  const oversizedLocalIndexCase = oversizedLocalIndex.cases.find(descriptor => (
+    descriptor.caseId === "diag.raw.hostile-profile-key.v1"
+  ));
+  oversizedLocalIndexCase.input.profileUtf8 = `[${
+    Array.from({ length: 65_536 }, () => "null").join(",")
+  },{"secret":1,"secret":2}]`;
+  oversizedLocalIndexCase.expected.diagnostics = [{
+    code: "decode.duplicate-key",
+    phase: "decode",
+    path: [{ kind: "field", value: "profile" }],
+    coordinate: {},
+    details: { reason: "duplicate-key" },
+  }];
+  assert.doesNotThrow(() => validate(oversizedLocalIndex));
+
+  const mutatedResourceAuthority = clone(resourceProfile);
+  mutatedResourceAuthority.limits.aggregateStringBytes += 1;
+  assert.throws(() => validateStaticConformanceProtocol({
+    protocol,
+    contract,
+    catalog,
+    ...createSchemaValidators(schema),
+    resourceProfile: mutatedResourceAuthority,
+  }), /one effective resource profile/u);
 
   const falseSchemaAfterDepthFailure = clone(truthfulInlineDepth);
   falseSchemaAfterDepthFailure.cases.find(descriptor => (
