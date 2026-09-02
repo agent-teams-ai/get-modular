@@ -1105,6 +1105,11 @@ function validateStaticSchemaSuppression({
     identityCensusComplete: invalidDeclarations === 0 && !hasDuplicate(implementationIds),
     moduleCensusComplete: invalidDeclarations === 0,
   };
+  if (context.profile !== undefined && hasDuplicate(context.profile.bindings.map(binding => (
+    `${binding.consumerImplementationId}\u0000${binding.slotId}`
+  )))) {
+    fail(`${descriptor.caseId} uses a repeated binding coordinate before its semantics are accepted`);
+  }
 
   for (const diagnostic of diagnostics) {
     const prerequisite = diagnosticPrerequisites.get(diagnostic.code);
@@ -1265,13 +1270,20 @@ function bindingPositiveProviders(binding, consumer, selected) {
   const slots = consumer.slots.filter(slot => slot.slotId === binding.slotId);
   if (slots.length !== 1 || hasDuplicate(binding.providerImplementationIds)) return [];
   const [slot] = slots;
-  return binding.providerImplementationIds.filter(providerId => {
+  const providers = [];
+  for (const providerId of binding.providerImplementationIds) {
     const provider = selected.byImplementation.get(providerId);
-    return provider !== undefined && provider.provides.some(capability => (
+    if (provider === undefined) return [];
+    const capabilities = provider.provides.filter(capability => (
       capability.capabilityId === slot.capabilityId
-      && same(capability.compatibility, slot.compatibility)
     ));
-  });
+    if (capabilities.length !== 1
+      || !same(capabilities[0].compatibility, slot.compatibility)) {
+      return [];
+    }
+    providers.push(providerId);
+  }
+  return providers;
 }
 
 function reachableSelectedImplementations(context) {

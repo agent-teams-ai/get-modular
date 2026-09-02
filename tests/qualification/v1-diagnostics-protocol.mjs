@@ -919,6 +919,67 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     ...validators,
   }), /truthful semantic witness/u);
 
+  const partialBindingCycle = clone(protocol);
+  const partialBindingCycleCase = partialBindingCycle.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.independent-declaration-and-graph.v1"
+  ));
+  partialBindingCycleCase.input = clone(independentSccCase.schemaValidCompanion);
+  partialBindingCycleCase.schemaValidCompanion = clone(
+    independentSccCase.schemaValidCompanion,
+  );
+  partialBindingCycleCase.input.declarations[0].slots[0].cardinality = {
+    kind: "many",
+    min: 1,
+    max: 2,
+    order: "profile",
+  };
+  partialBindingCycleCase.input.profile.bindings[0].providerImplementationIds.push(
+    "example/missing/default",
+  );
+  partialBindingCycleCase.expected = {
+    ok: false,
+    diagnostics: [
+      {
+        code: "binding.unknown-provider",
+        phase: "binding",
+        path: [],
+        coordinate: {
+          implementationId: "example/a/default",
+          slotId: "b",
+          providerImplementationId: "example/missing/default",
+        },
+        details: { reason: "unknown" },
+      },
+      clone(independentSccCase.expected.diagnostics.at(-1)),
+    ],
+  };
+  assert.throws(() => validateStaticConformanceProtocol({
+    protocol: partialBindingCycle,
+    contract,
+    catalog,
+    ...validators,
+  }), /truthful semantic witness/u);
+
+  const unresolvedRepeatedBinding = clone(protocol);
+  const repeatedBindingCase = unresolvedRepeatedBinding.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.independent-declaration-and-graph.v1"
+  ));
+  repeatedBindingCase.input = clone(independentSccCase.schemaValidCompanion);
+  repeatedBindingCase.schemaValidCompanion = clone(independentSccCase.schemaValidCompanion);
+  repeatedBindingCase.input.profile.bindings.push(
+    clone(repeatedBindingCase.input.profile.bindings[0]),
+  );
+  repeatedBindingCase.expected = {
+    ok: false,
+    diagnostics: [clone(independentSccCase.expected.diagnostics.at(-1))],
+  };
+  assert.throws(() => validateStaticConformanceProtocol({
+    protocol: unresolvedRepeatedBinding,
+    contract,
+    catalog,
+    ...validators,
+  }), /repeated binding coordinate/u);
+
   const independentCycleWithCollidingNode = clone(protocol);
   const collidingNodeCase = independentCycleWithCollidingNode.cases.find(descriptor => (
     descriptor.caseId === "diag.object.independent-declaration-and-graph.v1"
