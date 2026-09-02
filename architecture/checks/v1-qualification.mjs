@@ -1083,6 +1083,18 @@ function validateStaticSchemaSuppression({
       fail(`${descriptor.caseId} emits ${diagnostic.code} from a schema-invalid declaration`);
     }
   }
+
+  if (invalidDeclarations.length === 0) return;
+  for (const diagnostic of diagnostics) {
+    const prerequisite = diagnosticPrerequisites.get(diagnostic.code);
+    const requiresCompleteDeclarationCensus = prerequisite?.prerequisites.some(factId => (
+      factId === "declaration.identity-census-complete"
+      || factId === "declaration.module-census-complete"
+    ));
+    if (requiresCompleteDeclarationCensus) {
+      fail(`${descriptor.caseId} emits ${diagnostic.code} without a complete declaration census`);
+    }
+  }
 }
 
 function structuralPathFromJsonPointer(value, pointer) {

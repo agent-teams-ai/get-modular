@@ -465,6 +465,65 @@ test("diagnostic protocol rejects every named cascade, barrier, redaction, and c
     ...validators,
   }), /schema-invalid declaration/u);
 
+  const incompleteDeclarationCensus = clone(protocol);
+  const censusCase = incompleteDeclarationCensus.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.independent-declaration-and-graph.v1"
+  ));
+  censusCase.input.declarations[1].schemaVersion = 2;
+  censusCase.expected.diagnostics = [
+    {
+      code: "schema.unsupported-version",
+      phase: "schema",
+      path: [
+        { kind: "field", value: "declarations" },
+        { kind: "index", value: 1 },
+        { kind: "field", value: "schemaVersion" },
+      ],
+      coordinate: {},
+      details: { reason: "unsupported-version" },
+    },
+    censusCase.expected.diagnostics[0],
+    {
+      code: "profile.unknown-implementation",
+      phase: "profile",
+      path: [],
+      coordinate: {
+        moduleId: "example/b",
+        implementationId: "example/b/default",
+      },
+      details: { reason: "unknown" },
+    },
+  ];
+  assert.throws(() => validateStaticConformanceProtocol({
+    protocol: incompleteDeclarationCensus,
+    contract,
+    catalog,
+    ...validators,
+  }), /complete declaration census/u);
+
+  const schemaInvalidBindingConsumer = clone(protocol);
+  const bindingCase = schemaInvalidBindingConsumer.cases.find(descriptor => (
+    descriptor.caseId === "diag.object.invalid-binding-suppresses-unreachable.v1"
+  ));
+  bindingCase.input.declarations[0].schemaVersion = 2;
+  bindingCase.expected.diagnostics.unshift({
+    code: "schema.unsupported-version",
+    phase: "schema",
+    path: [
+      { kind: "field", value: "declarations" },
+      { kind: "index", value: 0 },
+      { kind: "field", value: "schemaVersion" },
+    ],
+    coordinate: {},
+    details: { reason: "unsupported-version" },
+  });
+  assert.throws(() => validateStaticConformanceProtocol({
+    protocol: schemaInvalidBindingConsumer,
+    contract,
+    catalog,
+    ...validators,
+  }), /complete declaration census/u);
+
   const reservedStaticResult = clone(protocol);
   reservedStaticResult.cases[0].expected.diagnostics[0] = {
     code: "output.canonicalization-failed",
