@@ -44,7 +44,7 @@
     },
     {
       "id": "final-review",
-      "status": "pending-report-commit",
+      "status": "pending-exact-head-review",
       "workerCount": 6,
       "ownership": "exact-head read-only review"
     }

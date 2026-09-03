@@ -519,11 +519,12 @@ implementation worker:
 
 ## Review status
 
-This report is ready for targeted exact-head review after the remaining audit,
-API and OSS result envelopes are harvested. The final review must verify every
-P1 against the exact base, distinguish evidence gaps from authority changes,
-and refuse automatic promotion to production or public API. A new report
-commit invalidates only reviews that touch changed evidence or conclusions.
+The audit, API lab, OSS comparison, integrator synthesis and targeted red-team
+results are harvested in the retained evidence bundle. The six-role final
+exact-head review is the next gate. It must verify every P1 against the exact
+branch head, distinguish evidence gaps from authority changes, and refuse
+automatic promotion to production or public API. Any later report or evidence
+commit invalidates this review and requires a fresh exact-head pass.
 
 **Current conclusion:** the research supports proceeding to a small private
 semantic Core after the owner-start precondition, but it does not support
