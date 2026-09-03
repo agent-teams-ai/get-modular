@@ -328,12 +328,15 @@ smaller split would make it unverifiable.
    negative structural fixtures, and wire the real Foundation check into
    `check:fast` and `check`. Structural and runtime conformance remain separate
    promotion states.
-5. Pack two temporary, separately hash-identified qualification subjects with
-   the same public compiler boundary: direct stage0 assembly and generated
-   stage1 assembly. Run default-deny export/deep-import tests, tarball allowlist,
-   declaration-leakage audits and inert import smoke tests against both. Only
-   generated stage1 is retained as the pack-once distribution candidate; never
-   repack either subject inside a platform job.
+5. Create two temporary, separately hash-identified qualification archives with
+   the same M1 object-only compiler boundary: direct stage0 assembly and
+   generated stage1 assembly. Run default-deny export/deep-import checks,
+   private archive allowlist checks, declaration-leakage audits and inert import
+   smoke tests against both. These archives are qualification subjects, not
+   publication candidates. After OD-004, the accepted export map and carrier
+   decision exist, create a separate generated stage1 release candidate from
+   the verified source subject; never repack either qualification subject inside
+   a platform job.
 6. Resolve OD-004 before freezing package type, export conditions and supported
    resolution modes. Do not infer an ESM/CommonJS policy from this roadmap.
 7. Before freezing the public TypeScript surface, run the retained generated

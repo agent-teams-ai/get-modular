@@ -30,10 +30,14 @@ The audit reviews exact base `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418` from
 exports, runtime engine, plugin host, product integration, and package
 publication are deliberately out of scope.
 
-The exact reviewed SHA is recorded in each result under
-`research/implementation-readiness/evidence/raw/final-4dee/`. The report does
-not duplicate a mutable branch-head hash; this avoids making the evidence
-self-referential. Any later source/evidence commit requires a new result set.
+The committed historical review SHA is recorded in each result under
+`research/implementation-readiness/evidence/raw/final-4dee/`. A later external
+six-role review also inspected the remediation subject at `5a08722`; its
+result envelopes remain on the verified hosted worker and are intentionally not
+copied into this branch, because copying them would change the reviewed tree
+and make the evidence self-referential. The external wave is not counted as
+retained repository evidence. Any later source/evidence commit requires a new
+subject review.
 
 The worker manifest is the execution record. `combined-workers.json` contains
 the raw result envelopes, including partial attempts. A result is positive
@@ -250,18 +254,21 @@ design, not as evidence for its diagnostic model.
 real private subject, with independent expectations from the accepted catalog
 and snapshots. Do not copy B4's diagnostic implementation.
 
-### R-010 - serialization fixture evidence needs explicit scope (resolved as a stale claim)
+### R-010 - serialization fixture evidence needs explicit scope (resolved as a scoped probe)
 
 The earlier B6 summary was stale: the current fixture validates a closed JSON
 value domain before calling `JSON.stringify` and rejects unsupported primitive
 values. B5 still demonstrates the separate risks of locale-aware ordering and
-ordinary object-literal handling of an own `__proto__` key. The current B6 run
+ordinary object-literal handling of an own `__proto__` key. The B6 source probe
 also rejects array hooks, accessors, symbols, non-enumerable properties, extra
-array keys and sparse arrays.
+array keys, sparse arrays, cycles, non-canonical indexes, negative zero and
+oversized arrays.
 
 **Resolution:** retain the historical B6 concern as non-current evidence, keep
-B5 as negative evidence, and state explicitly that B6 is a disposable
-representation probe rather than a canonicalization or trust-boundary proof.
+B5 as negative evidence, and state explicitly that B6 is a disposable bounded
+hostile-shape probe rather than canonicalization, resource-profile, or
+trust-boundary proof. It does not establish RFC 8785 ordering or the accepted
+profile's depth, string-byte, value-occurrence, or object-property limits.
 
 ### R-011 - W0/W1 parity is not a raw-byte comparison contract (P1)
 
@@ -572,7 +579,8 @@ found by the six-role review:
   unclaimed pending authority clarification;
 - resource-profile qualification is part of the full check command;
 - the B6 representation probe rejects hostile array/object shapes before
-  serialization;
+  serialization, while remaining explicitly outside canonicalization and
+  resource-profile proof;
 - first-production admission now checks accepted private package identities,
   private status, and absence of publication fields independent of active
   blockers.
@@ -584,11 +592,14 @@ gates remain open below.
 ## Review status
 
 The audit, API lab, OSS comparison, integrator synthesis and targeted red-team
-results are harvested in the retained evidence bundle. The exact-head review
-results under the evidence directory are conditional because the research
-branch intentionally has no production Core subject. Any later report or
-evidence commit invalidates the corresponding review and requires a fresh
-exact-head pass.
+results are harvested in the retained historical evidence bundle. The six
+reviewers run after `5a08722` completed on the verified hosted worker with
+conditional findings; their external envelopes are identified in
+`evidence/reconciliation.json` but are not copied into the repository. Their
+main conclusion is unchanged: no P0, no production-scope violation, and no
+qualified Phase 3/compiler or public-package claim. Any later report or
+evidence commit invalidates the corresponding subject review and requires a
+fresh exact-head pass.
 
 **Current conclusion:** the research supports proceeding to a small private
 semantic Core after the owner-start precondition, but it does not support

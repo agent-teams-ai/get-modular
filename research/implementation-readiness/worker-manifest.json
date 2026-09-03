@@ -44,14 +44,14 @@
     },
     {
       "id": "final-review",
-      "status": "review-evidence-retained",
+      "status": "historical-evidence-retained; current-exact-review-external",
       "workerCount": 6,
       "ownership": "exact-head read-only review",
       "evidenceDirectory": "research/implementation-readiness/evidence/raw/final-4dee"
     }
   ],
   "notes": [
-    "Final snapshot: 51 historical result envelopes plus 6 exact-head review results; each result file carries its own reviewed commit SHA.",
+    "Historical snapshot: 51 result envelopes plus 6 retained final-review results; the separate 5a08722 exact-head wave completed externally and is identified in reconciliation.json without copying self-referential result files.",
     "Historical V1 labels remain evidence lineage and are not silently rewritten.",
     "Proposed ADR-0009 through ADR-0016 remain non-authoritative.",
     "Production Core, public API, runtime engine and plugin host are out of scope."

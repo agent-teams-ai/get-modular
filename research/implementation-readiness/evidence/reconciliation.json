@@ -9,6 +9,14 @@
     "workerCount": 6,
     "status": "completed-with-conditional-findings"
   },
+  "currentExternalReviewerWave": {
+    "reviewedHeadSha": "5a08722fbd52b429ad67c412c8ec77eee0af58ff",
+    "jobPrefix": "gm-final-5a08722",
+    "workerCount": 6,
+    "status": "completed-with-conditional-findings",
+    "custody": "verified-hosted-worker-only",
+    "repositoryRetention": "excluded-to-avoid-self-referential-head-evidence"
+  },
   "records": [
     {
       "taskId": "gm-api-b1-lane-l-20260903",

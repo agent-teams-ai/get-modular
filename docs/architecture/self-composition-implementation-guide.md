@@ -447,7 +447,7 @@ the same public compiler boundary: one directly assembled and one generated",
 and it forbids a stage0 public export in the distributed package. The direct
 subject therefore has its own entry file,
 `packages/core/self-composition/stage0-entry.ts`. It imports `stage0.ts` and
-re-exports exactly the accepted compiler entry points bound to the stage0
+re-exports exactly the M1 object-entry compiler point bound to the stage0
 facade plus the authoring helpers and public types from
 `features/authoring/internal.ts`, with the same names and types that
 `src/index.ts` exports from M3, and nothing else. It is built by
@@ -462,8 +462,11 @@ shape: `self-composition/stage0-entry.variant.ts` imports
 build sees it. Until M3 `stage0-entry.ts` is therefore the only curated
 entry point of the package, and it exists for qualification alone; the curated
 public entry point `src/index.ts` appears together with the generated root.
-Both subjects expose the same accepted entry points, so the same independent
-vectors and packed public-API checks run against both, as ADR-0008 requires.
+Both subjects expose the same M1 object-only entry points, so the same
+independent object vectors and qualification checks run against both, as
+ADR-0008 requires. The raw-byte entry point, decoder, and carrier adapters are
+excluded from M1 and cannot be inferred from this re-export; they remain gated
+by OD-005 and its accepted successor.
 
 ### Build-only directory
 

@@ -5,14 +5,15 @@ This draft records an implementation-readiness audit and API authoring lab for G
 ## Evidence
 
 - Exact research base: `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418`
-- Exact reviewed SHA is carried by each result file under `research/implementation-readiness/evidence/raw/final-4dee/`; the report intentionally does not duplicate a mutable branch-head hash. No reviewer authorized production or public API work.
+- Remediation head: `5a08722fbd52b429ad67c412c8ec77eee0af58ff`
+- Historical reviewed SHA is carried by each retained result file under `research/implementation-readiness/evidence/raw/final-4dee/`. Six fresh exact-head reviewers inspected `5a08722` on the verified hosted worker; their external custody is recorded in `research/implementation-readiness/evidence/reconciliation.json` without copying self-referential result files. No reviewer authorized production or public API work.
 - 51 unique worker result envelopes retained: 49 completed and 2 partial
 - 16 targeted red-team critics completed across governance, API, composition and OSS/DI
 - Four independent integrators completed
 - Disposable API authoring fixtures cover eight candidates and remain under `tests/qualification`
-- Local `pnpm check` passed on Node `24.18.0`.
+- Local `pnpm check` passed on Node `24.18.0` at the remediation head.
 
-The hosted environment was Node 24.16, below the repository requirement. That limitation is recorded rather than treated as successful repository verification. Source-unavailable OSS attempts are also recorded as limitations, not negative evidence.
+The historical hosted research environment was Node 24.16, below the repository requirement. That limitation is recorded rather than treated as successful repository verification. The fresh exact-head review wave used the verified hosted runtime and returned no P0; it remained conditional because the branch intentionally has no production Core subject. Source-unavailable OSS attempts are also recorded as limitations, not negative evidence.
 
 ## Findings
 
@@ -22,6 +23,6 @@ The report identifies evidence gaps and implementation blockers, including owner
 
 ## Review policy
 
-This PR is intentionally Draft. It must receive exact-head review before any follow-up implementation work. It must not be merged automatically. No accepted ADR, production consumer, public SPI, or package was changed.
+This PR remains intentionally Draft. The current exact-head review is complete and conditional; it does not authorize follow-up production implementation. It must not be merged automatically. No accepted ADR, production consumer, public SPI, or package was changed.
 
 See `research/implementation-readiness/report.md` for the full authority matrix, evidence classification, API comparison, OSS lessons, anti-pattern catalogue, quantitative notes, open decisions, and recommended next checkpoint.
