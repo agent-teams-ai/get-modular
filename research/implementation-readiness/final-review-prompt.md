@@ -9,7 +9,8 @@ Read `AGENTS.md`, `CLAUDE.md`, accepted ADRs, `research/implementation-readiness
 
 The branch is a research-only deliverable. Verify that it contains no production Core, public Module API, runtime engine, plugin host, product integration, package publication, or unapproved ADR change. Distinguish a missing proof from a defect, and distinguish both from a product decision that must remain open.
 
-Assigned role: replace this line with the role from the launcher.
+The launcher supplies the assigned role in the task context. If it is absent,
+review all listed areas and state that the role was not supplied.
 
 Report a structured result with:
 

@@ -30,6 +30,13 @@ try {
   }
   const permuted = { id: "consumer", version: "1.0.0", dependencies: mod.moduleWithHostileKeys.dependencies, metadata: permutedMetadata };
   assert.equal(mod.canonicalSnapshot(permuted), snapshot, "equivalent insertion orders must produce the same snapshot");
+  const integerKeyMetadata = Object.create(null);
+  for (const [key, value] of [["10", "ten"], ["2", "two"]]) {
+    Object.defineProperty(integerKeyMetadata, key, { value, enumerable: true, configurable: true, writable: true });
+  }
+  const integerKeySnapshot = mod.canonicalSnapshot({ id: "integer-keys", version: "1.0.0", metadata: integerKeyMetadata });
+  assert.deepEqual(Object.keys(JSON.parse(integerKeySnapshot).metadata), ["2", "10"],
+    "JSON integer-index keys retain native numeric enumeration order");
   for (const invalid of [
     { value: undefined, label: "undefined" },
     { value: Symbol("symbol"), label: "symbol" },
@@ -67,7 +74,7 @@ try {
     if (inheritedToJson === undefined) delete Array.prototype.toJSON;
     else Object.defineProperty(Array.prototype, "toJSON", { value: inheritedToJson, configurable: true });
   }
-  console.log(JSON.stringify({ scenarios: mod.scenarioResults, snapshotBytes: Buffer.byteLength(snapshot), importSideEffects: "none", compileOutput: "ephemeral" }, null, 2));
+  console.log(JSON.stringify({ scenarios: mod.scenarioResults, snapshotBytes: Buffer.byteLength(snapshot), integerIndexOrdering: "native-json-numeric", importSideEffects: "none", compileOutput: "ephemeral" }, null, 2));
 } finally {
   await rm(outputRoot, { recursive: true, force: true });
 }

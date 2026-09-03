@@ -400,7 +400,7 @@ is a typed object literal whose keys are exactly the declared slot identifiers
 of that feature. The slot identifiers in the inventory above are chosen from
 the identifier-safe subset of the accepted `localToken` grammar, lowercase
 letters and digits starting with a letter, and never equal an own property
-name of `Object.prototype` or the name `then`; TypeScript checks that
+name of `Object.prototype`, `prototype`, or `then`; TypeScript checks that
 every `create<Feature>` call site supplies exactly those keys, and the witness
 checker rejects an own declaration whose slot identifier leaves that subset.
 

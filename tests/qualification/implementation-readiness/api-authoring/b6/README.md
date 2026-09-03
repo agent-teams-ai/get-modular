@@ -1,6 +1,6 @@
 # Hostile-key-and-serialization — worker b6
 
-Disposable TypeScript API-authoring fixture at the assigned path. It models required, optional, and bounded ordered many dependencies plus metadata keys `__proto__`, `constructor`, `then`, and Unicode. Its deterministic snapshot probe sorts own keys into a null-prototype record before JSON serialization; it is not the accepted canonical-byte implementation.
+Disposable TypeScript API-authoring fixture at the assigned path. It models required, optional, and bounded ordered many dependencies plus metadata keys `__proto__`, `constructor`, `then`, and Unicode. Its snapshot probe sorts non-index own keys into a null-prototype record before JSON serialization and records JSON's native numeric ordering for integer-index keys; it is not the accepted canonical-byte implementation.
 
 Base SHA: `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418`
 
