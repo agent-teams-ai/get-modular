@@ -456,6 +456,18 @@ test("every named resource limit has executable at and plus-one fixtures", async
   }
 });
 
+test("aggregate raw-byte mutation retains the profile document", async () => {
+  const vectors = await readJson("architecture/qualification/v1/resource-boundary-vectors.json");
+  const vector = vectors.cases.find(candidate => candidate.limitName === "aggregateRawBytes");
+  const fixture = generateLimitFixture(vector, vector.at);
+  const mutatedFixture = mutateLimitFixtureOffByOne(vector, fixture);
+
+  assert.ok(fixture.profile);
+  assert.ok(mutatedFixture.profile);
+  assert.equal(mutatedFixture.profile.byteLength, fixture.profile.byteLength);
+  assert.equal(meterLimitFixture(vector, mutatedFixture), vector.over);
+});
+
 test("aggregate string bytes count every decoded UTF-8 key and value occurrence", async () => {
   const vectors = await readJson("architecture/qualification/v1/resource-boundary-vectors.json");
   const vector = vectors.cases.find(candidate => candidate.limitName === "aggregateStringBytes");

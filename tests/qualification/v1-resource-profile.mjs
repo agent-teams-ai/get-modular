@@ -190,11 +190,17 @@ export function meterLimitFixture(vector, fixture) {
 
 export function mutateLimitFixtureOffByOne(vector, fixture) {
   switch (vector.fixtureFamily) {
-    case "raw-bytes": return fixture.document
-      ? { document: Buffer.concat([fixture.document, Buffer.from(" ")]) }
-      : { documents: [...fixture.documents.slice(0, -1), Buffer.concat([
-        fixture.documents.at(-1), Buffer.from(" "),
-      ])] };
+    case "raw-bytes": {
+      if (fixture.document) {
+        return { document: Buffer.concat([fixture.document, Buffer.from(" ")]) };
+      }
+      return {
+        documents: [...fixture.documents.slice(0, -1), Buffer.concat([
+          fixture.documents.at(-1), Buffer.from(" "),
+        ])],
+        ...(fixture.profile ? { profile: fixture.profile } : {}),
+      };
+    }
     case "json-depth": return { value: [fixture.value] };
     case "utf8-string-bytes": {
       if (vector.fixtureShape === "portable-id") {

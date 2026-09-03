@@ -523,7 +523,9 @@ found by the six-role review:
 
 - the branch-head metadata was synchronized with the reviewed research head;
 - the report and B1 fixture now distinguish source probing from executed
-  serialization and use the accepted `many({ min, max })` input shape;
+  serialization; the accepted `many({ min, max })` shape remains a required
+  follow-up for the non-authoritative authoring fixture rather than a claimed
+  API selection;
 - B7 is explicitly host-owned desired state and excluded from Core API
   measurements;
 - the raw document-batch limit fixture includes the profile document in its
