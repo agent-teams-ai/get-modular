@@ -33,6 +33,25 @@ try {
     assert.throws(() => mod.canonicalSnapshot({ invalid: invalid.value }), /unsupported JSON value/u,
       invalid.label);
   }
+  for (const [value, label] of [
+    [Object.assign([], { toJSON() { return null; } }), "array toJSON"],
+    [(() => { const array = []; Object.defineProperty(array, "0", { get() { return 1; }, enumerable: true }); return array; })(), "array accessor"],
+    [(() => { const array = []; array[0] = 1; Object.defineProperty(array, "extra", { value: 2, enumerable: true }); return array; })(), "array extra key"],
+    [(() => { const array = []; array.length = 1; return array; })(), "sparse array"],
+    [(() => { const array = []; array[0] = 1; array[Symbol("metadata")] = 2; return array; })(), "array symbol"],
+    [(() => { const object = { value: 1 }; Object.defineProperty(object, "hidden", { value: 2, enumerable: false }); return object; })(), "object non-enumerable"],
+    [(() => { const object = { value: 1 }; Object.defineProperty(object, Symbol("metadata"), { value: 2, enumerable: true }); return object; })(), "object symbol"],
+  ]) {
+    assert.throws(() => mod.canonicalSnapshot(value), /unsupported JSON value/u, label);
+  }
+  const inheritedToJson = Array.prototype.toJSON;
+  try {
+    Object.defineProperty(Array.prototype, "toJSON", { value: () => null, configurable: true });
+    assert.throws(() => mod.canonicalSnapshot([1]), /unsupported JSON value/u, "inherited array toJSON");
+  } finally {
+    if (inheritedToJson === undefined) delete Array.prototype.toJSON;
+    else Object.defineProperty(Array.prototype, "toJSON", { value: inheritedToJson, configurable: true });
+  }
   console.log(JSON.stringify({ scenarios: mod.scenarioResults, snapshotBytes: Buffer.byteLength(snapshot), importSideEffects: "none", compileOutput: "ephemeral" }, null, 2));
 } finally {
   await rm(outputRoot, { recursive: true, force: true });

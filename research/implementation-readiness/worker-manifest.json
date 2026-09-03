@@ -44,13 +44,15 @@
     },
     {
       "id": "final-review",
-      "status": "pending-exact-head-review",
+      "status": "completed-with-conditional-findings",
       "workerCount": 6,
-      "ownership": "exact-head read-only review"
+      "ownership": "exact-head read-only review",
+      "reviewedHeadSha": "4deeab422a74daa05f84dbad03fa8013d55536b6",
+      "evidenceDirectory": "research/implementation-readiness/evidence/raw/final-4dee"
     }
   ],
   "notes": [
-    "Final snapshot: 51 unique result envelopes, 49 completed and 2 partial; 16 targeted critics completed four per topic.",
+    "Final snapshot: 51 historical result envelopes plus 6 exact-head reviewer results; 49 historical completed and 2 partial, with the exact-head wave completed conditionally.",
     "Historical V1 labels remain evidence lineage and are not silently rewritten.",
     "Proposed ADR-0009 through ADR-0016 remain non-authoritative.",
     "Production Core, public API, runtime engine and plugin host are out of scope."

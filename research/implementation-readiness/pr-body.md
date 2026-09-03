@@ -5,13 +5,13 @@ This draft records an implementation-readiness audit and API authoring lab for G
 ## Evidence
 
 - Exact research base: `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418`
-- Remediation checkpoint: `490b1b5d8a434e07e5e533e9fedeb0595af864ff`
-- The six exact-head reviewers covered the preceding `fcf13205747453b6a086613a816fe5764a82dc2e`; their findings were reconciled in the remediation checkpoint. A new exact-head review is required for `490b1b5`.
+- Reviewed head: `4deeab422a74daa05f84dbad03fa8013d55536b6`
+- The six exact-head reviewers covered this exact head. Their conditional findings are retained under `research/implementation-readiness/evidence/raw/final-4dee/`; no reviewer authorized production or public API work.
 - 51 unique worker result envelopes retained: 49 completed and 2 partial
 - 16 targeted red-team critics completed across governance, API, composition and OSS/DI
 - Four independent integrators completed
 - Disposable API authoring fixtures cover eight candidates and remain under `tests/qualification`
-- Local `pnpm check` passed on Node 24.18
+- Local `pnpm check` passed on Node `24.18.0`.
 
 The hosted environment was Node 24.16, below the repository requirement. That limitation is recorded rather than treated as successful repository verification. Source-unavailable OSS attempts are also recorded as limitations, not negative evidence.
 
@@ -19,7 +19,7 @@ The hosted environment was Node 24.16, below the repository requirement. That li
 
 The evidence supports a `CONDITIONAL` recommendation for a small private semantic Core only after the owner-start precondition is recorded. It is `NO-GO` for public package work, runtime lifecycle, Cordis adoption, plugin host work, raw-carrier semantics, self-composition qualification, and release claims at this exact state. The remediation also makes the profile checker transition-aware without granting evidence: the current CLI profile remains `not-claimed`, while `governance:check` remains the authority for promotion custody.
 
-The report identifies evidence gaps and implementation blockers, including owner-start and real subject gates, cardinality and cycle coverage, an unselected-binding resource oracle, API fixture semantic mismatches, serialization silent-loss cases, and unresolved self-composition witness authority. No P0 was found. These findings do not change accepted ADRs.
+The report identifies evidence gaps and implementation blockers, including owner-start and real subject gates, cardinality and cycle coverage, an unselected-binding resource oracle, API fixture semantic mismatches, the remaining negative B5 serialization cases, and unresolved self-composition witness authority. No P0 was found. These findings do not change accepted ADRs.
 
 ## Review policy
 

@@ -22,6 +22,9 @@ const docsIndex = await readFile("docs/README.md", "utf8");
 const agentInstructions = await readFile("AGENTS.md", "utf8");
 const packageJson = JSON.parse(await readFile("package.json", "utf8"));
 const clone = value => structuredClone(value);
+const coreManifest = new Map([
+  ["packages/core/package.json", { name: "@get-modular/core", private: true }],
+]);
 
 function validate(overrides = {}) {
   return validateFeatureModuleStandardProfile({
@@ -179,6 +182,8 @@ test("first production package requires the Foundation source-dependency gate", 
     /first production package requires/u);
 
   configured.sourceDependencyPolicyPresent = true;
+  configured.productionArtifacts = ["packages/core/package.json", "packages/core/src/index.ts"];
+  configured.productionPackageManifests = coreManifest;
   assert.equal(
     validateFirstProductionPackageAdmission(configured),
     SOURCE_DEPENDENCY_POLICY_PATH,
@@ -194,7 +199,7 @@ test("first production package cannot use a no-op Foundation alias", () => {
   const packageWithNoOp = clone(packageJson);
   packageWithNoOp.scripts["foundation:check"] = "node -e 'process.exit(0)'";
   assert.throws(() => validateFirstProductionPackageAdmission({
-    productionArtifacts: ["packages/core/src/index.ts"],
+    productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts"],
     admission: { ...profile.adoption.admission, status: "source-admitted" },
     foundationConfig: {
       capabilities: {
@@ -203,7 +208,44 @@ test("first production package cannot use a no-op Foundation alias", () => {
     },
     packageJson: packageWithNoOp,
     sourceDependencyPolicyPresent: true,
+    productionPackageManifests: coreManifest,
   }), /foundation:check must execute agent-teams-foundation check/u);
+});
+
+test("rejects unknown package identities even with no active publication blockers", () => {
+  assert.throws(() => validateFirstProductionPackageAdmission({
+    productionArtifacts: ["packages/rogue/package.json", "packages/rogue/src/index.ts"],
+    productionPackageManifests: new Map([
+      ["packages/rogue/package.json", { name: "@example/rogue", private: true }],
+    ]),
+    admission: { ...profile.adoption.admission, status: "source-admitted" },
+    foundationConfig: {
+      capabilities: {
+        "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
+      },
+    },
+    packageJson,
+    sourceDependencyPolicyPresent: true,
+  }), /accepted private package identity/u);
+});
+
+test("rejects publication fields on an otherwise accepted private package", () => {
+  assert.throws(() => validateFirstProductionPackageAdmission({
+    productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts"],
+    productionPackageManifests: new Map([
+      ["packages/core/package.json", {
+        name: "@get-modular/core", private: true, exports: { ".": "./src/index.js" },
+      }],
+    ]),
+    admission: { ...profile.adoption.admission, status: "source-admitted" },
+    foundationConfig: {
+      capabilities: {
+        "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
+      },
+    },
+    packageJson,
+    sourceDependencyPolicyPresent: true,
+  }), /must not declare publication fields/u);
 });
 
 test("first production package rejects a package symlink", () => {

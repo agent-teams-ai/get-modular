@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 
 import {
+  PRIVATE_IMPLEMENTATION_PACKAGE_NAMES,
+  PUBLICATION_FIELDS,
   productionArtifactPaths,
   productionArtifactSymlinkPaths,
   productionArtifactsOutsidePackages,
@@ -21,6 +23,8 @@ const FOUNDATION_ADMISSION = Object.freeze({
   capability: "architecture.source-dependencies",
   policy: SOURCE_DEPENDENCY_POLICY_PATH,
 });
+
+const PACKAGE_MANIFEST = /^packages\/[^/]+\/package\.json$/u;
 
 const EXPECTED_STANDARD = Object.freeze({
   id: "agent-teams.feature-module-standard",
@@ -131,6 +135,7 @@ export function validateFirstProductionPackageAdmission({
   packageJson,
   sourceDependencyPolicyPresent,
   productionArtifactSymlinks = [],
+  productionPackageManifests = new Map(),
 }) {
   assert(Array.isArray(productionArtifacts)
     && productionArtifacts.every(path => safeRelativePath(path)),
@@ -157,6 +162,24 @@ export function validateFirstProductionPackageAdmission({
     `${FOUNDATION_ADMISSION.capability} must use ${SOURCE_DEPENDENCY_POLICY_PATH}`);
   assert(sourceDependencyPolicyPresent,
     `first production package requires ${SOURCE_DEPENDENCY_POLICY_PATH}`);
+
+  const manifestPaths = productionArtifacts.filter(path => PACKAGE_MANIFEST.test(path));
+  assert(manifestPaths.length > 0,
+    "first production package requires a package.json manifest");
+  assert(productionPackageManifests instanceof Map,
+    "production package manifests must be supplied as a map");
+  for (const manifestPath of manifestPaths) {
+    const manifest = productionPackageManifests.get(manifestPath);
+    assert(manifest !== undefined,
+      `missing production package manifest: ${manifestPath}`);
+    assert(PRIVATE_IMPLEMENTATION_PACKAGE_NAMES.has(manifest?.name),
+      `${manifestPath} must use an accepted private package identity`);
+    assert(manifest.private === true,
+      `${manifestPath} must remain private before publication approval`);
+    const publicationFields = PUBLICATION_FIELDS.filter(field => manifest?.[field] !== undefined);
+    assert(publicationFields.length === 0,
+      `${manifestPath} must not declare publication fields: ${publicationFields.join(", ")}`);
+  }
 
   assert(packageJson.devDependencies?.[FOUNDATION_ADMISSION.package]
     === FOUNDATION_ADMISSION.version,
@@ -340,6 +363,11 @@ export async function checkFeatureModuleStandardProfile(repositoryRoot = process
     packageJson,
     sourceDependencyPolicyPresent: policyPresent,
     productionArtifactSymlinks,
+    productionPackageManifests: new Map(await Promise.all(
+      productionArtifacts
+        .filter(path => PACKAGE_MANIFEST.test(path))
+        .map(async path => [path, JSON.parse(await readFile(resolve(repositoryRoot, path), "utf8"))]),
+    )),
   });
   await Promise.all(authorities.map(authority => access(resolve(repositoryRoot, authority))));
 }

@@ -8,12 +8,12 @@ import {
 } from "./tracked-file-custody.mjs";
 
 const PRODUCTION_SOURCE = /\.[cm]?[jt]sx?$/u;
-const PRIVATE_IMPLEMENTATION_PACKAGE_NAMES = new Set([
+export const PRIVATE_IMPLEMENTATION_PACKAGE_NAMES = new Set([
   "@get-modular/conformance",
   "@get-modular/core",
 ]);
 const PACKAGE_MANIFEST = /^packages\/[^/]+\/package\.json$/u;
-const PUBLICATION_FIELDS = Object.freeze([
+export const PUBLICATION_FIELDS = Object.freeze([
   "bin",
   "browser",
   "exports",

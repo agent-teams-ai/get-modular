@@ -1,8 +1,14 @@
 {
   "schemaVersion": 1,
   "baseSha": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418",
-  "reviewedHeadSha": "fcf13205747453b6a086613a816fe5764a82dc2e",
+  "reviewedHeadSha": "4deeab422a74daa05f84dbad03fa8013d55536b6",
   "source": "combined-workers.json",
+  "reviewerWave": {
+    "directory": "evidence/raw/final-4dee",
+    "reviewedHeadSha": "4deeab422a74daa05f84dbad03fa8013d55536b6",
+    "workerCount": 6,
+    "status": "completed-with-conditional-findings"
+  },
   "records": [
     {
       "taskId": "gm-api-b1-lane-l-20260903",

@@ -30,8 +30,8 @@ The audit reviews exact base `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418` from
 exports, runtime engine, plugin host, product integration, and package
 publication are deliberately out of scope.
 
-The current remediation head is `490b1b5d8a434e07e5e533e9fedeb0595af864ff`.
-The prior exact-head review wave covered `fcf13205747453b6a086613a816fe5764a82dc2e`; it is invalid for this head and must be rerun before the draft is considered review-complete.
+The current reviewed head is `4deeab422a74daa05f84dbad03fa8013d55536b6`.
+The prior exact-head review waves covered `fcf13205747453b6a086613a816fe5764a82dc2e` and `490b1b5d8a434e07e5e533e9fedeb0595af864ff`; both are invalid for this head. The six-role review for the current head is retained under `research/implementation-readiness/evidence/raw/final-4dee/`.
 
 The worker manifest is the execution record. `combined-workers.json` contains
 the raw result envelopes, including partial attempts. A result is positive
@@ -248,17 +248,18 @@ design, not as evidence for its diagnostic model.
 real private subject, with independent expectations from the accepted catalog
 and snapshots. Do not copy B4's diagnostic implementation.
 
-### R-010 - serialization fixtures silently accept forbidden values (P1)
+### R-010 - serialization fixture evidence needs explicit scope (resolved as a stale claim)
 
-B6 uses `Record<string, unknown>` and `JSON.stringify`; functions, symbols and
-`undefined` can therefore disappear instead of being rejected, collapsing
-invalid declarations to the same bytes. B5 also uses locale-aware ordering and
-loses an own `__proto__` key with ordinary object-literal construction.
+The earlier B6 summary was stale: the current fixture validates a closed JSON
+value domain before calling `JSON.stringify` and rejects unsupported primitive
+values. B5 still demonstrates the separate risks of locale-aware ordering and
+ordinary object-literal handling of an own `__proto__` key. The current B6 run
+also rejects array hooks, accessors, symbols, non-enumerable properties, extra
+array keys and sparse arrays.
 
-**Action:** use a closed JSON value domain before canonicalization, reject
-forbidden values, preserve hostile-key coverage with null-prototype records or
-ordered entries, and add cross-runtime ASCII-order and JavaScript-consumer
-tests. Do not treat JSON round-trip as a safety proof.
+**Resolution:** retain the historical B6 concern as non-current evidence, keep
+B5 as negative evidence, and state explicitly that B6 is a disposable
+representation probe rather than a canonicalization or trust-boundary proof.
 
 ### R-011 - W0/W1 parity is not a raw-byte comparison contract (P1)
 
@@ -271,15 +272,15 @@ no canonical W0 schema or extraction algorithm.
 path-independent canonical wiring tuples/IR and specify extraction and emitter
 normalization. Keep source bytes as secondary evidence only.
 
-### R-012 - direct subject staging omits the profile dependency (P1)
+### R-012 - direct subject staging profile closure (resolved as a stale claim)
 
-The self-composition guide says stage0 consumes `own-profile.ts`, but its direct
-staging list copies only stage0 and stage0-entry output. With ordinary relative
-TypeScript emission, the packed subject then lacks a reachable runtime module.
+The earlier report incorrectly said that direct staging omitted the profile.
+The current guide includes `own-profile.js`, its declaration file, and every
+file in the profile's reachable private closure in the staging set.
 
-**Action:** either pass the profile through the harness or include its complete
-reachable private closure in the qualification archive. Record this as a
-packaging rule before claiming direct or stage1 evidence.
+**Resolution:** remove this as a current blocker. The closure rule remains a
+qualification requirement, while direct and stage1 evidence remain gated by
+the unresolved witness authority and a real subject.
 
 ## API authoring lab
 
@@ -553,7 +554,8 @@ implementation worker:
 The exact-head remediation corrected only evidence and report inaccuracies
 found by the six-role review:
 
-- the branch-head metadata was synchronized with the reviewed research head;
+- the branch-head metadata and final-review record are synchronized with the
+  reviewed research head `4deeab422a74daa05f84dbad03fa8013d55536b6`;
 - the report and B1 fixture now distinguish source probing from executed
   serialization; the accepted `many({ min, max })` shape remains a required
   follow-up for the non-authoritative authoring fixture rather than a claimed
@@ -566,7 +568,12 @@ found by the six-role review:
   and `Eadj`, derives many cardinality from declarations, suppresses cyclic
   depth, and has a regression test; per-many applicability remains explicitly
   unclaimed pending authority clarification;
-- resource-profile qualification is part of the full check command.
+- resource-profile qualification is part of the full check command;
+- the B6 representation probe rejects hostile array/object shapes before
+  serialization;
+- first-production admission now checks accepted private package identities,
+  private status, and absence of publication fields independent of active
+  blockers.
 
 No production package, Core API, runtime engine, plugin host or accepted ADR was
 changed. Existing owner-start, Phase 3 subject, self-composition and release
@@ -575,11 +582,11 @@ gates remain open below.
 ## Review status
 
 The audit, API lab, OSS comparison, integrator synthesis and targeted red-team
-results are harvested in the retained evidence bundle. The six-role final
-exact-head review must verify the remediation against the exact branch head,
-distinguish evidence gaps from authority changes, and refuse automatic
-promotion to production or public API. Any later report or evidence commit
-invalidates the prior review and requires a fresh exact-head pass.
+results are harvested in the retained evidence bundle. Six exact-head reviewers
+completed against `4deeab422a74daa05f84dbad03fa8013d55536b6`; their findings are
+recorded as conditional because the research branch intentionally has no
+production Core subject. Any later report or evidence commit invalidates this
+review and requires a fresh exact-head pass.
 
 **Current conclusion:** the research supports proceeding to a small private
 semantic Core after the owner-start precondition, but it does not support
