@@ -5,9 +5,10 @@ import { resolve, sep } from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
-const NON_PORTABLE_PATH_CHARACTERS = /[<>:"|?*\u0000-\u001f]/u;
+const NON_PORTABLE_PATH_CHARACTERS = /[<>:"|?*\p{Cc}]/u;
 const SAFE_RELATIVE_PATH = /^(?![\\/])(?!.*(?:^|[\\/])\.\.(?:[\\/]|$))[^\\]+$/u;
-const WINDOWS_DEVICE_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.[^/]*)?$/iu;
+const WINDOWS_DEVICE_NAME =
+  /^(?:con|prn|aux|nul|com(?:[1-9]|[¹²³])|lpt(?:[1-9]|[¹²³]))(?:\.[^/]*)?$/iu;
 const GIT_OBJECT_ID = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u;
 const REGULAR_FILE_MODE = /^(?:100644|100755)$/u;
 const SYMBOLIC_LINK_MODE = "120000";

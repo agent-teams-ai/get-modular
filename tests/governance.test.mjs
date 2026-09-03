@@ -1446,6 +1446,28 @@ test("mutable revisions and unsafe paths fail closed", () => {
     }],
   }), /non-exact revision/u);
 
+  for (const path of [
+    "/docs/evidence.md",
+    "docs\\evidence.md",
+    "C:/docs/evidence.md",
+    "docs//evidence.md",
+    "docs/./evidence.md",
+    "docs/../evidence.md",
+    "docs/con/evidence.md",
+    "docs/evidence.",
+    "docs/evidence ",
+    "docs/evidence\n.md",
+    "docs/COM¹/evidence.md",
+    "docs/LPT².txt/evidence.md",
+    "docs/evidence\u007f.md",
+    "docs/evidence\u0085.md",
+  ]) {
+    assert.throws(() => validateSourceMap({
+      ...sourceMap,
+      sources: [{ ...sourceMap.sources[0], paths: [path] }],
+    }), /unsafe evidence path/u);
+  }
+
   assert.throws(() => validateSourceMap({
     ...sourceMap,
     sources: [{ ...sourceMap.sources[0], observedAt: "2026-02-30" }],

@@ -145,6 +145,17 @@ test("requires profile enforcement in complete and fast gates", () => {
         new RegExp(`${scriptName === "check" ? "complete" : "fast"} gate`, "u"));
     }
   }
+
+  for (const scriptName of [
+    "architecture:feature-module-profile",
+    "architecture:feature-module-profile:test",
+    "governance:check",
+  ]) {
+    const noOp = clone(packageJson);
+    noOp.scripts[scriptName] = ":";
+    assert.throws(() => validate({ packageJson: noOp }),
+      new RegExp(`${scriptName} must use its closed command definition`, "u"));
+  }
 });
 
 test("keeps the profile reachable for humans and agents", () => {
@@ -195,6 +206,10 @@ test("first production package requires the Foundation source-dependency gate", 
     "packages/con/src/index.ts",
     "packages/core /src/index.ts",
     "packages/core/src/index\n.ts",
+    "packages/COM¹/src/index.ts",
+    "packages/LPT².txt/src/index.ts",
+    "packages/core\u007f/src/index.ts",
+    "packages/core\u0085/src/index.ts",
   ]) {
     assert.throws(() => validateFirstProductionPackageAdmission({
       ...input,
@@ -289,6 +304,23 @@ test("first production package cannot use a no-op Foundation alias", () => {
     sourceDependencyPolicyPresent: true,
     productionPackageManifests: coreManifest,
   }), /foundation:check must use the closed Foundation command chain/u);
+
+  for (const scriptName of ["foundation:assert-dev-only", "foundation:assert-registry"]) {
+    const noOp = clone(packageJson);
+    noOp.scripts[scriptName] = ":";
+    assert.throws(() => validateFirstProductionPackageAdmission({
+      productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts"],
+      admission: { ...profile.adoption.admission, status: "source-admitted" },
+      foundationConfig: {
+        capabilities: {
+          "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
+        },
+      },
+      packageJson: noOp,
+      sourceDependencyPolicyPresent: true,
+      productionPackageManifests: coreManifest,
+    }), new RegExp(`${scriptName} must use its closed command definition`, "u"));
+  }
 });
 
 test("rejects unknown package identities even with no active publication blockers", () => {

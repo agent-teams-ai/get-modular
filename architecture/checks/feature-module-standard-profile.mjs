@@ -27,6 +27,15 @@ const FOUNDATION_ADMISSION = Object.freeze({
 });
 const FOUNDATION_CHECK_SCRIPT =
   "agent-teams-foundation check && pnpm foundation:assert-dev-only && pnpm foundation:assert-registry";
+const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
+  "architecture:feature-module-profile":
+    "node architecture/checks/feature-module-standard-profile.mjs",
+  "architecture:feature-module-profile:test":
+    "node --test tests/feature-module-standard-profile.test.mjs",
+  "foundation:assert-dev-only": "agent-teams-foundation assert-dev-only",
+  "foundation:assert-registry": "agent-teams-foundation assert-registry",
+  "governance:check": "node architecture/checks/governance.mjs",
+});
 
 const PACKAGE_MANIFEST = /^packages\/[^/]+\/package\.json$/u;
 
@@ -128,6 +137,11 @@ function scriptCommands(script) {
     : [];
 }
 
+function assertRequiredScript(packageJson, command) {
+  assert(packageJson.scripts?.[command] === REQUIRED_SCRIPT_DEFINITIONS[command],
+    `${command} must use its closed command definition`);
+}
+
 export function validateFirstProductionPackageAdmission({
   productionArtifacts,
   admission,
@@ -205,6 +219,8 @@ export function validateFirstProductionPackageAdmission({
   `${FOUNDATION_ADMISSION.package} must remain pinned to ${FOUNDATION_ADMISSION.version}`);
   assert(packageJson.scripts?.["foundation:check"] === FOUNDATION_CHECK_SCRIPT,
     "foundation:check must use the closed Foundation command chain");
+  assertRequiredScript(packageJson, "foundation:assert-dev-only");
+  assertRequiredScript(packageJson, "foundation:assert-registry");
 
   const completeCommands = scriptCommands(packageJson.scripts?.check);
   const fastCommands = scriptCommands(packageJson.scripts?.["check:fast"]);
@@ -278,13 +294,13 @@ export function validateFeatureModuleStandardProfile({
   const fastCommands = scriptCommands(packageJson.scripts?.["check:fast"]);
   for (const gate of adoption.enforcement) {
     exactKeys(gate, ["command", "evidence"], `enforcement ${gate?.command ?? "<unknown>"}`);
-    assert(typeof packageJson.scripts?.[gate.command] === "string",
-      `package.json is missing ${gate.command}`);
+    assertRequiredScript(packageJson, gate.command);
     assert(completeCommands.includes(gate.command),
       `complete gate must include ${gate.command}`);
   }
   assert(completeCommands.includes("architecture:feature-module-profile:test"),
     "complete gate must include profile tests");
+  assertRequiredScript(packageJson, "architecture:feature-module-profile:test");
   assert(fastCommands.includes("architecture:feature-module-profile"),
     "fast gate must include profile binding");
 
