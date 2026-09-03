@@ -49,6 +49,28 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
     "node --test tests/qualification/v1-graph-semantics.mjs",
   "runtime:preflight": "node architecture/checks/node-version.mjs",
 });
+const ROOT_SCRIPT_COMMANDS = Object.freeze({
+  check: Object.freeze([
+    "runtime:preflight",
+    "foundation:check",
+    "docs:protocol:check",
+    "architecture:feature-module-profile",
+    "architecture:feature-module-profile:test",
+    "contracts:check",
+    "contracts:test",
+    "qualification:resource-profile",
+    "qualification:v1-diagnostics-protocol",
+    "qualification:v1-graph-semantics",
+    "governance:check",
+    "governance:test",
+  ]),
+  "check:fast": Object.freeze([
+    "runtime:preflight",
+    "foundation:check",
+    "architecture:feature-module-profile",
+    "docs:check",
+  ]),
+});
 
 const PACKAGE_MANIFEST = /^packages\/[^/]+\/package\.json$/u;
 
@@ -164,7 +186,8 @@ function assertRequiredScriptDefinitions(packageJson) {
 
 function closedScriptCommands(packageJson, scriptName) {
   const commands = scriptCommands(packageJson.scripts?.[scriptName]);
-  assert(commands.length > 0, `${scriptName} must use a closed pnpm command chain`);
+  assert(JSON.stringify(commands) === JSON.stringify(ROOT_SCRIPT_COMMANDS[scriptName]),
+    `${scriptName} must use its exact closed pnpm command chain`);
   for (const command of commands) assertRequiredScript(packageJson, command);
   return commands;
 }

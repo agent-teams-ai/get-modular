@@ -130,19 +130,28 @@ test("requires profile enforcement in complete and fast gates", () => {
     "",
   );
   assert.throws(() => validate({ packageJson: missingComplete }),
-    /complete gate must include architecture:feature-module-profile/u);
+    /check must use its exact closed pnpm command chain/u);
 
   const missingFast = clone(packageJson);
   missingFast.scripts["check:fast"] = "pnpm foundation:check && pnpm docs:check";
   assert.throws(() => validate({ packageJson: missingFast }),
-    /fast gate must include profile binding/u);
+    /check:fast must use its exact closed pnpm command chain/u);
 
   for (const scriptName of ["check", "check:fast"]) {
     for (const prefix of [": # && ", ":; ", ": || ", ": | ", ":\n"]) {
       const bypass = clone(packageJson);
       bypass.scripts[scriptName] = `${prefix}${bypass.scripts[scriptName]}`;
       assert.throws(() => validate({ packageJson: bypass }),
-        /must use a closed pnpm command chain/u);
+        /must use its exact closed pnpm command chain/u);
+    }
+    const commands = packageJson.scripts[scriptName].split(" && ");
+    for (const removed of commands) {
+      const incomplete = clone(packageJson);
+      incomplete.scripts[scriptName] = commands
+        .filter(command => command !== removed)
+        .join(" && ");
+      assert.throws(() => validate({ packageJson: incomplete }),
+        /must use its exact closed pnpm command chain/u);
     }
   }
 
@@ -306,7 +315,7 @@ test("first production package requires the Foundation source-dependency gate", 
   const missingFastGate = clone(configured);
   missingFastGate.packageJson.scripts["check:fast"] = "pnpm docs:check";
   assert.throws(() => validateFirstProductionPackageAdmission(missingFastGate),
-    /fast gate must execute/u);
+    /check:fast must use its exact closed pnpm command chain/u);
 });
 
 test("first production package cannot use a no-op Foundation alias", () => {
