@@ -35,6 +35,7 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "foundation:assert-dev-only": "agent-teams-foundation assert-dev-only",
   "foundation:assert-registry": "agent-teams-foundation assert-registry",
   "governance:check": "node architecture/checks/governance.mjs",
+  "governance:test": "node --test tests/governance.test.mjs",
 });
 
 const PACKAGE_MANIFEST = /^packages\/[^/]+\/package\.json$/u;
@@ -165,6 +166,13 @@ export function validateFirstProductionPackageAdmission({
   ));
   assert(misplacedManifests.length === 0,
     `production package manifests must be direct package roots: ${misplacedManifests.join(", ")}`);
+  assert(packageJson.devDependencies?.[FOUNDATION_ADMISSION.package]
+    === FOUNDATION_ADMISSION.version,
+  `${FOUNDATION_ADMISSION.package} must remain pinned to ${FOUNDATION_ADMISSION.version}`);
+  assert(packageJson.scripts?.["foundation:check"] === FOUNDATION_CHECK_SCRIPT,
+    "foundation:check must use the closed Foundation command chain");
+  assertRequiredScript(packageJson, "foundation:assert-dev-only");
+  assertRequiredScript(packageJson, "foundation:assert-registry");
   if (productionArtifacts.length === 0) {
     assert(admission?.status === "pre-production",
       "an empty production inventory must remain pre-production");
@@ -213,14 +221,6 @@ export function validateFirstProductionPackageAdmission({
     assert(publicationFields.length === 0,
       `${manifestPath} must not declare publication fields: ${publicationFields.join(", ")}`);
   }
-
-  assert(packageJson.devDependencies?.[FOUNDATION_ADMISSION.package]
-    === FOUNDATION_ADMISSION.version,
-  `${FOUNDATION_ADMISSION.package} must remain pinned to ${FOUNDATION_ADMISSION.version}`);
-  assert(packageJson.scripts?.["foundation:check"] === FOUNDATION_CHECK_SCRIPT,
-    "foundation:check must use the closed Foundation command chain");
-  assertRequiredScript(packageJson, "foundation:assert-dev-only");
-  assertRequiredScript(packageJson, "foundation:assert-registry");
 
   const completeCommands = scriptCommands(packageJson.scripts?.check);
   const fastCommands = scriptCommands(packageJson.scripts?.["check:fast"]);
@@ -301,6 +301,9 @@ export function validateFeatureModuleStandardProfile({
   assert(completeCommands.includes("architecture:feature-module-profile:test"),
     "complete gate must include profile tests");
   assertRequiredScript(packageJson, "architecture:feature-module-profile:test");
+  assert(completeCommands.includes("governance:test"),
+    "complete gate must include governance tests");
+  assertRequiredScript(packageJson, "governance:test");
   assert(fastCommands.includes("architecture:feature-module-profile"),
     "fast gate must include profile binding");
 

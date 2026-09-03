@@ -1468,6 +1468,11 @@ test("mutable revisions and unsafe paths fail closed", () => {
     }), /unsafe evidence path/u);
   }
 
+  assert.doesNotThrow(() => validateSourceMap({
+    ...sourceMap,
+    sources: [{ ...sourceMap.sources[0], paths: ["docs/qualification/"] }],
+  }));
+
   assert.throws(() => validateSourceMap({
     ...sourceMap,
     sources: [{ ...sourceMap.sources[0], observedAt: "2026-02-30" }],

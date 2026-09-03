@@ -46,6 +46,13 @@ export function safeRepositoryPath(value) {
       && !WINDOWS_DEVICE_NAME.test(segment));
 }
 
+export function safeRepositoryPathOrDirectory(value) {
+  const path = typeof value === "string" && value.endsWith("/")
+    ? value.slice(0, -1)
+    : value;
+  return safeRepositoryPath(path);
+}
+
 async function inspectWorkingTreePath(relativePath, repositoryRoot) {
   if (!safeRepositoryPath(relativePath)) return { kind: "unsafe" };
   const parts = relativePath.split("/");

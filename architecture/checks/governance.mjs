@@ -18,6 +18,7 @@ import {
   inspectTrackedWorkingTreeRegularFile,
   readIndexSnapshotFile,
   safeRepositoryPath,
+  safeRepositoryPathOrDirectory,
   untrackedPathsInScope,
 } from "./tracked-file-custody.mjs";
 
@@ -469,7 +470,7 @@ export function validateSourceMap(sourceMap) {
       fail(`${source.id} must identify its pull request`);
     }
     for (const path of uniqueStrings(source.paths, `${source.id}.paths`)) {
-      if (!safeRepositoryPath(path)) {
+      if (!safeRepositoryPathOrDirectory(path)) {
         fail(`${source.id} has an unsafe evidence path`);
       }
     }

@@ -150,6 +150,7 @@ test("requires profile enforcement in complete and fast gates", () => {
     "architecture:feature-module-profile",
     "architecture:feature-module-profile:test",
     "governance:check",
+    "governance:test",
   ]) {
     const noOp = clone(packageJson);
     noOp.scripts[scriptName] = ":";
@@ -178,6 +179,22 @@ test("keeps an empty pre-production repository honestly not-claimed", () => {
     packageJson,
     sourceDependencyPolicyPresent: false,
   }), undefined);
+
+  for (const scriptName of [
+    "foundation:check",
+    "foundation:assert-dev-only",
+    "foundation:assert-registry",
+  ]) {
+    const noOp = clone(packageJson);
+    noOp.scripts[scriptName] = ":";
+    assert.throws(() => validateFirstProductionPackageAdmission({
+      productionArtifacts: [],
+      admission: profile.adoption.admission,
+      foundationConfig: { schemaVersion: 1 },
+      packageJson: noOp,
+      sourceDependencyPolicyPresent: false,
+    }), /closed/u);
+  }
 });
 
 test("first production package requires the Foundation source-dependency gate", () => {
