@@ -5,7 +5,9 @@ This draft records an implementation-readiness audit and API authoring lab for G
 ## Evidence
 
 - Exact research base: `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418`
-- Branch head: `63ff1fac86ef8b196e8fb9b3505554f3b11444dd`
+- Remediation checkpoint: `5f2160d1509a244df3de3671363adaefbc4325d1`
+- The final review head is recorded in the GitHub PR metadata after the last
+  remediation commit; this template is not an authority for the current head.
 - 51 unique worker result envelopes retained: 49 completed and 2 partial
 - 16 targeted red-team critics completed across governance, API, composition and OSS/DI
 - Four independent integrators completed
