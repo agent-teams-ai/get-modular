@@ -65,15 +65,25 @@ test("rejects silent scope, mapping, and authority drift", () => {
   assert.throws(() => validate({ profile: changedAuthority }), /extensions does not match/u);
 });
 
-test("rejects premature conformance claims and weakened evidence", () => {
-  for (const [claim, status] of [
-    ["structural", "structural-conformant"],
-    ["runtime", "runtime-conformant"],
-  ]) {
-    const claimed = clone(profile);
-    claimed.adoption.conformance[claim].status = status;
-    assert.throws(() => validate({ profile: claimed }),
-      new RegExp(`${claim} conformance must remain not-claimed`, "u"));
+test("accepts ordered conformance states and rejects unsupported status values", () => {
+  const premature = clone(profile);
+  premature.adoption.conformance.structural.status = "structural-conformant";
+  assert.throws(() => validate({ profile: premature }), /requires source-admitted status/u);
+
+  const structural = clone(profile);
+  structural.adoption.admission.status = "source-admitted";
+  structural.adoption.conformance.structural.status = "structural-conformant";
+  assert.doesNotThrow(() => validate({ profile: structural }));
+
+  const runtime = clone(structural);
+  runtime.adoption.conformance.runtime.status = "runtime-conformant";
+  assert.doesNotThrow(() => validate({ profile: runtime }));
+
+  for (const claim of ["structural", "runtime"]) {
+    const invalid = clone(profile);
+    invalid.adoption.conformance[claim].status = "promoted-without-evidence";
+    assert.throws(() => validate({ profile: invalid }),
+      new RegExp(`${claim} conformance has an unsupported status`, "u"));
   }
 
   const missingEvidence = clone(profile);

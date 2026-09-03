@@ -31,4 +31,4 @@ All 17 requested scenarios are named in fixture.ts: required, optional, many, mi
 
 ## Failure modes and recommendation
 
-Cardinality and capability are strings; demo uses type assertions to associate runtime descriptors with dependency types. Unknown fields, duplicate keys, ambiguity, cycles, reachability, and ordering have no syntax-level diagnostics. Recommend for further research as authoring syntax, contingent on a typed compiler and supported-Node declaration emit run. Non-authoritative evidence only.
+Cardinality and capability are strings; the fixture uses an erased optional type marker and explicit helper generics to associate descriptors with dependency types without placing executable type values in the declaration. Unknown fields, duplicate keys, ambiguity, cycles, reachability, and ordering have no syntax-level diagnostics. Recommend for further research as authoring syntax, contingent on a typed compiler and supported-Node declaration emit run. Non-authoritative evidence only.

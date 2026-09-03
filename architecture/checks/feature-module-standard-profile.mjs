@@ -88,6 +88,11 @@ const EXPECTED_RUNTIME_EVIDENCE = Object.freeze([
   "accepted promotion decision binding the packed subject and runtime evidence",
 ]);
 
+const CONFORMANCE_STATUSES = Object.freeze({
+  structural: Object.freeze(["not-claimed", "structural-conformant"]),
+  runtime: Object.freeze(["not-claimed", "runtime-conformant"]),
+});
+
 function assert(condition, message) {
   if (!condition) throw new Error(`FEATURE_MODULE_PROFILE_INVALID: ${message}`);
 }
@@ -257,12 +262,18 @@ export function validateFeatureModuleStandardProfile({
   ]) {
     const state = adoption.conformance[claim];
     exactKeys(state, ["status", "rationale", "required_evidence"], `${claim} conformance`);
-    assert(state.status === "not-claimed",
-      `${claim} conformance must remain not-claimed before promotion`);
+    assert(CONFORMANCE_STATUSES[claim].includes(state.status),
+      `${claim} conformance has an unsupported status: ${state.status}`);
     assert(typeof state.rationale === "string" && state.rationale.length > 0,
       `${claim} conformance rationale must be non-empty`);
     equalJson(state.required_evidence, expectedEvidence, `${claim} conformance evidence`);
   }
+  assert(adoption.conformance.runtime.status !== "runtime-conformant"
+    || adoption.conformance.structural.status === "structural-conformant",
+  "runtime conformance requires structural conformance state");
+  assert(adoption.conformance.structural.status !== "structural-conformant"
+    || adoption.admission.status === "source-admitted",
+  "structural conformance requires source-admitted status");
 
   const canonicalUrl = `https://github.com/${EXPECTED_STANDARD.repository}/blob/`
     + `eef92e7fd40f538b4e9ba03e01bbd4e2d23f12f2/${EXPECTED_STANDARD.path}`;

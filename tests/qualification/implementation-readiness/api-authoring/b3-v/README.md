@@ -7,8 +7,8 @@ Discovery is inert (`executable` is a host loader key); activation consumes an e
 
 * `node --version` -> `v24.16.0`.
 * `pnpm runtime:preflight` -> fails: required Node `>=24.18.0 <25`.
-* `pnpm exec tsc -p qualification/spikes/api-authoring/declaration-and-activation/b3/tsconfig.json` -> passes; emits `dist/fixture.d.ts`.
-* `node --experimental-strip-types qualification/spikes/api-authoring/declaration-and-activation/b3/fixture.ts` -> passes; JSON reports 17/17 scenarios `ok:true`.
+* `pnpm exec tsc -p tests/qualification/implementation-readiness/api-authoring/b3-v/tsconfig.json` -> passes; emits `dist/fixture.d.ts`.
+* `node --experimental-strip-types tests/qualification/implementation-readiness/api-authoring/b3-v/fixture.ts` -> passes; JSON reports 17/17 scenarios `ok:true`.
 
 ## Metrics
 

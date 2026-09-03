@@ -324,7 +324,10 @@ Rules:
   from the provider feature's `identity.ts` (or `declaration.ts` for a
   single-implementation feature) to name the required capability in its own
   declaration. That import carries constants only, never a port type, a
-  factory, or an implementation.
+  factory, or an implementation. This value-import exception is a proposed
+  qualification/self-composition rule, not current production structural
+  authority; it must be explicitly admitted by the source-dependency policy
+  before any production conformance claim relies on it.
 - `internal.ts` exists only in library features. It exports pure functions and
   plain types, never a factory, a declaration, or an implementation. The
   Foundation source-dependency policy records these three cross-feature edges,
@@ -578,9 +581,11 @@ because the governance gate scans the working tree and rejects any package
 manifest outside `packages/` and any manifest with a publication field that is
 not inside a private accepted package; only the hash records of the packing results come back under
 `tests/qualification/`. The direct staging holds `dist-stage0/src/features/**`,
-`dist-stage0/self-composition/stage0.js` and `stage0-entry.js` with their
-`.d.ts` files, and nothing else from `self-composition/`; its manifest points
-`types` at the entry's declaration file. The generated staging holds
+`dist-stage0/self-composition/stage0.js`, `stage0-entry.js`, and
+`own-profile.js` with their `.d.ts` files, together with every file in the
+profile's reachable private closure recorded in the staging manifest. It
+holds nothing else from `self-composition/`; its manifest points `types` at
+the entry's declaration file. The generated staging holds
 `dist/index.js`, `dist/index.d.ts`, `dist/composition/generated/stage1.js` and
 `stage1.d.ts`, and every `dist/features/**` file they reference; its manifest
 carries the ADR-0012 export map with `types` at `./dist/index.d.ts`, so the

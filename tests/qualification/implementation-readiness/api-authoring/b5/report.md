@@ -6,7 +6,7 @@ Research fixture at base SHA `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418`. This is
 
 - `api.ts` — generic authoring surface (`required`, `optional`, `many`, `defineModule`, JSON declaration).
 - `scenarios.ts` — 17 shared synthetic scenarios and executable serialization probe.
-- `tsconfig.json`, `package.json` — local compiler commands.
+- `tsconfig.json`, `fixture-package.json` — local compiler commands.
 - `evidence.json` — output from the emitted JavaScript run.
 - `dist/api.{js,d.ts}`, `dist/scenarios.{js,d.ts}` — declaration/build output (generated fixture files).
 

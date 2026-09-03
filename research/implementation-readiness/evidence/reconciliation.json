@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "baseSha": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418",
+  "reviewedHeadSha": "fcf13205747453b6a086613a816fe5764a82dc2e",
+  "source": "combined-workers.json",
+  "records": [
+    {
+      "taskId": "gm-api-b1-lane-l-20260903",
+      "rawProviderStatus": "done",
+      "retainedEvidenceStatus": "partial",
+      "reason": "The raw summary claimed serializable:true, but the retained B1 harness is a source probe and reports serializability:not-executed. The source probe is authoritative for the retained fixture.",
+      "correction": "Do not count B1 as executed serialization evidence."
+    },
+    {
+      "taskId": "gm-api-b3-lane-l-20260903",
+      "rawProviderStatus": "done",
+      "retainedEvidenceStatus": "blocked",
+      "reason": "The provider envelope completed the job wrapper, but the payload records the sandbox bwrap failure and contains no positive fixture evidence.",
+      "correction": "Do not count the B3 lane as completed evidence; retain the raw envelope for custody."
+    }
+  ]
+}

@@ -6,7 +6,7 @@ Disposable TypeScript API-authoring fixture at base SHA `0f7d2fc64ae7258781e6c26
 
 `node --version` -> `v24.16.0`.
 
-`pnpm exec tsc -p qualification/spikes/api-authoring/independent-low-ceremony-candidate/b4/tsconfig.json` (pass), then `node qualification/spikes/api-authoring/independent-low-ceremony-candidate/b4/dist/run.js` (all scenarios pass; cycle intentionally reports `missing`, documenting the limitation).
+`pnpm exec tsc -p tests/qualification/implementation-readiness/api-authoring/b4-v/tsconfig.json` (pass), then `node tests/qualification/implementation-readiness/api-authoring/b4-v/dist/run.js` (all scenarios pass; cycle intentionally reports `missing`, documenting the limitation).
 
 The full repository gate is not claimable because preflight requires Node `>=24.18 <25` and this worker has 24.16.0.
 

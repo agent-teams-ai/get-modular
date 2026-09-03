@@ -69,6 +69,14 @@ slice after the required owner-start record; `NO-GO` for claiming Phase 3
 readiness, self-composition qualification, public API readiness, or release
 eligibility at this SHA.
 
+The profile checker has now been made transition-aware at the shape level: it
+accepts only the ordered `not-claimed -> structural-conformant ->
+runtime-conformant` states and rejects an out-of-order runtime state. It does
+not grant a claim or verify its evidence. `governance:check` remains the
+promotion authority because it verifies the same-subject qualification record,
+closed evidence digests, and accepted reciprocal promotion decision. The
+checked-in pre-production profile remains `not-claimed`.
+
 The recurring blockers are concrete rather than stylistic:
 
 1. There is no governed product-owner start record for admitting the first
@@ -275,11 +283,13 @@ packaging rule before claiming direct or stage1 evidence.
 The fixtures are disposable and do not define a public API. They use a common
 intended scenario vocabulary, but executed subsets differ by fixture and are
 reported separately. The lab measures authoring and typing, not compiler
-correctness.
+correctness. The raw worker record for the blocked B3 lane is retained for
+custody but is not counted as completed evidence; its provider envelope must
+not override the payload's blocked classification.
 
 | Candidate | Result observed | Strength | Limitation |
 | --- | --- | --- | --- |
-| Descriptor object | Compact source declaration; serialization was not executed by the B1 probe | Explicit and inspectable | More object ceremony; no compiler diagnostics |
+| Descriptor object | Compact source declaration; serializability was not executed by the B1 probe | Explicit and inspectable | More object ceremony; no compiler diagnostics |
 | Typed `defineModule` | 4-19 authoring LOC in variants; strong inference | Good local DX and typed activation seam | Current fixtures violate accepted helper/identity semantics; needs exact-shape subject |
 | Declaration + activation factory | Clear split between inert data and executable binding | Preserves Clean Architecture boundary | Stable diagnostic model absent in fixture |
 | Low-ceremony typed candidate | 7 LOC authoring, 4 LOC generic glue in one run; 17 scenarios executed | Useful ergonomics signal; no framework leakage | Diagnostic model and several helper semantics are not accepted; no reachability, roots, cycles or disabled proof |
@@ -306,7 +316,7 @@ not sufficient proof of alias isolation or key preservation.
 ### Required scenario matrix for the real subject
 
 The fixtures covered only a syntax-lab subset. The production qualification
-subject must separately execute at least:
+subject must separately execute the Core semantic matrix:
 
 - unique and duplicate module IDs;
 - owner/feature locality;
@@ -315,13 +325,17 @@ subject must separately execute at least:
 - duplicate provider, missing required, absent optional and ambiguous binding;
 - version/capability mismatch;
 - dependency cycle, multi-root closure and unreachable selection;
-- disabled root, disabled required provider and disabled optional provider;
 - deterministic ordering independent of input order;
 - bounded diagnostics, resource boundaries and cascade suppression;
 - complete profile validation without executable discovery;
-- literal loader table for the selected private profile;
 - serialization and stable plan digest;
 - mutation resistance for declarations, plans, inputs and diagnostics.
+
+Host-owned adapter qualification is a separate matrix and must not be counted
+as Core compiler evidence. It covers disabled root/provider impact and the
+literal executable loader table for the selected private profile. The Core
+returns a plan or bounded diagnostics; the host owns authorization,
+disablement, loader construction and lifecycle behavior.
 
 The plan/digest lane adds two mandatory cases before a Phase 4 claim: a valid
 reversed ordered-`many` composition whose plan order and digest change, and a
@@ -329,6 +343,12 @@ defined result for `graphDepth` when the selected graph is cyclic. The latter
 must either be unavailable/suppressed after the cycle finding or have an
 accepted, deterministic precedence; returning an arbitrary depth from an empty
 topological result is not evidence.
+
+The graph-semantic fixture's `global-suppression` and `cycle-suppression`
+branches are deliberate oracle mutants used only by the mutation-resistance
+test. They are not alternate production semantics. Input-order permutation in
+this fixture proves graph-set determinism only; ordered-`many` order changes
+belong to the separate plan/digest matrix above.
 
 ## OSS and industry lessons
 

@@ -11,7 +11,7 @@ Disposable API-authoring research fixture at exact base SHA `0f7d2fc64ae7258781e
 ## Commands and outputs
 
 - `node --version` → `v24.16.0` (repository preflight requires `>=24.18 <25`; therefore the full gate is not claimed).
-- `npx tsc -p qualification/spikes/api-authoring/typed-define-module/b2/tsconfig.json` → exit 0.
+- `npx tsc -p tests/qualification/implementation-readiness/api-authoring/b2-v/tsconfig.json` → exit 0.
 - `node --input-type=module -e 'import(...).then(m => console.log(JSON.stringify(m.measure(), null, 2)))'` → all 17 scenario records observed at their expected result; `executableImports: 0`; serialized declaration is `{"id":"acme/root","provides":["acme/service"]}`.
 
 Scenario set covered: required, optional, many, missing, duplicate, ambiguity, cycle, disabled, unreachable, multiple roots, deterministic ordering, hostile keys (`__proto__`, `constructor`, `then`, Unicode), unknown fields, no fallback, serializability, declaration emit, and no executable import during discovery.

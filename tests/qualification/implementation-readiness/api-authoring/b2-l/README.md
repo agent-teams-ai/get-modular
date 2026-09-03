@@ -6,7 +6,7 @@ engine, executable discovery, or production imports.
 
 ## Commands
 
-From the repository root, `node_modules/.bin/tsc -p qualification/spikes/api-authoring/typed-define-module/b2/tsconfig.json` — passed; declaration-only output in `dist/`.
+From the repository root, `node_modules/.bin/tsc -p tests/qualification/implementation-readiness/api-authoring/b2-l/tsconfig.json` — passed; declaration-only output in `dist/`.
 
 From the repository root, `node architecture/checks/node-version.mjs` — failed: Node `v24.16.0`; contract requires `>=24.18.0 <25`.
 
