@@ -479,7 +479,7 @@ based on reproducible findings, not vote count:
 
 | Red-team topic | Critics | Converged result | Material correction |
 | --- | ---: | --- | --- |
-| Governance/admission | 4 | `NO-GO` for current admission/phase claims | Owner-start record and promotion gate are unenforced |
+| Governance/admission | 4 | `NO-GO` for current admission/phase claims | Owner-start custody remains unenforced; promotion validation is now present |
 | API/cardinality/serialization | 4 | `NO-GO` for API selection/claims | Current fixtures violate accepted helper semantics and contain false-positive/silent-loss cases |
 | Self-composition/witness | 4 | `NO-GO` for stage0/stage1 claims | ADR-0016, W0/W1 and direct staging are not executable authority |
 | OSS/DI/overengineering | 4 | `CONDITIONAL` only for private semantics | Adapter replaceability and complexity budgets have no executable proof |
