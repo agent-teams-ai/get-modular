@@ -24,8 +24,9 @@ production package, or authorize public publication.
 
 ## Scope and authority
 
-The audit reviews exact base `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418` from
-`agent-teams-ai/get-modular`. The branch is
+The audit was seeded from exact base `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418`
+from `agent-teams-ai/get-modular`. The current remediation subject is
+`f88ead7f590c6c426f039b8884ba9da03a5ea3ce`. The branch is
 `research/implementation-readiness-api-authoring`. Production Core, public
 exports, runtime engine, plugin host, product integration, and package
 publication are deliberately out of scope.
@@ -99,6 +100,9 @@ The recurring blockers are concrete rather than stylistic:
    proposed rather than accepted.
 6. Raw carriers, duplicate binding records, public naming, and package carrier
    remain correctly gated by their open decisions and proposed successors.
+7. The future finite emitter still needs a closed allowlist-handle schema for
+   unique ECMAScript local/export identifiers, relative in-bound import paths,
+   qualification exclusions, and deterministic malformed-handle diagnostics.
 
 These findings do not require a new universal framework. They define the
 minimum evidence to add around the first private semantic implementation.
@@ -313,7 +317,7 @@ not override the payload's blocked classification.
 | Declaration + activation factory | Clear split between inert data and executable binding | Preserves Clean Architecture boundary | Stable diagnostic model absent in fixture |
 | Low-ceremony typed candidate | 7 LOC authoring, 4 LOC generic glue in one run; 17 scenarios executed | Useful ergonomics signal; no framework leakage | Diagnostic model and several helper semantics are not accepted; no reachability, roots, cycles or disabled proof |
 | Inference and declaration emit b5 | 506-byte serialized declaration; `constructor` and `then` survived, own `__proto__` did not | Makes literal-key and declaration-emit risks visible | Ordinary object literals are unsafe for hostile keys; not engine evidence |
-| Hostile-key serialization b6 | Closed fixture preserved `__proto__`, `constructor`, `then` and Unicode with deterministic JSON | Supports explicit safe-record/ordered-entry design | Tests representation only; no graph or trust boundary |
+| Hostile-key serialization b6 | Closed fixture preserved `__proto__`, `constructor`, `then` and Unicode; integer-index behavior is recorded as native JSON numeric ordering | Supports explicit safe-record/ordered-entry design | Tests representation only; no RFC 8785 ordering, graph or trust boundary |
 | Accepted helper-shape b9 | Runtime probe covers `required()`, `optional()`, `many({ min, max })` and `defineModule(x) === x`, including fresh mutable plain-object results | Closest fixture to accepted helper syntax | Synthetic only; no compiler, graph or packed-consumer evidence |
 | Disablement/removal b7 | 15 deterministic host-owned desired-state scenarios and TypeScript declaration emit | Shows a localized host/adaptor seam | Excluded from Core API measurements; does not implement runtime disable, cleanup, generations or recovery |
 | DX/navigation-at-scale b8 | 17 authoring LOC, 14 generic glue LOC, one declaration file and one binding locus | Preserves literal inference and keeps framework types out | Inline declarations become harder to navigate as scale grows; synthetic only |
@@ -450,10 +454,10 @@ determinism or reversibility:
 - Composition critics agree that W0/W1 parity is blocked, but distinguish the
   raw-entrypoint wording from that block. Private qualification-only raw work
   can be documented separately; production/public raw exposure remains gated.
-- M1 wording about exposing both accepted entry points conflicts with the
-  object-only/raw-gated sequencing. A per-phase export matrix is required.
-- Roadmap packing language is ambiguous between private qualification archives
-  and publication archives. Both must be named separately.
+- The M1 object-only/raw-gated sequencing and the distinction between private
+  qualification archives and publication archives are now explicit in the
+  roadmap and self-composition guide. The remaining gap is executable subject
+  evidence, not an export or packing contradiction.
 - Candidate fixtures disagree on diagnostics because they are syntax prototypes,
   not competing semantic implementations. No fixture result chooses the public
   API.
@@ -489,8 +493,9 @@ based on reproducible findings, not vote count:
   corrected; `providersPerManySlot` applicability to unselected binding lists
   remains an accepted-authority ambiguity, so no production interpretation is
   claimed;
-- the private `NormalizedPlan` handoff, M1 export matrix and self-composition
-  witness authority are not sufficiently defined for implementation claims;
+- the private `NormalizedPlan` handoff and self-composition witness authority
+  are not sufficiently defined for implementation claims; the M1 export matrix
+  is now explicit;
 - the API fixtures are useful authoring evidence, but none is a semantic engine
   or public API decision.
 
@@ -586,8 +591,11 @@ found by the six-role review:
   unclaimed pending authority clarification;
 - resource-profile qualification is part of the full check command;
 - the B6 representation probe rejects hostile array/object shapes before
-  serialization, while remaining explicitly outside canonicalization and
-  resource-profile proof;
+  serialization, explicitly records integer-index ordering, and remains
+  outside canonicalization and resource-profile proof;
+- exact-head B6/B9 probe output is retained in
+  `evidence/exact-head-api-probes.json`, bound to the fixture input digests and
+  the `f88ead7` subject commit; B9 still explicitly reports no compiler handoff;
 - first-production admission now checks accepted private package identities,
   private status, and absence of publication fields independent of active
   blockers.
@@ -599,15 +607,16 @@ gates remain open below.
 ## Review status
 
 The audit, API lab, OSS comparison, integrator synthesis and targeted red-team
-results are harvested in the retained historical evidence bundle. The six
-reviewers run after `5a08722` completed on the verified hosted worker with
-conditional findings; that external envelope is recorded in the reconciliation
-record but is not copied into the repository. No exact-head review result for
-this commit is retained in the tree. The historical conclusion remains useful
-for scope only: no P0, no production-scope violation, and no qualified Phase
-3/compiler or public-package claim. A commit that changes source, fixtures, or
-evidence is not reviewed by an earlier wave; the branch head must be explicitly
-reviewed before its findings are treated as current evidence.
+results are harvested in the retained historical evidence bundle. Six hosted
+reviewers inspected exact `22acecf` and completed with conditional findings;
+their result envelopes remain external to avoid self-referential review files.
+The later `f88ead7` commit added the B6 integer-index regression and corrected
+wording, so that earlier exact-head review is not current evidence. The local
+B6/B9 executions for `f88ead7` are retained in
+`evidence/exact-head-api-probes.json`; a fresh review is still required for the
+current branch head. No production-scope violation or qualified Phase
+3/compiler or public-package claim is made. A commit that changes source,
+fixtures, or evidence is not reviewed by an earlier wave.
 
 **Current conclusion:** the research supports proceeding to a small private
 semantic Core after the owner-start precondition, but it does not support

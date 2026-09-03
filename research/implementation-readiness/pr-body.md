@@ -5,15 +5,15 @@ This draft records an implementation-readiness audit and API authoring lab for G
 ## Evidence
 
 - Exact research base: `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418`
-- Remediation head: `5a08722fbd52b429ad67c412c8ec77eee0af58ff`
-- Historical reviewed SHA is carried by each retained result file under `research/implementation-readiness/evidence/raw/final-4dee/`. Six fresh exact-head reviewers inspected `5a08722` on the verified hosted worker; their external custody is recorded in `research/implementation-readiness/evidence/reconciliation.json` without copying self-referential result files. No reviewer authorized production or public API work.
+- Current remediation subject: `f88ead7f590c6c426f039b8884ba9da03a5ea3ce`
+- Historical reviewed SHA is carried by each retained result file under `research/implementation-readiness/evidence/raw/final-4dee/`. Later six-reviewer waves inspected `5a08722` and `22acecf` on the verified hosted worker; their external custody is recorded in `research/implementation-readiness/evidence/reconciliation.json` without copying self-referential result files. No reviewer authorized production or public API work.
 - 51 unique worker result envelopes retained: 49 completed and 2 partial
 - 16 targeted red-team critics completed across governance, API, composition and OSS/DI
 - Four independent integrators completed
 - Disposable API authoring fixtures cover nine candidates and remain under `tests/qualification`; b9 directly probes the accepted helper shape, while all fixtures remain non-authoritative until a private compiler subject exists.
 - Local `pnpm check` passed on Node `24.18.0` at the remediation head.
 
-The historical hosted research environment was Node 24.16, below the repository requirement. That limitation is recorded rather than treated as successful repository verification. No exact-head review result for the current commit is retained in this draft; the branch intentionally has no production Core subject. Source-unavailable OSS attempts are also recorded as limitations, not negative evidence.
+The historical hosted research environment was Node 24.16, below the repository requirement. That limitation is recorded rather than treated as successful repository verification. Six hosted reviewers inspected the preceding exact subject `22acecf`; the later `f88ead7` fixture/documentation correction invalidates that review for the current head. Exact B6/B9 probe outputs are retained in `research/implementation-readiness/evidence/exact-head-api-probes.json`. The branch intentionally has no production Core subject. Source-unavailable OSS attempts are also recorded as limitations, not negative evidence.
 
 ## Findings
 
@@ -23,6 +23,6 @@ The report identifies evidence gaps and implementation blockers, including owner
 
 ## Review policy
 
-This PR remains intentionally Draft. The previous external exact-head review covered `5a08722`; this commit requires and awaits its own exact-head review. This research branch does not authorize follow-up production implementation. It must not be merged automatically. No accepted ADR, production consumer, public SPI, or package was changed.
+This PR remains intentionally Draft. The current subject requires a fresh exact-head review after the `f88ead7` correction. This research branch does not authorize follow-up production implementation. It must not be merged automatically. No accepted ADR, production consumer, public SPI, or package was changed.
 
 See `research/implementation-readiness/report.md` for the full authority matrix, evidence classification, API comparison, OSS lessons, anti-pattern catalogue, quantitative notes, open decisions, and recommended next checkpoint.

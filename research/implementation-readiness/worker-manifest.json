@@ -48,10 +48,19 @@
       "workerCount": 6,
       "ownership": "exact-head read-only review",
       "evidenceDirectory": "research/implementation-readiness/evidence/raw/final-4dee"
+    },
+    {
+      "id": "remediation-review-22acecf",
+      "status": "completed-external-with-conditional-findings",
+      "workerCount": 6,
+      "ownership": "exact-head read-only review",
+      "reviewedSubject": "22acecf32116ae33c1eb818967ff8c0b343a57f1",
+      "custodyRecord": "research/implementation-readiness/evidence/reconciliation.json"
     }
   ],
   "notes": [
-    "Historical snapshot: 51 result envelopes plus 6 retained final-review results; the separate 5a08722 exact-head wave completed externally and is identified in reconciliation.json without copying self-referential result files.",
+    "Historical snapshot: 51 result envelopes plus 6 retained final-review results. The separate 5a08722 and 22acecf exact-head waves completed externally and are identified in reconciliation.json without copying self-referential result files.",
+    "The f88ead7 B6 and B9 local probe executions are retained separately as non-authoritative synthetic evidence bound by input and output digests.",
     "Historical V1 labels remain evidence lineage and are not silently rewritten.",
     "Proposed ADR-0009 through ADR-0016 remain non-authoritative.",
     "Production Core, public API, runtime engine and plugin host are out of scope."

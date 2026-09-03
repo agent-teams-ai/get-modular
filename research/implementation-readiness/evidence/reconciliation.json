@@ -17,6 +17,29 @@
     "custody": "verified-hosted-worker-only",
     "repositoryRetention": "excluded-to-avoid-self-referential-head-evidence"
   },
+  "remediationReviewerWave": {
+    "reviewedHeadSha": "22acecf32116ae33c1eb818967ff8c0b343a57f1",
+    "jobPrefix": "gm-final-22acecf",
+    "workerCount": 6,
+    "status": "completed-with-conditional-findings",
+    "custody": "verified-hosted-worker-only",
+    "repositoryRetention": "excluded-to-avoid-self-referential-head-evidence",
+    "resultSha256": {
+      "api": "6408715adbffef15746f905913d7d91c8e9d96fd816a1694b4e69dbdccacee13",
+      "architecture": "969eb67061fa4b00f1a4c57cac2cfa3143121256f615ca02f4309bfd303d79c7",
+      "authority": "31dae2ace95f4d9658fc30f6f98e9d904bf2f42bac0fdb6f3937411b11d41a40",
+      "graph": "106ef8d55224bbc6e488bc32ad4794a7d68616afb1a94af4770d1bedbd23dc50",
+      "mvp": "507ae8cd43152dc2b649049d852edf988ceac6293492ae7e8db28c59d0a11cab",
+      "security": "9991efb0b1b0869cd74600c7d86e7fd6e4f8da724c967dd1923e8102f82366ff"
+    }
+  },
+  "latestLocalSubject": {
+    "subjectSha": "f88ead7f590c6c426f039b8884ba9da03a5ea3ce",
+    "probeEvidence": "evidence/exact-head-api-probes.json",
+    "reviewedPriorSha": "22acecf32116ae33c1eb818967ff8c0b343a57f1",
+    "reviewStatus": "stale-after-subject-change",
+    "note": "The prior hosted review was not copied into the repository. The probe record is non-authoritative synthetic evidence bound by input digests."
+  },
   "records": [
     {
       "taskId": "gm-api-b1-lane-l-20260903",
