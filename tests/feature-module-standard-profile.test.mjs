@@ -185,12 +185,33 @@ test("first production package requires the Foundation source-dependency gate", 
   configured.productionArtifacts = ["packages/core/package.json"];
   configured.productionPackageManifests = coreManifest;
   assert.throws(() => validateFirstProductionPackageAdmission(configured),
-    /requires substantive production source/u);
+    /requires substantive source below packages\/core\/src/u);
   configured.productionArtifacts = ["packages/core/package.json", "packages/core/README.md"];
   assert.throws(() => validateFirstProductionPackageAdmission(configured),
-    /requires substantive production source/u);
+    /requires substantive source below packages\/core\/src/u);
+  configured.productionArtifacts = [
+    "packages/core/package.json",
+    "packages/core/tests/smoke.test.ts",
+  ];
+  assert.throws(() => validateFirstProductionPackageAdmission(configured),
+    /requires substantive source below packages\/core\/src/u);
+  configured.productionArtifacts = [
+    "packages/core/package.json",
+    "packages/core/src/index.ts",
+    "packages/conformance/package.json",
+  ];
+  configured.productionPackageManifests = new Map([
+    ...coreManifest,
+    ["packages/conformance/package.json", {
+      name: "@get-modular/conformance",
+      private: true,
+    }],
+  ]);
+  assert.throws(() => validateFirstProductionPackageAdmission(configured),
+    /requires substantive source below packages\/conformance\/src/u);
 
   configured.productionArtifacts = ["packages/core/package.json", "packages/core/src/index.ts"];
+  configured.productionPackageManifests = coreManifest;
   assert.equal(
     validateFirstProductionPackageAdmission(configured),
     SOURCE_DEPENDENCY_POLICY_PATH,

@@ -172,9 +172,12 @@ export function validateFirstProductionPackageAdmission({
   const manifestPaths = productionArtifacts.filter(path => PACKAGE_MANIFEST.test(path));
   assert(manifestPaths.length > 0,
     "first production package requires a package.json manifest");
-  assert(productionArtifacts.some(isProductionSourceArtifactPath),
-    "first production package requires substantive production source");
   const packageRoots = new Set(manifestPaths.map(path => path.slice(0, -"/package.json".length)));
+  const sourcePaths = productionArtifacts.filter(isProductionSourceArtifactPath);
+  for (const packageRoot of packageRoots) {
+    assert(sourcePaths.some(path => path.startsWith(`${packageRoot}/src/`)),
+      `production package requires substantive source below ${packageRoot}/src`);
+  }
   for (const artifact of productionArtifacts) {
     const [, packageName] = artifact.split("/");
     if (packageName !== undefined) {
