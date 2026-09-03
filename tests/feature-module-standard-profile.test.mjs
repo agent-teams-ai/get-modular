@@ -189,6 +189,14 @@ test("first production package requires the Foundation source-dependency gate", 
   configured.productionArtifacts = ["packages/core/package.json", "packages/core/README.md"];
   assert.throws(() => validateFirstProductionPackageAdmission(configured),
     /requires substantive source below packages\/core\/src/u);
+  for (const extension of ["cjsx", "mjsx", "ctsx", "mtsx"]) {
+    configured.productionArtifacts = [
+      "packages/core/package.json",
+      `packages/core/src/not-source.${extension}`,
+    ];
+    assert.throws(() => validateFirstProductionPackageAdmission(configured),
+      /requires substantive source below packages\/core\/src/u);
+  }
   configured.productionArtifacts = [
     "packages/core/package.json",
     "packages/core/tests/smoke.test.ts",
@@ -331,6 +339,7 @@ test("production artifact discovery is repository-wide and deterministic",
       await mkdir(join(fixture, "packages", "core", "src"), { recursive: true });
       await writeFile(join(fixture, "packages", "core", "package.json"), "{}\n");
       await writeFile(join(fixture, "packages", "core", "src", "index.ts"), "export {};\n");
+      await writeFile(join(fixture, "packages", "core", "src", "not-source.mtsx"), "ignored\n");
       await mkdir(join(fixture, "src"));
       await writeFile(join(fixture, "src", "compiler.ts"), "export {};\n");
       assert.deepEqual(await productionArtifactPaths(fixture), [
