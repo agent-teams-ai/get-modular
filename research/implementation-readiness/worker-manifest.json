@@ -14,42 +14,43 @@
   "stages": [
     {
       "id": "track-a-readiness",
-      "status": "planned",
+      "status": "completed",
       "workerCount": 10,
       "ownership": "read-only research"
     },
     {
       "id": "track-b-api-authoring",
-      "status": "planned",
+      "status": "completed-with-fixture-limitations",
       "workerCount": 8,
       "ownership": "disposable qualification fixtures only"
     },
     {
       "id": "oss-reference",
-      "status": "planned",
+      "status": "completed-with-source-limitations",
       "workerCount": 6,
       "ownership": "read-only research"
     },
     {
       "id": "integrators",
-      "status": "planned",
+      "status": "completed",
       "workerCount": 4,
       "ownership": "evidence synthesis"
     },
     {
       "id": "dispute-critics",
-      "status": "planned",
-      "workerCount": "adaptive",
+      "status": "completed",
+      "workerCount": 16,
       "ownership": "read-only targeted criticism"
     },
     {
       "id": "final-review",
-      "status": "planned",
+      "status": "pending-report-commit",
       "workerCount": 6,
       "ownership": "exact-head read-only review"
     }
   ],
   "notes": [
+    "Final snapshot: 51 unique result envelopes, 49 completed and 2 partial; 16 targeted critics completed four per topic.",
     "Historical V1 labels remain evidence lineage and are not silently rewritten.",
     "Proposed ADR-0009 through ADR-0016 remain non-authoritative.",
     "Production Core, public API, runtime engine and plugin host are out of scope."

@@ -1,0 +1,29 @@
+{
+  "status": "partial",
+  "changedFiles": [
+    "node_modules"
+  ],
+  "evidence": [
+    "safe_execution_status:partial",
+    "handoff_artifact_materialization_failed:handoff_patch_empty_for_dirty_workspace",
+    "patch_preserve_unavailable"
+  ],
+  "blockers": [
+    "unknown_error",
+    "Safe execution found an interrupted running task with unrecorded workspace changes."
+  ],
+  "nextAction": "preserve_patch",
+  "schemaVersion": 1,
+  "provider": "codex",
+  "runId": "gm-readiness-a2-seq-20260903",
+  "taskId": "gm-readiness-a2-seq-20260903",
+  "reason": "unknown_error",
+  "details": {
+    "workspaceMode": "git",
+    "changedFileCount": "1",
+    "changedFiles": "node_modules",
+    "baseCommit": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418",
+    "handoffArtifactError": "handoff_patch_empty_for_dirty_workspace"
+  },
+  "updatedAt": "2026-09-02T23:51:04.208Z"
+}

@@ -1,0 +1,1 @@
+{"private":true,"type":"module","scripts":{"check":"tsc -p tsconfig.json --noEmit","emit":"tsc -p tsconfig.json","run":"node dist/scenarios.js"}}

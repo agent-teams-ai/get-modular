@@ -1,0 +1,44 @@
+{
+  "status": "done",
+  "changedFiles": [
+    "research/implementation-readiness/evidence/combined-workers.json"
+  ],
+  "evidence": [
+    "safe_execution_status:completed",
+    "output_summary:Review complete and marked complete. Exact `HEAD` still matches `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418`; no tracked production files were edited.\n\nExact topic: OSS and industry lessons, Pure DI, replaceable adapters, framework lock-in, and overengineering.\n\nEvidence reviewed: [`combined-workers.json`](/var/data/gm-implementation-readiness-api-20260903/workspaces/target-oss-3/research/implementation-readiness/evidence/combined-workers.json), [`gm-integrator-i3-20260903.result.json`](/var/data/gm-implementation-readiness-api-20260903/jobs/i3/gm-integrator-i3-20260903.result.json), and [`gm-integrator-i4-20260903.result.json`](/var/data/gm-implementation-readiness-api-20260903/jobs/i4/gm-integrator-i4-20260903.result.json).\n\n- **P1 — dependency-authority ambiguity.**  \n  **Claim:** The design has one unambiguous Pure-DI dependency mechanism.  \n  **Evidence:** The guide permits runtime value imports of provider identity constants (`docs/architecture/self-composition-implementation-guide.md:306-332`), while its mechanism classification (`:618-636`), [`docs/architecture/feature-module-standard.md:55-66`](docs/architecture/feature-module-standard.md), and ADR-0008 (`docs/decisions/0008-bounded-internal-engine-self-composition.md:198-203`) describe different ownership rules. There is no executable production package/source graph at this SHA. Worker `gm-readiness-a9-20260903` reports the same conflict.  \n  **Impact:** Static coupling or a hidden identity registry could enter while still appearing composition-compliant.  \n  **Correction:** Architecture must classify identity imports as a mechanically enforced metadata-only exception, or remove them.  \n  **Owner:** Architecture and Foundation/tooling.  \n  **Block:** Blocks structural-conformance and self-composition claims, not private semantic preparation.  \n  **Confidence:** 8/10.\n\n- **P1 — replaceable-adapter and construction proof is missing.**  \n  **Claim:** Generated wiring and replaceable primitives are established by evidence.  \n  **Evidence:** No Core/compiler subject exists at this SHA. ADR-0010 and ADR-0016 remain proposed; private port types are undefined (`docs/architecture/self-composition-implementation-guide.md:349-364`), and ADR-0008’s object-identity witness conflicts with ADR-0016’s proposed static witness. Workers `gm-readiness-a7-extra-l-20260903` and `gm-readiness-a9-20260903` identify these gaps. API workers `gm-api-b4-extra-v-20260903`, `gm-api-b5-lane-l-20260903`, and `gm-api-b6-lane-l-20260903` provide authoring/serialization fixtures only, not compiler or runtime proof.  \n  **Impact:** Adapter replacement could alter canonical bytes, diagnostics, ordering, or failure behavior; generated factories could remain decorative around hidden framework wiring.  \n  **Correction:** Resolve the witness/port authority, then run direct and generated subjects with independent vectors and a controlled canonicalizer/scanner swap.  \n  **Owner:** Architecture/Core and conformance owners.  \n  **Block:** Blocks production adapter selection, self-composition qualification, and positive Pure-DI claims.  \n  **Confidence:** 9/10.\n\n- **P2 — overengineering budgets cannot be reproduced.**  \n  **Claim:** ADR-0008’s cost limits adequately control complexity.  \n  **Evidence:** `docs/decisions/0008-bounded-internal-engine-self-composition.md:364-388` gives thresholds but no LOC denominator, baseline archive, benchmark command, runtime/hardware, warmup, sample/statistical method, or tarball procedure. Worker `gm-readiness-a10-20260903` confirms this.  \n  **Impact:** The stated stop conditions cannot be objectively enforced. This is a measurement defect, not proof that the accepted stage0→stage1 design is wrong.  \n  **Correction:** Define the measurement protocol and owners, or mark the thresholds advisory.  \n  **Owner:** Architecture, release, and product owners.  \n  **Block:** Blocks a GO decision on complexity control; not private semantic work.  \n  **Confidence:** 9/10.\n\nIndustry evidence is useful but bounded. `gm-oss-o6-extra-v-20260903` directly reviewed pinned Dagger, Bazel, and Gradle snapshots via `/var/data/gm-industry-dogfooding-five-20260831/sources/README.md`: explicit generated factories, finite bootstrap DAGs, explicit toolchains/roots, and layered build logic are transferable patterns. Service loaders, registries, ambient environment, mutable lockfiles, framework identity, and runtime lifecycle containers are anti-patterns to reject. This is external precedent, not proof of Get Modular behavior. Source-unavailable workers `gm-oss-o1-extra-v-20260903`, `gm-oss-o2-extra-v-20260903`, and `gm-oss-o3-extra-v-20260903`, plus the non-target Effect review `gm-oss-o4-extra-v-20260903`, remain environment/scope limitations and provide no positive target evidence.\n\n**Integrator report must change: YES.** Add O6’s completed external observations, retain the identity-import and witness ambiguities, and explicitly downgrade fixture passes to non-semantic evidence. No P0 was found.\n\n**Verdict: CONDITIONAL**",
+    "attempt_count:1",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/target-oss-3/gm-targeted-oss-3-20260903.c7291602023fc7207a85823643de89b02917d4cbe03f85cae254e048df0c84c4.handoff.patch",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/target-oss-3/gm-targeted-oss-3-20260903.c7291602023fc7207a85823643de89b02917d4cbe03f85cae254e048df0c84c4.handoff.summary.json",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/target-oss-3/gm-targeted-oss-3-20260903.c7291602023fc7207a85823643de89b02917d4cbe03f85cae254e048df0c84c4.handoff.manifest.json"
+  ],
+  "blockers": [],
+  "nextAction": "review_completed",
+  "schemaVersion": 1,
+  "provider": "codex",
+  "runId": "gm-targeted-oss-3-20260903",
+  "taskId": "gm-targeted-oss-3-20260903",
+  "details": {
+    "baseCommit": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418"
+  },
+  "artifacts": [
+    {
+      "kind": "patch",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/target-oss-3/gm-targeted-oss-3-20260903.c7291602023fc7207a85823643de89b02917d4cbe03f85cae254e048df0c84c4.handoff.patch",
+      "byteLength": 182494,
+      "sha256": "c7291602023fc7207a85823643de89b02917d4cbe03f85cae254e048df0c84c4"
+    },
+    {
+      "kind": "summary",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/target-oss-3/gm-targeted-oss-3-20260903.c7291602023fc7207a85823643de89b02917d4cbe03f85cae254e048df0c84c4.handoff.summary.json",
+      "byteLength": 792,
+      "sha256": "6744545fa2b58c778d0c56be52a5ecc00d18c38fc5afc880041f189233144bca"
+    },
+    {
+      "kind": "manifest",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/target-oss-3/gm-targeted-oss-3-20260903.c7291602023fc7207a85823643de89b02917d4cbe03f85cae254e048df0c84c4.handoff.manifest.json",
+      "byteLength": 1349,
+      "sha256": "f186ad0f6ed4cfcb268ad04e7cf5a4f20a0efdd2c17d205c582850d29bc0d001"
+    }
+  ],
+  "updatedAt": "2026-09-03T01:16:05.552Z"
+}

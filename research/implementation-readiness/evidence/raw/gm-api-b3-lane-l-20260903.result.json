@@ -1,0 +1,19 @@
+{
+  "status": "done",
+  "changedFiles": [],
+  "evidence": [
+    "safe_execution_status:completed",
+    "output_summary:The goal is blocked after three consecutive attempts due to the persistent sandbox failure:\n\n`bwrap: setting up uid map: Operation not permitted`\n\nThis prevents creating or editing any fixture files, including under the assigned workspace and `/tmp` fallback. The assigned directory remains empty, so no scenario measurements or evidence artifact can be produced.\n\nAdditional confirmed limitation: Node is `v24.16.0`, while the repository requires `>=24.18.0 <25`; the runtime preflight fails accordingly.",
+    "attempt_count:1"
+  ],
+  "blockers": [],
+  "nextAction": "review_completed",
+  "schemaVersion": 1,
+  "provider": "codex",
+  "runId": "gm-api-b3-lane-l-20260903",
+  "taskId": "gm-api-b3-lane-l-20260903",
+  "details": {
+    "baseCommit": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418"
+  },
+  "updatedAt": "2026-09-03T00:26:51.989Z"
+}

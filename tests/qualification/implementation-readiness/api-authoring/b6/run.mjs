@@ -1,0 +1,11 @@
+import { readFileSync } from "node:fs";
+import { strict as assert } from "node:assert";
+const source = readFileSync(new URL("./dist/fixture.js", import.meta.url), "utf8");
+assert(!source.includes("node:fs") && !source.includes("node:module"));
+const mod = await import(new URL("./dist/fixture.js", import.meta.url));
+const snapshot = mod.canonicalSnapshot(mod.moduleWithHostileKeys);
+assert(snapshot.includes("__proto__") && snapshot.includes("constructor") && snapshot.includes("then") && snapshot.includes("café") && snapshot.includes("ключ"));
+const parsed = JSON.parse(snapshot);
+assert.equal(parsed.metadata["__proto__"], "literal");
+assert.deepEqual(Object.keys(parsed.metadata), ["__proto__", "café", "constructor", "then", "ключ"]);
+console.log(JSON.stringify({ scenarios: mod.scenarioResults, snapshotBytes: Buffer.byteLength(snapshot), importSideEffects: "none" }, null, 2));

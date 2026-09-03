@@ -1,0 +1,11 @@
+export type Cardinality={kind:'required'}|{kind:'optional'}|{kind:'many';min:number;max:number;orderBy:'moduleId'|'priority'};
+export type DependencySpec<T=unknown>=Cardinality&{capability:string;implementation?:string;type?:T};
+export type ModuleDescriptor<D extends Record<string,DependencySpec>>={id:string;version:string;provides:readonly string[];dependencies:D;metadata?:Readonly<Record<string,string|number|boolean>>};
+export const required=<T>(capability:string,implementation?:string):DependencySpec<T>=>({kind:'required',capability,...(implementation?{implementation}:{})});
+export const optional=<T>(capability:string,implementation?:string):DependencySpec<T>=>({kind:'optional',capability,...(implementation?{implementation}:{})});
+export const many=<T>(capability:string,min:number,max:number,orderBy:'moduleId'|'priority'):DependencySpec<T>=>({kind:'many',capability,min,max,orderBy});
+export const defineModule=<D extends Record<string,DependencySpec>>(descriptor:ModuleDescriptor<D>):ModuleDescriptor<D>=>structuredClone(descriptor);
+export type DemoDeps={logger:DependencySpec<{log(message:string):void}>;cache:DependencySpec<{get(key:string):unknown}>;peers:DependencySpec<{id:string}[]>};
+export const demo=defineModule<DemoDeps>({id:'demo.consumer',version:'1.0.0',provides:['demo'],dependencies:{logger:required('logging').type as never,cache:optional('cache').type as never,peers:many('peer',0,3,'moduleId').type as never},metadata:{enabled:true}});
+export const scenarios=['required','optional','many','missing','duplicate','ambiguity','cycle','disabled','unreachable','multiple roots','deterministic ordering','hostile keys','unknown fields','no fallback','serializability','declaration emit','no executable import during discovery'] as const;
+export const hostileKeys=['__proto__','constructor','then','é','\u0301'] as const;

@@ -3,7 +3,14 @@
   "language": "en",
   "useGitignore": true,
   "files": ["**/*.{md,yaml,yml,json,jsonc}"],
-  "ignorePaths": ["node_modules/**", "pnpm-lock.yaml"],
+  "ignorePaths": [
+    "node_modules/**",
+    "pnpm-lock.yaml",
+    "research/implementation-readiness/evidence/raw/**",
+    "research/implementation-readiness/evidence/combined-workers.json",
+    "research/implementation-readiness/evidence/worker-index.json",
+    "tests/qualification/implementation-readiness/api-authoring/**/evidence.json"
+  ],
   "words": [
     "Agentic",
     "Awilix",
@@ -28,6 +35,23 @@
     "parameterless",
     "productization",
     "protectable",
+    "Avvio",
+    "bwrap",
+    "counterevidence",
+    "frontmatter",
+    "inspectable",
+    "nonblank",
+    "overengineering",
+    "readback",
+    "replaceability",
+    "serializability",
+    "Theia",
+    "undercount",
+    "underspecified",
+    "Unicode",
+    "Ünicode",
+    "unclaimable",
+    "worktree",
     "xhigh"
   ]
 }
