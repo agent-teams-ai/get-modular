@@ -30,7 +30,7 @@ The audit reviews exact base `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418` from
 exports, runtime engine, plugin host, product integration, and package
 publication are deliberately out of scope.
 
-The current candidate head is `cc8847730cf47e0d42ac8b2a5d9473cfdb55a3d6`.
+The current candidate head is `5544974a5b2cab021cc4e1666156656148fe9ca7`.
 The prior exact-head review waves covered `fcf13205747453b6a086613a816fe5764a82dc2e`, `490b1b5d8a434e07e5e533e9fedeb0595af864ff` and `4deeab422a74daa05f84dbad03fa8013d55536b6`; all are invalid for the candidate head. The six-role review for `4deeab4` is retained under `research/implementation-readiness/evidence/raw/final-4dee/`; a fresh review is required for the candidate head.
 
 The worker manifest is the execution record. `combined-workers.json` contains

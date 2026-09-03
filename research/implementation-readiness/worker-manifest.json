@@ -48,12 +48,12 @@
       "workerCount": 6,
       "ownership": "exact-head read-only review",
       "priorReviewedHeadSha": "4deeab422a74daa05f84dbad03fa8013d55536b6",
-      "candidateHeadSha": "cc8847730cf47e0d42ac8b2a5d9473cfdb55a3d6",
+      "candidateHeadSha": "5544974a5b2cab021cc4e1666156656148fe9ca7",
       "evidenceDirectory": "research/implementation-readiness/evidence/raw/final-4dee"
     }
   ],
   "notes": [
-    "Final snapshot: 51 historical result envelopes plus 6 completed exact-head reviews for 4deeab4; candidate cc88477 awaits fresh review.",
+    "Final snapshot: 51 historical result envelopes plus 6 completed exact-head reviews for 4deeab4; candidate 5544974 awaits fresh review.",
     "Historical V1 labels remain evidence lineage and are not silently rewritten.",
     "Proposed ADR-0009 through ADR-0016 remain non-authoritative.",
     "Production Core, public API, runtime engine and plugin host are out of scope."
