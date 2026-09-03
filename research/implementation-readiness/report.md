@@ -30,8 +30,8 @@ The audit reviews exact base `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418` from
 exports, runtime engine, plugin host, product integration, and package
 publication are deliberately out of scope.
 
-The current reviewed head is `4deeab422a74daa05f84dbad03fa8013d55536b6`.
-The prior exact-head review waves covered `fcf13205747453b6a086613a816fe5764a82dc2e` and `490b1b5d8a434e07e5e533e9fedeb0595af864ff`; both are invalid for this head. The six-role review for the current head is retained under `research/implementation-readiness/evidence/raw/final-4dee/`.
+The current candidate head is `cc8847730cf47e0d42ac8b2a5d9473cfdb55a3d6`.
+The prior exact-head review waves covered `fcf13205747453b6a086613a816fe5764a82dc2e`, `490b1b5d8a434e07e5e533e9fedeb0595af864ff` and `4deeab422a74daa05f84dbad03fa8013d55536b6`; all are invalid for the candidate head. The six-role review for `4deeab4` is retained under `research/implementation-readiness/evidence/raw/final-4dee/`; a fresh review is required for the candidate head.
 
 The worker manifest is the execution record. `combined-workers.json` contains
 the raw result envelopes, including partial attempts. A result is positive
@@ -554,8 +554,8 @@ implementation worker:
 The exact-head remediation corrected only evidence and report inaccuracies
 found by the six-role review:
 
-- the branch-head metadata and final-review record are synchronized with the
-  reviewed research head `4deeab422a74daa05f84dbad03fa8013d55536b6`;
+- the branch-head metadata and final-review record from the preceding wave are
+  retained with its exact evidence identity;
 - the report and B1 fixture now distinguish source probing from executed
   serialization; the accepted `many({ min, max })` shape remains a required
   follow-up for the non-authoritative authoring fixture rather than a claimed
@@ -583,10 +583,11 @@ gates remain open below.
 
 The audit, API lab, OSS comparison, integrator synthesis and targeted red-team
 results are harvested in the retained evidence bundle. Six exact-head reviewers
-completed against `4deeab422a74daa05f84dbad03fa8013d55536b6`; their findings are
-recorded as conditional because the research branch intentionally has no
-production Core subject. Any later report or evidence commit invalidates this
-review and requires a fresh exact-head pass.
+completed against the preceding remediation head; their findings are retained
+as conditional because the research branch intentionally has no production
+Core subject. The candidate head requires a fresh exact-head pass. Any later
+report or evidence commit invalidates the corresponding review and requires a
+fresh exact-head pass.
 
 **Current conclusion:** the research supports proceeding to a small private
 semantic Core after the owner-start precondition, but it does not support

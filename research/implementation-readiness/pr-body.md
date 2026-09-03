@@ -5,8 +5,8 @@ This draft records an implementation-readiness audit and API authoring lab for G
 ## Evidence
 
 - Exact research base: `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418`
-- Reviewed head: `4deeab422a74daa05f84dbad03fa8013d55536b6`
-- The six exact-head reviewers covered this exact head. Their conditional findings are retained under `research/implementation-readiness/evidence/raw/final-4dee/`; no reviewer authorized production or public API work.
+- Candidate head: `cc8847730cf47e0d42ac8b2a5d9473cfdb55a3d6`
+- The preceding six exact-head reviews are retained under `research/implementation-readiness/evidence/raw/final-4dee/`; a fresh review is required for this candidate head. No reviewer authorized production or public API work.
 - 51 unique worker result envelopes retained: 49 completed and 2 partial
 - 16 targeted red-team critics completed across governance, API, composition and OSS/DI
 - Four independent integrators completed
