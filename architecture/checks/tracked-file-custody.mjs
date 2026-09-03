@@ -33,7 +33,7 @@ function hermeticGitEnvironment() {
   return environment;
 }
 
-function safeRepositoryPath(value) {
+export function safeRepositoryPath(value) {
   return typeof value === "string"
     && SAFE_RELATIVE_PATH.test(value)
     && !/^[A-Za-z]:[\\/]/u.test(value)

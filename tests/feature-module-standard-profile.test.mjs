@@ -136,6 +136,15 @@ test("requires profile enforcement in complete and fast gates", () => {
   missingFast.scripts["check:fast"] = "pnpm foundation:check && pnpm docs:check";
   assert.throws(() => validate({ packageJson: missingFast }),
     /fast gate must include profile binding/u);
+
+  for (const scriptName of ["check", "check:fast"]) {
+    for (const prefix of [": # && ", ":; ", ": || ", ": | ", ":\n"]) {
+      const bypass = clone(packageJson);
+      bypass.scripts[scriptName] = `${prefix}${bypass.scripts[scriptName]}`;
+      assert.throws(() => validate({ packageJson: bypass }),
+        new RegExp(`${scriptName === "check" ? "complete" : "fast"} gate`, "u"));
+    }
+  }
 });
 
 test("keeps the profile reachable for humans and agents", () => {
@@ -173,6 +182,25 @@ test("first production package requires the Foundation source-dependency gate", 
   };
   assert.throws(() => validateFirstProductionPackageAdmission(input),
     /architecture\.source-dependencies capability/u);
+
+  for (const path of [
+    "/packages/core/src/index.ts",
+    "packages\\core\\src\\index.ts",
+    "C:/packages/core/src/index.ts",
+    "packages//core/src/index.ts",
+    "packages/./core/src/index.ts",
+    "packages/core/../core/src/index.ts",
+    "packages/core:/src/index.ts",
+    "packages/core./src/index.ts",
+    "packages/con/src/index.ts",
+    "packages/core /src/index.ts",
+    "packages/core/src/index\n.ts",
+  ]) {
+    assert.throws(() => validateFirstProductionPackageAdmission({
+      ...input,
+      productionArtifacts: [path],
+    }), /portable repository-relative paths/u);
+  }
 
   const configured = clone(input);
   configured.foundationConfig.capabilities = {
@@ -245,7 +273,22 @@ test("first production package cannot use a no-op Foundation alias", () => {
     packageJson: packageWithNoOp,
     sourceDependencyPolicyPresent: true,
     productionPackageManifests: coreManifest,
-  }), /foundation:check must execute agent-teams-foundation check/u);
+  }), /foundation:check must use the closed Foundation command chain/u);
+
+  const commented = clone(packageJson);
+  commented.scripts["foundation:check"] = ": # && agent-teams-foundation check";
+  assert.throws(() => validateFirstProductionPackageAdmission({
+    productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts"],
+    admission: { ...profile.adoption.admission, status: "source-admitted" },
+    foundationConfig: {
+      capabilities: {
+        "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
+      },
+    },
+    packageJson: commented,
+    sourceDependencyPolicyPresent: true,
+    productionPackageManifests: coreManifest,
+  }), /foundation:check must use the closed Foundation command chain/u);
 });
 
 test("rejects unknown package identities even with no active publication blockers", () => {

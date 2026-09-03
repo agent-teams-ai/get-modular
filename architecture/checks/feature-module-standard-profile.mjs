@@ -11,6 +11,7 @@ import {
   productionArtifactSymlinkPaths,
   productionArtifactsOutsidePackages,
 } from "./production-artifacts.mjs";
+import { safeRepositoryPath } from "./tracked-file-custody.mjs";
 
 export const PROFILE_PATH = "architecture/feature-module-standard-profile.json";
 export const PROFILE_DOCUMENT_PATH = "docs/architecture/feature-module-standard.md";
@@ -24,6 +25,8 @@ const FOUNDATION_ADMISSION = Object.freeze({
   capability: "architecture.source-dependencies",
   policy: SOURCE_DEPENDENCY_POLICY_PATH,
 });
+const FOUNDATION_CHECK_SCRIPT =
+  "agent-teams-foundation check && pnpm foundation:assert-dev-only && pnpm foundation:assert-registry";
 
 const PACKAGE_MANIFEST = /^packages\/[^/]+\/package\.json$/u;
 
@@ -115,18 +118,14 @@ function equalJson(actual, expected, label) {
   assert(JSON.stringify(actual) === JSON.stringify(expected), `${label} does not match`);
 }
 
-function safeRelativePath(value) {
-  return typeof value === "string"
-    && value.length > 0
-    && !value.startsWith("/")
-    && !value.includes("\\")
-    && !value.split("/").includes("..");
-}
-
 function scriptCommands(script) {
   if (typeof script !== "string") return [];
-  return script.split("&&")
-    .map(command => command.trim().replace(/^pnpm\s+/u, ""));
+  const commands = script.split(" && ").map(command => command.replace(/^pnpm /u, ""));
+  const canonicalScript = commands.map(command => `pnpm ${command}`).join(" && ");
+  return script === canonicalScript
+    && commands.every(command => /^[a-z0-9][a-z0-9:.-]*$/u.test(command))
+    ? commands
+    : [];
 }
 
 export function validateFirstProductionPackageAdmission({
@@ -139,8 +138,8 @@ export function validateFirstProductionPackageAdmission({
   productionPackageManifests = new Map(),
 }) {
   assert(Array.isArray(productionArtifacts)
-    && productionArtifacts.every(path => safeRelativePath(path)),
-  "production artifacts must be safe repository-relative paths");
+    && productionArtifacts.every(path => safeRepositoryPath(path)),
+  "production artifacts must be portable repository-relative paths");
   assert(Array.isArray(productionArtifactSymlinks)
     && productionArtifactSymlinks.length === 0,
   `production artifacts must not be symlinks: ${productionArtifactSymlinks.join(", ")}`);
@@ -204,9 +203,8 @@ export function validateFirstProductionPackageAdmission({
   assert(packageJson.devDependencies?.[FOUNDATION_ADMISSION.package]
     === FOUNDATION_ADMISSION.version,
   `${FOUNDATION_ADMISSION.package} must remain pinned to ${FOUNDATION_ADMISSION.version}`);
-  const foundationCommands = scriptCommands(packageJson.scripts?.["foundation:check"]);
-  assert(foundationCommands.includes(FOUNDATION_ADMISSION.command),
-    `foundation:check must execute ${FOUNDATION_ADMISSION.command}`);
+  assert(packageJson.scripts?.["foundation:check"] === FOUNDATION_CHECK_SCRIPT,
+    "foundation:check must use the closed Foundation command chain");
 
   const completeCommands = scriptCommands(packageJson.scripts?.check);
   const fastCommands = scriptCommands(packageJson.scripts?.["check:fast"]);
@@ -258,7 +256,8 @@ export function validateFeatureModuleStandardProfile({
   for (const extension of adoption.extensions) {
     exactKeys(extension, ["id", "authority"], `extension ${extension?.id ?? "<unknown>"}`);
     assert(/^[a-z][a-z0-9-]+$/u.test(extension.id), `invalid extension ID ${extension.id}`);
-    assert(safeRelativePath(extension.authority), `${extension.id} has an unsafe authority path`);
+    assert(safeRepositoryPath(extension.authority),
+      `${extension.id} has an unsafe authority path`);
   }
 
   assert(Array.isArray(adoption.deviations), "deviations must be an array");
