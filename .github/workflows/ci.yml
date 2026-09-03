@@ -34,6 +34,6 @@ jobs:
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Verify source-admission bootstrap
         run: |
-          agent-teams-foundation check
+          pnpm exec agent-teams-foundation check
           node architecture/checks/feature-module-standard-profile.mjs
       - run: pnpm check

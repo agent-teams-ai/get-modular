@@ -32,10 +32,22 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
     "node architecture/checks/feature-module-standard-profile.mjs",
   "architecture:feature-module-profile:test":
     "node --test tests/feature-module-standard-profile.test.mjs",
+  "contracts:check": "node architecture/checks/v1-contract.mjs",
+  "contracts:test": "node --test tests/v1-contract.test.mjs",
+  "docs:check": "agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml",
+  "docs:protocol:check": "pnpm docs:check && pnpm docs:quality",
+  "docs:quality": "markdownlint-cli2 && cspell --config .cspell.json --no-progress",
   "foundation:assert-dev-only": "agent-teams-foundation assert-dev-only",
   "foundation:assert-registry": "agent-teams-foundation assert-registry",
+  "foundation:check": FOUNDATION_CHECK_SCRIPT,
   "governance:check": "node architecture/checks/governance.mjs",
   "governance:test": "node --test tests/governance.test.mjs",
+  "qualification:resource-profile": "node tests/qualification/v1-resource-profile.mjs",
+  "qualification:v1-diagnostics-protocol":
+    "node --test tests/qualification/v1-diagnostics-protocol.mjs",
+  "qualification:v1-graph-semantics":
+    "node --test tests/qualification/v1-graph-semantics.mjs",
+  "runtime:preflight": "node architecture/checks/node-version.mjs",
 });
 
 const PACKAGE_MANIFEST = /^packages\/[^/]+\/package\.json$/u;
@@ -139,8 +151,22 @@ function scriptCommands(script) {
 }
 
 function assertRequiredScript(packageJson, command) {
-  assert(packageJson.scripts?.[command] === REQUIRED_SCRIPT_DEFINITIONS[command],
+  assert(Object.hasOwn(REQUIRED_SCRIPT_DEFINITIONS, command)
+    && packageJson.scripts?.[command] === REQUIRED_SCRIPT_DEFINITIONS[command],
     `${command} must use its closed command definition`);
+}
+
+function assertRequiredScriptDefinitions(packageJson) {
+  for (const command of Object.keys(REQUIRED_SCRIPT_DEFINITIONS)) {
+    assertRequiredScript(packageJson, command);
+  }
+}
+
+function closedScriptCommands(packageJson, scriptName) {
+  const commands = scriptCommands(packageJson.scripts?.[scriptName]);
+  assert(commands.length > 0, `${scriptName} must use a closed pnpm command chain`);
+  for (const command of commands) assertRequiredScript(packageJson, command);
+  return commands;
 }
 
 export function validateFirstProductionPackageAdmission({
@@ -169,10 +195,17 @@ export function validateFirstProductionPackageAdmission({
   assert(packageJson.devDependencies?.[FOUNDATION_ADMISSION.package]
     === FOUNDATION_ADMISSION.version,
   `${FOUNDATION_ADMISSION.package} must remain pinned to ${FOUNDATION_ADMISSION.version}`);
+  assertRequiredScriptDefinitions(packageJson);
   assert(packageJson.scripts?.["foundation:check"] === FOUNDATION_CHECK_SCRIPT,
     "foundation:check must use the closed Foundation command chain");
   assertRequiredScript(packageJson, "foundation:assert-dev-only");
   assertRequiredScript(packageJson, "foundation:assert-registry");
+  const completeCommands = closedScriptCommands(packageJson, "check");
+  const fastCommands = closedScriptCommands(packageJson, "check:fast");
+  assert(completeCommands.includes("foundation:check"),
+    "complete gate must execute the Foundation source-dependency capability");
+  assert(fastCommands.includes("foundation:check"),
+    "fast gate must execute the Foundation source-dependency capability");
   if (productionArtifacts.length === 0) {
     assert(admission?.status === "pre-production",
       "an empty production inventory must remain pre-production");
@@ -222,12 +255,6 @@ export function validateFirstProductionPackageAdmission({
       `${manifestPath} must not declare publication fields: ${publicationFields.join(", ")}`);
   }
 
-  const completeCommands = scriptCommands(packageJson.scripts?.check);
-  const fastCommands = scriptCommands(packageJson.scripts?.["check:fast"]);
-  assert(completeCommands.includes("foundation:check"),
-    "complete gate must execute the Foundation source-dependency capability");
-  assert(fastCommands.includes("foundation:check"),
-    "fast gate must execute the Foundation source-dependency capability");
   return capability.configPath;
 }
 
@@ -290,8 +317,9 @@ export function validateFeatureModuleStandardProfile({
   }
 
   equalJson(adoption.enforcement, EXPECTED_ENFORCEMENT, "enforcement");
-  const completeCommands = scriptCommands(packageJson.scripts?.check);
-  const fastCommands = scriptCommands(packageJson.scripts?.["check:fast"]);
+  assertRequiredScriptDefinitions(packageJson);
+  const completeCommands = closedScriptCommands(packageJson, "check");
+  const fastCommands = closedScriptCommands(packageJson, "check:fast");
   for (const gate of adoption.enforcement) {
     exactKeys(gate, ["command", "evidence"], `enforcement ${gate?.command ?? "<unknown>"}`);
     assertRequiredScript(packageJson, gate.command);

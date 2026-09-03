@@ -142,15 +142,27 @@ test("requires profile enforcement in complete and fast gates", () => {
       const bypass = clone(packageJson);
       bypass.scripts[scriptName] = `${prefix}${bypass.scripts[scriptName]}`;
       assert.throws(() => validate({ packageJson: bypass }),
-        new RegExp(`${scriptName === "check" ? "complete" : "fast"} gate`, "u"));
+        /must use a closed pnpm command chain/u);
     }
   }
 
   for (const scriptName of [
     "architecture:feature-module-profile",
     "architecture:feature-module-profile:test",
+    "contracts:check",
+    "contracts:test",
+    "docs:check",
+    "docs:protocol:check",
+    "docs:quality",
+    "foundation:check",
+    "foundation:assert-dev-only",
+    "foundation:assert-registry",
     "governance:check",
     "governance:test",
+    "qualification:resource-profile",
+    "qualification:v1-diagnostics-protocol",
+    "qualification:v1-graph-semantics",
+    "runtime:preflight",
   ]) {
     const noOp = clone(packageJson);
     noOp.scripts[scriptName] = ":";
@@ -227,6 +239,12 @@ test("first production package requires the Foundation source-dependency gate", 
     "packages/LPT².txt/src/index.ts",
     "packages/core\u007f/src/index.ts",
     "packages/core\u0085/src/index.ts",
+    "packages/core\u200e/src/index.ts",
+    "packages/core\u202e/src/index.ts",
+    "packages/core\u2066/src/index.ts",
+    "packages/core\u2069/src/index.ts",
+    "packages/CONIN$/src/index.ts",
+    "packages/CONOUT$/src/index.ts",
   ]) {
     assert.throws(() => validateFirstProductionPackageAdmission({
       ...input,
@@ -305,7 +323,7 @@ test("first production package cannot use a no-op Foundation alias", () => {
     packageJson: packageWithNoOp,
     sourceDependencyPolicyPresent: true,
     productionPackageManifests: coreManifest,
-  }), /foundation:check must use the closed Foundation command chain/u);
+  }), /foundation:check must use its closed command definition/u);
 
   const commented = clone(packageJson);
   commented.scripts["foundation:check"] = ": # && agent-teams-foundation check";
@@ -320,7 +338,7 @@ test("first production package cannot use a no-op Foundation alias", () => {
     packageJson: commented,
     sourceDependencyPolicyPresent: true,
     productionPackageManifests: coreManifest,
-  }), /foundation:check must use the closed Foundation command chain/u);
+  }), /foundation:check must use its closed command definition/u);
 
   for (const scriptName of ["foundation:assert-dev-only", "foundation:assert-registry"]) {
     const noOp = clone(packageJson);

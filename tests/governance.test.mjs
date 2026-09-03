@@ -1461,6 +1461,12 @@ test("mutable revisions and unsafe paths fail closed", () => {
     "docs/LPT².txt/evidence.md",
     "docs/evidence\u007f.md",
     "docs/evidence\u0085.md",
+    "docs/evidence\u200e.md",
+    "docs/evidence\u202e.md",
+    "docs/evidence\u2066.md",
+    "docs/evidence\u2069.md",
+    "docs/CONIN$/evidence.md",
+    "docs/CONOUT$/evidence.md",
   ]) {
     assert.throws(() => validateSourceMap({
       ...sourceMap,
