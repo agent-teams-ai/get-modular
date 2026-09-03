@@ -30,8 +30,10 @@ The audit reviews exact base `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418` from
 exports, runtime engine, plugin host, product integration, and package
 publication are deliberately out of scope.
 
-The current candidate head is `5544974a5b2cab021cc4e1666156656148fe9ca7`.
-The prior exact-head review waves covered `fcf13205747453b6a086613a816fe5764a82dc2e`, `490b1b5d8a434e07e5e533e9fedeb0595af864ff` and `4deeab422a74daa05f84dbad03fa8013d55536b6`; all are invalid for the candidate head. The six-role review for `4deeab4` is retained under `research/implementation-readiness/evidence/raw/final-4dee/`; a fresh review is required for the candidate head.
+The exact reviewed SHA is recorded in each result under
+`research/implementation-readiness/evidence/raw/final-4dee/`. The report does
+not duplicate a mutable branch-head hash; this avoids making the evidence
+self-referential. Any later source/evidence commit requires a new result set.
 
 The worker manifest is the execution record. `combined-workers.json` contains
 the raw result envelopes, including partial attempts. A result is positive
@@ -582,12 +584,11 @@ gates remain open below.
 ## Review status
 
 The audit, API lab, OSS comparison, integrator synthesis and targeted red-team
-results are harvested in the retained evidence bundle. Six exact-head reviewers
-completed against the preceding remediation head; their findings are retained
-as conditional because the research branch intentionally has no production
-Core subject. The candidate head requires a fresh exact-head pass. Any later
-report or evidence commit invalidates the corresponding review and requires a
-fresh exact-head pass.
+results are harvested in the retained evidence bundle. The exact-head review
+results under the evidence directory are conditional because the research
+branch intentionally has no production Core subject. Any later report or
+evidence commit invalidates the corresponding review and requires a fresh
+exact-head pass.
 
 **Current conclusion:** the research supports proceeding to a small private
 semantic Core after the owner-start precondition, but it does not support
