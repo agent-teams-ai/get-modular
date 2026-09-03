@@ -229,18 +229,21 @@ reproducibility gap, not evidence of current tampering.
 **Action:** document or expose the repository-owned verifier in a separate
 governance correction while preserving existing accepted bytes.
 
-### R-008 - API fixtures do not implement the accepted authoring contract (P1)
+### R-008 - API fixtures do not implement the accepted authoring contract (P1, narrowed)
 
 The API lab was intentionally exploratory, but its earlier synthesis was too
 generous in calling B2/B4 promising directions. ADR-0007 closes the helper
 shape: `required()` and `optional()` take no arguments, `many({ min, max })`
 is the explicit input form and its result has fixed `order: "profile"`, helpers do not clone/freeze, and
-`defineModule(x) === x`. Several fixtures instead accept positional arguments,
+`defineModule(x) === x`. Most historical fixtures instead accept positional arguments,
 `factory` values, alternate ordering fields, or executable loader values.
 
-**Action:** keep all current fixtures non-authoritative and add one exact-shape
-fixture before selecting an API. Reject executable values during declaration
-authoring and add packed NodeNext, bundler and JavaScript-consumer checks.
+**Action:** keep all current fixtures non-authoritative. The b9 fixture now
+probes the exact accepted helper shape, but it deliberately does not replace
+the future compiler-handoff gate. The private implementation must still add
+packed NodeNext, bundler and JavaScript-consumer checks before using API
+measurements as compiler evidence; executable values remain forbidden in
+declarations.
 
 ### R-009 - low-ceremony diagnostics are a false-positive prototype (P1)
 
@@ -593,13 +596,16 @@ gates remain open below.
 
 The audit, API lab, OSS comparison, integrator synthesis and targeted red-team
 results are harvested in the retained historical evidence bundle. The six
-reviewers run after `5a08722` completed on the verified hosted worker with
-conditional findings; their external envelopes are identified in
-`evidence/reconciliation.json` but are not copied into the repository. Their
-main conclusion is unchanged: no P0, no production-scope violation, and no
-qualified Phase 3/compiler or public-package claim. Any later report or
-evidence commit invalidates the corresponding subject review and requires a
-fresh exact-head pass.
+reviewers run after `5a08722` and the six reviewers run after `9a1f73b` both
+completed on the verified hosted worker with conditional findings; their
+external envelopes are identified by job prefix and reviewed SHA in the
+reconciliation record but are not copied into the repository. The latter wave
+is external evidence for `9a1f73b`, not for a later commit containing this
+paragraph. Their main conclusion is unchanged: no P0, no production-scope
+violation, and no qualified Phase 3/compiler or public-package claim. A commit
+that changes source, fixtures, or evidence is not reviewed by an earlier wave;
+the current branch head must be explicitly identified as not reviewed until a
+fresh external exact-head pass is completed.
 
 **Current conclusion:** the research supports proceeding to a small private
 semantic Core after the owner-start precondition, but it does not support

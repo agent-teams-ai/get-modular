@@ -9,7 +9,7 @@ export const baseline = defineModule({
 });
 export const hostileKeys = defineModule({
   moduleId: 'demo/hostile', provides: ['__proto__', 'constructor', 'then', 'Ünicode'] as const,
-  dependencies: [], metadata: { '__proto__': 'data', constructor: 'data', then: 'data', 'Ünicode': 'data' },
+  dependencies: [], metadata: { ['__proto__']: 'data', constructor: 'data', then: 'data', 'Ünicode': 'data' },
 });
 export const scenarios = [
   'required', 'optional', 'many', 'missing', 'duplicate', 'ambiguity', 'cycle', 'disabled',

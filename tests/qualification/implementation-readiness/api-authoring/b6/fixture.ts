@@ -9,14 +9,34 @@ const MAX_ARRAY_LENGTH = 10_000;
 
 type ValidationState = { active: Set<object>; nodes: number };
 
+function hasLoneSurrogate(value: string): boolean {
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        index += 1;
+        continue;
+      }
+      return true;
+    }
+    if (code >= 0xdc00 && code <= 0xdfff) return true;
+  }
+  return false;
+}
+
 export function assertJsonValue(
   value: unknown,
   state: ValidationState = { active: new Set(), nodes: 0 },
 ): asserts value is JsonValue {
-  if (value === null || typeof value === "boolean" || typeof value === "string") return;
+  if (value === null || typeof value === "boolean") return;
+  if (typeof value === "string") {
+    if (hasLoneSurrogate(value)) throw new TypeError("unsupported JSON value: lone surrogate");
+    return;
+  }
   if (typeof value === "number") {
-    if (Number.isFinite(value) && !Object.is(value, -0)) return;
-    throw new TypeError("unsupported JSON value: non-finite or negative-zero number");
+    if (Number.isSafeInteger(value) && !Object.is(value, -0)) return;
+    throw new TypeError("unsupported JSON value: non-safe-integer or negative-zero number");
   }
   if (typeof value !== "object") throw new TypeError("unsupported JSON value: primitive");
   state.nodes += 1;

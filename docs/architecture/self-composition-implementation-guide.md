@@ -110,7 +110,10 @@ feature, `packages/core/src/features/authoring/`. It has no module declaration
 and no factory, because the helpers are the non-validating constructors that
 ADR-0007 accepted and the types are inert contracts; its `internal.ts` is the
 one place from which the direct subject entry and, from M3, `src/index.ts`
-re-export them together with the accepted compiler entry points.
+re-export them together with the compiler entry points allowed by the
+roadmap's per-phase export matrix. In M1 this is the object-only entry; the
+raw entry point is first exposed to a qualification subject in M2 after its
+accepted carrier decisions.
 
 ### Own graph
 
@@ -345,7 +348,9 @@ Rules:
 - No feature exports a barrel over its whole directory. The module's curated
   public surface is `packages/core/src/index.ts` alone once it exists in M3;
   until then the direct subject entry `self-composition/stage0-entry.ts`
-  re-exports the same accepted entry points for qualification.
+  re-exports only the M1 object-only row of the roadmap's per-phase export
+  matrix for qualification. It must not imply that raw carriers are available
+  before M2.
 - No generic `resolve()`, container, service locator, or string-keyed factory
   map exists anywhere in production source.
 
@@ -523,7 +528,9 @@ The direct subject and the generated subject differ in the file that
 constructs the facade, the entry file that re-exports it, the build
 configuration and output directory, the staging manifest written for packing,
 and the set of allowlist entries that the plan reaches; both expose the same
-accepted entry points.
+M1 object-only entry-point row. The phrase "same accepted entry points" must
+always be qualified by a phase row because the full two-entrypoint boundary is
+not admitted in M1.
 
 `tsconfig.stage0.json` includes `src/features/**` and `self-composition/**`
 except the `*.variant.ts` files, and excludes `src/index.ts` and
@@ -556,9 +563,15 @@ requires for stage roots. Both variant subjects, the direct one built from
 `stage0.variant.ts` through `stage0-entry.variant.ts` and the generated one
 built from `stage1.variant.ts` through `self-composition/stage1-entry.variant.ts`,
 which imports `../src/composition/generated/stage1.variant.js` and re-exports
-the same accepted entry points, come from this one configuration; the layout
+the same M1 object-only entry points, come from this one configuration; the layout
 of `dist-qualification/` differs from `dist/` and takes no part in the W0/W1
-comparison, which compares emitted wiring bytes. The two variant subjects
+comparison, which does not compare unrelated source paths or raw emitted
+source bytes. Before stage1 qualification, W0 and W1 must instead be reduced
+to the same path-independent canonical wiring tuples: selected implementation
+identities, dependency-before-consumer order, slot IDs, and bound provider
+identities. The tuple schema, extraction rules for handwritten stage0, and
+emitter normalization are a required qualification artifact; until they are
+defined and checked, W0/W1 parity is not claimed. The two variant subjects
 share that one output root because they are witness subjects, not promotion
 subjects; the separate output, cache and incremental roots that ADR-0008
 requires for stage0 and stage1 apply to the direct and generated promotion
@@ -756,7 +769,7 @@ graph with a second, qualification-only provider, and checkpoint A replaces
 that provider for both. Checkpoint A is passed when:
 
 - the own declarations and the own profile compile with `ok: true` through the
-  accepted entry points re-exported by `self-composition/stage0-entry.ts`;
+  M1 object-only entry point re-exported by `self-composition/stage0-entry.ts`;
 - the static witness check passes over `self-composition/stage0.ts` against
   P0, which includes a construction order equal to `dependencyOrder`; and
 - rebinding both `canonicalizer` slots to the witness variant, through

@@ -20,7 +20,7 @@ No JavaScript is emitted or executed, so discovery performs no executable import
 | missing, duplicate, ambiguity, cycle | Not measured: no compiler |
 | disabled, unreachable, multiple roots | Not measured: no profile/graph |
 | deterministic ordering | Explicit `orderBy: implementationId` |
-| hostile keys | `__proto__`, `constructor`, `then`, `Ünicode` as data |
+| hostile keys | computed own `__proto__`, `constructor`, `then`, `Ünicode` as data; declaration-only source evidence |
 | unknown fields, no fallback | Type-level excess-property checks; no defaults |
 | serializability | Data-only readonly shape; inspection pass |
 | declaration emit | `tsc --emitDeclarationOnly` passed |
@@ -43,5 +43,7 @@ No JavaScript is emitted or executed, so discovery performs no executable import
 
 Strong local inference and low ceremony, but cannot validate graph scenarios
 (missing, duplicate, ambiguity, cycle, disabled, unreachable, roots), and has
-no structured diagnostics or bindings. Recommend only as an inert declaration
-surface behind a separate validated profile/compiler; not conformance evidence.
+no structured diagnostics or bindings. The computed `__proto__` key proves the
+source shape is intentional, not that runtime serialization preserves it.
+Recommend only as an inert declaration surface behind a separate validated
+profile/compiler; not conformance evidence.

@@ -29,6 +29,10 @@ try {
     { value: Symbol("symbol"), label: "symbol" },
     { value: Number.NaN, label: "NaN" },
     { value: () => {}, label: "function" },
+    { value: 1.5, label: "fractional number" },
+    { value: Number.MAX_SAFE_INTEGER + 1, label: "unsafe integer" },
+    { value: "\uD800", label: "high lone surrogate" },
+    { value: "\uDC00", label: "low lone surrogate" },
   ]) {
     assert.throws(() => mod.canonicalSnapshot({ invalid: invalid.value }), /unsupported JSON value/u,
       invalid.label);

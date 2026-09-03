@@ -104,6 +104,35 @@ in a decision record and reference it from the first private package pull
 request, materialize private `packages/core`, reach M1 on Node, prepare the diagnostic generation 2
 transaction in parallel with M1, then proceed to M2 and M3 in that order.
 
+### Per-phase export matrix
+
+This matrix is an implementation boundary, not a new contract or public-name
+decision. It resolves which entry points a qualification subject may expose at
+each checkpoint:
+
+| Phase | Direct and generated subject may expose | Explicitly excluded |
+| --- | --- | --- |
+| M1 private object checkpoint | `compileCompositionV1`, the four accepted authoring helpers and the object-contract types needed by that subject | `compileCompositionJsonV1`, raw decoders, carrier adapters, package exports, and runtime loading |
+| M2 private carrier checkpoint | The M1 object boundary plus `compileCompositionJsonV1`, only after the accepted successor decisions for raw carriers and duplicate binding records | Public publication, unapproved carrier behavior, and product/runtime lifecycle |
+| M3 public/package checkpoint | Exactly the export map accepted by the naming and package-carrier decisions; unversioned names only after ADR-0009 or its successor is accepted | `stage0` exports, qualification-only variants, implicit aliases, and any unresolved raw or carrier surface |
+
+The direct and generated subjects must expose the same row of this matrix, not
+the full two-entrypoint boundary prematurely. Therefore M1 can prove parity
+for the object-only subset without claiming raw support; M2 is the first phase
+where the raw entry point is in scope. A subject or document must not use
+"same accepted entry points" without naming the applicable matrix row.
+
+### Owner-start admission record
+
+Before the first private production package is added, the product owner must
+record a small governed start record in the repository or in the bootstrap
+decision record. It must bind the repository and exact source SHA, package
+identity, owner, allowed scope (private normalized semantics only), and the
+fact that publication, raw carriers, runtime lifecycle, and proposed ADRs are
+not authorized. The admission checker must consume that record as a
+precondition; a pull-request approval or the existence of an empty package is
+not a substitute. This research branch intentionally contains no such record.
+
 ### Roadmap qualification language
 
 The labels below are phase-report outcomes, not new Feature Module Standard

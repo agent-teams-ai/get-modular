@@ -10,7 +10,7 @@ This draft records an implementation-readiness audit and API authoring lab for G
 - 51 unique worker result envelopes retained: 49 completed and 2 partial
 - 16 targeted red-team critics completed across governance, API, composition and OSS/DI
 - Four independent integrators completed
-- Disposable API authoring fixtures cover eight candidates and remain under `tests/qualification`
+- Disposable API authoring fixtures cover nine candidates and remain under `tests/qualification`; b9 directly probes the accepted helper shape, while all fixtures remain non-authoritative until a private compiler subject exists.
 - Local `pnpm check` passed on Node `24.18.0` at the remediation head.
 
 The historical hosted research environment was Node 24.16, below the repository requirement. That limitation is recorded rather than treated as successful repository verification. The fresh exact-head review wave used the verified hosted runtime and returned no P0; it remained conditional because the branch intentionally has no production Core subject. Source-unavailable OSS attempts are also recorded as limitations, not negative evidence.
@@ -23,6 +23,6 @@ The report identifies evidence gaps and implementation blockers, including owner
 
 ## Review policy
 
-This PR remains intentionally Draft. The current exact-head review is complete and conditional; it does not authorize follow-up production implementation. It must not be merged automatically. No accepted ADR, production consumer, public SPI, or package was changed.
+This PR remains intentionally Draft. The previous exact-head review covered `5a08722`; the later evidence wave covered `9a1f73b`, and any subsequent commit requires a fresh exact-head review. This research branch does not authorize follow-up production implementation. It must not be merged automatically. No accepted ADR, production consumer, public SPI, or package was changed.
 
 See `research/implementation-readiness/report.md` for the full authority matrix, evidence classification, API comparison, OSS lessons, anti-pattern catalogue, quantitative notes, open decisions, and recommended next checkpoint.
