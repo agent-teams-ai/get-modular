@@ -151,7 +151,7 @@ contains one narrow case and does not exercise optional absence or a complete
 gate. Keep the subject behind the private package boundary and run independent
 vectors through its accepted compiler boundary.
 
-### R-003 - resource oracle over-counted inert bindings (resolved)
+### R-003 - Einput oracle over-counted inert bindings (resolved)
 
 The original resource meter incremented `Einput` before filtering to selected
 consumers, while accepted graph semantics define unselected declarations and
@@ -159,11 +159,16 @@ bindings as inert. It could reject a valid composition or produce incorrect
 boundary evidence.
 
 **Resolution:** the qualification meter now counts selected-consumer provider
-occurrences only, derives `many` from the declaration's cardinality rather than
-the slot name, and reports cyclic depth as unavailable. An executable
-regression covers an unselected binding and a cyclic selected graph. The
-correction changes qualification evidence only; it does not change product
-semantics.
+occurrences only for `Einput`, `Evalid` and `Eadj`, derives `many` from the
+declaration's cardinality rather than the slot name, and reports cyclic depth as
+unavailable. An executable regression covers an unselected binding and a cyclic
+selected graph. `providersPerManySlot` remains selected-consumer-only in this
+fixture, but its applicability to supplied unselected binding lists is not
+settled by the accepted text: the contract explicitly scopes `Einput` and
+`graphEdges` to selected bindings, while its per-many clause only says "before
+duplicate rejection". This is recorded as an authority clarification needed
+before treating that counter as production resource evidence. The correction
+changes qualification evidence only; it does not change product semantics.
 
 ### R-004 - cardinality and cycle/depth evidence is incomplete (P1/P2)
 
@@ -384,7 +389,9 @@ determinism or reversibility:
 - claiming readiness, unload, recovery, fencing or isolation from a graph result;
 - publishing an evidence runner, report or attestation as a public API before a
   real external subject exists;
-- counting unselected declarations as selected graph edges or resource input;
+- counting unselected declarations as selected graph edges or `Einput`/`Evalid`/
+  `Eadj`; these declarations still contribute to explicitly named
+  declaration-world resource limits;
 - deleting user data as a side effect of module or plugin retirement.
 
 ## Contradictions and reconciliation
@@ -438,8 +445,10 @@ based on reproducible findings, not vote count:
   subject or named Phase 3 gate;
 - `many` range/empty-cardinality validation and resource applicability need one
   executable authority;
-- the accepted graph-inert rule is contradicted by the `Einput` oracle's
-  counting of unselected bindings;
+- the original `Einput` oracle counted unselected binding entries and was
+  corrected; `providersPerManySlot` applicability to unselected binding lists
+  remains an accepted-authority ambiguity, so no production interpretation is
+  claimed;
 - the private `NormalizedPlan` handoff, M1 export matrix and self-composition
   witness authority are not sufficiently defined for implementation claims;
 - the API fixtures are useful authoring evidence, but none is a semantic engine
@@ -530,8 +539,10 @@ found by the six-role review:
   measurements;
 - the raw document-batch limit fixture includes the profile document in its
   aggregate byte budget;
-- the resource meter now applies selected-consumer and declaration-cardinality
-  rules, with cyclic depth suppressed and a regression test;
+- the resource meter now applies selected-consumer rules to `Einput`, `Evalid`
+  and `Eadj`, derives many cardinality from declarations, suppresses cyclic
+  depth, and has a regression test; per-many applicability remains explicitly
+  unclaimed pending authority clarification;
 - resource-profile qualification is part of the full check command.
 
 No production package, Core API, runtime engine, plugin host or accepted ADR was
