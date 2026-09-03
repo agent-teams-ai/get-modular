@@ -34,6 +34,12 @@ Scenario set covered: required, optional, many, missing, duplicate, ambiguity, c
 
 This is an authoring-syntax fixture, not a module engine: scenario outcomes are recorded synthetic expectations rather than graph compilation. It does not prove semantic validation, ordering algorithms, or production diagnostics. `defineModule` accepts a factory field for discovery-safety measurement but does not invoke it. Full repository checks were intentionally not run because Node 24.16.0 violates the declared runtime preflight (`>=24.18 <25`). `npx` emitted only environment config warnings and used the existing installed TypeScript; no packages were installed or fetched.
 
+## Evidence status
+
+This is a negative/illustrative fixture, not evidence that an inert declaration
+can contain an executable factory. Its serialized projection intentionally
+omits the factory, so it must not be used as a positive serializability result.
+
 ## Recommendation (non-authoritative)
 
 Typed `defineModule<const P>` is compact and gives useful capability-literal inference with low binding edit surface and no framework leakage. Its main risk is that generic typing alone cannot enforce graph semantics or strict unknown-field rejection; those remain compiler/schema responsibilities.

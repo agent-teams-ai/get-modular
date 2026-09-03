@@ -39,6 +39,10 @@ try {
     [(() => { const array = []; array[0] = 1; Object.defineProperty(array, "extra", { value: 2, enumerable: true }); return array; })(), "array extra key"],
     [(() => { const array = []; array.length = 1; return array; })(), "sparse array"],
     [(() => { const array = []; array[0] = 1; array[Symbol("metadata")] = 2; return array; })(), "array symbol"],
+    [(() => { const array = [1]; array["00"] = 2; return array; })(), "non-canonical array index"],
+    [-0, "negative zero"],
+    [(() => { const object = {}; object.self = object; return object; })(), "cycle"],
+    [(() => { const array = []; array.length = 10_001; return array; })(), "array length limit"],
     [(() => { const object = { value: 1 }; Object.defineProperty(object, "hidden", { value: 2, enumerable: false }); return object; })(), "object non-enumerable"],
     [(() => { const object = { value: 1 }; Object.defineProperty(object, Symbol("metadata"), { value: 2, enumerable: true }); return object; })(), "object symbol"],
   ]) {

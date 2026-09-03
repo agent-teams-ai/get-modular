@@ -248,6 +248,31 @@ test("rejects publication fields on an otherwise accepted private package", () =
   }), /must not declare publication fields/u);
 });
 
+test("rejects an unmanifested or nested production package root", () => {
+  const baseInput = {
+    admission: { ...profile.adoption.admission, status: "source-admitted" },
+    foundationConfig: {
+      capabilities: {
+        "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
+      },
+    },
+    packageJson,
+    sourceDependencyPolicyPresent: true,
+    productionPackageManifests: coreManifest,
+  };
+  assert.throws(() => validateFirstProductionPackageAdmission({
+    ...baseInput,
+    productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts", "packages/other/src/index.ts"],
+  }), /every production package root requires a manifest/u);
+  assert.throws(() => validateFirstProductionPackageAdmission({
+    ...baseInput,
+    productionArtifacts: ["packages/group/core/package.json", "packages/group/core/src/index.ts"],
+    productionPackageManifests: new Map([
+      ["packages/group/core/package.json", { name: "@get-modular/core", private: true }],
+    ]),
+  }), /production package manifests must be direct package roots/u);
+});
+
 test("first production package rejects a package symlink", () => {
   assert.throws(() => validateFirstProductionPackageAdmission({
     productionArtifacts: ["packages/core/linked"],

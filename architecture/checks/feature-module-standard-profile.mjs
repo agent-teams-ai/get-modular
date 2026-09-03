@@ -146,6 +146,11 @@ export function validateFirstProductionPackageAdmission({
   const misplacedArtifacts = productionArtifactsOutsidePackages(productionArtifacts);
   assert(misplacedArtifacts.length === 0,
     `production artifacts must be below packages: ${misplacedArtifacts.join(", ")}`);
+  const misplacedManifests = productionArtifacts.filter(path => (
+    path.endsWith("/package.json") && !PACKAGE_MANIFEST.test(path)
+  ));
+  assert(misplacedManifests.length === 0,
+    `production package manifests must be direct package roots: ${misplacedManifests.join(", ")}`);
   if (productionArtifacts.length === 0) {
     assert(admission?.status === "pre-production",
       "an empty production inventory must remain pre-production");
@@ -166,6 +171,15 @@ export function validateFirstProductionPackageAdmission({
   const manifestPaths = productionArtifacts.filter(path => PACKAGE_MANIFEST.test(path));
   assert(manifestPaths.length > 0,
     "first production package requires a package.json manifest");
+  const packageRoots = new Set(manifestPaths.map(path => path.slice(0, -"/package.json".length)));
+  for (const artifact of productionArtifacts) {
+    const [, packageName] = artifact.split("/");
+    if (packageName !== undefined) {
+      const packageRoot = `packages/${packageName}`;
+      assert(packageRoots.has(packageRoot),
+        `every production package root requires a manifest: ${packageRoot}/package.json`);
+    }
+  }
   assert(productionPackageManifests instanceof Map,
     "production package manifests must be supplied as a map");
   for (const manifestPath of manifestPaths) {
