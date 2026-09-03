@@ -186,6 +186,9 @@ test("first production package requires the Foundation source-dependency gate", 
   configured.productionPackageManifests = coreManifest;
   assert.throws(() => validateFirstProductionPackageAdmission(configured),
     /requires substantive production source/u);
+  configured.productionArtifacts = ["packages/core/package.json", "packages/core/README.md"];
+  assert.throws(() => validateFirstProductionPackageAdmission(configured),
+    /requires substantive production source/u);
 
   configured.productionArtifacts = ["packages/core/package.json", "packages/core/src/index.ts"];
   assert.equal(

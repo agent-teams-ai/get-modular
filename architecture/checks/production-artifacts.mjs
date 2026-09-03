@@ -43,6 +43,10 @@ function isProductionArtifactName(path) {
   return path.endsWith("/package.json") || PRODUCTION_SOURCE.test(path);
 }
 
+export function isProductionSourceArtifactPath(path) {
+  return typeof path === "string" && PRODUCTION_SOURCE.test(path);
+}
+
 function isTrackedProductionArtifactPath(path) {
   if (path.endsWith("/package.json")) return true;
   if (!PRODUCTION_SOURCE.test(path)) return false;

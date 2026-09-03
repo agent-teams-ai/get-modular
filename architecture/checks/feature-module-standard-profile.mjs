@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 
 import {
+  isProductionSourceArtifactPath,
   PRIVATE_IMPLEMENTATION_PACKAGE_NAMES,
   PUBLICATION_FIELDS,
   productionArtifactPaths,
@@ -171,7 +172,7 @@ export function validateFirstProductionPackageAdmission({
   const manifestPaths = productionArtifacts.filter(path => PACKAGE_MANIFEST.test(path));
   assert(manifestPaths.length > 0,
     "first production package requires a package.json manifest");
-  assert(productionArtifacts.some(path => !path.endsWith("/package.json")),
+  assert(productionArtifacts.some(isProductionSourceArtifactPath),
     "first production package requires substantive production source");
   const packageRoots = new Set(manifestPaths.map(path => path.slice(0, -"/package.json".length)));
   for (const artifact of productionArtifacts) {
