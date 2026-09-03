@@ -30,6 +30,9 @@ The audit reviews exact base `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418` from
 exports, runtime engine, plugin host, product integration, and package
 publication are deliberately out of scope.
 
+The current remediation head is `490b1b5d8a434e07e5e533e9fedeb0595af864ff`.
+The prior exact-head review wave covered `fcf13205747453b6a086613a816fe5764a82dc2e`; it is invalid for this head and must be rerun before the draft is considered review-complete.
+
 The worker manifest is the execution record. `combined-workers.json` contains
 the raw result envelopes, including partial attempts. A result is positive
 evidence only when its base SHA and task identity are explicit and the worker
