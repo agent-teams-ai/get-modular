@@ -37,3 +37,5 @@ jobs:
           pnpm exec agent-teams-foundation check
           node architecture/checks/feature-module-standard-profile.mjs
       - run: pnpm check
+      - name: Verify tracked workspace integrity
+        run: git diff HEAD --exit-code --
