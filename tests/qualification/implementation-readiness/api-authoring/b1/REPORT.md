@@ -6,7 +6,7 @@ Disposable fixture at exact SHA 0f7d2fc64ae7258781e6c2676ca1e0ccc377f418. No pro
 
 node --version: v24.16.0
 tsc 7.0.2 strict no-emit check: pass
-node run.mjs: {scenarios:17,serializable:true,executableImports:0}
+node run.mjs: {scenarios:17,serializability:"not-executed",evidenceStatus:"source-probe-only",executableImports:0}
 pnpm check:fast: sandbox cannot start (bwrap uid map); Node 24.16.0 is below required >=24.18 <25.
 
 ## Shared scenarios
@@ -24,7 +24,7 @@ All 17 requested scenarios are named in fixture.ts: required, optional, many, mi
 | Explicit types | ModuleDescriptor, DependencySpec, DemoDeps |
 | Inference | defineModule preserves dependency keys; helpers infer cardinality |
 | Diagnostics | None at authoring boundary; semantic errors deferred/untyped |
-| Serializability | Inert data serializes; helper snapshots via structuredClone |
+| Serializability | Not executed; source probe only |
 | Declaration emit | Typecheck passes; emit not claimed due preflight limitation |
 | Removal cost | Delete one dependencies property |
 | Framework leakage | None; built-in structuredClone only |

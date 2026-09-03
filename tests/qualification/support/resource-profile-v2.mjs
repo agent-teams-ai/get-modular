@@ -192,13 +192,17 @@ export function meterCompositionResources({ declarations, profile }) {
   const selected = new Set(index.keys());
   const graph = Array.from({ length: selected.size }, () => new Set());
   let Einput = 0, Evalid = 0, providersPerManySlot = 0;
+  const declarationByImplementation = new Map(declarations.map(value =>
+    [value.implementationId, value]));
   for (const binding of profile.bindings) {
+    if (!selected.has(binding.consumerImplementationId)) continue;
     Einput += binding.providerImplementationIds.length;
-    if (binding.slotId === "many") providersPerManySlot = Math.max(
+    const declaration = declarationByImplementation.get(binding.consumerImplementationId);
+    const slot = declaration?.slots.find(value => value.slotId === binding.slotId);
+    if (slot?.cardinality?.kind === "many") providersPerManySlot = Math.max(
       providersPerManySlot, binding.providerImplementationIds.length);
     const unique = new Set(binding.providerImplementationIds);
     const valid = unique.size === binding.providerImplementationIds.length
-      && selected.has(binding.consumerImplementationId)
       && binding.providerImplementationIds.every(provider => selected.has(provider));
     if (!valid) continue;
     Evalid += binding.providerImplementationIds.length;
@@ -231,7 +235,7 @@ export function meterCompositionResources({ declarations, profile }) {
     roots: profile.roots.length, selections: profile.selections.length,
     bindings: profile.bindings.length, providersPerManySlot, Einput, Evalid,
     Eadj: dependencies.reduce((sum, value) => sum + value.length, 0),
-    graphDepth: Math.max(...depths), acyclic: order.acyclic,
+    graphDepth: order.acyclic ? Math.max(...depths) : null, acyclic: order.acyclic,
     reachableSelections: reachable.size };
 }
 

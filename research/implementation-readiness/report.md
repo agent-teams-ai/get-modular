@@ -76,13 +76,11 @@ The recurring blockers are concrete rather than stylistic:
 2. No executable Phase 3 compiler subject or named subject gate exists.
 3. Existing normalization evidence does not cover optional absence or the
    required `many` boundary matrix.
-4. The resource oracle counts provider occurrences from unselected bindings,
-   contradicting the accepted graph-inert rule.
-5. `many` cardinality validation and authoring shape need one executable
+4. `many` cardinality validation and authoring shape need one executable
    authority, including `min <= max` and zero-provider cases.
-6. Self-composition dependency-record and construction-witness semantics remain
+5. Self-composition dependency-record and construction-witness semantics remain
    proposed rather than accepted.
-7. Raw carriers, duplicate binding records, public naming, and package carrier
+6. Raw carriers, duplicate binding records, public naming, and package carrier
    remain correctly gated by their open decisions and proposed successors.
 
 These findings do not require a new universal framework. They define the
@@ -153,16 +151,19 @@ contains one narrow case and does not exercise optional absence or a complete
 gate. Keep the subject behind the private package boundary and run independent
 vectors through its accepted compiler boundary.
 
-### R-003 - resource oracle over-counts inert bindings (P1)
+### R-003 - resource oracle over-counted inert bindings (resolved)
 
-The resource meter increments `Einput` before filtering to selected consumers,
-while accepted graph semantics define unselected declarations and bindings as
-inert. This can reject a valid composition or produce incorrect boundary
-evidence.
+The original resource meter incremented `Einput` before filtering to selected
+consumers, while accepted graph semantics define unselected declarations and
+bindings as inert. It could reject a valid composition or produce incorrect
+boundary evidence.
 
-**Action:** count selected-consumer provider occurrences only, add a regression
-for an unselected binding, and add the corresponding plus-one boundary case.
-This is a qualification correction, not a change to product semantics.
+**Resolution:** the qualification meter now counts selected-consumer provider
+occurrences only, derives `many` from the declaration's cardinality rather than
+the slot name, and reports cyclic depth as unavailable. An executable
+regression covers an unselected binding and a cyclic selected graph. The
+correction changes qualification evidence only; it does not change product
+semantics.
 
 ### R-004 - cardinality and cycle/depth evidence is incomplete (P1/P2)
 
@@ -172,7 +173,8 @@ cyclic graph `graphDepth` fact is also unspecified when topological ordering is
 not available.
 
 **Action:** preserve the explicit authoring form
-`many({ min, max, order })`; make invalid ranges fail deterministically; add
+`many({ min, max })`, whose normalized result has the fixed `order: "profile"`;
+make invalid ranges fail deterministically; add
 zero/interior/max vectors; and either define depth as unavailable on cycles or
 define its exact precedence in an accepted clarification before claiming that
 boundary.
@@ -209,8 +211,8 @@ governance correction while preserving existing accepted bytes.
 
 The API lab was intentionally exploratory, but its earlier synthesis was too
 generous in calling B2/B4 promising directions. ADR-0007 closes the helper
-shape: `required()` and `optional()` take no arguments, `many({ min, max,
-order })` is the explicit form, helpers do not clone/freeze, and
+shape: `required()` and `optional()` take no arguments, `many({ min, max })`
+is the explicit input form and its result has fixed `order: "profile"`, helpers do not clone/freeze, and
 `defineModule(x) === x`. Several fixtures instead accept positional arguments,
 `factory` values, alternate ordering fields, or executable loader values.
 
@@ -265,23 +267,20 @@ packaging rule before claiming direct or stage1 evidence.
 
 ## API authoring lab
 
-The fixtures are disposable and do not define a public API. They all use the
-same named scenario set and exact base. The lab measures authoring and typing,
-not compiler correctness.
+The fixtures are disposable and do not define a public API. They use a common
+intended scenario vocabulary, but executed subsets differ by fixture and are
+reported separately. The lab measures authoring and typing, not compiler
+correctness.
 
 | Candidate | Result observed | Strength | Limitation |
 | --- | --- | --- | --- |
-| Descriptor object | TypeScript and serialization worked; compact declarations | Explicit and inspectable | More object ceremony; no compiler diagnostics |
+| Descriptor object | Compact source declaration; serialization was not executed by the B1 probe | Explicit and inspectable | More object ceremony; no compiler diagnostics |
 | Typed `defineModule` | 4-19 authoring LOC in variants; strong inference | Good local DX and typed activation seam | Current fixtures violate accepted helper/identity semantics; needs exact-shape subject |
 | Declaration + activation factory | Clear split between inert data and executable binding | Preserves Clean Architecture boundary | Stable diagnostic model absent in fixture |
 | Low-ceremony typed candidate | 7 LOC authoring, 4 LOC generic glue in one run; 17 scenarios executed | Useful ergonomics signal; no framework leakage | Diagnostic model and several helper semantics are not accepted; no reachability, roots, cycles or disabled proof |
 | Inference and declaration emit b5 | 506-byte serialized declaration; `constructor` and `then` survived, own `__proto__` did not | Makes literal-key and declaration-emit risks visible | Ordinary object literals are unsafe for hostile keys; not engine evidence |
 | Hostile-key serialization b6 | Closed fixture preserved `__proto__`, `constructor`, `then` and Unicode with deterministic JSON | Supports explicit safe-record/ordered-entry design | Tests representation only; no graph or trust boundary |
-| Disablement/removal b7 | 15 deterministic fixture scenarios and TypeScript declaration emit | Shows a localized desired-state/removal authoring seam | Does not implement runtime disable, cleanup, generations or recovery |
-| DX/navigation-at-scale b8 | 17 authoring LOC, 14 generic glue LOC, one declaration file and one binding locus | Preserves literal inference and keeps framework types out | Inline declarations become harder to navigate as scale grows; synthetic only |
-| Inference and declaration emit b5 | 506-byte serialized declaration; `constructor` and `then` survived, own `__proto__` did not | Makes literal-key and declaration-emit risks visible | Ordinary object literals are unsafe for hostile keys; not engine evidence |
-| Hostile-key serialization b6 | Closed fixture preserved `__proto__`, `constructor`, `then` and Unicode with deterministic JSON | Supports explicit safe-record/ordered-entry design | Tests representation only; no graph or trust boundary |
-| Disablement/removal b7 | 15 deterministic fixture scenarios and TypeScript declaration emit | Shows a localized desired-state/removal authoring seam | Does not implement runtime disable, cleanup, generations or recovery |
+| Disablement/removal b7 | 15 deterministic host-owned desired-state scenarios and TypeScript declaration emit | Shows a localized host/adaptor seam | Excluded from Core API measurements; does not implement runtime disable, cleanup, generations or recovery |
 | DX/navigation-at-scale b8 | 17 authoring LOC, 14 generic glue LOC, one declaration file and one binding locus | Preserves literal inference and keeps framework types out | Inline declarations become harder to navigate as scale grows; synthetic only |
 
 The lowest-ceremony candidate is a useful syntax direction, not an automatic
@@ -306,7 +305,7 @@ subject must separately execute at least:
 
 - unique and duplicate module IDs;
 - owner/feature locality;
-- required, optional and explicit `many({ min, max, order })`;
+- required, optional and explicit `many({ min, max })` with normalized profile ordering;
 - zero, one, interior and maximum provider counts;
 - duplicate provider, missing required, absent optional and ambiguous binding;
 - version/capability mismatch;
@@ -517,14 +516,34 @@ implementation worker:
 - what first product adapter owns activation, factory failures, readiness and
   recovery after the semantic Core checkpoint.
 
+## Remediation applied
+
+The exact-head remediation corrected only evidence and report inaccuracies
+found by the six-role review:
+
+- the branch-head metadata was synchronized with the reviewed research head;
+- the report and B1 fixture now distinguish source probing from executed
+  serialization and use the accepted `many({ min, max })` input shape;
+- B7 is explicitly host-owned desired state and excluded from Core API
+  measurements;
+- the raw document-batch limit fixture includes the profile document in its
+  aggregate byte budget;
+- the resource meter now applies selected-consumer and declaration-cardinality
+  rules, with cyclic depth suppressed and a regression test;
+- resource-profile qualification is part of the full check command.
+
+No production package, Core API, runtime engine, plugin host or accepted ADR was
+changed. Existing owner-start, Phase 3 subject, self-composition and release
+gates remain open below.
+
 ## Review status
 
 The audit, API lab, OSS comparison, integrator synthesis and targeted red-team
 results are harvested in the retained evidence bundle. The six-role final
-exact-head review is the next gate. It must verify every P1 against the exact
-branch head, distinguish evidence gaps from authority changes, and refuse
-automatic promotion to production or public API. Any later report or evidence
-commit invalidates this review and requires a fresh exact-head pass.
+exact-head review must verify the remediation against the exact branch head,
+distinguish evidence gaps from authority changes, and refuse automatic
+promotion to production or public API. Any later report or evidence commit
+invalidates the prior review and requires a fresh exact-head pass.
 
 **Current conclusion:** the research supports proceeding to a small private
 semantic Core after the owner-start precondition, but it does not support

@@ -44,6 +44,7 @@ import {
   runDiagnosticCollectorCase,
   wideGraph,
 } from "./qualification/v1-resource-profile.mjs";
+import { meterCompositionResources } from "./qualification/support/resource-profile-v2.mjs";
 
 const readJson = async relativePath => JSON.parse(
   await readFile(new URL(`../${relativePath}`, import.meta.url), "utf8"),
@@ -364,6 +365,69 @@ test("resource boundary fixtures remain iterative and bounded", () => {
   const overCap = boundedDiagnosticSummary(257, 256);
   assert.equal(overCap.retained.length, 255);
   assert.deepEqual(overCap.truncation, { omitted: 2 });
+});
+
+test("resource composition meter ignores unselected bindings and suppresses cyclic depth", () => {
+  const compatibility = {
+    family: "exact",
+    familyVersion: 1,
+    token: "example/resource/capability",
+  };
+  const declaration = (implementationId, slots) => ({
+    implementationId,
+    slots,
+    provides: [{ capabilityId: compatibility.token, compatibility }],
+  });
+  const manySlot = {
+    slotId: "input",
+    capabilityId: compatibility.token,
+    compatibility,
+    cardinality: { kind: "many", min: 0, max: 2, order: "profile" },
+  };
+  const requiredSlot = {
+    slotId: "input",
+    capabilityId: compatibility.token,
+    compatibility,
+    cardinality: { kind: "required" },
+  };
+  const declarations = [
+    declaration("example/a", [manySlot]),
+    declaration("example/b", [requiredSlot]),
+    declaration("example/orphan", [manySlot]),
+  ];
+  const profile = {
+    selections: [
+      { moduleId: "example/a", implementationId: "example/a" },
+      { moduleId: "example/b", implementationId: "example/b" },
+    ],
+    roots: ["example/a"],
+    bindings: [
+      { consumerImplementationId: "example/a", slotId: "input",
+        providerImplementationIds: ["example/b"] },
+      { consumerImplementationId: "example/b", slotId: "input",
+        providerImplementationIds: ["example/a"] },
+      { consumerImplementationId: "example/orphan", slotId: "input",
+        providerImplementationIds: ["example/a", "example/a"] },
+    ],
+  };
+
+  assert.deepEqual(meterCompositionResources({ declarations, profile }), {
+    declarations: 3,
+    capabilitiesPerDeclaration: 1,
+    slotsPerDeclaration: 1,
+    totalCapabilities: 3,
+    totalSlots: 3,
+    roots: 1,
+    selections: 2,
+    bindings: 3,
+    providersPerManySlot: 1,
+    Einput: 2,
+    Evalid: 2,
+    Eadj: 2,
+    graphDepth: null,
+    acyclic: false,
+    reachableSelections: 2,
+  });
 });
 
 test("every named resource limit has executable at and plus-one fixtures", async () => {
