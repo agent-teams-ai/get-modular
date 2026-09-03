@@ -75,6 +75,7 @@ export function assertJsonValue(
     if ("toJSON" in value) throw new TypeError("unsupported JSON value: toJSON");
     for (const key of Reflect.ownKeys(value)) {
       if (typeof key !== "string") throw new TypeError("unsupported JSON value: symbol property");
+      if (hasLoneSurrogate(key)) throw new TypeError("unsupported JSON value: lone surrogate key");
       const descriptor = Object.getOwnPropertyDescriptor(value, key);
       if (!descriptor || !("value" in descriptor) || descriptor.enumerable !== true) throw new TypeError(`unsupported JSON value at ${key}`);
       assertJsonValue(descriptor.value, state);

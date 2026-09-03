@@ -271,7 +271,10 @@ oversized arrays.
 B5 as negative evidence, and state explicitly that B6 is a disposable bounded
 hostile-shape probe rather than canonicalization, resource-profile, or
 trust-boundary proof. It does not establish RFC 8785 ordering or the accepted
-profile's depth, string-byte, value-occurrence, or object-property limits.
+profile's depth, string-byte, value-occurrence, or object-property limits. The
+probe also rejects lone surrogates in object keys and compares equivalent
+objects built with different insertion orders, but this remains only a
+representation-level observation.
 
 ### R-011 - W0/W1 parity is not a raw-byte comparison contract (P1)
 
@@ -311,6 +314,7 @@ not override the payload's blocked classification.
 | Low-ceremony typed candidate | 7 LOC authoring, 4 LOC generic glue in one run; 17 scenarios executed | Useful ergonomics signal; no framework leakage | Diagnostic model and several helper semantics are not accepted; no reachability, roots, cycles or disabled proof |
 | Inference and declaration emit b5 | 506-byte serialized declaration; `constructor` and `then` survived, own `__proto__` did not | Makes literal-key and declaration-emit risks visible | Ordinary object literals are unsafe for hostile keys; not engine evidence |
 | Hostile-key serialization b6 | Closed fixture preserved `__proto__`, `constructor`, `then` and Unicode with deterministic JSON | Supports explicit safe-record/ordered-entry design | Tests representation only; no graph or trust boundary |
+| Accepted helper-shape b9 | Runtime probe covers `required()`, `optional()`, `many({ min, max })` and `defineModule(x) === x`, including fresh mutable plain-object results | Closest fixture to accepted helper syntax | Synthetic only; no compiler, graph or packed-consumer evidence |
 | Disablement/removal b7 | 15 deterministic host-owned desired-state scenarios and TypeScript declaration emit | Shows a localized host/adaptor seam | Excluded from Core API measurements; does not implement runtime disable, cleanup, generations or recovery |
 | DX/navigation-at-scale b8 | 17 authoring LOC, 14 generic glue LOC, one declaration file and one binding locus | Preserves literal inference and keeps framework types out | Inline declarations become harder to navigate as scale grows; synthetic only |
 
@@ -596,16 +600,14 @@ gates remain open below.
 
 The audit, API lab, OSS comparison, integrator synthesis and targeted red-team
 results are harvested in the retained historical evidence bundle. The six
-reviewers run after `5a08722` and the six reviewers run after `9a1f73b` both
-completed on the verified hosted worker with conditional findings; their
-external envelopes are identified by job prefix and reviewed SHA in the
-reconciliation record but are not copied into the repository. The latter wave
-is external evidence for `9a1f73b`, not for a later commit containing this
-paragraph. Their main conclusion is unchanged: no P0, no production-scope
-violation, and no qualified Phase 3/compiler or public-package claim. A commit
-that changes source, fixtures, or evidence is not reviewed by an earlier wave;
-the current branch head must be explicitly identified as not reviewed until a
-fresh external exact-head pass is completed.
+reviewers run after `5a08722` completed on the verified hosted worker with
+conditional findings; that external envelope is recorded in the reconciliation
+record but is not copied into the repository. No exact-head review result for
+this commit is retained in the tree. The historical conclusion remains useful
+for scope only: no P0, no production-scope violation, and no qualified Phase
+3/compiler or public-package claim. A commit that changes source, fixtures, or
+evidence is not reviewed by an earlier wave; the branch head must be explicitly
+reviewed before its findings are treated as current evidence.
 
 **Current conclusion:** the research supports proceeding to a small private
 semantic Core after the owner-start precondition, but it does not support

@@ -24,6 +24,12 @@ try {
   const parsed = JSON.parse(snapshot);
   assert.equal(parsed.metadata["__proto__"], "literal");
   assert.deepEqual(Object.keys(parsed.metadata), ["__proto__", "café", "constructor", "then", "ключ"]);
+  const permutedMetadata = Object.create(null);
+  for (const [key, value] of [["ключ", "Unicode Cyrillic"], ["then", "literal"], ["__proto__", "literal"], ["café", "Unicode NFC"], ["constructor", "literal"]]) {
+    Object.defineProperty(permutedMetadata, key, { value, enumerable: true, configurable: true, writable: true });
+  }
+  const permuted = { id: "consumer", version: "1.0.0", dependencies: mod.moduleWithHostileKeys.dependencies, metadata: permutedMetadata };
+  assert.equal(mod.canonicalSnapshot(permuted), snapshot, "equivalent insertion orders must produce the same snapshot");
   for (const invalid of [
     { value: undefined, label: "undefined" },
     { value: Symbol("symbol"), label: "symbol" },
@@ -49,6 +55,7 @@ try {
     [(() => { const array = []; array.length = 10_001; return array; })(), "array length limit"],
     [(() => { const object = { value: 1 }; Object.defineProperty(object, "hidden", { value: 2, enumerable: false }); return object; })(), "object non-enumerable"],
     [(() => { const object = { value: 1 }; Object.defineProperty(object, Symbol("metadata"), { value: 2, enumerable: true }); return object; })(), "object symbol"],
+    [(() => { const object = {}; Object.defineProperty(object, "\uD800", { value: 1, enumerable: true }); return object; })(), "object key lone surrogate"],
   ]) {
     assert.throws(() => mod.canonicalSnapshot(value), /unsupported JSON value/u, label);
   }
