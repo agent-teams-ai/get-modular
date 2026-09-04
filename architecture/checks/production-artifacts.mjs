@@ -176,7 +176,6 @@ export async function packageManifestInventory(
       publicationFields: readable
         ? PUBLICATION_FIELDS.filter(field => manifest[field] !== undefined)
         : [],
-      carriesEsmCarrierRules: readable && manifest.name === ESM_CARRIER_PACKAGE_NAME,
       prohibitedFields: readable && manifest.name === ESM_CARRIER_PACKAGE_NAME
         ? PROHIBITED_MANIFEST_FIELDS.filter(field => manifest[field] !== undefined)
         : [],
