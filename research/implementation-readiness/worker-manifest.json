@@ -1,68 +1,375 @@
 {
-  "schemaVersion": 1,
-  "task": "implementation-readiness-api-authoring",
+  "schemaVersion": 2,
+  "inventoryId": "get-modular/implementation-readiness-worker-inventory/v2",
   "repository": "agent-teams-ai/get-modular",
-  "baseSha": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418",
-  "branch": "research/implementation-readiness-api-authoring",
-  "productionCodeAllowed": false,
-  "acceptedAdrMutationAllowed": false,
-  "networkAccess": "disabled",
-  "serviceTier": "default",
-  "workerModel": "gpt-5.6-sol",
-  "researchReasoningEffort": "xhigh",
-  "fixtureCodingReasoningEffort": "medium",
-  "stages": [
+  "inventorySubjectSha": "f6a81e029098de30d46d8cf3737fadb4a16ed098",
+  "initialCampaignBaseSha": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418",
+  "generatedBy": "tests/qualification/implementation-readiness/generate-worker-inventory.mjs",
+  "launchContract": {
+    "locator": "git:f6a81e029098de30d46d8cf3737fadb4a16ed098:research/implementation-readiness/worker-manifest.json",
+    "sha256": "24f3daf720d4b26aded018557b93eeda086e487b4826e6c3cfabb3b095569747",
+    "note": "Immutable pre-remediation manifest at the supplied commit; used only for launch defaults that it explicitly records."
+  },
+  "valueConvention": "A {value:null,reason} object is an intentionally unrecoverable historical value.",
+  "executionProfiles": {
+    "research-xhigh": {
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "serviceTier": "default",
+      "ownership": "read-only research",
+      "network": {
+        "requested": {
+          "value": null,
+          "reason": "not-retained"
+        },
+        "enforced": "disabled"
+      },
+      "provenance": "git:f6a81e029098de30d46d8cf3737fadb4a16ed098:research/implementation-readiness/worker-manifest.json"
+    },
+    "fixtures-medium": {
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "medium",
+      "serviceTier": "default",
+      "ownership": "disposable qualification fixtures only",
+      "network": {
+        "requested": {
+          "value": null,
+          "reason": "not-retained"
+        },
+        "enforced": "disabled"
+      },
+      "provenance": "git:f6a81e029098de30d46d8cf3737fadb4a16ed098:research/implementation-readiness/worker-manifest.json"
+    },
+    "integrator-xhigh": {
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "serviceTier": "default",
+      "ownership": "evidence synthesis",
+      "network": {
+        "requested": {
+          "value": null,
+          "reason": "not-retained"
+        },
+        "enforced": "disabled"
+      },
+      "provenance": "git:f6a81e029098de30d46d8cf3737fadb4a16ed098:research/implementation-readiness/worker-manifest.json"
+    },
+    "critic-xhigh": {
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "serviceTier": "default",
+      "ownership": "read-only targeted criticism",
+      "network": {
+        "requested": false,
+        "enforced": "disabled"
+      },
+      "provenance": "research/implementation-readiness/launch-targeted-critics.sh:49-52"
+    },
+    "final-review-xhigh": {
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "serviceTier": "default",
+      "ownership": "exact-head read-only review",
+      "network": {
+        "requested": {
+          "value": null,
+          "reason": "not-retained"
+        },
+        "enforced": "disabled"
+      },
+      "provenance": "git:f6a81e029098de30d46d8cf3737fadb4a16ed098:research/implementation-readiness/worker-manifest.json"
+    },
+    "remediation-not-retained": {
+      "model": {
+        "value": null,
+        "reason": "not-retained"
+      },
+      "reasoningEffort": {
+        "value": null,
+        "reason": "not-retained"
+      },
+      "serviceTier": {
+        "value": null,
+        "reason": "not-retained"
+      },
+      "ownership": "qualification fixture remediation",
+      "network": {
+        "requested": false,
+        "enforced": {
+          "value": null,
+          "reason": "not-retained"
+        }
+      },
+      "provenance": "raw result plus research/implementation-readiness/api-lab-remediation-prompt.md"
+    },
+    "correction-not-retained": {
+      "model": {
+        "value": null,
+        "reason": "not-retained"
+      },
+      "reasoningEffort": {
+        "value": null,
+        "reason": "not-retained"
+      },
+      "serviceTier": {
+        "value": null,
+        "reason": "not-retained"
+      },
+      "ownership": "qualification fixture correction",
+      "network": {
+        "requested": {
+          "value": null,
+          "reason": "not-retained"
+        },
+        "enforced": "sandbox-denied"
+      },
+      "provenance": "raw result plus research/implementation-readiness/api-lab-scenario-correction-prompt.md"
+    },
+    "audit-not-retained": {
+      "model": {
+        "value": null,
+        "reason": "not-retained"
+      },
+      "reasoningEffort": {
+        "value": null,
+        "reason": "not-retained"
+      },
+      "serviceTier": {
+        "value": null,
+        "reason": "not-retained"
+      },
+      "ownership": "exact-SHA read-only completion audit",
+      "network": {
+        "requested": {
+          "value": null,
+          "reason": "not-retained"
+        },
+        "enforced": {
+          "value": null,
+          "reason": "not-retained"
+        }
+      },
+      "provenance": "raw completion-audit result summaries"
+    }
+  },
+  "tracks": [
     {
-      "id": "track-a-readiness",
-      "status": "completed",
-      "workerCount": 10,
-      "ownership": "read-only research"
+      "id": "api-lab-remediation",
+      "plannedRoles": [
+        "API-LAB"
+      ],
+      "recordCount": 2,
+      "canonicalCount": 1,
+      "attemptCount": 1
     },
     {
-      "id": "track-b-api-authoring",
-      "status": "completed-with-fixture-limitations",
-      "workerCount": 8,
-      "ownership": "disposable qualification fixtures only"
-    },
-    {
-      "id": "oss-reference",
-      "status": "completed-with-source-limitations",
-      "workerCount": 6,
-      "ownership": "read-only research"
-    },
-    {
-      "id": "integrators",
-      "status": "completed",
-      "workerCount": 4,
-      "ownership": "evidence synthesis"
+      "id": "completion-audit",
+      "plannedRoles": [
+        "API",
+        "COMPLETION",
+        "MANIFEST",
+        "REPORT"
+      ],
+      "recordCount": 4,
+      "canonicalCount": 4,
+      "attemptCount": 0
     },
     {
       "id": "dispute-critics",
-      "status": "completed",
-      "workerCount": 16,
-      "ownership": "read-only targeted criticism"
+      "plannedRoles": [
+        "api-1",
+        "api-2",
+        "api-3",
+        "api-4",
+        "composition-1",
+        "composition-2",
+        "composition-3",
+        "composition-4",
+        "governance-1",
+        "governance-2",
+        "governance-3",
+        "governance-4",
+        "oss-1",
+        "oss-2",
+        "oss-3",
+        "oss-4"
+      ],
+      "recordCount": 16,
+      "canonicalCount": 16,
+      "attemptCount": 0
     },
     {
       "id": "final-review",
-      "status": "historical-evidence-retained; current-exact-review-external",
-      "workerCount": 6,
-      "ownership": "exact-head read-only review",
-      "evidenceDirectory": "research/implementation-readiness/evidence/raw/final-4dee"
+      "plannedRoles": [
+        "R1-authority",
+        "R2-api-types",
+        "R3-graph",
+        "R4-security",
+        "R5-architecture",
+        "R6-mvp"
+      ],
+      "recordCount": 6,
+      "canonicalCount": 6,
+      "attemptCount": 0
     },
     {
-      "id": "remediation-review-22acecf",
-      "status": "completed-external-with-conditional-findings",
-      "workerCount": 6,
-      "ownership": "exact-head read-only review",
-      "reviewedSubject": "22acecf32116ae33c1eb818967ff8c0b343a57f1",
-      "custodyRecord": "research/implementation-readiness/evidence/reconciliation.json"
+      "id": "integrators",
+      "plannedRoles": [
+        "I1",
+        "I2",
+        "I3",
+        "I4"
+      ],
+      "recordCount": 4,
+      "canonicalCount": 4,
+      "attemptCount": 0
+    },
+    {
+      "id": "oss-reference",
+      "plannedRoles": [
+        "O1",
+        "O2",
+        "O3",
+        "O4",
+        "O5",
+        "O6"
+      ],
+      "recordCount": 6,
+      "canonicalCount": 6,
+      "attemptCount": 0
+    },
+    {
+      "id": "track-a-readiness",
+      "plannedRoles": [
+        "A1",
+        "A10",
+        "A2",
+        "A3",
+        "A4",
+        "A5",
+        "A6",
+        "A7",
+        "A8",
+        "A9"
+      ],
+      "recordCount": 14,
+      "canonicalCount": 10,
+      "attemptCount": 4
+    },
+    {
+      "id": "track-b-api-authoring",
+      "plannedRoles": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6",
+        "B7",
+        "B8"
+      ],
+      "recordCount": 11,
+      "canonicalCount": 8,
+      "attemptCount": 3
     }
   ],
-  "notes": [
-    "Historical snapshot: 51 result envelopes plus 6 retained final-review results. The separate 5a08722 and 22acecf exact-head waves completed externally and are identified in reconciliation.json without copying self-referential result files.",
-    "The f88ead7 B6 and B9 local probe executions are retained separately as non-authoritative synthetic evidence bound by input and output digests.",
-    "Historical V1 labels remain evidence lineage and are not silently rewritten.",
-    "Proposed ADR-0009 through ADR-0016 remain non-authoritative.",
-    "Production Core, public API, runtime engine and plugin host are out of scope."
-  ]
+  "decisions": {
+    "accepted": [
+      "ADR-0001",
+      "ADR-0002",
+      "ADR-0003",
+      "ADR-0004",
+      "ADR-0005",
+      "ADR-0006",
+      "ADR-0007",
+      "ADR-0008",
+      "ADR-0015"
+    ],
+    "proposed": [
+      "ADR-0009",
+      "ADR-0010",
+      "ADR-0011",
+      "ADR-0012",
+      "ADR-0013",
+      "ADR-0014",
+      "ADR-0016"
+    ]
+  },
+  "hostPreflight": {
+    "source": "evidence/host-preflight.json",
+    "observedAt": "2026-09-04T00:49:21Z",
+    "hostAlias": "codex-workers-eu-01",
+    "machineId": "be0aad971ea647fab370acd110b469b7",
+    "sourceBundle": {
+      "headSha": "ae1a13869643ef4ae421baad7c377d4ef9198aeb",
+      "sha256": "298446493f46234a5b1afcb7eecff4f6983320932e2806aa2754cbb0f40dfb74"
+    }
+  },
+  "externalReviewBoundary": {
+    "rule": "Final exact-head review records belong in external PR/CI custody; committing them inside the commit they review would change that commit and make the evidence self-referential.",
+    "retainedHistoricalWave": {
+      "directory": "evidence/raw/final-4dee",
+      "reviewedHeadSha": "4deeab422a74daa05f84dbad03fa8013d55536b6",
+      "workerCount": 6,
+      "status": "completed-with-conditional-findings"
+    },
+    "externalWaves": [
+      {
+        "reviewedHeadSha": "5a08722fbd52b429ad67c412c8ec77eee0af58ff",
+        "jobPrefix": "gm-final-5a08722",
+        "workerCount": 6,
+        "status": "completed-with-conditional-findings",
+        "custody": "verified-hosted-worker-only",
+        "repositoryRetention": "excluded-to-avoid-self-referential-head-evidence"
+      },
+      {
+        "reviewedHeadSha": "22acecf32116ae33c1eb818967ff8c0b343a57f1",
+        "jobPrefix": "gm-final-22acecf",
+        "workerCount": 6,
+        "status": "completed-with-conditional-findings",
+        "custody": "verified-hosted-worker-only",
+        "repositoryRetention": "excluded-to-avoid-self-referential-head-evidence",
+        "resultSha256": {
+          "api": "6408715adbffef15746f905913d7d91c8e9d96fd816a1694b4e69dbdccacee13",
+          "architecture": "969eb67061fa4b00f1a4c57cac2cfa3143121256f615ca02f4309bfd303d79c7",
+          "authority": "31dae2ace95f4d9658fc30f6f98e9d904bf2f42bac0fdb6f3937411b11d41a40",
+          "graph": "106ef8d55224bbc6e488bc32ad4794a7d68616afb1a94af4770d1bedbd23dc50",
+          "mvp": "507ae8cd43152dc2b649049d852edf988ceac6293492ae7e8db28c59d0a11cab",
+          "security": "9991efb0b1b0869cd74600c7d86e7fd6e4f8da724c967dd1923e8102f82366ff"
+        }
+      }
+    ],
+    "currentInventorySubject": "f6a81e029098de30d46d8cf3737fadb4a16ed098",
+    "currentInventoryReview": {
+      "value": null,
+      "reason": "external-review-not-retained-in-reviewed-commit"
+    }
+  },
+  "enumerationBoundary": "Records are limited to byte-unique raw results retained at the supplied exact commit. Externally held review waves are counted only in aggregate, and later launches are not enumerated.",
+  "sourceIndex": "research/implementation-readiness/evidence/worker-index.json#/sources",
+  "counts": {
+    "rawFiles": 76,
+    "byteUniqueRawResults": 63,
+    "duplicateRawAliases": 13,
+    "records": 63,
+    "plannedRoles": 55,
+    "canonicalRecords": 55,
+    "attemptRecords": 8,
+    "initialCampaignRecords": 51,
+    "initialCampaignPlannedRoles": 44,
+    "wrapperStatuses": {
+      "done": 61,
+      "partial": 2
+    },
+    "evidenceStatuses": {
+      "blocked": 2,
+      "partial": 3,
+      "positive": 10,
+      "review-only": 43,
+      "source-unavailable": 5
+    },
+    "retainedHistoricalFinalReviews": 6,
+    "retainedCompletionAudits": 4,
+    "externalReviewRecordsNotRetained": 12
+  }
 }

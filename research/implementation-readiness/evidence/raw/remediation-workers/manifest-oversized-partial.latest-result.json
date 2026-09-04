@@ -1,0 +1,51 @@
+{
+  "status": "partial",
+  "changedFiles": [
+    "research/implementation-readiness/evidence/worker-index.json",
+    "research/implementation-readiness/evidence/worker-inventory.mjs",
+    "research/implementation-readiness/worker-manifest.json"
+  ],
+  "evidence": [
+    "safe_execution_status:partial",
+    "attempt_count:5",
+    "patch_preserved:/var/data/gm-goal-audit-20260904/jobs/manifest-write-411-l-new/gm-goal-worker-manifest-remediation-l-new-20260904.0c464b395e473a656f98ce9a62154217c1bc4c7504ec655edd6057cbdb701978.handoff.patch",
+    "patch_preserved:/var/data/gm-goal-audit-20260904/jobs/manifest-write-411-l-new/gm-goal-worker-manifest-remediation-l-new-20260904.0c464b395e473a656f98ce9a62154217c1bc4c7504ec655edd6057cbdb701978.handoff.summary.json",
+    "patch_preserved:/var/data/gm-goal-audit-20260904/jobs/manifest-write-411-l-new/gm-goal-worker-manifest-remediation-l-new-20260904.0c464b395e473a656f98ce9a62154217c1bc4c7504ec655edd6057cbdb701978.handoff.manifest.json"
+  ],
+  "blockers": [
+    "capacity_unavailable",
+    "Safe execution has no attempts remaining."
+  ],
+  "nextAction": "switch_account",
+  "schemaVersion": 1,
+  "provider": "codex",
+  "runId": "gm-goal-worker-manifest-remediation-l-new-20260904",
+  "taskId": "gm-goal-worker-manifest-remediation-l-new-20260904",
+  "reason": "capacity_unavailable",
+  "details": {
+    "availability": "degraded:1",
+    "reasons": "task_cancelled:1",
+    "baseCommit": "4113615ff3b796e940aebdd2e29f0560038f34cc"
+  },
+  "artifacts": [
+    {
+      "kind": "patch",
+      "path": "/var/data/gm-goal-audit-20260904/jobs/manifest-write-411-l-new/gm-goal-worker-manifest-remediation-l-new-20260904.0c464b395e473a656f98ce9a62154217c1bc4c7504ec655edd6057cbdb701978.handoff.patch",
+      "byteLength": 630437,
+      "sha256": "0c464b395e473a656f98ce9a62154217c1bc4c7504ec655edd6057cbdb701978"
+    },
+    {
+      "kind": "summary",
+      "path": "/var/data/gm-goal-audit-20260904/jobs/manifest-write-411-l-new/gm-goal-worker-manifest-remediation-l-new-20260904.0c464b395e473a656f98ce9a62154217c1bc4c7504ec655edd6057cbdb701978.handoff.summary.json",
+      "byteLength": 981,
+      "sha256": "76f3b84c4a603eb4226527b798573b7789c9bcd2c750fbf649d03fba71ab22d2"
+    },
+    {
+      "kind": "manifest",
+      "path": "/var/data/gm-goal-audit-20260904/jobs/manifest-write-411-l-new/gm-goal-worker-manifest-remediation-l-new-20260904.0c464b395e473a656f98ce9a62154217c1bc4c7504ec655edd6057cbdb701978.handoff.manifest.json",
+      "byteLength": 1550,
+      "sha256": "e318cace1939cd2e465ed25d66dd0e7eafa99610a714c3f854ed38db5545c60b"
+    }
+  ],
+  "updatedAt": "2026-09-04T01:41:34.545Z"
+}
