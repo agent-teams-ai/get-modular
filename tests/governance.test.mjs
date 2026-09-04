@@ -1750,6 +1750,20 @@ test("nested package manifests are never an admitted identity", async () => {
     }), /accepted package root.*packages\/core\/fixtures\/evil\/package\.json/su);
   }
 
+  // A manifest directly in packages/ is not a package root either.
+  manifests.set("packages/package.json", { name: "@evil/thing", exports: { ".": "./i.js" } });
+  await assert.rejects(validateBlockedImplementation({
+    blockerIds: new Set(["OD-005", "OD-006"]),
+    publicationBlockerIds: new Set(),
+    productionArtifacts: [
+      "packages/package.json",
+      "packages/core/package.json",
+      "packages/core/src/index.ts",
+    ],
+    claimDocuments: [],
+    readPackageManifest,
+  }), /accepted package root.*packages\/package\.json/su);
+
   await assert.doesNotReject(validateBlockedImplementation({
     blockerIds: new Set(["OD-005", "OD-006"]),
     publicationBlockerIds: new Set(),
@@ -1786,6 +1800,13 @@ test("accepted carrier prohibitions hold with no publication blocker open", asyn
     [{ ...base, typings: "./dist/index.d.ts" }, /typings/u],
     [{ ...base, scripts: { postinstall: "node ./scripts/patch.mjs" } }, /scripts\.postinstall/u],
     [{ ...base, scripts: { prepare: "pnpm build" } }, /scripts\.prepare/u],
+    [{ ...base, scripts: { preprepare: "node x.mjs" } }, /scripts\.preprepare/u],
+    [{ ...base, scripts: { postprepare: "node x.mjs" } }, /scripts\.postprepare/u],
+    [{ ...base, scripts: { dependencies: "node x.mjs" } }, /scripts\.dependencies/u],
+    [{ ...base, scripts: { "pnpm:devPreinstall": "node x.mjs" } }, /pnpm:devPreinstall/u],
+    [{ ...base, scripts: ["postinstall"] }, /scripts must be an object/u],
+    [{ ...base, scripts: null }, /scripts must be an object/u],
+    [{ ...base, scripts: "build" }, /scripts must be an object/u],
   ]) {
     await assert.rejects(validate(manifest), expected);
     await assert.rejects(validate(manifest), /prohibited by the accepted carrier decision/u);

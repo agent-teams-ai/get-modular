@@ -202,7 +202,7 @@ export async function validateBlockedImplementation({
       .map(violation => [
         violation.path,
         ...violation.fields,
-        ...violation.scripts.map(script => `scripts.${script}`),
+        ...violation.scripts,
       ].join(" "))
       .join(", ");
     fail(`package manifests must omit the fields and lifecycle scripts prohibited by the `

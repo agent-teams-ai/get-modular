@@ -120,7 +120,9 @@ decision or authorize publication.
 Resolved by accepted ADR-0012 on 2026-09-04. The package is ESM-only with one
 root export, a sibling `default` condition for `require(esm)`, no CommonJS
 build, a manifest that omits every install-time lifecycle script with a
-negative fixture in the publication checker, and a closed archive allowlist.
+negative fixture in the packed consumer cases, and a closed archive allowlist.
+The manifest prohibitions themselves are enforced by `governance:check`, as
+accepted ADR-0012 records.
 Each
 published archive must pass the Node and TypeScript packed cases before
 publication and the full matrix before a conformance claim, as ADR-0012 and

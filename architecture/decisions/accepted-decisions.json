@@ -65,7 +65,7 @@
     {
       "id": "ADR-0017",
       "path": "docs/decisions/0017-publish-pre-1-0-releases-while-raw-carrier-and-duplicate-record-decisions-stay-open.md",
-      "immutableDigest": "sha256:d29a34d96c5e59146c9e2ba29f5593907952b287b3b121c9cb5f830450177987"
+      "immutableDigest": "sha256:995e7b7d4da5a2381acee289054d77366aa0de2b2e78c820c4de9074156177ab"
     }
   ]
 }

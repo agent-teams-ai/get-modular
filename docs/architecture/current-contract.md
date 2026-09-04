@@ -42,7 +42,9 @@ ADR-0009 names the one pre-1.0 public surface: `compileComposition`,
 the types `CompileCompositionResult`, `ModuleDeclaration`,
 `CompositionProfile`, `CompositionPlan`, `Diagnostic` and `PlanDigest`. The
 accepted evidence names `compileCompositionV1` and `compileCompositionJsonV1`
-remain only inside the immutable qualification artifacts and their checker;
+remain only inside the immutable qualification artifacts, the checkers under
+`architecture/checks` that validate them and the qualification harnesses under
+`tests/qualification` that execute those checkers;
 no production source uses a generation-suffixed name.
 
 ADR-0010 remains proposed until it passes the repository's governed acceptance
@@ -69,7 +71,7 @@ The following are deliberately different concepts:
 | `familyVersion: 1` | Version of the closed capability-compatibility family | No |
 | `profileVersion: 2` | Revision of the measured qualification artifact | No |
 | `V1` in a path or evidence ID | Immutable historical contract evidence | No |
-| `V1` in a TypeScript identifier | Prohibited by accepted ADR-0009 outside immutable qualification artifacts and their checker | No |
+| `V1` in a TypeScript identifier | Prohibited by accepted ADR-0009 outside immutable qualification artifacts, their checkers and the qualification harnesses | No |
 
 Applications do not select a resource profile by filename or version. The
 current qualification contract uses one effective resource policy. An older

@@ -12,7 +12,7 @@ export const ACCEPTED_PACKAGE_NAMES = new Set([
   "@get-modular/conformance",
   "@get-modular/core",
 ]);
-const PACKAGE_MANIFEST = /^packages\/.+\/package\.json$/u;
+const PACKAGE_MANIFEST = /^packages\/(?:.+\/)?package\.json$/u;
 const PACKAGE_ROOT_MANIFEST = /^packages\/[^/]+\/package\.json$/u;
 export const PUBLICATION_FIELDS = Object.freeze([
   "bin",
@@ -38,13 +38,17 @@ export const PROHIBITED_MANIFEST_FIELDS = Object.freeze([
   "typings",
 ]);
 export const PROHIBITED_LIFECYCLE_SCRIPTS = Object.freeze([
+  "dependencies",
   "install",
+  "pnpm:devPreinstall",
   "postinstall",
   "postpack",
+  "postprepare",
   "postpublish",
   "postuninstall",
   "preinstall",
   "prepack",
+  "preprepare",
   "prepare",
   "prepublish",
   "prepublishOnly",
@@ -135,7 +139,8 @@ async function defaultReadPackageManifest(path, repositoryRoot) {
   return JSON.parse(await readFile(resolve(repositoryRoot, path), "utf8"));
 }
 
-// Reads every direct package manifest below packages/. An unreadable manifest is
+// Reads every package manifest at or below packages/, at any depth. An
+// unreadable manifest is
 // recorded with `manifest: undefined` so every consumer fails closed on it.
 export async function packageManifestInventory(
   productionArtifacts,
@@ -153,11 +158,12 @@ export async function packageManifestInventory(
       manifest = undefined;
     }
     const readable = manifest !== null && typeof manifest === "object" && !Array.isArray(manifest);
-    const scripts = readable && manifest.scripts !== null
-      && typeof manifest.scripts === "object"
-      && !Array.isArray(manifest.scripts)
-      ? manifest.scripts
-      : {};
+    const scriptsDeclared = readable && manifest.scripts !== undefined;
+    const scriptsMalformed = scriptsDeclared
+      && (manifest.scripts === null
+        || typeof manifest.scripts !== "object"
+        || Array.isArray(manifest.scripts));
+    const scripts = scriptsDeclared && !scriptsMalformed ? manifest.scripts : {};
     inventory.push({
       path,
       root: path.slice(0, -"/package.json".length),
@@ -173,6 +179,7 @@ export async function packageManifestInventory(
       prohibitedScripts: readable
         ? PROHIBITED_LIFECYCLE_SCRIPTS.filter(script => scripts[script] !== undefined)
         : [],
+      scriptsMalformed,
       isPrivate: readable && manifest.private === true,
     });
   }
@@ -200,12 +207,16 @@ export function manifestCarrierViolations(inventory) {
   return inventory
     .filter(entry => (
       entry.manifest !== undefined
-      && (entry.prohibitedFields.length > 0 || entry.prohibitedScripts.length > 0)
+      && (entry.prohibitedFields.length > 0
+        || entry.prohibitedScripts.length > 0
+        || entry.scriptsMalformed === true)
     ))
     .map(entry => ({
       path: entry.path,
       fields: entry.prohibitedFields,
-      scripts: entry.prohibitedScripts,
+      scripts: entry.scriptsMalformed === true
+        ? ["scripts must be an object"]
+        : entry.prohibitedScripts.map(script => `scripts.${script}`),
     }));
 }
 

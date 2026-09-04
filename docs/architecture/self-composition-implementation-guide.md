@@ -748,7 +748,7 @@ ADR-0016 fixes the shape of an allowlist entry. In TypeScript:
 // self-composition/allowlist.ts
 export interface AllowlistHandle {
   readonly declaration: ModuleDeclaration; // the statically imported declaration value
-  readonly factory: FeatureFactory; // the statically imported factory value
+  readonly factory: (dependencies: never) => unknown; // the statically imported factory value
   readonly importPath: string; // relative to src/composition/generated/, inside src/features/**, ends in .js
   readonly factoryExport: string; // ECMAScript identifier exported by importPath
   readonly declarationExport: string; // ECMAScript identifier exported by the declaration module
