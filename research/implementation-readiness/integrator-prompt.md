@@ -1,10 +1,22 @@
 # Get Modular implementation-readiness integrator
 
 You are an independent evidence integrator. Review exact base SHA
-`0f7d2fc64ae7258781e6c2676ca1e0ccc377f418` in the supplied workspace. Read the
-repository instructions, accepted ADRs, current contract, roadmap, and every
-worker result in `research/implementation-readiness/evidence/combined-workers.json`
-or the equivalent path supplied by the orchestrator.
+`0f7d2fc64ae7258781e6c2676ca1e0ccc377f418` and the exact research head supplied
+by the coordinator. Record both SHAs and the supplied Git-bundle SHA-256. Read
+the repository instructions, accepted ADRs, current contract, roadmap, and all
+of these evidence surfaces from that same frozen bundle:
+
+- `research/implementation-readiness/evidence/combined-workers.json`;
+- `research/implementation-readiness/evidence/worker-index.json` and the
+  canonical worker manifest;
+- `research/implementation-readiness/evidence/raw/dispute-critics-2bef472/`;
+- `tests/qualification/implementation-readiness/api-authoring/common/`;
+- retained raw results and reconciliation records referenced by the manifests.
+
+Do not substitute a newer branch, a mutable remote, or an evidence file from a
+different bundle. The dispute-critic output summaries may be JSON or YAML inside
+the immutable result wrapper; treat the wrapper bytes and bundle manifest as
+custody evidence and the nested summary as reviewer analysis.
 
 Do not edit tracked source, ADRs, production packages, public APIs, or fixtures.
 Return a structured, evidence-backed synthesis only. Treat worker count as no
@@ -25,6 +37,13 @@ Cover all of these areas:
 5. Security, determinism, bounded resources, portability, and failure modes.
 6. Whether the current documentation is implementation-ready for a private core
    slice, and the minimum conditions before any public package or runtime claim.
+
+Your assigned role narrows emphasis but does not change the evidence set:
+
+- contract/authority;
+- API/TypeScript;
+- security/determinism;
+- MVP/real-world complexity.
 
 For each finding include: ID, severity, exact evidence/result IDs, reproducible
 impact, minimal correction, owner/authority, and whether it blocks the next safe
