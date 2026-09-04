@@ -64,6 +64,14 @@ closes the missing-input prerequisite, not the five research lanes: O1-O5 must
 still inspect those sources and return new read-only results. The historical
 worker inventory is not relabeled as successful.
 
+The six follow-up lanes are prepared with fast mode, but none has started.
+The current blocker is the deployed adapter's inability to enforce the goal's
+network-disabled boundary, not account authentication. Data-volume admission
+passed without lowering its space threshold. The broker rejected the first
+launch and rolled back its temporary prompt/worktree. The other lanes remain
+unattempted. `evidence/hosted-followup-launch.json` records this observation;
+it does not add a successful worker, review or source-research result.
+
 ## Authority and precedence
 
 The normative ladder is:
@@ -495,6 +503,29 @@ result column is the shared lab oracle, not accepted-contract authority.
 | VS Code/Backstage/Equinox, accepted ADR-0008 rationale | Keep host/resolver/lifecycle authority privileged and outside the composed semantic Core | Mutable runtime registry, unload, routing, service lookup, activation authority in Core |
 | TypeScript build, accepted ADR-0008 rationale | Record source/generated-file provenance precisely | Calling toolchain staging “compiler self-hosting” |
 | All sources | Isolated roots, explicit inputs, ASCII ordering, offline builds, independent qualification | Registration/filesystem/locale order, dynamic discovery, comparing generated output with itself |
+
+### Coordinator source note: Avvio
+
+These are bounded source observations from the prepared offline pack, not the
+missing independent O5 review, a runtime test, or adoption approval. At pinned
+Avvio commit `52f5cbba93995727401eca65cc6603bdb3653ae1`:
+
+- Boot uses single-concurrency queues; `_addPlugin` appends to the current
+  plugin's queue. This is executable registration ordering, not an inert
+  dependency-plan compiler. Do not inherit this ordering as Core semantics.
+  See [queue creation and registration](https://github.com/fastify/avvio/blob/52f5cbba93995727401eca65cc6603bdb3653ae1/index.js#L74-L209).
+- `Plugin.exec` guards repeated completion and reports a timeout through `done`.
+  That branch does not cancel the already invoked function or promise. A future
+  Host must not equate timeout with stopped work, released resources or safe
+  retry. See [execution and timeout](https://github.com/fastify/avvio/blob/52f5cbba93995727401eca65cc6603bdb3653ae1/lib/plugin.js#L84-L146).
+- `onClose` prepends hooks, while `close` waits for readiness and appends its
+  completion callback. That shutdown ordering is useful Host evidence, not
+  proof of per-module unload, bounded drain, generation fencing or recovery.
+  See [shutdown hooks](https://github.com/fastify/avvio/blob/52f5cbba93995727401eca65cc6603bdb3653ae1/index.js#L303-L340).
+
+The transferable constraint is to keep boot/shutdown mechanics behind a
+product-owned Host adapter and test its real failure semantics separately.
+This note neither installs Avvio nor proposes another Core lifecycle authority.
 
 ## Unresolved product and authority decisions
 

@@ -42,6 +42,13 @@ The retained dispute audit also requires a fifth T2 critic on the proposed
 inherited-property restriction. Accepted helper behavior is unchanged; this
 pending review cannot be represented as approval or an accepted product change.
 
+All new jobs use `gpt-5.6-sol`, `xhigh`, fast. Six exact-source follow-ups are
+prepared but not started: authentication and data-volume admission passed,
+then the broker rejected the requested network-disabled boundary because the
+deployed adapter cannot enforce it. No network downgrade was applied. The launch
+observation is retained separately; it is not a successful review. A short
+coordinator source note on Avvio timeout/ordering was added without closing O5.
+
 Worker count is not treated as proof. Partial, blocked, retried and
 source-unavailable results remain explicitly classified.
 
