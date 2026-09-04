@@ -35,8 +35,8 @@ No reproducible P0 was observed. Because there is no Core subject, this is not e
 | Dispute critics | Subject `2bef472612dea7c6a89199a47dd8ca7ed552e630` | 32 unique topic×role wrappers, all `done`; source-bundle digest `216bb3b0…` |
 | Dispute manifest integrity | Aggregate `ccd13b6652a45a6e4d80a4ca5b2ff80a95fdc7a624d3f30695d181e61e233838` | All 32 wrapper hashes and the aggregate were independently recomputed |
 | Indexed source integrity | 115 indexed sources | All current indexed hashes verified with no mismatch |
-| Retained API execution subject | `af519683f01a1f38cc323eb46bcb141fcc4abda5` | Exact committed corrected lab inputs; envelope and result retained together |
-| API result SHA-256 | `69497c6cab72770b6cdc96d913ccc12cccba95f10e78b121a533616752fb39a1` | 90 outcomes, 6 alternative-selection probes, 48 owner-token probes and 18 authoring-edit experiments; source/toolchain identities and emitted-file hashes; not an attestation |
+| Retained API execution subject | `abe96cd7dbdd2597f3e46711fc1ad5c3373f312f` | Exact committed corrected lab inputs; envelope and result retained together |
+| API result SHA-256 | `9b1f45f35076cffc32a686e79afe2f3811475f877e3d58aa5017ffcd4fdbd11f` | 90 outcomes, 6 alternative-selection probes, 48 owner-token probes and 18 authoring-edit experiments; source/toolchain identities and emitted-file hashes; not an attestation |
 
 The dispute wrapper bytes and bundle manifest are custody evidence. Their nested JSON/YAML summaries are reviewer analysis, not executable proof.
 
@@ -102,6 +102,12 @@ The integrators inspected the previous `3155309` execution, not the subsequent
 `af51968` correction run. Their raw conclusions remain unchanged. The current
 capture verifies corrected input bytes; final reviewers must inspect that
 capture and the applied correction, not reuse an earlier exact-head approval.
+
+Final security review at `ef14de6` found a remaining stale S19 title despite
+correct behavior. `abe96cd` changes only that title to distinguish arbitrary
+record keys from the valid `constructor`/`then` slots. The retained capture
+above reruns the same corpus after that label correction; review findings and
+the affected-area closure remain external to this reviewed tree.
 
 ## Authority and precedence
 

@@ -23,9 +23,9 @@ plugin host, product integration, package publication or accepted-ADR change.
 - retained API lab result:
   `research/implementation-readiness/evidence/api-authoring-exact-run.json`,
   SHA-256
-  `69497c6cab72770b6cdc96d913ccc12cccba95f10e78b121a533616752fb39a1`;
+  `9b1f45f35076cffc32a686e79afe2f3811475f877e3d58aa5017ffcd4fdbd11f`;
 - execution envelope: `research/implementation-readiness/evidence/api-authoring-execution.json`,
-  source `af519683f01a1f38cc323eb46bcb141fcc4abda5`, complete committed input
+  source `abe96cd7dbdd2597f3e46711fc1ad5c3373f312f`, complete committed input
   hashes, toolchain hashes, command outcome and emitted declarations.
 
 The shared laboratory now permits alternate implementations, rejects duplicate

@@ -268,7 +268,7 @@
     },
     {
       "id": "S19",
-      "title": "hostile slot names: own __proto__, constructor, then, composed and decomposed Unicode",
+      "title": "hostile record keys and Unicode; valid slots constructor and then",
       "evidenceClass": "representation",
       "expected": {
         "ok": true,
@@ -599,7 +599,7 @@
     {
       "candidateId": "descriptor-object",
       "scenarioId": "S19",
-      "title": "hostile slot names: own __proto__, constructor, then, composed and decomposed Unicode",
+      "title": "hostile record keys and Unicode; valid slots constructor and then",
       "evidenceClass": "representation",
       "ok": true,
       "diagnosticCodes": []
@@ -867,7 +867,7 @@
     {
       "candidateId": "define-module",
       "scenarioId": "S19",
-      "title": "hostile slot names: own __proto__, constructor, then, composed and decomposed Unicode",
+      "title": "hostile record keys and Unicode; valid slots constructor and then",
       "evidenceClass": "representation",
       "ok": true,
       "diagnosticCodes": []
@@ -1135,7 +1135,7 @@
     {
       "candidateId": "split-declaration-factory",
       "scenarioId": "S19",
-      "title": "hostile slot names: own __proto__, constructor, then, composed and decomposed Unicode",
+      "title": "hostile record keys and Unicode; valid slots constructor and then",
       "evidenceClass": "representation",
       "ok": true,
       "diagnosticCodes": []
@@ -1624,7 +1624,7 @@
       "compileDuration": {
         "10": {
           "declarations": 10,
-          "compileDurationMs": 120.3,
+          "compileDurationMs": 127.23,
           "inputs": {
             "scale.ts": "8bc4c9c67ff91fc7ec04345b59183489921fcf43e023cc8a016d853b2967e2ab",
             "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
@@ -1635,7 +1635,7 @@
         },
         "100": {
           "declarations": 100,
-          "compileDurationMs": 129.2,
+          "compileDurationMs": 131.58,
           "inputs": {
             "scale.ts": "90e4eca333ee28af1c0f61d5f236d2144baeeba388a6cb2800b5bd6620c6ce3b",
             "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
@@ -1646,7 +1646,7 @@
         },
         "1000": {
           "declarations": 1000,
-          "compileDurationMs": 208.97,
+          "compileDurationMs": 246.15,
           "inputs": {
             "scale.ts": "e4770a8ba5c8e5fda982e630f12891bba2673249e679d15d00a4fb8c8ab1c468",
             "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
@@ -2041,7 +2041,7 @@
       "compileDuration": {
         "10": {
           "declarations": 10,
-          "compileDurationMs": 126.04,
+          "compileDurationMs": 142.41,
           "inputs": {
             "scale.ts": "88af657e18b71c66fbc338510b865c4dd7f2cc9fbf06a39d24541e02d8e97a3c",
             "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
@@ -2052,7 +2052,7 @@
         },
         "100": {
           "declarations": 100,
-          "compileDurationMs": 129.91,
+          "compileDurationMs": 164.12,
           "inputs": {
             "scale.ts": "9ff49523af45db1e10d5391517163904da46d77f1903df864e10ad7f92d8923a",
             "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
@@ -2063,7 +2063,7 @@
         },
         "1000": {
           "declarations": 1000,
-          "compileDurationMs": 226.9,
+          "compileDurationMs": 263.58,
           "inputs": {
             "scale.ts": "21e02623447c6030232bdc181979105524bf62131adb70bc402a17c826b38ace",
             "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
@@ -2458,7 +2458,7 @@
       "compileDuration": {
         "10": {
           "declarations": 10,
-          "compileDurationMs": 120.27,
+          "compileDurationMs": 158.79,
           "inputs": {
             "factories.ts": "139a6efe4b389b2b0cf4cf7cadc14bba752858a7b6bc20bffc29e6205ec4f7b0",
             "scale.ts": "90d6000289978a326e8988fe7622a268df884d5e00fb88b04f6d01a85a9a6a88",
@@ -2471,7 +2471,7 @@
         },
         "100": {
           "declarations": 100,
-          "compileDurationMs": 136.04,
+          "compileDurationMs": 153.56,
           "inputs": {
             "factories.ts": "eaa07a3670925420328525300e3bd5a93788fe13f0ac0e82f0b173fe6ecacd78",
             "scale.ts": "aec40c1f1737c6c68b8c0a86c04dc6a54f747035c226d29cf85250bdaab1d3c9",
@@ -2484,7 +2484,7 @@
         },
         "1000": {
           "declarations": 1000,
-          "compileDurationMs": 331.75,
+          "compileDurationMs": 353.75,
           "inputs": {
             "factories.ts": "cbe280d8993ed453c2e770364aaa1287375f9dc6b2a42620405f42c6dee9c89d",
             "scale.ts": "453cf40e4ed1ad94fcabbecf6e52e5a034eaa6f51aff2ab9ce0f63283a29feff",
