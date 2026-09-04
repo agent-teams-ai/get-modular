@@ -2148,3 +2148,37 @@ test("a publishable carrier must declare its package root", async () => {
     },
   }), /must be a relative file target below the package root: \.\/\.\.\/evil\.js/u);
 });
+
+test("the files allowlist must not name the package root", async () => {
+  const base = {
+    name: "@get-modular/core",
+    type: "module",
+    exports: {
+      ".": {
+        import: { types: "./dist/index.d.ts", default: "./dist/index.js" },
+        default: "./dist/index.js",
+      },
+    },
+  };
+  const validate = async files => validateBlockedImplementation({
+    blockerIds: new Set(["OD-005"]),
+    publicationBlockerIds: new Set(),
+    productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts"],
+    claimDocuments: [],
+    readPackageManifest: async () => (files === undefined ? base : { ...base, files }),
+    readProductionSource: async () => "export const x = 1;",
+  });
+
+  await assert.doesNotReject(validate(undefined));
+  await assert.doesNotReject(validate(["dist"]));
+  await assert.doesNotReject(validate(["dist", "README.md", "LICENSE"]));
+
+  // An export map hides internals from importers; it does not keep them out of
+  // the archive. A root entry ships source, tests and configuration regardless.
+  for (const files of [["."], ["./"], ["*"], ["**"], ["**/*"], ["dist", "."], [" . "]]) {
+    await assert.rejects(validate(files), /files must not name the package root/u);
+  }
+  for (const files of ["dist", [1], [null]]) {
+    await assert.rejects(validate(files), /files must be an array of path patterns/u);
+  }
+});

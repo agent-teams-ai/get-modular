@@ -50,7 +50,7 @@
     {
       "id": "ADR-0012",
       "path": "docs/decisions/0012-select-esm-only-root-package-carrier.md",
-      "immutableDigest": "sha256:46e277301618325a18f19c76d0214edb968b4196ebf5fe2eae9ebc3da2c06581"
+      "immutableDigest": "sha256:bbc6e2d5dee29a3be534ccf05e0b90fb37d1fc3505b18afa27b7741a86e5e574"
     },
     {
       "id": "ADR-0015",

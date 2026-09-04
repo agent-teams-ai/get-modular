@@ -184,7 +184,10 @@ export async function packageManifestInventory(
         : [],
       scriptsMalformed,
       carrierShapeViolations: readable && manifest.name === ESM_CARRIER_PACKAGE_NAME
-        ? exportMapViolations(manifest.exports, manifest.private === true)
+        ? [
+          ...exportMapViolations(manifest.exports, manifest.private === true),
+          ...filesAllowlistViolations(manifest.files),
+        ]
         : [],
       moduleTypeViolation: readable
         && manifest.name === ESM_CARRIER_PACKAGE_NAME
@@ -306,6 +309,26 @@ function conditionOrderViolations(actual, expected, label) {
   if (actual.join(",") !== expected.join(",")) {
     return [`${label} must declare its conditions in the order ${expected.join(", ")}: `
       + actual.join(", ")];
+  }
+  return [];
+}
+
+// ADR-0012 keeps the publication allowlist closed: source, tests, fixtures and
+// repository configuration stay out of the archive. A `files` entry that names
+// the package root defeats that allowlist outright, whatever the export map
+// hides from importers. The archive inventory itself is verified by the packed
+// evidence, not here.
+const ROOT_FILES_ENTRIES = new Set([".", "./", "*", "**", "**/*", "./*", "/", ""]);
+
+function filesAllowlistViolations(filesField) {
+  if (filesField === undefined) return [];
+  if (!Array.isArray(filesField) || filesField.some(entry => typeof entry !== "string")) {
+    return ["files must be an array of path patterns"];
+  }
+  const rootEntries = filesField.filter(entry => ROOT_FILES_ENTRIES.has(entry.trim()));
+  if (rootEntries.length > 0) {
+    return [`files must not name the package root, which defeats the publication `
+      + `allowlist: ${rootEntries.join(", ")}`];
   }
   return [];
 }
