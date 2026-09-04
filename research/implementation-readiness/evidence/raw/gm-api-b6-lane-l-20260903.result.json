@@ -1,0 +1,47 @@
+{
+  "status": "done",
+  "changedFiles": [
+    "qualification/spikes/api-authoring/hostile-key-and-serialization/b6/README.md",
+    "qualification/spikes/api-authoring/hostile-key-and-serialization/b6/fixture.ts",
+    "qualification/spikes/api-authoring/hostile-key-and-serialization/b6/run.mjs",
+    "qualification/spikes/api-authoring/hostile-key-and-serialization/b6/tsconfig.json"
+  ],
+  "evidence": [
+    "safe_execution_status:completed",
+    "output_summary:Created only the disposable fixture under:\n\n- [fixture.ts](/var/data/gm-implementation-readiness-api-20260903/workspaces/l-b6/qualification/spikes/api-authoring/hostile-key-and-serialization/b6/fixture.ts)\n- [run.mjs](/var/data/gm-implementation-readiness-api-20260903/workspaces/l-b6/qualification/spikes/api-authoring/hostile-key-and-serialization/b6/run.mjs)\n- [tsconfig.json](/var/data/gm-implementation-readiness-api-20260903/workspaces/l-b6/qualification/spikes/api-authoring/hostile-key-and-serialization/b6/tsconfig.json)\n- [README.md](/var/data/gm-implementation-readiness-api-20260903/workspaces/l-b6/qualification/spikes/api-authoring/hostile-key-and-serialization/b6/README.md)\n\nEvidence:\n\n- Base SHA verified: `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418`\n- `node --version`: `v24.16.0`\n- `node architecture/checks/node-version.mjs`: failed as expected; required `>=24.18.0 <25`\n- `node_modules/.bin/tsc -p .../b6/tsconfig.json`: passed; emitted JavaScript and declarations\n- `node .../b6/run.mjs`: passed:\n  - hostile keys preserved, including `__proto__`, `constructor`, `then`, and Unicode\n  - deterministic canonical ordering\n  - JSON round-trip\n  - no executable import/discovery side effects\n- `pnpm check:fast`: could not complete because the runtime preflight environment is Node 24.16.0.\n\nMeasured metrics:\n\n- 8 physical LOC in the TypeScript fixture\n- 1 physical LOC of canonicalization glue\n- One module requires one TypeScript file plus configuration\n- Binding edits are localized to dependency-array entries\n- Explicit declarations: cardinality type plus `Dependency` and `ModuleDeclaration` interfaces\n- Inference used for hostile-key tuple and scenario map\n- Diagnostics are TypeScript compile-time diagnostics only\n- Framework leakage: none\n- Removal cost: delete the module object and dependency entries\n\nThe fixture covers the complete requested scenario list; only hostile-key, serialization, declaration emit, and import-side-effect checks execute behaviorally. Other scenarios are explicitly marked authoring-shape coverage, not engine conformance.",
+    "attempt_count:1",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/l-b6/gm-api-b6-lane-l-20260903.1a5ceca24acf2505272e3d71a339d23131ac57f45341c410605b56bdb9a6c046.handoff.patch",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/l-b6/gm-api-b6-lane-l-20260903.1a5ceca24acf2505272e3d71a339d23131ac57f45341c410605b56bdb9a6c046.handoff.summary.json",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/l-b6/gm-api-b6-lane-l-20260903.1a5ceca24acf2505272e3d71a339d23131ac57f45341c410605b56bdb9a6c046.handoff.manifest.json"
+  ],
+  "blockers": [],
+  "nextAction": "review_completed",
+  "schemaVersion": 1,
+  "provider": "codex",
+  "runId": "gm-api-b6-lane-l-20260903",
+  "taskId": "gm-api-b6-lane-l-20260903",
+  "details": {
+    "baseCommit": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418"
+  },
+  "artifacts": [
+    {
+      "kind": "patch",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/l-b6/gm-api-b6-lane-l-20260903.1a5ceca24acf2505272e3d71a339d23131ac57f45341c410605b56bdb9a6c046.handoff.patch",
+      "byteLength": 6329,
+      "sha256": "1a5ceca24acf2505272e3d71a339d23131ac57f45341c410605b56bdb9a6c046"
+    },
+    {
+      "kind": "summary",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/l-b6/gm-api-b6-lane-l-20260903.1a5ceca24acf2505272e3d71a339d23131ac57f45341c410605b56bdb9a6c046.handoff.summary.json",
+      "byteLength": 1040,
+      "sha256": "105883d836f80e162efc4cd10f98996a0b90dbc453d20af1fbce00d52598eabe"
+    },
+    {
+      "kind": "manifest",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/l-b6/gm-api-b6-lane-l-20260903.1a5ceca24acf2505272e3d71a339d23131ac57f45341c410605b56bdb9a6c046.handoff.manifest.json",
+      "byteLength": 1583,
+      "sha256": "fec98547f19c7263e7e58c317d3a305a1d25deb871e8a724a23368f14a59926b"
+    }
+  ],
+  "updatedAt": "2026-09-03T00:54:36.715Z"
+}

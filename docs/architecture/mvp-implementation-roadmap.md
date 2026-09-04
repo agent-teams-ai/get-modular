@@ -89,10 +89,13 @@ alone.
 
 | Milestone | Proposed decisions required | Blocked without them |
 | --- | --- | --- |
-| M1 `direct-semantics-qualified` on Node through the object entrypoint | None; accepted ADR-0015 already lets the gate admit private `packages/core` source | Private package source and the first executable subject |
-| M2 raw entrypoint and carriers | ADR-0013 and ADR-0014 together as one diagnostic generation 2 transaction: successor schema enum, catalog rank, diagnostic contract, snapshots, checker and ledger, because ADR-0007 keeps the base enum and code rank byte-identical | Raw decoding exposure, carrier admission and duplicate binding-record behavior |
+| M1 private semantics and object candidate on Node | None; ADR-0015 permits private source and acceptance-evidence candidates after the owner-start record | A normalized semantic subject is the minimum; a private trusted-object candidate may exercise the same implementation without public or carrier-conformance claims |
+| M2 qualified object/raw carriers | ADR-0013 and ADR-0014 together as one diagnostic generation 2 transaction: successor schema enum, catalog rank, diagnostic contract, snapshots, checker and ledger, because ADR-0007 keeps the base enum and code rank byte-identical | Exposed carrier semantics, raw decoding exposure and duplicate binding-record behavior; not the private candidates needed to gather acceptance evidence |
 | M3 public barrel and package carrier | ADR-0009 and ADR-0012 | Public names, export map and any packed publication candidate |
-| M3 emitter and generated stage1 | ADR-0016 for the dependency-record seam and the construction witness; ADR-0011 or a narrower successor only for release custody | `self-composed-qualified` and every release custody claim |
+| M3 emitter and generated stage1 | Accept ADR-0016 or another successor to reconcile the dependency-record seam in Phase 4 item 6. ADR-0008 remains construction-witness authority unless explicitly superseded. Accept ADR-0011 or a narrower successor for release custody | `self-composed-qualified` and every release custody claim; no proposed witness replaces accepted obligations |
+
+Experimental implementation of proposed ADR-0016 is replaceable qualification
+work, not authority to claim self-composition or to drop ADR-0008 obligations.
 
 A private, unpublished `0.x` archive may remain `not-claimed` while it is used
 for bounded implementation evidence. Publication and the first
@@ -103,6 +106,48 @@ product-owner start decision required by ADR-0015 in this bootstrap sequence or
 in a decision record and reference it from the first private package pull
 request, materialize private `packages/core`, reach M1 on Node, prepare the diagnostic generation 2
 transaction in parallel with M1, then proceed to M2 and M3 in that order.
+
+### Per-phase callable matrix
+
+This matrix is an implementation boundary, not a new contract or public-name
+decision. It resolves which entry points a qualification subject may expose at
+each checkpoint:
+
+| Phase | Qualification subject may expose | Explicitly excluded |
+| --- | --- | --- |
+| M1 private semantic checkpoint | The internal normalized-value seam; optionally a qualification-only trusted-object candidate of `compileCompositionV1` over that same implementation | Public/package exports, claimed unresolved carrier semantics, raw carrier implementation in this checkpoint, runtime loading |
+| M2 private carrier checkpoint | The accepted object/raw compiler names and authoring helpers, only after the successor decisions for carriers and duplicate binding records are accepted | Public publication, unapproved carrier behavior and product/runtime lifecycle |
+| M3 public/package checkpoint | Exactly the export map accepted by the naming and package-carrier decisions; unversioned names only after ADR-0009 or its successor is accepted | `stage0` exports, qualification-only variants, implicit aliases, and any unresolved raw or carrier surface |
+
+The direct and, once built, generated subjects use the same selected M1
+qualification surface and independent vectors. The normalized seam remains the
+minimum, not the only permissible test entry. An object candidate accepts
+ordinary trusted JSON-compatible inputs and exercises actual admission,
+synchronous snapshotting and the semantic implementation, not a pass-through
+mock. Accepted ADR-0006/0007 rules apply; unresolved cases are explicitly
+labelled candidate evidence, not successful contract qualification. Its
+successful result includes the Phase 4 plan and digest; before then test the
+implemented admission/semantic parts without a fake successful compiler result.
+The candidate stays out of package exports and does not require accepting the
+successor diagnostic generation before the first object-input test. Neither it
+nor M1 admits raw exposure or a second public API. M2 closes the carrier claims.
+A subject must name its phase and claimed domain, rather than saying only
+"same accepted entry points".
+
+### Owner-start admission record
+
+Before the first private production package is added, the product owner must
+record a small governed start record in the repository or in the bootstrap
+decision record. It must bind the repository and exact source SHA, package
+identity, owner, allowed scope (private semantics and an optional object
+acceptance-evidence candidate), and the
+fact that publication, raw carriers, runtime lifecycle, and proposed ADRs are
+not authorized. The admission checker must consume that record as a
+precondition; a pull-request approval or the existence of an empty package is
+not a substitute. The source SHA is the authorized starting base, not a demand
+for renewed permission after every implementation commit. The record and its
+checker land together before Core; this research branch contains neither and
+does not claim that enforcement already exists.
 
 ### Roadmap qualification language
 
@@ -264,7 +309,7 @@ the evidence and review affected by that change.
 No compiler, plugin host, lifecycle engine, Cordis adoption or product API
 changes are implemented here.
 
-## Phase 1: package topology and public boundary
+## Phase 1: package topology and private composition boundary
 
 **Purpose:** establish the package boundary at the same substantive checkpoint
 as the first Core behavior. A package shell or declaration-only facade is not
@@ -313,27 +358,32 @@ smaller split would make it unverifiable.
    substantive vectors, fixtures and packed-consumer tooling may be published
    after their surface gate; runner, subject, report and attestation contracts
    remain private until a separate compatibility decision accepts them.
-3. Freeze one export map only after the first substantive compiler behavior is
+3. Freeze one public export map only after the first substantive compiler behavior is
    present. `ModuleDeclaration`, `CompositionProfile`, `CompositionPlan`,
    `Diagnostic`, `PlanDigest`, `defineModule`, `required`, `optional`, `many`
    and the accepted compiler entrypoints must have their accepted semantics.
    Compiler entrypoints cannot be throwing, pass-through, no-op or
    declaration-only placeholders; authoring helpers retain the deliberately
-   pass-through behavior accepted by ADR-0007. Stop before export freeze or
-   subject packing until accepted authority supplies the exhaustive public name
-   map, package carrier and both JavaScript carrier boundaries.
+   pass-through behavior accepted by ADR-0007. Stop before public export freeze
+   or distribution packing until accepted authority supplies the exhaustive
+   public name map, package carrier and both JavaScript carrier boundaries.
+   This does not block a temporary hash-bound qualification archive that exposes
+   the selected M1 private qualification surface and is never a publication candidate.
 4. Promote the first production package atomically to `source-admitted`: add
    the pinned `architecture/foundation/source-dependencies.yaml`, enable the
    Engineering Foundation source-dependency capability, add positive and
    negative structural fixtures, and wire the real Foundation check into
    `check:fast` and `check`. Structural and runtime conformance remain separate
    promotion states.
-5. Pack two temporary, separately hash-identified qualification subjects with
-   the same public compiler boundary: direct stage0 assembly and generated
-   stage1 assembly. Run default-deny export/deep-import tests, tarball allowlist,
-   declaration-leakage audits and inert import smoke tests against both. Only
-   generated stage1 is retained as the pack-once distribution candidate; never
-   repack either subject inside a platform job.
+5. Create two temporary, separately hash-identified qualification archives with
+   the same selected M1 private qualification boundary: direct stage0 assembly and
+   generated stage1 assembly. Run default-deny export/deep-import checks,
+   private archive allowlist checks, declaration-leakage audits and inert import
+   smoke tests against both. These archives are qualification subjects, not
+   publication candidates. After OD-004, the accepted export map and carrier
+   decision exist, create a separate generated stage1 release candidate from
+   the verified source subject; never repack either qualification subject inside
+   a platform job.
 6. Resolve OD-004 before freezing package type, export conditions and supported
    resolution modes. Do not infer an ESM/CommonJS policy from this roadmap.
 7. Before freezing the public TypeScript surface, run the retained generated
@@ -346,11 +396,12 @@ smaller split would make it unverifiable.
 
 ### Phase 1 exit criteria
 
-After Phases 2-4 provide the complete substantive compiler, two disposable
-TypeScript consumers compile through the public barrel only, the retained
-generated stage1 archive passes the named resolver/type-scale gates, and the
-direct archive passes the same export, deep-import, declaration-leakage and
-inert-import audits. No Core API
+After Phases 2-4 provide the complete substantive private compiler, the direct
+and generated qualification subjects pass the same normalized-semantic and,
+when selected, object-candidate vectors plus
+deep-import, declaration-leakage and inert-import audits. Public-barrel and
+TypeScript consumer gates remain deferred until the M2/M3 decisions admit their
+surfaces. No admitted Core boundary
 exposes a container, resolver, registry, Context/Fiber, filesystem path,
 executable factory, transport DTO or versioned name. A package shell without
 substantive behavior cannot pass this phase.
@@ -464,9 +515,10 @@ composition root. The finite emitter and generated stage1 remain Phase 4 work.
 
 ### Phase 3 exit criteria
 
-One named subject gate invokes the actual private normalized-value compiler seam
-and compares complete results with independent expectations. It is not either
-public JavaScript carrier and returns no temporary public result. Static
+One named subject gate invokes the actual private semantic implementation
+and compares complete results with independent expectations. It may use the
+normalized seam or the bounded object candidate described in the M1 matrix;
+no public carrier or temporary public result is claimed. Static
 vector/oracle validation is a prerequisite and cannot satisfy this gate. The
 gate covers:
 
@@ -564,10 +616,12 @@ those bytes privately when binding the exact subject and evidence.
 One named gate proves semantic/digest invariants and deep immutability against
 the direct subject before a construction claim and against both temporary
 hash-identified subjects after item 6 is accepted. Both use the same public
-   compiler boundary only after both carrier boundaries are accepted; before then,
-   the private normalized-value seam is the only admitted checkpoint. Reordered
-   equivalent graphs produce identical canonical bytes/digest; valid semantic
-   changes produce different valid bytes/digest;
+compiler boundary only after both carrier boundaries are accepted; before then,
+they use the selected M1 private qualification surface: the normalized-value
+seam and, when selected, the qualification-only object candidate over the same
+implementation. This grants no public or carrier-conformance claim. Reordered
+equivalent graphs produce identical canonical bytes/digest; valid semantic
+changes produce different valid bytes/digest;
 invalid inputs produce diagnostics only; and nested mutation, alias and
 cross-process tests prove a plain immutable plan. This gate does not require or
 invent release-custody records.

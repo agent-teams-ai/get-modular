@@ -1,0 +1,52 @@
+{
+  "status": "done",
+  "changedFiles": [
+    "tests/qualification/implementation-readiness/api-authoring/common/candidate-define.ts",
+    "tests/qualification/implementation-readiness/api-authoring/common/candidate-descriptor.ts",
+    "tests/qualification/implementation-readiness/api-authoring/common/candidate-split.ts",
+    "tests/qualification/implementation-readiness/api-authoring/common/corpus.ts",
+    "tests/qualification/implementation-readiness/api-authoring/common/index.ts",
+    "tests/qualification/implementation-readiness/api-authoring/common/oracle.ts",
+    "tests/qualification/implementation-readiness/api-authoring/common/run.mjs",
+    "tests/qualification/implementation-readiness/api-authoring/common/type-probes.ts",
+    "tests/qualification/implementation-readiness/api-authoring/common/types.ts"
+  ],
+  "evidence": [
+    "safe_execution_status:completed",
+    "output_summary:Goal marked blocked after the same environment blocker persisted across three turns.\n\nImplemented changes remain confined to `api-authoring/common/**`, with 30 scenarios, 90 smoke-tested cells, one digest, accepted owner/helper semantics, distinct candidate execution, and strengthened fresh declaration-emit verification.\n\nBlocking condition:\n\n```text\nnode_modules/typescript -> .pnpm/typescript@7.0.2/node_modules/typescript\nnode_modules/.pnpm: missing\nregistry.npmjs.org: sandbox-denied\n```\n\nNode 24.18.0 is available, but exact TypeScript compilation, the complete runner, and pnpm gates cannot run until the pinned dependency tree is restored.",
+    "attempt_count:1",
+    "patch_preserved:/var/data/gm-goal-audit-20260904/jobs/api-lab-correct-993-l/gm-goal-api-lab-exact-corpus-l-old-20260904.84452f4a509a82698e60d4e7699141631e9956066ddebaf65f510d9e4485730d.handoff.patch",
+    "patch_preserved:/var/data/gm-goal-audit-20260904/jobs/api-lab-correct-993-l/gm-goal-api-lab-exact-corpus-l-old-20260904.84452f4a509a82698e60d4e7699141631e9956066ddebaf65f510d9e4485730d.handoff.summary.json",
+    "patch_preserved:/var/data/gm-goal-audit-20260904/jobs/api-lab-correct-993-l/gm-goal-api-lab-exact-corpus-l-old-20260904.84452f4a509a82698e60d4e7699141631e9956066ddebaf65f510d9e4485730d.handoff.manifest.json"
+  ],
+  "blockers": [],
+  "nextAction": "review_completed",
+  "schemaVersion": 1,
+  "provider": "codex",
+  "runId": "gm-goal-api-lab-exact-corpus-l-old-20260904",
+  "taskId": "gm-goal-api-lab-exact-corpus-l-old-20260904",
+  "details": {
+    "baseCommit": "9931fdec79c21f389f3e0ca668dd293ed4d02c23"
+  },
+  "artifacts": [
+    {
+      "kind": "patch",
+      "path": "/var/data/gm-goal-audit-20260904/jobs/api-lab-correct-993-l/gm-goal-api-lab-exact-corpus-l-old-20260904.84452f4a509a82698e60d4e7699141631e9956066ddebaf65f510d9e4485730d.handoff.patch",
+      "byteLength": 66198,
+      "sha256": "84452f4a509a82698e60d4e7699141631e9956066ddebaf65f510d9e4485730d"
+    },
+    {
+      "kind": "summary",
+      "path": "/var/data/gm-goal-audit-20260904/jobs/api-lab-correct-993-l/gm-goal-api-lab-exact-corpus-l-old-20260904.84452f4a509a82698e60d4e7699141631e9956066ddebaf65f510d9e4485730d.handoff.summary.json",
+      "byteLength": 1532,
+      "sha256": "91defb6e52d0254ad844e63d86754b3b7eb6b8c849ec9e32f409928b8ec7ab17"
+    },
+    {
+      "kind": "manifest",
+      "path": "/var/data/gm-goal-audit-20260904/jobs/api-lab-correct-993-l/gm-goal-api-lab-exact-corpus-l-old-20260904.84452f4a509a82698e60d4e7699141631e9956066ddebaf65f510d9e4485730d.handoff.manifest.json",
+      "byteLength": 2090,
+      "sha256": "f997c06c1d671be7ac732ac17d6b9a7d88ab982183d09d893aa57dbb96e07721"
+    }
+  ],
+  "updatedAt": "2026-09-04T01:32:22.933Z"
+}

@@ -1,0 +1,47 @@
+{
+  "status": "done",
+  "changedFiles": [
+    "qualification/spikes/api-authoring/declaration-and-activation/b3/README.md",
+    "qualification/spikes/api-authoring/declaration-and-activation/b3/fixture.ts",
+    "qualification/spikes/api-authoring/declaration-and-activation/b3/package.json",
+    "qualification/spikes/api-authoring/declaration-and-activation/b3/tsconfig.json"
+  ],
+  "evidence": [
+    "safe_execution_status:completed",
+    "output_summary:Created only under `qualification/spikes/api-authoring/declaration-and-activation/b3/`:\n\n- [fixture.ts](/var/data/gm-implementation-readiness-api-20260903/workspaces/extra-b3/qualification/spikes/api-authoring/declaration-and-activation/b3/fixture.ts)\n- [package.json](/var/data/gm-implementation-readiness-api-20260903/workspaces/extra-b3/qualification/spikes/api-authoring/declaration-and-activation/b3/package.json)\n- [tsconfig.json](/var/data/gm-implementation-readiness-api-20260903/workspaces/extra-b3/qualification/spikes/api-authoring/declaration-and-activation/b3/tsconfig.json)\n- [README.md](/var/data/gm-implementation-readiness-api-20260903/workspaces/extra-b3/qualification/spikes/api-authoring/declaration-and-activation/b3/README.md)\n- Generated `dist/fixture.d.ts`\n\nEvidence:\n\n- Base SHA verified: `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418`.\n- `node --version` → `v24.16.0`.\n- `node architecture/checks/node-version.mjs` fails with `NODE_VERSION_PREFLIGHT_FAILED` because the contract requires `>=24.18.0 <25`.\n- `./node_modules/.bin/tsc -p .../tsconfig.json` → passes; declaration emitted.\n- `node --experimental-strip-types .../fixture.ts` → 17 scenarios, 17 passed.\n- `pnpm check:changed` timed out after 20 seconds with no output (`exit:124`), so no full gate claim is made.\n\nMeasured metrics:\n\n- Authoring LOC: 5\n- Generic glue LOC: 14\n- Files for one module: 3 source/config files\n- Binding edit locations: 1\n- Explicit type aliases: 4\n- Inference: literal slots and activation result\n- Diagnostics: thrown strings only; no stable code/path model\n- Serializability: declaration JSON round-trip passes\n- Removal cost: delete declaration/profile entry; no registry cleanup\n- Framework leakage: none\n\nThe fixture covers all requested scenarios: required, optional, many, missing, duplicate, ambiguity, cycle, disabled, unreachable, multiple roots, deterministic ordering, hostile keys, unknown fields, no fallback, serializability, declaration emit, and no executable import during discovery.\n\nRecommendation (non-authoritative): the syntax is promising for small modules because declarations remain inert and explicit profile bindings are localized. It is not suitable as Core API evidence without closed-world validation, structured diagnostics, duplicate/ambiguity rejection, and canonical ordering.",
+    "attempt_count:1",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/extra-b3/gm-api-b3-extra-v-20260903.534e4e8cf8939ed85c5bd1f90fc1ee7f119218b8fd73745020fc64e35f8c2247.handoff.patch",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/extra-b3/gm-api-b3-extra-v-20260903.534e4e8cf8939ed85c5bd1f90fc1ee7f119218b8fd73745020fc64e35f8c2247.handoff.summary.json",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/extra-b3/gm-api-b3-extra-v-20260903.534e4e8cf8939ed85c5bd1f90fc1ee7f119218b8fd73745020fc64e35f8c2247.handoff.manifest.json"
+  ],
+  "blockers": [],
+  "nextAction": "review_completed",
+  "schemaVersion": 1,
+  "provider": "codex",
+  "runId": "gm-api-b3-extra-v-20260903",
+  "taskId": "gm-api-b3-extra-v-20260903",
+  "details": {
+    "baseCommit": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418"
+  },
+  "artifacts": [
+    {
+      "kind": "patch",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/extra-b3/gm-api-b3-extra-v-20260903.534e4e8cf8939ed85c5bd1f90fc1ee7f119218b8fd73745020fc64e35f8c2247.handoff.patch",
+      "byteLength": 6635,
+      "sha256": "534e4e8cf8939ed85c5bd1f90fc1ee7f119218b8fd73745020fc64e35f8c2247"
+    },
+    {
+      "kind": "summary",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/extra-b3/gm-api-b3-extra-v-20260903.534e4e8cf8939ed85c5bd1f90fc1ee7f119218b8fd73745020fc64e35f8c2247.handoff.summary.json",
+      "byteLength": 1044,
+      "sha256": "1ef467a8d0be8757009d266a2d7d7e2d5aa2eb410404844fd12ca3cd7d801598"
+    },
+    {
+      "kind": "manifest",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/extra-b3/gm-api-b3-extra-v-20260903.534e4e8cf8939ed85c5bd1f90fc1ee7f119218b8fd73745020fc64e35f8c2247.handoff.manifest.json",
+      "byteLength": 1596,
+      "sha256": "bb11f31599610816f4586fd3c5b48ad4f8ccd25e23babf29005769d88f4bb5c6"
+    }
+  ],
+  "updatedAt": "2026-09-03T00:19:10.572Z"
+}

@@ -1,0 +1,101 @@
+{
+  "scenarioCount": 17,
+  "serializedBytes": 506,
+  "deterministicStable": true,
+  "inferredKeys": [
+    "requiredService",
+    "optionalLogger",
+    "ordered",
+    "constructor",
+    "then",
+    "é"
+  ],
+  "hasProtoKey": false,
+  "scenarios": [
+    {
+      "name": "required",
+      "expected": "accept",
+      "detail": "one provider"
+    },
+    {
+      "name": "optional",
+      "expected": "accept",
+      "detail": "absence allowed"
+    },
+    {
+      "name": "many",
+      "expected": "accept",
+      "detail": "0..3 ordered"
+    },
+    {
+      "name": "missing",
+      "expected": "diagnostic",
+      "detail": "required slot unbound"
+    },
+    {
+      "name": "duplicate",
+      "expected": "diagnostic",
+      "detail": "duplicate binding"
+    },
+    {
+      "name": "ambiguity",
+      "expected": "diagnostic",
+      "detail": "multiple eligible implementations"
+    },
+    {
+      "name": "cycle",
+      "expected": "diagnostic",
+      "detail": "dependency cycle"
+    },
+    {
+      "name": "disabled",
+      "expected": "diagnostic",
+      "detail": "disabled implementation"
+    },
+    {
+      "name": "unreachable",
+      "expected": "diagnostic",
+      "detail": "unreachable module"
+    },
+    {
+      "name": "multiple roots",
+      "expected": "accept",
+      "detail": "two roots deterministic"
+    },
+    {
+      "name": "deterministic ordering",
+      "expected": "accept",
+      "detail": "sorted declaration"
+    },
+    {
+      "name": "hostile keys",
+      "expected": "accept",
+      "detail": "prototype-safe own keys"
+    },
+    {
+      "name": "unknown fields",
+      "expected": "diagnostic",
+      "detail": "closed input shape"
+    },
+    {
+      "name": "no fallback",
+      "expected": "diagnostic",
+      "detail": "no implicit provider"
+    },
+    {
+      "name": "serializability",
+      "expected": "accept",
+      "detail": "JSON declaration"
+    },
+    {
+      "name": "declaration emit",
+      "expected": "accept",
+      "detail": ".d.ts emitted"
+    },
+    {
+      "name": "no executable import during discovery",
+      "expected": "accept",
+      "detail": "inert declaration"
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-09-04T00:49:21Z",
+  "hostAlias": "codex-workers-eu-01",
+  "machineId": "be0aad971ea647fab370acd110b469b7",
+  "preferredMachineIdPrefix": "be0aad",
+  "filesystem": {
+    "mount": "/var/data",
+    "device": "/dev/vda1",
+    "totalBytes": 498131243008,
+    "usedBytes": 481565532160,
+    "availableBytes": 16548933632,
+    "usedPercent": 97,
+    "totalInodes": 62783488,
+    "usedInodes": 18088838,
+    "availableInodes": 44694650,
+    "usedInodesPercent": 29
+  },
+  "memory": {
+    "totalBytes": 16768630784,
+    "usedBytes": 6393757696,
+    "availableBytes": 10374873088
+  },
+  "swap": {
+    "totalBytes": 17179865088,
+    "usedBytes": 10779025408,
+    "freeBytes": 6400839680
+  },
+  "sourceBundle": {
+    "path": "/tmp/get-modular-ae1a138-20260904.bundle",
+    "sha256": "298446493f46234a5b1afcb7eecff4f6983320932e2806aa2754cbb0f40dfb74",
+    "headSha": "ae1a13869643ef4ae421baad7c377d4ef9198aeb",
+    "history": "complete"
+  },
+  "commands": [
+    "cat /etc/machine-id",
+    "df -P -B1 /var/data",
+    "df -P -i /var/data",
+    "free -b",
+    "sha256sum /tmp/get-modular-ae1a138-20260904.bundle"
+  ],
+  "interpretation": "The preferred host had sufficient RAM, swap, bytes and inodes for the bounded remediation workers. High byte utilization was observed and no cleanup or destructive action was performed."
+}

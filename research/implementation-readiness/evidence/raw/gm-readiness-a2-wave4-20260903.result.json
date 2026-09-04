@@ -1,0 +1,28 @@
+{
+  "status": "partial",
+  "changedFiles": [
+    "node_modules"
+  ],
+  "evidence": [
+    "supervisor_reconciled_result",
+    "latest_result_missing",
+    "progress_status:running",
+    "patch_preserve_unavailable"
+  ],
+  "blockers": [
+    "missing_runtime_result",
+    "productive"
+  ],
+  "nextAction": "wait",
+  "schemaVersion": 1,
+  "provider": "codex",
+  "runId": "gm-readiness-a2-wave4-20260903",
+  "taskId": "gm-readiness-a2-wave4-20260903",
+  "classification": "productive",
+  "reason": "missing_runtime_result",
+  "details": {
+    "source": "codex_goal_runtime_result_reconcile",
+    "baseCommit": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418"
+  },
+  "updatedAt": "2026-09-02T23:44:51.747Z"
+}

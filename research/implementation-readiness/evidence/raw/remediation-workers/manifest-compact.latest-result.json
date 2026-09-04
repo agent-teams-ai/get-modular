@@ -1,0 +1,46 @@
+{
+  "status": "done",
+  "changedFiles": [
+    "research/implementation-readiness/evidence/worker-index.json",
+    "research/implementation-readiness/generate-worker-inventory.mjs",
+    "research/implementation-readiness/worker-manifest.json"
+  ],
+  "evidence": [
+    "safe_execution_status:completed",
+    "output_summary:Implemented the compact worker inventory at exact `f6a81e029098de30d46d8cf3737fadb4a16ed098`.\n\nChanged:\n\n- [worker-manifest.json](/var/data/gm-goal-audit-20260904/workspaces/manifest-compact-f6-v3/research/implementation-readiness/worker-manifest.json)\n- [worker-index.json](/var/data/gm-goal-audit-20260904/workspaces/manifest-compact-f6-v3/research/implementation-readiness/evidence/worker-index.json)\n- [generate-worker-inventory.mjs](/var/data/gm-goal-audit-20260904/workspaces/manifest-compact-f6-v3/research/implementation-readiness/generate-worker-inventory.mjs)\n\nThe inventory contains 63 records across 55 planned roles and 8 attempts, identifies 13 byte-identical aliases, preserves B1 as partial and B3 as blocked, includes all four `ae1a138...` audits, and records the external-review custody boundary. ADR-0015 is accepted; the proposed set is ADR-0009–0014 plus ADR-0016.\n\nFocused validation:\n\n```text\n{\"status\":\"ok\",\"artifactLines\":932,\"rawFiles\":76,\"byteUniqueRawResults\":63,\n\"duplicateRawAliases\":13,\"records\":63,\"plannedRoles\":55,\n\"canonicalRecords\":55,\"attemptRecords\":8,\"initialCampaignRecords\":51,\n\"initialCampaignPlannedRoles\":44,\"retainedHistoricalFinalReviews\":6,\n\"retainedCompletionAudits\":4,\"externalReviewRecordsNotRetained\":12}\n```\n\nIndependent digest/count validation also passed, as did `node --check` and `git diff --check`. Patch size is 1,639 changed lines, below the 2,500-line limit. Only the three owned files changed; historical raw evidence remains untouched.\n\n`pnpm check:changed`, `pnpm check:fast`, and `pnpm check` could not bootstrap because dependencies are absent and sandbox policy blocks `registry.npmjs.org`. No full-gate pass is claimed.\n\nCompleted in about 12 minutes.",
+    "attempt_count:1",
+    "patch_preserved:/var/data/gm-goal-audit-20260904/jobs/manifest-compact-f6-v3/gm-manifest-compact-f6-20260904.a0bdb635394bc5abaf90bbd8bb708f4e2f67365c0d5ec1e5b3fa186c46a3b977.handoff.patch",
+    "patch_preserved:/var/data/gm-goal-audit-20260904/jobs/manifest-compact-f6-v3/gm-manifest-compact-f6-20260904.a0bdb635394bc5abaf90bbd8bb708f4e2f67365c0d5ec1e5b3fa186c46a3b977.handoff.summary.json",
+    "patch_preserved:/var/data/gm-goal-audit-20260904/jobs/manifest-compact-f6-v3/gm-manifest-compact-f6-20260904.a0bdb635394bc5abaf90bbd8bb708f4e2f67365c0d5ec1e5b3fa186c46a3b977.handoff.manifest.json"
+  ],
+  "blockers": [],
+  "nextAction": "review_completed",
+  "schemaVersion": 1,
+  "provider": "codex",
+  "runId": "gm-manifest-compact-f6-20260904",
+  "taskId": "gm-manifest-compact-f6-20260904",
+  "details": {
+    "baseCommit": "f6a81e029098de30d46d8cf3737fadb4a16ed098"
+  },
+  "artifacts": [
+    {
+      "kind": "patch",
+      "path": "/var/data/gm-goal-audit-20260904/jobs/manifest-compact-f6-v3/gm-manifest-compact-f6-20260904.a0bdb635394bc5abaf90bbd8bb708f4e2f67365c0d5ec1e5b3fa186c46a3b977.handoff.patch",
+      "byteLength": 285126,
+      "sha256": "a0bdb635394bc5abaf90bbd8bb708f4e2f67365c0d5ec1e5b3fa186c46a3b977"
+    },
+    {
+      "kind": "summary",
+      "path": "/var/data/gm-goal-audit-20260904/jobs/manifest-compact-f6-v3/gm-manifest-compact-f6-20260904.a0bdb635394bc5abaf90bbd8bb708f4e2f67365c0d5ec1e5b3fa186c46a3b977.handoff.summary.json",
+      "byteLength": 920,
+      "sha256": "838287e4dfa7956c5967aea78640203b929ccf429ed35f947ac3d8f6036590d3"
+    },
+    {
+      "kind": "manifest",
+      "path": "/var/data/gm-goal-audit-20260904/jobs/manifest-compact-f6-v3/gm-manifest-compact-f6-20260904.a0bdb635394bc5abaf90bbd8bb708f4e2f67365c0d5ec1e5b3fa186c46a3b977.handoff.manifest.json",
+      "byteLength": 1466,
+      "sha256": "c75d09cb11e7523abf60dc8b1591ea627a8a4bf101b3e413968025b9f0dbddd9"
+    }
+  ],
+  "updatedAt": "2026-09-04T01:59:03.502Z"
+}

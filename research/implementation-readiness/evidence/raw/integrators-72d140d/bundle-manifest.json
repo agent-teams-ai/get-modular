@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "read-only-implementation-readiness-integrator-results",
+  "initialBaseSha": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418",
+  "exactResearchHeadSha": "72d140da7975d0ca2b5f4180885c6fc4b2c05cd8",
+  "sourceBundleSha256": "1538e8ed0b8f7eb35439087753e9636a7e1a6d2058eb758f581d37716c25a839",
+  "model": "gpt-5.6-sol",
+  "reasoningEffort": "xhigh",
+  "serviceTier": "default",
+  "networkAccess": "disabled",
+  "editMode": "read-only",
+  "resultCount": 4,
+  "aggregateAlgorithm": "sha256(filename + NUL + fileSha256 + LF, sorted by filename)",
+  "aggregateSha256": "4b53d31b981ee0a4ea8d6a6329148453d925fdff2fd0aee40225ad22dd2957ba",
+  "files": [
+    {
+      "file": "gm-integrator2-i1-72d-20260904.latest-result.json",
+      "sha256": "1ec8a95d9dc2f5f25d320b2fda01c4691fc78cc7ff15906fac2ee8d9e7ab86a9",
+      "role": "contract-authority-and-adr-precedence",
+      "sourceHost": "codex-workers-eu-01-old",
+      "sourceMachineId": "93732118417e46618cefafc022c8b1db",
+      "wrapperStatus": "done",
+      "changedFileCount": 0
+    },
+    {
+      "file": "gm-integrator2-i2-72d-20260904.latest-result.json",
+      "sha256": "79cf297df6ffcc216f31d70239d3989ddb3041469d26dbbac065faa4c57304f2",
+      "role": "api-and-typescript",
+      "sourceHost": "codex-workers-eu-01-old",
+      "sourceMachineId": "93732118417e46618cefafc022c8b1db",
+      "wrapperStatus": "done",
+      "changedFileCount": 0
+    },
+    {
+      "file": "gm-integrator2-i3-72d-20260904.latest-result.json",
+      "sha256": "dc4bfa3178afa6e9c4d65057f5f5c1435e73681228d637326702d346d153dd71",
+      "role": "security-hostile-inputs-determinism-graph-and-digest",
+      "sourceHost": "codex-workers-eu-01",
+      "sourceMachineId": "be0aad971ea647fab370acd110b469b7",
+      "wrapperStatus": "done",
+      "changedFileCount": 0
+    },
+    {
+      "file": "gm-integrator2-i4-72d-20260904.latest-result.json",
+      "sha256": "0ead028445b84ee0cab6eb24c63b59bc99cfa0376237b916bf7e8b5cd11391d7",
+      "role": "mvp-real-world-complexity-and-overengineering",
+      "sourceHost": "codex-workers-eu-01",
+      "sourceMachineId": "be0aad971ea647fab370acd110b469b7",
+      "wrapperStatus": "done",
+      "changedFileCount": 0
+    }
+  ]
+}

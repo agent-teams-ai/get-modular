@@ -154,8 +154,12 @@ source and keeps blocking publication surfaces and runtime claims. Inside that
 checkpoint repeated binding-record inputs stay outside the claimed domain, and
 the ADR-0014 semantics may be demonstrated only in fixtures until ADR-0014 is
 accepted. It is not
-either proposed carrier adapter and cannot claim trusted-object or raw-byte
-admission. Public packaging, both carrier adapters, raw decoding, and production
+either exposed carrier adapter and cannot claim trusted-object or raw-byte
+admission. ADR-0015 nevertheless permits a private object candidate over the
+same semantic implementation to gather acceptance evidence in M1. Accepted
+object rules remain authority; unresolved cases are labelled candidate-only,
+not silently settled. The roadmap's callable matrix defines that test scope.
+Public packaging, exposed carrier semantics, raw decoding, and production
 dependency adapters remain gated by their corresponding decisions.
 
 ## Historical requirement wording

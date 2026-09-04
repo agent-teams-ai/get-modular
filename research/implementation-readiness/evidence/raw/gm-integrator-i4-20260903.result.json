@@ -1,0 +1,60 @@
+{
+  "status": "done",
+  "changedFiles": [
+    "research/implementation-readiness/evidence/combined-workers.json",
+    "research/implementation-readiness/evidence/fixtures/b1/b1/REPORT.md",
+    "research/implementation-readiness/evidence/fixtures/b1/b1/fixture.ts",
+    "research/implementation-readiness/evidence/fixtures/b1/b1/run.mjs",
+    "research/implementation-readiness/evidence/fixtures/b2/b2/README.md",
+    "research/implementation-readiness/evidence/fixtures/b2/b2/fixture.ts",
+    "research/implementation-readiness/evidence/fixtures/b2/b2/tsconfig.json",
+    "research/implementation-readiness/evidence/fixtures/b3/b3/README.md",
+    "research/implementation-readiness/evidence/fixtures/b3/b3/fixture.ts",
+    "research/implementation-readiness/evidence/fixtures/b3/b3/package.json",
+    "research/implementation-readiness/evidence/fixtures/b3/b3/tsconfig.json",
+    "research/implementation-readiness/evidence/fixtures/b4/b4/README.md",
+    "research/implementation-readiness/evidence/fixtures/b4/b4/package.json",
+    "research/implementation-readiness/evidence/fixtures/b4/b4/src/api.ts",
+    "research/implementation-readiness/evidence/fixtures/b4/b4/src/run.ts",
+    "research/implementation-readiness/evidence/fixtures/b4/b4/src/scenarios.ts",
+    "research/implementation-readiness/evidence/fixtures/b4/b4/tsconfig.json"
+  ],
+  "evidence": [
+    "safe_execution_status:completed",
+    "output_summary:Goal complete and marked `complete`.\n\nSummary:\n\n- Re-verified `HEAD` and every worker `details.baseCommit` as `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418`.\n- Integrated all 27 bundle records: 25 completed and 2 partial; partial/blocked attempts were excluded from positive consensus and retained as environment limitations.\n- Evidence bundle SHA-256: `6ac47ce73122ffced19173fb4e4078bb77c5b0cdea2fd176a850133ef1a9f965`.\n- No tracked source, ADR, API, production package, or fixture changes were made.\n- Overall result: **CONDITIONAL** for a future private Core slice, but **NO-GO for immediate production-source admission** until the ADR-0015 owner-start record exists.\n- Public, runtime-conformant, self-composed, and release claims remain unsupported because there is no Core compiler subject, the current qualification is static/oracle-only, open decisions remain active, and ADR-0016/W0-W1 authority is unresolved.\n- The API fixtures show promising low-ceremony TypeScript shapes but are synthetic and non-authoritative; they do not prove graph semantics, diagnostics, or runtime behavior.\n- The minimal safe next task is to record the owner-start decision, then build only a private normalized object-entry seam with an executable independent gate, after correcting the cardinality and resource-oracle defects.\n\nFinal usage reported by the goal runtime: 473,039 tokens over approximately 24 minutes.",
+    "attempt_count:1",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/i4/gm-integrator-i4-20260903.3f8dba03c134758d0892d2a3ec9c47b3dd5025a16b26d7e532cb831f4ff3f5b3.handoff.patch",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/i4/gm-integrator-i4-20260903.3f8dba03c134758d0892d2a3ec9c47b3dd5025a16b26d7e532cb831f4ff3f5b3.handoff.summary.json",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/i4/gm-integrator-i4-20260903.3f8dba03c134758d0892d2a3ec9c47b3dd5025a16b26d7e532cb831f4ff3f5b3.handoff.manifest.json"
+  ],
+  "blockers": [],
+  "nextAction": "review_completed",
+  "schemaVersion": 1,
+  "provider": "codex",
+  "runId": "gm-integrator-i4-20260903",
+  "taskId": "gm-integrator-i4-20260903",
+  "details": {
+    "baseCommit": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418"
+  },
+  "artifacts": [
+    {
+      "kind": "patch",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/i4/gm-integrator-i4-20260903.3f8dba03c134758d0892d2a3ec9c47b3dd5025a16b26d7e532cb831f4ff3f5b3.handoff.patch",
+      "byteLength": 209069,
+      "sha256": "3f8dba03c134758d0892d2a3ec9c47b3dd5025a16b26d7e532cb831f4ff3f5b3"
+    },
+    {
+      "kind": "summary",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/i4/gm-integrator-i4-20260903.3f8dba03c134758d0892d2a3ec9c47b3dd5025a16b26d7e532cb831f4ff3f5b3.handoff.summary.json",
+      "byteLength": 1998,
+      "sha256": "b0823b9852437ece970a9e265771a937d4f3287baa4f8afededea5a15d85a4b6"
+    },
+    {
+      "kind": "manifest",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/i4/gm-integrator-i4-20260903.3f8dba03c134758d0892d2a3ec9c47b3dd5025a16b26d7e532cb831f4ff3f5b3.handoff.manifest.json",
+      "byteLength": 2534,
+      "sha256": "6a0d96da87dd46921ed5005540364c3d809e3a470dcee0fdb945793201f00d7c"
+    }
+  ],
+  "updatedAt": "2026-09-03T01:08:39.978Z"
+}

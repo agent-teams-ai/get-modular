@@ -1,0 +1,47 @@
+{
+  "status": "done",
+  "changedFiles": [
+    "qualification/spikes/api-authoring/typed-define-module/b2/README.md",
+    "qualification/spikes/api-authoring/typed-define-module/b2/api.ts",
+    "qualification/spikes/api-authoring/typed-define-module/b2/scenarios.ts",
+    "qualification/spikes/api-authoring/typed-define-module/b2/tsconfig.json"
+  ],
+  "evidence": [
+    "safe_execution_status:completed",
+    "output_summary:Completed the disposable `typed-define-module / b2` fixture at the exact requested SHA.\n\nCreated only under:\n\n- [README.md](/var/data/gm-implementation-readiness-api-20260903/workspaces/l-b2/qualification/spikes/api-authoring/typed-define-module/b2/README.md)\n- [api.ts](/var/data/gm-implementation-readiness-api-20260903/workspaces/l-b2/qualification/spikes/api-authoring/typed-define-module/b2/api.ts)\n- [scenarios.ts](/var/data/gm-implementation-readiness-api-20260903/workspaces/l-b2/qualification/spikes/api-authoring/typed-define-module/b2/scenarios.ts)\n- [tsconfig.json](/var/data/gm-implementation-readiness-api-20260903/workspaces/l-b2/qualification/spikes/api-authoring/typed-define-module/b2/tsconfig.json)\n- Generated declaration evidence in `dist/api.d.ts` and `dist/scenarios.d.ts`\n\nResults:\n\n- TypeScript declaration-only compilation: passed.\n- Node runtime preflight: failed because the environment has Node `24.16.0`, while the contract requires `>=24.18.0 <25`.\n- No JavaScript was emitted or executed; no executable discovery import occurred.\n- Shared scenario coverage, LOC, generic glue, edit locations, inference, diagnostics, serializability, removal cost, leakage, limitations, and recommendation are documented in the fixture README.\n- No production source, public API, ADR, or ordinary documentation was changed.",
+    "attempt_count:1",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/l-b2/gm-api-b2-lane-l-20260903.bf6a8d6595501ddd04969dba46cbd6fa4b7276e3382520c1dc56f2fe07bfd673.handoff.patch",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/l-b2/gm-api-b2-lane-l-20260903.bf6a8d6595501ddd04969dba46cbd6fa4b7276e3382520c1dc56f2fe07bfd673.handoff.summary.json",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/l-b2/gm-api-b2-lane-l-20260903.bf6a8d6595501ddd04969dba46cbd6fa4b7276e3382520c1dc56f2fe07bfd673.handoff.manifest.json"
+  ],
+  "blockers": [],
+  "nextAction": "review_completed",
+  "schemaVersion": 1,
+  "provider": "codex",
+  "runId": "gm-api-b2-lane-l-20260903",
+  "taskId": "gm-api-b2-lane-l-20260903",
+  "details": {
+    "baseCommit": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418"
+  },
+  "artifacts": [
+    {
+      "kind": "patch",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/l-b2/gm-api-b2-lane-l-20260903.bf6a8d6595501ddd04969dba46cbd6fa4b7276e3382520c1dc56f2fe07bfd673.handoff.patch",
+      "byteLength": 5528,
+      "sha256": "bf6a8d6595501ddd04969dba46cbd6fa4b7276e3382520c1dc56f2fe07bfd673"
+    },
+    {
+      "kind": "summary",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/l-b2/gm-api-b2-lane-l-20260903.bf6a8d6595501ddd04969dba46cbd6fa4b7276e3382520c1dc56f2fe07bfd673.handoff.summary.json",
+      "byteLength": 1001,
+      "sha256": "be6586539266c5ae40936a7599014a0af62e7190e00167a6e43a2aac62b51541"
+    },
+    {
+      "kind": "manifest",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/l-b2/gm-api-b2-lane-l-20260903.bf6a8d6595501ddd04969dba46cbd6fa4b7276e3382520c1dc56f2fe07bfd673.handoff.manifest.json",
+      "byteLength": 1544,
+      "sha256": "7edc5b4d0a6e5f46679782ed5127e7b46686688e1ac1623d4e3e3db1c07f023d"
+    }
+  ],
+  "updatedAt": "2026-09-03T00:21:19.807Z"
+}

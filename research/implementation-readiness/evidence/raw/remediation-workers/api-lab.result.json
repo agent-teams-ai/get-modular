@@ -1,0 +1,55 @@
+{
+  "status": "done",
+  "changedFiles": [
+    "tests/qualification/implementation-readiness/api-authoring/common/README.md",
+    "tests/qualification/implementation-readiness/api-authoring/common/candidate-define.ts",
+    "tests/qualification/implementation-readiness/api-authoring/common/candidate-descriptor.ts",
+    "tests/qualification/implementation-readiness/api-authoring/common/candidate-split.ts",
+    "tests/qualification/implementation-readiness/api-authoring/common/corpus.ts",
+    "tests/qualification/implementation-readiness/api-authoring/common/factories.ts",
+    "tests/qualification/implementation-readiness/api-authoring/common/index.ts",
+    "tests/qualification/implementation-readiness/api-authoring/common/oracle.ts",
+    "tests/qualification/implementation-readiness/api-authoring/common/run.mjs",
+    "tests/qualification/implementation-readiness/api-authoring/common/tsconfig.json",
+    "tests/qualification/implementation-readiness/api-authoring/common/type-probes.ts",
+    "tests/qualification/implementation-readiness/api-authoring/common/types.ts"
+  ],
+  "evidence": [
+    "safe_execution_status:completed",
+    "output_summary:Implemented the qualification lab entirely under [common/](/var/data/gm-goal-audit-20260904/workspaces/api-lab-write-2/tests/qualification/implementation-readiness/api-authoring/common), starting from exact commit `ae1a13869643ef4ae421baad7c377d4ef9198aeb`.\n\nKey artifacts:\n\n- [corpus.ts](/var/data/gm-goal-audit-20260904/workspaces/api-lab-write-2/tests/qualification/implementation-readiness/api-authoring/common/corpus.ts): immutable 30-scenario corpus\n- [oracle.ts](/var/data/gm-goal-audit-20260904/workspaces/api-lab-write-2/tests/qualification/implementation-readiness/api-authoring/common/oracle.ts): independent deterministic oracle\n- [run.mjs](/var/data/gm-goal-audit-20260904/workspaces/api-lab-write-2/tests/qualification/implementation-readiness/api-authoring/common/run.mjs): fail-closed runner and metrics\n- [README.md](/var/data/gm-goal-audit-20260904/workspaces/api-lab-write-2/tests/qualification/implementation-readiness/api-authoring/common/README.md): non-authoritative/non-production handoff\n\nVerification:\n\n```sh\nnode node_modules/typescript/bin/tsc -p tests/qualification/implementation-readiness/api-authoring/common/tsconfig.json\nnode tests/qualification/implementation-readiness/api-authoring/common/run.mjs\n```\n\nOutput summary:\n\n```json\n{\n  \"status\": \"pass\",\n  \"scenarioCount\": 30,\n  \"executionCount\": 90,\n  \"corpusDigest\": \"7d48b85343b52ccf5b2ab27edcf009deecf7cf80d0a92487d99e799d6b34d5b5\",\n  \"allThreeDigestsEqual\": true,\n  \"allGuardsPassed\": true\n}\n```\n\nThe runner generates `dist/result-summary.json`, emits `.d.ts` files for all candidates, verifies compile-time probes, and runs 10/100/1000 scale compilations in an OS-temporary directory.\n\n`pnpm check:fast` could not start because pnpm cannot create its configured `.local` directory in this sandbox. Direct preflight additionally reports:\n\n```text\nNODE_VERSION_PREFLIGHT_FAILED: expected Node >=24.18.0 <25, received 24.16.0\n```\n\nNo files outside the owned directory were changed. Implementation size is 577 non-generated lines. Goal completed in approximately 12m45s.",
+    "attempt_count:1",
+    "patch_preserved:/var/data/gm-goal-audit-20260904/jobs/api-lab-write-2/gm-goal-api-lab-remediation-20260904.ebd7e1c0ad71c2cdc203cc5592bd14421513e64ce6e110ec2cfaa8455ebeb9fa.handoff.patch",
+    "patch_preserved:/var/data/gm-goal-audit-20260904/jobs/api-lab-write-2/gm-goal-api-lab-remediation-20260904.ebd7e1c0ad71c2cdc203cc5592bd14421513e64ce6e110ec2cfaa8455ebeb9fa.handoff.summary.json",
+    "patch_preserved:/var/data/gm-goal-audit-20260904/jobs/api-lab-write-2/gm-goal-api-lab-remediation-20260904.ebd7e1c0ad71c2cdc203cc5592bd14421513e64ce6e110ec2cfaa8455ebeb9fa.handoff.manifest.json"
+  ],
+  "blockers": [],
+  "nextAction": "review_completed",
+  "schemaVersion": 1,
+  "provider": "codex",
+  "runId": "gm-goal-api-lab-remediation-20260904",
+  "taskId": "gm-goal-api-lab-remediation-20260904",
+  "details": {
+    "baseCommit": "ae1a13869643ef4ae421baad7c377d4ef9198aeb"
+  },
+  "artifacts": [
+    {
+      "kind": "patch",
+      "path": "/var/data/gm-goal-audit-20260904/jobs/api-lab-write-2/gm-goal-api-lab-remediation-20260904.ebd7e1c0ad71c2cdc203cc5592bd14421513e64ce6e110ec2cfaa8455ebeb9fa.handoff.patch",
+      "byteLength": 40428,
+      "sha256": "ebd7e1c0ad71c2cdc203cc5592bd14421513e64ce6e110ec2cfaa8455ebeb9fa"
+    },
+    {
+      "kind": "summary",
+      "path": "/var/data/gm-goal-audit-20260904/jobs/api-lab-write-2/gm-goal-api-lab-remediation-20260904.ebd7e1c0ad71c2cdc203cc5592bd14421513e64ce6e110ec2cfaa8455ebeb9fa.handoff.summary.json",
+      "byteLength": 1756,
+      "sha256": "4552aa0b0a4239e760bd68bf26beae1a8e500af6cfe9c863d8fa74f5d7f40c5c"
+    },
+    {
+      "kind": "manifest",
+      "path": "/var/data/gm-goal-audit-20260904/jobs/api-lab-write-2/gm-goal-api-lab-remediation-20260904.ebd7e1c0ad71c2cdc203cc5592bd14421513e64ce6e110ec2cfaa8455ebeb9fa.handoff.manifest.json",
+      "byteLength": 2294,
+      "sha256": "839c759c0d413fc8e9913fbc9c7847ff9fb7ae8e203123dee9bc3efe3de243b1"
+    }
+  ],
+  "updatedAt": "2026-09-04T00:54:58.925Z"
+}

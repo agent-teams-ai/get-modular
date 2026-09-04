@@ -1,0 +1,10 @@
+export type Cardinality = { readonly kind: "required" } | { readonly kind: "optional" } | { readonly kind: "many"; readonly min: number; readonly max: number; readonly orderBy: "implementationId" };
+export type Dependency = Readonly<{ capability: string; slot: string; cardinality: Cardinality }>;
+export type ModuleDeclaration = Readonly<{ moduleId: string; provides: readonly string[]; dependencies: readonly Dependency[]; disabled?: boolean }>;
+export const required = (capability: string, slot: string): Dependency => ({ capability, slot, cardinality: { kind: "required" } });
+export const optional = (capability: string, slot: string): Dependency => ({ capability, slot, cardinality: { kind: "optional" } });
+export const many = (capability: string, slot: string, min: number, max: number): Dependency => ({ capability, slot, cardinality: { kind: "many", min, max, orderBy: "implementationId" } });
+export const defineModule = <const T extends ModuleDeclaration>(declaration: T): T => declaration;
+export const fixtures: { readonly core: ModuleDeclaration; readonly feature: ModuleDeclaration } = { core: defineModule({ moduleId: "core", provides: ["log"], dependencies: [] }), feature: defineModule({ moduleId: "feature", provides: ["feature"], dependencies: [required("log", "logger"), optional("cache", "cache"), many("plugin", "plugins", 0, 4)] }) } as const;
+export type ScenarioName = "required" | "optional" | "many" | "missing" | "duplicate" | "ambiguity" | "cycle" | "disabled" | "unreachable" | "multiple-roots" | "deterministic-ordering" | "hostile-keys" | "unknown-fields" | "no-fallback" | "serializability" | "declaration-emit" | "no-executable-import";
+export const scenarios: readonly ScenarioName[] = ["required", "optional", "many", "missing", "duplicate", "ambiguity", "cycle", "disabled", "unreachable", "multiple-roots", "deterministic-ordering", "hostile-keys", "unknown-fields", "no-fallback", "serializability", "declaration-emit", "no-executable-import"];

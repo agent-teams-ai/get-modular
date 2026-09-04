@@ -1,0 +1,596 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "read-only-dispute-critic-results",
+  "exactSubjectSha": "2bef472612dea7c6a89199a47dd8ca7ed552e630",
+  "sourceBundleSha256": "216bb3b0f5942aa7cbcae4e678233bf12d350504c5e0ff61eedd1fa1ad78bcf0",
+  "model": "gpt-5.6-sol",
+  "reasoningEffort": "xhigh",
+  "serviceTier": "default",
+  "networkAccess": "disabled",
+  "expectedTopicCount": 8,
+  "expectedRoleCountPerTopic": 4,
+  "resultCount": 32,
+  "uniqueTopicRoleCount": 32,
+  "aggregateAlgorithm": "sha256(filename + NUL + fileSha256 + LF, sorted by filename)",
+  "aggregateSha256": "ccd13b6652a45a6e4d80a4ca5b2ff80a95fdc7a624d3f30695d181e61e233838",
+  "files": [
+    {
+      "file": "gm-dispute-t1-r1-2bef-20260904.latest-result.json",
+      "sha256": "3defb65bc121e9ccd7f08e841b5db18432ad08ae0d1b10a3d9f551b18c053b13",
+      "sourceHost": "codex-workers-eu-01-old",
+      "sourceMachineId": "93732118417e46618cefafc022c8b1db",
+      "jobId": "gm-dispute-t1-r1-2bef-20260904",
+      "workerId": "critic-t1-r1",
+      "topic": "descriptor-vs-define-module",
+      "role": "correctness-determinism",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 2
+    },
+    {
+      "file": "gm-dispute-t1-r2-2bef-20260904.latest-result.json",
+      "sha256": "45fe689e2109444770fccfb4c3c322682dbff1f644996b5d0926bc1617c807af",
+      "sourceHost": "codex-workers-eu-01-old",
+      "sourceMachineId": "93732118417e46618cefafc022c8b1db",
+      "jobId": "gm-dispute-t1-r2-2bef-20260904",
+      "workerId": "descriptor-vs-define-module-clean-architecture-solid-ddd",
+      "topic": "descriptor-vs-define-module",
+      "role": "clean-architecture-solid-ddd",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 2
+    },
+    {
+      "file": "gm-dispute-t1-r3-2bef-20260904.latest-result.json",
+      "sha256": "0fd6ec3a41cb616cbc89744a0d16984417d2b0278017f1c9acce49ce82d292fa",
+      "sourceHost": "codex-workers-eu-01-old",
+      "sourceMachineId": "93732118417e46618cefafc022c8b1db",
+      "jobId": "gm-dispute-t1-r3-2bef-20260904",
+      "workerId": "descriptor-vs-define-module.security-failure-modes",
+      "topic": "descriptor-vs-define-module",
+      "role": "security-failure-modes",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 2
+    },
+    {
+      "file": "gm-dispute-t1-r4-2bef-20260904.latest-result.json",
+      "sha256": "fa63521f7ebadd2bc96b04e4b5df315fb9eef99a74dda246288bf6b8f5078e40",
+      "sourceHost": "codex-workers-eu-01-old",
+      "sourceMachineId": "93732118417e46618cefafc022c8b1db",
+      "jobId": "gm-dispute-t1-r4-2bef-20260904",
+      "workerId": "critic-t1-r4",
+      "topic": "descriptor-vs-define-module",
+      "role": "real-world-dx-maintenance",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 3
+    },
+    {
+      "file": "gm-dispute-t2-r1-2bef-20260904.latest-result.json",
+      "sha256": "85ca3c6da3828593909754b508ad03223ba277c9c7df0233111856e3e43ca672",
+      "sourceHost": "codex-workers-eu-01-old",
+      "sourceMachineId": "93732118417e46618cefafc022c8b1db",
+      "jobId": "gm-dispute-t2-r1-2bef-20260904",
+      "workerId": "critic-t2-r1",
+      "topic": "cardinality-helpers",
+      "role": "correctness-determinism",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 1
+    },
+    {
+      "file": "gm-dispute-t2-r2-2bef-20260904.latest-result.json",
+      "sha256": "0e3e95b2995bf9a508415505ae3a4045f830c7eab3fa4815e77195afe5a83765",
+      "sourceHost": "codex-workers-eu-01-old",
+      "sourceMachineId": "93732118417e46618cefafc022c8b1db",
+      "jobId": "gm-dispute-t2-r2-2bef-20260904",
+      "workerId": "critic-t2-r2",
+      "topic": "cardinality-helpers",
+      "role": "clean-architecture-solid-ddd",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 1
+    },
+    {
+      "file": "gm-dispute-t2-r3-2bef-20260904.latest-result.json",
+      "sha256": "e6fa5b46fe056baf9b862314e1dc59d0e53c9d6baa18d59ec0f4bdf9afca7048",
+      "sourceHost": "codex-workers-eu-01-old",
+      "sourceMachineId": "93732118417e46618cefafc022c8b1db",
+      "jobId": "gm-dispute-t2-r3-2bef-20260904",
+      "workerId": "critic-t2-r3",
+      "topic": "cardinality-helpers",
+      "role": "security-failure-modes",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 2
+    },
+    {
+      "file": "gm-dispute-t2-r4-2bef-20260904.latest-result.json",
+      "sha256": "c433fdf68f78aa40b3da50bf155420acabbb3f3df81ae05bc7ce22b524708e98",
+      "sourceHost": "codex-workers-eu-01-old",
+      "sourceMachineId": "93732118417e46618cefafc022c8b1db",
+      "jobId": "gm-dispute-t2-r4-2bef-20260904",
+      "workerId": "cardinality-helpers-real-world-dx-maintenance",
+      "topic": "cardinality-helpers",
+      "role": "real-world-dx-maintenance",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 3
+    },
+    {
+      "file": "gm-dispute-t3-r1-2bef-20260904.latest-result.json",
+      "sha256": "f002e8a278cda1cd7270470c334736e5d93e528f58f1a8febeeff43c09f80c55",
+      "sourceHost": "codex-workers-eu-01-old",
+      "sourceMachineId": "93732118417e46618cefafc022c8b1db",
+      "jobId": "gm-dispute-t3-r1-2bef-20260904",
+      "workerId": "critic-t3-r1",
+      "topic": "dependency-record",
+      "role": "correctness-determinism",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 2
+    },
+    {
+      "file": "gm-dispute-t3-r2-2bef-20260904.latest-result.json",
+      "sha256": "b25c485d11f29f3cb06662b6e2adbf5bc5e3675c868ac2f4ec321a7ad0ae0220",
+      "sourceHost": "codex-workers-eu-01-old",
+      "sourceMachineId": "93732118417e46618cefafc022c8b1db",
+      "jobId": "gm-dispute-t3-r2-2bef-20260904",
+      "workerId": "critic-t3-r2",
+      "topic": "dependency-record",
+      "role": "clean-architecture-solid-ddd",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 3
+    },
+    {
+      "file": "gm-dispute-t3-r3-2bef-20260904.latest-result.json",
+      "sha256": "11ff690a4c9098f0b656ce77ca71539803f06b31132ec500a5be758427fef9f1",
+      "sourceHost": "codex-workers-eu-01-old",
+      "sourceMachineId": "93732118417e46618cefafc022c8b1db",
+      "jobId": "gm-dispute-t3-r3-2bef-20260904",
+      "workerId": "dependency-record-security-failure-modes",
+      "topic": "dependency-record",
+      "role": "security-failure-modes",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 3
+    },
+    {
+      "file": "gm-dispute-t3-r4-2bef-20260904.latest-result.json",
+      "sha256": "139cf21141dcaeb4e73fff9508bc833bd9e09552fe98216dc3fbec8f826987c4",
+      "sourceHost": "codex-workers-eu-01-old",
+      "sourceMachineId": "93732118417e46618cefafc022c8b1db",
+      "jobId": "gm-dispute-t3-r4-2bef-20260904",
+      "workerId": "critic-t3-r4",
+      "topic": "dependency-record",
+      "role": "real-world-dx-maintenance",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 3
+    },
+    {
+      "file": "gm-dispute-t4-r1-2bef-20260904.latest-result.json",
+      "sha256": "53042550b2674fb6d088de11a25f5f992146795d95759b52f581ac8898488323",
+      "sourceHost": "codex-workers-eu-01-old",
+      "sourceMachineId": "93732118417e46618cefafc022c8b1db",
+      "jobId": "gm-dispute-t4-r1-2bef-20260904",
+      "workerId": "declaration-activation-correctness-determinism-2bef472",
+      "topic": "declaration-activation",
+      "role": "correctness-determinism",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 2
+    },
+    {
+      "file": "gm-dispute-t4-r2-2bef-20260904.latest-result.json",
+      "sha256": "7ce96f758869b98d72fc3e81f241d6c8c5102e1142de53db6cf67caa8aeaae10",
+      "sourceHost": "codex-workers-eu-01-old",
+      "sourceMachineId": "93732118417e46618cefafc022c8b1db",
+      "jobId": "gm-dispute-t4-r2-2bef-20260904",
+      "workerId": "critic-t4-r2",
+      "topic": "declaration-activation",
+      "role": "clean-architecture-solid-ddd",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 1
+    },
+    {
+      "file": "gm-dispute-t4-r3-2bef-20260904.latest-result.json",
+      "sha256": "ad64ba001615a06837965de48a66f588e83d292fdcec395d03286802db7ffcd9",
+      "sourceHost": "codex-workers-eu-01-old",
+      "sourceMachineId": "93732118417e46618cefafc022c8b1db",
+      "jobId": "gm-dispute-t4-r3-2bef-20260904",
+      "workerId": "critic-t4-r3",
+      "topic": "declaration-activation",
+      "role": "security-failure-modes",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 3
+    },
+    {
+      "file": "gm-dispute-t4-r4-2bef-20260904.latest-result.json",
+      "sha256": "d29ca48584a683afb24c4f49cfb71cea6663a080fc9e3ec22de0a6997e814c57",
+      "sourceHost": "codex-workers-eu-01-old",
+      "sourceMachineId": "93732118417e46618cefafc022c8b1db",
+      "jobId": "gm-dispute-t4-r4-2bef-20260904",
+      "workerId": "critic-t4-r4",
+      "topic": "declaration-activation",
+      "role": "real-world-dx-maintenance",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 3
+    },
+    {
+      "file": "gm-dispute-t5-r1-2bef-20260904.latest-result.json",
+      "sha256": "1607955ea4db4088a1ec22c134e6061f5346088d53dd168e6a8b21023bc33e3b",
+      "sourceHost": "codex-workers-eu-01",
+      "sourceMachineId": "be0aad971ea647fab370acd110b469b7",
+      "jobId": "gm-dispute-t5-r1-2bef-20260904",
+      "workerId": "stage0-stage1-correctness-determinism-2bef4726",
+      "topic": "stage0-stage1",
+      "role": "correctness-determinism",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 3
+    },
+    {
+      "file": "gm-dispute-t5-r2-2bef-20260904.latest-result.json",
+      "sha256": "698283b9295b4c94cdd33a6dbf1ff83d0ec70b158f34ef71fdc0113a2a9cff4a",
+      "sourceHost": "codex-workers-eu-01",
+      "sourceMachineId": "be0aad971ea647fab370acd110b469b7",
+      "jobId": "gm-dispute-t5-r2-2bef-20260904",
+      "workerId": "stage0-stage1-clean-architecture-solid-ddd-2bef472",
+      "topic": "stage0-stage1",
+      "role": "clean-architecture-solid-ddd",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 3
+    },
+    {
+      "file": "gm-dispute-t5-r3-2bef-20260904.latest-result.json",
+      "sha256": "cfda405bd1b44cf438b46f23032d29c96f05735bda67c89454f5e84bdda4730f",
+      "sourceHost": "codex-workers-eu-01",
+      "sourceMachineId": "be0aad971ea647fab370acd110b469b7",
+      "jobId": "gm-dispute-t5-r3-2bef-20260904",
+      "workerId": "critic-t5-r3",
+      "topic": "stage0-stage1",
+      "role": "security-failure-modes",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 3
+    },
+    {
+      "file": "gm-dispute-t5-r4-2bef-20260904.latest-result.json",
+      "sha256": "ace4c59152298b3da1d2f1056455b27b2e077a180ab64f5d23dffc03f11a2bb7",
+      "sourceHost": "codex-workers-eu-01",
+      "sourceMachineId": "be0aad971ea647fab370acd110b469b7",
+      "jobId": "gm-dispute-t5-r4-2bef-20260904",
+      "workerId": "critic-t5-r4-stage0-stage1-real-world-dx-maintenance",
+      "topic": "stage0-stage1",
+      "role": "real-world-dx-maintenance",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 3
+    },
+    {
+      "file": "gm-dispute-t6-r1-2bef-20260904.latest-result.json",
+      "sha256": "ee9480af65ac40a9629a8642b62825ea0cd2badba70c8f9580f238cf68bd846e",
+      "sourceHost": "codex-workers-eu-01",
+      "sourceMachineId": "be0aad971ea647fab370acd110b469b7",
+      "jobId": "gm-dispute-t6-r1-2bef-20260904",
+      "workerId": "identity-locality-correctness-determinism-2bef472",
+      "topic": "identity-locality",
+      "role": "correctness-determinism",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 2
+    },
+    {
+      "file": "gm-dispute-t6-r2-2bef-20260904.latest-result.json",
+      "sha256": "9ab960e2d77871f6ccbe1f63ae2cc96a7e04e1837af65b315ba55efec0979613",
+      "sourceHost": "codex-workers-eu-01",
+      "sourceMachineId": "be0aad971ea647fab370acd110b469b7",
+      "jobId": "gm-dispute-t6-r2-2bef-20260904",
+      "workerId": "critic-t6-r2",
+      "topic": "identity-locality",
+      "role": "clean-architecture-solid-ddd",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 3
+    },
+    {
+      "file": "gm-dispute-t6-r3-2bef-20260904.latest-result.json",
+      "sha256": "5920ac921c730c250870d248a3cd5ed0de07be9b00a1d436c1cf987737505b28",
+      "sourceHost": "codex-workers-eu-01",
+      "sourceMachineId": "be0aad971ea647fab370acd110b469b7",
+      "jobId": "gm-dispute-t6-r3-2bef-20260904",
+      "workerId": "critic-t6-r3",
+      "topic": "identity-locality",
+      "role": "security-failure-modes",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 3
+    },
+    {
+      "file": "gm-dispute-t6-r4-2bef-20260904.latest-result.json",
+      "sha256": "aba31b49cb4ec780e4e81d76064ec025207396894b8004322b3b252d1e725d78",
+      "sourceHost": "codex-workers-eu-01",
+      "sourceMachineId": "be0aad971ea647fab370acd110b469b7",
+      "jobId": "gm-dispute-t6-r4-2bef-20260904",
+      "workerId": "critic-t6-r4",
+      "topic": "identity-locality",
+      "role": "real-world-dx-maintenance",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 2
+    },
+    {
+      "file": "gm-dispute-t7-r1-2bef-20260904.latest-result.json",
+      "sha256": "4e476a46b5c490b0f964f57582190eea5d2b8b501b08a37bde9189daae6cee6b",
+      "sourceHost": "codex-workers-eu-01",
+      "sourceMachineId": "be0aad971ea647fab370acd110b469b7",
+      "jobId": "gm-dispute-t7-r1-2bef-20260904",
+      "workerId": "critic-t7-r1",
+      "topic": "pure-di-composition",
+      "role": "correctness-determinism",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 1
+    },
+    {
+      "file": "gm-dispute-t7-r2-2bef-20260904.latest-result.json",
+      "sha256": "61484f55568eac74ae83aa8d2f895863b59006227bfccce757eb843f89351a49",
+      "sourceHost": "codex-workers-eu-01",
+      "sourceMachineId": "be0aad971ea647fab370acd110b469b7",
+      "jobId": "gm-dispute-t7-r2-2bef-20260904",
+      "workerId": "critic-t7-r2",
+      "topic": "pure-di-composition",
+      "role": "clean-architecture-solid-ddd",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 1
+    },
+    {
+      "file": "gm-dispute-t7-r3-2bef-20260904.latest-result.json",
+      "sha256": "e8f5442449e43a072e64babb0f8400f4384b6dfeff26b3c9e35826257fb9e25c",
+      "sourceHost": "codex-workers-eu-01",
+      "sourceMachineId": "be0aad971ea647fab370acd110b469b7",
+      "jobId": "gm-dispute-t7-r3-2bef-20260904",
+      "workerId": "critic-t7-r3",
+      "topic": "pure-di-composition",
+      "role": "security-failure-modes",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 1
+    },
+    {
+      "file": "gm-dispute-t7-r4-2bef-20260904.latest-result.json",
+      "sha256": "aed49d0662993918209d6d9c791d53255fdfd9c414e11391d0f4de33145d35cb",
+      "sourceHost": "codex-workers-eu-01",
+      "sourceMachineId": "be0aad971ea647fab370acd110b469b7",
+      "jobId": "gm-dispute-t7-r4-2bef-20260904",
+      "workerId": "critic-t7-r4",
+      "topic": "pure-di-composition",
+      "role": "real-world-dx-maintenance",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 1
+    },
+    {
+      "file": "gm-dispute-t8-r1-2bef-20260904.latest-result.json",
+      "sha256": "40f5e7bce7b9ab655961c8625ea6bee7eec44a70f6ac0fce5c3754914d7de934",
+      "sourceHost": "codex-workers-eu-01",
+      "sourceMachineId": "be0aad971ea647fab370acd110b469b7",
+      "jobId": "gm-dispute-t8-r1-2bef-20260904",
+      "workerId": "critic-t8-r1",
+      "topic": "private-boundary",
+      "role": "correctness-determinism",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 2
+    },
+    {
+      "file": "gm-dispute-t8-r2-2bef-20260904.latest-result.json",
+      "sha256": "3b16f79206ea26e338ed8f07e82d64d3096c57e756ed2f655ada09c97ddb0de3",
+      "sourceHost": "codex-workers-eu-01",
+      "sourceMachineId": "be0aad971ea647fab370acd110b469b7",
+      "jobId": "gm-dispute-t8-r2-2bef-20260904",
+      "workerId": "critic-t8-r2",
+      "topic": "private-boundary",
+      "role": "clean-architecture-solid-ddd",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 2
+    },
+    {
+      "file": "gm-dispute-t8-r3-2bef-20260904.latest-result.json",
+      "sha256": "560a9c4a5167139b0ca720e598db3faa9f5c44c4e7dd2b53f69772baf854fc17",
+      "sourceHost": "codex-workers-eu-01",
+      "sourceMachineId": "be0aad971ea647fab370acd110b469b7",
+      "jobId": "gm-dispute-t8-r3-2bef-20260904",
+      "workerId": "critic-t8-r3-private-boundary-security-failure-modes",
+      "topic": "private-boundary",
+      "role": "security-failure-modes",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 2
+    },
+    {
+      "file": "gm-dispute-t8-r4-2bef-20260904.latest-result.json",
+      "sha256": "60074030981fc07cf1ba3179da922efac4c6575b500b791caaf2924f4774a627",
+      "sourceHost": "codex-workers-eu-01",
+      "sourceMachineId": "be0aad971ea647fab370acd110b469b7",
+      "jobId": "gm-dispute-t8-r4-2bef-20260904",
+      "workerId": "critic-t8-r4",
+      "topic": "private-boundary",
+      "role": "real-world-dx-maintenance",
+      "wrapperStatus": "done",
+      "changedFileCount": 0,
+      "findingCount": 2
+    }
+  ],
+  "topicRoleClosure": [
+    {
+      "topic": "cardinality-helpers",
+      "role": "clean-architecture-solid-ddd",
+      "jobId": "gm-dispute-t2-r2-2bef-20260904"
+    },
+    {
+      "topic": "cardinality-helpers",
+      "role": "correctness-determinism",
+      "jobId": "gm-dispute-t2-r1-2bef-20260904"
+    },
+    {
+      "topic": "cardinality-helpers",
+      "role": "real-world-dx-maintenance",
+      "jobId": "gm-dispute-t2-r4-2bef-20260904"
+    },
+    {
+      "topic": "cardinality-helpers",
+      "role": "security-failure-modes",
+      "jobId": "gm-dispute-t2-r3-2bef-20260904"
+    },
+    {
+      "topic": "declaration-activation",
+      "role": "clean-architecture-solid-ddd",
+      "jobId": "gm-dispute-t4-r2-2bef-20260904"
+    },
+    {
+      "topic": "declaration-activation",
+      "role": "correctness-determinism",
+      "jobId": "gm-dispute-t4-r1-2bef-20260904"
+    },
+    {
+      "topic": "declaration-activation",
+      "role": "real-world-dx-maintenance",
+      "jobId": "gm-dispute-t4-r4-2bef-20260904"
+    },
+    {
+      "topic": "declaration-activation",
+      "role": "security-failure-modes",
+      "jobId": "gm-dispute-t4-r3-2bef-20260904"
+    },
+    {
+      "topic": "dependency-record",
+      "role": "clean-architecture-solid-ddd",
+      "jobId": "gm-dispute-t3-r2-2bef-20260904"
+    },
+    {
+      "topic": "dependency-record",
+      "role": "correctness-determinism",
+      "jobId": "gm-dispute-t3-r1-2bef-20260904"
+    },
+    {
+      "topic": "dependency-record",
+      "role": "real-world-dx-maintenance",
+      "jobId": "gm-dispute-t3-r4-2bef-20260904"
+    },
+    {
+      "topic": "dependency-record",
+      "role": "security-failure-modes",
+      "jobId": "gm-dispute-t3-r3-2bef-20260904"
+    },
+    {
+      "topic": "descriptor-vs-define-module",
+      "role": "clean-architecture-solid-ddd",
+      "jobId": "gm-dispute-t1-r2-2bef-20260904"
+    },
+    {
+      "topic": "descriptor-vs-define-module",
+      "role": "correctness-determinism",
+      "jobId": "gm-dispute-t1-r1-2bef-20260904"
+    },
+    {
+      "topic": "descriptor-vs-define-module",
+      "role": "real-world-dx-maintenance",
+      "jobId": "gm-dispute-t1-r4-2bef-20260904"
+    },
+    {
+      "topic": "descriptor-vs-define-module",
+      "role": "security-failure-modes",
+      "jobId": "gm-dispute-t1-r3-2bef-20260904"
+    },
+    {
+      "topic": "identity-locality",
+      "role": "clean-architecture-solid-ddd",
+      "jobId": "gm-dispute-t6-r2-2bef-20260904"
+    },
+    {
+      "topic": "identity-locality",
+      "role": "correctness-determinism",
+      "jobId": "gm-dispute-t6-r1-2bef-20260904"
+    },
+    {
+      "topic": "identity-locality",
+      "role": "real-world-dx-maintenance",
+      "jobId": "gm-dispute-t6-r4-2bef-20260904"
+    },
+    {
+      "topic": "identity-locality",
+      "role": "security-failure-modes",
+      "jobId": "gm-dispute-t6-r3-2bef-20260904"
+    },
+    {
+      "topic": "private-boundary",
+      "role": "clean-architecture-solid-ddd",
+      "jobId": "gm-dispute-t8-r2-2bef-20260904"
+    },
+    {
+      "topic": "private-boundary",
+      "role": "correctness-determinism",
+      "jobId": "gm-dispute-t8-r1-2bef-20260904"
+    },
+    {
+      "topic": "private-boundary",
+      "role": "real-world-dx-maintenance",
+      "jobId": "gm-dispute-t8-r4-2bef-20260904"
+    },
+    {
+      "topic": "private-boundary",
+      "role": "security-failure-modes",
+      "jobId": "gm-dispute-t8-r3-2bef-20260904"
+    },
+    {
+      "topic": "pure-di-composition",
+      "role": "clean-architecture-solid-ddd",
+      "jobId": "gm-dispute-t7-r2-2bef-20260904"
+    },
+    {
+      "topic": "pure-di-composition",
+      "role": "correctness-determinism",
+      "jobId": "gm-dispute-t7-r1-2bef-20260904"
+    },
+    {
+      "topic": "pure-di-composition",
+      "role": "real-world-dx-maintenance",
+      "jobId": "gm-dispute-t7-r4-2bef-20260904"
+    },
+    {
+      "topic": "pure-di-composition",
+      "role": "security-failure-modes",
+      "jobId": "gm-dispute-t7-r3-2bef-20260904"
+    },
+    {
+      "topic": "stage0-stage1",
+      "role": "clean-architecture-solid-ddd",
+      "jobId": "gm-dispute-t5-r2-2bef-20260904"
+    },
+    {
+      "topic": "stage0-stage1",
+      "role": "correctness-determinism",
+      "jobId": "gm-dispute-t5-r1-2bef-20260904"
+    },
+    {
+      "topic": "stage0-stage1",
+      "role": "real-world-dx-maintenance",
+      "jobId": "gm-dispute-t5-r4-2bef-20260904"
+    },
+    {
+      "topic": "stage0-stage1",
+      "role": "security-failure-modes",
+      "jobId": "gm-dispute-t5-r3-2bef-20260904"
+    }
+  ]
+}

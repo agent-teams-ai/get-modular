@@ -1,0 +1,46 @@
+{
+  "status": "done",
+  "changedFiles": [
+    "qualification/spikes/api-authoring/descriptor-object/b1/REPORT.md",
+    "qualification/spikes/api-authoring/descriptor-object/b1/fixture.ts",
+    "qualification/spikes/api-authoring/descriptor-object/b1/run.mjs"
+  ],
+  "evidence": [
+    "safe_execution_status:completed",
+    "output_summary:Created only the disposable fixture files under:\n\n- [fixture.ts](/var/data/gm-implementation-readiness-api-20260903/workspaces/l-b1/qualification/spikes/api-authoring/descriptor-object/b1/fixture.ts)\n- [run.mjs](/var/data/gm-implementation-readiness-api-20260903/workspaces/l-b1/qualification/spikes/api-authoring/descriptor-object/b1/run.mjs)\n- [REPORT.md](/var/data/gm-implementation-readiness-api-20260903/workspaces/l-b1/qualification/spikes/api-authoring/descriptor-object/b1/REPORT.md)\n\nEvidence:\n\n- Base SHA verified: `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418`\n- Strict TypeScript no-emit check: passed with TypeScript 7.0.2\n- Smoke harness: `{\"scenarios\":17,\"serializable\":true,\"executableImports\":0}`\n- `pnpm check:fast` could not run in this sandbox (`bwrap` UID-map failure); Node is `24.16.0`, below the required `>=24.18 <25`\n- Report includes scenario coverage, LOC/glue metrics, inference, diagnostics, serializability, declaration-emit limitation, removal cost, leakage, failure modes, and non-authoritative recommendation.",
+    "attempt_count:1",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/l-b1/gm-api-b1-lane-l-20260903.299da6ced85ce486b84f603e6330083fbf284f3b7dc3253e6861239cd53e5f57.handoff.patch",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/l-b1/gm-api-b1-lane-l-20260903.299da6ced85ce486b84f603e6330083fbf284f3b7dc3253e6861239cd53e5f57.handoff.summary.json",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/l-b1/gm-api-b1-lane-l-20260903.299da6ced85ce486b84f603e6330083fbf284f3b7dc3253e6861239cd53e5f57.handoff.manifest.json"
+  ],
+  "blockers": [],
+  "nextAction": "review_completed",
+  "schemaVersion": 1,
+  "provider": "codex",
+  "runId": "gm-api-b1-lane-l-20260903",
+  "taskId": "gm-api-b1-lane-l-20260903",
+  "details": {
+    "baseCommit": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418"
+  },
+  "artifacts": [
+    {
+      "kind": "patch",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/l-b1/gm-api-b1-lane-l-20260903.299da6ced85ce486b84f603e6330083fbf284f3b7dc3253e6861239cd53e5f57.handoff.patch",
+      "byteLength": 5236,
+      "sha256": "299da6ced85ce486b84f603e6330083fbf284f3b7dc3253e6861239cd53e5f57"
+    },
+    {
+      "kind": "summary",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/l-b1/gm-api-b1-lane-l-20260903.299da6ced85ce486b84f603e6330083fbf284f3b7dc3253e6861239cd53e5f57.handoff.summary.json",
+      "byteLength": 915,
+      "sha256": "c77468200fce59c51f267dbeb5b1359e257ee76ba983308161d0fefc028f7af2"
+    },
+    {
+      "kind": "manifest",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/l-b1/gm-api-b1-lane-l-20260903.299da6ced85ce486b84f603e6330083fbf284f3b7dc3253e6861239cd53e5f57.handoff.manifest.json",
+      "byteLength": 1457,
+      "sha256": "34405f7494168b8263bfb28c2ae1eb69593591b04972f2dac3cca00269753c6a"
+    }
+  ],
+  "updatedAt": "2026-09-03T00:14:27.464Z"
+}
