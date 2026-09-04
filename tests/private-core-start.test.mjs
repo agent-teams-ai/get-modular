@@ -24,7 +24,7 @@ const check = (text, extra = {}) => validatePrivateCoreStart({
   markdown: text, productionArtifacts: artifacts,
   authorityDigest: ACCEPTED_AUTHORITY_LEDGER_DIGEST,
   isStartingBase: async base => base === recorded.baseCommit,
-  readPackageManifest: async () => ({ name: "@get-modular/core", private: true }),
+  readPackageManifest: async () => ({ name: "@get-modular/core", private: true, type: "module" }),
   ...extra,
 });
 
@@ -119,7 +119,7 @@ test("real governance entrypoint consumes the start record before admitting priv
     await exec("git", ["clone", "--quiet", "--no-hardlinks", repositoryRoot, fixture]);
     await symlink(join(repositoryRoot, "node_modules"), join(fixture, "node_modules"), "junction");
     await mkdir(join(fixture, "packages/core/src/features/example"), { recursive: true });
-    await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify({ name: "@get-modular/core", private: true }));
+    await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify({ name: "@get-modular/core", private: true, type: "module" }));
     await writeFile(join(fixture, artifacts[1]), "export const fixture = true;\n");
     const git = (...args) => exec("git", args, { cwd: fixture });
     const gate = () => exec(process.execPath, ["architecture/checks/governance.mjs"], { cwd: fixture });
@@ -128,7 +128,7 @@ test("real governance entrypoint consumes the start record before admitting priv
     await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify({ name: "@get-modular/conformance", private: true }));
     await git("add", "packages/core/package.json");
     await assert.rejects(gate(), error => /private Core start.*manifest identity/u.test(error.stderr));
-    await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify({ name: "@get-modular/core", private: true }));
+    await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify({ name: "@get-modular/core", private: true, type: "module" }));
     await git("add", "packages/core/package.json");
     for (const replacement of ["", markdown({ ...recorded, approvedBy: "reviewer" })]) {
       await writeFile(join(fixture, roadmapPath), roadmap.replace(block, replacement));
