@@ -474,7 +474,15 @@ export async function checkFeatureModuleStandardProfile(repositoryRoot = process
     productionPackageManifests: new Map(await Promise.all(
       productionArtifacts
         .filter(path => PACKAGE_MANIFEST.test(path))
-        .map(async path => [path, JSON.parse(await readFile(resolve(repositoryRoot, path), "utf8"))]),
+        .map(async path => {
+          const source = await readFile(resolve(repositoryRoot, path), "utf8");
+          try {
+            return [path, JSON.parse(source)];
+          } catch {
+            throw new Error(`FEATURE_MODULE_PROFILE_INVALID: `
+              + `package manifest is not valid JSON: ${path}`);
+          }
+        }),
     )),
     publicationBlockerIds: new Set(publicationBlockers(
       parse(await readFile(resolve(repositoryRoot, TRACEABILITY_PATH), "utf8")),

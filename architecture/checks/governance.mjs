@@ -180,6 +180,9 @@ export async function validateBlockedImplementation({
   if (!(blockerIds instanceof Set) || !(publicationBlockerIds instanceof Set)) {
     fail("active and publication blockers must be supplied as sets");
   }
+  if (typeof readProductionSource !== "function") {
+    fail("a production source reader must be supplied");
+  }
   for (const blockerId of publicationBlockerIds) {
     if (!blockerIds.has(blockerId)) {
       fail(`publication blocker ${blockerId} is not an active open decision`);
@@ -209,17 +212,15 @@ export async function validateBlockedImplementation({
   }
 
   // ADR-0009 prohibits generation-suffixed identifiers in package source.
-  if (typeof readProductionSource === "function") {
-    const versioned = await versionedIdentifierViolations(
-      productionArtifacts,
-      readProductionSource,
-    );
-    if (versioned.length > 0) {
-      const detail = versioned
-        .map(violation => `${violation.path} ${violation.identifiers.join(" ")}`)
-        .join(", ");
-      fail(`package source must not use a generation-suffixed identifier: ${detail}`);
-    }
+  const versioned = await versionedIdentifierViolations(
+    productionArtifacts,
+    readProductionSource,
+  );
+  if (versioned.length > 0) {
+    const detail = versioned
+      .map(violation => `${violation.path} ${violation.identifiers.join(" ")}`)
+      .join(", ");
+    fail(`package source must not use a generation-suffixed identifier: ${detail}`);
   }
 
   // Publication surfaces are blocked only by the publication-blocker subset.

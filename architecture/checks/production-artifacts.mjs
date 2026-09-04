@@ -189,7 +189,6 @@ export async function packageManifestInventory(
         : [],
       moduleTypeViolation: readable
         && manifest.name === ESM_CARRIER_PACKAGE_NAME
-        && manifest.exports !== undefined
         && manifest.type !== "module",
       isPrivate: readable && manifest.private === true,
     });
@@ -223,10 +222,20 @@ function plainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+function relativeTarget(value, label) {
+  if (typeof value !== "string") {
+    return [`${label} must be a relative file target, not a nested condition object`];
+  }
+  if (!value.startsWith("./") || value.includes("*")) {
+    return [`${label} must be a relative file target below the package root: ${value}`];
+  }
+  return [];
+}
+
 function exportMapViolations(exportsField) {
   if (exportsField === undefined) return [];
   if (!plainObject(exportsField)) {
-    return ["exports must be an object with one \".\" subpath"];
+    return ['exports must be an object with one "." subpath'];
   }
   const subpaths = Object.keys(exportsField);
   const extraSubpaths = subpaths.filter(key => key !== EXPORT_ROOT_SUBPATH);
@@ -240,30 +249,53 @@ function exportMapViolations(exportsField) {
   if (!plainObject(root)) {
     return ['exports["."] must be a condition object'];
   }
+  // Condition order is normative: a runtime selects the first matching key, so
+  // `import` must precede the sibling `default` and `types` must precede the
+  // nested `default`.
   const rootConditions = Object.keys(root);
-  const unexpected = rootConditions.filter(key => !EXPORT_ROOT_CONDITIONS.includes(key));
-  if (unexpected.length > 0) {
-    return [`exports["."] must declare no condition beyond import and default: ${unexpected.join(", ")}`];
-  }
-  const missing = EXPORT_ROOT_CONDITIONS.filter(key => !rootConditions.includes(key));
-  if (missing.length > 0) {
-    return [`exports["."] must declare the import and default conditions: ${missing.join(", ")}`];
-  }
+  const rootOrder = conditionOrderViolations(rootConditions, EXPORT_ROOT_CONDITIONS, 'exports["."]');
+  if (rootOrder.length > 0) return rootOrder;
   if (!plainObject(root.import)) {
     return ['exports["."].import must be a condition object'];
   }
   const importConditions = Object.keys(root.import);
-  const unexpectedImport = importConditions
-    .filter(key => !EXPORT_IMPORT_CONDITIONS.includes(key));
-  if (unexpectedImport.length > 0) {
-    return [`exports["."].import must declare no condition beyond types and default: `
-      + unexpectedImport.join(", ")];
+  const importOrder = conditionOrderViolations(
+    importConditions,
+    EXPORT_IMPORT_CONDITIONS,
+    'exports["."].import',
+  );
+  if (importOrder.length > 0) return importOrder;
+
+  const targets = [
+    ...relativeTarget(root.import.types, 'exports["."].import.types'),
+    ...relativeTarget(root.import.default, 'exports["."].import.default'),
+    ...relativeTarget(root.default, 'exports["."].default'),
+  ];
+  if (targets.length > 0) return targets;
+
+  // The sibling `default` is a second resolution path to one implementation,
+  // never a second build.
+  if (root.default !== root.import.default) {
+    return ['exports["."].default must resolve to the same file as '
+      + `exports["."].import.default: ${root.default} against ${root.import.default}`];
   }
-  const missingImport = EXPORT_IMPORT_CONDITIONS
-    .filter(key => !importConditions.includes(key));
-  if (missingImport.length > 0) {
-    return [`exports["."].import must declare the types and default conditions: `
-      + missingImport.join(", ")];
+  return [];
+}
+
+function conditionOrderViolations(actual, expected, label) {
+  const unexpected = actual.filter(key => !expected.includes(key));
+  if (unexpected.length > 0) {
+    return [`${label} must declare no condition beyond ${expected.join(" and ")}: `
+      + unexpected.join(", ")];
+  }
+  const missing = expected.filter(key => !actual.includes(key));
+  if (missing.length > 0) {
+    return [`${label} must declare the ${expected.join(" and ")} conditions: `
+      + missing.join(", ")];
+  }
+  if (actual.join(",") !== expected.join(",")) {
+    return [`${label} must declare its conditions in the order ${expected.join(", ")}: `
+      + actual.join(", ")];
   }
   return [];
 }
@@ -309,7 +341,7 @@ export function manifestCarrierViolations(inventory) {
         ...entry.prohibitedScripts.map(script => `scripts.${script}`),
         ...entry.carrierShapeViolations,
         ...(entry.moduleTypeViolation === true
-          ? ['type must be "module" when exports is declared']
+          ? ['type must be "module" because the carrier is ESM-only']
           : []),
       ],
     }));

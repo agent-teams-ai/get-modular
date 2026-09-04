@@ -85,9 +85,13 @@ shape without evaluating executable code or guessing from object structure.
   Internal qualification file names may retain historical generation labels
   while they are immutable authority.
 - The naming rule covers the whole package source, not only the public barrel.
-  An identifier whose name ends in `V` followed by a decimal digit and denotes
-  a contract generation is prohibited in production modules, private modules,
-  build tooling and tests. The historical evidence names such as
+  An identifier whose name ends in `V` followed by a decimal digit is
+  prohibited in production modules, private modules, build tooling and tests.
+  The rule is deliberately syntactic and rejects a superset of the names that
+  denote a contract generation: `apiV2` and `uuidV4` are refused alongside
+  `compileCompositionV1`. A name that would collide is spelled differently
+  rather than exempted, because an exemption list would reopen the question the
+  rule closes. The historical evidence names such as
   `compileCompositionV1` remain only inside the immutable qualification
   artifacts, the checkers under `architecture/checks` that validate them, and
   the qualification harnesses under `tests/qualification` that execute those

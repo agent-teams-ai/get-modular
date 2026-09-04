@@ -45,12 +45,12 @@
     {
       "id": "ADR-0009",
       "path": "docs/decisions/0009-keep-pre-1-0-public-api-unversioned.md",
-      "immutableDigest": "sha256:49b1a4619a86b7de0e191c5e2416042aebc6443958b327221d0845fb5882d212"
+      "immutableDigest": "sha256:98afa54fec8c6ad01634687dc4e6c5296102ad16f5e1f003a63be17799c4d1a2"
     },
     {
       "id": "ADR-0012",
       "path": "docs/decisions/0012-select-esm-only-root-package-carrier.md",
-      "immutableDigest": "sha256:b2712b4c7d3e98fc1f7ae9efb68d5212a1d5b8e64eb877b3a1c43bd88e5c5e72"
+      "immutableDigest": "sha256:b35a75fc8eed4cd19b72b4047604276033abf9bfb9d26fc482ea4034dab6589b"
     },
     {
       "id": "ADR-0015",

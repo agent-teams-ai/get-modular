@@ -67,10 +67,15 @@ The map is:
 ```
 
 The nested `default` is only the fallback target selected after `types` inside
-the `import` condition. The sibling top-level `default` points at the same ESM
-file so that CommonJS hosts load Core through `require(esm)`; it is a second
-resolution path to one implementation and one module instance, never a second
-build. Neither `default` authorizes a JavaScript default export. Public runtime
+the `import` condition. Condition order is therefore normative, not cosmetic:
+`import` precedes the sibling `default` and `types` precedes the nested
+`default`, because a runtime selects the first key that matches. The sibling
+top-level `default` points at the same ESM file so that CommonJS hosts load
+Core through `require(esm)`; it is a second resolution path to one
+implementation and one module instance, never a second build. `governance:check`
+compares the two targets literally and rejects a manifest whose sibling
+`default` names a different file, and it requires every condition target to be
+a relative path rather than a further condition object. Neither `default` authorizes a JavaScript default export. Public runtime
 exports remain named exports owned by the accepted public API decision.
 
 The package MUST omit:
