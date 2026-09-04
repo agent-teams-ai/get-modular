@@ -1954,11 +1954,33 @@ test("the ESM carrier rules bind core, the lifecycle rule binds every identity",
     name: "@get-modular/conformance",
     scripts: { postinstall: "node ./patch.mjs" },
   });
-  await assert.rejects(validate(), /packages\/conformance\/package\.json scripts\.postinstall/u);
+  await assert.rejects(validate(), /packages\/conformance\/package\.json: scripts\.postinstall/u);
 
   manifests.set("packages/conformance/package.json", {
     name: "@get-modular/conformance",
     scripts: "build",
   });
-  await assert.rejects(validate(), /packages\/conformance\/package\.json scripts must be an object/u);
+  await assert.rejects(validate(), /packages\/conformance\/package\.json: scripts must be an object/u);
+});
+
+test("a carrier violation message separates the manifest, its fields and the reason", async () => {
+  const manifest = {
+    name: "@get-modular/core",
+    type: "module",
+    main: "./dist/index.cjs",
+    exports: {
+      ".": {
+        import: { types: "./dist/index.d.ts", default: "./dist/index.js" },
+        default: "./dist/index.js",
+      },
+    },
+    scripts: ["postinstall"],
+  };
+  await assert.rejects(validateBlockedImplementation({
+    blockerIds: new Set(["OD-005"]),
+    publicationBlockerIds: new Set(),
+    productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts"],
+    claimDocuments: [],
+    readPackageManifest: async () => manifest,
+  }), /packages\/core\/package\.json: main; scripts must be an object/u);
 });

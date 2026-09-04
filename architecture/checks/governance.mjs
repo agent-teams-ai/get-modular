@@ -201,12 +201,9 @@ export async function validateBlockedImplementation({
   const carrierViolations = manifestCarrierViolations(inventory);
   if (carrierViolations.length > 0) {
     const detail = carrierViolations
-      .map(violation => [
-        violation.path,
-        ...violation.fields,
-        ...violation.scripts,
-      ].join(" "))
-      .join(", ");
+      .map(violation => `${violation.path}: `
+        + [...violation.fields, ...violation.scripts].join("; "))
+      .join(" | ");
     fail(`package manifests must omit the fields and lifecycle scripts prohibited by the `
       + `accepted carrier decision: ${detail}`);
   }
