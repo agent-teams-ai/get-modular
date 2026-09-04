@@ -41,7 +41,7 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "foundation:assert-registry": "agent-teams-foundation assert-registry",
   "foundation:check": FOUNDATION_CHECK_SCRIPT,
   "governance:check": "node architecture/checks/governance.mjs",
-  "governance:test": "node --test tests/governance.test.mjs",
+  "governance:test": "node --test tests/governance.test.mjs tests/private-core-start.test.mjs",
   "qualification:resource-profile": "node tests/qualification/v1-resource-profile.mjs",
   "qualification:v1-diagnostics-protocol":
     "node --test tests/qualification/v1-diagnostics-protocol.mjs",
