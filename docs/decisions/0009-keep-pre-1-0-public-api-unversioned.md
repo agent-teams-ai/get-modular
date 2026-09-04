@@ -77,10 +77,13 @@ shape without evaluating executable code or guessing from object structure.
 - Capability compatibility tokens are product-owned semantic identities. The
   core does not require `/v1`, `/v2`, or another generation suffix in those
   tokens.
-- CI rejects public core exports whose names end in `V` followed by a decimal
-  generation and rejects a second public compiler generation. Internal
-  qualification file names may retain historical generation labels while they
-  are immutable authority.
+- `governance:check` rejects any identifier in package source whose name ends
+  in `V` followed by a decimal generation. The rule is syntactic: the checker
+  reads tracked source below `packages/` and does not judge intent. A second
+  public compiler generation is rejected by the exhaustive export set above,
+  which the packed declaration-surface evidence of each release verifies.
+  Internal qualification file names may retain historical generation labels
+  while they are immutable authority.
 - The naming rule covers the whole package source, not only the public barrel.
   An identifier whose name ends in `V` followed by a decimal digit and denotes
   a contract generation is prohibited in production modules, private modules,

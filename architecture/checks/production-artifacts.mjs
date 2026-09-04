@@ -31,6 +31,7 @@ export const PUBLICATION_FIELDS = Object.freeze([
 // is a property of the accepted carrier, so it holds whether or not a
 // publication blocker is open.
 export const PROHIBITED_MANIFEST_FIELDS = Object.freeze([
+  "browser",
   "main",
   "module",
   "types",
@@ -180,6 +181,10 @@ export async function packageManifestInventory(
         ? PROHIBITED_LIFECYCLE_SCRIPTS.filter(script => scripts[script] !== undefined)
         : [],
       scriptsMalformed,
+      carrierShapeViolations: readable ? exportMapViolations(manifest.exports) : [],
+      moduleTypeViolation: readable
+        && manifest.exports !== undefined
+        && manifest.type !== "module",
       isPrivate: readable && manifest.private === true,
     });
   }
@@ -200,6 +205,83 @@ export function packageIdentityViolations(inventory) {
     .map(entry => entry.path);
 }
 
+// ADR-0012 exposes exactly one package root through one ESM target: a single
+// `.` subpath whose `import` condition carries `types` and `default`, plus a
+// sibling top-level `default` for `require(esm)`. Any other subpath, any
+// environment-specific condition and any `require` condition are prohibited.
+const EXPORT_ROOT_SUBPATH = ".";
+const EXPORT_IMPORT_CONDITIONS = Object.freeze(["types", "default"]);
+const EXPORT_ROOT_CONDITIONS = Object.freeze(["import", "default"]);
+
+function plainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function exportMapViolations(exportsField) {
+  if (exportsField === undefined) return [];
+  if (!plainObject(exportsField)) {
+    return ["exports must be an object with one \".\" subpath"];
+  }
+  const subpaths = Object.keys(exportsField);
+  const extraSubpaths = subpaths.filter(key => key !== EXPORT_ROOT_SUBPATH);
+  if (extraSubpaths.length > 0) {
+    return [`exports must declare no subpath beyond "." : ${extraSubpaths.join(", ")}`];
+  }
+  if (!subpaths.includes(EXPORT_ROOT_SUBPATH)) {
+    return ['exports must declare the "." subpath'];
+  }
+  const root = exportsField[EXPORT_ROOT_SUBPATH];
+  if (!plainObject(root)) {
+    return ['exports["."] must be a condition object'];
+  }
+  const rootConditions = Object.keys(root);
+  const unexpected = rootConditions.filter(key => !EXPORT_ROOT_CONDITIONS.includes(key));
+  if (unexpected.length > 0) {
+    return [`exports["."] must declare no condition beyond import and default: ${unexpected.join(", ")}`];
+  }
+  const missing = EXPORT_ROOT_CONDITIONS.filter(key => !rootConditions.includes(key));
+  if (missing.length > 0) {
+    return [`exports["."] must declare the import and default conditions: ${missing.join(", ")}`];
+  }
+  if (!plainObject(root.import)) {
+    return ['exports["."].import must be a condition object'];
+  }
+  const importConditions = Object.keys(root.import);
+  const unexpectedImport = importConditions
+    .filter(key => !EXPORT_IMPORT_CONDITIONS.includes(key));
+  if (unexpectedImport.length > 0) {
+    return [`exports["."].import must declare no condition beyond types and default: `
+      + unexpectedImport.join(", ")];
+  }
+  const missingImport = EXPORT_IMPORT_CONDITIONS
+    .filter(key => !importConditions.includes(key));
+  if (missingImport.length > 0) {
+    return [`exports["."].import must declare the types and default conditions: `
+      + missingImport.join(", ")];
+  }
+  return [];
+}
+
+// ADR-0009 prohibits an identifier that ends in `V` followed by a decimal
+// generation anywhere in package source. The rule is syntactic on purpose: a
+// checker cannot read intent, and the accepted evidence names live only in the
+// immutable qualification artifacts and the checkers that execute them, none of
+// which sit below packages/.
+const VERSIONED_IDENTIFIER = /\b[A-Za-z_$][A-Za-z0-9_$]*V\d+\b/gu;
+
+export function versionedIdentifierMatches(source) {
+  return [...new Set(String(source).match(VERSIONED_IDENTIFIER) ?? [])].sort();
+}
+
+export async function versionedIdentifierViolations(productionArtifacts, readSource) {
+  const violations = [];
+  for (const path of productionArtifacts.filter(candidate => PRODUCTION_SOURCE.test(candidate))) {
+    const matches = versionedIdentifierMatches(await readSource(path));
+    if (matches.length > 0) violations.push({ path, identifiers: matches });
+  }
+  return violations;
+}
+
 // ADR-0012 fixes the carrier shape of the accepted package manifest itself.
 // These prohibitions are independent of the publication blockers because they
 // describe the accepted carrier, not the decision to publish it.
@@ -209,14 +291,21 @@ export function manifestCarrierViolations(inventory) {
       entry.manifest !== undefined
       && (entry.prohibitedFields.length > 0
         || entry.prohibitedScripts.length > 0
-        || entry.scriptsMalformed === true)
+        || entry.scriptsMalformed === true
+        || entry.carrierShapeViolations.length > 0
+        || entry.moduleTypeViolation === true)
     ))
     .map(entry => ({
       path: entry.path,
       fields: entry.prohibitedFields,
-      scripts: entry.scriptsMalformed === true
-        ? ["scripts must be an object"]
-        : entry.prohibitedScripts.map(script => `scripts.${script}`),
+      scripts: [
+        ...(entry.scriptsMalformed === true ? ["scripts must be an object"] : []),
+        ...entry.prohibitedScripts.map(script => `scripts.${script}`),
+        ...entry.carrierShapeViolations,
+        ...(entry.moduleTypeViolation === true
+          ? ['type must be "module" when exports is declared']
+          : []),
+      ],
     }));
 }
 

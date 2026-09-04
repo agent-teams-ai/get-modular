@@ -8,6 +8,7 @@ import {
   manifestCarrierViolations,
   packageIdentityViolations,
   packageManifestInventory,
+  versionedIdentifierViolations,
   productionArtifactPaths,
   productionArtifactSymlinkPaths,
   productionArtifactsBlockedByOpenDecisions,
@@ -173,6 +174,7 @@ export async function validateBlockedImplementation({
   productionArtifacts,
   claimDocuments,
   readPackageManifest,
+  readProductionSource,
   repositoryRoot = process.cwd(),
 }) {
   if (!(blockerIds instanceof Set) || !(publicationBlockerIds instanceof Set)) {
@@ -207,6 +209,20 @@ export async function validateBlockedImplementation({
       .join(", ");
     fail(`package manifests must omit the fields and lifecycle scripts prohibited by the `
       + `accepted carrier decision: ${detail}`);
+  }
+
+  // ADR-0009 prohibits generation-suffixed identifiers in package source.
+  if (typeof readProductionSource === "function") {
+    const versioned = await versionedIdentifierViolations(
+      productionArtifacts,
+      readProductionSource,
+    );
+    if (versioned.length > 0) {
+      const detail = versioned
+        .map(violation => `${violation.path} ${violation.identifiers.join(" ")}`)
+        .join(", ");
+      fail(`package source must not use a generation-suffixed identifier: ${detail}`);
+    }
   }
 
   // Publication surfaces are blocked only by the publication-blocker subset.
@@ -713,10 +729,15 @@ async function main() {
     traceability,
   });
   const productionArtifacts = await productionArtifactPaths(root, snapshot);
-  const readPackageManifest = async path => JSON.parse((await readGovernanceInput(
-    path,
-    "production package manifest",
-  )).toString("utf8"));
+  const readPackageManifest = async path => {
+    const bytes = (await readGovernanceInput(path, "production package manifest"))
+      .toString("utf8");
+    try {
+      return JSON.parse(bytes);
+    } catch {
+      fail(`package manifest is not valid JSON: ${path}`);
+    }
+  };
   const productionArtifactSymlinks = await productionArtifactSymlinkPaths(root, snapshot);
   const misplacedArtifacts = productionArtifactsOutsidePackages(productionArtifacts);
   if (misplacedArtifacts.length > 0) {
@@ -754,6 +775,9 @@ async function main() {
     productionArtifacts,
     claimDocuments: claimDocuments.map(id => documents.get(id)),
     readPackageManifest,
+    readProductionSource: async path => (
+      await readGovernanceInput(path, "production source")
+    ).toString("utf8"),
     repositoryRoot: root,
   });
   await assertGitIndexSnapshotCurrent(snapshot);

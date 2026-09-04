@@ -29,6 +29,7 @@ import {
   validateSourceMap,
   validateTraceability,
 } from "../architecture/checks/governance.mjs";
+import { versionedIdentifierMatches } from "../architecture/checks/production-artifacts.mjs";
 import {
   assertSupportedNodeVersion,
   isDirectExecution,
@@ -436,7 +437,12 @@ test("open decisions admit private package source but block publication and runt
 
   for (const manifest of [
     { name: "@get-modular/core", private: false },
-    { name: "@get-modular/core", private: true, exports: { ".": "./dist/index.js" } },
+    {
+      name: "@get-modular/core",
+      private: true,
+      type: "module",
+      exports: { ".": { import: { types: "./dist/index.d.ts", default: "./dist/index.js" }, default: "./dist/index.js" } },
+    },
   ]) {
     manifests.set("packages/engine/package.json", manifest);
     await assert.rejects(validateBlockedImplementation({
@@ -470,6 +476,7 @@ test("publication surfaces are blocked only by the publication-blocker subset", 
   const manifests = new Map([
     ["packages/engine/package.json", {
       name: "@get-modular/core",
+      type: "module",
       exports: { ".": { import: { types: "./dist/index.d.ts", default: "./dist/index.js" }, default: "./dist/index.js" } },
     }],
   ]);
@@ -522,7 +529,8 @@ test("publication surfaces are blocked only by the publication-blocker subset", 
   ]) {
     manifests.set("packages/engine/package.json", {
       name: "@evil/thing",
-      exports: { ".": "./dist/index.js" },
+      type: "module",
+      exports: { ".": { import: { types: "./dist/index.d.ts", default: "./dist/index.js" }, default: "./dist/index.js" } },
     });
     await assert.rejects(validateBlockedImplementation({
       blockerIds: activeBlockers,
@@ -1726,11 +1734,13 @@ test("nested package manifests are never an admitted identity", async () => {
   const manifests = new Map([
     ["packages/core/package.json", {
       name: "@get-modular/core",
+      type: "module",
       exports: { ".": { import: { types: "./dist/index.d.ts", default: "./dist/index.js" }, default: "./dist/index.js" } },
     }],
     ["packages/core/fixtures/evil/package.json", {
       name: "@evil/thing",
-      exports: { ".": "./index.js" },
+      type: "module",
+      exports: { ".": { import: { types: "./dist/index.d.ts", default: "./dist/index.js" }, default: "./dist/index.js" } },
     }],
   ]);
   const readPackageManifest = async path => manifests.get(path);
@@ -1751,7 +1761,11 @@ test("nested package manifests are never an admitted identity", async () => {
   }
 
   // A manifest directly in packages/ is not a package root either.
-  manifests.set("packages/package.json", { name: "@evil/thing", exports: { ".": "./i.js" } });
+  manifests.set("packages/package.json", {
+    name: "@evil/thing",
+    type: "module",
+      exports: { ".": { import: { types: "./dist/index.d.ts", default: "./dist/index.js" }, default: "./dist/index.js" } },
+  });
   await assert.rejects(validateBlockedImplementation({
     blockerIds: new Set(["OD-005", "OD-006"]),
     publicationBlockerIds: new Set(),
@@ -1807,10 +1821,94 @@ test("accepted carrier prohibitions hold with no publication blocker open", asyn
     [{ ...base, scripts: ["postinstall"] }, /scripts must be an object/u],
     [{ ...base, scripts: null }, /scripts must be an object/u],
     [{ ...base, scripts: "build" }, /scripts must be an object/u],
+    [{ ...base, browser: "./dist/browser.js" }, /browser/u],
+    // ADR-0012 exposes exactly one package root through one ESM target.
+    [{ ...base, type: "commonjs" }, /type must be "module" when exports is declared/u],
+    [
+      { ...base, exports: { ...base.exports, "./package.json": "./package.json" } },
+      /no subpath beyond "\." : \.\/package\.json/u,
+    ],
+    [
+      { ...base, exports: { ...base.exports, "./dist/*": "./dist/*" } },
+      /no subpath beyond "\."/u,
+    ],
+    [
+      { ...base, exports: { ".": { ...base.exports["."], require: "./dist/index.cjs" } } },
+      /no condition beyond import and default: require/u,
+    ],
+    [
+      { ...base, exports: { ".": { ...base.exports["."], browser: "./dist/browser.js" } } },
+      /no condition beyond import and default: browser/u,
+    ],
+    [
+      { ...base, exports: { ".": { import: base.exports["."].import } } },
+      /must declare the import and default conditions: default/u,
+    ],
+    [
+      {
+        ...base,
+        exports: { ".": { ...base.exports["."], import: { default: "./dist/index.js" } } },
+      },
+      /import must declare the types and default conditions: types/u,
+    ],
+    [
+      {
+        ...base,
+        exports: {
+          ".": { ...base.exports["."], import: { ...base.exports["."].import, node: "./n.js" } },
+        },
+      },
+      /import must declare no condition beyond types and default: node/u,
+    ],
+    [{ ...base, exports: "./dist/index.js" }, /exports must be an object with one "\." subpath/u],
+    [{ ...base, exports: { ".": "./dist/index.js" } }, /exports\["\."\] must be a condition object/u],
   ]) {
     await assert.rejects(validate(manifest), expected);
     await assert.rejects(validate(manifest), /prohibited by the accepted carrier decision/u);
   }
 
   await assert.doesNotReject(validate({ ...base, scripts: { build: "tsc" } }));
+});
+
+test("package source must not carry a generation-suffixed identifier", async () => {
+  assert.deepEqual(versionedIdentifierMatches("export const x = 1;"), []);
+  assert.deepEqual(
+    versionedIdentifierMatches("export function compileCompositionV1() {}"),
+    ["compileCompositionV1"],
+  );
+  assert.deepEqual(
+    versionedIdentifierMatches("type ModuleDeclarationV1 = never; const profileV2 = 1;"),
+    ["ModuleDeclarationV1", "profileV2"],
+  );
+  // A trailing V without a digit, and a digit without a V, are ordinary names.
+  assert.deepEqual(versionedIdentifierMatches("const planDigest2 = 1; const nameV = 2;"), []);
+
+  const manifest = {
+    name: "@get-modular/core",
+    type: "module",
+    exports: {
+      ".": {
+        import: { types: "./dist/index.d.ts", default: "./dist/index.js" },
+        default: "./dist/index.js",
+      },
+    },
+  };
+  const sources = new Map([
+    ["packages/core/src/index.ts", "export { compileComposition } from './facade.js';"],
+    ["packages/core/src/facade.ts", "export function compileCompositionV1() {}"],
+  ]);
+  const call = async paths => validateBlockedImplementation({
+    blockerIds: new Set(["OD-005", "OD-006"]),
+    publicationBlockerIds: new Set(),
+    productionArtifacts: ["packages/core/package.json", ...paths],
+    claimDocuments: [],
+    readPackageManifest: async () => manifest,
+    readProductionSource: async path => sources.get(path),
+  });
+
+  await assert.doesNotReject(call(["packages/core/src/index.ts"]));
+  await assert.rejects(
+    call(["packages/core/src/index.ts", "packages/core/src/facade.ts"]),
+    /generation-suffixed identifier: packages\/core\/src\/facade\.ts compileCompositionV1/u,
+  );
 });

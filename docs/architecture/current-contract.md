@@ -202,7 +202,12 @@ package:
 - Tests run with `node --test` and an explicit glob against the built `dist`
   output; the build is `tsc -p` for the package configuration.
 - The `core:typecheck`, `core:build`, and `core:test` scripts and their place
-  in `check:fast` and `check` arrive with the first package, not before.
+  in `check:fast` and `check` arrive with the first package, not before. The
+  root script list is closed: `architecture:feature-module-profile` fails with
+  "must use its exact closed pnpm command chain" until the same pull request
+  updates the script definitions in
+  `architecture/checks/feature-module-standard-profile.mjs`. That update is
+  part of the first package change, not a separate follow-up.
 
 ## Historical evidence rule
 

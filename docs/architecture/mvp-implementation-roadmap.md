@@ -150,14 +150,22 @@ small governed start record in the repository or in the bootstrap decision
 record. It must bind the repository and exact source SHA, package identity,
 owner, allowed scope (the M1 row of the callable matrix: object semantics
 behind `compileComposition`, published as `not-claimed` under ADR-0017), and
-the fact that raw carriers, the OD-006 duplicate-record semantics, runtime
-lifecycle, every `runtime-conformant` claim and the proposed ADRs are not
-authorized. A pull-request approval or the existence of an empty package is
+the fact that raw carriers, the raw entry export, runtime lifecycle, every
+`runtime-conformant` claim, the proposed ADRs and every self-composed claim are
+not authorized. Those six exclusions are the exact `excluded` list of the
+record below, and the checker rejects any other list. A pull-request approval or the existence of an empty package is
 not a substitute. The source SHA is the authorized starting base, not a demand
-for renewed permission after every implementation commit. The record and a
-governance check that consumes it as a precondition land together before Core;
-this research branch contains neither and does not claim that enforcement
-already exists.
+for renewed permission after every implementation commit. The four ADR-0003
+publication preconditions are separate from this record and are not tracked by
+it: the pull request that publishes the first archive records verified control
+of the `@get-modular` npm namespace, the acyclic package graph, the absence of
+conformance tooling in the tarball and declaration surface, and the migration
+from the initial `0.x` topology, in its release evidence alongside the packed
+archive identity. The record and the
+governance check that consumes it as a precondition landed together before
+Core: the record is the JSON block under "Recorded Core start" in this
+document, and `architecture/checks/private-core-start.mjs` reads it from these
+exact bytes on every `governance:check`.
 
 ### Roadmap qualification language
 
@@ -500,7 +508,7 @@ remain a private intermediate and evidence input.
 Repeated binding records for one `(implementationId, slotId)` remain outside
 the admitted semantic domain until OD-006 and its accepted successor define the
 exact diagnostic and suppression behavior. Fixtures may demonstrate candidate
-behavior but cannot make it compiler authority. The private M1 compiler keeps
+behavior but cannot make it compiler authority. The M1 compiler keeps
 repeated-record inputs outside its claimed domain; any candidate implementation
 of the ADR-0014 semantics lives in fixtures under `tests/` until ADR-0014 is
 accepted; this placement is stricter than accepted ADR-0015 requires and keeps
@@ -876,10 +884,15 @@ document by `governance:check`. Its base is the shared reviewed main revision,
 not a per-commit permission token. Descendant work remains authorized while the
 accepted authority digest and bounded scope match. A changed authority,
 revocation, different package, or broadened scope needs an updated owner record.
-The checker validates the recorded declaration and enforces the excluded list
-against the package manifest; it does not validate the human author's identity
-or the semantics of future code, so code review and source-policy checks still
-enforce that implementation stays within the recorded scope. Missing or
+The checker validates the recorded declaration, the authorized package root
+and the manifest identity, and it applies any manifest-observable entry of the
+excluded list. Every entry of the current list is a property of source rather
+than of the manifest, so today that application finds nothing and the entries
+are enforced by the tests of the pull request that adds the code: no
+`compileCompositionJson` export, no runtime lifecycle, no `runtime-conformant`
+or self-composed claim, and no implementation of a proposed ADR outside
+fixtures. The checker does not validate the human author's identity or the
+semantics of future code, so code review stays part of the gate. Missing or
 malformed records fail closed when a package is present. No package is created
 to test the gate.
 
@@ -904,10 +917,13 @@ to test the gate.
 
 <!-- /get-modular:private-core-start -->
 
-The optional object candidate uses the same semantic implementation. It is
-qualification-only, not a public API or a claim that unresolved carrier rules
-are settled. The normalized seam remains the minimum. Accepted object rules
-apply; ambiguous cases are labelled candidate evidence until their decision.
+The object entry point uses the same semantic implementation as the internal
+normalized seam. Under accepted ADR-0017 it is the public API of the first
+`not-claimed` archive, and publishing it is not a claim that the carrier rules
+OD-005 still owns are settled: those refinements stay outside the admitted
+input domain and the package documents that. Accepted object rules of ADR-0006
+and ADR-0007 apply; ambiguous cases are labelled candidate evidence until their
+decision.
 Tests must not require a second diagnostic generation or a generated stage1
 before the first direct object-input test. No fake success result substitutes
 for the complete plan and digest.

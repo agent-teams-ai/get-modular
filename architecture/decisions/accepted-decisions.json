@@ -45,7 +45,7 @@
     {
       "id": "ADR-0009",
       "path": "docs/decisions/0009-keep-pre-1-0-public-api-unversioned.md",
-      "immutableDigest": "sha256:31a09ddc919b1ccf24e0b9d77035bddf596764752d7ef5535fd60067bb86a17d"
+      "immutableDigest": "sha256:49b1a4619a86b7de0e191c5e2416042aebc6443958b327221d0845fb5882d212"
     },
     {
       "id": "ADR-0012",
