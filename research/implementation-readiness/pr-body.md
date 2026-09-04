@@ -37,17 +37,19 @@ diagnostic, resource or SCC conformance.
 O1-O5 source access was incomplete in the historical campaign. A separate
 verified offline source pack now provides 24 original source/license files at
 five pinned upstream commits. `evidence/oss-source-inputs.json` records custody.
-Those five follow-up research results are still pending, not counted as success.
-The retained dispute audit also requires a fifth T2 critic on the proposed
-inherited-property restriction. Accepted helper behavior is unchanged; this
-pending review cannot be represented as approval or an accepted product change.
+Five new source inspections and the fifth T2 critic have now completed against
+exact `fe9611590dae25cdc22887148d685889daa0f7c6`; their independent raw reports,
+launch/input records, clean-workspace checks and cleanup are indexed in
+`evidence/follow-up/raw/sources-fe96115/index.json`. Source inspection is not
+runtime compatibility or adoption. T2 preserves accepted ordinary inherited
+reads; own-data restrictions require a successor and are not adopted.
 
-All new jobs use `gpt-5.6-sol`, `xhigh`, fast. Six exact-source follow-ups are
-prepared but not started: authentication and data-volume admission passed,
-then the broker rejected the requested network-disabled boundary because the
-deployed adapter cannot enforce it. No network downgrade was applied. The launch
-observation is retained separately; it is not a successful review. A short
-coordinator source note on Avvio timeout/ordering was added without closing O5.
+All new jobs use `gpt-5.6-sol`, `xhigh`, fast. The rejected ordinary goal launch
+remains historical evidence. Successful jobs use the runtime's supported
+bounded file-tool profile, with no worker shell/web/write/delegation tools or
+fallback and with hosted sandbox controls retained. Provider control-plane
+connectivity remains; OS-wide egress isolation is not claimed. No runtime guard,
+source or shared account/controller policy was changed.
 
 Worker count is not treated as proof. Partial, blocked, retried and
 source-unavailable results remain explicitly classified.

@@ -1,0 +1,255 @@
+{
+  "kind": "supplemental-read-only-evidence",
+  "wave": "sources-fe96115",
+  "collectedAt": "2026-09-04T12:58:12.768Z",
+  "historicalInventory": "unchanged",
+  "networkPolicy": "read_file/search_files only; native shell/web/apps/delegation disabled; no fallback; hosted sandbox retained; provider control plane connected; OS-wide egress denial not claimed",
+  "records": [
+    {
+      "lane": "o1",
+      "jobId": "gm-pr16-bounded-o1-fe96115",
+      "evidenceKind": "read-only-analysis",
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "serviceTier": "fast",
+      "inputs": [
+        {
+          "path": "gm",
+          "sha": "fe9611590dae25cdc22887148d685889daa0f7c6",
+          "clean": true
+        },
+        {
+          "path": "oss",
+          "sha": "32693e945e3cbeba4a94dac0be9dad3ad783740a",
+          "clean": true
+        }
+      ],
+      "changedFiles": [],
+      "providerStarted": true,
+      "cleanup": "completed",
+      "artifacts": {
+        "launch.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/o1.launch.json",
+          "sha256": "09e1a2e833edba12c1a31604ad1216840a40445ddd192a89c5cfc05b6c68d43c"
+        },
+        "profile.toml": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/o1.profile.toml",
+          "sha256": "c63a72229024b347c53a0f2a6fac439e310544ac87cc0acece38c630370b9ce1"
+        },
+        "progress.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/o1.progress.json",
+          "sha256": "aeb868bfdfb5e8ba52f9689a6896e64b462e339ffc6b75d4dba3fc5616c44a38"
+        },
+        "result.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/o1.result.json",
+          "sha256": "f290c76f2a92724912c2b1416eab96589c3e9cfb0b9153cc3d50df74291dcbdd"
+        }
+      }
+    },
+    {
+      "lane": "o2",
+      "jobId": "gm-pr16-bounded-o2-fe96115",
+      "evidenceKind": "read-only-analysis",
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "serviceTier": "fast",
+      "inputs": [
+        {
+          "path": "gm",
+          "sha": "fe9611590dae25cdc22887148d685889daa0f7c6",
+          "clean": true
+        },
+        {
+          "path": "oss",
+          "sha": "32693e945e3cbeba4a94dac0be9dad3ad783740a",
+          "clean": true
+        }
+      ],
+      "changedFiles": [],
+      "providerStarted": true,
+      "cleanup": "completed",
+      "artifacts": {
+        "launch.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/o2.launch.json",
+          "sha256": "b85cf54d2ce47aee2226884ffdf0c3e2d8aa024d910e9a4c5a44680b266fcbf3"
+        },
+        "profile.toml": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/o2.profile.toml",
+          "sha256": "7d4da9090fbeb0b36edfff1e587bd522a4cb03bfd8ab46a2a80b46f2e713a27f"
+        },
+        "progress.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/o2.progress.json",
+          "sha256": "eef4906aab97c57c14e0ad1df628c0f0a86e4365fd922ef2c526572776077482"
+        },
+        "result.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/o2.result.json",
+          "sha256": "e3bba264e8a04104459a28b8cf5771368ad5928beb35df357673bb35c032ae7a"
+        }
+      }
+    },
+    {
+      "lane": "o3",
+      "jobId": "gm-pr16-bounded-o3-fe96115",
+      "evidenceKind": "read-only-analysis",
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "serviceTier": "fast",
+      "inputs": [
+        {
+          "path": "gm",
+          "sha": "fe9611590dae25cdc22887148d685889daa0f7c6",
+          "clean": true
+        },
+        {
+          "path": "oss",
+          "sha": "32693e945e3cbeba4a94dac0be9dad3ad783740a",
+          "clean": true
+        }
+      ],
+      "changedFiles": [],
+      "providerStarted": true,
+      "cleanup": "completed",
+      "artifacts": {
+        "launch.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/o3.launch.json",
+          "sha256": "1aca13b99fdf49009012956fc65e4b2cdb79579a0334c4933ef0b6d12e28ff89"
+        },
+        "profile.toml": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/o3.profile.toml",
+          "sha256": "640fa13786eff9fb532eb463c37ea9ebb545f900efe95cceb254cc4924ae1775"
+        },
+        "progress.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/o3.progress.json",
+          "sha256": "8268b9129b8f2378b76c8c09991f1fb32f8642002af48b9c49486f2291181c2d"
+        },
+        "result.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/o3.result.json",
+          "sha256": "9aeb168dfe5c145eee821473e12738b8e9d875e0aa1e663d5df05d6b181cdab1"
+        }
+      }
+    },
+    {
+      "lane": "o4",
+      "jobId": "gm-pr16-bounded-o4-fe96115",
+      "evidenceKind": "read-only-analysis",
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "serviceTier": "fast",
+      "inputs": [
+        {
+          "path": "gm",
+          "sha": "fe9611590dae25cdc22887148d685889daa0f7c6",
+          "clean": true
+        },
+        {
+          "path": "oss",
+          "sha": "32693e945e3cbeba4a94dac0be9dad3ad783740a",
+          "clean": true
+        }
+      ],
+      "changedFiles": [],
+      "providerStarted": true,
+      "cleanup": "completed",
+      "artifacts": {
+        "launch.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/o4.launch.json",
+          "sha256": "74bbda58c5e19fd281d58aad132386f899867b46617968f9dcd99af58ddca359"
+        },
+        "profile.toml": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/o4.profile.toml",
+          "sha256": "9f289d202899d9df667002a24dfe5705b7d9dd49519f90e1c8910bf3873655ef"
+        },
+        "progress.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/o4.progress.json",
+          "sha256": "100d574344df78691dfabbb37070e9d06db7a453ada4736515b283841e8965ff"
+        },
+        "result.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/o4.result.json",
+          "sha256": "b4b86756673d83af2a5e0a77a589714bfbe0964600576511498a04cc455ade2c"
+        }
+      }
+    },
+    {
+      "lane": "o5",
+      "jobId": "gm-pr16-bounded-o5-fe96115",
+      "evidenceKind": "read-only-analysis",
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "serviceTier": "fast",
+      "inputs": [
+        {
+          "path": "gm",
+          "sha": "fe9611590dae25cdc22887148d685889daa0f7c6",
+          "clean": true
+        },
+        {
+          "path": "oss",
+          "sha": "32693e945e3cbeba4a94dac0be9dad3ad783740a",
+          "clean": true
+        }
+      ],
+      "changedFiles": [],
+      "providerStarted": true,
+      "cleanup": "completed",
+      "artifacts": {
+        "launch.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/o5.launch.json",
+          "sha256": "4f7eb475f0a183a2a10ad3e00293c09e4c44c5af8a70df35968094e21d0e426f"
+        },
+        "profile.toml": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/o5.profile.toml",
+          "sha256": "24810bad9a30644575d890cb1fc40f722dd9648830168358c5c238902a9a689d"
+        },
+        "progress.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/o5.progress.json",
+          "sha256": "0cfee338fb860490a952f937cd56f3de7e6fe13fffdb532ec169c322cf2efc2e"
+        },
+        "result.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/o5.result.json",
+          "sha256": "c7ae7a5a77f71dd331047f16c118c58204d99e31f1d1a0589f3ec5d996d01328"
+        }
+      }
+    },
+    {
+      "lane": "t2",
+      "jobId": "gm-pr16-bounded-t2-fe96115",
+      "evidenceKind": "read-only-analysis",
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "serviceTier": "fast",
+      "inputs": [
+        {
+          "path": "gm",
+          "sha": "fe9611590dae25cdc22887148d685889daa0f7c6",
+          "clean": true
+        },
+        {
+          "path": "oss",
+          "sha": "32693e945e3cbeba4a94dac0be9dad3ad783740a",
+          "clean": true
+        }
+      ],
+      "changedFiles": [],
+      "providerStarted": true,
+      "cleanup": "completed",
+      "artifacts": {
+        "launch.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/t2.launch.json",
+          "sha256": "68f5d7196c6bad59ddce1b12fdb8bf23d19de61d17b70cf46ef871e835726a0d"
+        },
+        "profile.toml": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/t2.profile.toml",
+          "sha256": "4bc4a15fb38741f30ad36d40666ab9924e7bc7bfe8379f4808bc2f31c2bf2882"
+        },
+        "progress.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/t2.progress.json",
+          "sha256": "904e0b627292ac8461170a1ed417494026e49bb51e4258eed308a2d7a3c82432"
+        },
+        "result.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/t2.result.json",
+          "sha256": "27883c1a11e8d329e23f0376e6b3af8ddf9025d3d1bad8e988471e810c278e92"
+        }
+      }
+    }
+  ]
+}

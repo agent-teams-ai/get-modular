@@ -48,10 +48,13 @@ Worker count was not treated as consensus. In particular:
 - A2’s two partial attempts are excluded; its canonical result remains review-only.
 - A5/A6 extras are attempts, not additional reviewers.
 - The 32 critics are role-distinct reviews, but share a model and frozen subject; they do not prove runtime behavior.
-- O1–O5 are source-unavailable under the final manifest and supply no positive OSS evidence.
+- Historical O1-O5 remain source-unavailable in that frozen manifest. New
+  source inspections are recorded separately below, not relabeled history.
 
-The [dispute follow-up audit](dispute-follow-up.md) identifies a required fifth
-critic for T2's inherited-property proposal. That result remains pending.
+The [dispute follow-up audit](dispute-follow-up.md) records the completed fifth
+critic for T2's inherited-property proposal at exact `fe9611590dae25cdc22887148d685889daa0f7c6`.
+It confirms that ordinary inherited reads are accepted behavior; own-data
+restriction would require a successor and is not adopted here.
 Comparable option scores were not supplied by the original reviewers; source
 confidence is not substituted for a preference score or a consensus claim.
 
@@ -59,18 +62,23 @@ Supplemental source access is now prepared separately in
 `evidence/oss-source-inputs.json`: 24 original source/license files, five exact
 upstream commits, verified Git blob identities and SHA-256 hashes. The complete
 offline pack is retained as Git commit `32693e945e3cbeba4a94dac0be9dad3ad783740a`
-and a verified hosted bundle. No upstream code is installed or executed. This
-closes the missing-input prerequisite, not the five research lanes: O1-O5 must
-still inspect those sources and return new read-only results. The historical
-worker inventory is not relabeled as successful.
+and a verified hosted bundle. Five new O1-O5 workers inspected all retained
+files at exact GM subject `fe9611590dae25cdc22887148d685889daa0f7c6`.
+Their source-specific results and the fifth T2 critique are retained in
+`evidence/follow-up/raw/sources-fe96115/index.json`, with exact launch/input,
+completion, cleanup and byte-digest records. No upstream code was installed or
+executed. Source inspection closes the missing research lanes, not library
+compatibility, adoption or runtime qualification.
 
-The six follow-up lanes are prepared with fast mode, but none has started.
-The current blocker is the deployed adapter's inability to enforce the goal's
-network-disabled boundary, not account authentication. Data-volume admission
-passed without lowering its space threshold. The broker rejected the first
-launch and rolled back its temporary prompt/worktree. The other lanes remain
-unattempted. `evidence/hosted-followup-launch.json` records this observation;
-it does not add a successful worker, review or source-research result.
+The ordinary goal adapter's rejected launch remains historical evidence in
+`evidence/hosted-followup-launch.json`. The successful follow-ups used the
+deployed subscription runtime's supported bounded-workspace profile instead:
+only `read_file`/`search_files`, no native shell/web/apps/delegation/write tools,
+no fallback, and hosted sandbox controls retained. A synthetic canary proved
+allowed reads and rejected parent-path access. Provider control-plane networking
+is still present; OS-wide egress isolation is not claimed. All six jobs used
+`gpt-5.6-sol`/`xhigh`/fast and separate clean, coordinator-verified exact clones.
+No runtime guard, source, account policy or shared controller was changed.
 
 ## Authority and precedence
 
@@ -352,13 +360,16 @@ before its witness is relied on.
 
 **Blocks next step:** **No.** It blocks maintenance-benefit and production-scale claims only.
 
-### OSS-01 — P2, non-blocking evidence limitation
+### OSS-01 — historical P2 source gap, supplemented here
 
 **Evidence/result IDs:** `gm-oss-o1-extra-v-20260903` through `gm-oss-o5-extra-v-20260903` (`source-unavailable`), `gm-oss-o6-extra-v-20260903` (`review-only`), `gm-targeted-oss-1/2/3/4-20260903`.
 
 **Impact:** Broad “industry consensus” is not supported by five unavailable lanes. O6 provides a useful pinned-source review, but remains reviewer analysis, not implementation compatibility evidence.
 
-**Minimal correction:** Limit claims to the locally recorded, source-specific lessons below or stage digest-pinned offline sources and rerun missing lanes.
+**Correction:** Five new pinned-source inspections now supply O1-O5 lessons.
+Their completed wrappers and raw reports are indexed separately from the frozen
+historical manifest. This does not establish framework compatibility or industry
+consensus; runtime execution and whole-product claims remain unsupported.
 
 **Owner/authority:** Research custodian.
 
@@ -376,7 +387,7 @@ before its witness is relied on.
 | Earlier 90-cell results reproduced defects in the shared oracle. | Historical results are not conformance evidence. The corrected corpus is recaptured from committed inputs. |
 | Earlier oracle rejected duplicate `moduleId`; ADR-0004 permits alternative implementation declarations. | Fixed: the catalog permits alternatives; the profile rejects duplicate selections. Each alternative also has a passing selection probe. |
 | Previous guide/report use canonical tuple W0/W1; accepted ADR-0008 defines emitted W0/W1 bytes. | ADR-0008 controls; this patch restores emitted-byte precedence. |
-| Report suggests broad OSS validation; O1–O5 are source-unavailable. | Retain only bounded ADR-0008/O6 lessons; no industry consensus claim. |
+| Earlier report suggests broad OSS validation; historical O1-O5 are source-unavailable. | Five new source-only results supplement that history. Neither they nor O6 establish industry consensus or runtime compatibility. |
 | Four integrators generally say “conditional private Core”; T8 critics say “no-go now.” | Both are reconciled as: **NO-GO before owner-start/enforcement; CONDITIONAL afterward for source-only normalized semantics.** |
 
 ## Phase 0-4 readiness matrix
@@ -504,6 +515,29 @@ result column is the shared lab oracle, not accepted-contract authority.
 | TypeScript build, accepted ADR-0008 rationale | Record source/generated-file provenance precisely | Calling toolchain staging “compiler self-hosting” |
 | All sources | Isolated roots, explicit inputs, ASCII ordering, offline builds, independent qualification | Registration/filesystem/locale order, dynamic discovery, comparing generated output with itself |
 
+### Supplemental source inspections
+
+The five completed workers inspected the 24 retained source/license files in
+the offline pack. Their reports distinguish literal source observations from
+runtime tests and identify omitted dependencies. The coordinator verified the
+bundle, individual file hashes and clean Git identities; the reviewers had only
+bounded file tools and did not claim to execute those checks.
+
+| Source and exact upstream commit | Bounded lesson | Do not transfer into Core |
+| --- | --- | --- |
+| VS Code `400d86be5f490c331817a72e85870f6337652574` | Inert contribution metadata and executable activation differ; active extensions are not always dynamically removable | Case-folded IDs, event-driven activation, mutable registry and host restart policy |
+| Theia `5358262f7ca40ba9a5e7b514914a18202bd2b7e6` | Contribution snapshots have scope/lifetime costs; timed-out cleanup may keep running | Container enumeration order, symbols as portable IDs, catch-and-continue startup as compiler semantics |
+| Equinox `6172b5245e2f267fc3a17b76a951ca97d5daa2de` | Dependency order differs from activation policy; old wiring can remain in use during revision changes | Mutable wiring, dynamic imports, auto-start, class loader isolation claims |
+| Effect `bd393d63c19bdd0ab212d95576cec89051c8501c` | Required/provided types and explicit shared/fresh lifetimes are useful host concepts | Executable Layer builds, Context lookup, object identity as durable module identity |
+| Avvio `52f5cbba93995727401eca65cc6603bdb3653ae1` | Nested boot queues and close hooks demonstrate host responsibilities, not an inert dependency compiler | Registration order, inherited runtime context, timeout treated as cancellation or recovery |
+
+The exact primary URLs and function/line evidence are retained in each
+`o1.result.json` through `o5.result.json` under the supplemental index above;
+`evidence/oss-source-inputs.json` retains the source custody. These lessons add no
+dependency, API, lifecycle obligation or product decision. In particular,
+missing resolver/loader internals, tests, package closure and real failure traces
+prevent whole-framework safety or adoption claims.
+
 ### Coordinator source note: Avvio
 
 These are bounded source observations from the prepared offline pack, not the
@@ -565,7 +599,7 @@ This note neither installs Avvio nor proposes another Core lifecycle authority.
 | Canonical bytes and digest vectors reproduce | Two independent static golden digests | **Partial**; no immutable plan subject |
 | Private Core source is admitted | ADR-0015, no owner-start record, reproduced admission gaps | **Not established** |
 | Self-composition is qualified | ADR-0008 accepted, ADR-0016 proposed, no stage0/stage1 subject | **Not established** |
-| Industry patterns justify this exact design | One bounded pinned-source review; five source-unavailable lanes | **Not established**; lessons only |
+| Industry patterns justify this exact design | O6 plus five new bounded source inspections; original unavailable records unchanged | **Not established**; source-specific lessons, not proof of this exact design |
 | Repository gates pass before final remediation | Node `24.18.0`; full `pnpm check`; 15 profile, 18 contract, 4 diagnostics, 4 graph and 36 governance tests | **Established** for pre-remediation head `f03d8e4…`; final head must rerun |
 
 ## Final verdict and minimum conditions
