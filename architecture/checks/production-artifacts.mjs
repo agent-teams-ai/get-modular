@@ -238,9 +238,11 @@ function relativeTarget(value, label) {
 function exportMapViolations(exportsField, isPrivate) {
   // A publishable carrier without an export map has no package root at all:
   // Node falls back to directory resolution and the archive hands out its whole
-  // tree, which is the opposite of exposing exactly one root. A `private: true`
-  // manifest is never published and is forbidden to declare `exports` while a
-  // publication blocker is open, so the requirement follows publishability.
+  // tree, which is the opposite of exposing exactly one root. The requirement
+  // follows publishability because a `private: true` manifest is forbidden to
+  // declare `exports` while a publication blocker is open; requiring it
+  // unconditionally would make that blocked state unsatisfiable. Such a
+  // manifest also carries no map to expose, and pnpm refuses to publish it.
   if (exportsField === undefined) {
     return isPrivate
       ? []
@@ -318,17 +320,34 @@ function conditionOrderViolations(actual, expected, label) {
 // the package root defeats that allowlist outright, whatever the export map
 // hides from importers. The archive inventory itself is verified by the packed
 // evidence, not here.
-const ROOT_FILES_ENTRIES = new Set([".", "./", "*", "**", "**/*", "./*", "/", ""]);
+// A literal list of spellings loses against a glob language: `./**` ships the
+// same tree as `**`. The entry is normalized first, then rejected when it
+// resolves to the package root or when its first path segment is a wildcard,
+// which is what makes it match every top-level directory.
+const ROOT_SEGMENT_WILDCARDS = new Set(["*", "**"]);
+
+function normalizedFilesEntry(entry) {
+  let value = entry.trim();
+  while (value.startsWith("./")) value = value.slice(2);
+  while (value.endsWith("/")) value = value.slice(0, -1);
+  return value;
+}
+
+function rootedFilesEntry(entry) {
+  const value = normalizedFilesEntry(entry);
+  if (value === "" || value === ".") return true;
+  return ROOT_SEGMENT_WILDCARDS.has(value.split("/")[0]);
+}
 
 function filesAllowlistViolations(filesField) {
   if (filesField === undefined) return [];
   if (!Array.isArray(filesField) || filesField.some(entry => typeof entry !== "string")) {
     return ["files must be an array of path patterns"];
   }
-  const rootEntries = filesField.filter(entry => ROOT_FILES_ENTRIES.has(entry.trim()));
+  const rootEntries = filesField.filter(entry => rootedFilesEntry(entry));
   if (rootEntries.length > 0) {
-    return [`files must not name the package root, which defeats the publication `
-      + `allowlist: ${rootEntries.join(", ")}`];
+    return [`files must not resolve to the package root or start with a wildcard `
+      + `segment, which defeats the publication allowlist: ${rootEntries.join(", ")}`];
   }
   return [];
 }

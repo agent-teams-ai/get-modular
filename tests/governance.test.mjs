@@ -2173,10 +2173,22 @@ test("the files allowlist must not name the package root", async () => {
   await assert.doesNotReject(validate(["dist"]));
   await assert.doesNotReject(validate(["dist", "README.md", "LICENSE"]));
 
+  await assert.doesNotReject(validate(["dist/**"]));
+  await assert.doesNotReject(validate(["./dist", "dist/"]));
+
   // An export map hides internals from importers; it does not keep them out of
-  // the archive. A root entry ships source, tests and configuration regardless.
-  for (const files of [["."], ["./"], ["*"], ["**"], ["**/*"], ["dist", "."], [" . "]]) {
-    await assert.rejects(validate(files), /files must not name the package root/u);
+  // the archive. A root entry ships source, tests and configuration regardless,
+  // and a literal list of spellings loses against a glob language: a real
+  // `npm pack` puts the same tree in the archive for `**` and for `./**`.
+  for (const files of [
+    ["."], ["./"], ["/"], [""], [" . "],
+    ["*"], ["**"], ["**/*"], ["./*"], ["./**"], ["./**/*"], [" ./** "], ["*/**"],
+    ["dist", "**"],
+  ]) {
+    await assert.rejects(
+      validate(files),
+      /files must not resolve to the package root or start with a wildcard segment/u,
+    );
   }
   for (const files of ["dist", [1], [null]]) {
     await assert.rejects(validate(files), /files must be an array of path patterns/u);

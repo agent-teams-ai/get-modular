@@ -105,10 +105,12 @@ The publication allowlist contains only files required to execute, typecheck,
 license, and minimally document the package. Source, tests, fixtures,
 qualification assets, repository configuration, conformance tooling, private
 adapter APIs, and source maps whose sources are not admitted by the allowlist
-are excluded. `governance:check` rejects a `files` entry that names the package
-root, because such an entry defeats the allowlist whatever the export map hides
-from importers; the archive inventory itself is verified by the packed evidence
-below, not by the manifest.
+are excluded. `governance:check` normalizes each `files` entry and rejects one
+that resolves to the package root or whose first path segment is a wildcard,
+because such an entry ships the whole tree whatever the export map hides from
+importers, and a list of literal spellings would lose against the glob language.
+A scoped pattern such as `dist/**` is admitted. The archive inventory itself is
+verified by the packed evidence below, not by the manifest.
 
 Before each publication, the production package is packed once from a clean
 source checkout. Its exact bytes, SHA-256, npm integrity, package manifest,
