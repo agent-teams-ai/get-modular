@@ -46,9 +46,8 @@ witness as product decisions.
 
 - exact API lab compile and runner: passed on Node `24.18.0`;
 - inventory and evidence digests: independently recomputed;
-- full `pnpm check`: passed before the report rewrite;
-- final exact-head local gates and six external hosted reviews are required
-  after the report commit.
+- full `pnpm check`: passed after the report rewrite;
+- final GitHub CI and six external hosted exact-head reviews remain required.
 
 This PR stays Draft and must not be merged automatically. The final reviewed
 head and external reviewer digests belong in the live PR body/comment after the
