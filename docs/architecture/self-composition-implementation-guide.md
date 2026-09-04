@@ -592,43 +592,29 @@ subjects, which keep `dist-stage0/` and `dist/` isolated.
 Until ADR-0012 is accepted, `packages/core/package.json` declares no `files`,
 `exports`, `types`, or other publication field, because accepted ADR-0015
 blocks them while OD-004, OD-005, and OD-006 are open. The two hash-identified
-qualification subjects that ADR-0008 and the roadmap require are therefore
-packed by a qualification tool under the repository's root `tests/qualification/`
-(the harness, the oracles, the staging tool, and the hash records of packing
-results live there, while `packages/core/tests/` holds only feature tests and
-the witness variant), never from the package manifest. The tool copies the
-built output into a disposable staging directory created under the
-operating-system temporary root, outside the repository tree, and writes there
-a candidate manifest, which OD-004 and ADR-0012 permit for a private,
-non-publishable qualification subject; for the generated candidate the export
-map is the one proposed by ADR-0012, and the direct candidate manifest points
-its targets at the stage0-entry build. The staging must be outside the tree
-because the governance gate scans the working tree and rejects any package
-manifest outside `packages/` and any manifest with a publication field that is
-not inside a private accepted package; only the hash records of the packing results come back under
-`tests/qualification/`. The direct staging holds `dist-stage0/src/features/**`,
-`dist-stage0/self-composition/stage0.js`, `stage0-entry.js`, and
-`own-profile.js` with their `.d.ts` files, together with every file in the
-profile's reachable private closure recorded in the staging manifest. It
-holds nothing else from `self-composition/`; its manifest points `types` at
-the entry's declaration file. The generated staging holds
-`dist/index.js`, `dist/index.d.ts`, `dist/composition/generated/stage1.js` and
-`stage1.d.ts`, and every `dist/features/**` file they reference; its manifest
-carries the ADR-0012 export map with `types` at `./dist/index.d.ts`, so the
-four TypeScript consumer modes resolve declarations. Only the retained
-generated subject ever becomes the pack-once distribution candidate, and its
-tarball allowlist includes the emitted `dist/` output and excludes
-`self-composition/`, generated sources, `dist-stage0/`, `dist-qualification/`,
-and tests, so the own profile, the emitter, and the witness variant cannot
-enter the archive.
+qualification subjects that ADR-0008 and the roadmap require are private
+normalized-seam test archives. They are not npm packages, publication
+candidates, or evidence for a public export map. A qualification tool under the
+repository's root `tests/qualification/` owns the harness, independent oracles,
+staging, and content-addressed result records. It copies only the reachable
+private subject closure into a disposable staging directory under the
+operating-system temporary root, outside the repository tree, and records the
+complete file allowlist and archive digest. It does not synthesize a
+`package.json`, `exports`, `types`, or public barrel.
 
-Consumer evidence is not duplicated across subjects. The four TypeScript
-consumer modes required by ADR-0007 and the 1000-declaration typecheck fixture
-run against the retained generated stage1 subject, which ADR-0007 names in the
-singular as the first packed implementation. The direct subject makes no claim
-about declaration output; it passes the export, deep-import,
-declaration-leakage and inert-import audits and the same independent vectors
-as the generated subject.
+The direct M1 archive contains the private stage0 entry and its reachable
+closure. The generated M1 archive contains the private stage1 entry and its
+reachable closure. Both expose the same private normalized-value seam and run
+the same normalized vectors, closure audit, declaration-leakage audit,
+deep-import rejection, and inert-import audit. Neither archive is retained as
+a distribution candidate, and neither makes a public TypeScript consumer-mode
+claim.
+
+Only after the M2/M3 authority gates are accepted may a separate later
+generated archive become a pack-once distribution candidate. That later
+archive may contain `dist/index.js`, `dist/index.d.ts`, an accepted export map,
+and public TypeScript consumer evidence. It is not an M1 artifact and cannot be
+derived from the proposed ADR-0012 carrier before that proposal is accepted.
 
 The build-only directory `packages/core/self-composition/` is build tooling
 beside the build configuration in the sense of ADR-0008, outside the
@@ -793,9 +779,10 @@ ADR-0011 to be removed before that decision can be accepted alongside it.
 
 ## What M1 lays down so that M3 adds the emitter without refactoring
 
-The first private package lands these seven properties. Each is required by
-ADR-0008 or the Feature Module Standard, and together they make the emitter a
-one-file change later:
+The first private package lands the accepted, reversible properties 1-4 and 6
+below. Properties 5 and 7 are candidate refinements from proposed ADR-0016;
+they may be implemented experimentally but are not M1 gates or accepted claims.
+Together the accepted properties preserve a one-file path to the emitter:
 
 1. Every feature has `ports.ts`, `declaration.ts`, and `factory.ts` with the
    identities from the inventory above, and no barrel over the feature.
@@ -812,17 +799,17 @@ one-file change later:
    sit behind consumer-owned ports in per-implementation directories with their
    own declarations and factories and one shared `identity.ts`, so binding
    replacement is a data change and the witness variant stays under `tests/`.
-5. The closed dependency record is a typed object literal keyed by declared
-   slot identifiers, and every identity-keyed lookup inside the compiler uses a
-   `Map`.
+5. **ADR-0016 candidate:** The closed dependency record is a typed object
+   literal keyed by declared slot identifiers, and every identity-keyed lookup
+   inside the compiler uses a `Map`.
 6. The own profile exists as data in `self-composition/own-profile.ts` from
    M1; it aggregates the feature-owned declaration constants and repeats no
    identity string, even though only the handwritten stage0 root consumes it.
-7. A checked-internal-graph test compiles the own profile through the private
-   normalized seam of `self-composition/stage0-entry.ts`, asserts `ok: true`, and
-   runs the static witness check over `self-composition/stage0.ts` against
-   that plan, which includes the construction order equal to
-   `dependencyOrder`.
+7. **ADR-0016 candidate:** A checked-internal-graph test compiles the own profile
+   through the private normalized seam of `self-composition/stage0-entry.ts`,
+   asserts `ok: true`, and runs the static witness check over
+   `self-composition/stage0.ts` against that plan, which includes the
+   construction order equal to `dependencyOrder`.
 
 ## Out of scope
 

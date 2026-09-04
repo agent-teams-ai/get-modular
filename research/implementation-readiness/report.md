@@ -52,18 +52,24 @@ Worker count was not treated as consensus. In particular:
 
 The normative ladder is:
 
-1. Accepted ADR-0001 through ADR-0008 and ADR-0015, GM-REQ-V1, and their digest-pinned contract/qualification artifacts.
-2. The accepted Feature Module Standard profile and mechanically governed repository policies.
-3. Current contract and roadmap as derived implementation guidance; neither may override an accepted ADR.
-4. Proposed ADR-0009 through ADR-0014 and ADR-0016 as candidate decisions only.
-5. Static qualification fixtures and disposable API laboratories.
-6. Worker analysis, integrator recommendations, and the draft readiness report.
+1. Accepted ADR-0001 through ADR-0008 and ADR-0015,
+   `ARCH-SYSTEM-BOUNDARY`, `GM-REQ-V1`, and their digest-pinned artifacts.
+2. The immutable organization Feature Module Standard adopted at an exact blob
+   and SHA-256 by ADR-0002.
+3. The active local Feature Module Standard mapping/profile and mechanically
+   governed repository policies. They apply the accepted authority but do not
+   replace it.
+4. Current contract and roadmap as derived implementation guidance; neither may override an accepted ADR.
+5. Proposed ADR-0009 through ADR-0014 and ADR-0016 as candidate decisions only.
+6. Static qualification fixtures and disposable API laboratories.
+7. Worker analysis, integrator recommendations, and the draft readiness report.
 
 | Authority group | Status | What it controls | What it cannot authorize |
 | --- | --- | --- | --- |
 | ADR-0001..0008 and ADR-0015 | accepted | Semantic contract, package identities, diagnostics/limits, self-composition direction and private-source admission | Starting implementation without the owner record; open carrier/public semantics |
-| GM-REQ-V1 and accepted contract ledgers | accepted/digest-pinned | Closed normative requirements and immutable qualification artifacts | Runtime behavior without a real subject |
-| Feature Module Standard profile and governance policies | accepted/local adoption | Source ownership, dependency direction and promotion custody | Product behavior or public API |
+| `ARCH-SYSTEM-BOUNDARY`, `GM-REQ-V1` and accepted contract ledgers | accepted/digest-pinned | System boundary, closed normative requirements and immutable qualification artifacts | Runtime behavior without a real subject |
+| Organization Feature Module Standard at the ADR-0002 pin | accepted through ADR-0002 | Universal feature ownership and dependency-direction rules | Get Modular package identity or product behavior |
+| Active local Feature Module Standard document/profile and governance policies | active local mapping/enforcement | Repository path mapping, local extensions, admission and promotion custody | Replacing the pinned organization standard, product behavior or public API |
 | ADR-0009..0014 and ADR-0016 | proposed | Candidate names, primitives, release custody, carriers, repeated records and construction witness | Any production/public claim before acceptance |
 | OD-004, OD-005 and OD-006 | open | Package carrier, raw/trusted boundary and repeated binding-record choices | A default implementation choice |
 | Roadmap and self-composition guide | active derived guidance | Dependency-safe implementation order and file ownership | Overriding accepted ADRs |
@@ -202,10 +208,13 @@ Two implementations can make different observable choices and both plausibly cit
 Node `24.18.0`: all 30 scenarios ran against all three candidates, producing 90
 passing candidate-scenario cells and corpus digest
 `fc2628ffc60914e23bef29d72b1cdf5f92f3d0d470e107fad503900a0f468f39`.
-That proves equal execution of the shared oracle, not conformance: API-02 shows
-that the shared oracle itself contradicts accepted identity and diagnostic
-semantics. There is still no real compiler handoff, packed consumer matrix, or
-production subject.
+The exact result is retained as
+`evidence/api-authoring-exact-run.json` with SHA-256
+`6c08bc149c4e5155ce7c87aa7cb2c251d2961b2890e868654bb075915d1e12b0`.
+It was emitted by TypeScript `7.0.2` and the checked-in runner. That proves equal
+execution of the shared oracle, not conformance: API-02 shows that the shared
+oracle itself contradicts accepted identity and diagnostic semantics. There is
+still no real compiler handoff, packed consumer matrix, or production subject.
 
 **Minimal correction:** Correct the corpus semantics, rerun the same closed
 30-by-three matrix, and then run the accepted subset through the real packed
@@ -445,7 +454,6 @@ result column is the shared lab oracle, not accepted-contract authority.
 | Decision | Status | Blocks |
 | --- | --- | --- |
 | Whether/when to authorize the private Core start and the closed record format | Required product-owner action under ADR-0015 | First tracked source |
-| Exact M1 callable boundary and qualification-packing exception | Documentation/architecture clarification | M1 subject and direct qualification |
 | Public unversioned export map | ADR-0009 proposed | Public API |
 | Production primitive/canonicalizer adapters | ADR-0010 proposed | External production adapter claims |
 | Release evidence and custody protocol | ADR-0011 proposed | Release eligibility |
@@ -471,16 +479,16 @@ result column is the shared lab oracle, not accepted-contract authority.
 
 | Claim | Evidence class and exact artifact | Current disposition |
 | --- | --- | --- |
-| Authority precedence is closed | Accepted ADR-0001..0008 and ADR-0015 plus governed ledgers | **Established** for this audit |
+| Authority precedence is closed | Accepted ADR-0001..0008 and ADR-0015, `ARCH-SYSTEM-BOUNDARY`, `GM-REQ-V1`, the ADR-0002-pinned organization standard and governed ledgers | **Established** for this audit |
 | Worker evidence custody is closed | Canonical 97-result inventory, dispute aggregate `ccd13b…`, four-integrator aggregate `4b53d3…` | **Established**; worker count is not proof |
-| The three API shapes execute an equal corpus | Exact 30-scenario/90-cell local compile and run; corpus digest `fc2628…` | **Established only as lab equality** |
+| The three API shapes execute an equal corpus | Retained `evidence/api-authoring-exact-run.json`, SHA-256 `6c08bc1…`; exact 30-scenario/90-cell local compile and run; corpus digest `fc2628…` | **Established only as lab equality** |
 | The common API oracle conforms to accepted semantics | API-02 reproductions against ADR-0004/0007 | **Refuted** until corrected |
 | Graph semantics are deterministic | Static graph vectors and mutation tests | **Partial**; no real compiler subject |
 | Canonical bytes and digest vectors reproduce | Two independent static golden digests | **Partial**; no immutable plan subject |
 | Private Core source is admitted | ADR-0015, no owner-start record, reproduced admission gaps | **Not established** |
 | Self-composition is qualified | ADR-0008 accepted, ADR-0016 proposed, no stage0/stage1 subject | **Not established** |
 | Industry patterns justify this exact design | One bounded pinned-source review; five source-unavailable lanes | **Not established**; lessons only |
-| Repository gates pass before report rewrite | Node `24.18.0`; full `pnpm check`; 15 profile, 18 contract, 4 diagnostics, 4 graph and 36 governance tests | **Established** for input head `c40d016…` ancestry; final head must rerun |
+| Repository gates pass before final remediation | Node `24.18.0`; full `pnpm check`; 15 profile, 18 contract, 4 diagnostics, 4 graph and 36 governance tests | **Established** for pre-remediation head `f03d8e4…`; final head must rerun |
 
 ## Final verdict and minimum conditions
 
@@ -519,7 +527,8 @@ Create one **Phase 0 authority-and-admission repair change**, with no `packages/
 1. Obtain and record the product-owner start authorization with a closed repository/package/SHA/scope binding.
 2. Make first-package admission consume it and reject missing, stale, mismatched, or over-broad records.
 3. Make accepted package identity, `private: true`, and no-publication-field checks unconditional.
-4. Reconcile the roadmap/current-contract/guide on the private normalized M1 seam and temporary qualification packing.
+4. Bind the start record to the already clarified private normalized M1 scope;
+   do not reopen either carrier or distribution packing.
 5. Add focused negative tests for those exact rules.
 
 Only after that task passes should a separate, private normalized-value Core slice begin. Resource-oracle and cardinality corrections must land before that slice can claim Phase 3 qualification.

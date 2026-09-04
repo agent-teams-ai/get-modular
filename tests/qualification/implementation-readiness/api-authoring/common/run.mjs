@@ -124,12 +124,12 @@ assert(canonical(requiredA) === '{"kind":"required"}' && canonical(optionalA) ==
 const options = { min: 1, max: 3 };
 assert(canonical(many(options)) === '{"kind":"many","max":3,"min":1,"order":"profile"}', "many helper wire shape changed");
 assert(!Object.isFrozen(requiredA) && Object.getPrototypeOf(requiredA) === Object.prototype, "helpers must return mutable plain objects");
-let helperReads = "";
+const helperReads = { min: 0, max: 0 };
 const observedMany = many({
-  get min() { helperReads += "min,"; return -1; },
-  get max() { helperReads += "max"; return Number.NaN; },
+  get min() { helperReads.min += 1; return -1; },
+  get max() { helperReads.max += 1; return Number.NaN; },
 });
-assert(helperReads === "min,max" && observedMany.min === -1 && Number.isNaN(observedMany.max), "many did not use direct ordinary reads or added validation");
+assert(helperReads.min === 1 && helperReads.max === 1 && observedMany.min === -1 && Number.isNaN(observedMany.max), "many did not perform one ordinary read per field or added validation");
 let definitionReads = 0;
 const unreadDefinition = new Proxy(identityProbe, { get(target, key, receiver) { definitionReads++; return Reflect.get(target, key, receiver); } });
 assert(defineModule(unreadDefinition) === unreadDefinition && definitionReads === 0, "defineModule read, cloned, or replaced its argument");
@@ -282,7 +282,7 @@ const summary = {
   executionCount: executions.length, corpusDigest,
   scenarioMatrix: corpus.map(({ id, title, evidenceClass, expected, hostProbe }) => ({ id, title, evidenceClass, expected, ...(hostProbe ? { hostProbe } : {}) })),
   executions, metrics,
-  guards: { exactClosedCorpus: true, substantiveScenarioWitnesses: true, immutablePlainData: true, acceptedHelperSemantics: true, genuineCandidateShapes: true, noExpectationManufacture: true, noExecutableDiscoveryImports: true, hiddenFallbackRejected: true, desiredProfileHostOwned: true, noRegistrationOrderSemantics: true, permutationStable: true, hostileOwnKeys: true, selectedLiteralLoadersOnly: true, directPureDiParity: true, declarationSerializability: true, actualDeclarationEmitEveryCandidate: true, factoriesRestrictedToHostProbes: true },
+  guards: { exactClosedCorpus: true, substantiveScenarioWitnesses: true, immutablePlainData: true, ordinaryHelperReadsWithoutValidation: true, genuineCandidateShapes: true, noExpectationManufacture: true, noExecutableDiscoveryImports: true, hiddenFallbackRejected: true, desiredProfileHostOwned: true, noRegistrationOrderSemantics: true, permutationStable: true, hostileOwnKeys: true, selectedLiteralLoadersOnly: true, directPureDiParity: true, declarationSerializability: true, actualDeclarationEmitEveryCandidate: true, factoriesRestrictedToHostProbes: true },
 };
 mkdirSync(join(here, "dist"), { recursive: true });
 writeFileSync(join(here, "dist", "result-summary.json"), `${JSON.stringify(summary, null, 2)}\n`);

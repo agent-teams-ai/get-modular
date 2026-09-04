@@ -1,0 +1,1367 @@
+{
+  "schemaVersion": 2,
+  "status": "pass",
+  "authority": "non-authoritative qualification-only; not production",
+  "scenarioCount": 30,
+  "executionCount": 90,
+  "corpusDigest": "fc2628ffc60914e23bef29d72b1cdf5f92f3d0d470e107fad503900a0f468f39",
+  "scenarioMatrix": [
+    {
+      "id": "S01",
+      "title": "one provider",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/provider-a/default"
+        ],
+        "dependencyOrder": [
+          "lab/provider-a/default"
+        ]
+      }
+    },
+    {
+      "id": "S02",
+      "title": "one consumer",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default"
+        ],
+        "dependencyOrder": [
+          "lab/consumer/default"
+        ]
+      }
+    },
+    {
+      "id": "S03",
+      "title": "required dependency",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default",
+          "lab/provider-a/default"
+        ],
+        "dependencyOrder": [
+          "lab/provider-a/default",
+          "lab/consumer/default"
+        ]
+      }
+    },
+    {
+      "id": "S04",
+      "title": "missing required dependency",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "binding.missing"
+        ]
+      }
+    },
+    {
+      "id": "S05",
+      "title": "missing optional dependency",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default"
+        ],
+        "dependencyOrder": [
+          "lab/consumer/default"
+        ]
+      }
+    },
+    {
+      "id": "S06",
+      "title": "zero many",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default"
+        ],
+        "dependencyOrder": [
+          "lab/consumer/default"
+        ]
+      }
+    },
+    {
+      "id": "S07",
+      "title": "one many",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default",
+          "lab/provider-a/default"
+        ],
+        "dependencyOrder": [
+          "lab/provider-a/default",
+          "lab/consumer/default"
+        ]
+      }
+    },
+    {
+      "id": "S08",
+      "title": "multiple many",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default",
+          "lab/provider-a/default",
+          "lab/provider-b/default",
+          "lab/provider-c/default"
+        ],
+        "dependencyOrder": [
+          "lab/provider-a/default",
+          "lab/provider-b/default",
+          "lab/provider-c/default",
+          "lab/consumer/default"
+        ]
+      }
+    },
+    {
+      "id": "S09",
+      "title": "duplicate provider",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "binding.provider-duplicate"
+        ]
+      }
+    },
+    {
+      "id": "S10",
+      "title": "ambiguous binding",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "binding.ambiguous"
+        ]
+      }
+    },
+    {
+      "id": "S11",
+      "title": "incompatible capability",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "binding.capability"
+        ]
+      }
+    },
+    {
+      "id": "S12",
+      "title": "dependency cycle",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "graph.cycle"
+        ]
+      }
+    },
+    {
+      "id": "S13",
+      "title": "disabled root",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "host.profile.root-disabled"
+        ]
+      }
+    },
+    {
+      "id": "S14",
+      "title": "disabled required provider",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "binding.missing"
+        ]
+      }
+    },
+    {
+      "id": "S15",
+      "title": "disabled optional provider",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default"
+        ],
+        "dependencyOrder": [
+          "lab/consumer/default"
+        ]
+      }
+    },
+    {
+      "id": "S16",
+      "title": "unreachable provider",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "graph.unreachable"
+        ]
+      }
+    },
+    {
+      "id": "S17",
+      "title": "multiple roots",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/provider-a/default",
+          "lab/provider-b/default"
+        ],
+        "dependencyOrder": [
+          "lab/provider-a/default",
+          "lab/provider-b/default"
+        ]
+      }
+    },
+    {
+      "id": "S18",
+      "title": "deterministic reorder",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default",
+          "lab/provider-a/default",
+          "lab/provider-b/default"
+        ],
+        "dependencyOrder": [
+          "lab/provider-a/default",
+          "lab/consumer/default",
+          "lab/provider-b/default"
+        ]
+      }
+    },
+    {
+      "id": "S19",
+      "title": "hostile slot names: own __proto__, constructor, then, composed and decomposed Unicode",
+      "evidenceClass": "representation",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/hostile/default"
+        ],
+        "dependencyOrder": [
+          "lab/hostile/default"
+        ]
+      }
+    },
+    {
+      "id": "S20",
+      "title": "unknown declaration fields",
+      "evidenceClass": "representation",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "declaration.unknown-field"
+        ]
+      }
+    },
+    {
+      "id": "S21",
+      "title": "duplicate module IDs",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "module.duplicate"
+        ]
+      }
+    },
+    {
+      "id": "S22",
+      "title": "duplicate implementation IDs",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "implementation.duplicate"
+        ]
+      }
+    },
+    {
+      "id": "S23",
+      "title": "invalid owner path",
+      "evidenceClass": "representation",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "owner.path-invalid"
+        ]
+      }
+    },
+    {
+      "id": "S24",
+      "title": "profile with unknown module",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "profile.module-unknown"
+        ]
+      }
+    },
+    {
+      "id": "S25",
+      "title": "hidden fallback attempt",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "binding.missing"
+        ]
+      }
+    },
+    {
+      "id": "S26",
+      "title": "discovery without executable imports",
+      "evidenceClass": "representation",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default",
+          "lab/provider-a/default"
+        ],
+        "dependencyOrder": [
+          "lab/provider-a/default",
+          "lab/consumer/default"
+        ]
+      }
+    },
+    {
+      "id": "S27",
+      "title": "literal loader table for selected modules only",
+      "evidenceClass": "host-probe",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default",
+          "lab/provider-a/default"
+        ],
+        "dependencyOrder": [
+          "lab/provider-a/default",
+          "lab/consumer/default"
+        ]
+      },
+      "hostProbe": "selected-literal-loaders"
+    },
+    {
+      "id": "S28",
+      "title": "direct Pure DI parity",
+      "evidenceClass": "host-probe",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default",
+          "lab/provider-a/default"
+        ],
+        "dependencyOrder": [
+          "lab/provider-a/default",
+          "lab/consumer/default"
+        ]
+      },
+      "hostProbe": "direct-pure-di-parity"
+    },
+    {
+      "id": "S29",
+      "title": "declaration serializability",
+      "evidenceClass": "representation",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default",
+          "lab/provider-a/default"
+        ],
+        "dependencyOrder": [
+          "lab/provider-a/default",
+          "lab/consumer/default"
+        ]
+      }
+    },
+    {
+      "id": "S30",
+      "title": "TypeScript declaration emit",
+      "evidenceClass": "representation",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default",
+          "lab/provider-a/default"
+        ],
+        "dependencyOrder": [
+          "lab/provider-a/default",
+          "lab/consumer/default"
+        ]
+      }
+    }
+  ],
+  "executions": [
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S01",
+      "title": "one provider",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S02",
+      "title": "one consumer",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S03",
+      "title": "required dependency",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S04",
+      "title": "missing required dependency",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.missing"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S05",
+      "title": "missing optional dependency",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S06",
+      "title": "zero many",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S07",
+      "title": "one many",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S08",
+      "title": "multiple many",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S09",
+      "title": "duplicate provider",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.provider-duplicate"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S10",
+      "title": "ambiguous binding",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.ambiguous"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S11",
+      "title": "incompatible capability",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.capability"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S12",
+      "title": "dependency cycle",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "graph.cycle"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S13",
+      "title": "disabled root",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "host.profile.root-disabled"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S14",
+      "title": "disabled required provider",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.missing"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S15",
+      "title": "disabled optional provider",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S16",
+      "title": "unreachable provider",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "graph.unreachable"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S17",
+      "title": "multiple roots",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S18",
+      "title": "deterministic reorder",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S19",
+      "title": "hostile slot names: own __proto__, constructor, then, composed and decomposed Unicode",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S20",
+      "title": "unknown declaration fields",
+      "evidenceClass": "representation",
+      "ok": false,
+      "diagnosticCodes": [
+        "declaration.unknown-field"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S21",
+      "title": "duplicate module IDs",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "module.duplicate"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S22",
+      "title": "duplicate implementation IDs",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "implementation.duplicate"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S23",
+      "title": "invalid owner path",
+      "evidenceClass": "representation",
+      "ok": false,
+      "diagnosticCodes": [
+        "owner.path-invalid"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S24",
+      "title": "profile with unknown module",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "profile.module-unknown"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S25",
+      "title": "hidden fallback attempt",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.missing"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S26",
+      "title": "discovery without executable imports",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S27",
+      "title": "literal loader table for selected modules only",
+      "evidenceClass": "host-probe",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S28",
+      "title": "direct Pure DI parity",
+      "evidenceClass": "host-probe",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S29",
+      "title": "declaration serializability",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S30",
+      "title": "TypeScript declaration emit",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S01",
+      "title": "one provider",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S02",
+      "title": "one consumer",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S03",
+      "title": "required dependency",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S04",
+      "title": "missing required dependency",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.missing"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S05",
+      "title": "missing optional dependency",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S06",
+      "title": "zero many",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S07",
+      "title": "one many",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S08",
+      "title": "multiple many",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S09",
+      "title": "duplicate provider",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.provider-duplicate"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S10",
+      "title": "ambiguous binding",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.ambiguous"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S11",
+      "title": "incompatible capability",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.capability"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S12",
+      "title": "dependency cycle",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "graph.cycle"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S13",
+      "title": "disabled root",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "host.profile.root-disabled"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S14",
+      "title": "disabled required provider",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.missing"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S15",
+      "title": "disabled optional provider",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S16",
+      "title": "unreachable provider",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "graph.unreachable"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S17",
+      "title": "multiple roots",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S18",
+      "title": "deterministic reorder",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S19",
+      "title": "hostile slot names: own __proto__, constructor, then, composed and decomposed Unicode",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S20",
+      "title": "unknown declaration fields",
+      "evidenceClass": "representation",
+      "ok": false,
+      "diagnosticCodes": [
+        "declaration.unknown-field"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S21",
+      "title": "duplicate module IDs",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "module.duplicate"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S22",
+      "title": "duplicate implementation IDs",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "implementation.duplicate"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S23",
+      "title": "invalid owner path",
+      "evidenceClass": "representation",
+      "ok": false,
+      "diagnosticCodes": [
+        "owner.path-invalid"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S24",
+      "title": "profile with unknown module",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "profile.module-unknown"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S25",
+      "title": "hidden fallback attempt",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.missing"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S26",
+      "title": "discovery without executable imports",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S27",
+      "title": "literal loader table for selected modules only",
+      "evidenceClass": "host-probe",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S28",
+      "title": "direct Pure DI parity",
+      "evidenceClass": "host-probe",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S29",
+      "title": "declaration serializability",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S30",
+      "title": "TypeScript declaration emit",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S01",
+      "title": "one provider",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S02",
+      "title": "one consumer",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S03",
+      "title": "required dependency",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S04",
+      "title": "missing required dependency",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.missing"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S05",
+      "title": "missing optional dependency",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S06",
+      "title": "zero many",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S07",
+      "title": "one many",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S08",
+      "title": "multiple many",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S09",
+      "title": "duplicate provider",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.provider-duplicate"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S10",
+      "title": "ambiguous binding",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.ambiguous"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S11",
+      "title": "incompatible capability",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.capability"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S12",
+      "title": "dependency cycle",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "graph.cycle"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S13",
+      "title": "disabled root",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "host.profile.root-disabled"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S14",
+      "title": "disabled required provider",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.missing"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S15",
+      "title": "disabled optional provider",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S16",
+      "title": "unreachable provider",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "graph.unreachable"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S17",
+      "title": "multiple roots",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S18",
+      "title": "deterministic reorder",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S19",
+      "title": "hostile slot names: own __proto__, constructor, then, composed and decomposed Unicode",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S20",
+      "title": "unknown declaration fields",
+      "evidenceClass": "representation",
+      "ok": false,
+      "diagnosticCodes": [
+        "declaration.unknown-field"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S21",
+      "title": "duplicate module IDs",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "module.duplicate"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S22",
+      "title": "duplicate implementation IDs",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "implementation.duplicate"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S23",
+      "title": "invalid owner path",
+      "evidenceClass": "representation",
+      "ok": false,
+      "diagnosticCodes": [
+        "owner.path-invalid"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S24",
+      "title": "profile with unknown module",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "profile.module-unknown"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S25",
+      "title": "hidden fallback attempt",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.missing"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S26",
+      "title": "discovery without executable imports",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S27",
+      "title": "literal loader table for selected modules only",
+      "evidenceClass": "host-probe",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S28",
+      "title": "direct Pure DI parity",
+      "evidenceClass": "host-probe",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S29",
+      "title": "declaration serializability",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S30",
+      "title": "TypeScript declaration emit",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    }
+  ],
+  "metrics": {
+    "descriptor-object": {
+      "authoringLoc": 4,
+      "genericGlueLoc": 11,
+      "genericGlueRatio": 0.7333333333333333,
+      "filesPerModule": 1,
+      "bindingLoci": 1,
+      "explicitAnnotations": 2,
+      "declarationLines": 3,
+      "declarationBytes": 181,
+      "declarationExports": 2,
+      "serializedBytes": 22632,
+      "importCounters": {
+        "sourceImports": 1,
+        "typeOnlyImports": 0,
+        "executableImplementationImports": 0,
+        "frameworkImports": 0
+      },
+      "removalEdits": 2,
+      "disableEdits": 1,
+      "compileDuration": {
+        "10": {
+          "declarations": 10,
+          "compileDurationMs": 124.09
+        },
+        "100": {
+          "declarations": 100,
+          "compileDurationMs": 137.73
+        },
+        "1000": {
+          "declarations": 1000,
+          "compileDurationMs": 197.69
+        }
+      },
+      "treeShaking": "not-measured",
+      "runtimePerformance": "not-measured"
+    },
+    "define-module": {
+      "authoringLoc": 4,
+      "genericGlueLoc": 11,
+      "genericGlueRatio": 0.7333333333333333,
+      "filesPerModule": 1,
+      "bindingLoci": 1,
+      "explicitAnnotations": 1,
+      "declarationLines": 19,
+      "declarationBytes": 543,
+      "declarationExports": 6,
+      "serializedBytes": 22482,
+      "importCounters": {
+        "sourceImports": 1,
+        "typeOnlyImports": 0,
+        "executableImplementationImports": 0,
+        "frameworkImports": 0
+      },
+      "removalEdits": 2,
+      "disableEdits": 1,
+      "compileDuration": {
+        "10": {
+          "declarations": 10,
+          "compileDurationMs": 125.03
+        },
+        "100": {
+          "declarations": 100,
+          "compileDurationMs": 131.22
+        },
+        "1000": {
+          "declarations": 1000,
+          "compileDurationMs": 269.4
+        }
+      },
+      "treeShaking": "not-measured",
+      "runtimePerformance": "not-measured"
+    },
+    "split-declaration-factory": {
+      "authoringLoc": 5,
+      "genericGlueLoc": 11,
+      "genericGlueRatio": 0.6875,
+      "filesPerModule": 2,
+      "bindingLoci": 1,
+      "explicitAnnotations": 3,
+      "declarationLines": 5,
+      "declarationBytes": 338,
+      "declarationExports": 4,
+      "serializedBytes": 26124,
+      "importCounters": {
+        "sourceImports": 1,
+        "typeOnlyImports": 0,
+        "executableImplementationImports": 0,
+        "frameworkImports": 0
+      },
+      "removalEdits": 2,
+      "disableEdits": 1,
+      "compileDuration": {
+        "10": {
+          "declarations": 10,
+          "compileDurationMs": 192.98
+        },
+        "100": {
+          "declarations": 100,
+          "compileDurationMs": 143.06
+        },
+        "1000": {
+          "declarations": 1000,
+          "compileDurationMs": 221.43
+        }
+      },
+      "treeShaking": "not-measured",
+      "runtimePerformance": "not-measured"
+    }
+  },
+  "guards": {
+    "exactClosedCorpus": true,
+    "substantiveScenarioWitnesses": true,
+    "immutablePlainData": true,
+    "ordinaryHelperReadsWithoutValidation": true,
+    "genuineCandidateShapes": true,
+    "noExpectationManufacture": true,
+    "noExecutableDiscoveryImports": true,
+    "hiddenFallbackRejected": true,
+    "desiredProfileHostOwned": true,
+    "noRegistrationOrderSemantics": true,
+    "permutationStable": true,
+    "hostileOwnKeys": true,
+    "selectedLiteralLoadersOnly": true,
+    "directPureDiParity": true,
+    "declarationSerializability": true,
+    "actualDeclarationEmitEveryCandidate": true,
+    "factoriesRestrictedToHostProbes": true
+  }
+}

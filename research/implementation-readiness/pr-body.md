@@ -19,7 +19,11 @@ plugin host, product integration, package publication or accepted-ADR change.
   `4b53d31b981ee0a4ea8d6a6329148453d925fdff2fd0aee40225ad22dd2957ba`;
 - API lab: the same 30 scenarios across three candidates, 90 executions,
   corpus digest
-  `fc2628ffc60914e23bef29d72b1cdf5f92f3d0d470e107fad503900a0f468f39`.
+  `fc2628ffc60914e23bef29d72b1cdf5f92f3d0d470e107fad503900a0f468f39`;
+- retained API lab result:
+  `research/implementation-readiness/evidence/api-authoring-exact-run.json`,
+  SHA-256
+  `6c08bc149c4e5155ce7c87aa7cb2c251d2961b2890e868654bb075915d1e12b0`.
 
 Worker count is not treated as proof. Partial, blocked, retried and
 source-unavailable results remain explicitly classified.
@@ -44,7 +48,8 @@ witness as product decisions.
 
 ## Verification
 
-- exact API lab compile and runner: passed on Node `24.18.0`;
+- exact API lab compile and runner: passed on Node `24.18.0` with TypeScript
+  `7.0.2`;
 - inventory and evidence digests: independently recomputed;
 - full `pnpm check`: passed after the report rewrite;
 - final GitHub CI and six external hosted exact-head reviews remain required.

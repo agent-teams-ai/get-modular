@@ -18,6 +18,9 @@ scenario cells, checks corpus identity, inertness, hostile keys, discovery
 imports, fallback and permutation behavior, generates 10/100/1000 declaration
 type-scale probes only below the OS temporary directory, and removes them.
 Machine-readable JSON is printed and written to `dist/result-summary.json`.
+The reviewed research handoff retains a generated copy at
+`research/implementation-readiness/evidence/api-authoring-exact-run.json`;
+that copy proves execution of this lab only, not contract conformance.
 
 Metrics use the same counting rules for all candidates. LOC is nonblank source
 inside the marked authoring/glue regions; declaration measures use emitted
