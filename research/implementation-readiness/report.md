@@ -35,8 +35,8 @@ No reproducible P0 was observed. Because there is no Core subject, this is not e
 | Dispute critics | Subject `2bef472612dea7c6a89199a47dd8ca7ed552e630` | 32 unique topic×role wrappers, all `done`; source-bundle digest `216bb3b0…` |
 | Dispute manifest integrity | Aggregate `ccd13b6652a45a6e4d80a4ca5b2ff80a95fdc7a624d3f30695d181e61e233838` | All 32 wrapper hashes and the aggregate were independently recomputed |
 | Indexed source integrity | 115 indexed sources | All current indexed hashes verified with no mismatch |
-| Retained API execution subject | `23de59bc20f354fd93e1d48b61ee754e4579d778` | Exact committed lab inputs; envelope and result retained together |
-| API result SHA-256 | `f98b20263eeb3c03d8f740fcccf72f1bf482525cae30adf30aa1cc15e1f6da2b` | 90 outcomes plus 6 alternative-selection probes, source/toolchain identities and emitted-file hashes; not an attestation |
+| Retained API execution subject | `3155309a25edfd8d9dbb8b46e9c95259d9901357` | Exact committed lab inputs; envelope and result retained together |
+| API result SHA-256 | `ec72ade37bc0e7342d879ff19c6f633493ecbce9520cbecdb15e589a22b18e76` | 90 outcomes, 6 alternative-selection probes and 18 authoring-edit experiments; source/toolchain identities and emitted-file hashes; not an attestation |
 
 The dispute wrapper bytes and bundle manifest are custody evidence. Their nested JSON/YAML summaries are reviewer analysis, not executable proof.
 
@@ -49,6 +49,11 @@ Worker count was not treated as consensus. In particular:
 - A5/A6 extras are attempts, not additional reviewers.
 - The 32 critics are role-distinct reviews, but share a model and frozen subject; they do not prove runtime behavior.
 - O1–O5 are source-unavailable under the final manifest and supply no positive OSS evidence.
+
+The [dispute follow-up audit](dispute-follow-up.md) identifies a required fifth
+critic for T2's inherited-property proposal. That result remains pending.
+Comparable option scores were not supplied by the original reviewers; source
+confidence is not substituted for a preference score or a consensus claim.
 
 Supplemental source access is now prepared separately in
 `evidence/oss-source-inputs.json`: 24 original source/license files, five exact

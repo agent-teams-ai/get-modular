@@ -1,13 +1,15 @@
 {
   "kind": "api-authoring-execution",
   "status": "pass",
-  "sourceCommit": "23de59bc20f354fd93e1d48b61ee754e4579d778",
+  "sourceCommit": "3155309a25edfd8d9dbb8b46e9c95259d9901357",
   "inputs": {
     "architecture/contracts/v1/composition.schema.json": "2b4ad547782fa36748fa937f8fe9896da3c022c3e78e68c8edc06c47ffe36562",
     "architecture/contracts/v1/diagnostic-catalog.json": "d59875576b4619dd01713bf108db14144030e30d8f0245e35f80c73563a4ca96",
     "package.json": "7164689465d626b35dd9f2493c90f084c62d507e3b2edcae3209563177154ff7",
     "pnpm-lock.yaml": "051f1db336ffaff43f75a0ca8beaa649c14a56000fb8d7d9b2e3f333233ed7cf",
     "pnpm-workspace.yaml": "e008e6106c73e9bcd00057c95d15b02b7cc5a1ac591ae451a705d022f75d1bff",
+    "tests/qualification/implementation-readiness/api-authoring/common/authoring-edits.mjs": "78c11c5f537eb5a6018b3fa4f69dbf06c7ebd222300d7d70d850556a776efe7d",
+    "tests/qualification/implementation-readiness/api-authoring/common/authoring-edits.test.mjs": "b9a505b28dedd8c433af6554743e34152d710b97a4fbc05f91899c80d7c2a748",
     "tests/qualification/implementation-readiness/api-authoring/common/candidate-define.ts": "b97f2545a46e766160cc23c58cfce97fdd7f1001ab3c48e6a0ae0a938099661c",
     "tests/qualification/implementation-readiness/api-authoring/common/candidate-descriptor.ts": "39adebdb4b68cfdc5744907b16645070a3a30816e900965207d8b8714a280cd9",
     "tests/qualification/implementation-readiness/api-authoring/common/candidate-split-factory.ts": "d6e06855f56d57ab1171cf7fadcb2d50b5c106f7018ba25109e3f20684640ac4",
@@ -19,7 +21,7 @@
     "tests/qualification/implementation-readiness/api-authoring/common/host-profile.ts": "b89c23de263b09743a792034a1af369fdf3de02d52fa20644846175e338d0a4e",
     "tests/qualification/implementation-readiness/api-authoring/common/index.ts": "4d141c3afca28409648eb2a989f874463ad1ad4a6c1947096579ac72d513c75e",
     "tests/qualification/implementation-readiness/api-authoring/common/oracle.ts": "1dda1c3cb1a80d92092ea9afc169221d5f5c45f79a88bbe5c7e292358b2bb0d1",
-    "tests/qualification/implementation-readiness/api-authoring/common/run.mjs": "f9b227247108625898274a6bd07ef6ec5a3fe6bf82d04fded6822e316d3c3c70",
+    "tests/qualification/implementation-readiness/api-authoring/common/run.mjs": "e0de60796bfbc2a362a2d21375b6b8d2b54d62b9291f83a636d3cad39707177f",
     "tests/qualification/implementation-readiness/api-authoring/common/tsconfig.json": "8554dcd2b4bc5bffa9a8600902c9bd3fcfb4b40c07453d8631eb801c91069351",
     "tests/qualification/implementation-readiness/api-authoring/common/type-probes.ts": "09ca8dca909e2d09c43d4c77d6956886907bcf0b6a2cdcb4162a182782d4d620",
     "tests/qualification/implementation-readiness/api-authoring/common/types.ts": "a2c5eeff171a2e15582467fb735bf0e4e4d0a678e4cf8a3df6debc6613577e14"
@@ -43,8 +45,8 @@
     "platform": "darwin",
     "architecture": "arm64"
   },
-  "startedAt": "2026-09-04T11:56:18.919Z",
-  "finishedAt": "2026-09-04T11:56:21.267Z",
+  "startedAt": "2026-09-04T12:13:36.158Z",
+  "finishedAt": "2026-09-04T12:13:40.962Z",
   "commands": [
     {
       "executable": "recorded Node executable",
@@ -54,7 +56,7 @@
       "exitCode": 0
     }
   ],
-  "resultSha256": "f98b20263eeb3c03d8f740fcccf72f1bf482525cae30adf30aa1cc15e1f6da2b",
+  "resultSha256": "ec72ade37bc0e7342d879ff19c6f633493ecbce9520cbecdb15e589a22b18e76",
   "emittedDeclarations": {
     "candidate-define.d.ts": "441beda8ea7ad7e6693d3337f38b63c7a99011a960bc2f2845fe7b75ba3a5e21",
     "candidate-descriptor.d.ts": "49971e2d379152700d270d25581834f6100365d1ade2a52a54176bd521fb8991",

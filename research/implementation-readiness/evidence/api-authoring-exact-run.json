@@ -1248,13 +1248,367 @@
       "separateFactoryLoc": 0,
       "totalSupportLoc": 12,
       "genericGlueRatio": 0.75,
-      "layoutAssumptions": {
-        "filesPerModule": 1,
-        "bindingLoci": 1,
-        "removalEdits": 2,
-        "disableEdits": 1,
-        "evidence": "not measured by editing product modules"
-      },
+      "editMeasurements": [
+        {
+          "candidate": "descriptor-object",
+          "action": "add-module",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "catalog.ts",
+              "kind": "modified",
+              "beforeSha256": "8a0198afade9436c318bf369e6dbf0bf9a05e0a4ad8d2b5e31a9feb06864438b",
+              "afterSha256": "0dbb79f2083d5ef4dd3d0f9db3cb51d59e2d78438c148ed4a64312d3fc1a3083"
+            },
+            {
+              "path": "modules/added/declaration.ts",
+              "kind": "added",
+              "beforeSha256": null,
+              "afterSha256": "66eabef7fb2168411f11315b4169230f6b2ae6999846097c5235ad678fd81df3"
+            },
+            {
+              "path": "modules/added/factory.ts",
+              "kind": "added",
+              "beforeSha256": null,
+              "afterSha256": "e52a58bacac43fc8b80cab9b931e86efa2e4c2db09266a6df5bfb987ec4f354c"
+            },
+            {
+              "path": "profile.ts",
+              "kind": "modified",
+              "beforeSha256": "4bd1b6d01d8eb52f7843608336681bf130105f6b880d4c4e939477ba94e16c1c",
+              "afterSha256": "58df79e81125de2d73a6c5064aca3fbd8d557fe3e3eafc4296ce5d1644872998"
+            }
+          ],
+          "changedAuthoringFiles": 4,
+          "addedFiles": 2,
+          "bindingEditLocations": [],
+          "addedLines": 27,
+          "deletedLines": 2,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "4e5ea12869434207652e473f92c767aa058c6c83aafb18cfe9bc7e790acc2f73",
+          "beforeSourceSha256": "284a5be200edeb6bb1635e44d629b4bde8f3420c1649bb6a8185e07e7e0b180a",
+          "afterSourceSha256": "38d016dd54393f57e1b8529353561e2a7a2518edbd997244873a0777e807051d",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/added/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/added/default",
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "descriptor-object",
+          "action": "rebind",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "profile.ts",
+              "kind": "modified",
+              "beforeSha256": "4bd1b6d01d8eb52f7843608336681bf130105f6b880d4c4e939477ba94e16c1c",
+              "afterSha256": "a073d55f11441fa63de00a39b472e235e90ed1ade176ab0f838d93c6d384ae31"
+            }
+          ],
+          "changedAuthoringFiles": 1,
+          "addedFiles": 0,
+          "bindingEditLocations": [
+            {
+              "path": "profile.ts",
+              "consumerImplementationId": "edits/consumer/default",
+              "slotId": "service"
+            }
+          ],
+          "addedLines": 3,
+          "deletedLines": 3,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "ecf8930b888e1fbe9be1977b8a9c9b664ef36f8daac5b01294f6499d3abb3765",
+          "beforeSourceSha256": "284a5be200edeb6bb1635e44d629b4bde8f3420c1649bb6a8185e07e7e0b180a",
+          "afterSourceSha256": "6493f4d0ace2ba8aa885f796880e159fe9c0dc9660f5bf8ab2fd95b6d0d096a5",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "descriptor-object",
+          "action": "remove-with-replacement",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "catalog.ts",
+              "kind": "modified",
+              "beforeSha256": "8a0198afade9436c318bf369e6dbf0bf9a05e0a4ad8d2b5e31a9feb06864438b",
+              "afterSha256": "f65551a0016aa889a7c833eea2dd8a29a148f63eb15e30b5539ce5d3d20be502"
+            },
+            {
+              "path": "modules/a/declaration.ts",
+              "kind": "deleted",
+              "beforeSha256": "940c6ae2d5229893969a494b0f60bb3cd563f9ef92a59c102f0257c45b01057a",
+              "afterSha256": null
+            },
+            {
+              "path": "modules/a/factory.ts",
+              "kind": "deleted",
+              "beforeSha256": "0de9e61f8e2c7084283f76f4e991ab2513e6041bbda6341cbfe8f2b086f73ffc",
+              "afterSha256": null
+            },
+            {
+              "path": "profile.ts",
+              "kind": "modified",
+              "beforeSha256": "4bd1b6d01d8eb52f7843608336681bf130105f6b880d4c4e939477ba94e16c1c",
+              "afterSha256": "a073d55f11441fa63de00a39b472e235e90ed1ade176ab0f838d93c6d384ae31"
+            }
+          ],
+          "changedAuthoringFiles": 4,
+          "addedFiles": 0,
+          "bindingEditLocations": [
+            {
+              "path": "profile.ts",
+              "consumerImplementationId": "edits/consumer/default",
+              "slotId": "service"
+            }
+          ],
+          "addedLines": 4,
+          "deletedLines": 24,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "e64a64c070b3d393f704dfc3f232b87a998f4ba8235beea29c06cc04aeafe44b",
+          "beforeSourceSha256": "284a5be200edeb6bb1635e44d629b4bde8f3420c1649bb6a8185e07e7e0b180a",
+          "afterSourceSha256": "211ad1963e527e782cb93bbc2b15a0a07297670d038c73ac524a8e1af0b547c2",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "descriptor-object",
+          "action": "remove-unrepaired",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "catalog.ts",
+              "kind": "modified",
+              "beforeSha256": "8a0198afade9436c318bf369e6dbf0bf9a05e0a4ad8d2b5e31a9feb06864438b",
+              "afterSha256": "f65551a0016aa889a7c833eea2dd8a29a148f63eb15e30b5539ce5d3d20be502"
+            },
+            {
+              "path": "modules/a/declaration.ts",
+              "kind": "deleted",
+              "beforeSha256": "940c6ae2d5229893969a494b0f60bb3cd563f9ef92a59c102f0257c45b01057a",
+              "afterSha256": null
+            },
+            {
+              "path": "modules/a/factory.ts",
+              "kind": "deleted",
+              "beforeSha256": "0de9e61f8e2c7084283f76f4e991ab2513e6041bbda6341cbfe8f2b086f73ffc",
+              "afterSha256": null
+            }
+          ],
+          "changedAuthoringFiles": 3,
+          "addedFiles": 0,
+          "bindingEditLocations": [],
+          "addedLines": 1,
+          "deletedLines": 21,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "9a7f71fb259e060c71610901a4675d2f47ccdf524358cb5a525964aa59068a8a",
+          "beforeSourceSha256": "284a5be200edeb6bb1635e44d629b4bde8f3420c1649bb6a8185e07e7e0b180a",
+          "afterSourceSha256": "93d938268f7e0a20317ffaa48bc26efc936b80beafb8a5ed9773919bc08e96aa",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": false,
+            "diagnostics": [
+              {
+                "code": "profile.unknown-module",
+                "path": "/profile/selections/edits/a",
+                "detail": "edits/a"
+              }
+            ],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": []
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "descriptor-object",
+          "action": "disable-required",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "desired-state.ts",
+              "kind": "modified",
+              "beforeSha256": "4284b431b34725f631c00459f882f01805cdcdfc4a623fd3cfcdbece9689f590",
+              "afterSha256": "79bdaf1ef88a4631504194a5bf8c020a5f7359bf60d01d4c09da489851571095"
+            }
+          ],
+          "changedAuthoringFiles": 1,
+          "addedFiles": 0,
+          "bindingEditLocations": [],
+          "addedLines": 3,
+          "deletedLines": 1,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "4226e4fbf33bf06c8032b454bef68fdb94afbb52619ddbbca0704fa683c5ee96",
+          "beforeSourceSha256": "284a5be200edeb6bb1635e44d629b4bde8f3420c1649bb6a8185e07e7e0b180a",
+          "afterSourceSha256": "56322cbddf22e85009a66e53609fb802bb837735a9ef2ad83bc6d8a3f76075d9",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": false,
+            "diagnostics": [
+              {
+                "code": "binding.missing",
+                "path": "/bindings/edits/consumer/default/service",
+                "detail": "service"
+              }
+            ],
+            "inventory": [
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": []
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "descriptor-object",
+          "action": "disable-optional",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "desired-state.ts",
+              "kind": "modified",
+              "beforeSha256": "4284b431b34725f631c00459f882f01805cdcdfc4a623fd3cfcdbece9689f590",
+              "afterSha256": "79bdaf1ef88a4631504194a5bf8c020a5f7359bf60d01d4c09da489851571095"
+            }
+          ],
+          "changedAuthoringFiles": 1,
+          "addedFiles": 0,
+          "bindingEditLocations": [],
+          "addedLines": 3,
+          "deletedLines": 1,
+          "beforeInputSha256": "64f04a89e1112c9f8768d6385bb533d3302677e6eb043f198572d77daf92ec09",
+          "afterInputSha256": "c4677203e35a59537d539994f220337cc34219a6fd268d1cbbf894cc541bed3b",
+          "beforeSourceSha256": "db8b62b000dcac9bdba6470c798d4eecd89d3cc0fe9e27f9489ae12aebd2814f",
+          "afterSourceSha256": "ba0f9c052ef26661083ce7aa3a55182fda9b0e7b104b4a743126a7ad726298c9",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        }
+      ],
       "explicitAnnotationMatchesInCandidateFile": 2,
       "declarationLines": 3,
       "declarationBytes": 181,
@@ -1269,7 +1623,7 @@
       "compileDuration": {
         "10": {
           "declarations": 10,
-          "compileDurationMs": 136.09,
+          "compileDurationMs": 143.4,
           "inputs": {
             "scale.ts": "8bc4c9c67ff91fc7ec04345b59183489921fcf43e023cc8a016d853b2967e2ab",
             "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
@@ -1280,7 +1634,7 @@
         },
         "100": {
           "declarations": 100,
-          "compileDurationMs": 132.79,
+          "compileDurationMs": 131.51,
           "inputs": {
             "scale.ts": "90e4eca333ee28af1c0f61d5f236d2144baeeba388a6cb2800b5bd6620c6ce3b",
             "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
@@ -1291,7 +1645,7 @@
         },
         "1000": {
           "declarations": 1000,
-          "compileDurationMs": 201.46,
+          "compileDurationMs": 222.47,
           "inputs": {
             "scale.ts": "e4770a8ba5c8e5fda982e630f12891bba2673249e679d15d00a4fb8c8ab1c468",
             "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
@@ -1311,13 +1665,367 @@
       "separateFactoryLoc": 0,
       "totalSupportLoc": 27,
       "genericGlueRatio": 0.8709677419354839,
-      "layoutAssumptions": {
-        "filesPerModule": 1,
-        "bindingLoci": 1,
-        "removalEdits": 2,
-        "disableEdits": 1,
-        "evidence": "not measured by editing product modules"
-      },
+      "editMeasurements": [
+        {
+          "candidate": "define-module",
+          "action": "add-module",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "catalog.ts",
+              "kind": "modified",
+              "beforeSha256": "8a0198afade9436c318bf369e6dbf0bf9a05e0a4ad8d2b5e31a9feb06864438b",
+              "afterSha256": "0dbb79f2083d5ef4dd3d0f9db3cb51d59e2d78438c148ed4a64312d3fc1a3083"
+            },
+            {
+              "path": "modules/added/declaration.ts",
+              "kind": "added",
+              "beforeSha256": null,
+              "afterSha256": "4d15f16f0023a6abdef67d0009ea45e15bb627207f878aa66feb0744a9d52b5d"
+            },
+            {
+              "path": "modules/added/factory.ts",
+              "kind": "added",
+              "beforeSha256": null,
+              "afterSha256": "e52a58bacac43fc8b80cab9b931e86efa2e4c2db09266a6df5bfb987ec4f354c"
+            },
+            {
+              "path": "profile.ts",
+              "kind": "modified",
+              "beforeSha256": "4bd1b6d01d8eb52f7843608336681bf130105f6b880d4c4e939477ba94e16c1c",
+              "afterSha256": "58df79e81125de2d73a6c5064aca3fbd8d557fe3e3eafc4296ce5d1644872998"
+            }
+          ],
+          "changedAuthoringFiles": 4,
+          "addedFiles": 2,
+          "bindingEditLocations": [],
+          "addedLines": 28,
+          "deletedLines": 2,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "4e5ea12869434207652e473f92c767aa058c6c83aafb18cfe9bc7e790acc2f73",
+          "beforeSourceSha256": "a7c010fb8a63075ca19fb90605ef8161805d425574e5c6b4ee396712780bbe32",
+          "afterSourceSha256": "1f763b74cb50f7db2766bae34b121cc797f70768cc0374a831b3946579a4eb9b",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/added/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/added/default",
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "define-module",
+          "action": "rebind",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "profile.ts",
+              "kind": "modified",
+              "beforeSha256": "4bd1b6d01d8eb52f7843608336681bf130105f6b880d4c4e939477ba94e16c1c",
+              "afterSha256": "a073d55f11441fa63de00a39b472e235e90ed1ade176ab0f838d93c6d384ae31"
+            }
+          ],
+          "changedAuthoringFiles": 1,
+          "addedFiles": 0,
+          "bindingEditLocations": [
+            {
+              "path": "profile.ts",
+              "consumerImplementationId": "edits/consumer/default",
+              "slotId": "service"
+            }
+          ],
+          "addedLines": 3,
+          "deletedLines": 3,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "ecf8930b888e1fbe9be1977b8a9c9b664ef36f8daac5b01294f6499d3abb3765",
+          "beforeSourceSha256": "a7c010fb8a63075ca19fb90605ef8161805d425574e5c6b4ee396712780bbe32",
+          "afterSourceSha256": "8c8722abd021691ec2df7b2461b488fcef20e6b46cb10eabebc0c02c488d8c87",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "define-module",
+          "action": "remove-with-replacement",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "catalog.ts",
+              "kind": "modified",
+              "beforeSha256": "8a0198afade9436c318bf369e6dbf0bf9a05e0a4ad8d2b5e31a9feb06864438b",
+              "afterSha256": "f65551a0016aa889a7c833eea2dd8a29a148f63eb15e30b5539ce5d3d20be502"
+            },
+            {
+              "path": "modules/a/declaration.ts",
+              "kind": "deleted",
+              "beforeSha256": "4c891563770e1ebfbf7b54bf9d3f4fe0d88eca850c254346876e72573b29f302",
+              "afterSha256": null
+            },
+            {
+              "path": "modules/a/factory.ts",
+              "kind": "deleted",
+              "beforeSha256": "0de9e61f8e2c7084283f76f4e991ab2513e6041bbda6341cbfe8f2b086f73ffc",
+              "afterSha256": null
+            },
+            {
+              "path": "profile.ts",
+              "kind": "modified",
+              "beforeSha256": "4bd1b6d01d8eb52f7843608336681bf130105f6b880d4c4e939477ba94e16c1c",
+              "afterSha256": "a073d55f11441fa63de00a39b472e235e90ed1ade176ab0f838d93c6d384ae31"
+            }
+          ],
+          "changedAuthoringFiles": 4,
+          "addedFiles": 0,
+          "bindingEditLocations": [
+            {
+              "path": "profile.ts",
+              "consumerImplementationId": "edits/consumer/default",
+              "slotId": "service"
+            }
+          ],
+          "addedLines": 4,
+          "deletedLines": 25,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "e64a64c070b3d393f704dfc3f232b87a998f4ba8235beea29c06cc04aeafe44b",
+          "beforeSourceSha256": "a7c010fb8a63075ca19fb90605ef8161805d425574e5c6b4ee396712780bbe32",
+          "afterSourceSha256": "86bc00c554779e74609673138efdc61e74fdb274678b7f2d613cdddf1f25e1fe",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "define-module",
+          "action": "remove-unrepaired",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "catalog.ts",
+              "kind": "modified",
+              "beforeSha256": "8a0198afade9436c318bf369e6dbf0bf9a05e0a4ad8d2b5e31a9feb06864438b",
+              "afterSha256": "f65551a0016aa889a7c833eea2dd8a29a148f63eb15e30b5539ce5d3d20be502"
+            },
+            {
+              "path": "modules/a/declaration.ts",
+              "kind": "deleted",
+              "beforeSha256": "4c891563770e1ebfbf7b54bf9d3f4fe0d88eca850c254346876e72573b29f302",
+              "afterSha256": null
+            },
+            {
+              "path": "modules/a/factory.ts",
+              "kind": "deleted",
+              "beforeSha256": "0de9e61f8e2c7084283f76f4e991ab2513e6041bbda6341cbfe8f2b086f73ffc",
+              "afterSha256": null
+            }
+          ],
+          "changedAuthoringFiles": 3,
+          "addedFiles": 0,
+          "bindingEditLocations": [],
+          "addedLines": 1,
+          "deletedLines": 22,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "9a7f71fb259e060c71610901a4675d2f47ccdf524358cb5a525964aa59068a8a",
+          "beforeSourceSha256": "a7c010fb8a63075ca19fb90605ef8161805d425574e5c6b4ee396712780bbe32",
+          "afterSourceSha256": "d35c1bcf91e0fb63e00e7df7c72e8d4cc372b46c269318670f1a7d8d071e51d2",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": false,
+            "diagnostics": [
+              {
+                "code": "profile.unknown-module",
+                "path": "/profile/selections/edits/a",
+                "detail": "edits/a"
+              }
+            ],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": []
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "define-module",
+          "action": "disable-required",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "desired-state.ts",
+              "kind": "modified",
+              "beforeSha256": "4284b431b34725f631c00459f882f01805cdcdfc4a623fd3cfcdbece9689f590",
+              "afterSha256": "79bdaf1ef88a4631504194a5bf8c020a5f7359bf60d01d4c09da489851571095"
+            }
+          ],
+          "changedAuthoringFiles": 1,
+          "addedFiles": 0,
+          "bindingEditLocations": [],
+          "addedLines": 3,
+          "deletedLines": 1,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "4226e4fbf33bf06c8032b454bef68fdb94afbb52619ddbbca0704fa683c5ee96",
+          "beforeSourceSha256": "a7c010fb8a63075ca19fb90605ef8161805d425574e5c6b4ee396712780bbe32",
+          "afterSourceSha256": "7e38bcc70aacda4fa20ebfde68a7f0e7267d8fb52ec3c1d9123a1cd7356f3cce",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": false,
+            "diagnostics": [
+              {
+                "code": "binding.missing",
+                "path": "/bindings/edits/consumer/default/service",
+                "detail": "service"
+              }
+            ],
+            "inventory": [
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": []
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "define-module",
+          "action": "disable-optional",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "desired-state.ts",
+              "kind": "modified",
+              "beforeSha256": "4284b431b34725f631c00459f882f01805cdcdfc4a623fd3cfcdbece9689f590",
+              "afterSha256": "79bdaf1ef88a4631504194a5bf8c020a5f7359bf60d01d4c09da489851571095"
+            }
+          ],
+          "changedAuthoringFiles": 1,
+          "addedFiles": 0,
+          "bindingEditLocations": [],
+          "addedLines": 3,
+          "deletedLines": 1,
+          "beforeInputSha256": "64f04a89e1112c9f8768d6385bb533d3302677e6eb043f198572d77daf92ec09",
+          "afterInputSha256": "c4677203e35a59537d539994f220337cc34219a6fd268d1cbbf894cc541bed3b",
+          "beforeSourceSha256": "70e8600df3027570cab13361a96b91abff4cc0abd45e2ae29e0190594016c1c2",
+          "afterSourceSha256": "4de1c959611814c0e4e7768c62d06619ba1a565f708a3618c15a0f087964f100",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        }
+      ],
       "explicitAnnotationMatchesInCandidateFile": 1,
       "declarationLines": 19,
       "declarationBytes": 543,
@@ -1332,7 +2040,7 @@
       "compileDuration": {
         "10": {
           "declarations": 10,
-          "compileDurationMs": 125.9,
+          "compileDurationMs": 125.81,
           "inputs": {
             "scale.ts": "88af657e18b71c66fbc338510b865c4dd7f2cc9fbf06a39d24541e02d8e97a3c",
             "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
@@ -1343,7 +2051,7 @@
         },
         "100": {
           "declarations": 100,
-          "compileDurationMs": 156.97,
+          "compileDurationMs": 130.05,
           "inputs": {
             "scale.ts": "9ff49523af45db1e10d5391517163904da46d77f1903df864e10ad7f92d8923a",
             "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
@@ -1354,7 +2062,7 @@
         },
         "1000": {
           "declarations": 1000,
-          "compileDurationMs": 226.05,
+          "compileDurationMs": 237.7,
           "inputs": {
             "scale.ts": "21e02623447c6030232bdc181979105524bf62131adb70bc402a17c826b38ace",
             "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
@@ -1374,13 +2082,367 @@
       "separateFactoryLoc": 10,
       "totalSupportLoc": 24,
       "genericGlueRatio": 0.8275862068965517,
-      "layoutAssumptions": {
-        "filesPerModule": 2,
-        "bindingLoci": 1,
-        "removalEdits": 2,
-        "disableEdits": 1,
-        "evidence": "not measured by editing product modules"
-      },
+      "editMeasurements": [
+        {
+          "candidate": "split-declaration-factory",
+          "action": "add-module",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "catalog.ts",
+              "kind": "modified",
+              "beforeSha256": "8a0198afade9436c318bf369e6dbf0bf9a05e0a4ad8d2b5e31a9feb06864438b",
+              "afterSha256": "0dbb79f2083d5ef4dd3d0f9db3cb51d59e2d78438c148ed4a64312d3fc1a3083"
+            },
+            {
+              "path": "modules/added/declaration.ts",
+              "kind": "added",
+              "beforeSha256": null,
+              "afterSha256": "66eabef7fb2168411f11315b4169230f6b2ae6999846097c5235ad678fd81df3"
+            },
+            {
+              "path": "modules/added/factory.ts",
+              "kind": "added",
+              "beforeSha256": null,
+              "afterSha256": "27e9bc8e9aaa7bf900c4165863c684fe1f68a1cde05149197598baf2752b8af0"
+            },
+            {
+              "path": "profile.ts",
+              "kind": "modified",
+              "beforeSha256": "4bd1b6d01d8eb52f7843608336681bf130105f6b880d4c4e939477ba94e16c1c",
+              "afterSha256": "58df79e81125de2d73a6c5064aca3fbd8d557fe3e3eafc4296ce5d1644872998"
+            }
+          ],
+          "changedAuthoringFiles": 4,
+          "addedFiles": 2,
+          "bindingEditLocations": [],
+          "addedLines": 29,
+          "deletedLines": 2,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "4e5ea12869434207652e473f92c767aa058c6c83aafb18cfe9bc7e790acc2f73",
+          "beforeSourceSha256": "27863a2ee8905127eadda53f847e744e3c9928590e7bb023fd2a5b4ba4a710ac",
+          "afterSourceSha256": "9660cdf82c73f35001672bb8092a12bbf8750f4c40e6bdbde69b2644d015260e",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/added/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/added/default",
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "split-declaration-factory",
+          "action": "rebind",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "profile.ts",
+              "kind": "modified",
+              "beforeSha256": "4bd1b6d01d8eb52f7843608336681bf130105f6b880d4c4e939477ba94e16c1c",
+              "afterSha256": "a073d55f11441fa63de00a39b472e235e90ed1ade176ab0f838d93c6d384ae31"
+            }
+          ],
+          "changedAuthoringFiles": 1,
+          "addedFiles": 0,
+          "bindingEditLocations": [
+            {
+              "path": "profile.ts",
+              "consumerImplementationId": "edits/consumer/default",
+              "slotId": "service"
+            }
+          ],
+          "addedLines": 3,
+          "deletedLines": 3,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "ecf8930b888e1fbe9be1977b8a9c9b664ef36f8daac5b01294f6499d3abb3765",
+          "beforeSourceSha256": "27863a2ee8905127eadda53f847e744e3c9928590e7bb023fd2a5b4ba4a710ac",
+          "afterSourceSha256": "f03332ab4b94bd803649c457ddc395a04970f7cae1d6501952ae14dbbe62bc30",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "split-declaration-factory",
+          "action": "remove-with-replacement",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "catalog.ts",
+              "kind": "modified",
+              "beforeSha256": "8a0198afade9436c318bf369e6dbf0bf9a05e0a4ad8d2b5e31a9feb06864438b",
+              "afterSha256": "f65551a0016aa889a7c833eea2dd8a29a148f63eb15e30b5539ce5d3d20be502"
+            },
+            {
+              "path": "modules/a/declaration.ts",
+              "kind": "deleted",
+              "beforeSha256": "940c6ae2d5229893969a494b0f60bb3cd563f9ef92a59c102f0257c45b01057a",
+              "afterSha256": null
+            },
+            {
+              "path": "modules/a/factory.ts",
+              "kind": "deleted",
+              "beforeSha256": "b25e0665f3c270a4f66046c38dea0599451c5e3820ccae08099d0f36d0614bb5",
+              "afterSha256": null
+            },
+            {
+              "path": "profile.ts",
+              "kind": "modified",
+              "beforeSha256": "4bd1b6d01d8eb52f7843608336681bf130105f6b880d4c4e939477ba94e16c1c",
+              "afterSha256": "a073d55f11441fa63de00a39b472e235e90ed1ade176ab0f838d93c6d384ae31"
+            }
+          ],
+          "changedAuthoringFiles": 4,
+          "addedFiles": 0,
+          "bindingEditLocations": [
+            {
+              "path": "profile.ts",
+              "consumerImplementationId": "edits/consumer/default",
+              "slotId": "service"
+            }
+          ],
+          "addedLines": 4,
+          "deletedLines": 26,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "e64a64c070b3d393f704dfc3f232b87a998f4ba8235beea29c06cc04aeafe44b",
+          "beforeSourceSha256": "27863a2ee8905127eadda53f847e744e3c9928590e7bb023fd2a5b4ba4a710ac",
+          "afterSourceSha256": "e15a8e19271fb08b2482fe4ef9eea07c30e4622a70291ee35d3ee8ff1dbf7a70",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "split-declaration-factory",
+          "action": "remove-unrepaired",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "catalog.ts",
+              "kind": "modified",
+              "beforeSha256": "8a0198afade9436c318bf369e6dbf0bf9a05e0a4ad8d2b5e31a9feb06864438b",
+              "afterSha256": "f65551a0016aa889a7c833eea2dd8a29a148f63eb15e30b5539ce5d3d20be502"
+            },
+            {
+              "path": "modules/a/declaration.ts",
+              "kind": "deleted",
+              "beforeSha256": "940c6ae2d5229893969a494b0f60bb3cd563f9ef92a59c102f0257c45b01057a",
+              "afterSha256": null
+            },
+            {
+              "path": "modules/a/factory.ts",
+              "kind": "deleted",
+              "beforeSha256": "b25e0665f3c270a4f66046c38dea0599451c5e3820ccae08099d0f36d0614bb5",
+              "afterSha256": null
+            }
+          ],
+          "changedAuthoringFiles": 3,
+          "addedFiles": 0,
+          "bindingEditLocations": [],
+          "addedLines": 1,
+          "deletedLines": 23,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "9a7f71fb259e060c71610901a4675d2f47ccdf524358cb5a525964aa59068a8a",
+          "beforeSourceSha256": "27863a2ee8905127eadda53f847e744e3c9928590e7bb023fd2a5b4ba4a710ac",
+          "afterSourceSha256": "f17d955ad68a29e0a8d89d9464cd5717228c4e594a0e7bffaacca91e9e396cfc",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": false,
+            "diagnostics": [
+              {
+                "code": "profile.unknown-module",
+                "path": "/profile/selections/edits/a",
+                "detail": "edits/a"
+              }
+            ],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": []
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "split-declaration-factory",
+          "action": "disable-required",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "desired-state.ts",
+              "kind": "modified",
+              "beforeSha256": "4284b431b34725f631c00459f882f01805cdcdfc4a623fd3cfcdbece9689f590",
+              "afterSha256": "79bdaf1ef88a4631504194a5bf8c020a5f7359bf60d01d4c09da489851571095"
+            }
+          ],
+          "changedAuthoringFiles": 1,
+          "addedFiles": 0,
+          "bindingEditLocations": [],
+          "addedLines": 3,
+          "deletedLines": 1,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "4226e4fbf33bf06c8032b454bef68fdb94afbb52619ddbbca0704fa683c5ee96",
+          "beforeSourceSha256": "27863a2ee8905127eadda53f847e744e3c9928590e7bb023fd2a5b4ba4a710ac",
+          "afterSourceSha256": "d12662f3ddacf490288c79d4e3db27baa4eaf30a889abdede07b11eea262b2de",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": false,
+            "diagnostics": [
+              {
+                "code": "binding.missing",
+                "path": "/bindings/edits/consumer/default/service",
+                "detail": "service"
+              }
+            ],
+            "inventory": [
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": []
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "split-declaration-factory",
+          "action": "disable-optional",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "desired-state.ts",
+              "kind": "modified",
+              "beforeSha256": "4284b431b34725f631c00459f882f01805cdcdfc4a623fd3cfcdbece9689f590",
+              "afterSha256": "79bdaf1ef88a4631504194a5bf8c020a5f7359bf60d01d4c09da489851571095"
+            }
+          ],
+          "changedAuthoringFiles": 1,
+          "addedFiles": 0,
+          "bindingEditLocations": [],
+          "addedLines": 3,
+          "deletedLines": 1,
+          "beforeInputSha256": "64f04a89e1112c9f8768d6385bb533d3302677e6eb043f198572d77daf92ec09",
+          "afterInputSha256": "c4677203e35a59537d539994f220337cc34219a6fd268d1cbbf894cc541bed3b",
+          "beforeSourceSha256": "b069185db029e5ccca356f0468ad74ac13d58557c0307ee986d6099d3df9df3e",
+          "afterSourceSha256": "2d73731946526cf4178971f141f12c468ff2f855671e6e804a0da6b86bf17c8b",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        }
+      ],
       "explicitAnnotationMatchesInCandidateFile": 3,
       "declarationLines": 5,
       "declarationBytes": 338,
@@ -1395,7 +2457,7 @@
       "compileDuration": {
         "10": {
           "declarations": 10,
-          "compileDurationMs": 127.85,
+          "compileDurationMs": 124.37,
           "inputs": {
             "factories.ts": "139a6efe4b389b2b0cf4cf7cadc14bba752858a7b6bc20bffc29e6205ec4f7b0",
             "scale.ts": "90d6000289978a326e8988fe7622a268df884d5e00fb88b04f6d01a85a9a6a88",
@@ -1408,7 +2470,7 @@
         },
         "100": {
           "declarations": 100,
-          "compileDurationMs": 131.46,
+          "compileDurationMs": 134.02,
           "inputs": {
             "factories.ts": "eaa07a3670925420328525300e3bd5a93788fe13f0ac0e82f0b173fe6ecacd78",
             "scale.ts": "aec40c1f1737c6c68b8c0a86c04dc6a54f747035c226d29cf85250bdaab1d3c9",
@@ -1421,7 +2483,7 @@
         },
         "1000": {
           "declarations": 1000,
-          "compileDurationMs": 329.86,
+          "compileDurationMs": 338.12,
           "inputs": {
             "factories.ts": "cbe280d8993ed453c2e770364aaa1287375f9dc6b2a42620405f42c6dee9c89d",
             "scale.ts": "453cf40e4ed1ad94fcabbecf6e52e5a034eaa6f51aff2ab9ce0f63283a29feff",
@@ -1453,7 +2515,7 @@
   "limitations": {
     "desiredState": "explicit test-Host preprocessing policy, not a production desired-state contract",
     "semantics": "simplified normalized lab inputs and diagnostic payloads, not full wire/diagnostic/SCC conformance",
-    "measurements": "synthetic source/emit counts only; layout edits are assumptions"
+    "measurements": "synthetic source/emit counts and six emitted-source edit experiments per candidate; chosen feature-local topology, not product edits or human task times"
   },
   "guards": {
     "exactClosedCorpus": true,

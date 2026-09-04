@@ -23,9 +23,9 @@ plugin host, product integration, package publication or accepted-ADR change.
 - retained API lab result:
   `research/implementation-readiness/evidence/api-authoring-exact-run.json`,
   SHA-256
-  `f98b20263eeb3c03d8f740fcccf72f1bf482525cae30adf30aa1cc15e1f6da2b`;
+  `ec72ade37bc0e7342d879ff19c6f633493ecbce9520cbecdb15e589a22b18e76`;
 - execution envelope: `research/implementation-readiness/evidence/api-authoring-execution.json`,
-  source `23de59bc20f354fd93e1d48b61ee754e4579d778`, complete committed input
+  source `3155309a25edfd8d9dbb8b46e9c95259d9901357`, complete committed input
   hashes, toolchain hashes, command outcome and emitted declarations.
 
 The shared laboratory now permits alternate implementations, rejects duplicate
@@ -38,6 +38,9 @@ O1-O5 source access was incomplete in the historical campaign. A separate
 verified offline source pack now provides 24 original source/license files at
 five pinned upstream commits. `evidence/oss-source-inputs.json` records custody.
 Those five follow-up research results are still pending, not counted as success.
+The retained dispute audit also requires a fifth T2 critic on the proposed
+inherited-property restriction. Accepted helper behavior is unchanged; this
+pending review cannot be represented as approval or an accepted product change.
 
 Worker count is not treated as proof. Partial, blocked, retried and
 source-unavailable results remain explicitly classified.
