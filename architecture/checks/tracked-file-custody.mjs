@@ -5,9 +5,10 @@ import { resolve, sep } from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
-const NON_PORTABLE_PATH_CHARACTERS = /[<>:"|?*\u0000-\u001f]/u;
+const NON_PORTABLE_PATH_CHARACTERS = /[<>:"|?*\p{Cc}\p{Cf}\p{Cs}]/u;
 const SAFE_RELATIVE_PATH = /^(?![\\/])(?!.*(?:^|[\\/])\.\.(?:[\\/]|$))[^\\]+$/u;
-const WINDOWS_DEVICE_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.[^/]*)?$/iu;
+const WINDOWS_DEVICE_NAME =
+  /^(?:con|prn|aux|nul|conin\$|conout\$|com(?:[1-9]|[¹²³])|lpt(?:[1-9]|[¹²³]))(?:\.[^/]*)?$/iu;
 const GIT_OBJECT_ID = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u;
 const REGULAR_FILE_MODE = /^(?:100644|100755)$/u;
 const SYMBOLIC_LINK_MODE = "120000";
@@ -33,7 +34,7 @@ function hermeticGitEnvironment() {
   return environment;
 }
 
-function safeRepositoryPath(value) {
+export function safeRepositoryPath(value) {
   return typeof value === "string"
     && SAFE_RELATIVE_PATH.test(value)
     && !/^[A-Za-z]:[\\/]/u.test(value)
@@ -43,6 +44,13 @@ function safeRepositoryPath(value) {
       && segment !== ".."
       && !/[. ]$/u.test(segment)
       && !WINDOWS_DEVICE_NAME.test(segment));
+}
+
+export function safeRepositoryPathOrDirectory(value) {
+  const path = typeof value === "string" && value.endsWith("/")
+    ? value.slice(0, -1)
+    : value;
+  return safeRepositoryPath(path);
 }
 
 async function inspectWorkingTreePath(relativePath, repositoryRoot) {
@@ -84,9 +92,18 @@ async function readWorkingTreeRegularFile(relativePath, repositoryRoot) {
     const status = await handle.stat();
     if (!status.isFile()) return { kind: "non-regular" };
     const bytes = await handle.readFile();
+    const finalStatus = await handle.stat();
+    if (status.dev !== finalStatus.dev
+      || status.ino !== finalStatus.ino
+      || status.mode !== finalStatus.mode
+      || status.size !== finalStatus.size
+      || status.mtimeMs !== finalStatus.mtimeMs
+      || status.ctimeMs !== finalStatus.ctimeMs) {
+      return { kind: "changed-during-read" };
+    }
     const after = await inspectWorkingTreePath(relativePath, repositoryRoot);
     if (after.kind !== "regular") return after;
-    return { kind: "regular", bytes };
+    return { kind: "regular", bytes, executable: (status.mode & 0o111) !== 0 };
   } catch (error) {
     if (["ELOOP", "ENOENT", "ENOTDIR"].includes(error?.code)) {
       return { kind: error.code === "ELOOP" ? "symlink" : "missing" };
@@ -331,6 +348,77 @@ export async function assertGitIndexSnapshotCurrent(snapshot) {
       || expected?.stage !== observed?.stage) {
       throw new Error("TRACKED_FILE_CUSTODY_FAILED: Git index changed after snapshot");
     }
+  }
+}
+
+async function currentHeadCommit(repositoryRoot) {
+  const { stdout } = await runGit(repositoryRoot, ["rev-parse", "--verify", "HEAD^{commit}"]);
+  const oid = stdout.toString("ascii").replace(/\r?\n$/u, "");
+  if (!GIT_OBJECT_ID.test(oid)) throw new Error("invalid HEAD commit identity");
+  return oid;
+}
+
+export async function assertTrackedWorkspaceMatchesHead(
+  repositoryRoot,
+  { expectedHeadCommit, afterFirstPass } = {},
+) {
+  const initialHeadCommit = await currentHeadCommit(repositoryRoot);
+  if (expectedHeadCommit !== undefined && initialHeadCommit !== expectedHeadCommit) {
+    throw new Error(
+      `TRACKED_FILE_CUSTODY_FAILED: HEAD ${initialHeadCommit} does not match expected commit `
+      + expectedHeadCommit,
+    );
+  }
+  const snapshot = await captureGitIndexSnapshot(repositoryRoot);
+  if (snapshot.headTreeOid === null) {
+    throw new Error("TRACKED_FILE_CUSTODY_FAILED: repository must have a committed HEAD");
+  }
+
+  const { stdout: headTreeBytes } = await runGit(repositoryRoot, [
+    "ls-tree", "--full-tree", "-r", "-z", snapshot.headTreeOid,
+  ]);
+  const headEntries = parseMaterializedTree(headTreeBytes);
+  const paths = indexSnapshotPaths(snapshot).sort();
+  if (paths.length !== headEntries.size) {
+    throw new Error("TRACKED_FILE_CUSTODY_FAILED: Git index differs from HEAD");
+  }
+
+  const expectedBlobs = [];
+  for (const path of paths) {
+    const indexEntry = snapshot.entries.get(path);
+    const headEntry = headEntries.get(path);
+    if (indexEntry?.kind !== "regular"
+      || headEntry?.type !== "blob"
+      || indexEntry.mode !== headEntry.mode
+      || indexEntry.oid !== headEntry.oid) {
+      throw new Error(`TRACKED_FILE_CUSTODY_FAILED: tracked path differs from HEAD: ${path}`);
+    }
+    expectedBlobs.push(indexEntry.oid);
+  }
+
+  const blobBytes = await readBlobBatch(repositoryRoot, expectedBlobs);
+  const expectedByPath = new Map(paths.map((path, index) => [path, blobBytes[index]]));
+  const assertWorkingTreePass = async orderedPaths => {
+    for (const path of orderedPaths) {
+      const workingTree = await readWorkingTreeRegularFile(path, repositoryRoot);
+      const expectedExecutable = snapshot.entries.get(path).mode === "100755";
+      if (workingTree.kind !== "regular"
+        || workingTree.executable !== expectedExecutable
+        || !workingTree.bytes.equals(expectedByPath.get(path))) {
+        throw new Error(
+          `TRACKED_FILE_CUSTODY_FAILED: working-tree bytes or mode differ from HEAD: ${path} `
+          + `(${workingTree.kind})`,
+        );
+      }
+    }
+  };
+
+  await assertWorkingTreePass(paths);
+  await afterFirstPass?.();
+  await assertWorkingTreePass([...paths].reverse());
+  await assertGitIndexSnapshotCurrent(snapshot);
+  if (await currentHeadCommit(repositoryRoot) !== initialHeadCommit) {
+    throw new Error("TRACKED_FILE_CUSTODY_FAILED: HEAD changed during verification");
   }
 }
 

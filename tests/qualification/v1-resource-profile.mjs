@@ -98,9 +98,13 @@ export function generateLimitFixture(vector, count) {
     case "single-document":
     case "declaration-document":
     case "profile-document": return { document: jsonDocument(count) };
-    case "document-batch": return {
-      documents: rawDocumentBatch(count),
-    };
+    case "document-batch": {
+      const profileBytes = count >= 2 ? 2 : 0;
+      return {
+        documents: rawDocumentBatch(count - profileBytes),
+        ...(profileBytes > 0 ? { profile: jsonDocument(profileBytes) } : {}),
+      };
+    }
     case "json-value-occurrences": return { value: new Array(count - 1).fill(null) };
     case "nested-arrays": {
       let value = 0;
@@ -138,7 +142,7 @@ export function meterLimitFixture(vector, fixture) {
     case "profile-document": return fixture.document.byteLength;
     case "json-value-occurrences": return fixture.value.length + 1;
     case "document-batch": return fixture.documents.reduce(
-      (total, document) => total + document.byteLength, 0,
+      (total, document) => total + document.byteLength, fixture.profile?.byteLength ?? 0,
     );
     case "nested-arrays": {
       let depth = 0;
@@ -186,11 +190,17 @@ export function meterLimitFixture(vector, fixture) {
 
 export function mutateLimitFixtureOffByOne(vector, fixture) {
   switch (vector.fixtureFamily) {
-    case "raw-bytes": return fixture.document
-      ? { document: Buffer.concat([fixture.document, Buffer.from(" ")]) }
-      : { documents: [...fixture.documents.slice(0, -1), Buffer.concat([
-        fixture.documents.at(-1), Buffer.from(" "),
-      ])] };
+    case "raw-bytes": {
+      if (fixture.document) {
+        return { document: Buffer.concat([fixture.document, Buffer.from(" ")]) };
+      }
+      return {
+        documents: [...fixture.documents.slice(0, -1), Buffer.concat([
+          fixture.documents.at(-1), Buffer.from(" "),
+        ])],
+        ...(fixture.profile ? { profile: fixture.profile } : {}),
+      };
+    }
     case "json-depth": return { value: [fixture.value] };
     case "utf8-string-bytes": {
       if (vector.fixtureShape === "portable-id") {

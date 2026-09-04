@@ -7,13 +7,13 @@ import {
   readIndexSnapshotFile,
 } from "./tracked-file-custody.mjs";
 
-const PRODUCTION_SOURCE = /\.[cm]?[jt]sx?$/u;
-const PRIVATE_IMPLEMENTATION_PACKAGE_NAMES = new Set([
+const PRODUCTION_SOURCE = /\.(?:[cm]?js|jsx|[cm]?ts|tsx)$/u;
+export const PRIVATE_IMPLEMENTATION_PACKAGE_NAMES = new Set([
   "@get-modular/conformance",
   "@get-modular/core",
 ]);
 const PACKAGE_MANIFEST = /^packages\/[^/]+\/package\.json$/u;
-const PUBLICATION_FIELDS = Object.freeze([
+export const PUBLICATION_FIELDS = Object.freeze([
   "bin",
   "browser",
   "exports",
@@ -41,6 +41,10 @@ function compareStrings(left, right) {
 
 function isProductionArtifactName(path) {
   return path.endsWith("/package.json") || PRODUCTION_SOURCE.test(path);
+}
+
+export function isProductionSourceArtifactPath(path) {
+  return typeof path === "string" && PRODUCTION_SOURCE.test(path);
 }
 
 function isTrackedProductionArtifactPath(path) {

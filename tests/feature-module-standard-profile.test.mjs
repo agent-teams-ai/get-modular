@@ -22,6 +22,9 @@ const docsIndex = await readFile("docs/README.md", "utf8");
 const agentInstructions = await readFile("AGENTS.md", "utf8");
 const packageJson = JSON.parse(await readFile("package.json", "utf8"));
 const clone = value => structuredClone(value);
+const coreManifest = new Map([
+  ["packages/core/package.json", { name: "@get-modular/core", private: true }],
+]);
 
 function validate(overrides = {}) {
   return validateFeatureModuleStandardProfile({
@@ -65,15 +68,25 @@ test("rejects silent scope, mapping, and authority drift", () => {
   assert.throws(() => validate({ profile: changedAuthority }), /extensions does not match/u);
 });
 
-test("rejects premature conformance claims and weakened evidence", () => {
-  for (const [claim, status] of [
-    ["structural", "structural-conformant"],
-    ["runtime", "runtime-conformant"],
-  ]) {
-    const claimed = clone(profile);
-    claimed.adoption.conformance[claim].status = status;
-    assert.throws(() => validate({ profile: claimed }),
-      new RegExp(`${claim} conformance must remain not-claimed`, "u"));
+test("accepts ordered conformance states and rejects unsupported status values", () => {
+  const premature = clone(profile);
+  premature.adoption.conformance.structural.status = "structural-conformant";
+  assert.throws(() => validate({ profile: premature }), /requires source-admitted status/u);
+
+  const structural = clone(profile);
+  structural.adoption.admission.status = "source-admitted";
+  structural.adoption.conformance.structural.status = "structural-conformant";
+  assert.doesNotThrow(() => validate({ profile: structural }));
+
+  const runtime = clone(structural);
+  runtime.adoption.conformance.runtime.status = "runtime-conformant";
+  assert.doesNotThrow(() => validate({ profile: runtime }));
+
+  for (const claim of ["structural", "runtime"]) {
+    const invalid = clone(profile);
+    invalid.adoption.conformance[claim].status = "promoted-without-evidence";
+    assert.throws(() => validate({ profile: invalid }),
+      new RegExp(`${claim} conformance has an unsupported status`, "u"));
   }
 
   const missingEvidence = clone(profile);
@@ -117,12 +130,54 @@ test("requires profile enforcement in complete and fast gates", () => {
     "",
   );
   assert.throws(() => validate({ packageJson: missingComplete }),
-    /complete gate must include architecture:feature-module-profile/u);
+    /check must use its exact closed pnpm command chain/u);
 
   const missingFast = clone(packageJson);
   missingFast.scripts["check:fast"] = "pnpm foundation:check && pnpm docs:check";
   assert.throws(() => validate({ packageJson: missingFast }),
-    /fast gate must include profile binding/u);
+    /check:fast must use its exact closed pnpm command chain/u);
+
+  for (const scriptName of ["check", "check:fast"]) {
+    for (const prefix of [": # && ", ":; ", ": || ", ": | ", ":\n"]) {
+      const bypass = clone(packageJson);
+      bypass.scripts[scriptName] = `${prefix}${bypass.scripts[scriptName]}`;
+      assert.throws(() => validate({ packageJson: bypass }),
+        /must use its exact closed pnpm command chain/u);
+    }
+    const commands = packageJson.scripts[scriptName].split(" && ");
+    for (const removed of commands) {
+      const incomplete = clone(packageJson);
+      incomplete.scripts[scriptName] = commands
+        .filter(command => command !== removed)
+        .join(" && ");
+      assert.throws(() => validate({ packageJson: incomplete }),
+        /must use its exact closed pnpm command chain/u);
+    }
+  }
+
+  for (const scriptName of [
+    "architecture:feature-module-profile",
+    "architecture:feature-module-profile:test",
+    "contracts:check",
+    "contracts:test",
+    "docs:check",
+    "docs:protocol:check",
+    "docs:quality",
+    "foundation:check",
+    "foundation:assert-dev-only",
+    "foundation:assert-registry",
+    "governance:check",
+    "governance:test",
+    "qualification:resource-profile",
+    "qualification:v1-diagnostics-protocol",
+    "qualification:v1-graph-semantics",
+    "runtime:preflight",
+  ]) {
+    const noOp = clone(packageJson);
+    noOp.scripts[scriptName] = ":";
+    assert.throws(() => validate({ packageJson: noOp }),
+      new RegExp(`${scriptName} must use its closed command definition`, "u"));
+  }
 });
 
 test("keeps the profile reachable for humans and agents", () => {
@@ -145,6 +200,22 @@ test("keeps an empty pre-production repository honestly not-claimed", () => {
     packageJson,
     sourceDependencyPolicyPresent: false,
   }), undefined);
+
+  for (const scriptName of [
+    "foundation:check",
+    "foundation:assert-dev-only",
+    "foundation:assert-registry",
+  ]) {
+    const noOp = clone(packageJson);
+    noOp.scripts[scriptName] = ":";
+    assert.throws(() => validateFirstProductionPackageAdmission({
+      productionArtifacts: [],
+      admission: profile.adoption.admission,
+      foundationConfig: { schemaVersion: 1 },
+      packageJson: noOp,
+      sourceDependencyPolicyPresent: false,
+    }), /closed/u);
+  }
 });
 
 test("first production package requires the Foundation source-dependency gate", () => {
@@ -161,6 +232,35 @@ test("first production package requires the Foundation source-dependency gate", 
   assert.throws(() => validateFirstProductionPackageAdmission(input),
     /architecture\.source-dependencies capability/u);
 
+  for (const path of [
+    "/packages/core/src/index.ts",
+    "packages\\core\\src\\index.ts",
+    "C:/packages/core/src/index.ts",
+    "packages//core/src/index.ts",
+    "packages/./core/src/index.ts",
+    "packages/core/../core/src/index.ts",
+    "packages/core:/src/index.ts",
+    "packages/core./src/index.ts",
+    "packages/con/src/index.ts",
+    "packages/core /src/index.ts",
+    "packages/core/src/index\n.ts",
+    "packages/COM¹/src/index.ts",
+    "packages/LPT².txt/src/index.ts",
+    "packages/core\u007f/src/index.ts",
+    "packages/core\u0085/src/index.ts",
+    "packages/core\u200e/src/index.ts",
+    "packages/core\u202e/src/index.ts",
+    "packages/core\u2066/src/index.ts",
+    "packages/core\u2069/src/index.ts",
+    "packages/CONIN$/src/index.ts",
+    "packages/CONOUT$/src/index.ts",
+  ]) {
+    assert.throws(() => validateFirstProductionPackageAdmission({
+      ...input,
+      productionArtifacts: [path],
+    }), /portable repository-relative paths/u);
+  }
+
   const configured = clone(input);
   configured.foundationConfig.capabilities = {
     "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
@@ -169,6 +269,44 @@ test("first production package requires the Foundation source-dependency gate", 
     /first production package requires/u);
 
   configured.sourceDependencyPolicyPresent = true;
+  configured.productionArtifacts = ["packages/core/package.json"];
+  configured.productionPackageManifests = coreManifest;
+  assert.throws(() => validateFirstProductionPackageAdmission(configured),
+    /requires substantive source below packages\/core\/src/u);
+  configured.productionArtifacts = ["packages/core/package.json", "packages/core/README.md"];
+  assert.throws(() => validateFirstProductionPackageAdmission(configured),
+    /requires substantive source below packages\/core\/src/u);
+  for (const extension of ["cjsx", "mjsx", "ctsx", "mtsx"]) {
+    configured.productionArtifacts = [
+      "packages/core/package.json",
+      `packages/core/src/not-source.${extension}`,
+    ];
+    assert.throws(() => validateFirstProductionPackageAdmission(configured),
+      /requires substantive source below packages\/core\/src/u);
+  }
+  configured.productionArtifacts = [
+    "packages/core/package.json",
+    "packages/core/tests/smoke.test.ts",
+  ];
+  assert.throws(() => validateFirstProductionPackageAdmission(configured),
+    /requires substantive source below packages\/core\/src/u);
+  configured.productionArtifacts = [
+    "packages/core/package.json",
+    "packages/core/src/index.ts",
+    "packages/conformance/package.json",
+  ];
+  configured.productionPackageManifests = new Map([
+    ...coreManifest,
+    ["packages/conformance/package.json", {
+      name: "@get-modular/conformance",
+      private: true,
+    }],
+  ]);
+  assert.throws(() => validateFirstProductionPackageAdmission(configured),
+    /requires substantive source below packages\/conformance\/src/u);
+
+  configured.productionArtifacts = ["packages/core/package.json", "packages/core/src/index.ts"];
+  configured.productionPackageManifests = coreManifest;
   assert.equal(
     validateFirstProductionPackageAdmission(configured),
     SOURCE_DEPENDENCY_POLICY_PATH,
@@ -177,14 +315,14 @@ test("first production package requires the Foundation source-dependency gate", 
   const missingFastGate = clone(configured);
   missingFastGate.packageJson.scripts["check:fast"] = "pnpm docs:check";
   assert.throws(() => validateFirstProductionPackageAdmission(missingFastGate),
-    /fast gate must execute/u);
+    /check:fast must use its exact closed pnpm command chain/u);
 });
 
 test("first production package cannot use a no-op Foundation alias", () => {
   const packageWithNoOp = clone(packageJson);
   packageWithNoOp.scripts["foundation:check"] = "node -e 'process.exit(0)'";
   assert.throws(() => validateFirstProductionPackageAdmission({
-    productionArtifacts: ["packages/core/src/index.ts"],
+    productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts"],
     admission: { ...profile.adoption.admission, status: "source-admitted" },
     foundationConfig: {
       capabilities: {
@@ -193,7 +331,101 @@ test("first production package cannot use a no-op Foundation alias", () => {
     },
     packageJson: packageWithNoOp,
     sourceDependencyPolicyPresent: true,
-  }), /foundation:check must execute agent-teams-foundation check/u);
+    productionPackageManifests: coreManifest,
+  }), /foundation:check must use its closed command definition/u);
+
+  const commented = clone(packageJson);
+  commented.scripts["foundation:check"] = ": # && agent-teams-foundation check";
+  assert.throws(() => validateFirstProductionPackageAdmission({
+    productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts"],
+    admission: { ...profile.adoption.admission, status: "source-admitted" },
+    foundationConfig: {
+      capabilities: {
+        "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
+      },
+    },
+    packageJson: commented,
+    sourceDependencyPolicyPresent: true,
+    productionPackageManifests: coreManifest,
+  }), /foundation:check must use its closed command definition/u);
+
+  for (const scriptName of ["foundation:assert-dev-only", "foundation:assert-registry"]) {
+    const noOp = clone(packageJson);
+    noOp.scripts[scriptName] = ":";
+    assert.throws(() => validateFirstProductionPackageAdmission({
+      productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts"],
+      admission: { ...profile.adoption.admission, status: "source-admitted" },
+      foundationConfig: {
+        capabilities: {
+          "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
+        },
+      },
+      packageJson: noOp,
+      sourceDependencyPolicyPresent: true,
+      productionPackageManifests: coreManifest,
+    }), new RegExp(`${scriptName} must use its closed command definition`, "u"));
+  }
+});
+
+test("rejects unknown package identities even with no active publication blockers", () => {
+  assert.throws(() => validateFirstProductionPackageAdmission({
+    productionArtifacts: ["packages/rogue/package.json", "packages/rogue/src/index.ts"],
+    productionPackageManifests: new Map([
+      ["packages/rogue/package.json", { name: "@example/rogue", private: true }],
+    ]),
+    admission: { ...profile.adoption.admission, status: "source-admitted" },
+    foundationConfig: {
+      capabilities: {
+        "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
+      },
+    },
+    packageJson,
+    sourceDependencyPolicyPresent: true,
+  }), /accepted private package identity/u);
+});
+
+test("rejects publication fields on an otherwise accepted private package", () => {
+  assert.throws(() => validateFirstProductionPackageAdmission({
+    productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts"],
+    productionPackageManifests: new Map([
+      ["packages/core/package.json", {
+        name: "@get-modular/core", private: true, exports: { ".": "./src/index.js" },
+      }],
+    ]),
+    admission: { ...profile.adoption.admission, status: "source-admitted" },
+    foundationConfig: {
+      capabilities: {
+        "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
+      },
+    },
+    packageJson,
+    sourceDependencyPolicyPresent: true,
+  }), /must not declare publication fields/u);
+});
+
+test("rejects an unmanifested or nested production package root", () => {
+  const baseInput = {
+    admission: { ...profile.adoption.admission, status: "source-admitted" },
+    foundationConfig: {
+      capabilities: {
+        "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
+      },
+    },
+    packageJson,
+    sourceDependencyPolicyPresent: true,
+    productionPackageManifests: coreManifest,
+  };
+  assert.throws(() => validateFirstProductionPackageAdmission({
+    ...baseInput,
+    productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts", "packages/other/src/index.ts"],
+  }), /every production package root requires a manifest/u);
+  assert.throws(() => validateFirstProductionPackageAdmission({
+    ...baseInput,
+    productionArtifacts: ["packages/group/core/package.json", "packages/group/core/src/index.ts"],
+    productionPackageManifests: new Map([
+      ["packages/group/core/package.json", { name: "@get-modular/core", private: true }],
+    ]),
+  }), /production package manifests must be direct package roots/u);
 });
 
 test("first production package rejects a package symlink", () => {
@@ -226,6 +458,7 @@ test("production artifact discovery is repository-wide and deterministic",
       await mkdir(join(fixture, "packages", "core", "src"), { recursive: true });
       await writeFile(join(fixture, "packages", "core", "package.json"), "{}\n");
       await writeFile(join(fixture, "packages", "core", "src", "index.ts"), "export {};\n");
+      await writeFile(join(fixture, "packages", "core", "src", "not-source.mtsx"), "ignored\n");
       await mkdir(join(fixture, "src"));
       await writeFile(join(fixture, "src", "compiler.ts"), "export {};\n");
       assert.deepEqual(await productionArtifactPaths(fixture), [

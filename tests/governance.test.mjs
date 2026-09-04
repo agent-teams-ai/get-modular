@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
@@ -37,6 +37,7 @@ import {
 } from "../architecture/checks/node-version.mjs";
 import {
   assertGitIndexSnapshotCurrent,
+  assertTrackedWorkspaceMatchesHead,
   captureGitIndexSnapshot,
   historicalFileVersions,
   inspectIndexSnapshotFile,
@@ -1270,6 +1271,97 @@ test("accepted authority bytes survive a deterministic leaf replacement race", a
   }
 });
 
+test("tracked workspace integrity ignores mutable Git metadata", async () => {
+  for (const indexFlag of ["--assume-unchanged", "--skip-worktree"]) {
+    const fixture = await mkdtemp(join(tmpdir(), "get-modular-workspace-integrity-"));
+    try {
+      await initFixtureRepository(fixture);
+      await writeFile(join(fixture, "tracked.txt"), "original\n");
+      await git(fixture, "add", "--", "tracked.txt");
+      await git(fixture, "commit", "--quiet", "-m", "fixture");
+      await assertTrackedWorkspaceMatchesHead(fixture);
+
+      await git(fixture, "update-index", indexFlag, "--", "tracked.txt");
+      await writeFile(join(fixture, "tracked.txt"), "modified\n");
+      await assert.rejects(
+        assertTrackedWorkspaceMatchesHead(fixture),
+        /TRACKED_FILE_CUSTODY_FAILED: working-tree bytes or mode differ from HEAD/u,
+      );
+    } finally {
+      await rm(fixture, { recursive: true, force: true });
+    }
+  }
+});
+
+test("tracked workspace integrity disables Git replacement objects", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-workspace-replacement-"));
+  try {
+    await initFixtureRepository(fixture);
+    await writeFile(join(fixture, "tracked.txt"), "original\n");
+    await git(fixture, "add", "--", "tracked.txt");
+    await git(fixture, "commit", "--quiet", "-m", "fixture");
+
+    await writeFile(join(fixture, "tracked.txt"), "modified\n");
+    await git(fixture, "add", "--", "tracked.txt");
+    const { stdout: oldTree } = await git(fixture, "rev-parse", "HEAD^{tree}");
+    const { stdout: newTree } = await git(fixture, "write-tree");
+    await git(fixture, "replace", oldTree.trim(), newTree.trim());
+    await assert.rejects(
+      assertTrackedWorkspaceMatchesHead(fixture),
+      /TRACKED_FILE_CUSTODY_FAILED: tracked path differs from HEAD/u,
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("tracked workspace integrity rejects mode and mid-scan changes", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-workspace-stability-"));
+  try {
+    await initFixtureRepository(fixture);
+    await writeFile(join(fixture, "a.txt"), "a\n");
+    await writeFile(join(fixture, "b.txt"), "b\n");
+    await git(fixture, "add", "--", "a.txt", "b.txt");
+    await git(fixture, "commit", "--quiet", "-m", "fixture");
+    const { stdout: head } = await git(fixture, "rev-parse", "HEAD");
+    await assert.rejects(
+      assertTrackedWorkspaceMatchesHead(fixture, { expectedHeadCommit: "0".repeat(40) }),
+      /does not match expected commit/u,
+    );
+
+    await assert.rejects(
+      assertTrackedWorkspaceMatchesHead(fixture, {
+        expectedHeadCommit: head.trim(),
+        afterFirstPass: () => writeFile(join(fixture, "a.txt"), "changed\n"),
+      }),
+      /working-tree bytes or mode differ from HEAD/u,
+    );
+    await writeFile(join(fixture, "a.txt"), "a\n");
+
+    if (process.platform !== "win32") {
+      await chmod(join(fixture, "a.txt"), 0o755);
+      await assert.rejects(
+        assertTrackedWorkspaceMatchesHead(fixture),
+        /working-tree bytes or mode differ from HEAD/u,
+      );
+      await chmod(join(fixture, "a.txt"), 0o644);
+    }
+
+    await assert.rejects(
+      assertTrackedWorkspaceMatchesHead(fixture, {
+        afterFirstPass: async () => {
+          await writeFile(join(fixture, "b.txt"), "staged\n");
+          await git(fixture, "add", "--", "b.txt");
+          await writeFile(join(fixture, "b.txt"), "b\n");
+        },
+      }),
+      /Git index changed after snapshot/u,
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
 test("production artifact discovery fails closed across repository layouts", async () => {
   const fixture = await mkdtemp(join(tmpdir(), "get-modular-governance-"));
   try {
@@ -1445,6 +1537,39 @@ test("mutable revisions and unsafe paths fail closed", () => {
       paths: ["../secret"],
     }],
   }), /non-exact revision/u);
+
+  for (const path of [
+    "/docs/evidence.md",
+    "docs\\evidence.md",
+    "C:/docs/evidence.md",
+    "docs//evidence.md",
+    "docs/./evidence.md",
+    "docs/../evidence.md",
+    "docs/con/evidence.md",
+    "docs/evidence.",
+    "docs/evidence ",
+    "docs/evidence\n.md",
+    "docs/COM¹/evidence.md",
+    "docs/LPT².txt/evidence.md",
+    "docs/evidence\u007f.md",
+    "docs/evidence\u0085.md",
+    "docs/evidence\u200e.md",
+    "docs/evidence\u202e.md",
+    "docs/evidence\u2066.md",
+    "docs/evidence\u2069.md",
+    "docs/CONIN$/evidence.md",
+    "docs/CONOUT$/evidence.md",
+  ]) {
+    assert.throws(() => validateSourceMap({
+      ...sourceMap,
+      sources: [{ ...sourceMap.sources[0], paths: [path] }],
+    }), /unsafe evidence path/u);
+  }
+
+  assert.doesNotThrow(() => validateSourceMap({
+    ...sourceMap,
+    sources: [{ ...sourceMap.sources[0], paths: ["docs/qualification/"] }],
+  }));
 
   assert.throws(() => validateSourceMap({
     ...sourceMap,
