@@ -1,8 +1,10 @@
 {
   "kind": "api-authoring-execution",
   "status": "pass",
-  "sourceCommit": "c86a2acc13c5d6dc3603b11be26462b43725035c",
+  "sourceCommit": "23de59bc20f354fd93e1d48b61ee754e4579d778",
   "inputs": {
+    "architecture/contracts/v1/composition.schema.json": "2b4ad547782fa36748fa937f8fe9896da3c022c3e78e68c8edc06c47ffe36562",
+    "architecture/contracts/v1/diagnostic-catalog.json": "d59875576b4619dd01713bf108db14144030e30d8f0245e35f80c73563a4ca96",
     "package.json": "7164689465d626b35dd9f2493c90f084c62d507e3b2edcae3209563177154ff7",
     "pnpm-lock.yaml": "051f1db336ffaff43f75a0ca8beaa649c14a56000fb8d7d9b2e3f333233ed7cf",
     "pnpm-workspace.yaml": "e008e6106c73e9bcd00057c95d15b02b7cc5a1ac591ae451a705d022f75d1bff",
@@ -10,16 +12,17 @@
     "tests/qualification/implementation-readiness/api-authoring/common/candidate-descriptor.ts": "39adebdb4b68cfdc5744907b16645070a3a30816e900965207d8b8714a280cd9",
     "tests/qualification/implementation-readiness/api-authoring/common/candidate-split-factory.ts": "d6e06855f56d57ab1171cf7fadcb2d50b5c106f7018ba25109e3f20684640ac4",
     "tests/qualification/implementation-readiness/api-authoring/common/candidate-split.ts": "f47191caf4c7da46f7c42c441f1d30fc287959b8fbac11794120b32afedfc428",
-    "tests/qualification/implementation-readiness/api-authoring/common/corpus.ts": "5f62352a91420549af85926aed77b9ef65e263a9c8c7f1d03bae731c8e506032",
-    "tests/qualification/implementation-readiness/api-authoring/common/execution-capture.mjs": "d6199c5dd3144633a0b09cea9a108c7bc0793f81ea7df8810338190170383f2c",
-    "tests/qualification/implementation-readiness/api-authoring/common/execution-capture.test.mjs": "7cd7462ba0c261de06c9cc60dc615c6c763f24d279cef2d2bc9c0eb53d7e5670",
+    "tests/qualification/implementation-readiness/api-authoring/common/corpus.ts": "e2738e50b964245a278e9fe0614644c02764d45109c99c2674e4baacd425b22c",
+    "tests/qualification/implementation-readiness/api-authoring/common/execution-capture.mjs": "2b92caedad60474e860c7b1a4254270298d9f15f0816841d5eb40ad7c7a5f19a",
+    "tests/qualification/implementation-readiness/api-authoring/common/execution-capture.test.mjs": "6b847d134f3666789c8dacaabd6f938cec6ff621040b4698d41c5358258e2010",
     "tests/qualification/implementation-readiness/api-authoring/common/factories.ts": "9718532193adc77df0823df5f1f4390331db6f03c916fa85c672f3df04e463e2",
-    "tests/qualification/implementation-readiness/api-authoring/common/index.ts": "8c414cc30f10cdbc609afb25d3fec76d3c2996e0fd0d0fa95b1fb435b0cf0c39",
-    "tests/qualification/implementation-readiness/api-authoring/common/oracle.ts": "30b2d6c4248da92cbb24b0895c9d1628129afcdab621271b73ca71638fb9d1d4",
-    "tests/qualification/implementation-readiness/api-authoring/common/run.mjs": "4bddb7636298ddd76dc6297b4cff67120c150591d715b8ac22c3ba6752cb0b8d",
+    "tests/qualification/implementation-readiness/api-authoring/common/host-profile.ts": "b89c23de263b09743a792034a1af369fdf3de02d52fa20644846175e338d0a4e",
+    "tests/qualification/implementation-readiness/api-authoring/common/index.ts": "4d141c3afca28409648eb2a989f874463ad1ad4a6c1947096579ac72d513c75e",
+    "tests/qualification/implementation-readiness/api-authoring/common/oracle.ts": "1dda1c3cb1a80d92092ea9afc169221d5f5c45f79a88bbe5c7e292358b2bb0d1",
+    "tests/qualification/implementation-readiness/api-authoring/common/run.mjs": "f9b227247108625898274a6bd07ef6ec5a3fe6bf82d04fded6822e316d3c3c70",
     "tests/qualification/implementation-readiness/api-authoring/common/tsconfig.json": "8554dcd2b4bc5bffa9a8600902c9bd3fcfb4b40c07453d8631eb801c91069351",
     "tests/qualification/implementation-readiness/api-authoring/common/type-probes.ts": "09ca8dca909e2d09c43d4c77d6956886907bcf0b6a2cdcb4162a182782d4d620",
-    "tests/qualification/implementation-readiness/api-authoring/common/types.ts": "6e61a2b46f4f74617afd3a05946d601bf0d5ea63b815ca6a51255f991c5de96b"
+    "tests/qualification/implementation-readiness/api-authoring/common/types.ts": "a2c5eeff171a2e15582467fb735bf0e4e4d0a678e4cf8a3df6debc6613577e14"
   },
   "toolchain": {
     "node": {
@@ -40,8 +43,8 @@
     "platform": "darwin",
     "architecture": "arm64"
   },
-  "startedAt": "2026-09-04T11:33:06.131Z",
-  "finishedAt": "2026-09-04T11:33:08.392Z",
+  "startedAt": "2026-09-04T11:56:18.919Z",
+  "finishedAt": "2026-09-04T11:56:21.267Z",
   "commands": [
     {
       "executable": "recorded Node executable",
@@ -51,7 +54,7 @@
       "exitCode": 0
     }
   ],
-  "resultSha256": "ac82157395692383a0b863351f6694c5635afbab18c70354629b2e71a0fb13b5",
+  "resultSha256": "f98b20263eeb3c03d8f740fcccf72f1bf482525cae30adf30aa1cc15e1f6da2b",
   "emittedDeclarations": {
     "candidate-define.d.ts": "441beda8ea7ad7e6693d3337f38b63c7a99011a960bc2f2845fe7b75ba3a5e21",
     "candidate-descriptor.d.ts": "49971e2d379152700d270d25581834f6100365d1ade2a52a54176bd521fb8991",
@@ -59,10 +62,11 @@
     "candidate-split.d.ts": "f7d7a60c5563c22165d9c12da9b0a8591f2ea44b24e9828cdb25928ec2eed58f",
     "corpus.d.ts": "fe78492bcf94b808a40a8d919cb250b293f337e0d81d6dc52725578a7120aaa5",
     "factories.d.ts": "baef386411419afa72fd5c9baa48888e52c50918783053d89b7a28995d2ac4c3",
-    "index.d.ts": "8c414cc30f10cdbc609afb25d3fec76d3c2996e0fd0d0fa95b1fb435b0cf0c39",
-    "oracle.d.ts": "dda17c0b45a2aa732f2dc2276f6ce85f81dea3bbf1f8e8c7889ccccc5cb9e6e4",
+    "host-profile.d.ts": "797ec7335d1e7a0da9ab28d720a935689e02acdee5ae4df8524b6ae1b74f6da3",
+    "index.d.ts": "4d141c3afca28409648eb2a989f874463ad1ad4a6c1947096579ac72d513c75e",
+    "oracle.d.ts": "1a70f15fe229f3fdf66a7f9979c4170530f93fd13b89e40d45e92692f801dfc1",
     "type-probes.d.ts": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881",
-    "types.d.ts": "709fd9960533b2be6b3b9a25285eb1d1102263cab61d5953f95f7171c6596a58"
+    "types.d.ts": "3cc7ee8d68e6b4af58e83fb06c732932e3fda3e3246a33529a9a003188ee6a9b"
   },
   "scope": "Coordinator observation, not a signed attestation or proof of accepted-contract conformance. Timings are machine-specific. Toolchain hashes describe the capture machine, not a cross-platform verifier requirement."
 }

@@ -35,8 +35,8 @@ No reproducible P0 was observed. Because there is no Core subject, this is not e
 | Dispute critics | Subject `2bef472612dea7c6a89199a47dd8ca7ed552e630` | 32 unique topic×role wrappers, all `done`; source-bundle digest `216bb3b0…` |
 | Dispute manifest integrity | Aggregate `ccd13b6652a45a6e4d80a4ca5b2ff80a95fdc7a624d3f30695d181e61e233838` | All 32 wrapper hashes and the aggregate were independently recomputed |
 | Indexed source integrity | 115 indexed sources | All current indexed hashes verified with no mismatch |
-| Retained API execution subject | `c86a2acc13c5d6dc3603b11be26462b43725035c` | Exact committed lab inputs; envelope and result retained together |
-| API result SHA-256 | `ac82157395692383a0b863351f6694c5635afbab18c70354629b2e71a0fb13b5` | 90 outcomes, source/toolchain identities and emitted-file hashes; not an attestation |
+| Retained API execution subject | `23de59bc20f354fd93e1d48b61ee754e4579d778` | Exact committed lab inputs; envelope and result retained together |
+| API result SHA-256 | `f98b20263eeb3c03d8f740fcccf72f1bf482525cae30adf30aa1cc15e1f6da2b` | 90 outcomes plus 6 alternative-selection probes, source/toolchain identities and emitted-file hashes; not an attestation |
 
 The dispute wrapper bytes and bundle manifest are custody evidence. Their nested JSON/YAML summaries are reviewer analysis, not executable proof.
 
@@ -502,7 +502,7 @@ result column is the shared lab oracle, not accepted-contract authority.
 | --- | --- | --- |
 | Authority precedence is closed | Accepted ADR-0001..0008 and ADR-0015, `ARCH-SYSTEM-BOUNDARY`, `GM-REQ-V1`, the ADR-0002-pinned organization standard and governed ledgers | **Established** for this audit |
 | Worker evidence custody is closed | Canonical 97-result inventory, dispute aggregate `ccd13b…`, four-integrator aggregate `4b53d3…` | **Established**; worker count is not proof |
-| The three API shapes execute an equal corpus | Retained `evidence/api-authoring-exact-run.json`, SHA-256 `ac821573…`, and `evidence/api-authoring-execution.json`; committed source `c86a2ac…`, 30 scenarios/90 cells, corpus digest `fc2628…` | **Established only as lab equality**; verifier rejects input/result drift |
+| The three API shapes execute an equal corpus | Retained `evidence/api-authoring-exact-run.json` and `evidence/api-authoring-execution.json`; exact identities in the custody table | **Established only as lab equality**; verifier rejects input/result drift |
 | The common API oracle is a full accepted-contract validator | API-02 regression fixes, plus explicit simplified-input/diagnostic limitations | **Not claimed**; covered identity, selection and Host-boundary cases are checked, full conformance remains future |
 | Graph semantics are deterministic | Static graph vectors and mutation tests | **Partial**; no real compiler subject |
 | Canonical bytes and digest vectors reproduce | Two independent static golden digests | **Partial**; no immutable plan subject |

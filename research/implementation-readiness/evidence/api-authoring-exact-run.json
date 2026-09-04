@@ -4,7 +4,12 @@
   "authority": "non-authoritative qualification-only; not production",
   "scenarioCount": 30,
   "executionCount": 90,
-  "corpusDigest": "fc2628ffc60914e23bef29d72b1cdf5f92f3d0d470e107fad503900a0f468f39",
+  "corpusDigest": "3f09cc2c6ad801e36594be02e2b99ca691ca149241495ec65d73978de19b860c",
+  "additionalChecks": {
+    "alternateImplementationSelections": 6,
+    "rawDesiredStateRejected": true,
+    "splitAssociationProbes": 2
+  },
   "scenarioMatrix": [
     {
       "id": "S01",
@@ -139,7 +144,7 @@
       "expected": {
         "ok": false,
         "codes": [
-          "binding.provider-duplicate"
+          "binding.duplicate"
         ]
       }
     },
@@ -150,7 +155,7 @@
       "expected": {
         "ok": false,
         "codes": [
-          "binding.ambiguous"
+          "binding.cardinality"
         ]
       }
     },
@@ -161,7 +166,7 @@
       "expected": {
         "ok": false,
         "codes": [
-          "binding.capability"
+          "binding.capability-missing"
         ]
       }
     },
@@ -220,7 +225,7 @@
       "expected": {
         "ok": false,
         "codes": [
-          "graph.unreachable"
+          "profile.unreachable-selection"
         ]
       }
     },
@@ -282,7 +287,7 @@
       "expected": {
         "ok": false,
         "codes": [
-          "declaration.unknown-field"
+          "schema.unknown-field"
         ]
       }
     },
@@ -293,7 +298,7 @@
       "expected": {
         "ok": false,
         "codes": [
-          "module.duplicate"
+          "profile.duplicate-selection"
         ]
       }
     },
@@ -304,7 +309,7 @@
       "expected": {
         "ok": false,
         "codes": [
-          "implementation.duplicate"
+          "declaration.duplicate-implementation"
         ]
       }
     },
@@ -315,7 +320,7 @@
       "expected": {
         "ok": false,
         "codes": [
-          "owner.path-invalid"
+          "schema.invalid-value"
         ]
       }
     },
@@ -326,7 +331,7 @@
       "expected": {
         "ok": false,
         "codes": [
-          "profile.module-unknown"
+          "profile.unknown-module"
         ]
       }
     },
@@ -503,7 +508,7 @@
       "evidenceClass": "semantic",
       "ok": false,
       "diagnosticCodes": [
-        "binding.provider-duplicate"
+        "binding.duplicate"
       ]
     },
     {
@@ -513,7 +518,7 @@
       "evidenceClass": "semantic",
       "ok": false,
       "diagnosticCodes": [
-        "binding.ambiguous"
+        "binding.cardinality"
       ]
     },
     {
@@ -523,7 +528,7 @@
       "evidenceClass": "semantic",
       "ok": false,
       "diagnosticCodes": [
-        "binding.capability"
+        "binding.capability-missing"
       ]
     },
     {
@@ -571,7 +576,7 @@
       "evidenceClass": "semantic",
       "ok": false,
       "diagnosticCodes": [
-        "graph.unreachable"
+        "profile.unreachable-selection"
       ]
     },
     {
@@ -605,7 +610,7 @@
       "evidenceClass": "representation",
       "ok": false,
       "diagnosticCodes": [
-        "declaration.unknown-field"
+        "schema.unknown-field"
       ]
     },
     {
@@ -615,7 +620,7 @@
       "evidenceClass": "semantic",
       "ok": false,
       "diagnosticCodes": [
-        "module.duplicate"
+        "profile.duplicate-selection"
       ]
     },
     {
@@ -625,7 +630,7 @@
       "evidenceClass": "semantic",
       "ok": false,
       "diagnosticCodes": [
-        "implementation.duplicate"
+        "declaration.duplicate-implementation"
       ]
     },
     {
@@ -635,7 +640,7 @@
       "evidenceClass": "representation",
       "ok": false,
       "diagnosticCodes": [
-        "owner.path-invalid"
+        "schema.invalid-value"
       ]
     },
     {
@@ -645,7 +650,7 @@
       "evidenceClass": "semantic",
       "ok": false,
       "diagnosticCodes": [
-        "profile.module-unknown"
+        "profile.unknown-module"
       ]
     },
     {
@@ -771,7 +776,7 @@
       "evidenceClass": "semantic",
       "ok": false,
       "diagnosticCodes": [
-        "binding.provider-duplicate"
+        "binding.duplicate"
       ]
     },
     {
@@ -781,7 +786,7 @@
       "evidenceClass": "semantic",
       "ok": false,
       "diagnosticCodes": [
-        "binding.ambiguous"
+        "binding.cardinality"
       ]
     },
     {
@@ -791,7 +796,7 @@
       "evidenceClass": "semantic",
       "ok": false,
       "diagnosticCodes": [
-        "binding.capability"
+        "binding.capability-missing"
       ]
     },
     {
@@ -839,7 +844,7 @@
       "evidenceClass": "semantic",
       "ok": false,
       "diagnosticCodes": [
-        "graph.unreachable"
+        "profile.unreachable-selection"
       ]
     },
     {
@@ -873,7 +878,7 @@
       "evidenceClass": "representation",
       "ok": false,
       "diagnosticCodes": [
-        "declaration.unknown-field"
+        "schema.unknown-field"
       ]
     },
     {
@@ -883,7 +888,7 @@
       "evidenceClass": "semantic",
       "ok": false,
       "diagnosticCodes": [
-        "module.duplicate"
+        "profile.duplicate-selection"
       ]
     },
     {
@@ -893,7 +898,7 @@
       "evidenceClass": "semantic",
       "ok": false,
       "diagnosticCodes": [
-        "implementation.duplicate"
+        "declaration.duplicate-implementation"
       ]
     },
     {
@@ -903,7 +908,7 @@
       "evidenceClass": "representation",
       "ok": false,
       "diagnosticCodes": [
-        "owner.path-invalid"
+        "schema.invalid-value"
       ]
     },
     {
@@ -913,7 +918,7 @@
       "evidenceClass": "semantic",
       "ok": false,
       "diagnosticCodes": [
-        "profile.module-unknown"
+        "profile.unknown-module"
       ]
     },
     {
@@ -1039,7 +1044,7 @@
       "evidenceClass": "semantic",
       "ok": false,
       "diagnosticCodes": [
-        "binding.provider-duplicate"
+        "binding.duplicate"
       ]
     },
     {
@@ -1049,7 +1054,7 @@
       "evidenceClass": "semantic",
       "ok": false,
       "diagnosticCodes": [
-        "binding.ambiguous"
+        "binding.cardinality"
       ]
     },
     {
@@ -1059,7 +1064,7 @@
       "evidenceClass": "semantic",
       "ok": false,
       "diagnosticCodes": [
-        "binding.capability"
+        "binding.capability-missing"
       ]
     },
     {
@@ -1107,7 +1112,7 @@
       "evidenceClass": "semantic",
       "ok": false,
       "diagnosticCodes": [
-        "graph.unreachable"
+        "profile.unreachable-selection"
       ]
     },
     {
@@ -1141,7 +1146,7 @@
       "evidenceClass": "representation",
       "ok": false,
       "diagnosticCodes": [
-        "declaration.unknown-field"
+        "schema.unknown-field"
       ]
     },
     {
@@ -1151,7 +1156,7 @@
       "evidenceClass": "semantic",
       "ok": false,
       "diagnosticCodes": [
-        "module.duplicate"
+        "profile.duplicate-selection"
       ]
     },
     {
@@ -1161,7 +1166,7 @@
       "evidenceClass": "semantic",
       "ok": false,
       "diagnosticCodes": [
-        "implementation.duplicate"
+        "declaration.duplicate-implementation"
       ]
     },
     {
@@ -1171,7 +1176,7 @@
       "evidenceClass": "representation",
       "ok": false,
       "diagnosticCodes": [
-        "owner.path-invalid"
+        "schema.invalid-value"
       ]
     },
     {
@@ -1181,7 +1186,7 @@
       "evidenceClass": "semantic",
       "ok": false,
       "diagnosticCodes": [
-        "profile.module-unknown"
+        "profile.unknown-module"
       ]
     },
     {
@@ -1254,7 +1259,7 @@
       "declarationLines": 3,
       "declarationBytes": 181,
       "declarationExports": 2,
-      "serializedBytes": 22632,
+      "serializedBytes": 22048,
       "importCounters": {
         "sourceImports": 1,
         "typeOnlyImports": 0,
@@ -1264,7 +1269,7 @@
       "compileDuration": {
         "10": {
           "declarations": 10,
-          "compileDurationMs": 122.4,
+          "compileDurationMs": 136.09,
           "inputs": {
             "scale.ts": "8bc4c9c67ff91fc7ec04345b59183489921fcf43e023cc8a016d853b2967e2ab",
             "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
@@ -1275,7 +1280,7 @@
         },
         "100": {
           "declarations": 100,
-          "compileDurationMs": 134.41,
+          "compileDurationMs": 132.79,
           "inputs": {
             "scale.ts": "90e4eca333ee28af1c0f61d5f236d2144baeeba388a6cb2800b5bd6620c6ce3b",
             "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
@@ -1286,7 +1291,7 @@
         },
         "1000": {
           "declarations": 1000,
-          "compileDurationMs": 203.01,
+          "compileDurationMs": 201.46,
           "inputs": {
             "scale.ts": "e4770a8ba5c8e5fda982e630f12891bba2673249e679d15d00a4fb8c8ab1c468",
             "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
@@ -1317,7 +1322,7 @@
       "declarationLines": 19,
       "declarationBytes": 543,
       "declarationExports": 6,
-      "serializedBytes": 22482,
+      "serializedBytes": 21898,
       "importCounters": {
         "sourceImports": 1,
         "typeOnlyImports": 0,
@@ -1327,7 +1332,7 @@
       "compileDuration": {
         "10": {
           "declarations": 10,
-          "compileDurationMs": 126.83,
+          "compileDurationMs": 125.9,
           "inputs": {
             "scale.ts": "88af657e18b71c66fbc338510b865c4dd7f2cc9fbf06a39d24541e02d8e97a3c",
             "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
@@ -1338,7 +1343,7 @@
         },
         "100": {
           "declarations": 100,
-          "compileDurationMs": 143.3,
+          "compileDurationMs": 156.97,
           "inputs": {
             "scale.ts": "9ff49523af45db1e10d5391517163904da46d77f1903df864e10ad7f92d8923a",
             "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
@@ -1349,7 +1354,7 @@
         },
         "1000": {
           "declarations": 1000,
-          "compileDurationMs": 229.66,
+          "compileDurationMs": 226.05,
           "inputs": {
             "scale.ts": "21e02623447c6030232bdc181979105524bf62131adb70bc402a17c826b38ace",
             "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
@@ -1380,7 +1385,7 @@
       "declarationLines": 5,
       "declarationBytes": 338,
       "declarationExports": 4,
-      "serializedBytes": 26124,
+      "serializedBytes": 25540,
       "importCounters": {
         "sourceImports": 1,
         "typeOnlyImports": 0,
@@ -1390,7 +1395,7 @@
       "compileDuration": {
         "10": {
           "declarations": 10,
-          "compileDurationMs": 123.7,
+          "compileDurationMs": 127.85,
           "inputs": {
             "factories.ts": "139a6efe4b389b2b0cf4cf7cadc14bba752858a7b6bc20bffc29e6205ec4f7b0",
             "scale.ts": "90d6000289978a326e8988fe7622a268df884d5e00fb88b04f6d01a85a9a6a88",
@@ -1403,7 +1408,7 @@
         },
         "100": {
           "declarations": 100,
-          "compileDurationMs": 134.69,
+          "compileDurationMs": 131.46,
           "inputs": {
             "factories.ts": "eaa07a3670925420328525300e3bd5a93788fe13f0ac0e82f0b173fe6ecacd78",
             "scale.ts": "aec40c1f1737c6c68b8c0a86c04dc6a54f747035c226d29cf85250bdaab1d3c9",
@@ -1416,7 +1421,7 @@
         },
         "1000": {
           "declarations": 1000,
-          "compileDurationMs": 322.37,
+          "compileDurationMs": 329.86,
           "inputs": {
             "factories.ts": "cbe280d8993ed453c2e770364aaa1287375f9dc6b2a42620405f42c6dee9c89d",
             "scale.ts": "453cf40e4ed1ad94fcabbecf6e52e5a034eaa6f51aff2ab9ce0f63283a29feff",
@@ -1439,14 +1444,15 @@
     "candidate-split.d.ts": "f7d7a60c5563c22165d9c12da9b0a8591f2ea44b24e9828cdb25928ec2eed58f",
     "corpus.d.ts": "fe78492bcf94b808a40a8d919cb250b293f337e0d81d6dc52725578a7120aaa5",
     "factories.d.ts": "baef386411419afa72fd5c9baa48888e52c50918783053d89b7a28995d2ac4c3",
-    "index.d.ts": "8c414cc30f10cdbc609afb25d3fec76d3c2996e0fd0d0fa95b1fb435b0cf0c39",
-    "oracle.d.ts": "dda17c0b45a2aa732f2dc2276f6ce85f81dea3bbf1f8e8c7889ccccc5cb9e6e4",
+    "host-profile.d.ts": "797ec7335d1e7a0da9ab28d720a935689e02acdee5ae4df8524b6ae1b74f6da3",
+    "index.d.ts": "4d141c3afca28409648eb2a989f874463ad1ad4a6c1947096579ac72d513c75e",
+    "oracle.d.ts": "1a70f15fe229f3fdf66a7f9979c4170530f93fd13b89e40d45e92692f801dfc1",
     "type-probes.d.ts": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881",
-    "types.d.ts": "709fd9960533b2be6b3b9a25285eb1d1102263cab61d5953f95f7171c6596a58"
+    "types.d.ts": "3cc7ee8d68e6b4af58e83fb06c732932e3fda3e3246a33529a9a003188ee6a9b"
   },
   "limitations": {
-    "desiredState": "synthetic filtering inside lab oracle, not Host boundary proof",
-    "semantics": "shared oracle has documented accepted-contract disagreements; see report API-02",
+    "desiredState": "explicit test-Host preprocessing policy, not a production desired-state contract",
+    "semantics": "simplified normalized lab inputs and diagnostic payloads, not full wire/diagnostic/SCC conformance",
     "measurements": "synthetic source/emit counts only; layout edits are assumptions"
   },
   "guards": {

@@ -19,14 +19,25 @@ plugin host, product integration, package publication or accepted-ADR change.
   `4b53d31b981ee0a4ea8d6a6329148453d925fdff2fd0aee40225ad22dd2957ba`;
 - API lab: the same 30 scenarios across three candidates, 90 executions,
   corpus digest
-  `fc2628ffc60914e23bef29d72b1cdf5f92f3d0d470e107fad503900a0f468f39`;
+  `3f09cc2c6ad801e36594be02e2b99ca691ca149241495ec65d73978de19b860c`;
 - retained API lab result:
   `research/implementation-readiness/evidence/api-authoring-exact-run.json`,
   SHA-256
-  `ac82157395692383a0b863351f6694c5635afbab18c70354629b2e71a0fb13b5`;
+  `f98b20263eeb3c03d8f740fcccf72f1bf482525cae30adf30aa1cc15e1f6da2b`;
 - execution envelope: `research/implementation-readiness/evidence/api-authoring-execution.json`,
-  source `c86a2acc13c5d6dc3603b11be26462b43725035c`, complete committed input
+  source `23de59bc20f354fd93e1d48b61ee754e4579d778`, complete committed input
   hashes, toolchain hashes, command outcome and emitted declarations.
+
+The shared laboratory now permits alternate implementations, rejects duplicate
+profile selections, uses accepted semantic code names and keeps desired state
+in an explicit test-Host. Six additional selection probes cover both alternatives
+for all three candidates. The normalized lab still does not claim complete wire,
+diagnostic, resource or SCC conformance.
+
+O1-O5 source access was incomplete in the historical campaign. A separate
+verified offline source pack now provides 24 original source/license files at
+five pinned upstream commits. `evidence/oss-source-inputs.json` records custody.
+Those five follow-up research results are still pending, not counted as success.
 
 Worker count is not treated as proof. Partial, blocked, retried and
 source-unavailable results remain explicitly classified.
