@@ -57,10 +57,7 @@ to declare the map at all, and because `private` is not a publication barrier:
 the npm guard that refuses a private manifest fires only on a workspace publish.
 The gate does not verify the target file names below, that those files exist, or
 that the declaration target is a declaration file; the packed consumer cases in
-the evidence section verify resolution against the real archive. It does not verify the target file names below, that those
-files exist, or that the declaration target is a declaration file; the packed
-consumer cases in the evidence section verify resolution against the real
-archive.
+the evidence section verify resolution against the real archive.
 
 The map is:
 
