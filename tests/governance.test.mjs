@@ -1912,3 +1912,53 @@ test("package source must not carry a generation-suffixed identifier", async () 
     /generation-suffixed identifier: packages\/core\/src\/facade\.ts compileCompositionV1/u,
   );
 });
+
+test("the ESM carrier rules bind core, the lifecycle rule binds every identity", async () => {
+  const core = {
+    name: "@get-modular/core",
+    type: "module",
+    exports: {
+      ".": {
+        import: { types: "./dist/index.d.ts", default: "./dist/index.js" },
+        default: "./dist/index.js",
+      },
+    },
+  };
+  const manifests = new Map([["packages/core/package.json", core]]);
+  const artifacts = [
+    "packages/core/package.json",
+    "packages/core/src/index.ts",
+    "packages/conformance/package.json",
+    "packages/conformance/src/index.ts",
+  ];
+  const validate = async () => validateBlockedImplementation({
+    blockerIds: new Set(["OD-005", "OD-006"]),
+    publicationBlockerIds: new Set(),
+    productionArtifacts: artifacts,
+    claimDocuments: [],
+    readPackageManifest: async path => manifests.get(path),
+  });
+
+  // The conformance package is not the ESM carrier of ADR-0012, so its own
+  // shape is not constrained by that decision.
+  manifests.set("packages/conformance/package.json", {
+    name: "@get-modular/conformance",
+    main: "./dist/index.cjs",
+    types: "./dist/index.d.ts",
+    exports: { ".": "./dist/index.js", "./vectors": "./dist/vectors.js" },
+  });
+  await assert.doesNotReject(validate());
+
+  // An install-time script runs code on every consumer, so it binds both.
+  manifests.set("packages/conformance/package.json", {
+    name: "@get-modular/conformance",
+    scripts: { postinstall: "node ./patch.mjs" },
+  });
+  await assert.rejects(validate(), /packages\/conformance\/package\.json scripts\.postinstall/u);
+
+  manifests.set("packages/conformance/package.json", {
+    name: "@get-modular/conformance",
+    scripts: "build",
+  });
+  await assert.rejects(validate(), /packages\/conformance\/package\.json scripts must be an object/u);
+});

@@ -12,6 +12,7 @@ export const ACCEPTED_PACKAGE_NAMES = new Set([
   "@get-modular/conformance",
   "@get-modular/core",
 ]);
+export const ESM_CARRIER_PACKAGE_NAME = "@get-modular/core";
 const PACKAGE_MANIFEST = /^packages\/(?:.+\/)?package\.json$/u;
 const PACKAGE_ROOT_MANIFEST = /^packages\/[^/]+\/package\.json$/u;
 export const PUBLICATION_FIELDS = Object.freeze([
@@ -26,10 +27,11 @@ export const PUBLICATION_FIELDS = Object.freeze([
   "typesVersions",
   "typings",
 ]);
-// ADR-0012 requires the accepted carrier to omit these root manifest fields and
-// every lifecycle script a package manager runs on install or publish. The rule
-// is a property of the accepted carrier, so it holds whether or not a
-// publication blocker is open.
+// ADR-0012 describes the carrier of `@get-modular/core`: it omits these root
+// manifest fields and exposes exactly one ESM package root. Those rules bind
+// that package only. The lifecycle-script prohibition is different in kind,
+// because an install script runs code on every consumer, so it binds every
+// accepted identity. Both hold whether or not a publication blocker is open.
 export const PROHIBITED_MANIFEST_FIELDS = Object.freeze([
   "browser",
   "main",
@@ -174,15 +176,19 @@ export async function packageManifestInventory(
       publicationFields: readable
         ? PUBLICATION_FIELDS.filter(field => manifest[field] !== undefined)
         : [],
-      prohibitedFields: readable
+      carriesEsmCarrierRules: readable && manifest.name === ESM_CARRIER_PACKAGE_NAME,
+      prohibitedFields: readable && manifest.name === ESM_CARRIER_PACKAGE_NAME
         ? PROHIBITED_MANIFEST_FIELDS.filter(field => manifest[field] !== undefined)
         : [],
       prohibitedScripts: readable
         ? PROHIBITED_LIFECYCLE_SCRIPTS.filter(script => scripts[script] !== undefined)
         : [],
       scriptsMalformed,
-      carrierShapeViolations: readable ? exportMapViolations(manifest.exports) : [],
+      carrierShapeViolations: readable && manifest.name === ESM_CARRIER_PACKAGE_NAME
+        ? exportMapViolations(manifest.exports)
+        : [],
       moduleTypeViolation: readable
+        && manifest.name === ESM_CARRIER_PACKAGE_NAME
         && manifest.exports !== undefined
         && manifest.type !== "module",
       isPrivate: readable && manifest.private === true,

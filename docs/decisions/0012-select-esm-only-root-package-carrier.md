@@ -43,7 +43,13 @@ the superseded passages.
 
 ### Package manifest
 
-`@get-modular/core` is ESM-only and exposes exactly one package root:
+`@get-modular/core` is ESM-only and exposes exactly one package root. The
+manifest rules in this section bind that package; `@get-modular/conformance`
+carries its own shape, and only the lifecycle-script prohibition below is
+common to both. `governance:check` enforces the export map exactly as written
+here.
+
+The map is:
 
 ```json
 {
@@ -71,9 +77,11 @@ The package MUST omit:
 
 - `preinstall`, `install`, `postinstall`, `prepare`, and every other lifecycle
   script that a package manager runs on install or publish; `governance:check`
-  rejects such a manifest for an accepted package identity regardless of any
-  open decision;
-- `main`, `module`, package-level `types`, `typings`, and `typesVersions`;
+  rejects such a manifest for any accepted package identity regardless of any
+  open decision, because an install script runs code on every consumer;
+- `main`, `module`, package-level `types`, `typings`, `typesVersions`, and a
+  root `browser` field, which would be a second environment-specific
+  implementation;
 - a `require` condition and `node`, `browser`, `development`, `production`, or
   other environment-specific export conditions;
 - subpath exports, including `./package.json` and `./dist/*`;
