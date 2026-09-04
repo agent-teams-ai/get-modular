@@ -46,10 +46,12 @@ the superseded passages.
 `@get-modular/core` is ESM-only and exposes exactly one package root. The
 manifest rules in this section bind that package; `@get-modular/conformance`
 carries its own shape, and only the lifecycle-script prohibition below is
-common to both. `governance:check` enforces the structure of that map: the
-subpath set, the condition names, their order, the relative form of every
-target, the identity of the sibling `default` with the nested one, and
-`"type": "module"`. It does not verify the target file names below, that those
+common to both. `governance:check` enforces the structure of that map: its
+presence on a publishable manifest, the subpath set, the condition names, their
+order, the relative form of every target, the identity of the sibling `default`
+with the nested one, and `"type": "module"`. A manifest without the map has no
+package root at all, so a published archive would expose its whole tree to deep
+imports; a `private: true` manifest is never published and is exempt. It does not verify the target file names below, that those
 files exist, or that the declaration target is a declaration file; the packed
 consumer cases in the evidence section verify resolution against the real
 archive.

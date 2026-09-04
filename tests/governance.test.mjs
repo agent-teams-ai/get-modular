@@ -442,7 +442,12 @@ test("open decisions admit private package source but block publication and runt
   }), /runtime-conformance claims are blocked/u);
 
   for (const manifest of [
-    { name: "@get-modular/core", private: false, type: "module" },
+    {
+      name: "@get-modular/core",
+      private: false,
+      type: "module",
+      exports: { ".": { import: { types: "./dist/index.d.ts", default: "./dist/index.js" }, default: "./dist/index.js" } },
+    },
     {
       name: "@get-modular/core",
       private: true,
@@ -2101,4 +2106,45 @@ test("a missing production source reader fails closed", async () => {
     claimDocuments: [],
     readPackageManifest: async () => undefined,
   }), /production source reader must be supplied/u);
+});
+
+test("a publishable carrier must declare its package root", async () => {
+  const artifacts = ["packages/core/package.json", "packages/core/src/index.ts"];
+  const validate = async manifest => validateBlockedImplementation({
+    blockerIds: new Set(["OD-005"]),
+    publicationBlockerIds: new Set(),
+    productionArtifacts: artifacts,
+    claimDocuments: [],
+    readPackageManifest: async () => manifest,
+    readProductionSource: async () => "export const x = 1;",
+  });
+
+  // Without an export map Node falls back to directory resolution and every
+  // internal file becomes importable, so a publishable manifest must declare it.
+  await assert.rejects(validate({
+    name: "@get-modular/core",
+    type: "module",
+    files: ["dist"],
+    publishConfig: { access: "public" },
+  }), /exports must declare the accepted package root/u);
+
+  // A private manifest is never published and may not declare exports while a
+  // publication blocker is open, so the requirement does not apply to it.
+  await assert.doesNotReject(validate({
+    name: "@get-modular/core",
+    type: "module",
+    private: true,
+  }));
+
+  // A target that climbs out of the package is not below the package root.
+  await assert.rejects(validate({
+    name: "@get-modular/core",
+    type: "module",
+    exports: {
+      ".": {
+        import: { types: "./dist/index.d.ts", default: "./../evil.js" },
+        default: "./../evil.js",
+      },
+    },
+  }), /must be a relative file target below the package root: \.\/\.\.\/evil\.js/u);
 });

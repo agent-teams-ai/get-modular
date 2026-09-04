@@ -184,7 +184,7 @@ export async function packageManifestInventory(
         : [],
       scriptsMalformed,
       carrierShapeViolations: readable && manifest.name === ESM_CARRIER_PACKAGE_NAME
-        ? exportMapViolations(manifest.exports)
+        ? exportMapViolations(manifest.exports, manifest.private === true)
         : [],
       moduleTypeViolation: readable
         && manifest.name === ESM_CARRIER_PACKAGE_NAME
@@ -225,14 +225,25 @@ function relativeTarget(value, label) {
   if (typeof value !== "string") {
     return [`${label} must be a relative file target, not a nested condition object`];
   }
-  if (!value.startsWith("./") || value.includes("*")) {
+  const escapes = value.split("/").includes("..");
+  if (!value.startsWith("./") || value.includes("*") || escapes) {
     return [`${label} must be a relative file target below the package root: ${value}`];
   }
   return [];
 }
 
-function exportMapViolations(exportsField) {
-  if (exportsField === undefined) return [];
+function exportMapViolations(exportsField, isPrivate) {
+  // A publishable carrier without an export map has no package root at all:
+  // Node falls back to directory resolution and the archive hands out its whole
+  // tree, which is the opposite of exposing exactly one root. A `private: true`
+  // manifest is never published and is forbidden to declare `exports` while a
+  // publication blocker is open, so the requirement follows publishability.
+  if (exportsField === undefined) {
+    return isPrivate
+      ? []
+      : ['exports must declare the accepted package root; without it a published '
+        + 'archive exposes its whole tree to deep imports'];
+  }
   if (!plainObject(exportsField)) {
     return ['exports must be an object with one "." subpath'];
   }
