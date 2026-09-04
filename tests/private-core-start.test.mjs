@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
@@ -117,6 +117,14 @@ test("real governance entrypoint consumes the start record before admitting priv
   const fixture = join(directory, "repository");
   try {
     await exec("git", ["clone", "--quiet", "--no-hardlinks", repositoryRoot, fixture]);
+    // The clone carries HEAD, so without this the fixture would exercise the
+    // committed checkers rather than the ones under test and a local run before
+    // a commit would report a stale result.
+    await cp(join(repositoryRoot, "architecture/checks"), join(fixture, "architecture/checks"), {
+      recursive: true,
+      force: true,
+    });
+    await exec("git", ["add", "architecture/checks"], { cwd: fixture });
     await symlink(join(repositoryRoot, "node_modules"), join(fixture, "node_modules"), "junction");
     await mkdir(join(fixture, "packages/core/src/features/example"), { recursive: true });
     await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify({ name: "@get-modular/core", private: true, type: "module" }));
@@ -125,7 +133,7 @@ test("real governance entrypoint consumes the start record before admitting priv
     const gate = () => exec(process.execPath, ["architecture/checks/governance.mjs"], { cwd: fixture });
     await git("add", "packages/core");
     await gate();
-    await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify({ name: "@get-modular/conformance", private: true }));
+    await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify({ name: "@get-modular/conformance", private: true, type: "module" }));
     await git("add", "packages/core/package.json");
     await assert.rejects(gate(), error => /private Core start.*manifest identity/u.test(error.stderr));
     await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify({ name: "@get-modular/core", private: true, type: "module" }));
