@@ -2191,14 +2191,19 @@ test("the files allowlist must not name the package root", async () => {
 
   await assert.doesNotReject(validate(["dist/**"]));
   await assert.doesNotReject(validate(["./dist", "dist/"]));
+  await assert.doesNotReject(validate(["dist/index.js", "README.md", "LICENSE", "docs/api.md"]));
 
   // An export map hides internals from importers; it does not keep them out of
   // the archive. A root entry ships source, tests and configuration regardless,
   // and a literal list of spellings loses against a glob language: a real
   // `npm pack` puts the same tree in the archive for `**` and for `./**`.
+  // Enumerating wildcard spellings loses at every level: a real `npm pack` ships
+  // the whole tree for `?*`, `[a-z]*`, `{,**}` and `/**` exactly as for `**`, so
+  // the first path segment must be a literal directory name.
   for (const files of [
-    ["."], ["./"], ["/"], [""], [" . "],
+    ["."], ["./"], ["/"], [""], [" . "], [".."], ["../src"],
     ["*"], ["**"], ["**/*"], ["./*"], ["./**"], ["./**/*"], [" ./** "], ["*/**"],
+    ["/**"], ["//**"], ["?*"], ["[a-z]*"], ["{,**}"], ["{*,**}"], ["!(dist)"],
     ["dist", "**"],
   ]) {
     await assert.rejects(

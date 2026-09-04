@@ -324,7 +324,11 @@ function conditionOrderViolations(actual, expected, label) {
 // same tree as `**`. The entry is normalized first, then rejected when it
 // resolves to the package root or when its first path segment is a wildcard,
 // which is what makes it match every top-level directory.
-const ROOT_SEGMENT_WILDCARDS = new Set(["*", "**"]);
+// Enumerating the wildcard spellings is the same mistake one level down: a real
+// `npm pack` ships the whole tree for `?*`, `[a-z]*`, `{,**}` and `/**` just as
+// it does for `**`. The predicate is inverted instead: the first path segment
+// must be a literal directory name.
+const GLOB_METACHARACTERS = /[*?[\]{}!()]/u;
 
 function normalizedFilesEntry(entry) {
   let value = entry.trim();
@@ -336,7 +340,8 @@ function normalizedFilesEntry(entry) {
 function rootedFilesEntry(entry) {
   const value = normalizedFilesEntry(entry);
   if (value === "" || value === ".") return true;
-  return ROOT_SEGMENT_WILDCARDS.has(value.split("/")[0]);
+  const first = value.split("/")[0];
+  return first === "" || first === "." || first === ".." || GLOB_METACHARACTERS.test(first);
 }
 
 function filesAllowlistViolations(filesField) {
