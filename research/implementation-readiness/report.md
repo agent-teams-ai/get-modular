@@ -35,8 +35,8 @@ No reproducible P0 was observed. Because there is no Core subject, this is not e
 | Dispute critics | Subject `2bef472612dea7c6a89199a47dd8ca7ed552e630` | 32 unique topic×role wrappers, all `done`; source-bundle digest `216bb3b0…` |
 | Dispute manifest integrity | Aggregate `ccd13b6652a45a6e4d80a4ca5b2ff80a95fdc7a624d3f30695d181e61e233838` | All 32 wrapper hashes and the aggregate were independently recomputed |
 | Indexed source integrity | 115 indexed sources | All current indexed hashes verified with no mismatch |
-| Retained API execution subject | `3155309a25edfd8d9dbb8b46e9c95259d9901357` | Exact committed lab inputs; envelope and result retained together |
-| API result SHA-256 | `ec72ade37bc0e7342d879ff19c6f633493ecbce9520cbecdb15e589a22b18e76` | 90 outcomes, 6 alternative-selection probes and 18 authoring-edit experiments; source/toolchain identities and emitted-file hashes; not an attestation |
+| Retained API execution subject | `af519683f01a1f38cc323eb46bcb141fcc4abda5` | Exact committed corrected lab inputs; envelope and result retained together |
+| API result SHA-256 | `69497c6cab72770b6cdc96d913ccc12cccba95f10e78b121a533616752fb39a1` | 90 outcomes, 6 alternative-selection probes, 48 owner-token probes and 18 authoring-edit experiments; source/toolchain identities and emitted-file hashes; not an attestation |
 
 The dispute wrapper bytes and bundle manifest are custody evidence. Their nested JSON/YAML summaries are reviewer analysis, not executable proof.
 
@@ -79,6 +79,29 @@ allowed reads and rejected parent-path access. Provider control-plane networking
 is still present; OS-wide egress isolation is not claimed. All six jobs used
 `gpt-5.6-sol`/`xhigh`/fast and separate clean, coordinator-verified exact clones.
 No runtime guard, source, account policy or shared controller was changed.
+
+Four fresh integrators then inspected exact subject
+`3014239a0d22b21a3d2994fcc5f5b2da4e7e8236` with the same bounded profile.
+Their complete unchanged outputs, inputs and cleanup records are indexed in
+`evidence/follow-up/raw/integrators-3014239/index.json`. They did not execute
+tests. The earlier integrator/inventory subjects above remain historical.
+
+| Integrator | Coordinator disposition |
+| --- | --- |
+| I1 authority | Preserve owner-start gate and ADR-0008 authority; clarify that M3 needs accepted successor authority, not a proposed document reference |
+| I2 API/TypeScript | Correct support-share label, S21 title, owner-token grammar and emitted-example check; retain packed typing and broader Pure DI parity as future gates |
+| I3 security/custody | Keep tool-only network restriction distinct from OS-wide isolation; retain real-subject resource/digest and raw-wrapper limitations |
+| I4 MVP/DX | Add the 10/100/1000 evidence distinction below; no further research campaign or navigation benchmark is a prerequisite for private M1 |
+
+All four distinguish absent implementation evidence from an architectural
+rejection. Their phase numbers are not a replacement for the roadmap's Phase
+0-4 mapping below. No reviewer can create the owner-start authorization or
+accept proposed public/transport/self-composition semantics.
+
+The integrators inspected the previous `3155309` execution, not the subsequent
+`af51968` correction run. Their raw conclusions remain unchanged. The current
+capture verifies corrected input bytes; final reviewers must inspect that
+capture and the applied correction, not reuse an earlier exact-head approval.
 
 ## Authority and precedence
 
@@ -352,7 +375,23 @@ before its witness is relied on.
 
 **Evidence/result IDs:** `gm-readiness-a10-20260903`, `gm-dispute-t6-r2/r3/r4-2bef-20260904`, all `gm-dispute-t7-r1…r4-2bef-20260904`.
 
-**Impact:** The 10/100/1000 laboratory creates one generated `scale.ts` and measures compilation time. It does not measure feature-local navigation, alternative implementations, inventory joins, binding-controlled factory replacement, failure recovery, or deletion/remediation cost. ADR-0008’s cost budgets lack a reproducible benchmark protocol.
+**Impact:** The flat 10/100/1000 type-scale experiment measures compilation,
+not human navigation or maintenance. A separate ten-module experiment does
+measure six source edits, including deletion/remediation. Neither measures
+human search time, product inventory joins, runtime replacement or recovery.
+ADR-0008's production cost budgets still need a reproducible consumer benchmark.
+
+| Module count | Measured | Not established |
+| --- | --- | --- |
+| 10 | Flat type-scale compilation; separate feature-local edit trees with declaration/factory, catalog/profile/desired-state files; one-file binding edit | Human owner/binding discovery, grouping quality, product loader regeneration or runtime failure handling |
+| 100 | Flat declaration compilation only; split candidate also emits a factory file | Owner-local navigation, inventory joins, alternative-provider discovery or binding edit costs |
+| 1000 | Flat declaration compilation only, with unequal split workload | Production-scale performance, navigation, maintainability or human task time |
+
+Feature-local IDs plus derived inventory are a supported design direction,
+not measured proof of effortless navigation at scale. Before claiming that
+benefit, use a product-owned task to find an owner, trace a slot to its binding
+and factory, replace/remove a provider, and detect stale inventory entries.
+Do not block private M1 on that study or add a registry to manufacture it.
 
 **Minimal correction:** Define these measures in the first product-owned Phase 6 consumer and compare plan-driven materialization with direct Pure DI on the same seam.
 
@@ -412,16 +451,28 @@ threshold; tree-shaking and runtime performance were not measured.
 
 | Candidate | Measured authoring/glue | Type/declaration evidence | Strength | Limitation | Provisional use |
 | --- | --- | --- | --- | --- | --- |
-| Descriptor object | 4 authoring / 12 total support LOC, 75.0% candidate-specific support | 2 annotation matches; 181-byte, 3-line declaration emit | Explicit canonical inert data | No inference facade; no full wire conformance | Canonical internal data form |
+| Descriptor object | 4 authoring / 12 total support LOC, 75.0% total support share | 2 annotation matches; 181-byte, 3-line declaration emit | Explicit canonical inert data | No inference facade; no full wire conformance | Canonical internal data form |
 | Typed `defineModule` | 4 / 27 LOC, 87.1% support including helpers and translation | 1 annotation match; 543-byte, 19-line declaration emit; literal inference passes probes | Zero-behavior authoring convenience | Generic preserves extra subtype fields; must not imply validation | **Preferred private authoring facade**, pending API decision |
 | Declaration plus factory | 5 / 24 LOC, 82.8% support including separate association file | 3 annotation matches in declaration file; 338-byte, 5-line declaration emit; separate typed association checks | Separates inert metadata from construction | ID association tested in host probes, not lifecycle or factory-failure rollback | Keep factories product-owned; do not adopt this lab encoding |
 
+The denominator is `authoringLoc + totalSupportLoc`; `totalSupportShare` is
+`totalSupportLoc` divided by that denominator, not a generic-glue percentage.
 Support counts include adapter glue, imports and candidate-specific helpers,
 but exclude the shared runner/oracle/types. They cannot be used as a product
 generic-glue ratio or proof that a framework reduces wiring cost. Annotation
 matches and declaration sizes refer to each candidate declaration file, not its
 complete transitive API. Split scale probes include an extra factory file;
 the timings therefore do not rank identical compile workloads.
+
+S30 checks the emitted authored example for each candidate, including
+`definedExample`, and source type probes check selected helper signatures.
+This is not packed-consumer inference or a complete public typing contract.
+S28 proves only a single required edge and equal returned value using the same
+two factories; it does not prove optional/many, failure, rollback or lifecycle
+parity. The machine-readable guard is named `singleRequiredEdgePureDiSmoke`.
+Forty-eight additional owner-token probes cover authority and path tokens,
+including repeated/trailing hyphens and 64/65-character bounds. They do not
+replace full owner/wire validation.
 
 Exact compile observations belong only to the retained machine-readable run,
 not a second manually copied timing table. The edit experiment now generates

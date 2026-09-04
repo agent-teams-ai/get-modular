@@ -84,5 +84,9 @@ profile at exact `fe9611590dae25cdc22887148d685889daa0f7c6`, all
 coordinator before and after; workers had no Git/test tools and do not claim
 independent command execution. No runtime source, safety guard, shared
 controller or account policy was changed. Their raw results supplement, never
-rewrite, the historical inventory. Updated integration and affected-area
-exact-head review remain separate subsequent steps.
+rewrite, the historical inventory. Four updated integrators subsequently
+completed on exact `3014239a0d22b21a3d2994fcc5f5b2da4e7e8236`; their
+unchanged results and custody are in
+`evidence/follow-up/raw/integrators-3014239/index.json`. The coordinator applied
+only confirmed documentation/lab corrections. Final affected-area exact-head
+review remains a separate step, not inferred from integrator agreement.

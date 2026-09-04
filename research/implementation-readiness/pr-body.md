@@ -23,9 +23,9 @@ plugin host, product integration, package publication or accepted-ADR change.
 - retained API lab result:
   `research/implementation-readiness/evidence/api-authoring-exact-run.json`,
   SHA-256
-  `ec72ade37bc0e7342d879ff19c6f633493ecbce9520cbecdb15e589a22b18e76`;
+  `69497c6cab72770b6cdc96d913ccc12cccba95f10e78b121a533616752fb39a1`;
 - execution envelope: `research/implementation-readiness/evidence/api-authoring-execution.json`,
-  source `3155309a25edfd8d9dbb8b46e9c95259d9901357`, complete committed input
+  source `af519683f01a1f38cc323eb46bcb141fcc4abda5`, complete committed input
   hashes, toolchain hashes, command outcome and emitted declarations.
 
 The shared laboratory now permits alternate implementations, rejects duplicate
@@ -54,6 +54,15 @@ source or shared account/controller policy was changed.
 Worker count is not treated as proof. Partial, blocked, retried and
 source-unavailable results remain explicitly classified.
 
+Four fresh integrators completed on exact
+`3014239a0d22b21a3d2994fcc5f5b2da4e7e8236`, indexed separately in
+`evidence/follow-up/raw/integrators-3014239/index.json`. Their raw results are
+unchanged; confirmed corrections clarify M3 authority, support-share metrics,
+duplicate profile selections, owner-token grammar and emitted-example coverage.
+The corrected source was executed afterward: 90 same-corpus outcomes, 48
+owner-token probes and 36 compiled edit trees passed. The report separates
+ten-module edit measurements from unmeasured human navigation at 100/1000.
+
 ## Verdict
 
 No P0 was reproduced. The result is **NO-GO now** for the first tracked private
@@ -77,7 +86,8 @@ witness as product decisions.
 - exact API lab compile and runner: passed on Node `24.18.0` with TypeScript
   `7.0.2`;
 - inventory and evidence digests: independently recomputed;
-- full `pnpm check`: passed after the report rewrite;
+- full `pnpm check`: passed at the previous integrated checkpoint; repeat on
+  the final corrected subject before handoff;
 - six hosted reviewers completed against `523f8e7`; confirmed report and lab
   findings were corrected after that review;
 - source/result drift tests pass, including ignored/untracked input, changed
