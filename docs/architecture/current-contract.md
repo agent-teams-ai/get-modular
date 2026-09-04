@@ -28,6 +28,11 @@ This document is the navigation and implementation guide for the current
 pre-1.0 contract. It does not replace an accepted ADR or mutate immutable
 qualification artifacts.
 
+The [compiler engineer handbook](../qualification/compiler-engineer-handbook.md)
+maps the seventeen diagnostic prerequisites to input evidence, partial-failure
+rules and independent examples. Read its explicit derivation gaps before
+implementing a private fact predicate; the checker is not the specification.
+
 ## Accepted contract and proposed public naming
 
 Get Modular has one accepted contract and no production package yet. The
@@ -154,8 +159,12 @@ source and keeps blocking publication surfaces and runtime claims. Inside that
 checkpoint repeated binding-record inputs stay outside the claimed domain, and
 the ADR-0014 semantics may be demonstrated only in fixtures until ADR-0014 is
 accepted. It is not
-either proposed carrier adapter and cannot claim trusted-object or raw-byte
-admission. Public packaging, both carrier adapters, raw decoding, and production
+either exposed carrier adapter and cannot claim trusted-object or raw-byte
+admission. ADR-0015 nevertheless permits a private object candidate over the
+same semantic implementation to gather acceptance evidence in M1. Accepted
+object rules remain authority; unresolved cases are labelled candidate-only,
+not silently settled. The roadmap's callable matrix defines that test scope.
+Public packaging, exposed carrier semantics, raw decoding, and production
 dependency adapters remain gated by their corresponding decisions.
 
 ## Historical requirement wording

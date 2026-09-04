@@ -36,6 +36,20 @@ keep it replaceable. Identifiers, file names, and directory names in this guide
 are implementation details in the sense of ADR-0008 and may change through an
 ordinary pull request as long as the invariants they carry survive.
 
+### Carrier-boundary precedence
+
+ADR-0015 admits private semantic source and explicitly permits private candidate
+entrypoints that produce acceptance evidence. M1 requires a normalized-value
+seam and may additionally test a trusted-object candidate of
+`compileCompositionV1` over the same implementation, as the roadmap's callable
+matrix specifies. This does not expose accepted carrier semantics, raw input,
+authoring helpers or public package exports. Unresolved cases remain candidate
+evidence; accepted object rules are not replaced by proposed ADR-0013. The
+ADR-0008 requirement that direct and generated subjects share the same public
+compiler boundary applies only after the M2/M3 decisions admit that boundary.
+Until then, M1 uses only the private qualification surface selected under that
+matrix. An object candidate is not a public or conforming carrier.
+
 ## Own feature inventory
 
 ADR-0008 names five cohesive responsibilities and leaves their identities to the
@@ -109,8 +123,10 @@ and the public wire types `ModuleDeclaration`, `CompositionProfile`,
 feature, `packages/core/src/features/authoring/`. It has no module declaration
 and no factory, because the helpers are the non-validating constructors that
 ADR-0007 accepted and the types are inert contracts; its `internal.ts` is the
-one place from which the direct subject entry and, from M3, `src/index.ts`
-re-export them together with the accepted compiler entry points.
+one feature-local source for the later M2/M3 carrier and public entries. M1
+imports the internal types needed by its selected qualification surface and
+does not publish these helpers or contracts. Its optional object candidate
+reuses that source; M2 admits carrier claims only after the relevant decisions.
 
 ### Own graph
 
@@ -324,7 +340,10 @@ Rules:
   from the provider feature's `identity.ts` (or `declaration.ts` for a
   single-implementation feature) to name the required capability in its own
   declaration. That import carries constants only, never a port type, a
-  factory, or an implementation.
+  factory, or an implementation. This value-import exception is a proposed
+  qualification/self-composition rule, not current production structural
+  authority; it must be explicitly admitted by the source-dependency policy
+  before any production conformance claim relies on it.
 - `internal.ts` exists only in library features. It exports pure functions and
   plain types, never a factory, a declaration, or an implementation. The
   Foundation source-dependency policy records these three cross-feature edges,
@@ -342,7 +361,9 @@ Rules:
 - No feature exports a barrel over its whole directory. The module's curated
   public surface is `packages/core/src/index.ts` alone once it exists in M3;
   until then the direct subject entry `self-composition/stage0-entry.ts`
-  re-exports the same accepted entry points for qualification.
+  exposes the selected M1 private row of the roadmap's callable matrix for
+  qualification, including an object candidate when selected. It must not imply
+  either carrier is public or conforming before M2.
 - No generic `resolve()`, container, service locator, or string-keyed factory
   map exists anywhere in production source.
 
@@ -392,7 +413,7 @@ is a typed object literal whose keys are exactly the declared slot identifiers
 of that feature. The slot identifiers in the inventory above are chosen from
 the identifier-safe subset of the accepted `localToken` grammar, lowercase
 letters and digits starting with a letter, and never equal an own property
-name of `Object.prototype` or the name `then`; TypeScript checks that
+name of `Object.prototype`, `prototype`, or `then`; TypeScript checks that
 every `create<Feature>` call site supplies exactly those keys, and the witness
 checker rejects an own declaration whose slot identifier leaves that subset.
 
@@ -425,8 +446,8 @@ handwritten stage0 root `packages/core/self-composition/stage0.ts`, in
 the witness variant and that only the qualification build sees, and nowhere
 else outside `tests/`. The stage0 root is the "checked internal graph"
 checkpoint that ADR-0008 allows as an explicit implementation checkpoint and
-forbids as a release: a test compiles the own declarations and the own profile
-through the direct subject's accepted entry points and proves that the plan's
+forbids as a release: a test compiles the own normalized declarations and
+profile through the direct subject's private qualification seam and proves that the plan's
 `dependencyOrder` equals the order of construction in the file.
 
 In M3 the production root appears as generated code:
@@ -439,15 +460,13 @@ generated one.
 
 ### Direct subject entry
 
-ADR-0008 requires two temporary, hash-identified qualification subjects "with
-the same public compiler boundary: one directly assembled and one generated",
-and it forbids a stage0 public export in the distributed package. The direct
-subject therefore has its own entry file,
+ADR-0008 ultimately requires two temporary, hash-identified qualification
+subjects with the same public compiler boundary and forbids a stage0 public
+export in the distributed package. Before carriers are admitted, the direct
+subject has a private entry file,
 `packages/core/self-composition/stage0-entry.ts`. It imports `stage0.ts` and
-re-exports exactly the accepted compiler entry points bound to the stage0
-facade plus the authoring helpers and public types from
-`features/authoring/internal.ts`, with the same names and types that
-`src/index.ts` exports from M3, and nothing else. It is built by
+exposes the M1 normalized-value seam and, when selected, the qualification-only
+object candidate, with no public package surface. It is built by
 `tsconfig.stage0.json`; `tsconfig.qualification.json` also compiles it because
 that build includes all of `self-composition/`; the production `tsconfig.json`
 never does; it
@@ -459,8 +478,13 @@ shape: `self-composition/stage0-entry.variant.ts` imports
 build sees it. Until M3 `stage0-entry.ts` is therefore the only curated
 entry point of the package, and it exists for qualification alone; the curated
 public entry point `src/index.ts` appears together with the generated root.
-Both subjects expose the same accepted entry points, so the same independent
-vectors and packed public-API checks run against both, as ADR-0008 requires.
+Both M1 subjects expose the same selected private surface, so the same
+independent semantic and object-candidate vectors run against both. M1 does not
+require a generated subject before the first direct object-input test. After
+the M2/M3 decisions admit carriers and public names, dedicated direct and
+generated qualification entries must expose the same accepted public boundary
+before a self-composed or release claim. No carrier-conformance claim is inferred
+from the M1 entry.
 
 ### Build-only directory
 
@@ -472,7 +496,7 @@ creating a third package:
 packages/core/
   self-composition/
     stage0.ts                  handwritten literal assembly of the feature factories, M1 onward
-    stage0-entry.ts            direct subject entry: re-exports the accepted entry points
+    stage0-entry.ts            private normalized seam and optional M1 object candidate
     own-profile.ts             imports every feature's declaration constant and defines the own profile as data
     stage0.variant.ts          handwritten literal root bound to the witness variant, qualification only
     stage0-entry.variant.ts    variant direct subject entry, qualification only
@@ -483,7 +507,7 @@ packages/core/
     emit.ts                    the finite emitter and its input manifest, M3
   src/
     features/
-      authoring/internal.ts    helpers and public types, re-exported by every entry
+      authoring/internal.ts    helpers and inert types; public re-export begins only after M2/M3 gates
       diagnostics/internal.ts  diagnostic rules, comparator, collector
       ...
     composition/
@@ -517,7 +541,9 @@ The direct subject and the generated subject differ in the file that
 constructs the facade, the entry file that re-exports it, the build
 configuration and output directory, the staging manifest written for packing,
 and the set of allowlist entries that the plan reaches; both expose the same
-accepted entry points.
+M1 private row, including the object candidate when selected. The phrase "same
+accepted entry points" must always name a phase row; M1 candidate execution
+does not establish carrier conformance.
 
 `tsconfig.stage0.json` includes `src/features/**` and `self-composition/**`
 except the `*.variant.ts` files, and excludes `src/index.ts` and
@@ -550,9 +576,15 @@ requires for stage roots. Both variant subjects, the direct one built from
 `stage0.variant.ts` through `stage0-entry.variant.ts` and the generated one
 built from `stage1.variant.ts` through `self-composition/stage1-entry.variant.ts`,
 which imports `../src/composition/generated/stage1.variant.js` and re-exports
-the same accepted entry points, come from this one configuration; the layout
+the same M1 private normalized seam, come from this one configuration; the layout
 of `dist-qualification/` differs from `dist/` and takes no part in the W0/W1
-comparison, which compares emitted wiring bytes. The two variant subjects
+comparison, which does not compare unrelated source paths or raw emitted
+source bytes. Under accepted ADR-0008, W0 is the exact wiring artifact emitted
+from P0 and W1 is the exact wiring artifact emitted from P1 by the same pinned
+emitter in an isolated location. Any path-independent tuple is only an internal
+emitter input or diagnostic view; it cannot replace W0/W1 authority. Until the
+closed emitted format, byte comparison and independent checker are defined,
+W0/W1 parity is not claimed. The two variant subjects
 share that one output root because they are witness subjects, not promotion
 subjects; the separate output, cache and incremental roots that ADR-0008
 requires for stage0 and stage1 apply to the direct and generated promotion
@@ -563,41 +595,29 @@ subjects, which keep `dist-stage0/` and `dist/` isolated.
 Until ADR-0012 is accepted, `packages/core/package.json` declares no `files`,
 `exports`, `types`, or other publication field, because accepted ADR-0015
 blocks them while OD-004, OD-005, and OD-006 are open. The two hash-identified
-qualification subjects that ADR-0008 and the roadmap require are therefore
-packed by a qualification tool under the repository's root `tests/qualification/`
-(the harness, the oracles, the staging tool, and the hash records of packing
-results live there, while `packages/core/tests/` holds only feature tests and
-the witness variant), never from the package manifest. The tool copies the
-built output into a disposable staging directory created under the
-operating-system temporary root, outside the repository tree, and writes there
-a candidate manifest, which OD-004 and ADR-0012 permit for a private,
-non-publishable qualification subject; for the generated candidate the export
-map is the one proposed by ADR-0012, and the direct candidate manifest points
-its targets at the stage0-entry build. The staging must be outside the tree
-because the governance gate scans the working tree and rejects any package
-manifest outside `packages/` and any manifest with a publication field that is
-not inside a private accepted package; only the hash records of the packing results come back under
-`tests/qualification/`. The direct staging holds `dist-stage0/src/features/**`,
-`dist-stage0/self-composition/stage0.js` and `stage0-entry.js` with their
-`.d.ts` files, and nothing else from `self-composition/`; its manifest points
-`types` at the entry's declaration file. The generated staging holds
-`dist/index.js`, `dist/index.d.ts`, `dist/composition/generated/stage1.js` and
-`stage1.d.ts`, and every `dist/features/**` file they reference; its manifest
-carries the ADR-0012 export map with `types` at `./dist/index.d.ts`, so the
-four TypeScript consumer modes resolve declarations. Only the retained
-generated subject ever becomes the pack-once distribution candidate, and its
-tarball allowlist includes the emitted `dist/` output and excludes
-`self-composition/`, generated sources, `dist-stage0/`, `dist-qualification/`,
-and tests, so the own profile, the emitter, and the witness variant cannot
-enter the archive.
+qualification subjects that ADR-0008 and the roadmap require are private
+normalized-seam test archives. They are not npm packages, publication
+candidates, or evidence for a public export map. A qualification tool under the
+repository's root `tests/qualification/` owns the harness, independent oracles,
+staging, and content-addressed result records. It copies only the reachable
+private subject closure into a disposable staging directory under the
+operating-system temporary root, outside the repository tree, and records the
+complete file allowlist and archive digest. It does not synthesize a
+`package.json`, `exports`, `types`, or public barrel.
 
-Consumer evidence is not duplicated across subjects. The four TypeScript
-consumer modes required by ADR-0007 and the 1000-declaration typecheck fixture
-run against the retained generated stage1 subject, which ADR-0007 names in the
-singular as the first packed implementation. The direct subject makes no claim
-about declaration output; it passes the export, deep-import,
-declaration-leakage and inert-import audits and the same independent vectors
-as the generated subject.
+The direct M1 archive contains the private stage0 entry and its reachable
+closure. The generated M1 archive contains the private stage1 entry and its
+reachable closure. Both expose the same selected private surface and run
+the same normalized and optional object-candidate vectors, closure audit, declaration-leakage audit,
+deep-import rejection, and inert-import audit. Neither archive is retained as
+a distribution candidate, and neither makes a public TypeScript consumer-mode
+claim.
+
+Only after the M2/M3 authority gates are accepted may a separate later
+generated archive become a pack-once distribution candidate. That later
+archive may contain `dist/index.js`, `dist/index.d.ts`, an accepted export map,
+and public TypeScript consumer evidence. It is not an M1 artifact and cannot be
+derived from the proposed ADR-0012 carrier before that proposal is accepted.
 
 The build-only directory `packages/core/self-composition/` is build tooling
 beside the build configuration in the sense of ADR-0008, outside the
@@ -724,9 +744,9 @@ instruments production code:
    `stage0.ts` against P0, and over their variant counterparts against the
    variant plan; equality of construction order in the checkpoint A test is a
    consequence of this check, not a substitute for it.
-2. A behavioral test compiles a fixed input through the public boundary of the
-   stage0 subject and of the generated stage1 subject, once with the own
-   profile and once with the qualification variant that selects
+2. A behavioral test compiles a fixed input through the phase-applicable
+   qualification boundary of the stage0 subject and of the generated stage1
+   subject, once with the own profile and once with the qualification variant that selects
    `get-modular/canonicalization/witness-variant` and binds both
    `canonicalizer` slots to it, whose canonical bytes carry a fixed prefix.
    The variant direct subject is `stage0.variant.ts` through
@@ -747,14 +767,14 @@ exists. That edge is `plan-output.canonicalizer`; it and
 graph with a second, qualification-only provider, and checkpoint A replaces
 that provider for both. Checkpoint A is passed when:
 
-- the own declarations and the own profile compile with `ok: true` through the
-  accepted entry points re-exported by `self-composition/stage0-entry.ts`;
+- the own normalized declarations and profile compile with `ok: true` through
+  the M1 private seam exposed by `self-composition/stage0-entry.ts`;
 - the static witness check passes over `self-composition/stage0.ts` against
   P0, which includes a construction order equal to `dependencyOrder`; and
 - rebinding both `canonicalizer` slots to the witness variant, through
   `own-profile.variant.ts`, `stage0.variant.ts` and
-  `stage0-entry.variant.ts`, changes the digest of a fixed input compiled
-  through the public boundary.
+  `stage0-entry.variant.ts`, changes the digest of a fixed normalized input
+  compiled through the private qualification boundary.
 
 A stronger checkpoint applies only if a later accepted decision adds it;
 ADR-0016 requires the two-edge and object-identity conditions of proposed
@@ -762,9 +782,10 @@ ADR-0011 to be removed before that decision can be accepted alongside it.
 
 ## What M1 lays down so that M3 adds the emitter without refactoring
 
-The first private package lands these seven properties. Each is required by
-ADR-0008 or the Feature Module Standard, and together they make the emitter a
-one-file change later:
+The first private package lands the accepted, reversible properties 1-4 and 6
+below. Properties 5 and 7 are candidate refinements from proposed ADR-0016;
+they may be implemented experimentally but are not M1 gates or accepted claims.
+Together the accepted properties preserve a one-file path to the emitter:
 
 1. Every feature has `ports.ts`, `declaration.ts`, and `factory.ts` with the
    identities from the inventory above, and no barrel over the feature.
@@ -781,17 +802,17 @@ one-file change later:
    sit behind consumer-owned ports in per-implementation directories with their
    own declarations and factories and one shared `identity.ts`, so binding
    replacement is a data change and the witness variant stays under `tests/`.
-5. The closed dependency record is a typed object literal keyed by declared
-   slot identifiers, and every identity-keyed lookup inside the compiler uses a
-   `Map`.
+5. **ADR-0016 candidate:** The closed dependency record is a typed object
+   literal keyed by declared slot identifiers, and every identity-keyed lookup
+   inside the compiler uses a `Map`.
 6. The own profile exists as data in `self-composition/own-profile.ts` from
    M1; it aggregates the feature-owned declaration constants and repeats no
    identity string, even though only the handwritten stage0 root consumes it.
-7. A checked-internal-graph test compiles the own profile through the accepted
-   entry points of `self-composition/stage0-entry.ts`, asserts `ok: true`, and
-   runs the static witness check over `self-composition/stage0.ts` against
-   that plan, which includes the construction order equal to
-   `dependencyOrder`.
+7. **ADR-0016 candidate:** A checked-internal-graph test compiles the own profile
+   through the private normalized seam of `self-composition/stage0-entry.ts`,
+   asserts `ok: true`, and runs the static witness check over
+   `self-composition/stage0.ts` against that plan, which includes the
+   construction order equal to `dependencyOrder`.
 
 ## Out of scope
 

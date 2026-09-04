@@ -1,0 +1,49 @@
+{
+  "status": "done",
+  "changedFiles": [
+    "qualification/spikes/api-authoring/independent-low-ceremony-candidate/b4/README.md",
+    "qualification/spikes/api-authoring/independent-low-ceremony-candidate/b4/package.json",
+    "qualification/spikes/api-authoring/independent-low-ceremony-candidate/b4/src/api.ts",
+    "qualification/spikes/api-authoring/independent-low-ceremony-candidate/b4/src/run.ts",
+    "qualification/spikes/api-authoring/independent-low-ceremony-candidate/b4/src/scenarios.ts",
+    "qualification/spikes/api-authoring/independent-low-ceremony-candidate/b4/tsconfig.json"
+  ],
+  "evidence": [
+    "safe_execution_status:completed",
+    "output_summary:Created only under `qualification/spikes/api-authoring/independent-low-ceremony-candidate/b4/`:\n\n- `package.json`\n- `tsconfig.json`\n- `src/api.ts`\n- `src/scenarios.ts`\n- `src/run.ts`\n- `README.md`\n- Generated `dist/*.js` and `dist/*.d.ts` (ignored by Git)\n\nBase SHA verified: `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418`.\n\nEvidence:\n\n- `./node_modules/.bin/tsc -p .../b4/tsconfig.json`: exit 0.\n- Scenario runner: all 17 scenarios reported `PASS`.\n- Declaration emit: `dist/api.d.ts` exists.\n- Executable-import scan (`import(`, `require(`, `fs`, `child_process`, `eval(`): PASS; none found.\n- `node architecture/checks/node-version.mjs`: failed as expected because environment is Node `v24.16.0`, while contract requires `>=24.18.0 <25`.\n- `timeout 20s pnpm check:changed`: timed out (exit 124), so no full gate claim is made.\n\nMetrics:\n\n- Source LOC: 39.\n- Generic glue LOC: 0.\n- One-module authoring: 1 file and 1 visible binding location (`needs`).\n- Explicit exported types/signatures: 7; scenario inputs infer through helpers.\n- Diagnostics: serializable `{code,path}` records with deterministic lexical sorting.\n- Serializability witness: PASS.\n- Removal cost: delete one scenario entry; no registry cleanup.\n- Framework leakage: none.\n\nKnown limitation: the cycle scenario produces `missing` diagnostics rather than a true cycle diagnostic; reachability, root semantics, and disabled-provider semantics are not fully implemented.\n\nRecommendation (non-authoritative): low-ceremony syntax is promising for authoring ergonomics, but requires a real graph compiler before production use.",
+    "attempt_count:1",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/extra-b4/gm-api-b4-extra-v-20260903.c09520cf2acfbc69d785a1db3743af72fd529d41878e693a512c736cd3985add.handoff.patch",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/extra-b4/gm-api-b4-extra-v-20260903.c09520cf2acfbc69d785a1db3743af72fd529d41878e693a512c736cd3985add.handoff.summary.json",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/extra-b4/gm-api-b4-extra-v-20260903.c09520cf2acfbc69d785a1db3743af72fd529d41878e693a512c736cd3985add.handoff.manifest.json"
+  ],
+  "blockers": [],
+  "nextAction": "review_completed",
+  "schemaVersion": 1,
+  "provider": "codex",
+  "runId": "gm-api-b4-extra-v-20260903",
+  "taskId": "gm-api-b4-extra-v-20260903",
+  "details": {
+    "baseCommit": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418"
+  },
+  "artifacts": [
+    {
+      "kind": "patch",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/extra-b4/gm-api-b4-extra-v-20260903.c09520cf2acfbc69d785a1db3743af72fd529d41878e693a512c736cd3985add.handoff.patch",
+      "byteLength": 8350,
+      "sha256": "c09520cf2acfbc69d785a1db3743af72fd529d41878e693a512c736cd3985add"
+    },
+    {
+      "kind": "summary",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/extra-b4/gm-api-b4-extra-v-20260903.c09520cf2acfbc69d785a1db3743af72fd529d41878e693a512c736cd3985add.handoff.summary.json",
+      "byteLength": 1264,
+      "sha256": "7288b3c8f423583ce36bbbceda03365e11092891a3ab0e6e6f6b06ba0e690c3e"
+    },
+    {
+      "kind": "manifest",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/extra-b4/gm-api-b4-extra-v-20260903.c09520cf2acfbc69d785a1db3743af72fd529d41878e693a512c736cd3985add.handoff.manifest.json",
+      "byteLength": 1816,
+      "sha256": "78654043f40808ac79ae4a111545696597c97c29bb1f3bff94ae11adfa8e8c1a"
+    }
+  ],
+  "updatedAt": "2026-09-03T00:19:29.696Z"
+}

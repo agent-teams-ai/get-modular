@@ -1,0 +1,2543 @@
+{
+  "schemaVersion": 2,
+  "status": "pass",
+  "authority": "non-authoritative qualification-only; not production",
+  "scenarioCount": 30,
+  "executionCount": 90,
+  "corpusDigest": "3f09cc2c6ad801e36594be02e2b99ca691ca149241495ec65d73978de19b860c",
+  "additionalChecks": {
+    "alternateImplementationSelections": 6,
+    "rawDesiredStateRejected": true,
+    "splitAssociationProbes": 2,
+    "ownerTokenProbes": 48
+  },
+  "scenarioMatrix": [
+    {
+      "id": "S01",
+      "title": "one provider",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/provider-a/default"
+        ],
+        "dependencyOrder": [
+          "lab/provider-a/default"
+        ]
+      }
+    },
+    {
+      "id": "S02",
+      "title": "one consumer",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default"
+        ],
+        "dependencyOrder": [
+          "lab/consumer/default"
+        ]
+      }
+    },
+    {
+      "id": "S03",
+      "title": "required dependency",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default",
+          "lab/provider-a/default"
+        ],
+        "dependencyOrder": [
+          "lab/provider-a/default",
+          "lab/consumer/default"
+        ]
+      }
+    },
+    {
+      "id": "S04",
+      "title": "missing required dependency",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "binding.missing"
+        ]
+      }
+    },
+    {
+      "id": "S05",
+      "title": "missing optional dependency",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default"
+        ],
+        "dependencyOrder": [
+          "lab/consumer/default"
+        ]
+      }
+    },
+    {
+      "id": "S06",
+      "title": "zero many",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default"
+        ],
+        "dependencyOrder": [
+          "lab/consumer/default"
+        ]
+      }
+    },
+    {
+      "id": "S07",
+      "title": "one many",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default",
+          "lab/provider-a/default"
+        ],
+        "dependencyOrder": [
+          "lab/provider-a/default",
+          "lab/consumer/default"
+        ]
+      }
+    },
+    {
+      "id": "S08",
+      "title": "multiple many",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default",
+          "lab/provider-a/default",
+          "lab/provider-b/default",
+          "lab/provider-c/default"
+        ],
+        "dependencyOrder": [
+          "lab/provider-a/default",
+          "lab/provider-b/default",
+          "lab/provider-c/default",
+          "lab/consumer/default"
+        ]
+      }
+    },
+    {
+      "id": "S09",
+      "title": "duplicate provider",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "binding.duplicate"
+        ]
+      }
+    },
+    {
+      "id": "S10",
+      "title": "ambiguous binding",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "binding.cardinality"
+        ]
+      }
+    },
+    {
+      "id": "S11",
+      "title": "incompatible capability",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "binding.capability-missing"
+        ]
+      }
+    },
+    {
+      "id": "S12",
+      "title": "dependency cycle",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "graph.cycle"
+        ]
+      }
+    },
+    {
+      "id": "S13",
+      "title": "disabled root",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "host.profile.root-disabled"
+        ]
+      }
+    },
+    {
+      "id": "S14",
+      "title": "disabled required provider",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "binding.missing"
+        ]
+      }
+    },
+    {
+      "id": "S15",
+      "title": "disabled optional provider",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default"
+        ],
+        "dependencyOrder": [
+          "lab/consumer/default"
+        ]
+      }
+    },
+    {
+      "id": "S16",
+      "title": "unreachable provider",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "profile.unreachable-selection"
+        ]
+      }
+    },
+    {
+      "id": "S17",
+      "title": "multiple roots",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/provider-a/default",
+          "lab/provider-b/default"
+        ],
+        "dependencyOrder": [
+          "lab/provider-a/default",
+          "lab/provider-b/default"
+        ]
+      }
+    },
+    {
+      "id": "S18",
+      "title": "deterministic reorder",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default",
+          "lab/provider-a/default",
+          "lab/provider-b/default"
+        ],
+        "dependencyOrder": [
+          "lab/provider-a/default",
+          "lab/consumer/default",
+          "lab/provider-b/default"
+        ]
+      }
+    },
+    {
+      "id": "S19",
+      "title": "hostile record keys and Unicode; valid slots constructor and then",
+      "evidenceClass": "representation",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/hostile/default"
+        ],
+        "dependencyOrder": [
+          "lab/hostile/default"
+        ]
+      }
+    },
+    {
+      "id": "S20",
+      "title": "unknown declaration fields",
+      "evidenceClass": "representation",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "schema.unknown-field"
+        ]
+      }
+    },
+    {
+      "id": "S21",
+      "title": "duplicate profile selections",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "profile.duplicate-selection"
+        ]
+      }
+    },
+    {
+      "id": "S22",
+      "title": "duplicate implementation IDs",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "declaration.duplicate-implementation"
+        ]
+      }
+    },
+    {
+      "id": "S23",
+      "title": "invalid owner path",
+      "evidenceClass": "representation",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "schema.invalid-value"
+        ]
+      }
+    },
+    {
+      "id": "S24",
+      "title": "profile with unknown module",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "profile.unknown-module"
+        ]
+      }
+    },
+    {
+      "id": "S25",
+      "title": "hidden fallback attempt",
+      "evidenceClass": "semantic",
+      "expected": {
+        "ok": false,
+        "codes": [
+          "binding.missing"
+        ]
+      }
+    },
+    {
+      "id": "S26",
+      "title": "discovery without executable imports",
+      "evidenceClass": "representation",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default",
+          "lab/provider-a/default"
+        ],
+        "dependencyOrder": [
+          "lab/provider-a/default",
+          "lab/consumer/default"
+        ]
+      }
+    },
+    {
+      "id": "S27",
+      "title": "literal loader table for selected modules only",
+      "evidenceClass": "host-probe",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default",
+          "lab/provider-a/default"
+        ],
+        "dependencyOrder": [
+          "lab/provider-a/default",
+          "lab/consumer/default"
+        ]
+      },
+      "hostProbe": "selected-literal-loaders"
+    },
+    {
+      "id": "S28",
+      "title": "direct Pure DI parity",
+      "evidenceClass": "host-probe",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default",
+          "lab/provider-a/default"
+        ],
+        "dependencyOrder": [
+          "lab/provider-a/default",
+          "lab/consumer/default"
+        ]
+      },
+      "hostProbe": "direct-pure-di-parity"
+    },
+    {
+      "id": "S29",
+      "title": "declaration serializability",
+      "evidenceClass": "representation",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default",
+          "lab/provider-a/default"
+        ],
+        "dependencyOrder": [
+          "lab/provider-a/default",
+          "lab/consumer/default"
+        ]
+      }
+    },
+    {
+      "id": "S30",
+      "title": "TypeScript declaration emit",
+      "evidenceClass": "representation",
+      "expected": {
+        "ok": true,
+        "codes": [],
+        "inventory": [
+          "lab/consumer/default",
+          "lab/provider-a/default"
+        ],
+        "dependencyOrder": [
+          "lab/provider-a/default",
+          "lab/consumer/default"
+        ]
+      }
+    }
+  ],
+  "executions": [
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S01",
+      "title": "one provider",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S02",
+      "title": "one consumer",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S03",
+      "title": "required dependency",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S04",
+      "title": "missing required dependency",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.missing"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S05",
+      "title": "missing optional dependency",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S06",
+      "title": "zero many",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S07",
+      "title": "one many",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S08",
+      "title": "multiple many",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S09",
+      "title": "duplicate provider",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.duplicate"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S10",
+      "title": "ambiguous binding",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.cardinality"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S11",
+      "title": "incompatible capability",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.capability-missing"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S12",
+      "title": "dependency cycle",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "graph.cycle"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S13",
+      "title": "disabled root",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "host.profile.root-disabled"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S14",
+      "title": "disabled required provider",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.missing"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S15",
+      "title": "disabled optional provider",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S16",
+      "title": "unreachable provider",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "profile.unreachable-selection"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S17",
+      "title": "multiple roots",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S18",
+      "title": "deterministic reorder",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S19",
+      "title": "hostile record keys and Unicode; valid slots constructor and then",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S20",
+      "title": "unknown declaration fields",
+      "evidenceClass": "representation",
+      "ok": false,
+      "diagnosticCodes": [
+        "schema.unknown-field"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S21",
+      "title": "duplicate profile selections",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "profile.duplicate-selection"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S22",
+      "title": "duplicate implementation IDs",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "declaration.duplicate-implementation"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S23",
+      "title": "invalid owner path",
+      "evidenceClass": "representation",
+      "ok": false,
+      "diagnosticCodes": [
+        "schema.invalid-value"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S24",
+      "title": "profile with unknown module",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "profile.unknown-module"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S25",
+      "title": "hidden fallback attempt",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.missing"
+      ]
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S26",
+      "title": "discovery without executable imports",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S27",
+      "title": "literal loader table for selected modules only",
+      "evidenceClass": "host-probe",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S28",
+      "title": "direct Pure DI parity",
+      "evidenceClass": "host-probe",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S29",
+      "title": "declaration serializability",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "descriptor-object",
+      "scenarioId": "S30",
+      "title": "TypeScript declaration emit",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S01",
+      "title": "one provider",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S02",
+      "title": "one consumer",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S03",
+      "title": "required dependency",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S04",
+      "title": "missing required dependency",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.missing"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S05",
+      "title": "missing optional dependency",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S06",
+      "title": "zero many",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S07",
+      "title": "one many",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S08",
+      "title": "multiple many",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S09",
+      "title": "duplicate provider",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.duplicate"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S10",
+      "title": "ambiguous binding",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.cardinality"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S11",
+      "title": "incompatible capability",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.capability-missing"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S12",
+      "title": "dependency cycle",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "graph.cycle"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S13",
+      "title": "disabled root",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "host.profile.root-disabled"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S14",
+      "title": "disabled required provider",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.missing"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S15",
+      "title": "disabled optional provider",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S16",
+      "title": "unreachable provider",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "profile.unreachable-selection"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S17",
+      "title": "multiple roots",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S18",
+      "title": "deterministic reorder",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S19",
+      "title": "hostile record keys and Unicode; valid slots constructor and then",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S20",
+      "title": "unknown declaration fields",
+      "evidenceClass": "representation",
+      "ok": false,
+      "diagnosticCodes": [
+        "schema.unknown-field"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S21",
+      "title": "duplicate profile selections",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "profile.duplicate-selection"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S22",
+      "title": "duplicate implementation IDs",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "declaration.duplicate-implementation"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S23",
+      "title": "invalid owner path",
+      "evidenceClass": "representation",
+      "ok": false,
+      "diagnosticCodes": [
+        "schema.invalid-value"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S24",
+      "title": "profile with unknown module",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "profile.unknown-module"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S25",
+      "title": "hidden fallback attempt",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.missing"
+      ]
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S26",
+      "title": "discovery without executable imports",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S27",
+      "title": "literal loader table for selected modules only",
+      "evidenceClass": "host-probe",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S28",
+      "title": "direct Pure DI parity",
+      "evidenceClass": "host-probe",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S29",
+      "title": "declaration serializability",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "define-module",
+      "scenarioId": "S30",
+      "title": "TypeScript declaration emit",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S01",
+      "title": "one provider",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S02",
+      "title": "one consumer",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S03",
+      "title": "required dependency",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S04",
+      "title": "missing required dependency",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.missing"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S05",
+      "title": "missing optional dependency",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S06",
+      "title": "zero many",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S07",
+      "title": "one many",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S08",
+      "title": "multiple many",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S09",
+      "title": "duplicate provider",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.duplicate"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S10",
+      "title": "ambiguous binding",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.cardinality"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S11",
+      "title": "incompatible capability",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.capability-missing"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S12",
+      "title": "dependency cycle",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "graph.cycle"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S13",
+      "title": "disabled root",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "host.profile.root-disabled"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S14",
+      "title": "disabled required provider",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.missing"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S15",
+      "title": "disabled optional provider",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S16",
+      "title": "unreachable provider",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "profile.unreachable-selection"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S17",
+      "title": "multiple roots",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S18",
+      "title": "deterministic reorder",
+      "evidenceClass": "semantic",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S19",
+      "title": "hostile record keys and Unicode; valid slots constructor and then",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S20",
+      "title": "unknown declaration fields",
+      "evidenceClass": "representation",
+      "ok": false,
+      "diagnosticCodes": [
+        "schema.unknown-field"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S21",
+      "title": "duplicate profile selections",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "profile.duplicate-selection"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S22",
+      "title": "duplicate implementation IDs",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "declaration.duplicate-implementation"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S23",
+      "title": "invalid owner path",
+      "evidenceClass": "representation",
+      "ok": false,
+      "diagnosticCodes": [
+        "schema.invalid-value"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S24",
+      "title": "profile with unknown module",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "profile.unknown-module"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S25",
+      "title": "hidden fallback attempt",
+      "evidenceClass": "semantic",
+      "ok": false,
+      "diagnosticCodes": [
+        "binding.missing"
+      ]
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S26",
+      "title": "discovery without executable imports",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S27",
+      "title": "literal loader table for selected modules only",
+      "evidenceClass": "host-probe",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S28",
+      "title": "direct Pure DI parity",
+      "evidenceClass": "host-probe",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S29",
+      "title": "declaration serializability",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    },
+    {
+      "candidateId": "split-declaration-factory",
+      "scenarioId": "S30",
+      "title": "TypeScript declaration emit",
+      "evidenceClass": "representation",
+      "ok": true,
+      "diagnosticCodes": []
+    }
+  ],
+  "metrics": {
+    "descriptor-object": {
+      "authoringLoc": 4,
+      "genericGlueLoc": 11,
+      "candidateSupportLoc": 1,
+      "separateFactoryLoc": 0,
+      "totalSupportLoc": 12,
+      "totalSupportShare": 0.75,
+      "editMeasurements": [
+        {
+          "candidate": "descriptor-object",
+          "action": "add-module",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "catalog.ts",
+              "kind": "modified",
+              "beforeSha256": "8a0198afade9436c318bf369e6dbf0bf9a05e0a4ad8d2b5e31a9feb06864438b",
+              "afterSha256": "0dbb79f2083d5ef4dd3d0f9db3cb51d59e2d78438c148ed4a64312d3fc1a3083"
+            },
+            {
+              "path": "modules/added/declaration.ts",
+              "kind": "added",
+              "beforeSha256": null,
+              "afterSha256": "66eabef7fb2168411f11315b4169230f6b2ae6999846097c5235ad678fd81df3"
+            },
+            {
+              "path": "modules/added/factory.ts",
+              "kind": "added",
+              "beforeSha256": null,
+              "afterSha256": "e52a58bacac43fc8b80cab9b931e86efa2e4c2db09266a6df5bfb987ec4f354c"
+            },
+            {
+              "path": "profile.ts",
+              "kind": "modified",
+              "beforeSha256": "4bd1b6d01d8eb52f7843608336681bf130105f6b880d4c4e939477ba94e16c1c",
+              "afterSha256": "58df79e81125de2d73a6c5064aca3fbd8d557fe3e3eafc4296ce5d1644872998"
+            }
+          ],
+          "changedAuthoringFiles": 4,
+          "addedFiles": 2,
+          "bindingEditLocations": [],
+          "addedLines": 27,
+          "deletedLines": 2,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "4e5ea12869434207652e473f92c767aa058c6c83aafb18cfe9bc7e790acc2f73",
+          "beforeSourceSha256": "284a5be200edeb6bb1635e44d629b4bde8f3420c1649bb6a8185e07e7e0b180a",
+          "afterSourceSha256": "38d016dd54393f57e1b8529353561e2a7a2518edbd997244873a0777e807051d",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/added/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/added/default",
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "descriptor-object",
+          "action": "rebind",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "profile.ts",
+              "kind": "modified",
+              "beforeSha256": "4bd1b6d01d8eb52f7843608336681bf130105f6b880d4c4e939477ba94e16c1c",
+              "afterSha256": "a073d55f11441fa63de00a39b472e235e90ed1ade176ab0f838d93c6d384ae31"
+            }
+          ],
+          "changedAuthoringFiles": 1,
+          "addedFiles": 0,
+          "bindingEditLocations": [
+            {
+              "path": "profile.ts",
+              "consumerImplementationId": "edits/consumer/default",
+              "slotId": "service"
+            }
+          ],
+          "addedLines": 3,
+          "deletedLines": 3,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "ecf8930b888e1fbe9be1977b8a9c9b664ef36f8daac5b01294f6499d3abb3765",
+          "beforeSourceSha256": "284a5be200edeb6bb1635e44d629b4bde8f3420c1649bb6a8185e07e7e0b180a",
+          "afterSourceSha256": "6493f4d0ace2ba8aa885f796880e159fe9c0dc9660f5bf8ab2fd95b6d0d096a5",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "descriptor-object",
+          "action": "remove-with-replacement",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "catalog.ts",
+              "kind": "modified",
+              "beforeSha256": "8a0198afade9436c318bf369e6dbf0bf9a05e0a4ad8d2b5e31a9feb06864438b",
+              "afterSha256": "f65551a0016aa889a7c833eea2dd8a29a148f63eb15e30b5539ce5d3d20be502"
+            },
+            {
+              "path": "modules/a/declaration.ts",
+              "kind": "deleted",
+              "beforeSha256": "940c6ae2d5229893969a494b0f60bb3cd563f9ef92a59c102f0257c45b01057a",
+              "afterSha256": null
+            },
+            {
+              "path": "modules/a/factory.ts",
+              "kind": "deleted",
+              "beforeSha256": "0de9e61f8e2c7084283f76f4e991ab2513e6041bbda6341cbfe8f2b086f73ffc",
+              "afterSha256": null
+            },
+            {
+              "path": "profile.ts",
+              "kind": "modified",
+              "beforeSha256": "4bd1b6d01d8eb52f7843608336681bf130105f6b880d4c4e939477ba94e16c1c",
+              "afterSha256": "a073d55f11441fa63de00a39b472e235e90ed1ade176ab0f838d93c6d384ae31"
+            }
+          ],
+          "changedAuthoringFiles": 4,
+          "addedFiles": 0,
+          "bindingEditLocations": [
+            {
+              "path": "profile.ts",
+              "consumerImplementationId": "edits/consumer/default",
+              "slotId": "service"
+            }
+          ],
+          "addedLines": 4,
+          "deletedLines": 24,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "e64a64c070b3d393f704dfc3f232b87a998f4ba8235beea29c06cc04aeafe44b",
+          "beforeSourceSha256": "284a5be200edeb6bb1635e44d629b4bde8f3420c1649bb6a8185e07e7e0b180a",
+          "afterSourceSha256": "211ad1963e527e782cb93bbc2b15a0a07297670d038c73ac524a8e1af0b547c2",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "descriptor-object",
+          "action": "remove-unrepaired",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "catalog.ts",
+              "kind": "modified",
+              "beforeSha256": "8a0198afade9436c318bf369e6dbf0bf9a05e0a4ad8d2b5e31a9feb06864438b",
+              "afterSha256": "f65551a0016aa889a7c833eea2dd8a29a148f63eb15e30b5539ce5d3d20be502"
+            },
+            {
+              "path": "modules/a/declaration.ts",
+              "kind": "deleted",
+              "beforeSha256": "940c6ae2d5229893969a494b0f60bb3cd563f9ef92a59c102f0257c45b01057a",
+              "afterSha256": null
+            },
+            {
+              "path": "modules/a/factory.ts",
+              "kind": "deleted",
+              "beforeSha256": "0de9e61f8e2c7084283f76f4e991ab2513e6041bbda6341cbfe8f2b086f73ffc",
+              "afterSha256": null
+            }
+          ],
+          "changedAuthoringFiles": 3,
+          "addedFiles": 0,
+          "bindingEditLocations": [],
+          "addedLines": 1,
+          "deletedLines": 21,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "9a7f71fb259e060c71610901a4675d2f47ccdf524358cb5a525964aa59068a8a",
+          "beforeSourceSha256": "284a5be200edeb6bb1635e44d629b4bde8f3420c1649bb6a8185e07e7e0b180a",
+          "afterSourceSha256": "93d938268f7e0a20317ffaa48bc26efc936b80beafb8a5ed9773919bc08e96aa",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": false,
+            "diagnostics": [
+              {
+                "code": "profile.unknown-module",
+                "path": "/profile/selections/edits/a",
+                "detail": "edits/a"
+              }
+            ],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": []
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "descriptor-object",
+          "action": "disable-required",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "desired-state.ts",
+              "kind": "modified",
+              "beforeSha256": "4284b431b34725f631c00459f882f01805cdcdfc4a623fd3cfcdbece9689f590",
+              "afterSha256": "79bdaf1ef88a4631504194a5bf8c020a5f7359bf60d01d4c09da489851571095"
+            }
+          ],
+          "changedAuthoringFiles": 1,
+          "addedFiles": 0,
+          "bindingEditLocations": [],
+          "addedLines": 3,
+          "deletedLines": 1,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "4226e4fbf33bf06c8032b454bef68fdb94afbb52619ddbbca0704fa683c5ee96",
+          "beforeSourceSha256": "284a5be200edeb6bb1635e44d629b4bde8f3420c1649bb6a8185e07e7e0b180a",
+          "afterSourceSha256": "56322cbddf22e85009a66e53609fb802bb837735a9ef2ad83bc6d8a3f76075d9",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": false,
+            "diagnostics": [
+              {
+                "code": "binding.missing",
+                "path": "/bindings/edits/consumer/default/service",
+                "detail": "service"
+              }
+            ],
+            "inventory": [
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": []
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "descriptor-object",
+          "action": "disable-optional",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "desired-state.ts",
+              "kind": "modified",
+              "beforeSha256": "4284b431b34725f631c00459f882f01805cdcdfc4a623fd3cfcdbece9689f590",
+              "afterSha256": "79bdaf1ef88a4631504194a5bf8c020a5f7359bf60d01d4c09da489851571095"
+            }
+          ],
+          "changedAuthoringFiles": 1,
+          "addedFiles": 0,
+          "bindingEditLocations": [],
+          "addedLines": 3,
+          "deletedLines": 1,
+          "beforeInputSha256": "64f04a89e1112c9f8768d6385bb533d3302677e6eb043f198572d77daf92ec09",
+          "afterInputSha256": "c4677203e35a59537d539994f220337cc34219a6fd268d1cbbf894cc541bed3b",
+          "beforeSourceSha256": "db8b62b000dcac9bdba6470c798d4eecd89d3cc0fe9e27f9489ae12aebd2814f",
+          "afterSourceSha256": "ba0f9c052ef26661083ce7aa3a55182fda9b0e7b104b4a743126a7ad726298c9",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        }
+      ],
+      "explicitAnnotationMatchesInCandidateFile": 2,
+      "declarationLines": 3,
+      "declarationBytes": 181,
+      "declarationExports": 2,
+      "serializedBytes": 22048,
+      "importCounters": {
+        "sourceImports": 1,
+        "typeOnlyImports": 0,
+        "executableImplementationImports": 0,
+        "frameworkImports": 0
+      },
+      "compileDuration": {
+        "10": {
+          "declarations": 10,
+          "compileDurationMs": 127.23,
+          "inputs": {
+            "scale.ts": "8bc4c9c67ff91fc7ec04345b59183489921fcf43e023cc8a016d853b2967e2ab",
+            "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
+          },
+          "declarationsEmitted": {
+            "scale.d.ts": "0946eeacb222ff4e6b348b1a3293fda177e6712a7ef1496822106bc825e4bed7"
+          }
+        },
+        "100": {
+          "declarations": 100,
+          "compileDurationMs": 131.58,
+          "inputs": {
+            "scale.ts": "90e4eca333ee28af1c0f61d5f236d2144baeeba388a6cb2800b5bd6620c6ce3b",
+            "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
+          },
+          "declarationsEmitted": {
+            "scale.d.ts": "6c29f5fa2961f38a77d24ac8dedf67a65b249ccf1d17ea9b889e0cd7557984bf"
+          }
+        },
+        "1000": {
+          "declarations": 1000,
+          "compileDurationMs": 246.15,
+          "inputs": {
+            "scale.ts": "e4770a8ba5c8e5fda982e630f12891bba2673249e679d15d00a4fb8c8ab1c468",
+            "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
+          },
+          "declarationsEmitted": {
+            "scale.d.ts": "a234768d1cc9b017f636e7ed440e66f5231a968ea97c8233378cc90b675ab3a0"
+          }
+        }
+      },
+      "treeShaking": "not-measured",
+      "runtimePerformance": "not-measured"
+    },
+    "define-module": {
+      "authoringLoc": 4,
+      "genericGlueLoc": 11,
+      "candidateSupportLoc": 16,
+      "separateFactoryLoc": 0,
+      "totalSupportLoc": 27,
+      "totalSupportShare": 0.8709677419354839,
+      "editMeasurements": [
+        {
+          "candidate": "define-module",
+          "action": "add-module",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "catalog.ts",
+              "kind": "modified",
+              "beforeSha256": "8a0198afade9436c318bf369e6dbf0bf9a05e0a4ad8d2b5e31a9feb06864438b",
+              "afterSha256": "0dbb79f2083d5ef4dd3d0f9db3cb51d59e2d78438c148ed4a64312d3fc1a3083"
+            },
+            {
+              "path": "modules/added/declaration.ts",
+              "kind": "added",
+              "beforeSha256": null,
+              "afterSha256": "4d15f16f0023a6abdef67d0009ea45e15bb627207f878aa66feb0744a9d52b5d"
+            },
+            {
+              "path": "modules/added/factory.ts",
+              "kind": "added",
+              "beforeSha256": null,
+              "afterSha256": "e52a58bacac43fc8b80cab9b931e86efa2e4c2db09266a6df5bfb987ec4f354c"
+            },
+            {
+              "path": "profile.ts",
+              "kind": "modified",
+              "beforeSha256": "4bd1b6d01d8eb52f7843608336681bf130105f6b880d4c4e939477ba94e16c1c",
+              "afterSha256": "58df79e81125de2d73a6c5064aca3fbd8d557fe3e3eafc4296ce5d1644872998"
+            }
+          ],
+          "changedAuthoringFiles": 4,
+          "addedFiles": 2,
+          "bindingEditLocations": [],
+          "addedLines": 28,
+          "deletedLines": 2,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "4e5ea12869434207652e473f92c767aa058c6c83aafb18cfe9bc7e790acc2f73",
+          "beforeSourceSha256": "a7c010fb8a63075ca19fb90605ef8161805d425574e5c6b4ee396712780bbe32",
+          "afterSourceSha256": "1f763b74cb50f7db2766bae34b121cc797f70768cc0374a831b3946579a4eb9b",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/added/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/added/default",
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "define-module",
+          "action": "rebind",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "profile.ts",
+              "kind": "modified",
+              "beforeSha256": "4bd1b6d01d8eb52f7843608336681bf130105f6b880d4c4e939477ba94e16c1c",
+              "afterSha256": "a073d55f11441fa63de00a39b472e235e90ed1ade176ab0f838d93c6d384ae31"
+            }
+          ],
+          "changedAuthoringFiles": 1,
+          "addedFiles": 0,
+          "bindingEditLocations": [
+            {
+              "path": "profile.ts",
+              "consumerImplementationId": "edits/consumer/default",
+              "slotId": "service"
+            }
+          ],
+          "addedLines": 3,
+          "deletedLines": 3,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "ecf8930b888e1fbe9be1977b8a9c9b664ef36f8daac5b01294f6499d3abb3765",
+          "beforeSourceSha256": "a7c010fb8a63075ca19fb90605ef8161805d425574e5c6b4ee396712780bbe32",
+          "afterSourceSha256": "8c8722abd021691ec2df7b2461b488fcef20e6b46cb10eabebc0c02c488d8c87",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "define-module",
+          "action": "remove-with-replacement",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "catalog.ts",
+              "kind": "modified",
+              "beforeSha256": "8a0198afade9436c318bf369e6dbf0bf9a05e0a4ad8d2b5e31a9feb06864438b",
+              "afterSha256": "f65551a0016aa889a7c833eea2dd8a29a148f63eb15e30b5539ce5d3d20be502"
+            },
+            {
+              "path": "modules/a/declaration.ts",
+              "kind": "deleted",
+              "beforeSha256": "4c891563770e1ebfbf7b54bf9d3f4fe0d88eca850c254346876e72573b29f302",
+              "afterSha256": null
+            },
+            {
+              "path": "modules/a/factory.ts",
+              "kind": "deleted",
+              "beforeSha256": "0de9e61f8e2c7084283f76f4e991ab2513e6041bbda6341cbfe8f2b086f73ffc",
+              "afterSha256": null
+            },
+            {
+              "path": "profile.ts",
+              "kind": "modified",
+              "beforeSha256": "4bd1b6d01d8eb52f7843608336681bf130105f6b880d4c4e939477ba94e16c1c",
+              "afterSha256": "a073d55f11441fa63de00a39b472e235e90ed1ade176ab0f838d93c6d384ae31"
+            }
+          ],
+          "changedAuthoringFiles": 4,
+          "addedFiles": 0,
+          "bindingEditLocations": [
+            {
+              "path": "profile.ts",
+              "consumerImplementationId": "edits/consumer/default",
+              "slotId": "service"
+            }
+          ],
+          "addedLines": 4,
+          "deletedLines": 25,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "e64a64c070b3d393f704dfc3f232b87a998f4ba8235beea29c06cc04aeafe44b",
+          "beforeSourceSha256": "a7c010fb8a63075ca19fb90605ef8161805d425574e5c6b4ee396712780bbe32",
+          "afterSourceSha256": "86bc00c554779e74609673138efdc61e74fdb274678b7f2d613cdddf1f25e1fe",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "define-module",
+          "action": "remove-unrepaired",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "catalog.ts",
+              "kind": "modified",
+              "beforeSha256": "8a0198afade9436c318bf369e6dbf0bf9a05e0a4ad8d2b5e31a9feb06864438b",
+              "afterSha256": "f65551a0016aa889a7c833eea2dd8a29a148f63eb15e30b5539ce5d3d20be502"
+            },
+            {
+              "path": "modules/a/declaration.ts",
+              "kind": "deleted",
+              "beforeSha256": "4c891563770e1ebfbf7b54bf9d3f4fe0d88eca850c254346876e72573b29f302",
+              "afterSha256": null
+            },
+            {
+              "path": "modules/a/factory.ts",
+              "kind": "deleted",
+              "beforeSha256": "0de9e61f8e2c7084283f76f4e991ab2513e6041bbda6341cbfe8f2b086f73ffc",
+              "afterSha256": null
+            }
+          ],
+          "changedAuthoringFiles": 3,
+          "addedFiles": 0,
+          "bindingEditLocations": [],
+          "addedLines": 1,
+          "deletedLines": 22,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "9a7f71fb259e060c71610901a4675d2f47ccdf524358cb5a525964aa59068a8a",
+          "beforeSourceSha256": "a7c010fb8a63075ca19fb90605ef8161805d425574e5c6b4ee396712780bbe32",
+          "afterSourceSha256": "d35c1bcf91e0fb63e00e7df7c72e8d4cc372b46c269318670f1a7d8d071e51d2",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": false,
+            "diagnostics": [
+              {
+                "code": "profile.unknown-module",
+                "path": "/profile/selections/edits/a",
+                "detail": "edits/a"
+              }
+            ],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": []
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "define-module",
+          "action": "disable-required",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "desired-state.ts",
+              "kind": "modified",
+              "beforeSha256": "4284b431b34725f631c00459f882f01805cdcdfc4a623fd3cfcdbece9689f590",
+              "afterSha256": "79bdaf1ef88a4631504194a5bf8c020a5f7359bf60d01d4c09da489851571095"
+            }
+          ],
+          "changedAuthoringFiles": 1,
+          "addedFiles": 0,
+          "bindingEditLocations": [],
+          "addedLines": 3,
+          "deletedLines": 1,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "4226e4fbf33bf06c8032b454bef68fdb94afbb52619ddbbca0704fa683c5ee96",
+          "beforeSourceSha256": "a7c010fb8a63075ca19fb90605ef8161805d425574e5c6b4ee396712780bbe32",
+          "afterSourceSha256": "7e38bcc70aacda4fa20ebfde68a7f0e7267d8fb52ec3c1d9123a1cd7356f3cce",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": false,
+            "diagnostics": [
+              {
+                "code": "binding.missing",
+                "path": "/bindings/edits/consumer/default/service",
+                "detail": "service"
+              }
+            ],
+            "inventory": [
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": []
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "define-module",
+          "action": "disable-optional",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "desired-state.ts",
+              "kind": "modified",
+              "beforeSha256": "4284b431b34725f631c00459f882f01805cdcdfc4a623fd3cfcdbece9689f590",
+              "afterSha256": "79bdaf1ef88a4631504194a5bf8c020a5f7359bf60d01d4c09da489851571095"
+            }
+          ],
+          "changedAuthoringFiles": 1,
+          "addedFiles": 0,
+          "bindingEditLocations": [],
+          "addedLines": 3,
+          "deletedLines": 1,
+          "beforeInputSha256": "64f04a89e1112c9f8768d6385bb533d3302677e6eb043f198572d77daf92ec09",
+          "afterInputSha256": "c4677203e35a59537d539994f220337cc34219a6fd268d1cbbf894cc541bed3b",
+          "beforeSourceSha256": "70e8600df3027570cab13361a96b91abff4cc0abd45e2ae29e0190594016c1c2",
+          "afterSourceSha256": "4de1c959611814c0e4e7768c62d06619ba1a565f708a3618c15a0f087964f100",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        }
+      ],
+      "explicitAnnotationMatchesInCandidateFile": 1,
+      "declarationLines": 19,
+      "declarationBytes": 543,
+      "declarationExports": 6,
+      "serializedBytes": 21898,
+      "importCounters": {
+        "sourceImports": 1,
+        "typeOnlyImports": 0,
+        "executableImplementationImports": 0,
+        "frameworkImports": 0
+      },
+      "compileDuration": {
+        "10": {
+          "declarations": 10,
+          "compileDurationMs": 142.41,
+          "inputs": {
+            "scale.ts": "88af657e18b71c66fbc338510b865c4dd7f2cc9fbf06a39d24541e02d8e97a3c",
+            "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
+          },
+          "declarationsEmitted": {
+            "scale.d.ts": "0946eeacb222ff4e6b348b1a3293fda177e6712a7ef1496822106bc825e4bed7"
+          }
+        },
+        "100": {
+          "declarations": 100,
+          "compileDurationMs": 164.12,
+          "inputs": {
+            "scale.ts": "9ff49523af45db1e10d5391517163904da46d77f1903df864e10ad7f92d8923a",
+            "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
+          },
+          "declarationsEmitted": {
+            "scale.d.ts": "6c29f5fa2961f38a77d24ac8dedf67a65b249ccf1d17ea9b889e0cd7557984bf"
+          }
+        },
+        "1000": {
+          "declarations": 1000,
+          "compileDurationMs": 263.58,
+          "inputs": {
+            "scale.ts": "21e02623447c6030232bdc181979105524bf62131adb70bc402a17c826b38ace",
+            "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
+          },
+          "declarationsEmitted": {
+            "scale.d.ts": "a234768d1cc9b017f636e7ed440e66f5231a968ea97c8233378cc90b675ab3a0"
+          }
+        }
+      },
+      "treeShaking": "not-measured",
+      "runtimePerformance": "not-measured"
+    },
+    "split-declaration-factory": {
+      "authoringLoc": 5,
+      "genericGlueLoc": 11,
+      "candidateSupportLoc": 3,
+      "separateFactoryLoc": 10,
+      "totalSupportLoc": 24,
+      "totalSupportShare": 0.8275862068965517,
+      "editMeasurements": [
+        {
+          "candidate": "split-declaration-factory",
+          "action": "add-module",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "catalog.ts",
+              "kind": "modified",
+              "beforeSha256": "8a0198afade9436c318bf369e6dbf0bf9a05e0a4ad8d2b5e31a9feb06864438b",
+              "afterSha256": "0dbb79f2083d5ef4dd3d0f9db3cb51d59e2d78438c148ed4a64312d3fc1a3083"
+            },
+            {
+              "path": "modules/added/declaration.ts",
+              "kind": "added",
+              "beforeSha256": null,
+              "afterSha256": "66eabef7fb2168411f11315b4169230f6b2ae6999846097c5235ad678fd81df3"
+            },
+            {
+              "path": "modules/added/factory.ts",
+              "kind": "added",
+              "beforeSha256": null,
+              "afterSha256": "27e9bc8e9aaa7bf900c4165863c684fe1f68a1cde05149197598baf2752b8af0"
+            },
+            {
+              "path": "profile.ts",
+              "kind": "modified",
+              "beforeSha256": "4bd1b6d01d8eb52f7843608336681bf130105f6b880d4c4e939477ba94e16c1c",
+              "afterSha256": "58df79e81125de2d73a6c5064aca3fbd8d557fe3e3eafc4296ce5d1644872998"
+            }
+          ],
+          "changedAuthoringFiles": 4,
+          "addedFiles": 2,
+          "bindingEditLocations": [],
+          "addedLines": 29,
+          "deletedLines": 2,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "4e5ea12869434207652e473f92c767aa058c6c83aafb18cfe9bc7e790acc2f73",
+          "beforeSourceSha256": "27863a2ee8905127eadda53f847e744e3c9928590e7bb023fd2a5b4ba4a710ac",
+          "afterSourceSha256": "9660cdf82c73f35001672bb8092a12bbf8750f4c40e6bdbde69b2644d015260e",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/added/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/added/default",
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "split-declaration-factory",
+          "action": "rebind",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "profile.ts",
+              "kind": "modified",
+              "beforeSha256": "4bd1b6d01d8eb52f7843608336681bf130105f6b880d4c4e939477ba94e16c1c",
+              "afterSha256": "a073d55f11441fa63de00a39b472e235e90ed1ade176ab0f838d93c6d384ae31"
+            }
+          ],
+          "changedAuthoringFiles": 1,
+          "addedFiles": 0,
+          "bindingEditLocations": [
+            {
+              "path": "profile.ts",
+              "consumerImplementationId": "edits/consumer/default",
+              "slotId": "service"
+            }
+          ],
+          "addedLines": 3,
+          "deletedLines": 3,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "ecf8930b888e1fbe9be1977b8a9c9b664ef36f8daac5b01294f6499d3abb3765",
+          "beforeSourceSha256": "27863a2ee8905127eadda53f847e744e3c9928590e7bb023fd2a5b4ba4a710ac",
+          "afterSourceSha256": "f03332ab4b94bd803649c457ddc395a04970f7cae1d6501952ae14dbbe62bc30",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "split-declaration-factory",
+          "action": "remove-with-replacement",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "catalog.ts",
+              "kind": "modified",
+              "beforeSha256": "8a0198afade9436c318bf369e6dbf0bf9a05e0a4ad8d2b5e31a9feb06864438b",
+              "afterSha256": "f65551a0016aa889a7c833eea2dd8a29a148f63eb15e30b5539ce5d3d20be502"
+            },
+            {
+              "path": "modules/a/declaration.ts",
+              "kind": "deleted",
+              "beforeSha256": "940c6ae2d5229893969a494b0f60bb3cd563f9ef92a59c102f0257c45b01057a",
+              "afterSha256": null
+            },
+            {
+              "path": "modules/a/factory.ts",
+              "kind": "deleted",
+              "beforeSha256": "b25e0665f3c270a4f66046c38dea0599451c5e3820ccae08099d0f36d0614bb5",
+              "afterSha256": null
+            },
+            {
+              "path": "profile.ts",
+              "kind": "modified",
+              "beforeSha256": "4bd1b6d01d8eb52f7843608336681bf130105f6b880d4c4e939477ba94e16c1c",
+              "afterSha256": "a073d55f11441fa63de00a39b472e235e90ed1ade176ab0f838d93c6d384ae31"
+            }
+          ],
+          "changedAuthoringFiles": 4,
+          "addedFiles": 0,
+          "bindingEditLocations": [
+            {
+              "path": "profile.ts",
+              "consumerImplementationId": "edits/consumer/default",
+              "slotId": "service"
+            }
+          ],
+          "addedLines": 4,
+          "deletedLines": 26,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "e64a64c070b3d393f704dfc3f232b87a998f4ba8235beea29c06cc04aeafe44b",
+          "beforeSourceSha256": "27863a2ee8905127eadda53f847e744e3c9928590e7bb023fd2a5b4ba4a710ac",
+          "afterSourceSha256": "e15a8e19271fb08b2482fe4ef9eea07c30e4622a70291ee35d3ee8ff1dbf7a70",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/b/default",
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "split-declaration-factory",
+          "action": "remove-unrepaired",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "catalog.ts",
+              "kind": "modified",
+              "beforeSha256": "8a0198afade9436c318bf369e6dbf0bf9a05e0a4ad8d2b5e31a9feb06864438b",
+              "afterSha256": "f65551a0016aa889a7c833eea2dd8a29a148f63eb15e30b5539ce5d3d20be502"
+            },
+            {
+              "path": "modules/a/declaration.ts",
+              "kind": "deleted",
+              "beforeSha256": "940c6ae2d5229893969a494b0f60bb3cd563f9ef92a59c102f0257c45b01057a",
+              "afterSha256": null
+            },
+            {
+              "path": "modules/a/factory.ts",
+              "kind": "deleted",
+              "beforeSha256": "b25e0665f3c270a4f66046c38dea0599451c5e3820ccae08099d0f36d0614bb5",
+              "afterSha256": null
+            }
+          ],
+          "changedAuthoringFiles": 3,
+          "addedFiles": 0,
+          "bindingEditLocations": [],
+          "addedLines": 1,
+          "deletedLines": 23,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "9a7f71fb259e060c71610901a4675d2f47ccdf524358cb5a525964aa59068a8a",
+          "beforeSourceSha256": "27863a2ee8905127eadda53f847e744e3c9928590e7bb023fd2a5b4ba4a710ac",
+          "afterSourceSha256": "f17d955ad68a29e0a8d89d9464cd5717228c4e594a0e7bffaacca91e9e396cfc",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": false,
+            "diagnostics": [
+              {
+                "code": "profile.unknown-module",
+                "path": "/profile/selections/edits/a",
+                "detail": "edits/a"
+              }
+            ],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": []
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "split-declaration-factory",
+          "action": "disable-required",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "desired-state.ts",
+              "kind": "modified",
+              "beforeSha256": "4284b431b34725f631c00459f882f01805cdcdfc4a623fd3cfcdbece9689f590",
+              "afterSha256": "79bdaf1ef88a4631504194a5bf8c020a5f7359bf60d01d4c09da489851571095"
+            }
+          ],
+          "changedAuthoringFiles": 1,
+          "addedFiles": 0,
+          "bindingEditLocations": [],
+          "addedLines": 3,
+          "deletedLines": 1,
+          "beforeInputSha256": "f579742db5e088a35a754f99ac92957d6c1964d54ccda22ff6423de62697fc9b",
+          "afterInputSha256": "4226e4fbf33bf06c8032b454bef68fdb94afbb52619ddbbca0704fa683c5ee96",
+          "beforeSourceSha256": "27863a2ee8905127eadda53f847e744e3c9928590e7bb023fd2a5b4ba4a710ac",
+          "afterSourceSha256": "d12662f3ddacf490288c79d4e3db27baa4eaf30a889abdede07b11eea262b2de",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": false,
+            "diagnostics": [
+              {
+                "code": "binding.missing",
+                "path": "/bindings/edits/consumer/default/service",
+                "detail": "service"
+              }
+            ],
+            "inventory": [
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": []
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        },
+        {
+          "candidate": "split-declaration-factory",
+          "action": "disable-optional",
+          "baselineModules": 10,
+          "changes": [
+            {
+              "path": "desired-state.ts",
+              "kind": "modified",
+              "beforeSha256": "4284b431b34725f631c00459f882f01805cdcdfc4a623fd3cfcdbece9689f590",
+              "afterSha256": "79bdaf1ef88a4631504194a5bf8c020a5f7359bf60d01d4c09da489851571095"
+            }
+          ],
+          "changedAuthoringFiles": 1,
+          "addedFiles": 0,
+          "bindingEditLocations": [],
+          "addedLines": 3,
+          "deletedLines": 1,
+          "beforeInputSha256": "64f04a89e1112c9f8768d6385bb533d3302677e6eb043f198572d77daf92ec09",
+          "afterInputSha256": "c4677203e35a59537d539994f220337cc34219a6fd268d1cbbf894cc541bed3b",
+          "beforeSourceSha256": "b069185db029e5ccca356f0468ad74ac13d58557c0307ee986d6099d3df9df3e",
+          "afterSourceSha256": "2d73731946526cf4178971f141f12c468ff2f855671e6e804a0da6b86bf17c8b",
+          "beforeOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/a/default",
+              "edits/consumer/default"
+            ]
+          },
+          "afterOutcome": {
+            "ok": true,
+            "diagnostics": [],
+            "inventory": [
+              "edits/consumer/default"
+            ],
+            "dependencyOrder": [
+              "edits/consumer/default"
+            ]
+          },
+          "typecheck": "pass",
+          "emittedSourceParity": "pass",
+          "lineCounter": "git version 2.38.1"
+        }
+      ],
+      "explicitAnnotationMatchesInCandidateFile": 3,
+      "declarationLines": 5,
+      "declarationBytes": 338,
+      "declarationExports": 4,
+      "serializedBytes": 25540,
+      "importCounters": {
+        "sourceImports": 1,
+        "typeOnlyImports": 0,
+        "executableImplementationImports": 0,
+        "frameworkImports": 0
+      },
+      "compileDuration": {
+        "10": {
+          "declarations": 10,
+          "compileDurationMs": 158.79,
+          "inputs": {
+            "factories.ts": "139a6efe4b389b2b0cf4cf7cadc14bba752858a7b6bc20bffc29e6205ec4f7b0",
+            "scale.ts": "90d6000289978a326e8988fe7622a268df884d5e00fb88b04f6d01a85a9a6a88",
+            "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
+          },
+          "declarationsEmitted": {
+            "factories.d.ts": "803cec087397ebf2107dfcfe10dd4f4b983b8971156cfe62a9db6051a013b604",
+            "scale.d.ts": "dcbf1223a7d7a1e2d0daee412e7abb64d0ec9fe163c079f0d1666a7190e8b1b2"
+          }
+        },
+        "100": {
+          "declarations": 100,
+          "compileDurationMs": 153.56,
+          "inputs": {
+            "factories.ts": "eaa07a3670925420328525300e3bd5a93788fe13f0ac0e82f0b173fe6ecacd78",
+            "scale.ts": "aec40c1f1737c6c68b8c0a86c04dc6a54f747035c226d29cf85250bdaab1d3c9",
+            "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
+          },
+          "declarationsEmitted": {
+            "factories.d.ts": "144b8338f3873cdd7f7acdfebc3f32b9dca56777a8d374df3a8b9bc792e430b8",
+            "scale.d.ts": "b9b7ec63f0b4b05a5d913baca9a8d137e6bd106f1b8635c45bd925b94a49387f"
+          }
+        },
+        "1000": {
+          "declarations": 1000,
+          "compileDurationMs": 353.75,
+          "inputs": {
+            "factories.ts": "cbe280d8993ed453c2e770364aaa1287375f9dc6b2a42620405f42c6dee9c89d",
+            "scale.ts": "453cf40e4ed1ad94fcabbecf6e52e5a034eaa6f51aff2ab9ce0f63283a29feff",
+            "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
+          },
+          "declarationsEmitted": {
+            "factories.d.ts": "e029825d79609a7f36ed7a5e39b9db44e5b33c26bbb812c4bb74354fa0eea036",
+            "scale.d.ts": "6e3508dd51dbfb5d6a0e510414705cc778fcf0179b8dd2cde59286b72d8763ad"
+          }
+        }
+      },
+      "treeShaking": "not-measured",
+      "runtimePerformance": "not-measured"
+    }
+  },
+  "emittedDeclarations": {
+    "candidate-define.d.ts": "441beda8ea7ad7e6693d3337f38b63c7a99011a960bc2f2845fe7b75ba3a5e21",
+    "candidate-descriptor.d.ts": "49971e2d379152700d270d25581834f6100365d1ade2a52a54176bd521fb8991",
+    "candidate-split-factory.d.ts": "99d06bbcdb14ecf73e8c57c98c92efcd9a317a8653c52a09f1bff476cfd14fa5",
+    "candidate-split.d.ts": "f7d7a60c5563c22165d9c12da9b0a8591f2ea44b24e9828cdb25928ec2eed58f",
+    "corpus.d.ts": "fe78492bcf94b808a40a8d919cb250b293f337e0d81d6dc52725578a7120aaa5",
+    "factories.d.ts": "baef386411419afa72fd5c9baa48888e52c50918783053d89b7a28995d2ac4c3",
+    "host-profile.d.ts": "797ec7335d1e7a0da9ab28d720a935689e02acdee5ae4df8524b6ae1b74f6da3",
+    "index.d.ts": "4d141c3afca28409648eb2a989f874463ad1ad4a6c1947096579ac72d513c75e",
+    "oracle.d.ts": "1a70f15fe229f3fdf66a7f9979c4170530f93fd13b89e40d45e92692f801dfc1",
+    "type-probes.d.ts": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881",
+    "types.d.ts": "3cc7ee8d68e6b4af58e83fb06c732932e3fda3e3246a33529a9a003188ee6a9b"
+  },
+  "limitations": {
+    "desiredState": "explicit test-Host preprocessing policy, not a production desired-state contract",
+    "semantics": "simplified normalized lab inputs and diagnostic payloads, not full wire/diagnostic/SCC conformance",
+    "measurements": "synthetic source/emit counts and six emitted-source edit experiments per candidate; chosen feature-local topology, not product edits or human task times",
+    "factoryParity": "single required edge and value observation only; no optional/many, failure, rollback or lifecycle parity",
+    "declarations": "authored export presence and source type probes; no packed consumer or complete public typing contract"
+  },
+  "guards": {
+    "exactClosedCorpus": true,
+    "substantiveScenarioWitnesses": true,
+    "immutablePlainData": true,
+    "ordinaryHelperReadsWithoutValidation": true,
+    "inheritedHelperReads": true,
+    "genuineCandidateShapes": true,
+    "splitFactoryAssociation": true,
+    "noExpectationManufacture": true,
+    "noExecutableDiscoveryImports": true,
+    "hiddenFallbackRejected": true,
+    "noRegistrationOrderSemantics": true,
+    "permutationStable": true,
+    "hostileOwnKeys": true,
+    "selectedLiteralLoadersOnly": true,
+    "singleRequiredEdgePureDiSmoke": true,
+    "declarationSerializability": true,
+    "actualDeclarationEmitEveryCandidate": true,
+    "factoriesRestrictedToHostProbes": true
+  }
+}

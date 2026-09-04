@@ -1,0 +1,48 @@
+{
+  "status": "done",
+  "changedFiles": [
+    "qualification/spikes/api-authoring/disablement-removal-and-diagnostics/b7/REPORT.md",
+    "qualification/spikes/api-authoring/disablement-removal-and-diagnostics/b7/api.js",
+    "qualification/spikes/api-authoring/disablement-removal-and-diagnostics/b7/api.ts",
+    "qualification/spikes/api-authoring/disablement-removal-and-diagnostics/b7/scenarios.mjs",
+    "qualification/spikes/api-authoring/disablement-removal-and-diagnostics/b7/tsconfig.json"
+  ],
+  "evidence": [
+    "safe_execution_status:completed",
+    "output_summary:Created the disposable fixture and evidence report at [REPORT.md](/var/data/gm-implementation-readiness-api-20260903/workspaces/l-b7/qualification/spikes/api-authoring/disablement-removal-and-diagnostics/b7/REPORT.md).\n\nIncluded files:\n\n- `api.ts`\n- `scenarios.mjs`\n- `tsconfig.json`\n- `api.js`\n- `dist/api.d.ts`\n- `REPORT.md`\n\nEvidence:\n\n- TypeScript declaration emit passed with `tsc -p`.\n- 15 shared scenarios executed with deterministic JSON output.\n- Node preflight failed as expected: Node `24.16.0`, required `>=24.18 <25`.\n- `pnpm check:changed` timed out without output under the constrained environment.\n- No production, public API, ADR, or ordinary documentation files changed.\n- Report records metrics, failure modes, limitations, and a non-authoritative recommendation.",
+    "attempt_count:1",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/l-b7/gm-api-b7-lane-l-20260903.8401c9c80a4e53729afbb4dad349c76386de67514ca5a0413cbb3b356231caab.handoff.patch",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/l-b7/gm-api-b7-lane-l-20260903.8401c9c80a4e53729afbb4dad349c76386de67514ca5a0413cbb3b356231caab.handoff.summary.json",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/l-b7/gm-api-b7-lane-l-20260903.8401c9c80a4e53729afbb4dad349c76386de67514ca5a0413cbb3b356231caab.handoff.manifest.json"
+  ],
+  "blockers": [],
+  "nextAction": "review_completed",
+  "schemaVersion": 1,
+  "provider": "codex",
+  "runId": "gm-api-b7-lane-l-20260903",
+  "taskId": "gm-api-b7-lane-l-20260903",
+  "details": {
+    "baseCommit": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418"
+  },
+  "artifacts": [
+    {
+      "kind": "patch",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/l-b7/gm-api-b7-lane-l-20260903.8401c9c80a4e53729afbb4dad349c76386de67514ca5a0413cbb3b356231caab.handoff.patch",
+      "byteLength": 11853,
+      "sha256": "8401c9c80a4e53729afbb4dad349c76386de67514ca5a0413cbb3b356231caab"
+    },
+    {
+      "kind": "summary",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/l-b7/gm-api-b7-lane-l-20260903.8401c9c80a4e53729afbb4dad349c76386de67514ca5a0413cbb3b356231caab.handoff.summary.json",
+      "byteLength": 1156,
+      "sha256": "8aa4d1ede67ea6075729aa96059203938e8d31c1d0770b91936fb7f1fae2953c"
+    },
+    {
+      "kind": "manifest",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/l-b7/gm-api-b7-lane-l-20260903.8401c9c80a4e53729afbb4dad349c76386de67514ca5a0413cbb3b356231caab.handoff.manifest.json",
+      "byteLength": 1698,
+      "sha256": "94b18f739a57b0bc155524234b50016c1e6ce81f4894ae5e5192a99e301f46f7"
+    }
+  ],
+  "updatedAt": "2026-09-03T01:00:23.888Z"
+}

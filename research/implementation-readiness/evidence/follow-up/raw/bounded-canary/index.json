@@ -1,0 +1,39 @@
+{
+  "kind": "supplemental-read-only-evidence",
+  "wave": "bounded-canary",
+  "collectedAt": "2026-09-04T12:59:45.717Z",
+  "historicalInventory": "unchanged",
+  "networkPolicy": "read_file/search_files only; native shell/web/apps/delegation disabled; no fallback; hosted sandbox retained; provider control plane connected; OS-wide egress denial not claimed",
+  "records": [
+    {
+      "lane": "canary",
+      "jobId": "gm-pr16-bounded-canary",
+      "evidenceKind": "read-only-analysis",
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "serviceTier": "fast",
+      "inputs": [],
+      "changedFiles": [],
+      "providerStarted": true,
+      "cleanup": "completed",
+      "artifacts": {
+        "launch.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/bounded-canary/canary.launch.json",
+          "sha256": "97dea611968eb879cf07f46d206ea1d79e901bd5851b5e4757d3b40dbd046024"
+        },
+        "profile.toml": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/bounded-canary/canary.profile.toml",
+          "sha256": "a57d3a089f66c7f0bcc44c58b4604c64059996ab628b2eea6dfe5fdb3c5fc435"
+        },
+        "progress.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/bounded-canary/canary.progress.json",
+          "sha256": "6600496dd6f7f731b8fe281ac3ca6fbcbfdc814bbdde290e7abd6928ad97f07c"
+        },
+        "result.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/bounded-canary/canary.result.json",
+          "sha256": "c37469a36b50d6dea8d260f54c679e8321eac2ad77befae889807be089b7eea9"
+        }
+      }
+    }
+  ]
+}

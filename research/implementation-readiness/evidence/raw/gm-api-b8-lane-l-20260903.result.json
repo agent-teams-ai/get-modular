@@ -1,0 +1,47 @@
+{
+  "status": "done",
+  "changedFiles": [
+    "qualification/spikes/api-authoring/DX-and-navigation-at-scale/b8/REPORT.md",
+    "qualification/spikes/api-authoring/DX-and-navigation-at-scale/b8/src/api.ts",
+    "qualification/spikes/api-authoring/DX-and-navigation-at-scale/b8/src/authoring.ts",
+    "qualification/spikes/api-authoring/DX-and-navigation-at-scale/b8/tsconfig.json"
+  ],
+  "evidence": [
+    "safe_execution_status:completed",
+    "output_summary:Completed the disposable fixture at:\n\n- [REPORT.md](/var/data/gm-implementation-readiness-api-20260903/workspaces/l-b8/qualification/spikes/api-authoring/DX-and-navigation-at-scale/b8/REPORT.md)\n- [src/api.ts](/var/data/gm-implementation-readiness-api-20260903/workspaces/l-b8/qualification/spikes/api-authoring/DX-and-navigation-at-scale/b8/src/api.ts)\n- [src/authoring.ts](/var/data/gm-implementation-readiness-api-20260903/workspaces/l-b8/qualification/spikes/api-authoring/DX-and-navigation-at-scale/b8/src/authoring.ts)\n- [tsconfig.json](/var/data/gm-implementation-readiness-api-20260903/workspaces/l-b8/qualification/spikes/api-authoring/DX-and-navigation-at-scale/b8/tsconfig.json)\n\nEvidence:\n\n- Base SHA verified: `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418`\n- Narrow TypeScript check passed: `tsc ...` exit `0`\n- Node runtime: `v24.16.0`; full preflight remains unavailable because the contract requires `>=24.18 <25`\n- Report includes scenario coverage, LOC and authoring metrics, diagnostics, serializability, removal cost, framework leakage, limitations, and a non-authoritative recommendation.\n\nFinal usage: 145,244 tokens over approximately 7.5 minutes.",
+    "attempt_count:1",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/l-b8/gm-api-b8-lane-l-20260903.7ef4060b9b201d44e7c379d672e4cdfde80a9bb57ae81fdb228e70bcb3d7d55c.handoff.patch",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/l-b8/gm-api-b8-lane-l-20260903.7ef4060b9b201d44e7c379d672e4cdfde80a9bb57ae81fdb228e70bcb3d7d55c.handoff.summary.json",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/l-b8/gm-api-b8-lane-l-20260903.7ef4060b9b201d44e7c379d672e4cdfde80a9bb57ae81fdb228e70bcb3d7d55c.handoff.manifest.json"
+  ],
+  "blockers": [],
+  "nextAction": "review_completed",
+  "schemaVersion": 1,
+  "provider": "codex",
+  "runId": "gm-api-b8-lane-l-20260903",
+  "taskId": "gm-api-b8-lane-l-20260903",
+  "details": {
+    "baseCommit": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418"
+  },
+  "artifacts": [
+    {
+      "kind": "patch",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/l-b8/gm-api-b8-lane-l-20260903.7ef4060b9b201d44e7c379d672e4cdfde80a9bb57ae81fdb228e70bcb3d7d55c.handoff.patch",
+      "byteLength": 7247,
+      "sha256": "7ef4060b9b201d44e7c379d672e4cdfde80a9bb57ae81fdb228e70bcb3d7d55c"
+    },
+    {
+      "kind": "summary",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/l-b8/gm-api-b8-lane-l-20260903.7ef4060b9b201d44e7c379d672e4cdfde80a9bb57ae81fdb228e70bcb3d7d55c.handoff.summary.json",
+      "byteLength": 1037,
+      "sha256": "bcc36c0bc042b513b4a4087b6c1f327657c51d78e027e34bdb1ed1209eee753d"
+    },
+    {
+      "kind": "manifest",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/l-b8/gm-api-b8-lane-l-20260903.7ef4060b9b201d44e7c379d672e4cdfde80a9bb57ae81fdb228e70bcb3d7d55c.handoff.manifest.json",
+      "byteLength": 1580,
+      "sha256": "fe23bce5765ce5f319e9f98b9b6ee04601db5f1745528db42bcb7eaacceb9029"
+    }
+  ],
+  "updatedAt": "2026-09-03T01:08:14.693Z"
+}

@@ -1,0 +1,49 @@
+{
+  "kind": "hosted-followup-launch-observation",
+  "observedAt": "2026-09-04T12:29:25.048Z",
+  "subjectCommit": "0bd6b4cf4d85f94967b03305917dc928b6c881da",
+  "sourcePackCommit": "32693e945e3cbeba4a94dac0be9dad3ad783740a",
+  "sourceBundleSha256": "44e7246f1a0df1927665e7da52875897446fc609d6fe4576586d0f7e654747d6",
+  "sourcePackBundleSha256": "cd6fcfd9bde2ba16a459404d3eadb683d140c4569574fdddcc2911d5850f0081",
+  "requestedProfile": {
+    "model": "gpt-5.6-sol",
+    "reasoningEffort": "xhigh",
+    "serviceTier": "fast",
+    "editMode": "read-only",
+    "networkAccess": "disabled"
+  },
+  "host": {
+    "machineId": "be0aad971ea647fab370acd110b469b7",
+    "workspaceRoot": "/mnt/volume_ams3_1784742570542/gm-pr16-followup-20260904/workspaces"
+  },
+  "preparation": {
+    "lanes": [
+      "O1",
+      "O2",
+      "O3",
+      "O4",
+      "O5",
+      "T2-fifth"
+    ],
+    "verifiedCleanClones": 6,
+    "sourceFilesVerified": 24,
+    "controller": "static-policy-anchor-not-executed"
+  },
+  "admission": {
+    "primaryDisk": "denied: less than configured 30 GiB minimum free",
+    "dataVolume": "allowed: no blocking output debt",
+    "thresholdChanged": false
+  },
+  "attempt": {
+    "jobId": "gm-pr16-followup-o1-0bd6b4c",
+    "operationId": "project-control-ccdb4bde718b5d54d99e26956589a0580a21c158ff77f77b635870e91a184b5a-1",
+    "status": "failed",
+    "error": "codex_goal_access_boundary_blocked:cannot_enforce_access_boundary:Codex goal adapter cannot enforce network_access=disabled; set networkAccess=\"restricted\" until OS/container egress isolation exists; rollback=prompt,worktree",
+    "startedWorkers": 0,
+    "authoredOutput": false,
+    "sourceWorktreeRolledBack": true
+  },
+  "remainingLanes": "O2-O5 and T2 not attempted after O1 common adapter rejection",
+  "disposition": "No network-policy downgrade. Owner clarification or supported egress-isolated adapter is required before resuming hosted critics.",
+  "evidenceLimits": "Infrastructure observation, not a worker review, source research result or contract verdict. Historical worker inventory unchanged."
+}

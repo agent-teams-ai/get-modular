@@ -1,0 +1,153 @@
+{
+  "kind": "supplemental-read-only-evidence",
+  "wave": "integrators-3014239",
+  "collectedAt": "2026-09-04T13:14:50.513Z",
+  "historicalInventory": "unchanged",
+  "networkPolicy": "read_file/search_files only; native shell/web/apps/delegation disabled; no fallback; hosted sandbox retained; provider control plane connected; OS-wide egress denial not claimed",
+  "records": [
+    {
+      "lane": "i1",
+      "jobId": "gm-pr16-bounded-i1-3014239",
+      "evidenceKind": "read-only-analysis",
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "serviceTier": "fast",
+      "inputs": [
+        {
+          "path": "gm",
+          "sha": "3014239a0d22b21a3d2994fcc5f5b2da4e7e8236",
+          "clean": true
+        }
+      ],
+      "changedFiles": [],
+      "providerStarted": true,
+      "cleanup": "completed",
+      "artifacts": {
+        "launch.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/integrators-3014239/i1.launch.json",
+          "sha256": "012e7cbd0e451e95b98e6e0d1a9532b02ccff5bc5f78c7d11802dfd7daf89171"
+        },
+        "profile.toml": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/integrators-3014239/i1.profile.toml",
+          "sha256": "cc61d2d7888cbe39973d20c7a7827747c2e53f47aa1b2f19af07cd20f846c8cd"
+        },
+        "progress.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/integrators-3014239/i1.progress.json",
+          "sha256": "7695041316d7511ad13afdd63ea4e47e99f7c4bf33b348d8abaaa913e7483412"
+        },
+        "result.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/integrators-3014239/i1.result.json",
+          "sha256": "0caa96920eee9031a6838c2fc0b5fab47c03eef1edff6f56ac29c5d21c7a83f9"
+        }
+      }
+    },
+    {
+      "lane": "i2",
+      "jobId": "gm-pr16-bounded-i2-3014239",
+      "evidenceKind": "read-only-analysis",
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "serviceTier": "fast",
+      "inputs": [
+        {
+          "path": "gm",
+          "sha": "3014239a0d22b21a3d2994fcc5f5b2da4e7e8236",
+          "clean": true
+        }
+      ],
+      "changedFiles": [],
+      "providerStarted": true,
+      "cleanup": "completed",
+      "artifacts": {
+        "launch.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/integrators-3014239/i2.launch.json",
+          "sha256": "39a8eec4ee9c531441c23592cd5c2822d2bc61c81e71c74d16d9b65498ee7e0c"
+        },
+        "profile.toml": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/integrators-3014239/i2.profile.toml",
+          "sha256": "410978fd1e02579f40c480e4c19303deb14f3bc32635096ad39ed8d0540b6ef3"
+        },
+        "progress.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/integrators-3014239/i2.progress.json",
+          "sha256": "a4c478e8361bf08c1b84913a5bf14b20b73da2bc2938f573a8ce77329584f8e4"
+        },
+        "result.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/integrators-3014239/i2.result.json",
+          "sha256": "bb607c8cce159ad595ba80dff616fac2f09b153a3dfb6b6a38a0ab36969a3648"
+        }
+      }
+    },
+    {
+      "lane": "i3",
+      "jobId": "gm-pr16-bounded-i3-3014239",
+      "evidenceKind": "read-only-analysis",
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "serviceTier": "fast",
+      "inputs": [
+        {
+          "path": "gm",
+          "sha": "3014239a0d22b21a3d2994fcc5f5b2da4e7e8236",
+          "clean": true
+        }
+      ],
+      "changedFiles": [],
+      "providerStarted": true,
+      "cleanup": "completed",
+      "artifacts": {
+        "launch.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/integrators-3014239/i3.launch.json",
+          "sha256": "05129e95dc72da1ecef9420378739d6684fa70f8f48f264247f766418f43f196"
+        },
+        "profile.toml": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/integrators-3014239/i3.profile.toml",
+          "sha256": "56d00b752987ca99b8763410f67429cd5d7908ddb9100fdb2b0b3c77e07df832"
+        },
+        "progress.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/integrators-3014239/i3.progress.json",
+          "sha256": "85416fb0a924a931d555f8e8c8190c0d071cc6e08e4f365523d79d11d69067b0"
+        },
+        "result.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/integrators-3014239/i3.result.json",
+          "sha256": "9595b16b08ef7c71858ba612ee0ff463644b71f2471a280ecedb67dbb323ee57"
+        }
+      }
+    },
+    {
+      "lane": "i4",
+      "jobId": "gm-pr16-bounded-i4-3014239",
+      "evidenceKind": "read-only-analysis",
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "serviceTier": "fast",
+      "inputs": [
+        {
+          "path": "gm",
+          "sha": "3014239a0d22b21a3d2994fcc5f5b2da4e7e8236",
+          "clean": true
+        }
+      ],
+      "changedFiles": [],
+      "providerStarted": true,
+      "cleanup": "completed",
+      "artifacts": {
+        "launch.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/integrators-3014239/i4.launch.json",
+          "sha256": "ef80b1d509dfcfceb934fa4713ecc28de30223164137ef449a83ef95d17ea7bc"
+        },
+        "profile.toml": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/integrators-3014239/i4.profile.toml",
+          "sha256": "3c6d50c284581d8597730d31e75cf9e4461bca47165bfb6179e50e0ccf85c072"
+        },
+        "progress.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/integrators-3014239/i4.progress.json",
+          "sha256": "7e54355f1ec81197782f11e93855187a80683d775fe5c2ca8313040991d0fca1"
+        },
+        "result.json": {
+          "path": "research/implementation-readiness/evidence/follow-up/raw/integrators-3014239/i4.result.json",
+          "sha256": "5ad0899da8b2e46cf32f47bae39eb214b897d7e69707110c2d43567d929a1688"
+        }
+      }
+    }
+  ]
+}

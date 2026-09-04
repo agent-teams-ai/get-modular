@@ -56,8 +56,8 @@ then implementations follow it as the candidate rule and claim nothing.
   declared slot identifiers of that feature. Own declarations choose slot
   identifiers from the identifier-safe subset of the accepted `localToken`
   grammar, lowercase ASCII letters and digits starting with a letter,
-  excluding every own property name of `Object.prototype` and the name
-  `then`, so that every key is a plain property name with no
+  excluding every own property name of `Object.prototype` and the names
+  `prototype` and `then`, so that every key is a plain property name with no
   prototype or thenable collision. The witness checker rejects an own
   declaration whose slot identifier violates this subset.
 - The emitter writes each key from the feature-owned declaration handle in the
@@ -146,9 +146,10 @@ the packet's recommendation is superseded by it.
   not a declared slot;
 - the behavioral replacement test executed against both the direct and the
   generated subject through the public boundary;
-- a test proving that a slot or implementation identity equal to
-  `constructor`, `prototype` or `then` is handled only through `Map`
-  lookups and never reaches an object key;
+- a test proving that valid hostile portable implementation identities such as
+  `x/constructor`, `x/prototype` and `x/then` are handled only through `Map`
+  lookups and never reach an object key; local slot tokens equal to
+  `constructor`, `prototype` or `then` are rejected by the identifier subset;
 - `tsc` rejecting a generated file whose record does not satisfy the
   feature-owned interface.
 

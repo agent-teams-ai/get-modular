@@ -1,0 +1,49 @@
+{
+  "status": "done",
+  "changedFiles": [
+    "qualification/spikes/api-authoring/typescript-inference-and-declaration-emit/b5/api.ts",
+    "qualification/spikes/api-authoring/typescript-inference-and-declaration-emit/b5/evidence.json",
+    "qualification/spikes/api-authoring/typescript-inference-and-declaration-emit/b5/package.json",
+    "qualification/spikes/api-authoring/typescript-inference-and-declaration-emit/b5/report.md",
+    "qualification/spikes/api-authoring/typescript-inference-and-declaration-emit/b5/scenarios.ts",
+    "qualification/spikes/api-authoring/typescript-inference-and-declaration-emit/b5/tsconfig.json"
+  ],
+  "evidence": [
+    "safe_execution_status:completed",
+    "output_summary:Created the disposable fixture exclusively under:\n\n`qualification/spikes/api-authoring/typescript-inference-and-declaration-emit/b5/`\n\nFiles:\n\n- `api.ts`\n- `scenarios.ts`\n- `package.json`\n- `tsconfig.json`\n- `evidence.json`\n- Generated `dist/api.{js,d.ts}` and `dist/scenarios.{js,d.ts}`\n- `report.md`\n\nEvidence:\n\n- TypeScript `--noEmit` check: passed.\n- Declaration emit: passed; `.d.ts` files generated.\n- Runtime scenario probe: passed.\n  - 17 shared scenarios represented.\n  - Serialized declaration: 506 bytes.\n  - Deterministic ordering: `true`.\n  - `constructor`, `then`, and Unicode keys preserved.\n  - `__proto__` was not preserved (`hasProtoKey: false`), exposing an object-literal serialization failure.\n- Node preflight failed as expected:\n  `expected Node >=24.18.0 <25, received 24.16.0`\n  (environment is Node 24.16.0, so no full repository gate was claimed).\n\nThe report contains LOC, generic glue, file/binding edit counts, explicit typing and inference observations, diagnostic limitations, serializability findings, removal cost, framework leakage, failure modes, and a non-authoritative recommendation.",
+    "attempt_count:1",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/l-b5/gm-api-b5-lane-l-20260903.171b8cef6c7c010852a17cb33b91432b12dc6858d0d58bee5355bf67cceb949e.handoff.patch",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/l-b5/gm-api-b5-lane-l-20260903.171b8cef6c7c010852a17cb33b91432b12dc6858d0d58bee5355bf67cceb949e.handoff.summary.json",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/l-b5/gm-api-b5-lane-l-20260903.171b8cef6c7c010852a17cb33b91432b12dc6858d0d58bee5355bf67cceb949e.handoff.manifest.json"
+  ],
+  "blockers": [],
+  "nextAction": "review_completed",
+  "schemaVersion": 1,
+  "provider": "codex",
+  "runId": "gm-api-b5-lane-l-20260903",
+  "taskId": "gm-api-b5-lane-l-20260903",
+  "details": {
+    "baseCommit": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418"
+  },
+  "artifacts": [
+    {
+      "kind": "patch",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/l-b5/gm-api-b5-lane-l-20260903.171b8cef6c7c010852a17cb33b91432b12dc6858d0d58bee5355bf67cceb949e.handoff.patch",
+      "byteLength": 11850,
+      "sha256": "171b8cef6c7c010852a17cb33b91432b12dc6858d0d58bee5355bf67cceb949e"
+    },
+    {
+      "kind": "summary",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/l-b5/gm-api-b5-lane-l-20260903.171b8cef6c7c010852a17cb33b91432b12dc6858d0d58bee5355bf67cceb949e.handoff.summary.json",
+      "byteLength": 1291,
+      "sha256": "31dc2be5f61f3a31de96b9b16639dc6ad70388a52fe451f5ada75858eeb7970e"
+    },
+    {
+      "kind": "manifest",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/l-b5/gm-api-b5-lane-l-20260903.171b8cef6c7c010852a17cb33b91432b12dc6858d0d58bee5355bf67cceb949e.handoff.manifest.json",
+      "byteLength": 1834,
+      "sha256": "1bed9979ba2cfe15a772ef0d71b259bcf8b365976c8ebb0f252fc12bc87b2456"
+    }
+  ],
+  "updatedAt": "2026-09-03T00:48:46.764Z"
+}
