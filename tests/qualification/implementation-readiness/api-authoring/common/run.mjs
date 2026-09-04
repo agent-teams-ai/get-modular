@@ -27,7 +27,7 @@ const exactTitles = [
   "one provider", "one consumer", "required dependency", "missing required dependency", "missing optional dependency",
   "zero many", "one many", "multiple many", "duplicate provider", "ambiguous binding", "incompatible capability",
   "dependency cycle", "disabled root", "disabled required provider", "disabled optional provider", "unreachable provider",
-  "multiple roots", "deterministic reorder", "hostile slot names: own __proto__, constructor, then, composed and decomposed Unicode",
+  "multiple roots", "deterministic reorder", "hostile record keys and Unicode; valid slots constructor and then",
   "unknown declaration fields", "duplicate profile selections", "duplicate implementation IDs", "invalid owner path",
   "profile with unknown module", "hidden fallback attempt", "discovery without executable imports",
   "literal loader table for selected modules only", "direct Pure DI parity", "declaration serializability", "TypeScript declaration emit",

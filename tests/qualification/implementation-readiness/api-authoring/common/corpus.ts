@@ -57,7 +57,7 @@ export const corpus: readonly Scenario[] = deepFreeze([
   scenario("S16", "unreachable provider", world([consumer(serviceSlot()), provider("provider-a"), provider("provider-b")], [bind([p1])], ["lab/consumer"]), bad("profile.unreachable-selection")),
   scenario("S17", "multiple roots", world([provider("provider-a"), provider("provider-b")], [], ["lab/provider-b", "lab/provider-a"]), ok([p1, p2], [p1, p2])),
   scenario("S18", "deterministic reorder", world([provider("provider-b"), consumer(serviceSlot()), provider("provider-a")], [bind([p1])], ["lab/provider-b", "lab/consumer"]), ok([c, p1, p2], [p1, c, p2])),
-  scenario("S19", "hostile slot names: own __proto__, constructor, then, composed and decomposed Unicode", world([hostileDeclaration], hostileBindings, ["lab/hostile"]), ok(["lab/hostile/default"], ["lab/hostile/default"]), "representation"),
+  scenario("S19", "hostile record keys and Unicode; valid slots constructor and then", world([hostileDeclaration], hostileBindings, ["lab/hostile"]), ok(["lab/hostile/default"], ["lab/hostile/default"]), "representation"),
   scenario("S20", "unknown declaration fields", world([declarationWithUnknownField], [], ["lab/provider-a"]), bad("schema.unknown-field"), "representation"),
   scenario("S21", "duplicate profile selections", world([provider("provider-a"), { ...provider("provider-a"), implementationId: "lab/provider-a/other" }], [], ["lab/provider-a"]), bad("profile.duplicate-selection")),
   scenario("S22", "duplicate implementation IDs", world([provider("provider-a"), { ...provider("provider-b"), implementationId: p1 }], [], ["lab/provider-a"]), bad("declaration.duplicate-implementation")),
