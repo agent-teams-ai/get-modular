@@ -28,6 +28,14 @@ Read the complete frozen evidence set, especially:
 - proposed ADR-0009 through ADR-0014 and ADR-0016;
 - OD-004, OD-005, and OD-006.
 
+Account for the complete set through the canonical manifest/index and their
+verified hashes. Use the four retained integrator summaries as the primary
+synthesis dossier. Open an individual historical raw wrapper only to verify a
+citation, resolve a disagreement, or inspect evidence that an integrator marks
+partial, blocked, unavailable, or ambiguous. Do not serially re-read every raw
+wrapper when the canonical index and all four integrators already agree on its
+custody and classification.
+
 Produce one implementation handoff that clearly separates:
 
 ```text
