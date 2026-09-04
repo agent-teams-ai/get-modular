@@ -438,7 +438,7 @@ consensus; runtime execution and whole-product claims remain unsupported.
 | Earlier oracle rejected duplicate `moduleId`; ADR-0004 permits alternative implementation declarations. | Fixed: the catalog permits alternatives; the profile rejects duplicate selections. Each alternative also has a passing selection probe. |
 | Previous guide/report use canonical tuple W0/W1; accepted ADR-0008 defines emitted W0/W1 bytes. | ADR-0008 controls; this patch restores emitted-byte precedence. |
 | Earlier report suggests broad OSS validation; historical O1-O5 are source-unavailable. | Five new source-only results supplement that history. Neither they nor O6 establish industry consensus or runtime compatibility. |
-| Four integrators generally say “conditional private Core”; T8 critics say “no-go now.” | Both are reconciled as: **NO-GO before owner-start/enforcement; CONDITIONAL afterward for source-only normalized semantics.** |
+| Four integrators generally say “conditional private Core”; T8 critics say “no-go now.” | Both are reconciled as: **NO-GO before owner-start/enforcement; CONDITIONAL afterward for private normalized semantics and an optional qualification-only object candidate.** No public or carrier-conformance claim follows. |
 
 ## Phase 0-4 readiness matrix
 

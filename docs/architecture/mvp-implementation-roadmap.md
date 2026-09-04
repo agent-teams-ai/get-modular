@@ -616,10 +616,12 @@ those bytes privately when binding the exact subject and evidence.
 One named gate proves semantic/digest invariants and deep immutability against
 the direct subject before a construction claim and against both temporary
 hash-identified subjects after item 6 is accepted. Both use the same public
-   compiler boundary only after both carrier boundaries are accepted; before then,
-   the private normalized-value seam is the only admitted checkpoint. Reordered
-   equivalent graphs produce identical canonical bytes/digest; valid semantic
-   changes produce different valid bytes/digest;
+compiler boundary only after both carrier boundaries are accepted; before then,
+they use the selected M1 private qualification surface: the normalized-value
+seam and, when selected, the qualification-only object candidate over the same
+implementation. This grants no public or carrier-conformance claim. Reordered
+equivalent graphs produce identical canonical bytes/digest; valid semantic
+changes produce different valid bytes/digest;
 invalid inputs produce diagnostics only; and nested mutation, alias and
 cross-process tests prove a plain immutable plan. This gate does not require or
 invent release-custody records.
