@@ -14,7 +14,8 @@ const roadmapPath = "docs/architecture/mvp-implementation-roadmap.md";
 const roadmap = await readFile(roadmapPath, "utf8");
 const block = /<!-- get-modular:private-core-start -->\s*```json\s*\n([\s\S]*?)\n```\s*<!-- \/get-modular:private-core-start -->/u;
 const recorded = JSON.parse(block.exec(roadmap)[1]);
-const markdown = value => `<!-- get-modular:private-core-start -->\n\n\`\`\`json\n${JSON.stringify(value)}\n\`\`\`\n<!-- /get-modular:private-core-start -->`;
+const markdownJson = json => `<!-- get-modular:private-core-start -->\n\n\`\`\`json\n${json}\n\`\`\`\n<!-- /get-modular:private-core-start -->`;
+const markdown = value => markdownJson(JSON.stringify(value));
 const artifacts = ["packages/core/package.json", "packages/core/src/features/example/internal.ts"];
 const check = (text, extra = {}) => validatePrivateCoreStart({
   markdown: text, productionArtifacts: artifacts,
@@ -69,19 +70,22 @@ test("private Core start binds the actual manifest identity, not only its direct
 });
 
 test("private Core start rejects repeated JSON members in either order", async () => {
+  const members = JSON.stringify(recorded).slice(1, -1);
   for (const field of ["package", "approvedBy", "scope", "authorityDigest"]) {
     for (const value of [recorded[field], "unauthorized"]) {
       const extra = `${JSON.stringify(field)}:${JSON.stringify(value)}`;
-      for (const placement of [
-        text => text.replace("{", `{${extra},`),
-        text => text.replace("}\n```", `,${extra}}\n\`\`\``),
+      for (const json of [
+        `{${extra},${members}}`,
+        `{${members},${extra}}`,
       ]) {
-        await assert.rejects(check(placement(markdown(recorded))), /duplicate members/u);
+        assert.doesNotThrow(() => JSON.parse(json));
+        await assert.rejects(check(markdownJson(json)), /duplicate members/u);
       }
     }
   }
-  const escaped = markdown(recorded).replace("{", '{"\\u0070ackage":"@get-modular/core",');
-  await assert.rejects(check(escaped), /duplicate members/u);
+  const escaped = `{"\\u0070ackage":"@get-modular/core",${members}}`;
+  assert.doesNotThrow(() => JSON.parse(escaped));
+  await assert.rejects(check(markdownJson(escaped)), /duplicate members/u);
 });
 
 test("starting base survives descendant commits without per-commit approval", async () => {
