@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import test from "node:test";
+import "./compiler-engineer-examples.test.mjs";
 import canonicalize from "canonicalize";
 import {
   createDiagnosticComparator,

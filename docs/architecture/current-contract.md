@@ -28,6 +28,11 @@ This document is the navigation and implementation guide for the current
 pre-1.0 contract. It does not replace an accepted ADR or mutate immutable
 qualification artifacts.
 
+The [compiler engineer handbook](../qualification/compiler-engineer-handbook.md)
+maps the seventeen diagnostic prerequisites to input evidence, partial-failure
+rules and independent examples. Read its explicit derivation gaps before
+implementing a private fact predicate; the checker is not the specification.
+
 ## Accepted contract and proposed public naming
 
 Get Modular has one accepted contract and no production package yet. The
