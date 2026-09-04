@@ -20,6 +20,7 @@ const check = (text, extra = {}) => validatePrivateCoreStart({
   markdown: text, productionArtifacts: artifacts,
   authorityDigest: ACCEPTED_AUTHORITY_LEDGER_DIGEST,
   isStartingBase: async base => base === recorded.baseCommit,
+  readPackageManifest: async () => ({ name: "@get-modular/core", private: true }),
   ...extra,
 });
 
@@ -60,6 +61,29 @@ test("private Core start rejects missing, duplicate and malformed record delimit
   await assert.rejects(check("<!-- /get-modular:private-core-start -->\n<!-- get-modular:private-core-start -->"), /out of order/u);
 });
 
+test("private Core start binds the actual manifest identity, not only its directory", async () => {
+  for (const manifest of [null, {}, { name: "@get-modular/conformance" }]) {
+    await assert.rejects(check(roadmap, { readPackageManifest: async () => manifest }),
+      /manifest identity/u);
+  }
+});
+
+test("private Core start rejects repeated JSON members in either order", async () => {
+  for (const field of ["package", "approvedBy", "scope", "authorityDigest"]) {
+    for (const value of [recorded[field], "unauthorized"]) {
+      const extra = `${JSON.stringify(field)}:${JSON.stringify(value)}`;
+      for (const placement of [
+        text => text.replace("{", `{${extra},`),
+        text => text.replace("}\n```", `,${extra}}\n\`\`\``),
+      ]) {
+        await assert.rejects(check(placement(markdown(recorded))), /duplicate members/u);
+      }
+    }
+  }
+  const escaped = markdown(recorded).replace("{", '{"\\u0070ackage":"@get-modular/core",');
+  await assert.rejects(check(escaped), /duplicate members/u);
+});
+
 test("starting base survives descendant commits without per-commit approval", async () => {
   const directory = await mkdtemp(join(tmpdir(), "gm-start-ancestry-"));
   const git = (...args) => exec("git", args, { cwd: directory });
@@ -94,6 +118,11 @@ test("real governance entrypoint consumes the start record before admitting priv
     const gate = () => exec(process.execPath, ["architecture/checks/governance.mjs"], { cwd: fixture });
     await git("add", "packages/core");
     await gate();
+    await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify({ name: "@get-modular/conformance", private: true }));
+    await git("add", "packages/core/package.json");
+    await assert.rejects(gate(), error => /private Core start.*manifest identity/u.test(error.stderr));
+    await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify({ name: "@get-modular/core", private: true }));
+    await git("add", "packages/core/package.json");
     for (const replacement of ["", markdown({ ...recorded, approvedBy: "reviewer" })]) {
       await writeFile(join(fixture, roadmapPath), roadmap.replace(block, replacement));
       await git("add", roadmapPath);

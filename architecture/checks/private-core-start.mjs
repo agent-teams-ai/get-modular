@@ -1,3 +1,5 @@
+import { visit } from "jsonc-parser";
+
 const START_MARKER = "<!-- get-modular:private-core-start -->";
 const END_MARKER = "<!-- /get-modular:private-core-start -->";
 const FIELDS = ["repository", "baseCommit", "authorityDigest", "approvedBy", "approvedOn", "status", "package", "scope", "excluded"];
@@ -18,6 +20,7 @@ export async function validatePrivateCoreStart({
   productionArtifacts,
   authorityDigest,
   isStartingBase,
+  readPackageManifest,
 }) {
   const starts = markdown.split(START_MARKER);
   const ends = markdown.split(END_MARKER);
@@ -32,6 +35,16 @@ export async function validatePrivateCoreStart({
   if (!fenced) fail("record must contain one JSON block");
   let record;
   try { record = JSON.parse(fenced[1]); } catch { fail("record must be valid JSON"); }
+  const objects = [];
+  visit(fenced[1], {
+    onObjectBegin() { objects.push(new Set()); },
+    onObjectProperty(name) {
+      const keys = objects.at(-1);
+      if (keys.has(name)) fail("record has duplicate members");
+      keys.add(name);
+    },
+    onObjectEnd() { objects.pop(); },
+  });
   if (record === null || typeof record !== "object" || Array.isArray(record)
     || !exactList(Object.keys(record), FIELDS)) fail("record fields are not the closed format");
   if (record.repository !== "agent-teams-ai/get-modular") fail("repository does not match");
@@ -41,6 +54,10 @@ export async function validatePrivateCoreStart({
   if (record.package !== "@get-modular/core") fail("package is not authorized");
   if (!exactList(record.scope, SCOPE) || !exactList(record.excluded, EXCLUDED)) fail("scope is not the bounded private checkpoint");
   if (productionArtifacts.some(path => !path.startsWith("packages/core/"))) fail("artifact is outside the authorized package root");
+  if (productionArtifacts.length > 0) {
+    const manifest = await readPackageManifest("packages/core/package.json");
+    if (manifest?.name !== record.package) fail("manifest identity does not match the authorized package");
+  }
   if (typeof record.baseCommit !== "string" || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u.test(record.baseCommit)) fail("base must be an exact Git commit");
   if (!await isStartingBase(record.baseCommit)) fail("base is not an ancestor of this checkout");
 }
