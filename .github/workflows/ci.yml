@@ -38,4 +38,6 @@ jobs:
           node architecture/checks/feature-module-standard-profile.mjs
       - run: pnpm check
       - name: Verify tracked workspace integrity
+        env:
+          EXPECTED_HEAD_SHA: ${{ github.sha }}
         run: node architecture/checks/tracked-workspace-integrity.mjs

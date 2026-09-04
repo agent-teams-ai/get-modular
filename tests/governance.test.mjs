@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
@@ -1285,7 +1285,7 @@ test("tracked workspace integrity ignores mutable Git metadata", async () => {
       await writeFile(join(fixture, "tracked.txt"), "modified\n");
       await assert.rejects(
         assertTrackedWorkspaceMatchesHead(fixture),
-        /TRACKED_FILE_CUSTODY_FAILED: working-tree bytes differ from HEAD/u,
+        /TRACKED_FILE_CUSTODY_FAILED: working-tree bytes or mode differ from HEAD/u,
       );
     } finally {
       await rm(fixture, { recursive: true, force: true });
@@ -1309,6 +1309,53 @@ test("tracked workspace integrity disables Git replacement objects", async () =>
     await assert.rejects(
       assertTrackedWorkspaceMatchesHead(fixture),
       /TRACKED_FILE_CUSTODY_FAILED: tracked path differs from HEAD/u,
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("tracked workspace integrity rejects mode and mid-scan changes", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-workspace-stability-"));
+  try {
+    await initFixtureRepository(fixture);
+    await writeFile(join(fixture, "a.txt"), "a\n");
+    await writeFile(join(fixture, "b.txt"), "b\n");
+    await git(fixture, "add", "--", "a.txt", "b.txt");
+    await git(fixture, "commit", "--quiet", "-m", "fixture");
+    const { stdout: head } = await git(fixture, "rev-parse", "HEAD");
+    await assert.rejects(
+      assertTrackedWorkspaceMatchesHead(fixture, { expectedHeadCommit: "0".repeat(40) }),
+      /does not match expected commit/u,
+    );
+
+    await assert.rejects(
+      assertTrackedWorkspaceMatchesHead(fixture, {
+        expectedHeadCommit: head.trim(),
+        afterFirstPass: () => writeFile(join(fixture, "a.txt"), "changed\n"),
+      }),
+      /working-tree bytes or mode differ from HEAD/u,
+    );
+    await writeFile(join(fixture, "a.txt"), "a\n");
+
+    if (process.platform !== "win32") {
+      await chmod(join(fixture, "a.txt"), 0o755);
+      await assert.rejects(
+        assertTrackedWorkspaceMatchesHead(fixture),
+        /working-tree bytes or mode differ from HEAD/u,
+      );
+      await chmod(join(fixture, "a.txt"), 0o644);
+    }
+
+    await assert.rejects(
+      assertTrackedWorkspaceMatchesHead(fixture, {
+        afterFirstPass: async () => {
+          await writeFile(join(fixture, "b.txt"), "staged\n");
+          await git(fixture, "add", "--", "b.txt");
+          await writeFile(join(fixture, "b.txt"), "b\n");
+        },
+      }),
+      /Git index changed after snapshot/u,
     );
   } finally {
     await rm(fixture, { recursive: true, force: true });

@@ -92,9 +92,18 @@ async function readWorkingTreeRegularFile(relativePath, repositoryRoot) {
     const status = await handle.stat();
     if (!status.isFile()) return { kind: "non-regular" };
     const bytes = await handle.readFile();
+    const finalStatus = await handle.stat();
+    if (status.dev !== finalStatus.dev
+      || status.ino !== finalStatus.ino
+      || status.mode !== finalStatus.mode
+      || status.size !== finalStatus.size
+      || status.mtimeMs !== finalStatus.mtimeMs
+      || status.ctimeMs !== finalStatus.ctimeMs) {
+      return { kind: "changed-during-read" };
+    }
     const after = await inspectWorkingTreePath(relativePath, repositoryRoot);
     if (after.kind !== "regular") return after;
-    return { kind: "regular", bytes };
+    return { kind: "regular", bytes, executable: (status.mode & 0o111) !== 0 };
   } catch (error) {
     if (["ELOOP", "ENOENT", "ENOTDIR"].includes(error?.code)) {
       return { kind: error.code === "ELOOP" ? "symlink" : "missing" };
@@ -342,7 +351,24 @@ export async function assertGitIndexSnapshotCurrent(snapshot) {
   }
 }
 
-export async function assertTrackedWorkspaceMatchesHead(repositoryRoot) {
+async function currentHeadCommit(repositoryRoot) {
+  const { stdout } = await runGit(repositoryRoot, ["rev-parse", "--verify", "HEAD^{commit}"]);
+  const oid = stdout.toString("ascii").replace(/\r?\n$/u, "");
+  if (!GIT_OBJECT_ID.test(oid)) throw new Error("invalid HEAD commit identity");
+  return oid;
+}
+
+export async function assertTrackedWorkspaceMatchesHead(
+  repositoryRoot,
+  { expectedHeadCommit, afterFirstPass } = {},
+) {
+  const initialHeadCommit = await currentHeadCommit(repositoryRoot);
+  if (expectedHeadCommit !== undefined && initialHeadCommit !== expectedHeadCommit) {
+    throw new Error(
+      `TRACKED_FILE_CUSTODY_FAILED: HEAD ${initialHeadCommit} does not match expected commit `
+      + expectedHeadCommit,
+    );
+  }
   const snapshot = await captureGitIndexSnapshot(repositoryRoot);
   if (snapshot.headTreeOid === null) {
     throw new Error("TRACKED_FILE_CUSTODY_FAILED: repository must have a committed HEAD");
@@ -371,14 +397,28 @@ export async function assertTrackedWorkspaceMatchesHead(repositoryRoot) {
   }
 
   const blobBytes = await readBlobBatch(repositoryRoot, expectedBlobs);
-  for (const [index, path] of paths.entries()) {
-    const workingTree = await readWorkingTreeRegularFile(path, repositoryRoot);
-    if (workingTree.kind !== "regular" || !workingTree.bytes.equals(blobBytes[index])) {
-      throw new Error(
-        `TRACKED_FILE_CUSTODY_FAILED: working-tree bytes differ from HEAD: ${path} `
-        + `(${workingTree.kind})`,
-      );
+  const expectedByPath = new Map(paths.map((path, index) => [path, blobBytes[index]]));
+  const assertWorkingTreePass = async orderedPaths => {
+    for (const path of orderedPaths) {
+      const workingTree = await readWorkingTreeRegularFile(path, repositoryRoot);
+      const expectedExecutable = snapshot.entries.get(path).mode === "100755";
+      if (workingTree.kind !== "regular"
+        || workingTree.executable !== expectedExecutable
+        || !workingTree.bytes.equals(expectedByPath.get(path))) {
+        throw new Error(
+          `TRACKED_FILE_CUSTODY_FAILED: working-tree bytes or mode differ from HEAD: ${path} `
+          + `(${workingTree.kind})`,
+        );
+      }
     }
+  };
+
+  await assertWorkingTreePass(paths);
+  await afterFirstPass?.();
+  await assertWorkingTreePass([...paths].reverse());
+  await assertGitIndexSnapshotCurrent(snapshot);
+  if (await currentHeadCommit(repositoryRoot) !== initialHeadCommit) {
+    throw new Error("TRACKED_FILE_CUSTODY_FAILED: HEAD changed during verification");
   }
 }
 
