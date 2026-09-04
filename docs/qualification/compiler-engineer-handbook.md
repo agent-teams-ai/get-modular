@@ -7,6 +7,7 @@ summary: Derives diagnostic prerequisites from input evidence and supplies indep
 related:
   - ADR-0006
   - ADR-0007
+  - ADR-0013
   - ADR-0015
   - ARCH-CURRENT-CONTRACT
   - ARCH-MVP-IMPLEMENTATION-ROADMAP
@@ -59,8 +60,8 @@ own decision. Rows labelled Gap are not permission to block unrelated M1 work.
 
 | Fact and scope | Data and derivation | Failure, suppression, and authority |
 | --- | --- | --- |
-| `batch.raw-bytes-admitted` / batch | Raw entry: preflight document sizes and aggregate bytes against R before decoding. | An exceeded batch budget blocks dependent decoding; document-local admission follows successful batch preflight. Gap: the object entry has no raw bytes; do not serialize objects to manufacture this measurement. N, D, F. |
-| `document.raw-bytes-admitted` / document | Raw entry: compare this document's byte length with its declaration or profile limit after batch admission. | Failure excludes this document's decoder; another admitted document may continue. Gap: object-entry mapping is not a byte test. D, F, R. |
+| `batch.raw-bytes-admitted` / batch | Raw entry: preflight document sizes and aggregate bytes against R before decoding. Object entry has B = 0; F's three object partitions set this fact valid. | An exceeded batch budget blocks dependent decoding; document-local admission follows successful batch preflight. Gap: exotic carrier propagation is not fixed by these partitions. Never serialize objects to manufacture byte measurements. N, D, F. |
+| `document.raw-bytes-admitted` / document | Raw entry: compare this document's byte length with its declaration or profile limit after batch admission. F's three object partitions set this fact valid without a byte test. | Failure excludes this document's decoder; another admitted document may continue. Gap: the partitions do not pin every downstream state after a batch failure. D, F, R. |
 | `document.decoded` / document | Raw entry: bounded valid UTF-8 and strict JSON with no duplicate keys yield a value. Object entry: use the accepted trusted-value domain, not JSON round-tripping. | Failed raw decoding contributes no downstream schema or semantic facts. Gap: unresolved object-carrier cases stay outside claimed admission. N, D, F. |
 | `document.schema-valid` / document | Validate the whole admitted value against the relevant S definition and accepted plain-value/identity rules. | A schema-invalid declaration supplies no partial semantic record. A schema-valid record may still fail semantic checks, such as `many.min > many.max`. N, D, S. |
 | `declaration.identity-census-complete` / batch | Retain implementation identities and their occurrences from admitted declarations; establish the relevant census before proving absence. | An invalid census suppresses negative unknown-implementation claims but preserves positively proven duplicate identities. Gap: F's partition fixes that result, not every mixed-document state transition. D, F. |
@@ -70,7 +71,7 @@ own decision. Rows labelled Gap are not permission to block unrelated M1 work.
 | `profile.selection-uniqueness` / profile | Group selection occurrences by module identity; establish whether there is one unambiguous selection per selected module. | Duplicate selection does not suppress an independently provable implementation mismatch. The flag is not a global phase barrier. D, F. |
 | `binding.consumer-census-complete` / binding | Resolve this binding's consumer against declaration identity and profile evidence. | Unknown/ambiguous consumer prevents dependent slot/provider inference, not checks on other consumers. Gap: census completeness versus successful resolution must not suppress `binding.unknown-consumer` itself. D, F. |
 | `binding.slot-census-complete` / binding | Inspect the resolved consumer's full declared slot list and binding records for the relevant slot. | Missing binding differs from explicit optional `[]`; duplicate slot identities cannot be silently overwritten. Gap: a completed slot lookup may prove unknown-slot, so absence is not an upstream failure. N, D, F. |
-| `binding.provider-census-complete` / binding | Retain every referenced provider occurrence; resolve identities before selection, capability and compatibility checks. | A complete declaration census can prove an unknown provider. Do not discard duplicate occurrences before cardinality accounting. Gap: define mixed resolved/unresolved provider states per candidate, not by dropping invalid providers. N, D, F. |
+| `binding.provider-census-complete` / binding | Retain every provider occurrence and classify it against the declaration identity census before selection, capability and compatibility checks. F's independent-SCC partition keeps this fact valid despite an unknown provider. | Valid does not mean every provider exists. Do not discard duplicate occurrences before cardinality accounting or add edges from a partially invalid binding. Gap: other mixed-state transitions must retain these exact observations. N, D, F. |
 | `binding.reached-frontier-complete` / graph | Traverse consumer to provider from selected roots; every reached consumer must have its complete valid outgoing binding frontier. | An incomplete reached frontier suppresses every currently unproved unreachable conclusion. An unrelated invalid frontier does not suppress a positive SCC. D, F, G. |
 | `graph.selected-node-census-complete` / graph | Establish selected implementation nodes from declaration/selection evidence, preserving uncertainty rather than choosing ambiguous selections. | Used by SCC, depth and reachability. Gap: F's duplicate-selection partition does not define all node-resolution cases; do not replace this fact with whole-profile success. D, F. |
 | `graph.positive-edge-subgraph-complete` / graph | Inspect all relevant bindings; construct the subgraph of wholly valid bindings, then deduplicate provider-to-consumer adjacency pairs. | Invalid unrelated bindings may be excluded while this fact remains valid. Positive SCC evidence survives; this does not prove a complete reachability frontier. D, F, G. |
@@ -138,13 +139,19 @@ vectors remain authoritative; this corpus does not replace them.
 | `many-duplicate` | Repeating one provider is a duplicate, even within numeric bounds. |
 | `cycle-with-tail` | The SCC excludes the downstream tail; no invented numeric cyclic depth. |
 | `hostile-slot-names` | `constructor` and `then` are legal local tokens, not prototype lookups or callbacks. |
-| `frozen-input` | Frozen plain records/arrays have the same semantic result as the unfrozen input. |
+| `frozen-input` | Proposed-only freeze setup; the candidate plan equals the unfrozen companion, but no accepted result is asserted. |
 
 For the hostile-name case, `__proto__` is a separate **invalid token**, not a
 legal lookup test. An engineer must reject it under S without echoing it into
 a diagnostic field path. A valid identifier named `constructor` must not be
 rejected just because a JavaScript object prototype has a property with that
 name. Use owned-key checks or maps for lookup, without introducing a container.
+
+The frozen-input admission rule is still in
+[proposed ADR-0013](../decisions/0013-close-trusted-object-and-raw-carrier-semantics.md).
+That record carries `candidateExpectation`, not an accepted `expected` result.
+Checking a frozen fixture proves its setup, not snapshot timing: N's separate
+mutation-after-invocation rule still needs a real asynchronous subject test.
 
 Run `node --test tests/compiler-engineer-examples.test.mjs` to check corpus
 shape, accepted input/plan schemas, exact case inventory, authority links and

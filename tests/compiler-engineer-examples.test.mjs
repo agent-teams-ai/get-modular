@@ -35,7 +35,7 @@ test("engineer examples have a closed inventory and resolvable authority", async
   for (const entry of corpus.cases) {
     assert.equal(entry.entryPoint, "trusted-object-qualification-candidate");
     assert.ok(["plain", "deep-freeze"].includes(entry.setup));
-    assert.equal(entry.authorities.length, 3);
+    assert.equal(entry.authorities.length, entry.setup === "deep-freeze" ? 4 : 3);
     for (const path of entry.authorities) {
       assert.match(path, /^(docs\/decisions|architecture\/contracts)\//u);
       assert.doesNotMatch(path, /\.\./u);
@@ -51,15 +51,22 @@ for (const entry of corpus.cases) {
       assertSchema("moduleDeclaration", declaration);
     }
     assertSchema("compositionProfile", entry.input.profile);
-    assert.equal("digest" in entry.expected, false);
-    if (entry.expected.ok) {
-      assert.equal(entry.expected.surface, "complete-plan-without-digest");
-      assertSchema("compositionPlan", entry.expected.plan);
-      assert.equal("diagnostics" in entry.expected, false);
+    const expectation = entry.expected ?? entry.candidateExpectation;
+    if (entry.setup === "deep-freeze") {
+      assert.equal(entry.authorityClass, "proposed-only");
+      assert.equal("expected" in entry, false);
     } else {
-      assert.equal("plan" in entry.expected, false);
-      assert.ok(entry.expected.diagnostics.length > 0);
-      for (const diagnostic of entry.expected.diagnostics) {
+      assert.equal("candidateExpectation" in entry, false);
+    }
+    assert.equal("digest" in expectation, false);
+    if (expectation.ok) {
+      assert.equal(expectation.surface, "complete-plan-without-digest");
+      assertSchema("compositionPlan", expectation.plan);
+      assert.equal("diagnostics" in expectation, false);
+    } else {
+      assert.equal("plan" in expectation, false);
+      assert.ok(expectation.diagnostics.length > 0);
+      for (const diagnostic of expectation.diagnostics) {
         assertSchema("diagnostic", diagnostic);
       }
       if (entry.id === "cycle-with-tail") {
@@ -83,11 +90,12 @@ test("handbook covers the exact fact vocabulary and every literal example", asyn
   for (const id of ids) assert.ok(handbook.includes(`| \`${id}\` |`), id);
 });
 
-test("frozen setup preserves all nested input and expected semantic data", () => {
+test("proposed frozen setup preserves nested input without an accepted result", () => {
   const source = byId("frozen-input");
   const input = freeze(structuredClone(source.input));
   assert.deepEqual(input, byId("optional-empty").input);
-  assert.deepEqual(source.expected, byId("optional-empty").expected);
+  assert.equal("expected" in source, false);
+  assert.deepEqual(source.candidateExpectation, byId("optional-empty").expected);
   const assertFrozen = value => {
     if (value !== null && typeof value === "object") {
       assert.ok(Object.isFrozen(value));

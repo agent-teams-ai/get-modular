@@ -131,7 +131,8 @@
     {
       "id": "frozen-input",
       "entryPoint": "trusted-object-qualification-candidate",
-      "authorities": ["docs/decisions/0006-clarify-v1-compiler-normalization-and-entry-points.md","docs/decisions/0007-require-executable-v1-conformance-amendments.md","architecture/contracts/v1/composition.schema.json"],
+      "authorities": ["docs/decisions/0006-clarify-v1-compiler-normalization-and-entry-points.md","docs/decisions/0007-require-executable-v1-conformance-amendments.md","architecture/contracts/v1/composition.schema.json","docs/decisions/0013-close-trusted-object-and-raw-carrier-semantics.md"],
+      "authorityClass": "proposed-only",
       "setup": "deep-freeze",
       "input": {
         "declarations": [
@@ -139,7 +140,7 @@
         ],
         "profile": {"kind":"get-modular.composition-profile","schemaVersion":1,"profileId":"example/handbook","roots":["example/app"],"selections":[{"moduleId":"example/app","implementationId":"example/app/default"}],"bindings":[{"consumerImplementationId":"example/app/default","slotId":"logs","providerImplementationIds":[]}]}
       },
-      "expected": {"surface":"complete-plan-without-digest","ok":true,"plan":{"kind":"get-modular.composition-plan","schemaVersion":1,"profileId":"example/handbook","roots":["example/app"],"selections":[{"moduleId":"example/app","implementationId":"example/app/default"}],"bindings":[{"consumerImplementationId":"example/app/default","slotId":"logs","providerImplementationIds":[],"capabilityId":"example/log","compatibility":{"family":"exact","familyVersion":1,"token":"example/log"}}],"dependencyOrder":["example/app/default"]}}
+      "candidateExpectation": {"surface":"complete-plan-without-digest","ok":true,"plan":{"kind":"get-modular.composition-plan","schemaVersion":1,"profileId":"example/handbook","roots":["example/app"],"selections":[{"moduleId":"example/app","implementationId":"example/app/default"}],"bindings":[{"consumerImplementationId":"example/app/default","slotId":"logs","providerImplementationIds":[],"capabilityId":"example/log","compatibility":{"family":"exact","familyVersion":1,"token":"example/log"}}],"dependencyOrder":["example/app/default"]}}
     }
   ]
 }
