@@ -13,7 +13,8 @@ This report patch resolves the earlier M1 callable/packing contradiction and
 restores the complete accepted ADR-0008 construction/behavior and W0/W1 obligations. Current checker and oracle gaps stay
 visible as later qualification blockers. After a governed owner-start record
 and admission enforcement, the result becomes **CONDITIONAL** for a source-only
-private normalized-value slice. It remains **NO-GO** for Phase 3 qualification,
+private semantic slice with an optional object acceptance-evidence candidate.
+It remains **NO-GO** for Phase 3 qualification,
 self-composition, public packaging, runtime conformance, or release claims.
 
 No reproducible P0 was observed. Because there is no Core subject, this is not evidence that a future implementation is P0-free.
@@ -140,7 +141,7 @@ ADR-0007 has only named-topic additive precedence over ADR-0004–0006. ADR-0015
 
 The accepted public compiler names remain `compileCompositionV1` and `compileCompositionJsonV1`. Other `V1`, `v1`, and `resource-profile-v2` labels identify historical evidence lineage and do not establish multiple supported public API generations.
 
-ADR-0015 permits private source but does not start implementation. The required owner-start record must bind repository, source authority, accepted private package identity, owner, private normalized-semantics scope, and explicit exclusions for publication, carriers, lifecycle, and proposed ADR semantics. The roadmap states that the admission checker must consume it; no such record or checker input exists.
+ADR-0015 permits private source but does not start implementation. The required owner-start record must bind repository, source authority, accepted private package identity, owner, private semantics and optional object-candidate scope, and explicit exclusions for publication, exposed carriers, lifecycle, and proposed ADR claims. The roadmap states that the admission checker must consume it; no such record or checker input exists in this research branch.
 
 ## Findings
 
@@ -162,14 +163,18 @@ ADR-0015 permits private source but does not start implementation. The required 
 
 **Impact:** The roadmap’s M1 matrix allows `compileCompositionV1`, while its Phase 3/4 gates allow only an unexported private normalized-value seam before carrier decisions. Phase 1 also says to stop “subject packing” while requiring temporary qualification archives. An implementer cannot determine the lawful callable and packing boundary.
 
-**Correction applied:** M1 is now consistently a private normalized-value
-qualification seam. The packing prohibition names production/distribution
-packing and explicitly allows temporary hash-bound qualification subjects.
+**Correction applied:** M1 consistently requires a private normalized-value
+seam and permits an optional object candidate over that same implementation.
+An external critique correctly identified that the earlier normalized-only
+wording excluded the acceptance-evidence exception in ADR-0015. The candidate
+does not expose or claim unresolved carrier semantics. The packing prohibition
+names distribution packing and allows temporary hash-bound qualification
+subjects. This clarification adds no executable object-carrier evidence.
 
-**Owner/authority:** Architecture owner; a broader carrier choice requires product-owner acceptance.
+**Owner/authority:** ADR-0015 permits private candidates; exposed carrier choices still require product-owner acceptance.
 
-**Blocks next step:** **No after this patch.** An object/raw carrier still waits
-for its governed decision.
+**Blocks next step:** **No after this patch.** Carrier claims still wait for
+their governed decisions; the private object candidate need not wait for M2.
 
 ### GOV-01 — P1, current checker regression
 
@@ -639,7 +644,7 @@ This note neither installs Avvio nor proposes another Core lifecycle authority.
 
 | Decision | Strong options | Recommendation | Work that may continue |
 | --- | --- | --- | --- |
-| First callable M1 boundary | A: private normalized-value seam; B: accepted object wrapper over that seam; C: object and raw carriers together | Prefer A for the first slice because it adds no carrier policy. B remains the accepted eventual object contract. C is blocked by OD-005/006. Product owner must authorize the start record; this report does not. | Phase 0 admission repair and internal normalized data-model fixtures |
+| First callable M1 boundary | A: private normalized-value seam; B: qualification-only object candidate over the same implementation; C: exposed object and raw carriers together | A is the minimum. B is permitted in M1 by ADR-0015 and useful for early real-entry tests; unresolved cases remain candidate-only. C is blocked by OD-005/006. No new public API or carrier choice is accepted here. | Phase 0 admission repair; then the selected private M1 surface |
 | `defineModule` type policy | A: identity-only literal-preserving generic; B: exact closed authoring type; C: validated/branded return | Keep A private for ergonomics evidence while wire validation stays in Core. Unknown-field and readonly typing remain open; C would require a successor to the accepted no-validation helper behavior. | Inert descriptor implementation and compile-only probes |
 | `many({min,max})` observable reads | A: specify `min` then `max`; B: specify `max` then `min`; C: restrict inputs to trusted own-data objects | Leave order unspecified under current authority. A/B need an explicit contract decision; C also changes accepted ordinary/inherited lookup and requires a successor. No option is silently selected here. | Semantic range validation over already normalized values |
 | Self-composition witness | A: full accepted ADR-0008 construction identity, behavior replacement, P0/P1 and W0/W1 evidence; B: accept/revise ADR-0016 alternative; C: direct-Core checkpoint before self-composition qualification | A is current authority. C is a sequencing checkpoint, not cancellation of self-composition. B requires a separate product decision and must reconcile all A obligations. | Direct handwritten private composition only, with no self-composed claim |
@@ -676,16 +681,17 @@ governed and admission enforcement passes.
 Production Core work may start only when all of these are true:
 
 1. A product-owner start record binds the repository, exact base, accepted
-   `@get-modular/core` identity, owner, private normalized-only scope and explicit
+   `@get-modular/core` identity, owner, private semantics/object-candidate scope and explicit
    exclusions.
 2. Admission rejects missing, stale, mismatched and over-broad records and checks
    package identity, uniqueness, `private: true` and absent publication fields
    unconditionally.
-3. The roadmap consistently names the first callable as an internal
-   normalized-value seam; temporary hash-bound qualification packing is
+3. The roadmap consistently names the normalized seam and optional private
+   object candidate; temporary hash-bound qualification packing is
    distinguished from distribution packing.
-4. The first implementation task excludes object/raw carriers, public exports,
-   lifecycle, plugins, runtime loading and self-composition claims.
+4. The first implementation task excludes exposed carrier semantics, raw
+   implementation, public exports, lifecycle, plugins, runtime loading and
+   self-composition claims. Its object candidate reuses the semantic subject.
 5. Focused admission tests and the complete repository gate pass at the exact
    implementation base.
 
@@ -696,8 +702,9 @@ Create one **Phase 0 authority-and-admission repair change**, with no `packages/
 1. Obtain and record the product-owner start authorization with a closed repository/package/SHA/scope binding.
 2. Make first-package admission consume it and reject missing, stale, mismatched, or over-broad records.
 3. Make accepted package identity, `private: true`, and no-publication-field checks unconditional.
-4. Bind the start record to the already clarified private normalized M1 scope;
-   do not reopen either carrier or distribution packing.
+4. Bind the start record to the clarified M1 private semantics/object-candidate
+   scope; do not authorize exposed carriers or distribution packing. The base
+   SHA is a starting point, not a per-commit approval requirement.
 5. Add focused negative tests for those exact rules.
 
 Only after that task passes should a separate, private normalized-value Core slice begin. Resource-oracle and cardinality corrections must land before that slice can claim Phase 3 qualification.

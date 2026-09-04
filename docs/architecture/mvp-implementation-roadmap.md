@@ -89,8 +89,8 @@ alone.
 
 | Milestone | Proposed decisions required | Blocked without them |
 | --- | --- | --- |
-| M1 private normalized semantics on Node | None; accepted ADR-0015 lets the gate admit private `packages/core` source after the owner-start record | Private package source and the first executable normalized-value subject |
-| M2 object/raw entrypoints and carriers | ADR-0013 and ADR-0014 together as one diagnostic generation 2 transaction: successor schema enum, catalog rank, diagnostic contract, snapshots, checker and ledger, because ADR-0007 keeps the base enum and code rank byte-identical | Both carrier adapters, raw decoding exposure and duplicate binding-record behavior |
+| M1 private semantics and object candidate on Node | None; ADR-0015 permits private source and acceptance-evidence candidates after the owner-start record | A normalized semantic subject is the minimum; a private trusted-object candidate may exercise the same implementation without public or carrier-conformance claims |
+| M2 qualified object/raw carriers | ADR-0013 and ADR-0014 together as one diagnostic generation 2 transaction: successor schema enum, catalog rank, diagnostic contract, snapshots, checker and ledger, because ADR-0007 keeps the base enum and code rank byte-identical | Exposed carrier semantics, raw decoding exposure and duplicate binding-record behavior; not the private candidates needed to gather acceptance evidence |
 | M3 public barrel and package carrier | ADR-0009 and ADR-0012 | Public names, export map and any packed publication candidate |
 | M3 emitter and generated stage1 | Accept ADR-0016 or another successor to reconcile the dependency-record seam in Phase 4 item 6. ADR-0008 remains construction-witness authority unless explicitly superseded. Accept ADR-0011 or a narrower successor for release custody | `self-composed-qualified` and every release custody claim; no proposed witness replaces accepted obligations |
 
@@ -115,26 +115,39 @@ each checkpoint:
 
 | Phase | Qualification subject may expose | Explicitly excluded |
 | --- | --- | --- |
-| M1 private normalized checkpoint | One unexported normalized-value seam named only in private source and qualification configuration | `compileCompositionV1`, `compileCompositionJsonV1`, authoring/carrier adapters, package exports and runtime loading |
+| M1 private semantic checkpoint | The internal normalized-value seam; optionally a qualification-only trusted-object candidate of `compileCompositionV1` over that same implementation | Public/package exports, claimed unresolved carrier semantics, raw carrier implementation in this checkpoint, runtime loading |
 | M2 private carrier checkpoint | The accepted object/raw compiler names and authoring helpers, only after the successor decisions for carriers and duplicate binding records are accepted | Public publication, unapproved carrier behavior and product/runtime lifecycle |
 | M3 public/package checkpoint | Exactly the export map accepted by the naming and package-carrier decisions; unversioned names only after ADR-0009 or its successor is accepted | `stage0` exports, qualification-only variants, implicit aliases, and any unresolved raw or carrier surface |
 
-The direct and generated subjects must expose the same applicable row of this
-matrix, not the two-entrypoint boundary prematurely. M1 proves only normalized
-semantic parity; M2 is the first phase where either carrier entrypoint is in
-scope. A subject or document must not use
-"same accepted entry points" without naming the applicable matrix row.
+The direct and, once built, generated subjects use the same selected M1
+qualification surface and independent vectors. The normalized seam remains the
+minimum, not the only permissible test entry. An object candidate accepts
+ordinary trusted JSON-compatible inputs and exercises actual admission,
+synchronous snapshotting and the semantic implementation, not a pass-through
+mock. Accepted ADR-0006/0007 rules apply; unresolved cases are explicitly
+labelled candidate evidence, not successful contract qualification. Its
+successful result includes the Phase 4 plan and digest; before then test the
+implemented admission/semantic parts without a fake successful compiler result.
+The candidate stays out of package exports and does not require accepting the
+successor diagnostic generation before the first object-input test. Neither it
+nor M1 admits raw exposure or a second public API. M2 closes the carrier claims.
+A subject must name its phase and claimed domain, rather than saying only
+"same accepted entry points".
 
 ### Owner-start admission record
 
 Before the first private production package is added, the product owner must
 record a small governed start record in the repository or in the bootstrap
 decision record. It must bind the repository and exact source SHA, package
-identity, owner, allowed scope (private normalized semantics only), and the
+identity, owner, allowed scope (private semantics and an optional object
+acceptance-evidence candidate), and the
 fact that publication, raw carriers, runtime lifecycle, and proposed ADRs are
 not authorized. The admission checker must consume that record as a
 precondition; a pull-request approval or the existence of an empty package is
-not a substitute. This research branch intentionally contains no such record.
+not a substitute. The source SHA is the authorized starting base, not a demand
+for renewed permission after every implementation commit. The record and its
+checker land together before Core; this research branch contains neither and
+does not claim that enforcement already exists.
 
 ### Roadmap qualification language
 
@@ -355,7 +368,7 @@ smaller split would make it unverifiable.
    or distribution packing until accepted authority supplies the exhaustive
    public name map, package carrier and both JavaScript carrier boundaries.
    This does not block a temporary hash-bound qualification archive that exposes
-   only the M1 private normalized seam and is never a publication candidate.
+   the selected M1 private qualification surface and is never a publication candidate.
 4. Promote the first production package atomically to `source-admitted`: add
    the pinned `architecture/foundation/source-dependencies.yaml`, enable the
    Engineering Foundation source-dependency capability, add positive and
@@ -363,7 +376,7 @@ smaller split would make it unverifiable.
    `check:fast` and `check`. Structural and runtime conformance remain separate
    promotion states.
 5. Create two temporary, separately hash-identified qualification archives with
-   the same M1 private normalized-value boundary: direct stage0 assembly and
+   the same selected M1 private qualification boundary: direct stage0 assembly and
    generated stage1 assembly. Run default-deny export/deep-import checks,
    private archive allowlist checks, declaration-leakage audits and inert import
    smoke tests against both. These archives are qualification subjects, not
@@ -384,7 +397,8 @@ smaller split would make it unverifiable.
 ### Phase 1 exit criteria
 
 After Phases 2-4 provide the complete substantive private compiler, the direct
-and generated qualification subjects pass the same normalized-semantic,
+and generated qualification subjects pass the same normalized-semantic and,
+when selected, object-candidate vectors plus
 deep-import, declaration-leakage and inert-import audits. Public-barrel and
 TypeScript consumer gates remain deferred until the M2/M3 decisions admit their
 surfaces. No admitted Core boundary
@@ -501,9 +515,10 @@ composition root. The finite emitter and generated stage1 remain Phase 4 work.
 
 ### Phase 3 exit criteria
 
-One named subject gate invokes the actual private normalized-value compiler seam
-and compares complete results with independent expectations. It is not either
-public JavaScript carrier and returns no temporary public result. Static
+One named subject gate invokes the actual private semantic implementation
+and compares complete results with independent expectations. It may use the
+normalized seam or the bounded object candidate described in the M1 matrix;
+no public carrier or temporary public result is claimed. Static
 vector/oracle validation is a prerequisite and cannot satisfy this gate. The
 gate covers:
 

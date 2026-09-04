@@ -38,15 +38,17 @@ ordinary pull request as long as the invariants they carry survive.
 
 ### Carrier-boundary precedence
 
-ADR-0015 admits private normalized semantic source but keeps both JavaScript
-carrier adapters blocked while OD-004, OD-005 and OD-006 remain open. Therefore
-M1 stage0 and stage1 qualification entries expose only one private
-normalized-value seam. They do not export `compileCompositionV1`,
-`compileCompositionJsonV1`, authoring helpers or public contract types. The
+ADR-0015 admits private semantic source and explicitly permits private candidate
+entrypoints that produce acceptance evidence. M1 requires a normalized-value
+seam and may additionally test a trusted-object candidate of
+`compileCompositionV1` over the same implementation, as the roadmap's callable
+matrix specifies. This does not expose accepted carrier semantics, raw input,
+authoring helpers or public package exports. Unresolved cases remain candidate
+evidence; accepted object rules are not replaced by proposed ADR-0013. The
 ADR-0008 requirement that direct and generated subjects share the same public
 compiler boundary applies only after the M2/M3 decisions admit that boundary.
-Until then, every later reference in this guide to an M1 object/public entry is
-read as the private normalized qualification seam defined by the roadmap.
+Until then, M1 uses only the private qualification surface selected under that
+matrix. An object candidate is not a public or conforming carrier.
 
 ## Own feature inventory
 
@@ -122,9 +124,9 @@ feature, `packages/core/src/features/authoring/`. It has no module declaration
 and no factory, because the helpers are the non-validating constructors that
 ADR-0007 accepted and the types are inert contracts; its `internal.ts` is the
 one feature-local source for the later M2/M3 carrier and public entries. M1
-imports only the internal normalized types it needs and re-exports none of
-these helpers or carrier contracts. Both carrier entrypoints are first exposed
-to a qualification subject in M2 after their accepted decisions.
+imports the internal types needed by its selected qualification surface and
+does not publish these helpers or contracts. Its optional object candidate
+reuses that source; M2 admits carrier claims only after the relevant decisions.
 
 ### Own graph
 
@@ -359,9 +361,9 @@ Rules:
 - No feature exports a barrel over its whole directory. The module's curated
   public surface is `packages/core/src/index.ts` alone once it exists in M3;
   until then the direct subject entry `self-composition/stage0-entry.ts`
-  exposes only the M1 private normalized row of the roadmap's callable matrix
-  for qualification. It must not imply that either carrier is available before
-  M2.
+  exposes the selected M1 private row of the roadmap's callable matrix for
+  qualification, including an object candidate when selected. It must not imply
+  either carrier is public or conforming before M2.
 - No generic `resolve()`, container, service locator, or string-keyed factory
   map exists anywhere in production source.
 
@@ -463,8 +465,8 @@ subjects with the same public compiler boundary and forbids a stage0 public
 export in the distributed package. Before carriers are admitted, the direct
 subject has a private entry file,
 `packages/core/self-composition/stage0-entry.ts`. It imports `stage0.ts` and
-exposes only the M1 normalized-value qualification seam, with no authoring
-helpers or public contract types. It is built by
+exposes the M1 normalized-value seam and, when selected, the qualification-only
+object candidate, with no public package surface. It is built by
 `tsconfig.stage0.json`; `tsconfig.qualification.json` also compiles it because
 that build includes all of `self-composition/`; the production `tsconfig.json`
 never does; it
@@ -476,12 +478,13 @@ shape: `self-composition/stage0-entry.variant.ts` imports
 build sees it. Until M3 `stage0-entry.ts` is therefore the only curated
 entry point of the package, and it exists for qualification alone; the curated
 public entry point `src/index.ts` appears together with the generated root.
-Both M1 subjects expose the same private normalized seam, so the same
-independent semantic vectors and qualification checks run against both. After
+Both M1 subjects expose the same selected private surface, so the same
+independent semantic and object-candidate vectors run against both. M1 does not
+require a generated subject before the first direct object-input test. After
 the M2/M3 decisions admit carriers and public names, dedicated direct and
 generated qualification entries must expose the same accepted public boundary
-before a self-composed or release claim. Neither carrier is inferred from the
-M1 entry.
+before a self-composed or release claim. No carrier-conformance claim is inferred
+from the M1 entry.
 
 ### Build-only directory
 
@@ -493,7 +496,7 @@ creating a third package:
 packages/core/
   self-composition/
     stage0.ts                  handwritten literal assembly of the feature factories, M1 onward
-    stage0-entry.ts            direct subject entry: exposes the private normalized seam in M1
+    stage0-entry.ts            private normalized seam and optional M1 object candidate
     own-profile.ts             imports every feature's declaration constant and defines the own profile as data
     stage0.variant.ts          handwritten literal root bound to the witness variant, qualification only
     stage0-entry.variant.ts    variant direct subject entry, qualification only
@@ -538,9 +541,9 @@ The direct subject and the generated subject differ in the file that
 constructs the facade, the entry file that re-exports it, the build
 configuration and output directory, the staging manifest written for packing,
 and the set of allowlist entries that the plan reaches; both expose the same
-M1 private normalized row. The phrase "same accepted entry points" must always
-be qualified by a phase row because neither carrier entrypoint is admitted in
-M1.
+M1 private row, including the object candidate when selected. The phrase "same
+accepted entry points" must always name a phase row; M1 candidate execution
+does not establish carrier conformance.
 
 `tsconfig.stage0.json` includes `src/features/**` and `self-composition/**`
 except the `*.variant.ts` files, and excludes `src/index.ts` and
@@ -604,8 +607,8 @@ complete file allowlist and archive digest. It does not synthesize a
 
 The direct M1 archive contains the private stage0 entry and its reachable
 closure. The generated M1 archive contains the private stage1 entry and its
-reachable closure. Both expose the same private normalized-value seam and run
-the same normalized vectors, closure audit, declaration-leakage audit,
+reachable closure. Both expose the same selected private surface and run
+the same normalized and optional object-candidate vectors, closure audit, declaration-leakage audit,
 deep-import rejection, and inert-import audit. Neither archive is retained as
 a distribution candidate, and neither makes a public TypeScript consumer-mode
 claim.
