@@ -201,7 +201,9 @@ export async function validateBlockedImplementation({
   }
 
   // ADR-0012 carrier prohibitions hold regardless of open decisions.
-  const carrierViolations = manifestCarrierViolations(inventory);
+  const carrierViolations = manifestCarrierViolations(inventory, {
+    publicationBlocked: publicationBlockerIds.size > 0,
+  });
   if (carrierViolations.length > 0) {
     const detail = carrierViolations
       .map(violation => `${violation.path}: `

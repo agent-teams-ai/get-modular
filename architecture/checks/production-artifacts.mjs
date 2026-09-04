@@ -183,11 +183,9 @@ export async function packageManifestInventory(
         ? PROHIBITED_LIFECYCLE_SCRIPTS.filter(script => scripts[script] !== undefined)
         : [],
       scriptsMalformed,
+      exportsField: readable ? manifest.exports : undefined,
       carrierShapeViolations: readable && manifest.name === ESM_CARRIER_PACKAGE_NAME
-        ? [
-          ...exportMapViolations(manifest.exports, manifest.private === true),
-          ...filesAllowlistViolations(manifest.files),
-        ]
+        ? filesAllowlistViolations(manifest.files)
         : [],
       moduleTypeViolation: readable
         && manifest.name === ESM_CARRIER_PACKAGE_NAME
@@ -235,16 +233,18 @@ function relativeTarget(value, label) {
   return [];
 }
 
-function exportMapViolations(exportsField, isPrivate) {
-  // A publishable carrier without an export map has no package root at all:
-  // Node falls back to directory resolution and the archive hands out its whole
-  // tree, which is the opposite of exposing exactly one root. The requirement
-  // follows publishability because a `private: true` manifest is forbidden to
-  // declare `exports` while a publication blocker is open; requiring it
-  // unconditionally would make that blocked state unsatisfiable. Such a
-  // manifest also carries no map to expose, and pnpm refuses to publish it.
+function exportMapViolations(exportsField, publicationBlocked) {
+  // A carrier without an export map has no package root at all: Node falls back
+  // to directory resolution and the archive hands out its whole tree, which is
+  // the opposite of exposing exactly one root. The exemption follows the
+  // publication blockers rather than `private`, for two reasons. While a
+  // blocker is open the manifest is forbidden to declare `exports` at all, so
+  // requiring it there would make that state unsatisfiable. And `private` is
+  // not a publication barrier that can be relied on: the npm guard that refuses
+  // a private manifest fires only on a workspace publish, so a direct
+  // `npm publish` from the package directory reaches the registry.
   if (exportsField === undefined) {
-    return isPrivate
+    return publicationBlocked
       ? []
       : ['exports must declare the accepted package root; without it a published '
         + 'archive exposes its whole tree to deep imports'];
@@ -375,28 +375,29 @@ export async function versionedIdentifierViolations(productionArtifacts, readSou
 // ADR-0012 fixes the carrier shape of the accepted package manifest itself.
 // These prohibitions are independent of the publication blockers because they
 // describe the accepted carrier, not the decision to publish it.
-export function manifestCarrierViolations(inventory) {
+export function manifestCarrierViolations(inventory, { publicationBlocked = false } = {}) {
   return inventory
-    .filter(entry => (
-      entry.manifest !== undefined
-      && (entry.prohibitedFields.length > 0
-        || entry.prohibitedScripts.length > 0
-        || entry.scriptsMalformed === true
-        || entry.carrierShapeViolations.length > 0
-        || entry.moduleTypeViolation === true)
-    ))
     .map(entry => ({
       path: entry.path,
+      manifest: entry.manifest,
       fields: entry.prohibitedFields,
       scripts: [
         ...(entry.scriptsMalformed === true ? ["scripts must be an object"] : []),
         ...entry.prohibitedScripts.map(script => `scripts.${script}`),
         ...entry.carrierShapeViolations,
+        ...(entry.name === ESM_CARRIER_PACKAGE_NAME
+          ? exportMapViolations(entry.exportsField, publicationBlocked)
+          : []),
         ...(entry.moduleTypeViolation === true
           ? ['type must be "module" because the carrier is ESM-only']
           : []),
       ],
-    }));
+    }))
+    .filter(entry => (
+      entry.manifest !== undefined
+      && (entry.fields.length > 0 || entry.scripts.length > 0)
+    ))
+    .map(({ path, fields, scripts }) => ({ path, fields, scripts }));
 }
 
 export async function productionArtifactsBlockedByOpenDecisions(

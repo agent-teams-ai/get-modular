@@ -2128,12 +2128,28 @@ test("a publishable carrier must declare its package root", async () => {
     publishConfig: { access: "public" },
   }), /exports must declare the accepted package root/u);
 
-  // A private manifest is never published and may not declare exports while a
-  // publication blocker is open, so the requirement does not apply to it.
-  await assert.doesNotReject(validate({
+  // `private` is not a publication barrier: the npm guard that refuses a private
+  // manifest fires only on a workspace publish, so a direct publish from the
+  // package directory still reaches the registry. The exemption therefore
+  // follows the publication blockers, which is also the only state where the
+  // manifest is forbidden to declare the map at all.
+  await assert.rejects(validate({
     name: "@get-modular/core",
     type: "module",
     private: true,
+  }), /exports must declare the accepted package root/u);
+
+  await assert.doesNotReject(validateBlockedImplementation({
+    blockerIds: new Set(["OD-005"]),
+    publicationBlockerIds: new Set(["OD-005"]),
+    productionArtifacts: artifacts,
+    claimDocuments: [],
+    readPackageManifest: async () => ({
+      name: "@get-modular/core",
+      type: "module",
+      private: true,
+    }),
+    readProductionSource: async () => "export const x = 1;",
   }));
 
   // A target that climbs out of the package is not below the package root.

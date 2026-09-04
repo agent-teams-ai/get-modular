@@ -47,11 +47,17 @@ the superseded passages.
 manifest rules in this section bind that package; `@get-modular/conformance`
 carries its own shape, and only the lifecycle-script prohibition below is
 common to both. `governance:check` enforces the structure of that map: its
-presence on a publishable manifest, the subpath set, the condition names, their
-order, the relative form of every target, the identity of the sibling `default`
-with the nested one, and `"type": "module"`. A manifest without the map has no
-package root at all, so a published archive would expose its whole tree to deep
-imports; a `private: true` manifest is never published and is exempt. It does not verify the target file names below, that those
+presence whenever no publication blocker is open, the subpath set, the condition
+names, their order, the relative form of every target, the identity of the
+sibling `default` with the nested one, and `"type": "module"`. A manifest
+without the map has no package root at all, so a published archive would expose
+its whole tree to deep imports. The exemption follows the publication blockers
+rather than `private`, because while a blocker is open the manifest is forbidden
+to declare the map at all, and because `private` is not a publication barrier:
+the npm guard that refuses a private manifest fires only on a workspace publish.
+The gate does not verify the target file names below, that those files exist, or
+that the declaration target is a declaration file; the packed consumer cases in
+the evidence section verify resolution against the real archive. It does not verify the target file names below, that those
 files exist, or that the declaration target is a declaration file; the packed
 consumer cases in the evidence section verify resolution against the real
 archive.
@@ -90,7 +96,11 @@ The package MUST omit:
 - `preinstall`, `install`, `postinstall`, `prepare`, and every other lifecycle
   script that a package manager runs on install or publish; `governance:check`
   rejects such a manifest for any accepted package identity regardless of any
-  open decision, because an install script runs code on every consumer;
+  open decision, because an install script runs code on every consumer. That
+  check detects the script, it does not prevent it: `packages/*` is a workspace
+  member, so a hostile script would run during a local install before any gate.
+  Repository installs therefore pass `--ignore-scripts`, in CI and through the
+  repository `.npmrc`;
 - `main`, `module`, package-level `types`, `typings`, `typesVersions`, and a
   root `browser` field, which would be a second environment-specific
   implementation;
