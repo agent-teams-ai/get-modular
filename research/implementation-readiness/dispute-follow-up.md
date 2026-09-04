@@ -33,9 +33,14 @@ The fifth critic must read current accepted ADR-0007, the inherited-property and
 Proxy probes, and all four original T2 results. Ask whether any reproducible
 defect remains within the accepted contract, or whether R3's restriction is an
 optional product change outside this task. Require evidence, a bounded verdict,
-and no implementation or acceptance. Use hosted `gpt-5.6-sol`, `xhigh`, default
+and no implementation or acceptance. Use hosted `gpt-5.6-sol`, `xhigh`, fast
 tier, network-disabled, read-only, with an exact verified bundle. It is pending
 account capacity; no fifth result or approval is claimed here.
+
+The owner's subsequent instruction on 2026-09-04 enables fast mode for all new
+workers. Historical default-tier execution records are unchanged. New research,
+integrator and review jobs remain `gpt-5.6-sol`/`xhigh`; fixture coding jobs retain
+the `medium` model split. This changes execution speed, not ownership or gates.
 
 No different selected semantics were found in the other seven recommendation
 sets. Their conditional evidence requirements differ by reviewer role; that is
