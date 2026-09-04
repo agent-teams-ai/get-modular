@@ -39,6 +39,7 @@ resource policy is the single profile described in the current contract.
 
 ## Evidence
 
+- [Compiler engineer handbook](qualification/compiler-engineer-handbook.md) - seventeen fact derivations, partial failure rules and independent examples.
 - [Source map](provenance/source-map.yaml)
 - [Five-critic bootstrap review](qualification/bootstrap-five-critic-review.md)
 - [V1 contract council and resource profile](qualification/v1-contract-council-and-resource-profile.md)

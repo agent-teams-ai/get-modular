@@ -462,6 +462,11 @@ belong only to an admitted Phase 6 consumer.
 
 ## Phase 3: normalization and deterministic graph compiler
 
+Use the [compiler engineer handbook](../qualification/compiler-engineer-handbook.md)
+for fact derivation, partial-invalid input and cycle/depth boundaries. Its
+literal examples supplement, not replace, accepted vectors. Fixture consistency
+is not execution evidence for a production subject.
+
 **Purpose:** implement the private semantic compiler seam:
 `declarations + complete profile -> normalized plan | bounded diagnostics`.
 The public successful compiler result does not exist until Phase 4 attaches the
