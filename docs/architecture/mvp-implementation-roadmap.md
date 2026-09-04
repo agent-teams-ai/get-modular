@@ -167,6 +167,59 @@ Core: the record is the JSON block under "Recorded Core start" in this
 document, and `architecture/checks/private-core-start.mjs` reads it from these
 exact bytes on every `governance:check`.
 
+### First `not-claimed` publication mechanics
+
+Implementation may start before registry access exists, but publication may
+not. The first package pull request owns a closed release checklist instead of
+depending on repository-root defaults:
+
+1. Record authenticated control of the npm `@get-modular` organization and the
+   actor or protected workflow permitted to publish `@get-modular/core`. An
+   `E404`, unauthenticated organization page or available-looking package name
+   is not ownership evidence.
+2. Start the package at `0.1.0`. The private repository version `0.0.0` is not
+   inherited. Later pre-1.0 breaking changes raise the minor version and follow
+   ADR-0009's coordinated consumer migration.
+3. Set public-package intent explicitly with
+   `publishConfig.access: "public"` and the npm registry. A command or workflow
+   also supplies `--access public` for the first publication; scoped-package
+   defaults are not trusted.
+4. Set the package `engines.node` field to the exact Node support interval
+   exercised by its packed-consumer evidence. The first M1 archive may claim
+   only its executed Node interval; browser portability and a broader runtime
+   envelope are separate evidence.
+5. Put `README.md`, `CHANGELOG.md` and `LICENSE` in the package root. The license
+   bytes match the repository license. README and changelog list the M1 callable
+   surface, `not-claimed` status, unresolved raw-carrier and duplicate-record
+   behavior, supported runtime interval, the browser secure-context requirement
+   for Web Crypto, and the "direct assembly, not self-composed" limitation
+   required by ADR-0017. M1 does not claim browser support.
+6. Use an explicit `files` allowlist and inspect the real `npm pack --json`
+   inventory. Only the accepted root exports, built declarations and JavaScript,
+   package metadata, license and minimal consumer documentation enter the
+   archive. Source, tests, maps, qualification material and private adapters do
+   not.
+7. Pack once from a clean, pinned checkout. Record the source SHA, package
+   version, toolchain identities, archive SHA-256, npm integrity and inventory;
+   install those retained bytes in every required packed-consumer case.
+8. Keep ordinary CI at `contents: read`. Publishing uses a separate protected
+   GitHub-hosted release workflow with `contents: read` and `id-token: write`
+   only for the publish job. Prefer npm Trusted Publishing and short-lived OIDC
+   over a long-lived write token. If npm requires a one-time namespace/package
+   bootstrap before a trusted publisher can be configured, the product owner
+   performs that bounded bootstrap with 2FA and records it; the workflow never
+   invents ownership from a failed registry lookup.
+9. Before upload, rehash the retained archive. After publication, download the
+   registry tarball, prove byte identity with the retained archive, and install
+   that downloaded artifact in a final consumer check. A metadata match is not
+   byte-identity evidence.
+
+The package pull request fails closed when any item above lacks evidence. It
+does not need Phase 8 release-custody schemas to publish as `not-claimed`, but it
+cannot use that label as a conformance, self-composition or release-eligibility
+claim. No release workflow is added before a real package exists because an
+untestable workflow would be ceremonial infrastructure.
+
 ### Roadmap qualification language
 
 The labels below are phase-report outcomes, not new Feature Module Standard
@@ -465,6 +518,53 @@ discovery or a second identity authority.
 7. Authoring helpers implement exactly the non-validating construction contract
    accepted by ADR-0007. The compiler alone validates cardinality,
    compatibility and closed profile rules.
+
+### Capability evolution and namespace admission
+
+Exact compatibility deliberately makes migration explicit. It does not require
+a flag-day deployment:
+
+1. A new implementation of an unchanged capability keeps the same
+   `capabilityId` and exact compatibility token. A profile can select the new
+   `implementationId`, qualify the resulting plan, and roll back by compiling
+   the previous complete profile.
+2. A breaking capability contract receives a new `capabilityId` and a new exact
+   token. A provider that faithfully implements both contracts may advertise
+   both distinct capability IDs in one declaration. Duplicate entries for one
+   capability ID remain invalid.
+3. Consumers add a slot for the new capability and migrate through explicit
+   complete profiles. Old and new consumer modules may coexist because the
+   graph binds slots, not package versions. Removal of the old capability
+   happens only after the Product Host inventory proves that no selected
+   consumer still requires it.
+4. When one implementation cannot safely provide both contracts, the owner
+   introduces a separate logical module and implementation for the new
+   capability. The Product Host owns staged selection, rollback and retirement;
+   Core still sees only one complete profile at a time.
+
+Package SemVer, a compatibility token and a capability identity solve different
+problems. Do not use an npm range as capability compatibility, silently change
+the meaning of an existing token, or add parallel compiler API generations to
+perform a product migration.
+
+Core validates portable identity syntax and collisions inside one compilation;
+it does not authenticate an `owner.authority` string. Before declarations from
+an extension, catalog or other independently governed source reach Core, the
+owning Product Host admission adapter must validate two separate grants:
+
+- the independently verified admission principal may allocate the declaration's
+  `moduleId` and `implementationId` namespace;
+- the admitted implementation may provide each product-owned `capabilityId`.
+
+Those grants are product or Extension Foundation policy, not inferred from
+matching string prefixes. A third-party implementation commonly owns its module
+identity while intentionally implementing a capability owned by a product.
+Publisher identity, artifact identity, installation identity and the declared
+`owner.authority` label remain distinct; the label cannot act as the verified
+principal that receives a grant.
+Unauthorized namespace allocation or capability provision fails before
+compilation. Core diagnostics are not an authorization fallback, and a derived
+inventory is not a grant registry.
 
 ### Phase 2 exit criteria
 
