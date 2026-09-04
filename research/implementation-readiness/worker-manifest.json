@@ -2,7 +2,15 @@
   "schemaVersion": 2,
   "inventoryId": "get-modular/implementation-readiness-worker-inventory/v2",
   "repository": "agent-teams-ai/get-modular",
-  "inventorySubjectSha": "f6a81e029098de30d46d8cf3737fadb4a16ed098",
+  "inventorySubjectSha": "e0388dc6a3dd72f114e83b41768f4ceefe7cc87c",
+  "inventorySourceBundle": {
+    "exactCommit": "e0388dc6a3dd72f114e83b41768f4ceefe7cc87c",
+    "sha256": "5a129322ced656fb37a1857fd9d9bb1df1a34f78a336c8e13c379c28b7ed581b",
+    "path": {
+      "value": null,
+      "reason": "coordinator-supplied-bundle-path-not-retained"
+    }
+  },
   "initialCampaignBaseSha": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418",
   "generatedBy": "tests/qualification/implementation-readiness/generate-worker-inventory.mjs",
   "launchContract": {
@@ -64,6 +72,17 @@
         "enforced": "disabled"
       },
       "provenance": "research/implementation-readiness/launch-targeted-critics.sh:49-52"
+    },
+    "dispute-critic-xhigh": {
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "serviceTier": "default",
+      "ownership": "read-only dispute criticism",
+      "network": {
+        "requested": false,
+        "enforced": "disabled"
+      },
+      "provenance": "retained dispute critic protocol, bundle manifest, and result wrappers"
     },
     "final-review-xhigh": {
       "model": "gpt-5.6-sol",
@@ -150,6 +169,35 @@
         }
       },
       "provenance": "raw completion-audit result summaries"
+    },
+    "inventory-remediation-not-retained": {
+      "model": {
+        "value": null,
+        "reason": "not-retained-by-result-wrapper"
+      },
+      "reasoningEffort": {
+        "value": null,
+        "reason": "not-retained-by-result-wrapper"
+      },
+      "serviceTier": {
+        "value": null,
+        "reason": "not-retained-by-result-wrapper"
+      },
+      "ownership": {
+        "value": null,
+        "reason": "not-retained-by-result-wrapper"
+      },
+      "network": {
+        "requested": {
+          "value": null,
+          "reason": "not-retained-by-result-wrapper"
+        },
+        "enforced": {
+          "value": null,
+          "reason": "not-retained-by-result-wrapper"
+        }
+      },
+      "provenance": "raw remediation result wrappers"
     }
   },
   "tracks": [
@@ -199,6 +247,46 @@
       "attemptCount": 0
     },
     {
+      "id": "dispute-critics-2bef472",
+      "plannedRoles": [
+        "T1-R1",
+        "T1-R2",
+        "T1-R3",
+        "T1-R4",
+        "T2-R1",
+        "T2-R2",
+        "T2-R3",
+        "T2-R4",
+        "T3-R1",
+        "T3-R2",
+        "T3-R3",
+        "T3-R4",
+        "T4-R1",
+        "T4-R2",
+        "T4-R3",
+        "T4-R4",
+        "T5-R1",
+        "T5-R2",
+        "T5-R3",
+        "T5-R4",
+        "T6-R1",
+        "T6-R2",
+        "T6-R3",
+        "T6-R4",
+        "T7-R1",
+        "T7-R2",
+        "T7-R3",
+        "T7-R4",
+        "T8-R1",
+        "T8-R2",
+        "T8-R3",
+        "T8-R4"
+      ],
+      "recordCount": 32,
+      "canonicalCount": 32,
+      "attemptCount": 0
+    },
+    {
       "id": "final-review",
       "plannedRoles": [
         "R1-authority",
@@ -223,6 +311,15 @@
       "recordCount": 4,
       "canonicalCount": 4,
       "attemptCount": 0
+    },
+    {
+      "id": "inventory-remediation",
+      "plannedRoles": [
+        "MANIFEST"
+      ],
+      "recordCount": 2,
+      "canonicalCount": 1,
+      "attemptCount": 1
     },
     {
       "id": "oss-reference",
@@ -305,6 +402,17 @@
       "sha256": "298446493f46234a5b1afcb7eecff4f6983320932e2806aa2754cbb0f40dfb74"
     }
   },
+  "disputeCriticEvidence": {
+    "subjectSha": "2bef472612dea7c6a89199a47dd8ca7ed552e630",
+    "sourceBundleSha256": "216bb3b0f5942aa7cbcae4e678233bf12d350504c5e0ff61eedd1fa1ad78bcf0",
+    "sourceBundlePath": {
+      "value": null,
+      "reason": "not-retained-in-repository-evidence"
+    },
+    "bundleManifest": "raw/dispute-critics-2bef472/bundle-manifest.json",
+    "protocol": "protocol/dispute-critic-protocol.md",
+    "assignment": "Closed t1..t8 topic and r1..r4 role indices are derived from each taskId; nested output summaries are not used for assignment."
+  },
   "externalReviewBoundary": {
     "rule": "Final exact-head review records belong in external PR/CI custody; committing them inside the commit they review would change that commit and make the evidence self-referential.",
     "retainedHistoricalWave": {
@@ -339,33 +447,38 @@
         }
       }
     ],
-    "currentInventorySubject": "f6a81e029098de30d46d8cf3737fadb4a16ed098",
+    "currentInventorySubject": "e0388dc6a3dd72f114e83b41768f4ceefe7cc87c",
     "currentInventoryReview": {
       "value": null,
       "reason": "external-review-not-retained-in-reviewed-commit"
     }
   },
-  "enumerationBoundary": "Records are limited to byte-unique raw results retained at the supplied exact commit. Externally held review waves are counted only in aggregate, and later launches are not enumerated.",
+  "enumerationBoundary": "Records are limited to byte-unique input result wrappers retained at the supplied exact commit. The inventory-building worker, future integrators, and final exact-head reviewers are not claimed to be contained in the commit they produce or review; externally held review waves are counted only in aggregate.",
   "sourceIndex": "research/implementation-readiness/evidence/worker-index.json#/sources",
   "counts": {
-    "rawFiles": 76,
-    "byteUniqueRawResults": 63,
+    "rawFiles": 110,
+    "byteUniqueRawResults": 97,
     "duplicateRawAliases": 13,
-    "records": 63,
-    "plannedRoles": 55,
-    "canonicalRecords": 55,
-    "attemptRecords": 8,
+    "records": 97,
+    "historicalRawFiles": 76,
+    "historicalRecords": 63,
+    "historicalDuplicateRawAliases": 13,
+    "disputeCriticRecords": 32,
+    "inventoryRemediationRecords": 2,
+    "plannedRoles": 88,
+    "canonicalRecords": 88,
+    "attemptRecords": 9,
     "initialCampaignRecords": 51,
     "initialCampaignPlannedRoles": 44,
     "wrapperStatuses": {
-      "done": 61,
-      "partial": 2
+      "done": 94,
+      "partial": 3
     },
     "evidenceStatuses": {
       "blocked": 2,
-      "partial": 3,
-      "positive": 10,
-      "review-only": 43,
+      "partial": 4,
+      "positive": 11,
+      "review-only": 75,
       "source-unavailable": 5
     },
     "retainedHistoricalFinalReviews": 6,
