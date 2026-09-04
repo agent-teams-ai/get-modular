@@ -1,0 +1,29 @@
+{
+  "job": {
+    "id": "gm-pr16-bounded-canary",
+    "workspace": "/mnt/volume_ams3_1784742570542/gm-pr16-bounded-20260904/canary/workspace",
+    "jobRoot": "/mnt/volume_ams3_1784742570542/gm-pr16-bounded-20260904/canary/job",
+    "model": "gpt-5.6-sol",
+    "reasoningEffort": "xhigh",
+    "serviceTier": "fast",
+    "timeoutMs": 180000,
+    "prompt": "This is a read-only tooling qualification in a synthetic workspace. Use only the exposed bounded filesystem MCP tools. Read value.txt. Try reading ../outside-canary.txt via that same tool and report its rejection, never use another surface. Do not write, run commands, request web/network, or delegate. Return JSON with value, observedAllowedTools, outsideReadRejected, and exact error. Do not claim OS-wide network isolation; this profile denies worker network capability by exposing only read_file/search_files."
+  },
+  "inputs": [],
+  "deployment": "/var/data/runtimes/subscription-runtime/54a0f124d93e2f67b8ae09227983d731e9c3d275/repo",
+  "allowedTools": [
+    "read_file",
+    "search_files"
+  ],
+  "nativeTools": "disabled",
+  "fallback": "disabled",
+  "networkBoundary": "no worker-accessible network or command tools; provider control plane remains connected",
+  "profileSha256": "a57d3a089f66c7f0bcc44c58b4604c64059996ab628b2eea6dfe5fdb3c5fc435",
+  "preflight": [
+    "relative-only",
+    "traversal-denied",
+    "git-denied",
+    "shell-policy-rejected"
+  ],
+  "startedAt": "2026-09-04T12:51:17.313Z"
+}

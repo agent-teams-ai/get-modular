@@ -1,0 +1,46 @@
+{
+  "status": "done",
+  "changedFiles": [
+    "qualification/spikes/api-authoring/typed-define-module/b2/README.md",
+    "qualification/spikes/api-authoring/typed-define-module/b2/fixture.ts",
+    "qualification/spikes/api-authoring/typed-define-module/b2/tsconfig.json"
+  ],
+  "evidence": [
+    "safe_execution_status:completed",
+    "output_summary:Completed the disposable `typed-define-module` fixture at the exact requested SHA, with changes confined to:\n\n- [fixture.ts](/var/data/gm-implementation-readiness-api-20260903/workspaces/extra-b2/qualification/spikes/api-authoring/typed-define-module/b2/fixture.ts)\n- [tsconfig.json](/var/data/gm-implementation-readiness-api-20260903/workspaces/extra-b2/qualification/spikes/api-authoring/typed-define-module/b2/tsconfig.json)\n- [README.md](/var/data/gm-implementation-readiness-api-20260903/workspaces/extra-b2/qualification/spikes/api-authoring/typed-define-module/b2/README.md)\n- Generated `dist/fixture.js` and `dist/fixture.d.ts`\n\nEvidence:\n\n- `npx tsc -p .../tsconfig.json` succeeded.\n- Declaration emit succeeded.\n- Runtime measurement reported all 17 requested synthetic scenarios at expected outcomes.\n- Discovery probe reported `executableImports: 0`.\n- `pnpm check:changed` completed without reported errors.\n- Direct runtime preflight failed as expected: Node `v24.16.0`, but the repository requires `>=24.18 <25`; no full gate pass is claimed.\n- No packages were installed or fetched.\n\nMeasured authoring cost is 4 LOC, generic glue is 5 LOC, one binding edit location, literal capability inference works through a const generic, and no framework leakage was observed. The README contains detailed scenario coverage, metrics, limitations, failure modes, commands, outputs, and a non-authoritative recommendation.",
+    "attempt_count:1",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/extra-b2/gm-api-b2-extra-v-20260903.7d2336ad9b6f62cc9b78ad8dee2d1435a499b010005473561ccb7d7a2a3666b2.handoff.patch",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/extra-b2/gm-api-b2-extra-v-20260903.7d2336ad9b6f62cc9b78ad8dee2d1435a499b010005473561ccb7d7a2a3666b2.handoff.summary.json",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/extra-b2/gm-api-b2-extra-v-20260903.7d2336ad9b6f62cc9b78ad8dee2d1435a499b010005473561ccb7d7a2a3666b2.handoff.manifest.json"
+  ],
+  "blockers": [],
+  "nextAction": "review_completed",
+  "schemaVersion": 1,
+  "provider": "codex",
+  "runId": "gm-api-b2-extra-v-20260903",
+  "taskId": "gm-api-b2-extra-v-20260903",
+  "details": {
+    "baseCommit": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418"
+  },
+  "artifacts": [
+    {
+      "kind": "patch",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/extra-b2/gm-api-b2-extra-v-20260903.7d2336ad9b6f62cc9b78ad8dee2d1435a499b010005473561ccb7d7a2a3666b2.handoff.patch",
+      "byteLength": 6690,
+      "sha256": "7d2336ad9b6f62cc9b78ad8dee2d1435a499b010005473561ccb7d7a2a3666b2"
+    },
+    {
+      "kind": "summary",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/extra-b2/gm-api-b2-extra-v-20260903.7d2336ad9b6f62cc9b78ad8dee2d1435a499b010005473561ccb7d7a2a3666b2.handoff.summary.json",
+      "byteLength": 938,
+      "sha256": "be424479f37316444ce11ea971cf5e55d16d689d06767a04beacf742e7b6491b"
+    },
+    {
+      "kind": "manifest",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/extra-b2/gm-api-b2-extra-v-20260903.7d2336ad9b6f62cc9b78ad8dee2d1435a499b010005473561ccb7d7a2a3666b2.handoff.manifest.json",
+      "byteLength": 1489,
+      "sha256": "0fe2d300bd7544fceb2c015de76888cee1413dce31c021f5b08157c2dba404a3"
+    }
+  ],
+  "updatedAt": "2026-09-03T00:18:16.864Z"
+}

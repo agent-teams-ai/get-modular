@@ -1,0 +1,7 @@
+{
+  "jobId": "gm-pr16-bounded-canary",
+  "completedAt": "2026-09-04T12:51:39.336Z",
+  "outputText": "{\n  \"value\": \"GM-PR16-BOUNDED-CANARY-42\\n\",\n  \"observedAllowedTools\": [\n    \"read_file\",\n    \"search_files\"\n  ],\n  \"outsideReadRejected\": true,\n  \"exact error\": \"workspace_path_outside_root\"\n}",
+  "warnings": [],
+  "inputs": []
+}

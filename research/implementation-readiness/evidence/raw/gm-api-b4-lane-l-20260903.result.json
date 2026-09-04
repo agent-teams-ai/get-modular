@@ -1,0 +1,46 @@
+{
+  "status": "done",
+  "changedFiles": [
+    "qualification/spikes/api-authoring/independent-low-ceremony-candidate/b4/README.md",
+    "qualification/spikes/api-authoring/independent-low-ceremony-candidate/b4/fixture.ts",
+    "qualification/spikes/api-authoring/independent-low-ceremony-candidate/b4/tsconfig.json"
+  ],
+  "evidence": [
+    "safe_execution_status:completed",
+    "output_summary:Completed the disposable candidate fixture at:\n\n- [README.md](/var/data/gm-implementation-readiness-api-20260903/workspaces/l-b4/qualification/spikes/api-authoring/independent-low-ceremony-candidate/b4/README.md)\n- [fixture.ts](/var/data/gm-implementation-readiness-api-20260903/workspaces/l-b4/qualification/spikes/api-authoring/independent-low-ceremony-candidate/b4/fixture.ts)\n- [tsconfig.json](/var/data/gm-implementation-readiness-api-20260903/workspaces/l-b4/qualification/spikes/api-authoring/independent-low-ceremony-candidate/b4/tsconfig.json)\n\nEvidence:\n\n- Base SHA verified: `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418`\n- TypeScript compilation and declaration emit succeeded.\n- Emitted fixture ran successfully and printed the requested scenario matrix.\n- `pnpm check:changed` and `pnpm check:fast` completed without reported errors.\n- Runtime observed: Node `v24.16.0`; repository contract specifies `>=24.18.0 <25`, so no full-gate conformance claim is made.\n- Authoring fixture: 11 LOC; approximately 7 LOC authoring surface and 4 LOC generic glue.\n- One module is one declaration line; binding edits touch one profile entry.\n- No imports, production edits, public API changes, ADR changes, or framework leakage.",
+    "attempt_count:2",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/l-b4/gm-api-b4-lane-l-20260903.f0ac713f773bc46aebdca167825b5cafc420c39349b68d9e6da56f45eb8140bd.handoff.patch",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/l-b4/gm-api-b4-lane-l-20260903.f0ac713f773bc46aebdca167825b5cafc420c39349b68d9e6da56f45eb8140bd.handoff.summary.json",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/l-b4/gm-api-b4-lane-l-20260903.f0ac713f773bc46aebdca167825b5cafc420c39349b68d9e6da56f45eb8140bd.handoff.manifest.json"
+  ],
+  "blockers": [],
+  "nextAction": "review_completed",
+  "schemaVersion": 1,
+  "provider": "codex",
+  "runId": "gm-api-b4-lane-l-20260903",
+  "taskId": "gm-api-b4-lane-l-20260903",
+  "details": {
+    "baseCommit": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418"
+  },
+  "artifacts": [
+    {
+      "kind": "patch",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/l-b4/gm-api-b4-lane-l-20260903.f0ac713f773bc46aebdca167825b5cafc420c39349b68d9e6da56f45eb8140bd.handoff.patch",
+      "byteLength": 5340,
+      "sha256": "f0ac713f773bc46aebdca167825b5cafc420c39349b68d9e6da56f45eb8140bd"
+    },
+    {
+      "kind": "summary",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/l-b4/gm-api-b4-lane-l-20260903.f0ac713f773bc46aebdca167825b5cafc420c39349b68d9e6da56f45eb8140bd.handoff.summary.json",
+      "byteLength": 972,
+      "sha256": "355ea01d828d060cf4a5cb26eba51f678c24d7066cb57c0014f3a6cdc5afeb4b"
+    },
+    {
+      "kind": "manifest",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/l-b4/gm-api-b4-lane-l-20260903.f0ac713f773bc46aebdca167825b5cafc420c39349b68d9e6da56f45eb8140bd.handoff.manifest.json",
+      "byteLength": 1514,
+      "sha256": "2ca6995206cc9a4db5f932153319ce9a6d649a10dffb26046c06cf2d0cf92640"
+    }
+  ],
+  "updatedAt": "2026-09-03T00:44:22.930Z"
+}

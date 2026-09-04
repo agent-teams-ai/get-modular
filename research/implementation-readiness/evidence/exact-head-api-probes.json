@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "kind": "synthetic-api-probe-execution",
+  "repository": "agent-teams-ai/get-modular",
+  "subjectCommit": "f88ead7f590c6c426f039b8884ba9da03a5ea3ce",
+  "recordedAt": "2026-09-03T17:22:55Z",
+  "toolchain": {
+    "node": "24.18.0",
+    "pnpm": "11.20.0",
+    "platform": "darwin",
+    "network": "not-used"
+  },
+  "commands": [
+    "node tests/qualification/implementation-readiness/api-authoring/b6/run.mjs",
+    "node tests/qualification/implementation-readiness/api-authoring/b9/run.mjs"
+  ],
+  "inputs": [
+    {
+      "path": "tests/qualification/implementation-readiness/api-authoring/b6/fixture.ts",
+      "sha256": "dc5aef2b551651ed25e991dbc6b0e3dbf9b9a50a870325df8f170db1830a7446"
+    },
+    {
+      "path": "tests/qualification/implementation-readiness/api-authoring/b6/run.mjs",
+      "sha256": "6113d4dd1f73f065a691d504294e101fc55463207546d427a6cf6e2df2c98791"
+    },
+    {
+      "path": "tests/qualification/implementation-readiness/api-authoring/b6/tsconfig.json",
+      "sha256": "65aa04a4470819b2a61218627593553fd23500c0835784cace294493c0c41f69"
+    },
+    {
+      "path": "tests/qualification/implementation-readiness/api-authoring/b9/fixture.ts",
+      "sha256": "8840b274980d448b52c7cbbaa2f5e6f07954c2eaeaf7fdfbabd06ab22719e8c1"
+    },
+    {
+      "path": "tests/qualification/implementation-readiness/api-authoring/b9/run.mjs",
+      "sha256": "dd989f9a49dd1009448fddf4c3534155b81ab2e3ae2231fa7e38f2640d106629"
+    },
+    {
+      "path": "tests/qualification/implementation-readiness/api-authoring/b9/tsconfig.json",
+      "sha256": "083a474a560754f9ac7bdd0243754424d1fa4bf9e1e7af1c7e1de4659a9421db"
+    }
+  ],
+  "results": {
+    "b6": {
+      "status": "passed",
+      "outputSha256": "df733878164fc02f534cb3cff10ff2d780b3e8e8d569f89f220f8f3e22246be2",
+      "summary": {
+        "hostileKeys": "pass",
+        "serializability": "pass",
+        "declarationEmit": "pass",
+        "integerIndexOrdering": "native-json-numeric",
+        "importSideEffects": "none",
+        "compileOutput": "ephemeral"
+      },
+      "scope": "representation-only; not canonicalization, graph, resource, or compiler evidence"
+    },
+    "b9": {
+      "status": "passed",
+      "outputSha256": "391fbcf6606d17bb7068fc664e945893aa31c45ae7a435285a9fbd8eb5bd220d",
+      "summary": {
+        "evidenceStatus": "exact-helper-shape-runtime-probe",
+        "compilerHandoff": "not-executed",
+        "declarationIdentity": "preserved",
+        "helperMutation": "preserved"
+      },
+      "scope": "helper-shape probe only; not compiler, graph, packed-consumer, or public API evidence"
+    }
+  },
+  "authority": "non-authoritative synthetic evidence; the subject is bound by commit and input digests, and does not qualify a production package"
+}

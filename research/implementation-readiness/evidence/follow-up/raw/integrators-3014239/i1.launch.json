@@ -1,0 +1,41 @@
+{
+  "job": {
+    "id": "gm-pr16-bounded-i1-3014239",
+    "workspace": "/mnt/volume_ams3_1784742570542/gm-pr16-bounded-20260904/i1/workspace",
+    "jobRoot": "/mnt/volume_ams3_1784742570542/gm-pr16-bounded-20260904/i1/job",
+    "model": "gpt-5.6-sol",
+    "reasoningEffort": "xhigh",
+    "serviceTier": "fast",
+    "timeoutMs": 1800000,
+    "inputs": [
+      {
+        "path": "gm",
+        "sha": "3014239a0d22b21a3d2994fcc5f5b2da4e7e8236"
+      }
+    ],
+    "prompt": "Read-only hosted subscription-runtime task. GM exact SHA 3014239a0d22b21a3d2994fcc5f5b2da4e7e8236; verified input Git bundle SHA256 d93888d7a01fd438c4ca22035f872cb1c61e0c77ba0d92ce75345121b24ae532. All paths are relative: GM repository is under gm/. Coordinator verified HEAD/clean before launch and will verify after. You have read_file/search_files tools only, NO shell/web/network/write/delegation and no fallback. Do not claim to run commands/tests. Read gm/AGENTS.md then the assigned protocol and all relevant evidence. Search only relevant subdirectories, not the whole workspace. Accepted ADRs outrank proposed documents, fixtures and reviewer recommendations. No files may be changed. Return substantive final JSON/YAML, no routine clarification questions. Missing evidence is not a pass; counts are not consensus. Read gm/research/implementation-readiness/integrator-prompt.md fully and follow its entire evidence-synthesis contract. Read historical worker-manifest.json, evidence/worker-index.json, relevant original raw results and dispute critics, the common API lab source and retained execution envelope/result. IMPORTANT updated evidence beyond that old prompt: gm/research/implementation-readiness/evidence/follow-up/raw/sources-fe96115/index.json and ALL SIX adjacent *.result.json; tooling canary evidence/follow-up/raw/bounded-canary. Their exact GM subject is fe96115, current report merely integrates those results. Historical 110/97/88 inventory remains frozen; supplement is six new read-only analyses, not votes or runtime proof. Current retained API source is 3155309, not a new execution at current docs SHA. Inspect real authoring-edits.mjs/run.mjs and scope of measured 36 trees, alternative providers and factory-association probes. Return all requested integrator tables plus findings limited to reproducible documentation/fixture gaps, clear P0-P2 vs future implementation blockers vs product decisions. Keep it under about 2500 words. No new framework, no accepted ADR change, no production or public API. Your assigned role narrows emphasis but does not replace complete evidence. Assigned role: I1 contract and authority. Reconcile ordinary/inherited many behavior, owner-start, current phase checklists, ADR0008 object identity/W0-W1 and proposed0016; do not turn retained NO-GO implementation gates into blockers for completing research. Make exact evidence/authority contradictions actionable. Explicitly distinguish technical start preflight from product approval."
+  },
+  "inputs": [
+    {
+      "path": "gm",
+      "sha": "3014239a0d22b21a3d2994fcc5f5b2da4e7e8236",
+      "clean": true
+    }
+  ],
+  "deployment": "/var/data/runtimes/subscription-runtime/54a0f124d93e2f67b8ae09227983d731e9c3d275/repo",
+  "allowedTools": [
+    "read_file",
+    "search_files"
+  ],
+  "nativeTools": "disabled",
+  "fallback": "disabled",
+  "networkBoundary": "no worker-accessible network or command tools; provider control plane remains connected",
+  "profileSha256": "cc61d2d7888cbe39973d20c7a7827747c2e53f47aa1b2f19af07cd20f846c8cd",
+  "preflight": [
+    "relative-only",
+    "traversal-denied",
+    "git-denied",
+    "shell-policy-rejected"
+  ],
+  "startedAt": "2026-09-04T13:00:56.153Z"
+}

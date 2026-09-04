@@ -1,0 +1,44 @@
+{
+  "status": "done",
+  "changedFiles": [
+    "research/implementation-readiness/evidence/combined-workers.json"
+  ],
+  "evidence": [
+    "safe_execution_status:completed",
+    "output_summary:Goal marked complete.\n\nCompleted the read-only exact-SHA review for topic: owner-start authority, ADR precedence, phase gates, and publication/admission boundaries at `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418`.\n\nSummary: the review found multiple P1/P2 governance and executable-proof gaps, including unenforced owner-start authority, impossible profile promotion, ambiguous M1/raw-entrypoint timing, proposed ADR-0016 being non-authoritative, absent executable self-composition/Phase 0 evidence, path-only package admission, and ADR precedence/packing ambiguity. Findings were supported with repository paths and worker IDs such as `gm-readiness-a2-lane-l-20260903`, `gm-readiness-a3-seq-20260903`, `gm-readiness-a5-extra-l-20260903`, `gm-readiness-a8-extra-l-20260903`, and `gm-readiness-a1-retry3-20260903`.\n\nNo repository files were changed. Verdict for this topic: **NO-GO**.",
+    "attempt_count:1",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/target-governance-1/gm-targeted-governance-1-20260903.c7291602023fc7207a85823643de89b02917d4cbe03f85cae254e048df0c84c4.handoff.patch",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/target-governance-1/gm-targeted-governance-1-20260903.c7291602023fc7207a85823643de89b02917d4cbe03f85cae254e048df0c84c4.handoff.summary.json",
+    "patch_preserved:/var/data/gm-implementation-readiness-api-20260903/jobs/target-governance-1/gm-targeted-governance-1-20260903.c7291602023fc7207a85823643de89b02917d4cbe03f85cae254e048df0c84c4.handoff.manifest.json"
+  ],
+  "blockers": [],
+  "nextAction": "review_completed",
+  "schemaVersion": 1,
+  "provider": "codex",
+  "runId": "gm-targeted-governance-1-20260903",
+  "taskId": "gm-targeted-governance-1-20260903",
+  "details": {
+    "baseCommit": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418"
+  },
+  "artifacts": [
+    {
+      "kind": "patch",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/target-governance-1/gm-targeted-governance-1-20260903.c7291602023fc7207a85823643de89b02917d4cbe03f85cae254e048df0c84c4.handoff.patch",
+      "byteLength": 182494,
+      "sha256": "c7291602023fc7207a85823643de89b02917d4cbe03f85cae254e048df0c84c4"
+    },
+    {
+      "kind": "summary",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/target-governance-1/gm-targeted-governance-1-20260903.c7291602023fc7207a85823643de89b02917d4cbe03f85cae254e048df0c84c4.handoff.summary.json",
+      "byteLength": 827,
+      "sha256": "3ac1787c23dd6441b53461ee1a37bb86582d842e9b5ad9ca79e4578c68fe0f93"
+    },
+    {
+      "kind": "manifest",
+      "path": "/var/data/gm-implementation-readiness-api-20260903/jobs/target-governance-1/gm-targeted-governance-1-20260903.c7291602023fc7207a85823643de89b02917d4cbe03f85cae254e048df0c84c4.handoff.manifest.json",
+      "byteLength": 1405,
+      "sha256": "61a396762a0369579dcfb0ecaa531f4748345d535b455789249a26117ad436d1"
+    }
+  ],
+  "updatedAt": "2026-09-03T01:20:53.486Z"
+}
