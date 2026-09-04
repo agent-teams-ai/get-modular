@@ -112,7 +112,7 @@ for its governed decision.
 
 ### GOV-01 — P1, current checker regression
 
-**Evidence/result IDs:** `gm-readiness-a2-lane-l-20260903`; contradicted report claim at `report.md:82-88`.
+**Evidence/result IDs:** `gm-readiness-a2-lane-l-20260903`; the worker's historical report-line citation is not a locator in this revised document.
 
 **Impact:** `feature-module-standard-profile.mjs:253-265` unconditionally requires structural and runtime states to remain `not-claimed`. It cannot validate the documented ordered promotion. Commit `711845c` restored this behavior after the report described the checker as transition-aware.
 
@@ -247,9 +247,9 @@ A 90-cell pass would therefore show agreement with the laboratory, not conforman
 
 **Evidence/result IDs:** all `gm-dispute-t1-r1…r4-2bef-20260904`, `gm-dispute-t2-r1/r3/r4-2bef-20260904`, and `gm-dispute-t4-r1…r4-2bef-20260904`.
 
-**Impact:** The generic `defineModule<const T extends Declaration>(x:T):T` preserves unknown `authorNote` fields while the oracle rejects unknown wire fields. The accepted runtime helper requires direct ordinary `many` reads but does not fix min-before-max ordering or own-property-only behavior. The split candidate serializes an `activationRef` string but never proves candidate-specific factory association.
+**Impact:** The generic `defineModule<const T extends Declaration>(x:T):T` preserves unknown `authorNote` fields while the oracle rejects unknown wire fields. ADR-0007 requires direct ordinary `many` reads, including inherited-property lookup; only min/max read ordering is unspecified. Candidate-specific factory association is a qualification concern, not permission to add a public factory API.
 
-**Minimal correction:** Through the public API decision, choose exact unknown-field typing, readonly/writable declaration shape, and inherited-property policy. Preserve ADR-0007’s current no-read/no-validation helper semantics unless a successor explicitly changes them. Add candidate-specific emitted-declaration and packed-consumer tests.
+**Minimal correction:** Through the public API decision, choose exact unknown-field typing and readonly/writable declaration shape. Preserve ADR-0007's inherited lookup and no-validation semantics unless a successor explicitly changes them; `defineModule` performs no reads. Candidate-specific emitted-declaration probes do not replace future packed-consumer tests.
 
 **Owner/authority:** Product/API owner; ADR-0009 or successor.
 
@@ -372,16 +372,21 @@ threshold; tree-shaking and runtime performance were not measured.
 
 | Candidate | Measured authoring/glue | Type/declaration evidence | Strength | Limitation | Provisional use |
 | --- | --- | --- | --- | --- | --- |
-| Descriptor object | 4/11 LOC, 73.3% marked glue, 1 file, 1 binding locus | 2 explicit annotations; 181-byte, 3-line declaration emit | Explicit canonical inert data | No inference facade; shared oracle is wrong | Canonical internal data form |
-| Typed `defineModule` | 4/11 LOC, 73.3%, 1 file, 1 locus | 1 annotation; 543-byte, 19-line declaration emit; best literal inference | Zero-behavior authoring convenience | Generic preserves extra subtype fields; must not imply validation | **Preferred private authoring facade**, pending API decision |
-| Declaration plus factory | 5/11 LOC, 68.8%, 2 files, 1 locus | 3 annotations; 338-byte, 5-line declaration emit | Separates inert metadata from construction | Lab drops `activationRef`; factory association and failures are unproved | Keep factories product-owned; do not adopt this lab encoding |
+| Descriptor object | 4 authoring / 12 total support LOC, 75.0% candidate-specific support | 2 annotation matches; 181-byte, 3-line declaration emit | Explicit canonical inert data | No inference facade; shared oracle is wrong | Canonical internal data form |
+| Typed `defineModule` | 4 / 27 LOC, 87.1% support including helpers and translation | 1 annotation match; 543-byte, 19-line declaration emit; literal inference passes probes | Zero-behavior authoring convenience | Generic preserves extra subtype fields; must not imply validation | **Preferred private authoring facade**, pending API decision |
+| Declaration plus factory | 5 / 24 LOC, 82.8% support including separate association file | 3 annotation matches in declaration file; 338-byte, 5-line declaration emit; separate typed association checks | Separates inert metadata from construction | ID association tested in host probes, not lifecycle or factory-failure rollback | Keep factories product-owned; do not adopt this lab encoding |
 
-All candidates used one source import, zero executable implementation imports,
-zero framework imports, two removal edits and one disable edit. Their generated
-10/100/1000 declaration compile observations were respectively
-`143.63/144.69/215.97 ms`, `142.75/148.69/246.54 ms`, and
-`137.71/166.50/209.35 ms`. These synthetic numbers do not establish product
-navigation or runtime-scale benefit.
+Support counts include adapter glue, imports and candidate-specific helpers,
+but exclude the shared runner/oracle/types. They cannot be used as a product
+generic-glue ratio or proof that a framework reduces wiring cost. Annotation
+matches and declaration sizes refer to each candidate declaration file, not its
+complete transitive API. Split scale probes include an extra factory file;
+the timings therefore do not rank identical compile workloads.
+
+Exact compile observations belong only to the retained machine-readable run,
+not a second manually copied timing table. File/edit counts in this lab are
+layout assumptions, not measured product changes. Synthetic declaration emit
+timings do not establish product navigation or runtime-scale benefit.
 
 The preferred internal direction is one inert descriptor model, an optional
 identity-only `defineModule` facade, and separate product-owned typed factories
@@ -408,8 +413,8 @@ result column is the shared lab oracle, not accepted-contract authority.
 | S11 | incompatible capability | `binding.capability` | Expected failure |
 | S12 | dependency cycle | `graph.cycle` | Static lab only |
 | S13 | disabled root | `host.profile.root-disabled` | Disablement is host-owned, not Core semantics |
-| S14 | disabled required provider | `binding.missing` | Host-preprocessed fixture |
-| S15 | disabled optional provider | `ok` | Host-preprocessed fixture |
+| S14 | disabled required provider | `binding.missing` | Synthetic desired-state filter inside the lab oracle, not proof of a Host boundary |
+| S15 | disabled optional provider | `ok` | Same synthetic filtering limitation |
 | S16 | unreachable provider | `graph.unreachable` | Expected failure |
 | S17 | multiple roots | `ok` | Deterministic inventory |
 | S18 | reordered input | `ok` | Permutation-stable result |
@@ -471,9 +476,9 @@ result column is the shared lab oracle, not accepted-contract authority.
 | Decision | Strong options | Recommendation | Work that may continue |
 | --- | --- | --- | --- |
 | First callable M1 boundary | A: private normalized-value seam; B: accepted object wrapper over that seam; C: object and raw carriers together | Prefer A for the first slice because it adds no carrier policy. B remains the accepted eventual object contract. C is blocked by OD-005/006. Product owner must authorize the start record; this report does not. | Phase 0 admission repair and internal normalized data-model fixtures |
-| `defineModule` type policy | A: identity-only literal-preserving generic; B: exact closed authoring type; C: validated/branded return | Keep A private for ergonomics evidence while wire validation stays in Core. Do not publish until unknown-field, readonly and inherited-property policy is chosen. | Inert descriptor implementation and compile-only probes |
-| `many({min,max})` observable reads | A: specify `min` then `max`; B: specify `max` then `min`; C: require a trusted ordinary own-data object and leave order unobservable | Prefer C if the product accepts the trusted authoring boundary; otherwise choose and test one exact order. No option is silently selected here. | Semantic range validation over already normalized values |
-| Self-composition witness | A: accepted ADR-0008 emitted W0/W1 only; B: accept/revise ADR-0016 static plus behavioral witness; C: defer self-composition | Use A as current authority and C for the first Core slice. B requires a separate product decision. | Direct handwritten private composition only, with no self-composed claim |
+| `defineModule` type policy | A: identity-only literal-preserving generic; B: exact closed authoring type; C: validated/branded return | Keep A private for ergonomics evidence while wire validation stays in Core. Unknown-field and readonly typing remain open; C would require a successor to the accepted no-validation helper behavior. | Inert descriptor implementation and compile-only probes |
+| `many({min,max})` observable reads | A: specify `min` then `max`; B: specify `max` then `min`; C: restrict inputs to trusted own-data objects | Leave order unspecified under current authority. A/B need an explicit contract decision; C also changes accepted ordinary/inherited lookup and requires a successor. No option is silently selected here. | Semantic range validation over already normalized values |
+| Self-composition witness | A: full accepted ADR-0008 construction identity, behavior replacement, P0/P1 and W0/W1 evidence; B: accept/revise ADR-0016 alternative; C: direct-Core checkpoint before self-composition qualification | A is current authority. C is a sequencing checkpoint, not cancellation of self-composition. B requires a separate product decision and must reconcile all A obligations. | Direct handwritten private composition only, with no self-composed claim |
 
 ## Claim and evidence ledger
 
@@ -500,7 +505,7 @@ governed and admission enforcement passes.
 
 **Runtime-conformant claim:** **NO-GO.** It additionally requires source admission, structural promotion, a real compiler subject, corrected resource/diagnostic evidence, immutable plan/digest proof, and the six accepted runtime cases: Linux, macOS, Windows, Chromium window, Chromium worker, and Electron desktop.
 
-**Self-composed/distributed Core claim:** **NO-GO.** It requires accepted witness authority, exact P0/P1 and W0/W1 evidence, closed emitter/allowlist checking, clean isolated stages, independent mutation evidence, and pack-once custody.
+**Self-composed/distributed Core claim:** **NO-GO.** ADR-0008 already supplies accepted witness authority. Missing implementation evidence must prove injected-object identity, controlled replacement observed through compiler behavior, exact P0/P1 and W0/W1 equality, closed emitter/allowlist checking, clean isolated stages, independent mutations, and pack-once custody. Choosing ADR-0016's alternative additionally requires its acceptance; it cannot silently replace ADR-0008.
 
 ### Exact Core start conditions
 

@@ -20,14 +20,34 @@ type-scale probes only below the OS temporary directory, and removes them.
 Machine-readable JSON is printed and written to `dist/result-summary.json`.
 The reviewed research handoff retains a generated copy at
 `research/implementation-readiness/evidence/api-authoring-exact-run.json`;
-that copy proves execution of this lab only, not contract conformance.
+the adjacent `api-authoring-execution.json` binds its result hash, committed
+inputs, toolchain identity, emitted declarations and command outcome. This is
+coordinator-observed execution, not a signed attestation or contract conformance.
 
-Metrics use the same counting rules for all candidates. LOC is nonblank source
-inside the marked authoring/glue regions; declaration measures use emitted
-`.d.ts` bytes; files/module counts the declaration and, for the split shape,
-its external factory file; binding loci counts the single explicit profile
-binding collection; removal edits count selection plus binding deletion;
-disable edits count the host-owned selection filter. Compile duration is an
-observation from the pinned local TypeScript toolchain, not a threshold.
+After committing executable inputs, capture once to a new external directory:
+
+```sh
+node tests/qualification/implementation-readiness/api-authoring/common/execution-capture.mjs --capture /tmp/gm-api-observation
+node tests/qualification/implementation-readiness/api-authoring/common/execution-capture.mjs --verify research/implementation-readiness/evidence/api-authoring-execution.json research/implementation-readiness/evidence/api-authoring-exact-run.json
+node --test tests/qualification/implementation-readiness/api-authoring/common/execution-capture.test.mjs
+```
+
+The coordinator retains both output files together in a later evidence commit.
+Verification permits that later commit only when all executable input hashes
+and the complete input set still match the captured source commit. Result hash
+verification does not certify a compiler or repeat a timing measurement.
+
+Metrics use the same nonblank/non-comment LOC rule. Marked authoring/glue
+regions are supplemented with all remaining candidate source and the split
+association file; `totalSupportLoc` includes helpers and translation code.
+Shared oracle/types/runner code is excluded from this candidate-specific ratio,
+which is not a product generic-glue percentage. Declaration measures use emitted
+`.d.ts` bytes. Files/module, binding loci and removal/disable edits are explicitly
+layout assumptions, not observed product edits. Desired-state filtering is
+inside the synthetic oracle and does not prove a Host boundary. Split factories
+are associated and exercised only in the two host probes, with mismatched ID
+rejection and compile-time dependency checks. Split scale probes emit both
+metadata/ref and factory files; other candidates emit declarations only.
+Compile duration is an observation, not a threshold or an equal-workload ranking.
 Tree-shaking and runtime performance are `not-measured` because this lab has no
 pinned bundler and no production runtime subject.

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
@@ -130,6 +130,7 @@ const observedMany = many({
   get max() { helperReads.max += 1; return Number.NaN; },
 });
 assert(helperReads.min === 1 && helperReads.max === 1 && observedMany.min === -1 && Number.isNaN(observedMany.max), "many did not perform one ordinary read per field or added validation");
+assert(canonical(many(Object.create({ min: 2, max: 4 }))) === '{"kind":"many","max":4,"min":2,"order":"profile"}', "many lost accepted inherited-property lookup");
 let definitionReads = 0;
 const unreadDefinition = new Proxy(identityProbe, { get(target, key, receiver) { definitionReads++; return Reflect.get(target, key, receiver); } });
 assert(defineModule(unreadDefinition) === unreadDefinition && definitionReads === 0, "defineModule read, cloned, or replaced its argument");
@@ -154,6 +155,7 @@ const executions = [];
 const decodedCorpusDigests = [];
 let factoryScenarioUses = 0;
 let declarationEmitCells = 0;
+let splitAssociationProbes = 0;
 for (const adapter of adapters) {
   const decoded = [];
   for (const scenario of corpus) {
@@ -198,15 +200,30 @@ for (const adapter of adapters) {
         "lab/consumer/default": async () => { selectedLoaderCalls++; return (await loadFactories()).consumerFactory; },
         "lab/unselected/default": async () => { unselectedLoaderCalls++; return (await loadFactories()).serviceFactory; },
       };
-      const serviceFactory = await loaders[observed.dependencyOrder[0]]();
-      const consumerFactory = await loaders[observed.dependencyOrder[1]]();
+      let serviceFactory = await loaders[observed.dependencyOrder[0]]();
+      let consumerFactory = await loaders[observed.dependencyOrder[1]]();
+      if (adapter.id === "split-declaration-factory") {
+        const { associateFactory } = await import(pathToFileURL(join(emitRoot, "candidate-split-factory.js")).href);
+        const [provider, consumer] = observed.dependencyOrder.map((id) => encoded.declarations.find(({ activationRef }) => activationRef === id));
+        serviceFactory = associateFactory(provider.declaration, provider.activationRef, serviceFactory).activate;
+        consumerFactory = associateFactory(consumer.declaration, consumer.activationRef, consumerFactory).activate;
+        let rejected = false;
+        try { associateFactory(provider.declaration, consumer.activationRef, consumerFactory); } catch (error) { rejected = error.message === "factory identity mismatch"; }
+        assert(rejected, "split factory association accepted a mismatched implementation");
+        splitAssociationProbes++;
+      }
       assert(consumerFactory({ service: serviceFactory() }).read() === "selected-service", `${adapter.id}/${scenario.id} selected loader result failed`);
       assert(selectedLoaderCalls === 2 && unselectedLoaderCalls === 0, `${adapter.id}/${scenario.id} called or imported an unselected literal loader`);
     }
     if (scenario.hostProbe === "direct-pure-di-parity") {
       factoryScenarioUses++;
       const { consumerFactory, serviceFactory } = await loadFactories();
-      const candidateFactories = { "lab/provider-a/default": serviceFactory, "lab/consumer/default": consumerFactory };
+      let candidateFactories = { "lab/provider-a/default": serviceFactory, "lab/consumer/default": consumerFactory };
+      if (adapter.id === "split-declaration-factory") {
+        const { associateFactory } = await import(pathToFileURL(join(emitRoot, "candidate-split-factory.js")).href);
+        candidateFactories = Object.fromEntries(encoded.declarations.map(({ declaration, activationRef }) => [activationRef, associateFactory(declaration, activationRef, candidateFactories[activationRef]).activate]));
+        splitAssociationProbes++;
+      }
       const candidateService = candidateFactories[observed.dependencyOrder[0]]();
       const candidateResult = candidateFactories[observed.dependencyOrder[1]]({ service: candidateService }).read();
       const handwrittenPureDiResult = consumerFactory({ service: serviceFactory() }).read();
@@ -228,6 +245,7 @@ for (const adapter of adapters) assert(executions.filter(({ candidateId }) => ca
 assert(new Set(decodedCorpusDigests).size === 1, "candidate corpus digests differ");
 assert(factoryScenarioUses === 6, `factories used outside the two host probes per candidate: ${factoryScenarioUses}`);
 assert(declarationEmitCells === 3, `declaration emit was not proved for every candidate: ${declarationEmitCells}`);
+assert(splitAssociationProbes === 2, "split associations were not exercised by both host probes");
 const corpusDigest = decodedCorpusDigests[0];
 
 const countRegion = (source, region) => {
@@ -244,29 +262,43 @@ try {
       mkdirSync(directory);
       const declarations = Array.from({ length: size }, (_, index) => {
         const value = `{moduleId:"scale/m${index}",implementationId:"scale/m${index}/default",owner:{authority:"scale",path:["m${index}"]},provides:[],slots:[]}`;
-        return adapter.id === "define-module" ? `export const m${index}=defineModule(${value});` : `export const m${index}=${value} as const satisfies Declaration;`;
+        if (adapter.id === "define-module") return `export const m${index}=defineModule(${value});`;
+        if (adapter.id === "split-declaration-factory") return `export const m${index}={declaration:${value} as const satisfies Declaration,activationRef:"scale/m${index}/default" as const};`;
+        return `export const m${index}=${value} as const satisfies Declaration;`;
       }).join("\n");
       const prelude = adapter.id === "define-module"
         ? "type Declaration={readonly moduleId:string;readonly implementationId:string;readonly owner:{readonly authority:string;readonly path:readonly string[]};readonly provides:readonly unknown[];readonly slots:readonly unknown[]};function defineModule<const T extends Declaration>(x:T):T{return x;}"
         : "type Declaration={readonly moduleId:string;readonly implementationId:string;readonly owner:{readonly authority:string;readonly path:readonly string[]};readonly provides:readonly unknown[];readonly slots:readonly unknown[]};";
       writeFileSync(join(directory, "scale.ts"), `${prelude}\n${declarations}\n`);
-      writeFileSync(join(directory, "tsconfig.json"), JSON.stringify({ compilerOptions: { target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", strict: true, declaration: true, emitDeclarationOnly: true, skipLibCheck: true, types: [], outDir: "dist" }, include: ["scale.ts"] }));
+      if (adapter.id === "split-declaration-factory") {
+        writeFileSync(join(directory, "factories.ts"), `import * as declarations from "./scale.js";\n${Array.from({ length: size }, (_, index) => `export const f${index}:{implementationId:typeof declarations.m${index}.activationRef;activate:()=>number}={implementationId:declarations.m${index}.activationRef,activate:()=>${index}};`).join("\n")}\n`);
+      }
+      writeFileSync(join(directory, "tsconfig.json"), JSON.stringify({ compilerOptions: { target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", strict: true, declaration: true, emitDeclarationOnly: true, skipLibCheck: true, types: [], outDir: "dist" }, include: ["*.ts"] }));
       const started = performance.now();
       execFileSync(process.execPath, [tscPath, "-p", join(directory, "tsconfig.json")], { stdio: "pipe" });
-      scale[adapter.id][size] = { declarations: size, compileDurationMs: Math.round((performance.now() - started) * 100) / 100 };
+      const fileHashes = (root, names) => Object.fromEntries(names.sort(compare).map((name) => [name, createHash("sha256").update(readFileSync(join(root, name))).digest("hex")]));
+      scale[adapter.id][size] = { declarations: size, compileDurationMs: Math.round((performance.now() - started) * 100) / 100,
+        inputs: fileHashes(directory, readdirSync(directory).filter((name) => /\.(ts|json)$/.test(name))),
+        declarationsEmitted: fileHashes(join(directory, "dist"), readdirSync(join(directory, "dist"))),
+      };
     }
   }
 } finally { rmSync(scaleRoot, { recursive: true, force: true }); }
 
 const metrics = {};
+const sourceLoc = (source) => source.split("\n").filter((line) => line.trim() && !line.trim().startsWith("//")).length;
 for (const { adapter, sourcePath, stem } of candidateSources) {
   const source = readFileSync(sourcePath, "utf8");
   const declaration = readFileSync(join(emitRoot, `candidate-${stem}.d.ts`), "utf8");
   const authoringLoc = countRegion(source, "authoring");
   const genericGlueLoc = countRegion(source, "glue");
+  const candidateSupportLoc = sourceLoc(source) - authoringLoc - genericGlueLoc;
+  const separateFactoryLoc = adapter.id === "split-declaration-factory" ? sourceLoc(readFileSync(join(here, "candidate-split-factory.ts"), "utf8")) : 0;
+  const totalSupportLoc = genericGlueLoc + candidateSupportLoc + separateFactoryLoc;
   metrics[adapter.id] = {
-    authoringLoc, genericGlueLoc, genericGlueRatio: genericGlueLoc / (authoringLoc + genericGlueLoc), filesPerModule: adapter.id === "split-declaration-factory" ? 2 : 1,
-    bindingLoci: 1, explicitAnnotations: (source.match(/satisfies Declaration|: CandidateAdapter|ActivationFactory/g) ?? []).length,
+    authoringLoc, genericGlueLoc, candidateSupportLoc, separateFactoryLoc, totalSupportLoc, genericGlueRatio: totalSupportLoc / (authoringLoc + totalSupportLoc),
+    layoutAssumptions: { filesPerModule: adapter.id === "split-declaration-factory" ? 2 : 1, bindingLoci: 1, removalEdits: 2, disableEdits: 1, evidence: "not measured by editing product modules" },
+    explicitAnnotationMatchesInCandidateFile: (source.match(/satisfies Declaration|: CandidateAdapter|ActivationFactory/g) ?? []).length,
     declarationLines: declaration.trimEnd().split("\n").length, declarationBytes: Buffer.byteLength(declaration), declarationExports: (declaration.match(/^export /gm) ?? []).length,
     serializedBytes: Buffer.byteLength(canonical(corpus.map(({ input }) => adapter.encode(input)))), importCounters: {
       sourceImports: (source.match(/^import /gm) ?? []).length,
@@ -274,7 +306,7 @@ for (const { adapter, sourcePath, stem } of candidateSources) {
       executableImplementationImports: (source.match(/from ["'].*factories|from ["'].*packages\/core/gm) ?? []).length,
       frameworkImports: (source.match(/from ["'](?:awilix|cordis|reflect-metadata)/gm) ?? []).length,
     },
-    removalEdits: 2, disableEdits: 1, compileDuration: scale[adapter.id], treeShaking: "not-measured", runtimePerformance: "not-measured",
+    compileDuration: scale[adapter.id], treeShaking: "not-measured", runtimePerformance: "not-measured",
   };
 }
 const summary = {
@@ -282,7 +314,9 @@ const summary = {
   executionCount: executions.length, corpusDigest,
   scenarioMatrix: corpus.map(({ id, title, evidenceClass, expected, hostProbe }) => ({ id, title, evidenceClass, expected, ...(hostProbe ? { hostProbe } : {}) })),
   executions, metrics,
-  guards: { exactClosedCorpus: true, substantiveScenarioWitnesses: true, immutablePlainData: true, ordinaryHelperReadsWithoutValidation: true, genuineCandidateShapes: true, noExpectationManufacture: true, noExecutableDiscoveryImports: true, hiddenFallbackRejected: true, desiredProfileHostOwned: true, noRegistrationOrderSemantics: true, permutationStable: true, hostileOwnKeys: true, selectedLiteralLoadersOnly: true, directPureDiParity: true, declarationSerializability: true, actualDeclarationEmitEveryCandidate: true, factoriesRestrictedToHostProbes: true },
+  emittedDeclarations: Object.fromEntries(readdirSync(emitRoot).filter((name) => name.endsWith(".d.ts")).sort(compare).map((name) => [name, createHash("sha256").update(readFileSync(join(emitRoot, name))).digest("hex")])),
+  limitations: { desiredState: "synthetic filtering inside lab oracle, not Host boundary proof", semantics: "shared oracle has documented accepted-contract disagreements; see report API-02", measurements: "synthetic source/emit counts only; layout edits are assumptions" },
+  guards: { exactClosedCorpus: true, substantiveScenarioWitnesses: true, immutablePlainData: true, ordinaryHelperReadsWithoutValidation: true, inheritedHelperReads: true, genuineCandidateShapes: true, splitFactoryAssociation: true, noExpectationManufacture: true, noExecutableDiscoveryImports: true, hiddenFallbackRejected: true, noRegistrationOrderSemantics: true, permutationStable: true, hostileOwnKeys: true, selectedLiteralLoadersOnly: true, directPureDiParity: true, declarationSerializability: true, actualDeclarationEmitEveryCandidate: true, factoriesRestrictedToHostProbes: true },
 };
 mkdirSync(join(here, "dist"), { recursive: true });
 writeFileSync(join(here, "dist", "result-summary.json"), `${JSON.stringify(summary, null, 2)}\n`);

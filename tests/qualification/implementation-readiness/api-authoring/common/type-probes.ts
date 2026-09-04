@@ -1,6 +1,7 @@
 import { defineModule, many, optional, required } from "./candidate-define.js";
 import type { ActivationFactory } from "./candidate-split.js";
 import type { Consumer, Service } from "./factories.js";
+import { associateFactory } from "./candidate-split-factory.js";
 
 const inferred = defineModule({ moduleId: "probe/module", implementationId: "probe/module/default", owner: { authority: "probe", path: ["module"] }, provides: [], slots: [] });
 const literal: "probe/module" = inferred.moduleId;
@@ -24,3 +25,10 @@ activate({ service });
 activate({});
 // @ts-expect-error closed dependencies reject extra resolver access
 activate({ service, resolve: () => service });
+
+const associated = associateFactory(inferred, "probe/module/default", activate);
+associated.activate({ service });
+// @ts-expect-error association does not erase closed dependencies
+associated.activate({});
+// @ts-expect-error literal implementation identity must match declaration
+associateFactory(inferred, "probe/other/default", activate);
