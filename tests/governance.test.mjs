@@ -37,6 +37,7 @@ import {
 } from "../architecture/checks/node-version.mjs";
 import {
   assertGitIndexSnapshotCurrent,
+  assertTrackedWorkspaceMatchesHead,
   captureGitIndexSnapshot,
   historicalFileVersions,
   inspectIndexSnapshotFile,
@@ -1267,6 +1268,50 @@ test("accepted authority bytes survive a deterministic leaf replacement race", a
   } finally {
     await rm(fixture, { recursive: true, force: true });
     await rm(external, { recursive: true, force: true });
+  }
+});
+
+test("tracked workspace integrity ignores mutable Git metadata", async () => {
+  for (const indexFlag of ["--assume-unchanged", "--skip-worktree"]) {
+    const fixture = await mkdtemp(join(tmpdir(), "get-modular-workspace-integrity-"));
+    try {
+      await initFixtureRepository(fixture);
+      await writeFile(join(fixture, "tracked.txt"), "original\n");
+      await git(fixture, "add", "--", "tracked.txt");
+      await git(fixture, "commit", "--quiet", "-m", "fixture");
+      await assertTrackedWorkspaceMatchesHead(fixture);
+
+      await git(fixture, "update-index", indexFlag, "--", "tracked.txt");
+      await writeFile(join(fixture, "tracked.txt"), "modified\n");
+      await assert.rejects(
+        assertTrackedWorkspaceMatchesHead(fixture),
+        /TRACKED_FILE_CUSTODY_FAILED: working-tree bytes differ from HEAD/u,
+      );
+    } finally {
+      await rm(fixture, { recursive: true, force: true });
+    }
+  }
+});
+
+test("tracked workspace integrity disables Git replacement objects", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-workspace-replacement-"));
+  try {
+    await initFixtureRepository(fixture);
+    await writeFile(join(fixture, "tracked.txt"), "original\n");
+    await git(fixture, "add", "--", "tracked.txt");
+    await git(fixture, "commit", "--quiet", "-m", "fixture");
+
+    await writeFile(join(fixture, "tracked.txt"), "modified\n");
+    await git(fixture, "add", "--", "tracked.txt");
+    const { stdout: oldTree } = await git(fixture, "rev-parse", "HEAD^{tree}");
+    const { stdout: newTree } = await git(fixture, "write-tree");
+    await git(fixture, "replace", oldTree.trim(), newTree.trim());
+    await assert.rejects(
+      assertTrackedWorkspaceMatchesHead(fixture),
+      /TRACKED_FILE_CUSTODY_FAILED: tracked path differs from HEAD/u,
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
   }
 });
 

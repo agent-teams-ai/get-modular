@@ -342,6 +342,46 @@ export async function assertGitIndexSnapshotCurrent(snapshot) {
   }
 }
 
+export async function assertTrackedWorkspaceMatchesHead(repositoryRoot) {
+  const snapshot = await captureGitIndexSnapshot(repositoryRoot);
+  if (snapshot.headTreeOid === null) {
+    throw new Error("TRACKED_FILE_CUSTODY_FAILED: repository must have a committed HEAD");
+  }
+
+  const { stdout: headTreeBytes } = await runGit(repositoryRoot, [
+    "ls-tree", "--full-tree", "-r", "-z", snapshot.headTreeOid,
+  ]);
+  const headEntries = parseMaterializedTree(headTreeBytes);
+  const paths = indexSnapshotPaths(snapshot).sort();
+  if (paths.length !== headEntries.size) {
+    throw new Error("TRACKED_FILE_CUSTODY_FAILED: Git index differs from HEAD");
+  }
+
+  const expectedBlobs = [];
+  for (const path of paths) {
+    const indexEntry = snapshot.entries.get(path);
+    const headEntry = headEntries.get(path);
+    if (indexEntry?.kind !== "regular"
+      || headEntry?.type !== "blob"
+      || indexEntry.mode !== headEntry.mode
+      || indexEntry.oid !== headEntry.oid) {
+      throw new Error(`TRACKED_FILE_CUSTODY_FAILED: tracked path differs from HEAD: ${path}`);
+    }
+    expectedBlobs.push(indexEntry.oid);
+  }
+
+  const blobBytes = await readBlobBatch(repositoryRoot, expectedBlobs);
+  for (const [index, path] of paths.entries()) {
+    const workingTree = await readWorkingTreeRegularFile(path, repositoryRoot);
+    if (workingTree.kind !== "regular" || !workingTree.bytes.equals(blobBytes[index])) {
+      throw new Error(
+        `TRACKED_FILE_CUSTODY_FAILED: working-tree bytes differ from HEAD: ${path} `
+        + `(${workingTree.kind})`,
+      );
+    }
+  }
+}
+
 export async function untrackedPathsInScope(snapshot, pathspecs) {
   const { stdout } = await runGit(snapshot.repositoryRoot, [
     "ls-files",

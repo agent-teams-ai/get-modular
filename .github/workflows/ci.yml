@@ -38,7 +38,4 @@ jobs:
           node architecture/checks/feature-module-standard-profile.mjs
       - run: pnpm check
       - name: Verify tracked workspace integrity
-        run: |
-          git sparse-checkout disable
-          git update-index --really-refresh
-          git diff HEAD --exit-code --
+        run: node architecture/checks/tracked-workspace-integrity.mjs
