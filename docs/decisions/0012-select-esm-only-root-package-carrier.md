@@ -1,14 +1,17 @@
 ---
 id: ADR-0012
 type: adr
-status: proposed
+status: accepted
 owner: architecture
 summary: Selects one ESM-only root package carrier, loadable through import and require(esm), with closed resolution and archive custody.
+approved_by: product-owner
+accepted_at: 2026-09-04
 related:
   - ADR-0003
   - ADR-0007
   - ADR-0009
   - OD-004
+  - ADR-0017
 ---
 
 <!-- cspell:words subpaths -->
@@ -26,13 +29,17 @@ the TypeScript barrel is curated.
 Disposable package probes demonstrated Node ESM, TypeScript NodeNext and Bundler
 resolution, and a closed root export. They did not qualify a release: the probe
 archive contained source and its browser import map pointed at `dist` directly.
-This proposal therefore selects a narrow target and requires new pack-once
+This decision therefore selects a narrow target and requires new pack-once
 evidence against the real archive.
 
 ## Decision
 
-This decision is proposed and becomes normative only after its acceptance
-evidence is governed.
+This decision is accepted. The packed evidence below is the publication gate
+for every archive, not a precondition of the decision itself. Accepted
+ADR-0007 forbids publishing a package as conforming before the runtime matrix
+executes and makes runtime coverage a publication gate; accepted ADR-0017
+narrows that publication gate for pre-1.0 `not-claimed` archives and records
+the superseded passages.
 
 ### Package manifest
 
@@ -62,6 +69,10 @@ exports remain named exports owned by the accepted public API decision.
 
 The package MUST omit:
 
+- `preinstall`, `install`, `postinstall`, `prepare`, and every other lifecycle
+  script that a package manager runs on install or publish; `governance:check`
+  rejects such a manifest for an accepted package identity regardless of any
+  open decision;
 - `main`, `module`, package-level `types`, `typings`, and `typesVersions`;
 - a `require` condition and `node`, `browser`, `development`, `production`, or
   other environment-specific export conditions;
@@ -76,13 +87,14 @@ qualification assets, repository configuration, conformance tooling, private
 adapter APIs, and source maps whose sources are not admitted by the allowlist
 are excluded.
 
-Before acceptance, one private non-publishable qualification subject is packed
-once from a hermetic source checkout. Its exact bytes, SHA-256, npm integrity,
-package manifest, file inventory, source commit, Node/npm/pnpm/TypeScript
-identities, and build command are recorded before consumer tests. Every
-mandatory acceptance consumer installs that same archive. Repacking per platform
-or per consumer is forbidden. This subject does not create a production package,
-public API, release candidate, or conformance claim.
+Before each publication, the production package is packed once from a clean
+source checkout. Its exact bytes, SHA-256, npm integrity, package manifest,
+file inventory, source commit, Node/npm/pnpm/TypeScript identities, and build
+command are recorded before consumer tests. Every mandatory consumer installs
+that same archive. Repacking per platform or per consumer is forbidden. A
+pre-1.0 archive that passes the Node and TypeScript cases below may publish as
+`not-claimed`, as accepted ADR-0017 permits; the browser, worker, and Electron
+cases are required for the first conformance claim, as ADR-0007 requires.
 
 The supported resolution surface is the package root through ESM `import`, the
 same root through CommonJS `require()` on a runtime that supports
@@ -122,8 +134,7 @@ loader or import-map adapter, but the adapter MUST resolve the public package
 root from the retained archive. A test that maps directly to a private `dist`
 path does not prove this package contract.
 
-After acceptance, the production package MUST rerun the same closed packed
-suite. Before publication, the release flow rehashes the retained production
+Before publication, the release flow rehashes the retained production
 archive, uploads those bytes, downloads the registry tarball, and proves its
 SHA-256 is exactly equal to the retained archive SHA-256 before making a release
 claim. Registry metadata or an outer envelope cannot substitute for inner
@@ -131,16 +142,16 @@ tarball byte identity.
 
 ### Precedence
 
-If accepted, this ADR supplements ADR-0003 only for the package carrier,
-resolution surface, archive contents, and packed-artifact custody. ADR-0003
-continues to own package identity and topology. ADR-0009 or its accepted
-successor exclusively owns public TypeScript names. This decision neither
-accepts ADR-0009 nor creates a public symbol.
+This ADR supplements ADR-0003 only for the package carrier, resolution
+surface, archive contents, and packed-artifact custody. ADR-0003 continues to
+own package identity and topology. Accepted ADR-0009 exclusively owns public
+TypeScript names; this decision creates no public symbol. Accepted ADR-0017
+owns which open decisions block the publication surface.
 
-## Acceptance evidence
+## Publication evidence
 
-Acceptance requires a closed machine-readable manifest and independent checker
-against the private non-publishable qualification subject covering:
+Every publication requires a closed machine-readable manifest and independent
+checker against the packed production archive covering:
 
 - exact export-map bytes and exhaustive archive allowlist;
 - one retained archive identity and full build provenance;
@@ -160,16 +171,19 @@ against the private non-publishable qualification subject covering:
   than any failure, plus the matching `require()` case proving that the sibling
   `default` target still loads; both are excluded from same-target assertions;
 - browser window, dedicated worker, and required Electron resolution through
-  the public root;
+  the public root before the first conformance claim;
 - declaration and archive leakage mutations;
+- a negative manifest case that declares an install-time lifecycle script and
+  is rejected by the checker;
 - publish-time rehash and registry read-back before publication eligibility.
 
 Every case binds a stable ID, the retained archive hash, exact source tree,
 runner/checker identity, exact consumer input, toolchain and platform identity,
-command, expected result, and observed result. No current disposable archive or
-direct `dist` browser mapping satisfies these gates. Acceptance authorizes the
-carrier contract only; the later production archive remains ineligible for
-publication until it passes the same suite and release custody.
+command, expected result, and observed result. No disposable archive or direct
+`dist` browser mapping satisfies these gates. This decision fixes the carrier
+contract; each production archive remains ineligible for publication until it
+passes the Node and TypeScript cases and ineligible for a conformance claim
+until it passes the full matrix and release custody.
 
 ## Consequences
 

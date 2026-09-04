@@ -20,6 +20,7 @@ related:
   - ADR-0014
   - ADR-0015
   - ADR-0016
+  - ADR-0017
   - ARCH-FEATURE-MODULE-STANDARD
   - ARCH-SELF-COMPOSITION-GUIDE
   - ARCH-SYSTEM-BOUNDARY
@@ -35,8 +36,9 @@ This document is the implementation roadmap, not a replacement for an
 accepted ADR. It deliberately describes the order and evidence required to
 build the first reusable Core. It does not accept new public API, change an
 accepted decision, or claim that a qualification fixture is production code.
-ADR-0009 to ADR-0014 and ADR-0016 are proposed decisions on the selected base
-unless their accepted successors are present; ADR-0015 is accepted. The proposed decisions
+ADR-0010, ADR-0011, ADR-0013 and ADR-0014 are proposed decisions on the
+selected base unless their accepted successors are present; ADR-0009,
+ADR-0012, ADR-0015, ADR-0016 and ADR-0017 are accepted. The proposed decisions
 do not enter accepted authority, the
 open-decision blocker catalog or executable governance until accepted through
 the repository decision flow.
@@ -64,7 +66,7 @@ for those concerns.
 
 | Required for qualified Core 0.x | Later checkpoint or reserved capability |
 | --- | --- |
-| One public `@get-modular/core` package after the naming authority gate | Dynamic runtime plugin installation |
+| One public `@get-modular/core` package, published as `not-claimed` from the first checkpoint under ADR-0017 | Dynamic runtime plugin installation |
 | Inert module declarations and complete profiles | Hot unload and live replacement |
 | `required`, `optional`, bounded ordered `many` | Cordis as a Host resource adapter |
 | Normalization, graph validation and immutable plan | Process/WASM plugin hosts |
@@ -72,14 +74,13 @@ for those concerns.
 | Public development-only `@get-modular/conformance` identity after its own surface gate | Managed catalog and registry service |
 | Pack-once Core subject and independent conformance | First product-owned composition adapter; runtime readiness and generation engine |
 
-The target public names are unversioned before 1.0. Historical `v1`/`v2` paths,
-schema discriminators and evidence IDs are lineage only and do not by
-themselves require parallel public API generations. This roadmap is not naming
-authority: until ADR-0009 (or a successor) is accepted on the exact
-implementation base, no unversioned public barrel or published package may be
-materialized. Existing accepted names remain contract authority in the
-meantime; historical names are not automatically published as compatibility
-aliases.
+The public names are unversioned before 1.0, as accepted ADR-0009 decides:
+`compileComposition`, `compileCompositionJson`, `defineModule`, `required`,
+`optional` and `many` plus the closed type set, with no generation suffix
+anywhere in package source and every pre-1.0 breaking change recorded in the
+package changelog. Historical `v1`/`v2` paths, schema discriminators and
+evidence IDs are lineage only and stay inside the immutable qualification
+artifacts; they are never published as compatibility aliases.
 
 ### Critical path of proposed decisions
 
@@ -89,23 +90,30 @@ alone.
 
 | Milestone | Proposed decisions required | Blocked without them |
 | --- | --- | --- |
-| M1 private semantics and object candidate on Node | None; ADR-0015 permits private source and acceptance-evidence candidates after the owner-start record | A normalized semantic subject is the minimum; a private trusted-object candidate may exercise the same implementation without public or carrier-conformance claims |
-| M2 qualified object/raw carriers | ADR-0013 and ADR-0014 together as one diagnostic generation 2 transaction: successor schema enum, catalog rank, diagnostic contract, snapshots, checker and ledger, because ADR-0007 keeps the base enum and code rank byte-identical | Exposed carrier semantics, raw decoding exposure and duplicate binding-record behavior; not the private candidates needed to gather acceptance evidence |
-| M3 public barrel and package carrier | ADR-0009 and ADR-0012 | Public names, export map and any packed publication candidate |
-| M3 emitter and generated stage1 | Accept ADR-0016 or another successor to reconcile the dependency-record seam in Phase 4 item 6. ADR-0008 remains construction-witness authority unless explicitly superseded. Accept ADR-0011 or a narrower successor for release custody | `self-composed-qualified` and every release custody claim; no proposed witness replaces accepted obligations |
+| M1 `direct-semantics-qualified` on Node through the object entrypoint, published as `not-claimed` | None; accepted ADR-0015 admits the source, accepted ADR-0012 and ADR-0017 admit the export map and publication, after the owner-start record | Package source, the first executable subject and the first `0.x` publication |
+| M2 raw entrypoint and carriers | ADR-0013 and ADR-0014 together as one diagnostic generation 2 transaction: successor schema enum, catalog rank, diagnostic contract, snapshots, checker and ledger, because ADR-0007 keeps the base enum and code rank byte-identical | Raw decoding exposure, carrier admission and duplicate binding-record behavior |
+| M2 public exposure of the raw entrypoint | The same generation 2 transaction resolving OD-005 | `compileCompositionJson` in the public barrel |
+| M3 emitter and generated stage1 | None for construction; accepted ADR-0016 closes the dependency-record seam and the witness; ADR-0011 or a narrower successor only for release custody | `self-composed-qualified` and every release custody claim |
 
-Experimental implementation of proposed ADR-0016 is replaceable qualification
-work, not authority to claim self-composition or to drop ADR-0008 obligations.
-
-A private, unpublished `0.x` archive may remain `not-claimed` while it is used
-for bounded implementation evidence. Publication and the first
-`runtime-conformant` claim both require the six runtime cases mandated by
-ADR-0007 and ADR-0008.
-The bootstrap sequence is therefore: record the
-product-owner start decision required by ADR-0015 in this bootstrap sequence or
-in a decision record and reference it from the first private package pull
-request, materialize private `packages/core`, reach M1 on Node, prepare the diagnostic generation 2
-transaction in parallel with M1, then proceed to M2 and M3 in that order.
+A `0.x` archive publishes as `not-claimed` once it passes the Node and
+TypeScript packed cases of ADR-0012 and all four ADR-0003 preconditions:
+verified control of the `@get-modular` npm namespace, an acyclic package graph,
+no conformance tooling in the core tarball or declaration surface, and a
+documented migration from the initial `0.x` topology.
+The six runtime cases mandated by ADR-0007 and ADR-0008 gate the first
+`runtime-conformant` claim and `release-eligible`, not a pre-1.0 publication.
+The bootstrap sequence is therefore: the product-owner start decision required
+by ADR-0015 is recorded as a governed record before the first production
+artifact; its validating check lands together with the record in its own
+change, and the first package pull request references it; materialize
+`packages/core` with the export map of
+ADR-0012 and the names of ADR-0009; reach M1 on Node, meaning
+`direct-semantics-qualified` behavior behind the object entry point; publish
+that archive as the first `not-claimed` `0.x` once the Node and TypeScript
+packed cases of ADR-0012 pass; prepare the diagnostic generation 2 transaction
+in parallel with M1; then proceed to M2 and M3 in that order. Nothing publishes
+before M1: the export map is frozen only after the first substantive compiler
+behavior exists, and a shell or placeholder entry point is never packed.
 
 ### Per-phase callable matrix
 
@@ -115,39 +123,41 @@ each checkpoint:
 
 | Phase | Qualification subject may expose | Explicitly excluded |
 | --- | --- | --- |
-| M1 private semantic checkpoint | The internal normalized-value seam; optionally a qualification-only trusted-object candidate of `compileCompositionV1` over that same implementation | Public/package exports, claimed unresolved carrier semantics, raw carrier implementation in this checkpoint, runtime loading |
-| M2 private carrier checkpoint | The accepted object/raw compiler names and authoring helpers, only after the successor decisions for carriers and duplicate binding records are accepted | Public publication, unapproved carrier behavior and product/runtime lifecycle |
-| M3 public/package checkpoint | Exactly the export map accepted by the naming and package-carrier decisions; unversioned names only after ADR-0009 or its successor is accepted | `stage0` exports, qualification-only variants, implicit aliases, and any unresolved raw or carrier surface |
+| M1 object entry point, published as `not-claimed` | `compileComposition` over trusted plain-object input, the authoring helpers `defineModule`, `required`, `optional` and `many`, and the object-contract types, exactly as ADR-0009 names them and ADR-0012 carries them | `compileCompositionJson`, any raw carrier behavior, the OD-006 duplicate-record semantics, every `runtime-conformant` claim, `stage0` exports, runtime loading |
+| M2 raw entry point and carriers | The M1 surface plus `compileCompositionJson`, only after the diagnostic generation 2 transaction resolves OD-005 and OD-006 | Unaccepted carrier behavior, product/runtime lifecycle, qualification-only variants |
+| M3 emitter and generated stage1 | Exactly the full export map accepted by ADR-0009 and ADR-0012, served from the generated stage1 root | `stage0` exports, qualification-only variants, implicit aliases, and any raw or carrier surface that the OD-005/OD-006 successors have not accepted |
 
-The direct and, once built, generated subjects use the same selected M1
-qualification surface and independent vectors. The normalized seam remains the
-minimum, not the only permissible test entry. An object candidate accepts
-ordinary trusted JSON-compatible inputs and exercises actual admission,
-synchronous snapshotting and the semantic implementation, not a pass-through
-mock. Accepted ADR-0006/0007 rules apply; unresolved cases are explicitly
-labelled candidate evidence, not successful contract qualification. Its
-successful result includes the Phase 4 plan and digest; before then test the
-implemented admission/semantic parts without a fake successful compiler result.
-The candidate stays out of package exports and does not require accepting the
-successor diagnostic generation before the first object-input test. Neither it
-nor M1 admits raw exposure or a second public API. M2 closes the carrier claims.
-A subject must name its phase and claimed domain, rather than saying only
-"same accepted entry points".
+The direct and, once built, generated subjects use the same M1 surface and
+independent vectors. `compileComposition` is the accepted object entry point
+of ADR-0006 and ADR-0007 and the only compiler function the M1 subject
+exports. Its tests accept ordinary trusted JSON-compatible inputs and exercise
+actual admission, synchronous snapshotting and the semantic implementation,
+not a pass-through mock. Accepted ADR-0006/0007 rules apply; cases that depend
+on the OD-005 or OD-006 successors stay outside the claimed domain and are
+labelled candidate evidence, not successful contract qualification. A
+successful M1 result includes the Phase 4 plan and digest; before Phase 4 the
+gates test the implemented admission and semantic parts without a fake
+successful compiler result. M1 does not require accepting the successor
+diagnostic generation before the first object-input test, and neither M1 nor
+the object entry point admits raw exposure or a second public API; M2 closes
+the carrier claims. A subject or document must not say only "same accepted
+entry points"; it must name the applicable matrix row.
 
 ### Owner-start admission record
 
-Before the first private production package is added, the product owner must
-record a small governed start record in the repository or in the bootstrap
-decision record. It must bind the repository and exact source SHA, package
-identity, owner, allowed scope (private semantics and an optional object
-acceptance-evidence candidate), and the
-fact that publication, raw carriers, runtime lifecycle, and proposed ADRs are
-not authorized. The admission checker must consume that record as a
-precondition; a pull-request approval or the existence of an empty package is
+Before the first production package is added, the product owner must record a
+small governed start record in the repository or in the bootstrap decision
+record. It must bind the repository and exact source SHA, package identity,
+owner, allowed scope (the M1 row of the callable matrix: object semantics
+behind `compileComposition`, published as `not-claimed` under ADR-0017), and
+the fact that raw carriers, the OD-006 duplicate-record semantics, runtime
+lifecycle, every `runtime-conformant` claim and the proposed ADRs are not
+authorized. A pull-request approval or the existence of an empty package is
 not a substitute. The source SHA is the authorized starting base, not a demand
-for renewed permission after every implementation commit. The record and its
-checker land together before Core; this research branch contains neither and
-does not claim that enforcement already exists.
+for renewed permission after every implementation commit. The record and a
+governance check that consumes it as a precondition land together before Core;
+this research branch contains neither and does not claim that enforcement
+already exists.
 
 ### Roadmap qualification language
 
@@ -163,8 +173,9 @@ or product adoption:
 | `release-eligible` | The retained self-composed stage1 archive also satisfies every accepted decision, conformance, support-envelope, custody and promotion gate applicable to the requested release state. | Actual publication, registry read-back, stable 1.0, or a product-adoption claim. |
 
 `direct-semantics-qualified` is useful prerequisite evidence, but accepted
-ADR-0008 does not permit it to replace self-composition for the first released
-Core. `release-eligible` means that the exact retained archive may enter the
+ADR-0008 does not permit it to replace self-composition for
+`self-composed-qualified` or `release-eligible`; accepted ADR-0017 lets a
+`not-claimed` pre-1.0 archive publish before that. `release-eligible` means that the exact retained archive may enter the
 publication checkpoint; it is not a synonym for published or conformant. While
 required custody authority remains proposed, release eligibility remains
 `CONDITIONAL` even when the two earlier outcomes pass.
@@ -214,18 +225,18 @@ the evidence and review affected by that change.
 - canonical schema, resource profile, diagnostic catalog and vectors;
 - accepted authority and qualification ledgers already present in the selected
   source;
-- proposed ADR-0009 to ADR-0014 candidates, clearly separated from accepted
-  authority and active open-decision blockers;
+- proposed ADR-0010, ADR-0011, ADR-0013 and ADR-0014 candidates, clearly
+  separated from accepted authority and active open-decision blockers;
 - the governed open decisions OD-004, OD-005 and OD-006 for package
   carrier/resolution, raw-input carrier semantics and duplicate binding-record
-  diagnostics, with proposed ADR-0012, ADR-0013 and ADR-0014 as their candidate
-  resolutions.
+  diagnostics: OD-004 is resolved by accepted ADR-0012, and proposed ADR-0013
+  and ADR-0014 are the candidate resolutions of OD-005 and OD-006.
 
 ### Phase 0 implementation
 
 1. Verify the selected base and accepted-decision precedence. Do not use a
    stale PR head or treat a proposed ADR as authority. The unversioned public
-   naming map is conditional on acceptance of ADR-0009.
+   naming map is fixed by accepted ADR-0009.
 2. Produce the required non-authoritative Phase 0 report as a PR/CI artifact
    after the exact head exists. Reuse the existing Foundation, governance,
    contract and qualification gates; the report records exact base/head SHA,
@@ -258,8 +269,9 @@ the evidence and review affected by that change.
    transfer/detachment, shared/resizable storage, cross-realm or exact failure
    disposition as undecided. The matrix covers the invocation wrapper and
    declaration collection as well as individual values and byte views. Resolve
-   the decision through an accepted successor ADR before either production
-   carrier adapter is admitted. Proposed ADR-0013 is the current candidate.
+   the decision through an accepted successor ADR before the raw-carrier
+   adapter is admitted; the trusted-object adapter ships from M1 under the
+   plain-value admission rules of accepted ADR-0006 and ADR-0007. Proposed ADR-0013 is the current candidate.
 7. Verify `OD-006-duplicate-binding-record-diagnostics`. Do not assign a
    diagnostic code, coordinates or suppression behavior to repeated records for
    one `(implementationId, slotId)`. Resolve it through an accepted successor
@@ -272,11 +284,11 @@ the evidence and review affected by that change.
    checkout as evidence.
 9. Verify `OD-004-package-carrier-and-resolution-policy` before freezing package
    type, export conditions, supported resolver modes or install-time script
-   behavior. Proposed ADR-0012 is the current candidate. Governance derives
+   behavior. Accepted ADR-0012 resolves it. Governance derives
    blockers only from the active open-decision catalog, not from this roadmap's
    identifiers; OD-004, OD-005 and OD-006 already follow that catalog-driven
-   path. Keep ADR-0009 to ADR-0014 and ADR-0016 as proposed roadmap choices
-   until accepted;
+   path. Keep ADR-0010, ADR-0011, ADR-0013 and ADR-0014 as proposed roadmap
+   choices until accepted;
    only their accepted decisions may add mutation fixtures or checkpoint
    requirements.
 10. Verify that the executable resource-profile generator/oracle proof remains
@@ -295,14 +307,13 @@ the evidence and review affected by that change.
   set without requiring unaccepted decision-specific mutation fixtures;
 - the existing complete gate succeeds in a fresh disposable checkout at the
   reported exact head; cold artifact recovery remains a later phase gate;
-- OD-004 is resolved by an accepted ADR or successor decision before package
-  carrier/export freeze, and OD-005 is resolved the same way before unresolved
-  raw-carrier behavior enters the public entrypoint;
+- OD-004 is resolved by accepted ADR-0012, and OD-005 is resolved by an
+  accepted ADR or successor decision before unresolved raw-carrier behavior
+  enters the public entrypoint;
 - OD-006 is resolved by an accepted ADR or successor decision before duplicate
   binding-record behavior enters the compiler;
-- the target unversioned surface requires accepted ADR-0009 or a successor.
-  Until then the accepted contract remains authority and the target public
-  milestone is `CONDITIONAL`, not a manufactured governance blocker.
+- the unversioned public surface is fixed by accepted ADR-0009; the historical
+  accepted evidence names stay inside the immutable qualification artifacts.
 
 ### Non-goals
 
@@ -319,11 +330,12 @@ Phases 1-4 are one atomic first-Core checkpoint, not four independently
 mergeable releases. Their acyclic construction order is:
 
 ```text
-Phase 1 private package/source setup
+Phase 1 package/source setup with the public barrel
   -> Phase 2 inert declarations
   -> Phase 3 private semantic compiler
   -> Phase 4 stage1 plan/digest implementation
-  -> Phase 1 export freeze and two hash-identified qualification subjects
+  -> Phase 1 first not-claimed 0.x publication, after Phase 4 and never before it
+  -> two hash-identified qualification subjects from M3
   -> Phase 4 direct/generated packed qualification
   -> joint Phase 1-4 checkpoint
 ```
@@ -335,20 +347,16 @@ Atomic applies to release qualification and promotion, not to review size.
 Implement Phases 1-4 as dependency-safe, private vertical PRs that normally
 change no more than roughly 2,000 LOC each, including the focused tests and
 evidence needed for that slice. Each PR must deliver testable behavior and a
-narrow revert path, but it remains unpublished and cannot claim an independent
-phase release or partial Core qualification. Keep one invariant together when a
+narrow revert path, but a pre-1.0 publication from it is `not-claimed` and
+cannot claim an independent phase release or partial Core qualification. Keep one invariant together when a
 smaller split would make it unverifiable.
 
 ### Phase 1 implementation
 
-1. Materialize the private Core package/source boundary under the accepted
-   topology, but do not freeze the target unversioned public barrel until
-   ADR-0009 or a successor is accepted. If it remains proposed, accepted API
-   authority continues to govern and the target release stays `CONDITIONAL`;
-   private implementation work is not blocked: accepted ADR-0015 lets the
-   governance gate admit private package identities, and the first production
-   source still waits for the product-owner start decision that ADR-0015
-   requires. Structure the package as feature-owned slices under
+1. Materialize the Core package/source boundary under the accepted topology
+   with the public barrel and export map that accepted ADR-0009 and ADR-0012
+   fix; the first production source waits only for the governed product-owner
+   start record that ADR-0015 requires. Structure the package as feature-owned slices under
    `packages/core/src/features/*` exactly as the adopted [Feature Module Standard profile](feature-module-standard.md)
    maps the organization standard ([canonical document](https://github.com/agent-teams-ai/.github/blob/eef92e7fd40f538b4e9ba03e01bbd4e2d23f12f2/docs/architecture/feature-module-standard/v1.md),
    revision `eef92e7`). Keep domain semantics independent from Foundation,
@@ -364,44 +372,43 @@ smaller split would make it unverifiable.
    and the accepted compiler entrypoints must have their accepted semantics.
    Compiler entrypoints cannot be throwing, pass-through, no-op or
    declaration-only placeholders; authoring helpers retain the deliberately
-   pass-through behavior accepted by ADR-0007. Stop before public export freeze
-   or distribution packing until accepted authority supplies the exhaustive
-   public name map, package carrier and both JavaScript carrier boundaries.
-   This does not block a temporary hash-bound qualification archive that exposes
-   the selected M1 private qualification surface and is never a publication candidate.
+   pass-through behavior accepted by ADR-0007. The public name map and the
+   package carrier are accepted; the raw entrypoint and the raw-carrier
+   adapter stay out of the public barrel until OD-005 is resolved, and the
+   package changelog and README list that limitation.
 4. Promote the first production package atomically to `source-admitted`: add
    the pinned `architecture/foundation/source-dependencies.yaml`, enable the
    Engineering Foundation source-dependency capability, add positive and
    negative structural fixtures, and wire the real Foundation check into
    `check:fast` and `check`. Structural and runtime conformance remain separate
    promotion states.
-5. Create two temporary, separately hash-identified qualification archives with
-   the same selected M1 private qualification boundary: direct stage0 assembly and
-   generated stage1 assembly. Run default-deny export/deep-import checks,
-   private archive allowlist checks, declaration-leakage audits and inert import
-   smoke tests against both. These archives are qualification subjects, not
-   publication candidates. After OD-004, the accepted export map and carrier
-   decision exist, create a separate generated stage1 release candidate from
-   the verified source subject; never repack either qualification subject inside
-   a platform job.
-6. Resolve OD-004 before freezing package type, export conditions and supported
-   resolution modes. Do not infer an ESM/CommonJS policy from this roadmap.
-7. Before freezing the public TypeScript surface, run the retained generated
-   stage1 subject through the four TypeScript consumer modes required by
-   ADR-0007 and one deterministic 1000-declaration typecheck fixture. ADR-0007
-   requires that matrix for the first packed implementation, not for every
-   subject; the direct subject passes the audits in item 5 and the independent
+5. Pack the production archive once per publication under ADR-0012 and, from
+   M3, two temporary, separately hash-identified qualification subjects with
+   the same public compiler boundary: direct stage0 assembly and generated
+   stage1 assembly. Run default-deny export/deep-import tests, tarball
+   allowlist, declaration-leakage audits and inert import smoke tests against
+   every archive. Only generated stage1 is retained as the pack-once
+   distribution candidate from M3; never repack any subject inside a platform
+   job.
+6. OD-004 is resolved by accepted ADR-0012: ESM-only root export with a
+   sibling `default` condition for `require(esm)`, no CommonJS build and no
+   install-time scripts. Do not infer any other policy from this roadmap.
+7. Before the first publication and again for every later publication, run
+   the packed production archive through the four TypeScript consumer modes
+   required by ADR-0007 and ADR-0012 and one deterministic 1000-declaration
+   typecheck fixture. Before M3 that archive ships the direct root; from M3 the
+   retained generated stage1 archive is the production archive, and the direct
+   qualification subject passes the audits in item 5 and the independent
    vectors instead of a second consumer matrix. Portable performance
    measurements belong to Phase 5.
 
 ### Phase 1 exit criteria
 
-After Phases 2-4 provide the complete substantive private compiler, the direct
-and generated qualification subjects pass the same normalized-semantic and,
-when selected, object-candidate vectors plus
-deep-import, declaration-leakage and inert-import audits. Public-barrel and
-TypeScript consumer gates remain deferred until the M2/M3 decisions admit their
-surfaces. No admitted Core boundary
+After Phases 2-4 provide the complete substantive compiler, two disposable
+TypeScript consumers compile through the public barrel only, every published
+production archive passes the named resolver/type-scale gates, and from M3 the
+direct qualification archive passes the same export, deep-import,
+declaration-leakage and inert-import audits. No Core API
 exposes a container, resolver, registry, Context/Fiber, filesystem path,
 executable factory, transport DTO or versioned name. A package shell without
 substantive behavior cannot pass this phase.
@@ -520,12 +527,11 @@ composition root. The finite emitter and generated stage1 remain Phase 4 work.
 
 ### Phase 3 exit criteria
 
-One named subject gate invokes the actual private semantic implementation
-and compares complete results with independent expectations. It may use the
-normalized seam or the bounded object candidate described in the M1 matrix;
-no public carrier or temporary public result is claimed. Static
-vector/oracle validation is a prerequisite and cannot satisfy this gate. The
-gate covers:
+One named subject gate invokes the actual semantic implementation through the
+M1 row of the callable matrix, `compileComposition` over trusted object input,
+and compares complete results with independent expectations; no raw carrier
+and no `runtime-conformant` result is claimed. Static vector/oracle
+validation is a prerequisite and cannot satisfy this gate. The gate covers:
 
 - required-one, optional-zero/one and bounded-many at zero/min/interior/max;
 - missing, duplicate, unknown, not-selected, incompatible, cardinality,
@@ -540,11 +546,13 @@ gate covers:
    changed provider order must change the later plan and digest.
 
 Every diagnostic result excludes a plan and digest. No input or output accepts
-executable values. The private normalized seam is not exported as a temporary
-public API. Accepted ADR-0015 permits it inside a manifest-bound private package
-after the explicit product-owner start record, but it cannot expose or claim
-semantics owned by active open decisions. Candidate carriers remain
-non-publishable and may produce evidence for OD-005 only.
+executable values. No internal seam is exported as a temporary public API;
+the public `compileComposition` boundary is the accepted object
+entry point of ADR-0006 and ADR-0007, published as `not-claimed` under
+ADR-0017 after the explicit product-owner start record, and it cannot expose or
+claim the OD-005 carrier refinements or the OD-006 duplicate-record semantics.
+Candidate raw carriers remain non-publishable and may produce evidence for
+OD-005 only.
 
 ## Phase 4: immutable plan, canonical bytes and self-composition
 
@@ -585,13 +593,11 @@ those bytes privately when binding the exact subject and evidence.
    multi-edge or explicit owner `GO` checkpoint applies only if a later
    accepted decision adds it; until then the single-edge replacement is
    candidate evidence, not an emitter veto.
-6. Stop before any stage0/stage1 construction claim until an accepted successor
-   reconciles ADR-0008's closed dependency record with its prohibition on using
-   hostile valid identities as property-lookup keys. The roadmap does not select
-   a representation. Proposed ADR-0016 is that successor candidate: typed
-   slot-keyed dependency records and a static generated-wiring witness, which
-   the self-composition implementation guide applies as a candidate rule until
-   ADR-0016 is accepted.
+6. Accepted ADR-0016 reconciles ADR-0008's closed dependency record with its
+   prohibition on hostile identities as property-lookup keys: typed slot-keyed
+   dependency records, `Map` lookups for every identity, and a static
+   generated-wiring witness with canonical wiring tuples, which the
+   self-composition implementation guide applies.
 7. After item 6 is resolved, implement ADR-0008's bounded self-composition in
    its accepted delivery order: handwritten stage0 uses the real graph
    semantics, emits finite private stage1 wiring, and stage1 wires the same
@@ -603,9 +609,10 @@ those bytes privately when binding the exact subject and evidence.
    in the form the accepted item 6 successor defines, a binding replacement that
    changes public behavior,
    no hidden concrete-import fallback, and zero own-profile compilation,
-   emitter calls or component assembly on caller requests. Only pack-once
-   stage1 is distributable; stage0, own profile and emitter stay outside the
-   runtime closure. Also prove immediate caller mutation before the first await,
+   emitter calls or component assembly on caller requests. From M3 only
+   pack-once stage1 is distributable; own profile, emitter and the
+   qualification entries stay outside the runtime closure, and a pre-M3 archive
+   that ships the direct root says so in its changelog under ADR-0017. Also prove immediate caller mutation before the first await,
    private canonicalizer/hash failure rejection without a reserved diagnostic,
    and a reversed ordered-`many` companion that changes plan order and digest.
 9. Treat completion as distinct phase-report outcomes. A direct subject may
@@ -621,12 +628,10 @@ those bytes privately when binding the exact subject and evidence.
 One named gate proves semantic/digest invariants and deep immutability against
 the direct subject before a construction claim and against both temporary
 hash-identified subjects after item 6 is accepted. Both use the same public
-compiler boundary only after both carrier boundaries are accepted; before then,
-they use the selected M1 private qualification surface: the normalized-value
-seam and, when selected, the qualification-only object candidate over the same
-implementation. This grants no public or carrier-conformance claim. Reordered
-equivalent graphs produce identical canonical bytes/digest; valid semantic
-changes produce different valid bytes/digest;
+   compiler boundary, the accepted object entry point; the raw carrier boundary
+   joins it only after OD-005 is resolved. Reordered
+   equivalent graphs produce identical canonical bytes/digest; valid semantic
+   changes produce different valid bytes/digest;
 invalid inputs produce diagnostics only; and nested mutation, alias and
 cross-process tests prove a plain immutable plan. This gate does not require or
 invent release-custody records.
@@ -636,10 +641,11 @@ ADR-0008 finite-construction gate proves clean bootstrap with
 stage1 absent, isolated/poisoned roots, P0/P1 and W0/W1 equality, behavioral
 replacement, independent construction witnesses, caller-time no-bootstrap and
 stage1-only runtime closure. Direct and generated packed subjects pass the same
-independent vectors and public-API checks; only generated stage1 may be retained
-for distribution. Passing the direct gate yields
+independent vectors and public-API checks; from M3 only generated stage1 may
+be retained as the release archive. Passing the direct gate yields
 `direct-semantics-qualified`; passing the construction and parity gate yields
-`self-composed-qualified`. Neither can imply publication readiness.
+`self-composed-qualified`. Neither implies `release-eligible`; a pre-M3
+`not-claimed` publication is governed by ADR-0017, not by these outcomes.
 
 ### Phase 4 release-custody prerequisites
 
@@ -801,13 +807,16 @@ behavior, and adds no loader, registry, plugin runtime or Extension Foundation
 dependency. Concrete translation, identity, lifecycle, retirement and atomicity
 rules wait for a real consumer and accepted decisions from their owners.
 
-## Phase 8: publication checkpoint
+## Phase 8: release and conformance checkpoint
 
 **Purpose:** prove the retained generated stage1 archive is reproducible and
-reversible before publication. Phase 6 remains optional and Phase 7 has no gate.
+reversible before a conformance claim or a `release-eligible` publication.
+Phase 6 remains optional and Phase 7 has no gate.
 
-Publication is blocked until an accepted custody decision defines the evidence
-record, reuse key, support representation, verifier and promotion transaction.
+A `release-eligible` publication and the first conformance claim are blocked
+until an accepted custody decision defines the evidence record, reuse key,
+support representation, verifier and promotion transaction. Pre-1.0
+`not-claimed` publications follow ADR-0012 and ADR-0017 and are not gated here.
 Once that authority exists:
 
 1. Bind the exact source, retained pack-once stage1 archive, accepted authorities,
@@ -826,7 +835,8 @@ Once that authority exists:
 
 ### Phase 8 exit criteria
 
-Publication has one accepted promotion authority, no unresolved release blocker,
+A `release-eligible` publication has one accepted promotion authority, no
+unresolved release blocker,
 an executed rollback/recovery proof and byte-identical registry read-back. A
 failed gate blocks only this checkpoint and cannot silently promote partial
 evidence.
@@ -850,23 +860,28 @@ self-composition evidence and conformance evidence. The first product-adoption
 checkpoint adds one real adapter. Neither
 is completion of the plugin ecosystem or evidence for a stable 1.0 claim.
 
-## Recorded private Core start
+## Recorded Core start
 
 On 2026-09-04 the product owner approved the bounded follow-up: permit an M1
-object candidate, record the start scope together with admission enforcement,
-and preserve the research evidence. This record permits a subsequent private
-Core implementation; this change creates no Core source and starts no runtime.
-It does not accept proposed ADRs or authorize publication or merge.
+object entry point, record the start scope together with admission enforcement,
+and preserve the research evidence. On the same day the owner accepted ADR-0017
+and reissued this record so that its scope names the public object entry point
+and a `not-claimed` pre-1.0 publication, which the first record excluded. This
+record permits a subsequent Core implementation; this change creates no Core
+source and starts no runtime. It does not accept proposed ADRs, does not
+authorize a `runtime-conformant` claim, and does not authorize merge.
 
 The JSON block below is the single start record, read from this governed
 document by `governance:check`. Its base is the shared reviewed main revision,
 not a per-commit permission token. Descendant work remains authorized while the
 accepted authority digest and bounded scope match. A changed authority,
 revocation, different package, or broadened scope needs an updated owner record.
-The checker validates the recorded declaration, not the human author's identity
-or the semantics of future code; code review and source-policy checks still
-enforce that implementation stays within it. Missing or malformed records fail
-closed when a package is present. No package is created to test the gate.
+The checker validates the recorded declaration and enforces the excluded list
+against the package manifest; it does not validate the human author's identity
+or the semantics of future code, so code review and source-policy checks still
+enforce that implementation stays within the recorded scope. Missing or
+malformed records fail closed when a package is present. No package is created
+to test the gate.
 
 <!-- get-modular:private-core-start -->
 
@@ -879,9 +894,9 @@ closed when a package is present. No package is created to test the gate.
   "approvedOn": "2026-09-04",
   "status": "authorized",
   "package": "@get-modular/core",
-  "scope": ["private-semantics", "object-candidate-evidence"],
+  "scope": ["semantics", "object-entry", "publication-not-claimed"],
   "excluded": [
-    "public-exports", "raw-carriers", "publication", "runtime-lifecycle",
+    "raw-carriers", "raw-entry-export", "runtime-lifecycle",
     "conformance-claims", "proposed-contract-claims", "generated-self-composition-claims"
   ]
 }

@@ -15,6 +15,7 @@ related:
   - ADR-0014
   - ADR-0015
   - ADR-0016
+  - ADR-0017
   - ARCH-SELF-COMPOSITION-GUIDE
   - OD-004
   - OD-005
@@ -33,22 +34,24 @@ maps the seventeen diagnostic prerequisites to input evidence, partial-failure
 rules and independent examples. Read its explicit derivation gaps before
 implementing a private fact predicate; the checker is not the specification.
 
-## Accepted contract and proposed public naming
+## Accepted contract and public naming
 
-Get Modular has one accepted contract and no production package yet. The
-accepted contract currently names `compileCompositionV1` and
-`compileCompositionJsonV1`. ADR-0009 proposes replacing those names with one
-unversioned pre-1.0 public surface, including `compileComposition`,
-`compileCompositionJson`, `ModuleDeclaration`, `CompositionProfile`,
-`CompositionPlan`, `Diagnostic`, `PlanDigest`, `defineModule`, `required`,
-`optional`, and `many`.
+Get Modular has one accepted contract and no production package yet. Accepted
+ADR-0009 names the one pre-1.0 public surface: `compileComposition`,
+`compileCompositionJson`, `defineModule`, `required`, `optional`, `many` and
+the types `CompileCompositionResult`, `ModuleDeclaration`,
+`CompositionProfile`, `CompositionPlan`, `Diagnostic` and `PlanDigest`. The
+accepted evidence names `compileCompositionV1` and `compileCompositionJsonV1`
+remain only inside the immutable qualification artifacts and their checker;
+no production source uses a generation-suffixed name.
 
-ADR-0009 and ADR-0010 remain proposed until they pass the repository's governed
-acceptance flow. Until then, no public production package may silently choose
-between the proposed and accepted naming or dependency policies. Private
-qualification work may use private names and owned primitives; production
-package source still requires the authority closure described below, and the
-first public barrel must follow one explicitly accepted map.
+ADR-0010 remains proposed until it passes the repository's governed acceptance
+flow. Until then, no production package may silently choose a dependency
+policy. Production source uses the ADR-0009 names from its first commit; before
+1.0 a breaking change replaces the current export set, raises the `0.x` minor
+version and is recorded in the package changelog with the consumer migration,
+as ADR-0009 requires. Production package source still requires the authority
+closure described below.
 
 ## What the version labels mean
 
@@ -66,7 +69,7 @@ The following are deliberately different concepts:
 | `familyVersion: 1` | Version of the closed capability-compatibility family | No |
 | `profileVersion: 2` | Revision of the measured qualification artifact | No |
 | `V1` in a path or evidence ID | Immutable historical contract evidence | No |
-| `V1` in a future TypeScript export | Accepted contract name until ADR-0009 or a successor is accepted | Yes |
+| `V1` in a TypeScript identifier | Prohibited by accepted ADR-0009 outside immutable qualification artifacts and their checker | No |
 
 Applications do not select a resource profile by filename or version. The
 current qualification contract uses one effective resource policy. An older
@@ -116,10 +119,10 @@ container, lifecycle, plugin, or authorization behavior.
 The source layout of `packages/core` MUST follow the adopted organization Feature
 Module Standard v1 through the local
 [profile](feature-module-standard.md): feature-owned slices under
-`packages/core/src/features/*`, a private composition root, and, once ADR-0009
-is accepted, one curated public entry point at `src/index.ts`; until then the
-only entry is the qualification-only `self-composition/stage0-entry.ts` named
-by the guide. The
+`packages/core/src/features/*`, a private composition root, and one curated
+public entry point at `src/index.ts` that exports the names fixed by accepted
+ADR-0009; until M3 the direct root `src/composition/stage0.ts` is that
+composition root, as the guide describes. The
 [self-composition implementation guide](self-composition-implementation-guide.md)
 names the own feature inventory, the feature skeleton, the build topology and
 the emitter contract that implementation follows.
@@ -128,14 +131,16 @@ the emitter contract that implementation follows.
 
 These are small contract gates, not a reason to redesign the architecture:
 
-1. Accept ADR-0009 with an exhaustive public export map and TypeScript authoring
-   fixtures before creating the public unversioned barrel.
+1. ADR-0009 is accepted: the public barrel follows its exhaustive export map,
+   and the TypeScript authoring fixtures required by ADR-0007 arrive with the
+   first package.
 2. Accept ADR-0010 before admitting any selected production dependency adapter.
    Until then, keep external canonicalization and scanner packages behind
    development-only qualification and use the same private ports.
-3. Resolve OD-004 and accept ADR-0012 or a successor before publishing the first
-   package carrier. The proposal is an ESM-only root export with one exact
-   TypeScript and JavaScript resolution path; it is not accepted yet.
+3. OD-004 is resolved by accepted ADR-0012: an ESM-only root export with a
+   sibling `default` condition, one exact TypeScript and JavaScript resolution
+   path, and the packed Node and TypeScript cases as the publication gate of
+   every archive.
 4. Resolve OD-006 and accept ADR-0014 or a successor before implementing
    duplicate binding-record behavior. The existing `binding.duplicate`
    coordinate describes a duplicate provider but not two records for one
@@ -152,20 +157,22 @@ These are small contract gates, not a reason to redesign the architecture:
 The first graph slice must not invent semantics for items 4 and 5. A private
 normalized-value semantic compiler checkpoint may proceed after
 accepted-authority preflight while excluding repeated binding records. That
-checkpoint lives in `packages/core` as a `private: true` package with no
-publication field, under the rule recorded by accepted ADR-0015 as the
-successor to the ADR-0003 deferral sentence; the governance gate admits that
-source and keeps blocking publication surfaces and runtime claims. Inside that
+checkpoint lives in `packages/core`, admitted by accepted ADR-0015 and
+published from the first checkpoint under accepted ADR-0017 with the export map
+of accepted ADR-0012; the governance gate admits that source, admits the
+publication surface because no publication blocker remains open, and keeps
+blocking runtime claims and the exposure of semantics owned by OD-005 and
+OD-006. Inside that
 checkpoint repeated binding-record inputs stay outside the claimed domain, and
 the ADR-0014 semantics may be demonstrated only in fixtures until ADR-0014 is
-accepted. It is not
-either exposed carrier adapter and cannot claim trusted-object or raw-byte
-admission. ADR-0015 nevertheless permits a private object candidate over the
-same semantic implementation to gather acceptance evidence in M1. Accepted
-object rules remain authority; unresolved cases are labelled candidate-only,
-not silently settled. The roadmap's callable matrix defines that test scope.
-Public packaging, exposed carrier semantics, raw decoding, and production
-dependency adapters remain gated by their corresponding decisions.
+accepted. It exposes the
+accepted object entry point of ADR-0006 and ADR-0007 and does not claim the
+OD-005 carrier refinements of proposed ADR-0013 or any raw-byte admission. The
+raw entrypoint, the raw-carrier adapter, raw decoding, and production
+dependency adapters remain gated by their corresponding decisions; the
+trusted-object adapter behind `compileComposition` is admitted by accepted
+ADR-0006, ADR-0007 and ADR-0017; the package carrier and
+publication are governed by accepted ADR-0012 and ADR-0017.
 
 ## Historical requirement wording
 
@@ -193,13 +200,12 @@ package:
 - Tests run with `node --test` and an explicit glob against the built `dist`
   output; the build is `tsc -p` for the package configuration.
 - The `core:typecheck`, `core:build`, and `core:test` scripts and their place
-  in `check:fast` and `check` arrive with the first private package, not
-  before.
+  in `check:fast` and `check` arrive with the first package, not before.
 
 ## Historical evidence rule
 
 Never rename or edit accepted evidence solely to remove a historical version
 label. A change to current semantics requires a successor decision, a new
-ledger, and new executable evidence. If ADR-0009 or a successor is accepted,
-the target public API becomes one unversioned pre-1.0 surface until a concrete
-requirement proves that concurrent public generations are necessary.
+ledger, and new executable evidence. Accepted ADR-0009 makes the public API
+one unversioned pre-1.0 surface until a concrete requirement proves that
+concurrent public generations are necessary.

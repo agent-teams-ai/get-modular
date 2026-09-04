@@ -43,9 +43,29 @@
       "immutableDigest": "sha256:8b13fe2f1fa190cbca2e47ed1e30a9b2caaf1455b2ca0560eda64babc5d37582"
     },
     {
+      "id": "ADR-0009",
+      "path": "docs/decisions/0009-keep-pre-1-0-public-api-unversioned.md",
+      "immutableDigest": "sha256:31a09ddc919b1ccf24e0b9d77035bddf596764752d7ef5535fd60067bb86a17d"
+    },
+    {
+      "id": "ADR-0012",
+      "path": "docs/decisions/0012-select-esm-only-root-package-carrier.md",
+      "immutableDigest": "sha256:4fbf69d9e954d809d2715051fcd88e32f41877b01c57545db1ef3c70a5ddd727"
+    },
+    {
       "id": "ADR-0015",
       "path": "docs/decisions/0015-block-publication-surfaces-and-runtime-claims-while-decisions-stay-open.md",
       "immutableDigest": "sha256:c88625b87128e9d5cf028dc6fc5a22bf45245f404e96cc80199037d69a1a102f"
+    },
+    {
+      "id": "ADR-0016",
+      "path": "docs/decisions/0016-close-the-dependency-record-seam-and-construction-witness-for-self-composition.md",
+      "immutableDigest": "sha256:3c221eff3982df67f11a61855004eaef7f3519829ab27c55afaa004dca2e3b12"
+    },
+    {
+      "id": "ADR-0017",
+      "path": "docs/decisions/0017-publish-pre-1-0-releases-while-raw-carrier-and-duplicate-record-decisions-stay-open.md",
+      "immutableDigest": "sha256:d29a34d96c5e59146c9e2ba29f5593907952b287b3b121c9cb5f830450177987"
     }
   ]
 }

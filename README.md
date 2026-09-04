@@ -35,9 +35,10 @@ consume both.
 owned fixtures prove that an implementation follows the contract. The
 conformance package may depend on core; core never depends on conformance.
 
-No production package exists yet. ADR-0009 proposes one unversioned pre-1.0
-public API surface; until that decision is accepted, the versioned names in the
-accepted contract remain authority and no public barrel may claim otherwise.
+No production package exists yet. Accepted ADR-0009 fixes one unversioned
+pre-1.0 public API surface: no export or internal identifier carries a
+generation suffix, and before 1.0 a breaking change simply replaces the current
+surface and is recorded in the package changelog with the consumer migration.
 `schemaVersion` is an inert data-format discriminator. Historical qualification
 files retain `V1` and `v2` labels so their immutable evidence identities remain
 auditable; those labels do not by themselves require parallel application API

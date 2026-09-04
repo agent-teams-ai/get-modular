@@ -1,6 +1,7 @@
 schemaVersion: 1
 decisionCatalog: [OD-001, OD-002, OD-003, OD-004, OD-005, OD-006]
-implementationBlockers: [OD-004, OD-005, OD-006]
+implementationBlockers: [OD-005, OD-006]
+publicationBlockers: []
 requirements:
   GM-REQ-001:
     authorities: [ADR-0001, ADR-0004, ADR-0006, ADR-0008, ARCH-SYSTEM-BOUNDARY]

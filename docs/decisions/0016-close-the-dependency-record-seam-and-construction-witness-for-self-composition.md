@@ -1,9 +1,11 @@
 ---
 id: ADR-0016
 type: adr
-status: proposed
+status: accepted
 owner: architecture
 summary: Fixes typed slot-keyed dependency records and a static generated-wiring witness so self-composition needs no runtime instrumentation.
+approved_by: product-owner
+accepted_at: 2026-09-04
 related:
   - ADR-0008
   - ADR-0010
@@ -41,13 +43,13 @@ narrow typed factory surface and with the tarball audit that excludes
 qualification code from the runtime closure.
 
 The self-composition implementation guide needs both seams closed before the
-first private package lands, and it needs them closed without the hermetic
+first package lands, and it needs them closed without the hermetic
 sandbox, custody store and capsule machinery that ADR-0011 bundles with them.
 
 ## Decision
 
-This decision is proposed and becomes normative only when accepted. Until
-then implementations follow it as the candidate rule and claim nothing.
+This decision is accepted; implementations follow it and may claim
+conformance to it only through the evidence below.
 
 ### Dependency record
 
@@ -90,16 +92,55 @@ then implementations follow it as the candidate rule and claim nothing.
   recorded; the structural proof and the behavioral proof together establish
   that the generated plan controls construction.
 
+### Wiring tuples and allowlist handles
+
+- The construction witness compares wiring as canonical tuples, not as source
+  bytes. For every selected implementation the tuple is
+  `[implementationId, dependencyOrderIndex, [[slotId, providerImplementationId], ...]]`
+  with the slot pairs sorted by `slotId` in ASCII order; the list of tuples is
+  sorted by `dependencyOrderIndex`, serialized with RFC 8785 and hashed with
+  SHA-256. W0 is the wiring that the stage0 build emits from P0 and W1 the
+  wiring that the stage1 build emits from P1, exactly as ADR-0008 defines them;
+  one AST reader extracts the tuples from W0, from W1 and, separately, from the
+  handwritten stage0 root, resolving every imported constant to the
+  implementation identity of its declaration handle. W0 equals W1 when their
+  tuple digests are equal, and the handwritten root is checked against P0 by
+  the static witness on its own. The bytes of a generated file remain
+  evidence only for the regeneration check that ADR-0008 requires between the
+  file used by a build and its disposable regeneration.
+- The emitter allowlist is a build-time `Map` that `allowlist.ts` builds from
+  static imports of each feature's `declaration.ts` and `factory.ts`, as
+  ADR-0008 requires of feature-owned handles. Its key is the imported
+  `implementationId` constant, never a string typed in the allowlist, and its
+  value is a typed handle `{ declaration, factory, importPath, factoryExport,
+  declarationExport, localName }`: `declaration` and `factory` are the imported
+  values, `importPath` is a relative path inside `src/features/**` that ends
+  in `.js`, `factoryExport` and `declarationExport` name the exports that the
+  generated wiring imports, and `localName` is an author-chosen ECMAScript
+  identifier that is unique across the allowlist. The emitter reads slot
+  identifiers from `declaration.slots` of the imported declaration and never
+  from a plan string, and it never loads a module dynamically. The emitter fails the build without writing
+  output on `allowlist.unknown-implementation`,
+  `allowlist.missing-for-selected`, `allowlist.duplicate-local-name`,
+  `allowlist.out-of-bound-import` and `allowlist.invalid-identifier`. An entry
+  that the plan does not select is not an error. A qualification allowlist may
+  extend the base allowlist with entries that point outside `src`, and only
+  the qualification build may load it.
+
 ### Precedence
 
-When accepted, this decision supersedes ADR-0008 only for three clauses: the
+This decision supersedes ADR-0008 only for four clauses: the
 requirement that a construction witness records the identity of each
 constructed object supplied to a consumer; the instrumentation clause that
 permits an inert hook in the packed bytes or a zero-byte-delta transformation;
-and the acceptance sentence that requires a controlled binding change to
+the acceptance sentence that requires a controlled binding change to
 demonstrate a changed injected object identity, which under this decision
 must instead alter the digest observed through the public boundary and the
-static witness. It also narrows one sentence: ADR-0008's rule that identities
+static witness; and the sentence that requires exact W0/W1 equality, which
+under this decision means equality of the canonical wiring tuples defined
+above rather than of emitted source bytes, while the byte comparison of a
+regenerated file against the file a build used remains as ADR-0008 states.
+It also narrows one sentence: ADR-0008's rule that identities
 "never become code, property lookup keys, paths, or comments" applies to
 caller-supplied identities; an own slot identifier from the identifier-safe
 subset may appear as an object-literal key in generated wiring and in the
@@ -135,10 +176,13 @@ an ordinary object, cannot occur for owner-authored declarations whose slot
 identifiers are restricted at build time and checked by the witness. The
 tuple and `Map` forms keep the same guarantee at the cost of per-slot typing
 and extra ceremony in every factory; the null-prototype form forces every
-factory to accept an exotic object. If accepted, this decision resolves D7 and
-the packet's recommendation is superseded by it.
+factory to accept an exotic object. This decision resolves D7, and the
+packet's recommendation is superseded by it.
 
 ## Acceptance evidence
+
+Acceptance is recorded on this text, as ADR-0007 was accepted on its static
+artifacts; the evidence below gates every claim of self-composition.
 
 - an independent witness checker under `tests/qualification` with mutation
   fixtures that reject a missing import, an extra factory call, a swapped or
@@ -155,7 +199,7 @@ the packet's recommendation is superseded by it.
 
 ## Consequences
 
-- The first private package can implement self-composition without waiting
+- The first package can implement self-composition without waiting
   for the release-custody protocol.
 - Feature factories stay plain typed constructors with no instrumentation
   seam, which keeps them within the Feature Module Standard.

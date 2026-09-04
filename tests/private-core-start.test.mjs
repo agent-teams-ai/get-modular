@@ -5,7 +5,10 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
-import { validatePrivateCoreStart } from "../architecture/checks/private-core-start.mjs";
+import {
+  manifestExclusionViolations,
+  validatePrivateCoreStart,
+} from "../architecture/checks/private-core-start.mjs";
 import { isStartingBaseAncestor } from "../architecture/checks/tracked-file-custody.mjs";
 import { ACCEPTED_AUTHORITY_LEDGER_DIGEST } from "../architecture/checks/governance.mjs";
 
@@ -133,4 +136,39 @@ test("real governance entrypoint consumes the start record before admitting priv
       await assert.rejects(gate(), error => /private Core start/u.test(error.stderr));
     }
   } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test("Core start enforces the excluded list against the manifest", async () => {
+  const publicManifest = {
+    name: "@get-modular/core",
+    type: "module",
+    exports: { ".": { import: { default: "./dist/index.js" }, default: "./dist/index.js" } },
+  };
+
+  // The reissued record excludes neither publication nor public exports, so the
+  // accepted export map of ADR-0012 passes.
+  assert.ok(!recorded.excluded.includes("publication"));
+  assert.ok(!recorded.excluded.includes("public-exports"));
+  assert.deepEqual(manifestExclusionViolations(recorded.excluded, publicManifest), []);
+  await check(markdown(recorded), { readPackageManifest: async () => publicManifest });
+
+  // A narrower record makes the field enforceable rather than decorative.
+  assert.deepEqual(
+    manifestExclusionViolations(["public-exports"], publicManifest),
+    [{ exclusion: "public-exports", declared: ["exports"] }],
+  );
+  assert.deepEqual(
+    manifestExclusionViolations(["publication"], { ...publicManifest, files: ["dist"] }),
+    [{ exclusion: "publication", declared: ["exports", "files"] }],
+  );
+  assert.deepEqual(
+    manifestExclusionViolations(["publication", "public-exports"], { private: true }),
+    [],
+  );
+
+  // A record whose excluded list leaves the closed format is rejected outright.
+  await assert.rejects(
+    check(markdown({ ...recorded, excluded: [...recorded.excluded, "publication"] })),
+    /scope is not the bounded/u,
+  );
 });

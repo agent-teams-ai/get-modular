@@ -8,6 +8,7 @@ related:
   - ADR-0006
   - ADR-0007
   - ADR-0013
+  - ADR-0017
   - GM-REQ-V1
 ---
 
@@ -88,18 +89,24 @@ evidence and make no Firefox, Safari, or release-runtime claim.
 - Every successful vector proves that later mutation, resize, detach, transfer,
   or concurrent shared writes cannot alter the owned admitted snapshot.
 - Acceptance evidence executes the successor vectors through a development-only
-  Node oracle and the private `packages/core` candidate entrypoints, binding
+  Node oracle and the `packages/core` candidate entrypoints, binding
   exact inputs, expected outcomes, runtime identities, and results. Execution
-  on every mandatory runtime is the conformance-claim and publication gate
-  defined by ADR-0007, not an acceptance prerequisite. The normative procedure
+  on every mandatory runtime is the conformance-claim gate defined by ADR-0007,
+  not an acceptance prerequisite; accepted ADR-0017 permits `not-claimed`
+  publication of the object entry point before this decision closes. The normative procedure
   uses only ECMAScript intrinsics, so acceptance on Node makes no Node-specific
   claim.
 
 ## Resolution
 
-Open. ADR-0013 is a proposed resolution. Before acceptance, private
-non-publishable qualification entrypoints MAY implement the proposed boundary
-solely to produce independent executable evidence. They are not production
-entrypoints, public API, or conformance claims. Production exposure remains
-blocked until the decision is accepted with successor diagnostics and evidence;
-the production subject must then rerun the same closed suite.
+Open. ADR-0013 is a proposed resolution. Under accepted ADR-0017 the object
+entry point `compileComposition` publishes with the plain-value admission rules
+that accepted ADR-0006 and ADR-0007 already fix; every carrier refinement this
+decision owns is documented as outside the admitted input domain and is
+neither exposed nor claimed. The raw entry point `compileCompositionJson` and
+the raw-carrier adapter stay out of the public barrel until this decision is
+accepted with successor diagnostics and evidence; the production subject must
+then rerun the same closed suite. Before acceptance, qualification-only
+candidate entrypoints MAY implement the proposed boundary solely to produce
+independent executable evidence; they are not public API or conformance
+claims.
