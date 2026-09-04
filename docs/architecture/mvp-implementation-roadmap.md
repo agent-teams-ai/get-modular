@@ -92,7 +92,10 @@ alone.
 | M1 private normalized semantics on Node | None; accepted ADR-0015 lets the gate admit private `packages/core` source after the owner-start record | Private package source and the first executable normalized-value subject |
 | M2 object/raw entrypoints and carriers | ADR-0013 and ADR-0014 together as one diagnostic generation 2 transaction: successor schema enum, catalog rank, diagnostic contract, snapshots, checker and ledger, because ADR-0007 keeps the base enum and code rank byte-identical | Both carrier adapters, raw decoding exposure and duplicate binding-record behavior |
 | M3 public barrel and package carrier | ADR-0009 and ADR-0012 | Public names, export map and any packed publication candidate |
-| M3 emitter and generated stage1 | ADR-0016 for the dependency-record seam and the construction witness; ADR-0011 or a narrower successor only for release custody | `self-composed-qualified` and every release custody claim |
+| M3 emitter and generated stage1 | ADR-0008 is current claim authority. Accept ADR-0016 or another successor before replacing its construction witness or dependency-record rules; accept ADR-0011 or a narrower successor for release custody | Replacement-witness claims and every release custody claim; accepted ADR-0008 qualification still requires its complete executable evidence |
+
+Experimental implementation of proposed ADR-0016 is replaceable qualification
+work, not authority to claim self-composition or to drop ADR-0008 obligations.
 
 A private, unpublished `0.x` archive may remain `not-claimed` while it is used
 for bounded implementation evidence. Publication and the first

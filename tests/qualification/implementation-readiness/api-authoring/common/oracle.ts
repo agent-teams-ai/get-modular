@@ -4,7 +4,8 @@ const compare = (a: string, b: string): number => a < b ? -1 : a > b ? 1 : 0;
 const diagnostic = (code: string, path: string, detail: string): Diagnostic => ({ code, path, detail });
 const bindingPath = (binding: Binding, provider = ""): string => `/bindings/${binding.consumerImplementationId}/${binding.slotId}${provider ? `/${provider}` : ""}`;
 const declarationKeys = new Set(["moduleId", "implementationId", "owner", "provides", "slots"]);
-const ownerSegment = /^[a-z][a-z0-9-]*$/;
+const ownerSegment = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+const validOwnerToken = (value: string): boolean => value.length <= 64 && ownerSegment.test(value);
 
 function finish(diagnostics: Diagnostic[], inventory: string[], dependencyOrder: string[] = []): Outcome {
   diagnostics.sort((a, b) => compare(a.code, b.code) || compare(a.path, b.path) || compare(a.detail, b.detail));
@@ -34,8 +35,9 @@ export function qualify(world: CompositionInput): Outcome {
     for (const key of Object.keys(declaration)) {
       if (!declarationKeys.has(key)) diagnostics.push(diagnostic("schema.unknown-field", `/declarations/${declaration.implementationId}/${key}`, key));
     }
+    if (!validOwnerToken(declaration.owner.authority)) diagnostics.push(diagnostic("schema.invalid-value", `/declarations/${declaration.implementationId}/owner/authority`, declaration.owner.authority));
     declaration.owner.path.forEach((segment, index) => {
-      if (!ownerSegment.test(segment)) diagnostics.push(diagnostic("schema.invalid-value", `/declarations/${declaration.implementationId}/owner/path/${index}`, segment));
+      if (!validOwnerToken(segment)) diagnostics.push(diagnostic("schema.invalid-value", `/declarations/${declaration.implementationId}/owner/path/${index}`, segment));
     });
     modules.add(declaration.moduleId);
     if (byImplementation.has(declaration.implementationId)) diagnostics.push(diagnostic("declaration.duplicate-implementation", `/implementations/${declaration.implementationId}`, declaration.implementationId));

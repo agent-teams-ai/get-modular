@@ -59,7 +59,7 @@ export const corpus: readonly Scenario[] = deepFreeze([
   scenario("S18", "deterministic reorder", world([provider("provider-b"), consumer(serviceSlot()), provider("provider-a")], [bind([p1])], ["lab/provider-b", "lab/consumer"]), ok([c, p1, p2], [p1, c, p2])),
   scenario("S19", "hostile slot names: own __proto__, constructor, then, composed and decomposed Unicode", world([hostileDeclaration], hostileBindings, ["lab/hostile"]), ok(["lab/hostile/default"], ["lab/hostile/default"]), "representation"),
   scenario("S20", "unknown declaration fields", world([declarationWithUnknownField], [], ["lab/provider-a"]), bad("schema.unknown-field"), "representation"),
-  scenario("S21", "duplicate module IDs", world([provider("provider-a"), { ...provider("provider-a"), implementationId: "lab/provider-a/other" }], [], ["lab/provider-a"]), bad("profile.duplicate-selection")),
+  scenario("S21", "duplicate profile selections", world([provider("provider-a"), { ...provider("provider-a"), implementationId: "lab/provider-a/other" }], [], ["lab/provider-a"]), bad("profile.duplicate-selection")),
   scenario("S22", "duplicate implementation IDs", world([provider("provider-a"), { ...provider("provider-b"), implementationId: p1 }], [], ["lab/provider-a"]), bad("declaration.duplicate-implementation")),
   scenario("S23", "invalid owner path", world([invalidOwner], [], ["lab/provider-a"]), bad("schema.invalid-value"), "representation"),
   scenario("S24", "profile with unknown module", world([], [], ["lab/unknown"], [{ moduleId: "lab/unknown", implementationId: "lab/unknown/default" }]), bad("profile.unknown-module")),

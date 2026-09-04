@@ -28,7 +28,7 @@ const exactTitles = [
   "zero many", "one many", "multiple many", "duplicate provider", "ambiguous binding", "incompatible capability",
   "dependency cycle", "disabled root", "disabled required provider", "disabled optional provider", "unreachable provider",
   "multiple roots", "deterministic reorder", "hostile slot names: own __proto__, constructor, then, composed and decomposed Unicode",
-  "unknown declaration fields", "duplicate module IDs", "duplicate implementation IDs", "invalid owner path",
+  "unknown declaration fields", "duplicate profile selections", "duplicate implementation IDs", "invalid owner path",
   "profile with unknown module", "hidden fallback attempt", "discovery without executable imports",
   "literal loader table for selected modules only", "direct Pure DI parity", "declaration serializability", "TypeScript declaration emit",
 ];
@@ -168,7 +168,19 @@ let factoryScenarioUses = 0;
 let declarationEmitCells = 0;
 let splitAssociationProbes = 0;
 let alternateImplementationSelections = 0;
+let ownerTokenProbes = 0;
 for (const adapter of adapters) {
+  for (const token of ["a", "owner-name", "a".repeat(64), "", "owner-", "owner--name", "Owner", "a".repeat(65)]) {
+    for (const field of ["authority", "path"]) {
+      const input = structuredClone(corpus[0].input);
+      input.declarations[0].owner[field] = field === "path" ? [token] : token;
+      const result = observe(adapter.decode(adapter.encode(input)));
+      const valid = token.length <= 64 && slotGrammar.test(token);
+      const coordinate = `/declarations/lab/provider-a/default/owner/${field}${field === "path" ? "/0" : ""}`;
+      assert(result.ok === valid && (valid || result.diagnostics.some(({ code, path }) => code === "schema.invalid-value" && path === coordinate)), `${adapter.id} owner ${field} token mismatch`);
+      ownerTokenProbes++;
+    }
+  }
   const decoded = [];
   for (const scenario of corpus) {
     const encoded = adapter.encode(scenario.input);
@@ -254,7 +266,7 @@ for (const adapter of adapters) {
     if (scenario.id === "S29") assert(canonical(JSON.parse(JSON.stringify(encoded))) === canonical(encoded), `${adapter.id} declaration is not serializable`);
     if (scenario.id === "S30") {
       const dts = readFileSync(join(emitRoot, `candidate-${candidateSources.find((entry) => entry.adapter === adapter).stem}.d.ts`), "utf8");
-      const requiredExport = adapter.id === "descriptor-object" ? "descriptorExample" : adapter.id === "define-module" ? "defineModule" : "splitDeclaration";
+      const requiredExport = adapter.id === "descriptor-object" ? "descriptorExample" : adapter.id === "define-module" ? "definedExample" : "splitDeclaration";
       assert(dts.includes(`export declare`) && dts.includes(requiredExport), `${adapter.id} lacks actual TypeScript declaration emit`);
       declarationEmitCells++;
     }
@@ -269,6 +281,7 @@ assert(factoryScenarioUses === 6, `factories used outside the two host probes pe
 assert(declarationEmitCells === 3, `declaration emit was not proved for every candidate: ${declarationEmitCells}`);
 assert(splitAssociationProbes === 2, "split associations were not exercised by both host probes");
 assert(alternateImplementationSelections === 6, "alternate implementation selection was not proved for every candidate");
+assert(ownerTokenProbes === 48, "owner token probes were not proved for every candidate");
 const corpusDigest = decodedCorpusDigests[0];
 
 const countRegion = (source, region) => {
@@ -326,7 +339,7 @@ for (const { adapter, sourcePath, stem } of candidateSources) {
   const separateFactoryLoc = adapter.id === "split-declaration-factory" ? sourceLoc(readFileSync(join(here, "candidate-split-factory.ts"), "utf8")) : 0;
   const totalSupportLoc = genericGlueLoc + candidateSupportLoc + separateFactoryLoc;
   metrics[adapter.id] = {
-    authoringLoc, genericGlueLoc, candidateSupportLoc, separateFactoryLoc, totalSupportLoc, genericGlueRatio: totalSupportLoc / (authoringLoc + totalSupportLoc),
+    authoringLoc, genericGlueLoc, candidateSupportLoc, separateFactoryLoc, totalSupportLoc, totalSupportShare: totalSupportLoc / (authoringLoc + totalSupportLoc),
     editMeasurements: authoringEdits.filter(({ candidate }) => candidate === adapter.id),
     explicitAnnotationMatchesInCandidateFile: (source.match(/satisfies Declaration|: CandidateAdapter|ActivationFactory/g) ?? []).length,
     declarationLines: declaration.trimEnd().split("\n").length, declarationBytes: Buffer.byteLength(declaration), declarationExports: (declaration.match(/^export /gm) ?? []).length,
@@ -342,12 +355,12 @@ for (const { adapter, sourcePath, stem } of candidateSources) {
 const summary = {
   schemaVersion: 2, status: "pass", authority: "non-authoritative qualification-only; not production", scenarioCount: corpus.length,
   executionCount: executions.length, corpusDigest,
-  additionalChecks: { alternateImplementationSelections, rawDesiredStateRejected, splitAssociationProbes },
+  additionalChecks: { alternateImplementationSelections, rawDesiredStateRejected, splitAssociationProbes, ownerTokenProbes },
   scenarioMatrix: corpus.map(({ id, title, evidenceClass, expected, hostProbe }) => ({ id, title, evidenceClass, expected, ...(hostProbe ? { hostProbe } : {}) })),
   executions, metrics,
   emittedDeclarations: Object.fromEntries(readdirSync(emitRoot).filter((name) => name.endsWith(".d.ts")).sort(compare).map((name) => [name, createHash("sha256").update(readFileSync(join(emitRoot, name))).digest("hex")])),
-  limitations: { desiredState: "explicit test-Host preprocessing policy, not a production desired-state contract", semantics: "simplified normalized lab inputs and diagnostic payloads, not full wire/diagnostic/SCC conformance", measurements: "synthetic source/emit counts and six emitted-source edit experiments per candidate; chosen feature-local topology, not product edits or human task times" },
-  guards: { exactClosedCorpus: true, substantiveScenarioWitnesses: true, immutablePlainData: true, ordinaryHelperReadsWithoutValidation: true, inheritedHelperReads: true, genuineCandidateShapes: true, splitFactoryAssociation: true, noExpectationManufacture: true, noExecutableDiscoveryImports: true, hiddenFallbackRejected: true, noRegistrationOrderSemantics: true, permutationStable: true, hostileOwnKeys: true, selectedLiteralLoadersOnly: true, directPureDiParity: true, declarationSerializability: true, actualDeclarationEmitEveryCandidate: true, factoriesRestrictedToHostProbes: true },
+  limitations: { desiredState: "explicit test-Host preprocessing policy, not a production desired-state contract", semantics: "simplified normalized lab inputs and diagnostic payloads, not full wire/diagnostic/SCC conformance", measurements: "synthetic source/emit counts and six emitted-source edit experiments per candidate; chosen feature-local topology, not product edits or human task times", factoryParity: "single required edge and value observation only; no optional/many, failure, rollback or lifecycle parity", declarations: "authored export presence and source type probes; no packed consumer or complete public typing contract" },
+  guards: { exactClosedCorpus: true, substantiveScenarioWitnesses: true, immutablePlainData: true, ordinaryHelperReadsWithoutValidation: true, inheritedHelperReads: true, genuineCandidateShapes: true, splitFactoryAssociation: true, noExpectationManufacture: true, noExecutableDiscoveryImports: true, hiddenFallbackRejected: true, noRegistrationOrderSemantics: true, permutationStable: true, hostileOwnKeys: true, selectedLiteralLoadersOnly: true, singleRequiredEdgePureDiSmoke: true, declarationSerializability: true, actualDeclarationEmitEveryCandidate: true, factoriesRestrictedToHostProbes: true },
 };
 mkdirSync(join(here, "dist"), { recursive: true });
 writeFileSync(join(here, "dist", "result-summary.json"), `${JSON.stringify(summary, null, 2)}\n`);

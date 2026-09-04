@@ -41,8 +41,9 @@ verification does not certify a compiler or repeat a timing measurement.
 Metrics use the same nonblank/non-comment LOC rule. Marked authoring/glue
 regions are supplemented with all remaining candidate source and the split
 association file; `totalSupportLoc` includes helpers and translation code.
-Shared oracle/types/runner code is excluded from this candidate-specific ratio,
-which is not a product generic-glue percentage. Declaration measures use emitted
+`totalSupportShare` is `totalSupportLoc / (authoringLoc + totalSupportLoc)`.
+Shared oracle/types/runner code is excluded; this is not a generic-glue
+percentage or a production complexity budget. Declaration measures use emitted
 `.d.ts` bytes. File and edit counts now come from six generated before/after
 source experiments per candidate, each starting with ten declarations. Every
 source tree is compiled and its emitted input compared with the intended input;
@@ -65,5 +66,11 @@ come from the pinned accepted catalog, but diagnostic payloads and normalized
 capability fields are deliberately simplified. S19 distinguishes valid SlotIds
 from arbitrary hostile record keys using the pinned grammar. None of these
 checks replaces the future full wire, comparator, SCC or resource conformance.
+Owner-token probes compare both authority and path tokens with the accepted
+local-token grammar, including repeated/trailing hyphens and length bounds.
+They do not replace complete owner or wire validation. S30 checks every authored
+example's emitted export, not packed consumer inference or public exactness.
+The S28 historical parity scenario is only a single-required-edge Pure DI smoke;
+optional/many wiring, factory failure, rollback and lifecycle are not measured.
 Tree-shaking and runtime performance are `not-measured` because this lab has no
 pinned bundler and no production runtime subject.
