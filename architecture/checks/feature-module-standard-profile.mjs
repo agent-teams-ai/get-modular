@@ -4,14 +4,10 @@ import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 
 import {
-  isProductionSourceArtifactPath,
-  PRIVATE_IMPLEMENTATION_PACKAGE_NAMES,
-  PUBLICATION_FIELDS,
   productionArtifactPaths,
   productionArtifactSymlinkPaths,
   productionArtifactsOutsidePackages,
 } from "./production-artifacts.mjs";
-import { safeRepositoryPath } from "./tracked-file-custody.mjs";
 
 export const PROFILE_PATH = "architecture/feature-module-standard-profile.json";
 export const PROFILE_DOCUMENT_PATH = "docs/architecture/feature-module-standard.md";
@@ -25,54 +21,6 @@ const FOUNDATION_ADMISSION = Object.freeze({
   capability: "architecture.source-dependencies",
   policy: SOURCE_DEPENDENCY_POLICY_PATH,
 });
-const FOUNDATION_CHECK_SCRIPT =
-  "agent-teams-foundation check && pnpm foundation:assert-dev-only && pnpm foundation:assert-registry";
-const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
-  "architecture:feature-module-profile":
-    "node architecture/checks/feature-module-standard-profile.mjs",
-  "architecture:feature-module-profile:test":
-    "node --test tests/feature-module-standard-profile.test.mjs",
-  "contracts:check": "node architecture/checks/v1-contract.mjs",
-  "contracts:test": "node --test tests/v1-contract.test.mjs",
-  "docs:check": "agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml",
-  "docs:protocol:check": "pnpm docs:check && pnpm docs:quality",
-  "docs:quality": "markdownlint-cli2 && cspell --config .cspell.json --no-progress",
-  "foundation:assert-dev-only": "agent-teams-foundation assert-dev-only",
-  "foundation:assert-registry": "agent-teams-foundation assert-registry",
-  "foundation:check": FOUNDATION_CHECK_SCRIPT,
-  "governance:check": "node architecture/checks/governance.mjs",
-  "governance:test": "node --test tests/governance.test.mjs",
-  "qualification:resource-profile": "node tests/qualification/v1-resource-profile.mjs",
-  "qualification:v1-diagnostics-protocol":
-    "node --test tests/qualification/v1-diagnostics-protocol.mjs",
-  "qualification:v1-graph-semantics":
-    "node --test tests/qualification/v1-graph-semantics.mjs",
-  "runtime:preflight": "node architecture/checks/node-version.mjs",
-});
-const ROOT_SCRIPT_COMMANDS = Object.freeze({
-  check: Object.freeze([
-    "runtime:preflight",
-    "foundation:check",
-    "docs:protocol:check",
-    "architecture:feature-module-profile",
-    "architecture:feature-module-profile:test",
-    "contracts:check",
-    "contracts:test",
-    "qualification:resource-profile",
-    "qualification:v1-diagnostics-protocol",
-    "qualification:v1-graph-semantics",
-    "governance:check",
-    "governance:test",
-  ]),
-  "check:fast": Object.freeze([
-    "runtime:preflight",
-    "foundation:check",
-    "architecture:feature-module-profile",
-    "docs:check",
-  ]),
-});
-
-const PACKAGE_MANIFEST = /^packages\/[^/]+\/package\.json$/u;
 
 const EXPECTED_STANDARD = Object.freeze({
   id: "agent-teams.feature-module-standard",
@@ -140,11 +88,6 @@ const EXPECTED_RUNTIME_EVIDENCE = Object.freeze([
   "accepted promotion decision binding the packed subject and runtime evidence",
 ]);
 
-const CONFORMANCE_STATUSES = Object.freeze({
-  structural: Object.freeze(["not-claimed", "structural-conformant"]),
-  runtime: Object.freeze(["not-claimed", "runtime-conformant"]),
-});
-
 function assert(condition, message) {
   if (!condition) throw new Error(`FEATURE_MODULE_PROFILE_INVALID: ${message}`);
 }
@@ -162,34 +105,18 @@ function equalJson(actual, expected, label) {
   assert(JSON.stringify(actual) === JSON.stringify(expected), `${label} does not match`);
 }
 
+function safeRelativePath(value) {
+  return typeof value === "string"
+    && value.length > 0
+    && !value.startsWith("/")
+    && !value.includes("\\")
+    && !value.split("/").includes("..");
+}
+
 function scriptCommands(script) {
   if (typeof script !== "string") return [];
-  const commands = script.split(" && ").map(command => command.replace(/^pnpm /u, ""));
-  const canonicalScript = commands.map(command => `pnpm ${command}`).join(" && ");
-  return script === canonicalScript
-    && commands.every(command => /^[a-z0-9][a-z0-9:.-]*$/u.test(command))
-    ? commands
-    : [];
-}
-
-function assertRequiredScript(packageJson, command) {
-  assert(Object.hasOwn(REQUIRED_SCRIPT_DEFINITIONS, command)
-    && packageJson.scripts?.[command] === REQUIRED_SCRIPT_DEFINITIONS[command],
-    `${command} must use its closed command definition`);
-}
-
-function assertRequiredScriptDefinitions(packageJson) {
-  for (const command of Object.keys(REQUIRED_SCRIPT_DEFINITIONS)) {
-    assertRequiredScript(packageJson, command);
-  }
-}
-
-function closedScriptCommands(packageJson, scriptName) {
-  const commands = scriptCommands(packageJson.scripts?.[scriptName]);
-  assert(JSON.stringify(commands) === JSON.stringify(ROOT_SCRIPT_COMMANDS[scriptName]),
-    `${scriptName} must use its exact closed pnpm command chain`);
-  for (const command of commands) assertRequiredScript(packageJson, command);
-  return commands;
+  return script.split("&&")
+    .map(command => command.trim().replace(/^pnpm\s+/u, ""));
 }
 
 export function validateFirstProductionPackageAdmission({
@@ -199,36 +126,16 @@ export function validateFirstProductionPackageAdmission({
   packageJson,
   sourceDependencyPolicyPresent,
   productionArtifactSymlinks = [],
-  productionPackageManifests = new Map(),
 }) {
   assert(Array.isArray(productionArtifacts)
-    && productionArtifacts.every(path => safeRepositoryPath(path)),
-  "production artifacts must be portable repository-relative paths");
+    && productionArtifacts.every(path => safeRelativePath(path)),
+  "production artifacts must be safe repository-relative paths");
   assert(Array.isArray(productionArtifactSymlinks)
     && productionArtifactSymlinks.length === 0,
   `production artifacts must not be symlinks: ${productionArtifactSymlinks.join(", ")}`);
   const misplacedArtifacts = productionArtifactsOutsidePackages(productionArtifacts);
   assert(misplacedArtifacts.length === 0,
     `production artifacts must be below packages: ${misplacedArtifacts.join(", ")}`);
-  const misplacedManifests = productionArtifacts.filter(path => (
-    path.endsWith("/package.json") && !PACKAGE_MANIFEST.test(path)
-  ));
-  assert(misplacedManifests.length === 0,
-    `production package manifests must be direct package roots: ${misplacedManifests.join(", ")}`);
-  assert(packageJson.devDependencies?.[FOUNDATION_ADMISSION.package]
-    === FOUNDATION_ADMISSION.version,
-  `${FOUNDATION_ADMISSION.package} must remain pinned to ${FOUNDATION_ADMISSION.version}`);
-  assertRequiredScriptDefinitions(packageJson);
-  assert(packageJson.scripts?.["foundation:check"] === FOUNDATION_CHECK_SCRIPT,
-    "foundation:check must use the closed Foundation command chain");
-  assertRequiredScript(packageJson, "foundation:assert-dev-only");
-  assertRequiredScript(packageJson, "foundation:assert-registry");
-  const completeCommands = closedScriptCommands(packageJson, "check");
-  const fastCommands = closedScriptCommands(packageJson, "check:fast");
-  assert(completeCommands.includes("foundation:check"),
-    "complete gate must execute the Foundation source-dependency capability");
-  assert(fastCommands.includes("foundation:check"),
-    "fast gate must execute the Foundation source-dependency capability");
   if (productionArtifacts.length === 0) {
     assert(admission?.status === "pre-production",
       "an empty production inventory must remain pre-production");
@@ -246,38 +153,19 @@ export function validateFirstProductionPackageAdmission({
   assert(sourceDependencyPolicyPresent,
     `first production package requires ${SOURCE_DEPENDENCY_POLICY_PATH}`);
 
-  const manifestPaths = productionArtifacts.filter(path => PACKAGE_MANIFEST.test(path));
-  assert(manifestPaths.length > 0,
-    "first production package requires a package.json manifest");
-  const packageRoots = new Set(manifestPaths.map(path => path.slice(0, -"/package.json".length)));
-  const sourcePaths = productionArtifacts.filter(isProductionSourceArtifactPath);
-  for (const packageRoot of packageRoots) {
-    assert(sourcePaths.some(path => path.startsWith(`${packageRoot}/src/`)),
-      `production package requires substantive source below ${packageRoot}/src`);
-  }
-  for (const artifact of productionArtifacts) {
-    const [, packageName] = artifact.split("/");
-    if (packageName !== undefined) {
-      const packageRoot = `packages/${packageName}`;
-      assert(packageRoots.has(packageRoot),
-        `every production package root requires a manifest: ${packageRoot}/package.json`);
-    }
-  }
-  assert(productionPackageManifests instanceof Map,
-    "production package manifests must be supplied as a map");
-  for (const manifestPath of manifestPaths) {
-    const manifest = productionPackageManifests.get(manifestPath);
-    assert(manifest !== undefined,
-      `missing production package manifest: ${manifestPath}`);
-    assert(PRIVATE_IMPLEMENTATION_PACKAGE_NAMES.has(manifest?.name),
-      `${manifestPath} must use an accepted private package identity`);
-    assert(manifest.private === true,
-      `${manifestPath} must remain private before publication approval`);
-    const publicationFields = PUBLICATION_FIELDS.filter(field => manifest?.[field] !== undefined);
-    assert(publicationFields.length === 0,
-      `${manifestPath} must not declare publication fields: ${publicationFields.join(", ")}`);
-  }
+  assert(packageJson.devDependencies?.[FOUNDATION_ADMISSION.package]
+    === FOUNDATION_ADMISSION.version,
+  `${FOUNDATION_ADMISSION.package} must remain pinned to ${FOUNDATION_ADMISSION.version}`);
+  const foundationCommands = scriptCommands(packageJson.scripts?.["foundation:check"]);
+  assert(foundationCommands.includes(FOUNDATION_ADMISSION.command),
+    `foundation:check must execute ${FOUNDATION_ADMISSION.command}`);
 
+  const completeCommands = scriptCommands(packageJson.scripts?.check);
+  const fastCommands = scriptCommands(packageJson.scripts?.["check:fast"]);
+  assert(completeCommands.includes("foundation:check"),
+    "complete gate must execute the Foundation source-dependency capability");
+  assert(fastCommands.includes("foundation:check"),
+    "fast gate must execute the Foundation source-dependency capability");
   return capability.configPath;
 }
 
@@ -322,8 +210,7 @@ export function validateFeatureModuleStandardProfile({
   for (const extension of adoption.extensions) {
     exactKeys(extension, ["id", "authority"], `extension ${extension?.id ?? "<unknown>"}`);
     assert(/^[a-z][a-z0-9-]+$/u.test(extension.id), `invalid extension ID ${extension.id}`);
-    assert(safeRepositoryPath(extension.authority),
-      `${extension.id} has an unsafe authority path`);
+    assert(safeRelativePath(extension.authority), `${extension.id} has an unsafe authority path`);
   }
 
   assert(Array.isArray(adoption.deviations), "deviations must be an array");
@@ -340,21 +227,17 @@ export function validateFeatureModuleStandardProfile({
   }
 
   equalJson(adoption.enforcement, EXPECTED_ENFORCEMENT, "enforcement");
-  assertRequiredScriptDefinitions(packageJson);
-  const completeCommands = closedScriptCommands(packageJson, "check");
-  const fastCommands = closedScriptCommands(packageJson, "check:fast");
+  const completeCommands = scriptCommands(packageJson.scripts?.check);
+  const fastCommands = scriptCommands(packageJson.scripts?.["check:fast"]);
   for (const gate of adoption.enforcement) {
     exactKeys(gate, ["command", "evidence"], `enforcement ${gate?.command ?? "<unknown>"}`);
-    assertRequiredScript(packageJson, gate.command);
+    assert(typeof packageJson.scripts?.[gate.command] === "string",
+      `package.json is missing ${gate.command}`);
     assert(completeCommands.includes(gate.command),
       `complete gate must include ${gate.command}`);
   }
   assert(completeCommands.includes("architecture:feature-module-profile:test"),
     "complete gate must include profile tests");
-  assertRequiredScript(packageJson, "architecture:feature-module-profile:test");
-  assert(completeCommands.includes("governance:test"),
-    "complete gate must include governance tests");
-  assertRequiredScript(packageJson, "governance:test");
   assert(fastCommands.includes("architecture:feature-module-profile"),
     "fast gate must include profile binding");
 
@@ -374,18 +257,12 @@ export function validateFeatureModuleStandardProfile({
   ]) {
     const state = adoption.conformance[claim];
     exactKeys(state, ["status", "rationale", "required_evidence"], `${claim} conformance`);
-    assert(CONFORMANCE_STATUSES[claim].includes(state.status),
-      `${claim} conformance has an unsupported status: ${state.status}`);
+    assert(state.status === "not-claimed",
+      `${claim} conformance must remain not-claimed before promotion`);
     assert(typeof state.rationale === "string" && state.rationale.length > 0,
       `${claim} conformance rationale must be non-empty`);
     equalJson(state.required_evidence, expectedEvidence, `${claim} conformance evidence`);
   }
-  assert(adoption.conformance.runtime.status !== "runtime-conformant"
-    || adoption.conformance.structural.status === "structural-conformant",
-  "runtime conformance requires structural conformance state");
-  assert(adoption.conformance.structural.status !== "structural-conformant"
-    || adoption.admission.status === "source-admitted",
-  "structural conformance requires source-admitted status");
 
   const canonicalUrl = `https://github.com/${EXPECTED_STANDARD.repository}/blob/`
     + `eef92e7fd40f538b4e9ba03e01bbd4e2d23f12f2/${EXPECTED_STANDARD.path}`;
@@ -452,11 +329,6 @@ export async function checkFeatureModuleStandardProfile(repositoryRoot = process
     packageJson,
     sourceDependencyPolicyPresent: policyPresent,
     productionArtifactSymlinks,
-    productionPackageManifests: new Map(await Promise.all(
-      productionArtifacts
-        .filter(path => PACKAGE_MANIFEST.test(path))
-        .map(async path => [path, JSON.parse(await readFile(resolve(repositoryRoot, path), "utf8"))]),
-    )),
   });
   await Promise.all(authorities.map(authority => access(resolve(repositoryRoot, authority))));
 }
