@@ -23,7 +23,10 @@ plugin host, product integration, package publication or accepted-ADR change.
 - retained API lab result:
   `research/implementation-readiness/evidence/api-authoring-exact-run.json`,
   SHA-256
-  `6c08bc149c4e5155ce7c87aa7cb2c251d2961b2890e868654bb075915d1e12b0`.
+  `ac82157395692383a0b863351f6694c5635afbab18c70354629b2e71a0fb13b5`;
+- execution envelope: `research/implementation-readiness/evidence/api-authoring-execution.json`,
+  source `c86a2acc13c5d6dc3603b11be26462b43725035c`, complete committed input
+  hashes, toolchain hashes, command outcome and emitted declarations.
 
 Worker count is not treated as proof. Partial, blocked, retried and
 source-unavailable results remain explicitly classified.
@@ -52,7 +55,16 @@ witness as product decisions.
   `7.0.2`;
 - inventory and evidence digests: independently recomputed;
 - full `pnpm check`: passed after the report rewrite;
-- final GitHub CI and six external hosted exact-head reviews remain required.
+- six hosted reviewers completed against `523f8e7`; confirmed report and lab
+  findings were corrected after that review;
+- source/result drift tests pass, including ignored/untracked input, changed
+  source, incomplete manifest, failed command and changed result;
+- latest GitHub CI and affected-area exact-head re-review remain required.
+
+Layout/edit counts are assumptions, not product measurements. Candidate support
+counts include helpers/translation, and split factory association is exercised
+in both host probes. ADR-0007 inherited lookup and full ADR-0008 construction and
+behavior evidence remain accepted; no product decision was silently changed.
 
 This PR stays Draft and must not be merged automatically. The final reviewed
 head and external reviewer digests belong in the live PR body/comment after the

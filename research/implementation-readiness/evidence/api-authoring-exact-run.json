@@ -1239,10 +1239,18 @@
     "descriptor-object": {
       "authoringLoc": 4,
       "genericGlueLoc": 11,
-      "genericGlueRatio": 0.7333333333333333,
-      "filesPerModule": 1,
-      "bindingLoci": 1,
-      "explicitAnnotations": 2,
+      "candidateSupportLoc": 1,
+      "separateFactoryLoc": 0,
+      "totalSupportLoc": 12,
+      "genericGlueRatio": 0.75,
+      "layoutAssumptions": {
+        "filesPerModule": 1,
+        "bindingLoci": 1,
+        "removalEdits": 2,
+        "disableEdits": 1,
+        "evidence": "not measured by editing product modules"
+      },
+      "explicitAnnotationMatchesInCandidateFile": 2,
       "declarationLines": 3,
       "declarationBytes": 181,
       "declarationExports": 2,
@@ -1253,20 +1261,39 @@
         "executableImplementationImports": 0,
         "frameworkImports": 0
       },
-      "removalEdits": 2,
-      "disableEdits": 1,
       "compileDuration": {
         "10": {
           "declarations": 10,
-          "compileDurationMs": 124.09
+          "compileDurationMs": 122.4,
+          "inputs": {
+            "scale.ts": "8bc4c9c67ff91fc7ec04345b59183489921fcf43e023cc8a016d853b2967e2ab",
+            "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
+          },
+          "declarationsEmitted": {
+            "scale.d.ts": "0946eeacb222ff4e6b348b1a3293fda177e6712a7ef1496822106bc825e4bed7"
+          }
         },
         "100": {
           "declarations": 100,
-          "compileDurationMs": 137.73
+          "compileDurationMs": 134.41,
+          "inputs": {
+            "scale.ts": "90e4eca333ee28af1c0f61d5f236d2144baeeba388a6cb2800b5bd6620c6ce3b",
+            "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
+          },
+          "declarationsEmitted": {
+            "scale.d.ts": "6c29f5fa2961f38a77d24ac8dedf67a65b249ccf1d17ea9b889e0cd7557984bf"
+          }
         },
         "1000": {
           "declarations": 1000,
-          "compileDurationMs": 197.69
+          "compileDurationMs": 203.01,
+          "inputs": {
+            "scale.ts": "e4770a8ba5c8e5fda982e630f12891bba2673249e679d15d00a4fb8c8ab1c468",
+            "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
+          },
+          "declarationsEmitted": {
+            "scale.d.ts": "a234768d1cc9b017f636e7ed440e66f5231a968ea97c8233378cc90b675ab3a0"
+          }
         }
       },
       "treeShaking": "not-measured",
@@ -1275,10 +1302,18 @@
     "define-module": {
       "authoringLoc": 4,
       "genericGlueLoc": 11,
-      "genericGlueRatio": 0.7333333333333333,
-      "filesPerModule": 1,
-      "bindingLoci": 1,
-      "explicitAnnotations": 1,
+      "candidateSupportLoc": 16,
+      "separateFactoryLoc": 0,
+      "totalSupportLoc": 27,
+      "genericGlueRatio": 0.8709677419354839,
+      "layoutAssumptions": {
+        "filesPerModule": 1,
+        "bindingLoci": 1,
+        "removalEdits": 2,
+        "disableEdits": 1,
+        "evidence": "not measured by editing product modules"
+      },
+      "explicitAnnotationMatchesInCandidateFile": 1,
       "declarationLines": 19,
       "declarationBytes": 543,
       "declarationExports": 6,
@@ -1289,20 +1324,39 @@
         "executableImplementationImports": 0,
         "frameworkImports": 0
       },
-      "removalEdits": 2,
-      "disableEdits": 1,
       "compileDuration": {
         "10": {
           "declarations": 10,
-          "compileDurationMs": 125.03
+          "compileDurationMs": 126.83,
+          "inputs": {
+            "scale.ts": "88af657e18b71c66fbc338510b865c4dd7f2cc9fbf06a39d24541e02d8e97a3c",
+            "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
+          },
+          "declarationsEmitted": {
+            "scale.d.ts": "0946eeacb222ff4e6b348b1a3293fda177e6712a7ef1496822106bc825e4bed7"
+          }
         },
         "100": {
           "declarations": 100,
-          "compileDurationMs": 131.22
+          "compileDurationMs": 143.3,
+          "inputs": {
+            "scale.ts": "9ff49523af45db1e10d5391517163904da46d77f1903df864e10ad7f92d8923a",
+            "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
+          },
+          "declarationsEmitted": {
+            "scale.d.ts": "6c29f5fa2961f38a77d24ac8dedf67a65b249ccf1d17ea9b889e0cd7557984bf"
+          }
         },
         "1000": {
           "declarations": 1000,
-          "compileDurationMs": 269.4
+          "compileDurationMs": 229.66,
+          "inputs": {
+            "scale.ts": "21e02623447c6030232bdc181979105524bf62131adb70bc402a17c826b38ace",
+            "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
+          },
+          "declarationsEmitted": {
+            "scale.d.ts": "a234768d1cc9b017f636e7ed440e66f5231a968ea97c8233378cc90b675ab3a0"
+          }
         }
       },
       "treeShaking": "not-measured",
@@ -1311,10 +1365,18 @@
     "split-declaration-factory": {
       "authoringLoc": 5,
       "genericGlueLoc": 11,
-      "genericGlueRatio": 0.6875,
-      "filesPerModule": 2,
-      "bindingLoci": 1,
-      "explicitAnnotations": 3,
+      "candidateSupportLoc": 3,
+      "separateFactoryLoc": 10,
+      "totalSupportLoc": 24,
+      "genericGlueRatio": 0.8275862068965517,
+      "layoutAssumptions": {
+        "filesPerModule": 2,
+        "bindingLoci": 1,
+        "removalEdits": 2,
+        "disableEdits": 1,
+        "evidence": "not measured by editing product modules"
+      },
+      "explicitAnnotationMatchesInCandidateFile": 3,
       "declarationLines": 5,
       "declarationBytes": 338,
       "declarationExports": 4,
@@ -1325,36 +1387,79 @@
         "executableImplementationImports": 0,
         "frameworkImports": 0
       },
-      "removalEdits": 2,
-      "disableEdits": 1,
       "compileDuration": {
         "10": {
           "declarations": 10,
-          "compileDurationMs": 192.98
+          "compileDurationMs": 123.7,
+          "inputs": {
+            "factories.ts": "139a6efe4b389b2b0cf4cf7cadc14bba752858a7b6bc20bffc29e6205ec4f7b0",
+            "scale.ts": "90d6000289978a326e8988fe7622a268df884d5e00fb88b04f6d01a85a9a6a88",
+            "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
+          },
+          "declarationsEmitted": {
+            "factories.d.ts": "803cec087397ebf2107dfcfe10dd4f4b983b8971156cfe62a9db6051a013b604",
+            "scale.d.ts": "dcbf1223a7d7a1e2d0daee412e7abb64d0ec9fe163c079f0d1666a7190e8b1b2"
+          }
         },
         "100": {
           "declarations": 100,
-          "compileDurationMs": 143.06
+          "compileDurationMs": 134.69,
+          "inputs": {
+            "factories.ts": "eaa07a3670925420328525300e3bd5a93788fe13f0ac0e82f0b173fe6ecacd78",
+            "scale.ts": "aec40c1f1737c6c68b8c0a86c04dc6a54f747035c226d29cf85250bdaab1d3c9",
+            "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
+          },
+          "declarationsEmitted": {
+            "factories.d.ts": "144b8338f3873cdd7f7acdfebc3f32b9dca56777a8d374df3a8b9bc792e430b8",
+            "scale.d.ts": "b9b7ec63f0b4b05a5d913baca9a8d137e6bd106f1b8635c45bd925b94a49387f"
+          }
         },
         "1000": {
           "declarations": 1000,
-          "compileDurationMs": 221.43
+          "compileDurationMs": 322.37,
+          "inputs": {
+            "factories.ts": "cbe280d8993ed453c2e770364aaa1287375f9dc6b2a42620405f42c6dee9c89d",
+            "scale.ts": "453cf40e4ed1ad94fcabbecf6e52e5a034eaa6f51aff2ab9ce0f63283a29feff",
+            "tsconfig.json": "12d21b76e8c9c4a8d20a93b842ec8ea258fc18039e97671015af35a1bf8b36fd"
+          },
+          "declarationsEmitted": {
+            "factories.d.ts": "e029825d79609a7f36ed7a5e39b9db44e5b33c26bbb812c4bb74354fa0eea036",
+            "scale.d.ts": "6e3508dd51dbfb5d6a0e510414705cc778fcf0179b8dd2cde59286b72d8763ad"
+          }
         }
       },
       "treeShaking": "not-measured",
       "runtimePerformance": "not-measured"
     }
   },
+  "emittedDeclarations": {
+    "candidate-define.d.ts": "441beda8ea7ad7e6693d3337f38b63c7a99011a960bc2f2845fe7b75ba3a5e21",
+    "candidate-descriptor.d.ts": "49971e2d379152700d270d25581834f6100365d1ade2a52a54176bd521fb8991",
+    "candidate-split-factory.d.ts": "99d06bbcdb14ecf73e8c57c98c92efcd9a317a8653c52a09f1bff476cfd14fa5",
+    "candidate-split.d.ts": "f7d7a60c5563c22165d9c12da9b0a8591f2ea44b24e9828cdb25928ec2eed58f",
+    "corpus.d.ts": "fe78492bcf94b808a40a8d919cb250b293f337e0d81d6dc52725578a7120aaa5",
+    "factories.d.ts": "baef386411419afa72fd5c9baa48888e52c50918783053d89b7a28995d2ac4c3",
+    "index.d.ts": "8c414cc30f10cdbc609afb25d3fec76d3c2996e0fd0d0fa95b1fb435b0cf0c39",
+    "oracle.d.ts": "dda17c0b45a2aa732f2dc2276f6ce85f81dea3bbf1f8e8c7889ccccc5cb9e6e4",
+    "type-probes.d.ts": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881",
+    "types.d.ts": "709fd9960533b2be6b3b9a25285eb1d1102263cab61d5953f95f7171c6596a58"
+  },
+  "limitations": {
+    "desiredState": "synthetic filtering inside lab oracle, not Host boundary proof",
+    "semantics": "shared oracle has documented accepted-contract disagreements; see report API-02",
+    "measurements": "synthetic source/emit counts only; layout edits are assumptions"
+  },
   "guards": {
     "exactClosedCorpus": true,
     "substantiveScenarioWitnesses": true,
     "immutablePlainData": true,
     "ordinaryHelperReadsWithoutValidation": true,
+    "inheritedHelperReads": true,
     "genuineCandidateShapes": true,
+    "splitFactoryAssociation": true,
     "noExpectationManufacture": true,
     "noExecutableDiscoveryImports": true,
     "hiddenFallbackRejected": true,
-    "desiredProfileHostOwned": true,
     "noRegistrationOrderSemantics": true,
     "permutationStable": true,
     "hostileOwnKeys": true,

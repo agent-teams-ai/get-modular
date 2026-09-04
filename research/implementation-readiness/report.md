@@ -10,7 +10,7 @@ bounded private slice, but one immediate start condition is not closed:
 1. The ADR-0015 product-owner start record is absent and not mechanically enforced.
 
 This report patch resolves the earlier M1 callable/packing contradiction and
-restores accepted ADR-0008 W0/W1 precedence. Current checker and oracle gaps stay
+restores the complete accepted ADR-0008 construction/behavior and W0/W1 obligations. Current checker and oracle gaps stay
 visible as later qualification blockers. After a governed owner-start record
 and admission enforcement, the result becomes **CONDITIONAL** for a source-only
 private normalized-value slice. It remains **NO-GO** for Phase 3 qualification,
@@ -35,6 +35,8 @@ No reproducible P0 was observed. Because there is no Core subject, this is not e
 | Dispute critics | Subject `2bef472612dea7c6a89199a47dd8ca7ed552e630` | 32 unique topic×role wrappers, all `done`; source-bundle digest `216bb3b0…` |
 | Dispute manifest integrity | Aggregate `ccd13b6652a45a6e4d80a4ca5b2ff80a95fdc7a624d3f30695d181e61e233838` | All 32 wrapper hashes and the aggregate were independently recomputed |
 | Indexed source integrity | 115 indexed sources | All current indexed hashes verified with no mismatch |
+| Retained API execution subject | `c86a2acc13c5d6dc3603b11be26462b43725035c` | Exact committed lab inputs; envelope and result retained together |
+| API result SHA-256 | `ac82157395692383a0b863351f6694c5635afbab18c70354629b2e71a0fb13b5` | 90 outcomes, source/toolchain identities and emitted-file hashes; not an attestation |
 
 The dispute wrapper bytes and bundle manifest are custody evidence. Their nested JSON/YAML summaries are reviewer analysis, not executable proof.
 
@@ -486,7 +488,7 @@ result column is the shared lab oracle, not accepted-contract authority.
 | --- | --- | --- |
 | Authority precedence is closed | Accepted ADR-0001..0008 and ADR-0015, `ARCH-SYSTEM-BOUNDARY`, `GM-REQ-V1`, the ADR-0002-pinned organization standard and governed ledgers | **Established** for this audit |
 | Worker evidence custody is closed | Canonical 97-result inventory, dispute aggregate `ccd13b…`, four-integrator aggregate `4b53d3…` | **Established**; worker count is not proof |
-| The three API shapes execute an equal corpus | Retained `evidence/api-authoring-exact-run.json`, SHA-256 `6c08bc1…`; exact 30-scenario/90-cell local compile and run; corpus digest `fc2628…` | **Established only as lab equality** |
+| The three API shapes execute an equal corpus | Retained `evidence/api-authoring-exact-run.json`, SHA-256 `ac821573…`, and `evidence/api-authoring-execution.json`; committed source `c86a2ac…`, 30 scenarios/90 cells, corpus digest `fc2628…` | **Established only as lab equality**; verifier rejects input/result drift |
 | The common API oracle conforms to accepted semantics | API-02 reproductions against ADR-0004/0007 | **Refuted** until corrected |
 | Graph semantics are deterministic | Static graph vectors and mutation tests | **Partial**; no real compiler subject |
 | Canonical bytes and digest vectors reproduce | Two independent static golden digests | **Partial**; no immutable plan subject |
@@ -543,7 +545,7 @@ Only after that task passes should a separate, private normalized-value Core sli
 - production `packages/core` source or public barrels;
 - object/raw carrier adapters and any package publication;
 - DI container, service locator, runtime registry or filesystem discovery;
-- factory execution, activation, readiness, lifecycle, cleanup or recovery;
+- production factory execution, activation, readiness, lifecycle, cleanup or recovery (only disposable factory probes execute);
 - plugin host, WASM host, Module Federation or dynamic replacement;
 - stage emitter, generated stage1 or self-composition qualification;
 - product integration in Agent Runtime, Orchestrator or Frontend;
