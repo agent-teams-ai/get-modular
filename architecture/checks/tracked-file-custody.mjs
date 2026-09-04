@@ -133,6 +133,17 @@ async function assertRepositoryToplevel(repositoryRoot) {
   }
 }
 
+export async function isStartingBaseAncestor(baseCommit, repositoryRoot) {
+  if (!GIT_OBJECT_ID.test(baseCommit)) throw new Error("invalid starting Git commit");
+  try {
+    await runGit(repositoryRoot, ["merge-base", "--is-ancestor", baseCommit, "HEAD"]);
+    return true;
+  } catch (error) {
+    if (error?.code === 1) return false;
+    throw error;
+  }
+}
+
 async function exactIndexEntry(relativePath, repositoryRoot) {
   try {
     const snapshot = await captureGitIndexSnapshot(repositoryRoot);
