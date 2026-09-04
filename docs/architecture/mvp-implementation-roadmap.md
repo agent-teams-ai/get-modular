@@ -214,6 +214,15 @@ depending on repository-root defaults:
    that downloaded artifact in a final consumer check. A metadata match is not
    byte-identity evidence.
 
+Authenticated namespace control was established on 2026-09-04: the npm
+organization `get-modular` was created on the free public plan, and its members
+settings list `ilyazelenko` as owner with 2FA enabled. This proves interactive
+control of the `@get-modular` namespace and admits the owner to perform a
+bounded first-package bootstrap. It does not prove that a package exists,
+authorize an unattended release, configure a Trusted Publisher, or satisfy the
+pack-once and registry-read-back evidence above. The first package pull request
+must record those remaining facts against its exact archive and workflow.
+
 The package pull request fails closed when any item above lacks evidence. It
 does not need Phase 8 release-custody schemas to publish as `not-claimed`, but it
 cannot use that label as a conformance, self-composition or release-eligibility
