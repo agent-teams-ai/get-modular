@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
+import { validatePrivateCoreStart } from "./private-core-start.mjs";
 
 import {
   productionArtifactPaths,
@@ -13,6 +14,7 @@ import {
   assertGitIndexSnapshotCurrent,
   captureGitIndexSnapshot,
   historicalFileVersions,
+  isStartingBaseAncestor,
   indexSnapshotPaths,
   inspectIndexSnapshotFile,
   inspectTrackedWorkingTreeRegularFile,
@@ -658,6 +660,17 @@ async function main() {
     traceability,
   });
   const productionArtifacts = await productionArtifactPaths(root, snapshot);
+  const readPackageManifest = async path => JSON.parse((await readGovernanceInput(
+    path,
+    "private implementation package manifest",
+  )).toString("utf8"));
+  await validatePrivateCoreStart({
+    markdown: documentSources.get("ARCH-MVP-IMPLEMENTATION-ROADMAP").bytes.toString("utf8"),
+    productionArtifacts,
+    authorityDigest: ACCEPTED_AUTHORITY_LEDGER_DIGEST,
+    isStartingBase: baseCommit => isStartingBaseAncestor(baseCommit, root),
+    readPackageManifest,
+  });
   const productionArtifactSymlinks = await productionArtifactSymlinkPaths(root, snapshot);
   const misplacedArtifacts = productionArtifactsOutsidePackages(productionArtifacts);
   if (misplacedArtifacts.length > 0) {
@@ -686,10 +699,7 @@ async function main() {
     blockerIds,
     productionArtifacts,
     claimDocuments: claimDocuments.map(id => documents.get(id)),
-    readPackageManifest: async path => JSON.parse((await readGovernanceInput(
-      path,
-      "private implementation package manifest",
-    )).toString("utf8")),
+    readPackageManifest,
     repositoryRoot: root,
   });
   await assertGitIndexSnapshotCurrent(snapshot);

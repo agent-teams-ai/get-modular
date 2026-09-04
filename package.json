@@ -36,7 +36,7 @@
     "architecture:feature-module-profile": "node architecture/checks/feature-module-standard-profile.mjs",
     "architecture:feature-module-profile:test": "node --test tests/feature-module-standard-profile.test.mjs",
     "governance:check": "node architecture/checks/governance.mjs",
-    "governance:test": "node --test tests/governance.test.mjs",
+    "governance:test": "node --test tests/governance.test.mjs tests/private-core-start.test.mjs",
     "qualification:resource-profile": "node tests/qualification/v1-resource-profile.mjs",
     "qualification:v1-diagnostics-protocol": "node --test tests/qualification/v1-diagnostics-protocol.mjs",
     "qualification:v1-graph-semantics": "node --test tests/qualification/v1-graph-semantics.mjs",

@@ -849,3 +849,50 @@ The first complete `0.x` Core checkpoint is a bounded compiler, the ADR-0008
 self-composition evidence and conformance evidence. The first product-adoption
 checkpoint adds one real adapter. Neither
 is completion of the plugin ecosystem or evidence for a stable 1.0 claim.
+
+## Recorded private Core start
+
+On 2026-09-04 the product owner approved the bounded follow-up: permit an M1
+object candidate, record the start scope together with admission enforcement,
+and preserve the research evidence. This record permits a subsequent private
+Core implementation; this change creates no Core source and starts no runtime.
+It does not accept proposed ADRs or authorize publication or merge.
+
+The JSON block below is the single start record, read from this governed
+document by `governance:check`. Its base is the shared reviewed main revision,
+not a per-commit permission token. Descendant work remains authorized while the
+accepted authority digest and bounded scope match. A changed authority,
+revocation, different package, or broadened scope needs an updated owner record.
+The checker validates the recorded declaration, not the human author's identity
+or the semantics of future code; code review and source-policy checks still
+enforce that implementation stays within it. Missing or malformed records fail
+closed when a package is present. No package is created to test the gate.
+
+<!-- get-modular:private-core-start -->
+
+```json
+{
+  "repository": "agent-teams-ai/get-modular",
+  "baseCommit": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418",
+  "authorityDigest": "sha256:9ba074210704a20f6a3ef7486f3cf2ec7435fb0fc5552cca210b6d3d5d73f077",
+  "approvedBy": "product-owner",
+  "approvedOn": "2026-09-04",
+  "status": "authorized",
+  "package": "@get-modular/core",
+  "scope": ["private-semantics", "object-candidate-evidence"],
+  "excluded": [
+    "public-exports", "raw-carriers", "publication", "runtime-lifecycle",
+    "conformance-claims", "proposed-contract-claims", "generated-self-composition-claims"
+  ]
+}
+```
+
+<!-- /get-modular:private-core-start -->
+
+The optional object candidate uses the same semantic implementation. It is
+qualification-only, not a public API or a claim that unresolved carrier rules
+are settled. The normalized seam remains the minimum. Accepted object rules
+apply; ambiguous cases are labelled candidate evidence until their decision.
+Tests must not require a second diagnostic generation or a generated stage1
+before the first direct object-input test. No fake success result substitutes
+for the complete plan and digest.
