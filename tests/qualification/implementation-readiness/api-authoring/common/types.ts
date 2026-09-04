@@ -30,6 +30,7 @@ export type World = Readonly<{
   desiredProfile?: DesiredProfile;
   fallbackBindings?: readonly Binding[];
 }>;
+export type CompositionInput = Pick<World, "declarations" | "profile">;
 export type Diagnostic = Readonly<{ code: string; path: string; detail: string }>;
 export type Outcome = Readonly<{
   ok: boolean;

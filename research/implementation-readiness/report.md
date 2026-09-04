@@ -50,6 +50,15 @@ Worker count was not treated as consensus. In particular:
 - The 32 critics are role-distinct reviews, but share a model and frozen subject; they do not prove runtime behavior.
 - O1–O5 are source-unavailable under the final manifest and supply no positive OSS evidence.
 
+Supplemental source access is now prepared separately in
+`evidence/oss-source-inputs.json`: 24 original source/license files, five exact
+upstream commits, verified Git blob identities and SHA-256 hashes. The complete
+offline pack is retained as Git commit `32693e945e3cbeba4a94dac0be9dad3ad783740a`
+and a verified hosted bundle. No upstream code is installed or executed. This
+closes the missing-input prerequisite, not the five research lanes: O1-O5 must
+still inspect those sources and return new read-only results. The historical
+worker inventory is not relabeled as successful.
+
 ## Authority and precedence
 
 The normative ladder is:
@@ -202,48 +211,53 @@ Two implementations can make different observable choices and both plausibly cit
 
 **Blocks next step:** No for isolated algorithms; **yes for a complete Phase 3 diagnostic/resource claim.**
 
-### API-01 — P1, missing executable proof
+### API-01 — historical P1, lab execution restored; packed proof remains future
 
 **Evidence/result IDs:** `gm-api-b1-lane-l-20260903` (`partial`), `gm-api-b3-lane-l-20260903` (`blocked`), `gm-goal-api-lab-remediation-20260904` (older `ae1a138…` source), `gm-goal-api-lab-exact-corpus-l-old-20260904` (`blocked` at corrected source), `gm-dispute-t1-r1-2bef-20260904`, `gm-dispute-t2-r3-2bef-20260904`.
 
-**Impact:** The coordinator compiled and executed the exact common laboratory on
-Node `24.18.0`: all 30 scenarios ran against all three candidates, producing 90
-passing candidate-scenario cells and corpus digest
-`fc2628ffc60914e23bef29d72b1cdf5f92f3d0d470e107fad503900a0f468f39`.
-The exact result is retained as
-`evidence/api-authoring-exact-run.json` with SHA-256
-`6c08bc149c4e5155ce7c87aa7cb2c251d2961b2890e868654bb075915d1e12b0`.
-It was emitted by TypeScript `7.0.2` and the checked-in runner. That proves equal
-execution of the shared oracle, not conformance: API-02 shows that the shared
-oracle itself contradicts accepted identity and diagnostic semantics. There is
-still no real compiler handoff, packed consumer matrix, or production subject.
+**Evidence now retained:** The coordinator compiled and executed all 30 scenarios
+against all three candidates on Node `24.18.0` and TypeScript `7.0.2`. The result
+and execution envelope listed in the custody table are the single source for
+the exact input commit, corpus digest and result hash. API-02 corrections add
+six alternate-implementation selection probes. This is a normalized laboratory,
+not a full wire decoder, diagnostic protocol, real compiler handoff or packed
+consumer matrix.
 
-**Minimal correction:** Correct the corpus semantics, rerun the same closed
-30-by-three matrix, and then run the accepted subset through the real packed
-private subject.
+**Remaining gate:** Run the accepted subset through the first real packed
+private subject in its separately authorized implementation scope. Do not
+require that production subject to complete this disposable authoring experiment.
 
 **Owner/authority:** API and conformance owners.
 
-**Blocks next step:** No for internal data-model work; **yes for API selection, helper readiness, or public claims.**
+**Blocks next step:** No for a provisional authoring recommendation; **yes for packed helper readiness or public claims.**
 
-### API-02 — P1, common-lab semantic defect
+### API-02 — confirmed P1, corrected in the laboratory
 
 **Evidence/result IDs:** `gm-dispute-t6-r1-2bef-20260904`, `gm-dispute-t6-r3-2bef-20260904`, `gm-dispute-t6-r4-2bef-20260904`, `gm-dispute-t2-r2-2bef-20260904`, `gm-dispute-t2-r4-2bef-20260904`.
 
-**Impact:** The shared oracle:
+**Historical impact:** The prior shared oracle:
 
 - rejects a second declaration for the same `moduleId`, although ADR-0004 expressly permits alternative implementations;
 - emits lab-local codes such as `module.duplicate`, `implementation.duplicate`, and `profile.module-unknown` rather than the accepted catalog;
 - performs product-owned disablement inside its Core-like oracle;
 - calls invalid `__proto__` and Unicode strings hostile SlotIds even though the accepted SlotId grammar rejects them.
 
-A 90-cell pass would therefore show agreement with the laboratory, not conformance with the contract.
+**Corrections:** A catalog can contain alternative implementations of one module;
+S21 rejects selecting both, then independently proves either individual choice.
+The exercised semantic diagnostic codes are checked against the accepted catalog.
+Desired state is preprocessed by a separate test-Host and is rejected by the
+oracle boundary. S19 uses valid `constructor`/`then` slots and separately checks
+all five arbitrary record keys; the accepted SlotId grammar rejects the other
+three as identifiers. These are executable regression checks, not merely labels.
 
-**Minimal correction:** Make module identity one-to-many over implementation candidates, use accepted diagnostics, move disablement to an explicit host preprocessing probe, and separate accepted SlotId, portable identity, and arbitrary record-key domains.
+The lab still uses simplified capability/version fields and diagnostic payloads.
+Matching code names does not prove the complete phase comparator, SCC reporting,
+resource bounds or wire schema. Those remain independent implementation gates.
 
 **Owner/authority:** Qualification owner under ADR-0004/0007.
 
-**Blocks next step:** It blocks using the lab to choose an API; it does not block a private compiler implementation based directly on accepted authority.
+**Blocks next step:** The corrected cases support private syntax comparison,
+pending independent re-review. They do not authorize a conformance or public claim.
 
 ### API-03 — P2, unresolved TypeScript/API policy
 
@@ -346,8 +360,8 @@ before its witness is relied on.
 | Previous report: package identity is enforced independently of open blockers. T8 reproduced a zero-blocker rogue-package pass. | T8/direct code wins; Phase 0 requires unconditional enforcement. |
 | B1 wrapper says serializable; retained fixture says not executed. | Reconciliation classifies B1 evidence as partial. |
 | B3 wrapper is `done`; payload says sandbox-blocked. | Canonical evidence is blocked; its extra retry is not independent. |
-| The exact common lab passes 90 cells; critics reproduce accepted-contract errors in its shared oracle. | Execution equality is retained, but the lab cannot qualify semantics until API-02 is fixed and rerun. |
-| Common oracle rejects duplicate `moduleId`; accepted ADR-0004 permits alternative implementation declarations. | The common oracle is wrong. |
+| Earlier 90-cell results reproduced defects in the shared oracle. | Historical results are not conformance evidence. The corrected corpus is recaptured from committed inputs. |
+| Earlier oracle rejected duplicate `moduleId`; ADR-0004 permits alternative implementation declarations. | Fixed: the catalog permits alternatives; the profile rejects duplicate selections. Each alternative also has a passing selection probe. |
 | Previous guide/report use canonical tuple W0/W1; accepted ADR-0008 defines emitted W0/W1 bytes. | ADR-0008 controls; this patch restores emitted-byte precedence. |
 | Report suggests broad OSS validation; O1–O5 are source-unavailable. | Retain only bounded ADR-0008/O6 lessons; no industry consensus claim. |
 | Four integrators generally say “conditional private Core”; T8 critics say “no-go now.” | Both are reconciled as: **NO-GO before owner-start/enforcement; CONDITIONAL afterward for source-only normalized semantics.** |
@@ -358,7 +372,7 @@ before its witness is relied on.
 | --- | --- | --- | --- | --- |
 | 0. Owner start, admission and custody | Inputs: accepted ADRs, exact base, governed start record, private package manifest. Outputs: deterministic admission report and source-custody identity. | Product owner authorizes; governance enforces. No earlier phase. Package identity is accepted, private, unique and non-publishable; no proposed semantics are imported. | Evidence: ADR-0015 plus reproduced missing-record and rogue-package gaps. Stop on absent, stale, wrong-owner, wrong-SHA, wrong-package or over-broad record. Exit only when those cases fail closed and the positive record passes. | **NO-GO now** |
 | 1. Topology and private composition boundary | Inputs: Phase 0 admission, Feature Module Standard profile and accepted package identity. Outputs: private feature-owned package topology, curated internal entry and product-neutral composition boundary. | Package/architecture owner. Depends on Phase 0. Source dependencies point inward; no public barrel, container, runtime registry or ceremonial empty layers. | Evidence is documentation/profile-only. Stop if topology requires public naming/carrier decisions or a second authority. Exit when source-policy fixtures prove the allowed dependency graph and deep imports fail closed. | **Blocked by Phase 0** |
-| 2. Inert declarations and profiles | Inputs: serializable declarations, complete profiles, slot/cardinality records and explicit bindings. Outputs: closed validated values or accepted bounded diagnostics. | Core semantic owner. Depends on Phase 1. No executable imports, callbacks, factories, lifecycle, hidden fallback or registration-order semantics. | Evidence: equal 30-by-three authoring lab, but API-02 and `min <= max` remain defects. Stop on unresolved observable accessor/typing semantics. Exit after accepted identity/diagnostic corrections and required/optional/many zero-min-interior-max vectors pass. | **NO-GO for exit** |
+| 2. Inert declarations and profiles | Inputs: serializable declarations, complete profiles, slot/cardinality records and explicit bindings. Outputs: closed validated values or accepted bounded diagnostics. | Core semantic owner. Depends on Phase 1. No executable imports, callbacks, factories, lifecycle, hidden fallback or registration-order semantics. | Evidence: equal 30-by-three authoring lab with corrected identity/Host-boundary cases; `min <= max` and full diagnostic conformance remain independent gaps. Stop on unresolved observable accessor/typing semantics. Exit after accepted bounded diagnostics and required/optional/many zero-min-interior-max vectors pass against a real subject. | **NO-GO for exit** |
 | 3. Normalization and graph | Inputs: Phase 2 values and accepted limits. Outputs: deterministic normalized graph or bounded diagnostics. | Core semantic owner; qualification owns independent oracle. Depends on Phase 2. Consumer-to-provider reachability, provider-to-consumer execution order, stable SCCs, no fallback, no runtime authority. | Evidence: static graph vectors only; resource meter and diagnostic precedence gaps remain. Stop on unresolved limit/schema precedence, path counting or cyclic depth. Exit requires one real private subject with permutations, cycles, ambiguity, disabled/unreachable and hostile-input cases. | **NO-GO** |
 | 4. Immutable plan and digest | Inputs: successful normalized graph. Outputs: deeply immutable plan, RFC 8785 canonical bytes as private evidence, and domain-separated SHA-256 digest. | Core semantic owner. Depends on Phase 3. No executable values, loaders, product objects or lifecycle; semantically equivalent inputs are byte-identical and semantic order changes alter the digest. | Evidence: static golden digests are reproducible, but no subject proves immutability, alias isolation or cross-process parity. Stop if canonicalization leaks into public policy or self-composition is treated as phase authority. Exit requires exact-byte, mutation, clone, cross-process and reversed-many companion gates. | **NO-GO** |
 
@@ -374,7 +388,7 @@ threshold; tree-shaking and runtime performance were not measured.
 
 | Candidate | Measured authoring/glue | Type/declaration evidence | Strength | Limitation | Provisional use |
 | --- | --- | --- | --- | --- | --- |
-| Descriptor object | 4 authoring / 12 total support LOC, 75.0% candidate-specific support | 2 annotation matches; 181-byte, 3-line declaration emit | Explicit canonical inert data | No inference facade; shared oracle is wrong | Canonical internal data form |
+| Descriptor object | 4 authoring / 12 total support LOC, 75.0% candidate-specific support | 2 annotation matches; 181-byte, 3-line declaration emit | Explicit canonical inert data | No inference facade; no full wire conformance | Canonical internal data form |
 | Typed `defineModule` | 4 / 27 LOC, 87.1% support including helpers and translation | 1 annotation match; 543-byte, 19-line declaration emit; literal inference passes probes | Zero-behavior authoring convenience | Generic preserves extra subtype fields; must not imply validation | **Preferred private authoring facade**, pending API decision |
 | Declaration plus factory | 5 / 24 LOC, 82.8% support including separate association file | 3 annotation matches in declaration file; 338-byte, 5-line declaration emit; separate typed association checks | Separates inert metadata from construction | ID association tested in host probes, not lifecycle or factory-failure rollback | Keep factories product-owned; do not adopt this lab encoding |
 
@@ -410,22 +424,22 @@ result column is the shared lab oracle, not accepted-contract authority.
 | S06 | zero many | `ok` | Does not cover positive minimum |
 | S07 | one many | `ok` | Boundary matrix remains incomplete |
 | S08 | multiple many | `ok` | Profile order retained by lab |
-| S09 | duplicate provider | `binding.provider-duplicate` | Lab-local code must be reconciled |
-| S10 | ambiguous binding | `binding.ambiguous` | Expected failure |
-| S11 | incompatible capability | `binding.capability` | Expected failure |
+| S09 | duplicate provider | `binding.duplicate` | Accepted code; simplified lab diagnostic payload |
+| S10 | ambiguous binding | `binding.cardinality` | Two explicit providers cannot satisfy a single slot |
+| S11 | incompatible capability | `binding.capability-missing` | Requested capability absent |
 | S12 | dependency cycle | `graph.cycle` | Static lab only |
 | S13 | disabled root | `host.profile.root-disabled` | Disablement is host-owned, not Core semantics |
-| S14 | disabled required provider | `binding.missing` | Synthetic desired-state filter inside the lab oracle, not proof of a Host boundary |
-| S15 | disabled optional provider | `ok` | Same synthetic filtering limitation |
-| S16 | unreachable provider | `graph.unreachable` | Expected failure |
+| S14 | disabled required provider | `binding.missing` | Explicit test-Host preprocessing; not a production desired-state protocol |
+| S15 | disabled optional provider | `ok` | Same test-Host policy |
+| S16 | unreachable provider | `profile.unreachable-selection` | Expected failure |
 | S17 | multiple roots | `ok` | Deterministic inventory |
 | S18 | reordered input | `ok` | Permutation-stable result |
-| S19 | hostile record keys and Unicode | `ok` | Record-key domain is not SlotId grammar |
-| S20 | unknown declaration field | `declaration.unknown-field` | Runtime validation only |
-| S21 | repeated module ID with alternate implementation | `module.duplicate` | **Oracle defect:** ADR-0004 permits alternatives |
-| S22 | duplicate implementation ID | `implementation.duplicate` | Semantics valid; code is lab-local |
-| S23 | invalid owner path | `owner.path-invalid` | Expected failure |
-| S24 | profile references unknown module | `profile.module-unknown` | Lab-local code must be reconciled |
+| S19 | hostile record keys and Unicode | `ok` for the two valid slots | Five arbitrary record keys tested separately; invalid SlotId forms rejected by the pinned grammar |
+| S20 | unknown declaration field | `schema.unknown-field` | Simplified lab schema check |
+| S21 | repeated selection of one module | `profile.duplicate-selection` | Catalog alternatives allowed; either individual selection also passes |
+| S22 | duplicate implementation ID | `declaration.duplicate-implementation` | Catalog-wide uniqueness |
+| S23 | invalid owner path | `schema.invalid-value` | Expected failure |
+| S24 | profile references unknown module | `profile.unknown-module` | Expected failure |
 | S25 | hidden fallback attempt | `binding.missing` | Fallback rejected |
 | S26 | discovery without executable imports | `ok` | Import counters remain zero |
 | S27 | selected literal loaders only | `ok` | Host probe, not Core proof |
@@ -469,7 +483,7 @@ result column is the shared lab oracle, not accepted-contract authority.
 | Repeated binding-record semantics and diagnostic generation | OD-006; ADR-0014 proposed | Duplicate-record behavior |
 | Dependency-record representation and construction witness | ADR-0016 proposed | Generated stage1/self-composition |
 | Resource/schema precedence, path-segment accounting, cyclic depth | Accepted clarification/successor needed | Full diagnostic/resource qualification |
-| Public generic unknown-field, mutability, and inherited-property policy | Public API decision needed | TypeScript surface freeze |
+| Public generic unknown-field and mutability typing | Public API decision needed; inherited lookup already follows ADR-0007 | TypeScript surface freeze |
 | Metadata-only cross-feature identity imports | Architecture/Foundation authority needed | Structural self-composition claim |
 | Factory failure, partial construction, retry, readiness, recovery, and retirement | Product-owned Phase 6 decision | Product runtime adoption, not Core semantics |
 
@@ -489,7 +503,7 @@ result column is the shared lab oracle, not accepted-contract authority.
 | Authority precedence is closed | Accepted ADR-0001..0008 and ADR-0015, `ARCH-SYSTEM-BOUNDARY`, `GM-REQ-V1`, the ADR-0002-pinned organization standard and governed ledgers | **Established** for this audit |
 | Worker evidence custody is closed | Canonical 97-result inventory, dispute aggregate `ccd13b…`, four-integrator aggregate `4b53d3…` | **Established**; worker count is not proof |
 | The three API shapes execute an equal corpus | Retained `evidence/api-authoring-exact-run.json`, SHA-256 `ac821573…`, and `evidence/api-authoring-execution.json`; committed source `c86a2ac…`, 30 scenarios/90 cells, corpus digest `fc2628…` | **Established only as lab equality**; verifier rejects input/result drift |
-| The common API oracle conforms to accepted semantics | API-02 reproductions against ADR-0004/0007 | **Refuted** until corrected |
+| The common API oracle is a full accepted-contract validator | API-02 regression fixes, plus explicit simplified-input/diagnostic limitations | **Not claimed**; covered identity, selection and Host-boundary cases are checked, full conformance remains future |
 | Graph semantics are deterministic | Static graph vectors and mutation tests | **Partial**; no real compiler subject |
 | Canonical bytes and digest vectors reproduce | Two independent static golden digests | **Partial**; no immutable plan subject |
 | Private Core source is admitted | ADR-0015, no owner-start record, reproduced admission gaps | **Not established** |

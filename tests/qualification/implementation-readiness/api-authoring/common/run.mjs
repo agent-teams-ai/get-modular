@@ -12,9 +12,16 @@ const emitRoot = mkdtempSync(join(tmpdir(), "gm-api-authoring-emit-"));
 process.on("exit", () => rmSync(emitRoot, { recursive: true, force: true }));
 writeFileSync(join(emitRoot, "package.json"), '{"type":"module"}\n');
 execFileSync(process.execPath, [tscPath, "-p", join(here, "tsconfig.json"), "--outDir", emitRoot], { stdio: "pipe" });
-const { corpus, defineModule, descriptorAdapter, defineModuleAdapter, many, optional, qualify, required, splitAdapter } = await import(pathToFileURL(join(emitRoot, "index.js")).href);
+const { corpus, defineModule, descriptorAdapter, defineModuleAdapter, many, optional, qualify, prepareHostProfile, required, splitAdapter } = await import(pathToFileURL(join(emitRoot, "index.js")).href);
 const loadFactories = () => import(pathToFileURL(join(emitRoot, "factories.js")).href);
 const adapters = [descriptorAdapter, defineModuleAdapter, splitAdapter];
+const diagnosticCodes = new Set(JSON.parse(readFileSync("architecture/contracts/v1/diagnostic-catalog.json", "utf8")).ordering.codes);
+const slotGrammar = new RegExp(JSON.parse(readFileSync("architecture/contracts/v1/composition.schema.json", "utf8")).$defs.localToken.pattern);
+const hostileRecordKeys = ["__proto__", "constructor", "then", "é", "é"];
+const observe = (world) => {
+  const { input, refusals } = prepareHostProfile(world);
+  return refusals.length ? { ok: false, diagnostics: refusals, inventory: input.profile.selections.map(({ implementationId }) => implementationId).sort(), dependencyOrder: [] } : qualify(input);
+};
 const exactTitles = [
   "one provider", "one consumer", "required dependency", "missing required dependency", "missing optional dependency",
   "zero many", "one many", "multiple many", "duplicate provider", "ambiguous binding", "incompatible capability",
@@ -81,22 +88,22 @@ const substance = [
   (s) => slot(s)?.cardinality.kind === "many" && providers(s).length === 0,
   (s) => slot(s)?.cardinality.kind === "many" && providers(s).length === 1,
   (s) => slot(s)?.cardinality.kind === "many" && providers(s).length > 1,
-  (s) => providers(s).length === 2 && providers(s)[0] === providers(s)[1] && hasCode(s, "binding.provider-duplicate"),
-  (s) => new Set(providers(s)).size > 1 && providers(s).length === new Set(providers(s)).size && hasCode(s, "binding.ambiguous"),
-  (s) => s.input.declarations.some((d) => d.provides.some((p) => p.id === "lab/other")) && hasCode(s, "binding.capability"),
+  (s) => providers(s).length === 2 && providers(s)[0] === providers(s)[1] && hasCode(s, "binding.duplicate"),
+  (s) => new Set(providers(s)).size > 1 && providers(s).length === new Set(providers(s)).size && hasCode(s, "binding.cardinality"),
+  (s) => s.input.declarations.some((d) => d.provides.some((p) => p.id === "lab/other")) && hasCode(s, "binding.capability-missing"),
   (s) => s.input.declarations.every((d) => d.slots.length === 1) && hasCode(s, "graph.cycle"),
   (s) => s.input.desiredProfile?.disabledModuleIds.includes(s.input.profile.roots[0]) && hasCode(s, "host.profile.root-disabled"),
   (s) => slot(s)?.cardinality.kind === "required" && s.input.desiredProfile?.disabledModuleIds.length === 1 && hasCode(s, "binding.missing"),
   (s) => slot(s)?.cardinality.kind === "optional" && s.input.desiredProfile?.disabledModuleIds.length === 1 && s.expected.ok,
-  (s) => s.input.profile.selections.length > 2 && hasCode(s, "graph.unreachable"),
+  (s) => s.input.profile.selections.length > 2 && hasCode(s, "profile.unreachable-selection"),
   (s) => s.input.profile.roots.length === 2 && s.expected.ok,
   (s) => s.input.declarations[0].moduleId > s.input.declarations[1].moduleId && s.expected.dependencyOrder,
-  (s) => ["__proto__", "constructor", "then", "é", "é"].every((id) => slot(s, id)),
-  (s) => s.input.declarations.some((d) => own(d, "executable")) && hasCode(s, "declaration.unknown-field"),
-  (s) => new Set(s.input.declarations.map((d) => d.moduleId)).size < s.input.declarations.length && hasCode(s, "module.duplicate"),
-  (s) => new Set(s.input.declarations.map((d) => d.implementationId)).size < s.input.declarations.length && hasCode(s, "implementation.duplicate"),
-  (s) => s.input.declarations[0].owner.path.some((part) => part.includes("/")) && hasCode(s, "owner.path-invalid"),
-  (s) => s.input.profile.selections.some(({ moduleId }) => !s.input.declarations.some((d) => d.moduleId === moduleId)) && hasCode(s, "profile.module-unknown"),
+  (s) => ["constructor", "then"].every((id) => slot(s, id)) && s.input.declarations.every((d) => d.slots.every(({ id }) => slotGrammar.test(id))),
+  (s) => s.input.declarations.some((d) => own(d, "executable")) && hasCode(s, "schema.unknown-field"),
+  (s) => new Set(s.input.profile.selections.map((d) => d.moduleId)).size < s.input.profile.selections.length && hasCode(s, "profile.duplicate-selection"),
+  (s) => new Set(s.input.declarations.map((d) => d.implementationId)).size < s.input.declarations.length && hasCode(s, "declaration.duplicate-implementation"),
+  (s) => s.input.declarations[0].owner.path.some((part) => part.includes("/")) && hasCode(s, "schema.invalid-value"),
+  (s) => s.input.profile.selections.some(({ moduleId }) => !s.input.declarations.some((d) => d.moduleId === moduleId)) && hasCode(s, "profile.unknown-module"),
   (s) => s.input.fallbackBindings?.length === 1 && s.input.profile.bindings.length === 0 && hasCode(s, "binding.missing"),
   (s) => s.evidenceClass === "representation" && s.expected.ok,
   (s) => s.hostProbe === "selected-literal-loaders" && s.input.declarations.length > s.input.profile.selections.length,
@@ -115,6 +122,9 @@ for (const [index, scenario] of corpus.entries()) {
   assert(!executablePath(scenario.input), `${id} input is not inert JSON-compatible data`);
 }
 assert(!mutablePath(corpus), "corpus is not deeply frozen");
+let rawDesiredStateRejected = false;
+try { qualify(corpus[12].input); } catch (error) { rawDesiredStateRejected = error.message === "desired state requires Host preprocessing"; }
+assert(rawDesiredStateRejected, "oracle admitted Host-owned desired state");
 
 const identityProbe = { moduleId: "probe/module", implementationId: "probe/module/default", owner: { authority: "probe", path: ["module"] }, provides: [], slots: [] };
 assert(defineModule(identityProbe) === identityProbe, "defineModule did not return the exact reference");
@@ -156,6 +166,7 @@ const decodedCorpusDigests = [];
 let factoryScenarioUses = 0;
 let declarationEmitCells = 0;
 let splitAssociationProbes = 0;
+let alternateImplementationSelections = 0;
 for (const adapter of adapters) {
   const decoded = [];
   for (const scenario of corpus) {
@@ -171,24 +182,34 @@ for (const adapter of adapters) {
     const input = adapter.decode(encoded);
     assert(digest(input) === digest(scenario.input), `${adapter.id}/${scenario.id} changes corpus semantics`);
     decoded.push(input);
-    const observed = qualify(input);
+    const observed = observe(input);
     assert(observed && observed !== scenario.expected, `${adapter.id}/${scenario.id} observed outcome absent or manufactured`);
     assert(expectedMatches(observed, scenario.expected), `${adapter.id}/${scenario.id} mismatch: ${canonical(observed)}`);
-    const permuted = qualify(adapter.decode(adapter.encode(permute(input))));
+    const permuted = observe(adapter.decode(adapter.encode(permute(input))));
     assert(canonical(observed) === canonical(permuted), `${adapter.id}/${scenario.id} depends on declaration or registration order`);
 
     if (scenario.id === "S19") {
       const dependencies = Object.create(null);
-      for (const { id } of input.declarations[0].slots) Object.defineProperty(dependencies, id, { value: id, enumerable: true });
-      for (const key of ["__proto__", "constructor", "then", "é", "é"]) assert(own(dependencies, key), `${adapter.id} lost hostile own slot ${key}`);
+      for (const key of hostileRecordKeys) Object.defineProperty(dependencies, key, { value: key, enumerable: true });
+      for (const key of hostileRecordKeys) assert(own(dependencies, key), `${adapter.id} lost hostile own record key ${key}`);
+      assert(canonical(hostileRecordKeys.filter((key) => slotGrammar.test(key))) === canonical(["constructor", "then"]), "arbitrary record keys were confused with accepted SlotIds");
       assert(dependencies["é"] !== dependencies["é"], `${adapter.id} collapsed Unicode slot forms`);
     }
     if (scenario.id === "S20") assert(observed.diagnostics[0].path === "/declarations/lab/provider-a/default/executable", `${adapter.id} unknown declaration field path is not explicit`);
     if (scenario.id === "S23") assert(observed.diagnostics[0].path === "/declarations/lab/provider-a/default/owner/path/0", `${adapter.id} owner path diagnostic is not explicit`);
     if (scenario.id === "S24") assert(observed.diagnostics[0].path === "/profile/selections/lab/unknown", `${adapter.id} unknown profile module path is not explicit`);
+    if (scenario.id === "S21") {
+      for (const chosen of input.profile.selections) {
+        const alternative = { ...input, profile: { ...input.profile, selections: [chosen] } };
+        const result = observe(adapter.decode(adapter.encode(alternative)));
+        assert(result.ok && canonical(result.inventory) === canonical([chosen.implementationId]), `${adapter.id} rejects legitimate alternate implementations`);
+        alternateImplementationSelections++;
+      }
+    }
+    assert(observed.diagnostics.every(({ code }) => code === "host.profile.root-disabled" || diagnosticCodes.has(code)), `${adapter.id} emits an unknown semantic diagnostic code`);
     if (scenario.id === "S25") {
       const withoutFallback = { ...input, fallbackBindings: [] };
-      assert(canonical(qualify(withoutFallback)) === canonical(observed) && observed.diagnostics.some(({ code }) => code === "binding.missing"), `${adapter.id} consumed a hidden fallback`);
+      assert(canonical(observe(withoutFallback)) === canonical(observed) && observed.diagnostics.some(({ code }) => code === "binding.missing"), `${adapter.id} consumed a hidden fallback`);
     }
     if (scenario.id === "S26") assert(discoveryProof.get(adapter.id), `${adapter.id} lacks discovery-import evidence`);
     if (scenario.hostProbe === "selected-literal-loaders") {
@@ -246,6 +267,7 @@ assert(new Set(decodedCorpusDigests).size === 1, "candidate corpus digests diffe
 assert(factoryScenarioUses === 6, `factories used outside the two host probes per candidate: ${factoryScenarioUses}`);
 assert(declarationEmitCells === 3, `declaration emit was not proved for every candidate: ${declarationEmitCells}`);
 assert(splitAssociationProbes === 2, "split associations were not exercised by both host probes");
+assert(alternateImplementationSelections === 6, "alternate implementation selection was not proved for every candidate");
 const corpusDigest = decodedCorpusDigests[0];
 
 const countRegion = (source, region) => {
@@ -312,10 +334,11 @@ for (const { adapter, sourcePath, stem } of candidateSources) {
 const summary = {
   schemaVersion: 2, status: "pass", authority: "non-authoritative qualification-only; not production", scenarioCount: corpus.length,
   executionCount: executions.length, corpusDigest,
+  additionalChecks: { alternateImplementationSelections, rawDesiredStateRejected, splitAssociationProbes },
   scenarioMatrix: corpus.map(({ id, title, evidenceClass, expected, hostProbe }) => ({ id, title, evidenceClass, expected, ...(hostProbe ? { hostProbe } : {}) })),
   executions, metrics,
   emittedDeclarations: Object.fromEntries(readdirSync(emitRoot).filter((name) => name.endsWith(".d.ts")).sort(compare).map((name) => [name, createHash("sha256").update(readFileSync(join(emitRoot, name))).digest("hex")])),
-  limitations: { desiredState: "synthetic filtering inside lab oracle, not Host boundary proof", semantics: "shared oracle has documented accepted-contract disagreements; see report API-02", measurements: "synthetic source/emit counts only; layout edits are assumptions" },
+  limitations: { desiredState: "explicit test-Host preprocessing policy, not a production desired-state contract", semantics: "simplified normalized lab inputs and diagnostic payloads, not full wire/diagnostic/SCC conformance", measurements: "synthetic source/emit counts only; layout edits are assumptions" },
   guards: { exactClosedCorpus: true, substantiveScenarioWitnesses: true, immutablePlainData: true, ordinaryHelperReadsWithoutValidation: true, inheritedHelperReads: true, genuineCandidateShapes: true, splitFactoryAssociation: true, noExpectationManufacture: true, noExecutableDiscoveryImports: true, hiddenFallbackRejected: true, noRegistrationOrderSemantics: true, permutationStable: true, hostileOwnKeys: true, selectedLiteralLoadersOnly: true, directPureDiParity: true, declarationSerializability: true, actualDeclarationEmitEveryCandidate: true, factoriesRestrictedToHostProbes: true },
 };
 mkdirSync(join(here, "dist"), { recursive: true });

@@ -1,7 +1,6 @@
-import type { Binding, Declaration, Diagnostic, Outcome, Profile, World } from "./types.js";
+import type { Binding, CompositionInput, Declaration, Diagnostic, Outcome, Profile } from "./types.js";
 
 const compare = (a: string, b: string): number => a < b ? -1 : a > b ? 1 : 0;
-const own = (value: object, key: PropertyKey): boolean => Object.prototype.hasOwnProperty.call(value, key);
 const diagnostic = (code: string, path: string, detail: string): Diagnostic => ({ code, path, detail });
 const bindingPath = (binding: Binding, provider = ""): string => `/bindings/${binding.consumerImplementationId}/${binding.slotId}${provider ? `/${provider}` : ""}`;
 const declarationKeys = new Set(["moduleId", "implementationId", "owner", "provides", "slots"]);
@@ -26,43 +25,36 @@ function selectedDeclarations(profile: Profile, byImplementation: Map<string, De
   return result;
 }
 
-function applyDesiredProfile(world: World, byImplementation: Map<string, Declaration>, diagnostics: Diagnostic[]): Profile {
-  const disabled = new Set(world.desiredProfile?.disabledModuleIds ?? []);
-  for (const root of world.profile.roots) {
-    if (disabled.has(root)) diagnostics.push(diagnostic("host.profile.root-disabled", `/desired-profile/disabled/${root}`, root));
-  }
-  const selections = world.profile.selections.filter(({ moduleId }) => !disabled.has(moduleId));
-  const bindings = world.profile.bindings.map((binding) => ({
-    ...binding,
-    providerImplementationIds: binding.providerImplementationIds.filter((id) => {
-      const declaration = byImplementation.get(id);
-      return declaration === undefined || !disabled.has(declaration.moduleId);
-    }),
-  }));
-  return { roots: world.profile.roots.filter((root) => !disabled.has(root)), selections, bindings };
-}
-
-export function qualify(world: World): Outcome {
+export function qualify(world: CompositionInput): Outcome {
+  if ("desiredProfile" in world) throw new Error("desired state requires Host preprocessing");
   const diagnostics: Diagnostic[] = [];
-  const byModule = new Map<string, Declaration>();
+  const modules = new Set<string>();
   const byImplementation = new Map<string, Declaration>();
   for (const declaration of world.declarations) {
     for (const key of Object.keys(declaration)) {
-      if (!declarationKeys.has(key)) diagnostics.push(diagnostic("declaration.unknown-field", `/declarations/${declaration.implementationId}/${key}`, key));
+      if (!declarationKeys.has(key)) diagnostics.push(diagnostic("schema.unknown-field", `/declarations/${declaration.implementationId}/${key}`, key));
     }
     declaration.owner.path.forEach((segment, index) => {
-      if (!ownerSegment.test(segment)) diagnostics.push(diagnostic("owner.path-invalid", `/declarations/${declaration.implementationId}/owner/path/${index}`, segment));
+      if (!ownerSegment.test(segment)) diagnostics.push(diagnostic("schema.invalid-value", `/declarations/${declaration.implementationId}/owner/path/${index}`, segment));
     });
-    if (byModule.has(declaration.moduleId)) diagnostics.push(diagnostic("module.duplicate", `/modules/${declaration.moduleId}`, declaration.moduleId));
-    else byModule.set(declaration.moduleId, declaration);
-    if (byImplementation.has(declaration.implementationId)) diagnostics.push(diagnostic("implementation.duplicate", `/implementations/${declaration.implementationId}`, declaration.implementationId));
+    modules.add(declaration.moduleId);
+    if (byImplementation.has(declaration.implementationId)) diagnostics.push(diagnostic("declaration.duplicate-implementation", `/implementations/${declaration.implementationId}`, declaration.implementationId));
     else byImplementation.set(declaration.implementationId, declaration);
   }
-  for (const selection of world.profile.selections) {
-    if (!byModule.has(selection.moduleId)) diagnostics.push(diagnostic("profile.module-unknown", `/profile/selections/${selection.moduleId}`, selection.moduleId));
-  }
-  const profile = applyDesiredProfile(world, byImplementation, diagnostics);
+  const profile = world.profile;
   const inventory = [...new Set(profile.selections.map((item) => item.implementationId))].sort(compare);
+  if (diagnostics.length) return finish(diagnostics, inventory);
+  const selectedModules = new Set<string>();
+  for (const selection of profile.selections) {
+    if (selectedModules.has(selection.moduleId)) diagnostics.push(diagnostic("profile.duplicate-selection", `/profile/selections/${selection.moduleId}`, selection.moduleId));
+    selectedModules.add(selection.moduleId);
+    if (!modules.has(selection.moduleId)) diagnostics.push(diagnostic("profile.unknown-module", `/profile/selections/${selection.moduleId}`, selection.moduleId));
+    else {
+      const implementation = byImplementation.get(selection.implementationId);
+      if (!implementation) diagnostics.push(diagnostic("profile.unknown-implementation", `/profile/selections/${selection.moduleId}`, selection.implementationId));
+      else if (implementation.moduleId !== selection.moduleId) diagnostics.push(diagnostic("profile.implementation-mismatch", `/profile/selections/${selection.moduleId}`, selection.implementationId));
+    }
+  }
   if (diagnostics.length) return finish(diagnostics, inventory);
 
   const selected = selectedDeclarations(profile, byImplementation);
@@ -74,33 +66,34 @@ export function qualify(world: World): Outcome {
     bindingBySlot.set(key, binding);
     const consumer = byImplementation.get(binding.consumerImplementationId);
     if (!consumer) {
-      diagnostics.push(diagnostic("binding.consumer-unknown", bindingPath(binding), binding.consumerImplementationId));
+      diagnostics.push(diagnostic("binding.unknown-consumer", bindingPath(binding), binding.consumerImplementationId));
       continue;
     }
     if (new Set(binding.providerImplementationIds).size !== binding.providerImplementationIds.length) {
-      diagnostics.push(diagnostic("binding.provider-duplicate", bindingPath(binding), binding.providerImplementationIds.join(",")));
+      diagnostics.push(diagnostic("binding.duplicate", bindingPath(binding), binding.providerImplementationIds.join(",")));
       continue;
     }
     const slot = consumer.slots.find((item) => item.id === binding.slotId);
     if (!slot) {
-      diagnostics.push(diagnostic("binding.slot-unknown", bindingPath(binding), binding.slotId));
+      diagnostics.push(diagnostic("binding.unknown-slot", bindingPath(binding), binding.slotId));
       continue;
     }
     if ((slot.cardinality.kind === "required" || slot.cardinality.kind === "optional") && binding.providerImplementationIds.length > 1) {
-      diagnostics.push(diagnostic("binding.ambiguous", bindingPath(binding), binding.providerImplementationIds.join(",")));
+      diagnostics.push(diagnostic("binding.cardinality", bindingPath(binding), binding.providerImplementationIds.join(",")));
       continue;
     }
     const unknownProviders = binding.providerImplementationIds.filter((id) => !byImplementation.has(id));
-    for (const id of unknownProviders) diagnostics.push(diagnostic("binding.provider-unknown", bindingPath(binding, id), id));
+    for (const id of unknownProviders) diagnostics.push(diagnostic("binding.unknown-provider", bindingPath(binding, id), id));
     if (unknownProviders.length) continue;
     for (const providerId of binding.providerImplementationIds) {
       const provider = byImplementation.get(providerId)!;
       if (!selectedIds.has(providerId)) {
-        diagnostics.push(diagnostic("binding.provider-unselected", bindingPath(binding, providerId), providerId));
+        diagnostics.push(diagnostic("binding.provider-not-selected", bindingPath(binding, providerId), providerId));
         continue;
       }
       const compatible = provider.provides.find((item) => item.id === slot.capability.id);
-      if (!compatible || compatible.version !== slot.capability.version) diagnostics.push(diagnostic("binding.capability", bindingPath(binding, providerId), slot.capability.id));
+      if (!compatible) diagnostics.push(diagnostic("binding.capability-missing", bindingPath(binding, providerId), slot.capability.id));
+      else if (compatible.version !== slot.capability.version) diagnostics.push(diagnostic("binding.compatibility-mismatch", bindingPath(binding, providerId), slot.capability.id));
       else validEdges.push([consumer.implementationId, providerId]);
     }
     const count = binding.providerImplementationIds.length;
@@ -126,7 +119,7 @@ export function qualify(world: World): Outcome {
     reachable.add(id);
     pending.push(...(dependencies.get(id) ?? []));
   }
-  for (const id of inventory) if (!reachable.has(id)) diagnostics.push(diagnostic("graph.unreachable", `/implementations/${id}`, id));
+  for (const id of inventory) if (!reachable.has(id)) diagnostics.push(diagnostic("profile.unreachable-selection", `/implementations/${id}`, id));
 
   const consumers = new Map<string, string[]>();
   const indegree = new Map<string, number>(inventory.map((id) => [id, 0]));

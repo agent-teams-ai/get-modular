@@ -7,7 +7,7 @@ import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 export const lab = "tests/qualification/implementation-readiness/api-authoring/common";
-const configuration = ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml"];
+export const configuration = ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "architecture/contracts/v1/composition.schema.json", "architecture/contracts/v1/diagnostic-catalog.json"];
 export const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const git = (root, ...args) => execFileSync("git", args, { cwd: root });
 const relevant = (path) => configuration.includes(path) || (path.startsWith(`${lab}/`) && /\.(ts|mjs|json)$/.test(path) && !path.includes("/dist/"));

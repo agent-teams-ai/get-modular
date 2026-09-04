@@ -44,10 +44,17 @@ Shared oracle/types/runner code is excluded from this candidate-specific ratio,
 which is not a product generic-glue percentage. Declaration measures use emitted
 `.d.ts` bytes. Files/module, binding loci and removal/disable edits are explicitly
 layout assumptions, not observed product edits. Desired-state filtering is
-inside the synthetic oracle and does not prove a Host boundary. Split factories
+performed by an explicit test-Host before the oracle, which rejects a raw desired
+profile. This is a fixture policy, not a production desired-state contract. Split factories
 are associated and exercised only in the two host probes, with mismatched ID
 rejection and compile-time dependency checks. Split scale probes emit both
 metadata/ref and factory files; other candidates emit declarations only.
 Compile duration is an observation, not a threshold or an equal-workload ranking.
+The catalog permits alternate implementations of a module; repeated selections
+are rejected, and either individual alternative is tested. Semantic code names
+come from the pinned accepted catalog, but diagnostic payloads and normalized
+capability fields are deliberately simplified. S19 distinguishes valid SlotIds
+from arbitrary hostile record keys using the pinned grammar. None of these
+checks replaces the future full wire, comparator, SCC or resource conformance.
 Tree-shaking and runtime performance are `not-measured` because this lab has no
 pinned bundler and no production runtime subject.

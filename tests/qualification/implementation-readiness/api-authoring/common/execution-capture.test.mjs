@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import test from "node:test";
-import { inputSnapshot, lab, sha256, verifyCapture } from "./execution-capture.mjs";
+import { configuration, inputSnapshot, lab, sha256, verifyCapture } from "./execution-capture.mjs";
 
 test("capture verifier detects source, manifest, command and result drift", (t) => {
   const root = mkdtempSync(join(tmpdir(), "gm-execution-verifier-"));
@@ -12,7 +12,10 @@ test("capture verifier detects source, manifest, command and result drift", (t) 
   const git = (...args) => execFileSync("git", args, { cwd: root, stdio: "pipe" }).toString().trim();
   git("init");
   mkdirSync(join(root, lab), { recursive: true });
-  for (const path of ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", `${lab}/run.mjs`]) writeFileSync(join(root, path), "fixture\n");
+  for (const path of [...configuration, `${lab}/run.mjs`]) {
+    mkdirSync(dirname(join(root, path)), { recursive: true });
+    writeFileSync(join(root, path), "fixture\n");
+  }
   const commit = () => { git("add", "."); git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "commit", "-m", "test fixture"); return git("rev-parse", "HEAD"); };
   const sourceCommit = commit();
   const result = Buffer.from(JSON.stringify({ status: "pass", executionCount: 90, scenarioCount: 30, emittedDeclarations: { "fixture.d.ts": sha256("fixture") } }));
