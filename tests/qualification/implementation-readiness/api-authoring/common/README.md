@@ -30,6 +30,7 @@ After committing executable inputs, capture once to a new external directory:
 node tests/qualification/implementation-readiness/api-authoring/common/execution-capture.mjs --capture /tmp/gm-api-observation
 node tests/qualification/implementation-readiness/api-authoring/common/execution-capture.mjs --verify research/implementation-readiness/evidence/api-authoring-execution.json research/implementation-readiness/evidence/api-authoring-exact-run.json
 node --test tests/qualification/implementation-readiness/api-authoring/common/execution-capture.test.mjs
+node --test tests/qualification/implementation-readiness/api-authoring/common/authoring-edits.test.mjs
 ```
 
 The coordinator retains both output files together in a later evidence commit.
@@ -42,8 +43,16 @@ regions are supplemented with all remaining candidate source and the split
 association file; `totalSupportLoc` includes helpers and translation code.
 Shared oracle/types/runner code is excluded from this candidate-specific ratio,
 which is not a product generic-glue percentage. Declaration measures use emitted
-`.d.ts` bytes. Files/module, binding loci and removal/disable edits are explicitly
-layout assumptions, not observed product edits. Desired-state filtering is
+`.d.ts` bytes. File and edit counts now come from six generated before/after
+source experiments per candidate, each starting with ten declarations. Every
+source tree is compiled and its emitted input compared with the intended input;
+the oracle then checks actual outcomes. Git numstat with fixed diff options counts
+changed lines; file hashes and binding-record coordinates identify changed loci.
+The identical feature-local layout has declaration/factory files, an explicit
+catalog, a complete profile and separate test-Host desired state. Support and
+fixed test entrypoints do not count as author edits. These are measured synthetic
+edits, not product measurements or human task times; no runtime construction,
+cleanup or loader-regeneration cost is included in them. Desired-state filtering is
 performed by an explicit test-Host before the oracle, which rejects a raw desired
 profile. This is a fixture policy, not a production desired-state contract. Split factories
 are associated and exercised only in the two host probes, with mismatched ID

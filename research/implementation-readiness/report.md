@@ -400,9 +400,30 @@ complete transitive API. Split scale probes include an extra factory file;
 the timings therefore do not rank identical compile workloads.
 
 Exact compile observations belong only to the retained machine-readable run,
-not a second manually copied timing table. File/edit counts in this lab are
-layout assumptions, not measured product changes. Synthetic declaration emit
-timings do not establish product navigation or runtime-scale benefit.
+not a second manually copied timing table. The edit experiment now generates
+before/after source trees for six changes per candidate with ten baseline
+declarations. All 36 trees compile; emitted input must equal intended input,
+and all candidates must have identical input and outcome hashes for each change.
+File hashes, Git numstat and binding-record coordinates replace layout estimates.
+
+| Synthetic change | Changed authoring files, all candidates | Result |
+| --- | --- | --- |
+| Add a root module | 4, including 2 new module files | Valid complete profile |
+| Rebind to another existing provider | 1, containing 1 changed binding record | Valid profile selects the other provider |
+| Remove provider and replace its binding | 4, including 2 deleted module files | Valid profile, no stale catalog import |
+| Remove provider without repairing profile | 3 | `profile.unknown-module` |
+| Disable required provider | 1 desired-state file | `binding.missing` after test-Host preprocessing |
+| Disable optional provider | 1 desired-state file | Explicit absence, valid profile |
+
+This is a chosen feature-local layout, not a topology mandated by any syntax.
+All candidates keep factories separate from inert metadata; the split candidate
+adds typed association inside its factory file, not an arbitrary extra file.
+The line deltas, exact changed paths and hashes are in `metrics.*.editMeasurements`.
+Fixed test entrypoints/support are unchanged and excluded. The experiment does
+not execute factories, regenerate product loaders, measure developer time or
+prove navigation at 1000 modules. Its outcome is narrower: syntax alone does not
+reduce edit loci in this layout. Runtime-scale and production maintenance
+benefits remain unmeasured.
 
 The preferred internal direction is one inert descriptor model, an optional
 identity-only `defineModule` facade, and separate product-owned typed factories

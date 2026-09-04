@@ -72,7 +72,10 @@ witness as product decisions.
   source, incomplete manifest, failed command and changed result;
 - latest GitHub CI and affected-area exact-head re-review remain required.
 
-Layout/edit counts are assumptions, not product measurements. Candidate support
+Edit counts now come from six before/after source experiments per candidate:
+36 compiled trees, identical semantic changes, source hashes, Git line counts
+and binding-record coordinates. These are synthetic layout measurements, not
+product edits, runtime loader costs or developer time. Candidate support
 counts include helpers/translation, and split factory association is exercised
 in both host probes. ADR-0007 inherited lookup and full ADR-0008 construction and
 behavior evidence remain accepted; no product decision was silently changed.

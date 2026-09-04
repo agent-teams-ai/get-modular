@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
 import { pathToFileURL } from "node:url";
+import { measureAuthoringEdits } from "./authoring-edits.mjs";
 
 const here = resolve("tests/qualification/implementation-readiness/api-authoring/common");
 const tscPath = resolve("node_modules/typescript/bin/tsc");
@@ -308,6 +309,13 @@ try {
 } finally { rmSync(scaleRoot, { recursive: true, force: true }); }
 
 const metrics = {};
+const authoringEdits = await measureAuthoringEdits({ here, tscPath, candidateIds: adapters.map(({ id }) => id), observe });
+assert(authoringEdits.length === 18, "missing authoring edit experiment");
+for (const action of new Set(authoringEdits.map((entry) => entry.action))) {
+  const rows = authoringEdits.filter((entry) => entry.action === action);
+  assert(rows.length === 3 && new Set(rows.map(({ candidate }) => candidate)).size === 3, `unequal edit coverage for ${action}`);
+  assert(new Set(rows.map(({ beforeInputSha256, afterInputSha256, beforeOutcome, afterOutcome }) => canonical({ beforeInputSha256, afterInputSha256, beforeOutcome, afterOutcome }))).size === 1, `unequal edit inputs/outcomes for ${action}`);
+}
 const sourceLoc = (source) => source.split("\n").filter((line) => line.trim() && !line.trim().startsWith("//")).length;
 for (const { adapter, sourcePath, stem } of candidateSources) {
   const source = readFileSync(sourcePath, "utf8");
@@ -319,7 +327,7 @@ for (const { adapter, sourcePath, stem } of candidateSources) {
   const totalSupportLoc = genericGlueLoc + candidateSupportLoc + separateFactoryLoc;
   metrics[adapter.id] = {
     authoringLoc, genericGlueLoc, candidateSupportLoc, separateFactoryLoc, totalSupportLoc, genericGlueRatio: totalSupportLoc / (authoringLoc + totalSupportLoc),
-    layoutAssumptions: { filesPerModule: adapter.id === "split-declaration-factory" ? 2 : 1, bindingLoci: 1, removalEdits: 2, disableEdits: 1, evidence: "not measured by editing product modules" },
+    editMeasurements: authoringEdits.filter(({ candidate }) => candidate === adapter.id),
     explicitAnnotationMatchesInCandidateFile: (source.match(/satisfies Declaration|: CandidateAdapter|ActivationFactory/g) ?? []).length,
     declarationLines: declaration.trimEnd().split("\n").length, declarationBytes: Buffer.byteLength(declaration), declarationExports: (declaration.match(/^export /gm) ?? []).length,
     serializedBytes: Buffer.byteLength(canonical(corpus.map(({ input }) => adapter.encode(input)))), importCounters: {
@@ -338,7 +346,7 @@ const summary = {
   scenarioMatrix: corpus.map(({ id, title, evidenceClass, expected, hostProbe }) => ({ id, title, evidenceClass, expected, ...(hostProbe ? { hostProbe } : {}) })),
   executions, metrics,
   emittedDeclarations: Object.fromEntries(readdirSync(emitRoot).filter((name) => name.endsWith(".d.ts")).sort(compare).map((name) => [name, createHash("sha256").update(readFileSync(join(emitRoot, name))).digest("hex")])),
-  limitations: { desiredState: "explicit test-Host preprocessing policy, not a production desired-state contract", semantics: "simplified normalized lab inputs and diagnostic payloads, not full wire/diagnostic/SCC conformance", measurements: "synthetic source/emit counts only; layout edits are assumptions" },
+  limitations: { desiredState: "explicit test-Host preprocessing policy, not a production desired-state contract", semantics: "simplified normalized lab inputs and diagnostic payloads, not full wire/diagnostic/SCC conformance", measurements: "synthetic source/emit counts and six emitted-source edit experiments per candidate; chosen feature-local topology, not product edits or human task times" },
   guards: { exactClosedCorpus: true, substantiveScenarioWitnesses: true, immutablePlainData: true, ordinaryHelperReadsWithoutValidation: true, inheritedHelperReads: true, genuineCandidateShapes: true, splitFactoryAssociation: true, noExpectationManufacture: true, noExecutableDiscoveryImports: true, hiddenFallbackRejected: true, noRegistrationOrderSemantics: true, permutationStable: true, hostileOwnKeys: true, selectedLiteralLoadersOnly: true, directPureDiParity: true, declarationSerializability: true, actualDeclarationEmitEveryCandidate: true, factoriesRestrictedToHostProbes: true },
 };
 mkdirSync(join(here, "dist"), { recursive: true });
