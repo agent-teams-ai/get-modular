@@ -89,8 +89,8 @@ alone.
 
 | Milestone | Proposed decisions required | Blocked without them |
 | --- | --- | --- |
-| M1 `direct-semantics-qualified` on Node through the object entrypoint | None; accepted ADR-0015 already lets the gate admit private `packages/core` source | Private package source and the first executable subject |
-| M2 raw entrypoint and carriers | ADR-0013 and ADR-0014 together as one diagnostic generation 2 transaction: successor schema enum, catalog rank, diagnostic contract, snapshots, checker and ledger, because ADR-0007 keeps the base enum and code rank byte-identical | Raw decoding exposure, carrier admission and duplicate binding-record behavior |
+| M1 private normalized semantics on Node | None; accepted ADR-0015 lets the gate admit private `packages/core` source after the owner-start record | Private package source and the first executable normalized-value subject |
+| M2 object/raw entrypoints and carriers | ADR-0013 and ADR-0014 together as one diagnostic generation 2 transaction: successor schema enum, catalog rank, diagnostic contract, snapshots, checker and ledger, because ADR-0007 keeps the base enum and code rank byte-identical | Both carrier adapters, raw decoding exposure and duplicate binding-record behavior |
 | M3 public barrel and package carrier | ADR-0009 and ADR-0012 | Public names, export map and any packed publication candidate |
 | M3 emitter and generated stage1 | ADR-0016 for the dependency-record seam and the construction witness; ADR-0011 or a narrower successor only for release custody | `self-composed-qualified` and every release custody claim |
 
@@ -104,22 +104,22 @@ in a decision record and reference it from the first private package pull
 request, materialize private `packages/core`, reach M1 on Node, prepare the diagnostic generation 2
 transaction in parallel with M1, then proceed to M2 and M3 in that order.
 
-### Per-phase export matrix
+### Per-phase callable matrix
 
 This matrix is an implementation boundary, not a new contract or public-name
 decision. It resolves which entry points a qualification subject may expose at
 each checkpoint:
 
-| Phase | Direct and generated subject may expose | Explicitly excluded |
+| Phase | Qualification subject may expose | Explicitly excluded |
 | --- | --- | --- |
-| M1 private object checkpoint | `compileCompositionV1`, the four accepted authoring helpers and the object-contract types needed by that subject | `compileCompositionJsonV1`, raw decoders, carrier adapters, package exports, and runtime loading |
-| M2 private carrier checkpoint | The M1 object boundary plus `compileCompositionJsonV1`, only after the accepted successor decisions for raw carriers and duplicate binding records | Public publication, unapproved carrier behavior, and product/runtime lifecycle |
+| M1 private normalized checkpoint | One unexported normalized-value seam named only in private source and qualification configuration | `compileCompositionV1`, `compileCompositionJsonV1`, authoring/carrier adapters, package exports and runtime loading |
+| M2 private carrier checkpoint | The accepted object/raw compiler names and authoring helpers, only after the successor decisions for carriers and duplicate binding records are accepted | Public publication, unapproved carrier behavior and product/runtime lifecycle |
 | M3 public/package checkpoint | Exactly the export map accepted by the naming and package-carrier decisions; unversioned names only after ADR-0009 or its successor is accepted | `stage0` exports, qualification-only variants, implicit aliases, and any unresolved raw or carrier surface |
 
-The direct and generated subjects must expose the same row of this matrix, not
-the full two-entrypoint boundary prematurely. Therefore M1 can prove parity
-for the object-only subset without claiming raw support; M2 is the first phase
-where the raw entry point is in scope. A subject or document must not use
+The direct and generated subjects must expose the same applicable row of this
+matrix, not the two-entrypoint boundary prematurely. M1 proves only normalized
+semantic parity; M2 is the first phase where either carrier entrypoint is in
+scope. A subject or document must not use
 "same accepted entry points" without naming the applicable matrix row.
 
 ### Owner-start admission record
@@ -293,7 +293,7 @@ the evidence and review affected by that change.
 No compiler, plugin host, lifecycle engine, Cordis adoption or product API
 changes are implemented here.
 
-## Phase 1: package topology and public boundary
+## Phase 1: package topology and private composition boundary
 
 **Purpose:** establish the package boundary at the same substantive checkpoint
 as the first Core behavior. A package shell or declaration-only facade is not
@@ -342,15 +342,17 @@ smaller split would make it unverifiable.
    substantive vectors, fixtures and packed-consumer tooling may be published
    after their surface gate; runner, subject, report and attestation contracts
    remain private until a separate compatibility decision accepts them.
-3. Freeze one export map only after the first substantive compiler behavior is
+3. Freeze one public export map only after the first substantive compiler behavior is
    present. `ModuleDeclaration`, `CompositionProfile`, `CompositionPlan`,
    `Diagnostic`, `PlanDigest`, `defineModule`, `required`, `optional`, `many`
    and the accepted compiler entrypoints must have their accepted semantics.
    Compiler entrypoints cannot be throwing, pass-through, no-op or
    declaration-only placeholders; authoring helpers retain the deliberately
-   pass-through behavior accepted by ADR-0007. Stop before export freeze or
-   subject packing until accepted authority supplies the exhaustive public name
-   map, package carrier and both JavaScript carrier boundaries.
+   pass-through behavior accepted by ADR-0007. Stop before public export freeze
+   or distribution packing until accepted authority supplies the exhaustive
+   public name map, package carrier and both JavaScript carrier boundaries.
+   This does not block a temporary hash-bound qualification archive that exposes
+   only the M1 private normalized seam and is never a publication candidate.
 4. Promote the first production package atomically to `source-admitted`: add
    the pinned `architecture/foundation/source-dependencies.yaml`, enable the
    Engineering Foundation source-dependency capability, add positive and
@@ -358,7 +360,7 @@ smaller split would make it unverifiable.
    `check:fast` and `check`. Structural and runtime conformance remain separate
    promotion states.
 5. Create two temporary, separately hash-identified qualification archives with
-   the same M1 object-only compiler boundary: direct stage0 assembly and
+   the same M1 private normalized-value boundary: direct stage0 assembly and
    generated stage1 assembly. Run default-deny export/deep-import checks,
    private archive allowlist checks, declaration-leakage audits and inert import
    smoke tests against both. These archives are qualification subjects, not
@@ -378,11 +380,11 @@ smaller split would make it unverifiable.
 
 ### Phase 1 exit criteria
 
-After Phases 2-4 provide the complete substantive compiler, two disposable
-TypeScript consumers compile through the public barrel only, the retained
-generated stage1 archive passes the named resolver/type-scale gates, and the
-direct archive passes the same export, deep-import, declaration-leakage and
-inert-import audits. No Core API
+After Phases 2-4 provide the complete substantive private compiler, the direct
+and generated qualification subjects pass the same normalized-semantic,
+deep-import, declaration-leakage and inert-import audits. Public-barrel and
+TypeScript consumer gates remain deferred until the M2/M3 decisions admit their
+surfaces. No admitted Core boundary
 exposes a container, resolver, registry, Context/Fiber, filesystem path,
 executable factory, transport DTO or versioned name. A package shell without
 substantive behavior cannot pass this phase.

@@ -1,28 +1,59 @@
 ## Scope
 
-This draft records an implementation-readiness audit and API authoring lab for Get Modular. It does not implement a production core, public API, runtime engine, plugin host, product adapter, or package publication.
+This Draft PR records the Get Modular implementation-readiness audit and API
+authoring lab. It contains no production Core, public API, runtime engine,
+plugin host, product integration, package publication or accepted-ADR change.
 
-## Evidence
+## Exact evidence
 
-- Exact research base: `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418`
-- Current remediation subject: `f88ead7f590c6c426f039b8884ba9da03a5ea3ce`
-- Historical reviewed SHA is carried by each retained result file under `research/implementation-readiness/evidence/raw/final-4dee/`. Later six-reviewer waves inspected `5a08722` and `22acecf` on the verified hosted worker; their external custody is recorded in `research/implementation-readiness/evidence/reconciliation.json` without copying self-referential result files. No reviewer authorized production or public API work.
-- 51 unique worker result envelopes retained: 49 completed and 2 partial
-- 16 targeted red-team critics completed across governance, API, composition and OSS/DI
-- Four independent integrators completed
-- Disposable API authoring fixtures cover nine candidates and remain under `tests/qualification`; b9 directly probes the accepted helper shape, while all fixtures remain non-authoritative until a private compiler subject exists.
-- Local `pnpm check` passed on Node `24.18.0` at the remediation head.
+- initial base: `0f7d2fc64ae7258781e6c2676ca1e0ccc377f418`;
+- frozen four-integrator subject:
+  `72d140da7975d0ca2b5f4180885c6fc4b2c05cd8`;
+- report synthesis input:
+  `c40d016c13c5a5ff3fbb5c27d5d668229755bec2`;
+- canonical inventory: 110 raw files, 97 byte-unique results, 88 canonical
+  roles and 9 attempts;
+- dispute review: 32 closed topic-role cells, aggregate
+  `ccd13b6652a45a6e4d80a4ca5b2ff80a95fdc7a624d3f30695d181e61e233838`;
+- four read-only integrators, aggregate
+  `4b53d31b981ee0a4ea8d6a6329148453d925fdff2fd0aee40225ad22dd2957ba`;
+- API lab: the same 30 scenarios across three candidates, 90 executions,
+  corpus digest
+  `fc2628ffc60914e23bef29d72b1cdf5f92f3d0d470e107fad503900a0f468f39`.
 
-The historical hosted research environment was Node 24.16, below the repository requirement. That limitation is recorded rather than treated as successful repository verification. Six hosted reviewers inspected the preceding exact subject `22acecf`; the later `f88ead7` fixture/documentation correction invalidates that review for the current head. Exact B6/B9 probe outputs are retained in `research/implementation-readiness/evidence/exact-head-api-probes.json`. The branch intentionally has no production Core subject. Source-unavailable OSS attempts are also recorded as limitations, not negative evidence.
+Worker count is not treated as proof. Partial, blocked, retried and
+source-unavailable results remain explicitly classified.
 
-## Findings
+## Verdict
 
-The evidence supports a `CONDITIONAL` recommendation for a small private semantic Core only after the owner-start precondition is recorded. It is `NO-GO` for public package work, runtime lifecycle, Cordis adoption, plugin host work, raw-carrier semantics, self-composition qualification, and release claims at this exact state. The remediation also makes the profile checker transition-aware without granting evidence: the current CLI profile remains `not-claimed`, while `governance:check` remains the authority for promotion custody.
+No P0 was reproduced. The result is **NO-GO now** for the first tracked private
+Core source because the product-owner start record is absent and unenforced.
+This patch resolves the earlier M1 callable/packing contradiction without
+admitting either carrier.
 
-The report identifies evidence gaps and implementation blockers, including owner-start and real subject gates, cardinality and cycle coverage, an unselected-binding resource oracle, API fixture semantic mismatches, the remaining negative B5 serialization cases, and unresolved self-composition witness authority. No P0 was found. These findings do not change accepted ADRs.
+After one bounded Phase 0 authority/admission repair, the result becomes
+**CONDITIONAL** for a private normalized-value semantic slice. It remains
+**NO-GO** for Phase 3/4 qualification, public packaging, raw carriers,
+self-composition, runtime conformance and release claims.
 
-## Review policy
+The preferred private authoring direction is inert descriptor data plus a
+zero-behavior typed `defineModule` facade and separate product-owned factories
+with Pure DI. This is a recommendation, not public API acceptance. The report
+keeps observable accessor order, public typing, carriers and the ADR-0016
+witness as product decisions.
 
-This PR remains intentionally Draft. The current subject requires a fresh exact-head review after the `f88ead7` correction. This research branch does not authorize follow-up production implementation. It must not be merged automatically. No accepted ADR, production consumer, public SPI, or package was changed.
+## Verification
 
-See `research/implementation-readiness/report.md` for the full authority matrix, evidence classification, API comparison, OSS lessons, anti-pattern catalogue, quantitative notes, open decisions, and recommended next checkpoint.
+- exact API lab compile and runner: passed on Node `24.18.0`;
+- inventory and evidence digests: independently recomputed;
+- full `pnpm check`: passed before the report rewrite;
+- final exact-head local gates and six external hosted reviews are required
+  after the report commit.
+
+This PR stays Draft and must not be merged automatically. The final reviewed
+head and external reviewer digests belong in the live PR body/comment after the
+six-reviewer gate, avoiding self-referential evidence in the reviewed tree.
+
+See `research/implementation-readiness/report.md` for the Phase 0-4 matrix,
+quantitative API comparison, security matrix, contradictions, decision packet,
+claim/evidence ledger and exact Core start conditions.
