@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { dirname, resolve, sep } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 
@@ -17,6 +17,8 @@ import {
   inspectIndexSnapshotFile,
   inspectTrackedWorkingTreeRegularFile,
   readIndexSnapshotFile,
+  safeRepositoryPath,
+  safeRepositoryPathOrDirectory,
   untrackedPathsInScope,
 } from "./tracked-file-custody.mjs";
 
@@ -31,10 +33,8 @@ const QUALIFICATION_DOCUMENT_PATH = /^docs\/qualification\/[^/]+\.md$/u;
 const DECISION_DOCUMENT_PATH = /^docs\/decisions\/[^/]+\.md$/u;
 const GOVERNED_DOCUMENT_PATH = /^docs\/(?:architecture|decisions|open-decisions|qualification|requirements)\/[^/]+\.md$/u;
 const OPEN_DECISION_ID = /^OD-[0-9]{3}$/u;
-const NON_PORTABLE_PATH_CHARACTERS = /[<>:"|?*\u0000-\u001f]/u;
 const REVISION = /^[a-f0-9]{40}$/u;
 const REQUIREMENT = /^GM-REQ-[0-9]{3}$/u;
-const SAFE_RELATIVE_PATH = /^(?![\\/])(?!.*(?:^|[\\/])\.\.(?:[\\/]|$))[^\\]+$/u;
 const SOURCE_STATUSES = new Set([
   "accepted-authority-at-observation",
   "draft-evidence",
@@ -53,7 +53,6 @@ const QUALIFICATION_CLAIM_STATUSES = new Set([
   "structural-conformant",
   "runtime-conformant",
 ]);
-const WINDOWS_DEVICE_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.[^/]*)?$/iu;
 
 export const ACCEPTED_AUTHORITY_LEDGER_PATH =
   "architecture/authority/accepted-authorities.json";
@@ -81,18 +80,6 @@ function digestBytes(bytes, label) {
     fail(`${label} bytes are missing`);
   }
   return `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
-}
-
-function safeRepositoryPath(value) {
-  return typeof value === "string"
-    && SAFE_RELATIVE_PATH.test(value)
-    && !/^[A-Za-z]:[\\/]/u.test(value)
-    && !NON_PORTABLE_PATH_CHARACTERS.test(value)
-    && value.split("/").every(segment => segment !== ""
-      && segment !== "."
-      && segment !== ".."
-      && !/[. ]$/u.test(segment)
-      && !WINDOWS_DEVICE_NAME.test(segment));
 }
 
 function uniqueStrings(values, label) {
@@ -483,7 +470,7 @@ export function validateSourceMap(sourceMap) {
       fail(`${source.id} must identify its pull request`);
     }
     for (const path of uniqueStrings(source.paths, `${source.id}.paths`)) {
-      if (!SAFE_RELATIVE_PATH.test(path) || path.includes(`${sep}..${sep}`)) {
+      if (!safeRepositoryPathOrDirectory(path)) {
         fail(`${source.id} has an unsafe evidence path`);
       }
     }
