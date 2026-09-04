@@ -29,6 +29,7 @@ import {
   validateSourceMap,
   validateTraceability,
 } from "../architecture/checks/governance.mjs";
+import { versionedIdentifierMatches } from "../architecture/checks/production-artifacts.mjs";
 import {
   assertSupportedNodeVersion,
   isDirectExecution,
@@ -189,6 +190,7 @@ test("traceability is closed and bidirectional", () => {
       schemaVersion: 1,
       decisionCatalog: ["OD-001"],
       implementationBlockers: ["OD-001"],
+      publicationBlockers: [],
       requirements: {
         "GM-REQ-001": {
           authorities: ["ADR-0001"],
@@ -264,6 +266,7 @@ test("missing reverse traceability fails closed", () => {
       schemaVersion: 1,
       decisionCatalog: [],
       implementationBlockers: [],
+      publicationBlockers: [],
       requirements: {
         "GM-REQ-001": { authorities: ["ADR-0001"], provenance: ["source-a"] },
       },
@@ -277,6 +280,7 @@ test("unknown authorities and non-open blockers fail closed", () => {
     schemaVersion: 1,
     decisionCatalog: ["OD-001"],
     implementationBlockers: ["OD-001"],
+    publicationBlockers: [],
     requirements: {
       "GM-REQ-001": { authorities: ["ADR-9999"], provenance: ["source-a"] },
     },
@@ -402,7 +406,11 @@ test("accepted authority custody closes ledger shape, paths, bytes, and ADR anch
 test("open decisions admit private package source but block publication and runtime claims", async () => {
   const blockerIds = new Set(["OD-001"]);
   const manifests = new Map([
-    ["packages/engine/package.json", { name: "@get-modular/core", private: true }],
+    ["packages/engine/package.json", {
+      name: "@get-modular/core",
+      private: true,
+      type: "module",
+    }],
   ]);
   const readPackageManifest = async path => manifests.get(path);
   const privateArtifacts = [
@@ -413,7 +421,9 @@ test("open decisions admit private package source but block publication and runt
   ];
 
   await assert.doesNotReject(validateBlockedImplementation({
+    readProductionSource: async () => "export const x = 1;",
     blockerIds,
+    publicationBlockerIds: blockerIds,
     productionArtifacts: privateArtifacts,
     claimDocuments: [
       { id: "QUAL-SOURCE", status: "source-admitted" },
@@ -423,25 +433,182 @@ test("open decisions admit private package source but block publication and runt
   }));
 
   await assert.rejects(validateBlockedImplementation({
+    readProductionSource: async () => "export const x = 1;",
     blockerIds,
+    publicationBlockerIds: blockerIds,
     productionArtifacts: privateArtifacts,
     claimDocuments: [{ id: "QUAL-RUNTIME", status: "runtime-conformant" }],
     readPackageManifest,
   }), /runtime-conformance claims are blocked/u);
 
   for (const manifest of [
-    { name: "@get-modular/core", private: false },
-    { name: "@get-modular/core", private: true, exports: { ".": "./dist/index.js" } },
-    { name: "@get-modular/unknown", private: true },
+    {
+      name: "@get-modular/core",
+      private: false,
+      type: "module",
+      exports: { ".": { import: { types: "./dist/index.d.ts", default: "./dist/index.js" }, default: "./dist/index.js" } },
+    },
+    {
+      name: "@get-modular/core",
+      private: true,
+      type: "module",
+      exports: { ".": { import: { types: "./dist/index.d.ts", default: "./dist/index.js" }, default: "./dist/index.js" } },
+    },
   ]) {
     manifests.set("packages/engine/package.json", manifest);
     await assert.rejects(validateBlockedImplementation({
+      readProductionSource: async () => "export const x = 1;",
       blockerIds,
+      publicationBlockerIds: blockerIds,
       productionArtifacts: privateArtifacts,
       claimDocuments: [],
       readPackageManifest,
     }), /public or publication-capable artifacts are blocked/u);
   }
+
+  manifests.set("packages/engine/package.json", { name: "@get-modular/unknown", private: true });
+  await assert.rejects(validateBlockedImplementation({
+    readProductionSource: async () => "export const x = 1;",
+    blockerIds,
+    publicationBlockerIds: blockerIds,
+    productionArtifacts: privateArtifacts,
+    claimDocuments: [],
+    readPackageManifest,
+  }), /accepted package identity: packages\/engine\/package\.json/u);
+
+  await assert.rejects(validateBlockedImplementation({
+    readProductionSource: async () => "export const x = 1;",
+    blockerIds,
+    productionArtifacts: privateArtifacts,
+    claimDocuments: [],
+    readPackageManifest,
+  }), /publication blockers must be supplied as sets/u);
+});
+
+test("publication surfaces are blocked only by the publication-blocker subset", async () => {
+  const blockerIds = new Set(["OD-005", "OD-006"]);
+  const manifests = new Map([
+    ["packages/engine/package.json", {
+      name: "@get-modular/core",
+      type: "module",
+      exports: { ".": { import: { types: "./dist/index.d.ts", default: "./dist/index.js" }, default: "./dist/index.js" } },
+    }],
+  ]);
+  const readPackageManifest = async path => manifests.get(path);
+  const artifacts = ["packages/engine/package.json", "packages/engine/src/index.ts"];
+
+  await assert.doesNotReject(validateBlockedImplementation({
+    readProductionSource: async () => "export const x = 1;",
+    blockerIds,
+    publicationBlockerIds: new Set(),
+    productionArtifacts: artifacts,
+    claimDocuments: [{ id: "QUAL-SOURCE", status: "source-admitted" }],
+    readPackageManifest,
+  }));
+  await assert.rejects(validateBlockedImplementation({
+    readProductionSource: async () => "export const x = 1;",
+    blockerIds,
+    publicationBlockerIds: new Set(),
+    productionArtifacts: artifacts,
+    claimDocuments: [{ id: "QUAL-RUNTIME", status: "runtime-conformant" }],
+    readPackageManifest,
+  }), /runtime-conformance claims are blocked/u);
+  await assert.rejects(validateBlockedImplementation({
+    readProductionSource: async () => "export const x = 1;",
+    blockerIds,
+    publicationBlockerIds: new Set(["OD-005"]),
+    productionArtifacts: artifacts,
+    claimDocuments: [],
+    readPackageManifest,
+  }), /public or publication-capable artifacts are blocked by open decisions: .*\(OD-005\)/u);
+  await assert.rejects(validateBlockedImplementation({
+    readProductionSource: async () => "export const x = 1;",
+    blockerIds,
+    publicationBlockerIds: new Set(["OD-001"]),
+    productionArtifacts: artifacts,
+    claimDocuments: [],
+    readPackageManifest,
+  }), /publication blocker OD-001 is not an active open decision/u);
+
+  // No open decision at all: accepted identity with a public export map passes.
+  await assert.doesNotReject(validateBlockedImplementation({
+    readProductionSource: async () => "export const x = 1;",
+    blockerIds: new Set(),
+    publicationBlockerIds: new Set(),
+    productionArtifacts: artifacts,
+    claimDocuments: [{ id: "QUAL-RUNTIME", status: "runtime-conformant" }],
+    readPackageManifest,
+  }));
+
+  // Accepted package identity is checked regardless of blockers.
+  for (const [activeBlockers, publicationBlockers] of [
+    [new Set(), new Set()],
+    [new Set(["OD-005"]), new Set()],
+    [new Set(["OD-005"]), new Set(["OD-005"])],
+  ]) {
+    manifests.set("packages/engine/package.json", {
+      name: "@evil/thing",
+      type: "module",
+      exports: { ".": { import: { types: "./dist/index.d.ts", default: "./dist/index.js" }, default: "./dist/index.js" } },
+    });
+    await assert.rejects(validateBlockedImplementation({
+      readProductionSource: async () => "export const x = 1;",
+      blockerIds: activeBlockers,
+      publicationBlockerIds: publicationBlockers,
+      productionArtifacts: artifacts,
+      claimDocuments: [],
+      readPackageManifest,
+    }), /accepted package identity: packages\/engine\/package\.json/u);
+    manifests.set("packages/engine/package.json", { name: "@evil/thing", private: true });
+    await assert.rejects(validateBlockedImplementation({
+      readProductionSource: async () => "export const x = 1;",
+      blockerIds: activeBlockers,
+      publicationBlockerIds: publicationBlockers,
+      productionArtifacts: artifacts,
+      claimDocuments: [],
+      readPackageManifest,
+    }), /accepted package identity: packages\/engine\/package\.json/u);
+  }
+
+  // An unreadable manifest fails closed.
+  await assert.rejects(validateBlockedImplementation({
+    readProductionSource: async () => "export const x = 1;",
+    blockerIds: new Set(),
+    publicationBlockerIds: new Set(),
+    productionArtifacts: artifacts,
+    claimDocuments: [],
+    readPackageManifest: async () => { throw new Error("unreadable"); },
+  }), /readable, sit at an accepted package root and use an accepted package identity/u);
+});
+
+test("traceability rejects publication blockers outside the active catalog", () => {
+  const sourceMap = { schemaVersion: 1, sources: [{ id: "source-a", repository: "https://example.invalid/a", revision: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef", status: "accepted-authority-at-observation", observedAt: "2026-01-01", paths: ["docs/a.md"] }] };
+  const base = {
+    requirementIds: requirementIdsFromMarkdown("### GM-REQ-001: One\n"),
+    sources: validateSourceMap(sourceMap),
+    authorityIds: new Set(["ADR-0001"]),
+    decisionIds: new Set(["OD-001", "OD-002"]),
+    blockerIds: new Set(["OD-001"]),
+  };
+  const traceabilityFor = publicationBlockers => ({
+    schemaVersion: 1,
+    decisionCatalog: ["OD-001", "OD-002"],
+    implementationBlockers: ["OD-001"],
+    publicationBlockers,
+    requirements: { "GM-REQ-001": { authorities: ["ADR-0001"], provenance: ["source-a"] } },
+    sources: { "source-a": ["GM-REQ-001"] },
+  });
+  assert.doesNotThrow(() => validateTraceability({ ...base, traceability: traceabilityFor([]) }));
+  assert.doesNotThrow(() => validateTraceability({ ...base, traceability: traceabilityFor(["OD-001"]) }));
+  assert.throws(() => validateTraceability({ ...base, traceability: traceabilityFor(["OD-002"]) }),
+    /publication blockers must be a subset/u);
+  assert.throws(() => validateTraceability({ ...base, traceability: traceabilityFor(["OD-001", "OD-001"]) }),
+    /publication blockers must be a subset/u);
+  const { publicationBlockers: _omitted, ...withoutKey } = traceabilityFor([]);
+  assert.throws(() => validateTraceability({ ...base, traceability: withoutKey }),
+    /must declare publicationBlockers as an array/u);
+  assert.throws(() => validateTraceability({ ...base, traceability: traceabilityFor("OD-001") }),
+    /must declare publicationBlockers as an array/u);
 });
 
 test("open-decision artifact admission is manifest-bound and fail-closed", async () => {
@@ -477,7 +644,7 @@ test("open-decision artifact admission is manifest-bound and fail-closed", async
   const nestedManifestPath = "packages/engine/nested/package.json";
   const nestedSourcePath = "packages/engine/nested/index.ts";
   const manifests = new Map([
-    [manifestPath, { name: "@get-modular/core", private: true }],
+    [manifestPath, { name: "@get-modular/core", private: true, type: "module" }],
     [nestedManifestPath, { name: "@get-modular/public-addon", exports: "./index.ts" }],
   ]);
   assert.deepEqual(await productionArtifactsBlockedByOpenDecisions([
@@ -1583,4 +1750,468 @@ test("mutable revisions and unsafe paths fail closed", () => {
     ...sourceMap,
     sources: [{ ...sourceMap.sources[0], observedAt: "2024-02-29" }],
   }));
+});
+
+test("nested package manifests are never an admitted identity", async () => {
+  const manifests = new Map([
+    ["packages/core/package.json", {
+      name: "@get-modular/core",
+      type: "module",
+      exports: { ".": { import: { types: "./dist/index.d.ts", default: "./dist/index.js" }, default: "./dist/index.js" } },
+    }],
+    ["packages/core/fixtures/evil/package.json", {
+      name: "@evil/thing",
+      type: "module",
+      exports: { ".": { import: { types: "./dist/index.d.ts", default: "./dist/index.js" }, default: "./dist/index.js" } },
+    }],
+  ]);
+  const readPackageManifest = async path => manifests.get(path);
+  const artifacts = [
+    "packages/core/package.json",
+    "packages/core/src/index.ts",
+    "packages/core/fixtures/evil/package.json",
+  ];
+
+  for (const publicationBlockerIds of [new Set(), new Set(["OD-005"])]) {
+    await assert.rejects(validateBlockedImplementation({
+      readProductionSource: async () => "export const x = 1;",
+      blockerIds: new Set(["OD-005", "OD-006"]),
+      publicationBlockerIds,
+      productionArtifacts: artifacts,
+      claimDocuments: [],
+      readPackageManifest,
+    }), /accepted package root.*packages\/core\/fixtures\/evil\/package\.json/su);
+  }
+
+  // A manifest directly in packages/ is not a package root either.
+  manifests.set("packages/package.json", {
+    name: "@evil/thing",
+    type: "module",
+      exports: { ".": { import: { types: "./dist/index.d.ts", default: "./dist/index.js" }, default: "./dist/index.js" } },
+  });
+  await assert.rejects(validateBlockedImplementation({
+    readProductionSource: async () => "export const x = 1;",
+    blockerIds: new Set(["OD-005", "OD-006"]),
+    publicationBlockerIds: new Set(),
+    productionArtifacts: [
+      "packages/package.json",
+      "packages/core/package.json",
+      "packages/core/src/index.ts",
+    ],
+    claimDocuments: [],
+    readPackageManifest,
+  }), /accepted package root.*packages\/package\.json/su);
+
+  await assert.doesNotReject(validateBlockedImplementation({
+    readProductionSource: async () => "export const x = 1;",
+    blockerIds: new Set(["OD-005", "OD-006"]),
+    publicationBlockerIds: new Set(),
+    productionArtifacts: artifacts.filter(path => !path.includes("fixtures")),
+    claimDocuments: [],
+    readPackageManifest,
+  }));
+});
+
+test("accepted carrier prohibitions hold with no publication blocker open", async () => {
+  const base = {
+    name: "@get-modular/core",
+    type: "module",
+    exports: { ".": { import: { types: "./dist/index.d.ts", default: "./dist/index.js" }, default: "./dist/index.js" } },
+  };
+  const artifacts = ["packages/core/package.json", "packages/core/src/index.ts"];
+  const validate = async manifest => validateBlockedImplementation({
+    readProductionSource: async () => "export const x = 1;",
+    blockerIds: new Set(["OD-005", "OD-006"]),
+    publicationBlockerIds: new Set(),
+    productionArtifacts: artifacts,
+    claimDocuments: [],
+    readPackageManifest: async path => (
+      path === "packages/core/package.json" ? manifest : undefined
+    ),
+  });
+
+  await assert.doesNotReject(validate(base));
+
+  for (const [manifest, expected] of [
+    [{ ...base, main: "./dist/index.cjs" }, /main/u],
+    [{ ...base, module: "./dist/index.js" }, /module/u],
+    [{ ...base, types: "./dist/index.d.ts" }, /types/u],
+    [{ ...base, typesVersions: {} }, /typesVersions/u],
+    [{ ...base, typings: "./dist/index.d.ts" }, /typings/u],
+    [{ ...base, scripts: { postinstall: "node ./scripts/patch.mjs" } }, /scripts\.postinstall/u],
+    [{ ...base, scripts: { prepare: "pnpm build" } }, /scripts\.prepare/u],
+    [{ ...base, scripts: { preprepare: "node x.mjs" } }, /scripts\.preprepare/u],
+    [{ ...base, scripts: { postprepare: "node x.mjs" } }, /scripts\.postprepare/u],
+    [{ ...base, scripts: { dependencies: "node x.mjs" } }, /scripts\.dependencies/u],
+    [{ ...base, scripts: { "pnpm:devPreinstall": "node x.mjs" } }, /pnpm:devPreinstall/u],
+    [{ ...base, scripts: ["postinstall"] }, /scripts must be an object/u],
+    [{ ...base, scripts: null }, /scripts must be an object/u],
+    [{ ...base, scripts: "build" }, /scripts must be an object/u],
+    [{ ...base, browser: "./dist/browser.js" }, /browser/u],
+    // ADR-0012 exposes exactly one package root through one ESM target.
+    [{ ...base, type: "commonjs" }, /type must be "module" because the carrier is ESM-only/u],
+    [
+      { ...base, exports: { ...base.exports, "./package.json": "./package.json" } },
+      /no subpath beyond "\." : \.\/package\.json/u,
+    ],
+    [
+      { ...base, exports: { ...base.exports, "./dist/*": "./dist/*" } },
+      /no subpath beyond "\."/u,
+    ],
+    [
+      { ...base, exports: { ".": { ...base.exports["."], require: "./dist/index.cjs" } } },
+      /no condition beyond import and default: require/u,
+    ],
+    [
+      { ...base, exports: { ".": { ...base.exports["."], browser: "./dist/browser.js" } } },
+      /no condition beyond import and default: browser/u,
+    ],
+    [
+      { ...base, exports: { ".": { import: base.exports["."].import } } },
+      /must declare the import and default conditions: default/u,
+    ],
+    [
+      {
+        ...base,
+        exports: { ".": { ...base.exports["."], import: { default: "./dist/index.js" } } },
+      },
+      /import must declare the types and default conditions: types/u,
+    ],
+    [
+      {
+        ...base,
+        exports: {
+          ".": { ...base.exports["."], import: { ...base.exports["."].import, node: "./n.js" } },
+        },
+      },
+      /import must declare no condition beyond types and default: node/u,
+    ],
+    [{ ...base, exports: "./dist/index.js" }, /exports must be an object with one "\." subpath/u],
+    [{ ...base, exports: { ".": "./dist/index.js" } }, /exports\["\."\] must be a condition object/u],
+  ]) {
+    await assert.rejects(validate(manifest), expected);
+    await assert.rejects(validate(manifest), /prohibited by the accepted carrier decision/u);
+  }
+
+  await assert.doesNotReject(validate({ ...base, scripts: { build: "tsc" } }));
+});
+
+test("package source must not carry a generation-suffixed identifier", async () => {
+  // ADR-0009 prohibits a generation-suffixed identifier in tests too, so this
+  // file never spells one: every fixture name is assembled from its stem and
+  // its suffix at run time.
+  const suffixed = (stem, generation) => `${stem}${"V"}${generation}`;
+  const compiler = suffixed("compileComposition", 1);
+  const declaration = suffixed("ModuleDeclaration", 1);
+  const profile = suffixed("profile", 2);
+
+  assert.deepEqual(versionedIdentifierMatches("export const x = 1;"), []);
+  assert.deepEqual(
+    versionedIdentifierMatches(`export function ${compiler}() {}`),
+    [compiler],
+  );
+  assert.deepEqual(
+    versionedIdentifierMatches(`type ${declaration} = never; const ${profile} = 1;`),
+    [declaration, profile],
+  );
+  // A trailing V without a digit, and a digit without a V, are ordinary names.
+  assert.deepEqual(versionedIdentifierMatches("const planDigest2 = 1; const nameV = 2;"), []);
+
+  const manifest = {
+    name: "@get-modular/core",
+    type: "module",
+    exports: {
+      ".": {
+        import: { types: "./dist/index.d.ts", default: "./dist/index.js" },
+        default: "./dist/index.js",
+      },
+    },
+  };
+  const sources = new Map([
+    ["packages/core/src/index.ts", "export { compileComposition } from './facade.js';"],
+    ["packages/core/src/facade.ts", `export function ${compiler}() {}`],
+  ]);
+  const call = async paths => validateBlockedImplementation({
+    blockerIds: new Set(["OD-005", "OD-006"]),
+    publicationBlockerIds: new Set(),
+    productionArtifacts: ["packages/core/package.json", ...paths],
+    claimDocuments: [],
+    readPackageManifest: async () => manifest,
+    readProductionSource: async path => sources.get(path),
+  });
+
+  await assert.doesNotReject(call(["packages/core/src/index.ts"]));
+  await assert.rejects(
+    call(["packages/core/src/index.ts", "packages/core/src/facade.ts"]),
+    new RegExp(`generation-suffixed identifier: packages/core/src/facade\\.ts ${compiler}`, "u"),
+  );
+});
+
+test("the ESM carrier rules bind core, the lifecycle rule binds every identity", async () => {
+  const core = {
+    name: "@get-modular/core",
+    type: "module",
+    exports: {
+      ".": {
+        import: { types: "./dist/index.d.ts", default: "./dist/index.js" },
+        default: "./dist/index.js",
+      },
+    },
+  };
+  const manifests = new Map([["packages/core/package.json", core]]);
+  const artifacts = [
+    "packages/core/package.json",
+    "packages/core/src/index.ts",
+    "packages/conformance/package.json",
+    "packages/conformance/src/index.ts",
+  ];
+  const validate = async () => validateBlockedImplementation({
+    readProductionSource: async () => "export const x = 1;",
+    blockerIds: new Set(["OD-005", "OD-006"]),
+    publicationBlockerIds: new Set(),
+    productionArtifacts: artifacts,
+    claimDocuments: [],
+    readPackageManifest: async path => manifests.get(path),
+  });
+
+  // The conformance package is not the ESM carrier of ADR-0012, so its own
+  // shape is not constrained by that decision.
+  manifests.set("packages/conformance/package.json", {
+    name: "@get-modular/conformance",
+    main: "./dist/index.cjs",
+    types: "./dist/index.d.ts",
+    exports: { ".": "./dist/index.js", "./vectors": "./dist/vectors.js" },
+  });
+  await assert.doesNotReject(validate());
+
+  // An install-time script runs code on every consumer, so it binds both.
+  manifests.set("packages/conformance/package.json", {
+    name: "@get-modular/conformance",
+    scripts: { postinstall: "node ./patch.mjs" },
+  });
+  await assert.rejects(validate(), /packages\/conformance\/package\.json: scripts\.postinstall/u);
+
+  manifests.set("packages/conformance/package.json", {
+    name: "@get-modular/conformance",
+    scripts: "build",
+  });
+  await assert.rejects(validate(), /packages\/conformance\/package\.json: scripts must be an object/u);
+});
+
+test("a carrier violation message separates the manifest, its fields and the reason", async () => {
+  const manifest = {
+    name: "@get-modular/core",
+    type: "module",
+    main: "./dist/index.cjs",
+    exports: {
+      ".": {
+        import: { types: "./dist/index.d.ts", default: "./dist/index.js" },
+        default: "./dist/index.js",
+      },
+    },
+    scripts: ["postinstall"],
+  };
+  await assert.rejects(validateBlockedImplementation({
+    readProductionSource: async () => "export const x = 1;",
+    blockerIds: new Set(["OD-005"]),
+    publicationBlockerIds: new Set(),
+    productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts"],
+    claimDocuments: [],
+    readPackageManifest: async () => manifest,
+  }), /packages\/core\/package\.json: main; scripts must be an object/u);
+});
+
+test("the sibling default resolves to the same build, in the normative order", async () => {
+  const target = "./dist/index.js";
+  const base = {
+    name: "@get-modular/core",
+    type: "module",
+    exports: {
+      ".": { import: { types: "./dist/index.d.ts", default: target }, default: target },
+    },
+  };
+  const validate = async manifest => validateBlockedImplementation({
+    blockerIds: new Set(["OD-005"]),
+    publicationBlockerIds: new Set(),
+    productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts"],
+    claimDocuments: [],
+    readPackageManifest: async () => manifest,
+    readProductionSource: async () => "export const x = 1;",
+  });
+
+  await assert.doesNotReject(validate(base));
+
+  for (const [manifest, expected] of [
+    // A second build behind the sibling default.
+    [
+      { ...base, exports: { ".": { import: base.exports["."].import, default: "./dist/index.cjs" } } },
+      /must resolve to the same file as exports\["\."\]\.import\.default/u,
+    ],
+    [
+      { ...base, exports: { ".": { import: base.exports["."].import, default: "./dist/browser.js" } } },
+      /must resolve to the same file/u,
+    ],
+    // Order decides which target a runtime selects, so it is normative.
+    [
+      { ...base, exports: { ".": { default: target, import: base.exports["."].import } } },
+      /must declare its conditions in the order import, default/u,
+    ],
+    [
+      {
+        ...base,
+        exports: { ".": { import: { default: target, types: "./dist/index.d.ts" }, default: target } },
+      },
+      /must declare its conditions in the order types, default/u,
+    ],
+    // A condition object nested below the leaf hides a prohibited condition.
+    [
+      {
+        ...base,
+        exports: {
+          ".": {
+            import: { types: "./dist/index.d.ts", default: { require: "./dist/index.cjs" } },
+            default: target,
+          },
+        },
+      },
+      /must be a relative file target, not a nested condition object/u,
+    ],
+    [
+      {
+        ...base,
+        exports: { ".": { import: { types: "./dist/index.d.ts", default: [target] }, default: target } },
+      },
+      /must be a relative file target, not a nested condition object/u,
+    ],
+    [
+      {
+        ...base,
+        exports: { ".": { import: { types: "./dist/index.d.ts", default: "dist/index.js" }, default: target } },
+      },
+      /must be a relative file target below the package root: dist\/index\.js/u,
+    ],
+    // ESM-only holds whether or not an export map is present yet.
+    [{ name: "@get-modular/core", type: "commonjs" }, /because the carrier is ESM-only/u],
+    [{ name: "@get-modular/core" }, /because the carrier is ESM-only/u],
+  ]) {
+    await assert.rejects(validate(manifest), expected);
+  }
+});
+
+test("a missing production source reader fails closed", async () => {
+  await assert.rejects(validateBlockedImplementation({
+    blockerIds: new Set(["OD-005"]),
+    publicationBlockerIds: new Set(),
+    productionArtifacts: [],
+    claimDocuments: [],
+    readPackageManifest: async () => undefined,
+  }), /production source reader must be supplied/u);
+});
+
+test("a publishable carrier must declare its package root", async () => {
+  const artifacts = ["packages/core/package.json", "packages/core/src/index.ts"];
+  const validate = async manifest => validateBlockedImplementation({
+    blockerIds: new Set(["OD-005"]),
+    publicationBlockerIds: new Set(),
+    productionArtifacts: artifacts,
+    claimDocuments: [],
+    readPackageManifest: async () => manifest,
+    readProductionSource: async () => "export const x = 1;",
+  });
+
+  // Without an export map Node falls back to directory resolution and every
+  // internal file becomes importable, so a publishable manifest must declare it.
+  await assert.rejects(validate({
+    name: "@get-modular/core",
+    type: "module",
+    files: ["dist"],
+    publishConfig: { access: "public" },
+  }), /exports must declare the accepted package root/u);
+
+  // `private` is not a publication barrier: the npm guard that refuses a private
+  // manifest fires only on a workspace publish, so a direct publish from the
+  // package directory still reaches the registry. The exemption therefore
+  // follows the publication blockers, which is also the only state where the
+  // manifest is forbidden to declare the map at all.
+  await assert.rejects(validate({
+    name: "@get-modular/core",
+    type: "module",
+    private: true,
+  }), /exports must declare the accepted package root/u);
+
+  await assert.doesNotReject(validateBlockedImplementation({
+    blockerIds: new Set(["OD-005"]),
+    publicationBlockerIds: new Set(["OD-005"]),
+    productionArtifacts: artifacts,
+    claimDocuments: [],
+    readPackageManifest: async () => ({
+      name: "@get-modular/core",
+      type: "module",
+      private: true,
+    }),
+    readProductionSource: async () => "export const x = 1;",
+  }));
+
+  // A target that climbs out of the package is not below the package root.
+  await assert.rejects(validate({
+    name: "@get-modular/core",
+    type: "module",
+    exports: {
+      ".": {
+        import: { types: "./dist/index.d.ts", default: "./../evil.js" },
+        default: "./../evil.js",
+      },
+    },
+  }), /must be a relative file target below the package root: \.\/\.\.\/evil\.js/u);
+});
+
+test("the files allowlist must not name the package root", async () => {
+  const base = {
+    name: "@get-modular/core",
+    type: "module",
+    exports: {
+      ".": {
+        import: { types: "./dist/index.d.ts", default: "./dist/index.js" },
+        default: "./dist/index.js",
+      },
+    },
+  };
+  const validate = async files => validateBlockedImplementation({
+    blockerIds: new Set(["OD-005"]),
+    publicationBlockerIds: new Set(),
+    productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts"],
+    claimDocuments: [],
+    readPackageManifest: async () => (files === undefined ? base : { ...base, files }),
+    readProductionSource: async () => "export const x = 1;",
+  });
+
+  await assert.doesNotReject(validate(undefined));
+  await assert.doesNotReject(validate(["dist"]));
+  await assert.doesNotReject(validate(["dist", "README.md", "LICENSE"]));
+
+  await assert.doesNotReject(validate(["dist/**"]));
+  await assert.doesNotReject(validate(["./dist", "dist/"]));
+  await assert.doesNotReject(validate(["dist/index.js", "README.md", "LICENSE", "docs/api.md"]));
+
+  // An export map hides internals from importers; it does not keep them out of
+  // the archive. A root entry ships source, tests and configuration regardless,
+  // and a literal list of spellings loses against a glob language: a real
+  // `npm pack` puts the same tree in the archive for `**` and for `./**`.
+  // Enumerating wildcard spellings loses at every level: a real `npm pack` ships
+  // the whole tree for `?*`, `[a-z]*`, `{,**}` and `/**` exactly as for `**`, so
+  // the first path segment must be a literal directory name.
+  for (const files of [
+    ["."], ["./"], ["/"], [""], [" . "], [".."], ["../src"],
+    ["*"], ["**"], ["**/*"], ["./*"], ["./**"], ["./**/*"], [" ./** "], ["*/**"],
+    ["/**"], ["//**"], ["?*"], ["[a-z]*"], ["{,**}"], ["{*,**}"], ["!(dist)"],
+    ["dist", "**"],
+  ]) {
+    await assert.rejects(
+      validate(files),
+      /files must not resolve to the package root or start with a wildcard segment/u,
+    );
+  }
+  for (const files of ["dist", [1], [null]]) {
+    await assert.rejects(validate(files), /files must be an array of path patterns/u);
+  }
 });

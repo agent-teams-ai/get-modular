@@ -9,6 +9,7 @@ import {
   PROFILE_PATH,
   SOURCE_DEPENDENCY_POLICY_PATH,
   validateFeatureModuleStandardProfile,
+  publicationBlockers,
   validateFirstProductionPackageAdmission,
 } from "../architecture/checks/feature-module-standard-profile.mjs";
 import {
@@ -194,6 +195,7 @@ test("keeps the profile reachable for humans and agents", () => {
 
 test("keeps an empty pre-production repository honestly not-claimed", () => {
   assert.equal(validateFirstProductionPackageAdmission({
+    publicationBlockerIds: new Set(["OD-005"]),
     productionArtifacts: [],
     admission: profile.adoption.admission,
     foundationConfig: { schemaVersion: 1 },
@@ -209,6 +211,7 @@ test("keeps an empty pre-production repository honestly not-claimed", () => {
     const noOp = clone(packageJson);
     noOp.scripts[scriptName] = ":";
     assert.throws(() => validateFirstProductionPackageAdmission({
+      publicationBlockerIds: new Set(["OD-005"]),
       productionArtifacts: [],
       admission: profile.adoption.admission,
       foundationConfig: { schemaVersion: 1 },
@@ -220,6 +223,7 @@ test("keeps an empty pre-production repository honestly not-claimed", () => {
 
 test("first production package requires the Foundation source-dependency gate", () => {
   const input = {
+    publicationBlockerIds: new Set(["OD-005"]),
     productionArtifacts: ["packages/core/src/index.ts"],
     admission: {
       ...profile.adoption.admission,
@@ -322,6 +326,7 @@ test("first production package cannot use a no-op Foundation alias", () => {
   const packageWithNoOp = clone(packageJson);
   packageWithNoOp.scripts["foundation:check"] = "node -e 'process.exit(0)'";
   assert.throws(() => validateFirstProductionPackageAdmission({
+    publicationBlockerIds: new Set(["OD-005"]),
     productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts"],
     admission: { ...profile.adoption.admission, status: "source-admitted" },
     foundationConfig: {
@@ -337,6 +342,7 @@ test("first production package cannot use a no-op Foundation alias", () => {
   const commented = clone(packageJson);
   commented.scripts["foundation:check"] = ": # && agent-teams-foundation check";
   assert.throws(() => validateFirstProductionPackageAdmission({
+    publicationBlockerIds: new Set(["OD-005"]),
     productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts"],
     admission: { ...profile.adoption.admission, status: "source-admitted" },
     foundationConfig: {
@@ -353,6 +359,7 @@ test("first production package cannot use a no-op Foundation alias", () => {
     const noOp = clone(packageJson);
     noOp.scripts[scriptName] = ":";
     assert.throws(() => validateFirstProductionPackageAdmission({
+      publicationBlockerIds: new Set(["OD-005"]),
       productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts"],
       admission: { ...profile.adoption.admission, status: "source-admitted" },
       foundationConfig: {
@@ -369,6 +376,7 @@ test("first production package cannot use a no-op Foundation alias", () => {
 
 test("rejects unknown package identities even with no active publication blockers", () => {
   assert.throws(() => validateFirstProductionPackageAdmission({
+    publicationBlockerIds: new Set(["OD-005"]),
     productionArtifacts: ["packages/rogue/package.json", "packages/rogue/src/index.ts"],
     productionPackageManifests: new Map([
       ["packages/rogue/package.json", { name: "@example/rogue", private: true }],
@@ -381,11 +389,12 @@ test("rejects unknown package identities even with no active publication blocker
     },
     packageJson,
     sourceDependencyPolicyPresent: true,
-  }), /accepted private package identity/u);
+  }), /must use an accepted package identity/u);
 });
 
 test("rejects publication fields on an otherwise accepted private package", () => {
   assert.throws(() => validateFirstProductionPackageAdmission({
+    publicationBlockerIds: new Set(["OD-005"]),
     productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts"],
     productionPackageManifests: new Map([
       ["packages/core/package.json", {
@@ -405,6 +414,7 @@ test("rejects publication fields on an otherwise accepted private package", () =
 
 test("rejects an unmanifested or nested production package root", () => {
   const baseInput = {
+    publicationBlockerIds: new Set(["OD-005"]),
     admission: { ...profile.adoption.admission, status: "source-admitted" },
     foundationConfig: {
       capabilities: {
@@ -430,6 +440,7 @@ test("rejects an unmanifested or nested production package root", () => {
 
 test("first production package rejects a package symlink", () => {
   assert.throws(() => validateFirstProductionPackageAdmission({
+    publicationBlockerIds: new Set(["OD-005"]),
     productionArtifacts: ["packages/core/linked"],
     productionArtifactSymlinks: ["packages/core/linked"],
     admission: { ...profile.adoption.admission, status: "source-admitted" },
@@ -441,6 +452,7 @@ test("first production package rejects a package symlink", () => {
 
 test("production source outside packages cannot bypass first-package admission", () => {
   assert.throws(() => validateFirstProductionPackageAdmission({
+    publicationBlockerIds: new Set(["OD-005"]),
     productionArtifacts: ["src/compiler.ts"],
     admission: { ...profile.adoption.admission, status: "source-admitted" },
     foundationConfig: { schemaVersion: 1 },
@@ -482,5 +494,69 @@ test("production package symlink discovery does not follow targets", async () =>
     assert.deepEqual(await productionArtifactSymlinkPaths(fixture), ["packages/core/linked"]);
   } finally {
     await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("admits the accepted export map once no publication blocker remains", () => {
+  const publicManifest = new Map([
+    ["packages/core/package.json", {
+      name: "@get-modular/core",
+      type: "module",
+      exports: {
+        ".": {
+          import: { types: "./dist/index.d.ts", default: "./dist/index.js" },
+          default: "./dist/index.js",
+        },
+      },
+    }],
+  ]);
+  const input = {
+    productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts"],
+    productionPackageManifests: publicManifest,
+    admission: { ...profile.adoption.admission, status: "source-admitted" },
+    foundationConfig: {
+      schemaVersion: 1,
+      capabilities: {
+        "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
+      },
+    },
+    packageJson,
+    sourceDependencyPolicyPresent: true,
+  };
+
+  assert.equal(
+    validateFirstProductionPackageAdmission({ ...input, publicationBlockerIds: new Set() }),
+    SOURCE_DEPENDENCY_POLICY_PATH,
+  );
+
+  assert.throws(() => validateFirstProductionPackageAdmission({
+    ...input,
+    publicationBlockerIds: new Set(["OD-005"]),
+  }), /must remain private while publication is blocked: OD-005/u);
+
+  assert.throws(() => validateFirstProductionPackageAdmission({
+    ...input,
+    productionPackageManifests: new Map([
+      ["packages/core/package.json", { name: "@evil/thing", private: true }],
+    ]),
+    publicationBlockerIds: new Set(),
+  }), /must use an accepted package identity/u);
+
+  assert.throws(() => validateFirstProductionPackageAdmission({ ...input }),
+    /publication blockers must be supplied as a set/u);
+});
+
+test("publication blockers come from the traceability catalog", () => {
+  assert.deepEqual(publicationBlockers({ publicationBlockers: [] }), []);
+  assert.deepEqual(publicationBlockers({ publicationBlockers: ["OD-005"] }), ["OD-005"]);
+  for (const traceability of [
+    {},
+    { publicationBlockers: null },
+    { publicationBlockers: "OD-005" },
+    { publicationBlockers: [""] },
+    { publicationBlockers: [5] },
+  ]) {
+    assert.throws(() => publicationBlockers(traceability),
+      /must declare publicationBlockers as an array of open-decision ids/u);
   }
 });

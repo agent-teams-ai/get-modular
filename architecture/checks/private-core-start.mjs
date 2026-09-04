@@ -1,10 +1,31 @@
 import { visit } from "jsonc-parser";
 
+import { PUBLICATION_FIELDS } from "./production-artifacts.mjs";
+
 const START_MARKER = "<!-- get-modular:private-core-start -->";
 const END_MARKER = "<!-- /get-modular:private-core-start -->";
 const FIELDS = ["repository", "baseCommit", "authorityDigest", "approvedBy", "approvedOn", "status", "package", "scope", "excluded"];
-const SCOPE = ["private-semantics", "object-candidate-evidence"];
-const EXCLUDED = ["public-exports", "raw-carriers", "publication", "runtime-lifecycle", "conformance-claims", "proposed-contract-claims", "generated-self-composition-claims"];
+const SCOPE = ["semantics", "object-entry", "publication-not-claimed"];
+const EXCLUDED = ["raw-carriers", "raw-entry-export", "runtime-lifecycle", "conformance-claims", "proposed-contract-claims", "generated-self-composition-claims"];
+// The excluded list is enforced against the manifest, not only recorded. The
+// current record excludes neither publication nor public exports, so these
+// rules are the enforcement that keeps the field meaningful whenever a future
+// owner record narrows the scope again.
+const EXCLUSION_MANIFEST_RULES = Object.freeze([
+  { exclusion: "publication", fields: PUBLICATION_FIELDS },
+  { exclusion: "public-exports", fields: ["exports"] },
+]);
+
+export function manifestExclusionViolations(excluded, manifest) {
+  const excludedSet = new Set(excluded);
+  return EXCLUSION_MANIFEST_RULES
+    .filter(rule => excludedSet.has(rule.exclusion))
+    .map(rule => ({
+      exclusion: rule.exclusion,
+      declared: rule.fields.filter(field => manifest?.[field] !== undefined),
+    }))
+    .filter(violation => violation.declared.length > 0);
+}
 
 function fail(message) {
   throw new Error(`GOVERNANCE_CHECK_FAILED: private Core start ${message}`);
@@ -25,7 +46,9 @@ export async function validatePrivateCoreStart({
   const starts = markdown.split(START_MARKER);
   const ends = markdown.split(END_MARKER);
   if (starts.length === 1 && ends.length === 1) {
-    if (productionArtifacts.length > 0) fail("record is required before adding a private package");
+    if (productionArtifacts.length > 0) {
+      fail("record is required before adding the first production package");
+    }
     return;
   }
   if (starts.length !== 2 || ends.length !== 2) fail("record must occur exactly once");
@@ -57,6 +80,10 @@ export async function validatePrivateCoreStart({
   if (productionArtifacts.length > 0) {
     const manifest = await readPackageManifest("packages/core/package.json");
     if (manifest?.name !== record.package) fail("manifest identity does not match the authorized package");
+    for (const violation of manifestExclusionViolations(record.excluded, manifest)) {
+      fail(`record excludes ${violation.exclusion} but the manifest declares `
+        + `${violation.declared.join(", ")}`);
+    }
   }
   if (typeof record.baseCommit !== "string" || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u.test(record.baseCommit)) fail("base must be an exact Git commit");
   if (!await isStartingBase(record.baseCommit)) fail("base is not an ancestor of this checkout");

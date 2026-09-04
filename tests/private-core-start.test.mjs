@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
-import { validatePrivateCoreStart } from "../architecture/checks/private-core-start.mjs";
+import {
+  manifestExclusionViolations,
+  validatePrivateCoreStart,
+} from "../architecture/checks/private-core-start.mjs";
 import { isStartingBaseAncestor } from "../architecture/checks/tracked-file-custody.mjs";
 import { ACCEPTED_AUTHORITY_LEDGER_DIGEST } from "../architecture/checks/governance.mjs";
 
@@ -17,11 +20,23 @@ const recorded = JSON.parse(block.exec(roadmap)[1]);
 const markdownJson = json => `<!-- get-modular:private-core-start -->\n\n\`\`\`json\n${json}\n\`\`\`\n<!-- /get-modular:private-core-start -->`;
 const markdown = value => markdownJson(JSON.stringify(value));
 const artifacts = ["packages/core/package.json", "packages/core/src/features/example/internal.ts"];
+// The accepted ADR-0012 carrier shape, which governance:check requires of the
+// core identity whenever no publication blocker is open.
+const carrier = {
+  private: true,
+  type: "module",
+  exports: {
+    ".": {
+      import: { types: "./dist/index.d.ts", default: "./dist/index.js" },
+      default: "./dist/index.js",
+    },
+  },
+};
 const check = (text, extra = {}) => validatePrivateCoreStart({
   markdown: text, productionArtifacts: artifacts,
   authorityDigest: ACCEPTED_AUTHORITY_LEDGER_DIGEST,
   isStartingBase: async base => base === recorded.baseCommit,
-  readPackageManifest: async () => ({ name: "@get-modular/core", private: true }),
+  readPackageManifest: async () => ({ name: "@get-modular/core", private: true, type: "module" }),
   ...extra,
 });
 
@@ -114,18 +129,26 @@ test("real governance entrypoint consumes the start record before admitting priv
   const fixture = join(directory, "repository");
   try {
     await exec("git", ["clone", "--quiet", "--no-hardlinks", repositoryRoot, fixture]);
+    // The clone carries HEAD, so without this the fixture would exercise the
+    // committed checkers rather than the ones under test and a local run before
+    // a commit would report a stale result.
+    await cp(join(repositoryRoot, "architecture/checks"), join(fixture, "architecture/checks"), {
+      recursive: true,
+      force: true,
+    });
+    await exec("git", ["add", "architecture/checks"], { cwd: fixture });
     await symlink(join(repositoryRoot, "node_modules"), join(fixture, "node_modules"), "junction");
     await mkdir(join(fixture, "packages/core/src/features/example"), { recursive: true });
-    await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify({ name: "@get-modular/core", private: true }));
+    await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify({ ...carrier, name: "@get-modular/core" }));
     await writeFile(join(fixture, artifacts[1]), "export const fixture = true;\n");
     const git = (...args) => exec("git", args, { cwd: fixture });
     const gate = () => exec(process.execPath, ["architecture/checks/governance.mjs"], { cwd: fixture });
     await git("add", "packages/core");
     await gate();
-    await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify({ name: "@get-modular/conformance", private: true }));
+    await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify({ ...carrier, name: "@get-modular/conformance" }));
     await git("add", "packages/core/package.json");
     await assert.rejects(gate(), error => /private Core start.*manifest identity/u.test(error.stderr));
-    await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify({ name: "@get-modular/core", private: true }));
+    await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify({ ...carrier, name: "@get-modular/core" }));
     await git("add", "packages/core/package.json");
     for (const replacement of ["", markdown({ ...recorded, approvedBy: "reviewer" })]) {
       await writeFile(join(fixture, roadmapPath), roadmap.replace(block, replacement));
@@ -133,4 +156,39 @@ test("real governance entrypoint consumes the start record before admitting priv
       await assert.rejects(gate(), error => /private Core start/u.test(error.stderr));
     }
   } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test("Core start enforces the excluded list against the manifest", async () => {
+  const publicManifest = {
+    name: "@get-modular/core",
+    type: "module",
+    exports: { ".": { import: { default: "./dist/index.js" }, default: "./dist/index.js" } },
+  };
+
+  // The reissued record excludes neither publication nor public exports, so the
+  // accepted export map of ADR-0012 passes.
+  assert.ok(!recorded.excluded.includes("publication"));
+  assert.ok(!recorded.excluded.includes("public-exports"));
+  assert.deepEqual(manifestExclusionViolations(recorded.excluded, publicManifest), []);
+  await check(markdown(recorded), { readPackageManifest: async () => publicManifest });
+
+  // A narrower record makes the field enforceable rather than decorative.
+  assert.deepEqual(
+    manifestExclusionViolations(["public-exports"], publicManifest),
+    [{ exclusion: "public-exports", declared: ["exports"] }],
+  );
+  assert.deepEqual(
+    manifestExclusionViolations(["publication"], { ...publicManifest, files: ["dist"] }),
+    [{ exclusion: "publication", declared: ["exports", "files"] }],
+  );
+  assert.deepEqual(
+    manifestExclusionViolations(["publication", "public-exports"], { private: true }),
+    [],
+  );
+
+  // A record whose excluded list leaves the closed format is rejected outright.
+  await assert.rejects(
+    check(markdown({ ...recorded, excluded: [...recorded.excluded, "publication"] })),
+    /scope is not the bounded/u,
+  );
 });

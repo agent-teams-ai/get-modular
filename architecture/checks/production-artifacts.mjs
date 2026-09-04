@@ -8,11 +8,13 @@ import {
 } from "./tracked-file-custody.mjs";
 
 const PRODUCTION_SOURCE = /\.(?:[cm]?js|jsx|[cm]?ts|tsx)$/u;
-export const PRIVATE_IMPLEMENTATION_PACKAGE_NAMES = new Set([
+export const ACCEPTED_PACKAGE_NAMES = new Set([
   "@get-modular/conformance",
   "@get-modular/core",
 ]);
-const PACKAGE_MANIFEST = /^packages\/[^/]+\/package\.json$/u;
+export const ESM_CARRIER_PACKAGE_NAME = "@get-modular/core";
+const PACKAGE_MANIFEST = /^packages\/(?:.+\/)?package\.json$/u;
+const PACKAGE_ROOT_MANIFEST = /^packages\/[^/]+\/package\.json$/u;
 export const PUBLICATION_FIELDS = Object.freeze([
   "bin",
   "browser",
@@ -24,6 +26,38 @@ export const PUBLICATION_FIELDS = Object.freeze([
   "types",
   "typesVersions",
   "typings",
+]);
+// ADR-0012 describes the carrier of `@get-modular/core`: it omits these root
+// manifest fields and exposes exactly one ESM package root. Those rules bind
+// that package only. The lifecycle-script prohibition is different in kind,
+// because an install script runs code on every consumer, so it binds every
+// accepted identity. Both hold whether or not a publication blocker is open.
+export const PROHIBITED_MANIFEST_FIELDS = Object.freeze([
+  "browser",
+  "main",
+  "module",
+  "types",
+  "typesVersions",
+  "typings",
+]);
+export const PROHIBITED_LIFECYCLE_SCRIPTS = Object.freeze([
+  "dependencies",
+  "install",
+  "pnpm:devPreinstall",
+  "postinstall",
+  "postpack",
+  "postprepare",
+  "postpublish",
+  "postuninstall",
+  "preinstall",
+  "prepack",
+  "preprepare",
+  "prepare",
+  "prepublish",
+  "prepublishOnly",
+  "preuninstall",
+  "publish",
+  "uninstall",
 ]);
 const NON_PRODUCTION_DIRECTORIES = new Set([
   ".agents",
@@ -108,29 +142,284 @@ async function defaultReadPackageManifest(path, repositoryRoot) {
   return JSON.parse(await readFile(resolve(repositoryRoot, path), "utf8"));
 }
 
-export async function productionArtifactsBlockedByOpenDecisions(
+// Reads every package manifest at or below packages/, at any depth. An
+// unreadable manifest is
+// recorded with `manifest: undefined` so every consumer fails closed on it.
+export async function packageManifestInventory(
   productionArtifacts,
   {
     repositoryRoot = process.cwd(),
     readPackageManifest = defaultReadPackageManifest,
   } = {},
 ) {
-  const packageRoots = productionArtifacts
-    .filter(path => path.endsWith("/package.json"))
-    .map(path => path.slice(0, -"/package.json".length));
-  const privatePackageRoots = new Set();
+  const inventory = [];
   for (const path of productionArtifacts.filter(candidate => PACKAGE_MANIFEST.test(candidate))) {
     let manifest;
     try {
       manifest = await readPackageManifest(path, repositoryRoot);
     } catch {
-      continue;
+      manifest = undefined;
     }
-    const hasPublicationField = PUBLICATION_FIELDS.some(field => manifest?.[field] !== undefined);
-    if (PRIVATE_IMPLEMENTATION_PACKAGE_NAMES.has(manifest?.name)
-      && manifest.private === true
-      && !hasPublicationField) {
-      privatePackageRoots.add(path.slice(0, -"/package.json".length));
+    const readable = manifest !== null && typeof manifest === "object" && !Array.isArray(manifest);
+    const scriptsDeclared = readable && manifest.scripts !== undefined;
+    const scriptsMalformed = scriptsDeclared
+      && (manifest.scripts === null
+        || typeof manifest.scripts !== "object"
+        || Array.isArray(manifest.scripts));
+    const scripts = scriptsDeclared && !scriptsMalformed ? manifest.scripts : {};
+    inventory.push({
+      path,
+      root: path.slice(0, -"/package.json".length),
+      manifest: readable ? manifest : undefined,
+      name: readable ? manifest.name : undefined,
+      isPackageRoot: PACKAGE_ROOT_MANIFEST.test(path),
+      publicationFields: readable
+        ? PUBLICATION_FIELDS.filter(field => manifest[field] !== undefined)
+        : [],
+      prohibitedFields: readable && manifest.name === ESM_CARRIER_PACKAGE_NAME
+        ? PROHIBITED_MANIFEST_FIELDS.filter(field => manifest[field] !== undefined)
+        : [],
+      prohibitedScripts: readable
+        ? PROHIBITED_LIFECYCLE_SCRIPTS.filter(script => scripts[script] !== undefined)
+        : [],
+      scriptsMalformed,
+      exportsField: readable ? manifest.exports : undefined,
+      carrierShapeViolations: readable && manifest.name === ESM_CARRIER_PACKAGE_NAME
+        ? filesAllowlistViolations(manifest.files)
+        : [],
+      moduleTypeViolation: readable
+        && manifest.name === ESM_CARRIER_PACKAGE_NAME
+        && manifest.type !== "module",
+      isPrivate: readable && manifest.private === true,
+    });
+  }
+  return inventory;
+}
+
+// Accepted package identity is an ADR-0003 rule and applies regardless of any
+// open decision: every manifest below packages/ must be readable and must name
+// an accepted package. ADR-0012 exposes exactly one package root, so a manifest
+// nested below a package root is never an admitted identity.
+export function packageIdentityViolations(inventory) {
+  return inventory
+    .filter(entry => (
+      entry.isPackageRoot !== true
+      || entry.manifest === undefined
+      || !ACCEPTED_PACKAGE_NAMES.has(entry.name)
+    ))
+    .map(entry => entry.path);
+}
+
+// ADR-0012 exposes exactly one package root through one ESM target: a single
+// `.` subpath whose `import` condition carries `types` and `default`, plus a
+// sibling top-level `default` for `require(esm)`. Any other subpath, any
+// environment-specific condition and any `require` condition are prohibited.
+const EXPORT_ROOT_SUBPATH = ".";
+const EXPORT_IMPORT_CONDITIONS = Object.freeze(["types", "default"]);
+const EXPORT_ROOT_CONDITIONS = Object.freeze(["import", "default"]);
+
+function plainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function relativeTarget(value, label) {
+  if (typeof value !== "string") {
+    return [`${label} must be a relative file target, not a nested condition object`];
+  }
+  const escapes = value.split("/").includes("..");
+  if (!value.startsWith("./") || value.includes("*") || escapes) {
+    return [`${label} must be a relative file target below the package root: ${value}`];
+  }
+  return [];
+}
+
+function exportMapViolations(exportsField, publicationBlocked) {
+  // A carrier without an export map has no package root at all: Node falls back
+  // to directory resolution and the archive hands out its whole tree, which is
+  // the opposite of exposing exactly one root. The exemption follows the
+  // publication blockers rather than `private`, for two reasons. While a
+  // blocker is open the manifest is forbidden to declare `exports` at all, so
+  // requiring it there would make that state unsatisfiable. And `private` is
+  // not a publication barrier that can be relied on: the npm guard that refuses
+  // a private manifest fires only on a workspace publish, so a direct
+  // `npm publish` from the package directory reaches the registry.
+  if (exportsField === undefined) {
+    return publicationBlocked
+      ? []
+      : ['exports must declare the accepted package root; without it a published '
+        + 'archive exposes its whole tree to deep imports'];
+  }
+  if (!plainObject(exportsField)) {
+    return ['exports must be an object with one "." subpath'];
+  }
+  const subpaths = Object.keys(exportsField);
+  const extraSubpaths = subpaths.filter(key => key !== EXPORT_ROOT_SUBPATH);
+  if (extraSubpaths.length > 0) {
+    return [`exports must declare no subpath beyond "." : ${extraSubpaths.join(", ")}`];
+  }
+  if (!subpaths.includes(EXPORT_ROOT_SUBPATH)) {
+    return ['exports must declare the "." subpath'];
+  }
+  const root = exportsField[EXPORT_ROOT_SUBPATH];
+  if (!plainObject(root)) {
+    return ['exports["."] must be a condition object'];
+  }
+  // Condition order is normative: a runtime selects the first matching key, so
+  // `import` must precede the sibling `default` and `types` must precede the
+  // nested `default`.
+  const rootConditions = Object.keys(root);
+  const rootOrder = conditionOrderViolations(rootConditions, EXPORT_ROOT_CONDITIONS, 'exports["."]');
+  if (rootOrder.length > 0) return rootOrder;
+  if (!plainObject(root.import)) {
+    return ['exports["."].import must be a condition object'];
+  }
+  const importConditions = Object.keys(root.import);
+  const importOrder = conditionOrderViolations(
+    importConditions,
+    EXPORT_IMPORT_CONDITIONS,
+    'exports["."].import',
+  );
+  if (importOrder.length > 0) return importOrder;
+
+  const targets = [
+    ...relativeTarget(root.import.types, 'exports["."].import.types'),
+    ...relativeTarget(root.import.default, 'exports["."].import.default'),
+    ...relativeTarget(root.default, 'exports["."].default'),
+  ];
+  if (targets.length > 0) return targets;
+
+  // The sibling `default` is a second resolution path to one implementation,
+  // never a second build.
+  if (root.default !== root.import.default) {
+    return ['exports["."].default must resolve to the same file as '
+      + `exports["."].import.default: ${root.default} against ${root.import.default}`];
+  }
+  return [];
+}
+
+function conditionOrderViolations(actual, expected, label) {
+  const unexpected = actual.filter(key => !expected.includes(key));
+  if (unexpected.length > 0) {
+    return [`${label} must declare no condition beyond ${expected.join(" and ")}: `
+      + unexpected.join(", ")];
+  }
+  const missing = expected.filter(key => !actual.includes(key));
+  if (missing.length > 0) {
+    return [`${label} must declare the ${expected.join(" and ")} conditions: `
+      + missing.join(", ")];
+  }
+  if (actual.join(",") !== expected.join(",")) {
+    return [`${label} must declare its conditions in the order ${expected.join(", ")}: `
+      + actual.join(", ")];
+  }
+  return [];
+}
+
+// ADR-0012 keeps the publication allowlist closed: source, tests, fixtures and
+// repository configuration stay out of the archive. A `files` entry that names
+// the package root defeats that allowlist outright, whatever the export map
+// hides from importers. The archive inventory itself is verified by the packed
+// evidence, not here.
+// A literal list of spellings loses against a glob language: `./**` ships the
+// same tree as `**`. The entry is normalized first, then rejected when it
+// resolves to the package root or when its first path segment is a wildcard,
+// which is what makes it match every top-level directory.
+// Enumerating the wildcard spellings is the same mistake one level down: a real
+// `npm pack` ships the whole tree for `?*`, `[a-z]*`, `{,**}` and `/**` just as
+// it does for `**`. The predicate is inverted instead: the first path segment
+// must be a literal directory name.
+const GLOB_METACHARACTERS = /[*?[\]{}!()]/u;
+
+function normalizedFilesEntry(entry) {
+  let value = entry.trim();
+  while (value.startsWith("./")) value = value.slice(2);
+  while (value.endsWith("/")) value = value.slice(0, -1);
+  return value;
+}
+
+function rootedFilesEntry(entry) {
+  const value = normalizedFilesEntry(entry);
+  if (value === "" || value === ".") return true;
+  const first = value.split("/")[0];
+  return first === "" || first === "." || first === ".." || GLOB_METACHARACTERS.test(first);
+}
+
+function filesAllowlistViolations(filesField) {
+  if (filesField === undefined) return [];
+  if (!Array.isArray(filesField) || filesField.some(entry => typeof entry !== "string")) {
+    return ["files must be an array of path patterns"];
+  }
+  const rootEntries = filesField.filter(entry => rootedFilesEntry(entry));
+  if (rootEntries.length > 0) {
+    return [`files must not resolve to the package root or start with a wildcard `
+      + `segment, which defeats the publication allowlist: ${rootEntries.join(", ")}`];
+  }
+  return [];
+}
+
+// ADR-0009 prohibits an identifier that ends in `V` followed by a decimal
+// generation anywhere in package source. The rule is syntactic on purpose: a
+// checker cannot read intent, and the accepted evidence names live only in the
+// immutable qualification artifacts and the checkers that execute them, none of
+// which sit below packages/.
+const VERSIONED_IDENTIFIER = /\b[A-Za-z_$][A-Za-z0-9_$]*V\d+\b/gu;
+
+export function versionedIdentifierMatches(source) {
+  return [...new Set(String(source).match(VERSIONED_IDENTIFIER) ?? [])].sort();
+}
+
+export async function versionedIdentifierViolations(productionArtifacts, readSource) {
+  const violations = [];
+  for (const path of productionArtifacts.filter(candidate => PRODUCTION_SOURCE.test(candidate))) {
+    const matches = versionedIdentifierMatches(await readSource(path));
+    if (matches.length > 0) violations.push({ path, identifiers: matches });
+  }
+  return violations;
+}
+
+// ADR-0012 fixes the carrier shape of the accepted package manifest itself.
+// These prohibitions are independent of the publication blockers because they
+// describe the accepted carrier, not the decision to publish it.
+export function manifestCarrierViolations(inventory, { publicationBlocked = false } = {}) {
+  return inventory
+    .map(entry => ({
+      path: entry.path,
+      manifest: entry.manifest,
+      fields: entry.prohibitedFields,
+      scripts: [
+        ...(entry.scriptsMalformed === true ? ["scripts must be an object"] : []),
+        ...entry.prohibitedScripts.map(script => `scripts.${script}`),
+        ...entry.carrierShapeViolations,
+        ...(entry.name === ESM_CARRIER_PACKAGE_NAME
+          ? exportMapViolations(entry.exportsField, publicationBlocked)
+          : []),
+        ...(entry.moduleTypeViolation === true
+          ? ['type must be "module" because the carrier is ESM-only']
+          : []),
+      ],
+    }))
+    .filter(entry => (
+      entry.manifest !== undefined
+      && (entry.fields.length > 0 || entry.scripts.length > 0)
+    ))
+    .map(({ path, fields, scripts }) => ({ path, fields, scripts }));
+}
+
+export async function productionArtifactsBlockedByOpenDecisions(
+  productionArtifacts,
+  options = {},
+) {
+  const packageRoots = productionArtifacts
+    .filter(path => path.endsWith("/package.json"))
+    .map(path => path.slice(0, -"/package.json".length));
+  const privatePackageRoots = new Set();
+  for (const entry of await packageManifestInventory(productionArtifacts, options)) {
+    if (entry.manifest !== undefined
+      && entry.isPackageRoot === true
+      && ACCEPTED_PACKAGE_NAMES.has(entry.name)
+      && entry.isPrivate
+      && entry.publicationFields.length === 0) {
+      privatePackageRoots.add(entry.root);
     }
   }
 

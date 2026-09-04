@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 
 import {
+  ACCEPTED_PACKAGE_NAMES,
   isProductionSourceArtifactPath,
-  PRIVATE_IMPLEMENTATION_PACKAGE_NAMES,
   PUBLICATION_FIELDS,
   productionArtifactPaths,
   productionArtifactSymlinkPaths,
@@ -17,6 +17,7 @@ export const PROFILE_PATH = "architecture/feature-module-standard-profile.json";
 export const PROFILE_DOCUMENT_PATH = "docs/architecture/feature-module-standard.md";
 export const SOURCE_DEPENDENCY_POLICY_PATH =
   "architecture/foundation/source-dependencies.yaml";
+export const TRACEABILITY_PATH = "docs/traceability/module-system-v1.yaml";
 
 const FOUNDATION_ADMISSION = Object.freeze({
   package: "@agent-teams/engineering-foundation",
@@ -192,6 +193,14 @@ function closedScriptCommands(packageJson, scriptName) {
   return commands;
 }
 
+export function publicationBlockers(traceability) {
+  const declared = traceability?.publicationBlockers;
+  assert(Array.isArray(declared)
+    && declared.every(id => typeof id === "string" && id.length > 0),
+  `${TRACEABILITY_PATH} must declare publicationBlockers as an array of open-decision ids`);
+  return declared;
+}
+
 export function validateFirstProductionPackageAdmission({
   productionArtifacts,
   admission,
@@ -200,7 +209,10 @@ export function validateFirstProductionPackageAdmission({
   sourceDependencyPolicyPresent,
   productionArtifactSymlinks = [],
   productionPackageManifests = new Map(),
+  publicationBlockerIds,
 }) {
+  assert(publicationBlockerIds instanceof Set,
+    "publication blockers must be supplied as a set");
   assert(Array.isArray(productionArtifacts)
     && productionArtifacts.every(path => safeRepositoryPath(path)),
   "production artifacts must be portable repository-relative paths");
@@ -269,13 +281,20 @@ export function validateFirstProductionPackageAdmission({
     const manifest = productionPackageManifests.get(manifestPath);
     assert(manifest !== undefined,
       `missing production package manifest: ${manifestPath}`);
-    assert(PRIVATE_IMPLEMENTATION_PACKAGE_NAMES.has(manifest?.name),
-      `${manifestPath} must use an accepted private package identity`);
-    assert(manifest.private === true,
-      `${manifestPath} must remain private before publication approval`);
-    const publicationFields = PUBLICATION_FIELDS.filter(field => manifest?.[field] !== undefined);
-    assert(publicationFields.length === 0,
-      `${manifestPath} must not declare publication fields: ${publicationFields.join(", ")}`);
+    // ADR-0003 identity holds regardless of any open decision.
+    assert(ACCEPTED_PACKAGE_NAMES.has(manifest?.name),
+      `${manifestPath} must use an accepted package identity`);
+    // ADR-0017 blocks the publication surface only through the publication
+    // blockers recorded in the traceability catalog.
+    if (publicationBlockerIds.size > 0) {
+      const blockers = [...publicationBlockerIds].sort().join(", ");
+      assert(manifest.private === true,
+        `${manifestPath} must remain private while publication is blocked: ${blockers}`);
+      const publicationFields = PUBLICATION_FIELDS.filter(field => manifest?.[field] !== undefined);
+      assert(publicationFields.length === 0,
+        `${manifestPath} must not declare publication fields while publication is `
+        + `blocked by ${blockers}: ${publicationFields.join(", ")}`);
+    }
   }
 
   return capability.configPath;
@@ -455,7 +474,18 @@ export async function checkFeatureModuleStandardProfile(repositoryRoot = process
     productionPackageManifests: new Map(await Promise.all(
       productionArtifacts
         .filter(path => PACKAGE_MANIFEST.test(path))
-        .map(async path => [path, JSON.parse(await readFile(resolve(repositoryRoot, path), "utf8"))]),
+        .map(async path => {
+          const source = await readFile(resolve(repositoryRoot, path), "utf8");
+          try {
+            return [path, JSON.parse(source)];
+          } catch {
+            throw new Error(`FEATURE_MODULE_PROFILE_INVALID: `
+              + `package manifest is not valid JSON: ${path}`);
+          }
+        }),
+    )),
+    publicationBlockerIds: new Set(publicationBlockers(
+      parse(await readFile(resolve(repositoryRoot, TRACEABILITY_PATH), "utf8")),
     )),
   });
   await Promise.all(authorities.map(authority => access(resolve(repositoryRoot, authority))));

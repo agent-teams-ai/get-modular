@@ -15,6 +15,7 @@ related:
   - ADR-0014
   - ADR-0015
   - ADR-0016
+  - ADR-0017
   - OD-004
   - OD-005
   - OD-006
@@ -36,13 +37,15 @@ the semantic compiler itself.
 
 ### D1: production-source admission while implementation blockers are open
 
-Accepted ADR-0015 selected private, non-publishable, manifest-bound source under
-the package identities accepted by ADR-0003. Public exports, publication and
-`runtime-conformant` claims remain blocked while their owning decisions are
-open. `source-admitted` and `structural-conformant` custody may proceed without
-claiming unresolved runtime semantics. The first production source still
-requires the explicit product-owner start record defined by ADR-0015. This item
-is no longer a choice in this packet.
+Accepted ADR-0015 admits source under the package identities accepted by
+ADR-0003, and accepted ADR-0017 limits publication blocking to the
+`publicationBlockers` subset of open decisions, now empty, so a pre-1.0
+`not-claimed` package publishes from the first checkpoint. `runtime-conformant`
+claims remain blocked while an open decision is active; `source-admitted` and
+`structural-conformant` custody may proceed without claiming unresolved runtime
+semantics. The first production source still requires the explicit
+product-owner start record defined by ADR-0015. This item is no longer a choice
+in this packet.
 
 ## Decisions required before the first Core public checkpoint
 
@@ -54,8 +57,8 @@ is no longer a choice in this packet.
 | Publish accepted versioned evidence names | 5/10 | 8/10 | 5/10 | 100-220 LOC | Preserves literal evidence names but creates compatibility baggage before a consumer exists. |
 | Keep all compiler entrypoints private | 7/10 | 9/10 | 2/10 | 20-60 LOC | Useful only as a short evidence checkpoint; it delays packed public-consumer proof. |
 
-**Stop point:** before freezing the public barrel, declarations or export map.
-ADR-0009 remains proposed until explicitly accepted.
+**Resolved:** ADR-0009 is accepted; the public barrel follows its exhaustive
+export map and no generation suffix appears in package source.
 
 ### D3: package carrier and resolution
 
@@ -65,8 +68,9 @@ ADR-0009 remains proposed until explicitly accepted.
 | Add CommonJS compatibility from the first archive | 5/10 | 7/10 | 8/10 | 700-1,400 LOC | Broadens consumers but creates dual-resolution and declaration risks without demonstrated demand. |
 | Keep a private non-publishable package carrier | 7/10 | 9/10 | 3/10 | 150-350 LOC | Allows qualification evidence but cannot resolve OD-004 or authorize publication. |
 
-**Stop point:** before package-type, export-condition, archive-content or
-install-script freeze. Resolve OD-004 through an accepted ADR.
+**Resolved:** ADR-0012 is accepted and OD-004 is resolved; the packed Node and
+TypeScript cases gate each publication, the full matrix gates the first
+conformance claim.
 
 ### D4: trusted-object and raw-byte carriers
 
@@ -76,8 +80,10 @@ install-script freeze. Resolve OD-004 through an accepted ADR.
 | Publish raw bytes first and keep object input private | 8/10 | 9/10 | 6/10 | 450-900 LOC | Smaller hostile-input boundary, but temporarily less ergonomic for trusted TypeScript callers. |
 | Keep both carriers private behind the normalized-value seam | 9/10 | 10/10 | 3/10 | 100-250 LOC | Safest implementation start; insufficient for the final public boundary. |
 
-**Stop point:** before exposing either JavaScript carrier. Resolve OD-005 and
-its diagnostic/evidence obligations first.
+**Stop point:** before exposing the raw-byte carrier. Accepted ADR-0017 admits
+the trusted-object carrier behind `compileComposition` from M1 under the
+plain-value rules of ADR-0006 and ADR-0007; the raw carrier waits for OD-005
+and its diagnostic and evidence obligations.
 
 ### D5: repeated binding-record diagnostics
 
@@ -114,14 +120,12 @@ slot identities as ordinary inherited property lookup keys.
 | Frozen ordered entry tuples with a typed lookup helper | 9/10 | 9/10 | 6/10 | 350-700 LOC | Recommended. Slightly more ceremony, but no property-key ambiguity and deterministic serialization. |
 | Read-only `Map` behind a private adapter | 7/10 | 8/10 | 5/10 | 250-550 LOC | Good internal ergonomics, weaker plain-data and cross-process evidence. |
 
-Proposed ADR-0016 selects a fourth form, a typed object literal keyed by
+Accepted ADR-0016 selects a fourth form, a typed object literal keyed by
 identifier-safe own slot identifiers with `Map` lookups for every identity,
-and pairs it with a static generated-wiring witness. If ADR-0016 is accepted it
-resolves this item and supersedes the recommendation above.
+and pairs it with a static generated-wiring witness and canonical wiring
+tuples. It resolves this item and supersedes the recommendation above.
 
-**Stop point:** before stage0 emits or stage1 consumes a dependency record. An
-accepted narrow successor must select one representation and its hostile-key
-vectors.
+**Resolved:** by accepted ADR-0016.
 
 ### D8: release custody and reusable conformance evidence
 
@@ -131,8 +135,10 @@ vectors.
 | Publish runner, report and attestation APIs now | 3/10 | 6/10 | 10/10 | 3,000-6,000 LOC | Premature compatibility surface without a real external subject. |
 | Keep hash-bound evidence without promotion/reuse claims | 9/10 | 9/10 | 3/10 | 250-550 LOC | Correct for implementation checkpoints; cannot authorize publication. |
 
-**Stop point:** before `release-eligible`, evidence reuse or publication. Until
-the custody decision is accepted, retain exact evidence as `not-claimed`.
+**Stop point:** before `release-eligible`, evidence reuse or the first
+conformance claim. A pre-1.0 `not-claimed` publication follows ADR-0012 and
+ADR-0017 and does not wait for the custody decision; until that decision is
+accepted, retain exact evidence as `not-claimed`.
 
 ## Explicitly product-owned decisions
 
@@ -148,15 +154,18 @@ integration.
 
 ## Recommended approval order
 
-1. Record the ADR-0015 product-owner start decision before the first private
-   production source.
+1. Record the ADR-0015 product-owner start decision before the first
+   production source. Under accepted ADR-0017 that source lands in a public
+   package, so the record names publication of a `not-claimed` archive inside
+   its authorized scope.
 2. D4 and D5 atomically, because their new diagnostics require one generation
    2 schema, catalog, snapshot, checker and qualification-ledger transaction.
-3. D2 and D3 before freezing or exposing the packed public boundary.
+3. D2 and D3 are resolved; the packed public boundary follows ADR-0009 and
+   ADR-0012.
 4. D6 before selecting any production dependency.
-5. D7 before generated stage1 construction.
-6. D8 only when a real retained archive exists and publication is the next
-   checkpoint.
+5. D7 is resolved by ADR-0016.
+6. D8 only when a real retained archive exists and a conformance claim or a
+   `release-eligible` publication is the next checkpoint.
 
 This order permits implementation through the smallest private semantic slice
 without guessing public, runtime or release behavior.

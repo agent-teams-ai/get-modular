@@ -5,6 +5,10 @@ import { parse } from "yaml";
 import { validatePrivateCoreStart } from "./private-core-start.mjs";
 
 import {
+  manifestCarrierViolations,
+  packageIdentityViolations,
+  packageManifestInventory,
+  versionedIdentifierViolations,
   productionArtifactPaths,
   productionArtifactSymlinkPaths,
   productionArtifactsBlockedByOpenDecisions,
@@ -166,26 +170,82 @@ export function validateAcceptedAuthorityCatalog({ documents, ledgerAuthorities 
 
 export async function validateBlockedImplementation({
   blockerIds,
+  publicationBlockerIds,
   productionArtifacts,
   claimDocuments,
   readPackageManifest,
+  readProductionSource,
   repositoryRoot = process.cwd(),
 }) {
-  if (blockerIds.size === 0) return;
-  const blockedArtifacts = await productionArtifactsBlockedByOpenDecisions(
+  if (!(blockerIds instanceof Set) || !(publicationBlockerIds instanceof Set)) {
+    fail("active and publication blockers must be supplied as sets");
+  }
+  if (typeof readProductionSource !== "function") {
+    fail("a production source reader must be supplied");
+  }
+  for (const blockerId of publicationBlockerIds) {
+    if (!blockerIds.has(blockerId)) {
+      fail(`publication blocker ${blockerId} is not an active open decision`);
+    }
+  }
+
+  // ADR-0003 package identity holds regardless of open decisions.
+  const inventory = await packageManifestInventory(
     productionArtifacts,
     { readPackageManifest, repositoryRoot },
   );
-  if (blockedArtifacts.length > 0) {
-    fail(`public or publication-capable artifacts are blocked by open decisions: `
-      + `${blockedArtifacts.join(", ")} (${[...blockerIds].sort().join(", ")})`);
+  const identityViolations = packageIdentityViolations(inventory);
+  if (identityViolations.length > 0) {
+    fail(`package manifests must be readable, sit at an accepted package root and use an `
+      + `accepted package identity: ${identityViolations.join(", ")}`);
   }
-  const runtimeClaims = claimDocuments.filter(document => (
-    document.status === "runtime-conformant"
-  ));
-  if (runtimeClaims.length > 0) {
-    fail(`runtime-conformance claims are blocked by open decisions: `
-      + `${[...blockerIds].sort().join(", ")}`);
+
+  // ADR-0012 carrier prohibitions hold regardless of open decisions.
+  const carrierViolations = manifestCarrierViolations(inventory, {
+    publicationBlocked: publicationBlockerIds.size > 0,
+  });
+  if (carrierViolations.length > 0) {
+    const detail = carrierViolations
+      .map(violation => `${violation.path}: `
+        + [...violation.fields, ...violation.scripts].join("; "))
+      .join(" | ");
+    fail(`package manifests must omit the fields and lifecycle scripts prohibited by the `
+      + `accepted carrier decision: ${detail}`);
+  }
+
+  // ADR-0009 prohibits generation-suffixed identifiers in package source.
+  const versioned = await versionedIdentifierViolations(
+    productionArtifacts,
+    readProductionSource,
+  );
+  if (versioned.length > 0) {
+    const detail = versioned
+      .map(violation => `${violation.path} ${violation.identifiers.join(" ")}`)
+      .join(", ");
+    fail(`package source must not use a generation-suffixed identifier: ${detail}`);
+  }
+
+  // Publication surfaces are blocked only by the publication-blocker subset.
+  if (publicationBlockerIds.size > 0) {
+    const blockedArtifacts = await productionArtifactsBlockedByOpenDecisions(
+      productionArtifacts,
+      { readPackageManifest, repositoryRoot },
+    );
+    if (blockedArtifacts.length > 0) {
+      fail(`public or publication-capable artifacts are blocked by open decisions: `
+        + `${blockedArtifacts.join(", ")} (${[...publicationBlockerIds].sort().join(", ")})`);
+    }
+  }
+
+  // Runtime-conformance claims are blocked while any open decision is active.
+  if (blockerIds.size > 0) {
+    const runtimeClaims = claimDocuments.filter(document => (
+      document.status === "runtime-conformant"
+    ));
+    if (runtimeClaims.length > 0) {
+      fail(`runtime-conformance claims are blocked by open decisions: `
+        + `${[...blockerIds].sort().join(", ")}`);
+    }
   }
 }
 
@@ -418,6 +478,15 @@ export function validateTraceability({
     || new Set(declaredBlockers).size !== declaredBlockers.length
     || !sameStrings(declaredBlockers, blockerIds)) {
     fail("implementation blockers do not match the open-decision catalog");
+  }
+  const declaredPublicationBlockers = traceability.publicationBlockers;
+  if (!Array.isArray(declaredPublicationBlockers)) {
+    fail("traceability must declare publicationBlockers as an array, empty when no open decision blocks publication");
+  }
+  if (declaredPublicationBlockers.some(value => typeof value !== "string")
+    || new Set(declaredPublicationBlockers).size !== declaredPublicationBlockers.length
+    || declaredPublicationBlockers.some(id => !blockerIds.has(id))) {
+    fail("publication blockers must be a subset of the active open-decision catalog");
   }
 
   const derivedReverse = new Map(sourceIds.map(id => [id, []]));
@@ -660,17 +729,15 @@ async function main() {
     traceability,
   });
   const productionArtifacts = await productionArtifactPaths(root, snapshot);
-  const readPackageManifest = async path => JSON.parse((await readGovernanceInput(
-    path,
-    "private implementation package manifest",
-  )).toString("utf8"));
-  await validatePrivateCoreStart({
-    markdown: documentSources.get("ARCH-MVP-IMPLEMENTATION-ROADMAP").bytes.toString("utf8"),
-    productionArtifacts,
-    authorityDigest: ACCEPTED_AUTHORITY_LEDGER_DIGEST,
-    isStartingBase: baseCommit => isStartingBaseAncestor(baseCommit, root),
-    readPackageManifest,
-  });
+  const readPackageManifest = async path => {
+    const bytes = (await readGovernanceInput(path, "production package manifest"))
+      .toString("utf8");
+    try {
+      return JSON.parse(bytes);
+    } catch {
+      fail(`package manifest is not valid JSON: ${path}`);
+    }
+  };
   const productionArtifactSymlinks = await productionArtifactSymlinkPaths(root, snapshot);
   const misplacedArtifacts = productionArtifactsOutsidePackages(productionArtifacts);
   if (misplacedArtifacts.length > 0) {
@@ -679,6 +746,13 @@ async function main() {
   if (productionArtifactSymlinks.length > 0) {
     fail(`production artifacts must not be symlinks: ${productionArtifactSymlinks.join(", ")}`);
   }
+  await validatePrivateCoreStart({
+    markdown: documentSources.get("ARCH-MVP-IMPLEMENTATION-ROADMAP").bytes.toString("utf8"),
+    productionArtifacts,
+    authorityDigest: ACCEPTED_AUTHORITY_LEDGER_DIGEST,
+    isStartingBase: baseCommit => isStartingBaseAncestor(baseCommit, root),
+    readPackageManifest,
+  });
   const profile = JSON.parse((await readGovernanceInput(
     "architecture/feature-module-standard-profile.json",
     "Feature Module Standard profile",
@@ -697,9 +771,13 @@ async function main() {
   });
   await validateBlockedImplementation({
     blockerIds,
+    publicationBlockerIds: new Set(traceability.publicationBlockers),
     productionArtifacts,
     claimDocuments: claimDocuments.map(id => documents.get(id)),
     readPackageManifest,
+    readProductionSource: async path => (
+      await readGovernanceInput(path, "production source")
+    ).toString("utf8"),
     repositoryRoot: root,
   });
   await assertGitIndexSnapshotCurrent(snapshot);

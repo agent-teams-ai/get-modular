@@ -1,9 +1,10 @@
 ---
 id: OD-004
 type: open-decision
-status: open
+status: resolved
 owner: architecture
 summary: Selects the exact package carrier and supported resolution surface for the first Core archive.
+resolved_by: ADR-0012
 related:
   - ADR-0003
   - ADR-0007
@@ -23,9 +24,9 @@ format, root export conditions, declaration resolution, allowed archive
 contents, supported consumer modes, negative resolution behavior, and whether
 any install-time lifecycle script is permitted.
 
-ADR-0003 owns package identity and topology. ADR-0009 proposes the public symbol
-names. Neither decision fixes how one packed archive exposes those symbols to
-Node, TypeScript, bundlers, browsers, or Electron.
+ADR-0003 owns package identity and topology. Accepted ADR-0009 owns the public
+symbol names. Neither decision fixes how one packed archive exposes those
+symbols to Node, TypeScript, bundlers, browsers, or Electron.
 
 ## Constraints
 
@@ -116,10 +117,13 @@ decision or authorize publication.
 
 ## Resolution
 
-Open. ADR-0012 is a proposed resolution. Before acceptance, a private,
-non-publishable qualification subject MAY pack the proposed carrier under the
-qualification fixture boundary solely to produce reviewable evidence. It is not
-a production package, public export authority, conformance claim, or publication
-candidate. Publication-capable package creation, public exposure, and
-publication remain blocked until the decision is accepted with the required
-packed evidence.
+Resolved by accepted ADR-0012 on 2026-09-04. The package is ESM-only with one
+root export, a sibling `default` condition for `require(esm)`, no CommonJS
+build, a manifest that omits every install-time lifecycle script with a
+negative fixture in the packed consumer cases, and a closed archive allowlist.
+The manifest prohibitions themselves are enforced by `governance:check`, as
+accepted ADR-0012 records.
+Each
+published archive must pass the Node and TypeScript packed cases before
+publication and the full matrix before a conformance claim, as ADR-0012 and
+ADR-0007 state.
