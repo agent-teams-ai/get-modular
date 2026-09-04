@@ -4,70 +4,69 @@ const cap = (id: string, version = 1) => ({ id, version } as const);
 const card = {
   required: { kind: "required" } as const,
   optional: { kind: "optional" } as const,
-  many: (min: number, max: number) => ({ kind: "many", min, max } as const),
+  many: (min: number, max: number) => ({ kind: "many", min, max, order: "profile" } as const),
 };
 const decl = (moduleId: string, implementationId: string, provides: readonly ReturnType<typeof cap>[] = [], slots: readonly Slot[] = []): Declaration => ({
-  moduleId, implementationId, owner: { authority: "lab", feature: moduleId }, provides, slots,
+  moduleId, implementationId, owner: { authority: "lab", path: moduleId.split("/").slice(1) }, provides, slots,
 });
-const provider = (name: string, capability = "lab/service", version = 1) => decl(`lab/${name}`, `lab/${name}/default`, [cap(capability, version)]);
-const consumer = (slot: Slot = { id: "service", capability: cap("lab/service"), cardinality: card.required }) => decl("lab/consumer", "lab/consumer/default", [], [slot]);
+const provider = (name: string, capability = "lab/service", version = 1): Declaration => decl(`lab/${name}`, `lab/${name}/default`, [cap(capability, version)]);
+const consumer = (slot?: Slot): Declaration => decl("lab/consumer", "lab/consumer/default", [], slot ? [slot] : []);
+const serviceSlot = (cardinality: Slot["cardinality"] = card.required, id = "service"): Slot => ({ id, capability: cap("lab/service"), cardinality });
 const bind = (providers: readonly string[], slotId = "service", consumerId = "lab/consumer/default"): Binding => ({ consumerImplementationId: consumerId, slotId, providerImplementationIds: providers });
-const world = (declarations: readonly Declaration[], bindings: readonly Binding[], roots = ["lab/consumer"], selections?: readonly { moduleId: string; implementationId: string }[], extra?: Partial<World>): World => ({
-  declarations,
-  profile: {
-    roots,
-    selections: selections ?? declarations.map(({ moduleId, implementationId }) => ({ moduleId, implementationId })),
-    bindings,
-  },
-  ...extra,
-});
+const world = (
+  declarations: readonly Declaration[], bindings: readonly Binding[], roots: readonly string[],
+  selections: readonly { moduleId: string; implementationId: string }[] = declarations.map(({ moduleId, implementationId }) => ({ moduleId, implementationId })),
+  extra: Pick<World, "desiredProfile" | "fallbackBindings"> = {},
+): World => ({ declarations, profile: { roots, selections, bindings }, ...extra });
 const ok = (inventory?: readonly string[], dependencyOrder?: readonly string[]): Expected => ({ ok: true, codes: [], inventory, dependencyOrder });
 const bad = (...codes: string[]): Expected => ({ ok: false, codes });
+const scenario = (id: string, title: string, input: World, expected: Expected, evidenceClass: Scenario["evidenceClass"] = "semantic", hostProbe?: Scenario["hostProbe"]): Scenario => ({ id, title, input, expected, evidenceClass, ...(hostProbe ? { hostProbe } : {}) });
+
+const c = "lab/consumer/default";
 const p1 = "lab/provider-a/default";
 const p2 = "lab/provider-b/default";
 const p3 = "lab/provider-c/default";
-const requiredBase = world([consumer(), provider("provider-a")], [bind([p1])]);
-const manyWorld = (count: number, min: number, max: number): World => {
-  const providers = [provider("provider-a"), provider("provider-b"), provider("provider-c")].slice(0, count);
-  return world([consumer({ id: "service", capability: cap("lab/service"), cardinality: card.many(min, max) }), ...providers], [bind([p1, p2, p3].slice(0, count))]);
-};
-const scenario = (id: string, title: string, input: World, expected: Expected, evidenceClass: Scenario["evidenceClass"] = "semantic", hostProbe?: Scenario["hostProbe"]): Scenario => ({ id, title, evidenceClass, input, expected, ...(hostProbe ? { hostProbe } : {}) });
-
-const hostile = JSON.parse('{"__proto__":"own-proto","constructor":"own-constructor","then":"own-then","é":"composed","é":"decomposed"}') as Record<string, string>;
-const hostileSlots = Object.keys(hostile).map((id) => ({ id, capability: cap(`hostile/${id.normalize("NFD").replaceAll("́", "mark")}`), cardinality: card.optional } as const));
-const cycleA = decl("lab/a", "lab/a/default", [], [{ id: "b", capability: cap("lab/b-cap"), cardinality: card.required }]);
+const requiredBase = world([consumer(serviceSlot()), provider("provider-a")], [bind([p1])], ["lab/consumer"]);
+const manyWorld = (providers: readonly Declaration[]): World => world(
+  [consumer(serviceSlot(card.many(0, 3))), ...providers], [bind(providers.map(({ implementationId }) => implementationId))], ["lab/consumer"],
+);
+const cycleA = decl("lab/a", "lab/a/default", [cap("lab/a-cap")], [{ id: "b", capability: cap("lab/b-cap"), cardinality: card.required }]);
 const cycleB = decl("lab/b", "lab/b/default", [cap("lab/b-cap")], [{ id: "a", capability: cap("lab/a-cap"), cardinality: card.required }]);
-const cycleProviderA = { ...cycleA, provides: [cap("lab/a-cap")] };
+const hostileIds = ["__proto__", "constructor", "then", "é", "é"] as const;
+const hostileDeclaration = decl("lab/hostile", "lab/hostile/default", [], hostileIds.map((id) => ({ id, capability: cap(`lab/${id === "é" ? "composed" : id === "é" ? "decomposed" : "hostile"}`), cardinality: card.optional })));
+const hostileBindings = hostileIds.map((id) => bind([], id, "lab/hostile/default"));
+const declarationWithUnknownField = { ...provider("provider-a"), executable: "not-allowed-even-when-inert" } as Declaration;
+const invalidOwner = { ...provider("provider-a"), owner: { authority: "lab", path: ["provider-a/source.ts"] } } as Declaration;
 
 export const corpus: readonly Scenario[] = deepFreeze([
-  scenario("S01", "required one", requiredBase, ok(["lab/consumer/default", p1], [p1, "lab/consumer/default"])),
-  scenario("S02", "optional zero", world([consumer({ id: "service", capability: cap("lab/service"), cardinality: card.optional })], [bind([])]), ok()),
-  scenario("S03", "optional one", world([consumer({ id: "service", capability: cap("lab/service"), cardinality: card.optional }), provider("provider-a")], [bind([p1])]), ok()),
-  scenario("S04", "many zero", manyWorld(0, 0, 3), ok()),
-  scenario("S05", "many minimum", manyWorld(1, 1, 3), ok()),
-  scenario("S06", "many interior", manyWorld(2, 1, 3), ok()),
-  scenario("S07", "many maximum", manyWorld(3, 1, 3), ok()),
-  scenario("S08", "many below minimum", manyWorld(0, 1, 3), bad("binding.cardinality")),
-  scenario("S09", "many above maximum", manyWorld(3, 0, 2), bad("binding.cardinality")),
-  scenario("S10", "missing required", world([consumer()], []), bad("binding.missing")),
-  scenario("S11", "duplicate module", world([consumer(), provider("provider-a"), { ...provider("provider-a"), implementationId: "lab/provider-a/other" }], [bind([p1])]), bad("module.duplicate")),
-  scenario("S12", "duplicate provider", world([consumer(), provider("provider-a")], [bind([p1, p1])]), bad("binding.provider-duplicate")),
-  scenario("S13", "unknown binding consumer", world([consumer(), provider("provider-a")], [bind([p1], "service", "lab/unknown/default")]), bad("binding.consumer-unknown", "binding.missing")),
-  scenario("S14", "unknown provider", world([consumer()], [bind(["lab/unknown/default"])]), bad("binding.provider-unknown")),
-  scenario("S15", "provider not selected", world([consumer(), provider("provider-a")], [bind([p1])], undefined, [{ moduleId: "lab/consumer", implementationId: "lab/consumer/default" }]), bad("binding.provider-unselected")),
-  scenario("S16", "capability mismatch", world([consumer(), provider("provider-a", "lab/other")], [bind([p1])]), bad("binding.capability")),
-  scenario("S17", "version mismatch", world([consumer(), provider("provider-a", "lab/service", 2)], [bind([p1])]), bad("binding.version")),
-  scenario("S18", "dependency cycle", world([cycleProviderA, cycleB], [bind(["lab/b/default"], "b", "lab/a/default"), bind(["lab/a/default"], "a", "lab/b/default")], ["lab/a"]), bad("graph.cycle")),
-  scenario("S19", "multiple roots", world([provider("provider-a"), provider("provider-b")], [], ["lab/provider-b", "lab/provider-a"]), ok([p1, p2], [p1, p2])),
-  scenario("S20", "unreachable selection", world([provider("provider-a"), provider("provider-b")], [], ["lab/provider-a"]), bad("graph.unreachable")),
-  scenario("S21", "permutation determinism", world([provider("provider-b"), consumer(), provider("provider-a")], [bind([p1])], ["lab/consumer", "lab/provider-b"]), ok(["lab/consumer/default", p1, p2])),
-  scenario("S22", "bounded diagnostics", world([consumer()], [bind(["lab/z/default"]), bind(["lab/y/default"], "other"), bind(["lab/x/default"], "third")], undefined, undefined, { diagnosticLimit: 2 }), bad("binding.provider-unknown", "binding.provider-unknown")),
-  scenario("S23", "cascade suppression", world([consumer()], [bind(["lab/unknown/default"])]), bad("binding.provider-unknown")),
-  scenario("S24", "no implicit fallback", world([consumer(), provider("provider-a"), provider("provider-b")], []), bad("binding.missing")),
-  scenario("S25", "hostile own keys and Unicode", world([decl("lab/hostile", "lab/hostile/default", [], hostileSlots)], [], ["lab/hostile"], undefined, { hostile }), ok(), "representation"),
-  scenario("S26", "unknown field rejected", { ...requiredBase, extra: { surprise: true } }, bad("input.unknown-field"), "representation"),
-  scenario("S27", "inert JSON round trip", requiredBase, ok(), "representation"),
-  scenario("S28", "discovery imports no executable", requiredBase, ok(), "representation"),
-  scenario("S29", "direct Pure DI host", requiredBase, ok(), "host-probe", "direct-pure-di"),
-  scenario("S30", "selected literal loader host", requiredBase, ok(), "host-probe", "selected-literal-loader"),
+  scenario("S01", "one provider", world([provider("provider-a")], [], ["lab/provider-a"]), ok([p1], [p1])),
+  scenario("S02", "one consumer", world([consumer()], [], ["lab/consumer"]), ok([c], [c])),
+  scenario("S03", "required dependency", requiredBase, ok([c, p1], [p1, c])),
+  scenario("S04", "missing required dependency", world([consumer(serviceSlot())], [bind([])], ["lab/consumer"]), bad("binding.missing")),
+  scenario("S05", "missing optional dependency", world([consumer(serviceSlot(card.optional))], [bind([])], ["lab/consumer"]), ok([c], [c])),
+  scenario("S06", "zero many", manyWorld([]), ok([c], [c])),
+  scenario("S07", "one many", manyWorld([provider("provider-a")]), ok([c, p1], [p1, c])),
+  scenario("S08", "multiple many", manyWorld([provider("provider-a"), provider("provider-b"), provider("provider-c")]), ok([c, p1, p2, p3], [p1, p2, p3, c])),
+  scenario("S09", "duplicate provider", world([consumer(serviceSlot(card.many(0, 3))), provider("provider-a")], [bind([p1, p1])], ["lab/consumer"]), bad("binding.provider-duplicate")),
+  scenario("S10", "ambiguous binding", world([consumer(serviceSlot()), provider("provider-a"), provider("provider-b")], [bind([p1, p2])], ["lab/consumer"]), bad("binding.ambiguous")),
+  scenario("S11", "incompatible capability", world([consumer(serviceSlot()), provider("provider-a", "lab/other")], [bind([p1])], ["lab/consumer"]), bad("binding.capability")),
+  scenario("S12", "dependency cycle", world([cycleA, cycleB], [bind(["lab/b/default"], "b", "lab/a/default"), bind(["lab/a/default"], "a", "lab/b/default")], ["lab/a"]), bad("graph.cycle")),
+  scenario("S13", "disabled root", world([provider("provider-a")], [], ["lab/provider-a"], undefined, { desiredProfile: { disabledModuleIds: ["lab/provider-a"] } }), bad("host.profile.root-disabled")),
+  scenario("S14", "disabled required provider", world([consumer(serviceSlot()), provider("provider-a")], [bind([p1])], ["lab/consumer"], undefined, { desiredProfile: { disabledModuleIds: ["lab/provider-a"] } }), bad("binding.missing")),
+  scenario("S15", "disabled optional provider", world([consumer(serviceSlot(card.optional)), provider("provider-a")], [bind([p1])], ["lab/consumer"], undefined, { desiredProfile: { disabledModuleIds: ["lab/provider-a"] } }), ok([c], [c])),
+  scenario("S16", "unreachable provider", world([consumer(serviceSlot()), provider("provider-a"), provider("provider-b")], [bind([p1])], ["lab/consumer"]), bad("graph.unreachable")),
+  scenario("S17", "multiple roots", world([provider("provider-a"), provider("provider-b")], [], ["lab/provider-b", "lab/provider-a"]), ok([p1, p2], [p1, p2])),
+  scenario("S18", "deterministic reorder", world([provider("provider-b"), consumer(serviceSlot()), provider("provider-a")], [bind([p1])], ["lab/provider-b", "lab/consumer"]), ok([c, p1, p2], [p1, c, p2])),
+  scenario("S19", "hostile slot names: own __proto__, constructor, then, composed and decomposed Unicode", world([hostileDeclaration], hostileBindings, ["lab/hostile"]), ok(["lab/hostile/default"], ["lab/hostile/default"]), "representation"),
+  scenario("S20", "unknown declaration fields", world([declarationWithUnknownField], [], ["lab/provider-a"]), bad("declaration.unknown-field"), "representation"),
+  scenario("S21", "duplicate module IDs", world([provider("provider-a"), { ...provider("provider-a"), implementationId: "lab/provider-a/other" }], [], ["lab/provider-a"]), bad("module.duplicate")),
+  scenario("S22", "duplicate implementation IDs", world([provider("provider-a"), { ...provider("provider-b"), implementationId: p1 }], [], ["lab/provider-a"]), bad("implementation.duplicate")),
+  scenario("S23", "invalid owner path", world([invalidOwner], [], ["lab/provider-a"]), bad("owner.path-invalid"), "representation"),
+  scenario("S24", "profile with unknown module", world([], [], ["lab/unknown"], [{ moduleId: "lab/unknown", implementationId: "lab/unknown/default" }]), bad("profile.module-unknown")),
+  scenario("S25", "hidden fallback attempt", world([consumer(serviceSlot()), provider("provider-a")], [], ["lab/consumer"], undefined, { fallbackBindings: [bind([p1])] }), bad("binding.missing")),
+  scenario("S26", "discovery without executable imports", requiredBase, ok([c, p1], [p1, c]), "representation"),
+  scenario("S27", "literal loader table for selected modules only", world([consumer(serviceSlot()), provider("provider-a"), provider("unselected")], [bind([p1])], ["lab/consumer"], [{ moduleId: "lab/consumer", implementationId: c }, { moduleId: "lab/provider-a", implementationId: p1 }]), ok([c, p1], [p1, c]), "host-probe", "selected-literal-loaders"),
+  scenario("S28", "direct Pure DI parity", requiredBase, ok([c, p1], [p1, c]), "host-probe", "direct-pure-di-parity"),
+  scenario("S29", "declaration serializability", requiredBase, ok([c, p1], [p1, c]), "representation"),
+  scenario("S30", "TypeScript declaration emit", requiredBase, ok([c, p1], [p1, c]), "representation"),
 ] satisfies readonly Scenario[]);

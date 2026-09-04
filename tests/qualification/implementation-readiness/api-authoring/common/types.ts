@@ -2,13 +2,13 @@ export type EvidenceClass = "semantic" | "representation" | "host-probe";
 export type Cardinality =
   | Readonly<{ kind: "required" }>
   | Readonly<{ kind: "optional" }>
-  | Readonly<{ kind: "many"; min: number; max: number }>;
+  | Readonly<{ kind: "many"; min: number; max: number; order: "profile" }>;
 export type Capability = Readonly<{ id: string; version: number }>;
 export type Slot = Readonly<{ id: string; capability: Capability; cardinality: Cardinality }>;
 export type Declaration = Readonly<{
   moduleId: string;
   implementationId: string;
-  owner: Readonly<{ authority: string; feature: string }>;
+  owner: Readonly<{ authority: string; path: readonly string[] }>;
   provides: readonly Capability[];
   slots: readonly Slot[];
 }>;
@@ -23,12 +23,12 @@ export type Profile = Readonly<{
   selections: readonly Selection[];
   bindings: readonly Binding[];
 }>;
+export type DesiredProfile = Readonly<{ disabledModuleIds: readonly string[] }>;
 export type World = Readonly<{
   declarations: readonly Declaration[];
   profile: Profile;
-  diagnosticLimit?: number;
-  extra?: unknown;
-  hostile?: Readonly<Record<string, string>>;
+  desiredProfile?: DesiredProfile;
+  fallbackBindings?: readonly Binding[];
 }>;
 export type Diagnostic = Readonly<{ code: string; path: string; detail: string }>;
 export type Outcome = Readonly<{
@@ -49,12 +49,14 @@ export type Scenario = Readonly<{
   evidenceClass: EvidenceClass;
   input: World;
   expected: Expected;
-  hostProbe?: "direct-pure-di" | "selected-literal-loader";
+  hostProbe?: "selected-literal-loaders" | "direct-pure-di-parity";
 }>;
 export type EncodedCandidate = Readonly<{
-  syntax: string;
-  declaration: unknown;
-  profile: unknown;
+  syntax: "inert-descriptor-object" | "typed-defineModule" | "inert-declaration-plus-activation-ref";
+  declarations: readonly unknown[];
+  profile: Profile;
+  desiredProfile?: DesiredProfile;
+  fallbackBindings?: readonly Binding[];
 }>;
 export type CandidateAdapter = Readonly<{
   id: "descriptor-object" | "define-module" | "split-declaration-factory";
@@ -77,4 +79,13 @@ export function deepFreeze<T>(value: T): T {
 
 export function cloneData<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
+}
+
+export function encodedWorld(encoded: EncodedCandidate, declarations: readonly Declaration[]): World {
+  return cloneData({
+    declarations,
+    profile: encoded.profile,
+    ...(encoded.desiredProfile ? { desiredProfile: encoded.desiredProfile } : {}),
+    ...(encoded.fallbackBindings ? { fallbackBindings: encoded.fallbackBindings } : {}),
+  });
 }
