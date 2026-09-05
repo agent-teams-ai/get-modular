@@ -173,7 +173,14 @@ with the archive. Unsupported metadata records, links and special entries fail
 closed under this finite tooling profile. Its private input budgets do not
 change Core resource limits. These disposable regressions also verify the
 complete accepted diagnostic types and JavaScript authoring through the public
-root; public type-leakage mutations and retained qualification are still pending. Accepted
+root. Separate finite static readers now inspect every archived JavaScript
+module and public declaration before installation. They follow named imports
+and aliases, require owned runtime roles and direct construction, and reject
+external references, extra exports, ambient declarations and private type
+leakage. Declaration checks preserve signatures, readonly shapes and diagnostic
+code/phase/limit associations. Independent mutations accompany both readers;
+these checks do not execute candidate code or establish algorithm correctness.
+Retained qualification is still pending. Accepted
 ADR-0009 names the one pre-1.0 public surface: `compileComposition`,
 `compileCompositionJson`, `defineModule`, `required`, `optional`, `many` and
 the types `CompileCompositionResult`, `ModuleDeclaration`,
