@@ -21,6 +21,7 @@ related:
   - ADR-0015
   - ADR-0016
   - ADR-0017
+  - ADR-0018
   - ARCH-FEATURE-MODULE-STANDARD
   - ARCH-SELF-COMPOSITION-GUIDE
   - ARCH-SYSTEM-BOUNDARY
@@ -38,7 +39,7 @@ build the first reusable Core. It does not accept new public API, change an
 accepted decision, or claim that a qualification fixture is production code.
 ADR-0010, ADR-0011, ADR-0013 and ADR-0014 are proposed decisions on the
 selected base unless their accepted successors are present; ADR-0009,
-ADR-0012, ADR-0015, ADR-0016 and ADR-0017 are accepted. The proposed decisions
+ADR-0012, ADR-0015, ADR-0016, ADR-0017 and ADR-0018 are accepted. The proposed decisions
 do not enter accepted authority, the
 open-decision blocker catalog or executable governance until accepted through
 the repository decision flow.
@@ -62,11 +63,248 @@ reconciliation. Extension Foundation owns artifact trust, signatures,
 distribution, isolation and plugin state. No phase may create a second owner
 for those concerns.
 
+## Agent execution route
+
+Give each implementation task this roadmap and one explicit milestone/phase
+slice. The complete roadmap is context; it is not permission to implement
+all phases, accept proposed decisions, publish, or change another task's
+files. Use the following route before choosing an implementation.
+
+### Required reading and authority
+
+1. Read [repository instructions](../../AGENTS.md), the
+   [system boundary](system-boundary.md),
+   [current contract](current-contract.md),
+   [requirements](../requirements/module-system-v1.md) and
+   [Feature Module Standard mapping](feature-module-standard.md).
+   These define ownership, public semantics and dependency direction.
+2. Read the [decision index](../decisions/README.md) and
+   [open-decision index](../open-decisions/README.md), then the accepted ADRs
+   linked for the assigned phase below. Read the decisions themselves, not
+   only their titles. Apply only explicit successor precedence:
+   [ADR-0018](../decisions/0018-close-implementation-readiness-rules.md)
+   is a narrow refinement, not acceptance of the remaining proposals.
+3. Read the entire assigned phase, the applicable
+   [callable-matrix row](#per-phase-callable-matrix),
+   and its direct prerequisites. For code layout and internal dependencies,
+   read the [self-composition guide](self-composition-implementation-guide.md)
+   even when the task only implements direct M1. Its five-module graph and
+   feature-owned libraries are the existing structure, not optional examples.
+4. Open the linked machine-readable contracts, cases and expected results for
+   every behavior the task changes. The
+   [requirement traceability](../traceability/module-system-v1.yaml),
+   [source map](../provenance/source-map.yaml),
+   [accepted authority ledger](../../architecture/authority/accepted-authorities.json),
+   [contract ledger](../../architecture/authority/accepted-contracts.json),
+   [qualification ledger](../../architecture/authority/v1-qualification-ledger.json)
+   and [clarification ledger](../../architecture/authority/implementation-clarifications-ledger.json)
+   locate their exact authority. Follow relevant normative references through
+   to their source. A missing or inaccessible source is an explicit task gap;
+   a title, search excerpt or historical report cannot replace its contents.
+
+The current contract, this roadmap and the handbook explain accepted authority;
+they do not override it. A checker pass alone cannot establish untested runtime
+behavior. Do not copy historical API suffixes into production or select a
+resource profile by filename. When two sources appear inconsistent, first
+check their status and explicit precedence; report any unresolved conflict with
+the smallest concrete input and competing outcomes before coding that rule.
+
+### Phase reading and delivery map
+
+Read the common route above for every task. The table adds the minimum
+phase-specific sources, the work boundary and the evidence the next task needs.
+Follow the phase's full exit criteria as well as this navigation table.
+
+| Phase | Additional required sources | Bounded output and next dependency |
+| --- | --- | --- |
+| [0: preflight](#phase-0-contract-and-evidence-preflight) | [ADR-0015 source admission](../decisions/0015-block-publication-surfaces-and-runtime-claims-while-decisions-stay-open.md), [ADR-0017 M1 publication](../decisions/0017-publish-pre-1-0-releases-while-raw-carrier-and-duplicate-record-decisions-stay-open.md), [recorded start](#recorded-core-start), all four ledgers above | Exact base/head, applicable authority and exclusions, existing gate results; no Core source. The no-package exit condition is for initial preflight, not every later task. |
+| [1: package boundary](#phase-1-package-topology-and-private-composition-boundary) | [ADR-0003 package identities](../decisions/0003-select-public-package-identity-and-initial-topology.md), [ADR-0009 names](../decisions/0009-keep-pre-1-0-public-api-unversioned.md), [ADR-0012 packed carrier](../decisions/0012-select-esm-only-root-package-carrier.md), [source admission](feature-module-standard.md#source-admission), [build topology](self-composition-implementation-guide.md), [first publication mechanics](#first-not-claimed-publication-mechanics) | Package and Foundation source boundaries land with substantive behavior from phases 2-4; packed publication waits for complete M1. An empty barrel or package is not a finished slice. |
+| [2: authoring](#phase-2-declarations-profiles-and-capability-slots) | [ADR-0004 data contract](../decisions/0004-freeze-v1-portable-composition-contract-and-plan-digest.md), [ADR-0006 normalization](../decisions/0006-clarify-v1-compiler-normalization-and-entry-points.md), [ADR-0007 helper contract](../decisions/0007-require-executable-v1-conformance-amendments.md), [composition schema](../../architecture/contracts/v1/composition.schema.json), [own feature inventory](self-composition-implementation-guide.md#own-feature-inventory) | Inert authoring helpers and wire types with positive/negative TypeScript fixtures; compiler remains the sole validator. Pass these types to admission/semantics without exporting private ports. |
+| [3: semantic compiler](#phase-3-normalization-and-deterministic-graph-compiler) | [ADR-0005 diagnostic/resource base](../decisions/0005-freeze-v1-compatibility-diagnostics-and-resource-profile.md), ADR-0006/0007 above, ADR-0018, [handbook and error-combination worksheet](../qualification/compiler-engineer-handbook.md#m1-error-combination-worksheet), [diagnostic contract](../../architecture/qualification/v1/diagnostic-contract.json), [snapshots](../../architecture/qualification/v1/diagnostic-snapshots.json), [normalization vectors](../../architecture/qualification/v1/normalization-vectors.json), [effective limits](../../architecture/qualification/v1/resource-profile-v2.json), [resource boundaries](../../architecture/qualification/v1/resource-boundary-vectors.json), [clarification cases](../../architecture/qualification/implementation-clarifications/cases.json) | Owned admission, graph and diagnostic behavior with partial-failure expectations; private normalized success may omit digest. Full public success waits for phase 4's output implementation. |
+| [4: output and self-composition](#phase-4-immutable-plan-canonical-bytes-and-self-composition) | [ADR-0008 finite self-use](../decisions/0008-bounded-internal-engine-self-composition.md), [ADR-0016 dependency records/witness](../decisions/0016-close-the-dependency-record-seam-and-construction-witness-for-self-composition.md), ADR-0018, [canonical vectors](../../architecture/contracts/v1/canonical-vectors.json), [canonicalization refinements](../../architecture/qualification/v1/canonicalization-vectors.json), [emitter/build/witness guide](self-composition-implementation-guide.md) | First deliver direct plan/digest and full M1 results. Later M3 delivers finite generation, direct/generated parity and construction proof; do not make the first part wait for the second. |
+| [5: conformance and scale](#phase-5-conformance-and-scale-proof) | ADR-0007/0008/0012, [case manifest](../../architecture/qualification/v1/qualification-case-manifest.json), [decoder vectors](../../architecture/qualification/v1/decoder-vectors.json), all evidence applicable to the selected subject, [governed qualification format](../metadata.schema.json), [custody proposal and stop point](../decisions/0011-define-private-self-composition-evidence-and-release-custody.md) | Run independent expectations against actual subjects; record exact inputs, outputs and excluded cases. Full runtime promotion and custody need their accepted authority; fixture validation is not subject execution. |
+| [6: product dogfooding](#phase-6-first-product-dogfooding) | System boundary and requirements, [capability migration and admission](#capability-evolution-and-namespace-admission), the actual consumer's accepted adoption decision | Optional product-owned adapter and observed integration results. The consumer owns factory failures, lifecycle and rollback; a second consumer gates only the broader extraction/stability claim. |
+| [7: reserved](#reserved-phase-7-extensionplugin-boundary) | System boundary | No implementation task, package, runtime or gate. |
+| [8: release/conformance](#phase-8-release-and-conformance-checkpoint) | ADR-0008/0012/0017/0018, the accepted successor to ADR-0011 if one exists, [release-custody prerequisites](#phase-4-release-custody-prerequisites) | Exact retained archive, required runtime/custody evidence and recovery proof; publishing remains a separate authorized action. Phase 6 is optional and phase 7 is skipped. |
+
+M2 is a milestone spanning the existing admission, semantic and output phases,
+not an omitted numbered phase. Before production raw or repeated-record implementation,
+read [OD-005](../open-decisions/OD-005-raw-input-carrier-semantics.md) and
+[OD-006](../open-decisions/OD-006-duplicate-binding-record-diagnostics.md),
+[ADR-0013](../decisions/0013-close-trusted-object-and-raw-carrier-semantics.md)
+and [ADR-0014](../decisions/0014-close-duplicate-binding-record-semantics.md).
+Their combined successor transaction must be accepted, preserve ADR-0018 and
+update the owner scope before those excluded semantics are implemented.
+The existence of proposed text never supplies that acceptance.
+Independent successor fixtures and Node oracle tooling may be prepared under
+`tests/qualification` before acceptance. Execute the same inventory against the
+real Core subject after acceptance and scope expansion, before exposing M2.
+
+An external production primitive additionally requires accepted
+[ADR-0010 or its successor](../decisions/0010-select-replaceable-primitives-for-the-first-core-implementation.md).
+Until then M1 uses the owned implementations behind the existing ports. The
+TypeScript fixture task records the minimum supported compiler separately
+from the pinned build compiler, exercises the claimed versions with
+`skipLibCheck: false`, and covers literal inference, `satisfies`, excess-field
+limits and the non-validating runtime helper contract before publication.
+
+### Assigning a bounded task
+
+The task message must contain concrete values for:
+
+- base commit and predecessor checkpoint; named milestone and exact phase
+  subsection, with its required reading links;
+- one owner and explicit file/directory ownership, including shared files such
+  as the barrel, root scripts, build configuration and composition root;
+- input/output contract, accepted behavior, non-goals and applicable open
+  decisions; link the canonical contract instead of copying a second version;
+- the smallest independently testable behavior, its positive/negative
+  expectations, meaningful failure mutations, and the later gate still pending;
+- exact existing commands to run, or a requirement to add the first package's
+  focused command and wire it into the closed root chain in the same change;
+- expected handoff: source/patch identity, executed checks, concrete remaining
+  gaps and a narrow revert point.
+
+The integration owner supplies the fixed base and shared-file ownership.
+Parallel tasks may read shared contracts; they must not concurrently redefine
+ports, fact meanings or public types. Start dependent tasks from a reviewed
+predecessor or explicitly supplied accepted interface. Do not generate empty
+stubs merely to unblock a dependent task. Split by cohesive behavior, not by
+assigning an entire overlapping phase to each writer.
+
+### Verification and completion
+
+Use [package scripts](../../package.json) and the
+[Foundation workflow](../../architecture/foundation/repository-agent-workflow.yaml):
+`pnpm check:changed` while editing, `pnpm check:fast` before handoff, and
+`pnpm check` for the completed change. The
+[CI workflow](../../.github/workflows/ci.yml) is the repository gate; its host
+matrix is not the Core runtime-conformance matrix. No package build/test command
+exists until the first package introduces it. Update the exact script chain
+and its guard together as the current contract requires; never mark a future
+command or absent subject as passed.
+
+A phase's implementation is complete only when its scoped behavior and focused
+checks pass. A milestone is complete only when its actual subject passes the
+full applicable exit gate. A merged algorithm slice can therefore be complete
+while M1 qualification is still pending. Record an unavailable future subject
+as pending, and a deliberately excluded behavior as out of scope with its
+controlling decision. Neither counts as successful evidence.
+
+### Example first M1 task
+
+A useful first source task is the owned canonicalization feature, with the
+minimum package and source-admission tooling needed to execute it. This is a
+private behavior slice of phases 1 and 4, not a completed public compiler.
+The integration owner fills in the reviewed base SHA and a single task owner
+before dispatch and assigns these files to that owner:
+
+- `packages/core/src/features/canonicalization/` and its focused tests;
+- the Core package/build configuration and the root scripts, closed-chain
+  checker and Foundation source-dependency configuration required for admission.
+
+Read the common route, the phase 1 and phase 4 sources in the table, and the
+guide's [feature skeleton](self-composition-implementation-guide.md#feature-skeleton-in-typescript).
+Implement the owned canonical-bytes port against the accepted canonical vectors
+and diagnostic-detail ordering inputs. Keep domain separation and hashing with
+plan-output; this task does not implement them. Use no external production
+adapter while ADR-0010 remains proposed.
+
+The handoff contains an executing feature factory, its owner-local declaration
+and port, byte-for-byte vector results and focused rejection/mutation checks,
+plus the actual `core:typecheck`, `core:build` and `core:test` commands added to
+the existing gate chain. Introduce only types needed by this slice in their
+declared owner. The manifest uses the accepted carrier shape, but the public
+barrel, full compile result, own-profile execution and packed-consumer evidence
+remain pending until their implementations exist. No empty facade, fake digest
+or partial public compiler stands in for them, and nothing is packed or
+published by this task. The next task starts from this reviewed implementation
+and its port, without redefining that port in parallel.
+
+### Dependency-safe parallel delivery
+
+Use one integration owner for the source baseline, shared scripts, public barrel,
+build configuration and composition root. A task may delegate a shared file to
+one named writer for one checkpoint; two writers never own it concurrently.
+The execution manifest records worker settings and resource limits separately
+from this product roadmap.
+
+1. Complete Phase 0 and integrate the agreed documentation and fixture fixes
+   into the exact implementation base. Start the
+   [first M1 task](#example-first-m1-task) from that base. In parallel, an
+   independent qualification owner can map accepted vectors and design missing
+   black-box cases without importing the implementation or changing accepted
+   evidence. Candidate M2 fixture research remains outside production source.
+2. After package admission, deliver authoring and the wire types in their
+   existing owner. Once those types and the canonicalization port have a
+   reviewed implementation, diagnostics and plan-output can proceed under
+   separate ownership. A downstream writer may prepare independent tests while
+   waiting for its prerequisite, but cannot invent a competing interface.
+3. Deliver trusted-object admission and graph semantics as separate behavior
+   slices when their actual input, diagnostic and normalized-output seams are
+   available from reviewed predecessors. If a seam is still missing, first
+   finish its owner's smallest working slice. Parallelize only work whose
+   prerequisite contracts already exist; a dependency arrow is not a stub.
+4. The integration owner connects the reviewed features through direct stage0
+   and the facade, then completes M1's public result, barrel and packed checks.
+   Independent reviewers inspect completed exact commits while writers work on
+   non-overlapping next slices. Run the integrated public-boundary tests after
+   connection; separate unit passes cannot establish integration correctness.
+5. Continue with the accepted M2 extension, then M3 construction, following the
+   [callable matrix](#per-phase-callable-matrix). Qualification tooling and
+   independent cases may develop alongside the corresponding implementation.
+   M3 runtime cases can execute in parallel against the same retained archive;
+   no platform job rebuilds or repacks it. Optional consumer adoption waits for
+   its own admission and cannot become a hidden dependency of Core delivery.
+
+Each writer receives an isolated checkout, exact base commit, bounded ownership,
+required reading and executable handoff contract. Writers preserve other work
+and return a verifiable patch or commit with focused evidence. Integration is
+sequential: verify the parent and patch, apply one checkpoint, run the affected
+integration checks, and give dependent writers the resulting commit. Do not
+transfer a dirty workspace as authority or silently accept an old-base result.
+Testing worker launch, provisioning or assignment uses disposable test projects,
+never an unrelated real product. Runtime limitations on Git writes require a
+verified patch handoff to the integration owner, not repeated failed commits.
+
+### Phase Definition of Done and evidence map
+
+This table indexes the phase exit criteria; it does not replace their complete
+case inventory or accept a proposal. Apply the
+[verification commands](#verification-and-completion) at every checkpoint.
+Package-specific commands listed there are introduced with the first package,
+not assumed to exist during Phase 0.
+
+| Phase or milestone | Required result and focused evidence | Completion boundary |
+| --- | --- | --- |
+| [0](#phase-0-exit-criteria) | Exact base, accepted authority and scope map; existing complete gate in a disposable checkout; no unresolved accepted-contract blocker. | Preparation only; later changes recheck affected authority instead of repeating the no-source condition. |
+| [1](#phase-1-exit-criteria) | Substantive feature plus source admission and positive/negative dependency fixtures; later complete barrel, packed export/deep-import/inert-import and declaration audits. | Source setup can finish first; the full phase waits for M1 and applicable packed consumers. |
+| [2](#phase-2-exit-criteria) | Actual inert helpers and owner-local types; positive/negative inference, cardinality and excess-field fixtures; non-validating runtime behavior. | Helpers and compiler validation have one owner each; required packed TypeScript modes and 1000-declaration proof join M1. |
+| [3](#phase-3-exit-criteria) | Actual admission, graph and diagnostic seams pass independent complete expectations, invalid-input combinations, permutation and accepted resource boundary cases. | Private normalized success may finish before digest; public success waits for Phase 4. No raw or repeated-record claim enters M1. |
+| [4, direct M1](#phase-4-qualification-exit) | Accepted canonical bytes, domain-separated digest, immutable output, immediate caller mutation and failure rejection; the facade executes complete object results. | The actual M1 subject passes the Phase 3/4 public-boundary and ADR-0012 packed/type-scale gates; record `not-claimed` and explicit exclusions. Upload is a separate action. |
+| [M2 across phases 2-4](#per-phase-callable-matrix) | Accepted combined OD-005/OD-006 successor and expanded owner scope precede production code; real raw/object boundaries replay the successor fixtures, exact numeric rules and carrier/concurrency cases. | No proposed fixture or passing oracle substitutes for acceptance or an executed Core subject. Only then expose the raw entrypoint. |
+| [4, generated M3](#phase-4-qualification-exit) | Finite generation, P0/P1 and W0/W1 equality, independent vectors, static/behavioral witnesses, binding replacement, poisoned/cold bootstrap, no fallback and generated-only closure. | Qualify the separate direct archive and the exact retained generated production archive; the latter also passes packed/type-scale checks. Equality from another archive is insufficient. |
+| [5](#phase-5-exit-criteria) | Actual-subject conformance and accepted resource/counter proofs; for runtime claims, all six manifest cases execute, with no skipped case counted as passed. | Without accepted custody, finish with reviewed hash-bound evidence and `not-claimed`; no invented support or promotion records. |
+| [6](#phase-6-exit-criteria) | An admitted real consumer uses the retained stage1 archive; test its own failure, partial-construction, cutover and rollback rules, and measure actual wiring changes. | Optional. No consumer admission means pending adoption, not a fake product test; a second consumer gates only the broader extraction claim. |
+| [7](#reserved-phase-7-extensionplugin-boundary) | No implementation or test suite. | Reserved and not applicable; never count it as delivered runtime functionality. |
+| [8](#phase-8-exit-criteria) | Accepted custody and exact archive evidence, all applicable release gates, cold recovery, explicit publication approval and post-upload byte-identical registry read-back. | Release eligibility, actual upload and completed publication are distinct. Missing approval or custody blocks this checkpoint, not completed earlier slices. |
+
+For every code checkpoint, the implementation and relevant independent tests
+must execute; no placeholder, skipped required case or successful schema-only
+check can stand in for the subject. The independent reviewer checks accepted
+semantics, dependency direction, error combinations and the adequacy of tests,
+not only formatting. Resolve confirmed correctness, boundary, security and
+contract findings with a regression case before completion; an unresolved
+behavior choice blocks only its dependent work. Record the exact source and
+artifact, commands and results, review disposition, exclusions and revert point
+in the task's handoff. One final complete gate runs on each mergeable head;
+repeat it only when changed inputs or unresolved evidence require it.
+
 ## MVP boundary
 
 | Required for qualified Core 0.x | Later checkpoint or reserved capability |
 | --- | --- |
-| One public `@get-modular/core` package, published as `not-claimed` from the first checkpoint under ADR-0017 | Dynamic runtime plugin installation |
+| One public `@get-modular/core` package: direct M1 `not-claimed` publication under ADR-0017, and generated post-M3 publication only after ADR-0018's full M3 gate | Dynamic runtime plugin installation |
 | Inert module declarations and complete profiles | Hot unload and live replacement |
 | `required`, `optional`, bounded ordered `many` | Cordis as a Host resource adapter |
 | Normalization, graph validation and immutable plan | Process/WASM plugin hosts |
@@ -90,18 +328,24 @@ alone.
 
 | Milestone | Proposed decisions required | Blocked without them |
 | --- | --- | --- |
-| M1 `direct-semantics-qualified` on Node through the object entrypoint, published as `not-claimed` | None; accepted ADR-0015 admits the source, accepted ADR-0012 and ADR-0017 admit the export map and publication, after the owner-start record | Package source, the first executable subject and the first `0.x` publication |
+| M1 `direct-semantics-qualified` on Node through the object entrypoint, published as `not-claimed` | None; accepted ADR-0015 admits the source, accepted ADR-0012 and ADR-0017 admit the export map and direct publication after the owner-start record, and ADR-0018 applies its accepted object, diagnostic-type and graph rules inside that unchanged scope | Package source, the first executable direct subject and the first `0.x` publication |
 | M2 raw entrypoint and carriers | ADR-0013 and ADR-0014 together as one diagnostic generation 2 transaction: successor schema enum, catalog rank, diagnostic contract, snapshots, checker and ledger, because ADR-0007 keeps the base enum and code rank byte-identical | Raw decoding exposure, carrier admission and duplicate binding-record behavior |
 | M2 public exposure of the raw entrypoint | The same generation 2 transaction resolving OD-005 | `compileCompositionJson` in the public barrel |
-| M3 emitter and generated stage1 | None for construction; accepted ADR-0016 closes the dependency-record seam and the witness; ADR-0011 or a narrower successor only for release custody | `self-composed-qualified` and every release custody claim |
+| M3 emitter and generated stage1, then generated `not-claimed` publication | None for construction; accepted ADR-0016 closes the dependency-record seam and the witness; ADR-0018 requires the complete M3 proof and ADR-0012 packed Node plus four TypeScript/type-scale cases before generated publication; ADR-0011 or a narrower successor is required only for release custody | `self-composed-qualified`, generated publication and every release custody claim |
 
-A `0.x` archive publishes as `not-claimed` once it passes the Node and
-TypeScript packed cases of ADR-0012 and all four ADR-0003 preconditions:
+A direct M1 `0.x` archive may publish as `not-claimed` once it passes the Node
+and TypeScript packed cases of ADR-0012 and all four ADR-0003 preconditions:
 verified control of the `@get-modular` npm namespace, an acyclic package graph,
 no conformance tooling in the core tarball or declaration surface, and a
 documented migration from the initial `0.x` topology.
-The six runtime cases mandated by ADR-0007 and ADR-0008 gate the first
-`runtime-conformant` claim and `release-eligible`, not a pre-1.0 publication.
+After M3, only the generated stage1 archive is distributable. Its publication
+also requires the complete M3 proof: P0/P1 plan/digest equality, W0/W1 tuple equality,
+independent vectors on direct and generated subjects, static and behavioral
+witnesses, no concrete fallback, clean and poisoned cold bootstrap, no
+caller-time bootstrap, and generated-only archive closure. The six runtime
+cases mandated by ADR-0007 and ADR-0008 gate the first `runtime-conformant`
+claim and `release-eligible`, not either `not-claimed` publication;
+release custody remains separate.
 The bootstrap sequence is therefore: the product-owner start decision required
 by ADR-0015 is recorded as a governed record before the first production
 artifact; its validating check lands together with the record in its own
@@ -109,11 +353,12 @@ change, and the first package pull request references it; materialize
 `packages/core` with the export map of
 ADR-0012 and the names of ADR-0009; reach M1 on Node, meaning
 `direct-semantics-qualified` behavior behind the object entry point; publish
-that archive as the first `not-claimed` `0.x` once the Node and TypeScript
-packed cases of ADR-0012 pass; prepare the diagnostic generation 2 transaction
-in parallel with M1; then proceed to M2 and M3 in that order. Nothing publishes
-before M1: the export map is frozen only after the first substantive compiler
-behavior exists, and a shell or placeholder entry point is never packed.
+that direct archive as `not-claimed` after its packed gates; prepare the
+diagnostic generation 2 transaction in parallel with M1; then proceed to M2
+and M3 in that order. Publish a generated post-M3 archive only after both the
+complete M3 proof and packed/type-scale gates pass. The export map is frozen
+only after substantive compiler behavior exists, and a shell or placeholder
+entry point is never packed.
 
 ### Per-phase callable matrix
 
@@ -123,9 +368,23 @@ each checkpoint:
 
 | Phase | Qualification subject may expose | Explicitly excluded |
 | --- | --- | --- |
-| M1 object entry point, published as `not-claimed` | `compileComposition` over trusted plain-object input, the authoring helpers `defineModule`, `required`, `optional` and `many`, and the object-contract types, exactly as ADR-0009 names them and ADR-0012 carries them | `compileCompositionJson`, any raw carrier behavior, the OD-006 duplicate-record semantics, every `runtime-conformant` claim, `stage0` exports, runtime loading |
+| M1 object entry point, published as `not-claimed` | `compileComposition` over the trusted cooperative Host-owned object graph, including its outer invocation wrapper and lists, the authoring helpers `defineModule`, `required`, `optional` and `many`, `DiagnosticCode` as exactly `Diagnostic['code']` over emittable codes, and the remaining object-contract types fixed by ADR-0009 and ADR-0018 | `compileCompositionJson`, any raw carrier behavior, the OD-006 duplicate-record semantics, every `runtime-conformant` claim, `stage0` exports, runtime loading, a public catalog type |
 | M2 raw entry point and carriers | The M1 surface plus `compileCompositionJson`, only after the diagnostic generation 2 transaction resolves OD-005 and OD-006 | Unaccepted carrier behavior, product/runtime lifecycle, qualification-only variants |
-| M3 emitter and generated stage1 | Exactly the full export map accepted by ADR-0009 and ADR-0012, served from the generated stage1 root | `stage0` exports, qualification-only variants, implicit aliases, and any raw or carrier surface that the OD-005/OD-006 successors have not accepted |
+| M3 emitter and generated stage1 | Exactly the full export map accepted by ADR-0009, ADR-0012 and ADR-0018, served from the generated stage1 root; publication waits for the complete M3 and packed/type-scale gates above | `stage0` exports, qualification-only variants, implicit aliases, and any raw or carrier surface that the OD-005/OD-006 successors have not accepted |
+
+ADR-0018 routes its accepted rules through these phase gates:
+
+| Phase | Required rule and evidence |
+| --- | --- |
+| M1 | Measure `graphDepth` on the residual DAG after removing cyclic SCC/self-loop nodes and incident edges; preserve independent cycle and capped 2049 overflow diagnostics. Snapshot the cooperative Host-owned outer wrapper, lists and nested admitted object graph synchronously without retained aliases. Define `DiagnosticCode` as exactly `Diagnostic['code']` over emittable codes; add no public catalog type, and keep canonicalization failure as Promise rejection. |
+| M2 | Before `Number` rounding, accept only raw lexemes that denote exact mathematical safe integers; accept `1`, `1.0` and `1e0`, reject `1.0000000000000001`, `1e-400` and every negative-zero spelling with `schema.invalid-value`, using a bounded lexeme algorithm without unbounded `BigInt`. Exposure still waits for OD-005/OD-006 and their combined generation 2 transaction. |
+| M3 publication | The generated pack-once archive passes the ADR-0012 Node and four TypeScript/type-scale cases and the complete P0/P1, W0/W1, direct/generated independent-vector, static/behavioral-witness, no-fallback, cold-bootstrap and generated-only closure proof. The six-runtime gate remains separate for `runtime-conformant` and `release-eligible`, as does custody. |
+
+The closed [implementation-clarification contract](../../architecture/qualification/implementation-clarifications/contract.json)
+and its sibling `cases.json` pin complete mixed-graph failure results and raw
+scalar numeric-admission projections. They are fixture-only evidence and do not
+count as Core source or conformance without execution against the applicable
+subject.
 
 The direct and, once built, generated subjects use the same M1 surface and
 independent vectors. `compileComposition` is the accepted object entry point
@@ -167,11 +426,18 @@ Core: the record is the JSON block under "Recorded Core start" in this
 document, and `architecture/checks/private-core-start.mjs` reads it from these
 exact bytes on every `governance:check`.
 
+ADR-0018 applies its accepted M1 rules inside this already authorized scope.
+It changes neither the start JSON nor its authority digest, opens no new M1
+permission gate, and launches no implementation action by itself. M2 scope and
+generated self-composition claims still require the owner-record and closed
+checker changes already planned for those expansions.
+
 ### First `not-claimed` publication mechanics
 
 Implementation may start before registry access exists, but publication may
-not. The first package pull request owns a closed release checklist instead of
-depending on repository-root defaults:
+not. The first publication of completed M1 owns this closed release checklist.
+It does not gate the first private source PR; package-local metadata and
+documentation still arrive with their applicable source changes:
 
 1. Record authenticated control of the npm `@get-modular` organization and the
    actor or protected workflow permitted to publish `@get-modular/core`. An
@@ -220,10 +486,12 @@ settings list `ilyazelenko` as owner with 2FA enabled. This proves interactive
 control of the `@get-modular` namespace and admits the owner to perform a
 bounded first-package bootstrap. It does not prove that a package exists,
 authorize an unattended release, configure a Trusted Publisher, or satisfy the
-pack-once and registry-read-back evidence above. The first package pull request
+pack-once and registry-read-back evidence above. The first publication
 must record those remaining facts against its exact archive and workflow.
 
-The package pull request fails closed when any item above lacks evidence. It
+Upload is blocked until items 1-8 and the pre-upload rehash in item 9 pass.
+Publication is complete only after item 9's registry read-back and consumer
+check pass; that post-upload evidence cannot be a precondition for upload. It
 does not need Phase 8 release-custody schemas to publish as `not-claimed`, but it
 cannot use that label as a conformance, self-composition or release-eligibility
 claim. No release workflow is added before a real package exists because an
@@ -274,8 +542,10 @@ flowchart TB
 Each phase contract names its authority, inputs, outputs, owner, non-goals,
 invariants, applicable checks and stop conditions. Its checkpoint records the
 exact source and subject identities, commands and results, unresolved blockers,
-owner, and narrow reversal path. Missing subjects are `not-applicable`, not
-synthetically satisfied.
+owner, and narrow reversal path. A required subject that does not exist yet is
+`pending` and blocks completion of its applicable milestone. A case outside
+the assigned milestone is `not-applicable` only with its controlling scope
+exclusion recorded. Neither state counts as passed evidence.
 
 Ordinary bounded work uses focused checks and one independent exact-head review.
 Public-surface, authority, security and publication changes require the stronger
@@ -396,22 +666,38 @@ changes are implemented here.
 as the first Core behavior. A package shell or declaration-only facade is not
 an implementation deliverable.
 
-Phases 1-4 are one atomic first-Core checkpoint, not four independently
-mergeable releases. Their acyclic construction order is:
+Phases 1-4 form the first-Core checkpoint; their work is delivered in bounded
+PRs and qualified by milestone, rather than as four independent releases.
+The acyclic construction and qualification order is:
 
 ```text
-Phase 1 package/source setup with the public barrel
+Phase 1 package/source setup with the accepted carrier shape
   -> Phase 2 inert declarations
   -> Phase 3 private semantic compiler
-  -> Phase 4 stage1 plan/digest implementation
-  -> Phase 1 first not-claimed 0.x publication, after Phase 4 and never before it
-  -> two hash-identified qualification subjects from M3
-  -> Phase 4 direct/generated packed qualification
-  -> joint Phase 1-4 checkpoint
+  -> Phase 4 immutable plan/digest implementation on direct stage0
+  -> complete M1 public barrel
+  -> complete M1 object-result and packed-consumer checks
+  -> M2 raw/duplicate-record work only after its accepted decisions
+  -> M3 finite emitter and two hash-identified qualification subjects
+  -> Phase 4 direct/generated construction and parity qualification
 ```
 
 This order prevents an empty public shell and prevents packed qualification from
 depending on a Phase 4 exit that already assumes the archive exists.
+The first `not-claimed` publication is a separate action after the M1
+packed gates. Registry upload is not a prerequisite for M2 or M3 implementation;
+their accepted decisions and owner scope remain the prerequisites.
+
+| Work ready for review | Evidence at that point | Later qualification dependency |
+| --- | --- | --- |
+| Phase 3 algorithms | Execute private normalization, graph and diagnostic seams against independent expectations | Full successful public results wait for Phase 4 plan/digest |
+| M1 direct compiler | Complete object results, immutable plan/digest and packed consumer checks | No raw carrier, generated subject or self-composition claim is required |
+| M2 carrier extension | Accepted raw and duplicate-record rules through their applicable boundary | Does not retroactively block M1 |
+| M3 generated compiler | Both subjects, finite emitter, construction witness and parity | Builds on working direct plan/digest behavior; accepted ADR-0016 already closes the seam |
+
+An algorithm slice can finish and merge before the full public-result gate.
+Report that slice as implemented with public qualification pending; never add
+a placeholder digest or claim a complete M1 result from the private seam.
 
 Atomic applies to release qualification and promotion, not to review size.
 Implement Phases 1-4 as dependency-safe, private vertical PRs that normally
@@ -424,8 +710,12 @@ smaller split would make it unverifiable.
 ### Phase 1 implementation
 
 1. Materialize the Core package/source boundary under the accepted topology
-   with the public barrel and export map that accepted ADR-0009 and ADR-0012
-   fix; the first production source waits only for the governed product-owner
+   and export-map shape that accepted ADR-0012 fixes. Add the complete public
+   barrel when substantive M1 behavior exists; prior private source slices
+   exercise their owned seams without a partial or placeholder compiler export.
+   ADR-0012 permits absent build targets during source admission; actual packed
+   resolution remains mandatory before publication. The first production
+   source waits only for the governed product-owner
    start record that ADR-0015 requires. Structure the package as feature-owned slices under
    `packages/core/src/features/*` exactly as the adopted [Feature Module Standard profile](feature-module-standard.md)
    maps the organization standard ([canonical document](https://github.com/agent-teams-ai/.github/blob/eef92e7fd40f538b4e9ba03e01bbd4e2d23f12f2/docs/architecture/feature-module-standard/v1.md),
@@ -452,10 +742,10 @@ smaller split would make it unverifiable.
    negative structural fixtures, and wire the real Foundation check into
    `check:fast` and `check`. Structural and runtime conformance remain separate
    promotion states.
-5. Pack the production archive once per publication under ADR-0012 and, from
-   M3, two temporary, separately hash-identified qualification subjects with
-   the same public compiler boundary: direct stage0 assembly and generated
-   stage1 assembly. Run default-deny export/deep-import tests, tarball
+5. Pack the production archive once per publication under ADR-0012. From M3,
+   qualification uses a separate temporary direct stage0 archive and that same
+   retained generated stage1 production archive, with the same public compiler
+   boundary and separate hashes. Run default-deny export/deep-import tests, tarball
    allowlist, declaration-leakage audits and inert import smoke tests against
    every archive. Only generated stage1 is retained as the pack-once
    distribution candidate from M3; never repack any subject inside a platform
@@ -470,7 +760,9 @@ smaller split would make it unverifiable.
    retained generated stage1 archive is the production archive, and the direct
    qualification subject passes the audits in item 5 and the independent
    vectors instead of a second consumer matrix. Portable performance
-   measurements belong to Phase 5.
+   measurements belong to Phase 5. A generated post-M3 publication additionally
+   requires the complete M3 proof in the callable-matrix gate; packed consumer
+   success alone is insufficient.
 
 ### Phase 1 exit criteria
 
@@ -644,7 +936,10 @@ composition root. The finite emitter and generated stage1 remain Phase 4 work.
 
 ### Phase 3 exit criteria
 
-One named subject gate invokes the actual semantic implementation through the
+During Phase 3, focused tests execute the private semantic implementation;
+successful expectations may cover its normalized plan without a digest. After
+Phase 4 supplies the immutable public plan and digest, one named subject gate
+invokes that same implementation through the
 M1 row of the callable matrix, `compileComposition` over trusted object input,
 and compares complete results with independent expectations; no raw carrier
 and no `runtime-conformant` result is claimed. Static vector/oracle
@@ -656,6 +951,8 @@ validation is a prerequisite and cannot satisfy this gate. The gate covers:
 - every accepted at-limit and plus-one resource case and accepted overlap,
   prerequisite, suppression, maximum-depth, dense-edge, giant-cycle and
   diagnostic-storm fixture;
+- the ADR-0018 mixed cycle/residual-DAG cases, including independent overflow
+  beside cycle diagnostics, limit 2048 and capped actual 2049;
 - the accepted closed P500 generator, iterative traversal, stack safety,
   retained-diagnostic bounds and structural operation counters;
 - exhaustive equivalent permutations for bounded tiny graphs. Ordered-many
@@ -670,6 +967,15 @@ ADR-0017 after the explicit product-owner start record, and it cannot expose or
 claim the OD-005 carrier refinements or the OD-006 duplicate-record semantics.
 Candidate raw carriers remain non-publishable and may produce evidence for
 OD-005 only.
+
+The M1 public type gate proves `DiagnosticCode` is exactly the emittable
+`Diagnostic['code']` union, rejects reserved canonicalization failure and a
+public catalog type, and retains Promise rejection for canonicalizer/hash
+failure. Object-entry mutation evidence covers the outer invocation wrapper,
+lists and nested admitted graph with synchronous no-alias snapshotting. Its
+resource assertions cover Core-owned bounded work and retained state, excluding
+intrinsic reflection allocation, caller-owned heap, arbitrary `Proxy` execution
+and fixed wall-time guarantees.
 
 ## Phase 4: immutable plan, canonical bytes and self-composition
 
@@ -743,8 +1049,10 @@ those bytes privately when binding the exact subject and evidence.
 ### Phase 4 qualification exit
 
 One named gate proves semantic/digest invariants and deep immutability against
-the direct subject before a construction claim and against both temporary
-hash-identified subjects after item 6 is accepted. Both use the same public
+the direct subject for M1 and against the separate direct qualification archive
+and exact retained generated production archive when M3 introduces stage1.
+Accepted item 6 defines the witness;
+its acceptance alone does not require a generated subject during M1. Both use the same public
    compiler boundary, the accepted object entry point; the raw carrier boundary
    joins it only after OD-005 is resolved. Reordered
    equivalent graphs produce identical canonical bytes/digest; valid semantic
@@ -762,7 +1070,9 @@ independent vectors and public-API checks; from M3 only generated stage1 may
 be retained as the release archive. Passing the direct gate yields
 `direct-semantics-qualified`; passing the construction and parity gate yields
 `self-composed-qualified`. Neither implies `release-eligible`; a pre-M3
-`not-claimed` publication is governed by ADR-0017, not by these outcomes.
+`not-claimed` publication is governed by ADR-0017, not by these outcomes. A
+generated post-M3 `not-claimed` publication additionally requires this complete
+construction/parity gate under ADR-0018.
 
 ### Phase 4 release-custody prerequisites
 
@@ -933,7 +1243,9 @@ Phase 6 remains optional and Phase 7 has no gate.
 A `release-eligible` publication and the first conformance claim are blocked
 until an accepted custody decision defines the evidence record, reuse key,
 support representation, verifier and promotion transaction. Pre-1.0
-`not-claimed` publications follow ADR-0012 and ADR-0017 and are not gated here.
+`not-claimed` publications follow ADR-0012 and ADR-0017; generated post-M3
+archives additionally follow ADR-0018's complete M3 gate. They are not gated
+by release custody here.
 Once that authority exists:
 
 1. Bind the exact source, retained pack-once stage1 archive, accepted authorities,

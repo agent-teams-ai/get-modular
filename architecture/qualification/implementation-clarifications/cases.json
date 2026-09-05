@@ -1,0 +1,487 @@
+{
+  "kind": "get-modular.implementation-clarification-cases",
+  "authority": "ADR-0018",
+  "evidence": "independent-fixture-consistency-no-production-subject",
+  "graphRecipe": {
+    "nodeNames": "a,b for cycles; n0001 through nNNNN for chain",
+    "moduleId": "example/<name>",
+    "implementationId": "example/<name>/default",
+    "profileId": "example/depth",
+    "capability": "example/link",
+    "compatibility": {
+      "family": "exact",
+      "familyVersion": 1,
+      "token": "example/link"
+    },
+    "edges": "each n(i+1) consumes n(i); pair a consumes b and b consumes a; self a consumes a",
+    "attachmentEdges": "cycle-consumes-chain: a consumes last n; chain-consumes-cycle: n0001 consumes a",
+    "slots": "one unique required slot d0,d1,... per edge at each consumer; exactly one provider per binding",
+    "roots": "a when present, plus last n when present",
+    "owner": {
+      "authority": "example",
+      "path": [
+        "depth"
+      ]
+    },
+    "allNodesSelected": true,
+    "maximumChainLength": 2049,
+    "permutations": [
+      "identity",
+      "reverse-declarations-selections-bindings-roots",
+      "rotate-declarations-selections-bindings-roots-by-one"
+    ]
+  },
+  "graphCases": [
+    {
+      "id": "independent-over",
+      "recipe": {
+        "chainLength": 2049,
+        "cycle": "pair",
+        "attachment": "none"
+      },
+      "entryPoint": "compileComposition",
+      "scope": "complete-result",
+      "expected": {
+        "ok": false,
+        "diagnostics": [
+          {
+            "code": "input.limit-exceeded",
+            "phase": "graph",
+            "path": [],
+            "coordinate": {},
+            "details": {
+              "limitName": "graphDepth",
+              "limit": 2048,
+              "actual": 2049
+            }
+          },
+          {
+            "code": "graph.cycle",
+            "phase": "graph",
+            "path": [],
+            "coordinate": {},
+            "details": {
+              "component": [
+                "example/a/default",
+                "example/b/default"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "independent-at",
+      "recipe": {
+        "chainLength": 2048,
+        "cycle": "pair",
+        "attachment": "none"
+      },
+      "entryPoint": "compileComposition",
+      "scope": "complete-result",
+      "expected": {
+        "ok": false,
+        "diagnostics": [
+          {
+            "code": "graph.cycle",
+            "phase": "graph",
+            "path": [],
+            "coordinate": {},
+            "details": {
+              "component": [
+                "example/a/default",
+                "example/b/default"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "attached-over",
+      "recipe": {
+        "chainLength": 2049,
+        "cycle": "pair",
+        "attachment": "cycle-consumes-chain"
+      },
+      "entryPoint": "compileComposition",
+      "scope": "complete-result",
+      "expected": {
+        "ok": false,
+        "diagnostics": [
+          {
+            "code": "input.limit-exceeded",
+            "phase": "graph",
+            "path": [],
+            "coordinate": {},
+            "details": {
+              "limitName": "graphDepth",
+              "limit": 2048,
+              "actual": 2049
+            }
+          },
+          {
+            "code": "graph.cycle",
+            "phase": "graph",
+            "path": [],
+            "coordinate": {},
+            "details": {
+              "component": [
+                "example/a/default",
+                "example/b/default"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "tail-over",
+      "recipe": {
+        "chainLength": 2049,
+        "cycle": "pair",
+        "attachment": "chain-consumes-cycle"
+      },
+      "entryPoint": "compileComposition",
+      "scope": "complete-result",
+      "expected": {
+        "ok": false,
+        "diagnostics": [
+          {
+            "code": "input.limit-exceeded",
+            "phase": "graph",
+            "path": [],
+            "coordinate": {},
+            "details": {
+              "limitName": "graphDepth",
+              "limit": 2048,
+              "actual": 2049
+            }
+          },
+          {
+            "code": "graph.cycle",
+            "phase": "graph",
+            "path": [],
+            "coordinate": {},
+            "details": {
+              "component": [
+                "example/a/default",
+                "example/b/default"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "chain-over",
+      "recipe": {
+        "chainLength": 2049,
+        "cycle": "none",
+        "attachment": "none"
+      },
+      "entryPoint": "compileComposition",
+      "scope": "complete-result",
+      "expected": {
+        "ok": false,
+        "diagnostics": [
+          {
+            "code": "input.limit-exceeded",
+            "phase": "graph",
+            "path": [],
+            "coordinate": {},
+            "details": {
+              "limitName": "graphDepth",
+              "limit": 2048,
+              "actual": 2049
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "cycle-only",
+      "recipe": {
+        "chainLength": 0,
+        "cycle": "pair",
+        "attachment": "none"
+      },
+      "entryPoint": "compileComposition",
+      "scope": "complete-result",
+      "expected": {
+        "ok": false,
+        "diagnostics": [
+          {
+            "code": "graph.cycle",
+            "phase": "graph",
+            "path": [],
+            "coordinate": {},
+            "details": {
+              "component": [
+                "example/a/default",
+                "example/b/default"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "self-cycle-only",
+      "recipe": {
+        "chainLength": 0,
+        "cycle": "self",
+        "attachment": "none"
+      },
+      "entryPoint": "compileComposition",
+      "scope": "complete-result",
+      "expected": {
+        "ok": false,
+        "diagnostics": [
+          {
+            "code": "graph.cycle",
+            "phase": "graph",
+            "path": [],
+            "coordinate": {},
+            "details": {
+              "component": [
+                "example/a/default"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "attached-at",
+      "recipe": {
+        "chainLength": 2048,
+        "cycle": "pair",
+        "attachment": "cycle-consumes-chain"
+      },
+      "entryPoint": "compileComposition",
+      "scope": "complete-result",
+      "expected": {
+        "ok": false,
+        "diagnostics": [
+          {
+            "code": "graph.cycle",
+            "phase": "graph",
+            "path": [],
+            "coordinate": {},
+            "details": {
+              "component": [
+                "example/a/default",
+                "example/b/default"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "rawNumberScope": "numeric-admission-projection-before-field-schema-validation",
+  "rawNumberCases": [
+    {
+      "lexeme": "0",
+      "expected": {
+        "admitted": true,
+        "value": 0
+      }
+    },
+    {
+      "lexeme": "0.0",
+      "expected": {
+        "admitted": true,
+        "value": 0
+      }
+    },
+    {
+      "lexeme": "0e999999999999999999999999",
+      "expected": {
+        "admitted": true,
+        "value": 0
+      }
+    },
+    {
+      "lexeme": "1",
+      "expected": {
+        "admitted": true,
+        "value": 1
+      }
+    },
+    {
+      "lexeme": "1.0",
+      "expected": {
+        "admitted": true,
+        "value": 1
+      }
+    },
+    {
+      "lexeme": "1e0",
+      "expected": {
+        "admitted": true,
+        "value": 1
+      }
+    },
+    {
+      "lexeme": "10e-1",
+      "expected": {
+        "admitted": true,
+        "value": 1
+      }
+    },
+    {
+      "lexeme": "1.0000000000000000",
+      "expected": {
+        "admitted": true,
+        "value": 1
+      }
+    },
+    {
+      "lexeme": "-1.0",
+      "expected": {
+        "admitted": true,
+        "value": -1
+      }
+    },
+    {
+      "lexeme": "9007199254740991",
+      "expected": {
+        "admitted": true,
+        "value": 9007199254740991
+      }
+    },
+    {
+      "lexeme": "-9007199254740991",
+      "expected": {
+        "admitted": true,
+        "value": -9007199254740991
+      }
+    },
+    {
+      "lexeme": "90071992547409910e-1",
+      "expected": {
+        "admitted": true,
+        "value": 9007199254740991
+      }
+    },
+    {
+      "lexeme": "1.0000000000000001",
+      "expected": {
+        "admitted": false,
+        "code": "schema.invalid-value",
+        "reason": "invalid-type"
+      }
+    },
+    {
+      "lexeme": "-1.0000000000000001",
+      "expected": {
+        "admitted": false,
+        "code": "schema.invalid-value",
+        "reason": "invalid-type"
+      }
+    },
+    {
+      "lexeme": "1e-400",
+      "expected": {
+        "admitted": false,
+        "code": "schema.invalid-value",
+        "reason": "invalid-type"
+      }
+    },
+    {
+      "lexeme": "-1e-400",
+      "expected": {
+        "admitted": false,
+        "code": "schema.invalid-value",
+        "reason": "invalid-type"
+      }
+    },
+    {
+      "lexeme": "1e-999999999999999999999999",
+      "expected": {
+        "admitted": false,
+        "code": "schema.invalid-value",
+        "reason": "invalid-type"
+      }
+    },
+    {
+      "lexeme": "1e999999999999999999999999",
+      "expected": {
+        "admitted": false,
+        "code": "schema.invalid-value",
+        "reason": "invalid-format"
+      }
+    },
+    {
+      "lexeme": "9007199254740992",
+      "expected": {
+        "admitted": false,
+        "code": "schema.invalid-value",
+        "reason": "invalid-format"
+      }
+    },
+    {
+      "lexeme": "-9007199254740992",
+      "expected": {
+        "admitted": false,
+        "code": "schema.invalid-value",
+        "reason": "invalid-format"
+      }
+    },
+    {
+      "lexeme": "-0",
+      "expected": {
+        "admitted": false,
+        "code": "schema.invalid-value",
+        "reason": "invalid-format"
+      }
+    },
+    {
+      "lexeme": "-0.0",
+      "expected": {
+        "admitted": false,
+        "code": "schema.invalid-value",
+        "reason": "invalid-format"
+      }
+    },
+    {
+      "lexeme": "-0e999999999999999999999999",
+      "expected": {
+        "admitted": false,
+        "code": "schema.invalid-value",
+        "reason": "invalid-format"
+      }
+    },
+    {
+      "lexeme": "-0.000e-999999999999999999999999",
+      "expected": {
+        "admitted": false,
+        "code": "schema.invalid-value",
+        "reason": "invalid-format"
+      }
+    },
+    {
+      "lexeme": "9007199254740991.0",
+      "expected": {
+        "admitted": true,
+        "value": 9007199254740991
+      }
+    },
+    {
+      "lexeme": "9.007199254740991e15",
+      "expected": {
+        "admitted": true,
+        "value": 9007199254740991
+      }
+    }
+  ],
+  "futureSubjectEvidence": [
+    "graph complete results through M1 public object boundary",
+    "raw numeric projections plus full document results at known field paths through M2",
+    "packed DiagnosticCode total-map and reserved-rejection fixtures",
+    "trusted-carrier snapshot/no-alias/resource checks",
+    "post-M3 pack-once archive qualification"
+  ]
+}

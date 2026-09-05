@@ -4,6 +4,8 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 
+import { checkImplementationClarifications } from "./implementation-clarifications.mjs";
+
 import canonicalize from "canonicalize";
 import { canonicalize as canonicalizeOracle } from "json-canonicalize";
 
@@ -258,6 +260,13 @@ async function main() {
     validateDiagnostic: validators.validateDiagnostic,
     maximumOmitted: schema.$defs.diagnostic.properties.details
       .properties.omitted.maximum,
+  });
+  const clarificationDirectory = "architecture/qualification/implementation-clarifications";
+  await checkImplementationClarifications({
+    readBytes: read,
+    listedPaths: await listLedgerJsonPaths({
+      repositoryRoot: root, snapshot, directory: clarificationDirectory,
+    }),
   });
   await assertGitIndexSnapshotCurrent(snapshot);
   process.stdout.write("Get Modular V1 contract and qualification checks passed.\n");

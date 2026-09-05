@@ -1,5 +1,13 @@
 # Get Modular implementation-readiness handoff
 
+> Historical audit, imported on 2026-09-04 at commit
+> `584b952`. Dispositions below apply to the separately identified historical
+> subjects, not to current `main`. The owner-start record now exists and
+> ADR-0009, ADR-0012, ADR-0016 and ADR-0017 are accepted. For current scope use
+> the [current contract](../../docs/architecture/current-contract.md) and
+> [MVP roadmap and owner-start record](../../docs/architecture/mvp-implementation-roadmap.md).
+> Original findings and retained evidence below remain historical observations.
+
 ## Disposition
 
 **NO-GO now for landing the first tracked private Core source.**

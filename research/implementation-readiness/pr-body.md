@@ -1,3 +1,10 @@
+> Historical PR handoff, imported on 2026-09-04 at commit `584b952`.
+> Its start blockers and decision statuses describe the reviewed subjects,
+> not current implementation authority. Use the
+> [current contract](../../docs/architecture/current-contract.md) and
+> [MVP roadmap and owner-start record](../../docs/architecture/mvp-implementation-roadmap.md)
+> for the admitted M1 scope. Retained evidence is unchanged.
+
 ## Scope
 
 This Draft PR records the Get Modular implementation-readiness audit and API

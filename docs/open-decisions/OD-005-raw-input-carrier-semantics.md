@@ -9,6 +9,7 @@ related:
   - ADR-0007
   - ADR-0013
   - ADR-0017
+  - ADR-0018
   - GM-REQ-V1
 ---
 
@@ -25,6 +26,12 @@ created in another realm, subclassed views, detached or resized buffers,
 shared storage, accessors, cycles, or caller mutation. The decision covers the
 top-level invocation record and declaration collection as well as individual
 records, arrays and byte views.
+
+Accepted [ADR-0018](../decisions/0018-close-implementation-readiness-rules.md)
+settles exact raw integer admission and the trusted object/wrapper resource
+envelope. This decision stays open for the remaining carrier classification,
+descriptor, wrapper-shape, snapshot and diagnostic evidence. Its successor
+must carry the accepted clarifications into the single M2 generation.
 
 ## Constraints
 
@@ -59,8 +66,9 @@ counted per occurrence.
 This observable-prototype rule does not make the trusted-object entry point a
 hostile-input boundary. A `null` prototype is not proof that a value is
 non-Proxy or safe, and prototype, key, or descriptor inspection can invoke
-Proxy traps. Product boundaries must send untrusted or possibly proxied values
-through the raw-byte entry point.
+Proxy traps. Product boundaries send hostile payloads as admitted raw bytes in
+a trusted Host-created wrapper/list. Safely serializing or isolating a hostile
+object happens upstream; the byte entry point does not make that operation safe.
 
 The raw entry point admits a genuine, currently usable, non-shared `Uint8Array`
 view, including cross-realm values, subclasses, non-zero offsets, and currently
@@ -89,8 +97,10 @@ evidence and make no Firefox, Safari, or release-runtime claim.
 - Every successful vector proves that later mutation, resize, detach, transfer,
   or concurrent shared writes cannot alter the owned admitted snapshot.
 - Acceptance evidence executes the successor vectors through a development-only
-  Node oracle and the `packages/core` candidate entrypoints, binding
-  exact inputs, expected outcomes, runtime identities, and results. Execution
+  Node oracle, binding exact inputs, expected outcomes, runtime identities, and
+  results. The combined diagnostic generation 2 transaction and owner-scope
+  expansion precede implementation in `packages/core`; that real subject must
+  then execute the same suite before exposure. Execution
   on every mandatory runtime is the conformance-claim gate defined by ADR-0007,
   not an acceptance prerequisite; accepted ADR-0017 permits `not-claimed`
   publication of the object entry point before this decision closes. The normative procedure
@@ -106,7 +116,7 @@ decision owns is documented as outside the admitted input domain and is
 neither exposed nor claimed. The raw entry point `compileCompositionJson` and
 the raw-carrier adapter stay out of the public barrel until this decision is
 accepted with successor diagnostics and evidence; the production subject must
-then rerun the same closed suite. Before acceptance, qualification-only
-candidate entrypoints MAY implement the proposed boundary solely to produce
-independent executable evidence; they are not public API or conformance
-claims.
+then rerun the same closed suite. Before acceptance, independent successor
+fixtures and Node oracle tooling under `tests/qualification` may produce
+acceptance evidence. This does not authorize candidate carrier semantics in
+`packages/core` under the current M1 owner scope or claim compiler conformance.

@@ -17,6 +17,7 @@ summary: Index of Get Modular architecture decisions.
 
 ## Accepted decisions
 
+- [ADR-0018: Close implementation readiness rules](0018-close-implementation-readiness-rules.md)
 - [ADR-0001: Product-neutral deterministic module composition](0001-product-neutral-deterministic-module-composition.md)
 - [ADR-0002: Adopt organization Feature Module Standard v1](0002-adopt-organization-feature-module-standard-v1.md)
 - [ADR-0003: Select public package identity and initial topology](0003-select-public-package-identity-and-initial-topology.md)

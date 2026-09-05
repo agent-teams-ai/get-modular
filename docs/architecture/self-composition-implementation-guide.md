@@ -13,6 +13,7 @@ related:
   - ADR-0015
   - ADR-0016
   - ADR-0017
+  - ADR-0018
   - ARCH-FEATURE-MODULE-STANDARD
   - ARCH-MVP-IMPLEMENTATION-ROADMAP
   - ARCH-CURRENT-CONTRACT
@@ -36,6 +37,12 @@ Module Standard profile. Every rule
 below is derived from one of those sources and names it. Identifiers, file names, and directory names in this guide
 are implementation details in the sense of ADR-0008 and may change through an
 ordinary pull request as long as the invariants they carry survive.
+
+Accepted ADR-0018 additionally governs residual depth, emittable diagnostic
+types, the trusted carrier envelope and the post-M3 publication row. A
+generated `0.x not-claimed` archive needs the complete M3 construction/parity
+proof and packed Node/TypeScript gates; passing only the latter is insufficient.
+Full runtime conformance and release custody remain separate claims.
 
 ### Carrier-boundary precedence
 
@@ -88,7 +95,8 @@ Additional implementations of `get-modular/canonicalization`:
   implementation is the only production provider.
 - `get-modular/canonicalization/witness-variant` is qualification-only. It
   produces deterministically different canonical bytes, a fixed prefix before
-  the same encoding, so a plan digest changes observably when it is bound while
+  the same plan encoding and decisive prefixes for the diagnostic witness
+  below, so a plan digest changes observably when it is bound while
   domain separation stays with plan-output. It lives outside `src`, under
   `packages/core/tests/features/canonicalization/witness-variant/`, is built
   only by the qualification variant of a stage0 or stage1 build, and never
@@ -120,15 +128,17 @@ self-use; a feature that emits diagnostics imports that library statically
 through its owner's `internal.ts` and through nothing else.
 
 The four authoring helpers `defineModule`, `required`, `optional`, and `many`
-and the public wire types `ModuleDeclaration`, `CompositionProfile`,
-`CompositionPlan`, `Diagnostic`, and `PlanDigest` belong to a second library
+and the complete public wire-type set named by
+[ADR-0009](../decisions/0009-keep-pre-1-0-public-api-unversioned.md), including
+`CompileCompositionResult` and the ADR-0018-refined `DiagnosticCode`, belong to a second library
 feature, `packages/core/src/features/authoring/`. It has no module declaration
 and no factory, because the helpers are the non-validating constructors that
 ADR-0007 accepted and the types are inert contracts; its `internal.ts` is the
 one place from which `src/index.ts` and the direct subject entry re-export
-them together with the compiler entry points named by accepted ADR-0009:
-`compileComposition` from M1 and `compileCompositionJson` from M2, never a
-name carrying a version suffix.
+these helpers and types. Compiler functions come from the selected composition
+root, not from authoring: `compileComposition` from M1 and
+`compileCompositionJson` from M2, as accepted ADR-0009 names them, never a name
+carrying a version suffix. Authoring imports no facade or composition root.
 
 ### Own graph
 
@@ -440,7 +450,7 @@ every `create<Feature>` in `dependencyOrder` and nothing else, and
 `src/index.ts` re-exports `compileComposition`, the four authoring helpers and
 the public types bound to it. Its qualification counterpart
 `self-composition/stage0.variant.ts` is an equally short literal root that
-binds the witness variant; only the qualification build sees it. No other
+binds the witness variant; only the seed and qualification builds see it. No other
 `create<Feature>` call exists outside `tests/`.
 
 This is the "checked internal graph" checkpoint that ADR-0008 allows as an
@@ -457,8 +467,8 @@ a pre-M3 archive can carry.
 In M3 the generated root `packages/core/src/composition/generated/stage1.ts`,
 listed in `.gitignore` and emitted from P0, replaces `stage0.ts` as the import
 target of `src/index.ts`. From that delivery `stage0.ts` stays where it is but
-becomes qualification-only: the production `tsconfig.json` names its
-composition root by explicit path and never includes `stage0.ts` again, the
+becomes qualification-only: the production barrel names its
+composition root by explicit path and never imports `stage0.ts` again, the
 stage0 and qualification builds keep including it, and `src` still holds
 exactly one composition root that the production build compiles. A second
 handwritten root never appears.
@@ -484,8 +494,8 @@ it because that build includes all of `self-composition/`; the production
 and it is the module against which the M1 harness, the checkpoint A test, and
 the direct half of every dual-subject gate run. The variant direct subject has
 the same shape: `self-composition/stage0-entry.variant.ts` imports
-`stage0.variant.ts` and re-exports the same names, and only the qualification
-build sees it. Both subjects expose the same entry points for the same
+`stage0.variant.ts` and re-exports the same names, and only the seed and
+qualification builds see it. Both subjects expose the same entry points for the same
 milestone, so the same independent vectors and packed public-API checks run
 against both, as ADR-0008 requires.
 
@@ -509,7 +519,7 @@ packages/core/
     emit.ts                    the finite emitter and its input manifest, M3
   src/
     features/
-      authoring/internal.ts    helpers and inert types; public re-export begins only after M2/M3 gates
+      authoring/internal.ts    helpers and inert types; accepted M1 names are public from M1
       diagnostics/internal.ts  diagnostic rules, comparator, collector
       ...
     composition/
@@ -523,21 +533,21 @@ packages/core/
   dist/                        production output from M1
   dist-stage0/                 stage0 output: dist-stage0/src/** and dist-stage0/self-composition/**
   dist-qualification/          qualification output of either variant subject
-  tsconfig.json                production build: rootDir src; include lists src/features/**,
-                               src/index.ts and, by explicit path, exactly one composition
-                               root: src/composition/stage0.ts until M3, then
-                               src/composition/generated/stage1.ts; errors are fatal
+  tsconfig.json                production emit: rootDir src; only src/index.ts is a root
+                               file; its imports select stage0 until M3, then stage1
+  tsconfig.typecheck.json      noEmit check of all source features, including unselected ones
   tsconfig.stage0.json         stage0 build: rootDir at the package root, outDir
                                dist-stage0; src/features/**, src/composition/stage0.ts and
                                self-composition/** without *.variant.ts; no src/index.ts,
                                no generated sources
   tsconfig.qualification.json  qualification build of either variant subject
-                               plus tests/features: the only build that sees the
-                               witness variant; rootDir at the package root,
+                               plus tests/features; rootDir at the package root,
                                outDir dist-qualification
+  tsconfig.seed.json           cold variant bootstrap: explicit build-tool entries,
+                               no generated entry; outDir dist-seed
 ```
 
-The first package must list the three output directories and the two
+The first package must list the four output directories and the two
 generated files in `.gitignore`; today the root `.gitignore` lists only
 `dist/`. None of them is ever committed.
 
@@ -553,26 +563,112 @@ and `self-composition/**` except the `*.variant.ts` files, and excludes
 builds from a clean checkout without the emitted file, as ADR-0008 demands.
 Because its inputs sit under two roots, its `rootDir` is the package root and
 its `outDir` is `dist-stage0/`, which therefore holds `dist-stage0/src/**` and
-`dist-stage0/self-composition/**`. The production `tsconfig.json` has `rootDir`
-`src`, lists `src/features/**`, `src/index.ts` and exactly one composition
-root by explicit path, `src/composition/stage0.ts` until M3 and
-`src/composition/generated/stage1.ts` from M3, never both and never a glob
-over `composition/`; it excludes `self-composition/` and `tests/`, treats every
-error as fatal (`noEmitOnError`), and emits `dist/`.
+`dist-stage0/self-composition/**`. Production emit starts from `src/index.ts`
+and follows its imports, including declaration dependencies. That barrel
+imports exactly one composition root, stage0 until M3 and generated stage1
+from M3. A separate `tsconfig.typecheck.json` checks all source features with
+`noEmit`, so an unselected implementation is still checked but not emitted
+merely because a broad source glob selected it. The production configuration
+is:
+
+<!-- build-config: tsconfig.json -->
+
+```json
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "noEmitOnError": true
+  },
+  "files": ["src/index.ts"],
+  "include": []
+}
+```
+
+An `exclude` list does not prevent transitive imports. Foundation boundaries
+and the packed-closure audit reject references to build tools, tests or an
+unselected implementation. Before each production emit, remove the previous
+`dist/` and its associated incremental state; narrowing root files cannot
+remove stale files from an earlier build.
+
+The production M3 cold sequence is **stage0 build -> emit -> production
+build**. Build `tsconfig.stage0.json` while `stage1.ts` is absent, then use
+its built direct entry to compile the own profile and pass P0 plus the base
+allowlist to its built emitter. The emitter writes `stage1.ts`; only then
+clean `dist/` and run the production configuration. The stage0 inputs are:
+
+<!-- build-config: tsconfig.stage0.json -->
+
+```json
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist-stage0",
+    "noEmitOnError": true
+  },
+  "include": [
+    "src/features/**/*.ts",
+    "src/composition/stage0.ts",
+    "self-composition/**/*.ts"
+  ],
+  "exclude": ["self-composition/**/*.variant.ts"]
+}
+```
+
+Stage0 imports neither the public barrel nor any generated entry. The clean
+bootstrap check must exercise the production sequence as well as the variant
+sequence below; starting a test with a manually present `stage1.ts` proves
+neither bootstrap path.
+
+The cold variant sequence is **seed build -> emit -> qualification build**.
+Before M3 the direct variant needs only the seed build. From M3 the seed
+configuration compiles these explicit entries and their imports:
+
+<!-- build-config: tsconfig.seed.json -->
+
+```json
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist-seed",
+    "noEmitOnError": true
+  },
+  "files": [
+    "self-composition/stage0-entry.variant.ts",
+    "self-composition/own-profile.variant.ts",
+    "self-composition/allowlist.variant.ts",
+    "self-composition/emit.ts"
+  ],
+  "include": []
+}
+```
+
+The last two entries are added in M3 when the emitter exists. No seed entry
+may import `stage1-entry.variant.ts` or any generated source. The harness
+uses the built direct variant, profile and emitter to write
+`src/composition/generated/stage1.variant.ts`, and only then runs
+`tsconfig.qualification.json`. Both the seed and qualification configurations
+may compile the witness variant; neither is a production build. Their output
+and incremental state are separate. A clean-bootstrap check starts with both
+generated files and every stage output/cache absent, and checks this sequence
+without a previously emitted file.
 
 `tsconfig.qualification.json` has `rootDir` at the package root, emits
 `dist-qualification/`, and includes `src/features/**`,
 `src/composition/stage0.ts`,
 `src/composition/generated/stage1.variant.ts` when the emitter has written it,
 `self-composition/**` including the `*.variant.ts` files, and
-`tests/features/**`. It is the only build that sees the witness variant. The
+`tests/features/**`. Together with the seed it builds the witness variant. The
 emitter writes the variant generated root to
 `src/composition/generated/stage1.variant.ts` only during a qualification
 build; that file imports the variant factory as
 `../../../tests/features/canonicalization/witness-variant/factory.js` relative
 to its own file, which resolves under the qualification `rootDir`. The
-production `tsconfig.json` never sees it because its `include` names its
-composition root by explicit path and any stray reference to `tests/` fails
+production `tsconfig.json` never sees it because its barrel imports only its
+selected composition root and any stray reference to `tests/` fails
 the production build as a fatal error. The qualification build writes only to
 `dist-qualification/` and never overwrites `stage1.ts` or `dist/`, so the
 production root and output are isolated from every variant run, as ADR-0008
@@ -595,8 +691,11 @@ With ADR-0012 accepted, `packages/core/package.json` carries the ESM-only
 export map with its sibling `default` from the first package, so the
 production archive is packed from the package manifest itself under the
 pack-once rule of ADR-0012, and the package is public from M1 with the
-changelog limitation stated above. The staging tool exists only for the two
-hash-identified qualification subjects that ADR-0008 and the roadmap require.
+changelog limitation stated above. From M3 the two hash-identified subjects are
+a separately staged direct archive and that exact retained generated production
+archive. Generated qualification does not create a second production-equivalent
+tarball. Separate staging is for the direct subject and qualification-only
+witness variants.
 It lives under the repository's root `tests/qualification/` (the harness, the
 oracles, the staging tool, and the hash records of packing results live there,
 while `packages/core/tests/` holds only feature tests and the witness
@@ -607,20 +706,33 @@ ADR-0012 map; the direct candidate manifest points its targets at the
 stage0-entry build. The staging must be outside the tree because the
 governance gate scans the working tree and rejects any package manifest
 outside `packages/`; only the hash records of the packing results come back
-under `tests/qualification/`. The direct staging holds
-`dist-stage0/src/features/**`, `dist-stage0/src/composition/stage0.js`,
-`dist-stage0/self-composition/stage0-entry.js` with their `.d.ts` files, and
-nothing else from `self-composition/`; its manifest points `types` at the
-entry's declaration file. The generated staging holds `dist/index.js`,
+under `tests/qualification/`. The direct staging starts from
+`dist-stage0/self-composition/stage0-entry.js` and its `.d.ts`, and copies
+only their transitive JavaScript and declaration closure, including
+`dist-stage0/src/composition/stage0.js` and the referenced feature files.
+It does not copy `dist-stage0/src/features/**` wholesale: the stage0 tooling
+build also emits unselected implementations. No other `self-composition/`
+file belongs in that subject; its manifest points `types` at the entry's
+declaration file. The retained generated production archive holds `dist/index.js`,
 `dist/index.d.ts`, `dist/composition/generated/stage1.js` and `stage1.d.ts`,
 and every `dist/features/**` file they reference; its manifest carries the
 ADR-0012 export map with `types` at `./dist/index.d.ts`, so the four
-TypeScript consumer modes resolve declarations. The production archive packed
-from the manifest and the retained generated qualification subject must carry
-the same `dist/` bytes; the production tarball allowlist includes the emitted
+TypeScript consumer modes resolve declarations. Generated-vector execution and
+packed-consumer execution bind the same retained archive SHA-256; equal `dist/`
+bytes in another tarball cannot substitute for that identity. The production
+tarball allowlist includes the emitted
 `dist/` output and excludes every source file, `self-composition/`,
-`dist-stage0/`, `dist-qualification/`, and tests, so the own profile, the
+`dist-stage0/`, `dist-seed/`, `dist-qualification/`, and tests, so the own profile, the
 emitter, and the witness variant cannot enter the archive.
+
+The closure audit follows both JavaScript imports and declaration references
+from the packed entry points; it permits required shared library and port
+files, but no unselected implementation. A closed export map controls public
+resolution, not archive contents. Check the actual pack-once tarball inventory
+and bytes: an unselected compatible implementation with a unique sentinel
+must be absent, while a type-only dependency required by an emitted `.d.ts`
+must resolve. Run the check after changing the selected implementation as
+well, so stale output cannot preserve the previous provider in the archive.
 
 Consumer evidence follows the archive that consumers install. The four
 TypeScript consumer modes required by ADR-0007 and ADR-0012 and the
@@ -629,6 +741,10 @@ every publication: the direct-root archive before M3 and the retained generated
 stage1 archive from M3. The direct qualification subject additionally passes
 the export, deep-import, declaration-leakage and inert-import audits and the
 same independent vectors as the generated subject.
+Changing the manifest while preserving `dist/` must invalidate that archive's
+evidence binding. The future packing harness checks this mutation: results from
+a temporary generated staging or witness variant cannot qualify a different
+production tarball.
 
 The build-only directory `packages/core/self-composition/` is build tooling
 beside the build configuration in the sense of ADR-0008, outside the
@@ -685,7 +801,7 @@ The emitter is finite and private. Its inputs are:
   ADR-0010. The witness-variant entry lives in
   `self-composition/allowlist.variant.ts`, which imports the base allowlist and
   adds the one entry that points into `tests/`; only the qualification build
-  sees that file, so neither the stage0 build nor the production build pulls
+  and its seed see that file, so neither the stage0 build nor the production build pulls
   `tests/` into its program, and `emit.ts` receives the allowlist as an
   argument instead of importing one.
 
@@ -693,11 +809,13 @@ Its output is one ECMAScript module with these properties:
 
 - UTF-8 with LF line endings, no timestamps, no absolute paths, no
   locale-dependent or target-dependent text;
-- one static import per selected implementation, in `dependencyOrder`;
+- one static factory import per selected implementation, in `dependencyOrder`,
+  plus the type-only import of the facade's provided port;
 - one `const` per selected implementation, in `dependencyOrder`, whose
   initializer is a single factory call receiving an object literal with one
   key per bound slot and the provider constant as the value;
-- exactly one `export const root` naming the constructed facade;
+- exactly one `export const root` naming the constructed facade, explicitly
+  annotated with its provided port for `isolatedDeclarations`;
 - no identity string anywhere in the file; the single leading comment records
   only the plan digest.
 
@@ -720,6 +838,7 @@ import { createCompositionSemantics } from "../../features/composition-semantics
 import { createInputAdmission } from "../../features/input-admission/factory.js";
 import { createPlanOutput } from "../../features/plan-output/factory.js";
 import { createCompilerFacade } from "../../features/compiler-facade/factory.js";
+import type { CompilerFacade } from "../../features/compiler-facade/ports.js";
 
 const ownedJcs = createOwnedJcs({});
 const compositionSemantics = createCompositionSemantics({ canonicalizer: ownedJcs });
@@ -731,7 +850,7 @@ const compilerFacade = createCompilerFacade({
   output: planOutput,
 });
 
-export const root = compilerFacade;
+export const root: CompilerFacade = compilerFacade;
 ```
 
 The local constant names `ownedJcs`, `compositionSemantics`, and the others
@@ -739,6 +858,13 @@ come from the `localName` field of each allowlist handle. The emitted file is
 regenerated in a disposable directory during the build and compared byte for
 byte against the file used by the build, as ADR-0008 requires. It is never
 hand-edited and never committed.
+
+`CompilerFacade` here names the internal provided port declared in the facade's
+`ports.ts`; it is not a new public export. Factory return types implement that
+port. Compile the generated file with the pinned `isolatedDeclarations`
+configuration and audit the packed public `.d.ts` surface: the barrel names
+the accepted compiler signatures and cannot infer its public types from a
+private factory or expose the internal facade port.
 
 ### Allowlist entry schema
 
@@ -804,13 +930,37 @@ is the one place where an `importPath` may point into `tests/`, and the
 `allowlist.out-of-bound-import` rule is relaxed for it only inside the
 qualification build.
 
+Before emission, the independent static witness also checks the correspondence
+that ADR-0016 requires between each handle and its static imports. Resolve the
+key's imported identity constant and the declaration value to their
+feature-owned declaration, verify that the declaration names that same
+implementation, and resolve the factory value to the factory beside that
+declaration in the documented feature layout. The handle's `importPath`,
+`factoryExport` and `declarationExport` must name those exact source exports.
+Compare resolved source modules and exported symbols, not merely identifier
+spellings or assignable function types. The same verified mapping interprets
+the generated imports; the checker derives it from the source import bindings
+and feature declarations, not from the emitter's serialized tuples.
+
+This is a finite construction-witness check, not another repository import
+policy engine. A correspondence mismatch fails the build before output is
+written with the private checker code `witness.allowlist-correspondence`.
+Its structured context names the validated own implementation ID, the mismatched
+handle field, and the expected/actual relative source module and export;
+it contains no arbitrary exception text or absolute paths. This does not add
+a public diagnostic or extend ADR-0016's closed emitter error catalog.
+Mutation fixtures change one textual export/path, swap
+a factory value to a compatible implementation, and swap both the value and
+text while retaining the original declaration. All three must fail even if
+the generated TypeScript would compile and W0/W1 would agree with each other.
+
 ## Construction witness and checkpoint A
 
 As decided by ADR-0016, the construction witness has two parts and neither
 instruments production code:
 
 1. A static check reads a composition root and the plan it must realize and
-   proves that the set of imports equals the set of selected implementations,
+   proves that the set of value factory imports equals the set of selected implementations,
    that every `const` is initialized by exactly one factory call, that the
    object literal keys of each call equal the bound slot identifiers of that
    consumer in the plan, that every value is the constant of the bound
@@ -819,6 +969,11 @@ instruments production code:
    `stage0.ts` against P0, and over their variant counterparts against the
    variant plan; equality of construction order in the checkpoint A test is a
    consequence of this check, not a substitute for it.
+   The separate type-only import must resolve to the provided port of the
+   selected facade and annotate only the exported root; it adds no constructed
+   implementation or wiring tuple. No other value, side-effect or type imports
+   are allowed in this finite root grammar. This distinguishes erased type
+   syntax from the implementation imports checked by ADR-0016.
 2. A behavioral test compiles a fixed input through the phase-applicable
    qualification boundary of the stage0 subject and of the generated stage1
    subject, once with the own profile and once with the qualification variant that selects
@@ -830,6 +985,30 @@ instruments production code:
    `stage1-entry.variant.ts`. The plan digest MUST
    change between the two profiles in both subjects and MUST be equal across
    subjects for the same profile.
+
+The behavioral tests also exercise the existing diagnostic canonicalization
+dependency on an `ok: false` path, where plan-output never computes a digest.
+A uniform prefix alone preserves relative diagnostic byte order and cannot
+prove that semantics uses its injected provider. Use a fixed, otherwise valid
+input with two disjoint self-cycles, both reachable roots and below every
+resource limit. Their `graph.cycle` records have equal phase, code, empty
+coordinate and empty path; only `details.component` differs. For these two
+known detail values, the qualification-only provider prepends distinct ASCII
+bytes in the opposite order to the owned canonical encoding. Both subjects
+must return the same two diagnostics in the reversed order, and rebinding
+must restore the independently specified original order. Component members
+and all diagnostic values stay unchanged; only this deliberately nonconforming
+witness subject's order changes. Retain the fixed-prefix behavior for the
+successful-input digest test.
+
+Two mutants must fail: one ignores only
+`composition-semantics.canonicalizer`, while plan-output still uses its
+injected provider; the other calls the injected provider but discards its
+returned bytes and sorts with a hard-coded canonicalizer. A controlled throw
+may separately check private failure rejection without a reserved diagnostic,
+but does not prove use of returned bytes. This is focused coverage of the
+existing dependency contract, not a stronger checkpoint A, a new own module,
+or production instrumentation.
 
 ADR-0016 is accepted: this static and behavioral form is the construction
 witness. It supersedes the object-identity wording of ADR-0008 in the clauses
@@ -892,12 +1071,18 @@ ADR-0011 to be removed before that decision can be accepted alongside it.
 
 ## What M1 lays down so that M3 adds the emitter without refactoring
 
-The first package lands these seven properties. Each is required by
-ADR-0008, ADR-0016 or the Feature Module Standard, and together they make the emitter a
-one-file change later:
+The completed M1 package has these seven properties. Bounded source slices add
+the properties applicable to their implemented features; own-profile execution
+and the complete root wait for all five real implementations, without stubs.
+Each property is required by
+ADR-0008, ADR-0016 or the Feature Module Standard. Together they let M3 add the
+emitter and its qualification without replacing the feature implementations:
 
-1. Every feature has `ports.ts`, `declaration.ts`, and `factory.ts` with the
-   identities from the inventory above, and no barrel over the feature.
+1. Each of the five own module features has `ports.ts`, `declaration.ts`, and
+   `factory.ts` in the single- or multiple-implementation layout above, with
+   the inventory's identities and no feature barrel. The authoring and
+   diagnostics libraries retain their separate `internal.ts` layout without
+   module declarations or factories.
 2. The facade receives its neighbors through its `deps` record and imports
    only port types.
 3. Each subject is built from exactly one composition root:
