@@ -11,6 +11,8 @@ import { objectSubjectCases } from "../../../../tests/qualification/support/obje
 import { authoringScale } from "../../../../tests/qualification/support/type-scale.mjs";
 import { readPackageArchive } from "../../../../tests/qualification/support/package-archive.mjs";
 import { diagnosticTypeCase } from "../../../../tests/qualification/support/diagnostic-type-cases.mjs";
+import { auditM1DeclarationClosure } from "../../../../tests/qualification/support/m1-declarations-closure.mjs";
+import { auditM1JavaScriptClosure } from "../../../../tests/qualification/support/m1-javascript-closure.mjs";
 
 const repo = fileURLToPath(new URL("../../../../", import.meta.url));
 const require = createRequire(import.meta.url);
@@ -66,6 +68,13 @@ test("packed M1 exposes one root across Node and TypeScript consumers", async t 
   assert.equal(packed.integrity, `sha512-${createHash("sha512").update(bytes).digest("base64")}`);
   const archiveHash = createHash("sha256").update(bytes).digest("hex");
   const audited = readPackageArchive(bytes, { sha256: archiveHash, integrity: packed.integrity });
+  assert.deepEqual(auditM1JavaScriptClosure(audited.files).exports, runtimeNames,
+    "the physical JavaScript members have the closed M1 purpose, imports and construction");
+  assert.deepEqual(auditM1DeclarationClosure(audited.files).rootExports,
+    ["CompileCompositionResult", "CompositionPlan", "CompositionProfile", "Diagnostic", "DiagnosticCode",
+      "ModuleDeclaration", "PlanDigest"].map(name => ({ name, kind: "type" }))
+      .concat(runtimeNames.map(name => ({ name, kind: "value" }))),
+    "the physical declarations preserve all accepted signatures, shapes and owners");
   const manifestBytes = await readFile(join(repo, "packages/core/package.json"));
   const manifest = JSON.parse(manifestBytes);
   assert.deepEqual(audited.files.get("package.json"), manifestBytes);
