@@ -42,6 +42,8 @@ test("packed M1 exposes one root across Node and TypeScript consumers", async t 
   const run = (args, cwd = consumer) => {
     const result = spawnSync(process.execPath, args, { cwd, env, encoding: "utf8", timeout: 60_000, maxBuffer: 4_000_000 });
     assert.ifError(result.error);
+    assert.equal(result.signal, null, `child terminated by ${result.signal}`);
+    assert.ok(Number.isInteger(result.status), "child must complete with an exit status");
     return result;
   };
   const success = result => { assert.equal(result.status, 0, result.stdout + result.stderr); return result.stdout; };
