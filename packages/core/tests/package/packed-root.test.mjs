@@ -51,6 +51,8 @@ test("packed M1 exposes one root across Node and TypeScript consumers", async t 
   const inventory = JSON.parse(success(run([npm, "pack", "--ignore-scripts", "--json", "--pack-destination", temporary], join(repo, "packages/core"))));
   assert.equal(inventory.length, 1);
   const packed = inventory[0];
+  assert.ok(packed.files.every(file => !/(?:^|\/)(?:tests|self-composition|dist-seed|dist-stage0|dist-qualification)(?:\/|$)|witness-variant|\.variant\./u.test(file.path)),
+    "the actual packed inventory excludes qualification roots and the replacement provider");
   const archive = join(temporary, packed.filename);
   const bytes = await readFile(archive);
   assert.equal(packed.integrity, `sha512-${createHash("sha512").update(bytes).digest("base64")}`);

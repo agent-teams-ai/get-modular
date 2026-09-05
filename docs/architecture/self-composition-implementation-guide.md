@@ -646,7 +646,8 @@ configuration compiles these explicit entries and their imports:
 }
 ```
 
-The last two entries are added in M3 when the emitter exists. No seed entry
+The emitter entry is added in M3. M1 also builds the variant allowlist for its
+independent construction witness; this adds no emitter or generated entry. No seed entry
 may import `stage1-entry.variant.ts` or any generated source. The harness
 uses the built direct variant, profile and emitter to write
 `src/composition/generated/stage1.variant.ts`, and only then runs
@@ -969,6 +970,24 @@ text while retaining the original declaration. All three must fail even if
 the generated TypeScript would compile and W0/W1 would agree with each other.
 
 ## Construction witness and checkpoint A
+
+The M1 executable checks are in
+[construction-witness.test.mjs](../../packages/core/tests/qualification/construction-witness.test.mjs)
+and [canonicalizer-replacement.test.mjs](../../packages/core/tests/qualification/canonicalizer-replacement.test.mjs).
+Their finite source reader uses the pinned development TypeScript scanner and
+the matching freshly built feature namespaces. Source/build custody remains the
+invoking gate's responsibility; the reader neither executes a root or allowlist
+nor establishes artifact trust. Generated subjects join these checks in M3.
+
+The current finite declaration format requires locally exported identity and
+declaration constants in both source and matching build. The identity uses a
+string or a single-identifier template; the declaration directly freezes an
+object literal. Re-exports, borrowed constant aliases and freezing a borrowed
+declaration cannot move its ownership beside another factory. These unsupported
+forms fail with `witness.invalid-construction`. Tests compile the mutated feature sources separately
+while keeping their changed root and allowlist unexecuted. Import bindings,
+construction bindings and handle local names also reject the strict-mode
+restricted names `eval` and `arguments`.
 
 As decided by ADR-0016, the construction witness has two parts and neither
 instruments production code:

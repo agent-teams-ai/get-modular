@@ -70,7 +70,7 @@ const NON_PRODUCTION_DIRECTORIES = new Set([
   "tests",
 ]);
 const UNTRACKED_DIRECTORIES = new Set([".git", "node_modules"]);
-const CORE_BUILD_SOURCE_ROOTS = ["dist", "dist-test", "dist-stage0"]
+const CORE_BUILD_SOURCE_ROOTS = ["dist", "dist-test", "dist-stage0", "dist-seed"]
   .map(directory => `packages/core/${directory}/`);
 
 function compareStrings(left, right) {
