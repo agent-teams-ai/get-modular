@@ -163,7 +163,17 @@ plans, large diagnostic streams, saturation and prerequisite suppression.
 The same injected-subject cases run through production, direct and installed
 package entries. Raw limits remain outside M1; private operation counters and
 diagnostic-path truncation are not claimed as public observations. Exhaustive
-archive and declaration audits and retained archive custody remain pending. Accepted
+public declaration audits and retained archive custody remain pending. The
+package file list now names its runtime closure and five public declaration
+files explicitly. A private archive reader validates compressed identity,
+physical entry framing, checksums, canonical paths, duplicates and file content
+before installation. Packed regression compares its independent byte inventory
+with npm's report and the reviewed file list, then compares installed bytes
+with the archive. Unsupported metadata records, links and special entries fail
+closed under this finite tooling profile. Its private input budgets do not
+change Core resource limits. These disposable regressions also verify the
+complete accepted diagnostic types and JavaScript authoring through the public
+root; public type-leakage mutations and retained qualification are still pending. Accepted
 ADR-0009 names the one pre-1.0 public surface: `compileComposition`,
 `compileCompositionJson`, `defineModule`, `required`, `optional`, `many` and
 the types `CompileCompositionResult`, `ModuleDeclaration`,
