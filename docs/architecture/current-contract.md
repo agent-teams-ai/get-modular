@@ -51,7 +51,12 @@ provide no partial semantic records; an incomplete admission census cannot
 prove absent identities. Accepted documents are copied and deeply frozen.
 Unknown versions suppress supported-schema checks; integer-format failures
 remain distinct from type failures. One iterative identity grammar precedes
-identifier-byte accounting. Oversized provider lists retain bounded,
+identifier-byte accounting. Admission also enforces ADR-0007's additional
+`many.min <= many.max` constraint: inverted definitions produce
+`schema.invalid-value` with an invalid-format reason at the cardinality object,
+and that declaration supplies no partial semantic records. This refinement is
+stronger than JSON Schema alone and precedes binding-count validation.
+Oversized provider lists retain bounded,
 owned resource-only counts separately from an admitted semantic profile.
 Valid selection rows survive beside invalid rows; a separate census-complete
 flag prevents treating missing evidence as proof of absence.
@@ -71,6 +76,19 @@ establish declaration/binding prerequisites or authorize an unreachable
 diagnostic from an incomplete frontier. Semantic validation, graph resource
 prerequisites, module construction and the facade remain pending. The graph
 implementation has no cross-feature entry and does not consume admission.
+Private declaration and profile censuses now inspect owned, whole-schema-valid
+documents, preserving identity occurrences and explicit ambiguous lookups.
+Legal alternative implementations of one module remain distinct. Duplicate
+capability/slot paths use positions in their identity-sorted declaration lists;
+normalized candidates are deduplicated before collection. Incomplete
+declaration admission withholds census-dependent absence claims, while positive
+duplicates and independent profile failures continue. Selected IDs, resolved
+node/root observations and selection uniqueness remain separate values; none
+alone proves graph eligibility or compiler success. Binding validation and
+end-to-end prerequisite integration still remain pending.
+Closure prerequisites require every selection to resolve, including non-root
+rows. Suppressed absence diagnostics from an incomplete declaration census do
+not turn an unresolved selection into positive closure evidence.
 Diagnostic producers still need to normalize and deduplicate their eligible
 candidates before collection. The public compiler and packed
 publication subject remain pending. Accepted
