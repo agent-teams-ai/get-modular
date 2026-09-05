@@ -82,6 +82,14 @@ test("packed M1 exposes one root across Node and TypeScript consumers", async t 
     }
   });
 
+  await t.test("Node without require(esm) rejects require but supports dynamic import of the same root", () => {
+    const observed = JSON.parse(success(run(["--no-require-module", "--input-type=commonjs", "--eval",
+      '(async () => { let code = null; try { require("@get-modular/core"); } catch (error) { code = error.code; } '
+      + 'const m = await import("@get-modular/core"); console.log(JSON.stringify({requireEsm:process.features.require_module,code,'
+      + 'path:require.resolve("@get-modular/core"),names:Object.keys(m).sort()})); })().catch(error => { console.error(error); process.exitCode = 1; });'])));
+    assert.deepEqual(observed, { requireEsm: false, code: "ERR_REQUIRE_ESM", path: resolved, names: runtimeNames });
+  });
+
   await t.test("runtime conditions keep one target; the types condition has its specified failure", () => {
     for (const condition of ["browser", "development", "production", "unknown-condition"]) {
       const result = JSON.parse(success(run([`--conditions=${condition}`, "--input-type=module", "--eval",
