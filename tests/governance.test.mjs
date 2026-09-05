@@ -95,6 +95,7 @@ test("Core build output does not require Git source custody or hide authored art
     await git(fixture, "add", ".");
     const snapshot = await captureGitIndexSnapshot(fixture);
     assert.ok(!(await productionArtifactPaths(fixture, snapshot)).includes(emitted));
+    assert.ok((await productionArtifactPaths(fixture)).includes(emitted), "without index evidence output stays visible");
 
     const misplaced = "packages/core/src/dist/hidden.ts";
     const otherPackage = "packages/other/dist/hidden.js";
@@ -108,6 +109,7 @@ test("Core build output does not require Git source custody or hide authored art
     await git(fixture, "add", "--force", emitted);
     const trackedOutput = await captureGitIndexSnapshot(fixture);
     assert.ok((await productionArtifactPaths(fixture, trackedOutput)).includes(emitted));
+    assert.ok((await productionArtifactPaths(fixture)).includes(emitted), "the profile reader must retain staged output too");
     await write(emitted, "export declare const changed: string;\n");
     await assert.rejects(productionArtifactPaths(fixture, trackedOutput), /working-tree-diverged/u);
   } finally {

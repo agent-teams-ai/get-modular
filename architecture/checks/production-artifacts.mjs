@@ -484,7 +484,7 @@ export async function productionArtifactPaths(repositoryRoot = process.cwd(), in
   // qualified as build/archive output, not as authored Git-index source. Keep
   // staged output, manifests, symlinks, and every other location in the source
   // inventory. An orphan dist tree cannot stand in for a real source package.
-  if (artifacts.has("packages/core/package.json")
+  if (indexSnapshot && artifacts.has("packages/core/package.json")
     && [...artifacts].some(path => path.startsWith("packages/core/src/") && PRODUCTION_SOURCE.test(path))) {
     for (const path of artifacts) {
       if (path.startsWith("packages/core/dist/") && PRODUCTION_SOURCE.test(path) && !capturedPaths.has(path)
