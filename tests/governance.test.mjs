@@ -29,7 +29,7 @@ import {
   validateSourceMap,
   validateTraceability,
 } from "../architecture/checks/governance.mjs";
-import { versionedIdentifierMatches } from "../architecture/checks/production-artifacts.mjs";
+import { manifestCarrierViolations, packageManifestInventory, versionedIdentifierMatches } from "../architecture/checks/production-artifacts.mjs";
 import {
   assertSupportedNodeVersion,
   isDirectExecution,
@@ -76,7 +76,8 @@ const sourceMap = {
   }],
 };
 
-test("Core build output does not require Git source custody or hide authored artifacts", async () => {
+for (const outputRoot of ["dist"]) {
+test(`Core ${outputRoot} output does not require Git source custody or hide authored artifacts`, async () => {
   const fixture = await mkdtemp(join(tmpdir(), "get-modular-build-custody-"));
   try {
     await initFixtureRepository(fixture);
@@ -86,25 +87,38 @@ test("Core build output does not require Git source custody or hide authored art
     };
     await write("package.json", '{"private":true}\n');
     await write("packages/core/package.json", '{"name":"@get-modular/core","private":true}\n');
-    const emitted = "packages/core/dist/features/canonicalization/identity.d.ts";
+    const emitted = `packages/core/${outputRoot}/features/canonicalization/identity.d.ts`;
+    const emittedJavaScript = `packages/core/${outputRoot}/features/canonicalization/identity.js`;
     await write(emitted, "export declare const identity: string;\n");
+    await write(emittedJavaScript, 'export const identity = "example/value";\n');
     assert.ok((await productionArtifactPaths(fixture)).includes(emitted), "orphan output stays visible");
 
     await write("packages/core/src/features/canonicalization/identity.ts", 'export const identity = "example/value";\n');
-    await write(".gitignore", "dist/\n");
+    await write(".gitignore", `${outputRoot}/\n`);
     await git(fixture, "add", ".");
     const snapshot = await captureGitIndexSnapshot(fixture);
     assert.ok(!(await productionArtifactPaths(fixture, snapshot)).includes(emitted));
+    assert.ok(!(await productionArtifactPaths(fixture, snapshot)).includes(emittedJavaScript));
     assert.ok((await productionArtifactPaths(fixture)).includes(emitted), "without index evidence output stays visible");
 
-    const misplaced = "packages/core/src/dist/hidden.ts";
-    const otherPackage = "packages/other/dist/hidden.js";
-    const nestedManifest = "packages/core/dist/nested/package.json";
+    const misplaced = `packages/core/src/${outputRoot}/hidden.ts`;
+    const otherPackage = `packages/other/${outputRoot}/hidden.js`;
+    const nestedManifest = `packages/core/${outputRoot}/nested/package.json`;
+    const similarPrefix = `packages/core/${outputRoot}-shadow/hidden.js`;
     await write(misplaced, "export {};\n");
     await write(otherPackage, "export {};\n");
     await write(nestedManifest, "{}\n");
+    await write(similarPrefix, "export {};\n");
+    const authored = [];
+    for (const suffix of ["ts", "mts", "cts", "tsx", "jsx", "mjs", "cjs", "d.mts", "d.cts"]) {
+      const path = `packages/core/${outputRoot}/authored.${suffix}`;
+      await write(path, "export const apiV2 = 1;\n");
+      authored.push(path);
+    }
     const inventory = await productionArtifactPaths(fixture, snapshot);
-    for (const path of [misplaced, otherPackage, nestedManifest]) assert.ok(inventory.includes(path));
+    for (const path of [misplaced, otherPackage, nestedManifest, similarPrefix, ...authored]) {
+      assert.ok(inventory.includes(path), `authored artifact remains visible: ${path}`);
+    }
 
     await git(fixture, "add", "--force", emitted);
     const trackedOutput = await captureGitIndexSnapshot(fixture);
@@ -116,6 +130,7 @@ test("Core build output does not require Git source custody or hide authored art
     await rm(fixture, { recursive: true, force: true });
   }
 });
+}
 
 test("metadata schema matches runtime Windows-safe path rules", async () => {
   const schema = JSON.parse(await readFile("docs/metadata.schema.json", "utf8"));
@@ -2204,6 +2219,65 @@ test("a publishable carrier must declare its package root", async () => {
       },
     },
   }), /must be a relative file target below the package root: \.\/\.\.\/evil\.js/u);
+});
+
+test("the files allowlist normalizes POSIX paths without erasing prohibited prefixes", async () => {
+  const manifestPath = "packages/core/package.json";
+  const base = {
+    name: "@get-modular/core",
+    private: true,
+    type: "module",
+    exports: {
+      ".": {
+        import: { types: "./dist/index.d.ts", default: "./dist/index.js" },
+        default: "./dist/index.js",
+      },
+    },
+  };
+  const inventoryFor = files => packageManifestInventory([manifestPath], {
+    readPackageManifest: async () => ({ ...base, files }),
+  });
+
+  for (const entry of [
+    "dist", "dist/**", "./dist", "dist/", " dist/** ",
+    "dist//nested/./**", "dist/nested/../**", "dist/nested/..", "dist/../dist/**",
+    "dist/{esm,types}/**", "dist/[a-z]*/**", "dist/!(private)/**", "dist/.../**",
+    "dist/{esm,{types,compat}}/**", "dist/{esm,types}{debug,release}/**",
+  ]) {
+    const inventory = await inventoryFor([entry]);
+    for (const publicationBlocked of [false, true]) {
+      assert.deepEqual(manifestCarrierViolations(inventory, { publicationBlocked }), [], entry);
+    }
+  }
+
+  for (const entry of [
+    "dist/..", "dist/../", "dist/../**", "./dist//.././**", "dist/nested/../..",
+    "dist/*/../..", "dist/../?*", "dist/../[a-z]*", "dist/../{,**}",
+    "dist/{..,safe}/**", "dist/{safe,..}/**", "dist/{,nested}/../**",
+    "dist/{.,nested}/../**", "dist/@(..|safe)/**", "dist/**/../**",
+    "dist/{.,safe}{.,safe}/**", "dist/.{,safe}./**", "dist/{.,safe}./**",
+    "dist/{a/b,..,c/d}/**", "dist/{a/b,.,c/d}{e/f,.,g/h}/**",
+    "dist/{a/b,c/d}/**", "dist/{safe,{a/b,..},other}/**",
+    "dist/{a}/b,..,c/d}/**", "dist/{esm,types", "dist/esm,types}",
+    "dist/../../outside", "../dist", "../outside/../dist",
+    "/dist", "/dist/../dist", "//server/share/dist",
+    "**/../dist", "?*/../dist", "[a-z]*/../dist", "{one,two}/../dist", "!(src)/../dist",
+    ".//dist", "././/dist", "C:/dist", "C:dist", "./C:/dist", "dist/../C:/dist",
+    "dist\\..", "dist\\..\\**", ".\\dist", "dist\\**", "C:\\dist", "\\\\server\\share\\dist",
+  ]) {
+    // A valid sibling must neither hide the violation nor appear in its reason.
+    for (const files of [[entry], ["dist", entry]]) {
+      const inventory = await inventoryFor(files);
+      for (const publicationBlocked of [false, true]) {
+        assert.deepEqual(manifestCarrierViolations(inventory, { publicationBlocked }), [{
+          path: manifestPath,
+          fields: [],
+          scripts: ["files must not resolve to the package root or start with a wildcard "
+            + `segment, which defeats the publication allowlist: ${entry}`],
+        }], JSON.stringify(files));
+      }
+    }
+  }
 });
 
 test("the files allowlist must not name the package root", async () => {

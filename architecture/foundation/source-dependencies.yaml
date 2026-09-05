@@ -5,6 +5,19 @@ workspace:
 governedRoots:
   - packages/core/src
 boundaries:
+  - id: core-authoring
+    roots:
+      - packages/core/src/features/authoring/wire-types.ts
+      - packages/core/src/features/authoring/diagnostic-types.ts
+      - packages/core/src/features/authoring/helpers.ts
+      - packages/core/src/features/authoring/internal.ts
+    entrypoints:
+      - packages/core/src/features/authoring/internal.ts
+    allow:
+      boundaries: []
+      packages: []
+      builtins: []
+      runtimeReferences: []
   # Enumerate only materialized source. New features and layers need an explicit
   # ownership edge in this policy, including otherwise dependency-free files.
   - id: core-canonicalization-contract
@@ -29,6 +42,7 @@ boundaries:
     allow:
       boundaries:
         - core-canonicalization-contract
+        - core-authoring
       packages: []
       builtins: []
       runtimeReferences: []

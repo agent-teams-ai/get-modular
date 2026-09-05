@@ -65,7 +65,7 @@ function addConsumer(files, configuration, target = "../canonicalization/ports.j
   });
 }
 
-test("Foundation accepts the complete materialized canonicalization slice", async () => {
+test("Foundation accepts all materialized feature roles", async () => {
   const report = await checkFixture();
   assert.equal(report.outcome, "passed", JSON.stringify(report));
   assert.equal(rules(report), "");
@@ -78,6 +78,21 @@ test("Foundation admits consumer-owned port and provider identity imports", asyn
   });
   assert.equal(report.outcome, "passed", JSON.stringify(report));
   assert.equal(rules(report), "");
+});
+
+test("Foundation admits the authoring library only through its curated entrypoint", async () => {
+  const admitted = await checkFixture((files, configuration) => {
+    addConsumer(files, configuration);
+    configuration.boundaries.find(boundary => boundary.id === "fixture-consumer").allow.boundaries.push("core-authoring");
+    files.set(consumerPath, 'export { required } from "../authoring/internal.js";\n');
+  });
+  assert.equal(admitted.outcome, "passed", JSON.stringify(admitted));
+  const rejected = await checkFixture((files, configuration) => {
+    addConsumer(files, configuration);
+    configuration.boundaries.find(boundary => boundary.id === "fixture-consumer").allow.boundaries.push("core-authoring");
+    files.set(consumerPath, 'export { required } from "../authoring/helpers.js";\n');
+  });
+  assert.match(rules(rejected), /architecture\.source-dependencies\.cross-boundary-local-import-not-entrypoint/u);
 });
 
 for (const [name, path, contents] of [
@@ -103,7 +118,7 @@ test("Foundation rejects private deep imports even across an allowed edge", asyn
   const report = await checkFixture((files, configuration) => {
     addConsumer(files, configuration);
     const hidden = `${canonicalRoot}/hidden.ts`;
-    configuration.boundaries[0].roots.push(hidden);
+    configuration.boundaries.find(boundary => boundary.id === "core-canonicalization-contract").roots.push(hidden);
     files.set(hidden, "export type Hidden = string;\n");
     files.set(consumerPath, 'export type { Hidden } from "../canonicalization/hidden.js";\n');
   });
@@ -125,7 +140,7 @@ for (const typeOnly of [false, true]) {
   test(`Foundation rejects an allowed-edge ${typeOnly ? "type-only" : "runtime"} cycle`, async () => {
     const report = await checkFixture((files, configuration) => {
       addConsumer(files, configuration);
-      configuration.boundaries[0].allow.boundaries.push("fixture-consumer");
+      configuration.boundaries.find(boundary => boundary.id === "core-canonicalization-contract").allow.boundaries.push("fixture-consumer");
       if (typeOnly) {
         files.set(`${canonicalRoot}/ports.ts`, files.get(`${canonicalRoot}/ports.ts`) + '\nexport type { Consumer } from "../consumer/factory.js";\n');
       } else {
