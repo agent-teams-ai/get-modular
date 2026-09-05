@@ -46,6 +46,23 @@ test("all eight accepted mixed cycle/depth recipes retain full diagnostics throu
   }
 });
 
+test("removing a cyclic bridge never joins two in-budget chains into a depth overflow", () => {
+  const input = materialize({ chainLength: 2049, cycle: "self", attachment: "none" });
+  // Split the chain into 1024 and 1025 nodes, joined only through cyclic a.
+  // Original root closure reaches every node; removing the SCC leaves depth
+  // 1025. Splicing across it would incorrectly produce the saturated 2049.
+  input.profile.bindings.find(binding => binding.consumerImplementationId === "example/n1025/default")
+    .providerImplementationIds = ["example/a/default"];
+  const cyclic = input.declarations.find(declaration => declaration.moduleId === "example/a");
+  cyclic.slots.push({ ...cyclic.slots[0], slotId: "d1" });
+  input.profile.bindings.push({ consumerImplementationId: "example/a/default", slotId: "d1",
+    providerImplementationIds: ["example/n1024/default"] });
+  input.profile.roots = ["example/n2049"];
+  const expected = { ok: false, diagnostics: [{ code: "graph.cycle", phase: "graph",
+    path: [], coordinate: {}, details: { component: ["example/a/default"] } }] };
+  for (const reorder of permutations) assert.deepEqual(compile(permute(input, reorder)), expected);
+});
+
 // Independent expected-output recipe: no input generator, subject census,
 // graph traversal, canonicalizer or returned plan supplies these expectations.
 function expectedP500Plan() {
