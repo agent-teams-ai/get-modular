@@ -1,6 +1,6 @@
 import type { DiagnosticCollector } from "../diagnostics/internal.js";
 import type { DeclarationCensus } from "./declaration-census.js";
-import type { ProfileResourceObservations } from "./semantic-input.js";
+import type { ProfileResourceObservations } from "./ports.js";
 
 const limits = { graphEdges: 262_144, providersPerManySlot: 1024 } as const;
 export const semanticResourceLimits: typeof limits = Object.freeze(limits);
