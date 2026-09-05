@@ -5,8 +5,8 @@ workspace:
 governedRoots:
   - packages/core/src
 boundaries:
-  # Semantic censuses and graph algorithms remain owner-private while binding
-  # validation, prerequisite integration and module construction are pending.
+  # Semantic censuses, binding validation and graph algorithms remain private
+  # while prerequisite integration and module construction are pending.
   - id: core-composition-semantics
     roots:
       - packages/core/src/features/composition-semantics/graph-components.ts
@@ -15,6 +15,8 @@ boundaries:
       - packages/core/src/features/composition-semantics/graph-diagnostics.ts
       - packages/core/src/features/composition-semantics/declaration-census.ts
       - packages/core/src/features/composition-semantics/profile-census.ts
+      - packages/core/src/features/composition-semantics/binding-record.ts
+      - packages/core/src/features/composition-semantics/selected-bindings.ts
     entrypoints: []
     allow:
       boundaries:
