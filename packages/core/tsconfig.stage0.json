@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist-stage0"
+  },
+  "files": [],
+  "include": [
+    "src/features/**/*.ts",
+    "src/composition/stage0.ts",
+    "self-composition/**/*.ts"
+  ],
+  "exclude": [
+    "self-composition/**/*.variant.ts",
+    "src/index.ts",
+    "src/composition/generated/**"
+  ]
+}

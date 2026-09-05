@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { admitObjectInput } from "../../../dist/features/input-admission/object-admission.js";
-import { analyzeCompositionSemantics } from "../../../dist/features/composition-semantics/semantic-analysis.js";
-import { createDeclarationCensus } from "../../../dist/features/composition-semantics/declaration-census.js";
-import { collectGraphResourceLimits } from "../../../dist/features/composition-semantics/graph-resources.js";
-import { createDiagnosticCollector } from "../../../dist/features/diagnostics/internal.js";
-import { createOwnedJcs } from "../../../dist/features/canonicalization/owned-jcs/factory.js";
+import { admitObjectInput } from "../../../dist-test/features/input-admission/object-admission.js";
+import { analyzeCompositionSemantics } from "../../../dist-test/features/composition-semantics/semantic-analysis.js";
+import { createDeclarationCensus } from "../../../dist-test/features/composition-semantics/declaration-census.js";
+import { collectGraphResourceLimits } from "../../../dist-test/features/composition-semantics/graph-resources.js";
+import { createDiagnosticCollector } from "../../../dist-test/features/diagnostics/internal.js";
+import { createOwnedJcs } from "../../../dist-test/features/canonicalization/owned-jcs/factory.js";
 
 const capability = () => ({ capabilityId: "x/cap", compatibility: { family: "exact", familyVersion: 1, token: "x/cap" } });
 const slot = (cardinality = { kind: "many", min: 0, max: 1024, order: "profile" }) => ({ slotId: "dep", ...capability(), cardinality });

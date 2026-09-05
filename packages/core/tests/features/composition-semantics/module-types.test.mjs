@@ -9,7 +9,7 @@ import test from "node:test";
 
 const require = createRequire(import.meta.url);
 const tsc = join(dirname(require.resolve("typescript/package.json")), "bin/tsc");
-const subject = path => JSON.stringify(fileURLToPath(new URL(`../../../dist/features/${path}.js`, import.meta.url)).replaceAll("\\", "/"));
+const subject = path => JSON.stringify(fileURLToPath(new URL(`../../../dist-test/features/${path}.js`, import.meta.url)).replaceAll("\\", "/"));
 
 test("built module contracts join structurally and enforce their exact dependency keys", async t => {
   const directory = await mkdtemp(join(tmpdir(), "gm-module-contracts-"));

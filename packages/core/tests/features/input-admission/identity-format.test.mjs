@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isLocalTokenFormat, isPortableIdFormat } from "../../../dist/features/input-admission/identity-format.js";
-import { validateDeclarationShape } from "../../../dist/features/input-admission/document-shape.js";
+import { isLocalTokenFormat, isPortableIdFormat } from "../../../dist-test/features/input-admission/identity-format.js";
+import { validateDeclarationShape } from "../../../dist-test/features/input-admission/document-shape.js";
 
 // Independent accepted regex grammars, with exact match length to exclude JS
 // end-anchor acceptance of a final line terminator. Length is a separate rule.

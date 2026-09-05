@@ -29,7 +29,11 @@ import {
   validateSourceMap,
   validateTraceability,
 } from "../architecture/checks/governance.mjs";
-import { manifestCarrierViolations, packageManifestInventory, versionedIdentifierMatches } from "../architecture/checks/production-artifacts.mjs";
+import {
+  manifestCarrierViolations,
+  packageManifestInventory,
+  versionedIdentifierMatches,
+} from "../architecture/checks/production-artifacts.mjs";
 import {
   assertSupportedNodeVersion,
   isDirectExecution,
@@ -76,7 +80,7 @@ const sourceMap = {
   }],
 };
 
-for (const outputRoot of ["dist"]) {
+for (const outputRoot of ["dist", "dist-test", "dist-stage0"]) {
 test(`Core ${outputRoot} output does not require Git source custody or hide authored artifacts`, async () => {
   const fixture = await mkdtemp(join(tmpdir(), "get-modular-build-custody-"));
   try {

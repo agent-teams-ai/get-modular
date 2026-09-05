@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import canonicalizeOracle from "canonicalize";
-import { createCompositionSemantics } from "../../../dist/features/composition-semantics/factory.js";
-import { createInputAdmission } from "../../../dist/features/input-admission/factory.js";
-import { createOwnedJcs } from "../../../dist/features/canonicalization/owned-jcs/factory.js";
+import { createCompositionSemantics } from "../../../dist-test/features/composition-semantics/factory.js";
+import { createInputAdmission } from "../../../dist-test/features/input-admission/factory.js";
+import { createOwnedJcs } from "../../../dist-test/features/canonicalization/owned-jcs/factory.js";
 
 const snapshots = JSON.parse(await readFile(new URL(
   "../../../../../architecture/qualification/v1/diagnostic-snapshots.json", import.meta.url,

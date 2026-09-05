@@ -9,9 +9,9 @@ import test from "node:test";
 
 const require = createRequire(import.meta.url);
 const tsc = join(dirname(require.resolve("typescript/package.json")), "bin/tsc");
-const subject = fileURLToPath(new URL("../../../dist/features/authoring/internal.js", import.meta.url));
+const subject = fileURLToPath(new URL("../../../dist-test/features/authoring/internal.js", import.meta.url));
 const importPath = JSON.stringify(subject.replaceAll("\\", "/"));
-const canonicalPortPath = JSON.stringify(fileURLToPath(new URL("../../../dist/features/canonicalization/ports.js", import.meta.url)).replaceAll("\\", "/"));
+const canonicalPortPath = JSON.stringify(fileURLToPath(new URL("../../../dist-test/features/canonicalization/ports.js", import.meta.url)).replaceAll("\\", "/"));
 const root = new URL("../../../../../", import.meta.url);
 const diagnostics = JSON.parse(await readFile(new URL("architecture/qualification/v1/diagnostic-contract.json", root), "utf8"));
 const snapshots = JSON.parse(await readFile(new URL("architecture/qualification/v1/diagnostic-snapshots.json", root), "utf8"));
