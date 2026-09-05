@@ -12,6 +12,8 @@ boundaries:
       - packages/core/src/features/input-admission/object-resource-meter.ts
       - packages/core/src/features/input-admission/document-snapshot.ts
       - packages/core/src/features/input-admission/document-shape.ts
+      - packages/core/src/features/input-admission/identity-format.ts
+      - packages/core/src/features/input-admission/schema-diagnostic.ts
     entrypoints: []
     allow:
       boundaries:

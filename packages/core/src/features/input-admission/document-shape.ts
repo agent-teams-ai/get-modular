@@ -1,17 +1,16 @@
+import { isLocalTokenFormat, isPortableIdFormat } from "./identity-format.js";
+
 // The caller first proves the cooperative JSON-shaped document's resource
 // bounds and plain descriptors. This owner-private pass checks the closed wire
 // schema, not semantic relationships or public diagnostic eligibility.
 // Violations stream to the caller: no unbounded error list or input is retained.
 export type DocumentShapeViolation = {
-  readonly rule: "type" | "required" | "constant" | "integer" | "range" | "identity" | "size" | "closed";
+  readonly rule: "type" | "required" | "constant" | "integer" | "range" | "identity" | "size" | "closed" | "unsupported-version";
   readonly path: readonly (string | number)[];
 };
 type Report = (violation: DocumentShapeViolation) => void;
 type Path = readonly (string | number)[];
 type Check = (value: unknown, path: Path) => void;
-
-const portablePattern = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\/[a-z][a-z0-9]*(?:-[a-z0-9]+)*)+$/;
-const localPattern = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
 function checks(report: Report) {
   let valid = true;
@@ -37,23 +36,24 @@ function checks(report: Report) {
   function literal(expected: string | number): Check {
     return (value, path) => {
       if (typeof value !== typeof expected) fail("type", path);
+      else if (typeof value === "number" && !Number.isInteger(value)) fail("integer", path);
+      else if (typeof value === "number" && (!Number.isSafeInteger(value) || Object.is(value, -0))) fail("range", path);
       else if (value !== expected) fail("constant", path);
     };
   }
   function integer(min: number, max: number): Check {
     return (value, path) => {
       if (typeof value !== "number") fail("type", path);
-      else if (!Number.isSafeInteger(value) || Object.is(value, -0)) fail("integer", path);
-      else if (value < min || value > max) fail("range", path);
+      else if (!Number.isInteger(value)) fail("integer", path);
+      else if (!Number.isSafeInteger(value) || Object.is(value, -0) || value < min || value > max) fail("range", path);
     };
   }
-  function identity(pattern: RegExp, min: number, max: number): Check {
+  function identity(matchesFormat: (value: string) => boolean, min: number, max: number): Check {
     return (value, path) => {
       if (typeof value !== "string") fail("type", path);
-      // Length is checked first, bounding regexp work even for rejected input.
-      // Require the match to consume the whole string: JS `$` admits a final
-      // line terminator, which is outside the accepted portable ASCII grammar.
-      else if (value.length < min || value.length > max || pattern.exec(value)?.[0] !== value) fail("identity", path);
+      // Shape validation may stop at the length bound. Resource classification
+      // separately calls the same grammar scan before measuring identifierBytes.
+      else if (value.length < min || value.length > max || !matchesFormat(value)) fail("identity", path);
     };
   }
   function array(min: number, max: number, item: Check): Check {
@@ -67,8 +67,8 @@ function checks(report: Report) {
       }
     };
   }
-  const portable = identity(portablePattern, 3, 128);
-  const local = identity(localPattern, 1, 64);
+  const portable = identity(isPortableIdFormat, 3, 128);
+  const local = identity(isLocalTokenFormat, 1, 64);
   const compatibility: Check = (value, path) => record(value, path, {
     family: literal("exact"), familyVersion: literal(1), token: portable,
   });
@@ -91,8 +91,23 @@ function checks(report: Report) {
     consumerImplementationId: portable, slotId: local, providerImplementationIds: array(0, 1024, portable),
   });
 
+  function supportedDocumentVersion(value: unknown): boolean {
+    if (value === null || typeof value !== "object" || Array.isArray(value)) return true;
+    const descriptor = Object.getOwnPropertyDescriptor(value, "schemaVersion");
+    const version = descriptor && Object.hasOwn(descriptor, "value") ? descriptor.value : undefined;
+    if (typeof version === "number" && Number.isSafeInteger(version) && !Object.is(version, -0) && version !== 1) {
+      // An unknown document version supplies no evidence for this version's
+      // required/unknown-field checks. The accepted partial-version case has
+      // exactly this failure, without invented missing fields.
+      fail("unsupported-version", ["schemaVersion"]);
+      return false;
+    }
+    return true;
+  }
+
   return {
     declaration(value: unknown): boolean {
+      if (!supportedDocumentVersion(value)) return false;
       record(value, [], {
         kind: literal("get-modular.module-declaration"), schemaVersion: literal(1),
         moduleId: portable, implementationId: portable,
@@ -102,6 +117,7 @@ function checks(report: Report) {
       return valid;
     },
     profile(value: unknown): boolean {
+      if (!supportedDocumentVersion(value)) return false;
       record(value, [], {
         kind: literal("get-modular.composition-profile"), schemaVersion: literal(1), profileId: portable,
         roots: array(1, 1024, portable), selections: array(1, 4096, selection), bindings: array(0, 65_536, binding),
