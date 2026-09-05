@@ -8,6 +8,8 @@ import canonicalize from "canonicalize";
 import { canonicalize as secondOracle } from "json-canonicalize";
 import { duplicateRecordBaseCases, duplicateRecordRowFailureCases,
   duplicateRecordOverlapCases, duplicateRecordPermutationCases } from "./duplicate-record-cases.mjs";
+import { duplicateRecordOrderingCases, duplicateRecordShuffledOrderingCases,
+  duplicateRecordCollectorCases } from "./duplicate-record-ordering.mjs";
 
 const manifest = JSON.parse(await readFile(new URL("./duplicate-record-recipes.json", import.meta.url), "utf8"));
 const schema = JSON.parse(await readFile(new URL("../../../architecture/contracts/v1/composition.schema.json", import.meta.url), "utf8"));
@@ -191,4 +193,97 @@ test("stream identity detects removal, reordering, inserted and altered outcomes
     assert.notDeepEqual(streamIdentity(mutation), manifest.streams.cardinality);
   }
   assert.throws(() => streamIdentity([...source, source[0]]), /duplicate case ID/u);
+});
+
+test("pins the candidate ordering, seeded shuffle and collector streams", () => {
+  assert.deepEqual(streamIdentity(duplicateRecordOrderingCases()), manifest.streams.ordering);
+  assert.deepEqual(streamIdentity(duplicateRecordShuffledOrderingCases()), manifest.streams.orderingShuffle);
+  assert.deepEqual(streamIdentity(duplicateRecordCollectorCases()), manifest.streams.collector);
+});
+
+test("ordering worlds separate phase, new code priority and ASCII coordinates", () => {
+  const cases = [...duplicateRecordOrderingCases()];
+  for (const value of cases) {
+    for (const item of value.input.declarations) assert.equal(declaration(item), true, JSON.stringify(declaration.errors));
+    assert.equal(profile(value.input.profile), true, JSON.stringify(profile.errors));
+    assert.equal(value.proposedOnly, true);
+    assert.deepEqual(Object.keys(value.expected).sort(), ["diagnostics", "ok"]);
+    assert.equal(value.expected.ok, false);
+    for (const item of value.expected.diagnostics.filter(item => item.code !== "binding.duplicate-record")) {
+      assert.equal(diagnostic(item), true, JSON.stringify(diagnostic.errors));
+    }
+  }
+  assert.deepEqual(cases[0].expected, [...duplicateRecordOverlapCases()].at(-1).expected);
+  assert.deepEqual(cases[1].expected.diagnostics, [
+    { code: "binding.duplicate-record", phase: "binding", path: [],
+      coordinate: { implementationId: "example/z/default", slotId: "dependency" }, details: { reason: "duplicate" } },
+    { code: "binding.duplicate", phase: "binding", path: [], coordinate: { implementationId: "example/a/default",
+      slotId: "dependency", providerImplementationId: "example/provider-two/default" }, details: { reason: "duplicate" } },
+  ]);
+  assert.deepEqual(cases[1].input.profile.bindings[0].providerImplementationIds,
+    ["example/provider-two/default", "example/provider-two/default", "example/provider-one/default"]);
+  assert.deepEqual(cases[2].expected.diagnostics.map(item => item.coordinate), [
+    { implementationId: "example/c-10/default", slotId: "slot-10" },
+    { implementationId: "example/c-10/default", slotId: "slot-2" },
+    { implementationId: "example/c-2/default", slotId: "slot-0" },
+  ]);
+});
+
+test("fixed shuffle uses one unsigned stream per case and never shuffles providers", () => {
+  const sources = [...duplicateRecordOrderingCases()];
+  for (const [index, value] of [...duplicateRecordShuffledOrderingCases()].entries()) {
+    const source = sources[index];
+    const lists = input => [input.declarations, input.profile.roots, input.profile.selections, input.profile.bindings];
+    assert.deepEqual(value.expected, source.expected);
+    assert.equal(value.sourceCaseId, source.caseId);
+    // These full index permutations were derived independently with Python
+    // masked integer arithmetic; no source PRNG generates the test oracle.
+    const indices = manifest.shuffleIndicesByAxis[source.parameters.axis];
+    assert.deepEqual(lists(value.input), lists(source.input).map((list, i) => indices[i].map(j => list[j])));
+  }
+  assert.deepEqual(sources, [...duplicateRecordOrderingCases()]);
+});
+
+test("collector worlds contain exactly N eligible groups and the complete capped outcome", async () => {
+  const resource = JSON.parse(await readFile(new URL("../../../architecture/qualification/v1/resource-profile-v2.json", import.meta.url), "utf8"));
+  assert.equal(resource.limits.diagnostics, 256);
+  const results = new Map();
+  for (const value of duplicateRecordCollectorCases()) {
+    const { count, order } = value.parameters;
+    const { declarations, profile: input } = value.input;
+    assert.equal(value.proposedOnly, true);
+    assert.deepEqual(Object.keys(value.expected).sort(), ["diagnostics", "ok"]);
+    assert.equal(value.expected.ok, false);
+    assert.equal(declarations.length, count);
+    assert.equal(input.bindings.length, count * 2);
+    assert.equal(profile(input), true, JSON.stringify(profile.errors));
+    const seen = new Set();
+    for (const item of declarations) {
+      assert.equal(declaration(item), true, JSON.stringify(declaration.errors));
+      assert.deepEqual(item.provides, []);
+      assert.deepEqual(item.slots.map(slot => [slot.slotId, slot.cardinality]), [["dependency", { kind: "optional" }]]);
+      assert.equal(seen.has(item.implementationId), false); seen.add(item.implementationId);
+      assert.ok(input.roots.includes(item.moduleId));
+      assert.ok(input.selections.some(row => row.moduleId === item.moduleId && row.implementationId === item.implementationId));
+      assert.deepEqual(input.bindings.filter(row => row.consumerImplementationId === item.implementationId),
+        Array.from({ length: 2 }, () => ({ consumerImplementationId: item.implementationId,
+          slotId: "dependency", providerImplementationIds: [] })));
+    }
+    const ids = [...seen].sort();
+    const expectedIds = Array.from({ length: count }, (_, index) => `example/c${String(index).padStart(4, "0")}/default`);
+    assert.deepEqual(ids, expectedIds);
+    if (order === "ascending") assert.deepEqual([...seen], expectedIds);
+    if (order === "reverse") assert.deepEqual([...seen], [...expectedIds].reverse());
+    if (order === "stride-17") assert.deepEqual([...seen], Array.from({ length: count }, (_, index) => expectedIds[(count - 1 + 17 * index) % count]));
+    // ASCII JSON byte length upper-bounds both all string bytes and value
+    // occurrences in these worlds, keeping this suite inside the C2 envelope.
+    assert.ok(Buffer.byteLength(JSON.stringify(value.input)) < Math.min(resource.limits.aggregateStringBytes, resource.limits.jsonValueOccurrences));
+    const expected = expectedIds.slice(0, count === 256 ? 256 : 255).map(implementationId => ({
+      code: "binding.duplicate-record", phase: "binding", path: [], coordinate: { implementationId, slotId: "dependency" }, details: { reason: "duplicate" } }));
+    if (count > 256) expected.push({ code: "diagnostics.truncated", phase: "output", path: [], coordinate: {}, details: { omitted: count === 257 ? 2 : 3 } });
+    assert.deepEqual(value.expected.diagnostics, expected);
+    if (results.has(count)) assert.deepEqual(value.expected, results.get(count));
+    results.set(count, value.expected);
+  }
+  assert.deepEqual([...results.keys()], [256, 257, 258]);
 });

@@ -3,7 +3,7 @@
   "version": 1,
   "status": "proposed-fixture-only",
   "proposal": "docs/decisions/0014-close-duplicate-binding-record-semantics.md",
-  "scope": "Cardinality, row-local failures, five lookup/graph overlaps and exhaustive cardinality/row-failure permutations. Ordering/collector/resource/mutation categories and combined generation 2 acceptance remain pending.",
+  "scope": "Cardinality, row-local failures, lookup/graph overlaps, exhaustive permutations, three ordering axes, fixed shuffles and bounded collector worlds. Resource/mutation categories, complete successor rank and combined generation 2 acceptance remain pending.",
   "domains": {
     "cardinalities": [
       "required",
@@ -27,6 +27,21 @@
       "cardinality-over",
       "capability-missing",
       "compatibility-mismatch"
+    ],
+    "orderingAxes": [
+      "phase-before-code",
+      "code-before-coordinate",
+      "coordinate-ascii"
+    ],
+    "collectorCounts": [
+      256,
+      257,
+      258
+    ],
+    "collectorOrders": [
+      "ascending",
+      "reverse",
+      "stride-17"
     ]
   },
   "identityTokens": {
@@ -51,7 +66,11 @@
     "enumeration": "cardinality, recordCount, rowRecipe in listed order; record permutations by source-index traversal with exact JSON deduplication; within each record permutation, provider permutations form a left-to-right Cartesian product; zero-based six-digit ranks; row-fault sources follow cardinality sources, ordered by listed fault, count, faultPosition",
     "streamEncoding": "each complete materialized case as RFC8785 UTF-8 followed by LF; SHA-256 over concatenation; no seed or sampling",
     "rowFailures": "many min1/max2, record counts2 then3, every fault position from0; faulty row counts and lookup worlds are closed in the fixture source; all other rows retain [provider-one,provider-two]",
-    "overlap": "five complete worlds in manifest order; unknown lookup roots have no slots/extra selections; unselected consumer retains only duplicate-record; reached invalid group contains an individually compatible self-reference that must not leak a cycle, while provider-three/provider-two form an independent SCC; unreached invalid frontier retains three unreachable selections"
+    "overlap": "five complete worlds in manifest order; unknown lookup roots have no slots/extra selections; unselected consumer retains only duplicate-record; reached invalid group contains an individually compatible self-reference that must not leak a cycle, while provider-three/provider-two form an independent SCC; unreached invalid frontier retains three unreachable selections",
+    "ordering": "Closed worlds separate phase from code, duplicate-record from duplicate-provider before ASCII coordinates, and implementation/slot ASCII order. Full rank adjacency evidence belongs to the future combined successor contract.",
+    "collector": "N distinct modules example/c0000..example/cNNNN each have one optional dependency slot, two empty rows, and are selected roots. No providers, graph edges or other errors. Present each group in ascending, reverse, or (N-1+17*i)%N order. Emit all256 or first255 plus truncation omitted N-255.",
+    "shuffle": "Reseed unsigned 32-bit shift/XOR generator (13,17,5) with0x4f440006 for each ordering world. Descending Fisher-Yates; one stream across declarations, roots, selections, bindings in that order. Provider arrays are untouched.",
+    "resourceSource": "architecture/qualification/v1/resource-profile-v2.json; diagnostics=256; collector worlds remain below structural/string/count limits."
   },
   "streams": {
     "cardinality": {
@@ -69,6 +88,18 @@
     "overlap": {
       "count": 5,
       "sha256": "2b05662a212c32936fc6592ebc3a796418820e4d7ea9162ea9dffea89ddc480c"
+    },
+    "ordering": {
+      "count": 3,
+      "sha256": "98e4d04deccb3682a142788119fe62a484b8bc955e56e7a36a4c7f8c009c0944"
+    },
+    "orderingShuffle": {
+      "count": 3,
+      "sha256": "670a85f54347675f9a53ccc4bd08233c6c7ab1a7d26f78c61fcef3ef1f5f1f1f"
+    },
+    "collector": {
+      "count": 9,
+      "sha256": "81fa34414c2f7421bbd1d452c676cac01338ed1f89eecf1d99c827fa92844933"
     }
   },
   "permutationsPerSource": {
@@ -132,5 +163,75 @@
     "od006.overlap.unselected-consumer.v1",
     "od006.graph.reached-incomplete-independent-scc.v1",
     "od006.graph.unreached-invalid-frontier.v1"
-  ]
+  ],
+  "shuffleIndicesByAxis": {
+    "phase-before-code": [
+      [
+        3,
+        1,
+        2,
+        0
+      ],
+      [
+        0
+      ],
+      [
+        1,
+        0,
+        2,
+        3
+      ],
+      [
+        1,
+        0
+      ]
+    ],
+    "code-before-coordinate": [
+      [
+        3,
+        1,
+        2,
+        0
+      ],
+      [
+        1,
+        0,
+        2,
+        3
+      ],
+      [
+        0,
+        1,
+        3,
+        2
+      ],
+      [
+        0,
+        1,
+        2
+      ]
+    ],
+    "coordinate-ascii": [
+      [
+        1,
+        0
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        0,
+        1
+      ],
+      [
+        3,
+        0,
+        5,
+        4,
+        2,
+        1
+      ]
+    ]
+  }
 }
