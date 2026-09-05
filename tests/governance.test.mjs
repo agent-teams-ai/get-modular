@@ -92,7 +92,9 @@ test(`Core ${outputRoot} output does not require Git source custody or hide auth
     await write("package.json", '{"private":true}\n');
     await write("packages/core/package.json", '{"name":"@get-modular/core","private":true}\n');
     const emitted = `packages/core/${outputRoot}/features/canonicalization/identity.d.ts`;
+    const emittedJavaScript = `packages/core/${outputRoot}/features/canonicalization/identity.js`;
     await write(emitted, "export declare const identity: string;\n");
+    await write(emittedJavaScript, 'export const identity = "example/value";\n');
     assert.ok((await productionArtifactPaths(fixture)).includes(emitted), "orphan output stays visible");
 
     await write("packages/core/src/features/canonicalization/identity.ts", 'export const identity = "example/value";\n');
@@ -100,6 +102,7 @@ test(`Core ${outputRoot} output does not require Git source custody or hide auth
     await git(fixture, "add", ".");
     const snapshot = await captureGitIndexSnapshot(fixture);
     assert.ok(!(await productionArtifactPaths(fixture, snapshot)).includes(emitted));
+    assert.ok(!(await productionArtifactPaths(fixture, snapshot)).includes(emittedJavaScript));
     assert.ok((await productionArtifactPaths(fixture)).includes(emitted), "without index evidence output stays visible");
 
     const misplaced = `packages/core/src/${outputRoot}/hidden.ts`;
@@ -110,8 +113,16 @@ test(`Core ${outputRoot} output does not require Git source custody or hide auth
     await write(otherPackage, "export {};\n");
     await write(nestedManifest, "{}\n");
     await write(similarPrefix, "export {};\n");
+    const authored = [];
+    for (const suffix of ["ts", "mts", "cts", "tsx", "jsx", "mjs", "cjs", "d.mts", "d.cts"]) {
+      const path = `packages/core/${outputRoot}/authored.${suffix}`;
+      await write(path, "export const apiV2 = 1;\n");
+      authored.push(path);
+    }
     const inventory = await productionArtifactPaths(fixture, snapshot);
-    for (const path of [misplaced, otherPackage, nestedManifest, similarPrefix]) assert.ok(inventory.includes(path));
+    for (const path of [misplaced, otherPackage, nestedManifest, similarPrefix, ...authored]) {
+      assert.ok(inventory.includes(path), `authored artifact remains visible: ${path}`);
+    }
 
     await git(fixture, "add", "--force", emitted);
     const trackedOutput = await captureGitIndexSnapshot(fixture);

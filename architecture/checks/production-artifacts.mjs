@@ -8,6 +8,8 @@ import {
 } from "./tracked-file-custody.mjs";
 
 const PRODUCTION_SOURCE = /\.(?:[cm]?js|jsx|[cm]?ts|tsx)$/u;
+// Current Core builds compile .ts inputs to .js and .d.ts only.
+const CORE_EMITTED_SOURCE = /(?:\.js|\.d\.ts)$/u;
 export const ACCEPTED_PACKAGE_NAMES = new Set([
   "@get-modular/conformance",
   "@get-modular/core",
@@ -516,12 +518,12 @@ export async function productionArtifactPaths(repositoryRoot = process.cwd(), in
   // The Core build emits ignored JavaScript/declarations into three explicit
   // output trees (production, component tests, and direct qualification). They are
   // qualified as build/archive output, not as authored Git-index source. Keep
-  // staged output, manifests, symlinks, and every other location in the source
+  // authored TypeScript, staged output, manifests, symlinks, and every other location in the source
   // inventory. An orphan dist tree cannot stand in for a real source package.
   if (indexSnapshot && artifacts.has("packages/core/package.json")
     && [...artifacts].some(path => path.startsWith("packages/core/src/") && PRODUCTION_SOURCE.test(path))) {
     for (const path of artifacts) {
-      if (CORE_BUILD_SOURCE_ROOTS.some(root => path.startsWith(root)) && PRODUCTION_SOURCE.test(path) && !capturedPaths.has(path)
+      if (CORE_BUILD_SOURCE_ROOTS.some(root => path.startsWith(root)) && CORE_EMITTED_SOURCE.test(path) && !capturedPaths.has(path)
         && (await lstat(resolve(repositoryRoot, path))).isFile()) {
         artifacts.delete(path);
       }
