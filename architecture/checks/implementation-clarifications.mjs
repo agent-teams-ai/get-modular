@@ -213,7 +213,7 @@ export function projectRawNumber(lexeme) {
   return { admitted: true, value };
 }
 
-function materialize(recipe) {
+export function materialize(recipe) {
   const names = [];
   if (recipe.cycle === "pair") names.push("a", "b");
   if (recipe.cycle === "self") names.push("a");

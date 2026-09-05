@@ -44,13 +44,17 @@ export function meterJsonResources(values, limits) {
       for (const [name, descriptor] of Object.entries(descriptors)) {
         if (name === "length") continue;
         const index = Number(name);
-        if (!Number.isInteger(index) || String(index) !== name || index >= value.length) {
+        if (!Number.isInteger(index) || index < 0 || String(index) !== name || index >= value.length) {
           reject("extended-array-property");
           continue;
         }
         indexes += 1;
         if (!descriptor.enumerable) reject("non-enumerable-property");
         if (!("value" in descriptor)) {
+          // The accessor occupies an attempted array position even though its
+          // value cannot be read or scheduled as an ordinary child frame.
+          result.jsonValueOccurrences = add(result.jsonValueOccurrences, 1,
+            limits.jsonValueOccurrences);
           reject("accessor-property");
           continue;
         }
@@ -94,6 +98,14 @@ export function meterRawResources(declarations, profile, limits) {
 
 const compatibility = () => ({ family: "exact", familyVersion: 1,
   token: "example/p500/capability" });
+
+// Historical vector-field names stay in the qualification executor, outside
+// the package's generation-free source and test namespace.
+export async function loadP500Recipe() {
+  const vectors = JSON.parse(await readFile(new URL(
+    "../../../architecture/qualification/v1/resource-boundary-vectors.json", import.meta.url), "utf8"));
+  return vectors.profileV2.p500;
+}
 const declaration = (moduleId, implementationId, slots) => ({
   kind: "get-modular.module-declaration", schemaVersion: 1, moduleId, implementationId,
   owner: { authority: "qualification", path: ["p500"] },

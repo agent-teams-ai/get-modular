@@ -199,3 +199,15 @@ test("shape inspection invokes no getters and has isolated per-document state", 
   assert.equal(check(validateProfileShape, profile()).valid, true);
   assert.throws(() => validateDeclarationShape(null, () => { throw new Error("report failure"); }), /report failure/);
 });
+
+test("malformed UTF-16 precedes identity grammar and byte accounting", () => {
+  for (const id of ["a/\ud800", "A/\ud800", `${"a".repeat(129)}\ud800`]) {
+    const value = declaration(); value.moduleId = id;
+    const violations = [];
+    const limits = [];
+    assert.equal(validateDeclarationShape(value, violation => violations.push(violation),
+      (...limit) => limits.push(limit)), false);
+    assert.deepEqual(violations, [{ rule: "unicode", path: ["moduleId"] }]);
+    assert.deepEqual(limits, []);
+  }
+});

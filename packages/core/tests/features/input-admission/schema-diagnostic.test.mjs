@@ -129,3 +129,18 @@ test("schema diagnostic records own and freeze all containers and count locator 
     assert.equal(Object.isFrozen(container), true);
   }
 });
+
+test("the accepted terminal-surrogate object projection fails once and its repair succeeds", async () => {
+  const vectors = await json("architecture/qualification/v1/decoder-vectors.json");
+  const fixture = vectors.cases.find(entry => entry.name === "lone-surrogate-escape");
+  const locator = { kind: "declaration", ordinal: 2 };
+  // This projects already-decoded objects; it does not qualify a raw decoder.
+  assert.deepEqual(project(validateDeclarationShape, JSON.parse(fixture.source), locator), {
+    valid: false,
+    diagnostics: [expected("schema.invalid-value",
+      [field("declarations"), index(2), field("owner"), field("path"), index(0)], "invalid-format")],
+  });
+  assert.deepEqual(project(validateDeclarationShape, JSON.parse(fixture.repairedSource), locator), {
+    valid: true, diagnostics: [],
+  });
+});
