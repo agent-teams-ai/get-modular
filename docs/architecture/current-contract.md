@@ -68,6 +68,16 @@ establish declaration/binding prerequisites or authorize an unreachable
 diagnostic from an incomplete frontier. Semantic validation, graph resource
 prerequisites, module construction and the facade remain pending. The graph
 implementation has no cross-feature entry and does not consume admission.
+Private declaration and profile censuses now inspect owned, whole-schema-valid
+documents, preserving identity occurrences and explicit ambiguous lookups.
+Legal alternative implementations of one module remain distinct. Duplicate
+capability/slot paths use positions in their identity-sorted declaration lists;
+normalized candidates are deduplicated before collection. Incomplete
+declaration admission withholds census-dependent absence claims, while positive
+duplicates and independent profile failures continue. Selected IDs, resolved
+node/root observations and selection uniqueness remain separate values; none
+alone proves graph eligibility or compiler success. Binding validation and
+end-to-end prerequisite integration still remain pending.
 Diagnostic producers still need to normalize and deduplicate their eligible
 candidates before collection. The public compiler and packed
 publication subject remain pending. Accepted
