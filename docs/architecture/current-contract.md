@@ -41,11 +41,13 @@ requires successor authority. The checker is not the specification.
 Get Modular has one accepted contract. Private features in `packages/core`
 currently implement owned canonicalization, inert authoring contracts,
 bounded diagnostic ordering and immutable plan output with its digest.
-Admission has private object-resource accounting and fixed-shape snapshot
-helpers. The latter copy and freeze already validated, bounded declarations
-and profiles; neither helper validates unknown input. Closed validation,
-diagnostic mapping and the admission module factory remain pending. These
-helpers have no cross-feature entry.
+Admission has private object-resource accounting, closed document-shape checks
+and snapshot helpers. Shape checks stream safe structural violations from
+resource-bounded plain documents; they do not establish semantic facts or
+public diagnostic eligibility. Snapshot helpers copy and freeze already
+validated declarations and profiles. Invocation admission, diagnostic mapping
+and the admission module factory remain pending. These helpers have no
+cross-feature entry.
 Diagnostic producers still need to normalize and deduplicate their eligible
 candidates before collection. The public compiler and packed
 publication subject remain pending. Accepted
