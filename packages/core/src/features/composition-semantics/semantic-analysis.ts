@@ -1,4 +1,4 @@
-import type { CompositionPlan, CompileCompositionResult } from "../authoring/internal.js";
+import type { CompositionPlan } from "../authoring/internal.js";
 import type { DiagnosticCollector } from "../diagnostics/internal.js";
 import { createDeclarationCensus } from "./declaration-census.js";
 import { createProfileCensus } from "./profile-census.js";
@@ -6,10 +6,7 @@ import { collectGraphResourceLimits } from "./graph-resources.js";
 import { validateSelectedBindings } from "./selected-bindings.js";
 import { analyzeSelectedGraph, type ProviderEdge } from "./selected-graph.js";
 import { collectGraphFailures } from "./graph-diagnostics.js";
-import type { SemanticInput } from "./semantic-input.js";
-
-export type SemanticResult = { readonly ok: true; readonly plan: CompositionPlan }
-  | Extract<CompileCompositionResult, { readonly ok: false }>;
+import type { SemanticInput, SemanticResult } from "./ports.js";
 
 /** Owned admitted input, truthful resource observations and its complete admission diagnostic stream. */
 export function analyzeCompositionSemantics(input: SemanticInput, collector: DiagnosticCollector): SemanticResult {

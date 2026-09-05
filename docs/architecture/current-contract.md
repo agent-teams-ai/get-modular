@@ -60,9 +60,9 @@ Oversized provider lists retain bounded,
 owned resource-only counts separately from an admitted semantic profile.
 Semantic resource checks consume these counts after establishing the relevant
 selection/consumer/slot evidence; they cannot create graph edges or plan bindings.
-Malformed wrapper/carrier classifications remain outside this private stage's
-claimed domain. The admission module factory and cross-feature entry are
-pending independent review and downstream integration.
+Malformed wrapper/carrier classifications remain outside this stage's claimed
+domain. Admission now exposes its owner-local typed port and pure, zero-slot
+module factory; the snapshot and resource algorithms stay private.
 Composition semantics now has private iterative graph algorithms for an
 already bounded, resolved selected graph of wholly valid binding edges. They
 compute stable SCC membership, ASCII-minimal dependency order, original
@@ -71,9 +71,8 @@ stream into the same caller-owned collector; cycles preserve their diagnostics
 and depth overflow saturates at 2049. Operation counters cover distinct
 adjacency traversal and bounded ready/traversal state. These algorithms do not
 establish declaration/binding prerequisites or authorize an unreachable
-diagnostic from an incomplete frontier. Module construction and the facade
-remain pending. The graph
-implementation has no cross-feature entry and does not consume admission.
+diagnostic from an incomplete frontier. The graph implementation has no
+cross-feature entry and does not consume admission.
 Private declaration and profile censuses now inspect owned, whole-schema-valid
 documents, preserving identity occurrences and explicit ambiguous lookups.
 Legal alternative implementations of one module remain distinct. Duplicate
@@ -107,6 +106,14 @@ independent positive cycles. The collector finishes after all eligible checks;
 any diagnostic prevents a plan. Success contains a deeply frozen normalized
 plan, with original many-provider order and deterministic roots, selections,
 bindings and dependency order. Digest emission stays in the output feature.
+The semantics module factory receives only its declared canonicalizer slot and
+creates a fresh diagnostic collector for each invocation. Admission and analysis
+share that collector; neither factory owns mutable invocation state. The driven
+canonicalizer and admitted-input shapes belong to the consuming feature and
+join their providers structurally. Foundation permits feature consumers to
+import these contracts while keeping concrete factories and algorithm files
+behind separate implementation boundaries. Direct assembly and the compiler
+facade remain pending.
 Tests connect the actual admission, semantic and output implementations against
 independent object diagnostic, plan and digest expectations. This private
 pipeline is not the public compiler, packed qualification or a completed M1.

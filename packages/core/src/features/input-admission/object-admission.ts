@@ -4,21 +4,11 @@ import { documentPath, type DocumentLocator } from "./document-path.js";
 import { validateDeclarationShape, validateProfileShape } from "./document-shape.js";
 import { snapshotDeclaration, snapshotProfile } from "./document-snapshot.js";
 import { createObjectResourceMeter, type ObjectResourceScan } from "./object-resource-meter.js";
-import { ownValue, profileResourceFacts, type ProfileResourceFacts } from "./profile-resource-facts.js";
+import { ownValue, profileResourceFacts } from "./profile-resource-facts.js";
+import type { AdmittedObjectInput, AdmissionDiagnosticSink, ObjectInput } from "./ports.js";
 import { resourceDiagnostic } from "./resource-diagnostic.js";
 import { admissionLimits } from "./resource-limits.js";
 import { schemaDiagnostic } from "./schema-diagnostic.js";
-
-type ObjectInput = { readonly declarations: readonly unknown[]; readonly profile: unknown };
-export type AdmittedObjectInput = {
-  readonly declarations: readonly ModuleDeclaration[];
-  // Complete admission is necessary, but not sufficient, for semantic identity
-  // uniqueness. Semantics must still establish its own identity/module census.
-  readonly allDeclarationsAdmitted: boolean;
-  readonly profile: CompositionProfile | null;
-  readonly profileResources: ProfileResourceFacts | null;
-  readonly hasErrors: boolean;
-};
 
 /**
  * Synchronous private M1 admission for the accepted cooperative invocation
@@ -30,7 +20,7 @@ export type AdmittedObjectInput = {
  * admits no snapshots; depth remains document-local. Complete eligible
  * diagnostic determinism is preserved inside the resource envelope.
  */
-export function admitObjectInput(input: ObjectInput, collector: Pick<DiagnosticCollector, "addUnique">): AdmittedObjectInput {
+export function admitObjectInput(input: ObjectInput, collector: AdmissionDiagnosticSink): AdmittedObjectInput {
   let hasErrors = false;
   const add: DiagnosticCollector["addUnique"] = diagnostic => { hasErrors = true; collector.addUnique(diagnostic); };
   const empty = (): AdmittedObjectInput => Object.freeze({ declarations: Object.freeze([]), allDeclarationsAdmitted: false,
