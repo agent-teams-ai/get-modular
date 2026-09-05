@@ -135,6 +135,20 @@ test("Foundation rejects a concrete canonicalizer inside admission", async () =>
   assert.match(rules(report), /architecture\.source-dependencies\.forbidden-boundary-dependency/u);
 });
 
+test("Foundation keeps the graph kernel private and independent from unfinished admission", async () => {
+  const privateEntry = await checkFixture((files, configuration) => {
+    addConsumer(files, configuration);
+    configuration.boundaries.find(boundary => boundary.id === "fixture-consumer").allow.boundaries.push("core-composition-semantics");
+    files.set(consumerPath, 'export { analyzeSelectedGraph } from "../composition-semantics/selected-graph.js";\n');
+  });
+  assert.match(rules(privateEntry), /architecture\.source-dependencies\.cross-boundary-local-import-not-entrypoint/u);
+  const forbiddenEdge = await checkFixture(files => {
+    const path = "packages/core/src/features/composition-semantics/selected-graph.ts";
+    files.set(path, files.get(path) + '\nimport { admitObjectInput } from "../input-admission/object-admission.js";\n');
+  });
+  assert.match(rules(forbiddenEdge), /architecture\.source-dependencies\.forbidden-boundary-dependency/u);
+});
+
 for (const [name, path, contents] of [
   ["behavior outside a feature", "packages/core/src/helpers.ts", "export function hiddenRule() { return 1; }\n"],
   ["undeclared feature ownership", "packages/core/src/features/unowned/factory.ts", "export const hidden = 1;\n"],
