@@ -28,7 +28,7 @@
     "docs:quality": "markdownlint-cli2 && cspell --config .cspell.json --no-progress",
     "docs:recover": "agent-teams-docs recover --consumer . --profile architecture/foundation/docs-protocol.yaml",
     "contracts:check": "node architecture/checks/v1-contract.mjs",
-    "contracts:test": "node --test tests/v1-contract.test.mjs tests/compiler-engineer-examples.test.mjs tests/implementation-clarifications.test.mjs tests/qualification/m2-candidate/raw-carrier-oracle.test.mjs tests/qualification/m2-candidate/duplicate-record-cases.test.mjs",
+    "contracts:test": "node --test tests/v1-contract.test.mjs tests/compiler-engineer-examples.test.mjs tests/implementation-clarifications.test.mjs tests/qualification/m2-candidate/raw-carrier-oracle.test.mjs tests/qualification/m2-candidate/duplicate-record-cases.test.mjs tests/qualification/m2-candidate/duplicate-record-extended-overlaps.test.mjs",
     "foundation:assert-dev-only": "agent-teams-foundation assert-dev-only",
     "foundation:assert-registry": "agent-teams-foundation assert-registry",
     "foundation:check": "agent-teams-foundation check && pnpm foundation:assert-dev-only && pnpm foundation:assert-registry",

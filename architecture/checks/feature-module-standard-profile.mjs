@@ -37,7 +37,7 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "core:build": "tsc -p packages/core/tsconfig.json",
   "core:test": 'node --test "packages/core/tests/**/*.test.mjs"',
   "contracts:check": "node architecture/checks/v1-contract.mjs",
-  "contracts:test": "node --test tests/v1-contract.test.mjs tests/compiler-engineer-examples.test.mjs tests/implementation-clarifications.test.mjs tests/qualification/m2-candidate/raw-carrier-oracle.test.mjs tests/qualification/m2-candidate/duplicate-record-cases.test.mjs",
+  "contracts:test": "node --test tests/v1-contract.test.mjs tests/compiler-engineer-examples.test.mjs tests/implementation-clarifications.test.mjs tests/qualification/m2-candidate/raw-carrier-oracle.test.mjs tests/qualification/m2-candidate/duplicate-record-cases.test.mjs tests/qualification/m2-candidate/duplicate-record-extended-overlaps.test.mjs",
   "docs:check": "agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml",
   "docs:protocol:check": "pnpm docs:check && pnpm docs:quality",
   "docs:quality": "markdownlint-cli2 && cspell --config .cspell.json --no-progress",
