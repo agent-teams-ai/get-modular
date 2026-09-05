@@ -979,6 +979,16 @@ the matching freshly built feature namespaces. Source/build custody remains the
 invoking gate's responsibility; the reader neither executes a root or allowlist
 nor establishes artifact trust. Generated subjects join these checks in M3.
 
+The current finite declaration format requires locally exported identity and
+declaration constants in both source and matching build. The identity uses a
+string or a single-identifier template; the declaration directly freezes an
+object literal. Re-exports, borrowed constant aliases and freezing a borrowed
+declaration cannot move its ownership beside another factory. These unsupported
+forms fail with `witness.invalid-construction`. Tests compile the mutated feature sources separately
+while keeping their changed root and allowlist unexecuted. Import bindings,
+construction bindings and handle local names also reject the strict-mode
+restricted names `eval` and `arguments`.
+
 As decided by ADR-0016, the construction witness has two parts and neither
 instruments production code:
 

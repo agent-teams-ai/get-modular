@@ -81,8 +81,16 @@ function tokens(source) {
   const scanner = createScanner(true, undefined, source);
   const result = [];
   let previousEnd = 0;
+  let braces = 0;
+  const templates = [];
   for (;;) {
-    const kind = scanner.scan();
+    let kind = scanner.scan();
+    if (kind === SyntaxKind.CloseBraceToken && templates.at(-1) === braces) {
+      kind = scanner.reScanTemplateToken(false);
+      if (kind === SyntaxKind.TemplateTail) templates.pop();
+    } else if (kind === SyntaxKind.OpenBraceToken) braces += 1;
+    else if (kind === SyntaxKind.CloseBraceToken) braces -= 1;
+    if (kind === SyntaxKind.TemplateHead) templates.push(braces);
     const start = scanner.getTokenStart();
     const end = scanner.getTokenEnd();
     trivia(source.slice(previousEnd, start));
@@ -99,6 +107,7 @@ function tokens(source) {
   return result;
 }
 function bindingName(value) {
+  if (value === 'eval' || value === 'arguments') return false;
   if (typeof value !== 'string' || !/^[A-Za-z_$][A-Za-z0-9_$]*$/u.test(value)) return false;
   const scanned = tokens(value);
   return scanned.length === 1 && scanned[0].kind === SyntaxKind.Identifier;
@@ -139,6 +148,7 @@ class Parser {
   end() { check(this.index === this.items.length); }
 }
 function claimName(names, name) {
+  check(bindingName(name), 'invalid-binding');
   check(!names.has(name), 'duplicate-binding');
   names.add(name);
 }
@@ -227,6 +237,59 @@ function parseAllowlist(source, path) {
   parser.need(')', ';');
   parser.end();
   return { ...imported, entries, typeLocal };
+}
+
+// This finite owner format admits local exported constants, not forwarding
+// modules. Checking namespace values alone loses a re-export's defining module
+// and can incorrectly authorize a different sibling factory for the same ID.
+function localDeclaration(source, module, identityName, declarationName) {
+  const parser = new Parser(source);
+  const names = new Set(['Object']);
+  imports(parser, module, names);
+  const definitions = new Map();
+  while (parser.peek() !== undefined) {
+    check(parser.eat('export') && parser.eat('const'), 'nonlocal-declaration');
+    const name = parser.identifier();
+    claimName(names, name);
+    if (parser.eat(':')) {
+      // Types are erased by the separately checked build. They do not establish
+      // the value's origin; the initializer below does.
+      while (parser.peek() !== '=') {
+        check(parser.peek() !== undefined && parser.peek() !== ';', 'nonlocal-declaration');
+        parser.index += 1;
+      }
+    }
+    parser.need('=');
+    const start = parser.index;
+    const close = [];
+    const delimiters = new Map([['(', ')'], ['[', ']'], ['{', '}']]);
+    while (parser.peek() !== ';' || close.length > 0) {
+      const text = parser.peek();
+      check(text !== undefined, 'nonlocal-declaration');
+      if (delimiters.has(text)) close.push(delimiters.get(text));
+      else if ([')', ']', '}'].includes(text)) check(close.pop() === text, 'nonlocal-declaration');
+      parser.index += 1;
+    }
+    definitions.set(name, parser.items.slice(start, parser.index));
+    parser.need(';');
+  }
+  const identity = definitions.get(identityName);
+  const declaration = definitions.get(declarationName)?.map(item => item.text);
+  // Own IDs are local string/template constants. A borrowed constant alias
+  // cannot relocate its declaration's ownership.
+  const literalIdentity = identity?.length === 1
+    && [SyntaxKind.StringLiteral, SyntaxKind.NoSubstitutionTemplateLiteral].includes(identity[0].kind);
+  const templateIdentity = identity?.length === 3 && identity[0].kind === SyntaxKind.TemplateHead
+    && identity[1].kind === SyntaxKind.Identifier && identity[2].kind === SyntaxKind.TemplateTail;
+  check(literalIdentity || templateIdentity, 'nonlocal-declaration');
+  check(declaration?.slice(0, 3).join(' ') === 'Object . freeze', 'nonlocal-declaration');
+  let offset = 3;
+  if (declaration[offset] === '<') {
+    check(declaration[offset + 1] === 'ModuleDeclaration' && declaration[offset + 2] === '>', 'nonlocal-declaration');
+    offset += 3;
+  }
+  check(declaration[offset] === '(' && declaration[offset + 1] === '{'
+    && declaration.at(-2) === '}' && declaration.at(-1) === ')', 'nonlocal-declaration');
 }
 function featureModule(module, qualification) {
   return /^src\/features\/[a-z][a-z0-9-]*(?:\/[a-z][a-z0-9-]*)?\/(?:declaration|factory)\.js$/u.test(module)
@@ -353,6 +416,8 @@ async function readHandles(packageRoot, buildRoot, initialPath, qualification) {
         throw invalid('declaration-identity');
       }
       const [declarationExport, declaration] = candidates[0];
+      localDeclaration(await textFile(packageRoot, sourcePath(key.module)), key.module, key.export, declarationExport);
+      localDeclaration(await textFile(buildRoot, key.module), key.module, key.export, declarationExport);
       const declarationRef = reference(key.module, declarationExport);
       corresponds(id, 'declaration', declarationRef, declared);
       if (extension) check(declarationRef.module === `${variantDirectory}/declaration.js`, 'variant-entry');

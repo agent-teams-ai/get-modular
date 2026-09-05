@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import canonicalize from 'canonicalize';
@@ -234,6 +236,63 @@ for (const changeText of [false, true]) {
     });
     await rejected(f, correspondenceCode, correspondence('factory', compatibleFactory, 'createCompatible'));
   });
+}
+
+for (const forwarding of ['re-export', 'local alias', 'frozen alias', 'local alias with local ID', 'frozen alias with local ID']) {
+  test(`a ${forwarding} cannot move a declaration beside another factory`, async t => {
+    const f = await fixture(t);
+    await compatibleFixture(f);
+    const names = 'ownedJcsImplementation as compatibleImplementation, ownedJcsDeclaration as compatibleDeclaration';
+    const original = '../owned-jcs/declaration.js';
+    const source = forwarding === 're-export'
+      ? `export { ${names} } from '${original}';\n`
+      : `import { ownedJcsImplementation, ownedJcsDeclaration } from '${original}';\n`
+        + `import type { ModuleDeclaration } from '../../authoring/internal.js';\n`
+        + `export const compatibleImplementation: typeof ownedJcsImplementation = ${forwarding.endsWith('local ID') ? JSON.stringify(canon) : 'ownedJcsImplementation'};\n`
+        + `export const compatibleDeclaration: ModuleDeclaration = ${forwarding.startsWith('frozen alias') ? 'Object.freeze(ownedJcsDeclaration)' : 'ownedJcsDeclaration'};\n`;
+    await write(f.packageRoot, 'src/features/canonicalization/compatible/declaration.ts', source);
+    await write(f.packageRoot, 'package.json', '{"type":"module"}\n');
+    // Compile only the actual feature sources. The mutated root and allowlist
+    // remain inert, and cannot supply their own correspondence evidence.
+    await write(f.packageRoot, 'tsconfig.origin.json', JSON.stringify({
+      extends: join(packageRoot, 'tsconfig.json'),
+      compilerOptions: { rootDir: '.', outDir: 'built' },
+      files: [],
+      include: ['src/features/**/*.ts'],
+    }));
+    const require = createRequire(import.meta.url);
+    const tsc = join(dirname(require.resolve('typescript/package.json')), 'bin/tsc');
+    const build = spawnSync(process.execPath, [tsc, '-p', join(f.packageRoot, 'tsconfig.origin.json')],
+      { encoding: 'utf8', timeout: 60_000 });
+    assert.ifError(build.error);
+    assert.equal(build.signal, null);
+    assert.equal(build.status, 0, build.stdout + build.stderr);
+    // Replace the complete original entry, not merely its textual fields.
+    const originalAllowlist = await readFile(join(packageRoot, allowlistPath), 'utf8');
+    await write(f.packageRoot, allowlistPath, originalAllowlist
+      .replaceAll('ownedJcs', 'compatible').replaceAll('createOwnedJcs', 'createCompatible')
+      .replaceAll('/owned-jcs/', '/compatible/'));
+    await rewrite(f, compositionPath, text => text.replaceAll('createOwnedJcs', 'createCompatible')
+      .replaceAll('/owned-jcs/', '/compatible/'));
+    await rejected(f, invalidCode, { reason: 'nonlocal-declaration' });
+  });
+}
+
+for (const name of ['eval', 'arguments']) {
+  for (const location of ['import', 'construction', 'handle']) {
+    test(`strict ESM rejects ${name} as a ${location} binding`, async t => {
+      const f = await fixture(t);
+      if (location === 'import') await rewrite(f, compositionPath, source => source
+        .replace('{ createOwnedJcs }', `{ createOwnedJcs as ${name} }`)
+        .replace('= createOwnedJcs(', `= ${name}(`));
+      if (location === 'construction') await rewrite(f, compositionPath, source => source
+        .replace('const canonicalizer =', `const ${name} =`)
+        .replaceAll('{ canonicalizer }', `{ canonicalizer: ${name} }`));
+      if (location === 'handle') await rewrite(f, allowlistPath, source => source
+        .replace('localName: "canonicalizer"', `localName: "${name}"`));
+      await rejected(f, invalidCode);
+    });
+  }
 }
 
 test('text drift in an unselected handle is rejected', async t => {

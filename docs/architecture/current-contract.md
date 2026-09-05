@@ -131,7 +131,10 @@ checks exclude the variant. The independent finite static witness now checks
 both direct roots against their plans, resolves declaration/factory imports and
 allowlist text to the same source exports, and checks the provided-port root.
 Its mutations reject compatible-factory substitutions even when value and text
-are changed together. The M1 checkpoint A tests combine this construction proof
+are changed together. The finite declaration reader requires local identity
+and declaration definitions in source and matching build, rejecting forwarding
+modules and borrowed aliases that could hide a different sibling factory.
+The M1 checkpoint A tests combine this construction proof
 with the behavioral replacement; generated wiring and W0/W1 remain M3 work.
 Tests connect the actual admission, semantic and output implementations against
 independent object diagnostic, plan and digest expectations. The public barrel
