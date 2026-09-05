@@ -119,6 +119,13 @@ admission, analysis and output through three driven ports. The literal direct
 root supplies one canonicalizer to semantics and output. Each call owns its
 input synchronously before awaiting output; internal primitive failures reject
 the Promise and never become diagnostic records.
+The build-only own profile aggregates the real five declaration handles and
+compiles through both direct and production entries into its independent
+five-node, five-binding expected plan. Its allowlist keeps static declaration
+and factory references outside the production closure. The private root exports
+its provided port, while the public entries annotate only the accepted compiler
+signature. Static wiring correspondence and controlled provider replacement
+remain separate pending parts of checkpoint A.
 Tests connect the actual admission, semantic and output implementations against
 independent object diagnostic, plan and digest expectations. The public barrel
 and separate direct qualification entry now execute the accepted complete
