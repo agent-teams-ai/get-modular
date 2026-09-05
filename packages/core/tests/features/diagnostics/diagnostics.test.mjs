@@ -46,7 +46,10 @@ test("orders every emittable snapshot by phase then catalog rank", () => {
 test("orders SCC arrays lexicographically with shorter prefixes first", () => {
   const components = [["example/a"], ["example/a", "example/b"], ["example/a", "example/c"], ["example/b"]];
   const diagnostics = components.map(component => ({ code: "graph.cycle", phase: "graph", path: [], coordinate: {}, details: { component } }));
-  for (const order of permutations(diagnostics)) assert.deepEqual(order.sort(compare), diagnostics);
+  const noCanonicalizer = () => { throw new Error("SCC order must not use canonical detail bytes"); };
+  for (const order of permutations(diagnostics)) {
+    assert.deepEqual(order.sort((a, b) => compareDiagnostics(a, b, noCanonicalizer)), diagnostics);
+  }
 });
 
 test("absent coordinate fields never consult inherited getters", () => {
@@ -87,6 +90,24 @@ test("uses complete RFC8785 detail bytes from the supplied function", () => {
   assert.ok(compareDiagnostics(left, right, prefix) < 0);
   const failure = new Error("private-detail-primitive-failure");
   assert.throws(() => compareDiagnostics(left, right, () => { throw failure; }), error => error === failure);
+});
+
+test("private collector witness reverses and restores accepted detail operands", () => {
+  // Comparator operands only: a single input is not claimed to emit both errors.
+  // The composition-semantics consumer-factory regression joins its later slice.
+  const vector = snapshots.orderingCases.find(item => item.axis === "details.rfc8785");
+  const operands = vector.operands.map(materialize);
+  const witness = details => Uint8Array.of(details.actual === 10 ? 2 : 1);
+  const finish = (provider, values) => {
+    const collector = createDiagnosticCollector(provider);
+    for (const value of values) collector.addUnique(value);
+    return collector.finish();
+  };
+  for (const values of permutations(operands)) {
+    assert.deepEqual(finish(canonicalize, values), operands);
+    assert.deepEqual(finish(witness, values), [...operands].reverse());
+    assert.deepEqual(finish(canonicalize, values), operands);
+  }
 });
 
 function candidate(index) {

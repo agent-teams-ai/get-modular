@@ -986,29 +986,37 @@ instruments production code:
    change between the two profiles in both subjects and MUST be equal across
    subjects for the same profile.
 
-The behavioral tests also exercise the existing diagnostic canonicalization
-dependency on an `ok: false` path, where plan-output never computes a digest.
-A uniform prefix alone preserves relative diagnostic byte order and cannot
-prove that semantics uses its injected provider. Use a fixed, otherwise valid
-input with two disjoint self-cycles, both reachable roots and below every
-resource limit. Their `graph.cycle` records have equal phase, code, empty
-coordinate and empty path; only `details.component` differs. For these two
-known detail values, the qualification-only provider prepends distinct ASCII
-bytes in the opposite order to the owned canonical encoding. Both subjects
-must return the same two diagnostics in the reversed order, and rebinding
-must restore the independently specified original order. Component members
-and all diagnostic values stay unchanged; only this deliberately nonconforming
-witness subject's order changes. Retain the fixed-prefix behavior for the
-successful-input digest test.
+Add a private dependency regression for diagnostic canonicalization alongside
+the public digest witness. A uniform prefix preserves relative detail-byte
+order. Moreover, ADR-0007 compares `graph.cycle` components directly by their
+sorted member arrays, with shorter prefixes first; this SCC exception does
+not consult the canonicalizer. Two self-cycles therefore cannot witness use
+of returned canonical bytes and must keep their normative order when the
+provider is replaced.
 
-Two mutants must fail: one ignores only
+Use the two operands of `details-use-rfc8785-key-order-and-utf8-bytes` in the
+[accepted diagnostic snapshots](../../architecture/qualification/v1/diagnostic-snapshots.json)
+for the private test. They tie on phase, code, coordinate and path and differ
+in details. Pass them to the production collector obtained from the actual
+composition-semantics factory with its `canonicalizer` dependency bound to
+the qualification provider. For these known details, return decisive byte
+prefixes in the opposite order to the owned encoding. Finalization must
+reverse the two records without changing their values; rebinding the owned
+provider must restore the independently specified order. These are comparator
+operands, not a claim that one compiler input can emit both resource errors.
+Do not inject diagnostic candidates through the public compiler or add a
+production test hook. Before semantics exists, the diagnostics-library test
+proves only its collector seam; the consumer-factory regression remains pending.
+
+Two private-test mutants must fail: one ignores only
 `composition-semantics.canonicalizer`, while plan-output still uses its
 injected provider; the other calls the injected provider but discards its
 returned bytes and sorts with a hard-coded canonicalizer. A controlled throw
-may separately check private failure rejection without a reserved diagnostic,
-but does not prove use of returned bytes. This is focused coverage of the
-existing dependency contract, not a stronger checkpoint A, a new own module,
-or production instrumentation.
+separately checks private failure propagation without a reserved diagnostic,
+but does not prove use of returned bytes. Static wiring checks and the public
+digest replacement on both subjects remain ADR-0016's construction witness.
+The private regression supplements that evidence without claiming a public
+failure-input witness, strengthening checkpoint A or adding instrumentation.
 
 ADR-0016 is accepted: this static and behavioral form is the construction
 witness. It supersedes the object-identity wording of ADR-0008 in the clauses
