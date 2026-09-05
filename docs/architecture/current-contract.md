@@ -129,7 +129,12 @@ conditional resolution and the four TypeScript modes with 1000 literal
 declarations. Negative modes assert their exact diagnostic codes. These tests
 do not retain publication evidence or establish a minimum TypeScript version.
 Diagnostic producers still need to normalize and deduplicate their eligible
-candidates before collection. The remaining public resource matrix, exhaustive
+candidates before collection. Public resource regressions now cover the object
+admission and semantic limits at their boundaries, including complete scaled
+plans, large diagnostic streams, saturation and prerequisite suppression.
+The same injected-subject cases run through production, direct and installed
+package entries. Raw limits remain outside M1; private operation counters and
+diagnostic-path truncation are not claimed as public observations. Exhaustive
 archive and declaration audits, minimum-version consumers, own-graph witness
 and retained archive custody remain pending. Accepted
 ADR-0009 names the one pre-1.0 public surface: `compileComposition`,
