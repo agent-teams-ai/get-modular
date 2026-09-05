@@ -9,6 +9,9 @@ related:
   - ADR-0008
   - ADR-0009
   - ADR-0010
+  - ADR-0016
+  - ADR-0017
+  - ADR-0018
   - GM-REQ-V1
   - ARCH-FEATURE-MODULE-STANDARD
 ---
@@ -43,8 +46,10 @@ internal module.
 This decision is a proposed private implementation and release protocol. It
 does not reopen the selected Option C, publish a conformance API, add production
 artifact-trust authority to Get Modular, or block the direct Core vertical
-slice and checkpoint A. Publication and a runtime-conformance claim remain
-blocked until the applicable protocol is accepted and executed.
+slice and checkpoint A. Accepted ADR-0017 permits the bounded pre-1.0
+`not-claimed` publication checkpoint without this proposal. Release eligibility
+and runtime-conformance claims still require their applicable accepted evidence.
+Revising this proposal does not accept its custody protocol.
 
 ## Options
 
@@ -61,12 +66,13 @@ only after this ADR is accepted.
 
 ### Scoped relation to accepted authority
 
-If accepted, this decision amends ADR-0008 in exactly one narrow place: a
-validated `SlotId` may be an own data key in a null-prototype closed dependency
-record whose keys exactly match the declared slots. It remains opaque data and
-never selects an import, factory, resolver, path, template, inherited property,
-or executable operation. All other ADR-0008 rules, including its portable ASCII
-source-path rule, remain unchanged.
+Accepted ADR-0016 already owns the dependency-record seam and construction
+witness. This proposal consumes that decision: own factories receive typed
+object literals with its restricted owner-authored slot keys; caller identities
+remain opaque `Map`/`Set` keys. It introduces no null-prototype record, runtime
+identity instrumentation, wrapper or second construction authority. ADR-0017
+owns bounded pre-1.0 publication and ADR-0018 owns the readiness refinements.
+All unaffected ADR-0008 rules, including portable ASCII source paths, remain.
 
 This private protocol is necessary release evidence, not a Feature Module
 Standard conformance claim. Source admission, same-subject qualification,
@@ -79,16 +85,18 @@ Implementation proceeds in three bounded phases:
 
 1. Build a substantive direct Core slice with owner-local ports, factories,
    inert declarations, and the minimal stage0 root.
-2. At checkpoint A, compile at least two natural dependency edges and prove a
-   controlled binding replacement through the public compiler boundary.
-3. Only after an owner go decision, add the finite emitter, generated stage1,
-   promotion evidence, and release custody.
+2. At checkpoint A, compile the real own graph and prove one controlled binding
+   replacement through the public compiler boundary plus the ADR-0016 static
+   witness. Do not add an artificial second edge to satisfy this proposal.
+3. Add the finite emitter and generated stage1 within the accepted M3 scope.
+   Add promotion evidence and release custody only after their decision is
+   accepted; neither this proposal nor a passing witness expands the scope.
 
 Checkpoint A is not distributable success and cannot weaken ADR-0008. It is a
 time-boxed stop point before expensive release machinery. Before the emitter, a
-normal module addition should touch at most three edit loci: its owner-local
-declaration/factory, the closed own profile binding, and stage0 assembly. After
-the emitter exists, the same change may also touch the private literal allowlist.
+normal module addition measures its owner-local declaration/factory, the closed
+own profile binding, stage0 assembly, and the private literal allowlist needed
+by the M1 witness. The emitter reuses that allowlist from M3.
 These are edit loci, not competing identity authorities: the feature owns its
 identity and factory, the profile owns intended selection, the allowlist owns
 literal source binding, and stage0 owns only direct qualification assembly.
@@ -96,11 +104,11 @@ Generated wiring and manifests require no manual edit. The independent atomic
 obligation ledger changes only when a normative obligation changes, not for
 every implementation addition.
 
-Checkpoint A records an explicit owner `GO` or `NO-GO`. A `GO` is required
-before deliveries 5 through 7. Delivery 4 may proceed independently because it
-completes public compiler semantics rather than promotion machinery. The
-checkpoint first measures the three pre-emitter edit loci and, after an emitter
-prototype exists, repeats three representative changes against all four loci.
+Checkpoint A records its evidence, remaining defects and the next authorized
+scope. No additional owner `GO` ritual is introduced for already authorized
+M1 work. M2/M3 scope expansion and accepted release-custody authority retain
+their actual decision prerequisites. The checkpoint measures representative
+changes before and after an emitter exists against the applicable edit loci.
 
 ADR-0009 must be accepted before the first production public exports are fixed,
 and ADR-0010 must be accepted before production primitive adapters are selected.
@@ -117,7 +125,7 @@ checkpoint ends in observable behavior:
 | --- | --- | --- |
 | 1 | Source-admitted direct vertical slice | One substantive object-entry behavior, minimal stage0, atomic source admission, source boundaries, and no ceremonial layers |
 | 2 | Complete object-entry semantic compiler | The object entry point and independent direct vectors pass with structured bounded failures |
-| 3 | Checkpoint A own graph | At least two natural edges and one replacement change public behavior and injection evidence |
+| 3 | Checkpoint A own graph | One real binding replacement changes public behavior and the independent static witness |
 | 4 | Raw-byte and resource slice | Object/raw parity, exact resource boundaries, fuzz regressions, and browser-worker smoke pass |
 | 5 | Packed direct qualification | One temporary direct subject passes the independent packed runner without a public runner API |
 | 6 | Finite emitter and generated stage1 | P0/P1, W0/W1, construction witnesses, source checks, and independent vectors agree |
@@ -145,7 +153,7 @@ and custody boundaries remain independent and auditable.
 
 ### Closed evidence envelope
 
-Before the first release, private schemas use explicit `kind` and
+Before the first custody-qualified release, private schemas use explicit `kind` and
 `schemaVersion` fields, reject unknown fields, and have one canonical JSON
 encoding. The envelope is closed over these records:
 
@@ -153,7 +161,7 @@ encoding. The envelope is closed over these records:
 | --- | --- |
 | `SourceManifest` | Immutable source-snapshot digest plus every admitted source, configuration, script, template, lockfile, package, and obligation input |
 | `BuildContext` | Cryptographic identities of Node, pnpm, TypeScript, builder target, read-only dependency store, and the explicit environment |
-| `ConstructionWitness` | Root, logical binding coordinates, selected factory, produced capability, consumed slots, and independently observed injection |
+| `ConstructionWitness` | ADR-0016 independent static wiring tuples and controlled public-boundary replacement evidence; no reference-identity observation |
 | `QualificationReport` | Exact subject archive, contract and qualification ledgers, closed case inventory, exact results, exact runtime matrix identities, and one closed `supportEnvelope` containing supported cells and explicit exclusions |
 | `ReleaseAttestation` | Digests of every record above, including `QualificationReport.supportEnvelope`, P0/P1, W0/W1, selected plans, archive bytes, verifier version, and one terminal pass/fail state; this same record is the Phase 8 promotion manifest |
 
@@ -174,7 +182,8 @@ The independent verifier consumes bytes, not trusted in-memory objects. It
 rejects missing, duplicate, unexpected, mismatched, or failed records. Mutation
 tests must change each archive, ledger, subject, stage, witness, case, runtime,
 and result binding independently and prove rejection. The trusted verifier,
-rather than candidate code, drives reference-identity observation. A tracked
+rather than candidate code, checks the accepted static witness and behavioral
+replacement results. A tracked
 file with a matching digest identifies bytes only; it proves neither validity,
 authority, nor trust.
 
@@ -193,38 +202,24 @@ normative outcome through the public compiler API. The facade cannot duplicate
 a normative implementation, retain a hidden concrete import, or fall back after
 an injected provider fails.
 
-A witness separates two identities:
-
-- a serializable logical coordinate identifies the consumer implementation,
-  slot, selected provider implementation, factory, and capability;
-- an in-process observation proves with reference identity that the exact value
-  returned by the selected factory was supplied to that consumer in that
-  assembly root.
-
-Stage0 and stage1 compare logical coordinates and outcomes. They never claim
-that heap objects from isolated roots or processes are reference-equal.
-Conformance-owned wrappers capture actual factory arguments and returns; the
-candidate cannot submit its own authoritative witness. Independent source or
-generated-AST checks prove that every emitted edge and only that edge reaches
-the consumer.
+The witness uses ADR-0016's canonical wiring tuples and independent AST checks
+of the handwritten stage0 and generated stage1 roots. It verifies the imported
+factories, exact dependency keys and selected providers, and call order. The
+controlled canonicalizer replacement changes the digest observed through the
+public boundary in both subjects and restores it when reversed. Custody binds
+these existing proof results to their exact subject; it adds no heap-identity
+claim, conformance-owned runtime wrapper or instrumentation in distributed bytes.
 
 ### Hostile slot names and closed dependencies
 
-The phrase in ADR-0008 that identities never become property lookup keys means
-they cannot select an import, factory, resolver entry, source path, template
-fragment, or inherited property. A validated `SlotId` may appear only as an own
-data key in the factory's closed dependency record when that record is the
-accepted typed factory shape.
-
-Such records have a null prototype, are created without spread or assignment to
-an ordinary object, and are checked through own property descriptors. The
-implementation never uses `in`, inherited lookup, or truthiness to determine
-presence. The valid hostile-token matrix includes `constructor`, `prototype`,
-and `then`; each receives the same exact missing, optional, and cardinality
-behavior as an ordinary slot.
-`__proto__` is rejected when it is outside the accepted identity grammar rather
-than advertised as a valid token. Wrappers never invoke or await slot values and
-cannot trigger Promise assimilation through a `then` slot.
+ADR-0016 separates caller identities from own dependency keys. Caller identity
+lookups use `Map`/`Set`, including valid hostile tokens. Own declarations use
+only the accepted identifier-safe subset; the witness rejects `constructor`,
+`prototype`, `then` and all other excluded names. Own dependency records are
+plain typed object literals checked by TypeScript. No null-prototype record,
+descriptor inspection, spreading caller values or Promise assimilation is
+introduced. The portable identity grammar still rejects `__proto__` wherever
+that spelling is outside its accepted domain.
 
 ### Hermetic source and toolchain identity
 
@@ -273,8 +268,9 @@ retained subject. Every later operation addresses the blob by digest, not by a
 mutable workspace path or package version. A pause-and-replace mutation between
 qualification and upload must fail before publication.
 
-Actual publication is a separate protected transaction after the no-publish
-rehearsal. The publisher independently rehashes the one retained digest,
+For a custody-qualified release, actual publication is a separate protected
+transaction after the no-publish rehearsal. ADR-0017's `not-claimed` checkpoint
+does not inherit that rehearsal prerequisite. The publisher independently rehashes the one retained digest,
 publishes it under a quarantine tag, downloads the exact version without cache,
 and compares archive bytes before moving a distribution tag. A post-publication
 mismatch cannot undo the registry write: it blocks distribution-tag,
@@ -284,7 +280,7 @@ A known-good release capsule retains the actual source tree blob, immutable
 builder image, package store, schemas, verifier bytes, archive, evidence
 envelope, and attestation independently of the current branch and writable
 build cache. Its external anchor is stored outside the capsule's writable
-contents. Before the first publication and after release-pipeline changes, an
+contents. Before the first custody-qualified publication and after its release-pipeline changes, an
 offline drill restores those retained inputs onto an empty host, deletes every
 generated output, performs cold regeneration and qualification of the exact
 archive, and proves that stage0 is absent from the release artifact. A retained
@@ -335,8 +331,9 @@ injected divergence from the retained bundle.
 
 - The accepted self-composition design gains executable custody and witness
   semantics without changing its public compiler contract.
-- A direct Core slice and checkpoint A can proceed before expensive promotion
-  machinery, while publication remains fail-closed.
+- A direct Core slice, checkpoint A and ADR-0017's bounded `not-claimed`
+  publication can proceed before custody; conformance and release eligibility
+  remain gated by their applicable authority and evidence.
 - Private build and qualification code becomes larger and requires independent
   ownership, mutation tests, and retained release assets.
 - Strict snapshot access may require a platform-specific sandbox adapter. The

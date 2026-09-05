@@ -466,8 +466,9 @@ documentation still arrive with their applicable source changes:
 6. Use an explicit `files` allowlist and inspect the real `npm pack --json`
    inventory. Only the accepted root exports, built declarations and JavaScript,
    package metadata, license and minimal consumer documentation enter the
-   archive. Source, tests, maps, qualification material and private adapters do
-   not.
+   archive. Source, tests, maps, qualification material and private adapter APIs
+   do not. Selected private adapter implementations remain in the runtime
+   closure when the accepted public entry point needs them.
 7. Pack once from a clean, pinned checkout. Record the source SHA, package
    version, toolchain identities, archive SHA-256, npm integrity and inventory;
    install those retained bytes in every required packed-consumer case.
@@ -499,6 +500,12 @@ does not need Phase 8 release-custody schemas to publish as `not-claimed`, but i
 cannot use that label as a conformance, self-composition or release-eligibility
 claim. No release workflow is added before a real package exists because an
 untestable workflow would be ceremonial infrastructure.
+
+[Proposed ADR-0019](../decisions/0019-separate-upload-admission-from-publication-completion.md)
+records the narrow successor needed to reconcile ADR-0012's eligibility wording
+and supplies the unknown-upload/tag-reconciliation runbook. Accept that policy
+before the first real upload; its proposed status does not block private M1
+fixes or preparation of the retained packed subject.
 
 ### Roadmap qualification language
 
@@ -969,9 +976,18 @@ validation is a prerequisite and cannot satisfy this gate. The gate covers:
   prerequisite, suppression, maximum-depth, dense-edge, giant-cycle and
   diagnostic-storm fixture;
 - the ADR-0018 mixed cycle/residual-DAG cases, including independent overflow
-  beside cycle diagnostics, limit 2048 and capped actual 2049;
+  beside cycle diagnostics, limit 2048 and capped actual 2049. Execute all eight
+  complete expected results through admission and semantics, including the
+  accepted declaration/selection/binding/root permutations; kernel-only
+  coverage does not close this integration gate;
 - the accepted closed P500 generator, iterative traversal, stack safety,
-  retained-diagnostic bounds and structural operation counters;
+  retained-diagnostic bounds and structural operation counters. Compare the
+  entire output plan with an independent closed expected-plan recipe and a
+  fixed independently derived digest; input counts and source hashes alone
+  do not prove compiler output. The recipe must detect a missing binding and
+  preserve semantic many order. Current private coverage lives in
+  [scale-integration.test.mjs](../../packages/core/tests/features/composition-semantics/scale-integration.test.mjs);
+  repeat the same expectations at the public packed boundary before M1 closes;
 - exhaustive equivalent permutations for bounded tiny graphs. Ordered-many
    provider arrays are semantic and are never shuffled as an equivalence; a
    changed provider order must change the later plan and digest.
@@ -1129,6 +1145,12 @@ Node and Chromium identities; matrix configuration and accepted freshness
 policy. Changing any component invalidates the case. Before such a decision
 exists, rerun rather than infer equivalence from a partial key.
 
+For the first actual qualification checkpoint, reuse stays disabled and every
+applicable case executes against the retained subject. This is not a permanent
+requirement to repeat a proven full pipeline: a later accepted custody decision
+may enable case reuse with the complete key above and rerun only invalidated
+cases. A source hash alone never substitutes for that key.
+
 ### Scale support envelope and operator guidance
 
 Phase 5 publishes an explicit Core `0.x` support envelope with the retained
@@ -1191,6 +1213,9 @@ envelope.
    required 1000-declaration TypeScript fixture. Prove the accepted asymptotic
    bound with structural operation/allocation counters. Timing, memory and extra
    scale shapes are optional sizing observations, not compatibility thresholds.
+   P500 must match the independent full plan and fixed digest through each
+   applicable retained subject. Test binding loss and changed many order;
+   agreement between two subjects is not an expected-output oracle.
 5. Compare object and raw adapters only after their common carrier domain is
    accepted. Include immediate mutation and object/object, raw/raw, object/raw
    and raw/object concurrent start orders. No fallback may hide divergence.
@@ -1218,6 +1243,12 @@ Core qualification and is not a publication prerequisite.
 
 1. The consumer repository owns an adoption decision binding its exact source,
    feature boundary, Product Host owner and retained generated stage1 archive.
+   Record known external consumers in the existing
+   [traceability ledger](../traceability/module-system-v1.yaml), with the
+   consumer source/adoption reference, owner and consumed package version or
+   archive identity. ADR-0009's external-consumer deprecation window starts with
+   that registration. Apply this rule to known M1 consumers too; do not wait
+   for optional Phase 6 or label an M1 consumer self-composed.
 2. A product anti-corruption adapter maps authorized desired state into inert
    declarations and one complete profile. Credentials, executable handles and
    product state never enter Core.
@@ -1234,13 +1265,23 @@ Core qualification and is not a publication prerequisite.
 7. Measure wiring/glue LOC, edit loci, navigation, typecheck, remediation and
    deletion cost. The consumer defines any threshold and its numerator,
    denominator and counting rules; this roadmap supplies no universal percentage.
+   Before migration, retain the direct-wiring baseline and define concrete
+   tasks: locate a dependency's owner, replace one provider, and remove the
+   admitted slice. Repeat the same tasks after migration and record changed
+   files/edit loci, verification effort and rollback/removal steps. Separate
+   generated lines from handwritten wiring and product-domain changes.
 8. Evaluate a second existing product seam independently. If none is admitted,
    record `second-consumer-not-admitted` instead of inventing a feature.
 
 ### Phase 6 exit criteria
 
 One real slice works from the retained stage1 subject with one wiring authority
-and no product API rewrite. A second independent consumer permits a
+and no product API rewrite. Its adoption evidence includes the baseline, the
+same navigation/replacement/removal tasks before and after migration, and the
+consumer owner's explicit verdict on whether the measured benefit justifies
+the cost. A negative or inconclusive verdict records that result and the
+consumer-local remediation or reversal; successful execution alone does not
+prove reduced wiring. A second independent consumer permits a
 cross-consumer extraction claim; its absence blocks only that claim.
 
 ## Reserved Phase 7: extension/plugin boundary

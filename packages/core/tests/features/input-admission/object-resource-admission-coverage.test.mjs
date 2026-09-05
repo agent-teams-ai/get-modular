@@ -25,13 +25,17 @@ test("batch rejection allocates no downstream document snapshot, including earli
   } finally { Object.freeze = original; }
 });
 
-test("oversized hidden tails stop before any proportional descriptor scan or getter", () => {
+test("dense and sparse oversized hidden tails stop before any proportional descriptor scan or getter", () => {
   const original = Object.getOwnPropertyDescriptors;
   let calls = 0;
   try {
-    for (const variant of ["string-first", "string-last", "depth-first", "depth-last"]) {
+    for (const dense of [false, true]) for (const variant of ["string-first", "string-last", "depth-first", "depth-last"]) {
       const values = coverageInput("oversized-array-hidden-tail", variant).profile.unknown;
-      Object.defineProperty(values, "1", { enumerable: true, get() { calls += 1; throw Error("getter"); } });
+      if (dense) {
+        const index = variant.endsWith("first") ? 0 : values.length - 1;
+        const hidden = values[index];
+        values.fill(null); values[index] = hidden;
+      } else Object.defineProperty(values, "1", { enumerable: true, get() { calls += 1; throw Error("getter"); } });
       Object.getOwnPropertyDescriptors = value => {
         assert.notEqual(value, values, "rejected length must precede descriptor table allocation");
         return original(value);

@@ -631,7 +631,32 @@ export function measureResourceFixtures({
 
 if (process.argv[1]
   && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const { qualifyResourceProfileV2 } = await import("./support/resource-profile-v2.mjs");
+  const { qualifyResourceProfileV2, meterJsonResources } = await import("./support/resource-profile-v2.mjs");
+  const { default: assert } = await import("node:assert/strict");
+  const limits = { jsonValueOccurrences: 2097152, aggregateStringBytes: 8388608 };
+  let getterCalls = 0;
+  const accessor = length => Object.defineProperty(new Array(length), "0", {
+    enumerable: true, get() { getterCalls += 1; throw new Error("oracle getter"); },
+  });
+  const negative = []; negative["-1"] = "not a position";
+  const shared = { a: null };
+  const cycle = []; cycle[0] = cycle;
+  const cases = [
+    { value: [null], count: 2, depth: 1, rejection: null },
+    { value: new Array(3), count: 4, depth: 1, rejection: "sparse-array" },
+    { value: accessor(1), count: 2, depth: 1, rejection: "accessor-property" },
+    { value: accessor(3), count: 4, depth: 1, rejection: "accessor-property" },
+    { value: negative, count: 1, depth: 1, rejection: "extended-array-property" },
+    { value: [shared, shared], count: 5, depth: 2, stringBytes: 2, rejection: null },
+    { value: cycle, count: 2, depth: 1, rejection: "cycle-back-reference" },
+    { value: accessor(limits.jsonValueOccurrences - 1), count: limits.jsonValueOccurrences, depth: 1, rejection: "accessor-property" },
+    { value: accessor(limits.jsonValueOccurrences), count: limits.jsonValueOccurrences + 1, depth: 1, rejection: "accessor-property" },
+  ];
+  for (const fixture of cases) assert.deepEqual(meterJsonResources([fixture.value], limits), {
+    jsonValueOccurrences: fixture.count, aggregateStringBytes: fixture.stringBytes ?? 0,
+    jsonDepth: fixture.depth, rejection: fixture.rejection,
+  });
+  assert.equal(getterCalls, 0);
   await qualifyResourceProfileV2({ generateLimitFixture, meterLimitFixture });
   process.stdout.write(`${JSON.stringify(measureResourceFixtures(), null, 2)}\n`);
 }
