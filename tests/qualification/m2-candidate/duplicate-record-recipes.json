@@ -1,0 +1,73 @@
+{
+  "kind": "get-modular.m2-candidate-recipe-manifest",
+  "version": 1,
+  "status": "proposed-fixture-only",
+  "proposal": "docs/decisions/0014-close-duplicate-binding-record-semantics.md",
+  "scope": "Cardinality source cases and their exhaustive permutations only; other ADR-0014 categories and combined generation 2 acceptance remain pending.",
+  "domains": {
+    "cardinalities": [
+      "required",
+      "optional",
+      "many"
+    ],
+    "recordCounts": [
+      2,
+      3
+    ],
+    "rowRecipes": [
+      "valid-identical",
+      "valid-conflicting",
+      "one-row-cardinality-invalid"
+    ]
+  },
+  "identityTokens": {
+    "consumer": "example/consumer/default",
+    "providers": [
+      "example/provider-one/default",
+      "example/provider-two/default",
+      "example/provider-three/default"
+    ],
+    "slotId": "dependency",
+    "capabilityId": "example/service",
+    "compatibilityToken": "example/service/v1",
+    "profileId": "example/duplicate-record-profile"
+  },
+  "recipe": {
+    "cardinality": "many has inclusive min1/max2 and profile order; required/optional use their accepted counts",
+    "rows": "invalid row is last: required0, optional2, many3; identical optional rows are empty; conflicting rows choose distinct compatible providers",
+    "graph": "consumer is the sole root; all three providers are selected; repeated group has no edges and makes the reached frontier incomplete, suppressing unproved unreachable conclusions",
+    "expected": "one duplicate-record, plus one row-local cardinality only for the invalid recipe; no plan or digest",
+    "enumeration": "cardinality, recordCount, rowRecipe in listed order; record permutations by source-index traversal with exact JSON deduplication; within each record permutation, provider permutations form a left-to-right Cartesian product; zero-based six-digit ranks",
+    "streamEncoding": "each complete materialized case as RFC8785 UTF-8 followed by LF; SHA-256 over concatenation; no seed or sampling"
+  },
+  "streams": {
+    "cardinality": {
+      "count": 18,
+      "sha256": "6fd8d893158f878bdaf26899263f222e900cf99fed175bd9926ab5029c50559d"
+    },
+    "permutations": {
+      "count": 199,
+      "sha256": "64989b231405863b153cdd8a7ff0a2049a327a7d4f60a4094eeff071757d68b5"
+    }
+  },
+  "permutationsPerSource": {
+    "od006.cardinality.v1/required/2/valid-identical": 1,
+    "od006.cardinality.v1/required/2/valid-conflicting": 2,
+    "od006.cardinality.v1/required/2/one-row-cardinality-invalid": 2,
+    "od006.cardinality.v1/required/3/valid-identical": 1,
+    "od006.cardinality.v1/required/3/valid-conflicting": 6,
+    "od006.cardinality.v1/required/3/one-row-cardinality-invalid": 3,
+    "od006.cardinality.v1/optional/2/valid-identical": 1,
+    "od006.cardinality.v1/optional/2/valid-conflicting": 2,
+    "od006.cardinality.v1/optional/2/one-row-cardinality-invalid": 4,
+    "od006.cardinality.v1/optional/3/valid-identical": 1,
+    "od006.cardinality.v1/optional/3/valid-conflicting": 6,
+    "od006.cardinality.v1/optional/3/one-row-cardinality-invalid": 6,
+    "od006.cardinality.v1/many/2/valid-identical": 4,
+    "od006.cardinality.v1/many/2/valid-conflicting": 8,
+    "od006.cardinality.v1/many/2/one-row-cardinality-invalid": 24,
+    "od006.cardinality.v1/many/3/valid-identical": 8,
+    "od006.cardinality.v1/many/3/valid-conflicting": 48,
+    "od006.cardinality.v1/many/3/one-row-cardinality-invalid": 72
+  }
+}
