@@ -46,8 +46,11 @@ function checks(report: Report, reportLimit?: ReportDocumentLimit) {
     return (value, path) => {
       if (typeof value !== "number") fail("type", path);
       else if (!Number.isInteger(value)) fail("integer", path);
-      else if (!Number.isSafeInteger(value) || Object.is(value, -0) || value < min || value > max) fail("range", path);
+      else if (!admittedInteger(value, min, max)) fail("range", path);
     };
+  }
+  function admittedInteger(value: unknown, min: number, max: number): value is number {
+    return typeof value === "number" && Number.isSafeInteger(value) && !Object.is(value, -0) && value >= min && value <= max;
   }
   function identity(matchesFormat: (value: string) => boolean, min: number, max: number): Check {
     return (value, path) => {
@@ -85,9 +88,18 @@ function checks(report: Report, reportLimit?: ReportDocumentLimit) {
     const kind = value !== null && typeof value === "object"
       ? Object.getOwnPropertyDescriptor(value, "kind") : undefined;
     const tag = kind && Object.hasOwn(kind, "value") ? kind.value : undefined;
-    if (tag === "many") record(value, path, {
-      kind: literal("many"), min: integer(0, 1024), max: integer(1, 1024), order: literal("profile"),
-    });
+    if (tag === "many") {
+      record(value, path, {
+        kind: literal("many"), min: integer(0, 1024), max: integer(1, 1024), order: literal("profile"),
+      });
+      const minimum = Object.getOwnPropertyDescriptor(value, "min");
+      const maximum = Object.getOwnPropertyDescriptor(value, "max");
+      const min = minimum && Object.hasOwn(minimum, "value") ? minimum.value : undefined;
+      const max = maximum && Object.hasOwn(maximum, "value") ? maximum.value : undefined;
+      // ADR-0007's range refinement is stricter than the JSON Schema alone.
+      // Report its containing constraint, not an invented provider count.
+      if (admittedInteger(min, 0, 1024) && admittedInteger(max, 1, 1024) && min > max) fail("range", path);
+    }
     else if (tag === "required" || tag === "optional") record(value, path, { kind: literal(tag) });
     else if (value === null || typeof value !== "object" || Array.isArray(value)) fail("type", path);
     else if (!kind) fail("required", [...path, "kind"]);

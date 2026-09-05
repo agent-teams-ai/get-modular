@@ -4,6 +4,8 @@
 
 ### Added
 
+- Enforce the accepted many-range refinement during admission, producing
+  `schema.invalid-value` before invalid definitions reach binding validation.
 - Private selected-binding validation for explicit presence, cardinality,
   duplicate providers, provider selection, capabilities and exact compatibility.
   Preserve complete valid rows and per-consumer frontier observations separately

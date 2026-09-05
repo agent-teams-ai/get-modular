@@ -50,7 +50,12 @@ provide no partial semantic records; an incomplete admission census cannot
 prove absent identities. Accepted documents are copied and deeply frozen.
 Unknown versions suppress supported-schema checks; integer-format failures
 remain distinct from type failures. One iterative identity grammar precedes
-identifier-byte accounting. Oversized provider lists retain bounded,
+identifier-byte accounting. Admission also enforces ADR-0007's additional
+`many.min <= many.max` constraint: inverted definitions produce
+`schema.invalid-value` with an invalid-format reason at the cardinality object,
+and that declaration supplies no partial semantic records. This refinement is
+stronger than JSON Schema alone and precedes binding-count validation.
+Oversized provider lists retain bounded,
 owned resource-only counts separately from an admitted semantic profile.
 Semantic selection/consumer/slot prerequisites and their graph/many limits
 remain pending; these counts cannot create graph edges or plan bindings.

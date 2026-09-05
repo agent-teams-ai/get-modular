@@ -8,9 +8,11 @@ import { analyzeSelectedGraph } from "../../../dist/features/composition-semanti
 import { collectGraphFailures } from "../../../dist/features/composition-semantics/graph-diagnostics.js";
 import { createDiagnosticCollector } from "../../../dist/features/diagnostics/internal.js";
 import { createOwnedJcs } from "../../../dist/features/canonicalization/owned-jcs/factory.js";
+import { admitObjectInput } from "../../../dist/features/input-admission/object-admission.js";
 
 const root = new URL("../../../../../", import.meta.url);
 const handbook = JSON.parse(await readFile(new URL("tests/qualification/compiler-engineer/examples.json", root), "utf8"));
+const resourceCases = JSON.parse(await readFile(new URL("architecture/qualification/v1/resource-boundary-vectors.json", root), "utf8"));
 const compatibility = (token = "example/cap/v1") => ({ family: "exact", familyVersion: 1, token });
 const capability = (token) => ({ capabilityId: "example/cap", compatibility: compatibility(token) });
 const slot = (slotId = "dep", cardinality = { kind: "required" }) => ({ slotId, ...capability(), cardinality });
@@ -54,10 +56,11 @@ test("handbook binding expectations execute against real validation across decla
   }
 });
 
-test("cardinality uses inclusive many bounds and all input occurrences, including min greater than max", () => {
+test("cardinality uses inclusive admitted many bounds and all input occurrences", () => {
   const providers = Array.from({ length: 5 }, (_v, i) => declaration(`p${i}`, [], [capability()]));
   const variants = [{ kind: "required" }, { kind: "optional" },
-    ...Array.from({ length: 5 }, (_v, min) => Array.from({ length: 5 }, (_w, max) => ({ kind: "many", min, max, order: "profile" }))).flat()];
+    ...Array.from({ length: 5 }, (_v, min) => Array.from({ length: 4 }, (_w, index) => ({ kind: "many", min, max: index + 1, order: "profile" })))
+      .flat().filter(row => row.min <= row.max)];
   for (const variant of variants) {
     for (let count = 0; count <= 5; count += 1) {
       const app = declaration("app", [slot("dep", variant)]);
@@ -74,11 +77,32 @@ test("cardinality uses inclusive many bounds and all input occurrences, includin
 });
 
 test("missing rows never become optional empty or zero-count cardinality failures", () => {
-  for (const variant of [{ kind: "required" }, { kind: "optional" }, { kind: "many", min: 2, max: 1, order: "profile" }]) {
+  for (const variant of [{ kind: "required" }, { kind: "optional" }, { kind: "many", min: 2, max: 2, order: "profile" }]) {
     const app = declaration("app", [slot("dep", variant)]);
     const { result, collector } = analyze([app], profile([app]));
     assert.deepEqual(collector.finish(), [reason("binding.missing", coordinate(app), "missing")]);
     assert.equal(result.frontierComplete(app.implementationId), false);
+  }
+});
+
+test("accepted inverted many definition fails admission before count checks and contributes no partial declaration", () => {
+  const fixture = resourceCases.semanticCases.find(row => row.name === "many-min-cannot-exceed-max");
+  const app = declaration("app", [slot("dep", structuredClone(fixture.cardinality))]);
+  const good = declaration("good");
+  for (const declarations of [[app, good], [good, app]]) {
+    const collector = createDiagnosticCollector(createOwnedJcs().canonicalize);
+    const p = profile([app, good], [binding(app, [])]);
+    const admitted = admitObjectInput({ declarations, profile: p }, collector);
+    assert.equal(admitted.allDeclarationsAdmitted, false);
+    assert.deepEqual(admitted.declarations.map(row => row.implementationId), [good.implementationId]);
+    const census = createDeclarationCensus(admitted.declarations, admitted.allDeclarationsAdmitted, collector);
+    const selected = createProfileCensus(admitted.profile, census, collector);
+    const result = validateSelectedBindings(admitted.profile, census, selected, collector);
+    assert.equal(result.frontierComplete(app.implementationId), false);
+    assert.deepEqual(result.validBindings, []);
+    assert.deepEqual(collector.finish(), [{ code: fixture.diagnosticCode, phase: "schema", coordinate: {}, details: { reason: "invalid-format" },
+      path: [{ kind: "field", value: "declarations" }, { kind: "index", value: declarations.indexOf(app) },
+        { kind: "field", value: "slots" }, { kind: "index", value: 0 }, { kind: "field", value: "cardinality" }] }]);
   }
 });
 

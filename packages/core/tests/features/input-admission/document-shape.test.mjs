@@ -119,7 +119,7 @@ test("identity grammar is whole-string ASCII, length bounded, and allows ordinar
   }
 });
 
-test("numeric bounds reject negative zero and unsafe or fractional values without adding semantic min/max rules", () => {
+test("numeric bounds reject invalid scalars and the accepted min/max relational refinement", () => {
   for (const field of ["min", "max"]) {
     for (const number of [-0, NaN, Infinity, -Infinity, 0.5, Number.MAX_SAFE_INTEGER + 1, -1, 1025]) {
       const value = declaration(); value.slots[0].cardinality[field] = number;
@@ -127,10 +127,17 @@ test("numeric bounds reject negative zero and unsafe or fractional values withou
     }
   }
   const value = declaration();
-  for (const pair of [[0, 1], [1024, 1024], [2, 1]]) {
+  for (const pair of [[0, 1], [1024, 1024]]) {
     [value.slots[0].cardinality.min, value.slots[0].cardinality.max] = pair;
     assert.equal(check(validateDeclarationShape, value).valid, true);
   }
+  [value.slots[0].cardinality.min, value.slots[0].cardinality.max] = [2, 1];
+  assert.equal(declarationOracle(value), true, "the accepted refinement is additional to the wire schema");
+  assert.deepEqual(check(validateDeclarationShape, value).violations, [{ rule: "range", path: ["slots", 0, "cardinality"] }]);
+  value.unknown = true;
+  assert.deepEqual(check(validateDeclarationShape, value).violations,
+    [{ rule: "closed", path: [] }, { rule: "range", path: ["slots", 0, "cardinality"] }]);
+  delete value.unknown;
   value.slots[0].cardinality.max = 0;
   assert.equal(check(validateDeclarationShape, value).valid, false);
 });

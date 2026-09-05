@@ -6,7 +6,7 @@ import type { ProfileCensus } from "./profile-census.js";
 type Binding = CompositionProfile["bindings"][number];
 type Slot = ModuleDeclaration["slots"][number];
 
-/** The consumer and its unique slot are already resolved. Counts precede deduplication. */
+/** Consumer/slot definitions passed admission, including ordered many bounds. Counts precede deduplication. */
 export function validateBindingRecord(binding: Binding, slot: Slot, declarations: DeclarationCensus,
   selected: ProfileCensus, collector: Pick<DiagnosticCollector, "addUnique">): boolean {
   let valid = true;
