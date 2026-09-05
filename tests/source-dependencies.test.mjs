@@ -118,6 +118,15 @@ test("Foundation prevents diagnostics from selecting a concrete canonicalizer", 
   assert.match(rules(report), /architecture\.source-dependencies\.forbidden-boundary-dependency/u);
 });
 
+test("Foundation keeps the unfinished admission resource pass private to its owner", async () => {
+  const report = await checkFixture((files, configuration) => {
+    addConsumer(files, configuration);
+    configuration.boundaries.find(boundary => boundary.id === "fixture-consumer").allow.boundaries.push("core-input-admission");
+    files.set(consumerPath, 'export { createObjectResourceMeter } from "../input-admission/object-resource-meter.js";\n');
+  });
+  assert.match(rules(report), /architecture\.source-dependencies\.cross-boundary-local-import-not-entrypoint/u);
+});
+
 for (const [name, path, contents] of [
   ["behavior outside a feature", "packages/core/src/helpers.ts", "export function hiddenRule() { return 1; }\n"],
   ["undeclared feature ownership", "packages/core/src/features/unowned/factory.ts", "export const hidden = 1;\n"],
