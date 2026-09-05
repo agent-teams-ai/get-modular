@@ -315,6 +315,28 @@ repeat it only when changed inputs or unresolved evidence require it.
 | Public development-only `@get-modular/conformance` identity after its own surface gate | Managed catalog and registry service |
 | Pack-once Core subject and independent conformance | First product-owned composition adapter; runtime readiness and generation engine |
 
+### Current delivery priorities
+
+The current delivery priority is usable static module composition and the
+M1, M2 and M3 roadmap milestones, preserving each milestone's decision
+prerequisites. Dynamic plugin installation, hot replacement,
+execution isolation and durable recovery are explicitly deferred future work.
+They are not prerequisites for this MVP and must not grow its implementation
+or acceptance gates. Any later implementation still belongs to the appropriate
+Product Host or extension boundary; deferral does not assign lifecycle to Core.
+
+A static construction helper is a separate question from those deferred
+capabilities. [ADR-0001](../decisions/0001-product-neutral-deterministic-module-composition.md)
+and [GM-REQ-014](../requirements/module-system-v1.md#gm-req-014-construction-is-not-activation)
+permit an optional narrow helper receiving already selected, authorized
+factories. The consumer still owns its concrete factories, capability contracts
+and literal executable table. The accepted current Core export map does not
+expose a generic construction helper. Before adding one, evaluate whether a
+shared static construction path actually removes repeated consumer wiring,
+define its typed inputs and failure handoff, and use the existing public-surface
+decision process. This review does not authorize a service locator, lifecycle
+engine or expansion of the current callable matrix without review.
+
 The public names are unversioned before 1.0, as accepted ADR-0009 decides:
 `compileComposition`, `compileCompositionJson`, `defineModule`, `required`,
 `optional` and `many` plus the closed type set, with no generation suffix

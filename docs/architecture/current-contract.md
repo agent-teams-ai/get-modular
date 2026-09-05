@@ -162,8 +162,8 @@ admission and semantic limits at their boundaries, including complete scaled
 plans, large diagnostic streams, saturation and prerequisite suppression.
 The same injected-subject cases run through production, direct and installed
 package entries. Raw limits remain outside M1; private operation counters and
-diagnostic-path truncation are not claimed as public observations. Exhaustive
-public declaration audits and retained archive custody remain pending. The
+diagnostic-path truncation are not claimed as public observations. Final
+retained qualification remains pending. The
 package file list now names its runtime closure and five public declaration
 files explicitly. A private archive reader validates compressed identity,
 physical entry framing, checksums, canonical paths, duplicates and file content
@@ -180,7 +180,28 @@ external references, extra exports, ambient declarations and private type
 leakage. Declaration checks preserve signatures, readonly shapes and diagnostic
 code/phase/limit associations. Independent mutations accompany both readers;
 these checks do not execute candidate code or establish algorithm correctness.
-Retained qualification is still pending. Accepted
+A private Linux [retained session runner](../../tests/qualification/m1-retained-session.mjs)
+now reuses the [packed consumer harness](../../tests/qualification/support/m1-packed-consumers.mjs).
+It builds a fresh checkout from exact Git objects, packs once, preserves the
+archive and executes all 97 prepared cases. The invoking checkout must have
+the pinned dependencies installed with workspace hoisting disabled, so its
+tool dependency snapshot has no link back to the workspace Core package.
+The runner rejects dependency links that escape that snapshot; it does not
+silently include the candidate as a tool dependency.
+
+Its opt-in `run` command requires explicit absolute checkout, output and tool
+paths and exact source/trusted commits. Before consumers it exports the seal
+hash; after all observations it exports the completed journal hash. API callers
+must provide and await both outside capture sinks. The separate `verify`
+command requires `--seal-sha256` and `--observations-sha256` from that outside
+capture, plus a fresh verification directory. It regenerates the expected
+inventory and checks the preserved source, tools, archive and observations.
+See the [failure and custody tests](../../packages/core/tests/package/retained-session.test.mjs)
+for controlled rejection cases. These private records remain `not-claimed`;
+successful execution does not supply independent model review, M2 acceptance,
+M3 construction, the full runtime matrix or release authority. Final retained
+qualification remains pending until its applicable review and exit gates pass.
+Accepted
 ADR-0009 names the one pre-1.0 public surface: `compileComposition`,
 `compileCompositionJson`, `defineModule`, `required`, `optional`, `many` and
 the types `CompileCompositionResult`, `ModuleDeclaration`,
