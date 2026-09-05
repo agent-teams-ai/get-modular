@@ -5,6 +5,8 @@ import { materialize } from "../../../architecture/checks/implementation-clarifi
 import { coverageInput } from "../../../packages/core/tests/features/input-admission/object-resource-coverage-cases.mjs";
 import { generateDenseProfile, loadP500Recipe } from "./resource-profile-v2.mjs";
 import { expectedP500Plan, expectedDigest, p500Digest } from "./scale-output.mjs";
+import { objectResourceAdmissionCases } from "./object-resource-admission.mjs";
+import { objectResourceSemanticCases } from "./object-resource-semantics.mjs";
 
 // The subject is supplied only through its public compile function. Inputs and
 // complete expected results come from accepted authority and independent recipes.
@@ -51,6 +53,8 @@ async function complete(compile, input, expected, id) {
 }
 
 export const objectSubjectCases = [
+  ...objectResourceAdmissionCases,
+  ...objectResourceSemanticCases,
   { id: "complete-object-diagnostic-partitions", async run(compile) {
     const cases = manifest.staticConformanceProtocol.cases.filter(row => row.caseId.startsWith("diag.object."));
     assert.equal(cases.length, 8);
