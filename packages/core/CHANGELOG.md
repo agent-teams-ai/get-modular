@@ -4,6 +4,10 @@
 
 ### Added
 
+- Private selected-binding validation for explicit presence, cardinality,
+  duplicate providers, provider selection, capabilities and exact compatibility.
+  Preserve complete valid rows and per-consumer frontier observations separately
+  from compiler success; resource integration and public compilation are pending.
 - Private owned canonicalization feature with RFC 8785 byte vectors and tests.
 - Inert authoring helpers and wire types with discriminated diagnostics.
 - Private immutable plan output with the accepted envelope and SHA-256 digest.

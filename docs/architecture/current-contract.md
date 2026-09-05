@@ -76,8 +76,19 @@ normalized candidates are deduplicated before collection. Incomplete
 declaration admission withholds census-dependent absence claims, while positive
 duplicates and independent profile failures continue. Selected IDs, resolved
 node/root observations and selection uniqueness remain separate values; none
-alone proves graph eligibility or compiler success. Binding validation and
-end-to-end prerequisite integration still remain pending.
+alone proves graph eligibility or compiler success. Private binding validation
+now resolves selected consumers, their unique slots and provider occurrences.
+It checks explicit binding presence, cardinality, duplicate providers,
+selection, capabilities and exact compatibility independently where eligible.
+Missing optional records remain failures; explicit empty rows remain bindings.
+Unknown or ambiguous records never supply a chosen value. Known unselected
+consumers remain inert. Only wholly valid rows contribute provider references;
+one invalid reference excludes the entire row. Per-consumer frontier observations
+retain unrelated valid frontiers and do not themselves authorize unreachable
+diagnostics. The stage consumes owned, whole-schema-valid inputs after the
+selected-provider resource budget and unique binding-record preconditions;
+it does not select M2 repeated-record behavior. Graph resource admission,
+end-to-end prerequisite integration and normalized plan assembly remain pending.
 Diagnostic producers still need to normalize and deduplicate their eligible
 candidates before collection. The public compiler and packed
 publication subject remain pending. Accepted
