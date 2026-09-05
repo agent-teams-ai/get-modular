@@ -8,6 +8,7 @@
 - Inert authoring helpers and wire types with discriminated diagnostics.
 - Private immutable plan output with the accepted envelope and SHA-256 digest.
 - Private diagnostic comparator and bounded collector for unique candidates.
+- Private bounded object-resource accounting inside input admission.
 - Package typecheck, build and tests with Foundation source-dependency checks.
 
 This package is not published. The public compiler, packed-consumer evidence
