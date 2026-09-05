@@ -147,8 +147,12 @@ These source-build checks are not a completed M1. Disposable packed-consumer
 regressions also execute the same object expectations through the installed
 package root. They verify Node import/require identity, closed deep imports,
 conditional resolution and the four TypeScript modes with 1000 literal
-declarations. Negative modes assert their exact diagnostic codes. These tests
-do not retain publication evidence or establish a minimum TypeScript version.
+declarations, using both the pinned build compiler and the separate minimum
+consumer compiler, TypeScript 5.8.3. Negative modes assert the exact diagnostic
+codes for each compiler; historical resolution failures differ from removed
+options in TypeScript 7. These tests establish the consumer floor but do not
+retain publication evidence. The historical compiler is a development-only
+catalog alias; it does not replace the build compiler or enter Core's archive.
 Closure prerequisites require every selection to resolve, including non-root
 rows. Suppressed absence diagnostics from an incomplete declaration census do
 not turn an unresolved selection into positive closure evidence.
@@ -159,8 +163,7 @@ plans, large diagnostic streams, saturation and prerequisite suppression.
 The same injected-subject cases run through production, direct and installed
 package entries. Raw limits remain outside M1; private operation counters and
 diagnostic-path truncation are not claimed as public observations. Exhaustive
-archive and declaration audits, minimum-version consumers, own-graph witness
-and retained archive custody remain pending. Accepted
+archive and declaration audits and retained archive custody remain pending. Accepted
 ADR-0009 names the one pre-1.0 public surface: `compileComposition`,
 `compileCompositionJson`, `defineModule`, `required`, `optional`, `many` and
 the types `CompileCompositionResult`, `ModuleDeclaration`,

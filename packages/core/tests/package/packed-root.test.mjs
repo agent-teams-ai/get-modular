@@ -12,7 +12,11 @@ import { authoringScale } from "../../../../tests/qualification/support/type-sca
 
 const repo = fileURLToPath(new URL("../../../../", import.meta.url));
 const require = createRequire(import.meta.url);
-const tsc = join(dirname(require.resolve("typescript/package.json")), "bin/tsc");
+const toolchains = ["typescript", "typescript-minimum"].map(name => {
+  const manifest = require.resolve(`${name}/package.json`);
+  return { name, version: require(manifest).version, tsc: join(dirname(manifest), "bin/tsc") };
+});
+assert.equal(toolchains[1].version, "5.8.3", "the minimum consumer compiler is pinned separately from the build compiler");
 const runtimeNames = ["compileComposition", "defineModule", "many", "optional", "required"];
 
 async function npmCli() {
@@ -78,6 +82,14 @@ test("packed M1 exposes one root across Node and TypeScript consumers", async t 
     }
   });
 
+  await t.test("Node without require(esm) rejects require but supports dynamic import of the same root", () => {
+    const observed = JSON.parse(success(run(["--no-require-module", "--input-type=commonjs", "--eval",
+      '(async () => { let code = null; try { require("@get-modular/core"); } catch (error) { code = error.code; } '
+      + 'const m = await import("@get-modular/core"); console.log(JSON.stringify({requireEsm:process.features.require_module,code,'
+      + 'path:require.resolve("@get-modular/core"),names:Object.keys(m).sort()})); })().catch(error => { console.error(error); process.exitCode = 1; });'])));
+    assert.deepEqual(observed, { requireEsm: false, code: "ERR_REQUIRE_ESM", path: resolved, names: runtimeNames });
+  });
+
   await t.test("runtime conditions keep one target; the types condition has its specified failure", () => {
     for (const condition of ["browser", "development", "production", "unknown-condition"]) {
       const result = JSON.parse(success(run([`--conditions=${condition}`, "--input-type=module", "--eval",
@@ -137,24 +149,28 @@ import { createCompilerFacade } from "@get-modular/core";
 import type { DiagnosticCatalogCode } from "@get-modular/core";
 ${authoringScale}
 `;
-  for (const [mode, extension, module] of [["NodeNext", "mts", "NodeNext"], ["Node16", "mts", "Node16"],
+  for (const toolchain of toolchains) for (const [mode, extension, module] of [["NodeNext", "mts", "NodeNext"], ["Node16", "mts", "Node16"],
     ["NodeNext", "cts", "NodeNext"], ["Bundler", "mts", "ESNext"], ["Node16", "cts", "Node16"],
     ["Node10", "mts", "ESNext"], ["Classic", "mts", "ESNext"]]) {
     const negative = mode === "Node16" && extension === "cts" || ["Node10", "Classic"].includes(mode);
-    await t.test(`TypeScript ${mode}/${extension} ${negative ? "rejects unsupported resolution" : "preserves the packed contract and 1000 literal declarations"}`, async () => {
+    await t.test(`TypeScript ${toolchain.version} ${mode}/${extension} ${negative ? "rejects unsupported resolution" : "preserves the packed contract and 1000 literal declarations"}`, async () => {
       const file = `case.${extension}`;
-      await writeFile(join(consumer, file), declarations);
+      // Removed modes fail configuration on TS7. On the historical compiler
+      // they instead fail package-root resolution; keep that diagnostic focused.
+      await writeFile(join(consumer, file), ["Node10", "Classic"].includes(mode)
+        ? 'import { defineModule } from "@get-modular/core";\nvoid defineModule;\n' : declarations);
       await writeFile(join(consumer, "tsconfig.json"), JSON.stringify({
         compilerOptions: { target: "ES2022", module, moduleResolution: mode, strict: true,
           exactOptionalPropertyTypes: true, skipLibCheck: false, types: [], noEmit: true }, files: [file],
       }));
-      const result = run([tsc, "-p", "tsconfig.json", "--pretty", "false"]);
+      const result = run([toolchain.tsc, "-p", "tsconfig.json", "--pretty", "false"]);
       if (mode === "Node16" && extension === "cts") {
         assert.notEqual(result.status, 0);
         assert.deepEqual([...new Set(result.stdout.match(/TS\d+/gu))], ["TS1479"], result.stdout + result.stderr);
       } else if (["Node10", "Classic"].includes(mode)) {
         assert.notEqual(result.status, 0);
-        assert.deepEqual([...new Set(result.stdout.match(/TS\d+/gu))], ["TS5108"], result.stdout + result.stderr);
+        const code = toolchain.name === "typescript-minimum" ? (mode === "Node10" ? "TS2307" : "TS2792") : "TS5108";
+        assert.deepEqual([...new Set(result.stdout.match(/TS\d+/gu))], [code], result.stdout + result.stderr);
       } else success(result);
     });
   }
