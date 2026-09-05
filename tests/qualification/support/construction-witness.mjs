@@ -290,6 +290,17 @@ function localDeclaration(source, module, identityName, declarationName) {
   }
   check(declaration[offset] === '(' && declaration[offset + 1] === '{'
     && declaration.at(-2) === '}' && declaration.at(-1) === ')', 'nonlocal-declaration');
+  // The matching literal close must end the sole argument. A suffix check
+  // alone also accepts `{ borrowed }.borrowed || {}`, which returns an alias.
+  let depth = 0;
+  let end = offset + 1;
+  do {
+    check(end < declaration.length, 'nonlocal-declaration');
+    if (declaration[end] === '{') depth += 1;
+    else if (declaration[end] === '}') depth -= 1;
+    end += 1;
+  } while (depth > 0);
+  check(end === declaration.length - 1, 'nonlocal-declaration');
 }
 function featureModule(module, qualification) {
   return /^src\/features\/[a-z][a-z0-9-]*(?:\/[a-z][a-z0-9-]*)?\/(?:declaration|factory)\.js$/u.test(module)
