@@ -210,6 +210,21 @@ test('TEST source admission compares actual tracked bytes, index bytes and flags
   await fs.writeFile(join(root, 'input.ts'), 'export const value = 2;\n');
   await assert.rejects(inspectExactSource({ checkout: root, ...clean }));
 });
+test('TEST Git root aliases preserve identity while relative and foreign roots fail', async t => {
+  const root = await temporary(t), bytes = Buffer.from('export const value = 1;\n');
+  await fs.writeFile(join(root, 'input.ts'), bytes, { mode: 0o644 });
+  const base = sourceContext(bytes);
+  const withRoot = value => ({ ...base, context: { gitRun: (cwd, args) =>
+    args[0] === 'rev-parse' && args[1] === '--show-toplevel'
+      ? Promise.resolve(value + '\n') : base.context.gitRun(cwd, args) } });
+  await inspectExactSource({ checkout: root, ...withRoot(root + '/.') });
+  await assert.rejects(inspectExactSource({ checkout: root, ...withRoot('.') }),
+    error => error.context?.reason === 'absolute-git-root');
+  const foreign = join(root, 'TEST-foreign-root');
+  await fs.mkdir(foreign);
+  await assert.rejects(inspectExactSource({ checkout: root, ...withRoot(foreign) }),
+    /Git root differs from the admitted checkout/);
+});
 test('TEST failed source admission preserves the exclusively created session', async t => {
   const root = await temporary(t), checkout = await fs.realpath(fileURLToPath(new URL('../../../../', import.meta.url)));
   const output = join(root, 'TEST-failed-session');

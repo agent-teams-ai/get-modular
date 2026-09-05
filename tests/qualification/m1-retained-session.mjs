@@ -4,7 +4,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { arch, release, type, version } from 'node:os';
-import { dirname, join, relative, resolve, sep } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { absolute, checkProcess, checkTree, createOutputDirectory, digest, jsonBytes, need,
   readBytes, readJournal, readJson, retainedLimits, rowDigest, scanTree, verifyM1Observations,
@@ -150,7 +150,9 @@ function ignoredAllowed(path) {
 export async function inspectExactSource({ checkout, commit, context, dependencyMount }) {
   sha(commit);
   await canonicalDirectory(checkout);
-  assert.equal((await context.gitRun(checkout, ['rev-parse', '--show-toplevel'])).trim(), checkout);
+  const gitRoot = (await context.gitRun(checkout, ['rev-parse', '--show-toplevel'])).trim();
+  need(isAbsolute(gitRoot), 'absolute-git-root');
+  assert.equal(await fs.realpath(gitRoot), checkout, 'Git root differs from the admitted checkout');
   assert.equal((await context.gitRun(checkout, ['rev-parse', 'HEAD'])).trim(), commit, 'source HEAD differs');
   const tree = (await context.gitRun(checkout, ['rev-parse', `${commit}^{tree}`])).trim();
   const rows = await treeRows(context, checkout, commit);
