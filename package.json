@@ -56,6 +56,7 @@
     "json-canonicalize": "catalog:",
     "jsonc-parser": "catalog:",
     "markdownlint-cli2": "catalog:",
+    "tar": "catalog:",
     "typescript": "catalog:",
     "typescript-minimum": "catalog:",
     "yaml": "catalog:"
