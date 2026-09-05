@@ -58,7 +58,7 @@ test("admission owns all containers synchronously, preserving every caller order
   assert.deepEqual(value.declarations, before.declarations);
   assert.deepEqual(value.profile, before.profile);
   assert.deepEqual(value.profileResources, { selections: before.profile.selections,
-    bindings: [{ consumerImplementationId: "x/i", slotId: "s", providerOccurrences: 2 }] });
+    bindings: [{ ordinal: 0, consumerImplementationId: "x/i", slotId: "s", providerOccurrences: 2 }] });
 });
 
 test("schema-invalid declarations supply no partial records and independent declarations/profile remain admitted", () => {
@@ -188,7 +188,7 @@ test("resource-only profile counts retain oversized and duplicate provider occur
   assert.equal(value.profile, null);
   assert.equal(value.allDeclarationsAdmitted, true);
   assert.deepEqual(value.profileResources, { selections: input.profile.selections,
-    bindings: [{ consumerImplementationId: "x/i", slotId: "s", providerOccurrences: 1025 }] });
+    bindings: [{ ordinal: 0, consumerImplementationId: "x/i", slotId: "s", providerOccurrences: 1025 }] });
   assert.deepEqual(diagnostics.map(item => item.code), ["schema.invalid-value"]);
   // The named many/graph limits still need semantic consumer/slot/selection
   // prerequisites. Admission must neither invent them nor hide their counts.
@@ -202,7 +202,7 @@ test("resource evidence preserves incomplete selection census and never stores m
   const { value } = admit(input);
   assert.equal(value.profile, null);
   assert.deepEqual(value.profileResources, { selections: null,
-    bindings: [{ consumerImplementationId: "x/i", slotId: null, providerOccurrences: 2 }] });
+    bindings: [{ ordinal: 0, consumerImplementationId: "x/i", slotId: null, providerOccurrences: 2 }] });
   assert.equal(JSON.stringify(value).includes("secret"), false);
   const version = world(); version.profile.schemaVersion = 2;
   assert.equal(admit(version).value.profileResources, null);
@@ -221,6 +221,14 @@ test("admission streams every unique error past K+1 and leaves collector complet
   assert.equal(collector.statistics().peakRetained, 256);
   assert.equal(collector.statistics().saturatedFailureCount, 301);
   assert.deepEqual(diagnostics[254].path, [field("declarations"), index(254)]);
+});
+
+test("resource observations preserve original binding locators when malformed rows are excluded", () => {
+  const input = world();
+  input.profile.bindings = [null, { ...binding(), consumerImplementationId: "INVALID" },
+    { ...binding(), providerImplementationIds: new Array(1025).fill("x/i") }];
+  assert.deepEqual(admit(input).value.profileResources.bindings,
+    [{ ordinal: 2, consumerImplementationId: "x/i", slotId: "s", providerOccurrences: 1025 }]);
 });
 
 test("unknown sibling keys normalize once and all invocation-local state is isolated", () => {

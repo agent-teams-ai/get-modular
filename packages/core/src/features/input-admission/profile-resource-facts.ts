@@ -3,6 +3,7 @@ import { isLocalTokenFormat, isPortableIdFormat } from "./identity-format.js";
 import { admissionLimits } from "./resource-limits.js";
 
 export type BindingResourceCount = {
+  readonly ordinal: number;
   readonly consumerImplementationId: string;
   readonly slotId: string | null;
   readonly providerOccurrences: number;
@@ -39,13 +40,14 @@ export function profileResourceFacts(value: unknown): ProfileResourceFacts {
   const bindings: BindingResourceCount[] = [];
   const bindingRows = ownValue(value, "bindings");
   if (Array.isArray(bindingRows) && bindingRows.length <= admissionLimits.bindings) {
-    for (const row of bindingRows) {
+    for (let ordinal = 0; ordinal < bindingRows.length; ordinal += 1) {
+      const row = bindingRows[ordinal];
       const consumerImplementationId = ownValue(row, "consumerImplementationId");
       const slot = ownValue(row, "slotId");
       const providers = ownValue(row, "providerImplementationIds");
       if (!portable(consumerImplementationId) || !Array.isArray(providers)) continue;
       const slotId = typeof slot === "string" && slot.length <= 64 && isLocalTokenFormat(slot) ? slot : null;
-      bindings.push(Object.freeze({ consumerImplementationId, slotId, providerOccurrences: providers.length }));
+      bindings.push(Object.freeze({ ordinal, consumerImplementationId, slotId, providerOccurrences: providers.length }));
     }
   }
   return Object.freeze({ selections: selections === null ? null : Object.freeze(selections), bindings: Object.freeze(bindings) });
