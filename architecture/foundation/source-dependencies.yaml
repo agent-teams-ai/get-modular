@@ -5,8 +5,8 @@ workspace:
 governedRoots:
   - packages/core/src
 boundaries:
-  # Semantic censuses, binding validation and graph algorithms remain private
-  # while prerequisite integration and module construction are pending.
+  # Semantic analysis remains owner-private while independent review and module
+  # construction are pending. Admission is joined only by the test pipeline.
   - id: core-composition-semantics
     roots:
       - packages/core/src/features/composition-semantics/graph-components.ts
@@ -17,6 +17,9 @@ boundaries:
       - packages/core/src/features/composition-semantics/profile-census.ts
       - packages/core/src/features/composition-semantics/binding-record.ts
       - packages/core/src/features/composition-semantics/selected-bindings.ts
+      - packages/core/src/features/composition-semantics/semantic-input.ts
+      - packages/core/src/features/composition-semantics/graph-resources.ts
+      - packages/core/src/features/composition-semantics/semantic-analysis.ts
     entrypoints: []
     allow:
       boundaries:

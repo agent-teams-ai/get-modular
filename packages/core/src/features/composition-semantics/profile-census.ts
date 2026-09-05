@@ -25,11 +25,13 @@ export function createProfileCensus(profile: CompositionProfile, declarations: D
     else groups.set(row.moduleId, [row]);
   }
   let selectionsUnique = true;
+  let selectionsResolved = true;
   let hasErrors = false;
   const add: DiagnosticCollector["addUnique"] = diagnostic => { hasErrors = true; collector.addUnique(diagnostic); };
   for (const [moduleId, rows] of groups) {
     if (rows.length > 1) {
       selectionsUnique = false;
+      selectionsResolved = false;
       add(Object.freeze({ code: "profile.duplicate-selection", phase: "profile", path: Object.freeze([]),
         coordinate: Object.freeze({ moduleId }), details: Object.freeze({ reason: "duplicate" }) }));
     }
@@ -40,8 +42,9 @@ export function createProfileCensus(profile: CompositionProfile, declarations: D
     // Repeated equal rows have one normalized semantic coordinate. Distinct
     // rows of an ambiguous module are all checked; none is the chosen winner.
     for (const implementationId of new Set(rows.map(row => row.implementationId))) {
-      if (!declarations.identityCensusComplete) continue;
       const known = declarations.implementation(implementationId);
+      if (!known || known.declaration.moduleId !== moduleId) selectionsResolved = false;
+      if (!declarations.identityCensusComplete) continue;
       if (known === undefined) {
         add(Object.freeze({ code: "profile.unknown-implementation", phase: "profile", path: Object.freeze([]),
           coordinate: Object.freeze({ moduleId, implementationId }), details: Object.freeze({ reason: "unknown" }) }));
@@ -53,7 +56,8 @@ export function createProfileCensus(profile: CompositionProfile, declarations: D
   }
   const roots = new Map<string, number>();
   for (const moduleId of profile.roots) roots.set(moduleId, (roots.get(moduleId) ?? 0) + 1);
-  let rootsResolved = selectionsUnique;
+  // Closure requires every selection to resolve, including non-root rows.
+  let rootsResolved = selectionsResolved;
   const resolvedRoots: string[] = [];
   for (const [moduleId, count] of roots) {
     if (count > 1) {

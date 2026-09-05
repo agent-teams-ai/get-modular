@@ -15,7 +15,8 @@ export type SelectedBindings = {
 
 /**
  * Owner-private: bounded, owned profile/declarations admitted under all accepted refinements;
- * unique binding records per consumer/slot and admitted selected-provider budget.
+ * unique binding records per consumer/slot. The caller bounds graph allocation;
+ * this pass retains only borrowed rows and continues after edge-budget failure.
  * This is not raw/resource admission, a compiler success gate or the M2 record policy.
  */
 export function validateSelectedBindings(profile: CompositionProfile, declarations: DeclarationCensus,

@@ -57,8 +57,8 @@ and that declaration supplies no partial semantic records. This refinement is
 stronger than JSON Schema alone and precedes binding-count validation.
 Oversized provider lists retain bounded,
 owned resource-only counts separately from an admitted semantic profile.
-Semantic selection/consumer/slot prerequisites and their graph/many limits
-remain pending; these counts cannot create graph edges or plan bindings.
+Semantic resource checks consume these counts after establishing the relevant
+selection/consumer/slot evidence; they cannot create graph edges or plan bindings.
 Malformed wrapper/carrier classifications remain outside this private stage's
 claimed domain. The admission module factory and cross-feature entry are
 pending independent review and downstream integration.
@@ -70,8 +70,8 @@ stream into the same caller-owned collector; cycles preserve their diagnostics
 and depth overflow saturates at 2049. Operation counters cover distinct
 adjacency traversal and bounded ready/traversal state. These algorithms do not
 establish declaration/binding prerequisites or authorize an unreachable
-diagnostic from an incomplete frontier. Semantic validation, graph resource
-prerequisites, module construction and the facade remain pending. The graph
+diagnostic from an incomplete frontier. Module construction and the facade
+remain pending. The graph
 implementation has no cross-feature entry and does not consume admission.
 Private declaration and profile censuses now inspect owned, whole-schema-valid
 documents, preserving identity occurrences and explicit ambiguous lookups.
@@ -90,10 +90,25 @@ Unknown or ambiguous records never supply a chosen value. Known unselected
 consumers remain inert. Only wholly valid rows contribute provider references;
 one invalid reference excludes the entire row. Per-consumer frontier observations
 retain unrelated valid frontiers and do not themselves authorize unreachable
-diagnostics. The stage consumes owned, whole-schema-valid inputs after the
-selected-provider resource budget and unique binding-record preconditions;
-it does not select M2 repeated-record behavior. Graph resource admission,
-end-to-end prerequisite integration and normalized plan assembly remain pending.
+diagnostics. The stage consumes owned, fully admitted inputs with unique binding
+records; it does not select M2 repeated-record behavior. It retains borrowed
+rows and continues independent checks after a graph-edge budget failure.
+
+A private semantic analysis now joins these operations using a consumer-owned
+input contract, without importing admission. It counts selected provider
+occurrences before validation, reports graph/many limits with their fixed
+prerequisites and saturated values, and builds a graph only from complete
+schema-valid profile data within the edge budget. Complete valid bindings
+supply its edges. Unreachable diagnostics require every selection, including
+non-root rows, to resolve to its module's unique implementation and every
+reached consumer to have a complete valid frontier. Unrelated errors preserve
+independent positive cycles. The collector finishes after all eligible checks;
+any diagnostic prevents a plan. Success contains a deeply frozen normalized
+plan, with original many-provider order and deterministic roots, selections,
+bindings and dependency order. Digest emission stays in the output feature.
+Tests connect the actual admission, semantic and output implementations against
+independent object diagnostic, plan and digest expectations. This private
+pipeline is not the public compiler, packed qualification or a completed M1.
 Diagnostic producers still need to normalize and deduplicate their eligible
 candidates before collection. The public compiler and packed
 publication subject remain pending. Accepted
