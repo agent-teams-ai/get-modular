@@ -5,6 +5,31 @@ workspace:
 governedRoots:
   - packages/core/src
 boundaries:
+  - id: core-plan-output-contract
+    roots:
+      - packages/core/src/features/plan-output/ports.ts
+      - packages/core/src/features/plan-output/declaration.ts
+    entrypoints:
+      - packages/core/src/features/plan-output/ports.ts
+      - packages/core/src/features/plan-output/declaration.ts
+    allow:
+      boundaries:
+        - core-authoring
+        - core-canonicalization-contract
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: core-plan-output-implementation
+    roots:
+      - packages/core/src/features/plan-output/factory.ts
+    entrypoints:
+      - packages/core/src/features/plan-output/factory.ts
+    allow:
+      boundaries:
+        - core-plan-output-contract
+      packages: []
+      builtins: []
+      runtimeReferences: []
   - id: core-authoring
     roots:
       - packages/core/src/features/authoring/wire-types.ts

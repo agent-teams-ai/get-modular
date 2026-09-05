@@ -38,9 +38,10 @@ requires successor authority. The checker is not the specification.
 
 ## Accepted contract and public naming
 
-Get Modular has one accepted contract. Its first private production slice is
-the owned canonicalization feature in `packages/core`; the public compiler and
-packed publication subject remain pending. Accepted
+Get Modular has one accepted contract. Private features in `packages/core`
+currently implement owned canonicalization, inert authoring contracts and
+immutable plan output with its digest. The public compiler and packed
+publication subject remain pending. Accepted
 ADR-0009 names the one pre-1.0 public surface: `compileComposition`,
 `compileCompositionJson`, `defineModule`, `required`, `optional`, `many` and
 the types `CompileCompositionResult`, `ModuleDeclaration`,
