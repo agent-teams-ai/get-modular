@@ -238,7 +238,7 @@ for (const changeText of [false, true]) {
   });
 }
 
-for (const forwarding of ['re-export', 'local alias', 'frozen alias', 'local alias with local ID', 'frozen alias with local ID', 'property alias with local ID']) {
+for (const forwarding of ['re-export', 'local alias', 'frozen alias', 'local alias with local ID', 'frozen alias with local ID', 'property alias with local ID', 'regex alias with local ID']) {
   test(`a ${forwarding} cannot move a declaration beside another factory`, async t => {
     const f = await fixture(t);
     await compatibleFixture(f);
@@ -251,6 +251,7 @@ for (const forwarding of ['re-export', 'local alias', 'frozen alias', 'local ali
         + `export const compatibleImplementation: typeof ownedJcsImplementation = ${forwarding.endsWith('local ID') ? JSON.stringify(canon) : 'ownedJcsImplementation'};\n`
         + `export const compatibleDeclaration: ModuleDeclaration = ${forwarding.startsWith('property alias')
           ? 'Object.freeze({ borrowed: ownedJcsDeclaration }.borrowed || {})'
+          : forwarding.startsWith('regex alias') ? 'Object.freeze({ opening: /\\{/, borrowed: ownedJcsDeclaration }.borrowed || { closing: /\\}/ })'
           : forwarding.startsWith('frozen alias') ? 'Object.freeze(ownedJcsDeclaration)' : 'ownedJcsDeclaration'};\n`;
     await write(f.packageRoot, 'src/features/canonicalization/compatible/declaration.ts', source);
     await write(f.packageRoot, 'package.json', '{"type":"module"}\n');

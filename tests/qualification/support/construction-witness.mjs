@@ -244,6 +244,11 @@ function parseAllowlist(source, path) {
 // and can incorrectly authorize a different sibling factory for the same ID.
 function localDeclaration(source, module, identityName, declarationName) {
   const parser = new Parser(source);
+  // The finite format has no regex literals or division. Their tokens need
+  // expression-sensitive rescanning; treating regex braces as delimiters can
+  // disguise a property expression as a complete object literal.
+  check(parser.items.every(item => ![SyntaxKind.SlashToken, SyntaxKind.SlashEqualsToken,
+    SyntaxKind.Unknown].includes(item.kind)), 'nonlocal-declaration');
   const names = new Set(['Object']);
   imports(parser, module, names);
   const definitions = new Map();
