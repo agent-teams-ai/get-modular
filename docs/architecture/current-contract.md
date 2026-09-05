@@ -17,6 +17,7 @@ related:
   - ADR-0016
   - ADR-0017
   - ADR-0018
+  - ADR-0020
   - ARCH-SELF-COMPOSITION-GUIDE
   - OD-004
   - OD-005
@@ -174,6 +175,19 @@ The complete repository gate runs the effective resource qualification through
 available unversioned command `pnpm qualification:resource-profile`. The test
 and evidence filenames retain their historical names for custody and
 traceability.
+
+Accepted [ADR-0020](../decisions/0020-define-diagnostic-coverage-outside-object-resource-admission.md)
+narrows diagnostic coverage only outside object resource admission. Within the
+JSON occurrence/string/depth envelope, complete eligible diagnostics remain
+deterministic under the existing equivalence. Outside it, reject with a
+truthful named saturated resource failure and no plan/digest; the selected
+limit and diagnostic subset may change with enumeration. Batch value/string
+failure prevents all document snapshots and resource-only profile promotion;
+depth is document-local. Preserve established shallow aggregates and earlier
+depth failures. The [coverage supplement and permitted-result vectors](../../architecture/qualification/object-resource-coverage/contract.json)
+apply alongside the immutable profile, not as a configurable resource policy.
+Public M1 API documentation and direct/generated qualification must carry this
+boundary forward; component tests do not themselves finish those gates.
 
 ## Implementation boundary
 

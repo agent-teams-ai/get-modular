@@ -10,7 +10,6 @@ summary: Index of Get Modular architecture decisions.
 
 ## Proposed decisions
 
-- [ADR-0020: Define diagnostic coverage outside object resource admission](0020-define-diagnostic-coverage-outside-object-resource-admission.md)
 - [ADR-0019: Separate upload admission from publication completion](0019-separate-upload-admission-from-publication-completion.md)
 - [ADR-0010: Select replaceable primitives for the first core implementation](0010-select-replaceable-primitives-for-the-first-core-implementation.md)
 - [ADR-0011: Define private self-composition evidence and release custody](0011-define-private-self-composition-evidence-and-release-custody.md)
@@ -19,6 +18,7 @@ summary: Index of Get Modular architecture decisions.
 
 ## Accepted decisions
 
+- [ADR-0020: Define diagnostic coverage outside object resource admission](0020-define-diagnostic-coverage-outside-object-resource-admission.md)
 - [ADR-0018: Close implementation readiness rules](0018-close-implementation-readiness-rules.md)
 - [ADR-0001: Product-neutral deterministic module composition](0001-product-neutral-deterministic-module-composition.md)
 - [ADR-0002: Adopt organization Feature Module Standard v1](0002-adopt-organization-feature-module-standard-v1.md)

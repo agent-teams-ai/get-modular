@@ -25,6 +25,10 @@ export type AdmittedObjectInput = {
  * record and dense ordinary declaration list. Malformed wrapper/carrier policy
  * is not selected here. No caller reference survives; the caller supplies the
  * per-invocation collector, and only semantics/facade finalize that collector.
+ * ADR-0020: outside the resource envelope, reject with a truthful early limit;
+ * enumeration need not select the same failure. Batch value/string exhaustion
+ * admits no snapshots; depth remains document-local. Complete eligible
+ * diagnostic determinism is preserved inside the resource envelope.
  */
 export function admitObjectInput(input: ObjectInput, collector: Pick<DiagnosticCollector, "addUnique">): AdmittedObjectInput {
   let hasErrors = false;

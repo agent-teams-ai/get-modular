@@ -1,9 +1,11 @@
 ---
 id: ADR-0020
 type: adr
-status: proposed
+status: accepted
 owner: architecture
-summary: Proposes an explicit bounded failure contract for object resource exhaustion and records the completeness versus bounded-work conflict.
+summary: Bounds object resource diagnostic coverage while preserving precise early failures and full determinism inside the admitted envelope.
+approved_by: product-owner
+accepted_at: 2026-09-05
 related:
   - ADR-0006
   - ADR-0007
@@ -38,92 +40,103 @@ failure. This is not a Proxy, raw-carrier or public-facade issue.
 
 ## Decision
 
-No option is accepted by this proposal. In particular, do not mark the current
-first-failure behavior conformant or silently weaken GM-REQ-007. Close this
-decision before the next public M1 integration checkpoint; independent C1,
-Unicode, partial-membership, package and oracle fixes can proceed.
+The product owner selected option A on 2026-09-05: bounded early rejection
+with a precise named failure outside the object resource envelope.
 
-### Option A: bounded first failure outside the resource envelope
+### Coverage and precedence
 
-Recommended for the smallest MVP contract: retain precise named failures and
-bounded early rejection. Guarantee complete deterministic diagnostics for the
-resource-admitted domain; outside it, guarantee rejection, a truthful saturated
-resource failure and no plan/digest, but do not promise the same selected limit
-under enumeration changes. Independently established shallow aggregate errors
-remain; no downstream snapshot is built after batch rejection. Depth remains
-document-local as in the existing implementation. Document this limitation at
-the object API and in the handbook, rather than calling the result exhaustive.
+Within the trusted, cooperative object entry domain of ADR-0018, preserve
+complete deterministic eligible diagnostics under the existing equivalence,
+normalization, prerequisite, ordering and truncation rules whenever resource
+admission completes without JSON occurrence, aggregate string or depth overflow.
+Malformed in-envelope inputs retain those guarantees. This does not broaden
+M1 to unresolved repeated binding records or raw-carrier classifications.
 
-This deliberately narrows the public determinism promise for over-budget input.
-It does not change results for resource-admitted malformed input or valid plans.
-Acceptance needs a scoped successor to GM-REQ-007/ADR-0006/ADR-0007, executable
-coverage rules and independent vectors. It is not only an implementation fix.
+Outside that envelope, reject with at least one truthfully established
+`input.limit-exceeded` and no plan or digest. Do not promise the same selected
+limit or complete diagnostic set under property, document or binding
+permutations. The returned named resource failure still uses the existing
+phase, path, coordinate and details shape; `actual` saturates at `limit + 1`.
+Every emitted candidate must be independently justified. Sorting the returned
+subset does not make it exhaustive, and missing diagnostics prove nothing
+about unvisited input. Do not continue unbounded traversal to improve coverage.
 
-### Option B: one deterministic resource-admission failure
+This narrowly supersedes GM-REQ-007's unconditional diagnostic determinism
+wording and ADR-0006/ADR-0007's complete independent resource coverage only
+outside that object admission envelope. Resource-admitted success, plans,
+digests, eligible semantic diagnostics and all numerical limits are unchanged.
+Existing immutable requirements, catalogs, prerequisite facts, qualification
+vectors and ledgers remain byte-identical. Their unaffected assertions still
+apply. The supplement below records this single fixed successor rule.
 
-Preserve bounded traversal and deterministic public rejection by introducing a
-single closed diagnostic for any J/string/depth admission failure. Once any
-such limit is proved, reject the whole batch with that stable diagnostic and
-omit order-dependent individual resource discoveries. Existing independently
-computed shallow aggregate candidates retain their fixed behavior. The complete
-failure has a fixed batch path and no observed first-limit name.
+### Failure propagation and allocation
 
-This loses limit-specific detail and the current document-local depth behavior,
-but needs no longer traversal or larger stack. A successor must define the exact
-catalog/details shape, scope, deprecation implications and full-result vectors;
-never invent a `limitName` or actual count for an unmeasured limit. Per-limit
-development instrumentation must not enter the public deterministic result.
+- `jsonValueOccurrences` and `aggregateStringBytes` are batch-wide limits.
+  Once either is proved, stop resource traversal for that invocation. Admit
+  no document snapshot or resource-only semantic profile, including earlier
+  valid documents. Keep already established diagnostic candidates only.
+- `jsonDepth` remains document-local. Stop the affected document, exclude it
+  from semantic data, preserve its document path, and continue independent
+  documents with the same invocation-wide occurrence/string counters. Retain
+  an earlier depth diagnostic even if a later batch limit stops admission.
+- Preserve independently established shallow `totalCapabilities` and
+  `totalSlots` overflow candidates. Complete those bounded counts before a
+  later JSON traversal can stop. Declaration-count preflight still precedes
+  copying or inspecting a rejected declaration list.
+- Reserve attempted array positions from length before a proportional
+  descriptor scan. A hidden string or deep value in an oversized array need
+  not be visited. Never invent a failure for such an unmeasured dimension.
+- Observable accessors are never invoked. The existing symbol/non-index tail
+  rule terminates only that frame; parent siblings remain eligible. Shared
+  DAG occurrences are counted separately, cycles remain non-plain values.
+  Traversal state and diagnostic data retain no caller aliases.
 
-### Option C: a separate bounded structural-work gate
+ADR-0018's exclusion of unavoidable intrinsic reflection allocations from a
+portable heap promise remains. Core-owned work and retained state stay bounded.
+No new port, resource profile, policy engine, container or Host lifecycle is
+introduced. The admission feature remains the sole runtime owner of this rule.
 
-Add a fully specified structural-work budget before claiming complete J/S/depth
-coverage. Charge root/value occurrences, attempted array positions and record
-descriptor keys independently of string length; charge accessors even though
-their values are never read. A completed scan supplies independent saturated
-J/S/depth facts. If the structural budget itself exceeds its fixed limit,
-return only its stable gate failure and suppress partial J/S/depth discoveries.
-String code-unit scanning still stops after string saturation. Forbidden array
-and symbol tails terminate their frame by the C1 ordering rule.
+### Executable evidence and delivery
 
-The initial design target is a structural budget of twice the accepted J limit:
-ordinary admitted JSON has no more record keys than value occurrences. Prove
-that bound and all descriptor accounting before acceptance. The traversal must
-continue below depth 32 when needed for complete structural coverage, so its
-explicit stack can grow to the structural bound. This changes the peak-memory
-contract and requires allocation evidence, unlike A/B. The total own work is
-bounded by structural budget plus string budget; no unlimited traversal is
-permitted. Do not introduce this extra gate merely to retain every diagnostic
-without evaluating that cost.
+The closed [contract](../../architecture/qualification/object-resource-coverage/contract.json)
+and [case vectors](../../architecture/qualification/object-resource-coverage/cases.json)
+pin coverage, propagation and permitted complete failure results. They include
+all three council permutation families, hidden string/depth values at both
+ends of an oversized array, multiple documents, prior depth plus later batch
+failure, independent shallow aggregates, malformed in-envelope input and cycles
+beside shared DAGs. Recipes construct the inputs independently of Core.
 
-### Required decision and evidence
+The actual admission/semantic tests require membership in the permitted result
+set outside the envelope, not equality across permutations. In-envelope
+permutations still require exact equality. Structural tests observe saturated
+counters, zero rejected-array descriptor scans, no getters, no document
+snapshot after batch rejection and no retained caller aliases. Existing
+boundary/plus-one, DAG occurrence and tail-work tests remain mandatory.
 
-Choose the coverage promise first. Then create successor machine-readable
-authority and case vectors without changing immutable accepted artifacts in
-place, implement its bounded algorithm, and independently review the exact
-result. No new Core/Host port, container or runtime lifecycle is required.
+Run these cases against the M1 object facade before its public qualification,
+and later against generated M3 as part of direct/generated parity. Document
+the coverage boundary in public API documentation and the handbook. The
+private-stage tests alone do not establish a public compiler or packed gate.
+A later M2 successor must explicitly carry forward this object rule; this
+acceptance does not select raw-byte diagnostics or resolve OD-005/OD-006.
 
-For each option, exercise the three concrete council permutations, a string and
-deep value at both ends of an oversized array, multiple documents, accessor and
-symbol tails, shared DAGs and cycles. Verify complete result shape, truthful
-limit saturation, no getters, no retained caller references, no snapshot after
-rejection, and structural counters. For A, assert the permitted first-failure
-set explicitly; do not require equality outside its declared envelope. For B/C,
-assert exact equal results for equivalent permutations.
+The object resource coverage ledger `architecture/authority/object-resource-coverage-ledger.json` is anchored as `sha256:358413860f9a47204f211a1787ebbca402e8a7d93b3b6d0e798b00897b897ab3`.
 
 ## Consequences
 
-- The distinction between rejection, complete diagnostics and resource safety
-  becomes explicit before the first public implementation claim.
-- A is the smallest change and keeps useful named errors; B buys strict failure
-  determinism by reducing detail; C buys more detail with a new budget and
-  larger bounded traversal state.
-- Proposed status does not authorize any of these changed semantics.
+- Useful named errors survive with bounded rejection and truthful coverage.
+- Hosts can rely on deterministic complete eligible diagnostics inside the
+  envelope. Beyond it they can rely on rejection, not a stable winning limit.
+- Existing bounded admission needs no new traversal algorithm. Authority,
+  independent vectors and API/agent guidance close the ambiguity explicitly.
+- Acceptance permits this M1 correction, not a publication, merge, runtime
+  conformance claim or expansion of the recorded implementation scope.
 
 ## Rejected alternatives
 
-- Continue through every rejected object to find all errors: violates bounded
-  work for arbitrarily large input.
-- Report whichever observed limit has the highest priority: cannot account for
-  an unvisited higher-priority failure and preserves enumeration dependence.
-- Sort the input or add round-robin traversal: the sorting and coverage cost
-  itself needs admission; it does not resolve the unread-position proof.
+- Option B, one generic batch failure: loses precise limit diagnostics and
+  document-local depth behavior without a current consumer need.
+- Option C, a second structural-work gate: adds another resource contract and
+  larger traversal state merely to preserve more rejected-input diagnostics.
+- Scan every rejected object, prioritize an unvisited limit, or sort all input
+  first: none resolves the bounded-work versus unread-position proof above.
