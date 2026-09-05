@@ -33,7 +33,7 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
     "node architecture/checks/feature-module-standard-profile.mjs",
   "architecture:feature-module-profile:test":
     "node --test tests/feature-module-standard-profile.test.mjs tests/source-dependencies.test.mjs",
-  "core:typecheck": "tsc -p packages/core/tsconfig.typecheck.json --noEmit",
+  "core:typecheck": "node node_modules/typescript/bin/tsc -p packages/core/tsconfig.typecheck.json --noEmit",
   "core:build": "node architecture/tooling/build-core.mjs",
   "core:test": 'node --test "packages/core/tests/**/*.test.mjs"',
   "contracts:check": "node architecture/checks/v1-contract.mjs",
