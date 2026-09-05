@@ -339,6 +339,15 @@ function rootedFilesEntry(entry) {
   // Preserve the original prefix restriction too: normalizing */../dist must
   // not erase a prohibited wildcard and turn it into an admitted literal root.
   const original = entry.trim().replace(/^(?:\.\/)+/u, "");
+  // Brace/extglob branches can hide `..` or an empty segment that changes the
+  // meaning of a later parent traversal. POSIX normalization does not expand
+  // patterns. Require parent traversal to be independent of glob expansion.
+  let seenPattern = false;
+  for (const segment of original.split("/")) {
+    const pattern = GLOB_METACHARACTERS.test(segment);
+    if (pattern && segment.includes("..") || seenPattern && segment === "..") return true;
+    seenPattern ||= pattern;
+  }
   return [original, normalized].some(value => {
     // Require POSIX spelling rather than guessing whether a backslash escapes
     // glob syntax or separates directories. Drive prefixes are not relative roots.

@@ -2241,6 +2241,8 @@ test("the files allowlist normalizes POSIX paths without erasing prohibited pref
   for (const entry of [
     "dist/..", "dist/../", "dist/../**", "./dist//.././**", "dist/nested/../..",
     "dist/*/../..", "dist/../?*", "dist/../[a-z]*", "dist/../{,**}",
+    "dist/{..,safe}/**", "dist/{safe,..}/**", "dist/{,nested}/../**",
+    "dist/{.,nested}/../**", "dist/@(..|safe)/**", "dist/**/../**",
     "dist/../../outside", "../dist", "../outside/../dist",
     "/dist", "/dist/../dist", "//server/share/dist",
     "**/../dist", "?*/../dist", "[a-z]*/../dist", "{one,two}/../dist", "!(src)/../dist",
