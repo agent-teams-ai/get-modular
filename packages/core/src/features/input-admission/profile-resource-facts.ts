@@ -1,20 +1,7 @@
 import type { CompositionProfile } from "../authoring/internal.js";
 import { isLocalTokenFormat, isPortableIdFormat } from "./identity-format.js";
+import type { BindingResourceCount, ProfileResourceFacts } from "./ports.js";
 import { admissionLimits } from "./resource-limits.js";
-
-export type BindingResourceCount = {
-  readonly ordinal: number;
-  readonly consumerImplementationId: string;
-  readonly slotId: string | null;
-  readonly providerOccurrences: number;
-};
-// These are resource-only observations, never an admitted semantic profile.
-// A schema-invalid profile cannot create declarations, edges or plan bindings.
-export type ProfileResourceFacts = {
-  readonly selections: CompositionProfile["selections"];
-  readonly selectionCensusComplete: boolean;
-  readonly bindings: readonly BindingResourceCount[];
-};
 
 export function ownValue(value: unknown, key: string): unknown {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return undefined;

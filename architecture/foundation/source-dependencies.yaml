@@ -5,8 +5,23 @@ workspace:
 governedRoots:
   - packages/core/src
 boundaries:
-  # Semantic analysis remains owner-private while independent review and module
-  # construction are pending. Admission is joined only by the test pipeline.
+  # Module consumers see only ports and identities. Only a composition root
+  # may depend on the separate implementation boundary and its factory.
+  - id: core-composition-semantics-contract
+    roots:
+      - packages/core/src/features/composition-semantics/ports.ts
+      - packages/core/src/features/composition-semantics/declaration.ts
+    entrypoints:
+      - packages/core/src/features/composition-semantics/ports.ts
+      - packages/core/src/features/composition-semantics/declaration.ts
+    allow:
+      boundaries:
+        - core-authoring
+        - core-diagnostics
+        - core-canonicalization-contract
+      packages: []
+      builtins: []
+      runtimeReferences: []
   - id: core-composition-semantics
     roots:
       - packages/core/src/features/composition-semantics/graph-components.ts
@@ -17,20 +32,34 @@ boundaries:
       - packages/core/src/features/composition-semantics/profile-census.ts
       - packages/core/src/features/composition-semantics/binding-record.ts
       - packages/core/src/features/composition-semantics/selected-bindings.ts
-      - packages/core/src/features/composition-semantics/semantic-input.ts
       - packages/core/src/features/composition-semantics/graph-resources.ts
       - packages/core/src/features/composition-semantics/semantic-analysis.ts
-    entrypoints: []
+      - packages/core/src/features/composition-semantics/factory.ts
+    entrypoints:
+      - packages/core/src/features/composition-semantics/factory.ts
     allow:
       boundaries:
+        - core-composition-semantics-contract
         - core-diagnostics
         - core-authoring
       packages: []
       builtins: []
       runtimeReferences: []
-  # Admission stays private pending independent review, semantic resource
-  # integration and module construction. It consumes the diagnostic library,
-  # never a concrete canonicalizer or an extra dependency slot.
+  # Admission receives a per-call sink, not another own-graph dependency.
+  - id: core-input-admission-contract
+    roots:
+      - packages/core/src/features/input-admission/ports.ts
+      - packages/core/src/features/input-admission/declaration.ts
+    entrypoints:
+      - packages/core/src/features/input-admission/ports.ts
+      - packages/core/src/features/input-admission/declaration.ts
+    allow:
+      boundaries:
+        - core-authoring
+        - core-diagnostics
+      packages: []
+      builtins: []
+      runtimeReferences: []
   - id: core-input-admission
     roots:
       - packages/core/src/features/input-admission/object-resource-meter.ts
@@ -43,9 +72,12 @@ boundaries:
       - packages/core/src/features/input-admission/resource-diagnostic.ts
       - packages/core/src/features/input-admission/profile-resource-facts.ts
       - packages/core/src/features/input-admission/object-admission.ts
-    entrypoints: []
+      - packages/core/src/features/input-admission/factory.ts
+    entrypoints:
+      - packages/core/src/features/input-admission/factory.ts
     allow:
       boundaries:
+        - core-input-admission-contract
         - core-authoring
         - core-diagnostics
       packages: []

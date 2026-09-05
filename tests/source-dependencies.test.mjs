@@ -118,7 +118,7 @@ test("Foundation prevents diagnostics from selecting a concrete canonicalizer", 
   assert.match(rules(report), /architecture\.source-dependencies\.forbidden-boundary-dependency/u);
 });
 
-test("Foundation keeps the unfinished admission resource pass private to its owner", async () => {
+test("Foundation keeps the admission resource pass private to its owner", async () => {
   const report = await checkFixture((files, configuration) => {
     addConsumer(files, configuration);
     configuration.boundaries.find(boundary => boundary.id === "fixture-consumer").allow.boundaries.push("core-input-admission");
@@ -135,7 +135,7 @@ test("Foundation rejects a concrete canonicalizer inside admission", async () =>
   assert.match(rules(report), /architecture\.source-dependencies\.forbidden-boundary-dependency/u);
 });
 
-test("Foundation keeps the graph kernel private and independent from unfinished admission", async () => {
+test("Foundation keeps the graph kernel private and independent from admission", async () => {
   const privateEntry = await checkFixture((files, configuration) => {
     addConsumer(files, configuration);
     configuration.boundaries.find(boundary => boundary.id === "fixture-consumer").allow.boundaries.push("core-composition-semantics");
@@ -148,6 +148,30 @@ test("Foundation keeps the graph kernel private and independent from unfinished 
   });
   assert.match(rules(forbiddenEdge), /architecture\.source-dependencies\.forbidden-boundary-dependency/u);
 });
+
+for (const [feature, symbol, privateFile, privateSymbol] of [
+  ["input-admission", "InputAdmissionPort", "object-admission", "admitObjectInput"],
+  ["composition-semantics", "CompositionSemanticsPort", "semantic-analysis", "analyzeCompositionSemantics"],
+]) {
+  test(`Foundation admits ${feature} contracts without opening factories or private algorithms`, async () => {
+    const configure = (files, configuration, contents) => {
+      addConsumer(files, configuration);
+      configuration.boundaries.find(boundary => boundary.id === "fixture-consumer").allow.boundaries.push(`core-${feature}-contract`);
+      files.set(consumerPath, contents);
+    };
+    const admitted = await checkFixture((files, configuration) => configure(files, configuration,
+      `export type { ${symbol} } from "../${feature}/ports.js";\n`));
+    assert.equal(admitted.outcome, "passed", JSON.stringify(admitted));
+    const factory = await checkFixture((files, configuration) => configure(files, configuration,
+      `import "../${feature}/factory.js";\n`));
+    assert.match(rules(factory), /architecture\.source-dependencies\.forbidden-boundary-dependency/u);
+    const algorithm = await checkFixture((files, configuration) => {
+      configure(files, configuration, `export { ${privateSymbol} } from "../${feature}/${privateFile}.js";\n`);
+      configuration.boundaries.find(boundary => boundary.id === "fixture-consumer").allow.boundaries.push(`core-${feature}`);
+    });
+    assert.match(rules(algorithm), /architecture\.source-dependencies\.cross-boundary-local-import-not-entrypoint/u);
+  });
+}
 
 for (const [name, path, contents] of [
   ["behavior outside a feature", "packages/core/src/helpers.ts", "export function hiddenRule() { return 1; }\n"],
