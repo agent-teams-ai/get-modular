@@ -30,7 +30,7 @@ export function snapshotDeclarationCarrier(value) {
   if ("reason" in observed) return { ok: false, carrierReason: observed.reason, copiedBytes: 0 };
   if (observed.visibleLength > declarationByteLimit) {
     return { ok: false, limitName: "declarationRawDocumentBytes", limit: declarationByteLimit,
-      actual: observed.visibleLength, copiedBytes: 0 };
+      actual: declarationByteLimit + 1, copiedBytes: 0 };
   }
   const bytes = new OwnedUint8Array(value);
   return { ok: true, bytes, copiedBytes: observed.visibleLength };

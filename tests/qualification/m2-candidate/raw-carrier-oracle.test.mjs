@@ -149,6 +149,15 @@ test("candidate byte limit uses visible length and does not copy a rejected docu
   });
 });
 
+test("candidate byte overflow saturates even far above the declaration bound", () => {
+  for (const size of [declarationByteLimit + 2, declarationByteLimit * 2]) {
+    assert.deepEqual(snapshotDeclarationCarrier(new Uint8Array(size)), {
+      ok: false, limitName: "declarationRawDocumentBytes", limit: declarationByteLimit,
+      actual: declarationByteLimit + 1, copiedBytes: 0,
+    });
+  }
+});
+
 test("candidate allocation witness catches copying before the byte-limit check", () => {
   // Isolated realm instrumentation observes actual constructor calls, rather
   // than trusting the oracle's reported copiedBytes counter. No public hook.
@@ -161,9 +170,12 @@ test("candidate allocation witness catches copying before the byte-limit check",
       return Reflect.construct(target, args);
     }});
     const {snapshotDeclarationCarrier, declarationByteLimit} = await import(${JSON.stringify(oracle)});
-    const backing = new ArrayBuffer(declarationByteLimit + 2);
+    const backing = new ArrayBuffer(2 * declarationByteLimit + 2);
     const rejected = new Native(backing, 1);
-    assert.equal(snapshotDeclarationCarrier(rejected).ok, false);
+    assert.deepEqual(snapshotDeclarationCarrier(rejected), {
+      ok: false, limitName: 'declarationRawDocumentBytes', limit: declarationByteLimit,
+      actual: declarationByteLimit + 1, copiedBytes: 0,
+    });
     assert.equal(allocations.length, 0);
     const admitted = new Native(backing, 1, declarationByteLimit);
     const result = snapshotDeclarationCarrier(admitted);
