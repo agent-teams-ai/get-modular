@@ -105,7 +105,7 @@ test("identity grammar is whole-string ASCII, length bounded, and allows ordinar
     const value = declaration(); value.moduleId = id;
     assert.equal(check(validateDeclarationShape, value).valid, true, id);
   }
-  for (const id of ["a", "A/b", "a//b", "a-/b", "a/b-", "a_b/c", "a/b\n", "a/b\r", "a/b\u2028", "a/é", "a/\ud800", `${"a".repeat(127)}/b`]) {
+  for (const id of ["a", "A/b", "a//b", "a-/b", "a/b-", "a_b/c", "a/b\n", "a/b\r", "a/b\u2028", "a/é", "a/\ud83d\ude00", `${"a".repeat(127)}/b`]) {
     const value = declaration(); value.moduleId = id;
     assert.deepEqual(check(validateDeclarationShape, value).violations, [{ rule: "identity", path: ["moduleId"] }]);
   }
@@ -116,6 +116,18 @@ test("identity grammar is whole-string ASCII, length bounded, and allows ordinar
   for (const token of ["__proto__", "a/b", "a".repeat(65), "then\n"]) {
     const value = declaration(); value.slots[0].slotId = token;
     assert.equal(check(validateDeclarationShape, value).valid, false);
+  }
+});
+
+test("malformed UTF-16 precedes identity grammar and byte accounting", () => {
+  for (const id of ["a/\ud800", "A/\ud800", `${"a".repeat(129)}\ud800`]) {
+    const value = declaration(); value.moduleId = id;
+    const violations = [];
+    const limits = [];
+    assert.equal(validateDeclarationShape(value, violation => violations.push(violation),
+      (...limit) => limits.push(limit)), false);
+    assert.deepEqual(violations, [{ rule: "unicode", path: ["moduleId"] }]);
+    assert.deepEqual(limits, []);
   }
 });
 

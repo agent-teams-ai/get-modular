@@ -17,6 +17,8 @@ export type ObjectResourceStatistics = {
   readonly jsonValueOccurrences: number;
   readonly aggregateStringBytes: number;
   readonly peakOpenContainers: number;
+  readonly ownKeyVisits: number;
+  readonly arrayIndexCodeUnits: number;
 };
 export interface ObjectResourceMeter {
   readonly scanDocument: (value: unknown) => ObjectResourceScan;
@@ -38,6 +40,8 @@ export function createObjectResourceMeter(): ObjectResourceMeter {
   let occurrences = 0;
   let stringBytes = 0;
   let peakOpenContainers = 0;
+  let ownKeyVisits = 0;
+  let arrayIndexCodeUnits = 0;
   let exhausted: BatchLimit | null = null;
 
   function countValues(count: number): boolean {
@@ -111,14 +115,26 @@ export function createObjectResourceMeter(): ObjectResourceMeter {
         continue;
       }
       const key = frame.keys[frame.next++]!;
-      if (typeof key !== "string") { nonPlainValue = true; continue; }
+      ownKeyVisits += 1;
+      // The descriptor table is ordinary: symbols follow every string key.
+      // Finish only this frame; parent siblings still contribute resources.
+      if (typeof key !== "string") { nonPlainValue = true; frame.next = frame.keys.length; continue; }
       if (frame.arrayLength !== null) {
         if (key === "length") continue;
-        const index = Number(key);
-        if (!Number.isInteger(index) || index < 0 || String(index) !== key || index >= frame.arrayLength) {
-          nonPlainValue = true;
-          continue;
+        // Array indices precede every non-index string. No rejected tail key
+        // may incur an unbounded Number conversion or a per-key own loop.
+        if (key.length === 0 || key.length > 10) {
+          nonPlainValue = true; frame.next = frame.keys.length; continue;
         }
+        arrayIndexCodeUnits += key.length;
+        const index = Number(key);
+        if (!Number.isInteger(index) || index < 0 || index > 0xfffffffe || index >= frame.arrayLength) {
+          nonPlainValue = true;
+          frame.next = frame.keys.length; continue;
+        }
+        const spelling = String(index);
+        arrayIndexCodeUnits += spelling.length;
+        if (spelling !== key) { nonPlainValue = true; frame.next = frame.keys.length; continue; }
         frame.indexes += 1;
       } else if (!countString(key)) { stoppedBy = exhausted; break; }
       const descriptor = frame.descriptors[key]!;
@@ -133,6 +149,6 @@ export function createObjectResourceMeter(): ObjectResourceMeter {
   return Object.freeze({
     scanDocument,
     statistics: () => Object.freeze({ jsonValueOccurrences: occurrences,
-      aggregateStringBytes: stringBytes, peakOpenContainers }),
+      aggregateStringBytes: stringBytes, peakOpenContainers, ownKeyVisits, arrayIndexCodeUnits }),
   });
 }

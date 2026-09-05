@@ -17,7 +17,7 @@ export function schemaDiagnostic(violation: DocumentShapeViolation, locator: Doc
       return Object.freeze({ ...common, code: "identity.invalid", details: Object.freeze({ reason: "invalid-format" }) });
     case "type": case "required": case "integer":
       return Object.freeze({ ...common, code: "schema.invalid-value", details: Object.freeze({ reason: "invalid-type" }) });
-    case "constant": case "range": case "size":
+    case "constant": case "range": case "size": case "unicode":
       return Object.freeze({ ...common, code: "schema.invalid-value", details: Object.freeze({ reason: "invalid-format" }) });
   }
 }

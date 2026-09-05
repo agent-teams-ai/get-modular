@@ -514,7 +514,7 @@ packages/core/
     stage0-entry.variant.ts    variant direct subject entry, qualification only
     stage1-entry.variant.ts    variant generated subject entry: imports the variant generated root, qualification only
     own-profile.variant.ts     the variant profile as data, qualification only
-    allowlist.ts               build-time map from declaration constants to typed import handles, M3
+    allowlist.ts               minimal declaration/factory handles for the M1 stage0 witness; reused by the M3 emitter
     allowlist.variant.ts       qualification allowlist: imports allowlist.ts and adds the witness-variant entry, qualification only
     emit.ts                    the finite emitter and its input manifest, M3
   src/
@@ -786,8 +786,10 @@ Standard profile, not a deviation.
 
 The emitter is finite and private. Its inputs are:
 
-- the accepted composition plan produced by stage0 from the own declarations
-  and the own profile, called P0; and
+- the successful `CompileCompositionResult` produced by stage0 from the own
+  declarations and own profile: its plan is P0 and its existing digest supplies
+  the generated header. Pass this result as one input; the emitter neither
+  hashes the plan again nor accepts a separately supplied digest; and
 - the allowlist, a build-time `Map` whose keys are the `implementationId`
   constants exported by each feature's `declaration.ts` and whose values are
   typed handles naming the import path, the factory export, the declaration
@@ -828,6 +830,18 @@ selections, and unsupported shapes that ADR-0008 names. An allowlist entry that
 the plan does not reach is not an error; it simply emits nothing.
 Emission is never a fallback resolver: it does not choose defaults, inspect a
 filesystem, or import dynamically.
+
+Before writing any output, validate the complete generated module binding
+namespace: every selected factory import, the facade type import, every selected
+handle's `localName`, and the exported `root`. Two bindings with the same name
+fail with the stable private code `emitter.binding-name-collision`, even when
+each spelling is a valid ECMAScript identifier. Do not classify a collision as
+`allowlist.invalid-identifier` or invent an alias from a caller identity. Keep
+the accepted whole-allowlist `localName` uniqueness check as a separate check;
+an unselected entry emits no binding. Regression cases cover `localName: root`,
+a local name equal to a selected factory export or the facade type name, and
+two selected factory imports with the same export name. A collision leaves the
+output absent; a valid namespace still passes the pinned TypeScript build.
 
 Illustrative output for the M1 own profile:
 

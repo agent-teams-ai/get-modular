@@ -74,10 +74,10 @@ test("sparse attempted positions are reserved before rejected-dimension reflecti
     const meter = createObjectResourceMeter();
     assert.equal(meter.scanDocument(oversized).stoppedBy, "jsonValueOccurrences");
     assert.deepEqual(meter.statistics(), { jsonValueOccurrences: limits.jsonValueOccurrences + 1,
-      aggregateStringBytes: 0, peakOpenContainers: 0 });
+      aggregateStringBytes: 0, peakOpenContainers: 0, ownKeyVisits: 0, arrayIndexCodeUnits: 0 });
   } finally { Object.getOwnPropertyDescriptors = original; }
   assert.deepEqual(measure([new Array(3)]).statistics, {
-    jsonValueOccurrences: 4, aggregateStringBytes: 0, peakOpenContainers: 1,
+    jsonValueOccurrences: 4, aggregateStringBytes: 0, peakOpenContainers: 1, ownKeyVisits: 1, arrayIndexCodeUnits: 0,
   });
 });
 
@@ -117,7 +117,41 @@ test("property names stay data and completed calls retain no active traversal st
   assert.equal(meter.scanDocument(value).nonPlainValue, false);
   assert.equal(meter.statistics().jsonValueOccurrences, 8);
   assert.deepEqual(createObjectResourceMeter().statistics(), {
-    jsonValueOccurrences: 0, aggregateStringBytes: 0, peakOpenContainers: 0,
+    jsonValueOccurrences: 0, aggregateStringBytes: 0, peakOpenContainers: 0, ownKeyVisits: 0, arrayIndexCodeUnits: 0,
   });
   assert.equal(Object.isFrozen(first), true);
+});
+
+test("forbidden symbol and array-property tails have constant own work without losing parent siblings", () => {
+  for (const array of [false, true]) {
+    const observations = [];
+    for (const count of [1, 10_000]) {
+      const value = array ? [] : {};
+      for (let i = 0; i < count; i += 1) Object.defineProperty(value, Symbol(), {
+        enumerable: true, get() { throw new Error("forbidden descriptor value must not be read"); },
+      });
+      const measured = measure([value]);
+      assert.deepEqual(measured.documents, [{ jsonDepth: 1, nonPlainValue: true, stoppedBy: null }]);
+      assert.equal(measured.statistics.ownKeyVisits, array ? 2 : 1);
+      assert.equal(measured.statistics.jsonValueOccurrences, 1);
+      assert.equal(measured.statistics.aggregateStringBytes, 0);
+      observations.push(measured);
+      const siblings = measure([{ a: value, b: "later" }]);
+      assert.equal(siblings.statistics.aggregateStringBytes, 7);
+      assert.equal(siblings.statistics.jsonValueOccurrences, 3);
+    }
+    assert.deepEqual(observations[0], observations[1]);
+  }
+  for (const key of ["x".repeat(1_000_000), "00", "-1", "1e0", "4294967295"]) {
+    const value = ["ok"];
+    Object.defineProperty(value, key, { enumerable: true, get() { throw new Error("extension getter"); } });
+    for (let i = 0; i < 10_000; i += 1) value[`tail${i}`] = "not counted";
+    const result = measure([value]);
+    assert.equal(result.documents[0].nonPlainValue, true);
+    assert.equal(result.statistics.ownKeyVisits, 3);
+    assert.equal(result.statistics.jsonValueOccurrences, 2);
+    assert.equal(result.statistics.aggregateStringBytes, 2);
+    assert.ok(result.statistics.arrayIndexCodeUnits <= 22);
+    if (key.length > 10) assert.equal(result.statistics.arrayIndexCodeUnits, 2);
+  }
 });

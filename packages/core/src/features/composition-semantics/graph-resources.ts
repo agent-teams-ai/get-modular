@@ -9,14 +9,16 @@ export type GraphResourceResult = { readonly countedInputEdges: number | null; r
 /** Resource-only evidence is never promoted to semantic rows or graph edges. */
 export function collectGraphResourceLimits(observations: ProfileResourceObservations | null, declarations: DeclarationCensus,
   collector: Pick<DiagnosticCollector, "addUnique">): GraphResourceResult {
-  if (!observations?.selections) return Object.freeze({ countedInputEdges: null, edgeLimitExceeded: false });
+  if (!observations) return Object.freeze({ countedInputEdges: null, edgeLimitExceeded: false });
   const selected = new Set(observations.selections.map(row => row.implementationId));
-  let inputEdges = 0;
+  // Only a complete selection census authorizes Einput. Positive membership
+  // still permits the independent known-consumer/unique-many-slot check.
+  let inputEdges: number | null = observations.selectionCensusComplete ? 0 : null;
   for (const binding of observations.bindings) {
     if (!selected.has(binding.consumerImplementationId)) continue;
     // Einput counts occurrences even when the consumer, slot or provider will
     // later fail validation. It is neither Evalid nor distinct adjacency.
-    inputEdges = Math.min(semanticResourceLimits.graphEdges + 1, inputEdges + binding.providerOccurrences);
+    if (inputEdges !== null) inputEdges = Math.min(semanticResourceLimits.graphEdges + 1, inputEdges + binding.providerOccurrences);
     if (binding.slotId === null || binding.providerOccurrences <= semanticResourceLimits.providersPerManySlot) continue;
     const consumer = declarations.implementation(binding.consumerImplementationId);
     const slot = consumer?.slot(binding.slotId);
@@ -27,7 +29,7 @@ export function collectGraphResourceLimits(observations: ProfileResourceObservat
       details: Object.freeze({ limitName: "providersPerManySlot", limit: semanticResourceLimits.providersPerManySlot,
         actual: semanticResourceLimits.providersPerManySlot + 1 }) }));
   }
-  const edgeLimitExceeded = inputEdges > semanticResourceLimits.graphEdges;
+  const edgeLimitExceeded = inputEdges !== null && inputEdges > semanticResourceLimits.graphEdges;
   if (edgeLimitExceeded) collector.addUnique(Object.freeze({ code: "input.limit-exceeded", phase: "graph", coordinate: Object.freeze({}),
     path: Object.freeze([]), details: Object.freeze({ limitName: "graphEdges", limit: semanticResourceLimits.graphEdges,
       actual: semanticResourceLimits.graphEdges + 1 }) }));

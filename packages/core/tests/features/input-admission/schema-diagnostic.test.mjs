@@ -47,6 +47,49 @@ test("unsupported document versions do not invent this version's missing fields"
     [expected("schema.unsupported-version", [field("profile"), field("schemaVersion")], "unsupported-version")]);
 });
 
+test("malformed UTF-16 and valid surrogate pairs retain exactly one diagnostic at the original identity path", () => {
+  const cases = [
+    ["\ud800", "schema.invalid-value"], ["\udbff", "schema.invalid-value"],
+    ["\udc00", "schema.invalid-value"], ["\udfff", "schema.invalid-value"],
+    ["\ud800x", "schema.invalid-value"], ["\ud800\ud800", "schema.invalid-value"],
+    ["\udc00\ud800", "schema.invalid-value"], ["\ud83d\ude00\ud800", "schema.invalid-value"],
+    ["\ud83d\ude00", "identity.invalid"], ["\ud800\udc00", "identity.invalid"],
+    ["\udbff\udfff", "identity.invalid"],
+  ];
+  for (const [suffix, code] of cases) {
+    const local = module(); local.owner.path[0] = `module${suffix}`;
+    const portable = module(); portable.moduleId = `example/module${suffix}`;
+    const profileValue = profile(); profileValue.profileId = `example/profile${suffix}`;
+    for (const [validate, value, locator, path] of [
+      [validateDeclarationShape, local, { kind: "declaration", ordinal: 3 },
+        [field("declarations"), index(3), field("owner"), field("path"), index(0)]],
+      [validateDeclarationShape, portable, { kind: "declaration", ordinal: 3 },
+        [field("declarations"), index(3), field("moduleId")]],
+      [validateProfileShape, profileValue, { kind: "profile" },
+        [field("profile"), field("profileId")]],
+    ]) {
+      assert.deepEqual(project(validate, value, locator), {
+        valid: false, diagnostics: [expected(code, path, "invalid-format")],
+      }, JSON.stringify({ suffix, path }));
+    }
+  }
+});
+
+test("the accepted terminal-surrogate object projection fails once and its repair succeeds", async () => {
+  const vectors = await json("architecture/qualification/v1/decoder-vectors.json");
+  const fixture = vectors.cases.find(entry => entry.name === "lone-surrogate-escape");
+  const locator = { kind: "declaration", ordinal: 2 };
+  // This projects already-decoded objects; it does not qualify a raw decoder.
+  assert.deepEqual(project(validateDeclarationShape, JSON.parse(fixture.source), locator), {
+    valid: false,
+    diagnostics: [expected("schema.invalid-value",
+      [field("declarations"), index(2), field("owner"), field("path"), index(0)], "invalid-format")],
+  });
+  assert.deepEqual(project(validateDeclarationShape, JSON.parse(fixture.repairedSource), locator), {
+    valid: true, diagnostics: [],
+  });
+});
+
 test("numeric schema failures preserve invalid-type versus invalid-format without retaining values", () => {
   for (const [value, reason] of [[0.5, "invalid-type"], [NaN, "invalid-type"], [Infinity, "invalid-type"],
     [-0, "invalid-format"], [Number.MAX_SAFE_INTEGER + 1, "invalid-format"], [-1, "invalid-format"], [1025, "invalid-format"]]) {

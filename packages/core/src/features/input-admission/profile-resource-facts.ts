@@ -11,7 +11,8 @@ export type BindingResourceCount = {
 // These are resource-only observations, never an admitted semantic profile.
 // A schema-invalid profile cannot create declarations, edges or plan bindings.
 export type ProfileResourceFacts = {
-  readonly selections: CompositionProfile["selections"] | null;
+  readonly selections: CompositionProfile["selections"];
+  readonly selectionCensusComplete: boolean;
   readonly bindings: readonly BindingResourceCount[];
 };
 
@@ -26,14 +27,16 @@ function portable(value: unknown): value is string {
 
 /** Only a completely resource-bounded, plain cooperative document enters. */
 export function profileResourceFacts(value: unknown): ProfileResourceFacts {
-  let selections: CompositionProfile["selections"][number][] | null = null;
+  const selections: CompositionProfile["selections"][number][] = [];
+  let selectionCensusComplete = false;
   const selectionRows = ownValue(value, "selections");
   if (Array.isArray(selectionRows) && selectionRows.length <= admissionLimits.selections) {
-    selections = [];
+    selectionCensusComplete = true;
     for (const row of selectionRows) {
       const moduleId = ownValue(row, "moduleId");
       const implementationId = ownValue(row, "implementationId");
-      if (!portable(moduleId) || !portable(implementationId)) { selections = null; break; }
+      // A failed row withholds completeness, not other positive membership.
+      if (!portable(moduleId) || !portable(implementationId)) { selectionCensusComplete = false; continue; }
       selections.push(Object.freeze({ moduleId, implementationId }));
     }
   }
@@ -50,5 +53,5 @@ export function profileResourceFacts(value: unknown): ProfileResourceFacts {
       bindings.push(Object.freeze({ ordinal, consumerImplementationId, slotId, providerOccurrences: providers.length }));
     }
   }
-  return Object.freeze({ selections: selections === null ? null : Object.freeze(selections), bindings: Object.freeze(bindings) });
+  return Object.freeze({ selections: Object.freeze(selections), selectionCensusComplete, bindings: Object.freeze(bindings) });
 }

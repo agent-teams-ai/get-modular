@@ -6,12 +6,26 @@ import { admissionLimits, type DocumentLimit, type ReportDocumentLimit } from ".
 // schema, not semantic relationships or public diagnostic eligibility.
 // Violations stream to the caller: no unbounded error list or input is retained.
 export type DocumentShapeViolation = {
-  readonly rule: "type" | "required" | "constant" | "integer" | "range" | "identity" | "size" | "closed" | "unsupported-version";
+  readonly rule: "type" | "required" | "constant" | "integer" | "range" | "unicode" | "identity" | "size" | "closed" | "unsupported-version";
   readonly path: readonly (string | number)[];
 };
 type Report = (violation: DocumentShapeViolation) => void;
 type Path = readonly (string | number)[];
 type Check = (value: unknown, path: Path) => void;
+
+// Resource preflight bounds this scan; malformed code units precede ASCII grammar.
+function isWellFormedUtf16(value: string): boolean {
+  for (let index = 0; index < value.length; index += 1) {
+    const unit = value.charCodeAt(index);
+    if (unit >= 0xd800 && unit <= 0xdbff) {
+      if (index + 1 >= value.length) return false;
+      const next = value.charCodeAt(index + 1);
+      if (next < 0xdc00 || next > 0xdfff) return false;
+      index += 1;
+    } else if (unit >= 0xdc00 && unit <= 0xdfff) return false;
+  }
+  return true;
+}
 
 function checks(report: Report, reportLimit?: ReportDocumentLimit) {
   let valid = true;
@@ -55,6 +69,7 @@ function checks(report: Report, reportLimit?: ReportDocumentLimit) {
   function identity(matchesFormat: (value: string) => boolean, min: number, max: number): Check {
     return (value, path) => {
       if (typeof value !== "string") fail("type", path);
+      else if (!isWellFormedUtf16(value)) fail("unicode", path);
       else {
         // The meter already bounded string work. The byte limit is meaningful
         // only after the complete ASCII grammar succeeds, independent of the

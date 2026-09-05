@@ -118,7 +118,7 @@ test("many resource evidence requires a selected known consumer and a unique kno
     if (variant === "incomplete-selections") p.selections.push({ moduleId: null, implementationId: "x/unknown" });
     const result = compile({ declarations: [app, extra], profile: p });
     assert.equal(result.ok, false, variant);
-    assert.equal(result.diagnostics.some(row => row.details.limitName === "providersPerManySlot"), false, variant);
+    assert.equal(result.diagnostics.some(row => row.details.limitName === "providersPerManySlot"), variant === "incomplete-selections", variant);
     assert.equal(result.diagnostics.some(row => row.code.startsWith("binding.")), false, variant);
   }
 });
@@ -126,7 +126,7 @@ test("many resource evidence requires a selected known consumer and a unique kno
 test("resource observations count all selected occurrences before validation and saturate independently of slot knowledge", () => {
   const app = declaration("app");
   const c = collector(); const declarations = createDeclarationCensus([app], true, c);
-  const observations = { selections: profile([app]).selections, bindings: [
+  const observations = { selections: profile([app]).selections, selectionCensusComplete: true, bindings: [
     { ordinal: 0, consumerImplementationId: app.implementationId, slotId: null, providerOccurrences: 262144 },
     { ordinal: 1, consumerImplementationId: app.implementationId, slotId: "unknown", providerOccurrences: 1000 },
     { ordinal: 2, consumerImplementationId: "x/unselected", slotId: null, providerOccurrences: 999999 },
@@ -135,7 +135,7 @@ test("resource observations count all selected occurrences before validation and
   assert.deepEqual(result, { countedInputEdges: 262145, edgeLimitExceeded: true });
   assert.deepEqual(c.finish(), [limitError("graphEdges", "graph")]);
   assert.equal(Object.isFrozen(result), true);
-  for (const input of [null, { selections: null, bindings: observations.bindings }]) {
+  for (const input of [null, { selections: [], selectionCensusComplete: false, bindings: observations.bindings }]) {
     const c = collector();
     assert.deepEqual(collectGraphResourceLimits(input, declarations, c), { countedInputEdges: null, edgeLimitExceeded: false });
     assert.deepEqual(c.finish(), []);

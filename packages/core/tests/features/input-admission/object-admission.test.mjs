@@ -57,7 +57,7 @@ test("admission owns all containers synchronously, preserving every caller order
   input.profile.selections[0].implementationId = "x/changed";
   assert.deepEqual(value.declarations, before.declarations);
   assert.deepEqual(value.profile, before.profile);
-  assert.deepEqual(value.profileResources, { selections: before.profile.selections,
+  assert.deepEqual(value.profileResources, { selections: before.profile.selections, selectionCensusComplete: true,
     bindings: [{ ordinal: 0, consumerImplementationId: "x/i", slotId: "s", providerOccurrences: 2 }] });
 });
 
@@ -187,7 +187,7 @@ test("resource-only profile counts retain oversized and duplicate provider occur
   const { value, diagnostics } = admit(input);
   assert.equal(value.profile, null);
   assert.equal(value.allDeclarationsAdmitted, true);
-  assert.deepEqual(value.profileResources, { selections: input.profile.selections,
+  assert.deepEqual(value.profileResources, { selections: input.profile.selections, selectionCensusComplete: true,
     bindings: [{ ordinal: 0, consumerImplementationId: "x/i", slotId: "s", providerOccurrences: 1025 }] });
   assert.deepEqual(diagnostics.map(item => item.code), ["schema.invalid-value"]);
   // The named many/graph limits still need semantic consumer/slot/selection
@@ -201,7 +201,7 @@ test("resource evidence preserves incomplete selection census and never stores m
     { ...binding(), consumerImplementationId: "INVALID" }];
   const { value } = admit(input);
   assert.equal(value.profile, null);
-  assert.deepEqual(value.profileResources, { selections: null,
+  assert.deepEqual(value.profileResources, { selections: [selection()], selectionCensusComplete: false,
     bindings: [{ ordinal: 0, consumerImplementationId: "x/i", slotId: null, providerOccurrences: 2 }] });
   assert.equal(JSON.stringify(value).includes("secret"), false);
   const version = world(); version.profile.schemaVersion = 2;

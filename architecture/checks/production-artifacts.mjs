@@ -1,5 +1,5 @@
 import { lstat, readFile, readdir } from "node:fs/promises";
-import { resolve } from "node:path";
+import { posix, resolve } from "node:path";
 
 import {
   indexSnapshotPaths,
@@ -331,17 +331,21 @@ function conditionOrderViolations(actual, expected, label) {
 const GLOB_METACHARACTERS = /[*?[\]{}!()]/u;
 
 function normalizedFilesEntry(entry) {
-  let value = entry.trim();
-  while (value.startsWith("./")) value = value.slice(2);
-  while (value.endsWith("/")) value = value.slice(0, -1);
-  return value;
+  return posix.normalize(entry.trim());
 }
 
 function rootedFilesEntry(entry) {
-  const value = normalizedFilesEntry(entry);
-  if (value === "" || value === ".") return true;
-  const first = value.split("/")[0];
-  return first === "" || first === "." || first === ".." || GLOB_METACHARACTERS.test(first);
+  const normalized = normalizedFilesEntry(entry);
+  // Preserve the original prefix restriction too: normalizing */../dist must
+  // not erase a prohibited wildcard and turn it into an admitted literal root.
+  const original = entry.trim().replace(/^(?:\.\/)+/u, "");
+  return [original, normalized].some(value => {
+    // Require POSIX spelling rather than guessing whether a backslash escapes
+    // glob syntax or separates directories. Drive prefixes are not relative roots.
+    if (value.includes("\\") || /^[A-Za-z]:/u.test(value)) return true;
+    const first = value.split("/")[0];
+    return first === "" || first === "." || first === ".." || GLOB_METACHARACTERS.test(first);
+  });
 }
 
 function filesAllowlistViolations(filesField) {

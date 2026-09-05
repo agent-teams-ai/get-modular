@@ -3,7 +3,9 @@ import type { CompositionProfile, ModuleDeclaration } from "../authoring/interna
 // Consumer-owned resource observations. Structurally supplied by admission;
 // this feature does not import its implementation or interpret raw objects.
 export type ProfileResourceObservations = {
-  readonly selections: CompositionProfile["selections"] | null;
+  // Positive identity evidence survives an incomplete census; it cannot prove absence.
+  readonly selections: CompositionProfile["selections"];
+  readonly selectionCensusComplete: boolean;
   readonly bindings: readonly {
     readonly ordinal: number;
     readonly consumerImplementationId: string;
