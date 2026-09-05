@@ -124,13 +124,19 @@ independent object diagnostic, plan and digest expectations. The public barrel
 and separate direct qualification entry now execute the accepted complete
 object diagnostic partitions, normalization permutations, eight mixed
 cycle/depth recipes, complete P500 plan/digest and ADR-0020 coverage vectors.
-These source-build checks are not packed qualification or a completed M1.
+These source-build checks are not a completed M1. Disposable packed-consumer
+regressions also execute the same object expectations through the installed
+package root. They verify Node import/require identity, closed deep imports,
+conditional resolution and the four TypeScript modes with 1000 literal
+declarations. Negative modes assert their exact diagnostic codes. These tests
+do not retain publication evidence or establish a minimum TypeScript version.
 Closure prerequisites require every selection to resolve, including non-root
 rows. Suppressed absence diagnostics from an incomplete declaration census do
 not turn an unresolved selection into positive closure evidence.
 Diagnostic producers still need to normalize and deduplicate their eligible
-candidates before collection. Packed consumers, the remaining public resource
-matrix, own-graph witness and archive custody remain pending. Accepted
+candidates before collection. The remaining public resource matrix, exhaustive
+archive and declaration audits, minimum-version consumers, own-graph witness
+and retained archive custody remain pending. Accepted
 ADR-0009 names the one pre-1.0 public surface: `compileComposition`,
 `compileCompositionJson`, `defineModule`, `required`, `optional`, `many` and
 the types `CompileCompositionResult`, `ModuleDeclaration`,

@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { authoringScale } from "../../../../../tests/qualification/support/type-scale.mjs";
 
 const require = createRequire(import.meta.url);
 const tsc = join(dirname(require.resolve("typescript/package.json")), "bin/tsc");
@@ -129,14 +130,7 @@ function result(value: CompileCompositionResult) {
 });
 
 test("1000 distinct authored declarations preserve their literal identities", async t => {
-  const declarations = Array.from({ length: 1000 }, (_, index) => `
-const declaration${index} = defineModule({ kind: 'get-modular.module-declaration', schemaVersion: 1,
-  moduleId: 'example/module-${index}', implementationId: 'example/module-${index}/default',
-  owner: { authority: 'example', path: ['modules'] }, provides: [], slots: [],
-});
-const identity${index}: 'example/module-${index}' = declaration${index}.moduleId;
-`).join("\n");
-  await compile(t, { "case.ts": `import { defineModule, type ModuleDeclaration } from ${importPath};\n${declarations}\nconst all: readonly ModuleDeclaration[] = [${Array.from({ length: 1000 }, (_, index) => `declaration${index}`).join(",")}];` });
+  await compile(t, { "case.ts": `import { defineModule, type ModuleDeclaration } from ${importPath};\n${authoringScale}` });
 });
 
 test("JavaScript checkJs callers retain mutable helper types", async t => {
