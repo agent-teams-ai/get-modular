@@ -5,14 +5,16 @@ workspace:
 governedRoots:
   - packages/core/src
 boundaries:
-  # Admission's resource pass remains private to its owner. Schema validation,
-  # snapshots and module construction are later admission slices.
+  # Admission's resource and snapshot helpers remain private to their owner.
+  # Closed validation and module construction are later admission slices.
   - id: core-input-admission
     roots:
       - packages/core/src/features/input-admission/object-resource-meter.ts
+      - packages/core/src/features/input-admission/document-snapshot.ts
     entrypoints: []
     allow:
-      boundaries: []
+      boundaries:
+        - core-authoring
       packages: []
       builtins: []
       runtimeReferences: []
