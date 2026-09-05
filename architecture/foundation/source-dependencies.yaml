@@ -5,6 +5,21 @@ workspace:
 governedRoots:
   - packages/core/src
 boundaries:
+  # Graph algorithms operate only on an already bounded selected graph and
+  # remain owner-private until semantics establishes their prerequisites.
+  - id: core-composition-semantics
+    roots:
+      - packages/core/src/features/composition-semantics/graph-components.ts
+      - packages/core/src/features/composition-semantics/ready-queue.ts
+      - packages/core/src/features/composition-semantics/selected-graph.ts
+      - packages/core/src/features/composition-semantics/graph-diagnostics.ts
+    entrypoints: []
+    allow:
+      boundaries:
+        - core-diagnostics
+      packages: []
+      builtins: []
+      runtimeReferences: []
   # Admission stays private pending independent review, semantic resource
   # integration and module construction. It consumes the diagnostic library,
   # never a concrete canonicalizer or an extra dependency slot.

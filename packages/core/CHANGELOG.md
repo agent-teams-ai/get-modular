@@ -17,6 +17,8 @@
 - Private synchronous object admission with batch preflight, independent
   document snapshots, streamed resource/schema diagnostics and explicit
   resource-only profile observations for later semantic prerequisites.
+- Private iterative selected-graph SCC, dependency order, root closure and
+  residual depth with streamed cycle/depth diagnostics and operation counters.
 - Package typecheck, build and tests with Foundation source-dependency checks.
 
 This package is not published. The public compiler, packed-consumer evidence
