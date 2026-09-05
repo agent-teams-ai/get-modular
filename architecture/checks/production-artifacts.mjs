@@ -1,4 +1,4 @@
-import { readFile, readdir } from "node:fs/promises";
+import { lstat, readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import {
@@ -445,6 +445,7 @@ export async function productionArtifactSymlinkPaths(repositoryRoot = process.cw
 
 export async function productionArtifactPaths(repositoryRoot = process.cwd(), indexSnapshot) {
   const artifacts = new Set();
+  const capturedPaths = new Set(indexSnapshot ? indexSnapshotPaths(indexSnapshot) : []);
   const rootPackageBytes = indexSnapshot
     ? await readIndexSnapshotFile(indexSnapshot, "package.json", "root package manifest")
     : await readFile(resolve(repositoryRoot, "package.json"));
@@ -473,10 +474,23 @@ export async function productionArtifactPaths(repositoryRoot = process.cwd(), in
 
   if (indexSnapshot) {
     for (const path of indexSnapshotSymlinkPaths(indexSnapshot)) artifacts.add(path);
-    for (const path of indexSnapshotPaths(indexSnapshot)) {
+    for (const path of capturedPaths) {
       if (!isTrackedProductionArtifactPath(path)) continue;
       await readIndexSnapshotFile(indexSnapshot, path, "production artifact");
       artifacts.add(path);
+    }
+  }
+  // The Core build emits ignored JavaScript/declarations into dist. They are
+  // qualified as build/archive output, not as authored Git-index source. Keep
+  // staged output, manifests, symlinks, and every other location in the source
+  // inventory. An orphan dist tree cannot stand in for a real source package.
+  if (indexSnapshot && artifacts.has("packages/core/package.json")
+    && [...artifacts].some(path => path.startsWith("packages/core/src/") && PRODUCTION_SOURCE.test(path))) {
+    for (const path of artifacts) {
+      if (path.startsWith("packages/core/dist/") && PRODUCTION_SOURCE.test(path) && !capturedPaths.has(path)
+        && (await lstat(resolve(repositoryRoot, path))).isFile()) {
+        artifacts.delete(path);
+      }
     }
   }
   return [...artifacts].sort(compareStrings);

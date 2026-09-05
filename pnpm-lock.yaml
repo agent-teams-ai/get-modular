@@ -66,6 +66,8 @@ importers:
         specifier: 'catalog:'
         version: 2.9.0
 
+  packages/core: {}
+
 packages:
 
   '@agent-teams/docs-protocol@0.4.1':

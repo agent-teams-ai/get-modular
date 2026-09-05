@@ -32,7 +32,10 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "architecture:feature-module-profile":
     "node architecture/checks/feature-module-standard-profile.mjs",
   "architecture:feature-module-profile:test":
-    "node --test tests/feature-module-standard-profile.test.mjs",
+    "node --test tests/feature-module-standard-profile.test.mjs tests/source-dependencies.test.mjs",
+  "core:typecheck": "tsc -p packages/core/tsconfig.json --noEmit",
+  "core:build": "tsc -p packages/core/tsconfig.json",
+  "core:test": 'node --test "packages/core/tests/**/*.test.mjs"',
   "contracts:check": "node architecture/checks/v1-contract.mjs",
   "contracts:test": "node --test tests/v1-contract.test.mjs tests/compiler-engineer-examples.test.mjs tests/implementation-clarifications.test.mjs",
   "docs:check": "agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml",
@@ -59,6 +62,9 @@ const ROOT_SCRIPT_COMMANDS = Object.freeze({
     "docs:protocol:check",
     "architecture:feature-module-profile",
     "architecture:feature-module-profile:test",
+    "core:typecheck",
+    "core:build",
+    "core:test",
     "contracts:check",
     "contracts:test",
     "qualification:resource-profile",
@@ -73,6 +79,9 @@ const ROOT_SCRIPT_COMMANDS = Object.freeze({
     "foundation:check",
     "architecture:feature-module-profile",
     "docs:check",
+    "core:typecheck",
+    "core:build",
+    "core:test",
   ]),
 });
 

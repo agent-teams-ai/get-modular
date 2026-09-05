@@ -15,9 +15,9 @@
     "url": "git+https://github.com/agent-teams-ai/get-modular.git"
   },
   "scripts": {
-    "check": "pnpm runtime:preflight && pnpm foundation:check && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm contracts:check && pnpm contracts:test && pnpm qualification:resource-profile && pnpm qualification:v1-diagnostics-protocol && pnpm qualification:v1-graph-semantics && pnpm qualification:self-composition-templates && pnpm governance:check && pnpm governance:test",
+    "check": "pnpm runtime:preflight && pnpm foundation:check && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm core:typecheck && pnpm core:build && pnpm core:test && pnpm contracts:check && pnpm contracts:test && pnpm qualification:resource-profile && pnpm qualification:v1-diagnostics-protocol && pnpm qualification:v1-graph-semantics && pnpm qualification:self-composition-templates && pnpm governance:check && pnpm governance:test",
     "check:changed": "agent-teams-foundation agent-workflow changed --consumer .",
-    "check:fast": "pnpm runtime:preflight && pnpm foundation:check && pnpm architecture:feature-module-profile && pnpm docs:check",
+    "check:fast": "pnpm runtime:preflight && pnpm foundation:check && pnpm architecture:feature-module-profile && pnpm docs:check && pnpm core:typecheck && pnpm core:build && pnpm core:test",
     "docs:changed": "pnpm docs:check && pnpm docs:quality",
     "docs:check": "agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml",
     "docs:doctor": "agent-teams-docs doctor --consumer . --profile architecture/foundation/docs-protocol.yaml",
@@ -34,7 +34,7 @@
     "foundation:check": "agent-teams-foundation check && pnpm foundation:assert-dev-only && pnpm foundation:assert-registry",
     "foundation:status": "agent-teams-foundation status",
     "architecture:feature-module-profile": "node architecture/checks/feature-module-standard-profile.mjs",
-    "architecture:feature-module-profile:test": "node --test tests/feature-module-standard-profile.test.mjs",
+    "architecture:feature-module-profile:test": "node --test tests/feature-module-standard-profile.test.mjs tests/source-dependencies.test.mjs",
     "governance:check": "node architecture/checks/governance.mjs",
     "governance:test": "node --test tests/governance.test.mjs tests/private-core-start.test.mjs",
     "qualification:resource-profile": "node tests/qualification/v1-resource-profile.mjs",
@@ -42,7 +42,10 @@
     "qualification:v1-graph-semantics": "node --test tests/qualification/v1-graph-semantics.mjs",
     "qualification:self-composition-templates": "node --test tests/self-composition-templates.test.mjs",
     "precheck:changed": "pnpm runtime:preflight",
-    "runtime:preflight": "node architecture/checks/node-version.mjs"
+    "runtime:preflight": "node architecture/checks/node-version.mjs",
+    "core:typecheck": "tsc -p packages/core/tsconfig.json --noEmit",
+    "core:build": "tsc -p packages/core/tsconfig.json",
+    "core:test": "node --test \"packages/core/tests/**/*.test.mjs\""
   },
   "devDependencies": {
     "@agent-teams/docs-protocol": "0.4.1",

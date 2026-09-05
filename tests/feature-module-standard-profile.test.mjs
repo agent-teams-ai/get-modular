@@ -71,6 +71,7 @@ test("rejects silent scope, mapping, and authority drift", () => {
 
 test("accepts ordered conformance states and rejects unsupported status values", () => {
   const premature = clone(profile);
+  premature.adoption.admission.status = "pre-production";
   premature.adoption.conformance.structural.status = "structural-conformant";
   assert.throws(() => validate({ profile: premature }), /requires source-admitted status/u);
 
@@ -198,7 +199,7 @@ test("keeps an empty pre-production repository honestly not-claimed", () => {
   assert.equal(validateFirstProductionPackageAdmission({
     publicationBlockerIds: new Set(["OD-005"]),
     productionArtifacts: [],
-    admission: profile.adoption.admission,
+    admission: { ...profile.adoption.admission, status: "pre-production" },
     foundationConfig: { schemaVersion: 1 },
     packageJson,
     sourceDependencyPolicyPresent: false,

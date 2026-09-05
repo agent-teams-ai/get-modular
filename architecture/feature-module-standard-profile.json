@@ -58,7 +58,7 @@
       }
     ],
     "admission": {
-      "status": "pre-production",
+      "status": "source-admitted",
       "production_root": "packages",
       "foundation": {
         "package": "@agent-teams/engineering-foundation",
@@ -71,7 +71,7 @@
     "conformance": {
       "structural": {
         "status": "not-claimed",
-        "rationale": "No production module has been source-admitted and passed the complete structural fixture matrix.",
+        "rationale": "The private canonicalization slice is source-admitted; complete module structural evidence and promotion remain pending.",
         "required_evidence": [
           "source-dependency policy and deterministic validator",
           "one valid fixture for every materialized module role",
