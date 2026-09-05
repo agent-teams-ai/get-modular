@@ -38,7 +38,9 @@ requires successor authority. The checker is not the specification.
 
 ## Accepted contract and public naming
 
-Get Modular has one accepted contract and no production package yet. Accepted
+Get Modular has one accepted contract. Its first private production slice is
+the owned canonicalization feature in `packages/core`; the public compiler and
+packed publication subject remain pending. Accepted
 ADR-0009 names the one pre-1.0 public surface: `compileComposition`,
 `compileCompositionJson`, `defineModule`, `required`, `optional`, `many` and
 the types `CompileCompositionResult`, `ModuleDeclaration`,
@@ -251,8 +253,8 @@ package:
   `.ts` specifiers inside emitted declaration files.
 - Tests run with `node --test` and an explicit glob against the built `dist`
   output; the build is `tsc -p` for the package configuration.
-- The `core:typecheck`, `core:build`, and `core:test` scripts and their place
-  in `check:fast` and `check` arrive with the first package, not before. The
+- The `core:typecheck`, `core:build`, and `core:test` scripts run the first
+  private package and are included in `check:fast` and `check`. The
   root script list is closed: `architecture:feature-module-profile` fails with
   "must use its exact closed pnpm command chain" until the same pull request
   updates the script definitions in

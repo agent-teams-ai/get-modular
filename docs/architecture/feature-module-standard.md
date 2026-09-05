@@ -138,8 +138,12 @@ Anchoring the claim bytes also binds its subject, prerequisite relationship,
 and evidence digests. A `reviewed` record is evidence or analysis only and
 makes no admission or conformance claim.
 
-The repository is currently `pre-production`. Structural conformance and
-runtime conformance are independently `not-claimed`. A future production
-package may be source-admitted without either conformance claim; structural
-evidence cannot stand in for packed runtime execution, and packed runtime
-execution cannot bypass source admission or structural qualification.
+The private canonicalization slice in `packages/core` is `source-admitted`.
+Structural conformance and runtime conformance remain independently
+`not-claimed`. The Foundation policy enumerates materialized files and their
+allowed entrypoints; its executable fixtures in
+`tests/source-dependencies.test.mjs` cover source ownership, dependency edges,
+cycles and rejected undeclared layers. They do not establish complete Core
+structural conformance. Structural evidence cannot stand in for packed runtime
+execution, and packed runtime execution cannot bypass source admission or
+structural qualification.
