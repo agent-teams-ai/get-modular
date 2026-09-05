@@ -348,9 +348,15 @@ function rootedFilesEntry(entry) {
   let braceDepth = 0;
   for (const character of original) {
     if (character === "{") braceDepth += 1;
-    else if (character === "}") braceDepth = Math.max(0, braceDepth - 1);
+    else if (character === "}") {
+      // npm may recover malformed groups by treating an earlier close as
+      // literal. Reject unmatched closes instead of accepting that recovery.
+      if (braceDepth === 0) return true;
+      braceDepth -= 1;
+    }
     else if (character === "/" && braceDepth > 0) return true;
   }
+  if (braceDepth !== 0) return true;
   let seenPattern = false;
   for (const segment of original.split("/")) {
     const pattern = GLOB_METACHARACTERS.test(segment);

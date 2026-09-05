@@ -28,6 +28,13 @@ for (const row of cases) test(`ADR-0020 ${row.id} obeys its complete permitted f
     const admitted = admitObjectInput(input, collector);
     const result = analyzeCompositionSemantics(admitted, collector);
     assert.ok(row.permittedResults.some(expected => isDeepStrictEqual(result, expected)), `${variant}: ${JSON.stringify(result)}`);
+    // These families vary the exhausted dimension, not its enumeration. Their
+    // union cannot authorize a limit that this particular input never reaches.
+    if (["prior-depth-then-batch", "shallow-then-batch"].includes(row.id)) {
+      const expectedLimit = variant === "string" ? "aggregateStringBytes" : "jsonValueOccurrences";
+      assert.deepEqual(result.diagnostics.filter(d => ["jsonValueOccurrences", "aggregateStringBytes"].includes(d.details.limitName))
+        .map(d => d.details.limitName), [expectedLimit], `${row.id}/${variant}: truthful batch limit`);
+    }
     const batchRejected = result.diagnostics.some(d => ["jsonValueOccurrences", "aggregateStringBytes"].includes(d.details.limitName));
     if (batchRejected) assert.deepEqual(admitted, { declarations: [], allDeclarationsAdmitted: false,
       profile: null, profileResources: null, hasErrors: true });
@@ -59,13 +66,17 @@ test("batch rejection allocates no downstream document snapshot, including earli
   } finally { Object.freeze = original; }
 });
 
-test("oversized hidden tails stop before any proportional descriptor scan or getter", () => {
+test("dense and sparse oversized hidden tails stop before any proportional descriptor scan or getter", () => {
   const original = Object.getOwnPropertyDescriptors;
   let calls = 0;
   try {
-    for (const variant of ["string-first", "string-last", "depth-first", "depth-last"]) {
+    for (const dense of [false, true]) for (const variant of ["string-first", "string-last", "depth-first", "depth-last"]) {
       const values = coverageInput("oversized-array-hidden-tail", variant).profile.unknown;
-      Object.defineProperty(values, "1", { enumerable: true, get() { calls += 1; throw Error("getter"); } });
+      if (dense) {
+        const index = variant.endsWith("first") ? 0 : values.length - 1;
+        const hidden = values[index];
+        values.fill(null); values[index] = hidden;
+      } else Object.defineProperty(values, "1", { enumerable: true, get() { calls += 1; throw Error("getter"); } });
       Object.getOwnPropertyDescriptors = value => {
         assert.notEqual(value, values, "rejected length must precede descriptor table allocation");
         return original(value);

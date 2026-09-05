@@ -2231,6 +2231,7 @@ test("the files allowlist normalizes POSIX paths without erasing prohibited pref
     "dist", "dist/**", "./dist", "dist/", " dist/** ",
     "dist//nested/./**", "dist/nested/../**", "dist/nested/..", "dist/../dist/**",
     "dist/{esm,types}/**", "dist/[a-z]*/**", "dist/!(private)/**", "dist/.../**",
+    "dist/{esm,{types,compat}}/**", "dist/{esm,types}{debug,release}/**",
   ]) {
     const inventory = await inventoryFor([entry]);
     for (const publicationBlocked of [false, true]) {
@@ -2246,6 +2247,7 @@ test("the files allowlist normalizes POSIX paths without erasing prohibited pref
     "dist/{.,safe}{.,safe}/**", "dist/.{,safe}./**", "dist/{.,safe}./**",
     "dist/{a/b,..,c/d}/**", "dist/{a/b,.,c/d}{e/f,.,g/h}/**",
     "dist/{a/b,c/d}/**", "dist/{safe,{a/b,..},other}/**",
+    "dist/{a}/b,..,c/d}/**", "dist/{esm,types", "dist/esm,types}",
     "dist/../../outside", "../dist", "../outside/../dist",
     "/dist", "/dist/../dist", "//server/share/dist",
     "**/../dist", "?*/../dist", "[a-z]*/../dist", "{one,two}/../dist", "!(src)/../dist",
