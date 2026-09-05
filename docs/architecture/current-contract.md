@@ -41,17 +41,22 @@ requires successor authority. The checker is not the specification.
 Get Modular has one accepted contract. Private features in `packages/core`
 currently implement owned canonicalization, inert authoring contracts,
 bounded diagnostic ordering and immutable plan output with its digest.
-Admission has private object-resource accounting, closed document-shape checks
-and snapshot helpers. Shape checks stream safe structural violations from
-resource-bounded plain documents; they do not establish semantic facts or
-resource diagnostic eligibility. A private schema mapper supplies bounded,
-owned diagnostics with safe invocation locators. Unknown document versions
-suppress checks that require the supported schema; integer-format failures
-remain distinct from type failures. Identity grammar has one iterative owner,
-shared with shape checking and available before identifier-byte accounting.
-Snapshot helpers copy and freeze already validated declarations and profiles.
-Invocation and batch admission, resource diagnostic mapping and the admission
-module factory remain pending. These helpers have no cross-feature entry.
+Admission now has a private synchronous object-admission stage for the accepted
+cooperative invocation record and dense ordinary declaration list. It proves
+batch resource bounds before allocating document snapshots, admits complete
+documents independently, and streams unique schema and admission-resource
+diagnostics into the caller's per-invocation collector. Failed declarations
+provide no partial semantic records; an incomplete admission census cannot
+prove absent identities. Accepted documents are copied and deeply frozen.
+Unknown versions suppress supported-schema checks; integer-format failures
+remain distinct from type failures. One iterative identity grammar precedes
+identifier-byte accounting. Oversized provider lists retain bounded,
+owned resource-only counts separately from an admitted semantic profile.
+Semantic selection/consumer/slot prerequisites and their graph/many limits
+remain pending; these counts cannot create graph edges or plan bindings.
+Malformed wrapper/carrier classifications remain outside this private stage's
+claimed domain. The admission module factory and cross-feature entry are
+pending independent review and downstream integration.
 Diagnostic producers still need to normalize and deduplicate their eligible
 candidates before collection. The public compiler and packed
 publication subject remain pending. Accepted

@@ -2,9 +2,10 @@
 // schema, snapshot values, emit diagnostics or establish semantic facts.
 // The graph is cooperative trusted-realm data (ADR-0018), not a Proxy sandbox.
 // Native reflection allocations are outside the portable heap claim.
-const valueLimit = 2_097_152;
-const stringLimit = 8_388_608;
-const depthLimit = 32;
+import { admissionLimits } from "./resource-limits.js";
+const valueLimit = admissionLimits.jsonValueOccurrences;
+const stringLimit = admissionLimits.aggregateStringBytes;
+const depthLimit = admissionLimits.jsonDepth;
 
 type BatchLimit = "jsonValueOccurrences" | "aggregateStringBytes";
 export type ObjectResourceScan = {
