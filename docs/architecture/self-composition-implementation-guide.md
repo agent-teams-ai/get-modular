@@ -646,7 +646,8 @@ configuration compiles these explicit entries and their imports:
 }
 ```
 
-The last two entries are added in M3 when the emitter exists. No seed entry
+The emitter entry is added in M3. M1 also builds the variant allowlist for its
+independent construction witness; this adds no emitter or generated entry. No seed entry
 may import `stage1-entry.variant.ts` or any generated source. The harness
 uses the built direct variant, profile and emitter to write
 `src/composition/generated/stage1.variant.ts`, and only then runs

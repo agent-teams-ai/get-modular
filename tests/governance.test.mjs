@@ -80,7 +80,7 @@ const sourceMap = {
   }],
 };
 
-for (const outputRoot of ["dist", "dist-test", "dist-stage0"]) {
+for (const outputRoot of ["dist", "dist-test", "dist-stage0", "dist-seed"]) {
 test(`Core ${outputRoot} output does not require Git source custody or hide authored artifacts`, async () => {
   const fixture = await mkdtemp(join(tmpdir(), "get-modular-build-custody-"));
   try {

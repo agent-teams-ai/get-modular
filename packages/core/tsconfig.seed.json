@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist-seed"
+  },
+  "files": [
+    "self-composition/stage0-entry.variant.ts",
+    "self-composition/own-profile.variant.ts",
+    "self-composition/allowlist.variant.ts"
+  ],
+  "include": []
+}
