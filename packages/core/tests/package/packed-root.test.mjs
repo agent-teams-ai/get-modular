@@ -96,7 +96,7 @@ test("packed M1 exposes one root across Node and TypeScript consumers", async t 
   const fromConsumer = createRequire(join(consumer, "consumer.cjs"));
   const required = fromConsumer("@get-modular/core");
   const resolved = fromConsumer.resolve("@get-modular/core");
-  assert.equal(resolved, join(installed, "dist/index.js"));
+  assert.equal(await realpath(resolved), join(installed, "dist/index.js"));
   const namespace = await import(pathToFileURL(resolved).href);
 
   await t.test("Node import and require resolve one implementation and no private exports", () => {
