@@ -1,5 +1,5 @@
 import { lstat, readFile, readdir } from "node:fs/promises";
-import { resolve } from "node:path";
+import { posix, resolve } from "node:path";
 
 import {
   indexSnapshotPaths,
@@ -8,6 +8,8 @@ import {
 } from "./tracked-file-custody.mjs";
 
 const PRODUCTION_SOURCE = /\.(?:[cm]?js|jsx|[cm]?ts|tsx)$/u;
+// Current Core builds compile .ts inputs to .js and .d.ts only.
+const CORE_EMITTED_SOURCE = /(?:\.js|\.d\.ts)$/u;
 export const ACCEPTED_PACKAGE_NAMES = new Set([
   "@get-modular/conformance",
   "@get-modular/core",
@@ -68,6 +70,8 @@ const NON_PRODUCTION_DIRECTORIES = new Set([
   "tests",
 ]);
 const UNTRACKED_DIRECTORIES = new Set([".git", "node_modules"]);
+const CORE_BUILD_SOURCE_ROOTS = ["dist"]
+  .map(directory => `packages/core/${directory}/`);
 
 function compareStrings(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
@@ -331,17 +335,48 @@ function conditionOrderViolations(actual, expected, label) {
 const GLOB_METACHARACTERS = /[*?[\]{}!()]/u;
 
 function normalizedFilesEntry(entry) {
-  let value = entry.trim();
-  while (value.startsWith("./")) value = value.slice(2);
-  while (value.endsWith("/")) value = value.slice(0, -1);
-  return value;
+  return posix.normalize(entry.trim());
 }
 
 function rootedFilesEntry(entry) {
-  const value = normalizedFilesEntry(entry);
-  if (value === "" || value === ".") return true;
-  const first = value.split("/")[0];
-  return first === "" || first === "." || first === ".." || GLOB_METACHARACTERS.test(first);
+  const normalized = normalizedFilesEntry(entry);
+  // Preserve the original prefix restriction too: normalizing */../dist must
+  // not erase a prohibited wildcard and turn it into an admitted literal root.
+  const original = entry.trim().replace(/^(?:\.\/)+/u, "");
+  // Brace/extglob branches can hide `..` or an empty segment that changes the
+  // meaning of a later parent traversal. POSIX normalization does not expand
+  // patterns. Require parent traversal to be independent of glob expansion.
+  // A brace group spanning `/` can hide its parent alternative in a segment
+  // with no glob marker, or concatenate two separate `.` alternatives. Keep
+  // brace groups within one path component; callers can list paths separately.
+  let braceDepth = 0;
+  for (const character of original) {
+    if (character === "{") braceDepth += 1;
+    else if (character === "}") {
+      // npm may recover malformed groups by treating an earlier close as
+      // literal. Reject unmatched closes instead of accepting that recovery.
+      if (braceDepth === 0) return true;
+      braceDepth -= 1;
+    }
+    else if (character === "/" && braceDepth > 0) return true;
+  }
+  if (braceDepth !== 0) return true;
+  let seenPattern = false;
+  for (const segment of original.split("/")) {
+    const pattern = GLOB_METACHARACTERS.test(segment);
+    // Even .{,safe}. expands to `..`. Dot-bearing brace segments must use
+    // separate literal allowlist entries; no brace-expansion engine is needed.
+    if (/[{}]/u.test(segment) && segment.includes(".")) return true;
+    if (pattern && segment.includes("..") || seenPattern && segment === "..") return true;
+    seenPattern ||= pattern;
+  }
+  return [original, normalized].some(value => {
+    // Require POSIX spelling rather than guessing whether a backslash escapes
+    // glob syntax or separates directories. Drive prefixes are not relative roots.
+    if (value.includes("\\") || /^[A-Za-z]:/u.test(value)) return true;
+    const first = value.split("/")[0];
+    return first === "" || first === "." || first === ".." || GLOB_METACHARACTERS.test(first);
+  });
 }
 
 function filesAllowlistViolations(filesField) {
@@ -482,12 +517,12 @@ export async function productionArtifactPaths(repositoryRoot = process.cwd(), in
   }
   // The Core build emits ignored JavaScript/declarations into dist. They are
   // qualified as build/archive output, not as authored Git-index source. Keep
-  // staged output, manifests, symlinks, and every other location in the source
+  // authored TypeScript, staged output, manifests, symlinks, and every other location in the source
   // inventory. An orphan dist tree cannot stand in for a real source package.
   if (indexSnapshot && artifacts.has("packages/core/package.json")
     && [...artifacts].some(path => path.startsWith("packages/core/src/") && PRODUCTION_SOURCE.test(path))) {
     for (const path of artifacts) {
-      if (path.startsWith("packages/core/dist/") && PRODUCTION_SOURCE.test(path) && !capturedPaths.has(path)
+      if (CORE_BUILD_SOURCE_ROOTS.some(root => path.startsWith(root)) && CORE_EMITTED_SOURCE.test(path) && !capturedPaths.has(path)
         && (await lstat(resolve(repositoryRoot, path))).isFile()) {
         artifacts.delete(path);
       }
