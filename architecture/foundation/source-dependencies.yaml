@@ -163,3 +163,60 @@ boundaries:
       packages: []
       builtins: []
       runtimeReferences: []
+  - id: core-compiler-facade-contract
+    roots:
+      - packages/core/src/features/compiler-facade/ports.ts
+      - packages/core/src/features/compiler-facade/declaration.ts
+    entrypoints:
+      - packages/core/src/features/compiler-facade/ports.ts
+      - packages/core/src/features/compiler-facade/declaration.ts
+    allow:
+      boundaries:
+        - core-authoring
+        - core-diagnostics
+        - core-input-admission-contract
+        - core-composition-semantics-contract
+        - core-plan-output-contract
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: core-compiler-facade-implementation
+    roots:
+      - packages/core/src/features/compiler-facade/factory.ts
+    entrypoints:
+      - packages/core/src/features/compiler-facade/factory.ts
+    allow:
+      boundaries:
+        - core-compiler-facade-contract
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: core-direct-composition
+    roots:
+      - packages/core/src/composition/stage0.ts
+    entrypoints:
+      - packages/core/src/composition/stage0.ts
+    allow:
+      boundaries:
+        - core-canonicalization-owned-jcs
+        - core-composition-semantics
+        - core-input-admission
+        - core-plan-output-implementation
+        - core-compiler-facade-implementation
+        - core-compiler-facade-contract
+        - core-authoring
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: core-public-entrypoint
+    roots:
+      - packages/core/src/index.ts
+    entrypoints:
+      - packages/core/src/index.ts
+    allow:
+      boundaries:
+        - core-authoring
+        - core-direct-composition
+      packages: []
+      builtins: []
+      runtimeReferences: []

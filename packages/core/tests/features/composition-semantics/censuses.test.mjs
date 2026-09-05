@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { createDeclarationCensus } from "../../../dist/features/composition-semantics/declaration-census.js";
-import { createProfileCensus } from "../../../dist/features/composition-semantics/profile-census.js";
-import { createDiagnosticCollector } from "../../../dist/features/diagnostics/internal.js";
-import { createOwnedJcs } from "../../../dist/features/canonicalization/owned-jcs/factory.js";
+import { createDeclarationCensus } from "../../../dist-test/features/composition-semantics/declaration-census.js";
+import { createProfileCensus } from "../../../dist-test/features/composition-semantics/profile-census.js";
+import { createDiagnosticCollector } from "../../../dist-test/features/diagnostics/internal.js";
+import { createOwnedJcs } from "../../../dist-test/features/canonicalization/owned-jcs/factory.js";
 
 const root = new URL("../../../../../", import.meta.url);
 const json = async path => JSON.parse(await readFile(new URL(path, root), "utf8"));

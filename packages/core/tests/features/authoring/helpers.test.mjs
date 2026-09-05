@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { defineModule, required, optional, many } from "../../../dist/features/authoring/internal.js";
+import { defineModule, required, optional, many } from "../../../dist-test/features/authoring/internal.js";
 
 test("defineModule passes through every input without reading it", () => {
   for (const value of [null, undefined, 0, "invalid", {}, Object.freeze({})]) {

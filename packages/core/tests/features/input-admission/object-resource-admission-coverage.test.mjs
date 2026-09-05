@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { admitObjectInput } from "../../../dist/features/input-admission/object-admission.js";
-import { createObjectResourceMeter } from "../../../dist/features/input-admission/object-resource-meter.js";
-import { createDiagnosticCollector } from "../../../dist/features/diagnostics/internal.js";
-import { createOwnedJcs } from "../../../dist/features/canonicalization/owned-jcs/factory.js";
+import { admitObjectInput } from "../../../dist-test/features/input-admission/object-admission.js";
+import { createObjectResourceMeter } from "../../../dist-test/features/input-admission/object-resource-meter.js";
+import { createDiagnosticCollector } from "../../../dist-test/features/diagnostics/internal.js";
+import { createOwnedJcs } from "../../../dist-test/features/canonicalization/owned-jcs/factory.js";
 import { coverageInput } from "./object-resource-coverage-cases.mjs";
 
 

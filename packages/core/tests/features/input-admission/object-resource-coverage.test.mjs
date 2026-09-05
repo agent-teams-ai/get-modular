@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { isDeepStrictEqual } from "node:util";
 import test from "node:test";
-import { admitObjectInput } from "../../../dist/features/input-admission/object-admission.js";
-import { analyzeCompositionSemantics } from "../../../dist/features/composition-semantics/semantic-analysis.js";
-import { createDiagnosticCollector } from "../../../dist/features/diagnostics/internal.js";
-import { createOwnedJcs } from "../../../dist/features/canonicalization/owned-jcs/factory.js";
+import { admitObjectInput } from "../../../dist-test/features/input-admission/object-admission.js";
+import { analyzeCompositionSemantics } from "../../../dist-test/features/composition-semantics/semantic-analysis.js";
+import { createDiagnosticCollector } from "../../../dist-test/features/diagnostics/internal.js";
+import { createOwnedJcs } from "../../../dist-test/features/canonicalization/owned-jcs/factory.js";
 import { coverageInput } from "./object-resource-coverage-cases.mjs";
 
 const { cases } = JSON.parse(await readFile(new URL(

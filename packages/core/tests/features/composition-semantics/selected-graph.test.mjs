@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { analyzeSelectedGraph, selectedGraphDepthLimit } from "../../../dist/features/composition-semantics/selected-graph.js";
-import { collectGraphFailures } from "../../../dist/features/composition-semantics/graph-diagnostics.js";
-import { createDiagnosticCollector } from "../../../dist/features/diagnostics/internal.js";
-import { createOwnedJcs } from "../../../dist/features/canonicalization/owned-jcs/factory.js";
+import { analyzeSelectedGraph, selectedGraphDepthLimit } from "../../../dist-test/features/composition-semantics/selected-graph.js";
+import { collectGraphFailures } from "../../../dist-test/features/composition-semantics/graph-diagnostics.js";
+import { createDiagnosticCollector } from "../../../dist-test/features/diagnostics/internal.js";
+import { createOwnedJcs } from "../../../dist-test/features/canonicalization/owned-jcs/factory.js";
 
 const root = new URL("../../../../../", import.meta.url);
 const json = async path => JSON.parse(await readFile(new URL(path, root), "utf8"));
@@ -190,7 +190,7 @@ test("a graph at the full 262144-edge boundary has bounded traversal and ready-s
 });
 
 test("full-size chains and giant cycles are stack-safe even with a deliberately small VM stack", () => {
-  const moduleUrl = new URL("../../../dist/features/composition-semantics/selected-graph.js", import.meta.url).href;
+  const moduleUrl = new URL("../../../dist-test/features/composition-semantics/selected-graph.js", import.meta.url).href;
   const code = `
     import assert from 'node:assert/strict';
     import { analyzeSelectedGraph } from ${JSON.stringify(moduleUrl)};

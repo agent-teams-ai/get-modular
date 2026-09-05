@@ -6,10 +6,10 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import canonicalizeOracle from "canonicalize";
 import { canonicalize as secondOracle } from "json-canonicalize";
-import { createPlanOutput } from "../../../dist/features/plan-output/factory.js";
-import { createOwnedJcs } from "../../../dist/features/canonicalization/owned-jcs/factory.js";
-import { canonicalBytesCapabilityId, canonicalBytesToken } from "../../../dist/features/canonicalization/identity.js";
-import { planOutputDeclaration, planOutputImplementation, planOutputModuleId, planEmissionCapabilityId, planEmissionToken } from "../../../dist/features/plan-output/declaration.js";
+import { createPlanOutput } from "../../../dist-test/features/plan-output/factory.js";
+import { createOwnedJcs } from "../../../dist-test/features/canonicalization/owned-jcs/factory.js";
+import { canonicalBytesCapabilityId, canonicalBytesToken } from "../../../dist-test/features/canonicalization/identity.js";
+import { planOutputDeclaration, planOutputImplementation, planOutputModuleId, planEmissionCapabilityId, planEmissionToken } from "../../../dist-test/features/plan-output/declaration.js";
 
 const root = new URL("../../../../../", import.meta.url);
 const read = async path => JSON.parse(await readFile(new URL(path, root), "utf8"));
@@ -138,8 +138,8 @@ test("structured clone and a separate process retain values and recomputed diges
   assert.deepEqual(cloned, result);
   assert.equal(Object.isFrozen(cloned.plan), false);
   assert.equal(expectedDigest(cloned.plan), result.digest);
-  const factory = new URL("../../../dist/features/plan-output/factory.js", import.meta.url).href;
-  const canonical = new URL("../../../dist/features/canonicalization/owned-jcs/factory.js", import.meta.url).href;
+  const factory = new URL("../../../dist-test/features/plan-output/factory.js", import.meta.url).href;
+  const canonical = new URL("../../../dist-test/features/canonicalization/owned-jcs/factory.js", import.meta.url).href;
   const script = `import {readFileSync} from 'node:fs';
     import {createPlanOutput} from ${JSON.stringify(factory)};
     import {createOwnedJcs} from ${JSON.stringify(canonical)};
@@ -185,8 +185,8 @@ for (const [name, install, rejection] of [
   ["unavailable Web Crypto", "Object.defineProperty(globalThis,'crypto',{value:undefined, configurable:true});", "TypeError"],
   ["rejected Web Crypto hash", "const failure=new Error('hash failure'); Object.defineProperty(globalThis,'crypto',{value:{subtle:{digest:()=>Promise.reject(failure)}}, configurable:true});", "error=>error===failure"],
 ]) test(`${name} rejects without a fabricated digest or diagnostic`, () => {
-  const factory = new URL("../../../dist/features/plan-output/factory.js", import.meta.url).href;
-  const canonical = new URL("../../../dist/features/canonicalization/owned-jcs/factory.js", import.meta.url).href;
+  const factory = new URL("../../../dist-test/features/plan-output/factory.js", import.meta.url).href;
+  const canonical = new URL("../../../dist-test/features/canonicalization/owned-jcs/factory.js", import.meta.url).href;
   const script = `import assert from 'node:assert/strict';
     ${install}
     const {createPlanOutput} = await import(${JSON.stringify(factory)});

@@ -43,8 +43,8 @@
     "qualification:self-composition-templates": "node --test tests/self-composition-templates.test.mjs",
     "precheck:changed": "pnpm runtime:preflight",
     "runtime:preflight": "node architecture/checks/node-version.mjs",
-    "core:typecheck": "tsc -p packages/core/tsconfig.json --noEmit",
-    "core:build": "tsc -p packages/core/tsconfig.json",
+    "core:typecheck": "tsc -p packages/core/tsconfig.typecheck.json --noEmit",
+    "core:build": "node architecture/tooling/build-core.mjs",
     "core:test": "node --test \"packages/core/tests/**/*.test.mjs\""
   },
   "devDependencies": {
