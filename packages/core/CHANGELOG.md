@@ -10,6 +10,10 @@
 - Private diagnostic comparator and bounded collector for unique candidates.
 - Private bounded object-resource accounting inside input admission.
 - Private immutable snapshots of validated declarations and profiles.
+- Private closed document-shape checks with streamed structural violations,
+  exact array bounds, portable identity grammar and no getter invocation.
+- Private iterative identity grammar and safe schema diagnostic projection,
+  including unsupported-version suppression and exact numeric failure reasons.
 - Package typecheck, build and tests with Foundation source-dependency checks.
 
 This package is not published. The public compiler, packed-consumer evidence
