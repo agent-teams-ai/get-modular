@@ -12,8 +12,8 @@ test("clean production build follows only the public entry while checking unsele
   t.after(() => rm(sandbox, { recursive: true, force: true }));
   const files = ["package.json", "tsconfig.base.json", "architecture/tooling/build-core.mjs",
     "packages/core/package.json", "packages/core/tsconfig.json", "packages/core/tsconfig.typecheck.json",
-    "packages/core/tsconfig.test.json", "packages/core/tsconfig.stage0.json", "packages/core/src",
-    "packages/core/self-composition"];
+    "packages/core/tsconfig.test.json", "packages/core/tsconfig.stage0.json", "packages/core/tsconfig.seed.json", "packages/core/src",
+    "packages/core/self-composition", "packages/core/tests/features/canonicalization/witness-variant"];
   for (const path of files) {
     await mkdir(dirname(join(sandbox, path)), { recursive: true });
     await cp(join(root, path), join(sandbox, path), { recursive: true });
@@ -32,11 +32,13 @@ test("clean production build follows only the public entry while checking unsele
   assert.ifError(good.error);
   assert.equal(good.status, 0, good.stdout + good.stderr);
   for (const path of ["dist/stale.js", "dist/features/unselected/probe.js", "dist/self-composition/stage0-entry.js",
-    "dist/features/compiler-facade/declaration.js"]) {
+    "dist/features/compiler-facade/declaration.js", "dist/tests/features/canonicalization/witness-variant/factory.js",
+    "dist-stage0/tests/features/canonicalization/witness-variant/factory.js"]) {
     await assert.rejects(readFile(join(core, path)), { code: "ENOENT" });
   }
   assert.match(await readFile(join(core, "dist-test/features/unselected/probe.js"), "utf8"), /probe = 1/u);
   assert.match(await readFile(join(core, "dist-stage0/self-composition/stage0-entry.js"), "utf8"), /compileComposition/u);
+  assert.match(await readFile(join(core, "dist-seed/self-composition/stage0-entry.variant.js"), "utf8"), /compileComposition/u);
   const internalRoot = await readFile(join(core, "dist/composition/stage0.d.ts"), "utf8");
   assert.match(internalRoot, /export declare const root: CompilerFacadePort;/u);
   const declaration = await readFile(join(core, "dist/index.d.ts"), "utf8");

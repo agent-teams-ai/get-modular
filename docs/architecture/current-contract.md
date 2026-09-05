@@ -124,8 +124,20 @@ compiles through both direct and production entries into its independent
 five-node, five-binding expected plan. Its allowlist keeps static declaration
 and factory references outside the production closure. The private root exports
 its provided port, while the public entries annotate only the accepted compiler
-signature. Static wiring correspondence and controlled provider replacement
-remain separate pending parts of checkpoint A.
+signature. A separate seed build now binds the qualification-only canonicalizer
+to both consumer slots. The fixed-input digest changes and restores on rebinding;
+the actual semantics factory reverses the accepted private detail operands while
+preserving SCC order. Two isolated consumer mutants prove that calling a provider
+without using its returned bytes is insufficient. Production and packed inventory
+checks exclude the variant. The independent finite static witness now checks
+both direct roots against their plans, resolves declaration/factory imports and
+allowlist text to the same source exports, and checks the provided-port root.
+Its mutations reject compatible-factory substitutions even when value and text
+are changed together. The finite declaration reader requires local identity
+and declaration definitions in source and matching build, rejecting forwarding
+modules and borrowed aliases that could hide a different sibling factory.
+The M1 checkpoint A tests combine this construction proof
+with the behavioral replacement; generated wiring and W0/W1 remain M3 work.
 Tests connect the actual admission, semantic and output implementations against
 independent object diagnostic, plan and digest expectations. The public barrel
 and separate direct qualification entry now execute the accepted complete
