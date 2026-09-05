@@ -7,6 +7,12 @@ or manage application lifecycle.
 This development checkpoint uses direct assembly and is not self-composed.
 It does not claim runtime conformance or release eligibility.
 
+Declaration consumers require TypeScript 5.8.3 or later. The packed regression
+tests both this minimum and the pinned build compiler in `NodeNext` ESM and
+CommonJS contexts, `Node16` ESM, and `Bundler`, with `skipLibCheck: false` and
+1,000 literal declarations in each supported mode. `Node16` CommonJS, `Node10`
+and `Classic` are unsupported and have explicit negative checks.
+
 ```ts
 import { compileComposition, defineModule } from "@get-modular/core";
 

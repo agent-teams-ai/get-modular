@@ -57,6 +57,7 @@
     "jsonc-parser": "catalog:",
     "markdownlint-cli2": "catalog:",
     "typescript": "catalog:",
+    "typescript-minimum": "catalog:",
     "yaml": "catalog:"
   }
 }

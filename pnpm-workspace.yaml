@@ -11,6 +11,8 @@ catalog:
   jsonc-parser: 3.3.1
   markdownlint-cli2: 0.23.2
   typescript: 7.0.2
+  # Historical consumer floor, deliberately separate from the current build compiler.
+  typescript-minimum: npm:typescript@5.8.3
   yaml: 2.9.0
 
 minimumReleaseAge: 1440
