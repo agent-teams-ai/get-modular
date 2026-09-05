@@ -57,6 +57,17 @@ remain pending; these counts cannot create graph edges or plan bindings.
 Malformed wrapper/carrier classifications remain outside this private stage's
 claimed domain. The admission module factory and cross-feature entry are
 pending independent review and downstream integration.
+Composition semantics now has private iterative graph algorithms for an
+already bounded, resolved selected graph of wholly valid binding edges. They
+compute stable SCC membership, ASCII-minimal dependency order, original
+consumer-to-provider closure and the ADR-0018 residual DAG depth. Graph failures
+stream into the same caller-owned collector; cycles preserve their diagnostics
+and depth overflow saturates at 2049. Operation counters cover distinct
+adjacency traversal and bounded ready/traversal state. These algorithms do not
+establish declaration/binding prerequisites or authorize an unreachable
+diagnostic from an incomplete frontier. Semantic validation, graph resource
+prerequisites, module construction and the facade remain pending. The graph
+implementation has no cross-feature entry and does not consume admission.
 Diagnostic producers still need to normalize and deduplicate their eligible
 candidates before collection. The public compiler and packed
 publication subject remain pending. Accepted
