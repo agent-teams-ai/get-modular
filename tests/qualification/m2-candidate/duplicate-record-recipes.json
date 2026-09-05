@@ -3,7 +3,7 @@
   "version": 1,
   "status": "proposed-fixture-only",
   "proposal": "docs/decisions/0014-close-duplicate-binding-record-semantics.md",
-  "scope": "Cardinality source cases and their exhaustive permutations only; other ADR-0014 categories and combined generation 2 acceptance remain pending.",
+  "scope": "Cardinality, row-local failures, five lookup/graph overlaps and exhaustive cardinality/row-failure permutations. Ordering/collector/resource/mutation categories and combined generation 2 acceptance remain pending.",
   "domains": {
     "cardinalities": [
       "required",
@@ -18,6 +18,15 @@
       "valid-identical",
       "valid-conflicting",
       "one-row-cardinality-invalid"
+    ],
+    "rowFaults": [
+      "duplicate-provider",
+      "unknown-provider",
+      "provider-not-selected",
+      "cardinality-under",
+      "cardinality-over",
+      "capability-missing",
+      "compatibility-mismatch"
     ]
   },
   "identityTokens": {
@@ -30,15 +39,19 @@
     "slotId": "dependency",
     "capabilityId": "example/service",
     "compatibilityToken": "example/service/v1",
-    "profileId": "example/duplicate-record-profile"
+    "profileId": "example/duplicate-record-profile",
+    "absentImplementation": "example/absent/default",
+    "mismatchedCompatibilityToken": "example/service/v2"
   },
   "recipe": {
     "cardinality": "many has inclusive min1/max2 and profile order; required/optional use their accepted counts",
     "rows": "invalid row is last: required0, optional2, many3; identical optional rows are empty; conflicting rows choose distinct compatible providers",
     "graph": "consumer is the sole root; all three providers are selected; repeated group has no edges and makes the reached frontier incomplete, suppressing unproved unreachable conclusions",
     "expected": "one duplicate-record, plus one row-local cardinality only for the invalid recipe; no plan or digest",
-    "enumeration": "cardinality, recordCount, rowRecipe in listed order; record permutations by source-index traversal with exact JSON deduplication; within each record permutation, provider permutations form a left-to-right Cartesian product; zero-based six-digit ranks",
-    "streamEncoding": "each complete materialized case as RFC8785 UTF-8 followed by LF; SHA-256 over concatenation; no seed or sampling"
+    "enumeration": "cardinality, recordCount, rowRecipe in listed order; record permutations by source-index traversal with exact JSON deduplication; within each record permutation, provider permutations form a left-to-right Cartesian product; zero-based six-digit ranks; row-fault sources follow cardinality sources, ordered by listed fault, count, faultPosition",
+    "streamEncoding": "each complete materialized case as RFC8785 UTF-8 followed by LF; SHA-256 over concatenation; no seed or sampling",
+    "rowFailures": "many min1/max2, record counts2 then3, every fault position from0; faulty row counts and lookup worlds are closed in the fixture source; all other rows retain [provider-one,provider-two]",
+    "overlap": "five complete worlds in manifest order; unknown lookup roots have no slots/extra selections; unselected consumer retains only duplicate-record; reached invalid group contains an individually compatible self-reference that must not leak a cycle, while provider-three/provider-two form an independent SCC; unreached invalid frontier retains three unreachable selections"
   },
   "streams": {
     "cardinality": {
@@ -46,8 +59,16 @@
       "sha256": "6fd8d893158f878bdaf26899263f222e900cf99fed175bd9926ab5029c50559d"
     },
     "permutations": {
-      "count": 199,
-      "sha256": "64989b231405863b153cdd8a7ff0a2049a327a7d4f60a4094eeff071757d68b5"
+      "count": 727,
+      "sha256": "28b5eefe84cecdddc3b43360a05c487adc0c064ddddb0b5fe8eeee9b62b19eff"
+    },
+    "rowFailures": {
+      "count": 35,
+      "sha256": "155772c474dd77f0dd84b9944b9bde9e56b4656fb6f7e3ee5f4a04395e838086"
+    },
+    "overlap": {
+      "count": 5,
+      "sha256": "2b05662a212c32936fc6592ebc3a796418820e4d7ea9162ea9dffea89ddc480c"
     }
   },
   "permutationsPerSource": {
@@ -68,6 +89,48 @@
     "od006.cardinality.v1/many/2/one-row-cardinality-invalid": 24,
     "od006.cardinality.v1/many/3/valid-identical": 8,
     "od006.cardinality.v1/many/3/valid-conflicting": 48,
-    "od006.cardinality.v1/many/3/one-row-cardinality-invalid": 72
-  }
+    "od006.cardinality.v1/many/3/one-row-cardinality-invalid": 72,
+    "od006.row-failures.v1/duplicate-provider/2/00": 4,
+    "od006.row-failures.v1/duplicate-provider/2/01": 4,
+    "od006.row-failures.v1/duplicate-provider/3/00": 12,
+    "od006.row-failures.v1/duplicate-provider/3/01": 12,
+    "od006.row-failures.v1/duplicate-provider/3/02": 12,
+    "od006.row-failures.v1/unknown-provider/2/00": 4,
+    "od006.row-failures.v1/unknown-provider/2/01": 4,
+    "od006.row-failures.v1/unknown-provider/3/00": 12,
+    "od006.row-failures.v1/unknown-provider/3/01": 12,
+    "od006.row-failures.v1/unknown-provider/3/02": 12,
+    "od006.row-failures.v1/provider-not-selected/2/00": 4,
+    "od006.row-failures.v1/provider-not-selected/2/01": 4,
+    "od006.row-failures.v1/provider-not-selected/3/00": 12,
+    "od006.row-failures.v1/provider-not-selected/3/01": 12,
+    "od006.row-failures.v1/provider-not-selected/3/02": 12,
+    "od006.row-failures.v1/cardinality-under/2/00": 4,
+    "od006.row-failures.v1/cardinality-under/2/01": 4,
+    "od006.row-failures.v1/cardinality-under/3/00": 12,
+    "od006.row-failures.v1/cardinality-under/3/01": 12,
+    "od006.row-failures.v1/cardinality-under/3/02": 12,
+    "od006.row-failures.v1/cardinality-over/2/00": 24,
+    "od006.row-failures.v1/cardinality-over/2/01": 24,
+    "od006.row-failures.v1/cardinality-over/3/00": 72,
+    "od006.row-failures.v1/cardinality-over/3/01": 72,
+    "od006.row-failures.v1/cardinality-over/3/02": 72,
+    "od006.row-failures.v1/capability-missing/2/00": 4,
+    "od006.row-failures.v1/capability-missing/2/01": 4,
+    "od006.row-failures.v1/capability-missing/3/00": 12,
+    "od006.row-failures.v1/capability-missing/3/01": 12,
+    "od006.row-failures.v1/capability-missing/3/02": 12,
+    "od006.row-failures.v1/compatibility-mismatch/2/00": 4,
+    "od006.row-failures.v1/compatibility-mismatch/2/01": 4,
+    "od006.row-failures.v1/compatibility-mismatch/3/00": 12,
+    "od006.row-failures.v1/compatibility-mismatch/3/01": 12,
+    "od006.row-failures.v1/compatibility-mismatch/3/02": 12
+  },
+  "overlapCaseIds": [
+    "od006.overlap.unknown-consumer.v1",
+    "od006.overlap.unknown-slot.v1",
+    "od006.overlap.unselected-consumer.v1",
+    "od006.graph.reached-incomplete-independent-scc.v1",
+    "od006.graph.unreached-invalid-frontier.v1"
+  ]
 }
