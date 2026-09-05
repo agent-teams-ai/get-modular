@@ -34,7 +34,7 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "architecture:feature-module-profile:test":
     "node --test tests/feature-module-standard-profile.test.mjs",
   "contracts:check": "node architecture/checks/v1-contract.mjs",
-  "contracts:test": "node --test tests/v1-contract.test.mjs",
+  "contracts:test": "node --test tests/v1-contract.test.mjs tests/compiler-engineer-examples.test.mjs tests/implementation-clarifications.test.mjs",
   "docs:check": "agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml",
   "docs:protocol:check": "pnpm docs:check && pnpm docs:quality",
   "docs:quality": "markdownlint-cli2 && cspell --config .cspell.json --no-progress",
@@ -48,6 +48,8 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
     "node --test tests/qualification/v1-diagnostics-protocol.mjs",
   "qualification:v1-graph-semantics":
     "node --test tests/qualification/v1-graph-semantics.mjs",
+  "qualification:self-composition-templates":
+    "node --test tests/self-composition-templates.test.mjs",
   "runtime:preflight": "node architecture/checks/node-version.mjs",
 });
 const ROOT_SCRIPT_COMMANDS = Object.freeze({
@@ -62,6 +64,7 @@ const ROOT_SCRIPT_COMMANDS = Object.freeze({
     "qualification:resource-profile",
     "qualification:v1-diagnostics-protocol",
     "qualification:v1-graph-semantics",
+    "qualification:self-composition-templates",
     "governance:check",
     "governance:test",
   ]),

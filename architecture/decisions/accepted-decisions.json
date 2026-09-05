@@ -66,6 +66,11 @@
       "id": "ADR-0017",
       "path": "docs/decisions/0017-publish-pre-1-0-releases-while-raw-carrier-and-duplicate-record-decisions-stay-open.md",
       "immutableDigest": "sha256:995e7b7d4da5a2381acee289054d77366aa0de2b2e78c820c4de9074156177ab"
+    },
+    {
+      "id": "ADR-0018",
+      "path": "docs/decisions/0018-close-implementation-readiness-rules.md",
+      "immutableDigest": "sha256:d2ed79790913df0288eab6353bc5ceb2928e10bfbf2f90a92a571de59937368d"
     }
   ]
 }

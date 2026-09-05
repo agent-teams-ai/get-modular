@@ -16,6 +16,7 @@ related:
   - ADR-0015
   - ADR-0016
   - ADR-0017
+  - ADR-0018
   - OD-004
   - OD-005
   - OD-006
@@ -38,9 +39,10 @@ the semantic compiler itself.
 ### D1: production-source admission while implementation blockers are open
 
 Accepted ADR-0015 admits source under the package identities accepted by
-ADR-0003, and accepted ADR-0017 limits publication blocking to the
-`publicationBlockers` subset of open decisions, now empty, so a pre-1.0
-`not-claimed` package publishes from the first checkpoint. `runtime-conformant`
+ADR-0003, and accepted ADR-0017 authorizes a pre-M3 direct M1 `not-claimed`
+publication after its packed gates. Accepted ADR-0018 preserves that path and
+extends publication to generated post-M3 archives only after their closed
+packed and self-composition gates. `runtime-conformant`
 claims remain blocked while an open decision is active; `source-admitted` and
 `structural-conformant` custody may proceed without claiming unresolved runtime
 semantics. The first production source still requires the explicit
@@ -68,9 +70,10 @@ export map and no generation suffix appears in package source.
 | Add CommonJS compatibility from the first archive | 5/10 | 7/10 | 8/10 | 700-1,400 LOC | Broadens consumers but creates dual-resolution and declaration risks without demonstrated demand. |
 | Keep a private non-publishable package carrier | 7/10 | 9/10 | 3/10 | 150-350 LOC | Allows qualification evidence but cannot resolve OD-004 or authorize publication. |
 
-**Resolved:** ADR-0012 is accepted and OD-004 is resolved; the packed Node and
-TypeScript cases gate each publication, the full matrix gates the first
-conformance claim.
+**Resolved:** ADR-0012 is accepted and OD-004 is resolved. ADR-0018 requires
+the first post-M3 generated archive to pass the packed Node and four
+TypeScript/type-scale cases plus the complete M3 proof. The full six-runtime
+matrix still gates the first conformance claim and `release-eligible`.
 
 ### D4: trusted-object and raw-byte carriers
 
@@ -84,6 +87,13 @@ conformance claim.
 the trusted-object carrier behind `compileComposition` from M1 under the
 plain-value rules of ADR-0006 and ADR-0007; the raw carrier waits for OD-005
 and its diagnostic and evidence obligations.
+
+Accepted ADR-0018 additionally fixes synchronous no-alias snapshotting for the
+cooperative Host-owned object graph and the outer wrappers and lists of both
+entry points; raw payload bytes become untrusted after admission. Resource
+ceilings stay scoped to Core's bounded work and retained model. This
+narrow rule neither admits arbitrary `Proxy` execution nor accepts the rest of
+proposed ADR-0013.
 
 ### D5: repeated binding-record diagnostics
 
@@ -136,9 +146,21 @@ tuples. It resolves this item and supersedes the recommendation above.
 | Keep hash-bound evidence without promotion/reuse claims | 9/10 | 9/10 | 3/10 | 250-550 LOC | Correct for implementation checkpoints; cannot authorize publication. |
 
 **Stop point:** before `release-eligible`, evidence reuse or the first
-conformance claim. A pre-1.0 `not-claimed` publication follows ADR-0012 and
-ADR-0017 and does not wait for the custody decision; until that decision is
-accepted, retain exact evidence as `not-claimed`.
+conformance claim. A pre-M3 direct `not-claimed` publication follows ADR-0012
+and ADR-0017; a post-M3 generated one also follows ADR-0018. Neither waits for
+the custody decision; until that decision is accepted, retain exact evidence
+as `not-claimed`.
+
+## Resolved implementation rules
+
+ADR-0018 fixes the residual-DAG depth rule and its independent overflow,
+exact raw mathematical safe-integer validation before `Number` rounding,
+`DiagnosticCode` as exactly `Diagnostic['code']` over emittable codes, the
+bounded trusted-object snapshot contract, and the post-M3 generated publication
+gate. It adds no public catalog type, no cycle depth, no reserved
+canonicalization diagnostic, and no new public engine. Raw exposure and
+repeated binding-record behavior still wait for the combined OD-005/OD-006
+diagnostic generation 2 transaction.
 
 ## Explicitly product-owned decisions
 
@@ -155,9 +177,9 @@ integration.
 ## Recommended approval order
 
 1. Record the ADR-0015 product-owner start decision before the first
-   production source. Under accepted ADR-0017 that source lands in a public
-   package, so the record names publication of a `not-claimed` archive inside
-   its authorized scope.
+   production source. ADR-0017 permits the direct M1 `not-claimed` publication
+   inside its authorized scope; ADR-0018 requires the closed M3 gates before a
+   generated post-M3 publication.
 2. D4 and D5 atomically, because their new diagnostics require one generation
    2 schema, catalog, snapshot, checker and qualification-ledger transaction.
 3. D2 and D3 are resolved; the packed public boundary follows ADR-0009 and

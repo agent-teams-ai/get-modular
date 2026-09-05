@@ -9,6 +9,7 @@ related:
   - ADR-0005
   - ADR-0006
   - ADR-0007
+  - ADR-0018
   - ADR-0014
   - GM-REQ-V1
 ---
@@ -91,10 +92,18 @@ ADR-0007 requires one exact coordinate shape for each emitted code.
 - Before acceptance, a versioned successor diagnostic contract, diagnostic
   snapshots, case manifest, recipe manifest, mutation manifest, closed checker,
   and their results are bound by a new immutable qualification ledger, and the
-  accepted-authority ledger is updated through the governed acceptance
-  transaction. These are required future artifact categories, not artifacts or
+  accepted ADR is registered in `architecture/decisions/accepted-decisions.json`
+  through the governed acceptance transaction. New successor contract and
+  qualification ledgers bind the new artifacts; existing ledgers, including
+  `architecture/authority/accepted-authorities.json`, remain byte-identical.
+  These are required future artifact categories, not artifacts or
   evidence created by this open decision. No accepted artifact is edited in
   place.
+
+The combined generation 2 transaction must carry forward ADR-0018's
+residual-depth, exact raw-number and emittable-type rules in its successor
+contract, cases, checker and ledger. OD-006 remains open; this carry-forward
+requirement adds no duplicate-record behavior.
 
 ## Resolution
 

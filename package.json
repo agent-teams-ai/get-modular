@@ -15,7 +15,7 @@
     "url": "git+https://github.com/agent-teams-ai/get-modular.git"
   },
   "scripts": {
-    "check": "pnpm runtime:preflight && pnpm foundation:check && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm contracts:check && pnpm contracts:test && pnpm qualification:resource-profile && pnpm qualification:v1-diagnostics-protocol && pnpm qualification:v1-graph-semantics && pnpm governance:check && pnpm governance:test",
+    "check": "pnpm runtime:preflight && pnpm foundation:check && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm contracts:check && pnpm contracts:test && pnpm qualification:resource-profile && pnpm qualification:v1-diagnostics-protocol && pnpm qualification:v1-graph-semantics && pnpm qualification:self-composition-templates && pnpm governance:check && pnpm governance:test",
     "check:changed": "agent-teams-foundation agent-workflow changed --consumer .",
     "check:fast": "pnpm runtime:preflight && pnpm foundation:check && pnpm architecture:feature-module-profile && pnpm docs:check",
     "docs:changed": "pnpm docs:check && pnpm docs:quality",
@@ -28,7 +28,7 @@
     "docs:quality": "markdownlint-cli2 && cspell --config .cspell.json --no-progress",
     "docs:recover": "agent-teams-docs recover --consumer . --profile architecture/foundation/docs-protocol.yaml",
     "contracts:check": "node architecture/checks/v1-contract.mjs",
-    "contracts:test": "node --test tests/v1-contract.test.mjs",
+    "contracts:test": "node --test tests/v1-contract.test.mjs tests/compiler-engineer-examples.test.mjs tests/implementation-clarifications.test.mjs",
     "foundation:assert-dev-only": "agent-teams-foundation assert-dev-only",
     "foundation:assert-registry": "agent-teams-foundation assert-registry",
     "foundation:check": "agent-teams-foundation check && pnpm foundation:assert-dev-only && pnpm foundation:assert-registry",
@@ -40,6 +40,7 @@
     "qualification:resource-profile": "node tests/qualification/v1-resource-profile.mjs",
     "qualification:v1-diagnostics-protocol": "node --test tests/qualification/v1-diagnostics-protocol.mjs",
     "qualification:v1-graph-semantics": "node --test tests/qualification/v1-graph-semantics.mjs",
+    "qualification:self-composition-templates": "node --test tests/self-composition-templates.test.mjs",
     "precheck:changed": "pnpm runtime:preflight",
     "runtime:preflight": "node architecture/checks/node-version.mjs"
   },

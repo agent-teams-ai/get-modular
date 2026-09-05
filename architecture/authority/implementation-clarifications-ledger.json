@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "algorithm": "sha256-bytes",
+  "artifacts": [
+    {
+      "id": "GM-IMPLEMENTATION-CLARIFICATIONS-CONTRACT",
+      "path": "architecture/qualification/implementation-clarifications/contract.json",
+      "immutableDigest": "sha256:e38f74d26959ae342c183764bd0e5623940339816baf51f9b893391a622a1ac9"
+    },
+    {
+      "id": "GM-IMPLEMENTATION-CLARIFICATIONS-CASES",
+      "path": "architecture/qualification/implementation-clarifications/cases.json",
+      "immutableDigest": "sha256:dde24d56296754825a3afa084261518177e296516d04cb59e06f996417cd2fe7"
+    }
+  ]
+}

@@ -8,6 +8,7 @@ related:
   - ADR-0005
   - ADR-0006
   - ADR-0007
+  - ADR-0018
   - GM-REQ-V1
   - OD-005
 ---
@@ -28,12 +29,20 @@ compiler input.
 Disposable probes support one narrow model: snapshot admitted values
 synchronously into owned storage and reject shared byte storage. Those probes
 are feasibility evidence only. Acceptance still requires successor contracts,
-vectors, checker, and ledger evidence against the real compiler subject.
+vectors, checker, and ledger evidence from the independent Node oracle below.
+The real Core subject must execute the same suite after acceptance and scope
+expansion, before exposure.
 
 ## Decision
 
 This decision is proposed and becomes normative only if accepted with the
 evidence below.
+
+Accepted [ADR-0018](0018-close-implementation-readiness-rules.md) already fixes
+exact raw numeric admission and the trusted object/wrapper boundary. Those
+rules apply independently of this proposal. The remaining carrier shapes,
+descriptor algorithm, new diagnostic and facts below are still proposed;
+ADR-0018 does not resolve OD-005 or authorize raw exposure.
 
 ### Synchronous ownership boundary
 
@@ -100,6 +109,13 @@ been re-prototyped to `Object.prototype` and exposes no own descriptor evidence
 is indistinguishable from an empty record, which is one more reason the
 trusted-object boundary is not a security boundary.
 
+This candidate procedure must obey ADR-0018's resource envelope:
+`Object.getOwnPropertyDescriptors` may allocate the full descriptor table
+before a traversal budget can stop inspection. Its intrinsic temporary
+allocation is not a portable hard peak-memory guarantee. Host supplies a
+bounded cooperative graph; Core still meters occurrences and stops its own
+downstream allocation after a limit fails.
+
 #### Value category mapping
 
 Every own value is classified before schema validation. The closed mapping
@@ -128,8 +144,20 @@ are charged before density rejection, preserving ADR-0007 resource precedence.
 Hostile Proxy safety is not claimed; product boundaries MUST NOT label
 untrusted executable objects as trusted object input. In particular, observing
 a `null` prototype is not proof that a value is non-Proxy, same-realm, or safe:
-prototype, key, and descriptor inspection can invoke Proxy traps. Values that
-may be hostile or proxied MUST cross the raw-byte boundary instead.
+prototype, key, and descriptor inspection can invoke Proxy traps. Hostile
+payloads must reach the raw-byte boundary inside a trusted Host-created
+wrapper/list. This does not make serialization of a hostile object safe;
+that upstream conversion or isolation remains the Host's responsibility.
+
+### Already accepted raw-number policy
+
+ADR-0018 fixes exact decimal mathematical integer admission before conversion
+to Number. Equivalent integer spellings such as `1`, `1.0` and `1e0` converge;
+rounded non-integers such as `1.0000000000000001` and `1e-400` fail as
+`schema.invalid-value` with `invalid-type`. Exact out-of-safe-range integers
+and every negative-zero spelling use `invalid-format`. Preserve that rule in
+the combined generation 2 contract and full-document numeric cases. The
+bounded raw scanner does not expand exponents or allocate an unbounded BigInt.
 
 ### Raw entry point
 
@@ -268,6 +296,12 @@ keys are ignored. `declarations` MUST be an array whose elements are read
 through own data descriptors of their canonical index; an own data `length`
 supplies the count.
 
+Both wrappers and lists are trusted cooperative Host-created data under
+ADR-0018. Descriptor operations can invoke Proxy traps and do not extend the
+hostile-byte guarantee to arbitrary executable wrapper objects. The following
+shape failures cover observable ordinary data; they promise no controlled
+result for hostile Proxy behavior.
+
 On the raw entry point the wrapper is realm-neutral: `Array.isArray` admits a
 cross-realm array because the carriers themselves are classified by intrinsic
 brand. A missing, non-array, or accessor-backed `declarations` list, or a
@@ -323,8 +357,10 @@ reordering are not observable in the normalized compiler model.
 If accepted, this ADR narrowly supplements ADR-0006 and ADR-0007 for carrier
 classification, synchronous snapshot ownership, trusted-object representation,
 the new raw-carrier diagnostic and its document fact, the wrapper rule, and the
-index-overflow emission rule. It does not change UTF-8, JSON, schema,
-resource limits, semantic normalization, graph behavior, canonicalization,
+index-overflow emission rule. ADR-0018 already owns numeric lexeme admission
+and the intrinsic-reflection resource boundary; this proposal must preserve
+them. It does not otherwise change UTF-8, JSON, schema,
+numeric resource limits, semantic normalization, graph behavior, canonicalization,
 digest, or Product Host lifecycle.
 
 The accepted diagnostic contract and snapshots remain byte-identical. This
@@ -341,15 +377,16 @@ tooling under `tests/qualification` (the oracle), executed on Node, are
 sufficient to accept this decision. That tooling meters and classifies
 fixtures; it is not a compiler fixture and does not implement composition
 semantics. The six-case runtime
-matrix is the conformance-claim and publication gate, not an acceptance
-prerequisite. The candidate entrypoints that execute the case inventory live in
-the private `packages/core` subject admitted by the governance gate; it is not
-production or public API before acceptance, and the production entrypoints must
-rerun the same closed suite before exposure.
-One closed subject-evidence key binds the exact source tree and subject bytes,
+matrix remains the conformance-claim gate, not an acceptance prerequisite;
+publication uses ADR-0018's applicable packed subject row. Independent fixtures
+and the Node oracle may be prepared before acceptance. After the combined
+generation 2 transaction and owner-scope expansion, the real `packages/core`
+entrypoints must execute the same closed suite before exposure. The current
+M1 scope does not admit proposed carrier semantics in that package.
+For each executed oracle or Core subject, one closed evidence key binds the exact source tree and subject bytes,
 subject digest, runner and checker bytes and digests, command, toolchain,
 operating system, architecture, realm, and every result. Each case binds that
-key, a stable ID, exact candidate entry point, complete input or closed generator
+key, a stable ID, exact executed entry point, complete input or closed generator
 recipe, exact complete expected result, runtime identity, and observed result.
 
 The closed case inventory covers:

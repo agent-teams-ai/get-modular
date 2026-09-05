@@ -103,7 +103,7 @@
     {
       "id": "cycle-with-tail",
       "entryPoint": "trusted-object-qualification-candidate",
-      "authorities": ["docs/decisions/0006-clarify-v1-compiler-normalization-and-entry-points.md","docs/decisions/0007-require-executable-v1-conformance-amendments.md","architecture/contracts/v1/composition.schema.json"],
+      "authorities": ["docs/decisions/0006-clarify-v1-compiler-normalization-and-entry-points.md","docs/decisions/0007-require-executable-v1-conformance-amendments.md","architecture/contracts/v1/composition.schema.json","docs/decisions/0018-close-implementation-readiness-rules.md"],
       "setup": "plain",
       "input": {
         "declarations": [
@@ -113,7 +113,7 @@
         ],
         "profile": {"kind":"get-modular.composition-profile","schemaVersion":1,"profileId":"example/handbook","roots":["example/tail"],"selections":[{"moduleId":"example/a","implementationId":"example/a/default"},{"moduleId":"example/b","implementationId":"example/b/default"},{"moduleId":"example/tail","implementationId":"example/tail/default"}],"bindings":[{"consumerImplementationId":"example/a/default","slotId":"logs","providerImplementationIds":["example/b/default"]},{"consumerImplementationId":"example/b/default","slotId":"logs","providerImplementationIds":["example/a/default"]},{"consumerImplementationId":"example/tail/default","slotId":"logs","providerImplementationIds":["example/a/default"]}]}
       },
-      "expected": {"surface":"required-diagnostic-only","ok":false,"diagnostics":[{"code":"graph.cycle","phase":"graph","path":[],"coordinate":{},"details":{"component":["example/a/default","example/b/default"]}}],"unresolved":["No numeric depth for a cyclic graph is asserted; joint cycle/depth-limit behavior remains a qualification gap."]}
+      "expected": {"surface":"complete-diagnostics","ok":false,"diagnostics":[{"code":"graph.cycle","phase":"graph","path":[],"coordinate":{},"details":{"component":["example/a/default","example/b/default"]}}]}
     },
     {
       "id": "hostile-slot-names",
@@ -127,6 +127,92 @@
         "profile": {"kind":"get-modular.composition-profile","schemaVersion":1,"profileId":"example/handbook","roots":["example/app"],"selections":[{"moduleId":"example/app","implementationId":"example/app/default"}],"bindings":[{"consumerImplementationId":"example/app/default","slotId":"constructor","providerImplementationIds":[]},{"consumerImplementationId":"example/app/default","slotId":"then","providerImplementationIds":[]}]}
       },
       "expected": {"surface":"complete-plan-without-digest","ok":true,"plan":{"kind":"get-modular.composition-plan","schemaVersion":1,"profileId":"example/handbook","roots":["example/app"],"selections":[{"moduleId":"example/app","implementationId":"example/app/default"}],"bindings":[{"consumerImplementationId":"example/app/default","slotId":"constructor","providerImplementationIds":[],"capabilityId":"example/log","compatibility":{"family":"exact","familyVersion":1,"token":"example/log"}},{"consumerImplementationId":"example/app/default","slotId":"then","providerImplementationIds":[],"capabilityId":"example/log","compatibility":{"family":"exact","familyVersion":1,"token":"example/log"}}],"dependencyOrder":["example/app/default"]}}
+    },
+    {
+      "id": "invalid-declaration-suppresses-absence",
+      "entryPoint": "trusted-object-qualification-candidate",
+      "authorities": ["docs/decisions/0006-clarify-v1-compiler-normalization-and-entry-points.md","docs/decisions/0007-require-executable-v1-conformance-amendments.md","architecture/contracts/v1/composition.schema.json","architecture/qualification/v1/diagnostic-contract.json"],
+      "setup": "plain",
+      "invalidInput": {"declarations":[0]},
+      "input": {
+        "declarations": [
+          {"kind":"get-modular.module-declaration","schemaVersion":1,"moduleId":"example/broken","implementationId":"example/broken/default","owner":{"authority":"example","path":["broken"]},"provides":[],"slots":[],"unknown":true}
+        ],
+        "profile": {"kind":"get-modular.composition-profile","schemaVersion":1,"profileId":"example/handbook","roots":["example/broken"],"selections":[{"moduleId":"example/broken","implementationId":"example/broken/default"}],"bindings":[]}
+      },
+      "expected": {"surface":"complete-diagnostics","ok":false,"diagnostics":[{"code":"schema.unknown-field","phase":"schema","path":[{"kind":"field","value":"declarations"},{"kind":"index","value":0}],"coordinate":{},"details":{"reason":"unknown-field"}}]}
+    },
+    {
+      "id": "renamed-unknown-declaration-field",
+      "entryPoint": "trusted-object-qualification-candidate",
+      "authorities": ["docs/decisions/0006-clarify-v1-compiler-normalization-and-entry-points.md","docs/decisions/0007-require-executable-v1-conformance-amendments.md","architecture/contracts/v1/composition.schema.json","architecture/qualification/v1/diagnostic-contract.json"],
+      "setup": "plain",
+      "invalidInput": {"declarations":[0]},
+      "input": {
+        "declarations": [
+          {"kind":"get-modular.module-declaration","schemaVersion":1,"moduleId":"example/broken","implementationId":"example/broken/default","owner":{"authority":"example","path":["broken"]},"provides":[],"slots":[],"another-field":true}
+        ],
+        "profile": {"kind":"get-modular.composition-profile","schemaVersion":1,"profileId":"example/handbook","roots":["example/broken"],"selections":[{"moduleId":"example/broken","implementationId":"example/broken/default"}],"bindings":[]}
+      },
+      "expected": {"surface":"complete-diagnostics","ok":false,"diagnostics":[{"code":"schema.unknown-field","phase":"schema","path":[{"kind":"field","value":"declarations"},{"kind":"index","value":0}],"coordinate":{},"details":{"reason":"unknown-field"}}]}
+    },
+    {
+      "id": "duplicate-selection-with-mismatch",
+      "entryPoint": "trusted-object-qualification-candidate",
+      "authorities": ["docs/decisions/0006-clarify-v1-compiler-normalization-and-entry-points.md","docs/decisions/0007-require-executable-v1-conformance-amendments.md","architecture/contracts/v1/composition.schema.json","architecture/qualification/v1/diagnostic-contract.json"],
+      "authorityCase": "diag.object.duplicate-selection-with-mismatch.v1",
+      "setup": "plain",
+      "input": {
+        "declarations": [
+          {"kind":"get-modular.module-declaration","schemaVersion":1,"moduleId":"example/app","implementationId":"example/app/default","owner":{"authority":"example","path":["app"]},"provides":[],"slots":[]},
+          {"kind":"get-modular.module-declaration","schemaVersion":1,"moduleId":"example/other","implementationId":"example/other/default","owner":{"authority":"example","path":["other"]},"provides":[],"slots":[]}
+        ],
+        "profile": {"kind":"get-modular.composition-profile","schemaVersion":1,"profileId":"example/handbook","roots":["example/app"],"selections":[{"moduleId":"example/app","implementationId":"example/app/default"},{"moduleId":"example/app","implementationId":"example/other/default"},{"moduleId":"example/other","implementationId":"example/other/default"}],"bindings":[]}
+      },
+      "expected": {"surface":"complete-diagnostics","ok":false,"diagnostics":[{"code":"profile.duplicate-selection","phase":"profile","path":[],"coordinate":{"moduleId":"example/app"},"details":{"reason":"duplicate"}},{"code":"profile.implementation-mismatch","phase":"profile","path":[],"coordinate":{"moduleId":"example/app","implementationId":"example/other/default"},"details":{"reason":"mismatch"}}]}
+    },
+    {
+      "id": "unknown-binding-coordinates",
+      "entryPoint": "trusted-object-qualification-candidate",
+      "authorities": ["docs/decisions/0006-clarify-v1-compiler-normalization-and-entry-points.md","docs/decisions/0007-require-executable-v1-conformance-amendments.md","architecture/contracts/v1/composition.schema.json","architecture/qualification/v1/diagnostic-contract.json"],
+      "setup": "plain",
+      "input": {
+        "declarations": [
+          {"kind":"get-modular.module-declaration","schemaVersion":1,"moduleId":"example/app","implementationId":"example/app/default","owner":{"authority":"example","path":["app"]},"provides":[],"slots":[{"slotId":"logs","capabilityId":"example/log","compatibility":{"family":"exact","familyVersion":1,"token":"example/log"},"cardinality":{"kind":"optional"}},{"slotId":"metrics","capabilityId":"example/metric","compatibility":{"family":"exact","familyVersion":1,"token":"example/metric"},"cardinality":{"kind":"optional"}}]}
+        ],
+        "profile": {"kind":"get-modular.composition-profile","schemaVersion":1,"profileId":"example/handbook","roots":["example/app"],"selections":[{"moduleId":"example/app","implementationId":"example/app/default"}],"bindings":[{"consumerImplementationId":"example/app/default","slotId":"logs","providerImplementationIds":[]},{"consumerImplementationId":"example/app/default","slotId":"metrics","providerImplementationIds":["example/missing/default"]},{"consumerImplementationId":"example/app/default","slotId":"missing","providerImplementationIds":[]},{"consumerImplementationId":"example/missing/default","slotId":"logs","providerImplementationIds":[]}]}
+      },
+      "expected": {"surface":"complete-diagnostics","ok":false,"diagnostics":[{"code":"binding.unknown-consumer","phase":"binding","path":[],"coordinate":{"implementationId":"example/missing/default"},"details":{"reason":"unknown"}},{"code":"binding.unknown-slot","phase":"binding","path":[],"coordinate":{"implementationId":"example/app/default","slotId":"missing"},"details":{"reason":"unknown"}},{"code":"binding.unknown-provider","phase":"binding","path":[],"coordinate":{"implementationId":"example/app/default","slotId":"metrics","providerImplementationId":"example/missing/default"},"details":{"reason":"unknown"}}]}
+    },
+    {
+      "id": "partial-binding-with-independent-cycle",
+      "entryPoint": "trusted-object-qualification-candidate",
+      "authorities": ["docs/decisions/0006-clarify-v1-compiler-normalization-and-entry-points.md","docs/decisions/0007-require-executable-v1-conformance-amendments.md","architecture/contracts/v1/composition.schema.json","architecture/qualification/v1/diagnostic-contract.json"],
+      "authorityCase": "diag.object.independent-scc-with-invalid-edge.v1",
+      "setup": "plain",
+      "input": {
+        "declarations": [
+          {"kind":"get-modular.module-declaration","schemaVersion":1,"moduleId":"example/app","implementationId":"example/app/default","owner":{"authority":"example","path":["app"]},"provides":[],"slots":[{"slotId":"logs","capabilityId":"example/log","compatibility":{"family":"exact","familyVersion":1,"token":"example/log"},"cardinality":{"kind":"many","min":0,"max":2,"order":"profile"}}]},
+          {"kind":"get-modular.module-declaration","schemaVersion":1,"moduleId":"example/a","implementationId":"example/a/default","owner":{"authority":"example","path":["a"]},"provides":[{"capabilityId":"example/log","compatibility":{"family":"exact","familyVersion":1,"token":"example/log"}}],"slots":[{"slotId":"logs","capabilityId":"example/log","compatibility":{"family":"exact","familyVersion":1,"token":"example/log"},"cardinality":{"kind":"required"}}]},
+          {"kind":"get-modular.module-declaration","schemaVersion":1,"moduleId":"example/b","implementationId":"example/b/default","owner":{"authority":"example","path":["b"]},"provides":[{"capabilityId":"example/log","compatibility":{"family":"exact","familyVersion":1,"token":"example/log"}}],"slots":[{"slotId":"logs","capabilityId":"example/log","compatibility":{"family":"exact","familyVersion":1,"token":"example/log"},"cardinality":{"kind":"required"}}]}
+        ],
+        "profile": {"kind":"get-modular.composition-profile","schemaVersion":1,"profileId":"example/handbook","roots":["example/app"],"selections":[{"moduleId":"example/a","implementationId":"example/a/default"},{"moduleId":"example/app","implementationId":"example/app/default"},{"moduleId":"example/b","implementationId":"example/b/default"}],"bindings":[{"consumerImplementationId":"example/a/default","slotId":"logs","providerImplementationIds":["example/b/default"]},{"consumerImplementationId":"example/app/default","slotId":"logs","providerImplementationIds":["example/a/default","example/missing/default"]},{"consumerImplementationId":"example/b/default","slotId":"logs","providerImplementationIds":["example/a/default"]}]}
+      },
+      "expected": {"surface":"complete-diagnostics","ok":false,"diagnostics":[{"code":"binding.unknown-provider","phase":"binding","path":[],"coordinate":{"implementationId":"example/app/default","slotId":"logs","providerImplementationId":"example/missing/default"},"details":{"reason":"unknown"}},{"code":"graph.cycle","phase":"graph","path":[],"coordinate":{},"details":{"component":["example/a/default","example/b/default"]}}]}
+    },
+    {
+      "id": "unreached-invalid-binding-preserves-unreachable",
+      "entryPoint": "trusted-object-qualification-candidate",
+      "authorities": ["docs/decisions/0006-clarify-v1-compiler-normalization-and-entry-points.md","docs/decisions/0007-require-executable-v1-conformance-amendments.md","architecture/contracts/v1/composition.schema.json","architecture/qualification/v1/diagnostic-contract.json"],
+      "setup": "plain",
+      "input": {
+        "declarations": [
+          {"kind":"get-modular.module-declaration","schemaVersion":1,"moduleId":"example/app","implementationId":"example/app/default","owner":{"authority":"example","path":["app"]},"provides":[],"slots":[]},
+          {"kind":"get-modular.module-declaration","schemaVersion":1,"moduleId":"example/orphan","implementationId":"example/orphan/default","owner":{"authority":"example","path":["orphan"]},"provides":[],"slots":[{"slotId":"logger","capabilityId":"example/log","compatibility":{"family":"exact","familyVersion":1,"token":"example/log"},"cardinality":{"kind":"optional"}}]}
+        ],
+        "profile": {"kind":"get-modular.composition-profile","schemaVersion":1,"profileId":"example/handbook","roots":["example/app"],"selections":[{"moduleId":"example/app","implementationId":"example/app/default"},{"moduleId":"example/orphan","implementationId":"example/orphan/default"}],"bindings":[{"consumerImplementationId":"example/orphan/default","slotId":"logger","providerImplementationIds":["example/missing/default"]}]}
+      },
+      "expected": {"surface":"complete-diagnostics","ok":false,"diagnostics":[{"code":"binding.unknown-provider","phase":"binding","path":[],"coordinate":{"implementationId":"example/orphan/default","slotId":"logger","providerImplementationId":"example/missing/default"},"details":{"reason":"unknown"}},{"code":"profile.unreachable-selection","phase":"graph","path":[],"coordinate":{"moduleId":"example/orphan","implementationId":"example/orphan/default"},"details":{"reason":"unreachable"}}]}
     },
     {
       "id": "frozen-input",

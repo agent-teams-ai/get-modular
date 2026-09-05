@@ -16,6 +16,7 @@ related:
   - ADR-0015
   - ADR-0016
   - ADR-0017
+  - ADR-0018
   - ARCH-SELF-COMPOSITION-GUIDE
   - OD-004
   - OD-005
@@ -31,8 +32,9 @@ qualification artifacts.
 
 The [compiler engineer handbook](../qualification/compiler-engineer-handbook.md)
 maps the seventeen diagnostic prerequisites to input evidence, partial-failure
-rules and independent examples. Read its explicit derivation gaps before
-implementing a private fact predicate; the checker is not the specification.
+rules and independent examples. ADR-0018 resolves its cyclic-depth gap. Other
+fact-derivation gaps follow existing accepted behavior; only a behavior change
+requires successor authority. The checker is not the specification.
 
 ## Accepted contract and public naming
 
@@ -40,7 +42,8 @@ Get Modular has one accepted contract and no production package yet. Accepted
 ADR-0009 names the one pre-1.0 public surface: `compileComposition`,
 `compileCompositionJson`, `defineModule`, `required`, `optional`, `many` and
 the types `CompileCompositionResult`, `ModuleDeclaration`,
-`CompositionProfile`, `CompositionPlan`, `Diagnostic` and `PlanDigest`. The
+`CompositionProfile`, `CompositionPlan`, `Diagnostic`, `DiagnosticCode` and
+`PlanDigest`. The
 accepted evidence names `compileCompositionV1` and `compileCompositionJsonV1`
 remain only inside the immutable qualification artifacts, the checkers under
 `architecture/checks` that validate them and the qualification harnesses under
@@ -129,6 +132,50 @@ composition root, as the guide describes. The
 names the own feature inventory, the feature skeleton, the build topology and
 the emitter contract that implementation follows.
 
+This layout applies Clean Architecture through consumer-owned ports, SOLID
+through feature ownership and narrow dependency direction, DDD through one
+semantic authority for the compiler domain, and DRY through one implementation
+of each accepted rule. These principles do not authorize ceremonial layers,
+an extra rule engine, or a second composition authority.
+
+## Accepted implementation clarifications
+
+Accepted ADR-0018 closes five implementation-readiness rules without accepting
+ADR-0013 as a whole or resolving OD-005 or OD-006:
+
+1. Calculate `graphDepth` on the residual DAG formed by removing every node in
+   a cyclic SCC, every self-loop node, and all incident edges from the
+   positive-valid-binding graph. Do not calculate a depth for a cycle. An
+   independent residual overflow still emits beside cycle diagnostics. The
+   limit is 2048 nodes. On overflow, `actual` saturates at 2049.
+2. For raw JSON only, validate an integer lexeme against the exact mathematical
+   safe-integer domain before `Number` rounding. Thus `1`, `1.0`, and `1e0` are
+   admitted, while `1.0000000000000001`, `1e-400`, and every spelling of
+   negative zero produce `schema.invalid-value`. Use a bounded lexeme algorithm,
+   not unbounded `BigInt`. Raw exposure still waits for the combined diagnostic
+   generation 2 transaction owned by OD-005 and OD-006.
+3. Define public `DiagnosticCode` exactly as `Diagnostic['code']` over emittable
+   diagnostic codes. Do not publish a catalog type. Reserved canonicalization
+   failure remains a rejected `Promise`, not a compiler diagnostic.
+4. The trusted object graph and the outer invocation wrapper and lists of both
+   entry points are cooperative Host-owned data; the raw payload becomes
+   untrusted bytes after carrier admission. Within the admitted domain Core
+   snapshots synchronously and retains no caller aliases.
+   Resource ceilings cover Core's bounded work and retained model, excluding
+   unavoidable intrinsic reflection key/descriptor allocations and arbitrary
+   `Proxy` execution. They do not claim impossible heap or wall-time safety.
+5. A generated `0.x` archive may publish as `not-claimed` only after M3:
+   the ADR-0012 packed Node and four TypeScript/type-scale cases pass, and the
+   complete M3 P0/P1, W0/W1, direct/generated independent-vector,
+   static/behavioral-witness, no-fallback, cold-bootstrap and generated-only
+   closure proof passes. All six runtime cases remain required for
+   `runtime-conformant` or `release-eligible`; release custody remains separate.
+
+The closed [implementation-clarification supplement](../../architecture/qualification/implementation-clarifications/contract.json)
+and its sibling `cases.json` pin complete mixed-graph failure results and raw
+scalar numeric-admission projections. They are fixture-only evidence, not Core
+source or conformance by themselves.
+
 ## Required closure before corresponding implementation
 
 These are small contract gates, not a reason to redesign the architecture:
@@ -159,22 +206,25 @@ These are small contract gates, not a reason to redesign the architecture:
 The first graph slice must not invent semantics for items 4 and 5. A private
 normalized-value semantic compiler checkpoint may proceed after
 accepted-authority preflight while excluding repeated binding records. That
-checkpoint lives in `packages/core`, admitted by accepted ADR-0015 and
-published from the first checkpoint under accepted ADR-0017 with the export map
-of accepted ADR-0012; the governance gate admits that source, admits the
-publication surface because no publication blocker remains open, and keeps
+checkpoint lives in `packages/core`, admitted by accepted ADR-0015. Its private
+tests may execute normalized results without a digest. Only the completed M1
+compiler exposes the full object result and becomes publishable under accepted
+ADR-0017 with the export map and packed evidence of ADR-0012; a partial semantic
+slice is not that publication subject.
+Accepted ADR-0018 extends that publication path to a generated post-M3 archive
+only after its full M3 gate. The governance gate admits M1 source and keeps
 blocking runtime claims and the exposure of semantics owned by OD-005 and
 OD-006. Inside that
 checkpoint repeated binding-record inputs stay outside the claimed domain, and
 the ADR-0014 semantics may be demonstrated only in fixtures until ADR-0014 is
-accepted. It exposes the
+accepted. The completed M1 compiler exposes the
 accepted object entry point of ADR-0006 and ADR-0007 and does not claim the
 OD-005 carrier refinements of proposed ADR-0013 or any raw-byte admission. The
 raw entrypoint, the raw-carrier adapter, raw decoding, and production
 dependency adapters remain gated by their corresponding decisions; the
 trusted-object adapter behind `compileComposition` is admitted by accepted
 ADR-0006, ADR-0007 and ADR-0017; the package carrier and
-publication are governed by accepted ADR-0012 and ADR-0017.
+publication are governed by accepted ADR-0012, ADR-0017 and ADR-0018.
 
 ## Historical requirement wording
 

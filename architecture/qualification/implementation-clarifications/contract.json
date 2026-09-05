@@ -1,0 +1,89 @@
+{
+  "kind": "get-modular.implementation-clarifications",
+  "authority": "ADR-0018",
+  "scope": "additive-fixed-rules-no-runtime-profile",
+  "graphDepth": {
+    "sourceGraph": "selected-nodes-and-wholly-valid-binding-edges",
+    "prerequisites": [
+      "graph.selected-node-census-complete",
+      "graph.positive-edge-subgraph-complete"
+    ],
+    "measurement": "induced-dag-after-removing-cyclic-scc-nodes-and-incident-edges",
+    "emptyResidual": "no-depth-limit-candidate",
+    "limit": 2048,
+    "actualMaximum": 2049,
+    "cycleDiagnostics": "preserved",
+    "unreachableNodes": "included",
+    "factAdditions": []
+  },
+  "rawNumbers": {
+    "meaning": "exact-mathematical-safe-integer-before-number-conversion",
+    "minimum": "-9007199254740991",
+    "maximum": "9007199254740991",
+    "negativeZero": "reject-all-spellings",
+    "integerSpellings": [
+      "integer",
+      "decimal",
+      "exponent"
+    ],
+    "nonIntegerReason": "invalid-type",
+    "outOfRangeOrNegativeZeroReason": "invalid-format",
+    "diagnosticCode": "schema.invalid-value",
+    "phase": "schema",
+    "objectMeaning": "supplied-number-value",
+    "exposure": "M2-after-OD-005-and-OD-006",
+    "unboundedBigInt": "forbidden",
+    "exponentExpansion": "forbidden"
+  },
+  "diagnosticTypes": {
+    "publicCodeType": "Diagnostic['code']",
+    "members": "effective-emittable-codes-in-catalog-order",
+    "reserved": "excluded",
+    "additionalRootExports": [],
+    "internalFailure": "reject-promise"
+  },
+  "carrierTrust": {
+    "objectGraph": "trusted-cooperative-host-data",
+    "rawWrapperAndList": "trusted-cooperative-host-data",
+    "rawPayload": "untrusted-bytes-after-carrier-admission",
+    "ownedSnapshot": "synchronous-before-async-no-retained-aliases",
+    "bounded": "compiler-owned-work-and-retained-model",
+    "excludedGuarantees": [
+      "intrinsic-reflection-temporary-allocation",
+      "caller-owned-heap",
+      "arbitrary-proxy-traps",
+      "fixed-wall-time",
+      "process-wide-heap-ceiling"
+    ],
+    "rawByteLimits": "before-copy-and-decode",
+    "OD-005": "open"
+  },
+  "publication": {
+    "preM3": "complete-M1-and-packed-Node-TypeScript",
+    "postM3": "packed-Node-TypeScript-and-complete-M3",
+    "M3": [
+      "P0-P1",
+      "W0-W1",
+      "static-witness",
+      "behavioral-witness",
+      "independent-vectors-both-subjects",
+      "clean-and-poisoned-bootstrap",
+      "no-concrete-fallback",
+      "no-caller-time-bootstrap",
+      "generated-only-closure"
+    ],
+    "runtimeMatrix": "runtime-conformant-and-release-eligible",
+    "custody": "separate-accepted-authority",
+    "archive": "pack-once-same-bytes-and-registry-read-back",
+    "claim": "not-claimed"
+  },
+  "unchanged": [
+    "base-schema",
+    "catalog-and-code-rank",
+    "seventeen-facts",
+    "resource-profile",
+    "OD-005",
+    "OD-006",
+    "M1-owner-start-scope"
+  ]
+}

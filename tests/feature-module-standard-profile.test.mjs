@@ -172,6 +172,7 @@ test("requires profile enforcement in complete and fast gates", () => {
     "qualification:resource-profile",
     "qualification:v1-diagnostics-protocol",
     "qualification:v1-graph-semantics",
+    "qualification:self-composition-templates",
     "runtime:preflight",
   ]) {
     const noOp = clone(packageJson);

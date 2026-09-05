@@ -9,6 +9,7 @@ related:
   - ADR-0005
   - ADR-0006
   - ADR-0007
+  - ADR-0018
   - GM-REQ-V1
   - OD-006
 ---
@@ -32,6 +33,10 @@ evidence. Prior disposable exploration did not leave a governed,
 content-addressed case inventory and is not a durable claim about coverage.
 This proposal instead defines the closed manifest and recipe contract that
 future successor evidence must satisfy.
+
+Generation 2 must carry forward ADR-0018's residual-depth, exact raw-number
+and emittable-type rules in its successor contract, cases, checker and ledger.
+This preserves the accepted supplement without expanding duplicate-record scope.
 
 ## Decision
 
@@ -82,7 +87,8 @@ future artifact categories:
 
 None of those successor artifacts or ledger entries exists merely because this
 proposal names them. Until they exist, are reviewed, and are accepted together,
-ADR-0005, ADR-0007, and their existing artifact bytes remain the only authority.
+ADR-0005, ADR-0007, ADR-0018, and their existing artifact bytes remain the
+accepted authority; the new duplicate-record behavior remains proposed.
 
 ADR-0013 adds `input.invalid-byte-carrier` under the same constraints. Because
 ADR-0007 requires the immutable base schema enum, diagnostic catalog, and code

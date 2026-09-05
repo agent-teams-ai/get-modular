@@ -12,8 +12,9 @@ summary: Canonical navigation for Get Modular architecture and evidence.
 
 - [System boundary](architecture/system-boundary.md)
 - [Current implementation contract](architecture/current-contract.md)
+- [Accepted implementation readiness rules](decisions/0018-close-implementation-readiness-rules.md) - exact depth, numeric, type, trust and generated-publication rules.
 - [Feature Module Standard profile](architecture/feature-module-standard.md)
-- [MVP implementation roadmap](architecture/mvp-implementation-roadmap.md)
+- [MVP implementation roadmap](architecture/mvp-implementation-roadmap.md) - start with the [agent execution route and phase reading map](architecture/mvp-implementation-roadmap.md#agent-execution-route), [parallel delivery](architecture/mvp-implementation-roadmap.md#dependency-safe-parallel-delivery) and [phase Definition of Done](architecture/mvp-implementation-roadmap.md#phase-definition-of-done-and-evidence-map).
 - [Self-composition implementation guide](architecture/self-composition-implementation-guide.md) - own feature inventory, feature skeleton, build topology and emitter contract for ADR-0008.
 - [MVP decision packet](architecture/mvp-decision-packet.md) - non-authoritative choices and implementation stop points.
 - [Internal engine self-composition](decisions/0008-bounded-internal-engine-self-composition.md) - accepted build-time self-use architecture; implementation evidence remains pending.
@@ -39,6 +40,7 @@ resource policy is the single profile described in the current contract.
 
 ## Evidence
 
+- [Historical implementation-readiness audit](../research/implementation-readiness/report.md) - dispositions belong to the recorded historical subjects; use the current contract and roadmap for today's start conditions.
 - [Compiler engineer handbook](qualification/compiler-engineer-handbook.md) - seventeen fact derivations, partial failure rules and independent examples.
 - [Growth and first-publication readiness review](qualification/growth-and-release-readiness-review.md) - reconciled capability migration, namespace admission and release-mechanics findings.
 - [Source map](provenance/source-map.yaml)
