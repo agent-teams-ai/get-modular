@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createInputAdmission } from "../../../dist/features/input-admission/factory.js";
+import { createInputAdmission } from "../../../dist-test/features/input-admission/factory.js";
 
 test("factory instances keep snapshots and invocation sinks independent", () => {
   const admission = createInputAdmission({});

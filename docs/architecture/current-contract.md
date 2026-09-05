@@ -112,14 +112,20 @@ share that collector; neither factory owns mutable invocation state. The driven
 canonicalizer and admitted-input shapes belong to the consuming feature and
 join their providers structurally. Foundation permits feature consumers to
 import these contracts while keeping concrete factories and algorithm files
-behind separate implementation boundaries. Direct assembly and the compiler
-facade remain pending.
+behind separate implementation boundaries. The compiler facade now connects
+admission, analysis and output through three driven ports. The literal direct
+root supplies one canonicalizer to semantics and output. Each call owns its
+input synchronously before awaiting output; internal primitive failures reject
+the Promise and never become diagnostic records.
 Tests connect the actual admission, semantic and output implementations against
-independent object diagnostic, plan and digest expectations. This private
-pipeline is not the public compiler, packed qualification or a completed M1.
+independent object diagnostic, plan and digest expectations. The public barrel
+and separate direct qualification entry now execute the accepted complete
+object diagnostic partitions, normalization permutations, eight mixed
+cycle/depth recipes, complete P500 plan/digest and ADR-0020 coverage vectors.
+These source-build checks are not packed qualification or a completed M1.
 Diagnostic producers still need to normalize and deduplicate their eligible
-candidates before collection. The public compiler and packed
-publication subject remain pending. Accepted
+candidates before collection. Packed consumers, the remaining public resource
+matrix, own-graph witness and archive custody remain pending. Accepted
 ADR-0009 names the one pre-1.0 public surface: `compileComposition`,
 `compileCompositionJson`, `defineModule`, `required`, `optional`, `many` and
 the types `CompileCompositionResult`, `ModuleDeclaration`,
@@ -338,13 +344,18 @@ package:
 - `tsconfig.base.json` extends
   `@agent-teams/engineering-foundation/presets/typescript/node.json` and adds
   `isolatedModules`, `isolatedDeclarations`, `erasableSyntaxOnly`,
-  `declaration`, `types: []`, and `skipLibCheck`. Package configurations extend it with `rootDir`, `outDir`, and
-  `include`.
+  `declaration`, `types: []`, and `skipLibCheck`. Production emit starts at
+  `src/index.ts`; the separate typecheck configuration checks every source
+  feature, including an unselected implementation.
 - Relative imports use `.js` specifiers in source. Do not enable
   `rewriteRelativeImportExtensions`: it rewrites emitted JavaScript but leaves
   `.ts` specifiers inside emitted declaration files.
-- Tests run with `node --test` and an explicit glob against the built `dist`
-  output; the build is `tsc -p` for the package configuration.
+- Tests run with `node --test` and an explicit glob. Private component tests use
+  `dist-test`, public tests use production `dist`, and the direct qualification
+  entry uses `dist-stage0`. `architecture/tooling/build-core.mjs` cleans those
+  three output trees and runs their pinned TypeScript configurations, so stale
+  files cannot survive narrowing of the production entrypoint. Qualification
+  tooling stays outside the production source closure and package allowlist.
 - The `core:typecheck`, `core:build`, and `core:test` scripts run the first
   private package and are included in `check:fast` and `check`. The
   root script list is closed: `architecture:feature-module-profile` fails with

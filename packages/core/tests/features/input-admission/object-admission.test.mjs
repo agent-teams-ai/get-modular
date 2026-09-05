@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { admitObjectInput } from "../../../dist/features/input-admission/object-admission.js";
-import { createDiagnosticCollector } from "../../../dist/features/diagnostics/internal.js";
-import { createOwnedJcs } from "../../../dist/features/canonicalization/owned-jcs/factory.js";
-import { admissionLimits } from "../../../dist/features/input-admission/resource-limits.js";
+import { admitObjectInput } from "../../../dist-test/features/input-admission/object-admission.js";
+import { createDiagnosticCollector } from "../../../dist-test/features/diagnostics/internal.js";
+import { createOwnedJcs } from "../../../dist-test/features/canonicalization/owned-jcs/factory.js";
+import { admissionLimits } from "../../../dist-test/features/input-admission/resource-limits.js";
 
 const root = new URL("../../../../../", import.meta.url);
 const json = async path => JSON.parse(await readFile(new URL(path, root), "utf8"));

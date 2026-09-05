@@ -80,7 +80,8 @@ const sourceMap = {
   }],
 };
 
-test("Core build output does not require Git source custody or hide authored artifacts", async () => {
+for (const outputRoot of ["dist", "dist-test", "dist-stage0"]) {
+test(`Core ${outputRoot} output does not require Git source custody or hide authored artifacts`, async () => {
   const fixture = await mkdtemp(join(tmpdir(), "get-modular-build-custody-"));
   try {
     await initFixtureRepository(fixture);
@@ -90,25 +91,27 @@ test("Core build output does not require Git source custody or hide authored art
     };
     await write("package.json", '{"private":true}\n');
     await write("packages/core/package.json", '{"name":"@get-modular/core","private":true}\n');
-    const emitted = "packages/core/dist/features/canonicalization/identity.d.ts";
+    const emitted = `packages/core/${outputRoot}/features/canonicalization/identity.d.ts`;
     await write(emitted, "export declare const identity: string;\n");
     assert.ok((await productionArtifactPaths(fixture)).includes(emitted), "orphan output stays visible");
 
     await write("packages/core/src/features/canonicalization/identity.ts", 'export const identity = "example/value";\n');
-    await write(".gitignore", "dist/\n");
+    await write(".gitignore", `${outputRoot}/\n`);
     await git(fixture, "add", ".");
     const snapshot = await captureGitIndexSnapshot(fixture);
     assert.ok(!(await productionArtifactPaths(fixture, snapshot)).includes(emitted));
     assert.ok((await productionArtifactPaths(fixture)).includes(emitted), "without index evidence output stays visible");
 
-    const misplaced = "packages/core/src/dist/hidden.ts";
-    const otherPackage = "packages/other/dist/hidden.js";
-    const nestedManifest = "packages/core/dist/nested/package.json";
+    const misplaced = `packages/core/src/${outputRoot}/hidden.ts`;
+    const otherPackage = `packages/other/${outputRoot}/hidden.js`;
+    const nestedManifest = `packages/core/${outputRoot}/nested/package.json`;
+    const similarPrefix = `packages/core/${outputRoot}-shadow/hidden.js`;
     await write(misplaced, "export {};\n");
     await write(otherPackage, "export {};\n");
     await write(nestedManifest, "{}\n");
+    await write(similarPrefix, "export {};\n");
     const inventory = await productionArtifactPaths(fixture, snapshot);
-    for (const path of [misplaced, otherPackage, nestedManifest]) assert.ok(inventory.includes(path));
+    for (const path of [misplaced, otherPackage, nestedManifest, similarPrefix]) assert.ok(inventory.includes(path));
 
     await git(fixture, "add", "--force", emitted);
     const trackedOutput = await captureGitIndexSnapshot(fixture);
@@ -120,6 +123,7 @@ test("Core build output does not require Git source custody or hide authored art
     await rm(fixture, { recursive: true, force: true });
   }
 });
+}
 
 test("metadata schema matches runtime Windows-safe path rules", async () => {
   const schema = JSON.parse(await readFile("docs/metadata.schema.json", "utf8"));

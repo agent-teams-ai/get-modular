@@ -3,9 +3,9 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import canonicalizeOracle from "canonicalize";
 import { canonicalize as secondOracle } from "json-canonicalize";
-import { createOwnedJcs } from "../../../dist/features/canonicalization/owned-jcs/factory.js";
-import { ownedJcsDeclaration, ownedJcsImplementation } from "../../../dist/features/canonicalization/owned-jcs/declaration.js";
-import { canonicalBytesCapabilityId, canonicalBytesToken, canonicalizationModuleId } from "../../../dist/features/canonicalization/identity.js";
+import { createOwnedJcs } from "../../../dist-test/features/canonicalization/owned-jcs/factory.js";
+import { ownedJcsDeclaration, ownedJcsImplementation } from "../../../dist-test/features/canonicalization/owned-jcs/declaration.js";
+import { canonicalBytesCapabilityId, canonicalBytesToken, canonicalizationModuleId } from "../../../dist-test/features/canonicalization/identity.js";
 
 const root = new URL("../../../../../", import.meta.url);
 const read = async path => JSON.parse(await readFile(new URL(path, root), "utf8"));

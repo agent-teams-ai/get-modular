@@ -6,8 +6,8 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import canonicalizeOracle from "canonicalize";
 import { canonicalize as secondOracle } from "json-canonicalize";
-import { compareDiagnostics, createDiagnosticCollector } from "../../../dist/features/diagnostics/internal.js";
-import { createOwnedJcs } from "../../../dist/features/canonicalization/owned-jcs/factory.js";
+import { compareDiagnostics, createDiagnosticCollector } from "../../../dist-test/features/diagnostics/internal.js";
+import { createOwnedJcs } from "../../../dist-test/features/canonicalization/owned-jcs/factory.js";
 
 const root = new URL("../../../../../", import.meta.url);
 const read = async path => JSON.parse(await readFile(new URL(path, root), "utf8"));
@@ -53,7 +53,7 @@ test("orders SCC arrays lexicographically with shorter prefixes first", () => {
 });
 
 test("absent coordinate fields never consult inherited getters", () => {
-  const entry = new URL("../../../dist/features/diagnostics/internal.js", import.meta.url).href;
+  const entry = new URL("../../../dist-test/features/diagnostics/internal.js", import.meta.url).href;
   // Isolate the prototype mutation from the test runner and all other tests.
   const script = `import assert from 'node:assert/strict';
     import {compareDiagnostics} from ${JSON.stringify(entry)};

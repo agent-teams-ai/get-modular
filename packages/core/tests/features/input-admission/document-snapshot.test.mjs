@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { snapshotDeclaration, snapshotProfile } from "../../../dist/features/input-admission/document-snapshot.js";
+import { snapshotDeclaration, snapshotProfile } from "../../../dist-test/features/input-admission/document-snapshot.js";
 
 const vectors = JSON.parse(await readFile(new URL("../../../../../architecture/qualification/v1/normalization-vectors.json", import.meta.url), "utf8"));
 const examples = JSON.parse(await readFile(new URL("../../../../../tests/qualification/compiler-engineer/examples.json", import.meta.url), "utf8"));

@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { materialize } from "../../../../../architecture/checks/implementation-clarifications.mjs";
+import { expectedP500Plan, expectedDigest, p500Digest } from "../../../../../tests/qualification/support/scale-output.mjs";
 import { generateDenseProfile, loadP500Recipe } from "../../../../../tests/qualification/support/resource-profile-v2.mjs";
-import { admitObjectInput } from "../../../dist/features/input-admission/object-admission.js";
-import { analyzeCompositionSemantics } from "../../../dist/features/composition-semantics/semantic-analysis.js";
-import { createDiagnosticCollector } from "../../../dist/features/diagnostics/internal.js";
-import { createOwnedJcs } from "../../../dist/features/canonicalization/owned-jcs/factory.js";
-import { createPlanOutput } from "../../../dist/features/plan-output/factory.js";
+import { admitObjectInput } from "../../../dist-test/features/input-admission/object-admission.js";
+import { analyzeCompositionSemantics } from "../../../dist-test/features/composition-semantics/semantic-analysis.js";
+import { createDiagnosticCollector } from "../../../dist-test/features/diagnostics/internal.js";
+import { createOwnedJcs } from "../../../dist-test/features/canonicalization/owned-jcs/factory.js";
+import { createPlanOutput } from "../../../dist-test/features/plan-output/factory.js";
 
 const root = new URL("../../../../../", import.meta.url);
 const json = async path => JSON.parse(await readFile(new URL(path, root), "utf8"));
@@ -63,46 +63,6 @@ test("removing a cyclic bridge never joins two in-budget chains into a depth ove
   for (const reorder of permutations) assert.deepEqual(compile(permute(input, reorder)), expected);
 });
 
-// Independent expected-output recipe: no input generator, subject census,
-// graph traversal, canonicalizer or returned plan supplies these expectations.
-function expectedP500Plan() {
-  const module = i => `example/p500/module-${String(i).padStart(4, "0")}`;
-  const implementation = i => `${module(i)}/implementation-${"x".repeat(48)}`;
-  const bindings = [];
-  for (let consumer = 1; consumer < 500; consumer += 1) {
-    for (const slotId of ["many", "optional", "required"]) {
-      if (slotId === "optional" && consumer === 1) continue;
-      const providers = slotId === "many"
-        ? Array.from({ length: Math.min(consumer, 48) }, (_, i) => Math.max(0, consumer - 48) + i)
-        : [consumer - (slotId === "optional" ? 2 : 1)];
-      bindings.push({ consumerImplementationId: implementation(consumer), slotId,
-        capabilityId: "example/p500/capability", compatibility: {
-          family: "exact", familyVersion: 1, token: "example/p500/capability" },
-        providerImplementationIds: providers.map(implementation) });
-    }
-  }
-  return { kind: "get-modular.composition-plan", schemaVersion: 1, profileId: "example/p500/profile",
-    roots: [module(499)], selections: Array.from({ length: 500 }, (_, i) => ({ moduleId: module(i), implementationId: implementation(i) })),
-    bindings, dependencyOrder: Array.from({ length: 500 }, (_, i) => implementation(i)) };
-}
-
-// This small oracle is deliberately restricted to the ASCII/integer fixture
-// domain. It is not another general RFC8785 implementation.
-function fixtureCanonical(value) {
-  if (Array.isArray(value)) return `[${value.map(fixtureCanonical).join(",")}]`;
-  if (value && typeof value === "object") return `{${Object.keys(value).sort()
-    .map(key => `${JSON.stringify(key)}:${fixtureCanonical(value[key])}`).join(",")}}`;
-  assert.ok(typeof value === "string" && /^[\x20-\x7e]*$/u.test(value) || Number.isSafeInteger(value));
-  return JSON.stringify(value);
-}
-function expectedDigest(plan) {
-  const bytes = fixtureCanonical({ canonicalization: "RFC8785", hashAlgorithm: "SHA-256",
-    kind: "get-modular.plan-content", plan, protocolVersion: 1 });
-  return `gm-plan:v1:sha-256:${createHash("sha256").update(bytes).digest("hex")}`;
-}
-// Independently reproduced with Python sorted compact JSON over this closed
-// ASCII recipe, not captured from the production compiler or canonicalizer.
-const p500Digest = "gm-plan:v1:sha-256:30ebe42d0c5fd429fe20177551c739bca784e74f97d4c7bf42300c9c46b46f55";
 
 test("the real private P500 pipeline matches the entire independent plan and fixed digest under permutations", async () => {
   assert.deepEqual([recipe.moduleCount, recipe.manyWindow, recipe.implementationIdPadding, recipe.rootModuleIndex], [500, 48, 48, 499]);

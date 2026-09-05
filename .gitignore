@@ -5,3 +5,9 @@ dist/
 *.tgz
 .agent-teams-local/
 **/.foundation-retired-evidence-/
+dist-test/
+dist-stage0/
+dist-qualification/
+dist-seed/
+packages/core/src/composition/generated/stage1.ts
+packages/core/src/composition/generated/stage1.variant.ts

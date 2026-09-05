@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import Ajv2020 from "ajv/dist/2020.js";
-import { validateDeclarationShape, validateProfileShape } from "../../../dist/features/input-admission/document-shape.js";
+import { validateDeclarationShape, validateProfileShape } from "../../../dist-test/features/input-admission/document-shape.js";
 
 const root = new URL("../../../../../", import.meta.url);
 const json = async path => JSON.parse(await readFile(new URL(path, root), "utf8"));

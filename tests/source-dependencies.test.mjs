@@ -200,6 +200,19 @@ test("Foundation rejects a concrete canonicalizer fallback inside plan output", 
   assert.match(rules(report), /architecture\.source-dependencies\.forbidden-boundary-dependency/u);
 });
 
+test("Foundation keeps facade providers injected and the public barrel closed", async () => {
+  const facade = await checkFixture(files => {
+    const path = "packages/core/src/features/compiler-facade/factory.ts";
+    files.set(path, files.get(path) + '\nimport { createInputAdmission } from "../input-admission/factory.js";\n');
+  });
+  assert.match(rules(facade), /architecture\.source-dependencies\.forbidden-boundary-dependency/u);
+  const barrel = await checkFixture(files => {
+    const path = "packages/core/src/index.ts";
+    files.set(path, files.get(path) + '\nexport { createCompilerFacade } from "./features/compiler-facade/factory.js";\n');
+  });
+  assert.match(rules(barrel), /architecture\.source-dependencies\.forbidden-boundary-dependency/u);
+});
+
 test("Foundation rejects private deep imports even across an allowed edge", async () => {
   const report = await checkFixture((files, configuration) => {
     addConsumer(files, configuration);

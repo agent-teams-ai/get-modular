@@ -68,6 +68,8 @@ const NON_PRODUCTION_DIRECTORIES = new Set([
   "tests",
 ]);
 const UNTRACKED_DIRECTORIES = new Set([".git", "node_modules"]);
+const CORE_BUILD_SOURCE_ROOTS = ["dist", "dist-test", "dist-stage0"]
+  .map(directory => `packages/core/${directory}/`);
 
 function compareStrings(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
@@ -511,14 +513,15 @@ export async function productionArtifactPaths(repositoryRoot = process.cwd(), in
       artifacts.add(path);
     }
   }
-  // The Core build emits ignored JavaScript/declarations into dist. They are
+  // The Core build emits ignored JavaScript/declarations into three explicit
+  // output trees (production, component tests, and direct qualification). They are
   // qualified as build/archive output, not as authored Git-index source. Keep
   // staged output, manifests, symlinks, and every other location in the source
   // inventory. An orphan dist tree cannot stand in for a real source package.
   if (indexSnapshot && artifacts.has("packages/core/package.json")
     && [...artifacts].some(path => path.startsWith("packages/core/src/") && PRODUCTION_SOURCE.test(path))) {
     for (const path of artifacts) {
-      if (path.startsWith("packages/core/dist/") && PRODUCTION_SOURCE.test(path) && !capturedPaths.has(path)
+      if (CORE_BUILD_SOURCE_ROOTS.some(root => path.startsWith(root)) && PRODUCTION_SOURCE.test(path) && !capturedPaths.has(path)
         && (await lstat(resolve(repositoryRoot, path))).isFile()) {
         artifacts.delete(path);
       }
