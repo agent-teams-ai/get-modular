@@ -342,6 +342,15 @@ function rootedFilesEntry(entry) {
   // Brace/extglob branches can hide `..` or an empty segment that changes the
   // meaning of a later parent traversal. POSIX normalization does not expand
   // patterns. Require parent traversal to be independent of glob expansion.
+  // A brace group spanning `/` can hide its parent alternative in a segment
+  // with no glob marker, or concatenate two separate `.` alternatives. Keep
+  // brace groups within one path component; callers can list paths separately.
+  let braceDepth = 0;
+  for (const character of original) {
+    if (character === "{") braceDepth += 1;
+    else if (character === "}") braceDepth = Math.max(0, braceDepth - 1);
+    else if (character === "/" && braceDepth > 0) return true;
+  }
   let seenPattern = false;
   for (const segment of original.split("/")) {
     const pattern = GLOB_METACHARACTERS.test(segment);
