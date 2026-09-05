@@ -1,6 +1,7 @@
 // Private ordering/collection only. Candidate generation, normalization,
 // deduplication and public compiler qualification remain producer/integration gates.
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import canonicalizeOracle from "canonicalize";
@@ -46,6 +47,20 @@ test("orders SCC arrays lexicographically with shorter prefixes first", () => {
   const components = [["example/a"], ["example/a", "example/b"], ["example/a", "example/c"], ["example/b"]];
   const diagnostics = components.map(component => ({ code: "graph.cycle", phase: "graph", path: [], coordinate: {}, details: { component } }));
   for (const order of permutations(diagnostics)) assert.deepEqual(order.sort(compare), diagnostics);
+});
+
+test("absent coordinate fields never consult inherited getters", () => {
+  const entry = new URL("../../../dist/features/diagnostics/internal.js", import.meta.url).href;
+  // Isolate the prototype mutation from the test runner and all other tests.
+  const script = `import assert from 'node:assert/strict';
+    import {compareDiagnostics} from ${JSON.stringify(entry)};
+    const left={code:'binding.unknown-provider',phase:'binding',path:[],
+      coordinate:{implementationId:'example/a',slotId:'dependency',providerImplementationId:'example/provider'},details:{reason:'unknown'}};
+    const right={...left,coordinate:{...left.coordinate,implementationId:'example/z'}};
+    Object.defineProperty(Object.prototype,'moduleId',{configurable:true,get(){throw new Error('inherited getter called');}});
+    try {assert.ok(compareDiagnostics(left,right,()=>{throw new Error('details are not decisive');})<0);}
+    finally {delete Object.prototype.moduleId;}`;
+  execFileSync(process.execPath, ["--input-type=module", "-e", script], { timeout: 10_000 });
 });
 
 test("uses complete RFC8785 detail bytes from the supplied function", () => {

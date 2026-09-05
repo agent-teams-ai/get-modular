@@ -34,8 +34,8 @@ export function compareDiagnostics(left: Diagnostic, right: Diagnostic, canonica
   const a: Coordinate = left.coordinate;
   const b: Coordinate = right.coordinate;
   for (const field of coordinateFields) {
-    const av = a[field];
-    const bv = b[field];
+    const av = Object.hasOwn(a, field) ? a[field] : undefined;
+    const bv = Object.hasOwn(b, field) ? b[field] : undefined;
     if (av === undefined && bv !== undefined) return -1;
     if (av !== undefined && bv === undefined) return 1;
     if (av !== undefined && bv !== undefined) {
