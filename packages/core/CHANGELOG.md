@@ -19,6 +19,8 @@
   resource-only profile observations for later semantic prerequisites.
 - Private iterative selected-graph SCC, dependency order, root closure and
   residual depth with streamed cycle/depth diagnostics and operation counters.
+- Private declaration/profile censuses with ambiguous identity lookups,
+  normalized duplicate diagnostics and independent absence/mismatch checks.
 - Package typecheck, build and tests with Foundation source-dependency checks.
 
 This package is not published. The public compiler, packed-consumer evidence

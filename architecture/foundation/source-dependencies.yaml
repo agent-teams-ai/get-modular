@@ -5,18 +5,21 @@ workspace:
 governedRoots:
   - packages/core/src
 boundaries:
-  # Graph algorithms operate only on an already bounded selected graph and
-  # remain owner-private until semantics establishes their prerequisites.
+  # Semantic censuses and graph algorithms remain owner-private while binding
+  # validation, prerequisite integration and module construction are pending.
   - id: core-composition-semantics
     roots:
       - packages/core/src/features/composition-semantics/graph-components.ts
       - packages/core/src/features/composition-semantics/ready-queue.ts
       - packages/core/src/features/composition-semantics/selected-graph.ts
       - packages/core/src/features/composition-semantics/graph-diagnostics.ts
+      - packages/core/src/features/composition-semantics/declaration-census.ts
+      - packages/core/src/features/composition-semantics/profile-census.ts
     entrypoints: []
     allow:
       boundaries:
         - core-diagnostics
+        - core-authoring
       packages: []
       builtins: []
       runtimeReferences: []
