@@ -138,7 +138,7 @@ Anchoring the claim bytes also binds its subject, prerequisite relationship,
 and evidence digests. A `reviewed` record is evidence or analysis only and
 makes no admission or conformance claim.
 
-The private canonicalization slice in `packages/core` is `source-admitted`.
+The materialized private features in `packages/core` are `source-admitted`.
 Structural conformance and runtime conformance remain independently
 `not-claimed`. The Foundation policy enumerates materialized files and their
 allowed entrypoints; its executable fixtures in

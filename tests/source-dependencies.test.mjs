@@ -114,6 +114,14 @@ test("Foundation rejects consumer imports of a concrete provider", async () => {
   assert.match(rules(report), /architecture\.source-dependencies\.forbidden-boundary-dependency/u);
 });
 
+test("Foundation rejects a concrete canonicalizer fallback inside plan output", async () => {
+  const report = await checkFixture(files => {
+    const path = "packages/core/src/features/plan-output/factory.ts";
+    files.set(path, files.get(path) + '\nimport { createOwnedJcs } from "../canonicalization/owned-jcs/factory.js";\n');
+  });
+  assert.match(rules(report), /architecture\.source-dependencies\.forbidden-boundary-dependency/u);
+});
+
 test("Foundation rejects private deep imports even across an allowed edge", async () => {
   const report = await checkFixture((files, configuration) => {
     addConsumer(files, configuration);
