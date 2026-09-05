@@ -5,8 +5,9 @@ workspace:
 governedRoots:
   - packages/core/src
 boundaries:
-  # Admission helpers remain private until diagnostic eligibility and module
-  # construction complete the feature's callable contract.
+  # Admission stays private pending independent review, semantic resource
+  # integration and module construction. It consumes the diagnostic library,
+  # never a concrete canonicalizer or an extra dependency slot.
   - id: core-input-admission
     roots:
       - packages/core/src/features/input-admission/object-resource-meter.ts
@@ -14,10 +15,16 @@ boundaries:
       - packages/core/src/features/input-admission/document-shape.ts
       - packages/core/src/features/input-admission/identity-format.ts
       - packages/core/src/features/input-admission/schema-diagnostic.ts
+      - packages/core/src/features/input-admission/resource-limits.ts
+      - packages/core/src/features/input-admission/document-path.ts
+      - packages/core/src/features/input-admission/resource-diagnostic.ts
+      - packages/core/src/features/input-admission/profile-resource-facts.ts
+      - packages/core/src/features/input-admission/object-admission.ts
     entrypoints: []
     allow:
       boundaries:
         - core-authoring
+        - core-diagnostics
       packages: []
       builtins: []
       runtimeReferences: []

@@ -71,6 +71,11 @@
       "id": "ADR-0018",
       "path": "docs/decisions/0018-close-implementation-readiness-rules.md",
       "immutableDigest": "sha256:d2ed79790913df0288eab6353bc5ceb2928e10bfbf2f90a92a571de59937368d"
+    },
+    {
+      "id": "ADR-0020",
+      "path": "docs/decisions/0020-define-diagnostic-coverage-outside-object-resource-admission.md",
+      "immutableDigest": "sha256:efed8501482a2bc9af58d6f0b71d85f18be0931ce39cf1a102d2b74090916668"
     }
   ]
 }

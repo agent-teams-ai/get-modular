@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "algorithm": "sha256-bytes",
+  "artifacts": [
+    {
+      "id": "OBJECT-RESOURCE-COVERAGE",
+      "path": "architecture/qualification/object-resource-coverage/contract.json",
+      "immutableDigest": "sha256:5125b31a3c7d31a44dcab8a492d4bbf9989ced548fcdb4af5eab31787cee437b"
+    },
+    {
+      "id": "OBJECT-RESOURCE-COVERAGE-CASES",
+      "path": "architecture/qualification/object-resource-coverage/cases.json",
+      "immutableDigest": "sha256:c6c1c3cee1b6b3d0a8436d1dd84627934bfab961e9060959d9a358a5852c1266"
+    }
+  ]
+}

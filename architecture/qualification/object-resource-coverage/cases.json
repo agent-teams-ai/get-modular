@@ -1,0 +1,458 @@
+{
+  "kind": "get-modular.object-resource-coverage-cases",
+  "authority": "ADR-0020",
+  "entryPoint": "trusted-object-admission-and-semantic-result",
+  "cases": [
+    {
+      "id": "key-order",
+      "domain": "outside-envelope",
+      "variants": [
+        "string-first",
+        "values-first"
+      ],
+      "permittedResults": [
+        {
+          "ok": false,
+          "diagnostics": [
+            {
+              "code": "input.limit-exceeded",
+              "phase": "decode",
+              "coordinate": {},
+              "path": [],
+              "details": {
+                "limitName": "aggregateStringBytes",
+                "limit": 8388608,
+                "actual": 8388609
+              }
+            }
+          ]
+        },
+        {
+          "ok": false,
+          "diagnostics": [
+            {
+              "code": "input.limit-exceeded",
+              "phase": "schema",
+              "coordinate": {},
+              "path": [],
+              "details": {
+                "limitName": "jsonValueOccurrences",
+                "limit": 2097152,
+                "actual": 2097153
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "depth-string-order",
+      "domain": "outside-envelope",
+      "variants": [
+        "depth-first",
+        "string-first"
+      ],
+      "permittedResults": [
+        {
+          "ok": false,
+          "diagnostics": [
+            {
+              "code": "input.limit-exceeded",
+              "phase": "decode",
+              "coordinate": {},
+              "path": [
+                {
+                  "kind": "field",
+                  "value": "declarations"
+                },
+                {
+                  "kind": "index",
+                  "value": 0
+                }
+              ],
+              "details": {
+                "limitName": "jsonDepth",
+                "limit": 32,
+                "actual": 33
+              }
+            }
+          ]
+        },
+        {
+          "ok": false,
+          "diagnostics": [
+            {
+              "code": "input.limit-exceeded",
+              "phase": "decode",
+              "coordinate": {},
+              "path": [],
+              "details": {
+                "limitName": "aggregateStringBytes",
+                "limit": 8388608,
+                "actual": 8388609
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "binding-order",
+      "domain": "outside-envelope",
+      "variants": [
+        "short-first",
+        "long-first"
+      ],
+      "permittedResults": [
+        {
+          "ok": false,
+          "diagnostics": [
+            {
+              "code": "input.limit-exceeded",
+              "phase": "decode",
+              "coordinate": {},
+              "path": [],
+              "details": {
+                "limitName": "aggregateStringBytes",
+                "limit": 8388608,
+                "actual": 8388609
+              }
+            }
+          ]
+        },
+        {
+          "ok": false,
+          "diagnostics": [
+            {
+              "code": "input.limit-exceeded",
+              "phase": "schema",
+              "coordinate": {},
+              "path": [],
+              "details": {
+                "limitName": "jsonValueOccurrences",
+                "limit": 2097152,
+                "actual": 2097153
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oversized-array-hidden-tail",
+      "domain": "outside-envelope",
+      "variants": [
+        "string-first",
+        "string-last",
+        "depth-first",
+        "depth-last"
+      ],
+      "permittedResults": [
+        {
+          "ok": false,
+          "diagnostics": [
+            {
+              "code": "input.limit-exceeded",
+              "phase": "schema",
+              "coordinate": {},
+              "path": [],
+              "details": {
+                "limitName": "jsonValueOccurrences",
+                "limit": 2097152,
+                "actual": 2097153
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "multiple-depth-documents",
+      "domain": "outside-envelope",
+      "variants": [
+        "forward"
+      ],
+      "permittedResults": [
+        {
+          "ok": false,
+          "diagnostics": [
+            {
+              "code": "input.limit-exceeded",
+              "phase": "decode",
+              "coordinate": {},
+              "path": [
+                {
+                  "kind": "field",
+                  "value": "declarations"
+                },
+                {
+                  "kind": "index",
+                  "value": 0
+                }
+              ],
+              "details": {
+                "limitName": "jsonDepth",
+                "limit": 32,
+                "actual": 33
+              }
+            },
+            {
+              "code": "input.limit-exceeded",
+              "phase": "decode",
+              "coordinate": {},
+              "path": [
+                {
+                  "kind": "field",
+                  "value": "declarations"
+                },
+                {
+                  "kind": "index",
+                  "value": 1
+                }
+              ],
+              "details": {
+                "limitName": "jsonDepth",
+                "limit": 32,
+                "actual": 33
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "prior-depth-then-batch",
+      "domain": "outside-envelope",
+      "variants": [
+        "string",
+        "values"
+      ],
+      "permittedResults": [
+        {
+          "ok": false,
+          "diagnostics": [
+            {
+              "code": "input.limit-exceeded",
+              "phase": "decode",
+              "coordinate": {},
+              "path": [],
+              "details": {
+                "limitName": "aggregateStringBytes",
+                "limit": 8388608,
+                "actual": 8388609
+              }
+            },
+            {
+              "code": "input.limit-exceeded",
+              "phase": "decode",
+              "coordinate": {},
+              "path": [
+                {
+                  "kind": "field",
+                  "value": "declarations"
+                },
+                {
+                  "kind": "index",
+                  "value": 0
+                }
+              ],
+              "details": {
+                "limitName": "jsonDepth",
+                "limit": 32,
+                "actual": 33
+              }
+            }
+          ]
+        },
+        {
+          "ok": false,
+          "diagnostics": [
+            {
+              "code": "input.limit-exceeded",
+              "phase": "decode",
+              "coordinate": {},
+              "path": [
+                {
+                  "kind": "field",
+                  "value": "declarations"
+                },
+                {
+                  "kind": "index",
+                  "value": 0
+                }
+              ],
+              "details": {
+                "limitName": "jsonDepth",
+                "limit": 32,
+                "actual": 33
+              }
+            },
+            {
+              "code": "input.limit-exceeded",
+              "phase": "schema",
+              "coordinate": {},
+              "path": [],
+              "details": {
+                "limitName": "jsonValueOccurrences",
+                "limit": 2097152,
+                "actual": 2097153
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shallow-then-batch",
+      "domain": "outside-envelope",
+      "variants": [
+        "string",
+        "values"
+      ],
+      "permittedResults": [
+        {
+          "ok": false,
+          "diagnostics": [
+            {
+              "code": "input.limit-exceeded",
+              "phase": "decode",
+              "coordinate": {},
+              "path": [],
+              "details": {
+                "limitName": "aggregateStringBytes",
+                "limit": 8388608,
+                "actual": 8388609
+              }
+            },
+            {
+              "code": "input.limit-exceeded",
+              "phase": "declaration",
+              "coordinate": {},
+              "path": [],
+              "details": {
+                "limitName": "totalCapabilities",
+                "limit": 65536,
+                "actual": 65537
+              }
+            },
+            {
+              "code": "input.limit-exceeded",
+              "phase": "declaration",
+              "coordinate": {},
+              "path": [],
+              "details": {
+                "limitName": "totalSlots",
+                "limit": 65536,
+                "actual": 65537
+              }
+            }
+          ]
+        },
+        {
+          "ok": false,
+          "diagnostics": [
+            {
+              "code": "input.limit-exceeded",
+              "phase": "schema",
+              "coordinate": {},
+              "path": [],
+              "details": {
+                "limitName": "jsonValueOccurrences",
+                "limit": 2097152,
+                "actual": 2097153
+              }
+            },
+            {
+              "code": "input.limit-exceeded",
+              "phase": "declaration",
+              "coordinate": {},
+              "path": [],
+              "details": {
+                "limitName": "totalCapabilities",
+                "limit": 65536,
+                "actual": 65537
+              }
+            },
+            {
+              "code": "input.limit-exceeded",
+              "phase": "declaration",
+              "coordinate": {},
+              "path": [],
+              "details": {
+                "limitName": "totalSlots",
+                "limit": 65536,
+                "actual": 65537
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "in-envelope-malformed",
+      "domain": "inside-envelope",
+      "variants": [
+        "unknown-first",
+        "unknown-last"
+      ],
+      "permittedResults": [
+        {
+          "ok": false,
+          "diagnostics": [
+            {
+              "code": "schema.unknown-field",
+              "phase": "schema",
+              "coordinate": {},
+              "path": [
+                {
+                  "kind": "field",
+                  "value": "declarations"
+                },
+                {
+                  "kind": "index",
+                  "value": 0
+                }
+              ],
+              "details": {
+                "reason": "unknown-field"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cycle-beside-shared-dag",
+      "domain": "inside-envelope",
+      "variants": [
+        "cycle-first",
+        "cycle-last"
+      ],
+      "permittedResults": [
+        {
+          "ok": false,
+          "diagnostics": [
+            {
+              "code": "schema.non-plain-value",
+              "phase": "schema",
+              "coordinate": {},
+              "path": [
+                {
+                  "kind": "field",
+                  "value": "declarations"
+                },
+                {
+                  "kind": "index",
+                  "value": 0
+                }
+              ],
+              "details": {
+                "reason": "non-plain-value"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

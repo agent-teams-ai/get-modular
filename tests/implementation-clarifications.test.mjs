@@ -192,3 +192,26 @@ test("supplement stays linked to immutable graph prerequisites and code disposit
   );
   await assert.rejects(run(disposition), /immutable catalog partition/u);
 });
+
+// ADR-0020 is additive; the ADR-0018 bytes and validator above remain unchanged.
+import { checkObjectResourceCoverage, coverageDirectory, coverageLedger, coverageDecision }
+  from "../architecture/checks/object-resource-coverage.mjs";
+import { createSchemaValidators } from "../architecture/checks/v1-qualification.mjs";
+
+test("object coverage custody rejects changed authority, expected failures and extra files", async () => {
+  const paths = [`${coverageDirectory}/contract.json`, `${coverageDirectory}/cases.json`];
+  const files = new Map(await Promise.all([...paths, coverageLedger, coverageDecision,
+    "architecture/qualification/v1/resource-profile-v2.json"].map(async path => [path, await load(path)])));
+  const { validateDiagnostic } = createSchemaValidators(JSON.parse(await load("architecture/contracts/v1/composition.schema.json")));
+  const runCoverage = (input = files, listedPaths = paths) => checkObjectResourceCoverage({
+    readBytes: async path => input.get(path), listedPaths, validateDiagnostic,
+  });
+  await runCoverage();
+  for (const path of [...paths, coverageLedger]) {
+    const mutant = new Map(files); mutant.set(path, Buffer.concat([mutant.get(path), Buffer.from(" ")]));
+    await assert.rejects(runCoverage(mutant), /byte drift|decision anchor/);
+  }
+  const noAnchor = new Map(files); noAnchor.set(coverageDecision, Buffer.from("missing anchor"));
+  await assert.rejects(runCoverage(noAnchor), /decision anchor/);
+  await assert.rejects(runCoverage(files, [...paths, `${coverageDirectory}/extra.json`]), /exactly its two artifacts/);
+});

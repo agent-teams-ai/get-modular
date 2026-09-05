@@ -4,6 +4,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 
+import { checkObjectResourceCoverage, coverageDirectory } from "./object-resource-coverage.mjs";
 import { checkImplementationClarifications } from "./implementation-clarifications.mjs";
 
 import canonicalize from "canonicalize";
@@ -267,6 +268,11 @@ async function main() {
     listedPaths: await listLedgerJsonPaths({
       repositoryRoot: root, snapshot, directory: clarificationDirectory,
     }),
+  });
+  await checkObjectResourceCoverage({
+    readBytes: read,
+    listedPaths: await listLedgerJsonPaths({ repositoryRoot: root, snapshot, directory: coverageDirectory }),
+    validateDiagnostic: validators.validateDiagnostic,
   });
   await assertGitIndexSnapshotCurrent(snapshot);
   process.stdout.write("Get Modular V1 contract and qualification checks passed.\n");

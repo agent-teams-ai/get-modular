@@ -1,4 +1,5 @@
 import { isLocalTokenFormat, isPortableIdFormat } from "./identity-format.js";
+import { admissionLimits, type DocumentLimit, type ReportDocumentLimit } from "./resource-limits.js";
 
 // The caller first proves the cooperative JSON-shaped document's resource
 // bounds and plain descriptors. This owner-private pass checks the closed wire
@@ -26,7 +27,7 @@ function isWellFormedUtf16(value: string): boolean {
   return true;
 }
 
-function checks(report: Report) {
+function checks(report: Report, reportLimit?: ReportDocumentLimit) {
   let valid = true;
   function fail(rule: DocumentShapeViolation["rule"], path: Path): void {
     valid = false;
@@ -69,14 +70,22 @@ function checks(report: Report) {
     return (value, path) => {
       if (typeof value !== "string") fail("type", path);
       else if (!isWellFormedUtf16(value)) fail("unicode", path);
-      // Shape validation may stop at the length bound. Resource classification
-      // separately calls the same grammar scan before measuring identifierBytes.
-      else if (value.length < min || value.length > max || !matchesFormat(value)) fail("identity", path);
+      else {
+        // The meter already bounded string work. The byte limit is meaningful
+        // only after the complete ASCII grammar succeeds, independent of the
+        // schema's shorter bound for local tokens.
+        const formatValid = matchesFormat(value);
+        if (formatValid && value.length > admissionLimits.identifierBytes) {
+          reportLimit?.("identifierBytes", admissionLimits.identifierBytes + 1, path);
+        }
+        if (value.length < min || value.length > max || !formatValid) fail("identity", path);
+      }
     };
   }
-  function array(min: number, max: number, item: Check): Check {
+  function array(min: number, max: number, item: Check, limit?: DocumentLimit): Check {
     return (value, path) => {
       if (!Array.isArray(value)) { fail("type", path); return; }
+      if (limit && value.length > admissionLimits[limit]) reportLimit?.(limit, admissionLimits[limit] + 1, path);
       if (value.length < min || value.length > max) { fail("size", path); return; }
       for (let index = 0; index < value.length; index += 1) {
         const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
@@ -85,7 +94,7 @@ function checks(report: Report) {
       }
     };
   }
-  const portable = identity(isPortableIdFormat, 3, 128);
+  const portable = identity(isPortableIdFormat, 3, admissionLimits.identifierBytes);
   const local = identity(isLocalTokenFormat, 1, 64);
   const compatibility: Check = (value, path) => record(value, path, {
     family: literal("exact"), familyVersion: literal(1), token: portable,
@@ -138,8 +147,10 @@ function checks(report: Report) {
       record(value, [], {
         kind: literal("get-modular.module-declaration"), schemaVersion: literal(1),
         moduleId: portable, implementationId: portable,
-        owner: (owner, path) => record(owner, path, { authority: local, path: array(1, 8, local) }),
-        provides: array(0, 64, provided), slots: array(0, 128, slot),
+        owner: (owner, path) => record(owner, path, { authority: local,
+          path: array(1, admissionLimits.ownerPathSegments, local, "ownerPathSegments") }),
+        provides: array(0, admissionLimits.capabilitiesPerDeclaration, provided, "capabilitiesPerDeclaration"),
+        slots: array(0, admissionLimits.slotsPerDeclaration, slot, "slotsPerDeclaration"),
       });
       return valid;
     },
@@ -147,17 +158,19 @@ function checks(report: Report) {
       if (!supportedDocumentVersion(value)) return false;
       record(value, [], {
         kind: literal("get-modular.composition-profile"), schemaVersion: literal(1), profileId: portable,
-        roots: array(1, 1024, portable), selections: array(1, 4096, selection), bindings: array(0, 65_536, binding),
+        roots: array(1, admissionLimits.roots, portable, "roots"),
+        selections: array(1, admissionLimits.selections, selection, "selections"),
+        bindings: array(0, admissionLimits.bindings, binding, "bindings"),
       });
       return valid;
     },
   };
 }
 
-export function validateDeclarationShape(value: unknown, report: Report): boolean {
-  return checks(report).declaration(value);
+export function validateDeclarationShape(value: unknown, report: Report, reportLimit?: ReportDocumentLimit): boolean {
+  return checks(report, reportLimit).declaration(value);
 }
 
-export function validateProfileShape(value: unknown, report: Report): boolean {
-  return checks(report).profile(value);
+export function validateProfileShape(value: unknown, report: Report, reportLimit?: ReportDocumentLimit): boolean {
+  return checks(report, reportLimit).profile(value);
 }
