@@ -1,0 +1,34 @@
+schemaVersion: 1
+workspace:
+  kind: pnpm
+  manifest: pnpm-workspace.yaml
+governedRoots:
+  - packages/core/src
+boundaries:
+  # Enumerate only materialized source. New features and layers need an explicit
+  # ownership edge in this policy, including otherwise dependency-free files.
+  - id: core-canonicalization-contract
+    roots:
+      - packages/core/src/features/canonicalization/ports.ts
+      - packages/core/src/features/canonicalization/identity.ts
+    entrypoints:
+      - packages/core/src/features/canonicalization/ports.ts
+      - packages/core/src/features/canonicalization/identity.ts
+    allow:
+      boundaries: []
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: core-canonicalization-owned-jcs
+    roots:
+      - packages/core/src/features/canonicalization/owned-jcs/declaration.ts
+      - packages/core/src/features/canonicalization/owned-jcs/factory.ts
+    entrypoints:
+      - packages/core/src/features/canonicalization/owned-jcs/declaration.ts
+      - packages/core/src/features/canonicalization/owned-jcs/factory.ts
+    allow:
+      boundaries:
+        - core-canonicalization-contract
+      packages: []
+      builtins: []
+      runtimeReferences: []

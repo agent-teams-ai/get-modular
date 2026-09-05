@@ -76,6 +76,45 @@ const sourceMap = {
   }],
 };
 
+test("Core build output does not require Git source custody or hide authored artifacts", async () => {
+  const fixture = await mkdtemp(join(tmpdir(), "get-modular-build-custody-"));
+  try {
+    await initFixtureRepository(fixture);
+    const write = async (path, content) => {
+      await mkdir(dirname(join(fixture, path)), { recursive: true });
+      await writeFile(join(fixture, path), content);
+    };
+    await write("package.json", '{"private":true}\n');
+    await write("packages/core/package.json", '{"name":"@get-modular/core","private":true}\n');
+    const emitted = "packages/core/dist/features/canonicalization/identity.d.ts";
+    await write(emitted, "export declare const identity: string;\n");
+    assert.ok((await productionArtifactPaths(fixture)).includes(emitted), "orphan output stays visible");
+
+    await write("packages/core/src/features/canonicalization/identity.ts", 'export const identity = "example/value";\n');
+    await write(".gitignore", "dist/\n");
+    await git(fixture, "add", ".");
+    const snapshot = await captureGitIndexSnapshot(fixture);
+    assert.ok(!(await productionArtifactPaths(fixture, snapshot)).includes(emitted));
+
+    const misplaced = "packages/core/src/dist/hidden.ts";
+    const otherPackage = "packages/other/dist/hidden.js";
+    const nestedManifest = "packages/core/dist/nested/package.json";
+    await write(misplaced, "export {};\n");
+    await write(otherPackage, "export {};\n");
+    await write(nestedManifest, "{}\n");
+    const inventory = await productionArtifactPaths(fixture, snapshot);
+    for (const path of [misplaced, otherPackage, nestedManifest]) assert.ok(inventory.includes(path));
+
+    await git(fixture, "add", "--force", emitted);
+    const trackedOutput = await captureGitIndexSnapshot(fixture);
+    assert.ok((await productionArtifactPaths(fixture, trackedOutput)).includes(emitted));
+    await write(emitted, "export declare const changed: string;\n");
+    await assert.rejects(productionArtifactPaths(fixture, trackedOutput), /working-tree-diverged/u);
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
 test("metadata schema matches runtime Windows-safe path rules", async () => {
   const schema = JSON.parse(await readFile("docs/metadata.schema.json", "utf8"));
   const validate = new Ajv2020({ allErrors: true, strict: true }).compile(schema);
