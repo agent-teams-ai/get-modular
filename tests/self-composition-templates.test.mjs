@@ -155,6 +155,6 @@ test("production root selection retains type dependencies and excludes unselecte
   assert.equal(result.status, 0, result.output);
   const paths = await readdir(join(core, "dist"), { recursive: true });
   assert.equal(paths.some(path => path.includes("unselected")), false);
-  assert.ok(paths.includes("features/authoring/internal.d.ts"));
+  assert.ok(paths.includes(join("features", "authoring", "internal.d.ts")));
   // This proves emit closure only. M3 must separately audit actual packed archives.
 });
