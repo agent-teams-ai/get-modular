@@ -345,6 +345,9 @@ function rootedFilesEntry(entry) {
   let seenPattern = false;
   for (const segment of original.split("/")) {
     const pattern = GLOB_METACHARACTERS.test(segment);
+    // Even .{,safe}. expands to `..`. Dot-bearing brace segments must use
+    // separate literal allowlist entries; no brace-expansion engine is needed.
+    if (/[{}]/u.test(segment) && segment.includes(".")) return true;
     if (pattern && segment.includes("..") || seenPattern && segment === "..") return true;
     seenPattern ||= pattern;
   }
