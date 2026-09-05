@@ -127,8 +127,12 @@ to both consumer slots. The fixed-input digest changes and restores on rebinding
 the actual semantics factory reverses the accepted private detail operands while
 preserving SCC order. Two isolated consumer mutants prove that calling a provider
 without using its returned bytes is insufficient. Production and packed inventory
-checks exclude the variant. Static wiring correspondence remains pending, so
-these behavioral checks alone do not close checkpoint A.
+checks exclude the variant. The independent finite static witness now checks
+both direct roots against their plans, resolves declaration/factory imports and
+allowlist text to the same source exports, and checks the provided-port root.
+Its mutations reject compatible-factory substitutions even when value and text
+are changed together. The M1 checkpoint A tests combine this construction proof
+with the behavioral replacement; generated wiring and W0/W1 remain M3 work.
 Tests connect the actual admission, semantic and output implementations against
 independent object diagnostic, plan and digest expectations. The public barrel
 and separate direct qualification entry now execute the accepted complete

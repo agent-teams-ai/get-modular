@@ -971,6 +971,14 @@ the generated TypeScript would compile and W0/W1 would agree with each other.
 
 ## Construction witness and checkpoint A
 
+The M1 executable checks are in
+[construction-witness.test.mjs](../../packages/core/tests/qualification/construction-witness.test.mjs)
+and [canonicalizer-replacement.test.mjs](../../packages/core/tests/qualification/canonicalizer-replacement.test.mjs).
+Their finite source reader uses the pinned development TypeScript scanner and
+the matching freshly built feature namespaces. Source/build custody remains the
+invoking gate's responsibility; the reader neither executes a root or allowlist
+nor establishes artifact trust. Generated subjects join these checks in M3.
+
 As decided by ADR-0016, the construction witness has two parts and neither
 instruments production code:
 
