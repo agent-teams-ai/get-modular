@@ -37,7 +37,9 @@ test("clean production build follows only the public entry while checking unsele
   }
   assert.match(await readFile(join(core, "dist-test/features/unselected/probe.js"), "utf8"), /probe = 1/u);
   assert.match(await readFile(join(core, "dist-stage0/self-composition/stage0-entry.js"), "utf8"), /compileComposition/u);
-  const declaration = await readFile(join(core, "dist/composition/stage0.d.ts"), "utf8");
+  const internalRoot = await readFile(join(core, "dist/composition/stage0.d.ts"), "utf8");
+  assert.match(internalRoot, /export declare const root: CompilerFacadePort;/u);
+  const declaration = await readFile(join(core, "dist/index.d.ts"), "utf8");
   assert.match(declaration, /Promise<CompileCompositionResult>/u);
   assert.doesNotMatch(declaration, /CompilerFacadePort|compiler-facade|input-admission|composition-semantics/u);
   // Unselected implementations still fail the full source check, rather than
