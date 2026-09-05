@@ -14,6 +14,9 @@
   exact array bounds, portable identity grammar and no getter invocation.
 - Private iterative identity grammar and safe schema diagnostic projection,
   including unsupported-version suppression and exact numeric failure reasons.
+- Private synchronous object admission with batch preflight, independent
+  document snapshots, streamed resource/schema diagnostics and explicit
+  resource-only profile observations for later semantic prerequisites.
 - Package typecheck, build and tests with Foundation source-dependency checks.
 
 This package is not published. The public compiler, packed-consumer evidence

@@ -127,6 +127,14 @@ test("Foundation keeps the unfinished admission resource pass private to its own
   assert.match(rules(report), /architecture\.source-dependencies\.cross-boundary-local-import-not-entrypoint/u);
 });
 
+test("Foundation rejects a concrete canonicalizer inside admission", async () => {
+  const report = await checkFixture(files => {
+    const path = "packages/core/src/features/input-admission/object-admission.ts";
+    files.set(path, files.get(path) + '\nimport { createOwnedJcs } from "../canonicalization/owned-jcs/factory.js";\n');
+  });
+  assert.match(rules(report), /architecture\.source-dependencies\.forbidden-boundary-dependency/u);
+});
+
 for (const [name, path, contents] of [
   ["behavior outside a feature", "packages/core/src/helpers.ts", "export function hiddenRule() { return 1; }\n"],
   ["undeclared feature ownership", "packages/core/src/features/unowned/factory.ts", "export const hidden = 1;\n"],

@@ -10,6 +10,7 @@ related:
   - ADR-0013
   - ADR-0015
   - ADR-0018
+  - ADR-0020
   - ARCH-CURRENT-CONTRACT
   - ARCH-MVP-IMPLEMENTATION-ROADMAP
 ---
@@ -29,6 +30,7 @@ production compiler has passed these examples.
 - [G: independently authored graph expectations](../../architecture/qualification/v1/normalization-vectors.json), `graphSemantics`.
 - [S: accepted data schema](../../architecture/contracts/v1/composition.schema.json).
 - [R: effective resource limits](../../architecture/qualification/v1/resource-profile-v2.json).
+- [C: object resource coverage](../decisions/0020-define-diagnostic-coverage-outside-object-resource-admission.md), with its [closed contract and permitted results](../../architecture/qualification/object-resource-coverage/contract.json).
 - [I: accepted implementation clarifications](../decisions/0018-close-implementation-readiness-rules.md).
 
 The names below are private qualification facts, not a public API, extensible
@@ -36,6 +38,19 @@ rule engine, or a reason to create seventeen services. A small set of private
 functions and explicit values is enough. Derive facts from input evidence;
 never copy a checker result, mark all facts valid, or infer a fact's meaning
 only from its name.
+
+## Object resource coverage
+
+C preserves full eligible diagnostic determinism inside the admitted JSON
+occurrence/string/depth envelope. Beyond it, bounded early rejection keeps a
+precise saturated limit failure; equivalent enumerations may select different
+limits or diagnostic subsets. Missing candidates do not prove absent errors.
+J/string failure is batch-wide and permits no document snapshot or resource
+profile; depth stops only that document. Keep independently established shallow
+aggregates and prior depth failures. Do not scan an oversized array to discover
+hidden competing limits. For these cases compare the full result against C's
+permitted set; for in-envelope cases retain exact equality. Carry both groups
+through the public M1 and generated M3 qualification routes.
 
 ## State and evidence rules
 

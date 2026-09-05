@@ -22,6 +22,7 @@ related:
   - ADR-0016
   - ADR-0017
   - ADR-0018
+  - ADR-0020
   - ARCH-FEATURE-MODULE-STANDARD
   - ARCH-SELF-COMPOSITION-GUIDE
   - ARCH-SYSTEM-BOUNDARY
@@ -83,7 +84,8 @@ files. Use the following route before choosing an implementation.
    linked for the assigned phase below. Read the decisions themselves, not
    only their titles. Apply only explicit successor precedence:
    [ADR-0018](../decisions/0018-close-implementation-readiness-rules.md)
-   is a narrow refinement, not acceptance of the remaining proposals.
+   and [ADR-0020](../decisions/0020-define-diagnostic-coverage-outside-object-resource-admission.md)
+   are narrow refinements, not acceptance of the remaining proposals.
 3. Read the entire assigned phase, the applicable
    [callable-matrix row](#per-phase-callable-matrix),
    and its direct prerequisites. For code layout and internal dependencies,
@@ -97,7 +99,8 @@ files. Use the following route before choosing an implementation.
    [accepted authority ledger](../../architecture/authority/accepted-authorities.json),
    [contract ledger](../../architecture/authority/accepted-contracts.json),
    [qualification ledger](../../architecture/authority/v1-qualification-ledger.json)
-   and [clarification ledger](../../architecture/authority/implementation-clarifications-ledger.json)
+   [clarification ledger](../../architecture/authority/implementation-clarifications-ledger.json)
+   and [object resource coverage ledger](../../architecture/authority/object-resource-coverage-ledger.json)
    locate their exact authority. Follow relevant normative references through
    to their source. A missing or inaccessible source is an explicit task gap;
    a title, search excerpt or historical report cannot replace its contents.
@@ -117,10 +120,10 @@ Follow the phase's full exit criteria as well as this navigation table.
 
 | Phase | Additional required sources | Bounded output and next dependency |
 | --- | --- | --- |
-| [0: preflight](#phase-0-contract-and-evidence-preflight) | [ADR-0015 source admission](../decisions/0015-block-publication-surfaces-and-runtime-claims-while-decisions-stay-open.md), [ADR-0017 M1 publication](../decisions/0017-publish-pre-1-0-releases-while-raw-carrier-and-duplicate-record-decisions-stay-open.md), [recorded start](#recorded-core-start), all four ledgers above | Exact base/head, applicable authority and exclusions, existing gate results; no Core source. The no-package exit condition is for initial preflight, not every later task. |
+| [0: preflight](#phase-0-contract-and-evidence-preflight) | [ADR-0015 source admission](../decisions/0015-block-publication-surfaces-and-runtime-claims-while-decisions-stay-open.md), [ADR-0017 M1 publication](../decisions/0017-publish-pre-1-0-releases-while-raw-carrier-and-duplicate-record-decisions-stay-open.md), [recorded start](#recorded-core-start), all five ledgers above | Exact base/head, applicable authority and exclusions, existing gate results; no Core source. The no-package exit condition is for initial preflight, not every later task. |
 | [1: package boundary](#phase-1-package-topology-and-private-composition-boundary) | [ADR-0003 package identities](../decisions/0003-select-public-package-identity-and-initial-topology.md), [ADR-0009 names](../decisions/0009-keep-pre-1-0-public-api-unversioned.md), [ADR-0012 packed carrier](../decisions/0012-select-esm-only-root-package-carrier.md), [source admission](feature-module-standard.md#source-admission), [build topology](self-composition-implementation-guide.md), [first publication mechanics](#first-not-claimed-publication-mechanics) | Package and Foundation source boundaries land with substantive behavior from phases 2-4; packed publication waits for complete M1. An empty barrel or package is not a finished slice. |
 | [2: authoring](#phase-2-declarations-profiles-and-capability-slots) | [ADR-0004 data contract](../decisions/0004-freeze-v1-portable-composition-contract-and-plan-digest.md), [ADR-0006 normalization](../decisions/0006-clarify-v1-compiler-normalization-and-entry-points.md), [ADR-0007 helper contract](../decisions/0007-require-executable-v1-conformance-amendments.md), [composition schema](../../architecture/contracts/v1/composition.schema.json), [own feature inventory](self-composition-implementation-guide.md#own-feature-inventory) | Inert authoring helpers and wire types with positive/negative TypeScript fixtures; compiler remains the sole validator. Pass these types to admission/semantics without exporting private ports. |
-| [3: semantic compiler](#phase-3-normalization-and-deterministic-graph-compiler) | [ADR-0005 diagnostic/resource base](../decisions/0005-freeze-v1-compatibility-diagnostics-and-resource-profile.md), ADR-0006/0007 above, ADR-0018, [handbook and error-combination worksheet](../qualification/compiler-engineer-handbook.md#m1-error-combination-worksheet), [diagnostic contract](../../architecture/qualification/v1/diagnostic-contract.json), [snapshots](../../architecture/qualification/v1/diagnostic-snapshots.json), [normalization vectors](../../architecture/qualification/v1/normalization-vectors.json), [effective limits](../../architecture/qualification/v1/resource-profile-v2.json), [resource boundaries](../../architecture/qualification/v1/resource-boundary-vectors.json), [clarification cases](../../architecture/qualification/implementation-clarifications/cases.json) | Owned admission, graph and diagnostic behavior with partial-failure expectations; private normalized success may omit digest. Full public success waits for phase 4's output implementation. |
+| [3: semantic compiler](#phase-3-normalization-and-deterministic-graph-compiler) | [ADR-0005 diagnostic/resource base](../decisions/0005-freeze-v1-compatibility-diagnostics-and-resource-profile.md), ADR-0006/0007 above, ADR-0018/0020, [object coverage contract and cases](../../architecture/qualification/object-resource-coverage/contract.json), [handbook and error-combination worksheet](../qualification/compiler-engineer-handbook.md#m1-error-combination-worksheet), [diagnostic contract](../../architecture/qualification/v1/diagnostic-contract.json), [snapshots](../../architecture/qualification/v1/diagnostic-snapshots.json), [normalization vectors](../../architecture/qualification/v1/normalization-vectors.json), [effective limits](../../architecture/qualification/v1/resource-profile-v2.json), [resource boundaries](../../architecture/qualification/v1/resource-boundary-vectors.json), [clarification cases](../../architecture/qualification/implementation-clarifications/cases.json) | Owned admission, graph and diagnostic behavior with partial-failure expectations; private normalized success may omit digest. Full public success waits for phase 4's output implementation. |
 | [4: output and self-composition](#phase-4-immutable-plan-canonical-bytes-and-self-composition) | [ADR-0008 finite self-use](../decisions/0008-bounded-internal-engine-self-composition.md), [ADR-0016 dependency records/witness](../decisions/0016-close-the-dependency-record-seam-and-construction-witness-for-self-composition.md), ADR-0018, [canonical vectors](../../architecture/contracts/v1/canonical-vectors.json), [canonicalization refinements](../../architecture/qualification/v1/canonicalization-vectors.json), [emitter/build/witness guide](self-composition-implementation-guide.md) | First deliver direct plan/digest and full M1 results. Later M3 delivers finite generation, direct/generated parity and construction proof; do not make the first part wait for the second. |
 | [5: conformance and scale](#phase-5-conformance-and-scale-proof) | ADR-0007/0008/0012, [case manifest](../../architecture/qualification/v1/qualification-case-manifest.json), [decoder vectors](../../architecture/qualification/v1/decoder-vectors.json), all evidence applicable to the selected subject, [governed qualification format](../metadata.schema.json), [custody proposal and stop point](../decisions/0011-define-private-self-composition-evidence-and-release-custody.md) | Run independent expectations against actual subjects; record exact inputs, outputs and excluded cases. Full runtime promotion and custody need their accepted authority; fixture validation is not subject execution. |
 | [6: product dogfooding](#phase-6-first-product-dogfooding) | System boundary and requirements, [capability migration and admission](#capability-evolution-and-namespace-admission), the actual consumer's accepted adoption decision | Optional product-owned adapter and observed integration results. The consumer owns factory failures, lifecycle and rollback; a second consumer gates only the broader extraction/stability claim. |
@@ -519,6 +522,20 @@ required custody authority remains proposed, release eligibility remains
 `CONDITIONAL` even when the two earlier outcomes pass.
 
 ## Common phase protocol
+
+Accepted [ADR-0020 option A](../decisions/0020-define-diagnostic-coverage-outside-object-resource-admission.md)
+closes object resource coverage: complete eligible diagnostic determinism inside
+the resource envelope, precise bounded early rejection outside it, without a
+stable winning-limit promise. Before public M1 qualification, execute its
+[permitted-result vectors](../../architecture/qualification/object-resource-coverage/cases.json)
+against the actual facade and document the boundary at the API. Preserve that
+gate for generated M3. Private-stage success does not close the public gate.
+
+The private admission checkpoint carries the accepted decision, immutable
+coverage artifacts, custody checker and admission-only structural regressions
+together. Execute the complete permitted-result cases when the semantic
+integration exists; then repeat them against the public M1 facade and generated
+M3 subject. No stage may replace a missing downstream subject with a stub.
 
 Every phase uses evidence and review proportional to the changed risk. A phase
 cannot enter implementation only because a plan sounds plausible, but ordinary

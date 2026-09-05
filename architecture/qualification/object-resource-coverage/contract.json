@@ -1,0 +1,30 @@
+{
+  "kind": "get-modular.object-resource-coverage",
+  "authority": "ADR-0020",
+  "selection": "A",
+  "scope": "trusted-object-admission-no-new-runtime-profile",
+  "insideEnvelope": "complete-deterministic-eligible-diagnostics-under-existing-equivalence",
+  "outsideEnvelope": "bounded-early-rejection-with-truthful-named-resource-failure",
+  "selectedLimitAcrossPermutations": "not-guaranteed-outside-envelope",
+  "batchLimits": [
+    "jsonValueOccurrences",
+    "aggregateStringBytes"
+  ],
+  "depthScope": "document-local",
+  "actual": "limit-plus-one",
+  "independentShallowAggregates": "preserve-totalCapabilities-and-totalSlots",
+  "priorDepthFailures": "preserve-established-document-local-failures",
+  "afterBatchRejection": "no-document-snapshot-no-resource-profile-no-plan-no-digest",
+  "ownership": "synchronous-no-getters-no-retained-caller-aliases",
+  "unchanged": [
+    "resource-values",
+    "catalog-and-code-rank",
+    "seventeen-facts",
+    "schema",
+    "raw-carrier-scope",
+    "OD-005",
+    "OD-006",
+    "M1-owner-start-scope"
+  ],
+  "caseRecipes": "packages/core/tests/features/input-admission/object-resource-coverage-cases.mjs"
+}
