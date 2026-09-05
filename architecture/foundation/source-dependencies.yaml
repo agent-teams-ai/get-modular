@@ -5,6 +5,20 @@ workspace:
 governedRoots:
   - packages/core/src
 boundaries:
+  - id: core-diagnostics
+    roots:
+      - packages/core/src/features/diagnostics/types.ts
+      - packages/core/src/features/diagnostics/order.ts
+      - packages/core/src/features/diagnostics/collector.ts
+      - packages/core/src/features/diagnostics/internal.ts
+    entrypoints:
+      - packages/core/src/features/diagnostics/internal.ts
+    allow:
+      boundaries:
+        - core-authoring
+      packages: []
+      builtins: []
+      runtimeReferences: []
   - id: core-plan-output-contract
     roots:
       - packages/core/src/features/plan-output/ports.ts
