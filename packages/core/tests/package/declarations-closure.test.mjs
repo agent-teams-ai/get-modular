@@ -508,6 +508,22 @@ test("public M2 accepts equivalent wrapper intersections", () => {
   assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
 });
 
+test("public M2 accepts equivalent union wrappers and rejects a divergent arm", () => {
+  for (const profile of ["Uint8Array", "unknown"]) {
+    const files = publicM2Fixture();
+    append(files, WIRE, `\nexport type RawInput =
+      | { readonly declarations: readonly Uint8Array[]; readonly profile: Uint8Array }
+      | { readonly declarations: ReadonlyArray<Uint8Array>; readonly profile: ${profile} };\n`);
+    append(files, ROOT, '\nimport type { RawInput } from "./features/authoring/wire.js";\n');
+    replace(files, ROOT, rawCompiler, "export declare const compileCompositionJson: (input: RawInput) => Promise<CompileCompositionResult>;");
+    if (profile === "Uint8Array") {
+      assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
+    } else {
+      assert.throws(() => auditM1DeclarationClosure(files, 2, "m2"));
+    }
+  }
+});
+
 test("public M2 accepts mapped wrappers with synthesized properties", () => {
   const files = publicM2Fixture();
   append(files, WIRE, '\nexport type RawInput = { readonly [K in "declarations" | "profile"]: K extends "declarations" ? readonly Uint8Array[] : Uint8Array };\n');
