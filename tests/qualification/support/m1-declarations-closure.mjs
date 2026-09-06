@@ -458,28 +458,26 @@ function audit(files, generation, surface) {
       // nominal, while the independent contract checks exact type arguments.
       need(type && type.getSymbol() === carrierSymbol, "raw-carrier");
     }
-    // TypeScript normalizes spread-only tuples to arrays. Reject their syntax
-    // too, following owned aliases without traversing standard-library members.
-    const pendingTypes = [inputNode];
+    // Reject a declaration-list tuple spelled directly or through transparent
+    // owned aliases. Carrier aliases and intermediate type computations are
+    // governed by the nominal check and exact type contract, not their syntax.
+    const pendingTypes = declarations.getDeclarations().map(node => node.type).filter(Boolean);
     const seenTypes = new Set();
     while (pendingTypes.length) {
       const node = pendingTypes.pop();
       if (seenTypes.has(node)) continue;
       seenTypes.add(node);
-      walk(node, child => {
-        need(!ts.isTupleTypeNode(child), "raw-input");
-        let symbol;
-        if (ts.isTypeReferenceNode(child)) symbol = checker.getSymbolAtLocation(child.typeName);
-        if (ts.isExpressionWithTypeArguments(child)) symbol = checker.getSymbolAtLocation(child.expression);
-        if (ts.isImportTypeNode(child)) symbol = checker.getSymbolAtLocation(child.qualifier);
+      need(!ts.isTupleTypeNode(node), "raw-input");
+      if (ts.isParenthesizedTypeNode(node) || ts.isTypeOperatorNode(node)) {
+        pendingTypes.push(node.type);
+      } else if (ts.isTypeReferenceNode(node) || ts.isImportTypeNode(node)) {
+        let symbol = checker.getSymbolAtLocation(ts.isTypeReferenceNode(node) ? node.typeName : node.qualifier);
         if (symbol?.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
         for (const declaration of symbol?.getDeclarations() ?? []) {
           if (declaration.getSourceFile().fileName.startsWith(`${BASE}/dist/`)
-            && (ts.isTypeAliasDeclaration(declaration) || ts.isInterfaceDeclaration(declaration))) {
-            pendingTypes.push(declaration);
-          }
+            && ts.isTypeAliasDeclaration(declaration)) pendingTypes.push(declaration.type);
         }
-      });
+      }
     }
   }
   need(!ts.getPreEmitDiagnostics(program).some(item => item.category === ts.DiagnosticCategory.Error), "type-contract");

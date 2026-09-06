@@ -489,6 +489,17 @@ test("public M2 accepts a function declaration and trusted carrier aliases", () 
   assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
 });
 
+test("public M2 accepts computed carrier and list aliases without scanning their intermediate tuples", () => {
+  for (const list of ["readonly Bytes[]", "[readonly Bytes[]][0]"]) {
+    const files = publicM2Fixture();
+    append(files, WIRE, `\nexport type Bytes = [Uint8Array][0];\nexport type Documents = ${list};\n`);
+    append(files, ROOT, '\nimport type { Bytes, Documents } from "./features/authoring/wire.js";\n');
+    replace(files, ROOT, rawCompiler, rawCompiler
+      .replace("readonly Uint8Array[]", "Documents").replace("profile: Uint8Array", "profile: Bytes"));
+    assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
+  }
+});
+
 test("public M2 rejects raw signature and provenance mutations", async t => {
   const rawMutation = (before, after) => files =>
     replace(files, ROOT, rawCompiler, rawCompiler.replace(before, after));
