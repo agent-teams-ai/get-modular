@@ -42,9 +42,9 @@ test("one selected canonicalizer and its two bindings are the only own-profile r
     bindings: ownProfile.bindings.map(value => ({ ...value, providerImplementationIds: value.providerImplementationIds.map(replace) })),
   });
   assert.equal(variantProfile.bindings.filter(value => value.providerImplementationIds.includes(variantId)).length, 2);
-  assert.deepEqual(variantDeclarations.slice(0, 5), ownDeclarations);
-  assert.equal(variantDeclarations.length, 6);
-  assert.equal(variantDeclarations[5].implementationId, variantId);
+  assert.deepEqual(variantDeclarations.slice(0, 6), ownDeclarations);
+  assert.equal(variantDeclarations.length, 7);
+  assert.equal(variantDeclarations[6].implementationId, variantId);
   const base = await direct.compileComposition({ declarations: ownDeclarations, profile: ownProfile });
   assert.equal(base.ok, true);
   const expectedPlan = {

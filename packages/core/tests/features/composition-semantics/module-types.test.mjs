@@ -20,15 +20,23 @@ import { createInputAdmission } from ${subject("input-admission/factory")};
 import { createCompositionSemantics } from ${subject("composition-semantics/factory")};
 import type { SemanticInput, CanonicalBytesPort as ConsumerCanonicalizer } from ${subject("composition-semantics/ports")};
 import type { CanonicalBytesPort as ProviderCanonicalizer } from ${subject("canonicalization/ports")};
+import type { RawScannerPort as ProviderScanner } from ${subject("raw-scanner/ports")};
+import type { RawScannerPort as ConsumerScanner } from ${subject("input-admission/ports")};
 declare const provider: ProviderCanonicalizer;
+declare const rawProvider: ProviderScanner;
 const consumed: ConsumerCanonicalizer = provider;
-const admission = createInputAdmission({});
+const scanner: ConsumerScanner = rawProvider;
+const admission = createInputAdmission({ scanner });
 const semantics = createCompositionSemantics({ canonicalizer: consumed });
 const collector = semantics.newCollector();
 const admitted: SemanticInput = admission.admitObjectInput({ declarations: [], profile: null }, collector);
 semantics.analyze(admitted, collector);
-// @ts-expect-error M1 admission has no scanner dependency
+// @ts-expect-error canonicalizer is not the required scanner port
 createInputAdmission({ scanner: provider });
+// @ts-expect-error scanner is a required dependency
+createInputAdmission({});
+// @ts-expect-error dependencies have no additional arbitrary keys
+createInputAdmission({ scanner, fallback: scanner });
 // @ts-expect-error canonicalizer is a required dependency
 createCompositionSemantics({});
 // @ts-expect-error dependencies have no additional arbitrary keys

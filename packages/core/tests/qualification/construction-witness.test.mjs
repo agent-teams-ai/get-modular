@@ -23,18 +23,20 @@ const canon = 'get-modular/canonicalization/owned-jcs';
 const semantics = 'get-modular/composition-semantics/default';
 const admission = 'get-modular/input-admission/default';
 const output = 'get-modular/plan-output/default';
+const scanner = 'get-modular/raw-scanner/owned-iterative';
 const facade = 'get-modular/compiler-facade/default';
 const canonicalFactory = 'src/features/canonicalization/owned-jcs/factory.js';
 const compatibleFactory = 'src/features/canonicalization/compatible/factory.js';
 
-// Literal construction expectations from ADR-0016 and the implementation guide.
+// Literal construction expectations for the accepted six-node M2 scanner graph.
 // The subject plan supplies the obligation; it never supplies expected tuples.
 const expectedTuples = [
   [canon, 0, []],
   [semantics, 1, [['canonicalizer', canon]]],
-  [admission, 2, []],
-  [output, 3, [['canonicalizer', canon]]],
-  [facade, 4, [['admission', admission], ['output', output], ['semantics', semantics]]],
+  [output, 2, [['canonicalizer', canon]]],
+  [scanner, 3, []],
+  [admission, 4, [['scanner', scanner]]],
+  [facade, 5, [['admission', admission], ['output', output], ['semantics', semantics]]],
 ];
 function expectedWitness(tuples = expectedTuples) {
   return { tuples, digest: `sha256:${createHash('sha256').update(canonicalize(tuples), 'utf8').digest('hex')}` };
@@ -86,7 +88,7 @@ function correspondence(field, actualModule, actualExport, expectedModule = cano
   };
 }
 
-test('real direct own profile yields the exact five construction tuples and independent digest', async () => {
+test('real direct own profile yields the exact six construction tuples and independent digest', async () => {
   const result = await verifyConstruction({ packageRoot, buildRoot, compositionPath, allowlistPath, plan: await ownPlan() });
   assert.deepEqual(result, expectedWitness());
 });
@@ -115,15 +117,22 @@ test('factory, identity, declaration and provided-port import aliases resolve to
   assert.deepEqual(await verifyConstruction(f), expectedWitness());
 });
 
+const scannerRootMutations = [
+  ['missing required scanner', source => source.replace('createInputAdmission({ scanner })', 'createInputAdmission({})'), 'construction-slots'],
+  ['miswired required scanner', source => source.replace('createInputAdmission({ scanner })', 'createInputAdmission({ scanner: output })'), 'construction-provider'],
+];
 const rootMutations = [
   ['missing factory import', source => source.replace(/^import \{ createOwnedJcs \}[^\n]*\n/mu, '')],
+  ['missing scanner import', source => source.replace(/^import \{ createOwnedRawScanner \}[^\n]*\n/mu, ''), 'construction-count'],
   ['extra factory import', source => 'import { createOwnedJcs as spareFactory } from "../features/canonicalization/owned-jcs/factory.js";\n' + source],
   ['extra construction', source => source.replace('export const root', 'const spare = createOwnedJcs({});\nexport const root')],
+  ['missing scanner construction', source => source.replace('const scanner = createOwnedRawScanner({});\n', ''), 'construction-count'],
   ['dropped slot', source => source.replace('createCompositionSemantics({ canonicalizer })', 'createCompositionSemantics({})')],
+  ...scannerRootMutations,
   ['duplicate slot', source => source.replace('createCompositionSemantics({ canonicalizer })', 'createCompositionSemantics({ canonicalizer, canonicalizer })')],
   ['wrong slot', source => source.replace('createCompositionSemantics({ canonicalizer })', 'createCompositionSemantics({ wrong: canonicalizer })')],
   ['swapped provider', source => source.replace('{ admission, semantics, output }', '{ admission: output, semantics, output }')],
-  ['wrong independent const order', source => source.replace('const semantics = createCompositionSemantics({ canonicalizer });\nconst admission = createInputAdmission({});', 'const admission = createInputAdmission({});\nconst semantics = createCompositionSemantics({ canonicalizer });')],
+  ['wrong independent const order', source => source.replace('const semantics = createCompositionSemantics({ canonicalizer });\nconst output = createPlanOutput({ canonicalizer });', 'const output = createPlanOutput({ canonicalizer });\nconst semantics = createCompositionSemantics({ canonicalizer });'), 'construction-order'],
   ['wrong root', source => source.replace('root: CompilerFacadePort = compiler', 'root: CompilerFacadePort = output')],
   ['wrong provided port', source => source.replaceAll('CompilerFacadePort', 'OutputPort')],
   ['wrong port module', source => source.replace('../features/compiler-facade/ports.js', '../features/input-admission/ports.js')],
@@ -143,11 +152,11 @@ const rootMutations = [
   ['unterminated comment', source => source + '\n/* unfinished'],
   ['reference directive', source => '/// <reference path="extra.ts" />\n' + source],
 ];
-for (const [name, mutate] of rootMutations) {
+for (const [name, mutate, reason] of rootMutations) {
   test(`finite root rejects ${name}`, async t => {
     const f = await fixture(t);
     await rewrite(f, compositionPath, mutate);
-    await rejected(f, invalidCode);
+    await rejected(f, invalidCode, reason ? { reason } : undefined);
   });
 }
 
@@ -322,12 +331,15 @@ for (const token of ['constructor', 'prototype', 'then']) {
     f.plan = result.plan;
     await rewrite(f, compositionPath, source => source.replaceAll('createOwnedJcs', 'createCompatible')
       .replace('/canonicalization/owned-jcs/factory.js', '/canonicalization/compatible/factory.js')
-      .replace('const admission = createInputAdmission({});\n', '')
-      .replace('const canonicalizer =', 'const admission = createInputAdmission({});\nconst canonicalizer ='));
+      .replace('const scanner = createOwnedRawScanner({});\nconst admission = createInputAdmission({ scanner });\n', '')
+      .replace('const canonicalizer =', 'const scanner = createOwnedRawScanner({});\nconst admission = createInputAdmission({ scanner });\nconst canonicalizer ='));
     assert.deepEqual(await verifyConstruction(f), expectedWitness([
-      [admission, 0, []], [id, 1, []], [semantics, 2, [['canonicalizer', id]]],
-      [output, 3, [['canonicalizer', id]]],
-      [facade, 4, [['admission', admission], ['output', output], ['semantics', semantics]]],
+      [scanner, 0, []],
+      [admission, 1, [['scanner', scanner]]],
+      [id, 2, []],
+      [semantics, 3, [['canonicalizer', id]]],
+      [output, 4, [['canonicalizer', id]]],
+      [facade, 5, [['admission', admission], ['output', output], ['semantics', semantics]]],
     ]));
   });
   test(`declared slot ${token} is rejected even on an unselected handle`, async t => {
@@ -342,6 +354,16 @@ for (const token of ['constructor', 'prototype', 'then']) {
 const planMutations = [
   ['duplicate binding records', plan => plan.bindings.push(structuredClone(plan.bindings[0]))],
   ['missing binding', plan => plan.bindings.pop()],
+  ['missing required scanner binding', plan => {
+    const index = plan.bindings.findIndex(binding => binding.consumerImplementationId === admission && binding.slotId === 'scanner');
+    assert.notEqual(index, -1, 'scanner binding must exist before omission');
+    plan.bindings.splice(index, 1);
+  }, 'missing-plan-binding'],
+  ['miswired required scanner binding', plan => {
+    const binding = plan.bindings.find(row => row.consumerImplementationId === admission && row.slotId === 'scanner');
+    assert.ok(binding, 'scanner binding must exist before miswiring');
+    binding.providerImplementationIds = [canon];
+  }, 'binding-correspondence'],
   ['multiple providers', plan => plan.bindings[0].providerImplementationIds.push(canon)],
   ['empty required binding', plan => { plan.bindings[0].providerImplementationIds = []; }],
   ['duplicate selection', plan => plan.selections.push(structuredClone(plan.selections[0]))],
@@ -349,12 +371,14 @@ const planMutations = [
   ['duplicate order member', plan => { plan.dependencyOrder[1] = plan.dependencyOrder[0]; }],
   ['unknown plan field', plan => { plan.extra = true; }],
 ];
-for (const [name, mutate] of planMutations) {
+for (const [name, mutate, reason] of planMutations) {
   test(`finite plan rejects ${name}`, async t => {
     const f = await fixture(t);
-    f.plan = structuredClone(f.plan);
+    const before = f.plan;
+    f.plan = structuredClone(before);
     mutate(f.plan);
-    await rejected(f, invalidCode);
+    assert.notDeepEqual(f.plan, before, 'fixture mutation must change plan');
+    await rejected(f, invalidCode, reason ? { reason } : undefined);
   });
 }
 
@@ -379,12 +403,25 @@ async function variantFixture(t) {
     compositionPath: 'self-composition/stage0.variant.ts',
     allowlistPath: 'self-composition/allowlist.variant.ts', qualification: true };
 }
-test('the real qualification variant wires the replacement into both consumers', async t => {
+test('the real qualification variant replaces only canonicalization and retains the scanner edge', async t => {
   const f = await variantFixture(t);
-  const tuples = expectedTuples.map(([id, index, slots]) => [id === canon ? variantId : id, index,
-    slots.map(([slot, provider]) => [slot, provider === canon ? variantId : provider])]);
+  const tuples = [
+    [variantId, 0, []],
+    [semantics, 1, [['canonicalizer', variantId]]],
+    [output, 2, [['canonicalizer', variantId]]],
+    [scanner, 3, []],
+    [admission, 4, [['scanner', scanner]]],
+    [facade, 5, [['admission', admission], ['output', output], ['semantics', semantics]]],
+  ];
   assert.deepEqual(await verifyConstruction(f), expectedWitness(tuples));
 });
+for (const [name, mutate, reason] of scannerRootMutations) {
+  test(`variant root rejects ${name}`, async t => {
+    const f = await variantFixture(t);
+    await rewrite(f, f.compositionPath, mutate);
+    await rejected(f, invalidCode, { reason });
+  });
+}
 test('a test-provider allowlist cannot enter a production witness', async t => {
   const f = await variantFixture(t);
   await rejected({ ...f, qualification: false }, invalidCode);

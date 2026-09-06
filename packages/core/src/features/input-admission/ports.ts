@@ -31,9 +31,12 @@ export type AdmissionDiagnosticSink = Pick<DiagnosticCollector, "addUnique">;
 
 export interface InputAdmissionPort {
   readonly admitObjectInput: (input: ObjectInput, collector: AdmissionDiagnosticSink) => AdmittedObjectInput;
+  readonly admitRawInput: (input: unknown, collector: AdmissionDiagnosticSink) => AdmittedObjectInput;
 }
 
-export type InputAdmissionDeps = Readonly<Record<string, never>>;
+export type InputAdmissionDeps = {
+  readonly scanner: RawScannerPort;
+};
 
 // Consumer-owned structural contract; no import of a concrete scanner provider.
 export type RawToken =
@@ -82,4 +85,3 @@ export interface RawScannerPort {
    */
   readonly open: (ownedBytes: Uint8Array) => RawTokenCursor;
 }
-

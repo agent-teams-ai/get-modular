@@ -1,10 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createInputAdmission } from "../../../dist-test/features/input-admission/factory.js";
+import { createOwnedRawScanner } from "../../../dist-test/features/raw-scanner/owned-iterative/factory.js";
+
+function expectedSnapshot(value) {
+  if (value === null || typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map(expectedSnapshot);
+  return Object.setPrototypeOf(Object.fromEntries(Object.entries(value)
+    .map(([key, child]) => [key, expectedSnapshot(child)])), null);
+}
 
 test("factory instances keep snapshots and invocation sinks independent", () => {
-  const admission = createInputAdmission({});
-  const other = createInputAdmission({});
+  const admission = createInputAdmission({ scanner: createOwnedRawScanner({}) });
+  const other = createInputAdmission({ scanner: createOwnedRawScanner({}) });
   assert.notEqual(admission, other);
   assert.equal(Object.isFrozen(admission), true);
 
@@ -21,24 +29,16 @@ test("factory instances keep snapshots and invocation sinks independent", () => 
       bindings: [],
     },
   };
-  function snapshot(value) {
-    if (Array.isArray(value)) return value.map(snapshot);
-    if (value === null || typeof value !== "object") return value;
-    const result = Object.create(null);
-    for (const [key, child] of Object.entries(value)) result[key] = snapshot(child);
-    return result;
-  }
-  const expected = snapshot(input);
-  const expectedSelections = structuredClone(input.profile.selections);
+  const expected = structuredClone(input);
   const firstDiagnostics = [];
   const first = admission.admitObjectInput(input, {
     addUnique: diagnostic => firstDiagnostics.push(diagnostic),
   });
   assert.deepEqual(first, {
-    declarations: expected.declarations, allDeclarationsAdmitted: true,
-    profile: expected.profile,
+    declarations: expectedSnapshot(expected.declarations), allDeclarationsAdmitted: true,
+    profile: expectedSnapshot(expected.profile),
     profileResources: {
-      selections: expectedSelections, selectionCensusComplete: true, bindings: [],
+      selections: expected.profile.selections, selectionCensusComplete: true, bindings: [],
     },
     hasErrors: false,
   });
@@ -47,8 +47,8 @@ test("factory instances keep snapshots and invocation sinks independent", () => 
   input.declarations.length = 0;
   input.profile.selections[0].implementationId = "example/changed";
   input.profile = null;
-  assert.deepEqual(first.declarations, expected.declarations);
-  assert.deepEqual(first.profile, expected.profile);
+  assert.deepEqual(first.declarations, expectedSnapshot(expected.declarations));
+  assert.deepEqual(first.profile, expectedSnapshot(expected.profile));
 
   const secondDiagnostics = [];
   const second = admission.admitObjectInput({ declarations: [], profile: { schemaVersion: 2 } }, {

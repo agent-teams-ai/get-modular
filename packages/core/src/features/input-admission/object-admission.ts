@@ -1,3 +1,4 @@
+import { inspectInvocation } from "./invocation-wrapper.js";
 import type { CompositionProfile, ModuleDeclaration } from "../authoring/internal.js";
 import type { DiagnosticCollector } from "../diagnostics/internal.js";
 import { documentPath, type DocumentLocator } from "./document-path.js";
@@ -25,29 +26,17 @@ export function admitObjectInput(input: ObjectInput, collector: AdmissionDiagnos
   const add: DiagnosticCollector["addUnique"] = diagnostic => { hasErrors = true; collector.addUnique(diagnostic); };
   const empty = (): AdmittedObjectInput => Object.freeze({ declarations: Object.freeze([]), allDeclarationsAdmitted: false,
     profile: null, profileResources: null, hasErrors });
-  // The cooperative wrapper is not a JSON document. Own data descriptors
-  // establish count eligibility before any list item or document is inspected.
-  const wrapper = input !== null && (typeof input === "object" || typeof input === "function") ? input : null;
-  const declarationsField = wrapper ? Object.getOwnPropertyDescriptor(wrapper, "declarations") : undefined;
-  const profileField = wrapper ? Object.getOwnPropertyDescriptor(wrapper, "profile") : undefined;
-  const wrapperFailure = (field: "declarations" | "profile"): void => {
-    add(Object.freeze({ code: "schema.non-plain-value", phase: "schema", coordinate: Object.freeze({}),
-      path: Object.freeze([Object.freeze({ kind: "field", value: field })]),
-      details: Object.freeze({ reason: "non-plain-value" }) }));
-  };
-  const list = declarationsField && Object.hasOwn(declarationsField, "value") ? declarationsField.value : undefined;
-  if (!Array.isArray(list) || Object.getPrototypeOf(list) !== Array.prototype) wrapperFailure("declarations");
-  if (!profileField || !Object.hasOwn(profileField, "value")) wrapperFailure("profile");
-  if (hasErrors) return empty();
-  const count = Object.getOwnPropertyDescriptor(list, "length")!.value as number;
-  if (count > admissionLimits.declarations) { add(resourceDiagnostic("declarations")); return empty(); }
-  const declarations: unknown[] = [];
-  for (let ordinal = 0; ordinal < count; ordinal += 1) {
-    const descriptor = Object.getOwnPropertyDescriptor(list, String(ordinal));
-    if (!descriptor || !Object.hasOwn(descriptor, "value")) { wrapperFailure("declarations"); return empty(); }
-    declarations.push(descriptor.value);
+  const invocation = inspectInvocation(input, "object");
+  if (invocation.kind === "invalid-wrapper") {
+    for (const field of invocation.roots) {
+      add(Object.freeze({ code: "schema.non-plain-value", phase: "schema", coordinate: Object.freeze({}),
+        path: Object.freeze([Object.freeze({ kind: "field", value: field })]),
+        details: Object.freeze({ reason: "non-plain-value" }) }));
+    }
+    return empty();
   }
-  const profile = profileField!.value;
+  if (invocation.kind === "declarations-limit") { add(resourceDiagnostic("declarations")); return empty(); }
+  const { declarations, profile } = invocation;
   const meter = createObjectResourceMeter();
   const scans: ObjectResourceScan[] = [];
   let totalCapabilities = 0;
