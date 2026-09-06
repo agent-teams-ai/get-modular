@@ -143,7 +143,17 @@ function checks<Value>(view: DocumentView<Value>, report: Report, reportLimit?: 
     const integer = reader.integer(value);
     return integer.admitted && integer.value >= min && integer.value <= max ? integer.value : null;
   }
+  function numericValue(value: Value, path: Path): boolean {
+    if (reader.kind(value) !== "number") return true;
+    const integer = reader.integer(value);
+    if (integer.admitted) return true;
+    fail(integer.reason === "invalid-type" ? "integer" : "range", path);
+    return false;
+  }
   function check(shape: Shape, value: Value, path: Path): void {
+    // Exact numeric admission precedes the field's narrower type or constant.
+    // In particular, negative zero remains invalid-format in a string field.
+    if (!numericValue(value, path)) return;
     switch (shape.type) {
       case "record":
         checkRecord(value, path, shape.fields);
@@ -204,7 +214,7 @@ function checks<Value>(view: DocumentView<Value>, report: Report, reportLimit?: 
         else if (tag === "required" || tag === "optional") checkRecord(value, path, shape.variants[tag].fields);
         else if (reader.kind(value) !== "record") fail("type", path);
         else if (!kind.present) fail("required", [...path, "kind"]);
-        else fail(typeof tag === "string" ? "constant" : "type", [...path, "kind"]);
+        else if (numericValue(kind.value, [...path, "kind"])) fail(typeof tag === "string" ? "constant" : "type", [...path, "kind"]);
         return;
       }
     }
