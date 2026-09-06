@@ -870,8 +870,8 @@ const MUTANTS = Object.freeze([
     change: source => replaceOnce(source, 'index <= 65535', 'index <= 4294967295') },
 ]);
 
-// Stream deterministic JSON tokens into the hash. No giant byte arrays or large
-// document lists are JSON.stringify'd, printed, or retained in a report buffer.
+// Stream deterministic JSON tokens; retention keeps only private observation
+// rows, including owned-byte hashes, never the input payloads.
 // This encoding is private evidence framing, not the compiler's JCS contract.
 function streamValue(hash, value) {
   if (Array.isArray(value)) {
@@ -894,6 +894,16 @@ function streamValue(hash, value) {
     hash.update(JSON.stringify(value));
   }
 }
+function observationLine(value) {
+  const tokens = [];
+  streamValue({ update(token) { assert.equal(typeof token, 'string'); tokens.push(token); } }, value);
+  const utf8 = `${tokens.join('')}\n`;
+  assert.equal(Buffer.from(utf8, 'utf8').toString('utf8'), utf8);
+  const parsed = JSON.parse(utf8);
+  assert.deepEqual(parsed, value, 'lossless private observation');
+  assert.equal(`${JSON.stringify(parsed)}\n`, utf8, 'exact private observation framing');
+  return utf8;
+}
 
 test('closed proposed-only raw invocation ownership and preflight corpus', async t => {
   assert.equal(typeof ArrayBuffer.prototype.resize, 'function');
@@ -905,14 +915,24 @@ test('closed proposed-only raw invocation ownership and preflight corpus', async
   assert.equal(new Set(MUTANTS.map(mutant => mutant.id)).size, 25);
   const hash = createHash('sha256');
   let observedRecords = 0;
+  const executionIds = Object.freeze([...CLOSED_IDS,
+    ...PATH_CASES.map(([id]) => id), ...MUTANTS.map(({ id }) => id)]);
+  assert.equal(new Set(executionIds).size, 92);
+  const retainedRecords = [];
   const header = {
     scope: 'proposed-only/raw-invocation', baseSource: SOURCE,
     subjectSha256: sha(subjectBytes), classifierSha256: sha(baseBytes), runnerSha256: sha(runnerBytes),
     runtime: process.version, platform: process.platform, architecture: process.arch,
     realms: ['node-module', 'instrumented-vm'],
   };
+  const headerUtf8 = observationLine(header);
   streamValue(hash, header); hash.update('\n');
-  const record = value => { streamValue(hash, value); hash.update('\n'); observedRecords += 1; };
+  const record = value => {
+    assert.equal(value.id, executionIds[observedRecords], 'closed observation execution order');
+    const utf8 = observationLine(value); // Capture before the next case resets trace.events.
+    streamValue(hash, value); hash.update('\n');
+    retainedRecords.push(utf8); observedRecords += 1;
+  };
   const direct = { observe: observeRawInvocation };
   const instrumented = evaluated(subjectSource);
   for (const [id, make] of CASES) {
@@ -962,8 +982,37 @@ test('closed proposed-only raw invocation ownership and preflight corpus', async
   }
   const mutationReport = evidence.report();
   assert.equal(observedRecords, 92);
+  const observedCaseStreamSha256 = `sha256:${hash.digest('hex')}`;
+  Object.freeze(retainedRecords); // Immutable strings sealed at each successful execution.
+  const verifyRetention = (candidateHeader, candidateRecords, candidateHash) => {
+    assert.equal(sha(candidateHeader + candidateRecords.join('')), candidateHash);
+    assert.equal(candidateHeader, headerUtf8);
+    assert.equal(candidateRecords.length, 92);
+    assert.deepEqual(candidateRecords.map(utf8 => JSON.parse(utf8).id), executionIds);
+    assert.deepEqual(candidateRecords, retainedRecords, 'privately sealed executed observations');
+    assert.equal(candidateHash, observedCaseStreamSha256);
+  };
+  const retained = { scope: 'proposed-only/raw-invocation-observation-retention', compilerExecuted: false,
+    headerUtf8, recordUtf8: [...retainedRecords], observedCaseStreamSha256 };
+  const diagnostic = JSON.stringify(retained);
+  const decoded = JSON.parse(diagnostic);
+  verifyRetention(decoded.headerUtf8, decoded.recordUtf8, decoded.observedCaseStreamSha256);
+  const substituted = JSON.parse(retainedRecords[0]); substituted.id = 'unexecuted-private-row';
+  const changed = JSON.parse(retainedRecords[0]); changed.direct.work.ownedBytes += 1;
+  for (const [id, rows] of [
+    ['dropped', retainedRecords.slice(1)],
+    ['duplicate', [retainedRecords[0], ...retainedRecords.slice(0, -1)]],
+    ['reordered', [retainedRecords[1], retainedRecords[0], ...retainedRecords.slice(2)]],
+    ['substituted', [observationLine(substituted), ...retainedRecords.slice(1)]],
+    ['changed-observation', [observationLine(changed), ...retainedRecords.slice(1)]],
+  ]) {
+    const rehashed = sha(headerUtf8 + rows.join(''));
+    assert.notEqual(rehashed, observedCaseStreamSha256, id);
+    assert.throws(() => verifyRetention(headerUtf8, rows, rehashed), { code: 'ERR_ASSERTION' }, id);
+  }
   t.diagnostic(JSON.stringify({ ...header, invocationCases: 62, pathCases: 5,
-    rejectedMutants: 25, observedRecords, observedCaseStreamSha256: `sha256:${hash.digest('hex')}` }));
+    rejectedMutants: 25, observedRecords, observedCaseStreamSha256 }));
   // Keep the original 92-record stream and its meaning; emit identities separately.
   t.diagnostic(JSON.stringify(mutationReport));
+  t.diagnostic(diagnostic);
 });
