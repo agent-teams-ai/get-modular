@@ -43,8 +43,8 @@ export function analyzeCompositionSemantics(input: SemanticInput, collector: Dia
   const profile = input.profile;
   const plan: CompositionPlan = Object.freeze({ kind: "get-modular.composition-plan", schemaVersion: 1, profileId: profile.profileId,
     roots: Object.freeze([...profile.roots].sort()),
-    selections: Object.freeze([...profile.selections].sort((a, b) => a.moduleId < b.moduleId ? -1 : a.moduleId > b.moduleId ? 1 : 0)),
+    selections: Object.freeze(profile.selections.map(selection => Object.freeze({ ...selection })).sort((a, b) => a.moduleId < b.moduleId ? -1 : a.moduleId > b.moduleId ? 1 : 0)),
     bindings: Object.freeze(bindings.validBindings.map(({ binding, slot }) => Object.freeze({ ...binding,
-      capabilityId: slot.capabilityId, compatibility: slot.compatibility }))), dependencyOrder: graph.dependencyOrder });
+      capabilityId: slot.capabilityId, compatibility: Object.freeze({ ...slot.compatibility }) }))), dependencyOrder: graph.dependencyOrder });
   return Object.freeze({ ok: true, plan });
 }
