@@ -37,6 +37,19 @@ rules and independent examples. ADR-0018 resolves its cyclic-depth gap. Other
 fact-derivation gaps follow existing accepted behavior; only a behavior change
 requires successor authority. The checker is not the specification.
 
+## Static consumer example
+
+The [installed-package example](../../tests/qualification/support/static-consumer-source.mjs)
+and its [executable checks](../../packages/core/tests/package/static-consumer.test.mjs)
+show a finite application using the M1 plan to select factories, create providers
+before consumers, and pass typed, closed dependencies. The consumer owns its
+factory table and capability types. The example covers optional dependencies,
+ordered many-provider slots, actual profile-dependent output, and failures
+before or during construction. It exercises a disposable test application and
+does not claim real product adoption or add a public construction API. Shared
+construction mechanics remain a candidate extraction after concrete consumer
+evidence; dynamic lifecycle is outside this static example.
+
 ## Accepted contract and public naming
 
 Get Modular has one accepted contract. Private features in `packages/core`
