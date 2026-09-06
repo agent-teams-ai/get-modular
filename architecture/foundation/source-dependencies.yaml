@@ -65,6 +65,7 @@ boundaries:
       - packages/core/src/features/input-admission/document-reader.ts
       - packages/core/src/features/input-admission/byte-carrier.ts
       - packages/core/src/features/input-admission/raw-integer.ts
+      - packages/core/src/features/input-admission/raw-document.ts
       - packages/core/src/features/input-admission/object-resource-meter.ts
       - packages/core/src/features/input-admission/document-snapshot.ts
       - packages/core/src/features/input-admission/document-shape.ts
