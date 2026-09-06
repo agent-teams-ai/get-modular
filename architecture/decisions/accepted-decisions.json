@@ -80,7 +80,7 @@
     {
       "id": "ADR-0021",
       "path": "docs/decisions/0021-freeze-combined-diagnostic-generation-two-for-m2.md",
-      "immutableDigest": "sha256:f69aa07ac719e8b317924753cf6375e32adee83b937cb4c450a87b0395da22de"
+      "immutableDigest": "sha256:f13bb47ff92b8c1a0e77e64b53da889b4ab507a37349bc9486540d5819fe68c6"
     }
   ]
 }
