@@ -57,7 +57,8 @@ const rows = [
   ['features/diagnostics/internal', 'compareDiagnostics createDiagnosticCollector', '', ''],
   ['features/diagnostics/order', 'compareDiagnostics', 'phases codes coordinateFields lexical', ''],
   ['features/input-admission/document-path', 'documentPath', '', ''],
-  ['features/input-admission/document-shape', 'validateDeclarationShape validateProfileShape', 'isWellFormedUtf16 checks', 'fail record literal integer admittedInteger identity array supportedDocumentVersion compatibility cardinality provided slot selection binding'],
+  ['features/input-admission/document-reader', 'objectDocument', 'objectKind objectOwn objectKeys objectLength objectItem objectText objectInteger objectReader', ''],
+  ['features/input-admission/document-shape', 'validateDeclarationShape validateProfileShape validateDeclarationView validateProfileView', 'isWellFormedUtf16 checks', 'fail record literal integer admittedInteger identity array supportedDocumentVersion compatibility cardinality provided slot selection binding'],
   ['features/input-admission/document-snapshot', 'snapshotDeclaration snapshotProfile', 'compatibility cardinality', ''],
   ['features/input-admission/factory', 'createInputAdmission', '', ''],
   ['features/input-admission/identity-format', 'isPortableIdFormat isLocalTokenFormat', 'matchesFormat', ''],
@@ -115,6 +116,7 @@ scanDocument stoppedBy nonPlainValue peakOpenContainers ownKeyVisits arrayIndexC
 freeze getOwnPropertyDescriptor getOwnPropertyDescriptors getPrototypeOf hasOwn is isArray ownKeys isFinite isInteger isSafeInteger
 MAX_SAFE_INTEGER isWellFormed stringify charCodeAt set get has delete add pop map sort some filter every fill encode join from toString padStart slice floor
 schema decode graph
+reader root own item text integer present admitted
 `);
 const globalMembers = new Map([
   ['Object', words('freeze getOwnPropertyDescriptor getOwnPropertyDescriptors getPrototypeOf hasOwn is keys prototype')],

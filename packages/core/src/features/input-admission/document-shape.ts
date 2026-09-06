@@ -1,3 +1,4 @@
+import { objectDocument, type DocumentView } from "./document-reader.js";
 import { isLocalTokenFormat, isPortableIdFormat } from "./identity-format.js";
 import { admissionLimits, type DocumentLimit, type ReportDocumentLimit } from "./resource-limits.js";
 
@@ -11,7 +12,7 @@ export type DocumentShapeViolation = {
 };
 type Report = (violation: DocumentShapeViolation) => void;
 type Path = readonly (string | number)[];
-type Check = (value: unknown, path: Path) => void;
+type Check<Value> = (value: Value, path: Path) => void;
 
 // Resource preflight bounds this scan; malformed code units precede ASCII grammar.
 function isWellFormedUtf16(value: string): boolean {
@@ -27,114 +28,108 @@ function isWellFormedUtf16(value: string): boolean {
   return true;
 }
 
-function checks(report: Report, reportLimit?: ReportDocumentLimit) {
+function checks<Value>(view: DocumentView<Value>, report: Report, reportLimit?: ReportDocumentLimit) {
+  const reader = view.reader;
   let valid = true;
   function fail(rule: DocumentShapeViolation["rule"], path: Path): void {
     valid = false;
     report(Object.freeze({ rule, path: Object.freeze([...path]) }));
   }
-  function record(value: unknown, path: Path, fields: Readonly<Record<string, Check>>): void {
-    if (value === null || typeof value !== "object" || Array.isArray(value)) { fail("type", path); return; }
-    const own = Object.getOwnPropertyDescriptors(value);
-    // All unknown spellings collapse to the containing object's safe path.
-    // Neither the key nor its value is copied into a violation or traversed.
-    if (Object.keys(own).some(key => !Object.hasOwn(fields, key))) fail("closed", path);
+  function record(value: Value, path: Path, fields: Readonly<Record<string, Check<Value>>>): void {
+    if (reader.kind(value) !== "record") { fail("type", path); return; }
+    if (reader.keys(value).some(key => !Object.hasOwn(fields, key))) fail("closed", path);
     for (const key of Object.keys(fields)) {
       const next = [...path, key];
-      if (!Object.hasOwn(own, key)) fail("required", next);
-      else if (Object.hasOwn(own[key]!, "value")) fields[key]!(own[key]!.value, next);
-      // The preflight owns accessor/non-plain rejection. Never invoke one even
-      // if this private pass is accidentally called without that prerequisite.
-      else fail("type", next);
+      const member = reader.own(value, key);
+      if (!member.present) fail("required", next);
+      else fields[key]!(member.value, next);
     }
   }
-  function literal(expected: string | number): Check {
+  function literal(expected: string | number): Check<Value> {
     return (value, path) => {
-      if (typeof value !== typeof expected) fail("type", path);
-      else if (typeof value === "number" && !Number.isInteger(value)) fail("integer", path);
-      else if (typeof value === "number" && (!Number.isSafeInteger(value) || Object.is(value, -0))) fail("range", path);
-      else if (value !== expected) fail("constant", path);
+      if (reader.kind(value) !== typeof expected) { fail("type", path); return; }
+      if (typeof expected === "number") {
+        const integer = reader.integer(value);
+        if (!integer.admitted) fail(integer.reason === "invalid-type" ? "integer" : "range", path);
+        else if (integer.value !== expected) fail("constant", path);
+      } else if (reader.text(value) !== expected) fail("constant", path);
     };
   }
-  function integer(min: number, max: number): Check {
+  function integer(min: number, max: number): Check<Value> {
     return (value, path) => {
-      if (typeof value !== "number") fail("type", path);
-      else if (!Number.isInteger(value)) fail("integer", path);
-      else if (!admittedInteger(value, min, max)) fail("range", path);
+      if (reader.kind(value) !== "number") { fail("type", path); return; }
+      const integer = reader.integer(value);
+      if (!integer.admitted) fail(integer.reason === "invalid-type" ? "integer" : "range", path);
+      else if (integer.value < min || integer.value > max) fail("range", path);
     };
   }
-  function admittedInteger(value: unknown, min: number, max: number): value is number {
-    return typeof value === "number" && Number.isSafeInteger(value) && !Object.is(value, -0) && value >= min && value <= max;
+  function admittedInteger(value: Value, min: number, max: number): number | null {
+    if (reader.kind(value) !== "number") return null;
+    const integer = reader.integer(value);
+    return integer.admitted && integer.value >= min && integer.value <= max ? integer.value : null;
   }
-  function identity(matchesFormat: (value: string) => boolean, min: number, max: number): Check {
+  function identity(matchesFormat: (value: string) => boolean, min: number, max: number): Check<Value> {
     return (value, path) => {
-      if (typeof value !== "string") fail("type", path);
-      else if (!isWellFormedUtf16(value)) fail("unicode", path);
+      if (reader.kind(value) !== "string") { fail("type", path); return; }
+      const text = reader.text(value);
+      if (!isWellFormedUtf16(text)) fail("unicode", path);
       else {
         // The meter already bounded string work. The byte limit is meaningful
         // only after the complete ASCII grammar succeeds, independent of the
         // schema's shorter bound for local tokens.
-        const formatValid = matchesFormat(value);
-        if (formatValid && value.length > admissionLimits.identifierBytes) {
+        const formatValid = matchesFormat(text);
+        if (formatValid && text.length > admissionLimits.identifierBytes) {
           reportLimit?.("identifierBytes", admissionLimits.identifierBytes + 1, path);
         }
-        if (value.length < min || value.length > max || !formatValid) fail("identity", path);
+        if (text.length < min || text.length > max || !formatValid) fail("identity", path);
       }
     };
   }
-  function array(min: number, max: number, item: Check, limit?: DocumentLimit): Check {
+  function array(min: number, max: number, item: Check<Value>, limit?: DocumentLimit): Check<Value> {
     return (value, path) => {
-      if (!Array.isArray(value)) { fail("type", path); return; }
-      if (limit && value.length > admissionLimits[limit]) reportLimit?.(limit, admissionLimits[limit] + 1, path);
-      if (value.length < min || value.length > max) { fail("size", path); return; }
-      for (let index = 0; index < value.length; index += 1) {
-        const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
-        if (descriptor && Object.hasOwn(descriptor, "value")) item(descriptor.value, [...path, index]);
-        else fail("type", [...path, index]);
-      }
+      if (reader.kind(value) !== "array") { fail("type", path); return; }
+      const length = reader.length(value);
+      if (limit && length > admissionLimits[limit]) reportLimit?.(limit, admissionLimits[limit] + 1, path);
+      if (length < min || length > max) { fail("size", path); return; }
+      for (let index = 0; index < length; index += 1) item(reader.item(value, index), [...path, index]);
     };
   }
   const portable = identity(isPortableIdFormat, 3, admissionLimits.identifierBytes);
   const local = identity(isLocalTokenFormat, 1, 64);
-  const compatibility: Check = (value, path) => record(value, path, {
+  const compatibility: Check<Value> = (value, path) => record(value, path, {
     family: literal("exact"), familyVersion: literal(1), token: portable,
   });
-  const cardinality: Check = (value, path) => {
-    const kind = value !== null && typeof value === "object"
-      ? Object.getOwnPropertyDescriptor(value, "kind") : undefined;
-    const tag = kind && Object.hasOwn(kind, "value") ? kind.value : undefined;
+  const cardinality: Check<Value> = (value, path) => {
+    const kind = reader.kind(value) === "record" ? reader.own(value, "kind") : { present: false } as const;
+    const tag = kind.present && reader.kind(kind.value) === "string" ? reader.text(kind.value) : undefined;
     if (tag === "many") {
       record(value, path, {
         kind: literal("many"), min: integer(0, 1024), max: integer(1, 1024), order: literal("profile"),
       });
-      const minimum = Object.getOwnPropertyDescriptor(value, "min");
-      const maximum = Object.getOwnPropertyDescriptor(value, "max");
-      const min = minimum && Object.hasOwn(minimum, "value") ? minimum.value : undefined;
-      const max = maximum && Object.hasOwn(maximum, "value") ? maximum.value : undefined;
-      // ADR-0007's range refinement is stricter than the JSON Schema alone.
-      // Report its containing constraint, not an invented provider count.
-      if (admittedInteger(min, 0, 1024) && admittedInteger(max, 1, 1024) && min > max) fail("range", path);
+      const minimum = reader.own(value, "min");
+      const maximum = reader.own(value, "max");
+      const min = minimum.present ? admittedInteger(minimum.value, 0, 1024) : null;
+      const max = maximum.present ? admittedInteger(maximum.value, 1, 1024) : null;
+      if (min !== null && max !== null && min > max) fail("range", path);
     }
     else if (tag === "required" || tag === "optional") record(value, path, { kind: literal(tag) });
-    else if (value === null || typeof value !== "object" || Array.isArray(value)) fail("type", path);
-    else if (!kind) fail("required", [...path, "kind"]);
+    else if (reader.kind(value) !== "record") fail("type", path);
+    else if (!kind.present) fail("required", [...path, "kind"]);
     else fail(typeof tag === "string" ? "constant" : "type", [...path, "kind"]);
   };
-  const provided: Check = (value, path) => record(value, path, { capabilityId: portable, compatibility });
-  const slot: Check = (value, path) => record(value, path, { slotId: local, capabilityId: portable, compatibility, cardinality });
-  const selection: Check = (value, path) => record(value, path, { moduleId: portable, implementationId: portable });
-  const binding: Check = (value, path) => record(value, path, {
+  const provided: Check<Value> = (value, path) => record(value, path, { capabilityId: portable, compatibility });
+  const slot: Check<Value> = (value, path) => record(value, path, { slotId: local, capabilityId: portable, compatibility, cardinality });
+  const selection: Check<Value> = (value, path) => record(value, path, { moduleId: portable, implementationId: portable });
+  const binding: Check<Value> = (value, path) => record(value, path, {
     consumerImplementationId: portable, slotId: local, providerImplementationIds: array(0, 1024, portable),
   });
 
-  function supportedDocumentVersion(value: unknown): boolean {
-    if (value === null || typeof value !== "object" || Array.isArray(value)) return true;
-    const descriptor = Object.getOwnPropertyDescriptor(value, "schemaVersion");
-    const version = descriptor && Object.hasOwn(descriptor, "value") ? descriptor.value : undefined;
-    if (typeof version === "number" && Number.isSafeInteger(version) && !Object.is(version, -0) && version !== 1) {
-      // An unknown document version supplies no evidence for this version's
-      // required/unknown-field checks. The accepted partial-version case has
-      // exactly this failure, without invented missing fields.
+  function supportedDocumentVersion(value: Value): boolean {
+    if (reader.kind(value) !== "record") return true;
+    const member = reader.own(value, "schemaVersion");
+    if (!member.present || reader.kind(member.value) !== "number") return true;
+    const version = reader.integer(member.value);
+    if (version.admitted && version.value !== 1) {
       fail("unsupported-version", ["schemaVersion"]);
       return false;
     }
@@ -142,7 +137,7 @@ function checks(report: Report, reportLimit?: ReportDocumentLimit) {
   }
 
   return {
-    declaration(value: unknown): boolean {
+    declaration(value: Value): boolean {
       if (!supportedDocumentVersion(value)) return false;
       record(value, [], {
         kind: literal("get-modular.module-declaration"), schemaVersion: literal(1),
@@ -154,7 +149,7 @@ function checks(report: Report, reportLimit?: ReportDocumentLimit) {
       });
       return valid;
     },
-    profile(value: unknown): boolean {
+    profile(value: Value): boolean {
       if (!supportedDocumentVersion(value)) return false;
       record(value, [], {
         kind: literal("get-modular.composition-profile"), schemaVersion: literal(1), profileId: portable,
@@ -168,9 +163,17 @@ function checks(report: Report, reportLimit?: ReportDocumentLimit) {
 }
 
 export function validateDeclarationShape(value: unknown, report: Report, reportLimit?: ReportDocumentLimit): boolean {
-  return checks(report, reportLimit).declaration(value);
+  return validateDeclarationView(objectDocument(value), report, reportLimit);
 }
 
 export function validateProfileShape(value: unknown, report: Report, reportLimit?: ReportDocumentLimit): boolean {
-  return checks(report, reportLimit).profile(value);
+  return validateProfileView(objectDocument(value), report, reportLimit);
+}
+
+export function validateDeclarationView<Value>(view: DocumentView<Value>, report: Report, reportLimit?: ReportDocumentLimit): boolean {
+  return checks(view, report, reportLimit).declaration(view.root);
+}
+
+export function validateProfileView<Value>(view: DocumentView<Value>, report: Report, reportLimit?: ReportDocumentLimit): boolean {
+  return checks(view, report, reportLimit).profile(view.root);
 }

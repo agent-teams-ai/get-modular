@@ -40,6 +40,7 @@
     "dist/features/diagnostics/internal.js",
     "dist/features/diagnostics/order.js",
     "dist/features/input-admission/document-path.js",
+    "dist/features/input-admission/document-reader.js",
     "dist/features/input-admission/document-shape.js",
     "dist/features/input-admission/document-snapshot.js",
     "dist/features/input-admission/factory.js",

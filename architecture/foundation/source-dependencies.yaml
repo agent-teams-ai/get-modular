@@ -62,6 +62,7 @@ boundaries:
       runtimeReferences: []
   - id: core-input-admission
     roots:
+      - packages/core/src/features/input-admission/document-reader.ts
       - packages/core/src/features/input-admission/byte-carrier.ts
       - packages/core/src/features/input-admission/raw-integer.ts
       - packages/core/src/features/input-admission/object-resource-meter.ts
@@ -161,6 +162,33 @@ boundaries:
     allow:
       boundaries:
         - core-canonicalization-contract
+        - core-authoring
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: core-raw-scanner-contract
+    roots:
+      - packages/core/src/features/raw-scanner/ports.ts
+      - packages/core/src/features/raw-scanner/identity.ts
+    entrypoints:
+      - packages/core/src/features/raw-scanner/ports.ts
+      - packages/core/src/features/raw-scanner/identity.ts
+    allow:
+      boundaries: []
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: core-raw-scanner-owned-iterative
+    roots:
+      - packages/core/src/features/raw-scanner/owned-iterative/declaration.ts
+      - packages/core/src/features/raw-scanner/owned-iterative/factory.ts
+      - packages/core/src/features/raw-scanner/owned-iterative/scanner.ts
+    entrypoints:
+      - packages/core/src/features/raw-scanner/owned-iterative/declaration.ts
+      - packages/core/src/features/raw-scanner/owned-iterative/factory.ts
+    allow:
+      boundaries:
+        - core-raw-scanner-contract
         - core-authoring
       packages: []
       builtins: []
