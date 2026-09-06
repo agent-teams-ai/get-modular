@@ -209,7 +209,8 @@ function contractSource(generation, surface) {
       // methods as wire fields. The checker separately proves carrier identity.
       'type EByteCarrier = Uint8Array;',
       `type ERawInput = ${record({ declarations: "readonly EByteCarrier[]", profile: "EByteCarrier" })};`,
-      'type RawFields<T> = { [K in keyof T]: T[K] };',
+      'type RawList<T> = T extends unknown ? Same<T, readonly EByteCarrier[]> : never;',
+      'type RawFields<T> = { [K in keyof T]: K extends "declarations" ? Same<RawList<T[K]>, true> extends true ? readonly EByteCarrier[] : T[K] : T[K] };',
       'type RawArm<T> = T extends unknown ? Same<RawFields<T>, ERawInput> : never;',
       'type RawInput = Check<Same<RawArm<Parameters<typeof P.compileCompositionJson>[0]>, true>>;',
       'type AssignRawInput = Check<Assignable<ERawInput, Parameters<typeof P.compileCompositionJson>[0]>>;',
@@ -455,13 +456,14 @@ function audit(files, generation, surface) {
       const profile = checker.getPropertyOfType(arm, "profile");
       need(declarations && profile, "raw-input");
       const list = checker.getTypeOfSymbolAtLocation(declarations, inputNode);
-      need(checker.isArrayType(list) && !checker.isTupleType(list), "raw-input");
-      const element = checker.getTypeArguments(list)[0];
       const profileType = checker.getTypeOfSymbolAtLocation(profile, inputNode);
-      for (const type of [element, profileType]) {
-        // Aliases can have distinct checker Type objects; symbol provenance is
-        // nominal, while the independent contract checks exact type arguments.
-        need(type && type.getSymbol() === carrierSymbol, "raw-carrier");
+      need(profileType.getSymbol() === carrierSymbol, "raw-carrier");
+      for (const alternative of list.isUnion() ? list.types : [list]) {
+        need(checker.isArrayType(alternative) && !checker.isTupleType(alternative), "raw-input");
+        const element = checker.getTypeArguments(alternative)[0];
+        // Nominal provenance stays separate from the exact semantic check,
+        // which normalizes only alternatives already equal to the readonly list.
+        need(element && element.getSymbol() === carrierSymbol, "raw-carrier");
       }
       // Reject a declaration-list tuple spelled directly or through transparent
       // owned aliases. Carrier aliases and intermediate type computations are
