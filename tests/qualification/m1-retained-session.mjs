@@ -349,7 +349,7 @@ async function auditArchive(modules, archive, source, packed) {
   const bytes = await readBytes(archive.path, 16 * 1024 * 1024);
   assert.equal(bytes.length, archive.bytes);
   const audited = modules.readPackageArchive(bytes, archive.identity);
-  assert.deepEqual(modules.auditM1JavaScriptClosure(audited.files).exports, modules.runtimeNames);
+  assert.deepEqual(modules.auditM1JavaScriptClosure(audited.files, 'm1-shared').exports, modules.runtimeNames);
   assert.deepEqual(modules.auditM1DeclarationClosure(audited.files, 2).rootExports,
     ['CompileCompositionResult', 'CompositionPlan', 'CompositionProfile', 'Diagnostic', 'DiagnosticCode',
       'ModuleDeclaration', 'PlanDigest'].map(name => ({ name, kind: 'type' }))

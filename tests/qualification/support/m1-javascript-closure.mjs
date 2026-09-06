@@ -27,6 +27,9 @@ const HELPERS = 'dist/features/authoring/helpers.js';
 const AUTHORING = 'dist/features/authoring/internal.js';
 const DIAGNOSTICS = 'dist/features/diagnostics/internal.js';
 const VALUES = ['compileComposition', 'defineModule', 'many', 'optional', 'required'];
+const M2_VALUES = ['compileComposition', 'compileCompositionJson', 'defineModule', 'many', 'optional', 'required'];
+const FACADE = 'dist/features/compiler-facade/factory.js';
+const profiles = new Set(['m1', 'm1-shared', 'm2']);
 const MAX_FILE = 1024 * 1024;
 const MAX_TOTAL = 8 * MAX_FILE;
 const MAX_NODES = 500_000;
@@ -343,7 +346,12 @@ function checkComments(source, budget) {
     && source.libReferenceDirectives.length === 0 && !source.hasNoDefaultLib, 'directive');
 }
 
-function audit(files) {
+function audit(files, profile) {
+  // Only the trusted caller selects this finite profile. Archive contents,
+  // including metadata and the export inventory, cannot activate it.
+  requireThat(profiles.has(profile), 'profile');
+  const shared = profile !== 'm1';
+  const publicValues = profile === 'm2' ? M2_VALUES : VALUES;
   requireThat(files instanceof Map && files.size <= 512, 'input');
   const modules = new Map();
   const budget = { nodes: 0 };
@@ -359,7 +367,9 @@ function audit(files) {
     try { source = ts.createSourceFile(PREFIX + path, bytes.toString('utf8'), ts.ScriptTarget.ESNext, true, ts.ScriptKind.JS); }
     catch { fail('parse'); }
     checkComments(source, budget);
-    modules.set(path, { source, role: roles.get(path), exports: new Set(), links: [] });
+    const role = path === ENTRY && profile === 'm2'
+      ? { ...roles.get(path), exports: new Set(publicValues) } : roles.get(path);
+    modules.set(path, { source, role, exports: new Set(), links: [] });
   }
   requireThat(modules.has(ENTRY), 'entry-missing');
   for (const [path, module] of modules) {
@@ -467,6 +477,11 @@ function audit(files) {
     return origin(declaration);
   };
   const isFunction = (value, path, name) => value.kind === 'function' && pathOf(value.node) === path && value.node.name?.text === name;
+  // This identity grants syntax only to the first owned nested declaration.
+  // The complete factory and helper grammar is checked below.
+  const facade = shared ? exported(FACADE, 'createCompilerFacade') : undefined;
+  const sharedHelper = facade?.kind === 'function'
+    ? facade.node.body?.statements[0] : undefined;
   // AST limits do not bound repeated expansion of const expression graphs.
   // Cache unknown results too; bound visits and concatenated text per audit.
   const staticStrings = new Map(), activeStrings = new Set();
@@ -533,7 +548,10 @@ function audit(files) {
         && declaration.name?.text === 'captureGetter', 'top-level');
   }, budget);
   function checkMember(name, node) {
-    requireThat(members.has(name) || scopedMembers.get(pathOf(node))?.has(name)
+    const sharedMember = shared && pathOf(node) === FACADE
+      && ['compileCompositionJson', 'admitRawInput'].includes(name);
+    requireThat(sharedMember || profile === 'm2' && pathOf(node) === ENTRY && name === 'compileCompositionJson'
+      || members.has(name) || scopedMembers.get(pathOf(node))?.has(name)
       || /^(?:decode|schema|identity|declaration|profile|binding|graph|diagnostics)\.[a-z-]+$/u.test(name), 'purpose');
     if (intrinsicSelectors.has(name)) requireThat(reviewedNodes.has(node), 'purpose');
   }
@@ -591,6 +609,58 @@ function audit(files) {
       || (ts.isPropertyAssignment(parent) || ts.isMethodDeclaration(parent) || ts.isPropertyDeclaration(parent)
         || ts.isGetAccessorDeclaration(parent) || ts.isSetAccessorDeclaration(parent)) && parent.name === node
       || ts.isBindingElement(parent) && parent.propertyName === node;
+  }
+  // Match a small reviewed AST grammar, resolving every local reference to
+  // its binding. Local spelling, comments, quotes and parentheses may vary.
+  // Each invocation has its own binding map; callback scopes cannot borrow
+  // the helper's collector merely by using the same identifier text.
+  function bindingSyntax(actual, expected, seeds) {
+    const method = ts.isMethodDeclaration(actual);
+    const source = ts.createSourceFile('facade-profile.js',
+      method ? `({${expected}});` : expected,
+      ts.ScriptTarget.ESNext, true, ts.ScriptKind.JS);
+    requireThat(source.parseDiagnostics.length === 0, 'checker-failed');
+    const reference = method
+      ? unwrap(source.statements[0].expression).properties[0] : source.statements[0];
+    const bindings = new Map(seeds);
+    function match(left, right) {
+      left = unwrap(left);
+      right = unwrap(right);
+      requireThat(left && right && left.kind === right.kind, 'construction');
+      if (ts.isIdentifier(left)) {
+        if (bindingName(right)) {
+          const declaration = declarationOf(symbolAt(left));
+          requireThat(bindingName(left) && declaration === left.parent
+            && !bindings.has(right.text)
+            && ![...bindings.values()].includes(declaration), 'construction');
+          bindings.set(right.text, declaration);
+        } else if (nonReference(right)) {
+          requireThat(nonReference(left) && left.text === right.text, 'construction');
+        } else {
+          requireThat(!nonReference(left), 'construction');
+          const declaration = declarationOf(symbolAt(left));
+          requireThat(bindings.has(right.text)
+            ? declaration === bindings.get(right.text)
+            : globals.has(right.text) && left.text === right.text && !declaration, 'construction');
+        }
+        return;
+      }
+      if (ts.isVariableDeclarationList(left)) {
+        requireThat((left.flags & ts.NodeFlags.Const) === (right.flags & ts.NodeFlags.Const), 'construction');
+      }
+      if (ts.isStringLiteral(left) || ts.isNumericLiteral(left)) {
+        requireThat(left.text === right.text, 'construction');
+      }
+      const children = node => {
+        const result = [];
+        ts.forEachChild(node, child => { result.push(child); });
+        return result;
+      };
+      const actualChildren = children(left), expectedChildren = children(right);
+      requireThat(actualChildren.length === expectedChildren.length, 'construction');
+      actualChildren.forEach((child, index) => match(child, expectedChildren[index]));
+    }
+    match(actual, reference);
   }
   function checkCapturedReference(node, declaration) {
     if (reviewedNodes.has(node)) return;
@@ -719,7 +789,8 @@ function audit(files) {
       }
       if (ts.isClassExpression(node) || ts.isSetAccessorDeclaration(node)) fail('syntax-profile');
       if (ts.isFunctionDeclaration(node)) requireThat(node.body && node.name
-        && (node.parent === source ? role.definitions : role.functions).has(node.name.text), 'purpose');
+        && ((node.parent === source ? role.definitions : role.functions).has(node.name.text)
+          || shared && path === FACADE && node === sharedHelper), 'purpose');
       if (ts.isArrowFunction(node)) {
         const parent = outer(node).parent;
         if (ts.isVariableDeclaration(parent)) requireThat(ts.isIdentifier(parent.name)
@@ -727,15 +798,18 @@ function audit(files) {
       }
       if (ts.isMethodDeclaration(node) || ts.isGetAccessorDeclaration(node)) {
         const allowed = path === QUEUE ? words('size less push take') : path === SHAPE || path === SNAPSHOT ? words('declaration profile')
-          : path === feature('compiler-facade') ? words('compileComposition')
+          : path === FACADE ? words(shared ? 'compileComposition compileCompositionJson' : 'compileComposition')
             : path === feature('plan-output') ? words('emit') : path === feature('composition-semantics') ? words('newCollector') : new Set();
         requireThat(node.body && allowed.has(propertyName(node.name)), 'purpose');
         requireThat(!ts.isGetAccessorDeclaration(node) || path === QUEUE && node.name.text === 'size', 'purpose');
       }
       if (node.asteriskToken) fail('syntax-profile');
-      if (modified(node, ts.SyntaxKind.AsyncKeyword)) requireThat(ts.isMethodDeclaration(node)
-        && (path === feature('compiler-facade') && node.name.text === 'compileComposition'
-          || path === feature('plan-output') && node.name.text === 'emit'), 'syntax-profile');
+      if (modified(node, ts.SyntaxKind.AsyncKeyword)) requireThat(
+        shared && path === FACADE && node === sharedHelper && ts.isFunctionDeclaration(node)
+        || ts.isMethodDeclaration(node)
+          && (path === FACADE && (node.name.text === 'compileComposition'
+            || shared && node.name.text === 'compileCompositionJson')
+            || path === feature('plan-output') && node.name.text === 'emit'), 'syntax-profile');
       if (ts.isAwaitExpression(node)) requireThat(modified(nearestFunction(node) ?? {}, ts.SyntaxKind.AsyncKeyword), 'syntax-profile');
       if (ts.isForOfStatement(node)) requireThat(!node.awaitModifier, 'syntax-profile');
       if (node.kind === ts.SyntaxKind.ThisKeyword) requireThat(path === QUEUE && nearestFunction(node), 'purpose');
@@ -864,15 +938,42 @@ function audit(files) {
       });
       requireThat(equalNames(new Set(keys), new Set(slots)), 'construction');
     } else requireThat(ts.isIdentifier(parameter.name), 'construction');
-    requireThat(fn.body.statements.length === 1 && ts.isReturnStatement(fn.body.statements[0]), 'construction');
-    const result = unwrap(fn.body.statements[0].expression);
+    const sharedFacade = shared && path === FACADE;
+    const returnIndex = sharedFacade ? 1 : 0;
+    requireThat(fn.body.statements.length === returnIndex + 1
+      && ts.isReturnStatement(fn.body.statements[returnIndex]), 'construction');
+    const slotBindings = sharedFacade ? new Map(parameter.name.elements.map(item =>
+      [propertyName(item.propertyName ?? item.name), item])) : undefined;
+    if (sharedFacade) {
+      requireThat(sharedHelper === fn.body.statements[0]
+        && ts.isFunctionDeclaration(sharedHelper), 'construction');
+      bindingSyntax(sharedHelper, `async function compile(admit) {
+        const collector = semantics.newCollector();
+        const admitted = admit(collector);
+        const analyzed = semantics.analyze(admitted, collector);
+        if (!analyzed.ok) return analyzed;
+        const emitted = await output.emit(analyzed.plan);
+        return Object.freeze({ ok: true, plan: emitted.plan, digest: emitted.digest });
+      }`, slotBindings);
+    }
+    const result = unwrap(fn.body.statements[returnIndex].expression);
     requireThat(builtinCall(result, 'Object', 'freeze') && result.arguments.length === 1, 'construction');
     const props = properties(result.arguments[0]);
-    requireThat(equalNames(new Set(props.keys()), new Set(ports)), 'construction');
+    const expectedPorts = sharedFacade ? ['compileComposition', 'compileCompositionJson'] : ports;
+    requireThat(equalNames(new Set(props.keys()), new Set(expectedPorts)), 'construction');
     for (const [key, property] of props) {
-      if (['compileComposition', 'emit', 'newCollector'].includes(key)) {
+      if (['compileComposition', 'compileCompositionJson', 'emit', 'newCollector'].includes(key)) {
         requireThat(ts.isMethodDeclaration(property)
           && modified(property, ts.SyntaxKind.AsyncKeyword) === (key !== 'newCollector'), 'construction');
+        if (sharedFacade) {
+          const member = key === 'compileComposition' ? 'admitObjectInput' : 'admitRawInput';
+          bindingSyntax(property, `async ${key}(input) {
+            return compile(collector => admission.${member}(input, collector));
+          }`, new Map([
+            ['compile', sharedHelper],
+            ['admission', slotBindings.get('admission')],
+          ]));
+        }
       } else if (key === 'admitRawInput') {
         const arrow = unwrap(propertyValue(property));
         requireThat(path === feature('input-admission') && ts.isPropertyAssignment(property)
@@ -926,13 +1027,18 @@ function audit(files) {
     }
   }
   requireThat(built.length === factories.length && exported(ROOT, 'root').node === built[5], 'construction');
-  const compiler = exported(ENTRY, 'compileComposition');
-  requireThat(compiler.kind === 'member' && compiler.name === 'compileComposition'
-    && compiler.base.kind === 'call' && compiler.base.node === built[5], 'public-origin');
+  const compilers = (profile === 'm2' ? ['compileComposition', 'compileCompositionJson'] : ['compileComposition'])
+    .map(name => {
+      const compiler = exported(ENTRY, name);
+      requireThat(compiler.kind === 'member' && compiler.name === name
+        && compiler.base.kind === 'call' && compiler.base.node === built[5], 'public-origin');
+      return compiler;
+    });
   for (const statement of modules.get(ENTRY).source.statements) if (ts.isVariableStatement(statement)) {
     for (const declaration of statement.declarationList.declarations) {
       const value = origin(declaration);
-      requireThat(value.kind === 'member' && value.node === compiler.node || value.kind === 'call' && value.node === built[5]
+      requireThat(value.kind === 'member' && compilers.some(compiler => value.node === compiler.node)
+        || value.kind === 'call' && value.node === built[5]
         || ['defineModule', 'required', 'optional', 'many'].some(name => isFunction(value, HELPERS, name)), 'public-origin');
     }
   }
@@ -944,11 +1050,13 @@ function audit(files) {
     for (const link of modules.get(path).links) pending.push(link.target);
   }
   requireThat(reached.size === modules.size, 'orphan');
-  return { modules: [...reached].sort(), exports: [...VALUES] };
+  return { modules: [...reached].sort(), exports: [...publicValues] };
 }
 
-export function auditM1JavaScriptClosure(files) {
-  try { return audit(files); }
+// Historical M1 remains the default. The shared private facade and public M2
+// are distinct opt-in witnesses, selected by trusted qualification tooling.
+export function auditM1JavaScriptClosure(files, profile = 'm1') {
+  try { return audit(files, profile); }
   catch (error) {
     if (error instanceof InvalidClosure) throw error;
     fail('checker-failed');

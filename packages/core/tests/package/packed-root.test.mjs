@@ -100,7 +100,7 @@ test('packed M1 exposes one root across Node and TypeScript consumers', async t 
   const archiveHash = hash(bytes);
   const identity = { sha256: archiveHash, integrity: packed.integrity };
   const audited = readPackageArchive(bytes, identity);
-  assert.deepEqual(auditM1JavaScriptClosure(audited.files).exports, runtimeNames,
+  assert.deepEqual(auditM1JavaScriptClosure(audited.files, 'm1-shared').exports, runtimeNames,
     'the physical JavaScript members have the closed M1 purpose, imports and construction');
   assert.deepEqual(auditM1DeclarationClosure(audited.files, 2).rootExports,
     ['CompileCompositionResult', 'CompositionPlan', 'CompositionProfile', 'Diagnostic', 'DiagnosticCode',
