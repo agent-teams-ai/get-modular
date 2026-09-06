@@ -627,6 +627,10 @@ function audit(files, profile) {
       left = unwrap(left);
       right = unwrap(right);
       requireThat(left && right && left.kind === right.kind, 'construction');
+      // Unary operators are scalar AST fields, not forEachChild children.
+      if (ts.isPrefixUnaryExpression(left) || ts.isPostfixUnaryExpression(left)) {
+        requireThat(left.operator === right.operator, 'construction');
+      }
       if (ts.isIdentifier(left)) {
         if (bindingName(right)) {
           const declaration = declarationOf(symbolAt(left));

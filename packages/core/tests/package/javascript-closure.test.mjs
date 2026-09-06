@@ -909,6 +909,7 @@ for (const profile of ['m1-shared', 'm2']) {
       'collector => ((input) => admission.admitRawInput(input, collector))(collector)'],
     ['collector => admission.admitRawInput(input, collector)',
       'admission => admission.admitRawInput(input, admission)'],
+    ['if (!analyzed.ok)', 'if (~analyzed.ok)'],
     ['const admitted = admit(collector);', 'const admitted = await admit(collector);'],
     ['const admitted = admit(collector);', 'const admitted = admit(collector) || collector;'],
     ['const admitted = admit(collector);', 'const admitted = (admit => admit(collector))(collector);'],
