@@ -1,3 +1,6 @@
+// Include source-custody and independent-expectation checks in the Core gate.
+import '../../../../tests/qualification/m2-raw-invocation-fixtures.test.mjs';
+import '../../../../tests/qualification/m2-raw-invocation-expectations.test.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
