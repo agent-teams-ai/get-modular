@@ -1,0 +1,291 @@
+{
+  "schemaVersion": 1,
+  "algorithm": "sha256-bytes",
+  "artifacts": [
+    {
+      "id": "architecture/authority/implementation-clarifications-ledger.json",
+      "path": "architecture/authority/implementation-clarifications-ledger.json",
+      "immutableDigest": "sha256:9a813cd8b7b7fe26d249569d02b25710c3f47895b330ad0858a68c483aa7c345"
+    },
+    {
+      "id": "architecture/authority/object-resource-coverage-ledger.json",
+      "path": "architecture/authority/object-resource-coverage-ledger.json",
+      "immutableDigest": "sha256:358413860f9a47204f211a1787ebbca402e8a7d93b3b6d0e798b00897b897ab3"
+    },
+    {
+      "id": "architecture/checks/implementation-clarifications.mjs",
+      "path": "architecture/checks/implementation-clarifications.mjs",
+      "immutableDigest": "sha256:f365933e08cc1e24576452ba5383a0ca057d959066c2cb73d5aa9eaa3eb3aab3"
+    },
+    {
+      "id": "architecture/checks/m2-evidence.mjs",
+      "path": "architecture/checks/m2-evidence.mjs",
+      "immutableDigest": "sha256:e5d64537d9b56b6349630a3fa5d40b1917f6d297b81c4f0281167f145d4997f6"
+    },
+    {
+      "id": "architecture/checks/v1-qualification.mjs",
+      "path": "architecture/checks/v1-qualification.mjs",
+      "immutableDigest": "sha256:1f5a7f3efbd843c65a6e64bdb1f60008336916ce9f1d65384139809f3acfb281"
+    },
+    {
+      "id": "architecture/contracts/v1/canonical-vectors.json",
+      "path": "architecture/contracts/v1/canonical-vectors.json",
+      "immutableDigest": "sha256:6c46cf7056d8cd1bc9df675bb356d60b8ad191cf2d212240fa995b8c315697b3"
+    },
+    {
+      "id": "architecture/contracts/v1/composition.schema.json",
+      "path": "architecture/contracts/v1/composition.schema.json",
+      "immutableDigest": "sha256:2b4ad547782fa36748fa937f8fe9896da3c022c3e78e68c8edc06c47ffe36562"
+    },
+    {
+      "id": "architecture/contracts/v1/diagnostic-catalog.json",
+      "path": "architecture/contracts/v1/diagnostic-catalog.json",
+      "immutableDigest": "sha256:d59875576b4619dd01713bf108db14144030e30d8f0245e35f80c73563a4ca96"
+    },
+    {
+      "id": "architecture/contracts/v1/resource-profile.json",
+      "path": "architecture/contracts/v1/resource-profile.json",
+      "immutableDigest": "sha256:7900fdba888dd4895168bba8c0dc5a886e17687e39f39d614a88c84c739aad6d"
+    },
+    {
+      "id": "architecture/qualification/generation-two/candidate.json",
+      "path": "architecture/qualification/generation-two/candidate.json",
+      "immutableDigest": "sha256:51c75b40974c51c382ab81ec065614278b249772435f706cb5e55648b1bacf61"
+    },
+    {
+      "id": "architecture/qualification/generation-two/catalog.json",
+      "path": "architecture/qualification/generation-two/catalog.json",
+      "immutableDigest": "sha256:1f4a766b3622185a5f99084a0cd85fa0c0d7e6972da8752ec1579812ef2af170"
+    },
+    {
+      "id": "architecture/qualification/generation-two/contract.json",
+      "path": "architecture/qualification/generation-two/contract.json",
+      "immutableDigest": "sha256:cd514f67bf69cb6ebe93cfa5d334c50deba6e9f668b55f71bef0fb43d003b915"
+    },
+    {
+      "id": "architecture/qualification/generation-two/retained-candidate.json.gz",
+      "path": "architecture/qualification/generation-two/retained-candidate.json.gz",
+      "immutableDigest": "sha256:bc955c87d08941d83436278ddfc0324c9589ae750d898c580eb812de7c2c139f"
+    },
+    {
+      "id": "architecture/qualification/generation-two/retained-ledger.json",
+      "path": "architecture/qualification/generation-two/retained-ledger.json",
+      "immutableDigest": "sha256:a75f5e079611211f7be525d9e864490d3a0dcabc1ab8ee306bf19ecba1d8c8cf"
+    },
+    {
+      "id": "architecture/qualification/generation-two/schema.json",
+      "path": "architecture/qualification/generation-two/schema.json",
+      "immutableDigest": "sha256:c69683c531f28cc40b530400ab8d60c09c1f5f3895d3a9f48a46c10a0a3af483"
+    },
+    {
+      "id": "architecture/qualification/generation-two/snapshots.json",
+      "path": "architecture/qualification/generation-two/snapshots.json",
+      "immutableDigest": "sha256:a2c66e2c8d8e85c6a6440648b7e763b9cd4bff48babd6a1bb89a8983ad8a72dd"
+    },
+    {
+      "id": "architecture/qualification/implementation-clarifications/cases.json",
+      "path": "architecture/qualification/implementation-clarifications/cases.json",
+      "immutableDigest": "sha256:dde24d56296754825a3afa084261518177e296516d04cb59e06f996417cd2fe7"
+    },
+    {
+      "id": "architecture/qualification/implementation-clarifications/contract.json",
+      "path": "architecture/qualification/implementation-clarifications/contract.json",
+      "immutableDigest": "sha256:e38f74d26959ae342c183764bd0e5623940339816baf51f9b893391a622a1ac9"
+    },
+    {
+      "id": "architecture/qualification/object-resource-coverage/cases.json",
+      "path": "architecture/qualification/object-resource-coverage/cases.json",
+      "immutableDigest": "sha256:c6c1c3cee1b6b3d0a8436d1dd84627934bfab961e9060959d9a358a5852c1266"
+    },
+    {
+      "id": "architecture/qualification/object-resource-coverage/contract.json",
+      "path": "architecture/qualification/object-resource-coverage/contract.json",
+      "immutableDigest": "sha256:5125b31a3c7d31a44dcab8a492d4bbf9989ced548fcdb4af5eab31787cee437b"
+    },
+    {
+      "id": "architecture/qualification/v1/canonicalization-vectors.json",
+      "path": "architecture/qualification/v1/canonicalization-vectors.json",
+      "immutableDigest": "sha256:df4241321f2dfc8dc33ec5a4e957828ef325403370b8b72205cc184e8625e65d"
+    },
+    {
+      "id": "architecture/qualification/v1/decoder-vectors.json",
+      "path": "architecture/qualification/v1/decoder-vectors.json",
+      "immutableDigest": "sha256:94d981c9193bd14cd61f5fbe3d7539dd7631f350cf7c3e36b57f731c674f3b1c"
+    },
+    {
+      "id": "architecture/qualification/v1/diagnostic-contract.json",
+      "path": "architecture/qualification/v1/diagnostic-contract.json",
+      "immutableDigest": "sha256:3f7d8a7a4a5a9d7b54f72d5e0915df3e437ab056107ab50294fa65a8e69b6c94"
+    },
+    {
+      "id": "architecture/qualification/v1/diagnostic-snapshots.json",
+      "path": "architecture/qualification/v1/diagnostic-snapshots.json",
+      "immutableDigest": "sha256:c7806cca2e72bd04374b2c0d7a4a1c59da806f96abc54b9339eb53c13f4d5eda"
+    },
+    {
+      "id": "architecture/qualification/v1/normalization-vectors.json",
+      "path": "architecture/qualification/v1/normalization-vectors.json",
+      "immutableDigest": "sha256:64f97efa285f05924305f3b32d6b55f9fc5924950db55c2ed3938bbd11c81b99"
+    },
+    {
+      "id": "architecture/qualification/v1/qualification-case-manifest.json",
+      "path": "architecture/qualification/v1/qualification-case-manifest.json",
+      "immutableDigest": "sha256:25896f00963d6e206aa754b094ef4fa7946ef7acfd108eded6de6b9480ec423b"
+    },
+    {
+      "id": "architecture/qualification/v1/resource-boundary-vectors.json",
+      "path": "architecture/qualification/v1/resource-boundary-vectors.json",
+      "immutableDigest": "sha256:e33d0890b4b6a398b2f79c262ab5ec79dde02ac7ef7600e321dd32b42dc8a24d"
+    },
+    {
+      "id": "architecture/qualification/v1/resource-profile-v2.json",
+      "path": "architecture/qualification/v1/resource-profile-v2.json",
+      "immutableDigest": "sha256:9cc605e8a5b6b9553c4c12c1355eaf033daae8b7ecf000f7a159d88262c0674c"
+    },
+    {
+      "id": "docs/decisions/0013-close-trusted-object-and-raw-carrier-semantics.md",
+      "path": "docs/decisions/0013-close-trusted-object-and-raw-carrier-semantics.md",
+      "immutableDigest": "sha256:0ad41cbfb49f6fe5e04cf0b7cab1deecfc047c95c457446b97969333be108ff3"
+    },
+    {
+      "id": "docs/decisions/0014-close-duplicate-binding-record-semantics.md",
+      "path": "docs/decisions/0014-close-duplicate-binding-record-semantics.md",
+      "immutableDigest": "sha256:eb071dcbd4d766ff65f8fb08635e3b4a7613c7f4cba38b00ec1047b2e81d9e6a"
+    },
+    {
+      "id": "pnpm-lock.yaml",
+      "path": "pnpm-lock.yaml",
+      "immutableDigest": "sha256:7420fcef084e65d3a61eba8e907a17bba9efbd255d1e9fe72b8370d216bdec99"
+    },
+    {
+      "id": "tests/m2-start.test.mjs",
+      "path": "tests/m2-start.test.mjs",
+      "immutableDigest": "sha256:1e76e54d18ca31ee777c24eb4a1193b7c6a324b401113a631efee06efa009405"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/boundary-source-mutations.test.mjs",
+      "path": "tests/qualification/m2-candidate/boundary-source-mutations.test.mjs",
+      "immutableDigest": "sha256:abd5aae84006e2e319bd28aad5a779c5cddc7d8f929685ec47088405c6d5db8f"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/combined-case-inventory.mjs",
+      "path": "tests/qualification/m2-candidate/combined-case-inventory.mjs",
+      "immutableDigest": "sha256:1d01724267a41744b1f6c9c1bd9e089c05b4b81afe979c5820f880f48db9cc8e"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/combined-case-inventory.test.mjs",
+      "path": "tests/qualification/m2-candidate/combined-case-inventory.test.mjs",
+      "immutableDigest": "sha256:d8bf6dd214f5c45ca2ba6ad8cfdfbfb88da688071a1c8a724b6dd2f5f4f75403"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/duplicate-record-cases.mjs",
+      "path": "tests/qualification/m2-candidate/duplicate-record-cases.mjs",
+      "immutableDigest": "sha256:23cafc4dded1a2d501c3d11d58b89cfe9b8d07c11a3afd616c457c5bbb41598a"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/duplicate-record-cases.test.mjs",
+      "path": "tests/qualification/m2-candidate/duplicate-record-cases.test.mjs",
+      "immutableDigest": "sha256:9eb5b8a21bbed9f57d7f4bac69389e36ce0d49915ce4587f02013f800a98aa2f"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/duplicate-record-extended-overlaps.mjs",
+      "path": "tests/qualification/m2-candidate/duplicate-record-extended-overlaps.mjs",
+      "immutableDigest": "sha256:cc8c58b92b5b3e1c55babe04a1515bc1f40358078cdb16a674acb74633df7924"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/duplicate-record-extended-overlaps.test.mjs",
+      "path": "tests/qualification/m2-candidate/duplicate-record-extended-overlaps.test.mjs",
+      "immutableDigest": "sha256:29f9fe5736336283d3c41067ed6fd4315ca13985ab92aa1e2cd627d6f04e9a6f"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/duplicate-record-ordering.mjs",
+      "path": "tests/qualification/m2-candidate/duplicate-record-ordering.mjs",
+      "immutableDigest": "sha256:0cd972bd0f5f539c194f499c748993c94e5eabd06da8e19235b171ec1b7675a2"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/duplicate-record-recipes.json",
+      "path": "tests/qualification/m2-candidate/duplicate-record-recipes.json",
+      "immutableDigest": "sha256:ce31bf0953e30b1aeec43fa7a5e507ed8b3553d1567d1c5dde8238761ec18063"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/duplicate-record-resources.mjs",
+      "path": "tests/qualification/m2-candidate/duplicate-record-resources.mjs",
+      "immutableDigest": "sha256:906a691943332033331114b9d30b3ba61869cd61948875df52a28e1dd51b6e9f"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/duplicate-record-resources.test.mjs",
+      "path": "tests/qualification/m2-candidate/duplicate-record-resources.test.mjs",
+      "immutableDigest": "sha256:b2ecc8b9786dc20afbabe7213b2c12c19c3a8fd9bcee05683ebf5fd7128fb009"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/generation-two-artifacts.mjs",
+      "path": "tests/qualification/m2-candidate/generation-two-artifacts.mjs",
+      "immutableDigest": "sha256:849751b93ad7c162a44eb335659c1cfd0615894f5b5b3e06b553aa5e9299ba25"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/generation-two-artifacts.test.mjs",
+      "path": "tests/qualification/m2-candidate/generation-two-artifacts.test.mjs",
+      "immutableDigest": "sha256:1139018049f30fdc4d2613f14e802d34ca259bc2a3bf2da4a67ccd86399143c5"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/mutation-evidence.mjs",
+      "path": "tests/qualification/m2-candidate/mutation-evidence.mjs",
+      "immutableDigest": "sha256:4c9573494b0a3a8106f356ee69ee7b182a2de451ad3d527445b39d08c0c1ce57"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/mutation-evidence.test.mjs",
+      "path": "tests/qualification/m2-candidate/mutation-evidence.test.mjs",
+      "immutableDigest": "sha256:b2e6aa71f55665b37ff23b1c6c164649c9b2ee84ac699d2c879d2f1630cbb798"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/object-descriptor-cases.mjs",
+      "path": "tests/qualification/m2-candidate/object-descriptor-cases.mjs",
+      "immutableDigest": "sha256:866cfc93635ad0490ef2313bf486b4edce28016f1eecd64437287bd60714c7f6"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/object-descriptor-cases.test.mjs",
+      "path": "tests/qualification/m2-candidate/object-descriptor-cases.test.mjs",
+      "immutableDigest": "sha256:fdcd1aa0699a9a7b8ee48711fa2db69d5c49ce415c2b7fe79881411ff50f7669"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/raw-carrier-oracle.mjs",
+      "path": "tests/qualification/m2-candidate/raw-carrier-oracle.mjs",
+      "immutableDigest": "sha256:66ceef427f7b99446e78081b910e2f77a117c0b8f3679350bd2cff4c9237e84c"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/raw-carrier-oracle.test.mjs",
+      "path": "tests/qualification/m2-candidate/raw-carrier-oracle.test.mjs",
+      "immutableDigest": "sha256:513c46b21dc95be698025bf976453e3f38165e6c3d9a08c0988fe3f126628cb4"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/raw-document-cases.mjs",
+      "path": "tests/qualification/m2-candidate/raw-document-cases.mjs",
+      "immutableDigest": "sha256:e43c73562223ea3d21c8fde0377fbc1378e787602692167d1b3b9166c032a881"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/raw-document-cases.test.mjs",
+      "path": "tests/qualification/m2-candidate/raw-document-cases.test.mjs",
+      "immutableDigest": "sha256:5805453eb047295a9dbef838946e8e3c777603f443cfa2006fb0bc15c185b98a"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/raw-invocation-oracle.mjs",
+      "path": "tests/qualification/m2-candidate/raw-invocation-oracle.mjs",
+      "immutableDigest": "sha256:f970cf1b8d0a0e54ffac5aae55db6c759a3be38bea363a411963c661261f1533"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/raw-invocation-oracle.test.mjs",
+      "path": "tests/qualification/m2-candidate/raw-invocation-oracle.test.mjs",
+      "immutableDigest": "sha256:f378165b09d9a5f4875a4c41e34b10e7b286fc09f076ad9423f999faa771f0d0"
+    },
+    {
+      "id": "tests/qualification/m2-candidate/retained-acceptance.test.mjs",
+      "path": "tests/qualification/m2-candidate/retained-acceptance.test.mjs",
+      "immutableDigest": "sha256:4eef3b2f40aadd6409b77748901b235f876c31c7ed8db1b40c78ea5357568f16"
+    },
+    {
+      "id": "tests/qualification/support/resource-profile-v2.mjs",
+      "path": "tests/qualification/support/resource-profile-v2.mjs",
+      "immutableDigest": "sha256:d9bc6451e98d7561c1a37cc7f0e41713c5e6b6eba9c914dbae2037e8ccd2860f"
+    }
+  ]
+}

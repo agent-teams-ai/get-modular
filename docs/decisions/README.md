@@ -10,6 +10,8 @@ summary: Index of Get Modular architecture decisions.
 
 ## Proposed decisions
 
+- [ADR-0021: Freeze combined diagnostic generation two for M2](0021-freeze-combined-diagnostic-generation-two-for-m2.md)
+
 - [ADR-0019: Separate upload admission from publication completion](0019-separate-upload-admission-from-publication-completion.md)
 - [ADR-0010: Select replaceable primitives for the first core implementation](0010-select-replaceable-primitives-for-the-first-core-implementation.md)
 - [ADR-0011: Define private self-composition evidence and release custody](0011-define-private-self-composition-evidence-and-release-custody.md)

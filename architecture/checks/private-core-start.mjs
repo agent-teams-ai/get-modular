@@ -1,12 +1,15 @@
 import { visit } from "jsonc-parser";
 
 import { PUBLICATION_FIELDS } from "./production-artifacts.mjs";
+import { validateM2StartAuthority } from "./m2-evidence.mjs";
 
 const START_MARKER = "<!-- get-modular:private-core-start -->";
 const END_MARKER = "<!-- /get-modular:private-core-start -->";
 const FIELDS = ["repository", "baseCommit", "authorityDigest", "approvedBy", "approvedOn", "status", "package", "scope", "excluded"];
 const SCOPE = ["semantics", "object-entry", "publication-not-claimed"];
 const EXCLUDED = ["raw-carriers", "raw-entry-export", "runtime-lifecycle", "conformance-claims", "proposed-contract-claims", "generated-self-composition-claims"];
+const M2_SCOPE = [...SCOPE, "raw-carriers", "raw-entry-export", "duplicate-binding-records"];
+const M2_EXCLUDED = EXCLUDED.filter(value => value !== "raw-carriers" && value !== "raw-entry-export");
 // The excluded list is enforced against the manifest, not only recorded. The
 // current record excludes neither publication nor public exports, so these
 // rules are the enforcement that keeps the field meaningful whenever a future
@@ -42,6 +45,7 @@ export async function validatePrivateCoreStart({
   authorityDigest,
   isStartingBase,
   readPackageManifest,
+  readM2Authority,
 }) {
   const starts = markdown.split(START_MARKER);
   const ends = markdown.split(END_MARKER);
@@ -68,14 +72,30 @@ export async function validatePrivateCoreStart({
     },
     onObjectEnd() { objects.pop(); },
   });
-  if (record === null || typeof record !== "object" || Array.isArray(record)
-    || !exactList(Object.keys(record), FIELDS)) fail("record fields are not the closed format");
+  if (record === null || typeof record !== "object" || Array.isArray(record)) fail("record fields are not the closed format");
+  const m2 = Object.hasOwn(record, "m2Authority");
+  if (!exactList(Object.keys(record), m2 ? [...FIELDS, "m2Authority"] : FIELDS)) fail("record fields are not the closed format");
   if (record.repository !== "agent-teams-ai/get-modular") fail("repository does not match");
   if (record.approvedBy !== "product-owner" || record.status !== "authorized"
     || !/^\d{4}-\d{2}-\d{2}$/u.test(record.approvedOn)) fail("owner authorization is missing or inactive");
   if (record.authorityDigest !== authorityDigest) fail("accepted authority has changed");
   if (record.package !== "@get-modular/core") fail("package is not authorized");
-  if (!exactList(record.scope, SCOPE) || !exactList(record.excluded, EXCLUDED)) fail("scope is not the bounded private checkpoint");
+  if (!exactList(record.scope, m2 ? M2_SCOPE : SCOPE)
+    || !exactList(record.excluded, m2 ? M2_EXCLUDED : EXCLUDED)) fail("scope is not the bounded private checkpoint");
+  if (m2) {
+    const authority = record.m2Authority;
+    if (!authority || typeof authority !== "object" || Array.isArray(authority)
+      || !exactList(Object.keys(authority), ["decisionId", "ledgerDigest"])
+      || authority.decisionId !== "ADR-0021"
+      || !/^sha256:[a-f0-9]{64}$/u.test(authority.ledgerDigest)
+      || typeof readM2Authority !== "function") fail("M2 accepted authority is missing");
+    try {
+      const input = await readM2Authority();
+      await validateM2StartAuthority({ ...input, expectedLedgerDigest: authority.ledgerDigest });
+    } catch (error) {
+      fail(`M2 authority verification failed: ${error.message}`);
+    }
+  }
   if (productionArtifacts.some(path => !path.startsWith("packages/core/"))) fail("artifact is outside the authorized package root");
   if (productionArtifacts.length > 0) {
     const manifest = await readPackageManifest("packages/core/package.json");
