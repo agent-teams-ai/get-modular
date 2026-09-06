@@ -508,6 +508,14 @@ test("public M2 accepts equivalent wrapper intersections", () => {
   assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
 });
 
+test("public M2 accepts mapped wrappers with synthesized properties", () => {
+  const files = publicM2Fixture();
+  append(files, WIRE, '\nexport type RawInput = { readonly [K in "declarations" | "profile"]: K extends "declarations" ? readonly Uint8Array[] : Uint8Array };\n');
+  append(files, ROOT, '\nimport type { RawInput } from "./features/authoring/wire.js";\n');
+  replace(files, ROOT, rawCompiler, "export declare const compileCompositionJson: (input: RawInput) => Promise<CompileCompositionResult>;");
+  assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
+});
+
 test("public M2 rejects raw signature and provenance mutations", async t => {
   const rawMutation = (before, after) => files =>
     replace(files, ROOT, rawCompiler, rawCompiler.replace(before, after));

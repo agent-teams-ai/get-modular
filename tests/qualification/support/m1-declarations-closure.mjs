@@ -462,7 +462,7 @@ function audit(files, generation, surface) {
     // Reject a declaration-list tuple spelled directly or through transparent
     // owned aliases. Carrier aliases and intermediate type computations are
     // governed by the nominal check and exact type contract, not their syntax.
-    const pendingTypes = declarations.getDeclarations().map(node => node.type).filter(Boolean);
+    const pendingTypes = (declarations.getDeclarations() ?? []).map(node => node.type).filter(Boolean);
     const seenTypes = new Set();
     while (pendingTypes.length) {
       const node = pendingTypes.pop();
