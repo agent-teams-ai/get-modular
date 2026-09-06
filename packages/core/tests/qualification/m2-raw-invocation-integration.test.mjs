@@ -268,7 +268,7 @@ test(`${LABEL}: aggregate preflight blocks earlier eligible malformed documents`
   assert.equal(subject.probe.opens, 0);
 });
 
-for (const [left, right] of [['raw', 'raw'], ['raw', 'object'], ['object', 'raw']]) {
+for (const [left, right] of [['raw', 'raw'], ['raw', 'object'], ['object', 'raw'], ['object', 'object']]) {
   for (const badFirst of [false, true]) {
     test(`${LABEL}: concurrent ${left}/${right}, ${badFirst ? 'failure' : 'success'} first`, async () => {
       const subject = setup();
