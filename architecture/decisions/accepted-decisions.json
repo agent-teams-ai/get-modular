@@ -81,6 +81,11 @@
       "id": "ADR-0021",
       "path": "docs/decisions/0021-freeze-combined-diagnostic-generation-two-for-m2.md",
       "immutableDigest": "sha256:f13bb47ff92b8c1a0e77e64b53da889b4ab507a37349bc9486540d5819fe68c6"
+    },
+    {
+      "id": "ADR-0022",
+      "path": "docs/decisions/0022-correct-two-in-envelope-m2-resource-outcomes.md",
+      "immutableDigest": "sha256:8335e88bcf98e732b58240dcf37357333a1fb357824ef9a3c4cbc76e3d0fa90a"
     }
   ]
 }

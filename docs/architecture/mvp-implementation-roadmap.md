@@ -135,6 +135,15 @@ binds the prepared successor evidence and the M2.1-M2.4 ownership/exit map.
 The owner accepted ADR-0021 and activated the bounded M2 implementation scope
 on 2026-09-06. M2 completion still requires real Core replay and qualification.
 
+For new M2 replay, also read the accepted
+[two resource outcome correction](../decisions/0022-correct-two-in-envelope-m2-resource-outcomes.md).
+Use its [resource category adapter](../../tests/qualification/support/m2-resource-outcomes.mjs)
+for the six resource cases, retaining the original case IDs and inputs. Exactly
+two complete outcomes gain an independent schema diagnostic; all other
+categories retain their original expectations. Retain this supplement identity
+with new object/raw results. The frozen 941-case archive remains unchanged and
+does not itself prove this successor or M2.4 completion.
+
 M2 is a milestone spanning the existing admission, semantic and output phases,
 not an omitted numbered phase. Before production raw or repeated-record implementation,
 read [OD-005](../open-decisions/OD-005-raw-input-carrier-semantics.md) and
