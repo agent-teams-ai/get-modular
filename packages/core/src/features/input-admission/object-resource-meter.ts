@@ -82,8 +82,13 @@ export function createObjectResourceMeter(): ObjectResourceMeter {
         if (!countString(item)) stoppedBy = exhausted;
         return;
       }
-      // Numeric domain and field-specific types belong to the schema pass.
-      if (item === null || typeof item === "boolean" || typeof item === "number") return;
+      // Non-finite numbers cannot be JSON values. Finite numeric domain and
+      // field-specific types remain the responsibility of the schema pass.
+      if (typeof item === "number") {
+        if (!Number.isFinite(item)) nonPlainValue = true;
+        return;
+      }
+      if (item === null || typeof item === "boolean") return;
       if (typeof item !== "object") { nonPlainValue = true; return; }
       if (active.has(item)) { nonPlainValue = true; return; }
       jsonDepth = Math.max(jsonDepth, depth);
