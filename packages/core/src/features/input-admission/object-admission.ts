@@ -11,9 +11,9 @@ import { admissionLimits } from "./resource-limits.js";
 import { schemaDiagnostic } from "./schema-diagnostic.js";
 
 /**
- * Synchronous private M1 admission for the accepted cooperative invocation
- * record and dense ordinary declaration list. Malformed wrapper/carrier policy
- * is not selected here. No caller reference survives; the caller supplies the
+ * Synchronous object admission for the accepted cooperative invocation record
+ * and dense ordinary declaration list. ADR-0021 supplies the closed wrapper
+ * policy. No caller reference survives; the caller supplies the
  * per-invocation collector, and only semantics/facade finalize that collector.
  * ADR-0020: outside the resource envelope, reject with a truthful early limit;
  * enumeration need not select the same failure. Batch value/string exhaustion
@@ -25,10 +25,29 @@ export function admitObjectInput(input: ObjectInput, collector: AdmissionDiagnos
   const add: DiagnosticCollector["addUnique"] = diagnostic => { hasErrors = true; collector.addUnique(diagnostic); };
   const empty = (): AdmittedObjectInput => Object.freeze({ declarations: Object.freeze([]), allDeclarationsAdmitted: false,
     profile: null, profileResources: null, hasErrors });
-  // Inspect the rejected dimension before copying the invocation list.
-  if (input.declarations.length > admissionLimits.declarations) { add(resourceDiagnostic("declarations")); return empty(); }
-  const declarations = [...input.declarations];
-  const profile = input.profile;
+  // The cooperative wrapper is not a JSON document. Own data descriptors
+  // establish count eligibility before any list item or document is inspected.
+  const wrapper = input !== null && (typeof input === "object" || typeof input === "function") ? input : null;
+  const declarationsField = wrapper ? Object.getOwnPropertyDescriptor(wrapper, "declarations") : undefined;
+  const profileField = wrapper ? Object.getOwnPropertyDescriptor(wrapper, "profile") : undefined;
+  const wrapperFailure = (field: "declarations" | "profile"): void => {
+    add(Object.freeze({ code: "schema.non-plain-value", phase: "schema", coordinate: Object.freeze({}),
+      path: Object.freeze([Object.freeze({ kind: "field", value: field })]),
+      details: Object.freeze({ reason: "non-plain-value" }) }));
+  };
+  const list = declarationsField && Object.hasOwn(declarationsField, "value") ? declarationsField.value : undefined;
+  if (!Array.isArray(list) || Object.getPrototypeOf(list) !== Array.prototype) wrapperFailure("declarations");
+  if (!profileField || !Object.hasOwn(profileField, "value")) wrapperFailure("profile");
+  if (hasErrors) return empty();
+  const count = Object.getOwnPropertyDescriptor(list, "length")!.value as number;
+  if (count > admissionLimits.declarations) { add(resourceDiagnostic("declarations")); return empty(); }
+  const declarations: unknown[] = [];
+  for (let ordinal = 0; ordinal < count; ordinal += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(list, String(ordinal));
+    if (!descriptor || !Object.hasOwn(descriptor, "value")) { wrapperFailure("declarations"); return empty(); }
+    declarations.push(descriptor.value);
+  }
+  const profile = profileField!.value;
   const meter = createObjectResourceMeter();
   const scans: ObjectResourceScan[] = [];
   let totalCapabilities = 0;
