@@ -623,3 +623,10 @@ test('the successor carrier code is admitted without broadening input member pur
   assert.deepEqual(auditM1JavaScriptClosure(files).exports, publicNames);
   mutant(files => body(files, `input['input.install'];`), 'purpose');
 });
+
+for (const update of ['++record', '--record']) {
+  test(`schema initializer rejects mutation of an owned helper: ${update}`, () => {
+    mutant(files => edit(files, SHAPE, 'identity(isPortableIdFormat, 3, 128)',
+      `identity(isPortableIdFormat, ${update}, 128)`), 'top-level', projectionBaseline);
+  });
+}

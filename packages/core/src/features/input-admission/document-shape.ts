@@ -99,9 +99,12 @@ export function schemaSafeLocalPath(kind: "declaration" | "profile", local: read
         }
       }
     }
-    if (next.length === 0) break;
+    if (typeof segment === "number") {
+      if (!Number.isSafeInteger(segment) || segment < 0 || segment > 65535) break;
+    } else if (next.length === 0) break;
     path.push(segment);
-    current = next;
+    // Numeric fallback preserves the current candidates, never a parent or root.
+    if (next.length > 0) current = next;
   }
   // Invocation prefixes and the global segment cap belong to documentPath.
   return Object.freeze(path);

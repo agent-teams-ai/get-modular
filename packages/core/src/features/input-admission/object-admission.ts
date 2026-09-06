@@ -89,17 +89,20 @@ export function admitObjectInput(input: ObjectInput, collector: AdmissionDiagnos
       // The first pass proved this document's depth and the whole batch's JSON
       // budgets. Replay only rejected documents to stream every safe location
       // into the bounded collector without retaining a list of caller paths.
-      // In a depth-first walk over unique own keys, a different prefix at the
-      // same depth cannot be followed by an earlier prefix. One last path per
-      // depth therefore deduplicates ancestor and clipped-path observations.
-      const lastByDepth: (readonly (string | number)[] | undefined)[] = [];
+      // The meter finishes each child's subtree before the next parent key.
+      // Descriptor and exit failures may interleave shorter ancestor paths.
+      // Projection retains occurrence prefixes, so a final prefix cannot recur
+      // after leaving its subtree. Compare tagged paths after prefixing and
+      // clipping; at most 33 table slots retain O(32 * 32) segments.
+      const lastByDepth: (ReturnType<typeof documentPath> | undefined)[] = [];
       createObjectResourceMeter().scanDocument(value, local => {
-        const safe = schemaSafeLocalPath(locator.kind, local);
-        const previous = lastByDepth[safe.length];
-        if (previous !== undefined && safe.every((segment, index) => segment === previous[index])) return;
-        lastByDepth[safe.length] = safe;
+        const path = documentPath(locator, schemaSafeLocalPath(locator.kind, local));
+        const previous = lastByDepth[path.length];
+        if (previous !== undefined && path.every((segment, index) =>
+          segment.kind === previous[index]!.kind && segment.value === previous[index]!.value)) return;
+        lastByDepth[path.length] = path;
         add(Object.freeze({ code: "schema.non-plain-value", phase: "schema", coordinate: Object.freeze({}),
-          path: documentPath(locator, safe),
+          path,
           details: Object.freeze({ reason: "non-plain-value" }) }));
       });
       return false;

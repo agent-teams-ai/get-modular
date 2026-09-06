@@ -420,7 +420,8 @@ function audit(files) {
     if (ts.isArrayLiteralExpression(node)) return node.elements.every(item => !ts.isSpreadElement(item) && inert(item, schema));
     if (ts.isObjectLiteralExpression(node)) return node.properties.every(item =>
       ts.isShorthandPropertyAssignment(item) || ts.isPropertyAssignment(item) && inert(item.initializer, schema));
-    if (ts.isPrefixUnaryExpression(node)) return inert(node.operand, schema);
+    if (ts.isPrefixUnaryExpression(node)) return [ts.SyntaxKind.PlusToken, ts.SyntaxKind.MinusToken,
+      ts.SyntaxKind.ExclamationToken, ts.SyntaxKind.TildeToken].includes(node.operator) && inert(node.operand, schema);
     if (ts.isBinaryExpression(node)) return [ts.SyntaxKind.PlusToken, ts.SyntaxKind.MinusToken, ts.SyntaxKind.AsteriskToken,
       ts.SyntaxKind.SlashToken, ts.SyntaxKind.PercentToken, ts.SyntaxKind.AsteriskAsteriskToken].includes(node.operatorToken.kind)
       && inert(node.left, schema) && inert(node.right, schema);

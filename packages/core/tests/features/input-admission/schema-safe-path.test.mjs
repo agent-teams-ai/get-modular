@@ -63,7 +63,7 @@ function scanDuplicates(kind, source) {
 function assertEmitted(kind, observed, expected) {
   const prefix = kind === 'declaration' ? ['declarations', 7] : ['profile'];
   assert.deepEqual(observed.safe, expected);
-  assert.deepEqual(observed.emitted, expected.map(path => tagged([...prefix, ...path])));
+  assert.deepEqual(observed.emitted, expected.map(path => tagged([...prefix, ...path].slice(0, 32))));
   for (const path of observed.emitted) {
     assert.equal(Object.isFrozen(path), true);
     for (const segment of path) assert.equal(Object.isFrozen(segment), true);
@@ -108,6 +108,8 @@ test('all accepted cardinality variants contribute their fields to path projecti
     for (const field of ['kind', 'min', 'max', 'order']) {
       assertProjection('declaration', [...base, field]);
       assertProjection('declaration', [...base, field, 'moduleId'], [...base, field]);
+      assertProjection('declaration', [...base, 0, 1, field]);
+      assertProjection('declaration', [...base, 0, 1, field, 0, 1, 'kind'], [...base, 0, 1, field, 0, 1]);
     }
   }
 });
@@ -150,18 +152,46 @@ test('unknown ancestors permanently stop projection at every admitted fixture po
   }
 });
 
-test('scalar descendants and numeric segments in record positions stop at their containing schema node', () => {
+test('bounded numeric segments retain current candidates at record and scalar positions', () => {
   for (const [kind, document] of worlds) {
     for (const { value, path } of nodes(document)) {
       if (Array.isArray(value)) continue;
-      if (value !== null && typeof value === 'object') {
-        for (const index of [0, 1, 65535]) {
-          assertProjection(kind, [...path, index, 'moduleId'], path);
+      for (const index of [0, 1, 65535]) {
+        const shifted = [...path, index, 0];
+        assertProjection(kind, shifted);
+        if (value !== null && typeof value === 'object') {
+          for (const field of Object.keys(value)) assertProjection(kind, [...shifted, field]);
+        } else {
+          for (const field of ['0', 'moduleId', 'kind', 'min', 'max', 'order']) {
+            assertProjection(kind, [...shifted, field], shifted);
+          }
         }
-      } else {
-        for (const tail of [[0], ['0'], ['moduleId'], ['kind', 'owner', 'path', 0], ['min'], ['max'], ['order']]) {
-          assertProjection(kind, [...path, ...tail], path);
-        }
+      }
+    }
+  }
+});
+
+test('numeric fallback preserves current candidates and unknown fields or invalid indices stop permanently', () => {
+  for (const [kind, local, expected] of [
+    ['declaration', [0, 'moduleId'], [0, 'moduleId']],
+    ['profile', [0, 'profileId'], [0, 'profileId']],
+    ['declaration', ['owner', 0, 'authority'], ['owner', 0, 'authority']],
+    ['declaration', ['slots', 0, 0, 'cardinality', 0, 'min'], ['slots', 0, 0, 'cardinality', 0, 'min']],
+    ['declaration', ['moduleId', 0, 1, 'owner'], ['moduleId', 0, 1]],
+    ['declaration', ['owner', 'path', 0, 1, 'authority'], ['owner', 'path', 0, 1]],
+    ['profile', ['bindings', '0', 'slotId'], ['bindings']],
+    ['declaration', [0, 'secret', 0, 'moduleId'], [0]],
+    ['profile', ['bindings', 65535, 'slotId'], ['bindings', 65535, 'slotId']],
+    ['profile', ['bindings', 65536, 'slotId'], ['bindings']],
+    ['profile', ['profileId', 0, 1, 'profileId'], ['profileId', 0, 1]],
+    ['declaration', ['slots', 0, 0, 'owner'], ['slots', 0, 0]],
+    ['declaration', ['slots', 0, 'cardinality', 0, 'kind', 1, 'min'], ['slots', 0, 'cardinality', 0, 'kind', 1]],
+    ['declaration', ['slots', 0, 'cardinality', 0, 'secret', 0, 'min'], ['slots', 0, 'cardinality', 0]],
+  ]) assertProjection(kind, Object.freeze(local), expected);
+  for (const [kind, document] of worlds) {
+    for (const { path } of nodes(document)) {
+      for (const index of [-1, -65535, 0.5, 65535.5, 65536, Number.MAX_SAFE_INTEGER, NaN, Infinity, -Infinity]) {
+        assertProjection(kind, Object.freeze([...path, index, 0, 'moduleId', 'profileId']), path);
       }
     }
   }
@@ -259,16 +289,30 @@ test('real scanner array indices at 65535 and 65536 are projected before documen
   }
 });
 
-test('real scanner property string zero stays a field and root arrays cannot borrow record fields', () => {
+test('real scanner property string zero stays a field and root arrays retain root record candidates', () => {
   for (const [kind, source, raw, safe] of [
     ['profile', '{"bindings":{"0":{"slotId":0,"slotId":1}}}', ['bindings', '0', 'slotId'], ['bindings']],
     ['declaration', '{"owner":{"path":{"0":{"authority":0,"authority":1}}}}', ['owner', 'path', '0', 'authority'], ['owner', 'path']],
-    ['declaration', '[{"moduleId":0,"moduleId":1}]', [0, 'moduleId'], []],
-    ['profile', '[{"profileId":0,"profileId":1}]', [0, 'profileId'], []],
+    ['declaration', '[{"moduleId":0,"moduleId":1}]', [0, 'moduleId'], [0, 'moduleId']],
+    ['profile', '[{"profileId":0,"profileId":1}]', [0, 'profileId'], [0, 'profileId']],
   ]) {
     const observed = scanDuplicates(kind, source);
     assert.deepEqual(observed.raw, [raw]);
     assertEmitted(kind, observed, [safe]);
+  }
+});
+
+test('actual duplicate locations at depth 32 retain numeric fallback before prefix clipping', () => {
+  for (const kind of ['declaration', 'profile']) {
+    const field = kind === 'declaration' ? 'moduleId' : 'profileId';
+    const local = [...Array(31).fill(0), field];
+    const source = '['.repeat(31) + '{"' + field + '":0,"' + field + '":1}' + ']'.repeat(31);
+    const observed = scanDuplicates(kind, source);
+    assert.deepEqual(observed.raw, [local]);
+    assertEmitted(kind, observed, [local]);
+    assert.deepEqual(observed.emitted, [tagged(kind === 'declaration'
+      ? ['declarations', 7, ...Array(30).fill(0)]
+      : ['profile', ...Array(31).fill(0)])]);
   }
 });
 
@@ -279,12 +323,13 @@ test('documentPath owns invocation prefixes, ordinal clipping and the global 32-
   assert.deepEqual(documentPath({ kind: 'declaration', ordinal: 65536 }, local), tagged(['declarations']));
   assert.deepEqual(documentPath({ kind: 'profile' }, schemaSafeLocalPath('profile', ['roots', 0])),
     tagged(['profile', 'roots', 0]));
-  // The fixed schema is shallower than the cap; exercise the caller's cap directly.
-  const longLocal = Array(40).fill('kind');
+  // Malformed nesting can fill the cap even though the valid schema is shallow.
+  const longLocal = assertProjection('declaration', Object.freeze(Array(40).fill(0)));
+  assertProjection('profile', longLocal);
   assert.deepEqual(documentPath({ kind: 'declaration', ordinal: 7 }, longLocal),
-    tagged(['declarations', 7, ...Array(30).fill('kind')]));
+    tagged(['declarations', 7, ...Array(30).fill(0)]));
   assert.deepEqual(documentPath({ kind: 'profile' }, longLocal),
-    tagged(['profile', ...Array(31).fill('kind')]));
+    tagged(['profile', ...Array(31).fill(0)]));
 });
 
 test('shared schema validation streams failures and skips items of every rejected array dimension', () => {
