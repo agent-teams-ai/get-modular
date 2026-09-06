@@ -500,6 +500,14 @@ test("public M2 accepts computed carrier and list aliases without scanning their
   }
 });
 
+test("public M2 accepts equivalent wrapper intersections", () => {
+  const files = publicM2Fixture();
+  append(files, WIRE, "\nexport type RawInput = { readonly declarations: readonly Uint8Array[] } & { readonly profile: Uint8Array };\n");
+  append(files, ROOT, '\nimport type { RawInput } from "./features/authoring/wire.js";\n');
+  replace(files, ROOT, rawCompiler, "export declare const compileCompositionJson: (input: RawInput) => Promise<CompileCompositionResult>;");
+  assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
+});
+
 test("public M2 rejects raw signature and provenance mutations", async t => {
   const rawMutation = (before, after) => files =>
     replace(files, ROOT, rawCompiler, rawCompiler.replace(before, after));

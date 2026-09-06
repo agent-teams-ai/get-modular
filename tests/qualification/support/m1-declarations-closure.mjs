@@ -209,7 +209,8 @@ function contractSource(generation, surface) {
       // methods as wire fields. The checker separately proves carrier identity.
       'type EByteCarrier = Uint8Array;',
       `type ERawInput = ${record({ declarations: "readonly EByteCarrier[]", profile: "EByteCarrier" })};`,
-      'type RawInput = Check<Same<Parameters<typeof P.compileCompositionJson>[0], ERawInput>>;',
+      'type RawFields<T> = { [K in keyof T]: T[K] };',
+      'type RawInput = Check<Same<RawFields<Parameters<typeof P.compileCompositionJson>[0]>, ERawInput>>;',
       'type AssignRawInput = Check<Assignable<ERawInput, Parameters<typeof P.compileCompositionJson>[0]>>;',
       'type RawPromiseResult = Check<Same<ReturnType<typeof P.compileCompositionJson>, Promise<P.CompileCompositionResult>>>;',
       'type AssignRawPromiseResult = Check<Assignable<Promise<ECompileCompositionResult>, ReturnType<typeof P.compileCompositionJson>>>;',
