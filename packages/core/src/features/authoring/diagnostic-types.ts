@@ -53,6 +53,8 @@ type LimitDiagnostic = {
 }[keyof LimitPhase];
 
 export type Diagnostic =
+  | RecordFor<"input.invalid-byte-carrier", "decode", EmptyCoordinate,
+    Reason<"not-uint8array" | "unusable-view" | "shared-storage" | "not-document-list">>
   | RecordFor<"decode.invalid-json", "decode", EmptyCoordinate, Reason<"invalid-json">>
   | RecordFor<"decode.duplicate-key", "decode", EmptyCoordinate, Reason<"duplicate-key">>
   | LimitDiagnostic
@@ -72,6 +74,7 @@ export type Diagnostic =
   | RecordFor<"profile.implementation-mismatch", "profile", SelectionCoordinate, Reason<"mismatch">>
   | RecordFor<"profile.missing-selection", "profile", ModuleCoordinate, Reason<"missing">>
   | RecordFor<"profile.unreachable-selection", "graph", SelectionCoordinate, Reason<"unreachable">>
+  | RecordFor<"binding.duplicate-record", "binding", SlotCoordinate, Reason<"duplicate">>
   | RecordFor<"binding.duplicate", "binding", ProviderCoordinate, Reason<"duplicate">>
   | RecordFor<"binding.missing", "binding", SlotCoordinate, Reason<"missing">>
   | RecordFor<"binding.unknown-consumer", "binding", ImplementationCoordinate, Reason<"unknown">>

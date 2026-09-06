@@ -102,7 +102,7 @@ test('packed M1 exposes one root across Node and TypeScript consumers', async t 
   const audited = readPackageArchive(bytes, identity);
   assert.deepEqual(auditM1JavaScriptClosure(audited.files).exports, runtimeNames,
     'the physical JavaScript members have the closed M1 purpose, imports and construction');
-  assert.deepEqual(auditM1DeclarationClosure(audited.files).rootExports,
+  assert.deepEqual(auditM1DeclarationClosure(audited.files, 2).rootExports,
     ['CompileCompositionResult', 'CompositionPlan', 'CompositionProfile', 'Diagnostic', 'DiagnosticCode',
       'ModuleDeclaration', 'PlanDigest'].map(name => ({ name, kind: 'type' }))
       .concat(runtimeNames.map(name => ({ name, kind: 'value' }))),
@@ -122,7 +122,7 @@ test('packed M1 exposes one root across Node and TypeScript consumers', async t 
   const workspace = join(temporary, 'consumers');
   await mkdir(workspace);
   try {
-    const prepared = await prepareM1PackedConsumers({ archive: { path: archive, identity, files: audited.files },
+    const prepared = await prepareM1PackedConsumers({ diagnosticGeneration: 2, archive: { path: archive, identity, files: audited.files },
       workspace, toolchain: { node, npm, compilers }, contextId: 'disposable-packed-root', osEnvironment });
     let lastCommand;
     const observe = async event => {

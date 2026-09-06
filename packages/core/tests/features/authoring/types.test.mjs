@@ -80,7 +80,7 @@ for (const mode of ["NodeNext", "Bundler"]) {
 }
 
 test("diagnostics match accepted snapshots, emittable codes and code-specific details", async t => {
-  await compile(t, { "case.ts": diagnosticTypeCase(subject.replaceAll("\\", "/")) });
+  await compile(t, { "case.ts": diagnosticTypeCase(subject.replaceAll("\\", "/"), 2) });
 });
 
 test("1000 distinct authored declarations preserve their literal identities", async t => {
