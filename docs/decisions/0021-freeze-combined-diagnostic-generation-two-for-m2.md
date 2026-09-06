@@ -62,7 +62,7 @@ The [generation 2 ledger](../../architecture/authority/diagnostic-generation-two
 binds the successor schema, catalog, diagnostic contract, snapshots, candidate,
 closed recipe/checker sources and retained execution bytes.
 
-Generation 2 ledger digest: `sha256:732bb2516b6f6ba8ab632551cf335eb042f971a22d3d9a56775843828872f5a9`
+Generation 2 ledger digest: `sha256:3781993b5714d8f8928ca2a2082353f93bc42b0e69a3373bd9cfaa41963f7f61`
 
 The [retained ledger](../../architecture/qualification/generation-two/retained-ledger.json)
 is the unchanged 30-artifact capture ledger, digest
@@ -142,7 +142,7 @@ by the checker.
   ],
   "m2Authority": {
     "decisionId": "ADR-0021",
-    "ledgerDigest": "sha256:732bb2516b6f6ba8ab632551cf335eb042f971a22d3d9a56775843828872f5a9"
+    "ledgerDigest": "sha256:3781993b5714d8f8928ca2a2082353f93bc42b0e69a3373bd9cfaa41963f7f61"
   }
 }
 ```

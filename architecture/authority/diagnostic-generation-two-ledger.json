@@ -160,7 +160,7 @@
     {
       "id": "tests/m2-start.test.mjs",
       "path": "tests/m2-start.test.mjs",
-      "immutableDigest": "sha256:1e76e54d18ca31ee777c24eb4a1193b7c6a324b401113a631efee06efa009405"
+      "immutableDigest": "sha256:a6009556a2b195b4c38c10d79a60c500ad8a1eaf028a07a7aed78647ace2d940"
     },
     {
       "id": "tests/qualification/m2-candidate/boundary-source-mutations.test.mjs",

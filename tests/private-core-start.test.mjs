@@ -16,7 +16,17 @@ const exec = promisify(execFile);
 const roadmapPath = "docs/architecture/mvp-implementation-roadmap.md";
 const roadmap = await readFile(roadmapPath, "utf8");
 const block = /<!-- get-modular:private-core-start -->\s*```json\s*\n([\s\S]*?)\n```\s*<!-- \/get-modular:private-core-start -->/u;
-const recorded = JSON.parse(block.exec(roadmap)[1]);
+// Historical M1 fixture, independent of the currently activated roadmap record.
+const recorded = {
+  repository: "agent-teams-ai/get-modular",
+  baseCommit: "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418",
+  authorityDigest: "sha256:9ba074210704a20f6a3ef7486f3cf2ec7435fb0fc5552cca210b6d3d5d73f077",
+  approvedBy: "product-owner", approvedOn: "2026-09-04", status: "authorized",
+  package: "@get-modular/core",
+  scope: ["semantics", "object-entry", "publication-not-claimed"],
+  excluded: ["raw-carriers", "raw-entry-export", "runtime-lifecycle",
+    "conformance-claims", "proposed-contract-claims", "generated-self-composition-claims"],
+};
 const markdownJson = json => `<!-- get-modular:private-core-start -->\n\n\`\`\`json\n${json}\n\`\`\`\n<!-- /get-modular:private-core-start -->`;
 const markdown = value => markdownJson(JSON.stringify(value));
 const artifacts = ["packages/core/package.json", "packages/core/src/features/example/internal.ts"];
@@ -39,12 +49,24 @@ const check = (text, extra = {}) => validatePrivateCoreStart({
   readPackageManifest: async () => ({ name: "@get-modular/core", private: true, type: "module" }),
   ...extra,
 });
+const actualInputs = {
+  isStartingBase: base => isStartingBaseAncestor(base, resolve(".")),
+  readPackageManifest: async path => JSON.parse(await readFile(path, "utf8")),
+  readM2Authority: async () => ({
+    decisionMarkdown: await readFile(
+      "docs/decisions/0021-freeze-combined-diagnostic-generation-two-for-m2.md", "utf8",
+    ),
+    ledgerBytes: await readFile("architecture/authority/diagnostic-generation-two-ledger.json"),
+    readBytes: path => readFile(path),
+  }),
+};
 
 test("private Core start is optional without a package but mandatory for the first artifact", async () => {
   await check("# No start record", { productionArtifacts: [] });
   await assert.rejects(check("# No start record"), /record is required/u);
-  await check(roadmap);
-  await check(roadmap, { productionArtifacts: [] });
+  await check(markdown(recorded));
+  await check(roadmap, actualInputs);
+  await check(roadmap, { ...actualInputs, productionArtifacts: [] });
 });
 
 test("private Core start rejects independent authority, scope and identity mutations", async () => {
@@ -64,8 +86,8 @@ test("private Core start rejects independent authority, scope and identity mutat
   }
   const missing = { ...recorded }; delete missing.approvedBy;
   await assert.rejects(check(markdown(missing)), /closed format/u);
-  await assert.rejects(check(roadmap, { productionArtifacts: ["packages/conformance/package.json"] }), /outside the authorized package/u);
-  await assert.rejects(check(roadmap, { productionArtifacts: ["packages/core-other/index.ts"] }), /outside the authorized package/u);
+  await assert.rejects(check(roadmap, { ...actualInputs, productionArtifacts: ["packages/conformance/package.json"] }), /outside the authorized package/u);
+  await assert.rejects(check(roadmap, { ...actualInputs, productionArtifacts: ["packages/core-other/index.ts"] }), /outside the authorized package/u);
 });
 
 test("private Core start rejects missing, duplicate and malformed record delimiters", async () => {
@@ -79,7 +101,7 @@ test("private Core start rejects missing, duplicate and malformed record delimit
 
 test("private Core start binds the actual manifest identity, not only its directory", async () => {
   for (const manifest of [null, {}, { name: "@get-modular/conformance" }]) {
-    await assert.rejects(check(roadmap, { readPackageManifest: async () => manifest }),
+    await assert.rejects(check(roadmap, { ...actualInputs, readPackageManifest: async () => manifest }),
       /manifest identity/u);
   }
 });
