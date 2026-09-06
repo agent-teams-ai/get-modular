@@ -4,6 +4,7 @@ import { admissionLimits, type AdmissionLimit } from "./resource-limits.js";
 
 type LimitDiagnostic = Extract<DiagnosticCandidate, { readonly code: "input.limit-exceeded" }>;
 const phases = Object.freeze({
+  declarationRawDocumentBytes: "decode", profileRawDocumentBytes: "decode", aggregateRawBytes: "decode",
   jsonValueOccurrences: "schema", jsonDepth: "decode", aggregateStringBytes: "decode",
   identifierBytes: "schema", ownerPathSegments: "declaration", declarations: "declaration",
   capabilitiesPerDeclaration: "declaration", slotsPerDeclaration: "declaration",

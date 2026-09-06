@@ -95,13 +95,15 @@ const shapeConstructors = new Map([
 const localMembers = new Map([
   [SHAPE, words('type fields expected matchesFormat variants many required optional')],
   [SNAPSHOT, words('create defineProperty')],
+  ['dist/features/input-admission/resource-limits.js', words('declarationRawDocumentBytes profileRawDocumentBytes aggregateRawBytes')],
+  ['dist/features/input-admission/resource-diagnostic.js', words('declarationRawDocumentBytes profileRawDocumentBytes aggregateRawBytes')],
   ['dist/features/input-admission/object-resource-meter.js', words('segment')],
 ]);
 const routing = new Set([ENTRY, ROOT, AUTHORING, DIAGNOSTICS]);
 const dataExports = new Map([
   ['selectedGraphDepthLimit', null],
   ['semanticResourceLimits', words('graphEdges providersPerManySlot')],
-  ['admissionLimits', words('jsonValueOccurrences jsonDepth aggregateStringBytes identifierBytes ownerPathSegments declarations capabilitiesPerDeclaration slotsPerDeclaration totalCapabilities totalSlots roots selections bindings')],
+  ['admissionLimits', words('declarationRawDocumentBytes profileRawDocumentBytes aggregateRawBytes jsonValueOccurrences jsonDepth aggregateStringBytes identifierBytes ownerPathSegments declarations capabilitiesPerDeclaration slotsPerDeclaration totalCapabilities totalSlots roots selections bindings')],
 ]);
 
 // Member selectors and constructed record keys have a closed data/operation

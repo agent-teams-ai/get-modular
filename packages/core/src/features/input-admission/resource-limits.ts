@@ -1,6 +1,9 @@
 // Closed admission-owned values from the accepted resource-profile-v2. This
 // is not a configurable profile or a dependency on qualification tooling.
 const limits = {
+  declarationRawDocumentBytes: 1_048_576,
+  profileRawDocumentBytes: 8_388_608,
+  aggregateRawBytes: 16_777_216,
   jsonValueOccurrences: 2_097_152,
   jsonDepth: 32,
   aggregateStringBytes: 8_388_608,
