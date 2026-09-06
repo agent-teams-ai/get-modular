@@ -13,6 +13,8 @@ const CANONICAL = 'dist/features/canonicalization/owned-jcs/factory.js';
 const OUTPUT = 'dist/features/plan-output/factory.js';
 const ORDER = 'dist/features/diagnostics/order.js';
 const ORPHAN = 'dist/features/composition-semantics/graph-components.js';
+const SHAPE = 'dist/features/input-admission/document-shape.js';
+const SNAPSHOT = 'dist/features/input-admission/document-snapshot.js';
 const publicNames = ['compileComposition', 'defineModule', 'many', 'optional', 'required'];
 
 // A real-style direct graph, with the actual helper/facade/construction forms.
@@ -110,6 +112,52 @@ export function createPlanOutput({ canonicalizer }) {
 }`],
 ]);
 function baseline() { return new Map([...sources].map(([path, source]) => [path, Buffer.from(source + '\n')])); }
+// Small construction specimens extend the libraries of the same five-factory
+// root. These functions supply no semantic expectations and are never executed.
+function projectionBaseline() {
+  const files = baseline();
+  files.set(SHAPE, Buffer.from(`import { isPortableIdFormat, isLocalTokenFormat } from './identity-format.js';
+function record(fields) { return { type: 'record', fields }; }
+function literal(expected) { return { type: 'literal', expected }; }
+function integer(min, max) { return { type: 'integer', min, max }; }
+function identity(matchesFormat, min, max) { return { type: 'identity', matchesFormat, min, max }; }
+function array(min, max, item, limit) { return { type: 'array', min, max, item, limit }; }
+const portable = identity(isPortableIdFormat, 3, 128);
+const local = identity(isLocalTokenFormat, 1, 64);
+const declarationShape = record({ schemaVersion: literal(1), roots: array(1, 8, local), min: integer(0, 1) });
+const profileShape = { type: 'cardinality', variants: { many: declarationShape, required: declarationShape, optional: declarationShape } };
+function checks(view) { return view.root; }
+export function schemaSafeLocalPath(kind, local) { Object.values(profileShape.variants); return Object.freeze([...local]); }
+export function validateDeclarationShape(value, report) { return true; }
+export function validateProfileShape(value, report) { return true; }
+export function validateDeclarationView(view, report) { return portable.matchesFormat(view.root); }
+export function validateProfileView(view, report) { return local.matchesFormat(view.root); }
+`));
+  files.set('dist/features/input-admission/identity-format.js', Buffer.from(`export function isPortableIdFormat(value) { return true; }
+export function isLocalTokenFormat(value) { return true; }
+`));
+  files.set(SNAPSHOT, Buffer.from(`function record(fields) {
+  const value = Object.create(null);
+  for (const key of Object.keys(fields)) {
+    Object.defineProperty(value, key, { value: fields[key], enumerable: true });
+  }
+  return Object.freeze(value);
+}
+function projection(view) {
+  function member(value, key) { return view.reader.own(value, key).value; }
+  return {
+    declaration() { return record({ moduleId: member(view.root, 'moduleId') }); },
+    profile() { return record({ profileId: member(view.root, 'profileId') }); },
+  };
+}
+export function snapshotDeclaration(value) { return snapshotDeclarationView(value); }
+export function snapshotProfile(value) { return snapshotProfileView(value); }
+export function snapshotDeclarationView(view) { return projection(view).declaration(); }
+export function snapshotProfileView(view) { return projection(view).profile(); }
+`));
+  files.set(ADMISSION, Buffer.concat([Buffer.from("import { schemaSafeLocalPath } from './document-shape.js';\nimport { snapshotDeclaration } from './document-snapshot.js';\n"), files.get(ADMISSION)]));
+  return files;
+}
 function edit(files, path, before, after) {
   const source = files.get(path).toString('utf8');
   assert.ok(source.includes(before), 'mutation must match its intended content');
@@ -127,8 +175,8 @@ function reject(files, reason) {
     return true;
   });
 }
-function mutant(change, reason) {
-  const files = baseline();
+function mutant(change, reason, makeFiles = baseline) {
+  const files = makeFiles();
   assert.deepEqual(auditM1JavaScriptClosure(files).exports, publicNames, 'the complete companion passes before mutation');
   change(files);
   reject(files, reason);
@@ -174,6 +222,28 @@ test('audits the complete direct fixture graph without mutating archive data', (
   assert.deepEqual(auditM1JavaScriptClosure(files), { modules: [...sources.keys()].sort(), exports: publicNames });
   assert.deepEqual(files, copy);
   assert.deepEqual(auditM1JavaScriptClosure(new Map([...files].reverse())), auditM1JavaScriptClosure(files));
+});
+
+test('schema initialization and owned snapshot construction preserve the five-factory surface', () => {
+  const files = projectionBaseline();
+  assert.deepEqual(auditM1JavaScriptClosure(files), { modules: [...files.keys()].sort(), exports: publicNames });
+  assert.deepEqual(files.get(ROOT), baseline().get(ROOT));
+  edit(files, SHAPE, 'const portable = identity(', 'const describe = identity;\nconst portable = describe(');
+  edit(files, SHAPE, "function literal(expected) { return { type: 'literal', expected }; }",
+    "function literal(value) { return { type: 'literal', expected: value }; }");
+  edit(files, SNAPSHOT, 'Object.create(null)', 'Object.create((null))');
+  edit(files, SNAPSHOT, 'Object.defineProperty(value, key, { value: fields[key], enumerable: true })',
+    'Object.defineProperty((value), (key), { "enumerable": true, "value": fields[(key)] })');
+  assert.deepEqual(auditM1JavaScriptClosure(files).exports, publicNames);
+});
+
+test('projection vocabulary remains confined to its owning modules', () => {
+  for (const name of ['type', 'fields', 'expected', 'matchesFormat', 'variants', 'many', 'required', 'optional', 'segment', 'create', 'defineProperty']) {
+    mutant(files => body(files, `input.${name};`), 'purpose');
+  }
+  mutant(files => body(files, 'Object.values(input);'), 'intrinsic');
+  mutant(files => edit(files, SHAPE, 'return portable.matchesFormat(view.root);',
+    'return view.reader[view.root](view.root);'), 'computed-call', projectionBaseline);
 });
 
 test('metadata and declaration purpose do not invent required fixture fields or type semantics', () => {
@@ -418,12 +488,62 @@ test('the five private factories remain legitimate but assembly stays literal an
   mutant(files => edit(files, ROOT, 'const compiler =', 'const extra = createOwnedJcs({});\nconst compiler ='), 'construction');
 });
 
+test('schema initializer permission requires a pure constructor body and its actual origin', () => {
+  for (const [before, after, reason] of [
+    ['function record(fields) {', 'function record(fields) { fields();', 'initializer'],
+    ['function record(fields) {', 'function record(fields = {}) {', 'initializer'],
+    ["return { type: 'record', fields };", 'return fields;', 'initializer'],
+    ["return { type: 'record', fields };", "return { type: 'record', fields: () => fields };", 'initializer'],
+    ["return { type: 'record', fields };", "return { type: 'array', fields };", 'initializer'],
+    ["function record(fields) { return { type: 'record', fields }; }", 'const record = validateDeclarationShape;', 'top-level'],
+    ["function record(fields) { return { type: 'record', fields }; }", "const record = fields => ({ type: 'record', fields });", 'top-level'],
+    ['literal(1)', 'literal(1, 2)', 'top-level'],
+    ['literal(1)', 'literal((() => 1)())', 'top-level'],
+    ['literal(1)', 'checks(1)', 'top-level'],
+    ['identity(isPortableIdFormat, 3, 128)', 'identity(checks, 3, 128)', 'top-level'],
+    ['const declarationShape = record(', 'const declarationShape = checks(', 'top-level'],
+    ['const declarationShape = record(', 'const unreviewed = record(', 'purpose'],
+  ]) mutant(files => edit(files, SHAPE, before, after), reason, projectionBaseline);
+});
+
 test('top-level effects, asynchronous initialization and ambient declarations fail', () => {
   mutant(files => files.set(ORDER, Buffer.concat([files.get(ORDER), Buffer.from('\nObject.freeze({});')])), 'top-level');
   mutant(files => files.set(ORDER, Buffer.concat([files.get(ORDER), Buffer.from('\nawait 0;')])), 'top-level');
   mutant(files => files.set(ORDER, Buffer.concat([files.get(ORDER), Buffer.from('\nlet state = 0;')])), 'top-level');
   mutant(files => files.set(ORDER, Buffer.concat([files.get(ORDER), Buffer.from('\ndeclare global { var host: unknown; }')])), 'parse');
   mutant(files => body(files, 'const Object = input;'), 'binding');
+});
+
+test('snapshot intrinsics require fresh null storage, own-key provenance and data descriptors', () => {
+  for (const [before, after] of [
+    ['Object.create(null)', 'Object.create(fields)'],
+    ['Object.create(null)', 'Object.create(null, {})'],
+    ['const value = Object.create(null);', 'const value = fields;'],
+    ['Object.keys(fields)', 'Object.keys(value)'],
+    ['Object.defineProperty(value, key,', 'Object.defineProperty(fields, key,'],
+    ['Object.defineProperty(value, key,', "Object.defineProperty(value, 'moduleId',"],
+    ['value: fields[key]', 'value: key'],
+    ['value: fields[key]', 'get: fields[key]'],
+    ['enumerable: true', 'enumerable: false'],
+    ['enumerable: true', 'enumerable: true, configurable: true'],
+    ['return Object.freeze(value);', 'return Object.freeze(fields);'],
+    ['function record(fields) {', 'function record(fields = {}) {'],
+  ]) mutant(files => edit(files, SNAPSHOT, before, after), 'intrinsic', projectionBaseline);
+});
+
+test('snapshot intrinsic permissions cannot escape through helpers, aliases or computed calls', () => {
+  for (const [code, reason] of [
+    ['Object.create(null);', 'intrinsic'],
+    ["Object.defineProperty(view.root, 'moduleId', { value: 'x/m', enumerable: true });", 'intrinsic'],
+    ['const create = Object.create; create(null);', 'global'],
+    ["const define = Object.defineProperty; define(view.root, 'moduleId', {});", 'global'],
+    ["Object['create'](null);", 'computed-call'],
+    ['Object.values(view.variants);', 'purpose'],
+  ]) mutant(files => edit(files, SNAPSHOT, 'function projection(view) {',
+    `function projection(view) { ${code}`), reason, projectionBaseline);
+  mutant(files => edit(files, SNAPSHOT,
+    'export function snapshotDeclarationView(view) { return projection(view).declaration(); }',
+    'export { snapshotProfileView as snapshotDeclarationView };'), 'global', projectionBaseline);
 });
 
 test('alias cycles and malformed input fail with bounded private reasons', () => {

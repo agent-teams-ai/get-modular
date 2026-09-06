@@ -58,13 +58,13 @@ const rows = [
   ['features/diagnostics/order', 'compareDiagnostics', 'phases codes coordinateFields lexical', ''],
   ['features/input-admission/document-path', 'documentPath', '', ''],
   ['features/input-admission/document-reader', 'objectDocument', 'objectKind objectOwn objectKeys objectLength objectItem objectText objectInteger objectReader', ''],
-  ['features/input-admission/document-shape', 'validateDeclarationShape validateProfileShape validateDeclarationView validateProfileView', 'isWellFormedUtf16 checks', 'fail record literal integer admittedInteger identity array supportedDocumentVersion compatibility cardinality provided slot selection binding'],
-  ['features/input-admission/document-snapshot', 'snapshotDeclaration snapshotProfile', 'compatibility cardinality', ''],
+  ['features/input-admission/document-shape', 'schemaSafeLocalPath validateDeclarationShape validateProfileShape validateDeclarationView validateProfileView', 'record literal integer identity array portable local compatibility cardinality provided slot selection binding declarationShape profileShape isWellFormedUtf16 checks', 'fail checkRecord admittedInteger numericValue check supportedDocumentVersion'],
+  ['features/input-admission/document-snapshot', 'snapshotDeclaration snapshotProfile snapshotDeclarationView snapshotProfileView', 'record projection', 'member text integer list compatibility cardinality'],
   ['features/input-admission/factory', 'createInputAdmission', '', ''],
   ['features/input-admission/identity-format', 'isPortableIdFormat isLocalTokenFormat', 'matchesFormat', ''],
   ['features/input-admission/object-admission', 'admitObjectInput', '', 'add empty scan validate wrapperFailure'],
-  ['features/input-admission/object-resource-meter', 'createObjectResourceMeter', 'valueLimit stringLimit depthLimit', 'countValues countString scanDocument enter'],
-  ['features/input-admission/profile-resource-facts', 'ownValue profileResourceFacts', 'portable', ''],
+  ['features/input-admission/object-resource-meter', 'createObjectResourceMeter', 'valueLimit stringLimit depthLimit', 'countValues countString scanDocument nonPlain enter'],
+  ['features/input-admission/profile-resource-facts', 'ownValue profileResourceFacts profileResourceFactsView', 'portable', 'ownMember textMember'],
   ['features/input-admission/resource-diagnostic', 'resourceDiagnostic', 'phases', ''],
   ['features/input-admission/resource-limits', 'admissionLimits', 'limits', ''],
   ['features/input-admission/schema-diagnostic', 'schemaDiagnostic', '', ''],
@@ -86,6 +86,17 @@ const factories = [
 ];
 const QUEUE = 'dist/features/composition-semantics/ready-queue.js';
 const SHAPE = 'dist/features/input-admission/document-shape.js';
+const SNAPSHOT = 'dist/features/input-admission/document-snapshot.js';
+const shapeInitializers = words('portable local compatibility cardinality provided slot selection binding declarationShape profileShape');
+const shapeConstructors = new Map([
+  ['record', ['fields']], ['literal', ['expected']], ['integer', ['min', 'max']],
+  ['identity', ['matchesFormat', 'min', 'max']], ['array', ['min', 'max', 'item', 'limit']],
+]);
+const localMembers = new Map([
+  [SHAPE, words('type fields expected matchesFormat variants many required optional')],
+  [SNAPSHOT, words('create defineProperty')],
+  ['dist/features/input-admission/object-resource-meter.js', words('segment')],
+]);
 const routing = new Set([ENTRY, ROOT, AUTHORING, DIAGNOSTICS]);
 const dataExports = new Map([
   ['selectedGraphDepthLimit', null],
@@ -119,7 +130,7 @@ schema decode graph
 reader root own item text integer present admitted
 `);
 const globalMembers = new Map([
-  ['Object', words('freeze getOwnPropertyDescriptor getOwnPropertyDescriptors getPrototypeOf hasOwn is keys prototype')],
+  ['Object', words('freeze getOwnPropertyDescriptor getOwnPropertyDescriptors getPrototypeOf hasOwn is keys values create defineProperty prototype')],
   ['Array', words('isArray from prototype')], ['Math', words('min max floor')],
   ['Number', words('isFinite isInteger isSafeInteger MAX_SAFE_INTEGER')],
   ['JSON', words('stringify')], ['Reflect', words('ownKeys')],
@@ -345,6 +356,30 @@ function audit(files) {
     return origin(declaration);
   };
   const isFunction = (value, path, name) => value.kind === 'function' && pathOf(value.node) === path && value.node.name?.text === name;
+  function referenceTo(node, declaration) {
+    node = unwrap(node);
+    return !!node && ts.isIdentifier(node) && declarationOf(symbolAt(node)) === declaration;
+  }
+  // Eager schema calls may only construct tagged records from their parameters.
+  // Validate the callee's definition, not just its spelling at the call site.
+  function checkShapeConstructor(fn) {
+    const fields = shapeConstructors.get(fn.name?.text);
+    requireThat(fields && pathOf(fn) === SHAPE && ts.isSourceFile(fn.parent)
+      && fn.parameters.length === fields.length && fn.parameters.every(parameter =>
+        ts.isIdentifier(parameter.name) && !parameter.initializer && !parameter.dotDotDotToken)
+      && fn.body?.statements.length === 1 && ts.isReturnStatement(fn.body.statements[0]), 'initializer');
+    const result = unwrap(fn.body.statements[0].expression);
+    requireThat(result && ts.isObjectLiteralExpression(result), 'initializer');
+    const props = properties(result);
+    requireThat(equalNames(new Set(props.keys()), new Set(['type', ...fields]))
+      && [...props.values()].every(property => ts.isPropertyAssignment(property)
+        || ts.isShorthandPropertyAssignment(property)), 'initializer');
+    const tag = unwrap(propertyValue(props.get('type')));
+    requireThat(tag && ts.isStringLiteral(tag) && tag.text === fn.name.text, 'initializer');
+    for (const [index, field] of fields.entries()) {
+      requireThat(referenceTo(propertyValue(props.get(field)), fn.parameters[index]), 'initializer');
+    }
+  }
   // AST limits do not bound repeated expansion of const expression graphs.
   // Cache unknown results too; bound visits and concatenated text per audit.
   const staticStrings = new Map(), activeStrings = new Set();
@@ -376,23 +411,69 @@ function audit(files) {
     staticStrings.set(node, value);
     return value;
   }
-  function checkMember(name) {
-    requireThat(members.has(name) || /^(?:decode|schema|identity|declaration|profile|binding|graph|diagnostics)\.[a-z-]+$/u.test(name), 'purpose');
-  }
-  function inert(node) {
+  function inert(node, schema = false) {
     node = unwrap(node);
     if (!node) return false;
     if (ts.isIdentifier(node) || ts.isStringLiteral(node) || ts.isNumericLiteral(node)
       || [ts.SyntaxKind.TrueKeyword, ts.SyntaxKind.FalseKeyword, ts.SyntaxKind.NullKeyword].includes(node.kind)) return true;
-    if (ts.isPropertyAccessExpression(node)) return inert(node.expression);
-    if (ts.isArrayLiteralExpression(node)) return node.elements.every(item => !ts.isSpreadElement(item) && inert(item));
+    if (ts.isPropertyAccessExpression(node)) return inert(node.expression, schema);
+    if (ts.isArrayLiteralExpression(node)) return node.elements.every(item => !ts.isSpreadElement(item) && inert(item, schema));
     if (ts.isObjectLiteralExpression(node)) return node.properties.every(item =>
-      ts.isShorthandPropertyAssignment(item) || ts.isPropertyAssignment(item) && inert(item.initializer));
-    if (ts.isPrefixUnaryExpression(node)) return inert(node.operand);
+      ts.isShorthandPropertyAssignment(item) || ts.isPropertyAssignment(item) && inert(item.initializer, schema));
+    if (ts.isPrefixUnaryExpression(node)) return inert(node.operand, schema);
     if (ts.isBinaryExpression(node)) return [ts.SyntaxKind.PlusToken, ts.SyntaxKind.MinusToken, ts.SyntaxKind.AsteriskToken,
       ts.SyntaxKind.SlashToken, ts.SyntaxKind.PercentToken, ts.SyntaxKind.AsteriskAsteriskToken].includes(node.operatorToken.kind)
-      && inert(node.left) && inert(node.right);
-    return builtinCall(node, 'Object', 'freeze') && node.arguments.length === 1 && inert(node.arguments[0]);
+      && inert(node.left, schema) && inert(node.right, schema);
+    if (builtinCall(node, 'Object', 'freeze')) return node.arguments.length === 1 && inert(node.arguments[0], schema);
+    if (!schema || !ts.isCallExpression(node) || node.questionDotToken
+      || !ts.isIdentifier(unwrap(node.expression))) return false;
+    const resolved = origin(node.expression);
+    if (resolved.kind !== 'function' || pathOf(resolved.node) !== SHAPE
+      || !ts.isSourceFile(resolved.node.parent) || !shapeConstructors.has(resolved.node.name?.text)) return false;
+    const fn = resolved.node, name = fn.name.text, count = shapeConstructors.get(name).length;
+    checkShapeConstructor(fn);
+    if (node.arguments.length < count - (name === 'array' ? 1 : 0) || node.arguments.length > count
+      || !node.arguments.every(argument => inert(argument, true))) return false;
+    return name !== 'identity' || ['isPortableIdFormat', 'isLocalTokenFormat'].some(format =>
+      isFunction(origin(node.arguments[0]), 'dist/features/input-admission/identity-format.js', format));
+  }
+  // The only new write intrinsic copies own fields into freshly allocated,
+  // null-prototype storage. Check allocation, loop, descriptor and return origins.
+  function checkSnapshotRecord(fn) {
+    requireThat(fn && ts.isFunctionDeclaration(fn) && fn.name?.text === 'record'
+      && pathOf(fn) === SNAPSHOT && ts.isSourceFile(fn.parent)
+      && fn.parameters.length === 1 && ts.isIdentifier(fn.parameters[0].name)
+      && !fn.parameters[0].initializer && !fn.parameters[0].dotDotDotToken
+      && fn.body?.statements.length === 3, 'intrinsic');
+    const [allocation, loop, returned] = fn.body.statements, fields = fn.parameters[0];
+    requireThat(ts.isVariableStatement(allocation) && allocation.declarationList.declarations.length === 1
+      && !!(allocation.declarationList.flags & ts.NodeFlags.Const), 'intrinsic');
+    const owned = allocation.declarationList.declarations[0], create = unwrap(owned.initializer);
+    requireThat(ts.isIdentifier(owned.name) && builtinCall(create, 'Object', 'create')
+      && create.arguments.length === 1 && unwrap(create.arguments[0]).kind === ts.SyntaxKind.NullKeyword, 'intrinsic');
+    requireThat(ts.isForOfStatement(loop) && !loop.awaitModifier
+      && ts.isVariableDeclarationList(loop.initializer) && !!(loop.initializer.flags & ts.NodeFlags.Const)
+      && loop.initializer.declarations.length === 1 && ts.isBlock(loop.statement)
+      && loop.statement.statements.length === 1 && ts.isExpressionStatement(loop.statement.statements[0]), 'intrinsic');
+    const key = loop.initializer.declarations[0], keys = unwrap(loop.expression);
+    const copy = unwrap(loop.statement.statements[0].expression);
+    requireThat(ts.isIdentifier(key.name) && !key.initializer
+      && builtinCall(keys, 'Object', 'keys') && keys.arguments.length === 1 && referenceTo(keys.arguments[0], fields)
+      && builtinCall(copy, 'Object', 'defineProperty') && copy.arguments.length === 3
+      && referenceTo(copy.arguments[0], owned) && referenceTo(copy.arguments[1], key), 'intrinsic');
+    const descriptor = unwrap(copy.arguments[2]);
+    requireThat(descriptor && ts.isObjectLiteralExpression(descriptor), 'intrinsic');
+    const props = properties(descriptor);
+    requireThat(equalNames(new Set(props.keys()), words('value enumerable'))
+      && [...props.values()].every(ts.isPropertyAssignment), 'intrinsic');
+    const value = unwrap(props.get('value').initializer);
+    requireThat(ts.isElementAccessExpression(value) && !value.questionDotToken
+      && referenceTo(value.expression, fields) && referenceTo(value.argumentExpression, key)
+      && unwrap(props.get('enumerable').initializer).kind === ts.SyntaxKind.TrueKeyword, 'intrinsic');
+    requireThat(ts.isReturnStatement(returned), 'intrinsic');
+    const frozen = unwrap(returned.expression);
+    requireThat(builtinCall(frozen, 'Object', 'freeze') && frozen.arguments.length === 1
+      && referenceTo(frozen.arguments[0], owned), 'intrinsic');
   }
   function nearestFunction(node) {
     for (let parent = node.parent; parent; parent = parent.parent) {
@@ -449,23 +530,38 @@ function audit(files) {
     } else {
       const use = outer(parent).parent;
       requireThat(ts.isCallExpression(use) && use.expression === outer(parent), 'global');
+      if (name === 'Object' && ['create', 'defineProperty'].includes(member)) checkSnapshotRecord(nearestFunction(node));
+      if (name === 'Object' && member === 'values') {
+        const fn = nearestFunction(node), argument = unwrap(use.arguments[0]);
+        requireThat(pathOf(node) === SHAPE && fn && ts.isFunctionDeclaration(fn)
+          && ts.isSourceFile(fn.parent) && fn.name?.text === 'schemaSafeLocalPath'
+          && use.arguments.length === 1 && argument && ts.isPropertyAccessExpression(argument)
+          && !argument.questionDotToken && argument.name.text === 'variants', 'intrinsic');
+      }
     }
     requireThat(name !== 'JSON' || pathOf(node) === feature('canonicalization/owned-jcs'), 'global');
   }
 
   for (const [path, module] of modules) {
     const { source, role } = module;
+    function checkMember(name) {
+      requireThat(members.has(name) || localMembers.get(path)?.has(name)
+        || /^(?:decode|schema|identity|declaration|profile|binding|graph|diagnostics)\.[a-z-]+$/u.test(name), 'purpose');
+    }
     for (const statement of source.statements) {
       if (ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement)) continue;
       if (ts.isFunctionDeclaration(statement)) {
         requireThat(statement.name && role.definitions.has(statement.name.text) && !routing.has(path), 'purpose');
+        if (path === SHAPE && shapeConstructors.has(statement.name.text)) checkShapeConstructor(statement);
+        if (path === SNAPSHOT && statement.name.text === 'record') checkSnapshotRecord(statement);
       } else if (ts.isClassDeclaration(statement)) requireThat(path === QUEUE && statement.name?.text === 'ReadyQueue', 'purpose');
       else if (ts.isVariableStatement(statement)) {
         requireThat(!!(statement.declarationList.flags & ts.NodeFlags.Const), 'top-level');
         for (const declaration of statement.declarationList.declarations) {
           requireThat(ts.isIdentifier(declaration.name) && declaration.initializer, 'top-level');
           requireThat(routing.has(path) || role.definitions.has(declaration.name.text) || ts.isIdentifier(unwrap(declaration.initializer)), 'purpose');
-          if (path !== ROOT && path !== ENTRY) requireThat(inert(declaration.initializer), 'top-level');
+          if (path !== ROOT && path !== ENTRY) requireThat(inert(declaration.initializer,
+            path === SHAPE && shapeInitializers.has(declaration.name.text)), 'top-level');
         }
       } else requireThat(ts.isExpressionStatement(statement) && ts.isStringLiteral(statement.expression)
         && statement.expression.text === 'use strict', 'top-level');
@@ -491,7 +587,7 @@ function audit(files) {
           && role.functions.has(parent.name.text), 'purpose');
       }
       if (ts.isMethodDeclaration(node) || ts.isGetAccessorDeclaration(node)) {
-        const allowed = path === QUEUE ? words('size less push take') : path === SHAPE ? words('declaration profile')
+        const allowed = path === QUEUE ? words('size less push take') : (path === SHAPE || path === SNAPSHOT) ? words('declaration profile')
           : path === feature('compiler-facade') ? words('compileComposition')
             : path === feature('plan-output') ? words('emit') : path === feature('composition-semantics') ? words('newCollector') : new Set();
         requireThat(node.body && allowed.has(propertyName(node.name)), 'purpose');
@@ -541,15 +637,8 @@ function audit(files) {
       if (ts.isCallExpression(node)) {
         const callee = unwrap(node.expression);
         requireThat(callee.kind !== ts.SyntaxKind.ImportKeyword, 'code-loading');
-        if (ts.isElementAccessExpression(callee)) {
-          // The existing schema validator dispatches its closed literal field
-          // validators through record's third parameter. No general computed
-          // method/callback dispatcher is admitted by this profile.
-          const declaration = ts.isIdentifier(callee.expression) ? declarationOf(symbolAt(callee.expression)) : undefined;
-          requireThat(path === SHAPE && declaration && ts.isParameter(declaration)
-            && ts.isFunctionDeclaration(declaration.parent) && declaration.parent.name?.text === 'record'
-            && declaration.parent.parameters[2] === declaration, 'computed-call');
-        }
+        // Schema dispatch now reads tagged data; no computed call is needed.
+        if (ts.isElementAccessExpression(callee)) fail('computed-call');
         const resolved = origin(callee);
         if (factories.some(([owner, name]) => isFunction(resolved, owner, name))) {
           const use = outer(node).parent;
