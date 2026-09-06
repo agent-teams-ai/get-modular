@@ -21,7 +21,7 @@ export type ObjectResourceStatistics = {
   readonly arrayIndexCodeUnits: number;
 };
 export interface ObjectResourceMeter {
-  readonly scanDocument: (value: unknown) => ObjectResourceScan;
+  readonly scanDocument: (value: unknown, onNonPlain?: (localPath: readonly (string | number)[]) => void) => ObjectResourceScan;
   readonly statistics: () => ObjectResourceStatistics;
 }
 
@@ -31,6 +31,7 @@ type Frame = {
   readonly keys: readonly PropertyKey[];
   readonly depth: number;
   readonly arrayLength: number | null;
+  readonly segment: string | number | null;
   next: number;
   indexes: number;
 };
@@ -69,14 +70,23 @@ export function createObjectResourceMeter(): ObjectResourceMeter {
     return true;
   }
 
-  function scanDocument(value: unknown): ObjectResourceScan {
+  function scanDocument(value: unknown, onNonPlain?: (localPath: readonly (string | number)[]) => void): ObjectResourceScan {
     let jsonDepth = 0;
     let nonPlainValue = false;
     let stoppedBy: ObjectResourceScan["stoppedBy"] = exhausted;
     const active = new WeakSet<object>();
     const stack: Frame[] = [];
 
-    function enter(item: unknown, depth: number, prepaid: boolean): void {
+    function nonPlain(segment: string | number | null = null): void {
+      nonPlainValue = true;
+      if (!onNonPlain) return;
+      const path: (string | number)[] = [];
+      for (const frame of stack) if (frame.segment !== null) path.push(frame.segment);
+      if (segment !== null) path.push(segment);
+      onNonPlain(Object.freeze(path));
+    }
+
+    function enter(item: unknown, depth: number, prepaid: boolean, segment: string | number | null): void {
       if (!prepaid && !countValues(1)) { stoppedBy = exhausted; return; }
       if (typeof item === "string") {
         if (!countString(item)) stoppedBy = exhausted;
@@ -85,19 +95,19 @@ export function createObjectResourceMeter(): ObjectResourceMeter {
       // Non-finite numbers cannot be JSON values. Finite numeric domain and
       // field-specific types remain the responsibility of the schema pass.
       if (typeof item === "number") {
-        if (!Number.isFinite(item)) nonPlainValue = true;
+        if (!Number.isFinite(item)) nonPlain(segment);
         return;
       }
       if (item === null || typeof item === "boolean") return;
-      if (typeof item !== "object") { nonPlainValue = true; return; }
-      if (active.has(item)) { nonPlainValue = true; return; }
+      if (typeof item !== "object") { nonPlain(segment); return; }
+      if (active.has(item)) { nonPlain(segment); return; }
       jsonDepth = Math.max(jsonDepth, depth);
       if (depth > depthLimit) { stoppedBy = "jsonDepth"; return; }
 
       const isArray = Array.isArray(item);
       const prototype = Object.getPrototypeOf(item);
       if (isArray ? prototype !== Array.prototype : prototype !== Object.prototype && prototype !== null) {
-        nonPlainValue = true;
+        nonPlain(segment);
       }
       const arrayLength = isArray ? Object.getOwnPropertyDescriptor(item, "length")!.value as number : null;
       // Reserve attempted positions before density inspection or work
@@ -105,16 +115,16 @@ export function createObjectResourceMeter(): ObjectResourceMeter {
       if (arrayLength !== null && !countValues(arrayLength)) { stoppedBy = exhausted; return; }
       const descriptors = Object.getOwnPropertyDescriptors(item);
       stack.push({ value: item, descriptors, keys: Reflect.ownKeys(descriptors), depth,
-        arrayLength, next: 0, indexes: 0 });
+        arrayLength, segment, next: 0, indexes: 0 });
       active.add(item);
       peakOpenContainers = Math.max(peakOpenContainers, stack.length);
     }
 
-    if (stoppedBy === null) enter(value, 1, false);
+    if (stoppedBy === null) enter(value, 1, false, null);
     while (stoppedBy === null && stack.length > 0) {
       const frame = stack[stack.length - 1]!;
       if (frame.next === frame.keys.length) {
-        if (frame.arrayLength !== null && frame.indexes !== frame.arrayLength) nonPlainValue = true;
+        if (frame.arrayLength !== null && frame.indexes !== frame.arrayLength) nonPlain();
         active.delete(frame.value);
         stack.pop();
         continue;
@@ -123,29 +133,31 @@ export function createObjectResourceMeter(): ObjectResourceMeter {
       ownKeyVisits += 1;
       // The descriptor table is ordinary: symbols follow every string key.
       // Finish only this frame; parent siblings still contribute resources.
-      if (typeof key !== "string") { nonPlainValue = true; frame.next = frame.keys.length; continue; }
+      if (typeof key !== "string") { nonPlain(); frame.next = frame.keys.length; continue; }
+      let segment: string | number = key;
       if (frame.arrayLength !== null) {
         if (key === "length") continue;
         // Array indices precede every non-index string. No rejected tail key
         // may incur an unbounded Number conversion or a per-key own loop.
         if (key.length === 0 || key.length > 10) {
-          nonPlainValue = true; frame.next = frame.keys.length; continue;
+          nonPlain(); frame.next = frame.keys.length; continue;
         }
         arrayIndexCodeUnits += key.length;
         const index = Number(key);
         if (!Number.isInteger(index) || index < 0 || index > 0xfffffffe || index >= frame.arrayLength) {
-          nonPlainValue = true;
+          nonPlain();
           frame.next = frame.keys.length; continue;
         }
         const spelling = String(index);
         arrayIndexCodeUnits += spelling.length;
-        if (spelling !== key) { nonPlainValue = true; frame.next = frame.keys.length; continue; }
+        if (spelling !== key) { nonPlain(); frame.next = frame.keys.length; continue; }
         frame.indexes += 1;
+        segment = index;
       } else if (!countString(key)) { stoppedBy = exhausted; break; }
       const descriptor = frame.descriptors[key]!;
-      if (!descriptor.enumerable) nonPlainValue = true;
-      if (!Object.hasOwn(descriptor, "value")) { nonPlainValue = true; continue; }
-      enter(descriptor.value, frame.depth + 1, frame.arrayLength !== null);
+      if (!descriptor.enumerable) nonPlain();
+      if (!Object.hasOwn(descriptor, "value")) { nonPlain(); continue; }
+      enter(descriptor.value, frame.depth + 1, frame.arrayLength !== null, segment);
     }
     // No caller reference survives this synchronous call, including early stops.
     return Object.freeze({ jsonDepth, nonPlainValue, stoppedBy });

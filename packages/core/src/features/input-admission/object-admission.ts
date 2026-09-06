@@ -1,7 +1,7 @@
 import type { CompositionProfile, ModuleDeclaration } from "../authoring/internal.js";
 import type { DiagnosticCollector } from "../diagnostics/internal.js";
 import { documentPath, type DocumentLocator } from "./document-path.js";
-import { validateDeclarationShape, validateProfileShape } from "./document-shape.js";
+import { schemaSafeLocalPath, validateDeclarationShape, validateProfileShape } from "./document-shape.js";
 import { snapshotDeclaration, snapshotProfile } from "./document-snapshot.js";
 import { createObjectResourceMeter, type ObjectResourceScan } from "./object-resource-meter.js";
 import { ownValue, profileResourceFacts } from "./profile-resource-facts.js";
@@ -86,8 +86,22 @@ export function admitObjectInput(input: ObjectInput, collector: AdmissionDiagnos
   function validate(value: unknown, result: ObjectResourceScan, locator: DocumentLocator): boolean {
     if (result.stoppedBy !== null) return false;
     if (result.nonPlainValue) {
-      add(Object.freeze({ code: "schema.non-plain-value", phase: "schema", coordinate: Object.freeze({}),
-        path: documentPath(locator), details: Object.freeze({ reason: "non-plain-value" }) }));
+      // The first pass proved this document's depth and the whole batch's JSON
+      // budgets. Replay only rejected documents to stream every safe location
+      // into the bounded collector without retaining a list of caller paths.
+      // In a depth-first walk over unique own keys, a different prefix at the
+      // same depth cannot be followed by an earlier prefix. One last path per
+      // depth therefore deduplicates ancestor and clipped-path observations.
+      const lastByDepth: (readonly (string | number)[] | undefined)[] = [];
+      createObjectResourceMeter().scanDocument(value, local => {
+        const safe = schemaSafeLocalPath(locator.kind, local);
+        const previous = lastByDepth[safe.length];
+        if (previous !== undefined && safe.every((segment, index) => segment === previous[index])) return;
+        lastByDepth[safe.length] = safe;
+        add(Object.freeze({ code: "schema.non-plain-value", phase: "schema", coordinate: Object.freeze({}),
+          path: documentPath(locator, safe),
+          details: Object.freeze({ reason: "non-plain-value" }) }));
+      });
       return false;
     }
     const validateShape = locator.kind === "declaration" ? validateDeclarationShape : validateProfileShape;
