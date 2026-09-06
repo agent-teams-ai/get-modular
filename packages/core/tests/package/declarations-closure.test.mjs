@@ -524,6 +524,18 @@ test("public M2 accepts equivalent union wrappers and rejects a divergent arm", 
   }
 });
 
+test("public M2 accepts distinct list aliases in equivalent union arms", () => {
+  const files = publicM2Fixture();
+  append(files, WIRE, `\ntype Left<T> = readonly T[];
+  type Right<T> = ReadonlyArray<T>;
+  export type RawInput =
+    | { readonly declarations: Left<Uint8Array>; readonly profile: Uint8Array }
+    | { readonly declarations: Right<Uint8Array>; readonly profile: Uint8Array };\n`);
+  append(files, ROOT, '\nimport type { RawInput } from "./features/authoring/wire.js";\n');
+  replace(files, ROOT, rawCompiler, "export declare const compileCompositionJson: (input: RawInput) => Promise<CompileCompositionResult>;");
+  assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
+});
+
 test("public M2 accepts mapped wrappers with synthesized properties", () => {
   const files = publicM2Fixture();
   append(files, WIRE, '\nexport type RawInput = { readonly [K in "declarations" | "profile"]: K extends "declarations" ? readonly Uint8Array[] : Uint8Array };\n');

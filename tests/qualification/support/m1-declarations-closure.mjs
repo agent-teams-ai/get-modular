@@ -448,36 +448,40 @@ function audit(files, generation, surface) {
     const signature = ts.isFunctionDeclaration(raw.node) ? raw.node : raw.node.type;
     const inputNode = signature.parameters[0].type;
     const input = checker.getTypeFromTypeNode(inputNode);
-    const declarations = checker.getPropertyOfType(input, "declarations");
-    const profile = checker.getPropertyOfType(input, "profile");
-    need(declarations && profile, "raw-input");
-    const list = checker.getTypeOfSymbolAtLocation(declarations, inputNode);
-    need(checker.isArrayType(list) && !checker.isTupleType(list), "raw-input");
-    const element = checker.getTypeArguments(list)[0];
-    const profileType = checker.getTypeOfSymbolAtLocation(profile, inputNode);
-    for (const type of [element, profileType]) {
-      // Aliases can have distinct checker Type objects; symbol provenance is
-      // nominal, while the independent contract checks exact type arguments.
-      need(type && type.getSymbol() === carrierSymbol, "raw-carrier");
-    }
-    // Reject a declaration-list tuple spelled directly or through transparent
-    // owned aliases. Carrier aliases and intermediate type computations are
-    // governed by the nominal check and exact type contract, not their syntax.
-    const pendingTypes = (declarations.getDeclarations() ?? []).map(node => node.type).filter(Boolean);
-    const seenTypes = new Set();
-    while (pendingTypes.length) {
-      const node = pendingTypes.pop();
-      if (seenTypes.has(node)) continue;
-      seenTypes.add(node);
-      need(!ts.isTupleTypeNode(node), "raw-input");
-      if (ts.isParenthesizedTypeNode(node) || ts.isTypeOperatorNode(node)) {
-        pendingTypes.push(node.type);
-      } else if (ts.isTypeReferenceNode(node) || ts.isImportTypeNode(node)) {
-        let symbol = checker.getSymbolAtLocation(ts.isTypeReferenceNode(node) ? node.typeName : node.qualifier);
-        if (symbol?.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
-        for (const declaration of symbol?.getDeclarations() ?? []) {
-          if (declaration.getSourceFile().fileName.startsWith(`${BASE}/dist/`)
-            && ts.isTypeAliasDeclaration(declaration)) pendingTypes.push(declaration.type);
+    // Check each constituent before combining its semantic contract. Distinct
+    // aliases can preserve separate array references inside a wrapper union.
+    for (const arm of input.isUnion() ? input.types : [input]) {
+      const declarations = checker.getPropertyOfType(arm, "declarations");
+      const profile = checker.getPropertyOfType(arm, "profile");
+      need(declarations && profile, "raw-input");
+      const list = checker.getTypeOfSymbolAtLocation(declarations, inputNode);
+      need(checker.isArrayType(list) && !checker.isTupleType(list), "raw-input");
+      const element = checker.getTypeArguments(list)[0];
+      const profileType = checker.getTypeOfSymbolAtLocation(profile, inputNode);
+      for (const type of [element, profileType]) {
+        // Aliases can have distinct checker Type objects; symbol provenance is
+        // nominal, while the independent contract checks exact type arguments.
+        need(type && type.getSymbol() === carrierSymbol, "raw-carrier");
+      }
+      // Reject a declaration-list tuple spelled directly or through transparent
+      // owned aliases. Carrier aliases and intermediate type computations are
+      // governed by the nominal check and exact type contract, not their syntax.
+      const pendingTypes = (declarations.getDeclarations() ?? []).map(node => node.type).filter(Boolean);
+      const seenTypes = new Set();
+      while (pendingTypes.length) {
+        const node = pendingTypes.pop();
+        if (seenTypes.has(node)) continue;
+        seenTypes.add(node);
+        need(!ts.isTupleTypeNode(node), "raw-input");
+        if (ts.isParenthesizedTypeNode(node) || ts.isTypeOperatorNode(node)) {
+          pendingTypes.push(node.type);
+        } else if (ts.isTypeReferenceNode(node) || ts.isImportTypeNode(node)) {
+          let symbol = checker.getSymbolAtLocation(ts.isTypeReferenceNode(node) ? node.typeName : node.qualifier);
+          if (symbol?.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+          for (const declaration of symbol?.getDeclarations() ?? []) {
+            if (declaration.getSourceFile().fileName.startsWith(`${BASE}/dist/`)
+              && ts.isTypeAliasDeclaration(declaration)) pendingTypes.push(declaration.type);
+          }
         }
       }
     }
