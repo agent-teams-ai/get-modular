@@ -392,6 +392,9 @@ export interface CanonicalBytesPort {
 export interface PlanEmissionPort {
   readonly emit: (normalized: NormalizedPlan) => Promise<PlanAndDigest>;
 }
+export interface PlanOutputDeps {
+  readonly canonicalizer: CanonicalBytesPort;
+}
 ```
 
 ```ts
@@ -408,9 +411,7 @@ export const planOutputImplementation = planOutputDeclaration.implementationId;
 
 ```ts
 // features/plan-output/factory.ts
-export interface PlanOutputDeps {
-  readonly canonicalizer: CanonicalBytesPort;
-}
+import type { PlanOutputDeps, PlanEmissionPort } from "./ports.js";
 export function createPlanOutput(deps: PlanOutputDeps): PlanEmissionPort {
   // pure construction; no I/O, no registry, no module state
 }
@@ -853,7 +854,7 @@ import { createCompositionSemantics } from "../../features/composition-semantics
 import { createInputAdmission } from "../../features/input-admission/factory.js";
 import { createPlanOutput } from "../../features/plan-output/factory.js";
 import { createCompilerFacade } from "../../features/compiler-facade/factory.js";
-import type { CompilerFacade } from "../../features/compiler-facade/ports.js";
+import type { CompilerFacadePort } from "../../features/compiler-facade/ports.js";
 
 const ownedJcs = createOwnedJcs({});
 const compositionSemantics = createCompositionSemantics({ canonicalizer: ownedJcs });
@@ -865,7 +866,7 @@ const compilerFacade = createCompilerFacade({
   output: planOutput,
 });
 
-export const root: CompilerFacade = compilerFacade;
+export const root: CompilerFacadePort = compilerFacade;
 ```
 
 The local constant names `ownedJcs`, `compositionSemantics`, and the others
@@ -874,7 +875,7 @@ regenerated in a disposable directory during the build and compared byte for
 byte against the file used by the build, as ADR-0008 requires. It is never
 hand-edited and never committed.
 
-`CompilerFacade` here names the internal provided port declared in the facade's
+`CompilerFacadePort` here names the internal provided port declared in the facade's
 `ports.ts`; it is not a new public export. Factory return types implement that
 port. Compile the generated file with the pinned `isolatedDeclarations`
 configuration and audit the packed public `.d.ts` surface: the barrel names
