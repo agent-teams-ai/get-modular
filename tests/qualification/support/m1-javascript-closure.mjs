@@ -7,8 +7,9 @@ import ts from 'typescript-minimum';
 // The compiler host below has no filesystem fallback, libraries or declarations.
 // Candidate code is never loaded, evaluated, emitted or extracted.
 //
-// Evidence: ADR-0012 archive purpose; ADR-0009/0017 M1 values; ADR-0016 and
-// the self-composition guide's five factories, literal root and owned libraries.
+// Evidence: ADR-0012 archive purpose; ADR-0009/0017's five public values;
+// ADR-0016's literal construction and ADR-0021's internal raw-admission closure.
+// The reviewed source constructs six factories, including the required scanner.
 // This profile permits named ESM bindings, const aliases, ordinary data
 // algorithms, the reviewed ReadyQueue class, and the closed operations below.
 // Prose and string values are not classified by suspicious substrings.
@@ -56,19 +57,29 @@ const rows = [
   ['features/diagnostics/collector', 'createDiagnosticCollector', 'retainedLimit maximumOmitted countCeiling snapshot', 'compare addUnique finish'],
   ['features/diagnostics/internal', 'compareDiagnostics createDiagnosticCollector', '', ''],
   ['features/diagnostics/order', 'compareDiagnostics', 'phases codes coordinateFields lexical', ''],
+  ['features/input-admission/byte-carrier', 'classifyByteCarrier copyByteCarrier', 'capturedApply CapturedUint8Array typedArrayPrototype brandOf bufferOf lengthOf sharedProbe usableProbe captureGetter', ''],
   ['features/input-admission/document-path', 'documentPath', '', ''],
   ['features/input-admission/document-reader', 'objectDocument', 'objectKind objectOwn objectKeys objectLength objectItem objectText objectInteger objectReader', ''],
   ['features/input-admission/document-shape', 'schemaSafeLocalPath validateDeclarationShape validateProfileShape validateDeclarationView validateProfileView', 'record literal integer identity array portable local compatibility cardinality provided slot selection binding declarationShape profileShape isWellFormedUtf16 checks', 'fail checkRecord admittedInteger numericValue check supportedDocumentVersion'],
   ['features/input-admission/document-snapshot', 'snapshotDeclaration snapshotProfile snapshotDeclarationView snapshotProfileView', 'record projection', 'member text integer list compatibility cardinality'],
   ['features/input-admission/factory', 'createInputAdmission', '', ''],
   ['features/input-admission/identity-format', 'isPortableIdFormat isLocalTokenFormat', 'matchesFormat', ''],
-  ['features/input-admission/object-admission', 'admitObjectInput', '', 'add empty scan validate wrapperFailure'],
+  ['features/input-admission/invocation-wrapper', 'inspectInvocation', 'getOwnDescriptor hasOwn isArray getPrototypeOf arrayPrototype isInteger defineProperty freeze ownData invalidWrapper', ''],
+  ['features/input-admission/object-admission', 'admitObjectInput', '', 'add empty scan validate'],
   ['features/input-admission/object-resource-meter', 'createObjectResourceMeter', 'valueLimit stringLimit depthLimit', 'countValues countString scanDocument nonPlain enter'],
   ['features/input-admission/profile-resource-facts', 'ownValue profileResourceFacts profileResourceFactsView', 'portable', 'ownMember textMember'],
+  ['features/input-admission/raw-admission', 'admitRawInput', '', 'add empty scan arrayLength validate hasVersionOne'],
+  ['features/input-admission/raw-byte-input', 'captureRawInput', '', 'add empty'],
+  ['features/input-admission/raw-document', 'scanRawDocument rawDocumentView', 'lexicalKind duplicatePath invalidAccess valueEnd', 'chargeString spanOf open capture recordOf arrayOf item text'],
+  ['features/input-admission/raw-duplicate-replay', 'visitRawDuplicatePaths', 'invalidReplay isContainer isValue newGroup', 'admits retainSpan open releaseCursor read capture fold collectRecord visit'],
+  ['features/input-admission/raw-numeric-admission', 'numericFailureMask visitRawNumericFailures', 'localPathCapacity union integerMask stoppedMask ownerMask', 'child emitMask visitChild visitOwner'],
+  ['features/input-admission/raw-integer', 'admitRawInteger', 'maximumSafeIntegerDigits', ''],
   ['features/input-admission/resource-diagnostic', 'resourceDiagnostic', 'phases', ''],
   ['features/input-admission/resource-limits', 'admissionLimits', 'limits', ''],
   ['features/input-admission/schema-diagnostic', 'schemaDiagnostic', '', ''],
   ['features/plan-output/factory', 'createPlanOutput', 'snapshotPlan', ''],
+  ['features/raw-scanner/owned-iterative/factory', 'createOwnedRawScanner', '', ''],
+  ['features/raw-scanner/owned-iterative/scanner', 'openOwnedRawTokenCursor', 'fromCharCode invalidToken isWhitespace isDigit isBoundary scalarBytes isContinuation readScalar hexDigit readHexUnit escapedUnit scanString scanNumber scanKeyword', 'next decodeString'],
 ];
 const roles = new Map(rows.map(([path, exports, locals, functions]) => [
   `dist/${path}.js`, { exports: words(exports), definitions: words(`${exports} ${locals}`), functions: words(functions) },
@@ -80,26 +91,42 @@ const feature = name => `dist/features/${name}/factory.js`;
 const factories = [
   [feature('canonicalization/owned-jcs'), 'createOwnedJcs', [], ['canonicalize']],
   [feature('composition-semantics'), 'createCompositionSemantics', ['canonicalizer'], ['newCollector', 'analyze']],
-  [feature('input-admission'), 'createInputAdmission', [], ['admitObjectInput']],
   [feature('plan-output'), 'createPlanOutput', ['canonicalizer'], ['emit']],
+  [feature('raw-scanner/owned-iterative'), 'createOwnedRawScanner', [], ['open']],
+  [feature('input-admission'), 'createInputAdmission', ['scanner'], ['admitObjectInput', 'admitRawInput']],
   [feature('compiler-facade'), 'createCompilerFacade', ['admission', 'semantics', 'output'], ['compileComposition']],
 ];
 const QUEUE = 'dist/features/composition-semantics/ready-queue.js';
 const SHAPE = 'dist/features/input-admission/document-shape.js';
 const SNAPSHOT = 'dist/features/input-admission/document-snapshot.js';
-const shapeInitializers = words('portable local compatibility cardinality provided slot selection binding declarationShape profileShape');
-const shapeConstructors = new Map([
-  ['record', ['fields']], ['literal', ['expected']], ['integer', ['min', 'max']],
-  ['identity', ['matchesFormat', 'min', 'max']], ['array', ['min', 'max', 'item', 'limit']],
-]);
-const localMembers = new Map([
+const WRAPPER = 'dist/features/input-admission/invocation-wrapper.js';
+const BYTE_CARRIER = 'dist/features/input-admission/byte-carrier.js';
+const RAW_ADMISSION = 'dist/features/input-admission/raw-admission.js';
+const RAW_BYTES = 'dist/features/input-admission/raw-byte-input.js';
+const RAW_DOCUMENT = 'dist/features/input-admission/raw-document.js';
+const SCANNER = 'dist/features/raw-scanner/owned-iterative/scanner.js';
+const routing = new Set([ENTRY, ROOT, AUTHORING, DIAGNOSTICS]);
+// New selectors belong only to their reviewed implementation roles. In
+// particular, schema metadata such as expected is not general fixture data.
+const scopedMembers = new Map([
+  [ROOT, words('scanner')],
   [SHAPE, words('type fields expected matchesFormat variants many required optional')],
   [SNAPSHOT, words('create defineProperty')],
+  [WRAPPER, words('defineProperty configurable writable')],
+  [BYTE_CARRIER, words('apply at toStringTag visibleLength')],
+  [feature('input-admission'), words('scanner admitRawInput')],
+  ['dist/features/input-admission/object-resource-meter.js', words('segment')],
+  [RAW_ADMISSION, words('blocked allDeclarationsCaptured valuesRemaining stringBytesRemaining valueOccurrences stringBytes invalidJson decoded duplicateKey')],
+  [RAW_BYTES, words('blocked allDeclarationsCaptured visibleLength declarationRawDocumentBytes profileRawDocumentBytes aggregateRawBytes')],
   ['dist/features/input-admission/resource-limits.js', words('declarationRawDocumentBytes profileRawDocumentBytes aggregateRawBytes')],
   ['dist/features/input-admission/resource-diagnostic.js', words('declarationRawDocumentBytes profileRawDocumentBytes aggregateRawBytes')],
-  ['dist/features/input-admission/object-resource-meter.js', words('segment')],
+  ['dist/features/input-admission/raw-duplicate-replay.js', words('start end spans duplicate source base current cursor keys keyExpected tokenVisits arrayCursorSteps peakLiveSpans peakLiveCursors peakGroupDepth open subarray decodeString')],
+  ['dist/features/input-admission/raw-numeric-admission.js', words('next')],
+  [RAW_DOCUMENT, words('open subarray start end decodedUtf8Bytes segment state key nextIndex cursor last decodeString valuesRemaining stringBytesRemaining valueOccurrences stringBytes maximumDepth invalidJson duplicateKey decoded')],
+  [feature('raw-scanner/owned-iterative'), words('open')],
+  [SCANNER, words('fromCharCode start end decodedUtf8Bytes wellFormedUtf16 decodeString')],
 ]);
-const routing = new Set([ENTRY, ROOT, AUTHORING, DIAGNOSTICS]);
+const intrinsicSelectors = words('create defineProperty apply at toStringTag fromCharCode');
 const dataExports = new Map([
   ['selectedGraphDepthLimit', null],
   ['semanticResourceLimits', words('graphEdges providersPerManySlot')],
@@ -108,8 +135,8 @@ const dataExports = new Map([
 
 // Member selectors and constructed record keys have a closed data/operation
 // vocabulary. Arbitrary string VALUES remain legal, including hostile IDs.
-// In particular this does not admit loader, raw-carrier, Host, fixture or
-// conformance ports merely because their module is reachable or renamed.
+// Reachability or renaming admits no additional loader, carrier, Host, fixture
+// or conformance operations; internal raw roles have explicit scopes above.
 const members = words(`
 kind schemaVersion moduleId implementationId profileId owner authority path provides slots
 capabilityId compatibility family familyVersion token slotId cardinality min max order
@@ -132,13 +159,55 @@ schema decode graph
 reader root own item text integer present admitted
 `);
 const globalMembers = new Map([
-  ['Object', words('freeze getOwnPropertyDescriptor getOwnPropertyDescriptors getPrototypeOf hasOwn is keys values create defineProperty prototype')],
+  ['Object', words('freeze getOwnPropertyDescriptor getOwnPropertyDescriptors getPrototypeOf hasOwn is keys prototype')],
   ['Array', words('isArray from prototype')], ['Math', words('min max floor')],
   ['Number', words('isFinite isInteger isSafeInteger MAX_SAFE_INTEGER')],
   ['JSON', words('stringify')], ['Reflect', words('ownKeys')],
 ]);
-const constructors = words('Map Set WeakSet Uint8Array Uint16Array Uint32Array TextEncoder Error TypeError');
-const globals = new Set([...globalMembers.keys(), ...constructors, 'String', 'undefined', 'NaN', 'Infinity', 'globalThis']);
+const constructors = words('Map Set WeakMap WeakSet Uint8Array Uint16Array Uint32Array TextEncoder Error TypeError');
+const globals = new Set([...globalMembers.keys(), ...constructors, 'String', 'Symbol', 'ArrayBuffer', 'undefined', 'NaN', 'Infinity', 'globalThis']);
+
+// These are exact intrinsic capture sites, not permissions to borrow arbitrary
+// ambient functions. References to the resulting bindings are checked below.
+const captureInitializers = new Map([
+  [WRAPPER, new Map([
+    ['getOwnDescriptor', 'Object.getOwnPropertyDescriptor'], ['hasOwn', 'Object.hasOwn'],
+    ['isArray', 'Array.isArray'], ['getPrototypeOf', 'Object.getPrototypeOf'],
+    ['arrayPrototype', 'Array.prototype'], ['isInteger', 'Number.isInteger'],
+    ['defineProperty', 'Object.defineProperty'], ['freeze', 'Object.freeze'],
+  ])],
+  [BYTE_CARRIER, new Map([
+    ['capturedApply', 'Reflect.apply'], ['CapturedUint8Array', 'Uint8Array'],
+    ['typedArrayPrototype', 'Object.getPrototypeOf(CapturedUint8Array.prototype)'],
+    ['brandOf', 'captureGetter(typedArrayPrototype, Symbol.toStringTag)'],
+    ['bufferOf', 'captureGetter(typedArrayPrototype, "buffer")'],
+    ['lengthOf', 'captureGetter(typedArrayPrototype, "length")'],
+    ['sharedProbe', 'captureGetter(ArrayBuffer.prototype, "byteLength")'],
+    ['usableProbe', 'typedArrayPrototype.at'],
+  ])],
+  [SCANNER, new Map([['fromCharCode', 'String.fromCharCode']])],
+]);
+const shapeConstructors = new Map([
+  ['record', [1, 1, 'function record(fields) { return { type: "record", fields }; }']],
+  ['literal', [1, 1, 'function literal(expected) { return { type: "literal", expected }; }']],
+  ['integer', [2, 2, 'function integer(min, max) { return { type: "integer", min, max }; }']],
+  ['identity', [3, 3, 'function identity(matchesFormat, min, max) { return { type: "identity", matchesFormat, min, max }; }']],
+  ['array', [3, 4, 'function array(min, max, item, limit) { return { type: "array", min, max, item, limit }; }']],
+]);
+// Tiny helpers that execute during initialization or introduce intrinsic writes
+// need a closed body as well as a name. No scanner/schema algorithm is pinned.
+const functionProfiles = new Map([
+  [`${BYTE_CARRIER}:captureGetter`, 'function captureGetter(prototype, key) { const getter = Object.getOwnPropertyDescriptor(prototype, key)?.get; if (getter === undefined) { throw new TypeError("Required byte carrier intrinsic is unavailable"); } return getter; }'],
+  [`${SNAPSHOT}:record`, 'function record(fields) { const value = Object.create(null); for (const key of Object.keys(fields)) { Object.defineProperty(value, key, { value: fields[key], enumerable: true }); } return Object.freeze(value); }'],
+  ...[...shapeConstructors].map(([name, contract]) => [`${SHAPE}:${name}`, contract[2]]),
+]);
+const applySites = new Map([
+  ['brandOf', 'capturedApply(brandOf, value, [])'],
+  ['bufferOf', 'capturedApply(bufferOf, value, [])'],
+  ['sharedProbe', 'capturedApply(sharedProbe, buffer, [])'],
+  ['usableProbe', 'capturedApply(usableProbe, value, [0])'],
+  ['lengthOf', 'capturedApply(lengthOf, value, [])'],
+]);
 
 class InvalidClosure extends Error {
   constructor(reason) {
@@ -190,6 +259,43 @@ function builtinCall(node, owner, method) {
   const callee = unwrap(node.expression);
   return ts.isPropertyAccessExpression(callee) && !callee.questionDotToken
     && ts.isIdentifier(callee.expression) && callee.expression.text === owner && callee.name.text === method;
+}
+// Compare the finite helper/capture grammar without depending on emitter
+// whitespace, comments or quote style. Candidate text is only tokenized.
+function sameSyntax(node, expected) {
+  const tokens = text => {
+    const scanner = ts.createScanner(ts.ScriptTarget.ESNext, true, ts.LanguageVariant.Standard, text);
+    const result = [];
+    for (let kind = scanner.scan(); kind !== ts.SyntaxKind.EndOfFileToken; kind = scanner.scan()) {
+      result.push([kind, kind === ts.SyntaxKind.StringLiteral ? scanner.getTokenValue() : scanner.getTokenText()]);
+    }
+    return JSON.stringify(result);
+  };
+  if (!node || tokens(node.getText()) !== tokens(expected)) return false;
+  // Equal tokens can still parse differently after a restricted-production
+  // newline (for example return followed by an expression on the next line).
+  const declaration = ts.isFunctionDeclaration(node);
+  const parsed = ts.createSourceFile('profile.js', declaration ? expected : `(${expected});`,
+    ts.ScriptTarget.ESNext, true, ts.ScriptKind.JS);
+  if (parsed.parseDiagnostics.length !== 0) return false;
+  const statement = parsed.statements[0];
+  const reference = declaration ? statement
+    : statement && ts.isExpressionStatement(statement) ? unwrap(statement.expression) : undefined;
+  if (!reference) return false;
+  const shape = root => {
+    const result = [], stack = [root];
+    while (stack.length !== 0) {
+      const current = stack.pop();
+      result.push(current.kind);
+      const children = [];
+      ts.forEachChild(current, child => { children.push(child); });
+      for (let index = children.length - 1; index >= 0; index--) stack.push(children[index]);
+    }
+    return result;
+  };
+  const actualShape = shape(node), expectedShape = shape(reference);
+  return actualShape.length === expectedShape.length
+    && actualShape.every((kind, index) => kind === expectedShape[index]);
 }
 function resolveSpecifier(from, text) {
   requireThat(/^(?:\.\/|\.\.\/)[A-Za-z0-9_./-]+\.js$/u.test(text), 'specifier');
@@ -265,6 +371,7 @@ function audit(files) {
       const target = resolveSpecifier(path, literal.text);
       requireThat(modules.has(target), 'module-missing');
       for (const element of elements) {
+        requireThat(!captureInitializers.get(path)?.has(element.name.text), 'top-level');
         requireThat(!element.isTypeOnly && ts.isIdentifier(element.name)
           && (!element.propertyName || ts.isIdentifier(element.propertyName)), 'module-syntax');
         module.links.push({ target, name: (element.propertyName ?? element.name).text });
@@ -358,30 +465,6 @@ function audit(files) {
     return origin(declaration);
   };
   const isFunction = (value, path, name) => value.kind === 'function' && pathOf(value.node) === path && value.node.name?.text === name;
-  function referenceTo(node, declaration) {
-    node = unwrap(node);
-    return !!node && ts.isIdentifier(node) && declarationOf(symbolAt(node)) === declaration;
-  }
-  // Eager schema calls may only construct tagged records from their parameters.
-  // Validate the callee's definition, not just its spelling at the call site.
-  function checkShapeConstructor(fn) {
-    const fields = shapeConstructors.get(fn.name?.text);
-    requireThat(fields && pathOf(fn) === SHAPE && ts.isSourceFile(fn.parent)
-      && fn.parameters.length === fields.length && fn.parameters.every(parameter =>
-        ts.isIdentifier(parameter.name) && !parameter.initializer && !parameter.dotDotDotToken)
-      && fn.body?.statements.length === 1 && ts.isReturnStatement(fn.body.statements[0]), 'initializer');
-    const result = unwrap(fn.body.statements[0].expression);
-    requireThat(result && ts.isObjectLiteralExpression(result), 'initializer');
-    const props = properties(result);
-    requireThat(equalNames(new Set(props.keys()), new Set(['type', ...fields]))
-      && [...props.values()].every(property => ts.isPropertyAssignment(property)
-        || ts.isShorthandPropertyAssignment(property)), 'initializer');
-    const tag = unwrap(propertyValue(props.get('type')));
-    requireThat(tag && ts.isStringLiteral(tag) && tag.text === fn.name.text, 'initializer');
-    for (const [index, field] of fields.entries()) {
-      requireThat(referenceTo(propertyValue(props.get(field)), fn.parameters[index]), 'initializer');
-    }
-  }
   // AST limits do not bound repeated expansion of const expression graphs.
   // Cache unknown results too; bound visits and concatenated text per audit.
   const staticStrings = new Map(), activeStrings = new Set();
@@ -413,70 +496,68 @@ function audit(files) {
     staticStrings.set(node, value);
     return value;
   }
-  function inert(node, schema = false) {
+  const reviewedNodes = new Set(), reviewedInitializers = new Set(), reviewedFunctions = new Set();
+  const captures = new Map();
+  for (const [path, module] of modules) for (const statement of module.source.statements) {
+    if (ts.isFunctionDeclaration(statement) && statement.name) {
+      requireThat(!captureInitializers.get(path)?.has(statement.name.text), 'top-level');
+      const expected = functionProfiles.get(`${path}:${statement.name.text}`);
+      if (expected !== undefined) {
+        requireThat(sameSyntax(statement, expected), 'construction');
+        reviewedFunctions.add(statement);
+        visit(statement, node => { reviewedNodes.add(node); }, budget);
+      }
+    }
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(declaration.name)) continue;
+      const expected = captureInitializers.get(path)?.get(declaration.name.text);
+      if (expected === undefined) continue;
+      const initializer = unwrap(declaration.initializer);
+      requireThat(constant(declaration) && sameSyntax(initializer, expected), 'top-level');
+      captures.set(declaration, { path, name: declaration.name.text });
+      reviewedInitializers.add(initializer);
+      visit(initializer, node => { reviewedNodes.add(node); }, budget);
+    }
+  }
+  // Matching a spelling cannot substitute an import or borrowed helper for the
+  // owned captures and the checked getter body that initialization actually uses.
+  for (const initializer of reviewedInitializers) visit(initializer, node => {
+    if (!ts.isIdentifier(node) || nonReference(node) || globals.has(node.text)) return;
+    const declaration = declarationOf(symbolAt(node)), capture = captures.get(declaration);
+    requireThat(capture && capture.path === pathOf(node) && capture.name === node.text
+      || declaration && reviewedFunctions.has(declaration) && pathOf(declaration) === BYTE_CARRIER
+        && declaration.name?.text === 'captureGetter', 'top-level');
+  }, budget);
+  function checkMember(name, node) {
+    requireThat(members.has(name) || scopedMembers.get(pathOf(node))?.has(name)
+      || /^(?:decode|schema|identity|declaration|profile|binding|graph|diagnostics)\.[a-z-]+$/u.test(name), 'purpose');
+    if (intrinsicSelectors.has(name)) requireThat(reviewedNodes.has(node), 'purpose');
+  }
+  function inert(node) {
     node = unwrap(node);
     if (!node) return false;
+    if (reviewedInitializers.has(node)) return true;
     if (ts.isIdentifier(node) || ts.isStringLiteral(node) || ts.isNumericLiteral(node)
       || [ts.SyntaxKind.TrueKeyword, ts.SyntaxKind.FalseKeyword, ts.SyntaxKind.NullKeyword].includes(node.kind)) return true;
-    if (ts.isPropertyAccessExpression(node)) return inert(node.expression, schema);
-    if (ts.isArrayLiteralExpression(node)) return node.elements.every(item => !ts.isSpreadElement(item) && inert(item, schema));
+    if (ts.isPropertyAccessExpression(node)) return inert(node.expression);
+    if (ts.isArrayLiteralExpression(node)) return node.elements.every(item => !ts.isSpreadElement(item) && inert(item));
     if (ts.isObjectLiteralExpression(node)) return node.properties.every(item =>
-      ts.isShorthandPropertyAssignment(item) || ts.isPropertyAssignment(item) && inert(item.initializer, schema));
+      ts.isShorthandPropertyAssignment(item) || ts.isPropertyAssignment(item) && inert(item.initializer));
     if (ts.isPrefixUnaryExpression(node)) return [ts.SyntaxKind.PlusToken, ts.SyntaxKind.MinusToken,
-      ts.SyntaxKind.ExclamationToken, ts.SyntaxKind.TildeToken].includes(node.operator) && inert(node.operand, schema);
+      ts.SyntaxKind.ExclamationToken, ts.SyntaxKind.TildeToken].includes(node.operator) && inert(node.operand);
     if (ts.isBinaryExpression(node)) return [ts.SyntaxKind.PlusToken, ts.SyntaxKind.MinusToken, ts.SyntaxKind.AsteriskToken,
       ts.SyntaxKind.SlashToken, ts.SyntaxKind.PercentToken, ts.SyntaxKind.AsteriskAsteriskToken].includes(node.operatorToken.kind)
-      && inert(node.left, schema) && inert(node.right, schema);
-    if (builtinCall(node, 'Object', 'freeze')) return node.arguments.length === 1 && inert(node.arguments[0], schema);
-    if (!schema || !ts.isCallExpression(node) || node.questionDotToken
-      || !ts.isIdentifier(unwrap(node.expression))) return false;
-    const resolved = origin(node.expression);
-    if (resolved.kind !== 'function' || pathOf(resolved.node) !== SHAPE
-      || !ts.isSourceFile(resolved.node.parent) || !shapeConstructors.has(resolved.node.name?.text)) return false;
-    const fn = resolved.node, name = fn.name.text, count = shapeConstructors.get(name).length;
-    checkShapeConstructor(fn);
-    if (node.arguments.length < count - (name === 'array' ? 1 : 0) || node.arguments.length > count
-      || !node.arguments.every(argument => inert(argument, true))) return false;
-    return name !== 'identity' || ['isPortableIdFormat', 'isLocalTokenFormat'].some(format =>
-      isFunction(origin(node.arguments[0]), 'dist/features/input-admission/identity-format.js', format));
-  }
-  // The only new write intrinsic copies own fields into freshly allocated,
-  // null-prototype storage. Check allocation, loop, descriptor and return origins.
-  function checkSnapshotRecord(fn) {
-    requireThat(fn && ts.isFunctionDeclaration(fn) && fn.name?.text === 'record'
-      && pathOf(fn) === SNAPSHOT && ts.isSourceFile(fn.parent)
-      && fn.parameters.length === 1 && ts.isIdentifier(fn.parameters[0].name)
-      && !fn.parameters[0].initializer && !fn.parameters[0].dotDotDotToken
-      && fn.body?.statements.length === 3, 'intrinsic');
-    const [allocation, loop, returned] = fn.body.statements, fields = fn.parameters[0];
-    requireThat(ts.isVariableStatement(allocation) && allocation.declarationList.declarations.length === 1
-      && !!(allocation.declarationList.flags & ts.NodeFlags.Const), 'intrinsic');
-    const owned = allocation.declarationList.declarations[0], create = unwrap(owned.initializer);
-    requireThat(ts.isIdentifier(owned.name) && builtinCall(create, 'Object', 'create')
-      && create.arguments.length === 1 && unwrap(create.arguments[0]).kind === ts.SyntaxKind.NullKeyword, 'intrinsic');
-    requireThat(ts.isForOfStatement(loop) && !loop.awaitModifier
-      && ts.isVariableDeclarationList(loop.initializer) && !!(loop.initializer.flags & ts.NodeFlags.Const)
-      && loop.initializer.declarations.length === 1 && ts.isBlock(loop.statement)
-      && loop.statement.statements.length === 1 && ts.isExpressionStatement(loop.statement.statements[0]), 'intrinsic');
-    const key = loop.initializer.declarations[0], keys = unwrap(loop.expression);
-    const copy = unwrap(loop.statement.statements[0].expression);
-    requireThat(ts.isIdentifier(key.name) && !key.initializer
-      && builtinCall(keys, 'Object', 'keys') && keys.arguments.length === 1 && referenceTo(keys.arguments[0], fields)
-      && builtinCall(copy, 'Object', 'defineProperty') && copy.arguments.length === 3
-      && referenceTo(copy.arguments[0], owned) && referenceTo(copy.arguments[1], key), 'intrinsic');
-    const descriptor = unwrap(copy.arguments[2]);
-    requireThat(descriptor && ts.isObjectLiteralExpression(descriptor), 'intrinsic');
-    const props = properties(descriptor);
-    requireThat(equalNames(new Set(props.keys()), words('value enumerable'))
-      && [...props.values()].every(ts.isPropertyAssignment), 'intrinsic');
-    const value = unwrap(props.get('value').initializer);
-    requireThat(ts.isElementAccessExpression(value) && !value.questionDotToken
-      && referenceTo(value.expression, fields) && referenceTo(value.argumentExpression, key)
-      && unwrap(props.get('enumerable').initializer).kind === ts.SyntaxKind.TrueKeyword, 'intrinsic');
-    requireThat(ts.isReturnStatement(returned), 'intrinsic');
-    const frozen = unwrap(returned.expression);
-    requireThat(builtinCall(frozen, 'Object', 'freeze') && frozen.arguments.length === 1
-      && referenceTo(frozen.arguments[0], owned), 'intrinsic');
+      && inert(node.left) && inert(node.right);
+    if (ts.isCallExpression(node) && !node.questionDotToken && pathOf(node) === SHAPE
+      && ts.isIdentifier(unwrap(node.expression))) {
+      const target = origin(node.expression);
+      const contract = target.kind === 'function' && pathOf(target.node) === SHAPE
+        && reviewedFunctions.has(target.node) ? shapeConstructors.get(target.node.name.text) : undefined;
+      if (contract && node.arguments.length >= contract[0] && node.arguments.length <= contract[1]
+        && node.arguments.every(inert)) return true;
+    }
+    return builtinCall(node, 'Object', 'freeze') && node.arguments.length === 1 && inert(node.arguments[0]);
   }
   function nearestFunction(node) {
     for (let parent = node.parent; parent; parent = parent.parent) {
@@ -484,6 +565,16 @@ function audit(files) {
         || ts.isGetAccessorDeclaration(parent) || ts.isSetAccessorDeclaration(parent)) return parent;
     }
     return undefined;
+  }
+  function capturedApplication(call) {
+    if (!ts.isCallExpression(call) || call.questionDotToken || call.arguments.length !== 3
+      || !ts.isIdentifier(unwrap(call.expression)) || !ts.isIdentifier(unwrap(call.arguments[0]))) return false;
+    const apply = captures.get(declarationOf(symbolAt(unwrap(call.expression))));
+    const target = captures.get(declarationOf(symbolAt(unwrap(call.arguments[0]))));
+    const expected = target?.path === BYTE_CARRIER ? applySites.get(target.name) : undefined;
+    return apply?.path === BYTE_CARRIER && apply.name === 'capturedApply' && expected !== undefined
+      && pathOf(call) === BYTE_CARRIER && nearestFunction(call)?.name?.text === 'classifyByteCarrier'
+      && sameSyntax(call, expected);
   }
   function bindingName(node) {
     const parent = node.parent;
@@ -498,8 +589,60 @@ function audit(files) {
         || ts.isGetAccessorDeclaration(parent) || ts.isSetAccessorDeclaration(parent)) && parent.name === node
       || ts.isBindingElement(parent) && parent.propertyName === node;
   }
+  function checkCapturedReference(node, declaration) {
+    if (reviewedNodes.has(node)) return;
+    if (ts.isFunctionDeclaration(declaration) && pathOf(declaration) === BYTE_CARRIER
+      && declaration.name?.text === 'captureGetter') fail('construction');
+    const capture = captures.get(declaration);
+    if (!capture) return;
+    const use = outer(node).parent, fn = nearestFunction(node);
+    requireThat(pathOf(node) === capture.path, 'global');
+    const direct = ts.isCallExpression(use) && !use.questionDotToken && unwrap(use.expression) === node
+      && use.arguments.every(argument => !ts.isSpreadElement(argument));
+    if (capture.path === WRAPPER) {
+      if (capture.name === 'arrayPrototype') {
+        requireThat(fn?.name?.text === 'inspectInvocation' && ts.isBinaryExpression(use)
+          && [ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken].includes(use.operatorToken.kind), 'global');
+        return;
+      }
+      const contracts = new Map([
+        ['getOwnDescriptor', [2, ['ownData']]], ['hasOwn', [2, ['ownData']]],
+        ['isArray', [1, ['inspectInvocation']]], ['getPrototypeOf', [1, ['inspectInvocation']]],
+        ['isInteger', [1, ['inspectInvocation']]], ['defineProperty', [3, ['inspectInvocation']]],
+        ['freeze', [1, ['invalidWrapper', 'inspectInvocation']]],
+      ]);
+      const contract = contracts.get(capture.name);
+      requireThat(contract && direct && use.arguments.length === contract[0]
+        && contract[1].includes(fn?.name?.text), 'global');
+      if (capture.name === 'defineProperty') {
+        requireThat([
+          'defineProperty(declarations, key, { value: item.value, enumerable: true, configurable: true, writable: true })',
+          'defineProperty(declarations, key, { value: item.value, enumerable: true, configurable: true, writable: true, })',
+        ].some(expected => sameSyntax(use, expected)), 'construction');
+        const storage = origin(use.arguments[0]);
+        requireThat(storage.kind === 'value' && ts.isArrayLiteralExpression(storage.node)
+          && storage.node.elements.length === 0 && nearestFunction(storage.node) === fn, 'construction');
+      }
+      return;
+    }
+    if (capture.path === SCANNER) {
+      requireThat(capture.name === 'fromCharCode' && fn?.name?.text === 'scanString' && direct
+        && [1, 2].includes(use.arguments.length), 'global');
+      return;
+    }
+    if (capture.name === 'CapturedUint8Array') {
+      requireThat(ts.isNewExpression(use) && unwrap(use.expression) === node
+        && fn?.name?.text === 'copyByteCarrier' && fn.parameters.length === 1 && use.arguments?.length === 1
+        && ts.isIdentifier(unwrap(use.arguments[0]))
+        && declarationOf(symbolAt(unwrap(use.arguments[0]))) === fn.parameters[0], 'construction');
+      return;
+    }
+    requireThat(capturedApplication(use) && (capture.name === 'capturedApply'
+      ? unwrap(use.expression) === node : unwrap(use.arguments[0]) === node), 'global');
+  }
   function checkGlobal(node) {
     const name = node.text, reference = outer(node), parent = reference.parent;
+    if (reviewedNodes.has(node)) return;
     if (['undefined', 'NaN', 'Infinity'].includes(name)) return;
     if (name === 'globalThis') {
       let expression = reference;
@@ -519,6 +662,7 @@ function audit(files) {
     if (constructors.has(name)) {
       requireThat(ts.isNewExpression(parent) && unwrap(parent.expression) === node, 'global');
       requireThat(name !== 'TextEncoder' || pathOf(node) === feature('canonicalization/owned-jcs'), 'global');
+      requireThat(name !== 'WeakMap' || pathOf(node) === RAW_DOCUMENT, 'global');
       return;
     }
     if ((name === 'String' || name === 'Number') && ts.isCallExpression(parent) && parent.expression === reference) {
@@ -527,44 +671,33 @@ function audit(files) {
     }
     requireThat((ts.isPropertyAccessExpression(parent) || ts.isElementAccessExpression(parent)) && parent.expression === reference, 'global');
     const member = ts.isPropertyAccessExpression(parent) ? parent.name.text : staticString(parent.argumentExpression);
-    requireThat(globalMembers.get(name)?.has(member) && !parent.questionDotToken, 'global');
+    const shapeValues = name === 'Object' && member === 'values' && pathOf(node) === SHAPE
+      && nearestFunction(node)?.name?.text === 'schemaSafeLocalPath'
+      && ts.isCallExpression(outer(parent).parent)
+      && sameSyntax(outer(parent).parent, 'Object.values(shape.variants)');
+    requireThat((globalMembers.get(name)?.has(member) || shapeValues) && !parent.questionDotToken, 'global');
     if (member === 'prototype' || member === 'MAX_SAFE_INTEGER') {
       requireThat(!ts.isPropertyAccessExpression(parent.parent) && !ts.isElementAccessExpression(parent.parent), 'global');
     } else {
       const use = outer(parent).parent;
       requireThat(ts.isCallExpression(use) && use.expression === outer(parent), 'global');
-      if (name === 'Object' && ['create', 'defineProperty'].includes(member)) checkSnapshotRecord(nearestFunction(node));
-      if (name === 'Object' && member === 'values') {
-        const fn = nearestFunction(node), argument = unwrap(use.arguments[0]);
-        requireThat(pathOf(node) === SHAPE && fn && ts.isFunctionDeclaration(fn)
-          && ts.isSourceFile(fn.parent) && fn.name?.text === 'schemaSafeLocalPath'
-          && use.arguments.length === 1 && argument && ts.isPropertyAccessExpression(argument)
-          && !argument.questionDotToken && argument.name.text === 'variants', 'intrinsic');
-      }
     }
     requireThat(name !== 'JSON' || pathOf(node) === feature('canonicalization/owned-jcs'), 'global');
   }
 
   for (const [path, module] of modules) {
     const { source, role } = module;
-    function checkMember(name) {
-      requireThat(members.has(name) || localMembers.get(path)?.has(name)
-        || /^(?:decode|schema|identity|declaration|profile|binding|graph|diagnostics)\.[a-z-]+$/u.test(name), 'purpose');
-    }
     for (const statement of source.statements) {
       if (ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement)) continue;
       if (ts.isFunctionDeclaration(statement)) {
         requireThat(statement.name && role.definitions.has(statement.name.text) && !routing.has(path), 'purpose');
-        if (path === SHAPE && shapeConstructors.has(statement.name.text)) checkShapeConstructor(statement);
-        if (path === SNAPSHOT && statement.name.text === 'record') checkSnapshotRecord(statement);
       } else if (ts.isClassDeclaration(statement)) requireThat(path === QUEUE && statement.name?.text === 'ReadyQueue', 'purpose');
       else if (ts.isVariableStatement(statement)) {
         requireThat(!!(statement.declarationList.flags & ts.NodeFlags.Const), 'top-level');
         for (const declaration of statement.declarationList.declarations) {
           requireThat(ts.isIdentifier(declaration.name) && declaration.initializer, 'top-level');
           requireThat(routing.has(path) || role.definitions.has(declaration.name.text) || ts.isIdentifier(unwrap(declaration.initializer)), 'purpose');
-          if (path !== ROOT && path !== ENTRY) requireThat(inert(declaration.initializer,
-            path === SHAPE && shapeInitializers.has(declaration.name.text)), 'top-level');
+          if (path !== ROOT && path !== ENTRY) requireThat(inert(declaration.initializer), 'top-level');
         }
       } else requireThat(ts.isExpressionStatement(statement) && ts.isStringLiteral(statement.expression)
         && statement.expression.text === 'use strict', 'top-level');
@@ -590,7 +723,7 @@ function audit(files) {
           && role.functions.has(parent.name.text), 'purpose');
       }
       if (ts.isMethodDeclaration(node) || ts.isGetAccessorDeclaration(node)) {
-        const allowed = path === QUEUE ? words('size less push take') : (path === SHAPE || path === SNAPSHOT) ? words('declaration profile')
+        const allowed = path === QUEUE ? words('size less push take') : path === SHAPE || path === SNAPSHOT ? words('declaration profile')
           : path === feature('compiler-facade') ? words('compileComposition')
             : path === feature('plan-output') ? words('emit') : path === feature('composition-semantics') ? words('newCollector') : new Set();
         requireThat(node.body && allowed.has(propertyName(node.name)), 'purpose');
@@ -608,39 +741,45 @@ function audit(files) {
       if (ts.isExpressionStatement(node) && ts.isStringLiteral(node.expression)) requireThat(node.expression.text === 'use strict', 'directive');
       if (ts.isPropertyAccessExpression(node)) {
         // The sole ambient chain is checked in full at its globalThis identifier.
-        if (!['crypto', 'subtle', 'digest'].includes(node.name.text)) checkMember(propertyName(node.name));
+        if (!['crypto', 'subtle', 'digest'].includes(node.name.text)) checkMember(propertyName(node.name), node);
       }
       if (ts.isElementAccessExpression(node)) {
         const name = staticString(node.argumentExpression);
-        if (name !== undefined) checkMember(name);
+        if (name !== undefined) checkMember(name, node);
       }
       if (ts.isBindingElement(node) && ts.isObjectBindingPattern(node.parent) && !node.dotDotDotToken) {
         const selector = node.propertyName ?? node.name;
         const name = ts.isComputedPropertyName(selector) ? staticString(selector.expression) : propertyName(selector);
         requireThat(name !== undefined, 'purpose');
-        checkMember(name);
+        checkMember(name, node);
       }
       if (ts.isPropertyAssignment(node) || ts.isShorthandPropertyAssignment(node) || ts.isPropertyDeclaration(node)
-        || ts.isMethodDeclaration(node) || ts.isGetAccessorDeclaration(node)) checkMember(propertyName(node.name));
+        || ts.isMethodDeclaration(node) || ts.isGetAccessorDeclaration(node)) checkMember(propertyName(node.name), node);
       if (ts.isIdentifier(node)) {
         if (bindingName(node)) {
           requireThat(!globals.has(node.text) && node.text !== 'eval' && node.text !== 'arguments', 'binding');
           requireThat((checker.getSymbolAtLocation(node)?.declarations?.length ?? 0) === 1, 'binding');
         } else if (!nonReference(node)) {
           const declaration = declarationOf(symbolAt(node));
-          if (declaration) requireThat(modules.has(pathOf(declaration)), 'global');
+          if (declaration) {
+            requireThat(modules.has(pathOf(declaration)), 'global');
+            checkCapturedReference(node, declaration);
+          }
           else { requireThat(globals.has(node.text), 'global'); checkGlobal(node); }
         }
       }
       if (ts.isNewExpression(node)) {
         const callee = unwrap(node.expression), resolved = origin(callee);
+        const captured = ts.isIdentifier(callee) ? captures.get(declarationOf(symbolAt(callee))) : undefined;
         requireThat(ts.isIdentifier(callee) && constructors.has(callee.text) && !declarationOf(symbolAt(callee))
+          || captured?.path === BYTE_CARRIER && captured.name === 'CapturedUint8Array' && path === BYTE_CARRIER
           || resolved.kind === 'class' && pathOf(resolved.node) === QUEUE && resolved.node.name.text === 'ReadyQueue', 'construction');
       }
       if (ts.isCallExpression(node)) {
         const callee = unwrap(node.expression);
         requireThat(callee.kind !== ts.SyntaxKind.ImportKeyword, 'code-loading');
-        // Schema dispatch now reads tagged data; no computed call is needed.
+        // The current schema reader uses named functions and a tagged shape;
+        // its former computed validator dispatch is no longer in the closure.
         if (ts.isElementAccessExpression(callee)) fail('computed-call');
         const resolved = origin(callee);
         if (factories.some(([owner, name]) => isFunction(resolved, owner, name))) {
@@ -724,10 +863,26 @@ function audit(files) {
       if (['compileComposition', 'emit', 'newCollector'].includes(key)) {
         requireThat(ts.isMethodDeclaration(property)
           && modified(property, ts.SyntaxKind.AsyncKeyword) === (key !== 'newCollector'), 'construction');
+      } else if (key === 'admitRawInput') {
+        const arrow = unwrap(propertyValue(property));
+        requireThat(path === feature('input-admission') && ts.isPropertyAssignment(property)
+          && arrow && ts.isArrowFunction(arrow) && !modified(arrow, ts.SyntaxKind.AsyncKeyword)
+          && arrow.parameters.length === 2 && arrow.parameters.every(item => ts.isIdentifier(item.name)
+            && !item.initializer && !item.dotDotDotToken), 'construction');
+        const call = unwrap(arrow.body);
+        requireThat(ts.isCallExpression(call) && !call.questionDotToken && call.arguments.length === 3
+          && isFunction(origin(call.expression), RAW_ADMISSION, 'admitRawInput'), 'construction');
+        const scanner = parameter.name.elements.find(item => propertyName(item.propertyName ?? item.name) === 'scanner');
+        for (let index = 0; index < 3; index += 1) {
+          const argument = unwrap(call.arguments[index]);
+          requireThat(ts.isIdentifier(argument) && declarationOf(symbolAt(argument))
+            === (index < 2 ? arrow.parameters[index] : scanner), 'construction');
+        }
       } else {
         const owner = key === 'canonicalize' ? path : key === 'analyze'
-          ? 'dist/features/composition-semantics/semantic-analysis.js' : 'dist/features/input-admission/object-admission.js';
-        const targetName = key === 'analyze' ? 'analyzeCompositionSemantics' : key;
+          ? 'dist/features/composition-semantics/semantic-analysis.js' : key === 'open'
+            ? SCANNER : 'dist/features/input-admission/object-admission.js';
+        const targetName = key === 'analyze' ? 'analyzeCompositionSemantics' : key === 'open' ? 'openOwnedRawTokenCursor' : key;
         requireThat(isFunction(origin(propertyValue(property)), owner, targetName), 'construction');
       }
     }
@@ -753,20 +908,21 @@ function audit(files) {
       for (const [key, property] of props) {
         requireThat(!ts.isMethodDeclaration(property), 'construction');
         const provider = origin(propertyValue(property));
-        const index = key === 'canonicalizer' ? 0 : key === 'admission' ? 2 : key === 'semantics' ? 1 : 3;
-        requireThat(provider.kind === 'call' && provider.node === built[index], 'construction');
+        const index = { canonicalizer: 0, semantics: 1, output: 2, scanner: 3, admission: 4 }[key];
+        requireThat(index !== undefined && index < built.length
+          && provider.kind === 'call' && provider.node === built[index], 'construction');
       }
       built.push(call);
     }
   }
-  requireThat(built.length === factories.length && exported(ROOT, 'root').node === built[4], 'construction');
+  requireThat(built.length === factories.length && exported(ROOT, 'root').node === built[5], 'construction');
   const compiler = exported(ENTRY, 'compileComposition');
   requireThat(compiler.kind === 'member' && compiler.name === 'compileComposition'
-    && compiler.base.kind === 'call' && compiler.base.node === built[4], 'public-origin');
+    && compiler.base.kind === 'call' && compiler.base.node === built[5], 'public-origin');
   for (const statement of modules.get(ENTRY).source.statements) if (ts.isVariableStatement(statement)) {
     for (const declaration of statement.declarationList.declarations) {
       const value = origin(declaration);
-      requireThat(value.kind === 'member' && value.node === compiler.node || value.kind === 'call' && value.node === built[4]
+      requireThat(value.kind === 'member' && value.node === compiler.node || value.kind === 'call' && value.node === built[5]
         || ['defineModule', 'required', 'optional', 'many'].some(name => isFunction(value, HELPERS, name)), 'public-origin');
     }
   }

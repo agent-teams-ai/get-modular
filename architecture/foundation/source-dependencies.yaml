@@ -57,6 +57,7 @@ boundaries:
       boundaries:
         - core-authoring
         - core-diagnostics
+        - core-raw-scanner-contract
       packages: []
       builtins: []
       runtimeReferences: []
@@ -68,8 +69,9 @@ boundaries:
       - packages/core/src/features/input-admission/raw-document.ts
       - packages/core/src/features/input-admission/raw-duplicate-replay.ts
       - packages/core/src/features/input-admission/raw-numeric-admission.ts
-      - packages/core/src/features/input-admission/invocation-wrapper.ts
       - packages/core/src/features/input-admission/raw-byte-input.ts
+      - packages/core/src/features/input-admission/raw-admission.ts
+      - packages/core/src/features/input-admission/invocation-wrapper.ts
       - packages/core/src/features/input-admission/object-resource-meter.ts
       - packages/core/src/features/input-admission/document-snapshot.ts
       - packages/core/src/features/input-admission/document-shape.ts
@@ -234,6 +236,7 @@ boundaries:
     allow:
       boundaries:
         - core-canonicalization-owned-jcs
+        - core-raw-scanner-owned-iterative
         - core-composition-semantics
         - core-input-admission
         - core-plan-output-implementation

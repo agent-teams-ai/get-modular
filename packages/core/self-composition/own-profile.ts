@@ -1,13 +1,14 @@
 import type { CompositionProfile, ModuleDeclaration } from "../src/features/authoring/internal.js";
 import { ownedJcsDeclaration } from "../src/features/canonicalization/owned-jcs/declaration.js";
 import { compositionSemanticsDeclaration } from "../src/features/composition-semantics/declaration.js";
-import { inputAdmissionDeclaration } from "../src/features/input-admission/declaration.js";
 import { planOutputDeclaration } from "../src/features/plan-output/declaration.js";
+import { ownedRawScannerDeclaration } from "../src/features/raw-scanner/owned-iterative/declaration.js";
+import { inputAdmissionDeclaration } from "../src/features/input-admission/declaration.js";
 import { compilerFacadeDeclaration } from "../src/features/compiler-facade/declaration.js";
 
 export const ownDeclarations: readonly ModuleDeclaration[] = Object.freeze([
-  ownedJcsDeclaration, compositionSemanticsDeclaration, inputAdmissionDeclaration,
-  planOutputDeclaration, compilerFacadeDeclaration,
+  ownedJcsDeclaration, compositionSemanticsDeclaration, planOutputDeclaration,
+  ownedRawScannerDeclaration, inputAdmissionDeclaration, compilerFacadeDeclaration,
 ]);
 
 export const ownProfile: CompositionProfile = Object.freeze({
@@ -29,5 +30,7 @@ export const ownProfile: CompositionProfile = Object.freeze({
       slotId: "canonicalizer", providerImplementationIds: Object.freeze([ownedJcsDeclaration.implementationId]) }),
     Object.freeze({ consumerImplementationId: compositionSemanticsDeclaration.implementationId,
       slotId: "canonicalizer", providerImplementationIds: Object.freeze([ownedJcsDeclaration.implementationId]) }),
+    Object.freeze({ consumerImplementationId: inputAdmissionDeclaration.implementationId,
+      slotId: "scanner", providerImplementationIds: Object.freeze([ownedRawScannerDeclaration.implementationId]) }),
   ]),
 });

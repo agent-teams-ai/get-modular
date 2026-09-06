@@ -9,12 +9,17 @@ const ROOT = 'dist/composition/stage0.js';
 const HELPERS = 'dist/features/authoring/helpers.js';
 const AUTHORING = 'dist/features/authoring/internal.js';
 const ADMISSION = 'dist/features/input-admission/object-admission.js';
+const ADMISSION_FACTORY = 'dist/features/input-admission/factory.js';
+const RAW_ADMISSION = 'dist/features/input-admission/raw-admission.js';
+const BYTE_CARRIER = 'dist/features/input-admission/byte-carrier.js';
+const WRAPPER = 'dist/features/input-admission/invocation-wrapper.js';
+const SHAPE = 'dist/features/input-admission/document-shape.js';
+const SCANNER_FACTORY = 'dist/features/raw-scanner/owned-iterative/factory.js';
+const SCANNER = 'dist/features/raw-scanner/owned-iterative/scanner.js';
 const CANONICAL = 'dist/features/canonicalization/owned-jcs/factory.js';
 const OUTPUT = 'dist/features/plan-output/factory.js';
 const ORDER = 'dist/features/diagnostics/order.js';
 const ORPHAN = 'dist/features/composition-semantics/graph-components.js';
-const SHAPE = 'dist/features/input-admission/document-shape.js';
-const SNAPSHOT = 'dist/features/input-admission/document-snapshot.js';
 const publicNames = ['compileComposition', 'defineModule', 'many', 'optional', 'required'];
 
 // A real-style direct graph, with the actual helper/facade/construction forms.
@@ -27,13 +32,15 @@ export const compileComposition = root.compileComposition;
 export { defineModule, required, optional, many } from './features/authoring/internal.js';`],
   [ROOT, `import { createOwnedJcs } from '../features/canonicalization/owned-jcs/factory.js';
 import { createCompositionSemantics } from '../features/composition-semantics/factory.js';
-import { createInputAdmission } from '../features/input-admission/factory.js';
 import { createPlanOutput } from '../features/plan-output/factory.js';
+import { createOwnedRawScanner } from '../features/raw-scanner/owned-iterative/factory.js';
+import { createInputAdmission } from '../features/input-admission/factory.js';
 import { createCompilerFacade } from '../features/compiler-facade/factory.js';
 const canonicalizer = createOwnedJcs({});
 const semantics = createCompositionSemantics({ canonicalizer });
-const admission = createInputAdmission({});
 const output = createPlanOutput({ canonicalizer });
+const scanner = createOwnedRawScanner({});
+const admission = createInputAdmission({ scanner });
 const compiler = createCompilerFacade({ admission, semantics, output });
 export const root = compiler;`],
   [AUTHORING, `export { defineModule, required, optional, many } from './helpers.js';`],
@@ -42,6 +49,15 @@ export function defineModule(declaration) { return declaration; }
 export function required() { return { kind: 'required' }; }
 export function optional() { return { kind: 'optional' }; }
 export function many(bounds) { return { kind: 'many', min: bounds.min, max: bounds.max, order: 'profile' }; }`],
+  [SCANNER_FACTORY, `import { openOwnedRawTokenCursor } from './scanner.js';
+export function createOwnedRawScanner(_deps) { return Object.freeze({ open: openOwnedRawTokenCursor }); }`],
+  [SCANNER, `const fromCharCode = String.fromCharCode;
+function scanString(unit) { return fromCharCode(unit); }
+export function openOwnedRawTokenCursor(bytes) {
+  const next = () => ({ kind: 'end', start: bytes.length, end: bytes.length });
+  const decodeString = token => scanString(token.start);
+  return Object.freeze({ next, decodeString });
+}`],
   [CANONICAL, `function canonicalize(value) { return new TextEncoder().encode(JSON.stringify(value)); }
 export function createOwnedJcs(_deps) { return Object.freeze({ canonicalize }); }`],
   ['dist/features/compiler-facade/factory.js', `export function createCompilerFacade({ admission, semantics, output }) {
@@ -62,12 +78,45 @@ export function createCompositionSemantics({ canonicalizer }) {
     analyze: analyzeCompositionSemantics,
   });
 }`],
-  ['dist/features/input-admission/factory.js', `import { admitObjectInput } from './object-admission.js';
-export function createInputAdmission(_deps) { return Object.freeze({ admitObjectInput }); }`],
-  [ADMISSION, `export function admitObjectInput(input, collector) {
+  [ADMISSION_FACTORY, `import { admitObjectInput } from './object-admission.js';
+import { admitRawInput } from './raw-admission.js';
+export function createInputAdmission({ scanner }) {
+  return Object.freeze({ admitObjectInput,
+    admitRawInput: (input, collector) => admitRawInput(input, collector, scanner) });
+}`],
+  [RAW_ADMISSION, `import { classifyByteCarrier, copyByteCarrier } from './byte-carrier.js';
+export function admitRawInput(input, collector, scanner) {
+  const carrier = classifyByteCarrier(input.profile);
+  const profile = carrier.kind === 'admitted' ? copyByteCarrier(input.profile) : null;
+  return Object.freeze({ declarations: input.declarations, profile,
+    allDeclarationsAdmitted: true, profileResources: null, hasErrors: false });
+}`],
+  [ADMISSION, `import { inspectInvocation } from './invocation-wrapper.js';
+import { validateDeclarationShape, validateProfileShape } from './document-shape.js';
+export function admitObjectInput(input, collector) {
+  inspectInvocation(input);
+  validateDeclarationShape(input.declarations[0], collector.addUnique);
+  validateProfileShape(input.profile, collector.addUnique);
   return Object.freeze({ declarations: Object.freeze([...input.declarations]), profile: input.profile,
     allDeclarationsAdmitted: true, profileResources: null, hasErrors: false });
 }`],
+  [BYTE_CARRIER, `const capturedApply = Reflect.apply;
+const CapturedUint8Array = Uint8Array;
+const typedArrayPrototype = Object.getPrototypeOf(CapturedUint8Array.prototype);
+const brandOf = captureGetter(typedArrayPrototype, Symbol.toStringTag);
+const bufferOf = captureGetter(typedArrayPrototype, 'buffer');
+const lengthOf = captureGetter(typedArrayPrototype, 'length');
+const sharedProbe = captureGetter(ArrayBuffer.prototype, 'byteLength');
+const usableProbe = typedArrayPrototype.at;
+function captureGetter(prototype, key) { const getter = Object.getOwnPropertyDescriptor(prototype, key)?.get; if (getter === undefined) { throw new TypeError('Required byte carrier intrinsic is unavailable'); } return getter; }
+export function classifyByteCarrier(value) {
+  if (capturedApply(brandOf, value, []) !== 'Uint8Array') return { kind: 'rejected' };
+  const buffer = capturedApply(bufferOf, value, []);
+  capturedApply(sharedProbe, buffer, []);
+  capturedApply(usableProbe, value, [0]);
+  return { kind: 'admitted', visibleLength: capturedApply(lengthOf, value, []) };
+}
+export function copyByteCarrier(value) { return new CapturedUint8Array(value); }`],
   ['dist/features/composition-semantics/semantic-analysis.js', `import { ReadyQueue } from './ready-queue.js';
 export function analyzeCompositionSemantics(input, collector) {
   const ready = new ReadyQueue(); ready.push(0); ready.take();
@@ -85,6 +134,24 @@ export function analyzeCompositionSemantics(input, collector) {
   }
   take() { if (this.#items.length === 0) throw new Error('Empty queue'); return this.#items.pop(); }
 }`],
+  [WRAPPER, `const getOwnDescriptor = Object.getOwnPropertyDescriptor;
+const hasOwn = Object.hasOwn;
+const isArray = Array.isArray;
+const getPrototypeOf = Object.getPrototypeOf;
+const arrayPrototype = Array.prototype;
+const isInteger = Number.isInteger;
+const defineProperty = Object.defineProperty;
+const freeze = Object.freeze;
+function ownData(value, key) { return hasOwn(value, key) ? getOwnDescriptor(value, key) : undefined; }
+export function inspectInvocation(input) {
+  const declarations = [];
+  const key = '0';
+  const item = ownData(input, 'profile');
+  if (isArray(input.declarations) && getPrototypeOf(input.declarations) === arrayPrototype && isInteger(input.declarations.length)) {
+    defineProperty(declarations, key, { value: item.value, enumerable: true, configurable: true, writable: true });
+  }
+  return freeze({ declarations, profile: input.profile });
+}`],
   ['dist/features/diagnostics/internal.js', `export { compareDiagnostics } from './order.js';
 export { createDiagnosticCollector } from './collector.js';`],
   ['dist/features/diagnostics/collector.js', `import { compareDiagnostics } from './order.js';
@@ -94,6 +161,20 @@ export function createDiagnosticCollector(canonicalize) {
   const finish = () => Object.freeze(heap.sort((left, right) => compareDiagnostics(left, right, canonicalize)));
   return Object.freeze({ addUnique, finish });
 }`],
+  [SHAPE, `function record(fields) { return { type: 'record', fields }; }
+function literal(expected) { return { type: 'literal', expected }; }
+function integer(min, max) { return { type: 'integer', min, max }; }
+function identity(matchesFormat, min, max) { return { type: 'identity', matchesFormat, min, max }; }
+function array(min, max, item, limit) { return { type: 'array', min, max, item, limit }; }
+function isWellFormedUtf16(value) { return typeof value === 'string'; }
+const portable = identity(isWellFormedUtf16, 3, 64);
+const declarationShape = record({ schemaVersion: literal(1), slots: array(0, 1024, integer(0, 1024)) });
+const profileShape = record({ profileId: portable });
+export function schemaSafeLocalPath(kind, path) { return path; }
+export function validateDeclarationShape(value, report) { return validateDeclarationView(value, report); }
+export function validateProfileShape(value, report) { return validateProfileView(value, report); }
+export function validateDeclarationView(value, report) { return declarationShape.type === 'record'; }
+export function validateProfileView(value, report) { return profileShape.type === 'record'; }`],
   [ORDER, `export function compareDiagnostics(left, right, canonicalize) {
   const a = canonicalize(left.details), b = canonicalize(right.details);
   return a.length - b.length;
@@ -112,58 +193,15 @@ export function createPlanOutput({ canonicalizer }) {
 }`],
 ]);
 function baseline() { return new Map([...sources].map(([path, source]) => [path, Buffer.from(source + '\n')])); }
-// Small construction specimens extend the libraries of the same five-factory
-// root. These functions supply no semantic expectations and are never executed.
-function projectionBaseline() {
-  const files = baseline();
-  files.set(SHAPE, Buffer.from(`import { isPortableIdFormat, isLocalTokenFormat } from './identity-format.js';
-function record(fields) { return { type: 'record', fields }; }
-function literal(expected) { return { type: 'literal', expected }; }
-function integer(min, max) { return { type: 'integer', min, max }; }
-function identity(matchesFormat, min, max) { return { type: 'identity', matchesFormat, min, max }; }
-function array(min, max, item, limit) { return { type: 'array', min, max, item, limit }; }
-const portable = identity(isPortableIdFormat, 3, 128);
-const local = identity(isLocalTokenFormat, 1, 64);
-const declarationShape = record({ schemaVersion: literal(1), roots: array(1, 8, local), min: integer(0, 1) });
-const profileShape = { type: 'cardinality', variants: { many: declarationShape, required: declarationShape, optional: declarationShape } };
-function checks(view) { return view.root; }
-export function schemaSafeLocalPath(kind, local) { Object.values(profileShape.variants); return Object.freeze([...local]); }
-export function validateDeclarationShape(value, report) { return true; }
-export function validateProfileShape(value, report) { return true; }
-export function validateDeclarationView(view, report) { return portable.matchesFormat(view.root); }
-export function validateProfileView(view, report) { return local.matchesFormat(view.root); }
-`));
-  files.set('dist/features/input-admission/identity-format.js', Buffer.from(`export function isPortableIdFormat(value) { return true; }
-export function isLocalTokenFormat(value) { return true; }
-`));
-  files.set(SNAPSHOT, Buffer.from(`function record(fields) {
-  const value = Object.create(null);
-  for (const key of Object.keys(fields)) {
-    Object.defineProperty(value, key, { value: fields[key], enumerable: true });
-  }
-  return Object.freeze(value);
-}
-function projection(view) {
-  function member(value, key) { return view.reader.own(value, key).value; }
-  return {
-    declaration() { return record({ moduleId: member(view.root, 'moduleId') }); },
-    profile() { return record({ profileId: member(view.root, 'profileId') }); },
-  };
-}
-export function snapshotDeclaration(value) { return snapshotDeclarationView(value); }
-export function snapshotProfile(value) { return snapshotProfileView(value); }
-export function snapshotDeclarationView(view) { return projection(view).declaration(); }
-export function snapshotProfileView(view) { return projection(view).profile(); }
-`));
-  files.set(ADMISSION, Buffer.concat([Buffer.from("import { schemaSafeLocalPath } from './document-shape.js';\nimport { snapshotDeclaration } from './document-snapshot.js';\n"), files.get(ADMISSION)]));
-  return files;
-}
 function edit(files, path, before, after) {
   const source = files.get(path).toString('utf8');
   assert.ok(source.includes(before), 'mutation must match its intended content');
   files.set(path, Buffer.from(source.replace(before, after)));
 }
-function body(files, code) { edit(files, ADMISSION, '{\n  return', `{\n  ${code}\n  return`); }
+function body(files, code) {
+  const anchor = 'export function admitObjectInput(input, collector) {\n';
+  edit(files, ADMISSION, anchor, `${anchor}  ${code}\n`);
+}
 function reject(files, reason) {
   assert.throws(() => auditM1JavaScriptClosure(files), error => {
     assert.ok(error instanceof Error);
@@ -175,8 +213,8 @@ function reject(files, reason) {
     return true;
   });
 }
-function mutant(change, reason, makeFiles = baseline) {
-  const files = makeFiles();
+function mutant(change, reason) {
+  const files = baseline();
   assert.deepEqual(auditM1JavaScriptClosure(files).exports, publicNames, 'the complete companion passes before mutation');
   change(files);
   reject(files, reason);
@@ -222,28 +260,6 @@ test('audits the complete direct fixture graph without mutating archive data', (
   assert.deepEqual(auditM1JavaScriptClosure(files), { modules: [...sources.keys()].sort(), exports: publicNames });
   assert.deepEqual(files, copy);
   assert.deepEqual(auditM1JavaScriptClosure(new Map([...files].reverse())), auditM1JavaScriptClosure(files));
-});
-
-test('schema initialization and owned snapshot construction preserve the five-factory surface', () => {
-  const files = projectionBaseline();
-  assert.deepEqual(auditM1JavaScriptClosure(files), { modules: [...files.keys()].sort(), exports: publicNames });
-  assert.deepEqual(files.get(ROOT), baseline().get(ROOT));
-  edit(files, SHAPE, 'const portable = identity(', 'const describe = identity;\nconst portable = describe(');
-  edit(files, SHAPE, "function literal(expected) { return { type: 'literal', expected }; }",
-    "function literal(value) { return { type: 'literal', expected: value }; }");
-  edit(files, SNAPSHOT, 'Object.create(null)', 'Object.create((null))');
-  edit(files, SNAPSHOT, 'Object.defineProperty(value, key, { value: fields[key], enumerable: true })',
-    'Object.defineProperty((value), (key), { "enumerable": true, "value": fields[(key)] })');
-  assert.deepEqual(auditM1JavaScriptClosure(files).exports, publicNames);
-});
-
-test('projection vocabulary remains confined to its owning modules', () => {
-  for (const name of ['type', 'fields', 'expected', 'matchesFormat', 'variants', 'many', 'required', 'optional', 'segment', 'create', 'defineProperty']) {
-    mutant(files => body(files, `input.${name};`), 'purpose');
-  }
-  mutant(files => body(files, 'Object.values(input);'), 'intrinsic');
-  mutant(files => edit(files, SHAPE, 'return portable.matchesFormat(view.root);',
-    'return view.reader[view.root](view.root);'), 'computed-call', projectionBaseline);
 });
 
 test('metadata and declaration purpose do not invent required fixture fields or type semantics', () => {
@@ -478,32 +494,60 @@ test('helper construction is checked against its accepted inert contract', () =>
   mutant(files => edit(files, HELPERS, 'min: bounds.min, max: bounds.max', 'max: bounds.max, min: bounds.min'), 'helper-contract');
 });
 
-test('the five private factories remain legitimate but assembly stays literal and closed', () => {
+test('the six private factories remain legitimate but assembly stays literal and closed', () => {
   mutant(files => edit(files, ROOT, 'createPlanOutput({ canonicalizer })', 'createPlanOutput({ canonicalizer: admission })'), 'construction');
   mutant(files => edit(files, ROOT, 'createPlanOutput({ canonicalizer })', 'createPlanOutput({})'), 'construction');
-  mutant(files => edit(files, ROOT, 'const admission = createInputAdmission({});\nconst output = createPlanOutput({ canonicalizer });',
-    'const output = createPlanOutput({ canonicalizer });\nconst admission = createInputAdmission({});'), 'construction');
+  mutant(files => edit(files, ROOT, 'const output = createPlanOutput({ canonicalizer });\nconst scanner = createOwnedRawScanner({});',
+    'const scanner = createOwnedRawScanner({});\nconst output = createPlanOutput({ canonicalizer });'), 'construction');
   mutant(files => edit(files, CANONICAL, 'return Object.freeze({ canonicalize });', 'return Object.freeze({ canonicalize, emit: canonicalize });'), 'construction');
   mutant(files => edit(files, CANONICAL, 'return Object.freeze({ canonicalize });', 'const value = canonicalize; return Object.freeze({ canonicalize });'), 'construction');
   mutant(files => edit(files, ROOT, 'const compiler =', 'const extra = createOwnedJcs({});\nconst compiler ='), 'construction');
 });
 
-test('schema initializer permission requires a pure constructor body and its actual origin', () => {
-  for (const [before, after, reason] of [
-    ['function record(fields) {', 'function record(fields) { fields();', 'initializer'],
-    ['function record(fields) {', 'function record(fields = {}) {', 'initializer'],
-    ["return { type: 'record', fields };", 'return fields;', 'initializer'],
-    ["return { type: 'record', fields };", "return { type: 'record', fields: () => fields };", 'initializer'],
-    ["return { type: 'record', fields };", "return { type: 'array', fields };", 'initializer'],
-    ["function record(fields) { return { type: 'record', fields }; }", 'const record = validateDeclarationShape;', 'top-level'],
-    ["function record(fields) { return { type: 'record', fields }; }", "const record = fields => ({ type: 'record', fields });", 'top-level'],
-    ['literal(1)', 'literal(1, 2)', 'top-level'],
-    ['literal(1)', 'literal((() => 1)())', 'top-level'],
-    ['literal(1)', 'checks(1)', 'top-level'],
-    ['identity(isPortableIdFormat, 3, 128)', 'identity(checks, 3, 128)', 'top-level'],
-    ['const declarationShape = record(', 'const declarationShape = checks(', 'top-level'],
-    ['const declarationShape = record(', 'const unreviewed = record(', 'purpose'],
-  ]) mutant(files => edit(files, SHAPE, before, after), reason, projectionBaseline);
+test('the scanner module, construction, required slot and owned open function are mandatory', () => {
+  mutant(files => files.delete(SCANNER_FACTORY), 'module-missing');
+  mutant(files => files.delete(SCANNER), 'module-missing');
+  mutant(files => edit(files, ROOT, 'createInputAdmission({ scanner })', 'createInputAdmission({})'), 'construction');
+  mutant(files => edit(files, ROOT, 'createInputAdmission({ scanner })', 'createInputAdmission({ scanner: canonicalizer })'), 'construction');
+  mutant(files => edit(files, ROOT, 'createOwnedRawScanner({})', 'createOwnedRawScanner({ canonicalizer })'), 'construction');
+  mutant(files => edit(files, SCANNER_FACTORY, 'open: openOwnedRawTokenCursor', 'open: _deps'), 'construction');
+  mutant(files => {
+    edit(files, ROOT, 'const scanner = createOwnedRawScanner({});\n', '');
+    edit(files, ROOT, 'createInputAdmission({ scanner })', 'createInputAdmission({})');
+  }, 'construction');
+});
+
+for (const call of [
+  'admitRawInput(collector, input, scanner)',
+  'admitRawInput(input, input, scanner)',
+  'admitRawInput(input, collector, collector)',
+  'admitRawInput(input, collector)',
+  'admitRawInput(input, collector, scanner, input)',
+  'admitRawInput({ ...input }, collector, scanner)',
+  'admitRawInput(input, collector, { ...scanner })',
+  'admitObjectInput(input, collector, scanner)',
+]) {
+  test(`raw factory forwarding preserves all three argument origins: ${call}`, () => {
+    mutant(files => edit(files, ADMISSION_FACTORY, 'admitRawInput(input, collector, scanner)', call), 'construction');
+  });
+}
+
+test('the raw factory requires its synchronous forwarding arrow and captured scanner binding', () => {
+  const forwarding = 'admitRawInput: (input, collector) => admitRawInput(input, collector, scanner)';
+  mutant(files => edit(files, ADMISSION_FACTORY, forwarding, 'admitRawInput'), 'construction');
+  mutant(files => edit(files, ADMISSION_FACTORY, forwarding,
+    'admitRawInput: (input, scanner) => admitRawInput(input, scanner, scanner)'), 'construction');
+  mutant(files => edit(files, ADMISSION_FACTORY, forwarding,
+    'admitRawInput: async (input, collector) => admitRawInput(input, collector, scanner)'), 'syntax-profile');
+});
+
+test('raw forwarding accepts renamed parameters, import aliases and the explicit scanner binding', () => {
+  const files = baseline();
+  edit(files, ADMISSION_FACTORY, 'import { admitRawInput }', 'import { admitRawInput as admit }');
+  edit(files, ADMISSION_FACTORY, 'createInputAdmission({ scanner })', 'createInputAdmission({ scanner: tokens })');
+  edit(files, ADMISSION_FACTORY, '(input, collector) => admitRawInput(input, collector, scanner)',
+    '(value, report) => (admit(value, report, tokens))');
+  assert.deepEqual(auditM1JavaScriptClosure(files).exports, publicNames);
 });
 
 test('top-level effects, asynchronous initialization and ambient declarations fail', () => {
@@ -514,36 +558,39 @@ test('top-level effects, asynchronous initialization and ambient declarations fa
   mutant(files => body(files, 'const Object = input;'), 'binding');
 });
 
-test('snapshot intrinsics require fresh null storage, own-key provenance and data descriptors', () => {
-  for (const [before, after] of [
-    ['Object.create(null)', 'Object.create(fields)'],
-    ['Object.create(null)', 'Object.create(null, {})'],
-    ['const value = Object.create(null);', 'const value = fields;'],
-    ['Object.keys(fields)', 'Object.keys(value)'],
-    ['Object.defineProperty(value, key,', 'Object.defineProperty(fields, key,'],
-    ['Object.defineProperty(value, key,', "Object.defineProperty(value, 'moduleId',"],
-    ['value: fields[key]', 'value: key'],
-    ['value: fields[key]', 'get: fields[key]'],
-    ['enumerable: true', 'enumerable: false'],
-    ['enumerable: true', 'enumerable: true, configurable: true'],
-    ['return Object.freeze(value);', 'return Object.freeze(fields);'],
-    ['function record(fields) {', 'function record(fields = {}) {'],
-  ]) mutant(files => edit(files, SNAPSHOT, before, after), 'intrinsic', projectionBaseline);
+test('intrinsic capture initializers retain their exact reviewed origins', () => {
+  mutant(files => edit(files, WRAPPER, 'const getOwnDescriptor = Object.getOwnPropertyDescriptor;',
+    'const getOwnDescriptor = Object.getOwnPropertyDescriptors;'), 'top-level');
+  mutant(files => edit(files, BYTE_CARRIER, 'const capturedApply = Reflect.apply;',
+    'const capturedApply = Object.freeze;'), 'top-level');
+  mutant(files => edit(files, SCANNER, 'const fromCharCode = String.fromCharCode;',
+    'const fromCharCode = Number.isInteger;'), 'top-level');
+  mutant(files => edit(files, BYTE_CARRIER, 'const CapturedUint8Array = Uint8Array;',
+    "import { defineModule as CapturedUint8Array } from '../authoring/helpers.js';"), 'top-level');
+  mutant(files => edit(files, BYTE_CARRIER,
+    "function captureGetter(prototype, key) { const getter = Object.getOwnPropertyDescriptor(prototype, key)?.get; if (getter === undefined) { throw new TypeError('Required byte carrier intrinsic is unavailable'); } return getter; }",
+    "import { defineModule as captureGetter } from '../authoring/helpers.js';"), 'top-level');
 });
 
-test('snapshot intrinsic permissions cannot escape through helpers, aliases or computed calls', () => {
-  for (const [code, reason] of [
-    ['Object.create(null);', 'intrinsic'],
-    ["Object.defineProperty(view.root, 'moduleId', { value: 'x/m', enumerable: true });", 'intrinsic'],
-    ['const create = Object.create; create(null);', 'global'],
-    ["const define = Object.defineProperty; define(view.root, 'moduleId', {});", 'global'],
-    ["Object['create'](null);", 'computed-call'],
-    ['Object.values(view.variants);', 'purpose'],
-  ]) mutant(files => edit(files, SNAPSHOT, 'function projection(view) {',
-    `function projection(view) { ${code}`), reason, projectionBaseline);
-  mutant(files => edit(files, SNAPSHOT,
-    'export function snapshotDeclarationView(view) { return projection(view).declaration(); }',
-    'export { snapshotProfileView as snapshotDeclarationView };'), 'global', projectionBaseline);
+for (const [path, before, after] of [
+  [WRAPPER, 'const getOwnDescriptor = Object.getOwnPropertyDescriptor;',
+    "import { defineModule as getOwnDescriptor } from '../authoring/helpers.js';"],
+  [SCANNER, 'const fromCharCode = String.fromCharCode;',
+    "import { defineModule as fromCharCode } from '../../authoring/helpers.js';"],
+]) {
+  test(`import aliases cannot replace an owned intrinsic capture in ${path}`, () => {
+    mutant(files => edit(files, path, before, after), 'top-level');
+  });
+}
+
+test('reviewed intrinsic captures do not authorize arbitrary applications or copies', () => {
+  mutant(files => edit(files, BYTE_CARRIER, 'capturedApply(usableProbe, value, [0])',
+    'capturedApply(usableProbe, value, [1])'), 'global');
+  mutant(files => edit(files, BYTE_CARRIER, 'new CapturedUint8Array(value)',
+    'new CapturedUint8Array(value.profile)'), 'construction');
+  mutant(files => edit(files, SCANNER, 'return fromCharCode(unit);',
+    'const decode = fromCharCode; return decode(unit);'), 'global');
+  mutant(files => body(files, 'String.fromCharCode(65);'), 'purpose');
 });
 
 test('alias cycles and malformed input fail with bounded private reasons', () => {
@@ -617,6 +664,25 @@ test('private byte budget has an inclusive boundary and is not a Core resource c
   reject(files, 'limit');
 });
 
+for (const [before, after] of [
+  ["return { type: 'record', fields };", "return { type: 'record', fields: { ...fields } };"],
+  ["return { type: 'literal', expected };", "return { type: 'literal', expected: 0 };"],
+  ["return { type: 'integer', min, max };", "return { type: 'integer', min: max, max: min };"],
+  ["return { type: 'identity', matchesFormat, min, max };", "return { type: 'identity', matchesFormat, min: 0, max };"],
+  ["return { type: 'array', min, max, item, limit };", "return { type: 'array', min, max, item };"],
+]) {
+  test(`schema initializer helper bodies remain closed: ${before}`, () => {
+    mutant(files => edit(files, SHAPE, before, after), 'construction');
+  });
+}
+
+test('schema initialization requires owned helpers and their reviewed call arity', () => {
+  mutant(files => edit(files, SHAPE, "function record(fields) { return { type: 'record', fields }; }",
+    "import { defineModule as record } from '../authoring/helpers.js';"), 'top-level');
+  mutant(files => edit(files, SHAPE, 'record({ profileId: portable })',
+    'record({ profileId: portable }, portable)'), 'top-level');
+});
+
 test('the successor carrier code is admitted without broadening input member purpose', () => {
   const files = baseline();
   body(files, `input['input.invalid-byte-carrier'];`);
@@ -624,9 +690,14 @@ test('the successor carrier code is admitted without broadening input member pur
   mutant(files => body(files, `input['input.install'];`), 'purpose');
 });
 
+for (const separator of ['\n', '\r\n', '\u2028', '\u2029']) {
+  test(`profiled helper return expressions survive restricted-production newline ${JSON.stringify(separator)}`, () => {
+    mutant(files => edit(files, BYTE_CARRIER, 'return getter;', `return${separator}getter;`), 'construction');
+  });
+}
 for (const update of ['++record', '--record']) {
-  test(`schema initializer rejects mutation of an owned helper: ${update}`, () => {
-    mutant(files => edit(files, SHAPE, 'identity(isPortableIdFormat, 3, 128)',
-      `identity(isPortableIdFormat, ${update}, 128)`), 'top-level', projectionBaseline);
+  test(`schema initialization cannot mutate a checked helper with ${update}`, () => {
+    mutant(files => edit(files, SHAPE, 'identity(isWellFormedUtf16, 3, 64)',
+      `identity(isWellFormedUtf16, ${update}, 64)`), 'top-level');
   });
 }

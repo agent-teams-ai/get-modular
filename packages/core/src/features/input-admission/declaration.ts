@@ -1,4 +1,5 @@
 import type { ModuleDeclaration } from "../authoring/internal.js";
+import { rawScannerCapabilityId, rawScannerToken } from "../raw-scanner/identity.js";
 
 export const inputAdmissionModuleId = "get-modular/input-admission";
 export const admittedInputCapabilityId = "get-modular/admitted-input";
@@ -15,5 +16,10 @@ export const inputAdmissionDeclaration: ModuleDeclaration = Object.freeze<Module
     capabilityId: admittedInputCapabilityId,
     compatibility: Object.freeze({ family: "exact", familyVersion: 1, token: admittedInputToken }),
   })]),
-  slots: Object.freeze([]),
+  slots: Object.freeze([Object.freeze({
+    slotId: "scanner",
+    capabilityId: rawScannerCapabilityId,
+    compatibility: Object.freeze({ family: "exact", familyVersion: 1, token: rawScannerToken }),
+    cardinality: Object.freeze({ kind: "required" }),
+  })]),
 });
