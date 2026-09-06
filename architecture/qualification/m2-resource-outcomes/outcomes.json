@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "decision": "ADR-0022",
+  "scope": "two complete M2 resource outcomes; frozen recipes and evidence unchanged",
+  "source": {
+    "path": "tests/qualification/m2-candidate/duplicate-record-resources.mjs",
+    "sha256": "906a691943332033331114b9d30b3ba61869cd61948875df52a28e1dd51b6e9f"
+  },
+  "cases": [
+    {
+      "caseId": "od006.resources.v1/bindings/over",
+      "expected": {
+        "ok": false,
+        "diagnostics": [
+          {
+            "code": "schema.invalid-value",
+            "phase": "schema",
+            "path": [
+              {
+                "kind": "field",
+                "value": "profile"
+              },
+              {
+                "kind": "field",
+                "value": "bindings"
+              }
+            ],
+            "coordinate": {},
+            "details": {
+              "reason": "invalid-format"
+            }
+          },
+          {
+            "code": "input.limit-exceeded",
+            "phase": "profile",
+            "path": [
+              {
+                "kind": "field",
+                "value": "profile"
+              },
+              {
+                "kind": "field",
+                "value": "bindings"
+              }
+            ],
+            "coordinate": {},
+            "details": {
+              "limitName": "bindings",
+              "limit": 65536,
+              "actual": 65537
+            }
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "od006.resources.v1/providersPerManySlot/over",
+      "expected": {
+        "ok": false,
+        "diagnostics": [
+          {
+            "code": "schema.invalid-value",
+            "phase": "schema",
+            "path": [
+              {
+                "kind": "field",
+                "value": "profile"
+              },
+              {
+                "kind": "field",
+                "value": "bindings"
+              },
+              {
+                "kind": "index",
+                "value": 0
+              },
+              {
+                "kind": "field",
+                "value": "providerImplementationIds"
+              }
+            ],
+            "coordinate": {},
+            "details": {
+              "reason": "invalid-format"
+            }
+          },
+          {
+            "code": "input.limit-exceeded",
+            "phase": "binding",
+            "path": [
+              {
+                "kind": "field",
+                "value": "profile"
+              },
+              {
+                "kind": "field",
+                "value": "bindings"
+              },
+              {
+                "kind": "index",
+                "value": 0
+              },
+              {
+                "kind": "field",
+                "value": "providerImplementationIds"
+              }
+            ],
+            "coordinate": {},
+            "details": {
+              "limitName": "providersPerManySlot",
+              "limit": 1024,
+              "actual": 1025
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

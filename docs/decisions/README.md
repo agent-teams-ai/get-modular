@@ -18,6 +18,8 @@ summary: Index of Get Modular architecture decisions.
 
 ## Accepted decisions
 
+- [ADR-0022: Correct two in-envelope M2 resource outcomes](0022-correct-two-in-envelope-m2-resource-outcomes.md)
+
 - [ADR-0021: Freeze combined diagnostic generation two for M2](0021-freeze-combined-diagnostic-generation-two-for-m2.md)
 - [ADR-0020: Define diagnostic coverage outside object resource admission](0020-define-diagnostic-coverage-outside-object-resource-admission.md)
 - [ADR-0018: Close implementation readiness rules](0018-close-implementation-readiness-rules.md)
