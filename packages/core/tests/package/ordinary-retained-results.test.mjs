@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -175,6 +176,39 @@ for (const attack of ['missing', 'extra', 'symlink', 'trailing bytes']) {
     }
     if (attack === 'trailing bytes') await fs.appendFile(path, '\n');
     await assert.rejects(f.verify());
+  });
+}
+for (const member of ['plan.json', 'index.json', '000000.json']) {
+  test(`physical retention rejects a writerless FIFO replacing ${member}`, {
+    skip: process.platform === 'win32' ? 'POSIX filesystem FIFOs are unavailable on Windows' : false,
+  }, async t => {
+    const f = await completed(t);
+    assert.equal((await f.verify()).count, 1);
+    const path = join(f.directory, member);
+    await fs.unlink(path);
+    const fifo = spawnSync('mkfifo', [path], {
+      encoding: 'utf8', timeout: 5000, killSignal: 'SIGKILL',
+    });
+    assert.ifError(fifo.error);
+    assert.equal(fifo.status, 0, fifo.stderr);
+    assert.ok((await fs.lstat(path)).isFIFO());
+    const storeUrl = new URL('../../../../tests/qualification/support/ordinary-result-store.mjs', import.meta.url);
+    // Keep the potentially blocked open outside the test runner. SIGKILL also
+    // terminates a child whose libuv worker is stuck waiting for a FIFO writer.
+    // setup() registers cleanup of the entire fixture, including this FIFO.
+    const child = spawnSync(process.execPath, ['--input-type=module', '--eval', `
+      import assert from 'node:assert/strict';
+      import { prepareOrdinaryResults, verifyOrdinaryResults } from ${JSON.stringify(storeUrl.href)};
+      const { context, assignments, anchors } = JSON.parse(process.argv[1]);
+      const plan = prepareOrdinaryResults({ context, assignments });
+      await assert.rejects(verifyOrdinaryResults(plan, anchors), {
+        code: 'm1.retained.invalid', context: { reason: 'regular-file-budget' },
+      });
+    `, JSON.stringify({ context, assignments: [assignment(failure)], anchors: f.anchors() })],
+    { encoding: 'utf8', timeout: 5000, killSignal: 'SIGKILL' });
+    assert.ifError(child.error);
+    assert.equal(child.signal, null);
+    assert.equal(child.status, 0, child.stderr);
   });
 }
 test('incomplete, duplicate and oversized result attempts cannot publish successful completion', async t => {

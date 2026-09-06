@@ -44,7 +44,14 @@ export function within(path, root) {
 export async function readBytes(path, maximum = retainedLimits.fileBytes) {
   absolute(path);
   need(await fs.realpath(path) === path, 'regular-canonical-path');
-  const handle = await fs.open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+  // POSIX FIFOs must not wait for a writer before the handle can be checked.
+  const nonblocking = constants.O_NONBLOCK ?? 0;
+  need(nonblocking !== 0 || process.platform === 'win32', 'nonblocking-open-unavailable');
+  // Windows has no filesystem FIFOs or O_NONBLOCK; require filesystem metadata
+  // before opening, rather than admitting a named-pipe namespace endpoint.
+  if (!nonblocking) need((await fs.lstat(path)).isFile(), 'regular-file-budget');
+  const handle = await fs.open(path, constants.O_RDONLY
+    | (constants.O_NOFOLLOW ?? 0) | nonblocking);
   try {
     const before = await handle.stat();
     need(before.isFile() && before.size <= maximum, 'regular-file-budget');
