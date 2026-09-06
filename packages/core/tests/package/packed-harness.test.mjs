@@ -209,7 +209,7 @@ for (const selection of [{}, { surface: 'm1' }, { surface: 'm1', diagnosticGener
     const root = prepared.cases.find(row => row.id === 'node-root');
     assert.deepEqual(root.expected.assertions.runtimeNames, runtimeNames);
     for (const extension of ['mts', 'cts']) {
-      const source = prepared.artifacts.find(row => row.path.endsWith(`/case.${extension}`));
+      const source = prepared.artifacts.find(row => row.path.replaceAll('\\', '/').endsWith(`/case.${extension}`));
       assert.ok(source.content.includes('// @ts-expect-error raw input is excluded from M1'));
       assert.equal(source.content.includes('const rawPending:'), false);
     }
@@ -258,10 +258,10 @@ test('M2 preparation retains 97 cases and all 185 original independent raw const
     'm2-candidate/raw-document-cases.mjs',
     'support/m2-raw-invocation-fixtures.mjs',
     'support/m2-raw-invocation-expectations.mjs',
-  ]) assert.ok(sourcePaths.some(value => value.endsWith(path)), path);
+  ]) assert.ok(sourcePaths.some(value => value.replaceAll('\\', '/').endsWith(path)), path);
   assert.equal(prepared.trustedSources.length, 11);
   for (const extension of ['mts', 'cts']) {
-    const source = prepared.artifacts.find(row => row.path.endsWith(`/case.${extension}`)).content;
+    const source = prepared.artifacts.find(row => row.path.replaceAll('\\', '/').endsWith(`/case.${extension}`)).content;
     assert.equal(source.includes('raw input is excluded from M1'), false);
     assert.ok(source.includes('readonly declarations: readonly Uint8Array[]'));
     assert.ok(source.includes('readonly profile: Uint8Array'));
