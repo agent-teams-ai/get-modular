@@ -555,6 +555,21 @@ test("public M2 accepts equivalent list unions without admitting a divergent lis
   }
 });
 
+test("public M2 accepts equivalent carrier unions at both positions", () => {
+  for (const divergent of [false, true]) for (const position of ["profile", "declarations"]) {
+    const files = publicM2Fixture();
+    append(files, WIRE, `\ntype Left<T extends Uint8Array["buffer"]> = Uint8Array<T>;
+    type Right<T extends Uint8Array["buffer"]> = ${divergent ? "Uint16Array<T>" : "Uint8Array<T>"};
+    export type Bytes = Left<Uint8Array["buffer"]> | Right<Uint8Array["buffer"]>;\n`);
+    append(files, ROOT, '\nimport type { Bytes } from "./features/authoring/wire.js";\n');
+    replace(files, ROOT, rawCompiler, rawCompiler.replace(
+      position === "profile" ? "profile: Uint8Array" : "readonly Uint8Array[]",
+      position === "profile" ? "profile: Bytes" : "readonly Bytes[]"));
+    if (divergent) assert.throws(() => auditM1DeclarationClosure(files, 2, "m2"));
+    else assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
+  }
+});
+
 test("public M2 accepts mapped wrappers with synthesized properties", () => {
   const files = publicM2Fixture();
   append(files, WIRE, '\nexport type RawInput = { readonly [K in "declarations" | "profile"]: K extends "declarations" ? readonly Uint8Array[] : Uint8Array };\n');

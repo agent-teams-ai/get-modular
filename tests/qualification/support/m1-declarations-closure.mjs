@@ -209,8 +209,11 @@ function contractSource(generation, surface) {
       // methods as wire fields. The checker separately proves carrier identity.
       'type EByteCarrier = Uint8Array;',
       `type ERawInput = ${record({ declarations: "readonly EByteCarrier[]", profile: "EByteCarrier" })};`,
-      'type RawList<T> = T extends unknown ? Same<T, readonly EByteCarrier[]> : never;',
-      'type RawFields<T> = { [K in keyof T]: K extends "declarations" ? Same<RawList<T[K]>, true> extends true ? readonly EByteCarrier[] : T[K] : T[K] };',
+      'type RawCarrier<T> = T extends unknown ? Same<T, EByteCarrier> : never;',
+      'type RawCarrierField<T> = Same<RawCarrier<T>, true> extends true ? EByteCarrier : T;',
+      'type RawListFields<T> = { [K in keyof T]: RawCarrierField<T[K]> };',
+      'type RawList<T> = T extends unknown ? Same<RawListFields<T>, readonly EByteCarrier[]> : never;',
+      'type RawFields<T> = { [K in keyof T]: K extends "declarations" ? Same<RawList<T[K]>, true> extends true ? readonly EByteCarrier[] : T[K] : K extends "profile" ? RawCarrierField<T[K]> : T[K] };',
       'type RawArm<T> = T extends unknown ? Same<RawFields<T>, ERawInput> : never;',
       'type RawInput = Check<Same<RawArm<Parameters<typeof P.compileCompositionJson>[0]>, true>>;',
       'type AssignRawInput = Check<Assignable<ERawInput, Parameters<typeof P.compileCompositionJson>[0]>>;',
@@ -457,13 +460,17 @@ function audit(files, generation, surface) {
       need(declarations && profile, "raw-input");
       const list = checker.getTypeOfSymbolAtLocation(declarations, inputNode);
       const profileType = checker.getTypeOfSymbolAtLocation(profile, inputNode);
-      need(profileType.getSymbol() === carrierSymbol, "raw-carrier");
+      const carriers = [profileType];
       for (const alternative of list.isUnion() ? list.types : [list]) {
         need(checker.isArrayType(alternative) && !checker.isTupleType(alternative), "raw-input");
         const element = checker.getTypeArguments(alternative)[0];
         // Nominal provenance stays separate from the exact semantic check,
         // which normalizes only alternatives already equal to the readonly list.
-        need(element && element.getSymbol() === carrierSymbol, "raw-carrier");
+        need(element, "raw-carrier");
+        carriers.push(element);
+      }
+      for (const type of carriers) for (const alternative of type.isUnion() ? type.types : [type]) {
+        need(alternative.getSymbol() === carrierSymbol, "raw-carrier");
       }
       // Reject a declaration-list tuple spelled directly or through transparent
       // owned aliases. Carrier aliases and intermediate type computations are
