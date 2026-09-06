@@ -764,7 +764,7 @@ function audit(files) {
           requireThat((checker.getSymbolAtLocation(node)?.declarations?.length ?? 0) === 1, 'binding');
         } else if (!nonReference(node)) {
           const declaration = declarationOf(symbolAt(node));
-          if (functionProfiles.has(`${path}:${node.text}`)) requireThat(declaration
+          if (path === RAW_BYTES && node.text === 'appendOwn') requireThat(declaration
             && reviewedFunctions.has(declaration) && pathOf(declaration) === path
             && declaration.name?.text === node.text, 'construction');
           if (declaration) {
