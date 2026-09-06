@@ -288,7 +288,7 @@ not assumed to exist during Phase 0.
 | [M2 across phases 2-4](#per-phase-callable-matrix) | Accepted combined OD-005/OD-006 successor and expanded owner scope precede production code; real raw/object boundaries replay the successor fixtures, exact numeric rules and carrier/concurrency cases. | No proposed fixture or passing oracle substitutes for acceptance or an executed Core subject. Only then expose the raw entrypoint. |
 | [4, generated M3](#phase-4-qualification-exit) | Finite generation, P0/P1 and W0/W1 equality, independent vectors, static/behavioral witnesses, binding replacement, poisoned/cold bootstrap, no fallback and generated-only closure. | Qualify the separate direct archive and the exact retained generated production archive; the latter also passes packed/type-scale checks. Equality from another archive is insufficient. |
 | [5](#phase-5-exit-criteria) | Actual-subject conformance and accepted resource/counter proofs; for runtime claims, all six manifest cases execute, with no skipped case counted as passed. | Without accepted custody, finish with reviewed hash-bound evidence and `not-claimed`; no invented support or promotion records. |
-| [6](#phase-6-exit-criteria) | An admitted real consumer uses the retained stage1 archive; test its own failure, partial-construction, cutover and rollback rules, and measure actual wiring changes. | Optional. No consumer admission means pending adoption, not a fake product test; a second consumer gates only the broader extraction claim. |
+| [6](#phase-6-exit-criteria) | An admitted real consumer uses the retained stage1 archive; test its own failure and partial-construction rules plus any applicable cutover and rollback rules, and measure actual wiring changes. | Optional. No consumer admission means pending adoption, not a fake product test; a second consumer gates only the broader extraction claim. |
 | [7](#reserved-phase-7-extensionplugin-boundary) | No implementation or test suite. | Reserved and not applicable; never count it as delivered runtime functionality. |
 | [8](#phase-8-exit-criteria) | Accepted custody and exact archive evidence, all applicable release gates, cold recovery, explicit publication approval and post-upload byte-identical registry read-back. | Release eligibility, actual upload and completed publication are distinct. Missing approval or custody blocks this checkpoint, not completed earlier slices. |
 
@@ -1275,8 +1275,10 @@ Core qualification and is not a publication prerequisite.
    declarations and one complete profile. Credentials, executable handles and
    product state never enter Core.
 3. Before materialization, the consumer decision defines missing-factory,
-   factory-exception, partial-construction, readiness, fencing, cutover and
-   rollback behavior. Get Modular does not define these Product Host semantics.
+   factory-exception and partial-construction behavior. Readiness, fencing,
+   cutover and rollback rules are required only when those capabilities belong
+   to the admitted slice. A static slice does not need a dynamic runtime.
+   Get Modular does not define these Product Host semantics.
 4. After a successful compile, the Host may use an authorized literal factory
    table. No metadata becomes a grant; no dynamic import, filesystem scan,
    fallback or unselected lookup is allowed.

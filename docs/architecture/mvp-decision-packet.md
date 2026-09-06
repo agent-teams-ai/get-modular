@@ -79,7 +79,7 @@ matrix still gates the first conformance claim and `release-eligible`.
 
 | Option | Confidence | Reliability | Complexity | Approximate change | Consequence |
 | --- | ---: | ---: | ---: | ---: | --- |
-| Accept ADR-0013's synchronous owned snapshots for both carriers | 8/10 | 9/10 | 8/10 | 700-1,400 LOC | Recommended only after multi-runtime carrier and mutation evidence passes. |
+| Accept ADR-0013's synchronous owned snapshots for both carriers | 8/10 | 9/10 | 8/10 | 700-1,400 LOC | Recommended after the independent Node acceptance oracle and mutation evidence required by ADR-0013 pass. Production and runtime qualification remain separate gates. |
 | Publish raw bytes first and keep object input private | 8/10 | 9/10 | 6/10 | 450-900 LOC | Smaller hostile-input boundary, but temporarily less ergonomic for trusted TypeScript callers. |
 | Keep both carriers private behind the normalized-value seam | 9/10 | 10/10 | 3/10 | 100-250 LOC | Safest implementation start; insufficient for the final public boundary. |
 
@@ -141,9 +141,9 @@ tuples. It resolves this item and supersedes the recommendation above.
 
 | Option | Confidence | Reliability | Complexity | Approximate change | Consequence |
 | --- | ---: | ---: | ---: | ---: | --- |
-| Accept a private closed custody protocol derived from ADR-0011 | 8/10 | 9/10 | 8/10 | 1,200-2,500 LOC | Recommended before publication, after the real packed subject exists. Keeps report/verifier contracts private. |
+| Accept a private closed custody protocol derived from ADR-0011 | 8/10 | 9/10 | 8/10 | 1,200-2,500 LOC | Recommended before conformance promotion, evidence reuse or `release-eligible`, after the real packed subject exists. Keeps report/verifier contracts private. |
 | Publish runner, report and attestation APIs now | 3/10 | 6/10 | 10/10 | 3,000-6,000 LOC | Premature compatibility surface without a real external subject. |
-| Keep hash-bound evidence without promotion/reuse claims | 9/10 | 9/10 | 3/10 | 250-550 LOC | Correct for implementation checkpoints; cannot authorize publication. |
+| Keep hash-bound evidence without promotion/reuse claims | 9/10 | 9/10 | 3/10 | 250-550 LOC | Correct for implementation and applicable `not-claimed` publication checkpoints; does not authorize conformance promotion, reuse or `release-eligible`. |
 
 **Stop point:** before `release-eligible`, evidence reuse or the first
 conformance claim. A pre-M3 direct `not-claimed` publication follows ADR-0012
@@ -169,8 +169,12 @@ missing-factory behavior, partial construction, readiness, generations,
 fencing, cutover, rollback and recovery. Get Modular may compile inert data and
 return a plan; it cannot turn metadata into execution authority.
 
-The product-adoption step proceeds only after the consumer records those rules
-and binds one exact retained Core subject. A second consumer is required only
+The product-adoption step proceeds only after the consumer records the rules
+applicable to its admitted slice and binds one exact retained Core subject.
+A static slice defines factory lookup, failure and partial-construction behavior;
+readiness, generations, fencing, cutover, rollback and recovery rules apply only
+when the slice actually includes those capabilities. They do not require adding
+a dynamic runtime to static composition. A second consumer is required only
 for a cross-consumer or stable abstraction claim, not for the first useful
 integration.
 

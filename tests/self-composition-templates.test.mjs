@@ -58,11 +58,11 @@ async function fixture(t) {
       + "  return { value: Object.keys(deps).length };\n}\n");
   }
   await put(core, "src/features/compiler-facade/ports.ts",
-    "export interface CompilerFacade { compileComposition(): number; }\n");
+    "export interface CompilerFacadePort { compileComposition(): number; }\n");
   await put(core, "src/features/compiler-facade/factory.ts",
-    'import type { CompilerFacade } from "./ports.js";\n'
+    'import type { CompilerFacadePort } from "./ports.js";\n'
     + 'import type { Service } from "../authoring/internal.js";\n'
-    + "export function createCompilerFacade(deps: { admission: Service; semantics: Service; output: Service }): CompilerFacade {\n"
+    + "export function createCompilerFacade(deps: { admission: Service; semantics: Service; output: Service }): CompilerFacadePort {\n"
     + "  return { compileComposition: () => deps.semantics.value };\n}\n");
   await put(core, "tsconfig.json", JSON.stringify(config("tsconfig.json")));
   await put(core, "tsconfig.seed.json", JSON.stringify(config("tsconfig.seed.json")));
@@ -82,7 +82,7 @@ test("generated root supports isolated declaration emit and a closed public type
   assert.match(declaration, /compileComposition/u);
   assert.doesNotMatch(declaration, /factory|CompilerFacade|composition\//u);
   // Reproduce the original defect, so a passing stub cannot mask the regression.
-  await put(core, path, wiring.replace("root: CompilerFacade", "root"));
+  await put(core, path, wiring.replace("root: CompilerFacadePort", "root"));
   result = compile(core, "tsconfig.json");
   assert.notEqual(result.status, 0);
   assert.match(result.output, /TS9010/u);
