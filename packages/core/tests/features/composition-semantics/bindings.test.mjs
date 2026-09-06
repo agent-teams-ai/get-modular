@@ -262,11 +262,12 @@ test("owned results preserve frozen records, sorted bindings, safe slot keys and
   assert.equal(result.frontierComplete(app.implementationId), true);
 });
 
-test("violated private record precondition and collector faults propagate without fabricated diagnostics", () => {
+test("collector faults propagate for missing and repeated records without fabricated diagnostics", () => {
   const app = declaration("app", [slot()]);
   const { census, selected } = analyze([app], profile([app]));
   const failure = Error("internal collector failure");
-  assert.throws(() => validateSelectedBindings(freeze(profile([app])), census, selected, { addUnique() { throw failure; } }), error => error === failure);
-  assert.throws(() => validateSelectedBindings(freeze(profile([app], [binding(app, []), binding(app, [])])), census, selected,
-    { addUnique() { assert.fail("record precondition must be checked before emitting"); } }), /Unique binding records/);
+  for (const input of [profile([app]), profile([app], [binding(app, []), binding(app, [])])]) {
+    assert.throws(() => validateSelectedBindings(freeze(input), census, selected,
+      { addUnique() { throw failure; } }), error => error === failure);
+  }
 });

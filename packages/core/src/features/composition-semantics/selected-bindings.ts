@@ -2,7 +2,7 @@ import type { CompositionProfile, ModuleDeclaration } from "../authoring/interna
 import type { DiagnosticCollector } from "../diagnostics/internal.js";
 import type { DeclarationCensus } from "./declaration-census.js";
 import type { ProfileCensus } from "./profile-census.js";
-import { validateBindingRecord } from "./binding-record.js";
+import { validateBindingRecords } from "./binding-record.js";
 
 type Binding = CompositionProfile["bindings"][number];
 type Slot = ModuleDeclaration["slots"][number];
@@ -14,19 +14,21 @@ export type SelectedBindings = {
 };
 
 /**
- * Owner-private: bounded, owned profile/declarations admitted under all accepted refinements;
- * unique binding records per consumer/slot. The caller bounds graph allocation;
- * this pass retains only borrowed rows and continues after edge-budget failure.
- * This is not raw/resource admission, a compiler success gate or the M2 record policy.
+ * Owner-private: bounded, owned, whole-schema-admitted profile/declarations.
+ * Census every binding occurrence before declaration or selection lookup.
+ * Repeated coordinates supply diagnostics but no resolved binding or edge.
+ * The caller counts resources and bounds graph allocation before this pass;
+ * borrowed rows still receive independent checks after an edge-budget failure.
  */
 export function validateSelectedBindings(profile: CompositionProfile, declarations: DeclarationCensus,
   selected: ProfileCensus, collector: Pick<DiagnosticCollector, "addUnique">): SelectedBindings {
-  const groups = new Map<string, Map<string, Binding>>();
+  const groups = new Map<string, Map<string, Binding[]>>();
   for (const binding of profile.bindings) {
     let slots = groups.get(binding.consumerImplementationId);
-    if (!slots) { slots = new Map<string, Binding>(); groups.set(binding.consumerImplementationId, slots); }
-    if (slots.has(binding.slotId)) throw new Error("Unique binding records are required by this private stage");
-    slots.set(binding.slotId, binding);
+    if (!slots) { slots = new Map<string, Binding[]>(); groups.set(binding.consumerImplementationId, slots); }
+    const records = slots.get(binding.slotId);
+    if (records) records.push(binding);
+    else slots.set(binding.slotId, [binding]);
   }
   let hasErrors = false;
   const add: DiagnosticCollector["addUnique"] = diagnostic => { hasErrors = true; collector.addUnique(diagnostic); };
@@ -34,6 +36,14 @@ export function validateSelectedBindings(profile: CompositionProfile, declaratio
   const validBindings: ResolvedBinding[] = [];
   for (const implementationId of selected.selectedImplementationIds) frontiers.set(implementationId, true);
   for (const [implementationId, slots] of groups) {
+    // Record uniqueness is a profile property, including unknown and
+    // unselected consumers. A complete census need not be unique.
+    for (const [slotId, records] of slots) {
+      if (records.length < 2) continue;
+      add(Object.freeze({ code: "binding.duplicate-record", phase: "binding", path: Object.freeze([]),
+        coordinate: Object.freeze({ implementationId, slotId }), details: Object.freeze({ reason: "duplicate" }) }));
+      if (selected.isSelected(implementationId)) frontiers.set(implementationId, false);
+    }
     const consumer = declarations.implementation(implementationId);
     if (!consumer) {
       if (selected.isSelected(implementationId)) frontiers.set(implementationId, false);
@@ -43,9 +53,10 @@ export function validateSelectedBindings(profile: CompositionProfile, declaratio
       }
       continue;
     }
-    // Known unselected declarations and their bindings are graph/plan-inert.
+    // Known unselected rows retain their existing inert behavior. Their
+    // repeated coordinates were independently diagnosed above.
     if (!selected.isSelected(implementationId)) continue;
-    for (const [slotId, binding] of slots) {
+    for (const [slotId, records] of slots) {
       const slot = consumer.slot(slotId);
       if (!slot) {
         frontiers.set(implementationId, false);
@@ -55,8 +66,9 @@ export function validateSelectedBindings(profile: CompositionProfile, declaratio
         }
         continue;
       }
-      if (validateBindingRecord(binding, slot, declarations, selected, { addUnique: add })) {
-        validBindings.push(Object.freeze({ binding, slot }));
+      if (validateBindingRecords(records, slot, declarations, selected, { addUnique: add })) {
+        // Validation establishes exactly one wholly valid record here.
+        validBindings.push(Object.freeze({ binding: records[0]!, slot }));
       } else frontiers.set(implementationId, false);
     }
   }

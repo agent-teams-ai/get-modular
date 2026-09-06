@@ -42,7 +42,7 @@ const rows = [
   ['features/authoring/helpers', 'defineModule required optional many', '', ''],
   ['features/canonicalization/owned-jcs/factory', 'createOwnedJcs', 'invalidValue quote member container canonicalize', ''],
   ['features/compiler-facade/factory', 'createCompilerFacade', '', ''],
-  ['features/composition-semantics/binding-record', 'validateBindingRecord', '', 'add'],
+  ['features/composition-semantics/binding-record', 'validateBindingRecord validateBindingRecords', '', 'add'],
   ['features/composition-semantics/declaration-census', 'createDeclarationCensus', 'uniqueIndex', 'add'],
   ['features/composition-semantics/factory', 'createCompositionSemantics', '', ''],
   ['features/composition-semantics/graph-components', 'graphComponents', '', ''],
