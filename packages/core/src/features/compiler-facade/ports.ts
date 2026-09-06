@@ -11,6 +11,7 @@ export type ObjectCompilationInput = {
 // The facade owns these driven ports; provider implementations join structurally.
 export interface AdmissionPort {
   readonly admitObjectInput: (input: ObjectCompilationInput, collector: DiagnosticCollector) => AdmittedObjectInput;
+  readonly admitRawInput: (input: unknown, collector: DiagnosticCollector) => AdmittedObjectInput;
 }
 export interface SemanticsPort {
   readonly newCollector: () => DiagnosticCollector;
@@ -26,4 +27,5 @@ export interface CompilerFacadeDeps {
 }
 export interface CompilerFacadePort {
   readonly compileComposition: (input: ObjectCompilationInput) => Promise<CompileCompositionResult>;
+  readonly compileCompositionJson: (input: unknown) => Promise<CompileCompositionResult>;
 }
