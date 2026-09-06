@@ -764,9 +764,13 @@ function audit(files) {
           requireThat((checker.getSymbolAtLocation(node)?.declarations?.length ?? 0) === 1, 'binding');
         } else if (!nonReference(node)) {
           const declaration = declarationOf(symbolAt(node));
-          if (path === RAW_BYTES && node.text === 'appendOwn') requireThat(declaration
-            && reviewedFunctions.has(declaration) && pathOf(declaration) === path
-            && declaration.name?.text === node.text, 'construction');
+          if (path === RAW_BYTES && node.text === 'appendOwn') {
+            const use = outer(node).parent;
+            requireThat(declaration && reviewedFunctions.has(declaration) && pathOf(declaration) === path
+              && declaration.name?.text === node.text && ts.isCallExpression(use)
+              && unwrap(use.expression) === node && !use.questionDotToken && use.arguments.length === 2
+              && use.arguments.every(argument => !ts.isSpreadElement(argument)), 'construction');
+          }
           if (declaration) {
             requireThat(modules.has(pathOf(declaration)), 'global');
             checkCapturedReference(node, declaration);

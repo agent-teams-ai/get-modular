@@ -739,3 +739,18 @@ for (const replacement of [
     reject(files, 'construction');
   });
 }
+
+for (const write of [
+  'appendOwn = (values, value) => {};',
+  'appendOwn ||= (values, value) => {};',
+  '++appendOwn;',
+  '[appendOwn] = [undefined];',
+  '({ value: appendOwn } = { value: undefined });',
+  'const borrowed = appendOwn;',
+]) {
+  test(`raw append rejects writes and escaping references: ${write}`, () => {
+    const { files, path } = rawAppendFixture();
+    edit(files, path, 'const values = [];', `${write} const values = [];`);
+    reject(files, 'construction');
+  });
+}
