@@ -10,9 +10,10 @@ import { objectResourceAdmissionCases } from './object-resource-admission.mjs';
 import { objectResourceSemanticCases } from './object-resource-semantics.mjs';
 import { authoringScale } from './type-scale.mjs';
 import { diagnosticTypeCase } from './diagnostic-type-cases.mjs';
-import { m1CaseIds, m1NodeCaseDefinitions, m1ErrorDetails, runtimeNames } from './m1-packed-object-consumer.mjs';
+import { m1CaseIds, m2CaseIds, m1NodeCaseDefinitions, m2NodeCaseDefinitions,
+  m1ErrorDetails, runtimeNames, m2RuntimeNames } from './m1-packed-object-consumer.mjs';
 
-export { runtimeNames };
+export { runtimeNames, m2RuntimeNames };
 
 // Private, pack-free extraction interface:
 //
@@ -53,6 +54,7 @@ const TIMEOUT = 60_000;
 const MAX_OUTPUT = 4_000_000;
 const MAX_PROTOCOL = 65_536;
 const MAX_CASES = 256;
+const MAX_M2_CASES = 512;
 const trustedRoot = resolve(fileURLToPath(new URL('../../../', import.meta.url)));
 const childPath = fileURLToPath(new URL('./m1-packed-object-consumer.mjs', import.meta.url));
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -219,8 +221,36 @@ import type { DiagnosticCatalogCode } from '@get-modular/core';
 ${authoringScale}
 `;
 
-export async function prepareM1PackedConsumers({ archive, workspace, toolchain, contextId, osEnvironment = {}, diagnosticGeneration = 1 }) {
+const m1RawExclusion = `// @ts-expect-error raw input is excluded from M1
+import { compileCompositionJson } from '@get-modular/core';`;
+const m2RawDeclarations = `import { compileCompositionJson } from '@get-modular/core';
+declare const rawInput: {
+  readonly declarations: readonly Uint8Array[];
+  readonly profile: Uint8Array;
+};
+const rawPending: Promise<CompileCompositionResult> = compileCompositionJson(rawInput);
+const exactRawResult: Equal<ReturnType<typeof compileCompositionJson>, Promise<CompileCompositionResult>> = true;
+// @ts-expect-error strings are not declaration byte carriers
+compileCompositionJson({ declarations: ['{}'], profile: new Uint8Array() });
+// @ts-expect-error strings are not profile byte carriers
+compileCompositionJson({ declarations: [], profile: '{}' });
+// @ts-expect-error an ArrayBuffer is not a Uint8Array carrier
+compileCompositionJson({ declarations: [new ArrayBuffer(0)], profile: new Uint8Array() });
+// @ts-expect-error the profile field is required
+compileCompositionJson({ declarations: [] });
+// @ts-expect-error the wrapper requires a declaration list
+compileCompositionJson({ declarations: new Uint8Array(), profile: new Uint8Array() });
+// @ts-expect-error a null wrapper is invalid
+compileCompositionJson(null);
+`;
+
+export async function prepareM1PackedConsumers({ archive, workspace, toolchain, contextId, osEnvironment = {},
+  diagnosticGeneration = 1, surface = 'm1' }) {
+  if (surface !== 'm1' && surface !== 'm2') throw new TypeError('Unknown packed consumer surface');
   if (diagnosticGeneration !== 1 && diagnosticGeneration !== 2) throw new TypeError("Unknown diagnostic generation");
+  if (surface === 'm2' && diagnosticGeneration !== 2) throw new TypeError('M2 requires diagnostic generation 2');
+  // An explicit M1 selection preserves the historical artifact and protocol shape.
+  const surfaceBinding = surface === 'm2' ? { surface } : {};
   assert.equal(typeof contextId, 'string');
   assert.ok(contextId.length > 0 && contextId.length <= 256 && !/[\r\n\0]/u.test(contextId));
   absolute(workspace);
@@ -247,7 +277,7 @@ export async function prepareM1PackedConsumers({ archive, workspace, toolchain, 
     m1CaseIds(family);
     assert.ok(family.every(fixture => objectSubjectCases.includes(fixture)), 'every resource fixture belongs to the shared subject cases');
   }
-  const nodeCases = m1NodeCaseDefinitions(objectSubjectCases);
+  const nodeCases = surface === 'm2' ? await m2NodeCaseDefinitions(objectSubjectCases) : m1NodeCaseDefinitions(objectSubjectCases);
   const pins = [['typescript', '7.0.2'], ['typescript-minimum', '5.8.3']];
   assert.deepEqual(toolchain.compilers.map(({ name, version }) => [name, version]), pins);
   assert.match(toolchain.node.version, /^v24\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u);
@@ -266,6 +296,12 @@ export async function prepareM1PackedConsumers({ archive, workspace, toolchain, 
   for (const name of ['m1-packed-consumers.mjs', 'm1-packed-object-consumer.mjs', 'object-subject-cases.mjs',
     'object-resource-admission.mjs', 'object-resource-semantics.mjs', 'type-scale.mjs', 'diagnostic-type-cases.mjs']) {
     trustedSources.push(await sourceReference(fileURLToPath(new URL(name, import.meta.url)), 'trusted-source'));
+  }
+  if (surface === 'm2') {
+    const { m2RawSourcePaths } = await import('./m2-packed-raw-cases.mjs');
+    for (const path of m2RawSourcePaths) {
+      trustedSources.push(await sourceReference(path, 'trusted-source'));
+    }
   }
   freeze(trustedSources);
 
@@ -385,7 +421,7 @@ export async function prepareM1PackedConsumers({ archive, workspace, toolchain, 
   }
 
   for (const [index, definition] of nodeCases.entries()) {
-    const assignment = { caseId: definition.id, contextId, archiveIdentity: identity, consumer: consumer.path };
+    const assignment = { caseId: definition.id, contextId, archiveIdentity: identity, consumer: consumer.path, ...surfaceBinding };
     // These two closures reside in the installed consumer module, so bare ESM
     // resolution/import exercises its real package root. The child helper owns
     // all assertions and actual object fixture execution, with no compiler RPC.
@@ -395,8 +431,9 @@ export async function prepareM1PackedConsumers({ archive, workspace, toolchain, 
       + `  resolve: specifier => import.meta.resolve(specifier),\n`
       + `  load: specifier => import(specifier),\n`
       + `});\n`);
-    const binding = { caseId: definition.id, contextId, archiveIdentity: identity, inputSha256: script.sha256 };
-    add({ id: definition.id, title: definition.title, kind: definition.construction ? 'object' : 'node',
+    const binding = { caseId: definition.id, contextId, archiveIdentity: identity, inputSha256: script.sha256, ...surfaceBinding };
+    add({ id: definition.id, title: definition.title,
+      kind: definition.construction?.entrypoint === 'compileCompositionJson' ? 'raw' : definition.construction ? 'object' : 'node',
       inputs: [archiveReference, admitted.node, ...consumer.inputs, script, ...trustedSources],
       ...(definition.construction ? { construction: definition.construction } : {}),
       command: command([...definition.flags, script.path, script.sha256]),
@@ -408,8 +445,12 @@ export async function prepareM1PackedConsumers({ archive, workspace, toolchain, 
 
   const diagnosticSource = await artifact('first/diagnostics.mts', diagnosticTypeCase('@get-modular/core', diagnosticGeneration));
   const jsdocSource = await artifact('first/authoring.mjs', jsdoc);
-  const mts = await artifact('first/case.mts', declarations);
-  const cts = await artifact('first/case.cts', declarations);
+  if (surface === 'm2') {
+    assert.equal(declarations.split(m1RawExclusion).length, 2, 'replace exactly the historical raw-import exclusion');
+  }
+  const declarationSource = surface === 'm2' ? declarations.replace(m1RawExclusion, m2RawDeclarations) : declarations;
+  const mts = await artifact('first/case.mts', declarationSource);
+  const cts = await artifact('first/case.cts', declarationSource);
   const legacy = await artifact('first/legacy.mts', 'import { defineModule } from "@get-modular/core";\nvoid defineModule;\n');
   let configIndex = 0;
   async function typeCase(compiler, id, title, source, compilerOptions, code = null) {
@@ -454,8 +495,19 @@ export async function prepareM1PackedConsumers({ archive, workspace, toolchain, 
   }
   add({ id: 'archive-unchanged', title: 'consumer execution preserves the compressed archive identity', kind: 'archive',
     inputs: [archiveReference], command: null, expected: { archiveIdentity: identity } }, async ({ emit }) => checkArchive(emit));
-  m1CaseIds(cases);
-  assert.ok(cases.length <= MAX_CASES);
+  if (surface === 'm2') {
+    m2CaseIds(cases);
+    const { m2RawCaseDefinitions } = await import('./m2-packed-raw-cases.mjs');
+    const rawIds = m2RawCaseDefinitions.map(row => row.id);
+    assert.deepEqual(cases.filter(row => row.kind === 'raw').map(row => row.id), rawIds);
+    assert.equal(rawIds.length, 185, 'all original raw calls remain independent cases');
+    assert.equal(cases.length - rawIds.length, 97, 'M2 retains every historical prepared case');
+    assert.equal(cases.length, 282);
+    assert.ok(cases.length <= MAX_M2_CASES);
+  } else {
+    m1CaseIds(cases);
+    assert.ok(cases.length <= MAX_CASES);
+  }
   freeze(cases);
   freeze(artifacts);
 
@@ -480,12 +532,12 @@ export async function prepareM1PackedConsumers({ archive, workspace, toolchain, 
     const row = cases[next];
     if (running || failed !== null || !row || row.id !== id) {
       failed ??= typeof id === 'string' ? id.slice(0, 160) : 'invalid-case-request';
-      await observe(freeze({ kind: 'case-rejected', contextId, archiveIdentity: identity,
+      await observe(freeze({ kind: 'case-rejected', contextId, archiveIdentity: identity, ...surfaceBinding,
         caseId: typeof id === 'string' ? id.slice(0, 160) : null, expectedCaseId: row?.id ?? null }));
       throw new Error('M1 cases execute once, sequentially, in the prepared closed inventory order.');
     }
     running = true;
-    const emit = (kind, details = {}) => observe(freeze({ kind, contextId, archiveIdentity: identity, case: row, ...details }));
+    const emit = (kind, details = {}) => observe(freeze({ kind, contextId, archiveIdentity: identity, ...surfaceBinding, case: row, ...details }));
     try {
       await emit('case-started');
       await checkInputs(row, emit);

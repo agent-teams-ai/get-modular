@@ -13,11 +13,20 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 // This subprocess boundary is not a sandbox for arbitrary malicious JavaScript.
 const core = '@get-modular/core';
 export const runtimeNames = Object.freeze(['compileComposition', 'defineModule', 'many', 'optional', 'required']);
+export const m2RuntimeNames = Object.freeze([
+  'compileComposition', 'compileCompositionJson', 'defineModule', 'many', 'optional', 'required',
+]);
 const closedPathError = 'ERR_PACKAGE_PATH_NOT_EXPORTED';
 const typesError = 'ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING';
 
 export function m1CaseIds(rows) {
-  assert.ok(Array.isArray(rows) && rows.length > 0 && rows.length <= 256, 'case inventory must be nonempty and bounded');
+  return caseIds(rows, 256);
+}
+export function m2CaseIds(rows) {
+  return caseIds(rows, 512);
+}
+function caseIds(rows, limit) {
+  assert.ok(Array.isArray(rows) && rows.length > 0 && rows.length <= limit, 'case inventory must be nonempty and bounded');
   const ids = rows.map(row => row.id);
   for (const id of ids) {
     assert.equal(typeof id, 'string');
@@ -41,14 +50,14 @@ export function m1ErrorDetails(error) {
 const nodeCases = [
   { id: 'node-root', title: 'Node import and require resolve one implementation and no private exports', flags: [],
     expected: { runtimeNames, target: 'dist/index.js', strictNamespaceIdentity: true },
-    async run({ fromConsumer, resolved, loader }) {
+    async run({ fromConsumer, resolved, loader, names = runtimeNames }) {
       const required = fromConsumer(core);
       const namespace = await import(pathToFileURL(resolved).href);
       assert.equal(required, namespace);
-      assert.deepEqual(Object.keys(namespace).sort(), runtimeNames);
+      assert.deepEqual(Object.keys(namespace).sort(), names);
       const imported = await loader.load(core);
       const observed = { names: Object.keys(imported).sort(), url: loader.resolve(core) };
-      assert.deepEqual(observed, { names: runtimeNames, url: pathToFileURL(resolved).href });
+      assert.deepEqual(observed, { names, url: pathToFileURL(resolved).href });
       assert.equal(imported, namespace);
     } },
   ...['package.json', 'dist/index.js', 'unknown'].flatMap(path => [
@@ -70,13 +79,13 @@ const nodeCases = [
     title: 'Node without require(esm) rejects require but supports dynamic import of the same root',
     flags: ['--no-require-module'],
     expected: { requireEsm: false, code: 'ERR_REQUIRE_ESM', target: 'dist/index.js', runtimeNames },
-    async run({ fromConsumer, resolved, loader }) {
+    async run({ fromConsumer, resolved, loader, names = runtimeNames }) {
       let code = null;
       try { fromConsumer(core); } catch (error) { code = error.code; }
       const namespace = await loader.load(core);
       const observed = { requireEsm: process.features.require_module, code,
         path: fromConsumer.resolve(core), names: Object.keys(namespace).sort() };
-      assert.deepEqual(observed, { requireEsm: false, code: 'ERR_REQUIRE_ESM', path: resolved, names: runtimeNames });
+      assert.deepEqual(observed, { requireEsm: false, code: 'ERR_REQUIRE_ESM', path: resolved, names });
     } },
   ...['browser', 'development', 'production', 'unknown-condition'].map(condition => ({
     id: `node-condition/${condition}`, title: `runtime condition ${condition} keeps the same JavaScript target`,
@@ -98,9 +107,9 @@ const nodeCases = [
     } },
   { id: 'node-condition/types-require', title: 'require under the types condition still selects the sibling JavaScript default',
     flags: ['--conditions=types'], expected: { target: 'dist/index.js', runtimeNames },
-    async run({ fromConsumer, resolved }) {
+    async run({ fromConsumer, resolved, names = runtimeNames }) {
       const commonjs = { names: Object.keys(fromConsumer(core)).sort(), path: fromConsumer.resolve(core) };
-      assert.deepEqual(commonjs, { names: runtimeNames, path: resolved });
+      assert.deepEqual(commonjs, { names, path: resolved });
     } },
   { id: 'javascript-authoring', title: 'JavaScript authoring preserves identity, fresh helpers and compiler handoff', flags: [],
     expected: { identity: true, freshMutableHelpers: true, copiedBounds: true, nonValidating: true, compilerHandoff: true },
@@ -154,12 +163,31 @@ export function m1NodeCaseDefinitions(objectFixtures) {
   return Object.freeze(rows);
 }
 
+export async function m2NodeCaseDefinitions(objectFixtures) {
+  // Reuse the same Node bodies and all original object constructions.
+  const historical = m1NodeCaseDefinitions(objectFixtures);
+  const { m2RawCaseDefinitions } = await import('./m2-packed-raw-cases.mjs');
+  const rows = [
+    ...historical.map(row => Object.hasOwn(row.expected, 'runtimeNames')
+      ? Object.freeze({ ...row, expected: Object.freeze({ ...row.expected, runtimeNames: m2RuntimeNames }) })
+      : row),
+    ...m2RawCaseDefinitions,
+  ];
+  m2CaseIds(rows);
+  assert.equal(rows.length, historical.length + 185);
+  assert.deepEqual(rows.filter(row => row.construction?.export === 'objectSubjectCases')
+    .map(row => row.construction.id), objectFixtures.map(row => row.id));
+  return Object.freeze(rows);
+}
+
 // Called only by a generated consumer bootstrap. fd 3 is the bounded structured
 // completion channel; stdout/stderr are diagnostics and cannot indicate success.
 // There is exactly one assigned case per child, with no discover/run-all mode.
 export async function executeM1NodeCase(assignment, loader) {
+  const surfaceBinding = Object.hasOwn(assignment, 'surface') ? { surface: assignment.surface } : {};
   const binding = Object.freeze({ caseId: assignment.caseId, contextId: assignment.contextId,
-    archiveIdentity: Object.freeze({ ...assignment.archiveIdentity }), inputSha256: assignment.inputSha256 });
+    archiveIdentity: Object.freeze({ ...assignment.archiveIdentity }), inputSha256: assignment.inputSha256,
+    ...surfaceBinding });
   const record = (phase, details = {}) => {
     const bytes = Buffer.from(`${JSON.stringify({ ...binding, phase, ...details })}\n`);
     assert.ok(bytes.length <= 32_768, 'child observation is bounded');
@@ -168,7 +196,11 @@ export async function executeM1NodeCase(assignment, loader) {
   };
   record('started');
   try {
-    assert.deepEqual(Object.keys(assignment).sort(), ['archiveIdentity', 'caseId', 'consumer', 'contextId', 'inputSha256']);
+    // Historical assignments have no surface key. Only the explicit successor
+    // adds one; it cannot be removed or relabelled without changing completion.
+    if (Object.hasOwn(assignment, 'surface')) assert.equal(assignment.surface, 'm2', 'unknown child surface');
+    assert.deepEqual(Object.keys(assignment).sort(),
+      ['archiveIdentity', 'caseId', 'consumer', 'contextId', 'inputSha256', ...Object.keys(surfaceBinding)].sort());
     assert.match(assignment.inputSha256, /^[a-f0-9]{64}$/u);
     assert.match(assignment.archiveIdentity.sha256, /^[a-f0-9]{64}$/u);
     assert.match(assignment.archiveIdentity.integrity, /^sha512-[A-Za-z0-9+/]{86}==$/u);
@@ -180,32 +212,44 @@ export async function executeM1NodeCase(assignment, loader) {
     assert.equal(typeof loader.load, 'function');
     assert.equal(typeof loader.resolve, 'function');
     const nodeCase = nodeCases.find(row => row.id === assignment.caseId);
-    let fixture;
-    if (!nodeCase) {
-      // This is a fixed trusted import, never a candidate-selected module path.
-      // Lazy loading also keeps the types-condition probes independent of the
-      // trusted fixture dependency graph's own conditional package exports.
-      const { objectSubjectCases } = await import('./object-subject-cases.mjs');
-      m1CaseIds(objectSubjectCases);
-      fixture = objectSubjectCases.find(row => row.id === assignment.caseId);
-      assert.ok(fixture, 'the child must execute an existing assigned fixture');
-      assert.equal(typeof fixture.run, 'function');
-    }
     assert.deepEqual(process.execArgv, nodeCase?.flags ?? [], 'the assigned case uses exactly its prepared Node flags');
     const fromConsumer = createRequire(join(assignment.consumer, 'consumer.cjs'));
     const installed = await realpath(join(assignment.consumer, 'node_modules/@get-modular/core'));
     const resolved = fromConsumer.resolve(core);
     assert.equal(await realpath(resolved), join(installed, 'dist/index.js'));
     if (nodeCase) {
-      await nodeCase.run({ fromConsumer, resolved, loader });
+      await nodeCase.run({ fromConsumer, resolved, loader,
+        names: assignment.surface === 'm2' ? m2RuntimeNames : runtimeNames });
     } else {
+      // Load constructing fixtures only after resolution, and never for any
+      // Node condition probe. All module paths here are trusted and fixed.
+      let fixture;
+      let raw;
+      if (assignment.surface === 'm2') {
+        raw = await import('./m2-packed-raw-cases.mjs');
+        if (!raw.m2RawCaseDefinitions.some(row => row.id === assignment.caseId)) raw = null;
+      }
+      if (!raw) {
+        const { objectSubjectCases } = await import('./object-subject-cases.mjs');
+        m1CaseIds(objectSubjectCases);
+        fixture = objectSubjectCases.find(row => row.id === assignment.caseId);
+        assert.ok(fixture, 'the child must execute an existing assigned fixture');
+        assert.equal(typeof fixture.run, 'function');
+      }
       const required = fromConsumer(core);
       const namespace = await import(pathToFileURL(resolved).href);
       assert.equal(required, namespace);
+      if (assignment.surface === 'm2') {
+        assert.deepEqual(Object.keys(namespace).sort(), m2RuntimeNames);
+        const imported = await loader.load(core);
+        assert.equal(imported, namespace);
+        assert.equal(loader.resolve(core), pathToFileURL(resolved).href);
+      }
       // The fixture calls the ACTUAL compiler before immediately mutating its
       // own objects. There is no serialization, asynchronous proxy or wrapper
       // around compileComposition that could conceal snapshot timing failures.
-      await fixture.run(required.compileComposition);
+      if (raw) await raw.executeM2RawCase(assignment.caseId, required.compileCompositionJson);
+      else await fixture.run(required.compileComposition);
     }
     record('passed');
   } catch (error) {
