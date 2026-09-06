@@ -202,8 +202,8 @@ function body(files, code) {
   const anchor = 'export function admitObjectInput(input, collector) {\n';
   edit(files, ADMISSION, anchor, `${anchor}  ${code}\n`);
 }
-function reject(files, reason) {
-  assert.throws(() => auditM1JavaScriptClosure(files), error => {
+function reject(files, reason, profile) {
+  assert.throws(() => auditM1JavaScriptClosure(files, profile), error => {
     assert.ok(error instanceof Error);
     assert.equal(error.code, 'm1.javascript-closure.invalid');
     assert.equal(error.message, 'Invalid M1 JavaScript closure.');
@@ -752,5 +752,203 @@ for (const write of [
     const { files, path } = rawAppendFixture();
     edit(files, path, 'const values = [];', `${write} const values = [];`);
     reject(files, 'construction');
+  });
+}
+
+const FACADE = 'dist/features/compiler-facade/factory.js';
+const m2PublicNames = ['compileComposition', 'compileCompositionJson', 'defineModule', 'many', 'optional', 'required'];
+// The incoming reviewed facade after erasing its TypeScript annotations.
+// These bytes are static fixtures; this suite never executes their algorithms.
+const sharedFacadeSource = `export function createCompilerFacade({ admission, semantics, output }) {
+  async function compile(admit) {
+    const collector = semantics.newCollector();
+    const admitted = admit(collector);
+    const analyzed = semantics.analyze(admitted, collector);
+    if (!analyzed.ok) return analyzed;
+    const emitted = await output.emit(analyzed.plan);
+    return Object.freeze({ ok: true, plan: emitted.plan, digest: emitted.digest });
+  }
+  return Object.freeze({
+    async compileComposition(input) {
+      return compile(collector => admission.admitObjectInput(input, collector));
+    },
+    async compileCompositionJson(input) {
+      return compile(collector => admission.admitRawInput(input, collector));
+    },
+  });
+}`;
+function sharedFixture(profile = 'm1-shared') {
+  const files = baseline();
+  files.set(FACADE, Buffer.from(sharedFacadeSource));
+  if (profile === 'm2') {
+    edit(files, ENTRY, 'export const compileComposition = root.compileComposition;',
+      `export const compileComposition = root.compileComposition;
+export const compileCompositionJson = root.compileCompositionJson;`);
+  }
+  return files;
+}
+function sharedMutant(profile, change, reason = 'construction') {
+  const files = sharedFixture(profile);
+  assert.deepEqual(auditM1JavaScriptClosure(files, profile).exports,
+    profile === 'm2' ? m2PublicNames : publicNames, 'the shared companion passes before mutation');
+  change(files);
+  reject(files, reason, profile);
+}
+
+test('historical M1 remains explicit or default and does not infer the shared facade', () => {
+  assert.deepEqual(auditM1JavaScriptClosure(baseline(), 'm1'), auditM1JavaScriptClosure(baseline()));
+  reject(sharedFixture(), 'purpose');
+  reject(sharedFixture(), 'purpose', 'm1');
+  reject(sharedFixture('m2'), 'exports');
+  reject(baseline(), 'construction', 'm1-shared');
+});
+
+test('only a trusted closed profile selects private shared or public M2', () => {
+  for (const profile of ['m1-shared', 'm2']) {
+    const files = sharedFixture(profile);
+    const copy = new Map([...files].map(([path, bytes]) => [path, Buffer.from(bytes)]));
+    const expected = { modules: [...sources.keys()].sort(),
+      exports: profile === 'm2' ? m2PublicNames : publicNames };
+    assert.deepEqual(auditM1JavaScriptClosure(files, profile), expected);
+    assert.deepEqual(auditM1JavaScriptClosure(new Map([...files].reverse()), profile), expected);
+    assert.deepEqual(files, copy);
+  }
+  reject(sharedFixture('m2'), 'exports', 'm1-shared');
+  reject(sharedFixture(), 'exports', 'm2');
+  const files = sharedFixture();
+  files.set('package.json', Buffer.from('{"profile":"m1-shared"}'));
+  reject(files, 'purpose');
+});
+
+test('unknown profiles fail closed before reading candidate bytes', () => {
+  for (const profile of ['', 'M2', 'm3', 'default', null, false, 2, {}, { profile: 'm2' }]) {
+    reject(sharedFixture('m2'), 'profile', profile);
+    reject(null, 'profile', profile);
+  }
+});
+
+test('M2 public raw export has its corresponding member and the same constructed root', () => {
+  for (const replacement of ['root.compileComposition', 'root', 'defineModule']) {
+    sharedMutant('m2', files => {
+      if (replacement === 'defineModule') {
+        edit(files, ENTRY, "import { root } from './composition/stage0.js';",
+          `import { root } from './composition/stage0.js';
+import { defineModule } from './features/authoring/internal.js';`);
+      }
+      edit(files, ENTRY, 'root.compileCompositionJson', replacement);
+    }, 'public-origin');
+  }
+  sharedMutant('m2', files => {
+    edit(files, ENTRY, "import { root } from './composition/stage0.js';",
+      `import { root } from './composition/stage0.js';
+import { defineModule as borrowed } from './features/authoring/internal.js';`);
+    edit(files, ENTRY, 'root.compileCompositionJson', 'borrowed.compileCompositionJson');
+  }, 'public-origin');
+});
+
+test('M2 named aliases preserve both public entry origins', () => {
+  const files = sharedFixture('m2');
+  files.set(ENTRY, Buffer.from(`import { root as assembly } from './composition/stage0.js';
+const compiler = assembly;
+const objectEntry = (compiler.compileComposition);
+const rawEntry = (compiler.compileCompositionJson);
+export { objectEntry as compileComposition, rawEntry as compileCompositionJson };
+export { defineModule, required, optional, many } from './features/authoring/internal.js';`));
+  assert.deepEqual(auditM1JavaScriptClosure(files, 'm2').exports, m2PublicNames);
+});
+
+for (const profile of ['m1-shared', 'm2']) {
+  test(`${profile} preserves binding identity while allowing local renaming`, () => {
+    const files = sharedFixture(profile);
+    let source = sharedFacadeSource
+      .replace('({ admission, semantics, output })',
+        '({ admission: intake, semantics: analysis, output: sink })')
+      .replaceAll('admission.', 'intake.')
+      .replaceAll('semantics.', 'analysis.')
+      .replaceAll('output.', 'sink.');
+    for (const [before, after] of [
+      ['compile', 'run'], ['admit', 'own'], ['collector', 'report'],
+      ['admitted', 'owned'], ['analyzed', 'result'], ['emitted', 'rendered'], ['input', 'request'],
+    ]) source = source.replace(new RegExp(`\\b${before}\\b`, 'gu'), after);
+    files.set(FACADE, Buffer.from(source));
+    assert.deepEqual(auditM1JavaScriptClosure(files, profile).exports,
+      profile === 'm2' ? m2PublicNames : publicNames);
+  });
+
+  test(`${profile} retains export, scanner, factory and member boundaries`, () => {
+    sharedMutant(profile, files => files.set(ENTRY,
+      Buffer.concat([files.get(ENTRY), Buffer.from('\nexport const extra = 1;')])), 'exports');
+    sharedMutant(profile, files => files.delete(SCANNER), 'module-missing');
+    sharedMutant(profile, files => edit(files, ROOT,
+      'createInputAdmission({ scanner })', 'createInputAdmission({ scanner: canonicalizer })'));
+    sharedMutant(profile, files => edit(files, CANONICAL,
+      'return Object.freeze({ canonicalize });',
+      'const value = canonicalize; return Object.freeze({ canonicalize });'));
+    sharedMutant(profile, files => body(files, 'input.compileCompositionJson;'), 'purpose');
+    sharedMutant(profile, files => body(files, 'input.admitRawInput;'), 'purpose');
+    sharedMutant(profile, files => edit(files, FACADE,
+      'async function compile(admit) {', 'async function compile(admit) {}\nasync function extra(admit) {'),
+    'purpose');
+  });
+
+  for (const [before, after] of [
+    ['admission.admitRawInput(input, collector)', 'admission.admitObjectInput(input, collector)'],
+    ['admission.admitObjectInput(input, collector)', 'admission.admitRawInput(input, collector)'],
+    ['admission.admitRawInput(input, collector)', 'admission.admitRawInput(collector, input)'],
+    ['admission.admitRawInput(input, collector)', 'admission.admitRawInput({ ...input }, collector)'],
+    ['admission.admitRawInput(input, collector)', 'admission.admitRawInput(input, input)'],
+    ['admission.admitRawInput(input, collector)', 'input.admitRawInput(input, collector)'],
+    ['admission.admitRawInput(input, collector)', 'admission.admitRawInput(input, collector) || input'],
+    ['return compile(collector => admission.admitRawInput(input, collector));',
+      'return await compile(collector => admission.admitRawInput(input, collector));'],
+    ['return compile(collector => admission.admitRawInput(input, collector));',
+      'return input ? compile(collector => admission.admitRawInput(input, collector)) : input;'],
+    ['collector => admission.admitRawInput(input, collector)',
+      'collector => { return admission.admitRawInput(input, collector); }'],
+    ['collector => admission.admitRawInput(input, collector)',
+      'collector => ((input) => admission.admitRawInput(input, collector))(collector)'],
+    ['collector => admission.admitRawInput(input, collector)',
+      'admission => admission.admitRawInput(input, admission)'],
+    ['if (!analyzed.ok)', 'if (~analyzed.ok)'],
+    ['const admitted = admit(collector);', 'const admitted = await admit(collector);'],
+    ['const admitted = admit(collector);', 'const admitted = admit(collector) || collector;'],
+    ['const admitted = admit(collector);', 'const admitted = (admit => admit(collector))(collector);'],
+    ['const collector = semantics.newCollector();', 'const collector = await semantics.newCollector();'],
+    ['const admitted = admit(collector);', 'const admitted = admit({ ...collector });'],
+    ['const analyzed = semantics.analyze(admitted, collector);',
+      'const analyzed = semantics.analyze(collector, admitted);'],
+    ['const emitted = await output.emit(analyzed.plan);',
+      'const emitted = await output.emit(collector);'],
+    ['const admitted = admit(collector);', 'let admitted = admit(collector);'],
+  ]) {
+    test(`${profile} rejects altered shared routing: ${after}`, () => {
+      sharedMutant(profile, files => edit(files, FACADE, before, after));
+    });
+  }
+
+  test(`${profile} rejects computed dispatch and asynchronous admission callbacks`, () => {
+    sharedMutant(profile, files => edit(files, FACADE,
+      'admission.admitRawInput(input, collector)', "admission['admitRawInput'](input, collector)"),
+    'computed-call');
+    sharedMutant(profile, files => edit(files, FACADE,
+      'collector => admission.admitRawInput(input, collector)',
+      'async collector => await admission.admitRawInput(input, collector)'), 'syntax-profile');
+  });
+
+  test(`${profile} requires exactly one owned helper and both private methods`, () => {
+    sharedMutant(profile, files => edit(files, FACADE,
+      'async compileCompositionJson(input) {',
+      'async compileCompositionJson(input) { const compile = input;'));
+    sharedMutant(profile, files => edit(files, FACADE,
+      'return compile(collector => admission.admitRawInput(input, collector));',
+      'const admission = input; return compile(collector => admission.admitRawInput(input, collector));'));
+    sharedMutant(profile, files => edit(files, FACADE,
+      '  return Object.freeze({\n    async compileComposition(input)',
+      '  const value = output;\n  return Object.freeze({\n    async compileComposition(input)'));
+    sharedMutant(profile, files => edit(files, FACADE,
+      `    async compileCompositionJson(input) {
+      return compile(collector => admission.admitRawInput(input, collector));
+    },
+`, ''));
   });
 }

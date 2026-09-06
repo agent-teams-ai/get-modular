@@ -31,11 +31,11 @@ test('all 62 original raw invocations: complete results and owned byte snapshots
       } });
       const canonicalizer = createOwnedJcs({});
       const facade = createCompilerFacade({
-        admission: { admitObjectInput: admission.admitRawInput },
+        admission,
         semantics: createCompositionSemantics({ canonicalizer }),
         output: createPlanOutput({ canonicalizer }),
       });
-      const pending = facade.compileComposition(fixture.input);
+      const pending = facade.compileCompositionJson(fixture.input);
       assert.ok(pending instanceof Promise);
       fixture.after(); // No suspension between invocation and caller mutation.
       assert.equal(fixture.reads(), 0);
