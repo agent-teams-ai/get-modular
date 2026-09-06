@@ -154,9 +154,14 @@ M2 spans the existing phases; these are bounded delivery packets within them:
 | Packet | Ownership and dependency | Definition of done |
 | --- | --- | --- |
 | M2.1 | Integration owner: successor diagnostic types, ranks and fact vocabulary. Start only after acceptance and expanded scope. | Actual Core types and diagnostics use the additive generation; existing-code relative order and M1 vectors pass; exhaustive public type fixtures pass. |
-| M2.2 | Admission owner: synchronous raw wrapper/carrier snapshot and bounded exact-number decoding. Depends on M2.1 contract; no binding/graph edits. | Actual ordinary raw entry executes the closed carrier/wrapper/numeric cases; mutation/detachment after invocation cannot affect the result; getters and forbidden hooks remain untouched; exact complete results match independent expectations. |
-| M2.3 | Binding/graph owner: occurrence census, invalid-group exclusion and independent facts. Parallel with M2.2 after M2.1; shared types and composition root remain integration-owned. | Actual object and raw paths replay all repeated-record cases, permutations, ordering, top-K and resource boundaries; invalid groups supply no edges; independent failures survive. |
-| M2.4 | Integration and qualification owners: wire one public raw entry through existing feature ports and stage0 composition. Depends on M2.2 and M2.3. | Retain actual Core source/subject digests and complete results for the same suite; focused mutation tests detect the named implementation failures; all M1 regressions and full check pass. Packed Node and four TypeScript/type-scale gates pass for the resulting archive before any publication claim. |
+| M2.2 | Admission owner: synchronous raw wrapper/carrier snapshot and bounded exact-number decoding. Depends on M2.1 contract; no binding/graph edits. | The real input-admission feature port executes the closed carrier/wrapper/numeric cases with complete independently expected admission observations; synchronous ownership, exact numbers and zero forbidden hooks are proved. Public facade wiring and complete compiler-result replay belong to M2.4. |
+| M2.3 | Binding/graph owner: occurrence census, invalid-group exclusion and independent facts. Parallel with M2.2 after M2.1; shared types and composition root remain integration-owned. | The real semantic feature and existing object entry replay repeated-record cases, permutations, ordering, top-K and resource boundaries; invalid groups supply no edges and independent failures survive. Raw-entry replay joins M2.4 after M2.2 is available. |
+| M2.4 | Integration and qualification owners: wire one public raw entry through existing feature ports and stage0 composition. Depends on M2.2 and M2.3. | Replay the complete successor suite through both ordinary object/raw entries and retain actual Core source/subject digests and complete results; focused mutation tests detect the named implementation failures; all M1 regressions and full check pass. Packed Node and four TypeScript/type-scale gates pass for the resulting archive before any publication claim. |
+
+M2.2 and M2.3 can finish their component checkpoints independently; neither
+requires the other lane or the M2.4 facade to declare that bounded checkpoint
+ready. Component readiness does not satisfy the M2 milestone: M2.4 still owns
+the complete ordinary-entry replay before exposure.
 
 Each writer uses an isolated checkout at the exact agreed commit, bounded
 non-overlapping file ownership and a small reversible PR. Shared integration
