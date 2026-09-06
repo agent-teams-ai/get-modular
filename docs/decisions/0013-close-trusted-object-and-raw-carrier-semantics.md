@@ -198,9 +198,10 @@ prefix, including the declaration document ordinal where applicable; the
 wrapper reason `not-document-list` uses the path defined below. The new code
 sorts before `decode.invalid-json`, has prerequisite group
 `decode.byte-carrier`, an empty prerequisite list, path policy `structural`
-satisfied by the invocation prefix, and document suppression scope. The prefix
-is bounded by the accepted clipping rule; no hostile key or runtime error text
-is reflected.
+satisfied by the invocation prefix, and document suppression scope. A wrapper
+failure with reason `not-document-list` leaves every document fact unavailable.
+The prefix is bounded by the accepted clipping rule; no hostile key or runtime
+error text is reflected.
 
 #### Carrier classification and copy procedure
 
@@ -272,7 +273,10 @@ rejects any platform dependency mechanically once that file exists.
 The visible length is read once through `lengthOf` and compared with the
 accepted byte limits before any owned buffer is allocated:
 
-1. read the wrapper (below) and classify every declaration and profile carrier;
+1. admit the own wrapper fields and list length, then apply the declarations
+   count rule below; only an eligible count permits index inspection, and all
+   bounded element descriptors must pass before any declaration or profile
+   carrier is classified;
 2. compute `aggregateRawBytes` as the saturating sum of the visible lengths of
    admitted carriers, counting a rejected carrier as zero bytes;
 3. compare every admitted carrier with `declarationRawDocumentBytes` or
@@ -305,19 +309,78 @@ result for hostile Proxy behavior.
 On the raw entry point the wrapper is realm-neutral: `Array.isArray` admits a
 cross-realm array because the carriers themselves are classified by intrinsic
 brand. A missing, non-array, or accessor-backed `declarations` list, or a
-missing `profile`, fails as `input.invalid-byte-carrier` with the fourth closed
-reason `not-document-list` at path `[declarations]` or `[profile]`; every
-document fact then becomes `unavailable`. On the object entry point the same
-shapes fail as `schema.non-plain-value` at the same paths, because that
-boundary already requires a same-realm genuine array.
+missing or accessor-backed `profile`, fails as `input.invalid-byte-carrier`
+with the fourth closed reason `not-document-list` at the corresponding root
+path `[declarations]` or `[profile]`; every document fact then becomes
+`unavailable`. On the object entry point the same shapes fail as
+`schema.non-plain-value` at the same paths, because that boundary already
+requires a same-realm genuine array.
+
+After admission of the own wrapper data fields, array list, and own data
+length, both entry points check the `declarations` count before any element
+descriptor, carrier reflection or classification, or allocation proportional to
+the list or payload. An admitted length above `4096` returns this complete
+failure result:
+
+```json
+{
+  "ok": false,
+  "diagnostics": [
+    {
+      "code": "input.limit-exceeded",
+      "phase": "declaration",
+      "path": [],
+      "coordinate": {},
+      "details": {"limitName": "declarations", "limit": 4096, "actual": 4097}
+    }
+  ]
+}
+```
+
+The accepted [diagnostic contract](../../architecture/qualification/v1/diagnostic-contract.json)
+maps `declarations` to phase `declaration` and path policy `empty`. Its limit
+variant and accepted snapshots use the three details fields shown above,
+without `reason`. Phases classify and sort candidates; this count check still
+runs before byte admission. The reported `actual` saturates at `4097` for
+lengths `4097`, `65536`, and the maximum array length `4294967295` alike.
+
+A missing or malformed own wrapper field, including an accessor `profile`,
+fails before count eligibility. An own data `profile: undefined` is present,
+so count overflow still takes this early exit. At overflow no index is
+validated, including a missing or accessor index, and no oversized tail carrier
+is inspected. `batch.raw-bytes-admitted` and every document fact remain
+`unavailable`; no carrier, byte-limit, decoder, schema or semantic derivative,
+or partial snapshot, is published.
+
+For a bounded count, a missing (including inherited-only) or accessor
+declaration index rejects the entire wrapper/list. On the raw entry point it
+uses `input.invalid-byte-carrier`, reason `not-document-list`, at the root
+`[declarations]` path without an ordinal. The count may remain `valid`, but
+`batch.raw-bytes-admitted` and every document fact are `unavailable`. All
+bounded element descriptors must pass before any carrier classification or
+copy, even when earlier values are valid, oversized, or invalid carriers;
+inspection may stop at the first malformed index. An own data `undefined`
+profile or index is present and, when the wrapper/list and count are admitted,
+independently fails carrier classification as `not-uint8array`. Wrapper failure
+publishes no byte-limit, decoder, schema or semantic derivative, or partial
+snapshot.
+
+For this clarification, the proposed generation 2 `declarations` limit row
+changes only `prerequisites: ["batch.raw-bytes-admitted"]` to
+`prerequisites: []`. Its `prerequisiteGroup: "declaration.batch-count"` and
+`suppressionScope: "batch"` remain unchanged. Positive overflow evidence comes
+from the admitted own length; an unavailable count creates no candidate.
+This adds no fact to the combined 20-fact inventory. Accepted contracts,
+snapshots, catalog ranks and limits remain byte-identical. The owner selected
+this count-first rule and wrapper policy A on 2026-09-06. These bounded choices
+do not accept ADR-0013 or the combined M2 successor; this ADR remains proposed.
 
 Document ordinals above the accepted maximum index of `65535` cannot be
 represented in a diagnostic path. The successor contract therefore adds the
 bounded-emission rule `indexOverflow: stop-before-unrepresentable-index`: the
-path stops before the unrepresentable index segment, identical normalized
-candidates deduplicate under the accepted candidate key, and the `declarations`
-count limit is evaluated from the wrapper length before any carrier beyond
-that limit is classified.
+path stops before the unrepresentable index segment and identical normalized
+candidates deduplicate under the accepted candidate key. The count-first rule
+prevents an overflowing list from producing any per-document candidate.
 
 #### Carrier failure and facts
 
@@ -326,19 +389,20 @@ The successor contract adds exactly one document-scoped fact,
 
 | State | Meaning |
 | --- | --- |
-| `valid` | the document carrier is a genuine, usable, non-shared `Uint8Array`; on the object entry point the fact is always `valid` |
+| `valid` | the document carrier is a genuine, usable, non-shared `Uint8Array`; on the object entry point the fact is `valid` for documents that reach admission after the wrapper and count checks |
 | `invalid` | classification failed; the document emits `input.invalid-byte-carrier` |
-| `unavailable` | the wrapper failed as `not-document-list`, so no document was classified |
+| `unavailable` | the wrapper/list was not admitted, including a later malformed index, or declaration count overflow stopped admission before any document was classified |
 
 The accepted facts are refined rather than replaced. `document.raw-bytes-admitted`
 is `unavailable` for a document whose carrier fact is `invalid` or
 `unavailable`; the accepted `declarationRawDocumentBytes` and
 `profileRawDocumentBytes` limit rows gain `document.byte-carrier-admitted` as
-their single prerequisite. `batch.raw-bytes-admitted` counts a rejected carrier
-as zero bytes and does not become `unavailable` because of a carrier failure.
-A failed carrier therefore emits its carrier diagnostic and no decoder, schema,
-or byte-limit derivative, while independently admitted documents continue
-unless the batch byte fact itself is `invalid`.
+their single prerequisite. After wrapper/list and count admission,
+`batch.raw-bytes-admitted` counts a rejected carrier as zero bytes and does not
+become `unavailable` because of a carrier failure. A failed carrier therefore
+emits its carrier diagnostic and no decoder, schema, or byte-limit derivative,
+while independently admitted documents continue unless the batch byte fact
+itself is `invalid`.
 
 ### Owned snapshot representation
 
@@ -356,8 +420,9 @@ reordering are not observable in the normalized compiler model.
 
 If accepted, this ADR narrowly supplements ADR-0006 and ADR-0007 for carrier
 classification, synchronous snapshot ownership, trusted-object representation,
-the new raw-carrier diagnostic and its document fact, the wrapper rule, and the
-index-overflow emission rule. ADR-0018 already owns numeric lexeme admission
+the new raw-carrier diagnostic and its document fact, the wrapper and early
+count rules, the declarations prerequisite change, and the index-overflow
+emission rule. ADR-0018 already owns numeric lexeme admission
 and the intrinsic-reflection resource boundary; this proposal must preserve
 them. It does not otherwise change UTF-8, JSON, schema,
 numeric resource limits, semantic normalization, graph behavior, canonicalization,
@@ -402,6 +467,10 @@ The closed case inventory covers:
   arrays, cycles, and repeated DAG references;
 - limit and limit-plus-one resource cases, multi-document independence,
   diagnostic ordering, top-K behavior, and safe path prefixes;
+- accessor profiles, missing/accessor/inherited-only indices, and their
+  distinction from own data `undefined`; late malformed indices after valid,
+  oversized, and invalid carriers; wrapper-before-count and count-before-index
+  precedence, with zero classification, copies, and owned bytes on failure;
 - mutations that retain caller storage, await before copying, use
   `instanceof`, copy an entire backing buffer, accept shared storage, invoke a
   getter, deduplicate shared references, miss a cycle, or emit a decoder
