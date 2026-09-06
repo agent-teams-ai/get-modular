@@ -115,7 +115,7 @@ function diagnostic(code, phase, names, details) {
     coordinate: coordinate(names), details });
 }
 
-function contractSource() {
+function contractSource(generation) {
   // Independent structural expectations from the closed wire contract and the
   // ADR-0006 object signature. Intersections and mapped aliases in the subject
   // may implement these shapes; file text and source hashes are not oracles.
@@ -129,7 +129,11 @@ function contractSource() {
   const many = record({ kind: '"many"', min: "number", max: "number", order: '"profile"' }, false);
   const profile = { kind: '"get-modular.composition-profile"', schemaVersion: "1", profileId: "string",
     roots: "readonly string[]", selections: "readonly ESelection[]", bindings: "readonly EBinding[]" };
-  const rows = REASONS.map(([code, phase, names, reasons]) =>
+  const reasons = generation === 1 ? REASONS : [
+    ["input.invalid-byte-carrier", "decode", "", "not-uint8array|unusable-view|shared-storage|not-document-list"],
+    ...REASONS, ["binding.duplicate-record", "binding", "implementationId slotId", "duplicate"],
+  ];
+  const rows = reasons.map(([code, phase, names, reasons]) =>
     diagnostic(code, phase, names, record({ reason: literals(reasons.split("|")) })));
   rows.push(diagnostic("binding.cardinality", "binding", "implementationId slotId", record({
     expectedCardinality: '"required" | "optional" | "many"', actualCardinality: "number",
@@ -140,7 +144,7 @@ function contractSource() {
   for (const [phase, limits] of Object.entries(LIMITS)) for (const limit of limits) {
     rows.push(diagnostic("input.limit-exceeded", phase, "", record({ limitName: quote(limit), limit: "number", actual: "number" })));
   }
-  const codes = [...REASONS.map(row => row[0]), "input.limit-exceeded", "binding.cardinality",
+  const codes = [...reasons.map(row => row[0]), "input.limit-exceeded", "binding.cardinality",
     "binding.compatibility-mismatch", "graph.cycle", "diagnostics.truncated"];
   return [
     'import * as P from "./dist/index.js";',
@@ -227,7 +231,7 @@ function contractSource() {
   ].join("\n");
 }
 
-function audit(files) {
+function audit(files, generation) {
   need(files instanceof Map && files.size <= 512, "input");
   const sources = new Map();
   const modules = new Map();
@@ -410,7 +414,7 @@ function audit(files) {
     libraryTexts = LIB_NAMES.map(name => [name, readFileSync(join(directory, name), "utf8")]);
   }
   for (const [name, text] of libraryTexts) sources.set(`${LIB}/${name}`, source(`${LIB}/${name}`, text));
-  sources.set(`${BASE}/contract.ts`, source(`${BASE}/contract.ts`, contractSource()));
+  sources.set(`${BASE}/contract.ts`, source(`${BASE}/contract.ts`, contractSource(generation)));
   const host = hostFor(sources, (specifier, containing) => {
     need(containing.startsWith(`${BASE}/`), "module-reference");
     return { resolvedFileName: `${BASE}/${target(specifier, containing.slice(BASE.length + 1))}`,
@@ -464,8 +468,13 @@ function audit(files) {
     rootExports: roots.map(({ name, kind }) => ({ name, kind })) };
 }
 
-export function auditM1DeclarationClosure(files) {
-  try { return audit(files); }
+// The default keeps historical M1 fixture qualification closed. Current M2.1
+// callers explicitly select the additive diagnostic contract, not a raw facade.
+export function auditM1DeclarationClosure(files, generation = 1) {
+  try {
+    need(generation === 1 || generation === 2, "diagnostic-generation");
+    return audit(files, generation);
+  }
   catch (error) {
     if (error instanceof InvalidDeclarations) throw error;
     fail("checker-failed");

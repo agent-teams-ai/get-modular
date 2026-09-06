@@ -429,3 +429,42 @@ test("declaration resolution is closed over owned bytes", async t => {
     'export { defineModule, optional, many } from "./constructors.js";\nexport { required } from "./surface.js";');
   reject(cycle, "alias-cycle");
 });
+
+function successorFixture() {
+  const files = fixture();
+  replace(files, ISSUES, "export type Diagnostic =", `export type Diagnostic =
+  | RecordFor<"input.invalid-byte-carrier", "decode", EmptyCoordinate,
+      Reason<"not-uint8array" | "unusable-view" | "shared-storage" | "not-document-list">>
+  | RecordFor<"binding.duplicate-record", "binding", SlotCoordinate, Reason<"duplicate">>`);
+  return files;
+}
+
+test("generation two accepts exactly its independent algebra and preserves M1 rejection", () => {
+  const files = successorFixture();
+  assert.equal(auditM1DeclarationClosure(files, 2).rootExports.length, 12);
+  reject(files, "type-contract");
+  assert.throws(() => auditM1DeclarationClosure(fixture(), 2), { code: "declarations.invalid", reason: "type-contract" });
+  for (const generation of [0, 3, "2", null, {}]) {
+    assert.throws(() => auditM1DeclarationClosure(files, generation),
+      { code: "declarations.invalid", reason: "diagnostic-generation" });
+  }
+});
+
+for (const [name, before, after] of [
+  ["carrier phase", '"input.invalid-byte-carrier", "decode"', '"input.invalid-byte-carrier", "schema"'],
+  ["carrier reason", '"shared-storage" | "not-document-list"', '"shared-storage" | "invalid-json"'],
+  ["carrier coordinate", '"input.invalid-byte-carrier", "decode", EmptyCoordinate',
+    '"input.invalid-byte-carrier", "decode", ImplementationCoordinate'],
+  ["record coordinate", '"binding.duplicate-record", "binding", SlotCoordinate',
+    '"binding.duplicate-record", "binding", ProviderCoordinate'],
+  ["record reason", '"binding.duplicate-record", "binding", SlotCoordinate, Reason<"duplicate">',
+    '"binding.duplicate-record", "binding", SlotCoordinate, Reason<"missing">'],
+  ["record omitted", '\n  | RecordFor<"binding.duplicate-record", "binding", SlotCoordinate, Reason<"duplicate">>', ""],
+]) {
+  test(`generation two rejects ${name} without relaxing the finite contract`, () => {
+    const files = successorFixture();
+    replace(files, ISSUES, before, after);
+    assert.throws(() => auditM1DeclarationClosure(files, 2),
+      { code: "declarations.invalid", reason: "type-contract" });
+  });
+}

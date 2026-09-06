@@ -219,7 +219,8 @@ import type { DiagnosticCatalogCode } from '@get-modular/core';
 ${authoringScale}
 `;
 
-export async function prepareM1PackedConsumers({ archive, workspace, toolchain, contextId, osEnvironment = {} }) {
+export async function prepareM1PackedConsumers({ archive, workspace, toolchain, contextId, osEnvironment = {}, diagnosticGeneration = 1 }) {
+  if (diagnosticGeneration !== 1 && diagnosticGeneration !== 2) throw new TypeError("Unknown diagnostic generation");
   assert.equal(typeof contextId, 'string');
   assert.ok(contextId.length > 0 && contextId.length <= 256 && !/[\r\n\0]/u.test(contextId));
   absolute(workspace);
@@ -405,7 +406,7 @@ export async function prepareM1PackedConsumers({ archive, workspace, toolchain, 
     });
   }
 
-  const diagnosticSource = await artifact('first/diagnostics.mts', diagnosticTypeCase('@get-modular/core'));
+  const diagnosticSource = await artifact('first/diagnostics.mts', diagnosticTypeCase('@get-modular/core', diagnosticGeneration));
   const jsdocSource = await artifact('first/authoring.mjs', jsdoc);
   const mts = await artifact('first/case.mts', declarations);
   const cts = await artifact('first/case.cts', declarations);

@@ -36,6 +36,9 @@ const mandatoryFiles = [
   'architecture/authority/object-resource-coverage-ledger.json',
   'architecture/qualification/v1/qualification-case-manifest.json',
   'architecture/qualification/v1/normalization-vectors.json',
+  'architecture/qualification/generation-two/contract.json',
+  'architecture/qualification/generation-two/catalog.json',
+  'architecture/qualification/generation-two/snapshots.json',
   'architecture/qualification/v1/diagnostic-contract.json',
   'architecture/qualification/v1/diagnostic-snapshots.json',
   'architecture/qualification/v1/resource-profile-v2.json',
@@ -347,7 +350,7 @@ async function auditArchive(modules, archive, source, packed) {
   assert.equal(bytes.length, archive.bytes);
   const audited = modules.readPackageArchive(bytes, archive.identity);
   assert.deepEqual(modules.auditM1JavaScriptClosure(audited.files).exports, modules.runtimeNames);
-  assert.deepEqual(modules.auditM1DeclarationClosure(audited.files).rootExports,
+  assert.deepEqual(modules.auditM1DeclarationClosure(audited.files, 2).rootExports,
     ['CompileCompositionResult', 'CompositionPlan', 'CompositionProfile', 'Diagnostic', 'DiagnosticCode',
       'ModuleDeclaration', 'PlanDigest'].map(name => ({ name, kind: 'type' }))
       .concat(modules.runtimeNames.map(name => ({ name, kind: 'value' }))));
@@ -572,7 +575,7 @@ export async function runM1RetainedSession({ trustedCheckout, sourceCheckout = t
     const workspace = join(outputDirectory, 'consumers');
     await fs.mkdir(workspace);
     const contextId = `private-m1-${randomUUID()}`;
-    prepared = await modules.prepareM1PackedConsumers({ archive: { path: archive.path, identity, files: audited.files },
+    prepared = await modules.prepareM1PackedConsumers({ diagnosticGeneration: 2, archive: { path: archive.path, identity, files: audited.files },
       workspace, toolchain, contextId });
     const plan = preparedData(prepared);
     assertPlan(plan);
@@ -696,7 +699,7 @@ export async function verifyM1RetainedSession({ trustedCheckout, trustedCommit, 
   // It has no pack or execute operation and does not reuse observed case results.
   const scratch = join(verificationDirectory, 'consumers');
   await fs.mkdir(scratch);
-  const expected = await modules.prepareM1PackedConsumers({ archive: { path: seal.archive.path,
+  const expected = await modules.prepareM1PackedConsumers({ diagnosticGeneration: 2, archive: { path: seal.archive.path,
     identity: seal.archive.identity, files: audited.files }, workspace: scratch,
     toolchain: closure.tools, contextId: seal.contextId });
   const expectedPlan = relocatePreparedPlan(preparedData(expected), scratch, seal.workspace);

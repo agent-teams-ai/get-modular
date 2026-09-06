@@ -5,11 +5,19 @@ const diagnostics = JSON.parse(await readFile(new URL("architecture/qualificatio
 const snapshots = JSON.parse(await readFile(new URL("architecture/qualification/v1/diagnostic-snapshots.json", root), "utf8"));
 const catalog = JSON.parse(await readFile(new URL("architecture/contracts/v1/diagnostic-catalog.json", root), "utf8"));
 
+const successor = {
+  diagnostics: JSON.parse(await readFile(new URL("architecture/qualification/generation-two/contract.json", root), "utf8")),
+  snapshots: JSON.parse(await readFile(new URL("architecture/qualification/generation-two/snapshots.json", root), "utf8")),
+  catalog: JSON.parse(await readFile(new URL("architecture/qualification/generation-two/catalog.json", root), "utf8")),
+};
+
 // Independent accepted vectors, shared by source and installed-root consumers.
-export function diagnosticTypeCase(importSpecifier) {
-  const codes = diagnostics.codeDisposition.emittable;
+export function diagnosticTypeCase(importSpecifier, generation = 1) {
+  if (generation !== 1 && generation !== 2) throw new TypeError("Unknown diagnostic generation");
+  const selected = generation === 1 ? { diagnostics, snapshots, catalog } : successor;
+  const codes = selected.diagnostics.codeDisposition.emittable;
   const expected = codes.map(JSON.stringify).join(" | ");
-  const records = snapshots.snapshots.map(item => item.diagnostic);
+  const records = selected.snapshots.snapshots.map(item => item.diagnostic);
   const snapshotAssertions = records.map((record, index) => `const snapshot${index} = ${JSON.stringify(record)} satisfies Diagnostic;`).join("\n");
   const malformedAssertions = records.map((record, index) => {
     const malformed = { ...record, details: { unexpected: true } };
@@ -19,6 +27,14 @@ export function diagnosticTypeCase(importSpecifier) {
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;
 ${snapshotAssertions}
 ${malformedAssertions}
+${generation === 2 ? `
+// @ts-expect-error the carrier reasons are a closed vocabulary
+const wrongCarrier: Diagnostic = { code: "input.invalid-byte-carrier", phase: "decode", path: [], coordinate: {}, details: { reason: "invalid-json" } };
+// @ts-expect-error duplicate records never expose a provider coordinate
+const wrongRecord: Diagnostic = { code: "binding.duplicate-record", phase: "binding", path: [], coordinate: { implementationId: "example/a", slotId: "x", providerImplementationId: "example/b" }, details: { reason: "duplicate" } };
+// @ts-expect-error carrier failures belong to decode
+const wrongPhase: Diagnostic = { code: "input.invalid-byte-carrier", phase: "schema", path: [], coordinate: {}, details: { reason: "not-uint8array" } };
+` : ""}
 const exact: Equal<DiagnosticCode, ${expected}> = true;
 const derived: Equal<DiagnosticCode, Diagnostic['code']> = true;
 const complete: Record<DiagnosticCode, string> = ${JSON.stringify(Object.fromEntries(codes.map(code => [code, code])))};
@@ -28,7 +44,7 @@ const incomplete: Record<DiagnosticCode, string> = ${JSON.stringify(Object.fromE
 const reserved: DiagnosticCode = 'output.canonicalization-failed';
 function exhaustive(diagnostic: Diagnostic) {
   switch (diagnostic.code) {
-    ${codes.map(code => `case ${JSON.stringify(code)}: { const keys: Equal<keyof typeof diagnostic.details, ${catalog.detailPolicy[code].map(JSON.stringify).join(" | ")}> = true; break; }`).join("\n")}
+    ${codes.map(code => `case ${JSON.stringify(code)}: { const keys: Equal<keyof typeof diagnostic.details, ${selected.catalog.detailPolicy[code].map(JSON.stringify).join(" | ")}> = true; break; }`).join("\n")}
     default: { const absent: never = diagnostic; return absent; }
   }
 }

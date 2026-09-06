@@ -202,3 +202,57 @@ test("retains late decisive detail failures using the injected canonicalizer", (
   assert.equal(result.at(-1).details.omitted, 3);
   assert.ok(collector.statistics().comparisons < 258 * 20 + 256 * 16);
 });
+
+// The successor's immutable independent vectors qualify the actual comparator.
+const successorCatalog = await read("architecture/qualification/generation-two/catalog.json");
+const successorSnapshots = await read("architecture/qualification/generation-two/snapshots.json");
+
+test("generation two ranks both new codes and preserves every prior code order", () => {
+  const examples = new Map(successorSnapshots.snapshots.map(item => [item.diagnostic.code, item.diagnostic]));
+  const expected = successorCatalog.ordering.phases.flatMap(phase =>
+    successorCatalog.ordering.codes.flatMap(code => {
+      const value = examples.get(code);
+      return value?.phase === phase ? [value] : [];
+    }));
+  assert.equal(expected.length, 32);
+  assert.equal(examples.has("output.canonicalization-failed"), false);
+  for (let offset = 0; offset < expected.length; offset += 1) {
+    const input = [...expected.slice(offset), ...expected.slice(0, offset)].reverse();
+    assert.deepEqual(input.sort(compare), expected);
+  }
+  for (let left = 0; left < expected.length; left += 1) {
+    for (let right = left + 1; right < expected.length; right += 1) {
+      assert.ok(compare(expected[left], expected[right]) < 0);
+      assert.ok(compare(expected[right], expected[left]) > 0);
+    }
+  }
+});
+
+test("carrier and repeated-record candidates retain complete shapes through collection", () => {
+  const names = ["g2-wrapper-declarations", "g2-carrier-not-uint8array",
+    "g2-carrier-shared-storage", "g2-carrier-unusable-view", "g2-duplicate-record"];
+  const examples = new Map(successorSnapshots.snapshots.map(item => [item.name, item.diagnostic]));
+  const expected = names.map(name => examples.get(name));
+  assert.ok(expected.every(Boolean));
+  for (const values of permutations(expected)) {
+    const collector = createDiagnosticCollector(canonicalize);
+    for (const value of values) collector.addUnique(value);
+    assert.deepEqual(collector.finish(), expected);
+  }
+});
+
+test("late successor codes enter bounded top-K without hiding distinct prior failures", () => {
+  const examples = new Map(successorSnapshots.snapshots.map(item => [item.name, item.diagnostic]));
+  const early = examples.get("g2-wrapper-profile");
+  const duplicate = examples.get("g2-duplicate-record");
+  const legacy = Array.from({ length: 256 }, (_, index) => candidate(index));
+  const expected = [early, ...legacy.slice(0, 254), {
+    code: "diagnostics.truncated", phase: "output", path: [], coordinate: {}, details: { omitted: 3 },
+  }];
+  for (const input of [[...legacy, duplicate, early], [early, duplicate, ...legacy].reverse()]) {
+    const collector = createDiagnosticCollector(canonicalize);
+    for (const value of input) collector.addUnique(value);
+    assert.deepEqual(collector.finish(), expected);
+    assert.equal(collector.statistics().peakRetained, 256);
+  }
+});
