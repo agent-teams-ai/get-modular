@@ -137,8 +137,8 @@ function replace(files, path, before, after) {
   files.set(path, Buffer.from(text.replace(before, after)));
 }
 function append(files, path, text) { files.set(path, Buffer.concat([files.get(path), Buffer.from(text)])); }
-function reject(files, reason) {
-  assert.throws(() => auditM1DeclarationClosure(files), error => {
+function reject(files, reason, generation = 1, publicSurface = "m1") {
+  assert.throws(() => auditM1DeclarationClosure(files, generation, publicSurface), error => {
     assert.ok(error instanceof Error);
     assert.equal(error.message, "Invalid M1 declaration closure.");
     assert.equal(error.code, "declarations.invalid");
@@ -432,12 +432,143 @@ test("declaration resolution is closed over owned bytes", async t => {
 
 function successorFixture() {
   const files = fixture();
+  addSuccessorDiagnostics(files);
+  return files;
+}
+
+function addSuccessorDiagnostics(files) {
   replace(files, ISSUES, "export type Diagnostic =", `export type Diagnostic =
   | RecordFor<"input.invalid-byte-carrier", "decode", EmptyCoordinate,
       Reason<"not-uint8array" | "unusable-view" | "shared-storage" | "not-document-list">>
   | RecordFor<"binding.duplicate-record", "binding", SlotCoordinate, Reason<"duplicate">>`);
+}
+
+const rawCompiler = `export declare const compileCompositionJson: (input: {
+  readonly declarations: readonly Uint8Array[]; readonly profile: Uint8Array;
+}) => Promise<CompileCompositionResult>;`;
+
+function publicM2Fixture() {
+  const files = successorFixture();
+  append(files, ROOT, `\n${rawCompiler}\n`);
   return files;
 }
+
+test("public M2 explicitly adds only the raw compiler to historical generation two", () => {
+  const historical = auditM1DeclarationClosure(successorFixture(), 2);
+  assert.equal(historical.rootExports.length, 12);
+  assert.deepEqual(auditM1DeclarationClosure(successorFixture(), 2, "m1"), historical);
+  const files = publicM2Fixture();
+  const before = new Map([...files].map(([path, bytes]) => [path, Buffer.from(bytes)]));
+  const result = auditM1DeclarationClosure(files, 2, "m2");
+  assert.equal(result.rootExports.length, 13);
+  assert.deepEqual(result.rootExports, [
+    ...historical.rootExports,
+    { name: "compileCompositionJson", kind: "value" },
+  ].sort((left, right) => left.name < right.name ? -1 : left.name > right.name ? 1 : 0));
+  assert.deepEqual(result.modules, historical.modules);
+  assert.deepEqual(files, before);
+  reject(files, "root-exports", 2);
+  reject(files, "root-exports");
+  reject(files, "diagnostic-generation", 1, "m2");
+  reject(successorFixture(), "root-exports", 2, "m2");
+  const oldDiagnostics = fixture();
+  append(oldDiagnostics, ROOT, `\n${rawCompiler}\n`);
+  reject(oldDiagnostics, "type-contract", 2, "m2");
+  for (const selector of ["M2", "", "m3", 2, null, {}, false]) {
+    reject(files, "public-surface", 2, selector);
+  }
+});
+
+test("public M2 accepts a function declaration and trusted carrier aliases", () => {
+  const files = publicM2Fixture();
+  replace(files, ROOT, rawCompiler, `export declare function compileCompositionJson(input: {
+  readonly declarations: ReadonlyArray<Bytes>; readonly profile: Bytes;
+}): Promise<CompileCompositionResult>;`);
+  append(files, WIRE, "\nexport type Bytes = Uint8Array;\n");
+  append(files, ROOT, '\nimport type { Bytes } from "./features/authoring/wire.js";\n');
+  assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
+});
+
+test("public M2 rejects raw signature and provenance mutations", async t => {
+  const rawMutation = (before, after) => files =>
+    replace(files, ROOT, rawCompiler, rawCompiler.replace(before, after));
+  const cases = [
+    ...["unknown", "string", "Uint16Array", "{ readonly length: number; readonly [index: number]: number }"]
+      .flatMap(carrier => [
+        [`declaration carrier ${carrier}`, rawMutation("readonly Uint8Array[]", `readonly (${carrier})[]`)],
+        [`profile carrier ${carrier}`, rawMutation("profile: Uint8Array", `profile: ${carrier}`)],
+      ]),
+    ["mutable declarations property", rawMutation("readonly declarations:", "declarations:")],
+    ["mutable profile property", rawMutation("readonly profile:", "profile:")],
+    ["mutable declaration list", rawMutation("readonly Uint8Array[]", "Uint8Array[]")],
+    ["optional declarations property", rawMutation("declarations:", "declarations?:")],
+    ["optional profile property", rawMutation("profile:", "profile?:")],
+    ["extra required wrapper property", rawMutation("profile: Uint8Array;", "profile: Uint8Array; readonly extra: string;")],
+    ["extra optional wrapper property", rawMutation("profile: Uint8Array;", "profile: Uint8Array; readonly extra?: never;")],
+    ["nonempty tuple", rawMutation("readonly Uint8Array[]", "readonly [Uint8Array, ...Uint8Array[]]")],
+    ["empty tuple", rawMutation("readonly Uint8Array[]", "readonly []")],
+    ["spread-only tuple", rawMutation("readonly Uint8Array[]", "readonly [...Uint8Array[]]")],
+    ["list intersection", rawMutation("readonly Uint8Array[]", "readonly Uint8Array[] & { readonly extra?: never }")],
+    ["optional argument", rawMutation("(input:", "(input?:")],
+    ["rest argument", rawMutation("(input: {", "(...input: {")],
+    ["extra argument", rawMutation("}) =>", "}, extra: unknown) =>")],
+    ["generic argument", rawMutation("(input:", "<T>(input:")],
+    ["synchronous result", rawMutation("Promise<CompileCompositionResult>", "CompileCompositionResult")],
+    ["unknown result", rawMutation("Promise<CompileCompositionResult>", "Promise<unknown>")],
+    ["narrowed result", rawMutation("Promise<CompileCompositionResult>", 'Promise<Extract<CompileCompositionResult, { ok: true }>>')],
+    ["overloaded function", files => replace(files, ROOT, rawCompiler,
+      `export declare function compileCompositionJson(input: {
+        readonly declarations: readonly Uint8Array[]; readonly profile: Uint8Array;
+      }): Promise<CompileCompositionResult>;
+      export declare function compileCompositionJson(input: unknown): Promise<CompileCompositionResult>;`)],
+    ["same-named callable originates in authoring", files => {
+      replace(files, ROOT, rawCompiler,
+        'export { compileCompositionJson } from "./features/authoring/constructors.js";');
+      append(files, HELPERS, `\nimport type { CompileCompositionResult } from "./issues.js";\n${rawCompiler}\n`);
+    }],
+    ["renamed private callable originates in authoring", files => {
+      replace(files, ROOT, rawCompiler,
+        'export { assemble as compileCompositionJson } from "./features/authoring/constructors.js";');
+      append(files, HELPERS, '\nimport type { CompileCompositionResult } from "./issues.js";\n'
+        + rawCompiler.replace("compileCompositionJson", "assemble"));
+    }],
+    ["local named Uint8Array impostor", files => {
+      append(files, HELPERS, "\nexport type TrustedBytes = Uint8Array;\n");
+      append(files, WIRE, '\nimport type { TrustedBytes } from "./constructors.js";\n'
+        + "export type Uint8Array = { [K in keyof TrustedBytes]: TrustedBytes[K] };\n");
+      append(files, ROOT, '\nimport type { Uint8Array } from "./features/authoring/wire.js";\n');
+    }],
+    ["structural mapped carrier", files => {
+      append(files, WIRE, "\nexport type Bytes = { [K in keyof Uint8Array]: Uint8Array[K] };\n");
+      append(files, ROOT, '\nimport type { Bytes } from "./features/authoring/wire.js";\n');
+      replace(files, ROOT, rawCompiler, rawCompiler.replaceAll("Uint8Array", "Bytes"));
+    }],
+    ["aliased spread-only tuple", files => {
+      append(files, WIRE, "\nexport type Documents = readonly [...Uint8Array[]];\n");
+      append(files, ROOT, '\nimport type { Documents } from "./features/authoring/wire.js";\n');
+      rawMutation("readonly Uint8Array[]", "Documents")(files);
+    }],
+    ["candidate standard library directive", files =>
+      replace(files, ROOT, "import type", '/// <reference lib="es2015" />\nimport type')],
+    ["external carrier import", files =>
+      append(files, ROOT, '\nimport type { Uint8Array } from "host-runtime";\n')],
+    ["ambient carrier augmentation", files =>
+      append(files, WIRE, "\ndeclare global { interface Uint8Array { readonly extra: true } }\n")],
+    ["private carrier owner", files => {
+      files.set("dist/features/admission/bytes.d.ts", Buffer.from("export type Bytes = Uint8Array;"));
+      append(files, ROOT, '\nimport type { Bytes } from "./features/admission/bytes.js";\n');
+      replace(files, ROOT, rawCompiler, rawCompiler.replaceAll("Uint8Array", "Bytes"));
+    }],
+    ["extra value export", files => append(files, ROOT, "\nexport declare function extra(): void;\n")],
+    ["extra type export", files => append(files, ROOT, "\nexport type Bytes = Uint8Array;\n")],
+  ];
+  for (const [name, edit] of cases) await t.test(name, () => {
+    const files = publicM2Fixture();
+    edit(files);
+    reject(files, undefined, 2, "m2");
+  });
+});
+
 
 test("generation two accepts exactly its independent algebra and preserves M1 rejection", () => {
   const files = successorFixture();
