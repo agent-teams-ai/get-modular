@@ -6,6 +6,15 @@ import type { AdmissionDiagnosticSink } from "./ports.js";
 import { admissionLimits } from "./resource-limits.js";
 import { resourceDiagnostic } from "./resource-diagnostic.js";
 
+const defineProperty = Object.defineProperty;
+
+// Bypass replaceable array methods and inherited index setters.
+function appendOwn<T>(values: T[], value: T): void {
+  // Descriptor conversion must not consult inherited properties either.
+  const descriptor = { __proto__: null, value, enumerable: true, configurable: true, writable: true };
+  defineProperty(values, values.length, descriptor);
+}
+
 export type RawInputCapture = {
   readonly declarations: readonly (Uint8Array | null)[];
   readonly profile: Uint8Array | null;
@@ -31,40 +40,55 @@ export function captureRawInput(input: unknown, sink: AdmissionDiagnosticSink): 
   }
   if (invocation.kind === "declarations-limit") { add(resourceDiagnostic("declarations")); return empty(); }
   const count = invocation.declarations.length;
-  const eligible: boolean[] = [];
+  // true means within the document limit; false means oversized.
+  // Rejected carriers retain only their primitive reason.
+  const outcomes: (boolean | "not-uint8array" | "shared-storage" | "unusable-view")[] = [];
   let totalBytes = 0;
   let allDeclarationsCaptured = true;
+  // Only captured intrinsics and own data may participate from the first
+  // classification through the last eligible copy.
   for (let ordinal = 0; ordinal <= count; ordinal += 1) {
     const profile = ordinal === count;
-    const locator: DocumentLocator = profile ? { kind: "profile" } : { kind: "declaration", ordinal };
     const value = profile ? invocation.profile : invocation.declarations[ordinal];
     const carrier = classifyByteCarrier(value);
     if (carrier.kind === "rejected") {
-      eligible.push(false);
+      appendOwn(outcomes, carrier.reason);
       if (!profile) allDeclarationsCaptured = false;
-      add(Object.freeze({ code: "input.invalid-byte-carrier", phase: "decode", coordinate: Object.freeze({}),
-        path: documentPath(locator), details: Object.freeze({ reason: carrier.reason }) }));
       continue;
     }
     // Oversized genuine views still contribute their complete visible length.
     // Invalid carriers contribute zero and never authorize byte observations.
-    totalBytes = Math.min(admissionLimits.aggregateRawBytes + 1, totalBytes + carrier.visibleLength);
+    const nextTotal = totalBytes + carrier.visibleLength;
+    totalBytes = nextTotal > admissionLimits.aggregateRawBytes ? admissionLimits.aggregateRawBytes + 1 : nextTotal;
     const limit = profile ? "profileRawDocumentBytes" : "declarationRawDocumentBytes";
     const admitted = carrier.visibleLength <= admissionLimits[limit];
-    eligible.push(admitted);
-    if (!admitted) {
-      if (!profile) allDeclarationsCaptured = false;
-      add(resourceDiagnostic(limit, documentPath(locator)));
+    appendOwn(outcomes, admitted);
+    if (!admitted && !profile) allDeclarationsCaptured = false;
+  }
+  const blocked = totalBytes > admissionLimits.aggregateRawBytes;
+  const declarations: (Uint8Array | null)[] = [];
+  let profile: Uint8Array | null = null;
+  if (!blocked) {
+    for (let ordinal = 0; ordinal < count; ordinal += 1) {
+      appendOwn(declarations, outcomes[ordinal] === true ? copyByteCarrier(invocation.declarations[ordinal] as Uint8Array) : null);
+    }
+    profile = outcomes[count] === true ? copyByteCarrier(invocation.profile as Uint8Array) : null;
+  }
+
+  // Paths, diagnostic construction and sink calls may invoke caller code.
+  // All preflight facts and eligible copies are complete before they run.
+  for (let ordinal = 0; ordinal <= count; ordinal += 1) {
+    const outcome = outcomes[ordinal]!;
+    if (outcome === true) continue;
+    const isProfile = ordinal === count;
+    const locator: DocumentLocator = isProfile ? { kind: "profile" } : { kind: "declaration", ordinal };
+    if (outcome === false) {
+      add(resourceDiagnostic(isProfile ? "profileRawDocumentBytes" : "declarationRawDocumentBytes", documentPath(locator)));
+    } else {
+      add(Object.freeze({ code: "input.invalid-byte-carrier", phase: "decode", coordinate: Object.freeze({}),
+        path: documentPath(locator), details: Object.freeze({ reason: outcome }) }));
     }
   }
-  if (totalBytes > admissionLimits.aggregateRawBytes) { add(resourceDiagnostic("aggregateRawBytes")); return empty(); }
-
-  // No scanner, callbacks or continuations occur between preflight and the
-  // complete set of copies. The returned arrays contain no caller-owned view.
-  const declarations: (Uint8Array | null)[] = [];
-  for (let ordinal = 0; ordinal < count; ordinal += 1) {
-    declarations.push(eligible[ordinal] ? copyByteCarrier(invocation.declarations[ordinal] as Uint8Array) : null);
-  }
-  const profile = eligible[count] ? copyByteCarrier(invocation.profile as Uint8Array) : null;
+  if (blocked) { add(resourceDiagnostic("aggregateRawBytes")); return empty(); }
   return Object.freeze({ declarations: Object.freeze(declarations), profile, allDeclarationsCaptured, hasErrors, blocked: false });
 }

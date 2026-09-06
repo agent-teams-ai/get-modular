@@ -80,3 +80,106 @@ test("aggregate byte admission is inclusive and rejects one extra profile byte",
   assert.equal(capture({ declarations, profile: new Uint8Array() }).result.blocked, false);
   assert.deepEqual(capture({ declarations, profile: new Uint8Array(1) }).diagnostics, [limit("aggregateRawBytes", 16_777_216)]);
 });
+
+test("raw capture excludes patched helpers and inherited setters from classification through copying", () => {
+  // The actual compiled module has already evaluated through the static import.
+  const defineProperty = Object.defineProperty;
+  const getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
+  const apply = Reflect.apply;
+  const patches = [
+    [Math, "min"],
+    [Array.prototype, "push"],
+    [Object, "defineProperty"],
+    [Object, "freeze"],
+    [Array.prototype, Symbol.iterator],
+    [Array.prototype, "slice"],
+    [Array.prototype, "map"],
+    [Array.prototype, "0"],
+  ];
+  for (const [target, key] of patches) {
+    for (const tail of ["valid", "invalid", "oversized"]) {
+      const label = `${String(key)} / ${tail}`;
+      const backing = new ArrayBuffer(1_048_576, { maxByteLength: 2_097_152 });
+      const view = new Uint8Array(backing);
+      view[0] = 17;
+      view[1_048_575] = 19;
+      const profileBacking = new ArrayBuffer(1, { maxByteLength: 2 });
+      const profile = new Uint8Array(profileBacking);
+      profile[0] = 23;
+      const input = { declarations: [view, tail === "invalid" ? undefined
+        : tail === "oversized" ? new Uint8Array(1_048_577) : new Uint8Array([29])], profile };
+      const diagnostics = [];
+      let hookCalls = 0;
+      const mutate = () => {
+        backing.resize(2_097_152);
+        view[0] = 99;
+        profileBacking.resize(2);
+        profile[0] = 101;
+      };
+      const sink = { addUnique(diagnostic) {
+        defineProperty(diagnostics, diagnostics.length, {
+          value: diagnostic, enumerable: true, configurable: true, writable: true,
+        });
+        // Sink emission must also follow the complete set of eligible copies.
+        mutate();
+      } };
+      const original = getOwnPropertyDescriptor(target, key);
+      const arrayLength = key === "0" ? getOwnPropertyDescriptor(target, "length") : undefined;
+      const replacement = key === "0" ? {
+        configurable: true,
+        set(value) {
+          hookCalls += 1;
+          mutate();
+          defineProperty(this, key, { value, enumerable: true, configurable: true, writable: true });
+        },
+      } : {
+        ...original,
+        value: function (...args) {
+          hookCalls += 1;
+          mutate();
+          return apply(original.value, this, args);
+        },
+      };
+      let result;
+      try {
+        defineProperty(target, key, replacement);
+        result = captureRawInput(input, sink);
+      } finally {
+        if (original === undefined) delete target[key];
+        else defineProperty(target, key, original);
+        // Defining a numeric property also changes Array.prototype.length.
+        if (arrayLength !== undefined) defineProperty(target, "length", arrayLength);
+      }
+
+      // Every assertion and test-harness interaction follows global restoration.
+      assert.equal(result.blocked, false, label);
+      assert.equal(result.hasErrors, tail !== "valid", label);
+      assert.equal(result.allDeclarationsCaptured, tail === "valid", label);
+      assert.equal(Object.isFrozen(result), true, label);
+      assert.equal(Object.isFrozen(result.declarations), true, label);
+      assert.equal(result.declarations.length, 2, label);
+      assert.equal(result.declarations[0]?.byteLength, 1_048_576, label);
+      assert.equal(result.declarations[0][0], 17, label);
+      assert.equal(result.declarations[0][1_048_575], 19, label);
+      assert.equal(result.declarations[0].buffer.resizable, false, label);
+      assert.notEqual(result.declarations[0].buffer, backing, label);
+      assert.deepEqual(result.declarations[1], tail === "valid" ? new Uint8Array([29]) : null, label);
+      assert.deepEqual([...result.profile], [23], label);
+      assert.equal(result.profile.buffer.resizable, false, label);
+      assert.notEqual(result.profile.buffer, profileBacking, label);
+      assert.deepEqual(diagnostics, tail === "valid" ? [] : [tail === "invalid"
+        ? carrier([field("declarations"), index(1)], "not-uint8array")
+        : limit("declarationRawDocumentBytes", 1_048_576, [field("declarations"), index(1)])], label);
+      if (tail !== "valid" && (key === "freeze" || key === Symbol.iterator || key === "slice" || key === "map")) {
+        assert.ok(hookCalls > 0, label);
+      }
+      // Calls after copying may mutate caller storage without changing snapshots.
+      if (hookCalls > 0 || diagnostics.length > 0) {
+        assert.equal(view.byteLength, 2_097_152, label);
+        assert.equal(view[0], 99, label);
+        assert.equal(profile.byteLength, 2, label);
+        assert.equal(profile[0], 101, label);
+      }
+    }
+  }
+});
