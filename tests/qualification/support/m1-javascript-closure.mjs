@@ -61,7 +61,7 @@ const rows = [
   ['features/input-admission/document-snapshot', 'snapshotDeclaration snapshotProfile', 'compatibility cardinality', ''],
   ['features/input-admission/factory', 'createInputAdmission', '', ''],
   ['features/input-admission/identity-format', 'isPortableIdFormat isLocalTokenFormat', 'matchesFormat', ''],
-  ['features/input-admission/object-admission', 'admitObjectInput', '', 'add empty scan validate'],
+  ['features/input-admission/object-admission', 'admitObjectInput', '', 'add empty scan validate wrapperFailure'],
   ['features/input-admission/object-resource-meter', 'createObjectResourceMeter', 'valueLimit stringLimit depthLimit', 'countValues countString scanDocument enter'],
   ['features/input-admission/profile-resource-facts', 'ownValue profileResourceFacts', 'portable', ''],
   ['features/input-admission/resource-diagnostic', 'resourceDiagnostic', 'phases', ''],
