@@ -37,6 +37,18 @@ rules and independent examples. ADR-0018 resolves its cyclic-depth gap. Other
 fact-derivation gaps follow existing accepted behavior; only a behavior change
 requires successor authority. The checker is not the specification.
 
+## Current M2 authorization
+
+The product owner accepted [ADR-0021](../decisions/0021-freeze-combined-diagnostic-generation-two-for-m2.md)
+on 2026-09-06, resolving OD-005/OD-006 through one combined successor and
+activating the bounded roadmap owner record. The raw/carrier and repeated-record
+semantics are authorized for implementation. M1 descriptions below remain the
+boundary of the already delivered compiler until real M2 object/raw replay and
+qualification pass. Earlier conditional acceptance gates for those two decisions
+are satisfied; external dependency selection, custody and M3 gates remain
+separate. The historical ADR-0013/0014 annexes retain their original bytes and
+proposed metadata; ADR-0021 is their acceptance authority.
+
 ## Static consumer example
 
 The [installed-package example](../../tests/qualification/support/static-consumer-source.mjs)

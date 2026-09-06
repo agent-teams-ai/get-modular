@@ -1,10 +1,12 @@
 ---
 id: OD-006
 type: open-decision
-status: open
+status: resolved
+resolved_by: ADR-0021
 owner: architecture
 summary: Defines the diagnostic and fail-closed semantics needed for repeated binding records.
 related:
+  - ADR-0021
   - ADR-0004
   - ADR-0005
   - ADR-0006
@@ -102,10 +104,15 @@ ADR-0007 requires one exact coordinate shape for each emitted code.
 
 The combined generation 2 transaction must carry forward ADR-0018's
 residual-depth, exact raw-number and emittable-type rules in its successor
-contract, cases, checker and ledger. OD-006 remains open; this carry-forward
-requirement adds no duplicate-record behavior.
+contract, cases, checker and ledger. ADR-0021 now adopts that combined
+successor; the prior carry-forward requirement alone added no behavior.
 
 ## Resolution
 
-Open. ADR-0014 is a proposed resolution and MUST NOT authorize compiler
-behavior unless it is accepted with the required executable evidence.
+Resolved by accepted [ADR-0021](../decisions/0021-freeze-combined-diagnostic-generation-two-for-m2.md)
+on 2026-09-06. It adopts the exact semantic annex ADR-0014 together with
+the combined generation 2 ledger and retained oracle evidence. The annex's
+historical proposed status and pinned bytes are preserved. The owner has
+authorized the bounded M2 implementation scope. Real Core object/raw replay
+and the complete M2 qualification gates remain required before exposure;
+acceptance does not relabel the oracle observations as compiler execution.

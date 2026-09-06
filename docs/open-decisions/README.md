@@ -23,11 +23,12 @@ key, and the gate rejects any mismatch between that key, the
 
 ## Active
 
-- [OD-005: Raw input carrier semantics](OD-005-raw-input-carrier-semantics.md)
-- [OD-006: Duplicate binding-record diagnostics](OD-006-duplicate-binding-record-diagnostics.md)
+None. The separate proposed dependency and custody ADRs retain their own gates.
 
 ## Resolved
 
+- [OD-005: Raw input carrier semantics](OD-005-raw-input-carrier-semantics.md)
+- [OD-006: Duplicate binding-record diagnostics](OD-006-duplicate-binding-record-diagnostics.md)
 - [OD-004: Package carrier and resolution policy](OD-004-package-carrier-and-resolution-policy.md)
 - [OD-001: Public package identity and topology](OD-001-public-package-identity-and-topology.md)
 - [OD-002: Canonical plan encoding and digest](OD-002-canonical-plan-encoding-and-digest.md)

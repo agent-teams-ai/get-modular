@@ -1,9 +1,17 @@
 ---
 id: ADR-0021
 type: adr
-status: proposed
+status: accepted
 owner: architecture
 summary: Binds the combined raw and duplicate-record successor artifacts and bounded M2 implementation scope.
+approved_by: product-owner
+accepted_at: 2026-09-06
+related:
+  - ADR-0013
+  - ADR-0014
+  - OD-005
+  - OD-006
+  - ARCH-MVP-IMPLEMENTATION-ROADMAP
 ---
 
 # ADR-0021: Freeze combined diagnostic generation two for M2
@@ -15,14 +23,16 @@ combined diagnostic generation 2 transaction described by ADR-0013 and
 ADR-0014. The owner has selected both wrapper rules; this proposal binds their
 complete evidence and a bounded implementation handoff.
 
-This document remains proposed. Neither a fixture pass nor its presence in
-main authorizes M2 production semantics.
+The product owner explicitly accepted this decision and the bounded M2 scope
+on 2026-09-06 after independent review and the three-platform CI gate.
+Acceptance authorizes implementation; the retained oracle evidence does not
+prove that the future Core implementation passes its qualification suite.
 
 ## Decision
 
 ### One successor, immutable semantic annexes
 
-On explicit acceptance, adopt the complete Decision sections of these exact
+Adopt the complete Decision sections of these exact
 semantic annexes together:
 
 - [ADR-0013](0013-close-trusted-object-and-raw-carrier-semantics.md), raw file
@@ -104,18 +114,17 @@ cannot turn these observations into execution of a future compiler.
 
 ### Owner scope and implementation handoff
 
-Before production edits, the explicit owner acceptance activates ADR-0021,
-resolves OD-005/OD-006, registers its immutable decision digest and expands the
-roadmap owner record with the matching ledger identity. The active M1 record
-remains unchanged while this document is proposed. The finite checker must
-reject an expanded record without the accepted umbrella and matching evidence.
+The owner acceptance activates ADR-0021, resolves OD-005/OD-006, registers its
+immutable decision digest and expands the roadmap owner record with the
+matching ledger identity before production edits. The finite checker rejects
+an expanded record without the accepted umbrella and matching evidence.
 No publication, dependency selection, runtime lifecycle or generated claim is
 implicitly admitted by that operation.
 
-Prepared replacement record follows. After explicit acceptance, set the actual
-approval date and authorized status and insert it into the existing roadmap
-markers in the same transaction. This inactive example is deliberately rejected
-by the checker.
+The historical preparation template follows. The active authorized record,
+with the actual approval date, is in the existing roadmap markers. This
+inactive example is retained to illustrate a record rejected by the checker;
+it is not a second owner authorization.
 
 ```json
 {

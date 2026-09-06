@@ -130,9 +130,10 @@ Follow the phase's full exit criteria as well as this navigation table.
 | [7: reserved](#reserved-phase-7-extensionplugin-boundary) | System boundary | No implementation task, package, runtime or gate. |
 | [8: release/conformance](#phase-8-release-and-conformance-checkpoint) | ADR-0008/0012/0017/0018, the accepted successor to ADR-0011 if one exists, [release-custody prerequisites](#phase-4-release-custody-prerequisites) | Exact retained archive, required runtime/custody evidence and recovery proof; publishing remains a separate authorized action. Phase 6 is optional and phase 7 is skipped. |
 
-The proposed [combined M2 handoff](../decisions/0021-freeze-combined-diagnostic-generation-two-for-m2.md#owner-scope-and-implementation-handoff)
+The accepted [combined M2 handoff](../decisions/0021-freeze-combined-diagnostic-generation-two-for-m2.md#owner-scope-and-implementation-handoff)
 binds the prepared successor evidence and the M2.1-M2.4 ownership/exit map.
-It does not activate M2 while its status is proposed.
+The owner accepted ADR-0021 and activated the bounded M2 implementation scope
+on 2026-09-06. M2 completion still requires real Core replay and qualification.
 
 M2 is a milestone spanning the existing admission, semantic and output phases,
 not an omitted numbered phase. Before production raw or repeated-record implementation,
@@ -1408,17 +1409,30 @@ to test the gate.
 ```json
 {
   "repository": "agent-teams-ai/get-modular",
-  "baseCommit": "0f7d2fc64ae7258781e6c2676ca1e0ccc377f418",
+  "baseCommit": "bdeabe942676fd2a12c9ad59ce83658b60d85ffc",
   "authorityDigest": "sha256:9ba074210704a20f6a3ef7486f3cf2ec7435fb0fc5552cca210b6d3d5d73f077",
   "approvedBy": "product-owner",
-  "approvedOn": "2026-09-04",
+  "approvedOn": "2026-09-06",
   "status": "authorized",
   "package": "@get-modular/core",
-  "scope": ["semantics", "object-entry", "publication-not-claimed"],
+  "scope": [
+    "semantics",
+    "object-entry",
+    "publication-not-claimed",
+    "raw-carriers",
+    "raw-entry-export",
+    "duplicate-binding-records"
+  ],
   "excluded": [
-    "raw-carriers", "raw-entry-export", "runtime-lifecycle",
-    "conformance-claims", "proposed-contract-claims", "generated-self-composition-claims"
-  ]
+    "runtime-lifecycle",
+    "conformance-claims",
+    "proposed-contract-claims",
+    "generated-self-composition-claims"
+  ],
+  "m2Authority": {
+    "decisionId": "ADR-0021",
+    "ledgerDigest": "sha256:3781993b5714d8f8928ca2a2082353f93bc42b0e69a3373bd9cfaa41963f7f61"
+  }
 }
 ```
 
