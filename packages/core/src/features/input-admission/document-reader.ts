@@ -34,21 +34,21 @@ function objectOwn(value: unknown, key: string): OwnMember<unknown> {
   return { present: true, value: Object.hasOwn(descriptor, "value") ? descriptor.value : undefined };
 }
 
+function objectKeys(value: unknown): readonly string[] { return Object.keys(Object.getOwnPropertyDescriptors(value)); }
+function objectLength(value: unknown): number { return Object.getOwnPropertyDescriptor(value, "length")!.value as number; }
+function objectItem(value: unknown, index: number): unknown {
+  const member = objectOwn(value, String(index));
+  return member.present ? member.value : undefined;
+}
+function objectText(value: unknown): string { return value as string; }
+function objectInteger(value: unknown): ExactInteger {
+  if (typeof value !== "number" || !Number.isInteger(value)) return { admitted: false, reason: "invalid-type" };
+  if (!Number.isSafeInteger(value) || Object.is(value, -0)) return { admitted: false, reason: "invalid-format" };
+  return { admitted: true, value };
+}
 const objectReader: DocumentReader<unknown> = Object.freeze({
-  kind: objectKind,
-  keys: (value: unknown) => Object.keys(Object.getOwnPropertyDescriptors(value)),
-  own: objectOwn,
-  length: (value: unknown) => Object.getOwnPropertyDescriptor(value, "length")!.value as number,
-  item: (value: unknown, index: number) => {
-    const member = objectOwn(value, String(index));
-    return member.present ? member.value : undefined;
-  },
-  text: (value: unknown) => value as string,
-  integer: (value: unknown): ExactInteger => {
-    if (typeof value !== "number" || !Number.isInteger(value)) return { admitted: false, reason: "invalid-type" };
-    if (!Number.isSafeInteger(value) || Object.is(value, -0)) return { admitted: false, reason: "invalid-format" };
-    return { admitted: true, value };
-  },
+  kind: objectKind, keys: objectKeys, own: objectOwn, length: objectLength,
+  item: objectItem, text: objectText, integer: objectInteger,
 });
 
 export function objectDocument(value: unknown): DocumentView<unknown> {
