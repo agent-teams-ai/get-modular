@@ -208,12 +208,11 @@ function contractSource(generation, surface) {
       // Compare the raw signature without recursively interpreting typed-array
       // methods as wire fields. The checker separately proves carrier identity.
       'type EByteCarrier = Uint8Array;',
-      `type ERawInput = ${record({ declarations: "readonly EByteCarrier[]", profile: "EByteCarrier" })};`,
-      'type RawCarrier<T> = T extends unknown ? Same<T, EByteCarrier> : never;',
-      'type RawCarrierField<T> = Same<RawCarrier<T>, true> extends true ? EByteCarrier : T;',
-      'type RawListFields<T> = { [K in keyof T]: RawCarrierField<T[K]> };',
-      'type RawList<T> = T extends unknown ? Same<RawListFields<T>, readonly EByteCarrier[]> : never;',
-      'type RawFields<T> = { [K in keyof T]: K extends "declarations" ? Same<RawList<T[K]>, true> extends true ? readonly EByteCarrier[] : T[K] : K extends "profile" ? RawCarrierField<T[K]> : T[K] };',
+      'type EByteList = readonly EByteCarrier[];',
+      `type ERawInput = ${record({ declarations: "EByteList", profile: "EByteCarrier" })};`,
+      // Independent component verification precedes this comparison. Replace
+      // verified field values while preserving wrapper keys and modifiers.
+      'type RawFields<T> = { [K in keyof T]: K extends "declarations" ? EByteList : K extends "profile" ? EByteCarrier : T[K] };',
       'type RawArm<T> = T extends unknown ? Same<RawFields<T>, ERawInput> : never;',
       'type RawInput = Check<Same<RawArm<Parameters<typeof P.compileCompositionJson>[0]>, true>>;',
       'type AssignRawInput = Check<Assignable<ERawInput, Parameters<typeof P.compileCompositionJson>[0]>>;',
@@ -448,29 +447,54 @@ function audit(files, generation, surface) {
     need(carrierSymbol?.name === "Uint8Array"
       && carrierSymbol.getDeclarations()?.every(node =>
         node.getSourceFile() === sources.get(`${LIB}/lib.es5.d.ts`)), "library-type");
+    const listDeclaration = contract.statements.find(node =>
+      ts.isTypeAliasDeclaration(node) && node.name.text === "EByteList");
+    const readonlyList = checker.getTypeFromTypeNode(listDeclaration.type);
+    const listSymbol = readonlyList.getSymbol();
+    const carrierArguments = checker.getTypeArguments(carrier);
+    // Trusted reference targets fix members and modifiers; exact instantiated
+    // arguments fix the carrier contract. Verify every union/intersection leaf
+    // before canonicalizing, without comparing intersected method overloads.
+    function* components(type) {
+      const pending = [type];
+      const seen = new Set();
+      while (pending.length) {
+        const component = pending.pop();
+        if (seen.has(component)) continue;
+        seen.add(component);
+        if (component.isUnion() || component.isIntersection()) pending.push(...component.types);
+        else yield component;
+      }
+    }
+    function verifyCarrier(type) {
+      for (const alternative of components(type)) {
+        need(alternative.getSymbol() === carrierSymbol && alternative.target === carrier.target,
+          "raw-carrier");
+        const arguments_ = checker.getTypeArguments(alternative);
+        need(arguments_.length === carrierArguments.length
+          && arguments_.every((argument, index) => argument === carrierArguments[index]), "type-contract");
+      }
+    }
     const raw = roots.find(item => item.name === "compileCompositionJson");
     const signature = ts.isFunctionDeclaration(raw.node) ? raw.node : raw.node.type;
     const inputNode = signature.parameters[0].type;
     const input = checker.getTypeFromTypeNode(inputNode);
-    // Check each constituent before combining its semantic contract. Distinct
-    // aliases can preserve separate array references inside a wrapper union.
+    // Verify every list/carrier component before the contract canonicalizes
+    // field values; wrapper keys and modifiers remain in the semantic check.
     for (const arm of input.isUnion() ? input.types : [input]) {
       const declarations = checker.getPropertyOfType(arm, "declarations");
       const profile = checker.getPropertyOfType(arm, "profile");
       need(declarations && profile, "raw-input");
       const list = checker.getTypeOfSymbolAtLocation(declarations, inputNode);
       const profileType = checker.getTypeOfSymbolAtLocation(profile, inputNode);
-      const carriers = [profileType];
-      for (const alternative of list.isUnion() ? list.types : [list]) {
+      verifyCarrier(profileType);
+      for (const alternative of components(list)) {
         need(checker.isArrayType(alternative) && !checker.isTupleType(alternative), "raw-input");
-        const element = checker.getTypeArguments(alternative)[0];
-        // Nominal provenance stays separate from the exact semantic check,
-        // which normalizes only alternatives already equal to the readonly list.
-        need(element, "raw-carrier");
-        carriers.push(element);
-      }
-      for (const type of carriers) for (const alternative of type.isUnion() ? type.types : [type]) {
-        need(alternative.getSymbol() === carrierSymbol, "raw-carrier");
+        need(alternative.getSymbol() === listSymbol && alternative.target === readonlyList.target,
+          "type-contract");
+        const arguments_ = checker.getTypeArguments(alternative);
+        need(arguments_.length === 1, "raw-carrier");
+        verifyCarrier(arguments_[0]);
       }
       // Reject a declaration-list tuple spelled directly or through transparent
       // owned aliases. Carrier aliases and intermediate type computations are
@@ -484,6 +508,8 @@ function audit(files, generation, surface) {
         need(!ts.isTupleTypeNode(node), "raw-input");
         if (ts.isParenthesizedTypeNode(node) || ts.isTypeOperatorNode(node)) {
           pendingTypes.push(node.type);
+        } else if (ts.isUnionTypeNode(node) || ts.isIntersectionTypeNode(node)) {
+          pendingTypes.push(...node.types);
         } else if (ts.isTypeReferenceNode(node) || ts.isImportTypeNode(node)) {
           let symbol = checker.getSymbolAtLocation(ts.isTypeReferenceNode(node) ? node.typeName : node.qualifier);
           if (symbol?.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);

@@ -570,6 +570,64 @@ test("public M2 accepts equivalent carrier unions at both positions", () => {
   }
 });
 
+test("public M2 verifies each list intersection component before normalization", () => {
+  for (const right of [
+    "ReadonlyArray<T>", "T[]", "ReadonlyArray<T> & { readonly extra?: never }",
+    "ReadonlyArray<never>", "readonly [...T[]]",
+  ]) {
+    const files = publicM2Fixture();
+    append(files, WIRE, `\ntype Left<T> = readonly T[];
+    type Right<T> = ${right};
+    export type RawInput = {
+      readonly declarations: Left<Uint8Array> & Right<Uint8Array>;
+      readonly profile: Uint8Array;
+    };\n`);
+    append(files, ROOT, '\nimport type { RawInput } from "./features/authoring/wire.js";\n');
+    replace(files, ROOT, rawCompiler,
+      "export declare const compileCompositionJson: (input: RawInput) => Promise<CompileCompositionResult>;");
+    if (right === "ReadonlyArray<T>") {
+      assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
+    } else reject(files, undefined, 2, "m2");
+  }
+});
+
+test("public M2 verifies each carrier intersection component at both positions", () => {
+  for (const right of [
+    "Uint8Array<T>", "Uint8Array<never>", "Uint16Array<T>",
+    "Uint8Array<T> & { readonly extra?: never }",
+    "{ [K in keyof Uint8Array<T>]: Uint8Array<T>[K] }",
+  ]) for (const position of ["profile", "declarations"]) {
+    const files = publicM2Fixture();
+    append(files, WIRE, `\ntype Left<T extends Uint8Array["buffer"]> = Uint8Array<T>;
+    type Right<T extends Uint8Array["buffer"]> = ${right};
+    export type Bytes = Left<Uint8Array["buffer"]> & Right<Uint8Array["buffer"]>;\n`);
+    append(files, ROOT, '\nimport type { Bytes } from "./features/authoring/wire.js";\n');
+    replace(files, ROOT, rawCompiler, rawCompiler.replace(
+      position === "profile" ? "profile: Uint8Array" : "readonly Uint8Array[]",
+      position === "profile" ? "profile: Bytes" : "readonly Bytes[]"));
+    if (right === "Uint8Array<T>") {
+      assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
+    } else reject(files, undefined, 2, "m2");
+  }
+});
+
+test("public M2 normalizes verified carrier intersections within list intersections", () => {
+  const files = publicM2Fixture();
+  append(files, WIRE, `\ntype Left<T> = readonly T[];
+  type Right<T> = ReadonlyArray<T>;
+  type ByteLeft<T extends Uint8Array["buffer"]> = Uint8Array<T>;
+  type ByteRight<T extends Uint8Array["buffer"]> = Uint8Array<T>;
+  type Bytes = ByteLeft<Uint8Array["buffer"]> & ByteRight<Uint8Array["buffer"]>;
+  export type RawInput = {
+    readonly declarations: Left<Bytes> & Right<Bytes>;
+    readonly profile: Bytes;
+  };\n`);
+  append(files, ROOT, '\nimport type { RawInput } from "./features/authoring/wire.js";\n');
+  replace(files, ROOT, rawCompiler,
+    "export declare const compileCompositionJson: (input: RawInput) => Promise<CompileCompositionResult>;");
+  assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
+});
+
 test("public M2 accepts mapped wrappers with synthesized properties", () => {
   const files = publicM2Fixture();
   append(files, WIRE, '\nexport type RawInput = { readonly [K in "declarations" | "profile"]: K extends "declarations" ? readonly Uint8Array[] : Uint8Array };\n');
