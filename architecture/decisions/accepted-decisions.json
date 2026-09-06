@@ -76,6 +76,11 @@
       "id": "ADR-0020",
       "path": "docs/decisions/0020-define-diagnostic-coverage-outside-object-resource-admission.md",
       "immutableDigest": "sha256:efed8501482a2bc9af58d6f0b71d85f18be0931ce39cf1a102d2b74090916668"
+    },
+    {
+      "id": "ADR-0021",
+      "path": "docs/decisions/0021-freeze-combined-diagnostic-generation-two-for-m2.md",
+      "immutableDigest": "sha256:f69aa07ac719e8b317924753cf6375e32adee83b937cb4c450a87b0395da22de"
     }
   ]
 }

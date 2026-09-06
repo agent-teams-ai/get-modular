@@ -1,10 +1,12 @@
 ---
 id: OD-005
 type: open-decision
-status: open
+status: resolved
+resolved_by: ADR-0021
 owner: architecture
 summary: Closes trusted-object admission and raw byte-carrier snapshot behavior before raw-input exposure.
 related:
+  - ADR-0021
   - ADR-0006
   - ADR-0007
   - ADR-0013
@@ -29,9 +31,9 @@ records, arrays and byte views.
 
 Accepted [ADR-0018](../decisions/0018-close-implementation-readiness-rules.md)
 settles exact raw integer admission and the trusted object/wrapper resource
-envelope. This decision stays open for the remaining carrier classification,
-descriptor, wrapper-shape, snapshot and diagnostic evidence. Its successor
-must carry the accepted clarifications into the single M2 generation.
+envelope. The remaining carrier classification, descriptor, wrapper-shape, snapshot
+and diagnostic evidence are adopted through ADR-0021, which carries these
+clarifications into the single M2 generation.
 
 ## Constraints
 
@@ -109,14 +111,10 @@ evidence and make no Firefox, Safari, or release-runtime claim.
 
 ## Resolution
 
-Open. ADR-0013 is a proposed resolution. Under accepted ADR-0017 the object
-entry point `compileComposition` publishes with the plain-value admission rules
-that accepted ADR-0006 and ADR-0007 already fix; every carrier refinement this
-decision owns is documented as outside the admitted input domain and is
-neither exposed nor claimed. The raw entry point `compileCompositionJson` and
-the raw-carrier adapter stay out of the public barrel until this decision is
-accepted with successor diagnostics and evidence; the production subject must
-then rerun the same closed suite. Before acceptance, independent successor
-fixtures and Node oracle tooling under `tests/qualification` may produce
-acceptance evidence. This does not authorize candidate carrier semantics in
-`packages/core` under the current M1 owner scope or claim compiler conformance.
+Resolved by accepted [ADR-0021](../decisions/0021-freeze-combined-diagnostic-generation-two-for-m2.md)
+on 2026-09-06. It adopts the exact semantic annex ADR-0013 together with
+the combined generation 2 ledger and retained oracle evidence. The annex's
+historical proposed status and pinned bytes are preserved. The owner has
+authorized the bounded M2 implementation scope. Real Core object/raw replay
+and the complete M2 qualification gates remain required before exposure;
+acceptance does not relabel the oracle observations as compiler execution.

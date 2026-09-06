@@ -1,6 +1,6 @@
 schemaVersion: 1
 decisionCatalog: [OD-001, OD-002, OD-003, OD-004, OD-005, OD-006]
-implementationBlockers: [OD-005, OD-006]
+implementationBlockers: []
 publicationBlockers: []
 requirements:
   GM-REQ-001:
