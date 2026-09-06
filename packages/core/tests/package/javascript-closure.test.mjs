@@ -727,3 +727,15 @@ for (const [before, after, reason] of [
     reject(files, reason);
   });
 }
+
+for (const replacement of [
+  "import { defineModule as appendOwn } from '../authoring/helpers.js';",
+  "import { defineModule as borrowed } from '../authoring/helpers.js'; const appendOwn = borrowed;",
+]) {
+  test(`raw append rejects a borrowed helper: ${replacement}`, () => {
+    const { files, path } = rawAppendFixture();
+    const text = files.get(path).toString();
+    files.set(path, Buffer.from(text.replace(/function appendOwn\(values, value\) \{[\s\S]*?\n\}/u, replacement)));
+    reject(files, 'construction');
+  });
+}

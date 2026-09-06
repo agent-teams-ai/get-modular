@@ -513,6 +513,7 @@ function audit(files) {
     if (!ts.isVariableStatement(statement)) continue;
     for (const declaration of statement.declarationList.declarations) {
       if (!ts.isIdentifier(declaration.name)) continue;
+      requireThat(!functionProfiles.has(`${path}:${declaration.name.text}`), 'construction');
       const expected = captureInitializers.get(path)?.get(declaration.name.text);
       if (expected === undefined) continue;
       const initializer = unwrap(declaration.initializer);
@@ -763,6 +764,9 @@ function audit(files) {
           requireThat((checker.getSymbolAtLocation(node)?.declarations?.length ?? 0) === 1, 'binding');
         } else if (!nonReference(node)) {
           const declaration = declarationOf(symbolAt(node));
+          if (functionProfiles.has(`${path}:${node.text}`)) requireThat(declaration
+            && reviewedFunctions.has(declaration) && pathOf(declaration) === path
+            && declaration.name?.text === node.text, 'construction');
           if (declaration) {
             requireThat(modules.has(pathOf(declaration)), 'global');
             checkCapturedReference(node, declaration);
