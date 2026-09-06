@@ -701,3 +701,29 @@ for (const update of ['++record', '--record']) {
       `identity(isWellFormedUtf16, ${update}, 64)`), 'top-level');
   });
 }
+
+function rawAppendFixture() {
+  const files = baseline(), path = 'dist/features/input-admission/raw-byte-input.js';
+  files.set(path, Buffer.from(`const defineProperty = Object.defineProperty;
+function appendOwn(values, value) {
+  const descriptor = { __proto__: null, value, enumerable: true, configurable: true, writable: true };
+  defineProperty(values, values.length, descriptor);
+}
+export function captureRawInput(input, sink) { const values = []; appendOwn(values, input); return values; }`));
+  files.set(RAW_ADMISSION, Buffer.from("import { captureRawInput } from './raw-byte-input.js';\n" + files.get(RAW_ADMISSION)));
+  return { files, path };
+}
+test('owned raw append helper admits its captured intrinsic and null-prototype descriptor', () => {
+  assert.deepEqual(auditM1JavaScriptClosure(rawAppendFixture().files).exports, publicNames);
+});
+for (const [before, after, reason] of [
+  ['Object.defineProperty', 'Object.freeze', 'top-level'],
+  ['__proto__: null, ', '', 'construction'],
+  ['defineProperty(values, values.length, descriptor);', 'values.push(value);', 'construction'],
+]) {
+  test(`raw append helper rejects altered construction: ${after}`, () => {
+    const { files, path } = rawAppendFixture();
+    edit(files, path, before, after);
+    reject(files, reason);
+  });
+}

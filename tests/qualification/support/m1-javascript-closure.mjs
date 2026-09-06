@@ -69,7 +69,7 @@ const rows = [
   ['features/input-admission/object-resource-meter', 'createObjectResourceMeter', 'valueLimit stringLimit depthLimit', 'countValues countString scanDocument nonPlain enter'],
   ['features/input-admission/profile-resource-facts', 'ownValue profileResourceFacts profileResourceFactsView', 'portable', 'ownMember textMember'],
   ['features/input-admission/raw-admission', 'admitRawInput', '', 'add empty scan arrayLength validate hasVersionOne'],
-  ['features/input-admission/raw-byte-input', 'captureRawInput', '', 'add empty'],
+  ['features/input-admission/raw-byte-input', 'captureRawInput', 'appendOwn defineProperty', 'add empty'],
   ['features/input-admission/raw-document', 'scanRawDocument rawDocumentView', 'lexicalKind duplicatePath invalidAccess valueEnd', 'chargeString spanOf open capture recordOf arrayOf item text'],
   ['features/input-admission/raw-duplicate-replay', 'visitRawDuplicatePaths', 'invalidReplay isContainer isValue newGroup', 'admits retainSpan open releaseCursor read capture fold collectRecord visit'],
   ['features/input-admission/raw-numeric-admission', 'numericFailureMask visitRawNumericFailures', 'localPathCapacity union integerMask stoppedMask ownerMask', 'child emitMask visitChild visitOwner'],
@@ -117,7 +117,7 @@ const scopedMembers = new Map([
   [feature('input-admission'), words('scanner admitRawInput')],
   ['dist/features/input-admission/object-resource-meter.js', words('segment')],
   [RAW_ADMISSION, words('blocked allDeclarationsCaptured valuesRemaining stringBytesRemaining valueOccurrences stringBytes invalidJson decoded duplicateKey')],
-  [RAW_BYTES, words('blocked allDeclarationsCaptured visibleLength declarationRawDocumentBytes profileRawDocumentBytes aggregateRawBytes')],
+  [RAW_BYTES, words('blocked allDeclarationsCaptured visibleLength declarationRawDocumentBytes profileRawDocumentBytes aggregateRawBytes defineProperty __proto__ configurable writable')],
   ['dist/features/input-admission/resource-limits.js', words('declarationRawDocumentBytes profileRawDocumentBytes aggregateRawBytes')],
   ['dist/features/input-admission/resource-diagnostic.js', words('declarationRawDocumentBytes profileRawDocumentBytes aggregateRawBytes')],
   ['dist/features/input-admission/raw-duplicate-replay.js', words('start end spans duplicate source base current cursor keys keyExpected tokenVisits arrayCursorSteps peakLiveSpans peakLiveCursors peakGroupDepth open subarray decodeString')],
@@ -185,6 +185,7 @@ const captureInitializers = new Map([
     ['sharedProbe', 'captureGetter(ArrayBuffer.prototype, "byteLength")'],
     ['usableProbe', 'typedArrayPrototype.at'],
   ])],
+  [RAW_BYTES, new Map([['defineProperty', 'Object.defineProperty']])],
   [SCANNER, new Map([['fromCharCode', 'String.fromCharCode']])],
 ]);
 const shapeConstructors = new Map([
@@ -197,6 +198,7 @@ const shapeConstructors = new Map([
 // Tiny helpers that execute during initialization or introduce intrinsic writes
 // need a closed body as well as a name. No scanner/schema algorithm is pinned.
 const functionProfiles = new Map([
+  [`${RAW_BYTES}:appendOwn`, 'function appendOwn(values, value) { const descriptor = { __proto__: null, value, enumerable: true, configurable: true, writable: true }; defineProperty(values, values.length, descriptor); }'],
   [`${BYTE_CARRIER}:captureGetter`, 'function captureGetter(prototype, key) { const getter = Object.getOwnPropertyDescriptor(prototype, key)?.get; if (getter === undefined) { throw new TypeError("Required byte carrier intrinsic is unavailable"); } return getter; }'],
   [`${SNAPSHOT}:record`, 'function record(fields) { const value = Object.create(null); for (const key of Object.keys(fields)) { Object.defineProperty(value, key, { value: fields[key], enumerable: true }); } return Object.freeze(value); }'],
   ...[...shapeConstructors].map(([name, contract]) => [`${SHAPE}:${name}`, contract[2]]),
