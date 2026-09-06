@@ -4,6 +4,7 @@ import test from 'node:test';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { buildGenerationTwo } from './generation-two-artifacts.mjs';
+import { mutationEvidence } from './mutation-evidence.mjs';
 
 // These pins and expectations come from the supplied normative texts, not the builder.
 const PINS = [
@@ -300,6 +301,32 @@ function checkSnapshotShapes(candidate) {
 }
 const eligible = (entry, facts) => entry.prerequisites.every(id => facts[id] === 'valid');
 
+function candidateBytes(value) {
+  assertJson(value); // Admission precedes encoding; never stringify a malformed control.
+  return Buffer.from(stable(value), 'utf8');
+}
+function checkedCandidate(base, candidate) {
+  try { checkCandidate(base, candidate); }
+  catch (error) { error.privateCheck = 'checkCandidate'; throw error; }
+}
+const appendSourceNewline = bytes => Buffer.concat([bytes, Buffer.from('\n')]);
+const NON_JSON_CONTROLS = ['unsupported-undefined', 'unsupported-symbol', 'unsupported-getter', 'unsupported-nan'];
+// These map static artifact corruptions to existing/new rejection test IDs.
+// They do not stand for execution of a compiler implementing these mutations.
+const ADR0014_STATIC_MUTATIONS = {
+  overloadedCode: ['reject:record-overloaded-code'],
+  codeRank: ['reject:record-rank'],
+  prerequisiteOrderGroupScope: ['reject:record-prerequisite-order', 'reject:record-prerequisite-group', 'reject:record-prerequisite-scope'],
+  missingOrRemappedFacts: ['reject:fact-removed', 'reject:fact-unknown', 'reject:fact-scope'],
+  perOccurrenceOutput: ['reject:record-per-occurrence'],
+  arrayIndexPath: ['reject:record-path-index'],
+  winnerSelection: ['reject:record-first-winner', 'reject:record-last-winner'],
+  rowCombination: ['reject:record-row-merge', 'reject:record-row-concatenation', 'reject:record-row-intersection', 'reject:record-row-sort', 'reject:record-row-fallback'],
+  invalidGroupContribution: ['reject:invalid-group-edge-leak', 'reject:record-plan-binding-leak'],
+  independentFactSuppression: ['reject:independent-scc-suppressed', 'reject:unreached-frontier-global-suppression', 'reject:legacy-binding-prerequisite'],
+  collectorEarlyStop: ['reject:collector-stop-k-plus-one'],
+  resourceDeduplication: ['reject:resource-deduplication', 'reject:graph-resource-deduplication', 'reject:many-resource-deduplication'],
+};
 const MUTATIONS = [
   ['removed-schema-code', c => c.schema.$defs.diagnostic.properties.code.enum.splice(0, 1)],
   ['unknown-catalog-code', c => c.catalog.ordering.codes.push('binding.future')],
@@ -361,8 +388,25 @@ const MUTATIONS = [
   ['accepted-status', c => { c.status = 'accepted'; }],
   ['old-generation', c => { c.snapshots.vectorVersion = 1; }],
   ['source-hash-drift', c => { c.sourceHashes[PINS[0][0]] = 'sha256:' + '0'.repeat(64); }],
+  ['record-overloaded-code', c => { snapshot(c, 'g2-duplicate-record').code = 'binding.duplicate'; }],
+  ['record-prerequisite-group', c => { row(c, RECORD).prerequisiteGroup = 'binding.slot-frontier'; }],
+  ['record-prerequisite-scope', c => { row(c, RECORD).suppressionScope = 'profile'; }],
+  ['record-per-occurrence', c => c.snapshots.snapshots.push(clone(c.snapshots.snapshots.find(item => item.name === 'g2-duplicate-record')))],
+  ['record-first-winner', c => { c.contract.proposedRefinements.bindingRecords.invalidGroup.resolution = 'first-row'; }],
+  ['record-last-winner', c => { c.contract.proposedRefinements.bindingRecords.invalidGroup.resolution = 'last-row'; }],
+  ['record-row-merge', c => { c.contract.proposedRefinements.bindingRecords.invalidGroup.resolution = 'merge'; }],
+  ['record-row-concatenation', c => { c.contract.proposedRefinements.bindingRecords.invalidGroup.resolution = 'concatenate'; }],
+  ['record-row-intersection', c => { c.contract.proposedRefinements.bindingRecords.invalidGroup.resolution = 'intersect'; }],
+  ['record-row-sort', c => { c.contract.proposedRefinements.bindingRecords.invalidGroup.resolution = 'sort'; }],
+  ['record-row-fallback', c => { c.contract.proposedRefinements.bindingRecords.invalidGroup.resolution = 'fallback'; }],
+  ['collector-stop-k-plus-one', c => { c.contract.proposedRefinements.bindingRecords.collector = 'stop-at-k-plus-one'; }],
+  ['graph-resource-deduplication', c => { c.contract.proposedRefinements.bindingRecords.resourceAccounting.graphEdges = 'unique-providers'; }],
+  ['many-resource-deduplication', c => { c.contract.proposedRefinements.bindingRecords.resourceAccounting.providersPerManySlot = 'unique-providers-per-row'; }],
+  ['record-plan-binding-leak', c => { c.contract.proposedRefinements.bindingRecords.invalidGroup.planBindings = 'first-row'; }],
   ['unsupported-undefined', c => { c.extra = undefined; }],
-  ['unsupported-symbol', c => { c[Symbol('extra')] = true; }]
+  ['unsupported-symbol', c => { c[Symbol('extra')] = true; }],
+  ['unsupported-getter', c => { Object.defineProperty(c, 'extra', { enumerable: true, get() { throw new Error('getter invoked'); } }); }],
+  ['unsupported-nan', c => { c.extra = NaN; }]
 ];
 
 test('private generation two: closed static artifact corpus', async t => {
@@ -378,6 +422,23 @@ test('private generation two: closed static artifact corpus', async t => {
   const subjectBytes = readFileSync(subjectUrl);
   const runnerBytes = readFileSync(runnerUrl);
   const candidate = buildGenerationTwo(sourceBytes);
+  eq(MUTATIONS.length, 79);
+  eq(new Set(MUTATIONS.map(([id]) => id)).size, 79);
+  eq(MUTATIONS.filter(([id]) => NON_JSON_CONTROLS.includes(id)).map(([id]) => id), NON_JSON_CONTROLS);
+  const baseCandidateBytes = candidateBytes(candidate);
+  const evidence = mutationEvidence('generation-two-artifacts', runnerBytes, [
+    ...MUTATIONS.filter(([id]) => !NON_JSON_CONTROLS.includes(id)).map(([id, change]) => ({
+      mutationId: `reject:${id}`, targetKind: 'candidate-artifact',
+      sourcePath: 'tests/qualification/m2-candidate/generation-two-artifacts.mjs',
+      sourceBytes: subjectBytes, baseBytes: baseCandidateBytes, change,
+      caseId: `reject:${id}`, entryPoint: 'checkCandidate', checker: 'checkCandidate', rejectedBy: 'checkCandidate',
+    })),
+    ...PINS.map(([path]) => ({
+      mutationId: `source-fingerprint:${path}`, targetKind: 'accepted-source-bytes',
+      sourcePath: path, sourceBytes: sourceBytes[path], baseBytes: sourceBytes[path], change: appendSourceNewline,
+      caseId: `source-fingerprint:${path}`, entryPoint: 'buildGenerationTwo', checker: 'buildGenerationTwo', rejectedBy: null,
+    })),
+  ]);
   const checks = [
     ['closed-contract-and-unchanged-legacy', () => checkCandidate(base, candidate)],
     ['complete-snapshots-and-dispositions', () => {
@@ -447,14 +508,19 @@ test('private generation two: closed static artifact corpus', async t => {
       assert.throws(() => buildGenerationTwo(missing), /base-source-shape/);
     }]
   ];
-  for (const [id, mutate] of MUTATIONS) checks.push([`reject:${id}`, () => {
-    const corrupt = clone(candidate);
-    mutate(corrupt);
-    assert.throws(() => checkCandidate(base, corrupt), { name: 'AssertionError' });
+  for (const [id, mutate] of MUTATIONS) checks.push([`reject:${id}`, async () => {
+    if (NON_JSON_CONTROLS.includes(id)) {
+      const corrupt = clone(candidate);
+      mutate(corrupt);
+      assert.throws(() => checkedCandidate(base, corrupt), {
+        name: 'AssertionError', code: 'ERR_ASSERTION', privateCheck: 'checkCandidate',
+      });
+      return; // Supplemental integrity control: no JSON payload identity is claimed.
+    }
+    await evidence.run(`reject:${id}`, corrupt => checkedCandidate(base, corrupt), candidateBytes);
   }]);
-  for (const [path] of PINS) checks.push([`source-fingerprint:${path}`, () => {
-    const corrupt = { ...sourceBytes, [path]: Buffer.concat([sourceBytes[path], Buffer.from('\n')]) };
-    assert.throws(() => buildGenerationTwo(corrupt), /base-fingerprint/);
+  for (const [path] of PINS) checks.push([`source-fingerprint:${path}`, async () => {
+    await evidence.run(`source-fingerprint:${path}`, bytes => buildGenerationTwo({ ...sourceBytes, [path]: bytes }));
   }]);
   checks.push(['observation-bytes-stable', () => {
     eq(readFileSync(subjectUrl), subjectBytes);
@@ -464,8 +530,15 @@ test('private generation two: closed static artifact corpus', async t => {
   const ids = checks.map(([id]) => id);
   eq(new Set(ids).size, ids.length);
   let completed = 0;
-  for (const [id, run] of checks) await t.test(id, () => { run(); completed++; });
+  for (const [id, run] of checks) await t.test(id, async () => { await run(); completed++; });
   if (completed !== checks.length) return; // Never emit a successful observation after a failed check.
+  const mutationReport = evidence.report();
+  eq(mutationReport.rows.length, 84);
+  const mutationIds = new Set(mutationReport.rows.map(item => item.mutationId));
+  for (const mapped of Object.values(ADR0014_STATIC_MUTATIONS)) {
+    for (const id of mapped) assert(mutationIds.has(id), `missing static mutation witness: ${id}`);
+  }
+  eq(candidateBytes(candidate), baseCandidateBytes);
   const candidateHashes = Object.fromEntries(['schema', 'catalog', 'contract', 'snapshots'].map(name => [name, hash(Buffer.from(stable(candidate[name])))]));
   t.diagnostic(JSON.stringify({
     kind: 'get-modular.private-generation-two-test-observation',
@@ -480,6 +553,11 @@ test('private generation two: closed static artifact corpus', async t => {
     candidateHashes: { candidate: hash(Buffer.from(stable(candidate))), ...candidateHashes },
     closedTestCount: completed,
     testIds: ids,
+    adr0014StaticMutationCategories: ADR0014_STATIC_MUTATIONS,
+    supplementalIntegrityControls: NON_JSON_CONTROLS.map(id => ({
+      testId: `reject:${id}`, exclusionReason: 'non-json-integrity-control-no-payload-digest',
+    })),
     remaining: REMAINING
   }));
+  t.diagnostic(JSON.stringify(mutationReport));
 });
