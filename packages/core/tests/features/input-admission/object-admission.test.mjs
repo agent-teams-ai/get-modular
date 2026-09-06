@@ -29,6 +29,16 @@ function admit(input) {
   const value = admitObjectInput(input, collector);
   return { value, diagnostics: collector.finish(), statistics: collector.statistics() };
 }
+
+// Independent expected representation, derived from fixture data, never actual
+// output. Preserve strict prototype-sensitive equality throughout the tests.
+function expectedSnapshot(value) {
+  if (value === null || typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map(expectedSnapshot);
+  return Object.setPrototypeOf(Object.fromEntries(Object.entries(value)
+    .map(([key, item]) => [key, expectedSnapshot(item)])), null);
+}
+
 function containers(value, found = new Set()) {
   if (value === null || typeof value !== "object" || found.has(value)) return found;
   found.add(value);
@@ -47,16 +57,16 @@ test("admission owns all containers synchronously, preserving every caller order
   assert.equal(value.hasErrors, false);
   assert.equal(value.allDeclarationsAdmitted, true);
   assert.deepEqual(diagnostics, []);
-  assert.deepEqual(value.declarations, before.declarations);
-  assert.deepEqual(value.profile, before.profile);
+  assert.deepEqual(value.declarations, expectedSnapshot(before.declarations));
+  assert.deepEqual(value.profile, expectedSnapshot(before.profile));
   for (const item of containers(value)) { assert.equal(Object.isFrozen(item), true); assert.equal(caller.has(item), false); }
   for (const item of caller) assert.equal(Object.isFrozen(item), false);
   input.declarations[0].owner.path[0] = "changed";
   input.declarations.length = 0;
   input.profile.bindings[0].providerImplementationIds.reverse();
   input.profile.selections[0].implementationId = "x/changed";
-  assert.deepEqual(value.declarations, before.declarations);
-  assert.deepEqual(value.profile, before.profile);
+  assert.deepEqual(value.declarations, expectedSnapshot(before.declarations));
+  assert.deepEqual(value.profile, expectedSnapshot(before.profile));
   assert.deepEqual(value.profileResources, { selections: before.profile.selections, selectionCensusComplete: true,
     bindings: [{ ordinal: 0, consumerImplementationId: "x/i", slotId: "s", providerOccurrences: 2 }] });
 });
@@ -68,12 +78,12 @@ test("schema-invalid declarations supply no partial records and independent decl
     assert.equal(value.hasErrors, true);
     assert.equal(value.allDeclarationsAdmitted, false);
     assert.equal(value.declarations.length, fixture.input.declarations.length - 1);
-    assert.deepEqual(value.profile, fixture.input.profile);
+    assert.deepEqual(value.profile, expectedSnapshot(fixture.input.profile));
     assert.deepEqual(diagnostics, fixture.expected.diagnostics, id);
   }
   const input = world(); input.declarations.unshift(null, { schemaVersion: 2 });
   const { value, diagnostics } = admit(input);
-  assert.deepEqual(value.declarations, [input.declarations[2]]);
+  assert.deepEqual(value.declarations, expectedSnapshot([input.declarations[2]]));
   assert.deepEqual(diagnostics.map(item => item.code), ["schema.unsupported-version", "schema.invalid-value"]);
   assert.equal(value.allDeclarationsAdmitted, false);
 });
@@ -85,8 +95,8 @@ test("non-plain and depth failures are document-local, invoke no getters and can
   const input = world(); input.declarations.unshift(accessor, deep);
   const { value, diagnostics } = admit(input);
   assert.equal(invoked, 0);
-  assert.deepEqual(value.declarations, [input.declarations[2]]);
-  assert.deepEqual(value.profile, input.profile);
+  assert.deepEqual(value.declarations, expectedSnapshot([input.declarations[2]]));
+  assert.deepEqual(value.profile, expectedSnapshot(input.profile));
   assert.deepEqual(diagnostics, [limitDiagnostic("jsonDepth", "decode", [field("declarations"), index(1)]),
     { code: "schema.non-plain-value", phase: "schema", path: [field("declarations"), index(0)], coordinate: {}, details: { reason: "non-plain-value" } }]);
 });

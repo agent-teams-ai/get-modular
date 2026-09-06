@@ -8,6 +8,16 @@ import { snapshotDeclaration, snapshotProfile } from "../../../dist-test/feature
 const vectors = JSON.parse(await readFile(new URL("../../../../../architecture/qualification/v1/normalization-vectors.json", import.meta.url), "utf8"));
 const examples = JSON.parse(await readFile(new URL("../../../../../tests/qualification/compiler-engineer/examples.json", import.meta.url), "utf8"));
 
+
+// Independent expected representation, derived from fixture data, never actual
+// output. Preserve strict prototype-sensitive equality throughout the tests.
+function expectedSnapshot(value) {
+  if (value === null || typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map(expectedSnapshot);
+  return Object.setPrototypeOf(Object.fromEntries(Object.entries(value)
+    .map(([key, item]) => [key, expectedSnapshot(item)])), null);
+}
+
 function containers(value) {
   const found = new Set();
   const pending = [value];
@@ -22,13 +32,14 @@ function containers(value) {
 
 function assertOwnedSnapshot(copy, input) {
   const callerContainers = containers(input);
-  const expected = structuredClone(input);
+  const expected = expectedSnapshot(input);
   const result = copy(input);
   assert.deepEqual(result, expected);
   for (const value of callerContainers) assert.equal(Object.isFrozen(value), false);
   for (const value of containers(result)) {
     assert.equal(callerContainers.has(value), false);
     assert.equal(Object.isFrozen(value), true);
+    assert.equal(Object.getPrototypeOf(value), Array.isArray(value) ? Array.prototype : null);
     assert.throws(() => Object.defineProperty(value, "changed", { value: true }), TypeError);
   }
   // Mutate every caller container, including shared nested objects and arrays.
@@ -80,5 +91,5 @@ test("snapshot calls are isolated and do not install identity or factory state",
   const firstContainers = containers(first);
   for (const item of containers(second)) assert.equal(firstContainers.has(item), false);
   assert.deepEqual(Reflect.ownKeys(first).sort(), Reflect.ownKeys(value).sort());
-  assert.equal(Object.getPrototypeOf(first), Object.prototype);
+  assert.equal(Object.getPrototypeOf(first), null);
 });

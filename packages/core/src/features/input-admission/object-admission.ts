@@ -1,7 +1,7 @@
 import type { CompositionProfile, ModuleDeclaration } from "../authoring/internal.js";
 import type { DiagnosticCollector } from "../diagnostics/internal.js";
 import { documentPath, type DocumentLocator } from "./document-path.js";
-import { validateDeclarationShape, validateProfileShape } from "./document-shape.js";
+import { schemaSafeLocalPath, validateDeclarationShape, validateProfileShape } from "./document-shape.js";
 import { snapshotDeclaration, snapshotProfile } from "./document-snapshot.js";
 import { createObjectResourceMeter, type ObjectResourceScan } from "./object-resource-meter.js";
 import { ownValue, profileResourceFacts } from "./profile-resource-facts.js";
@@ -86,8 +86,25 @@ export function admitObjectInput(input: ObjectInput, collector: AdmissionDiagnos
   function validate(value: unknown, result: ObjectResourceScan, locator: DocumentLocator): boolean {
     if (result.stoppedBy !== null) return false;
     if (result.nonPlainValue) {
-      add(Object.freeze({ code: "schema.non-plain-value", phase: "schema", coordinate: Object.freeze({}),
-        path: documentPath(locator), details: Object.freeze({ reason: "non-plain-value" }) }));
+      // The first pass proved this document's depth and the whole batch's JSON
+      // budgets. Replay only rejected documents to stream every safe location
+      // into the bounded collector without retaining a list of caller paths.
+      // The meter finishes each child's subtree before the next parent key.
+      // Descriptor and exit failures may interleave shorter ancestor paths.
+      // Projection retains occurrence prefixes, so a final prefix cannot recur
+      // after leaving its subtree. Compare tagged paths after prefixing and
+      // clipping; at most 33 table slots retain O(32 * 32) segments.
+      const lastByDepth: (ReturnType<typeof documentPath> | undefined)[] = [];
+      createObjectResourceMeter().scanDocument(value, local => {
+        const path = documentPath(locator, schemaSafeLocalPath(locator.kind, local));
+        const previous = lastByDepth[path.length];
+        if (previous !== undefined && path.every((segment, index) =>
+          segment.kind === previous[index]!.kind && segment.value === previous[index]!.value)) return;
+        lastByDepth[path.length] = path;
+        add(Object.freeze({ code: "schema.non-plain-value", phase: "schema", coordinate: Object.freeze({}),
+          path,
+          details: Object.freeze({ reason: "non-plain-value" }) }));
+      });
       return false;
     }
     const validateShape = locator.kind === "declaration" ? validateDeclarationShape : validateProfileShape;

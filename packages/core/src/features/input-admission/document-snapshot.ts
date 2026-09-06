@@ -1,56 +1,85 @@
 import type { CompositionProfile, ModuleDeclaration } from "../authoring/internal.js";
+import { objectDocument, type DocumentView } from "./document-reader.js";
 
 type Compatibility = ModuleDeclaration["provides"][number]["compatibility"];
 type Cardinality = ModuleDeclaration["slots"][number]["cardinality"];
 
-function compatibility(value: Compatibility): Compatibility {
-  return Object.freeze({ family: value.family, familyVersion: value.familyVersion, token: value.token });
+function record<Value extends object>(fields: Value): Value {
+  const value = Object.create(null) as Value;
+  for (const key of Object.keys(fields)) {
+    Object.defineProperty(value, key, { value: fields[key as keyof Value], enumerable: true });
+  }
+  return Object.freeze(value);
 }
 
-function cardinality(value: Cardinality): Cardinality {
-  return value.kind === "many"
-    ? Object.freeze({ kind: value.kind, min: value.min, max: value.max, order: value.order })
-    : Object.freeze({ kind: value.kind });
+// One fixed-schema projection for either reader. Every record is defined into
+// null-prototype owned storage; arrays preserve caller order and occurrences.
+// The caller has already proved whole-batch resource and document schema facts.
+function projection<Value>(view: DocumentView<Value>) {
+  const reader = view.reader;
+  function member(value: Value, key: string): Value {
+    const own = reader.own(value, key);
+    if (!own.present) throw new TypeError("Snapshot requires an admitted document");
+    return own.value;
+  }
+  function text(value: Value, key: string): string { return reader.text(member(value, key)); }
+  function integer(value: Value, key: string): number {
+    const result = reader.integer(member(value, key));
+    if (!result.admitted) throw new TypeError("Snapshot requires an admitted integer");
+    return result.value;
+  }
+  function list<Result>(value: Value, key: string, copy: (item: Value) => Result): readonly Result[] {
+    const source = member(value, key);
+    const result: Result[] = [];
+    const length = reader.length(source);
+    for (let index = 0; index < length; index += 1) result.push(copy(reader.item(source, index)));
+    return Object.freeze(result);
+  }
+  function compatibility(value: Value): Compatibility {
+    return record<Compatibility>({ family: "exact", familyVersion: 1, token: text(value, "token") });
+  }
+  function cardinality(value: Value): Cardinality {
+    const kind = text(value, "kind");
+    if (kind === "many") return record<Cardinality>({ kind, min: integer(value, "min"), max: integer(value, "max"), order: "profile" });
+    if (kind === "required" || kind === "optional") return record<Cardinality>({ kind });
+    throw new TypeError("Snapshot requires an admitted cardinality");
+  }
+  return {
+    declaration(): ModuleDeclaration {
+      const value = view.root;
+      const owner = member(value, "owner");
+      return record<ModuleDeclaration>({
+        kind: "get-modular.module-declaration", schemaVersion: 1,
+        moduleId: text(value, "moduleId"), implementationId: text(value, "implementationId"),
+        owner: record({ authority: text(owner, "authority"), path: list(owner, "path", item => reader.text(item)) }),
+        provides: list(value, "provides", item => record({ capabilityId: text(item, "capabilityId"),
+          compatibility: compatibility(member(item, "compatibility")) })),
+        slots: list(value, "slots", item => record({ slotId: text(item, "slotId"), capabilityId: text(item, "capabilityId"),
+          compatibility: compatibility(member(item, "compatibility")), cardinality: cardinality(member(item, "cardinality")) })),
+      });
+    },
+    profile(): CompositionProfile {
+      const value = view.root;
+      return record<CompositionProfile>({
+        kind: "get-modular.composition-profile", schemaVersion: 1, profileId: text(value, "profileId"),
+        roots: list(value, "roots", item => reader.text(item)),
+        selections: list(value, "selections", item => record({ moduleId: text(item, "moduleId"), implementationId: text(item, "implementationId") })),
+        bindings: list(value, "bindings", item => record({ consumerImplementationId: text(item, "consumerImplementationId"),
+          slotId: text(item, "slotId"), providerImplementationIds: list(item, "providerImplementationIds", provider => reader.text(provider)) })),
+      });
+    },
+  };
 }
 
-// Owner-private primitives for already resource-bounded, schema-validated
-// cooperative documents. These are not validators or public unknown-input APIs.
-// The closed wire shapes have fixed depth; loops copy every occurrence before
-// an async boundary without recursion or retained caller containers.
 export function snapshotDeclaration(value: ModuleDeclaration): ModuleDeclaration {
-  return Object.freeze({
-    kind: value.kind,
-    schemaVersion: value.schemaVersion,
-    moduleId: value.moduleId,
-    implementationId: value.implementationId,
-    owner: Object.freeze({ authority: value.owner.authority, path: Object.freeze([...value.owner.path]) }),
-    provides: Object.freeze(value.provides.map(provided => Object.freeze({
-      capabilityId: provided.capabilityId,
-      compatibility: compatibility(provided.compatibility),
-    }))),
-    slots: Object.freeze(value.slots.map(slot => Object.freeze({
-      slotId: slot.slotId,
-      capabilityId: slot.capabilityId,
-      compatibility: compatibility(slot.compatibility),
-      cardinality: cardinality(slot.cardinality),
-    }))),
-  });
+  return snapshotDeclarationView(objectDocument(value));
 }
-
 export function snapshotProfile(value: CompositionProfile): CompositionProfile {
-  return Object.freeze({
-    kind: value.kind,
-    schemaVersion: value.schemaVersion,
-    profileId: value.profileId,
-    roots: Object.freeze([...value.roots]),
-    selections: Object.freeze(value.selections.map(selection => Object.freeze({
-      moduleId: selection.moduleId,
-      implementationId: selection.implementationId,
-    }))),
-    bindings: Object.freeze(value.bindings.map(binding => Object.freeze({
-      consumerImplementationId: binding.consumerImplementationId,
-      slotId: binding.slotId,
-      providerImplementationIds: Object.freeze([...binding.providerImplementationIds]),
-    }))),
-  });
+  return snapshotProfileView(objectDocument(value));
+}
+export function snapshotDeclarationView<Value>(view: DocumentView<Value>): ModuleDeclaration {
+  return projection(view).declaration();
+}
+export function snapshotProfileView<Value>(view: DocumentView<Value>): CompositionProfile {
+  return projection(view).profile();
 }

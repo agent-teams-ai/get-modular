@@ -21,7 +21,15 @@ test("factory instances keep snapshots and invocation sinks independent", () => 
       bindings: [],
     },
   };
-  const expected = structuredClone(input);
+  function snapshot(value) {
+    if (Array.isArray(value)) return value.map(snapshot);
+    if (value === null || typeof value !== "object") return value;
+    const result = Object.create(null);
+    for (const [key, child] of Object.entries(value)) result[key] = snapshot(child);
+    return result;
+  }
+  const expected = snapshot(input);
+  const expectedSelections = structuredClone(input.profile.selections);
   const firstDiagnostics = [];
   const first = admission.admitObjectInput(input, {
     addUnique: diagnostic => firstDiagnostics.push(diagnostic),
@@ -30,7 +38,7 @@ test("factory instances keep snapshots and invocation sinks independent", () => 
     declarations: expected.declarations, allDeclarationsAdmitted: true,
     profile: expected.profile,
     profileResources: {
-      selections: expected.profile.selections, selectionCensusComplete: true, bindings: [],
+      selections: expectedSelections, selectionCensusComplete: true, bindings: [],
     },
     hasErrors: false,
   });
