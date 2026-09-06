@@ -130,6 +130,10 @@ Follow the phase's full exit criteria as well as this navigation table.
 | [7: reserved](#reserved-phase-7-extensionplugin-boundary) | System boundary | No implementation task, package, runtime or gate. |
 | [8: release/conformance](#phase-8-release-and-conformance-checkpoint) | ADR-0008/0012/0017/0018, the accepted successor to ADR-0011 if one exists, [release-custody prerequisites](#phase-4-release-custody-prerequisites) | Exact retained archive, required runtime/custody evidence and recovery proof; publishing remains a separate authorized action. Phase 6 is optional and phase 7 is skipped. |
 
+The proposed [combined M2 handoff](../decisions/0021-freeze-combined-diagnostic-generation-two-for-m2.md#owner-scope-and-implementation-handoff)
+binds the prepared successor evidence and the M2.1-M2.4 ownership/exit map.
+It does not activate M2 while its status is proposed.
+
 M2 is a milestone spanning the existing admission, semantic and output phases,
 not an omitted numbered phase. Before production raw or repeated-record implementation,
 read [OD-005](../open-decisions/OD-005-raw-input-carrier-semantics.md) and

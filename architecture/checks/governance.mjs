@@ -752,6 +752,17 @@ async function main() {
     authorityDigest: ACCEPTED_AUTHORITY_LEDGER_DIGEST,
     isStartingBase: baseCommit => isStartingBaseAncestor(baseCommit, root),
     readPackageManifest,
+    readM2Authority: async () => ({
+      decisionMarkdown: (await readGovernanceInput(
+        "docs/decisions/0021-freeze-combined-diagnostic-generation-two-for-m2.md",
+        "M2 accepted umbrella",
+      )).toString("utf8"),
+      ledgerBytes: await readGovernanceInput(
+        "architecture/authority/diagnostic-generation-two-ledger.json",
+        "M2 successor evidence ledger",
+      ),
+      readBytes: path => readGovernanceInput(path, "M2 successor artifact"),
+    }),
   });
   const profile = JSON.parse((await readGovernanceInput(
     "architecture/feature-module-standard-profile.json",
