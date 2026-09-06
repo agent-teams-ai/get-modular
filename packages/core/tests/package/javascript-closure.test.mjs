@@ -496,3 +496,10 @@ test('private byte budget has an inclusive boundary and is not a Core resource c
   files.set(ORDER, Buffer.concat([files.get(ORDER), Buffer.from(' ')]));
   reject(files, 'limit');
 });
+
+test('the successor carrier code is admitted without broadening input member purpose', () => {
+  const files = baseline();
+  body(files, `input['input.invalid-byte-carrier'];`);
+  assert.deepEqual(auditM1JavaScriptClosure(files).exports, publicNames);
+  mutant(files => body(files, `input['input.install'];`), 'purpose');
+});
