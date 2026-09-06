@@ -65,7 +65,7 @@ function lexicalKind(current: RawToken): SpanKind | null {
   }
 }
 
-function duplicatePath(frames: readonly ScanFrame[], key: string): readonly Segment[] {
+function duplicatePath(frames: readonly ScanFrame[], key: Segment): readonly Segment[] {
   const path: Segment[] = [];
   for (const frame of frames) {
     if (frame.segment !== null) path.push(frame.segment);
@@ -84,6 +84,8 @@ export function scanRawDocument(
   scanner: RawScannerPort,
   budget: RawDocumentBudget,
   onDuplicate: (localPath: readonly (string | number)[]) => void,
+  onReplayBoundary?: (observedEnd: number) => void,
+  onDepthLimit?: (localPath: readonly Segment[]) => void,
 ): RawDocumentScan {
   const cursor = scanner.open(ownedBytes);
   const frames: ScanFrame[] = [];
@@ -104,8 +106,12 @@ export function scanRawDocument(
     return true;
   }
 
-  for (;;) {
+  // Commit an event only when the loop advances past all of its checks.
+  // A break excludes the current event, including a rejected key or value.
+  let observedEnd = 0;
+  for (let processedEnd = 0; ; observedEnd = processedEnd) {
     const current = cursor.next();
+    processedEnd = current.end;
     // A lexical failure is terminal even though the cursor subsequently emits end.
     if (current.kind === "invalid") { invalidJson = true; break; }
     if (current.kind === "end") {
@@ -175,6 +181,10 @@ export function scanRawDocument(
       maximumDepth = Math.max(maximumDepth, depth);
       if (depth > admissionLimits.jsonDepth) {
         stoppedBy = "jsonDepth";
+        // Report the attempted container before advancing the parent or
+        // allocating its frame. The caller owns schema projection and clipping.
+        if (frame !== undefined) onDepthLimit?.(duplicatePath(frames,
+          frame.kind === "object" ? frame.key : frame.nextIndex));
         break;
       }
     }
@@ -199,6 +209,7 @@ export function scanRawDocument(
     }
   }
 
+  onReplayBoundary?.(observedEnd);
   return {
     decoded: !invalidJson && !duplicateKey && stoppedBy === null,
     invalidJson,

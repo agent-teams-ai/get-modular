@@ -526,3 +526,27 @@ test('one scanner port supports reentrant scans and independently interleaved vi
     { admitted: true, value: index + 1 },
   ]));
 });
+
+test('depth overflow reports the actual attempted container before advancing its parent', () => {
+  for (const [source, expectedPath] of [
+    ['['.repeat(33) + '0' + ']'.repeat(33), Array(32).fill(0)],
+    ['[0,0,' + '['.repeat(32) + '0' + ']'.repeat(32) + ']', [2, ...Array(31).fill(0)]],
+    ['{"owner":' + '['.repeat(32) + '0' + ']'.repeat(32) + '}', ['owner', ...Array(31).fill(0)]],
+    ['{"unknown/private":' + '['.repeat(32) + '0' + ']'.repeat(32) + '}', ['unknown/private', ...Array(31).fill(0)]],
+  ]) {
+    const paths = [];
+    let observedEnd;
+    const result = scanRawDocument(bytesOf(source), scanner, defaultBudget, () => {},
+      end => { observedEnd = end; }, path => paths.push(path));
+    assert.equal(result.stoppedBy, 'jsonDepth');
+    assert.equal(result.maximumDepth, 33);
+    assert.deepEqual(paths, [expectedPath]);
+    assert.equal(Object.isFrozen(paths[0]), true);
+    assert.equal(source[observedEnd], '[', 'rejected opening is outside replay prefix');
+  }
+  let calls = 0;
+  const result = scanRawDocument(bytesOf('['.repeat(32) + '0' + ']'.repeat(32)), scanner, defaultBudget,
+    () => {}, undefined, () => { calls += 1; });
+  assert.equal(result.decoded, true);
+  assert.equal(calls, 0);
+});
