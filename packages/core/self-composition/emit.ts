@@ -96,14 +96,17 @@ function validateDeclaration(declaration: ModuleDeclaration): void {
 }
 
 /**
- * Private production-path renderer. The caller owns source/build custody and
+ * Private renderer, production-strict by default. The caller owns source/build custody and
  * must independently verify allowlist correspondence before publishing output.
+ * Qualification permits only the existing witness variant's literal handle.
  * Runtime factory values are checked for function type only, never invoked.
  */
 export function emitComposition(
   result: CompileCompositionResult,
   allowlist: ReadonlyMap<string, AllowlistHandle>,
+  options: { readonly qualification?: boolean } = {},
 ): string {
+  const qualification = options.qualification === true;
   check(result?.ok === true && fields(result, ["ok", "plan", "digest"])
     && typeof result.digest === "string"
     && /^gm-plan:v1:sha-256:[0-9a-f]{64}$/u.test(result.digest), "emitter.invalid-result");
@@ -126,9 +129,24 @@ export function emitComposition(
       && identifier(handle.localName), "allowlist.invalid-identifier");
     check(!localNames.has(handle.localName), "allowlist.duplicate-local-name");
     localNames.add(handle.localName);
-    check(typeof handle.importPath === "string"
-      && /^\.\.\/\.\.\/features\/(?:(?!\.{1,2}\/)[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+\.js$/u.test(handle.importPath),
-    "allowlist.out-of-bound-import");
+    // These literals constrain a private test exception; they never select a
+    // provider or become emitted identity-derived paths. Correspondence of
+    // actual source exports remains the independent witness's responsibility.
+    const variantPath = "../../../tests/features/canonicalization/witness-variant/factory.js";
+    const variantIdentity = "get-modular/canonicalization/witness-variant";
+    if (id === variantIdentity || handle.importPath === variantPath) {
+      check(qualification && id === variantIdentity
+        && handle.declaration.moduleId === "get-modular/canonicalization"
+        && handle.importPath === variantPath
+        && handle.factoryExport === "createWitnessVariant"
+        && handle.declarationExport === "witnessVariantDeclaration"
+        && handle.localName === "canonicalizerVariant",
+      "allowlist.out-of-bound-import");
+    } else {
+      check(typeof handle.importPath === "string"
+        && /^\.\.\/\.\.\/features\/(?:(?!\.{1,2}\/)[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+\.js$/u.test(handle.importPath),
+      "allowlist.out-of-bound-import");
+    }
   }
 
   const selected = new Map<string, AllowlistHandle>();
