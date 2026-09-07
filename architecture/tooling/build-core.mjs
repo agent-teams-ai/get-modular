@@ -23,7 +23,8 @@ export async function buildCore({ snapshot } = {}) {
   }
 }
 
-if (process.argv[1] && await realpath(resolve(process.argv[1])) === fileURLToPath(import.meta.url)) {
+if (process.argv[1]
+  && await realpath(resolve(process.argv[1])) === await realpath(fileURLToPath(import.meta.url))) {
   if (process.argv.length !== 2) throw new Error("build.unsupported-options");
   await buildCore();
 }

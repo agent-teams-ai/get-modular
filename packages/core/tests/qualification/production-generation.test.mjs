@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { chmod, cp, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -67,24 +67,127 @@ function fails(result, expected) {
   assert.match(result.stdout + result.stderr, expected);
 }
 
+async function bounded(promise, milliseconds, message) {
+  let timer;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), milliseconds);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function withWindowsFileLock(path, action) {
+  // The path travels only through the environment, never through script text.
+  // FileShare.None denies deletion while the child owns the open handle.
+  const script = `
+    $ErrorActionPreference = 'Stop'
+    $stream = [System.IO.File]::Open(
+      $env:GM_CLEANUP_LOCK_PATH,
+      [System.IO.FileMode]::Open,
+      [System.IO.FileAccess]::ReadWrite,
+      [System.IO.FileShare]::None
+    )
+    try {
+      [Console]::Out.WriteLine('LOCK_READY')
+      [Console]::Out.Flush()
+      [Console]::In.ReadLine() | Out-Null
+    } finally {
+      $stream.Dispose()
+    }
+  `;
+  const child = spawn("powershell.exe", [
+    "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", script,
+  ], {
+    env: { ...process.env, GM_CLEANUP_LOCK_PATH: path },
+    stdio: ["pipe", "pipe", "pipe"],
+    windowsHide: true,
+    timeout: 30_000,
+  });
+  let output = "";
+  let diagnostics = "";
+  let childError;
+  let stdinError;
+  child.stdin.on("error", error => { stdinError = error; });
+  child.stderr.setEncoding("utf8");
+  child.stderr.on("data", chunk => {
+    diagnostics = (diagnostics + chunk).slice(-8_192);
+  });
+  const closed = new Promise(resolve => {
+    child.once("close", (code, signal) => resolve({ code, signal }));
+  });
+  const ready = new Promise((resolve, reject) => {
+    child.once("error", error => {
+      childError = error;
+      reject(error);
+    });
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", chunk => {
+      output = (output + chunk).slice(-8_192);
+      if (output.split(/\r?\n/u).includes("LOCK_READY")) resolve();
+    });
+    child.once("close", (code, signal) => {
+      reject(new Error(`lock child exited before readiness: ${code}/${signal}: ${diagnostics}`));
+    });
+  });
+  try {
+    await bounded(ready, 10_000, "Windows lock child readiness timed out");
+    assert.equal(child.exitCode, null);
+    assert.equal(child.signalCode, null);
+    await action();
+  } finally {
+    child.stdin.end("\n");
+    let result;
+    try {
+      result = await bounded(closed, 5_000, "Windows lock child release timed out");
+    } catch (error) {
+      child.kill();
+      await bounded(closed, 5_000, "Windows lock child termination timed out");
+      throw error;
+    }
+    assert.ifError(childError);
+    assert.ifError(stdinError);
+    assert.equal(result.signal, null, diagnostics);
+    assert.equal(result.code, 0, diagnostics);
+  }
+}
+
 test("generated cleanup failure still removes stale production output", async t => {
   const f = await fixture(t);
   const { cleanProduction } = await import(
     pathToFileURL(join(f.directory, "architecture/tooling/generate-core.mjs")).href
   );
-  // A regular-file ancestor produces a real filesystem rejection, including
-  // when running as root, without changing permissions in the source checkout.
-  const blocker = "src/composition/generated";
-  await f.put(blocker, "not a directory\n");
-  await f.put("dist/index.js", "export const stale = true;\n");
-  await assert.rejects(cleanProduction(), error => {
-    assert.equal(error.code, "ENOTDIR");
-    assert.equal(error instanceof AggregateError, false);
-    return true;
-  });
-  await assert.rejects(readFile(join(f.core, "dist/index.js")), { code: "ENOENT" });
-  assert.equal(await readFile(join(f.core, blocker), "utf8"), "not a directory\n");
-  await rm(join(f.core, blocker));
+  if (process.platform === "win32") {
+    await f.poison();
+    await withWindowsFileLock(join(f.core, generated), async () => {
+      await assert.rejects(cleanProduction(), error => {
+        assert.ok(["EPERM", "EACCES", "EBUSY"].includes(error.code), String(error));
+        assert.equal(error instanceof AggregateError, false);
+        return true;
+      });
+      await assert.rejects(readFile(join(f.core, "dist/index.js")), { code: "ENOENT" });
+    });
+    assert.equal(await readFile(join(f.core, generated), "utf8"),
+      "invalid stale generated source !!!\n");
+  } else {
+    // A regular-file ancestor produces ENOTDIR on POSIX, including under root.
+    // Windows rm(force) can treat this path as missing, so it uses a real lock.
+    const blocker = "src/composition/generated";
+    await f.put(blocker, "not a directory\n");
+    await f.put("dist/index.js", "export const stale = true;\n");
+    await assert.rejects(cleanProduction(), error => {
+      assert.equal(error.code, "ENOTDIR");
+      assert.equal(error instanceof AggregateError, false);
+      return true;
+    });
+    await assert.rejects(readFile(join(f.core, "dist/index.js")), { code: "ENOENT" });
+    assert.equal(await readFile(join(f.core, blocker), "utf8"), "not a directory\n");
+    await rm(join(f.core, blocker));
+  }
   await f.poison();
   await cleanProduction();
   await f.absent();
@@ -92,11 +195,12 @@ test("generated cleanup failure still removes stale production output", async t 
 });
 
 test("permission failures attempt both removals and retain every cleanup error", {
-  // POSIX permission denial is not evidence on Windows or under root.
-  // The ENOTDIR regression above runs independently without this restriction.
-  skip: process.platform === "win32" || process.getuid?.() === 0
-    ? "requires POSIX permissions and a non-root process; permission cases are unproven here"
-    : false,
+  // The cleanup regression above uses a real failure backend on both platforms.
+  skip: process.platform === "win32"
+    ? "POSIX permission fixture is not applicable on Windows; exclusive-lock cleanup is tested separately"
+    : process.getuid?.() === 0
+      ? "requires a non-root process; POSIX permission cases are unproven under root"
+      : false,
 }, async t => {
   const f = await fixture(t);
   const { cleanProduction } = await import(
