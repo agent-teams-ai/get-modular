@@ -197,7 +197,7 @@ unchanged. A historical reader reconstructs and verifies the pinned lock only fo
 M2 evidence, while current dependency checks keep reading the current lock.
 
 [Admission regressions](../../tests/assembly-admission.test.mjs) reject graph drift,
-changed authority and unadmitted packages. The current
+changed authority and packages outside the admitted scope. The current
 [retained replay adapter](../../tests/assembly-admission-retained.test.mjs) preserves
 the historical cases and explicitly proves that the old verifier still rejects
 current lock bytes without the authenticated transition. This finite transition
