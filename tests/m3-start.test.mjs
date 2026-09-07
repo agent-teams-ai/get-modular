@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { validatePrivateCoreStart } from '../architecture/checks/private-core-start.mjs';
-import { M2_EVIDENCE_LEDGER } from '../architecture/checks/m2-evidence.mjs';
+import { readCurrentM2Authority } from '../architecture/checks/m2-lock-witness.mjs';
 
 const root = new URL('../', import.meta.url);
 const read = path => readFileSync(new URL(path, root));
@@ -44,7 +44,7 @@ const m3 = { ...m2, approvedOn: '2026-09-07',
   excluded: m2.excluded.filter(value => value !== 'generated-self-composition-claims') };
 const markdown = value => '<!-- get-modular:private-core-start -->\n```json\n'
   + JSON.stringify(value) + '\n```\n<!-- /get-modular:private-core-start -->';
-const authority = { decisionMarkdown: accepted, ledgerBytes: read(M2_EVIDENCE_LEDGER), readBytes: read };
+const authority = await readCurrentM2Authority(read);
 const check = (record, input = authority, extra = {}) => validatePrivateCoreStart({
   markdown: markdown(record), productionArtifacts: ['packages/core/package.json'],
   authorityDigest: m1.authorityDigest, isStartingBase: async base => base === m1.baseCommit,

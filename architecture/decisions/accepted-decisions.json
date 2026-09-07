@@ -96,6 +96,11 @@
       "id": "ADR-0023",
       "path": "docs/decisions/0023-add-a-thin-host-owned-assembly-component-above-core.md",
       "immutableDigest": "sha256:0b7ae923c25d069e951b36cb46a2500888e3193d597f17990d069577983935dc"
+    },
+    {
+      "id": "ADR-0024",
+      "path": "docs/decisions/0024-separate-historical-m2-lock-custody-from-current-dependencies.md",
+      "immutableDigest": "sha256:a860ef239be89f4fbb564df38f3f313bcb383da7298cd9293515064362e065b0"
     }
   ]
 }

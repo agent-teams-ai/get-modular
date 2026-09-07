@@ -5,6 +5,7 @@ import { gzipSync, gunzipSync } from 'node:zlib';
 import test from 'node:test';
 import { M2_EVIDENCE_LEDGER, M2_RETAINED_LEDGER_DIGEST, unpackRetainedCandidate,
   replayRetainedCandidate, verifyM2Evidence as verifyFrozenM2Evidence } from '../architecture/checks/m2-evidence.mjs';
+import { readCurrentM2Authority } from '../architecture/checks/m2-lock-witness.mjs';
 import { createHistoricalM2EvidenceReader } from '../architecture/checks/assembly-admission.mjs';
 
 // The ledger pins retained-acceptance.test.mjs itself. Preserve that historical
@@ -20,9 +21,14 @@ const anchor = /Generation 2 ledger digest: `(sha256:[a-f0-9]{64})`/u.exec(decis
 assert(anchor, 'proposed umbrella must bind one concrete ledger');
 const files = unpackRetainedCandidate(archive, retainedLedger);
 const sha = bytes => `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
-const verifyM2Evidence = async input => verifyFrozenM2Evidence({
-  ...input, readBytes: await createHistoricalM2EvidenceReader(input),
-});
+const verifyM2Evidence = async input => {
+  const authority = await readCurrentM2Authority(input.readBytes);
+  return verifyFrozenM2Evidence({
+    ...input, readBytes: await createHistoricalM2EvidenceReader({
+      ...input, readBytes: authority.readBytes,
+    }),
+  });
+};
 
 test('proposed umbrella binds exact successor artifacts and complete retained observations', async () => {
   assert.equal(sha(retainedLedger), M2_RETAINED_LEDGER_DIGEST);

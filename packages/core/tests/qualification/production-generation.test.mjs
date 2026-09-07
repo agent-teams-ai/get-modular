@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { chmod, cp, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -73,7 +74,7 @@ async function bounded(promise, milliseconds, message) {
     return await Promise.race([
       promise,
       new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error(message)), milliseconds);
+        timer = setTimeout(() => reject(new Error(message())), milliseconds);
       }),
     ]);
   } finally {
@@ -82,7 +83,8 @@ async function bounded(promise, milliseconds, message) {
 }
 
 async function withWindowsFileLock(path, action) {
-  // The path travels only through the environment, never through script text.
+  const releasePath = `${path}.${randomUUID()}.release`;
+  // Both fixture-owned paths travel through the environment, never script text.
   // FileShare.None denies deletion while the child owns the open handle.
   const script = `
     $ErrorActionPreference = 'Stop'
@@ -95,7 +97,13 @@ async function withWindowsFileLock(path, action) {
     try {
       [Console]::Out.WriteLine('LOCK_READY')
       [Console]::Out.Flush()
-      [Console]::In.ReadLine() | Out-Null
+      $watchdog = [System.Diagnostics.Stopwatch]::StartNew()
+      while (-not [System.IO.File]::Exists($env:GM_CLEANUP_RELEASE_PATH)) {
+        if ($watchdog.ElapsedMilliseconds -ge 25000) {
+          throw 'Windows lock release marker watchdog expired'
+        }
+        Start-Sleep -Milliseconds 50
+      }
     } finally {
       $stream.Dispose()
     }
@@ -103,22 +111,28 @@ async function withWindowsFileLock(path, action) {
   const child = spawn("powershell.exe", [
     "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", script,
   ], {
-    env: { ...process.env, GM_CLEANUP_LOCK_PATH: path },
-    stdio: ["pipe", "pipe", "pipe"],
+    env: { ...process.env, GM_CLEANUP_LOCK_PATH: path, GM_CLEANUP_RELEASE_PATH: releasePath },
+    stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true,
     timeout: 30_000,
   });
   let output = "";
   let diagnostics = "";
   let childError;
-  let stdinError;
-  child.stdin.on("error", error => { stdinError = error; });
+  let didClose = false;
+  let markerCreated = false;
+  const errors = [];
+  const status = () => `exitCode=${child.exitCode}, signalCode=${child.signalCode}; ` +
+    `stdout=${JSON.stringify(output)}; stderr=${JSON.stringify(diagnostics)}`;
   child.stderr.setEncoding("utf8");
   child.stderr.on("data", chunk => {
     diagnostics = (diagnostics + chunk).slice(-8_192);
   });
   const closed = new Promise(resolve => {
-    child.once("close", (code, signal) => resolve({ code, signal }));
+    child.once("close", (code, signal) => {
+      didClose = true;
+      resolve({ code, signal });
+    });
   });
   const ready = new Promise((resolve, reject) => {
     child.once("error", error => {
@@ -130,30 +144,47 @@ async function withWindowsFileLock(path, action) {
       output = (output + chunk).slice(-8_192);
       if (output.split(/\r?\n/u).includes("LOCK_READY")) resolve();
     });
-    child.once("close", (code, signal) => {
-      reject(new Error(`lock child exited before readiness: ${code}/${signal}: ${diagnostics}`));
+    child.once("close", () => {
+      reject(new Error(`lock child exited before readiness: ${status()}`));
     });
   });
   try {
-    await bounded(ready, 10_000, "Windows lock child readiness timed out");
+    await bounded(ready, 10_000, () => `Windows lock child readiness timed out: ${status()}`);
     assert.equal(child.exitCode, null);
     assert.equal(child.signalCode, null);
     await action();
+  } catch (error) {
+    errors.push(error);
   } finally {
-    child.stdin.end("\n");
-    let result;
     try {
-      result = await bounded(closed, 5_000, "Windows lock child release timed out");
+      await writeFile(releasePath, "", { flag: "wx" });
+      markerCreated = true;
+      const result = await bounded(closed, 5_000, () => `Windows lock child release timed out: ${status()}`);
+      assert.ifError(childError);
+      assert.equal(result.signal, null, status());
+      assert.equal(result.code, 0, status());
     } catch (error) {
-      child.kill();
-      await bounded(closed, 5_000, "Windows lock child termination timed out");
-      throw error;
+      errors.push(error);
+      if (!didClose) {
+        try {
+          child.kill();
+          await bounded(closed, 5_000, () => `Windows lock child termination timed out: ${status()}`);
+        } catch (terminationError) {
+          errors.push(terminationError);
+        }
+      }
+    } finally {
+      if (didClose && markerCreated) {
+        try {
+          await rm(releasePath);
+        } catch (markerError) {
+          errors.push(markerError);
+        }
+      }
     }
-    assert.ifError(childError);
-    assert.ifError(stdinError);
-    assert.equal(result.signal, null, diagnostics);
-    assert.equal(result.code, 0, diagnostics);
   }
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1) throw new AggregateError(errors, "Windows file lock action/readiness and teardown failed");
 }
 
 test("generated cleanup failure still removes stale production output", async t => {

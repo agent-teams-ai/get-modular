@@ -6,6 +6,7 @@
   "ignorePaths": [
     "node_modules/**",
     "pnpm-lock.yaml",
+    "architecture/qualification/generation-two/historical-pnpm-lock.yaml",
     "research/implementation-readiness/evidence/raw/**",
     "research/implementation-readiness/evidence/follow-up/raw/**",
     "research/implementation-readiness/evidence/combined-workers.json",

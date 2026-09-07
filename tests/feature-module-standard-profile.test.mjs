@@ -690,3 +690,19 @@ test("ADR-0023 admits only private Assembly 0.1.0 with its sole Core workspace d
   }));
   assert.deepEqual(lifecycle[0].scripts, ["scripts.install"]);
 });
+
+test("requires exactly one historical M2 replay in the contracts gate", () => {
+  const wrapper = "tests/m2-lock-witness.test.mjs";
+  const command = packageJson.scripts["contracts:test"];
+  assert.equal(command.split(wrapper).length - 1, 1);
+  for (const replacement of [
+    "tests/qualification/m2-candidate/retained-acceptance.test.mjs tests/m2-start.test.mjs",
+    "",
+    `${wrapper} ${wrapper}`,
+  ]) {
+    const changed = clone(packageJson);
+    changed.scripts["contracts:test"] = command.replace(wrapper, replacement);
+    assert.throws(() => validate({ packageJson: changed }),
+      /contracts:test must use its closed command definition/u);
+  }
+});
