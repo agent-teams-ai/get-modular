@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   validateInput, electronEnvironment, verifyElectronResults as verifyNativeElectronResults,
+  verifyElectronProcessIdentity,
 } from '../../../../tests/qualification/m3-electron-consumer.mjs';
 import { runInNewContext } from 'node:vm';
 import { produceDescriptorRuntimeFixtures } from '../../../../tests/qualification/support/m3-descriptor-runtime-fixtures.mjs';
@@ -80,6 +81,7 @@ function evidence() {
     realm: 'electron-sandboxed-renderer', secureContext: true, crossOriginIsolated: true,
     sharedArrayBuffer: true, webCrypto: true, processAbsent: true, requireAbsent: true,
     identity, osProcessId: identity.pid,
+    procStatus: process.platform === 'linux' ? 'Name:\trenderer\nNSpid:\t202\n' : null,
     webPreferences: { sandbox: true, nodeIntegration: false, contextIsolation: true },
     records: fixtures.map(record),
   };
@@ -87,6 +89,85 @@ function evidence() {
     realm.p500Records = structuredClone(p500Evidence.expected);
   return { config, observations: { main, renderer } };
 }
+
+test('Linux PID mapping accepts nested and non-nested namespaces', () => {
+  for (const [mainPid, hostPid, preloadPid, ids] of [
+    [101, 202, 202, '202'],
+    [101, 3363, 12, '3363\t12'],
+    [101, 3363, 12, '3363\t202\t12'],
+    // Equal numbers in different namespaces do not identify the same process.
+    [12, 3363, 12, '3363\t12'],
+  ]) {
+    assert.doesNotThrow(() => verifyElectronProcessIdentity(
+      mainPid, hostPid, preloadPid, 'linux', `Name:\trenderer\nNSpid:\t${ids}\n`));
+  }
+});
+
+test('Linux PID mapping rejects missing, malformed, oversized and inconsistent evidence', () => {
+  for (const status of [
+    undefined, null, {}, '', 'Name:\trenderer\n',
+    'NSpid:\t3363\t12',
+    'NSpid:\t3363\t12\nNSpid:\t3363\t12\n',
+    'NSpid\t3363\t12\n',
+    'NSpid:\n',
+    'NSpid:\t12\t3363\n',
+    'NSpid:\t3364\t12\n',
+    'NSpid:\t3363\t13\n',
+    'NSpid:\t3363\n',
+    'NSpid:\t3363\t0\t12\n',
+    'NSpid:\t3363\t-1\t12\n',
+    'NSpid:\t3363\t+1\t12\n',
+    'NSpid:\t3363\t01\t12\n',
+    'NSpid:\t3363\t1.5\t12\n',
+    'NSpid:\t3363\t1e2\t12\n',
+    'NSpid:\t3363\tNaN\t12\n',
+    'NSpid:\t3363\t9007199254740992\t12\n',
+    'NSpid:\t3363\t10000000000000000\t12\n',
+    'NSpid:\t3363\u00a012\n',
+    'NSpid:\t3363\t12\0\n',
+    `NSpid:\t3363\t${'1\t'.repeat(31)}12\n`,
+    `NSpid:${' '.repeat(1024)}3363\t12\n`,
+    `${'x'.repeat(65536)}\nNSpid:\t3363\t12\n`,
+    `${'é'.repeat(32768)}\nNSpid:\t3363\t12\n`,
+  ]) {
+    assert.throws(() => verifyElectronProcessIdentity(101, 3363, 12, 'linux', status));
+  }
+  assert.throws(() => verifyElectronProcessIdentity(
+    3363, 3363, 12, 'linux', 'NSpid:\t3363\t12\n'));
+});
+
+test('all PID inputs must be positive safe integers on every platform', () => {
+  for (const os of ['linux', 'darwin', 'win32']) {
+    for (const invalid of [undefined, null, '202', 0, -1, 1.5, NaN, Infinity,
+      Number.MAX_SAFE_INTEGER + 1]) {
+      for (let index = 0; index < 3; index += 1) {
+        const ids = [101, 202, 202];
+        ids[index] = invalid;
+        assert.throws(() => verifyElectronProcessIdentity(
+          ...ids, os, 'NSpid:\t202\n'));
+      }
+    }
+  }
+});
+
+test('non-Linux PID mapping retains exact equality regardless of proc evidence', () => {
+  for (const os of ['darwin', 'win32']) {
+    assert.doesNotThrow(() => verifyElectronProcessIdentity(101, 202, 202, os, null));
+    assert.throws(() => verifyElectronProcessIdentity(
+      101, 3363, 12, os, 'NSpid:\t3363\t12\n'));
+    assert.throws(() => verifyElectronProcessIdentity(202, 202, 202, os, null));
+  }
+});
+
+test('Linux realm verifier requires captured PID mapping even when numeric IDs match', {
+  skip: process.platform !== 'linux',
+}, () => {
+  const { observations, config } = evidence();
+  verifyElectronResults(observations, fixtures, config);
+  delete observations.renderer.procStatus;
+  observations.renderer.identity.procStatus = 'NSpid:\t202\n';
+  assert.throws(() => verifyElectronResults(observations, fixtures, config));
+});
 
 test('Electron cannot omit P500 evidence in either native realm', () => {
   const baseline = evidence();

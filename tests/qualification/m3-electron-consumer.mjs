@@ -119,7 +119,7 @@ contextBridge.exposeInMainWorld('electronIdentity', identity);
 const mainSource = `
 import assert from 'node:assert/strict';
 import { app, BrowserWindow } from 'electron';
-import { readFileSync, writeFileSync, renameSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync, openSync, readSync, closeSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { executeRuntimeFixtures } from './m3-runtime-executor.mjs';
@@ -198,6 +198,26 @@ try {
   renderer.webPreferences = { sandbox: preferences.sandbox,
     nodeIntegration: preferences.nodeIntegration, contextIsolation: preferences.contextIsolation };
   renderer.osProcessId = window.webContents.getOSProcessId();
+  assert.ok(Number.isSafeInteger(renderer.osProcessId) && renderer.osProcessId > 0);
+  // Overwrite any page-provided value with main-owned evidence before teardown.
+  renderer.procStatus = null;
+  if (process.platform === 'linux') {
+    const fd = openSync('/proc/' + renderer.osProcessId + '/status', 'r');
+    try {
+      const bytes = Buffer.alloc(65537);
+      let length = 0;
+      while (length < bytes.length) {
+        const count = readSync(fd, bytes, length, bytes.length - length, null);
+        if (count === 0) break;
+        length += count;
+      }
+      assert.ok(length > 0 && length <= 65536, 'bounded renderer proc status');
+      renderer.procStatus = bytes.subarray(0, length).toString('utf8');
+    } finally {
+      closeSync(fd);
+    }
+    assert.equal(window.webContents.getOSProcessId(), renderer.osProcessId);
+  }
   save('renderer.json', renderer);
   window.destroy();
   clearTimeout(watchdog);
@@ -212,6 +232,38 @@ try {
 // Let the entry module finish so Electron can emit ready.
 void execute();
 `;
+
+export function verifyElectronProcessIdentity(mainPid, hostPid, preloadPid, os, procStatus) {
+  for (const pid of [mainPid, hostPid, preloadPid]) {
+    assert.ok(Number.isSafeInteger(pid) && pid > 0, 'positive safe process ID');
+  }
+  assert.notEqual(mainPid, hostPid, 'main and renderer host process IDs must differ');
+  if (os !== 'linux') {
+    assert.equal(hostPid, preloadPid, 'renderer process ID');
+    return;
+  }
+  assert.ok(typeof procStatus === 'string' &&
+    procStatus.length > 0 && procStatus.length <= 65536, 'bounded renderer proc status');
+  assert.ok(Buffer.byteLength(procStatus, 'utf8') <= 65536, 'bounded proc status bytes');
+  assert.ok(!procStatus.includes('\0') && procStatus.endsWith('\n'),
+    'complete renderer proc status text');
+  const fields = procStatus.split('\n').filter(line => /^NSpid\b/.test(line));
+  assert.equal(fields.length, 1, 'one required NSpid field');
+  const field = fields[0];
+  assert.ok(field.length <= 1024, 'bounded NSpid field');
+  assert.match(field, /^NSpid:[ \t]+[1-9][0-9]*(?:[ \t]+[1-9][0-9]*)*[ \t]*$/);
+  const tokens = field.slice('NSpid:'.length).trim().split(/[ \t]+/);
+  assert.ok(tokens.length >= 1 && tokens.length <= 32, 'bounded PID namespace depth');
+  const ids = tokens.map(value => {
+    assert.ok(value.length <= 16, 'bounded PID token');
+    const pid = Number(value);
+    assert.ok(Number.isSafeInteger(pid) && pid > 0, 'positive safe namespace ID');
+    return pid;
+  });
+  // proc_pid_status(5): procfs namespace first, successive inner namespaces last.
+  assert.equal(ids[0], hostPid, 'NSpid must start with the observed host process ID');
+  assert.equal(ids.at(-1), preloadPid, 'NSpid must end with the preload process ID');
+}
 
 export function verifyElectronResults(observations, fixtures, config, semanticFixtures, descriptorFixtures, invocationFixtures, invocationExpected, p500Evidence) {
   const { main, renderer } = observations;
@@ -232,9 +284,8 @@ export function verifyElectronResults(observations, fixtures, config, semanticFi
   assert.equal(identity.type, 'renderer');
   assert.equal(identity.sandboxed, true);
   assert.equal(identity.contextIsolated, true);
-  assert.equal(renderer.osProcessId, identity.pid);
-  assert.ok(Number.isSafeInteger(identity.pid) && identity.pid > 0);
-  assert.ok(Number.isSafeInteger(main.pid) && main.pid > 0 && main.pid !== identity.pid);
+  verifyElectronProcessIdentity(main.pid, renderer.osProcessId, identity.pid,
+    platform(), renderer.procStatus);
   assert.deepEqual(renderer.webPreferences, { sandbox: true, nodeIntegration: false, contextIsolation: true });
   for (const runtime of [main, identity]) {
     assert.equal(runtime.versions.electron, config.expectedElectronVersion, 'exact Electron version');
