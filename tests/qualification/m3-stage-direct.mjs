@@ -44,7 +44,7 @@ function git(checkout, args) {
   // Ambient Git routing, alternate indexes and replacement objects cannot
   // substitute a different checkout or source identity.
   const env = Object.fromEntries(Object.entries(process.env)
-    .filter(([key]) => !key.startsWith("GIT_")));
+    .filter(([key]) => !key.toUpperCase().startsWith("GIT_")));
   env.GIT_NO_REPLACE_OBJECTS = "1";
   env.GIT_CONFIG_NOSYSTEM = "1";
   env.GIT_CONFIG_GLOBAL = process.platform === "win32" ? "NUL" : "/dev/null";

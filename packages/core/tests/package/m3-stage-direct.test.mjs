@@ -38,7 +38,7 @@ function fixture(t) {
   put("README.md", "Fixture documentation\n");
   writeFileSync(join(checkout, ".gitignore"), "packages/core/dist-stage0/\n");
   const env = Object.fromEntries(Object.entries(process.env)
-    .filter(([key]) => !key.startsWith("GIT_")));
+    .filter(([key]) => !key.toUpperCase().startsWith("GIT_")));
   Object.assign(env, {
     GIT_NO_REPLACE_OBJECTS: "1", GIT_CONFIG_NOSYSTEM: "1",
     GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null",
@@ -64,7 +64,7 @@ function fixture(t) {
     sourceCheckout: checkout, expectedSha, stagingDir: join(base, "direct"),
     javascriptEntry: join(packageRoot, JS), declarationEntry: join(packageRoot, DTS),
   };
-  return { base, checkout, packageRoot, put, options };
+  return { base, checkout, packageRoot, put, options, git };
 }
 
 function inventoryAt(directory, prefix = "") {
@@ -137,4 +137,29 @@ test("rejects dirty source and staging inside the checkout", t => {
   }), /staging-location/u);
   f.put("README.md", "Changed source metadata\n");
   assert.throws(() => stageDirectSubject(f.options), /dirty-source/u);
+});
+
+
+test("Windows mixed-case Git routing cannot substitute source identity", {
+  skip: process.platform !== "win32" && "Windows environment names are case-insensitive",
+}, t => {
+  const first = fixture(t), other = fixture(t);
+  other.git(["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+    "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null",
+    "commit", "--quiet", "--allow-empty", "-m", "distinct fixture identity"]);
+  const substituted = other.git(["rev-parse", "HEAD"]);
+  assert.notEqual(substituted, first.options.expectedSha);
+  assert.equal(other.git(["rev-parse", "HEAD^{tree}"]), first.git(["rev-parse", "HEAD^{tree}"]));
+  const affected = key => ["GIT_DIR", "GIT_WORK_TREE"].includes(key.toUpperCase());
+  const previous = Object.entries(process.env).filter(([key]) => affected(key));
+  for (const key of Object.keys(process.env).filter(affected)) delete process.env[key];
+  try {
+    process.env.Git_Dir = join(other.checkout, ".git");
+    process.env.Git_Work_Tree = first.checkout;
+    assert.throws(() => stageDirectSubject({ ...first.options, expectedSha: substituted }), /source-sha/u);
+    assert.equal(stageDirectSubject(first.options).source.commit, first.options.expectedSha);
+  } finally {
+    for (const key of Object.keys(process.env).filter(affected)) delete process.env[key];
+    for (const [key, value] of previous) process.env[key] = value;
+  }
 });
