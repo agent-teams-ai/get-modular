@@ -615,7 +615,7 @@ test("requires the Assembly gates in dependency order in both root commands", ()
   }
 });
 
-test("ADR-0023 admits only private Assembly 0.1.0 with its sole Core workspace dependency", async () => {
+test("ADR-0023 and ADR-0025 admit historical private and canonical public Assembly shapes", async () => {
   const manifestPath = "packages/assembly/package.json";
   const manifest = {
     name: "@get-modular/assembly",
@@ -646,12 +646,42 @@ test("ADR-0023 admits only private Assembly 0.1.0 with its sole Core workspace d
   const inventory = async (value, path = manifestPath) => packageManifestInventory([path], {
     readPackageManifest: async () => value,
   });
-  assert.equal(validateFirstProductionPackageAdmission(input), SOURCE_DEPENDENCY_POLICY_PATH);
-  assert.deepEqual(packageIdentityViolations(await inventory(manifest)), []);
-  assert.deepEqual(manifestCarrierViolations(await inventory(manifest)), []);
+  const publicManifest = {
+    ...manifest,
+    publishConfig: { access: "public", registry: "https://registry.npmjs.org/" },
+    repository: { type: "git", url: "git+https://github.com/agent-teams-ai/get-modular.git",
+      directory: "packages/assembly" },
+  };
+  delete publicManifest.private;
+  // These profile/carrier checks establish shape only. Captured-reader authority
+  // authentication remains covered by assembly-admission.test.mjs.
+  for (const admitted of [manifest, publicManifest]) {
+    assert.equal(validateFirstProductionPackageAdmission({ ...input,
+      productionPackageManifests: new Map([...coreManifest, [manifestPath, admitted]]),
+    }), SOURCE_DEPENDENCY_POLICY_PATH);
+    assert.deepEqual(packageIdentityViolations(await inventory(admitted)), []);
+    assert.deepEqual(manifestCarrierViolations(await inventory(admitted)), []);
+  }
 
   for (const [change, message] of [
-    [{ private: false }, /must remain private/u],
+    ...[false, null, undefined, "true"].map(value => [{ private: value }, /must omit private/u]),
+    ...[undefined, null, {}, { access: "restricted", registry: "https://registry.npmjs.org/" },
+      { access: "public", registry: "https://example.com/" },
+      { ...publicManifest.publishConfig, tag: "latest" }]
+      .map(value => [{ publishConfig: value }, /requires exact publishConfig/u]),
+    ...[undefined, null, {}, { ...publicManifest.repository, directory: "packages/other" }]
+      .map(value => [{ repository: value }, /requires exact repository/u]),
+  ]) {
+    const changed = { ...publicManifest, ...change };
+    assert.throws(() => validateFirstProductionPackageAdmission({ ...input,
+      productionPackageManifests: new Map([...coreManifest, [manifestPath, changed]]),
+    }), message);
+    const violations = manifestCarrierViolations(await inventory(changed));
+    assert.equal(violations.length, 1);
+    assert.match(violations[0].scripts.join("\n"), message);
+  }
+
+  for (const [change, message] of [
     [{ version: "0.2.0" }, /version must remain 0\.1\.0/u],
     [{ dependencies: {} }, /dependencies must contain only/u],
     [{ dependencies: { "@get-modular/core": "^0.1.0" } }, /dependencies must contain only/u],
@@ -663,14 +693,16 @@ test("ADR-0023 admits only private Assembly 0.1.0 with its sole Core workspace d
     [{ peerDependencies: { "@get-modular/core": "*" } },
       /peerDependencies must be absent or empty/u],
   ]) {
-    const changed = { ...manifest, ...change };
-    assert.throws(() => validateFirstProductionPackageAdmission({
-      ...input,
-      productionPackageManifests: new Map([...coreManifest, [manifestPath, changed]]),
-    }), message);
-    const violations = manifestCarrierViolations(await inventory(changed));
-    assert.equal(violations.length, 1);
-    assert.match(violations[0].scripts.join("\n"), message);
+    for (const admitted of [manifest, publicManifest]) {
+      const changed = { ...admitted, ...change };
+      assert.throws(() => validateFirstProductionPackageAdmission({
+        ...input,
+        productionPackageManifests: new Map([...coreManifest, [manifestPath, changed]]),
+      }), message);
+      const violations = manifestCarrierViolations(await inventory(changed));
+      assert.equal(violations.length, 1);
+      assert.match(violations[0].scripts.join("\n"), message);
+    }
   }
 
   const unknown = { ...manifest, name: "@get-modular/arbitrary" };
