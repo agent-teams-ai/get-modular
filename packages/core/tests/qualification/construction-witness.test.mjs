@@ -5,7 +5,7 @@ import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createRequire } from 'node:module';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import test from 'node:test';
 import canonicalize from 'canonicalize';
 import { compileComposition as direct } from '../../dist-stage0/self-composition/stage0-entry.js';
@@ -472,12 +472,13 @@ for (const name of ['constructor', 'async', 'get']) {
   });
 }
 
-async function compileIdentifierFixture(f) {
+async function compileIdentifierFixture(f, emit = false) {
   await write(f.packageRoot, 'package.json', '{"type":"module"}\n');
   await write(f.packageRoot, 'tsconfig.identifiers.json', JSON.stringify({
     extends: join(packageRoot, 'tsconfig.json'),
-    compilerOptions: { rootDir: '.', noEmit: true },
-    files: [compositionPath, allowlistPath],
+    compilerOptions: { rootDir: '.', noEmit: !emit, outDir: 'built-identifiers' },
+    files: [compositionPath, allowlistPath,
+      ...(emit ? ['self-composition/own-profile.ts'] : [])],
     include: [],
   }));
   const require = createRequire(import.meta.url);
@@ -488,6 +489,88 @@ async function compileIdentifierFixture(f) {
   assert.ifError(build.error);
   assert.equal(build.signal, null);
   assert.equal(build.status, 0, build.stdout + build.stderr);
+}
+
+for (const slot of ['eval', 'default']) {
+  test(`explicit ${slot} slot compiles and yields independent construction tuples`, async t => {
+    const f = await fixture(t);
+    await rewrite(f, 'src/features/composition-semantics/declaration.ts', source => source
+      .replace('slotId: "canonicalizer"', `slotId: "${slot}"`));
+    await rewrite(f, 'src/features/composition-semantics/ports.ts', source => source
+      .replace('readonly canonicalizer: CanonicalBytesPort;', `readonly ${slot}: CanonicalBytesPort;`));
+    await rewrite(f, 'src/features/composition-semantics/factory.ts', source => source
+      .replace('{ canonicalizer }: CompositionSemanticsDeps', `{ ${slot}: canonicalizer }: CompositionSemanticsDeps`));
+    await rewrite(f, compositionPath, source => source
+      .replace('createCompositionSemantics({ canonicalizer })', `createCompositionSemantics({ ${slot}: canonicalizer })`));
+    await rewrite(f, 'self-composition/own-profile.ts', source => source
+      .replace('consumerImplementationId: compositionSemanticsDeclaration.implementationId,\n      slotId: "canonicalizer"',
+        `consumerImplementationId: compositionSemanticsDeclaration.implementationId,\n      slotId: "${slot}"`));
+
+    // Compile the isolated package, including its root, allowlist and profile.
+    // The witness imports declaration values from buildRoot: the original
+    // namespace would still declare canonicalizer and cannot prove this change.
+    await compileIdentifierFixture(f, true);
+    f.buildRoot = join(f.packageRoot, 'built-identifiers');
+    const inputs = await import(pathToFileURL(join(f.buildRoot, 'self-composition/own-profile.js')).href);
+    const declarations = structuredClone(inputs.ownDeclarations);
+    const profile = structuredClone(inputs.ownProfile);
+    const expectedDeclarations = structuredClone(ownDeclarations);
+    expectedDeclarations.find(row => row.implementationId === semantics).slots[0].slotId = slot;
+    const expectedProfile = structuredClone(ownProfile);
+    expectedProfile.bindings.find(row => row.consumerImplementationId === semantics).slotId = slot;
+    assert.deepEqual(declarations, expectedDeclarations);
+    assert.deepEqual(profile, expectedProfile);
+    const result = await direct({ declarations, profile });
+    assert.equal(result.ok, true);
+    f.plan = result.plan;
+    assert.deepEqual(await verifyConstruction(f), expectedWitness([
+      [canon, 0, []],
+      [semantics, 1, [[slot, canon]]],
+      [output, 2, [['canonicalizer', canon]]],
+      [scanner, 3, []],
+      [admission, 4, [['scanner', scanner]]],
+      [facade, 5, [['admission', admission], ['output', output], ['semantics', semantics]]],
+    ]));
+
+    // Legal property spelling does not make a shorthand a legal binding.
+    await rewrite(f, compositionPath, source => source
+      .replace(`{ ${slot}: canonicalizer }`, `{ ${slot} }`));
+    await rejected(f, invalidCode, { reason: 'invalid-binding' });
+  });
+}
+
+for (const slot of [
+  ...Object.getOwnPropertyNames(Object.prototype), 'prototype', 'then',
+  'Uppercase', 'a_b', '$slot', 'π', '1slot', 'a-b', 'a'.repeat(65),
+]) {
+  test(`explicit own slot ${JSON.stringify(slot)} is rejected`, async t => {
+    const f = await fixture(t);
+    await rewrite(f, compositionPath, source => source
+      .replace('createCompositionSemantics({ canonicalizer })', `createCompositionSemantics({ ${slot}: canonicalizer })`));
+    await rejected(f, invalidCode);
+  });
+  test(`unselected own declaration rejects slot ${JSON.stringify(slot)}`, async t => {
+    const f = await fixture(t);
+    await compatibleFixture(f, 'get-modular/canonicalization/compatible', [{ slotId: slot,
+      capabilityId: 'get-modular/canonical-bytes',
+      compatibility: { family: 'exact', familyVersion: 1, token: "get-modular/canonical-bytes/v1" },
+      cardinality: { kind: 'required' } }]);
+    await rejected(f, invalidCode, { reason: 'declared-slot' });
+  });
+}
+
+for (const name of ['eval', 'default', 'arguments', 'await', 'yield', 'let', 'static']) {
+  for (const location of ['provider', 'shorthand']) {
+    test(`strict binding checks reject ${name} in ${location} position`, async t => {
+      const f = await fixture(t);
+      await rewrite(f, compositionPath, source => source
+        .replace('createCompositionSemantics({ canonicalizer })',
+          `createCompositionSemantics({ ${location === 'provider' ? `canonicalizer: ${name}` : name} })`));
+      await rejected(f, invalidCode, {
+        reason: location === 'provider' ? 'syntax' : 'invalid-binding',
+      });
+    });
+  }
 }
 
 for (const name of ['constructor', 'async', 'get', 'π', '𐐀', 'á', 'a\u200cb\u200d']) {

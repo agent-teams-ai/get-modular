@@ -129,6 +129,10 @@ function bindingName(value) {
   const scanned = tokens(value);
   return scanned.length === 1 && scanned[0].text === value && bindingToken(scanned[0]);
 }
+function slotName(value) {
+  return typeof value === 'string' && /^[a-z][a-z0-9]{0,63}$/u.test(value)
+    && !forbiddenSlots.has(value);
+}
 class Parser {
   constructor(source) { this.items = tokens(source); this.index = 0; }
   peek() { return this.items[this.index]?.text; }
@@ -141,6 +145,11 @@ class Parser {
   identifier() {
     const item = this.items[this.index++];
     check(bindingToken(item));
+    return item.text;
+  }
+  slot() {
+    const item = this.items[this.index++];
+    check(slotName(item?.text), 'invalid-slot');
     return item.text;
   }
   string() {
@@ -208,8 +217,9 @@ function parseRoot(source, path) {
     parser.need('(');
     const slots = new Map();
     parser.list('{', '}', () => {
-      const slot = parser.identifier();
+      const slot = parser.slot();
       const provider = parser.eat(':') ? parser.identifier() : slot;
+      check(bindingName(provider), 'invalid-binding');
       check(!slots.has(slot), 'duplicate-slot');
       slots.set(slot, provider);
     });
@@ -345,8 +355,7 @@ function declarationMaps(declaration) {
   const slots = new Map();
   const provides = new Map();
   for (const slot of declaration.slots) {
-    check(typeof slot?.slotId === 'string' && /^[a-z][a-z0-9]{0,63}$/u.test(slot.slotId)
-      && !forbiddenSlots.has(slot.slotId) && !slots.has(slot.slotId), 'declared-slot');
+    check(slotName(slot?.slotId) && !slots.has(slot.slotId), 'declared-slot');
     fields(slot.cardinality, ['kind'], 'required-cardinality');
     check(slot.cardinality.kind === 'required' && portable(slot.capabilityId), 'required-cardinality');
     compatibility(slot.compatibility);
