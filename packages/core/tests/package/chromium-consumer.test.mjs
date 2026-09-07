@@ -4,12 +4,75 @@ import { createServer, request } from 'node:http';
 import {
   publicArchiveRoot, routeHandler, validateInput, verifyRecords,
   verifySemanticRecords, verifyDescriptorRecords,
+  prepareInvocationEvidence, verifyInvocationRecords,
+  prepareP500Evidence, verifyP500Records,
 } from '../../../../tests/qualification/m3-chromium-consumer.mjs';
+import { produceInvocationRuntimeFixtures } from '../../../../tests/qualification/support/m3-invocation-runtime-fixtures.mjs';
 import { readPackageArchive } from '../../../../tests/qualification/support/package-archive.mjs';
 import { produceDescriptorRuntimeFixtures } from '../../../../tests/qualification/support/m3-descriptor-runtime-fixtures.mjs';
 import {
   executeDescriptorRuntimeFixture,
 } from '../../../../tests/qualification/support/m3-descriptor-runtime-executor.mjs';
+
+test('P500 requires all ten complete results and exact local observations', async () => {
+  const evidence = await prepareP500Evidence();
+  verifyP500Records(evidence.expected, evidence);
+  for (const missing of [undefined, null, [], {}])
+    assert.throws(() => verifyP500Records(missing, evidence));
+  assert.throws(() => verifyP500Records(evidence.expected, undefined));
+  assert.throws(() => verifyP500Records(evidence.expected, structuredClone(evidence)));
+  for (const mutate of [
+    rows => { rows.pop(); },
+    rows => { rows[2].id = rows[0].id; },
+    rows => { rows.reverse(); },
+    rows => { rows[1].mode = 'object'; },
+    rows => { rows[0].category = 'substituted'; },
+    rows => { rows[0].result.digest = 'forged'; },
+    rows => { rows[0].result.plan.bindings.pop(); },
+    rows => { rows[6].result.diagnostics = []; },
+    rows => { rows[8].result = structuredClone(rows[0].result); },
+    rows => { delete rows[0].observations; },
+    ...['containers', 'mutationRejections', 'mutatedObjects', 'mutatedBuffers',
+      'mutatedBytes'].map(name => rows => { rows[0].observations[name] += 1; }),
+    rows => { rows[0].observations.callerWrapperMutated = false; },
+    rows => { rows[0].observations.unmet = []; },
+  ]) {
+    const changed = structuredClone(evidence.expected);
+    mutate(changed);
+    assert.throws(() => verifyP500Records(changed, evidence));
+  }
+});
+
+test('invocation parent rejects missing IDs, false coverage and incomplete capability rows', async () => {
+  const fixtures = [...produceInvocationRuntimeFixtures()];
+  const expected = await prepareInvocationEvidence(fixtures);
+  for (const realm of ['window', 'worker']) {
+    verifyInvocationRecords(expected[realm], fixtures, expected, realm);
+    for (const mutate of [
+      value => { value.records.pop(); },
+      value => { value.records[1].id = value.records[0].id; },
+      value => { value.records[0].mode = 'object'; },
+      value => { value.records[0].result.ok = true; },
+      value => { value.records[0].observations.foreignRealm = !value.records[0].observations.foreignRealm; },
+      value => { value.records[0].observations.nodeBuffer = true; },
+      value => { value.records[0].observations.mutatedBytes += 1; },
+      value => { value.records[0].observations.mutationRejections = 0; },
+      value => { value.unmet.pop(); },
+      value => { value.unmet[0].code = 'passed'; },
+      value => { value.unmet[0].id = value.records[0].id; },
+      value => { value.records.push(structuredClone(expected.main.records.find(row =>
+        row.id === 'dense-offset-buffer'))); },
+    ]) {
+      const changed = structuredClone(expected[realm]);
+      mutate(changed);
+      assert.throws(() => verifyInvocationRecords(changed, fixtures, expected, realm));
+    }
+  }
+  const changed = structuredClone(fixtures);
+  changed.find(row => row.id === 'realm-array-cleared').applicability.foreignRealm = 'nonapplicable';
+  assert.throws(() => verifyInvocationRecords(expected.worker, changed, expected, 'worker'));
+  assert.throws(() => verifyInvocationRecords(expected.worker, fixtures.slice(1), expected, 'worker'));
+});
 
 test('routes serve copied bytes and reject noncanonical or unlisted targets', async () => {
   const bytes = Buffer.from('export const value = 1;');

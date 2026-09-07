@@ -2,11 +2,19 @@ import { join } from 'node:path';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  validateInput, electronEnvironment, verifyElectronResults,
+  validateInput, electronEnvironment, verifyElectronResults as verifyNativeElectronResults,
 } from '../../../../tests/qualification/m3-electron-consumer.mjs';
 import { runInNewContext } from 'node:vm';
 import { produceDescriptorRuntimeFixtures } from '../../../../tests/qualification/support/m3-descriptor-runtime-fixtures.mjs';
 import { executeDescriptorRuntimeFixture } from '../../../../tests/qualification/support/m3-descriptor-runtime-executor.mjs';
+import { produceInvocationRuntimeFixtures } from '../../../../tests/qualification/support/m3-invocation-runtime-fixtures.mjs';
+import { prepareInvocationEvidence, prepareP500Evidence } from '../../../../tests/qualification/m3-chromium-consumer.mjs';
+
+const p500Evidence = await prepareP500Evidence();
+function verifyElectronResults(...args) {
+  args.length = 7;
+  return verifyNativeElectronResults(...args, p500Evidence);
+}
 
 const input = {
   absoluteelectronExecutable: '/tools/Electron.app/Contents/MacOS/Electron', archivePath: '/retained/core.tgz',
@@ -75,8 +83,69 @@ function evidence() {
     webPreferences: { sandbox: true, nodeIntegration: false, contextIsolation: true },
     records: fixtures.map(record),
   };
+  for (const realm of [main, renderer])
+    realm.p500Records = structuredClone(p500Evidence.expected);
   return { config, observations: { main, renderer } };
 }
+
+test('Electron cannot omit P500 evidence in either native realm', () => {
+  const baseline = evidence();
+  assert.throws(() => verifyNativeElectronResults(
+    baseline.observations, fixtures, baseline.config));
+  for (const realm of ['main', 'renderer']) {
+    for (const mutate of [
+      value => { delete value.p500Records; },
+      value => { value.p500Records = null; },
+      value => { value.p500Records = {}; },
+      value => { value.p500Records.pop(); },
+      value => { value.p500Records[1].mode = 'object'; },
+      value => { value.p500Records[2].id = value.p500Records[0].id; },
+      value => { value.p500Records[0].result.plan.bindings.pop(); },
+      value => { value.p500Records[6].result.diagnostics = []; },
+      value => { value.p500Records[8].result.digest = value.p500Records[0].result.digest; },
+      value => { value.p500Records[0].observations.mutatedBytes += 1; },
+      value => { value.p500Records[0].observations.mutationRejections = 0; },
+    ]) {
+      const { observations, config } = evidence();
+      verifyElectronResults(observations, fixtures, config);
+      mutate(observations[realm]);
+      assert.throws(() => verifyElectronResults(observations, fixtures, config));
+    }
+  }
+  delete baseline.observations.main.p500Records;
+  delete baseline.observations.renderer.p500Records;
+  assert.throws(() => verifyElectronResults(baseline.observations, fixtures, baseline.config));
+});
+
+test('Electron invocation verification requires main62 and renderer61 with exact local proof', async () => {
+  const invocationFixtures = [...produceInvocationRuntimeFixtures()];
+  const expected = await prepareInvocationEvidence(invocationFixtures);
+  for (const realm of ['main', 'renderer']) {
+    for (const mutate of [
+      value => { delete value.invocations; },
+      value => { value.invocations.records.pop(); },
+      value => { value.invocations.records[0].mode = 'object'; },
+      value => { value.invocations.records[0].result.ok = true; },
+      value => { value.invocations.records[0].observations.getterCalls = 1; },
+      value => { value.invocations.records[0].observations.nodeBuffer = !value.invocations.records[0].observations.nodeBuffer; },
+      value => { value.invocations.records[0].observations.mutatedBuffers += 1; },
+      value => { value.invocations = structuredClone(expected.worker); },
+      value => { value.invocations.unmet.push({
+        id: 'realm-array-cleared', capability: 'foreign-realm',
+        code: 'invocation.foreign-realm-unavailable',
+      }); },
+    ]) {
+      const { observations, config } = evidence();
+      observations.main.invocations = structuredClone(expected.main);
+      observations.renderer.invocations = structuredClone(expected.window);
+      const verify = () => verifyElectronResults(observations, fixtures, config,
+        undefined, undefined, invocationFixtures, expected);
+      verify();
+      mutate(observations[realm]);
+      assert.throws(verify);
+    }
+  }
+});
 
 test('parent rejects incomplete results, substituted realms, unsafe preferences and identity drift', () => {
   for (const mutate of [
