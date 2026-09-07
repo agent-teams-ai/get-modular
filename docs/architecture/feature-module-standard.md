@@ -150,6 +150,9 @@ structural qualification.
 
 ## Optional common assembly delivery
 
+The [Consumer module standard](common-assembly.md#consumer-module-standard) defines
+scoped consumer wiring adoption; this repository profile does not certify consumers.
+
 [Common assembly](common-assembly.md) defines the separate A0-A3 route and
 acceptance checks admitted by [ADR-0023](../decisions/0023-add-a-thin-host-owned-assembly-component-above-core.md).
 Core callable surfaces and historical qualification remain unchanged. Assembly

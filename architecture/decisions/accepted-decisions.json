@@ -106,6 +106,11 @@
       "id": "ADR-0025",
       "path": "docs/decisions/0025-publish-assembly-0-1-0-with-core-0-1-0.md",
       "immutableDigest": "sha256:ad3a06508a7a124fa2b909168957cd40ca940b2581193051debc90fcfb9a30e8"
+    },
+    {
+      "id": "ADR-0026",
+      "path": "docs/decisions/0026-adopt-consumer-module-standard.md",
+      "immutableDigest": "sha256:2cfcdfd5dc544bc5059602dcc5df0ed7c71d45758256524f99ff6562a80a20fc"
     }
   ]
 }

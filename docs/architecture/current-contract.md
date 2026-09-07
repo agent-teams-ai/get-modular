@@ -27,6 +27,9 @@ related:
 
 # Current contract
 
+For scoped Host adoption, use the [Consumer module standard](common-assembly.md#consumer-module-standard).
+It preserves the Core and Host authority boundaries defined here.
+
 This document is the navigation and implementation guide for the current
 pre-1.0 contract. It does not replace an accepted ADR or mutate immutable
 qualification artifacts.
