@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { lstat, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
+import { access, lstat, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { delimiter, dirname, join, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { testAssemblyTypes } from "../../../architecture/tooling/test-assembly-types.mjs";
@@ -10,6 +10,30 @@ import { largeLiteralSource } from "./type-scale.mjs";
 
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const fixtures = join(workspace, "packages/assembly/tests");
+
+async function packageManagerCli(name) {
+  const node = await realpath(process.execPath);
+  const candidates = name === "npm" ? [
+    join(dirname(node), "node_modules/npm/bin/npm-cli.js"),
+    join(dirname(dirname(node)), "lib/node_modules/npm/bin/npm-cli.js"),
+  ] : [];
+  const inherited = process.env.npm_execpath;
+  if (inherited && (name === "pnpm" ? /pnpm\.(?:c?js|mjs)$/u : /npm-cli\.js$/u).test(inherited)) {
+    candidates.unshift(inherited);
+  }
+  for (const directory of (process.env.PATH ?? "").split(delimiter)) {
+    try {
+      const target = await realpath(join(directory, name));
+      if (/\.(?:c?js|mjs)$/u.test(target)) candidates.push(target);
+    } catch (error) {
+      if (error.code !== "ENOENT" && error.code !== "ENOTDIR") throw error;
+    }
+  }
+  for (const candidate of candidates) {
+    try { await access(candidate); return await realpath(candidate); } catch {}
+  }
+  throw new Error(`Pinned ${name} JavaScript CLI is required; no shell/download fallback`);
+}
 
 function command(executable, args, cwd, environment = {}) {
   const result = spawnSync(executable, args, {
@@ -66,10 +90,11 @@ test("disposable packed consumer checks closed roots, synthetic wiring and both 
     await mkdir(archives);
     await mkdir(consumer);
     const archivePaths = {};
+    const pnpm = await packageManagerCli("pnpm"), npm = await packageManagerCli("npm");
     for (const name of ["core", "assembly"]) {
       const directory = join(workspace, "packages", name);
       const manifest = JSON.parse(await readFile(join(directory, "package.json"), "utf8"));
-      command("pnpm", ["pack", "--pack-destination", archives], directory);
+      command(process.execPath, [pnpm, "pack", "--pack-destination", archives], directory);
       const archive = join(archives, `${manifest.name.replace("@", "").replace("/", "-")}-${manifest.version}.tgz`);
       assert.equal((await lstat(archive)).isFile(), true);
       archivePaths[manifest.name] = archive;
@@ -79,7 +104,7 @@ test("disposable packed consumer checks closed roots, synthetic wiring and both 
       name: "assembly-disposable-consumer", private: true, type: "module",
       dependencies: Object.fromEntries(Object.entries(archivePaths).map(([name, archive]) => [name, `file:${archive}`])),
     }));
-    command("npm", ["install", "--offline", "--ignore-scripts", "--no-audit", "--no-fund", "--package-lock=false"], consumer, {
+    command(process.execPath, [npm, "install", "--offline", "--ignore-scripts", "--no-audit", "--no-fund", "--package-lock=false"], consumer, {
       npm_config_cache: join(temporary, "npm-cache"),
     });
     assert.deepEqual((await readdir(join(consumer, "node_modules"))).filter((name) => name !== ".package-lock.json").sort(), ["@get-modular"]);
