@@ -16,7 +16,7 @@
     }
   },
   "files": [
-    "dist/composition/stage0.js",
+    "dist/composition/generated/stage1.js",
     "dist/features/authoring/diagnostic-types.d.ts",
     "dist/features/authoring/helpers.d.ts",
     "dist/features/authoring/helpers.js",

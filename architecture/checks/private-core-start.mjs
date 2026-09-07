@@ -10,6 +10,10 @@ const SCOPE = ["semantics", "object-entry", "publication-not-claimed"];
 const EXCLUDED = ["raw-carriers", "raw-entry-export", "runtime-lifecycle", "conformance-claims", "proposed-contract-claims", "generated-self-composition-claims"];
 const M2_SCOPE = [...SCOPE, "raw-carriers", "raw-entry-export", "duplicate-binding-records"];
 const M2_EXCLUDED = EXCLUDED.filter(value => value !== "raw-carriers" && value !== "raw-entry-export");
+// M3 admits generated implementation only; qualification and promotion remain
+// separate gates. Both expanded scopes require the same verified M2 authority.
+const M3_SCOPE = [...M2_SCOPE, "generated-self-composition"];
+const M3_EXCLUDED = M2_EXCLUDED.filter(value => value !== "generated-self-composition-claims");
 // The excluded list is enforced against the manifest, not only recorded. The
 // current record excludes neither publication nor public exports, so these
 // rules are the enforcement that keeps the field meaningful whenever a future
@@ -53,7 +57,7 @@ export async function validatePrivateCoreStart({
     if (productionArtifacts.length > 0) {
       fail("record is required before adding the first production package");
     }
-    return;
+    return Object.freeze({ generatedSelfComposition: false });
   }
   if (starts.length !== 2 || ends.length !== 2) fail("record must occur exactly once");
   const body = starts[1].split(END_MARKER);
@@ -80,8 +84,11 @@ export async function validatePrivateCoreStart({
     || !/^\d{4}-\d{2}-\d{2}$/u.test(record.approvedOn)) fail("owner authorization is missing or inactive");
   if (record.authorityDigest !== authorityDigest) fail("accepted authority has changed");
   if (record.package !== "@get-modular/core") fail("package is not authorized");
-  if (!exactList(record.scope, m2 ? M2_SCOPE : SCOPE)
-    || !exactList(record.excluded, m2 ? M2_EXCLUDED : EXCLUDED)) fail("scope is not the bounded private checkpoint");
+  const boundedScope = m2
+    ? (exactList(record.scope, M2_SCOPE) && exactList(record.excluded, M2_EXCLUDED))
+      || (exactList(record.scope, M3_SCOPE) && exactList(record.excluded, M3_EXCLUDED))
+    : exactList(record.scope, SCOPE) && exactList(record.excluded, EXCLUDED);
+  if (!boundedScope) fail("scope is not the bounded private checkpoint");
   if (m2) {
     const authority = record.m2Authority;
     if (!authority || typeof authority !== "object" || Array.isArray(authority)
@@ -107,4 +114,9 @@ export async function validatePrivateCoreStart({
   }
   if (typeof record.baseCommit !== "string" || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u.test(record.baseCommit)) fail("base must be an exact Git commit");
   if (!await isStartingBase(record.baseCommit)) fail("base is not an ancestor of this checkout");
+  return Object.freeze({
+    generatedSelfComposition: m2
+      && exactList(record.scope, M3_SCOPE)
+      && exactList(record.excluded, M3_EXCLUDED),
+  });
 }

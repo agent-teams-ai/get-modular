@@ -64,7 +64,7 @@ function reject(files, profile, reason) {
   });
 }
 
-// Disposable candidate only: production and its packed gate still select m2.
+// Disposable profile fixtures alongside the actual generated production closure.
 // Build the actual emitter and its actual generated root in a temporary tree;
 // audit those emitted JS bytes at their physical path with the real dist
 // closure. Declaration semantics remain the independent declaration owner's.
@@ -87,17 +87,22 @@ test('explicit generated archive profile preserves the full M2 closure', async t
   await compile(temporary, 'generated', [rootPath]);
 
   const manifest = JSON.parse(await readFile(join(packageRoot, 'package.json'), 'utf8'));
-  assert.ok(manifest.files.includes(DIRECT));
-  assert.ok(!manifest.files.includes(GENERATED));
-  const direct = new Map();
+  assert.ok(manifest.files.includes(GENERATED));
+  assert.ok(!manifest.files.includes(DIRECT));
+  const generated = new Map();
   for (const path of [...manifest.files, 'LICENSE', 'README.md', 'package.json']) {
-    direct.set(path, await readFile(join(packageRoot, path)));
+    generated.set(path, await readFile(join(packageRoot, path)));
   }
-  const generated = new Map(direct);
-  generated.delete(DIRECT);
-  generated.set(GENERATED, await readFile(join(temporary,
-    'built-generated/src/composition/generated/stage1.js')));
-  edit(generated, ENTRY, './composition/stage0.js', './composition/generated/stage1.js');
+  assert.deepEqual(generated.get(GENERATED), await readFile(join(temporary,
+    'built-generated/src/composition/generated/stage1.js')),
+  'production wiring matches independently regenerated physical JavaScript');
+  // The direct companion uses the real separately built handwritten root.
+  // Only its disposable public entry is redirected; no feature bytes change.
+  const direct = new Map(generated);
+  direct.delete(GENERATED);
+  direct.set(DIRECT, await readFile(join(packageRoot,
+    'dist-stage0/src/composition/stage0.js')));
+  edit(direct, ENTRY, './composition/generated/stage1.js', './composition/stage0.js');
   const expectedPhysical = [...direct.keys()].filter(path => path !== DIRECT)
     .concat(GENERATED).sort();
   assert.deepEqual([...generated.keys()].sort(), expectedPhysical);

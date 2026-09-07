@@ -4,6 +4,10 @@
 
 ### Added
 
+- Generated production assembly through verified current-source stage0 planning,
+  finite rendering and independent construction checks before wiring publication.
+  The production barrel and archive use generated stage1 with unchanged public
+  compiler signatures, package exports and diagnostic generation.
 - Public object and raw JSON compilation through one private facade pipeline.
   Raw input uses synchronously owned UTF-8 `Uint8Array` views and exact safe
   integer checks before rounding.
@@ -42,7 +46,9 @@
   normalized duplicate diagnostics and independent absence/mismatch checks.
 - Package typecheck, build and tests with Foundation source-dependency checks.
 
-This package is not published. The direct public compiler and packed regression
-checks are implemented. Final retained M2 qualification, generated
-self-composition and the complete runtime matrix remain separate pending exits.
-No structural or runtime conformance is claimed by this source checkpoint.
+This package is not published. Generated production assembly is implemented in
+this atomic checkpoint; historical M1/M2 checkpoints used direct assembly, not
+self-composed assembly. Full M3 cold recovery, retained-archive qualification
+and runtime proof remain pending, as does final retained M2 qualification.
+No `self-composed-qualified`, structural or runtime conformance, or
+`release-eligible` claim is made by this source checkpoint.

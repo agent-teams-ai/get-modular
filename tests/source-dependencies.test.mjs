@@ -14,6 +14,7 @@ const cli = join(dirname(require.resolve("@agent-teams/engineering-foundation/pa
 const policyPath = "architecture/foundation/source-dependencies.yaml";
 const policy = parse(await readFile(policyPath, "utf8"));
 const sourcePaths = policy.boundaries.flatMap(boundary => boundary.roots);
+// Standalone execution requires pnpm core:build, as do the aggregate gates.
 const source = new Map(await Promise.all(sourcePaths.map(async path => [path, await readFile(path, "utf8")])));
 const coreManifest = await readFile("packages/core/package.json", "utf8");
 const canonicalRoot = "packages/core/src/features/canonicalization";
@@ -250,3 +251,43 @@ for (const typeOnly of [false, true]) {
     assert.ok(rules(report).includes(`architecture.source-dependencies.boundary-${typeOnly ? "type-only" : "runtime"}-cycle`), rules(report));
   });
 }
+
+test("Foundation rejects public fallback to the direct qualification root", async () => {
+  const report = await checkFixture(files => {
+    const path = "packages/core/src/index.ts";
+    const original = files.get(path);
+    assert.ok(original.includes("./composition/generated/stage1.js"));
+    files.set(path, original.replace("./composition/generated/stage1.js", "./composition/stage0.js"));
+  });
+  assert.match(rules(report), /architecture\.source-dependencies\.forbidden-boundary-dependency/u);
+});
+
+test("Foundation rejects a feature dependency on generated construction", async () => {
+  const report = await checkFixture(files => {
+    const path = "packages/core/src/features/compiler-facade/factory.ts";
+    files.set(path, files.get(path) + '\nimport { root } from "../../composition/generated/stage1.js";\n');
+  });
+  assert.match(rules(report), /architecture\.source-dependencies\.forbidden-boundary-dependency/u);
+});
+
+for (const [name, target, specifier] of [
+  ["tooling", "packages/core/self-composition/fixture.ts", "../../../self-composition/fixture.js"],
+  ["tests", "packages/core/tests/fixture.ts", "../../../tests/fixture.js"],
+]) {
+  test(`Foundation rejects generated imports into ${name}`, async () => {
+    const report = await checkFixture(files => {
+      const path = "packages/core/src/composition/generated/stage1.ts";
+      files.set(target, "export const fixture = 1;\n");
+      files.set(path, files.get(path) + `\nimport { fixture } from "${specifier}";\n`);
+    });
+    assert.equal(report.outcome, "violations", JSON.stringify(report));
+    assert.ok(rules(report).includes("architecture.source-dependencies."), rules(report));
+  });
+}
+
+test("Foundation leaves generated siblings unclassified", async () => {
+  const report = await checkFixture(files => {
+    files.set("packages/core/src/composition/generated/extra.ts", "export {};\n");
+  });
+  assert.match(rules(report), /architecture\.source-dependencies\.unclassified-source-file/u);
+});

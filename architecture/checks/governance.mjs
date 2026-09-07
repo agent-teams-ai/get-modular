@@ -3,6 +3,8 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 import { validatePrivateCoreStart } from "./private-core-start.mjs";
+import { GENERATED_PRODUCTION_PATH } from "./generated-production-source.mjs";
+import { cleanProductionAfterFailure } from "../tooling/generate-core.mjs";
 
 import {
   manifestCarrierViolations,
@@ -654,13 +656,16 @@ export async function inspectTrackedNavigationFile(relativePath, repositoryRoot 
   return inspectTrackedWorkingTreeRegularFile(relativePath, repositoryRoot);
 }
 
-async function main() {
+export async function runGovernance() {
   const snapshot = await captureGitIndexSnapshot(root);
-  const readGovernanceInput = (path, label) => readIndexSnapshotFile(
-    snapshot,
-    path,
-    label,
-  );
+  const observedInputs = new Set();
+  const readGovernanceInput = (path, label) => {
+    observedInputs.add(path);
+    return readIndexSnapshotFile(snapshot, path, label);
+  };
+  if (snapshot.entries.has(GENERATED_PRODUCTION_PATH)) {
+    fail("generated production source must not have an index entry");
+  }
   const ledgerBytes = await readGovernanceInput(
     ACCEPTED_AUTHORITY_LEDGER_PATH,
     "accepted authority ledger",
@@ -728,7 +733,7 @@ async function main() {
     blockerIds,
     traceability,
   });
-  const productionArtifacts = await productionArtifactPaths(root, snapshot);
+  let productionArtifacts = await productionArtifactPaths(root, snapshot);
   const readPackageManifest = async path => {
     const bytes = (await readGovernanceInput(path, "production package manifest"))
       .toString("utf8");
@@ -746,7 +751,7 @@ async function main() {
   if (productionArtifactSymlinks.length > 0) {
     fail(`production artifacts must not be symlinks: ${productionArtifactSymlinks.join(", ")}`);
   }
-  await validatePrivateCoreStart({
+  const scope = await validatePrivateCoreStart({
     markdown: documentSources.get("ARCH-MVP-IMPLEMENTATION-ROADMAP").bytes.toString("utf8"),
     productionArtifacts,
     authorityDigest: ACCEPTED_AUTHORITY_LEDGER_DIGEST,
@@ -764,37 +769,75 @@ async function main() {
       readBytes: path => readGovernanceInput(path, "M2 successor artifact"),
     }),
   });
-  const profile = JSON.parse((await readGovernanceInput(
-    "architecture/feature-module-standard-profile.json",
-    "Feature Module Standard profile",
-  )).toString("utf8"));
-  const claimDocuments = await validateQualificationClaims({
-    documents: [...documents.values()],
-    productionArtifacts,
-    documentSources,
-    evidenceFile: async path => {
-      return inspectIndexSnapshotFile(snapshot, path);
-    },
-  });
-  validateQualificationProfileConsistency({
-    profile,
-    documents: [...documents.values()],
-  });
-  await validateBlockedImplementation({
-    blockerIds,
-    publicationBlockerIds: new Set(traceability.publicationBlockers),
-    productionArtifacts,
-    claimDocuments: claimDocuments.map(id => documents.get(id)),
-    readPackageManifest,
-    readProductionSource: async path => (
-      await readGovernanceInput(path, "production source")
-    ).toString("utf8"),
-    repositoryRoot: root,
-  });
-  await assertGitIndexSnapshotCurrent(snapshot);
-  process.stdout.write("Get Modular governance check passed.\n");
+  let generation;
+  try {
+    if (scope.generatedSelfComposition
+      && productionArtifacts.includes("packages/core/package.json")) {
+      const { buildCore } = await import("../tooling/build-core.mjs");
+      generation = await buildCore({ snapshot });
+      productionArtifacts = [...new Set([
+        ...await productionArtifactPaths(root, snapshot),
+        GENERATED_PRODUCTION_PATH,
+      ])].sort(compareStrings);
+      const symlinks = await productionArtifactSymlinkPaths(root, snapshot);
+      if (symlinks.length > 0) {
+        fail(`production artifacts must not be symlinks: ${symlinks.join(", ")}`);
+      }
+      const misplaced = productionArtifactsOutsidePackages(productionArtifacts);
+      if (misplaced.length > 0) {
+        fail(`production artifacts must be below packages: ${misplaced.join(", ")}`);
+      }
+      await generation.generatedReader(GENERATED_PRODUCTION_PATH);
+    }
+    const profile = JSON.parse((await readGovernanceInput(
+      "architecture/feature-module-standard-profile.json",
+      "Feature Module Standard profile",
+    )).toString("utf8"));
+    const claimDocuments = await validateQualificationClaims({
+      documents: [...documents.values()],
+      productionArtifacts,
+      documentSources,
+      evidenceFile: async path => {
+        observedInputs.add(path);
+        return inspectIndexSnapshotFile(snapshot, path);
+      },
+    });
+    validateQualificationProfileConsistency({
+      profile,
+      documents: [...documents.values()],
+    });
+    await validateBlockedImplementation({
+      blockerIds,
+      publicationBlockerIds: new Set(traceability.publicationBlockers),
+      productionArtifacts,
+      claimDocuments: claimDocuments.map(id => documents.get(id)),
+      readPackageManifest,
+      readProductionSource: async path => (
+        generation && path === GENERATED_PRODUCTION_PATH
+          ? await generation.generatedReader(path)
+          : await readGovernanceInput(path, "production source")
+      ).toString("utf8"),
+      repositoryRoot: root,
+    });
+    for (const { path } of documentSources.values()) observedInputs.add(path);
+    for (const path of observedInputs) {
+      await readIndexSnapshotFile(snapshot, path, "governance completion input");
+    }
+    await governanceDocumentCatalog(root, snapshot);
+    const finalArtifacts = await productionArtifactPaths(root, snapshot);
+    if (generation) finalArtifacts.push(GENERATED_PRODUCTION_PATH);
+    if (!sameStrings(new Set(finalArtifacts), productionArtifacts)) {
+      fail("production inventory changed during governance");
+    }
+    await generation?.verifyInputs();
+    await assertGitIndexSnapshotCurrent(snapshot);
+    process.stdout.write("Get Modular governance check passed.\n");
+  } catch (error) {
+    if (generation) await cleanProductionAfterFailure(error);
+    throw error;
+  }
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  await main();
+  await runGovernance();
 }

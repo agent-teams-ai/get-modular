@@ -6,5 +6,8 @@
   "files": [],
   "include": [
     "src/**/*.ts"
+  ],
+  "exclude": [
+    "src/composition/generated/stage1.variant.ts"
   ]
 }
