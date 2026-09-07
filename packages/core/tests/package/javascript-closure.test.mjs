@@ -952,3 +952,81 @@ for (const profile of ['m1-shared', 'm2']) {
 `, ''));
   });
 }
+
+function callableFixture(profile) {
+  const files = profile === 'm1' ? baseline()
+    : sharedFixture(profile === 'm2-generated' ? 'm2' : profile);
+  if (profile === 'm2-generated') {
+    const generatedRoot = 'dist/composition/generated/stage1.js';
+    files.set(generatedRoot, Buffer.from(files.get(ROOT).toString('utf8')
+      .replaceAll("'../features/", "'../../features/")));
+    files.delete(ROOT);
+    edit(files, ENTRY, "'./composition/stage0.js'", "'./composition/generated/stage1.js'");
+  }
+  return files;
+}
+
+const computedConstructorPrefix = 'let key = "constructor"; const text = ""; const stringConstructor = text[key];';
+for (const profile of ['m1', 'm1-shared', 'm2', 'm2-generated']) {
+  const expectedExports = profile.startsWith('m2') ? m2PublicNames : publicNames;
+  test(`${profile} preserves indexed data and allowed callable aliases`, () => {
+    const files = callableFixture(profile);
+    body(files, `const declarations = input.declarations;
+let index = 0;
+const selected = declarations[index];
+const alias = selected;
+alias.slots.map(slot => slot);
+const report = collector.addUnique;
+const reportAlias = (report);
+reportAlias(input.profile);
+const { addUnique: destructured } = collector;
+destructured(input.profile);
+const key = 'add' + 'Unique';
+const named = collector[key];
+named(input.profile);
+const validate = input.profile ? ((candidate) => candidate) : ((candidate) => candidate);
+const validateAlias = validate;
+validateAlias(input.profile);`);
+    edit(files, ORDER,
+      'const a = canonicalize(left.details), b = canonicalize(right.details);',
+      'const invoke = (canonicalize); const a = invoke(left.details), b = invoke(right.details);');
+    assert.deepEqual(auditM1JavaScriptClosure(files, profile),
+      { modules: [...files.keys()].sort(), exports: expectedExports });
+  });
+
+  for (const [description, code, reason] of [
+    ['the complete Function constructor chain',
+      `${computedConstructorPrefix} const functionConstructor = stringConstructor[key]; functionConstructor("return 1")();`, 'call-origin'],
+    ['a computed constructor alias',
+      `${computedConstructorPrefix} const functionConstructor = stringConstructor[key]; functionConstructor("return 1");`, 'computed-call'],
+    ['parenthesized aliases',
+      `${computedConstructorPrefix} const first = (stringConstructor); const second = (first[(key)]); const invoke = ((second)); invoke("return 1");`, 'computed-call'],
+    ['an unknown const selector',
+      'const key = value.moduleId; const text = ""; const target = text[key]; const invoke = target; invoke("return 1");', 'computed-call'],
+    ['mutable aliases',
+      `${computedConstructorPrefix} let invoke = stringConstructor[key]; const alias = invoke; alias("return 1");`, 'call-origin'],
+    ['assigned aliases',
+      `${computedConstructorPrefix} let invoke; invoke = stringConstructor[key]; const alias = invoke; alias("return 1");`, 'call-origin'],
+    ['array destructuring aliases',
+      `${computedConstructorPrefix} const [invoke] = [stringConstructor[key]]; invoke("return 1");`, 'computed-call'],
+    ['mutable capability bindings',
+      `${computedConstructorPrefix} let { canonicalize: invoke } = value; invoke = stringConstructor[key]; invoke("return 1");`, 'call-origin'],
+    ['conditional aliases',
+      `${computedConstructorPrefix} const invoke = value ? stringConstructor[key] : canonicalize; invoke("return 1");`, 'call-origin'],
+    ['logical aliases',
+      `${computedConstructorPrefix} const invoke = stringConstructor[key] || canonicalize; invoke("return 1");`, 'call-origin'],
+    ['sequence aliases',
+      `${computedConstructorPrefix} const invoke = (canonicalize, stringConstructor[key]); invoke("return 1");`, 'call-origin'],
+    ['aliases of returned functions',
+      `${computedConstructorPrefix} const functionConstructor = stringConstructor[key]; const invoke = functionConstructor("return 1"); invoke();`, 'call-origin'],
+    ['literal callees', 'const invoke = 1; invoke();', 'call-origin'],
+  ]) {
+    test(`${profile} rejects ${description} in canonicalization archive bytes`, () => {
+      const files = callableFixture(profile);
+      assert.deepEqual(auditM1JavaScriptClosure(files, profile).exports, expectedExports);
+      const anchor = 'function canonicalize(value) {';
+      edit(files, CANONICAL, anchor, `${anchor}\n  ${code}\n`);
+      reject(files, reason, profile);
+    });
+  }
+}

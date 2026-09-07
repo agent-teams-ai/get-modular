@@ -1,8 +1,10 @@
 ---
 id: ADR-0019
 type: adr
-status: proposed
+status: accepted
 owner: architecture
+approved_by: product-owner-delegated-orchestrator
+accepted_at: 2026-09-07
 summary: Clarifies retained-archive upload prerequisites, registry reconciliation and publication completion without changing conformance authority.
 related:
   - ADR-0012
@@ -22,11 +24,10 @@ history. A lost upload response also does not prove that the version is absent.
 
 ## Decision
 
-This proposal requires acceptance before it changes publication policy. It does
-not block private M1 correction or packed-subject preparation, authorize an
+This decision clarifies publication ordering. It does not itself authorize an
 upload, accept ADR-0011 custody, expand M2/M3 scope or grant conformance.
 
-If accepted, supersede only ADR-0012's phrase "publish-time rehash and registry
+Supersede only ADR-0012's phrase "publish-time rehash and registry
 read-back before publication eligibility" with these ordered obligations:
 
 1. **Upload admission:** the applicable Node/TypeScript/package gates, verified
@@ -47,6 +48,9 @@ and promotion operate on the same recorded package/version/archive identity.
 The release owner selects the provisional and intended tags in the release
 record before execution; the workflow never guesses them from a branch name.
 Create that workflow with its real package consumer, not as empty infrastructure.
+The roadmap's separately authorized first-package owner bootstrap remains
+supported; its delegated operator follows the same retained-byte, durable-intent
+and reconciliation rules. This does not authorize an unattended publisher.
 
 For an unknown upload or promotion outcome, the runbook is:
 
@@ -87,3 +91,11 @@ owner-authorized action.
   qualification of different bytes.
 - Couple this clarification to all proposed release custody: unnecessary for
   ADR-0017's bounded `not-claimed` publication checkpoint.
+
+## Acceptance evidence
+
+The private [release procedure](../../architecture/tooling/first-core-release.mjs)
+and its [deterministic checks](../../packages/core/tests/package/first-core-release.test.mjs)
+cover the six required scenarios, an absent previous tag, concurrent tag changes,
+archive identity and durable intent failures. They execute no registry writes.
+Actual publication still requires the separate recorded owner authorization.

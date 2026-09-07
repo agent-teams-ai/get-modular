@@ -73,6 +73,11 @@
       "immutableDigest": "sha256:d2ed79790913df0288eab6353bc5ceb2928e10bfbf2f90a92a571de59937368d"
     },
     {
+      "id": "ADR-0019",
+      "path": "docs/decisions/0019-separate-upload-admission-from-publication-completion.md",
+      "immutableDigest": "sha256:6d59cb752e51cfb17b82d099836c9469b6f96e2690b0a94b365c192d2a298538"
+    },
+    {
       "id": "ADR-0020",
       "path": "docs/decisions/0020-define-diagnostic-coverage-outside-object-resource-admission.md",
       "immutableDigest": "sha256:efed8501482a2bc9af58d6f0b71d85f18be0931ce39cf1a102d2b74090916668"
