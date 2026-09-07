@@ -11,7 +11,7 @@ import canonicalize from 'canonicalize';
 import { compileComposition as direct } from '../../dist-stage0/self-composition/stage0-entry.js';
 import { ownDeclarations, ownProfile } from '../../dist-stage0/self-composition/own-profile.js';
 import { ownDeclarations as variantDeclarations, ownProfile as variantProfile } from '../../dist-seed/self-composition/own-profile.variant.js';
-import { verifyConstruction } from '../../../../tests/qualification/support/construction-witness.mjs';
+import { verifyConstruction, verifyGeneratedConstruction } from '../../../../tests/qualification/support/construction-witness.mjs';
 
 const packageRoot = fileURLToPath(new URL('../../', import.meta.url));
 const buildRoot = join(packageRoot, 'dist-stage0');
@@ -636,3 +636,160 @@ test('escaped metadata remains outside the finite string grammar', async t => {
     .replace('factoryExport: "createOwnedJcs"', 'factoryExport: "create\\u004fwnedJcs"'));
   await rejected(f, invalidCode);
 });
+
+const generatedPath = 'src/composition/generated/stage1.ts';
+
+function generatedInput(f, sourceText) {
+  return {
+    packageRoot: f.packageRoot, buildRoot: f.buildRoot,
+    allowlistPath: f.allowlistPath, plan: f.plan, sourceText,
+  };
+}
+
+async function generatedSource(f) {
+  // A literal root with the emitter's relative import base. Expectations remain
+  // the independent tuples above, never tuples serialized by the renderer.
+  return (await readFile(join(f.packageRoot, compositionPath), 'utf8'))
+    .replaceAll('"../features/', '"../../features/');
+}
+
+async function generatedRejected(f, sourceText, code = invalidCode, context) {
+  await assert.rejects(() => verifyGeneratedConstruction(generatedInput(f, sourceText)), error => {
+    assert.equal(error.code, code);
+    if (context) assert.deepEqual(error.context, context);
+    assert.equal(JSON.stringify(error.context).includes(f.packageRoot), false);
+    assert.equal(JSON.stringify(error.context).includes(f.buildRoot), false);
+    return true;
+  });
+}
+
+test('actual emitted text is verified before publication with absent and poisoned destinations', async t => {
+  const f = await fixture(t);
+  await rm(join(f.packageRoot, 'src/composition/generated'), { recursive: true, force: true });
+  await write(f.packageRoot, 'package.json', '{"type":"module"}\n');
+  await write(f.packageRoot, 'tsconfig.witness-emitter.json', JSON.stringify({
+    extends: join(packageRoot, 'tsconfig.json'),
+    compilerOptions: { rootDir: '.', outDir: 'built-witness-emitter' },
+    files: ['self-composition/emit.ts', allowlistPath],
+    include: [],
+  }));
+  const require = createRequire(import.meta.url);
+  const tsc = join(dirname(require.resolve('typescript/package.json')), 'bin/tsc');
+  const build = spawnSync(process.execPath,
+    [tsc, '-p', join(f.packageRoot, 'tsconfig.witness-emitter.json')],
+    { encoding: 'utf8', timeout: 60_000 });
+  assert.ifError(build.error);
+  assert.equal(build.signal, null);
+  assert.equal(build.status, 0, build.stdout + build.stderr);
+  f.buildRoot = join(f.packageRoot, 'built-witness-emitter');
+  const { emitComposition } = await import(pathToFileURL(join(f.buildRoot, 'self-composition/emit.js')).href);
+  const { allowlist } = await import(pathToFileURL(join(f.buildRoot, 'self-composition/allowlist.js')).href);
+  const result = await direct({ declarations: ownDeclarations, profile: ownProfile });
+  assert.equal(result.ok, true);
+  const sourceText = emitComposition(result, allowlist);
+  const input = generatedInput(f, sourceText);
+  assert.deepEqual(await verifyGeneratedConstruction(input), expectedWitness());
+  await assert.rejects(readFile(join(f.packageRoot, generatedPath)), { code: 'ENOENT' });
+
+  const poison = Buffer.from([0xff, 0x00, 0xfe]);
+  await write(f.packageRoot, generatedPath, poison);
+  assert.deepEqual(await verifyGeneratedConstruction(input), expectedWitness());
+  assert.deepEqual(await readFile(join(f.packageRoot, generatedPath)), poison);
+  await assert.rejects(() => verifyConstruction({ ...f, compositionPath: generatedPath }),
+    { code: invalidCode });
+
+  // A directory at the destination also makes any accidental file read fail.
+  await rm(join(f.packageRoot, generatedPath));
+  await mkdir(join(f.packageRoot, generatedPath));
+  assert.deepEqual(await verifyGeneratedConstruction(input), expectedWitness());
+});
+
+const generatedMutations = [
+  ['wrong provider', source => source.replace('{ admission, semantics, output }',
+    '{ admission: output, semantics, output }')],
+  ['fallback expression', source => source.replace('= compiler;', '= compiler || output;')],
+  ['direct fallback import', source => source.replace(
+    'export const root: CompilerFacadePort = compiler;',
+    'export { root } from "../stage0.js";')],
+  ['unknown factory', source => source.replaceAll('createOwnedJcs', 'createUnknown')],
+  ['duplicate factory import', source =>
+    'import { createOwnedJcs as extra } from "../../features/canonicalization/owned-jcs/factory.js";\n' + source],
+  ['duplicate factory call', source => source.replace('export const root',
+    'const extra = createOwnedJcs({});\nexport const root')],
+];
+for (const [name, mutate] of generatedMutations) {
+  test(`in-memory witness rejects ${name} before publication`, async t => {
+    const f = await fixture(t);
+    await rm(join(f.packageRoot, generatedPath), { force: true });
+    const source = await generatedSource(f);
+    const changed = mutate(source);
+    assert.notEqual(changed, source);
+    await generatedRejected(f, changed);
+    await assert.rejects(readFile(join(f.packageRoot, generatedPath)), { code: 'ENOENT' });
+  });
+}
+
+for (const [name, mutate, context] of correspondenceMutations) {
+  test(`in-memory witness preserves correspondence rejection: ${name}`, async t => {
+    const f = await fixture(t);
+    const source = await generatedSource(f);
+    await rewrite(f, allowlistPath, mutate);
+    await generatedRejected(f, source, correspondenceCode, context);
+  });
+}
+
+test('coordinated generated text and factory value substitution cannot retain the original declaration', async t => {
+  const f = await fixture(t);
+  await compatibleFixture(f);
+  const source = await generatedSource(f);
+  assert.deepEqual(await verifyGeneratedConstruction(generatedInput(f, source)), expectedWitness());
+  await rm(join(f.packageRoot, generatedPath), { force: true });
+  await rewrite(f, allowlistPath, text => text
+    .replace('factory: createOwnedJcs,', 'factory: createCompatible,')
+    .replace('importPath: "../../features/canonicalization/owned-jcs/factory.js"',
+      'importPath: "../../features/canonicalization/compatible/factory.js"')
+    .replace('factoryExport: "createOwnedJcs"', 'factoryExport: "createCompatible"'));
+  const substituted = source.replaceAll('createOwnedJcs', 'createCompatible')
+    .replaceAll('/owned-jcs/factory.js', '/compatible/factory.js');
+  await generatedRejected(f, substituted, correspondenceCode,
+    correspondence('factory', compatibleFactory, 'createCompatible'));
+  await assert.rejects(readFile(join(f.packageRoot, generatedPath)), { code: 'ENOENT' });
+});
+
+test('in-memory witness checks correspondence of unselected handles', async t => {
+  const f = await fixture(t);
+  await compatibleFixture(f);
+  const source = await generatedSource(f);
+  await rewrite(f, allowlistPath, text =>
+    text.replace('factoryExport: "createCompatible"', 'factoryExport: "missingFactory"'));
+  await generatedRejected(f, source, correspondenceCode, {
+    implementationId: 'get-modular/canonicalization/compatible', field: 'factoryExport',
+    expected: { module: compatibleFactory, export: 'createCompatible' },
+    actual: { module: compatibleFactory, export: 'missingFactory' },
+  });
+});
+
+for (const [name, sourceText, reason] of [
+  ['bytes', new Uint8Array(), 'generated-text'],
+  ['boxed text', new String(''), 'generated-text'],
+  ['oversized text', ' '.repeat(1024 * 1024 + 1), 'generated-text-size'],
+  ['oversized UTF-8', 'π'.repeat(524289), 'generated-text-size'],
+  ['lone surrogate', '\ud800', 'generated-text-encoding'],
+  ['CRLF', '\r\n', 'generated-text-encoding'],
+  ['BOM', '\ufeff', 'generated-text-encoding'],
+  ['NUL', '\u0000', 'generated-text-encoding'],
+]) {
+  test(`generated text rejects ${name} before source access`, async () => {
+    await assert.rejects(() => verifyGeneratedConstruction({
+      sourceText, packageRoot: null, buildRoot: null, allowlistPath, plan: null,
+    }), error => error.code === invalidCode && error.context.reason === reason);
+  });
+}
+
+for (const option of [{ compositionPath }, { qualification: true }, { importPolicy: 'tests' }]) {
+  test(`generated witness rejects alternate policy ${Object.keys(option)[0]}`, async () => {
+    await assert.rejects(() => verifyGeneratedConstruction({
+      sourceText: '', packageRoot: null, buildRoot: null, allowlistPath, plan: null, ...option,
+    }), error => error.code === invalidCode && error.context.reason === 'generated-options');
+  });
+}

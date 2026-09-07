@@ -11,6 +11,8 @@ const correspondenceCode = 'witness.allowlist-correspondence';
 const basePath = 'self-composition/allowlist.ts';
 const variantPath = 'self-composition/allowlist.variant.ts';
 const variantDirectory = 'tests/features/canonicalization/witness-variant';
+const generatedPath = 'src/composition/generated/stage1.ts';
+const generatedTextByteLimit = 1024 * 1024;
 const forbiddenSlots = new Set([...Object.getOwnPropertyNames(Object.prototype), 'prototype', 'then']);
 const handleFields = ['declaration', 'factory', 'importPath', 'factoryExport', 'declarationExport', 'localName'];
 
@@ -601,6 +603,39 @@ export async function verifyConstruction({ packageRoot, buildRoot, compositionPa
   packageRoot = await directory(packageRoot);
   buildRoot = await directory(buildRoot);
   const ast = parseRoot(await textFile(packageRoot, compositionPath), compositionPath);
+  return verifyRoot({ packageRoot, buildRoot, ast, allowlistPath, plan, qualification });
+}
+
+/**
+ * Production W0 proof before publication. Only the candidate root is supplied
+ * as text; allowlist correspondence still uses real source and original built
+ * feature namespaces. The designated destination is never inspected or read.
+ * This private text entry has a 1 MiB UTF-8 budget and requires lossless LF text.
+ */
+export async function verifyGeneratedConstruction({
+  sourceText, packageRoot, buildRoot, allowlistPath, plan, ...unsupported
+}) {
+  check(Object.keys(unsupported).length === 0, 'generated-options');
+  check(version === '7.0.2', 'pinned-typescript');
+  check(typeof sourceText === 'string', 'generated-text');
+  // Bound work before checking encoding or allocating scanner tokens.
+  check(sourceText.length <= generatedTextByteLimit, 'generated-text-size');
+  check(sourceText.isWellFormed() && !/[\r\u0000\ufeff]/u.test(sourceText), 'generated-text-encoding');
+  check(Buffer.byteLength(sourceText, 'utf8') <= generatedTextByteLimit, 'generated-text-size');
+  check(relativePath(allowlistPath) && allowlistPath.endsWith('.ts'), 'source-path');
+  const ast = parseRoot(sourceText, generatedPath);
+  packageRoot = await directory(packageRoot);
+  buildRoot = await directory(buildRoot);
+  return verifyRoot({
+    packageRoot, buildRoot, ast, allowlistPath, plan, qualification: false,
+  });
+}
+
+// Both entry points use the same full-allowlist correspondence and tuple proof.
+// Source acquisition and the production text policy are their only differences.
+async function verifyRoot({
+  packageRoot, buildRoot, ast, allowlistPath, plan, qualification,
+}) {
   const handles = await readHandles(packageRoot, buildRoot, allowlistPath, qualification);
   const { selected, rows, facade } = checkPlan(plan, handles);
   const typeGroups = ast.groups.filter(group => group.typeOnly);
