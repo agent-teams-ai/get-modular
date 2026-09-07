@@ -45,7 +45,8 @@ async function fixture(t) {
     GIT_COMMITTER_NAME: 'Fixture', GIT_COMMITTER_EMAIL: 'fixture@example.invalid',
   };
   function git(args) {
-    const result = spawnSync('/usr/bin/git', ['-C', root, ...args], {
+    const result = spawnSync(process.platform === 'darwin'
+      ? '/Library/Developer/CommandLineTools/usr/bin/git' : '/usr/bin/git', ['-C', root, ...args], {
       env, encoding: 'utf8', timeout: 10000, maxBuffer: 1024 * 1024,
     });
     assert.equal(result.error, undefined);

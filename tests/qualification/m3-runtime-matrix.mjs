@@ -284,17 +284,61 @@ async function archive(ctx, expected) {
   return { path, identity: { ...expected.archiveIdentity }, bytes: bytes.length };
 }
 
+// Build-only inventory permits the one explicitly bound workspace link.
+// Its target is covered by the separate exact tracked source inventory.
+async function buildDependencies(root) {
+  const entries = [], pending = [''];
+  let total = 0;
+  assert.equal(await realpath(root), root);
+  while (pending.length) {
+    const suffix = pending.pop();
+    assert.ok(suffix.split('/').length <= 64);
+    for (const name of (await readdir(join(root, suffix))).sort()) {
+      assert.ok(!/[\\\0\r\n]/u.test(name));
+      const path = suffix ? `${suffix}/${name}` : name, full = join(root, path);
+      const stat = await lstat(full);
+      if (stat.isSymbolicLink()) {
+        const target = await realpath(full);
+        assert.ok(within(target, root) || (path === 'node_modules/@get-modular/core'
+          && target === await realpath(join(repository, 'packages/core'))), 'build dependency link escape');
+        entries.push({ path, kind: 'link', target: await readlink(full), resolved: target });
+      } else if (stat.isDirectory()) {
+        entries.push({ path, kind: 'directory' }); pending.push(path);
+      } else {
+        assert.ok(stat.isFile()); total += stat.size;
+        assert.ok(total <= 2 * 1024 ** 3);
+        const bytes = await readBytes(full);
+        entries.push({ path, kind: 'file', bytes: bytes.length, mode: stat.mode & 0o777, sha256: digest(bytes) });
+      }
+      assert.ok(entries.length + pending.length <= 100000);
+    }
+  }
+  return entries.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+}
+
 async function pack(ctx) {
   assert.equal(process.platform, 'linux');
   const trusted = await trustedRunner(ctx);
   await json(join(ctx.diagnostics, 'trusted-runner.json'), trusted);
   const tools = await nodeAndNpm();
+  const pnpmPath = await realpath(command('/usr/bin/which', ['pnpm'], repository).trim());
+  const pnpm = { path: pnpmPath, version: command(pnpmPath, ['--version'], repository).trim(),
+    sha256: digest(await readBytes(pnpmPath)) };
+  assert.equal(pnpm.version, '11.20.0');
+  const dependenciesRoot = await realpath(join(repository, 'node_modules/.pnpm'));
+  const buildBefore = { pnpm, npm: await scanTree(tools.npmRoot),
+    dependencies: await buildDependencies(dependenciesRoot) };
+  await json(join(ctx.diagnostics, 'build-tools-before.json'), buildBefore);
   const { runPackSubject } = await import('./m3-pack-subject.mjs');
   const subject = await runPackSubject({
     repositoryRoot: repository, exactSourceSHA: ctx.sourceCommit,
     nodeExecutable: tools.node.path, npmCLI: tools.npm.path,
     outputDirectory: join(ctx.diagnostics, 'pack'),
   });
+  const buildAfter = { pnpm: { ...pnpm, sha256: digest(await readBytes(pnpmPath)) },
+    npm: await scanTree(tools.npmRoot), dependencies: await buildDependencies(dependenciesRoot) };
+  await json(join(ctx.diagnostics, 'build-tools-after.json'), buildAfter);
+  assert.deepEqual(buildAfter, buildBefore, 'build tooling unchanged');
   assert.equal(subject.status, 'prepared', 'pack preparation failed');
   assert.equal(subject.packInvocations, 1);
   await mkdir(join(ctx.root, 'transfer'));
@@ -361,10 +405,11 @@ function installEnvironment(ctx) {
     HOME: join(ctx.root, 'home'), TMPDIR: join(ctx.root, 'tmp'),
     LANG: 'C.UTF-8', CI: 'true', GIT_NO_REPLACE_OBJECTS: '1',
     npm_config_cache: join(ctx.root, 'npm-cache'),
-    npm_config_userconfig: '/dev/null', npm_config_globalconfig: '/dev/null',
+    npm_config_userconfig: join(ctx.root, 'native-user.npmrc'),
+    npm_config_globalconfig: join(ctx.root, 'native-global.npmrc'),
     npm_config_audit: 'false', npm_config_fund: 'false',
     PLAYWRIGHT_BROWSERS_PATH: join(ctx.root, 'browsers'),
-    ELECTRON_CACHE: join(ctx.root, 'electron-cache'),
+    electron_config_cache: join(ctx.root, 'electron-cache'),
   };
 }
 
@@ -384,6 +429,8 @@ async function native(ctx) {
     dependencies: { playwright: '1.63.0', electron: '44.2.0' },
   });
   const env = installEnvironment(ctx);
+  await writeFile(env.npm_config_userconfig, '', { flag: 'wx' });
+  await writeFile(env.npm_config_globalconfig, '', { flag: 'wx' });
   await logged(ctx, 'native-npm-install', tools.node.path,
     [tools.npm.path, 'install', '--ignore-scripts', '--no-audit', '--no-fund'],
     tooling, env);
@@ -409,7 +456,7 @@ async function native(ctx) {
   const electronVersion = await logged(ctx, 'electron-version', '/usr/bin/xvfb-run',
     ['-a', electron, '--version'], tooling, env);
   assert.equal(electronVersion, 'v44.2.0');
-  const roots = [tooling, browsers, await realpath(env.ELECTRON_CACHE)];
+  const roots = [tooling, browsers, await realpath(env.electron_config_cache)];
   const installation = [];
   for (const root of roots) installation.push({ root, entries: await scanTree(root) });
   assert.ok(installation[2].entries.some(entry => entry.kind === 'file'
