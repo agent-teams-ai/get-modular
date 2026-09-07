@@ -126,6 +126,61 @@ export async function sourceIdentity(root) {
   return { sourceCommit, sha256: hash(encode(inventory)), inventory };
 }
 
+export async function physicalOutputDestination(runnerRoot, outputDir) {
+  const root = await realpath(runnerRoot);
+  const parent = await realpath(dirname(outputDir));
+  assert.ok((await lstat(parent)).isDirectory(), 'output parent must be an existing directory');
+  const destination = join(parent, relative(dirname(outputDir), outputDir));
+  assert.ok(!inside(root, destination), 'physical output must be outside runner source');
+  return destination;
+}
+
+export async function npmIdentity(path) {
+  const launcher = await toolIdentity(path);
+  const root = dirname(dirname(launcher.physicalPath));
+  assert.equal(launcher.physicalPath, join(root, 'bin/npm-cli.js'), 'npm package launcher required');
+  for (const name of ['bin', 'lib', 'node_modules']) {
+    assert.ok((await lstat(join(root, name))).isDirectory(), `npm ${name} directory required`);
+  }
+  const inventory = [];
+  let total = 0;
+  async function visit(directory) {
+    for (const name of (await readdir(directory)).sort()) {
+      assert.ok(inventory.length < 100_000, 'npm inventory budget');
+      const child = join(directory, name);
+      const logical = relative(root, child).split(sep).join('/');
+      const stat = await lstat(child);
+      if (stat.isSymbolicLink()) {
+        assert.ok(inside(root, await realpath(child)), 'npm link escapes implementation tree');
+        inventory.push({ path: logical, link: await readlink(child) });
+      } else if (stat.isDirectory()) {
+        inventory.push({ path: logical, directory: true });
+        await visit(child);
+      } else {
+        assert.ok(stat.isFile(), 'unsupported npm implementation entry');
+        assert.ok(total + stat.size <= MAX_TOTAL, 'npm byte budget');
+        const bytes = await boundedRead(child);
+        total += bytes.length;
+        assert.ok(total <= MAX_TOTAL, 'npm byte budget');
+        if (logical === 'package.json') {
+          assert.equal(JSON.parse(bytes.toString('utf8')).name, 'npm', 'npm package required');
+        }
+        inventory.push({ path: logical, bytes: bytes.length, sha256: hash(bytes) });
+      }
+    }
+  }
+  await visit(root);
+  assert.ok(inventory.some(row => row.path === 'package.json' && row.sha256),
+    'regular npm package manifest required');
+  const entry = inventory.find(row => row.path === 'bin/npm-cli.js');
+  assert.equal(entry?.sha256, launcher.sha256, 'npm launcher changed during inventory');
+  inventory.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  return {
+    ...launcher,
+    implementation: { root, sha256: hash(encode(inventory)), inventory },
+  };
+}
+
 async function toolIdentity(path) {
   const physicalPath = await realpath(path);
   const bytes = await boundedRead(physicalPath);
@@ -412,10 +467,11 @@ export async function runRetainedParity(rawInput) {
   const input = validateInput(rawInput);
   assert.ok(['linux', 'darwin'].includes(process.platform), 'owned POSIX process groups required');
   assert.equal(await realpath(ROOT), input.trustedRunner.path);
+  input.outputDir = await physicalOutputDestination(input.trustedRunner.path, input.outputDir);
   const source = await sourceIdentity(input.trustedRunner.path);
   assert.equal(source.sourceCommit, input.trustedRunner.sourceCommit, 'actual runner commit');
   assert.equal(source.sha256, input.trustedRunner.sha256, 'authenticated runner source mismatch');
-  const tools = { node: await toolIdentity(input.nodePath), npm: await toolIdentity(input.npmPath) };
+  const tools = { node: await toolIdentity(input.nodePath), npm: await npmIdentity(input.npmPath) };
   const orderedBytes = await boundedRead(input.orderedManyPath, 1024 * 1024);
   const prepared = await prepareCases(orderedBytes);
   const { readPackageArchive } = await import('./support/package-archive.mjs');
@@ -475,7 +531,7 @@ export async function runRetainedParity(rawInput) {
         m1Groups: prepared.m1Groups, m2Calls: prepared.m2Calls, concurrentCalls: 8 });
     }
     assert.deepEqual(await toolIdentity(input.nodePath), tools.node);
-    assert.deepEqual(await toolIdentity(input.npmPath), tools.npm);
+    assert.deepEqual(await npmIdentity(input.npmPath), tools.npm, 'npm implementation changed');
     assert.equal((await sourceIdentity(input.trustedRunner.path)).sha256, source.sha256);
     assert.deepEqual(await boundedRead(input.orderedManyPath, 1024 * 1024), orderedBytes);
     const result = {
@@ -503,7 +559,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   assert.equal(process.argv.length, 3, 'one explicit absolute JSON input path required');
   absolute(process.argv[2]);
   const bytes = await boundedRead(process.argv[2], 1024 * 1024);
-  const result = await runRetainedParity(JSON.parse(bytes));
-  await exclusive(join(JSON.parse(bytes).outputDir, 'input-exact.json'), bytes);
+  const input = validateInput(JSON.parse(bytes));
+  input.outputDir = await physicalOutputDestination(input.trustedRunner.path, input.outputDir);
+  const result = await runRetainedParity(input);
+  await exclusive(join(input.outputDir, 'input-exact.json'), bytes);
   process.stdout.write(`${JSON.stringify(result)}\n`);
 }
