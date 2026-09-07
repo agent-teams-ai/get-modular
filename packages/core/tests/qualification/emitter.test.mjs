@@ -123,6 +123,49 @@ test('private finite emitter', async t => {
   function changedHandle(map, id, changes) {
     map.set(id, { ...map.get(id), ...changes });
   }
+  for (const localName of ['constructor', 'async', 'get', 'π', '$owned']) {
+    await t.test(`valid local binding ${localName} compiles`, async t => {
+      const handles = new Map(allowlist);
+      changedHandle(handles, canon, { localName });
+      const source = emitComposition(result, handles);
+      const expectedSource = expected
+        .replace('const canonicalizer =', `const ${localName} =`)
+        .replaceAll('canonicalizer: canonicalizer', `canonicalizer: ${localName}`);
+      assert.equal(source, expectedSource);
+      const compositionPath = 'src/composition/generated/stage1.ts';
+      await write(temporary, compositionPath, source);
+      compile(temporary, 'tsconfig.generated.json');
+    });
+  }
+  for (const [importPath, modulePath, moduleSource] of [
+    ['../../features/canonicalization/owned-jcs/nested/deeper/factory.js',
+      'src/features/canonicalization/owned-jcs/nested/deeper/factory.ts',
+      'export { createOwnedJcs } from "../../factory.js";\n'],
+    ['../../features/canonicalization/owned-jcs/factory-alias.js',
+      'src/features/canonicalization/owned-jcs/factory-alias.ts',
+      'export { createOwnedJcs } from "./factory.js";\n'],
+  ]) {
+    await t.test(`safe feature descendant ${importPath} compiles`, async () => {
+      const handles = new Map(allowlist);
+      changedHandle(handles, canon, { importPath });
+      const source = emitComposition(result, handles);
+      assert.equal(source, expected.replace(allowlist.get(canon).importPath, importPath));
+      await write(temporary, modulePath, moduleSource);
+      await write(temporary, 'src/composition/generated/stage1.ts', source);
+      compile(temporary, 'tsconfig.generated.json');
+    });
+  }
+  for (const slotId of ['constructor', 'prototype', 'then']) {
+    await t.test(`forbidden slot remains independent: ${slotId}`, () => {
+      const handles = new Map(allowlist);
+      const declaration = structuredClone(allowlist.get(semantics).declaration);
+      declaration.slots[0].slotId = slotId;
+      changedHandle(handles, semantics, { declaration });
+      reject(result, handles, 'emitter.invalid-declaration');
+    });
+  }
+  // Path variants above test the pure renderer and real compiler. The unchanged
+  // witness separately requires factory.js beside its owned declaration.
   function reject(candidate, handles, code) {
     let rendered;
     assert.throws(() => { rendered = emitComposition(candidate, handles); }, error => {
@@ -188,7 +231,8 @@ test('private finite emitter', async t => {
     }]);
   }
   for (const field of ['localName', 'factoryExport', 'declarationExport']) {
-    for (const value of ['bad-name', 'eval', 'arguments', 'await']) {
+    for (const value of ['bad-name', 'eval', 'arguments', 'await', 'const', 'class',
+      'import', 'enum', 'implements', 'let', 'yield', '1name', '\u0301name', 'a-b']) {
       negatives.push([`${field} ${value}`, 'allowlist.invalid-identifier', state => {
         changedHandle(state.handles, canon, { [field]: value });
       }]);
@@ -196,6 +240,13 @@ test('private finite emitter', async t => {
   }
   for (const importPath of ['/tmp/factory.js', '../../features/../factory.js',
     '../../features/canonicalization/owned-jcs/factory.ts',
+    '../../features/canonicalization/./factory.js',
+    '../../features/canonicalization/nested/../../factory.js',
+    '../../features/canonicalization//factory.js',
+    '../../features/canonicalization/factory.js?query',
+    '../../features/canonicalization/factory.js#fragment',
+    '../../features/canonicalization/"factory.js',
+    '../../features/canonicalization/%2e%2e/factory.js',
     '../../../tests/features/canonicalization/witness-variant/factory.js']) {
     negatives.push([importPath, 'allowlist.out-of-bound-import', state => {
       changedHandle(state.handles, canon, { importPath });

@@ -25,11 +25,7 @@ const reserved = new Set([
   "return", "super", "switch", "this", "throw", "true", "try", "typeof",
   "var", "void", "while", "with", "implements", "interface", "let", "package",
   "private", "protected", "public", "static", "yield", "await", "eval",
-  "arguments", "abstract", "accessor", "as", "asserts", "assert", "any",
-  "async", "boolean", "constructor", "declare", "get", "infer", "intrinsic",
-  "is", "keyof", "module", "namespace", "never", "out", "override", "readonly",
-  "require", "number", "object", "satisfies", "set", "string", "symbol",
-  "type", "undefined", "unique", "unknown", "using", "from", "global", "of",
+  "arguments",
 ]);
 const forbiddenSlots = new Set([
   ...Object.getOwnPropertyNames(Object.prototype), "prototype", "then",
@@ -55,7 +51,8 @@ function portable(value: unknown): boolean {
 }
 
 function identifier(value: unknown): boolean {
-  return typeof value === "string" && /^[A-Za-z_$][A-Za-z0-9_$]*$/u.test(value)
+  return typeof value === "string"
+    && /^[$_\p{ID_Start}][$\u200c\u200d\p{ID_Continue}]*$/u.test(value)
     && !reserved.has(value);
 }
 
@@ -130,7 +127,7 @@ export function emitComposition(
     check(!localNames.has(handle.localName), "allowlist.duplicate-local-name");
     localNames.add(handle.localName);
     check(typeof handle.importPath === "string"
-      && /^\.\.\/\.\.\/features\/[a-z][a-z0-9-]*(?:\/[a-z][a-z0-9-]*)?\/factory\.js$/u.test(handle.importPath),
+      && /^\.\.\/\.\.\/features\/(?:(?!\.{1,2}\/)[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+\.js$/u.test(handle.importPath),
     "allowlist.out-of-bound-import");
   }
 

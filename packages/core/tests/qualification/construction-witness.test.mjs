@@ -290,7 +290,15 @@ for (const forwarding of ['re-export', 'local alias', 'frozen alias', 'local ali
   });
 }
 
-for (const name of ['eval', 'arguments']) {
+for (const name of [
+  'eval', 'arguments', 'await', 'yield', 'implements', 'interface', 'let',
+  'package', 'private', 'protected', 'public', 'static', 'enum',
+  'break', 'case', 'catch', 'class', 'const', 'continue', 'debugger', 'default',
+  'delete', 'do', 'else', 'export', 'extends', 'false', 'finally', 'for',
+  'function', 'if', 'import', 'in', 'instanceof', 'new', 'null', 'return',
+  'super', 'switch', 'this', 'throw', 'true', 'try', 'typeof', 'var', 'void',
+  'while', 'with',
+]) {
   for (const location of ['import', 'construction', 'handle']) {
     test(`strict ESM rejects ${name} as a ${location} binding`, async t => {
       const f = await fixture(t);
@@ -463,3 +471,85 @@ for (const name of ['constructor', 'async', 'get']) {
     assert.deepEqual(await verifyConstruction(f), expectedWitness());
   });
 }
+
+async function compileIdentifierFixture(f) {
+  await write(f.packageRoot, 'package.json', '{"type":"module"}\n');
+  await write(f.packageRoot, 'tsconfig.identifiers.json', JSON.stringify({
+    extends: join(packageRoot, 'tsconfig.json'),
+    compilerOptions: { rootDir: '.', noEmit: true },
+    files: [compositionPath, allowlistPath],
+    include: [],
+  }));
+  const require = createRequire(import.meta.url);
+  const tsc = join(dirname(require.resolve('typescript/package.json')), 'bin/tsc');
+  const build = spawnSync(process.execPath,
+    [tsc, '-p', join(f.packageRoot, 'tsconfig.identifiers.json')],
+    { encoding: 'utf8', timeout: 60_000 });
+  assert.ifError(build.error);
+  assert.equal(build.signal, null);
+  assert.equal(build.status, 0, build.stdout + build.stderr);
+}
+
+for (const name of ['constructor', 'async', 'get', 'π', '𐐀', 'á', 'a\u200cb\u200d']) {
+  test(`raw binding ${name} compiles across imports, construction and handle metadata`, async t => {
+    const f = await fixture(t);
+    // Use the exact spelling in separate module namespaces, avoiding collisions.
+    await rewrite(f, compositionPath, source => source
+      .replace('const canonicalizer =', `const ${name} =`)
+      .replaceAll('{ canonicalizer }', `{ canonicalizer: ${name} }`));
+    await rewrite(f, allowlistPath, source => source
+      .replace('{ createOwnedJcs }', `{ createOwnedJcs as ${name} }`)
+      .replace('factory: createOwnedJcs,', `factory: ${name},`)
+      .replace('localName: "canonicalizer"', `localName: "${name}"`));
+    await compileIdentifierFixture(f);
+    assert.deepEqual(await verifyConstruction(f), expectedWitness());
+    // Exercise the root's import and callee positions independently too.
+    await write(f.packageRoot, compositionPath,
+      (await readFile(join(packageRoot, compositionPath), 'utf8'))
+        .replace('{ createOwnedJcs }', `{ createOwnedJcs as ${name} }`)
+        .replace('= createOwnedJcs(', `= ${name}(`));
+    await compileIdentifierFixture(f);
+    assert.deepEqual(await verifyConstruction(f), expectedWitness());
+  });
+}
+
+for (const name of ['π', 'constructor', 'async', 'get']) {
+  test(`safe correspondence retains legal export spelling ${name}`, async t => {
+    const f = await fixture(t);
+    await rewrite(f, allowlistPath, source => source
+      .replace('factoryExport: "createOwnedJcs"', `factoryExport: "${name}"`));
+    await rejected(f, correspondenceCode, correspondence('factoryExport', canonicalFactory, name));
+  });
+}
+
+for (const name of ['\\u03c0', '\\u{3c0}', 'π-name', '́a', 'π\nx']) {
+  for (const location of ['import', 'construction', 'handle']) {
+    test(`finite spelling rejects ${JSON.stringify(name)} in ${location}`, async t => {
+      const f = await fixture(t);
+      if (location === 'import') await rewrite(f, compositionPath, source => source
+        .replace('{ createOwnedJcs }', `{ createOwnedJcs as ${name} }`)
+        .replace('= createOwnedJcs(', `= ${name}(`));
+      if (location === 'construction') await rewrite(f, compositionPath, source => source
+        .replace('const canonicalizer =', `const ${name} =`)
+        .replaceAll('{ canonicalizer }', `{ canonicalizer: ${name} }`));
+      if (location === 'handle') await rewrite(f, allowlistPath, source => source
+        .replace('localName: "canonicalizer"', `localName: "${name}"`));
+      await rejected(f, invalidCode);
+    });
+  }
+}
+
+test('raw Unicode does not widen literal import paths', async t => {
+  const f = await fixture(t);
+  await rewrite(f, compositionPath, source => source
+    .replace('../features/canonicalization/owned-jcs/factory.js',
+      '../features/canonicalization/π/factory.js'));
+  await rejected(f, invalidCode);
+});
+
+test('escaped metadata remains outside the finite string grammar', async t => {
+  const f = await fixture(t);
+  await rewrite(f, allowlistPath, source => source
+    .replace('factoryExport: "createOwnedJcs"', 'factoryExport: "create\\u004fwnedJcs"'));
+  await rejected(f, invalidCode);
+});

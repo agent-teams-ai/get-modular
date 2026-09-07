@@ -41,8 +41,7 @@ function reference(module, exported) { return { module, export: exported }; }
 function safeReference(value) {
   return {
     module: relativePath(value?.module) ? value.module : null,
-    export: typeof value?.export === 'string' && /^[A-Za-z_$][A-Za-z0-9_$]*$/u.test(value.export)
-      ? value.export : null,
+    export: bindingName(value?.export) ? value.export : null,
   };
 }
 function corresponds(implementationId, field, expected, actual) {
@@ -106,11 +105,29 @@ function tokens(source) {
   }
   return result;
 }
+// Scanner keywords include contextual words that remain legal bindings.
+// Keep strict module exclusions independent of the candidate emitter.
+const forbiddenBindings = new Set([
+  'break', 'case', 'catch', 'class', 'const', 'continue', 'debugger', 'default',
+  'delete', 'do', 'else', 'enum', 'export', 'extends', 'false', 'finally', 'for',
+  'function', 'if', 'import', 'in', 'instanceof', 'new', 'null', 'return',
+  'super', 'switch', 'this', 'throw', 'true', 'try', 'typeof', 'var', 'void',
+  'while', 'with', 'implements', 'interface', 'let', 'package', 'private',
+  'protected', 'public', 'static', 'await', 'yield', 'eval', 'arguments',
+]);
+function rawBindingSpelling(value) {
+  return typeof value === 'string'
+    && /^[$_\p{ID_Start}][$\u200c\u200d\p{ID_Continue}]*$/u.test(value)
+    && !forbiddenBindings.has(value);
+}
+function bindingToken(item) {
+  return rawBindingSpelling(item?.text) && (item.kind === SyntaxKind.Identifier
+    || (item.kind >= SyntaxKind.FirstKeyword && item.kind <= SyntaxKind.LastKeyword));
+}
 function bindingName(value) {
-  if (value === 'eval' || value === 'arguments') return false;
-  if (typeof value !== 'string' || !/^[A-Za-z_$][A-Za-z0-9_$]*$/u.test(value)) return false;
+  if (!rawBindingSpelling(value)) return false;
   const scanned = tokens(value);
-  return scanned.length === 1 && scanned[0].kind === SyntaxKind.Identifier;
+  return scanned.length === 1 && scanned[0].text === value && bindingToken(scanned[0]);
 }
 class Parser {
   constructor(source) { this.items = tokens(source); this.index = 0; }
@@ -123,7 +140,7 @@ class Parser {
   need(...words) { for (const word of words) check(this.eat(word)); }
   identifier() {
     const item = this.items[this.index++];
-    check(item?.kind === SyntaxKind.Identifier && /^[A-Za-z_$][A-Za-z0-9_$]*$/u.test(item.text));
+    check(bindingToken(item));
     return item.text;
   }
   string() {
@@ -132,7 +149,10 @@ class Parser {
     const quote = raw[0];
     check((quote === '"' || quote === "'") && raw.at(-1) === quote);
     const body = raw.slice(1, -1);
-    check(!body.includes(quote) && !body.includes('\\') && !/[^\x20-\x7e]/u.test(body), 'unsupported-string-spelling');
+    // Extend metadata only for raw identifier spellings; paths retain their
+    // existing ASCII grammar, and escaped strings remain outside this reader.
+    check(!body.includes(quote) && !body.includes('\\')
+      && (!/[^\x20-\x7e]/u.test(body) || bindingName(body)), 'unsupported-string-spelling');
     return body;
   }
   list(open, close, item) {
@@ -285,7 +305,7 @@ function localDeclaration(source, module, identityName, declarationName) {
   const literalIdentity = identity?.length === 1
     && [SyntaxKind.StringLiteral, SyntaxKind.NoSubstitutionTemplateLiteral].includes(identity[0].kind);
   const templateIdentity = identity?.length === 3 && identity[0].kind === SyntaxKind.TemplateHead
-    && identity[1].kind === SyntaxKind.Identifier && identity[2].kind === SyntaxKind.TemplateTail;
+    && bindingToken(identity[1]) && identity[2].kind === SyntaxKind.TemplateTail;
   check(literalIdentity || templateIdentity, 'nonlocal-declaration');
   check(declaration?.slice(0, 3).join(' ') === 'Object . freeze', 'nonlocal-declaration');
   let offset = 3;
