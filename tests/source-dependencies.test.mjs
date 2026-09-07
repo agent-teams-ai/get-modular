@@ -317,7 +317,7 @@ for (const specifier of ["@get-modular/assembly", "../../assembly/src/index.js"]
     });
     assert.equal(report.outcome, "violations", JSON.stringify(report));
     assert.match(rules(report),
-      /architecture\.source-dependencies\.(?:forbidden-package-dependency|forbidden-boundary-dependency)/u);
+      /architecture\.source-dependencies\.(?:forbidden-package-dependency|forbidden-boundary-dependency|cross-package-relative-import)/u);
   });
 }
 
