@@ -17,6 +17,9 @@ import { assertM3RuntimeIdentity, freezeRuntimeData,
 // [{root,entries}], externally authenticated scanTree inventories covering npm,
 // both complete compilers, and the runner's installed parser/tar dependencies.
 // These are caller trust inputs, not provenance inferred from candidate bytes.
+// javascriptProfile is a trusted preparation choice: m2 (default) or
+// m2-generated. Both use the M2 surface and diagnostic generation 2.
+// Format 2 seals bind that choice; historical unversioned seals mean m2 only.
 //
 // Save the returned expected object in trusted invocation state before run().
 // Await onSeal and onObservations in storage outside outputDirectory. A later
@@ -32,6 +35,21 @@ const requiredSources = [
 ];
 const sha256 = value => need(typeof value === 'string' && /^[a-f0-9]{64}$/u.test(value), 'sha256-required');
 const snapshot = value => freezeRuntimeData(JSON.parse(JSON.stringify(value)));
+
+function javascriptProfile(value) {
+  need(value === 'm2' || value === 'm2-generated', 'accepted-javascript-profile-required');
+  return value;
+}
+
+function sealedJavaScriptProfile(expected) {
+  if (!Object.hasOwn(expected, 'formatVersion')) {
+    need(!Object.hasOwn(expected, 'javascriptProfile'), 'runtime-node-seal-format');
+    return 'm2';
+  }
+  need(expected.formatVersion === 2, 'runtime-node-seal-format');
+  need(Object.hasOwn(expected, 'javascriptProfile'), 'sealed-javascript-profile-required');
+  return javascriptProfile(expected.javascriptProfile);
+}
 
 async function checkTrust(trustedRunner, toolchain, required = requiredSources) {
   need(Array.isArray(trustedRunner.files) && trustedRunner.files.length > 0
@@ -90,11 +108,12 @@ async function modules() {
   return { ...harness, ...archive, ...javascript, ...declarations };
 }
 
-async function audit(modules, archive) {
+async function audit(modules, archive, profile) {
+  javascriptProfile(profile);
   const bytes = await readBytes(archive.path, 16 * 1024 * 1024);
   if (archive.bytes !== undefined) assert.equal(bytes.length, archive.bytes);
   const result = modules.readPackageArchive(bytes, archive.identity);
-  modules.auditM1JavaScriptClosure(result.files, 'm2');
+  modules.auditM1JavaScriptClosure(result.files, profile);
   modules.auditM1DeclarationClosure(result.files, 2, 'm2');
   const manifest = JSON.parse(result.files.get('package.json').toString('utf8'));
   assert.equal(manifest.name, '@get-modular/core');
@@ -134,10 +153,13 @@ async function checkInstalled(workspace, inventory) {
 
 export async function prepareM3RuntimeNode(options) {
   assertM3RuntimeIdentity(options);
+  const profile = javascriptProfile(Object.hasOwn(options, 'javascriptProfile')
+    ? options.javascriptProfile : 'm2');
   need(typeof options.onSeal === 'function' && typeof options.onObservations === 'function',
     'outside-capture-sinks-required');
   const { onSeal, onObservations } = options;
   const input = snapshot({
+    formatVersion: 2, javascriptProfile: profile,
     runtimeCaseId: options.runtimeCaseId, sourceCommit: options.sourceCommit,
     trustedRunner: options.trustedRunner, toolchain: options.toolchain,
     archive: options.archive, outputDirectory: options.outputDirectory,
@@ -146,7 +168,7 @@ export async function prepareM3RuntimeNode(options) {
   absolute(input.archive.path); absolute(input.outputDirectory);
   await checkTrust(input.trustedRunner, input.toolchain);
   const loaded = await modules();
-  const audited = await audit(loaded, input.archive);
+  const audited = await audit(loaded, input.archive, input.javascriptProfile);
   const excluded = [input.archive.path, ...input.trustedRunner.files.map(row => row.path),
     ...input.toolchain.closures.map(row => row.root), input.toolchain.node.path];
   await createOutputDirectory(input.outputDirectory, excluded);
@@ -204,7 +226,7 @@ export async function prepareM3RuntimeNode(options) {
     await checkTrust(input.trustedRunner, input.toolchain);
     await checkArtifacts(expected.plan);
     await checkInstalled(workspace, expected.inventory);
-    await audit(loaded, expected.archive);
+    await audit(loaded, expected.archive, expected.javascriptProfile);
     await put(null, null, 'session-ended', { completed: expected.plan.cases.map(row => row.id) });
     const events = await readJournal(join(input.outputDirectory, 'observations'));
     const observationsSha256 = digest(jsonBytes(events));
@@ -216,6 +238,7 @@ export async function prepareM3RuntimeNode(options) {
 
 export async function verifyM3RuntimeNode({ expected, sealSha256, observationsSha256 }) {
   // expected is the caller's independently retained pre-execution plan.
+  const profile = sealedJavaScriptProfile(expected);
   expected = snapshot(expected);
   assertM3RuntimeIdentity(expected);
   sha256(sealSha256); sha256(observationsSha256);
@@ -226,7 +249,7 @@ export async function verifyM3RuntimeNode({ expected, sealSha256, observationsSh
     [...requiredSources, ...expected.plan.trustedSources.map(row => row.path)]);
   await checkArtifacts(expected.plan);
   const loaded = await modules();
-  const audited = await audit(loaded, expected.archive);
+  const audited = await audit(loaded, expected.archive, profile);
   assert.deepEqual(audited.inventory, expected.inventory);
   const interpreted = verifyM3RuntimeObservations({
     expectedPlan: expected.plan, events: await readJournal(join(expected.outputDirectory, 'observations')),

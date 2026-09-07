@@ -7,7 +7,10 @@ import { assertM3RuntimeIdentity, verifyM3RuntimeObservations } from
   '../../../../tests/qualification/support/m3-runtime-observations.mjs';
 import { digest, jsonBytes, readBytes, rowDigest, verifyM1Observations } from
   '../../../../tests/qualification/support/m1-retained-observations.mjs';
-import { prepareM3RuntimeNode } from '../../../../tests/qualification/m3-runtime-node.mjs';
+import { prepareM3RuntimeNode, verifyM3RuntimeNode } from
+  '../../../../tests/qualification/m3-runtime-node.mjs';
+import { auditM1JavaScriptClosure } from
+  '../../../../tests/qualification/support/m1-javascript-closure.mjs';
 
 // Truthful transport fixtures: these rows describe archive guards only. They
 // neither execute a package nor purport to be the adapter's Node/TS inventory.
@@ -88,6 +91,87 @@ test('runtime admission rejects foreign IDs, foreign OS and inexact source ident
 test('invalid admission fails before output creation or execution', async () => {
   await assert.rejects(prepareM3RuntimeNode({ ...identity(), runtimeCaseId: 'invalid' }));
   await assert.rejects(prepareM3RuntimeNode(identity()), /outside-capture-sinks-required/);
+});
+
+test('JavaScript profile admission is closed and preserves the direct default', async () => {
+  for (const options of [{}, { javascriptProfile: 'm2' }, { javascriptProfile: 'm2-generated' }]) {
+    await assert.rejects(prepareM3RuntimeNode({ ...identity(), ...options }),
+      /outside-capture-sinks-required/);
+  }
+  for (const javascriptProfile of [undefined, null, '', 'm1', 'generated', 'M2', {}, ['m2']]) {
+    await assert.rejects(prepareM3RuntimeNode({ ...identity(), javascriptProfile }),
+      /accepted-javascript-profile-required/);
+  }
+  // Candidate metadata cannot supply even an invalid trusted selection.
+  await assert.rejects(prepareM3RuntimeNode({
+    ...identity(), archive: { javascriptProfile: 'unsupported', formatVersion: 99 },
+  }), /outside-capture-sinks-required/);
+  await assert.rejects(prepareM3RuntimeNode({
+    ...identity(), javascriptProfile: 'unsupported',
+    archive: { javascriptProfile: 'm2-generated' },
+  }), /accepted-javascript-profile-required/);
+});
+
+function sealedFixture(binding = {}) {
+  return { ...identity(), ...binding, plan: { cases: fixture().expectedPlan.cases } };
+}
+
+test('versioned seals require their profile while historical direct seals remain admitted', async () => {
+  const verify = expected => verifyM3RuntimeNode({
+    expected, sealSha256: '0'.repeat(64), observationsSha256: '0'.repeat(64),
+  });
+  for (const binding of [
+    { formatVersion: 2 },
+    { formatVersion: 2, javascriptProfile: undefined },
+    { formatVersion: 2, javascriptProfile: null },
+    { formatVersion: 2, javascriptProfile: 'm1' },
+    { formatVersion: 3, javascriptProfile: 'm2' },
+    { formatVersion: undefined, javascriptProfile: 'm2' },
+    { javascriptProfile: 'm2-generated' },
+  ]) {
+    await assert.rejects(verify(sealedFixture(binding)), /seal-format|javascript-profile-required/);
+  }
+  for (const binding of [
+    {}, { formatVersion: 2, javascriptProfile: 'm2' },
+    { formatVersion: 2, javascriptProfile: 'm2-generated' },
+  ]) {
+    await assert.rejects(verify(sealedFixture(binding)), /outside plan anchor mismatch/);
+  }
+});
+
+test('outside seal identity binds the profile even when archive and case identities match', async () => {
+  const direct = sealedFixture({ formatVersion: 2, javascriptProfile: 'm2' });
+  const generated = { ...direct, javascriptProfile: 'm2-generated' };
+  for (const [original, altered] of [[direct, generated], [generated, direct]]) {
+    await assert.rejects(verifyM3RuntimeNode({
+      expected: altered, sealSha256: digest(jsonBytes(original)),
+      observationsSha256: '0'.repeat(64),
+    }), /outside plan anchor mismatch/);
+  }
+  const stripped = { ...generated };
+  delete stripped.formatVersion;
+  delete stripped.javascriptProfile;
+  await assert.rejects(verifyM3RuntimeNode({
+    expected: stripped, sealSha256: digest(jsonBytes(generated)),
+    observationsSha256: '0'.repeat(64),
+  }), /outside plan anchor mismatch/);
+});
+
+test('closure profiles reject the other assembly path regardless of candidate metadata', () => {
+  // Incomplete inert fixtures test path admission only, not archive qualification.
+  for (const [profile, path, other] of [
+    ['m2', 'dist/composition/stage0.js', 'm2-generated'],
+    ['m2-generated', 'dist/composition/generated/stage1.js', 'm2'],
+  ]) {
+    const files = new Map([
+      ['package.json', Buffer.from(JSON.stringify({ javascriptProfile: other }))],
+      [path, Buffer.from('')],
+    ]);
+    assert.throws(() => auditM1JavaScriptClosure(files, other),
+      error => error.code === 'm1.javascript-closure.invalid' && error.reason === 'file-purpose');
+    assert.throws(() => auditM1JavaScriptClosure(files, profile),
+      error => error.code === 'm1.javascript-closure.invalid' && error.reason === 'entry-missing');
+  }
 });
 
 test('bounded retained-byte checks detect a same-size altered archive', async t => {
