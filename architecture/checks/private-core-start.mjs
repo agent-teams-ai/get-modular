@@ -57,7 +57,7 @@ export async function validatePrivateCoreStart({
     if (productionArtifacts.length > 0) {
       fail("record is required before adding the first production package");
     }
-    return;
+    return Object.freeze({ generatedSelfComposition: false });
   }
   if (starts.length !== 2 || ends.length !== 2) fail("record must occur exactly once");
   const body = starts[1].split(END_MARKER);
@@ -114,4 +114,9 @@ export async function validatePrivateCoreStart({
   }
   if (typeof record.baseCommit !== "string" || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u.test(record.baseCommit)) fail("base must be an exact Git commit");
   if (!await isStartingBase(record.baseCommit)) fail("base is not an ancestor of this checkout");
+  return Object.freeze({
+    generatedSelfComposition: m2
+      && exactList(record.scope, M3_SCOPE)
+      && exactList(record.excluded, M3_EXCLUDED),
+  });
 }

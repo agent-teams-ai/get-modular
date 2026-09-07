@@ -38,6 +38,7 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "core:typecheck:prepared":
     "node node_modules/typescript/bin/tsc -p packages/core/tsconfig.typecheck.json --noEmit",
   "core:build": "node architecture/tooling/build-core.mjs",
+  "core:build:governance": "node architecture/tooling/build-core.mjs --governance",
   "core:test": 'node --test "packages/core/tests/**/*.test.mjs"',
   "contracts:check": "node architecture/checks/v1-contract.mjs",
   "contracts:test": "node --test tests/v1-contract.test.mjs tests/compiler-engineer-examples.test.mjs tests/implementation-clarifications.test.mjs tests/qualification/m2-candidate/generation-two-artifacts.test.mjs tests/qualification/m2-candidate/raw-carrier-oracle.test.mjs tests/qualification/m2-candidate/duplicate-record-cases.test.mjs tests/qualification/m2-candidate/duplicate-record-extended-overlaps.test.mjs tests/qualification/m2-candidate/raw-invocation-oracle.test.mjs tests/qualification/m2-candidate/duplicate-record-resources.test.mjs tests/qualification/m2-candidate/raw-document-cases.test.mjs tests/qualification/m2-candidate/mutation-evidence.test.mjs tests/qualification/m2-candidate/retained-object-descriptors.test.mjs tests/qualification/m2-candidate/combined-case-inventory.test.mjs tests/qualification/m2-candidate/boundary-source-mutations.test.mjs tests/qualification/m2-candidate/retained-acceptance.test.mjs tests/m2-start.test.mjs",
@@ -48,7 +49,7 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "foundation:assert-registry": "agent-teams-foundation assert-registry",
   "foundation:check": FOUNDATION_CHECK_SCRIPT,
   "governance:check": "node architecture/checks/governance.mjs",
-  "governance:test": "node --test tests/governance.test.mjs tests/private-core-start.test.mjs tests/m3-start.test.mjs",
+  "governance:test": "node --test tests/governance.test.mjs tests/private-core-start.test.mjs tests/m3-start.test.mjs tests/generated-production-source.test.mjs",
   "qualification:resource-profile": "node tests/qualification/v1-resource-profile.mjs",
   "qualification:v1-diagnostics-protocol":
     "node --test tests/qualification/v1-diagnostics-protocol.mjs",
@@ -61,7 +62,7 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
 const ROOT_SCRIPT_COMMANDS = Object.freeze({
   check: Object.freeze([
     "runtime:preflight",
-    "core:build",
+    "core:build:governance",
     "foundation:check",
     "docs:protocol:check",
     "architecture:feature-module-profile",
@@ -74,7 +75,6 @@ const ROOT_SCRIPT_COMMANDS = Object.freeze({
     "qualification:v1-diagnostics-protocol",
     "qualification:v1-graph-semantics",
     "qualification:self-composition-templates",
-    "governance:check",
     "governance:test",
   ]),
   "check:fast": Object.freeze([
@@ -380,7 +380,9 @@ export function validateFeatureModuleStandardProfile({
   for (const gate of adoption.enforcement) {
     exactKeys(gate, ["command", "evidence"], `enforcement ${gate?.command ?? "<unknown>"}`);
     assertRequiredScript(packageJson, gate.command);
-    assert(completeCommands.includes(gate.command),
+    assert(completeCommands.includes(gate.command)
+      || gate.command === "governance:check"
+        && completeCommands.includes("core:build:governance"),
       `complete gate must include ${gate.command}`);
   }
   assert(completeCommands.includes("architecture:feature-module-profile:test"),

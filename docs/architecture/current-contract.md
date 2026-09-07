@@ -74,6 +74,15 @@ qualification and runtime proof remain pending. No `self-composed-qualified`,
 conformance or `release-eligible` claim follows from implementation; generated
 publication still requires the complete M3 and packed-consumer gates.
 
+Standalone `pnpm governance:check` performs a fresh build after validating the
+accepted implementation scope against one captured Git index. The full
+`pnpm check` shares that build through `core:build:governance`; its later gates
+still run normally. Only the fixed generated root may differ from tracked
+source: governance compares its complete bytes with the fresh emission held
+in the same process, then applies the existing source checks. A previous build
+or a writable receipt cannot authorize that exception. This local verification
+does not establish retained release custody.
+
 ## Static consumer example
 
 The [installed-package example](../../tests/qualification/support/static-consumer-source.mjs)

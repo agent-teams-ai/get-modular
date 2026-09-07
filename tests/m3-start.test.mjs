@@ -114,3 +114,18 @@ test('M3 rejects mixed scopes, malformed lists and loss of any remaining exclusi
   await assert.rejects(check({ ...m3, authorityDigest: 'sha256:' + '0'.repeat(64) }), /accepted authority has changed/u);
   await assert.rejects(check({ ...m3, status: 'pending-owner-approval' }), /authorization is missing/u);
 });
+
+test('only completed M3 validation returns immutable generated-source scope', async () => {
+  for (const record of [m1, m2, m3]) {
+    const result = await check(record);
+    assert.equal(Object.isFrozen(result), true);
+    assert.deepEqual(result, { generatedSelfComposition: record === m3 });
+  }
+  await assert.rejects(check(m3, authority, {
+    isStartingBase: async () => false,
+  }), /base is not an ancestor/u);
+  await assert.rejects(check(m3, {
+    ...authority,
+    ledgerBytes: Buffer.from('{}'),
+  }), /M2 authority verification failed/u);
+});
