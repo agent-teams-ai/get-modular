@@ -99,7 +99,7 @@ test('row rejects a destination parent alias', async t => {
 
 
 test('row refuses arbitrary inherited environment overrides', async t => {
-  const input = await fixture(t);
+  const { input } = await fixture(t);
   input.osEnvironment = { NODE_OPTIONS: '--require=unexpected' };
   await assert.rejects(runM3NodeRow(input), /row-keys/);
 });
