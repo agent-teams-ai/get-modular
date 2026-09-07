@@ -215,12 +215,26 @@ export function packageIdentityViolations(inventory) {
     .map(entry => entry.path);
 }
 
-// ADR-0023 admits an optional private package with one public Core dependency.
+// ADR-0023 historical private shape and ADR-0025 public shape. Authority is
+// authenticated separately by assembly-admission through its supplied reader.
 export function assemblyManifestViolations(manifest) {
   if (manifest?.name !== "@get-modular/assembly") return [];
   const violations = [];
   if (manifest.private !== true) {
-    violations.push("Assembly must remain private under ADR-0023");
+    if (Object.hasOwn(manifest, "private")) {
+      violations.push("public Assembly must omit private under ADR-0025");
+    }
+    for (const [field, expected] of Object.entries({
+      publishConfig: { access: "public", registry: "https://registry.npmjs.org/" },
+      repository: { type: "git", url: "git+https://github.com/agent-teams-ai/get-modular.git",
+        directory: "packages/assembly" },
+    })) {
+      const value = manifest[field];
+      if (!plainObject(value) || Object.keys(value).length !== Object.keys(expected).length
+        || Object.entries(expected).some(([key, entry]) => value[key] !== entry)) {
+        violations.push(`public Assembly requires exact ${field} under ADR-0025`);
+      }
+    }
   }
   if (manifest.version !== "0.1.0") {
     violations.push("Assembly version must remain 0.1.0 under ADR-0023");

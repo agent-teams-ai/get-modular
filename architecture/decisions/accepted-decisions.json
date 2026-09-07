@@ -101,6 +101,11 @@
       "id": "ADR-0024",
       "path": "docs/decisions/0024-separate-historical-m2-lock-custody-from-current-dependencies.md",
       "immutableDigest": "sha256:a860ef239be89f4fbb564df38f3f313bcb383da7298cd9293515064362e065b0"
+    },
+    {
+      "id": "ADR-0025",
+      "path": "docs/decisions/0025-publish-assembly-0-1-0-with-core-0-1-0.md",
+      "immutableDigest": "sha256:ad3a06508a7a124fa2b909168957cd40ca940b2581193051debc90fcfb9a30e8"
     }
   ]
 }

@@ -189,16 +189,23 @@ historical evidence and is not overwritten.
 ## Historical Core evidence and current admission
 
 The [assembly admission checker](../../architecture/checks/assembly-admission.mjs)
-authenticates ADR-0023 and the private manifest before separating Assembly paths
-from the unchanged Core scope. Its lock transition admits only the exact internal
-Assembly-to-Core importer; every other byte and dependency remains bound to the
-historical M2 lock. The original ledgers, verifier and retained test bytes remain
-unchanged. A historical reader reconstructs and verifies the pinned lock only for
-M2 evidence, while current dependency checks keep reading the current lock.
+authenticates ADR-0023 and the admitted manifest before separating Assembly paths
+from the unchanged Core scope. Under
+[ADR-0024](../decisions/0024-separate-historical-m2-lock-custody-from-current-dependencies.md),
+current admission checks the exact workspace importers and Assembly-to-Core edge;
+root tooling resolutions evolve under current dependency and frozen-install gates.
+The separately authenticated historical M2 lock witness preserves the original
+ledgers, verifier and retained test bytes. The legacy direct reader retains its
+strict reconstruction without coupling current admission to the historical lock.
 
 [Admission regressions](../../tests/assembly-admission.test.mjs) reject graph drift,
 changed authority and packages outside the admitted scope. The current
 [retained replay adapter](../../tests/assembly-admission-retained.test.mjs) preserves
 the historical cases and explicitly proves that the old verifier still rejects
 current lock bytes without the authenticated transition. This finite transition
-is not an authorization to change third-party dependencies or historical evidence.
+does not itself establish current installation readiness or change historical evidence.
+
+Public Assembly 0.1.0 admission additionally authenticates
+[ADR-0025](../decisions/0025-publish-assembly-0-1-0-with-core-0-1-0.md).
+Historical private admission retains its original authority. Publication follows
+retained-byte and registry consumer checks; admission alone proves no release.

@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { readPackageArchive } from "../../../tests/qualification/support/package-archive.mjs";
 import { spawnSync } from "node:child_process";
 import { access, lstat, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -10,6 +12,24 @@ import { largeLiteralSource } from "./type-scale.mjs";
 
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const fixtures = join(workspace, "packages/assembly/tests");
+
+function assertAssemblyPackedManifest(packed, source) {
+  assert.deepEqual(packed, { ...source, dependencies: { "@get-modular/core": "0.1.0" } },
+    "Assembly packed manifest must equal source with only the exact Core dependency rewritten");
+}
+
+test("retained Assembly manifest rejects metadata drift beyond dependency rewriting", async () => {
+  const source = JSON.parse(await readFile(join(workspace, "packages/assembly/package.json"), "utf8"));
+  const packed = { ...source, dependencies: { "@get-modular/core": "0.1.0" } };
+  assertAssemblyPackedManifest(packed, source);
+  for (const change of [
+    { repository: undefined }, { repository: { ...source.repository, directory: "wrong" } },
+    { engines: { node: ">=18" } }, { files: ["dist"] }, { private: true },
+    { dependencies: { "@get-modular/core": "workspace:*" } },
+    { dependencies: { "@get-modular/core": "^0.1.0" } },
+    { publishConfig: { access: "restricted" } }, { extra: true },
+  ]) assert.throws(() => assertAssemblyPackedManifest({ ...packed, ...change }, source));
+});
 
 async function packageManagerCli(name) {
   const node = await realpath(process.execPath);
@@ -82,7 +102,7 @@ async function installedPackage(consumer, name) {
   return manifest;
 }
 
-test("disposable packed consumer checks closed roots, synthetic wiring and both TypeScript compilers", { timeout: 900000 }, async () => {
+test("disposable packed consumer checks closed roots, synthetic wiring and both TypeScript compilers", { timeout: 900000 }, async t => {
   const temporary = await realpath(await mkdtemp(join(tmpdir(), "get-modular-assembly-consumer-")));
   try {
     const archives = join(temporary, "archives");
@@ -90,16 +110,39 @@ test("disposable packed consumer checks closed roots, synthetic wiring and both 
     await mkdir(archives);
     await mkdir(consumer);
     const archivePaths = {};
+    const retained = process.env.GET_MODULAR_ASSEMBLY_ARCHIVE;
+    const publishedCore = process.env.GET_MODULAR_PUBLISHED_CORE_ARCHIVE;
+    assert.equal(Boolean(retained), Boolean(publishedCore), "supply both retained archives or neither");
+    const archiveBytes = new Map();
     const pnpm = await packageManagerCli("pnpm"), npm = await packageManagerCli("npm");
     for (const name of ["core", "assembly"]) {
       const directory = join(workspace, "packages", name);
       const manifest = JSON.parse(await readFile(join(directory, "package.json"), "utf8"));
-      command(process.execPath, [pnpm, "pack", "--pack-destination", archives], directory);
-      const archive = join(archives, `${manifest.name.replace("@", "").replace("/", "-")}-${manifest.version}.tgz`);
+      if (!retained) command(process.execPath, [pnpm, "pack", "--pack-destination", archives], directory);
+      const archive = retained ? await realpath(name === "assembly" ? retained : publishedCore)
+        : join(archives, `${manifest.name.replace("@", "").replace("/", "-")}-${manifest.version}.tgz`);
       assert.equal((await lstat(archive)).isFile(), true);
+      const bytes = await readFile(archive);
+      const identity = {
+        sha256: createHash("sha256").update(bytes).digest("hex"),
+        integrity: `sha512-${createHash("sha512").update(bytes).digest("base64")}`,
+      };
+      if (retained) {
+        const prefix = name === "assembly" ? "GET_MODULAR_ASSEMBLY" : "GET_MODULAR_PUBLISHED_CORE";
+        assert.equal(identity.sha256, process.env[`${prefix}_SHA256`], `${name}: retained SHA-256`);
+        assert.equal(identity.integrity, process.env[`${prefix}_INTEGRITY`], `${name}: retained integrity`);
+      }
+      const audited = readPackageArchive(bytes, identity);
+      const packedManifest = JSON.parse(audited.files.get("package.json"));
+      assert.equal(packedManifest.name, manifest.name);
+      assert.equal(packedManifest.version, "0.1.0");
+      if (name === "assembly") assertAssemblyPackedManifest(packedManifest, manifest);
+      archiveBytes.set(archive, { bytes, files: audited.files });
+      t.diagnostic(JSON.stringify({ package: manifest.name, archive, ...identity,
+        inventory: [...audited.files.keys()].sort(), retained: Boolean(retained) }));
       archivePaths[manifest.name] = archive;
     }
-    assert.equal((await readdir(archives)).length, 2);
+    assert.equal((await readdir(archives)).length, retained ? 0 : 2);
     await writeFile(join(consumer, "package.json"), JSON.stringify({
       name: "assembly-disposable-consumer", private: true, type: "module",
       dependencies: Object.fromEntries(Object.entries(archivePaths).map(([name, archive]) => [name, `file:${archive}`])),
@@ -111,6 +154,17 @@ test("disposable packed consumer checks closed roots, synthetic wiring and both 
     assert.deepEqual((await readdir(join(consumer, "node_modules/@get-modular"))).sort(), ["assembly", "core"]);
     const core = await installedPackage(consumer, "@get-modular/core");
     const assembly = await installedPackage(consumer, "@get-modular/assembly");
+    for (const [name, archive] of Object.entries(archivePaths)) {
+      const { bytes, files } = archiveBytes.get(archive);
+      assert.deepEqual(await readFile(archive), bytes, `${name}: archive unchanged after install`);
+      const installed = join(consumer, "node_modules", name);
+      assert.deepEqual(await filesBelow(installed), [...files.keys()].sort());
+      for (const [path, expected] of files) assert.deepEqual(await readFile(join(installed, path)), expected);
+    }
+    assert.equal(Object.hasOwn(assembly, "private"), false);
+    assert.deepEqual(assembly.publishConfig, { access: "public", registry: "https://registry.npmjs.org/" });
+    assert.equal(core.version, "0.1.0");
+    assert.equal(assembly.version, "0.1.0");
     assert.deepEqual(core.dependencies ?? {}, {});
     assert.deepEqual(assembly.dependencies, { "@get-modular/core": core.version });
     for (const manifest of [core, assembly]) {
@@ -144,6 +198,9 @@ test("disposable packed consumer checks closed roots, synthetic wiring and both 
     }));
     const observations = testAssemblyTypes({ directory: consumer, project, runtimeProject, negativeProject });
     assert.equal(observations.length, 4);
+    for (const [archive, { bytes }] of archiveBytes) assert.deepEqual(await readFile(archive), bytes);
+    t.diagnostic(JSON.stringify({ consumerChecks: "passed", compilers: observations,
+      retained: Boolean(retained), registryOriginAuthenticatedByHarness: false }));
   } finally {
     await rm(temporary, { recursive: true, force: true });
   }
