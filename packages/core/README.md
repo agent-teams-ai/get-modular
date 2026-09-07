@@ -10,6 +10,10 @@ Generated assembly alone does not establish conformance or authorize publication
 This checkpoint is `not-claimed`; it claims neither `self-composed-qualified`
 nor runtime conformance or release eligibility.
 
+The initial Node support interval is `>=24.18.0 <25`. Browser execution
+requires a secure context with Web Crypto; the native diagnostic runs do not
+constitute an official browser support or runtime-conformance claim.
+
 Declaration consumers require TypeScript 5.8.3 or later. The packed regression
 tests both this minimum and the pinned build compiler in `NodeNext` ESM and
 CommonJS contexts, `Node16` ESM, and `Bundler`, with `skipLibCheck: false` and
@@ -97,5 +101,6 @@ Repeated binding records for one consumer/slot are rejected with
 Invalid groups contribute no dependency edges, while independent eligible
 failures remain visible. Consumers migrating from M1 must handle the additive
 `input.invalid-byte-carrier` and `binding.duplicate-record` diagnostic cases.
-The M2 semantics remain subject to retained qualification. Generated assembly
-does not by itself complete M3 qualification or authorize publication.
+M2 and M3 have executed retained qualification at the completed Core checkpoint.
+Each publication archive still requires its own packed-consumer evidence and
+registry byte-identity check; generated assembly alone is insufficient.

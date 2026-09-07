@@ -90,7 +90,7 @@ const baseRoles = new Map(rows.map(([path, exports, locals, functions]) => [
 ]));
 const declarations = new Set(['dist/index.d.ts', ...['internal', 'helpers', 'wire-types', 'diagnostic-types']
   .map(name => `dist/features/authoring/${name}.d.ts`)]);
-const metadata = new Set(['package.json', 'README.md', 'LICENSE']);
+const metadata = new Set(['package.json', 'README.md', 'LICENSE', 'CHANGELOG.md']);
 const feature = name => `dist/features/${name}/factory.js`;
 const factories = [
   [feature('canonicalization/owned-jcs'), 'createOwnedJcs', [], ['canonicalize']],

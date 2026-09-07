@@ -211,7 +211,12 @@ export function stageDirectSubject({
   need(metadata.name === "@get-modular/core"
     && typeof metadata.version === "string" && /^\d+\.\d+\.\d+$/u.test(metadata.version)
     && typeof metadata.license === "string" && metadata.license.length > 0, "package-identity");
-  for (const name of ["LICENSE", "README.md"]) {
+  const documentation = ["LICENSE", "README.md"];
+  if (Array.isArray(metadata.files) && metadata.files.includes("CHANGELOG.md")) {
+    git(sourceCheckout, ["ls-files", "--error-unmatch", "--", "packages/core/CHANGELOG.md"]);
+    documentation.push("CHANGELOG.md");
+  }
+  for (const name of documentation) {
     retain(name, readRegular(packageRoot, join(packageRoot, name)));
   }
   const manifest = {
