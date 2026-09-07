@@ -102,6 +102,42 @@ test("stages only reached bytes, preserving declaration-only dependencies", t =>
   assert.throws(() => stageDirectSubject(f.options), /staging-exists/u);
 });
 
+test("Windows drive-letter casing preserves checkout identity", {
+  skip: process.platform !== "win32" && "Windows drive-letter spelling",
+}, t => {
+  const f = fixture(t);
+  assert.match(f.checkout, /^[A-Za-z]:\\/u);
+  for (const [index, drive] of [
+    f.checkout[0].toLowerCase(), f.checkout[0].toUpperCase(),
+  ].entries()) {
+    const checkout = `${drive}${f.checkout.slice(1)}`;
+    assert.equal(realpathSync(checkout), checkout);
+    const packageRoot = join(checkout, "packages/core");
+    const result = stageDirectSubject({
+      ...f.options, sourceCheckout: checkout,
+      stagingDir: join(f.base, `direct-${index}`),
+      javascriptEntry: join(packageRoot, JS), declarationEntry: join(packageRoot, DTS),
+    });
+    assert.equal(result.source.checkout, checkout);
+    assert.equal(result.source.commit, f.options.expectedSha);
+  }
+});
+
+test("rejects a source checkout that is a repository subdirectory", t => {
+  const f = fixture(t);
+  assert.throws(() => stageDirectSubject({
+    ...f.options, sourceCheckout: f.packageRoot,
+  }), /checkout-root/u);
+  assert.equal(existsSync(f.options.stagingDir), false);
+});
+
+test("rejects Git reporting another checkout as the worktree", t => {
+  const f = fixture(t), other = fixture(t);
+  f.git(["config", "core.worktree", other.checkout]);
+  assert.throws(() => stageDirectSubject(f.options), /checkout-root/u);
+  assert.equal(existsSync(f.options.stagingDir), false);
+});
+
 for (const [name, path, text] of [
   ["missing", JS, 'import "./missing.js";'],
   ["escaping", JS, 'import "../../../outside.js";'],
