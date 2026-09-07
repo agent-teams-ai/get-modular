@@ -480,15 +480,18 @@ async function collect(ctx) {
       const bytes = await readBytes(join(root, group, file), 64 * 1024);
       const record = JSON.parse(bytes.toString());
       assert.ok(bytes.equals(jsonBytes(record)), 'canonical complete row');
-      const evidenceRoot = join(ctx.root, 'driver-evidence',
-        group.replace('m3-rows-', 'm3-diagnostics-'));
-      const diagnostic = await readBytes(join(evidenceRoot, record.diagnostic.path));
-      assert.equal(digest(diagnostic), record.diagnostic.sha256,
-        'downloaded driver evidence differs from row binding');
       records.push({ group, file, record });
     }
   }
-  await json(join(ctx.diagnostics, 'collection.json'), collectRows(records, expectedIdentity()));
+  const summary = collectRows(records, expectedIdentity());
+  for (const { group, record } of records) {
+    const evidenceRoot = join(ctx.root, 'driver-evidence',
+      group.replace('m3-rows-', 'm3-diagnostics-'));
+    const diagnostic = await readBytes(join(evidenceRoot, record.diagnostic.path));
+    assert.equal(digest(diagnostic), record.diagnostic.sha256,
+      'downloaded driver evidence differs from row binding');
+  }
+  await json(join(ctx.diagnostics, 'collection.json'), summary);
 }
 
 async function main() {
