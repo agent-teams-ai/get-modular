@@ -247,13 +247,13 @@ async function stopOwned(child, exited) {
   try { await bounded(exited, 5_000, 'Electron exit'); }
   catch { signal('SIGKILL'); await bounded(exited, 5_000, 'Electron kill'); }
   signal('SIGKILL');
-  await bounded((async () => {
-    for (;;) {
-      try { process.kill(-child.pid, 0); }
-      catch (error) { if (error.code === 'ESRCH') return; throw error; }
-      await delay(50);
-    }
-  })(), 5_000, 'owned Electron process group teardown');
+  const deadline = performance.now() + 5_000;
+  for (;;) {
+    try { process.kill(-child.pid, 0); }
+    catch (error) { if (error.code === 'ESRCH') return; throw error; }
+    assert.ok(performance.now() < deadline, 'owned Electron process group teardown timed out');
+    await delay(Math.min(50, Math.max(1, deadline - performance.now())));
+  }
 }
 
 export async function runElectronConsumer(rawInput) {
