@@ -58,7 +58,7 @@ function git(checkout, args) {
 function sourceIdentity(checkout, expectedSha) {
   need(/^[a-f0-9]{40}$/u.test(expectedSha), "full-source-sha");
   canonicalDirectory(checkout);
-  need(resolve(git(checkout, ["rev-parse", "--show-toplevel"]).trim()) === checkout, "checkout-root");
+  need(realpathSync(git(checkout, ["rev-parse", "--show-toplevel"]).trim()) === checkout, "checkout-root");
   const commit = git(checkout, ["rev-parse", "--verify", "HEAD^{commit}"]).trim();
   need(commit === expectedSha, "source-sha");
   need(git(checkout, [
