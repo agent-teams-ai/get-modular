@@ -2,6 +2,7 @@ import { visit } from "jsonc-parser";
 
 import { PUBLICATION_FIELDS } from "./production-artifacts.mjs";
 import { validateM2StartAuthority } from "./m2-evidence.mjs";
+import { createHistoricalM2EvidenceReader } from "./assembly-admission.mjs";
 
 const START_MARKER = "<!-- get-modular:private-core-start -->";
 const END_MARKER = "<!-- /get-modular:private-core-start -->";
@@ -98,7 +99,11 @@ export async function validatePrivateCoreStart({
       || typeof readM2Authority !== "function") fail("M2 accepted authority is missing");
     try {
       const input = await readM2Authority();
-      await validateM2StartAuthority({ ...input, expectedLedgerDigest: authority.ledgerDigest });
+      const evidence = { ...input, expectedLedgerDigest: authority.ledgerDigest };
+      await validateM2StartAuthority({
+        ...evidence,
+        readBytes: await createHistoricalM2EvidenceReader(evidence),
+      });
     } catch (error) {
       fail(`M2 authority verification failed: ${error.message}`);
     }

@@ -1,0 +1,150 @@
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { access, lstat, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { delimiter, dirname, join, resolve } from "node:path";
+import test from "node:test";
+import { fileURLToPath } from "node:url";
+import { testAssemblyTypes } from "../../../architecture/tooling/test-assembly-types.mjs";
+import { largeLiteralSource } from "./type-scale.mjs";
+
+const workspace = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+const fixtures = join(workspace, "packages/assembly/tests");
+
+async function packageManagerCli(name) {
+  const node = await realpath(process.execPath);
+  const candidates = name === "npm" ? [
+    join(dirname(node), "node_modules/npm/bin/npm-cli.js"),
+    join(dirname(dirname(node)), "lib/node_modules/npm/bin/npm-cli.js"),
+  ] : [];
+  const inherited = process.env.npm_execpath;
+  if (inherited && (name === "pnpm" ? /pnpm\.(?:c?js|mjs)$/u : /npm-cli\.js$/u).test(inherited)) {
+    candidates.unshift(inherited);
+  }
+  for (const directory of (process.env.PATH ?? "").split(delimiter)) {
+    try {
+      const target = await realpath(join(directory, name));
+      if (/\.(?:c?js|mjs)$/u.test(target)) candidates.push(target);
+    } catch (error) {
+      if (error.code !== "ENOENT" && error.code !== "ENOTDIR") throw error;
+    }
+  }
+  for (const candidate of candidates) {
+    try { await access(candidate); return await realpath(candidate); } catch {}
+  }
+  throw new Error(`Pinned ${name} JavaScript CLI is required; no shell/download fallback`);
+}
+
+function command(executable, args, cwd, environment = {}) {
+  const result = spawnSync(executable, args, {
+    cwd, encoding: "utf8", timeout: 180000, maxBuffer: 16 * 1024 * 1024,
+    env: { ...process.env, ...environment, NODE_PATH: "", NODE_OPTIONS: "", npm_config_ignore_scripts: "true" },
+  });
+  if (result.error) throw result.error;
+  assert.equal(result.status, 0, `${executable} ${args.join(" ")}\n${result.stdout}\n${result.stderr}`);
+  return result.stdout;
+}
+async function filesBelow(directory) {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    const path = join(directory, entry.name);
+    assert.equal(entry.isSymbolicLink(), false, path);
+    if (entry.isDirectory()) files.push(...(await filesBelow(path)).map((file) => `${entry.name}/${file}`));
+    else { assert.equal(entry.isFile(), true, path); files.push(entry.name); }
+  }
+  return files.sort();
+}
+async function installedPackage(consumer, name) {
+  const directory = join(consumer, "node_modules", name);
+  assert.equal((await lstat(directory)).isSymbolicLink(), false);
+  assert.equal(await realpath(directory), directory);
+  const manifest = JSON.parse(await readFile(join(directory, "package.json"), "utf8"));
+  assert.equal(manifest.name, name);
+  assert.equal(manifest.type, "module");
+  assert.equal(JSON.stringify(manifest.exports), JSON.stringify({
+    ".": { import: { types: "./dist/index.d.ts", default: "./dist/index.js" }, default: "./dist/index.js" },
+  }));
+  for (const field of ["main", "module", "types", "typings", "typesVersions", "browser"]) {
+    assert.equal(Object.hasOwn(manifest, field), false, `${name}: ${field}`);
+  }
+  for (const script of ["preinstall", "install", "postinstall", "prepare", "prepack", "postpack", "prepublish", "prepublishOnly", "publish", "postpublish"]) {
+    assert.equal(Object.hasOwn(manifest.scripts ?? {}, script), false, `${name}: ${script}`);
+  }
+  const inventory = await filesBelow(directory);
+  for (const file of inventory) {
+    assert.ok(["package.json", "README.md", "LICENSE", "CHANGELOG.md"].includes(file)
+      || manifest.files.includes(file)
+      || (manifest.files.includes("dist") && /^dist\/(?:[^/]+\/)*[^/]+(?:\.js|\.d\.ts)$/u.test(file)),
+    `${name}: unsupported installed file ${file}`);
+  }
+  for (const file of ["dist/index.js", "dist/index.d.ts"]) assert.ok(inventory.includes(file));
+  return manifest;
+}
+
+test("disposable packed consumer checks closed roots, synthetic wiring and both TypeScript compilers", { timeout: 900000 }, async () => {
+  const temporary = await realpath(await mkdtemp(join(tmpdir(), "get-modular-assembly-consumer-")));
+  try {
+    const archives = join(temporary, "archives");
+    const consumer = join(temporary, "consumer");
+    await mkdir(archives);
+    await mkdir(consumer);
+    const archivePaths = {};
+    const pnpm = await packageManagerCli("pnpm"), npm = await packageManagerCli("npm");
+    for (const name of ["core", "assembly"]) {
+      const directory = join(workspace, "packages", name);
+      const manifest = JSON.parse(await readFile(join(directory, "package.json"), "utf8"));
+      command(process.execPath, [pnpm, "pack", "--pack-destination", archives], directory);
+      const archive = join(archives, `${manifest.name.replace("@", "").replace("/", "-")}-${manifest.version}.tgz`);
+      assert.equal((await lstat(archive)).isFile(), true);
+      archivePaths[manifest.name] = archive;
+    }
+    assert.equal((await readdir(archives)).length, 2);
+    await writeFile(join(consumer, "package.json"), JSON.stringify({
+      name: "assembly-disposable-consumer", private: true, type: "module",
+      dependencies: Object.fromEntries(Object.entries(archivePaths).map(([name, archive]) => [name, `file:${archive}`])),
+    }));
+    command(process.execPath, [npm, "install", "--offline", "--ignore-scripts", "--no-audit", "--no-fund", "--package-lock=false"], consumer, {
+      npm_config_cache: join(temporary, "npm-cache"),
+    });
+    assert.deepEqual((await readdir(join(consumer, "node_modules"))).filter((name) => name !== ".package-lock.json").sort(), ["@get-modular"]);
+    assert.deepEqual((await readdir(join(consumer, "node_modules/@get-modular"))).sort(), ["assembly", "core"]);
+    const core = await installedPackage(consumer, "@get-modular/core");
+    const assembly = await installedPackage(consumer, "@get-modular/assembly");
+    assert.deepEqual(core.dependencies ?? {}, {});
+    assert.deepEqual(assembly.dependencies, { "@get-modular/core": core.version });
+    for (const manifest of [core, assembly]) {
+      for (const field of ["devDependencies", "optionalDependencies", "peerDependencies"]) assert.deepEqual(manifest[field] ?? {}, {});
+    }
+    for (const file of ["fixture.mjs", "runtime.test.mjs", "preparation.test.mjs", "packed-consumer.mjs"]) {
+      await writeFile(join(consumer, file), await readFile(join(fixtures, file)));
+    }
+    command(process.execPath, ["packed-consumer.mjs"], consumer);
+    command(process.execPath, ["--conditions=browser", "--conditions=development", "packed-consumer.mjs"], consumer);
+    command(process.execPath, ["--test", "runtime.test.mjs", "preparation.test.mjs"], consumer);
+    await mkdir(join(consumer, "tests"));
+    for (const file of ["types.ts", "types-positive.ts"]) await writeFile(join(consumer, "tests", file), await readFile(join(fixtures, file)));
+    await writeFile(join(consumer, "tests/type-scale.ts"), largeLiteralSource());
+    const closedSpecifiers = ["@get-modular/core", "@get-modular/assembly"].flatMap((name) =>
+      ["dist/index.js", "src/index.js", "package.json", "unknown"].map((subpath) => `${name}/${subpath}`));
+    await writeFile(join(consumer, "tests/closed-imports.ts"), closedSpecifiers.map((specifier, index) =>
+      `import { hidden as hidden${index} } from ${JSON.stringify(specifier)}; void hidden${index};`).join("\n"));
+    const config = { compilerOptions: {
+      target: "ES2022", lib: ["ES2023", "DOM"], strict: true, noEmit: true,
+      skipLibCheck: false, resolveJsonModule: true, types: [], isolatedDeclarations: false, erasableSyntaxOnly: false,
+    }, files: ["tests/types.ts", "tests/types-positive.ts", "tests/type-scale.ts"] };
+    const project = join(consumer, "tsconfig.types.json");
+    await writeFile(project, JSON.stringify(config));
+    const runtimeProject = join(consumer, "tsconfig.runtime.json");
+    await writeFile(runtimeProject, JSON.stringify({ extends: "./tsconfig.types.json",
+      compilerOptions: { rootDir: "tests", noEmit: false, declaration: false }, files: ["tests/types-positive.ts"] }));
+    const negativeProject = join(consumer, "tsconfig.negative.json");
+    await writeFile(negativeProject, JSON.stringify({
+      extends: "./tsconfig.types.json", files: ["tests/closed-imports.ts"],
+    }));
+    const observations = testAssemblyTypes({ directory: consumer, project, runtimeProject, negativeProject });
+    assert.equal(observations.length, 4);
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
+});

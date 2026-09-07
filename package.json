@@ -15,9 +15,9 @@
     "url": "git+https://github.com/agent-teams-ai/get-modular.git"
   },
   "scripts": {
-    "check": "pnpm runtime:preflight && pnpm governance:check && pnpm foundation:check && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm core:typecheck:prepared && pnpm core:test && pnpm contracts:check && pnpm contracts:test && pnpm qualification:resource-profile && pnpm qualification:v1-diagnostics-protocol && pnpm qualification:v1-graph-semantics && pnpm qualification:self-composition-templates && pnpm governance:test",
+    "check": "pnpm runtime:preflight && pnpm governance:check && pnpm assembly:build && pnpm foundation:check && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm core:typecheck:prepared && pnpm core:test && pnpm assembly:typecheck && pnpm assembly:test && pnpm contracts:check && pnpm contracts:test && pnpm qualification:resource-profile && pnpm qualification:v1-diagnostics-protocol && pnpm qualification:v1-graph-semantics && pnpm qualification:self-composition-templates && pnpm governance:test",
     "check:changed": "agent-teams-foundation agent-workflow changed --consumer .",
-    "check:fast": "pnpm runtime:preflight && pnpm core:build && pnpm foundation:check && pnpm architecture:feature-module-profile && pnpm docs:check && pnpm core:typecheck:prepared && pnpm core:test",
+    "check:fast": "pnpm runtime:preflight && pnpm assembly:build && pnpm foundation:check && pnpm architecture:feature-module-profile && pnpm docs:check && pnpm core:typecheck:prepared && pnpm core:test && pnpm assembly:typecheck && pnpm assembly:test",
     "docs:changed": "pnpm docs:check && pnpm docs:quality",
     "docs:check": "agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml",
     "docs:doctor": "agent-teams-docs doctor --consumer . --profile architecture/foundation/docs-protocol.yaml",
@@ -28,7 +28,7 @@
     "docs:quality": "markdownlint-cli2 && cspell --config .cspell.json --no-progress",
     "docs:recover": "agent-teams-docs recover --consumer . --profile architecture/foundation/docs-protocol.yaml",
     "contracts:check": "node architecture/checks/v1-contract.mjs",
-    "contracts:test": "node --test tests/v1-contract.test.mjs tests/compiler-engineer-examples.test.mjs tests/implementation-clarifications.test.mjs tests/qualification/m2-candidate/generation-two-artifacts.test.mjs tests/qualification/m2-candidate/raw-carrier-oracle.test.mjs tests/qualification/m2-candidate/duplicate-record-cases.test.mjs tests/qualification/m2-candidate/duplicate-record-extended-overlaps.test.mjs tests/qualification/m2-candidate/raw-invocation-oracle.test.mjs tests/qualification/m2-candidate/duplicate-record-resources.test.mjs tests/qualification/m2-candidate/raw-document-cases.test.mjs tests/qualification/m2-candidate/mutation-evidence.test.mjs tests/qualification/m2-candidate/retained-object-descriptors.test.mjs tests/qualification/m2-candidate/combined-case-inventory.test.mjs tests/qualification/m2-candidate/boundary-source-mutations.test.mjs tests/qualification/m2-candidate/retained-acceptance.test.mjs tests/m2-start.test.mjs",
+    "contracts:test": "node --test tests/v1-contract.test.mjs tests/compiler-engineer-examples.test.mjs tests/implementation-clarifications.test.mjs tests/qualification/m2-candidate/generation-two-artifacts.test.mjs tests/qualification/m2-candidate/raw-carrier-oracle.test.mjs tests/qualification/m2-candidate/duplicate-record-cases.test.mjs tests/qualification/m2-candidate/duplicate-record-extended-overlaps.test.mjs tests/qualification/m2-candidate/raw-invocation-oracle.test.mjs tests/qualification/m2-candidate/duplicate-record-resources.test.mjs tests/qualification/m2-candidate/raw-document-cases.test.mjs tests/qualification/m2-candidate/mutation-evidence.test.mjs tests/qualification/m2-candidate/retained-object-descriptors.test.mjs tests/qualification/m2-candidate/combined-case-inventory.test.mjs tests/qualification/m2-candidate/boundary-source-mutations.test.mjs tests/assembly-admission-retained.test.mjs tests/m2-start.test.mjs",
     "foundation:assert-dev-only": "agent-teams-foundation assert-dev-only",
     "foundation:assert-registry": "agent-teams-foundation assert-registry",
     "foundation:check": "agent-teams-foundation check && pnpm foundation:assert-dev-only && pnpm foundation:assert-registry",
@@ -36,7 +36,7 @@
     "architecture:feature-module-profile": "node architecture/checks/feature-module-standard-profile.mjs",
     "architecture:feature-module-profile:test": "node --test tests/feature-module-standard-profile.test.mjs tests/source-dependencies.test.mjs",
     "governance:check": "node architecture/checks/governance.mjs",
-    "governance:test": "node --test tests/governance.test.mjs tests/private-core-start.test.mjs tests/m3-start.test.mjs tests/generated-production-source.test.mjs",
+    "governance:test": "node --test tests/governance.test.mjs tests/assembly-admission.test.mjs tests/private-core-start.test.mjs tests/m3-start.test.mjs tests/generated-production-source.test.mjs",
     "qualification:resource-profile": "node tests/qualification/v1-resource-profile.mjs",
     "qualification:v1-diagnostics-protocol": "node --test tests/qualification/v1-diagnostics-protocol.mjs",
     "qualification:v1-graph-semantics": "node --test tests/qualification/v1-graph-semantics.mjs",
@@ -46,7 +46,10 @@
     "core:typecheck": "node architecture/tooling/generate-core.mjs --typecheck",
     "core:typecheck:prepared": "node node_modules/typescript/bin/tsc -p packages/core/tsconfig.typecheck.json --noEmit",
     "core:build": "node architecture/tooling/build-core.mjs",
-    "core:test": "node --test \"packages/core/tests/**/*.test.mjs\""
+    "core:test": "node --test \"packages/core/tests/**/*.test.mjs\"",
+    "assembly:build": "pnpm core:build && node architecture/tooling/build-assembly.mjs",
+    "assembly:typecheck": "node node_modules/typescript/bin/tsc -p packages/assembly/tsconfig.json --noEmit",
+    "assembly:test": "node --test \"packages/assembly/tests/**/*.test.mjs\""
   },
   "devDependencies": {
     "@agent-teams/docs-protocol": "0.4.1",

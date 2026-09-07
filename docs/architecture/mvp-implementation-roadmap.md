@@ -553,11 +553,10 @@ cannot use that label as a conformance, self-composition or release-eligibility
 claim. No release workflow is added before a real package exists because an
 untestable workflow would be ceremonial infrastructure.
 
-[Proposed ADR-0019](../decisions/0019-separate-upload-admission-from-publication-completion.md)
-records the narrow successor needed to reconcile ADR-0012's eligibility wording
-and supplies the unknown-upload/tag-reconciliation runbook. Accept that policy
-before the first real upload; its proposed status does not block private M1
-fixes or preparation of the retained packed subject.
+[Accepted ADR-0019](../decisions/0019-separate-upload-admission-from-publication-completion.md)
+records the narrow successor reconciling ADR-0012's eligibility wording
+and supplies the unknown-upload/tag-reconciliation runbook. Its acceptance
+checks are linked from the decision; actual upload remains separately authorized.
 
 ### Roadmap qualification language
 
@@ -1479,3 +1478,10 @@ decision.
 Tests must not require a second diagnostic generation or a generated stage1
 before the first direct object-input test. No fake success result substitutes
 for the complete plan and digest.
+
+## Optional common assembly delivery
+
+[Common assembly](common-assembly.md) defines the separate A0-A3 route and
+acceptance checks admitted by [ADR-0023](../decisions/0023-add-a-thin-host-owned-assembly-component-above-core.md).
+Core callable surfaces and historical qualification remain unchanged. Assembly
+is a separate construction feature; Host retains permissions and lifecycle.

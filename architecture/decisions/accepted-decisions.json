@@ -91,6 +91,11 @@
       "id": "ADR-0022",
       "path": "docs/decisions/0022-correct-two-in-envelope-m2-resource-outcomes.md",
       "immutableDigest": "sha256:8335e88bcf98e732b58240dcf37357333a1fb357824ef9a3c4cbc76e3d0fa90a"
+    },
+    {
+      "id": "ADR-0023",
+      "path": "docs/decisions/0023-add-a-thin-host-owned-assembly-component-above-core.md",
+      "immutableDigest": "sha256:0b7ae923c25d069e951b36cb46a2500888e3193d597f17990d069577983935dc"
     }
   ]
 }

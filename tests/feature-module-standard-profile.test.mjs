@@ -13,6 +13,9 @@ import {
   validateFirstProductionPackageAdmission,
 } from "../architecture/checks/feature-module-standard-profile.mjs";
 import {
+  manifestCarrierViolations,
+  packageIdentityViolations,
+  packageManifestInventory,
   productionArtifactPaths,
   productionArtifactSymlinkPaths,
 } from "../architecture/checks/production-artifacts.mjs";
@@ -162,6 +165,9 @@ test("requires profile enforcement in complete and fast gates", () => {
     "core:typecheck",
     "core:typecheck:prepared",
     "core:test",
+    "assembly:build",
+    "assembly:typecheck",
+    "assembly:test",
     "architecture:feature-module-profile",
     "architecture:feature-module-profile:test",
     "contracts:check",
@@ -191,7 +197,9 @@ test("rejects Foundation before generation and redundant aggregate preparation",
   for (const scriptName of ["check", "check:fast"]) {
     const reordered = clone(packageJson);
     const commands = reordered.scripts[scriptName].split(" && ");
-    const build = commands.indexOf("pnpm core:build");
+    const preparation = scriptName === "check" ? "governance:check" : "assembly:build";
+    const build = commands.indexOf(`pnpm ${preparation}`);
+    assert.notEqual(build, -1);
     const foundation = commands.indexOf("pnpm foundation:check");
     [commands[build], commands[foundation]] = [commands[foundation], commands[build]];
     reordered.scripts[scriptName] = commands.join(" && ");
@@ -584,4 +592,101 @@ test("publication blockers come from the traceability catalog", () => {
     assert.throws(() => publicationBlockers(traceability),
       /must declare publicationBlockers as an array of open-decision ids/u);
   }
+});
+
+test("requires the Assembly gates in dependency order in both root commands", () => {
+  const required = ["pnpm assembly:build", "pnpm assembly:typecheck", "pnpm assembly:test"];
+  for (const scriptName of ["check", "check:fast"]) {
+    const commands = packageJson.scripts[scriptName].split(" && ");
+    assert.deepEqual(commands.filter(command => required.includes(command)), required);
+    for (const removed of required) {
+      const changed = clone(packageJson);
+      changed.scripts[scriptName] = commands.filter(command => command !== removed).join(" && ");
+      assert.throws(() => validate({ packageJson: changed }),
+        /must use its exact closed pnpm command chain/u);
+    }
+    const reordered = clone(packageJson);
+    const build = commands.indexOf(required[0]);
+    const typecheck = commands.indexOf(required[1]);
+    [commands[build], commands[typecheck]] = [commands[typecheck], commands[build]];
+    reordered.scripts[scriptName] = commands.join(" && ");
+    assert.throws(() => validate({ packageJson: reordered }),
+      /must use its exact closed pnpm command chain/u);
+  }
+});
+
+test("ADR-0023 admits only private Assembly 0.1.0 with its sole Core workspace dependency", async () => {
+  const manifestPath = "packages/assembly/package.json";
+  const manifest = {
+    name: "@get-modular/assembly",
+    version: "0.1.0",
+    private: true,
+    type: "module",
+    dependencies: { "@get-modular/core": "workspace:*" },
+  };
+  const input = {
+    publicationBlockerIds: new Set(),
+    productionArtifacts: [
+      "packages/core/package.json", "packages/core/src/index.ts",
+      manifestPath, "packages/assembly/src/index.ts",
+      "packages/assembly/src/composition/root.ts",
+      "packages/assembly/src/features/construction/types.ts",
+      "packages/assembly/src/features/construction/factory.ts",
+    ],
+    productionPackageManifests: new Map([...coreManifest, [manifestPath, manifest]]),
+    admission: { ...profile.adoption.admission, status: "source-admitted" },
+    foundationConfig: {
+      capabilities: {
+        "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
+      },
+    },
+    packageJson,
+    sourceDependencyPolicyPresent: true,
+  };
+  const inventory = async (value, path = manifestPath) => packageManifestInventory([path], {
+    readPackageManifest: async () => value,
+  });
+  assert.equal(validateFirstProductionPackageAdmission(input), SOURCE_DEPENDENCY_POLICY_PATH);
+  assert.deepEqual(packageIdentityViolations(await inventory(manifest)), []);
+  assert.deepEqual(manifestCarrierViolations(await inventory(manifest)), []);
+
+  for (const [change, message] of [
+    [{ private: false }, /must remain private/u],
+    [{ version: "0.2.0" }, /version must remain 0\.1\.0/u],
+    [{ dependencies: {} }, /dependencies must contain only/u],
+    [{ dependencies: { "@get-modular/core": "^0.1.0" } }, /dependencies must contain only/u],
+    [{ dependencies: { ...manifest.dependencies, "@example/extra": "1.0.0" } },
+      /dependencies must contain only/u],
+    [{ devDependencies: { typescript: "catalog:" } }, /devDependencies must be absent or empty/u],
+    [{ optionalDependencies: { "@example/extra": "1.0.0" } },
+      /optionalDependencies must be absent or empty/u],
+    [{ peerDependencies: { "@get-modular/core": "*" } },
+      /peerDependencies must be absent or empty/u],
+  ]) {
+    const changed = { ...manifest, ...change };
+    assert.throws(() => validateFirstProductionPackageAdmission({
+      ...input,
+      productionPackageManifests: new Map([...coreManifest, [manifestPath, changed]]),
+    }), message);
+    const violations = manifestCarrierViolations(await inventory(changed));
+    assert.equal(violations.length, 1);
+    assert.match(violations[0].scripts.join("\n"), message);
+  }
+
+  const unknown = { ...manifest, name: "@get-modular/arbitrary" };
+  assert.deepEqual(packageIdentityViolations(await inventory(unknown)), [manifestPath]);
+  const nested = "packages/assembly/nested/package.json";
+  assert.deepEqual(packageIdentityViolations(await inventory(manifest, nested)), [nested]);
+
+  assert.throws(() => validateFirstProductionPackageAdmission({
+    ...input,
+    publicationBlockerIds: new Set(["OD-005"]),
+    productionPackageManifests: new Map([...coreManifest, [manifestPath, {
+      ...manifest, exports: { ".": "./dist/index.js" },
+    }]]),
+  }), /must not declare publication fields while publication is blocked/u);
+  const lifecycle = manifestCarrierViolations(await inventory({
+    ...manifest, scripts: { install: "node install.mjs" },
+  }));
+  assert.deepEqual(lifecycle[0].scripts, ["scripts.install"]);
 });

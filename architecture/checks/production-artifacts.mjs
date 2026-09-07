@@ -8,9 +8,10 @@ import {
 } from "./tracked-file-custody.mjs";
 
 const PRODUCTION_SOURCE = /\.(?:[cm]?js|jsx|[cm]?ts|tsx)$/u;
-// Current Core builds compile .ts inputs to .js and .d.ts only.
-const CORE_EMITTED_SOURCE = /(?:\.js|\.d\.ts)$/u;
+// Current Core and Assembly builds compile .ts inputs to .js and .d.ts only.
+const PACKAGE_EMITTED_SOURCE = /(?:\.js|\.d\.ts)$/u;
 export const ACCEPTED_PACKAGE_NAMES = new Set([
+  "@get-modular/assembly",
   "@get-modular/conformance",
   "@get-modular/core",
 ]);
@@ -200,8 +201,8 @@ export async function packageManifestInventory(
   return inventory;
 }
 
-// Accepted package identity is an ADR-0003 rule and applies regardless of any
-// open decision: every manifest below packages/ must be readable and must name
+// Accepted package identity follows ADR-0003 as extended by ADR-0023, regardless
+// of any open decision: every manifest below packages/ must be readable and name
 // an accepted package. ADR-0012 exposes exactly one package root, so a manifest
 // nested below a package root is never an admitted identity.
 export function packageIdentityViolations(inventory) {
@@ -212,6 +213,33 @@ export function packageIdentityViolations(inventory) {
       || !ACCEPTED_PACKAGE_NAMES.has(entry.name)
     ))
     .map(entry => entry.path);
+}
+
+// ADR-0023 admits an optional private package with one public Core dependency.
+export function assemblyManifestViolations(manifest) {
+  if (manifest?.name !== "@get-modular/assembly") return [];
+  const violations = [];
+  if (manifest.private !== true) {
+    violations.push("Assembly must remain private under ADR-0023");
+  }
+  if (manifest.version !== "0.1.0") {
+    violations.push("Assembly version must remain 0.1.0 under ADR-0023");
+  }
+  if (!plainObject(manifest.dependencies)
+    || Object.keys(manifest.dependencies).length !== 1
+    || manifest.dependencies["@get-modular/core"] !== "workspace:*") {
+    violations.push(
+      "dependencies must contain only @get-modular/core at workspace:*",
+    );
+  }
+  for (const field of ["devDependencies", "optionalDependencies", "peerDependencies"]) {
+    const value = manifest[field];
+    if (value !== undefined
+      && (!plainObject(value) || Object.keys(value).length !== 0)) {
+      violations.push(`${field} must be absent or empty under ADR-0023`);
+    }
+  }
+  return violations;
 }
 
 // ADR-0012 exposes exactly one package root through one ESM target: a single
@@ -424,6 +452,7 @@ export function manifestCarrierViolations(inventory, { publicationBlocked = fals
       scripts: [
         ...(entry.scriptsMalformed === true ? ["scripts must be an object"] : []),
         ...entry.prohibitedScripts.map(script => `scripts.${script}`),
+        ...assemblyManifestViolations(entry.manifest),
         ...entry.carrierShapeViolations,
         ...(entry.name === ESM_CARRIER_PACKAGE_NAME
           ? exportMapViolations(entry.exportsField, publicationBlocked)
@@ -523,8 +552,20 @@ export async function productionArtifactPaths(repositoryRoot = process.cwd(), in
   if (indexSnapshot && artifacts.has("packages/core/package.json")
     && [...artifacts].some(path => path.startsWith("packages/core/src/") && PRODUCTION_SOURCE.test(path))) {
     for (const path of artifacts) {
-      if (CORE_BUILD_SOURCE_ROOTS.some(root => path.startsWith(root)) && CORE_EMITTED_SOURCE.test(path) && !capturedPaths.has(path)
+      if (CORE_BUILD_SOURCE_ROOTS.some(root => path.startsWith(root)) && PACKAGE_EMITTED_SOURCE.test(path) && !capturedPaths.has(path)
         && (await lstat(resolve(repositoryRoot, path))).isFile()) {
+        artifacts.delete(path);
+      }
+    }
+  }
+  // Only untracked Assembly build output is excluded from authored source.
+  // Staged output, symlinks, manifests and orphan output remain in the inventory.
+  if (indexSnapshot && artifacts.has("packages/assembly/package.json")
+    && [...artifacts].some(path => path.startsWith("packages/assembly/src/")
+      && PRODUCTION_SOURCE.test(path))) {
+    for (const path of artifacts) {
+      if (path.startsWith("packages/assembly/dist/") && PACKAGE_EMITTED_SOURCE.test(path)
+        && !capturedPaths.has(path) && (await lstat(resolve(repositoryRoot, path))).isFile()) {
         artifacts.delete(path);
       }
     }

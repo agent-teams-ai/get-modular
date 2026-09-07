@@ -104,6 +104,7 @@ test("private Core start rejects independent authority, scope and identity mutat
   const missing = { ...recorded }; delete missing.approvedBy;
   await assert.rejects(check(markdown(missing)), /closed format/u);
   await assert.rejects(check(roadmap, { ...actualInputs, productionArtifacts: ["packages/conformance/package.json"] }), /outside the authorized package/u);
+  await assert.rejects(check(markdown(recorded), { productionArtifacts: ["packages/assembly/package.json"] }), /outside the authorized package/u);
   await assert.rejects(check(roadmap, { ...actualInputs, productionArtifacts: ["packages/core-other/index.ts"] }), /outside the authorized package/u);
 });
 

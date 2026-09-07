@@ -1193,3 +1193,10 @@ scheduled by the roadmap's release checkpoint. It does not decide the six
 runtime cases, which ADR-0007 reserves for the first conformance claim.
 ADR-0016 is accepted; a claim of `self-composed-qualified` still requires the
 evidence that ADR-0016 lists and the M3 generated subject.
+
+## Optional common assembly delivery
+
+[Common assembly](common-assembly.md) defines the separate A0-A3 route and
+acceptance checks admitted by [ADR-0023](../decisions/0023-add-a-thin-host-owned-assembly-component-above-core.md).
+Core callable surfaces and historical qualification remain unchanged. Assembly
+is a separate construction feature; Host retains permissions and lifecycle.
