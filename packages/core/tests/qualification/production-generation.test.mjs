@@ -1,16 +1,16 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 
 const repository = fileURLToPath(new URL("../../../../", import.meta.url));
 const generated = "src/composition/generated/stage1.ts";
 
 async function fixture(t) {
-  const directory = await mkdtemp(join(tmpdir(), "gm-production-generation-"));
+  const directory = await realpath(await mkdtemp(join(tmpdir(), "gm-production-generation-")));
   t.after(() => rm(directory, { recursive: true, force: true }));
   for (const path of [
     "package.json", "tsconfig.base.json",
@@ -66,6 +66,85 @@ function fails(result, expected) {
   assert.notEqual(result.status, 0, result.stdout + result.stderr);
   assert.match(result.stdout + result.stderr, expected);
 }
+
+test("generated cleanup failure still removes stale production output", async t => {
+  const f = await fixture(t);
+  const { cleanProduction } = await import(
+    pathToFileURL(join(f.directory, "architecture/tooling/generate-core.mjs")).href
+  );
+  // A regular-file ancestor produces a real filesystem rejection, including
+  // when running as root, without changing permissions in the source checkout.
+  const blocker = "src/composition/generated";
+  await f.put(blocker, "not a directory\n");
+  await f.put("dist/index.js", "export const stale = true;\n");
+  await assert.rejects(cleanProduction(), error => {
+    assert.equal(error.code, "ENOTDIR");
+    assert.equal(error instanceof AggregateError, false);
+    return true;
+  });
+  await assert.rejects(readFile(join(f.core, "dist/index.js")), { code: "ENOENT" });
+  assert.equal(await readFile(join(f.core, blocker), "utf8"), "not a directory\n");
+  await rm(join(f.core, blocker));
+  await f.poison();
+  await cleanProduction();
+  await f.absent();
+  await cleanProduction();
+});
+
+test("permission failures attempt both removals and retain every cleanup error", {
+  // POSIX permission denial is not evidence on Windows or under root.
+  // The ENOTDIR regression above runs independently without this restriction.
+  skip: process.platform === "win32" || process.getuid?.() === 0
+    ? "requires POSIX permissions and a non-root process; permission cases are unproven here"
+    : false,
+}, async t => {
+  const f = await fixture(t);
+  const { cleanProduction } = await import(
+    pathToFileURL(join(f.directory, "architecture/tooling/generate-core.mjs")).href
+  );
+  const generatedDirectory = dirname(join(f.core, generated));
+  const dist = join(f.core, "dist");
+  const denied = error => {
+    assert.ok(["EACCES", "EPERM"].includes(error.code), String(error));
+    return true;
+  };
+  for (const blockGenerated of [false, true]) {
+    await f.poison();
+    // An empty dist isolates the failing operation to removal of the directory
+    // entry from its unwritable parent, rather than removal of its children.
+    await rm(dist, { recursive: true, force: true });
+    await mkdir(dist);
+    try {
+      if (blockGenerated) await chmod(generatedDirectory, 0o555);
+      await chmod(f.core, 0o555);
+      await assert.rejects(cleanProduction(), error => {
+        if (!blockGenerated) {
+          assert.equal(error instanceof AggregateError, false);
+          return denied(error);
+        }
+        assert.ok(error instanceof AggregateError);
+        assert.equal(error.errors.length, 2);
+        error.errors.forEach(denied);
+        assert.equal(error.errors[0].path, join(f.core, generated));
+        assert.equal(error.errors[1].path, dist);
+        assert.ok(error.message.includes(join(f.core, generated)));
+        assert.ok(error.message.includes(dist));
+        return true;
+      });
+      if (blockGenerated) {
+        assert.equal(await readFile(join(f.core, generated), "utf8"),
+          "invalid stale generated source !!!\n");
+      } else {
+        await assert.rejects(readFile(join(f.core, generated)), { code: "ENOENT" });
+      }
+    } finally {
+      await chmod(f.core, 0o755);
+      await chmod(generatedDirectory, 0o755);
+    }
+    await cleanProduction();
+    await f.absent();
+  }
+});
 
 test("cold production executes generated M2 and retains direct qualification", async t => {
   const f = await fixture(t);

@@ -17,8 +17,17 @@ function failure(code) {
 }
 
 export async function cleanProduction() {
-  await rm(generated, { recursive: true, force: true });
-  await rm(join(core, "dist"), { recursive: true, force: true });
+  const paths = [generated, join(core, "dist")];
+  const results = await Promise.allSettled(
+    paths.map(path => rm(path, { recursive: true, force: true })),
+  );
+  const failures = results.flatMap((result, index) =>
+    result.status === "rejected" ? [{ path: paths[index], error: result.reason }] : []);
+  if (failures.length === 1) throw failures[0].error;
+  if (failures.length > 1) {
+    throw new AggregateError(failures.map(({ error }) => error),
+      `build.production-cleanup-failed: ${failures.map(({ path }) => path).join(", ")}`);
+  }
 }
 
 export function runTypeScript(configuration, noEmit = false) {
