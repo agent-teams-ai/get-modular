@@ -65,6 +65,8 @@ function inspect(actual, expected, callers, observations, path = '$') {
   observations.mutationRejections += 3;
 }
 
+export { inspect as inspectRuntimeResult };
+
 export async function executeRuntimeFixture(namespace, fixture) {
   namespaceCheck(namespace);
   demand(typeof fixture.id === 'string' && fixture.id.length > 0, 'missing fixture ID');
