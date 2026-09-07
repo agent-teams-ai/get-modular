@@ -103,6 +103,7 @@ app.setPath('userData', config.userData);
 app.setPath('sessionData', config.sessionData);
 app.enableSandbox();
 app.commandLine.appendSwitch('disable-background-networking');
+async function execute() {
 const watchdog = setTimeout(() => app.exit(1), 170000);
 let window;
 try {
@@ -148,6 +149,9 @@ try {
   clearTimeout(watchdog);
   app.exit(1);
 }
+}
+// Let the entry module finish so Electron can emit ready.
+void execute();
 `;
 
 export function verifyElectronResults(observations, fixtures, config) {
