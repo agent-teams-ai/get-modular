@@ -54,8 +54,45 @@ first. Complete diagnostic coverage and the same chosen limit are not promised
 there. Batch value/string rejection retains no admitted documents; depth
 rejection is local to its document.
 
-Arbitrary executable Proxy behavior, malformed invocation wrappers, raw input
-carriers and duplicate binding-record semantics are outside this M1 scope.
-The public root exports `compileComposition`, `defineModule`, `required`,
-`optional` and `many`, with the accepted wire types. Private feature imports,
-`compileCompositionJson` and runtime loading are not public APIs.
+The public root exports `compileComposition`, `compileCompositionJson`,
+`defineModule`, `required`, `optional` and `many`, with the accepted wire types.
+Private feature imports and runtime loading are not public APIs.
+
+The raw entry accepts one record with `readonly declarations: readonly Uint8Array[]`
+and `readonly profile: Uint8Array`. Each view contains one UTF-8 JSON document;
+strings and other typed-array carriers are rejected. It snapshots accepted byte
+views synchronously, before the returned Promise can suspend. JSON numeric
+lexemes are validated before rounding: exact safe integers such as `1.0` and
+`1e0` are accepted; fractional values, unsafe integers and negative zero are
+rejected where an integer is required.
+
+```ts
+import { compileCompositionJson } from "@get-modular/core";
+
+const encode = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
+const rawResult = await compileCompositionJson({
+  declarations: [encode(app)],
+  profile: encode({
+    kind: "get-modular.composition-profile",
+    schemaVersion: 1,
+    profileId: "example/default",
+    roots: [app.moduleId],
+    selections: [{ moduleId: app.moduleId, implementationId: app.implementationId }],
+    bindings: [],
+  }),
+});
+```
+
+The raw wrapper requires own data properties and a dense declaration list.
+Missing elements or accessor properties reject the wrapper without calling
+getters. A list longer than 4096 declarations can fail before reading document
+bytes; that failure does not claim byte validation. Arbitrary executable Proxy
+behavior remains outside the cooperative Host boundary.
+
+Repeated binding records for one consumer/slot are rejected with
+`binding.duplicate-record`; they are not merged or resolved by first/last wins.
+Invalid groups contribute no dependency edges, while independent eligible
+failures remain visible. Consumers migrating from M1 must handle the additive
+`input.invalid-byte-carrier` and `binding.duplicate-record` diagnostic cases.
+The M2 source checkpoint still does not claim completed retained qualification,
+generated self-composition or runtime conformance.

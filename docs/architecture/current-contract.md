@@ -42,11 +42,21 @@ requires successor authority. The checker is not the specification.
 The product owner accepted [ADR-0021](../decisions/0021-freeze-combined-diagnostic-generation-two-for-m2.md)
 on 2026-09-06, resolving OD-005/OD-006 through one combined successor and
 activating the bounded roadmap owner record. The raw/carrier and repeated-record
-semantics are authorized for implementation. M1 descriptions below remain the
-boundary of the already delivered compiler until real M2 object/raw replay and
-qualification pass. Earlier conditional acceptance gates for those two decisions
-are satisfied; external dependency selection, custody and M3 gates remain
-separate. The historical ADR-0013/0014 annexes retain their original bytes and
+semantics are authorized and implemented through the shared facade in the
+current source checkpoint. The [Core API guide](../../packages/core/README.md)
+describes both public entries and the additive diagnostic migration.
+The [ordinary successor replay](../../packages/core/tests/public/m2-successor.test.mjs),
+[isolation checks](../../packages/core/tests/public/m2-isolation.test.mjs) and
+[complete ordered-many results](../../packages/core/tests/public/m2-ordered-many.test.mjs)
+execute the production and direct subjects. The
+[packed checks](../../packages/core/tests/package/packed-root.test.mjs) exercise
+an installed M2 archive with Node and the supported TypeScript modes.
+These executable checks do not by themselves finish retained M2 qualification.
+M1 descriptions below identify the historical component checkpoints; the current
+raw and repeated-record rules are governed by ADR-0021 and the accepted
+[resource outcome correction](../decisions/0022-correct-two-in-envelope-m2-resource-outcomes.md).
+Earlier conditional acceptance gates for those two decisions are satisfied;
+external dependency selection, custody and M3 gates remain separate. The historical ADR-0013/0014 annexes retain their original bytes and
 proposed metadata; ADR-0021 is their acceptance authority.
 
 ## Static consumer example

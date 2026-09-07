@@ -24,10 +24,10 @@ consume both.
 
 ## Packages
 
-- `@get-modular/core` will be the only production dependency. It owns portable
+- `@get-modular/core` is the only production package in this repository. It owns portable
   declarations, validation, deterministic compilation, plans, digests, and
   diagnostics.
-- `@get-modular/conformance` is a development-only conformance suite for core,
+- `@get-modular/conformance` is reserved for a development-only conformance suite for core,
   alternative implementations, and adapters. Applications do not install it at
   runtime.
 
@@ -35,7 +35,8 @@ consume both.
 owned fixtures prove that an implementation follows the contract. The
 conformance package may depend on core; core never depends on conformance.
 
-No production package exists yet. Accepted ADR-0009 fixes one unversioned
+Core is implemented under `packages/core`; publication remains pending.
+See its [API and scope](packages/core/README.md). Accepted ADR-0009 fixes one unversioned
 pre-1.0 public API surface: no export or internal identifier carries a
 generation suffix, and before 1.0 a breaking change simply replaces the current
 surface and is recorded in the package changelog with the consumer migration.
