@@ -4,9 +4,9 @@ Get Modular compiles module declarations and an explicit composition profile
 into a deterministic plan and content digest. It does not execute factories
 or manage application lifecycle.
 
-Generated production assembly is implemented in this atomic development
-checkpoint. The public API and package exports are unchanged. Full M3 cold
-recovery, retained-archive qualification and runtime proof remain pending.
+Production builds use generated assembly. Qualification separately checks
+identified direct and generated archives, cold recovery and native runtimes.
+Generated assembly alone does not establish conformance or authorize publication.
 This checkpoint is `not-claimed`; it claims neither `self-composed-qualified`
 nor runtime conformance or release eligibility.
 
