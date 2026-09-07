@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
+import { join, resolve } from 'node:path';
 import {
-  collectRows, parseArguments, ROWS,
+  admitElectronSandboxRunner, chromiumSandboxProfile, collectRows, parseArguments, ROWS,
+  verifyElectronSandboxHelper,
 } from '../../../../tests/qualification/m3-runtime-matrix.mjs';
 
 // Synthetic transport inputs are used only to test rejection. They are neither
@@ -89,4 +92,132 @@ test('CLI accepts only finite commands and fixed Node row arguments', () => {
     ['native', '--no-sandbox'], ['collect', '/tmp/result'], ['init', 'other'],
     ['node', 'node-24-linux', '--command=echo'], ['pack', '--repo=other'],
   ]) assert.throws(() => parseArguments(args));
+});
+
+test('sandbox admission permits only dispatched hosted Ubuntu Linux runners', () => {
+  const env = {
+    GITHUB_ACTIONS: 'true', GITHUB_EVENT_NAME: 'workflow_dispatch',
+    RUNNER_ENVIRONMENT: 'github-hosted', RUNNER_OS: 'Linux', ImageOS: 'ubuntu24',
+  };
+  assert.doesNotThrow(() => admitElectronSandboxRunner(env, 'linux', 'x64', 1001));
+  for (const patch of [
+    { GITHUB_ACTIONS: undefined }, { GITHUB_ACTIONS: 'false' },
+    { GITHUB_EVENT_NAME: 'push' }, { RUNNER_ENVIRONMENT: 'self-hosted' },
+    { RUNNER_ENVIRONMENT: undefined }, { RUNNER_OS: 'macOS' },
+    { ImageOS: undefined }, { ImageOS: 'debian12' },
+  ]) {
+    assert.throws(() => admitElectronSandboxRunner({ ...env, ...patch }, 'linux', 'x64', 1001));
+  }
+  for (const [platform, arch, uid] of [
+    ['darwin', 'x64', 1001], ['win32', 'x64', 1001],
+    ['linux', 'arm64', 1001], ['linux', 'x64', 0], ['linux', 'x64', undefined],
+  ]) assert.throws(() => admitElectronSandboxRunner(env, platform, arch, uid));
+});
+
+function chromiumProfileInput() {
+  const root = '/home/runner/work/_temp/m3-runtime-matrix-Ab12Cd';
+  return {
+    env: {
+      GITHUB_ACTIONS: 'true', GITHUB_EVENT_NAME: 'workflow_dispatch',
+      RUNNER_ENVIRONMENT: 'github-hosted', RUNNER_OS: 'Linux', ImageOS: 'ubuntu24',
+    },
+    platform: 'linux', arch: 'x64', uid: 1001,
+    temporary: '/home/runner/work/_temp', root, revision: '1234',
+    executable: `${root}/browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell`,
+  };
+}
+
+test('Chromium profile binds one exact executable with a path-derived unique name', () => {
+  const input = chromiumProfileInput();
+  const profile = chromiumSandboxProfile(input);
+  const hash = value => createHash('sha256').update(value).digest('hex');
+  assert.equal(profile.name, `m3-chromium-userns-${hash(input.executable)}`);
+  assert.equal(profile.path, `${input.root}/diagnostics/chromium-userns.apparmor`);
+  assert.equal(profile.executable, input.executable);
+  assert.equal(profile.bytes,
+    `abi <abi/4.0>,\ninclude <tunables/global>\n\n`
+    + `profile ${profile.name} ${input.executable} flags=(unconfined) {\n  userns,\n}\n`);
+  assert.equal(profile.sha256, hash(profile.bytes));
+  assert.deepEqual(chromiumSandboxProfile(input), profile);
+  const other = chromiumProfileInput();
+  other.root = other.root.replace('Ab12Cd', 'Ef34Gh');
+  other.executable = other.executable.replace('Ab12Cd', 'Ef34Gh');
+  assert.notEqual(chromiumSandboxProfile(other).name, profile.name);
+});
+
+test('Chromium profile rejects paths outside its closed disposable pinned installation', () => {
+  for (const patch of [
+    { temporary: '/tmp' }, { temporary: '/home/runner/work/_temp/' },
+    { root: '/home/runner/work/_temp/m3-runtime-matrix-Ab12Cd/nested' },
+    { root: '/home/runner/work/_temp/m3-runtime-matrix-' },
+    { executable: '/usr/bin/chromium' },
+    { executable: `${chromiumProfileInput().executable}-other` },
+    { revision: '1235' }, { revision: '../1234' }, { revision: '01234' },
+    { revision: 1234 }, { revision: '1'.repeat(11) },
+  ]) {
+    assert.throws(() => chromiumSandboxProfile({ ...chromiumProfileInput(), ...patch }));
+  }
+  for (const suffix of [
+    '*', '?', '[ab]', '{a,b}', '"', "'", '\\', '\n', '\r', '\0',
+    '/..', '/../escape', '//nested', ' space', '@{HOME}', ';', '$()', '#',
+    'x'.repeat(4096),
+  ]) {
+    const input = chromiumProfileInput();
+    // Mutate all related paths together so path relationships cannot hide
+    // acceptance of AppArmor syntax or noncanonical Linux paths.
+    input.temporary += suffix;
+    input.root = `${input.temporary}/m3-runtime-matrix-Ab12Cd`;
+    input.executable = `${input.root}/browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell`;
+    assert.throws(() => chromiumSandboxProfile(input));
+  }
+});
+
+test('Chromium profile generation requires hosted Ubuntu dispatch admission', () => {
+  for (const patch of [
+    { GITHUB_ACTIONS: undefined }, { GITHUB_ACTIONS: 'false' },
+    { GITHUB_EVENT_NAME: 'push' }, { RUNNER_ENVIRONMENT: 'self-hosted' },
+    { RUNNER_ENVIRONMENT: undefined }, { RUNNER_OS: 'Windows' },
+    { ImageOS: 'debian12' }, { ImageOS: undefined },
+  ]) {
+    const input = chromiumProfileInput();
+    Object.assign(input.env, patch);
+    assert.throws(() => chromiumSandboxProfile(input));
+  }
+  for (const patch of [
+    { platform: 'darwin' }, { platform: 'win32' }, { arch: 'arm64' },
+    { uid: 0 }, { uid: undefined }, { uid: -1 }, { uid: 1.5 },
+  ]) {
+    assert.throws(() => chromiumSandboxProfile({ ...chromiumProfileInput(), ...patch }));
+  }
+});
+
+test('sandbox helper verification binds physical file, bytes and root setuid metadata', () => {
+  const dist = resolve('m3-runtime-matrix-test/tooling/node_modules/electron/dist');
+  const before = {
+    path: join(dist, 'chrome-sandbox'), physicalPath: join(dist, 'chrome-sandbox'),
+    dev: 1, ino: 42, nlink: 1, uid: 1001, gid: 1001,
+    mode: 0o100755, sha256: 'a'.repeat(64),
+  };
+  const after = { ...before, uid: 0, gid: 0, mode: 0o104755 };
+  assert.doesNotThrow(() => verifyElectronSandboxHelper(before, dist));
+  assert.doesNotThrow(() => verifyElectronSandboxHelper(after, dist, before));
+  for (const patch of [
+    { path: `${dist}/other` },
+    { path: `${dist}-other/chrome-sandbox` },
+    { physicalPath: '/usr/bin/chrome-sandbox' },
+    { mode: 0o120777 }, { mode: 0o040755 }, { mode: 0o010755 },
+    { nlink: 2 }, { sha256: 'invalid' },
+  ]) {
+    assert.throws(() => verifyElectronSandboxHelper({ ...before, ...patch }, dist));
+  }
+  for (const patch of [
+    { uid: 1001 }, { gid: 1001 },
+    { mode: 0o100755 }, { mode: 0o104777 }, { mode: 0o106755 },
+    { sha256: 'b'.repeat(64) }, { dev: 2 }, { ino: 43 },
+  ]) {
+    assert.throws(() => verifyElectronSandboxHelper({ ...after, ...patch }, dist, before));
+  }
+  assert.throws(() => verifyElectronSandboxHelper(after, dist, {
+    ...before, mode: 0o120777,
+  }));
 });

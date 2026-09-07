@@ -413,6 +413,144 @@ function installEnvironment(ctx) {
   };
 }
 
+export function chromiumSandboxProfile({
+  env, platform, arch, uid, temporary, root, executable, revision,
+}) {
+  admitElectronSandboxRunner(env, platform, arch, uid);
+  // Closed Linux path grammar: no AppArmor expansion, quoting or traversal.
+  for (const path of [temporary, root, executable]) {
+    assert.equal(typeof path, 'string');
+    assert.ok(path.length <= 4096, 'bounded sandbox path');
+    assert.match(path, /^\/[A-Za-z0-9_-][A-Za-z0-9_.-]*(?:\/[A-Za-z0-9_-][A-Za-z0-9_.-]*)*$/u);
+  }
+  assert.ok(root.startsWith(`${temporary}/m3-runtime-matrix-`));
+  assert.match(root.slice(temporary.length), /^\/m3-runtime-matrix-[A-Za-z0-9]{6}$/u,
+    'direct disposable runner directory');
+  assert.equal(typeof revision, 'string');
+  assert.match(revision, /^[1-9][0-9]{0,9}$/u);
+  assert.equal(executable,
+    `${root}/browsers/chromium_headless_shell-${revision}/chrome-headless-shell-linux64/chrome-headless-shell`,
+    'exact pinned headless shell path');
+  const name = `m3-chromium-userns-${digest(Buffer.from(executable))}`;
+  const bytes = `abi <abi/4.0>,\ninclude <tunables/global>\n\n`
+    + `profile ${name} ${executable} flags=(unconfined) {\n  userns,\n}\n`;
+  return {
+    name, executable, bytes, sha256: digest(Buffer.from(bytes)),
+    path: `${root}/diagnostics/chromium-userns.apparmor`,
+  };
+}
+
+async function configureChromiumSandbox(ctx, tooling, env, executable) {
+  dispatchSHA();
+  assert.equal(tooling, join(ctx.root, 'tooling'));
+  const manifest = JSON.parse(await readBytes(
+    join(tooling, 'node_modules/playwright-core/package.json')));
+  assert.equal(manifest.name, 'playwright-core');
+  assert.equal(manifest.version, '1.63.0');
+  const registry = JSON.parse(await readBytes(
+    join(tooling, 'node_modules/playwright-core/browsers.json')));
+  const shells = registry.browsers.filter(browser => browser.name === 'chromium-headless-shell');
+  assert.equal(shells.length, 1, 'one pinned headless shell registry entry');
+  const profile = chromiumSandboxProfile({
+    env: process.env, platform: process.platform, arch: process.arch, uid: process.getuid(),
+    temporary: await realpath(absolute(process.env.RUNNER_TEMP)),
+    root: ctx.root, executable, revision: shells[0].revision,
+  });
+  assert.equal(await realpath(ctx.root), ctx.root);
+  assert.equal(ctx.diagnostics, join(ctx.root, 'diagnostics'));
+  assert.equal(await realpath(ctx.diagnostics), ctx.diagnostics);
+  assert.equal(await realpath(executable), executable, 'exact physical Chromium executable');
+  const stat = await lstat(executable);
+  assert.ok(stat.isFile() && !stat.isSymbolicLink());
+  assert.equal(stat.nlink, 1, 'unshared Chromium executable');
+  assert.ok((stat.mode & 0o111) !== 0, 'executable Chromium file');
+  const executableSha256 = digest(await readBytes(executable));
+  await writeFile(profile.path, profile.bytes, { flag: 'wx', mode: 0o600 });
+  assert.equal(await realpath(profile.path), profile.path);
+  const profileStat = await lstat(profile.path);
+  assert.ok(profileStat.isFile() && !profileStat.isSymbolicLink());
+  assert.equal(profileStat.nlink, 1);
+  assert.equal(digest(await readBytes(profile.path)), profile.sha256);
+  await json(join(ctx.diagnostics, 'chromium-sandbox-profile.json'), {
+    ...profile, executableSha256,
+    lifetime: 'disposable hosted runner; exact executable attachment',
+  });
+  await logged(ctx, 'chromium-sandbox-load', '/usr/bin/sudo',
+    ['-n', '/usr/sbin/apparmor_parser', '-a', '-I', '/etc/apparmor.d', '--', profile.path],
+    tooling, env, 60_000);
+  assert.equal(digest(await readBytes(profile.path)), profile.sha256);
+  assert.equal(await realpath(executable), executable);
+  assert.equal(digest(await readBytes(executable)), executableSha256);
+  return {
+    name: profile.name, path: profile.path, sha256: profile.sha256,
+    executable, executableSha256, loaderResult: 'chromium-sandbox-load.json',
+    loaderResultSha256: digest(await readBytes(join(ctx.diagnostics, 'chromium-sandbox-load.json'))),
+  };
+}
+
+export function admitElectronSandboxRunner(env, platform, arch, uid) {
+  assert.equal(platform, 'linux');
+  assert.equal(arch, 'x64');
+  assert.ok(Number.isInteger(uid) && uid > 0, 'non-root runner required');
+  assert.equal(env.GITHUB_ACTIONS, 'true');
+  assert.equal(env.GITHUB_EVENT_NAME, 'workflow_dispatch');
+  assert.equal(env.RUNNER_ENVIRONMENT, 'github-hosted');
+  assert.equal(env.RUNNER_OS, 'Linux');
+  assert.match(env.ImageOS ?? '', /^ubuntu(?:22|24)$/u);
+}
+
+export function verifyElectronSandboxHelper(helper, dist, before) {
+  assert.equal(helper.path, join(dist, 'chrome-sandbox'), 'exact helper path');
+  assert.equal(helper.physicalPath, helper.path, 'physical non-symlink helper');
+  assert.equal(helper.mode & 0o170000, 0o100000, 'regular helper required');
+  assert.equal(helper.nlink, 1, 'unshared helper required');
+  assert.match(helper.sha256, HASH);
+  if (before) {
+    verifyElectronSandboxHelper(before, dist);
+    for (const key of ['path', 'physicalPath', 'dev', 'ino', 'nlink', 'sha256']) {
+      assert.equal(helper[key], before[key], `sandbox helper unchanged: ${key}`);
+    }
+    assert.equal(helper.uid, 0, 'root helper uid');
+    assert.equal(helper.gid, 0, 'root helper gid');
+    assert.equal(helper.mode & 0o7777, 0o4755, 'setuid helper mode');
+  }
+}
+
+async function configureElectronSandbox(ctx, tooling, env) {
+  admitElectronSandboxRunner(process.env, process.platform, process.arch, process.getuid());
+  dispatchSHA();
+  const temporary = await realpath(absolute(process.env.RUNNER_TEMP));
+  assert.equal(await realpath(ctx.root), ctx.root);
+  assert.equal(dirname(ctx.root), temporary, 'disposable runner directory');
+  assert.ok(ctx.root.startsWith(join(temporary, 'm3-runtime-matrix-')));
+  assert.equal(tooling, join(ctx.root, 'tooling'));
+  const dist = join(tooling, 'node_modules/electron/dist');
+  assert.equal(await realpath(dist), dist, 'physical installed Electron dist');
+  const path = join(dist, 'chrome-sandbox');
+  const observe = async () => {
+    const stat = await lstat(path);
+    assert.ok(stat.isFile() && !stat.isSymbolicLink(), 'regular non-symlink helper');
+    const helper = {
+      path, physicalPath: await realpath(path),
+      dev: stat.dev, ino: stat.ino, nlink: stat.nlink,
+      uid: stat.uid, gid: stat.gid, mode: stat.mode,
+      sha256: digest(await readBytes(path)),
+    };
+    verifyElectronSandboxHelper(helper, dist);
+    return helper;
+  };
+  const before = await observe();
+  await json(join(ctx.diagnostics, 'electron-sandbox-before.json'), before);
+  await logged(ctx, 'electron-sandbox-chown', '/usr/bin/sudo',
+    ['-n', '/usr/bin/chown', '0:0', '--', path], tooling, env);
+  await logged(ctx, 'electron-sandbox-chmod', '/usr/bin/sudo',
+    ['-n', '/usr/bin/chmod', '04755', '--', path], tooling, env);
+  const after = await observe();
+  await json(join(ctx.diagnostics, 'electron-sandbox-after.json'), after);
+  verifyElectronSandboxHelper(after, dist, before);
+  return { dist, before, after };
+}
+
 async function native(ctx) {
   assert.equal(process.platform, 'linux');
   assert.equal(process.arch, 'x64', 'pinned Linux native distribution');
@@ -444,10 +582,12 @@ async function native(ctx) {
       'install', '--with-deps', '--only-shell', 'chromium'], tooling, env);
   await logged(ctx, 'electron-install', tools.node.path,
     [join(tooling, 'node_modules/electron/install.js')], tooling, env);
+  const electronSandbox = await configureElectronSandbox(ctx, tooling, env);
   const browsers = await realpath(env.PLAYWRIGHT_BROWSERS_PATH);
   const shells = (await readdir(browsers)).filter(name => /^chromium_headless_shell-\d+$/u.test(name));
   assert.equal(shells.length, 1, 'one pinned headless shell installation');
   const chromium = await realpath(join(browsers, shells[0], 'chrome-headless-shell-linux64/chrome-headless-shell'));
+  const chromiumSandbox = await configureChromiumSandbox(ctx, tooling, env, chromium);
   const electron = await realpath(join(tooling, 'node_modules/electron/dist/electron'));
   const browserVersion = await logged(ctx, 'chromium-version', chromium, ['--version'], tooling, env);
   const match = /^(?:Chromium|Google Chrome(?: for Testing)?|HeadlessChrome) (\d+\.\d+\.\d+\.\d+)$/u
@@ -471,6 +611,8 @@ async function native(ctx) {
       electron: { path: electron, sha256: digest(await readBytes(electron)) },
     },
     installation,
+    chromiumSandbox,
+    electronSandbox,
   });
   const failures = [];
   for (const kind of ['chromium', 'electron']) {
