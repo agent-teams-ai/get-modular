@@ -10,7 +10,7 @@ import test from 'node:test';
 import { readPackageArchive } from '../../../../tests/qualification/support/package-archive.mjs';
 import { auditM1DeclarationClosure } from '../../../../tests/qualification/support/m1-declarations-closure.mjs';
 import { auditM1JavaScriptClosure } from '../../../../tests/qualification/support/m1-javascript-closure.mjs';
-import { prepareM1PackedConsumers, m1NodeEnvironment, runtimeNames } from '../../../../tests/qualification/support/m1-packed-consumers.mjs';
+import { prepareM1PackedConsumers, m1NodeEnvironment, m2RuntimeNames as runtimeNames } from '../../../../tests/qualification/support/m1-packed-consumers.mjs';
 
 const repo = fileURLToPath(new URL('../../../../', import.meta.url));
 const require = createRequire(import.meta.url);
@@ -39,7 +39,7 @@ async function program(path, version) {
 // This adapter owns one disposable pack and all physical/content/source
 // comparisons. Its local tool observations are not retained build provenance.
 // The private shared harness owns the complete consumer inventory and bodies.
-test('packed M1 exposes one root across Node and TypeScript consumers', async t => {
+test('packed M2 exposes one root across Node and TypeScript consumers', async t => {
   const temporary = await realpath(await mkdtemp(join(tmpdir(), 'gm-packed-consumer-')));
   t.after(() => rm(temporary, { recursive: true, force: true }));
   const osEnvironment = {};
@@ -100,9 +100,9 @@ test('packed M1 exposes one root across Node and TypeScript consumers', async t 
   const archiveHash = hash(bytes);
   const identity = { sha256: archiveHash, integrity: packed.integrity };
   const audited = readPackageArchive(bytes, identity);
-  assert.deepEqual(auditM1JavaScriptClosure(audited.files, 'm1-shared').exports, runtimeNames,
-    'the physical JavaScript members have the closed M1 purpose, imports and construction');
-  assert.deepEqual(auditM1DeclarationClosure(audited.files, 2).rootExports,
+  assert.deepEqual(auditM1JavaScriptClosure(audited.files, 'm2').exports, runtimeNames,
+    'the physical JavaScript members have the closed M2 purpose, imports and construction');
+  assert.deepEqual(auditM1DeclarationClosure(audited.files, 2, 'm2').rootExports,
     ['CompileCompositionResult', 'CompositionPlan', 'CompositionProfile', 'Diagnostic', 'DiagnosticCode',
       'ModuleDeclaration', 'PlanDigest'].map(name => ({ name, kind: 'type' }))
       .concat(runtimeNames.map(name => ({ name, kind: 'value' }))),
@@ -122,7 +122,7 @@ test('packed M1 exposes one root across Node and TypeScript consumers', async t 
   const workspace = join(temporary, 'consumers');
   await mkdir(workspace);
   try {
-    const prepared = await prepareM1PackedConsumers({ diagnosticGeneration: 2, archive: { path: archive, identity, files: audited.files },
+    const prepared = await prepareM1PackedConsumers({ diagnosticGeneration: 2, surface: 'm2', archive: { path: archive, identity, files: audited.files },
       workspace, toolchain: { node, npm, compilers }, contextId: 'disposable-packed-root', osEnvironment });
     let lastCommand;
     const observe = async event => {
