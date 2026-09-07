@@ -4,12 +4,45 @@ import { createServer, request } from 'node:http';
 import {
   publicArchiveRoot, routeHandler, validateInput, verifyRecords,
   verifySemanticRecords, verifyDescriptorRecords,
+  prepareInvocationEvidence, verifyInvocationRecords,
 } from '../../../../tests/qualification/m3-chromium-consumer.mjs';
+import { produceInvocationRuntimeFixtures } from '../../../../tests/qualification/support/m3-invocation-runtime-fixtures.mjs';
 import { readPackageArchive } from '../../../../tests/qualification/support/package-archive.mjs';
 import { produceDescriptorRuntimeFixtures } from '../../../../tests/qualification/support/m3-descriptor-runtime-fixtures.mjs';
 import {
   executeDescriptorRuntimeFixture,
 } from '../../../../tests/qualification/support/m3-descriptor-runtime-executor.mjs';
+
+test('invocation parent rejects missing IDs, false coverage and incomplete capability rows', async () => {
+  const fixtures = [...produceInvocationRuntimeFixtures()];
+  const expected = await prepareInvocationEvidence(fixtures);
+  for (const realm of ['window', 'worker']) {
+    verifyInvocationRecords(expected[realm], fixtures, expected, realm);
+    for (const mutate of [
+      value => { value.records.pop(); },
+      value => { value.records[1].id = value.records[0].id; },
+      value => { value.records[0].mode = 'object'; },
+      value => { value.records[0].result.ok = true; },
+      value => { value.records[0].observations.foreignRealm = !value.records[0].observations.foreignRealm; },
+      value => { value.records[0].observations.nodeBuffer = true; },
+      value => { value.records[0].observations.mutatedBytes += 1; },
+      value => { value.records[0].observations.mutationRejections = 0; },
+      value => { value.unmet.pop(); },
+      value => { value.unmet[0].code = 'passed'; },
+      value => { value.unmet[0].id = value.records[0].id; },
+      value => { value.records.push(structuredClone(expected.main.records.find(row =>
+        row.id === 'dense-offset-buffer'))); },
+    ]) {
+      const changed = structuredClone(expected[realm]);
+      mutate(changed);
+      assert.throws(() => verifyInvocationRecords(changed, fixtures, expected, realm));
+    }
+  }
+  const changed = structuredClone(fixtures);
+  changed.find(row => row.id === 'realm-array-cleared').applicability.foreignRealm = 'nonapplicable';
+  assert.throws(() => verifyInvocationRecords(expected.worker, changed, expected, 'worker'));
+  assert.throws(() => verifyInvocationRecords(expected.worker, fixtures.slice(1), expected, 'worker'));
+});
 
 test('routes serve copied bytes and reject noncanonical or unlisted targets', async () => {
   const bytes = Buffer.from('export const value = 1;');

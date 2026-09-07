@@ -7,6 +7,8 @@ import {
 import { runInNewContext } from 'node:vm';
 import { produceDescriptorRuntimeFixtures } from '../../../../tests/qualification/support/m3-descriptor-runtime-fixtures.mjs';
 import { executeDescriptorRuntimeFixture } from '../../../../tests/qualification/support/m3-descriptor-runtime-executor.mjs';
+import { produceInvocationRuntimeFixtures } from '../../../../tests/qualification/support/m3-invocation-runtime-fixtures.mjs';
+import { prepareInvocationEvidence } from '../../../../tests/qualification/m3-chromium-consumer.mjs';
 
 const input = {
   absoluteelectronExecutable: '/tools/Electron.app/Contents/MacOS/Electron', archivePath: '/retained/core.tgz',
@@ -77,6 +79,36 @@ function evidence() {
   };
   return { config, observations: { main, renderer } };
 }
+
+test('Electron invocation verification requires main62 and renderer61 with exact local proof', async () => {
+  const invocationFixtures = [...produceInvocationRuntimeFixtures()];
+  const expected = await prepareInvocationEvidence(invocationFixtures);
+  for (const realm of ['main', 'renderer']) {
+    for (const mutate of [
+      value => { delete value.invocations; },
+      value => { value.invocations.records.pop(); },
+      value => { value.invocations.records[0].mode = 'object'; },
+      value => { value.invocations.records[0].result.ok = true; },
+      value => { value.invocations.records[0].observations.getterCalls = 1; },
+      value => { value.invocations.records[0].observations.nodeBuffer = !value.invocations.records[0].observations.nodeBuffer; },
+      value => { value.invocations.records[0].observations.mutatedBuffers += 1; },
+      value => { value.invocations = structuredClone(expected.worker); },
+      value => { value.invocations.unmet.push({
+        id: 'realm-array-cleared', capability: 'foreign-realm',
+        code: 'invocation.foreign-realm-unavailable',
+      }); },
+    ]) {
+      const { observations, config } = evidence();
+      observations.main.invocations = structuredClone(expected.main);
+      observations.renderer.invocations = structuredClone(expected.window);
+      const verify = () => verifyElectronResults(observations, fixtures, config,
+        undefined, undefined, invocationFixtures, expected);
+      verify();
+      mutate(observations[realm]);
+      assert.throws(verify);
+    }
+  }
+});
 
 test('parent rejects incomplete results, substituted realms, unsafe preferences and identity drift', () => {
   for (const mutate of [
