@@ -10,7 +10,12 @@ import { parse, stringify } from "yaml";
 
 const execute = promisify(execFile);
 const require = createRequire(import.meta.url);
-const cli = join(dirname(require.resolve("@agent-teams/engineering-foundation/package.json")), "dist/cli.js");
+// Resolve the exported manifest and its public bin contract, not a private dist layout.
+const foundationManifestPath = require.resolve("@agent-teams/engineering-foundation/package.json");
+const foundationManifest = JSON.parse(await readFile(foundationManifestPath, "utf8"));
+const foundationBin = foundationManifest.bin?.["agent-teams-foundation"];
+assert.equal(typeof foundationBin, "string", "Foundation must expose its public CLI bin");
+const cli = join(dirname(foundationManifestPath), foundationBin);
 const policyPath = "architecture/foundation/source-dependencies.yaml";
 const policy = parse(await readFile(policyPath, "utf8"));
 const sourcePaths = [];
