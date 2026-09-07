@@ -34,7 +34,9 @@ waits for an in-flight factory to settle. Construction does not establish readin
 
 The package freezes its metadata, records, arrays and journals. Instance objects,
 capability values, causes and signals remain opaque. Direct thenable objects, Promise
-subclasses and Promises with own properties are unsupported factory carriers.
+subclasses and Promises with own string properties or symbol accessors are
+unsupported factory carriers. Own symbol data properties used by Node async context
+tracking are permitted and ignored.
 
 Build Core first, then run this package's `build`, `typecheck` and `test` commands.
 The runtime test command also invokes the minimum and build TypeScript compilers
