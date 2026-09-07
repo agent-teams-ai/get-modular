@@ -57,9 +57,9 @@ async function compile(root, name, files) {
   assert.equal(built.status, 0, built.stdout + built.stderr);
 }
 
-// Disposable execution slice only. Production remains stage0; replacement and
-// restoration, cold bootstrap, packed closure and retained 3786-case generated
-// qualification are separate obligations. This test makes no M3 claim.
+// Disposable execution slice only. Production generation has its own build gate;
+// replacement/restoration, cold bootstrap and retained generated qualification
+// remain separate obligations. This test alone makes no full M3 claim.
 test('generated own root executes and regenerates its composition', async t => {
   const temporary = await mkdtemp(join(tmpdir(), 'gm-generated-composition-'));
   t.after(() => rm(temporary, { recursive: true, force: true }));

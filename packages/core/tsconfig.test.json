@@ -3,5 +3,8 @@
   "compilerOptions": {
     "noEmit": false,
     "outDir": "dist-test"
-  }
+  },
+  "exclude": [
+    "src/composition/generated/stage1.variant.ts"
+  ]
 }

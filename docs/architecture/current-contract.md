@@ -59,6 +59,21 @@ Earlier conditional acceptance gates for those two decisions are satisfied;
 external dependency selection, custody and M3 gates remain separate. The historical ADR-0013/0014 annexes retain their original bytes and
 proposed metadata; ADR-0021 is their acceptance authority.
 
+## Current M3 implementation checkpoint
+
+The product owner authorized M3 implementation and full end-to-end qualification
+on 2026-09-07. Generated production assembly is implemented in this atomic
+checkpoint. The [production generator](../../architecture/tooling/generate-core.mjs)
+builds the current-source direct seed, compiles the real own input, verifies
+direct construction and allowlist correspondence, and independently verifies
+rendered wiring before publishing it. The public barrel uses that generated
+root with unchanged compiler signatures, public exports and package resolution.
+The [production generation tests](../../packages/core/tests/qualification/production-generation.test.mjs)
+cover the build integration. Full M3 cold/poisoned recovery, retained-archive
+qualification and runtime proof remain pending. No `self-composed-qualified`,
+conformance or `release-eligible` claim follows from implementation; generated
+publication still requires the complete M3 and packed-consumer gates.
+
 ## Static consumer example
 
 The [installed-package example](../../tests/qualification/support/static-consumer-source.mjs)
@@ -154,9 +169,9 @@ admission, analysis and output through three driven ports. The literal direct
 root supplies one canonicalizer to semantics and output. Each call owns its
 input synchronously before awaiting output; internal primitive failures reject
 the Promise and never become diagnostic records.
-The build-only own profile aggregates the real five declaration handles and
-compiles through both direct and production entries into its independent
-five-node, five-binding expected plan. Its allowlist keeps static declaration
+The build-only own profile now aggregates six declaration handles and compiles
+through direct and generated production entries into a six-node, six-binding
+plan. Its allowlist keeps static declaration
 and factory references outside the production closure. The private root exports
 its provided port, while the public entries annotate only the accepted compiler
 signature. A separate seed build now binds the qualification-only canonicalizer
@@ -171,8 +186,9 @@ Its mutations reject compatible-factory substitutions even when value and text
 are changed together. The finite declaration reader requires local identity
 and declaration definitions in source and matching build, rejecting forwarding
 modules and borrowed aliases that could hide a different sibling factory.
-The M1 checkpoint A tests combine this construction proof
-with the behavioral replacement; generated wiring and W0/W1 remain M3 work.
+The historical M1 checkpoint A tests combine this construction proof
+with behavioral replacement. Generated production wiring is now implemented;
+full M3 W0/W1 and retained-subject qualification remain separate gates.
 Tests connect the actual admission, semantic and output implementations against
 independent object diagnostic, plan and digest expectations. The public barrel
 and separate direct qualification entry now execute the accepted complete
@@ -337,8 +353,9 @@ Module Standard v1 through the local
 [profile](feature-module-standard.md): feature-owned slices under
 `packages/core/src/features/*`, a private composition root, and one curated
 public entry point at `src/index.ts` that exports the names fixed by accepted
-ADR-0009; until M3 the direct root `src/composition/stage0.ts` is that
-composition root, as the guide describes. The
+ADR-0009. The production root is now `src/composition/generated/stage1.ts`;
+`src/composition/stage0.ts` remains the private direct seed and qualification
+root, as the guide describes. The
 [self-composition implementation guide](self-composition-implementation-guide.md)
 names the own feature inventory, the feature skeleton, the build topology and
 the emitter contract that implementation follows.
@@ -463,10 +480,16 @@ package:
   `.ts` specifiers inside emitted declaration files.
 - Tests run with `node --test` and an explicit glob. Private component tests use
   `dist-test`, public tests use production `dist`, and the direct qualification
-  entry uses `dist-stage0`. `architecture/tooling/build-core.mjs` cleans those
-  three output trees and runs their pinned TypeScript configurations, so stale
-  files cannot survive narrowing of the production entrypoint. Qualification
-  tooling stays outside the production source closure and package allowlist.
+  entry uses `dist-stage0`. `architecture/tooling/build-core.mjs` coordinates
+  verified generation and clean production, component and qualification builds.
+  `architecture/tooling/generate-core.mjs` uses `tsconfig.stage0.json` as the
+  production seed; `tsconfig.seed.json` remains the qualification variant seed.
+  Standalone `core:typecheck` prepares verified wiring before its no-emit check.
+  Aggregate gates run `core:build` immediately after runtime preflight, before
+  Foundation and the internal already-prepared typecheck. Standalone source-policy
+  fixtures require `core:build` first. Production-oriented typecheck and component
+  globs exclude `stage1.variant.ts`; qualification owns it. Qualification tooling
+  stays outside the production source closure and package allowlist.
 - The `core:typecheck`, `core:build`, and `core:test` scripts run the first
   private package and are included in `check:fast` and `check`. The
   root script list is closed: `architecture:feature-module-profile` fails with

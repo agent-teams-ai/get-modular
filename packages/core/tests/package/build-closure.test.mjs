@@ -11,6 +11,8 @@ test("clean production build follows only the public entry while checking unsele
   const sandbox = await mkdtemp(join(tmpdir(), "gm-build-closure-"));
   t.after(() => rm(sandbox, { recursive: true, force: true }));
   const files = ["package.json", "tsconfig.base.json", "architecture/tooling/build-core.mjs",
+    "architecture/tooling/generate-core.mjs",
+    "tests/qualification/support/construction-witness.mjs",
     "packages/core/package.json", "packages/core/tsconfig.json", "packages/core/tsconfig.typecheck.json",
     "packages/core/tsconfig.test.json", "packages/core/tsconfig.stage0.json", "packages/core/tsconfig.seed.json", "packages/core/src",
     "packages/core/self-composition", "packages/core/tests/features/canonicalization/witness-variant"];
@@ -26,12 +28,13 @@ test("clean production build follows only the public entry while checking unsele
   await mkdir(join(core, "dist"), { recursive: true });
   await writeFile(join(core, "dist/stale.js"), "throw new Error('stale output');\n");
   const build = () => spawnSync(process.execPath, [join(sandbox, "architecture/tooling/build-core.mjs")], {
-    cwd: sandbox, encoding: "utf8", timeout: 30_000,
+    cwd: sandbox, encoding: "utf8", timeout: 120_000,
   });
   const good = build();
   assert.ifError(good.error);
   assert.equal(good.status, 0, good.stdout + good.stderr);
   for (const path of ["dist/stale.js", "dist/features/unselected/probe.js", "dist/self-composition/stage0-entry.js",
+    "dist/composition/stage0.js",
     "dist/features/compiler-facade/declaration.js", "dist/tests/features/canonicalization/witness-variant/factory.js",
     "dist-stage0/tests/features/canonicalization/witness-variant/factory.js"]) {
     await assert.rejects(readFile(join(core, path)), { code: "ENOENT" });
@@ -39,7 +42,7 @@ test("clean production build follows only the public entry while checking unsele
   assert.match(await readFile(join(core, "dist-test/features/unselected/probe.js"), "utf8"), /probe = 1/u);
   assert.match(await readFile(join(core, "dist-stage0/self-composition/stage0-entry.js"), "utf8"), /compileComposition/u);
   assert.match(await readFile(join(core, "dist-seed/self-composition/stage0-entry.variant.js"), "utf8"), /compileComposition/u);
-  const internalRoot = await readFile(join(core, "dist/composition/stage0.d.ts"), "utf8");
+  const internalRoot = await readFile(join(core, "dist/composition/generated/stage1.d.ts"), "utf8");
   assert.match(internalRoot, /export declare const root: CompilerFacadePort;/u);
   const declaration = await readFile(join(core, "dist/index.d.ts"), "utf8");
   assert.match(declaration, /Promise<CompileCompositionResult>/u);
@@ -51,4 +54,7 @@ test("clean production build follows only the public entry while checking unsele
   assert.ifError(invalid.error);
   assert.notEqual(invalid.status, 0);
   assert.match(invalid.stdout + invalid.stderr, /TS2322/u);
+  for (const path of ["dist/index.js", "src/composition/generated/stage1.ts"]) {
+    await assert.rejects(readFile(join(core, path)), { code: "ENOENT" });
+  }
 });

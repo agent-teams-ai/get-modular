@@ -1,4 +1,4 @@
-import { root } from "./composition/stage0.js";
+import { root } from "./composition/generated/stage1.js";
 import type { CompileCompositionResult } from "./features/authoring/internal.js";
 
 // The private root has its provided port; the public declaration stays closed.

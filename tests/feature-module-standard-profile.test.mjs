@@ -158,6 +158,10 @@ test("requires profile enforcement in complete and fast gates", () => {
   }
 
   for (const scriptName of [
+    "core:build",
+    "core:typecheck",
+    "core:typecheck:prepared",
+    "core:test",
     "architecture:feature-module-profile",
     "architecture:feature-module-profile:test",
     "contracts:check",
@@ -180,6 +184,25 @@ test("requires profile enforcement in complete and fast gates", () => {
     noOp.scripts[scriptName] = ":";
     assert.throws(() => validate({ packageJson: noOp }),
       new RegExp(`${scriptName} must use its closed command definition`, "u"));
+  }
+});
+
+test("rejects Foundation before generation and redundant aggregate preparation", () => {
+  for (const scriptName of ["check", "check:fast"]) {
+    const reordered = clone(packageJson);
+    const commands = reordered.scripts[scriptName].split(" && ");
+    const build = commands.indexOf("pnpm core:build");
+    const foundation = commands.indexOf("pnpm foundation:check");
+    [commands[build], commands[foundation]] = [commands[foundation], commands[build]];
+    reordered.scripts[scriptName] = commands.join(" && ");
+    assert.throws(() => validate({ packageJson: reordered }),
+      /must use its exact closed pnpm command chain/u);
+    const redundant = clone(packageJson);
+    redundant.scripts[scriptName] = redundant.scripts[scriptName].replace(
+      "pnpm core:typecheck:prepared", "pnpm core:typecheck",
+    );
+    assert.throws(() => validate({ packageJson: redundant }),
+      /must use its exact closed pnpm command chain/u);
   }
 });
 

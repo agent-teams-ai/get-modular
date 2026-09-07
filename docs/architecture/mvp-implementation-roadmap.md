@@ -90,8 +90,9 @@ files. Use the following route before choosing an implementation.
    [callable-matrix row](#per-phase-callable-matrix),
    and its direct prerequisites. For code layout and internal dependencies,
    read the [self-composition guide](self-composition-implementation-guide.md)
-   even when the task only implements direct M1. Its five-module graph and
-   feature-owned libraries are the existing structure, not optional examples.
+   even when the task only implements direct M1. Its historical five-module
+   M1 graph, current six-module graph and feature-owned libraries define the
+   applicable structure.
 4. Open the linked machine-readable contracts, cases and expected results for
    every behavior the task changes. The
    [requirement traceability](../traceability/module-system-v1.yaml),
@@ -134,6 +135,18 @@ The accepted [combined M2 handoff](../decisions/0021-freeze-combined-diagnostic-
 binds the prepared successor evidence and the M2.1-M2.4 ownership/exit map.
 The owner accepted ADR-0021 and activated the bounded M2 implementation scope
 on 2026-09-06. M2 completion still requires real Core replay and qualification.
+
+On 2026-09-07 the product owner authorized M3 implementation and the full
+end-to-end qualification work. Generated production assembly is implemented in
+this atomic checkpoint: the public barrel, generation/build sequence, source
+boundaries, archive inventory and their guards switch together. The
+[production generator](../../architecture/tooling/generate-core.mjs) uses the
+existing [emitter](../../packages/core/self-composition/emit.ts); the
+[production generation tests](../../packages/core/tests/qualification/production-generation.test.mjs)
+cover that integration. Full M3 cold recovery, retained-archive qualification
+and runtime proof remain pending. This implementation authorization grants no
+conformance or promotion: neither `self-composed-qualified` nor
+`release-eligible` is claimed, and generated publication awaits its full gate.
 
 For new M2 replay, also read the accepted
 [two resource outcome correction](../decisions/0022-correct-two-in-envelope-m2-resource-outcomes.md).
@@ -450,9 +463,11 @@ owner, allowed scope (the M1 row of the callable matrix: object semantics
 behind `compileComposition`, published as `not-claimed` under ADR-0017), and
 the fact that raw carriers, the raw entry export, runtime lifecycle, every
 `runtime-conformant` claim, the proposed ADRs and every self-composed claim are
-not authorized. Those six exclusions are the exact `excluded` list of the
-record below, and the checker rejects any other list. A pull-request approval or the existence of an empty package is
-not a substitute. The source SHA is the authorized starting base, not a demand
+not authorized in the historical M1 record. The checker preserves that exact
+M1 alternative, the verified M2 alternative, and one bounded M3 implementation
+alternative with verified M2 authority. Mixed scopes or lost remaining
+exclusions fail. A pull-request approval or an empty package is not a substitute.
+The source SHA is the authorized starting base, not a demand
 for renewed permission after every implementation commit. The four ADR-0003
 publication preconditions are separate from this record and are not tracked by
 it: the pull request that publishes the first archive records verified control
@@ -467,9 +482,10 @@ exact bytes on every `governance:check`.
 
 ADR-0018 applies its accepted M1 rules inside this already authorized scope.
 It changes neither the start JSON nor its authority digest, opens no new M1
-permission gate, and launches no implementation action by itself. M2 scope and
-generated self-composition claims still require the owner-record and closed
-checker changes already planned for those expansions.
+permission gate, and launches no implementation action by itself. The M2 and
+M3 implementation expansions update the owner record and closed checker
+together. Generated implementation does not establish self-composition
+qualification or authorize promotion.
 
 ### First `not-claimed` publication mechanics
 
@@ -1392,9 +1408,9 @@ object entry point, record the start scope together with admission enforcement,
 and preserve the research evidence. On the same day the owner accepted ADR-0017
 and reissued this record so that its scope names the public object entry point
 and a `not-claimed` pre-1.0 publication, which the first record excluded. This
-record permits a subsequent Core implementation; this change creates no Core
-source and starts no runtime. It does not accept proposed ADRs, does not
-authorize a `runtime-conformant` claim, and does not authorize merge.
+historical record permitted subsequent Core implementation without creating
+Core source or starting a runtime. It did not accept proposed ADRs, authorize
+a `runtime-conformant` claim, or authorize merge.
 
 The JSON block below is the single start record, read from this governed
 document by `governance:check`. Its base is the shared reviewed main revision,
@@ -1405,13 +1421,19 @@ The checker validates the recorded declaration, the authorized package root
 and the manifest identity, and it applies any manifest-observable entry of the
 excluded list. Every entry of the current list is a property of source rather
 than of the manifest, so today that application finds nothing and the entries
-are enforced by the tests of the pull request that adds the code: no
-`compileCompositionJson` export, no runtime lifecycle, no `runtime-conformant`
-or self-composed claim, and no implementation of a proposed ADR outside
-fixtures. The checker does not validate the human author's identity or the
+are enforced by the applicable source guards and review: no runtime lifecycle,
+conformance claim or proposed-contract claim. The checker does not validate
+the human author's identity or the
 semantics of future code, so code review stays part of the gate. Missing or
 malformed records fail closed when a package is present. No package is created
 to test the gate.
+
+The current record retains the original accepted-authority digest and base.
+Its verified ADR-0021 authority admits M2; the 2026-09-07 owner expansion adds
+only generated self-composition implementation. Removing the historical
+generated-claims exclusion for this bounded scope does not confer qualification,
+generated publication eligibility or promotion authority. Full M3 proof remains
+pending.
 
 <!-- get-modular:private-core-start -->
 
@@ -1421,7 +1443,7 @@ to test the gate.
   "baseCommit": "bdeabe942676fd2a12c9ad59ce83658b60d85ffc",
   "authorityDigest": "sha256:9ba074210704a20f6a3ef7486f3cf2ec7435fb0fc5552cca210b6d3d5d73f077",
   "approvedBy": "product-owner",
-  "approvedOn": "2026-09-06",
+  "approvedOn": "2026-09-07",
   "status": "authorized",
   "package": "@get-modular/core",
   "scope": [
@@ -1430,13 +1452,13 @@ to test the gate.
     "publication-not-claimed",
     "raw-carriers",
     "raw-entry-export",
-    "duplicate-binding-records"
+    "duplicate-binding-records",
+    "generated-self-composition"
   ],
   "excluded": [
     "runtime-lifecycle",
     "conformance-claims",
-    "proposed-contract-claims",
-    "generated-self-composition-claims"
+    "proposed-contract-claims"
   ],
   "m2Authority": {
     "decisionId": "ADR-0021",
@@ -1447,8 +1469,8 @@ to test the gate.
 
 <!-- /get-modular:private-core-start -->
 
-The object entry point uses the same semantic implementation as the internal
-normalized seam. Under accepted ADR-0017 it is the public API of the first
+Historically, the M1 object entry point used the same semantic implementation
+as the internal normalized seam. Under accepted ADR-0017 it was the public API of the first
 `not-claimed` archive, and publishing it is not a claim that the carrier rules
 OD-005 still owns are settled: those refinements stay outside the admitted
 input domain and the package documents that. Accepted object rules of ADR-0006

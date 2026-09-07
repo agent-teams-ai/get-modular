@@ -246,6 +246,23 @@ boundaries:
       packages: []
       builtins: []
       runtimeReferences: []
+  - id: core-generated-composition
+    roots:
+      - packages/core/src/composition/generated/stage1.ts
+    entrypoints:
+      - packages/core/src/composition/generated/stage1.ts
+    allow:
+      boundaries:
+        - core-canonicalization-owned-jcs
+        - core-raw-scanner-owned-iterative
+        - core-composition-semantics
+        - core-input-admission
+        - core-plan-output-implementation
+        - core-compiler-facade-implementation
+        - core-compiler-facade-contract
+      packages: []
+      builtins: []
+      runtimeReferences: []
   - id: core-public-entrypoint
     roots:
       - packages/core/src/index.ts
@@ -254,7 +271,7 @@ boundaries:
     allow:
       boundaries:
         - core-authoring
-        - core-direct-composition
+        - core-generated-composition
       packages: []
       builtins: []
       runtimeReferences: []

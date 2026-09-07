@@ -4,8 +4,11 @@ Get Modular compiles module declarations and an explicit composition profile
 into a deterministic plan and content digest. It does not execute factories
 or manage application lifecycle.
 
-This development checkpoint uses direct assembly and is not self-composed.
-It does not claim runtime conformance or release eligibility.
+Generated production assembly is implemented in this atomic development
+checkpoint. The public API and package exports are unchanged. Full M3 cold
+recovery, retained-archive qualification and runtime proof remain pending.
+This checkpoint is `not-claimed`; it claims neither `self-composed-qualified`
+nor runtime conformance or release eligibility.
 
 Declaration consumers require TypeScript 5.8.3 or later. The packed regression
 tests both this minimum and the pinned build compiler in `NodeNext` ESM and
@@ -94,5 +97,5 @@ Repeated binding records for one consumer/slot are rejected with
 Invalid groups contribute no dependency edges, while independent eligible
 failures remain visible. Consumers migrating from M1 must handle the additive
 `input.invalid-byte-carrier` and `binding.duplicate-record` diagnostic cases.
-The M2 source checkpoint still does not claim completed retained qualification,
-generated self-composition or runtime conformance.
+The M2 semantics remain subject to retained qualification. Generated assembly
+does not by itself complete M3 qualification or authorize publication.

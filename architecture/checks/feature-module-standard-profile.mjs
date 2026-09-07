@@ -34,6 +34,8 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "architecture:feature-module-profile:test":
     "node --test tests/feature-module-standard-profile.test.mjs tests/source-dependencies.test.mjs",
   "core:typecheck":
+    "node architecture/tooling/generate-core.mjs --typecheck",
+  "core:typecheck:prepared":
     "node node_modules/typescript/bin/tsc -p packages/core/tsconfig.typecheck.json --noEmit",
   "core:build": "node architecture/tooling/build-core.mjs",
   "core:test": 'node --test "packages/core/tests/**/*.test.mjs"',
@@ -46,7 +48,7 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "foundation:assert-registry": "agent-teams-foundation assert-registry",
   "foundation:check": FOUNDATION_CHECK_SCRIPT,
   "governance:check": "node architecture/checks/governance.mjs",
-  "governance:test": "node --test tests/governance.test.mjs tests/private-core-start.test.mjs",
+  "governance:test": "node --test tests/governance.test.mjs tests/private-core-start.test.mjs tests/m3-start.test.mjs",
   "qualification:resource-profile": "node tests/qualification/v1-resource-profile.mjs",
   "qualification:v1-diagnostics-protocol":
     "node --test tests/qualification/v1-diagnostics-protocol.mjs",
@@ -59,12 +61,12 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
 const ROOT_SCRIPT_COMMANDS = Object.freeze({
   check: Object.freeze([
     "runtime:preflight",
+    "core:build",
     "foundation:check",
     "docs:protocol:check",
     "architecture:feature-module-profile",
     "architecture:feature-module-profile:test",
-    "core:typecheck",
-    "core:build",
+    "core:typecheck:prepared",
     "core:test",
     "contracts:check",
     "contracts:test",
@@ -77,11 +79,11 @@ const ROOT_SCRIPT_COMMANDS = Object.freeze({
   ]),
   "check:fast": Object.freeze([
     "runtime:preflight",
+    "core:build",
     "foundation:check",
     "architecture:feature-module-profile",
     "docs:check",
-    "core:typecheck",
-    "core:build",
+    "core:typecheck:prepared",
     "core:test",
   ]),
 });

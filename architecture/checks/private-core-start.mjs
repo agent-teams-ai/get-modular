@@ -10,6 +10,10 @@ const SCOPE = ["semantics", "object-entry", "publication-not-claimed"];
 const EXCLUDED = ["raw-carriers", "raw-entry-export", "runtime-lifecycle", "conformance-claims", "proposed-contract-claims", "generated-self-composition-claims"];
 const M2_SCOPE = [...SCOPE, "raw-carriers", "raw-entry-export", "duplicate-binding-records"];
 const M2_EXCLUDED = EXCLUDED.filter(value => value !== "raw-carriers" && value !== "raw-entry-export");
+// M3 admits generated implementation only; qualification and promotion remain
+// separate gates. Both expanded scopes require the same verified M2 authority.
+const M3_SCOPE = [...M2_SCOPE, "generated-self-composition"];
+const M3_EXCLUDED = M2_EXCLUDED.filter(value => value !== "generated-self-composition-claims");
 // The excluded list is enforced against the manifest, not only recorded. The
 // current record excludes neither publication nor public exports, so these
 // rules are the enforcement that keeps the field meaningful whenever a future
@@ -80,8 +84,11 @@ export async function validatePrivateCoreStart({
     || !/^\d{4}-\d{2}-\d{2}$/u.test(record.approvedOn)) fail("owner authorization is missing or inactive");
   if (record.authorityDigest !== authorityDigest) fail("accepted authority has changed");
   if (record.package !== "@get-modular/core") fail("package is not authorized");
-  if (!exactList(record.scope, m2 ? M2_SCOPE : SCOPE)
-    || !exactList(record.excluded, m2 ? M2_EXCLUDED : EXCLUDED)) fail("scope is not the bounded private checkpoint");
+  const boundedScope = m2
+    ? (exactList(record.scope, M2_SCOPE) && exactList(record.excluded, M2_EXCLUDED))
+      || (exactList(record.scope, M3_SCOPE) && exactList(record.excluded, M3_EXCLUDED))
+    : exactList(record.scope, SCOPE) && exactList(record.excluded, EXCLUDED);
+  if (!boundedScope) fail("scope is not the bounded private checkpoint");
   if (m2) {
     const authority = record.m2Authority;
     if (!authority || typeof authority !== "object" || Array.isArray(authority)

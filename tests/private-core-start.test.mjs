@@ -69,6 +69,23 @@ test("private Core start is optional without a package but mandatory for the fir
   await check(roadmap, { ...actualInputs, productionArtifacts: [] });
 });
 
+test("current M3 record retains the original authority and bounded implementation scope", async () => {
+  const current = JSON.parse(block.exec(roadmap)[1]);
+  assert.equal(current.baseCommit, "bdeabe942676fd2a12c9ad59ce83658b60d85ffc");
+  assert.equal(current.authorityDigest, recorded.authorityDigest);
+  assert.equal(current.approvedOn, "2026-09-07");
+  assert.equal(current.approvedBy, "product-owner");
+  assert.equal(current.status, "authorized");
+  assert.deepEqual(current.scope, [...recorded.scope, "raw-carriers",
+    "raw-entry-export", "duplicate-binding-records", "generated-self-composition"]);
+  assert.deepEqual(current.excluded, ["runtime-lifecycle",
+    "conformance-claims", "proposed-contract-claims"]);
+  await check(roadmap, actualInputs);
+  await assert.rejects(check(roadmap, {
+    ...actualInputs, readM2Authority: undefined,
+  }), /M2 accepted authority is missing/u);
+});
+
 test("private Core start rejects independent authority, scope and identity mutations", async () => {
   const mutations = [
     { repository: "another/repository" }, { approvedBy: "reviewer" },
@@ -158,6 +175,7 @@ test("real governance entrypoint consumes the start record before admitting priv
       recursive: true,
       force: true,
     });
+    await writeFile(join(fixture, roadmapPath), roadmap);
     await exec("git", ["add", "architecture/checks"], { cwd: fixture });
     await symlink(join(repositoryRoot, "node_modules"), join(fixture, "node_modules"), "junction");
     await mkdir(join(fixture, "packages/core/src/features/example"), { recursive: true });
@@ -165,7 +183,7 @@ test("real governance entrypoint consumes the start record before admitting priv
     await writeFile(join(fixture, artifacts[1]), "export const fixture = true;\n");
     const git = (...args) => exec("git", args, { cwd: fixture });
     const gate = () => exec(process.execPath, ["architecture/checks/governance.mjs"], { cwd: fixture });
-    await git("add", "packages/core");
+    await git("add", "packages/core", roadmapPath);
     await gate();
     await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify({ ...carrier, name: "@get-modular/conformance" }));
     await git("add", "packages/core/package.json");

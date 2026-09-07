@@ -44,9 +44,27 @@ generated `0.x not-claimed` archive needs the complete M3 construction/parity
 proof and packed Node/TypeScript gates; passing only the latter is insufficient.
 Full runtime conformance and release custody remain separate claims.
 
+Generated production assembly is implemented in the atomic M3 checkpoint
+authorized by the product owner on 2026-09-07. The
+[production generator](../../architecture/tooling/generate-core.mjs) connects the
+existing [finite emitter](../../packages/core/self-composition/emit.ts) and
+[construction witness](../../tests/qualification/support/construction-witness.mjs)
+to the production build. The
+[construction tests](../../packages/core/tests/qualification/construction-witness.test.mjs)
+and [production generation tests](../../packages/core/tests/qualification/production-generation.test.mjs)
+cover the verification seams and generated build integration. Full M3 cold
+recovery, retained-archive qualification and runtime proof remain pending;
+neither `self-composed-qualified` nor `release-eligible` is claimed.
+
+The current graph has six nodes and six bindings, constructed in dependency
+order: canonicalizer, semantics, output, scanner, admission, facade. Admission
+receives the scanner; semantics and output share the canonicalizer. Five-node
+profiles, diagrams, wiring and tuples below describe the historical M1 graph.
+
 ### Carrier-boundary precedence
 
-ADR-0015 admits the semantic source, and ADR-0017 admits publishing it as
+Historically, M1 used the following carrier boundary. ADR-0015 admits the
+semantic source, and ADR-0017 admits publishing it as
 `not-claimed` while OD-005 and OD-006 stay open. M1 therefore exposes exactly
 the M1 row of the roadmap's callable matrix: `compileComposition`, the
 accepted object entry point of ADR-0006 and ADR-0007, together with the
@@ -58,6 +76,9 @@ not replaced by proposed ADR-0013. The ADR-0008 requirement that direct and
 generated subjects share the same public compiler boundary applies to that
 object entry point from M1 onward; the raw entry point joins the shared
 boundary only after the M2 decisions admit it.
+
+Accepted ADR-0021 now admits both compiler entries and repeated binding-record
+semantics. Generated production preserves that M2 API and diagnostic generation.
 
 ## Own feature inventory
 
@@ -443,9 +464,9 @@ alongside ADR-0016; no factory receives an exotic object.
 
 ### One composition root
 
-`src` contains exactly one composition root at any time, and the public barrel
+Each production build compiles exactly one composition root, and the public barrel
 `packages/core/src/index.ts` exists from M1 because the package is public from
-its first checkpoint. Until M3 that root is the handwritten literal file
+its first checkpoint. Historically, before M3 that root was the handwritten literal file
 `packages/core/src/composition/stage0.ts`: it is ADR-0008's stage0, it calls
 every `create<Feature>` in `dependencyOrder` and nothing else, and
 `src/index.ts` re-exports `compileComposition`, the four authoring helpers and
@@ -465,7 +486,7 @@ claim `self-composed-qualified` or `release-eligible`, and accepted ADR-0017
 narrows that ADR-0008 sentence for pre-M3 `not-claimed` releases only. `direct-semantics-qualified` remains the highest outcome
 a pre-M3 archive can carry.
 
-In M3 the generated root `packages/core/src/composition/generated/stage1.ts`,
+The current generated root `packages/core/src/composition/generated/stage1.ts`,
 listed in `.gitignore` and emitted from P0, replaces `stage0.ts` as the import
 target of `src/index.ts`. From that delivery `stage0.ts` stays where it is but
 becomes qualification-only: the production barrel names its
@@ -593,11 +614,20 @@ unselected implementation. Before each production emit, remove the previous
 `dist/` and its associated incremental state; narrowing root files cannot
 remove stale files from an earlier build.
 
-The production M3 cold sequence is **stage0 build -> emit -> production
-build**. Build `tsconfig.stage0.json` while `stage1.ts` is absent, then use
-its built direct entry to compile the own profile and pass P0 plus the base
-allowlist to its built emitter. The emitter writes `stage1.ts`; only then
-clean `dist/` and run the production configuration. The stage0 inputs are:
+The production M3 sequence is **clean -> stage0 build -> verify direct ->
+render -> verify candidate -> publish wiring -> production build**.
+The fixed production tool removes stale `stage1.ts` and production output,
+cleans and builds `tsconfig.stage0.json`, and loads the freshly built direct
+entry, own input, base allowlist and emitter through tool-owned paths. It
+compiles the complete successful P0 result and checks direct construction and
+whole-allowlist correspondence before rendering. The independent generated-text
+witness then checks the candidate at the fixed logical `stage1.ts` path before
+those exact bytes are written. Failure propagates without usable production
+output or direct fallback. Source/build correspondence remains the orchestrator's
+responsibility: one invocation uses unchanged source inputs throughout.
+Production compilation follows from `src/index.ts`; component and qualification
+outputs are built separately. Full isolated cold-recovery proof remains pending.
+The stage0 inputs are:
 
 <!-- build-config: tsconfig.stage0.json -->
 
@@ -716,14 +746,17 @@ It does not copy `dist-stage0/src/features/**` wholesale: the stage0 tooling
 build also emits unselected implementations. No other `self-composition/`
 file belongs in that subject; its manifest points `types` at the entry's
 declaration file. The retained generated production archive holds `dist/index.js`,
-`dist/index.d.ts`, `dist/composition/generated/stage1.js` and `stage1.d.ts`,
-and every `dist/features/**` file they reference; its manifest carries the
+`dist/index.d.ts`, `dist/composition/generated/stage1.js`, its required runtime
+feature closure and the five public declaration files. The explicitly annotated
+public compiler signatures do not reference private `stage1.d.ts`, so that
+emitted file is excluded from packed files. Assembly relocation changes neither
+the public API nor declaration generation 2. Its manifest carries the
 ADR-0012 export map with `types` at `./dist/index.d.ts`, so the four
 TypeScript consumer modes resolve declarations. Generated-vector execution and
 packed-consumer execution bind the same retained archive SHA-256; equal `dist/`
 bytes in another tarball cannot substitute for that identity. The production
-tarball allowlist includes the emitted
-`dist/` output and excludes every source file, `self-composition/`,
+tarball allowlist names only the required literal runtime and public declaration
+files and excludes every source file, `self-composition/`,
 `dist-stage0/`, `dist-seed/`, `dist-qualification/`, and tests, so the own profile, the
 emitter, and the witness variant cannot enter the archive.
 
