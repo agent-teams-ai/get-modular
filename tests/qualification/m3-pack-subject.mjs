@@ -96,7 +96,7 @@ function environment(output, node) {
     TMPDIR: join(output, 'tmp'), TMP: join(output, 'tmp'), TEMP: join(output, 'tmp'),
     LANG: 'C', LC_ALL: 'C', TZ: 'UTC', CI: 'true',
     GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: join(output, 'empty-config'),
-    GIT_TERMINAL_PROMPT: '0', GIT_OPTIONAL_LOCKS: '0',
+    GIT_TERMINAL_PROMPT: '0', GIT_OPTIONAL_LOCKS: '0', GIT_NO_REPLACE_OBJECTS: '1',
     npm_config_userconfig: join(output, 'empty-config'),
     npm_config_globalconfig: join(output, 'empty-global-config'),
     npm_config_cache: join(output, 'npm-cache'),

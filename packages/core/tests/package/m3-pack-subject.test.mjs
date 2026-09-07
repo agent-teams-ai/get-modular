@@ -90,7 +90,7 @@ async function fixture(t) {
     return JSON.parse(child.stdout);
   }
   return {
-    root, file, run,
+    root, file, run, git,
     options: {
       repositoryRoot: root, exactSourceSHA: git(['rev-parse', 'HEAD']),
       nodeExecutable: await realpath(process.execPath), npmCLI,
@@ -153,4 +153,25 @@ test('one actual small npm pack is retained but an audit mismatch is never a sub
   assert.ok((await readFile(result.partialArchive.path)).length > 0);
   await assert.rejects(access(join(f.options.outputDirectory, 'subject.json')), { code: 'ENOENT' });
   assert.match(result.partialArchive.identity.sha256, /^[a-f0-9]{64}$/u);
+});
+
+
+test('replacement commit cannot supply bytes under the original exact SHA', async t => {
+  const f = await fixture(t);
+  if (!f) return;
+  const original = f.options.exactSourceSHA;
+  await f.file('packages/core/src/input.ts', 'export const substituted = true;\n');
+  f.git(['add', '.']);
+  f.git(['commit', '--quiet', '-m', 'Disposable replacement']);
+  const replacement = f.git(['rev-parse', 'HEAD']);
+  f.git(['checkout', '--quiet', '--detach', original]);
+  f.git(['replace', original, replacement]);
+  f.git(['reset', '--hard', 'HEAD']);
+  assert.equal(f.git(['rev-parse', 'HEAD']), original);
+  assert.equal(f.git(['status', '--porcelain']), '');
+  const result = f.run(f.options);
+  assert.equal(result.status, 'failed');
+  assert.equal(result.failure.code, 'pack.dirty-source');
+  assert.equal(result.packInvocations, 0);
+  assert.equal(result.commands.some(row => row.args.some(arg => arg.endsWith('build-core.mjs'))), false);
 });
