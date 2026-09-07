@@ -451,3 +451,15 @@ test('a variant cannot replace its verified base-map import with itself', async 
   await rewrite(f, f.allowlistPath, source => source.replace('from "./allowlist.js"', 'from "./allowlist.variant.js"'));
   await rejected(f, invalidCode);
 });
+
+for (const name of ['constructor', 'async', 'get']) {
+  test(`valid contextual construction binding ${name} preserves witness`, async t => {
+    const f = await fixture(t);
+    await rewrite(f, compositionPath, source => source
+      .replace('const canonicalizer =', `const ${name} =`)
+      .replaceAll('{ canonicalizer }', `{ canonicalizer: ${name} }`));
+    await rewrite(f, allowlistPath, source => source
+      .replace('localName: "canonicalizer"', `localName: "${name}"`));
+    assert.deepEqual(await verifyConstruction(f), expectedWitness());
+  });
+}
