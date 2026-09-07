@@ -489,6 +489,48 @@ test("public M2 accepts a function declaration and trusted carrier aliases", () 
   assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
 });
 
+test("public M2 follows instantiated transparent list aliases", async t => {
+  const aliases = [
+    ["review identity", "type Forward<T> = T;", "Forward<LIST>"],
+    ["alias chain",
+      "type Forward<T> = T; type Chain<T> = Forward<T>;", "Chain<LIST>"],
+    ["nested identity", "type Forward<T> = T;", "Forward<Forward<LIST>>"],
+    ["default", "type Forward<T = LIST> = T;", "Forward"],
+    ["dependent defaults",
+      "type Forward<T, U = T, V = U> = V;", "Forward<LIST>"],
+    ["default through identity",
+      "type Forward<T> = T; type Chain<T, U = Forward<T>> = Forward<U>;", "Chain<LIST>"],
+    ["distinct union substitutions", "type Forward<T> = T;",
+      "Forward<LIST> | Forward<readonly Uint8Array[]>"],
+    ["shared intersection alias body",
+      "type Forward<T> = T; type Pair<A, B> = Forward<A> & Forward<B>;",
+      "Pair<LIST, readonly Uint8Array[]>"],
+  ];
+  for (const [name, definitions, documents] of aliases) {
+    for (const list of ["readonly Uint8Array[]", "readonly [...Uint8Array[]]", "([readonly Uint8Array[]][0])"]) {
+      await t.test(`${name}: ${list}`, () => {
+        const files = publicM2Fixture();
+        append(files, WIRE, `\n${definitions}\nexport type Documents = ${documents};\n`.replaceAll("LIST", list));
+        append(files, ROOT, '\nimport type { Documents } from "./features/authoring/wire.js";\n');
+        replace(files, ROOT, rawCompiler, rawCompiler.replace("readonly Uint8Array[]", "Documents"));
+        if (name.includes("default")) reject(files, "generic-default", 2, "m2");
+        else if (list === "readonly [...Uint8Array[]]") reject(files, "raw-input", 2, "m2");
+        else assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
+      });
+    }
+  }
+});
+
+test("public M2 accepts generic readonly lists with computed carriers", () => {
+  const files = publicM2Fixture();
+  append(files, WIRE, `\ntype Forward<T> = T;
+  type List<T> = readonly T[];
+  export type Documents = Forward<List<Forward<[Uint8Array][0]>>>;\n`);
+  append(files, ROOT, '\nimport type { Documents } from "./features/authoring/wire.js";\n');
+  replace(files, ROOT, rawCompiler, rawCompiler.replace("readonly Uint8Array[]", "Documents"));
+  assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
+});
+
 test("public M2 accepts computed carrier and list aliases without scanning their intermediate tuples", () => {
   for (const list of ["readonly Bytes[]", "[readonly Bytes[]][0]"]) {
     const files = publicM2Fixture();

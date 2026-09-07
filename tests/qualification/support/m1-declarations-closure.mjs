@@ -499,23 +499,51 @@ function audit(files, generation, surface) {
       // Reject a declaration-list tuple spelled directly or through transparent
       // owned aliases. Carrier aliases and intermediate type computations are
       // governed by the nominal check and exact type contract, not their syntax.
-      const pendingTypes = (declarations.getDeclarations() ?? []).map(node => node.type).filter(Boolean);
-      const seenTypes = new Set();
+      const emptySubstitutions = new Map();
+      const pendingTypes = (declarations.getDeclarations() ?? []).map(node => node.type).filter(Boolean)
+        .map(node => ({ node, substitutions: emptySubstitutions }));
+      const seenTypes = new Map();
+      let visits = 0;
       while (pendingTypes.length) {
-        const node = pendingTypes.pop();
-        if (seenTypes.has(node)) continue;
-        seenTypes.add(node);
+        const { node, substitutions } = pendingTypes.pop();
+        let seen = seenTypes.get(node);
+        if (seen?.has(substitutions)) continue;
+        if (!seen) seenTypes.set(node, seen = new Set());
+        seen.add(substitutions);
+        need(++visits <= 25_000, "syntax-budget");
         need(!ts.isTupleTypeNode(node), "raw-input");
+        const enqueue = child => pendingTypes.push({ node: child, substitutions });
         if (ts.isParenthesizedTypeNode(node) || ts.isTypeOperatorNode(node)) {
-          pendingTypes.push(node.type);
+          enqueue(node.type);
         } else if (ts.isUnionTypeNode(node) || ts.isIntersectionTypeNode(node)) {
-          pendingTypes.push(...node.types);
+          for (const child of node.types) enqueue(child);
         } else if (ts.isTypeReferenceNode(node) || ts.isImportTypeNode(node)) {
           let symbol = checker.getSymbolAtLocation(ts.isTypeReferenceNode(node) ? node.typeName : node.qualifier);
           if (symbol?.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
           for (const declaration of symbol?.getDeclarations() ?? []) {
-            if (declaration.getSourceFile().fileName.startsWith(`${BASE}/dist/`)
-              && ts.isTypeAliasDeclaration(declaration)) pendingTypes.push(declaration.type);
+            if (ts.isTypeParameterDeclaration(declaration)) {
+              const argument = substitutions.get(declaration);
+              if (argument) pendingTypes.push(argument);
+            } else if (declaration.getSourceFile().fileName.startsWith(`${BASE}/dist/`)
+              && ts.isTypeAliasDeclaration(declaration)) {
+              // Arguments retain their caller's scope; defaults see earlier
+              // parameters. Fresh scopes distinguish visits; the budget bounds recursion.
+              const instantiated = new Map();
+              for (const [index, parameter] of (declaration.typeParameters ?? []).entries()) {
+                const argument = node.typeArguments?.[index];
+                if (argument) {
+                  instantiated.set(parameter, { node: argument, substitutions });
+                } else if (parameter.default) {
+                  instantiated.set(parameter, {
+                    node: parameter.default, substitutions: new Map(instantiated),
+                  });
+                }
+              }
+              pendingTypes.push({
+                node: declaration.type,
+                substitutions: instantiated.size ? instantiated : emptySubstitutions,
+              });
+            }
           }
         }
       }
