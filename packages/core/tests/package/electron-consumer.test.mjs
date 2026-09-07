@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
@@ -38,7 +39,7 @@ test('environment isolates profile storage without dropping macOS and display la
     HOME: '/real/user', NODE_OPTIONS: '--import=/injected.mjs', ELECTRON_RUN_AS_NODE: '1',
     DYLD_INSERT_LIBRARIES: '/injected.dylib', DISPLAY: ':91', __CF_USER_TEXT_ENCODING: '0x1:0:0',
   });
-  assert.equal(env.HOME, '/owned/out/home');
+  assert.equal(env.HOME, join('/owned/out', 'home'));
   assert.equal(env.DISPLAY, ':91');
   assert.equal(env.__CF_USER_TEXT_ENCODING, '0x1:0:0');
   for (const name of ['NODE_OPTIONS', 'NODE_PATH', 'ELECTRON_RUN_AS_NODE', 'DYLD_INSERT_LIBRARIES']) {
