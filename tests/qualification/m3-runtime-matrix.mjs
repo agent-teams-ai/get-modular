@@ -413,6 +413,69 @@ function installEnvironment(ctx) {
   };
 }
 
+export function admitElectronSandboxRunner(env, platform, arch, uid) {
+  assert.equal(platform, 'linux');
+  assert.equal(arch, 'x64');
+  assert.ok(Number.isInteger(uid) && uid > 0, 'non-root runner required');
+  assert.equal(env.GITHUB_ACTIONS, 'true');
+  assert.equal(env.GITHUB_EVENT_NAME, 'workflow_dispatch');
+  assert.equal(env.RUNNER_ENVIRONMENT, 'github-hosted');
+  assert.equal(env.RUNNER_OS, 'Linux');
+  assert.match(env.ImageOS ?? '', /^ubuntu(?:22|24)$/u);
+}
+
+export function verifyElectronSandboxHelper(helper, dist, before) {
+  assert.equal(helper.path, join(dist, 'chrome-sandbox'), 'exact helper path');
+  assert.equal(helper.physicalPath, helper.path, 'physical non-symlink helper');
+  assert.equal(helper.mode & 0o170000, 0o100000, 'regular helper required');
+  assert.equal(helper.nlink, 1, 'unshared helper required');
+  assert.match(helper.sha256, HASH);
+  if (before) {
+    verifyElectronSandboxHelper(before, dist);
+    for (const key of ['path', 'physicalPath', 'dev', 'ino', 'nlink', 'sha256']) {
+      assert.equal(helper[key], before[key], `sandbox helper unchanged: ${key}`);
+    }
+    assert.equal(helper.uid, 0, 'root helper uid');
+    assert.equal(helper.gid, 0, 'root helper gid');
+    assert.equal(helper.mode & 0o7777, 0o4755, 'setuid helper mode');
+  }
+}
+
+async function configureElectronSandbox(ctx, tooling, env) {
+  admitElectronSandboxRunner(process.env, process.platform, process.arch, process.getuid());
+  dispatchSHA();
+  const temporary = await realpath(absolute(process.env.RUNNER_TEMP));
+  assert.equal(await realpath(ctx.root), ctx.root);
+  assert.equal(dirname(ctx.root), temporary, 'disposable runner directory');
+  assert.ok(ctx.root.startsWith(join(temporary, 'm3-runtime-matrix-')));
+  assert.equal(tooling, join(ctx.root, 'tooling'));
+  const dist = join(tooling, 'node_modules/electron/dist');
+  assert.equal(await realpath(dist), dist, 'physical installed Electron dist');
+  const path = join(dist, 'chrome-sandbox');
+  const observe = async () => {
+    const stat = await lstat(path);
+    assert.ok(stat.isFile() && !stat.isSymbolicLink(), 'regular non-symlink helper');
+    const helper = {
+      path, physicalPath: await realpath(path),
+      dev: stat.dev, ino: stat.ino, nlink: stat.nlink,
+      uid: stat.uid, gid: stat.gid, mode: stat.mode,
+      sha256: digest(await readBytes(path)),
+    };
+    verifyElectronSandboxHelper(helper, dist);
+    return helper;
+  };
+  const before = await observe();
+  await json(join(ctx.diagnostics, 'electron-sandbox-before.json'), before);
+  await logged(ctx, 'electron-sandbox-chown', '/usr/bin/sudo',
+    ['-n', '/usr/bin/chown', '0:0', '--', path], tooling, env);
+  await logged(ctx, 'electron-sandbox-chmod', '/usr/bin/sudo',
+    ['-n', '/usr/bin/chmod', '04755', '--', path], tooling, env);
+  const after = await observe();
+  await json(join(ctx.diagnostics, 'electron-sandbox-after.json'), after);
+  verifyElectronSandboxHelper(after, dist, before);
+  return { dist, before, after };
+}
+
 async function native(ctx) {
   assert.equal(process.platform, 'linux');
   assert.equal(process.arch, 'x64', 'pinned Linux native distribution');
@@ -444,6 +507,7 @@ async function native(ctx) {
       'install', '--with-deps', '--only-shell', 'chromium'], tooling, env);
   await logged(ctx, 'electron-install', tools.node.path,
     [join(tooling, 'node_modules/electron/install.js')], tooling, env);
+  const electronSandbox = await configureElectronSandbox(ctx, tooling, env);
   const browsers = await realpath(env.PLAYWRIGHT_BROWSERS_PATH);
   const shells = (await readdir(browsers)).filter(name => /^chromium_headless_shell-\d+$/u.test(name));
   assert.equal(shells.length, 1, 'one pinned headless shell installation');
@@ -471,6 +535,7 @@ async function native(ctx) {
       electron: { path: electron, sha256: digest(await readBytes(electron)) },
     },
     installation,
+    electronSandbox,
   });
   const failures = [];
   for (const kind of ['chromium', 'electron']) {

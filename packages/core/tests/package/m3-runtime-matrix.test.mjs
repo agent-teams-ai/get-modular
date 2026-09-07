@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { join, resolve } from 'node:path';
 import {
-  collectRows, parseArguments, ROWS,
+  admitElectronSandboxRunner, collectRows, parseArguments, ROWS,
+  verifyElectronSandboxHelper,
 } from '../../../../tests/qualification/m3-runtime-matrix.mjs';
 
 // Synthetic transport inputs are used only to test rejection. They are neither
@@ -89,4 +91,55 @@ test('CLI accepts only finite commands and fixed Node row arguments', () => {
     ['native', '--no-sandbox'], ['collect', '/tmp/result'], ['init', 'other'],
     ['node', 'node-24-linux', '--command=echo'], ['pack', '--repo=other'],
   ]) assert.throws(() => parseArguments(args));
+});
+
+test('sandbox admission permits only dispatched hosted Ubuntu Linux runners', () => {
+  const env = {
+    GITHUB_ACTIONS: 'true', GITHUB_EVENT_NAME: 'workflow_dispatch',
+    RUNNER_ENVIRONMENT: 'github-hosted', RUNNER_OS: 'Linux', ImageOS: 'ubuntu24',
+  };
+  assert.doesNotThrow(() => admitElectronSandboxRunner(env, 'linux', 'x64', 1001));
+  for (const patch of [
+    { GITHUB_ACTIONS: undefined }, { GITHUB_ACTIONS: 'false' },
+    { GITHUB_EVENT_NAME: 'push' }, { RUNNER_ENVIRONMENT: 'self-hosted' },
+    { RUNNER_ENVIRONMENT: undefined }, { RUNNER_OS: 'macOS' },
+    { ImageOS: undefined }, { ImageOS: 'debian12' },
+  ]) {
+    assert.throws(() => admitElectronSandboxRunner({ ...env, ...patch }, 'linux', 'x64', 1001));
+  }
+  for (const [platform, arch, uid] of [
+    ['darwin', 'x64', 1001], ['win32', 'x64', 1001],
+    ['linux', 'arm64', 1001], ['linux', 'x64', 0], ['linux', 'x64', undefined],
+  ]) assert.throws(() => admitElectronSandboxRunner(env, platform, arch, uid));
+});
+
+test('sandbox helper verification binds physical file, bytes and root setuid metadata', () => {
+  const dist = resolve('m3-runtime-matrix-test/tooling/node_modules/electron/dist');
+  const before = {
+    path: join(dist, 'chrome-sandbox'), physicalPath: join(dist, 'chrome-sandbox'),
+    dev: 1, ino: 42, nlink: 1, uid: 1001, gid: 1001,
+    mode: 0o100755, sha256: 'a'.repeat(64),
+  };
+  const after = { ...before, uid: 0, gid: 0, mode: 0o104755 };
+  assert.doesNotThrow(() => verifyElectronSandboxHelper(before, dist));
+  assert.doesNotThrow(() => verifyElectronSandboxHelper(after, dist, before));
+  for (const patch of [
+    { path: `${dist}/other` },
+    { path: `${dist}-other/chrome-sandbox` },
+    { physicalPath: '/usr/bin/chrome-sandbox' },
+    { mode: 0o120777 }, { mode: 0o040755 }, { mode: 0o010755 },
+    { nlink: 2 }, { sha256: 'invalid' },
+  ]) {
+    assert.throws(() => verifyElectronSandboxHelper({ ...before, ...patch }, dist));
+  }
+  for (const patch of [
+    { uid: 1001 }, { gid: 1001 },
+    { mode: 0o100755 }, { mode: 0o104777 }, { mode: 0o106755 },
+    { sha256: 'b'.repeat(64) }, { dev: 2 }, { ino: 43 },
+  ]) {
+    assert.throws(() => verifyElectronSandboxHelper({ ...after, ...patch }, dist, before));
+  }
+  assert.throws(() => verifyElectronSandboxHelper(after, dist, {
+    ...before, mode: 0o120777,
+  }));
 });
