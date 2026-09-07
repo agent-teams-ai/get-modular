@@ -17,6 +17,7 @@ summary: Index of Get Modular architecture decisions.
 
 ## Accepted decisions
 
+- [ADR-0023: Add a thin Host-owned assembly component above Core](0023-add-a-thin-host-owned-assembly-component-above-core.md)
 - [ADR-0019: Separate upload admission from publication completion](0019-separate-upload-admission-from-publication-completion.md)
 
 - [ADR-0022: Correct two in-envelope M2 resource outcomes](0022-correct-two-in-envelope-m2-resource-outcomes.md)

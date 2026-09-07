@@ -4,6 +4,7 @@ workspace:
   manifest: pnpm-workspace.yaml
 governedRoots:
   - packages/core/src
+  - packages/assembly/src
 boundaries:
   # Module consumers see only ports and identities. Only a composition root
   # may depend on the separate implementation boundary and its factory.
@@ -272,6 +273,43 @@ boundaries:
       boundaries:
         - core-authoring
         - core-generated-composition
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  # ADR-0023 keeps construction contracts and implementation in one feature.
+  # Assembly reaches Core only through its public package root.
+  - id: assembly-construction
+    roots:
+      - packages/assembly/src/features/construction
+    entrypoints:
+      - packages/assembly/src/features/construction/types.ts
+      - packages/assembly/src/features/construction/factory.ts
+    allow:
+      boundaries: []
+      packages:
+        - "@get-modular/core"
+      builtins: []
+      runtimeReferences: []
+  - id: assembly-composition
+    roots:
+      - packages/assembly/src/composition/root.ts
+    entrypoints:
+      - packages/assembly/src/composition/root.ts
+    allow:
+      boundaries:
+        - assembly-construction
+      packages: ["@get-modular/core"]
+      builtins: []
+      runtimeReferences: []
+  - id: assembly-public-entrypoint
+    roots:
+      - packages/assembly/src/index.ts
+    entrypoints:
+      - packages/assembly/src/index.ts
+    allow:
+      boundaries:
+        - assembly-construction
+        - assembly-composition
       packages: []
       builtins: []
       runtimeReferences: []

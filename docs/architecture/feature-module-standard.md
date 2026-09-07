@@ -147,3 +147,10 @@ cycles and rejected undeclared layers. They do not establish complete Core
 structural conformance. Structural evidence cannot stand in for packed runtime
 execution, and packed runtime execution cannot bypass source admission or
 structural qualification.
+
+## Optional common assembly delivery
+
+[Common assembly](common-assembly.md) defines the separate A0-A3 route and
+acceptance checks admitted by [ADR-0023](../decisions/0023-add-a-thin-host-owned-assembly-component-above-core.md).
+Core callable surfaces and historical qualification remain unchanged. Assembly
+is a separate construction feature; Host retains permissions and lifecycle.

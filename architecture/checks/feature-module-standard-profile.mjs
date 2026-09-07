@@ -5,6 +5,7 @@ import { parse } from "yaml";
 
 import {
   ACCEPTED_PACKAGE_NAMES,
+  assemblyManifestViolations,
   isProductionSourceArtifactPath,
   PUBLICATION_FIELDS,
   productionArtifactPaths,
@@ -39,6 +40,9 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
     "node node_modules/typescript/bin/tsc -p packages/core/tsconfig.typecheck.json --noEmit",
   "core:build": "node architecture/tooling/build-core.mjs",
   "core:test": 'node --test "packages/core/tests/**/*.test.mjs"',
+  "assembly:build": "pnpm core:build && node architecture/tooling/build-assembly.mjs",
+  "assembly:typecheck": "node node_modules/typescript/bin/tsc -p packages/assembly/tsconfig.json --noEmit",
+  "assembly:test": 'node --test "packages/assembly/tests/**/*.test.mjs"',
   "contracts:check": "node architecture/checks/v1-contract.mjs",
   "contracts:test": "node --test tests/v1-contract.test.mjs tests/compiler-engineer-examples.test.mjs tests/implementation-clarifications.test.mjs tests/qualification/m2-candidate/generation-two-artifacts.test.mjs tests/qualification/m2-candidate/raw-carrier-oracle.test.mjs tests/qualification/m2-candidate/duplicate-record-cases.test.mjs tests/qualification/m2-candidate/duplicate-record-extended-overlaps.test.mjs tests/qualification/m2-candidate/raw-invocation-oracle.test.mjs tests/qualification/m2-candidate/duplicate-record-resources.test.mjs tests/qualification/m2-candidate/raw-document-cases.test.mjs tests/qualification/m2-candidate/mutation-evidence.test.mjs tests/qualification/m2-candidate/retained-object-descriptors.test.mjs tests/qualification/m2-candidate/combined-case-inventory.test.mjs tests/qualification/m2-candidate/boundary-source-mutations.test.mjs tests/qualification/m2-candidate/retained-acceptance.test.mjs tests/m2-start.test.mjs",
   "docs:check": "agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml",
@@ -62,12 +66,15 @@ const ROOT_SCRIPT_COMMANDS = Object.freeze({
   check: Object.freeze([
     "runtime:preflight",
     "governance:check",
+    "assembly:build",
     "foundation:check",
     "docs:protocol:check",
     "architecture:feature-module-profile",
     "architecture:feature-module-profile:test",
     "core:typecheck:prepared",
     "core:test",
+    "assembly:typecheck",
+    "assembly:test",
     "contracts:check",
     "contracts:test",
     "qualification:resource-profile",
@@ -78,12 +85,14 @@ const ROOT_SCRIPT_COMMANDS = Object.freeze({
   ]),
   "check:fast": Object.freeze([
     "runtime:preflight",
-    "core:build",
+    "assembly:build",
     "foundation:check",
     "architecture:feature-module-profile",
     "docs:check",
     "core:typecheck:prepared",
     "core:test",
+    "assembly:typecheck",
+    "assembly:test",
   ]),
 });
 
@@ -295,9 +304,12 @@ export function validateFirstProductionPackageAdmission({
     const manifest = productionPackageManifests.get(manifestPath);
     assert(manifest !== undefined,
       `missing production package manifest: ${manifestPath}`);
-    // ADR-0003 identity holds regardless of any open decision.
+    // ADR-0003 identity, extended by ADR-0023, holds regardless of open decisions.
     assert(ACCEPTED_PACKAGE_NAMES.has(manifest?.name),
       `${manifestPath} must use an accepted package identity`);
+    const assemblyViolations = assemblyManifestViolations(manifest);
+    assert(assemblyViolations.length === 0,
+      `${manifestPath}: ${assemblyViolations.join("; ")}`);
     // ADR-0017 blocks the publication surface only through the publication
     // blockers recorded in the traceability catalog.
     if (publicationBlockerIds.size > 0) {

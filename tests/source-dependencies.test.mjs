@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { glob, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -13,13 +13,20 @@ const require = createRequire(import.meta.url);
 const cli = join(dirname(require.resolve("@agent-teams/engineering-foundation/package.json")), "dist/cli.js");
 const policyPath = "architecture/foundation/source-dependencies.yaml";
 const policy = parse(await readFile(policyPath, "utf8"));
-const sourcePaths = policy.boundaries.flatMap(boundary => boundary.roots);
-// Standalone execution requires pnpm core:build, as do the aggregate gates.
+const sourcePaths = [];
+for (const root of policy.governedRoots) {
+  for await (const path of glob(`${root}/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}`)) {
+    sourcePaths.push(path.replaceAll("\\", "/"));
+  }
+}
+// Standalone execution requires pnpm assembly:build, as do the aggregate gates.
 const source = new Map(await Promise.all(sourcePaths.map(async path => [path, await readFile(path, "utf8")])));
 const coreManifest = await readFile("packages/core/package.json", "utf8");
+const assemblyManifest = await readFile("packages/assembly/package.json", "utf8");
 const canonicalRoot = "packages/core/src/features/canonicalization";
 const implementationRoot = `${canonicalRoot}/owned-jcs`;
 const consumerPath = "packages/core/src/features/consumer/factory.ts";
+const assemblyFactoryPath = "packages/assembly/src/features/construction/factory.ts";
 
 // Fixtures invoke the installed Foundation CLI. This harness neither parses
 // source nor reproduces its classifier, dependency rules, or cycle algorithm.
@@ -32,6 +39,7 @@ async function checkFixture(change = () => {}) {
     files.set("package.json", JSON.stringify({ name: "source-policy-fixture", private: true, type: "module" }));
     files.set("pnpm-workspace.yaml", 'packages:\n  - "packages/*"\n');
     files.set("packages/core/package.json", coreManifest);
+    files.set("packages/assembly/package.json", assemblyManifest);
     files.set("foundation.config.yaml", stringify({ schemaVersion: 1, project: { id: "source-policy-fixture" }, capabilities: { "architecture.source-dependencies": { configPath: policyPath } } }));
     files.set(policyPath, stringify(configuration));
     for (const [path, contents] of files) {
@@ -291,3 +299,80 @@ test("Foundation leaves generated siblings unclassified", async () => {
   });
   assert.match(rules(report), /architecture\.source-dependencies\.unclassified-source-file/u);
 });
+
+test("Foundation admits Assembly construction through the public Core root", async () => {
+  const report = await checkFixture(files => {
+    files.set(assemblyFactoryPath, files.get(assemblyFactoryPath)
+      + '\nimport "@get-modular/core";\n');
+  });
+  assert.equal(report.outcome, "passed", JSON.stringify(report));
+  assert.equal(rules(report), "");
+});
+
+for (const specifier of ["@get-modular/assembly", "../../assembly/src/index.js"]) {
+  test(`Foundation rejects Core importing Assembly through ${specifier}`, async () => {
+    const report = await checkFixture(files => {
+      const path = "packages/core/src/index.ts";
+      files.set(path, files.get(path) + `\nimport ${JSON.stringify(specifier)};\n`);
+    });
+    assert.equal(report.outcome, "violations", JSON.stringify(report));
+    assert.match(rules(report),
+      /architecture\.source-dependencies\.(?:forbidden-package-dependency|forbidden-boundary-dependency)/u);
+  });
+}
+
+for (const specifier of [
+  "@get-modular/core/src/features/authoring/helpers.js",
+  "@get-modular/core/dist/index.js",
+  "../../../../core/src/index.js",
+  "../../../../core/src/features/authoring/helpers.js",
+]) {
+  test(`Foundation rejects Assembly bypassing the Core public root with ${specifier}`, async () => {
+    const report = await checkFixture(files => {
+      files.set(assemblyFactoryPath, files.get(assemblyFactoryPath)
+        + `\nimport ${JSON.stringify(specifier)};\n`);
+    });
+    assert.equal(report.outcome, "violations", JSON.stringify(report));
+    assert.match(rules(report), /architecture\.source-dependencies\./u);
+  });
+}
+
+test("Foundation keeps private construction files behind the feature entrypoints", async () => {
+  const report = await checkFixture(files => {
+    files.set("packages/assembly/src/features/construction/hidden.ts",
+      "export const hidden = 1;\n");
+    const path = "packages/assembly/src/composition/root.ts";
+    files.set(path, files.get(path)
+      + '\nimport { hidden } from "../features/construction/hidden.js";\n');
+  });
+  assert.equal(report.outcome, "violations", JSON.stringify(report));
+  assert.match(rules(report),
+    /architecture\.source-dependencies\.cross-boundary-local-import-not-entrypoint/u);
+});
+
+for (const [name, statement, rule] of [
+  ["Node builtin", 'import "node:fs";', "forbidden-builtin-dependency"],
+  ["development package", 'import "@agent-teams/engineering-foundation";', "forbidden-package-dependency"],
+  ["dynamic import", 'const target = "somewhere"; void import(target);', "unresolved-runtime-reference"],
+]) {
+  test(`Foundation rejects ${name} in Assembly construction`, async () => {
+    const report = await checkFixture(files => {
+      files.set(assemblyFactoryPath, files.get(assemblyFactoryPath) + `\n${statement}\n`);
+    });
+    assert.equal(report.outcome, "violations", JSON.stringify(report));
+    assert.ok(rules(report).includes(`architecture.source-dependencies.${rule}`), rules(report));
+  });
+}
+
+for (const path of [
+  "packages/assembly/src/helpers.ts",
+  "packages/assembly/src/features/unowned/factory.ts",
+  "packages/assembly/src/composition/extra.ts",
+]) {
+  test(`Foundation rejects unowned Assembly source at ${path}`, async () => {
+    const report = await checkFixture(files => {
+      files.set(path, "export const hidden = 1;\n");
+    });
+    assert.match(rules(report), /architecture\.source-dependencies\.unclassified-source-file/u);
+  });
+}

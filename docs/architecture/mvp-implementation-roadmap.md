@@ -1479,3 +1479,10 @@ decision.
 Tests must not require a second diagnostic generation or a generated stage1
 before the first direct object-input test. No fake success result substitutes
 for the complete plan and digest.
+
+## Optional common assembly delivery
+
+[Common assembly](common-assembly.md) defines the separate A0-A3 route and
+acceptance checks admitted by [ADR-0023](../decisions/0023-add-a-thin-host-owned-assembly-component-above-core.md).
+Core callable surfaces and historical qualification remain unchanged. Assembly
+is a separate construction feature; Host retains permissions and lifecycle.

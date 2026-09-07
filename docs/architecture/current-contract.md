@@ -92,9 +92,11 @@ before consumers, and pass typed, closed dependencies. The consumer owns its
 factory table and capability types. The example covers optional dependencies,
 ordered many-provider slots, actual profile-dependent output, and failures
 before or during construction. It exercises a disposable test application and
-does not claim real product adoption or add a public construction API. Shared
-construction mechanics remain a candidate extraction after concrete consumer
-evidence; dynamic lifecycle is outside this static example.
+does not claim real product adoption or add a public construction API. The separately approved
+[common assembly](common-assembly.md) adds optional construction mechanics under
+[ADR-0023](../decisions/0023-add-a-thin-host-owned-assembly-component-above-core.md).
+Its A0-A3 delivery is additional to Core qualification; dynamic lifecycle remains
+outside both components.
 
 ## Accepted contract and public naming
 
