@@ -13,6 +13,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { readPackageArchive } from './support/package-archive.mjs';
 import { auditM1JavaScriptClosure } from './support/m1-javascript-closure.mjs';
 import { produceRuntimeFixtures } from './support/m3-runtime-fixture-producer.mjs';
+import { produceSemanticRuntimeFixtures } from './support/m3-semantic-runtime-fixtures.mjs';
 import { bounded, connectCDP } from './support/m3-cdp.mjs';
 
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -84,6 +85,55 @@ export function verifyRecords(records, fixtures) {
   }
 }
 
+export function verifySemanticRecords(records, fixtures) {
+  assert.ok(Array.isArray(fixtures));
+  assert.equal(fixtures.length, 818, 'complete semantic fixture inventory');
+  assert.equal(new Set(fixtures.map(row => row.id)).size, 818, 'unique semantic IDs');
+  assert.ok(Array.isArray(records), 'semantic observations required');
+  assert.equal(records.length, 1636, 'no skipped semantic observations');
+  const measure = value => {
+    if (value === null || typeof value !== 'object') {
+      return { containers: 0, mutationRejections: 0 };
+    }
+    const total = {
+      containers: 1, mutationRejections: 3 + 2 * Reflect.ownKeys(value).length,
+    };
+    for (const child of Object.values(value)) {
+      const nested = measure(child);
+      total.containers += nested.containers;
+      total.mutationRejections += nested.mutationRejections;
+    }
+    return total;
+  };
+  let index = 0;
+  for (const fixture of fixtures) {
+    assert.equal(typeof fixture.id, 'string');
+    assert.ok(fixture.id.length > 0);
+    const resultShape = measure(fixture.expected);
+    const mutatedObjects = measure(fixture.input).containers + 2;
+    for (const mode of ['object', 'raw']) {
+      const row = records[index++];
+      keys(row, ['id', 'category', 'mode', 'result', 'observations']);
+      assert.equal(row.id, fixture.id, 'semantic ID order');
+      assert.equal(row.category, fixture.category, 'semantic category');
+      assert.equal(row.mode, mode, 'semantic mode order');
+      assert.deepEqual(row.result, fixture.expected,
+        `${fixture.id}/${mode}: full expected result`);
+      keys(row.observations, [
+        'containers', 'mutationRejections', 'mutatedObjects',
+        'mutatedBuffers', 'mutatedBytes', 'callerWrapperMutated',
+      ]);
+      assert.deepEqual(row.observations, {
+        ...resultShape,
+        mutatedObjects,
+        mutatedBuffers: fixture.input.declarations.length + 1,
+        mutatedBytes: fixture.rawEligibility.aggregateBytes,
+        callerWrapperMutated: true,
+      }, `${fixture.id}/${mode}: local observations`);
+    }
+  }
+}
+
 export function routeHandler(inputRoutes) {
   // Copy once; callers cannot mutate served bytes through their original map.
   const routes = new Map([...inputRoutes].map(([path, row]) =>
@@ -111,6 +161,7 @@ export function routeHandler(inputRoutes) {
 
 const realmSource = `
 import { executeRuntimeFixtures } from './m3-runtime-executor.mjs';
+import { executeSemanticRuntimeFixtures } from './m3-semantic-runtime-executor.mjs';
 export async function run(rootURL, realm) {
   if (!isSecureContext || !crossOriginIsolated ||
       typeof SharedArrayBuffer !== 'function' || !crypto.subtle) {
@@ -125,11 +176,15 @@ export async function run(rootURL, realm) {
   const response = await fetch('/dev/fixtures.json');
   if (!response.ok) throw new Error('fixtures unavailable');
   const fixtures = await response.json();
+  const semanticResponse = await fetch('/dev/semantic-fixtures.json');
+  if (!semanticResponse.ok) throw new Error('semantic fixtures unavailable');
+  const semanticFixtures = await semanticResponse.json();
   const namespace = await import(root.href);
   const records = await executeRuntimeFixtures(namespace, fixtures);
+  const semanticRecords = await executeSemanticRuntimeFixtures(namespace, semanticFixtures);
   return { realm, secureContext: isSecureContext, crossOriginIsolated,
     sharedArrayBuffer: typeof SharedArrayBuffer === 'function',
-    userAgent: navigator.userAgent, records };
+    userAgent: navigator.userAgent, records, semanticRecords };
 }
 `;
 const workerSource = `
@@ -173,6 +228,7 @@ export async function runChromiumConsumer(rawInput) {
   const publicRoot = publicArchiveRoot(archive.files);
   const closure = auditM1JavaScriptClosure(archive.files, 'm2-generated');
   const fixtures = produceRuntimeFixtures();
+  const semanticFixtures = [...produceSemanticRuntimeFixtures()];
   const out = input.uniqueOutputDir;
   await mkdir(out, { mode: 0o700 }); // Existing output is never reused.
   const profile = join(out, 'profile');
@@ -187,13 +243,18 @@ export async function runChromiumConsumer(rawInput) {
       routes.set(path, { bytes: Buffer.from(bytes), type });
     for (const path of closure.modules) add(`/archive/${path}`, archive.files.get(path));
     add('/dev/fixtures.json', json(fixtures), 'application/json');
+    add('/dev/semantic-fixtures.json', json(semanticFixtures), 'application/json');
     add('/dev/realm.mjs', realmSource);
     add('/dev/worker.mjs', workerSource);
     add('/index.html', '<!doctype html><meta charset="utf-8"><title>M3 diagnostic</title>',
       'text/html; charset=utf-8');
-    for (const name of ['m3-runtime-materializers.mjs', 'm3-runtime-executor.mjs']) {
+    for (const name of ['m3-runtime-materializers.mjs', 'm3-runtime-executor.mjs', 'm3-semantic-runtime-executor.mjs']) {
       add(`/dev/${name}`, await readFile(new URL(`./support/${name}`, import.meta.url)));
     }
+    await writeFile(join(out, 'semantic-fixtures.json'), json(semanticFixtures), { flag: 'wx' });
+    await writeFile(join(out, 'semantic-expected.json'), json(semanticFixtures.flatMap(
+      ({ id, category, expected }) => ['object', 'raw'].map(mode =>
+        ({ id, category, mode, result: expected })))), { flag: 'wx' });
     await writeFile(join(out, 'fixtures.json'), json(fixtures), { flag: 'wx' });
     await writeFile(join(out, 'expected.json'),
       json(fixtures.map(({ id, expected }) => ({ id, result: expected }))), { flag: 'wx' });
@@ -206,18 +267,20 @@ export async function runChromiumConsumer(rawInput) {
     const runnerFiles = [
       new URL(import.meta.url), new URL('./support/m3-cdp.mjs', import.meta.url),
       new URL('./support/m3-runtime-fixture-producer.mjs', import.meta.url),
+      new URL('./support/m3-semantic-runtime-fixtures.mjs', import.meta.url),
     ];
     const runnerIdentity = [];
     for (const url of runnerFiles) {
       runnerIdentity.push({ url: url.href, sha256: sha256(await readFile(url)) });
     }
     const metadata = {
-      input, status: 'prepared', claim: 'not-claimed', scope: 'PARTIAL123ONLY',
+      input, status: 'prepared', claim: 'not-claimed', scope: 'PARTIAL raw123 + semantic818/object+raw; excludes all-vectors, P500, descriptors and runtime conformance',
       review: 'pending independent review', purpose: 'diagnostic',
       promotion: 'none; not the six-runtime matrix',
       node: process.version, os: platform(), arch: arch(), publicRoot,
       archiveSha256: archive.sha256, integrity: archive.integrity,
       inventory: archive.inventory, fixtureSha256: sha256(json(fixtures)),
+      semanticFixtureSha256: sha256(json(semanticFixtures)),
       runnerIdentity,
       routes: [...routes].map(([path, row]) => ({ path, sha256: sha256(row.bytes) })),
     };
@@ -289,6 +352,7 @@ export async function runChromiumConsumer(rawInput) {
     const windowResult = await evaluate(`import('/dev/realm.mjs').then(m => m.run(${rootURL}, 'window'))`);
     await writeFile(join(out, 'window.json'), json(windowResult), { flag: 'wx' });
     verifyRecords(windowResult.records, fixtures);
+    verifySemanticRecords(windowResult.semanticRecords, semanticFixtures);
     const workerResult = await evaluate(`new Promise((resolve, reject) => {
       const worker = new Worker('/dev/worker.mjs', { type: 'module' });
       const timer = setTimeout(() => { worker.terminate(); reject(new Error('worker timeout')); }, 110000);
@@ -300,6 +364,7 @@ export async function runChromiumConsumer(rawInput) {
     })`);
     await writeFile(join(out, 'worker.json'), json(workerResult), { flag: 'wx' });
     verifyRecords(workerResult.records, fixtures);
+    verifySemanticRecords(workerResult.semanticRecords, semanticFixtures);
     observations = { version, window: windowResult, worker: workerResult };
     for (const [name, realm] of [['window', 'window'], ['worker', 'dedicated-module-worker']]) {
       assert.equal(observations[name].realm, realm);
@@ -323,7 +388,7 @@ export async function runChromiumConsumer(rawInput) {
   const after = await archiveIdentity(input);
   assert.equal(after.sha256, archive.sha256, 'unchanged archive after teardown');
   await rm(profile, { recursive: true, force: true });
-  const result = { status: 'verified', claim: 'not-claimed', scope: 'PARTIAL123ONLY',
+  const result = { status: 'verified', claim: 'not-claimed', scope: 'PARTIAL raw123 + semantic818/object+raw; excludes all-vectors, P500, descriptors and runtime conformance',
     review: 'pending independent review', promotion: 'none', exactSourceSHA: input.exactSourceSHA,
     archiveSha256: after.sha256, integrity: after.integrity, os: platform(), arch: arch(), observations };
   await writeFile(join(out, 'result.pending.json'), json(result), { flag: 'wx' });

@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { createServer, request } from 'node:http';
 import {
   publicArchiveRoot, routeHandler, validateInput, verifyRecords,
+  verifySemanticRecords,
 } from '../../../../tests/qualification/m3-chromium-consumer.mjs';
 import { readPackageArchive } from '../../../../tests/qualification/support/package-archive.mjs';
 
@@ -70,4 +71,42 @@ test('complete comparison rejects changed expected values and omitted IDs', () =
   assert.throws(() => verifyRecords(records, fixtures), /full expected result/);
   assert.throws(() => verifyRecords(records.slice(1), fixtures), /no skipped observations/);
   assert.throws(() => verifyRecords(records.map(row => ({ ...row, id: 'same' })), fixtures));
+});
+
+test('semantic comparison requires both ordered modes, complete results and local observations', () => {
+  const fixtures = Array.from({ length: 818 }, (_, index) => ({
+    id: `semantic-${index}`, category: 'synthetic',
+    input: { declarations: [], profile: {} },
+    expected: { ok: false, diagnostics: [] },
+    rawEligibility: { declarationBytes: [], profileBytes: 2, aggregateBytes: 2 },
+  }));
+  const records = fixtures.flatMap(fixture => ['object', 'raw'].map(mode => ({
+    id: fixture.id, category: fixture.category, mode,
+    result: structuredClone(fixture.expected),
+    observations: {
+      containers: 2, mutationRejections: 12, mutatedObjects: 5,
+      mutatedBuffers: 1, mutatedBytes: 2, callerWrapperMutated: true,
+    },
+  })));
+  verifySemanticRecords(records, fixtures);
+  for (const mutate of [
+    rows => { rows.pop(); },
+    rows => { rows[1].mode = 'object'; },
+    rows => { rows[2].id = rows[0].id; },
+    rows => { [rows[0], rows[1]] = [rows[1], rows[0]]; },
+    rows => { rows[0].category = 'substituted'; },
+    rows => { rows[0].result.diagnostics.push({ code: 'unexpected' }); },
+    rows => { rows[0].observations.containers = 1; },
+    rows => { rows[0].observations.mutationRejections -= 1; },
+    rows => { rows[0].observations.mutatedObjects = 0; },
+    rows => { rows[1].observations.mutatedBytes -= 1; },
+    rows => { rows[0].observations.callerWrapperMutated = false; },
+  ]) {
+    const changed = structuredClone(records);
+    mutate(changed);
+    assert.throws(() => verifySemanticRecords(changed, fixtures));
+  }
+  const wrongExpected = structuredClone(fixtures);
+  wrongExpected[817].expected.ok = true;
+  assert.throws(() => verifySemanticRecords(records, wrongExpected), /full expected result/);
 });

@@ -95,3 +95,39 @@ test('parent rejects incomplete results, substituted realms, unsafe preferences 
     assert.throws(() => verifyElectronResults(observations, fixtures, config));
   }
 });
+
+test('Electron applies shared semantic verification to both realms', () => {
+  const semanticFixtures = Array.from({ length: 818 }, (_, index) => ({
+    id: `semantic-${index}`, category: 'synthetic',
+    input: { declarations: [], profile: {} },
+    expected: { ok: false, diagnostics: [] },
+    rawEligibility: { declarationBytes: [], profileBytes: 2, aggregateBytes: 2 },
+  }));
+  const semanticRecords = semanticFixtures.flatMap(fixture =>
+    ['object', 'raw'].map(mode => ({
+      id: fixture.id, category: fixture.category, mode,
+      result: structuredClone(fixture.expected),
+      observations: {
+        containers: 2, mutationRejections: 12, mutatedObjects: 5,
+        mutatedBuffers: 1, mutatedBytes: 2, callerWrapperMutated: true,
+      },
+    })));
+  for (const realm of ['main', 'renderer']) {
+    for (const mutate of [
+      value => { delete value.semanticRecords; },
+      value => { value.semanticRecords.pop(); },
+      value => { value.semanticRecords[1].mode = 'object'; },
+      value => { value.semanticRecords[0].result.ok = true; },
+      value => { value.semanticRecords[0].observations.mutatedBuffers = 0; },
+    ]) {
+      const { observations, config } = evidence();
+      for (const value of Object.values(observations)) {
+        value.semanticRecords = structuredClone(semanticRecords);
+      }
+      verifyElectronResults(observations, fixtures, config, semanticFixtures);
+      mutate(observations[realm]);
+      assert.throws(() =>
+        verifyElectronResults(observations, fixtures, config, semanticFixtures));
+    }
+  }
+});
