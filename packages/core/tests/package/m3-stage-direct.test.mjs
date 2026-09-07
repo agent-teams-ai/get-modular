@@ -199,3 +199,22 @@ test("Windows mixed-case Git routing cannot substitute source identity", {
     for (const [key, value] of previous) process.env[key] = value;
   }
 });
+
+// Release metadata is copied only from tracked, clean source when allowlisted.
+test("stages the allowlisted release changelog byte-for-byte", t => {
+  const f = fixture(t);
+  const path = join(f.packageRoot, "package.json");
+  const metadata = JSON.parse(readFileSync(path, "utf8"));
+  metadata.files = ["CHANGELOG.md"];
+  writeFileSync(path, JSON.stringify(metadata));
+  f.put("CHANGELOG.md", "# Changelog\n\nRelease candidate.\n");
+  f.git(["add", "packages/core/package.json", "packages/core/CHANGELOG.md"]);
+  f.git(["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+    "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null",
+    "commit", "--quiet", "-m", "release metadata fixture"]);
+  const result = stageDirectSubject({ ...f.options, expectedSha: f.git(["rev-parse", "HEAD"]) });
+  assert.deepEqual(readFileSync(join(result.stagingDir, "CHANGELOG.md")),
+    readFileSync(join(f.packageRoot, "CHANGELOG.md")));
+  const manifest = JSON.parse(readFileSync(join(result.stagingDir, "package.json"), "utf8"));
+  assert.ok(manifest.files.includes("CHANGELOG.md"));
+});

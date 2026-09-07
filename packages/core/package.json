@@ -1,7 +1,6 @@
 {
   "name": "@get-modular/core",
   "version": "0.1.0",
-  "private": true,
   "description": "Deterministic, product-neutral composition semantics.",
   "license": "Apache-2.0",
   "type": "module",
@@ -63,6 +62,19 @@
     "dist/features/raw-scanner/owned-iterative/factory.js",
     "dist/features/raw-scanner/owned-iterative/scanner.js",
     "dist/index.d.ts",
-    "dist/index.js"
-  ]
+    "dist/index.js",
+    "CHANGELOG.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "engines": {
+    "node": ">=24.18.0 <25"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agent-teams-ai/get-modular.git",
+    "directory": "packages/core"
+  }
 }

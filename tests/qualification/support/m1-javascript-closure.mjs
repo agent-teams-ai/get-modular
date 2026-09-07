@@ -90,7 +90,7 @@ const baseRoles = new Map(rows.map(([path, exports, locals, functions]) => [
 ]));
 const declarations = new Set(['dist/index.d.ts', ...['internal', 'helpers', 'wire-types', 'diagnostic-types']
   .map(name => `dist/features/authoring/${name}.d.ts`)]);
-const metadata = new Set(['package.json', 'README.md', 'LICENSE']);
+const metadata = new Set(['package.json', 'README.md', 'LICENSE', 'CHANGELOG.md']);
 const feature = name => `dist/features/${name}/factory.js`;
 const factories = [
   [feature('canonicalization/owned-jcs'), 'createOwnedJcs', [], ['canonicalize']],
@@ -371,6 +371,7 @@ function audit(files, profile) {
   }
   requireThat(files instanceof Map && files.size <= 512, 'input');
   const modules = new Map();
+  const calls = [];
   const budget = { nodes: 0 };
   let total = 0;
   for (const [path, bytes] of files) {
@@ -480,8 +481,24 @@ function audit(files, profile) {
     if (ts.isClassDeclaration(node)) return { kind: 'class', node };
     if (ts.isCallExpression(node)) return { kind: 'call', node, callee: origin(node.expression, seen) };
     if (ts.isPropertyAccessExpression(node)) return { kind: 'member', node, name: node.name.text, base: origin(node.expression, seen) };
-    if (ts.isElementAccessExpression(node) && ts.isStringLiteral(unwrap(node.argumentExpression))) {
-      return { kind: 'member', node, name: unwrap(node.argumentExpression).text, base: origin(node.expression, seen) };
+    if (ts.isElementAccessExpression(node)) {
+      const key = unwrap(node.argumentExpression);
+      return { kind: 'member', node, name: ts.isStringLiteral(key) ? key.text : undefined,
+        key, base: origin(node.expression, seen) };
+    }
+    // Destructuring preserves the selected member rather than inventing a
+    // callback origin. Mutable bindings and defaults supply no callable proof.
+    if (ts.isBindingElement(node) && !node.initializer && !node.dotDotDotToken) {
+      const owner = node.parent.parent;
+      let root = owner;
+      while (ts.isBindingElement(root)) root = root.parent.parent;
+      if (constant(root) || ts.isParameter(root)) {
+        const selector = ts.isObjectBindingPattern(node.parent) ? node.propertyName ?? node.name : undefined;
+        const key = selector && ts.isComputedPropertyName(selector) ? selector.expression : undefined;
+        return { kind: 'member', node,
+          name: selector && !ts.isComputedPropertyName(selector) ? propertyName(selector) : undefined,
+          key, base: origin(owner, seen) };
+      }
     }
     return { kind: 'value', node };
   }
@@ -887,6 +904,7 @@ function audit(files, profile) {
         // its former computed validator dispatch is no longer in the closure.
         if (ts.isElementAccessExpression(callee)) fail('computed-call');
         const resolved = origin(callee);
+        calls.push({ node, resolved });
         if (factories.some(([owner, name]) => isFunction(resolved, owner, name))) {
           const use = outer(node).parent;
           requireThat(path === ROOT && topVariable(use) && unwrap(use.initializer) === node, 'construction');
@@ -1071,6 +1089,35 @@ function audit(files, profile) {
     for (const link of modules.get(path).links) pending.push(link.target);
   }
   requireThat(reached.size === modules.size, 'orphan');
+
+  // A checked named member is the existing method/capability boundary. Indexed
+  // receivers remain data; an unknown selector never becomes callable merely
+  // because it was saved in an alias. Other calls need an owned function/arrow,
+  // a callback parameter or one of the already checked conversion globals.
+  // Run this after the syntax and construction checks to retain their reasons.
+  let callableSteps = 0;
+  function ownedCallable(value, depth = 0) {
+    requireThat(++callableSteps <= MAX_STATIC_STEPS && depth <= 64, 'limit');
+    if (value.kind === 'function') return true;
+    if (value.kind === 'member') return (value.name ?? staticString(value.key)) !== undefined;
+    if (value.kind !== 'value') return false;
+    if (ts.isArrowFunction(value.node) || ts.isParameter(value.node)) return true;
+    // Both branches must independently carry an allowed callable origin.
+    // The work/depth bound also covers repeated conditional alias graphs.
+    return ts.isConditionalExpression(value.node)
+      && ownedCallable(origin(value.node.whenTrue), depth + 1)
+      && ownedCallable(origin(value.node.whenFalse), depth + 1);
+  }
+  for (const { node, resolved } of calls) {
+    if (resolved.kind === 'member') {
+      requireThat((resolved.name ?? staticString(resolved.key)) !== undefined, 'computed-call');
+      continue;
+    }
+    if (ownedCallable(resolved)) continue;
+    const callee = unwrap(node.expression);
+    requireThat(ts.isIdentifier(callee) && !declarationOf(symbolAt(callee))
+      && (callee.text === 'String' || callee.text === 'Number'), 'call-origin');
+  }
   return { modules: [...reached].sort(), exports: [...publicValues] };
 }
 

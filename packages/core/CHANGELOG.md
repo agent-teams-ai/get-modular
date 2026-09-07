@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0 - release candidate
 
 ### Added
 
@@ -46,9 +46,14 @@
   normalized duplicate diagnostics and independent absence/mismatch checks.
 - Package typecheck, build and tests with Foundation source-dependency checks.
 
-This package is not published. Generated production assembly is implemented in
-this atomic checkpoint; historical M1/M2 checkpoints used direct assembly, not
-self-composed assembly. Full M3 cold recovery, retained-archive qualification
-and runtime proof remain pending, as does final retained M2 qualification.
-No `self-composed-qualified`, structural or runtime conformance, or
-`release-eligible` claim is made by this source checkpoint.
+The initial release candidate includes generated assembly and both compiler
+entries. Core M1/M2/M3 end-to-end qualification completed at source `f41dfe7`,
+whose full tree matches merged `4bca9d0`. This release candidate changes package
+metadata and requires a new retained archive and packed-consumer evidence
+before upload. It has not been published.
+
+Node support is `>=24.18.0 <25`; TypeScript consumers require 5.8.3 or later.
+Browser Web Crypto requires a secure context. No official browser support,
+structural or runtime conformance, or `release-eligible` claim is made.
+The publication status is `not-claimed`. Core compiles plans and does not
+execute product factories or manage application lifecycle.
