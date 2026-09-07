@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 import { validatePrivateCoreStart } from "./private-core-start.mjs";
+import { validateAssemblyAdmission } from "./assembly-admission.mjs";
 import { GENERATED_PRODUCTION_PATH } from "./generated-production-source.mjs";
 import { cleanProductionAfterFailure } from "../tooling/generate-core.mjs";
 
@@ -751,9 +752,16 @@ export async function runGovernance() {
   if (productionArtifactSymlinks.length > 0) {
     fail(`production artifacts must not be symlinks: ${productionArtifactSymlinks.join(", ")}`);
   }
+  // Independently admit Assembly before subtracting those paths from Core's
+  // inventory. Every other artifact must still pass the Core scope check.
+  const admittedAssembly = new Set(await validateAssemblyAdmission({
+    productionArtifacts,
+    readPackageManifest,
+    readBytes: path => readGovernanceInput(path, "Assembly admission input"),
+  }));
   const scope = await validatePrivateCoreStart({
     markdown: documentSources.get("ARCH-MVP-IMPLEMENTATION-ROADMAP").bytes.toString("utf8"),
-    productionArtifacts,
+    productionArtifacts: productionArtifacts.filter(path => !admittedAssembly.has(path)),
     authorityDigest: ACCEPTED_AUTHORITY_LEDGER_DIGEST,
     isStartingBase: baseCommit => isStartingBaseAncestor(baseCommit, root),
     readPackageManifest,

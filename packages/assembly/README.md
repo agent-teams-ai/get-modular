@@ -9,6 +9,12 @@ Core declaration to `bindFactory`; its slots determine the callback's dependency
 record. The callback receives that record and `{ signal }`, and returns an
 ordinary current-realm Promise fulfilling with `{ instance, capabilities }`.
 
+Module, implementation, profile and capability identities, and exact compatibility
+tokens, use Core's portable grammar, for example `synthetic/store` and
+`synthetic/v1`. Owner path segments and slot IDs remain local, for example `store`.
+Returned capability records use the full capability IDs as keys; dependency
+records use the consumer's local slot IDs.
+
 Compile with public Core, then call
 `prepare({ composition, factories, roots: { app: appHandle } })`.
 A `"prepared"` result exposes `prepared.run({ signal })`; an omitted signal gets
@@ -27,7 +33,14 @@ resource several times; Host cleanup must account for that sharing. Cancellation
 waits for an in-flight factory to settle. Construction does not establish readiness.
 
 The package freezes its metadata, records, arrays and journals. Instance objects,
-capability values, causes and signals remain opaque. Direct thenables, Promise
+capability values, causes and signals remain opaque. Direct thenable objects, Promise
 subclasses and Promises with own properties are unsupported factory carriers.
 
 Build Core first, then run this package's `build`, `typecheck` and `test` commands.
+The runtime test command also invokes the minimum and build TypeScript compilers
+in NodeNext and Bundler modes. Test configurations disable `isolatedDeclarations`
+and `erasableSyntaxOnly`; production compiler settings remain independently enforced.
+
+Packed tests install local Core and assembly archives into a disposable consumer,
+exercise the synthetic Host, and check typed wiring, deliberate negative fixtures
+and 1000 literal declarations. The scale fixture is only typechecked.

@@ -8,19 +8,19 @@ test("all plan fields, digest and closed shapes participate in preflight", async
   const host = await synthetic();
   const changes = [
     (c) => { c.digest = c.digest.slice(0, -1) + (c.digest.endsWith("0") ? "1" : "0"); },
-    (c) => { c.plan.profileId = "changed"; },
+    (c) => { c.plan.profileId = "synthetic/changed"; },
     (c) => { c.plan.kind = "other"; },
     (c) => { c.plan.schemaVersion = 2; },
     (c) => { c.plan.dependencyOrder.reverse(); },
     (c) => { c.plan.selections.reverse(); },
     (c) => { c.plan.bindings.reverse(); },
-    (c) => { c.plan.selections[0].moduleId = "other"; },
-    (c) => { c.plan.bindings[0].capabilityId = "other"; },
-    (c) => { c.plan.bindings[0].compatibility.token = "changed"; },
+    (c) => { c.plan.selections[0].moduleId = "synthetic/other"; },
+    (c) => { c.plan.bindings[0].capabilityId = "synthetic/other"; },
+    (c) => { c.plan.bindings[0].compatibility["token"] = "synthetic/changed"; },
     (c) => { c.plan.bindings[0].compatibility.familyVersion = 2; },
     (c) => { c.plan.bindings.find((b) => b.slotId === "filters").providerImplementationIds.reverse(); },
     (c) => { c.plan.bindings = c.plan.bindings.filter((b) => b.slotId !== "logger"); },
-    (c) => { c.plan.roots = ["store"]; },
+    (c) => { c.plan.roots = ["synthetic/store"]; },
     (c) => { c.plan.extra = true; },
     (c) => { c.plan.selections[0].extra = true; },
     (c) => { c.plan.bindings[0].extra = true; },
@@ -36,7 +36,7 @@ test("all plan fields, digest and closed shapes participate in preflight", async
 test("exact authenticated handles, complete roots and data-only aliases are required", async () => {
   const host = await synthetic(), { factories } = host.input;
   const forged = Object.create(Object.getPrototypeOf(factories[0]), Object.getOwnPropertyDescriptors(factories[0]));
-  const equivalent = host.api.bindFactory(host.declarations[0], async () => ({ instance: {}, capabilities: { store: {} } }));
+  const equivalent = host.api.bindFactory(host.declarations[0], async () => ({ instance: {}, capabilities: { "synthetic/store": {} } }));
   const changes = [
     { factories: factories.slice(1) },
     { factories: [...factories, factories[0]] },
@@ -56,10 +56,10 @@ test("exact authenticated handles, complete roots and data-only aliases are requ
 
 test("binding and synchronous preparation snapshots survive later input mutation", async () => {
   const api = assemblyFor();
-  const provider = declaration("provider", ["value"]), consumer = declaration("consumer", [], [slot("value", "value")]);
+  const provider = declaration("provider", ["synthetic/value"]), consumer = declaration("consumer", [], [slot("value", "synthetic/value")]);
   const declarations = [provider, consumer], value = {};
-  const composition = structuredClone(await compile(declarations, profile(declarations, [binding("consumer", "value", ["provider"])])));
-  const p = api.bindFactory(provider, async () => ({ instance: {}, capabilities: { value } }));
+  const composition = structuredClone(await compile(declarations, profile(declarations, [binding("synthetic/consumer", "value", ["synthetic/provider"])])));
+  const p = api.bindFactory(provider, async () => ({ instance: {}, capabilities: { "synthetic/value": value } }));
   const c = api.bindFactory(consumer, async (deps) => ({ instance: deps.value, capabilities: {} }));
   consumer.slots[0].cardinality = { kind: "many", min: 0, max: 1, order: "profile" };
   provider.provides.length = 0;

@@ -553,11 +553,10 @@ cannot use that label as a conformance, self-composition or release-eligibility
 claim. No release workflow is added before a real package exists because an
 untestable workflow would be ceremonial infrastructure.
 
-[Proposed ADR-0019](../decisions/0019-separate-upload-admission-from-publication-completion.md)
-records the narrow successor needed to reconcile ADR-0012's eligibility wording
-and supplies the unknown-upload/tag-reconciliation runbook. Accept that policy
-before the first real upload; its proposed status does not block private M1
-fixes or preparation of the retained packed subject.
+[Accepted ADR-0019](../decisions/0019-separate-upload-admission-from-publication-completion.md)
+records the narrow successor reconciling ADR-0012's eligibility wording
+and supplies the unknown-upload/tag-reconciliation runbook. Its acceptance
+checks are linked from the decision; actual upload remains separately authorized.
 
 ### Roadmap qualification language
 

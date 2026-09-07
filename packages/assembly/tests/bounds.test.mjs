@@ -8,19 +8,19 @@ import { binding, compile, declaration, exact, profile, provide, slot } from "./
 
 const limit = (operation) => assert.throws(operation, (error) => error.kind === "limit");
 const plan = () => ({
-  kind: "get-modular.composition-plan", schemaVersion: 1, profileId: "bounds",
-  roots: ["root"], selections: [{ moduleId: "root", implementationId: "root" }],
-  bindings: [], dependencyOrder: ["root"],
+  kind: "get-modular.composition-plan", schemaVersion: 1, profileId: "synthetic/bounds",
+  roots: ["synthetic/root"], selections: [{ moduleId: "synthetic/root", implementationId: "synthetic/root" }],
+  bindings: [], dependencyOrder: ["synthetic/root"],
 });
 const row = (count) => ({
-  ...binding("root", "slot", Array.from({ length: count }, () => "provider")),
-  capabilityId: "value", compatibility: exact(),
+  ...binding("synthetic/root", "slot", Array.from({ length: count }, () => "synthetic/provider")),
+  capabilityId: "synthetic/value", compatibility: exact(),
 });
 
 test("all individual declaration, plan and alias ceilings accept boundary and refuse plus one", () => {
   for (const [field, maximum, make] of [
-    ["provides", 64, (index) => provide(`value-${index}`)],
-    ["slots", 128, (index) => slot(`slot-${index}`, "value")],
+    ["provides", 64, (index) => provide(`synthetic/value-${index}`)],
+    ["slots", 128, (index) => slot(`slot-${index}`, "synthetic/value")],
   ]) {
     const input = declaration("root");
     input[field] = Array.from({ length: maximum }, (_, index) => make(index));
@@ -33,15 +33,17 @@ test("all individual declaration, plan and alias ceilings accept boundary and re
   snapshotDeclaration(owned);
   owned.owner.path.push("part");
   limit(() => snapshotDeclaration(owned));
-  for (const text of ["a".repeat(128), "é".repeat(64), "😀".repeat(32)]) {
-    const input = declaration(text);
+  // Multibyte inputs exercise the structural byte ceiling, independently of Core grammar.
+  for (const text of ["s/" + "a".repeat(126), "é".repeat(64), "😀".repeat(32)]) {
+    const input = declaration("root");
+    input.moduleId = text;
     snapshotDeclaration(input);
     input.moduleId += "a";
     limit(() => snapshotDeclaration(input));
   }
   for (const [field, maximum, value] of [
-    ["roots", 1024, "root"], ["selections", 4096, { moduleId: "root", implementationId: "root" }],
-    ["dependencyOrder", 4096, "root"], ["bindings", 65536, row(0)],
+    ["roots", 1024, "synthetic/root"], ["selections", 4096, { moduleId: "synthetic/root", implementationId: "synthetic/root" }],
+    ["dependencyOrder", 4096, "synthetic/root"], ["bindings", 65536, row(0)],
   ]) {
     const input = plan();
     input[field] = Array(maximum).fill(value);
@@ -52,7 +54,7 @@ test("all individual declaration, plan and alias ceilings accept boundary and re
   const input = plan();
   input.bindings = [row(1024)];
   snapshotPlan(input);
-  input.bindings[0].providerImplementationIds.push("provider");
+  input.bindings[0].providerImplementationIds.push("synthetic/provider");
   limit(() => snapshotPlan(input));
   const aliases = Object.fromEntries(Array.from({ length: 1024 }, (_, index) => [`root-${index}`, {}]));
   rootKeys(aliases);
@@ -83,18 +85,18 @@ test("aggregate declarations and handle count are checked before compilation", a
     const composition = structuredClone(original), factories = [];
     for (let index = 0; index < 4096; index++) {
       const item = declaration(`item-${index}`);
-      item[field] = Array.from({ length: 16 }, (_, slotIndex) => field === "provides" ? provide(`value-${slotIndex}`) : slot(`slot-${slotIndex}`, "value"));
+      item[field] = Array.from({ length: 16 }, (_, slotIndex) => field === "provides" ? provide(`synthetic/value-${slotIndex}`) : slot(`slot-${slotIndex}`, "synthetic/value"));
       factories.push(api.bindFactory(item, async () => ({ instance: {}, capabilities: {} })));
     }
-    composition.plan.selections = factories.map((_, index) => ({ moduleId: `item-${index}`, implementationId: `item-${index}` }));
-    composition.plan.dependencyOrder = factories.map((_, index) => `item-${index}`);
-    composition.plan.roots = ["item-0"];
+    composition.plan.selections = factories.map((_, index) => ({ moduleId: `synthetic/item-${index}`, implementationId: `synthetic/item-${index}` }));
+    composition.plan.dependencyOrder = factories.map((_, index) => `synthetic/item-${index}`);
+    composition.plan.roots = ["synthetic/item-0"];
     let calls = 0;
     const ports = { compileComposition: async () => { calls++; return original; } };
     await prepareConstruction({ composition, factories, roots: { root: factories[0] } }, ports);
     assert.equal(calls, 1);
     const extra = declaration("item-4095");
-    extra[field] = Array.from({ length: 17 }, (_, index) => field === "provides" ? provide(`value-${index}`) : slot(`slot-${index}`, "value"));
+    extra[field] = Array.from({ length: 17 }, (_, index) => field === "provides" ? provide(`synthetic/value-${index}`) : slot(`slot-${index}`, "synthetic/value"));
     factories[4095] = api.bindFactory(extra, async () => ({ instance: {}, capabilities: {} }));
     const result = await prepareConstruction({ composition, factories, roots: { root: factories[0] } }, ports);
     assert.equal(result.error.code, "assembly.prepare.limit");
@@ -118,20 +120,21 @@ test("dense arrays and alias own-key counts include nonenumerable and symbol pro
 });
 
 test("public Core accepts 4096 selected implementations and 1024 providers per row", async () => {
-  const leaves = Array.from({ length: 4095 }, (_, index) => declaration(`leaf-${index}`, ["value"]));
+  const leaves = Array.from({ length: 4095 }, (_, index) => declaration(`leaf-${index}`, ["synthetic/value"]));
   const groups = Array.from({ length: 4 }, (_, index) => leaves.slice(index * 1024, (index + 1) * 1024));
-  const root = declaration("root", [], groups.map((group, index) => slot(`group-${index}`, "value", many({ min: group.length, max: group.length }))));
+  const root = declaration("root", [], groups.map((group, index) => slot(`group-${index}`, "synthetic/value", many({ min: group.length, max: group.length }))));
   const declarations = [...leaves, root];
-  const rows = groups.map((group, index) => binding("root", `group-${index}`, group.map((item) => item.implementationId)));
+  const rows = groups.map((group, index) => binding("synthetic/root", `group-${index}`, group.map((item) => item.implementationId)));
   const composition = await compile(declarations, profile(declarations, rows));
   const api = assemblyFor();
   const handles = declarations.map((item) => api.bindFactory(item, async (dependencies) => ({
     instance: item === root ? dependencies : item.implementationId,
-    capabilities: item === root ? {} : { value: item.implementationId },
+    capabilities: item === root ? {} : { "synthetic/value": item.implementationId },
   })));
   const result = await api.prepare({ composition, factories: handles, roots: { root: handles.at(-1) } });
   assert.equal(result.status, "prepared");
   const outcome = await result.prepared.run();
+  assert.equal(outcome.status, "succeeded");
   assert.equal(outcome.created.length, 4096);
   assert.deepEqual(outcome.roots.root["group-0"], groups[0].map((item) => item.implementationId));
 });

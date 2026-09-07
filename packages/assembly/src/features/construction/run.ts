@@ -11,7 +11,13 @@ function observe(carrier: unknown): Promise<Settlement> {
     throw new TypeError("Expected a current-realm ordinary Promise");
   }
   // In particular, reject an own constructor getter before species lookup.
-  if (Reflect.ownKeys(carrier).length !== 0) throw new TypeError("Factory Promise must have no own properties");
+  for (const key of Reflect.ownKeys(carrier)) {
+    // Node async context tracking attaches opaque symbol data to native Promises.
+    const descriptor = Object.getOwnPropertyDescriptor(carrier, key)!;
+    if (typeof key !== "symbol" || !("value" in descriptor)) {
+      throw new TypeError("Factory Promise must have no own string properties or accessors");
+    }
+  }
   return new Promise<Settlement>((resolve) => {
     try {
       Reflect.apply(Promise.prototype.then, carrier, [

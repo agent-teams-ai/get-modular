@@ -16,7 +16,7 @@ test("unsupported carriers never call then or an own constructor getter", async 
     const outcome = await host.prepared.run();
     assert.equal(outcome.status, "failed");
     assert.equal(outcome.code, "assembly.run.unsupported-carrier");
-    assert.equal(outcome.implementationId, "app");
+    assert.equal(outcome.implementationId, "synthetic/app");
     assert.equal(outcome.created.length, 3);
     assert.equal(outcome.returned, undefined);
   }
@@ -26,7 +26,7 @@ test("unsupported carriers never call then or an own constructor getter", async 
 test("nested instance and capability then methods remain opaque and unfrozen", async () => {
   let calls = 0;
   const value = { initial: "", then() { calls++; throw new Error("opaque"); } };
-  const host = await synthetic({ storeFactory: async () => ({ instance: value, capabilities: { store: value } }) });
+  const host = await synthetic({ storeFactory: async () => ({ instance: value, capabilities: { "synthetic/store": value } }) });
   const result = await host.prepared.run();
   assert.equal(result.status, "succeeded");
   assert.equal(result.roots.app.deps.store, value);
@@ -60,7 +60,7 @@ test("throw, rejection and malformed completion retain causes and ownership", as
     assert.equal(result.phase, "completion");
     assert.equal(result.created.length, 3);
     assert.equal(result.returned.product, product);
-    assert.equal(result.returned.implementationId, "app");
+    assert.equal(result.returned.implementationId, "synthetic/app");
   }
   assert.equal(reads, 0);
 });
@@ -77,7 +77,7 @@ test("late rejection and malformed fulfillment fail while separately recording a
     assert.equal(outcome.status, "failed");
     assert.equal(outcome.cancellation.reason, "cancelled");
     assert.equal(outcome.created.length, 0);
-    assert.deepEqual(host.trace, ["store"]);
+    assert.deepEqual(host.trace, ["synthetic/store"]);
     if (mode === "reject") assert.equal(outcome.cause, cause);
     else assert.equal(outcome.returned.product, product);
   }
@@ -98,8 +98,8 @@ test("internal journal seam proves handoff before and after commit", async () =>
     const result = await prepareConstruction(input, {
       compileComposition,
       commitCreated(journal, entry) {
-        if (entry.implementationId !== "app" || afterCommit) journal.push(entry);
-        if (entry.implementationId === "app") throw marker;
+        if (entry.implementationId !== "synthetic/app" || afterCommit) journal.push(entry);
+        if (entry.implementationId === "synthetic/app") throw marker;
       },
     });
     assert.equal(result.status, "prepared");

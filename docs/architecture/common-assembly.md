@@ -102,7 +102,9 @@ are not deeply frozen, logged or copied. Library internals never await a nested
 capability, including one with a callable `then`.
 
 The supported factory carrier is a current-realm Promise with ordinary
-Promise.prototype and no own properties, under unmodified intrinsics. Inspect
+Promise.prototype and no own string properties, under unmodified intrinsics.
+Own symbol data properties used by Node async context tracking are permitted and
+ignored; symbol accessors are rejected without invocation. Inspect
 its prototype/own descriptors before intrinsic Promise observation; reject a
 constructor getter without invoking it. Direct thenable objects and subclasses are not
 supported or assimilated. Intrinsic observation verifies the internal brand.
@@ -183,3 +185,20 @@ historical evidence and is not overwritten.
   synthetic Host. Core never imports assembly; no development tooling leaks.
 - Focused assembly gates, check:changed, check:fast, one final full check and
   independent exact-source review pass. Record evidence and remaining limitations.
+
+## Historical Core evidence and current admission
+
+The [assembly admission checker](../../architecture/checks/assembly-admission.mjs)
+authenticates ADR-0023 and the private manifest before separating Assembly paths
+from the unchanged Core scope. Its lock transition admits only the exact internal
+Assembly-to-Core importer; every other byte and dependency remains bound to the
+historical M2 lock. The original ledgers, verifier and retained test bytes remain
+unchanged. A historical reader reconstructs and verifies the pinned lock only for
+M2 evidence, while current dependency checks keep reading the current lock.
+
+[Admission regressions](../../tests/assembly-admission.test.mjs) reject graph drift,
+changed authority and unadmitted packages. The current
+[retained replay adapter](../../tests/assembly-admission-retained.test.mjs) preserves
+the historical cases and explicitly proves that the old verifier still rejects
+current lock bytes without the authenticated transition. This finite transition
+is not an authorization to change third-party dependencies or historical evidence.

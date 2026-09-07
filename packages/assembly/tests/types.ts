@@ -6,31 +6,31 @@ import type { CapabilityContract, SuccessfulComposition } from "@get-modular/ass
 type Store = { readonly value: string };
 type Filter = { readonly apply: (value: string) => string };
 type Capabilities = {
-  store: CapabilityContract<Store, "v1">;
-  filter: CapabilityContract<Filter, "v1">;
-  logger: CapabilityContract<{ readonly log: (value: string) => void }, "v1">;
+  "synthetic/store": CapabilityContract<Store, "synthetic/v1">;
+  "synthetic/filter": CapabilityContract<Filter, "synthetic/v1">;
+  "synthetic/logger": CapabilityContract<{ readonly log: (value: string) => void }, "synthetic/v1">;
 };
-function exact<const T extends string>(token: T): { readonly family: "exact"; readonly familyVersion: 1; readonly token: T } {
-  return { family: "exact", familyVersion: 1, token };
+function exact<const T extends string>(compatibilityToken: T): { readonly family: "exact"; readonly familyVersion: 1; readonly "token": T } {
+  return { family: "exact", familyVersion: 1, "token": compatibilityToken };
 }
 const owner = { authority: "synthetic", path: ["types"] };
 const storeDeclaration = defineModule({
-  kind: "get-modular.module-declaration", schemaVersion: 1, moduleId: "store", implementationId: "store", owner,
-  provides: [{ capabilityId: "store", compatibility: exact("v1") }], slots: [],
+  kind: "get-modular.module-declaration", schemaVersion: 1, moduleId: "synthetic/store", implementationId: "synthetic/store", owner,
+  provides: [{ capabilityId: "synthetic/store", compatibility: exact("synthetic/v1") }], slots: [],
 });
 const rootDeclaration = defineModule({
-  kind: "get-modular.module-declaration", schemaVersion: 1, moduleId: "root", implementationId: "root", owner,
+  kind: "get-modular.module-declaration", schemaVersion: 1, moduleId: "synthetic/root", implementationId: "synthetic/root", owner,
   provides: [], slots: [
-    { slotId: "store", capabilityId: "store", compatibility: exact("v1"), cardinality: required() },
-    { slotId: "logger", capabilityId: "logger", compatibility: exact("v1"), cardinality: optional() },
-    { slotId: "filters", capabilityId: "filter", compatibility: exact("v1"), cardinality: many({ min: 0, max: 10 }) },
+    { slotId: "store", capabilityId: "synthetic/store", compatibility: exact("synthetic/v1"), cardinality: required() },
+    { slotId: "logger", capabilityId: "synthetic/logger", compatibility: exact("synthetic/v1"), cardinality: optional() },
+    { slotId: "filters", capabilityId: "synthetic/filter", compatibility: exact("synthetic/v1"), cardinality: many({ min: 0, max: 10 }) },
   ],
 });
 const api = assemblyFor<Capabilities>();
 const store = api.bindFactory(storeDeclaration, async (deps, { signal }) => {
   const empty: Readonly<Record<string, never>> = deps;
   const hostSignal: AbortSignal = signal;
-  return { instance: { host: true }, capabilities: { store: { value: "data" } } };
+  return { instance: { host: true }, capabilities: { "synthetic/store": { value: "data" } } };
 });
 const root = api.bindFactory(rootDeclaration, async (deps) => {
   const value: string = deps.store.value;
@@ -59,28 +59,28 @@ async function consume(composition: SuccessfulComposition) {
 // @ts-expect-error Callback parameter inference cannot widen declaration slots.
 api.bindFactory(rootDeclaration, async (deps: { store: number }) => ({ instance: deps.store, capabilities: {} }));
 // @ts-expect-error Capability values must match the Host contract.
-api.bindFactory(storeDeclaration, async () => ({ instance: {}, capabilities: { store: 12 } }));
+api.bindFactory(storeDeclaration, async () => ({ instance: {}, capabilities: { "synthetic/store": 12 } }));
 // @ts-expect-error Declared capabilities cannot be omitted.
 api.bindFactory(storeDeclaration, async () => ({ instance: {}, capabilities: {} }));
-const wrongIdentity = defineModule({ ...storeDeclaration, provides: [{ capabilityId: "store", compatibility: exact("v2") }] });
+const wrongIdentity = defineModule({ ...storeDeclaration, provides: [{ capabilityId: "synthetic/store", compatibility: exact("synthetic/v2") }] });
 // @ts-expect-error Exact compatibility identities are part of the mapping.
-api.bindFactory(wrongIdentity, async () => ({ instance: {}, capabilities: { store: { value: "" } } }));
-const unknownCapability = defineModule({ ...storeDeclaration, provides: [{ capabilityId: "missing", compatibility: exact("v1") }] });
+api.bindFactory(wrongIdentity, async () => ({ instance: {}, capabilities: { "synthetic/store": { value: "" } } }));
+const unknownCapability = defineModule({ ...storeDeclaration, provides: [{ capabilityId: "synthetic/missing", compatibility: exact("synthetic/v1") }] });
 // @ts-expect-error Unknown capability identifiers are not added by a callback.
-api.bindFactory(unknownCapability, async () => ({ instance: {}, capabilities: { missing: {} } }));
+api.bindFactory(unknownCapability, async () => ({ instance: {}, capabilities: { "synthetic/missing": {} } }));
 const widened: ModuleDeclaration = storeDeclaration;
 // @ts-expect-error Widened declarations do not grant a precise injection contract.
 api.bindFactory(widened, async () => ({ instance: {}, capabilities: {} }));
-type Narrower = { store: CapabilityContract<Store & { readonly extra: true }, "v1">; filter: Capabilities["filter"]; logger: Capabilities["logger"] };
+type Narrower = { "synthetic/store": CapabilityContract<Store & { readonly extra: true }, "synthetic/v1">; "synthetic/filter": Capabilities["synthetic/filter"]; "synthetic/logger": Capabilities["synthetic/logger"] };
 const narrower = assemblyFor<Narrower>();
 declare const composition: SuccessfulComposition;
 // @ts-expect-error Host mappings are invariant even when values are covariantly assignable.
 narrower.prepare({ composition, factories: [store], roots: { store } });
-type OtherIdentity = { store: CapabilityContract<Store, "v2"> };
+type OtherIdentity = { "synthetic/store": CapabilityContract<Store, "synthetic/v2"> };
 // @ts-expect-error Handles with different exact identities cannot cross mappings.
 assemblyFor<OtherIdentity>().prepare({ composition, factories: [store], roots: { store } });
 function largeSlot<const S extends string>(slotId: S) {
-  return { slotId, capabilityId: "store" as const, compatibility: exact("v1"), cardinality: required() };
+  return { slotId, capabilityId: "synthetic/store" as const, compatibility: exact("synthetic/v1"), cardinality: required() };
 }
 const large = defineModule({
   ...rootDeclaration, slots: [
@@ -100,3 +100,17 @@ api.bindFactory(large, async (deps) => {
   deps.s64;
   return { instance: last, capabilities: {} };
 });
+
+// A union must not manufacture dependencies absent from the captured declaration.
+declare const ambiguousKey: "left" | "right";
+const unionKey = defineModule({ ...rootDeclaration, slots: [largeSlot(ambiguousKey)] });
+// @ts-expect-error One runtime slot cannot provide both keys of a union.
+api.bindFactory(unionKey, async () => ({ instance: {}, capabilities: {} }));
+declare const alternativeSlots: readonly [] | readonly [ReturnType<typeof largeSlot<"store">>];
+const unionTuple = defineModule({ ...rootDeclaration, slots: alternativeSlots });
+// @ts-expect-error The store slot is absent in one possible tuple.
+api.bindFactory(unionTuple, async () => ({ instance: {}, capabilities: {} }));
+declare const alternativeSlot: ReturnType<typeof largeSlot<"left">> | ReturnType<typeof largeSlot<"right">>;
+const unionElement = defineModule({ ...rootDeclaration, slots: [alternativeSlot] });
+// @ts-expect-error A tuple element must have one definite slot identity.
+api.bindFactory(unionElement, async () => ({ instance: {}, capabilities: {} }));

@@ -18,9 +18,9 @@ test("ordered many, optional presence, diamond sharing, roots without provides",
     assert.ok(Object.isFrozen(deps) && Object.isFrozen(deps.filters) && Object.isFrozen(result.created));
     for (const filter of deps.filters) assert.equal(filter.store, deps.store);
     assert.equal(Object.isFrozen(deps.store), false);
-    const store = result.created.find((entry) => entry.implementationId === "store");
-    assert.notEqual(store.instance, store.capabilities.store);
-    assert.equal(store.capabilities.store, deps.store);
+    const store = result.created.find((entry) => entry.implementationId === "synthetic/store");
+    assert.notEqual(store.instance, store.capabilities["synthetic/store"]);
+    assert.equal(store.capabilities["synthetic/store"], deps.store);
     assert.deepEqual(host.trace, host.input.composition.plan.dependencyOrder);
     for (const entry of result.created) {
       assert.ok(Object.isFrozen(entry) && Object.isFrozen(entry.capabilities));
@@ -34,13 +34,13 @@ test("a pending provider prevents later invocations and concurrent attempts are 
   let invocation = 0;
   const host = await synthetic({ storeFactory: () => pending[invocation++].promise });
   const first = host.prepared.run(), second = host.prepared.run();
-  assert.deepEqual(host.trace, ["store", "store"]);
+  assert.deepEqual(host.trace, ["synthetic/store", "synthetic/store"]);
   const left = { initial: "L" }, right = { initial: "R" };
-  pending[1].resolve({ instance: {}, capabilities: { store: right } });
+  pending[1].resolve({ instance: {}, capabilities: { "synthetic/store": right } });
   const b = await second;
   assert.equal(b.roots.app.output, "RBA");
-  assert.equal(host.trace.filter((id) => id === "app").length, 1);
-  pending[0].resolve({ instance: {}, capabilities: { store: left } });
+  assert.equal(host.trace.filter((id) => id === "synthetic/app").length, 1);
+  pending[0].resolve({ instance: {}, capabilities: { "synthetic/store": left } });
   const a = await first;
   assert.equal(a.roots.app.output, "LBA");
   assert.notEqual(a.created, b.created);
@@ -49,7 +49,7 @@ test("a pending provider prevents later invocations and concurrent attempts are 
 });
 
 test("repeated and finite nested runs use separate journals and dependency maps", async () => {
-  const api = assemblyFor(), item = declaration("nested", ["value"]);
+  const api = assemblyFor(), item = declaration("nested", ["synthetic/value"]);
   let nesting = false, runnable, inner, count = 0;
   const handle = api.bindFactory(item, async () => {
     const instance = { sequence: ++count };
@@ -58,7 +58,7 @@ test("repeated and finite nested runs use separate journals and dependency maps"
       inner = await runnable.run();
       nesting = false;
     }
-    return { instance, capabilities: { value: instance } };
+    return { instance, capabilities: { "synthetic/value": instance } };
   });
   runnable = await prepared(api, { composition: await compile([item]), factories: [handle], roots: { root: handle } });
   const first = await runnable.run(), firstInner = inner, second = await runnable.run();
@@ -71,16 +71,16 @@ test("repeated and finite nested runs use separate journals and dependency maps"
 });
 
 test("several capabilities and defined undefined values never fall back to instance", async () => {
-  const api = assemblyFor(), provider = declaration("provider", ["left", "right", "empty"]);
+  const api = assemblyFor(), provider = declaration("provider", ["synthetic/left", "synthetic/right", "synthetic/empty"]);
   const instance = {}, left = {}, right = {};
-  const handle = api.bindFactory(provider, async () => ({ instance, capabilities: { left, right, empty: undefined } }));
+  const handle = api.bindFactory(provider, async () => ({ instance, capabilities: { "synthetic/left": left, "synthetic/right": right, "synthetic/empty": undefined } }));
   const result = await (await prepared(api, { composition: await compile([provider]), factories: [handle], roots: { root: handle } })).run();
   assert.equal(result.status, "succeeded");
   assert.equal(result.roots.root, instance);
-  assert.equal(result.created[0].capabilities.left, left);
-  assert.equal(result.created[0].capabilities.right, right);
-  assert.ok(Object.hasOwn(result.created[0].capabilities, "empty"));
-  assert.equal(result.created[0].capabilities.empty, undefined);
+  assert.equal(result.created[0].capabilities["synthetic/left"], left);
+  assert.equal(result.created[0].capabilities["synthetic/right"], right);
+  assert.ok(Object.hasOwn(result.created[0].capabilities, "synthetic/empty"));
+  assert.equal(result.created[0].capabilities["synthetic/empty"], undefined);
 });
 
 test("already aborted means no calls; valid late fulfillment is journaled before cancellation", async () => {
@@ -98,13 +98,13 @@ test("already aborted means no calls; valid late fulfillment is journaled before
   await Promise.resolve();
   assert.equal(finished, false);
   const instance = {}, store = { initial: "" };
-  gate.resolve({ instance, capabilities: { store } });
+  gate.resolve({ instance, capabilities: { "synthetic/store": store } });
   const result = await running;
   assert.equal(result.status, "cancelled");
   assert.equal(result.reason, "during");
   assert.equal(result.created.length, 1);
   assert.equal(result.created[0].instance, instance);
-  assert.deepEqual(host.trace, ["store"]);
+  assert.deepEqual(host.trace, ["synthetic/store"]);
 });
 
 test("abort during final fulfillment cancels; settled outcomes remain terminal", async () => {
@@ -125,7 +125,7 @@ test("Host cleanup can deduplicate resources shared by instances and capabilitie
   const resource = { initial: "", dispose() { disposed++; } };
   const cause = new Error("app failed");
   const host = await synthetic({
-    storeFactory: async () => ({ instance: resource, capabilities: { store: resource } }),
+    storeFactory: async () => ({ instance: resource, capabilities: { "synthetic/store": resource } }),
     appFactory: async () => { throw cause; },
   });
   const result = await host.prepared.run();
