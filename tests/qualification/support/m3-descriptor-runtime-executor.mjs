@@ -17,6 +17,23 @@ function collect(value, callers) {
   }
 }
 
+// Only baseline JSON documents/profile are probed; the descriptor-specific
+// sixth declaration retains its shape so accessor checks remain meaningful.
+function mutateBaseline(value, seen = new Set()) {
+  if (value === null || typeof value !== 'object' || seen.has(value)) return 0;
+  seen.add(value);
+  let mutations = 0;
+  for (const key of Reflect.ownKeys(value)) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!Object.hasOwn(descriptor, 'value') || key === 'length') continue;
+    mutations += mutateBaseline(descriptor.value, seen);
+    if (!descriptor.writable || descriptor.value !== null && typeof descriptor.value === 'object') continue;
+    Object.defineProperty(value, key, { ...descriptor, value: null });
+    mutations += 1;
+  }
+  return mutations;
+}
+
 export async function executeDescriptorRuntimeFixture(namespace, fixture, capabilities = {}) {
   demand(typeof namespace.compileComposition === 'function', 'missing object compiler');
   demand(typeof fixture.id === 'string' && fixture.id.length > 0, 'missing descriptor ID');
@@ -34,12 +51,18 @@ export async function executeDescriptorRuntimeFixture(namespace, fixture, capabi
     containers: 0, mutationRejections: 0, getterCalls: 0,
     lengthAttempt: materialized.lengthAttempt,
     foreignRealm: materialized.foreignRealm,
-    callerWrapperMutated: false,
+    callerWrapperMutated: false, nestedMutations: 0,
   };
   const pending = namespace.compileComposition(input);
   demand(materialized.getterCalls() === 0, 'getter called during synchronous admission');
   // All recipes have this mutable cooperative wrapper, even frozen documents.
   // No await or transport precedes this synchronous ownership probe.
+  const seen = new Set();
+  for (const document of input.declarations.slice(0, 5)) {
+    observations.nestedMutations += mutateBaseline(document, seen);
+  }
+  observations.nestedMutations += mutateBaseline(input.profile, seen);
+  demand(observations.nestedMutations > 0, 'baseline mutation probe did not execute');
   input.declarations.length = 0;
   input.profile = null;
   observations.callerWrapperMutated = true;

@@ -165,3 +165,13 @@ test('rejects deferred snapshots and getter invocation even with the expected re
     },
   }, fixture), /getter called during compilation/);
 });
+
+
+test('rejects shallow snapshots that retain nested caller documents', async () => {
+  await assert.rejects(executeDescriptorRuntimeFixture({
+    compileComposition: input => {
+      const shallow = { declarations: input.declarations.slice(), profile: input.profile };
+      return Promise.resolve().then(() => production.compileComposition(shallow));
+    },
+  }, fixtures()[0]), /result .*mismatch|missing container|container kind mismatch/);
+});
