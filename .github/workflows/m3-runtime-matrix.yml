@@ -1,0 +1,179 @@
+name: M3 same generated archive diagnostics
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GIT_NO_REPLACE_OBJECTS: '1'
+  GIT_CONFIG_COUNT: '1'
+  GIT_CONFIG_KEY_0: core.autocrlf
+  GIT_CONFIG_VALUE_0: 'false'
+  M3_DISPATCH_SHA: ${{ github.sha }}
+
+jobs:
+  pack:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    outputs:
+      artifact-id: ${{ steps.archive.outputs.artifact-id }}
+      sha256: ${{ steps.pack.outputs.sha256 }}
+      integrity: ${{ steps.pack.outputs.integrity }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@008330803749db0355799c700092d9a85fd074e9 # v6.0.9
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - run: node tests/qualification/m3-runtime-matrix.mjs init
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - id: pack
+        run: node tests/qualification/m3-runtime-matrix.mjs pack
+      - id: archive
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: m3-generated-archive
+          path: ${{ env.M3_ROOT }}/transfer/core.tgz
+          if-no-files-found: error
+          compression-level: 0
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: m3-diagnostics-pack
+          path: ${{ env.M3_ROOT }}/diagnostics
+          include-hidden-files: true
+          if-no-files-found: warn
+
+  node:
+    needs: pack
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            row: node-24-linux
+          - os: macos-15
+            row: node-24-macos
+          - os: windows-2025
+            row: node-24-windows
+    env:
+      M3_ARCHIVE_ARTIFACT_ID: ${{ needs.pack.outputs.artifact-id }}
+      M3_ARCHIVE_SHA256: ${{ needs.pack.outputs.sha256 }}
+      M3_ARCHIVE_INTEGRITY: ${{ needs.pack.outputs.integrity }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@008330803749db0355799c700092d9a85fd074e9 # v6.0.9
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - run: node tests/qualification/m3-runtime-matrix.mjs init
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.pack.outputs.artifact-id }}
+          merge-multiple: true
+          path: ${{ env.M3_ROOT }}/incoming
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: node tests/qualification/m3-runtime-matrix.mjs node ${{ matrix.row }}
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: m3-rows-${{ matrix.row }}
+          path: ${{ env.M3_ROOT }}/rows
+          if-no-files-found: warn
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: m3-diagnostics-${{ matrix.row }}
+          path: ${{ env.M3_ROOT }}/diagnostics
+          include-hidden-files: true
+          if-no-files-found: warn
+
+  native:
+    needs: pack
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      M3_ARCHIVE_ARTIFACT_ID: ${{ needs.pack.outputs.artifact-id }}
+      M3_ARCHIVE_SHA256: ${{ needs.pack.outputs.sha256 }}
+      M3_ARCHIVE_INTEGRITY: ${{ needs.pack.outputs.integrity }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@008330803749db0355799c700092d9a85fd074e9 # v6.0.9
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - run: node tests/qualification/m3-runtime-matrix.mjs init
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.pack.outputs.artifact-id }}
+          merge-multiple: true
+          path: ${{ env.M3_ROOT }}/incoming
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: node tests/qualification/m3-runtime-matrix.mjs native
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: m3-rows-native
+          path: ${{ env.M3_ROOT }}/rows
+          if-no-files-found: warn
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: m3-diagnostics-native
+          path: ${{ env.M3_ROOT }}/diagnostics
+          include-hidden-files: true
+          if-no-files-found: warn
+
+  collect:
+    if: always()
+    needs: [pack, node, native]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      M3_ARCHIVE_ARTIFACT_ID: ${{ needs.pack.outputs.artifact-id }}
+      M3_ARCHIVE_SHA256: ${{ needs.pack.outputs.sha256 }}
+      M3_ARCHIVE_INTEGRITY: ${{ needs.pack.outputs.integrity }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - run: node tests/qualification/m3-runtime-matrix.mjs init
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: m3-rows-*
+          merge-multiple: false
+          path: ${{ env.M3_ROOT }}/collected
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: m3-diagnostics-*
+          merge-multiple: false
+          path: ${{ env.M3_ROOT }}/driver-evidence
+      - if: always()
+        run: node tests/qualification/m3-runtime-matrix.mjs collect
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: m3-diagnostics-collector
+          path: ${{ env.M3_ROOT }}/diagnostics
+          if-no-files-found: warn
