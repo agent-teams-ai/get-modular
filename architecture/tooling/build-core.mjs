@@ -24,14 +24,6 @@ export async function buildCore({ snapshot } = {}) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  if (process.argv.length > 3
-    || process.argv[2] !== undefined && process.argv[2] !== "--governance") {
-    throw new Error("build.unsupported-options");
-  }
-  if (process.argv[2] === "--governance") {
-    const { runGovernance } = await import("../checks/governance.mjs");
-    await runGovernance();
-  } else {
-    await buildCore();
-  }
+  if (process.argv.length !== 2) throw new Error("build.unsupported-options");
+  await buildCore();
 }

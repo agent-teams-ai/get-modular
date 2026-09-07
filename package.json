@@ -15,7 +15,7 @@
     "url": "git+https://github.com/agent-teams-ai/get-modular.git"
   },
   "scripts": {
-    "check": "pnpm runtime:preflight && pnpm core:build:governance && pnpm foundation:check && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm core:typecheck:prepared && pnpm core:test && pnpm contracts:check && pnpm contracts:test && pnpm qualification:resource-profile && pnpm qualification:v1-diagnostics-protocol && pnpm qualification:v1-graph-semantics && pnpm qualification:self-composition-templates && pnpm governance:test",
+    "check": "pnpm runtime:preflight && pnpm governance:check && pnpm foundation:check && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm core:typecheck:prepared && pnpm core:test && pnpm contracts:check && pnpm contracts:test && pnpm qualification:resource-profile && pnpm qualification:v1-diagnostics-protocol && pnpm qualification:v1-graph-semantics && pnpm qualification:self-composition-templates && pnpm governance:test",
     "check:changed": "agent-teams-foundation agent-workflow changed --consumer .",
     "check:fast": "pnpm runtime:preflight && pnpm core:build && pnpm foundation:check && pnpm architecture:feature-module-profile && pnpm docs:check && pnpm core:typecheck:prepared && pnpm core:test",
     "docs:changed": "pnpm docs:check && pnpm docs:quality",
@@ -46,7 +46,6 @@
     "core:typecheck": "node architecture/tooling/generate-core.mjs --typecheck",
     "core:typecheck:prepared": "node node_modules/typescript/bin/tsc -p packages/core/tsconfig.typecheck.json --noEmit",
     "core:build": "node architecture/tooling/build-core.mjs",
-    "core:build:governance": "node architecture/tooling/build-core.mjs --governance",
     "core:test": "node --test \"packages/core/tests/**/*.test.mjs\""
   },
   "devDependencies": {
