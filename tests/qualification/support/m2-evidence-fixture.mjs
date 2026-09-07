@@ -115,7 +115,7 @@ export async function prepareM2EvidenceFixture(snapshot) {
   }
   files.set('package.json', Buffer.from('{"private":true,"type":"module"}\n'));
   files.set('m2-reporter.mjs', Buffer.from(REPORTER));
-  const directory = await mkdtemp(join(tmpdir(), 'TEST-gm-m2-evidence-'));
+  const directory = await realpath(await mkdtemp(join(tmpdir(), 'TEST-gm-m2-evidence-')));
   const dispose = () => rm(directory, { recursive: true, force: true });
   const verify = async () => {
     assert((await lstat(directory)).isDirectory());

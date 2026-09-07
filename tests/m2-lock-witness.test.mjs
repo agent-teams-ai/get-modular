@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { cp, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
@@ -107,6 +107,7 @@ test('a different tracked current lock passes; missing lock, worktree and index 
 test('both frozen suites execute verbatim and fixture or terminal-result substitutions fail', async t => {
   const fixture = await prepareM2EvidenceFixture(await captureGitIndexSnapshot(root));
   try {
+    assert.equal(fixture.directory, await realpath(fixture.directory));
     const receipt = await fixture.run();
     assert.equal(receipt.tests, 7);
     assert.equal(receipt.currentInstallationQualified, false);
