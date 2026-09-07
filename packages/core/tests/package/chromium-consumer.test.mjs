@@ -3,9 +3,13 @@ import { test } from 'node:test';
 import { createServer, request } from 'node:http';
 import {
   publicArchiveRoot, routeHandler, validateInput, verifyRecords,
-  verifySemanticRecords,
+  verifySemanticRecords, verifyDescriptorRecords,
 } from '../../../../tests/qualification/m3-chromium-consumer.mjs';
 import { readPackageArchive } from '../../../../tests/qualification/support/package-archive.mjs';
+import { produceDescriptorRuntimeFixtures } from '../../../../tests/qualification/support/m3-descriptor-runtime-fixtures.mjs';
+import {
+  executeDescriptorRuntimeFixture,
+} from '../../../../tests/qualification/support/m3-descriptor-runtime-executor.mjs';
 
 test('routes serve copied bytes and reject noncanonical or unlisted targets', async () => {
   const bytes = Buffer.from('export const value = 1;');
@@ -109,4 +113,62 @@ test('semantic comparison requires both ordered modes, complete results and loca
   const wrongExpected = structuredClone(fixtures);
   wrongExpected[817].expected.ok = true;
   assert.throws(() => verifySemanticRecords(records, wrongExpected), /full expected result/);
+});
+
+test('descriptor parent rejects omissions, forged applicability and foreign worker coverage', async () => {
+  const fixtures = [...produceDescriptorRuntimeFixtures()];
+  const freeze = value => {
+    if (value && typeof value === 'object') {
+      for (const child of Object.values(value)) freeze(child);
+      Object.freeze(value);
+    }
+    return value;
+  };
+  // This is verifier evidence from a synthetic subject, not compiler qualification.
+  const records = [];
+  const foreign = fixtures.filter(row => row.applicability.foreignRealm === 'required');
+  for (const fixture of fixtures) {
+    if (foreign.includes(fixture)) continue;
+    records.push(await executeDescriptorRuntimeFixture({
+      compileComposition: () => Promise.resolve(freeze(structuredClone(fixture.expected))),
+    }, fixture));
+  }
+  const evidence = { records, unmet: foreign.map(row => ({
+    id: row.id, capability: 'foreign-realm',
+    code: 'descriptor.foreign-realm-unavailable',
+  })) };
+  verifyDescriptorRecords(evidence, fixtures, true);
+  assert.throws(() => verifyDescriptorRecords(evidence, fixtures));
+  for (const mutate of [
+    value => { value.records.pop(); },
+    value => { value.records[1].id = value.records[0].id; },
+    value => { value.records.reverse(); },
+    value => { value.records[0].result.ok = !value.records[0].result.ok; },
+    value => { value.records[0].mode = 'raw'; },
+    value => { value.records[0].applicability.foreignRealm = 'required'; },
+    value => { value.records[0].observations.foreignRealm = 'supplied'; },
+    value => { value.records[0].observations.getterCalls = 1; },
+    value => { value.records[0].observations.nestedMutations = 0; },
+    value => { value.records[0].observations.nestedMutations += 1; },
+    value => { value.records[0].observations.containers += 1; },
+    value => { value.records[0].observations.mutationRejections -= 1; },
+    value => { value.records[0].observations.callerWrapperMutated = false; },
+    value => { value.unmet.pop(); },
+    value => { value.unmet[0].id = value.records[0].id; },
+    value => { value.unmet[0].code = 'passed'; },
+    value => { value.unmet = []; },
+    value => { value.claim = 'descriptor68'; },
+    value => { value.records.push(...foreign.map(row => ({
+      ...structuredClone(value.records[0]), id: row.id,
+    }))); },
+  ]) {
+    const changed = structuredClone(evidence);
+    mutate(changed);
+    assert.throws(() => verifyDescriptorRecords(changed, fixtures, true));
+  }
+  const falseApplicability = structuredClone(fixtures);
+  falseApplicability.find(row => row.applicability.foreignRealm === 'required')
+    .applicability.foreignRealm = 'nonapplicable';
+  assert.throws(() => verifyDescriptorRecords(evidence, falseApplicability, true));
+  assert.throws(() => verifyDescriptorRecords(evidence, fixtures.slice(1), true));
 });

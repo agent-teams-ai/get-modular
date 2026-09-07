@@ -4,6 +4,9 @@ import test from 'node:test';
 import {
   validateInput, electronEnvironment, verifyElectronResults,
 } from '../../../../tests/qualification/m3-electron-consumer.mjs';
+import { runInNewContext } from 'node:vm';
+import { produceDescriptorRuntimeFixtures } from '../../../../tests/qualification/support/m3-descriptor-runtime-fixtures.mjs';
+import { executeDescriptorRuntimeFixture } from '../../../../tests/qualification/support/m3-descriptor-runtime-executor.mjs';
 
 const input = {
   absoluteelectronExecutable: '/tools/Electron.app/Contents/MacOS/Electron', archivePath: '/retained/core.tgz',
@@ -129,6 +132,63 @@ test('Electron applies shared semantic verification to both realms', () => {
       mutate(observations[realm]);
       assert.throws(() =>
         verifyElectronResults(observations, fixtures, config, semanticFixtures));
+    }
+  }
+});
+
+test('Electron requires complete descriptor evidence and foreign coverage in each realm', async () => {
+  const descriptorFixtures = [...produceDescriptorRuntimeFixtures()];
+  const foreignRealmFactory = runInNewContext(`(() => ({
+    objectPrototype: Object.prototype, arrayPrototype: Array.prototype,
+    record: () => ({}), nullRecord: () => Object.create(null), array: () => [],
+  }))`, Object.create(null), { contextCodeGeneration: { strings: false, wasm: false } });
+  const freeze = value => {
+    if (value && typeof value === 'object') {
+      for (const child of Object.values(value)) freeze(child);
+      Object.freeze(value);
+    }
+    return value;
+  };
+  // Synthetic result producer exercises the verifier, not the installed compiler.
+  const records = [];
+  for (const fixture of descriptorFixtures) {
+    records.push(await executeDescriptorRuntimeFixture({
+      compileComposition: () => Promise.resolve(freeze(structuredClone(fixture.expected))),
+    }, fixture, { foreignRealmFactory }));
+  }
+  for (const realm of ['main', 'renderer']) {
+    for (const mutate of [
+      value => { delete value.descriptors; },
+      value => { value.descriptors.records.pop(); },
+      value => { value.descriptors.records[0].result.ok = !value.descriptors.records[0].result.ok; },
+      value => { value.descriptors.records[0].observations.getterCalls = 1; },
+      value => { value.descriptors.records[0].observations.nestedMutations = 0; },
+      value => { value.descriptors.records[0].observations.mutationRejections = 0; },
+      value => {
+        value.descriptors.records.find(row => row.applicability.foreignRealm === 'required')
+          .observations.foreignRealm = 'nonapplicable';
+      },
+      value => {
+        value.descriptors.records.find(row => row.applicability.foreignRealm === 'required')
+          .applicability.foreignRealm = 'nonapplicable';
+      },
+      value => {
+        const foreign = value.descriptors.records.filter(row =>
+          row.applicability.foreignRealm === 'required');
+        value.descriptors.records = value.descriptors.records.filter(row => !foreign.includes(row));
+        value.descriptors.unmet = foreign.map(row => ({
+          id: row.id, capability: 'foreign-realm',
+          code: 'descriptor.foreign-realm-unavailable',
+        }));
+      },
+    ]) {
+      const { observations, config } = evidence();
+      for (const value of Object.values(observations))
+        value.descriptors = { records: structuredClone(records), unmet: [] };
+      verifyElectronResults(observations, fixtures, config, undefined, descriptorFixtures);
+      mutate(observations[realm]);
+      assert.throws(() =>
+        verifyElectronResults(observations, fixtures, config, undefined, descriptorFixtures));
     }
   }
 });
