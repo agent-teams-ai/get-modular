@@ -15,6 +15,8 @@ import { auditM1JavaScriptClosure } from './support/m1-javascript-closure.mjs';
 import { produceRuntimeFixtures } from './support/m3-runtime-fixture-producer.mjs';
 import { produceSemanticRuntimeFixtures } from './support/m3-semantic-runtime-fixtures.mjs';
 import { produceDescriptorRuntimeFixtures } from './support/m3-descriptor-runtime-fixtures.mjs';
+import { produceP500RuntimeFixtures } from './support/m3-p500-runtime-fixtures.mjs';
+import { executeSemanticRuntimeFixture } from './support/m3-semantic-runtime-executor.mjs';
 import { bounded, connectCDP } from './support/m3-cdp.mjs';
 import { runInNewContext } from 'node:vm';
 import { Buffer } from 'node:buffer';
@@ -91,11 +93,15 @@ export function verifyRecords(records, fixtures) {
 }
 
 export function verifySemanticRecords(records, fixtures) {
+  verifySemanticInventory(records, fixtures, 818);
+}
+
+function verifySemanticInventory(records, fixtures, count) {
   assert.ok(Array.isArray(fixtures));
-  assert.equal(fixtures.length, 818, 'complete semantic fixture inventory');
-  assert.equal(new Set(fixtures.map(row => row.id)).size, 818, 'unique semantic IDs');
+  assert.equal(fixtures.length, count, 'complete semantic fixture inventory');
+  assert.equal(new Set(fixtures.map(row => row.id)).size, count, 'unique semantic IDs');
   assert.ok(Array.isArray(records), 'semantic observations required');
-  assert.equal(records.length, 1636, 'no skipped semantic observations');
+  assert.equal(records.length, count * 2, 'no skipped semantic observations');
   const measure = value => {
     if (value === null || typeof value !== 'object') {
       return { containers: 0, mutationRejections: 0 };
@@ -137,6 +143,58 @@ export function verifySemanticRecords(records, fixtures) {
       }, `${fixture.id}/${mode}: local observations`);
     }
   }
+}
+
+// Reuse the single-fixture semantic executor without changing its 818-case API.
+export async function executeP500RuntimeFixtures(namespace, fixtures) {
+  if (!Array.isArray(fixtures) || fixtures.length !== 5 ||
+      new Set(fixtures.map(row => row.id)).size !== 5)
+    throw new Error('complete P500 inventory required');
+  const records = [];
+  for (const fixture of fixtures) {
+    for (const mode of ['object', 'raw'])
+      records.push(await executeSemanticRuntimeFixture(namespace, fixture, mode));
+  }
+  return records;
+}
+
+export const p500RuntimeSource = `
+import { executeSemanticRuntimeFixture } from './m3-semantic-runtime-executor.mjs';
+export ${executeP500RuntimeFixtures.toString()}
+`;
+
+const preparedP500Evidence = new WeakSet();
+export async function prepareP500Evidence() {
+  const fixtures = [];
+  for await (const fixture of produceP500RuntimeFixtures()) fixtures.push(fixture);
+  const freeze = value => {
+    if (value && typeof value === 'object') {
+      for (const child of Object.values(value)) freeze(child);
+      Object.freeze(value);
+    }
+    return value;
+  };
+  freeze(fixtures);
+  // Independent fixture results drive only this preparation subject, before load.
+  const expected = [];
+  for (const fixture of fixtures) {
+    const compile = () => Promise.resolve(freeze(structuredClone(fixture.expected)));
+    for (const mode of ['object', 'raw']) {
+      expected.push(await executeSemanticRuntimeFixture({
+        compileComposition: compile, compileCompositionJson: compile,
+      }, fixture, mode));
+    }
+  }
+  verifySemanticInventory(expected, fixtures, 5);
+  const evidence = freeze({ fixtures, expected });
+  preparedP500Evidence.add(evidence);
+  return evidence;
+}
+
+export function verifyP500Records(records, evidence) {
+  assert.ok(preparedP500Evidence.has(evidence), 'precomputed independent P500 evidence required');
+  verifySemanticInventory(records, evidence.fixtures, 5);
+  assert.deepEqual(records, evidence.expected, 'complete P500 local proof');
 }
 
 export const descriptorHelperNames = Object.freeze([
@@ -461,6 +519,7 @@ export function routeHandler(inputRoutes) {
 const realmSource = `
 import { executeRuntimeFixtures } from './m3-runtime-executor.mjs';
 import { executeSemanticRuntimeFixtures } from './m3-semantic-runtime-executor.mjs';
+import { executeP500RuntimeFixtures } from './p500-runtime.mjs';
 import { runDescriptors } from './descriptor-browser.mjs';
 import { runInvocations } from './invocation-browser.mjs';
 export async function run(rootURL, realm) {
@@ -480,6 +539,9 @@ export async function run(rootURL, realm) {
   const semanticResponse = await fetch('/dev/semantic-fixtures.json');
   if (!semanticResponse.ok) throw new Error('semantic fixtures unavailable');
   const semanticFixtures = await semanticResponse.json();
+  const p500Response = await fetch('/dev/p500-fixtures.json');
+  if (!p500Response.ok) throw new Error('P500 fixtures unavailable');
+  const p500Fixtures = await p500Response.json();
   const invocationResponse = await fetch('/dev/invocation-fixtures.json');
   if (!invocationResponse.ok) throw new Error('invocation fixtures unavailable');
   const invocationFixtures = await invocationResponse.json();
@@ -487,10 +549,11 @@ export async function run(rootURL, realm) {
   const invocations = await runInvocations(namespace, invocationFixtures, realm === 'dedicated-module-worker');
   const records = await executeRuntimeFixtures(namespace, fixtures);
   const semanticRecords = await executeSemanticRuntimeFixtures(namespace, semanticFixtures);
+  const p500Records = await executeP500RuntimeFixtures(namespace, p500Fixtures);
   const descriptors = await runDescriptors(namespace, realm === 'dedicated-module-worker');
   return { realm, secureContext: isSecureContext, crossOriginIsolated,
     sharedArrayBuffer: typeof SharedArrayBuffer === 'function',
-    userAgent: navigator.userAgent, records, semanticRecords, descriptors, invocations };
+    userAgent: navigator.userAgent, records, semanticRecords, p500Records, descriptors, invocations };
 }
 `;
 const workerSource = `
@@ -535,6 +598,7 @@ export async function runChromiumConsumer(rawInput) {
   const closure = auditM1JavaScriptClosure(archive.files, 'm2-generated');
   const fixtures = produceRuntimeFixtures();
   const semanticFixtures = [...produceSemanticRuntimeFixtures()];
+  const p500Evidence = await prepareP500Evidence();
   const descriptorFixtures = [...produceDescriptorRuntimeFixtures()];
   const invocationFixtures = [...produceInvocationRuntimeFixtures()];
   const invocationExpected = await prepareInvocationEvidence(invocationFixtures);
@@ -553,6 +617,8 @@ export async function runChromiumConsumer(rawInput) {
     for (const path of closure.modules) add(`/archive/${path}`, archive.files.get(path));
     add('/dev/fixtures.json', json(fixtures), 'application/json');
     add('/dev/semantic-fixtures.json', json(semanticFixtures), 'application/json');
+    add('/dev/p500-fixtures.json', json(p500Evidence.fixtures), 'application/json');
+    add('/dev/p500-runtime.mjs', p500RuntimeSource);
     add('/dev/descriptor-fixtures.json', json(descriptorFixtures), 'application/json');
     add('/dev/descriptor-browser.mjs', descriptorBrowserSource);
     add('/dev/invocation-browser.mjs', invocationBrowserSource);
@@ -569,6 +635,8 @@ export async function runChromiumConsumer(rawInput) {
     await writeFile(join(out, 'invocation-fixtures.json'), json(invocationFixtures), { flag: 'wx' });
     await writeFile(join(out, 'invocation-expected.json'), json(invocationExpected), { flag: 'wx' });
     await writeFile(join(out, 'semantic-fixtures.json'), json(semanticFixtures), { flag: 'wx' });
+    await writeFile(join(out, 'p500-fixtures.json'), json(p500Evidence.fixtures), { flag: 'wx' });
+    await writeFile(join(out, 'p500-expected.json'), json(p500Evidence.expected), { flag: 'wx' });
     await writeFile(join(out, 'descriptor-fixtures.json'), json(descriptorFixtures), { flag: 'wx' });
     await writeFile(join(out, 'descriptor-expected.json'), json(descriptorFixtures.map(
       ({ id, category, applicability, expected }) =>
@@ -589,6 +657,9 @@ export async function runChromiumConsumer(rawInput) {
       new URL(import.meta.url), new URL('./support/m3-cdp.mjs', import.meta.url),
       new URL('./support/m3-runtime-fixture-producer.mjs', import.meta.url),
       new URL('./support/m3-semantic-runtime-fixtures.mjs', import.meta.url),
+      new URL('./support/m3-p500-runtime-fixtures.mjs', import.meta.url),
+      new URL('./support/resource-profile-v2.mjs', import.meta.url),
+      new URL('./support/scale-output.mjs', import.meta.url),
       new URL('./support/m3-descriptor-runtime-fixtures.mjs', import.meta.url),
       new URL('./support/m3-invocation-runtime-fixtures.mjs', import.meta.url),
       new URL('./m2-candidate/object-descriptor-cases.mjs', import.meta.url),
@@ -598,13 +669,15 @@ export async function runChromiumConsumer(rawInput) {
       runnerIdentity.push({ url: url.href, sha256: sha256(await readFile(url)) });
     }
     const metadata = {
-      input, status: 'prepared', claim: 'not-claimed', scope: 'PARTIAL raw123 + semantic818/object+raw + descriptor68/window and descriptor65/worker (3 unmet foreign-realm IDs); excludes all-vectors, P500 and runtime conformance',
+      input, status: 'prepared', claim: 'not-claimed', scope: 'PARTIAL raw123 + semantic818/object+raw + P500 five/object+raw (10 calls per realm) + descriptor68/window and descriptor65/worker (3 unmet foreign-realm IDs); excludes all-vectors and runtime conformance',
       review: 'pending independent review', purpose: 'diagnostic',
       promotion: 'none; not the six-runtime matrix',
       node: process.version, os: platform(), arch: arch(), publicRoot,
       archiveSha256: archive.sha256, integrity: archive.integrity,
       inventory: archive.inventory, fixtureSha256: sha256(json(fixtures)),
       semanticFixtureSha256: sha256(json(semanticFixtures)),
+      p500FixtureSha256: sha256(json(p500Evidence.fixtures)),
+      p500ExpectedSha256: sha256(json(p500Evidence.expected)),
       descriptorFixtureSha256: sha256(json(descriptorFixtures)),
       invocationFixtureSha256: sha256(json(invocationFixtures)),
       invocationExpectedSha256: sha256(json(invocationExpected)),
@@ -681,6 +754,7 @@ export async function runChromiumConsumer(rawInput) {
     await writeFile(join(out, 'window.json'), json(windowResult), { flag: 'wx' });
     verifyRecords(windowResult.records, fixtures);
     verifySemanticRecords(windowResult.semanticRecords, semanticFixtures);
+    verifyP500Records(windowResult.p500Records, p500Evidence);
     verifyDescriptorRecords(windowResult.descriptors, descriptorFixtures);
     verifyInvocationRecords(windowResult.invocations, invocationFixtures, invocationExpected, 'window');
     const workerResult = await evaluate(`new Promise((resolve, reject) => {
@@ -695,6 +769,7 @@ export async function runChromiumConsumer(rawInput) {
     await writeFile(join(out, 'worker.json'), json(workerResult), { flag: 'wx' });
     verifyRecords(workerResult.records, fixtures);
     verifySemanticRecords(workerResult.semanticRecords, semanticFixtures);
+    verifyP500Records(workerResult.p500Records, p500Evidence);
     verifyDescriptorRecords(workerResult.descriptors, descriptorFixtures, true);
     verifyInvocationRecords(workerResult.invocations, invocationFixtures, invocationExpected, 'worker');
     observations = { version, window: windowResult, worker: workerResult };
@@ -720,7 +795,7 @@ export async function runChromiumConsumer(rawInput) {
   const after = await archiveIdentity(input);
   assert.equal(after.sha256, archive.sha256, 'unchanged archive after teardown');
   await rm(profile, { recursive: true, force: true });
-  const result = { status: 'verified', claim: 'not-claimed', scope: 'PARTIAL raw123 + semantic818/object+raw + descriptor68/window and descriptor65/worker (3 unmet foreign-realm IDs); excludes all-vectors, P500 and runtime conformance',
+  const result = { status: 'verified', claim: 'not-claimed', scope: 'PARTIAL raw123 + semantic818/object+raw + P500 five/object+raw (10 calls per realm) + descriptor68/window and descriptor65/worker (3 unmet foreign-realm IDs); excludes all-vectors and runtime conformance',
     review: 'pending independent review', promotion: 'none', exactSourceSHA: input.exactSourceSHA,
     archiveSha256: after.sha256, integrity: after.integrity, os: platform(), arch: arch(), observations };
   await writeFile(join(out, 'result.pending.json'), json(result), { flag: 'wx' });

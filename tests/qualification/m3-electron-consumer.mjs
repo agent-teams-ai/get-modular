@@ -1,4 +1,4 @@
-// Partial retained-archive diagnostic: raw123, semantic818/both carriers, descriptor68/object.
+// Partial retained-archive diagnostic: raw123, semantic818 and P500 five/both carriers, descriptor68/object.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
@@ -21,6 +21,7 @@ import {
   verifyDescriptorRecords, descriptorBrowserSource, descriptorHelperNames,
   prepareInvocationEvidence, verifyInvocationRecords, invocationBrowserSource,
   invocationHelperNames, invocationForeignSource,
+  prepareP500Evidence, verifyP500Records, p500RuntimeSource,
 } from './m3-chromium-consumer.mjs';
 
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -67,6 +68,7 @@ export function electronEnvironment(out, inherited = process.env) {
 const rendererSource = `
 import { executeRuntimeFixtures } from './m3-runtime-executor.mjs';
 import { executeSemanticRuntimeFixtures } from './m3-semantic-runtime-executor.mjs';
+import { executeP500RuntimeFixtures } from './p500-runtime.mjs';
 import { runDescriptors } from './descriptor-browser.mjs';
 import { runInvocations } from './invocation-browser.mjs';
 export async function run(rootURL) {
@@ -88,6 +90,9 @@ export async function run(rootURL) {
   const semanticResponse = await fetch('/dev/semantic-fixtures.json');
   if (!semanticResponse.ok) throw new Error('semantic fixtures unavailable');
   const semanticFixtures = await semanticResponse.json();
+  const p500Response = await fetch('/dev/p500-fixtures.json');
+  if (!p500Response.ok) throw new Error('P500 fixtures unavailable');
+  const p500Fixtures = await p500Response.json();
   const invocationResponse = await fetch('/dev/invocation-fixtures.json');
   if (!invocationResponse.ok) throw new Error('invocation fixtures unavailable');
   const invocationFixtures = await invocationResponse.json();
@@ -95,8 +100,9 @@ export async function run(rootURL) {
   const invocations = await runInvocations(namespace, invocationFixtures);
   const records = await executeRuntimeFixtures(namespace, fixtures);
   const semanticRecords = await executeSemanticRuntimeFixtures(namespace, semanticFixtures);
+  const p500Records = await executeP500RuntimeFixtures(namespace, p500Fixtures);
   const descriptors = await runDescriptors(namespace);
-  return { ...local, records, semanticRecords, descriptors, invocations };
+  return { ...local, records, semanticRecords, p500Records, descriptors, invocations };
 }
 `;
 
@@ -118,6 +124,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { executeRuntimeFixtures } from './m3-runtime-executor.mjs';
 import { executeSemanticRuntimeFixtures } from './m3-semantic-runtime-executor.mjs';
+import { executeP500RuntimeFixtures } from './p500-runtime.mjs';
 import { executeDescriptorRuntimeFixtures } from './m3-descriptor-runtime-executor.mjs';
 import { runInNewContext } from 'node:vm';
 import { Buffer } from 'node:buffer';
@@ -159,11 +166,13 @@ try {
   };
   assert.equal(main.resolvedRoot, config.installedRoot);
   const invocationFixtures = JSON.parse(readFileSync(join(config.uniqueOutputDir, 'invocation-fixtures.json'), 'utf8'));
+  const p500Fixtures = JSON.parse(readFileSync(join(config.uniqueOutputDir, 'p500-fixtures.json'), 'utf8'));
   const namespace = await import('@get-modular/core');
   main.invocations = { records: await executeInvocationRuntimeFixtures(namespace, invocationFixtures,
     { nodeBuffer: Buffer, foreignRealmFactory: invocationForeignRealmFactory }), unmet: [] };
   main.records = await executeRuntimeFixtures(namespace, JSON.parse(readFileSync(join(config.uniqueOutputDir, 'fixtures.json'), 'utf8')));
   main.semanticRecords = await executeSemanticRuntimeFixtures(namespace, JSON.parse(readFileSync(join(config.uniqueOutputDir, 'semantic-fixtures.json'), 'utf8')));
+  main.p500Records = await executeP500RuntimeFixtures(namespace, p500Fixtures);
   main.descriptors = {
     records: await executeDescriptorRuntimeFixtures(namespace,
       JSON.parse(readFileSync(join(config.uniqueOutputDir, 'descriptor-fixtures.json'), 'utf8')),
@@ -204,8 +213,9 @@ try {
 void execute();
 `;
 
-export function verifyElectronResults(observations, fixtures, config, semanticFixtures, descriptorFixtures, invocationFixtures, invocationExpected) {
+export function verifyElectronResults(observations, fixtures, config, semanticFixtures, descriptorFixtures, invocationFixtures, invocationExpected, p500Evidence) {
   const { main, renderer } = observations;
+  for (const realm of [main, renderer]) verifyP500Records(realm.p500Records, p500Evidence);
   assert.equal(main.realm, 'electron-main');
   assert.equal(main.processType, 'browser');
   assert.equal(main.resolvedRoot, config.installedRoot);
@@ -315,6 +325,7 @@ export async function runElectronConsumer(rawInput) {
   const closure = auditM1JavaScriptClosure(archive.files, 'm2-generated');
   const fixtures = produceRuntimeFixtures();
   const semanticFixtures = [...produceSemanticRuntimeFixtures()];
+  const p500Evidence = await prepareP500Evidence();
   const descriptorFixtures = [...produceDescriptorRuntimeFixtures()];
   const invocationFixtures = [...produceInvocationRuntimeFixtures()];
   const invocationExpected = await prepareInvocationEvidence(invocationFixtures);
@@ -334,6 +345,8 @@ export async function runElectronConsumer(rawInput) {
   for (const path of closure.modules) add(`/archive/${path}`, archive.files.get(path));
   add('/dev/fixtures.json', json(fixtures), 'application/json');
   add('/dev/semantic-fixtures.json', json(semanticFixtures), 'application/json');
+  add('/dev/p500-fixtures.json', json(p500Evidence.fixtures), 'application/json');
+  add('/dev/p500-runtime.mjs', p500RuntimeSource);
   add('/dev/descriptor-fixtures.json', json(descriptorFixtures), 'application/json');
   add('/dev/descriptor-browser.mjs', descriptorBrowserSource);
   add('/dev/invocation-browser.mjs', invocationBrowserSource);
@@ -341,19 +354,22 @@ export async function runElectronConsumer(rawInput) {
   add('/dev/descriptor-blank.html', '<!doctype html><title>Owned descriptor realm</title>',
     'text/html; charset=utf-8');
   add('/dev/renderer.mjs', rendererSource);
-  add('/index.html', '<!doctype html><meta charset="utf-8"><title>ElectronDesktopSmoke: raw123 + semantic818</title>', 'text/html; charset=utf-8');
+  add('/index.html', '<!doctype html><meta charset="utf-8"><title>ElectronDesktopSmoke: raw123 + semantic818 + P500 five</title>', 'text/html; charset=utf-8');
   for (const name of ['m3-runtime-executor.mjs', 'm3-runtime-materializers.mjs', 'm3-semantic-runtime-executor.mjs', ...descriptorHelperNames, ...invocationHelperNames]) {
     const bytes = await readFile(new URL(`./support/${name}`, import.meta.url));
     add(`/dev/${name}`, bytes);
     await writeFile(join(appDir, name), bytes, { flag: 'wx' });
   }
   await writeFile(join(appDir, 'preload.cjs'), preloadSource, { flag: 'wx' });
+  await writeFile(join(appDir, 'p500-runtime.mjs'), p500RuntimeSource, { flag: 'wx' });
   await writeFile(join(appDir, 'main.mjs'), mainSource, { flag: 'wx' });
   const toolURLs = [
     import.meta.url, './m3-chromium-consumer.mjs',
     './support/package-archive.mjs', './support/m1-javascript-closure.mjs',
     './support/m3-runtime-fixture-producer.mjs', './m2-candidate/raw-document-cases.mjs',
     './support/m3-semantic-runtime-fixtures.mjs', './support/m3-semantic-runtime-executor.mjs',
+    './support/m3-p500-runtime-fixtures.mjs',
+    './support/resource-profile-v2.mjs', './support/scale-output.mjs',
     './support/m3-descriptor-runtime-fixtures.mjs',
     './support/m3-invocation-runtime-fixtures.mjs',
     ...invocationHelperNames.map(name => `./support/${name}`),
@@ -369,6 +385,8 @@ export async function runElectronConsumer(rawInput) {
   await writeFile(join(out, 'expected.json'), json(fixtures.map(({ id, expected }) => ({ id, result: expected }))), { flag: 'wx' });
   await writeFile(join(out, 'fixtures.json'), json(fixtures), { flag: 'wx' });
   await writeFile(join(out, 'semantic-fixtures.json'), json(semanticFixtures), { flag: 'wx' });
+  await writeFile(join(out, 'p500-fixtures.json'), json(p500Evidence.fixtures), { flag: 'wx' });
+  await writeFile(join(out, 'p500-expected.json'), json(p500Evidence.expected), { flag: 'wx' });
   await writeFile(join(out, 'descriptor-fixtures.json'), json(descriptorFixtures), { flag: 'wx' });
   await writeFile(join(out, 'invocation-fixtures.json'), json(invocationFixtures), { flag: 'wx' });
   await writeFile(join(out, 'invocation-expected.json'), json(invocationExpected), { flag: 'wx' });
@@ -379,7 +397,9 @@ export async function runElectronConsumer(rawInput) {
     ({ id, category, expected }) => ['object', 'raw'].map(mode =>
       ({ id, category, mode, result: expected })))), { flag: 'wx' });
   const metadata = {
-    input, status: 'prepared', claim: 'not-claimed', scope: 'ElectronDesktopSmoke/PARTIAL raw123 + semantic818/object+raw + descriptor68/object in main and renderer; excludes all-vectors, P500 and runtime conformance', promotion: 'none; not the six-runtime matrix',
+    input, status: 'prepared', claim: 'not-claimed', scope: 'ElectronDesktopSmoke/PARTIAL raw123 + semantic818/object+raw + P500 five/object+raw (10 calls per realm) + descriptor68/object in main and renderer; excludes all-vectors and runtime conformance', promotion: 'none; not the six-runtime matrix',
+    p500FixtureSha256: sha256(json(p500Evidence.fixtures)),
+    p500ExpectedSha256: sha256(json(p500Evidence.expected)),
     descriptorFixtureSha256: sha256(json(descriptorFixtures)),
     invocationFixtureSha256: sha256(json(invocationFixtures)),
     invocationExpectedSha256: sha256(json(invocationExpected)),
@@ -419,7 +439,7 @@ export async function runElectronConsumer(rawInput) {
     await writeFile(join(out, 'exit.json'), json(exit), { flag: 'wx' });
     assert.deepEqual(exit, { code: 0, signal: null }, 'Electron execution failed; inspect retained log and failure.json');
     observations = { main: JSON.parse(await readFile(join(out, 'main.json'), 'utf8')), renderer: JSON.parse(await readFile(join(out, 'renderer.json'), 'utf8')) };
-    verifyElectronResults(observations, fixtures, config, semanticFixtures, descriptorFixtures, invocationFixtures, invocationExpected); assert.equal(observations.main.pid, child.pid);
+    verifyElectronResults(observations, fixtures, config, semanticFixtures, descriptorFixtures, invocationFixtures, invocationExpected, p500Evidence); assert.equal(observations.main.pid, child.pid);
   } finally {
     try { await stopOwned(child, exited); }
     finally {
