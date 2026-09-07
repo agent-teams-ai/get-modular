@@ -85,6 +85,39 @@ function verifyAssemblyLockDelta(currentBytes) {
   return historicalBytes;
 }
 
+// ADR-0024: current package admission owns only the admitted workspace edges.
+// Root tooling resolution remains subject to frozen install and Foundation;
+// it must not be authenticated against the historical oracle's entire lock.
+async function validateCurrentAssemblyInputs({ readBytes, readPackageManifest }) {
+  const corePath = "packages/core/package.json";
+  const core = await readPackageManifest(corePath);
+  assert.equal(core?.name, "@get-modular/core", "Assembly admission Core identity differs");
+  const inventory = await packageManifestInventory([corePath], {
+    readPackageManifest: async () => core,
+  });
+  assert.deepEqual(manifestCarrierViolations(inventory), [],
+    "Assembly admission requires the Core carrier and dependency boundary");
+  const workspace = parse((await readBytes("pnpm-workspace.yaml")).toString("utf8"));
+  assert.deepEqual(workspace?.packages, ["packages/*"],
+    "Assembly admission requires the admitted workspace package scope");
+  const lock = parse((await readBytes("pnpm-lock.yaml")).toString("utf8"));
+  assert.equal(lock?.lockfileVersion, "9.0", "Assembly admission lock format differs");
+  const importers = lock.importers;
+  assert(importers && typeof importers === "object" && !Array.isArray(importers),
+    "Assembly admission requires an importer map");
+  assert.deepEqual(Object.keys(importers).sort(), [".", "packages/assembly", "packages/core"],
+    "Assembly admission requires exactly the current workspace importers");
+  assert(importers["."] && typeof importers["."] === "object" && !Array.isArray(importers["."]),
+    "Assembly admission requires the root tooling importer");
+  assert.deepEqual(importers["packages/core"], {},
+    "Assembly admission requires a dependency-free Core importer");
+  assert.deepEqual(importers["packages/assembly"], {
+    dependencies: {
+      "@get-modular/core": { specifier: "workspace:*", version: "link:../core" },
+    },
+  }, "Assembly admission requires only the exact Assembly to Core workspace edge");
+}
+
 export async function validateAssemblyAdmission({
   productionArtifacts, readBytes, readPackageManifest,
 }) {
@@ -98,7 +131,7 @@ export async function validateAssemblyAdmission({
   assert(productionArtifacts.includes("packages/core/package.json"),
     "Assembly admission requires the Core package");
   await validateAssemblyPackage({ readBytes, readPackageManifest });
-  verifyAssemblyLockDelta(await readBytes("pnpm-lock.yaml"));
+  await validateCurrentAssemblyInputs({ readBytes, readPackageManifest });
   return Object.freeze(artifacts);
 }
 

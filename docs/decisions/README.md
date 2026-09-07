@@ -17,6 +17,8 @@ summary: Index of Get Modular architecture decisions.
 
 ## Accepted decisions
 
+- [ADR-0024: Separate historical M2 lock custody from current dependencies](0024-separate-historical-m2-lock-custody-from-current-dependencies.md)
+
 - [ADR-0023: Add a thin Host-owned assembly component above Core](0023-add-a-thin-host-owned-assembly-component-above-core.md)
 - [ADR-0019: Separate upload admission from publication completion](0019-separate-upload-admission-from-publication-completion.md)
 

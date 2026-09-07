@@ -6,6 +6,8 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
+import { parse, stringify } from "yaml";
+import { readCurrentM2Authority } from "../architecture/checks/m2-lock-witness.mjs";
 import { promisify } from "node:util";
 import {
   ASSEMBLY_DECISION_PATH, ASSEMBLY_MANIFEST_PATH, M2_HISTORICAL_LOCK_DIGEST,
@@ -38,7 +40,8 @@ const inputs = {
   productionArtifacts: artifacts, readBytes: read,
   readPackageManifest: async path => JSON.parse(read(path).toString("utf8")),
 };
-const evidenceInput = { ledgerBytes, expectedLedgerDigest, readBytes: read };
+const witnessAuthority = await readCurrentM2Authority(read);
+const evidenceInput = { ledgerBytes, expectedLedgerDigest, readBytes: witnessAuthority.readBytes };
 const admit = extra => validateAssemblyAdmission({ ...inputs, ...extra });
 const changeLock = (before, after) => {
   const text = currentLock.toString("utf8");
@@ -122,39 +125,102 @@ test("Assembly requires the exact accepted ADR-0023 and its registry entry", asy
   }), /registered ADR-0023/u);
 });
 
-test("current lock admits exactly the Assembly importer and no other graph or byte drift", async () => {
-  for (const bytes of [
-    changeLock("autoInstallPeers: true", "autoInstallPeers: false"),
-    changeLock("specifier: 2.9.0", "specifier: 2.9.1"),
-    changeLock("      yaml:\n        specifier: 'catalog:'\n        version: 2.9.0", "      yaml:\n        specifier: 'catalog:'\n        version: 2.9.1"),
-    changeLock("      yaml: 2.9.0", "      yaml: 2.9.1"),
-    changeLock("sha512-hcK886", "sha512-XcK886"),
-    changeLock("  packages/core: {}", "  packages/core:\n    dependencies:\n      rogue: {specifier: 1.0.0, version: 1.0.0}"),
-    changeLock("version: link:../core", "version: link:../other"),
-    changeLock("specifier: workspace:*", "specifier: ^0.1.0"),
-    changeLock(importer, importer + importer),
-    changeLock(importer, "  packages/assembly: {}\n\n"),
-    changeLock(importer, importer.replace("    dependencies:", "    optionalDependencies:")),
-    changeLock(importer, importer.replace("\n\n", "\n    devDependencies: {}\n\n")),
-    changeLock("  packages/core: {}", "  packages/extra: {}\n\n  packages/core: {}"),
-    Buffer.from(currentLock.toString("utf8").replace(importer, "").replace("snapshots:\n\n", "snapshots:\n\n" + importer)),
-    Buffer.from(currentLock.toString("utf8") + "\n"), Buffer.from("importers: [\n"),
-  ]) {
-    const readBytes = path => path === "pnpm-lock.yaml" ? bytes : read(path);
-    await assert.rejects(admit({ readBytes }));
-    await assert.rejects(createHistoricalM2EvidenceReader({ ...evidenceInput, readBytes }));
+test("current admission rejects malformed, missing, extra and redirected importers", async () => {
+  const current = parse(currentLock.toString("utf8"));
+  const encode = value => Buffer.from(stringify(value));
+  const locks = [Buffer.from("importers: [\n"),
+    changeLock(importer, importer + importer)];
+  for (const replacement of [undefined, null, [], {}, true]) {
+    locks.push(encode({ ...current, importers: replacement }));
   }
-  const historical = changeLock(importer, "");
-  assert.equal(sha(historical), M2_HISTORICAL_LOCK_DIGEST);
-  await assert.rejects(admit({
-    readBytes: path => path === "pnpm-lock.yaml" ? historical : read(path),
-  }), /exactly the reviewed lock importer addition/u);
+  for (const name of [".", "packages/core", "packages/assembly"]) {
+    const changed = structuredClone(current);
+    delete changed.importers[name];
+    locks.push(encode(changed));
+    for (const value of [null, [], true]) {
+      locks.push(encode({ ...current, importers: { ...current.importers, [name]: value } }));
+    }
+  }
+  locks.push(encode({ ...current, importers: { ...current.importers, "packages/extra": {} } }));
+  locks.push(encode({ ...current, lockfileVersion: "8.0" }));
+  locks.push(changeLock("  packages/core: {}",
+    "  packages/core:\n    dependencies:\n      rogue: {specifier: 1.0.0, version: 1.0.0}"));
+  for (const assembly of [
+    {}, { dependencies: {} }, { dependencies: null }, { dependencies: [] },
+    { optionalDependencies: current.importers["packages/assembly"].dependencies },
+    { ...current.importers["packages/assembly"], devDependencies: {} },
+    { ...current.importers["packages/assembly"], dependenciesMeta: {} },
+    { dependencies: { ...current.importers["packages/assembly"].dependencies, rogue: {} } },
+    { dependencies: { "@get-modular/core": { specifier: "^0.1.0", version: "link:../core" } } },
+    { dependencies: { "@get-modular/core": { specifier: "workspace:*", version: "link:../other" } } },
+    { dependencies: { "@get-modular/core": { specifier: "workspace:*", version: "link:../core", injected: true } } },
+  ]) locks.push(encode({ ...current, importers: { ...current.importers, "packages/assembly": assembly } }));
+  for (const bytes of locks) await assert.rejects(admit({
+    readBytes: path => path === "pnpm-lock.yaml" ? bytes : read(path),
+  }));
+});
+
+test("current workspace and Core manifest cannot bypass Assembly admission", async () => {
+  for (const packages of [undefined, null, [], ["packages/assembly"], ["packages/*", "other/*"],
+    ["packages/*", "!packages/core"]]) {
+    const workspace = { ...parse(read("pnpm-workspace.yaml").toString()), packages };
+    await assert.rejects(admit({ readBytes: path => path === "pnpm-workspace.yaml"
+      ? Buffer.from(stringify(workspace)) : read(path) }), /workspace package scope/u);
+  }
+  const corePath = "packages/core/package.json";
+  const core = JSON.parse(read(corePath));
+  for (const mutation of [{ name: "@rogue/core" }, { type: "commonjs" },
+    { dependencies: { rogue: "1.0.0" } }, { scripts: { install: "node bypass.mjs" } },
+    { exports: { "./bypass": "./dist/index.js" } }]) {
+    await assert.rejects(admit({ readPackageManifest: async path => path === corePath
+      ? { ...core, ...mutation } : inputs.readPackageManifest(path) }), /Assembly admission/u);
+  }
+});
+
+test("root tooling lock upgrades admit independently and compose with historical custody", async () => {
+  // A structurally consistent catalog/tool resolution update is admission input,
+  // not a claim that this hypothetical version has been installed or qualified.
+  const workspace = parse(read("pnpm-workspace.yaml").toString());
+  const previous = workspace.catalog.yaml;
+  const next = previous + "-m2-admission-fixture";
+  const changedLock = Buffer.from(currentLock.toString().replaceAll(previous, next));
+  workspace.catalog.yaml = next;
+  const changedWorkspace = Buffer.from(stringify(workspace));
+  assert.notDeepEqual(changedLock, currentLock);
+  const readBytes = path => path === "pnpm-lock.yaml" ? changedLock
+    : path === "pnpm-workspace.yaml" ? changedWorkspace : read(path);
+  assert.deepEqual(await admit({ readBytes }), artifacts.slice(2));
+  const authority = await readCurrentM2Authority(readBytes);
+  const historicalRead = await createHistoricalM2EvidenceReader({ ...evidenceInput,
+    readBytes: authority.readBytes });
+  for (const entry of ledger.artifacts) {
+    assert.equal(sha(await historicalRead(entry.path)), entry.immutableDigest, entry.path);
+  }
+  assert.equal(authority.toolingEvidence.inputs.find(row => row.path === "pnpm-lock.yaml").digest,
+    sha(changedLock));
+  await assert.rejects(createHistoricalM2EvidenceReader({ ...evidenceInput, readBytes }),
+    /differs beyond the sole importer addition/u);
+  await admit({ readBytes: path => path === "pnpm-lock.yaml"
+    ? Buffer.concat([currentLock, Buffer.from("\n# tooling formatting\n")]) : read(path) });
+});
+
+test("legacy Assembly reader still authenticates its closed historical delta", async () => {
+  const historical = await witnessAuthority.readBytes("pnpm-lock.yaml");
+  const legacy = Buffer.from(historical.toString().replace("  packages/core: {}", importer + "  packages/core: {}"));
+  assert.equal(sha(legacy), "sha256:3ae75433a52d071775c9688fb41a2f24331c9ac05b01dadf0278be7788192562");
+  const legacyRead = await createHistoricalM2EvidenceReader({ ...evidenceInput,
+    readBytes: path => path === "pnpm-lock.yaml" ? legacy : read(path) });
+  assert.deepEqual(await legacyRead("pnpm-lock.yaml"), historical);
+  for (const bytes of [Buffer.concat([legacy, Buffer.from("\n")]),
+    Buffer.from(legacy.toString().replace("version: link:../core", "version: link:../other"))]) {
+    await assert.rejects(createHistoricalM2EvidenceReader({ ...evidenceInput,
+      readBytes: path => path === "pnpm-lock.yaml" ? bytes : read(path) }));
+  }
 });
 
 test("only the historical evidence reader supplies historical lock bytes; history stays unchanged", async () => {
   const before = new Map(ledger.artifacts.map(entry => [entry.path, read(entry.path)]));
   const historicalRead = await createHistoricalM2EvidenceReader(evidenceInput);
-  assert.equal(sha(currentLock), "sha256:3ae75433a52d071775c9688fb41a2f24331c9ac05b01dadf0278be7788192562");
   assert.equal(sha(await historicalRead("pnpm-lock.yaml")), M2_HISTORICAL_LOCK_DIGEST);
   assert.deepEqual(read("pnpm-lock.yaml"), currentLock);
   for (const entry of ledger.artifacts) {
@@ -172,7 +238,8 @@ test("Assembly admission retains captured-index custody for every admission inpu
   const exec = promisify(execFile);
   const git = (...args) => exec("git", args, { cwd: directory });
   const paths = [ASSEMBLY_MANIFEST_PATH, ASSEMBLY_DECISION_PATH,
-    "architecture/decisions/accepted-decisions.json", "pnpm-lock.yaml"];
+    "architecture/decisions/accepted-decisions.json", "pnpm-lock.yaml",
+    "pnpm-workspace.yaml", "packages/core/package.json"];
   try {
     for (const path of paths) {
       await mkdir(dirname(join(directory, path)), { recursive: true });

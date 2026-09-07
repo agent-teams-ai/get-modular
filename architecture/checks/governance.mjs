@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
+import { readCurrentM2Authority } from "./m2-lock-witness.mjs";
 import { validatePrivateCoreStart } from "./private-core-start.mjs";
 import { validateAssemblyAdmission } from "./assembly-admission.mjs";
 import { GENERATED_PRODUCTION_PATH } from "./generated-production-source.mjs";
@@ -765,17 +766,7 @@ export async function runGovernance() {
     authorityDigest: ACCEPTED_AUTHORITY_LEDGER_DIGEST,
     isStartingBase: baseCommit => isStartingBaseAncestor(baseCommit, root),
     readPackageManifest,
-    readM2Authority: async () => ({
-      decisionMarkdown: (await readGovernanceInput(
-        "docs/decisions/0021-freeze-combined-diagnostic-generation-two-for-m2.md",
-        "M2 accepted umbrella",
-      )).toString("utf8"),
-      ledgerBytes: await readGovernanceInput(
-        "architecture/authority/diagnostic-generation-two-ledger.json",
-        "M2 successor evidence ledger",
-      ),
-      readBytes: path => readGovernanceInput(path, "M2 successor artifact"),
-    }),
+    readM2Authority: () => readCurrentM2Authority(readGovernanceInput),
   });
   let generation;
   try {
