@@ -85,12 +85,14 @@ export async function publishFirstCoreRelease({ identity, effects, checkpoint } 
       || prior.previousTags?.intended !== previous.intended
       || typeof prior.uploadAttempted !== 'boolean'
       || typeof prior.promotionAttempted !== 'boolean'
+      || typeof prior.intendedObserved !== 'boolean'
     )) stop('failed', 'checkpoint-identity-mismatch');
     record = {
       identity: subject,
       previousTags: { provisional: previous.provisional, intended: previous.intended },
       uploadAttempted: prior?.uploadAttempted ?? false,
       promotionAttempted: prior?.promotionAttempted ?? false,
+      intendedObserved: prior?.intendedObserved ?? false,
       stage: 'observing',
     };
     if (prior?.stage === 'failed') stop('failed', 'checkpoint-terminal-failure');
@@ -166,9 +168,19 @@ export async function publishFirstCoreRelease({ identity, effects, checkpoint } 
           ? subject.version : record.previousTags.provisional;
         const pendingProvisional = selected.provisional !== expectedProvisional
           && record.uploadAttempted && selected.provisional === record.previousTags.provisional;
-        if ((selected.provisional !== expectedProvisional && !pendingProvisional)
+        if ((record.intendedObserved && selected.intended !== subject.version)
+          || (selected.provisional !== expectedProvisional && !pendingProvisional)
           || (selected.intended !== record.previousTags.intended && selected.intended !== subject.version)) {
           stop('failed', 'concurrent-tag-change');
+        }
+        if (selected.intended === subject.version && !record.intendedObserved) {
+          record.intendedObserved = true;
+          try {
+            await checkpoint.save(snapshot());
+          } catch (error) {
+            note('checkpoint', { stage: record.stage, error: errorText(error) });
+            stop('incomplete', 'checkpoint-not-durable');
+          }
         }
         if (pendingProvisional || (requireIntended && selected.intended !== subject.version)) continue;
         return selected;

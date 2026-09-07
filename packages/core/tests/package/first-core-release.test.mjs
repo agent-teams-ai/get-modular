@@ -9,7 +9,7 @@ const VERSION = '0.1.0';
 const SUCCESS = [
   'readVersion', 'readTags', 'save:upload-intent', 'upload',
   'readVersion', 'download', 'consumer', 'readTags',
-  'save:promotion-intent', 'setTag', 'readTags',
+  'save:promotion-intent', 'setTag', 'readTags', 'save:promotion-intent',
 ];
 
 function fixture({ existing = null, intended = '0.0.0', provisional = null } = {}) {
@@ -206,7 +206,7 @@ test('ADR0019: lost promotion response only reconciles, including across resume'
     };
     const result = await f.run();
     assert.equal(result.status, applied ? 'completed' : 'incomplete');
-    const expected = applied ? SUCCESS : [...SUCCESS, 'readTags', 'readTags'];
+    const expected = applied ? SUCCESS : [...SUCCESS.slice(0, -1), 'readTags', 'readTags'];
     expectCalls(f, expected);
     assert.ok(result.evidence.some((item) => item.operation === 'setTag' && item.outcome === 'unknown'));
     if (!applied) {
@@ -218,7 +218,7 @@ test('ADR0019: lost promotion response only reconciles, including across resume'
       f.store.tags.latest = VERSION;
       const reconciled = await f.run(resumed.checkpoint);
       assert.equal(reconciled.status, 'completed');
-      expectCalls(f, [...expected, ...resumedCalls, 'readVersion', 'download', 'readTags', 'consumer', 'readTags']);
+      expectCalls(f, [...expected, ...resumedCalls, 'readVersion', 'download', 'readTags', 'save:observing', 'consumer', 'readTags']);
     }
   }
 });
@@ -228,14 +228,15 @@ test('ADR0019: an existing matching version and correct intended tag are idempot
   f.store.tags.latest = VERSION;
   const result = await f.run();
   assert.equal(result.status, 'completed');
-  const expected = ['readVersion', 'download', 'readTags', 'consumer', 'readTags'];
+  const expected = ['readVersion', 'download', 'readTags', 'save:observing', 'consumer', 'readTags'];
   expectCalls(f, expected);
-  assert.equal(f.saved.length, 0);
+  assert.equal(f.saved.length, 1);
+  assert.equal(f.saved[0].intendedObserved, true);
   assert.equal(result.checkpoint.uploadAttempted, false);
   assert.equal(result.checkpoint.promotionAttempted, false);
   const resumed = await f.run(result.checkpoint);
   assert.equal(resumed.status, 'completed');
-  expectCalls(f, [...expected, ...expected]);
+  expectCalls(f, [...expected, ...expected.filter(value => value !== 'save:observing')]);
 });
 
 test('ADR0019: absent previous latest stays explicit null through promotion', async () => {
@@ -325,5 +326,31 @@ test('Uncertain initial reads and non-durable intents never authorize a mutation
     const rejected = await f.run(mismatched);
     assert.equal(rejected.reason, 'checkpoint-identity-mismatch');
     expectCalls(f, expected);
+  }
+});
+
+ test('ADR0019: an observed intended target cannot regress, including on resume', async () => {
+  for (const previous of [null, '0.0.0']) {
+    for (const resume of [false, true]) {
+      const f = fixture({ existing: ARCHIVE, intended: previous });
+      f.store.tags.latest = VERSION;
+      const consumer = f.effects.consumer;
+      f.effects.consumer = async request => {
+        const result = await consumer(request);
+        if (!resume) f.store.tags.latest = previous;
+        return result;
+      };
+      let result = await f.run();
+      if (resume) {
+        assert.equal(result.status, 'completed');
+        f.store.tags.latest = previous;
+        result = await f.run(f.saved[0]);
+      }
+      assert.equal(result.status, 'failed');
+      assert.equal(result.reason, 'concurrent-tag-change');
+      assert.equal(result.checkpoint.intendedObserved, true);
+      assert.equal(count(f, 'upload'), 0);
+      assert.equal(count(f, 'setTag'), 0);
+    }
   }
 });
