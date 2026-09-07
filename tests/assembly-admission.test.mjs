@@ -169,12 +169,19 @@ test("current workspace and Core manifest cannot bypass Assembly admission", asy
   }
   const corePath = "packages/core/package.json";
   const core = JSON.parse(read(corePath));
+  const dependencyFields = ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"];
+  const dependencyMutations = dependencyFields.flatMap(field =>
+    [{ rogue: "1.0.0" }, null, [], "malformed"].map(value => ({ [field]: value })));
   for (const mutation of [{ name: "@rogue/core" }, { type: "commonjs" },
-    { dependencies: { rogue: "1.0.0" } }, { scripts: { install: "node bypass.mjs" } },
+    ...dependencyMutations, { scripts: { install: "node bypass.mjs" } },
     { exports: { "./bypass": "./dist/index.js" } }]) {
     await assert.rejects(admit({ readPackageManifest: async path => path === corePath
-      ? { ...core, ...mutation } : inputs.readPackageManifest(path) }), /Assembly admission/u);
+      ? { ...core, ...mutation } : inputs.readPackageManifest(path) }), /Assembly admission/u,
+    JSON.stringify(mutation));
   }
+  const emptyDependencies = Object.fromEntries(dependencyFields.map(field => [field, {}]));
+  await admit({ readPackageManifest: async path => path === corePath
+    ? { ...core, ...emptyDependencies } : inputs.readPackageManifest(path) });
 });
 
 test("root tooling lock upgrades admit independently and compose with historical custody", async () => {

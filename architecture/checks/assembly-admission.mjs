@@ -92,6 +92,11 @@ async function validateCurrentAssemblyInputs({ readBytes, readPackageManifest })
   const corePath = "packages/core/package.json";
   const core = await readPackageManifest(corePath);
   assert.equal(core?.name, "@get-modular/core", "Assembly admission Core identity differs");
+  for (const field of ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"]) {
+    if (core[field] !== undefined) {
+      assert.deepEqual(core[field], {}, `Assembly admission requires dependency-free Core: ${field}`);
+    }
+  }
   const inventory = await packageManifestInventory([corePath], {
     readPackageManifest: async () => core,
   });
