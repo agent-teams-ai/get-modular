@@ -22,14 +22,15 @@ import ts from 'typescript-minimum';
 
 const PREFIX = '/__m1_archive__/';
 const ENTRY = 'dist/index.js';
-const ROOT = 'dist/composition/stage0.js';
+const DIRECT_ROOT = 'dist/composition/stage0.js';
+const GENERATED_ROOT = 'dist/composition/generated/stage1.js';
 const HELPERS = 'dist/features/authoring/helpers.js';
 const AUTHORING = 'dist/features/authoring/internal.js';
 const DIAGNOSTICS = 'dist/features/diagnostics/internal.js';
 const VALUES = ['compileComposition', 'defineModule', 'many', 'optional', 'required'];
 const M2_VALUES = ['compileComposition', 'compileCompositionJson', 'defineModule', 'many', 'optional', 'required'];
 const FACADE = 'dist/features/compiler-facade/factory.js';
-const profiles = new Set(['m1', 'm1-shared', 'm2']);
+const profiles = new Set(['m1', 'm1-shared', 'm2', 'm2-generated']);
 const MAX_FILE = 1024 * 1024;
 const MAX_TOTAL = 8 * MAX_FILE;
 const MAX_NODES = 500_000;
@@ -84,7 +85,7 @@ const rows = [
   ['features/raw-scanner/owned-iterative/factory', 'createOwnedRawScanner', '', ''],
   ['features/raw-scanner/owned-iterative/scanner', 'openOwnedRawTokenCursor', 'fromCharCode invalidToken isWhitespace isDigit isBoundary scalarBytes isContinuation readScalar hexDigit readHexUnit escapedUnit scanString scanNumber scanKeyword', 'next decodeString'],
 ];
-const roles = new Map(rows.map(([path, exports, locals, functions]) => [
+const baseRoles = new Map(rows.map(([path, exports, locals, functions]) => [
   `dist/${path}.js`, { exports: words(exports), definitions: words(`${exports} ${locals}`), functions: words(functions) },
 ]));
 const declarations = new Set(['dist/index.d.ts', ...['internal', 'helpers', 'wire-types', 'diagnostic-types']
@@ -108,11 +109,11 @@ const RAW_ADMISSION = 'dist/features/input-admission/raw-admission.js';
 const RAW_BYTES = 'dist/features/input-admission/raw-byte-input.js';
 const RAW_DOCUMENT = 'dist/features/input-admission/raw-document.js';
 const SCANNER = 'dist/features/raw-scanner/owned-iterative/scanner.js';
-const routing = new Set([ENTRY, ROOT, AUTHORING, DIAGNOSTICS]);
+const baseRouting = new Set([ENTRY, DIRECT_ROOT, AUTHORING, DIAGNOSTICS]);
 // New selectors belong only to their reviewed implementation roles. In
 // particular, schema metadata such as expected is not general fixture data.
-const scopedMembers = new Map([
-  [ROOT, words('scanner')],
+const baseScopedMembers = new Map([
+  [DIRECT_ROOT, words('scanner')],
   [SHAPE, words('type fields expected matchesFormat variants many required optional')],
   [SNAPSHOT, words('create defineProperty')],
   [WRAPPER, words('defineProperty configurable writable')],
@@ -351,7 +352,23 @@ function audit(files, profile) {
   // including metadata and the export inventory, cannot activate it.
   requireThat(profiles.has(profile), 'profile');
   const shared = profile !== 'm1';
-  const publicValues = profile === 'm2' ? M2_VALUES : VALUES;
+  const m2 = profile === 'm2' || profile === 'm2-generated';
+  const publicValues = m2 ? M2_VALUES : VALUES;
+  const ROOT = profile === 'm2-generated' ? GENERATED_ROOT : DIRECT_ROOT;
+  // Select the physical assembly path once for every check below. Clone only
+  // the containers; their shared role/member sets are read-only during audit.
+  // Candidate paths and bytes remain untouched, including rejected extra roots.
+  const roles = new Map(baseRoles);
+  const routing = new Set(baseRouting);
+  const scopedMembers = new Map(baseScopedMembers);
+  if (ROOT !== DIRECT_ROOT) {
+    roles.set(ROOT, roles.get(DIRECT_ROOT));
+    roles.delete(DIRECT_ROOT);
+    routing.delete(DIRECT_ROOT);
+    routing.add(ROOT);
+    scopedMembers.set(ROOT, scopedMembers.get(DIRECT_ROOT));
+    scopedMembers.delete(DIRECT_ROOT);
+  }
   requireThat(files instanceof Map && files.size <= 512, 'input');
   const modules = new Map();
   const budget = { nodes: 0 };
@@ -367,7 +384,7 @@ function audit(files, profile) {
     try { source = ts.createSourceFile(PREFIX + path, bytes.toString('utf8'), ts.ScriptTarget.ESNext, true, ts.ScriptKind.JS); }
     catch { fail('parse'); }
     checkComments(source, budget);
-    const role = path === ENTRY && profile === 'm2'
+    const role = path === ENTRY && m2
       ? { ...roles.get(path), exports: new Set(publicValues) } : roles.get(path);
     modules.set(path, { source, role, exports: new Set(), links: [] });
   }
@@ -550,7 +567,7 @@ function audit(files, profile) {
   function checkMember(name, node) {
     const sharedMember = shared && pathOf(node) === FACADE
       && ['compileCompositionJson', 'admitRawInput'].includes(name);
-    requireThat(sharedMember || profile === 'm2' && pathOf(node) === ENTRY && name === 'compileCompositionJson'
+    requireThat(sharedMember || m2 && pathOf(node) === ENTRY && name === 'compileCompositionJson'
       || members.has(name) || scopedMembers.get(pathOf(node))?.has(name)
       || /^(?:decode|schema|identity|declaration|profile|binding|graph|diagnostics)\.[a-z-]+$/u.test(name), 'purpose');
     if (intrinsicSelectors.has(name)) requireThat(reviewedNodes.has(node), 'purpose');
@@ -1031,7 +1048,7 @@ function audit(files, profile) {
     }
   }
   requireThat(built.length === factories.length && exported(ROOT, 'root').node === built[5], 'construction');
-  const compilers = (profile === 'm2' ? ['compileComposition', 'compileCompositionJson'] : ['compileComposition'])
+  const compilers = (m2 ? ['compileComposition', 'compileCompositionJson'] : ['compileComposition'])
     .map(name => {
       const compiler = exported(ENTRY, name);
       requireThat(compiler.kind === 'member' && compiler.name === name
@@ -1059,6 +1076,7 @@ function audit(files, profile) {
 
 // Historical M1 remains the default. The shared private facade and public M2
 // are distinct opt-in witnesses, selected by trusted qualification tooling.
+// m2-generated carries the full M2 surface with only the generated assembly.
 export function auditM1JavaScriptClosure(files, profile = 'm1') {
   try { return audit(files, profile); }
   catch (error) {
