@@ -164,7 +164,7 @@ export function rootKeys(value: unknown): { readonly object: Record<string, unkn
 export function envelope(value: unknown): Readonly<Record<string, unknown>> {
   const input = record(value, ["plan", "digest"], ["ok", "status", "success", "kind", "diagnostics"]);
   const header: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
-  for (const key of Object.keys(input)) {
+  for (const key of Object.getOwnPropertyNames(input)) {
     if (key === "plan") continue;
     const field = data(input, key);
     if (key === "diagnostics") {

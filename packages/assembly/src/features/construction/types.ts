@@ -21,13 +21,17 @@ export type RootInstances<R> = {
 };
 
 type IsUnion<T, Whole = T> = T extends Whole ? [Whole] extends [T] ? false : true : never;
+type UnionElements<T extends readonly unknown[]> = { [K in keyof T]: IsUnion<T[K]> }[number];
 type InvalidMember<C, P> = P extends { readonly capabilityId: infer K extends string; readonly compatibility: infer T }
   ? string extends K ? P
+    : true extends IsUnion<K> ? P
     : K extends keyof C ? [T, CompatibilityOf<C, K>] extends [CompatibilityOf<C, K>, T] ? never : P : P
   : P;
 type InvalidSlot<S> = S extends { readonly slotId: infer K extends string; readonly cardinality: { readonly kind: infer Q } }
-  ? string extends K ? S : true extends IsUnion<Q> ? S : never : S;
+  ? string extends K ? S : true extends IsUnion<K> | IsUnion<Q> ? S : never : S;
 export type ValidDeclaration<C, D extends ModuleDeclaration> =
+  true extends IsUnion<D> | IsUnion<D["slots"]> | IsUnion<D["provides"]>
+    | UnionElements<D["slots"]> | UnionElements<D["provides"]> ? never :
   number extends D["provides"]["length"] | D["slots"]["length"] ? never
     : [InvalidMember<C, D["provides"][number] | D["slots"][number]> | InvalidSlot<D["slots"][number]>] extends [never] ? unknown : never;
 export type FactoryCapabilities<C, D extends ModuleDeclaration> = {
