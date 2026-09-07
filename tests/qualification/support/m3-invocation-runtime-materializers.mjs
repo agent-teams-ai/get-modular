@@ -113,7 +113,7 @@ export function materializeInvocationRuntimeInput(fixture, capabilities = {}) {
     demand(input !== null && typeof input === 'object', 'foreign factory input missing');
     const list = Object.getOwnPropertyDescriptor(input, 'declarations')?.value;
     const profile = Object.getOwnPropertyDescriptor(input, 'profile')?.value;
-    demand(Array.isArray(list) && !(list instanceof Array), 'foreign array required');
+    demand(Array.isArray(list) && (id === 'realm-shared-both' || !(list instanceof Array)), 'foreign array required');
     for (const view of [list[0], profile]) {
       demand(ArrayBuffer.isView(view) && !(view instanceof U8), 'foreign byte view required');
       demand(Object.getOwnPropertyDescriptor(TA, Symbol.toStringTag).get.call(view) ===
@@ -157,8 +157,12 @@ export function materializeInvocationRuntimeInput(fixture, capabilities = {}) {
       }));
       break;
     case 'foreign-null-frozen-wrapper':
-    case 'realm-array-cleared':
-    case 'realm-shared-both': input = foreign(); break;
+    case 'realm-array-cleared': input = foreign(); break;
+    case 'realm-shared-both': {
+      const supplied = foreign();
+      input = normal([supplied.declarations[0]], supplied.profile);
+      break;
+    }
     case 'own-shadows-inherited': {
       const prototype = {};
       access(prototype, 'declarations', undefined);
@@ -171,13 +175,13 @@ export function materializeInvocationRuntimeInput(fixture, capabilities = {}) {
     }
     case 'inherited-declarations': {
       const prototype = {};
-      access(prototype, 'declarations', []);
+      access(prototype, 'declarations', [], true, true);
       input = Object.create(keep(prototype), { profile: { value: bytes(1) } });
       break;
     }
     case 'inherited-profile': {
       const prototype = {};
-      access(prototype, 'profile', bytes());
+      access(prototype, 'profile', bytes(), true, true);
       input = Object.create(keep(prototype), { declarations: { value: [] } });
       break;
     }

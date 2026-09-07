@@ -103,11 +103,18 @@ function projection(root) {
     if (prototype !== null) {
       for (const key of ['declarations', 'profile', '0']) {
         const descriptor = Object.getOwnPropertyDescriptor(prototype, key);
-        if (descriptor) inherited.push([key, Object.hasOwn(descriptor, 'value')
-          ? { value: visit(descriptor.value) } : { getter: typeof descriptor.get === 'function' }]);
+        if (descriptor) inherited.push([key, {
+          enumerable: descriptor.enumerable, configurable: descriptor.configurable,
+          ...(Object.hasOwn(descriptor, 'value')
+            ? { writable: descriptor.writable, value: visit(descriptor.value) }
+            : { getter: typeof descriptor.get === 'function', setter: typeof descriptor.set === 'function' }),
+        }]);
       }
     }
+    let realmRoot = prototype;
+    while (realmRoot !== null && Object.getPrototypeOf(realmRoot) !== null) realmRoot = Object.getPrototypeOf(realmRoot);
     return { identity, array: Array.isArray(value), nullPrototype: prototype === null,
+      foreignRealm: realmRoot !== null && realmRoot !== Object.prototype,
       frozen: Object.isFrozen(value), own, inherited };
   }
   return visit(root);
