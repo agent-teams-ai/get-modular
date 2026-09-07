@@ -15,6 +15,7 @@ Read these sources before changing this repository:
 For implementation tasks, follow the [agent execution route](docs/architecture/mvp-implementation-roadmap.md#agent-execution-route) and phase reading map before editing.
 For admission, graph or diagnostic work, also read the [compiler engineer handbook](docs/qualification/compiler-engineer-handbook.md) and its linked complete examples.
 Task ownership and the milestone callable surface are explicit; the full roadmap does not authorize implementing every phase.
+For consumer composition work, read the [Consumer module standard](docs/architecture/common-assembly.md#consumer-module-standard).
 
 Use `pnpm check:changed` while editing, `pnpm check:fast` before handoff, and
 `pnpm check` as the complete gate.

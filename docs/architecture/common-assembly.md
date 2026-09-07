@@ -6,6 +6,7 @@ owner: architecture
 summary: Bounded plan and execution contract for the optional assembly component above Core.
 related:
   - ADR-0023
+  - ADR-0026
   - ARCH-CURRENT-CONTRACT
   - ARCH-MVP-IMPLEMENTATION-ROADMAP
 ---
@@ -23,6 +24,143 @@ One construction feature owns handles, preparation and sequential execution.
 No service locator, global service registry, discovery, dynamic imports,
 scheduler, retry, automatic rollback, disposal, readiness, generations or hot
 replacement. The internal Core emitter remains private and required-only.
+
+## Consumer module standard
+
+[ADR-0026](../decisions/0026-adopt-consumer-module-standard.md) accepts this
+central authoring and adoption contract. It applies to new composition boundaries
+inside a consumer's explicitly accepted Host scope. It does not migrate a product
+or certify existing code merely because that product installs Assembly.
+
+### Authority and identity
+
+The organization [Feature Module Standard v1](feature-module-standard.md#adoption)
+remains the sole authority for semantic ownership, layers, feature layout,
+dependency mechanisms and extraction. Its immutable identity is Git blob
+`d0bfff2033faf544fe65268c1dcdfd524d093015`, SHA-256
+`851653f96643cf0466b67ab22963661976b00de44840fa3144a48a8c054f95fa`.
+The linked local profile maps Get Modular itself, not all consumers.
+
+The [current contract](current-contract.md) and this Assembly contract own graph
+compilation, exact bindings, preparation and construction handoff. Host owns
+permissions, resources, readiness and lifecycle. The local accepted adoption
+ADR and consumer profile own concrete roots, composition owners, package pins,
+legacy boundaries, exceptions and actual verification commands. None may weaken
+organization rules or infer repository-wide conformance from one adopted slice.
+Foundation remains this repository's source classifier and dependency policy
+engine; this standard does not introduce another import parser.
+
+A consumer pins this document's repository, path, anchor, exact Git commit and
+SHA-256 of the complete document bytes, plus its accepting ADR identity. Keep
+this one current document; package SemVer, compatibility tokens, profile schema
+versions and document content pins are different identities. Local copies are
+non-authoritative evidence only.
+
+### New composition boundaries
+
+Every new production capability needs a semantic owner. A bounded context,
+package, feature and Assembly handle need not map one-to-one. Inside accepted
+Host scope, independently assembled capabilities, alternative implementations
+and configurable inter-module relationships must use consumer-owned ports and
+a single Core/Assembly composition root. A local adoption can make this optional
+library mandatory for that scope.
+
+Fixed library dependencies and private helpers inside a cohesive feature remain
+static imports and typed factories. A parser, mapper, DTO, class or endpoint is
+not a graph node merely because it is new. Cover real composition seams, not a
+quota of handles. Each wiring relationship uses one organization dependency
+mechanism. Static composition does not imply runtime plugin discovery; runtime
+selection, variable dependencies or independently managed lifecycle require an
+explicit demonstrated need for the runtime mechanism.
+
+Keep declarations, profiles and handle mapping in the outer composition adapter.
+Domain and application code must not import Core, Assembly, registration types,
+SDK or transport DTOs, or selected concrete port implementations. Features expose
+narrow typed factories and consumer-owned dependency records. Preserve owned
+Published Language and anti-corruption boundaries; shared domain identities or
+generic repositories are not justified by similar code alone.
+
+There is one production composition authority: the profile selects bindings,
+owner-local factories materialize capabilities, and Host receives closed roots.
+Do not retain a second direct production assembly, instance fallback, string
+lookup, mutable registry, global container or registration-order semantics.
+Keep IDs and compatibility tokens in one local typed source. Preserve literal
+inference; production wiring must not use `any`, double casts through `unknown`
+or broad casts to hide capability, token or slot mismatches. A justified exact
+exception needs an accepted rationale and a rejecting test; it cannot authorize
+a false type claim.
+
+Construction may be async without making domain APIs async. Preserve Host-owned
+cleanup, the created journal and untransferred returned-product handoff. Do not
+introduce a generic lifecycle manager for passive construction.
+
+| Use | Reject | Evidence |
+| --- | --- | --- |
+| Cohesive feature with closed ports | Business policy in a giant root | Existing layer gate and ownership review |
+| Exact implementation and capability | Instance fallback or second resolver | Independent mapping and zero-call negative tests |
+| Local private parser or helper | Node per class or endpoint | Positive fixture and semantic review |
+| Composition adapter imports | Assembly inside domain/application | Existing source policy and negative import fixture |
+| Existing Host cleanup | Duplicate disposal through shared capabilities | Failure, cancellation and handoff tests |
+| Independent direct test reference | Production fallback or oracle derived from profile | Binding mutant and parity test |
+
+### Scoped acceptance and evidence
+
+An adopting consumer must provide an accepted local decision and a profile with:
+
+- Central document and organization authority pins; exact reviewed package and
+  lock/archive identities under existing package policy.
+- Declared production roots, active wiring scope, owner, materialized entrypoint,
+  declaration/profile/factory paths, dependency mechanism and test mapping.
+- Exact existing legacy boundaries and direct relationships, marked `not-adopted`,
+  with rationale, owner and review trigger. This inventory is not an FMS
+  violation baseline and must not weaken an existing activation's prohibition
+  on grandfather lists.
+- Exact accepted exceptions with rule, paths, owner, rationale, decision and
+  review trigger. No wildcard, blanket directory exemption or automatic legacy
+  inventory expansion. Reject stale entries.
+- Actual blocking commands, reciprocal references and evidence for the precise
+  claimed slice. Package installation or a successful library test is not
+  consumer adoption evidence.
+
+At activation, the consumer gate must discover new production boundaries through
+its existing topology/source inventory. Unknown boundaries fail until explicitly
+adopted or classified. New cross-module or replaceable relationships inside a
+legacy boundary require current adoption or an exact accepted exception. An
+ordinary fixed-dependency classification is valid only inside its owning feature.
+The gate must reject drifted pins, missing paths, removed/no-op command chains and
+unknown or stale exceptions. These requirements become an enforced consumer claim
+only with positive and rejecting fixtures in that consumer's fast and full gates.
+This documentation checkpoint does not claim that a consumer checker exists.
+
+Evidence includes unchanged existing FMS scope, adopted wiring, allowed private
+helpers and declared legacy; rejection of unknown boundaries, new direct legacy
+edges, invalid exceptions, pin drift and forbidden layer imports; typed rejection
+of wrong capability/token/slot and a missing await on an async Host constructor; independent
+binding parity, zero factories on preparation failure, attempt isolation and
+Host failure/cancellation ownership; and packed imports through public roots on
+exact approved artifacts in a disposable directory. Semantic review must also
+look for new capabilities hidden inside existing functions: a static inventory
+does not prove all ownership or domain design rules.
+
+### Executable examples and adoption status
+
+The existing [synthetic Host source](../../packages/assembly/tests/fixture.mjs)
+and [runtime assertions](../../packages/assembly/tests/runtime.test.mjs) exercise
+required, optional and ordered-many bindings, sharing and Host cleanup.
+[Preparation regressions](../../packages/assembly/tests/preparation.test.mjs)
+check invalid wiring before effects; [typed fixtures](../../packages/assembly/tests/types.test.mjs)
+and the [packed consumer](../../packages/assembly/tests/packed-consumer.mjs)
+cover the public carrier. These belong to the existing `pnpm assembly:test`
+command, invoked by both fast and full gates, after `pnpm assembly:build`.
+Consumers must additionally link their own executable slice and independent
+binding oracle; copied Markdown examples do not count as evidence.
+
+Agent Runtime is a planned consumer, not an adopted product claim here. Core
+self-composition and synthetic/packed Hosts are library evidence, not independent
+production consumers. No consumer ledger entry or repository-wide conformance is
+created by this decision. Record reciprocal consumer evidence only after that
+consumer's exact scoped acceptance gates pass. Contained-turn migration, full
+legacy conversion and shared checker extraction require separate scope.
 
 ## API and metadata ownership
 
@@ -189,16 +327,23 @@ historical evidence and is not overwritten.
 ## Historical Core evidence and current admission
 
 The [assembly admission checker](../../architecture/checks/assembly-admission.mjs)
-authenticates ADR-0023 and the private manifest before separating Assembly paths
-from the unchanged Core scope. Its lock transition admits only the exact internal
-Assembly-to-Core importer; every other byte and dependency remains bound to the
-historical M2 lock. The original ledgers, verifier and retained test bytes remain
-unchanged. A historical reader reconstructs and verifies the pinned lock only for
-M2 evidence, while current dependency checks keep reading the current lock.
+authenticates ADR-0023 and the admitted manifest before separating Assembly paths
+from the unchanged Core scope. Under
+[ADR-0024](../decisions/0024-separate-historical-m2-lock-custody-from-current-dependencies.md),
+current admission checks the exact workspace importers and Assembly-to-Core edge;
+root tooling resolutions evolve under current dependency and frozen-install gates.
+The separately authenticated historical M2 lock witness preserves the original
+ledgers, verifier and retained test bytes. The legacy direct reader retains its
+strict reconstruction without coupling current admission to the historical lock.
 
 [Admission regressions](../../tests/assembly-admission.test.mjs) reject graph drift,
 changed authority and packages outside the admitted scope. The current
 [retained replay adapter](../../tests/assembly-admission-retained.test.mjs) preserves
 the historical cases and explicitly proves that the old verifier still rejects
 current lock bytes without the authenticated transition. This finite transition
-is not an authorization to change third-party dependencies or historical evidence.
+does not itself establish current installation readiness or change historical evidence.
+
+Public Assembly 0.1.0 admission additionally authenticates
+[ADR-0025](../decisions/0025-publish-assembly-0-1-0-with-core-0-1-0.md).
+Historical private admission retains its original authority. Publication follows
+retained-byte and registry consumer checks; admission alone proves no release.

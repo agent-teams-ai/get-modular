@@ -10,6 +10,8 @@ summary: Canonical navigation for Get Modular architecture and evidence.
 
 ## Architecture
 
+- [Consumer module standard](architecture/common-assembly.md#consumer-module-standard) - scoped adoption rules and executable evidence.
+
 - [System boundary](architecture/system-boundary.md)
 - [Current implementation contract](architecture/current-contract.md)
 - [Accepted implementation readiness rules](decisions/0018-close-implementation-readiness-rules.md) - exact depth, numeric, type, trust and generated-publication rules.

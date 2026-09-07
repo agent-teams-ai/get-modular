@@ -1,8 +1,13 @@
 {
   "name": "@get-modular/assembly",
   "version": "0.1.0",
-  "private": true,
   "description": "Host-owned sequential construction above Get Modular Core.",
+  "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org/" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agent-teams-ai/get-modular.git",
+    "directory": "packages/assembly"
+  },
   "license": "Apache-2.0",
   "type": "module",
   "sideEffects": false,

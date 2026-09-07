@@ -17,6 +17,9 @@ summary: Index of Get Modular architecture decisions.
 
 ## Accepted decisions
 
+- [ADR-0025: Publish Assembly 0.1.0 with Core 0.1.0](0025-publish-assembly-0-1-0-with-core-0-1-0.md)
+- [ADR-0026: Adopt consumer module standard](0026-adopt-consumer-module-standard.md)
+
 - [ADR-0024: Separate historical M2 lock custody from current dependencies](0024-separate-historical-m2-lock-custody-from-current-dependencies.md)
 
 - [ADR-0023: Add a thin Host-owned assembly component above Core](0023-add-a-thin-host-owned-assembly-component-above-core.md)

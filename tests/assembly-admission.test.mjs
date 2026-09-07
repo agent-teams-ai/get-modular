@@ -10,7 +10,7 @@ import { parse, stringify } from "yaml";
 import { readCurrentM2Authority } from "../architecture/checks/m2-lock-witness.mjs";
 import { promisify } from "node:util";
 import {
-  ASSEMBLY_DECISION_PATH, ASSEMBLY_MANIFEST_PATH, M2_HISTORICAL_LOCK_DIGEST,
+  ASSEMBLY_PUBLICATION_DECISION_PATH, ASSEMBLY_DECISION_PATH, ASSEMBLY_MANIFEST_PATH, M2_HISTORICAL_LOCK_DIGEST,
   createHistoricalM2EvidenceReader, validateAssemblyAdmission,
 } from "../architecture/checks/assembly-admission.mjs";
 import { validatePrivateCoreStart } from "../architecture/checks/private-core-start.mjs";
@@ -86,7 +86,13 @@ test("Assembly admission subtracts only independently admitted paths from Core",
 test("Assembly admission rejects malformed manifests, dependencies and package roots", async () => {
   const manifest = JSON.parse(read(ASSEMBLY_MANIFEST_PATH).toString("utf8"));
   for (const mutation of [
-    { name: "@rogue/package" }, { private: false }, { version: "0.2.0" },
+    { name: "@rogue/package" }, ...[false, null, "true", 1, undefined].map(privateValue => ({ private: privateValue })),
+    ...[undefined, null, {}, { access: "restricted", registry: "https://registry.npmjs.org/" },
+      { access: "public", registry: "https://example.com/" },
+      { access: "public", registry: "https://registry.npmjs.org/", tag: "latest" }]
+      .map(publishConfig => ({ publishConfig })),
+    ...[undefined, null, {}, { type: "git", url: "https://example.com/", directory: "packages/assembly" }]
+      .map(repository => ({ repository })), { version: "0.2.0" },
     ...[undefined, null, [], {}, true].map(dependencies => ({ dependencies })),
     { dependencies: { "@get-modular/core": "^0.1.0" } },
     { dependencies: { ...manifest.dependencies, extra: "1.0.0" } },
@@ -244,7 +250,7 @@ test("Assembly admission retains captured-index custody for every admission inpu
   const directory = await mkdtemp(join(tmpdir(), "gm-assembly-admission-"));
   const exec = promisify(execFile);
   const git = (...args) => exec("git", args, { cwd: directory });
-  const paths = [ASSEMBLY_MANIFEST_PATH, ASSEMBLY_DECISION_PATH,
+  const paths = [ASSEMBLY_MANIFEST_PATH, ASSEMBLY_DECISION_PATH, ASSEMBLY_PUBLICATION_DECISION_PATH,
     "architecture/decisions/accepted-decisions.json", "pnpm-lock.yaml",
     "pnpm-workspace.yaml", "packages/core/package.json"];
   try {
@@ -271,4 +277,46 @@ test("Assembly admission retains captured-index custody for every admission inpu
     await git("add", "pnpm-lock.yaml");
     await assert.rejects(assertGitIndexSnapshotCurrent(snapshot), /Git index changed/u);
   } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+
+test("public admission authenticates publication authority in current and legacy historical readers", async () => {
+  const registryPath = "architecture/decisions/accepted-decisions.json";
+  const registry = JSON.parse(read(registryPath));
+  const decision = read(ASSEMBLY_PUBLICATION_DECISION_PATH);
+  const mutations = [
+    [ASSEMBLY_PUBLICATION_DECISION_PATH, undefined],
+    [ASSEMBLY_PUBLICATION_DECISION_PATH, Buffer.concat([decision, Buffer.from("\n")])],
+    [ASSEMBLY_PUBLICATION_DECISION_PATH, Buffer.from(decision.toString().replace("status: accepted", "status: proposed"))],
+    ...[
+      registry.decisions.filter(entry => entry.id !== "ADR-0025"),
+      registry.decisions.map(entry => entry.id === "ADR-0025" ? { ...entry, immutableDigest: "sha256:" + "0".repeat(64) } : entry),
+      [...registry.decisions, registry.decisions.find(entry => entry.id === "ADR-0025")],
+    ].map(decisions => [registryPath, Buffer.from(JSON.stringify({ ...registry, decisions }))]),
+  ];
+  for (const [target, bytes] of mutations) {
+    const readBytes = path => path === target ? bytes : read(path);
+    await assert.rejects(admit({ readBytes }));
+    await assert.rejects(createHistoricalM2EvidenceReader({ ...evidenceInput, readBytes }));
+  }
+});
+
+test("historical private Assembly remains admitted without publication authority", async () => {
+  const manifest = { ...JSON.parse(read(ASSEMBLY_MANIFEST_PATH)), private: true };
+  delete manifest.publishConfig;
+  delete manifest.repository;
+  const readBytes = path => {
+    assert.notEqual(path, ASSEMBLY_PUBLICATION_DECISION_PATH);
+    if (path === ASSEMBLY_MANIFEST_PATH) return Buffer.from(JSON.stringify(manifest));
+    if (path === "architecture/decisions/accepted-decisions.json") {
+      const registry = JSON.parse(read(path));
+      return Buffer.from(JSON.stringify({ ...registry,
+        decisions: registry.decisions.filter(entry => entry.id !== "ADR-0025") }));
+    }
+    return read(path);
+  };
+  await admit({ readBytes, readPackageManifest: async path => path === ASSEMBLY_MANIFEST_PATH
+    ? manifest : inputs.readPackageManifest(path) });
+  const historical = await createHistoricalM2EvidenceReader({ ...evidenceInput, readBytes });
+  assert.equal(sha(await historical("pnpm-lock.yaml")), M2_HISTORICAL_LOCK_DIGEST);
 });

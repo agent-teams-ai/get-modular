@@ -51,7 +51,16 @@ const validTarget = (value) => value === null || (typeof value === 'string' && v
  * @returns {Promise<{status: 'completed'|'incomplete'|'failed', reason: string,
  *   checkpoint: object|null, evidence: object[]}>}
  */
-export async function publishFirstCoreRelease({ identity, effects, checkpoint } = {}) {
+export function publishFirstCoreRelease(options) {
+  return publishFirstPackageRelease('@get-modular/core', options);
+}
+
+// ADR-0025 extends the existing bounded procedure; no caller-selectable package.
+export function publishFirstAssemblyRelease(options) {
+  return publishFirstPackageRelease('@get-modular/assembly', options);
+}
+
+async function publishFirstPackageRelease(packageName, { identity, effects, checkpoint } = {}) {
   let record = null;
   const evidence = [];
   const note = (operation, details) => evidence.push({ operation, ...details });
@@ -64,7 +73,7 @@ export async function publishFirstCoreRelease({ identity, effects, checkpoint } 
   try {
     const strings = ['version', 'provisionalTag', 'intendedTag'];
     const previous = identity?.previousTags;
-    if (identity?.name !== '@get-modular/core'
+    if (identity?.name !== packageName
       || !strings.every((key) => typeof identity[key] === 'string' && identity[key].length > 0)
       || identity.provisionalTag === identity.intendedTag
       || !/^[a-f0-9]{64}$/.test(identity.sha256)

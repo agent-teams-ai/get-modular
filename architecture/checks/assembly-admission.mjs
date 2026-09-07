@@ -10,6 +10,15 @@ import { safeRepositoryPath } from "./tracked-file-custody.mjs";
 export const ASSEMBLY_MANIFEST_PATH = "packages/assembly/package.json";
 export const ASSEMBLY_DECISION_PATH =
   "docs/decisions/0023-add-a-thin-host-owned-assembly-component-above-core.md";
+export const ASSEMBLY_PUBLICATION_DECISION_PATH =
+  "docs/decisions/0025-publish-assembly-0-1-0-with-core-0-1-0.md";
+const ASSEMBLY_PUBLICATION_DECISION_BYTES_DIGEST =
+  "sha256:87c851bff5b00fe010754d52d99f595037d8373a7133162e249a244d4c2b2de6";
+const ASSEMBLY_PUBLICATION_REGISTRY_ENTRY = Object.freeze({
+  id: "ADR-0025",
+  path: ASSEMBLY_PUBLICATION_DECISION_PATH,
+  immutableDigest: "sha256:ad3a06508a7a124fa2b909168957cd40ca940b2581193051debc90fcfb9a30e8",
+});
 export const M2_HISTORICAL_LOCK_DIGEST =
   "sha256:7420fcef084e65d3a61eba8e907a17bba9efbd255d1e9fe72b8370d216bdec99";
 const ASSEMBLY_DECISION_BYTES_DIGEST =
@@ -48,6 +57,15 @@ async function validateAssemblyPackage({ readBytes, readPackageManifest }) {
   const manifest = await readPackageManifest(ASSEMBLY_MANIFEST_PATH);
   assert(manifest && typeof manifest === "object" && !Array.isArray(manifest)
     && manifest.name === "@get-modular/assembly", "Assembly admission manifest identity differs");
+  if (manifest.private !== true) {
+    assert.equal(digest(await readBytes(ASSEMBLY_PUBLICATION_DECISION_PATH)),
+      ASSEMBLY_PUBLICATION_DECISION_BYTES_DIGEST,
+      "public Assembly admission requires unchanged accepted ADR-0025");
+    assert.deepEqual(registry.decisions.filter(entry => entry?.id === "ADR-0025"
+      || entry?.path === ASSEMBLY_PUBLICATION_DECISION_PATH),
+    [ASSEMBLY_PUBLICATION_REGISTRY_ENTRY],
+    "public Assembly admission requires the registered ADR-0025 identity");
+  }
   const inventory = await packageManifestInventory([ASSEMBLY_MANIFEST_PATH], {
     readPackageManifest: async () => manifest,
   });
