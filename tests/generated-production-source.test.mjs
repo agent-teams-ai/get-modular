@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { mkdir, mkdtemp, rename, rm, symlink, writeFile } from "node:fs/promises";
+import { execFile, execFileSync } from "node:child_process";
+import { cp, lstat, mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import test from "node:test";
 import {
   createGeneratedProductionReader,
@@ -95,4 +97,64 @@ test("snapshot verification rejects authored bytes, authority and index drift", 
 test("importing the build module does not start generation", async () => {
   const module = await import("../architecture/tooling/build-core.mjs");
   assert.equal(typeof module.buildCore, "function");
+});
+
+test("governance cleans successful build outputs when completion detects source drift", async t => {
+  const exec = promisify(execFile);
+  const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
+  const directory = await mkdtemp(join(tmpdir(), "gm-governance-completion-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const root = join(directory, "repository");
+  const environment = Object.fromEntries(Object.entries(process.env)
+    .filter(([key]) => !key.startsWith("GIT_")));
+  const env = {
+    ...environment,
+    GIT_CONFIG_GLOBAL: "/dev/null",
+    GIT_CONFIG_SYSTEM: "/dev/null",
+    GIT_CONFIG_NOSYSTEM: "1",
+  };
+  await exec("git", ["clone", "--quiet", "--no-hardlinks", repositoryRoot, root], { env });
+  // Exercise current checkers and build tooling, including uncommitted fixes.
+  for (const path of ["architecture/checks", "architecture/tooling"]) {
+    await cp(join(repositoryRoot, path), join(root, path), {
+      recursive: true,
+      force: true,
+    });
+  }
+  await symlink(join(repositoryRoot, "node_modules"), join(root, "node_modules"), "junction");
+  const governancePath = join(root, "architecture/checks/governance.mjs");
+  const governance = await readFile(governancePath, "utf8");
+  const completionLoop = "for (const path of observedInputs) {";
+  assert.equal(governance.split(completionLoop).length, 2);
+  const driftPath = "packages/core/self-composition/own-profile.ts";
+  const marker = "fixture: successful build before completion drift";
+  // This hook exists only in the staged disposable copy. Reading both outputs
+  // proves the failure follows a successful build without a background race.
+  const hook = [
+    'const fixtureFs = await import("node:fs/promises");',
+    `await fixtureFs.readFile(resolve(root, ${JSON.stringify(GENERATED_PRODUCTION_PATH)}));`,
+    'await fixtureFs.readFile(resolve(root, "packages/core/dist/index.js"));',
+    `await fixtureFs.appendFile(resolve(root, ${JSON.stringify(driftPath)}), "\\n// completion drift\\n");`,
+    `process.stdout.write(${JSON.stringify(`${marker}\n`)});`,
+    completionLoop,
+  ].join("\n");
+  await writeFile(governancePath, governance.replace(completionLoop, hook));
+  await exec("git", ["add", "--", "architecture/checks", "architecture/tooling"], {
+    cwd: root, env,
+  });
+  await assert.rejects(
+    exec(process.execPath, ["architecture/checks/governance.mjs"], {
+      cwd: root, env, maxBuffer: 4 * 1024 * 1024,
+    }),
+    error => {
+      assert.equal(error.code, 1);
+      assert.ok(error.stdout.includes(marker), error.stdout);
+      assert.match(error.stderr, /TRACKED_FILE_CUSTODY_FAILED/u);
+      assert.ok(error.stderr.includes(`${driftPath} (working-tree-diverged)`), error.stderr);
+      return true;
+    },
+  );
+  for (const path of [GENERATED_PRODUCTION_PATH, "packages/core/dist/index.js"]) {
+    await assert.rejects(lstat(join(root, path)), { code: "ENOENT" });
+  }
 });

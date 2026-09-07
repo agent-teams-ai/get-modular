@@ -1,4 +1,4 @@
-import { rm } from "node:fs/promises";
+import { realpath, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -23,7 +23,7 @@ export async function buildCore({ snapshot } = {}) {
   }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && await realpath(resolve(process.argv[1])) === fileURLToPath(import.meta.url)) {
   if (process.argv.length !== 2) throw new Error("build.unsupported-options");
   await buildCore();
 }
