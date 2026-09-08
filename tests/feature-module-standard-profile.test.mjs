@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { parse } from "yaml";
 
 import {
   PROFILE_DOCUMENT_PATH,
@@ -43,6 +44,131 @@ function validate(overrides = {}) {
 
 test("accepts the checked-in Get Modular adoption profile", () => {
   assert.doesNotThrow(() => validate());
+});
+
+// Accepted source pins; final archive binding and publication verification remain pending.
+test("pins the accepted Foundation and Docs source versions with exact age exclusions", async () => {
+  const workspace = parse(await readFile("pnpm-workspace.yaml", "utf8"));
+  assert.equal(packageJson.devDependencies["@agent-teams/engineering-foundation"], "1.1.0");
+  assert.equal(packageJson.devDependencies["@agent-teams/docs-protocol"], "0.6.0");
+  assert.equal(profile.adoption.admission.foundation.version, "1.1.0");
+  assert.equal(workspace.minimumReleaseAge, 1440);
+  assert.equal(workspace.minimumReleaseAgeStrict, true);
+  assert.deepEqual(workspace.minimumReleaseAgeExclude, [
+    "@agent-teams/docs-protocol@0.6.0",
+    "@agent-teams/engineering-foundation@1.1.0",
+    "@agent-teams/document-authoring@0.3.0",
+    "@agent-teams/repository-mutation@0.2.0",
+  ]);
+});
+
+// Synthetic Core-only scenarios retain the empty/pre-production guard coverage.
+function versionAdmissionInput() {
+  return {
+    publicationBlockerIds: new Set(["OD-005"]),
+    productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts"],
+    productionPackageManifests: coreManifest,
+    admission: clone(profile.adoption.admission),
+    foundationConfig: {
+      capabilities: {
+        "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
+      },
+    },
+    packageJson: clone(packageJson),
+    sourceDependencyPolicyPresent: true,
+  };
+}
+
+// Literal counterexamples must not follow the checker or an installed package's version.
+const rejectedFoundationPins = [
+  "0.21.0", "1.0.1", "1.1.1", "2.0.0", "^1.1.0", "~1.1.0", "*", undefined,
+];
+
+test("accepts exactly Foundation 1.1.0 for source and empty pre-production guard inputs", () => {
+  const input = versionAdmissionInput();
+  input.packageJson.devDependencies["@agent-teams/engineering-foundation"] = "1.1.0";
+  input.admission.foundation.version = "1.1.0";
+  assert.equal(validateFirstProductionPackageAdmission(input), SOURCE_DEPENDENCY_POLICY_PATH);
+  input.productionArtifacts = [];
+  input.admission.status = "pre-production";
+  assert.equal(validateFirstProductionPackageAdmission(input), undefined);
+});
+
+test("rejects stale, mismatched, ranged and missing Foundation manifest pins before admission", () => {
+  for (const version of rejectedFoundationPins) {
+    for (const empty of [false, true]) {
+      const input = versionAdmissionInput();
+      input.packageJson.devDependencies["@agent-teams/engineering-foundation"] = version;
+      if (empty) {
+        input.productionArtifacts = [];
+        input.admission.status = "pre-production";
+      }
+      assert.throws(() => validateFirstProductionPackageAdmission(input),
+        /@agent-teams\/engineering-foundation must remain pinned to 1\.1\.0/u,
+        `manifest ${String(version)}, empty inventory ${empty}`);
+    }
+  }
+});
+
+test("rejects stale and mismatched profile bindings even with the correct manifest", () => {
+  for (const version of rejectedFoundationPins) {
+    const changed = clone(profile);
+    changed.adoption.admission.foundation.version = version;
+    assert.throws(() => validate({ profile: changed }), /Foundation admission binding does not match/u);
+    const input = versionAdmissionInput();
+    input.admission = changed.adoption.admission;
+    assert.throws(() => validateFirstProductionPackageAdmission(input),
+      /Foundation admission binding does not match/u);
+  }
+});
+
+test("matching manifest and profile versions cannot replace the exact Foundation candidate", () => {
+  for (const version of rejectedFoundationPins) {
+    const input = versionAdmissionInput();
+    input.packageJson.devDependencies["@agent-teams/engineering-foundation"] = version;
+    input.admission.foundation.version = version;
+    assert.throws(() => validateFirstProductionPackageAdmission(input),
+      /@agent-teams\/engineering-foundation must remain pinned to 1\.1\.0/u);
+    const changed = clone(profile);
+    changed.adoption.admission = input.admission;
+    assert.throws(() => validate({ profile: changed, packageJson: input.packageJson }),
+      /Foundation admission binding does not match/u);
+  }
+});
+
+test("admits current Core and Assembly only with the exact Foundation 1.1.0 binding", async () => {
+  const manifests = new Map(await Promise.all([
+    "packages/core/package.json", "packages/assembly/package.json",
+  ].map(async path => [path, JSON.parse(await readFile(path, "utf8"))])));
+  const input = {
+    ...versionAdmissionInput(),
+    publicationBlockerIds: new Set(),
+    productionArtifacts: [
+      ...manifests.keys(),
+      "packages/core/src/index.ts", "packages/assembly/src/index.ts",
+      "packages/assembly/src/composition/root.ts",
+      "packages/assembly/src/features/construction/types.ts",
+      "packages/assembly/src/features/construction/factory.ts",
+    ],
+    productionPackageManifests: manifests,
+  };
+  assert.deepEqual(manifests.get("packages/core/package.json").dependencies ?? {}, {});
+  assert.deepEqual(manifests.get("packages/assembly/package.json").dependencies,
+    { "@get-modular/core": "workspace:*" });
+  assert.equal(validateFirstProductionPackageAdmission(input), SOURCE_DEPENDENCY_POLICY_PATH);
+  for (const version of rejectedFoundationPins) {
+    for (const binding of ["manifest", "profile", "both"]) {
+      const changed = clone(input);
+      if (binding !== "profile") {
+        changed.packageJson.devDependencies["@agent-teams/engineering-foundation"] = version;
+      }
+      if (binding !== "manifest") changed.admission.foundation.version = version;
+      assert.throws(() => validateFirstProductionPackageAdmission(changed),
+        binding === "profile" ? /Foundation admission binding does not match/u
+          : /@agent-teams\/engineering-foundation must remain pinned to 1\.1\.0/u,
+        `Core+Assembly ${binding} ${String(version)}`);
+    }
+  }
 });
 
 test("rejects central identity and digest drift", () => {
@@ -737,4 +863,34 @@ test("requires exactly one historical M2 replay in the contracts gate", () => {
     assert.throws(() => validate({ packageJson: changed }),
       /contracts:test must use its closed command definition/u);
   }
+});
+
+// Portable adoption must never silently select the separate managed adapter.
+test("routes Docs through portable v3 authoring without managed activation", async () => {
+  const docs = parse(await readFile("architecture/foundation/docs-protocol.yaml", "utf8"));
+  const authoring = parse(await readFile("architecture/foundation/document-authoring.yaml", "utf8"));
+  assert.deepEqual(docs, {
+    schemaVersion: 3,
+    protocol: { id: "agent-teams.docs-protocol", version: 1 },
+    foundationProfile: {
+      path: "architecture/foundation/document-authoring.yaml",
+      schemaVersion: 3,
+      metadataSidecarPolicy: "foundation-profile-v3-strict-merge",
+    },
+    agentWorkflow: { adoption: "portable-v1", skillPath: ".agents/skills/docs-authoring/SKILL.md" },
+    semanticValidatorIds: [],
+  });
+  assert.equal(authoring.schemaVersion, 3);
+  assert.equal(packageJson.devDependencies["@agent-teams/docs-protocol-agent-teams"], undefined);
+  for (const [name, command] of Object.entries(packageJson.scripts)) {
+    if (name.startsWith("docs:") && command.startsWith("agent-teams-docs ")) {
+      assert.ok(command.endsWith("--consumer . --profile architecture/foundation/docs-protocol.yaml"), name);
+    }
+    assert.ok(!command.includes("agent-teams-docs-managed"), name);
+  }
+  const skill = await readFile(docs.agentWorkflow.skillPath, "utf8");
+  assert.ok(skill.includes("--apply --expect sha256:PLAN_DIGEST_FROM_DRY_RUN"));
+  assert.ok(skill.includes("manual-required"));
+  assert.ok(skill.includes("markdownLink"));
+  assert.ok(skill.includes("indexPath"));
 });

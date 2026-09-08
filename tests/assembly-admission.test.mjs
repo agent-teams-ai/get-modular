@@ -317,6 +317,21 @@ test("historical private Assembly remains admitted without publication authority
   };
   await admit({ readBytes, readPackageManifest: async path => path === ASSEMBLY_MANIFEST_PATH
     ? manifest : inputs.readPackageManifest(path) });
-  const historical = await createHistoricalM2EvidenceReader({ ...evidenceInput, readBytes });
+  // Current tooling reaches historical evidence through ADR-0024's authenticated witness.
+  const authority = await readCurrentM2Authority(readBytes);
+  const currentHistorical = await createHistoricalM2EvidenceReader({ ...evidenceInput,
+    readBytes: authority.readBytes });
+  for (const entry of ledger.artifacts) {
+    assert.equal(sha(await currentHistorical(entry.path)), entry.immutableDigest, entry.path);
+  }
+  assert.equal(authority.toolingEvidence.inputs.find(row => row.path === "pnpm-lock.yaml").digest,
+    sha(currentLock));
+
+  // Exercise private package validation in the legacy reader with its exact lock delta.
+  const witness = await authority.readBytes("pnpm-lock.yaml");
+  const legacy = Buffer.from(witness.toString().replace("  packages/core: {}", importer + "  packages/core: {}"));
+  assert.equal(sha(legacy), "sha256:3ae75433a52d071775c9688fb41a2f24331c9ac05b01dadf0278be7788192562");
+  const historical = await createHistoricalM2EvidenceReader({ ...evidenceInput,
+    readBytes: path => path === "pnpm-lock.yaml" ? legacy : readBytes(path) });
   assert.equal(sha(await historical("pnpm-lock.yaml")), M2_HISTORICAL_LOCK_DIGEST);
 });
