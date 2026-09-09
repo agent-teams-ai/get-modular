@@ -60,3 +60,31 @@ sources:
   module-authoring-measurement-proof-final: [GM-REQ-003, GM-REQ-004, GM-REQ-005, GM-REQ-006, GM-REQ-007, GM-REQ-008, GM-REQ-009, GM-REQ-010, GM-REQ-012, GM-REQ-013, GM-REQ-014, GM-REQ-015, GM-REQ-016]
   module-dogfooding-qualification: [GM-REQ-006, GM-REQ-013, GM-REQ-014, GM-REQ-016]
   organization-feature-module-standard-v1: [GM-REQ-011, GM-REQ-012, GM-REQ-015, GM-REQ-016]
+
+# Informational pending delivery references, not accepted consumer evidence.
+# External authority/path/package identities are relative to reviewedSource.
+# Canonical Consumer Module Standard and its consumer-held pin stay unchanged.
+knownExternalConsumers:
+  - repository: agent-teams-ai/agent-runtime
+    pullRequest: 71
+    reviewedSource: 291684ed93df4f7b6cbe1d9776e55fe4082c8c3a
+    status: pending-delivery
+    scope: default passive setup
+    owner: Embedded Runtime composition
+    authority:
+      id: ADR-0015
+      path: docs/decisions/0015-passive-setup-static-assembly-adoption.md
+    consumerProfile: architecture/get-modular/consumer-profile.json
+    reviewTrigger: Later integration commits and final scoped delivery gates require review.
+    limitations: >-
+      No final adoption, qualification, whole-runtime conformity or second consumer
+      extraction is claimed. Contained-turn migration remains outside this scope.
+    packages:
+      - name: '@get-modular/core'
+        version: 0.1.0
+        archiveSha256: 50803ea69e2fb4078013a897f858908b4d73d26296336ab155a6118809dfb8ba
+        archivePath: architecture/get-modular/evidence/get-modular-core-0.1.0.tgz
+      - name: '@get-modular/assembly'
+        version: 0.1.0
+        archiveSha256: e89207171e44afd5e813aa5e7a0db8abc999b42338559d38b44b4db71da228ab
+        archivePath: architecture/get-modular/evidence/get-modular-assembly-0.1.0.tgz
