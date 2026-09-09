@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
+import { parse } from "yaml";
 import Ajv2020 from "ajv/dist/2020.js";
 import {
   ACCEPTED_AUTHORITY_LEDGER_ANCHOR,
@@ -2333,4 +2334,47 @@ test("the files allowlist must not name the package root", async () => {
   for (const files of ["dist", [1], [null]]) {
     await assert.rejects(validate(files), /files must be an array of path patterns/u);
   }
+});
+
+test("known external consumers are pending references, not accepted evidence", async () => {
+  const catalog = parse(await readFile(new URL("../docs/traceability/module-system-v1.yaml", import.meta.url), "utf8"));
+  const records = catalog.knownExternalConsumers;
+  const validate = knownExternalConsumers => validateTraceability({
+    requirementIds: new Set(), sources: new Set(), authorityIds: new Set(),
+    decisionIds: new Set(), blockerIds: new Set(),
+    traceability: {
+      schemaVersion: 1, decisionCatalog: [], implementationBlockers: [],
+      publicationBlockers: [], requirements: {}, sources: {}, knownExternalConsumers,
+    },
+  });
+  // External ADR-0015 must not need admission as a Get Modular authority.
+  assert.doesNotThrow(() => validate(records));
+  assert.doesNotThrow(() => validate(undefined));
+  assert.doesNotThrow(() => validate([]));
+  for (const mutate of [
+    rows => { rows[0].status = "adopted"; },
+    rows => { rows[0].status = "qualified"; },
+    rows => { rows[0].reviewedSource = "291684ed9"; },
+    rows => { rows[0].owner = ""; },
+    rows => { rows[0].repository = ["agent-teams-ai/agent-runtime"]; },
+    rows => { rows[0].pullRequest = 0; },
+    rows => { rows[0].consumerProfile = "../consumer-profile.json"; },
+    rows => { rows[0].authority.path = "/authority.md"; },
+    rows => { rows[0].authority.id = "ADR0015"; },
+    rows => { delete rows[0].reviewTrigger; },
+    rows => { delete rows[0].limitations; },
+    rows => { rows[0].qualified = true; },
+    rows => { rows[0].packages[0].archiveSha256 = "0.1.0"; },
+    rows => { rows[0].packages[0].archivePath = "../archive.tgz"; },
+    rows => { rows[0].packages[0].version = "latest"; },
+    rows => { rows[0].packages[0].extra = true; },
+    rows => { rows[0].packages[1] = rows[0].packages[0]; },
+    rows => { rows[0].packages.pop(); },
+    rows => { rows.push(rows[0]); },
+  ]) {
+    const mutated = structuredClone(records);
+    mutate(mutated);
+    assert.throws(() => validate(mutated), /invalid pending known external consumer record/u);
+  }
+  assert.throws(() => validate({}), /invalid pending known external consumer record/u);
 });

@@ -444,6 +444,47 @@ export function validateQualificationProfileConsistency({ profile, documents }) 
   }
 }
 
+// Pending references are separate from accepted authority and requirement provenance.
+// This deliberately supports no adoption/qualification promotion workflow.
+function validateKnownExternalConsumers(records) {
+  if (records === undefined) return;
+  const invalid = () => fail("invalid pending known external consumer record");
+  const shape = (value, keys) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)
+      || !sameStrings(Object.keys(value), new Set(keys.split(" ")))) invalid();
+  };
+  const nonempty = value => typeof value === "string" && value.trim().length > 0;
+  if (!Array.isArray(records)) invalid();
+  const identities = new Set();
+  for (const record of records) {
+    shape(record, "repository pullRequest reviewedSource status scope owner authority consumerProfile reviewTrigger limitations packages");
+    if (typeof record.repository !== "string"
+      || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u.test(record.repository)
+      || !Number.isSafeInteger(record.pullRequest) || record.pullRequest < 1
+      || typeof record.reviewedSource !== "string" || !REVISION.test(record.reviewedSource)
+      || record.status !== "pending-delivery"
+      || ![record.scope, record.owner, record.reviewTrigger, record.limitations].every(nonempty)
+      || !safeRepositoryPath(record.consumerProfile)) invalid();
+    const identity = `${record.repository}#${record.pullRequest}`;
+    if (identities.has(identity)) invalid();
+    identities.add(identity);
+    shape(record.authority, "id path");
+    if (typeof record.authority.id !== "string" || !/^ADR-[0-9]{4}$/u.test(record.authority.id)
+      || !safeRepositoryPath(record.authority.path)) invalid();
+    if (!Array.isArray(record.packages) || record.packages.length !== 2) invalid();
+    const names = new Set();
+    for (const pkg of record.packages) {
+      shape(pkg, "name version archiveSha256 archivePath");
+      if (!["@get-modular/core", "@get-modular/assembly"].includes(pkg.name)
+        || names.has(pkg.name) || typeof pkg.version !== "string"
+        || !/^[0-9]+\.[0-9]+\.[0-9]+$/u.test(pkg.version)
+        || typeof pkg.archiveSha256 !== "string" || !/^[a-f0-9]{64}$/u.test(pkg.archiveSha256)
+        || !safeRepositoryPath(pkg.archivePath)) invalid();
+      names.add(pkg.name);
+    }
+  }
+}
+
 export function validateTraceability({
   requirementIds,
   sources,
@@ -453,6 +494,7 @@ export function validateTraceability({
   traceability,
 }) {
   if (traceability?.schemaVersion !== 1) fail("unsupported traceability schema");
+  validateKnownExternalConsumers(traceability.knownExternalConsumers);
   const mappedRequirements = traceability.requirements ?? {};
   const mappedSources = traceability.sources ?? {};
   const expectedRequirements = [...requirementIds].sort();
