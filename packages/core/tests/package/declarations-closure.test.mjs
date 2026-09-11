@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
 import test from "node:test";
-import { auditM1DeclarationClosure } from "../../../../tests/qualification/support/m1-declarations-closure.mjs";
+import { auditM1DeclarationClosure } from "../qualification-support/support/m1-declarations-closure.mjs";
 
 const ROOT = "dist/index.d.ts";
 const WIRE = "dist/features/authoring/wire.d.ts";

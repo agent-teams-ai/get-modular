@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { assemblyFor } from "@get-modular/assembly";
+import { assemblyFor } from "../dist/index.js";
 import { many } from "@get-modular/core";
 import { prepareConstruction } from "../dist/features/construction/prepare.js";
 import { rootKeys, snapshotDeclaration, snapshotPlan } from "../dist/features/construction/snapshot.js";

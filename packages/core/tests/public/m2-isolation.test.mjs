@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as production from '../../dist/index.js';
 import * as direct from '../../dist-stage0/self-composition/stage0-entry.js';
-import { rawDocumentCases } from '../../../../tests/qualification/m2-candidate/raw-document-cases.mjs';
+import { rawDocumentCases } from '../qualification-support/m2-candidate/raw-document-cases.mjs';
 
 // Ordinary integration-stack subjects; this does not establish M2 completion.
 // Reuse the independent baseline's complete plan and literal digest unchanged.

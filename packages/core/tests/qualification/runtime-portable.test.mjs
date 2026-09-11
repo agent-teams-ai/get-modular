@@ -1,16 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as core from '../../dist/index.js';
-import { rawDocumentCases } from '../../../../tests/qualification/m2-candidate/raw-document-cases.mjs';
+import { rawDocumentCases } from '../qualification-support/m2-candidate/raw-document-cases.mjs';
 import {
   produceRuntimeFixtures, runtimeFixtures,
-} from '../../../../tests/qualification/support/m3-runtime-fixture-producer.mjs';
+} from '../qualification-support/support/m3-runtime-fixture-producer.mjs';
 import {
   materializeDocument, materializeRuntimeInput,
-} from '../../../../tests/qualification/support/m3-runtime-materializers.mjs';
+} from '../qualification-support/support/m3-runtime-materializers.mjs';
 import {
   executeRuntimeFixture, executeRuntimeFixtures,
-} from '../../../../tests/qualification/support/m3-runtime-executor.mjs';
+} from '../qualification-support/support/m3-runtime-executor.mjs';
 
 // Disposable Node execution of the portable slice against the generated public
 // dist root. This is not packed-root, Chromium, Electron, foreign-realm, Buffer,

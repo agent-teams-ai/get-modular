@@ -60,7 +60,7 @@ supplied archives. Set `GET_MODULAR_ASSEMBLY_ARCHIVE` and
 `GET_MODULAR_ASSEMBLY_SHA256`, `GET_MODULAR_ASSEMBLY_INTEGRITY`,
 `GET_MODULAR_PUBLISHED_CORE_SHA256` and `GET_MODULAR_PUBLISHED_CORE_INTEGRITY`
 from the release record. Run
-`node --test packages/assembly/tests/packed-root.test.mjs` from the repository.
+`node --test tests/assembly/packed-root.test.mjs` from the repository.
 The harness checks physical archive contents, installed byte equality, runtime
 and type consumers, and emits identities and observations for retention. The
 release operator separately authenticates the Core archive's registry origin;

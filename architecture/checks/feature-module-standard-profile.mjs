@@ -42,7 +42,7 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "core:test": 'node --test "packages/core/tests/**/*.test.mjs"',
   "assembly:build": "pnpm core:build && node architecture/tooling/build-assembly.mjs",
   "assembly:typecheck": "node node_modules/typescript/bin/tsc -p packages/assembly/tsconfig.json --noEmit",
-  "assembly:test": 'node --test "packages/assembly/tests/**/*.test.mjs"',
+  "assembly:test": 'node --test "tests/assembly/**/*.test.mjs" "packages/assembly/tests/**/*.test.mjs"',
   "contracts:check": "node architecture/checks/v1-contract.mjs",
   "contracts:test": "node --test tests/v1-contract.test.mjs tests/compiler-engineer-examples.test.mjs tests/implementation-clarifications.test.mjs tests/qualification/m2-candidate/generation-two-artifacts.test.mjs tests/qualification/m2-candidate/raw-carrier-oracle.test.mjs tests/qualification/m2-candidate/duplicate-record-cases.test.mjs tests/qualification/m2-candidate/duplicate-record-extended-overlaps.test.mjs tests/qualification/m2-candidate/raw-invocation-oracle.test.mjs tests/qualification/m2-candidate/duplicate-record-resources.test.mjs tests/qualification/m2-candidate/raw-document-cases.test.mjs tests/qualification/m2-candidate/mutation-evidence.test.mjs tests/qualification/m2-candidate/retained-object-descriptors.test.mjs tests/qualification/m2-candidate/combined-case-inventory.test.mjs tests/qualification/m2-candidate/boundary-source-mutations.test.mjs tests/assembly-admission-retained.test.mjs tests/m2-lock-witness.test.mjs",
   "docs:check": "agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml",

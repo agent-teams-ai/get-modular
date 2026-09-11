@@ -2,7 +2,13 @@ import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 import { test } from 'node:test';
-import { publishFirstCoreRelease } from '../../../../architecture/tooling/first-core-release.mjs';
+import { pathToFileURL } from 'node:url';
+import { join } from 'node:path';
+import { findRepoRoot } from '../qualification-support/support/load-repo-json.mjs';
+
+const { publishFirstCoreRelease } = await import(
+  pathToFileURL(join(findRepoRoot(), 'architecture/tooling/first-core-release.mjs')).href
+);
 
 const ARCHIVE = Buffer.from('retained first-core archive fixture\n');
 const VERSION = '0.1.0';

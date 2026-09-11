@@ -1,6 +1,6 @@
 import { pathToFileURL } from "node:url";
 import { compileComposition, defineModule, required } from "@get-modular/core";
-import { assemblyFor } from "@get-modular/assembly";
+import { assemblyFor } from "../dist/index.js";
 
 const exact = (token) => ({ family: "exact", familyVersion: 1, token });
 const capability = (capabilityId, token) => ({

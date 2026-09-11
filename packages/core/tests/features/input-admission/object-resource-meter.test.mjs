@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { createObjectResourceMeter } from "../../../dist-test/features/input-admission/object-resource-meter.js";
-import { meterJsonResources } from "../../../../../tests/qualification/support/resource-profile-v2.mjs";
+import { meterJsonResources } from "../../qualification-support/support/resource-profile-v2.mjs";
 
 const limits = JSON.parse(await readFile(new URL("../../../../../architecture/qualification/v1/resource-profile-v2.json", import.meta.url), "utf8")).limits;
 const chain = count => { let value = null; for (let i = 0; i < count; i += 1) value = [value]; return value; };

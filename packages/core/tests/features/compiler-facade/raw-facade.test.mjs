@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { rawDocumentCases } from "../../../../../tests/qualification/m2-candidate/raw-document-cases.mjs";
+import { rawDocumentCases } from "../../qualification-support/m2-candidate/raw-document-cases.mjs";
 import { createCompilerFacade } from "../../../dist-test/features/compiler-facade/factory.js";
 import { createOwnedJcs } from "../../../dist-test/features/canonicalization/owned-jcs/factory.js";
 import { createOwnedRawScanner } from "../../../dist-test/features/raw-scanner/owned-iterative/factory.js";

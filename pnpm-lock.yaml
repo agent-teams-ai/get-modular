@@ -47,6 +47,12 @@ importers:
       '@agent-teams/engineering-foundation':
         specifier: 1.2.0
         version: 1.2.0
+      '@get-modular/assembly':
+        specifier: workspace:*
+        version: link:packages/assembly
+      '@get-modular/core':
+        specifier: workspace:*
+        version: link:packages/core
       ajv:
         specifier: 'catalog:'
         version: 8.20.0
@@ -84,7 +90,29 @@ importers:
         specifier: workspace:*
         version: link:../core
 
-  packages/core: {}
+  packages/core:
+    devDependencies:
+      ajv:
+        specifier: 'catalog:'
+        version: 8.20.0
+      canonicalize:
+        specifier: 'catalog:'
+        version: 4.0.0
+      json-canonicalize:
+        specifier: 'catalog:'
+        version: 3.0.0
+      tar:
+        specifier: 'catalog:'
+        version: 7.5.22
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      typescript-minimum:
+        specifier: 'catalog:'
+        version: typescript@5.8.3
+      yaml:
+        specifier: 'catalog:'
+        version: 2.9.0
 
 packages:
 

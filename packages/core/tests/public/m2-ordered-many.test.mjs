@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as production from '../../dist/index.js';
 import * as direct from '../../dist-stage0/self-composition/stage0-entry.js';
-import { materializeDuplicateRecordExtendedOverlap } from '../../../../tests/qualification/m2-candidate/duplicate-record-extended-overlaps.mjs';
-import { expectedDigest } from '../../../../tests/qualification/support/scale-output.mjs';
+import { materializeDuplicateRecordExtendedOverlap } from '../qualification-support/m2-candidate/duplicate-record-extended-overlaps.mjs';
+import { expectedDigest } from '../qualification-support/support/scale-output.mjs';
 
 // Independently specified complete plans for the original relation-only case.
 // These literal results predate Core replay. Neither candidate output nor input

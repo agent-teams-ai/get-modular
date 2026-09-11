@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import normalizationVectors from '../../../../../architecture/qualification/v1/normalization-vectors.json' with { type: 'json' };
-import decoderVectors from '../../../../../architecture/qualification/v1/decoder-vectors.json' with { type: 'json' };
+import { readFile } from 'node:fs/promises';
+const normalizationVectors = JSON.parse(await readFile(new URL('../../../../../architecture/qualification/v1/normalization-vectors.json', import.meta.url)));
+const decoderVectors = JSON.parse(await readFile(new URL('../../../../../architecture/qualification/v1/decoder-vectors.json', import.meta.url)));
 import { createOwnedRawScanner } from '../../../dist-test/features/raw-scanner/owned-iterative/factory.js';
 import { rawDocumentView, scanRawDocument } from '../../../dist-test/features/input-admission/raw-document.js';
 import { validateDeclarationView, validateProfileView } from '../../../dist-test/features/input-admission/document-shape.js';

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { CASES, materializeCase } from "../../../../tests/qualification/m2-candidate/object-descriptor-cases.mjs";
+import { CASES, materializeCase } from "../qualification-support/m2-candidate/object-descriptor-cases.mjs";
 import { compileComposition } from "../../dist/index.js";
 
 // The immutable recipes supply real descriptors and independently frozen whole

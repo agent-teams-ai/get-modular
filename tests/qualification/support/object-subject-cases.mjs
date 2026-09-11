@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { isDeepStrictEqual } from "node:util";
 import { materialize } from "../../../architecture/checks/implementation-clarifications.mjs";
-import { coverageInput } from "../../../packages/core/tests/features/input-admission/object-resource-coverage-cases.mjs";
+import { coverageInput } from "./object-resource-coverage-cases.mjs";
 import { generateDenseProfile, loadP500Recipe } from "./resource-profile-v2.mjs";
 import { expectedP500Plan, expectedDigest, p500Digest } from "./scale-output.mjs";
 import { objectResourceAdmissionCases } from "./object-resource-admission.mjs";

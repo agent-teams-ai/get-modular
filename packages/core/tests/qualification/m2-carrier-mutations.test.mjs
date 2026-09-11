@@ -4,9 +4,9 @@ import { createHash } from 'node:crypto';
 import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import test from 'node:test';
-import { rawDocumentCases } from '../../../../tests/qualification/m2-candidate/raw-document-cases.mjs';
+import { rawDocumentCases } from '../qualification-support/m2-candidate/raw-document-cases.mjs';
 
 // Actual built Core mutations for ADR-0021 M2.4, separate from oracle controls
 // and canonicalizer replacements. These disposable reports are not custody proof.
@@ -70,7 +70,7 @@ async function childMain() {
   const request = JSON.parse(readFileSync(0, 'utf8'));
   const carrierBytes = readFileSync(new URL('./src/features/input-admission/byte-carrier.js', import.meta.url));
   const carrierSha256 = createHash('sha256').update(carrierBytes).digest('hex');
-  const subject = await import('./self-composition/stage0-entry.js');
+  const subject = await import(pathToFileURL(join(process.cwd(), entryPath)).href);
   assert.equal(typeof subject.compileCompositionJson, 'function', 'actual raw export is required');
   const hooks = { slice: 0, iteratorGet: 0, iteratorCall: 0, species: 0 };
   const encode = recipe => {
@@ -138,6 +138,9 @@ const childSource = [
   "import assert from 'node:assert/strict';",
   "import { createHash } from 'node:crypto';",
   "import { readFileSync } from 'node:fs';",
+  "import { join } from 'node:path';",
+  "import { pathToFileURL } from 'node:url';",
+  `const entryPath = ${JSON.stringify(entryPath)};`,
   `await (${childMain.toString()})();`,
 ].join('\n');
 

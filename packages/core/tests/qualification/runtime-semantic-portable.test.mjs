@@ -3,10 +3,10 @@ import test from 'node:test';
 import * as production from '../../dist/index.js';
 import {
   produceSemanticRuntimeFixtures, semanticRuntimeCounts,
-} from '../../../../tests/qualification/support/m3-semantic-runtime-fixtures.mjs';
+} from '../qualification-support/support/m3-semantic-runtime-fixtures.mjs';
 import {
   executeSemanticRuntimeFixture, executeSemanticRuntimeFixtures,
-} from '../../../../tests/qualification/support/m3-semantic-runtime-executor.mjs';
+} from '../qualification-support/support/m3-semantic-runtime-executor.mjs';
 
 test('generated public root: portable 818 semantic subset, object and raw', async () => {
   // Transport one fixture at a time; never retain the large input inventory.

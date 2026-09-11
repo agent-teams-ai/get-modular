@@ -4,13 +4,13 @@ import * as production from '../../dist/index.js';
 import {
   produceP500RuntimeFixtures, p500RuntimeCounts, p500RuntimeFixtureCount,
   p500RuntimeParameters,
-} from '../../../../tests/qualification/support/m3-p500-runtime-fixtures.mjs';
+} from '../qualification-support/support/m3-p500-runtime-fixtures.mjs';
 import {
   executeSemanticRuntimeFixture,
-} from '../../../../tests/qualification/support/m3-semantic-runtime-executor.mjs';
+} from '../qualification-support/support/m3-semantic-runtime-executor.mjs';
 import {
   expectedP500Plan, expectedDigest, p500Digest,
-} from '../../../../tests/qualification/support/scale-output.mjs';
+} from '../qualification-support/support/scale-output.mjs';
 
 async function fixtureFor(category) {
   for await (const fixture of produceP500RuntimeFixtures()) {

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 import { createHash } from 'node:crypto';
-import { rawDocumentCases } from '../../../../tests/qualification/m2-candidate/raw-document-cases.mjs';
+import { rawDocumentCases } from '../qualification-support/m2-candidate/raw-document-cases.mjs';
 import { createOwnedJcs } from '../../dist-test/features/canonicalization/owned-jcs/factory.js';
 import { createOwnedRawScanner } from '../../dist-test/features/raw-scanner/owned-iterative/factory.js';
 import { createInputAdmission } from '../../dist-test/features/input-admission/factory.js';

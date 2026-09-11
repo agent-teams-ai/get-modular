@@ -4,16 +4,16 @@ import { createContext, runInContext } from 'node:vm';
 import * as production from '../../dist/index.js';
 import {
   CASES, materializeCase, REALM_PROTOTYPES,
-} from '../../../../tests/qualification/m2-candidate/object-descriptor-cases.mjs';
+} from '../qualification-support/m2-candidate/object-descriptor-cases.mjs';
 import {
   produceDescriptorRuntimeFixtures, descriptorRuntimeCounts,
-} from '../../../../tests/qualification/support/m3-descriptor-runtime-fixtures.mjs';
+} from '../qualification-support/support/m3-descriptor-runtime-fixtures.mjs';
 import {
   materializeDescriptorRuntimeInput,
-} from '../../../../tests/qualification/support/m3-descriptor-runtime-materializers.mjs';
+} from '../qualification-support/support/m3-descriptor-runtime-materializers.mjs';
 import {
   executeDescriptorRuntimeFixture, executeDescriptorRuntimeFixtures,
-} from '../../../../tests/qualification/support/m3-descriptor-runtime-executor.mjs';
+} from '../qualification-support/support/m3-descriptor-runtime-executor.mjs';
 
 const foreign = runInContext(`({
   objectPrototype: Object.prototype, arrayPrototype: Array.prototype,

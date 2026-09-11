@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import examples from '../../../../../tests/qualification/compiler-engineer/examples.json' with { type: 'json' };
+import { readFile } from 'node:fs/promises';
+const examples = JSON.parse(await readFile(new URL('../../../../../tests/qualification/compiler-engineer/examples.json', import.meta.url)));
 import { schemaSafeLocalPath, validateDeclarationShape, validateProfileShape, validateDeclarationView, validateProfileView } from '../../../dist-test/features/input-admission/document-shape.js';
 import { objectDocument } from '../../../dist-test/features/input-admission/document-reader.js';
 import { documentPath } from '../../../dist-test/features/input-admission/document-path.js';

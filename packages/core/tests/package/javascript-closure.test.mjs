@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
 import test from 'node:test';
 import { Worker } from 'node:worker_threads';
-import { auditM1JavaScriptClosure } from '../../../../tests/qualification/support/m1-javascript-closure.mjs';
+import { auditM1JavaScriptClosure } from '../qualification-support/support/m1-javascript-closure.mjs';
 
 const ENTRY = 'dist/index.js';
 const ROOT = 'dist/composition/stage0.js';

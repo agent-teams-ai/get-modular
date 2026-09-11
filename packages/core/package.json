@@ -76,5 +76,14 @@
     "type": "git",
     "url": "git+https://github.com/agent-teams-ai/get-modular.git",
     "directory": "packages/core"
+  },
+  "devDependencies": {
+    "ajv": "catalog:",
+    "canonicalize": "catalog:",
+    "json-canonicalize": "catalog:",
+    "tar": "catalog:",
+    "typescript": "catalog:",
+    "typescript-minimum": "catalog:",
+    "yaml": "catalog:"
   }
 }

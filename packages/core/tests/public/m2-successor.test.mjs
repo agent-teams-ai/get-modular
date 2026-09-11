@@ -1,15 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import resourceProfile from '../../../../architecture/qualification/v1/resource-profile-v2.json' with { type: 'json' };
+import { readFile } from 'node:fs/promises';
+const resourceProfile = JSON.parse(await readFile(new URL('../../../../architecture/qualification/v1/resource-profile-v2.json', import.meta.url)));
 import * as production from '../../dist/index.js';
 import * as direct from '../../dist-stage0/self-composition/stage0-entry.js';
 import { duplicateRecordBaseCases, duplicateRecordRowFailureCases,
-  duplicateRecordOverlapCases, duplicateRecordPermutationCases } from '../../../../tests/qualification/m2-candidate/duplicate-record-cases.mjs';
+  duplicateRecordOverlapCases, duplicateRecordPermutationCases } from '../qualification-support/m2-candidate/duplicate-record-cases.mjs';
 import { duplicateRecordOrderingCases, duplicateRecordShuffledOrderingCases,
-  duplicateRecordCollectorCases } from '../../../../tests/qualification/m2-candidate/duplicate-record-ordering.mjs';
-import { duplicateRecordExtendedOverlapCases } from '../../../../tests/qualification/m2-candidate/duplicate-record-extended-overlaps.mjs';
-import { m2ResourceOutcomeCases } from '../../../../tests/qualification/support/m2-resource-outcomes.mjs';
-import { m2RawCaseDefinitions, executeM2RawCase } from '../../../../tests/qualification/support/m2-packed-raw-cases.mjs';
+  duplicateRecordCollectorCases } from '../qualification-support/m2-candidate/duplicate-record-ordering.mjs';
+import { duplicateRecordExtendedOverlapCases } from '../qualification-support/m2-candidate/duplicate-record-extended-overlaps.mjs';
+import { m2ResourceOutcomeCases } from '../qualification-support/support/m2-resource-outcomes.mjs';
+import { m2RawCaseDefinitions, executeM2RawCase } from '../qualification-support/support/m2-packed-raw-cases.mjs';
 
 // These are ordinary production/direct entry calls, with independent complete
 // successor results. Carrier recipes remain constructing fixtures, never RPC.

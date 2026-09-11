@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import examples from "../../../../../tests/qualification/compiler-engineer/examples.json" with { type: "json" };
+import { readFile } from "node:fs/promises";
+const examples = JSON.parse(await readFile(new URL("../../../../../tests/qualification/compiler-engineer/examples.json", import.meta.url)));
 import { admitRawInput } from "../../../dist-test/features/input-admission/raw-admission.js";
 import { admitObjectInput } from "../../../dist-test/features/input-admission/object-admission.js";
 import { createOwnedRawScanner } from "../../../dist-test/features/raw-scanner/owned-iterative/factory.js";

@@ -11,7 +11,7 @@ import { version } from 'typescript';
 import { compileComposition } from '../../dist-stage0/self-composition/stage0-entry.js';
 import { ownDeclarations, ownProfile } from '../../dist-stage0/self-composition/own-profile.js';
 import { allowlist } from '../../dist-stage0/self-composition/allowlist.js';
-import { auditM1JavaScriptClosure } from '../../../../tests/qualification/support/m1-javascript-closure.mjs';
+import { auditM1JavaScriptClosure } from '../qualification-support/support/m1-javascript-closure.mjs';
 
 const packageRoot = fileURLToPath(new URL('../../', import.meta.url));
 const require = createRequire(import.meta.url);

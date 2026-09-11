@@ -8,8 +8,8 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { checkProcess, checkTree, createOutputDirectory, digest, jsonBytes, readJournal,
-  rowDigest, scanTree, verifyM1Observations, writeExclusive, captureOutsideAnchor, verifyObservationAnchor } from '../../../../tests/qualification/support/m1-retained-observations.mjs';
-import { createExactSourceCheckout, inspectExactSource, parseRetainedM1Arguments, relocatePreparedPlan, retainedM1Main, runM1RetainedSession, verifyBuildCompiler, writeM1Anchor } from '../../../../tests/qualification/m1-retained-session.mjs';
+  rowDigest, scanTree, verifyM1Observations, writeExclusive, captureOutsideAnchor, verifyObservationAnchor } from '../qualification-support/support/m1-retained-observations.mjs';
+import { createExactSourceCheckout, inspectExactSource, parseRetainedM1Arguments, relocatePreparedPlan, retainedM1Main, runM1RetainedSession, verifyBuildCompiler, writeM1Anchor } from '../qualification-support/m1-retained-session.mjs';
 
 // Controlled TEST transports below do not build, install or qualify Core. The
 // real opt-in retained command executes the shared 97-case inventory separately.

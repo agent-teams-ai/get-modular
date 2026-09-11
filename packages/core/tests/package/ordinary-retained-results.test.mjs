@@ -5,9 +5,9 @@ import * as fs from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { encodeOrdinaryValue, ordinaryValueLimits } from '../../../../tests/qualification/support/ordinary-result-format.mjs';
-import { createOrdinaryResultStore, prepareOrdinaryResults, verifyOrdinaryResults } from '../../../../tests/qualification/support/ordinary-result-store.mjs';
-import { expectedDigest, expectedP500Plan, p500Digest } from '../../../../tests/qualification/support/scale-output.mjs';
+import { encodeOrdinaryValue, ordinaryValueLimits } from '../qualification-support/support/ordinary-result-format.mjs';
+import { createOrdinaryResultStore, prepareOrdinaryResults, verifyOrdinaryResults } from '../qualification-support/support/ordinary-result-store.mjs';
+import { expectedDigest, expectedP500Plan, p500Digest } from '../qualification-support/support/scale-output.mjs';
 
 // Controlled TEST storage and real unretained Core observations. These tests
 // do not qualify an archive or claim that M2/M3 retained execution is complete.
@@ -280,7 +280,7 @@ test('an actual ordinary M1 call retains its complete independently expected res
 for (const suffix of ['bindings/over', 'providersPerManySlot/over']) {
   test(`frozen resource disagreement stays observable and unqualified: ${suffix}`, async t => {
     const { compileComposition } = await import('../../dist/index.js');
-    const { materializeDuplicateRecordResource } = await import('../../../../tests/qualification/m2-candidate/duplicate-record-resources.mjs');
+    const { materializeDuplicateRecordResource } = await import('../qualification-support/m2-candidate/duplicate-record-resources.mjs');
     const id = `od006.resources.v1/${suffix}`, row = materializeDuplicateRecordResource(id);
     const f = await setup(t, [assignment(row.expected, id, {
       construction: { recipe: id, disposition: 'frozen-expectation-owner-choice-pending' },

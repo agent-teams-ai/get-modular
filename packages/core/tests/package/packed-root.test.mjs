@@ -7,10 +7,10 @@ import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { readPackageArchive } from '../../../../tests/qualification/support/package-archive.mjs';
-import { auditM1DeclarationClosure } from '../../../../tests/qualification/support/m1-declarations-closure.mjs';
-import { auditM1JavaScriptClosure } from '../../../../tests/qualification/support/m1-javascript-closure.mjs';
-import { prepareM1PackedConsumers, m1NodeEnvironment, m2RuntimeNames as runtimeNames } from '../../../../tests/qualification/support/m1-packed-consumers.mjs';
+import { readPackageArchive } from '../qualification-support/support/package-archive.mjs';
+import { auditM1DeclarationClosure } from '../qualification-support/support/m1-declarations-closure.mjs';
+import { auditM1JavaScriptClosure } from '../qualification-support/support/m1-javascript-closure.mjs';
+import { prepareM1PackedConsumers, m1NodeEnvironment, m2RuntimeNames as runtimeNames } from '../qualification-support/support/m1-packed-consumers.mjs';
 
 const repo = fileURLToPath(new URL('../../../../', import.meta.url));
 const require = createRequire(import.meta.url);

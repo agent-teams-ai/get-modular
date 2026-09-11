@@ -49,7 +49,7 @@
     "core:test": "node --test \"packages/core/tests/**/*.test.mjs\"",
     "assembly:build": "pnpm core:build && node architecture/tooling/build-assembly.mjs",
     "assembly:typecheck": "node node_modules/typescript/bin/tsc -p packages/assembly/tsconfig.json --noEmit",
-    "assembly:test": "node --test \"packages/assembly/tests/**/*.test.mjs\""
+    "assembly:test": "node --test \"tests/assembly/**/*.test.mjs\" \"packages/assembly/tests/**/*.test.mjs\""
   },
   "devDependencies": {
     "@agent-teams/docs-protocol": "0.6.0",
@@ -63,6 +63,8 @@
     "tar": "catalog:",
     "typescript": "catalog:",
     "typescript-minimum": "catalog:",
-    "yaml": "catalog:"
+    "yaml": "catalog:",
+    "@get-modular/core": "workspace:*",
+    "@get-modular/assembly": "workspace:*"
   }
 }

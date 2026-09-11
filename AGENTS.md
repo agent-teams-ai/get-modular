@@ -18,7 +18,24 @@ Task ownership and the milestone callable surface are explicit; the full roadmap
 For consumer composition work, read the [Consumer module standard](docs/architecture/common-assembly.md#consumer-module-standard).
 
 Use `pnpm check:changed` while editing, `pnpm check:fast` before handoff, and
-`pnpm check` as the complete gate.
+`pnpm check` as the complete gate, including the installed
+`architecture.source-dependencies` schema v3 gate (`rootPackage: true` and
+`packageRoots` for Core/Assembly).
+
+When that gate reports a boundary violation, fix the source rather than
+shrinking governed roots or adding a baseline:
+
+- forbidden domain/tooling dependency -> consumer-owned port and adapter;
+- deep import -> the declared public entrypoint for that boundary;
+- new root or package -> owner, `packageRoots`/`rootPackage`, and a
+  non-overlapping boundary, never an exclusion;
+- `includeRootPackage` in YAML is invalid; public v3 uses `rootPackage: true`;
+- generated `dist-*` trees are governed development output, not a reason to
+  drop package scope;
+- qualification helpers stay in `tests/qualification` (root) or
+  `packages/core/tests/qualification-support` (Core-local copies), not a
+  third production or Host composition package;
+- CI greening by narrowing scope or pending a root silently is forbidden.
 
 <!-- agent-teams-docs:route/v1 begin -->
 Use [.agents/skills/docs-authoring/SKILL.md](.agents/skills/docs-authoring/SKILL.md) for documentation.

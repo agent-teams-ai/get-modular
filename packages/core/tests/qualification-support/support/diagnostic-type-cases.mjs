@@ -1,0 +1,79 @@
+import { readFile } from "node:fs/promises";
+import { findRepoRoot, repoFileUrl } from './load-repo-json.mjs';
+import { pathToFileURL } from 'node:url';
+
+const root = pathToFileURL(findRepoRoot() + '/');
+const diagnostics = JSON.parse(await readFile(new URL("architecture/qualification/v1/diagnostic-contract.json", root), "utf8"));
+const snapshots = JSON.parse(await readFile(new URL("architecture/qualification/v1/diagnostic-snapshots.json", root), "utf8"));
+const catalog = JSON.parse(await readFile(new URL("architecture/contracts/v1/diagnostic-catalog.json", root), "utf8"));
+
+const successor = {
+  diagnostics: JSON.parse(await readFile(new URL("architecture/qualification/generation-two/contract.json", root), "utf8")),
+  snapshots: JSON.parse(await readFile(new URL("architecture/qualification/generation-two/snapshots.json", root), "utf8")),
+  catalog: JSON.parse(await readFile(new URL("architecture/qualification/generation-two/catalog.json", root), "utf8")),
+};
+
+// Independent accepted vectors, shared by source and installed-root consumers.
+export function diagnosticTypeCase(importSpecifier, generation = 1) {
+  if (generation !== 1 && generation !== 2) throw new TypeError("Unknown diagnostic generation");
+  const selected = generation === 1 ? { diagnostics, snapshots, catalog } : successor;
+  const codes = selected.diagnostics.codeDisposition.emittable;
+  const expected = codes.map(JSON.stringify).join(" | ");
+  const records = selected.snapshots.snapshots.map(item => item.diagnostic);
+  const snapshotAssertions = records.map((record, index) => `const snapshot${index} = ${JSON.stringify(record)} satisfies Diagnostic;`).join("\n");
+  const malformedAssertions = records.map((record, index) => {
+    const malformed = { ...record, details: { unexpected: true } };
+    return `// @ts-expect-error accepted variant requires its own closed details\nconst malformed${index} = ${JSON.stringify(malformed)} satisfies Diagnostic;`;
+  }).join("\n");
+  const text = `import type { Diagnostic, DiagnosticCode, CompileCompositionResult } from ${JSON.stringify(importSpecifier)};
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;
+${snapshotAssertions}
+${malformedAssertions}
+${generation === 2 ? `
+// @ts-expect-error the carrier reasons are a closed vocabulary
+const wrongCarrier: Diagnostic = { code: "input.invalid-byte-carrier", phase: "decode", path: [], coordinate: {}, details: { reason: "invalid-json" } };
+// @ts-expect-error duplicate records never expose a provider coordinate
+const wrongRecord: Diagnostic = { code: "binding.duplicate-record", phase: "binding", path: [], coordinate: { implementationId: "example/a", slotId: "x", providerImplementationId: "example/b" }, details: { reason: "duplicate" } };
+// @ts-expect-error carrier failures belong to decode
+const wrongPhase: Diagnostic = { code: "input.invalid-byte-carrier", phase: "schema", path: [], coordinate: {}, details: { reason: "not-uint8array" } };
+` : ""}
+const exact: Equal<DiagnosticCode, ${expected}> = true;
+const derived: Equal<DiagnosticCode, Diagnostic['code']> = true;
+const complete: Record<DiagnosticCode, string> = ${JSON.stringify(Object.fromEntries(codes.map(code => [code, code])))};
+// @ts-expect-error missing real code
+const incomplete: Record<DiagnosticCode, string> = ${JSON.stringify(Object.fromEntries(codes.slice(1).map(code => [code, code])))};
+// @ts-expect-error reserved failure is never emittable
+const reserved: DiagnosticCode = 'output.canonicalization-failed';
+function exhaustive(diagnostic: Diagnostic) {
+  switch (diagnostic.code) {
+    ${codes.map(code => `case ${JSON.stringify(code)}: { const keys: Equal<keyof typeof diagnostic.details, ${selected.catalog.detailPolicy[code].map(JSON.stringify).join(" | ")}> = true; break; }`).join("\n")}
+    default: { const absent: never = diagnostic; return absent; }
+  }
+}
+function narrow(diagnostic: Diagnostic) {
+  if (diagnostic.code === 'binding.compatibility-mismatch') {
+    const token: string = diagnostic.details.expectedCompatibility.token;
+    const provider: string = diagnostic.coordinate.providerImplementationId;
+    // @ts-expect-error this variant has no reason
+    diagnostic.details.reason;
+  }
+  if (diagnostic.code === 'graph.cycle') {
+    const component: readonly string[] = diagnostic.details.component;
+    // @ts-expect-error graph.cycle has no omitted counter
+    diagnostic.details.omitted;
+  }
+}
+function result(value: CompileCompositionResult) {
+  if (value.ok) {
+    const digest: string = value.digest;
+    // @ts-expect-error success has no diagnostics
+    value.diagnostics;
+  } else {
+    const errors: readonly Diagnostic[] = value.diagnostics;
+    // @ts-expect-error failure has no plan
+    value.plan;
+  }
+}
+`;
+  return text;
+}
