@@ -22,23 +22,21 @@ Use `pnpm check:changed` while editing, `pnpm check:fast` before handoff, and
 `architecture.source-dependencies` schema v3 gate (`rootPackage: true` and
 `packageRoots` for Core/Assembly) and `pnpm release-owned-files:check`.
 
-Public TypeScript API breaks fail closed once `package.public-api-compatibility`
-is enabled. Compare Core and Assembly `"."` exports against
-`architecture/public-api/core.json` and `architecture/public-api/assembly.json`
-with `pnpm foundation:check` (and `pnpm check` before merge). Fix source, or
-take the real Changesets release and
-`agent-teams-foundation public-api-promote-release` path. Never shrink
-`architecture/public-api/`, never retarget `releasedBaselinePath`, and never
-recapture a baseline from current source to hide a break. Required PR CI
-blocks modify/rename/delete of those baselines except first-adoption create
-and trusted `changeset-release/main` mutations.
+When `package.public-api-compatibility` or `pnpm release-owned-files:check`
+fails, fix the source. Do not shrink yaml entrypoints, retarget
+`releasedBaselinePath`, or edit `architecture/public-api/` on a feature PR.
+First adoption may create `architecture/public-api/core.json` and
+`architecture/public-api/assembly.json` (`A`). Later baseline writes are only
+`agent-teams-foundation public-api-promote-release` on trusted
+`changeset-release/main` in this repository.
 
-Do not enable `package.public-api-compatibility` yet. Foundation 1.2.0 API
+Do not enable `package.public-api-compatibility` while Foundation 1.2.0 API
 Extractor fail-closes on `ae-forgotten-export` for named aliases in the
 ADR-0009 closed root set (and Assembly `ValueOf` / `ValidDeclaration`).
 Elevating those names onto `"."` would expand the public root beyond ADR-0009
-and fail packed-root declaration closure. Do not recapture current source as
-0.1.0 to hide that.
+and fail packed-root declaration closure. Inlining them inflates `Diagnostic`
+past the 10000-character baseline signature cap. Do not recapture current
+source as 0.1.0 to hide that.
 
 When that gate reports a boundary violation, fix the source rather than
 shrinking governed roots or adding a baseline:
