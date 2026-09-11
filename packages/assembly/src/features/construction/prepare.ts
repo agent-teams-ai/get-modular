@@ -85,7 +85,7 @@ export async function prepareConstruction<C, R extends RootHandles<C>>(
     const roots = Object.freeze(aliases.keys.map((alias) => {
       const handle = data(aliases.object, alias);
       const metadata = byHandle.get(handle as object);
-      if (!metadata || rootHandles.has(handle as object) || !rootIds.has(metadata.declaration.implementationId)) return refuse("assembly.prepare.roots");
+      if (!metadata || rootHandles.has(handle as object) || !rootIds.has(metadata.declaration.moduleId)) return refuse("assembly.prepare.roots");
       rootHandles.add(handle as object);
       return Object.freeze({ alias, implementationId: metadata.declaration.implementationId });
     }));
