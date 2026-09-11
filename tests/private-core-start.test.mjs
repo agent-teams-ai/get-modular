@@ -10,6 +10,7 @@ import {
   validatePrivateCoreStart,
 } from "../architecture/checks/private-core-start.mjs";
 import { isStartingBaseAncestor } from "../architecture/checks/tracked-file-custody.mjs";
+import { CORE_DEVELOPMENT_DEPENDENCIES } from "../architecture/checks/assembly-admission.mjs";
 import { ACCEPTED_AUTHORITY_LEDGER_DIGEST } from "../architecture/checks/governance.mjs";
 
 import { readCurrentM2Authority, M2_LOCK_DECISION, M2_LOCK_WITNESS } from "../architecture/checks/m2-lock-witness.mjs";
@@ -180,16 +181,27 @@ test("real governance entrypoint consumes the start record before admitting priv
     await exec("git", ["add", "architecture/checks"], { cwd: fixture });
     await symlink(join(repositoryRoot, "node_modules"), join(fixture, "node_modules"), "junction");
     await mkdir(join(fixture, "packages/core/src/features/example"), { recursive: true });
-    await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify({ ...carrier, name: "@get-modular/core" }));
+    // Assembly admission now requires Core's development catalog pins on the live
+    // package graph; the start-gate fixture must keep that shape or governance
+    // fails before the start record is even read.
+    const coreCarrier = {
+      ...carrier,
+      name: "@get-modular/core",
+      devDependencies: { ...CORE_DEVELOPMENT_DEPENDENCIES },
+    };
+    await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify(coreCarrier));
     await writeFile(join(fixture, artifacts[1]), "export const fixture = true;\n");
     const git = (...args) => exec("git", args, { cwd: fixture });
     const gate = () => exec(process.execPath, ["architecture/checks/governance.mjs"], { cwd: fixture });
     await git("add", "packages/core", roadmapPath);
     await gate();
-    await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify({ ...carrier, name: "@get-modular/conformance" }));
+    await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify({
+      ...coreCarrier,
+      name: "@get-modular/conformance",
+    }));
     await git("add", "packages/core/package.json");
     await assert.rejects(gate(), error => /(?:private Core start.*manifest identity|Assembly admission Core identity)/u.test(error.stderr));
-    await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify({ ...carrier, name: "@get-modular/core" }));
+    await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify(coreCarrier));
     await git("add", "packages/core/package.json");
     for (const replacement of ["", markdown({ ...recorded, approvedBy: "reviewer" })]) {
       await writeFile(join(fixture, roadmapPath), roadmap.replace(block, replacement));
