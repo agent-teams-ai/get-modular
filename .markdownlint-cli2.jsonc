@@ -4,5 +4,5 @@
     "MD033": false,
     "MD041": false
   },
-  "globs": ["**/*.md", "!node_modules/**"]
+  "globs": ["**/*.md", "!**/node_modules/**"]
 }
