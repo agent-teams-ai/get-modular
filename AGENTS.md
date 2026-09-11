@@ -20,7 +20,25 @@ For consumer composition work, read the [Consumer module standard](docs/architec
 Use `pnpm check:changed` while editing, `pnpm check:fast` before handoff, and
 `pnpm check` as the complete gate, including the installed
 `architecture.source-dependencies` schema v3 gate (`rootPackage: true` and
-`packageRoots` for Core/Assembly).
+`packageRoots` for Core/Assembly) and `pnpm release-owned-files:check`.
+
+Public TypeScript API breaks fail closed once `package.public-api-compatibility`
+is enabled. Compare Core and Assembly `"."` exports against
+`architecture/public-api/core.json` and `architecture/public-api/assembly.json`
+with `pnpm foundation:check` (and `pnpm check` before merge). Fix source, or
+take the real Changesets release and
+`agent-teams-foundation public-api-promote-release` path. Never shrink
+`architecture/public-api/`, never retarget `releasedBaselinePath`, and never
+recapture a baseline from current source to hide a break. Required PR CI
+blocks modify/rename/delete of those baselines except first-adoption create
+and trusted `changeset-release/main` mutations.
+
+Do not enable `package.public-api-compatibility` yet. Foundation 1.2.0 API
+Extractor fail-closes on `ae-forgotten-export` for named aliases in the
+ADR-0009 closed root set (and Assembly `ValueOf` / `ValidDeclaration`).
+Elevating those names onto `"."` would expand the public root beyond ADR-0009
+and fail packed-root declaration closure. Do not recapture current source as
+0.1.0 to hide that.
 
 When that gate reports a boundary violation, fix the source rather than
 shrinking governed roots or adding a baseline:
