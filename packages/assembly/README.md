@@ -3,6 +3,9 @@
 Optional pre-1.0 construction support above the public `@get-modular/core` root.
 Node.js `>=24.18.0 <25`; ESM; TypeScript consumer floor 5.8.3.
 
+See the repository's [consumer quickstart](https://github.com/agent-teams-ai/get-modular/blob/main/docs/guides/consumer-quickstart.md)
+for an executable Host with diagnostics, cancellation, and cleanup.
+
 `assemblyFor<C>()` returns `bindFactory` and `prepare`. Describe each Host-owned
 capability in `C` using `CapabilityContract<Value, ExactToken>`. Pass a literal
 Core declaration to `bindFactory`; its slots determine the callback's dependency
@@ -47,9 +50,9 @@ Packed tests install local Core and assembly archives into a disposable consumer
 exercise the synthetic Host, and check typed wiring, deliberate negative fixtures
 and 1000 literal declarations. The scale fixture is only typechecked.
 
-First public publication targets Assembly 0.1.0 with exactly Core 0.1.0.
-Availability requires registry reconciliation and downloaded-byte consumer checks;
-source tests alone do not establish publication or conformance.
+Assembly 0.1.0 is published with exactly Core 0.1.0. Later releases still
+require registry reconciliation and downloaded-byte consumer checks; source
+tests alone do not establish publication or conformance.
 
 Release validation can reuse the same consumer checks without packing or deleting
 supplied archives. Set `GET_MODULAR_ASSEMBLY_ARCHIVE` and

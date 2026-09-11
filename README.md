@@ -24,9 +24,12 @@ consume both.
 
 ## Packages
 
-- `@get-modular/core` is the only production package in this repository. It owns portable
-  declarations, validation, deterministic compilation, plans, digests, and
-  diagnostics.
+- [`@get-modular/core`](packages/core/README.md) owns portable declarations,
+  validation, deterministic compilation, plans, digests, and diagnostics.
+- [`@get-modular/assembly`](packages/assembly/README.md) optionally constructs
+  Host-authorized factories from a successful Core plan. It passes closed,
+  typed dependency records to each factory; the Host retains lifecycle,
+  readiness, permissions, and cleanup ownership.
 - `@get-modular/conformance` is reserved for a development-only conformance suite for core,
   alternative implementations, and adapters. Applications do not install it at
   runtime.
@@ -35,8 +38,17 @@ consume both.
 owned fixtures prove that an implementation follows the contract. The
 conformance package may depend on core; core never depends on conformance.
 
-Core is implemented under `packages/core`; publication remains pending.
-See its [API and scope](packages/core/README.md). Accepted ADR-0009 fixes one unversioned
+Core and Assembly `0.1.0` are available from npm. Install both when the Host
+needs construction, or Core alone when it only needs a portable plan:
+
+```sh
+npm install @get-modular/core@0.1.0 @get-modular/assembly@0.1.0
+```
+
+Start with the [consumer quickstart](docs/guides/consumer-quickstart.md) and its
+[executable Host example](packages/assembly/examples/basic-host.mjs).
+
+Accepted ADR-0009 fixes one unversioned
 pre-1.0 public API surface: no export or internal identifier carries a
 generation suffix, and before 1.0 a breaking change simply replaces the current
 surface and is recorded in the package changelog with the consumer migration.
@@ -54,6 +66,7 @@ generations. See the [current contract](docs/architecture/current-contract.md).
 - [Normative requirements](docs/requirements/module-system-v1.md)
 - [Provenance map](docs/provenance/source-map.yaml)
 
-The repository is in pre-1.0 bootstrap. No production Module API is published
-yet.
+The packages are pre-1.0. Core and Assembly are published for real consumer
+adoption, without a stable `1.0`, runtime-conformance, or lifecycle-management
+claim.
 Deterministic, product-neutral TypeScript module composition with explicit capabilities, immutable plans, and conformance tooling.
