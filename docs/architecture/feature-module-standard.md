@@ -96,10 +96,10 @@ production. The first production package must atomically:
 - change the admission state to `source-admitted`;
 - enable Engineering Foundation's `architecture.source-dependencies`
   capability at `architecture/foundation/source-dependencies.yaml`; and
-- execute the pinned `@agent-teams/engineering-foundation` `1.1.0` command
+- execute the pinned `@agent-teams/engineering-foundation` `1.2.0` command
   `agent-teams-foundation check` through both the complete and fast gates.
 
-The `1.1.0` source pin is accepted. Registry publication and final installed
+The `1.2.0` source pin is accepted. Registry publication and final installed
 archive qualification remain pending; this source refresh claims neither.
 
 The gate resolves the checked-in `foundation:check` script to that actual

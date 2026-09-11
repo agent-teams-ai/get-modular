@@ -49,14 +49,14 @@ test("accepts the checked-in Get Modular adoption profile", () => {
 // Accepted source pins; final archive binding and publication verification remain pending.
 test("pins the accepted Foundation and Docs source versions with exact age exclusions", async () => {
   const workspace = parse(await readFile("pnpm-workspace.yaml", "utf8"));
-  assert.equal(packageJson.devDependencies["@agent-teams/engineering-foundation"], "1.1.0");
+  assert.equal(packageJson.devDependencies["@agent-teams/engineering-foundation"], "1.2.0");
   assert.equal(packageJson.devDependencies["@agent-teams/docs-protocol"], "0.6.0");
-  assert.equal(profile.adoption.admission.foundation.version, "1.1.0");
+  assert.equal(profile.adoption.admission.foundation.version, "1.2.0");
   assert.equal(workspace.minimumReleaseAge, 1440);
   assert.equal(workspace.minimumReleaseAgeStrict, true);
   assert.deepEqual(workspace.minimumReleaseAgeExclude, [
     "@agent-teams/docs-protocol@0.6.0",
-    "@agent-teams/engineering-foundation@1.1.0",
+    "@agent-teams/engineering-foundation@1.2.0",
     "@agent-teams/document-authoring@0.3.0",
     "@agent-teams/repository-mutation@0.2.0",
   ]);
@@ -81,13 +81,13 @@ function versionAdmissionInput() {
 
 // Literal counterexamples must not follow the checker or an installed package's version.
 const rejectedFoundationPins = [
-  "0.21.0", "1.0.1", "1.1.1", "2.0.0", "^1.1.0", "~1.1.0", "*", undefined,
+  "0.21.0", "1.0.1", "1.1.0", "1.1.1", "2.0.0", "^1.2.0", "~1.2.0", "*", undefined,
 ];
 
-test("accepts exactly Foundation 1.1.0 for source and empty pre-production guard inputs", () => {
+test("accepts exactly Foundation 1.2.0 for source and empty pre-production guard inputs", () => {
   const input = versionAdmissionInput();
-  input.packageJson.devDependencies["@agent-teams/engineering-foundation"] = "1.1.0";
-  input.admission.foundation.version = "1.1.0";
+  input.packageJson.devDependencies["@agent-teams/engineering-foundation"] = "1.2.0";
+  input.admission.foundation.version = "1.2.0";
   assert.equal(validateFirstProductionPackageAdmission(input), SOURCE_DEPENDENCY_POLICY_PATH);
   input.productionArtifacts = [];
   input.admission.status = "pre-production";
@@ -104,7 +104,7 @@ test("rejects stale, mismatched, ranged and missing Foundation manifest pins bef
         input.admission.status = "pre-production";
       }
       assert.throws(() => validateFirstProductionPackageAdmission(input),
-        /@agent-teams\/engineering-foundation must remain pinned to 1\.1\.0/u,
+        /@agent-teams\/engineering-foundation must remain pinned to 1\.2\.0/u,
         `manifest ${String(version)}, empty inventory ${empty}`);
     }
   }
@@ -128,7 +128,7 @@ test("matching manifest and profile versions cannot replace the exact Foundation
     input.packageJson.devDependencies["@agent-teams/engineering-foundation"] = version;
     input.admission.foundation.version = version;
     assert.throws(() => validateFirstProductionPackageAdmission(input),
-      /@agent-teams\/engineering-foundation must remain pinned to 1\.1\.0/u);
+      /@agent-teams\/engineering-foundation must remain pinned to 1\.2\.0/u);
     const changed = clone(profile);
     changed.adoption.admission = input.admission;
     assert.throws(() => validate({ profile: changed, packageJson: input.packageJson }),
@@ -136,7 +136,7 @@ test("matching manifest and profile versions cannot replace the exact Foundation
   }
 });
 
-test("admits current Core and Assembly only with the exact Foundation 1.1.0 binding", async () => {
+test("admits current Core and Assembly only with the exact Foundation 1.2.0 binding", async () => {
   const manifests = new Map(await Promise.all([
     "packages/core/package.json", "packages/assembly/package.json",
   ].map(async path => [path, JSON.parse(await readFile(path, "utf8"))])));
@@ -165,7 +165,7 @@ test("admits current Core and Assembly only with the exact Foundation 1.1.0 bind
       if (binding !== "manifest") changed.admission.foundation.version = version;
       assert.throws(() => validateFirstProductionPackageAdmission(changed),
         binding === "profile" ? /Foundation admission binding does not match/u
-          : /@agent-teams\/engineering-foundation must remain pinned to 1\.1\.0/u,
+          : /@agent-teams\/engineering-foundation must remain pinned to 1\.2\.0/u,
         `Core+Assembly ${binding} ${String(version)}`);
     }
   }

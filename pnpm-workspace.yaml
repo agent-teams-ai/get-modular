@@ -22,6 +22,6 @@ minimumReleaseAgeStrict: true
 # Source refresh only; final archive binding and exception admission await release coordination.
 minimumReleaseAgeExclude:
   - "@agent-teams/docs-protocol@0.6.0"
-  - "@agent-teams/engineering-foundation@1.1.0"
+  - "@agent-teams/engineering-foundation@1.2.0"
   - "@agent-teams/document-authoring@0.3.0"
   - "@agent-teams/repository-mutation@0.2.0"
