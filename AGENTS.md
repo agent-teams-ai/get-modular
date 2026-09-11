@@ -20,7 +20,15 @@ For consumer composition work, read the [Consumer module standard](docs/architec
 Use `pnpm check:changed` while editing, `pnpm check:fast` before handoff, and
 `pnpm check` as the complete gate, including the installed
 `architecture.source-dependencies` schema v3 gate (`rootPackage: true` and
-`packageRoots` for Core/Assembly).
+`packageRoots` for Core/Assembly) and `pnpm release-owned-files:check`.
+
+When `package.public-api-compatibility` or `pnpm release-owned-files:check`
+fails, fix the source. Do not shrink yaml entrypoints, retarget
+`releasedBaselinePath`, or edit `architecture/public-api/` on a feature PR.
+First adoption may create `architecture/public-api/core.json` and
+`architecture/public-api/assembly.json` (`A`). Later baseline writes are only
+`agent-teams-foundation public-api-promote-release` on trusted
+`changeset-release/main` in this repository.
 
 When that gate reports a boundary violation, fix the source rather than
 shrinking governed roots or adding a baseline:

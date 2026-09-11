@@ -5,6 +5,7 @@
   "files": ["**/*.{md,yaml,yml,json,jsonc}"],
   "ignorePaths": [
     "**/node_modules/**",
+    "architecture/public-api/**",
     "pnpm-lock.yaml",
     "architecture/qualification/generation-two/historical-pnpm-lock.yaml",
     "research/implementation-readiness/evidence/raw/**",
@@ -49,6 +50,7 @@
     "overengineering",
     "readback",
     "replaceability",
+    "retarget",
     "serializability",
     "Theia",
     "undercount",

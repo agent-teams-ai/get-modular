@@ -33,7 +33,7 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "architecture:feature-module-profile":
     "node architecture/checks/feature-module-standard-profile.mjs",
   "architecture:feature-module-profile:test":
-    "node --test tests/feature-module-standard-profile.test.mjs tests/source-dependencies.test.mjs",
+    "node --test tests/feature-module-standard-profile.test.mjs tests/source-dependencies.test.mjs tests/release-owned-files.test.mjs tests/public-api-compatibility.test.mjs",
   "core:typecheck":
     "node architecture/tooling/generate-core.mjs --typecheck",
   "core:typecheck:prepared":
@@ -60,12 +60,15 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
     "node --test tests/qualification/v1-graph-semantics.mjs",
   "qualification:self-composition-templates":
     "node --test tests/self-composition-templates.test.mjs",
+  "release-owned-files:check":
+    "node architecture/checks/release-owned-files.mjs",
   "runtime:preflight": "node architecture/checks/node-version.mjs",
 });
 const ROOT_SCRIPT_COMMANDS = Object.freeze({
   check: Object.freeze([
     "runtime:preflight",
     "governance:check",
+    "release-owned-files:check",
     "assembly:build",
     "foundation:check",
     "docs:protocol:check",

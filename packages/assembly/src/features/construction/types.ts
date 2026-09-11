@@ -5,8 +5,6 @@ export type CapabilityContract<Value, Token extends string> = {
   readonly compatibility: { readonly family: "exact"; readonly familyVersion: 1; readonly token: Token; };
 };
 export type CapabilitySchema<C> = { readonly [K in keyof C]: CapabilityContract<unknown, string> };
-type ValueOf<C, K> = K extends keyof C ? C[K] extends { readonly value: infer V } ? V : never : never;
-type CompatibilityOf<C, K> = K extends keyof C ? C[K] extends { readonly compatibility: infer T } ? T : never : never;
 
 declare const scope: unique symbol;
 declare const detail: unique symbol;
@@ -20,27 +18,52 @@ export type RootInstances<R> = {
   readonly [K in keyof R]: R[K] extends FactoryHandle<infer _C, infer _D, infer I> ? I : never;
 };
 
-type IsUnion<T, Whole = T> = T extends Whole ? [Whole] extends [T] ? false : true : never;
-type UnionElements<T extends readonly unknown[]> = { [K in keyof T]: IsUnion<T[K]> }[number];
-type InvalidMember<C, P> = P extends { readonly capabilityId: infer K extends string; readonly compatibility: infer T }
-  ? string extends K ? P
-    : true extends IsUnion<K> ? P
-    : K extends keyof C ? [T, CompatibilityOf<C, K>] extends [CompatibilityOf<C, K>, T] ? never : P : P
-  : P;
-type InvalidSlot<S> = S extends { readonly slotId: infer K extends string; readonly cardinality: { readonly kind: infer Q } }
-  ? string extends K ? S : true extends IsUnion<K> | IsUnion<Q> ? S : never : S;
+export type IsUnion<T, Whole = T> = T extends Whole ? [Whole] extends [T] ? false : true : never;
 export type ValidDeclaration<C, D extends ModuleDeclaration> =
   true extends IsUnion<D> | IsUnion<D["slots"]> | IsUnion<D["provides"]>
-    | UnionElements<D["slots"]> | UnionElements<D["provides"]> ? never :
+    | (D["slots"] extends infer Slots extends readonly unknown[]
+      ? { [K in keyof Slots]: IsUnion<Slots[K]> }[number]
+      : never)
+    | (D["provides"] extends infer Provides extends readonly unknown[]
+      ? { [K in keyof Provides]: IsUnion<Provides[K]> }[number]
+      : never) ? never :
   number extends D["provides"]["length"] | D["slots"]["length"] ? never
-    : [InvalidMember<C, D["provides"][number] | D["slots"][number]> | InvalidSlot<D["slots"][number]>] extends [never] ? unknown : never;
+    : [(
+      D["provides"][number] | D["slots"][number] extends infer P
+        ? P extends { readonly capabilityId: infer K extends string; readonly compatibility: infer T }
+          ? string extends K ? P
+            : true extends IsUnion<K> ? P
+            : K extends keyof C
+              ? [T, (K extends keyof C ? C[K] extends { readonly compatibility: infer Compat } ? Compat : never : never)] extends
+                [(K extends keyof C ? C[K] extends { readonly compatibility: infer Compat } ? Compat : never : never), T]
+                ? never : P
+              : P
+          : P
+        : never
+    ) | (
+      D["slots"][number] extends infer S
+        ? S extends { readonly slotId: infer K extends string; readonly cardinality: { readonly kind: infer Q } }
+          ? string extends K ? S : true extends IsUnion<K> | IsUnion<Q> ? S : never
+          : S
+        : never
+    )] extends [never] ? unknown : never;
 export type FactoryCapabilities<C, D extends ModuleDeclaration> = {
-  readonly [P in D["provides"][number] as P["capabilityId"]]: ValueOf<C, P["capabilityId"]>;
+  readonly [P in D["provides"][number] as P["capabilityId"]]: P["capabilityId"] extends keyof C
+    ? C[P["capabilityId"]] extends { readonly value: infer V } ? V : never
+    : never;
 };
 export type FactoryDependencies<C, D extends ModuleDeclaration> = {
   readonly [S in D["slots"][number] as S["slotId"]]: S["cardinality"]["kind"] extends "many"
-    ? readonly ValueOf<C, S["capabilityId"]>[]
-    : S["cardinality"]["kind"] extends "optional" ? ValueOf<C, S["capabilityId"]> | undefined : ValueOf<C, S["capabilityId"]>;
+    ? readonly (S["capabilityId"] extends keyof C
+      ? C[S["capabilityId"]] extends { readonly value: infer V } ? V : never
+      : never)[]
+    : S["cardinality"]["kind"] extends "optional"
+      ? (S["capabilityId"] extends keyof C
+        ? C[S["capabilityId"]] extends { readonly value: infer V } ? V : never
+        : never) | undefined
+      : S["capabilityId"] extends keyof C
+        ? C[S["capabilityId"]] extends { readonly value: infer V } ? V : never
+        : never;
 };
 export type FactoryContext = { readonly signal: AbortSignal };
 export type FactoryProduct<I, P> = { readonly instance: I; readonly capabilities: P };

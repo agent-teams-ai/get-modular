@@ -6,5 +6,5 @@ export type {
   CreatedEntry, FactoryCapabilities, FactoryContext, FactoryDependencies,
   FactoryHandle, FactoryProduct, ObservedCancellation, PreparationErrorCode,
   PreparedAssembly, ReturnedProduct, RootHandles, RootInstances, RunErrorCode,
-  RunOptions, SuccessfulComposition,
+  RunOptions, SuccessfulComposition, IsUnion, ValidDeclaration,
 } from "./features/construction/types.js";

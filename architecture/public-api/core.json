@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "packageName": "@get-modular/core",
+  "packageVersion": "0.1.0",
+  "extractorVersion": "7.58.12",
+  "entrypoints": [
+    {
+      "exportPath": ".",
+      "items": [
+        {
+          "canonicalReference": "@get-modular/core!CompileCompositionResult:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/core!",
+          "parentKind": "EntryPoint",
+          "signature": "export type CompileCompositionResult = {\n    readonly ok: true;\n    readonly plan: CompositionPlan;\n    readonly digest: PlanDigest;\n} | {\n    readonly ok: false;\n    readonly diagnostics: readonly Diagnostic[];\n};"
+        },
+        {
+          "canonicalReference": "@get-modular/core!CompositionPlan:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/core!",
+          "parentKind": "EntryPoint",
+          "signature": "export type CompositionPlan = {\n    readonly kind: \"get-modular.composition-plan\";\n    readonly schemaVersion: 1;\n    readonly profileId: string;\n    readonly roots: readonly string[];\n    readonly selections: readonly {\n        readonly moduleId: string;\n        readonly implementationId: string;\n    }[];\n    readonly bindings: readonly {\n        readonly consumerImplementationId: string;\n        readonly slotId: string;\n        readonly providerImplementationIds: readonly string[];\n        readonly capabilityId: string;\n        readonly compatibility: {\n            readonly family: \"exact\";\n            readonly familyVersion: 1;\n            readonly token: string;\n        };\n    }[];\n    readonly dependencyOrder: readonly string[];\n};"
+        },
+        {
+          "canonicalReference": "@get-modular/core!CompositionProfile:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/core!",
+          "parentKind": "EntryPoint",
+          "signature": "export type CompositionProfile = {\n    readonly kind: \"get-modular.composition-profile\";\n    readonly schemaVersion: 1;\n    readonly profileId: string;\n    readonly roots: readonly string[];\n    readonly selections: readonly {\n        readonly moduleId: string;\n        readonly implementationId: string;\n    }[];\n    readonly bindings: readonly {\n        readonly consumerImplementationId: string;\n        readonly slotId: string;\n        readonly providerImplementationIds: readonly string[];\n    }[];\n};"
+        },
+        {
+          "canonicalReference": "@get-modular/core!Diagnostic:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/core!",
+          "parentKind": "EntryPoint",
+          "signature": "export type Diagnostic = {\n    readonly [K in \"input.invalid-byte-carrier\" | \"decode.invalid-json\" | \"decode.duplicate-key\" | \"schema.unsupported-version\" | \"schema.unknown-field\" | \"schema.invalid-value\" | \"schema.non-plain-value\" | \"identity.invalid\" | \"declaration.duplicate-implementation\" | \"declaration.duplicate-capability\" | \"declaration.duplicate-slot\" | \"profile.duplicate-root\" | \"profile.unknown-root\" | \"profile.duplicate-selection\" | \"profile.unknown-module\" | \"profile.unknown-implementation\" | \"profile.implementation-mismatch\" | \"profile.missing-selection\" | \"profile.unreachable-selection\" | \"binding.duplicate-record\" | \"binding.duplicate\" | \"binding.missing\" | \"binding.unknown-consumer\" | \"binding.unknown-slot\" | \"binding.unknown-provider\" | \"binding.provider-not-selected\" | \"binding.cardinality\" | \"binding.capability-missing\" | \"binding.compatibility-mismatch\" | \"graph.cycle\" | \"diagnostics.truncated\"]: {\n        readonly code: K;\n        readonly phase: K extends \"input.invalid-byte-carrier\" | \"decode.invalid-json\" | \"decode.duplicate-key\" ? \"decode\" : K extends \"schema.unsupported-version\" | \"schema.unknown-field\" | \"schema.invalid-value\" | \"schema.non-plain-value\" | \"identity.invalid\" ? \"schema\" : K extends \"declaration.duplicate-implementation\" | \"declaration.duplicate-capability\" | \"declaration.duplicate-slot\" ? \"declaration\" : K extends \"profile.duplicate-root\" | \"profile.unknown-root\" | \"profile.duplicate-selection\" | \"profile.unknown-module\" | \"profile.unknown-implementation\" | \"profile.implementation-mismatch\" | \"profile.missing-selection\" ? \"profile\" : K extends \"profile.unreachable-selection\" | \"graph.cycle\" ? \"graph\" : K extends \"diagnostics.truncated\" ? \"output\" : \"binding\";\n        readonly path: readonly ({\n            readonly kind: \"field\";\n            readonly value: string;\n        } | {\n            readonly kind: \"index\";\n            readonly value: number;\n        })[];\n        readonly coordinate: K extends \"input.invalid-byte-carrier\" | \"decode.invalid-json\" | \"decode.duplicate-key\" | \"schema.unsupported-version\" | \"schema.unknown-field\" | \"schema.invalid-value\" | \"schema.non-plain-value\" | \"identity.invalid\" | \"graph.cycle\" | \"diagnostics.truncated\" ? Readonly<Record<string, never>> : K extends \"profile.duplicate-root\" | \"profile.unknown-root\" | \"profile.duplicate-selection\" | \"profile.unknown-module\" | \"profile.missing-selection\" ? {\n            readonly moduleId: string;\n        } : K extends \"declaration.duplicate-implementation\" | \"declaration.duplicate-capability\" | \"binding.unknown-consumer\" ? {\n            readonly implementationId: string;\n        } : K extends \"profile.unknown-implementation\" | \"profile.implementation-mismatch\" | \"profile.unreachable-selection\" ? {\n            readonly moduleId: string;\n            readonly implementationId: string;\n        } : K extends \"declaration.duplicate-slot\" | \"binding.duplicate-record\" | \"binding.missing\" | \"binding.unknown-slot\" | \"binding.cardinality\" ? {\n            readonly implementationId: string;\n            readonly slotId: string;\n        } : {\n            readonly implementationId: string;\n            readonly slotId: string;\n            readonly providerImplementationId: string;\n        };\n        readonly details: K extends \"binding.cardinality\" ? {\n            readonly expectedCardinality: \"required\" | \"optional\" | \"many\";\n            readonly actualCardinality: number;\n        } : K extends \"binding.compatibility-mismatch\" ? {\n            readonly expectedCompatibility: {\n                readonly family: \"exact\";\n                readonly familyVersion: 1;\n                readonly token: string;\n            };\n            readonly actualCompatibility: {\n                readonly family: \"exact\";\n                readonly familyVersion: 1;\n                readonly token: string;\n            };\n        } : K extends \"graph.cycle\" ? {\n            readonly component: readonly string[];\n        } : K extends \"diagnostics.truncated\" ? {\n            readonly omitted: number;\n        } : {\n            readonly reason: K extends \"input.invalid-byte-carrier\" ? \"not-uint8array\" | \"unusable-view\" | \"shared-storage\" | \"not-document-list\" : K extends \"decode.invalid-json\" ? \"invalid-json\" : K extends \"decode.duplicate-key\" ? \"duplicate-key\" : K extends \"schema.unsupported-version\" ? \"unsupported-version\" : K extends \"schema.unknown-field\" ? \"unknown-field\" : K extends \"schema.invalid-value\" ? \"invalid-type\" | \"invalid-format\" : K extends \"schema.non-plain-value\" ? \"non-plain-value\" : K extends \"identity.invalid\" ? \"invalid-format\" : K extends \"declaration.duplicate-implementation\" | \"declaration.duplicate-capability\" | \"declaration.duplicate-slot\" | \"profile.duplicate-root\" | \"profile.duplicate-selection\" | \"binding.duplicate-record\" | \"binding.duplicate\" ? \"duplicate\" : K extends \"profile.unknown-root\" | \"profile.unknown-module\" | \"profile.unknown-implementation\" | \"binding.unknown-consumer\" | \"binding.unknown-slot\" | \"binding.unknown-provider\" ? \"unknown\" : K extends \"profile.implementation-mismatch\" | \"binding.provider-not-selected\" ? \"mismatch\" : K extends \"profile.missing-selection\" | \"binding.missing\" | \"binding.capability-missing\" ? \"missing\" : \"unreachable\";\n        };\n    };\n}[\"input.invalid-byte-carrier\" | \"decode.invalid-json\" | \"decode.duplicate-key\" | \"schema.unsupported-version\" | \"schema.unknown-field\" | \"schema.invalid-value\" | \"schema.non-plain-value\" | \"identity.invalid\" | \"declaration.duplicate-implementation\" | \"declaration.duplicate-capability\" | \"declaration.duplicate-slot\" | \"profile.duplicate-root\" | \"profile.unknown-root\" | \"profile.duplicate-selection\" | \"profile.unknown-module\" | \"profile.unknown-implementation\" | \"profile.implementation-mismatch\" | \"profile.missing-selection\" | \"profile.unreachable-selection\" | \"binding.duplicate-record\" | \"binding.duplicate\" | \"binding.missing\" | \"binding.unknown-consumer\" | \"binding.unknown-slot\" | \"binding.unknown-provider\" | \"binding.provider-not-selected\" | \"binding.cardinality\" | \"binding.capability-missing\" | \"binding.compatibility-mismatch\" | \"graph.cycle\" | \"diagnostics.truncated\"] | {\n    readonly [L in \"declarationRawDocumentBytes\" | \"profileRawDocumentBytes\" | \"aggregateRawBytes\" | \"jsonValueOccurrences\" | \"jsonDepth\" | \"aggregateStringBytes\" | \"identifierBytes\" | \"ownerPathSegments\" | \"declarations\" | \"capabilitiesPerDeclaration\" | \"slotsPerDeclaration\" | \"totalCapabilities\" | \"totalSlots\" | \"roots\" | \"selections\" | \"bindings\" | \"graphEdges\" | \"providersPerManySlot\" | \"graphDepth\" | \"diagnostics\" | \"diagnosticPathSegments\"]: {\n        readonly code: \"input.limit-exceeded\";\n        readonly phase: L extends \"jsonValueOccurrences\" | \"identifierBytes\" ? \"schema\" : L extends \"ownerPathSegments\" | \"declarations\" | \"capabilitiesPerDeclaration\" | \"slotsPerDeclaration\" | \"totalCapabilities\" | \"totalSlots\" ? \"declaration\" : L extends \"roots\" | \"selections\" | \"bindings\" ? \"profile\" : L extends \"providersPerManySlot\" ? \"binding\" : L extends \"graphEdges\" | \"graphDepth\" ? \"graph\" : L extends \"diagnostics\" | \"diagnosticPathSegments\" ? \"output\" : \"decode\";\n        readonly path: readonly ({\n            readonly kind: \"field\";\n            readonly value: string;\n        } | {\n            readonly kind: \"index\";\n            readonly value: number;\n        })[];\n        readonly coordinate: Readonly<Record<string, never>>;\n        readonly details: {\n            readonly limitName: L;\n            readonly limit: number;\n            readonly actual: number;\n        };\n    };\n}[\"declarationRawDocumentBytes\" | \"profileRawDocumentBytes\" | \"aggregateRawBytes\" | \"jsonValueOccurrences\" | \"jsonDepth\" | \"aggregateStringBytes\" | \"identifierBytes\" | \"ownerPathSegments\" | \"declarations\" | \"capabilitiesPerDeclaration\" | \"slotsPerDeclaration\" | \"totalCapabilities\" | \"totalSlots\" | \"roots\" | \"selections\" | \"bindings\" | \"graphEdges\" | \"providersPerManySlot\" | \"graphDepth\" | \"diagnostics\" | \"diagnosticPathSegments\"];"
+        },
+        {
+          "canonicalReference": "@get-modular/core!DiagnosticCode:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/core!",
+          "parentKind": "EntryPoint",
+          "signature": "export type DiagnosticCode = Diagnostic[\"code\"];"
+        },
+        {
+          "canonicalReference": "@get-modular/core!ModuleDeclaration:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/core!",
+          "parentKind": "EntryPoint",
+          "signature": "export type ModuleDeclaration = {\n    readonly kind: \"get-modular.module-declaration\";\n    readonly schemaVersion: 1;\n    readonly moduleId: string;\n    readonly implementationId: string;\n    readonly owner: {\n        readonly authority: string;\n        readonly path: readonly string[];\n    };\n    readonly provides: readonly {\n        readonly capabilityId: string;\n        readonly compatibility: {\n            readonly family: \"exact\";\n            readonly familyVersion: 1;\n            readonly token: string;\n        };\n    }[];\n    readonly slots: readonly {\n        readonly capabilityId: string;\n        readonly compatibility: {\n            readonly family: \"exact\";\n            readonly familyVersion: 1;\n            readonly token: string;\n        };\n        readonly slotId: string;\n        readonly cardinality: Readonly<{\n            kind: \"required\";\n        }> | Readonly<{\n            kind: \"optional\";\n        }> | Readonly<{\n            kind: \"many\";\n            min: number;\n            max: number;\n            order: \"profile\";\n        }>;\n    }[];\n};"
+        },
+        {
+          "canonicalReference": "@get-modular/core!PlanDigest:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/core!",
+          "parentKind": "EntryPoint",
+          "signature": "export type PlanDigest = `gm-plan:v1:sha-256:${string}`;"
+        },
+        {
+          "canonicalReference": "@get-modular/core!compileComposition:function(1)",
+          "kind": "Function",
+          "parentReference": "@get-modular/core!",
+          "parentKind": "EntryPoint",
+          "signature": "compileComposition: (input: {\n    readonly declarations: readonly unknown[];\n    readonly profile: unknown;\n}) => Promise<CompileCompositionResult>"
+        },
+        {
+          "canonicalReference": "@get-modular/core!compileCompositionJson:function(1)",
+          "kind": "Function",
+          "parentReference": "@get-modular/core!",
+          "parentKind": "EntryPoint",
+          "signature": "compileCompositionJson: (input: {\n    readonly declarations: readonly Uint8Array[];\n    readonly profile: Uint8Array;\n}) => Promise<CompileCompositionResult>"
+        },
+        {
+          "canonicalReference": "@get-modular/core!defineModule:function(1)",
+          "kind": "Function",
+          "parentReference": "@get-modular/core!",
+          "parentKind": "EntryPoint",
+          "signature": "export declare function defineModule<const T extends ModuleDeclaration>(declaration: T): T;"
+        },
+        {
+          "canonicalReference": "@get-modular/core!many:function(1)",
+          "kind": "Function",
+          "parentReference": "@get-modular/core!",
+          "parentKind": "EntryPoint",
+          "signature": "export declare function many(bounds: {\n    readonly min: number;\n    readonly max: number;\n}): {\n    kind: \"many\";\n    min: number;\n    max: number;\n    order: \"profile\";\n};"
+        },
+        {
+          "canonicalReference": "@get-modular/core!optional:function(1)",
+          "kind": "Function",
+          "parentReference": "@get-modular/core!",
+          "parentKind": "EntryPoint",
+          "signature": "export declare function optional(): {\n    kind: \"optional\";\n};"
+        },
+        {
+          "canonicalReference": "@get-modular/core!required:function(1)",
+          "kind": "Function",
+          "parentReference": "@get-modular/core!",
+          "parentKind": "EntryPoint",
+          "signature": "export declare function required(): {\n    kind: \"required\";\n};"
+        }
+      ]
+    }
+  ]
+}
