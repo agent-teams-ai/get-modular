@@ -1,0 +1,25 @@
+schemaVersion: 1
+changesetDirectory: .changeset
+acceptedDecisionBaselinePath: architecture/decisions/accepted-decisions.json
+governanceConfigPath: architecture/foundation/governance-architecture-decisions.yaml
+packages:
+  - packageName: "@get-modular/core"
+    packageRoot: packages/core
+    manifestPath: packages/core/package.json
+    entrypoints:
+      - exportPath: "."
+        declarationEntryPoint: packages/core/dist/index.d.ts
+    nonTypeExports: []
+    tsconfigPath: packages/core/tsconfig.json
+    releasedBaselinePath: architecture/public-api/core.json
+    approvedBreakingChanges: []
+  - packageName: "@get-modular/assembly"
+    packageRoot: packages/assembly
+    manifestPath: packages/assembly/package.json
+    entrypoints:
+      - exportPath: "."
+        declarationEntryPoint: packages/assembly/dist/index.d.ts
+    nonTypeExports: []
+    tsconfigPath: packages/assembly/tsconfig.json
+    releasedBaselinePath: architecture/public-api/assembly.json
+    approvedBreakingChanges: []

@@ -447,6 +447,7 @@ boundaries:
       - architecture/checks/object-resource-coverage.mjs
       - architecture/checks/private-core-start.mjs
       - architecture/checks/production-artifacts.mjs
+      - architecture/checks/release-owned-files.mjs
       - architecture/checks/retained-descriptor-source.mjs
       - architecture/checks/tracked-file-custody.mjs
       - architecture/checks/v1-contract.mjs
