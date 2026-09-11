@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { materialize } from "../../../../../architecture/checks/implementation-clarifications.mjs";
-import { expectedP500Plan, expectedDigest, p500Digest } from "../../../../../tests/qualification/support/scale-output.mjs";
-import { generateDenseProfile, loadP500Recipe } from "../../../../../tests/qualification/support/resource-profile-v2.mjs";
+import { materialize } from "../../qualification-support/support/materialize-graph-recipe.mjs";
+import { expectedP500Plan, expectedDigest, p500Digest } from "../../qualification-support/support/scale-output.mjs";
+import { generateDenseProfile, loadP500Recipe } from "../../qualification-support/support/resource-profile-v2.mjs";
 import { admitObjectInput } from "../../../dist-test/features/input-admission/object-admission.js";
 import { analyzeCompositionSemantics } from "../../../dist-test/features/composition-semantics/semantic-analysis.js";
 import { createDiagnosticCollector } from "../../../dist-test/features/diagnostics/internal.js";

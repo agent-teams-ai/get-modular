@@ -10,9 +10,9 @@ import { createProfileCensus } from "../../../dist-test/features/composition-sem
 import { validateSelectedBindings } from "../../../dist-test/features/composition-semantics/selected-bindings.js";
 import { createDiagnosticCollector } from "../../../dist-test/features/diagnostics/internal.js";
 import { createOwnedJcs } from "../../../dist-test/features/canonicalization/owned-jcs/factory.js";
-import { duplicateRecordBaseCases, duplicateRecordRowFailureCases, duplicateRecordOverlapCases } from "../../../../../tests/qualification/m2-candidate/duplicate-record-cases.mjs";
+import { duplicateRecordBaseCases, duplicateRecordRowFailureCases, duplicateRecordOverlapCases } from "../../qualification-support/m2-candidate/duplicate-record-cases.mjs";
 import { materializeDuplicateRecordExtendedOverlap }
-  from "../../../../../tests/qualification/m2-candidate/duplicate-record-extended-overlaps.mjs";
+  from "../../qualification-support/m2-candidate/duplicate-record-extended-overlaps.mjs";
 
 // Focused component invariants and ordinary-entry mutation controls.
 function freezeTree(value) {

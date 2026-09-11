@@ -1,11 +1,11 @@
 // Include source-custody and independent-expectation checks in the Core gate.
-import '../../../../tests/qualification/m2-raw-invocation-fixtures.test.mjs';
-import '../../../../tests/qualification/m2-raw-invocation-expectations.test.mjs';
+import '../qualification-support/m2-raw-invocation-fixtures.suite.mjs';
+import '../qualification-support/m2-raw-invocation-expectations.suite.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { rawInvocationCaseIds, materializeRawInvocationCase } from '../../../../tests/qualification/support/m2-raw-invocation-fixtures.mjs';
-import { rawInvocationExpectedIds, rawInvocationExpectedResult } from '../../../../tests/qualification/support/m2-raw-invocation-expectations.mjs';
+import { rawInvocationCaseIds, materializeRawInvocationCase } from '../qualification-support/support/m2-raw-invocation-fixtures.mjs';
+import { rawInvocationExpectedIds, rawInvocationExpectedResult } from '../qualification-support/support/m2-raw-invocation-expectations.mjs';
 import { createOwnedJcs } from '../../dist-test/features/canonicalization/owned-jcs/factory.js';
 import { createOwnedRawScanner } from '../../dist-test/features/raw-scanner/owned-iterative/factory.js';
 import { createInputAdmission } from '../../dist-test/features/input-admission/factory.js';

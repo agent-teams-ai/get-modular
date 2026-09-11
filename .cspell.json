@@ -4,7 +4,7 @@
   "useGitignore": true,
   "files": ["**/*.{md,yaml,yml,json,jsonc}"],
   "ignorePaths": [
-    "node_modules/**",
+    "**/node_modules/**",
     "pnpm-lock.yaml",
     "architecture/qualification/generation-two/historical-pnpm-lock.yaml",
     "research/implementation-readiness/evidence/raw/**",

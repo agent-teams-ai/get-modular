@@ -5,19 +5,19 @@ import { createContext, runInContext } from 'node:vm';
 import * as core from '../../dist/index.js';
 import {
   produceInvocationRuntimeFixtures,
-} from '../../../../tests/qualification/support/m3-invocation-runtime-fixtures.mjs';
+} from '../qualification-support/support/m3-invocation-runtime-fixtures.mjs';
 import {
   materializeInvocationRuntimeInput,
-} from '../../../../tests/qualification/support/m3-invocation-runtime-materializers.mjs';
+} from '../qualification-support/support/m3-invocation-runtime-materializers.mjs';
 import {
   executeInvocationRuntimeFixture, executeInvocationRuntimeFixtures,
-} from '../../../../tests/qualification/support/m3-invocation-runtime-executor.mjs';
+} from '../qualification-support/support/m3-invocation-runtime-executor.mjs';
 import {
   rawInvocationCaseIds, materializeRawInvocationCase,
-} from '../../../../tests/qualification/support/m2-raw-invocation-fixtures.mjs';
+} from '../qualification-support/support/m2-raw-invocation-fixtures.mjs';
 import {
   rawInvocationExpectedResult,
-} from '../../../../tests/qualification/support/m2-raw-invocation-expectations.mjs';
+} from '../qualification-support/support/m2-raw-invocation-expectations.mjs';
 
 const foreignSources = Object.freeze({
   'foreign-null-frozen-wrapper': `Object.freeze(Object.assign(Object.create(null), {

@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import test from "node:test";
 import { gzipSync } from "node:zlib";
 import { Header } from "tar";
-import { readPackageArchive } from "../../../../tests/qualification/support/package-archive.mjs";
+import { readPackageArchive } from "../qualification-support/support/package-archive.mjs";
 
 const BLOCK = 512;
 const MIB = 1024 * 1024;

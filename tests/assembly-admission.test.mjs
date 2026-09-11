@@ -149,8 +149,35 @@ test("current admission rejects malformed, missing, extra and redirected importe
   }
   locks.push(encode({ ...current, importers: { ...current.importers, "packages/extra": {} } }));
   locks.push(encode({ ...current, lockfileVersion: "8.0" }));
-  locks.push(changeLock("  packages/core: {}",
-    "  packages/core:\n    dependencies:\n      rogue: {specifier: 1.0.0, version: 1.0.0}"));
+  locks.push(encode({
+    ...current,
+    importers: {
+      ...current.importers,
+      "packages/core": {
+        ...current.importers["packages/core"],
+        dependencies: { rogue: { specifier: "1.0.0", version: "1.0.0" } },
+      },
+    },
+  }));
+  locks.push(encode({
+    ...current,
+    importers: {
+      ...current.importers,
+      "packages/core": {},
+    },
+  }));
+  locks.push(encode({
+    ...current,
+    importers: {
+      ...current.importers,
+      "packages/core": {
+        devDependencies: {
+          ...current.importers["packages/core"].devDependencies,
+          rogue: { specifier: "catalog:", version: "1.0.0" },
+        },
+      },
+    },
+  }));
   for (const assembly of [
     {}, { dependencies: {} }, { dependencies: null }, { dependencies: [] },
     { optionalDependencies: current.importers["packages/assembly"].dependencies },
@@ -175,9 +202,14 @@ test("current workspace and Core manifest cannot bypass Assembly admission", asy
   }
   const corePath = "packages/core/package.json";
   const core = JSON.parse(read(corePath));
-  const dependencyFields = ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"];
-  const dependencyMutations = dependencyFields.flatMap(field =>
-    [{ rogue: "1.0.0" }, null, [], "malformed"].map(value => ({ [field]: value })));
+  const dependencyFields = ["dependencies", "optionalDependencies", "peerDependencies"];
+  const dependencyMutations = [
+    ...dependencyFields.flatMap(field =>
+      [{ rogue: "1.0.0" }, null, [], "malformed"].map(value => ({ [field]: value }))),
+    { devDependencies: {} },
+    { devDependencies: { rogue: "1.0.0" } },
+    { devDependencies: { ...core.devDependencies, rogue: "catalog:" } },
+  ];
   for (const mutation of [{ name: "@rogue/core" }, { type: "commonjs" },
     ...dependencyMutations, { scripts: { install: "node bypass.mjs" } },
     { exports: { "./bypass": "./dist/index.js" } }]) {
@@ -185,9 +217,9 @@ test("current workspace and Core manifest cannot bypass Assembly admission", asy
       ? { ...core, ...mutation } : inputs.readPackageManifest(path) }), /Assembly admission/u,
     JSON.stringify(mutation));
   }
-  const emptyDependencies = Object.fromEntries(dependencyFields.map(field => [field, {}]));
+  const emptyProduction = Object.fromEntries(dependencyFields.map(field => [field, {}]));
   await admit({ readPackageManifest: async path => path === corePath
-    ? { ...core, ...emptyDependencies } : inputs.readPackageManifest(path) });
+    ? { ...core, ...emptyProduction } : inputs.readPackageManifest(path) });
 });
 
 test("root tooling lock upgrades admit independently and compose with historical custody", async () => {

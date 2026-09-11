@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
-import { publishFirstAssemblyRelease, publishFirstCoreRelease } from "../../../architecture/tooling/first-core-release.mjs";
+import { publishFirstAssemblyRelease, publishFirstCoreRelease } from "../../architecture/tooling/first-core-release.mjs";
 
 function fixture() {
   const archive = Buffer.from("retained Assembly fixture");

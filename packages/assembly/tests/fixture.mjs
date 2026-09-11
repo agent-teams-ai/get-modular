@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { compileComposition, many, optional, required } from "@get-modular/core";
-import { assemblyFor } from "@get-modular/assembly";
+import { assemblyFor } from "../dist/index.js";
 
 export const exact = (compatibilityToken = "synthetic/v1") => ({ family: "exact", familyVersion: 1, "token": compatibilityToken });
 export const provide = (capabilityId) => ({ capabilityId, compatibility: exact() });

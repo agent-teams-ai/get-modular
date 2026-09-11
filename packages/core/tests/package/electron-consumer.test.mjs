@@ -4,12 +4,12 @@ import test from 'node:test';
 import {
   validateInput, electronEnvironment, verifyElectronResults as verifyNativeElectronResults,
   verifyElectronProcessIdentity,
-} from '../../../../tests/qualification/m3-electron-consumer.mjs';
+} from '../qualification-support/m3-electron-consumer.mjs';
 import { runInNewContext } from 'node:vm';
-import { produceDescriptorRuntimeFixtures } from '../../../../tests/qualification/support/m3-descriptor-runtime-fixtures.mjs';
-import { executeDescriptorRuntimeFixture } from '../../../../tests/qualification/support/m3-descriptor-runtime-executor.mjs';
-import { produceInvocationRuntimeFixtures } from '../../../../tests/qualification/support/m3-invocation-runtime-fixtures.mjs';
-import { prepareInvocationEvidence, prepareP500Evidence } from '../../../../tests/qualification/m3-chromium-consumer.mjs';
+import { produceDescriptorRuntimeFixtures } from '../qualification-support/support/m3-descriptor-runtime-fixtures.mjs';
+import { executeDescriptorRuntimeFixture } from '../qualification-support/support/m3-descriptor-runtime-executor.mjs';
+import { produceInvocationRuntimeFixtures } from '../qualification-support/support/m3-invocation-runtime-fixtures.mjs';
+import { prepareInvocationEvidence, prepareP500Evidence } from '../qualification-support/m3-chromium-consumer.mjs';
 
 const p500Evidence = await prepareP500Evidence();
 function verifyElectronResults(...args) {

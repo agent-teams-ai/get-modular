@@ -2002,6 +2002,14 @@ test("package source must not carry a generation-suffixed identifier", async () 
   });
 
   await assert.doesNotReject(call(["packages/core/src/index.ts"]));
+  sources.set(
+    "packages/core/tests/qualification-support/labels.mjs",
+    `export const entryPoint = ${JSON.stringify(compiler)};`,
+  );
+  await assert.doesNotReject(call([
+    "packages/core/src/index.ts",
+    "packages/core/tests/qualification-support/labels.mjs",
+  ]));
   await assert.rejects(
     call(["packages/core/src/index.ts", "packages/core/src/facade.ts"]),
     new RegExp(`generation-suffixed identifier: packages/core/src/facade\\.ts ${compiler}`, "u"),

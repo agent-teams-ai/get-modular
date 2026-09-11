@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import {
   admitElectronSandboxRunner, chromiumSandboxProfile, collectRows, parseArguments, ROWS,
   verifyElectronSandboxHelper,
-} from '../../../../tests/qualification/m3-runtime-matrix.mjs';
+} from '../qualification-support/m3-runtime-matrix.mjs';
 
 // Synthetic transport inputs are used only to test rejection. They are neither
 // runtime observations nor evidence that any runtime executed successfully.

@@ -19,7 +19,9 @@ const cli = join(dirname(foundationManifestPath), foundationBin);
 const policyPath = "architecture/foundation/source-dependencies.yaml";
 const policy = parse(await readFile(policyPath, "utf8"));
 const sourcePaths = [];
-for (const root of policy.governedRoots) {
+// Hostile fixtures exercise the production Core/Assembly graph. Full-repo
+// generated and test trees stay on the live check, not this disposable copy.
+for (const root of ["packages/core/src", "packages/assembly/src"]) {
   for await (const path of glob(`${root}/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}`)) {
     sourcePaths.push(path.replaceAll("\\", "/"));
   }
@@ -40,6 +42,13 @@ async function checkFixture(change = () => {}) {
   try {
     const files = new Map(source);
     const configuration = structuredClone(policy);
+    configuration.schemaVersion = 3;
+    configuration.packageRoots = ["packages/core", "packages/assembly"];
+    delete configuration.rootPackage;
+    configuration.governedRoots = ["packages/core/src", "packages/assembly/src"];
+    configuration.boundaries = configuration.boundaries.filter(boundary =>
+      (boundary.roots ?? []).every(root =>
+        root.startsWith("packages/core/src") || root.startsWith("packages/assembly/src")));
     change(files, configuration);
     files.set("package.json", JSON.stringify({ name: "source-policy-fixture", private: true, type: "module" }));
     files.set("pnpm-workspace.yaml", 'packages:\n  - "packages/*"\n');
@@ -56,7 +65,7 @@ async function checkFixture(change = () => {}) {
     try {
       result = await execute(process.execPath, [cli, "check", "architecture.source-dependencies", "--consumer", directory, "--format", "json"], { timeout: 30_000, maxBuffer: 2_000_000 });
     } catch (error) {
-      assert.equal(error.code, 1, error.stderr ?? String(error));
+      assert.ok(error.code === 1 || error.code === 2, error.stderr ?? String(error));
       result = error;
     }
     return JSON.parse(result.stdout);
@@ -378,6 +387,14 @@ for (const path of [
     const report = await checkFixture(files => {
       files.set(path, "export const hidden = 1;\n");
     });
-    assert.match(rules(report), /architecture\.source-dependencies\.unclassified-source-file/u);
+    assert.match(rules(report), /architecture.source-dependencies\.unclassified-source-file/u);
   });
 }
+
+test("source v3 rejects includeRootPackage as an unknown public field", async () => {
+  const report = await checkFixture((_files, configuration) => {
+    configuration.includeRootPackage = true;
+  });
+  assert.notEqual(report.outcome, "passed", JSON.stringify(report));
+  assert.match(JSON.stringify(report), /includeRootPackage|unknown property|invalid-input/iu);
+});

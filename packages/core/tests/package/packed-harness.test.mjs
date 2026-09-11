@@ -8,11 +8,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { prepareM1PackedConsumers, runtimeNames, m2RuntimeNames } from '../../../../tests/qualification/support/m1-packed-consumers.mjs';
-import { m1CaseIds, m2CaseIds } from '../../../../tests/qualification/support/m1-packed-object-consumer.mjs';
-import { rawDocumentCases } from '../../../../tests/qualification/m2-candidate/raw-document-cases.mjs';
-import { rawInvocationCaseIds } from '../../../../tests/qualification/support/m2-raw-invocation-fixtures.mjs';
-import { rawInvocationExpectedResult } from '../../../../tests/qualification/support/m2-raw-invocation-expectations.mjs';
+import { prepareM1PackedConsumers, runtimeNames, m2RuntimeNames } from '../qualification-support/support/m1-packed-consumers.mjs';
+import { m1CaseIds, m2CaseIds } from '../qualification-support/support/m1-packed-object-consumer.mjs';
+import { rawDocumentCases } from '../qualification-support/m2-candidate/raw-document-cases.mjs';
+import { rawInvocationCaseIds } from '../qualification-support/support/m2-raw-invocation-fixtures.mjs';
+import { rawInvocationExpectedResult } from '../qualification-support/support/m2-raw-invocation-expectations.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 

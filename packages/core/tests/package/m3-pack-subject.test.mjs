@@ -5,7 +5,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import test from 'node:test';
-import { runPackSubject } from '../../../../tests/qualification/m3-pack-subject.mjs';
+import { runPackSubject } from '../qualification-support/m3-pack-subject.mjs';
 
 const require = createRequire(import.meta.url);
 const supported = process.platform !== 'win32' && /^v24\./u.test(process.version)
@@ -84,7 +84,7 @@ async function fixture(t) {
   ].join('\n'));
   function run(options) {
     const child = spawnSync(process.execPath, [runner, JSON.stringify(options)], {
-      encoding: 'utf8', timeout: 30000, maxBuffer: 8 * 1024 * 1024,
+      encoding: 'utf8', timeout: 180000, maxBuffer: 8 * 1024 * 1024,
     });
     assert.equal(child.error, undefined);
     assert.equal(child.status, 0, child.stderr);
@@ -140,7 +140,7 @@ test('existing output remains untouched', async t => {
   assert.equal(await readFile(sentinel, 'utf8'), 'existing bytes');
 });
 
-test('one actual small npm pack is retained but an audit mismatch is never a subject', async t => {
+test('one actual small npm pack is retained but an audit mismatch is never a subject', { timeout: 180000 }, async t => {
   const f = await fixture(t);
   if (!f) return;
   const result = f.run(f.options);

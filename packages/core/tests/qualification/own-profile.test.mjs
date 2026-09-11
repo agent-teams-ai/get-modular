@@ -5,7 +5,7 @@ import { compileComposition as production } from "../../dist/index.js";
 import { compileComposition as direct } from "../../dist-stage0/self-composition/stage0-entry.js";
 import { ownDeclarations, ownProfile } from "../../dist-stage0/self-composition/own-profile.js";
 import { allowlist } from "../../dist-stage0/self-composition/allowlist.js";
-import { expectedDigest } from "../../../../tests/qualification/support/scale-output.mjs";
+import { expectedDigest } from "../qualification-support/support/scale-output.mjs";
 
 // Independent literal six-node M2 scanner graph, including its normalized order.
 // The digest helper receives only this expected data, never the subject plan.

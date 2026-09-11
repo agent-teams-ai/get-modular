@@ -11,7 +11,7 @@ import canonicalize from 'canonicalize';
 import { compileComposition as direct } from '../../dist-stage0/self-composition/stage0-entry.js';
 import { ownDeclarations, ownProfile } from '../../dist-stage0/self-composition/own-profile.js';
 import { ownDeclarations as variantDeclarations, ownProfile as variantProfile } from '../../dist-seed/self-composition/own-profile.variant.js';
-import { verifyConstruction, verifyGeneratedConstruction } from '../../../../tests/qualification/support/construction-witness.mjs';
+import { verifyConstruction, verifyGeneratedConstruction } from '../qualification-support/support/construction-witness.mjs';
 
 const packageRoot = fileURLToPath(new URL('../../', import.meta.url));
 const buildRoot = join(packageRoot, 'dist-stage0');

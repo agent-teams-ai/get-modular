@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { compileComposition } from '../../dist/index.js';
-import { duplicateRecordResourceCases } from '../../../../tests/qualification/m2-candidate/duplicate-record-resources.mjs';
-import { m2ResourceOutcomeCases } from '../../../../tests/qualification/support/m2-resource-outcomes.mjs';
+import { duplicateRecordResourceCases } from '../qualification-support/m2-candidate/duplicate-record-resources.mjs';
+import { m2ResourceOutcomeCases } from '../qualification-support/support/m2-resource-outcomes.mjs';
 
 const changed = new Set(['od006.resources.v1/bindings/over', 'od006.resources.v1/providersPerManySlot/over']);
 test('ADR-0022 retains all six resource recipes and exact complete Core outcomes', async t => {

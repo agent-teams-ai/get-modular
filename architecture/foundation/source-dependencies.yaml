@@ -1,10 +1,24 @@
-schemaVersion: 1
+schemaVersion: 3
 workspace:
   kind: pnpm
   manifest: pnpm-workspace.yaml
+packageRoots:
+  - packages/assembly
+  - packages/core
+rootPackage: true
 governedRoots:
-  - packages/core/src
+  - architecture/checks
+  - architecture/tooling
+  - packages/assembly/examples
   - packages/assembly/src
+  - packages/assembly/tests
+  - packages/core/dist-seed
+  - packages/core/dist-stage0
+  - packages/core/dist-test
+  - packages/core/self-composition
+  - packages/core/src
+  - packages/core/tests
+  - tests
 boundaries:
   # Module consumers see only ports and identities. Only a composition root
   # may depend on the separate implementation boundary and its factory.
@@ -265,6 +279,8 @@ boundaries:
       builtins: []
       runtimeReferences: []
   - id: core-public-entrypoint
+    packageExports:
+      - "."
     roots:
       - packages/core/src/index.ts
     entrypoints:
@@ -302,6 +318,8 @@ boundaries:
       builtins: []
       runtimeReferences: []
   - id: assembly-public-entrypoint
+    packageExports:
+      - "."
     roots:
       - packages/assembly/src/index.ts
     entrypoints:
@@ -313,3 +331,173 @@ boundaries:
       packages: []
       builtins: []
       runtimeReferences: []
+  - id: core-development
+    dependencyMode: development
+    roots:
+      - packages/core/dist-seed
+      - packages/core/dist-stage0
+      - packages/core/dist-test
+      - packages/core/self-composition
+      - packages/core/tests
+    entrypoints:
+      - packages/core/self-composition/emit.ts
+      - packages/core/tests/features/canonicalization/witness-variant/declaration.ts
+      - packages/core/tests/features/canonicalization/witness-variant/factory.ts
+      - packages/core/tests/package/build-closure.test.mjs
+    allow:
+      boundaries:
+        - core-authoring
+        - core-canonicalization-contract
+        - core-canonicalization-owned-jcs
+        - core-compiler-facade-contract
+        - core-compiler-facade-implementation
+        - core-composition-semantics
+        - core-composition-semantics-contract
+        - core-diagnostics
+        - core-direct-composition
+        - core-generated-composition
+        - core-input-admission
+        - core-input-admission-contract
+        - core-plan-output-contract
+        - core-plan-output-implementation
+        - core-public-entrypoint
+        - core-raw-scanner-contract
+        - core-raw-scanner-owned-iterative
+        - repository.development
+      packages:
+        - "@get-modular/core"
+        - ajv
+        - canonicalize
+        - json-canonicalize
+        - tar
+        - typescript
+        - typescript-minimum
+        - yaml
+      builtins:
+        - node:assert
+        - node:assert/strict
+        - node:buffer
+        - node:child_process
+        - node:crypto
+        - node:fs
+        - node:fs/promises
+        - node:http
+        - node:module
+        - node:os
+        - node:path
+        - node:test
+        - node:timers/promises
+        - node:url
+        - node:util
+        - node:util/types
+        - node:vm
+        - node:worker_threads
+        - node:zlib
+      runtimeReferences:
+        - commonjs
+        - dynamic
+  - id: assembly-internal-tests
+    dependencyMode: development
+    roots:
+      - packages/assembly/tests
+    entrypoints:
+      - packages/assembly/tests/bounds.test.mjs
+    allow:
+      boundaries:
+        - assembly-composition
+        - assembly-construction
+        - assembly-examples
+        - assembly-public-entrypoint
+      packages:
+        - "@get-modular/core"
+      builtins:
+        - node:assert/strict
+        - node:test
+        - node:async_hooks
+      runtimeReferences: []
+  - id: assembly-examples
+    dependencyMode: development
+    roots:
+      - packages/assembly/examples
+    entrypoints:
+      - packages/assembly/examples/basic-host.mjs
+    allow:
+      boundaries:
+        - assembly-public-entrypoint
+      packages:
+        - "@get-modular/core"
+      builtins:
+        - node:url
+      runtimeReferences: []
+  - id: repository.development
+    dependencyMode: development
+    roots:
+      - architecture/checks
+      - architecture/tooling
+      - tests
+    entrypoints:
+      - architecture/checks/assembly-admission.mjs
+      - architecture/checks/feature-module-standard-profile.mjs
+      - architecture/checks/generated-production-source.mjs
+      - architecture/checks/governance.mjs
+      - architecture/checks/implementation-clarifications.mjs
+      - architecture/checks/m2-evidence.mjs
+      - architecture/checks/m2-lock-witness.mjs
+      - architecture/checks/node-version.mjs
+      - architecture/checks/object-resource-coverage.mjs
+      - architecture/checks/private-core-start.mjs
+      - architecture/checks/production-artifacts.mjs
+      - architecture/checks/retained-descriptor-source.mjs
+      - architecture/checks/tracked-file-custody.mjs
+      - architecture/checks/v1-contract.mjs
+      - architecture/checks/v1-qualification.mjs
+      - architecture/tooling/build-assembly.mjs
+      - architecture/tooling/build-core.mjs
+      - architecture/tooling/first-core-release.mjs
+      - architecture/tooling/generate-core.mjs
+      - architecture/tooling/test-assembly-types.mjs
+      - tests/qualification/m2-candidate/combined-case-inventory.mjs
+      - tests/qualification/m2-candidate/generation-two-artifacts.mjs
+      - tests/source-dependencies.test.mjs
+    allow:
+      boundaries:
+        - assembly-examples
+        - assembly-public-entrypoint
+        - core-public-entrypoint
+      packages:
+        - "@agent-teams/engineering-foundation"
+        - "@get-modular/assembly"
+        - "@get-modular/core"
+        - ajv
+        - canonicalize
+        - json-canonicalize
+        - jsonc-parser
+        - tar
+        - typescript
+        - typescript-minimum
+        - yaml
+      builtins:
+        - node:assert
+        - node:assert/strict
+        - node:async_hooks
+        - node:buffer
+        - node:child_process
+        - node:crypto
+        - node:fs
+        - node:fs/promises
+        - node:http
+        - node:module
+        - node:os
+        - node:path
+        - node:perf_hooks
+        - node:process
+        - node:test
+        - node:timers/promises
+        - node:url
+        - node:util
+        - node:util/types
+        - node:vm
+        - node:zlib
+      runtimeReferences:
+        - commonjs
+        - dynamic

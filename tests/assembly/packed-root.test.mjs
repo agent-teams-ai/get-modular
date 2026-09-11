@@ -1,17 +1,18 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { readPackageArchive } from "../../../tests/qualification/support/package-archive.mjs";
+import { readPackageArchive } from "../qualification/support/package-archive.mjs";
 import { spawnSync } from "node:child_process";
 import { access, lstat, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { testAssemblyTypes } from "../../../architecture/tooling/test-assembly-types.mjs";
+import { CORE_DEVELOPMENT_DEPENDENCIES } from "../../architecture/checks/assembly-admission.mjs";
+import { testAssemblyTypes } from "../../architecture/tooling/test-assembly-types.mjs";
 import { largeLiteralSource } from "./type-scale.mjs";
 
-const workspace = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
-const fixtures = join(workspace, "packages/assembly/tests");
+const workspace = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const fixtures = join(workspace, "tests/assembly");
 
 function assertAssemblyPackedManifest(packed, source) {
   assert.deepEqual(packed, { ...source, dependencies: { "@get-modular/core": "0.1.0" } },
@@ -167,8 +168,17 @@ test("disposable packed consumer checks closed roots, synthetic wiring and both 
     assert.equal(assembly.version, "0.1.0");
     assert.deepEqual(core.dependencies ?? {}, {});
     assert.deepEqual(assembly.dependencies, { "@get-modular/core": core.version });
+    assert.deepEqual(Object.keys(core.devDependencies ?? {}).sort(),
+      Object.keys(CORE_DEVELOPMENT_DEPENDENCIES).sort());
+    for (const specifier of Object.values(core.devDependencies ?? {})) {
+      assert.equal(typeof specifier, "string");
+      assert.notEqual(specifier, "");
+      assert.equal(specifier.includes("workspace:"), false);
+      assert.equal(specifier.startsWith("file:"), false);
+    }
+    assert.deepEqual(assembly.devDependencies ?? {}, {});
     for (const manifest of [core, assembly]) {
-      for (const field of ["devDependencies", "optionalDependencies", "peerDependencies"]) assert.deepEqual(manifest[field] ?? {}, {});
+      for (const field of ["optionalDependencies", "peerDependencies"]) assert.deepEqual(manifest[field] ?? {}, {});
     }
     for (const file of ["fixture.mjs", "runtime.test.mjs", "preparation.test.mjs", "packed-consumer.mjs"]) {
       await writeFile(join(consumer, file), await readFile(join(fixtures, file)));

@@ -12,7 +12,7 @@ import { version } from 'typescript';
 import { compileComposition as direct } from '../../dist-stage0/self-composition/stage0-entry.js';
 import { ownDeclarations, ownProfile } from '../../dist-stage0/self-composition/own-profile.js';
 import { allowlist } from '../../dist-stage0/self-composition/allowlist.js';
-import { verifyConstruction } from '../../../../tests/qualification/support/construction-witness.mjs';
+import { verifyConstruction } from '../qualification-support/support/construction-witness.mjs';
 
 const packageRoot = fileURLToPath(new URL('../../', import.meta.url));
 const require = createRequire(import.meta.url);

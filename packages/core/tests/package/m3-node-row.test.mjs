@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readdir, realpath, rm, symlink } from 'node:fs/promises
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { runM3NodeRow } from '../../../../tests/qualification/m3-node-row.mjs';
+import { runM3NodeRow } from '../qualification-support/m3-node-row.mjs';
 
 // Admission-only fixtures use nonexistent tools and archive. No candidate,
 // installation or complete Node282 inventory is executed by these tests.

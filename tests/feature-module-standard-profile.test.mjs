@@ -319,6 +319,13 @@ test("requires profile enforcement in complete and fast gates", () => {
   }
 });
 
+test("docs quality ignores nested workspace node_modules, not only the root tree", async () => {
+  const markdownlint = JSON.parse(await readFile(".markdownlint-cli2.jsonc", "utf8"));
+  assert.deepEqual(markdownlint.globs, ["**/*.md", "!**/node_modules/**"]);
+  const cspell = JSON.parse(await readFile(".cspell.json", "utf8"));
+  assert.ok(cspell.ignorePaths.includes("**/node_modules/**"));
+});
+
 test("rejects Foundation before generation and redundant aggregate preparation", () => {
   for (const scriptName of ["check", "check:fast"]) {
     const reordered = clone(packageJson);

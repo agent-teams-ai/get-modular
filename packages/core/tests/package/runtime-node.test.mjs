@@ -4,13 +4,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { assertM3RuntimeIdentity, verifyM3RuntimeObservations } from
-  '../../../../tests/qualification/support/m3-runtime-observations.mjs';
+  '../qualification-support/support/m3-runtime-observations.mjs';
 import { digest, jsonBytes, readBytes, rowDigest, verifyM1Observations } from
-  '../../../../tests/qualification/support/m1-retained-observations.mjs';
+  '../qualification-support/support/m1-retained-observations.mjs';
 import { prepareM3RuntimeNode, verifyM3RuntimeNode } from
-  '../../../../tests/qualification/m3-runtime-node.mjs';
+  '../qualification-support/m3-runtime-node.mjs';
 import { auditM1JavaScriptClosure } from
-  '../../../../tests/qualification/support/m1-javascript-closure.mjs';
+  '../qualification-support/support/m1-javascript-closure.mjs';
 
 // Truthful transport fixtures: these rows describe archive guards only. They
 // neither execute a package nor purport to be the adapter's Node/TS inventory.

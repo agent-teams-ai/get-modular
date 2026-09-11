@@ -6,8 +6,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { authoringScale } from "../../../../../tests/qualification/support/type-scale.mjs";
-import { diagnosticTypeCase } from "../../../../../tests/qualification/support/diagnostic-type-cases.mjs";
+import { authoringScale } from "../../qualification-support/support/type-scale.mjs";
+import { diagnosticTypeCase } from "../../qualification-support/support/diagnostic-type-cases.mjs";
 
 const require = createRequire(import.meta.url);
 const tsc = join(dirname(require.resolve("typescript/package.json")), "bin/tsc");

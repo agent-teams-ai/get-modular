@@ -7,7 +7,7 @@ import { lstat, mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, writeF
 import {
   validateInput, admitManifest, validateEvents,
   physicalOutputDestination, npmIdentity, runRetainedParity,
-} from '../../../../tests/qualification/m3-retained-parity.mjs';
+} from '../qualification-support/m3-retained-parity.mjs';
 
 const commit = '7b8e38461b81fdb505eb013cfc1ea08e1bce14d9';
 const input = () => ({

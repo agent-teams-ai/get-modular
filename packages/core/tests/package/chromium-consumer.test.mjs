@@ -6,13 +6,13 @@ import {
   verifySemanticRecords, verifyDescriptorRecords,
   prepareInvocationEvidence, verifyInvocationRecords,
   prepareP500Evidence, verifyP500Records,
-} from '../../../../tests/qualification/m3-chromium-consumer.mjs';
-import { produceInvocationRuntimeFixtures } from '../../../../tests/qualification/support/m3-invocation-runtime-fixtures.mjs';
-import { readPackageArchive } from '../../../../tests/qualification/support/package-archive.mjs';
-import { produceDescriptorRuntimeFixtures } from '../../../../tests/qualification/support/m3-descriptor-runtime-fixtures.mjs';
+} from '../qualification-support/m3-chromium-consumer.mjs';
+import { produceInvocationRuntimeFixtures } from '../qualification-support/support/m3-invocation-runtime-fixtures.mjs';
+import { readPackageArchive } from '../qualification-support/support/package-archive.mjs';
+import { produceDescriptorRuntimeFixtures } from '../qualification-support/support/m3-descriptor-runtime-fixtures.mjs';
 import {
   executeDescriptorRuntimeFixture,
-} from '../../../../tests/qualification/support/m3-descriptor-runtime-executor.mjs';
+} from '../qualification-support/support/m3-descriptor-runtime-executor.mjs';
 
 test('P500 requires all ten complete results and exact local observations', async () => {
   const evidence = await prepareP500Evidence();

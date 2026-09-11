@@ -7,9 +7,9 @@ import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { m1NodeEnvironment } from '../../../../tests/qualification/support/m1-packed-consumers.mjs';
-import { readPackageArchive } from '../../../../tests/qualification/support/package-archive.mjs';
-import { staticConsumerSource, staticConsumerTests } from '../../../../tests/qualification/support/static-consumer-source.mjs';
+import { m1NodeEnvironment } from '../qualification-support/support/m1-packed-consumers.mjs';
+import { readPackageArchive } from '../qualification-support/support/package-archive.mjs';
+import { staticConsumerSource, staticConsumerTests } from '../qualification-support/support/static-consumer-source.mjs';
 
 const repo = fileURLToPath(new URL('../../../../', import.meta.url));
 const require = createRequire(import.meta.url);

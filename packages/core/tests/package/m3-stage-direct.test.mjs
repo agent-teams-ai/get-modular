@@ -8,7 +8,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
-import { stageDirectSubject } from "../../../../tests/qualification/m3-stage-direct.mjs";
+import { stageDirectSubject } from "../qualification-support/m3-stage-direct.mjs";
 
 const JS = "dist-stage0/self-composition/stage0-entry.js";
 const DTS = "dist-stage0/self-composition/stage0-entry.d.ts";

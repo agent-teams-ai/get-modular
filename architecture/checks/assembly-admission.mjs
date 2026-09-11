@@ -19,6 +19,15 @@ const ASSEMBLY_PUBLICATION_REGISTRY_ENTRY = Object.freeze({
   path: ASSEMBLY_PUBLICATION_DECISION_PATH,
   immutableDigest: "sha256:ad3a06508a7a124fa2b909168957cd40ca940b2581193051debc90fcfb9a30e8",
 });
+export const CORE_DEVELOPMENT_DEPENDENCIES = Object.freeze({
+  ajv: "catalog:",
+  canonicalize: "catalog:",
+  "json-canonicalize": "catalog:",
+  tar: "catalog:",
+  typescript: "catalog:",
+  "typescript-minimum": "catalog:",
+  yaml: "catalog:",
+});
 export const M2_HISTORICAL_LOCK_DIGEST =
   "sha256:7420fcef084e65d3a61eba8e907a17bba9efbd255d1e9fe72b8370d216bdec99";
 const ASSEMBLY_DECISION_BYTES_DIGEST =
@@ -110,11 +119,13 @@ async function validateCurrentAssemblyInputs({ readBytes, readPackageManifest })
   const corePath = "packages/core/package.json";
   const core = await readPackageManifest(corePath);
   assert.equal(core?.name, "@get-modular/core", "Assembly admission Core identity differs");
-  for (const field of ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"]) {
+  for (const field of ["dependencies", "optionalDependencies", "peerDependencies"]) {
     if (core[field] !== undefined) {
-      assert.deepEqual(core[field], {}, `Assembly admission requires dependency-free Core: ${field}`);
+      assert.deepEqual(core[field], {}, `Assembly admission requires production-dependency-free Core: ${field}`);
     }
   }
+  assert.deepEqual(core.devDependencies, CORE_DEVELOPMENT_DEPENDENCIES,
+    "Assembly admission requires exact Core development catalog pins");
   const inventory = await packageManifestInventory([corePath], {
     readPackageManifest: async () => core,
   });
@@ -132,8 +143,20 @@ async function validateCurrentAssemblyInputs({ readBytes, readPackageManifest })
     "Assembly admission requires exactly the current workspace importers");
   assert(importers["."] && typeof importers["."] === "object" && !Array.isArray(importers["."]),
     "Assembly admission requires the root tooling importer");
-  assert.deepEqual(importers["packages/core"], {},
-    "Assembly admission requires a dependency-free Core importer");
+  const coreImporter = importers["packages/core"];
+  assert(coreImporter && typeof coreImporter === "object" && !Array.isArray(coreImporter),
+    "Assembly admission requires a Core importer");
+  assert.deepEqual(Object.keys(coreImporter).sort(), ["devDependencies"],
+    "Assembly admission Core importer may declare only development catalog pins");
+  assert.deepEqual(
+    Object.keys(coreImporter.devDependencies ?? {}).sort(),
+    Object.keys(CORE_DEVELOPMENT_DEPENDENCIES).sort(),
+    "Assembly admission Core importer development names",
+  );
+  for (const [name, specifier] of Object.entries(CORE_DEVELOPMENT_DEPENDENCIES)) {
+    assert.equal(coreImporter.devDependencies[name]?.specifier, specifier,
+      `Assembly admission Core importer specifier for ${name}`);
+  }
   assert.deepEqual(importers["packages/assembly"], {
     dependencies: {
       "@get-modular/core": { specifier: "workspace:*", version: "link:../core" },
