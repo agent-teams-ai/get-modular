@@ -12,3 +12,5 @@ capabilities:
     configPath: architecture/foundation/repository-agent-workflow.yaml
   workspace.dependency-declarations:
     configPath: architecture/foundation/dependency-declarations.yaml
+  package.public-api-compatibility:
+    configPath: architecture/foundation/public-api-compatibility.yaml

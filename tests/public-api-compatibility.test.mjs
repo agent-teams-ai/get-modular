@@ -28,6 +28,9 @@ const COPY_PATHS = Object.freeze([
   "packages/assembly/package.json",
   "packages/assembly/tsconfig.json",
   ".changeset/config.json",
+  "tsconfig.base.json",
+  "architecture/public-api/core.json",
+  "architecture/public-api/assembly.json",
 ]);
 
 function packagePolicy(configuration, packageName) {
@@ -36,6 +39,11 @@ function packagePolicy(configuration, packageName) {
 
 test("live public-api policy keeps both published packages and their root export", async () => {
   const configuration = parse(await readFile(policyPath, "utf8"));
+  const foundationConfig = parse(await readFile("foundation.config.yaml", "utf8"));
+  assert.equal(
+    foundationConfig.capabilities["package.public-api-compatibility"]?.configPath,
+    policyPath,
+  );
   assert.deepEqual(
     configuration.packages.map((item) => item.packageName).toSorted(),
     [...GOVERNED_PACKAGES],
@@ -103,10 +111,7 @@ test("shrinking yaml entrypoints while package.json still exports . fails closed
     await writeFile(path, stringify(configuration));
   });
   assert.notEqual(status, 0, JSON.stringify(report));
-  assert.match(
-    JSON.stringify(report),
-    /PUBLIC_API_PACKAGE_EXPORTS_INVALID|not declared|undeclared|export/iu,
-  );
+  assert.match(JSON.stringify(report), /PUBLIC_API_PACKAGE_EXPORTS_INVALID/);
 });
 
 test("adding an undeclared package export path fails closed", async () => {
@@ -120,10 +125,7 @@ test("adding an undeclared package export path fails closed", async () => {
     await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   });
   assert.notEqual(status, 0, JSON.stringify(report));
-  assert.match(
-    JSON.stringify(report),
-    /PUBLIC_API_PACKAGE_EXPORTS_INVALID|not declared|undeclared|export/iu,
-  );
+  assert.match(JSON.stringify(report), /PUBLIC_API_PACKAGE_EXPORTS_INVALID/);
 });
 
 test("live yaml cannot drop a published package or its . export while manifests still export .", async () => {

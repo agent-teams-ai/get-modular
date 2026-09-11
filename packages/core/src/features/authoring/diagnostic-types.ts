@@ -1,97 +1,248 @@
-import type { Compatibility, CompositionPlan, PlanDigest } from "./wire-types.js";
-
-export type DiagnosticPathSegment =
-  | { readonly kind: "field"; readonly value: string }
-  | { readonly kind: "index"; readonly value: number };
-
-type EmptyCoordinate = Readonly<Record<string, never>>;
-type ModuleCoordinate = { readonly moduleId: string };
-type ImplementationCoordinate = { readonly implementationId: string };
-type SelectionCoordinate = ModuleCoordinate & ImplementationCoordinate;
-type SlotCoordinate = ImplementationCoordinate & { readonly slotId: string };
-type ProviderCoordinate = SlotCoordinate & { readonly providerImplementationId: string };
-type Reason<R extends string> = { readonly reason: R };
-type RecordFor<Code extends string, Phase extends string, Coordinate, Details> = {
-  readonly code: Code;
-  readonly phase: Phase;
-  readonly path: readonly DiagnosticPathSegment[];
-  readonly coordinate: Coordinate;
-  readonly details: Details;
-};
-
-// This inert type mapping is owned by the public authoring contract, not a
-// configurable diagnostic engine. Runtime limits remain admission-owned.
-type LimitPhase = {
-  declarationRawDocumentBytes: "decode";
-  profileRawDocumentBytes: "decode";
-  aggregateRawBytes: "decode";
-  jsonValueOccurrences: "schema";
-  jsonDepth: "decode";
-  aggregateStringBytes: "decode";
-  identifierBytes: "schema";
-  ownerPathSegments: "declaration";
-  declarations: "declaration";
-  capabilitiesPerDeclaration: "declaration";
-  slotsPerDeclaration: "declaration";
-  totalCapabilities: "declaration";
-  totalSlots: "declaration";
-  roots: "profile";
-  selections: "profile";
-  bindings: "profile";
-  graphEdges: "graph";
-  providersPerManySlot: "binding";
-  graphDepth: "graph";
-  diagnostics: "output";
-  diagnosticPathSegments: "output";
-};
-type LimitDiagnostic = {
-  [L in keyof LimitPhase]: RecordFor<"input.limit-exceeded", LimitPhase[L], EmptyCoordinate, {
-    readonly limitName: L;
-    readonly limit: number;
-    readonly actual: number;
-  }>;
-}[keyof LimitPhase];
+import type { CompositionPlan, PlanDigest } from "./wire-types.js";
 
 export type Diagnostic =
-  | RecordFor<"input.invalid-byte-carrier", "decode", EmptyCoordinate,
-    Reason<"not-uint8array" | "unusable-view" | "shared-storage" | "not-document-list">>
-  | RecordFor<"decode.invalid-json", "decode", EmptyCoordinate, Reason<"invalid-json">>
-  | RecordFor<"decode.duplicate-key", "decode", EmptyCoordinate, Reason<"duplicate-key">>
-  | LimitDiagnostic
-  | RecordFor<"schema.unsupported-version", "schema", EmptyCoordinate, Reason<"unsupported-version">>
-  | RecordFor<"schema.unknown-field", "schema", EmptyCoordinate, Reason<"unknown-field">>
-  | RecordFor<"schema.invalid-value", "schema", EmptyCoordinate, Reason<"invalid-type" | "invalid-format">>
-  | RecordFor<"schema.non-plain-value", "schema", EmptyCoordinate, Reason<"non-plain-value">>
-  | RecordFor<"identity.invalid", "schema", EmptyCoordinate, Reason<"invalid-format">>
-  | RecordFor<"declaration.duplicate-implementation", "declaration", ImplementationCoordinate, Reason<"duplicate">>
-  | RecordFor<"declaration.duplicate-capability", "declaration", ImplementationCoordinate, Reason<"duplicate">>
-  | RecordFor<"declaration.duplicate-slot", "declaration", SlotCoordinate, Reason<"duplicate">>
-  | RecordFor<"profile.duplicate-root", "profile", ModuleCoordinate, Reason<"duplicate">>
-  | RecordFor<"profile.unknown-root", "profile", ModuleCoordinate, Reason<"unknown">>
-  | RecordFor<"profile.duplicate-selection", "profile", ModuleCoordinate, Reason<"duplicate">>
-  | RecordFor<"profile.unknown-module", "profile", ModuleCoordinate, Reason<"unknown">>
-  | RecordFor<"profile.unknown-implementation", "profile", SelectionCoordinate, Reason<"unknown">>
-  | RecordFor<"profile.implementation-mismatch", "profile", SelectionCoordinate, Reason<"mismatch">>
-  | RecordFor<"profile.missing-selection", "profile", ModuleCoordinate, Reason<"missing">>
-  | RecordFor<"profile.unreachable-selection", "graph", SelectionCoordinate, Reason<"unreachable">>
-  | RecordFor<"binding.duplicate-record", "binding", SlotCoordinate, Reason<"duplicate">>
-  | RecordFor<"binding.duplicate", "binding", ProviderCoordinate, Reason<"duplicate">>
-  | RecordFor<"binding.missing", "binding", SlotCoordinate, Reason<"missing">>
-  | RecordFor<"binding.unknown-consumer", "binding", ImplementationCoordinate, Reason<"unknown">>
-  | RecordFor<"binding.unknown-slot", "binding", SlotCoordinate, Reason<"unknown">>
-  | RecordFor<"binding.unknown-provider", "binding", ProviderCoordinate, Reason<"unknown">>
-  | RecordFor<"binding.provider-not-selected", "binding", ProviderCoordinate, Reason<"mismatch">>
-  | RecordFor<"binding.cardinality", "binding", SlotCoordinate, {
-    readonly expectedCardinality: "required" | "optional" | "many";
-    readonly actualCardinality: number;
-  }>
-  | RecordFor<"binding.capability-missing", "binding", ProviderCoordinate, Reason<"missing">>
-  | RecordFor<"binding.compatibility-mismatch", "binding", ProviderCoordinate, {
-    readonly expectedCompatibility: Compatibility;
-    readonly actualCompatibility: Compatibility;
-  }>
-  | RecordFor<"graph.cycle", "graph", EmptyCoordinate, { readonly component: readonly string[] }>
-  | RecordFor<"diagnostics.truncated", "output", EmptyCoordinate, { readonly omitted: number }>;
+  | {
+      readonly [K in
+        | "input.invalid-byte-carrier"
+        | "decode.invalid-json"
+        | "decode.duplicate-key"
+        | "schema.unsupported-version"
+        | "schema.unknown-field"
+        | "schema.invalid-value"
+        | "schema.non-plain-value"
+        | "identity.invalid"
+        | "declaration.duplicate-implementation"
+        | "declaration.duplicate-capability"
+        | "declaration.duplicate-slot"
+        | "profile.duplicate-root"
+        | "profile.unknown-root"
+        | "profile.duplicate-selection"
+        | "profile.unknown-module"
+        | "profile.unknown-implementation"
+        | "profile.implementation-mismatch"
+        | "profile.missing-selection"
+        | "profile.unreachable-selection"
+        | "binding.duplicate-record"
+        | "binding.duplicate"
+        | "binding.missing"
+        | "binding.unknown-consumer"
+        | "binding.unknown-slot"
+        | "binding.unknown-provider"
+        | "binding.provider-not-selected"
+        | "binding.cardinality"
+        | "binding.capability-missing"
+        | "binding.compatibility-mismatch"
+        | "graph.cycle"
+        | "diagnostics.truncated"]: {
+        readonly code: K;
+        readonly phase: K extends
+          | "input.invalid-byte-carrier"
+          | "decode.invalid-json"
+          | "decode.duplicate-key" ? "decode"
+          : K extends
+            | "schema.unsupported-version"
+            | "schema.unknown-field"
+            | "schema.invalid-value"
+            | "schema.non-plain-value"
+            | "identity.invalid" ? "schema"
+          : K extends
+            | "declaration.duplicate-implementation"
+            | "declaration.duplicate-capability"
+            | "declaration.duplicate-slot" ? "declaration"
+          : K extends
+            | "profile.duplicate-root"
+            | "profile.unknown-root"
+            | "profile.duplicate-selection"
+            | "profile.unknown-module"
+            | "profile.unknown-implementation"
+            | "profile.implementation-mismatch"
+            | "profile.missing-selection" ? "profile"
+          : K extends "profile.unreachable-selection" | "graph.cycle" ? "graph"
+          : K extends "diagnostics.truncated" ? "output"
+          : "binding";
+        readonly path: readonly (
+          | { readonly kind: "field"; readonly value: string }
+          | { readonly kind: "index"; readonly value: number }
+        )[];
+        readonly coordinate: K extends
+          | "input.invalid-byte-carrier"
+          | "decode.invalid-json"
+          | "decode.duplicate-key"
+          | "schema.unsupported-version"
+          | "schema.unknown-field"
+          | "schema.invalid-value"
+          | "schema.non-plain-value"
+          | "identity.invalid"
+          | "graph.cycle"
+          | "diagnostics.truncated" ? Readonly<Record<string, never>>
+          : K extends
+            | "profile.duplicate-root"
+            | "profile.unknown-root"
+            | "profile.duplicate-selection"
+            | "profile.unknown-module"
+            | "profile.missing-selection" ? { readonly moduleId: string }
+          : K extends
+            | "declaration.duplicate-implementation"
+            | "declaration.duplicate-capability"
+            | "binding.unknown-consumer" ? { readonly implementationId: string }
+          : K extends "profile.unknown-implementation" | "profile.implementation-mismatch" | "profile.unreachable-selection"
+            ? { readonly moduleId: string; readonly implementationId: string }
+          : K extends
+            | "declaration.duplicate-slot"
+            | "binding.duplicate-record"
+            | "binding.missing"
+            | "binding.unknown-slot"
+            | "binding.cardinality"
+            ? { readonly implementationId: string; readonly slotId: string }
+          : {
+              readonly implementationId: string;
+              readonly slotId: string;
+              readonly providerImplementationId: string;
+            };
+        readonly details: K extends "binding.cardinality" ? {
+          readonly expectedCardinality: "required" | "optional" | "many";
+          readonly actualCardinality: number;
+        } : K extends "binding.compatibility-mismatch" ? {
+          readonly expectedCompatibility: {
+            readonly family: "exact";
+            readonly familyVersion: 1;
+            readonly token: string;
+          };
+          readonly actualCompatibility: {
+            readonly family: "exact";
+            readonly familyVersion: 1;
+            readonly token: string;
+          };
+        } : K extends "graph.cycle" ? { readonly component: readonly string[] }
+          : K extends "diagnostics.truncated" ? { readonly omitted: number }
+          : {
+              readonly reason: K extends "input.invalid-byte-carrier"
+                ? "not-uint8array" | "unusable-view" | "shared-storage" | "not-document-list"
+                : K extends "decode.invalid-json" ? "invalid-json"
+                : K extends "decode.duplicate-key" ? "duplicate-key"
+                : K extends "schema.unsupported-version" ? "unsupported-version"
+                : K extends "schema.unknown-field" ? "unknown-field"
+                : K extends "schema.invalid-value" ? "invalid-type" | "invalid-format"
+                : K extends "schema.non-plain-value" ? "non-plain-value"
+                : K extends "identity.invalid" ? "invalid-format"
+                : K extends
+                  | "declaration.duplicate-implementation"
+                  | "declaration.duplicate-capability"
+                  | "declaration.duplicate-slot"
+                  | "profile.duplicate-root"
+                  | "profile.duplicate-selection"
+                  | "binding.duplicate-record"
+                  | "binding.duplicate" ? "duplicate"
+                : K extends
+                  | "profile.unknown-root"
+                  | "profile.unknown-module"
+                  | "profile.unknown-implementation"
+                  | "binding.unknown-consumer"
+                  | "binding.unknown-slot"
+                  | "binding.unknown-provider" ? "unknown"
+                : K extends "profile.implementation-mismatch" | "binding.provider-not-selected" ? "mismatch"
+                : K extends "profile.missing-selection" | "binding.missing" | "binding.capability-missing" ? "missing"
+                : "unreachable";
+            };
+      };
+    }[
+      | "input.invalid-byte-carrier"
+      | "decode.invalid-json"
+      | "decode.duplicate-key"
+      | "schema.unsupported-version"
+      | "schema.unknown-field"
+      | "schema.invalid-value"
+      | "schema.non-plain-value"
+      | "identity.invalid"
+      | "declaration.duplicate-implementation"
+      | "declaration.duplicate-capability"
+      | "declaration.duplicate-slot"
+      | "profile.duplicate-root"
+      | "profile.unknown-root"
+      | "profile.duplicate-selection"
+      | "profile.unknown-module"
+      | "profile.unknown-implementation"
+      | "profile.implementation-mismatch"
+      | "profile.missing-selection"
+      | "profile.unreachable-selection"
+      | "binding.duplicate-record"
+      | "binding.duplicate"
+      | "binding.missing"
+      | "binding.unknown-consumer"
+      | "binding.unknown-slot"
+      | "binding.unknown-provider"
+      | "binding.provider-not-selected"
+      | "binding.cardinality"
+      | "binding.capability-missing"
+      | "binding.compatibility-mismatch"
+      | "graph.cycle"
+      | "diagnostics.truncated"]
+  | {
+      readonly [L in
+        | "declarationRawDocumentBytes"
+        | "profileRawDocumentBytes"
+        | "aggregateRawBytes"
+        | "jsonValueOccurrences"
+        | "jsonDepth"
+        | "aggregateStringBytes"
+        | "identifierBytes"
+        | "ownerPathSegments"
+        | "declarations"
+        | "capabilitiesPerDeclaration"
+        | "slotsPerDeclaration"
+        | "totalCapabilities"
+        | "totalSlots"
+        | "roots"
+        | "selections"
+        | "bindings"
+        | "graphEdges"
+        | "providersPerManySlot"
+        | "graphDepth"
+        | "diagnostics"
+        | "diagnosticPathSegments"]: {
+        readonly code: "input.limit-exceeded";
+        readonly phase: L extends "jsonValueOccurrences" | "identifierBytes" ? "schema"
+          : L extends
+            | "ownerPathSegments"
+            | "declarations"
+            | "capabilitiesPerDeclaration"
+            | "slotsPerDeclaration"
+            | "totalCapabilities"
+            | "totalSlots" ? "declaration"
+          : L extends "roots" | "selections" | "bindings" ? "profile"
+          : L extends "providersPerManySlot" ? "binding"
+          : L extends "graphEdges" | "graphDepth" ? "graph"
+          : L extends "diagnostics" | "diagnosticPathSegments" ? "output"
+          : "decode";
+        readonly path: readonly (
+          | { readonly kind: "field"; readonly value: string }
+          | { readonly kind: "index"; readonly value: number }
+        )[];
+        readonly coordinate: Readonly<Record<string, never>>;
+        readonly details: { readonly limitName: L; readonly limit: number; readonly actual: number };
+      };
+    }[
+      | "declarationRawDocumentBytes"
+      | "profileRawDocumentBytes"
+      | "aggregateRawBytes"
+      | "jsonValueOccurrences"
+      | "jsonDepth"
+      | "aggregateStringBytes"
+      | "identifierBytes"
+      | "ownerPathSegments"
+      | "declarations"
+      | "capabilitiesPerDeclaration"
+      | "slotsPerDeclaration"
+      | "totalCapabilities"
+      | "totalSlots"
+      | "roots"
+      | "selections"
+      | "bindings"
+      | "graphEdges"
+      | "providersPerManySlot"
+      | "graphDepth"
+      | "diagnostics"
+      | "diagnosticPathSegments"];
 
 export type DiagnosticCode = Diagnostic["code"];
 

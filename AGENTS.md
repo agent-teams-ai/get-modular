@@ -30,14 +30,6 @@ First adoption may create `architecture/public-api/core.json` and
 `agent-teams-foundation public-api-promote-release` on trusted
 `changeset-release/main` in this repository.
 
-Do not enable `package.public-api-compatibility` while Foundation 1.2.0 API
-Extractor fail-closes on `ae-forgotten-export` for named aliases in the
-ADR-0009 closed root set (and Assembly `ValueOf` / `ValidDeclaration`).
-Elevating those names onto `"."` would expand the public root beyond ADR-0009
-and fail packed-root declaration closure. Inlining them inflates `Diagnostic`
-past the 10000-character baseline signature cap. Do not recapture current
-source as 0.1.0 to hide that.
-
 When that gate reports a boundary violation, fix the source rather than
 shrinking governed roots or adding a baseline:
 
