@@ -45,8 +45,8 @@ importers:
         specifier: 0.6.0
         version: 0.6.0
       '@agent-teams/engineering-foundation':
-        specifier: 1.1.0
-        version: 1.1.0
+        specifier: 1.2.0
+        version: 1.2.0
       ajv:
         specifier: 'catalog:'
         version: 8.20.0
@@ -97,8 +97,8 @@ packages:
     resolution: {integrity: sha512-LdNT8VHPQxXvuyXsCblFSeCmbEEZcXwiCTY1E+c0ZEWWJG0V2qoi95F8fHAwI4ngZLDmLr/yzHGyDqwkd9GBrA==}
     engines: {node: '>=24.18.0 <25', pnpm: '>=11.17.0 <12'}
 
-  '@agent-teams/engineering-foundation@1.1.0':
-    resolution: {integrity: sha512-BsHAyVYRQEuIACqmC3j23ADOraEH7oLuHMe9Bh8TasaAocGJE7yqEq1m/6FzMi1tLxlJ0Uko67gZu365t9e7pw==}
+  '@agent-teams/engineering-foundation@1.2.0':
+    resolution: {integrity: sha512-TBUH9TdTv3RepCbSt9RrIAAEnShYiUDxIotcbkbRkT0HjM+yAzBYNmBlC9qRfPqY3GPutDwTy0uZnPxEesi7vg==}
     engines: {node: '>=24.18.0 <25', pnpm: '>=11.17.0 <12'}
     hasBin: true
 
@@ -1316,7 +1316,7 @@ snapshots:
       ajv: 8.20.0
       yaml: 2.9.0
 
-  '@agent-teams/engineering-foundation@1.1.0':
+  '@agent-teams/engineering-foundation@1.2.0':
     dependencies:
       '@agent-teams/document-authoring': 0.3.0
       '@agent-teams/repository-mutation': 0.2.0
