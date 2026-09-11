@@ -33,8 +33,9 @@ shrinking governed roots or adding a baseline:
 - generated `dist-*` trees are governed development output, not a reason to
   drop package scope;
 - qualification helpers stay in `tests/qualification` (root) or
-  `packages/core/tests/qualification-support` (Core-local copies), not a
-  third production or Host composition package;
+  `packages/core/tests/qualification-support` (Core-local test copies), not a
+  third production or Host composition package. ADR-0009 still forbids those
+  generation-suffixed evidence names in published/implementation source.
 - CI greening by narrowing scope or pending a root silently is forbidden.
 
 <!-- agent-teams-docs:route/v1 begin -->

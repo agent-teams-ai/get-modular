@@ -445,9 +445,15 @@ export function versionedIdentifierMatches(source) {
   return [...new Set(String(source).match(VERSIONED_IDENTIFIER) ?? [])].sort();
 }
 
+const PACKAGE_TEST_SOURCE = /(?:^|\/)tests\//u;
+
 export async function versionedIdentifierViolations(productionArtifacts, readSource) {
   const violations = [];
   for (const path of productionArtifacts.filter(candidate => PRODUCTION_SOURCE.test(candidate))) {
+    // ADR-0009 binds implementation and publication source. Qualification
+    // evidence names stay in top-level tests/ and Core-local test copies;
+    // those copies are not in the published files allowlist.
+    if (PACKAGE_TEST_SOURCE.test(path)) continue;
     const matches = versionedIdentifierMatches(await readSource(path));
     if (matches.length > 0) violations.push({ path, identifiers: matches });
   }
