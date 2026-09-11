@@ -5,11 +5,19 @@ import * as fs from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
-import { checkProcess, checkTree, createOutputDirectory, digest, jsonBytes, readJournal,
-  rowDigest, scanTree, verifyM1Observations, writeExclusive, captureOutsideAnchor, verifyObservationAnchor } from '../qualification-support/support/m1-retained-observations.mjs';
-import { createExactSourceCheckout, inspectExactSource, parseRetainedM1Arguments, relocatePreparedPlan, retainedM1Main, runM1RetainedSession, verifyBuildCompiler, writeM1Anchor } from '../qualification-support/m1-retained-session.mjs';
+import { findRepoRoot } from '../qualification-support/support/load-repo-json.mjs';
+
+const repositoryRoot = findRepoRoot();
+const {
+  checkProcess, checkTree, createOutputDirectory, digest, jsonBytes, readJournal,
+  rowDigest, scanTree, verifyM1Observations, writeExclusive, captureOutsideAnchor, verifyObservationAnchor,
+} = await import(pathToFileURL(join(repositoryRoot, 'tests/qualification/support/m1-retained-observations.mjs')).href);
+const {
+  createExactSourceCheckout, inspectExactSource, parseRetainedM1Arguments, relocatePreparedPlan,
+  retainedM1Main, runM1RetainedSession, verifyBuildCompiler, writeM1Anchor,
+} = await import(pathToFileURL(join(repositoryRoot, 'tests/qualification/m1-retained-session.mjs')).href);
 
 // Controlled TEST transports below do not build, install or qualify Core. The
 // real opt-in retained command executes the shared 97-case inventory separately.
