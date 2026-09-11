@@ -18,6 +18,35 @@ export type RootInstances<R> = {
   readonly [K in keyof R]: R[K] extends FactoryHandle<infer _C, infer _D, infer I> ? I : never;
 };
 
+export type IsUnion<T, Whole = T> = T extends Whole ? [Whole] extends [T] ? false : true : never;
+export type ValidDeclaration<C, D extends ModuleDeclaration> =
+  true extends IsUnion<D> | IsUnion<D["slots"]> | IsUnion<D["provides"]>
+    | (D["slots"] extends infer Slots extends readonly unknown[]
+      ? { [K in keyof Slots]: IsUnion<Slots[K]> }[number]
+      : never)
+    | (D["provides"] extends infer Provides extends readonly unknown[]
+      ? { [K in keyof Provides]: IsUnion<Provides[K]> }[number]
+      : never) ? never :
+  number extends D["provides"]["length"] | D["slots"]["length"] ? never
+    : [(
+      D["provides"][number] | D["slots"][number] extends infer P
+        ? P extends { readonly capabilityId: infer K extends string; readonly compatibility: infer T }
+          ? string extends K ? P
+            : true extends IsUnion<K> ? P
+            : K extends keyof C
+              ? [T, (K extends keyof C ? C[K] extends { readonly compatibility: infer Compat } ? Compat : never : never)] extends
+                [(K extends keyof C ? C[K] extends { readonly compatibility: infer Compat } ? Compat : never : never), T]
+                ? never : P
+              : P
+          : P
+        : never
+    ) | (
+      D["slots"][number] extends infer S
+        ? S extends { readonly slotId: infer K extends string; readonly cardinality: { readonly kind: infer Q } }
+          ? string extends K ? S : true extends IsUnion<K> | IsUnion<Q> ? S : never
+          : S
+        : never
+    )] extends [never] ? unknown : never;
 export type FactoryCapabilities<C, D extends ModuleDeclaration> = {
   readonly [P in D["provides"][number] as P["capabilityId"]]: P["capabilityId"] extends keyof C
     ? C[P["capabilityId"]] extends { readonly value: infer V } ? V : never
@@ -32,9 +61,9 @@ export type FactoryDependencies<C, D extends ModuleDeclaration> = {
       ? (S["capabilityId"] extends keyof C
         ? C[S["capabilityId"]] extends { readonly value: infer V } ? V : never
         : never) | undefined
-      : (S["capabilityId"] extends keyof C
+      : S["capabilityId"] extends keyof C
         ? C[S["capabilityId"]] extends { readonly value: infer V } ? V : never
-        : never);
+        : never;
 };
 export type FactoryContext = { readonly signal: AbortSignal };
 export type FactoryProduct<I, P> = { readonly instance: I; readonly capabilities: P };
@@ -87,38 +116,7 @@ export type AssemblyPreparationResult<R> =
 export type BindingErrorCode = "assembly.bind.invalid-declaration" | "assembly.bind.limit" | "assembly.bind.invalid-factory";
 export type Assembly<C> = {
   readonly bindFactory: <const D extends ModuleDeclaration, I>(
-    declaration: D & (
-      true extends (
-        | (NoInfer<D> extends infer Whole ? NoInfer<D> extends Whole ? [Whole] extends [NoInfer<D>] ? false : true : never : never)
-        | (NoInfer<D>["slots"] extends infer Whole ? NoInfer<D>["slots"] extends Whole ? [Whole] extends [NoInfer<D>["slots"]] ? false : true : never : never)
-        | (NoInfer<D>["provides"] extends infer Whole ? NoInfer<D>["provides"] extends Whole ? [Whole] extends [NoInfer<D>["provides"]] ? false : true : never : never)
-        | { [K in keyof NoInfer<D>["slots"]]: NoInfer<D>["slots"][K] extends infer Whole ? NoInfer<D>["slots"][K] extends Whole ? [Whole] extends [NoInfer<D>["slots"][K]] ? false : true : never : never }[number]
-        | { [K in keyof NoInfer<D>["provides"]]: NoInfer<D>["provides"][K] extends infer Whole ? NoInfer<D>["provides"][K] extends Whole ? [Whole] extends [NoInfer<D>["provides"][K]] ? false : true : never : never }[number]
-      ) ? never
-        : number extends NoInfer<D>["provides"]["length"] | NoInfer<D>["slots"]["length"] ? never
-        : [
-          (NoInfer<D>["provides"][number] | NoInfer<D>["slots"][number] extends infer P
-            ? P extends { readonly capabilityId: infer K extends string; readonly compatibility: infer T }
-              ? string extends K ? P
-                : true extends (K extends infer Whole ? K extends Whole ? [Whole] extends [K] ? false : true : never : never) ? P
-                : K extends keyof C
-                  ? [T, (K extends keyof C ? C[K] extends { readonly compatibility: infer Compat } ? Compat : never : never)] extends
-                    [(K extends keyof C ? C[K] extends { readonly compatibility: infer Compat } ? Compat : never : never), T]
-                    ? never : P
-                  : P
-              : P
-            : never)
-          | (NoInfer<D>["slots"][number] extends infer S
-            ? S extends { readonly slotId: infer K extends string; readonly cardinality: { readonly kind: infer Q } }
-              ? string extends K ? S
-                : true extends (
-                  | (K extends infer Whole ? K extends Whole ? [Whole] extends [K] ? false : true : never : never)
-                  | (Q extends infer Whole ? Q extends Whole ? [Whole] extends [Q] ? false : true : never : never)
-                ) ? S : never
-              : S
-            : never)
-        ] extends [never] ? unknown : never
-    ),
+    declaration: D & ValidDeclaration<C, NoInfer<D>>,
     factory: (dependencies: FactoryDependencies<C, NoInfer<D>>, context: FactoryContext) => Promise<FactoryProduct<I, FactoryCapabilities<C, NoInfer<D>>>>,
   ) => FactoryHandle<C, D, I>;
   readonly prepare: <const R extends RootHandles<C>>(input: AssemblyPrepareInput<C, R>) =>

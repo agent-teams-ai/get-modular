@@ -19,7 +19,7 @@
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
-          "signature": "export type Assembly<C> = {\n    readonly bindFactory: <const D extends ModuleDeclaration, I>(declaration: D & (true extends ((NoInfer<D> extends infer Whole ? NoInfer<D> extends Whole ? [Whole] extends [NoInfer<D>] ? false : true : never : never) | (NoInfer<D>[\"slots\"] extends infer Whole ? NoInfer<D>[\"slots\"] extends Whole ? [Whole] extends [NoInfer<D>[\"slots\"]] ? false : true : never : never) | (NoInfer<D>[\"provides\"] extends infer Whole ? NoInfer<D>[\"provides\"] extends Whole ? [Whole] extends [NoInfer<D>[\"provides\"]] ? false : true : never : never) | {\n        [K in keyof NoInfer<D>[\"slots\"]]: NoInfer<D>[\"slots\"][K] extends infer Whole ? NoInfer<D>[\"slots\"][K] extends Whole ? [Whole] extends [NoInfer<D>[\"slots\"][K]] ? false : true : never : never;\n    }[number] | {\n        [K in keyof NoInfer<D>[\"provides\"]]: NoInfer<D>[\"provides\"][K] extends infer Whole ? NoInfer<D>[\"provides\"][K] extends Whole ? [Whole] extends [NoInfer<D>[\"provides\"][K]] ? false : true : never : never;\n    }[number]) ? never : number extends NoInfer<D>[\"provides\"][\"length\"] | NoInfer<D>[\"slots\"][\"length\"] ? never : [\n        (NoInfer<D>[\"provides\"][number] | NoInfer<D>[\"slots\"][number] extends infer P ? P extends {\n            readonly capabilityId: infer K extends string;\n            readonly compatibility: infer T;\n        } ? string extends K ? P : true extends (K extends infer Whole ? K extends Whole ? [Whole] extends [K] ? false : true : never : never) ? P : K extends keyof C ? [T, (K extends keyof C ? C[K] extends {\n            readonly compatibility: infer Compat;\n        } ? Compat : never : never)] extends [\n            (K extends keyof C ? C[K] extends {\n                readonly compatibility: infer Compat;\n            } ? Compat : never : never),\n            T\n        ] ? never : P : P : P : never) | (NoInfer<D>[\"slots\"][number] extends infer S ? S extends {\n            readonly slotId: infer K extends string;\n            readonly cardinality: {\n                readonly kind: infer Q;\n            };\n        } ? string extends K ? S : true extends ((K extends infer Whole ? K extends Whole ? [Whole] extends [K] ? false : true : never : never) | (Q extends infer Whole ? Q extends Whole ? [Whole] extends [Q] ? false : true : never : never)) ? S : never : S : never)\n    ] extends [never] ? unknown : never), factory: (dependencies: FactoryDependencies<C, NoInfer<D>>, context: FactoryContext) => Promise<FactoryProduct<I, FactoryCapabilities<C, NoInfer<D>>>>) => FactoryHandle<C, D, I>;\n    readonly prepare: <const R extends RootHandles<C>>(input: AssemblyPrepareInput<C, R>) => Promise<AssemblyPreparationResult<R>>;\n};"
+          "signature": "export type Assembly<C> = {\n    readonly bindFactory: <const D extends ModuleDeclaration, I>(declaration: D & ValidDeclaration<C, NoInfer<D>>, factory: (dependencies: FactoryDependencies<C, NoInfer<D>>, context: FactoryContext) => Promise<FactoryProduct<I, FactoryCapabilities<C, NoInfer<D>>>>) => FactoryHandle<C, D, I>;\n    readonly prepare: <const R extends RootHandles<C>>(input: AssemblyPrepareInput<C, R>) => Promise<AssemblyPreparationResult<R>>;\n};"
         },
         {
           "canonicalReference": "@get-modular/assembly!AssemblyBindingError#code:member",
@@ -110,7 +110,7 @@
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
-          "signature": "export type FactoryDependencies<C, D extends ModuleDeclaration> = {\n    readonly [S in D[\"slots\"][number] as S[\"slotId\"]]: S[\"cardinality\"][\"kind\"] extends \"many\" ? readonly (S[\"capabilityId\"] extends keyof C ? C[S[\"capabilityId\"]] extends {\n        readonly value: infer V;\n    } ? V : never : never)[] : S[\"cardinality\"][\"kind\"] extends \"optional\" ? (S[\"capabilityId\"] extends keyof C ? C[S[\"capabilityId\"]] extends {\n        readonly value: infer V;\n    } ? V : never : never) | undefined : (S[\"capabilityId\"] extends keyof C ? C[S[\"capabilityId\"]] extends {\n        readonly value: infer V;\n    } ? V : never : never);\n};"
+          "signature": "export type FactoryDependencies<C, D extends ModuleDeclaration> = {\n    readonly [S in D[\"slots\"][number] as S[\"slotId\"]]: S[\"cardinality\"][\"kind\"] extends \"many\" ? readonly (S[\"capabilityId\"] extends keyof C ? C[S[\"capabilityId\"]] extends {\n        readonly value: infer V;\n    } ? V : never : never)[] : S[\"cardinality\"][\"kind\"] extends \"optional\" ? (S[\"capabilityId\"] extends keyof C ? C[S[\"capabilityId\"]] extends {\n        readonly value: infer V;\n    } ? V : never : never) | undefined : S[\"capabilityId\"] extends keyof C ? C[S[\"capabilityId\"]] extends {\n        readonly value: infer V;\n    } ? V : never : never;\n};"
         },
         {
           "canonicalReference": "@get-modular/assembly!FactoryHandle:type",
@@ -125,6 +125,13 @@
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
           "signature": "export type FactoryProduct<I, P> = {\n    readonly instance: I;\n    readonly capabilities: P;\n};"
+        },
+        {
+          "canonicalReference": "@get-modular/assembly!IsUnion:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/assembly!",
+          "parentKind": "EntryPoint",
+          "signature": "export type IsUnion<T, Whole = T> = T extends Whole ? [Whole] extends [T] ? false : true : never;"
         },
         {
           "canonicalReference": "@get-modular/assembly!ObservedCancellation:type",
@@ -188,6 +195,13 @@
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
           "signature": "export type SuccessfulComposition = Extract<CompileCompositionResult, {\n    readonly plan: CompositionPlan;\n    readonly digest: PlanDigest;\n}>;"
+        },
+        {
+          "canonicalReference": "@get-modular/assembly!ValidDeclaration:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/assembly!",
+          "parentKind": "EntryPoint",
+          "signature": "export type ValidDeclaration<C, D extends ModuleDeclaration> = true extends IsUnion<D> | IsUnion<D[\"slots\"]> | IsUnion<D[\"provides\"]> | (D[\"slots\"] extends infer Slots extends readonly unknown[] ? {\n    [K in keyof Slots]: IsUnion<Slots[K]>;\n}[number] : never) | (D[\"provides\"] extends infer Provides extends readonly unknown[] ? {\n    [K in keyof Provides]: IsUnion<Provides[K]>;\n}[number] : never) ? never : number extends D[\"provides\"][\"length\"] | D[\"slots\"][\"length\"] ? never : [\n    (D[\"provides\"][number] | D[\"slots\"][number] extends infer P ? P extends {\n        readonly capabilityId: infer K extends string;\n        readonly compatibility: infer T;\n    } ? string extends K ? P : true extends IsUnion<K> ? P : K extends keyof C ? [T, (K extends keyof C ? C[K] extends {\n        readonly compatibility: infer Compat;\n    } ? Compat : never : never)] extends [\n        (K extends keyof C ? C[K] extends {\n            readonly compatibility: infer Compat;\n        } ? Compat : never : never),\n        T\n    ] ? never : P : P : P : never) | (D[\"slots\"][number] extends infer S ? S extends {\n        readonly slotId: infer K extends string;\n        readonly cardinality: {\n            readonly kind: infer Q;\n        };\n    } ? string extends K ? S : true extends IsUnion<K> | IsUnion<Q> ? S : never : S : never)\n] extends [never] ? unknown : never;"
         },
         {
           "canonicalReference": "@get-modular/assembly!assemblyFor:function(1)",
