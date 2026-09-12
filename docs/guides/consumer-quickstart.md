@@ -87,11 +87,18 @@ reference. Resources not handed back by a rejected factory remain that factory's
 or its Host owner's responsibility. Keep the exact `returned` handoff available
 to the known owner; do not inspect arbitrary values for a disposal method.
 
-The current basic example scans unique disposable values for its own small
-configuration resource and closes its scope before returning. This illustrates
-that particular resource arrangement, not a general ownership algorithm. Do not
-reuse the returned roots as live services after the example completes. A Host
-that returns usable roots must also transfer their lifetime to the caller.
+The basic example registers its known configuration owner in an
+`AsyncDisposableStack` before construction handoff. It awaits construction and
+root use inside the protected lifetime, then closes the scope exactly once.
+Its one-shot result contains a message and implementation IDs, never graph roots,
+created products or raw returned products. Opaque failure causes remain untouched.
+A Host that returns usable roots must also transfer their lifetime to the caller.
+
+The example's `status` describes work. A separate `cleanupFailure: { cause }`
+preserves cleanup failure alongside any primary failure, including
+`throw undefined`; CLI success requires successful work and no cleanup failure.
+An async acquisition provider must clean up allocations it never successfully
+hands back: registration after `await acquire()` cannot recover an unreturned resource.
 
 Readiness, retries, permissions, routing, drain, recovery, and long-lived
 lifecycle state also remain Host policies. Keep them outside module factories

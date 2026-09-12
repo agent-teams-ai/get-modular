@@ -70,45 +70,43 @@ const profile = {
   ],
 };
 
-async function disposeCreated(created) {
-  await using resources = new AsyncDisposableStack();
-  const registered = new Set();
-  for (const entry of created) {
-    for (const value of [entry.instance, ...Object.values(entry.capabilities)]) {
-      if (registered.has(value)) continue;
-      if (value && typeof value[Symbol.asyncDispose] === "function") {
-        registered.add(value);
-        resources.use(value);
-      } else if (value && typeof value[Symbol.dispose] === "function") {
-        registered.add(value);
-        resources.use(value);
-      }
-    }
-  }
+// The caller retains ownership of this borrowed work port.
+const defaultGreetingPort = {
+  greet: (name, audience) => `Hello ${name}, from ${audience}`,
+};
+
+export function basicHostExitCode(outcome) {
+  return outcome.status === "succeeded" && !Object.hasOwn(outcome, "cleanupFailure") ? 0 : 1;
 }
 
-export async function runBasicHost({ signal, onConfigurationDisposed } = {}) {
+export async function runBasicHost({
+  signal, onConfigurationDisposed, greetingPort = defaultGreetingPort,
+} = {}) {
   const composition = await compileComposition({ declarations, profile });
   if (!composition.ok) {
     throw new Error(`Invalid composition: ${composition.diagnostics.map(({ code }) => code).join(", ")}`);
   }
 
+  const resources = new AsyncDisposableStack();
   const api = assemblyFor();
   const configurationHandle = api.bindFactory(configuration, async () => {
-    const value = {
-      audience: "consumer",
-      [Symbol.asyncDispose]: async () => onConfigurationDisposed?.(),
-    };
-    return { instance: value, capabilities: { "example/configuration": value } };
+    const resource = { audience: "consumer" };
+    resources.defer(async () => onConfigurationDisposed?.());
+    // Distinct wrappers share one resource; neither receives cleanup authority.
+    const value = { get audience() { return resource.audience; } };
+    return { instance: { configuration: value }, capabilities: { "example/configuration": value } };
   });
-  const greetingHandle = api.bindFactory(greeting, async ({ configuration }) => ({
-    instance: {},
-    capabilities: {
-      "example/greeting": {
-        greet: (name) => `Hello ${name}, from ${configuration.audience}`,
+  const greetingHandle = api.bindFactory(greeting, async ({ configuration }) => {
+    const greet = greetingPort.greet;
+    return {
+      instance: {},
+      capabilities: {
+        "example/greeting": {
+          greet: (name) => greet.call(greetingPort, name, configuration.audience),
+        },
       },
-    },
-  }));
+    };
+  });
   const applicationHandle = api.bindFactory(application, async ({ greeting }) => ({
     instance: { run: (name) => greeting.greet(name) },
     capabilities: {},
@@ -121,20 +119,41 @@ export async function runBasicHost({ signal, onConfigurationDisposed } = {}) {
   });
   if (preparation.status === "failed") throw preparation.error;
 
-  const outcome = await preparation.prepared.run({ signal });
+  let result;
+  let phase = "run";
+  let createdImplementationIds = [];
+  let cleanupFailure;
   try {
-    if (outcome.status !== "succeeded") return outcome;
-    return { ...outcome, message: outcome.roots.application.run("modules") };
+    const outcome = await preparation.prepared.run({ signal });
+    createdImplementationIds = outcome.created.map(({ implementationId }) => implementationId);
+    if (outcome.status === "succeeded") {
+      phase = "use";
+      const message = await outcome.roots.application.run("modules");
+      result = { status: "succeeded", message, createdImplementationIds };
+    } else if (outcome.status === "cancelled") {
+      result = { status: "cancelled", reason: outcome.reason, createdImplementationIds };
+    } else {
+      result = {
+        status: "failed", phase: outcome.phase, code: outcome.code,
+        implementationId: outcome.implementationId, cause: outcome.cause,
+        cancellation: outcome.cancellation, createdImplementationIds,
+      };
+    }
+  } catch (cause) {
+    result = { status: "failed", phase, cause, createdImplementationIds };
   } finally {
-    await disposeCreated(outcome.created);
+    try {
+      await resources.disposeAsync();
+    } catch (cause) {
+      cleanupFailure = { cause };
+    }
   }
+  if (cleanupFailure) result.cleanupFailure = cleanupFailure;
+  return result;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const outcome = await runBasicHost();
-  if (outcome.status !== "succeeded") {
-    process.exitCode = 1;
-  } else {
-    console.log(outcome.message);
-  }
+  process.exitCode = basicHostExitCode(outcome);
+  if (process.exitCode === 0) console.log(outcome.message);
 }
