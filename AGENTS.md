@@ -63,3 +63,11 @@ product-owned adapters outside this repository.
 Get Modular compiles composition semantics. It does not own artifact trust,
 authorization, executable discovery, desired state, readiness, generations,
 routing, drain, recovery, or retirement.
+
+<!-- agent-teams:quality-standard:start -->
+Before planning, implementing, or reviewing changes, read and follow the
+[organization Engineering Quality Standard](https://github.com/agent-teams-ai/.github/blob/main/docs/engineering-quality-standard.md).
+Apply it with this repository's instructions, accepted decisions and local
+adoption profiles. This reference does not change pinned architecture contracts
+or certify existing code as conformant.
+<!-- agent-teams:quality-standard:end -->
