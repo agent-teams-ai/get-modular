@@ -1,0 +1,32 @@
+import assert from "node:assert/strict";
+import { pathToFileURL } from "node:url";
+
+// The existing packed TypeScript driver supplies its emitted mixed-graph.js.
+const { declarations, profile, runMixedGraph } = await import(pathToFileURL(process.argv[2]).href);
+assert.equal(declarations.length, 24);
+assert.deepEqual(profile.roots, ["mixed/root", "mixed/n17"]);
+const outcome = await runMixedGraph();
+assert.deepEqual(Object.keys(outcome.roots).sort(), ["app", "last"]);
+assert.equal(outcome.roots.app.output, "18:enabled:absent:RL");
+assert.deepEqual(outcome.roots.last, { value: 18 });
+const deps = outcome.roots.app.deps;
+assert.deepEqual(Object.keys(deps).sort(), ["absent", "filters", "present", "previous"]);
+assert.equal(deps.present, "enabled");
+assert.equal(deps.absent, "absent");
+assert.deepEqual(deps.filters.map(item => item.apply("")), ["R", "L"]);
+assert.equal(deps.filters[0].counter, deps.previous);
+assert.equal(deps.filters[1].counter, deps.previous);
+assert.equal(Object.isFrozen(deps.filters), true);
+assert.equal(Object.isFrozen(deps), true);
+assert.equal(outcome.created.length, 24);
+assert.equal(new Set(outcome.created.map(item => item.implementationId)).size, 24);
+const created = new Map(outcome.created.map(item => [item.implementationId, item]));
+assert.deepEqual(Object.keys(created.get("mixed/root").capabilities), []);
+assert.equal(created.get("mixed/n17").instance, outcome.roots.last);
+assert.equal(created.get("mixed/n17").capabilities["mixed/counter"], deps.previous);
+assert.equal(created.get("mixed/present").instance.deps.logger, created.get("mixed/log").capabilities["mixed/logger"]);
+const absent = created.get("mixed/absent").instance.deps;
+assert.deepEqual(Object.keys(absent), ["logger"]);
+assert.equal(Object.hasOwn(absent, "logger"), true);
+assert.equal(absent.logger, undefined);
+console.log("mixed-runtime:passed");
