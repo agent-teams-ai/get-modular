@@ -15,7 +15,8 @@
   },
   "files": [
     "../../tests/assembly/types.ts",
-    "../../tests/assembly/types-positive.ts"
+    "../../tests/assembly/types-positive.ts",
+    "../../tests/assembly/mixed-graph.ts"
   ],
   "include": []
 }
