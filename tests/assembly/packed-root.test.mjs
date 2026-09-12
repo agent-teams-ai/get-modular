@@ -183,11 +183,28 @@ test("disposable packed consumer checks closed roots, synthetic wiring and both 
     for (const file of ["fixture.mjs", "runtime.test.mjs", "preparation.test.mjs", "packed-consumer.mjs"]) {
       await writeFile(join(consumer, file), await readFile(join(fixtures, file)));
     }
+    const secondConsumer = join(temporary, "consumer-copy");
+    await mkdir(secondConsumer);
+    await writeFile(join(secondConsumer, "package.json"), await readFile(join(consumer, "package.json")));
+    command(process.execPath, [npm, "install", "--offline", "--ignore-scripts", "--no-audit", "--no-fund", "--package-lock=false"], secondConsumer, {
+      npm_config_cache: join(temporary, "npm-cache"),
+    });
+    for (const name of ["@get-modular/core", "@get-modular/assembly"]) {
+      assert.deepEqual(await installedPackage(secondConsumer, name), await installedPackage(consumer, name));
+      for (const [path, expected] of archiveBytes.get(archivePaths[name]).files) {
+        assert.deepEqual(await readFile(join(secondConsumer, "node_modules", name, path)), expected);
+      }
+    }
+    for (const file of ["package-copy-consumer.mjs", "mixed-runtime.mjs"]) {
+      await writeFile(join(consumer, file), await readFile(join(fixtures, file)));
+    }
+    const runtimeChecks = [];
+    runtimeChecks.push(command(process.execPath, ["package-copy-consumer.mjs", secondConsumer], consumer).trim());
     command(process.execPath, ["packed-consumer.mjs"], consumer);
     command(process.execPath, ["--conditions=browser", "--conditions=development", "packed-consumer.mjs"], consumer);
     command(process.execPath, ["--test", "runtime.test.mjs", "preparation.test.mjs"], consumer);
     await mkdir(join(consumer, "tests"));
-    for (const file of ["types.ts", "types-positive.ts"]) await writeFile(join(consumer, "tests", file), await readFile(join(fixtures, file)));
+    for (const file of ["types.ts", "types-positive.ts", "mixed-graph.ts"]) await writeFile(join(consumer, "tests", file), await readFile(join(fixtures, file)));
     await writeFile(join(consumer, "tests/type-scale.ts"), largeLiteralSource());
     const closedSpecifiers = ["@get-modular/core", "@get-modular/assembly"].flatMap((name) =>
       ["dist/index.js", "src/index.js", "package.json", "unknown"].map((subpath) => `${name}/${subpath}`));
@@ -196,18 +213,24 @@ test("disposable packed consumer checks closed roots, synthetic wiring and both 
     const config = { compilerOptions: {
       target: "ES2022", lib: ["ES2023", "DOM"], strict: true, noEmit: true,
       skipLibCheck: false, resolveJsonModule: true, types: [], isolatedDeclarations: false, erasableSyntaxOnly: false,
-    }, files: ["tests/types.ts", "tests/types-positive.ts", "tests/type-scale.ts"] };
+    }, files: ["tests/types.ts", "tests/types-positive.ts", "tests/type-scale.ts", "tests/mixed-graph.ts"] };
     const project = join(consumer, "tsconfig.types.json");
     await writeFile(project, JSON.stringify(config));
     const runtimeProject = join(consumer, "tsconfig.runtime.json");
     await writeFile(runtimeProject, JSON.stringify({ extends: "./tsconfig.types.json",
-      compilerOptions: { rootDir: "tests", noEmit: false, declaration: false }, files: ["tests/types-positive.ts"] }));
+      compilerOptions: { rootDir: "tests", noEmit: false, declaration: false }, files: ["tests/types-positive.ts", "tests/mixed-graph.ts"] }));
     const negativeProject = join(consumer, "tsconfig.negative.json");
     await writeFile(negativeProject, JSON.stringify({
       extends: "./tsconfig.types.json", files: ["tests/closed-imports.ts"],
     }));
     const observations = testAssemblyTypes({ directory: consumer, project, runtimeProject, negativeProject });
+    for (const { compilerName, resolution } of observations) {
+      runtimeChecks.push(command(process.execPath, ["mixed-runtime.mjs",
+        join(consumer, "emitted", `${compilerName}-${resolution}`, "mixed-graph.js")], consumer).trim());
+    }
     assert.equal(observations.length, 4);
+    assert.deepEqual(runtimeChecks, ["package-copy:passed", ...Array(4).fill("mixed-runtime:passed")],
+      "packed runtime runner completion");
     for (const [archive, { bytes }] of archiveBytes) assert.deepEqual(await readFile(archive), bytes);
     t.diagnostic(JSON.stringify({ consumerChecks: "passed", compilers: observations,
       retained: Boolean(retained), registryOriginAuthenticatedByHarness: false }));
