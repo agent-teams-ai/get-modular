@@ -4,6 +4,7 @@ packages:
 catalogMode: strict
 
 catalog:
+  '@changesets/cli': 3.0.2
   ajv: 8.20.0
   canonicalize: 4.0.0
   cspell: 10.0.1

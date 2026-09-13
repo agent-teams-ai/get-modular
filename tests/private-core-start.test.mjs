@@ -187,8 +187,14 @@ test("real governance entrypoint consumes the start record before admitting priv
     const coreCarrier = {
       ...carrier,
       name: "@get-modular/core",
+      version: "0.1.0",
       devDependencies: { ...CORE_DEVELOPMENT_DEPENDENCIES },
     };
+    // This start-record witness retains the historical pair after current releases advance.
+    const assemblyPath = join(fixture, "packages/assembly/package.json");
+    const assemblyCarrier = JSON.parse(await readFile(assemblyPath, "utf8"));
+    await writeFile(assemblyPath, JSON.stringify({ ...assemblyCarrier, version: "0.1.0" }));
+    await exec("git", ["add", "packages/assembly/package.json"], { cwd: fixture });
     await writeFile(join(fixture, "packages/core/package.json"), JSON.stringify(coreCarrier));
     await writeFile(join(fixture, artifacts[1]), "export const fixture = true;\n");
     const git = (...args) => exec("git", args, { cwd: fixture });

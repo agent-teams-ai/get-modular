@@ -111,6 +111,11 @@
       "id": "ADR-0026",
       "path": "docs/decisions/0026-adopt-consumer-module-standard.md",
       "immutableDigest": "sha256:2cfcdfd5dc544bc5059602dcc5df0ed7c71d45758256524f99ff6562a80a20fc"
+    },
+    {
+      "id": "ADR-0027",
+      "path": "docs/decisions/0027-admit-the-core-and-assembly-0-2-0-correction-pair.md",
+      "immutableDigest": "sha256:18d5bb55016d4c38856d415dc62599f0cbc445f0856d8365ff6e6b3535d6e505"
     }
   ]
 }

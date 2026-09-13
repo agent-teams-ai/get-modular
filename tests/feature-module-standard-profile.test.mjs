@@ -814,8 +814,14 @@ test("ADR-0023 and ADR-0025 admit historical private and canonical public Assemb
     assert.match(violations[0].scripts.join("\n"), message);
   }
 
+  // Shape validation does not confer the separately authenticated successor authority.
+  assert.deepEqual(manifestCarrierViolations(await inventory({ ...publicManifest, version: "0.2.0" })), []);
+  const privateNext = manifestCarrierViolations(await inventory({ ...manifest, version: "0.2.0" }));
+  assert.equal(privateNext.length, 1);
+  assert.match(privateNext[0].scripts.join("\n"), /version requires historical/u);
+
   for (const [change, message] of [
-    [{ version: "0.2.0" }, /version must remain 0\.1\.0/u],
+    [{ version: "0.3.0" }, /version requires historical 0\.1\.0 or public 0\.2\.0 admission/u],
     [{ dependencies: {} }, /dependencies must contain only/u],
     [{ dependencies: { "@get-modular/core": "^0.1.0" } }, /dependencies must contain only/u],
     [{ dependencies: { ...manifest.dependencies, "@example/extra": "1.0.0" } },

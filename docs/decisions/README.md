@@ -17,6 +17,8 @@ summary: Index of Get Modular architecture decisions.
 
 ## Accepted decisions
 
+- [ADR-0027: Admit the Core and Assembly 0.2.0 correction pair](0027-admit-the-core-and-assembly-0-2-0-correction-pair.md)
+
 - [ADR-0025: Publish Assembly 0.1.0 with Core 0.1.0](0025-publish-assembly-0-1-0-with-core-0-1-0.md)
 - [ADR-0026: Adopt consumer module standard](0026-adopt-consumer-module-standard.md)
 

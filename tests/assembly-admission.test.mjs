@@ -10,7 +10,7 @@ import { parse, stringify } from "yaml";
 import { readCurrentM2Authority } from "../architecture/checks/m2-lock-witness.mjs";
 import { promisify } from "node:util";
 import {
-  ASSEMBLY_PUBLICATION_DECISION_PATH, ASSEMBLY_DECISION_PATH, ASSEMBLY_MANIFEST_PATH, M2_HISTORICAL_LOCK_DIGEST,
+  ASSEMBLY_CORRECTION_DECISION_PATH, ASSEMBLY_PUBLICATION_DECISION_PATH, ASSEMBLY_DECISION_PATH, ASSEMBLY_MANIFEST_PATH, M2_HISTORICAL_LOCK_DIGEST,
   createHistoricalM2EvidenceReader, validateAssemblyAdmission,
 } from "../architecture/checks/assembly-admission.mjs";
 import { validatePrivateCoreStart } from "../architecture/checks/private-core-start.mjs";
@@ -21,6 +21,9 @@ import {
 
 const root = new URL("../", import.meta.url);
 const read = path => readFileSync(new URL(path, root));
+// Synthetic legacy manifests retain first-release identity independently of current SemVer.
+const historicalManifestRead = path => path === ASSEMBLY_MANIFEST_PATH
+  ? Buffer.from(JSON.stringify({ ...JSON.parse(read(path)), version: "0.1.0" })) : read(path);
 const sha = bytes => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const ledgerBytes = read(M2_EVIDENCE_LEDGER);
 const expectedLedgerDigest = "sha256:3781993b5714d8f8928ca2a2082353f93bc42b0e69a3373bd9cfaa41963f7f61";
@@ -243,7 +246,8 @@ test("root tooling lock upgrades admit independently and compose with historical
   }
   assert.equal(authority.toolingEvidence.inputs.find(row => row.path === "pnpm-lock.yaml").digest,
     sha(changedLock));
-  await assert.rejects(createHistoricalM2EvidenceReader({ ...evidenceInput, readBytes }),
+  await assert.rejects(createHistoricalM2EvidenceReader({ ...evidenceInput,
+    readBytes: path => path === ASSEMBLY_MANIFEST_PATH ? historicalManifestRead(path) : readBytes(path) }),
     /differs beyond the sole importer addition/u);
   await admit({ readBytes: path => path === "pnpm-lock.yaml"
     ? Buffer.concat([currentLock, Buffer.from("\n# tooling formatting\n")]) : read(path) });
@@ -254,12 +258,12 @@ test("legacy Assembly reader still authenticates its closed historical delta", a
   const legacy = Buffer.from(historical.toString().replace("  packages/core: {}", importer + "  packages/core: {}"));
   assert.equal(sha(legacy), "sha256:3ae75433a52d071775c9688fb41a2f24331c9ac05b01dadf0278be7788192562");
   const legacyRead = await createHistoricalM2EvidenceReader({ ...evidenceInput,
-    readBytes: path => path === "pnpm-lock.yaml" ? legacy : read(path) });
+    readBytes: path => path === "pnpm-lock.yaml" ? legacy : historicalManifestRead(path) });
   assert.deepEqual(await legacyRead("pnpm-lock.yaml"), historical);
   for (const bytes of [Buffer.concat([legacy, Buffer.from("\n")]),
     Buffer.from(legacy.toString().replace("version: link:../core", "version: link:../other"))]) {
     await assert.rejects(createHistoricalM2EvidenceReader({ ...evidenceInput,
-      readBytes: path => path === "pnpm-lock.yaml" ? bytes : read(path) }));
+      readBytes: path => path === "pnpm-lock.yaml" ? bytes : historicalManifestRead(path) }));
   }
 });
 
@@ -283,6 +287,8 @@ test("Assembly admission retains captured-index custody for every admission inpu
   const exec = promisify(execFile);
   const git = (...args) => exec("git", args, { cwd: directory });
   const paths = [ASSEMBLY_MANIFEST_PATH, ASSEMBLY_DECISION_PATH, ASSEMBLY_PUBLICATION_DECISION_PATH,
+    ...(JSON.parse(read(ASSEMBLY_MANIFEST_PATH)).version === "0.2.0"
+      ? [ASSEMBLY_CORRECTION_DECISION_PATH] : []),
     "architecture/decisions/accepted-decisions.json", "pnpm-lock.yaml",
     "pnpm-workspace.yaml", "packages/core/package.json"];
   try {
@@ -334,7 +340,7 @@ test("public admission authenticates publication authority in current and legacy
 });
 
 test("historical private Assembly remains admitted without publication authority", async () => {
-  const manifest = { ...JSON.parse(read(ASSEMBLY_MANIFEST_PATH)), private: true };
+  const manifest = { ...JSON.parse(historicalManifestRead(ASSEMBLY_MANIFEST_PATH)), private: true };
   delete manifest.publishConfig;
   delete manifest.repository;
   const readBytes = path => {
@@ -348,7 +354,7 @@ test("historical private Assembly remains admitted without publication authority
     return read(path);
   };
   await admit({ readBytes, readPackageManifest: async path => path === ASSEMBLY_MANIFEST_PATH
-    ? manifest : inputs.readPackageManifest(path) });
+    ? manifest : { ...await inputs.readPackageManifest(path), version: "0.1.0" } });
   // Current tooling reaches historical evidence through ADR-0024's authenticated witness.
   const authority = await readCurrentM2Authority(readBytes);
   const currentHistorical = await createHistoricalM2EvidenceReader({ ...evidenceInput,
@@ -366,4 +372,54 @@ test("historical private Assembly remains admitted without publication authority
   const historical = await createHistoricalM2EvidenceReader({ ...evidenceInput,
     readBytes: path => path === "pnpm-lock.yaml" ? legacy : readBytes(path) });
   assert.equal(sha(await historical("pnpm-lock.yaml")), M2_HISTORICAL_LOCK_DIGEST);
+});
+
+test("next pair requires the exact accepted successor and retains first-release authority", async () => {
+  const decisionPath = "docs/decisions/0027-admit-the-core-and-assembly-0-2-0-correction-pair.md";
+  // A synthetic acceptance projection exercises pending admission without accepting
+  // a decision or writing a registry/baseline in this feature workspace.
+  const proposed = read(decisionPath).toString("utf8")
+    .replace(/^status: accepted$/mu, "status: proposed")
+    .replace(/^approved_by:.*\n/mu, "").replace(/^accepted_at:.*\n/mu, "");
+  const accepted = Buffer.from(proposed.replace("status: proposed",
+    "status: accepted\napproved_by: product-owner-delegated-orchestrator\naccepted_at: 2026-09-13"));
+  const registryPath = "architecture/decisions/accepted-decisions.json";
+  const registry = JSON.parse(read(registryPath));
+  registry.decisions = registry.decisions.filter(entry => entry.id !== "ADR-0027"
+    && entry.path !== decisionPath);
+  const pending = path => path === decisionPath ? Buffer.from(proposed)
+    : path === registryPath ? Buffer.from(JSON.stringify(registry)) : read(path);
+  const entry = { id: "ADR-0027", path: decisionPath,
+    immutableDigest: "sha256:18d5bb55016d4c38856d415dc62599f0cbc445f0856d8365ff6e6b3535d6e505" };
+  const bytes = new Map([[decisionPath, accepted],
+    [registryPath, Buffer.from(JSON.stringify({ ...registry, decisions: [...registry.decisions, entry] }))]]);
+  const next = {
+    readBytes: path => bytes.get(path) ?? read(path),
+    readPackageManifest: async path => ({ ...JSON.parse(read(path)), version: "0.2.0" }),
+  };
+  assert.deepEqual(await admit(next), artifacts.slice(2));
+  await assert.rejects(admit({ ...next, readBytes: pending }), /accepted ADR-0027/u);
+  for (const [path, replacement] of [
+    [decisionPath, Buffer.from(accepted.toString().replace("0.2.0", "0.3.0"))],
+    [ASSEMBLY_DECISION_PATH, Buffer.from("changed history")],
+    [ASSEMBLY_PUBLICATION_DECISION_PATH, Buffer.from("changed first release")],
+    [registryPath, pending(registryPath)],
+    [registryPath, Buffer.from(JSON.stringify({ ...registry, decisions: [...registry.decisions,
+      { ...entry, immutableDigest: "sha256:" + "0".repeat(64) }] }))],
+    [registryPath, Buffer.from(JSON.stringify({ ...registry, decisions: [...registry.decisions, entry, entry] }))],
+  ]) await assert.rejects(admit({ ...next,
+    readBytes: candidate => candidate === path ? replacement : next.readBytes(candidate),
+  }), /ADR-002[357]/u);
+  for (const [coreVersion, assemblyVersion] of [["0.1.0", "0.2.0"], ["0.2.0", "0.1.0"],
+    ["0.3.0", "0.3.0"], ["0.2.0-rc.0", "0.2.0-rc.0"]]) {
+    await assert.rejects(admit({ ...next, readPackageManifest: async path => ({
+      ...JSON.parse(read(path)), version: path === ASSEMBLY_MANIFEST_PATH ? assemblyVersion : coreVersion,
+    }) }), /pair|manifest violates/u);
+  }
+  for (const change of [{ private: true }, { dependencies: { "@get-modular/core": "^0.2.0" } },
+    { dependencies: { "@get-modular/core": "workspace:*", extra: "1.0.0" } }]) {
+    await assert.rejects(admit({ ...next, readPackageManifest: async path => ({
+      ...await next.readPackageManifest(path), ...(path === ASSEMBLY_MANIFEST_PATH ? change : {}),
+    }) }), /manifest violates/u);
+  }
 });
