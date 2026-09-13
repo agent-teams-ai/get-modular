@@ -19,6 +19,15 @@ const ASSEMBLY_PUBLICATION_REGISTRY_ENTRY = Object.freeze({
   path: ASSEMBLY_PUBLICATION_DECISION_PATH,
   immutableDigest: "sha256:ad3a06508a7a124fa2b909168957cd40ca940b2581193051debc90fcfb9a30e8",
 });
+export const ASSEMBLY_CORRECTION_DECISION_PATH =
+  "docs/decisions/0027-admit-the-core-and-assembly-0-2-0-correction-pair.md";
+const ASSEMBLY_CORRECTION_DECISION_BYTES_DIGEST =
+  "sha256:b2298deb38b9764c2f91f87f8aa369b35d80e2febfa7c419f40b8859a556e6f1";
+const ASSEMBLY_CORRECTION_REGISTRY_ENTRY = Object.freeze({
+  id: "ADR-0027",
+  path: ASSEMBLY_CORRECTION_DECISION_PATH,
+  immutableDigest: "sha256:18d5bb55016d4c38856d415dc62599f0cbc445f0856d8365ff6e6b3535d6e505",
+});
 export const CORE_DEVELOPMENT_DEPENDENCIES = Object.freeze({
   ajv: "catalog:",
   canonicalize: "catalog:",
@@ -49,7 +58,7 @@ const digest = bytes => {
   return `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 };
 
-async function validateAssemblyPackage({ readBytes, readPackageManifest }) {
+async function validateAssemblyPackage({ readBytes, readPackageManifest, current = false }) {
   // Pin the complete accepted document, including its approval metadata.
   // The registry identity separately follows the existing Docs Protocol format.
   assert.equal(digest(await readBytes(ASSEMBLY_DECISION_PATH)),
@@ -74,6 +83,20 @@ async function validateAssemblyPackage({ readBytes, readPackageManifest }) {
       || entry?.path === ASSEMBLY_PUBLICATION_DECISION_PATH),
     [ASSEMBLY_PUBLICATION_REGISTRY_ENTRY],
     "public Assembly admission requires the registered ADR-0025 identity");
+  }
+  if (current) {
+    const core = await readPackageManifest("packages/core/package.json");
+    assert.equal(core?.version, manifest.version, "Assembly admission requires an exact Core/Assembly pair");
+    if (manifest.version === "0.2.0") {
+      assert.equal(digest(await readBytes(ASSEMBLY_CORRECTION_DECISION_PATH)),
+        ASSEMBLY_CORRECTION_DECISION_BYTES_DIGEST,
+        "Assembly admission next pair requires unchanged accepted ADR-0027 including approval metadata");
+      assert.deepEqual(registry.decisions.filter(entry => entry?.id === "ADR-0027"
+        || entry?.path === ASSEMBLY_CORRECTION_DECISION_PATH),
+      [ASSEMBLY_CORRECTION_REGISTRY_ENTRY], "Assembly admission next pair requires registered ADR-0027 identity");
+    }
+  } else {
+    assert.equal(manifest.version, "0.1.0", "historical admission retains only the first 0.1.0 release");
   }
   const inventory = await packageManifestInventory([ASSEMBLY_MANIFEST_PATH], {
     readPackageManifest: async () => manifest,
@@ -176,7 +199,7 @@ export async function validateAssemblyAdmission({
     "Assembly admission requires its package root manifest");
   assert(productionArtifacts.includes("packages/core/package.json"),
     "Assembly admission requires the Core package");
-  await validateAssemblyPackage({ readBytes, readPackageManifest });
+  await validateAssemblyPackage({ readBytes, readPackageManifest, current: true });
   await validateCurrentAssemblyInputs({ readBytes, readPackageManifest });
   return Object.freeze(artifacts);
 }

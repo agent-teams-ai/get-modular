@@ -14,14 +14,14 @@ import { largeLiteralSource } from "./type-scale.mjs";
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const fixtures = join(workspace, "tests/assembly");
 
-function assertAssemblyPackedManifest(packed, source) {
-  assert.deepEqual(packed, { ...source, dependencies: { "@get-modular/core": "0.1.0" } },
+function assertAssemblyPackedManifest(packed, source, coreVersion = source.version) {
+  assert.deepEqual(packed, { ...source, dependencies: { "@get-modular/core": coreVersion } },
     "Assembly packed manifest must equal source with only the exact Core dependency rewritten");
 }
 
 test("retained Assembly manifest rejects metadata drift beyond dependency rewriting", async () => {
   const source = JSON.parse(await readFile(join(workspace, "packages/assembly/package.json"), "utf8"));
-  const packed = { ...source, dependencies: { "@get-modular/core": "0.1.0" } };
+  const packed = { ...source, dependencies: { "@get-modular/core": source.version } };
   assertAssemblyPackedManifest(packed, source);
   for (const change of [
     { repository: undefined }, { repository: { ...source.repository, directory: "wrong" } },
@@ -114,6 +114,10 @@ test("disposable packed consumer checks closed roots, synthetic wiring and both 
     const retained = process.env.GET_MODULAR_ASSEMBLY_ARCHIVE;
     const publishedCore = process.env.GET_MODULAR_PUBLISHED_CORE_ARCHIVE;
     assert.equal(Boolean(retained), Boolean(publishedCore), "supply both retained archives or neither");
+    const historical = process.env.GET_MODULAR_HISTORICAL_RELEASE === "0.1.0";
+    assert.ok(!process.env.GET_MODULAR_HISTORICAL_RELEASE || historical,
+      "only the historical first-release fixture is supported");
+    assert.ok(!historical || retained, "historical mode requires authenticated retained archives");
     const archiveBytes = new Map();
     const pnpm = await packageManagerCli("pnpm"), npm = await packageManagerCli("npm");
     for (const name of ["core", "assembly"]) {
@@ -136,8 +140,8 @@ test("disposable packed consumer checks closed roots, synthetic wiring and both 
       const audited = readPackageArchive(bytes, identity);
       const packedManifest = JSON.parse(audited.files.get("package.json"));
       assert.equal(packedManifest.name, manifest.name);
-      assert.equal(packedManifest.version, "0.1.0");
-      if (name === "assembly") assertAssemblyPackedManifest(packedManifest, manifest);
+      assert.equal(packedManifest.version, historical ? "0.1.0" : manifest.version);
+      if (name === "assembly" && !historical) assertAssemblyPackedManifest(packedManifest, manifest);
       archiveBytes.set(archive, { bytes, files: audited.files });
       t.diagnostic(JSON.stringify({ package: manifest.name, archive, ...identity,
         inventory: [...audited.files.keys()].sort(), retained: Boolean(retained) }));
@@ -164,11 +168,12 @@ test("disposable packed consumer checks closed roots, synthetic wiring and both 
     }
     assert.equal(Object.hasOwn(assembly, "private"), false);
     assert.deepEqual(assembly.publishConfig, { access: "public", registry: "https://registry.npmjs.org/" });
-    assert.equal(core.version, "0.1.0");
-    assert.equal(assembly.version, "0.1.0");
+    assert.equal(core.version, historical ? "0.1.0"
+      : JSON.parse(await readFile(join(workspace, "packages/core/package.json"), "utf8")).version);
+    assert.equal(assembly.version, core.version);
     assert.deepEqual(core.dependencies ?? {}, {});
     assert.deepEqual(assembly.dependencies, { "@get-modular/core": core.version });
-    assert.deepEqual(Object.keys(core.devDependencies ?? {}).sort(),
+    if (!historical) assert.deepEqual(Object.keys(core.devDependencies ?? {}).sort(),
       Object.keys(CORE_DEVELOPMENT_DEPENDENCIES).sort());
     for (const specifier of Object.values(core.devDependencies ?? {})) {
       assert.equal(typeof specifier, "string");

@@ -52,3 +52,5 @@ resource policy is the single profile described in the current contract.
 - [Source map](provenance/source-map.yaml)
 - [Five-critic bootstrap review](qualification/bootstrap-five-critic-review.md)
 - [V1 contract council and resource profile](qualification/v1-contract-council-and-resource-profile.md)
+
+- [GM-02 API evidence erratum](qualification/gm02-api-erratum.md)
