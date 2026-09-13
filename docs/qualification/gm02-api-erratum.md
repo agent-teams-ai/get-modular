@@ -200,3 +200,33 @@ changelog and an ordinary minor Changeset are now prepared. This supersedes the
 historical missing-tooling and missing-Changeset observations above. Those
 observations describe the retained exact C;
 new release qualification and baseline promotion remain pending.
+
+## Prepared 0.2.0 correction
+
+Following [PR #111](https://github.com/agent-teams-ai/get-modular/pull/111), merged
+as `f4e6137d39594349eb763d470151b94b1f54a597`, the release-owned
+`changeset-release/main` checkout advances both packages to 0.2.0 through pinned
+Changesets. The supported EF 1.2.0 promotion updates each baseline's package
+version only; declaration entries and production source are unchanged. The
+post-promotion production API check passes with zero errors or warnings.
+
+Each intended archive was packed once and retained with its complete physical
+inventory, exact manifest and SHA-512 integrity. SHA-256 identities are:
+
+| Intended package | Archive SHA-256 |
+| --- | --- |
+| Core 0.2.0 | `0c231cca08e7381df454afdb876b0f2536cc6499450e77f54cd3654cbbf33fe5` |
+| Assembly 0.2.0 | `ecbca91c7980ccbae81e726383c161c5e6cfc2f3ac5967453f36dbfd5dd75dc2` |
+
+The existing retained-archive harness passes closed-root, synthetic runtime and
+TypeScript 5.8.3/7.0.2 NodeNext/Bundler checks against this exact pair. Assembly's
+packed Core dependency is exactly 0.2.0. These are intended local artifacts,
+not downloaded published 0.2.0 packages.
+
+Independent read-only custody review verified the original A/B/C manifests,
+archive members and six report comparisons without altering or rerunning them.
+This supersedes the pending data-integrity review above, not the unresolved
+historical source-to-publication provenance or that packet's other claims.
+The release PR still needs independent review and exact-head CI using real
+trusted PR metadata. Publication and registry/downstream reconciliation remain
+separate; no upload or tag operation was performed here.
