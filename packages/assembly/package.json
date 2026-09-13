@@ -1,6 +1,6 @@
 {
   "name": "@get-modular/assembly",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Host-owned sequential construction above Get Modular Core.",
   "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org/" },
   "repository": {

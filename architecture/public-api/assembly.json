@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "packageName": "@get-modular/assembly",
-  "packageVersion": "0.1.0",
+  "packageVersion": "0.2.0",
   "extractorVersion": "7.58.12",
   "entrypoints": [
     {
