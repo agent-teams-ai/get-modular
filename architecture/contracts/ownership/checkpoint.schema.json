@@ -1,0 +1,216 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ADR-0028 C0 checkpoint admission (not a runtime format)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "decision",
+    "phase",
+    "owner",
+    "package",
+    "activation",
+    "contract",
+    "evidence",
+    "contractRevision",
+    "consumers"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "decision": {
+      "const": "ADR-0028"
+    },
+    "phase": {
+      "const": "C0"
+    },
+    "owner": {
+      "const": "architecture"
+    },
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "root",
+        "materialized",
+        "runtimeDependencies"
+      ],
+      "properties": {
+        "name": {
+          "const": "@get-modular/ownership"
+        },
+        "root": {
+          "const": "packages/ownership"
+        },
+        "materialized": {
+          "const": false
+        },
+        "runtimeDependencies": {
+          "type": "array",
+          "maxItems": 0
+        }
+      }
+    },
+    "activation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "implementation",
+        "cmsGuidance",
+        "arAdoption",
+        "sdkAdmission"
+      ],
+      "properties": {
+        "implementation": {
+          "const": "pending"
+        },
+        "cmsGuidance": {
+          "const": "pending"
+        },
+        "arAdoption": {
+          "const": "pending"
+        },
+        "sdkAdmission": {
+          "const": "pending"
+        }
+      }
+    },
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "digest",
+        "decisionPath",
+        "decisionDigest"
+      ],
+      "properties": {
+        "path": {
+          "const": "architecture/contracts/ownership/public-contract.d.ts"
+        },
+        "digest": {
+          "$ref": "#/definitions/digest"
+        },
+        "decisionPath": {
+          "const": "docs/decisions/0028-authorize-the-optional-ownership-contract-checkpoint.md"
+        },
+        "decisionDigest": {
+          "$ref": "#/definitions/digest"
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base",
+        "packages",
+        "lockDigest",
+        "cms",
+        "ar",
+        "plan",
+        "efBase"
+      ],
+      "properties": {
+        "base": {
+          "const": "ac49bb3374946330ec820591f8195a22d2c90900"
+        },
+        "packages": {
+          "const": {
+            "core": "0.2.0",
+            "assembly": "0.2.0"
+          }
+        },
+        "lockDigest": {
+          "const": "sha256:126fb4b67fdc6ed0bf4c927e5f27cc3e698699cab2d3b9d1f984b80c60884276"
+        },
+        "cms": {
+          "const": {
+            "path": "docs/architecture/common-assembly.md",
+            "commit": "ac49bb3374946330ec820591f8195a22d2c90900",
+            "digest": "sha256:d5bb71e5a700014f9f0a09b17d1f33d24b30b66c49b273c9fb65584672c51e4f"
+          }
+        },
+        "ar": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "revision",
+            "activeStandard",
+            "candidateSites",
+            "scopeEligibility",
+            "profile"
+          ],
+          "properties": {
+            "revision": {
+              "const": "be96f01ea54ec7d2ec0156774e3dfb75fac46803"
+            },
+            "activeStandard": {
+              "const": {
+                "repository": "agent-teams-ai/get-modular",
+                "path": "docs/architecture/common-assembly.md",
+                "anchor": "consumer-module-standard",
+                "decision": "ADR-0026",
+                "commit": "669a750d8db451e04f075cdeb36576c6606fba6e",
+                "sha256": "e6cd8d26b4317bf5f94ddd22f6e36bf25e90548f72265d94808eaf20b947e553",
+                "evidencePath": "architecture/get-modular/evidence/consumer-module-standard.md"
+              }
+            },
+            "scopeEligibility": {
+              "const": "pending"
+            },
+            "candidateSites": {
+              "const": [
+                {
+                  "path": "packages/apps/embedded-runtime/src/composition/default-agent-runtime-host.ts",
+                  "digest": "sha256:999a426602c19830fca5e230c58a467ccda717e157f05db61f4b3373e5a1d951"
+                },
+                {
+                  "path": "packages/apps/embedded-runtime/src/features/ordinary-session-runtime/composition/ordinary-agent-runtime-host.ts",
+                  "digest": "sha256:0cb13268e0bafc2448b709639d0eeb6e091759aa5e4885b15383c859b9d8fec8"
+                }
+              ]
+            },
+            "profile": {
+              "const": {
+                "path": "architecture/get-modular/consumer-profile.json",
+                "digest": "sha256:2373779b480bd455978189e2ed3cee726346827d626bbc4545401e3f393c01e6"
+              }
+            }
+          }
+        },
+        "efBase": {
+          "const": "eadd117f98e8b93318426ab9d77d5890aab2e15e"
+        },
+        "plan": {
+          "const": {
+            "digest": "sha256:e025978dcf3cfac12b7795fa3aafc96f06838620e124df4cc091ebee45352864"
+          }
+        }
+      }
+    },
+    "consumers": {
+      "const": [
+        "GM K1",
+        "GM G1",
+        "AR C0",
+        "AR A1"
+      ]
+    },
+    "contractRevision": {
+      "const": "gm-ownership-c0/1"
+    }
+  },
+  "definitions": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "commit": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    }
+  }
+}

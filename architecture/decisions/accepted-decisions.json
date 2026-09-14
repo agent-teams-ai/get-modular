@@ -116,6 +116,11 @@
       "id": "ADR-0027",
       "path": "docs/decisions/0027-admit-the-core-and-assembly-0-2-0-correction-pair.md",
       "immutableDigest": "sha256:18d5bb55016d4c38856d415dc62599f0cbc445f0856d8365ff6e6b3535d6e505"
+    },
+    {
+      "id": "ADR-0028",
+      "path": "docs/decisions/0028-authorize-the-optional-ownership-contract-checkpoint.md",
+      "immutableDigest": "sha256:69e001cd3334aa37d1c94cf3df945ceef86bde4475eedcf8d2b3460ba7fa8d86"
     }
   ]
 }
