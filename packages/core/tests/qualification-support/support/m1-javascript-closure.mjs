@@ -40,6 +40,8 @@ const words = text => new Set(text.split(/\s+/u).filter(Boolean));
 
 // Columns: module, exact exports, other top-level definitions, named local
 // functions/arrows. These are role witnesses, not copies of algorithm bodies.
+// Retain historical nested roles while naming the extracted helpers only at
+// their reviewed owners; extraction does not grant general member operations.
 const rows = [
   ['index', 'compileComposition defineModule required optional many', '', ''],
   ['composition/stage0', 'root', '', ''],
@@ -53,37 +55,37 @@ const rows = [
   ['features/composition-semantics/graph-components', 'graphComponents', '', ''],
   ['features/composition-semantics/graph-diagnostics', 'collectGraphFailures', '', ''],
   ['features/composition-semantics/graph-resources', 'semanticResourceLimits collectGraphResourceLimits', 'limits', ''],
-  ['features/composition-semantics/profile-census', 'createProfileCensus', '', 'add'],
+  ['features/composition-semantics/profile-census', 'createProfileCensus', 'groupSelections validateSelectionGroups resolveRoots resolveNodes', 'add'],
   ['features/composition-semantics/ready-queue', 'ReadyQueue', '', ''],
-  ['features/composition-semantics/selected-bindings', 'validateSelectedBindings', '', 'add'],
-  ['features/composition-semantics/selected-graph', 'selectedGraphDepthLimit analyzeSelectedGraph', '', 'vertex'],
-  ['features/composition-semantics/semantic-analysis', 'analyzeCompositionSemantics', '', ''],
+  ['features/composition-semantics/selected-bindings', 'validateSelectedBindings', 'groupBindings validateSuppliedGroup validateMissingBindings', 'add'],
+  ['features/composition-semantics/selected-graph', 'selectedGraphDepthLimit analyzeSelectedGraph', 'buildAdjacency findCycles analyzeResidual findRootClosure', 'vertex'],
+  ['features/composition-semantics/semantic-analysis', 'analyzeCompositionSemantics', 'buildGraph assertPrerequisites createPlan', ''],
   ['features/diagnostics/collector', 'createDiagnosticCollector', 'retainedLimit maximumOmitted countCeiling snapshot', 'compare addUnique finish'],
   ['features/diagnostics/internal', 'compareDiagnostics createDiagnosticCollector', '', ''],
-  ['features/diagnostics/order', 'compareDiagnostics', 'phases codes coordinateFields lexical', ''],
+  ['features/diagnostics/order', 'compareDiagnostics', 'phases codes coordinateFields lexical compareCoordinates comparePaths compareCycles compareBytes', ''],
   ['features/input-admission/byte-carrier', 'classifyByteCarrier copyByteCarrier', 'capturedApply CapturedUint8Array typedArrayPrototype brandOf bufferOf lengthOf sharedProbe usableProbe captureGetter', ''],
   ['features/input-admission/document-path', 'documentPath', '', ''],
   ['features/input-admission/document-reader', 'objectDocument', 'objectKind objectOwn objectKeys objectLength objectItem objectText objectInteger objectReader', ''],
-  ['features/input-admission/document-shape', 'schemaSafeLocalPath validateDeclarationShape validateProfileShape validateDeclarationView validateProfileView', 'record literal integer identity array portable local compatibility cardinality provided slot selection binding declarationShape profileShape isWellFormedUtf16 checks', 'fail checkRecord admittedInteger numericValue check supportedDocumentVersion'],
+  ['features/input-admission/document-shape', 'schemaSafeLocalPath validateDeclarationShape validateProfileShape validateDeclarationView validateProfileView', 'record literal integer identity array portable local compatibility cardinality provided slot selection binding declarationShape profileShape isWellFormedUtf16 checks projectedShapes representablePathSegment', 'fail checkRecord admittedInteger numericValue check supportedDocumentVersion checkLiteral checkInteger checkIdentity checkArray checkCardinality'],
   ['features/input-admission/document-snapshot', 'snapshotDeclaration snapshotProfile snapshotDeclarationView snapshotProfileView', 'record projection', 'member text integer list compatibility cardinality'],
   ['features/input-admission/factory', 'createInputAdmission', '', ''],
   ['features/input-admission/identity-format', 'isPortableIdFormat isLocalTokenFormat', 'matchesFormat', ''],
   ['features/input-admission/invocation-wrapper', 'inspectInvocation', 'getOwnDescriptor hasOwn isArray getPrototypeOf arrayPrototype isInteger defineProperty freeze ownData invalidWrapper', ''],
-  ['features/input-admission/object-admission', 'admitObjectInput', '', 'add empty scan validate'],
+  ['features/input-admission/object-admission', 'admitObjectInput', 'shallowCounts scanObjectDocument validateObjectDocument admitDeclarations', 'add empty scan validate'],
   ['features/input-admission/object-resource-meter', 'createObjectResourceMeter', 'valueLimit stringLimit depthLimit', 'countValues countString scanDocument nonPlain enter'],
   ['features/input-admission/profile-resource-facts', 'ownValue profileResourceFacts profileResourceFactsView', 'portable', 'ownMember textMember'],
-  ['features/input-admission/raw-admission', 'admitRawInput', '', 'add empty scan arrayLength validate hasVersionOne'],
-  ['features/input-admission/raw-byte-input', 'captureRawInput', 'appendOwn defineProperty', 'add empty'],
-  ['features/input-admission/raw-document', 'scanRawDocument rawDocumentView', 'lexicalKind duplicatePath invalidAccess valueEnd', 'chargeString spanOf open capture recordOf arrayOf item text'],
-  ['features/input-admission/raw-duplicate-replay', 'visitRawDuplicatePaths', 'invalidReplay isContainer isValue newGroup', 'admits retainSpan open releaseCursor read capture fold collectRecord visit'],
+  ['features/input-admission/raw-admission', 'admitRawInput', 'arrayLength hasVersionOne scanRawEntry scanCaptured createRawViews validateRawDocument admitRawDeclarations', 'add empty scan arrayLength validate hasVersionOne'],
+  ['features/input-admission/raw-byte-input', 'captureRawInput', 'appendOwn defineProperty reportInvalidWrapper preflightCarriers copyCaptured reportCarrierOutcomes', 'add empty'],
+  ['features/input-admission/raw-document', 'scanRawDocument rawDocumentView', 'lexicalKind duplicatePath invalidAccess valueEnd chargeString handleObjectFrame handleArrayFrame handleFrameToken chargeValue commitValue', 'chargeString spanOf open capture recordOf arrayOf item text'],
+  ['features/input-admission/raw-duplicate-replay', 'visitRawDuplicatePaths', 'invalidReplay isContainer isValue newGroup admits retainSpan open releaseCursor read capture fold collectRecord foldTerminalGroup collectGroupSpans advanceArrayCursor visitArrays visit', 'admits retainSpan open releaseCursor read capture fold collectRecord visit'],
   ['features/input-admission/raw-numeric-admission', 'numericFailureMask visitRawNumericFailures', 'localPathCapacity union integerMask stoppedMask ownerMask', 'child emitMask visitChild visitOwner'],
-  ['features/input-admission/raw-integer', 'admitRawInteger', 'maximumSafeIntegerDigits', ''],
+  ['features/input-admission/raw-integer', 'admitRawInteger', 'maximumSafeIntegerDigits scanCoefficient readExponent normalizedDigit exceedsSafeInteger materializeInteger', ''],
   ['features/input-admission/resource-diagnostic', 'resourceDiagnostic', 'phases', ''],
   ['features/input-admission/resource-limits', 'admissionLimits', 'limits', ''],
   ['features/input-admission/schema-diagnostic', 'schemaDiagnostic', '', ''],
   ['features/plan-output/factory', 'createPlanOutput', 'snapshotPlan', ''],
   ['features/raw-scanner/owned-iterative/factory', 'createOwnedRawScanner', '', ''],
-  ['features/raw-scanner/owned-iterative/scanner', 'openOwnedRawTokenCursor', 'fromCharCode invalidToken isWhitespace isDigit isBoundary scalarBytes isContinuation readScalar hexDigit readHexUnit escapedUnit scanString scanNumber scanKeyword', 'next decodeString'],
+  ['features/raw-scanner/owned-iterative/scanner', 'openOwnedRawTokenCursor', 'fromCharCode invalidToken isWhitespace isDigit isBoundary scalarBytes isContinuation readScalar hexDigit readHexUnit escapedUnit scanString scanNumber scanKeyword readTwoByteScalar readThreeByteScalar readFourByteScalar scanStringUnit appendStringUnit accountStringUnit tokenAt', 'next decodeString'],
 ];
 const baseRoles = new Map(rows.map(([path, exports, locals, functions]) => [
   `dist/${path}.js`, { exports: words(exports), definitions: words(`${exports} ${locals}`), functions: words(functions) },
@@ -113,6 +115,13 @@ const baseRouting = new Set([ENTRY, DIRECT_ROOT, AUTHORING, DIAGNOSTICS]);
 // New selectors belong only to their reviewed implementation roles. In
 // particular, schema metadata such as expected is not general fixture data.
 const baseScopedMembers = new Map([
+  ['dist/features/input-admission/raw-integer.js', words('exponentStart fractionalDigits significantStart significantDigits trailingZeros')],
+  ['dist/features/input-admission/object-admission.js', words('capabilities allAdmitted')],
+  ['dist/features/composition-semantics/semantic-analysis.js', words('toSorted input')],
+  ['dist/features/composition-semantics/selected-graph.js', words('outgoing incoming unique decomposition cyclic toSorted')],
+  ['dist/features/composition-semantics/selected-bindings.js', words('selected frontiers')],
+  ['dist/features/composition-semantics/profile-census.js', words('groups selected selectionsResolved toSorted')],
+  ['dist/features/composition-semantics/declaration-census.js', words('toSorted')],
   [DIRECT_ROOT, words('scanner')],
   [SHAPE, words('type fields expected matchesFormat variants many required optional')],
   [SNAPSHOT, words('create defineProperty')],
@@ -120,15 +129,15 @@ const baseScopedMembers = new Map([
   [BYTE_CARRIER, words('apply at toStringTag visibleLength')],
   [feature('input-admission'), words('scanner admitRawInput')],
   ['dist/features/input-admission/object-resource-meter.js', words('segment')],
-  [RAW_ADMISSION, words('blocked allDeclarationsCaptured valuesRemaining stringBytesRemaining valueOccurrences stringBytes invalidJson decoded duplicateKey')],
-  [RAW_BYTES, words('blocked allDeclarationsCaptured visibleLength declarationRawDocumentBytes profileRawDocumentBytes aggregateRawBytes defineProperty __proto__ configurable writable')],
+  [RAW_ADMISSION, words('blocked allDeclarationsCaptured valuesRemaining stringBytesRemaining valueOccurrences stringBytes invalidJson decoded duplicateKey replayBoundary depthLimit batchBlocked scans profileScan views allAdmitted')],
+  [RAW_BYTES, words('blocked allDeclarationsCaptured visibleLength declarationRawDocumentBytes profileRawDocumentBytes aggregateRawBytes defineProperty __proto__ configurable writable outcomes totalBytes')],
   ['dist/features/input-admission/resource-limits.js', words('declarationRawDocumentBytes profileRawDocumentBytes aggregateRawBytes')],
   ['dist/features/input-admission/resource-diagnostic.js', words('declarationRawDocumentBytes profileRawDocumentBytes aggregateRawBytes')],
-  ['dist/features/input-admission/raw-duplicate-replay.js', words('start end spans duplicate source base current cursor keys keyExpected tokenVisits arrayCursorSteps peakLiveSpans peakLiveCursors peakGroupDepth open subarray decodeString')],
+  ['dist/features/input-admission/raw-duplicate-replay.js', words('start end spans duplicate source base current cursor keys keyExpected tokenVisits arrayCursorSteps peakLiveSpans peakLiveCursors peakGroupDepth open subarray decodeString liveSpans scanner ownedBytes liveCursors localCapacity')],
   ['dist/features/input-admission/raw-numeric-admission.js', words('next')],
-  [RAW_DOCUMENT, words('open subarray start end decodedUtf8Bytes segment state key nextIndex cursor last decodeString valuesRemaining stringBytesRemaining valueOccurrences stringBytes maximumDepth invalidJson duplicateKey decoded')],
+  [RAW_DOCUMENT, words('open subarray start end decodedUtf8Bytes segment state key nextIndex cursor last decodeString valuesRemaining stringBytesRemaining valueOccurrences stringBytes maximumDepth invalidJson duplicateKey decoded frames current budget onDuplicate rootSeen replayBoundary depthLimit')],
   [feature('raw-scanner/owned-iterative'), words('open')],
-  [SCANNER, words('fromCharCode start end decodedUtf8Bytes wellFormedUtf16 decodeString')],
+  [SCANNER, words('fromCharCode start end decodedUtf8Bytes wellFormedUtf16 decodeString invalidAt unit chunk pendingHighSurrogate position')],
 ]);
 const intrinsicSelectors = words('create defineProperty apply at toStringTag fromCharCode');
 const dataExports = new Map([
@@ -660,6 +669,14 @@ function audit(files, profile) {
     function match(left, right) {
       left = unwrap(left);
       right = unwrap(right);
+      // A braced single-return guard has the same binding contract as the
+      // historical unbraced guard. Keep every return expression and binding
+      // check; do not normalize blocks containing declarations or extra work.
+      if (left && right && ts.isBlock(left) && ts.isReturnStatement(right)
+        && ts.isIfStatement(left.parent) && left.parent.thenStatement === left
+        && left.statements.length === 1 && ts.isReturnStatement(left.statements[0])) {
+        left = left.statements[0];
+      }
       requireThat(left && right && left.kind === right.kind, 'construction');
       // Unary operators are scalar AST fields, not forEachChild children.
       if (ts.isPrefixUnaryExpression(left) || ts.isPostfixUnaryExpression(left)) {
@@ -737,7 +754,7 @@ function audit(files, profile) {
       return;
     }
     if (capture.path === SCANNER) {
-      requireThat(capture.name === 'fromCharCode' && fn?.name?.text === 'scanString' && direct
+      requireThat(capture.name === 'fromCharCode' && ['scanString', 'appendStringUnit'].includes(fn?.name?.text) && direct
         && [1, 2].includes(use.arguments.length), 'global');
       return;
     }
@@ -783,7 +800,7 @@ function audit(files, profile) {
     requireThat((ts.isPropertyAccessExpression(parent) || ts.isElementAccessExpression(parent)) && parent.expression === reference, 'global');
     const member = ts.isPropertyAccessExpression(parent) ? parent.name.text : staticString(parent.argumentExpression);
     const shapeValues = name === 'Object' && member === 'values' && pathOf(node) === SHAPE
-      && nearestFunction(node)?.name?.text === 'schemaSafeLocalPath'
+      && ['schemaSafeLocalPath', 'projectedShapes'].includes(nearestFunction(node)?.name?.text)
       && ts.isCallExpression(outer(parent).parent)
       && sameSyntax(outer(parent).parent, 'Object.values(shape.variants)');
     requireThat((globalMembers.get(name)?.has(member) || shapeValues) && !parent.questionDotToken, 'global');

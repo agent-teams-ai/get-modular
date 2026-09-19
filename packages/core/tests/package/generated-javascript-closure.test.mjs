@@ -175,6 +175,17 @@ test('explicit generated archive profile preserves the full M2 closure', async t
       'function activate() {}\nexport function admitObjectInput('), 'purpose');
   });
 
+  await t.test('refactored roles and state selectors remain owner-scoped', () => {
+    mutant(files => edit(files, ADMISSION, 'export function admitObjectInput(',
+      'function scanRawEntry() {}\nexport function admitObjectInput('), 'purpose');
+    mutant(files => edit(files, ADMISSION, 'export function admitObjectInput(input, collector) {',
+      'export function admitObjectInput(input, collector) { input.replayBoundary;'), 'purpose');
+    mutant(files => edit(files, FACADE, 'return analyzed;',
+      'semantics.newCollector(); return analyzed;'), 'construction');
+    mutant(files => edit(files, FACADE, 'return analyzed;',
+      'return admitted;'), 'construction');
+  });
+
   await t.test('both public compiler members retain their selected facade origin', () => {
     mutant(files => edit(files, ENTRY, 'root.compileCompositionJson',
       'root.compileComposition'), 'public-origin');

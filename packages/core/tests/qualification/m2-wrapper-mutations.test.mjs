@@ -53,8 +53,8 @@ const countFailure = {
 };
 
 // Match the complete emitted guard, allowing only formatting whitespace.
-const profileGuard = /if \(profileField === undefined\)[ \t\r\n]+return invalidWrapper\(\["profile"\]\);/g;
-const countGuard = /if \(count > admissionLimits\.declarations\)[ \t\r\n]+return freeze\(\{ kind: "declarations-limit" \}\);/g;
+const profileGuard = /if \(profileField === undefined\)[ \t\r\n]+\{[ \t\r\n]*return invalidWrapper\(\["profile"\]\);[ \t\r\n]*\}/g;
+const countGuard = /if \(count > admissionLimits\.declarations\)[ \t\r\n]+\{[ \t\r\n]*return freeze\(\{ kind: "declarations-limit" \}\);[ \t\r\n]*\}/g;
 const admittedReturn = /return freeze\(\{[ \t\r\n]+kind: "admitted",/g;
 function uniqueMatch(source, pattern) {
   const matches = [...source.matchAll(pattern)];
