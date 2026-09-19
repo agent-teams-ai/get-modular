@@ -14,7 +14,7 @@ export function graphComponents(outgoing: Adjacency, incoming: Adjacency): Graph
   let edgeVisits = 0;
   let peakFrames = 0;
   for (let root = 0; root < outgoing.length; root += 1) {
-    if (seen[root]) continue;
+    if (seen[root]) {continue;}
     seen[root] = 1;
     frames.push({ vertex: root, next: 0 });
     peakFrames = Math.max(peakFrames, frames.length);
@@ -36,7 +36,7 @@ export function graphComponents(outgoing: Adjacency, incoming: Adjacency): Graph
   const pending: number[] = [];
   for (let position = finish.length - 1; position >= 0; position -= 1) {
     const root = finish[position]!;
-    if (seen[root]) continue;
+    if (seen[root]) {continue;}
     const component: number[] = [];
     seen[root] = 1;
     pending.push(root);

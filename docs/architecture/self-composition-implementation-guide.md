@@ -783,7 +783,7 @@ production tarball.
 
 The build-only directory `packages/core/self-composition/` is build tooling
 beside the build configuration in the sense of ADR-0008, outside the
-`source_root` that the Feature Module Standard profile maps and covered by the
+`sourceRoot` that the Feature Module Standard profile maps and covered by the
 profile's `internal-self-composition` extension rather than by the standard's
 abstract layout. It is build-only source inside the package and is
 admitted by the governance gate; the Foundation source-dependency policy gives

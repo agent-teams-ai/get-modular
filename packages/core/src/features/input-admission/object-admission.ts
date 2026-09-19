@@ -11,6 +11,63 @@ import { resourceDiagnostic } from "./resource-diagnostic.js";
 import { admissionLimits } from "./resource-limits.js";
 import { schemaDiagnostic } from "./schema-diagnostic.js";
 
+type AddDiagnostic = DiagnosticCollector["addUnique"];
+
+function shallowCounts(declarations: readonly unknown[]): { readonly capabilities: number; readonly slots: number } {
+  let capabilities = 0;
+  let slots = 0;
+  for (const value of declarations) {
+    const provides = ownValue(value, "provides");
+    const declaredSlots = ownValue(value, "slots");
+    if (Array.isArray(provides)) {
+      capabilities = Math.min(admissionLimits.totalCapabilities + 1, capabilities + provides.length);
+    }
+    if (Array.isArray(declaredSlots)) {slots = Math.min(admissionLimits.totalSlots + 1, slots + declaredSlots.length);}
+  }
+  return { capabilities, slots };
+}
+
+function scanObjectDocument(meter: ReturnType<typeof createObjectResourceMeter>, value: unknown,
+  locator: DocumentLocator, add: AddDiagnostic): ObjectResourceScan {
+  const result = meter.scanDocument(value);
+  if (result.stoppedBy === "jsonDepth") {add(resourceDiagnostic("jsonDepth", documentPath(locator)));}
+  else if (result.stoppedBy !== null) {add(resourceDiagnostic(result.stoppedBy));}
+  return result;
+}
+
+function validateObjectDocument(value: unknown, result: ObjectResourceScan,
+  locator: DocumentLocator, add: AddDiagnostic): boolean {
+  if (result.stoppedBy !== null) {return false;}
+  if (result.nonPlainValue) {
+    const lastByDepth: (ReturnType<typeof documentPath> | undefined)[] = [];
+    createObjectResourceMeter().scanDocument(value, local => {
+      const path = documentPath(locator, schemaSafeLocalPath(locator.kind, local));
+      const previous = lastByDepth[path.length];
+      if (previous !== undefined && path.every((segment, index) =>
+        segment.kind === previous[index]!.kind && segment.value === previous[index]!.value)) {return;}
+      lastByDepth[path.length] = path;
+      add(Object.freeze({ code: "schema.non-plain-value", phase: "schema", coordinate: Object.freeze({}),
+        path, details: Object.freeze({ reason: "non-plain-value" }) }));
+    });
+    return false;
+  }
+  const validateShape = locator.kind === "declaration" ? validateDeclarationShape : validateProfileShape;
+  return validateShape(value, violation => add(schemaDiagnostic(violation, locator)),
+    (name, _actual, path) => add(resourceDiagnostic(name, documentPath(locator, path))));
+}
+
+function admitDeclarations(declarations: readonly unknown[], scans: readonly ObjectResourceScan[],
+  batchBlocked: boolean, add: AddDiagnostic): { readonly admitted: readonly ModuleDeclaration[]; readonly allAdmitted: boolean } {
+  const admitted: ModuleDeclaration[] = [];
+  let allAdmitted = !batchBlocked;
+  for (let ordinal = 0; ordinal < declarations.length; ordinal += 1) {
+    const value = declarations[ordinal];
+    if (!validateObjectDocument(value, scans[ordinal]!, { kind: "declaration", ordinal }, add)) {allAdmitted = false;}
+    else if (!batchBlocked) {admitted.push(snapshotDeclaration(value as ModuleDeclaration));}
+  }
+  return { admitted, allAdmitted };
+}
+
 /**
  * Synchronous object admission for the accepted cooperative invocation record
  * and dense ordinary declaration list. ADR-0021 supplies the closed wrapper
@@ -39,78 +96,30 @@ export function admitObjectInput(input: ObjectInput, collector: AdmissionDiagnos
   const { declarations, profile } = invocation;
   const meter = createObjectResourceMeter();
   const scans: ObjectResourceScan[] = [];
-  let totalCapabilities = 0;
-  let totalSlots = 0;
   let batchBlocked = false;
 
   // These bounded shallow counts have no decoded-document prerequisite. Count
   // the complete supplied world before a later JSON traversal can stop; a
   // separately proven aggregate failure must not disappear behind that stop.
-  for (const value of declarations) {
-    const provides = ownValue(value, "provides");
-    const slots = ownValue(value, "slots");
-    if (Array.isArray(provides)) totalCapabilities = Math.min(admissionLimits.totalCapabilities + 1, totalCapabilities + provides.length);
-    if (Array.isArray(slots)) totalSlots = Math.min(admissionLimits.totalSlots + 1, totalSlots + slots.length);
-  }
-  if (totalCapabilities > admissionLimits.totalCapabilities) { add(resourceDiagnostic("totalCapabilities")); batchBlocked = true; }
-  if (totalSlots > admissionLimits.totalSlots) { add(resourceDiagnostic("totalSlots")); batchBlocked = true; }
-
-  function scan(value: unknown, locator: DocumentLocator): ObjectResourceScan {
-    const result = meter.scanDocument(value);
-    if (result.stoppedBy === "jsonDepth") add(resourceDiagnostic("jsonDepth", documentPath(locator)));
-    else if (result.stoppedBy !== null) { add(resourceDiagnostic(result.stoppedBy)); batchBlocked = true; }
-    return result;
-  }
+  const counts = shallowCounts(declarations);
+  if (counts.capabilities > admissionLimits.totalCapabilities) { add(resourceDiagnostic("totalCapabilities")); batchBlocked = true; }
+  if (counts.slots > admissionLimits.totalSlots) { add(resourceDiagnostic("totalSlots")); batchBlocked = true; }
   // No document snapshots or semantic maps are allocated until the entire
   // batch's value/string and aggregate structural budgets have been proved.
   for (let ordinal = 0; ordinal < declarations.length; ordinal += 1) {
     const value = declarations[ordinal];
-    const result = scan(value, { kind: "declaration", ordinal });
+    const result = scanObjectDocument(meter, value, { kind: "declaration", ordinal }, add);
     scans.push(result);
-    if (result.stoppedBy !== null && result.stoppedBy !== "jsonDepth") return empty();
+    if (result.stoppedBy !== null && result.stoppedBy !== "jsonDepth") {batchBlocked = true; return empty();}
   }
-  const profileScan = scan(profile, { kind: "profile" });
-  if (profileScan.stoppedBy !== null && profileScan.stoppedBy !== "jsonDepth") return empty();
-
-  function validate(value: unknown, result: ObjectResourceScan, locator: DocumentLocator): boolean {
-    if (result.stoppedBy !== null) return false;
-    if (result.nonPlainValue) {
-      // The first pass proved this document's depth and the whole batch's JSON
-      // budgets. Replay only rejected documents to stream every safe location
-      // into the bounded collector without retaining a list of caller paths.
-      // The meter finishes each child's subtree before the next parent key.
-      // Descriptor and exit failures may interleave shorter ancestor paths.
-      // Projection retains occurrence prefixes, so a final prefix cannot recur
-      // after leaving its subtree. Compare tagged paths after prefixing and
-      // clipping; at most 33 table slots retain O(32 * 32) segments.
-      const lastByDepth: (ReturnType<typeof documentPath> | undefined)[] = [];
-      createObjectResourceMeter().scanDocument(value, local => {
-        const path = documentPath(locator, schemaSafeLocalPath(locator.kind, local));
-        const previous = lastByDepth[path.length];
-        if (previous !== undefined && path.every((segment, index) =>
-          segment.kind === previous[index]!.kind && segment.value === previous[index]!.value)) return;
-        lastByDepth[path.length] = path;
-        add(Object.freeze({ code: "schema.non-plain-value", phase: "schema", coordinate: Object.freeze({}),
-          path,
-          details: Object.freeze({ reason: "non-plain-value" }) }));
-      });
-      return false;
-    }
-    const validateShape = locator.kind === "declaration" ? validateDeclarationShape : validateProfileShape;
-    return validateShape(value, violation => add(schemaDiagnostic(violation, locator)),
-      (name, _actual, path) => add(resourceDiagnostic(name, documentPath(locator, path))));
-  }
-  const admitted: ModuleDeclaration[] = [];
-  let allDeclarationsAdmitted = !batchBlocked;
-  for (let ordinal = 0; ordinal < declarations.length; ordinal += 1) {
-    const value = declarations[ordinal];
-    if (!validate(value, scans[ordinal]!, { kind: "declaration", ordinal })) allDeclarationsAdmitted = false;
-    else if (!batchBlocked) admitted.push(snapshotDeclaration(value as ModuleDeclaration));
-  }
-  const profileValid = validate(profile, profileScan, { kind: "profile" });
+  const profileScan = scanObjectDocument(meter, profile, { kind: "profile" }, add);
+  if (profileScan.stoppedBy !== null && profileScan.stoppedBy !== "jsonDepth") {batchBlocked = true; return empty();}
+  const admittedDeclarations = admitDeclarations(declarations, scans, batchBlocked, add);
+  const profileValid = validateObjectDocument(profile, profileScan, { kind: "profile" }, add);
   const resourceFacts = !batchBlocked && profileScan.stoppedBy === null && !profileScan.nonPlainValue
     && ownValue(profile, "schemaVersion") === 1 ? profileResourceFacts(profile) : null;
-  return Object.freeze({ declarations: Object.freeze(admitted), allDeclarationsAdmitted,
+  return Object.freeze({ declarations: Object.freeze(admittedDeclarations.admitted),
+    allDeclarationsAdmitted: admittedDeclarations.allAdmitted,
     profile: !batchBlocked && profileValid ? snapshotProfile(profile as CompositionProfile) : null,
     profileResources: resourceFacts, hasErrors });
 }

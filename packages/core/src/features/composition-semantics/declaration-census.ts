@@ -35,8 +35,8 @@ export function createDeclarationCensus(declarations: readonly ModuleDeclaration
   for (const declaration of declarations) {
     modules.add(declaration.moduleId);
     const group = groups.get(declaration.implementationId);
-    if (group) group.push(declaration);
-    else groups.set(declaration.implementationId, [declaration]);
+    if (group) {group.push(declaration);}
+    else {groups.set(declaration.implementationId, [declaration]);}
   }
   let identitiesUnique = true;
   let hasErrors = false;
@@ -54,12 +54,12 @@ export function createDeclarationCensus(declarations: readonly ModuleDeclaration
     const duplicateCapabilities = new Set<number>();
     const duplicateSlots = new Map<string, Set<number>>();
     for (const declaration of group) {
-      const provides = [...declaration.provides].sort((left, right) => left.capabilityId < right.capabilityId ? -1 : left.capabilityId > right.capabilityId ? 1 : 0);
-      const slots = [...declaration.slots].sort((left, right) => left.slotId < right.slotId ? -1 : left.slotId > right.slotId ? 1 : 0);
+      const provides = declaration.provides.toSorted((left, right) => left.capabilityId < right.capabilityId ? -1 : left.capabilityId > right.capabilityId ? 1 : 0);
+      const slots = declaration.slots.toSorted((left, right) => left.slotId < right.slotId ? -1 : left.slotId > right.slotId ? 1 : 0);
       // Structural positions belong to identity-sorted lists, never the caller's
       // registration order. Equal identities need no winner or value tie-break.
       for (let index = 1; index < provides.length; index += 1) {
-        if (provides[index]!.capabilityId !== provides[index - 1]!.capabilityId || duplicateCapabilities.has(index)) continue;
+        if (provides[index]!.capabilityId !== provides[index - 1]!.capabilityId || duplicateCapabilities.has(index)) {continue;}
         duplicateCapabilities.add(index);
         add(Object.freeze({ code: "declaration.duplicate-capability", phase: "declaration",
           path: Object.freeze([Object.freeze({ kind: "field", value: "provides" }), Object.freeze({ kind: "index", value: index })]),
@@ -67,16 +67,16 @@ export function createDeclarationCensus(declarations: readonly ModuleDeclaration
       }
       for (let index = 1; index < slots.length; index += 1) {
         const slotId = slots[index]!.slotId;
-        if (slotId !== slots[index - 1]!.slotId) continue;
+        if (slotId !== slots[index - 1]!.slotId) {continue;}
         let seen = duplicateSlots.get(slotId);
         if (!seen) { seen = new Set<number>(); duplicateSlots.set(slotId, seen); }
-        if (seen.has(index)) continue;
+        if (seen.has(index)) {continue;}
         seen.add(index);
         add(Object.freeze({ code: "declaration.duplicate-slot", phase: "declaration",
           path: Object.freeze([Object.freeze({ kind: "field", value: "slots" }), Object.freeze({ kind: "index", value: index })]),
           coordinate: Object.freeze({ implementationId, slotId }), details: Object.freeze({ reason: "duplicate" }) }));
       }
-      if (group.length !== 1) continue;
+      if (group.length !== 1) {continue;}
       const capabilities = uniqueIndex(provides, capability => capability.capabilityId);
       const slotIndex = uniqueIndex(slots, slot => slot.slotId);
       implementations.set(implementationId, Object.freeze({ declaration,

@@ -34,6 +34,20 @@ type ScanFrame = {
   state: "first-value" | "value" | "after-value";
   nextIndex: number;
 };
+type RawDocumentObservers = {
+  readonly replayBoundary?: (observedEnd: number) => void;
+  readonly depthLimit?: (localPath: readonly Segment[]) => void;
+};
+type ScanState = {
+  readonly frames: ScanFrame[];
+  rootSeen: boolean;
+  invalidJson: boolean;
+  duplicateKey: boolean;
+  stoppedBy: RawDocumentScan["stoppedBy"];
+  valueOccurrences: number;
+  stringBytes: number;
+  maximumDepth: number;
+};
 
 // Handles expose no offsets or contents. Each reader owns its span table, so a
 // handle from another view cannot be used to address this document's bytes.
@@ -68,10 +82,113 @@ function lexicalKind(current: RawToken): SpanKind | null {
 function duplicatePath(frames: readonly ScanFrame[], key: Segment): readonly Segment[] {
   const path: Segment[] = [];
   for (const frame of frames) {
-    if (frame.segment !== null) path.push(frame.segment);
+    if (frame.segment !== null) {path.push(frame.segment);}
   }
   path.push(key);
   return Object.freeze(path);
+}
+
+function chargeString(state: ScanState, current: StringLexical, budget: RawDocumentBudget): boolean {
+  state.stringBytes = Math.min(budget.stringBytesRemaining + 1, state.stringBytes + current.decodedUtf8Bytes);
+  if (state.stringBytes <= budget.stringBytesRemaining) {return true;}
+  state.stoppedBy = "aggregateStringBytes";
+  return false;
+}
+
+type FrameContext = {
+  readonly state: ScanState;
+  readonly current: RawToken;
+  readonly cursor: RawTokenCursor;
+  readonly budget: RawDocumentBudget;
+  readonly onDuplicate: (localPath: readonly Segment[]) => void;
+};
+type FrameResult = "continue" | "value" | "invalid";
+
+function handleObjectFrame(context: FrameContext, frame: Extract<ScanFrame, { readonly kind: "object" }>): FrameResult {
+  const { state, current, cursor, budget, onDuplicate } = context;
+  if (frame.state === "first-key" || frame.state === "key") {
+    if (frame.state === "first-key" && current.kind === "object-end") {state.frames.pop(); return "continue";}
+    if (current.kind !== "string") {return "invalid";}
+    if (!chargeString(state, current, budget)) {return "continue";}
+    const key = cursor.decodeString(current);
+    if (frame.keys.has(key)) {state.duplicateKey = true; onDuplicate(duplicatePath(state.frames, key));}
+    else {frame.keys.add(key);}
+    frame.key = key;
+    frame.state = "colon";
+    return "continue";
+  }
+  if (frame?.kind === "object" && frame.state === "colon") {
+    if (current.kind !== "colon") {return "invalid";}
+    frame.state = "value";
+    return "continue";
+  }
+  if (frame?.kind === "object" && frame.state === "after-value") {
+    if (current.kind === "object-end") {state.frames.pop();}
+    else if (current.kind === "comma") {frame.state = "key";}
+    else {return "invalid";}
+    return "continue";
+  }
+  return "value";
+}
+
+function handleArrayFrame(context: FrameContext, frame: Extract<ScanFrame, { readonly kind: "array" }>): FrameResult {
+  const { state, current } = context;
+  if (frame.state === "first-value" && current.kind === "array-end") {
+    state.frames.pop();
+    return "continue";
+  }
+  if (frame.state === "after-value") {
+    if (current.kind === "array-end") {state.frames.pop();}
+    else if (current.kind === "comma") {frame.state = "value";}
+    else {return "invalid";}
+    return "continue";
+  }
+  return "value";
+}
+
+function handleFrameToken(state: ScanState, current: RawToken, cursor: RawTokenCursor,
+  budget: RawDocumentBudget, onDuplicate: (localPath: readonly Segment[]) => void): FrameResult {
+  const frame = state.frames[state.frames.length - 1];
+  const context = { state, current, cursor, budget, onDuplicate };
+  if (frame?.kind === "object") {return handleObjectFrame(context, frame);}
+  if (frame?.kind === "array") {return handleArrayFrame(context, frame);}
+  return frame === undefined && state.rootSeen ? "invalid" : "value";
+}
+
+function chargeValue(state: ScanState, current: RawToken, kind: SpanKind, budget: RawDocumentBudget,
+  onDepthLimit: RawDocumentObservers["depthLimit"]): boolean {
+  state.valueOccurrences = Math.min(budget.valuesRemaining + 1, state.valueOccurrences + 1);
+  if (state.valueOccurrences > budget.valuesRemaining) {state.stoppedBy = "jsonValueOccurrences"; return false;}
+  if (current.kind === "string" && !chargeString(state, current, budget)) {return false;}
+  if (kind !== "record" && kind !== "array") {return true;}
+  const depth = state.frames.length + 1;
+  state.maximumDepth = Math.max(state.maximumDepth, depth);
+  if (depth <= admissionLimits.jsonDepth) {return true;}
+  state.stoppedBy = "jsonDepth";
+  const frame = state.frames[state.frames.length - 1];
+  if (frame !== undefined) {
+    onDepthLimit?.(duplicatePath(state.frames, frame.kind === "object" ? frame.key : frame.nextIndex));
+  }
+  return false;
+}
+
+function commitValue(state: ScanState, kind: SpanKind): void {
+  const frame = state.frames[state.frames.length - 1];
+  let segment: Segment | null = null;
+  if (frame?.kind === "object") {
+    segment = frame.key;
+    frame.key = "";
+    frame.state = "after-value";
+  } else if (frame?.kind === "array") {
+    segment = frame.nextIndex;
+    frame.nextIndex += 1;
+    frame.state = "after-value";
+  } else {state.rootSeen = true;}
+  if (kind === "record") {
+    state.frames.push({ kind: "object", segment, keys: new Set<string>(), state: "first-key", key: "" });
+  } else if (kind === "array") {
+    state.frames.push({ kind: "array", segment, state: "first-value", nextIndex: 0 });
+  }
 }
 
 /**
@@ -84,27 +201,12 @@ export function scanRawDocument(
   scanner: RawScannerPort,
   budget: RawDocumentBudget,
   onDuplicate: (localPath: readonly (string | number)[]) => void,
-  onReplayBoundary?: (observedEnd: number) => void,
-  onDepthLimit?: (localPath: readonly Segment[]) => void,
+  observerInput: RawDocumentObservers | ((observedEnd: number) => void) = {},
 ): RawDocumentScan {
+  const observers = typeof observerInput === "function" ? { replayBoundary: observerInput } : observerInput;
   const cursor = scanner.open(ownedBytes);
-  const frames: ScanFrame[] = [];
-  let rootSeen = false;
-  let invalidJson = false;
-  let duplicateKey = false;
-  let stoppedBy: RawDocumentScan["stoppedBy"] = null;
-  let valueOccurrences = 0;
-  let stringBytes = 0;
-  let maximumDepth = 0;
-
-  function chargeString(current: StringLexical): boolean {
-    stringBytes = Math.min(budget.stringBytesRemaining + 1, stringBytes + current.decodedUtf8Bytes);
-    if (stringBytes > budget.stringBytesRemaining) {
-      stoppedBy = "aggregateStringBytes";
-      return false;
-    }
-    return true;
-  }
+  const state: ScanState = { frames: [], rootSeen: false, invalidJson: false, duplicateKey: false,
+    stoppedBy: null, valueOccurrences: 0, stringBytes: 0, maximumDepth: 0 };
 
   // Commit an event only when the loop advances past all of its checks.
   // A break excludes the current event, including a rejected key or value.
@@ -113,111 +215,32 @@ export function scanRawDocument(
     const current = cursor.next();
     processedEnd = current.end;
     // A lexical failure is terminal even though the cursor subsequently emits end.
-    if (current.kind === "invalid") { invalidJson = true; break; }
+    if (current.kind === "invalid") { state.invalidJson = true; break; }
     if (current.kind === "end") {
-      invalidJson = !rootSeen || frames.length !== 0;
+      state.invalidJson = !state.rootSeen || state.frames.length !== 0;
       break;
     }
-
-    const frame = frames[frames.length - 1];
-    if (frame?.kind === "object") {
-      if (frame.state === "first-key" || frame.state === "key") {
-        if (frame.state === "first-key" && current.kind === "object-end") {
-          frames.pop();
-          continue;
-        }
-        if (current.kind !== "string") { invalidJson = true; break; }
-        // Charge metadata before allocating a decoded key or extending its set.
-        if (!chargeString(current)) break;
-        const key = cursor.decodeString(current);
-        if (frame.keys.has(key)) {
-          duplicateKey = true;
-          onDuplicate(duplicatePath(frames, key));
-        } else {
-          frame.keys.add(key);
-        }
-        frame.key = key;
-        frame.state = "colon";
-        continue;
-      }
-      if (frame.state === "colon") {
-        if (current.kind !== "colon") { invalidJson = true; break; }
-        frame.state = "value";
-        continue;
-      }
-      if (frame.state === "after-value") {
-        if (current.kind === "object-end") frames.pop();
-        else if (current.kind === "comma") frame.state = "key";
-        else { invalidJson = true; break; }
-        continue;
-      }
-    } else if (frame?.kind === "array") {
-      if (frame.state === "first-value" && current.kind === "array-end") {
-        frames.pop();
-        continue;
-      }
-      if (frame.state === "after-value") {
-        if (current.kind === "array-end") frames.pop();
-        else if (current.kind === "comma") frame.state = "value";
-        else { invalidJson = true; break; }
-        continue;
-      }
-    } else if (rootSeen) {
-      invalidJson = true;
-      break;
-    }
+    const handled = handleFrameToken(state, current, cursor, budget, onDuplicate);
+    if (handled === "continue") {if (state.stoppedBy !== null) {break;} continue;}
+    if (handled === "invalid") {state.invalidJson = true; break;}
 
     // Only a grammatically expected value reaches this point. Keys never do.
     const kind = lexicalKind(current);
-    if (kind === null) { invalidJson = true; break; }
-    valueOccurrences = Math.min(budget.valuesRemaining + 1, valueOccurrences + 1);
-    if (valueOccurrences > budget.valuesRemaining) {
-      stoppedBy = "jsonValueOccurrences";
-      break;
-    }
-    if (current.kind === "string" && !chargeString(current)) break;
-    if (kind === "record" || kind === "array") {
-      const depth = frames.length + 1;
-      maximumDepth = Math.max(maximumDepth, depth);
-      if (depth > admissionLimits.jsonDepth) {
-        stoppedBy = "jsonDepth";
-        // Report the attempted container before advancing the parent or
-        // allocating its frame. The caller owns schema projection and clipping.
-        if (frame !== undefined) onDepthLimit?.(duplicatePath(frames,
-          frame.kind === "object" ? frame.key : frame.nextIndex));
-        break;
-      }
-    }
-
-    let segment: Segment | null = null;
-    if (frame?.kind === "object") {
-      segment = frame.key;
-      frame.key = "";
-      frame.state = "after-value";
-    } else if (frame?.kind === "array") {
-      segment = frame.nextIndex;
-      frame.nextIndex += 1;
-      frame.state = "after-value";
-    } else {
-      rootSeen = true;
-    }
-    // The depth and both aggregate charges precede every new frame or key set.
-    if (kind === "record") {
-      frames.push({ kind: "object", segment, keys: new Set<string>(), state: "first-key", key: "" });
-    } else if (kind === "array") {
-      frames.push({ kind: "array", segment, state: "first-value", nextIndex: 0 });
-    }
+    if (kind === null) { state.invalidJson = true; break; }
+    if (!chargeValue(state, current, kind, budget, observers.depthLimit)) {break;}
+    // Depth and aggregate charges precede every new frame or key set.
+    commitValue(state, kind);
   }
 
-  onReplayBoundary?.(observedEnd);
+  observers.replayBoundary?.(observedEnd);
   return {
-    decoded: !invalidJson && !duplicateKey && stoppedBy === null,
-    invalidJson,
-    duplicateKey,
-    stoppedBy,
-    valueOccurrences,
-    stringBytes,
-    maximumDepth,
+    decoded: !state.invalidJson && !state.duplicateKey && state.stoppedBy === null,
+    invalidJson: state.invalidJson,
+    duplicateKey: state.duplicateKey,
+    stoppedBy: state.stoppedBy,
+    valueOccurrences: state.valueOccurrences,
+    stringBytes: state.stringBytes,
+    maximumDepth: state.maximumDepth,
   };
 }
 
@@ -228,16 +251,16 @@ function invalidAccess(): never {
 /** Consume one already validated value without decoding or retaining children. */
 function valueEnd(cursor: RawTokenCursor, first: RawToken): number {
   const kind = lexicalKind(first);
-  if (kind === null) invalidAccess();
-  if (kind !== "record" && kind !== "array") return first.end;
+  if (kind === null) {invalidAccess();}
+  if (kind !== "record" && kind !== "array") {return first.end;}
   let depth = 1;
   let end = first.end;
   while (depth !== 0) {
     const current = cursor.next();
-    if (current.kind === "invalid" || current.kind === "end") invalidAccess();
+    if (current.kind === "invalid" || current.kind === "end") {invalidAccess();}
     if (current.kind === "object-start" || current.kind === "array-start") {
       depth += 1;
-      if (depth > admissionLimits.jsonDepth) invalidAccess();
+      if (depth > admissionLimits.jsonDepth) {invalidAccess();}
     } else if (current.kind === "object-end" || current.kind === "array-end") {
       depth -= 1;
     }
@@ -258,7 +281,7 @@ export function rawDocumentView(ownedBytes: Uint8Array, scanner: RawScannerPort)
 
   function spanOf(value: RawValue, expected?: SpanKind): Span {
     const span = spans.get(value);
-    if (span === undefined || (expected !== undefined && span.kind !== expected)) invalidAccess();
+    if (span === undefined || (expected !== undefined && span.kind !== expected)) {invalidAccess();}
     return span;
   }
 
@@ -268,7 +291,7 @@ export function rawDocumentView(ownedBytes: Uint8Array, scanner: RawScannerPort)
 
   function capture(cursor: RawTokenCursor, current: RawToken, base: number): RawValue {
     const kind = lexicalKind(current);
-    if (kind === null) invalidAccess();
+    if (kind === null) {invalidAccess();}
     const end = valueEnd(cursor, current);
     const value = Object.freeze({}) as RawValue;
     spans.set(value, { kind, start: base + current.start, end: base + end });
@@ -278,23 +301,23 @@ export function rawDocumentView(ownedBytes: Uint8Array, scanner: RawScannerPort)
   function recordOf(value: RawValue): RecordIndex {
     const span = spanOf(value, "record");
     const cached = records.get(value);
-    if (cached !== undefined) return cached;
+    if (cached !== undefined) {return cached;}
     const cursor = open(span);
-    if (cursor.next().kind !== "object-start") invalidAccess();
+    if (cursor.next().kind !== "object-start") {invalidAccess();}
     const members = new Map<string, RawValue>();
     const keys: string[] = [];
     let current = cursor.next();
     if (current.kind !== "object-end") {
       for (;;) {
-        if (current.kind !== "string") invalidAccess();
+        if (current.kind !== "string") {invalidAccess();}
         const key = cursor.decodeString(current);
-        if (members.has(key) || cursor.next().kind !== "colon") invalidAccess();
+        if (members.has(key) || cursor.next().kind !== "colon") {invalidAccess();}
         const child = capture(cursor, cursor.next(), span.start);
         members.set(key, child);
         keys.push(key);
         const separator = cursor.next();
-        if (separator.kind === "object-end") break;
-        if (separator.kind !== "comma") invalidAccess();
+        if (separator.kind === "object-end") {break;}
+        if (separator.kind !== "comma") {invalidAccess();}
         current = cursor.next();
       }
     }
@@ -306,9 +329,9 @@ export function rawDocumentView(ownedBytes: Uint8Array, scanner: RawScannerPort)
   function arrayOf(value: RawValue): ArrayIndex {
     const span = spanOf(value, "array");
     const cached = arrays.get(value);
-    if (cached !== undefined) return cached;
+    if (cached !== undefined) {return cached;}
     const cursor = open(span);
-    if (cursor.next().kind !== "array-start") invalidAccess();
+    if (cursor.next().kind !== "array-start") {invalidAccess();}
     let current = cursor.next();
     let length = 0;
     if (current.kind !== "array-end") {
@@ -317,8 +340,8 @@ export function rawDocumentView(ownedBytes: Uint8Array, scanner: RawScannerPort)
         valueEnd(cursor, current);
         length += 1;
         const separator = cursor.next();
-        if (separator.kind === "array-end") break;
-        if (separator.kind !== "comma") invalidAccess();
+        if (separator.kind === "array-end") {break;}
+        if (separator.kind !== "comma") {invalidAccess();}
         current = cursor.next();
       }
     }
@@ -330,37 +353,37 @@ export function rawDocumentView(ownedBytes: Uint8Array, scanner: RawScannerPort)
   function item(value: RawValue, index: number): RawValue {
     const span = spanOf(value, "array");
     const indexed = arrayOf(value);
-    if (!Number.isInteger(index) || index < 0 || index >= indexed.length) invalidAccess();
-    if (indexed.last !== null && index === indexed.nextIndex - 1) return indexed.last;
+    if (!Number.isInteger(index) || index < 0 || index >= indexed.length) {invalidAccess();}
+    if (indexed.last !== null && index === indexed.nextIndex - 1) {return indexed.last;}
     if (indexed.cursor === null || index < indexed.nextIndex) {
       indexed.cursor = open(span);
-      if (indexed.cursor.next().kind !== "array-start") invalidAccess();
+      if (indexed.cursor.next().kind !== "array-start") {invalidAccess();}
       indexed.nextIndex = 0;
       indexed.last = null;
     }
     const cursor = indexed.cursor;
-    if (cursor === null) invalidAccess();
+    if (cursor === null) {invalidAccess();}
     while (indexed.nextIndex <= index) {
-      if (indexed.nextIndex !== 0 && cursor.next().kind !== "comma") invalidAccess();
+      if (indexed.nextIndex !== 0 && cursor.next().kind !== "comma") {invalidAccess();}
       const current = cursor.next();
-      if (indexed.nextIndex === index) indexed.last = capture(cursor, current, span.start);
-      else valueEnd(cursor, current);
+      if (indexed.nextIndex === index) {indexed.last = capture(cursor, current, span.start);}
+      else {valueEnd(cursor, current);}
       indexed.nextIndex += 1;
     }
-    if (indexed.last === null) invalidAccess();
+    if (indexed.last === null) {invalidAccess();}
     return indexed.last;
   }
 
   function text(value: RawValue): string {
     const cursor = open(spanOf(value, "string"));
     const current = cursor.next();
-    if (current.kind !== "string") invalidAccess();
+    if (current.kind !== "string") {invalidAccess();}
     return cursor.decodeString(current);
   }
 
   const rootCursor = scanner.open(ownedBytes.subarray(0, ownedBytes.length));
   const root = capture(rootCursor, rootCursor.next(), 0);
-  if (rootCursor.next().kind !== "end") invalidAccess();
+  if (rootCursor.next().kind !== "end") {invalidAccess();}
 
   // Record indexes retain immediate child spans. Array indexes retain only the
   // most recent element; weak caches let earlier visited rows be collected.

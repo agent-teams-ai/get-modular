@@ -46,46 +46,61 @@ function lexical(left: string | number, right: string | number): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
+function compareCoordinates(left: Coordinate, right: Coordinate): number {
+  for (const field of coordinateFields) {
+    const leftValue = Object.hasOwn(left, field) ? left[field] : undefined;
+    const rightValue = Object.hasOwn(right, field) ? right[field] : undefined;
+    if (leftValue === undefined && rightValue !== undefined) {return -1;}
+    if (leftValue !== undefined && rightValue === undefined) {return 1;}
+    if (leftValue !== undefined && rightValue !== undefined) {
+      const order = lexical(leftValue, rightValue);
+      if (order !== 0) {return order;}
+    }
+  }
+  return 0;
+}
+
+function comparePaths(left: Diagnostic["path"], right: Diagnostic["path"]): number {
+  for (let index = 0; index < Math.min(left.length, right.length); index += 1) {
+    const leftSegment = left[index]!;
+    const rightSegment = right[index]!;
+    if (leftSegment.kind !== rightSegment.kind) {return leftSegment.kind === "field" ? -1 : 1;}
+    const order = lexical(leftSegment.value, rightSegment.value);
+    if (order !== 0) {return order;}
+  }
+  return left.length - right.length;
+}
+
+function compareCycles(left: readonly string[], right: readonly string[]): number {
+  for (let index = 0; index < Math.min(left.length, right.length); index += 1) {
+    const order = lexical(left[index]!, right[index]!);
+    if (order !== 0) {return order;}
+  }
+  return left.length - right.length;
+}
+
+function compareBytes(left: Uint8Array, right: Uint8Array): number {
+  for (let index = 0; index < Math.min(left.length, right.length); index += 1) {
+    if (left[index] !== right[index]) {return left[index]! - right[index]!;}
+  }
+  return left.length - right.length;
+}
+
 /** Inputs are closed, normalized diagnostics, never untrusted input objects. */
 export function compareDiagnostics(left: Diagnostic, right: Diagnostic, canonicalize: CanonicalizeDetails): number {
   const rank = phases[left.phase] - phases[right.phase] || codes[left.code] - codes[right.code];
-  if (rank !== 0) return rank;
-  const a: Coordinate = left.coordinate;
-  const b: Coordinate = right.coordinate;
-  for (const field of coordinateFields) {
-    const av = Object.hasOwn(a, field) ? a[field] : undefined;
-    const bv = Object.hasOwn(b, field) ? b[field] : undefined;
-    if (av === undefined && bv !== undefined) return -1;
-    if (av !== undefined && bv === undefined) return 1;
-    if (av !== undefined && bv !== undefined) {
-      const order = lexical(av, bv);
-      if (order !== 0) return order;
-    }
-  }
-  for (let index = 0; index < Math.min(left.path.length, right.path.length); index += 1) {
-    const av = left.path[index]!;
-    const bv = right.path[index]!;
-    if (av.kind !== bv.kind) return av.kind === "field" ? -1 : 1;
-    const order = lexical(av.value, bv.value);
-    if (order !== 0) return order;
-  }
-  if (left.path.length !== right.path.length) return left.path.length - right.path.length;
+  if (rank !== 0) {return rank;}
+  const coordinateOrder = compareCoordinates(left.coordinate, right.coordinate);
+  if (coordinateOrder !== 0) {return coordinateOrder;}
+  const pathOrder = comparePaths(left.path, right.path);
+  if (pathOrder !== 0) {return pathOrder;}
   // SCC components have their own accepted shorter-prefix-first array order.
   if (left.code === "graph.cycle" && right.code === "graph.cycle") {
-    const ac = left.details.component;
-    const bc = right.details.component;
-    for (let index = 0; index < Math.min(ac.length, bc.length); index += 1) {
-      const order = lexical(ac[index]!, bc[index]!);
-      if (order !== 0) return order;
-    }
-    return ac.length - bc.length;
+    return compareCycles(left.details.component, right.details.component);
   }
   // Own the first result before the second call: a provider may reuse scratch
   // storage. Compare view bytes, not UTF-16 strings or the backing buffer.
   const ab = new Uint8Array(canonicalize(left.details));
   const bb = canonicalize(right.details);
-  for (let index = 0; index < Math.min(ab.length, bb.length); index += 1) {
-    if (ab[index] !== bb[index]) return ab[index]! - bb[index]!;
-  }
-  return ab.length - bb.length;
+  return compareBytes(ab, bb);
 }

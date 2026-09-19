@@ -47,7 +47,7 @@ export function createObjectResourceMeter(): ObjectResourceMeter {
 
   function countValues(count: number): boolean {
     occurrences = Math.min(valueLimit + 1, occurrences + count);
-    if (occurrences > valueLimit) exhausted = "jsonValueOccurrences";
+    if (occurrences > valueLimit) {exhausted = "jsonValueOccurrences";}
     return exhausted === null;
   }
 
@@ -79,26 +79,26 @@ export function createObjectResourceMeter(): ObjectResourceMeter {
 
     function nonPlain(segment: string | number | null = null): void {
       nonPlainValue = true;
-      if (!onNonPlain) return;
+      if (!onNonPlain) {return;}
       const path: (string | number)[] = [];
-      for (const frame of stack) if (frame.segment !== null) path.push(frame.segment);
-      if (segment !== null) path.push(segment);
+      for (const frame of stack) {if (frame.segment !== null) {path.push(frame.segment);}}
+      if (segment !== null) {path.push(segment);}
       onNonPlain(Object.freeze(path));
     }
 
     function enter(item: unknown, depth: number, prepaid: boolean, segment: string | number | null): void {
       if (!prepaid && !countValues(1)) { stoppedBy = exhausted; return; }
       if (typeof item === "string") {
-        if (!countString(item)) stoppedBy = exhausted;
+        if (!countString(item)) {stoppedBy = exhausted;}
         return;
       }
       // Non-finite numbers cannot be JSON values. Finite numeric domain and
       // field-specific types remain the responsibility of the schema pass.
       if (typeof item === "number") {
-        if (!Number.isFinite(item)) nonPlain(segment);
+        if (!Number.isFinite(item)) {nonPlain(segment);}
         return;
       }
-      if (item === null || typeof item === "boolean") return;
+      if (item === null || typeof item === "boolean") {return;}
       if (typeof item !== "object") { nonPlain(segment); return; }
       if (active.has(item)) { nonPlain(segment); return; }
       jsonDepth = Math.max(jsonDepth, depth);
@@ -120,11 +120,11 @@ export function createObjectResourceMeter(): ObjectResourceMeter {
       peakOpenContainers = Math.max(peakOpenContainers, stack.length);
     }
 
-    if (stoppedBy === null) enter(value, 1, false, null);
+    if (stoppedBy === null) {enter(value, 1, false, null);}
     while (stoppedBy === null && stack.length > 0) {
       const frame = stack[stack.length - 1]!;
       if (frame.next === frame.keys.length) {
-        if (frame.arrayLength !== null && frame.indexes !== frame.arrayLength) nonPlain();
+        if (frame.arrayLength !== null && frame.indexes !== frame.arrayLength) {nonPlain();}
         active.delete(frame.value);
         stack.pop();
         continue;
@@ -136,7 +136,7 @@ export function createObjectResourceMeter(): ObjectResourceMeter {
       if (typeof key !== "string") { nonPlain(); frame.next = frame.keys.length; continue; }
       let segment: string | number = key;
       if (frame.arrayLength !== null) {
-        if (key === "length") continue;
+        if (key === "length") {continue;}
         // Array indices precede every non-index string. No rejected tail key
         // may incur an unbounded Number conversion or a per-key own loop.
         if (key.length === 0 || key.length > 10) {
@@ -155,7 +155,7 @@ export function createObjectResourceMeter(): ObjectResourceMeter {
         segment = index;
       } else if (!countString(key)) { stoppedBy = exhausted; break; }
       const descriptor = frame.descriptors[key]!;
-      if (!descriptor.enumerable) nonPlain();
+      if (!descriptor.enumerable) {nonPlain();}
       if (!Object.hasOwn(descriptor, "value")) { nonPlain(); continue; }
       enter(descriptor.value, frame.depth + 1, frame.arrayLength !== null, segment);
     }

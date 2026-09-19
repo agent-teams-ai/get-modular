@@ -5,7 +5,7 @@ import type { BindingResourceCount, ProfileResourceFacts } from "./ports.js";
 import { admissionLimits } from "./resource-limits.js";
 
 export function ownValue(value: unknown, key: string): unknown {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {return undefined;}
   const descriptor = Object.getOwnPropertyDescriptor(value, key);
   return descriptor && Object.hasOwn(descriptor, "value") ? descriptor.value : undefined;
 }
@@ -56,7 +56,7 @@ export function profileResourceFactsView<Value>(view: DocumentView<Value>): Prof
         const consumerImplementationId = textMember(row, "consumerImplementationId");
         const slot = textMember(row, "slotId");
         const providers = ownMember(row, "providerImplementationIds");
-        if (!portable(consumerImplementationId) || !providers.present || reader.kind(providers.value) !== "array") continue;
+        if (!portable(consumerImplementationId) || !providers.present || reader.kind(providers.value) !== "array") {continue;}
         const slotId = slot !== null && slot.length <= 64 && isLocalTokenFormat(slot) ? slot : null;
         // Provider contents never become evidence here; retain only their exact count.
         bindings.push(Object.freeze({ ordinal, consumerImplementationId, slotId,

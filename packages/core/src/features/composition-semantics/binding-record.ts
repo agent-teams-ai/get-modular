@@ -22,15 +22,15 @@ export function validateBindingRecord(binding: Binding, slot: Slot, declarations
   const cardinality = slot.cardinality;
   const allowed = cardinality.kind === "many" ? count >= cardinality.min && count <= cardinality.max
     : cardinality.kind === "required" ? count === 1 : count <= 1;
-  if (!allowed) add(Object.freeze({ code: "binding.cardinality", phase: "binding", path, coordinate,
-    details: Object.freeze({ expectedCardinality: cardinality.kind, actualCardinality: count }) }));
+  if (!allowed) {add(Object.freeze({ code: "binding.cardinality", phase: "binding", path, coordinate,
+    details: Object.freeze({ expectedCardinality: cardinality.kind, actualCardinality: count }) }));}
 
   const providers = new Map<string, number>();
-  for (const id of binding.providerImplementationIds) providers.set(id, (providers.get(id) ?? 0) + 1);
+  for (const id of binding.providerImplementationIds) {providers.set(id, (providers.get(id) ?? 0) + 1);}
   for (const [providerImplementationId, occurrences] of providers) {
     const providerCoordinate = Object.freeze({ ...coordinate, providerImplementationId });
-    if (occurrences > 1) add(Object.freeze({ code: "binding.duplicate", phase: "binding", path,
-      coordinate: providerCoordinate, details: Object.freeze({ reason: "duplicate" }) }));
+    if (occurrences > 1) {add(Object.freeze({ code: "binding.duplicate", phase: "binding", path,
+      coordinate: providerCoordinate, details: Object.freeze({ reason: "duplicate" }) }));}
     const provider = declarations.implementation(providerImplementationId);
     if (!provider) {
       valid = false;
@@ -48,8 +48,8 @@ export function validateBindingRecord(binding: Binding, slot: Slot, declarations
     const capability = provider.capability(slot.capabilityId);
     if (!capability) {
       valid = false;
-      if (capability === undefined) add(Object.freeze({ code: "binding.capability-missing", phase: "binding", path,
-        coordinate: providerCoordinate, details: Object.freeze({ reason: "missing" }) }));
+      if (capability === undefined) {add(Object.freeze({ code: "binding.capability-missing", phase: "binding", path,
+        coordinate: providerCoordinate, details: Object.freeze({ reason: "missing" }) }));}
       // An absent/ambiguous capability supplies no compatibility value.
       continue;
     }
@@ -77,13 +77,13 @@ export function validateBindingRecords(bindings: readonly Binding[], slot: Slot,
     addUnique: diagnostic => {
       if (diagnostic.code === "binding.cardinality") {
         const count = diagnostic.details.actualCardinality;
-        if (cardinalities.has(count)) return;
+        if (cardinalities.has(count)) {return;}
         cardinalities.add(count);
       } else {
         const providerImplementationId = diagnostic.coordinate.providerImplementationId;
         let seen = providerFailures.get(diagnostic.code);
         if (!seen) { seen = new Set<string>(); providerFailures.set(diagnostic.code, seen); }
-        if (seen.has(providerImplementationId)) return;
+        if (seen.has(providerImplementationId)) {return;}
         seen.add(providerImplementationId);
       }
       collector.addUnique(diagnostic);
@@ -92,7 +92,7 @@ export function validateBindingRecords(bindings: readonly Binding[], slot: Slot,
   for (const binding of bindings) {
     // A suppressed duplicate candidate still invalidates its original row.
     // Never short-circuit later checks because this group is already invalid.
-    if (!validateBindingRecord(binding, slot, declarations, selected, rowCollector)) valid = false;
+    if (!validateBindingRecord(binding, slot, declarations, selected, rowCollector)) {valid = false;}
   }
   return valid;
 }

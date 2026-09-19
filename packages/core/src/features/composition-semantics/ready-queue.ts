@@ -14,7 +14,7 @@ export class ReadyQueue {
     this.peakSize = Math.max(this.peakSize, this.#items.length);
     while (index > 0) {
       const parent = Math.floor((index - 1) / 2);
-      if (!this.#less(value, this.#items[parent]!)) break;
+      if (!this.#less(value, this.#items[parent]!)) {break;}
       this.#items[index] = this.#items[parent]!;
       index = parent;
     }
@@ -22,15 +22,15 @@ export class ReadyQueue {
   }
 
   take(): number {
-    if (this.#items.length === 0) throw new Error("Empty internal graph ready queue");
+    if (this.#items.length === 0) {throw new Error("Empty internal graph ready queue");}
     const first = this.#items[0]!;
     const last = this.#items.pop()!;
     if (this.#items.length > 0) {
       let index = 0;
       while (index * 2 + 1 < this.#items.length) {
         let child = index * 2 + 1;
-        if (child + 1 < this.#items.length && this.#less(this.#items[child + 1]!, this.#items[child]!)) child += 1;
-        if (!this.#less(this.#items[child]!, last)) break;
+        if (child + 1 < this.#items.length && this.#less(this.#items[child + 1]!, this.#items[child]!)) {child += 1;}
+        if (!this.#less(this.#items[child]!, last)) {break;}
         this.#items[index] = this.#items[child]!;
         index = child;
       }

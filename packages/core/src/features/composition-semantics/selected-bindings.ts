@@ -13,6 +13,77 @@ export type SelectedBindings = {
   readonly hasErrors: boolean;
 };
 
+type BindingGroups = Map<string, Map<string, Binding[]>>;
+type ValidationContext = {
+  readonly declarations: DeclarationCensus;
+  readonly selected: ProfileCensus;
+  readonly add: DiagnosticCollector["addUnique"];
+  readonly frontiers: Map<string, boolean>;
+  readonly validBindings: ResolvedBinding[];
+};
+
+function groupBindings(profile: CompositionProfile): BindingGroups {
+  const groups: BindingGroups = new Map();
+  for (const binding of profile.bindings) {
+    let slots = groups.get(binding.consumerImplementationId);
+    if (!slots) { slots = new Map<string, Binding[]>(); groups.set(binding.consumerImplementationId, slots); }
+    const records = slots.get(binding.slotId);
+    if (records) {records.push(binding);}
+    else {slots.set(binding.slotId, [binding]);}
+  }
+  return groups;
+}
+
+function validateSuppliedGroup(implementationId: string, slots: Map<string, Binding[]>, context: ValidationContext): void {
+  const { declarations, selected, add, frontiers, validBindings } = context;
+  for (const [slotId, records] of slots) {
+    if (records.length < 2) {continue;}
+    add(Object.freeze({ code: "binding.duplicate-record", phase: "binding", path: Object.freeze([]),
+      coordinate: Object.freeze({ implementationId, slotId }), details: Object.freeze({ reason: "duplicate" }) }));
+    if (selected.isSelected(implementationId)) {frontiers.set(implementationId, false);}
+  }
+  const consumer = declarations.implementation(implementationId);
+  if (!consumer) {
+    if (selected.isSelected(implementationId)) {frontiers.set(implementationId, false);}
+    if (consumer === undefined && declarations.identityCensusComplete) {
+      add(Object.freeze({ code: "binding.unknown-consumer", phase: "binding", path: Object.freeze([]),
+        coordinate: Object.freeze({ implementationId }), details: Object.freeze({ reason: "unknown" }) }));
+    }
+    return;
+  }
+  if (!selected.isSelected(implementationId)) {return;}
+  for (const [slotId, records] of slots) {
+    const slot = consumer.slot(slotId);
+    if (!slot) {
+      frontiers.set(implementationId, false);
+      if (slot === undefined && declarations.identityCensusComplete) {
+        add(Object.freeze({ code: "binding.unknown-slot", phase: "binding", path: Object.freeze([]),
+          coordinate: Object.freeze({ implementationId, slotId }), details: Object.freeze({ reason: "unknown" }) }));
+      }
+      continue;
+    }
+    if (validateBindingRecords(records, slot, declarations, selected, { addUnique: add })) {
+      validBindings.push(Object.freeze({ binding: records[0]!, slot }));
+    } else {frontiers.set(implementationId, false);}
+  }
+}
+
+function validateMissingBindings(groups: BindingGroups, context: ValidationContext): void {
+  const { declarations, selected, add, frontiers } = context;
+  for (const implementationId of selected.selectedImplementationIds) {
+    const consumer = declarations.implementation(implementationId);
+    if (!consumer) { frontiers.set(implementationId, false); continue; }
+    if (consumer.uniqueSlots.length !== consumer.declaration.slots.length) {frontiers.set(implementationId, false);}
+    const records = groups.get(implementationId);
+    for (const slot of consumer.uniqueSlots) {
+      if (records?.has(slot.slotId)) {continue;}
+      frontiers.set(implementationId, false);
+      add(Object.freeze({ code: "binding.missing", phase: "binding", path: Object.freeze([]),
+        coordinate: Object.freeze({ implementationId, slotId: slot.slotId }), details: Object.freeze({ reason: "missing" }) }));
+    }
+  }
+}
+
 /**
  * Owner-private: bounded, owned, whole-schema-admitted profile/declarations.
  * Census every binding occurrence before declaration or selection lookup.
@@ -22,68 +93,19 @@ export type SelectedBindings = {
  */
 export function validateSelectedBindings(profile: CompositionProfile, declarations: DeclarationCensus,
   selected: ProfileCensus, collector: Pick<DiagnosticCollector, "addUnique">): SelectedBindings {
-  const groups = new Map<string, Map<string, Binding[]>>();
-  for (const binding of profile.bindings) {
-    let slots = groups.get(binding.consumerImplementationId);
-    if (!slots) { slots = new Map<string, Binding[]>(); groups.set(binding.consumerImplementationId, slots); }
-    const records = slots.get(binding.slotId);
-    if (records) records.push(binding);
-    else slots.set(binding.slotId, [binding]);
-  }
+  const groups = groupBindings(profile);
   let hasErrors = false;
   const add: DiagnosticCollector["addUnique"] = diagnostic => { hasErrors = true; collector.addUnique(diagnostic); };
   const frontiers = new Map<string, boolean>();
   const validBindings: ResolvedBinding[] = [];
-  for (const implementationId of selected.selectedImplementationIds) frontiers.set(implementationId, true);
+  for (const implementationId of selected.selectedImplementationIds) {frontiers.set(implementationId, true);}
+  const context = { declarations, selected, add, frontiers, validBindings };
   for (const [implementationId, slots] of groups) {
     // Record uniqueness is a profile property, including unknown and
     // unselected consumers. A complete census need not be unique.
-    for (const [slotId, records] of slots) {
-      if (records.length < 2) continue;
-      add(Object.freeze({ code: "binding.duplicate-record", phase: "binding", path: Object.freeze([]),
-        coordinate: Object.freeze({ implementationId, slotId }), details: Object.freeze({ reason: "duplicate" }) }));
-      if (selected.isSelected(implementationId)) frontiers.set(implementationId, false);
-    }
-    const consumer = declarations.implementation(implementationId);
-    if (!consumer) {
-      if (selected.isSelected(implementationId)) frontiers.set(implementationId, false);
-      if (consumer === undefined && declarations.identityCensusComplete) {
-        add(Object.freeze({ code: "binding.unknown-consumer", phase: "binding", path: Object.freeze([]),
-          coordinate: Object.freeze({ implementationId }), details: Object.freeze({ reason: "unknown" }) }));
-      }
-      continue;
-    }
-    // Known unselected rows retain their existing inert behavior. Their
-    // repeated coordinates were independently diagnosed above.
-    if (!selected.isSelected(implementationId)) continue;
-    for (const [slotId, records] of slots) {
-      const slot = consumer.slot(slotId);
-      if (!slot) {
-        frontiers.set(implementationId, false);
-        if (slot === undefined && declarations.identityCensusComplete) {
-          add(Object.freeze({ code: "binding.unknown-slot", phase: "binding", path: Object.freeze([]),
-            coordinate: Object.freeze({ implementationId, slotId }), details: Object.freeze({ reason: "unknown" }) }));
-        }
-        continue;
-      }
-      if (validateBindingRecords(records, slot, declarations, selected, { addUnique: add })) {
-        // Validation establishes exactly one wholly valid record here.
-        validBindings.push(Object.freeze({ binding: records[0]!, slot }));
-      } else frontiers.set(implementationId, false);
-    }
+    validateSuppliedGroup(implementationId, slots, context);
   }
-  for (const implementationId of selected.selectedImplementationIds) {
-    const consumer = declarations.implementation(implementationId);
-    if (!consumer) { frontiers.set(implementationId, false); continue; }
-    if (consumer.uniqueSlots.length !== consumer.declaration.slots.length) frontiers.set(implementationId, false);
-    const records = groups.get(implementationId);
-    for (const slot of consumer.uniqueSlots) {
-      if (records?.has(slot.slotId)) continue;
-      frontiers.set(implementationId, false);
-      add(Object.freeze({ code: "binding.missing", phase: "binding", path: Object.freeze([]),
-        coordinate: Object.freeze({ implementationId, slotId: slot.slotId }), details: Object.freeze({ reason: "missing" }) }));
-    }
-  }
+  validateMissingBindings(groups, context);
   // Whole valid rows only; profile provider order is untouched. This list is
   // an observation, never a partial plan that could escape after other errors.
   validBindings.sort((left, right) => {

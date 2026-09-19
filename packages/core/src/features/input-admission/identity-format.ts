@@ -11,14 +11,14 @@ function matchesFormat(value: string, portable: boolean): boolean {
     const letter = code >= 97 && code <= 122;
     const digit = code >= 48 && code <= 57;
     if (needsLetter) {
-      if (!letter) return false;
+      if (!letter) {return false;}
       needsLetter = false;
     } else if (needsAlphanumeric) {
-      if (!letter && !digit) return false;
+      if (!letter && !digit) {return false;}
       needsAlphanumeric = false;
-    } else if (code === 45) needsAlphanumeric = true;
+    } else if (code === 45) {needsAlphanumeric = true;}
     else if (code === 47 && portable) { needsLetter = true; slashSeen = true; }
-    else if (!letter && !digit) return false;
+    else if (!letter && !digit) {return false;}
   }
   return !needsLetter && !needsAlphanumeric && (!portable || slashSeen);
 }

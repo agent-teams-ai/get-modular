@@ -101,31 +101,42 @@ const ROOT_SCRIPT_COMMANDS = Object.freeze({
 
 const PACKAGE_MANIFEST = /^packages\/[^/]+\/package\.json$/u;
 
-const EXPECTED_STANDARD = Object.freeze({
+const EXPECTED_AUTHORITY = Object.freeze({
   id: "agent-teams.feature-module-standard",
   version: "v1",
   repository: "agent-teams-ai/.github",
   path: "docs/architecture/feature-module-standard/v1.md",
-  git_blob_sha: "d0bfff2033faf544fe65268c1dcdfd524d093015",
+  gitBlob: "d0bfff2033faf544fe65268c1dcdfd524d093015",
   sha256: "851653f96643cf0466b67ab22963661976b00de44840fa3144a48a8c054f95fa",
 });
 
 const EXPECTED_SCOPE = Object.freeze({
-  production_roots: ["packages"],
-  module_roots: ["packages"],
-  application_roots: [],
-  excluded_roots: ["architecture", "docs", "tests"],
+  workspaceContainers: ["packages"],
+  productionRoots: ["packages/core/src", "packages/assembly/src"],
+  productionModules: [
+    { id: "core", moduleRoot: "packages/core", sourceRoot: "packages/core/src" },
+    { id: "assembly", moduleRoot: "packages/assembly", sourceRoot: "packages/assembly/src" },
+  ],
 });
 
-const EXPECTED_MAPPING = Object.freeze({
-  production_module: "packages/*",
-  source_root: "packages/*/src",
-  feature_root: "packages/*/src/features/*",
-  module_composition: "packages/*/src/composition",
-  public_entrypoint: "packages/*/src/index.ts",
-  test_root: "packages/*/tests",
-  application_roots: [],
-});
+const EXPECTED_LAYOUT_MODULES = Object.freeze([
+  {
+    moduleRoot: "packages/core",
+    sourceRoot: "packages/core/src",
+    featuresRoot: "packages/core/src/features",
+    moduleComposition: "packages/core/src/composition",
+    publicEntrypoint: "packages/core/src/index.ts",
+    testRoot: "packages/core/tests",
+  },
+  {
+    moduleRoot: "packages/assembly",
+    sourceRoot: "packages/assembly/src",
+    featuresRoot: "packages/assembly/src/features",
+    moduleComposition: "packages/assembly/src/composition",
+    publicEntrypoint: "packages/assembly/src/index.ts",
+    testRoot: "packages/assembly/tests",
+  },
+]);
 
 const EXPECTED_EXTENSIONS = Object.freeze([
   {
@@ -187,6 +198,71 @@ function exactKeys(value, expectedKeys, label) {
 
 function equalJson(actual, expected, label) {
   assert(JSON.stringify(actual) === JSON.stringify(expected), `${label} does not match`);
+}
+
+function assertExplicitPath(value, label) {
+  assert(typeof value === "string" && safeRepositoryPath(value) && !value.includes("*"),
+    `${label} must be an explicit repository path without wildcards`);
+}
+
+function assertUniqueRecords(records, key, label) {
+  assert(new Set(records.map(record => record[key])).size === records.length,
+    `${label} must not contain duplicate ${key} records`);
+}
+
+function validateQualifiedTopology(profile) {
+  exactKeys(profile.scope, Object.keys(EXPECTED_SCOPE), "scope");
+  equalJson(profile.scope.workspaceContainers, EXPECTED_SCOPE.workspaceContainers,
+    "scope workspace containers");
+  equalJson(profile.scope.productionRoots, EXPECTED_SCOPE.productionRoots,
+    "scope production roots");
+  assert(Array.isArray(profile.scope.productionModules),
+    "scope productionModules must be an array");
+  for (const module of profile.scope.productionModules) {
+    exactKeys(module, ["id", "moduleRoot", "sourceRoot"],
+      `production module ${module?.id ?? "<unknown>"}`);
+    assert(typeof module.id === "string" && /^[a-z][a-z0-9-]+$/u.test(module.id),
+      "production module id must be a lower-case identifier");
+    assertExplicitPath(module.moduleRoot, `production module ${module.id} moduleRoot`);
+    assertExplicitPath(module.sourceRoot, `production module ${module.id} sourceRoot`);
+  }
+  assertUniqueRecords(profile.scope.productionModules, "id", "productionModules");
+  assertUniqueRecords(profile.scope.productionModules, "moduleRoot", "productionModules");
+  assertUniqueRecords(profile.scope.productionModules, "sourceRoot", "productionModules");
+  equalJson(profile.scope.productionModules, EXPECTED_SCOPE.productionModules,
+    "Core/Assembly production module records");
+
+  const adoption = profile.adoption;
+  equalJson(adoption.applicationRoots, [], "application roots");
+  equalJson(adoption.excludedRoots, ["architecture", "docs", "tests"], "excluded roots");
+  exactKeys(adoption.abstractLayout, ["modules"], "abstractLayout");
+  assert(Array.isArray(adoption.abstractLayout.modules),
+    "abstractLayout modules must be an array");
+  const layoutKeys = [
+    "moduleRoot", "sourceRoot", "featuresRoot", "moduleComposition", "publicEntrypoint",
+    "testRoot",
+  ];
+  for (const module of adoption.abstractLayout.modules) {
+    exactKeys(module, layoutKeys, `abstract layout module ${module?.moduleRoot ?? "<unknown>"}`);
+    for (const key of layoutKeys) {
+      assertExplicitPath(module[key], `abstract layout ${module.moduleRoot ?? "<unknown>"} ${key}`);
+    }
+  }
+  assertUniqueRecords(adoption.abstractLayout.modules, "moduleRoot", "abstractLayout modules");
+  assertUniqueRecords(adoption.abstractLayout.modules, "sourceRoot", "abstractLayout modules");
+  assertUniqueRecords(adoption.abstractLayout.modules, "testRoot", "abstractLayout modules");
+  equalJson(adoption.abstractLayout.modules, EXPECTED_LAYOUT_MODULES,
+    "Core/Assembly abstract layout records");
+
+  for (const productionModule of profile.scope.productionModules) {
+    const layout = adoption.abstractLayout.modules.find(
+      module => module.moduleRoot === productionModule.moduleRoot,
+    );
+    assert(layout !== undefined,
+      `missing abstract layout record for ${productionModule.moduleRoot}`);
+    assert(layout.sourceRoot === productionModule.sourceRoot,
+      `sourceRoot mismatch for ${productionModule.moduleRoot}`);
+  }
 }
 
 function scriptCommands(script) {
@@ -336,19 +412,20 @@ export function validateFeatureModuleStandardProfile({
   agentInstructions,
   packageJson,
 }) {
-  exactKeys(profile, ["schema_version", "standard", "adoption"], "profile");
-  assert(profile.schema_version === 1, "schema_version must be 1");
-  exactKeys(profile.standard, Object.keys(EXPECTED_STANDARD), "standard");
-  equalJson(profile.standard, EXPECTED_STANDARD, "standard binding");
+  exactKeys(profile, ["schemaVersion", "authority", "scope", "adoption"], "profile");
+  assert(profile.schemaVersion === 1, "schemaVersion must be 1");
+  exactKeys(profile.authority, Object.keys(EXPECTED_AUTHORITY), "authority");
+  equalJson(profile.authority, EXPECTED_AUTHORITY, "authority binding");
 
   const adoption = profile.adoption;
   exactKeys(adoption, [
     "status",
     "owner",
-    "profile_document",
+    "profileDocument",
     "decision",
-    "scope",
-    "mapping",
+    "applicationRoots",
+    "excludedRoots",
+    "abstractLayout",
     "extensions",
     "deviations",
     "enforcement",
@@ -357,14 +434,10 @@ export function validateFeatureModuleStandardProfile({
   ], "adoption");
   assert(adoption.status === "adopted", "adoption status must be adopted");
   assert(adoption.owner === "architecture", "adoption owner must be architecture");
-  assert(adoption.profile_document === "ARCH-FEATURE-MODULE-STANDARD",
+  assert(adoption.profileDocument === "ARCH-FEATURE-MODULE-STANDARD",
     "profile document must be ARCH-FEATURE-MODULE-STANDARD");
   assert(adoption.decision === "ADR-0002", "decision must be ADR-0002");
-
-  exactKeys(adoption.scope, Object.keys(EXPECTED_SCOPE), "scope");
-  equalJson(adoption.scope, EXPECTED_SCOPE, "scope");
-  exactKeys(adoption.mapping, Object.keys(EXPECTED_MAPPING), "mapping");
-  equalJson(adoption.mapping, EXPECTED_MAPPING, "mapping");
+  validateQualifiedTopology(profile);
 
   equalJson(adoption.extensions, EXPECTED_EXTENSIONS, "extensions");
   for (const extension of adoption.extensions) {
@@ -377,9 +450,9 @@ export function validateFeatureModuleStandardProfile({
   assert(Array.isArray(adoption.deviations), "deviations must be an array");
   for (const deviation of adoption.deviations) {
     exactKeys(deviation, [
-      "clause", "scope", "rationale", "owner", "decision", "review_trigger",
+      "clause", "scope", "rationale", "owner", "decision", "reviewTrigger",
     ], `deviation ${deviation?.clause ?? "<unknown>"}`);
-    for (const key of ["clause", "scope", "rationale", "owner", "decision", "review_trigger"]) {
+    for (const key of ["clause", "scope", "rationale", "owner", "decision", "reviewTrigger"]) {
       assert(typeof deviation[key] === "string" && deviation[key].length > 0,
         `deviation ${key} must be non-empty`);
     }
@@ -406,10 +479,10 @@ export function validateFeatureModuleStandardProfile({
   assert(fastCommands.includes("architecture:feature-module-profile"),
     "fast gate must include profile binding");
 
-  exactKeys(adoption.admission, ["status", "production_root", "foundation"], "admission");
+  exactKeys(adoption.admission, ["status", "productionRoot", "foundation"], "admission");
   assert(["pre-production", "source-admitted"].includes(adoption.admission.status),
     "admission status must be pre-production or source-admitted");
-  assert(adoption.admission.production_root === "packages",
+  assert(adoption.admission.productionRoot === "packages",
     "admission production root must be packages");
   exactKeys(adoption.admission.foundation, Object.keys(FOUNDATION_ADMISSION),
     "Foundation admission binding");
@@ -421,12 +494,12 @@ export function validateFeatureModuleStandardProfile({
     ["runtime", EXPECTED_RUNTIME_EVIDENCE],
   ]) {
     const state = adoption.conformance[claim];
-    exactKeys(state, ["status", "rationale", "required_evidence"], `${claim} conformance`);
+    exactKeys(state, ["status", "rationale", "requiredEvidence"], `${claim} conformance`);
     assert(CONFORMANCE_STATUSES[claim].includes(state.status),
       `${claim} conformance has an unsupported status: ${state.status}`);
     assert(typeof state.rationale === "string" && state.rationale.length > 0,
       `${claim} conformance rationale must be non-empty`);
-    equalJson(state.required_evidence, expectedEvidence, `${claim} conformance evidence`);
+    equalJson(state.requiredEvidence, expectedEvidence, `${claim} conformance evidence`);
   }
   assert(adoption.conformance.runtime.status !== "runtime-conformant"
     || adoption.conformance.structural.status === "structural-conformant",
@@ -435,16 +508,16 @@ export function validateFeatureModuleStandardProfile({
     || adoption.admission.status === "source-admitted",
   "structural conformance requires source-admitted status");
 
-  const canonicalUrl = `https://github.com/${EXPECTED_STANDARD.repository}/blob/`
-    + `eef92e7fd40f538b4e9ba03e01bbd4e2d23f12f2/${EXPECTED_STANDARD.path}`;
+  const canonicalUrl = `https://github.com/${EXPECTED_AUTHORITY.repository}/blob/`
+    + `eef92e7fd40f538b4e9ba03e01bbd4e2d23f12f2/${EXPECTED_AUTHORITY.path}`;
   for (const marker of [
     "id: ARCH-FEATURE-MODULE-STANDARD",
     "# Get Modular Feature Module Standard Profile",
     "## Scope mapping",
     "## Local extensions",
     "## Qualification states",
-    EXPECTED_STANDARD.id,
-    EXPECTED_STANDARD.sha256,
+    EXPECTED_AUTHORITY.id,
+    EXPECTED_AUTHORITY.sha256,
     canonicalUrl,
     "ADR-0002",
     "OD-001",

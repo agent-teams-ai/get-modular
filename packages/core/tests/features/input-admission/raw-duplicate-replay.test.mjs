@@ -58,8 +58,9 @@ function replay(source, { kind = "profile", budget = fullBudget } = {}) {
     },
   };
   const scan = scanRawDocument(ownedBytes, preflightScanner, budget,
-    path => physical.push([...path]),
-    end => { boundaryCalls += 1; observedEnd = end; });
+    path => physical.push([...path]), {
+      replayBoundary: end => { boundaryCalls += 1; observedEnd = end; },
+    });
   assert.equal(boundaryCalls, 1);
   assert.ok(observedEnd >= 0 && observedEnd <= ownedBytes.length);
 

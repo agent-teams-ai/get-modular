@@ -35,45 +35,45 @@ export function createDiagnosticCollector(canonicalize: CanonicalizeDetails): Di
     return compareDiagnostics(left, right, canonicalize);
   };
   const addUnique = (candidate: DiagnosticCandidate): void => {
-    if (result !== undefined) throw new Error("Diagnostic stream is already finalized");
-    if (count < countCeiling) count += 1;
-    else saturated = true;
+    if (result !== undefined) {throw new Error("Diagnostic stream is already finalized");}
+    if (count < countCeiling) {count += 1;}
+    else {saturated = true;}
     if (heap.length < retainedLimit) {
       let index = heap.length;
       heap.push(snapshot(candidate));
       peakRetained = heap.length;
       while (index > 0) {
         const parent = (index - 1) >>> 1;
-        if (compare(heap[parent]!, heap[index]!) >= 0) break;
+        if (compare(heap[parent]!, heap[index]!) >= 0) {break;}
         [heap[index], heap[parent]] = [heap[parent]!, heap[index]!];
         index = parent;
       }
       return;
     }
-    if (compare(candidate, heap[0]!) >= 0) return;
+    if (compare(candidate, heap[0]!) >= 0) {return;}
     heap[0] = snapshot(candidate);
     let index = 0;
     for (;;) {
       const left = 2 * index + 1;
-      if (left >= heap.length) return;
+      if (left >= heap.length) {return;}
       const right = left + 1;
       const child = right < heap.length && compare(heap[right]!, heap[left]!) > 0 ? right : left;
-      if (compare(heap[index]!, heap[child]!) >= 0) return;
+      if (compare(heap[index]!, heap[child]!) >= 0) {return;}
       [heap[index], heap[child]] = [heap[child]!, heap[index]!];
       index = child;
     }
   };
   const finish = (): readonly Diagnostic[] => {
-    if (result !== undefined) return result;
+    if (result !== undefined) {return result;}
     // Sort only the bounded retained set. Release the last candidate before
     // constructing the overflow record, so retained records never exceed K.
     heap.sort(compare);
-    if (count > retainedLimit) heap.pop();
+    if (count > retainedLimit) {heap.pop();}
     const completed: Diagnostic[] = heap;
-    if (count > retainedLimit) completed.push(Object.freeze({
+    if (count > retainedLimit) {completed.push(Object.freeze({
       code: "diagnostics.truncated", phase: "output", path: Object.freeze([]),
       coordinate: Object.freeze({}), details: Object.freeze({ omitted: count - heap.length }),
-    }));
+    }));}
     result = Object.freeze(completed);
     return result;
   };

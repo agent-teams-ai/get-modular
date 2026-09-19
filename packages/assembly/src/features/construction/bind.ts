@@ -20,7 +20,7 @@ export function bindFactoryFor<C>(): Assembly<C>["bindFactory"] {
     declaration: D,
     factory: (dependencies: FactoryDependencies<C, NoInfer<D>>, context: FactoryContext) => Promise<FactoryProduct<I, FactoryCapabilities<C, NoInfer<D>>>>,
   ): FactoryHandle<C, D, I> {
-    if (typeof factory !== "function") throw new AssemblyBindingError("assembly.bind.invalid-factory", new TypeError("Expected a factory function"));
+    if (typeof factory !== "function") {throw new AssemblyBindingError("assembly.bind.invalid-factory", new TypeError("Expected a factory function"));}
     let captured: ModuleDeclaration;
     try {
       captured = snapshotDeclaration(declaration);

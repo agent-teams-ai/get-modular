@@ -19,20 +19,20 @@ function projection<Value>(view: DocumentView<Value>) {
   const reader = view.reader;
   function member(value: Value, key: string): Value {
     const own = reader.own(value, key);
-    if (!own.present) throw new TypeError("Snapshot requires an admitted document");
+    if (!own.present) {throw new TypeError("Snapshot requires an admitted document");}
     return own.value;
   }
   function text(value: Value, key: string): string { return reader.text(member(value, key)); }
   function integer(value: Value, key: string): number {
     const result = reader.integer(member(value, key));
-    if (!result.admitted) throw new TypeError("Snapshot requires an admitted integer");
+    if (!result.admitted) {throw new TypeError("Snapshot requires an admitted integer");}
     return result.value;
   }
   function list<Result>(value: Value, key: string, copy: (item: Value) => Result): readonly Result[] {
     const source = member(value, key);
     const result: Result[] = [];
     const length = reader.length(source);
-    for (let index = 0; index < length; index += 1) result.push(copy(reader.item(source, index)));
+    for (let index = 0; index < length; index += 1) {result.push(copy(reader.item(source, index)));}
     return Object.freeze(result);
   }
   function compatibility(value: Value): Compatibility {
@@ -40,8 +40,8 @@ function projection<Value>(view: DocumentView<Value>) {
   }
   function cardinality(value: Value): Cardinality {
     const kind = text(value, "kind");
-    if (kind === "many") return record<Cardinality>({ kind, min: integer(value, "min"), max: integer(value, "max"), order: "profile" });
-    if (kind === "required" || kind === "optional") return record<Cardinality>({ kind });
+    if (kind === "many") {return record<Cardinality>({ kind, min: integer(value, "min"), max: integer(value, "max"), order: "profile" });}
+    if (kind === "required" || kind === "optional") {return record<Cardinality>({ kind });}
     throw new TypeError("Snapshot requires an admitted cardinality");
   }
   return {

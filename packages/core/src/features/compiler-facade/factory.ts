@@ -8,7 +8,7 @@ export function createCompilerFacade({ admission, semantics, output }: CompilerF
     // Admission owns caller data synchronously, before the first suspension.
     const admitted = admit(collector);
     const analyzed = semantics.analyze(admitted, collector);
-    if (!analyzed.ok) return analyzed;
+    if (!analyzed.ok) {return analyzed;}
     const emitted = await output.emit(analyzed.plan);
     // Primitive failures reject the Promise; no synthetic diagnostic/digest.
     return Object.freeze({ ok: true, plan: emitted.plan, digest: emitted.digest });

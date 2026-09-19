@@ -1,32 +1,55 @@
 {
-  "schema_version": 1,
-  "standard": {
+  "schemaVersion": 1,
+  "authority": {
     "id": "agent-teams.feature-module-standard",
     "version": "v1",
     "repository": "agent-teams-ai/.github",
     "path": "docs/architecture/feature-module-standard/v1.md",
-    "git_blob_sha": "d0bfff2033faf544fe65268c1dcdfd524d093015",
+    "gitBlob": "d0bfff2033faf544fe65268c1dcdfd524d093015",
     "sha256": "851653f96643cf0466b67ab22963661976b00de44840fa3144a48a8c054f95fa"
+  },
+  "scope": {
+    "workspaceContainers": ["packages"],
+    "productionRoots": ["packages/core/src", "packages/assembly/src"],
+    "productionModules": [
+      {
+        "id": "core",
+        "moduleRoot": "packages/core",
+        "sourceRoot": "packages/core/src"
+      },
+      {
+        "id": "assembly",
+        "moduleRoot": "packages/assembly",
+        "sourceRoot": "packages/assembly/src"
+      }
+    ]
   },
   "adoption": {
     "status": "adopted",
     "owner": "architecture",
-    "profile_document": "ARCH-FEATURE-MODULE-STANDARD",
+    "profileDocument": "ARCH-FEATURE-MODULE-STANDARD",
     "decision": "ADR-0002",
-    "scope": {
-      "production_roots": ["packages"],
-      "module_roots": ["packages"],
-      "application_roots": [],
-      "excluded_roots": ["architecture", "docs", "tests"]
-    },
-    "mapping": {
-      "production_module": "packages/*",
-      "source_root": "packages/*/src",
-      "feature_root": "packages/*/src/features/*",
-      "module_composition": "packages/*/src/composition",
-      "public_entrypoint": "packages/*/src/index.ts",
-      "test_root": "packages/*/tests",
-      "application_roots": []
+    "applicationRoots": [],
+    "excludedRoots": ["architecture", "docs", "tests"],
+    "abstractLayout": {
+      "modules": [
+        {
+          "moduleRoot": "packages/core",
+          "sourceRoot": "packages/core/src",
+          "featuresRoot": "packages/core/src/features",
+          "moduleComposition": "packages/core/src/composition",
+          "publicEntrypoint": "packages/core/src/index.ts",
+          "testRoot": "packages/core/tests"
+        },
+        {
+          "moduleRoot": "packages/assembly",
+          "sourceRoot": "packages/assembly/src",
+          "featuresRoot": "packages/assembly/src/features",
+          "moduleComposition": "packages/assembly/src/composition",
+          "publicEntrypoint": "packages/assembly/src/index.ts",
+          "testRoot": "packages/assembly/tests"
+        }
+      ]
     },
     "extensions": [
       {
@@ -59,7 +82,7 @@
     ],
     "admission": {
       "status": "source-admitted",
-      "production_root": "packages",
+      "productionRoot": "packages",
       "foundation": {
         "package": "@agent-teams/engineering-foundation",
         "version": "1.2.0",
@@ -72,7 +95,7 @@
       "structural": {
         "status": "not-claimed",
         "rationale": "The private canonicalization slice is source-admitted; complete module structural evidence and promotion remain pending.",
-        "required_evidence": [
+        "requiredEvidence": [
           "source-dependency policy and deterministic validator",
           "one valid fixture for every materialized module role",
           "rejection of production behavior outside a feature",
@@ -86,7 +109,7 @@
       "runtime": {
         "status": "not-claimed",
         "rationale": "No packed production module has executed the qualification vectors on the supported runtime matrix.",
-        "required_evidence": [
+        "requiredEvidence": [
           "packed artifact conformance on the supported runtime matrix",
           "accepted promotion decision binding the packed subject and runtime evidence"
         ]

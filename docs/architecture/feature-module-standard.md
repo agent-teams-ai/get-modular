@@ -62,7 +62,7 @@ gate.
   mechanism. The third mechanism, a runtime activation plan, is not used inside
   the Core. The build-only directory `packages/*/self-composition` holds the
   own profile, the allowlist, the emitter and the qualification entries beside
-  the build configuration, outside the mapped `source_root`; the direct stage0
+  the build configuration, outside the mapped `sourceRoot`; the direct stage0
   root lives at `packages/*/src/composition/stage0.ts` until generated stage1
   replaces it in M3. This extension covers both and no third package exists.
 - No deviation from organization `v1` is declared.

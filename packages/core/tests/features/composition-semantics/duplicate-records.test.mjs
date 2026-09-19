@@ -171,15 +171,15 @@ const mutations = [
   {
     name: "repeated provider failure candidates",
     file: "binding-record.js",
-    pattern: /if\s*\(seen\.has\(providerImplementationId\)\)\s*return;/gu,
-    replacement: "if (false && seen.has(providerImplementationId)) return;",
+    pattern: /if\s*\(seen\.has\(providerImplementationId\)\)\s*\{\s*return;\s*\}/gu,
+    replacement: "if (false && seen.has(providerImplementationId)) {return;}",
     fixture: () => extended("many-row-dedup"),
   },
   {
     name: "repeated cardinality failure candidates",
     file: "binding-record.js",
-    pattern: /if\s*\(cardinalities\.has\(count\)\)\s*return;/gu,
-    replacement: "if (false && cardinalities.has(count)) return;",
+    pattern: /if\s*\(cardinalities\.has\(count\)\)\s*\{\s*return;\s*\}/gu,
+    replacement: "if (false && cardinalities.has(count)) {return;}",
     fixture: () => extended("many-row-dedup"),
   },
 ];

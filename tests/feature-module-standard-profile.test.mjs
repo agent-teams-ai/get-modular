@@ -46,6 +46,94 @@ test("accepts the checked-in Get Modular adoption profile", () => {
   assert.doesNotThrow(() => validate());
 });
 
+test("rejects the retired snake-case consumer profile schema", () => {
+  const legacy = clone(profile);
+  legacy.schema_version = legacy.schemaVersion;
+  delete legacy.schemaVersion;
+  assert.throws(() => validate({ profile: legacy }),
+    /profile must contain exactly: schemaVersion, authority, scope, adoption/u);
+});
+
+test("exposes the qualified nested FMS v1 topology consumed by Foundation", () => {
+  assert.deepEqual(
+    {
+      authority: [profile.authority.id, profile.authority.version],
+      workspaceContainers: profile.scope.workspaceContainers,
+      productionRoots: profile.scope.productionRoots,
+      modules: profile.scope.productionModules.map(({ moduleRoot, sourceRoot }) => ({
+        moduleRoot,
+        sourceRoot,
+        testRoot: profile.adoption.abstractLayout.modules.find(
+          layout => layout.moduleRoot === moduleRoot && layout.sourceRoot === sourceRoot,
+        )?.testRoot,
+      })),
+    },
+    {
+      authority: ["agent-teams.feature-module-standard", "v1"],
+      workspaceContainers: ["packages"],
+      productionRoots: ["packages/core/src", "packages/assembly/src"],
+      modules: [
+        {
+          moduleRoot: "packages/core",
+          sourceRoot: "packages/core/src",
+          testRoot: "packages/core/tests",
+        },
+        {
+          moduleRoot: "packages/assembly",
+          sourceRoot: "packages/assembly/src",
+          testRoot: "packages/assembly/tests",
+        },
+      ],
+    },
+  );
+});
+
+test("rejects missing and duplicate Core/Assembly records", () => {
+  const missingProduction = clone(profile);
+  missingProduction.scope.productionModules.pop();
+  assert.throws(() => validate({ profile: missingProduction }),
+    /Core\/Assembly production module records does not match/u);
+
+  const missingLayout = clone(profile);
+  missingLayout.adoption.abstractLayout.modules.pop();
+  assert.throws(() => validate({ profile: missingLayout }),
+    /Core\/Assembly abstract layout records does not match/u);
+
+  const duplicateProduction = clone(profile);
+  duplicateProduction.scope.productionModules[1] =
+    clone(duplicateProduction.scope.productionModules[0]);
+  assert.throws(() => validate({ profile: duplicateProduction }),
+    /productionModules must not contain duplicate id records/u);
+
+  for (const key of ["moduleRoot", "sourceRoot", "testRoot"]) {
+    const duplicateLayout = clone(profile);
+    duplicateLayout.adoption.abstractLayout.modules[1][key] =
+      duplicateLayout.adoption.abstractLayout.modules[0][key];
+    assert.throws(() => validate({ profile: duplicateLayout }),
+      new RegExp(`abstractLayout modules must not contain duplicate ${key} records`, "u"),
+      key);
+  }
+});
+
+test("rejects wildcard and mismatched module, source, and test roots", () => {
+  const wildcard = clone(profile);
+  wildcard.scope.productionModules[0].sourceRoot = "packages/*/src";
+  assert.throws(() => validate({ profile: wildcard }),
+    /explicit repository path without wildcards/u);
+
+  for (const [key, value] of [
+    ["moduleRoot", "packages/not-core"],
+    ["sourceRoot", "packages/core/not-src"],
+    ["testRoot", "packages/core/not-tests"],
+  ]) {
+    const mismatch = clone(profile);
+    mismatch.adoption.abstractLayout.modules[0][key] = value;
+    assert.throws(() => validate({ profile: mismatch }),
+      /Core\/Assembly abstract layout records does not match/u,
+      key);
+  }
+});
+
 // Accepted source pins; final archive binding and publication verification remain pending.
 test("pins the accepted Foundation and Docs source versions with exact age exclusions", async () => {
   const workspace = parse(await readFile("pnpm-workspace.yaml", "utf8"));
@@ -175,23 +263,19 @@ test("rejects central identity and digest drift", () => {
   for (const [key, value] of [
     ["version", "v2"],
     ["repository", "agent-teams-ai/other"],
-    ["git_blob_sha", "0".repeat(40)],
+    ["gitBlob", "0".repeat(40)],
     ["sha256", "0".repeat(64)],
   ]) {
     const changed = clone(profile);
-    changed.standard[key] = value;
-    assert.throws(() => validate({ profile: changed }), /standard binding does not match/u);
+    changed.authority[key] = value;
+    assert.throws(() => validate({ profile: changed }), /authority binding does not match/u);
   }
 });
 
-test("rejects silent scope, mapping, and authority drift", () => {
+test("rejects silent scope and extension-authority drift", () => {
   const changedScope = clone(profile);
-  changedScope.adoption.scope.production_roots = ["src"];
-  assert.throws(() => validate({ profile: changedScope }), /scope does not match/u);
-
-  const changedMapping = clone(profile);
-  changedMapping.adoption.mapping.feature_root = "src/modules/*";
-  assert.throws(() => validate({ profile: changedMapping }), /mapping does not match/u);
+  changedScope.scope.productionRoots = ["src"];
+  assert.throws(() => validate({ profile: changedScope }), /scope production roots does not match/u);
 
   const changedAuthority = clone(profile);
   changedAuthority.adoption.extensions[0].authority = "../outside.md";
@@ -221,7 +305,7 @@ test("accepts ordered conformance states and rejects unsupported status values",
   }
 
   const missingEvidence = clone(profile);
-  missingEvidence.adoption.conformance.structural.required_evidence.pop();
+  missingEvidence.adoption.conformance.structural.requiredEvidence.pop();
   assert.throws(() => validate({ profile: missingEvidence }),
     /structural conformance evidence does not match/u);
 });
@@ -245,7 +329,7 @@ test("requires explicit owned deviation records", () => {
     rationale: "",
     owner: "architecture",
     decision: "ADR-0003",
-    review_trigger: "first production module",
+    reviewTrigger: "first production module",
   });
   assert.throws(() => validate({ profile: changed }), /deviation rationale must be non-empty/u);
 

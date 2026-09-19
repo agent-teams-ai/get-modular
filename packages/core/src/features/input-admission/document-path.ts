@@ -12,7 +12,7 @@ export function documentPath(locator: DocumentLocator, local: readonly (string |
   let length = 0;
   while (length < segments.length && length < 32) {
     const value = segments[length]!;
-    if (typeof value === "number" && value > 65535) break;
+    if (typeof value === "number" && value > 65535) {break;}
     length += 1;
   }
   return Object.freeze(segments.slice(0, length).map(value => Object.freeze(typeof value === "string"

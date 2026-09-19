@@ -23,23 +23,9 @@ export type SelectedGraphAnalysis = {
   };
 };
 
-/**
- * Owner-private graph kernel, after bounded selected-node census and complete
- * binding validation. IDs are unique, admitted ASCII strings; all endpoints
- * and roots belong to this selected graph. Edges are Evalid occurrences from
- * wholly valid bindings, not surviving individual providers of a failed row.
- * Callers still own diagnostic prerequisites, reachability-frontier validity,
- * Einput limits, normalization of plan bindings and successful-plan eligibility.
- */
-export function analyzeSelectedGraph(implementationIds: readonly string[], edges: readonly ProviderEdge[], roots: readonly string[]): SelectedGraphAnalysis {
-  const nodes = [...implementationIds].sort();
-  const rank = new Map(nodes.map((id, index) => [id, index]));
-  if (rank.size !== nodes.length) throw new Error("Duplicate internal selected-graph node");
-  const vertex = (id: string): number => {
-    const result = rank.get(id);
-    if (result === undefined) throw new Error("Unresolved internal selected-graph identity");
-    return result;
-  };
+type Vertex = (id: string) => number;
+
+function buildAdjacency(nodes: readonly string[], edges: readonly ProviderEdge[], vertex: Vertex) {
   const outgoing: number[][] = nodes.map(() => []);
   const incoming: number[][] = nodes.map(() => []);
   const unique: Set<number>[] = nodes.map(() => new Set<number>());
@@ -47,35 +33,44 @@ export function analyzeSelectedGraph(implementationIds: readonly string[], edges
   for (const [providerId, consumerId] of edges) {
     const provider = vertex(providerId);
     const consumer = vertex(consumerId);
-    if (unique[provider]!.has(consumer)) continue;
+    if (unique[provider]!.has(consumer)) {continue;}
     unique[provider]!.add(consumer);
     outgoing[provider]!.push(consumer);
     incoming[consumer]!.push(provider);
     adjacencyEdges += 1;
   }
+  return { outgoing, incoming, unique, adjacencyEdges };
+}
+
+function findCycles(nodes: readonly string[], unique: readonly Set<number>[],
+  outgoing: readonly number[][], incoming: readonly number[][]) {
   const decomposition = graphComponents(outgoing, incoming);
   const cyclic = new Uint8Array(nodes.length);
   const cycles: (readonly string[])[] = [];
   for (const component of decomposition.members) {
-    if (component.length === 1 && !unique[component[0]!]!.has(component[0]!)) continue;
-    for (const member of component) cyclic[member] = 1;
+    if (component.length === 1 && !unique[component[0]!]!.has(component[0]!)) {continue;}
+    for (const member of component) {cyclic[member] = 1;}
     cycles.push(Object.freeze(component.map(member => nodes[member]!)));
   }
+  return { decomposition, cyclic, cycles };
+}
 
+function analyzeResidual(nodes: readonly string[], cyclic: Uint8Array,
+  outgoing: readonly number[][], incoming: readonly number[][]) {
   const indegree = new Uint32Array(nodes.length);
   const depth = new Uint16Array(nodes.length);
   const ready = new ReadyQueue();
   let depthEdgeVisits = 0;
   let residualSize = 0;
   for (let node = 0; node < nodes.length; node += 1) {
-    if (cyclic[node]) continue;
+    if (cyclic[node]) {continue;}
     residualSize += 1;
     depth[node] = 1;
     for (const provider of incoming[node]!) {
       depthEdgeVisits += 1;
-      if (!cyclic[provider]) indegree[node] = indegree[node]! + 1;
+      if (!cyclic[provider]) {indegree[node] = indegree[node]! + 1;}
     }
-    if (indegree[node] === 0) ready.push(node);
+    if (indegree[node] === 0) {ready.push(node);}
   }
   const order: string[] = [];
   let residualDepth = 0;
@@ -85,20 +80,21 @@ export function analyzeSelectedGraph(implementationIds: readonly string[], edges
     residualDepth = Math.max(residualDepth, depth[node]!);
     for (const consumer of outgoing[node]!) {
       depthEdgeVisits += 1;
-      if (cyclic[consumer]) continue;
+      if (cyclic[consumer]) {continue;}
       depth[consumer] = Math.min(selectedGraphDepthLimit + 1, Math.max(depth[consumer]!, depth[node]! + 1));
       indegree[consumer] = indegree[consumer]! - 1;
-      if (indegree[consumer] === 0) ready.push(consumer);
+      if (indegree[consumer] === 0) {ready.push(consumer);}
     }
   }
-  if (order.length !== residualSize) throw new Error("Cyclic internal residual graph");
+  if (order.length !== residualSize) {throw new Error("Cyclic internal residual graph");}
+  return { order, residualDepth, depthEdgeVisits, peakReady: ready.peakSize, readyComparisons: ready.comparisons };
+}
 
-  // Closure keeps the original graph, including cycles, and follows the
-  // opposite direction: consumers depend on their providers. This observation
-  // alone does not authorize an unreachable diagnostic on an invalid frontier.
+function findRootClosure(nodes: readonly string[], roots: readonly string[], vertex: Vertex,
+  incoming: readonly number[][], initialPeak: number) {
   const reached = new Uint8Array(nodes.length);
   const pending: number[] = [];
-  let peakTraversalFrames = decomposition.peakFrames;
+  let peakTraversalFrames = initialPeak;
   let closureEdgeVisits = 0;
   for (const id of roots) {
     const node = vertex(id);
@@ -116,10 +112,39 @@ export function analyzeSelectedGraph(implementationIds: readonly string[], edges
       }
     }
   }
-  return Object.freeze({ cycles: Object.freeze(cycles), dependencyOrder: cycles.length ? null : Object.freeze(order), residualDepth,
-    rootClosure: Object.freeze(nodes.filter((_node, index) => reached[index])),
+  return { rootClosure: nodes.filter((_node, index) => reached[index]), closureEdgeVisits, peakTraversalFrames };
+}
+
+/**
+ * Owner-private graph kernel, after bounded selected-node census and complete
+ * binding validation. IDs are unique, admitted ASCII strings; all endpoints
+ * and roots belong to this selected graph. Edges are Evalid occurrences from
+ * wholly valid bindings, not surviving individual providers of a failed row.
+ * Callers still own diagnostic prerequisites, reachability-frontier validity,
+ * Einput limits, normalization of plan bindings and successful-plan eligibility.
+ */
+export function analyzeSelectedGraph(implementationIds: readonly string[], edges: readonly ProviderEdge[], roots: readonly string[]): SelectedGraphAnalysis {
+  const nodes = implementationIds.toSorted();
+  const rank = new Map(nodes.map((id, index) => [id, index]));
+  if (rank.size !== nodes.length) {throw new Error("Duplicate internal selected-graph node");}
+  const vertex = (id: string): number => {
+    const result = rank.get(id);
+    if (result === undefined) {throw new Error("Unresolved internal selected-graph identity");}
+    return result;
+  };
+  const { outgoing, incoming, unique, adjacencyEdges } = buildAdjacency(nodes, edges, vertex);
+  const { decomposition, cyclic, cycles } = findCycles(nodes, unique, outgoing, incoming);
+  const residual = analyzeResidual(nodes, cyclic, outgoing, incoming);
+
+  // Closure keeps the original graph, including cycles, and follows the
+  // opposite direction: consumers depend on their providers. This observation
+  // alone does not authorize an unreachable diagnostic on an invalid frontier.
+  const closure = findRootClosure(nodes, roots, vertex, incoming, decomposition.peakFrames);
+  return Object.freeze({ cycles: Object.freeze(cycles), dependencyOrder: cycles.length ? null : Object.freeze(residual.order),
+    residualDepth: residual.residualDepth, rootClosure: Object.freeze(closure.rootClosure),
     statistics: Object.freeze({ selectedNodes: nodes.length, validEdgeOccurrences: edges.length, adjacencyEdges,
-      sccEdgeVisits: decomposition.edgeVisits, depthEdgeVisits, closureEdgeVisits, peakTraversalFrames,
-      peakReady: ready.peakSize, readyComparisons: ready.comparisons }),
+      sccEdgeVisits: decomposition.edgeVisits, depthEdgeVisits: residual.depthEdgeVisits,
+      closureEdgeVisits: closure.closureEdgeVisits, peakTraversalFrames: closure.peakTraversalFrames,
+      peakReady: residual.peakReady, readyComparisons: residual.readyComparisons }),
   });
 }

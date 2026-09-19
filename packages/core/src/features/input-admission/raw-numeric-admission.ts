@@ -58,7 +58,7 @@ function stoppedMask<Value>(reader: DocumentReader<Value>, root: Value): Failure
         const key = frame.keys[frame.next]!;
         frame.next += 1;
         const member = reader.own(frame.value, key);
-        if (!member.present) continue;
+        if (!member.present) {continue;}
         current = member.value;
       } else {
         if (frame.next === frame.length) { frames.pop(); continue; }
@@ -68,7 +68,7 @@ function stoppedMask<Value>(reader: DocumentReader<Value>, root: Value): Failure
       foundChild = true;
       break;
     }
-    if (!foundChild) return mask;
+    if (!foundChild) {return mask;}
   }
 }
 
@@ -83,9 +83,9 @@ function ownerMask<Value>(
   const reader = view.reader;
   // Clipping is a permanent ownership boundary, just like an unknown field
   // or an unrepresentable index. Probes and visits fold the same whole group.
-  if (path.length === localPathCapacity(kind)) return stoppedMask(reader, value);
+  if (path.length === localPathCapacity(kind)) {return stoppedMask(reader, value);}
   const valueKind = reader.kind(value);
-  if (valueKind === "number") return integerMask(reader, value);
+  if (valueKind === "number") {return integerMask(reader, value);}
   let mask: FailureMask = 0;
 
   function child(childValue: Value, childPath: Path): void {
@@ -100,9 +100,9 @@ function ownerMask<Value>(
     for (const key of reader.keys(value)) {
       const next = schemaSafeLocalPath(kind, [...path, key]);
       // A probe must not inspect a separate owner's value or descendants.
-      if (visitChild === undefined && next.length !== path.length) continue;
+      if (visitChild === undefined && next.length !== path.length) {continue;}
       const member = reader.own(value, key);
-      if (member.present) child(member.value, next);
+      if (member.present) {child(member.value, next);}
     }
   } else if (valueKind === "array") {
     const length = reader.length(value);
@@ -139,20 +139,20 @@ export function numericFailureMask<Value>(
   kind: "declaration" | "profile",
   safeLocalPath: readonly (string | number)[],
 ): 0 | 1 | 2 | 3 {
-  if (safeLocalPath.length > localPathCapacity(kind)) return 0;
+  if (safeLocalPath.length > localPathCapacity(kind)) {return 0;}
   const path = schemaSafeLocalPath(kind, safeLocalPath);
-  if (path.length !== safeLocalPath.length) return 0;
+  if (path.length !== safeLocalPath.length) {return 0;}
   const reader = view.reader;
   let value = view.root;
   for (const segment of path) {
     if (typeof segment === "string") {
-      if (reader.kind(value) !== "record") return 0;
+      if (reader.kind(value) !== "record") {return 0;}
       const member = reader.own(value, segment);
-      if (!member.present) return 0;
+      if (!member.present) {return 0;}
       value = member.value;
     } else {
       if (reader.kind(value) !== "array" || !Number.isInteger(segment)
-        || segment < 0 || segment >= reader.length(value)) return 0;
+        || segment < 0 || segment >= reader.length(value)) {return 0;}
       value = reader.item(value, segment);
     }
   }
@@ -184,10 +184,10 @@ export function visitRawNumericFailures<Value>(
   const capacity = localPathCapacity(kind);
   let failed = false;
   function emitMask(path: Path, mask: FailureMask): void {
-    if (mask === 0) return;
+    if (mask === 0) {return;}
     failed = true;
-    if ((mask & 1) !== 0) emit(path, "invalid-type");
-    if ((mask & 2) !== 0) emit(path, "invalid-format");
+    if ((mask & 1) !== 0) {emit(path, "invalid-type");}
+    if ((mask & 2) !== 0) {emit(path, "invalid-format");}
   }
   function visitChild(value: Value, path: Path): void {
     if (path.length === capacity) {

@@ -15,7 +15,7 @@ function invalidValue(): never {
 
 function quote(value: string): string {
   // TextEncoder would replace lone surrogates, silently changing content identity.
-  if (!value.isWellFormed()) invalidValue();
+  if (!value.isWellFormed()) {invalidValue();}
   return JSON.stringify(value);
 }
 
@@ -36,15 +36,15 @@ function container(value: object): ContainerFrame {
   const ownKeys = Reflect.ownKeys(value);
   const keys: string[] = [];
   for (const key of ownKeys) {
-    if (typeof key !== "string") invalidValue();
-    if (array && key === "length") continue;
+    if (typeof key !== "string") {invalidValue();}
+    if (array && key === "length") {continue;}
     keys.push(key);
   }
   if (array) {
     // Array-index own keys are returned in index order. Extra keys and holes
     // must fail instead of being dropped or converted to null.
     const length: unknown = Object.getOwnPropertyDescriptor(value, "length")?.value;
-    if (keys.length !== length || keys.some((key, index) => key !== String(index))) invalidValue();
+    if (keys.length !== length || keys.some((key, index) => key !== String(index))) {invalidValue();}
   } else {
     // Default sort compares UTF-16 code units, including numeric-looking keys.
     keys.sort();
@@ -58,7 +58,7 @@ function canonicalize(value: JsonValue): Uint8Array {
   const ancestors = new WeakSet<object>();
   while (stack.length > 0) {
     const frame = stack.pop();
-    if (frame === undefined) break;
+    if (frame === undefined) {break;}
     if (frame.kind === "container") {
       const key = frame.keys[frame.index];
       if (key === undefined) {
@@ -66,8 +66,8 @@ function canonicalize(value: JsonValue): Uint8Array {
         ancestors.delete(frame.value);
         continue;
       }
-      if (frame.index > 0) chunks.push(",");
-      if (!frame.array) chunks.push(quote(key), ":");
+      if (frame.index > 0) {chunks.push(",");}
+      if (!frame.array) {chunks.push(quote(key), ":");}
       frame.index += 1;
       stack.push(frame, { kind: "value", value: member(frame.value, key) });
       continue;
@@ -80,12 +80,12 @@ function canonicalize(value: JsonValue): Uint8Array {
     } else if (typeof current === "boolean") {
       chunks.push(current ? "true" : "false");
     } else if (typeof current === "number") {
-      if (!Number.isFinite(current)) invalidValue();
+      if (!Number.isFinite(current)) {invalidValue();}
       // JCS follows ECMAScript number serialization, including -0 -> 0.
       // The compiler's narrower numeric admission is owned by input-admission.
       chunks.push(JSON.stringify(current));
     } else if (typeof current === "object") {
-      if (ancestors.has(current)) invalidValue();
+      if (ancestors.has(current)) {invalidValue();}
       ancestors.add(current);
       const next = container(current);
       chunks.push(next.array ? "[" : "{");

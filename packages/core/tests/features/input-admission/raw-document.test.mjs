@@ -537,8 +537,9 @@ test('depth overflow reports the actual attempted container before advancing its
   ]) {
     const paths = [];
     let observedEnd;
-    const result = scanRawDocument(bytesOf(source), scanner, defaultBudget, () => {},
-      end => { observedEnd = end; }, path => paths.push(path));
+    const result = scanRawDocument(bytesOf(source), scanner, defaultBudget, () => {}, {
+      replayBoundary: end => { observedEnd = end; }, depthLimit: path => paths.push(path),
+    });
     assert.equal(result.stoppedBy, 'jsonDepth');
     assert.equal(result.maximumDepth, 33);
     assert.deepEqual(paths, [expectedPath]);
@@ -547,7 +548,7 @@ test('depth overflow reports the actual attempted container before advancing its
   }
   let calls = 0;
   const result = scanRawDocument(bytesOf('['.repeat(32) + '0' + ']'.repeat(32)), scanner, defaultBudget,
-    () => {}, undefined, () => { calls += 1; });
+    () => {}, { depthLimit: () => { calls += 1; } });
   assert.equal(result.decoded, true);
   assert.equal(calls, 0);
 });

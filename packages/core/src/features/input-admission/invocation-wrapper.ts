@@ -28,7 +28,7 @@ type OwnData = { readonly value: unknown };
 
 function ownData(value: object, key: string): OwnData | undefined {
   const descriptor = getOwnDescriptor(value, key);
-  if (descriptor === undefined || !hasOwn(descriptor, "value")) return undefined;
+  if (descriptor === undefined || !hasOwn(descriptor, "value")) {return undefined;}
   return descriptor as OwnData;
 }
 
@@ -55,7 +55,7 @@ export function inspectInvocation(input: unknown, entry: "object" | "raw"): Wrap
   if (!isArray(list) || (entry === "object" && getPrototypeOf(list) !== arrayPrototype)) {
     return invalidWrapper(profileField === undefined ? ["declarations", "profile"] : ["declarations"]);
   }
-  if (profileField === undefined) return invalidWrapper(["profile"]);
+  if (profileField === undefined) {return invalidWrapper(["profile"]);}
 
   // Both own wrapper fields must pass before length establishes count evidence.
   // Ordinary genuine arrays always supply an own integer data length.
@@ -63,7 +63,7 @@ export function inspectInvocation(input: unknown, entry: "object" | "raw"): Wrap
   if (typeof count !== "number" || !isInteger(count) || count < 0 || count > 4_294_967_295) {
     return invalidWrapper(["declarations"]);
   }
-  if (count > admissionLimits.declarations) return freeze({ kind: "declarations-limit" });
+  if (count > admissionLimits.declarations) {return freeze({ kind: "declarations-limit" });}
 
   // Allocate only after count admission. Read canonical own data indices,
   // ignoring enumerability, additional keys and every iterable hook.
@@ -71,7 +71,7 @@ export function inspectInvocation(input: unknown, entry: "object" | "raw"): Wrap
   for (let ordinal = 0; ordinal < count; ordinal += 1) {
     const key = `${ordinal}`;
     const item = ownData(list, key);
-    if (item === undefined) return invalidWrapper(["declarations"]);
+    if (item === undefined) {return invalidWrapper(["declarations"]);}
     defineProperty(declarations, key, {
       value: item.value, enumerable: true, configurable: true, writable: true,
     });

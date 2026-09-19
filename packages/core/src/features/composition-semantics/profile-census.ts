@@ -13,21 +13,25 @@ export type ProfileCensus = {
   readonly hasErrors: boolean;
 };
 
-/** Whole-schema-admitted owned profile; census completeness is a precondition. */
-export function createProfileCensus(profile: CompositionProfile, declarations: DeclarationCensus,
-  collector: Pick<DiagnosticCollector, "addUnique">): ProfileCensus {
+function groupSelections(profile: CompositionProfile): {
+  readonly groups: Map<string, Selection[]>;
+  readonly selected: Set<string>;
+} {
   const groups = new Map<string, Selection[]>();
   const selected = new Set<string>();
   for (const row of profile.selections) {
     selected.add(row.implementationId);
     const group = groups.get(row.moduleId);
-    if (group) group.push(row);
-    else groups.set(row.moduleId, [row]);
+    if (group) {group.push(row);}
+    else {groups.set(row.moduleId, [row]);}
   }
+  return { groups, selected };
+}
+
+function validateSelectionGroups(groups: Map<string, Selection[]>, declarations: DeclarationCensus,
+  add: DiagnosticCollector["addUnique"]): { readonly selectionsUnique: boolean; readonly selectionsResolved: boolean } {
   let selectionsUnique = true;
   let selectionsResolved = true;
-  let hasErrors = false;
-  const add: DiagnosticCollector["addUnique"] = diagnostic => { hasErrors = true; collector.addUnique(diagnostic); };
   for (const [moduleId, rows] of groups) {
     if (rows.length > 1) {
       selectionsUnique = false;
@@ -39,12 +43,10 @@ export function createProfileCensus(profile: CompositionProfile, declarations: D
       add(Object.freeze({ code: "profile.unknown-module", phase: "profile", path: Object.freeze([]),
         coordinate: Object.freeze({ moduleId }), details: Object.freeze({ reason: "unknown" }) }));
     }
-    // Repeated equal rows have one normalized semantic coordinate. Distinct
-    // rows of an ambiguous module are all checked; none is the chosen winner.
     for (const implementationId of new Set(rows.map(row => row.implementationId))) {
       const known = declarations.implementation(implementationId);
-      if (!known || known.declaration.moduleId !== moduleId) selectionsResolved = false;
-      if (!declarations.identityCensusComplete) continue;
+      if (!known || known.declaration.moduleId !== moduleId) {selectionsResolved = false;}
+      if (!declarations.identityCensusComplete) {continue;}
       if (known === undefined) {
         add(Object.freeze({ code: "profile.unknown-implementation", phase: "profile", path: Object.freeze([]),
           coordinate: Object.freeze({ moduleId, implementationId }), details: Object.freeze({ reason: "unknown" }) }));
@@ -54,43 +56,60 @@ export function createProfileCensus(profile: CompositionProfile, declarations: D
       }
     }
   }
+  return { selectionsUnique, selectionsResolved };
+}
+
+function resolveRoots(profile: CompositionProfile, groups: Map<string, Selection[]>, declarations: DeclarationCensus,
+  selectionsResolved: boolean, add: DiagnosticCollector["addUnique"]): readonly string[] | null {
   const roots = new Map<string, number>();
-  for (const moduleId of profile.roots) roots.set(moduleId, (roots.get(moduleId) ?? 0) + 1);
-  // Closure requires every selection to resolve, including non-root rows.
-  let rootsResolved = selectionsResolved;
-  const resolvedRoots: string[] = [];
+  for (const moduleId of profile.roots) {roots.set(moduleId, (roots.get(moduleId) ?? 0) + 1);}
+  let resolved = selectionsResolved;
+  const result: string[] = [];
   for (const [moduleId, count] of roots) {
     if (count > 1) {
-      rootsResolved = false;
+      resolved = false;
       add(Object.freeze({ code: "profile.duplicate-root", phase: "profile", path: Object.freeze([]),
         coordinate: Object.freeze({ moduleId }), details: Object.freeze({ reason: "duplicate" }) }));
     }
     const rows = groups.get(moduleId);
-    if (declarations.moduleCensusComplete) {
-      if (!declarations.hasModule(moduleId)) {
-        add(Object.freeze({ code: "profile.unknown-root", phase: "profile", path: Object.freeze([]),
-          coordinate: Object.freeze({ moduleId }), details: Object.freeze({ reason: "unknown" }) }));
-      } else if (!rows) {
-        add(Object.freeze({ code: "profile.missing-selection", phase: "profile", path: Object.freeze([]),
-          coordinate: Object.freeze({ moduleId }), details: Object.freeze({ reason: "missing" }) }));
-      }
+    if (declarations.moduleCensusComplete && !declarations.hasModule(moduleId)) {
+      add(Object.freeze({ code: "profile.unknown-root", phase: "profile", path: Object.freeze([]),
+        coordinate: Object.freeze({ moduleId }), details: Object.freeze({ reason: "unknown" }) }));
+    } else if (declarations.moduleCensusComplete && !rows) {
+      add(Object.freeze({ code: "profile.missing-selection", phase: "profile", path: Object.freeze([]),
+        coordinate: Object.freeze({ moduleId }), details: Object.freeze({ reason: "missing" }) }));
     }
     const known = rows?.length === 1 ? declarations.implementation(rows[0]!.implementationId) : undefined;
-    if (known && known.declaration.moduleId === moduleId) resolvedRoots.push(known.declaration.implementationId);
-    else rootsResolved = false;
+    if (known && known.declaration.moduleId === moduleId) {result.push(known.declaration.implementationId);}
+    else {resolved = false;}
   }
-  const selectedImplementationIds = [...selected].sort();
-  const resolvedNodes: DeclaredImplementation[] = [];
-  let nodesResolved = true;
+  return resolved ? Object.freeze(result.toSorted()) : null;
+}
+
+function resolveNodes(selectedImplementationIds: readonly string[], declarations: DeclarationCensus): readonly DeclaredImplementation[] | null {
+  const result: DeclaredImplementation[] = [];
   for (const id of selectedImplementationIds) {
     const known = declarations.implementation(id);
-    if (known) resolvedNodes.push(known);
-    else nodesResolved = false;
+    if (!known) {return null;}
+    result.push(known);
   }
+  return Object.freeze(result);
+}
+
+/** Whole-schema-admitted owned profile; census completeness is a precondition. */
+export function createProfileCensus(profile: CompositionProfile, declarations: DeclarationCensus,
+  collector: Pick<DiagnosticCollector, "addUnique">): ProfileCensus {
+  const { groups, selected } = groupSelections(profile);
+  let hasErrors = false;
+  const add: DiagnosticCollector["addUnique"] = diagnostic => { hasErrors = true; collector.addUnique(diagnostic); };
+  const { selectionsUnique, selectionsResolved } = validateSelectionGroups(groups, declarations, add);
+  const selectedImplementationIds = [...selected].toSorted();
+  const resolvedNodes = resolveNodes(selectedImplementationIds, declarations);
+  // Closure requires every selection to resolve, including non-root rows.
+  const resolvedRoots = resolveRoots(profile, groups, declarations, selectionsResolved, add);
   return Object.freeze({ selection: (id: string) => {
     const rows = groups.get(id);
     return rows ? rows.length === 1 ? rows[0]! : null : undefined;
   }, isSelected: (id: string) => selected.has(id), selectedImplementationIds: Object.freeze(selectedImplementationIds),
-  resolvedNodes: nodesResolved ? Object.freeze(resolvedNodes) : null,
-  resolvedRoots: rootsResolved && nodesResolved ? Object.freeze(resolvedRoots.sort()) : null, selectionsUnique, hasErrors });
+  resolvedNodes, resolvedRoots: resolvedNodes === null ? null : resolvedRoots, selectionsUnique, hasErrors });
 }
