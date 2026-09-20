@@ -17,8 +17,6 @@ catalog:
   typescript-minimum: npm:typescript@5.8.3
   yaml: 2.9.0
 
-minimumReleaseAge: 1440
-minimumReleaseAgeStrict: true
 
 # Source refresh only; final archive binding and exception admission await release coordination.
 minimumReleaseAgeExclude:
