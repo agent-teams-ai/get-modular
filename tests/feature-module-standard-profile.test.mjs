@@ -135,19 +135,13 @@ test("rejects wildcard and mismatched module, source, and test roots", () => {
 });
 
 // Accepted source pins; final archive binding and publication verification remain pending.
-test("pins the accepted Foundation and Docs source versions with exact age exclusions", async () => {
+test("pins accepted Foundation and Docs versions with release-age waiting disabled", async () => {
   const workspace = parse(await readFile("pnpm-workspace.yaml", "utf8"));
   assert.equal(packageJson.devDependencies["@agent-teams/engineering-foundation"], "1.2.0");
   assert.equal(packageJson.devDependencies["@agent-teams/docs-protocol"], "0.6.0");
   assert.equal(profile.adoption.admission.foundation.version, "1.2.0");
   assert.equal(workspace.minimumReleaseAge, 0);
   assert.equal(workspace.minimumReleaseAgeStrict, undefined);
-  assert.deepEqual(workspace.minimumReleaseAgeExclude, [
-    "@agent-teams/docs-protocol@0.6.0",
-    "@agent-teams/engineering-foundation@1.2.0",
-    "@agent-teams/document-authoring@0.3.0",
-    "@agent-teams/repository-mutation@0.2.0",
-  ]);
 });
 
 // Synthetic Core-only scenarios retain the empty/pre-production guard coverage.
