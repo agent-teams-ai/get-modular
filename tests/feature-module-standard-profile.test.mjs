@@ -140,7 +140,7 @@ test("pins the accepted Foundation and Docs source versions with exact age exclu
   assert.equal(packageJson.devDependencies["@agent-teams/engineering-foundation"], "1.2.0");
   assert.equal(packageJson.devDependencies["@agent-teams/docs-protocol"], "0.6.0");
   assert.equal(profile.adoption.admission.foundation.version, "1.2.0");
-  assert.equal(workspace.minimumReleaseAge, undefined);
+  assert.equal(workspace.minimumReleaseAge, 0);
   assert.equal(workspace.minimumReleaseAgeStrict, undefined);
   assert.deepEqual(workspace.minimumReleaseAgeExclude, [
     "@agent-teams/docs-protocol@0.6.0",
