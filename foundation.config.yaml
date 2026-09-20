@@ -1,4 +1,4 @@
-schemaVersion: 1
+schemaVersion: 2
 project:
   id: get-modular
 capabilities:
@@ -14,3 +14,7 @@ capabilities:
     configPath: architecture/foundation/dependency-declarations.yaml
   package.public-api-compatibility:
     configPath: architecture/foundation/public-api-compatibility.yaml
+  quality.source-coverage:
+    configPath: architecture/foundation/quality-source-coverage.yaml
+  quality.suppression-governance:
+    configPath: architecture/foundation/suppression-governance.yaml

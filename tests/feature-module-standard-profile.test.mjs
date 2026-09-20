@@ -8,7 +8,9 @@ import { parse } from "yaml";
 import {
   PROFILE_DOCUMENT_PATH,
   PROFILE_PATH,
+  QUALITY_SOURCE_COVERAGE_PATH,
   SOURCE_DEPENDENCY_POLICY_PATH,
+  SUPPRESSION_GOVERNANCE_PATH,
   validateFeatureModuleStandardProfile,
   publicationBlockers,
   validateFirstProductionPackageAdmission,
@@ -27,6 +29,11 @@ const docsIndex = await readFile("docs/README.md", "utf8");
 const agentInstructions = await readFile("AGENTS.md", "utf8");
 const packageJson = JSON.parse(await readFile("package.json", "utf8"));
 const clone = value => structuredClone(value);
+const foundationCapabilities = () => ({
+  "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
+  "quality.source-coverage": { configPath: QUALITY_SOURCE_COVERAGE_PATH },
+  "quality.suppression-governance": { configPath: SUPPRESSION_GOVERNANCE_PATH },
+});
 const coreManifest = new Map([
   ["packages/core/package.json", { name: "@get-modular/core", private: true }],
 ]);
@@ -135,13 +142,14 @@ test("rejects wildcard and mismatched module, source, and test roots", () => {
 });
 
 // Accepted source pins; final archive binding and publication verification remain pending.
-test("pins accepted Foundation and Docs versions with release-age waiting disabled", async () => {
+test("pins the accepted Foundation and Docs source versions without age exclusions", async () => {
   const workspace = parse(await readFile("pnpm-workspace.yaml", "utf8"));
-  assert.equal(packageJson.devDependencies["@agent-teams/engineering-foundation"], "1.2.0");
+  assert.equal(packageJson.devDependencies["@agent-teams/engineering-foundation"], "1.4.0");
   assert.equal(packageJson.devDependencies["@agent-teams/docs-protocol"], "0.6.0");
-  assert.equal(profile.adoption.admission.foundation.version, "1.2.0");
+  assert.equal(profile.adoption.admission.foundation.version, "1.4.0");
   assert.equal(workspace.minimumReleaseAge, 0);
   assert.equal(workspace.minimumReleaseAgeStrict, undefined);
+  assert.equal(workspace.minimumReleaseAgeExclude, undefined);
 });
 
 // Synthetic Core-only scenarios retain the empty/pre-production guard coverage.
@@ -152,9 +160,7 @@ function versionAdmissionInput() {
     productionPackageManifests: coreManifest,
     admission: clone(profile.adoption.admission),
     foundationConfig: {
-      capabilities: {
-        "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
-      },
+      capabilities: foundationCapabilities(),
     },
     packageJson: clone(packageJson),
     sourceDependencyPolicyPresent: true,
@@ -163,13 +169,14 @@ function versionAdmissionInput() {
 
 // Literal counterexamples must not follow the checker or an installed package's version.
 const rejectedFoundationPins = [
-  "0.21.0", "1.0.1", "1.1.0", "1.1.1", "2.0.0", "^1.2.0", "~1.2.0", "*", undefined,
+  "0.21.0", "1.0.1", "1.1.0", "1.1.1", "1.2.0", "2.0.0", "^1.4.0", "~1.4.0",
+  "*", undefined,
 ];
 
-test("accepts exactly Foundation 1.2.0 for source and empty pre-production guard inputs", () => {
+test("accepts exactly Foundation 1.4.0 for source and empty pre-production guard inputs", () => {
   const input = versionAdmissionInput();
-  input.packageJson.devDependencies["@agent-teams/engineering-foundation"] = "1.2.0";
-  input.admission.foundation.version = "1.2.0";
+  input.packageJson.devDependencies["@agent-teams/engineering-foundation"] = "1.4.0";
+  input.admission.foundation.version = "1.4.0";
   assert.equal(validateFirstProductionPackageAdmission(input), SOURCE_DEPENDENCY_POLICY_PATH);
   input.productionArtifacts = [];
   input.admission.status = "pre-production";
@@ -186,7 +193,7 @@ test("rejects stale, mismatched, ranged and missing Foundation manifest pins bef
         input.admission.status = "pre-production";
       }
       assert.throws(() => validateFirstProductionPackageAdmission(input),
-        /@agent-teams\/engineering-foundation must remain pinned to 1\.2\.0/u,
+        /@agent-teams\/engineering-foundation must remain pinned to 1\.4\.0/u,
         `manifest ${String(version)}, empty inventory ${empty}`);
     }
   }
@@ -210,7 +217,7 @@ test("matching manifest and profile versions cannot replace the exact Foundation
     input.packageJson.devDependencies["@agent-teams/engineering-foundation"] = version;
     input.admission.foundation.version = version;
     assert.throws(() => validateFirstProductionPackageAdmission(input),
-      /@agent-teams\/engineering-foundation must remain pinned to 1\.2\.0/u);
+      /@agent-teams\/engineering-foundation must remain pinned to 1\.4\.0/u);
     const changed = clone(profile);
     changed.adoption.admission = input.admission;
     assert.throws(() => validate({ profile: changed, packageJson: input.packageJson }),
@@ -218,7 +225,7 @@ test("matching manifest and profile versions cannot replace the exact Foundation
   }
 });
 
-test("admits current Core and Assembly only with the exact Foundation 1.2.0 binding", async () => {
+test("admits current Core and Assembly only with the exact Foundation 1.4.0 binding", async () => {
   const manifests = new Map(await Promise.all([
     "packages/core/package.json", "packages/assembly/package.json",
   ].map(async path => [path, JSON.parse(await readFile(path, "utf8"))])));
@@ -247,7 +254,7 @@ test("admits current Core and Assembly only with the exact Foundation 1.2.0 bind
       if (binding !== "manifest") changed.admission.foundation.version = version;
       assert.throws(() => validateFirstProductionPackageAdmission(changed),
         binding === "profile" ? /Foundation admission binding does not match/u
-          : /@agent-teams\/engineering-foundation must remain pinned to 1\.2\.0/u,
+          : /@agent-teams\/engineering-foundation must remain pinned to 1\.4\.0/u,
         `Core+Assembly ${binding} ${String(version)}`);
     }
   }
@@ -382,6 +389,8 @@ test("requires profile enforcement in complete and fast gates", () => {
     "foundation:check",
     "foundation:assert-dev-only",
     "foundation:assert-registry",
+    "quality:coverage:scope",
+    "lint:typed",
     "governance:check",
     "governance:test",
     "qualification:resource-profile",
@@ -510,9 +519,7 @@ test("first production package requires the Foundation source-dependency gate", 
   }
 
   const configured = clone(input);
-  configured.foundationConfig.capabilities = {
-    "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
-  };
+  configured.foundationConfig.capabilities = foundationCapabilities();
   assert.throws(() => validateFirstProductionPackageAdmission(configured),
     /first production package requires/u);
 
@@ -574,9 +581,7 @@ test("first production package cannot use a no-op Foundation alias", () => {
     productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts"],
     admission: { ...profile.adoption.admission, status: "source-admitted" },
     foundationConfig: {
-      capabilities: {
-        "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
-      },
+      capabilities: foundationCapabilities(),
     },
     packageJson: packageWithNoOp,
     sourceDependencyPolicyPresent: true,
@@ -590,9 +595,7 @@ test("first production package cannot use a no-op Foundation alias", () => {
     productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts"],
     admission: { ...profile.adoption.admission, status: "source-admitted" },
     foundationConfig: {
-      capabilities: {
-        "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
-      },
+      capabilities: foundationCapabilities(),
     },
     packageJson: commented,
     sourceDependencyPolicyPresent: true,
@@ -607,9 +610,7 @@ test("first production package cannot use a no-op Foundation alias", () => {
       productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts"],
       admission: { ...profile.adoption.admission, status: "source-admitted" },
       foundationConfig: {
-        capabilities: {
-          "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
-        },
+        capabilities: foundationCapabilities(),
       },
       packageJson: noOp,
       sourceDependencyPolicyPresent: true,
@@ -627,9 +628,7 @@ test("rejects unknown package identities even with no active publication blocker
     ]),
     admission: { ...profile.adoption.admission, status: "source-admitted" },
     foundationConfig: {
-      capabilities: {
-        "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
-      },
+      capabilities: foundationCapabilities(),
     },
     packageJson,
     sourceDependencyPolicyPresent: true,
@@ -647,9 +646,7 @@ test("rejects publication fields on an otherwise accepted private package", () =
     ]),
     admission: { ...profile.adoption.admission, status: "source-admitted" },
     foundationConfig: {
-      capabilities: {
-        "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
-      },
+      capabilities: foundationCapabilities(),
     },
     packageJson,
     sourceDependencyPolicyPresent: true,
@@ -661,9 +658,7 @@ test("rejects an unmanifested or nested production package root", () => {
     publicationBlockerIds: new Set(["OD-005"]),
     admission: { ...profile.adoption.admission, status: "source-admitted" },
     foundationConfig: {
-      capabilities: {
-        "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
-      },
+      capabilities: foundationCapabilities(),
     },
     packageJson,
     sourceDependencyPolicyPresent: true,
@@ -760,9 +755,7 @@ test("admits the accepted export map once no publication blocker remains", () =>
     admission: { ...profile.adoption.admission, status: "source-admitted" },
     foundationConfig: {
       schemaVersion: 1,
-      capabilities: {
-        "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
-      },
+      capabilities: foundationCapabilities(),
     },
     packageJson,
     sourceDependencyPolicyPresent: true,
@@ -847,9 +840,7 @@ test("ADR-0023 and ADR-0025 admit historical private and canonical public Assemb
     productionPackageManifests: new Map([...coreManifest, [manifestPath, manifest]]),
     admission: { ...profile.adoption.admission, status: "source-admitted" },
     foundationConfig: {
-      capabilities: {
-        "architecture.source-dependencies": { configPath: SOURCE_DEPENDENCY_POLICY_PATH },
-      },
+      capabilities: foundationCapabilities(),
     },
     packageJson,
     sourceDependencyPolicyPresent: true,
@@ -985,3 +976,14 @@ test("routes Docs through portable v3 authoring without managed activation", asy
   assert.ok(skill.includes("markdownLink"));
   assert.ok(skill.includes("indexPath"));
 });
+
+for (const capability of ["quality.source-coverage", "quality.suppression-governance"]) {
+  test(`source admission rejects removed or redirected ${capability}`, () => {
+    const missing = versionAdmissionInput();
+    delete missing.foundationConfig.capabilities[capability];
+    assert.throws(() => validateFirstProductionPackageAdmission(missing), /capability/u);
+    const redirected = versionAdmissionInput();
+    redirected.foundationConfig.capabilities[capability].configPath = "unreviewed.yaml";
+    assert.throws(() => validateFirstProductionPackageAdmission(redirected), /must use/u);
+  });
+}

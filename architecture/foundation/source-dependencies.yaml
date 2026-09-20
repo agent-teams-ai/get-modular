@@ -461,6 +461,7 @@ boundaries:
       - architecture/tooling/test-assembly-types.mjs
       - tests/qualification/m2-candidate/combined-case-inventory.mjs
       - tests/qualification/m2-candidate/generation-two-artifacts.mjs
+      - tests/quality-activation.test.mjs
       - tests/source-dependencies.test.mjs
     allow:
       boundaries:

@@ -96,11 +96,16 @@ production. The first production package must atomically:
 - change the admission state to `source-admitted`;
 - enable Engineering Foundation's `architecture.source-dependencies`
   capability at `architecture/foundation/source-dependencies.yaml`; and
-- execute the pinned `@agent-teams/engineering-foundation` `1.2.0` command
+- execute the pinned `@agent-teams/engineering-foundation` `1.4.0` command
   `agent-teams-foundation check` through both the complete and fast gates.
 
-The `1.2.0` source pin is accepted. Registry publication and final installed
-archive qualification remain pending; this source refresh claims neither.
+The tooling activation pins Foundation `1.4.0`. The published
+`quality.source-coverage` route uses the existing production profile and source
+policy: `quality:coverage:scope` runs in the fast gate and `lint:typed` runs in
+the complete gate. Suppression governance covers Core and Assembly source with
+no waivers. Activation does not claim that existing source passes typed lint
+or establish structural or runtime conformance. Docs retains its portable
+workflow without a managed adapter or cohort binding.
 
 The gate resolves the checked-in `foundation:check` script to that actual
 Foundation command, so replacing the script with a successful no-op cannot

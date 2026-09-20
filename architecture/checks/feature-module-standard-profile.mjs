@@ -18,11 +18,15 @@ export const PROFILE_PATH = "architecture/feature-module-standard-profile.json";
 export const PROFILE_DOCUMENT_PATH = "docs/architecture/feature-module-standard.md";
 export const SOURCE_DEPENDENCY_POLICY_PATH =
   "architecture/foundation/source-dependencies.yaml";
+export const QUALITY_SOURCE_COVERAGE_PATH =
+  "architecture/foundation/quality-source-coverage.yaml";
+export const SUPPRESSION_GOVERNANCE_PATH =
+  "architecture/foundation/suppression-governance.yaml";
 export const TRACEABILITY_PATH = "docs/traceability/module-system-v1.yaml";
 
 const FOUNDATION_ADMISSION = Object.freeze({
   package: "@agent-teams/engineering-foundation",
-  version: "1.2.0",
+  version: "1.4.0",
   command: "agent-teams-foundation check",
   capability: "architecture.source-dependencies",
   policy: SOURCE_DEPENDENCY_POLICY_PATH,
@@ -33,7 +37,7 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "architecture:feature-module-profile":
     "node architecture/checks/feature-module-standard-profile.mjs",
   "architecture:feature-module-profile:test":
-    "node --test tests/feature-module-standard-profile.test.mjs tests/source-dependencies.test.mjs tests/release-owned-files.test.mjs tests/public-api-compatibility.test.mjs",
+    "node --test tests/feature-module-standard-profile.test.mjs tests/source-dependencies.test.mjs tests/quality-activation.test.mjs tests/release-owned-files.test.mjs tests/public-api-compatibility.test.mjs",
   "core:typecheck":
     "node architecture/tooling/generate-core.mjs --typecheck",
   "core:typecheck:prepared":
@@ -51,6 +55,9 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "foundation:assert-dev-only": "agent-teams-foundation assert-dev-only",
   "foundation:assert-registry": "agent-teams-foundation assert-registry",
   "foundation:check": FOUNDATION_CHECK_SCRIPT,
+  "quality:coverage:scope":
+    "agent-teams-foundation quality check --consumer . --scope-only",
+  "lint:typed": "agent-teams-foundation quality check --consumer .",
   "governance:check": "node architecture/checks/governance.mjs",
   "governance:test": "node --test tests/governance.test.mjs tests/assembly-admission.test.mjs tests/private-core-start.test.mjs tests/m3-start.test.mjs tests/generated-production-source.test.mjs",
   "qualification:resource-profile": "node tests/qualification/v1-resource-profile.mjs",
@@ -71,6 +78,7 @@ const ROOT_SCRIPT_COMMANDS = Object.freeze({
     "release-owned-files:check",
     "assembly:build",
     "foundation:check",
+    "lint:typed",
     "docs:protocol:check",
     "architecture:feature-module-profile",
     "architecture:feature-module-profile:test",
@@ -90,6 +98,7 @@ const ROOT_SCRIPT_COMMANDS = Object.freeze({
     "runtime:preflight",
     "assembly:build",
     "foundation:check",
+    "quality:coverage:scope",
     "architecture:feature-module-profile",
     "docs:check",
     "core:typecheck:prepared",
@@ -357,6 +366,15 @@ export function validateFirstProductionPackageAdmission({
   exactKeys(capability, ["configPath"], `${FOUNDATION_ADMISSION.capability} capability`);
   assert(capability.configPath === SOURCE_DEPENDENCY_POLICY_PATH,
     `${FOUNDATION_ADMISSION.capability} must use ${SOURCE_DEPENDENCY_POLICY_PATH}`);
+  const qualityCapability = foundationConfig?.capabilities?.["quality.source-coverage"];
+  exactKeys(qualityCapability, ["configPath"], "quality.source-coverage capability");
+  assert(qualityCapability.configPath === QUALITY_SOURCE_COVERAGE_PATH,
+    `quality.source-coverage must use ${QUALITY_SOURCE_COVERAGE_PATH}`);
+  const suppressionCapability =
+    foundationConfig?.capabilities?.["quality.suppression-governance"];
+  exactKeys(suppressionCapability, ["configPath"], "quality.suppression-governance capability");
+  assert(suppressionCapability.configPath === SUPPRESSION_GOVERNANCE_PATH,
+    `quality.suppression-governance must use ${SUPPRESSION_GOVERNANCE_PATH}`);
   assert(sourceDependencyPolicyPresent,
     `first production package requires ${SOURCE_DEPENDENCY_POLICY_PATH}`);
 

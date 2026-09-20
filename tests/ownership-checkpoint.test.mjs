@@ -89,12 +89,28 @@ test("C0 schema admits the observed checkpoint and rejects premature activation"
   }
 });
 
-test("observations bind exact base bytes, callable contract and current CMS", () => {
+test("observations bind historical lock bytes, production importers and current CMS", () => {
   assert.equal(checkpoint.evidence.base, "ac49bb3374946330ec820591f8195a22d2c90900");
   assert.equal(digest(declaration), checkpoint.contract.digest);
   assert.equal(digest(readFileSync(checkpoint.contract.decisionPath)), checkpoint.contract.decisionDigest);
+  // ADR-0028 records the lock at its observed base, not a perpetual tooling pin.
+  // Authenticate those bytes while retaining the same production workspace graph.
+  const historicalLockBytes = execFileSync("git", ["show",
+    `${checkpoint.evidence.base}:pnpm-lock.yaml`]);
+  assert.equal(digest(historicalLockBytes), checkpoint.evidence.lockDigest);
+  const historicalImporters = parse(historicalLockBytes.toString("utf8")).importers;
+  const currentImporters = parse(readFileSync("pnpm-lock.yaml", "utf8")).importers;
+  assert.deepEqual(Object.keys(currentImporters).sort(), Object.keys(historicalImporters).sort());
+  for (const [path, importer] of Object.entries(historicalImporters)) {
+    if (path === ".") {
+      for (const field of ["dependencies", "optionalDependencies"]) {
+        assert.deepEqual(currentImporters[path][field], importer[field], field);
+      }
+    } else {
+      assert.deepEqual(currentImporters[path], importer, path);
+    }
+  }
   for (const [path, expected] of [
-    ["pnpm-lock.yaml", checkpoint.evidence.lockDigest],
     [checkpoint.evidence.cms.path, checkpoint.evidence.cms.digest],
   ]) {
     const bytes = execFileSync("git", ["show", `${checkpoint.evidence.base}:${path}`]);
