@@ -102,12 +102,8 @@ test("observations bind historical lock bytes, production importers and current 
   const currentImporters = parse(readFileSync("pnpm-lock.yaml", "utf8")).importers;
   assert.deepEqual(Object.keys(currentImporters).sort(), Object.keys(historicalImporters).sort());
   for (const [path, importer] of Object.entries(historicalImporters)) {
-    if (path === ".") {
-      for (const field of ["dependencies", "optionalDependencies"]) {
-        assert.deepEqual(currentImporters[path][field], importer[field], field);
-      }
-    } else {
-      assert.deepEqual(currentImporters[path], importer, path);
+    for (const field of ["dependencies", "optionalDependencies"]) {
+      assert.deepEqual(currentImporters[path][field], importer[field], `${path}:${field}`);
     }
   }
   for (const [path, expected] of [

@@ -367,6 +367,7 @@ export function validateFirstProductionPackageAdmission({
   assert(capability.configPath === SOURCE_DEPENDENCY_POLICY_PATH,
     `${FOUNDATION_ADMISSION.capability} must use ${SOURCE_DEPENDENCY_POLICY_PATH}`);
   const qualityCapability = foundationConfig?.capabilities?.["quality.source-coverage"];
+  assert(qualityCapability !== undefined, "quality.source-coverage capability is required");
   exactKeys(qualityCapability, ["configPath"], "quality.source-coverage capability");
   assert(qualityCapability.configPath === QUALITY_SOURCE_COVERAGE_PATH,
     `quality.source-coverage must use ${QUALITY_SOURCE_COVERAGE_PATH}`);

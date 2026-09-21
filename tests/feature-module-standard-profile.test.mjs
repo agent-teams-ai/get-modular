@@ -254,7 +254,7 @@ test("admits current Core and Assembly only with the exact Foundation 1.4.1 bind
       if (binding !== "manifest") changed.admission.foundation.version = version;
       assert.throws(() => validateFirstProductionPackageAdmission(changed),
         binding === "profile" ? /Foundation admission binding does not match/u
-          : /@agent-teams\/engineering-foundation must remain pinned to 1\.4\.0/u,
+          : /@agent-teams\/engineering-foundation must remain pinned to 1\.4\.1/u,
         `Core+Assembly ${binding} ${String(version)}`);
     }
   }
@@ -981,7 +981,10 @@ for (const capability of ["quality.source-coverage", "quality.suppression-govern
   test(`source admission rejects removed or redirected ${capability}`, () => {
     const missing = versionAdmissionInput();
     delete missing.foundationConfig.capabilities[capability];
-    assert.throws(() => validateFirstProductionPackageAdmission(missing), /capability/u);
+    assert.throws(() => validateFirstProductionPackageAdmission(missing),
+      capability === "quality.source-coverage"
+        ? /quality\.source-coverage capability is required/u
+        : /capability/u);
     const redirected = versionAdmissionInput();
     redirected.foundationConfig.capabilities[capability].configPath = "unreviewed.yaml";
     assert.throws(() => validateFirstProductionPackageAdmission(redirected), /must use/u);

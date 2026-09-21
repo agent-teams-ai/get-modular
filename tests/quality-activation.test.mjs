@@ -17,6 +17,7 @@ const cli = join(dirname(manifestPath), foundationPackage.bin["agent-teams-found
 const workspace = parse(await readFile("pnpm-workspace.yaml", "utf8"));
 const oxlintPackage = JSON.parse(await readFile("node_modules/oxlint/package.json", "utf8"));
 const typedPackage = JSON.parse(await readFile("node_modules/oxlint-tsgolint/package.json", "utf8"));
+const typescriptPackage = JSON.parse(await readFile("node_modules/typescript/package.json", "utf8"));
 
 async function writeFixtureFile(root, path, contents) {
   const target = join(root, path);
@@ -54,6 +55,7 @@ async function copyQualityToolchain(root) {
 
 async function createFixture(mutator = () => {}) {
   const root = await mkdtemp(join(tmpdir(), "gm-quality-activation-"));
+  try {
   const files = new Map([
     ["package.json", JSON.stringify({
       name: "quality-activation-fixture",
@@ -206,6 +208,14 @@ async function createFixture(mutator = () => {}) {
   await mutator(files);
   for (const [path, contents] of files) await writeFixtureFile(root, path, contents);
   return root;
+  } catch (error) {
+    await rm(root, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+function commandFailureDetails(error) {
+  return [error.stderr, error.stdout].filter(Boolean).join("\n") || String(error);
 }
 
 async function foundationCheck(root, capability) {
@@ -221,7 +231,7 @@ async function foundationCheck(root, capability) {
     ], { timeout: 90_000, maxBuffer: 2_000_000 });
     return JSON.parse(result.stdout);
   } catch (error) {
-    assert.ok([1, 2, 3].includes(error.code), error.stderr ?? String(error));
+    assert.ok([1, 2, 3].includes(error.code), commandFailureDetails(error));
     return JSON.parse(error.stdout);
   }
 }
@@ -239,7 +249,7 @@ async function fullQualityCheck(root) {
     ], { timeout: 90_000, maxBuffer: 2_000_000 });
     return JSON.parse(result.stdout);
   } catch (error) {
-    assert.ok([1, 2, 3].includes(error.code), error.stderr ?? String(error));
+    assert.ok([1, 2, 3].includes(error.code), commandFailureDetails(error));
     return JSON.parse(error.stdout);
   }
 }
@@ -253,6 +263,7 @@ test("activates exact published Foundation quality pins", () => {
   assert.equal(foundationPackage.version, "1.4.1");
   assert.equal(oxlintPackage.version, "1.83.0");
   assert.equal(typedPackage.version, "7.0.2001");
+  assert.equal(typescriptPackage.version, "7.0.2");
   assert.equal(workspace.patchedDependencies, undefined);
 });
 
