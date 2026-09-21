@@ -21,6 +21,3 @@ catalog:
 
 # Source refresh only; final archive binding and exception admission await release coordination.
 minimumReleaseAge: 0
-
-patchedDependencies:
-  '@agent-teams/engineering-foundation@1.4.0': patches/@agent-teams__engineering-foundation@1.4.0.patch

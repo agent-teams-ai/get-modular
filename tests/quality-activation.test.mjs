@@ -66,7 +66,7 @@ async function createFixture(mutator = () => {}) {
         "lint:typed": "agent-teams-foundation quality check --consumer .",
       },
       devDependencies: {
-        "@agent-teams/engineering-foundation": "1.4.0",
+        "@agent-teams/engineering-foundation": "1.4.1",
         oxlint: "1.83.0",
         "oxlint-tsgolint": "7.0.2001",
         typescript: "7.0.2",
@@ -184,7 +184,7 @@ async function createFixture(mutator = () => {}) {
     ["packages/assembly/src/index.ts", "export const assembly = 1;\n"],
     [
       "node_modules/@agent-teams/engineering-foundation/package.json",
-      JSON.stringify({ name: "@agent-teams/engineering-foundation", version: "1.4.0" }),
+      JSON.stringify({ name: "@agent-teams/engineering-foundation", version: "1.4.1" }),
     ],
     [
       "node_modules/@agent-teams/engineering-foundation/presets/oxlint/base.json",
@@ -250,13 +250,10 @@ function ruleIds(report) {
 }
 
 test("activates exact published Foundation quality pins", () => {
-  assert.equal(foundationPackage.version, "1.4.0");
+  assert.equal(foundationPackage.version, "1.4.1");
   assert.equal(oxlintPackage.version, "1.83.0");
   assert.equal(typedPackage.version, "7.0.2001");
-  assert.deepEqual(workspace.patchedDependencies, {
-    "@agent-teams/engineering-foundation@1.4.0":
-      "patches/@agent-teams__engineering-foundation@1.4.0.patch",
-  });
+  assert.equal(workspace.patchedDependencies, undefined);
 });
 
 test("Foundation accepts the quality activation route and rejects route drift", async () => {

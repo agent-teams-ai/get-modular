@@ -96,10 +96,10 @@ production. The first production package must atomically:
 - change the admission state to `source-admitted`;
 - enable Engineering Foundation's `architecture.source-dependencies`
   capability at `architecture/foundation/source-dependencies.yaml`; and
-- execute the pinned `@agent-teams/engineering-foundation` `1.4.0` command
+- execute the pinned `@agent-teams/engineering-foundation` `1.4.1` command
   `agent-teams-foundation check` through both the complete and fast gates.
 
-The tooling activation pins Foundation `1.4.0`. The published
+The tooling activation pins Foundation `1.4.1`. The published
 `quality.source-coverage` route uses the existing production profile and source
 policy: `quality:coverage:scope` runs in the fast gate and `lint:typed` runs in
 the complete gate. Suppression governance covers Core and Assembly source with

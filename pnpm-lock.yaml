@@ -46,9 +46,6 @@ catalogs:
       specifier: 2.9.0
       version: 2.9.0
 
-patchedDependencies:
-  '@agent-teams/engineering-foundation@1.4.0': b3b1215326366cd47d2551a9edbf3f986493bc089071d70c4e6866c0e477468c
-
 importers:
 
   .:
@@ -57,8 +54,8 @@ importers:
         specifier: 0.6.0
         version: 0.6.0
       '@agent-teams/engineering-foundation':
-        specifier: 1.4.0
-        version: 1.4.0(patch_hash=b3b1215326366cd47d2551a9edbf3f986493bc089071d70c4e6866c0e477468c)
+        specifier: 1.4.1
+        version: 1.4.1
       '@changesets/cli':
         specifier: 'catalog:'
         version: 3.0.2
@@ -146,8 +143,8 @@ packages:
     resolution: {integrity: sha512-LdNT8VHPQxXvuyXsCblFSeCmbEEZcXwiCTY1E+c0ZEWWJG0V2qoi95F8fHAwI4ngZLDmLr/yzHGyDqwkd9GBrA==}
     engines: {node: '>=24.18.0 <25', pnpm: '>=11.17.0 <12'}
 
-  '@agent-teams/engineering-foundation@1.4.0':
-    resolution: {integrity: sha512-m8rLOvctyXu+kqN4LyCW4LIz303a7p+ZIvx+oieYIwst6DNBpsWUu/Ux7UZM3fZH5JTYhB4eSEBEfi5lUTt4vQ==}
+  '@agent-teams/engineering-foundation@1.4.1':
+    resolution: {integrity: sha512-K7WkVRtW5+YtZJ4gcBufa29xJrkIIxy7G9DE07En4W/TBUU2m0fKMvt2hbgAs3uAA0nmDIIDqBohStiLyiK6Xw==}
     engines: {node: '>=24.18.0 <25', pnpm: '>=11.17.0 <12'}
     hasBin: true
 
@@ -1656,7 +1653,7 @@ snapshots:
       ajv: 8.20.0
       yaml: 2.9.0
 
-  '@agent-teams/engineering-foundation@1.4.0(patch_hash=b3b1215326366cd47d2551a9edbf3f986493bc089071d70c4e6866c0e477468c)':
+  '@agent-teams/engineering-foundation@1.4.1':
     dependencies:
       '@agent-teams/document-authoring': 0.3.0
       '@agent-teams/repository-mutation': 0.2.0

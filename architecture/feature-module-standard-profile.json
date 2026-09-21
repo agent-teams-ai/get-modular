@@ -85,7 +85,7 @@
       "productionRoot": "packages",
       "foundation": {
         "package": "@agent-teams/engineering-foundation",
-        "version": "1.4.0",
+        "version": "1.4.1",
         "command": "agent-teams-foundation check",
         "capability": "architecture.source-dependencies",
         "policy": "architecture/foundation/source-dependencies.yaml"
