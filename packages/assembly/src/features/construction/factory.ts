@@ -6,7 +6,7 @@ import { prepareConstruction } from "./prepare.js";
 export function createConstruction<C>(ports: ConstructionPorts): Assembly<C> {
   return Object.freeze({
     bindFactory: bindFactoryFor<C>(),
-    prepare: <const R extends RootHandles<C>>(input: AssemblyPrepareInput<C, R>) =>
+    prepare: async <const R extends RootHandles<C>>(input: AssemblyPrepareInput<C, R>) =>
       prepareConstruction<C, R>(input, ports),
   });
 }

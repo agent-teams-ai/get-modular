@@ -7,6 +7,11 @@ type Group = { readonly spans: Span[]; duplicate: boolean };
 type ReplayCursor = { readonly source: RawTokenCursor; readonly base: number; readonly end: number };
 type ArrayCursor = { readonly cursor: ReplayCursor; current: RawToken };
 type FoldFrame = { readonly keys: Set<string> | null; keyExpected: boolean };
+
+function defined<T>(value: T | undefined): T {
+  if (value === undefined) {throw new Error("Missing internal duplicate-replay value");}
+  return value;
+}
 type RawDuplicateReplayStatistics = {
   readonly tokenVisits: number;
   readonly arrayCursorSteps: number;
@@ -105,7 +110,7 @@ function fold(state: ReplayState, cursor: ReplayCursor, first: RawToken): boolea
       frames.push({ keys: current.kind === "object-start" ? new Set<string>() : null, keyExpected: true });
     } else if (current.kind === "object-end" || current.kind === "array-end") {frames.pop();}
     else {
-      const frame = frames[frames.length - 1]!;
+      const frame = defined(frames[frames.length - 1]);
       if (current.kind === "comma") {frame.keyExpected = true;}
       else if (current.kind === "string" && frame.keys !== null && frame.keyExpected) {
         const key = cursor.source.decodeString(current);
@@ -191,7 +196,7 @@ function visitArrays(state: ReplayState, path: Path, group: Group, arrays: Array
     if (projectItems && !admits(state, path, index)) {projectItems = false;}
     const child = projectItems ? newGroup() : null;
     for (let position = 0; position < arrays.length;) {
-      const active = arrays[position]!;
+      const active = defined(arrays[position]);
       state.arrayCursorSteps += 1;
       if (child !== null) {retainSpan(state, child, capture(state, active.cursor, active.current));}
       else if (fold(state, active.cursor, active.current)) {group.duplicate = true;}

@@ -7,6 +7,10 @@ export class ReadyQueue {
 
   get size(): number { return this.#items.length; }
   #less(left: number, right: number): boolean { this.comparisons += 1; return left < right; }
+  #defined(value: number | undefined): number {
+    if (value === undefined) {throw new Error("Missing internal graph ready-queue value");}
+    return value;
+  }
 
   push(value: number): void {
     let index = this.#items.length;
@@ -14,8 +18,8 @@ export class ReadyQueue {
     this.peakSize = Math.max(this.peakSize, this.#items.length);
     while (index > 0) {
       const parent = Math.floor((index - 1) / 2);
-      if (!this.#less(value, this.#items[parent]!)) {break;}
-      this.#items[index] = this.#items[parent]!;
+      if (!this.#less(value, this.#defined(this.#items[parent]))) {break;}
+      this.#items[index] = this.#defined(this.#items[parent]);
       index = parent;
     }
     this.#items[index] = value;
@@ -23,15 +27,15 @@ export class ReadyQueue {
 
   take(): number {
     if (this.#items.length === 0) {throw new Error("Empty internal graph ready queue");}
-    const first = this.#items[0]!;
-    const last = this.#items.pop()!;
+    const first = this.#defined(this.#items[0]);
+    const last = this.#defined(this.#items.pop());
     if (this.#items.length > 0) {
       let index = 0;
       while (index * 2 + 1 < this.#items.length) {
         let child = index * 2 + 1;
-        if (child + 1 < this.#items.length && this.#less(this.#items[child + 1]!, this.#items[child]!)) {child += 1;}
-        if (!this.#less(this.#items[child]!, last)) {break;}
-        this.#items[index] = this.#items[child]!;
+        if (child + 1 < this.#items.length && this.#less(this.#defined(this.#items[child + 1]), this.#defined(this.#items[child]))) {child += 1;}
+        if (!this.#less(this.#defined(this.#items[child]), last)) {break;}
+        this.#items[index] = this.#defined(this.#items[child]);
         index = child;
       }
       this.#items[index] = last;

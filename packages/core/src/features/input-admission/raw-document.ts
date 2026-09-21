@@ -75,7 +75,12 @@ function lexicalKind(current: RawToken): SpanKind | null {
     case "true":
     case "false": return "boolean";
     case "null": return "null";
-    default: return null;
+    case "array-end":
+    case "colon":
+    case "comma":
+    case "end":
+    case "invalid":
+    case "object-end": return null;
   }
 }
 
@@ -117,12 +122,12 @@ function handleObjectFrame(context: FrameContext, frame: Extract<ScanFrame, { re
     frame.state = "colon";
     return "continue";
   }
-  if (frame?.kind === "object" && frame.state === "colon") {
+  if (frame.state === "colon") {
     if (current.kind !== "colon") {return "invalid";}
     frame.state = "value";
     return "continue";
   }
-  if (frame?.kind === "object" && frame.state === "after-value") {
+  if (frame.state === "after-value") {
     if (current.kind === "object-end") {state.frames.pop();}
     else if (current.kind === "comma") {frame.state = "key";}
     else {return "invalid";}
@@ -148,11 +153,11 @@ function handleArrayFrame(context: FrameContext, frame: Extract<ScanFrame, { rea
 
 function handleFrameToken(state: ScanState, current: RawToken, cursor: RawTokenCursor,
   budget: RawDocumentBudget, onDuplicate: (localPath: readonly Segment[]) => void): FrameResult {
-  const frame = state.frames[state.frames.length - 1];
+  const frame = state.frames.at(-1);
   const context = { state, current, cursor, budget, onDuplicate };
   if (frame?.kind === "object") {return handleObjectFrame(context, frame);}
   if (frame?.kind === "array") {return handleArrayFrame(context, frame);}
-  return frame === undefined && state.rootSeen ? "invalid" : "value";
+  return state.rootSeen ? "invalid" : "value";
 }
 
 function chargeValue(state: ScanState, current: RawToken, kind: SpanKind, budget: RawDocumentBudget,
@@ -165,15 +170,14 @@ function chargeValue(state: ScanState, current: RawToken, kind: SpanKind, budget
   state.maximumDepth = Math.max(state.maximumDepth, depth);
   if (depth <= admissionLimits.jsonDepth) {return true;}
   state.stoppedBy = "jsonDepth";
-  const frame = state.frames[state.frames.length - 1];
-  if (frame !== undefined) {
-    onDepthLimit?.(duplicatePath(state.frames, frame.kind === "object" ? frame.key : frame.nextIndex));
-  }
+  const frame = state.frames.at(-1);
+  if (frame === undefined) {throw new Error("Missing internal raw-document frame");}
+  onDepthLimit?.(duplicatePath(state.frames, frame.kind === "object" ? frame.key : frame.nextIndex));
   return false;
 }
 
 function commitValue(state: ScanState, kind: SpanKind): void {
-  const frame = state.frames[state.frames.length - 1];
+  const frame = state.frames.at(-1);
   let segment: Segment | null = null;
   if (frame?.kind === "object") {
     segment = frame.key;
@@ -362,7 +366,6 @@ export function rawDocumentView(ownedBytes: Uint8Array, scanner: RawScannerPort)
       indexed.last = null;
     }
     const cursor = indexed.cursor;
-    if (cursor === null) {invalidAccess();}
     while (indexed.nextIndex <= index) {
       if (indexed.nextIndex !== 0 && cursor.next().kind !== "comma") {invalidAccess();}
       const current = cursor.next();

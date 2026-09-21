@@ -7,12 +7,17 @@ type Settlement =
   | { readonly kind: "rejected"; readonly cause: unknown }
   | { readonly kind: "unsupported"; readonly cause: unknown };
 type ObservedSettlement = { readonly settlement: Settlement };
+function nullRecord(): Record<string, unknown> {
+  const value: Record<string, unknown> = {};
+  Object.setPrototypeOf(value, null);
+  return value;
+}
 function observed(settlement: Settlement): ObservedSettlement {
-  const envelope: ObservedSettlement = Object.create(null);
-  Object.defineProperty(envelope, "settlement", { value: settlement, enumerable: true });
+  const envelope: ObservedSettlement = { settlement };
+  Object.setPrototypeOf(envelope, null);
   return Object.freeze(envelope);
 }
-function observe(carrier: unknown): Promise<ObservedSettlement> {
+async function observe(carrier: unknown): Promise<ObservedSettlement> {
   if (carrier === null || typeof carrier !== "object" || Object.getPrototypeOf(carrier) !== Promise.prototype) {
     throw new TypeError("Expected a current-realm ordinary Promise");
   }
@@ -26,10 +31,11 @@ function observe(carrier: unknown): Promise<ObservedSettlement> {
   }
   return new Promise<ObservedSettlement>((resolve) => {
     try {
-      Reflect.apply(Promise.prototype.then, carrier, [
+      const then = Promise.prototype.then.bind(carrier);
+      void then(
         (product: unknown) => { resolve(observed(Object.freeze({ kind: "returned" as const, product }))); },
         (cause: unknown) => { resolve(observed(Object.freeze({ kind: "rejected" as const, cause }))); },
-      ]);
+      );
     } catch (cause) {
       resolve(observed(Object.freeze({ kind: "unsupported" as const, cause })));
     }
@@ -39,7 +45,7 @@ function snapshotProduct(product: unknown, metadata: Metadata): CreatedEntry {
   const result = record(product, ["instance", "capabilities"]);
   const keys = metadata.declaration.provides.map((provided) => provided.capabilityId);
   const supplied = record(data(result, "capabilities"), keys);
-  const capabilities: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+  const capabilities = nullRecord();
   for (const key of keys) {capabilities[key] = data(supplied, key);}
   return Object.freeze({
     moduleId: metadata.declaration.moduleId, implementationId: metadata.declaration.implementationId,
@@ -48,17 +54,20 @@ function snapshotProduct(product: unknown, metadata: Metadata): CreatedEntry {
 }
 
 function dependenciesFor(step: Program["steps"][number], capability: (id: string, key: string) => unknown) {
-  const dependencies: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+  const dependencies = nullRecord();
   for (const injection of step.injections) {
-    dependencies[injection.slotId] = injection.kind === "many"
-      ? Object.freeze(injection.providers.map((id) => capability(id, injection.capabilityId)))
-      : injection.providers.length === 0 ? undefined : capability(injection.providers[0]!, injection.capabilityId);
+    if (injection.kind === "many") {
+      dependencies[injection.slotId] = Object.freeze(injection.providers.map((id) => capability(id, injection.capabilityId)));
+    } else {
+      const provider = injection.providers.at(0);
+      dependencies[injection.slotId] = provider === undefined ? undefined : capability(provider, injection.capabilityId);
+    }
   }
   return Object.freeze(dependencies);
 }
 
-function rootInstances<R>(program: Program, createdById: Map<string, CreatedEntry>): RootInstances<R> {
-  const roots: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+function rootInstances<R>(program: Readonly<Program>, createdById: ReadonlyMap<string, CreatedEntry>): RootInstances<R> {
+  const roots = nullRecord();
   for (const root of program.roots) {
     const entry = createdById.get(root.implementationId);
     if (!entry) {throw new Error("assembly.internal.missing-root");}
@@ -77,23 +86,27 @@ export async function runAttempt<R>(
   const failed = (phase: "factory" | "completion" | "internal", code: RunErrorCode, cause: unknown): AssemblyOutcome<R> => Object.freeze({
     status: "failed", phase, code, cause, implementationId: current, returned,
     created: Object.freeze(journal),
-    cancellation: signal?.aborted ? Object.freeze({ reason: signal.reason }) : undefined,
+    cancellation: signal?.aborted === true ? Object.freeze({ reason: signal.reason as unknown }) : undefined,
   });
-  const cancelled = (): AssemblyOutcome<R> => Object.freeze({
-    status: "cancelled", reason: signal!.reason, created: Object.freeze(journal),
-  });
+  const cancelledIfAborted = (activeSignal: AbortSignal): AssemblyOutcome<R> | undefined => activeSignal.aborted
+    ? Object.freeze({ status: "cancelled", reason: activeSignal.reason as unknown, created: Object.freeze(journal) })
+    : undefined;
   const capability = (id: string, key: string): unknown => {
     const provider = createdById.get(id);
     if (!provider || !Object.hasOwn(provider.capabilities, key)) {throw new Error("assembly.internal.missing-capability");}
     return provider.capabilities[key];
   };
   try {
-    signal = options?.signal ?? new AbortController().signal;
-    const context = Object.freeze({ signal });
-    if (signal.aborted) {return cancelled();}
+    const activeSignal = options?.signal ?? new AbortController().signal;
+    signal = activeSignal;
+    const context = Object.freeze({ signal: activeSignal });
+    const cancelledBeforeRun = cancelledIfAborted(activeSignal);
+    if (cancelledBeforeRun !== undefined) {return cancelledBeforeRun;}
     for (const step of program.steps) {
-      current = step.metadata.declaration.implementationId;
-      if (signal.aborted) {return cancelled();}
+      const implementationId = step.metadata.declaration.implementationId;
+      current = implementationId;
+      const cancelledBeforeFactory = cancelledIfAborted(activeSignal);
+      if (cancelledBeforeFactory !== undefined) {return cancelledBeforeFactory;}
       const dependencies = dependenciesFor(step, capability);
       let carrier: unknown;
       try {
@@ -110,7 +123,7 @@ export async function runAttempt<R>(
       if (settlement.kind === "rejected") {return failed("factory", "assembly.run.factory-rejected", settlement.cause);}
       if (settlement.kind === "unsupported") {return failed("factory", "assembly.run.unsupported-carrier", settlement.cause);}
       // Retain the raw fulfillment before inspecting any part of the product.
-      returned = Object.freeze({ implementationId: current, product: settlement.product });
+      returned = Object.freeze({ implementationId, product: settlement.product });
       let entry: CreatedEntry;
       try {
         entry = snapshotProduct(settlement.product, step.metadata);
@@ -126,10 +139,11 @@ export async function runAttempt<R>(
         if (journal.length === position + 1 && journal[position] === entry) {returned = undefined;}
       }
       if (returned !== undefined) {throw new Error("assembly.internal.uncommitted-product");}
-      createdById.set(current, entry);
+      createdById.set(implementationId, entry);
     }
     const roots = rootInstances<R>(program, createdById);
-    if (signal.aborted) {return cancelled();}
+    const cancelledAfterFulfillment = cancelledIfAborted(activeSignal);
+    if (cancelledAfterFulfillment !== undefined) {return cancelledAfterFulfillment;}
     return Object.freeze({
       status: "succeeded", roots, created: Object.freeze(journal),
     });

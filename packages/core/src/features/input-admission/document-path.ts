@@ -4,6 +4,11 @@ export type DocumentLocator =
   | { readonly kind: "declaration"; readonly ordinal: number }
   | { readonly kind: "profile" };
 
+function defined<T>(value: T | undefined): T {
+  if (value === undefined) {throw new Error("Missing internal document path segment");}
+  return value;
+}
+
 // Only invocation roots, schema-known field names and admitted array indices
 // enter this private helper. The prefix participates in the 32-segment cap.
 export function documentPath(locator: DocumentLocator, local: readonly (string | number)[] = []): Diagnostic["path"] {
@@ -11,7 +16,7 @@ export function documentPath(locator: DocumentLocator, local: readonly (string |
   const segments = [...prefix, ...local];
   let length = 0;
   while (length < segments.length && length < 32) {
-    const value = segments[length]!;
+    const value = defined(segments[length]);
     if (typeof value === "number" && value > 65535) {break;}
     length += 1;
   }

@@ -33,6 +33,16 @@ function hasVersionOne(view: DocumentView<RawValue>): boolean {
 type AddDiagnostic = (diagnostic: DiagnosticCandidate) => void;
 type RawBudgetState = { valuesRemaining: number; stringBytesRemaining: number; batchBlocked: boolean };
 
+function defined<T>(value: T | undefined): T {
+  if (value === undefined) {throw new Error("Missing internal raw-admission value");}
+  return value;
+}
+
+function nonNull<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {throw new Error("Missing admitted raw document bytes");}
+  return value;
+}
+
 function scanRawEntry(bytes: Uint8Array | null, locator: DocumentLocator, scanner: RawScannerPort,
   state: RawBudgetState, add: AddDiagnostic): RawDocumentScan | null {
   if (bytes === null) {return null;}
@@ -64,7 +74,7 @@ function scanCaptured(captured: RawInputCapture, scanner: RawScannerPort, add: A
     stringBytesRemaining: admissionLimits.aggregateStringBytes, batchBlocked: false };
   const scans: (RawDocumentScan | null)[] = [];
   for (let ordinal = 0; ordinal < captured.declarations.length && !state.batchBlocked; ordinal += 1) {
-    scans.push(scanRawEntry(captured.declarations[ordinal]!, { kind: "declaration", ordinal }, scanner, state, add));
+    scans.push(scanRawEntry(defined(captured.declarations[ordinal]), { kind: "declaration", ordinal }, scanner, state, add));
   }
   const profileScan = state.batchBlocked ? null : scanRawEntry(captured.profile, { kind: "profile" }, scanner, state, add);
   return { scans, profileScan, batchBlocked: state.batchBlocked };
@@ -75,7 +85,9 @@ function createRawViews(captured: RawInputCapture, scans: readonly (RawDocumentS
   let totalCapabilities = 0;
   let totalSlots = 0;
   for (let ordinal = 0; ordinal < captured.declarations.length; ordinal += 1) {
-    const view = scans[ordinal]?.decoded ? rawDocumentView(captured.declarations[ordinal]!, scanner) : null;
+    const view = scans[ordinal]?.decoded === true
+      ? rawDocumentView(nonNull(captured.declarations[ordinal]), scanner)
+      : null;
     views.push(view);
     if (view === null) {continue;}
     totalCapabilities = Math.min(admissionLimits.totalCapabilities + 1,
@@ -94,7 +106,7 @@ function validateRawDocument(view: DocumentView<RawValue>, locator: DocumentLoca
       if ((numericFailureMask(view, locator.kind, violation.path) & bit) !== 0) {return;}
     }
     add(candidate);
-  }, (name, _actual, path) => add(resourceDiagnostic(name, documentPath(locator, path))));
+  }, (name, _actual, path) => { add(resourceDiagnostic(name, documentPath(locator, path))); });
   const numericInvalid = visitRawNumericFailures(view, locator.kind, (path, reason) => {
     add(schemaDiagnostic({ rule: reason === "invalid-type" ? "integer" : "range", path }, locator));
   });
@@ -106,7 +118,7 @@ function admitRawDeclarations(views: readonly (DocumentView<RawValue> | null)[],
   const declarations: ModuleDeclaration[] = [];
   let allAdmitted = captured.allDeclarationsCaptured && !batchBlocked;
   for (let ordinal = 0; ordinal < views.length; ordinal += 1) {
-    const view = views[ordinal]!;
+    const view = defined(views[ordinal]);
     if (view === null || !validateRawDocument(view, { kind: "declaration", ordinal }, add)) {allAdmitted = false;}
     else if (!batchBlocked) {declarations.push(snapshotDeclarationView(view));}
   }
@@ -133,10 +145,10 @@ export function admitRawInput(input: unknown, collector: AdmissionDiagnosticSink
   if (viewState.totalCapabilities > admissionLimits.totalCapabilities) {add(resourceDiagnostic("totalCapabilities")); batchBlocked = true;}
   if (viewState.totalSlots > admissionLimits.totalSlots) {add(resourceDiagnostic("totalSlots")); batchBlocked = true;}
   const admitted = admitRawDeclarations(viewState.views, captured, batchBlocked, add);
-  const profileView = scanned.profileScan?.decoded ? rawDocumentView(captured.profile!, scanner) : null;
+  const profileView = scanned.profileScan?.decoded === true ? rawDocumentView(nonNull(captured.profile), scanner) : null;
   const profileValid = profileView !== null && validateRawDocument(profileView, { kind: "profile" }, add);
   return Object.freeze({ declarations: Object.freeze(admitted.declarations), allDeclarationsAdmitted: admitted.allAdmitted,
-    profile: !batchBlocked && profileValid ? snapshotProfileView(profileView!) : null,
+    profile: !batchBlocked && profileValid ? snapshotProfileView(nonNull(profileView)) : null,
     profileResources: !batchBlocked && profileView !== null && hasVersionOne(profileView) ? profileResourceFactsView(profileView) : null,
     hasErrors });
 }

@@ -59,7 +59,7 @@
   },
   "devDependencies": {
     "@agent-teams/docs-protocol": "0.6.0",
-    "@agent-teams/engineering-foundation": "1.4.1",
+    "@agent-teams/engineering-foundation": "1.4.2",
     "@changesets/cli": "catalog:",
     "@get-modular/assembly": "workspace:*",
     "@get-modular/core": "workspace:*",

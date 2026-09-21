@@ -5,6 +5,11 @@ export type GraphComponents = {
   readonly peakFrames: number;
 };
 
+function defined<T>(value: T | undefined): T {
+  if (value === undefined) {throw new Error("Missing internal graph value");}
+  return value;
+}
+
 // Iterative two-pass SCC decomposition. Both adjacency directions describe
 // the same bounded graph. Vertex ranks are private integers, not wire IDs.
 export function graphComponents(outgoing: Adjacency, incoming: Adjacency): GraphComponents {
@@ -19,10 +24,10 @@ export function graphComponents(outgoing: Adjacency, incoming: Adjacency): Graph
     frames.push({ vertex: root, next: 0 });
     peakFrames = Math.max(peakFrames, frames.length);
     while (frames.length > 0) {
-      const frame = frames[frames.length - 1]!;
-      const adjacent = outgoing[frame.vertex]!;
+      const frame = defined(frames[frames.length - 1]);
+      const adjacent = defined(outgoing[frame.vertex]);
       if (frame.next === adjacent.length) { finish.push(frame.vertex); frames.pop(); continue; }
-      const target = adjacent[frame.next++]!;
+      const target = defined(adjacent[frame.next++]);
       edgeVisits += 1;
       if (!seen[target]) {
         seen[target] = 1;
@@ -35,7 +40,7 @@ export function graphComponents(outgoing: Adjacency, incoming: Adjacency): Graph
   const members: number[][] = [];
   const pending: number[] = [];
   for (let position = finish.length - 1; position >= 0; position -= 1) {
-    const root = finish[position]!;
+    const root = defined(finish[position]);
     if (seen[root]) {continue;}
     const component: number[] = [];
     seen[root] = 1;
@@ -44,7 +49,7 @@ export function graphComponents(outgoing: Adjacency, incoming: Adjacency): Graph
     while (pending.length > 0) {
       const vertex = pending.pop()!;
       component.push(vertex);
-      for (const target of incoming[vertex]!) {
+      for (const target of defined(incoming[vertex])) {
         edgeVisits += 1;
         if (!seen[target]) {
           seen[target] = 1;
@@ -58,6 +63,6 @@ export function graphComponents(outgoing: Adjacency, incoming: Adjacency): Graph
   }
   // Distinct SCCs have disjoint members, so their smallest ranks differ and
   // determine the accepted lexicographic order of their sorted member arrays.
-  members.sort((left, right) => left[0]! - right[0]!);
+  members.sort((left, right) => defined(left[0]) - defined(right[0]));
   return { members, edgeVisits, peakFrames };
 }

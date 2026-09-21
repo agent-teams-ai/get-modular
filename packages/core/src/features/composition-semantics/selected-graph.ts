@@ -25,6 +25,17 @@ export type SelectedGraphAnalysis = {
 
 type Vertex = (id: string) => number;
 
+function defined<T>(value: T | undefined): T {
+  if (value === undefined) {throw new Error("Missing internal selected-graph value");}
+  return value;
+}
+
+function ordered(values: readonly string[]): string[] {
+  const result = [...values];
+  result.sort();
+  return result;
+}
+
 function buildAdjacency(nodes: readonly string[], edges: readonly ProviderEdge[], vertex: Vertex) {
   const outgoing: number[][] = nodes.map(() => []);
   const incoming: number[][] = nodes.map(() => []);
@@ -33,10 +44,10 @@ function buildAdjacency(nodes: readonly string[], edges: readonly ProviderEdge[]
   for (const [providerId, consumerId] of edges) {
     const provider = vertex(providerId);
     const consumer = vertex(consumerId);
-    if (unique[provider]!.has(consumer)) {continue;}
-    unique[provider]!.add(consumer);
-    outgoing[provider]!.push(consumer);
-    incoming[consumer]!.push(provider);
+    if (defined(unique[provider]).has(consumer)) {continue;}
+    defined(unique[provider]).add(consumer);
+    defined(outgoing[provider]).push(consumer);
+    defined(incoming[consumer]).push(provider);
     adjacencyEdges += 1;
   }
   return { outgoing, incoming, unique, adjacencyEdges };
@@ -48,9 +59,9 @@ function findCycles(nodes: readonly string[], unique: readonly Set<number>[],
   const cyclic = new Uint8Array(nodes.length);
   const cycles: (readonly string[])[] = [];
   for (const component of decomposition.members) {
-    if (component.length === 1 && !unique[component[0]!]!.has(component[0]!)) {continue;}
+    if (component.length === 1 && !defined(unique[defined(component[0])]).has(defined(component[0]))) {continue;}
     for (const member of component) {cyclic[member] = 1;}
-    cycles.push(Object.freeze(component.map(member => nodes[member]!)));
+    cycles.push(Object.freeze(component.map(member => defined(nodes[member]))));
   }
   return { decomposition, cyclic, cycles };
 }
@@ -66,9 +77,9 @@ function analyzeResidual(nodes: readonly string[], cyclic: Uint8Array,
     if (cyclic[node]) {continue;}
     residualSize += 1;
     depth[node] = 1;
-    for (const provider of incoming[node]!) {
+    for (const provider of defined(incoming[node])) {
       depthEdgeVisits += 1;
-      if (!cyclic[provider]) {indegree[node] = indegree[node]! + 1;}
+      if (!cyclic[provider]) {indegree[node] = defined(indegree[node]) + 1;}
     }
     if (indegree[node] === 0) {ready.push(node);}
   }
@@ -76,13 +87,13 @@ function analyzeResidual(nodes: readonly string[], cyclic: Uint8Array,
   let residualDepth = 0;
   while (ready.size > 0) {
     const node = ready.take();
-    order.push(nodes[node]!);
-    residualDepth = Math.max(residualDepth, depth[node]!);
-    for (const consumer of outgoing[node]!) {
+    order.push(defined(nodes[node]));
+    residualDepth = Math.max(residualDepth, defined(depth[node]));
+    for (const consumer of defined(outgoing[node])) {
       depthEdgeVisits += 1;
       if (cyclic[consumer]) {continue;}
-      depth[consumer] = Math.min(selectedGraphDepthLimit + 1, Math.max(depth[consumer]!, depth[node]! + 1));
-      indegree[consumer] = indegree[consumer]! - 1;
+      depth[consumer] = Math.min(selectedGraphDepthLimit + 1, Math.max(defined(depth[consumer]), defined(depth[node]) + 1));
+      indegree[consumer] = defined(indegree[consumer]) - 1;
       if (indegree[consumer] === 0) {ready.push(consumer);}
     }
   }
@@ -103,7 +114,7 @@ function findRootClosure(nodes: readonly string[], roots: readonly string[], ver
   peakTraversalFrames = Math.max(peakTraversalFrames, pending.length);
   while (pending.length > 0) {
     const node = pending.pop()!;
-    for (const provider of incoming[node]!) {
+    for (const provider of defined(incoming[node])) {
       closureEdgeVisits += 1;
       if (!reached[provider]) {
         reached[provider] = 1;
@@ -124,8 +135,8 @@ function findRootClosure(nodes: readonly string[], roots: readonly string[], ver
  * Einput limits, normalization of plan bindings and successful-plan eligibility.
  */
 export function analyzeSelectedGraph(implementationIds: readonly string[], edges: readonly ProviderEdge[], roots: readonly string[]): SelectedGraphAnalysis {
-  const nodes = implementationIds.toSorted();
-  const rank = new Map(nodes.map((id, index) => [id, index]));
+  const nodes = ordered(implementationIds);
+  const rank = new Map(nodes.map((id, index) => [id, index] as const));
   if (rank.size !== nodes.length) {throw new Error("Duplicate internal selected-graph node");}
   const vertex = (id: string): number => {
     const result = rank.get(id);

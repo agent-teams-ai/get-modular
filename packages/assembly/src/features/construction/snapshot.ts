@@ -20,11 +20,14 @@ export function data(value: object, key: PropertyKey): unknown {
   if (!descriptor || !("value" in descriptor)) {return shape();}
   return descriptor.value;
 }
+function isDataObject(value: object): value is Record<string, unknown> {
+  const prototype = Reflect.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
 export function dataObject(value: unknown): Record<string, unknown> {
   if (value === null || typeof value !== "object") {return shape();}
-  const prototype = Object.getPrototypeOf(value);
-  if (prototype !== Object.prototype && prototype !== null) {return shape();}
-  return value as Record<string, unknown>;
+  if (!isDataObject(value)) {return shape();}
+  return value;
 }
 export function record(value: unknown, required: readonly string[], optional: readonly string[] = []): Record<string, unknown> {
   const object = dataObject(value);
@@ -51,7 +54,8 @@ export function identifier(value: unknown): string {
   if (value.length > limits.identifierBytes) {return limit();}
   let bytes = 0;
   for (const point of value) {
-    const code = point.codePointAt(0)!;
+    const code = point.codePointAt(0);
+    if (code === undefined) {return shape();}
     bytes += code <= 0x7f ? 1 : code <= 0x7ff ? 2 : code <= 0xffff ? 3 : 4;
   }
   if (bytes > limits.identifierBytes) {return limit();}
@@ -123,7 +127,7 @@ export function inspectPlan(value: unknown): PlanCensus {
   }
   return { input, roots, selections, bindings, order };
 }
-export function copyPlan(census: PlanCensus): CompositionPlan {
+export function copyPlan(census: Readonly<PlanCensus>): CompositionPlan {
   const { input, roots, selections, bindings, order } = census;
   return Object.freeze({
     kind: "get-modular.composition-plan", schemaVersion: 1,
@@ -154,16 +158,19 @@ export function rootKeys(value: unknown): { readonly object: Record<string, unkn
   const object = dataObject(value);
   const keys = Reflect.ownKeys(object);
   if (keys.length > limits.roots) {return limit();}
+  const stringKeys: string[] = [];
   for (const key of keys) {
     if (typeof key !== "string") {return shape();}
     identifier(key);
     data(object, key);
+    stringKeys.push(key);
   }
-  return { object, keys: keys as string[] };
+  return { object, keys: stringKeys };
 }
 export function envelope(value: unknown): Readonly<Record<string, unknown>> {
   const input = record(value, ["plan", "digest"], ["ok", "status", "success", "kind", "diagnostics"]);
-  const header: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+  const header: Record<string, unknown> = {};
+  Object.setPrototypeOf(header, null);
   for (const key of Object.getOwnPropertyNames(input)) {
     if (key === "plan") {continue;}
     const field = data(input, key);

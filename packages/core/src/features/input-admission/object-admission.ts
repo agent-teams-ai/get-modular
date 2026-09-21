@@ -13,6 +13,11 @@ import { schemaDiagnostic } from "./schema-diagnostic.js";
 
 type AddDiagnostic = DiagnosticCollector["addUnique"];
 
+function defined<T>(value: T | undefined): T {
+  if (value === undefined) {throw new Error("Missing internal object-admission value");}
+  return value;
+}
+
 function shallowCounts(declarations: readonly unknown[]): { readonly capabilities: number; readonly slots: number } {
   let capabilities = 0;
   let slots = 0;
@@ -44,7 +49,7 @@ function validateObjectDocument(value: unknown, result: ObjectResourceScan,
       const path = documentPath(locator, schemaSafeLocalPath(locator.kind, local));
       const previous = lastByDepth[path.length];
       if (previous !== undefined && path.every((segment, index) =>
-        segment.kind === previous[index]!.kind && segment.value === previous[index]!.value)) {return;}
+        segment.kind === defined(previous[index]).kind && segment.value === defined(previous[index]).value)) {return;}
       lastByDepth[path.length] = path;
       add(Object.freeze({ code: "schema.non-plain-value", phase: "schema", coordinate: Object.freeze({}),
         path, details: Object.freeze({ reason: "non-plain-value" }) }));
@@ -52,8 +57,8 @@ function validateObjectDocument(value: unknown, result: ObjectResourceScan,
     return false;
   }
   const validateShape = locator.kind === "declaration" ? validateDeclarationShape : validateProfileShape;
-  return validateShape(value, violation => add(schemaDiagnostic(violation, locator)),
-    (name, _actual, path) => add(resourceDiagnostic(name, documentPath(locator, path))));
+  return validateShape(value, violation =>{  add(schemaDiagnostic(violation, locator)); },
+    (name, _actual, path) =>{  add(resourceDiagnostic(name, documentPath(locator, path))); });
 }
 
 function admitDeclarations(declarations: readonly unknown[], scans: readonly ObjectResourceScan[],
@@ -62,7 +67,7 @@ function admitDeclarations(declarations: readonly unknown[], scans: readonly Obj
   let allAdmitted = !batchBlocked;
   for (let ordinal = 0; ordinal < declarations.length; ordinal += 1) {
     const value = declarations[ordinal];
-    if (!validateObjectDocument(value, scans[ordinal]!, { kind: "declaration", ordinal }, add)) {allAdmitted = false;}
+    if (!validateObjectDocument(value, defined(scans[ordinal]), { kind: "declaration", ordinal }, add)) {allAdmitted = false;}
     else if (!batchBlocked) {admitted.push(snapshotDeclaration(value as ModuleDeclaration));}
   }
   return { admitted, allAdmitted };

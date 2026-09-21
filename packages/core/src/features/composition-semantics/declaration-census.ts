@@ -18,6 +18,17 @@ export type DeclarationCensus = {
   readonly hasErrors: boolean;
 };
 
+function defined<T>(value: T | undefined): T {
+  if (value === undefined) {throw new Error("Missing internal declaration value");}
+  return value;
+}
+
+function ordered<T>(values: readonly T[], compare: (left: T, right: T) => number): T[] {
+  const result = [...values];
+  result.sort(compare);
+  return result;
+}
+
 function uniqueIndex<T>(values: readonly T[], identity: (value: T) => string): Map<string, T | null> {
   const result = new Map<string, T | null>();
   for (const value of values) {
@@ -54,20 +65,20 @@ export function createDeclarationCensus(declarations: readonly ModuleDeclaration
     const duplicateCapabilities = new Set<number>();
     const duplicateSlots = new Map<string, Set<number>>();
     for (const declaration of group) {
-      const provides = declaration.provides.toSorted((left, right) => left.capabilityId < right.capabilityId ? -1 : left.capabilityId > right.capabilityId ? 1 : 0);
-      const slots = declaration.slots.toSorted((left, right) => left.slotId < right.slotId ? -1 : left.slotId > right.slotId ? 1 : 0);
+      const provides = ordered(declaration.provides, (left, right) => left.capabilityId < right.capabilityId ? -1 : left.capabilityId > right.capabilityId ? 1 : 0);
+      const slots = ordered(declaration.slots, (left, right) => left.slotId < right.slotId ? -1 : left.slotId > right.slotId ? 1 : 0);
       // Structural positions belong to identity-sorted lists, never the caller's
       // registration order. Equal identities need no winner or value tie-break.
       for (let index = 1; index < provides.length; index += 1) {
-        if (provides[index]!.capabilityId !== provides[index - 1]!.capabilityId || duplicateCapabilities.has(index)) {continue;}
+        if (defined(provides[index]).capabilityId !== defined(provides[index - 1]).capabilityId || duplicateCapabilities.has(index)) {continue;}
         duplicateCapabilities.add(index);
         add(Object.freeze({ code: "declaration.duplicate-capability", phase: "declaration",
           path: Object.freeze([Object.freeze({ kind: "field", value: "provides" }), Object.freeze({ kind: "index", value: index })]),
           coordinate: Object.freeze({ implementationId }), details: Object.freeze({ reason: "duplicate" }) }));
       }
       for (let index = 1; index < slots.length; index += 1) {
-        const slotId = slots[index]!.slotId;
-        if (slotId !== slots[index - 1]!.slotId) {continue;}
+        const slotId = defined(slots[index]).slotId;
+        if (slotId !== defined(slots[index - 1]).slotId) {continue;}
         let seen = duplicateSlots.get(slotId);
         if (!seen) { seen = new Set<number>(); duplicateSlots.set(slotId, seen); }
         if (seen.has(index)) {continue;}

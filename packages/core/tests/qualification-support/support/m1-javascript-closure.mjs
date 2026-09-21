@@ -47,39 +47,39 @@ const rows = [
   ['composition/stage0', 'root', '', ''],
   ['features/authoring/internal', 'defineModule required optional many', '', ''],
   ['features/authoring/helpers', 'defineModule required optional many', '', ''],
-  ['features/canonicalization/owned-jcs/factory', 'createOwnedJcs', 'invalidValue quote member container canonicalize', ''],
+  ['features/canonicalization/owned-jcs/factory', 'createOwnedJcs', 'invalidValue wellFormed quote member container canonicalize', ''],
   ['features/compiler-facade/factory', 'createCompilerFacade', '', ''],
   ['features/composition-semantics/binding-record', 'validateBindingRecord validateBindingRecords', '', 'add'],
-  ['features/composition-semantics/declaration-census', 'createDeclarationCensus', 'uniqueIndex', 'add'],
+  ['features/composition-semantics/declaration-census', 'createDeclarationCensus', 'defined ordered uniqueIndex', 'add'],
   ['features/composition-semantics/factory', 'createCompositionSemantics', '', ''],
-  ['features/composition-semantics/graph-components', 'graphComponents', '', ''],
+  ['features/composition-semantics/graph-components', 'graphComponents', 'defined', ''],
   ['features/composition-semantics/graph-diagnostics', 'collectGraphFailures', '', ''],
   ['features/composition-semantics/graph-resources', 'semanticResourceLimits collectGraphResourceLimits', 'limits', ''],
-  ['features/composition-semantics/profile-census', 'createProfileCensus', 'groupSelections validateSelectionGroups resolveRoots resolveNodes', 'add'],
+  ['features/composition-semantics/profile-census', 'createProfileCensus', 'defined ordered groupSelections validateSelectionGroups resolveRoots resolveNodes', 'add'],
   ['features/composition-semantics/ready-queue', 'ReadyQueue', '', ''],
-  ['features/composition-semantics/selected-bindings', 'validateSelectedBindings', 'groupBindings validateSuppliedGroup validateMissingBindings', 'add'],
-  ['features/composition-semantics/selected-graph', 'selectedGraphDepthLimit analyzeSelectedGraph', 'buildAdjacency findCycles analyzeResidual findRootClosure', 'vertex'],
-  ['features/composition-semantics/semantic-analysis', 'analyzeCompositionSemantics', 'buildGraph assertPrerequisites createPlan', ''],
-  ['features/diagnostics/collector', 'createDiagnosticCollector', 'retainedLimit maximumOmitted countCeiling snapshot', 'compare addUnique finish'],
+  ['features/composition-semantics/selected-bindings', 'validateSelectedBindings', 'defined groupBindings validateSuppliedGroup validateMissingBindings', 'add'],
+  ['features/composition-semantics/selected-graph', 'selectedGraphDepthLimit analyzeSelectedGraph', 'defined ordered buildAdjacency findCycles analyzeResidual findRootClosure', 'vertex'],
+  ['features/composition-semantics/semantic-analysis', 'analyzeCompositionSemantics', 'ordered buildGraph assertPrerequisites createPlan', ''],
+  ['features/diagnostics/collector', 'createDiagnosticCollector', 'defined retainedLimit maximumOmitted countCeiling snapshot', 'compare addUnique finish'],
   ['features/diagnostics/internal', 'compareDiagnostics createDiagnosticCollector', '', ''],
-  ['features/diagnostics/order', 'compareDiagnostics', 'phases codes coordinateFields lexical compareCoordinates comparePaths compareCycles compareBytes', ''],
-  ['features/input-admission/byte-carrier', 'classifyByteCarrier copyByteCarrier', 'capturedApply CapturedUint8Array typedArrayPrototype brandOf bufferOf lengthOf sharedProbe usableProbe captureGetter', ''],
-  ['features/input-admission/document-path', 'documentPath', '', ''],
+  ['features/diagnostics/order', 'compareDiagnostics', 'defined phases codes coordinateFields lexical compareCoordinates comparePaths compareCycles compareBytes', ''],
+  ['features/input-admission/byte-carrier', 'classifyByteCarrier copyByteCarrier', 'capturedApply CapturedUint8Array typedArrayPrototype brandOf bufferOf lengthOf sharedProbe usableProbe requiredPrototype captureGetter captureMethod', ''],
+  ['features/input-admission/document-path', 'documentPath', 'defined', ''],
   ['features/input-admission/document-reader', 'objectDocument', 'objectKind objectOwn objectKeys objectLength objectItem objectText objectInteger objectReader', ''],
-  ['features/input-admission/document-shape', 'schemaSafeLocalPath validateDeclarationShape validateProfileShape validateDeclarationView validateProfileView', 'record literal integer identity array portable local compatibility cardinality provided slot selection binding declarationShape profileShape isWellFormedUtf16 checks projectedShapes representablePathSegment', 'fail checkRecord admittedInteger numericValue check supportedDocumentVersion checkLiteral checkInteger checkIdentity checkArray checkCardinality'],
+  ['features/input-admission/document-shape', 'schemaSafeLocalPath validateDeclarationShape validateProfileShape validateDeclarationView validateProfileView', 'defined record literal integer identity array portable local compatibility cardinality provided slot selection binding declarationShape profileShape isWellFormedUtf16 checks projectedShapes representablePathSegment', 'fail checkRecord admittedInteger numericValue check supportedDocumentVersion checkLiteral checkInteger checkIdentity checkArray checkCardinality'],
   ['features/input-admission/document-snapshot', 'snapshotDeclaration snapshotProfile snapshotDeclarationView snapshotProfileView', 'record projection', 'member text integer list compatibility cardinality'],
   ['features/input-admission/factory', 'createInputAdmission', '', ''],
   ['features/input-admission/identity-format', 'isPortableIdFormat isLocalTokenFormat', 'matchesFormat', ''],
   ['features/input-admission/invocation-wrapper', 'inspectInvocation', 'getOwnDescriptor hasOwn isArray getPrototypeOf arrayPrototype isInteger defineProperty freeze ownData invalidWrapper', ''],
-  ['features/input-admission/object-admission', 'admitObjectInput', 'shallowCounts scanObjectDocument validateObjectDocument admitDeclarations', 'add empty scan validate'],
-  ['features/input-admission/object-resource-meter', 'createObjectResourceMeter', 'valueLimit stringLimit depthLimit', 'countValues countString scanDocument nonPlain enter'],
+  ['features/input-admission/object-admission', 'admitObjectInput', 'defined shallowCounts scanObjectDocument validateObjectDocument admitDeclarations', 'add empty scan validate'],
+  ['features/input-admission/object-resource-meter', 'createObjectResourceMeter', 'defined arrayLength valueLimit stringLimit depthLimit', 'countValues countString scanDocument nonPlain enter'],
   ['features/input-admission/profile-resource-facts', 'ownValue profileResourceFacts profileResourceFactsView', 'portable', 'ownMember textMember'],
-  ['features/input-admission/raw-admission', 'admitRawInput', 'arrayLength hasVersionOne scanRawEntry scanCaptured createRawViews validateRawDocument admitRawDeclarations', 'add empty scan arrayLength validate hasVersionOne'],
-  ['features/input-admission/raw-byte-input', 'captureRawInput', 'appendOwn defineProperty reportInvalidWrapper preflightCarriers copyCaptured reportCarrierOutcomes', 'add empty'],
+  ['features/input-admission/raw-admission', 'admitRawInput', 'defined nonNull arrayLength hasVersionOne scanRawEntry scanCaptured createRawViews validateRawDocument admitRawDeclarations', 'add empty scan arrayLength validate hasVersionOne'],
+  ['features/input-admission/raw-byte-input', 'captureRawInput', 'defined appendOwn defineProperty reportInvalidWrapper preflightCarriers copyCaptured reportCarrierOutcomes', 'add empty'],
   ['features/input-admission/raw-document', 'scanRawDocument rawDocumentView', 'lexicalKind duplicatePath invalidAccess valueEnd chargeString handleObjectFrame handleArrayFrame handleFrameToken chargeValue commitValue', 'chargeString spanOf open capture recordOf arrayOf item text'],
-  ['features/input-admission/raw-duplicate-replay', 'visitRawDuplicatePaths', 'invalidReplay isContainer isValue newGroup admits retainSpan open releaseCursor read capture fold collectRecord foldTerminalGroup collectGroupSpans advanceArrayCursor visitArrays visit', 'admits retainSpan open releaseCursor read capture fold collectRecord visit'],
-  ['features/input-admission/raw-numeric-admission', 'numericFailureMask visitRawNumericFailures', 'localPathCapacity union integerMask stoppedMask ownerMask', 'child emitMask visitChild visitOwner'],
-  ['features/input-admission/raw-integer', 'admitRawInteger', 'maximumSafeIntegerDigits scanCoefficient readExponent normalizedDigit exceedsSafeInteger materializeInteger', ''],
+  ['features/input-admission/raw-duplicate-replay', 'visitRawDuplicatePaths', 'defined invalidReplay isContainer isValue newGroup admits retainSpan open releaseCursor read capture fold collectRecord foldTerminalGroup collectGroupSpans advanceArrayCursor visitArrays visit', 'admits retainSpan open releaseCursor read capture fold collectRecord visit'],
+  ['features/input-admission/raw-numeric-admission', 'numericFailureMask visitRawNumericFailures', 'defined localPathCapacity union integerMask stoppedMask ownerMask', 'child emitMask visitChild visitOwner'],
+  ['features/input-admission/raw-integer', 'admitRawInteger', 'defined maximumSafeIntegerDigits scanCoefficient readExponent normalizedDigit exceedsSafeInteger materializeInteger', ''],
   ['features/input-admission/resource-diagnostic', 'resourceDiagnostic', 'phases', ''],
   ['features/input-admission/resource-limits', 'admissionLimits', 'limits', ''],
   ['features/input-admission/schema-diagnostic', 'schemaDiagnostic', '', ''],
@@ -115,6 +115,7 @@ const baseRouting = new Set([ENTRY, DIRECT_ROOT, AUTHORING, DIAGNOSTICS]);
 // New selectors belong only to their reviewed implementation roles. In
 // particular, schema metadata such as expected is not general fixture data.
 const baseScopedMembers = new Map([
+  [QUEUE, words('defined')],
   ['dist/features/input-admission/raw-integer.js', words('exponentStart fractionalDigits significantStart significantDigits trailingZeros')],
   ['dist/features/input-admission/object-admission.js', words('capabilities allAdmitted')],
   ['dist/features/composition-semantics/semantic-analysis.js', words('toSorted input')],
@@ -122,6 +123,7 @@ const baseScopedMembers = new Map([
   ['dist/features/composition-semantics/selected-bindings.js', words('selected frontiers')],
   ['dist/features/composition-semantics/profile-census.js', words('groups selected selectionsResolved toSorted')],
   ['dist/features/composition-semantics/declaration-census.js', words('toSorted')],
+  ['dist/features/canonicalization/owned-jcs/factory.js', words('at')],
   [DIRECT_ROOT, words('scanner')],
   [SHAPE, words('type fields expected matchesFormat variants many required optional')],
   [SNAPSHOT, words('create defineProperty')],
@@ -135,11 +137,11 @@ const baseScopedMembers = new Map([
   ['dist/features/input-admission/resource-diagnostic.js', words('declarationRawDocumentBytes profileRawDocumentBytes aggregateRawBytes')],
   ['dist/features/input-admission/raw-duplicate-replay.js', words('start end spans duplicate source base current cursor keys keyExpected tokenVisits arrayCursorSteps peakLiveSpans peakLiveCursors peakGroupDepth open subarray decodeString liveSpans scanner ownedBytes liveCursors localCapacity')],
   ['dist/features/input-admission/raw-numeric-admission.js', words('next')],
-  [RAW_DOCUMENT, words('open subarray start end decodedUtf8Bytes segment state key nextIndex cursor last decodeString valuesRemaining stringBytesRemaining valueOccurrences stringBytes maximumDepth invalidJson duplicateKey decoded frames current budget onDuplicate rootSeen replayBoundary depthLimit')],
+  [RAW_DOCUMENT, words('at open subarray start end decodedUtf8Bytes segment state key nextIndex cursor last decodeString valuesRemaining stringBytesRemaining valueOccurrences stringBytes maximumDepth invalidJson duplicateKey decoded frames current budget onDuplicate rootSeen replayBoundary depthLimit')],
   [feature('raw-scanner/owned-iterative'), words('open')],
-  [SCANNER, words('fromCharCode start end decodedUtf8Bytes wellFormedUtf16 decodeString invalidAt unit chunk pendingHighSurrogate position')],
+  [SCANNER, words('at fromCharCode start end decodedUtf8Bytes wellFormedUtf16 decodeString invalidAt unit chunk pendingHighSurrogate position')],
 ]);
-const intrinsicSelectors = words('create defineProperty apply at toStringTag fromCharCode');
+const intrinsicSelectors = words('create defineProperty apply toStringTag fromCharCode');
 const dataExports = new Map([
   ['selectedGraphDepthLimit', null],
   ['semanticResourceLimits', words('graphEdges providersPerManySlot')],
@@ -191,12 +193,12 @@ const captureInitializers = new Map([
   ])],
   [BYTE_CARRIER, new Map([
     ['capturedApply', 'Reflect.apply'], ['CapturedUint8Array', 'Uint8Array'],
-    ['typedArrayPrototype', 'Object.getPrototypeOf(CapturedUint8Array.prototype)'],
+    ['typedArrayPrototype', 'requiredPrototype(CapturedUint8Array.prototype)'],
     ['brandOf', 'captureGetter(typedArrayPrototype, Symbol.toStringTag)'],
     ['bufferOf', 'captureGetter(typedArrayPrototype, "buffer")'],
     ['lengthOf', 'captureGetter(typedArrayPrototype, "length")'],
     ['sharedProbe', 'captureGetter(ArrayBuffer.prototype, "byteLength")'],
-    ['usableProbe', 'typedArrayPrototype.at'],
+    ['usableProbe', 'captureMethod(typedArrayPrototype, "at")'],
   ])],
   [RAW_BYTES, new Map([['defineProperty', 'Object.defineProperty']])],
   [SCANNER, new Map([['fromCharCode', 'String.fromCharCode']])],
@@ -212,7 +214,9 @@ const shapeConstructors = new Map([
 // need a closed body as well as a name. No scanner/schema algorithm is pinned.
 const functionProfiles = new Map([
   [`${RAW_BYTES}:appendOwn`, 'function appendOwn(values, value) { const descriptor = { __proto__: null, value, enumerable: true, configurable: true, writable: true }; defineProperty(values, values.length, descriptor); }'],
-  [`${BYTE_CARRIER}:captureGetter`, 'function captureGetter(prototype, key) { const getter = Object.getOwnPropertyDescriptor(prototype, key)?.get; if (getter === undefined) { throw new TypeError("Required byte carrier intrinsic is unavailable"); } return getter; }'],
+  [`${BYTE_CARRIER}:requiredPrototype`, 'function requiredPrototype(value) { const prototype = Object.getPrototypeOf(value); if (prototype === null || typeof prototype !== "object") { throw new TypeError("Required byte carrier intrinsic is unavailable"); } return prototype; }'],
+  [`${BYTE_CARRIER}:captureGetter`, 'function captureGetter(prototype, key) { const descriptor = Object.getOwnPropertyDescriptor(prototype, key); const getter = descriptor === undefined ? undefined : Reflect.get(descriptor, "get"); if (typeof getter !== "function") { throw new TypeError("Required byte carrier intrinsic is unavailable"); } return function capturedGetter() { const result = capturedApply(getter, this, []); return result; }; }'],
+  [`${BYTE_CARRIER}:captureMethod`, 'function captureMethod(prototype, key) { const method = Object.getOwnPropertyDescriptor(prototype, key)?.value; if (typeof method !== "function") { throw new TypeError("Required byte carrier intrinsic is unavailable"); } return (receiver, ...args) => { const result = capturedApply(method, receiver, args); return result; }; }'],
   [`${SNAPSHOT}:record`, 'function record(fields) { const value = Object.create(null); for (const key of Object.keys(fields)) { Object.defineProperty(value, key, { value: fields[key], enumerable: true }); } return Object.freeze(value); }'],
   ...[...shapeConstructors].map(([name, contract]) => [`${SHAPE}:${name}`, contract[2]]),
 ]);
@@ -556,7 +560,7 @@ function audit(files, profile) {
     staticStrings.set(node, value);
     return value;
   }
-  const reviewedNodes = new Set(), reviewedInitializers = new Set(), reviewedFunctions = new Set();
+  const reviewedNodes = new Set(), reviewedInitializers = new Set(), reviewedFunctions = new Set(), reviewedCalls = new Set();
   const captures = new Map();
   for (const [path, module] of modules) for (const statement of module.source.statements) {
     if (ts.isFunctionDeclaration(statement) && statement.name) {
@@ -588,7 +592,7 @@ function audit(files, profile) {
     const declaration = declarationOf(symbolAt(node)), capture = captures.get(declaration);
     requireThat(capture && capture.path === pathOf(node) && capture.name === node.text
       || declaration && reviewedFunctions.has(declaration) && pathOf(declaration) === BYTE_CARRIER
-        && declaration.name?.text === 'captureGetter', 'top-level');
+        && ['requiredPrototype', 'captureGetter', 'captureMethod'].includes(declaration.name?.text), 'top-level');
   }, budget);
   function checkMember(name, node) {
     const sharedMember = shared && pathOf(node) === FACADE
@@ -597,6 +601,7 @@ function audit(files, profile) {
       || members.has(name) || scopedMembers.get(pathOf(node))?.has(name)
       || /^(?:decode|schema|identity|declaration|profile|binding|graph|diagnostics)\.[a-z-]+$/u.test(name), 'purpose');
     if (intrinsicSelectors.has(name)) requireThat(reviewedNodes.has(node), 'purpose');
+    if (name === 'at' && pathOf(node) === BYTE_CARRIER) requireThat(reviewedNodes.has(node), 'purpose');
   }
   function inert(node) {
     node = unwrap(node);
@@ -720,7 +725,7 @@ function audit(files, profile) {
   function checkCapturedReference(node, declaration) {
     if (reviewedNodes.has(node)) return;
     if (ts.isFunctionDeclaration(declaration) && pathOf(declaration) === BYTE_CARRIER
-      && declaration.name?.text === 'captureGetter') fail('construction');
+      && ['requiredPrototype', 'captureGetter', 'captureMethod'].includes(declaration.name?.text)) fail('construction');
     const capture = captures.get(declaration);
     if (!capture) return;
     const use = outer(node).parent, fn = nearestFunction(node);
@@ -763,6 +768,12 @@ function audit(files, profile) {
         && fn?.name?.text === 'copyByteCarrier' && fn.parameters.length === 1 && use.arguments?.length === 1
         && ts.isIdentifier(unwrap(use.arguments[0]))
         && declarationOf(symbolAt(unwrap(use.arguments[0]))) === fn.parameters[0], 'construction');
+      return;
+    }
+    if (capture.name === 'usableProbe') {
+      requireThat(direct && fn?.name?.text === 'classifyByteCarrier'
+        && sameSyntax(use, 'usableProbe(value, 0)'), 'global');
+      reviewedCalls.add(use);
       return;
     }
     requireThat(capturedApplication(use) && (capture.name === 'capturedApply'
@@ -832,14 +843,15 @@ function audit(files, profile) {
     }
     visit(source, node => {
       requireThat(!ts.isImportEqualsDeclaration(node) && !ts.isModuleDeclaration(node) && !ts.isWithStatement(node)
-        && !ts.isMetaProperty(node) && !ts.isTaggedTemplateExpression(node) && !ts.isFunctionExpression(node)
+        && !ts.isMetaProperty(node) && !ts.isTaggedTemplateExpression(node)
+        && (!ts.isFunctionExpression(node) || reviewedNodes.has(node))
         && !ts.isLabeledStatement(node) && !ts.isDebuggerStatement(node) && !ts.isYieldExpression(node)
         && !ts.isConstructorDeclaration(node) && !ts.isClassStaticBlockDeclaration(node)
         && !modified(node, ts.SyntaxKind.StaticKeyword) && !modified(node, ts.SyntaxKind.DeclareKeyword), 'syntax-profile');
       if (ts.isClassDeclaration(node)) {
         requireThat(path === QUEUE && node.parent === source && !node.heritageClauses, 'purpose');
-        requireThat(equalNames(new Set(node.members.map(item => propertyName(item.name))), words('items comparisons peakSize size less push take'))
-          && node.members.length === 7, 'purpose');
+        requireThat(equalNames(new Set(node.members.map(item => propertyName(item.name))), words('items comparisons peakSize size less defined push take'))
+          && node.members.length === 8, 'purpose');
         for (const item of node.members) if (ts.isPropertyDeclaration(item)) requireThat(inert(item.initializer), 'purpose');
       }
       if (ts.isClassExpression(node) || ts.isSetAccessorDeclaration(node)) fail('syntax-profile');
@@ -852,7 +864,7 @@ function audit(files, profile) {
           && role.functions.has(parent.name.text), 'purpose');
       }
       if (ts.isMethodDeclaration(node) || ts.isGetAccessorDeclaration(node)) {
-        const allowed = path === QUEUE ? words('size less push take') : path === SHAPE || path === SNAPSHOT ? words('declaration profile')
+        const allowed = path === QUEUE ? words('size less defined push take') : path === SHAPE || path === SNAPSHOT ? words('declaration profile')
           : path === FACADE ? words(shared ? 'compileComposition compileCompositionJson' : 'compileComposition')
             : path === feature('plan-output') ? words('emit') : path === feature('composition-semantics') ? words('newCollector') : new Set();
         requireThat(node.body && allowed.has(propertyName(node.name)), 'purpose');
@@ -867,7 +879,8 @@ function audit(files, profile) {
             || path === feature('plan-output') && node.name.text === 'emit'), 'syntax-profile');
       if (ts.isAwaitExpression(node)) requireThat(modified(nearestFunction(node) ?? {}, ts.SyntaxKind.AsyncKeyword), 'syntax-profile');
       if (ts.isForOfStatement(node)) requireThat(!node.awaitModifier, 'syntax-profile');
-      if (node.kind === ts.SyntaxKind.ThisKeyword) requireThat(path === QUEUE && nearestFunction(node), 'purpose');
+      if (node.kind === ts.SyntaxKind.ThisKeyword) requireThat(
+        path === QUEUE && nearestFunction(node) || reviewedNodes.has(node), 'purpose');
       if (node.kind === ts.SyntaxKind.SuperKeyword) fail('syntax-profile');
       if (ts.isReturnStatement(node)) requireThat(nearestFunction(node), 'parse');
       if (ts.isExpressionStatement(node) && ts.isStringLiteral(node.expression)) requireThat(node.expression.text === 'use strict', 'directive');
@@ -1126,6 +1139,7 @@ function audit(files, profile) {
       && ownedCallable(origin(value.node.whenFalse), depth + 1);
   }
   for (const { node, resolved } of calls) {
+    if (reviewedCalls.has(node)) continue;
     if (resolved.kind === 'member') {
       requireThat((resolved.name ?? staticString(resolved.key)) !== undefined, 'computed-call');
       continue;

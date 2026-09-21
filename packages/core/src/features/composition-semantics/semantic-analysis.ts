@@ -10,6 +10,12 @@ import type { SemanticInput, SemanticResult } from "./ports.js";
 
 type Graph = ReturnType<typeof analyzeSelectedGraph>;
 
+function ordered<T>(values: readonly T[], compare: (left: T, right: T) => number): T[] {
+  const result = [...values];
+  result.sort(compare);
+  return result;
+}
+
 function buildGraph(selected: ProfileCensus | null, bindings: SelectedBindings | null,
   resources: GraphResourceResult, collector: DiagnosticCollector): Graph | null {
   if (!selected?.resolvedNodes || !bindings || resources.countedInputEdges === null || resources.edgeLimitExceeded) {return null;}
@@ -51,8 +57,9 @@ function createPlan(input: SemanticInput & { readonly profile: CompositionProfil
   bindings: SelectedBindings, graph: Graph & { readonly dependencyOrder: readonly string[] }): CompositionPlan {
   const profile = input.profile;
   return Object.freeze({ kind: "get-modular.composition-plan", schemaVersion: 1, profileId: profile.profileId,
-    roots: Object.freeze(profile.roots.toSorted()),
-    selections: Object.freeze(profile.selections.map(selection => Object.freeze({ ...selection })).toSorted((a, b) => a.moduleId < b.moduleId ? -1 : a.moduleId > b.moduleId ? 1 : 0)),
+    roots: Object.freeze(ordered(profile.roots, (left, right) => left < right ? -1 : left > right ? 1 : 0)),
+    selections: Object.freeze(ordered(profile.selections.map(selection => Object.freeze({ ...selection })),
+      (a, b) => a.moduleId < b.moduleId ? -1 : a.moduleId > b.moduleId ? 1 : 0)),
     bindings: Object.freeze(bindings.validBindings.map(({ binding, slot }) => Object.freeze({ ...binding,
       capabilityId: slot.capabilityId, compatibility: Object.freeze({ ...slot.compatibility }) }))),
     dependencyOrder: graph.dependencyOrder });

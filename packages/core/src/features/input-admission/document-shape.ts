@@ -13,6 +13,11 @@ export type DocumentShapeViolation = {
 type Report = (violation: DocumentShapeViolation) => void;
 type Path = readonly (string | number)[];
 
+function defined<T>(value: T | undefined): T {
+  if (value === undefined) {throw new Error("Missing internal document-shape value");}
+  return value;
+}
+
 type RecordShape = {
   readonly type: "record";
   readonly fields: Readonly<Record<string, Shape>>;
@@ -82,13 +87,13 @@ function projectedShapes(current: readonly Shape[], segment: string | number): S
   const next: Shape[] = [];
   for (const shape of current) {
     if (shape.type === "record" && typeof segment === "string" && Object.hasOwn(shape.fields, segment)) {
-      next.push(shape.fields[segment]!);
+      next.push(defined(shape.fields[segment]));
     } else if (shape.type === "array" && typeof segment === "number"
       && Number.isInteger(segment) && segment >= 0 && segment <= 65535) {
       next.push(shape.item);
     } else if (shape.type === "cardinality" && typeof segment === "string") {
       for (const variant of Object.values(shape.variants)) {
-        if (Object.hasOwn(variant.fields, segment)) {next.push(variant.fields[segment]!);}
+        if (Object.hasOwn(variant.fields, segment)) {next.push(defined(variant.fields[segment]));}
       }
     }
   }
@@ -145,7 +150,7 @@ function checks<Value>(view: DocumentView<Value>, report: Report, reportLimit?: 
       const next = [...path, key];
       const member = reader.own(value, key);
       if (!member.present) {fail("required", next);}
-      else {check(fields[key]!, member.value, next);}
+      else {check(defined(fields[key]), member.value, next);}
     }
   }
   function admittedInteger(value: Value, min: number, max: number): number | null {

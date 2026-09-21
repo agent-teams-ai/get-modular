@@ -107,6 +107,19 @@ test("rejectable descriptor forms are observed without invoking any accessor", (
   assert.equal(measure([indexed]).statistics.jsonValueOccurrences, 2, "array positions precede descriptor rejection");
 });
 
+test("array length accounting does not invoke a Proxy property get trap", () => {
+  let calls = 0;
+  const value = new Proxy([null], {
+    get() { calls += 1; throw new Error("array properties must not be read"); },
+  });
+  assert.deepEqual(measure([value]), {
+    documents: [{ jsonDepth: 1, nonPlainValue: false, stoppedBy: null }],
+    statistics: { jsonValueOccurrences: 2, aggregateStringBytes: 0,
+      peakOpenContainers: 1, ownKeyVisits: 2, arrayIndexCodeUnits: 2 },
+  });
+  assert.equal(calls, 0);
+});
+
 test("property names stay data and completed calls retain no active traversal state", () => {
   const value = JSON.parse('{"__proto__":1,"constructor":2,"toJSON":3}');
   const meter = createObjectResourceMeter();

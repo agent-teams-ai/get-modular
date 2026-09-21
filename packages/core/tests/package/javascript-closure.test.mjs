@@ -102,19 +102,23 @@ export function admitObjectInput(input, collector) {
 }`],
   [BYTE_CARRIER, `const capturedApply = Reflect.apply;
 const CapturedUint8Array = Uint8Array;
-const typedArrayPrototype = Object.getPrototypeOf(CapturedUint8Array.prototype);
+const typedArrayPrototype = requiredPrototype(CapturedUint8Array.prototype);
 const brandOf = captureGetter(typedArrayPrototype, Symbol.toStringTag);
 const bufferOf = captureGetter(typedArrayPrototype, 'buffer');
 const lengthOf = captureGetter(typedArrayPrototype, 'length');
 const sharedProbe = captureGetter(ArrayBuffer.prototype, 'byteLength');
-const usableProbe = typedArrayPrototype.at;
-function captureGetter(prototype, key) { const getter = Object.getOwnPropertyDescriptor(prototype, key)?.get; if (getter === undefined) { throw new TypeError('Required byte carrier intrinsic is unavailable'); } return getter; }
+const usableProbe = captureMethod(typedArrayPrototype, 'at');
+function requiredPrototype(value) { const prototype = Object.getPrototypeOf(value); if (prototype === null || typeof prototype !== 'object') { throw new TypeError('Required byte carrier intrinsic is unavailable'); } return prototype; }
+function captureGetter(prototype, key) { const descriptor = Object.getOwnPropertyDescriptor(prototype, key); const getter = descriptor === undefined ? undefined : Reflect.get(descriptor, 'get'); if (typeof getter !== 'function') { throw new TypeError('Required byte carrier intrinsic is unavailable'); } return function capturedGetter() { const result = capturedApply(getter, this, []); return result; }; }
+function captureMethod(prototype, key) { const method = Object.getOwnPropertyDescriptor(prototype, key)?.value; if (typeof method !== 'function') { throw new TypeError('Required byte carrier intrinsic is unavailable'); } return (receiver, ...args) => { const result = capturedApply(method, receiver, args); return result; }; }
 export function classifyByteCarrier(value) {
   if (capturedApply(brandOf, value, []) !== 'Uint8Array') return { kind: 'rejected' };
   const buffer = capturedApply(bufferOf, value, []);
   capturedApply(sharedProbe, buffer, []);
-  capturedApply(usableProbe, value, [0]);
-  return { kind: 'admitted', visibleLength: capturedApply(lengthOf, value, []) };
+  usableProbe(value, 0);
+  const visibleLength = capturedApply(lengthOf, value, []);
+  if (typeof visibleLength !== 'number') throw new TypeError('Required byte carrier intrinsic returned an invalid length');
+  return { kind: 'admitted', visibleLength };
 }
 export function copyByteCarrier(value) { return new CapturedUint8Array(value); }`],
   ['dist/features/composition-semantics/semantic-analysis.js', `import { ReadyQueue } from './ready-queue.js';
@@ -127,6 +131,7 @@ export function analyzeCompositionSemantics(input, collector) {
   #items = []; comparisons = 0; peakSize = 0;
   get size() { return this.#items.length; }
   #less(left, right) { this.comparisons += 1; return left < right; }
+  #defined(value) { if (value === undefined) throw new Error('Missing internal graph ready-queue value'); return value; }
   push(value) {
     this.#items.push(value);
     this.peakSize = Math.max(this.peakSize, this.#items.length);
@@ -568,8 +573,14 @@ test('intrinsic capture initializers retain their exact reviewed origins', () =>
   mutant(files => edit(files, BYTE_CARRIER, 'const CapturedUint8Array = Uint8Array;',
     "import { defineModule as CapturedUint8Array } from '../authoring/helpers.js';"), 'top-level');
   mutant(files => edit(files, BYTE_CARRIER,
-    "function captureGetter(prototype, key) { const getter = Object.getOwnPropertyDescriptor(prototype, key)?.get; if (getter === undefined) { throw new TypeError('Required byte carrier intrinsic is unavailable'); } return getter; }",
+    "function captureGetter(prototype, key) { const descriptor = Object.getOwnPropertyDescriptor(prototype, key); const getter = descriptor === undefined ? undefined : Reflect.get(descriptor, 'get'); if (typeof getter !== 'function') { throw new TypeError('Required byte carrier intrinsic is unavailable'); } return function capturedGetter() { const result = capturedApply(getter, this, []); return result; }; }",
     "import { defineModule as captureGetter } from '../authoring/helpers.js';"), 'top-level');
+  mutant(files => edit(files, BYTE_CARRIER,
+    "function requiredPrototype(value) { const prototype = Object.getPrototypeOf(value); if (prototype === null || typeof prototype !== 'object') { throw new TypeError('Required byte carrier intrinsic is unavailable'); } return prototype; }",
+    'function requiredPrototype(value) { return value; }'), 'construction');
+  mutant(files => edit(files, BYTE_CARRIER,
+    "function captureMethod(prototype, key) { const method = Object.getOwnPropertyDescriptor(prototype, key)?.value; if (typeof method !== 'function') { throw new TypeError('Required byte carrier intrinsic is unavailable'); } return (receiver, ...args) => { const result = capturedApply(method, receiver, args); return result; }; }",
+    'function captureMethod(prototype, key) { return prototype[key]; }'), 'construction');
 });
 
 for (const [path, before, after] of [
@@ -584,8 +595,8 @@ for (const [path, before, after] of [
 }
 
 test('reviewed intrinsic captures do not authorize arbitrary applications or copies', () => {
-  mutant(files => edit(files, BYTE_CARRIER, 'capturedApply(usableProbe, value, [0])',
-    'capturedApply(usableProbe, value, [1])'), 'global');
+  mutant(files => edit(files, BYTE_CARRIER, 'usableProbe(value, 0)',
+    'usableProbe(value, 1)'), 'global');
   mutant(files => edit(files, BYTE_CARRIER, 'new CapturedUint8Array(value)',
     'new CapturedUint8Array(value.profile)'), 'construction');
   mutant(files => edit(files, SCANNER, 'return fromCharCode(unit);',
@@ -692,7 +703,7 @@ test('the successor carrier code is admitted without broadening input member pur
 
 for (const separator of ['\n', '\r\n', '\u2028', '\u2029']) {
   test(`profiled helper return expressions survive restricted-production newline ${JSON.stringify(separator)}`, () => {
-    mutant(files => edit(files, BYTE_CARRIER, 'return getter;', `return${separator}getter;`), 'construction');
+    mutant(files => edit(files, BYTE_CARRIER, 'return prototype;', `return${separator}prototype;`), 'construction');
   });
 }
 for (const update of ['++record', '--record']) {

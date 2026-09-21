@@ -27,6 +27,11 @@ type CarrierOutcome = boolean | "not-uint8array" | "shared-storage" | "unusable-
 type AdmittedInvocation = Extract<ReturnType<typeof inspectInvocation>, { readonly kind: "admitted" }>;
 type AddDiagnostic = (diagnostic: DiagnosticCandidate) => void;
 
+function defined<T>(value: T | undefined): T {
+  if (value === undefined) {throw new Error("Missing internal carrier outcome");}
+  return value;
+}
+
 function reportInvalidWrapper(roots: readonly string[], add: AddDiagnostic): void {
   for (const field of roots) {
     add(Object.freeze({ code: "input.invalid-byte-carrier", phase: "decode", coordinate: Object.freeze({}),
@@ -79,7 +84,7 @@ function copyCaptured(invocation: AdmittedInvocation, outcomes: readonly Carrier
 
 function reportCarrierOutcomes(outcomes: readonly CarrierOutcome[], count: number, add: AddDiagnostic): void {
   for (let ordinal = 0; ordinal <= count; ordinal += 1) {
-    const outcome = outcomes[ordinal]!;
+    const outcome = defined(outcomes[ordinal]);
     if (outcome === true) {continue;}
     const isProfile = ordinal === count;
     const locator: DocumentLocator = isProfile ? { kind: "profile" } : { kind: "declaration", ordinal };

@@ -5,6 +5,11 @@ import type { ProfileCensus } from "./profile-census.js";
 import { validateBindingRecords } from "./binding-record.js";
 
 type Binding = CompositionProfile["bindings"][number];
+
+function defined<T>(value: T | undefined): T {
+  if (value === undefined) {throw new Error("Missing internal binding value");}
+  return value;
+}
 type Slot = ModuleDeclaration["slots"][number];
 export type ResolvedBinding = { readonly binding: Binding; readonly slot: Slot };
 export type SelectedBindings = {
@@ -63,7 +68,7 @@ function validateSuppliedGroup(implementationId: string, slots: Map<string, Bind
       continue;
     }
     if (validateBindingRecords(records, slot, declarations, selected, { addUnique: add })) {
-      validBindings.push(Object.freeze({ binding: records[0]!, slot }));
+      validBindings.push(Object.freeze({ binding: defined(records[0]), slot }));
     } else {frontiers.set(implementationId, false);}
   }
 }
@@ -76,7 +81,7 @@ function validateMissingBindings(groups: BindingGroups, context: ValidationConte
     if (consumer.uniqueSlots.length !== consumer.declaration.slots.length) {frontiers.set(implementationId, false);}
     const records = groups.get(implementationId);
     for (const slot of consumer.uniqueSlots) {
-      if (records?.has(slot.slotId)) {continue;}
+      if (records?.has(slot.slotId) === true) {continue;}
       frontiers.set(implementationId, false);
       add(Object.freeze({ code: "binding.missing", phase: "binding", path: Object.freeze([]),
         coordinate: Object.freeze({ implementationId, slotId: slot.slotId }), details: Object.freeze({ reason: "missing" }) }));

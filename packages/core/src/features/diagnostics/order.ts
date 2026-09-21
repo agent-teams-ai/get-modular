@@ -42,6 +42,11 @@ const codes = {
 const coordinateFields = ["moduleId", "implementationId", "slotId", "providerImplementationId"] as const;
 type Coordinate = Readonly<Partial<Record<typeof coordinateFields[number], string>>>;
 
+function defined<T>(value: T | undefined): T {
+  if (value === undefined) {throw new Error("Missing internal diagnostic ordering value");}
+  return value;
+}
+
 function lexical(left: string | number, right: string | number): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
@@ -62,8 +67,8 @@ function compareCoordinates(left: Coordinate, right: Coordinate): number {
 
 function comparePaths(left: Diagnostic["path"], right: Diagnostic["path"]): number {
   for (let index = 0; index < Math.min(left.length, right.length); index += 1) {
-    const leftSegment = left[index]!;
-    const rightSegment = right[index]!;
+    const leftSegment = defined(left[index]);
+    const rightSegment = defined(right[index]);
     if (leftSegment.kind !== rightSegment.kind) {return leftSegment.kind === "field" ? -1 : 1;}
     const order = lexical(leftSegment.value, rightSegment.value);
     if (order !== 0) {return order;}
@@ -73,7 +78,7 @@ function comparePaths(left: Diagnostic["path"], right: Diagnostic["path"]): numb
 
 function compareCycles(left: readonly string[], right: readonly string[]): number {
   for (let index = 0; index < Math.min(left.length, right.length); index += 1) {
-    const order = lexical(left[index]!, right[index]!);
+    const order = lexical(defined(left[index]), defined(right[index]));
     if (order !== 0) {return order;}
   }
   return left.length - right.length;
@@ -81,7 +86,9 @@ function compareCycles(left: readonly string[], right: readonly string[]): numbe
 
 function compareBytes(left: Uint8Array, right: Uint8Array): number {
   for (let index = 0; index < Math.min(left.length, right.length); index += 1) {
-    if (left[index] !== right[index]) {return left[index]! - right[index]!;}
+    const leftByte = defined(left[index]);
+    const rightByte = defined(right[index]);
+    if (leftByte !== rightByte) {return leftByte - rightByte;}
   }
   return left.length - right.length;
 }

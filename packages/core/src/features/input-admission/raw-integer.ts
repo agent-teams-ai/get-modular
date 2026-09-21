@@ -12,6 +12,11 @@ type Coefficient = {
   readonly trailingZeros: number;
 };
 
+function defined<T>(value: T | undefined): T {
+  if (value === undefined) {throw new Error("Missing internal raw-integer byte");}
+  return value;
+}
+
 function scanCoefficient(bytes: Uint8Array, start: number, end: number): Coefficient {
   let cursor = start;
   let fractional = false;
@@ -20,7 +25,7 @@ function scanCoefficient(bytes: Uint8Array, start: number, end: number): Coeffic
   let significantDigits = 0;
   let trailingZeros = 0;
   while (cursor < end) {
-    const byte = bytes[cursor]!;
+    const byte = defined(bytes[cursor]);
     if (byte === 0x65 || byte === 0x45) {break;}
     if (byte === 0x2e) {fractional = true;}
     else {
@@ -43,7 +48,7 @@ function readExponent(bytes: Uint8Array, start: number, end: number, limit: numb
   if (negative || bytes[cursor] === 0x2b) {cursor += 1;}
   let exponent = 0;
   while (cursor < end) {
-    exponent = Math.min(limit, exponent * 10 + (bytes[cursor]! - 0x30));
+    exponent = Math.min(limit, exponent * 10 + (defined(bytes[cursor]) - 0x30));
     cursor += 1;
   }
   return negative ? -exponent : exponent;
@@ -52,8 +57,8 @@ function readExponent(bytes: Uint8Array, start: number, end: number, limit: numb
 function normalizedDigit(bytes: Uint8Array, cursor: number, index: number,
   significantDigits: number): readonly [digit: number, cursor: number] {
   if (index >= significantDigits) {return [0, cursor];}
-  const position = bytes[cursor] === 0x2e ? cursor + 1 : cursor;
-  return [bytes[position]! - 0x30, position + 1];
+  const position = defined(bytes[cursor]) === 0x2e ? cursor + 1 : cursor;
+  return [defined(bytes[position]) - 0x30, position + 1];
 }
 
 function exceedsSafeInteger(bytes: Uint8Array, start: number, significantDigits: number): boolean {

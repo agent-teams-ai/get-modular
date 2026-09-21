@@ -26,7 +26,7 @@ export const TRACEABILITY_PATH = "docs/traceability/module-system-v1.yaml";
 
 const FOUNDATION_ADMISSION = Object.freeze({
   package: "@agent-teams/engineering-foundation",
-  version: "1.4.1",
+  version: "1.4.2",
   command: "agent-teams-foundation check",
   capability: "architecture.source-dependencies",
   policy: SOURCE_DEPENDENCY_POLICY_PATH,
@@ -373,6 +373,8 @@ export function validateFirstProductionPackageAdmission({
     `quality.source-coverage must use ${QUALITY_SOURCE_COVERAGE_PATH}`);
   const suppressionCapability =
     foundationConfig?.capabilities?.["quality.suppression-governance"];
+  assert(suppressionCapability !== undefined,
+    "quality.suppression-governance capability is required");
   exactKeys(suppressionCapability, ["configPath"], "quality.suppression-governance capability");
   assert(suppressionCapability.configPath === SUPPRESSION_GOVERNANCE_PATH,
     `quality.suppression-governance must use ${SUPPRESSION_GOVERNANCE_PATH}`);

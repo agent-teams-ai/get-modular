@@ -12,7 +12,7 @@ export type FactoryHandle<C, D extends ModuleDeclaration = ModuleDeclaration, I 
   readonly [scope]: (capabilities: C) => C;
   readonly [detail]: { readonly declaration: D; readonly instance: I };
 };
-export type AnyFactoryHandle<C> = FactoryHandle<C, ModuleDeclaration, unknown>;
+export type AnyFactoryHandle<C> = FactoryHandle<C>;
 export type RootHandles<C> = Readonly<Record<string, AnyFactoryHandle<C>>>;
 export type RootInstances<R> = {
   readonly [K in keyof R]: R[K] extends FactoryHandle<infer _C, infer _D, infer I> ? I : never;

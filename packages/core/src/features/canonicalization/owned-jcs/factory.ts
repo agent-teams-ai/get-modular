@@ -13,15 +13,28 @@ function invalidValue(): never {
   throw new TypeError("Canonicalization requires an acyclic JSON value with well-formed Unicode and finite numbers.");
 }
 
+function wellFormed(value: string): boolean {
+  for (let index = 0; index < value.length; index += 1) {
+    const unit = value.charCodeAt(index);
+    if (unit >= 0xd800 && unit <= 0xdbff) {
+      if (index + 1 >= value.length) {return false;}
+      const next = value.charCodeAt(index + 1);
+      if (next < 0xdc00 || next > 0xdfff) {return false;}
+      index += 1;
+    } else if (unit >= 0xdc00 && unit <= 0xdfff) {return false;}
+  }
+  return true;
+}
+
 function quote(value: string): string {
   // TextEncoder would replace lone surrogates, silently changing content identity.
-  if (!value.isWellFormed()) {invalidValue();}
+  if (!wellFormed(value)) {invalidValue();}
   return JSON.stringify(value);
 }
 
 function member(value: object, key: string): unknown {
   const descriptor = Object.getOwnPropertyDescriptor(value, key);
-  if (descriptor === undefined || !Object.hasOwn(descriptor, "value") || !descriptor.enumerable) {
+  if (descriptor === undefined || !Object.hasOwn(descriptor, "value") || descriptor.enumerable !== true) {
     invalidValue();
   }
   return descriptor.value;
@@ -55,12 +68,12 @@ function container(value: object): ContainerFrame {
 function canonicalize(value: JsonValue): Uint8Array {
   const chunks: string[] = [];
   const stack: Frame[] = [{ kind: "value", value }];
-  const ancestors = new WeakSet<object>();
+  const ancestors = new WeakSet();
   while (stack.length > 0) {
     const frame = stack.pop();
     if (frame === undefined) {break;}
     if (frame.kind === "container") {
-      const key = frame.keys[frame.index];
+      const key = frame.keys.at(frame.index);
       if (key === undefined) {
         chunks.push(frame.array ? "]" : "}");
         ancestors.delete(frame.value);

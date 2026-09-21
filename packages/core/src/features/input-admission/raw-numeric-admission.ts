@@ -17,6 +17,11 @@ type Frame<Value> = {
   next: number;
 };
 
+function defined<T>(value: T | undefined): T {
+  if (value === undefined) {throw new Error("Missing internal numeric-admission value");}
+  return value;
+}
+
 // The admitted invocation prefix occupies two declaration segments or one
 // profile segment of the complete 32-segment diagnostic address.
 function localPathCapacity(kind: DocumentKind): number {
@@ -52,10 +57,10 @@ function stoppedMask<Value>(reader: DocumentReader<Value>, root: Value): Failure
     // Even mask 3 does not stop exact classification of subsequent numbers.
     let foundChild = false;
     while (frames.length !== 0) {
-      const frame = frames[frames.length - 1]!;
+      const frame = defined(frames[frames.length - 1]);
       if (frame.kind === "record") {
         if (frame.next === frame.keys.length) { frames.pop(); continue; }
-        const key = frame.keys[frame.next]!;
+        const key = defined(frame.keys[frame.next]);
         frame.next += 1;
         const member = reader.own(frame.value, key);
         if (!member.present) {continue;}

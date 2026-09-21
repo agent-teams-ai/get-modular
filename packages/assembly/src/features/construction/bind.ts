@@ -27,8 +27,13 @@ export function bindFactoryFor<C>(): Assembly<C>["bindFactory"] {
     } catch (cause) {
       throw new AssemblyBindingError(cause instanceof SnapshotFault && cause.kind === "limit" ? "assembly.bind.limit" : "assembly.bind.invalid-declaration", cause);
     }
-    const handle: object = Object.freeze(Object.create(null) as object);
-    metadata.set(handle, Object.freeze({ declaration: captured, factory: factory as unknown as ExecutableFactory }));
+    const handle: object = {};
+    Object.setPrototypeOf(handle, null);
+    Object.freeze(handle);
+    const executable: ExecutableFactory = function forwardFactory(this: unknown, dependencies, context) {
+      return Reflect.apply(factory, this, [dependencies, context]);
+    };
+    metadata.set(handle, Object.freeze({ declaration: captured, factory: executable }));
     return handle as FactoryHandle<C, D, I>;
   };
 }

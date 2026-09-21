@@ -36,6 +36,20 @@ type Frame = {
   indexes: number;
 };
 
+function defined<T>(value: T | undefined): T {
+  if (value === undefined) {throw new Error("Missing internal object-resource value");}
+  return value;
+}
+
+function arrayLength(value: object): number | null {
+  const descriptor = Object.getOwnPropertyDescriptor(value, "length");
+  if (descriptor === undefined || !Object.hasOwn(descriptor, "value")) {return null;}
+  const length: unknown = descriptor.value;
+  return typeof length === "number" && Number.isInteger(length) && length >= 0 && length <= 0xffffffff
+    ? length
+    : null;
+}
+
 /** One meter per invocation; the wrapper/list are not JSON document values. */
 export function createObjectResourceMeter(): ObjectResourceMeter {
   let occurrences = 0;
@@ -74,7 +88,7 @@ export function createObjectResourceMeter(): ObjectResourceMeter {
     let jsonDepth = 0;
     let nonPlainValue = false;
     let stoppedBy: ObjectResourceScan["stoppedBy"] = exhausted;
-    const active = new WeakSet<object>();
+    const active = new WeakSet();
     const stack: Frame[] = [];
 
     function nonPlain(segment: string | number | null = null): void {
@@ -105,31 +119,32 @@ export function createObjectResourceMeter(): ObjectResourceMeter {
       if (depth > depthLimit) { stoppedBy = "jsonDepth"; return; }
 
       const isArray = Array.isArray(item);
-      const prototype = Object.getPrototypeOf(item);
+      const prototype: unknown = Object.getPrototypeOf(item);
       if (isArray ? prototype !== Array.prototype : prototype !== Object.prototype && prototype !== null) {
         nonPlain(segment);
       }
-      const arrayLength = isArray ? Object.getOwnPropertyDescriptor(item, "length")!.value as number : null;
+      const length = isArray ? arrayLength(item) : null;
+      if (isArray && length === null) { nonPlain(segment); return; }
       // Reserve attempted positions before density inspection or work
       // proportional to a rejected array dimension, including sparse length.
-      if (arrayLength !== null && !countValues(arrayLength)) { stoppedBy = exhausted; return; }
+      if (length !== null && !countValues(length)) { stoppedBy = exhausted; return; }
       const descriptors = Object.getOwnPropertyDescriptors(item);
       stack.push({ value: item, descriptors, keys: Reflect.ownKeys(descriptors), depth,
-        arrayLength, segment, next: 0, indexes: 0 });
+        arrayLength: length, segment, next: 0, indexes: 0 });
       active.add(item);
       peakOpenContainers = Math.max(peakOpenContainers, stack.length);
     }
 
     if (stoppedBy === null) {enter(value, 1, false, null);}
     while (stoppedBy === null && stack.length > 0) {
-      const frame = stack[stack.length - 1]!;
+      const frame = defined(stack[stack.length - 1]);
       if (frame.next === frame.keys.length) {
         if (frame.arrayLength !== null && frame.indexes !== frame.arrayLength) {nonPlain();}
         active.delete(frame.value);
         stack.pop();
         continue;
       }
-      const key = frame.keys[frame.next++]!;
+      const key = defined(frame.keys[frame.next++]);
       ownKeyVisits += 1;
       // The descriptor table is ordinary: symbols follow every string key.
       // Finish only this frame; parent siblings still contribute resources.
@@ -154,8 +169,8 @@ export function createObjectResourceMeter(): ObjectResourceMeter {
         frame.indexes += 1;
         segment = index;
       } else if (!countString(key)) { stoppedBy = exhausted; break; }
-      const descriptor = frame.descriptors[key]!;
-      if (!descriptor.enumerable) {nonPlain();}
+      const descriptor = defined(frame.descriptors[key]);
+      if (descriptor.enumerable !== true) {nonPlain();}
       if (!Object.hasOwn(descriptor, "value")) { nonPlain(); continue; }
       enter(descriptor.value, frame.depth + 1, frame.arrayLength !== null, segment);
     }

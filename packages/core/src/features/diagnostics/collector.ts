@@ -6,6 +6,11 @@ const retainedLimit = 256;
 const maximumOmitted = 262_144;
 const countCeiling = retainedLimit - 1 + maximumOmitted;
 
+function defined<T>(value: T | undefined): T {
+  if (value === undefined) {throw new Error("Missing internal diagnostic heap value");}
+  return value;
+}
+
 function snapshot(candidate: DiagnosticCandidate): DiagnosticCandidate {
   const details = candidate.code === "graph.cycle"
     ? { component: Object.freeze([...candidate.details.component]) }
@@ -44,22 +49,22 @@ export function createDiagnosticCollector(canonicalize: CanonicalizeDetails): Di
       peakRetained = heap.length;
       while (index > 0) {
         const parent = (index - 1) >>> 1;
-        if (compare(heap[parent]!, heap[index]!) >= 0) {break;}
-        [heap[index], heap[parent]] = [heap[parent]!, heap[index]!];
+        if (compare(defined(heap[parent]), defined(heap[index])) >= 0) {break;}
+        [heap[index], heap[parent]] = [defined(heap[parent]), defined(heap[index])];
         index = parent;
       }
       return;
     }
-    if (compare(candidate, heap[0]!) >= 0) {return;}
+    if (compare(candidate, defined(heap[0])) >= 0) {return;}
     heap[0] = snapshot(candidate);
     let index = 0;
     for (;;) {
       const left = 2 * index + 1;
       if (left >= heap.length) {return;}
       const right = left + 1;
-      const child = right < heap.length && compare(heap[right]!, heap[left]!) > 0 ? right : left;
-      if (compare(heap[index]!, heap[child]!) >= 0) {return;}
-      [heap[index], heap[child]] = [heap[child]!, heap[index]!];
+      const child = right < heap.length && compare(defined(heap[right]), defined(heap[left])) > 0 ? right : left;
+      if (compare(defined(heap[index]), defined(heap[child])) >= 0) {return;}
+      [heap[index], heap[child]] = [defined(heap[child]), defined(heap[index])];
       index = child;
     }
   };

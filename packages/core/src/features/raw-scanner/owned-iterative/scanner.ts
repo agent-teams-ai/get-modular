@@ -109,15 +109,16 @@ type ScannedUnit = { readonly ok: true; readonly unit: number; readonly next: nu
   | { readonly ok: false; readonly invalidAt: number };
 
 function scanStringUnit(bytes: Uint8Array, position: number, limit: number): ScannedUnit {
-  const byte = bytes[position];
+  const byte = bytes.at(position);
   if (byte === 0x5c) {
     if (position + 1 >= limit) {return { ok: false, invalidAt: limit };}
-    const escape = bytes[position + 1];
+    const escape = bytes.at(position + 1);
+    if (escape === undefined) {return { ok: false, invalidAt: limit };}
     if (escape === 0x75) {
       const unit = readHexUnit(bytes, position + 2, limit);
       return unit < 0 ? { ok: false, invalidAt: position + 5 } : { ok: true, unit, next: position + 6 };
     }
-    const unit = escapedUnit(escape ?? -1);
+    const unit = escapedUnit(escape);
     return unit < 0 ? { ok: false, invalidAt: position + 1 } : { ok: true, unit, next: position + 2 };
   }
   if (byte === undefined || byte < 0x20) {return { ok: false, invalidAt: position };}
@@ -190,7 +191,7 @@ function scanNumber(bytes: Uint8Array, start: number): RawToken {
   let position = start;
   if (bytes[position] === 0x2d) {position += 1;}
 
-  const leading = bytes[position];
+  const leading = bytes.at(position);
   if (leading === 0x30) {
     position += 1;
     if (isDigit(bytes[position])) {return invalidToken(start, position, limit);}
