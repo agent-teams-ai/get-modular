@@ -44,7 +44,9 @@ try {
     const created = (await readdir(temporary)).filter(name => name.endsWith(".tgz") && !before.has(name));
     assert.equal(created.length, 1, `${surface.packageName} must produce one archive`);
     const archive = join(temporary, created[0]);
-    const members = (await run("tar", ["-tzf", archive])).stdout.trim().split("\n");
+    const members = (await run("tar", ["-tzf", archive])).stdout.split(/\r?\n/u)
+      .map(member => member.trim().replaceAll("\\", "/").replace(/^\.\//u, ""))
+      .filter(Boolean);
     assert.ok(members.includes("package/package.json"), `${surface.packageName} archive manifest`);
     assert.ok(!members.some(path => path.startsWith("package/src/")), `${surface.packageName} archive leaks source`);
     for (const exported of surface.exports) {
