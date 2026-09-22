@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "kind": "published-release-history",
+  "packageName": "@get-modular/core",
+  "classification": "released",
+  "published": {
+    "version": "0.1.0",
+    "tarball": "https://registry.npmjs.org/@get-modular/core/-/core-0.1.0.tgz",
+    "integrity": "sha512-0aqzW7sbh7O8aAPBGJIPZBbhgeYnk+HuZdVf27dimkQ3d/zb9zpsYIMdLGt3EXi1B8MaBjw09ApzLaiIRiAgIQ==",
+    "shasum": "df2387f1944afea722cd4244e76a4ac30a4cdd39",
+    "sha256": "50803ea69e2fb4078013a897f858908b4d73d26296336ab155a6118809dfb8ba",
+    "publishedAt": "2026-09-07T18:22:35.862Z"
+  },
+  "sourceBinding": {
+    "status": "unavailable",
+    "reasons": [
+      "registry-packument-has-no-gitHead",
+      "trusted-authority-receipt-binding-archive-to-source-is-unavailable"
+    ]
+  },
+  "growthObservation": {
+    "status": "unavailable",
+    "reasons": [
+      "authenticated-released-observation-is-unavailable",
+      "trusted-packed-custody-receipt-is-unavailable"
+    ]
+  }
+}

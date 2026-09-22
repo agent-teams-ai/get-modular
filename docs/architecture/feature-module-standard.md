@@ -96,10 +96,14 @@ production. The first production package must atomically:
 - change the admission state to `source-admitted`;
 - enable Engineering Foundation's `architecture.source-dependencies`
   capability at `architecture/foundation/source-dependencies.yaml`; and
-- execute the pinned `@agent-teams/engineering-foundation` `1.4.2` command
+- execute the pinned `@agent-teams/engineering-foundation` `1.5.1` command
   `agent-teams-foundation check` through both the complete and fast gates.
 
-The tooling activation pins Foundation `1.4.2`. The published
+The tooling activation pins Foundation `1.5.1`. SDK growth admission remains
+explicitly pending: the active public-API capability retains schema v1 until a
+trusted external authority binds the PR base and candidate to authenticated
+released Core and Assembly artifacts. Local qualification records cannot
+activate that route. The published
 `quality.source-coverage` route uses the existing production profile and source
 policy: `quality:coverage:scope` runs in the fast gate and `lint:typed` runs in
 the complete gate. Suppression governance covers Core and Assembly source with

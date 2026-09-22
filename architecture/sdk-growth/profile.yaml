@@ -1,0 +1,40 @@
+schemaVersion: 1
+contractRevision: foundation:sdk-growth:c0:5
+policyVersion: foundation:sdk-growth:policy:1
+owner: architecture/tooling
+status: pending
+activation: hold
+statusPath: architecture/sdk-growth/status.json
+qualificationPolicyPath: architecture/sdk-growth/qualification-policy.yaml
+standardReviewPath: architecture/sdk-growth/evidence/consumer-module-standard.json
+foundation:
+  package: "@agent-teams/engineering-foundation"
+  version: 1.5.1
+  integrity: "sha512-29r5QUvMIFdvsPaJ5m0Yx1Uo6bL85J/teP1p1ThNg7jMEz54cVxyrEnsLx/DN5cc/2CAzq2i8iLnPKgZN1cT8A=="
+  tarballSha256: bd0c476d2940168ac1b020f42726107cce81580b7b1b014e74aceabbafa9e951
+  sourceMergeCommit: 1674c4a9459c286f52861dd9beacbb0421a2118b
+  sourceReleaseCommit: 54424334c2e839a8358cdb88945fb45e20714a88
+authority:
+  requiredProtocol: reviewrouter:sdk-growth-authority:3
+  source: external-required
+  available: false
+  candidateMaySupplyAuthority: false
+packages:
+  - packageName: "@get-modular/assembly"
+    packageRoot: packages/assembly
+    manifestPath: packages/assembly/package.json
+    historyPath: architecture/sdk-growth/evidence/history-assembly.json
+    releasedBaselinePath: architecture/public-api/assembly.json
+    exports:
+      - exportPath: "."
+        declarationPath: packages/assembly/dist/index.d.ts
+        runtimePath: packages/assembly/dist/index.js
+  - packageName: "@get-modular/core"
+    packageRoot: packages/core
+    manifestPath: packages/core/package.json
+    historyPath: architecture/sdk-growth/evidence/history-core.json
+    releasedBaselinePath: architecture/public-api/core.json
+    exports:
+      - exportPath: "."
+        declarationPath: packages/core/dist/index.d.ts
+        runtimePath: packages/core/dist/index.js

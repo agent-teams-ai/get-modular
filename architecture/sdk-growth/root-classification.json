@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "foundation:sdk-growth:metadata-root:1",
+  "kind": "non-release-metadata-root",
+  "packageName": "@get-modular/repository",
+  "rootPath": ".",
+  "manifestPath": "package.json",
+  "decisionId": "GM-G1-ROOT-CLASSIFICATION",
+  "ownerRef": "get-modular/architecture",
+  "releaseHistory": "none"
+}

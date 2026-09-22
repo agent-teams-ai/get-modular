@@ -26,7 +26,7 @@ export const TRACEABILITY_PATH = "docs/traceability/module-system-v1.yaml";
 
 const FOUNDATION_ADMISSION = Object.freeze({
   package: "@agent-teams/engineering-foundation",
-  version: "1.4.2",
+  version: "1.5.1",
   command: "agent-teams-foundation check",
   capability: "architecture.source-dependencies",
   policy: SOURCE_DEPENDENCY_POLICY_PATH,
@@ -70,6 +70,11 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "release-owned-files:check":
     "node architecture/checks/release-owned-files.mjs",
   "runtime:preflight": "node architecture/checks/node-version.mjs",
+  "sdk-growth:check": "node architecture/checks/sdk-growth.mjs && node --test tests/sdk-growth.test.mjs && node tests/qualification/sdk-growth-admission.mjs && node tests/qualification/sdk-growth-packed-consumers.mjs && node tests/qualification/sdk-growth-registry-consumer.mjs",
+  "sdk-growth:admission": "node tests/qualification/sdk-growth-admission.mjs",
+  "sdk-growth:test": "node --test tests/sdk-growth.test.mjs",
+  "sdk-growth:pack": "node tests/qualification/sdk-growth-packed-consumers.mjs",
+  "sdk-growth:registry": "node tests/qualification/sdk-growth-registry-consumer.mjs",
 });
 const ROOT_SCRIPT_COMMANDS = Object.freeze({
   check: Object.freeze([
@@ -78,6 +83,7 @@ const ROOT_SCRIPT_COMMANDS = Object.freeze({
     "release-owned-files:check",
     "assembly:build",
     "foundation:check",
+    "sdk-growth:check",
     "lint:typed",
     "docs:protocol:check",
     "architecture:feature-module-profile",
@@ -98,6 +104,7 @@ const ROOT_SCRIPT_COMMANDS = Object.freeze({
     "runtime:preflight",
     "assembly:build",
     "foundation:check",
+    "sdk-growth:check",
     "quality:coverage:scope",
     "architecture:feature-module-profile",
     "docs:check",

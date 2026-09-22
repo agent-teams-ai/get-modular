@@ -14,6 +14,12 @@ changedChecks:
     extensions: [.md, .yaml, .yml]
     passPaths: false
 fullScanPaths:
+  - architecture/checks/sdk-growth.mjs
+  - architecture/sdk-growth
+  - tests/sdk-growth.test.mjs
+  - tests/qualification/sdk-growth-admission.mjs
+  - tests/qualification/sdk-growth-packed-consumers.mjs
+  - tests/qualification/sdk-growth-registry-consumer.mjs
   - .github/workflows
   - architecture
   - docs
