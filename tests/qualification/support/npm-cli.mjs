@@ -24,3 +24,26 @@ export async function resolveNpmCli() {
   }
   throw new Error("The local Node toolchain must provide npm-cli.js; no shell fallback is used.");
 }
+
+export async function resolvePnpmCli() {
+  const candidates = [process.env.npm_execpath];
+  if (process.env.PNPM_HOME) {
+    candidates.push(join(process.env.PNPM_HOME, "..", "pnpm", "bin", "pnpm.cjs"));
+  }
+  for (const directory of (process.env.PATH ?? "").split(delimiter)) {
+    try {
+      candidates.push(await realpath(join(directory, process.platform === "win32" ? "pnpm.cmd" : "pnpm")));
+    } catch (error) {
+      if (error.code !== "ENOENT" && error.code !== "ENOTDIR") throw error;
+    }
+    candidates.push(join(directory, "..", "pnpm", "bin", "pnpm.cjs"));
+  }
+  for (const candidate of candidates) {
+    if (!candidate || !/\.(?:cjs|mjs|js)$/iu.test(candidate)) continue;
+    try {
+      await access(candidate);
+      return await realpath(candidate);
+    } catch {}
+  }
+  throw new Error("The local Node toolchain must provide a pnpm JavaScript CLI; no shell fallback is used.");
+}
