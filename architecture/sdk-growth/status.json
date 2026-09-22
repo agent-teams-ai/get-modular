@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "kind": "get-modular-g1-sdk-adoption-status",
+  "status": "pending",
+  "activation": "hold",
+  "qualified": false,
+  "activeCompatibilityGate": "package.public-api-compatibility/v1",
+  "growthQualification": "package.public-api-compatibility/v2",
+  "authorityProtocol": "reviewrouter:sdk-growth-authority:3",
+  "blockers": [
+    "trusted-external-authority-transport-unavailable",
+    "trusted-pr-base-and-exact-candidate-binding-unavailable",
+    "authenticated-released-artifact-source-binding-unavailable",
+    "released-growth-observations-and-custody-receipts-unavailable"
+  ],
+  "claims": {
+    "activation": false,
+    "authority": false,
+    "qualification": false,
+    "releaseEligible": false
+  }
+}

@@ -70,7 +70,8 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "release-owned-files:check":
     "node architecture/checks/release-owned-files.mjs",
   "runtime:preflight": "node architecture/checks/node-version.mjs",
-  "sdk-growth:check": "node architecture/checks/sdk-growth.mjs && node --test tests/sdk-growth.test.mjs && node tests/qualification/sdk-growth-packed-consumers.mjs && node tests/qualification/sdk-growth-registry-consumer.mjs",
+  "sdk-growth:check": "node architecture/checks/sdk-growth.mjs && node --test tests/sdk-growth.test.mjs && node tests/qualification/sdk-growth-admission.mjs && node tests/qualification/sdk-growth-packed-consumers.mjs && node tests/qualification/sdk-growth-registry-consumer.mjs",
+  "sdk-growth:admission": "node tests/qualification/sdk-growth-admission.mjs",
   "sdk-growth:test": "node --test tests/sdk-growth.test.mjs",
   "sdk-growth:pack": "node tests/qualification/sdk-growth-packed-consumers.mjs",
   "sdk-growth:registry": "node tests/qualification/sdk-growth-registry-consumer.mjs",

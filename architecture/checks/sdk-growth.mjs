@@ -1,195 +1,211 @@
-import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
 import { parse } from "yaml";
 
 const execute = promisify(execFile);
+const require = createRequire(import.meta.url);
+
 export const PROFILE_PATH = "architecture/sdk-growth/profile.yaml";
-const SHA256 = /^sha256:[a-f0-9]{64}$/u;
-const BASE = "6373d7fc7c43a8c161e4a145ec850041825aa628";
-const EF = Object.freeze({
+const STATUS_PATH = "architecture/sdk-growth/status.json";
+const QUALIFICATION_POLICY_PATH = "architecture/sdk-growth/qualification-policy.yaml";
+const PUBLIC_API_POLICY_PATH = "architecture/foundation/public-api-compatibility.yaml";
+const FOUNDATION_CONFIG_PATH = "foundation.config.yaml";
+const WORKFLOW_PATH = "architecture/foundation/repository-agent-workflow.yaml";
+const SDK_COMMAND = "node architecture/checks/sdk-growth.mjs && node --test tests/sdk-growth.test.mjs && node tests/qualification/sdk-growth-admission.mjs && node tests/qualification/sdk-growth-packed-consumers.mjs && node tests/qualification/sdk-growth-registry-consumer.mjs";
+const OBSOLETE_ACTIVE_RECORDS = Object.freeze([
+  "architecture/sdk-growth/activation.json",
+  "architecture/sdk-growth/evidence/completion.json",
+  "architecture/sdk-growth/evidence/decisions.json",
+  "architecture/sdk-growth/evidence/grant.json",
+  "architecture/sdk-growth/evidence/receipt.json",
+  "architecture/sdk-growth/evidence/report.json",
+  "architecture/sdk-growth/evidence/trusted-base.json",
+]);
+const FOUNDATION = Object.freeze({
   package: "@agent-teams/engineering-foundation",
   version: "1.5.1",
   integrity: "sha512-29r5QUvMIFdvsPaJ5m0Yx1Uo6bL85J/teP1p1ThNg7jMEz54cVxyrEnsLx/DN5cc/2CAzq2i8iLnPKgZN1cT8A==",
   tarballSha256: "bd0c476d2940168ac1b020f42726107cce81580b7b1b014e74aceabbafa9e951",
   sourceMergeCommit: "1674c4a9459c286f52861dd9beacbb0421a2118b",
   sourceReleaseCommit: "54424334c2e839a8358cdb88945fb45e20714a88",
-  requiredCommand: "sdk-growth:check",
 });
-const SDK_COMMAND = "node architecture/checks/sdk-growth.mjs && node --test tests/sdk-growth.test.mjs && node tests/qualification/sdk-growth-packed-consumers.mjs && node tests/qualification/sdk-growth-registry-consumer.mjs";
-const SURFACES = Object.freeze([
+const PACKAGES = Object.freeze([
   Object.freeze({ packageName: "@get-modular/assembly", packageRoot: "packages/assembly",
     manifestPath: "packages/assembly/package.json", historyPath: "architecture/sdk-growth/evidence/history-assembly.json",
-    exports: Object.freeze([Object.freeze({ exportPath: ".", declarationPath: "packages/assembly/dist/index.d.ts", runtimePath: "packages/assembly/dist/index.js" })]) }),
+    releasedBaselinePath: "architecture/public-api/assembly.json", exportPath: ".",
+    declarationEntryPoint: "packages/assembly/dist/index.d.ts", runtimeEntryPoint: "packages/assembly/dist/index.js" }),
   Object.freeze({ packageName: "@get-modular/core", packageRoot: "packages/core",
     manifestPath: "packages/core/package.json", historyPath: "architecture/sdk-growth/evidence/history-core.json",
-    exports: Object.freeze([Object.freeze({ exportPath: ".", declarationPath: "packages/core/dist/index.d.ts", runtimePath: "packages/core/dist/index.js" })]) }),
+    releasedBaselinePath: "architecture/public-api/core.json", exportPath: ".",
+    declarationEntryPoint: "packages/core/dist/index.d.ts", runtimeEntryPoint: "packages/core/dist/index.js" }),
 ]);
-const COORDINATES = Object.freeze([
-  "@get-modular/assembly:.", "@get-modular/core:.", "@get-modular/repository:metadata-root",
-]);
-const PHASES = Object.freeze([
-  "topology", "observation", "packed", "decision", "trusted-base", "released", "authority",
-]);
+const RELEASES = Object.freeze({
+  "@get-modular/assembly": Object.freeze({ version: "0.1.0",
+    tarball: "https://registry.npmjs.org/@get-modular/assembly/-/assembly-0.1.0.tgz",
+    integrity: "sha512-wxK49abnnAWLkCuI8EwL8cJENP2IfDmEm29UHi0w5t0/BL/c2IdTNbOTvQDo/8+hl0ZCJZtwqIqPZ3AnxJ7WNQ==",
+    shasum: "d5c0dced8ef754b265276fabbfebe7600e4fa0c5", sha256: "e89207171e44afd5e813aa5e7a0db8abc999b42338559d38b44b4db71da228ab",
+    publishedAt: "2026-09-08T00:05:03.721Z" }),
+  "@get-modular/core": Object.freeze({ version: "0.1.0",
+    tarball: "https://registry.npmjs.org/@get-modular/core/-/core-0.1.0.tgz",
+    integrity: "sha512-0aqzW7sbh7O8aAPBGJIPZBbhgeYnk+HuZdVf27dimkQ3d/zb9zpsYIMdLGt3EXi1B8MaBjw09ApzLaiIRiAgIQ==",
+    shasum: "df2387f1944afea722cd4244e76a4ac30a4cdd39", sha256: "50803ea69e2fb4078013a897f858908b4d73d26296336ab155a6118809dfb8ba",
+    publishedAt: "2026-09-07T18:22:35.862Z" }),
+});
 
-function fail(message) { throw new Error(`SDK_GROWTH_INVALID: ${message}`); }
+function fail(message) { throw new Error(`SDK_GROWTH_PENDING_INVALID: ${message}`); }
 function same(actual, expected, label) {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) fail(`${label} drifted`);
 }
-function digest(bytes) { return `sha256:${createHash("sha256").update(bytes).digest("hex")}`; }
-function exactKeys(value, keys, label) {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) fail(`${label} must be an object`);
-  same(Object.keys(value).toSorted(), [...keys].toSorted(), `${label} keys`);
-}
-function requireDigest(value, label) { if (!SHA256.test(value)) fail(`${label} must be a SHA-256 digest`); }
 
-async function gitBytes(revision, path) {
-  const result = await execute("git", ["show", `${revision}:${path}`], { encoding: "buffer", maxBuffer: 4_000_000 });
-  return result.stdout;
-}
+async function readYaml(root, path) { return parse(await readFile(join(root, path), "utf8")); }
+async function readJson(root, path) { return JSON.parse(await readFile(join(root, path), "utf8")); }
 
 export async function loadSdkGrowthModel(root = process.cwd()) {
-  const get = path => readFile(`${root}/${path}`);
-  const profileBytes = await get(PROFILE_PATH);
-  const profile = parse(profileBytes.toString("utf8"));
-  const recordEntries = await Promise.all(Object.entries(profile.records).map(async ([name, path]) =>
-    [name, { path, bytes: await get(path), value: JSON.parse(await get(path)) }]));
-  const packageEntries = await Promise.all(profile.packages.map(async surface =>
-    [surface.packageName, JSON.parse(await get(surface.manifestPath))]));
-  const packageJsonBytes = await get("package.json");
-  const lockBytes = await get("pnpm-lock.yaml");
-  const workflowBytes = await get("architecture/foundation/repository-agent-workflow.yaml");
-  const classificationBytes = await get(profile.metadataRoot.classificationPath);
-  const standardBytes = await get(profile.standardReviewPath);
-  const tracked = (await execute("git", ["ls-files", "--cached", "--others", "--exclude-standard"], { cwd: root })).stdout
+  const listed = (await execute("git", ["ls-files", "--cached", "--others", "--exclude-standard"], { cwd: root })).stdout
     .trim().split("\n").filter(Boolean);
-  const trackedEntries = await Promise.all(tracked.map(async path => [path, await get(path)]));
+  const tracked = [];
+  for (const path of listed) {
+    try { await access(join(root, path)); tracked.push(path); } catch {}
+  }
+  const profile = await readYaml(root, PROFILE_PATH);
   return {
-    root, profileBytes, profile, records: Object.fromEntries(recordEntries),
-    manifests: Object.fromEntries(packageEntries), packageJsonBytes, packageJson: JSON.parse(packageJsonBytes),
-    lockBytes, workflow: parse(workflowBytes.toString("utf8")), classificationBytes,
-    classification: JSON.parse(classificationBytes), standardBytes, standard: JSON.parse(standardBytes),
-    tracked: Object.fromEntries(trackedEntries),
+    root,
+    profile,
+    status: await readJson(root, STATUS_PATH),
+    qualificationPolicy: await readYaml(root, QUALIFICATION_POLICY_PATH),
+    publicApiPolicy: await readYaml(root, PUBLIC_API_POLICY_PATH),
+    foundationConfig: await readYaml(root, FOUNDATION_CONFIG_PATH),
+    workflow: await readYaml(root, WORKFLOW_PATH),
+    packageJson: await readJson(root, "package.json"),
+    lockText: await readFile(join(root, "pnpm-lock.yaml"), "utf8"),
+    manifests: Object.fromEntries(await Promise.all(PACKAGES.map(async pkg => [pkg.packageName, await readJson(root, pkg.manifestPath)]))),
+    baselines: Object.fromEntries(await Promise.all(PACKAGES.map(async pkg => [pkg.packageName, await readJson(root, pkg.releasedBaselinePath)]))),
+    histories: Object.fromEntries(await Promise.all(PACKAGES.map(async pkg => [pkg.packageName, await readJson(root, pkg.historyPath)]))),
+    tracked,
   };
 }
 
-function validateFoundation(model) {
-  same(model.profile.foundation, EF, "Foundation identity");
-  if (model.packageJson.devDependencies?.[EF.package] !== EF.version) fail("Foundation must be an exact dev dependency");
-  if (!model.lockBytes.toString("utf8").includes(`'@agent-teams/engineering-foundation@${EF.version}':`)
-    || !model.lockBytes.toString("utf8").includes(EF.integrity)) fail("lockfile lacks exact Foundation registry identity");
-  const sdk = model.packageJson.scripts?.[EF.requiredCommand];
-  if (sdk !== SDK_COMMAND) fail("required SDK command is missing or a no-op");
-  for (const command of ["check", "check:fast"]) {
-    if (!model.packageJson.scripts?.[command]?.includes("pnpm sdk-growth:check")) fail(`${command} bypasses SDK activation`);
+async function validateInstalledFoundation(model) {
+  same(model.profile.foundation, FOUNDATION, "Foundation identity");
+  if (model.packageJson.devDependencies?.[FOUNDATION.package] !== FOUNDATION.version) fail("Foundation must be an exact dev dependency");
+  if (!model.lockText.includes(`'${FOUNDATION.package}@${FOUNDATION.version}':`) || !model.lockText.includes(FOUNDATION.integrity)) {
+    fail("lockfile lacks exact Foundation registry identity");
   }
+  const manifestPath = require.resolve(`${FOUNDATION.package}/package.json`);
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  if (manifest.version !== FOUNDATION.version || manifest.exports?.["./sdk-growth-authority"] === undefined) {
+    fail("installed Foundation SDK authority export drifted");
+  }
+  const sdkTarget = manifest.exports["./sdk-growth-authority"].import;
+  const sdk = await import(pathToFileURL(join(dirname(manifestPath), sdkTarget)));
+  if (typeof sdk.createSdkGrowthAuthorityVerifier !== "function") fail("installed Foundation SDK verifier is unavailable");
 }
 
-function validateSurfaces(model) {
-  same(model.profile.packages, SURFACES, "C0 package surfaces");
-  for (const surface of SURFACES) {
-    const manifest = model.manifests[surface.packageName];
-    if (manifest?.name !== surface.packageName) fail(`${surface.packageName} manifest identity drifted`);
-    same(Object.keys(manifest.exports), surface.exports.map(item => item.exportPath), `${surface.packageName} exports`);
-    const target = manifest.exports["."];
-    same(Object.keys(target), ["import", "default"], `${surface.packageName} root condition order`);
-    same(Object.keys(target.import), ["types", "default"], `${surface.packageName} import condition order`);
-    if (target?.import?.types !== `./${surface.exports[0].declarationPath.split("/").slice(2).join("/")}`
-      || target?.import?.default !== `./${surface.exports[0].runtimePath.split("/").slice(2).join("/")}`
-      || target?.default !== `./${surface.exports[0].runtimePath.split("/").slice(2).join("/")}`) {
-      fail(`${surface.packageName} ordered root resolution drifted`);
+function validatePendingState(model) {
+  same(model.status, {
+    schemaVersion: 1,
+    kind: "get-modular-g1-sdk-adoption-status",
+    status: "pending",
+    activation: "hold",
+    qualified: false,
+    activeCompatibilityGate: "package.public-api-compatibility/v1",
+    growthQualification: "package.public-api-compatibility/v2",
+    authorityProtocol: "reviewrouter:sdk-growth-authority:3",
+    blockers: [
+      "trusted-external-authority-transport-unavailable",
+      "trusted-pr-base-and-exact-candidate-binding-unavailable",
+      "authenticated-released-artifact-source-binding-unavailable",
+      "released-growth-observations-and-custody-receipts-unavailable",
+    ],
+    claims: { activation: false, authority: false, qualification: false, releaseEligible: false },
+  }, "pending status");
+  for (const path of OBSOLETE_ACTIVE_RECORDS) if (model.tracked.includes(path)) fail(`obsolete self-authored active evidence remains: ${path}`);
+}
+
+function validateProfiles(model) {
+  if (model.profile.schemaVersion !== 1 || model.profile.status !== "pending" || model.profile.activation !== "hold"
+    || model.profile.qualificationPolicyPath !== QUALIFICATION_POLICY_PATH || model.profile.statusPath !== STATUS_PATH) {
+    fail("pending profile identity drifted");
+  }
+  if (model.foundationConfig.capabilities?.["package.public-api-compatibility"]?.configPath !== PUBLIC_API_POLICY_PATH
+    || model.publicApiPolicy.schemaVersion !== 1) fail("v1 compatibility retention drifted");
+  if (model.qualificationPolicy.schemaVersion !== 2
+    || model.qualificationPolicy.sdkGrowth?.contractRevision !== "foundation:sdk-growth:c0:5"
+    || model.qualificationPolicy.sdkGrowth?.policyVersion !== "foundation:sdk-growth:policy:1") fail("v2 qualification policy drifted");
+  const activeNames = model.publicApiPolicy.packages.map(row => row.packageName).toSorted();
+  const qualifiedNames = model.qualificationPolicy.packages.map(row => row.packageName).toSorted();
+  same(activeNames, PACKAGES.map(row => row.packageName).toSorted(), "v1 package scope");
+  same(qualifiedNames, activeNames, "v2 package scope");
+  same(model.profile.packages, PACKAGES.map(pkg => ({
+    packageName: pkg.packageName,
+    packageRoot: pkg.packageRoot,
+    manifestPath: pkg.manifestPath,
+    historyPath: pkg.historyPath,
+    releasedBaselinePath: pkg.releasedBaselinePath,
+    exports: [{ exportPath: pkg.exportPath, declarationPath: pkg.declarationEntryPoint,
+      runtimePath: pkg.runtimeEntryPoint }],
+  })), "packed profile package/export scope");
+  const released = model.qualificationPolicy.sdkGrowth.comparison.released;
+  same(released.map(row => ({ packageName: row.packageName, kind: row.kind })), PACKAGES.map(row => ({ packageName: row.packageName, kind: "released" })).toSorted((a, b) => a.packageName.localeCompare(b.packageName)), "published release classification");
+  if (released.some(row => row.kind === "initial-unreleased")) fail("published package classified as initial-unreleased");
+}
+
+function validatePackages(model) {
+  for (const pkg of PACKAGES) {
+    const manifest = model.manifests[pkg.packageName];
+    const active = model.publicApiPolicy.packages.find(row => row.packageName === pkg.packageName);
+    const qualified = model.qualificationPolicy.packages.find(row => row.packageName === pkg.packageName);
+    if (manifest.name !== pkg.packageName || !Object.hasOwn(manifest.exports, pkg.exportPath)) fail(`${pkg.packageName} manifest scope drifted`);
+    for (const policy of [active, qualified]) {
+      if (policy?.packageRoot !== pkg.packageRoot || policy?.manifestPath !== pkg.manifestPath
+        || policy?.releasedBaselinePath !== pkg.releasedBaselinePath
+        || JSON.stringify(policy.entrypoints) !== JSON.stringify([{ exportPath: pkg.exportPath, declarationEntryPoint: pkg.declarationEntryPoint }])) {
+        fail(`${pkg.packageName} policy scope drifted`);
+      }
+    }
+    const baseline = model.baselines[pkg.packageName];
+    if (baseline.packageName !== pkg.packageName || baseline.packageVersion !== "0.2.0") fail(`${pkg.packageName} retained v1 baseline drifted`);
+    const history = model.histories[pkg.packageName];
+    if (history.kind !== "published-release-history" || history.packageName !== pkg.packageName || history.classification !== "released") {
+      fail(`${pkg.packageName} release history classification drifted`);
+    }
+    same(history.published, RELEASES[pkg.packageName], `${pkg.packageName} published artifact`);
+    if (history.sourceBinding.status !== "unavailable" || history.growthObservation.status !== "unavailable") {
+      fail(`${pkg.packageName} unverified release evidence was promoted`);
     }
   }
-  exactKeys(model.profile.metadataRoot,
-    ["packageName", "rootPath", "manifestPath", "classificationPath", "kind"], "metadata root profile");
-  same(model.profile.metadataRoot, { packageName: "@get-modular/repository", rootPath: ".", manifestPath: "package.json",
-    classificationPath: "architecture/sdk-growth/root-classification.json", kind: "non-release-metadata-root" }, "metadata root");
-  same(model.classification, { schemaVersion: "foundation:sdk-growth:metadata-root:1", kind: "non-release-metadata-root",
-    packageName: "@get-modular/repository", rootPath: ".", manifestPath: "package.json",
-    decisionId: "GM-G1-ROOT-CLASSIFICATION", ownerRef: "get-modular/architecture", releaseHistory: "none" }, "metadata classification");
 }
 
-async function validateStandard(model) {
-  const review = model.standard;
-  const path = "docs/architecture/common-assembly.md";
-  const pinned = await gitBytes(review.pinned.commit, path);
-  const current = await gitBytes(review.acceptedCurrent.commit, path);
-  if (digest(pinned) !== `sha256:${review.pinned.sha256}`.replace("sha256:sha256:", "sha256:")) fail("pinned standard bytes drifted");
-  if (digest(current) !== `sha256:${review.acceptedCurrent.sha256}`.replace("sha256:sha256:", "sha256:")) fail("current standard bytes drifted");
-  if (digest(await readFile(`${model.root}/${path}`)) !== `sha256:${review.acceptedCurrent.sha256}`.replace("sha256:sha256:", "sha256:")) fail("working standard is not the accepted current bytes");
-  same(review.delta, { classification: "reciprocal-consumer-evidence-only", changedHunks: 1, removedLines: 6, addedLines: 11,
-    semanticChanges: ["Record accepted Agent Runtime PR 168 passive setup and ordinary-session composition.",
-      "Retain the exact 669a750d Consumer Module Standard pin in that consumer.",
-      "Keep contained-turn and dynamic plugin runtime scope outside admission."],
-    changesGetModularCompositionContract: false, pinAction: "retain-reviewed-pin" }, "standard delta");
-}
-
-function validateEvidence(model) {
-  const value = name => model.records[name].value;
-  const bytesDigest = name => digest(model.records[name].bytes);
-  const grant = value("grant"), completion = value("completion"), receipt = value("receipt"), report = value("report"), activation = value("activation");
-  if (grant.authority?.boundary !== "@agent-teams/engineering-foundation/sdk-growth-authority"
-    || grant.authority?.candidateControlled !== false) fail("authority must be external and candidate-independent");
-  same(grant.authorizedCoordinates, COORDINATES, "grant coordinates");
-  same(grant.requiredPhases, PHASES, "grant phases");
-  if (grant.target.baseCommit !== BASE || grant.target.profileDigest !== digest(model.profileBytes)) fail("grant target drifted");
-  if (grant.trustedBaseDigest !== bytesDigest("trustedBase") || grant.decisionsDigest !== bytesDigest("decisions")
-    || grant.classificationDigest !== digest(model.classificationBytes) || grant.standardReviewDigest !== digest(model.standardBytes)) fail("grant evidence drifted");
-  for (const surface of SURFACES) {
-    const name = surface.packageName.endsWith("core") ? "history-core" : "history-assembly";
-    if (grant.historyDigests[surface.packageName] !== digest(model.tracked[surface.historyPath])) fail(`${surface.packageName} history drifted`);
-    const history = JSON.parse(model.tracked[surface.historyPath]);
-    if (history.kind !== "initial-unreleased-history" || history.packageName !== surface.packageName) fail(`${name} is not exact initial history`);
-  }
-  if (completion.grantDigest !== bytesDigest("grant") || completion.status !== "complete") fail("completion does not bind grant");
-  if (receipt.grantDigest !== bytesDigest("grant") || receipt.completionDigest !== bytesDigest("completion")
-    || receipt.qualification !== "qualified" || receipt.verdict !== "admitted") fail("receipt is not qualified");
-  if (report.grantDigest !== bytesDigest("grant") || report.completionDigest !== bytesDigest("completion")
-    || report.receiptDigest !== bytesDigest("receipt") || report.activation !== "active") fail("report chain drifted");
-  same(report.surfaces, COORDINATES, "reported surfaces");
-  same(report.phases, PHASES.map(name => ({ name, status: "complete" })), "reported phases");
-  if (activation.status !== "active" || activation.baseCommit !== BASE || activation.profileDigest !== digest(model.profileBytes)
-    || activation.reportDigest !== bytesDigest("report") || activation.receiptDigest !== bytesDigest("receipt")) fail("activation record drifted");
-  same(activation.foundation, { package: EF.package, version: EF.version, integrity: EF.integrity,
-    tarballSha256: EF.tarballSha256, sourceMergeCommit: EF.sourceMergeCommit, sourceReleaseCommit: EF.sourceReleaseCommit }, "activation Foundation identity");
-  if (activation.compositionChange || activation.ownershipSurfaceAdded || activation.lifecycleBehaviorAdded || activation.dynamicPluginsAdded) fail("G1 scope expanded");
-}
-
-function validateRouting(model) {
-  const required = ["architecture/checks/sdk-growth.mjs", "architecture/sdk-growth",
-    "tests/sdk-growth.test.mjs", "tests/qualification/sdk-growth-packed-consumers.mjs",
+function validateWiring(model) {
+  if (model.packageJson.scripts?.["sdk-growth:check"] !== SDK_COMMAND) fail("pending SDK command is missing or a no-op");
+  for (const command of ["check", "check:fast"]) if (!model.packageJson.scripts?.[command]?.includes("pnpm sdk-growth:check")) fail(`${command} bypasses pending SDK guard`);
+  const required = ["architecture/checks/sdk-growth.mjs", "architecture/sdk-growth", "tests/sdk-growth.test.mjs",
+    "tests/qualification/sdk-growth-admission.mjs", "tests/qualification/sdk-growth-packed-consumers.mjs",
     "tests/qualification/sdk-growth-registry-consumer.mjs"];
   for (const path of required) if (!model.workflow.fullScanPaths?.includes(path)) fail(`changed-file routing omits ${path}`);
 }
 
-function validateScans(model) {
-  const localDependencyPattern = new RegExp(`["']${["file", ":"].join("")}`, "u");
-  for (const [path, bytes] of Object.entries(model.tracked)) {
-    const text = bytes.toString("utf8");
-    if ((path === "pnpm-lock.yaml" || path.endsWith("/package.json") || path === "package.json")
-      && localDependencyPattern.test(text)) fail(`tracked local dependency in ${path}`);
-    if ((path.startsWith("packages/core/src/") || path.startsWith("packages/assembly/src/"))
-      && text.includes("@agent-teams/engineering-foundation")) fail(`production Foundation import in ${path}`);
-  }
-  if (Object.keys(model.tracked).some(path => path.startsWith("packages/ownership/"))) fail("ownership package surface was added");
+function validateScope(model) {
+  for (const path of model.tracked) if (path.startsWith("packages/ownership/")) fail("ownership package surface was added");
 }
 
 export async function validateSdkGrowth(model) {
-  if (model.profile.schemaVersion !== 1 || model.profile.contractRevision !== "foundation:sdk-growth:c0:5"
-    || model.profile.policyVersion !== "foundation:sdk-growth:policy:1" || model.profile.baseCommit !== BASE) fail("profile identity drifted");
-  validateFoundation(model);
-  validateSurfaces(model);
-  await validateStandard(model);
-  validateEvidence(model);
-  validateRouting(model);
-  validateScans(model);
-  return { packages: SURFACES.length, exports: SURFACES.reduce((count, item) => count + item.exports.length, 0),
-    metadataRoots: 1, phases: PHASES.length, activation: "active" };
+  await validateInstalledFoundation(model);
+  validatePendingState(model);
+  validateProfiles(model);
+  validatePackages(model);
+  validateWiring(model);
+  validateScope(model);
+  return { packages: PACKAGES.length, releasedPackages: PACKAGES.length, compatibility: "v1-retained",
+    growthQualification: "v2", activation: "pending", status: "hold" };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const result = await validateSdkGrowth(await loadSdkGrowthModel());
-  process.stdout.write(`${JSON.stringify({ status: "passed", ...result })}\n`);
+  process.stdout.write(`${JSON.stringify({ result: "passed", ...result })}\n`);
 }

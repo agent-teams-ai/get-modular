@@ -9,75 +9,96 @@ async function rejects(change, pattern) {
   await assert.rejects(() => validateSdkGrowth(model), pattern);
 }
 
-test("active G1 profile covers two packages, two exports and the metadata root", async () => {
+test("G1 remains on explicit HOLD without external authority or released custody", async () => {
   assert.deepEqual(await validateSdkGrowth(await loadSdkGrowthModel()), {
-    packages: 2, exports: 2, metadataRoots: 1, phases: 7, activation: "active",
+    packages: 2,
+    releasedPackages: 2,
+    compatibility: "v1-retained",
+    growthQualification: "v2",
+    activation: "pending",
+    status: "hold",
   });
 });
 
-test("rejects an omitted package", () => rejects(model => { model.profile.packages.pop(); }, /package surfaces/u));
-test("rejects an omitted declared export", () => rejects(model => {
-  model.profile.packages[0].exports = [];
-}, /package surfaces/u));
-test("rejects a package export absent from the growth profile", () => rejects(model => {
-  model.manifests["@get-modular/core"].exports["./leak"] = "./dist/index.js";
-}, /exports drifted/u));
-test("rejects source path leakage", () => rejects(model => {
-  model.profile.packages[0].exports[0].runtimePath = "packages/assembly/src/index.ts";
-}, /package surfaces/u));
-test("rejects export condition and path order drift", () => rejects(model => {
-  const target = model.manifests["@get-modular/core"].exports["."];
-  model.manifests["@get-modular/core"].exports["."] = { default: target.default, import: target.import };
-}, /root condition order/u));
-test("rejects a missing or no-op required command", () => rejects(model => {
-  model.packageJson.scripts["sdk-growth:check"] = "node -e ''";
-}, /missing or a no-op/u));
-test("rejects trusted-base drift", () => rejects(model => {
-  model.records.grant.value.trustedBaseDigest = `sha256:${"0".repeat(64)}`;
-}, /grant evidence drifted/u));
-test("rejects decision drift", () => rejects(model => {
-  model.records.grant.value.decisionsDigest = `sha256:${"0".repeat(64)}`;
-}, /grant evidence drifted/u));
-test("rejects workflow bypass", () => rejects(model => {
-  model.workflow.fullScanPaths = model.workflow.fullScanPaths.filter(path => path !== "architecture/sdk-growth");
-}, /routing omits/u));
-test("rejects forged package identity", () => rejects(model => {
-  model.manifests["@get-modular/core"].name = "@get-modular/forged";
-}, /manifest identity/u));
-test("rejects candidate-controlled authority", () => rejects(model => {
-  model.records.grant.value.authority.candidateControlled = true;
-}, /candidate-independent/u));
-test("rejects authority boundary substitution", () => rejects(model => {
-  model.records.grant.value.authority.boundary = "./candidate-authority.mjs";
-}, /external and candidate-independent/u));
-test("rejects completion or receipt forgery", async t => {
-  await t.test("completion", () => rejects(model => {
-    model.records.completion.value.grantDigest = `sha256:${"0".repeat(64)}`;
-  }, /completion does not bind/u));
-  await t.test("receipt", () => rejects(model => {
-    model.records.receipt.value.qualification = "not-qualified";
-  }, /receipt is not qualified/u));
+test("rejects activation or qualification claims while authority is unavailable", async t => {
+  await t.test("active", () => rejects(model => { model.status.status = "active"; }, /pending status/u));
+  await t.test("qualified", () => rejects(model => { model.status.qualified = true; }, /pending status/u));
+  await t.test("admitted claim", () => rejects(model => { model.status.claims.activation = true; }, /pending status/u));
 });
-test("rejects Foundation version and registry integrity drift", async t => {
-  await t.test("version", () => rejects(model => {
+
+test("rejects candidate-authored evidence masquerading as active authority", async t => {
+  for (const path of [
+    "architecture/sdk-growth/activation.json",
+    "architecture/sdk-growth/evidence/grant.json",
+    "architecture/sdk-growth/evidence/receipt.json",
+  ]) {
+    await t.test(path, () => rejects(model => { model.tracked.push(path); }, /obsolete self-authored active evidence/u));
+  }
+});
+
+test("retains v1 compatibility while v2 admission is only a qualification profile", async t => {
+  await t.test("active config cannot silently select v2", () => rejects(model => {
+    model.foundationConfig.capabilities["package.public-api-compatibility"].configPath = model.profile.qualificationPolicyPath;
+  }, /v1 compatibility retention/u));
+  await t.test("v2 profile cannot be downgraded", () => rejects(model => {
+    model.qualificationPolicy.schemaVersion = 1;
+  }, /v2 qualification policy/u));
+});
+
+test("published packages cannot be reclassified as initial-unreleased", async t => {
+  await t.test("policy", () => rejects(model => {
+    model.qualificationPolicy.sdkGrowth.comparison.released[0] = {
+      packageName: "@get-modular/assembly",
+      kind: "initial-unreleased",
+      trustedHistoryPath: "architecture/sdk-growth/evidence/history-assembly.json",
+    };
+  }, /published release classification|initial-unreleased/u));
+  await t.test("history", () => rejects(model => {
+    model.histories["@get-modular/core"].kind = "initial-unreleased-history";
+  }, /release history classification/u));
+});
+
+test("unverified released bytes cannot be promoted into growth observations", () => rejects(model => {
+  model.histories["@get-modular/core"].growthObservation = { status: "available", value: {} };
+}, /unverified release evidence was promoted/u));
+
+test("rejects package-scope narrowing and entrypoint replacement", async t => {
+  await t.test("package omitted", () => rejects(model => {
+    model.qualificationPolicy.packages.pop();
+  }, /v2 package scope/u));
+  await t.test("entrypoint replaced at the same count", () => rejects(model => {
+    model.qualificationPolicy.packages[0].entrypoints[0] = {
+      exportPath: "./replacement",
+      declarationEntryPoint: "packages/assembly/dist/replacement.d.ts",
+    };
+  }, /policy scope drifted/u));
+  await t.test("packed package scope emptied", () => rejects(model => {
+    model.profile.packages = [];
+  }, /packed profile package\/export scope/u));
+  await t.test("packed exports emptied", () => rejects(model => {
+    model.profile.packages[0].exports = [];
+  }, /packed profile package\/export scope/u));
+  await t.test("packed export replaced at the same count", () => rejects(model => {
+    model.profile.packages[0].exports[0] = {
+      exportPath: "./replacement",
+      declarationPath: "packages/assembly/dist/replacement.d.ts",
+      runtimePath: "packages/assembly/dist/replacement.js",
+    };
+  }, /packed profile package\/export scope/u));
+});
+
+test("rejects missing command and Foundation identity drift", async t => {
+  await t.test("no-op command", () => rejects(model => {
+    model.packageJson.scripts["sdk-growth:check"] = "node -e ''";
+  }, /missing or a no-op/u));
+  await t.test("version range", () => rejects(model => {
     model.packageJson.devDependencies["@agent-teams/engineering-foundation"] = "^1.5.1";
   }, /exact dev dependency/u));
-  await t.test("integrity", () => rejects(model => {
-    model.lockBytes = Buffer.from(model.lockBytes.toString("utf8").replace(model.profile.foundation.integrity, "sha512-forged"));
+  await t.test("registry integrity", () => rejects(model => {
+    model.lockText = model.lockText.replace(model.profile.foundation.integrity, "sha512-forged");
   }, /registry identity/u));
 });
-test("rejects Consumer Module Standard pin or delta drift", async t => {
-  await t.test("pin", () => rejects(model => { model.standard.pinned.commit = "main"; }, /Command failed|standard bytes/u));
-  await t.test("delta", () => rejects(model => { model.standard.delta.changedHunks = 0; }, /standard delta/u));
-});
-test("rejects a production Engineering Foundation import", () => rejects(model => {
-  model.tracked["packages/core/src/forged.ts"] = Buffer.from('import "@agent-teams/engineering-foundation";\n');
-}, /production Foundation import/u));
-test("rejects tracked local dependencies and ownership surfaces", async t => {
-  await t.test("local dependency", () => rejects(model => {
-    model.tracked["packages/forged/package.json"] = Buffer.from(JSON.stringify({ dependency: ["file", ":../candidate"].join("") }));
-  }, /tracked local dependency/u));
-  await t.test("ownership", () => rejects(model => {
-    model.tracked["packages/ownership/package.json"] = Buffer.from("{}");
-  }, /ownership package surface/u));
-});
+
+test("rejects tracked ownership work outside G1", () => rejects(model => {
+  model.tracked.push("packages/ownership/package.json");
+}, /ownership package surface/u));

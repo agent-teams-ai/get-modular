@@ -1,0 +1,39 @@
+schemaVersion: 2
+acceptedDecisionBaselinePath: architecture/decisions/accepted-decisions.json
+governanceConfigPath: architecture/foundation/governance-architecture-decisions.yaml
+changesetDirectory: .changeset
+packages:
+  - packageName: "@get-modular/assembly"
+    packageRoot: packages/assembly
+    manifestPath: packages/assembly/package.json
+    entrypoints:
+      - exportPath: "."
+        declarationEntryPoint: packages/assembly/dist/index.d.ts
+    nonTypeExports: []
+    tsconfigPath: packages/assembly/tsconfig.json
+    releasedBaselinePath: architecture/public-api/assembly.json
+    approvedBreakingChanges: []
+  - packageName: "@get-modular/core"
+    packageRoot: packages/core
+    manifestPath: packages/core/package.json
+    entrypoints:
+      - exportPath: "."
+        declarationEntryPoint: packages/core/dist/index.d.ts
+    nonTypeExports: []
+    tsconfigPath: packages/core/tsconfig.json
+    releasedBaselinePath: architecture/public-api/core.json
+    approvedBreakingChanges: []
+sdkGrowth:
+  contractRevision: foundation:sdk-growth:c0:5
+  policyVersion: foundation:sdk-growth:policy:1
+  comparison:
+    trustedBasePath: architecture/sdk-growth/authority/trusted-base.json
+    released:
+      - packageName: "@get-modular/assembly"
+        kind: released
+        observationPath: architecture/sdk-growth/authority/released-assembly.json
+      - packageName: "@get-modular/core"
+        kind: released
+        observationPath: architecture/sdk-growth/authority/released-core.json
+  decisionsPath: architecture/sdk-growth/authority/decisions.json
+  reportPath: sdk-growth-qualification-report.json
