@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdk-growth-authority-grant",
+  "protocol": "review-router:sdk-growth-authority:3",
+  "grantId": "gm-g1-sdk-activation",
+  "authority": {
+    "boundary": "@agent-teams/engineering-foundation/sdk-growth-authority",
+    "issuer": "disposable-external-qualification-authority",
+    "candidateControlled": false
+  },
+  "target": {
+    "baseCommit": "6373d7fc7c43a8c161e4a145ec850041825aa628",
+    "profileDigest": "sha256:c6aa3f95ba3227fa35ecc5b888a5e5f8af6e06f4403b5e9f108437ce01e44dd5"
+  },
+  "trustedBaseDigest": "sha256:2c1adf0c96bdc139585c83326dba43cd3b118b9024c7125b75e2124a7d092d75",
+  "historyDigests": {
+    "@get-modular/assembly": "sha256:a58c54b0c7e5054f1968fa7e298baaf0eecd7b64c99f990a91e5c999a49b6e8c",
+    "@get-modular/core": "sha256:d8313c2baf7f92b3665e0a9a5a63298c9a2f9810b0fbc4e7b43646164dfd94ad"
+  },
+  "decisionsDigest": "sha256:5a0af65d01a2ae67d8d4553905df398ee8afc59e89cde8d10d31dffef189058f",
+  "classificationDigest": "sha256:70b166554697f40982078160a33e8395da303581c5aea85a4e0217c773a41789",
+  "standardReviewDigest": "sha256:c2051f779506afc18c64de0e4007139a26319da6d63c4668bb288acf71dbd084",
+  "authorizedCoordinates": [
+    "@get-modular/assembly:.",
+    "@get-modular/core:.",
+    "@get-modular/repository:metadata-root"
+  ],
+  "requiredPhases": [
+    "topology",
+    "observation",
+    "packed",
+    "decision",
+    "trusted-base",
+    "released",
+    "authority"
+  ]
+}

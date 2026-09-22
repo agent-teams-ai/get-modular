@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "kind": "initial-unreleased-history",
+  "packageName": "@get-modular/core",
+  "packageVersion": "0.2.0",
+  "releaseHistory": "initial-unreleased-sdk-growth",
+  "firstSurface": [{"exportPath": ".", "declarationPath": "packages/core/dist/index.d.ts", "runtimePath": "packages/core/dist/index.js"}],
+  "ownerRef": "get-modular/architecture"
+}

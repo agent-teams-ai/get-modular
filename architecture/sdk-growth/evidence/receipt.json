@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdk-growth-authority-receipt",
+  "grantDigest": "sha256:10d5069ed7b375bcc647704d69c27fb40498a16ef936a07333cd67a4e698e35f",
+  "completionDigest": "sha256:e09eda94a9a3b8934872586f1bce37de112e0a3b6d29b6f7d69ea4d518ef5e7a",
+  "qualification": "qualified",
+  "verdict": "admitted",
+  "releaseEligible": false,
+  "scope": "sdk-tooling-activation",
+  "custodyRef": "architecture/sdk-growth/evidence",
+  "authorityBoundary": "@agent-teams/engineering-foundation/sdk-growth-authority"
+}

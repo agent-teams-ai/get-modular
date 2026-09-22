@@ -1,0 +1,50 @@
+schemaVersion: 1
+contractRevision: foundation:sdk-growth:c0:5
+policyVersion: foundation:sdk-growth:policy:1
+owner: architecture
+baseCommit: 6373d7fc7c43a8c161e4a145ec850041825aa628
+foundation:
+  package: "@agent-teams/engineering-foundation"
+  version: 1.5.1
+  integrity: "sha512-29r5QUvMIFdvsPaJ5m0Yx1Uo6bL85J/teP1p1ThNg7jMEz54cVxyrEnsLx/DN5cc/2CAzq2i8iLnPKgZN1cT8A=="
+  tarballSha256: bd0c476d2940168ac1b020f42726107cce81580b7b1b014e74aceabbafa9e951
+  sourceMergeCommit: 1674c4a9459c286f52861dd9beacbb0421a2118b
+  sourceReleaseCommit: 54424334c2e839a8358cdb88945fb45e20714a88
+  requiredCommand: sdk-growth:check
+standardReviewPath: architecture/sdk-growth/evidence/consumer-module-standard.json
+authority:
+  boundary: "@agent-teams/engineering-foundation/sdk-growth-authority"
+  protocol: review-router:sdk-growth-authority:3
+  candidateMaySupplyAuthority: false
+  evidenceRoot: architecture/sdk-growth/evidence
+packages:
+  - packageName: "@get-modular/assembly"
+    packageRoot: packages/assembly
+    manifestPath: packages/assembly/package.json
+    historyPath: architecture/sdk-growth/evidence/history-assembly.json
+    exports:
+      - exportPath: "."
+        declarationPath: packages/assembly/dist/index.d.ts
+        runtimePath: packages/assembly/dist/index.js
+  - packageName: "@get-modular/core"
+    packageRoot: packages/core
+    manifestPath: packages/core/package.json
+    historyPath: architecture/sdk-growth/evidence/history-core.json
+    exports:
+      - exportPath: "."
+        declarationPath: packages/core/dist/index.d.ts
+        runtimePath: packages/core/dist/index.js
+metadataRoot:
+  packageName: "@get-modular/repository"
+  rootPath: "."
+  manifestPath: package.json
+  classificationPath: architecture/sdk-growth/root-classification.json
+  kind: non-release-metadata-root
+records:
+  trustedBase: architecture/sdk-growth/evidence/trusted-base.json
+  decisions: architecture/sdk-growth/evidence/decisions.json
+  grant: architecture/sdk-growth/evidence/grant.json
+  completion: architecture/sdk-growth/evidence/completion.json
+  receipt: architecture/sdk-growth/evidence/receipt.json
+  report: architecture/sdk-growth/evidence/report.json
+  activation: architecture/sdk-growth/activation.json
