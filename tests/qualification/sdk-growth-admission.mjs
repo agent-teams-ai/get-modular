@@ -156,6 +156,7 @@ function valuesByReference(observation) {
 const temporary = await mkdtemp(join(tmpdir(), "gm-sdk-growth-admission-"));
 try {
   await symlink(join(workspace, "node_modules"), join(temporary, "node_modules"), process.platform === "win32" ? "junction" : "dir");
+  await put(temporary, ".gitignore", "node_modules/\n");
   await put(temporary, "package.json", `${JSON.stringify({ name: "sdk-growth-qualification-root", private: true, version: "0.0.0" }, null, 2)}\n`);
   await put(temporary, "pnpm-workspace.yaml", "packages:\n  - packages/*\n");
   await put(temporary, "pnpm-lock.yaml", "lockfileVersion: '9.0'\n");
