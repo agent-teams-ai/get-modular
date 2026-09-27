@@ -1,13 +1,13 @@
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-export const SUPPORTED_NODE_RANGE = ">=24.18.0 <25";
+export const SUPPORTED_NODE_RANGE = ">=24.18.0 <25 || >=26.10.0 <27";
 
 export function isSupportedNodeVersion(version) {
   const match = /^(?:v)?([0-9]+)\.([0-9]+)\.([0-9]+)$/u.exec(version ?? "");
   if (!match) return false;
   const [, major, minor] = match.map(Number);
-  return major === 24 && minor >= 18;
+  return (major === 24 && minor >= 18) || (major === 26 && minor >= 10);
 }
 
 export function assertSupportedNodeVersion(version = process.versions.node) {

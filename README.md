@@ -7,6 +7,10 @@ turns inert module declarations and an explicit profile into a deterministic,
 immutable composition plan. Product hosts retain authorization, executable
 loading, lifecycle, readiness, publication, routing, and recovery authority.
 
+Node.js 24.18 is the production/default toolchain. Node.js 26.10 and later 26.x
+releases are supported as a compatibility lane; Node.js 25 is unsupported.
+Moving the default requires Node.js 26 LTS status and explicit owner approval.
+
 ```mermaid
 flowchart LR
     Declarations["Inert module declarations"] --> Compiler["Get Modular compiler"]

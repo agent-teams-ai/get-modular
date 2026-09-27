@@ -265,17 +265,26 @@ test("traceability is closed and bidirectional", () => {
 });
 
 test("supported Node preflight matches repository runtime custody", async () => {
-  for (const version of ["24.18.0", "v24.18.0", "24.18.1", "24.99.0"]) {
+  for (const version of [
+    "24.18.0", "v24.18.0", "24.18.1", "24.99.0",
+    "26.10.0", "v26.10.0", "26.10.1", "26.99.0",
+  ]) {
     assert.equal(isSupportedNodeVersion(version), true, version);
     assert.doesNotThrow(() => assertSupportedNodeVersion(version));
   }
-  for (const version of ["24.17.9", "24.18.0-rc.1", "25.0.0", "23.99.0", "invalid"]) {
+  for (const version of [
+    "24.17.9", "24.18.0-rc.1", "25.0.0", "26.9.9", "26.10.0-rc.1",
+    "27.0.0", "23.99.0", "invalid",
+  ]) {
     assert.equal(isSupportedNodeVersion(version), false, version);
     assert.throws(() => assertSupportedNodeVersion(version), /NODE_VERSION_PREFLIGHT_FAILED/u);
   }
 
   const packageJson = JSON.parse(await readFile("package.json", "utf8"));
-  assert.equal(packageJson.engines.node, SUPPORTED_NODE_RANGE);
+  for (const path of ["package.json", "packages/core/package.json", "packages/assembly/package.json"]) {
+    const manifest = JSON.parse(await readFile(path, "utf8"));
+    assert.equal(manifest.engines.node, SUPPORTED_NODE_RANGE, path);
+  }
   assert.equal(await readFile(".node-version", "utf8"), "24.18.0\n");
   assert.equal(packageJson.scripts["runtime:preflight"],
     "node architecture/checks/node-version.mjs");
