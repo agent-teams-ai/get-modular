@@ -41,7 +41,7 @@ jobs:
         run: node architecture/checks/tracked-workspace-integrity.mjs
 
   node-26-compatibility:
-    name: node-26 compatibility
+    name: Node 26 package root compatibility
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -52,9 +52,19 @@ jobs:
       - uses: pnpm/action-setup@008330803749db0355799c700092d9a85fd074e9 # v6.0.9
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 26.10.0
+          node-version-file: .node-version
           cache: pnpm
-      - name: Clean strict-engine production-workspace install
-        run: pnpm install --frozen-lockfile --ignore-scripts --filter @get-modular/core... --filter @get-modular/assembly...
-      - run: pnpm runtime:preflight
-      - run: node --no-warnings --test tests/node-runtime-compatibility.test.mjs
+      - name: Build and pack libraries with qualified Node 24 tooling
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm assembly:build
+          mkdir -p "$RUNNER_TEMP/node26-pack"
+          pnpm --dir packages/core pack --pack-destination "$RUNNER_TEMP/node26-pack"
+          pnpm --dir packages/assembly pack --pack-destination "$RUNNER_TEMP/node26-pack"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26.10.0
+      - name: Verify disposable installed public consumer on Node 26
+        env:
+          GET_MODULAR_COMPAT_ARCHIVE_DIR: ${{ runner.temp }}/node26-pack
+        run: node --no-warnings --test tests/node-runtime-compatibility.test.mjs

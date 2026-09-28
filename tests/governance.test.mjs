@@ -37,9 +37,12 @@ import {
 } from "../architecture/checks/production-artifacts.mjs";
 import {
   assertSupportedNodeVersion,
+  assertSupportedToolingNodeVersion,
   isDirectExecution,
   isSupportedNodeVersion,
+  isSupportedToolingNodeVersion,
   SUPPORTED_NODE_RANGE,
+  TOOLING_NODE_RANGE,
 } from "../architecture/checks/node-version.mjs";
 import {
   assertGitIndexSnapshotCurrent,
@@ -279,9 +282,18 @@ test("supported Node preflight matches repository runtime custody", async () => 
     assert.equal(isSupportedNodeVersion(version), false, version);
     assert.throws(() => assertSupportedNodeVersion(version), /NODE_VERSION_PREFLIGHT_FAILED/u);
   }
+  for (const version of ["24.18.0", "v24.21.0", "24.99.0"]) {
+    assert.equal(isSupportedToolingNodeVersion(version), true, version);
+    assert.doesNotThrow(() => assertSupportedToolingNodeVersion(version));
+  }
+  for (const version of ["24.17.9", "25.0.0", "26.10.0", "v26.99.0", "invalid"]) {
+    assert.equal(isSupportedToolingNodeVersion(version), false, version);
+    assert.throws(() => assertSupportedToolingNodeVersion(version), /NODE_VERSION_PREFLIGHT_FAILED/u);
+  }
 
   const packageJson = JSON.parse(await readFile("package.json", "utf8"));
-  for (const path of ["package.json", "packages/core/package.json", "packages/assembly/package.json"]) {
+  assert.equal(packageJson.engines.node, TOOLING_NODE_RANGE);
+  for (const path of ["packages/core/package.json", "packages/assembly/package.json"]) {
     const manifest = JSON.parse(await readFile(path, "utf8"));
     assert.equal(manifest.engines.node, SUPPORTED_NODE_RANGE, path);
   }
@@ -308,7 +320,7 @@ test("Node preflight recognizes a symlinked direct entry in a subprocess", async
       import.meta.url,
     ).href, aliasedPath), true);
 
-    if (isSupportedNodeVersion(process.versions.node)) {
+    if (isSupportedToolingNodeVersion(process.versions.node)) {
       const { stdout } = await execFileAsync(process.execPath, [aliasedPath]);
       assert.match(stdout, /satisfies/u);
     } else {

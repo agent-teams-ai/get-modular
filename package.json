@@ -7,7 +7,7 @@
   "type": "module",
   "packageManager": "pnpm@11.20.0",
   "engines": {
-    "node": ">=24.18.0 <25 || >=26.10.0 <27",
+    "node": ">=24.18.0 <25",
     "pnpm": ">=11.20.0 <12"
   },
   "repository": {
