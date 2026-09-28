@@ -57,6 +57,7 @@ jobs:
       - name: Build and pack libraries with qualified Node 24 tooling
         run: |
           pnpm install --frozen-lockfile --ignore-scripts
+          pnpm peers check --lockfile-only
           pnpm assembly:build
           mkdir -p "$RUNNER_TEMP/node26-pack"
           pnpm --dir packages/core pack --pack-destination "$RUNNER_TEMP/node26-pack"

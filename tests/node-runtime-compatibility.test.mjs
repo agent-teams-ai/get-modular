@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { resolveNpmCli, resolvePnpmCli } from "./qualification/support/npm-cli.mjs";
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageNames = ["core", "assembly"];
@@ -99,8 +100,9 @@ test("disposable installed public roots compile and assemble on the selected Nod
         "Node 26 requires archives built and packed under the qualified Node 24 toolchain");
       archiveDirectory = join(root, "archives");
       await mkdir(archiveDirectory);
+      const pnpm = await resolvePnpmCli();
       for (const name of packageNames) {
-        const result = run("pnpm", ["pack", "--pack-destination", archiveDirectory],
+        const result = run(process.execPath, [pnpm, "pack", "--pack-destination", archiveDirectory],
           join(repository, "packages", name));
         assert.equal(result.status, 0, `${name} pack: ${result.stdout}\n${result.stderr}`);
       }
@@ -112,7 +114,7 @@ test("disposable installed public roots compile and assemble on the selected Nod
       name: "get-modular-node-compatibility-consumer", private: true, type: "module",
       dependencies: Object.fromEntries(Object.entries(archives).map(([name, archive]) => [name, `file:${archive}`])),
     }));
-    const npm = join(dirname(process.execPath), "../lib/node_modules/npm/bin/npm-cli.js");
+    const npm = await resolveNpmCli();
     const install = run(process.execPath, [npm, "install", "--offline", "--ignore-scripts",
       "--no-audit", "--no-fund", "--package-lock=false"], consumer, {
       npm_config_cache: join(root, "npm-cache"), npm_config_engine_strict: "true",
@@ -136,6 +138,56 @@ test("disposable installed public roots compile and assemble on the selected Nod
     const broken = run(process.execPath, ["run.mjs"], consumer);
     assert.notEqual(broken.status, 0, "consumer accepted a broken Core public entry");
     assert.match(broken.stderr, /does not provide an export named 'compileComposition'/u);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("pinned pnpm rejects fresh and locked invalid peer graphs", { timeout: 180000 }, async () => {
+  const root = await mkdtemp(join(tmpdir(), "get-modular-node-peer-"));
+  try {
+    // This marker must precede every pnpm invocation in the fixture, including pack.
+    await writeFile(join(root, "pnpm-workspace.yaml"),
+      "packages: []\nstrictPeerDependencies: true\nautoInstallPeers: false\n");
+    const expectedPnpm = JSON.parse(await readFile(join(repository, "package.json"), "utf8")).packageManager;
+    assert.equal(expectedPnpm, "pnpm@11.20.0");
+    const pnpm = await resolvePnpmCli();
+    const version = run(process.execPath, [pnpm, "--version"], root);
+    assert.equal(version.status, 0, version.stderr);
+    assert.equal(`pnpm@${version.stdout.trim()}`, expectedPnpm);
+
+    for (const [name, manifest] of [
+      ["peer-api", { name: "peer-api", version: "1.0.0" }],
+      ["peer-consumer", { name: "peer-consumer", version: "1.0.0",
+        peerDependencies: { "peer-api": "^2.0.0" } }],
+    ]) {
+      const source = join(root, "sources", name);
+      await mkdir(source, { recursive: true });
+      await writeFile(join(source, "package.json"), JSON.stringify(manifest));
+      const packed = run(process.execPath, [pnpm, "pack", "--pack-destination", root], source);
+      assert.equal(packed.status, 0, `${name} pack: ${packed.stdout}\n${packed.stderr}`);
+    }
+    await writeFile(join(root, "package.json"), JSON.stringify({
+      name: "invalid-peer-graph-fixture", private: true, packageManager: expectedPnpm,
+      dependencies: {
+        "peer-api": "file:peer-api-1.0.0.tgz",
+        "peer-consumer": "file:peer-consumer-1.0.0.tgz",
+      },
+    }));
+    const invoke = (...args) => run(process.execPath, [pnpm, ...args], root);
+    const fresh = invoke("install", "--lockfile-only", "--offline", "--ignore-scripts");
+    assert.notEqual(fresh.status, 0, "fresh resolution accepted an invalid peer graph");
+    assert.match(fresh.stdout + fresh.stderr, /ERR_PNPM_PEER_DEP_ISSUES/u);
+
+    // Reproduce a lockfile generated under relaxed policy, then test the actual frozen gate.
+    const relaxed = invoke("install", "--lockfile-only", "--offline", "--ignore-scripts",
+      "--config.strict-peer-dependencies=false");
+    assert.equal(relaxed.status, 0, `relaxed lock creation: ${relaxed.stdout}\n${relaxed.stderr}`);
+    const frozen = invoke("install", "--frozen-lockfile", "--offline", "--ignore-scripts");
+    assert.equal(frozen.status, 0, `frozen install: ${frozen.stdout}\n${frozen.stderr}`);
+    const checked = invoke("peers", "check", "--lockfile-only");
+    assert.notEqual(checked.status, 0, "lock graph check accepted an invalid peer graph");
+    assert.match(checked.stdout + checked.stderr, /unmet peer peer-api/u);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

@@ -26,20 +26,24 @@ export async function resolveNpmCli() {
 }
 
 export async function resolvePnpmCli() {
-  const candidates = [process.env.npm_execpath];
-  if (process.env.PNPM_HOME) {
-    candidates.push(join(process.env.PNPM_HOME, "..", "pnpm", "bin", "pnpm.cjs"));
+  const candidates = [];
+  if (process.env.npm_execpath && /(?:^|[\\/])pnpm\.(?:cjs|mjs|js)$/iu.test(process.env.npm_execpath)) {
+    candidates.push(process.env.npm_execpath);
   }
-  for (const directory of (process.env.PATH ?? "").split(delimiter)) {
+  for (const directory of [process.env.PNPM_HOME, ...(process.env.PATH ?? "").split(delimiter)]) {
+    if (!directory) continue;
     try {
-      candidates.push(await realpath(join(directory, process.platform === "win32" ? "pnpm.cmd" : "pnpm")));
+      candidates.push(await realpath(join(directory, "pnpm")));
     } catch (error) {
       if (error.code !== "ENOENT" && error.code !== "ENOTDIR") throw error;
     }
-    candidates.push(join(directory, "..", "pnpm", "bin", "pnpm.cjs"));
+    for (const packageDirectory of [join(directory, "node_modules", "pnpm"), join(directory, "..", "pnpm")]) {
+      candidates.push(join(packageDirectory, "bin", "pnpm.mjs"));
+      candidates.push(join(packageDirectory, "bin", "pnpm.cjs"));
+    }
   }
   for (const candidate of candidates) {
-    if (!candidate || !/\.(?:cjs|mjs|js)$/iu.test(candidate)) continue;
+    if (!/(?:^|[\\/])pnpm\.(?:cjs|mjs|js)$/iu.test(candidate)) continue;
     try {
       await access(candidate);
       return await realpath(candidate);
