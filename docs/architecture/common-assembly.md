@@ -115,14 +115,16 @@ tickets. New admission closes at quiesce; ordinary effects close at retirement.
 Private owner cleanup may continue afterward without restoring plugin authority.
 An observer timeout never releases held work or proves physical disposal.
 
-Record source SHA, exact package/archive hashes, full bytes of this standard,
-TEST/production classification and real rejecting commands in the consumer
-profile. A synthetic TEST Host can demonstrate these races but cannot
+Record source SHA, exact package/archive hashes, this standard's full-document
+SHA-256 and retained copy, TEST/production classification and real rejecting
+commands in the consumer profile. A synthetic TEST Host can demonstrate these
+races but cannot
 meet ADR-0028's two production ownership scopes or G1 public qualification.
 Until those gates and a product's local adoption decision pass, classify the
 dynamic boundary as pending. Retained consumers that initiate **new** calls
-after owner retirement are outside the first kernel contract; use a separately
-proved product policy rather than treating custody as invocation authority.
+after owner retirement are outside the first kernel contract; supporting them
+requires a successor decision, separate evidence and product policy rather
+than treating custody as invocation authority.
 
 | Use | Reject | Evidence |
 | --- | --- | --- |

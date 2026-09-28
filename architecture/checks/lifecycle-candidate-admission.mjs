@@ -78,9 +78,9 @@ function parseSource(path, source, forbidDynamic = true) {
       && (node.expression.kind === ts.SyntaxKind.ImportKeyword
         || ts.isIdentifier(node.expression) && node.expression.text === "require")) {
       if (forbidDynamic) assert.fail(`${path} must not use dynamic import or require`);
-      if (node.arguments[0] && ts.isStringLiteral(node.arguments[0])) {
-        specifiers.push(node.arguments[0].text);
-      }
+      assert(node.arguments.length === 1 && ts.isStringLiteralLike(node.arguments[0]),
+        `${path} has an unresolved dynamic import or require`);
+      specifiers.push(node.arguments[0].text);
     }
     ts.forEachChild(node, visit);
   }
@@ -103,9 +103,11 @@ function assertSourceEdges(path, source) {
 function substantiveSource(parsed) {
   let substantive = false;
   function visit(node) {
-    if ((ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)
-      || ts.isConstructorDeclaration(node) || ts.isArrowFunction(node))
-      && node.body && node.body.statements?.length > 0) substantive = true;
+    if ((ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)
+      || ts.isMethodDeclaration(node) || ts.isConstructorDeclaration(node)
+      || ts.isArrowFunction(node)) && node.body &&
+      node.body.statements?.some(statement =>
+        !ts.isEmptyStatement(statement) && !ts.isDebuggerStatement(statement))) substantive = true;
     ts.forEachChild(node, visit);
   }
   visit(parsed);

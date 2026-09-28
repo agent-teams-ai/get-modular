@@ -66,7 +66,8 @@ test("the exact decision and registry cannot independently authorize a different
   await assert.rejects(validateLifecycleCandidateAdmission(input), /exact accepted ADR-0029 bytes/u);
   files.set(LIFECYCLE_DECISION_PATH, decision);
   const changed = JSON.parse(registry);
-  changed.decisions.at(-1).immutableDigest = "sha256:" + "0".repeat(64);
+  changed.decisions.find(entry => entry.id === "ADR-0029").immutableDigest =
+    "sha256:" + "0".repeat(64);
   files.set("architecture/decisions/accepted-decisions.json", Buffer.from(JSON.stringify(changed)));
   await assert.rejects(validateLifecycleCandidateAdmission(input), /exact registered ADR-0029/u);
 });
@@ -85,6 +86,11 @@ test("the candidate root, manifest and executable source are required together",
   await assert.rejects(validateLifecycleCandidateAdmission(missingPackTest), /requires a real test/u);
   sources.set(sourcePath, "export {};\n");
   await assert.rejects(validateLifecycleCandidateAdmission(input), /substantive executable source/u);
+  sources.set(sourcePath, "export function createKernel() { ; debugger; }\n");
+  await assert.rejects(validateLifecycleCandidateAdmission(input), /substantive executable source/u);
+  sources.set(sourcePath, "export const createKernel = function () { return {}; };\n");
+  assert.deepEqual(await validateLifecycleCandidateAdmission(input),
+    [LIFECYCLE_MANIFEST_PATH, sourcePath, ...testPaths]);
   sources.set(sourcePath, "  \n");
   await assert.rejects(validateLifecycleCandidateAdmission(input), /cannot be empty/u);
 });
@@ -108,10 +114,21 @@ test("untracked build output and Core or Assembly imports cannot become candidat
   input.productionArtifacts.push("packages/lifecycle-kernel/dist/index.js");
   await assert.rejects(validateLifecycleCandidateAdmission(input), /ungoverned development output/u);
   input.productionArtifacts.pop();
-  const coreSource = "packages/core/src/consumer.ts";
-  input.productionArtifacts.push(coreSource);
-  sources.set(coreSource, 'import type { Lease } from "@get-modular/lifecycle-kernel";\n');
-  await assert.rejects(validateLifecycleCandidateAdmission(input), /must not import the lifecycle candidate/u);
+  for (const path of ["packages/core/src/consumer.ts", "packages/assembly/src/consumer.ts"]) {
+    input.productionArtifacts.push(path);
+    for (const source of [
+      'import type { Lease } from "@get-modular/lifecycle-kernel";\n',
+      'void import(`@get-modular/lifecycle-kernel`);\n',
+    ]) {
+      sources.set(path, source);
+      await assert.rejects(validateLifecycleCandidateAdmission(input),
+        /must not import the lifecycle candidate/u);
+    }
+    sources.set(path, 'void import(candidatePath);\n');
+    await assert.rejects(validateLifecycleCandidateAdmission(input),
+      /unresolved dynamic import/u);
+    input.productionArtifacts.pop();
+  }
 });
 
 test("candidate manifest cannot run install hooks, depend on runtime packages or claim publication", async () => {
@@ -165,10 +182,15 @@ test("no-op or disconnected candidate command chain cannot satisfy source admiss
   input.packageJson.scripts["lifecycle:test"] = "echo ok";
   await assert.rejects(validateLifecycleCandidateAdmission(input), /non-no-op lifecycle:test/u);
   input.packageJson.scripts["lifecycle:test"] = candidateScripts["lifecycle:test"];
-  input.packageJson.scripts.check = "echo pnpm lifecycle:check";
-  await assert.rejects(validateLifecycleCandidateAdmission(input), /check must execute lifecycle:check/u);
-  input.packageJson.scripts.check = 'echo "prefix && pnpm lifecycle:check && suffix"';
-  await assert.rejects(validateLifecycleCandidateAdmission(input), /check must execute lifecycle:check/u);
+  for (const command of ["check", "check:fast"]) {
+    input.packageJson.scripts[command] = "echo pnpm lifecycle:check";
+    await assert.rejects(validateLifecycleCandidateAdmission(input),
+      /must execute lifecycle:check/u);
+    input.packageJson.scripts[command] = 'echo "prefix && pnpm lifecycle:check && suffix"';
+    await assert.rejects(validateLifecycleCandidateAdmission(input),
+      /must execute lifecycle:check/u);
+    input.packageJson.scripts[command] = candidateScripts[command];
+  }
 });
 
 test("candidate admission leaves G1 on hold even with no package", async () => {
