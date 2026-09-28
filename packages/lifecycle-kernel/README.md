@@ -44,7 +44,7 @@ async function deliver(owner: HostOwner): Promise<void> {
   } finally {
     value(kernel.retire(generation));
     await owner.resource.close(); // Physical cleanup is Host-owned.
-    value(kernel.release(custody)); // Keep custody if close failed.
+    value(kernel.release(custody)); // Release only after successful physical close.
     value(kernel.finishRetirement(generation));
     owner.forgetRecovery(record);
   }

@@ -60,6 +60,9 @@ test("candidate archive exposes the full lifecycle semantics through its public 
       import { createLifecycleKernel } from '@get-modular/lifecycle-kernel';
       const kernel = createLifecycleKernel();
       const generation = kernel.stage();
+      // @ts-expect-error packed declaration must preserve the private identity
+      const copiedGeneration: typeof generation = { ...generation };
+      void copiedGeneration;
       const call = kernel.beginCall(generation);
       const custody = kernel.retainCustody(generation);
       if (call.ok) kernel.checkCall(call.value);

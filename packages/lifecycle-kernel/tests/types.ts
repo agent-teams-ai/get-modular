@@ -24,6 +24,15 @@ if (callResult.ok && custodyResult.ok) {
   kernel.release(generation);
   // @ts-expect-error call is not a generation
   kernel.activate(call);
+  // @ts-expect-error spread cannot copy the private generation identity
+  const copiedGeneration: Generation = { ...generation };
+  // @ts-expect-error spread cannot copy the private call lease identity
+  const copiedCall: CallLease = { ...call };
+  // @ts-expect-error spread cannot copy the private custody lease identity
+  const copiedCustody: CustodyLease = { ...custody };
+  void copiedGeneration;
+  void copiedCall;
+  void copiedCustody;
 }
 // @ts-expect-error a copied structural object cannot carry the private brand
 const forgedGeneration: Generation = {};

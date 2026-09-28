@@ -1,21 +1,23 @@
-declare const generationBrand: unique symbol;
-declare const callLeaseBrand: unique symbol;
-declare const custodyLeaseBrand: unique symbol;
+declare class GenerationIdentity {
+  private readonly generationIdentity: void;
+}
+
+declare class CallLeaseIdentity {
+  private readonly callLeaseIdentity: void;
+}
+
+declare class CustodyLeaseIdentity {
+  private readonly custodyLeaseIdentity: void;
+}
 
 /** Opaque identity of one executable generation in one kernel. */
-export interface Generation {
-  readonly [generationBrand]: true;
-}
+export type Generation = GenerationIdentity;
 
 /** Retains an admitted call and its local effect authority until release. */
-export interface CallLease {
-  readonly [callLeaseBrand]: true;
-}
+export type CallLease = CallLeaseIdentity;
 
 /** Retains an acquisition or borrower lifetime, without call authority. */
-export interface CustodyLease {
-  readonly [custodyLeaseBrand]: true;
-}
+export type CustodyLease = CustodyLeaseIdentity;
 
 export type Lease = CallLease | CustodyLease;
 export type Phase = "staged" | "active" | "quiescing" | "retiring" | "retired";

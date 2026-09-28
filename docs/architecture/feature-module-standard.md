@@ -79,7 +79,8 @@ repository mapping, local authorities, navigation, gate wiring, and explicit
 qualification states. `pnpm governance:check` uses the same repository-wide
 production-artifact inventory. It always rejects production artifacts outside
 `packages`. Accepted ADR-0015 admits source only inside a package identity
-accepted by ADR-0003 or the bounded ADR-0029 successor and, on its own, only while that manifest is
+accepted by ADR-0003, ADR-0023 or the bounded ADR-0029 successor and, on its
+own, only while that manifest is
 `private: true` and declares no publication field. Accepted ADR-0017 supersedes
 those two conditions and blocks publication surfaces only while an open
 decision listed under `publicationBlockers` in the traceability catalog remains
