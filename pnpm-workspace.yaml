@@ -2,6 +2,7 @@ packages:
   - "packages/*"
 
 strictPeerDependencies: true
+engineStrict: true
 
 catalogMode: strict
 

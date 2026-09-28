@@ -192,3 +192,71 @@ test("pinned pnpm rejects fresh and locked invalid peer graphs", { timeout: 1800
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("pinned pnpm enforces dependency engines on fresh and frozen installs", { timeout: 180000 }, async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "get-modular-node-engine-"));
+  try {
+    const workspace = await readFile(join(repository, "pnpm-workspace.yaml"), "utf8");
+    const formerWorkspace = workspace.replace(/^engineStrict: true\n/mu, "");
+    assert.notEqual(formerWorkspace, workspace, "workspace must enable pnpm's supported engineStrict setting");
+    // Every pnpm invocation in this fixture has its own workspace configuration.
+    await writeFile(join(root, "pnpm-workspace.yaml"), formerWorkspace);
+    await writeFile(join(root, ".npmrc"), await readFile(join(repository, ".npmrc")));
+
+    const expectedPnpm = JSON.parse(await readFile(join(repository, "package.json"), "utf8")).packageManager;
+    assert.equal(expectedPnpm, "pnpm@11.20.0");
+    assert.match(process.version, /^v(?:24|26)\./u);
+    const pnpm = await resolvePnpmCli();
+    const invoke = (...args) => run(process.execPath, [pnpm, ...args], root);
+    const version = invoke("--version");
+    assert.equal(version.status, 0, version.stderr);
+    assert.equal(`pnpm@${version.stdout.trim()}`, expectedPnpm);
+
+    for (const [name, engine] of [["bad-engine", "<1"], ["good-engine", ">=24 <27"]]) {
+      const source = join(root, "sources", name);
+      await mkdir(source, { recursive: true });
+      await writeFile(join(source, "package.json"), JSON.stringify({
+        name, version: "1.0.0", engines: { node: engine },
+      }));
+      const packed = run(process.execPath, [pnpm, "pack", "--pack-destination", root], source);
+      assert.equal(packed.status, 0, `${name} pack: ${packed.stdout}\n${packed.stderr}`);
+    }
+
+    const manifest = (name) => JSON.stringify({
+      name: "engine-enforcement-fixture", private: true, packageManager: expectedPnpm,
+      dependencies: { [name]: `file:${name}-1.0.0.tgz` },
+    });
+    await writeFile(join(root, "package.json"), manifest("bad-engine"));
+    const baselineFresh = invoke("install", "--offline", "--ignore-scripts");
+    assert.equal(baselineFresh.status, 0, `former fresh install: ${baselineFresh.stdout}\n${baselineFresh.stderr}`);
+    await rm(join(root, "node_modules"), { recursive: true, force: true });
+    const baselineFrozen = invoke("install", "--frozen-lockfile", "--offline", "--ignore-scripts");
+    assert.equal(baselineFrozen.status, 0, `former frozen install: ${baselineFrozen.stdout}\n${baselineFrozen.stderr}`);
+
+    await writeFile(join(root, "pnpm-workspace.yaml"), workspace);
+    const setting = invoke("config", "get", "engineStrict");
+    assert.equal(setting.status, 0, setting.stderr);
+    assert.equal(setting.stdout.trim(), "true");
+    const frozen = invoke("install", "--frozen-lockfile", "--offline", "--ignore-scripts");
+    assert.notEqual(frozen.status, 0, "frozen install accepted an incompatible dependency engine");
+    assert.match(frozen.stdout + frozen.stderr, /ERR_PNPM_UNSUPPORTED_ENGINE/u);
+
+    await rm(join(root, "pnpm-lock.yaml"), { force: true });
+    await rm(join(root, "node_modules"), { recursive: true, force: true });
+    const fresh = invoke("install", "--offline", "--ignore-scripts");
+    assert.notEqual(fresh.status, 0, "fresh install accepted an incompatible dependency engine");
+    assert.match(fresh.stdout + fresh.stderr, /ERR_PNPM_UNSUPPORTED_ENGINE/u);
+
+    await writeFile(join(root, "package.json"), manifest("good-engine"));
+    const validFresh = invoke("install", "--offline", "--ignore-scripts");
+    assert.equal(validFresh.status, 0, `valid fresh install: ${validFresh.stdout}\n${validFresh.stderr}`);
+    await rm(join(root, "node_modules"), { recursive: true, force: true });
+    const validFrozen = invoke("install", "--frozen-lockfile", "--offline", "--ignore-scripts");
+    assert.equal(validFrozen.status, 0, `valid frozen install: ${validFrozen.stdout}\n${validFrozen.stderr}`);
+    t.diagnostic(`Node ${process.version} (${process.execPath}), ${expectedPnpm}: former bad fresh/frozen accepted; ` +
+      "workspace engineStrict rejected bad fresh/frozen with ERR_PNPM_UNSUPPORTED_ENGINE; " +
+      "good fresh/frozen accepted");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
