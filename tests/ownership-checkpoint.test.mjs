@@ -108,7 +108,15 @@ test("observations bind historical lock bytes, production importers and reviewed
   assert.equal(digest(historicalLockBytes), checkpoint.evidence.lockDigest);
   const historicalImporters = parse(historicalLockBytes.toString("utf8")).importers;
   const currentImporters = parse(readFileSync("pnpm-lock.yaml", "utf8")).importers;
-  assert.deepEqual(Object.keys(currentImporters).sort(), Object.keys(historicalImporters).sort());
+  const lifecycleRoot = "packages/lifecycle-kernel";
+  const lifecyclePresent = existsSync(`${lifecycleRoot}/package.json`);
+  assert.deepEqual(Object.keys(currentImporters).sort(), [
+    ...Object.keys(historicalImporters), ...(lifecyclePresent ? [lifecycleRoot] : []),
+  ].sort());
+  if (lifecyclePresent) {
+    assert.deepEqual(currentImporters[lifecycleRoot], {},
+      "the separate ADR-0029 candidate adds no runtime dependency importer");
+  }
   for (const [path, importer] of Object.entries(historicalImporters)) {
     for (const field of ["dependencies", "optionalDependencies"]) {
       assert.deepEqual(currentImporters[path][field], importer[field], `${path}:${field}`);
@@ -136,7 +144,11 @@ test("C0 preserves rejecting runtime package admission until K1", async () => {
   const policy = parse(readFileSync("architecture/foundation/source-dependencies.yaml", "utf8"));
   assert.equal(policy.schemaVersion, 3);
   assert.equal(policy.rootPackage, true);
-  assert.deepEqual(policy.packageRoots, ["packages/assembly", "packages/core"]);
+  const lifecyclePresent = existsSync("packages/lifecycle-kernel/package.json");
+  assert.deepEqual(policy.packageRoots, [
+    "packages/assembly", "packages/core",
+    ...(lifecyclePresent ? ["packages/lifecycle-kernel"] : []),
+  ]);
   for (const boundary of policy.boundaries.filter(b => b.dependencyMode !== "development")) {
     assert.equal(boundary.allow.packages.includes("@get-modular/ownership"), false);
   }
