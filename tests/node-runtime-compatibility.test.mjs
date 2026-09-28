@@ -10,6 +10,12 @@ import { resolveNpmCli, resolvePnpmCli } from "./qualification/support/npm-cli.m
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageNames = ["core", "assembly"];
 
+// The Node 26 CI consumer is outside the source workspace. Its package manager
+// must be the physically provisioned source pin, not a shim selected by cwd.
+async function fixturePnpmCli() {
+  return process.env.GET_MODULAR_COMPAT_PNPM_CLI || await resolvePnpmCli();
+}
+
 function run(executable, args, cwd, environment = {}) {
   const result = spawnSync(executable, args, {
     cwd, encoding: "utf8", timeout: 180000,
@@ -100,7 +106,7 @@ test("disposable installed public roots compile and assemble on the selected Nod
         "Node 26 requires archives built and packed under the qualified Node 24 toolchain");
       archiveDirectory = join(root, "archives");
       await mkdir(archiveDirectory);
-      const pnpm = await resolvePnpmCli();
+      const pnpm = await fixturePnpmCli();
       for (const name of packageNames) {
         const result = run(process.execPath, [pnpm, "pack", "--pack-destination", archiveDirectory],
           join(repository, "packages", name));
@@ -151,7 +157,7 @@ test("pinned pnpm rejects fresh and locked invalid peer graphs", { timeout: 1800
       "packages: []\nstrictPeerDependencies: true\nautoInstallPeers: false\n");
     const expectedPnpm = JSON.parse(await readFile(join(repository, "package.json"), "utf8")).packageManager;
     assert.equal(expectedPnpm, "pnpm@11.20.0");
-    const pnpm = await resolvePnpmCli();
+    const pnpm = await fixturePnpmCli();
     const version = run(process.execPath, [pnpm, "--version"], root);
     assert.equal(version.status, 0, version.stderr);
     assert.equal(`pnpm@${version.stdout.trim()}`, expectedPnpm);
@@ -206,7 +212,7 @@ test("pinned pnpm enforces dependency engines on fresh and frozen installs", { t
     const expectedPnpm = JSON.parse(await readFile(join(repository, "package.json"), "utf8")).packageManager;
     assert.equal(expectedPnpm, "pnpm@11.20.0");
     assert.match(process.version, /^v(?:24|26)\./u);
-    const pnpm = await resolvePnpmCli();
+    const pnpm = await fixturePnpmCli();
     const invoke = (...args) => run(process.execPath, [pnpm, ...args], root);
     const version = invoke("--version");
     assert.equal(version.status, 0, version.stderr);
