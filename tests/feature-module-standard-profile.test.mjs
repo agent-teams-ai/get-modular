@@ -78,7 +78,7 @@ test("exposes the qualified nested FMS v1 topology consumed by Foundation", () =
     {
       authority: ["agent-teams.feature-module-standard", "v1"],
       workspaceContainers: ["packages"],
-      productionRoots: ["packages/core/src", "packages/assembly/src"],
+      productionRoots: ["packages/core/src", "packages/assembly/src", "packages/lifecycle-kernel/src"],
       modules: [
         {
           moduleRoot: "packages/core",
@@ -90,21 +90,26 @@ test("exposes the qualified nested FMS v1 topology consumed by Foundation", () =
           sourceRoot: "packages/assembly/src",
           testRoot: "packages/assembly/tests",
         },
+        {
+          moduleRoot: "packages/lifecycle-kernel",
+          sourceRoot: "packages/lifecycle-kernel/src",
+          testRoot: "packages/lifecycle-kernel/tests",
+        },
       ],
     },
   );
 });
 
-test("rejects missing and duplicate Core/Assembly records", () => {
+test("rejects missing and duplicate governed module records", () => {
   const missingProduction = clone(profile);
   missingProduction.scope.productionModules.pop();
   assert.throws(() => validate({ profile: missingProduction }),
-    /Core\/Assembly production module records does not match/u);
+    /governed production module records does not match/u);
 
   const missingLayout = clone(profile);
   missingLayout.adoption.abstractLayout.modules.pop();
   assert.throws(() => validate({ profile: missingLayout }),
-    /Core\/Assembly abstract layout records does not match/u);
+    /governed abstract layout records does not match/u);
 
   const duplicateProduction = clone(profile);
   duplicateProduction.scope.productionModules[1] =
@@ -136,7 +141,7 @@ test("rejects wildcard and mismatched module, source, and test roots", () => {
     const mismatch = clone(profile);
     mismatch.adoption.abstractLayout.modules[0][key] = value;
     assert.throws(() => validate({ profile: mismatch }),
-      /Core\/Assembly abstract layout records does not match/u,
+      /governed abstract layout records does not match/u,
       key);
   }
 });

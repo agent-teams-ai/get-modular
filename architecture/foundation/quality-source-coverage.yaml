@@ -6,6 +6,7 @@ lintConfigPath: .oxlintrc.json
 compilerProjects:
   - packages/core/tsconfig.typecheck.json
   - packages/assembly/tsconfig.json
+  - packages/lifecycle-kernel/tsconfig.json
 scripts:
   fast: check:fast
   full: check

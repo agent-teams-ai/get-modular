@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -11,8 +11,12 @@ import { readCurrentM2Authority } from "../architecture/checks/m2-lock-witness.m
 import { promisify } from "node:util";
 import {
   ASSEMBLY_CORRECTION_DECISION_PATH, ASSEMBLY_PUBLICATION_DECISION_PATH, ASSEMBLY_DECISION_PATH, ASSEMBLY_MANIFEST_PATH, M2_HISTORICAL_LOCK_DIGEST,
-  createHistoricalM2EvidenceReader, validateAssemblyAdmission,
+  createHistoricalM2EvidenceReader, validateAssemblyAdmission, validateLifecycleKernelAdmission,
 } from "../architecture/checks/assembly-admission.mjs";
+import {
+  LIFECYCLE_KERNEL_MANIFEST_PATH, packageIdentityViolations, packageManifestInventory,
+  productionArtifactPaths, productionArtifactSymlinkPaths,
+} from "../architecture/checks/production-artifacts.mjs";
 import { validatePrivateCoreStart } from "../architecture/checks/private-core-start.mjs";
 import { M2_EVIDENCE_LEDGER } from "../architecture/checks/m2-evidence.mjs";
 import {
@@ -84,6 +88,23 @@ test("Assembly admission subtracts only independently admitted paths from Core",
     await assert.rejects(core(all.filter(candidate => !allowed.includes(candidate))),
       /outside the authorized package root/u);
   }
+});
+
+test("the candidate remains optional when its package and exact tooling edges are absent", async () => {
+  const rootManifest = JSON.parse(read("package.json"));
+  delete rootManifest.devDependencies["@get-modular/lifecycle-kernel"];
+  const lock = parse(currentLock.toString("utf8"));
+  delete lock.importers["."].devDependencies["@get-modular/lifecycle-kernel"];
+  delete lock.importers["packages/lifecycle-kernel"];
+  const readBytes = path => path === "package.json"
+    ? Buffer.from(JSON.stringify(rootManifest))
+    : path === "pnpm-lock.yaml" ? Buffer.from(stringify(lock)) : read(path);
+  assert.deepEqual(await admit({ readBytes,
+    readPackageManifest: async path => {
+      if (path === LIFECYCLE_KERNEL_MANIFEST_PATH) throw Error("candidate absent");
+      return JSON.parse(read(path));
+    },
+  }), artifacts.slice(2));
 });
 
 test("Assembly admission rejects malformed manifests, dependencies and package roots", async () => {
@@ -196,6 +217,129 @@ test("current admission rejects malformed, missing, extra and redirected importe
   }));
 });
 
+test("Lifecycle Kernel admission keeps the candidate private and dependency-free", async () => {
+  const candidateArtifacts = [LIFECYCLE_KERNEL_MANIFEST_PATH,
+    "packages/lifecycle-kernel/src/index.ts"];
+  assert.deepEqual(await validateLifecycleKernelAdmission({
+    ...inputs, productionArtifacts: [...artifacts, ...candidateArtifacts],
+  }), candidateArtifacts);
+  const manifest = JSON.parse(read(LIFECYCLE_KERNEL_MANIFEST_PATH));
+  for (const mutation of [
+    { private: false }, { private: undefined }, { version: "0.2.0" },
+    { publishConfig: { access: "public" } },
+    ...["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"]
+      .map(field => ({ [field]: { "@get-modular/core": "workspace:*" } })),
+    { scripts: { postinstall: "node install.mjs" } },
+    { exports: { "./internal": "./dist/internal.js" } },
+  ]) {
+    await assert.rejects(admit({ readPackageManifest: async path =>
+      path === LIFECYCLE_KERNEL_MANIFEST_PATH
+        ? { ...manifest, ...mutation } : inputs.readPackageManifest(path) }),
+    /Lifecycle Kernel admission/u, JSON.stringify(mutation));
+  }
+  for (const productionArtifacts of [
+    [...artifacts, "packages/lifecycle-kernel/src/index.ts"],
+    [...artifacts, ...candidateArtifacts, "packages/lifecycle-kernel/nested/package.json"],
+    [...artifacts, ...candidateArtifacts, "packages/lifecycle-kernel/../rogue/index.ts"],
+  ]) await assert.rejects(validateLifecycleKernelAdmission({
+    ...inputs, productionArtifacts,
+  }), /Lifecycle Kernel admission/u);
+  const unknownRoot = "packages/rogue/package.json";
+  const inventory = await packageManifestInventory([unknownRoot], {
+    readPackageManifest: async () => manifest,
+  });
+  assert.deepEqual(packageIdentityViolations(inventory), [unknownRoot]);
+});
+
+test("Lifecycle Kernel root edge and importer reject every additional lock edge", async () => {
+  const current = parse(currentLock.toString("utf8"));
+  const encode = value => Buffer.from(stringify(value));
+  const rootManifest = JSON.parse(read("package.json"));
+  for (const mutation of [
+    { devDependencies: { ...rootManifest.devDependencies,
+      "@get-modular/lifecycle-kernel": "^0.1.0" } },
+    ...["dependencies", "optionalDependencies", "peerDependencies"]
+      .map(field => ({ [field]: { "@get-modular/lifecycle-kernel": "workspace:*" } })),
+  ]) await assert.rejects(admit({ readBytes: path => path === "package.json"
+    ? Buffer.from(JSON.stringify({ ...rootManifest, ...mutation })) : read(path) }),
+  /Lifecycle Kernel admission/u);
+  const locks = [];
+  for (const value of [undefined, null, [], { dependencies: {} },
+    { devDependencies: {} }, { dependencies: { "@get-modular/core": {
+      specifier: "workspace:*", version: "link:../core",
+    } } }]) {
+    const changed = structuredClone(current);
+    if (value === undefined) delete changed.importers["packages/lifecycle-kernel"];
+    else changed.importers["packages/lifecycle-kernel"] = value;
+    locks.push(encode(changed));
+  }
+  for (const edge of [
+    { specifier: "^0.1.0", version: "link:packages/lifecycle-kernel" },
+    { specifier: "workspace:*", version: "link:packages/other" },
+    { specifier: "workspace:*", version: "link:packages/lifecycle-kernel", injected: true },
+  ]) {
+    const changed = structuredClone(current);
+    changed.importers["."].devDependencies["@get-modular/lifecycle-kernel"] = edge;
+    locks.push(encode(changed));
+  }
+  for (const field of ["dependencies", "optionalDependencies", "peerDependencies"]) {
+    const changed = structuredClone(current);
+    changed.importers["."][field] = { "@get-modular/lifecycle-kernel": {
+      specifier: "workspace:*", version: "link:packages/lifecycle-kernel",
+    } };
+    locks.push(encode(changed));
+  }
+  for (const bytes of locks) await assert.rejects(admit({
+    readBytes: path => path === "pnpm-lock.yaml" ? bytes : read(path),
+  }), /Lifecycle Kernel admission|current workspace importers/u);
+});
+
+test("Lifecycle Kernel build output is omitted only with source and unstaged file custody", async () => {
+  // A regression that hides authored or staged dist files, or exposes ordinary
+  // untracked build files as source, changes this inventory on the Git boundary.
+  const fixture = await mkdtemp(join(tmpdir(), "gm-lifecycle-output-"));
+  const exec = promisify(execFile);
+  const git = (...args) => exec("git", args, { cwd: fixture });
+  const write = async (path, content) => {
+    await mkdir(dirname(join(fixture, path)), { recursive: true });
+    await writeFile(join(fixture, path), content);
+  };
+  const output = "packages/lifecycle-kernel/dist/index.js";
+  const declaration = "packages/lifecycle-kernel/dist/index.d.ts";
+  try {
+    await git("init", "--quiet", "--initial-branch=main");
+    await write("package.json", '{"private":true}\n');
+    await write(LIFECYCLE_KERNEL_MANIFEST_PATH, read(LIFECYCLE_KERNEL_MANIFEST_PATH));
+    await write(output, "export const built = true;\n");
+    await write(declaration, "export declare const built: boolean;\n");
+    await git("add", "package.json", LIFECYCLE_KERNEL_MANIFEST_PATH);
+    let snapshot = await captureGitIndexSnapshot(fixture);
+    assert((await productionArtifactPaths(fixture, snapshot)).includes(output),
+      "orphan dist output remains visible");
+    await write("packages/lifecycle-kernel/src/index.ts", "export const built = true;\n");
+    await git("add", "packages/lifecycle-kernel/src/index.ts");
+    snapshot = await captureGitIndexSnapshot(fixture);
+    let paths = await productionArtifactPaths(fixture, snapshot);
+    assert(!paths.includes(output) && !paths.includes(declaration),
+      "ordinary untracked output is excluded when source exists");
+    assert((await productionArtifactPaths(fixture)).includes(output),
+      "the unsnapshotted inventory does not assume build provenance");
+    await write("packages/lifecycle-kernel/dist/handwritten.ts", "export const x = 1;\n");
+    await write("packages/lifecycle-kernel/dist/nested/package.json", "{}\n");
+    await symlink("index.js", join(fixture, "packages/lifecycle-kernel/dist/link.js"));
+    paths = await productionArtifactPaths(fixture, snapshot);
+    for (const path of ["packages/lifecycle-kernel/dist/handwritten.ts",
+      "packages/lifecycle-kernel/dist/nested/package.json",
+      "packages/lifecycle-kernel/dist/link.js"]) assert(paths.includes(path), path);
+    assert.deepEqual(await productionArtifactSymlinkPaths(fixture, snapshot),
+      ["packages/lifecycle-kernel/dist/link.js"]);
+    await git("add", "--force", output);
+    snapshot = await captureGitIndexSnapshot(fixture);
+    assert((await productionArtifactPaths(fixture, snapshot)).includes(output),
+      "staged output remains visible");
+  } finally { await rm(fixture, { recursive: true, force: true }); }
+});
+
 test("current workspace and Core manifest cannot bypass Assembly admission", async () => {
   for (const packages of [undefined, null, [], ["packages/assembly"], ["packages/*", "other/*"],
     ["packages/*", "!packages/core"]]) {
@@ -290,7 +434,8 @@ test("Assembly admission retains captured-index custody for every admission inpu
     ...(JSON.parse(read(ASSEMBLY_MANIFEST_PATH)).version === "0.2.0"
       ? [ASSEMBLY_CORRECTION_DECISION_PATH] : []),
     "architecture/decisions/accepted-decisions.json", "pnpm-lock.yaml",
-    "pnpm-workspace.yaml", "packages/core/package.json"];
+    "pnpm-workspace.yaml", "package.json", "packages/core/package.json",
+    LIFECYCLE_KERNEL_MANIFEST_PATH];
   try {
     for (const path of paths) {
       await mkdir(dirname(join(directory, path)), { recursive: true });
@@ -395,7 +540,8 @@ test("next pair requires the exact accepted successor and retains first-release 
     [registryPath, Buffer.from(JSON.stringify({ ...registry, decisions: [...registry.decisions, entry] }))]]);
   const next = {
     readBytes: path => bytes.get(path) ?? read(path),
-    readPackageManifest: async path => ({ ...JSON.parse(read(path)), version: "0.2.0" }),
+    readPackageManifest: async path => ({ ...JSON.parse(read(path)),
+      version: path === LIFECYCLE_KERNEL_MANIFEST_PATH ? "0.1.0" : "0.2.0" }),
   };
   assert.deepEqual(await admit(next), artifacts.slice(2));
   await assert.rejects(admit({ ...next, readBytes: pending }), /accepted ADR-0027/u);

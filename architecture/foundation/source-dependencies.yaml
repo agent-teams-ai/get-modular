@@ -5,6 +5,7 @@ workspace:
 packageRoots:
   - packages/assembly
   - packages/core
+  - packages/lifecycle-kernel
 rootPackage: true
 governedRoots:
   - architecture/contracts/ownership
@@ -19,6 +20,8 @@ governedRoots:
   - packages/core/self-composition
   - packages/core/src
   - packages/core/tests
+  - packages/lifecycle-kernel/src
+  - packages/lifecycle-kernel/tests
   - tests
 boundaries:
   # Module consumers see only ports and identities. Only a composition root
@@ -332,6 +335,82 @@ boundaries:
       packages: []
       builtins: []
       runtimeReferences: []
+  # ADR-0029 permits one pure local policy kernel. Its bookkeeping identities
+  # never import the composition packages or acquire Host authority.
+  - id: lifecycle-kernel-contract
+    roots:
+      - packages/lifecycle-kernel/src/features/lifecycle/types.ts
+    entrypoints:
+      - packages/lifecycle-kernel/src/features/lifecycle/types.ts
+    allow:
+      boundaries: []
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: lifecycle-kernel-implementation
+    roots:
+      - packages/lifecycle-kernel/src/features/lifecycle/kernel.ts
+    entrypoints:
+      - packages/lifecycle-kernel/src/features/lifecycle/kernel.ts
+    allow:
+      boundaries:
+        - lifecycle-kernel-contract
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: lifecycle-kernel-composition
+    roots:
+      - packages/lifecycle-kernel/src/composition/root.ts
+    entrypoints:
+      - packages/lifecycle-kernel/src/composition/root.ts
+    allow:
+      boundaries:
+        - lifecycle-kernel-contract
+        - lifecycle-kernel-implementation
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: lifecycle-kernel-public-entrypoint
+    packageExports:
+      - "."
+    roots:
+      - packages/lifecycle-kernel/src/index.ts
+    entrypoints:
+      - packages/lifecycle-kernel/src/index.ts
+    allow:
+      boundaries:
+        - lifecycle-kernel-contract
+        - lifecycle-kernel-composition
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: lifecycle-kernel-development
+    dependencyMode: development
+    roots:
+      - packages/lifecycle-kernel/tests
+    entrypoints:
+      - packages/lifecycle-kernel/tests/kernel.test.mjs
+      - packages/lifecycle-kernel/tests/packed-root.test.mjs
+      - packages/lifecycle-kernel/tests/semantic-suite.mjs
+      - packages/lifecycle-kernel/tests/types.ts
+    allow:
+      boundaries:
+        - lifecycle-kernel-contract
+        - lifecycle-kernel-implementation
+        - lifecycle-kernel-composition
+        - lifecycle-kernel-public-entrypoint
+      packages:
+        - "@get-modular/lifecycle-kernel"
+      builtins:
+        - node:assert/strict
+        - node:child_process
+        - node:fs/promises
+        - node:module
+        - node:os
+        - node:path
+        - node:test
+        - node:url
+      runtimeReferences: []
   - id: core-development
     dependencyMode: development
     roots:
@@ -468,10 +547,12 @@ boundaries:
         - assembly-examples
         - assembly-public-entrypoint
         - core-public-entrypoint
+        - lifecycle-kernel-public-entrypoint
       packages:
         - "@agent-teams/engineering-foundation"
         - "@get-modular/assembly"
         - "@get-modular/core"
+        - "@get-modular/lifecycle-kernel"
         - ajv
         - canonicalize
         - json-canonicalize

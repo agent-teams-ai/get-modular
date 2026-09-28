@@ -2,5 +2,6 @@ schemaVersion: 1
 governedRoots:
   - packages/core/src
   - packages/assembly/src
+  - packages/lifecycle-kernel/src
 nonWaivableRulePrefixes: []
 waivers: []

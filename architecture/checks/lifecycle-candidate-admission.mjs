@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { posix } from "node:path";
 import ts from "typescript-minimum";
+import { GENERATED_PRODUCTION_PATH } from "./generated-production-source.mjs";
 
 export const LIFECYCLE_DECISION_PATH =
   "docs/decisions/0029-admit-an-optional-lifecycle-kernel-candidate.md";
@@ -206,7 +207,8 @@ export async function validateLifecycleCandidateAdmission({
   }
   assert(substantive, "lifecycle candidate requires substantive executable source");
   for (const path of productionArtifacts.filter(path =>
-    /^packages\/(?:core|assembly)\/src\//u.test(path) && SOURCE.test(path))) {
+    /^packages\/(?:core|assembly)\/src\//u.test(path)
+      && SOURCE.test(path) && path !== GENERATED_PRODUCTION_PATH)) {
     const source = await readProductionSource(path);
     for (const specifier of parseSource(path, source, false).specifiers) {
       const target = specifier.startsWith(".")
