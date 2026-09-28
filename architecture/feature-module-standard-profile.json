@@ -10,7 +10,7 @@
   },
   "scope": {
     "workspaceContainers": ["packages"],
-    "productionRoots": ["packages/core/src", "packages/assembly/src"],
+    "productionRoots": ["packages/core/src", "packages/assembly/src", "packages/lifecycle-kernel/src"],
     "productionModules": [
       {
         "id": "core",
@@ -21,6 +21,11 @@
         "id": "assembly",
         "moduleRoot": "packages/assembly",
         "sourceRoot": "packages/assembly/src"
+      },
+      {
+        "id": "lifecycle-kernel",
+        "moduleRoot": "packages/lifecycle-kernel",
+        "sourceRoot": "packages/lifecycle-kernel/src"
       }
     ]
   },
@@ -48,6 +53,14 @@
           "moduleComposition": "packages/assembly/src/composition",
           "publicEntrypoint": "packages/assembly/src/index.ts",
           "testRoot": "packages/assembly/tests"
+        },
+        {
+          "moduleRoot": "packages/lifecycle-kernel",
+          "sourceRoot": "packages/lifecycle-kernel/src",
+          "featuresRoot": "packages/lifecycle-kernel/src/features",
+          "moduleComposition": "packages/lifecycle-kernel/src/composition",
+          "publicEntrypoint": "packages/lifecycle-kernel/src/index.ts",
+          "testRoot": "packages/lifecycle-kernel/tests"
         }
       ]
     },
@@ -67,6 +80,10 @@
       {
         "id": "internal-self-composition",
         "authority": "docs/decisions/0008-bounded-internal-engine-self-composition.md"
+      },
+      {
+        "id": "lifecycle-generation-and-lease",
+        "authority": "docs/decisions/0029-admit-an-optional-lifecycle-kernel-candidate.md"
       }
     ],
     "deviations": [],

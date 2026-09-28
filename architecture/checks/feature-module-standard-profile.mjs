@@ -7,6 +7,7 @@ import {
   ACCEPTED_PACKAGE_NAMES,
   assemblyManifestViolations,
   isProductionSourceArtifactPath,
+  lifecycleKernelManifestViolations,
   PUBLICATION_FIELDS,
   productionArtifactPaths,
   productionArtifactSymlinkPaths,
@@ -47,6 +48,15 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "assembly:build": "pnpm core:build && node architecture/tooling/build-assembly.mjs",
   "assembly:typecheck": "node node_modules/typescript/bin/tsc -p packages/assembly/tsconfig.json --noEmit",
   "assembly:test": 'node --test "tests/assembly/**/*.test.mjs" "packages/assembly/tests/**/*.test.mjs"',
+  "lifecycle:build": "node architecture/tooling/build-lifecycle-kernel.mjs",
+  "lifecycle:typecheck":
+    "node node_modules/typescript/bin/tsc -p packages/lifecycle-kernel/tsconfig.json --noEmit"
+    + " && node node_modules/typescript/bin/tsc -p packages/lifecycle-kernel/tsconfig.types.json --noEmit"
+    + " && node node_modules/typescript/bin/tsc -p packages/lifecycle-kernel/tsconfig.types.bundler.json --noEmit",
+  "lifecycle:test": "node --test packages/lifecycle-kernel/tests/kernel.test.mjs",
+  "lifecycle:pack": "node --test packages/lifecycle-kernel/tests/packed-root.test.mjs",
+  "lifecycle:check":
+    "pnpm lifecycle:build && pnpm lifecycle:typecheck && pnpm lifecycle:test && pnpm lifecycle:pack",
   "contracts:check": "node architecture/checks/v1-contract.mjs",
   "contracts:test": "node --test tests/v1-contract.test.mjs tests/compiler-engineer-examples.test.mjs tests/implementation-clarifications.test.mjs tests/qualification/m2-candidate/generation-two-artifacts.test.mjs tests/qualification/m2-candidate/raw-carrier-oracle.test.mjs tests/qualification/m2-candidate/duplicate-record-cases.test.mjs tests/qualification/m2-candidate/duplicate-record-extended-overlaps.test.mjs tests/qualification/m2-candidate/raw-invocation-oracle.test.mjs tests/qualification/m2-candidate/duplicate-record-resources.test.mjs tests/qualification/m2-candidate/raw-document-cases.test.mjs tests/qualification/m2-candidate/mutation-evidence.test.mjs tests/qualification/m2-candidate/retained-object-descriptors.test.mjs tests/qualification/m2-candidate/combined-case-inventory.test.mjs tests/qualification/m2-candidate/boundary-source-mutations.test.mjs tests/assembly-admission-retained.test.mjs tests/m2-lock-witness.test.mjs",
   "docs:check": "agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml",
@@ -82,6 +92,7 @@ const ROOT_SCRIPT_COMMANDS = Object.freeze({
     "governance:check",
     "release-owned-files:check",
     "assembly:build",
+    "lifecycle:check",
     "foundation:check",
     "sdk-growth:check",
     "lint:typed",
@@ -103,6 +114,7 @@ const ROOT_SCRIPT_COMMANDS = Object.freeze({
   "check:fast": Object.freeze([
     "runtime:preflight",
     "assembly:build",
+    "lifecycle:check",
     "foundation:check",
     "sdk-growth:check",
     "quality:coverage:scope",
@@ -128,10 +140,11 @@ const EXPECTED_AUTHORITY = Object.freeze({
 
 const EXPECTED_SCOPE = Object.freeze({
   workspaceContainers: ["packages"],
-  productionRoots: ["packages/core/src", "packages/assembly/src"],
+  productionRoots: ["packages/core/src", "packages/assembly/src", "packages/lifecycle-kernel/src"],
   productionModules: [
     { id: "core", moduleRoot: "packages/core", sourceRoot: "packages/core/src" },
     { id: "assembly", moduleRoot: "packages/assembly", sourceRoot: "packages/assembly/src" },
+    { id: "lifecycle-kernel", moduleRoot: "packages/lifecycle-kernel", sourceRoot: "packages/lifecycle-kernel/src" },
   ],
 });
 
@@ -152,6 +165,14 @@ const EXPECTED_LAYOUT_MODULES = Object.freeze([
     publicEntrypoint: "packages/assembly/src/index.ts",
     testRoot: "packages/assembly/tests",
   },
+  {
+    moduleRoot: "packages/lifecycle-kernel",
+    sourceRoot: "packages/lifecycle-kernel/src",
+    featuresRoot: "packages/lifecycle-kernel/src/features",
+    moduleComposition: "packages/lifecycle-kernel/src/composition",
+    publicEntrypoint: "packages/lifecycle-kernel/src/index.ts",
+    testRoot: "packages/lifecycle-kernel/tests",
+  },
 ]);
 
 const EXPECTED_EXTENSIONS = Object.freeze([
@@ -170,6 +191,10 @@ const EXPECTED_EXTENSIONS = Object.freeze([
   {
     id: "internal-self-composition",
     authority: "docs/decisions/0008-bounded-internal-engine-self-composition.md",
+  },
+  {
+    id: "lifecycle-generation-and-lease",
+    authority: "docs/decisions/0029-admit-an-optional-lifecycle-kernel-candidate.md",
   },
 ]);
 
@@ -246,7 +271,7 @@ function validateQualifiedTopology(profile) {
   assertUniqueRecords(profile.scope.productionModules, "moduleRoot", "productionModules");
   assertUniqueRecords(profile.scope.productionModules, "sourceRoot", "productionModules");
   equalJson(profile.scope.productionModules, EXPECTED_SCOPE.productionModules,
-    "Core/Assembly production module records");
+    "governed production module records");
 
   const adoption = profile.adoption;
   equalJson(adoption.applicationRoots, [], "application roots");
@@ -268,7 +293,7 @@ function validateQualifiedTopology(profile) {
   assertUniqueRecords(adoption.abstractLayout.modules, "sourceRoot", "abstractLayout modules");
   assertUniqueRecords(adoption.abstractLayout.modules, "testRoot", "abstractLayout modules");
   equalJson(adoption.abstractLayout.modules, EXPECTED_LAYOUT_MODULES,
-    "Core/Assembly abstract layout records");
+    "governed abstract layout records");
 
   for (const productionModule of profile.scope.productionModules) {
     const layout = adoption.abstractLayout.modules.find(
@@ -411,12 +436,15 @@ export function validateFirstProductionPackageAdmission({
     const manifest = productionPackageManifests.get(manifestPath);
     assert(manifest !== undefined,
       `missing production package manifest: ${manifestPath}`);
-    // ADR-0003 identity, extended by ADR-0023, holds regardless of open decisions.
+    // ADR-0003 identity, extended by ADR-0023 and ADR-0029, holds regardless of open decisions.
     assert(ACCEPTED_PACKAGE_NAMES.has(manifest?.name),
       `${manifestPath} must use an accepted package identity`);
     const assemblyViolations = assemblyManifestViolations(manifest);
     assert(assemblyViolations.length === 0,
       `${manifestPath}: ${assemblyViolations.join("; ")}`);
+    const lifecycleViolations = lifecycleKernelManifestViolations(manifest);
+    assert(lifecycleViolations.length === 0,
+      `${manifestPath}: ${lifecycleViolations.join("; ")}`);
     // ADR-0017 blocks the publication surface only through the publication
     // blockers recorded in the traceability catalog.
     if (publicationBlockerIds.size > 0) {

@@ -38,9 +38,9 @@ Get Modular is a library repository, so it has no application roots. Root
 qualification tooling and are outside production-module scope. No production
 package or empty feature layout is created by this adoption.
 
-Package identities and initial package boundaries are owned by `ADR-0003`, which
-resolves `OD-001` while retaining npm namespace verification as a publication
-gate.
+Initial package boundaries are owned by `ADR-0003`, which resolves `OD-001`.
+`ADR-0029` adds the optional candidate-only lifecycle kernel module and retains
+G1 public qualification and npm namespace verification as release gates.
 
 ## Local extensions
 
@@ -64,7 +64,12 @@ gate.
   own profile, the allowlist, the emitter and the qualification entries beside
   the build configuration, outside the mapped `sourceRoot`; the direct stage0
   root lives at `packages/*/src/composition/stage0.ts` until generated stage1
-  replaces it in M3. This extension covers both and no third package exists.
+  replaces it in M3. This extension concerns Core alone; it creates no edge to
+  the separate lifecycle kernel package.
+- The lifecycle kernel has one feature for local generation/lease policy, a
+  thin `src/composition/root.ts` package factory, and a curated root export.
+  Its local bookkeeping identities are not product generation IDs or Host
+  cleanup resources. Runtime dependencies and Core/Assembly imports are absent.
 - No deviation from organization `v1` is declared.
 
 ## Enforcement
@@ -74,7 +79,8 @@ repository mapping, local authorities, navigation, gate wiring, and explicit
 qualification states. `pnpm governance:check` uses the same repository-wide
 production-artifact inventory. It always rejects production artifacts outside
 `packages`. Accepted ADR-0015 admits source only inside a package identity
-accepted by ADR-0003 and, on its own, only while that manifest is
+accepted by ADR-0003, ADR-0023 or the bounded ADR-0029 successor and, on its
+own, only while that manifest is
 `private: true` and declares no publication field. Accepted ADR-0017 supersedes
 those two conditions and blocks publication surfaces only while an open
 decision listed under `publicationBlockers` in the traceability catalog remains

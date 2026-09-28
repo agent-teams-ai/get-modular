@@ -14,7 +14,9 @@ export const ACCEPTED_PACKAGE_NAMES = new Set([
   "@get-modular/assembly",
   "@get-modular/conformance",
   "@get-modular/core",
+  "@get-modular/lifecycle-kernel",
 ]);
+export const LIFECYCLE_KERNEL_MANIFEST_PATH = "packages/lifecycle-kernel/package.json";
 export const ESM_CARRIER_PACKAGE_NAME = "@get-modular/core";
 const PACKAGE_MANIFEST = /^packages\/(?:.+\/)?package\.json$/u;
 const PACKAGE_ROOT_MANIFEST = /^packages\/[^/]+\/package\.json$/u;
@@ -181,7 +183,8 @@ export async function packageManifestInventory(
       publicationFields: readable
         ? PUBLICATION_FIELDS.filter(field => manifest[field] !== undefined)
         : [],
-      prohibitedFields: readable && manifest.name === ESM_CARRIER_PACKAGE_NAME
+      prohibitedFields: readable && (manifest.name === ESM_CARRIER_PACKAGE_NAME
+        || manifest.name === "@get-modular/lifecycle-kernel")
         ? PROHIBITED_MANIFEST_FIELDS.filter(field => manifest[field] !== undefined)
         : [],
       prohibitedScripts: readable
@@ -189,11 +192,13 @@ export async function packageManifestInventory(
         : [],
       scriptsMalformed,
       exportsField: readable ? manifest.exports : undefined,
-      carrierShapeViolations: readable && manifest.name === ESM_CARRIER_PACKAGE_NAME
+      carrierShapeViolations: readable && (manifest.name === ESM_CARRIER_PACKAGE_NAME
+        || manifest.name === "@get-modular/lifecycle-kernel")
         ? filesAllowlistViolations(manifest.files)
         : [],
       moduleTypeViolation: readable
-        && manifest.name === ESM_CARRIER_PACKAGE_NAME
+        && (manifest.name === ESM_CARRIER_PACKAGE_NAME
+          || manifest.name === "@get-modular/lifecycle-kernel")
         && manifest.type !== "module",
       isPrivate: readable && manifest.private === true,
     });
@@ -211,6 +216,8 @@ export function packageIdentityViolations(inventory) {
       entry.isPackageRoot !== true
       || entry.manifest === undefined
       || !ACCEPTED_PACKAGE_NAMES.has(entry.name)
+      || (entry.name === "@get-modular/lifecycle-kernel"
+        && entry.path !== LIFECYCLE_KERNEL_MANIFEST_PATH)
     ))
     .map(entry => entry.path);
 }
@@ -253,6 +260,24 @@ export function assemblyManifestViolations(manifest) {
     if (value !== undefined
       && (!plainObject(value) || Object.keys(value).length !== 0)) {
       violations.push(`${field} must be absent or empty under ADR-0023`);
+    }
+  }
+  return violations;
+}
+
+// The optional 0.1.0 candidate remains a private, dependency-free leaf until
+// its separate release decision. Its package carrier may expose a local build
+// for qualification without making it public.
+export function lifecycleKernelManifestViolations(manifest) {
+  if (manifest?.name !== "@get-modular/lifecycle-kernel") return [];
+  const violations = [];
+  if (manifest.version !== "0.1.0") violations.push("Lifecycle Kernel candidate version must be 0.1.0");
+  if (manifest.private !== true) violations.push("Lifecycle Kernel candidate must remain private");
+  if (manifest.publishConfig !== undefined) violations.push("Lifecycle Kernel candidate must omit publishConfig");
+  for (const field of ["dependencies", "optionalDependencies", "peerDependencies", "devDependencies"]) {
+    const value = manifest[field];
+    if (value !== undefined && (!plainObject(value) || Object.keys(value).length !== 0)) {
+      violations.push(`Lifecycle Kernel candidate ${field} must be absent or empty`);
     }
   }
   return violations;
@@ -475,8 +500,10 @@ export function manifestCarrierViolations(inventory, { publicationBlocked = fals
         ...(entry.scriptsMalformed === true ? ["scripts must be an object"] : []),
         ...entry.prohibitedScripts.map(script => `scripts.${script}`),
         ...assemblyManifestViolations(entry.manifest),
+        ...lifecycleKernelManifestViolations(entry.manifest),
         ...entry.carrierShapeViolations,
         ...(entry.name === ESM_CARRIER_PACKAGE_NAME
+          || entry.name === "@get-modular/lifecycle-kernel"
           ? exportMapViolations(entry.exportsField, publicationBlocked)
           : []),
         ...(entry.moduleTypeViolation === true
@@ -580,15 +607,17 @@ export async function productionArtifactPaths(repositoryRoot = process.cwd(), in
       }
     }
   }
-  // Only untracked Assembly build output is excluded from authored source.
-  // Staged output, symlinks, manifests and orphan output remain in the inventory.
-  if (indexSnapshot && artifacts.has("packages/assembly/package.json")
-    && [...artifacts].some(path => path.startsWith("packages/assembly/src/")
-      && PRODUCTION_SOURCE.test(path))) {
-    for (const path of artifacts) {
-      if (path.startsWith("packages/assembly/dist/") && PACKAGE_EMITTED_SOURCE.test(path)
-        && !capturedPaths.has(path) && (await lstat(resolve(repositoryRoot, path))).isFile()) {
-        artifacts.delete(path);
+  // Only untracked Assembly and Lifecycle Kernel build output is excluded from
+  // authored source. Staged output, symlinks, manifests and orphan output remain.
+  for (const packageRoot of ["packages/assembly", "packages/lifecycle-kernel"]) {
+    if (indexSnapshot && artifacts.has(`${packageRoot}/package.json`)
+      && [...artifacts].some(path => path.startsWith(`${packageRoot}/src/`)
+        && PRODUCTION_SOURCE.test(path))) {
+      for (const path of artifacts) {
+        if (path.startsWith(`${packageRoot}/dist/`) && PACKAGE_EMITTED_SOURCE.test(path)
+          && !capturedPaths.has(path) && (await lstat(resolve(repositoryRoot, path))).isFile()) {
+          artifacts.delete(path);
+        }
       }
     }
   }

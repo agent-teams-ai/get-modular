@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 import { readCurrentM2Authority } from "./m2-lock-witness.mjs";
 import { validatePrivateCoreStart } from "./private-core-start.mjs";
-import { validateAssemblyAdmission } from "./assembly-admission.mjs";
+import { validateAssemblyAdmission, validateLifecycleKernelAdmission } from "./assembly-admission.mjs";
 import { validateLifecycleCandidateAdmission } from "./lifecycle-candidate-admission.mjs";
 import { GENERATED_PRODUCTION_PATH } from "./generated-production-source.mjs";
 import { cleanProductionAfterFailure } from "../tooling/generate-core.mjs";
@@ -810,16 +810,21 @@ export async function runGovernance() {
       "architecture/sdk-growth/status.json", "G1 pending status",
     )).toString("utf8")),
   });
-  // Independently admit Assembly before subtracting those paths from Core's
-  // inventory. Every other artifact must still pass the Core scope check.
+  // Each non-Core root passes its own admission before Core sees the remainder.
   const admittedAssembly = new Set(await validateAssemblyAdmission({
     productionArtifacts,
     readPackageManifest,
     readBytes: path => readGovernanceInput(path, "Assembly admission input"),
   }));
+  const admittedLifecycle = new Set(await validateLifecycleKernelAdmission({
+    productionArtifacts,
+    readPackageManifest,
+    readBytes: path => readGovernanceInput(path, "lifecycle lock admission input"),
+  }));
   const scope = await validatePrivateCoreStart({
     markdown: documentSources.get("ARCH-MVP-IMPLEMENTATION-ROADMAP").bytes.toString("utf8"),
-    productionArtifacts: productionArtifacts.filter(path => !admittedAssembly.has(path)),
+    productionArtifacts: productionArtifacts.filter(path =>
+      !admittedAssembly.has(path) && !admittedLifecycle.has(path)),
     authorityDigest: ACCEPTED_AUTHORITY_LEDGER_DIGEST,
     isStartingBase: baseCommit => isStartingBaseAncestor(baseCommit, root),
     readPackageManifest,

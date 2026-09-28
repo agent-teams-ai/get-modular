@@ -131,6 +131,13 @@ test("untracked build output and Core or Assembly imports cannot become candidat
   }
 });
 
+test("the Core generated output is checked by its own custody gate, not the authored-source reader", async () => {
+  const { input } = fixture();
+  input.productionArtifacts.push("packages/core/src/composition/generated/stage1.ts");
+  assert.deepEqual(await validateLifecycleCandidateAdmission(input),
+    [LIFECYCLE_MANIFEST_PATH, sourcePath, ...testPaths]);
+});
+
 test("candidate manifest cannot run install hooks, depend on runtime packages or claim publication", async () => {
   const { input } = fixture();
   const manifest = {

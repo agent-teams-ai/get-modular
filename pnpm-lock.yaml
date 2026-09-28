@@ -65,6 +65,9 @@ importers:
       '@get-modular/core':
         specifier: workspace:*
         version: link:packages/core
+      '@get-modular/lifecycle-kernel':
+        specifier: workspace:*
+        version: link:packages/lifecycle-kernel
       ajv:
         specifier: 'catalog:'
         version: 8.20.0
@@ -131,6 +134,8 @@ importers:
       yaml:
         specifier: 'catalog:'
         version: 2.9.0
+
+  packages/lifecycle-kernel: {}
 
 packages:
 
