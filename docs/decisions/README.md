@@ -17,6 +17,8 @@ summary: Index of Get Modular architecture decisions.
 
 ## Accepted decisions
 
+- [ADR-0029: Admit an optional lifecycle kernel candidate](0029-admit-an-optional-lifecycle-kernel-candidate.md)
+
 - [ADR-0028: Authorize the optional ownership contract checkpoint](0028-authorize-the-optional-ownership-contract-checkpoint.md)
 
 - [ADR-0027: Admit the Core and Assembly 0.2.0 correction pair](0027-admit-the-core-and-assembly-0-2-0-correction-pair.md)

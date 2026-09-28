@@ -121,6 +121,15 @@ test("governance cleans successful build outputs when completion detects source 
       force: true,
     });
   }
+  // The current checker authenticates its newly accepted candidate decision
+  // even when this historical fixture contains no lifecycle package.
+  for (const path of [
+    "architecture/decisions/accepted-decisions.json",
+    "docs/decisions/0029-admit-an-optional-lifecycle-kernel-candidate.md",
+  ]) {
+    await mkdir(dirname(join(root, path)), { recursive: true });
+    await cp(join(repositoryRoot, path), join(root, path));
+  }
   await symlink(join(repositoryRoot, "node_modules"), join(root, "node_modules"), "junction");
   const governancePath = join(root, "architecture/checks/governance.mjs");
   const governance = await readFile(governancePath, "utf8");
@@ -139,7 +148,9 @@ test("governance cleans successful build outputs when completion detects source 
     completionLoop,
   ].join("\n");
   await writeFile(governancePath, governance.replace(completionLoop, hook));
-  await exec("git", ["add", "--", "architecture/checks", "architecture/tooling"], {
+  await exec("git", ["add", "--", "architecture/checks", "architecture/tooling",
+    "architecture/decisions/accepted-decisions.json",
+    "docs/decisions/0029-admit-an-optional-lifecycle-kernel-candidate.md"], {
     cwd: root, env,
   });
   await assert.rejects(
