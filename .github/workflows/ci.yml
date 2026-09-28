@@ -39,3 +39,38 @@ jobs:
         env:
           EXPECTED_HEAD_SHA: ${{ github.sha }}
         run: node architecture/checks/tracked-workspace-integrity.mjs
+
+  node-26-compatibility:
+    name: Node 26 package root compatibility
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@008330803749db0355799c700092d9a85fd074e9 # v6.0.9
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - name: Build and pack libraries with qualified Node 24 tooling
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm peers check --lockfile-only
+          pnpm assembly:build
+          mkdir -p "$RUNNER_TEMP/node26-pack"
+          pnpm --dir packages/core pack --pack-destination "$RUNNER_TEMP/node26-pack"
+          pnpm --dir packages/assembly pack --pack-destination "$RUNNER_TEMP/node26-pack"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26.10.0
+      - name: Provision pinned pnpm for disposable Node 26 fixtures
+        run: |
+          npm install --prefix "$RUNNER_TEMP/node26-pnpm" --no-save --ignore-scripts --no-audit --no-fund pnpm@11.20.0
+          node "$RUNNER_TEMP/node26-pnpm/node_modules/pnpm/bin/pnpm.mjs" --version | grep -Fx 11.20.0
+      - name: Verify disposable installed public consumer on Node 26
+        env:
+          GET_MODULAR_COMPAT_ARCHIVE_DIR: ${{ runner.temp }}/node26-pack
+          GET_MODULAR_COMPAT_PNPM_CLI: ${{ runner.temp }}/node26-pnpm/node_modules/pnpm/bin/pnpm.mjs
+        run: node --no-warnings --test tests/node-runtime-compatibility.test.mjs
