@@ -165,8 +165,9 @@ of product-owned code, not another Get Modular package or a production Host.
    implementation ID to exactly one Host-owned lazy loader and factory handle;
    then call public Assembly `prepare`. Refuse any selected implementation ID
    without exactly one loader before invoking a candidate loader. Import code
-   only inside the admitted factory path. Recheck Host authority after an async
-   import and before calling the candidate factory.
+   only inside the admitted factory path. Check Host authority immediately
+   before invoking its loader, then again after an async import and before
+   calling the candidate factory.
 4. **Retain one lifetime owner.** Create the product Host before
    `prepared.run({ signal })` and publish its construction flight synchronously
    before invoking that run. Reserve ownership before an asynchronous acquire;
