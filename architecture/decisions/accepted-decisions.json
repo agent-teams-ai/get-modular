@@ -121,6 +121,11 @@
       "id": "ADR-0028",
       "path": "docs/decisions/0028-authorize-the-optional-ownership-contract-checkpoint.md",
       "immutableDigest": "sha256:69e001cd3334aa37d1c94cf3df945ceef86bde4475eedcf8d2b3460ba7fa8d86"
+    },
+    {
+      "id": "ADR-0029",
+      "path": "docs/decisions/0029-admit-an-optional-lifecycle-kernel-candidate.md",
+      "immutableDigest": "sha256:4162e78542ac053ee03e3b330880495ddd9ffd261c0a578fe100035bdf910d64"
     }
   ]
 }

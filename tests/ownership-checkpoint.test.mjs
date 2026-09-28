@@ -38,11 +38,19 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
   const index = JSON.parse(readFileSync(indexPath, "utf8"));
   const previousIndex = JSON.parse(execFileSync("git", ["show",
     `${checkpoint.evidence.base}:${indexPath}`], { encoding: "utf8" }));
-  assert.deepEqual(index.decisions.slice(0, -1), previousIndex.decisions);
-  assert.deepEqual(index.decisions.at(-1), {
-    id: "ADR-0028", path,
-    immutableDigest: "sha256:69e001cd3334aa37d1c94cf3df945ceef86bde4475eedcf8d2b3460ba7fa8d86",
-  });
+  assert.deepEqual(index.decisions.slice(0, previousIndex.decisions.length),
+    previousIndex.decisions);
+  assert.deepEqual(index.decisions.slice(previousIndex.decisions.length), [
+    {
+      id: "ADR-0028", path,
+      immutableDigest: "sha256:69e001cd3334aa37d1c94cf3df945ceef86bde4475eedcf8d2b3460ba7fa8d86",
+    },
+    {
+      id: "ADR-0029",
+      path: "docs/decisions/0029-admit-an-optional-lifecycle-kernel-candidate.md",
+      immutableDigest: "sha256:4162e78542ac053ee03e3b330880495ddd9ffd261c0a578fe100035bdf910d64",
+    },
+  ]);
   const paths = execFileSync("git", ["ls-tree", "-r", "--name-only", checkpoint.evidence.base,
     "docs/decisions"], { encoding: "utf8" }).trim().split("\n");
   for (const previous of paths.filter(path => /\/\d{4}-/u.test(path))) {
@@ -89,7 +97,7 @@ test("C0 schema admits the observed checkpoint and rejects premature activation"
   }
 });
 
-test("observations bind historical lock bytes, production importers and current CMS", () => {
+test("observations bind historical lock bytes, production importers and reviewed CMS successor", () => {
   assert.equal(checkpoint.evidence.base, "ac49bb3374946330ec820591f8195a22d2c90900");
   assert.equal(digest(declaration), checkpoint.contract.digest);
   assert.equal(digest(readFileSync(checkpoint.contract.decisionPath)), checkpoint.contract.decisionDigest);
@@ -106,13 +114,14 @@ test("observations bind historical lock bytes, production importers and current 
       assert.deepEqual(currentImporters[path][field], importer[field], `${path}:${field}`);
     }
   }
-  for (const [path, expected] of [
-    [checkpoint.evidence.cms.path, checkpoint.evidence.cms.digest],
-  ]) {
-    const bytes = execFileSync("git", ["show", `${checkpoint.evidence.base}:${path}`]);
-    assert.equal(digest(bytes), expected);
-    assert.equal(digest(readFileSync(path)), expected);
-  }
+  const cmsPath = checkpoint.evidence.cms.path;
+  const historicalCms = execFileSync("git", ["show", `${checkpoint.evidence.base}:${cmsPath}`]);
+  assert.equal(digest(historicalCms), checkpoint.evidence.cms.digest,
+    "C0 retains the CMS bytes observed at its base");
+  const currentCms = readFileSync(cmsPath);
+  assert.equal(digest(currentCms),
+    "sha256:1410382e5c82599c8c7ba7fde9743502b6738f62ac46b0390a2ef0dcc74d19bc",
+    "the current CMS successor must match its separately reviewed bytes");
   for (const [name, version] of Object.entries(checkpoint.evidence.packages)) {
     assert.equal(JSON.parse(readFileSync(`packages/${name}/package.json`, "utf8")).version, version);
   }

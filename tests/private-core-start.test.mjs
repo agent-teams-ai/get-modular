@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
 import {
@@ -173,10 +173,15 @@ test("real governance entrypoint consumes the start record before admitting priv
       recursive: true,
       force: true,
     });
-    for (const path of [M2_LOCK_DECISION, M2_LOCK_WITNESS]) {
+    for (const path of [M2_LOCK_DECISION, M2_LOCK_WITNESS,
+      "architecture/decisions/accepted-decisions.json",
+      "docs/decisions/0029-admit-an-optional-lifecycle-kernel-candidate.md"]) {
+      await mkdir(dirname(join(fixture, path)), { recursive: true });
       await cp(join(repositoryRoot, path), join(fixture, path));
     }
-    await exec("git", ["add", M2_LOCK_DECISION, M2_LOCK_WITNESS], { cwd: fixture });
+    await exec("git", ["add", M2_LOCK_DECISION, M2_LOCK_WITNESS,
+      "architecture/decisions/accepted-decisions.json",
+      "docs/decisions/0029-admit-an-optional-lifecycle-kernel-candidate.md"], { cwd: fixture });
     await writeFile(join(fixture, roadmapPath), roadmap);
     await exec("git", ["add", "architecture/checks"], { cwd: fixture });
     await symlink(join(repositoryRoot, "node_modules"), join(fixture, "node_modules"), "junction");

@@ -5,6 +5,7 @@ import { parse } from "yaml";
 import { readCurrentM2Authority } from "./m2-lock-witness.mjs";
 import { validatePrivateCoreStart } from "./private-core-start.mjs";
 import { validateAssemblyAdmission } from "./assembly-admission.mjs";
+import { validateLifecycleCandidateAdmission } from "./lifecycle-candidate-admission.mjs";
 import { GENERATED_PRODUCTION_PATH } from "./generated-production-source.mjs";
 import { cleanProductionAfterFailure } from "../tooling/generate-core.mjs";
 
@@ -795,6 +796,20 @@ export async function runGovernance() {
   if (productionArtifactSymlinks.length > 0) {
     fail(`production artifacts must not be symlinks: ${productionArtifactSymlinks.join(", ")}`);
   }
+  await validateLifecycleCandidateAdmission({
+    productionArtifacts,
+    readBytes: path => readGovernanceInput(path, "lifecycle candidate admission input"),
+    readPackageManifest,
+    readProductionSource: async path => (await readGovernanceInput(
+      path, "lifecycle candidate production source",
+    )).toString("utf8"),
+    packageJson: JSON.parse((await readGovernanceInput(
+      "package.json", "root package manifest",
+    )).toString("utf8")),
+    sdkGrowthStatus: JSON.parse((await readGovernanceInput(
+      "architecture/sdk-growth/status.json", "G1 pending status",
+    )).toString("utf8")),
+  });
   // Independently admit Assembly before subtracting those paths from Core's
   // inventory. Every other artifact must still pass the Core scope check.
   const admittedAssembly = new Set(await validateAssemblyAdmission({
