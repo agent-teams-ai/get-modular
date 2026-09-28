@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   check:
-    name: check (${{ matrix.os }}, node-24-default)
+    name: check (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: ${{ matrix.os == 'windows-2025' && 25 || 15 }}
     strategy:
