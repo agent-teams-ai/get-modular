@@ -3,7 +3,7 @@ id: GUIDE-CONSUMER-QUICKSTART
 type: architecture
 status: active
 owner: architecture
-summary: Minimal path from module declarations to a constructed Host with diagnostics, cancellation, and cleanup.
+summary: Consumer construction and a Host-owned admission and lifecycle recipe for optional executable modules.
 related:
   - ARCH-COMMON-ASSEMBLY
   - ARCH-CURRENT-CONTRACT
@@ -140,6 +140,61 @@ See the [system boundary](../architecture/system-boundary.md) and
 [capability evolution](../architecture/mvp-implementation-roadmap.md#capability-evolution-and-namespace-admission).
 Changing a capability contract requires its explicit migration path; adding a
 runtime manager to Core or Assembly does not solve that product responsibility.
+
+## Host recipe for optional executable modules
+
+Use this recipe only when the product actually selects executable modules or
+keeps constructed roots alive. A fixed, passive composition can use the smaller
+one-shot Host above. The [synthetic TEST Host](https://github.com/agent-teams-ai/modularity-host-test/tree/fa11296f0c69d80216dec0c44d9742368a913a9d)
+exercises this recipe against exact Core/Assembly package pairs; it is an example
+of product-owned code, not another Get Modular package or a production Host.
+
+1. **Define the scope.** Record the production root, composition owner, accepted
+   local decision, exact standard and package pins, and real verification commands
+   in a [consumer profile](../templates/consumer-module-profile.md). Classify new
+   composition boundaries through the existing source inventory. Keep feature
+   helpers that are fixed inside one owner out of the graph.
+2. **Admit the entire selection before loading candidate code.** Build an inert
+   snapshot from a Host-trusted candidate inventory, namespace assignments,
+   capability grants and selection. Reject duplicates, unknown IDs and every
+   unauthorized binding across the whole selected set. Core accepting a graph
+   does not grant a module permission to receive a capability. Treat request
+   metadata and `owner.authority` strings as claims, not trusted principals.
+3. **Compile and prepare exact wiring.** Project the admitted snapshot to one
+   complete Core profile; call public `compileComposition`; map every selected
+   implementation ID to exactly one Host-owned lazy loader and factory handle;
+   then call public Assembly `prepare`. Refuse any selected implementation ID
+   without exactly one loader before invoking a candidate loader. Import code
+   only inside the admitted factory path. Recheck Host authority after an async
+   import and before calling the candidate factory.
+4. **Retain one lifetime owner.** Create the product Host before
+   `prepared.run({ signal })` and publish its construction flight synchronously
+   before invoking that run. Reserve ownership before an asynchronous acquire;
+   register each acquired resource with that same owner as soon as it exists.
+   If acquisition fails after an unreturned allocation, the provider must clean
+   it up or hand the obligation to an already reachable owner. Preserve the raw
+   Assembly `created`/`returned` handoff without disposing borrowed capabilities.
+5. **Fence effects and close once.** Keep issued capabilities bound to that Host
+   lifetime. Check authority again immediately before each effect after an
+   `await`, including through saved handles and extracted methods. On close,
+   stop admitting work, retain the single close flight before notifying abort
+   listeners, drain tracked construction and operations, and invoke each owned
+   disposer once. An observer deadline may return `pending`; it must not turn
+   unfinished cleanup into `closed`. Keep cleanup debt reachable for readback
+   and an explicit retry owner.
+6. **Prove the product boundary.** Add a positive constructed graph and
+   rejecting cases for a bad final grant, a valid Core graph without Host receive
+   permission, wrong loader mapping, import after revocation, late acquisition,
+   post-`await` effects, saved handles, concurrent close and failed disposal.
+   Check the consumer's real adapters and recovery holder in a disposable TEST
+   project. Link these checks to the profile's blocking commands; a green library
+   suite or this synthetic stand alone does not qualify the product.
+
+The TEST stand has [admission code](https://github.com/agent-teams-ai/modularity-host-test/blob/fa11296f0c69d80216dec0c44d9742368a913a9d/src/admission/run.ts),
+[one concrete Host owner](https://github.com/agent-teams-ai/modularity-host-test/blob/fa11296f0c69d80216dec0c44d9742368a913a9d/src/host/lifetime.ts)
+and [evidence limits](https://github.com/agent-teams-ai/modularity-host-test/blob/fa11296f0c69d80216dec0c44d9742368a913a9d/docs/implementation-plan.md#claim-ledger).
+Its in-memory effects do not prove external process termination, physical
+cancellation, crash recovery, arbitrary-code isolation or Agent Runtime adoption.
 
 ## Adopt the Consumer Module Standard
 
