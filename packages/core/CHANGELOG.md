@@ -10,6 +10,13 @@
   The historical baseline did not describe all released 0.1.0 declarations; the
   new baseline describes only the new release and does not rewrite that history.
 
+### Patch Changes
+
+- d555dfd: Support Node.js 26 from 26.10.0 while retaining Node.js 24 from
+  24.18.0 and excluding Node.js 25.
+- 6373d7f: Adopt the shared typed quality gate and harden invalid-input
+  handling.
+
 ## 0.1.0 - release candidate
 
 ### Added
