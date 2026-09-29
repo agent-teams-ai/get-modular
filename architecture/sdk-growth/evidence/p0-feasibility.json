@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "kind": "g1-p0-feasibility-not-qualification",
+  "reviewedAt": "2026-09-29",
+  "sourceCommit": "24d6557a1b04b01a3a73c64b1d9a9afd83d89c8f",
+  "disposition": "hold",
+  "ownerDecisionRequired": [
+    "Retain a verified copy of the Core Actions build artifact before 2026-12-06 and decide whether a new recovery attestation can bind that artifact to source without claiming historical npm upload custody.",
+    "Find independent Assembly build and upload custody or explicitly accept that historical source binding is unavailable; rebuilding is corroboration only.",
+    "Select one published EF archive after registry provenance review and decide whether its public v3 codec surface suffices before a consumer pin change.",
+    "Read live Render service, role, migration and secret-reference metadata before choosing a protected deployment boundary."
+  ],
+  "standard": {
+    "reviewPath": "architecture/sdk-growth/evidence/consumer-module-standard.json",
+    "currentDocumentPath": "docs/architecture/common-assembly.md",
+    "currentSha256": "33b41d5babf0a431c97e8e596a56e6ec1557ba1a0b26d39bf23e13d9a19e1fbd",
+    "applicability": "The ADR-0029 dynamic Host guidance applies only to an explicitly adopted dynamic scope. Get Modular G1 remains pending; this review is not product adoption."
+  },
+  "foundation": {
+    "installedPublishedVersion": "1.5.1",
+    "currentSourceCommit": "6503c8fe026972dbd48d2ef9f1b23ccbaa539c74",
+    "currentSourceVersion": "1.6.1",
+    "currentSourcePublication": "unverified",
+    "semanticC0Revision": 6,
+    "frozenConsumerPolicyLiteral": "foundation:sdk-growth:c0:5",
+    "authorityProtocol": "reviewrouter:sdk-growth-authority:3",
+    "delta": [
+      "v3 closed authority fields and independently authenticated source/base/exact candidate binding",
+      "candidate and released archive sets, distinct transport and canonical archive digests, and real installed inventory",
+      "metadataRoots, canonical digest vectors, limits, completion and promotion linkage"
+    ],
+    "policyLiteralAction": "retain-until-separate-contract-decision",
+    "pinAction": "retain-1.5.1-until-published-v3-archive-verified"
+  },
+  "identityMatrix": [
+    {
+      "identity": "registry-transport-archive",
+      "owner": "registry-and-release-custody",
+      "proof": "package/version, raw tgz byte count, SHA-256, SHA-512 SRI and retained storage identity",
+      "notEquivalentTo": "EF canonical archive inventory digest"
+    },
+    {
+      "identity": "canonical-archive-inventory",
+      "owner": "engineering-foundation",
+      "proof": "foundation:sdk-growth:archive:1 sorted regular-file inventory with contentHex and its own digest/SRI",
+      "notEquivalentTo": "registry transport bytes or source tree"
+    },
+    {
+      "identity": "trusted-source-binding",
+      "owner": "reviewrouter-protected-authority",
+      "proof": "independent repository/PR/head/base/merge-base/trees and exact run/attempt/assignment",
+      "notEquivalentTo": "candidate URL, run head_sha alone or package name"
+    },
+    {
+      "identity": "installed-observation",
+      "owner": "isolated-verifier",
+      "proof": "regular files independently read from exact retained packed install, with authenticated custody",
+      "notEquivalentTo": "producer-supplied file list or a successful consumer smoke test"
+    }
+  ],
+  "releases": [
+    {
+      "packageName": "@get-modular/core",
+      "version": "0.1.0",
+      "historyPath": "architecture/sdk-growth/evidence/history-core.json",
+      "transportSha256": "50803ea69e2fb4078013a897f858908b4d73d26296336ab155a6118809dfb8ba",
+      "sourceLead": {
+        "kind": "actions-build-artifact",
+        "runId": 34140432571,
+        "sourceCommit": "bbc5053c2f2f96e7c524bd65c42288fc88cd7358",
+        "artifactId": 10025685624,
+        "zipSha256": "28bd843ea264dace196ba992504549585eb558145e3d9ef529a722014012d4f8",
+        "containedFile": "core.tgz",
+        "containedBytes": 48013,
+        "containedSha256": "50803ea69e2fb4078013a897f858908b4d73d26296336ab155a6118809dfb8ba",
+        "diagnosticsArtifactId": 10025686345,
+        "collectorArtifactId": 10025871778,
+        "collectorClaim": "not-claimed",
+        "buildArtifactExpires": "2026-12-06"
+      },
+      "registryGitHead": "absent",
+      "registryAttestation": "absent",
+      "publisherCustody": "unavailable",
+      "sourceBinding": "unavailable",
+      "growthObservation": "unavailable"
+    },
+    {
+      "packageName": "@get-modular/assembly",
+      "version": "0.1.0",
+      "historyPath": "architecture/sdk-growth/evidence/history-assembly.json",
+      "transportSha256": "e89207171e44afd5e813aa5e7a0db8abc999b42338559d38b44b4db71da228ab",
+      "sourceLead": {
+        "kind": "plausible-pr-without-retained-artifact",
+        "prNumber": 99,
+        "candidateCommit": "a05f2cb51553e1efc5ba89be352e4aba04675088",
+        "ciRunId": 34169464634,
+        "retainedArtifactCount": 0
+      },
+      "registryGitHead": "absent",
+      "registryAttestation": "absent",
+      "publisherCustody": "unavailable",
+      "sourceBinding": "unavailable",
+      "growthObservation": "unavailable"
+    }
+  ],
+  "scope": {
+    "releasedPackageRoots": ["packages/assembly", "packages/core"],
+    "metadataRoot": "architecture/sdk-growth/root-classification.json",
+    "metadataRootPath": ".",
+    "lifecycleRoot": "packages/lifecycle-kernel",
+    "lifecycleClassification": "private-candidate-pending-separate-admission",
+    "productionHostRoot": "none-in-this-repository"
+  },
+  "checks": {
+    "pendingGate": "pnpm sdk-growth:check",
+    "fastGate": "pnpm check:fast",
+    "fullGate": "pnpm check",
+    "docsGate": "pnpm docs:protocol:check",
+    "currentCompatibility": "package.public-api-compatibility/v1",
+    "futureGrowthQualification": "package.public-api-compatibility/v2-pending"
+  },
+  "deployment": {
+    "renderIsolationPreflight": "pending-live-readback",
+    "evidence": "The reviewed infrastructure inventory is not a current provider readback; no protected role, secret-reference, workload or migration readiness is claimed."
+  },
+  "b2Applicability": "ReviewRouter B2 atomic merge and operational-control holds are downstream merge-enforcement claims, not an added prerequisite for Get Modular G1 without an accepted consumer or release contract."
+}

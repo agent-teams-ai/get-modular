@@ -32,6 +32,9 @@ const observationInvocation = Object.freeze({
     extractorVersion: foundationManifest.dependencies["@microsoft/api-extractor"] }),
 });
 const cancellation = Object.freeze({ throwIfCancelled() {} });
+const fixtureGitEnv = Object.freeze({ ...process.env,
+  GIT_AUTHOR_NAME: "iliya", GIT_AUTHOR_EMAIL: "iliyazelenkog@gmail.com",
+  GIT_COMMITTER_NAME: "iliya", GIT_COMMITTER_EMAIL: "iliyazelenkog@gmail.com" });
 
 async function put(root, path, content) {
   await mkdir(dirname(join(root, path)), { recursive: true });
@@ -40,14 +43,12 @@ async function put(root, path, content) {
 
 async function commit(root, message) {
   await execute("git", ["add", "."], { cwd: root });
-  await execute("git", ["-c", "user.name=SDK Growth Fixture", "-c", "user.email=sdk-growth@example.invalid",
-    "commit", "--quiet", "-m", message], { cwd: root });
+  await execute("git", ["commit", "--quiet", "-m", message], { cwd: root, env: fixtureGitEnv });
 }
 
 async function commitPackages(root, message) {
   await execute("git", ["add", "packages"], { cwd: root });
-  await execute("git", ["-c", "user.name=SDK Growth Fixture", "-c", "user.email=sdk-growth@example.invalid",
-    "commit", "--quiet", "-m", message], { cwd: root });
+  await execute("git", ["commit", "--quiet", "-m", message], { cwd: root, env: fixtureGitEnv });
 }
 
 async function runGrowth(root) {
