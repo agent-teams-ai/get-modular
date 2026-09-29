@@ -66,10 +66,10 @@ test("unverified released bytes cannot be promoted into growth observations", ()
 // or bind a release to the wrong source. The P0 gate must reject each one.
 test("P0 feasibility cannot promote historical release leads", async t => {
   await t.test("fabricated source binding", () => rejects(model => {
-    model.feasibility.releases[1].sourceBinding = "available";
+    model.feasibility.releases.find(row => row.packageName === "@get-modular/assembly").sourceBinding = "available";
   }, /cannot promote release evidence/u));
   await t.test("fabricated publisher custody", () => rejects(model => {
-    model.feasibility.releases[0].publisherCustody = "available";
+    model.feasibility.releases.find(row => row.packageName === "@get-modular/core").publisherCustody = "available";
   }, /cannot promote release evidence/u));
   await t.test("false completed disposition", () => rejects(model => {
     model.feasibility.disposition = "qualified";
@@ -86,8 +86,17 @@ test("P0 rejects drifted CMS, artifact and gate identities", async t => {
   await t.test("wrong Core ZIP", () => rejects(model => {
     model.feasibility.releases.find(row => row.packageName === "@get-modular/core").sourceLead.zipSha256 = "0".repeat(64);
   }, /Core recovery lead/u));
+  await t.test("wrong Core lead kind", () => rejects(model => {
+    model.feasibility.releases.find(row => row.packageName === "@get-modular/core").sourceLead.kind = "registry-upload-proof";
+  }, /Core recovery lead/u));
+  await t.test("wrong Core contained file", () => rejects(model => {
+    model.feasibility.releases.find(row => row.packageName === "@get-modular/core").sourceLead.containedFile = "other.tgz";
+  }, /Core recovery lead/u));
   await t.test("Assembly artifact falsely retained", () => rejects(model => {
     model.feasibility.releases.find(row => row.packageName === "@get-modular/assembly").sourceLead.retainedArtifactCount = 1;
+  }, /Assembly recovery lead/u));
+  await t.test("wrong Assembly lead kind", () => rejects(model => {
+    model.feasibility.releases.find(row => row.packageName === "@get-modular/assembly").sourceLead.kind = "actions-build-artifact";
   }, /Assembly recovery lead/u));
   await t.test("gate marked complete", () => rejects(model => {
     model.feasibility.checks.futureGrowthQualification = "package.public-api-compatibility/v2";

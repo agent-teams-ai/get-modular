@@ -235,12 +235,15 @@ function validateP0Evidence(model) {
     historyPath: pkg.historyPath, transportSha256: RELEASES[pkg.packageName].sha256 })).toSorted((a, b) => a.packageName.localeCompare(b.packageName)), "P0 release identities");
   const core = evidence.releases.find(row => row.packageName === "@get-modular/core");
   const assembly = evidence.releases.find(row => row.packageName === "@get-modular/assembly");
-  if (core.sourceLead?.runId !== 34140432571 || core.sourceLead?.sourceCommit !== "bbc5053c2f2f96e7c524bd65c42288fc88cd7358"
+  if (core.sourceLead?.kind !== "actions-build-artifact" || core.sourceLead?.runId !== 34140432571
+    || core.sourceLead?.sourceCommit !== "bbc5053c2f2f96e7c524bd65c42288fc88cd7358"
     || core.sourceLead?.artifactId !== 10025685624 || core.sourceLead?.zipSha256 !== "28bd843ea264dace196ba992504549585eb558145e3d9ef529a722014012d4f8"
-    || core.sourceLead?.containedBytes !== 48013 || core.sourceLead?.containedSha256 !== core.transportSha256
+    || core.sourceLead?.containedFile !== "core.tgz" || core.sourceLead?.containedBytes !== 48013
+    || core.sourceLead?.containedSha256 !== core.transportSha256
     || core.sourceLead?.diagnosticsArtifactId !== 10025686345 || core.sourceLead?.collectorArtifactId !== 10025871778
     || core.sourceLead?.collectorClaim !== "not-claimed" || core.sourceLead?.buildArtifactExpires !== "2026-12-06") fail("Core recovery lead drifted");
-  if (assembly.sourceLead?.prNumber !== 99 || assembly.sourceLead?.candidateCommit !== "a05f2cb51553e1efc5ba89be352e4aba04675088"
+  if (assembly.sourceLead?.kind !== "plausible-pr-without-retained-artifact" || assembly.sourceLead?.prNumber !== 99
+    || assembly.sourceLead?.candidateCommit !== "a05f2cb51553e1efc5ba89be352e4aba04675088"
     || assembly.sourceLead?.ciRunId !== 34169464634 || assembly.sourceLead?.retainedArtifactCount !== 0) fail("Assembly recovery lead drifted");
   for (const row of evidence.releases) {
     const history = model.histories[row.packageName];
