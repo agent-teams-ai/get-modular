@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { access, readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
@@ -16,6 +17,10 @@ const QUALIFICATION_POLICY_PATH = "architecture/sdk-growth/qualification-policy.
 const PUBLIC_API_POLICY_PATH = "architecture/foundation/public-api-compatibility.yaml";
 const FOUNDATION_CONFIG_PATH = "foundation.config.yaml";
 const WORKFLOW_PATH = "architecture/foundation/repository-agent-workflow.yaml";
+const CMS_PATH = "architecture/sdk-growth/evidence/consumer-module-standard.json";
+const FEASIBILITY_PATH = "architecture/sdk-growth/evidence/p0-feasibility.json";
+const ROOT_CLASSIFICATION_PATH = "architecture/sdk-growth/root-classification.json";
+const CMS_SHA256 = "33b41d5babf0a431c97e8e596a56e6ec1557ba1a0b26d39bf23e13d9a19e1fbd";
 const SDK_COMMAND = "node architecture/checks/sdk-growth.mjs && node --test tests/sdk-growth.test.mjs && node tests/qualification/sdk-growth-admission.mjs && node tests/qualification/sdk-growth-packed-consumers.mjs && node tests/qualification/sdk-growth-registry-consumer.mjs";
 const OBSOLETE_ACTIVE_RECORDS = Object.freeze([
   "architecture/sdk-growth/activation.json",
@@ -86,6 +91,10 @@ export async function loadSdkGrowthModel(root = process.cwd()) {
     manifests: Object.fromEntries(await Promise.all(PACKAGES.map(async pkg => [pkg.packageName, await readJson(root, pkg.manifestPath)]))),
     baselines: Object.fromEntries(await Promise.all(PACKAGES.map(async pkg => [pkg.packageName, await readJson(root, pkg.releasedBaselinePath)]))),
     histories: Object.fromEntries(await Promise.all(PACKAGES.map(async pkg => [pkg.packageName, await readJson(root, pkg.historyPath)]))),
+    cmsReview: await readJson(root, CMS_PATH),
+    cmsBytes: await readFile(join(root, "docs/architecture/common-assembly.md")),
+    feasibility: await readJson(root, FEASIBILITY_PATH),
+    rootClassification: await readJson(root, ROOT_CLASSIFICATION_PATH),
     tracked,
   };
 }
@@ -181,6 +190,80 @@ function validatePackages(model) {
   }
 }
 
+function validateP0Evidence(model) {
+  const cms = model.cmsReview;
+  same(cms.pinned, {
+    commit: "669a750d8db451e04f075cdeb36576c6606fba6e",
+    gitBlob: "7bf511f88d4f3547b107cad9ec85d54b009ed033",
+    sha256: "e6cd8d26b4317bf5f94ddd22f6e36bf25e90548f72265d94808eaf20b947e553",
+  }, "original CMS pin");
+  const previous = {
+    commit: "ac49bb3374946330ec820591f8195a22d2c90900",
+    gitBlob: "93e743d9f833b698fc3106054aafc449c6d9f8f9",
+    sha256: "d5bb71e5a700014f9f0a09b17d1f33d24b30b66c49b273c9fb65584672c51e4f",
+  };
+  same(cms.acceptedCurrent, {
+    commit: "24d6557a1b04b01a3a73c64b1d9a9afd83d89c8f",
+    gitBlob: "63540f7b0420134ba685002d01770da2f213c65a",
+    sha256: CMS_SHA256,
+  }, "current CMS pin");
+  same(cms.delta.fromAcceptedCurrent, previous, "previous CMS pin");
+  if (cms.delta.classification !== "optional-dynamic-host-guidance" || cms.delta.changedHunks !== 2
+    || cms.delta.addedLines !== 32 || cms.delta.removedLines !== 0
+    || cms.delta.changesGetModularCompositionContract !== false
+    || cms.delta.pinAction !== "advance-reviewed-current-pin-with-historical-pin-retained") fail("CMS delta review drifted");
+  if (createHash("sha256").update(model.cmsBytes).digest("hex") !== CMS_SHA256) fail("CMS document bytes drifted");
+  const evidence = model.feasibility;
+  if (evidence.schemaVersion !== 1 || evidence.kind !== "g1-p0-feasibility-not-qualification"
+    || evidence.sourceCommit !== cms.acceptedCurrent.commit || evidence.disposition !== "hold"
+    || evidence.standard?.currentSha256 !== CMS_SHA256 || evidence.standard?.reviewPath !== CMS_PATH) fail("P0 disposition or standard drifted");
+  if (evidence.foundation?.installedPublishedVersion !== FOUNDATION.version
+    || evidence.foundation?.semanticC0Revision !== 6
+    || evidence.foundation?.frozenConsumerPolicyLiteral !== "foundation:sdk-growth:c0:5"
+    || evidence.foundation?.currentSourcePublication !== "unverified"
+    || evidence.foundation?.pinAction !== "retain-1.5.1-until-published-v3-archive-verified"
+    || evidence.foundation?.authorityProtocol !== model.status.authorityProtocol) fail("P0 EF contract drifted");
+  if (model.profile.contractRevision !== evidence.foundation.frozenConsumerPolicyLiteral) fail("P0 frozen policy literal drifted");
+  same(evidence.identityMatrix.map(row => row.identity), [
+    "registry-transport-archive", "canonical-archive-inventory", "trusted-source-binding", "installed-observation",
+  ], "P0 distinct proof identities");
+  if (evidence.identityMatrix.some(row => !row.owner || !row.proof || !row.notEquivalentTo)
+    || evidence.ownerDecisionRequired?.length !== 4) fail("P0 proof limits or owner decisions missing");
+  same(evidence.releases.map(row => ({ packageName: row.packageName, version: row.version,
+    historyPath: row.historyPath, transportSha256: row.transportSha256 })).toSorted((a, b) => a.packageName.localeCompare(b.packageName)),
+  PACKAGES.map(pkg => ({ packageName: pkg.packageName, version: RELEASES[pkg.packageName].version,
+    historyPath: pkg.historyPath, transportSha256: RELEASES[pkg.packageName].sha256 })).toSorted((a, b) => a.packageName.localeCompare(b.packageName)), "P0 release identities");
+  const core = evidence.releases.find(row => row.packageName === "@get-modular/core");
+  const assembly = evidence.releases.find(row => row.packageName === "@get-modular/assembly");
+  if (core.sourceLead?.kind !== "actions-build-artifact" || core.sourceLead?.runId !== 34140432571
+    || core.sourceLead?.sourceCommit !== "bbc5053c2f2f96e7c524bd65c42288fc88cd7358"
+    || core.sourceLead?.artifactId !== 10025685624 || core.sourceLead?.zipSha256 !== "28bd843ea264dace196ba992504549585eb558145e3d9ef529a722014012d4f8"
+    || core.sourceLead?.containedFile !== "core.tgz" || core.sourceLead?.containedBytes !== 48013
+    || core.sourceLead?.containedSha256 !== core.transportSha256
+    || core.sourceLead?.diagnosticsArtifactId !== 10025686345 || core.sourceLead?.collectorArtifactId !== 10025871778
+    || core.sourceLead?.collectorClaim !== "not-claimed" || core.sourceLead?.buildArtifactExpires !== "2026-12-06") fail("Core recovery lead drifted");
+  if (assembly.sourceLead?.kind !== "plausible-pr-without-retained-artifact" || assembly.sourceLead?.prNumber !== 99
+    || assembly.sourceLead?.candidateCommit !== "a05f2cb51553e1efc5ba89be352e4aba04675088"
+    || assembly.sourceLead?.ciRunId !== 34169464634 || assembly.sourceLead?.retainedArtifactCount !== 0) fail("Assembly recovery lead drifted");
+  for (const row of evidence.releases) {
+    const history = model.histories[row.packageName];
+    if (row.registryGitHead !== "absent" || row.registryAttestation !== "absent" || row.publisherCustody !== "unavailable"
+      || row.sourceBinding !== "unavailable" || row.growthObservation !== "unavailable"
+      || history.sourceBinding.status !== row.sourceBinding || history.growthObservation.status !== row.growthObservation) {
+      fail(`${row.packageName} P0 cannot promote release evidence`);
+    }
+  }
+  same(evidence.scope.releasedPackageRoots, PACKAGES.map(pkg => pkg.packageRoot), "P0 released roots");
+  if (evidence.scope.metadataRoot !== ROOT_CLASSIFICATION_PATH || evidence.scope.metadataRootPath !== model.rootClassification.rootPath
+    || model.rootClassification.kind !== "non-release-metadata-root" || model.rootClassification.releaseHistory !== "none"
+    || evidence.scope.lifecycleRoot !== "packages/lifecycle-kernel" || evidence.scope.lifecycleClassification !== "private-candidate-pending-separate-admission"
+    || evidence.scope.productionHostRoot !== "none-in-this-repository") fail("P0 root classification drifted");
+  if (evidence.checks.pendingGate !== "pnpm sdk-growth:check" || evidence.checks.currentCompatibility !== model.status.activeCompatibilityGate
+    || evidence.checks.futureGrowthQualification !== `${model.status.growthQualification}-pending`
+    || evidence.checks.fastGate !== "pnpm check:fast" || evidence.checks.fullGate !== "pnpm check"
+    || evidence.deployment?.renderIsolationPreflight !== "pending-live-readback") fail("P0 gate or deployment claim drifted");
+}
+
 function validateWiring(model) {
   if (model.packageJson.scripts?.["sdk-growth:check"] !== SDK_COMMAND) fail("pending SDK command is missing or a no-op");
   for (const command of ["check", "check:fast"]) if (!model.packageJson.scripts?.[command]?.includes("pnpm sdk-growth:check")) fail(`${command} bypasses pending SDK guard`);
@@ -199,6 +282,7 @@ export async function validateSdkGrowth(model) {
   validatePendingState(model);
   validateProfiles(model);
   validatePackages(model);
+  validateP0Evidence(model);
   validateWiring(model);
   validateScope(model);
   return { packages: PACKAGES.length, releasedPackages: PACKAGES.length, compatibility: "v1-retained",

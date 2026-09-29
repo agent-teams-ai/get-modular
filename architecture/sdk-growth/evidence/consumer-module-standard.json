@@ -10,21 +10,27 @@
     "sha256": "e6cd8d26b4317bf5f94ddd22f6e36bf25e90548f72265d94808eaf20b947e553"
   },
   "acceptedCurrent": {
-    "commit": "ac49bb3374946330ec820591f8195a22d2c90900",
-    "gitBlob": "93e743d9f833b698fc3106054aafc449c6d9f8f9",
-    "sha256": "d5bb71e5a700014f9f0a09b17d1f33d24b30b66c49b273c9fb65584672c51e4f"
+    "commit": "24d6557a1b04b01a3a73c64b1d9a9afd83d89c8f",
+    "gitBlob": "63540f7b0420134ba685002d01770da2f213c65a",
+    "sha256": "33b41d5babf0a431c97e8e596a56e6ec1557ba1a0b26d39bf23e13d9a19e1fbd"
   },
   "delta": {
-    "classification": "reciprocal-consumer-evidence-only",
-    "changedHunks": 1,
-    "removedLines": 6,
-    "addedLines": 11,
+    "classification": "optional-dynamic-host-guidance",
+    "fromAcceptedCurrent": {
+      "commit": "ac49bb3374946330ec820591f8195a22d2c90900",
+      "gitBlob": "93e743d9f833b698fc3106054aafc449c6d9f8f9",
+      "sha256": "d5bb71e5a700014f9f0a09b17d1f33d24b30b66c49b273c9fb65584672c51e4f"
+    },
+    "changedHunks": 2,
+    "removedLines": 0,
+    "addedLines": 32,
     "semanticChanges": [
-      "Record accepted Agent Runtime PR 168 passive setup and ordinary-session composition.",
-      "Retain the exact 669a750d Consumer Module Standard pin in that consumer.",
-      "Keep contained-turn and dynamic plugin runtime scope outside admission."
+      "Add ADR-0029 to the document relations.",
+      "Add optional dynamic Host lifecycle candidate guidance: whole-graph rejection before imports, attempt/custody ownership, post-await authority checks, quiesce and retirement boundaries.",
+      "Require dynamic consumer profiles to retain exact standard bytes and package/archive hashes, classify TEST versus production, and keep dynamic adoption pending until local and production gates pass.",
+      "Keep passive composition unchanged; the reciprocal Agent Runtime PR 168 pin remains at 669a750d and does not certify dynamic adoption."
     ],
     "changesGetModularCompositionContract": false,
-    "pinAction": "retain-reviewed-pin"
+    "pinAction": "advance-reviewed-current-pin-with-historical-pin-retained"
   }
 }
