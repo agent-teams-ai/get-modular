@@ -12,6 +12,11 @@
 
 ### Patch Changes
 
+- d555dfd: Support Node.js 26 from 26.10.0 while retaining Node.js 24 from
+  24.18.0 and excluding Node.js 25.
+- 6373d7f: Adopt the shared typed quality gate and harden invalid-input
+  handling. Preserve factory receivers, observe cancellation after final
+  fulfillment, and retain null-prototype result records.
 - Updated dependencies [f4e6137]
   - @get-modular/core@0.2.0
 
