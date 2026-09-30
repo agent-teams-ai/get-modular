@@ -3,3 +3,11 @@
 *.jpg binary
 *.jpeg binary
 *.gif binary
+
+# Language statistics describe the published TypeScript library, not its
+# qualification suites and repository tooling. These files stay tracked and
+# visible in diffs with their original syntax highlighting.
+/tests/** -linguist-detectable
+/packages/*/tests/** -linguist-detectable
+/architecture/checks/** -linguist-detectable
+/architecture/tooling/** -linguist-detectable
