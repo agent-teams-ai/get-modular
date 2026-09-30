@@ -16,6 +16,7 @@ For implementation tasks, follow the [agent execution route](docs/architecture/m
 For admission, graph or diagnostic work, also read the [compiler engineer handbook](docs/qualification/compiler-engineer-handbook.md) and its linked complete examples.
 Task ownership and the milestone callable surface are explicit; the full roadmap does not authorize implementing every phase.
 For consumer composition work, read the [Consumer module standard](docs/architecture/common-assembly.md#consumer-module-standard).
+For dynamic plugin lifecycle work, read its [lifecycle-kernel decision boundary](docs/architecture/common-assembly.md#optional-dynamic-host-lifecycle-candidate) and the [candidate package contract](packages/lifecycle-kernel/README.md) before selecting a package. Static composition and passive setup do not require this candidate; product adoption and public release remain separate decisions.
 
 Use `pnpm check:changed` while editing, `pnpm check:fast` before handoff, and
 `pnpm check` as the complete gate, including the installed
