@@ -37,6 +37,12 @@ consume both.
   Host-authorized factories from a successful Core plan. It passes closed,
   typed dependency records to each factory; the Host retains lifecycle,
   readiness, permissions, and cleanup ownership.
+- [`@get-modular/lifecycle-kernel`](packages/lifecycle-kernel/README.md) is an
+  unreleased candidate for a dynamic Host that must revoke old generations
+  while retaining calls or resources across async work and cleanup. The Host
+  still owns plugin admission, effects, physical cleanup, and recovery. Use it
+  only for an explicitly adopted dynamic scope; ordinary static composition and
+  passive setup do not need it. See the [consumer lifecycle guidance](docs/architecture/common-assembly.md#optional-dynamic-host-lifecycle-candidate).
 - `@get-modular/conformance` is reserved for a development-only conformance suite for core,
   alternative implementations, and adapters. Applications do not install it at
   runtime.
