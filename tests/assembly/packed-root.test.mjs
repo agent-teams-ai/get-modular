@@ -185,7 +185,7 @@ test("disposable packed consumer checks closed roots, synthetic wiring and both 
     for (const manifest of [core, assembly]) {
       for (const field of ["optionalDependencies", "peerDependencies"]) assert.deepEqual(manifest[field] ?? {}, {});
     }
-    for (const file of ["fixture.mjs", "runtime.test.mjs", "preparation.test.mjs", "inputs.test.mjs", "packed-consumer.mjs"]) {
+    for (const file of ["fixture.mjs", "runtime.test.mjs", "preparation.test.mjs", "inputs.test.mjs", "builder.test.mjs", "packed-consumer.mjs"]) {
       await writeFile(join(consumer, file), await readFile(join(fixtures, file)));
     }
     const secondConsumer = join(temporary, "consumer-copy");
@@ -207,7 +207,7 @@ test("disposable packed consumer checks closed roots, synthetic wiring and both 
     runtimeChecks.push(command(process.execPath, ["package-copy-consumer.mjs", secondConsumer], consumer).trim());
     command(process.execPath, ["packed-consumer.mjs"], consumer);
     command(process.execPath, ["--conditions=browser", "--conditions=development", "packed-consumer.mjs"], consumer);
-    command(process.execPath, ["--test", "runtime.test.mjs", "preparation.test.mjs", "inputs.test.mjs"], consumer);
+    command(process.execPath, ["--test", "runtime.test.mjs", "preparation.test.mjs", "inputs.test.mjs", "builder.test.mjs"], consumer);
     await mkdir(join(consumer, "tests"));
     for (const file of ["types.ts", "types-positive.ts", "mixed-graph.ts"]) await writeFile(join(consumer, "tests", file), await readFile(join(fixtures, file)));
     await writeFile(join(consumer, "tests/type-scale.ts"), largeLiteralSource());

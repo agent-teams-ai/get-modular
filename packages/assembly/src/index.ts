@@ -1,10 +1,10 @@
 export { assemblyFor } from "./composition/root.js";
-export { AssemblyBindingError } from "./features/construction/factory.js";
+export { AssemblyBindingError, declareModule, defineContract } from "./features/construction/factory.js";
 export type {
-  AnyFactoryHandle, AnyInputHandle, Assembly, AssemblyOutcome, AssemblyPreparationResult,
-  AssemblyPrepareInput, BindingErrorCode, CapabilityContract, CapabilitySchema,
-  CreatedEntry, FactoryCapabilities, FactoryContext, FactoryDependencies,
+  AnyContract, AnyFactoryHandle, AnyInputHandle, Assembly, AssemblyOutcome, AssemblyPreparationResult,
+  AssemblyPrepareInput, BindingErrorCode, CapabilitiesOf, CapabilityContract, CapabilitySchema, Cardinality,
+  Contract, CreatedEntry, DeclarationSpec, Declared, FactoryCapabilities, FactoryContext, FactoryDependencies,
   FactoryHandle, FactoryProduct, InputHandle, InputHandles, ObservedCancellation,
-  PreparationErrorCode, PreparedAssembly, ReturnedProduct, RootHandles, RootInstances,
-  RunErrorCode, RunInputs, RunOptions, SuccessfulComposition, IsUnion, ValidDeclaration,
+  PreparationErrorCode, PreparedAssembly, ProvidedEntry, ReturnedProduct, RootHandles, RootInstances,
+  RunErrorCode, RunInputs, RunOptions, SlotEntry, SuccessfulComposition, IsUnion, ValidDeclaration,
 } from "./features/construction/types.js";

@@ -25,3 +25,5 @@ packages:
     approvedBreakingChanges:
       - fingerprint: "sha256:42266e521b2fb7b3892bda9aae536962986eca082a6917508b5a7143057ef75a"
         decisionId: ADR-0031
+      - fingerprint: "sha256:bfc2b34d8e2f20e90c40034ffa4601de6b6c286f0ed1ece9e0caee370c8e5f7f"
+        decisionId: ADR-0032

@@ -12,3 +12,4 @@ export function createConstruction<C>(ports: ConstructionPorts): Assembly<C> {
   });
 }
 export { AssemblyBindingError } from "./bind.js";
+export { declareModule, defineContract } from "./contract.js";

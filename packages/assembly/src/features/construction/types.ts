@@ -9,6 +9,63 @@ export type CapabilitySchema<C> = { readonly [K in keyof C]: CapabilityContract<
 declare const scope: unique symbol;
 declare const detail: unique symbol;
 declare const input: unique symbol;
+declare const contractEntry: unique symbol;
+declare const contractValue: unique symbol;
+
+// Authoring builder (ADR-0032). Only `contract.ts` spells the wire generation; these types keep
+// their arity when the next generation adds revision windows.
+export type Cardinality = ModuleDeclaration["slots"][number]["cardinality"];
+/** A provided capability entry; only a contract descriptor produces it. */
+export type ProvidedEntry<Id extends string, Rev extends number> = {
+  readonly capabilityId: Id;
+  readonly compatibility: { readonly family: "exact"; readonly familyVersion: 1; readonly token: `${Id}/r${Rev}` };
+  /** Type-only: the entry comes from a contract descriptor, never from a hand-written record. */
+  readonly [contractEntry]: true;
+};
+/** A dependency slot entry; only a contract descriptor produces it. */
+export type SlotEntry<Id extends string, Rev extends number, S extends string, K extends Cardinality> = {
+  readonly slotId: S;
+  readonly capabilityId: Id;
+  readonly compatibility: { readonly family: "exact"; readonly familyVersion: 1; readonly token: `${Id}/r${Rev}` };
+  readonly cardinality: K;
+  /** Type-only: the entry comes from a contract descriptor, never from a hand-written record. */
+  readonly [contractEntry]: true;
+};
+/** One descriptor per capability, owned by the contract owner and created by `defineContract`. */
+export type Contract<Id extends string, V, Rev extends number> = {
+  readonly id: Id;
+  readonly revision: Rev;
+  readonly provide: () => ProvidedEntry<Id, Rev>;
+  readonly slot: <const S extends string, const K extends Cardinality>(slotId: S, cardinality: K) => SlotEntry<Id, Rev, S, K>;
+  /** Type-only: the capability value at this revision. */
+  readonly [contractValue]?: V;
+};
+export type AnyContract = Contract<string, unknown, number>;
+/**
+ * The capability map of a module, a team fragment or a Host, derived from contract descriptors.
+ * Name a map over many descriptors as an interface: `interface Host extends CapabilitiesOf<typeof A | typeof B> {}`.
+ */
+export type CapabilitiesOf<T extends AnyContract> = {
+  readonly [Id in T["id"]]: T extends { readonly id: Id; readonly revision: infer Rev extends number; readonly [contractValue]?: infer V }
+    ? CapabilityContract<V, `${Id}/r${Rev}`> : never;
+};
+/** What a module author writes: identities, owner and descriptor entries, never wire discriminators. */
+export type DeclarationSpec = {
+  readonly moduleId: string;
+  readonly implementationId: string;
+  readonly owner: ModuleDeclaration["owner"];
+  readonly provides: readonly ProvidedEntry<string, number>[];
+  readonly slots: readonly SlotEntry<string, number, string, Cardinality>[];
+  /** `declareModule` supplies the wire discriminators; a spec never carries them. */
+  readonly kind?: never;
+  readonly schemaVersion?: never;
+};
+/** A module declaration in the current wire generation, produced by `declareModule`. */
+export type Declared<T extends DeclarationSpec> = T & {
+  readonly kind: "get-modular.module-declaration";
+  readonly schemaVersion: 1;
+};
+
 export type FactoryHandle<C, D extends ModuleDeclaration = ModuleDeclaration, I = unknown> = {
   readonly [scope]: (capabilities: C) => C;
   readonly [detail]: { readonly declaration: D; readonly instance: I };
