@@ -1,0 +1,12 @@
+// A second instantiation with an `interface` record type (genericity).
+import { createKeyedSource, participantsFor } from "../../lib/observation/index.ts";
+
+export interface Flags { readonly betaSearch: boolean; readonly maxResults: number }
+
+export function flagsDemo() {
+  const source = createKeyedSource<Flags>({ betaSearch: false, maxResults: 10 });
+  const initial = source.reader.read(["maxResults"]);
+  let limit = initial.values.maxResults;
+  const participant = participantsFor<Flags>().sync({ initial, apply: ({ values }) => { limit = values.maxResults; return undefined; } });
+  return { source, participant, limit: () => limit };
+}

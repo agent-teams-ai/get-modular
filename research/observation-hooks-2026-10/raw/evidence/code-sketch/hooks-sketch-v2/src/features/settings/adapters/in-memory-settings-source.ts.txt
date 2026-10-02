@@ -1,0 +1,145 @@
+// Adapter: one in-process settings source. Owns commits, revisions, the key
+// index and delivery. Who may commit is Host policy (only the Host root sees
+// `commit`/`seal`; features receive frozen `read`/`observe` facades).
+
+import { SETTING_KEYS, type AppSettings, type SettingKey } from "../domain/app-settings.ts";
+import type { SettingsKeys, SettingsReaderV1, SettingsSnapshot } from "../published/settings-read.v1.ts";
+import { SettingsSourceId } from "../published/settings-read.v1.ts";
+import type {
+  ObserveOptions, SettingsObservation, SettingsObservationPortV1,
+} from "../published/settings-observation.v1.ts";
+import { invokeIsolated } from "./callback-isolation.ts";
+
+interface Registration {
+  readonly order: number;
+  flush(): void;
+}
+
+export type SourceStats = Readonly<{ commits: number; registrationVisits: number; deliveries: number }>;
+
+function pick<K extends SettingKey>(values: AppSettings, keys: readonly K[]): Readonly<Pick<AppSettings, K>> {
+  const out: Partial<Pick<AppSettings, K>> = {};
+  for (const key of keys) out[key] = values[key];
+  return Object.freeze(out) as Readonly<Pick<AppSettings, K>>; // single projection cast: exactly `keys`
+}
+
+export class InMemorySettingsSource {
+  readonly #id = new SettingsSourceId();
+  readonly #buckets = new Map<SettingKey, Set<Registration>>();
+  readonly #lastTouched = new Map<SettingKey, number>();
+  readonly #dirty = new Set<Registration>();
+  #values: AppSettings;
+  #commitNumber = 0;
+  #registrations = 0;
+  #sealed = false;
+  #flushScheduled = false;
+  readonly #stats = { commits: 0, registrationVisits: 0, deliveries: 0 };
+
+  /** Frozen facades for capabilities: no `commit`, `seal` or diagnostics. */
+  readonly reader: SettingsReaderV1;
+  readonly port: SettingsObservationPortV1;
+
+  constructor(initial: AppSettings) {
+    this.#values = Object.freeze({ ...initial });
+    this.reader = Object.freeze({ read: <const Keys extends SettingsKeys>(keys: Keys) => this.#snapshot(keys) });
+    this.port = Object.freeze({
+      observe: <const Keys extends SettingsKeys>(
+        keys: Keys, record: (next: SettingsSnapshot<Keys[number]>) => undefined, options: ObserveOptions,
+      ) => this.#observe(keys, record, options),
+    });
+  }
+
+  /** Host-only. Returns the commit number; a no-op patch commits nothing. */
+  commit(patch: Partial<AppSettings>): number {
+    if (this.#sealed) throw new Error("settings.commit.sealed");
+    const next: AppSettings = Object.freeze({ ...this.#values, ...patch });
+    const changed = SETTING_KEYS.filter((key) => !Object.is(next[key], this.#values[key]));
+    if (changed.length === 0) return this.#commitNumber;
+    this.#values = next;
+    this.#commitNumber += 1;
+    this.#stats.commits += 1;
+    for (const key of changed) {
+      this.#lastTouched.set(key, this.#commitNumber);
+      for (const registration of this.#buckets.get(key) ?? []) {
+        this.#stats.registrationVisits += 1;
+        this.#dirty.add(registration); // Set: a multi-key commit yields one delivery
+      }
+    }
+    this.#scheduleFlush();
+    return this.#commitNumber;
+  }
+
+  /** Host-only: refuse further commits before shutdown so cleanup is not chasing new work. */
+  seal(): undefined { this.#sealed = true; this.#dirty.clear(); return undefined; }
+
+  /** TEST diagnostics (Host root only). */
+  stats(): SourceStats { return Object.freeze({ ...this.#stats }); }
+  listenerCount(key: SettingKey): number { return this.#buckets.get(key)?.size ?? 0; }
+
+  #observe<const Keys extends SettingsKeys>(
+    keys: Keys, record: (next: SettingsSnapshot<Keys[number]>) => undefined, options: ObserveOptions,
+  ): SettingsObservation<Keys[number]> {
+    if (!Array.isArray(keys) || keys.length === 0) throw new TypeError("settings.observe.empty-keys");
+    const initial = this.#snapshot(keys);
+    let cached = initial;
+    let delivered = initial.revision;
+    let attached = true;
+    const latest = (): number => Math.max(0, ...keys.map((key) => this.#lastTouched.get(key) ?? 0));
+    const current = (): SettingsSnapshot<Keys[number]> => {
+      const revision = latest();
+      if (cached.revision !== revision) cached = this.#snapshot(keys, revision);
+      return cached;
+    };
+    const registration: Registration = {
+      order: this.#registrations += 1,
+      flush: () => {
+        if (!attached) return;
+        const next = current();
+        if (next.revision <= delivered) return;
+        delivered = next.revision;
+        this.#stats.deliveries += 1;
+        invokeIsolated(() => record(next), options.reportError);
+      },
+    };
+    for (const key of new Set(keys)) this.#bucket(key).add(registration); // atomic with `initial`
+    const view = Object.freeze({
+      initial,
+      current,
+      admits: (revision: number): boolean => attached && revision === latest(),
+    });
+    return Object.freeze({
+      view,
+      unsubscribe: (): undefined => {
+        attached = false;
+        this.#dirty.delete(registration);
+        for (const key of keys) this.#buckets.get(key)?.delete(registration);
+        return undefined;
+      },
+      isAttached: (): boolean => keys.some((key) => this.#buckets.get(key)?.has(registration) === true),
+    });
+  }
+
+  #snapshot<K extends SettingKey>(keys: readonly [K, ...K[]], revision?: number): SettingsSnapshot<K> {
+    const touched = revision ?? Math.max(0, ...keys.map((key) => this.#lastTouched.get(key) ?? 0));
+    return Object.freeze({ source: this.#id, keys, revision: touched, values: pick(this.#values, keys) });
+  }
+
+  #bucket(key: SettingKey): Set<Registration> {
+    let bucket = this.#buckets.get(key);
+    if (bucket === undefined) this.#buckets.set(key, bucket = new Set());
+    return bucket;
+  }
+
+  #scheduleFlush(): void {
+    if (this.#flushScheduled) return;
+    this.#flushScheduled = true;
+    // A later task, not a microtask: a callback that commits again cannot starve timers/deadlines.
+    setTimeout(() => {
+      this.#flushScheduled = false;
+      if (this.#sealed) return;
+      const batch = [...this.#dirty].sort((a, b) => a.order - b.order); // registration order
+      this.#dirty.clear();
+      for (const registration of batch) registration.flush(); // flush never throws (isolated)
+    }, 0);
+  }
+}

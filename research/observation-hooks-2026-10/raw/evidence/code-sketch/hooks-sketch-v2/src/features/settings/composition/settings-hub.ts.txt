@@ -1,0 +1,137 @@
+// Settings feature module: the HUB for one event family (settings change).
+// The only code that subscribes on behalf of participants, exactly once each.
+// One owned obligation; two-phase cleanup (detach all, then drain all, verify);
+// per-participant attribution and outcomes; deadlines and readiness decisions
+// stay Host policy.
+
+import { RELEASED, unresolved, type OwnerContext } from "../../../kernel/resource-owner.stand-in.ts";
+import type { SettingKey } from "../domain/app-settings.ts";
+import type { SettingsKeys, SettingsSnapshot } from "../published/settings-read.v1.ts";
+import type { Detachable, SettingsObservationPortV1, SettingsView } from "../published/settings-observation.v1.ts";
+import type {
+  DerivedParticipant, ParticipantVisitor, SettingsParticipantV1, SyncParticipant,
+} from "../published/settings-participant.v1.ts";
+import type { Report } from "../adapters/callback-isolation.ts";
+import { latestDerivation } from "./latest-derivation.ts";
+
+export type ParticipantOutcome =
+  | Readonly<{ id: string; kind: "ready"; revision: number }>
+  | Readonly<{ id: string; kind: "failed"; revision: number; cause: unknown }>;
+
+type Running = Readonly<{
+  id: string;
+  detach: Detachable;
+  drain: () => Promise<void>;
+  drained: () => boolean;
+  firstOutcome: Promise<ParticipantOutcome>;
+}>;
+
+/** What the visitor returns: a plan with no effect yet (N1: no hidden subscribe authority). */
+type Prepared = () => Running;
+
+export type HubDeps = Readonly<{ settings: SettingsObservationPortV1; participants: readonly SettingsParticipantV1[] }>;
+export type HubContext = OwnerContext & Readonly<{ participantIds: readonly string[] }>;
+
+function trackDrain(drain: () => Promise<void>): Pick<Running, "drain" | "drained"> {
+  let done = false;
+  return { drain: () => drain().finally(() => { done = true; }), drained: () => done };
+}
+
+function participantVisitor(port: SettingsObservationPortV1, id: string, report: Report): ParticipantVisitor<Prepared> {
+  return {
+    sync: <K extends SettingKey>(spec: SyncParticipant<K>): Prepared => () => {
+      let applied = spec.initial.revision;
+      const apply = (next: SettingsSnapshot<K>): undefined => {
+        if (next.revision <= applied) return undefined;
+        applied = next.revision;
+        spec.apply(next); // isolated by the source's delivery
+        return undefined;
+      };
+      const observation = port.observe(spec.initial.keys, apply, { reportError: report });
+      if (observation.view.initial.source !== spec.initial.source) { // fail-closed (N7)
+        observation.unsubscribe();
+        throw new Error("construction read and observation port use different settings sources");
+      }
+      // Replay: a commit between the module's construction read and this attach is not lost.
+      setTimeout(() => { if (observation.isAttached()) apply(observation.view.current()); }, 0);
+      return { id, detach: observation, ...trackDrain(async () => {}), firstOutcome: Promise.resolve({ id, kind: "ready", revision: applied }) };
+    },
+
+    derived: <Keys extends SettingsKeys, T>(spec: DerivedParticipant<Keys, T>): Prepared => () => {
+      let first!: (outcome: ParticipantOutcome) => void;
+      const firstOutcome = new Promise<ParticipantOutcome>((resolve) => { first = resolve; });
+      let view: SettingsView<Keys[number]> | undefined;
+      let latest: SettingsSnapshot<Keys[number]> | undefined;
+      const lane = latestDerivation<SettingsSnapshot<Keys[number]>, T>({
+        derive: (snapshot, signal) => spec.derive(snapshot.values, signal),
+        isCurrent: (revision) => view?.admits(revision) === true && latest?.revision === revision,
+        commit: (revision, result) => {
+          try {
+            if (latest !== undefined) spec.commit(result, latest);
+          } catch (cause) {
+            first({ id, kind: "failed", revision, cause }); // N4: a throwing commit is a failed outcome
+            throw cause; // still reported by the lane
+          }
+          first({ id, kind: "ready", revision });
+          return undefined;
+        },
+        fail: (revision, cause) => {
+          first({ id, kind: "failed", revision, cause });
+          if (latest !== undefined) spec.fail(cause, latest);
+          return undefined;
+        },
+        report,
+      });
+      const offer = (next: SettingsSnapshot<Keys[number]>): undefined => {
+        latest = next;
+        return lane.offer(next.revision, next);
+      };
+      const observation = port.observe(spec.keys, offer, { reportError: report });
+      view = observation.view;
+      offer(observation.view.initial);
+      return {
+        id,
+        detach: { unsubscribe: () => { observation.unsubscribe(); lane.close(); return undefined; }, isAttached: () => observation.isAttached() },
+        ...trackDrain(() => lane.drain()),
+        firstOutcome,
+      };
+    },
+  };
+}
+
+export async function createSettingsHub(deps: HubDeps, context: HubContext) {
+  if (deps.participants.length !== context.participantIds.length) throw new Error("settings.hub.participant-ids-mismatch");
+  const running: Running[] = [];
+  await context.resources.setup<readonly Running[]>({
+    setup: () => {
+      deps.participants.forEach((participant, index) => {
+        const id = context.participantIds[index] ?? `#${index}`;
+        const report: Report = (cause) => context.reportError(new Error(`settings participant ${id}`, { cause }));
+        try {
+          const prepared = participant.open(participantVisitor(deps.settings, id, report));
+          running.push(prepared()); // the single subscribe point per participant
+        } catch (cause) {
+          throw new Error(`settings participant ${id} failed to start`, { cause }); // N5 attribution
+        }
+      });
+      return running;
+    },
+    cleanup: async () => { // also runs after a partial setup failure
+      for (const entry of running) entry.detach.unsubscribe();
+      await Promise.all(running.map((entry) => entry.drain()));
+      const left = running.filter((entry) => entry.detach.isAttached()).map((entry) => entry.id);
+      return left.length === 0 ? RELEASED : unresolved(new Error(`still attached: ${left.join(", ")}`));
+    },
+  });
+  return {
+    instance: Object.freeze({
+      participants: running.map((entry) => entry.id),
+      /** Per-participant first outcome promises; the Host applies its own deadline. */
+      outcomes: (): ReadonlyArray<Readonly<{ id: string; outcome: Promise<ParticipantOutcome> }>> =>
+        running.map((entry) => ({ id: entry.id, outcome: entry.firstOutcome })),
+      /** After a cleanup deadline: which participants still have unsettled work (N3). */
+      undrained: (): readonly string[] => running.filter((entry) => !entry.drained()).map((entry) => entry.id),
+    }),
+    capabilities: {},
+  };
+}

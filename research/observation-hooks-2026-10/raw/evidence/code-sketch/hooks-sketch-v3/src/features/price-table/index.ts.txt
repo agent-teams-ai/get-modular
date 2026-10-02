@@ -1,0 +1,40 @@
+// OPTION 2 (escape hatch): the module owns its subscription through its own
+// `resources` (resources design rules 4-5): lane record first, subscription
+// second, so LIFO = unsubscribe -> drain. No special helper needed.
+import type { Resources } from "../../kernel/resources.stand-in.ts";
+import { latestDerivation } from "../../lib/observation/index.ts";
+import type { SettingsPort } from "../settings/index.ts";
+import { PriceTable, type RatesPort } from "./price-table.ts";
+
+export type { RatesPort } from "./price-table.ts";
+export type PriceApi = Readonly<{ price: (base: number) => ReturnType<PriceTable["price"]> }>;
+
+export async function createPriceTable(
+  deps: Readonly<{ settings: SettingsPort; rates: RatesPort }>,
+  { resources, reportError }: Readonly<{ resources: Resources; reportError: (cause: unknown) => undefined }>,
+) {
+  const table = new PriceTable();
+  let admits = (_revision: number): boolean => false;
+  const lane = await resources.setup({
+    name: "rate-lane",
+    setup: () => latestDerivation<string, Readonly<{ currency: string; rate: number }>>({
+      derive: async (currency, signal) => ({ currency, rate: await deps.rates.fetchRate(currency, signal) }),
+      isCurrent: (revision) => admits(revision),
+      commit: (_revision, { currency, rate }) => table.setRate(currency, rate),
+      fail: (revision, cause) => reportError(new Error(`rate for revision ${revision}`, { cause })),
+      report: reportError,
+    }),
+    cleanup: async (created) => { created.close(); await created.drain(); },
+  });
+  const observation = await resources.setup({
+    name: "subscription:priceCurrency",
+    setup: () => deps.settings.observe(["priceCurrency"], (next) => lane.offer(next.revision, next.values.priceCurrency), { reportError }),
+    cleanup: (created) => { created.unsubscribe(); if (created.isAttached()) throw new Error("still attached"); },
+  });
+  admits = observation.view.admits;
+  lane.offer(observation.view.initial.revision, observation.view.initial.values.priceCurrency);
+  return {
+    instance: table,
+    capabilities: { "pricing/price-table": { price: (base: number) => table.price(base) } satisfies PriceApi },
+  };
+}

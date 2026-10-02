@@ -1,0 +1,29 @@
+// TEST-only physical adapters with controllable settlement.
+
+import type { RatesPort } from "../features/price-table/index.ts";
+import type { TaxRulesPort } from "../features/tax-table/index.ts";
+
+export function controllableRates(table: Readonly<Record<string, number>>) {
+  const holds = new Map<string, () => void>();
+  const rates: RatesPort = {
+    async fetchRate(currency) {
+      if (holds.has(currency)) await new Promise<void>((resolve) => holds.set(currency, resolve));
+      const rate = table[currency];
+      if (rate === undefined) throw new Error(`unknown currency ${currency}`);
+      return rate;
+    },
+  };
+  return {
+    rates,
+    hold(currency: string): void { holds.set(currency, () => {}); },
+    release(currency: string): void { holds.get(currency)?.(); holds.delete(currency); },
+  };
+}
+
+export const taxRules: TaxRulesPort = {
+  async load(region) {
+    if (region === "XX") throw new Error("no tax rules for XX");
+    if (region === "HANG") return new Promise(() => {}); // never settles, ignores abort
+    return { region, vat: region === "DE" ? 0.19 : 0.2 };
+  },
+};

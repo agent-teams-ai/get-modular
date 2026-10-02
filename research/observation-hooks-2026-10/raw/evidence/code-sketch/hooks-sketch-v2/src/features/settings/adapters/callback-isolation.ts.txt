@@ -1,0 +1,31 @@
+// Settings feature internal: one isolation rule for every user callback.
+// Throws and illegal return values (including Promises passed through casts)
+// are reported; a throwing reporter is surfaced asynchronously, never swallowed,
+// and never breaks the caller's loop.
+
+export type Report = (cause: unknown) => undefined;
+
+const isThenable = (value: unknown): value is PromiseLike<unknown> =>
+  (typeof value === "object" || typeof value === "function") && value !== null &&
+  typeof (value as { then?: unknown }).then === "function";
+
+export function safeReport(report: Report, cause: unknown): void {
+  try {
+    report(cause);
+  } catch (reporterFailure) {
+    queueMicrotask(() => { throw new AggregateError([cause, reporterFailure], "settings error reporter failed"); });
+  }
+}
+
+export function invokeIsolated(call: () => unknown, report: Report): void {
+  let result: unknown;
+  try {
+    result = call();
+  } catch (cause) {
+    safeReport(report, cause);
+    return;
+  }
+  if (result === undefined) return;
+  safeReport(report, new TypeError("settings callback must be synchronous and return undefined"));
+  if (isThenable(result)) result.then(undefined, (cause: unknown) => safeReport(report, cause));
+}

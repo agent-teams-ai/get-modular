@@ -1,0 +1,13 @@
+// A SECOND instantiation of the same library with a different record type,
+// to prove the contract is generic (feature flags instead of settings).
+import { createKeyedSource, syncParticipant, type Snapshot } from "../../lib/observation/index.ts";
+
+export type Flags = Readonly<{ betaSearch: boolean; maxResults: number }>;
+
+export function flagsDemo() {
+  const source = createKeyedSource<Flags>({ betaSearch: false, maxResults: 10 });
+  const initial: Snapshot<Flags, "maxResults"> = source.reader.read(["maxResults"]);
+  let limit = initial.values.maxResults;
+  const participant = syncParticipant(initial, ({ values }) => { limit = values.maxResults; return undefined; });
+  return { source, participant, limit: () => limit };
+}

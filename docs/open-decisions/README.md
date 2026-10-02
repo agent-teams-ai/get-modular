@@ -23,7 +23,9 @@ key, and the gate rejects any mismatch between that key, the
 
 ## Active
 
-None. The separate proposed dependency and custody ADRs retain their own gates.
+- [OD-007: Module change observation package](OD-007-module-change-observation-package.md)
+
+The separate proposed dependency and custody ADRs retain their own gates.
 
 ## Resolved
 

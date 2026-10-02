@@ -1,0 +1,84 @@
+// `@get-modular/observation` (candidate) - public contract.
+// Values are immutable plain data. Delivery: a registration and its snapshot are
+// atomic; delivery runs in a later task, at most once per commit per
+// registration, may coalesce revisions, is never awaited; a revision is a commit
+// number, not proof that a value changed (A->B->A delivers again), so `apply`
+// must be idempotent; order between registrations is not contractual; nothing
+// is delivered after the source is sealed. `commit` takes ownership of the values
+// it receives: plain objects and arrays are frozen in place.
+
+/** Any object record. Declare every key (use `T | undefined`, not `?:`). */
+export type Values = object;
+export type Key<V extends Values> = keyof V & string;
+/** Non-empty key list. */
+export type Keys<V extends Values> = readonly [Key<V>, ...Key<V>[]];
+
+declare const sourceBrand: unique symbol;
+/** Opaque identity for equality only; revisions compare within one source. */
+export interface SourceId {
+  readonly [sourceBrand]: true;
+}
+
+export type Snapshot<V extends Values, K extends Key<V>> = Readonly<{
+  source: SourceId;
+  keys: readonly [K, ...K[]];
+  /** Commit number of the latest commit that changed a selected key. */
+  revision: number;
+  values: Readonly<Pick<V, K>>;
+}>;
+
+/** What a caller already holds (a `Snapshot` fits); source, keys and revision are checked. */
+export type SnapshotRef = Readonly<{ source: SourceId; keys: readonly string[]; revision: number }>;
+
+export interface Reader<in out V extends Values> {
+  read<const S extends Keys<V>>(keys: S): Snapshot<V, S[number]>;
+}
+
+export interface View<V extends Values, K extends Key<V>> {
+  readonly initial: Snapshot<V, K>;
+  current(): Snapshot<V, K>;
+  admits(revision: number): boolean;
+}
+
+export interface Observation<V extends Values, K extends Key<V>> extends Disposable {
+  readonly view: View<V, K>;
+  /** Idempotent and synchronous; drops queued delivery; never closes the source. */
+  unsubscribe(): undefined;
+}
+
+export type ObserveOptions = Readonly<{
+  /** Must be synchronous and must not throw; a throwing reporter is a Host bug. */
+  reportError: (cause: unknown) => undefined;
+  /** Catch up from what the caller already holds (same source, revision <= current). */
+  since?: SnapshotRef | undefined;
+}>;
+
+export interface ObservationPort<in out V extends Values> {
+  observe<const S extends Keys<V>>(
+    keys: S,
+    recordDesired: (next: Snapshot<V, S[number]>) => undefined,
+    options: ObserveOptions,
+  ): Observation<V, S[number]>;
+}
+
+export type ObservationErrorCode =
+  | "observation.keys.empty"
+  | "observation.keys.unknown"
+  | "observation.values.not-plain"
+  | "observation.source.sealed"
+  | "observation.since.invalid"
+  | "observation.callback.returned-value"
+  | "observation.participant.foreign"
+  | "observation.hub.participant-mismatch"
+  | "observation.hub.duplicate-participant"
+  | "observation.hub.participant-start"
+  | "observation.derivation.still-running";
+
+export class ObservationError extends Error {
+  readonly code: ObservationErrorCode;
+  constructor(code: ObservationErrorCode, message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "ObservationError";
+    this.code = code;
+  }
+}
