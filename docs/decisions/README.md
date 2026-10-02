@@ -17,9 +17,15 @@ summary: Index of Get Modular architecture decisions.
 
 ## Accepted decisions
 
+- [ADR-0032: Give Assembly an authoring builder and capability-scoped handles](0032-give-assembly-an-authoring-builder-and-capability-scoped-handles.md)
+- [ADR-0031: Pass a per-run scope and declared inputs to Assembly runs](0031-pass-a-per-run-scope-and-declared-inputs-to-assembly-runs.md)
+- [ADR-0030: Admit the module resource scope package](0030-admit-the-module-resource-scope-package.md)
+
 - [ADR-0029: Admit an optional lifecycle kernel candidate](0029-admit-an-optional-lifecycle-kernel-candidate.md)
 
-- [ADR-0028: Authorize the optional ownership contract checkpoint](0028-authorize-the-optional-ownership-contract-checkpoint.md)
+- [ADR-0028: Authorize the optional ownership contract checkpoint](0028-authorize-the-optional-ownership-contract-checkpoint.md),
+  superseded in full by ADR-0030. It stays listed as accepted because its
+  frozen C0 checkpoint pins its bytes, including its status.
 
 - [ADR-0027: Admit the Core and Assembly 0.2.0 correction pair](0027-admit-the-core-and-assembly-0-2-0-correction-pair.md)
 
@@ -52,4 +58,5 @@ summary: Index of Get Modular architecture decisions.
 
 ## Superseded decisions
 
-None.
+None by status. ADR-0030 supersedes ADR-0028 in full; see the note on
+ADR-0028 above.
