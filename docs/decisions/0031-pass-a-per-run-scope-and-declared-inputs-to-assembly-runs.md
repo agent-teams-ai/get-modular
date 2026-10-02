@@ -49,7 +49,7 @@ On 2026-10-01 the owner chose instances over live graph mutation.
 - `prepare({ composition, factories, roots, inputs })`. Input handles appear
   only in `inputs`, each under exactly one alias; factory handles appear only
   in `factories`. Together they cover every selection exactly once. An input
-  handle is never a root. Violations are `assembly.prepare.inputs`; an
+  handle is never a root. Violations are `assembly.prepare.input-handles`; an
   uncovered selection stays `assembly.prepare.handles`.
 - A run passes `inputs[alias]` as a plain data record with exactly the
   declaration's capability ids. Assembly checks every input before the first

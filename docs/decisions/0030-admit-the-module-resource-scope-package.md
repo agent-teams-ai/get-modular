@@ -188,8 +188,9 @@ entry and a migration note, without compatibility aliases (ADR-0009). Version
 1.0.0 needs a separate decision. While G1 is on hold, the package is not
 enrolled in `package.public-api-compatibility` or G1 SDK growth. Module
 packages declare Get Modular packages as peer dependencies. The Host must
-install one copy of this package; peer ranges make duplicate copies visible
-at install time. The Consumer Module Standard states the packaging rules.
+install one copy of this package; peer ranges surface version conflicts at
+install time, and `scoped()` rejects a run scope from another copy. The
+Consumer Module Standard states the packaging rules.
 
 ### Admission evidence
 
