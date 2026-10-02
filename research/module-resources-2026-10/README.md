@@ -68,6 +68,9 @@ English summary.
 
 - Source code files inside `raw/` carry an extra `.txt` suffix so repository
   checks do not treat them as production artifacts.
+- A few long flat file names under `raw/evidence/` are shortened for the
+  Windows path limit; the mapping is in
+  [renamed-files.json](raw/evidence/module-resource-planning-20261001/renamed-files.json).
 - Local paths are replaced with `<workspace>`, `<scratchpad>`, `<home>` and
   `<codex-visualizations>`. Hashes recorded inside the evidence refer to the
   original bytes.

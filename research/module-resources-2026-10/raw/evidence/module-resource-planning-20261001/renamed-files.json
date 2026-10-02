@@ -1,0 +1,33 @@
+{
+  "note": "Long flat names were shortened for the Windows path limit; references inside raw/ were updated.",
+  "renamed": [
+    {
+      "from": "source-supplement/agent-teams-ai_agent-runtime__packages__apps__embedded-runtime__src__features__ordinary-session-runtime__adapters__ordinary-observation-journal.ts.txt",
+      "to": "source-supplement/ar__ordinary-observation-journal.ts.txt"
+    },
+    {
+      "from": "source-supplement/agent-teams-ai_agent-runtime__packages__apps__embedded-runtime__src__composition__agent-runtime-host-creation-error.ts.txt",
+      "to": "source-supplement/ar__agent-runtime-host-creation-error.ts.txt"
+    },
+    {
+      "from": "source-supplement/agent-teams-ai_agent-runtime__packages__apps__embedded-runtime__src__composition__default-agent-runtime-host.ts.txt",
+      "to": "source-supplement/ar__default-agent-runtime-host.ts.txt"
+    },
+    {
+      "from": "source-supplement/agent-teams-ai_agent-runtime__architecture__get-modular__consumer-profile.json",
+      "to": "source-supplement/ar__consumer-profile.json"
+    },
+    {
+      "from": "source-supplement/agent-teams-ai_modularity-host-test__scripts__evidence__run.mjs.txt",
+      "to": "source-supplement/test__evidence-run.mjs.txt"
+    },
+    {
+      "from": "agent-teams-ai_get-modular__docs__decisions__0028-authorize-the-optional-ownership-contract-checkpoint.md",
+      "to": "gm__adr-0028.md"
+    },
+    {
+      "from": "agent-teams-ai_get-modular__docs__decisions__0029-admit-an-optional-lifecycle-kernel-candidate.md",
+      "to": "gm__adr-0029.md"
+    }
+  ]
+}

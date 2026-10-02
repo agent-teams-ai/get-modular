@@ -8,7 +8,7 @@ Recommend **`@get-modular/ownership`**, root **`packages/ownership`**, version *
 
 Require a **new accepted successor before package source**. It must authorize this exact callback/Promise surface, substantive candidate admission, disposable TEST consumption before ordinary K1, and synchronized guidance/profile/enforcement changes. A private flag does not admit source.
 
-[ADR-0028](../evidence/module-resource-planning-20261001/agent-teams-ai_get-modular__docs__decisions__0028-authorize-the-optional-ownership-contract-checkpoint.md) excludes callback execution; [ADR-0029](../evidence/module-resource-planning-20261001/agent-teams-ai_get-modular__docs__decisions__0029-admit-an-optional-lifecycle-kernel-candidate.md) admits a narrower synchronous kernel. Preserve accepted ADRs and frozen C0 evidence byte-for-byte.
+[ADR-0028](../evidence/module-resource-planning-20261001/gm__adr-0028.md) excludes callback execution; [ADR-0029](../evidence/module-resource-planning-20261001/gm__adr-0029.md) admits a narrower synchronous kernel. Preserve accepted ADRs and frozen C0 evidence byte-for-byte.
 
 Ordinary **S3 → G1 → K1** remains. S3 completion is unproven; **G1 stays `hold`; K1 stays pending**. These TEST slices establish neither two eligible production ownership scopes nor trusted release authority or released-artifact binding.
 
@@ -165,7 +165,7 @@ Existing commands from [GM](../evidence/module-resource-planning-20261001/agent-
 
 **Proposed, NOT existing:** `pnpm ownership:resource:check`: substantive build, owner tests, public-root positive/negative NodeNext/Bundler fixtures with minimum TS 5.8.3/pinned compiler, and exact packed-root checks. Route into changed-file, fast and full gates.
 
-Extend the actual [runner](../evidence/module-resource-planning-20261001/source-supplement/agent-teams-ai_modularity-host-test__scripts__evidence__run.mjs) inside `pnpm evidence`. Preserve separate published-0.1/candidate-0.2 Core/Assembly installations and kernel identities.
+Extend the actual [runner](../evidence/module-resource-planning-20261001/source-supplement/test__evidence-run.mjs) inside `pnpm evidence`. Preserve separate published-0.1/candidate-0.2 Core/Assembly installations and kernel identities.
 
 Add ownership archive/pin to both manifests/locks, archive validation and installed-root resolution. Preserve `expected.tests` and lifecycle index slicing. Add a separate required resource-name inventory with explicit routes to proposed `tests/resources/subscription.test.mjs` and `tests/resources/nested.test.mjs`.
 

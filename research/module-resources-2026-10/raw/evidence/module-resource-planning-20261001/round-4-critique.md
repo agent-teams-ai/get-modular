@@ -44,7 +44,7 @@ Keep direct `ResourceControl.cleanup` out of successful disposer slots. This req
 
 The plan permits refinement through observation of the original handle’s closed state and requires reads to fail after completion. These observations are insufficient following a failed close: a wrapper flag, `fd === -1`, or rejected read can describe an unusable JavaScript handle without establishing native release.
 
-The retained [AR descriptor owner](../evidence/module-resource-planning-20261001/source-supplement/agent-teams-ai_agent-runtime__packages__apps__embedded-runtime__src__features__ordinary-session-runtime__adapters__ordinary-observation-journal.ts) already treats thrown close as uncertainty and prohibits blind retry. This is counterevidence to the proposed inference, not an unfixed AR bug.
+The retained [AR descriptor owner](../evidence/module-resource-planning-20261001/source-supplement/ar__ordinary-observation-journal.ts) already treats thrown close as uncertainty and prohibits blind retry. This is counterevidence to the proposed inference, not an unfixed AR bug.
 
 **Precise correction:** Select the parent TEST adapter’s rule explicitly:
 
@@ -86,7 +86,7 @@ The [prior fix](../evidence/module-resource-planning-20261001/prior-fix-report.m
 
 The [GM manifest](../evidence/module-resource-planning-20261001/agent-teams-ai_get-modular__package.json) and [TEST manifest](../evidence/module-resource-planning-20261001/test-consumer__package.json) support the named existing commands. `ownership:resource:check` is correctly marked proposed.
 
-Review of the exact [evidence runner](../evidence/module-resource-planning-20261001/source-supplement/agent-teams-ai_modularity-host-test__scripts__evidence__run.mjs) confirms separate archive-pair installations, lifecycle inventory slicing, committed-input checks and frozen offline installation/typechecking. The planned ownership extension explicitly covers both manifests/locks, archive/root resolution, resource inventories/routes and hashed replay inputs. Archive-only diagnostics cannot replace installed replay.
+Review of the exact [evidence runner](../evidence/module-resource-planning-20261001/source-supplement/test__evidence-run.mjs) confirms separate archive-pair installations, lifecycle inventory slicing, committed-input checks and frozen offline installation/typechecking. The planned ownership extension explicitly covers both manifests/locks, archive/root resolution, resource inventories/routes and hashed replay inputs. Archive-only diagnostics cannot replace installed replay.
 
 Rollback remains bounded to candidate TEST integration, preserving unresolved original owners without parallel fallback disposal. Portable snapshot export, hash/link verification and authentic retention of historical reviews remain root publication prerequisites; missing reviews were not treated as inspected.
 

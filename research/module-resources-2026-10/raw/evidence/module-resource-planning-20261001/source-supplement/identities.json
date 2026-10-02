@@ -3,28 +3,28 @@
     "repo": "agent-teams-ai/agent-runtime",
     "sha": "b0bcb265d1466da3272078f9dfdb7c6784624283",
     "path": "architecture/get-modular/consumer-profile.json",
-    "retained": "agent-teams-ai_agent-runtime__architecture__get-modular__consumer-profile.json",
+    "retained": "ar__consumer-profile.json",
     "sha256": "14a3b343cc5f85f00f5cc1e0d2ab103150033715b76dfc8c22e19a7afc4eaba1"
   },
   {
     "repo": "agent-teams-ai/agent-runtime",
     "sha": "b0bcb265d1466da3272078f9dfdb7c6784624283",
     "path": "packages/apps/embedded-runtime/src/composition/default-agent-runtime-host.ts",
-    "retained": "agent-teams-ai_agent-runtime__packages__apps__embedded-runtime__src__composition__default-agent-runtime-host.ts",
+    "retained": "ar__default-agent-runtime-host.ts",
     "sha256": "e070514060b7c8d6dd4565c232a224766d3773e55f7fb5899ff8090f249a185c"
   },
   {
     "repo": "agent-teams-ai/agent-runtime",
     "sha": "b0bcb265d1466da3272078f9dfdb7c6784624283",
     "path": "packages/apps/embedded-runtime/src/features/ordinary-session-runtime/adapters/ordinary-observation-journal.ts",
-    "retained": "agent-teams-ai_agent-runtime__packages__apps__embedded-runtime__src__features__ordinary-session-runtime__adapters__ordinary-observation-journal.ts",
+    "retained": "ar__ordinary-observation-journal.ts",
     "sha256": "016c84844bbdec0dc8cbe5bf91d4ffd07d365d09a902f3f4c8ecab0643ba07a9"
   },
   {
     "repo": "agent-teams-ai/agent-runtime",
     "sha": "b0bcb265d1466da3272078f9dfdb7c6784624283",
     "path": "packages/apps/embedded-runtime/src/composition/agent-runtime-host-creation-error.ts",
-    "retained": "agent-teams-ai_agent-runtime__packages__apps__embedded-runtime__src__composition__agent-runtime-host-creation-error.ts",
+    "retained": "ar__agent-runtime-host-creation-error.ts",
     "sha256": "4a1d4e282dd75767ca5e88be3b4019786879f816c8ce435e6d1cb99f17aa1a37"
   },
   {
@@ -80,7 +80,7 @@
     "repo": "agent-teams-ai/modularity-host-test",
     "sha": "fcc10b2501420aacf9f904e976a4d230d3f02e68",
     "path": "scripts/evidence/run.mjs",
-    "retained": "agent-teams-ai_modularity-host-test__scripts__evidence__run.mjs",
+    "retained": "test__evidence-run.mjs",
     "sha256": "c4fcbd046f3be75fad522109bb9c365a073b64f422f60305dba3839a714dfbca"
   },
   {
