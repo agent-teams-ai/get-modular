@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { parse } from "yaml";
+import { LEAF_PACKAGES, leafManifestPath } from "./leaf-packages.mjs";
 import {
-  LIFECYCLE_KERNEL_MANIFEST_PATH,
   manifestCarrierViolations,
   packageManifestInventory,
 } from "./production-artifacts.mjs";
@@ -139,7 +139,9 @@ function verifyAssemblyLockDelta(currentBytes) {
 // ADR-0024: current package admission owns only the admitted workspace edges.
 // Root tooling resolution remains subject to frozen install and Foundation;
 // it must not be authenticated against the historical oracle's entire lock.
-async function validateCurrentAssemblyInputs({ readBytes, readPackageManifest, requireLifecycle = false }) {
+// A leaf package is present exactly when the root declares its development
+// workspace edge; an implemented leaf root requires that edge.
+async function validateCurrentAssemblyInputs({ readBytes, readPackageManifest, requiredLeaves = [] }) {
   const corePath = "packages/core/package.json";
   const core = await readPackageManifest(corePath);
   assert.equal(core?.name, "@get-modular/core", "Assembly admission Core identity differs");
@@ -159,25 +161,27 @@ async function validateCurrentAssemblyInputs({ readBytes, readPackageManifest, r
   assert.deepEqual(workspace?.packages, ["packages/*"],
     "Assembly admission requires the admitted workspace package scope");
   const rootManifest = JSON.parse((await readBytes("package.json")).toString("utf8"));
-  const lifecyclePresent = rootManifest.devDependencies?.["@get-modular/lifecycle-kernel"] !== undefined;
-  if (requireLifecycle) assert(lifecyclePresent,
-    "Lifecycle Kernel admission requires the root development workspace edge");
-  if (lifecyclePresent) {
-    const lifecycleKernel = await readPackageManifest(LIFECYCLE_KERNEL_MANIFEST_PATH);
-    assert.equal(lifecycleKernel?.name, "@get-modular/lifecycle-kernel",
-      "Lifecycle Kernel admission manifest identity differs");
-    const lifecycleInventory = await packageManifestInventory([LIFECYCLE_KERNEL_MANIFEST_PATH], {
-      readPackageManifest: async () => lifecycleKernel,
-    });
-    assert.deepEqual(manifestCarrierViolations(lifecycleInventory), [],
-      "Lifecycle Kernel admission requires a private dependency-free ESM candidate");
-  }
-  assert.equal(rootManifest.devDependencies?.["@get-modular/lifecycle-kernel"],
-    lifecyclePresent ? "workspace:*" : undefined,
-    "Lifecycle Kernel admission requires an exact optional root development workspace edge");
-  for (const field of ["dependencies", "optionalDependencies", "peerDependencies"]) {
-    assert.equal(rootManifest[field]?.["@get-modular/lifecycle-kernel"], undefined,
-      `Lifecycle Kernel admission forbids a root ${field} edge`);
+  const presentLeaves = [];
+  for (const leaf of LEAF_PACKAGES) {
+    const present = rootManifest.devDependencies?.[leaf.name] !== undefined;
+    if (requiredLeaves.includes(leaf)) assert(present,
+      `${leaf.name} admission requires the root development workspace edge`);
+    if (present) {
+      presentLeaves.push(leaf);
+      const manifest = await readPackageManifest(leafManifestPath(leaf));
+      assert.equal(manifest?.name, leaf.name, `${leaf.name} admission manifest identity differs`);
+      const inventory = await packageManifestInventory([leafManifestPath(leaf)], {
+        readPackageManifest: async () => manifest,
+      });
+      assert.deepEqual(manifestCarrierViolations(inventory), [],
+        `${leaf.name} admission requires a dependency-free ESM package of its publication class`);
+    }
+    assert.equal(rootManifest.devDependencies?.[leaf.name], present ? "workspace:*" : undefined,
+      `${leaf.name} admission requires an exact optional root development workspace edge`);
+    for (const field of ["dependencies", "optionalDependencies", "peerDependencies"]) {
+      assert.equal(rootManifest[field]?.[leaf.name], undefined,
+        `${leaf.name} admission forbids a root ${field} edge`);
+    }
   }
   const lock = parse((await readBytes("pnpm-lock.yaml")).toString("utf8"));
   assert.equal(lock?.lockfileVersion, "9.0", "Assembly admission lock format differs");
@@ -185,23 +189,22 @@ async function validateCurrentAssemblyInputs({ readBytes, readPackageManifest, r
   assert(importers && typeof importers === "object" && !Array.isArray(importers),
     "Assembly admission requires an importer map");
   assert.deepEqual(Object.keys(importers).sort(),
-    lifecyclePresent
-      ? [".", "packages/assembly", "packages/core", "packages/lifecycle-kernel"]
-      : [".", "packages/assembly", "packages/core"],
+    [".", "packages/assembly", "packages/core", ...presentLeaves.map(leaf => leaf.root)].sort(),
     "Assembly admission requires exactly the current workspace importers");
   assert(importers["."] && typeof importers["."] === "object" && !Array.isArray(importers["."]),
     "Assembly admission requires the root tooling importer");
-  assert.deepEqual(importers["."].devDependencies?.["@get-modular/lifecycle-kernel"],
-    lifecyclePresent
-      ? { specifier: "workspace:*", version: "link:packages/lifecycle-kernel" }
-      : undefined,
-    "Lifecycle Kernel admission requires the exact root development lock edge");
-  for (const field of ["dependencies", "optionalDependencies", "peerDependencies"]) {
-    assert.equal(importers["."][field]?.["@get-modular/lifecycle-kernel"], undefined,
-      `Lifecycle Kernel admission forbids a root ${field} lock edge`);
+  for (const leaf of LEAF_PACKAGES) {
+    const present = presentLeaves.includes(leaf);
+    assert.deepEqual(importers["."].devDependencies?.[leaf.name],
+      present ? { specifier: "workspace:*", version: `link:${leaf.root}` } : undefined,
+      `${leaf.name} admission requires the exact root development lock edge`);
+    for (const field of ["dependencies", "optionalDependencies", "peerDependencies"]) {
+      assert.equal(importers["."][field]?.[leaf.name], undefined,
+        `${leaf.name} admission forbids a root ${field} lock edge`);
+    }
+    if (present) assert.deepEqual(importers[leaf.root], {},
+      `${leaf.name} admission requires a dependency-free importer`);
   }
-  if (lifecyclePresent) assert.deepEqual(importers["packages/lifecycle-kernel"], {},
-    "Lifecycle Kernel admission requires a dependency-free importer");
   const coreImporter = importers["packages/core"];
   assert(coreImporter && typeof coreImporter === "object" && !Array.isArray(coreImporter),
     "Assembly admission requires a Core importer");
@@ -223,18 +226,27 @@ async function validateCurrentAssemblyInputs({ readBytes, readPackageManifest, r
   }, "Assembly admission requires only the exact Assembly to Core workspace edge");
 }
 
-export async function validateLifecycleKernelAdmission({
+export async function validateLeafPackageWorkspaceAdmission({
   productionArtifacts, readBytes, readPackageManifest,
 }) {
-  const artifacts = productionArtifacts.filter(path => path.startsWith("packages/lifecycle-kernel/"));
-  if (artifacts.length === 0) return Object.freeze([]);
-  assert(artifacts.every(path => safeRepositoryPath(path)
-    && (!path.endsWith("/package.json") || path === LIFECYCLE_KERNEL_MANIFEST_PATH)),
-  "Lifecycle Kernel admission rejects unsafe paths and nested manifests");
-  assert(artifacts.includes(LIFECYCLE_KERNEL_MANIFEST_PATH),
-    "Lifecycle Kernel admission requires its package root manifest");
-  await validateCurrentAssemblyInputs({ readBytes, readPackageManifest, requireLifecycle: true });
-  return Object.freeze(artifacts);
+  const admitted = [];
+  const implemented = [];
+  for (const leaf of LEAF_PACKAGES) {
+    const manifestPath = leafManifestPath(leaf);
+    const artifacts = productionArtifacts.filter(path => path.startsWith(`${leaf.root}/`));
+    if (artifacts.length === 0) continue;
+    assert(artifacts.every(path => safeRepositoryPath(path)
+      && (!path.endsWith("/package.json") || path === manifestPath)),
+    `${leaf.name} admission rejects unsafe paths and nested manifests`);
+    assert(artifacts.includes(manifestPath),
+      `${leaf.name} admission requires its package root manifest`);
+    implemented.push(leaf);
+    admitted.push(...artifacts);
+  }
+  if (implemented.length > 0) {
+    await validateCurrentAssemblyInputs({ readBytes, readPackageManifest, requiredLeaves: implemented });
+  }
+  return Object.freeze(admitted);
 }
 
 export async function validateAssemblyAdmission({

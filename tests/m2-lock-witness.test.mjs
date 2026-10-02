@@ -111,7 +111,7 @@ test('both frozen suites execute verbatim and fixture or terminal-result substit
     const receipt = await fixture.run();
     assert.equal(receipt.tests, 7);
     assert.equal(receipt.currentInstallationQualified, false);
-    assert.equal(receipt.currentDependencies.length, 4);
+    assert.equal(receipt.currentDependencies.length, 5);
     assert.deepEqual(receipt.currentDependencies.find(row => row.path === 'architecture/checks/assembly-admission.mjs'), {
       path: 'architecture/checks/assembly-admission.mjs',
       digest: m2Digest(await read('architecture/checks/assembly-admission.mjs')),
@@ -129,7 +129,7 @@ test('both frozen suites execute verbatim and fixture or terminal-result substit
     assert.throws(() => validateM2FixtureEvents(events, fixture.directory));
     assert.throws(() => validateM2FixtureEvents(receipt.events, join(fixture.directory, 'substituted')));
     for (const path of ['pnpm-lock.yaml', 'architecture/checks/private-core-start.mjs',
-      'architecture/checks/assembly-admission.mjs',
+      'architecture/checks/assembly-admission.mjs', 'architecture/checks/leaf-packages.mjs',
       'tests/m2-start.test.mjs', 'm2-reporter.mjs', 'node_modules/canonicalize/lib/canonicalize.js']) {
       const target = join(fixture.directory, path), bytes = await readFile(target);
       await writeFile(target, Buffer.concat([bytes, Buffer.from('\n// substitution')]));

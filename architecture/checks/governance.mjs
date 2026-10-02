@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 import { readCurrentM2Authority } from "./m2-lock-witness.mjs";
 import { validatePrivateCoreStart } from "./private-core-start.mjs";
-import { validateAssemblyAdmission, validateLifecycleKernelAdmission } from "./assembly-admission.mjs";
-import { validateLifecycleCandidateAdmission } from "./lifecycle-candidate-admission.mjs";
+import { validateAssemblyAdmission, validateLeafPackageWorkspaceAdmission } from "./assembly-admission.mjs";
+import { validateLeafPackageAdmission } from "./leaf-package-admission.mjs";
 import { GENERATED_PRODUCTION_PATH } from "./generated-production-source.mjs";
 import { cleanProductionAfterFailure } from "../tooling/generate-core.mjs";
 
@@ -796,12 +796,12 @@ export async function runGovernance() {
   if (productionArtifactSymlinks.length > 0) {
     fail(`production artifacts must not be symlinks: ${productionArtifactSymlinks.join(", ")}`);
   }
-  await validateLifecycleCandidateAdmission({
+  await validateLeafPackageAdmission({
     productionArtifacts,
-    readBytes: path => readGovernanceInput(path, "lifecycle candidate admission input"),
+    readBytes: path => readGovernanceInput(path, "leaf package admission input"),
     readPackageManifest,
     readProductionSource: async path => (await readGovernanceInput(
-      path, "lifecycle candidate production source",
+      path, "leaf package production source",
     )).toString("utf8"),
     packageJson: JSON.parse((await readGovernanceInput(
       "package.json", "root package manifest",
@@ -816,15 +816,15 @@ export async function runGovernance() {
     readPackageManifest,
     readBytes: path => readGovernanceInput(path, "Assembly admission input"),
   }));
-  const admittedLifecycle = new Set(await validateLifecycleKernelAdmission({
+  const admittedLeaves = new Set(await validateLeafPackageWorkspaceAdmission({
     productionArtifacts,
     readPackageManifest,
-    readBytes: path => readGovernanceInput(path, "lifecycle lock admission input"),
+    readBytes: path => readGovernanceInput(path, "leaf package lock admission input"),
   }));
   const scope = await validatePrivateCoreStart({
     markdown: documentSources.get("ARCH-MVP-IMPLEMENTATION-ROADMAP").bytes.toString("utf8"),
     productionArtifacts: productionArtifacts.filter(path =>
-      !admittedAssembly.has(path) && !admittedLifecycle.has(path)),
+      !admittedAssembly.has(path) && !admittedLeaves.has(path)),
     authorityDigest: ACCEPTED_AUTHORITY_LEDGER_DIGEST,
     isStartingBase: baseCommit => isStartingBaseAncestor(baseCommit, root),
     readPackageManifest,

@@ -11,10 +11,11 @@ import { readCurrentM2Authority } from "../architecture/checks/m2-lock-witness.m
 import { promisify } from "node:util";
 import {
   ASSEMBLY_CORRECTION_DECISION_PATH, ASSEMBLY_PUBLICATION_DECISION_PATH, ASSEMBLY_DECISION_PATH, ASSEMBLY_MANIFEST_PATH, M2_HISTORICAL_LOCK_DIGEST,
-  createHistoricalM2EvidenceReader, validateAssemblyAdmission, validateLifecycleKernelAdmission,
+  createHistoricalM2EvidenceReader, validateAssemblyAdmission, validateLeafPackageWorkspaceAdmission,
 } from "../architecture/checks/assembly-admission.mjs";
+import { LEAF_PACKAGES, leafManifestPath } from "../architecture/checks/leaf-packages.mjs";
 import {
-  LIFECYCLE_KERNEL_MANIFEST_PATH, packageIdentityViolations, packageManifestInventory,
+  packageIdentityViolations, packageManifestInventory,
   productionArtifactPaths, productionArtifactSymlinkPaths,
 } from "../architecture/checks/production-artifacts.mjs";
 import { validatePrivateCoreStart } from "../architecture/checks/private-core-start.mjs";
@@ -90,18 +91,21 @@ test("Assembly admission subtracts only independently admitted paths from Core",
   }
 });
 
-test("the candidate remains optional when its package and exact tooling edges are absent", async () => {
+test("leaf packages remain optional when their packages and exact tooling edges are absent", async () => {
   const rootManifest = JSON.parse(read("package.json"));
-  delete rootManifest.devDependencies["@get-modular/lifecycle-kernel"];
   const lock = parse(currentLock.toString("utf8"));
-  delete lock.importers["."].devDependencies["@get-modular/lifecycle-kernel"];
-  delete lock.importers["packages/lifecycle-kernel"];
+  for (const leaf of LEAF_PACKAGES) {
+    delete rootManifest.devDependencies[leaf.name];
+    delete lock.importers["."].devDependencies[leaf.name];
+    delete lock.importers[leaf.root];
+  }
   const readBytes = path => path === "package.json"
     ? Buffer.from(JSON.stringify(rootManifest))
     : path === "pnpm-lock.yaml" ? Buffer.from(stringify(lock)) : read(path);
+  const leafManifests = new Set(LEAF_PACKAGES.map(leafManifestPath));
   assert.deepEqual(await admit({ readBytes,
     readPackageManifest: async path => {
-      if (path === LIFECYCLE_KERNEL_MANIFEST_PATH) throw Error("candidate absent");
+      if (leafManifests.has(path)) throw Error("leaf package absent");
       return JSON.parse(read(path));
     },
   }), artifacts.slice(2));
@@ -217,122 +221,138 @@ test("current admission rejects malformed, missing, extra and redirected importe
   }));
 });
 
-test("Lifecycle Kernel admission keeps the candidate private and dependency-free", async () => {
-  const candidateArtifacts = [LIFECYCLE_KERNEL_MANIFEST_PATH,
-    "packages/lifecycle-kernel/src/index.ts"];
-  assert.deepEqual(await validateLifecycleKernelAdmission({
-    ...inputs, productionArtifacts: [...artifacts, ...candidateArtifacts],
-  }), candidateArtifacts);
-  const manifest = JSON.parse(read(LIFECYCLE_KERNEL_MANIFEST_PATH));
-  for (const mutation of [
-    { private: false }, { private: undefined }, { version: "0.2.0" },
-    { publishConfig: { access: "public" } },
-    ...["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"]
-      .map(field => ({ [field]: { "@get-modular/core": "workspace:*" } })),
-    { scripts: { postinstall: "node install.mjs" } },
-    { exports: { "./internal": "./dist/internal.js" } },
-  ]) {
-    await assert.rejects(admit({ readPackageManifest: async path =>
-      path === LIFECYCLE_KERNEL_MANIFEST_PATH
-        ? { ...manifest, ...mutation } : inputs.readPackageManifest(path) }),
-    /Lifecycle Kernel admission/u, JSON.stringify(mutation));
-  }
-  for (const productionArtifacts of [
-    [...artifacts, "packages/lifecycle-kernel/src/index.ts"],
-    [...artifacts, ...candidateArtifacts, "packages/lifecycle-kernel/nested/package.json"],
-    [...artifacts, ...candidateArtifacts, "packages/lifecycle-kernel/../rogue/index.ts"],
-  ]) await assert.rejects(validateLifecycleKernelAdmission({
-    ...inputs, productionArtifacts,
-  }), /Lifecycle Kernel admission/u);
-  const unknownRoot = "packages/rogue/package.json";
-  const inventory = await packageManifestInventory([unknownRoot], {
-    readPackageManifest: async () => manifest,
+for (const leaf of LEAF_PACKAGES) {
+  const manifestPath = leafManifestPath(leaf);
+  const leafAdmission = new RegExp(`${leaf.name} admission`, "u");
+
+  test(`${leaf.id}: workspace admission keeps the leaf of its publication class and dependency-free`, async () => {
+    const candidateArtifacts = [manifestPath, `${leaf.root}/src/index.ts`];
+    assert.deepEqual(await validateLeafPackageWorkspaceAdmission({
+      ...inputs, productionArtifacts: [...artifacts, ...candidateArtifacts],
+    }), candidateArtifacts);
+    const manifest = JSON.parse(read(manifestPath));
+    for (const mutation of [
+      { private: false }, { private: undefined },
+      ...["0.2.0", "1.0.0"].filter(version => !leaf.version.test(version)).map(version => ({ version })),
+      { publishConfig: { access: "public" } },
+      ...["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"]
+        .map(field => ({ [field]: { "@get-modular/core": "workspace:*" } })),
+      { scripts: { postinstall: "node install.mjs" } },
+      { exports: { "./internal": "./dist/internal.js" } },
+    ]) {
+      await assert.rejects(admit({ readPackageManifest: async path =>
+        path === manifestPath
+          ? { ...manifest, ...mutation } : inputs.readPackageManifest(path) }),
+      leafAdmission, JSON.stringify(mutation));
+    }
+    for (const productionArtifacts of [
+      [...artifacts, `${leaf.root}/src/index.ts`],
+      [...artifacts, ...candidateArtifacts, `${leaf.root}/nested/package.json`],
+      [...artifacts, ...candidateArtifacts, `${leaf.root}/../rogue/index.ts`],
+    ]) await assert.rejects(validateLeafPackageWorkspaceAdmission({
+      ...inputs, productionArtifacts,
+    }), leafAdmission);
+    // An implemented root needs its root development edge even when the root
+    // manifest and lock consistently omit it.
+    const rootManifest = JSON.parse(read("package.json"));
+    delete rootManifest.devDependencies[leaf.name];
+    const lock = parse(currentLock.toString("utf8"));
+    delete lock.importers["."].devDependencies[leaf.name];
+    delete lock.importers[leaf.root];
+    await assert.rejects(validateLeafPackageWorkspaceAdmission({
+      ...inputs, productionArtifacts: [...artifacts, ...candidateArtifacts],
+      readBytes: path => path === "package.json" ? Buffer.from(JSON.stringify(rootManifest))
+        : path === "pnpm-lock.yaml" ? Buffer.from(stringify(lock)) : read(path),
+    }), new RegExp(`${leaf.name} admission requires the root development workspace edge`, "u"));
+    const unknownRoot = "packages/rogue/package.json";
+    const inventory = await packageManifestInventory([unknownRoot], {
+      readPackageManifest: async () => manifest,
+    });
+    assert.deepEqual(packageIdentityViolations(inventory), [unknownRoot]);
   });
-  assert.deepEqual(packageIdentityViolations(inventory), [unknownRoot]);
-});
 
-test("Lifecycle Kernel root edge and importer reject every additional lock edge", async () => {
-  const current = parse(currentLock.toString("utf8"));
-  const encode = value => Buffer.from(stringify(value));
-  const rootManifest = JSON.parse(read("package.json"));
-  for (const mutation of [
-    { devDependencies: { ...rootManifest.devDependencies,
-      "@get-modular/lifecycle-kernel": "^0.1.0" } },
-    ...["dependencies", "optionalDependencies", "peerDependencies"]
-      .map(field => ({ [field]: { "@get-modular/lifecycle-kernel": "workspace:*" } })),
-  ]) await assert.rejects(admit({ readBytes: path => path === "package.json"
-    ? Buffer.from(JSON.stringify({ ...rootManifest, ...mutation })) : read(path) }),
-  /Lifecycle Kernel admission/u);
-  const locks = [];
-  for (const value of [undefined, null, [], { dependencies: {} },
-    { devDependencies: {} }, { dependencies: { "@get-modular/core": {
-      specifier: "workspace:*", version: "link:../core",
-    } } }]) {
-    const changed = structuredClone(current);
-    if (value === undefined) delete changed.importers["packages/lifecycle-kernel"];
-    else changed.importers["packages/lifecycle-kernel"] = value;
-    locks.push(encode(changed));
-  }
-  for (const edge of [
-    { specifier: "^0.1.0", version: "link:packages/lifecycle-kernel" },
-    { specifier: "workspace:*", version: "link:packages/other" },
-    { specifier: "workspace:*", version: "link:packages/lifecycle-kernel", injected: true },
-  ]) {
-    const changed = structuredClone(current);
-    changed.importers["."].devDependencies["@get-modular/lifecycle-kernel"] = edge;
-    locks.push(encode(changed));
-  }
-  for (const field of ["dependencies", "optionalDependencies", "peerDependencies"]) {
-    const changed = structuredClone(current);
-    changed.importers["."][field] = { "@get-modular/lifecycle-kernel": {
-      specifier: "workspace:*", version: "link:packages/lifecycle-kernel",
-    } };
-    locks.push(encode(changed));
-  }
-  for (const bytes of locks) await assert.rejects(admit({
-    readBytes: path => path === "pnpm-lock.yaml" ? bytes : read(path),
-  }), /Lifecycle Kernel admission|current workspace importers/u);
-});
+  test(`${leaf.id}: root edge and importer reject every additional lock edge`, async () => {
+    const current = parse(currentLock.toString("utf8"));
+    const encode = value => Buffer.from(stringify(value));
+    const rootManifest = JSON.parse(read("package.json"));
+    for (const mutation of [
+      { devDependencies: { ...rootManifest.devDependencies, [leaf.name]: "^0.1.0" } },
+      ...["dependencies", "optionalDependencies", "peerDependencies"]
+        .map(field => ({ [field]: { [leaf.name]: "workspace:*" } })),
+    ]) await assert.rejects(admit({ readBytes: path => path === "package.json"
+      ? Buffer.from(JSON.stringify({ ...rootManifest, ...mutation })) : read(path) }),
+    leafAdmission);
+    const locks = [];
+    for (const value of [undefined, null, [], { dependencies: {} },
+      { devDependencies: {} }, { dependencies: { "@get-modular/core": {
+        specifier: "workspace:*", version: "link:../core",
+      } } }]) {
+      const changed = structuredClone(current);
+      if (value === undefined) delete changed.importers[leaf.root];
+      else changed.importers[leaf.root] = value;
+      locks.push(encode(changed));
+    }
+    for (const edge of [
+      { specifier: "^0.1.0", version: `link:${leaf.root}` },
+      { specifier: "workspace:*", version: "link:packages/other" },
+      { specifier: "workspace:*", version: `link:${leaf.root}`, injected: true },
+    ]) {
+      const changed = structuredClone(current);
+      changed.importers["."].devDependencies[leaf.name] = edge;
+      locks.push(encode(changed));
+    }
+    for (const field of ["dependencies", "optionalDependencies", "peerDependencies"]) {
+      const changed = structuredClone(current);
+      changed.importers["."][field] = { [leaf.name]: {
+        specifier: "workspace:*", version: `link:${leaf.root}`,
+      } };
+      locks.push(encode(changed));
+    }
+    for (const bytes of locks) await assert.rejects(admit({
+      readBytes: path => path === "pnpm-lock.yaml" ? bytes : read(path),
+    }), new RegExp(`${leaf.name} admission|current workspace importers`, "u"));
+  });
+}
 
-test("Lifecycle Kernel build output is omitted only with source and unstaged file custody", async () => {
+for (const leaf of LEAF_PACKAGES) test(`${leaf.id}: build output is omitted only with source and unstaged file custody`, async () => {
   // A regression that hides authored or staged dist files, or exposes ordinary
   // untracked build files as source, changes this inventory on the Git boundary.
-  const fixture = await mkdtemp(join(tmpdir(), "gm-lifecycle-output-"));
+  const fixture = await mkdtemp(join(tmpdir(), `gm-${leaf.id}-output-`));
   const exec = promisify(execFile);
   const git = (...args) => exec("git", args, { cwd: fixture });
   const write = async (path, content) => {
     await mkdir(dirname(join(fixture, path)), { recursive: true });
     await writeFile(join(fixture, path), content);
   };
-  const output = "packages/lifecycle-kernel/dist/index.js";
-  const declaration = "packages/lifecycle-kernel/dist/index.d.ts";
+  const output = `${leaf.root}/dist/index.js`;
+  const declaration = `${leaf.root}/dist/index.d.ts`;
   try {
     await git("init", "--quiet", "--initial-branch=main");
     await write("package.json", '{"private":true}\n');
-    await write(LIFECYCLE_KERNEL_MANIFEST_PATH, read(LIFECYCLE_KERNEL_MANIFEST_PATH));
+    await write(leafManifestPath(leaf), read(leafManifestPath(leaf)));
     await write(output, "export const built = true;\n");
     await write(declaration, "export declare const built: boolean;\n");
-    await git("add", "package.json", LIFECYCLE_KERNEL_MANIFEST_PATH);
+    await git("add", "package.json", leafManifestPath(leaf));
     let snapshot = await captureGitIndexSnapshot(fixture);
     assert((await productionArtifactPaths(fixture, snapshot)).includes(output),
       "orphan dist output remains visible");
-    await write("packages/lifecycle-kernel/src/index.ts", "export const built = true;\n");
-    await git("add", "packages/lifecycle-kernel/src/index.ts");
+    await write(`${leaf.root}/src/index.ts`, "export const built = true;\n");
+    await git("add", `${leaf.root}/src/index.ts`);
     snapshot = await captureGitIndexSnapshot(fixture);
     let paths = await productionArtifactPaths(fixture, snapshot);
     assert(!paths.includes(output) && !paths.includes(declaration),
       "ordinary untracked output is excluded when source exists");
     assert((await productionArtifactPaths(fixture)).includes(output),
       "the unsnapshotted inventory does not assume build provenance");
-    await write("packages/lifecycle-kernel/dist/handwritten.ts", "export const x = 1;\n");
-    await write("packages/lifecycle-kernel/dist/nested/package.json", "{}\n");
-    await symlink("index.js", join(fixture, "packages/lifecycle-kernel/dist/link.js"));
+    await write(`${leaf.root}/dist/handwritten.ts`, "export const x = 1;\n");
+    await write(`${leaf.root}/dist/nested/package.json`, "{}\n");
+    await symlink("index.js", join(fixture, `${leaf.root}/dist/link.js`));
     paths = await productionArtifactPaths(fixture, snapshot);
-    for (const path of ["packages/lifecycle-kernel/dist/handwritten.ts",
-      "packages/lifecycle-kernel/dist/nested/package.json",
-      "packages/lifecycle-kernel/dist/link.js"]) assert(paths.includes(path), path);
+    for (const path of [`${leaf.root}/dist/handwritten.ts`,
+      `${leaf.root}/dist/nested/package.json`,
+      `${leaf.root}/dist/link.js`]) assert(paths.includes(path), path);
     assert.deepEqual(await productionArtifactSymlinkPaths(fixture, snapshot),
-      ["packages/lifecycle-kernel/dist/link.js"]);
+      [`${leaf.root}/dist/link.js`]);
     await git("add", "--force", output);
     snapshot = await captureGitIndexSnapshot(fixture);
     assert((await productionArtifactPaths(fixture, snapshot)).includes(output),
@@ -435,7 +455,7 @@ test("Assembly admission retains captured-index custody for every admission inpu
       ? [ASSEMBLY_CORRECTION_DECISION_PATH] : []),
     "architecture/decisions/accepted-decisions.json", "pnpm-lock.yaml",
     "pnpm-workspace.yaml", "package.json", "packages/core/package.json",
-    LIFECYCLE_KERNEL_MANIFEST_PATH];
+    ...LEAF_PACKAGES.map(leafManifestPath)];
   try {
     for (const path of paths) {
       await mkdir(dirname(join(directory, path)), { recursive: true });
@@ -540,8 +560,9 @@ test("next pair requires the exact accepted successor and retains first-release 
     [registryPath, Buffer.from(JSON.stringify({ ...registry, decisions: [...registry.decisions, entry] }))]]);
   const next = {
     readBytes: path => bytes.get(path) ?? read(path),
-    readPackageManifest: async path => ({ ...JSON.parse(read(path)),
-      version: path === LIFECYCLE_KERNEL_MANIFEST_PATH ? "0.1.0" : "0.2.0" }),
+    // The next Core/Assembly pair leaves every leaf package at its own version.
+    readPackageManifest: async path => LEAF_PACKAGES.some(leaf => leafManifestPath(leaf) === path)
+      ? JSON.parse(read(path)) : { ...JSON.parse(read(path)), version: "0.2.0" },
   };
   assert.deepEqual(await admit(next), artifacts.slice(2));
   await assert.rejects(admit({ ...next, readBytes: pending }), /accepted ADR-0027/u);

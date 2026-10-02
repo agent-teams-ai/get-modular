@@ -12,6 +12,7 @@ import {
 import { isStartingBaseAncestor } from "../architecture/checks/tracked-file-custody.mjs";
 import { CORE_DEVELOPMENT_DEPENDENCIES } from "../architecture/checks/assembly-admission.mjs";
 import { ACCEPTED_AUTHORITY_LEDGER_DIGEST } from "../architecture/checks/governance.mjs";
+import { LEAF_PACKAGES } from "../architecture/checks/leaf-packages.mjs";
 
 import { readCurrentM2Authority, M2_LOCK_DECISION, M2_LOCK_WITNESS } from "../architecture/checks/m2-lock-witness.mjs";
 
@@ -173,15 +174,14 @@ test("real governance entrypoint consumes the start record before admitting priv
       recursive: true,
       force: true,
     });
+    const leafDecisions = LEAF_PACKAGES.map(leaf => leaf.decision.path);
     for (const path of [M2_LOCK_DECISION, M2_LOCK_WITNESS,
-      "architecture/decisions/accepted-decisions.json",
-      "docs/decisions/0029-admit-an-optional-lifecycle-kernel-candidate.md"]) {
+      "architecture/decisions/accepted-decisions.json", ...leafDecisions]) {
       await mkdir(dirname(join(fixture, path)), { recursive: true });
       await cp(join(repositoryRoot, path), join(fixture, path));
     }
     await exec("git", ["add", M2_LOCK_DECISION, M2_LOCK_WITNESS,
-      "architecture/decisions/accepted-decisions.json",
-      "docs/decisions/0029-admit-an-optional-lifecycle-kernel-candidate.md"], { cwd: fixture });
+      "architecture/decisions/accepted-decisions.json", ...leafDecisions], { cwd: fixture });
     await writeFile(join(fixture, roadmapPath), roadmap);
     await exec("git", ["add", "architecture/checks"], { cwd: fixture });
     await symlink(join(repositoryRoot, "node_modules"), join(fixture, "node_modules"), "junction");
