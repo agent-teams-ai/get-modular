@@ -473,6 +473,7 @@ boundaries:
       - packages/resources/tests/scope.test.mjs
       - packages/resources/tests/packed-root.test.mjs
       - packages/resources/tests/semantic-suite.mjs
+      - packages/resources/tests/gc-probe.mjs
       - packages/resources/tests/types.ts
     allow:
       boundaries:
