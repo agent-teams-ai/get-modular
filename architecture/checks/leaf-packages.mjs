@@ -1,6 +1,12 @@
-// The only publication class admitted so far: a private, unpublished candidate.
-// Its rules apply to every row until a decision admits another class.
-const PRIVATE_CANDIDATE = "private-candidate";
+// Publication classes. A private candidate is never published. A public leaf is
+// published from 0.x under its decision with the npm shape of Core and Assembly.
+export const PRIVATE_CANDIDATE = "private-candidate";
+export const PUBLIC = "public";
+export const PUBLIC_PUBLISH_CONFIG = Object.freeze({ access: "public", registry: "https://registry.npmjs.org/" });
+export const PUBLIC_FILES = Object.freeze(["dist", "LICENSE", "README.md", "CHANGELOG.md"]);
+export const publicRepository = leaf => ({
+  type: "git", url: "git+https://github.com/agent-teams-ai/get-modular.git", directory: leaf.root,
+});
 
 // Optional leaf packages admitted beside Core and Assembly. Each row is bound to
 // its accepted decision; the governance, workspace, manifest, build and profile
@@ -49,7 +55,7 @@ function identityProblem(leaf, rows, index) {
   if (!/^[a-z][a-z0-9-]*$/u.test(leaf.id) || ["core", "assembly"].includes(leaf.id)
     || rows.findIndex(other => other.id === leaf.id) !== index) return "id";
   if (leaf.root !== `packages/${leaf.id}` || leaf.name !== `@get-modular/${leaf.id}`) return "root";
-  if (leaf.publication !== PRIVATE_CANDIDATE) return "publication";
+  if (![PRIVATE_CANDIDATE, PUBLIC].includes(leaf.publication)) return "publication";
   const { version } = leaf;
   if (!(version instanceof RegExp) || version.global || version.sticky || version.multiline
     || !version.source.startsWith("^") || !version.source.endsWith("$")) return "version";
