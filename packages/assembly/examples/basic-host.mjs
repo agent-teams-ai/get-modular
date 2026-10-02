@@ -1,49 +1,33 @@
 import { pathToFileURL } from "node:url";
-import { compileComposition, defineModule, required } from "@get-modular/core";
-import { assemblyFor } from "../dist/index.js";
+import { compileComposition, required } from "@get-modular/core";
+import { assemblyFor, declareModule, defineContract } from "../dist/index.js";
 
-const exact = (token) => ({ family: "exact", familyVersion: 1, token });
-const capability = (capabilityId, token) => ({
-  capabilityId,
-  compatibility: exact(token),
-});
+// Each contract owner publishes one descriptor per capability.
+const Configuration = defineContract()({ id: "example/configuration", revision: 1 });
+const Greeting = defineContract()({ id: "example/greeting", revision: 1 });
 
-const configuration = defineModule({
-  kind: "get-modular.module-declaration",
-  schemaVersion: 1,
+const configuration = declareModule({
   moduleId: "example/configuration",
   implementationId: "example/configuration/environment",
   owner: { authority: "example", path: ["configuration"] },
-  provides: [capability("example/configuration", "example/configuration/v1")],
+  provides: [Configuration.provide()],
   slots: [],
 });
 
-const greeting = defineModule({
-  kind: "get-modular.module-declaration",
-  schemaVersion: 1,
+const greeting = declareModule({
   moduleId: "example/greeting",
   implementationId: "example/greeting/default",
   owner: { authority: "example", path: ["greeting"] },
-  provides: [capability("example/greeting", "example/greeting/v1")],
-  slots: [{
-    slotId: "configuration",
-    ...capability("example/configuration", "example/configuration/v1"),
-    cardinality: required(),
-  }],
+  provides: [Greeting.provide()],
+  slots: [Configuration.slot("configuration", required())],
 });
 
-const application = defineModule({
-  kind: "get-modular.module-declaration",
-  schemaVersion: 1,
+const application = declareModule({
   moduleId: "example/application",
   implementationId: "example/application/default",
   owner: { authority: "example", path: ["application"] },
   provides: [],
-  slots: [{
-    slotId: "greeting",
-    ...capability("example/greeting", "example/greeting/v1"),
-    cardinality: required(),
-  }],
+  slots: [Greeting.slot("greeting", required())],
 });
 
 const declarations = [configuration, greeting, application];

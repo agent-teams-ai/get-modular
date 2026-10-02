@@ -44,7 +44,7 @@ import * as assembly from "@get-modular/assembly";
 const require = createRequire(import.meta.url);
 for (const [name, namespace, expected] of [
   ["core", core, ["compileComposition", "compileCompositionJson", "defineModule", "many", "optional", "required"]],
-  ["assembly", assembly, ["AssemblyBindingError", "assemblyFor"]],
+  ["assembly", assembly, ["AssemblyBindingError", "assemblyFor", "declareModule", "defineContract"]],
 ]) {
   const specifier = "@get-modular/" + name;
   assert.deepEqual(Object.keys(namespace).sort(), expected.sort());

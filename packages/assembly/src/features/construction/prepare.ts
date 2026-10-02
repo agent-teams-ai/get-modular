@@ -1,5 +1,5 @@
 import type { CompositionPlan, CompositionProfile } from "@get-modular/core";
-import type { AssemblyPreparationResult, AssemblyPrepareInput, InputHandles, PreparationErrorCode, PreparedAssembly, RootHandles, RunOptions } from "./types.js";
+import type { AnyFactoryHandle, AssemblyPreparationResult, AssemblyPrepareInput, InputHandles, PreparationErrorCode, PreparedAssembly, RootHandles, RunOptions } from "./types.js";
 import type { ConstructionPorts, Metadata, Program } from "./ports.js";
 import { appendCreated } from "./ports.js";
 import { SnapshotFault, copyPlan, data, dataObject, denseArray, envelope, inspectPlan, limits, record, rootKeys, snapshotPlan } from "./snapshot.js";
@@ -143,8 +143,9 @@ function createProgram(plan: CompositionPlan, roots: Program["roots"], inputs: P
     })),
   });
 }
-export async function prepareConstruction<C, R extends RootHandles<C>, N extends InputHandles<C>>(
-  input: AssemblyPrepareInput<C, R, N>, ports: ConstructionPorts,
+export async function prepareConstruction<C, R extends RootHandles<C>, N extends InputHandles<C>,
+  F extends readonly AnyFactoryHandle<C>[]>(
+  input: AssemblyPrepareInput<C, R, N, F>, ports: ConstructionPorts,
 ): Promise<AssemblyPreparationResult<R, N>> {
   try {
     const supplied = record(input, ["composition", "factories", "roots"], ["inputs"]);
