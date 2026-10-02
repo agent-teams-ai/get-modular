@@ -6,6 +6,7 @@ packageRoots:
   - packages/assembly
   - packages/core
   - packages/lifecycle-kernel
+  - packages/resources
 rootPackage: true
 governedRoots:
   - architecture/contracts/ownership
@@ -22,6 +23,8 @@ governedRoots:
   - packages/core/tests
   - packages/lifecycle-kernel/src
   - packages/lifecycle-kernel/tests
+  - packages/resources/src
+  - packages/resources/tests
   - tests
 boundaries:
   # Module consumers see only ports and identities. Only a composition root
@@ -411,6 +414,85 @@ boundaries:
         - node:test
         - node:url
       runtimeReferences: []
+  # ADR-0030 admits one optional public cleanup-scope package. It imports no
+  # package, builtin or composition package; only module code and Hosts use it.
+  - id: resources-contract
+    roots:
+      - packages/resources/src/features/scope/types.ts
+      - packages/resources/src/features/scope/errors.ts
+    entrypoints:
+      - packages/resources/src/features/scope/types.ts
+      - packages/resources/src/features/scope/errors.ts
+    allow:
+      boundaries: []
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: resources-implementation
+    roots:
+      - packages/resources/src/features/scope/arguments.ts
+      - packages/resources/src/features/scope/scope.ts
+    entrypoints:
+      - packages/resources/src/features/scope/scope.ts
+    allow:
+      boundaries:
+        - resources-contract
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: resources-composition
+    roots:
+      - packages/resources/src/composition/root.ts
+    entrypoints:
+      - packages/resources/src/composition/root.ts
+    allow:
+      boundaries:
+        - resources-implementation
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: resources-public-entrypoint
+    packageExports:
+      - "."
+    roots:
+      - packages/resources/src/index.ts
+    entrypoints:
+      - packages/resources/src/index.ts
+    allow:
+      boundaries:
+        - resources-contract
+        - resources-composition
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: resources-development
+    dependencyMode: development
+    roots:
+      - packages/resources/tests
+    entrypoints:
+      - packages/resources/tests/scope.test.mjs
+      - packages/resources/tests/packed-root.test.mjs
+      - packages/resources/tests/semantic-suite.mjs
+      - packages/resources/tests/types.ts
+    allow:
+      boundaries:
+        - resources-contract
+        - resources-implementation
+        - resources-composition
+        - resources-public-entrypoint
+      packages:
+        - "@get-modular/resources"
+      builtins:
+        - node:assert/strict
+        - node:child_process
+        - node:events
+        - node:fs/promises
+        - node:module
+        - node:os
+        - node:path
+        - node:test
+        - node:url
+      runtimeReferences: []
   - id: core-development
     dependencyMode: development
     roots:
@@ -548,11 +630,13 @@ boundaries:
         - assembly-public-entrypoint
         - core-public-entrypoint
         - lifecycle-kernel-public-entrypoint
+        - resources-public-entrypoint
       packages:
         - "@agent-teams/engineering-foundation"
         - "@get-modular/assembly"
         - "@get-modular/core"
         - "@get-modular/lifecycle-kernel"
+        - "@get-modular/resources"
         - ajv
         - canonicalize
         - json-canonicalize

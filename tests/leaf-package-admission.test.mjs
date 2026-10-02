@@ -129,6 +129,25 @@ test("the lifecycle-kernel row keeps its reviewed tests and command chain", () =
   assert.equal(kernel.gate, "lifecycle:check");
 });
 
+// ADR-0030 admits the public row; a release changes only its version within 0.x.
+test("the resources row keeps its reviewed public class, tests and command chain", () => {
+  const resources = leafPackageById("resources");
+  assert.equal(resources.publication, PUBLIC);
+  assert.equal(String(resources.version), "/^0\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$/u");
+  assert.deepEqual(resources.requiredTests, [
+    "packages/resources/tests/scope.test.mjs",
+    "packages/resources/tests/packed-root.test.mjs",
+  ]);
+  assert.deepEqual(Object.keys(resources.commands),
+    ["resources:build", "resources:typecheck", "resources:test", "resources:pack", "resources:check"]);
+  assert.match(resources.commands["resources:typecheck"],
+    /typescript-minimum\/bin\/tsc -p packages\/resources\/tsconfig\.types\.bundler\.json/u);
+  assert.match(resources.commands["resources:test"], /tests\/resources\/assembly-scope\.test\.mjs/u);
+  assert.equal(resources.gate, "resources:check");
+  for (const version of ["0.0.0", "0.1.0", "0.12.3"]) assert.match(version, resources.version);
+  for (const version of ["1.0.0", "0.1", "0.1.0-rc.1", "0.01.0"]) assert.doesNotMatch(version, resources.version);
+});
+
 test("a root outside the table stays rejected", async () => {
   const { input } = fixture(exampleLeaf);
   await assert.rejects(validateLeafPackageAdmission({ ...input, leaves: LEAF_PACKAGES }),

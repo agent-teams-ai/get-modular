@@ -46,6 +46,42 @@ export const LEAF_PACKAGES = Object.freeze([
     }),
     gate: "lifecycle:check",
   }),
+  Object.freeze({
+    id: "resources",
+    name: "@get-modular/resources",
+    root: "packages/resources",
+    publication: PUBLIC,
+    // ADR-0030: public 0.x; 0.0.0 only until the first Changesets release; 1.0.0 needs a decision.
+    version: /^0\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u,
+    decision: Object.freeze({
+      id: "ADR-0030",
+      path: "docs/decisions/0030-admit-the-module-resource-scope-package.md",
+      fileDigest: "sha256:8b2dd245de55ebea734c6a74460f37a210dfe0ee0af7ce7069f9cb41592f729e",
+      immutableDigest: "sha256:9ab491290ea3614714f6f3d17bb44ba31c578e37e68e8f68e87575567291c5c9",
+    }),
+    extension: Object.freeze({
+      id: "module-resource-scopes",
+      authority: "docs/decisions/0030-admit-the-module-resource-scope-package.md",
+    }),
+    requiredTests: Object.freeze([
+      "packages/resources/tests/scope.test.mjs",
+      "packages/resources/tests/packed-root.test.mjs",
+    ]),
+    commands: Object.freeze({
+      "resources:build": "node architecture/tooling/build-leaf-package.mjs resources",
+      "resources:typecheck":
+        "node node_modules/typescript/bin/tsc -p packages/resources/tsconfig.json --noEmit"
+        + " && node node_modules/typescript/bin/tsc -p packages/resources/tsconfig.types.json --noEmit"
+        + " && node node_modules/typescript/bin/tsc -p packages/resources/tsconfig.types.bundler.json --noEmit"
+        + " && node node_modules/typescript-minimum/bin/tsc -p packages/resources/tsconfig.types.json --noEmit"
+        + " && node node_modules/typescript-minimum/bin/tsc -p packages/resources/tsconfig.types.bundler.json --noEmit",
+      "resources:test": "node --test packages/resources/tests/scope.test.mjs tests/resources/assembly-scope.test.mjs",
+      "resources:pack": "node --test packages/resources/tests/packed-root.test.mjs",
+      "resources:check":
+        "pnpm resources:build && pnpm resources:typecheck && pnpm resources:test && pnpm resources:pack",
+    }),
+    gate: "resources:check",
+  }),
 ]);
 
 // A row names its own identity, root, decision and version pattern. It cannot
