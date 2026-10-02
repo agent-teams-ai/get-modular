@@ -214,6 +214,19 @@ exists until the first package introduces it. Update the exact script chain
 and its guard together as the current contract requires; never mark a future
 command or absent subject as passed.
 
+CI runs Core, Assembly, packaging, governance and static lanes in independent
+checkouts on each of Ubuntu, macOS and Windows. Each lane runs runtime preflight
+and governance before explicit builds; later checks retain their Assembly and
+lifecycle build prerequisites. The governance lane retains the ownership
+checkpoint before runtime preflight. The required `check (ubuntu-24.04)`,
+`check (macos-15)` and `check (windows-2025)` aggregates require every lane to
+succeed, including rejection of skipped dependencies. The
+[lane parity tests](../../tests/ci-check-lanes.test.mjs) retain the original
+command chain as an independent oracle and exercise the shell failure boundary
+in disposable TEST fixtures. This is private CI tooling; production composition
+and the local gate chains retain their existing contracts. Complete OS
+qualification and measured acceleration require CI evidence on the exact head.
+
 A phase's implementation is complete only when its scoped behavior and focused
 checks pass. A milestone is complete only when its actual subject passes the
 full applicable exit gate. A merged algorithm slice can therefore be complete

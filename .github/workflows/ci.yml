@@ -13,15 +13,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check:
-    name: check (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: ${{ matrix.os == 'windows-2025' && 40 || 25 }}
+  lanes-ubuntu:
+    name: check lane (ubuntu-24.04, ${{ matrix.lane }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     strategy:
       fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, macos-15, windows-2025]
-    steps:
+      matrix: &check-lane-matrix
+        include:
+          - lane: core
+            scripts: runtime:preflight governance:check assembly:build lifecycle:build core:typecheck:prepared core:test
+          - lane: assembly
+            scripts: runtime:preflight governance:check assembly:build lifecycle:build assembly:typecheck assembly:test
+          - lane: packaging
+            scripts: runtime:preflight governance:check assembly:build lifecycle:check foundation:check sdk-growth:check lint:typed
+          - lane: governance
+            scripts: ownership:checkpoint:test runtime:preflight governance:check release-owned-files:check assembly:build lifecycle:build governance:test
+          - lane: static
+            scripts: runtime:preflight governance:check assembly:build lifecycle:build docs:protocol:check architecture:feature-module-profile architecture:feature-module-profile:test contracts:check contracts:test qualification:resource-profile qualification:v1-diagnostics-protocol qualification:v1-graph-semantics qualification:self-composition-templates
+    steps: &check-lane-steps
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -32,13 +42,60 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile --ignore-scripts
-      - run: pnpm check
+      - name: Run check lane with its build prerequisites
         env:
+          LANE_SCRIPTS: ${{ matrix.scripts }}
           FOUNDATION_PR_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+        run: node architecture/tooling/run-ci-check-lane.mjs
       - name: Verify tracked workspace integrity
         env:
           EXPECTED_HEAD_SHA: ${{ github.sha }}
         run: node architecture/checks/tracked-workspace-integrity.mjs
+
+  lanes-macos:
+    name: check lane (macos-15, ${{ matrix.lane }})
+    runs-on: macos-15
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix: *check-lane-matrix
+    steps: *check-lane-steps
+
+  lanes-windows:
+    name: check lane (windows-2025, ${{ matrix.lane }})
+    runs-on: windows-2025
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix: *check-lane-matrix
+    steps: *check-lane-steps
+
+  check-ubuntu:
+    name: check (ubuntu-24.04)
+    runs-on: ubuntu-24.04
+    needs: [lanes-ubuntu]
+    if: always()
+    steps: &check-aggregate-steps
+      - name: Require every check lane to succeed
+        shell: bash
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          jq -e 'to_entries | length > 0 and all(.value.result == "success")' <<< "$NEEDS_JSON"
+
+  check-macos:
+    name: check (macos-15)
+    runs-on: macos-15
+    needs: [lanes-macos]
+    if: always()
+    steps: *check-aggregate-steps
+
+  check-windows:
+    name: check (windows-2025)
+    runs-on: windows-2025
+    needs: [lanes-windows]
+    if: always()
+    steps: *check-aggregate-steps
 
   node-26-compatibility:
     name: Node 26 package root compatibility
