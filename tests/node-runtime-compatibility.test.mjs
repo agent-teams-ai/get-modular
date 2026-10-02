@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { resolveNpmCli, resolvePnpmCli } from "./qualification/support/npm-cli.mjs";
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const packageNames = ["core", "assembly"];
+const packageNames = ["core", "assembly", "resources"];
 
 // The Node 26 CI consumer is outside the source workspace. Its package manager
 // must be the physically provisioned source pin, not a shim selected by cwd.
@@ -40,11 +40,13 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import * as core from "@get-modular/core";
 import * as assembly from "@get-modular/assembly";
+import * as resources from "@get-modular/resources";
 
 const require = createRequire(import.meta.url);
 for (const [name, namespace, expected] of [
   ["core", core, ["compileComposition", "compileCompositionJson", "defineModule", "many", "optional", "required"]],
   ["assembly", assembly, ["AssemblyBindingError", "assemblyFor", "declareModule", "defineContract"]],
+  ["resources", resources, ["CloseIncompleteError", "InvalidArgumentError", "ScopeClosedError", "createScope", "scoped"]],
 ]) {
   const specifier = "@get-modular/" + name;
   assert.deepEqual(Object.keys(namespace).sort(), expected.sort());
@@ -85,15 +87,21 @@ const api = assembly.assemblyFor();
 const providerFactory = api.bindFactory(provider, async () => ({
   instance: { provider: true }, capabilities: { "smoke/value": 42 },
 }));
-const consumerFactory = api.bindFactory(consumer, async (dependencies) => ({
-  instance: dependencies.value, capabilities: {},
-}));
+const released = [];
+const consumerFactory = api.bindFactory(consumer, resources.scoped(consumer.implementationId,
+  async (dependencies, { resources: scope }) => {
+    await scope.setup({ name: "value", setup: () => dependencies.value, cleanup: (value) => { released.push(value); } });
+    return { instance: dependencies.value, capabilities: {} };
+  }));
 const preparation = await api.prepare({ composition,
   factories: [providerFactory, consumerFactory], roots: { consumer: consumerFactory } });
 assert.equal(preparation.status, "prepared", JSON.stringify(preparation));
-const outcome = await preparation.prepared.run();
+const attempt = resources.createScope({ name: "attempt" });
+const outcome = await preparation.prepared.run({ scope: attempt.resources });
 assert.equal(outcome.status, "succeeded", JSON.stringify(outcome));
 assert.equal(outcome.roots.consumer, 42);
+assert.deepEqual(await attempt.control.close(), { complete: true, settled: true, debts: [] });
+assert.deepEqual(released, [42]);
 console.log("public-consumer:passed");
 `;
 
