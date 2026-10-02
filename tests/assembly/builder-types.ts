@@ -137,4 +137,4 @@ declareModule({ moduleId: "x/y", implementationId: "x/y", owner: { authority: "x
 // A spec typed as the plain DeclarationSpec keeps declareModule typed, so a wrong factory is still rejected.
 declare const widenedSpec: DeclarationSpec;
 // @ts-expect-error A widened spec must not turn the bound declaration into never and disable checking.
-void host.bindFactory(declareModule(widenedSpec), async () => ({ capabilities: { "acme/whatever": 42 } }));
+void host.bindFactory(declareModule(widenedSpec), async () => ({ instance: 0, capabilities: { "acme/whatever": 42 } }));
