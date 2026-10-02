@@ -1,0 +1,12 @@
+{
+  "jobId": "ar-research-resource-round4-critique-fast-20261001",
+  "rawResultSha256": "b9663ebddf2a9afff9555489930df6e1acd78ae0f6bf8188b0a275512a5eb81e",
+  "requested": {
+    "model": "gpt-6.1-sol",
+    "reasoningEffort": "xhigh",
+    "serviceTier": "fast",
+    "accounts": [
+      "account-u"
+    ]
+  }
+}

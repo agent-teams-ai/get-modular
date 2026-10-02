@@ -1,0 +1,49 @@
+import type { Cardinality, Contract, DeclarationSpec, Declared, ProvidedEntry, SlotEntry } from "./types.js";
+import { AssemblyBindingError } from "./bind.js";
+
+// The only place that spells the wire generation. Train 2 changes these bodies, not declarations.
+const KIND = "get-modular.module-declaration" as const;
+const SCHEMA_VERSION = 1 as const;
+
+function refuse(message: string): never {
+  throw new AssemblyBindingError("assembly.bind.invalid-declaration", new TypeError(message));
+}
+
+/** Contract owner: `export const Db = defineContract<DbPort>()({ id: "acme/db", revision: 1 })`. */
+export function defineContract<V>(): <const Id extends string, const Rev extends number>(
+  spec: { readonly id: Id; readonly revision: Rev },
+) => Contract<Id, V, Rev> {
+  return <const Id extends string, const Rev extends number>(spec: { readonly id: Id; readonly revision: Rev }) => {
+    const { id, revision } = spec;
+    if (typeof id !== "string" || id.length === 0) {
+      refuse("A contract needs a capability id");
+    }
+    if (!Number.isSafeInteger(revision) || revision < 1) {
+      refuse("A contract revision is a positive safe integer");
+    }
+    // Current wire generation: exact token per revision. Core validates the identity grammar.
+    const token = `${id}/r${String(revision)}` as `${Id}/r${Rev}`;
+    const compatibility = () => Object.freeze({ family: "exact", familyVersion: 1, token } as const);
+    const contract: Contract<Id, V, Rev> = Object.freeze({
+      id,
+      revision,
+      provide: (): ProvidedEntry<Id, Rev> => Object.freeze({ capabilityId: id, compatibility: compatibility() }) as ProvidedEntry<Id, Rev>,
+      slot: <const S extends string, const K extends Cardinality>(slotId: S, cardinality: K): SlotEntry<Id, Rev, S, K> =>
+        Object.freeze({ slotId, capabilityId: id, compatibility: compatibility(), cardinality }) as SlotEntry<Id, Rev, S, K>,
+    });
+    return contract;
+  };
+}
+
+/** Module author: identities, owner, descriptor entries; never `kind`, `schemaVersion` or `compatibility`. */
+export function declareModule<const T extends DeclarationSpec>(spec: T): Declared<T> {
+  const candidate: unknown = spec;
+  if (typeof candidate !== "object" || candidate === null) {
+    refuse("declareModule() requires a declaration spec");
+  }
+  if (Object.hasOwn(candidate, "kind") || Object.hasOwn(candidate, "schemaVersion")) {
+    refuse("declareModule() supplies kind and schemaVersion");
+  }
+  const declared: Declared<T> = { ...spec, kind: KIND, schemaVersion: SCHEMA_VERSION };
+  return Object.freeze(declared);
+}

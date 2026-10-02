@@ -1,0 +1,8 @@
+{
+  "repo": "nestjs/docs.nestjs.com",
+  "sha": "cc4542f80d03a9f78cb255a1c11812becb2a50f7",
+  "files": {
+    "nestjs__lifecycle-events.md": "content/fundamentals/lifecycle-events.md",
+    "nestjs__injection-scopes.md": "content/fundamentals/provider-scopes.md"
+  }
+}

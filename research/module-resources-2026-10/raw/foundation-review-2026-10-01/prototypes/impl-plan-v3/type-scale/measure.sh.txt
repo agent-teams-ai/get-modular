@@ -1,0 +1,18 @@
+#!/bin/sh
+# Usage: ./measure.sh [modules]; prints check time, memory and instantiations per shape and compiler.
+set -u
+cd "$(dirname "$0")"
+GM=${GM:-<workspace>/get-modular}
+node generate.mjs "${1:-500}"
+for shape in fragments global literal; do
+  for compiler in tsc7 ts58; do
+    if [ "$compiler" = tsc7 ]; then cmd="tsc7"; else cmd="node $GM/node_modules/typescript-minimum/bin/tsc"; fi
+    start=$(node -e 'console.log(Date.now())')
+    out=$($cmd -p "tsconfig.$shape.json" --extendedDiagnostics 2>&1)
+    status=$?
+    end=$(node -e 'console.log(Date.now())')
+    errors=$(printf '%s\n' "$out" | grep -c 'error TS')
+    pick() { printf '%s\n' "$out" | grep -E "^$1" | head -1 | sed -E 's/ +/ /g'; }
+    echo "$shape $compiler exit=$status errors=$errors wall=$((end - start))ms | $(pick 'Check time') | $(pick 'Memory used') | $(pick 'Instantiations') | $(pick 'Types:')"
+  done
+done

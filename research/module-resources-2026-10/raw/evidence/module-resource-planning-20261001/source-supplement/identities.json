@@ -1,0 +1,93 @@
+[
+  {
+    "repo": "agent-teams-ai/agent-runtime",
+    "sha": "b0bcb265d1466da3272078f9dfdb7c6784624283",
+    "path": "architecture/get-modular/consumer-profile.json",
+    "retained": "agent-teams-ai_agent-runtime__architecture__get-modular__consumer-profile.json",
+    "sha256": "14a3b343cc5f85f00f5cc1e0d2ab103150033715b76dfc8c22e19a7afc4eaba1"
+  },
+  {
+    "repo": "agent-teams-ai/agent-runtime",
+    "sha": "b0bcb265d1466da3272078f9dfdb7c6784624283",
+    "path": "packages/apps/embedded-runtime/src/composition/default-agent-runtime-host.ts",
+    "retained": "agent-teams-ai_agent-runtime__packages__apps__embedded-runtime__src__composition__default-agent-runtime-host.ts",
+    "sha256": "e070514060b7c8d6dd4565c232a224766d3773e55f7fb5899ff8090f249a185c"
+  },
+  {
+    "repo": "agent-teams-ai/agent-runtime",
+    "sha": "b0bcb265d1466da3272078f9dfdb7c6784624283",
+    "path": "packages/apps/embedded-runtime/src/features/ordinary-session-runtime/adapters/ordinary-observation-journal.ts",
+    "retained": "agent-teams-ai_agent-runtime__packages__apps__embedded-runtime__src__features__ordinary-session-runtime__adapters__ordinary-observation-journal.ts",
+    "sha256": "016c84844bbdec0dc8cbe5bf91d4ffd07d365d09a902f3f4c8ecab0643ba07a9"
+  },
+  {
+    "repo": "agent-teams-ai/agent-runtime",
+    "sha": "b0bcb265d1466da3272078f9dfdb7c6784624283",
+    "path": "packages/apps/embedded-runtime/src/composition/agent-runtime-host-creation-error.ts",
+    "retained": "agent-teams-ai_agent-runtime__packages__apps__embedded-runtime__src__composition__agent-runtime-host-creation-error.ts",
+    "sha256": "4a1d4e282dd75767ca5e88be3b4019786879f816c8ce435e6d1cb99f17aa1a37"
+  },
+  {
+    "repo": "facebook/react",
+    "sha": "7c6ac13e19fef500b7f669a16bbd01ecc95965ca",
+    "path": "packages/react-reconciler/src/ReactFiberCommitEffects.js",
+    "retained": "facebook_react__packages__react-reconciler__src__ReactFiberCommitEffects.js",
+    "sha256": "eae02d27e3e3edd266c87fef4c3d6531e6c7c42ff9211c4c5bb87b0d5e74d844"
+  },
+  {
+    "repo": "vuejs/core",
+    "sha": "4ab865a848a1da3d10fb674f857e5fff13094644",
+    "path": "packages/reactivity/src/watch.ts",
+    "retained": "vuejs_core__packages__reactivity__src__watch.ts",
+    "sha256": "d0dcce0566ceff5db841870036027c53cd881291c9b335653696c3fa91a31548"
+  },
+  {
+    "repo": "sveltejs/svelte",
+    "sha": "020242d6bef059df9ae8c13dc8dbff4c9b31e0ff",
+    "path": "packages/svelte/src/internal/client/reactivity/effects.js",
+    "retained": "sveltejs_svelte__packages__svelte__src__internal__client__reactivity__effects.js",
+    "sha256": "e5fe83a0b7580836ecee8f9cd985ef8de920a711fd1ced77579bc854101d07b6"
+  },
+  {
+    "repo": "nestjs/nest",
+    "sha": "7fb52e7f4f7314fbc117e369a09297bc2ecadf6b",
+    "path": "packages/core/hooks/on-module-init.hook.ts",
+    "retained": "nestjs_nest__packages__core__hooks__on-module-init.hook.ts",
+    "sha256": "f468a31e21e1226eea5e6949cee8abdd9ab0c5cbc5de2d8548415b1a335ff29e"
+  },
+  {
+    "repo": "nestjs/nest",
+    "sha": "7fb52e7f4f7314fbc117e369a09297bc2ecadf6b",
+    "path": "packages/core/hooks/on-module-destroy.hook.ts",
+    "retained": "nestjs_nest__packages__core__hooks__on-module-destroy.hook.ts",
+    "sha256": "7068bde561c078fdb0ac7037972f397372f3cc6fd47f0cd1a3e3b9e338d076a6"
+  },
+  {
+    "repo": "nestjs/nest",
+    "sha": "7fb52e7f4f7314fbc117e369a09297bc2ecadf6b",
+    "path": "packages/core/nest-application-context.ts",
+    "retained": "nestjs_nest__packages__core__nest-application-context.ts",
+    "sha256": "63f61faf9a328e30067f4fe00d3d09b748089d2ed8b8c8df53780328c44f1ae5"
+  },
+  {
+    "repo": "spring-projects/spring-framework",
+    "sha": "82a6b40b9366ec181ededdad282b307ee5381a52",
+    "path": "spring-context/src/main/java/org/springframework/context/support/DefaultLifecycleProcessor.java",
+    "retained": "spring-projects_spring-framework__spring-context__src__main__java__org__springframework__context__support__DefaultLifecycleProcessor.java",
+    "sha256": "3037d1f6cbfb29fa69241b83f9a5630dd031d94dddb0872b69019e3cba819dad"
+  },
+  {
+    "repo": "agent-teams-ai/modularity-host-test",
+    "sha": "fcc10b2501420aacf9f904e976a4d230d3f02e68",
+    "path": "scripts/evidence/run.mjs",
+    "retained": "agent-teams-ai_modularity-host-test__scripts__evidence__run.mjs",
+    "sha256": "c4fcbd046f3be75fad522109bb9c365a073b64f422f60305dba3839a714dfbca"
+  },
+  {
+    "repo": "agent-teams-ai/get-modular",
+    "sha": "9c722ceff4ede307d06d7a4b63fdebe615f54c53",
+    "path": "package.json",
+    "retained": "agent-teams-ai_get-modular__package.json",
+    "sha256": "db7b4ac8bb46d5cb98fbf8c03dbb609827c4a310b8ad23b92a0df7dfab8d8c07"
+  }
+]

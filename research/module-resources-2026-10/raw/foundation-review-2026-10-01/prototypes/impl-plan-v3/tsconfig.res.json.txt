@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "strict": true, "noEmit": true, "target": "ES2024", "module": "NodeNext", "moduleResolution": "NodeNext",
+    "lib": ["ES2024", "ESNext.Disposable", "ESNext.Promise", "DOM"],
+    "types": [], "isolatedDeclarations": true, "declaration": true, "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true, "noUncheckedIndexedAccess": true, "exactOptionalPropertyTypes": true,
+    "verbatimModuleSyntax": true
+  },
+  "files": ["res/index.ts"]
+}

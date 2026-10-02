@@ -1,0 +1,41 @@
+// usage: node scale.ts <path-to-index.ts>
+const { createScope } = await import(process.argv[2] ?? "./res/index.ts");
+const ms = (t: number) => (performance.now() - t).toFixed(1);
+function children(n: number) {
+  const parent = createScope({ name: "host" });
+  const t0 = performance.now();
+  const first = performance.now();
+  const kids: any[] = [];
+  let firstK = 0, lastK = 0;
+  for (let i = 0; i < n; i += 1) {
+    const s = i < 1000 || i >= n - 1000 ? performance.now() : 0;
+    const c = parent.resources.child({ name: `s${i}` });
+    c.resources.use({ [Symbol.dispose]: () => {} }, "r");
+    kids.push(c);
+    if (i < 1000) firstK += performance.now() - s; else if (i >= n - 1000) lastK += performance.now() - s;
+  }
+  return { parent, kids, create: ms(t0), firstK: firstK.toFixed(2), lastK: lastK.toFixed(2) };
+}
+for (const n of [1000, 10000, 50000]) {
+  const { parent, kids, create, firstK, lastK } = children(n);
+  const t1 = performance.now();
+  for (const k of kids) await k.control.close();          // oldest first
+  const closeOldest = ms(t1);
+  const t2 = performance.now();
+  const r = await parent.control.close();
+  console.log(`children n=${n}: create ${create} ms (first1k ${firstK} ms, last1k ${lastK} ms), close oldest-first ${closeOldest} ms, parent close ${ms(t2)} ms complete=${r.complete}`);
+}
+for (const n of [5000, 20000]) {
+  const s = createScope({ name: "m" });
+  for (let i = 0; i < n; i += 1) s.resources.use({ [Symbol.dispose]: () => { throw new Error("x"); } }, `f${i}`);
+  const t = performance.now();
+  await s.control.close(); await s.control.close();
+  console.log(`debts n=${n}: two closes ${ms(t)} ms`);
+}
+{ // one scope, 50k live children closed by the parent with order concurrent
+  const p = createScope({ name: "tenant", order: "concurrent" });
+  for (let i = 0; i < 50000; i += 1) p.resources.child({ name: `s${i}` }).resources.use({ [Symbol.asyncDispose]: async () => {} }, "r");
+  const t = performance.now();
+  const r = await p.control.close();
+  console.log(`concurrent close of 50k children: ${ms(t)} ms complete=${r.complete}`);
+}

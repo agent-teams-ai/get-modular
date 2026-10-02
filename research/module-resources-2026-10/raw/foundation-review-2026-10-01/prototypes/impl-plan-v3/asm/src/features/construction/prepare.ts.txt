@@ -1,0 +1,186 @@
+import type { CompositionPlan, CompositionProfile } from "@get-modular/core";
+import type { AnyFactoryHandle, AssemblyPreparationResult, AssemblyPrepareInput, InputHandles, PreparationErrorCode, RootHandles, RunOptions } from "./types.js";
+import type { ConstructionPorts, Metadata, Program } from "./ports.js";
+import { appendCreated } from "./ports.js";
+import { SnapshotFault, copyPlan, data, dataObject, denseArray, envelope, inspectPlan, limits, record, rootKeys, snapshotPlan } from "./snapshot.js";
+import { metadataFor } from "./bind.js";
+import { runAttempt } from "./run.js";
+
+class PreparationFault extends Error {
+  readonly code: PreparationErrorCode;
+  constructor(code: PreparationErrorCode) { super(code); this.code = code; }
+}
+function refuse(code: PreparationErrorCode): never { throw new PreparationFault(code); }
+function sameStrings(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+}
+function samePlan(a: CompositionPlan, b: CompositionPlan): boolean {
+  return a.profileId === b.profileId
+    && sameStrings(a.roots, b.roots) && sameStrings(a.dependencyOrder, b.dependencyOrder)
+    && a.selections.length === b.selections.length && a.selections.every((value, index) => {
+      const other = b.selections.at(index);
+      if (other === undefined) {return false;}
+      return value.moduleId === other.moduleId && value.implementationId === other.implementationId;
+    })
+    && a.bindings.length === b.bindings.length && a.bindings.every((value, index) => {
+      const other = b.bindings.at(index);
+      if (other === undefined) {return false;}
+      return value.consumerImplementationId === other.consumerImplementationId && value.slotId === other.slotId
+      && value.capabilityId === other.capabilityId && value.compatibility.token === other.compatibility.token
+        && sameStrings(value.providerImplementationIds, other.providerImplementationIds);
+    });
+}
+function sameEnvelope(a: Readonly<Record<string, unknown>>, b: Readonly<Record<string, unknown>>): boolean {
+  const keys = Reflect.ownKeys(a);
+  return keys.length === Reflect.ownKeys(b).length && keys.every((key) => {
+    if (typeof key !== "string" || !Object.hasOwn(b, key)) {return false;}
+    return a[key] === b[key] || (key === "diagnostics" && Array.isArray(a[key]) && Array.isArray(b[key]));
+  });
+}
+function profileFrom(plan: CompositionPlan): CompositionProfile {
+  return Object.freeze({
+    kind: "get-modular.composition-profile", schemaVersion: 1, profileId: plan.profileId,
+    roots: plan.roots, selections: plan.selections,
+    bindings: Object.freeze(plan.bindings.map((binding) => Object.freeze({
+      consumerImplementationId: binding.consumerImplementationId,
+      slotId: binding.slotId, providerImplementationIds: binding.providerImplementationIds,
+    }))),
+  });
+}
+
+// Factory handles come only through `factories`, input handles only through `inputs`;
+// together they cover every selection exactly once.
+function collectMetadata(factories: readonly unknown[], inputHandles: readonly unknown[]): {
+  readonly byHandle: Map<object, Metadata>;
+  readonly byId: Map<string, Metadata>;
+} {
+  let provides = 0;
+  let slots = 0;
+  const all = [...factories, ...inputHandles];
+  for (const [index, handle] of all.entries()) {
+    const metadata = metadataFor(handle);
+    if (!metadata) {refuse(index < factories.length ? "assembly.prepare.handles" : "assembly.prepare.inputs");}
+    if ((metadata.input === true) !== (index >= factories.length)) {refuse("assembly.prepare.inputs");}
+    provides += metadata.declaration.provides.length;
+    slots += metadata.declaration.slots.length;
+    if (provides > limits.aggregateProvides || slots > limits.aggregateSlots) {throw new SnapshotFault("limit");}
+  }
+  const byHandle = new Map<object, Metadata>();
+  const byId = new Map<string, Metadata>();
+  for (const [index, handle] of all.entries()) {
+    const metadata = metadataFor(handle);
+    if (handle === null || typeof handle !== "object" || !metadata) {refuse("assembly.prepare.handles");}
+    const id = metadata.declaration.implementationId;
+    if (byHandle.has(handle) || byId.has(id)) {refuse(index < factories.length ? "assembly.prepare.handles" : "assembly.prepare.inputs");}
+    byHandle.set(handle, metadata);
+    byId.set(id, metadata);
+  }
+  return { byHandle, byId };
+}
+
+function validateSelections(plan: CompositionPlan, byId: ReadonlyMap<string, Metadata>): void {
+  const selected = new Set(plan.selections.map((selection) => selection.implementationId));
+  if (plan.selections.length !== byId.size || selected.size !== byId.size) {refuse("assembly.prepare.handles");}
+  for (const selection of plan.selections) {
+    if (byId.get(selection.implementationId)?.declaration.moduleId !== selection.moduleId) {
+      refuse("assembly.prepare.handles");
+    }
+  }
+}
+
+function bindRoots(aliases: Readonly<ReturnType<typeof rootKeys>>, plan: CompositionPlan,
+  byHandle: ReadonlyMap<object, Metadata>): Program["roots"] {
+  const rootIds = new Set(plan.roots);
+  const rootHandles = new Set<object>();
+  if (aliases.keys.length !== plan.roots.length || rootIds.size !== plan.roots.length) {refuse("assembly.prepare.roots");}
+  return Object.freeze(aliases.keys.map((alias) => {
+    const handle = data(aliases.object, alias);
+    if (handle === null || typeof handle !== "object") {refuse("assembly.prepare.roots");}
+    const metadata = byHandle.get(handle);
+    if (metadata?.input === true) {refuse("assembly.prepare.inputs");} // a borrowed input is never a root
+    if (!metadata || rootHandles.has(handle) || !rootIds.has(metadata.declaration.moduleId)) {
+      refuse("assembly.prepare.roots");
+    }
+    rootHandles.add(handle);
+    return Object.freeze({ alias, implementationId: metadata.declaration.implementationId });
+  }));
+}
+
+function inputHandlesOf(aliases: Readonly<ReturnType<typeof rootKeys>>): readonly unknown[] {
+  return aliases.keys.map((alias) => data(aliases.object, alias));
+}
+function bindInputs(aliases: Readonly<ReturnType<typeof rootKeys>>, byHandle: ReadonlyMap<object, Metadata>): Program["inputs"] {
+  return Object.freeze(aliases.keys.map((alias) => {
+    const handle = data(aliases.object, alias);
+    const metadata = handle !== null && typeof handle === "object" ? byHandle.get(handle) : undefined;
+    if (metadata?.input !== true) {refuse("assembly.prepare.inputs");}
+    return Object.freeze({ alias, implementationId: metadata.declaration.implementationId });
+  }));
+}
+function createProgram(plan: CompositionPlan, roots: Program["roots"], inputs: Program["inputs"], byId: ReadonlyMap<string, Metadata>): Program {
+  const bindings = new Map<string, Map<string, CompositionPlan["bindings"][number]>>();
+  for (const binding of plan.bindings) {
+    let rows = bindings.get(binding.consumerImplementationId);
+    if (!rows) { rows = new Map(); bindings.set(binding.consumerImplementationId, rows); }
+    rows.set(binding.slotId, binding);
+  }
+  return Object.freeze({
+    roots, inputs,
+    steps: Object.freeze(plan.dependencyOrder.map((id) => {
+      const metadata = byId.get(id);
+      if (!metadata) {refuse("assembly.prepare.handles");}
+      const rows = bindings.get(id);
+      if (metadata.declaration.slots.length > 0 && rows === undefined) {refuse("assembly.prepare.handles");}
+      return Object.freeze({ metadata, injections: Object.freeze(metadata.declaration.slots.map((slot) => {
+        const binding = rows?.get(slot.slotId);
+        if (binding === undefined) {refuse("assembly.prepare.handles");}
+        return Object.freeze({ slotId: slot.slotId, capabilityId: binding.capabilityId,
+          kind: slot.cardinality.kind, providers: binding.providerImplementationIds });
+      })) });
+    })),
+  });
+}
+export async function prepareConstruction<C, F extends readonly AnyFactoryHandle<C>[], R extends RootHandles<C>, N extends InputHandles<C>>(
+  input: AssemblyPrepareInput<C, F, R, N>, ports: ConstructionPorts,
+): Promise<AssemblyPreparationResult<R, N>> {
+  try {
+    const supplied = record(input, ["composition", "factories", "roots"], ["inputs"]);
+    const factories = denseArray(data(supplied, "factories"), limits.handles);
+    const aliases = rootKeys(data(supplied, "roots"));
+    const suppliedInputs = Object.hasOwn(supplied, "inputs") ? data(supplied, "inputs") : undefined;
+    const inputAliases = rootKeys(suppliedInputs === undefined ? {} : suppliedInputs);
+    const composition = dataObject(data(supplied, "composition"));
+    const header = envelope(composition);
+    const census = inspectPlan(data(composition, "plan"));
+    // All individual and aggregate counts precede proportional snapshot copies.
+    const { byHandle, byId } = collectMetadata(factories, inputHandlesOf(inputAliases));
+    const plan = copyPlan(census);
+    validateSelections(plan, byId);
+    const roots = bindRoots(aliases, plan, byHandle);
+    const inputs = bindInputs(inputAliases, byHandle);
+    const declarations = Object.freeze(Array.from(byId.values(), (metadata) => metadata.declaration));
+    const profile = profileFrom(plan);
+    const compile = ports.compileComposition, commit = ports.commitCreated ?? appendCreated;
+    const checked = await compile({ declarations, profile });
+    if (!checked.ok) {
+      const diagnostics = checked.diagnostics;
+      return Object.freeze({
+        status: "failed", error: Object.freeze({ code: "assembly.prepare.core-rejected", cause: undefined }),
+        diagnostics: Object.freeze([...diagnostics]),
+      });
+    }
+    if (!sameEnvelope(header, envelope(checked)) || !samePlan(plan, snapshotPlan(checked.plan))) {
+      return refuse("assembly.prepare.plan-mismatch");
+    }
+    const program = createProgram(plan, roots, inputs, byId);
+    const prepared = Object.freeze({ run: async (options?: RunOptions) => runAttempt<R>(program, options, commit) }) as never;
+    return Object.freeze({ status: "prepared", prepared });
+  } catch (cause) {
+    const code = cause instanceof PreparationFault ? cause.code
+      : cause instanceof SnapshotFault ? cause.kind === "limit" ? "assembly.prepare.limit" : "assembly.prepare.invalid-input" : undefined;
+    if (code === undefined) {throw cause;}
+    return Object.freeze({
+      status: "failed", error: Object.freeze({ code, cause }), diagnostics: Object.freeze([]),
+    });
+  }
+}
