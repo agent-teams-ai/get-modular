@@ -43,6 +43,10 @@ consume both.
   still owns plugin admission, effects, physical cleanup, and recovery. Use it
   only for an explicitly adopted dynamic scope; ordinary static composition and
   passive setup do not need it. See the [consumer lifecycle guidance](docs/architecture/common-assembly.md#optional-dynamic-host-lifecycle-candidate).
+- [`@get-modular/resources`](packages/resources/README.md) gives module
+  instances ordered, cooperative cleanup scopes. A module registers how to
+  release what it acquired; the Host decides when a scope closes, how long to
+  wait and whether to retry. `scoped()` needs Assembly 0.3.0 `run({ scope })`.
 - `@get-modular/conformance` is reserved for a development-only conformance suite for core,
   alternative implementations, and adapters. Applications do not install it at
   runtime.

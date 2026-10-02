@@ -41,6 +41,7 @@ package or empty feature layout is created by this adoption.
 Initial package boundaries are owned by `ADR-0003`, which resolves `OD-001`.
 `ADR-0029` adds the optional candidate-only lifecycle kernel module and retains
 G1 public qualification and npm namespace verification as release gates.
+`ADR-0030` adds the optional public resource scope module.
 
 ## Local extensions
 
@@ -70,6 +71,11 @@ G1 public qualification and npm namespace verification as release gates.
   thin `src/composition/root.ts` package factory, and a curated root export.
   Its local bookkeeping identities are not product generation IDs or Host
   cleanup resources. Runtime dependencies and Core/Assembly imports are absent.
+- The resource scope package has one feature for ordered cooperative cleanup, a
+  thin `src/composition/root.ts` seam and a curated root export. It has no
+  runtime dependency, imports neither Core, Assembly nor a builtin, and Core
+  and Assembly do not import it. Its Assembly integration tests live in root
+  `tests/resources` because a leaf package declares no workspace dependency.
 - No deviation from organization `v1` is declared.
 
 ## Enforcement
@@ -79,7 +85,7 @@ repository mapping, local authorities, navigation, gate wiring, and explicit
 qualification states. `pnpm governance:check` uses the same repository-wide
 production-artifact inventory. It always rejects production artifacts outside
 `packages`. Accepted ADR-0015 admits source only inside a package identity
-accepted by ADR-0003, ADR-0023 or the bounded ADR-0029 successor and, on its
+accepted by ADR-0003, ADR-0023, the bounded ADR-0029 successor or ADR-0030 and, on its
 own, only while that manifest is
 `private: true` and declares no publication field. Accepted ADR-0017 supersedes
 those two conditions and blocks publication surfaces only while an open
