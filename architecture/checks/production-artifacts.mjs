@@ -225,7 +225,8 @@ export function packageIdentityViolations(inventory) {
 
 // ADR-0023 historical private shape and ADR-0025 public shape. Authority is
 // authenticated separately by assembly-admission through its supplied reader.
-// ADR-0027 extends the public shape to the exact next pair; shape is not authority.
+// ADR-0027 and ADR-0031 extend the public shape to the exact next pairs; shape is not authority.
+const PUBLIC_ASSEMBLY_VERSIONS = Object.freeze(["0.2.0", "0.3.0"]);
 export function assemblyManifestViolations(manifest) {
   if (manifest?.name !== "@get-modular/assembly") return [];
   const violations = [];
@@ -246,8 +247,8 @@ export function assemblyManifestViolations(manifest) {
     }
   }
   if (manifest.version !== "0.1.0"
-    && !(manifest.version === "0.2.0" && manifest.private === undefined)) {
-    violations.push("Assembly version requires historical 0.1.0 or public 0.2.0 admission");
+    && !(PUBLIC_ASSEMBLY_VERSIONS.includes(manifest.version) && manifest.private === undefined)) {
+    violations.push("Assembly version requires historical 0.1.0 or public 0.2.0/0.3.0 admission");
   }
   if (!plainObject(manifest.dependencies)
     || Object.keys(manifest.dependencies).length !== 1

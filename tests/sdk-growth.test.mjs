@@ -140,6 +140,16 @@ test("rejects missing command and Foundation identity drift", async t => {
   }, /registry identity/u));
 });
 
+// Versions outside any release keep these mutations real on feature and release branches.
+test("retained baseline describes the current manifest version", async t => {
+  await t.test("baseline behind its manifest", () => rejects(model => {
+    model.baselines["@get-modular/assembly"].packageVersion = "0.0.1";
+  }, /retained v1 baseline drifted/u));
+  await t.test("manifest ahead of its baseline", () => rejects(model => {
+    model.manifests["@get-modular/core"].version = "99.0.0";
+  }, /retained v1 baseline drifted/u));
+});
+
 test("rejects tracked ownership work outside G1", () => rejects(model => {
   model.tracked.push("packages/ownership/package.json");
 }, /ownership package surface/u));
