@@ -1,5 +1,5 @@
 import type { ModuleDeclaration } from "@get-modular/core";
-import type { Assembly, BindingErrorCode, FactoryCapabilities, FactoryContext, FactoryDependencies, FactoryHandle, FactoryProduct } from "./types.js";
+import type { Assembly, BindingErrorCode, FactoryContext } from "./types.js";
 import type { ExecutableFactory, Metadata } from "./ports.js";
 import { SnapshotFault, snapshotDeclaration } from "./snapshot.js";
 
@@ -42,10 +42,11 @@ export function bindInputFor<C>(): Assembly<C>["bindInput"] {
   };
 }
 export function bindFactoryFor<C>(): Assembly<C>["bindFactory"] {
-  return function bindFactory<const D extends ModuleDeclaration, I>(
-    declaration: D,
-    factory: (dependencies: FactoryDependencies<C, NoInfer<D>>, context: FactoryContext) => Promise<FactoryProduct<I, FactoryCapabilities<C, NoInfer<D>>>>,
-  ): FactoryHandle<C, D, I> {
+  // The public signature is Assembly<C>["bindFactory"]; the handle type is a type-level brand only.
+  return function bindFactory(
+    declaration: ModuleDeclaration,
+    factory: (dependencies: never, context: FactoryContext) => unknown,
+  ): never {
     if (typeof factory !== "function") {throw new AssemblyBindingError("assembly.bind.invalid-factory", new TypeError("Expected a factory function"));}
     const captured = captureDeclaration(declaration);
     const handle = sealedHandle();
@@ -53,6 +54,6 @@ export function bindFactoryFor<C>(): Assembly<C>["bindFactory"] {
       return Reflect.apply(factory, this, [dependencies, context]);
     };
     metadata.set(handle, Object.freeze({ declaration: captured, factory: executable }));
-    return handle as FactoryHandle<C, D, I>;
+    return handle as never;
   };
 }

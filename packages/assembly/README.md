@@ -8,14 +8,35 @@ consumer floor 5.8.3.
 See the repository's [consumer quickstart](https://github.com/agent-teams-ai/get-modular/blob/main/docs/guides/consumer-quickstart.md)
 for an executable Host with diagnostics, cancellation, and cleanup.
 
-`assemblyFor<C>()` returns `bindFactory`, `bindInput` and `prepare`. Describe each
-Host-owned capability in `C` using `CapabilityContract<Value, ExactToken>`. Pass a
-literal Core declaration to `bindFactory`; its slots determine the callback's
-dependency record. The callback receives that record and `{ signal, scope }`, where
-`scope` is the opaque value passed to `run()`, and returns an ordinary current-realm
-Promise fulfilling with `{ instance, capabilities }`. Assembly never reads, awaits,
-freezes or disposes `scope`. `bindInput` binds a declaration without slots whose
-capability record every run supplies instead of a factory.
+A contract owner publishes one descriptor per capability with
+`defineContract<Value>()({ id, revision })`, where `revision` is an integer from 1
+to 2147483647. Module authors write declarations with `declareModule`, for example
+`declareModule({ moduleId, implementationId, owner, provides: [Orders.provide()], slots: [Db.slot("db", required())] })`.
+`declareModule` supplies `kind` and `schemaVersion`, and each entry carries the exact
+compatibility token `<id>/r<revision>`, so Core rejects a slot built from another
+revision. `CapabilitiesOf<typeof Db | typeof Orders>` derives the capability map `C`.
+Name a map over many descriptors as an interface,
+`interface HostCapabilities extends CapabilitiesOf<typeof Db | typeof Orders> {}`;
+a type alias over hundreds of contracts multiplies type-check time. In 0.3.0,
+hand-written `CapabilityContract<Value, ExactToken>` maps and literal Core
+declarations remain valid.
+
+`assemblyFor<C>()` returns `bindFactory`, `bindInput` and `prepare`. Pass a literal
+declaration to `bindFactory`; its slots determine the callback's dependency record.
+The callback receives that record and `{ signal, scope }`, where `scope` is the
+opaque value passed to `run()`, and returns an ordinary current-realm Promise
+fulfilling with `{ instance, capabilities }`. Assembly never reads, awaits, freezes
+or disposes `scope`. A module package names that callback type as
+`ModuleFactory<C, typeof declaration, Instance>`, with its own map as `C`.
+`bindInput` binds a declaration without slots whose capability record every run
+supplies instead of a factory.
+
+A handle is invariant only in the capabilities its declaration uses. Teams bind
+handles under their own maps, and a Host prepares them together when every
+capability a handle uses has the identical contract in the preparing map; a handle
+that uses a capability the preparing map lacks is rejected. Pass handles to
+`prepare` as a literal array: an array typed as `AnyFactoryHandle<C>[]` beforehand
+skips that check, and so does an explicit `prepare<R>()` type argument.
 
 Module, implementation, profile and capability identities, and exact compatibility
 tokens, use Core's portable grammar, for example `synthetic/store` and
@@ -60,7 +81,9 @@ and `erasableSyntaxOnly`; production compiler settings remain independently enfo
 
 Packed tests install local Core and assembly archives into a disposable consumer,
 exercise the synthetic Host, and check typed wiring, deliberate negative fixtures
-and 1000 literal declarations. The scale fixture is only typechecked.
+and 1000 literal declarations. The scale fixture is only typechecked. A separate
+test type-checks 500 handles bound by 20 team maps and prepared under one Host map
+against the workspace build.
 
 Each Assembly release is published with exactly the Core release of the same
 version. Every release still requires registry reconciliation and downloaded-byte
