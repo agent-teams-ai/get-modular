@@ -55,3 +55,40 @@ if (outcome.status !== "succeeded") throw new Error(JSON.stringify(outcome));
 const rendered: string = outcome.roots.app.render();
 const host: boolean = outcome.roots.storage.host;
 if (rendered !== "data" || host !== true) throw new Error("Incorrect typed consumer wiring");
+
+// ADR-0031: one prepared assembly serves concurrent runs, each with its own scope and inputs.
+type SessionCapabilities = {
+  "synthetic/session": CapabilityContract<string, "synthetic/v1">;
+  "synthetic/greeting": CapabilityContract<string, "synthetic/v1">;
+};
+const sessionApi = assemblyFor<SessionCapabilities>();
+const sessionDeclaration = defineModule({
+  kind: "get-modular.module-declaration", schemaVersion: 1,
+  moduleId: "synthetic/session", implementationId: "synthetic/session", owner,
+  provides: [{ capabilityId: "synthetic/session", compatibility: exact() }], slots: [],
+});
+const greetingDeclaration = defineModule({
+  kind: "get-modular.module-declaration", schemaVersion: 1,
+  moduleId: "synthetic/greeting", implementationId: "synthetic/greeting", owner,
+  provides: [{ capabilityId: "synthetic/greeting", compatibility: exact() }],
+  slots: [{ slotId: "session", capabilityId: "synthetic/session", compatibility: exact(), cardinality: required() }],
+});
+const sessionInput = sessionApi.bindInput(sessionDeclaration);
+const greeting = sessionApi.bindFactory(greetingDeclaration, async (deps, { scope }) => ({
+  instance: { text: `${deps.session}:${String(scope)}` }, capabilities: { "synthetic/greeting": deps.session },
+}));
+const sessions = await compileComposition({
+  declarations: [sessionDeclaration, greetingDeclaration],
+  profile: {
+    kind: "get-modular.composition-profile", schemaVersion: 1, profileId: "synthetic/sessions",
+    roots: ["synthetic/greeting"],
+    selections: [sessionDeclaration, greetingDeclaration].map(({ moduleId, implementationId }) => ({ moduleId, implementationId })),
+    bindings: [{ consumerImplementationId: "synthetic/greeting", slotId: "session", providerImplementationIds: ["synthetic/session"] }],
+  },
+});
+if (!("plan" in sessions)) throw new Error(JSON.stringify(sessions));
+const sessionReady = await sessionApi.prepare({ composition: sessions, factories: [greeting], roots: { greeting }, inputs: { session: sessionInput } });
+if (sessionReady.status !== "prepared") throw new Error(JSON.stringify(sessionReady));
+const [first, second] = await Promise.all(["a", "b"].map((id) => sessionReady.prepared.run({ scope: id, inputs: { session: { "synthetic/session": id } } })));
+if (first?.status !== "succeeded" || second?.status !== "succeeded"
+  || first.roots.greeting.text !== "a:a" || second.roots.greeting.text !== "b:b") throw new Error("Incorrect run scope or inputs");

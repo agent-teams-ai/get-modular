@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { assemblyFor, AssemblyBindingError } from "@get-modular/assembly";
-import { required } from "@get-modular/core";
+import { compileComposition, required } from "@get-modular/core";
 import { binding, compile, declaration, prepared, profile, slot, synthetic } from "./fixture.mjs";
 
 test("all plan fields, digest and closed shapes participate in preflight", async () => {
@@ -100,4 +100,50 @@ test("a late incompatible declaration preserves separate Core diagnostics and ca
   assert.equal(result.error.code, "assembly.prepare.core-rejected");
   assert.ok(result.diagnostics.length > 0);
   assert.deepEqual(host.trace, []);
+});
+
+test("Core binds a parent port passed as an input like any provider", async () => {
+  const session = declaration("session", ["synthetic/session"]);
+  const store = declaration("store", ["synthetic/store"], [slot("session", "synthetic/session")]);
+  const rows = [binding("synthetic/store", "session", ["synthetic/session"])];
+  const without = await compileComposition({ declarations: [store], profile: profile([store], rows) });
+  assert.equal(without.ok, false);
+  assert.ok(without.diagnostics.some(({ code }) => code === "binding.unknown-provider"), JSON.stringify(without.diagnostics));
+  const api = assemblyFor();
+  const input = api.bindInput(session);
+  const factory = api.bindFactory(store, async (deps) => ({ instance: deps.session, capabilities: { "synthetic/store": deps.session } }));
+  const composition = await compile([session, store], profile([session, store], rows));
+  const ready = await prepared(api, { composition, factories: [factory], roots: { store: factory }, inputs: { session: input } });
+  assert.equal((await ready.run({ inputs: { session: { "synthetic/session": 7 } } })).roots.store, 7);
+});
+
+test("input handles appear only in inputs, under one alias, and are never roots", async () => {
+  const api = assemblyFor();
+  let calls = 0, reads = 0;
+  const session = declaration("session", ["synthetic/session"]);
+  const store = declaration("store", ["synthetic/store"], [slot("session", "synthetic/session")]);
+  const composition = await compile([session, store],
+    profile([session, store], [binding("synthetic/store", "session", ["synthetic/session"])]));
+  const input = api.bindInput(session);
+  const factory = api.bindFactory(store, async () => { calls++; return { instance: {}, capabilities: { "synthetic/store": {} } }; });
+  const sessionFactory = api.bindFactory(session, async () => { calls++; return { instance: {}, capabilities: { "synthetic/session": {} } }; });
+  const getter = {};
+  Object.defineProperty(getter, "session", { enumerable: true, get() { reads++; return input; } });
+  for (const [change, code] of [
+    [{ factories: [input, factory] }, "assembly.prepare.input-handles"],
+    [{ factories: [input, factory], inputs: { session: input } }, "assembly.prepare.input-handles"],
+    [{ roots: { store: input }, inputs: { session: input } }, "assembly.prepare.input-handles"],
+    [{ inputs: { first: input, second: input } }, "assembly.prepare.input-handles"],
+    [{ factories: [sessionFactory, factory], inputs: { session: sessionFactory } }, "assembly.prepare.input-handles"],
+    [{ inputs: { session: {} } }, "assembly.prepare.input-handles"],
+    [{ inputs: getter }, "assembly.prepare.invalid-input"],
+    [{ inputs: null }, "assembly.prepare.invalid-input"],
+    [{ inputs: undefined }, "assembly.prepare.handles"],
+  ]) {
+    const result = await api.prepare({ composition, factories: [factory], roots: { store: factory }, ...change });
+    assert.equal(result.status, "failed", JSON.stringify(Object.keys(change)));
+    assert.equal(result.error.code, code, JSON.stringify(Object.keys(change)));
+  }
+  assert.equal(calls, 0);
+  assert.equal(reads, 0);
 });

@@ -8,11 +8,13 @@ export type CapabilitySchema<C> = { readonly [K in keyof C]: CapabilityContract<
 
 declare const scope: unique symbol;
 declare const detail: unique symbol;
+declare const input: unique symbol;
 export type FactoryHandle<C, D extends ModuleDeclaration = ModuleDeclaration, I = unknown> = {
   readonly [scope]: (capabilities: C) => C;
   readonly [detail]: { readonly declaration: D; readonly instance: I };
 };
-export type AnyFactoryHandle<C> = FactoryHandle<C>;
+/** A factory handle that a map C accepts as a factory or a root; an input handle never is one. */
+export type AnyFactoryHandle<C> = FactoryHandle<C> & { readonly [input]?: never };
 export type RootHandles<C> = Readonly<Record<string, AnyFactoryHandle<C>>>;
 export type RootInstances<R> = {
   readonly [K in keyof R]: R[K] extends FactoryHandle<infer _C, infer _D, infer I> ? I : never;
@@ -65,16 +67,32 @@ export type FactoryDependencies<C, D extends ModuleDeclaration> = {
         ? C[S["capabilityId"]] extends { readonly value: infer V } ? V : never
         : never;
 };
-export type FactoryContext = { readonly signal: AbortSignal };
+/** Lifetime only. `scope` is the opaque value passed to `run()`: Assembly never reads, awaits, freezes or disposes it. */
+export type FactoryContext = { readonly signal: AbortSignal; readonly scope: unknown };
 export type FactoryProduct<I, P> = { readonly instance: I; readonly capabilities: P };
 
+/** A slot-free module whose capability record each run supplies instead of a factory. */
+export type InputHandle<C, D extends ModuleDeclaration = ModuleDeclaration> =
+  FactoryHandle<C, D, FactoryCapabilities<C, D>> & { readonly [input]: true };
+export type AnyInputHandle<C> = FactoryHandle<C> & { readonly [input]: true };
+export type InputHandles<C> = Readonly<Record<string, AnyInputHandle<C>>>;
+/** The capability record a run supplies for every declared input alias. */
+export type RunInputs<N> = {
+  readonly [K in keyof N]: N[K] extends { readonly [detail]: { readonly instance: infer I } } ? I : never;
+};
+
 export type SuccessfulComposition = Extract<CompileCompositionResult, { readonly plan: CompositionPlan; readonly digest: PlanDigest }>;
-export type AssemblyPrepareInput<C, R extends RootHandles<C>> = {
+export type AssemblyPrepareInput<C, R extends RootHandles<C>, N extends InputHandles<C> = {}> = {
   readonly composition: SuccessfulComposition;
   readonly factories: readonly AnyFactoryHandle<C>[];
   readonly roots: R;
+  readonly inputs?: N | undefined;
 };
-export type RunOptions = { readonly signal?: AbortSignal };
+export type RunOptions<N = {}> = {
+  readonly signal?: AbortSignal | undefined;
+  readonly scope?: unknown;
+  readonly inputs?: RunInputs<N> | undefined;
+};
 export type CreatedEntry = {
   readonly moduleId: string;
   readonly implementationId: string;
@@ -85,13 +103,14 @@ export type ReturnedProduct = { readonly implementationId: string; readonly prod
 export type ObservedCancellation = { readonly reason: unknown };
 export type RunErrorCode =
   | "assembly.run.factory-threw" | "assembly.run.unsupported-carrier"
-  | "assembly.run.factory-rejected" | "assembly.run.invalid-product" | "assembly.run.internal";
+  | "assembly.run.factory-rejected" | "assembly.run.invalid-product" | "assembly.run.internal"
+  | "assembly.run.invalid-inputs";
 export type AssemblyOutcome<R> =
   | { readonly status: "succeeded"; readonly roots: RootInstances<R>; readonly created: readonly CreatedEntry[] }
   | { readonly status: "cancelled"; readonly reason: unknown; readonly created: readonly CreatedEntry[] }
   | {
     readonly status: "failed";
-    readonly phase: "factory" | "completion" | "internal";
+    readonly phase: "inputs" | "factory" | "completion" | "internal";
     readonly code: RunErrorCode;
     readonly implementationId: string | undefined;
     readonly cause: unknown;
@@ -99,15 +118,18 @@ export type AssemblyOutcome<R> =
     readonly returned: ReturnedProduct | undefined;
     readonly cancellation: ObservedCancellation | undefined;
   };
-export type PreparedAssembly<R> = {
-  readonly run: (options?: RunOptions) => Promise<AssemblyOutcome<R>>;
+/** Options may be omitted unless the assembly declares inputs; then every run supplies them. */
+export type PreparedAssembly<R, N = {}> = {
+  readonly run: (...options: {} extends N
+    ? [options?: RunOptions<N>]
+    : [options: RunOptions<N> & { readonly inputs: RunInputs<N> }]) => Promise<AssemblyOutcome<R>>;
 };
 export type PreparationErrorCode =
   | "assembly.prepare.invalid-input" | "assembly.prepare.limit"
   | "assembly.prepare.handles" | "assembly.prepare.roots"
-  | "assembly.prepare.core-rejected" | "assembly.prepare.plan-mismatch";
-export type AssemblyPreparationResult<R> =
-  | { readonly status: "prepared"; readonly prepared: PreparedAssembly<R> }
+  | "assembly.prepare.core-rejected" | "assembly.prepare.plan-mismatch" | "assembly.prepare.input-handles";
+export type AssemblyPreparationResult<R, N = {}> =
+  | { readonly status: "prepared"; readonly prepared: PreparedAssembly<R, N> }
   | {
     readonly status: "failed";
     readonly error: { readonly code: PreparationErrorCode; readonly cause: unknown };
@@ -119,6 +141,10 @@ export type Assembly<C> = {
     declaration: D & ValidDeclaration<C, NoInfer<D>>,
     factory: (dependencies: FactoryDependencies<C, NoInfer<D>>, context: FactoryContext) => Promise<FactoryProduct<I, FactoryCapabilities<C, NoInfer<D>>>>,
   ) => FactoryHandle<C, D, I>;
-  readonly prepare: <const R extends RootHandles<C>>(input: AssemblyPrepareInput<C, R>) =>
-    Promise<AssemblyPreparationResult<R>>;
+  readonly bindInput: <const D extends ModuleDeclaration & { readonly slots: readonly [] }>(
+    declaration: D & ValidDeclaration<C, NoInfer<D>>,
+  ) => InputHandle<C, D>;
+  readonly prepare: <const R extends RootHandles<C>, const N extends InputHandles<C> = {}>(
+    input: AssemblyPrepareInput<C, R, N>,
+  ) => Promise<AssemblyPreparationResult<R, N>>;
 };
