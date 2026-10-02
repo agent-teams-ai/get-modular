@@ -44,6 +44,8 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
     `${checkpoint.evidence.base}:${indexPath}`], { encoding: "utf8" }));
   assert.deepEqual(index.decisions.slice(0, previousIndex.decisions.length),
     previousIndex.decisions);
+  // ADR-0030 supersedes ADR-0028 in its own text. ADR-0028 keeps its accepted
+  // bytes and status because the frozen checkpoint authenticates the whole file.
   assert.deepEqual(index.decisions.slice(previousIndex.decisions.length), [
     {
       id: "ADR-0028", path,
@@ -53,6 +55,21 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
       id: "ADR-0029",
       path: "docs/decisions/0029-admit-an-optional-lifecycle-kernel-candidate.md",
       immutableDigest: "sha256:4162e78542ac053ee03e3b330880495ddd9ffd261c0a578fe100035bdf910d64",
+    },
+    {
+      id: "ADR-0030",
+      path: "docs/decisions/0030-admit-the-module-resource-scope-package.md",
+      immutableDigest: "sha256:f964dc45a7c41aa6198c350a6a7a6efca26d715a43e8876c409898a2911a8adc",
+    },
+    {
+      id: "ADR-0031",
+      path: "docs/decisions/0031-pass-a-per-run-scope-and-declared-inputs-to-assembly-runs.md",
+      immutableDigest: "sha256:de8fc01b077851b14574553939f29d94245455c946ab62fea12fa958a36db1ec",
+    },
+    {
+      id: "ADR-0032",
+      path: "docs/decisions/0032-give-assembly-an-authoring-builder-and-capability-scoped-handles.md",
+      immutableDigest: "sha256:8d929a7f40c1864f3fc898e68700c51ea171bcf48ec9fa32a967d4d4d2e1066a",
     },
   ]);
   const paths = execFileSync("git", ["ls-tree", "-r", "--name-only", checkpoint.evidence.base,
