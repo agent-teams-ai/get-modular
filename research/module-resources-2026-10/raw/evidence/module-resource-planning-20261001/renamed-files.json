@@ -1,5 +1,5 @@
 {
-  "note": "Long flat names were shortened for the Windows path limit; references inside raw/ were updated.",
+  "note": "Long flat names were shortened for the Windows path limit; references inside raw/ keep the old names.",
   "renamed": [
     {
       "from": "source-supplement/agent-teams-ai_agent-runtime__packages__apps__embedded-runtime__src__features__ordinary-session-runtime__adapters__ordinary-observation-journal.ts.txt",

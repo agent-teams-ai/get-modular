@@ -77,7 +77,7 @@ English summary.
   [renamed-files.json](raw/evidence/module-resource-planning-20261001/renamed-files.json).
 - Local paths are replaced with `<workspace>`, `<scratchpad>`, `<home>` and
   `<codex-visualizations>`; worker infrastructure details are replaced with
-  `<worker-host>`, `<worker-jobs>`, `<worker-state>` and `<worker-id>`. Hashes
+  `<worker-host>`, `<worker-jobs>`, `<worker-state>`, `<worker-tmp>` and `<worker-id>`. Hashes
   recorded inside the evidence refer to the original bytes.
 - Third-party source files and crawled web pages used as inputs are not
   committed because they carry no bundled licenses. Their paths, sizes and
