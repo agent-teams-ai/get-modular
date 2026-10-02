@@ -43,12 +43,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Run check lane with its build prerequisites
-        shell: bash
         env:
           LANE_SCRIPTS: ${{ matrix.scripts }}
           FOUNDATION_PR_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
-        run: |
-          for s in $LANE_SCRIPTS; do pnpm run "$s" || exit 1; done
+        run: node architecture/tooling/run-ci-check-lane.mjs
       - name: Verify tracked workspace integrity
         env:
           EXPECTED_HEAD_SHA: ${{ github.sha }}

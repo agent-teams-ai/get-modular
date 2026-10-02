@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import test from "node:test";
@@ -43,6 +43,7 @@ const aggregate = (value, host) => value.jobs[`check-${host}`];
 const runner = job => job.steps.find(step => step.env?.LANE_SCRIPTS);
 
 function validateLanes(value, manifest = packageJson) {
+  assert.equal(value.defaults?.run?.shell, undefined, "payload needs the platform default shell");
   assert.equal(manifest.scripts.precheck, "pnpm ownership:checkpoint:test", "precheck drift");
   assert.equal(manifest.scripts.check, baseline.map(script => `pnpm ${script}`).join(" && "), "check chain drift");
   assert.deepEqual(Object.values(primary).flat().sort(),
@@ -56,6 +57,7 @@ function validateLanes(value, manifest = packageJson) {
     assert.equal(job.needs, undefined, "lane must have an independent checkout");
     assert.equal(job.if, undefined, "lane must not be skipped");
     assert.equal(job["continue-on-error"], undefined);
+    assert.equal(job.defaults?.run?.shell, undefined, "payload needs the platform default shell");
     assert.deepEqual(Object.keys(job.strategy.matrix), ["include"]);
     const rows = job.strategy.matrix.include;
     assert.deepEqual(rows.map(row => row.lane).sort(), Object.keys(primary).sort(), "lane inventory");
@@ -68,7 +70,7 @@ function validateLanes(value, manifest = packageJson) {
       assert.equal(step["continue-on-error"], undefined);
     }
     const execution = runner(job);
-    assert.equal(execution.shell, "bash");
+    assert.equal(execution.shell, undefined, "payload needs the platform default shell");
     assert.equal(execution.env.LANE_SCRIPTS, "${{ matrix.scripts }}");
     assert.equal(execution.env.FOUNDATION_PR_HEAD_REPOSITORY,
       "${{ github.event.pull_request.head.repo.full_name }}");
@@ -134,6 +136,36 @@ function shell(command, cwd, environment) {
   return result.status;
 }
 
+function lane(step, cwd, environment) {
+  const [command, ...args] = step.run.trim().split(/\s+/u);
+  assert.equal(command, "node");
+  const result = spawnSync(process.execPath, args, {
+    cwd, encoding: "utf8", timeout: 15_000,
+    env: { ...process.env, ...environment },
+  });
+  assert.ifError(result.error);
+  assert.equal(result.signal, null, result.stderr);
+  return result.status;
+}
+
+async function prepareLane(cwd) {
+  await mkdir(join(cwd, "architecture", "tooling"), { recursive: true });
+  await copyFile(new URL("architecture/tooling/run-ci-check-lane.mjs", root),
+    join(cwd, "architecture", "tooling", "run-ci-check-lane.mjs"));
+  const fake = [
+    'const { appendFileSync } = require("node:fs");',
+    'appendFileSync("calls.txt", JSON.stringify(process.argv.slice(2)) + "\\n");',
+    'if (process.env.FAIL_SIGNAL) process.kill(process.pid, "SIGTERM");',
+    'process.exit(process.argv[3] === process.env.FAIL_SCRIPT ? 37 : 0);',
+    "",
+  ].join("\n");
+  await writeFile(join(cwd, "pnpm.cjs"), fake);
+  await writeFile(join(cwd, process.platform === "win32" ? "pnpm.cmd" : "pnpm"),
+    process.platform === "win32"
+      ? `@"${process.execPath}" "%~dp0pnpm.cjs" %*\r\n@exit /b %errorlevel%\r\n`
+      : `#!/usr/bin/env node\n${fake}`, { mode: 0o755 });
+}
+
 function assertAggregate(step, cwd, dependency) {
   assert.equal(shell(step.run, cwd, { NEEDS_JSON: JSON.stringify({ [dependency]: { result: "success" } }) }), 0);
   for (const result of ["failure", "cancelled", "skipped", "unknown", null]) {
@@ -174,6 +206,8 @@ test("rejects missing, duplicate, unknown and reordered obligations on any OS", 
     mutate(job => { job.steps[4].if = "false"; });
     mutate(job => { job["continue-on-error"] = true; });
     mutate(job => { job.strategy["fail-fast"] = true; });
+    mutate(job => { runner(job).shell = "bash"; });
+    mutate(job => { job.defaults = { run: { shell: "bash" } }; });
     mutate(job => { delete runner(job).env.FOUNDATION_PR_HEAD_REPOSITORY; });
     mutate(job => { job.steps.pop(); });
     mutate(job => { delete job.steps.at(-1).env.EXPECTED_HEAD_SHA; });
@@ -221,27 +255,54 @@ test("the actual aggregate shell fails closed for failure, cancellation, skips a
   });
 });
 
-test("the actual lane shell runs in order and stops at the first failed script", async () => {
+// The prior Bash payload changed Windows tar selection, coerced child exits to 1,
+// and accepted empty lanes. Native .cmd fixtures and these boundaries catch that regression.
+test("the actual native lane runner passes argv in order and preserves the first failed exit", async () => {
   await fixture(async cwd => {
-    await writeFile(join(cwd, "pnpm"), [
-      "#!/usr/bin/env bash",
-      'printf "%s\\n" "$2" >> calls.txt',
-      '[[ "$1" == "run" && "$2" != "$FAIL_SCRIPT" ]]',
-      "",
-    ].join("\n"), { mode: 0o755 });
-    const job = laneJob(workflow, "ubuntu");
+    await prepareLane(cwd);
+    const host = process.platform === "win32" ? "windows" : process.platform === "darwin" ? "macos" : "ubuntu";
+    const job = laneJob(workflow, host);
     for (const row of job.strategy.matrix.include) {
       const scripts = scriptsOf(row);
       for (const failure of [undefined, scripts[1], scripts.at(-2)]) {
         await rm(join(cwd, "calls.txt"), { force: true });
-        const status = shell(runner(job).run, cwd, {
+        const status = lane(runner(job), cwd, {
           PATH: `${cwd}${delimiter}${process.env.PATH}`, LANE_SCRIPTS: row.scripts, FAIL_SCRIPT: failure ?? "",
         });
-        assert.equal(status, failure ? 1 : 0, `${row.lane}: failure propagation`);
-        const calls = (await readFile(join(cwd, "calls.txt"), "utf8")).trim().split(/\r?\n/u);
-        assert.deepEqual(calls, failure ? scripts.slice(0, scripts.indexOf(failure) + 1) : scripts);
+        assert.equal(status, failure ? 37 : 0, `${row.lane}: failure propagation`);
+        const calls = (await readFile(join(cwd, "calls.txt"), "utf8")).trim().split(/\r?\n/u).map(line => JSON.parse(line));
+        const expected = failure ? scripts.slice(0, scripts.indexOf(failure) + 1) : scripts;
+        assert.deepEqual(calls, expected.map(script => ["run", script]));
       }
     }
+  });
+});
+
+test("the native lane rejects empty or unsafe input before invoking any script", async () => {
+  await fixture(async cwd => {
+    await prepareLane(cwd);
+    const step = runner(laneJob(workflow, "ubuntu"));
+    for (const scripts of [undefined, "", " \n\t ", "safe bad&name", "safe bad;name",
+      "safe bad|name", "safe %PATH%", "safe !PATH!", "safe $(node)", 'safe "quoted"', "safe ../path", "-flag"]) {
+      assert.notEqual(lane(step, cwd, {
+        PATH: `${cwd}${delimiter}${process.env.PATH}`, LANE_SCRIPTS: scripts,
+      }), 0);
+      await assert.rejects(readFile(join(cwd, "calls.txt")), { code: "ENOENT" });
+    }
+  });
+});
+
+test("the native lane fails for a terminated child or unavailable native tool", async () => {
+  await fixture(async cwd => {
+    await prepareLane(cwd);
+    const step = runner(laneJob(workflow, "ubuntu"));
+    const env = { PATH: `${cwd}${delimiter}${process.env.PATH}`, LANE_SCRIPTS: "first later" };
+    assert.notEqual(lane(step, cwd, { ...env, FAIL_SIGNAL: "1" }), 0);
+    assert.deepEqual((await readFile(join(cwd, "calls.txt"), "utf8")).trim().split(/\r?\n/u).map(line => JSON.parse(line)),
+      [["run", "first"]]);
+    await rm(join(cwd, "pnpm"), { force: true });
+    await rm(join(cwd, "pnpm.cmd"), { force: true });
+    assert.notEqual(lane(step, cwd, { ...env, PATH: cwd }), 0);
   });
 });
 
