@@ -48,6 +48,7 @@ resource policy is the single profile described in the current contract.
 ## Evidence
 
 - [Historical implementation-readiness audit](../research/implementation-readiness/report.md) - dispositions belong to the recorded historical subjects; use the current contract and roadmap for today's start conditions.
+- [Lifecycle kernel extraction plan](../research/lifecycle-kernel-2026-09/README.md) - archived working plan behind ADR-0029; the current authority listed in its README takes precedence.
 - [Compiler engineer handbook](qualification/compiler-engineer-handbook.md) - seventeen fact derivations, partial failure rules and independent examples.
 - [Growth and first-publication readiness review](qualification/growth-and-release-readiness-review.md) - reconciled capability migration, namespace admission and release-mechanics findings.
 - [Source map](provenance/source-map.yaml)
