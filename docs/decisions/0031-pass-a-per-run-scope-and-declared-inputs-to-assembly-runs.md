@@ -1,0 +1,107 @@
+---
+id: ADR-0031
+type: adr
+status: accepted
+owner: architecture
+approved_by: product-owner
+accepted_at: 2026-10-02
+summary: Admits the Core and Assembly 0.3.0 pair in which every run receives an opaque scope and declared inputs, so one prepared assembly serves many isolated instances.
+related:
+  - ADR-0009
+  - ADR-0023
+  - ADR-0026
+  - ADR-0027
+  - ADR-0029
+  - ADR-0030
+  - ADR-0032
+---
+
+# ADR-0031: Pass a per-run scope and declared inputs to Assembly runs
+
+## Context
+
+Assembly 0.2.0 factories receive `{ signal }`, and repeated or concurrent runs
+of one prepared assembly are isolated attempts. Two needs are not met.
+
+1. A wrapper that opens cleanup scopes for factories must know under which
+   parent scope the current run lives. Capturing that parent when factories are
+   bound puts every run under the first one: closing session 1 releases session
+   2, and a third run fails because its scope is closing (reproduced).
+2. Per-instance data and parent ports can only reach factories through
+   closures captured at bind time, so concurrent runs of one prepared assembly
+   see each other's data (reproduced). Hosts therefore compile, bind and prepare
+   per instance; prepare measured 14 to 78 times the cost of a run.
+
+On 2026-10-01 the owner chose instances over live graph mutation.
+
+## Decision
+
+- Admit the public pair Core 0.3.0 and Assembly 0.3.0 under the exact-pair rule
+  of ADR-0027. Core changes only its version.
+- `FactoryContext` is closed: `{ signal, scope }`. `scope` is the value passed
+  to `run()`. Assembly never reads, awaits, freezes or disposes it; when absent
+  it is `undefined`. Assembly does not import `@get-modular/resources`; the
+  `scoped()` wrapper of that package reads `scope` and never forwards it to a
+  module.
+- `run({ signal, scope, inputs })`; every option may be omitted or passed as
+  `undefined`. `bindInput(declaration)` binds a declaration without slots whose
+  capability record each run supplies instead of a factory.
+- `prepare({ composition, factories, roots, inputs })`. Input handles appear
+  only in `inputs`, each under exactly one alias; factory handles appear only
+  in `factories`. Together they cover every selection exactly once. An input
+  handle is never a root. Violations are `assembly.prepare.input-handles`; an
+  uncovered selection stays `assembly.prepare.handles`.
+- A run passes `inputs[alias]` as a plain data record with exactly the
+  declaration's capability ids. Assembly checks every input before the first
+  factory: a violation is `assembly.run.invalid-inputs` in phase `inputs`, with
+  no factory called and no accessor invoked. Inputs are borrowed and never
+  appear in `created`. Core sees an input as an ordinary selected module without
+  slots, so parent ports passed as inputs are bound and checked like any other
+  provider.
+- No live graph mutation, rebind, hot replacement or code unloading. Replacing
+  an instance means running a new one, switching the Host's pointer and closing
+  the old one.
+- The field is named `scope` because declarations already carry
+  `owner: { authority, path }`, a navigation label without authority.
+- This keeps GM-REQ-012. A factory still receives its closed dependency
+  record and the closed per-run context `{ signal, scope }`. Assembly delivers
+  `scope` but never reads it; only `scoped()` reads it, and it removes `scope`
+  before a module sees its context. Module code does not read `scope` outside
+  `scoped()`; the Consumer Module Standard states that rule. No factory
+  receives a resolver, a container or a registry.
+- The change is additive for factories and breaking for code that constructs
+  `FactoryContext` or `RunOptions` itself or implements `PreparedAssembly`. It
+  ships as a minor release with a migration note.
+- For Assembly 0.3.0 this decision takes precedence over the Assembly contract
+  in `docs/architecture/common-assembly.md` wherever the two differ,
+  including `prepare` without `inputs`, factory handles that must cover every
+  selection, `prepared.run({ signal })` and `{ signal }` as the whole factory
+  context. The revision of that document for this release replaces those
+  passages.
+
+## Consequences
+
+- One prepared assembly serves many isolated runs; the per-instance cost is a
+  run.
+- Input lifetime is not checked by types. An input must outlive every instance
+  that received it; the Consumer Module Standard states the rule.
+- An input shaped as a registry with `get(key)` recreates a service locator; the
+  Consumer Module Standard forbids such bundle inputs.
+- A run without `scope` fails only in wrapped factories, at run time, before
+  their bodies run.
+- Core plans do not mark inputs; Assembly bindings are the only place that
+  knows them.
+
+## Rejected alternatives
+
+- An opaque `context: X` for every factory: invisible dependencies that grow
+  into a service bag.
+- Input handles listed both in `factories` and in `inputs`: one handle in two
+  places, and a factory entry that is never called.
+- The field name `owner`: it collides with the declaration field.
+- `implementationId` in the context to name scopes automatically: it widens the
+  closed context; names stay explicit in `scoped(name, factory)`.
+- Prepare per instance as the only path: 14 to 78 times the cost of a run and
+  closure races.
+- A live graph with `replace(module)`: lifecycle policy would move into Get
+  Modular, against the system boundary and ADR-0029.
