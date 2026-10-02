@@ -4,7 +4,7 @@ Retained, non-authoritative research inputs and four read-only hosted results.
 These copies do not replace the canonical Consumer Module Standard or admit a runtime package.
 
 Requested profile for each job: `gpt-6.1-sol`, `max`, `priority` (fast).
-Host: `workers-fsn1-01`. Workstream: `agent-runtime/architecture-research-20260928`.
+Host: `<worker-host>`. Workstream: `agent-runtime/architecture-research-20260928`.
 All four jobs completed; source changes are empty. No runtime/build/test execution.
 
 | Lane | Result | Original remote result SHA-256 | Retained export SHA-256 |

@@ -24,7 +24,7 @@
     "elapsedMs": "1251631",
     "rawCause": "codex_app_server_turn_error:codex_app_server_error:Selected model is at capacity. Please try a different model.:details={\"phase\":\"turn_error_before_output\",\"turnNumber\":1,\"outputObserved\":false,\"outputCharCount\":0,\"elapsedMs\":1251631}",
     "subscriptionWorkerCode": "subscription_worker_pool_slot_failed",
-    "workerId": "file-backend-codex-safe:96d8052082de:slot-1",
+    "workerId": "file-backend-codex-safe:<worker-id>:slot-1",
     "slotIndex": "0",
     "baseCommit": "c9b8efe485e2736bbaba4e9c47914fe3ac849b8a",
     "executionGeneration": "2869e961-4261-4bc9-9e0f-a1cdfcbf104a",

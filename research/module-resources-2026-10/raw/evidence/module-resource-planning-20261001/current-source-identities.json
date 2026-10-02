@@ -10,14 +10,14 @@
     "repo": "agent-teams-ai/get-modular",
     "sha": "9c722ceff4ede307d06d7a4b63fdebe615f54c53",
     "path": "docs/decisions/0028-authorize-the-optional-ownership-contract-checkpoint.md",
-    "retained": "gm__adr-0028.md",
+    "retained": "agent-teams-ai_get-modular__docs__decisions__0028-authorize-the-optional-ownership-contract-checkpoint.md",
     "sha256": "6edd5c84db53f63525f03df6da21f6b4da284b770cbc727f7a4ed8e170551973"
   },
   {
     "repo": "agent-teams-ai/get-modular",
     "sha": "9c722ceff4ede307d06d7a4b63fdebe615f54c53",
     "path": "docs/decisions/0029-admit-an-optional-lifecycle-kernel-candidate.md",
-    "retained": "gm__adr-0029.md",
+    "retained": "agent-teams-ai_get-modular__docs__decisions__0029-admit-an-optional-lifecycle-kernel-candidate.md",
     "sha256": "9247eb2c2eb70cbbc215426446101314b1085d1d03fee02b6dc0467a737eac00"
   },
   {

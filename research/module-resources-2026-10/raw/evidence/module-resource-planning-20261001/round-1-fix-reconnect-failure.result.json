@@ -18,7 +18,7 @@
   "details": {
     "reason": "provider_reconnect_required",
     "subscriptionWorkerCode": "subscription_worker_pool_slot_failed",
-    "workerId": "file-backend-codex-safe:8c27080e85a6:slot-1",
+    "workerId": "file-backend-codex-safe:<worker-id>:slot-1",
     "slotIndex": "0",
     "rawCause": "Worker pool slot failed to run a task. <- Provider session needs reconnect.",
     "baseCommit": "c9b8efe485e2736bbaba4e9c47914fe3ac849b8a",
