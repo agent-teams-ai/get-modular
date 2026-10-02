@@ -11,6 +11,7 @@ import {
   GENERATED_PRODUCTION_PATH,
   verifySnapshotInputs,
 } from "../architecture/checks/generated-production-source.mjs";
+import { LEAF_PACKAGES } from "../architecture/checks/leaf-packages.mjs";
 import { captureGitIndexSnapshot } from "../architecture/checks/tracked-file-custody.mjs";
 
 const source = Buffer.from("// digest: exact\nexport const root = {};\n");
@@ -121,12 +122,10 @@ test("governance cleans successful build outputs when completion detects source 
       force: true,
     });
   }
-  // The current checker authenticates its newly accepted candidate decision
-  // even when this historical fixture contains no lifecycle package.
-  for (const path of [
-    "architecture/decisions/accepted-decisions.json",
-    "docs/decisions/0029-admit-an-optional-lifecycle-kernel-candidate.md",
-  ]) {
+  // The current checker authenticates every leaf package decision even when
+  // this historical fixture contains no leaf package.
+  const leafDecisions = LEAF_PACKAGES.map(leaf => leaf.decision.path);
+  for (const path of ["architecture/decisions/accepted-decisions.json", ...leafDecisions]) {
     await mkdir(dirname(join(root, path)), { recursive: true });
     await cp(join(repositoryRoot, path), join(root, path));
   }
@@ -149,8 +148,7 @@ test("governance cleans successful build outputs when completion detects source 
   ].join("\n");
   await writeFile(governancePath, governance.replace(completionLoop, hook));
   await exec("git", ["add", "--", "architecture/checks", "architecture/tooling",
-    "architecture/decisions/accepted-decisions.json",
-    "docs/decisions/0029-admit-an-optional-lifecycle-kernel-candidate.md"], {
+    "architecture/decisions/accepted-decisions.json", ...leafDecisions], {
     cwd: root, env,
   });
   await assert.rejects(

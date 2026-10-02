@@ -9,6 +9,7 @@ import Ajv from "ajv";
 import ts from "typescript-minimum";
 import { parse } from "yaml";
 import { packageIdentityViolations, packageManifestInventory } from "../architecture/checks/production-artifacts.mjs";
+import { LEAF_PACKAGES, leafManifestPath } from "../architecture/checks/leaf-packages.mjs";
 
 const directory = "architecture/contracts/ownership/";
 const checkpoint = JSON.parse(readFileSync(`${directory}checkpoint.json`, "utf8"));
@@ -16,6 +17,9 @@ const schema = JSON.parse(readFileSync(`${directory}checkpoint.schema.json`, "ut
 const validate = new Ajv({ allErrors: true, strict: true }).compile(schema);
 const digest = bytes => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const declaration = readFileSync(checkpoint.contract.path, "utf8");
+// Separately decided leaf packages beside Core and Assembly whose root exists.
+const presentLeafRoots = () => LEAF_PACKAGES
+  .filter(leaf => existsSync(leafManifestPath(leaf))).map(leaf => leaf.root);
 
 test("the complete gate runs the ownership checkpoint suite with failure propagation", () => {
   const { scripts } = JSON.parse(readFileSync("package.json", "utf8"));
@@ -108,14 +112,13 @@ test("observations bind historical lock bytes, production importers and reviewed
   assert.equal(digest(historicalLockBytes), checkpoint.evidence.lockDigest);
   const historicalImporters = parse(historicalLockBytes.toString("utf8")).importers;
   const currentImporters = parse(readFileSync("pnpm-lock.yaml", "utf8")).importers;
-  const lifecycleRoot = "packages/lifecycle-kernel";
-  const lifecyclePresent = existsSync(`${lifecycleRoot}/package.json`);
+  const leafRoots = presentLeafRoots();
   assert.deepEqual(Object.keys(currentImporters).sort(), [
-    ...Object.keys(historicalImporters), ...(lifecyclePresent ? [lifecycleRoot] : []),
+    ...Object.keys(historicalImporters), ...leafRoots,
   ].sort());
-  if (lifecyclePresent) {
-    assert.deepEqual(currentImporters[lifecycleRoot], {},
-      "the separate ADR-0029 candidate adds no runtime dependency importer");
+  for (const root of leafRoots) {
+    assert.deepEqual(currentImporters[root], {},
+      `the separately decided leaf package ${root} adds no runtime dependency importer`);
   }
   for (const [path, importer] of Object.entries(historicalImporters)) {
     for (const field of ["dependencies", "optionalDependencies"]) {
@@ -144,11 +147,9 @@ test("C0 preserves rejecting runtime package admission until K1", async () => {
   const policy = parse(readFileSync("architecture/foundation/source-dependencies.yaml", "utf8"));
   assert.equal(policy.schemaVersion, 3);
   assert.equal(policy.rootPackage, true);
-  const lifecyclePresent = existsSync("packages/lifecycle-kernel/package.json");
   assert.deepEqual(policy.packageRoots, [
-    "packages/assembly", "packages/core",
-    ...(lifecyclePresent ? ["packages/lifecycle-kernel"] : []),
-  ]);
+    "packages/assembly", "packages/core", ...presentLeafRoots(),
+  ].sort());
   for (const boundary of policy.boundaries.filter(b => b.dependencyMode !== "development")) {
     assert.equal(boundary.allow.packages.includes("@get-modular/ownership"), false);
   }
