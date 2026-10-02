@@ -6,7 +6,7 @@ export type CapabilityContract<Value, Token extends string> = {
 };
 export type CapabilitySchema<C> = { readonly [K in keyof C]: CapabilityContract<unknown, string> };
 
-declare const scope: unique symbol;
+declare const uses: unique symbol;
 declare const detail: unique symbol;
 declare const input: unique symbol;
 declare const contractEntry: unique symbol;
@@ -66,15 +66,29 @@ export type Declared<T extends DeclarationSpec> = T & {
   readonly schemaVersion: 1;
 };
 
+// Handles (ADR-0032): invariant only in the capabilities a declaration uses.
+/** The capability map keys a declaration provides or consumes; a handle brand is keyed by them. */
+export type UsedCapability<D extends ModuleDeclaration> =
+  D["provides"][number]["capabilityId"] | D["slots"][number]["capabilityId"];
+/** A handle brand over the used keys `K` of a map `C`, named so handles using the same keys share one instantiation. */
+export type CapabilityBrand<C, K extends keyof C> = { readonly [P in K]: (capability: C[P]) => C[P] };
+/** A bound module, invariant only in the contracts of the capabilities its declaration uses. */
 export type FactoryHandle<C, D extends ModuleDeclaration = ModuleDeclaration, I = unknown> = {
-  readonly [scope]: (capabilities: C) => C;
+  readonly [uses]: CapabilityBrand<C, UsedCapability<D> & keyof C>;
   readonly [detail]: { readonly declaration: D; readonly instance: I };
 };
-/** A factory handle that a map C accepts as a factory or a root; an input handle never is one. */
-export type AnyFactoryHandle<C> = FactoryHandle<C> & { readonly [input]?: never };
+/**
+ * A factory handle that a map `C` accepts as a factory or a root: every used capability that `C` contains has
+ * the identical contract in `C`. An input handle never is one.
+ */
+export type AnyFactoryHandle<C> = {
+  readonly [uses]: { readonly [K in keyof C]?: (capability: C[K]) => C[K] };
+  readonly [detail]: { readonly declaration: ModuleDeclaration; readonly instance: unknown };
+  readonly [input]?: never;
+};
 export type RootHandles<C> = Readonly<Record<string, AnyFactoryHandle<C>>>;
 export type RootInstances<R> = {
-  readonly [K in keyof R]: R[K] extends FactoryHandle<infer _C, infer _D, infer I> ? I : never;
+  readonly [K in keyof R]: R[K] extends { readonly [detail]: { readonly instance: infer I } } ? I : never;
 };
 
 export type IsUnion<T, Whole = T> = T extends Whole ? [Whole] extends [T] ? false : true : never;
@@ -127,11 +141,22 @@ export type FactoryDependencies<C, D extends ModuleDeclaration> = {
 /** Lifetime only. `scope` is the opaque value passed to `run()`: Assembly never reads, awaits, freezes or disposes it. */
 export type FactoryContext = { readonly signal: AbortSignal; readonly scope: unknown };
 export type FactoryProduct<I, P> = { readonly instance: I; readonly capabilities: P };
+/**
+ * The factory type of a module package. `C` is the module's own map, for example
+ * `CapabilitiesOf<typeof Db | typeof Orders>`, never the Host's; `X` is the context the factory reads.
+ */
+export type ModuleFactory<C, D extends ModuleDeclaration, I, X = FactoryContext> =
+  (dependencies: FactoryDependencies<C, D>, context: X) => Promise<FactoryProduct<I, FactoryCapabilities<C, D>>>;
 
 /** A slot-free module whose capability record each run supplies instead of a factory. */
 export type InputHandle<C, D extends ModuleDeclaration = ModuleDeclaration> =
   FactoryHandle<C, D, FactoryCapabilities<C, D>> & { readonly [input]: true };
-export type AnyInputHandle<C> = FactoryHandle<C> & { readonly [input]: true };
+/** An input handle that a map `C` accepts, compared like `AnyFactoryHandle`. */
+export type AnyInputHandle<C> = {
+  readonly [uses]: { readonly [K in keyof C]?: (capability: C[K]) => C[K] };
+  readonly [detail]: { readonly declaration: ModuleDeclaration; readonly instance: unknown };
+  readonly [input]: true;
+};
 export type InputHandles<C> = Readonly<Record<string, AnyInputHandle<C>>>;
 /** The capability record a run supplies for every declared input alias. */
 export type RunInputs<N> = {
@@ -139,9 +164,19 @@ export type RunInputs<N> = {
 };
 
 export type SuccessfulComposition = Extract<CompileCompositionResult, { readonly plan: CompositionPlan; readonly digest: PlanDigest }>;
-export type AssemblyPrepareInput<C, R extends RootHandles<C>, N extends InputHandles<C> = {}> = {
+/**
+ * Every capability any factory or input handle uses must be part of the preparing map `C`. Handles passed as a
+ * literal array keep their used capabilities; an array typed as `AnyFactoryHandle<C>[]` beforehand does not.
+ */
+export type KnownCapabilities<C, F extends readonly unknown[], N> = [Exclude<
+  (F[number] | N[keyof N]) extends infer H ? H extends { readonly [uses]: infer U } ? keyof U : never : never,
+  keyof C>] extends [infer Missing]
+  ? [Missing] extends [never] ? unknown : { readonly "capabilities missing from the preparing map": Missing }
+  : never;
+export type AssemblyPrepareInput<C, R extends RootHandles<C>, N extends InputHandles<C> = {},
+  F extends readonly AnyFactoryHandle<C>[] = readonly AnyFactoryHandle<C>[]> = {
   readonly composition: SuccessfulComposition;
-  readonly factories: readonly AnyFactoryHandle<C>[];
+  readonly factories: F & KnownCapabilities<C, F, N>;
   readonly roots: R;
   readonly inputs?: N | undefined;
 };
@@ -201,7 +236,8 @@ export type Assembly<C> = {
   readonly bindInput: <const D extends ModuleDeclaration & { readonly slots: readonly [] }>(
     declaration: D & ValidDeclaration<C, NoInfer<D>>,
   ) => InputHandle<C, D>;
-  readonly prepare: <const R extends RootHandles<C>, const N extends InputHandles<C> = {}>(
-    input: AssemblyPrepareInput<C, R, N>,
+  readonly prepare: <const R extends RootHandles<C>, const N extends InputHandles<C> = {},
+    const F extends readonly AnyFactoryHandle<C>[] = readonly AnyFactoryHandle<C>[]>(
+    input: AssemblyPrepareInput<C, R, N, F>,
   ) => Promise<AssemblyPreparationResult<R, N>>;
 };

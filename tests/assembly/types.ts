@@ -74,7 +74,7 @@ api.bindFactory(widened, async () => ({ instance: {}, capabilities: {} }));
 type Narrower = { "synthetic/store": CapabilityContract<Store & { readonly extra: true }, "synthetic/v1">; "synthetic/filter": Capabilities["synthetic/filter"]; "synthetic/logger": Capabilities["synthetic/logger"] };
 const narrower = assemblyFor<Narrower>();
 declare const composition: SuccessfulComposition;
-// @ts-expect-error Host mappings are invariant even when values are covariantly assignable.
+// @ts-expect-error Handles are invariant in the capabilities they use, even when values are covariantly assignable.
 narrower.prepare({ composition, factories: [store], roots: { store } });
 type OtherIdentity = { "synthetic/store": CapabilityContract<Store, "synthetic/v2"> };
 // @ts-expect-error Handles with different exact identities cannot cross mappings.
