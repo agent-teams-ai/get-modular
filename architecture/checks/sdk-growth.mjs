@@ -33,6 +33,11 @@ const OBSOLETE_ACTIVE_RECORDS = Object.freeze([
 ]);
 const FOUNDATION = Object.freeze({
   package: "@agent-teams/engineering-foundation",
+  version: "1.7.1",
+  integrity: "sha512-w7iCTZd/toljAMG0BnbU7al6SKTdl0MlFfxIATMP8IlOGucO8mpljxM1B0AHF0Qt0tLRz58jueb9AW7D/d+V0Q==",
+});
+const RETAINED_FOUNDATION = Object.freeze({
+  package: "@agent-teams/engineering-foundation",
   version: "1.5.1",
   integrity: "sha512-29r5QUvMIFdvsPaJ5m0Yx1Uo6bL85J/teP1p1ThNg7jMEz54cVxyrEnsLx/DN5cc/2CAzq2i8iLnPKgZN1cT8A==",
   tarballSha256: "bd0c476d2940168ac1b020f42726107cce81580b7b1b014e74aceabbafa9e951",
@@ -101,6 +106,7 @@ export async function loadSdkGrowthModel(root = process.cwd()) {
 
 async function validateInstalledFoundation(model) {
   same(model.profile.foundation, FOUNDATION, "Foundation identity");
+  same(model.profile.retainedFoundation, RETAINED_FOUNDATION, "retained Foundation evidence identity");
   if (model.packageJson.devDependencies?.[FOUNDATION.package] !== FOUNDATION.version) fail("Foundation must be an exact dev dependency");
   if (!model.lockText.includes(`'${FOUNDATION.package}@${FOUNDATION.version}':`) || !model.lockText.includes(FOUNDATION.integrity)) {
     fail("lockfile lacks exact Foundation registry identity");
@@ -217,7 +223,7 @@ function validateP0Evidence(model) {
   if (evidence.schemaVersion !== 1 || evidence.kind !== "g1-p0-feasibility-not-qualification"
     || evidence.sourceCommit !== cms.acceptedCurrent.commit || evidence.disposition !== "hold"
     || evidence.standard?.currentSha256 !== CMS_SHA256 || evidence.standard?.reviewPath !== CMS_PATH) fail("P0 disposition or standard drifted");
-  if (evidence.foundation?.installedPublishedVersion !== FOUNDATION.version
+  if (evidence.foundation?.installedPublishedVersion !== RETAINED_FOUNDATION.version
     || evidence.foundation?.semanticC0Revision !== 6
     || evidence.foundation?.frozenConsumerPolicyLiteral !== "foundation:sdk-growth:c0:5"
     || evidence.foundation?.currentSourcePublication !== "unverified"

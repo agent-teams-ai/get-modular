@@ -102,20 +102,53 @@ production. The first production package must atomically:
 - change the admission state to `source-admitted`;
 - enable Engineering Foundation's `architecture.source-dependencies`
   capability at `architecture/foundation/source-dependencies.yaml`; and
-- execute the pinned `@agent-teams/engineering-foundation` `1.5.1` command
+- execute the pinned `@agent-teams/engineering-foundation` `1.7.1` command
   `agent-teams-foundation check` through both the complete and fast gates.
 
-The tooling activation pins Foundation `1.5.1`. SDK growth admission remains
+The tooling activation pins Foundation `1.7.1`. SDK growth admission remains
 explicitly pending: the active public-API capability retains schema v1 until a
 trusted external authority binds the PR base and candidate to authenticated
 released Core and Assembly artifacts. Local qualification records cannot
 activate that route. The published
 `quality.source-coverage` route uses the existing production profile and source
 policy: `quality:coverage:scope` runs in the fast gate and `lint:typed` runs in
-the complete gate. Suppression governance covers Core and Assembly source with
+the complete gate. Suppression governance covers Core, Assembly and lifecycle kernel source with
 no waivers. Activation does not claim that existing source passes typed lint
 or establish structural or runtime conformance. Docs retains its portable
 workflow without a managed adapter or cohort binding.
+
+The Foundation 1.7.1 migration keeps the immutable Feature Module Standard and
+Consumer Module Standard pins. The retained current Consumer Module Standard
+adds the optional ADR-0029 dynamic Host guidance; it does not expand passive
+composition or confer SDK authority. The current SDK tooling binding advances
+while the earlier Foundation archive and P0 records remain historical evidence.
+SDK status stays pending, activation stays on hold and release eligibility stays
+false.
+
+Repository tooling uses Node 24.21.0 and pnpm 11.20.0. Node 24.18.0 remains the
+library consumer floor; the existing Node 26 package compatibility lane remains
+separate. The installed mandatory runner requires Node 24.21.0 for execution
+events. `pnpm quality:critical:test` runs the existing source dependency and
+quality activation entries through `agent-teams-node-test`. Its consumer
+checker binds the complete selected file command and the SHA-256 of the reviewed
+required identity contract. Fast and full gates execute this route; other tests
+retain their existing Node runners. The consumer inventory has no OS exceptions.
+Disposable regressions reject missing identities, skip, todo, late failure,
+removed selected files and changed contracts, and exercise an exact Windows-only
+fixture exception on POSIX.
+
+| Installed mechanism | Applicability and enforcement | Command |
+| --- | --- | --- |
+| Source dependencies v3 | Root development tooling, Core, Assembly and lifecycle kernel; preserve declared roots, generated output and dependency budgets | `pnpm foundation:check` |
+| Source coverage and typed quality | All declared compiler projects; missing inputs fail; the default unknown assertion bridge gate remains active with no admissions | `pnpm quality:coverage:scope`, `pnpm lint:typed` |
+| Suppression governance | All three production source roots, no waivers | `pnpm foundation:check` |
+| Required Node execution | Nine critical identities in two existing files; complete selected file list is bound | `pnpm quality:critical:test` |
+| Documentation, decisions, workflow and dependency declarations | Existing installed profiles and repository routes remain active | `pnpm foundation:check`, `pnpm docs:protocol:check` |
+| Public API compatibility | Existing v1 profiles and released baselines; baseline mutation guard retained | `pnpm foundation:check`, `pnpm release-owned-files:check` |
+| SDK growth authority | Current installed verifier and disposable qualification; activation remains pending without external authority | `pnpm sdk-growth:check` |
+| JSON schema release evolution and executable specifications | No installed release profile/catalog adopted; current immutable contracts use their existing owner gates | `pnpm contracts:check`, `pnpm governance:check` |
+| Protobuf, property testing and repository security capabilities | No adopted capability profiles; no protobuf production root or property-testing toolchain is declared | Review `foundation.config.yaml` and `package.json` |
+| Scaffolding, local mode and native managed processes | No requested scaffold owner, native boundary or managed adapter; registry mode remains required | `pnpm foundation:assert-registry` |
 
 The gate resolves the checked-in `foundation:check` script to that actual
 Foundation command, so replacing the script with a successful no-op cannot
