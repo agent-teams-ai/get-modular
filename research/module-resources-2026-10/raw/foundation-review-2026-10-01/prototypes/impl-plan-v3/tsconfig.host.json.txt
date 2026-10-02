@@ -1,0 +1,5 @@
+{ "compilerOptions": { "strict": true, "noEmit": true, "target": "ES2024", "module": "NodeNext", "moduleResolution": "NodeNext",
+  "lib": ["ES2024", "ESNext.Disposable", "ESNext.Promise", "DOM"], "types": [], "allowImportingTsExtensions": true,
+  "exactOptionalPropertyTypes": true, "noUncheckedIndexedAccess": true, "verbatimModuleSyntax": true, "skipLibCheck": false,
+  "paths": { "@get-modular/assembly": ["./asm/dist/index.d.ts"], "@get-modular/resources": ["./res/index.ts"] } },
+  "files": ["host-template.ts"] }

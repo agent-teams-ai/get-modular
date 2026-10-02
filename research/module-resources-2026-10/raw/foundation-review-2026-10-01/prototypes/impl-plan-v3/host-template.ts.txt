@@ -1,0 +1,76 @@
+// CMS "Module resource scopes" Host template, compiled on TS 7.0.2 and 5.8.3 (deep review H2 fix:
+// narrow the preparation once at top level and use `prepared` inside the hoisted function).
+import type { SuccessfulComposition } from "@get-modular/assembly";
+// ---- placeholders the template assumes ----
+type DbPort = { readonly query: (q: string) => number };
+type OrdersPort = { readonly list: () => number };
+type Connection = { readonly close: () => Promise<void> };
+declare const url: string;
+declare function connect(url: string, options: { readonly signal: AbortSignal }): Promise<Connection>;
+declare function createOrdersPort(db: DbPort, conn: Connection): OrdersPort;
+declare const composition: SuccessfulComposition;
+declare class ConstructionFailed extends Error { constructor(...details: readonly unknown[]); }
+// ---- BEGIN CMS TEMPLATE ----
+import { assemblyFor, declareModule, defineContract, type CapabilitiesOf, type ModuleFactory } from "@get-modular/assembly";
+import { required } from "@get-modular/core";
+import { scoped, type CloseReport, type ModuleContext, type Resources, type ScopeControl } from "@get-modular/resources";
+
+// Contract owners publish one descriptor per capability.
+export const Db = defineContract<DbPort>()({ id: "acme/db", revision: 1 });
+export const Orders = defineContract<OrdersPort>()({ id: "acme/orders", revision: 1 });
+
+// A module package: no wire literals, typed only by the contracts it uses.
+export const ordersDeclaration = declareModule({
+  moduleId: "acme/orders", implementationId: "acme/orders/default",
+  owner: { authority: "acme", path: ["orders"] },
+  provides: [Orders.provide()], slots: [Db.slot("db", required())],
+});
+export const createOrders: ModuleFactory<
+  CapabilitiesOf<typeof Db | typeof Orders>, typeof ordersDeclaration, Connection, ModuleContext
+> = async (deps, { resources }) => {
+  const conn = await resources.setup({
+    name: "conn",
+    setup: ({ signal }) => connect(url, { signal }),
+    cleanup: (c) => c.close(),
+  });
+  return { instance: conn, capabilities: { "acme/orders": createOrdersPort(deps.db, conn) } };
+};
+
+// The Host: policy belongs here, not in the library.
+export async function closeWithin(
+  control: ScopeControl, graceMs: number, abandonMs: number,
+): Promise<CloseReport> {
+  const escalate = new AbortController();
+  const abandon = new AbortController();
+  // Referenced timers keep the process alive until the Host has a report.
+  // Abandon ends only this wait: the scope keeps releasing in order.
+  const toEscalate = setTimeout(() => { escalate.abort(); }, graceMs);
+  const toAbandon = setTimeout(() => { abandon.abort(); }, graceMs + abandonMs);
+  try {
+    return await control.close({ escalate: escalate.signal, abandon: abandon.signal });
+  } finally {
+    clearTimeout(toEscalate);
+    clearTimeout(toAbandon);
+  }
+}
+
+const api = assemblyFor<CapabilitiesOf<typeof Db | typeof Orders>>();
+const database = api.bindFactory(declareModule({
+  moduleId: "acme/db", implementationId: "acme/db/pg",
+  owner: { authority: "acme", path: ["db"] }, provides: [Db.provide()], slots: [],
+}), async () => ({ instance: undefined, capabilities: { "acme/db": { query: () => 0 } } }));
+const orders = api.bindFactory(ordersDeclaration, scoped(ordersDeclaration.implementationId, createOrders));
+// Bind and prepare once; every run gets its own scope.
+const preparation = await api.prepare({ composition, factories: [database, orders], roots: { orders } });
+if (preparation.status === "failed") { throw new ConstructionFailed(preparation); }
+const { prepared } = preparation;
+
+export async function construct(host: Resources, signal: AbortSignal) {
+  const attempt = host.child({ name: "attempt" });
+  const outcome = await prepared.run({ signal, scope: attempt.resources });
+  if (outcome.status !== "succeeded") { // run() has settled: no factory is running
+    throw new ConstructionFailed(outcome, await closeWithin(attempt.control, 5_000, 5_000));
+  }
+  return { roots: outcome.roots, lifetime: attempt.control }; // transfer ownership with control
+}
+// ---- END CMS TEMPLATE ----

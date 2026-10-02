@@ -1,0 +1,182 @@
+# CMS draft
+
+## Consumer module standard (excerpt)
+
+### Module resource scopes
+
+[ADR-0030](../decisions/0030-admit-the-module-resource-scope-package.md) admits
+the optional `@get-modular/resources` package. It is a cleanup mechanism: a
+module registers how to release what it acquired, and the Host decides when a
+scope closes, how long to wait, when to escalate or abandon, whether to retry
+and how to report health. Core and Assembly do not import it. Pure and
+borrow-only modules need nothing.
+
+A scope is cooperative cleanup of trusted in-process code. `complete: true`
+means every registered cleanup callback returned without throwing; it is not
+proof of physical release. Never assemble third-party or untrusted code through
+`scoped()`; such code runs in a runtime the Host can terminate, registered as
+one `setup`/`cleanup` entry in a Host scope. `Resources` is not part of any
+plugin SPI. `Debt.path` is an array; join it only for display.
+
+Module authors:
+
+1. Acquire through `resources.setup`, or pass a value already in hand to
+   `resources.use`. Acquire asynchronously only inside `setup`: after a close is
+   requested `use()` throws and the value stays with you. Never close a
+   dependency received through a slot; it is borrowed.
+2. Name every entry and child scope. Names form the debt paths that Hosts
+   alert on.
+3. Everything a cleanup needs is a declared slot or the module's own resource.
+   Hidden dependencies break the order; independent modules are ordered by
+   implementation ID, not by intent.
+4. Give a child scope only ports whose setup completed before the child was
+   created. Never pass `Resources` of an ancestor or any `ScopeControl` down.
+5. When subscribing to a provider, register the returned disposer in your own
+   scope.
+6. Running work is not a resource. Register dependencies, then the drain set,
+   then the subscription, so release runs unsubscribe, drain, close; or make
+   each operation a `child()`.
+7. A domain shutdown protocol, such as retire, settle and delete in a fixed
+   order, stays inside one cleanup. A scope orders independent entries; it
+   does not replace an authority sequence.
+8. A cleanup throws only when its resource may still be held. Its `escalate`
+   signal asks for a faster release; it never permits skipping one.
+9. `use()` releases bluntly: `Writable` is destroyed, `ChildProcess` only
+   receives SIGTERM, `http.Server` waits for active requests. Use the README
+   recipes that react to the escalation signal.
+10. Wrap a thenable resource: `setup: () => ({ proc: execa(...) })`.
+11. Domain and application code never sees `Resources`; only the composition or
+    adapter layer of the module does. Only `scoped()` reads `FactoryContext.scope`;
+    never cast it.
+12. Never await `close()` of your own or an ancestor scope inside a cleanup.
+13. A cleanup that must not run twice guards itself; the Host may retry.
+
+Host template (policy belongs to the Host, not to the library):
+
+    import { assemblyFor, declareModule, defineContract, type CapabilitiesOf, type ModuleFactory } from "@get-modular/assembly";
+    import { required } from "@get-modular/core";
+    import { scoped, type CloseReport, type ModuleContext, type Resources, type ScopeControl } from "@get-modular/resources";
+
+    // Contract owners publish one descriptor per capability.
+    export const Db = defineContract<DbPort>()({ id: "acme/db", revision: 1 });
+    export const Orders = defineContract<OrdersPort>()({ id: "acme/orders", revision: 1 });
+
+    // A module package: no wire literals, typed only by the contracts it uses.
+    export const ordersDeclaration = declareModule({
+      moduleId: "acme/orders", implementationId: "acme/orders/default",
+      owner: { authority: "acme", path: ["orders"] },
+      provides: [Orders.provide()], slots: [Db.slot("db", required())],
+    });
+    export const createOrders: ModuleFactory<
+      CapabilitiesOf<typeof Db | typeof Orders>, typeof ordersDeclaration, Connection, ModuleContext
+    > = async (deps, { resources }) => {
+      const conn = await resources.setup({
+        name: "conn",
+        setup: ({ signal }) => connect(url, { signal }),
+        cleanup: (c) => c.close(),
+      });
+      return { instance: conn, capabilities: { "acme/orders": createOrdersPort(deps.db, conn) } };
+    };
+
+    // The Host: policy belongs here, not in the library.
+    export async function closeWithin(
+      control: ScopeControl, graceMs: number, abandonMs: number,
+    ): Promise<CloseReport> {
+      const escalate = new AbortController();
+      const abandon = new AbortController();
+      // Referenced timers keep the process alive until the Host has a report.
+      // Abandon ends only this wait: the scope keeps releasing in order.
+      const toEscalate = setTimeout(() => { escalate.abort(); }, graceMs);
+      const toAbandon = setTimeout(() => { abandon.abort(); }, graceMs + abandonMs);
+      try {
+        return await control.close({ escalate: escalate.signal, abandon: abandon.signal });
+      } finally {
+        clearTimeout(toEscalate);
+        clearTimeout(toAbandon);
+      }
+    }
+
+    const api = assemblyFor<CapabilitiesOf<typeof Db | typeof Orders>>();
+    const database = api.bindFactory(declareModule({
+      moduleId: "acme/db", implementationId: "acme/db/pg",
+      owner: { authority: "acme", path: ["db"] }, provides: [Db.provide()], slots: [],
+    }), async () => ({ instance: undefined, capabilities: { "acme/db": { query: () => 0 } } }));
+    const orders = api.bindFactory(ordersDeclaration, scoped(ordersDeclaration.implementationId, createOrders));
+    // Bind and prepare once; every run gets its own scope.
+    const preparation = await api.prepare({ composition, factories: [database, orders], roots: { orders } });
+    if (preparation.status === "failed") { throw new ConstructionFailed(preparation); }
+    const { prepared } = preparation;
+
+    export async function construct(host: Resources, signal: AbortSignal) {
+      const attempt = host.child({ name: "attempt" });
+      const outcome = await prepared.run({ signal, scope: attempt.resources });
+      if (outcome.status !== "succeeded") { // run() has settled: no factory is running
+        throw new ConstructionFailed(outcome, await closeWithin(attempt.control, 5_000, 5_000));
+      }
+      return { roots: outcome.roots, lifetime: attempt.control }; // transfer ownership with control
+    }
+
+Host rules:
+
+- Wrap owning factories with `scoped(implementationId, factory)` and pass one
+  scope per run: `run({ signal, scope: attempt.resources })`, never the `Scope`
+  itself. Never capture a scope when binding factories. Close the attempt only
+  after `run()` settles. Load exactly one copy of `@get-modular/resources` per
+  Host.
+- Pass construction cancellation to `run({ signal })`. `scoped()` stops a
+  module's setups when it aborts, until the factory settles.
+- Keep singletons shared across attempts in the Host scope.
+- Use one deadline at the root: escalate first, then abandon, with referenced
+  timers. Abandon never means released; the snapshot has `settled: false`,
+  debts stay in the scope, and a later `close()` after the flight completed is
+  an explicit retry.
+- Release continues past a failed entry. When a cleanup may need a provider
+  again on retry, such as an observation journal that owners write while they
+  release, keep that provider in an outer scope and close the outer scope only
+  after the inner report is complete.
+- Use `child({ order: "concurrent" })` only for a scope whose entries are
+  independent peers, such as sessions, turns or instances; everything else
+  stays in reverse order.
+- Drain or stop running work before closing the scope that holds its
+  resources; deciding that work has stopped is Host policy.
+- Transfer ownership by transferring `control`.
+- A dynamic Host that uses the lifecycle kernel (candidate, ADR-0029) retains
+  custody before `child()` and releases it only after the child's report is
+  complete.
+
+Out of scope: release order derived from the graph, reference-counted sharing,
+durable recovery, dependency-loss health contracts, lifecycle hooks, plugin
+managers and process or worker control.
+
+### Module packages and contracts
+
+[ADR-0032](../decisions/0032-give-assembly-an-authoring-builder-and-capability-scoped-handles.md)
+gives Assembly the authoring builder.
+
+- A contract owner publishes one descriptor per capability with
+  `defineContract<Value>()({ id, revision })` and raises `revision` with every
+  change of the value type.
+- Declarations use `declareModule` with `Contract.provide()` and
+  `Contract.slot(slotId, cardinality)`. Never write `kind`, `schemaVersion` or
+  a `compatibility` literal by hand; the builder emits the current wire
+  generation.
+- A module package exports its declaration and either an unbound factory typed
+  `ModuleFactory<CapabilitiesOf<its contracts>, typeof declaration, Instance, ModuleContext>`
+  or handles bound with its own map. It never imports the Host's capability map.
+- Name a map derived from many contracts as an interface:
+  `interface HostCapabilities extends CapabilitiesOf<typeof A | typeof B> {}`.
+  A type alias over hundreds of contracts multiplies check time and reaches
+  TS2589 on TypeScript 5.8.3.
+- A Host prepares with a map that contains every capability any handle uses,
+  with the identical contract.
+- Module packages list Get Modular packages only in `peerDependencies`, with a
+  range of one 0.x minor such as `^0.3.0`. A Host installs one copy of each Get
+  Modular package. Widen a range only when the release notes of the newer minor
+  say that the authoring surface did not change.
+- Identify errors by `code`, never by class or message:
+  `assembly.<area>.<reason>`, `resources.<area>.<reason>` and
+  `conformance.<area>.<reason>`. Core diagnostics carry their catalog codes in
+  `Diagnostic.code`.
+- A contract that may become the API of an isolated plugin is RPC-safe:
+  asynchronous methods, plain data arguments and results, no callbacks and no
+  object identity.

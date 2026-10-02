@@ -1,0 +1,14 @@
+#!/bin/sh
+# Prototype v3 setup: registry bytes of Core/Assembly 0.2.0 (vendor/*.tgz, fetched with
+# `npm pack @get-modular/{core,assembly}@0.2.0` on 2026-10-02) extracted into node_modules,
+# then the Assembly 0.3.0 candidate (asm/) built with the pinned TypeScript of get-modular.
+set -eu
+cd "$(dirname "$0")"
+GM=${GM:-<workspace>/get-modular}
+for name in core assembly; do
+  rm -rf "node_modules/@get-modular/$name"
+  mkdir -p "node_modules/@get-modular/$name"
+  tar -xzf "vendor/get-modular-$name-0.2.0.tgz" -C "node_modules/@get-modular/$name" --strip-components=1
+done
+(cd asm && rm -rf dist && node "$GM/node_modules/typescript/bin/tsc" -p tsconfig.json)
+shasum -a 256 vendor/*.tgz

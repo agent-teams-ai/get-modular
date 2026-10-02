@@ -1,0 +1,6 @@
+export { createScope, scoped } from "./scope.ts";
+export { CloseIncompleteError, InvalidArgumentError, ScopeClosedError } from "./errors.ts";
+export type {
+  CleanupContext, CloseOptions, CloseReport, Debt, ModuleContext, Resources, ResourcesErrorCode,
+  Scope, ScopeControl, ScopeOptions, SetupContext, SetupSpec,
+} from "./types.ts";

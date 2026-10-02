@@ -1,0 +1,59 @@
+# Applies each mutation to res/scope.ts in a copy (res-mut/) and reports which tests catch it.
+import os, shutil, subprocess, sys
+base = 'res/scope.ts'
+src = open(base).read()
+M = {
+ 'abandon-finishes-shared-flight': ('const onAbandon = (): void => { resolve(this.#report(false)); };', 'const onAbandon = (): void => { flight.finish(this.#report(false)); };'),
+ 'escalate-skips-idle-children': ('    const flight = this.#flight;\n    if (flight && !flight.escalate.signal.aborted) {\n      flight.escalate.abort(reason);\n    }\n',
+                                  '    const flight = this.#flight;\n    if (!flight) {\n      return;\n    }\n    if (!flight.escalate.signal.aborted) {\n      flight.escalate.abort(reason);\n    }\n'),
+ 'listener-per-child': ('    if (parent && parent.#setupAbort.signal.aborted) {\n      this.#setupAbort.abort(parent.#setupAbort.signal.reason);\n    }',
+                        '    if (parent) {\n      parent.#setupAbort.signal.addEventListener("abort", () => { this.#setupAbort.abort(parent.#setupAbort.signal.reason); }, { once: true });\n    }'),
+ 'no-detach-from-parent': ('      parent.#children.delete(this);\n      parent.#forget(entry);', '      void entry;'),
+ 'escalate-links-kept': ('    for (const unlink of flight.unlink.splice(0)) {\n      unlink();\n    }', '    void flight.unlink;'),
+ 'sticky-escalate': ('const flight: Flight = { escalate: new AbortController(), done, finish, unlink: [] };', 'const flight: Flight = { escalate: (this.#sticky ??= new AbortController()), done, finish, unlink: [] };'),
+ 'use-takes-custody-when-closed': ('    if (this.#requested) {\n      throw new ScopeClosedError(this.path); // no custody: the caller still owns value\n    }\n    this.#live.push({ name: entryName, release, child: undefined, where: "live", cause: undefined });',
+                                   '    this.#live.push({ name: entryName, release, child: undefined, where: "live", cause: undefined });\n    if (this.#requested) {\n      throw new ScopeClosedError(this.path);\n    }'),
+ 'concurrent-ignored': ('    this.#order = order;', '    this.#order = "reverse"; void order;'),
+ 'validate-after-request': ('    const { escalate, abandon } = checkCloseOptions(options); // before any state change\n    this.#request();', '    this.#request();\n    const { escalate, abandon } = checkCloseOptions(options);'),
+ 'pending-removed-late': ('      this.#pending.delete(record); // same turn as the push: never two debts for one resource\n', '      queueMicrotask(() => { queueMicrotask(() => { this.#pending.delete(record); }); });\n'),
+ 'scoped-captures-first-scope': ('    const { node, unlink } = ScopeNode.openModule(context, name); // coded TypeError before the body', '    const { node, unlink } = ScopeNode.openModule((captured ??= context), name);'),
+ 'scoped-ignores-run-signal': ('    const unlink = isSignal(runSignal) ? follow(runSignal, () => { node.#abortSetups(runSignal.reason); }) : noop;', '    const unlink = noop; void runSignal;'),
+ 'scoped-links-run-signal-forever': ('    if (result instanceof Promise) {\n      void Promise.prototype.then.call(result, unlink, unlink);\n    } else {\n      unlink();\n    }', '    void unlink;'),
+ 'scoped-passes-run-scope': ('= { ...forwarded, resources: node.resources };', '= { ...context, resources: node.resources };'),
+ 'scoped-drops-context-fields': ('= { ...forwarded, resources: node.resources };', '= { signal: context.signal, resources: node.resources } as never;'),
+ 'retry-skips-failed': ('    if (this.#failed.length > 0) { // every new flight retries', '    if (false && this.#failed.length > 0) { // every new flight retries'),
+ 'stop-on-first-failure': ('      this.#fail(entry, cause); // continue with the next entry (Q1)', '      this.#fail(entry, cause); this.#live.length = 0;'),
+ 'cleanup-gets-setup-signal': ('      await entry.release?.({ escalate: flight.escalate.signal });', '      await entry.release?.({ escalate: this.#setupAbort.signal });'),
+ 'abandon-snapshot-claims-settled': ('const onAbandon = (): void => { resolve(this.#report(false)); };', 'const onAbandon = (): void => { resolve(this.#report(true)); };'),
+}
+extra = {
+ 'sticky-escalate': ('  #flight: Flight | undefined;\n', '  #flight: Flight | undefined;\n  #sticky: AbortController | undefined;\n'),
+ 'scoped-captures-first-scope': ('/**\n * Opens one module scope per factory call', 'let captured: unknown;\n/**\n * Opens one module scope per factory call'),
+}
+only = sys.argv[1:] or list(M)
+missed = 0
+for name in only:
+    old, new = M[name]
+    assert src.count(old) == 1, (name, src.count(old))
+    out = src.replace(old, new)
+    if name in extra:
+        o, n = extra[name]; assert out.count(o) == 1, name; out = out.replace(o, n)
+    d = 'res-mut'
+    shutil.rmtree(d, ignore_errors=True); shutil.copytree('res', d)
+    open(f'{d}/scope.ts', 'w').write(out)
+    fails = []
+    for f in ['semantics.test.ts', 'assembly.test.ts']:
+        t = open(f).read().replace('./res/index.ts', './res-mut/index.ts')
+        open(f'mut-{f}', 'w').write(t)
+        r = subprocess.run(['node', '--test', '--test-timeout=3000', f'mut-{f}'], capture_output=True, text=True, timeout=180)
+        fails += [l.split(' ', 1)[1].rsplit(' (', 1)[0][:48] for l in r.stdout.splitlines() if l.startswith('✖ ')]
+    g = subprocess.run(['node', '--expose-gc', 'gc-probe.ts', './res-mut/index.ts'], capture_output=True, text=True, timeout=60)
+    if g.returncode != 0: fails.append('G1 gc probe')
+    caught = sorted(set(fails))
+    missed += 0 if caught else 1
+    print(f'{name}: {"NOT CAUGHT" if not caught else "caught by " + " | ".join(caught)}')
+for f in ['mut-semantics.test.ts', 'mut-assembly.test.ts']:
+    if os.path.exists(f): os.remove(f)
+shutil.rmtree('res-mut', ignore_errors=True)
+print(f'mutations: {len(only)}, not caught: {missed}')
+sys.exit(1 if missed else 0)

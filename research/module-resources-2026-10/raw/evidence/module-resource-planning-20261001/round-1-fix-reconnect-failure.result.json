@@ -1,0 +1,29 @@
+{
+  "status": "blocked",
+  "changedFiles": [],
+  "evidence": [
+    "safe_execution_status:waiting_capacity",
+    "attempt_count:1"
+  ],
+  "blockers": [
+    "reconnect_required",
+    "Safe execution has no attempts remaining."
+  ],
+  "nextAction": "wait",
+  "schemaVersion": 1,
+  "provider": "codex",
+  "runId": "ar-research-resource-round1-fix-fast-20261001",
+  "taskId": "ar-research-resource-round1-fix-fast-20261001",
+  "reason": "reconnect_required",
+  "details": {
+    "reason": "provider_reconnect_required",
+    "subscriptionWorkerCode": "subscription_worker_pool_slot_failed",
+    "workerId": "file-backend-codex-safe:8c27080e85a6:slot-1",
+    "slotIndex": "0",
+    "rawCause": "Worker pool slot failed to run a task. <- Provider session needs reconnect.",
+    "baseCommit": "c9b8efe485e2736bbaba4e9c47914fe3ac849b8a",
+    "executionGeneration": "efdfdea6-90d2-4091-96be-461e346c7a11",
+    "attemptNumber": "1"
+  },
+  "updatedAt": "2026-10-01T15:02:54.997Z"
+}

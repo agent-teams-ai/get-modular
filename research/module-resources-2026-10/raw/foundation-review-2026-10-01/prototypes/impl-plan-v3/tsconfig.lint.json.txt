@@ -1,0 +1,4 @@
+{ "compilerOptions": { "strict": true, "noEmit": true, "target": "ES2024", "module": "NodeNext", "moduleResolution": "NodeNext",
+  "lib": ["esnext.full"], "types": [], "allowImportingTsExtensions": true,
+  "exactOptionalPropertyTypes": true, "noUncheckedIndexedAccess": true, "verbatimModuleSyntax": true },
+  "files": ["res/index.ts", "asm/src/index.ts"] }

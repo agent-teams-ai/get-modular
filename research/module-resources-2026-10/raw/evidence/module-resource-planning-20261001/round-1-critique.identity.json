@@ -1,0 +1,12 @@
+{
+  "jobId": "ar-research-resource-round1-critique-std-20261001-retry-t",
+  "sha256": "72901d8e882a2fb15d0c448c2e9a9a990b902b0b92008fec230c6de35eb229d1",
+  "requested": {
+    "model": "gpt-6.1-sol",
+    "reasoningEffort": "max",
+    "serviceTier": "default",
+    "accounts": [
+      "account-t"
+    ]
+  }
+}

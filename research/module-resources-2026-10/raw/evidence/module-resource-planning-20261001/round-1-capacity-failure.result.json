@@ -1,0 +1,34 @@
+{
+  "status": "failed",
+  "changedFiles": [],
+  "evidence": [
+    "safe_execution_status:failed",
+    "attempt_count:1"
+  ],
+  "blockers": [
+    "unknown_error",
+    "Safe execution has no attempts remaining."
+  ],
+  "nextAction": "recover",
+  "schemaVersion": 1,
+  "provider": "codex",
+  "runId": "ar-research-resource-round1-critique-std-20261001",
+  "taskId": "ar-research-resource-round1-critique-std-20261001",
+  "reason": "unknown_error",
+  "details": {
+    "code": "unknown_runtime_failure",
+    "phase": "turn_error_before_output",
+    "turnNumber": "1",
+    "outputObserved": "false",
+    "outputCharCount": "0",
+    "elapsedMs": "544816",
+    "rawCause": "codex_app_server_turn_error:codex_app_server_error:Selected model is at capacity. Please try a different model.:details={\"phase\":\"turn_error_before_output\",\"turnNumber\":1,\"outputObserved\":false,\"outputCharCount\":0,\"elapsedMs\":544816}",
+    "subscriptionWorkerCode": "subscription_worker_pool_slot_failed",
+    "workerId": "file-backend-codex-safe:56ffedfd67eb:slot-1",
+    "slotIndex": "0",
+    "baseCommit": "c9b8efe485e2736bbaba4e9c47914fe3ac849b8a",
+    "executionGeneration": "86b360d3-bf9d-41c5-9d12-297ad28f3206",
+    "attemptNumber": "1"
+  },
+  "updatedAt": "2026-10-01T14:25:09.085Z"
+}

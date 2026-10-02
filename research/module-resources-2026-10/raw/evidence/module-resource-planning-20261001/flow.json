@@ -1,0 +1,189 @@
+{
+  "status": "complete",
+  "requestedAt": "2026-10-01",
+  "model": "gpt-6.1-sol",
+  "sourceAccess": "live root source relay; native worker web disabled",
+  "proposalInputSha256": "90ddd653e155b9731277e56ddc0e8e2cc6417c1ac0f137b27bc3468c71c7e0d2",
+  "scopes": {
+    "planning": "admission and bounded TEST setup/cleanup only",
+    "hooks": "experimental research only"
+  },
+  "seed": {
+    "effort": "max",
+    "job": "ar-research-plan-seed-std-20261001-ro-u",
+    "status": "failed_before_output",
+    "reason": "Selected model is at capacity",
+    "replacement": "Round 1 starts from retained reviewed proposal"
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "critiqueEffort": "max",
+      "fixEffort": "xhigh",
+      "status": "done",
+      "critiqueJob": "ar-research-resource-round1-critique-std-20261001-retry-t",
+      "inputSha256": "90ddd653e155b9731277e56ddc0e8e2cc6417c1ac0f137b27bc3468c71c7e0d2",
+      "failedAttempt": "ar-research-resource-round1-critique-std-20261001",
+      "fallbackAccount": "account-t",
+      "fixJob": "ar-research-resource-round1-fix-fast-20261001-retry-u",
+      "fixTier": "fast",
+      "undispatchedFix": "ar-research-resource-round1-fix-std-20261001",
+      "failedFixAttempt": "ar-research-resource-round1-fix-fast-20261001",
+      "failedFixAttempts": [
+        "ar-research-resource-round1-fix-fast-20261001",
+        "ar-research-resource-round1-fix-fast-20261001-retry-r"
+      ],
+      "critiqueRequestedProfile": {
+        "model": "gpt-6.1-sol",
+        "effort": "max",
+        "serviceTier": "default"
+      },
+      "fixRequestedProfile": {
+        "model": "gpt-6.1-sol",
+        "effort": "xhigh",
+        "serviceTier": "fast"
+      },
+      "revisedPlanSha256": "c80f7c8414df783eea9eaa28576d510cdfeea79e904317999db6f7f3c607d853"
+    },
+    {
+      "round": 2,
+      "critiqueEffort": "xhigh",
+      "fixEffort": "xhigh",
+      "status": "done",
+      "critiqueRequestedProfile": {
+        "model": "gpt-6.1-sol",
+        "effort": "xhigh",
+        "serviceTier": "fast"
+      },
+      "fixRequestedProfile": {
+        "model": "gpt-6.1-sol",
+        "effort": "xhigh",
+        "serviceTier": "fast"
+      },
+      "critiqueJob": "ar-research-resource-round2-critique-fast-20261001",
+      "fixJob": "ar-research-resource-round2-fix-fast-20261001",
+      "inputSha256": "c80f7c8414df783eea9eaa28576d510cdfeea79e904317999db6f7f3c607d853",
+      "revisedPlanSha256": "310c519fc5692d078483861f46997f8904297b633a1459dc2e872fcb088fc8ce"
+    },
+    {
+      "round": 3,
+      "critiqueEffort": "xhigh",
+      "fixEffort": "xhigh",
+      "status": "done",
+      "critiqueRequestedProfile": {
+        "model": "gpt-6.1-sol",
+        "effort": "xhigh",
+        "serviceTier": "fast"
+      },
+      "fixRequestedProfile": {
+        "model": "gpt-6.1-sol",
+        "effort": "xhigh",
+        "serviceTier": "fast"
+      },
+      "critiqueJob": "ar-research-resource-round3-critique-fast-20261001",
+      "fixJob": "ar-research-resource-round3-fix-fast-20261001",
+      "inputSha256": "310c519fc5692d078483861f46997f8904297b633a1459dc2e872fcb088fc8ce",
+      "revisedPlanSha256": "43a6ac34b1ab3f024eb6be2bf8b7921997d4621b95b0fde03b581f5c47586bbd"
+    },
+    {
+      "round": 4,
+      "critiqueEffort": "xhigh",
+      "fixEffort": "xhigh",
+      "status": "done",
+      "critiqueRequestedProfile": {
+        "model": "gpt-6.1-sol",
+        "effort": "xhigh",
+        "serviceTier": "fast"
+      },
+      "fixRequestedProfile": {
+        "model": "gpt-6.1-sol",
+        "effort": "xhigh",
+        "serviceTier": "fast"
+      },
+      "critiqueJob": "ar-research-resource-round4-critique-fast-20261001",
+      "fixJob": "ar-research-resource-round4-fix-fast-20261001",
+      "inputSha256": "43a6ac34b1ab3f024eb6be2bf8b7921997d4621b95b0fde03b581f5c47586bbd",
+      "critiqueFindings": [
+        "R4-1: derived pending setup observation",
+        "R4-2: Host disposer success only after observed completion",
+        "R4-3: failed handle close stays unresolved",
+        "R4-4: clear unnecessary terminal resource references"
+      ],
+      "revisedPlanSha256": "aa63421d4777900150e86c7decbe023c43f16771f823672f1fa9604aa2164bc6"
+    }
+  ],
+  "research": [
+    {
+      "lane": "hooks-flutter",
+      "id": "ar-research-hooks-flutter-std-20261001-ro-u",
+      "effort": "max",
+      "description": "Experimental lifecycle hooks: Flutter and Riverpod",
+      "status": "done"
+    },
+    {
+      "lane": "hooks-reactive",
+      "id": "ar-research-hooks-reactive-std-20261001-ro-u",
+      "effort": "max",
+      "description": "Experimental lifecycle hooks: reactive UI systems",
+      "status": "done"
+    },
+    {
+      "lane": "hooks-frameworks",
+      "id": "ar-research-hooks-frameworks-std-20261001-ro-u",
+      "effort": "max",
+      "description": "Experimental lifecycle hooks: DI/application frameworks",
+      "status": "done"
+    },
+    {
+      "lane": "hooks-plugins",
+      "id": "ar-research-hooks-plugins-std-20261001-ro-u",
+      "effort": "max",
+      "description": "Experimental lifecycle hooks: dynamic plugin systems",
+      "status": "done"
+    },
+    {
+      "lane": "hooks-scale",
+      "id": "ar-research-hooks-scale-std-20261001-ro-u",
+      "effort": "max",
+      "description": "Experimental lifecycle hooks: adversarial hierarchy and scale",
+      "status": "done"
+    }
+  ],
+  "notes": [
+    "Initial producer-role staging rejected by existing output-debt admission; no jobs/turns created. Documentation jobs use read-only reviewer role and root mechanical edits.",
+    "Initial account-s provider attempts rejected requested model before a turn/source changes. Known-working account-u selected explicitly in replacement read-only jobs.",
+    "No implementation, production runtime tests, release or hook runtime.",
+    "Sole account-u max seed and round1 critique failed before output with Selected model is at capacity. Two supported pool slots added through broker scope update; read-only retry uses account-t, same max/default profile.",
+    "Earlier foreground wait ended without creating the planned default fix job; existence checked through broker before replacement. Round1 fix uses latest xhigh/fast instruction.",
+    "Round1 fast fix account-t required provider reconnect before any authored output; replacement keeps xhigh/fast on available account-r. Remaining rounds are sequential critiques/fixes under latest xhigh/fast rule.",
+    "account-r rejected gpt-6.1-sol before authored output. Same xhigh/fast profile now dispatched on known-working account-u; other sessions remain excluded for this attempt."
+  ],
+  "instructionUpdate": {
+    "date": "2026-10-01",
+    "nextWorkers": {
+      "model": "gpt-6.1-sol",
+      "effort": "xhigh",
+      "serviceTier": "fast"
+    },
+    "existingAttempts": "retain original requested profiles; do not replay completed/uncertain turns"
+  },
+  "completionScope": "Four critique/fix rounds and five indirect-source research analyses; no implementation, ADR acceptance, K1 or release qualification.",
+  "rootPublication": {
+    "path": "../../shared-module-resource-contract-2026-10-01.md",
+    "rawRound4PlanSha256": "aa63421d4777900150e86c7decbe023c43f16771f823672f1fa9604aa2164bc6",
+    "publishedPlanSha256": "46e869cefe261dab667f87f6249c63bfb301f3b1581e52f87cf42f270dc0eea7",
+    "changes": [
+      "Completion/proposal status",
+      "Portable evidence links with explicit round artifacts",
+      "Correct root/worker provenance and actual requested profiles",
+      "Separate hooks and Node migration scope clarification"
+    ],
+    "sourceSemantics": "No public surface or state-transition changes after round-four fix."
+  },
+  "initialRequestedProfile": {
+    "model": "gpt-6.1-sol",
+    "critiqueEffort": "max",
+    "fixEffort": "xhigh",
+    "serviceTier": "default"
+  }
+}

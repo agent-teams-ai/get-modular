@@ -1,0 +1,12 @@
+{
+  "jobId": "ar-research-hooks-scale-std-20261001-ro-u",
+  "sha256": "d7bac2cb77b2631a1ff054ce06c4500fa15124c3127b1a767be3e3b1711c13b4",
+  "requested": {
+    "model": "gpt-6.1-sol",
+    "reasoningEffort": "max",
+    "serviceTier": "default",
+    "accounts": [
+      "account-u"
+    ]
+  }
+}
