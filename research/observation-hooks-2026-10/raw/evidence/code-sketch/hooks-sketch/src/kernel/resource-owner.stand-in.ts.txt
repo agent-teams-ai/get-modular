@@ -1,0 +1,71 @@
+// STAND-IN for the proposed `@get-modular/ownership` candidate from the resource
+// plan (not implemented yet). Only the surface this sketch needs: one obligation
+// per `setup`, custody recorded before fallible setup, owner-run cleanup with
+// per-obligation isolation, reverse order. No readback, deadlines or recovery.
+
+export type SetupOutcome<T> =
+  | Readonly<{ kind: "ready"; value: T }>
+  | Readonly<{ kind: "failed"; cause: unknown }>;
+
+export type CleanupResult =
+  | Readonly<{ kind: "released" }>
+  | Readonly<{ kind: "unresolved"; cause: unknown }>;
+
+export const RELEASED: CleanupResult = Object.freeze({ kind: "released" });
+
+export const unresolved = (cause: unknown): CleanupResult => Object.freeze({ kind: "unresolved", cause });
+
+export type SetupSpec<T> = Readonly<{
+  setup: () => T | Promise<T>;
+  cleanup: (outcome: SetupOutcome<T>) => CleanupResult | Promise<CleanupResult>;
+}>;
+
+export interface ResourceAuthor {
+  setup<T>(spec: SetupSpec<T>): Promise<T>;
+}
+
+export type StandInOwner = Readonly<{
+  label: string;
+  resources: ResourceAuthor;
+  cleanup: () => Promise<readonly CleanupResult[]>;
+}>;
+
+export function createStandInOwner(label: string): StandInOwner {
+  const obligations: Array<() => Promise<CleanupResult>> = [];
+  let closed = false;
+
+  const resources: ResourceAuthor = {
+    async setup<T>(spec: SetupSpec<T>): Promise<T> {
+      if (closed) throw new Error(`${label}: setup-closed`);
+      let outcome: SetupOutcome<T> | undefined;
+      // Custody first: the cleanup obligation exists before setup can fail.
+      obligations.push(async () => {
+        if (outcome === undefined) return unresolved(new Error(`${label}: setup still pending`));
+        try {
+          return await spec.cleanup(outcome);
+        } catch (cause) {
+          return unresolved(cause);
+        }
+      });
+      try {
+        const value = await spec.setup();
+        outcome = Object.freeze({ kind: "ready", value });
+        return value;
+      } catch (cause) {
+        outcome = Object.freeze({ kind: "failed", cause });
+        throw cause;
+      }
+    },
+  };
+
+  return Object.freeze({
+    label,
+    resources,
+    async cleanup(): Promise<readonly CleanupResult[]> {
+      closed = true;
+      const results: CleanupResult[] = [];
+      for (const release of [...obligations].reverse()) results.push(await release());
+      return results;
+    },
+  });
+}

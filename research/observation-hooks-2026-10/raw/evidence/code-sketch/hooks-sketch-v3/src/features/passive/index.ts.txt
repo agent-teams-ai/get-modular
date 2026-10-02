@@ -1,0 +1,16 @@
+// PASSIVE modules: unchanged by any hook kind.
+import type { SettingsReader } from "../settings/index.ts";
+
+export type AuditApi = Readonly<{ record: (event: string) => string }>;
+export async function createAuditLog(deps: Readonly<{ settings: SettingsReader }>) {
+  const verbose = deps.settings.read(["auditVerbose"]).values.auditVerbose;
+  const audit: AuditApi = { record: (event) => (verbose ? `[verbose] ${event}` : event) };
+  return { instance: { verbose }, capabilities: { "audit/log": audit } };
+}
+
+export type ClockApi = Readonly<{ now: () => number }>;
+export async function createClock() {
+  let ticks = 0;
+  const clock: ClockApi = { now: () => ++ticks };
+  return { instance: clock, capabilities: { "time/clock": clock } };
+}

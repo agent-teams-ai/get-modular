@@ -1,0 +1,79 @@
+{
+  "status": "complete",
+  "date": "2026-10-01",
+  "scope": "Independent critique and correction of plans/lifecycle-hooks-research-2026-10-01.md; experimental research only, no implementation.",
+  "researchRevision1Sha256": "3709c3a7e46d6696a419716736f014e528a69f07bdc0cfb5ce81128270c1f337",
+  "resourcePlanCheckedSha256": "46e869cefe261dab667f87f6249c63bfb301f3b1581e52f87cf42f270dc0eea7",
+  "standard": {
+    "commit": "9c722ceff4ede307d06d7a4b63fdebe615f54c53",
+    "sha256": "33b41d5babf0a431c97e8e596a56e6ec1557ba1a0b26d39bf23e13d9a19e1fbd"
+  },
+  "rootOnlineVerification": {
+    "agents": "three subagents of the root session plus root gh checks",
+    "retrieved": "2026-10-01 about 16:05-16:40 UTC",
+    "files": [
+      "root-verified-online/topic-a-opt-in-evolution.md",
+      "root-verified-online/topic-b-async-errors.md",
+      "root-verified-online/topic-c-hierarchy-config.md",
+      "root-verified-online/topic-d-typescript-void-callbacks.md"
+    ]
+  },
+  "hostedRuntime": {
+    "researchNetworkProfile": "unavailable: app-server thread config sets web_search disabled; networkAccess unrestricted requires danger-full-access sandbox; restricted used"
+  },
+  "critics": [
+    {
+      "lane": "api",
+      "job": "ar-research-hooks-critic-api-fast-20261001",
+      "description": "API ergonomics",
+      "status": "done",
+      "changedFiles": []
+    },
+    {
+      "lane": "async",
+      "job": "ar-research-hooks-critic-async-fast-20261001",
+      "description": "async and errors",
+      "status": "done",
+      "changedFiles": []
+    },
+    {
+      "lane": "hierarchy",
+      "job": "ar-research-hooks-critic-hierarchy-fast-20261001",
+      "description": "hierarchy and scale",
+      "status": "done",
+      "changedFiles": []
+    },
+    {
+      "lane": "arch",
+      "job": "ar-research-hooks-critic-arch-fast-20261001",
+      "description": "architecture critique",
+      "status": "done",
+      "changedFiles": []
+    }
+  ],
+  "criticInputManifestSha256": "9d297a73bd8e2a77931d079ae0bf5f2215225f9a4c924feb998edfbf6b3966b7",
+  "operatorNotes": [
+    "Parallel start: api started; async and hierarchy refills succeeded but start hit \"Workspace is already locked by another safe execution task\"; arch refill rolled back before job creation. No turn ran for those three; they were started sequentially afterwards (async, hierarchy via codex_goal_project_start on the existing jobs, arch via a fresh refill). No completed or uncertain turn was replayed.",
+    "Staging archive carried 49 macOS AppleDouble ._* metadata files into every critic input; critics verified the 49 substantive files.",
+    "topic-b packet given to critics (6ccda018...) differs from root final copy (topic-b-async-errors.final-root-copy.md) by three shortened sentences; same facts.",
+    "All four jobs marked reviewed in the consumed-output ledger after export and hash verification; unconsumedCompletedJobs=0. Four pre-existing 2026-09-28 shared-workspace debts are unrelated."
+  ],
+  "result": "Revision 2 written to plans/lifecycle-hooks-research-2026-10-01.md; revision 1 preserved as research-revision-1.md; original five reports unchanged in ../module-resource-planning-20261001/.",
+  "rootReview": {
+    "reviewer": "read-only subagent of the root session",
+    "file": "root-review-of-revision-2.md",
+    "sha256": "2ebb1f3cb6145944135c0c9b31e0bb22a4a22b69b5a336d59e8c4e953ec3e899",
+    "findings": {
+      "P1": 0,
+      "P2": 5,
+      "P3": 7
+    },
+    "applied": "all twelve (R2-1..R2-12) after root verification"
+  },
+  "runtimeCapabilityCheck": {
+    "file": "runtime-capability-check.md",
+    "sha256": "04872ba5e3cef97607a4382ce9033244e3fc805d90c8c6d0c8577e825ff4564f"
+  },
+  "researchRevision2Sha256": "eee3f3428de5dba960e051d6475c3894cf847d2aca0d801807fff3240b57e009",
+  "resourcePlanCheckedSha256Final": "46e869cefe261dab667f87f6249c63bfb301f3b1581e52f87cf42f270dc0eea7"
+}

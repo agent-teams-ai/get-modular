@@ -1,0 +1,20 @@
+// OPTION 2 participant, feature composition factory.
+// Opting in = REQUIRE `settings/observation` + one `observeOwned(...)` call.
+
+import type { ResourceAuthor } from "../../kernel/resource-owner.stand-in.ts";
+import { observeOwned } from "../settings/published/observe-owned.ts";
+import type { SettingsObservationPortV1 } from "../settings/published/settings-v1.ts";
+import { PriceTable, type RatesPort } from "./application/price-table.ts";
+
+export type PriceTableDeps = Readonly<{ settings: SettingsObservationPortV1; rates: RatesPort }>;
+export type OwnedContext = Readonly<{ signal: AbortSignal; resources: ResourceAuthor; reportError: (cause: unknown) => undefined }>;
+export type PriceApi = Readonly<{ price: PriceTable["price"] }>;
+
+export async function createPriceTable(deps: PriceTableDeps, context: OwnedContext) {
+  const table = new PriceTable(deps.rates);
+  await observeOwned(context.resources, deps.settings, ["priceCurrency"], table, { reportError: context.reportError });
+  return {
+    instance: table,
+    capabilities: { "pricing/price-table": { price: (base: number) => table.price(base) } satisfies PriceApi },
+  };
+}

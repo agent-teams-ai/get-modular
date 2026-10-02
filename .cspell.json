@@ -10,6 +10,7 @@
     "architecture/qualification/generation-two/historical-pnpm-lock.yaml",
     "research/implementation-readiness/evidence/raw/**",
     "research/implementation-readiness/evidence/follow-up/raw/**",
+    "research/observation-hooks-2026-10/raw/**",
     "research/implementation-readiness/evidence/combined-workers.json",
     "research/implementation-readiness/evidence/worker-index.json",
     "tests/qualification/implementation-readiness/api-authoring/**/evidence.json"
@@ -66,6 +67,11 @@
     "unrepaired",
     "worktree",
     "worktrees",
-    "xhigh"
+    "xhigh",
+    "codemod",
+    "Flagsmith",
+    "lifecycles",
+    "nanostores",
+    "Riverpod"
   ]
 }

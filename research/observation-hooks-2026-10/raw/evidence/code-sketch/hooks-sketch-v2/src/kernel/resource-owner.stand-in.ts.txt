@@ -1,0 +1,103 @@
+// STAND-IN for the proposed `@get-modular/ownership` candidate (resource plan,
+// not implemented). Enough of its contract for this sketch: custody before
+// fallible setup, late setup after close is cleaned up, one memoized cleanup per
+// obligation, malformed results are unresolved, and an observation budget that
+// reports `unresolved` without dropping the raw action.
+
+export type SetupOutcome<T> =
+  | Readonly<{ kind: "ready"; value: T }>
+  | Readonly<{ kind: "failed"; cause: unknown }>;
+
+export type CleanupResult =
+  | Readonly<{ kind: "released" }>
+  | Readonly<{ kind: "unresolved"; cause: unknown }>;
+
+export const RELEASED: CleanupResult = Object.freeze({ kind: "released" });
+export const unresolved = (cause: unknown): CleanupResult => Object.freeze({ kind: "unresolved", cause });
+
+export type SetupSpec<T> = Readonly<{
+  setup: () => T | Promise<T>;
+  cleanup: (outcome: SetupOutcome<T>) => CleanupResult | Promise<CleanupResult>;
+}>;
+
+export interface ResourceAuthor {
+  setup<T>(spec: SetupSpec<T>): Promise<T>;
+}
+
+/** What `owned(...)` passes to a module factory through the Host closure. */
+export type OwnerContext = Readonly<{
+  signal: AbortSignal;
+  resources: ResourceAuthor;
+  /** Already attributed to the owning module by the Host. */
+  reportError: (cause: unknown) => undefined;
+}>;
+
+export type StandInOwner = Readonly<{
+  label: string;
+  resources: ResourceAuthor;
+  cleanup: (budgetMs: number) => Promise<readonly CleanupResult[]>;
+}>;
+
+const isCleanupResult = (value: unknown): value is CleanupResult =>
+  typeof value === "object" && value !== null &&
+  ((value as { kind?: unknown }).kind === "released" || (value as { kind?: unknown }).kind === "unresolved");
+
+export function createStandInOwner(label: string): StandInOwner {
+  type Obligation = { settle: () => void; run: (() => Promise<CleanupResult>) | undefined; raw: Promise<CleanupResult> | undefined };
+  const obligations: Obligation[] = [];
+  let closed = false;
+
+  const resources: ResourceAuthor = {
+    async setup<T>(spec: SetupSpec<T>): Promise<T> {
+      if (closed) throw new Error(`${label}: setup-closed`);
+      let outcome: SetupOutcome<T> | undefined;
+      let settled!: () => void;
+      const setupSettled = new Promise<void>((resolve) => { settled = resolve; });
+      const obligation: Obligation = {
+        settle: settled,
+        raw: undefined,
+        run: async () => {
+          await setupSettled; // never invoke cleanup while setup is still running
+          try {
+            const result: unknown = await spec.cleanup(outcome ?? { kind: "failed", cause: new Error("no outcome") });
+            return isCleanupResult(result) ? result : unresolved(new TypeError(`${label}: malformed cleanup result`));
+          } catch (cause) {
+            return unresolved(cause);
+          }
+        },
+      };
+      obligations.push(obligation); // custody first
+      try {
+        const value = await spec.setup();
+        outcome = Object.freeze({ kind: "ready", value });
+      } catch (cause) {
+        outcome = Object.freeze({ kind: "failed", cause });
+        obligation.settle();
+        throw cause;
+      }
+      obligation.settle();
+      if (closed) throw new Error(`${label}: setup-closed (late fulfillment is cleaned by the owner)`);
+      return outcome.value;
+    },
+  };
+
+  return Object.freeze({
+    label,
+    resources,
+    async cleanup(budgetMs: number): Promise<readonly CleanupResult[]> {
+      closed = true;
+      const results: CleanupResult[] = [];
+      for (const obligation of [...obligations].reverse()) {
+        obligation.raw ??= obligation.run?.(); // memoized: one physical cleanup per obligation
+        obligation.run = undefined;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const budget = new Promise<CleanupResult>((resolve) => {
+          timer = setTimeout(() => resolve(unresolved(new Error(`${label}: cleanup still pending after ${budgetMs}ms`))), budgetMs);
+        });
+        results.push(await Promise.race([obligation.raw ?? Promise.resolve(RELEASED), budget]));
+        clearTimeout(timer);
+      }
+      return results;
+    },
+  });
+}

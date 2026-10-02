@@ -1,0 +1,1 @@
+{ "name": "hooks-sketch", "private": true, "type": "module" }

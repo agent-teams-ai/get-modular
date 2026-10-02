@@ -1,0 +1,87 @@
+// Settings feature composition kit (owned by the settings feature; used by its
+// hub and by option-2 escape-hatch modules' composition code, never by
+// application code). One active derivation, one latest pending input,
+// guarded and isolated publication. No acquisition, retry, health or disposal.
+
+import { invokeIsolated, safeReport, type Report } from "../adapters/callback-isolation.ts";
+
+export interface LatestDerivation<I> {
+  /** Synchronous. Older/duplicate revisions are ignored and never retry a failure. */
+  offer(revision: number, input: I): undefined;
+  /** Closes admission, drops pending input, aborts (cooperatively) the active run. */
+  close(): undefined;
+  /** Resolves when no run is active. Never resolves while `derive` hangs (Host budget reports it). */
+  drain(): Promise<void>;
+}
+
+type Job<I> = Readonly<{ revision: number; input: I }>;
+
+export function latestDerivation<I, T>(spec: Readonly<{
+  derive: (input: I, signal: AbortSignal) => Promise<T>;
+  /** Checked right before publication: admission AND current revision. */
+  isCurrent: (revision: number) => boolean;
+  commit: (revision: number, result: T) => undefined;
+  fail: (revision: number, cause: unknown) => undefined;
+  report: Report;
+}>): LatestDerivation<I> {
+  let open = true;
+  let lastOffered = Number.NEGATIVE_INFINITY;
+  let pending: Job<I> | undefined;
+  let active: Readonly<{ controller: AbortController; settled: Promise<void> }> | undefined;
+
+  // A throwing abort listener (user code in derive) must not escape into the caller.
+  const abort = (controller: AbortController): void => invokeIsolated(() => { controller.abort(); return undefined; }, spec.report);
+
+  const publish = (job: Job<I>, outcome: () => unknown): void => {
+    let current = false;
+    invokeIsolated(() => { current = open && spec.isCurrent(job.revision); return undefined; }, spec.report);
+    if (current) invokeIsolated(outcome, spec.report);
+  };
+
+  const start = (job: Job<I>): void => {
+    const controller = new AbortController();
+    const settled = (async () => {
+      await Promise.resolve(); // `active` is assigned before any user code runs
+      if (!open || controller.signal.aborted) return; // closed or superseded before start
+      let result: T;
+      try {
+        result = await spec.derive(job.input, controller.signal);
+      } catch (cause) {
+        publish(job, () => spec.fail(job.revision, cause));
+        return;
+      }
+      publish(job, () => spec.commit(job.revision, result));
+    })()
+      .catch((cause: unknown) => safeReport(spec.report, cause))
+      .finally(() => {
+        active = undefined;
+        const next = pending;
+        pending = undefined;
+        if (open && next !== undefined) start(next);
+      });
+    active = Object.freeze({ controller, settled });
+  };
+
+  return Object.freeze({
+    offer(revision: number, input: I): undefined {
+      if (!open || revision <= lastOffered) return undefined;
+      lastOffered = revision;
+      if (active === undefined) {
+        start({ revision, input });
+      } else {
+        pending = { revision, input };
+        abort(active.controller);
+      }
+      return undefined;
+    },
+    close(): undefined {
+      open = false;
+      pending = undefined;
+      if (active !== undefined) abort(active.controller);
+      return undefined;
+    },
+    async drain(): Promise<void> {
+      while (active !== undefined) await active.settled;
+    },
+  });
+}

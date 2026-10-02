@@ -1,0 +1,29 @@
+// OPTION 3 participant. Opting in = PROVIDE `settings/derivation` with pure
+// `derive` + synchronous `commit`. No subscription, lane or cleanup code here.
+
+import { settingsDerivation, type SettingsDerivationV1 } from "../settings/published/settings-v1.ts";
+
+export interface TaxRulesPort {
+  load(region: string, signal: AbortSignal): Promise<Readonly<{ region: string; vat: number }>>;
+}
+
+export type TaxTableDeps = Readonly<{ rules: TaxRulesPort }>;
+export type TaxApi = Readonly<{ vat: () => number | undefined; failures: () => number }>;
+
+export async function createTaxTable(deps: TaxTableDeps) {
+  let rules: Readonly<{ region: string; vat: number }> | undefined; // module-owned state
+  let failures = 0;
+  const derivation = settingsDerivation({
+    keys: ["taxRegion"],
+    derive: ({ taxRegion }, signal) => deps.rules.load(taxRegion, signal),
+    commit: (loaded) => { rules = loaded; return undefined; },
+    fail: () => { failures += 1; return undefined; }, // previous rules are kept
+  });
+  return {
+    instance: { region: () => rules?.region, vat: () => rules?.vat, failures: () => failures },
+    capabilities: {
+      "tax/table": { vat: () => rules?.vat, failures: () => failures } satisfies TaxApi,
+      "settings/derivation": derivation satisfies SettingsDerivationV1,
+    },
+  };
+}

@@ -1303,6 +1303,8 @@ test("open-decision history is complete and non-decreasing", async () => {
     documents: decisions,
   }), new Set(history.recordedDecisionIds));
 
+  const latestId = history.recordedDecisionIds.at(-1);
+  assert.match(latestId, /^OD-[0-9]{3}$/u);
   assert.throws(() => validateDecisionHistory({
     history: {
       schemaVersion: 1,
@@ -1310,7 +1312,7 @@ test("open-decision history is complete and non-decreasing", async () => {
     },
     historicalHistories: [history],
     documents: decisions.slice(0, -1),
-  }), /cannot remove previously recorded OD-006/u);
+  }), new RegExp(`cannot remove previously recorded ${latestId}$`, "u"));
   assert.throws(() => validateDecisionHistory({
     history,
     documents: decisions.slice(0, -1),

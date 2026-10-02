@@ -1,0 +1,44 @@
+// Published Language V1, part 3: DATA-ONLY participation in the settings hub.
+// A participant hands over a construction snapshot or keys plus callbacks.
+// The hub's visitor only PREPARES (no effect); the hub alone subscribes, once.
+
+import type { AppSettings, SettingKey } from "../domain/app-settings.ts";
+import type { SettingsKeys, SettingsSnapshot } from "./settings-read.v1.ts";
+
+export type SyncParticipant<K extends SettingKey> = Readonly<{
+  /** The construction read; its `keys` are the subscription, its revision the baseline. */
+  initial: SettingsSnapshot<K>;
+  apply: (next: SettingsSnapshot<K>) => undefined;
+}>;
+
+export type DerivedParticipant<Keys extends SettingsKeys, T> = Readonly<{
+  keys: Keys;
+  derive: (values: Readonly<Pick<AppSettings, Keys[number]>>, signal: AbortSignal) => Promise<T>;
+  commit: (result: T, snapshot: SettingsSnapshot<Keys[number]>) => undefined;
+  fail: (cause: unknown, snapshot: SettingsSnapshot<Keys[number]>) => undefined;
+}>;
+
+/** Existential visitor implemented by the hub; its methods must be effect-free. */
+export interface ParticipantVisitor<R> {
+  sync<K extends SettingKey>(spec: SyncParticipant<K>): R;
+  derived<Keys extends SettingsKeys, T>(spec: DerivedParticipant<Keys, T>): R;
+}
+
+export interface SettingsParticipantV1 {
+  open<R>(visit: ParticipantVisitor<R>): R;
+}
+
+/** Option 1 shape: synchronous apply after a construction read. */
+export function syncSettings<K extends SettingKey>(
+  initial: SettingsSnapshot<K>,
+  apply: (next: SettingsSnapshot<K>) => undefined,
+): SettingsParticipantV1 {
+  const spec: SyncParticipant<K> = Object.freeze({ initial, apply });
+  return Object.freeze({ open: <R>(visit: ParticipantVisitor<R>): R => visit.sync(spec) });
+}
+
+/** Option 3 shape: asynchronous derivation; the hub owns lane, fencing, drain and outcome. */
+export function derivedSettings<const Keys extends SettingsKeys, T>(spec: DerivedParticipant<Keys, T>): SettingsParticipantV1 {
+  const frozen = Object.freeze({ ...spec });
+  return Object.freeze({ open: <R>(visit: ParticipantVisitor<R>): R => visit.derived(frozen) });
+}

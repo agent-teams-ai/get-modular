@@ -1,0 +1,44 @@
+// Published Language V1, part 2: the observation port (used by the hub and by
+// option-2 escape-hatch modules). Types only.
+// Contract: registration + `initial` are atomic; delivery runs in a later task,
+// never inside `observe` or a commit, at most once per commit per registration,
+// may coalesce revisions, and is never awaited. Delivery order between
+// registrations is deterministic but NOT part of the contract. After the Host
+// seals the source, no further delivery starts.
+
+import type { SettingKey } from "../domain/app-settings.ts";
+import type { SettingsKeys, SettingsSnapshot } from "./settings-read.v1.ts";
+
+/** Borrowable read facet. No detach authority. */
+export interface SettingsView<K extends SettingKey> {
+  readonly initial: SettingsSnapshot<K>;
+  /** Authoritative latest committed state of the selected keys (also after unsubscribe). */
+  current(): SettingsSnapshot<K>;
+  /** Registration still attached AND `revision` is the latest for its keys. */
+  admits(revision: number): boolean;
+}
+
+/** Owner-only facet. */
+export interface Detachable {
+  /** Idempotent, synchronous; drops queued delivery; never closes the source. */
+  unsubscribe(): undefined;
+  /** Independent check against the source's listener index. */
+  isAttached(): boolean;
+}
+
+export interface SettingsObservation<K extends SettingKey> extends Detachable {
+  readonly view: SettingsView<K>;
+}
+
+export type ObserveOptions = Readonly<{
+  /** Receives exceptions and illegal return values of `recordDesired`. */
+  reportError: (cause: unknown) => undefined;
+}>;
+
+export interface SettingsObservationPortV1 {
+  observe<const Keys extends SettingsKeys>(
+    keys: Keys,
+    recordDesired: (next: SettingsSnapshot<Keys[number]>) => undefined,
+    options: ObserveOptions,
+  ): SettingsObservation<Keys[number]>;
+}

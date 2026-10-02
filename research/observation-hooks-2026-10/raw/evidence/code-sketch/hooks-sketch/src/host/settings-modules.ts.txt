@@ -1,0 +1,60 @@
+// Host-owned modules: the settings source itself, the option-1 fan-out and the
+// option-3 derivation driver. These own subscriptions; participants do not.
+
+import { RELEASED, unresolved, type ResourceAuthor } from "../kernel/resource-owner.stand-in.ts";
+import type { AppSettings } from "../features/settings/domain/app-settings.ts";
+import { InMemorySettingsSource } from "../features/settings/adapters/in-memory-settings-source.ts";
+import type {
+  Detachable, RunningDerivation, SettingsApplierV1, SettingsDerivationV1,
+  SettingsObservationPortV1, SettingsReaderV1,
+} from "../features/settings/published/settings-v1.ts";
+
+export type HostContext = Readonly<{ signal: AbortSignal; resources: ResourceAuthor; reportError: (cause: unknown) => undefined }>;
+
+export async function createSettingsModule(initial: AppSettings) {
+  const source = new InMemorySettingsSource(initial);
+  return {
+    instance: source, // the Host commits through its root handle; features never can
+    capabilities: {
+      "settings/read": source satisfies SettingsReaderV1,
+      "settings/observation": source satisfies SettingsObservationPortV1,
+    },
+  };
+}
+
+/** OPTION 1: one owned obligation per applier; cleanup = unsubscribe + verify. */
+export async function createSettingsFanout(
+  deps: Readonly<{ settings: SettingsObservationPortV1; appliers: readonly SettingsApplierV1[] }>,
+  context: HostContext,
+) {
+  for (const applier of deps.appliers) {
+    await context.resources.setup<Detachable>({
+      setup: () => applier.attachTo(deps.settings, { reportError: context.reportError }),
+      cleanup: (outcome) => {
+        if (outcome.kind === "failed") return RELEASED;
+        outcome.value.unsubscribe();
+        return outcome.value.isAttached() ? unresolved(new Error("applier still attached")) : RELEASED;
+      },
+    });
+  }
+  return { instance: { participants: deps.appliers.length }, capabilities: {} };
+}
+
+/** OPTION 3: one owned obligation per derivation; cleanup = unsubscribe + drain + verify. */
+export async function createSettingsDerivationDriver(
+  deps: Readonly<{ settings: SettingsObservationPortV1; derivations: readonly SettingsDerivationV1[] }>,
+  context: HostContext,
+) {
+  for (const derivation of deps.derivations) {
+    await context.resources.setup<RunningDerivation>({
+      setup: () => derivation.start(deps.settings, { reportError: context.reportError }),
+      cleanup: async (outcome) => {
+        if (outcome.kind === "failed") return RELEASED;
+        outcome.value.unsubscribe();
+        await outcome.value.drain();
+        return outcome.value.isAttached() ? unresolved(new Error("derivation still attached")) : RELEASED;
+      },
+    });
+  }
+  return { instance: { participants: deps.derivations.length }, capabilities: {} };
+}

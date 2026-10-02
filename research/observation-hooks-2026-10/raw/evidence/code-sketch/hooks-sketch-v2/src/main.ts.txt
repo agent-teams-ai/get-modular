@@ -1,0 +1,193 @@
+// Executable sketch check v2 (real Core/Assembly, stand-in owner). Not a test suite.
+
+import { composeHost } from "./host/composition.ts";
+import { controllableRates, taxRules } from "./host/test-adapters.ts";
+import { createStandInOwner } from "./kernel/resource-owner.stand-in.ts";
+import { InMemorySettingsSource } from "./features/settings/adapters/in-memory-settings-source.ts";
+import { ownObservation } from "./features/settings/composition/own-observation.ts";
+import { latestDerivation } from "./features/settings/composition/latest-derivation.ts";
+import type { AppSettings } from "./features/settings/domain/app-settings.ts";
+
+let failures = 0;
+const check = (ok: boolean, label: string, detail: unknown = ""): void => {
+  if (!ok) failures += 1;
+  console.log(`${ok ? "PASS" : "FAIL"}  ${label}${ok ? "" : `  -> ${detail instanceof Error ? detail.message : JSON.stringify(detail)}`}`);
+};
+const tick = (ms = 0): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+const settle = async (): Promise<void> => { for (let i = 0; i < 5; i += 1) await tick(); };
+const initial: AppSettings = { locale: "en", greetingStyle: "short", priceCurrency: "USD", taxRegion: "FR", auditVerbose: false };
+
+// ---- 1. Normal life of the three shapes plus passive modules ----
+{
+  const fx = controllableRates({ USD: 1, EUR: 0.9, GBP: 0.8 });
+  const host = await composeHost({ initial, rates: fx.rates, rules: taxRules });
+  const { settings, greeting, price, tax, audit, clock } = host.roots;
+  check(JSON.stringify(host.participantIds) === JSON.stringify(["feature/greeting", "feature/tax-table"]), "hub participants derived from declarations");
+  const readiness = await host.participantReadiness(500);
+  check(readiness.ready.length === 2 && readiness.failed.length === 0 && readiness.pending.length === 0, "participant readiness: every participant ready", readiness);
+  check(greeting.greet("Ann") === "Hello, Ann (#1)", "opt1 initial");
+
+  const before = settings.stats();
+  settings.commit({ locale: "ru", greetingStyle: "formal" });
+  await settle();
+  check(greeting.greet("Ann") === "Привет, уважаемый Ann (#2)", "opt1 applied, instance counter preserved");
+  check(settings.stats().deliveries - before.deliveries === 1, "multi-key commit -> one delivery");
+
+  fx.hold("EUR");
+  settings.commit({ priceCurrency: "EUR" });
+  await settle();
+  settings.commit({ priceCurrency: "USD" });
+  await settle();
+  fx.release("EUR");
+  await settle();
+  const priced = price.snapshot();
+  check(priced.state.kind === "ready" && priced.state.currency === "USD", "opt2 A->B->A: stale EUR never published", priced);
+
+  settings.commit({ taxRegion: "XX" });
+  await settle();
+  check(tax.region() === "FR" && tax.lastFailure()?.revision !== undefined, "opt3 failure keeps previous rules, records revision");
+  settings.commit({ taxRegion: "DE" });
+  await settle();
+  check(tax.region() === "DE" && tax.lastFailure() === undefined, "opt3 newer success clears older failure");
+
+  const quiet = settings.stats();
+  settings.commit({ auditVerbose: true });
+  await settle();
+  check(settings.stats().registrationVisits === quiet.registrationVisits, "commit of an unsubscribed key visits nobody");
+  check(audit.verbose === false && clock.now() === 1, "passive modules untouched");
+  check(Object.keys(settings.reader).join() === "read" && Object.keys(settings.port).join() === "observe", "capabilities are read/observe facades only");
+
+  const { owners: report } = await host.shutdown(500);
+  check(report.flatMap((entry) => entry.results).every((r) => r.kind === "released"), "shutdown: all released", report);
+  let sealed = false;
+  try { settings.commit({ locale: "de" }); } catch { sealed = true; }
+  check(sealed, "source sealed before cleanup");
+  check((["locale", "greetingStyle", "priceCurrency", "taxRegion"] as const).every((k) => settings.listenerCount(k) === 0), "no listeners left");
+  check(host.errors.length === 0, "no errors reported", host.errors.map((e) => e.message));
+}
+
+// ---- 2. Hung derivation: bounded shutdown, independent owners still released ----
+{
+  const fx = controllableRates({ USD: 1 });
+  const host = await composeHost({ initial, rates: fx.rates, rules: taxRules });
+  host.roots.settings.commit({ taxRegion: "HANG" });
+  await settle();
+  const started = Date.now();
+  const { owners: report, undrainedParticipants } = await host.shutdown(50);
+  const hub = report.find((entry) => entry.owner === "settings/hub")?.results[0];
+  const priceOwner = report.find((entry) => entry.owner === "feature/price-table")?.results[0];
+  check(Date.now() - started < 1_000, "hung derive: shutdown bounded by the observation budget");
+  check(hub?.kind === "unresolved" && priceOwner?.kind === "released", "hung derive: hub unresolved, independent owner released", report);
+  check(JSON.stringify(undrainedParticipants) === JSON.stringify(["feature/tax-table"]), "hung derive: attributed to its participant (N3)", undrainedParticipants);
+  check(host.roots.settings.listenerCount("taxRegion") === 0, "hung derive: listener detached even though work is unsettled");
+}
+
+// ---- 3. Construction failure after subscriptions: Host cleans up ----
+{
+  let probe: InMemorySettingsSource | undefined;
+  let failed: unknown;
+  try {
+    await composeHost({ initial, rates: controllableRates({ USD: 1 }).rates, rules: taxRules,
+      injectFactoryFailure: "settings/hub", sourceProbe: (source) => { probe = source; } });
+  } catch (error) { failed = error; }
+  const cleanup = (failed as { cause?: { cleanup?: Array<{ results: Array<{ kind: string }> }> } })?.cause?.cleanup;
+  check(failed instanceof Error && cleanup !== undefined && cleanup.flatMap((e) => e.results).every((r) => r.kind === "released"), "failed construction: owners cleaned", failed);
+  check(probe !== undefined && probe.listenerCount("taxRegion") === 0 && probe.listenerCount("priceCurrency") === 0, "failed construction: no orphaned listeners");
+}
+
+// ---- 4. Unit-level regressions from the critiques ----
+{
+  // F1/A1: onAttached throws after observe -> cleanup still detaches.
+  const source = new InMemorySettingsSource(initial);
+  const owner = createStandInOwner("unit");
+  const rejected = await ownObservation(owner.resources, source.port, ["locale"], {
+    onSettings: () => undefined,
+    onAttached: () => { throw new Error("attach bug"); },
+  }, { reportError: () => undefined }).then(() => false, () => true);
+  const results = await owner.cleanup(100);
+  check(rejected && results[0]?.kind === "released" && source.listenerCount("locale") === 0, "attach failure: custody kept, listener removed");
+
+  // F2/A4: throwing commit is reported once; fail is not called; no crash.
+  const reports: unknown[] = [];
+  const calls: string[] = [];
+  const lane = latestDerivation<string, string>({
+    derive: async (input) => input,
+    isCurrent: () => true,
+    commit: () => { calls.push("commit"); throw new Error("commit bug"); },
+    fail: () => { calls.push("fail"); return undefined; },
+    report: (cause) => { reports.push(cause); return undefined; },
+  });
+  lane.offer(1, "A");
+  await lane.drain();
+  check(calls.join() === "commit" && reports.length === 1, "throwing commit: reported once, fail not called", { calls, reports: reports.length });
+
+  // F5: offer then close in the same tick -> derive never starts.
+  let derived = 0;
+  const closed = latestDerivation<string, string>({
+    derive: async (input) => { derived += 1; return input; },
+    isCurrent: () => true, commit: () => undefined, fail: () => undefined, report: () => undefined,
+  });
+  closed.offer(1, "A");
+  closed.close();
+  await closed.drain();
+  check(derived === 0, "closed before start: derive not invoked");
+
+  // F9: a Promise-returning callback smuggled through a cast is reported, not crashing.
+  const caught: unknown[] = [];
+  const smuggled = (async () => { throw new Error("async bug"); }) as unknown as () => undefined;
+  const observation = source.port.observe(["priceCurrency"], smuggled, { reportError: (cause) => { caught.push(cause); return undefined; } });
+  source.commit({ priceCurrency: "EUR" });
+  await settle();
+  check(caught.length === 2, "async callback via cast: illegal return + rejection reported", caught.map(String));
+  observation.unsubscribe();
+
+  // F7/A5: borrowers get a view without detach authority; admits() closes on unsubscribe.
+  const watched = source.port.observe(["taxRegion"], () => undefined, { reportError: () => undefined });
+  const view = watched.view;
+  const before = view.admits(view.current().revision);
+  watched.unsubscribe();
+  check(!("unsubscribe" in view) && before && !view.admits(view.current().revision), "view has no unsubscribe; admits() false after unsubscribe");
+}
+
+// ---- 5. Re-review regressions (N1, N4, N2) ----
+{
+  // N1: a hand-written participant calls the visitor twice and keeps it; nothing leaks.
+  const source = new InMemorySettingsSource(initial);
+  const owner = createStandInOwner("hub-unit");
+  const { createSettingsHub } = await import("./features/settings/composition/settings-hub.ts");
+  const kept: unknown[] = [];
+  const sneaky = { open: <R>(visit: { sync: (s: never) => R }): R => {
+    const spec = { initial: source.reader.read(["locale"]), apply: () => undefined } as never;
+    kept.push(visit.sync(spec)); // a second, retained plan
+    return visit.sync(spec);
+  } } as unknown as import("./features/settings/index.ts").SettingsParticipantV1;
+  await createSettingsHub({ settings: source.port, participants: [sneaky] },
+    { signal: new AbortController().signal, resources: owner.resources, reportError: () => undefined, participantIds: ["sneaky"] });
+  const results = await owner.cleanup(100);
+  check(results[0]?.kind === "released" && source.listenerCount("locale") === 0 && kept.length === 1, "N1: visitor plans have no effect; only the hub subscribes");
+
+  // N4: throwing commit in a derived participant -> failed outcome, not a timeout.
+  const owner2 = createStandInOwner("hub-unit-2");
+  const { derivedSettings } = await import("./features/settings/index.ts");
+  const hub = await createSettingsHub({ settings: source.port, participants: [derivedSettings({
+    keys: ["taxRegion"], derive: async ({ taxRegion }) => taxRegion,
+    commit: () => { throw new Error("commit bug"); }, fail: () => undefined,
+  })] }, { signal: new AbortController().signal, resources: owner2.resources, reportError: () => undefined, participantIds: ["bad"] });
+  const outcome = await Promise.race([hub.instance.outcomes()[0]?.outcome, tick(200).then(() => "timeout" as const)]);
+  check(typeof outcome === "object" && outcome?.kind === "failed", "N4: throwing commit yields a failed outcome", outcome);
+  await owner2.cleanup(100);
+
+  // N2: a factory that hangs during construction -> bounded failure with cleanup.
+  let probe: InMemorySettingsSource | undefined;
+  let hung: unknown;
+  const started = Date.now();
+  try {
+    await composeHost({ initial, rates: controllableRates({ USD: 1 }).rates, rules: taxRules,
+      injectFactoryHang: "settings/hub", constructionBudgetMs: 100, sourceProbe: (s) => { probe = s; } });
+  } catch (error) { hung = error; }
+  check(hung instanceof Error && Date.now() - started < 3_000, "N2: hung factory -> bounded construction failure", hung);
+  check(probe !== undefined && probe.listenerCount("taxRegion") === 0 && probe.listenerCount("priceCurrency") === 0, "N2: owners created before the hang were cleaned");
+}
+
+console.log(failures === 0 ? "\nALL CHECKS PASSED" : `\n${failures} CHECK(S) FAILED`);
+process.exitCode = failures === 0 ? 0 : 1;
