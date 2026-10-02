@@ -178,7 +178,7 @@ negative type fixtures clean on TS 5.8.3 and 7.0.2.
 
 | Competitor mistake | Countermeasure in v4 |
 | --- | --- |
-| Stale async response overwrites newer data (LaunchDarkly #840, Flagsmith #203) | monotonic revision; publish only if `admits` and current |
+| Stale async response overwrites newer data (LaunchDarkly #840, Flagsmith #203) | monotonic revision; a derived result publishes only if `admits` and current. The freshness of what the Host commits stays the adapter's job |
 | Listener accumulation / leaks (OpenFeature #1360, Flagsmith #390, RxJS `shareReplay`) | one owned subscription per participant; scope cleanup verifies detachment |
 | One subscriber error stops others (Svelte #11555, Jotai #2871, Zustand) | per-registration isolation |
 | Phantom "changes" (Unleash #209, LaunchDarkly `update`, .NET #36045) | `Object.is` no-op commits; documented "revision is not a value change" |
@@ -439,6 +439,9 @@ lifecycle hooks from its package; this package uses `Resources` per its rules 4,
 
 ## Remaining limitations
 
+- **Known sketch v4 defects** found after this revision are listed in
+  [sketch-v4-known-defects.md](sketch-v4-known-defects.md); the implementation
+  delivery covers them.
 - **No real consumer yet, public anyway (owner decision 5):** the first public 0.x
   API is shaped by TEST evidence; expect deliberate 0.x breaks once real consumers
   arrive. Keep v1 minimal (sync and derived only).

@@ -20,7 +20,8 @@ reviewed.
 
 | Path | What it is |
 | --- | --- |
-| [design.md](design.md) | Revision 4 of the research and recommended design, edited for this repository: links adjusted to this layout, rule 10 updated with the error-code agreement of 2026-10-02, workspace `AGENTS.md` citations marked as outside this repository, reviewer naming as described below, and lint and spelling fixes (a note and directive for the deliberate rule numbering, "fan-out", one reworded sentence about timers) |
+| [design.md](design.md) | Revision 4 of the research and recommended design, edited for this repository: links adjusted to this layout, rule 10 updated with the error-code agreement of 2026-10-02, workspace `AGENTS.md` citations marked as outside this repository, reviewer naming as described below, lint and spelling fixes (a note and directive for the deliberate rule numbering, "fan-out", one reworded sentence about timers), the stale-response countermeasure scoped to derived results, and a pointer to the known sketch v4 defects |
+| [sketch-v4-known-defects.md](sketch-v4-known-defects.md) | Defects in the frozen sketch v4 confirmed after the move, as input for the implementation delivery |
 | [raw/revisions/](raw/revisions/) | Revisions 1-3 (originals SHA-256 `3709c3a7…`, `eee3f342…`, `9754799b…`; revision 1 is byte-identical, revisions 2 and 3 carry the redacted details below); their internal links refer to the former workspace layout |
 | [raw/original-reports/](raw/original-reports/) | The five original hook research reports (Flutter/Riverpod, reactive UI, DI frameworks, plugin systems, scale), raw results, identities and their task scope; hashes in `research-document-hashes.json` |
 | [raw/evidence/](raw/evidence/README.md) | Hosted critiques of revision 1, root-verified online sources, the review of revision 2, runtime capability check |
@@ -51,8 +52,8 @@ find . -type f -name '*.txt' -exec sh -c 'mv "$1" "${1%.txt}"' _ {} \;
 Then provide
 `node_modules/@get-modular/core` (this repository's `packages/core` at
 `9c722ce`, the revision the sketches were built against, with its `dist`), compile `packages/assembly/src` into
-`node_modules/@get-modular/assembly/dist` with its `package.json`, add
-`@types/node`, then run `tsc -p tsconfig.json` and `node src/main.ts` on Node
+`node_modules/@get-modular/assembly/dist` with its `package.json`, install
+`typescript` (5.8.3 or 7.0.2 were used) and `@types/node`, then run `tsc -p tsconfig.json` and `node src/main.ts` on Node
 24.18+ (v4: 30 checks).
 
 ## Provenance limits
@@ -80,8 +81,8 @@ This public copy differs from the private originals only by:
   unchanged;
 - one absolute local scratch path, shortened to `scratchpad/`.
 
-Edited copies: revisions 2 and 3; in `raw/evidence/`, the two README files
-(also for links), `flow.json`, `runtime-capability-check.md`,
+Edited copies: revisions 2 and 3; in `raw/evidence/`, the README files (also for
+links and status), `flow.json`, `runtime-capability-check.md`,
 `root-review-of-revision-2.md`, `root-verified-online/README.md`, the four critic
 `*.identity.json` files, `requests/`, the research round 4 files and the
 code-sketch critic reports; in `raw/original-reports/`, the five
@@ -95,5 +96,7 @@ inputs (authority snapshots, relayed sources, macOS metadata files) are not part
 of this archive at all. The original reports themselves (`hooks-*.md` and their
 `*.result.json`) are unchanged and still match `research-document-hashes.json`.
 Being hash-pinned, they still contain hosted worker workspace links under
-`/srv/workers/` (in `hooks-reactive.md` and its result) and job ids whose
-last letter names a worker account slot; neither carries credentials.
+`/srv/workers/` (in `hooks-reactive.md` and its result). Job ids everywhere,
+including the edited identity files, keep their last letter, which names a
+worker account slot, because they are the cross-reference between files;
+neither carries credentials.

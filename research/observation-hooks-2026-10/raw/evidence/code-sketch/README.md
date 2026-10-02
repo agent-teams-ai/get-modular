@@ -40,6 +40,6 @@ and `final-review-rev3.md` (independent xhigh review of research revision 3; F-1
   continues; then hardened by the final review of revision 4 (G-1..G-13). 30 checks
   pass on Node 24.18.0 and 26.9; TS 5.8.3 and 7.0.2 clean incl. negative type fixtures.
 Remaining known limits: TypeScript TS2590 near ~1,150 declarations in one array
-literal; Core/Assembly ceilings (1,024 providers per many-row, 1,024 roots);
+literal (measured on v1, not re-measured on v4); Core/Assembly ceilings (1,024 providers per many-row, 1,024 roots);
 option-2 settlement is self-reported; readiness is diagnostic per participant,
 the Host decides.

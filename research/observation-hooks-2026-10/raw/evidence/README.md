@@ -16,8 +16,9 @@ consumer migration, G1/K1 change, production adoption or release follows.
   ([code-sketch/](code-sketch/README.md)).
 - Revision 4 (current document) adds research round 4 ([research-r4/](research-r4/))
   and sketch v4; the package is public from the first 0.x release.
-- Original five research reports and their relay stay unchanged in
-  [original-reports](../original-reports/) (the rest of that workspace evidence moves with the resource planning archive).
+- Original five research reports stay unchanged in
+  [original-reports](../original-reports/); their relayed source packet is not
+  part of this archive (it stays with the resource planning evidence).
 - Resource plan checked for conflicts at SHA-256
   `46e869cefe261dab667f87f6249c63bfb301f3b1581e52f87cf42f270dc0eea7`; it was not edited.
 

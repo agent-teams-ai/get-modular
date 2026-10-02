@@ -14,4 +14,5 @@ are saved here by root (their rules forbid writing report files):
   with `@get-modular/resources`, 0.x evolution, GM publication requirements.
 
 All confirmed defects were fixed in `../code-sketch/hooks-sketch-v4/` and recorded
-as R4-1..R4-12 in the research document.
+as R4-1..R4-13 in the research document; R4-14 records removals, not defects.
+Defects found later are in `../../../sketch-v4-known-defects.md`.
