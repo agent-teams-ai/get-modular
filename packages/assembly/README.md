@@ -48,7 +48,7 @@ resource several times; Host cleanup must account for that sharing. Cancellation
 waits for an in-flight factory to settle. Construction does not establish readiness.
 
 The package freezes its metadata, records, arrays and journals. Instance objects,
-capability values, causes, signals, run scopes and input records remain opaque.
+capability values, causes, signals and run scopes remain opaque. Input records are borrowed and never frozen; only their own data properties are read.
 Direct thenable objects, Promise subclasses and Promises with own string properties
 or symbol accessors are unsupported factory carriers. Own symbol data properties
 used by Node async context tracking are permitted and ignored.

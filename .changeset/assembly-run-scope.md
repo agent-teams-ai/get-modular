@@ -12,6 +12,7 @@ Pass a per-run scope and declared inputs to runs (ADR-0031). One prepared assemb
 
 Migration: code that constructs `FactoryContext` or `RunOptions` itself or implements `PreparedAssembly` adds
 `scope`. Exhaustive maps over `PreparationErrorCode`, `RunErrorCode` or the failed `phase` add the new members.
+Custom implementations of `Assembly<C>` (for example test doubles) must also implement `bindInput`.
 Factories and ordinary `run()` calls need no change.
 
 Authoring surface changed: yes
