@@ -320,6 +320,21 @@ test("Foundation selects gitignored generated production sources", async () => {
     await copyQualityToolchain(generated);
     const report = await fullQualityCheck(generated);
     assert.equal(report.outcome, "passed", JSON.stringify(report));
+    await writeFixtureFile(generated, "packages/core/src/generated.ts",
+      "async function prepare(): Promise<void> {}\nprepare();\nexport const generated = 1;\n");
+    const rejected = await fullQualityCheck(generated);
+    assert.equal(rejected.outcome, "violations", JSON.stringify(rejected));
+    assert.ok(rejected.capabilities[0].diagnostics.some(diagnostic =>
+      diagnostic.ruleId === "quality.source-coverage.lint-violation" &&
+      JSON.stringify(diagnostic).includes("packages/core/src/generated.ts") &&
+      diagnostic.evidence.some(evidence =>
+        evidence.kind === "tool-rule" &&
+        evidence.value === "typescript(no-floating-promises)",
+      )), JSON.stringify(rejected));
+    await writeFixtureFile(generated, "packages/core/src/generated.ts",
+      "async function prepare(): Promise<void> {}\nawait prepare();\nexport const generated = 1;\n");
+    const corrected = await fullQualityCheck(generated);
+    assert.equal(corrected.outcome, "passed", JSON.stringify(corrected));
   } finally {
     await rm(generated, { recursive: true, force: true });
   }
