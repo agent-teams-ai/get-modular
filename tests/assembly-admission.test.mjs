@@ -252,6 +252,18 @@ for (const leaf of LEAF_PACKAGES) {
     ]) await assert.rejects(validateLeafPackageWorkspaceAdmission({
       ...inputs, productionArtifacts,
     }), leafAdmission);
+    // An implemented root needs its root development edge even when the root
+    // manifest and lock consistently omit it.
+    const rootManifest = JSON.parse(read("package.json"));
+    delete rootManifest.devDependencies[leaf.name];
+    const lock = parse(currentLock.toString("utf8"));
+    delete lock.importers["."].devDependencies[leaf.name];
+    delete lock.importers[leaf.root];
+    await assert.rejects(validateLeafPackageWorkspaceAdmission({
+      ...inputs, productionArtifacts: [...artifacts, ...candidateArtifacts],
+      readBytes: path => path === "package.json" ? Buffer.from(JSON.stringify(rootManifest))
+        : path === "pnpm-lock.yaml" ? Buffer.from(stringify(lock)) : read(path),
+    }), new RegExp(`${leaf.name} admission requires the root development workspace edge`, "u"));
     const unknownRoot = "packages/rogue/package.json";
     const inventory = await packageManifestInventory([unknownRoot], {
       readPackageManifest: async () => manifest,

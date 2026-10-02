@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { posix } from "node:path";
 import ts from "typescript-minimum";
 import { GENERATED_PRODUCTION_PATH } from "./generated-production-source.mjs";
-import { LEAF_PACKAGES, leafManifestPath, PRIVATE_CANDIDATE } from "./leaf-packages.mjs";
+import { assertLeafPackageTable, LEAF_PACKAGES, leafManifestPath } from "./leaf-packages.mjs";
 
 const PUBLICATION_FIELDS = Object.freeze([
   "bin", "browser", "main", "module", "publishConfig",
@@ -98,21 +98,18 @@ async function authenticateLeafDecision(leaf, { readBytes, registry, sdkGrowthSt
     || entry?.path === decision.path),
   [{ id: decision.id, path: decision.path, immutableDigest: decision.immutableDigest }],
   `${leaf.name} admission requires exact registered ${decision.id} identity`);
-  if (leaf.publication !== PRIVATE_CANDIDATE) return;
   assert(sdkGrowthStatus?.status === "pending"
     && sdkGrowthStatus.activation === "hold"
     && sdkGrowthStatus.qualified === false
     && record(sdkGrowthStatus.claims)
     && Object.values(sdkGrowthStatus.claims).every(value => value === false),
-  `${leaf.name} candidate must not promote G1 or claim public qualification`);
+  `${leaf.name} must not promote G1 or claim public qualification`);
 }
 
 async function assertLeafManifest(leaf, readPackageManifest) {
   const manifest = await readPackageManifest(leafManifestPath(leaf));
   assert(record(manifest) && manifest.name === leaf.name,
     `${leaf.name} requires its exact package identity`);
-  assert.equal(leaf.publication, PRIVATE_CANDIDATE,
-    `${leaf.name} has an unsupported publication class: ${leaf.publication}`);
   assert.equal(manifest.private, true, `${leaf.name} candidate must remain private`);
   assert.equal(manifest.type, "module", `${leaf.name} must use ESM`);
   for (const field of PUBLICATION_FIELDS) {
@@ -212,6 +209,7 @@ export async function validateLeafPackageAdmission({
   leaves = LEAF_PACKAGES,
 }) {
   assert(Array.isArray(productionArtifacts), "leaf package admission needs an artifact inventory");
+  assertLeafPackageTable(leaves);
   const registry = JSON.parse((await readBytes(
     "architecture/decisions/accepted-decisions.json",
   )).toString("utf8"));

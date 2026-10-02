@@ -1,7 +1,7 @@
 import { lstat, readFile, readdir } from "node:fs/promises";
 import { posix, resolve } from "node:path";
 
-import { LEAF_PACKAGES, leafManifestPath, PRIVATE_CANDIDATE } from "./leaf-packages.mjs";
+import { LEAF_PACKAGES, leafManifestPath } from "./leaf-packages.mjs";
 import {
   indexSnapshotPaths,
   indexSnapshotSymlinkPaths,
@@ -267,9 +267,9 @@ export function assemblyManifestViolations(manifest) {
 }
 
 // An admitted leaf remains a dependency-free package of its decided version.
-// A private candidate stays private until its separate release decision; its
-// package carrier may expose a local build for qualification without making it
-// public. No other publication class is admitted yet.
+// Every row is a private candidate (the table admits no other class): it stays
+// private until its separate release decision, and its package carrier may
+// expose a local build for qualification without making it public.
 export function leafManifestViolations(manifest) {
   const leaf = LEAF_PACKAGES_BY_NAME.get(manifest?.name);
   if (leaf === undefined) return [];
@@ -277,12 +277,8 @@ export function leafManifestViolations(manifest) {
   if (typeof manifest.version !== "string" || !leaf.version.test(manifest.version)) {
     violations.push(`${leaf.name} version is not admitted by ${leaf.decision.id}`);
   }
-  if (leaf.publication === PRIVATE_CANDIDATE) {
-    if (manifest.private !== true) violations.push(`${leaf.name} candidate must remain private`);
-    if (manifest.publishConfig !== undefined) violations.push(`${leaf.name} candidate must omit publishConfig`);
-  } else {
-    violations.push(`${leaf.name} has an unsupported publication class: ${leaf.publication}`);
-  }
+  if (manifest.private !== true) violations.push(`${leaf.name} candidate must remain private`);
+  if (manifest.publishConfig !== undefined) violations.push(`${leaf.name} candidate must omit publishConfig`);
   for (const field of ["dependencies", "optionalDependencies", "peerDependencies", "devDependencies"]) {
     const value = manifest[field];
     if (value !== undefined && (!plainObject(value) || Object.keys(value).length !== 0)) {

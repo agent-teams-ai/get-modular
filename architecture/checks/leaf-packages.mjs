@@ -1,5 +1,6 @@
 // The only publication class admitted so far: a private, unpublished candidate.
-export const PRIVATE_CANDIDATE = "private-candidate";
+// Its rules apply to every row until a decision admits another class.
+const PRIVATE_CANDIDATE = "private-candidate";
 
 // Optional leaf packages admitted beside Core and Assembly. Each row is bound to
 // its accepted decision; the governance, workspace, manifest, build and profile
@@ -41,18 +42,50 @@ export const LEAF_PACKAGES = Object.freeze([
   }),
 ]);
 
-// Fail closed on a malformed row: a differently named root or identity cannot
-// hide behind it, it cannot claim Core or Assembly, and its version pattern is
-// stateless.
-for (const [index, leaf] of LEAF_PACKAGES.entries()) {
+// A row names its own identity, root, decision and version pattern. It cannot
+// claim Core or Assembly, a differently named root, another row's decision or
+// an unanchored or stateful version pattern.
+function identityProblem(leaf, rows, index) {
   if (!/^[a-z][a-z0-9-]*$/u.test(leaf.id) || ["core", "assembly"].includes(leaf.id)
-    || leaf.root !== `packages/${leaf.id}` || leaf.name !== `@get-modular/${leaf.id}`
-    || !(leaf.version instanceof RegExp) || leaf.version.global || leaf.version.sticky
-    || LEAF_PACKAGES.findIndex(other => other.id === leaf.id) !== index
-    || !Object.hasOwn(leaf.commands, leaf.gate)) {
-    throw new Error(`LEAF_PACKAGE_TABLE_INVALID: ${leaf.id}`);
+    || rows.findIndex(other => other.id === leaf.id) !== index) return "id";
+  if (leaf.root !== `packages/${leaf.id}` || leaf.name !== `@get-modular/${leaf.id}`) return "root";
+  if (leaf.publication !== PRIVATE_CANDIDATE) return "publication";
+  const { version } = leaf;
+  if (!(version instanceof RegExp) || version.global || version.sticky || version.multiline
+    || !version.source.startsWith("^") || !version.source.endsWith("$")) return "version";
+  const { decision } = leaf;
+  if (typeof decision?.id !== "string" || typeof decision.path !== "string"
+    || rows.findIndex(other => other.decision?.id === decision.id
+      || other.decision?.path === decision.path) !== index) return "decision";
+  if (leaf.extension?.authority !== decision.path) return "extension";
+  return undefined;
+}
+
+// Every command belongs to the row's namespace, its gate runs exactly the other
+// commands in order, and each required test lives in the row and is run by one
+// of them. A row therefore cannot reuse a shared command or gate nothing.
+function commandProblem(leaf) {
+  const match = /^([a-z][a-z0-9-]*:)check$/u.exec(leaf.gate);
+  const names = Object.keys(leaf.commands ?? {});
+  const steps = names.filter(name => name !== leaf.gate);
+  if (!match || steps.length === 0
+    || !names.every(name => name.startsWith(match[1]) && typeof leaf.commands[name] === "string")
+    || leaf.commands[leaf.gate] !== steps.map(name => `pnpm ${name}`).join(" && ")) return "commands";
+  if (!Array.isArray(leaf.requiredTests) || leaf.requiredTests.length === 0
+    || !leaf.requiredTests.every(path => typeof path === "string"
+      && path.startsWith(`${leaf.root}/tests/`) && !path.split("/").includes("..")
+      && steps.some(name => leaf.commands[name].split(" ").includes(path)))) return "requiredTests";
+  return undefined;
+}
+
+export function assertLeafPackageTable(rows) {
+  for (const [index, leaf] of rows.entries()) {
+    const problem = identityProblem(leaf, rows, index) ?? commandProblem(leaf);
+    if (problem !== undefined) throw new Error(`LEAF_PACKAGE_TABLE_INVALID: ${leaf.id}: ${problem}`);
   }
 }
+
+assertLeafPackageTable(LEAF_PACKAGES);
 
 export const leafManifestPath = leaf => `${leaf.root}/package.json`;
 

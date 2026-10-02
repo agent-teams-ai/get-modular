@@ -5,7 +5,7 @@ import test from "node:test";
 
 import { validateLeafPackageAdmission } from "../architecture/checks/leaf-package-admission.mjs";
 import {
-  LEAF_PACKAGES, leafManifestPath, leafPackageById,
+  assertLeafPackageTable, LEAF_PACKAGES, leafManifestPath, leafPackageById,
 } from "../architecture/checks/leaf-packages.mjs";
 
 const registryPath = "architecture/decisions/accepted-decisions.json";
@@ -99,13 +99,86 @@ test("the lifecycle-kernel row keeps its reviewed tests and command chain", () =
   assert.equal(kernel.gate, "lifecycle:check");
 });
 
-test("a root outside the table stays rejected, and an unknown publication class fails closed", async () => {
+test("a root outside the table stays rejected", async () => {
   const { input } = fixture(exampleLeaf);
   await assert.rejects(validateLeafPackageAdmission({ ...input, leaves: LEAF_PACKAGES }),
     /unknown or differently named production root: packages\/example-leaf\//u);
-  await assert.rejects(validateLeafPackageAdmission({
-    ...input, leaves: [...LEAF_PACKAGES, { ...exampleLeaf, publication: "public" }],
-  }), /unsupported publication class: public/u);
+});
+
+// A malformed row would weaken every check that reads the table, so the table
+// rejects it on load and admission rejects it when rows are supplied directly.
+test("the table rejects rows that would admit less than their decision requires", async () => {
+  assert.doesNotThrow(() => assertLeafPackageTable(ROWS));
+  for (const [problem, change] of [
+    ["id", { id: "core", root: "packages/core", name: "@get-modular/core" }],
+    ["id", { id: "lifecycle-kernel" }],
+    ["root", { root: "packages/example-copy" }],
+    ["root", { name: "@get-modular/example-copy" }],
+    ["publication", { publication: "public" }],
+    ["publication", { publication: undefined }],
+    ["version", { version: /.*/u }],
+    ["version", { version: /0\.1\.0/u }],
+    ["version", { version: /^0\.1\.0$/gu }],
+    ["version", { version: /^0\.1\.0$/mu }],
+    ["version", { version: "0.1.0" }],
+    ["decision", { decision: LEAF_PACKAGES[0].decision }],
+    ["decision", { decision: { ...exampleLeaf.decision, path: LEAF_PACKAGES[0].decision.path } }],
+    ["extension", { extension: { id: "example", authority: "docs/decisions/0001-other.md" } }],
+    ["commands", { commands: { "example:check": "node -e 0" } }],
+    ["commands", { gate: "governance:check",
+      commands: { "governance:check": "node architecture/checks/governance.mjs" } }],
+    ["commands", { commands: { ...exampleLeaf.commands, "example:check": "pnpm example:test && echo ok" } }],
+    ["commands", { commands: { "example:test": exampleLeaf.commands["example:test"],
+      "governance:test": "node --test tests/governance.test.mjs",
+      "example:check": "pnpm example:test && pnpm governance:test" } }],
+    ["requiredTests", { requiredTests: [] }],
+    ["requiredTests", { requiredTests: [...exampleLeaf.requiredTests, `${exampleLeaf.root}/tests/other.test.mjs`] }],
+    ...[LEAF_PACKAGES[0].requiredTests[0], `${exampleLeaf.root}/tests/../../core/tests/x.test.mjs`]
+      .map(path => ["requiredTests", { requiredTests: [path], commands: {
+        "example:test": `node --test ${path}`, "example:check": "pnpm example:test",
+      } }]),
+  ]) {
+    const row = { ...exampleLeaf, ...change };
+    const pattern = new RegExp(`LEAF_PACKAGE_TABLE_INVALID: ${row.id}: ${problem}$`, "u");
+    assert.throws(() => assertLeafPackageTable([...LEAF_PACKAGES, row]), pattern,
+      `${problem}: ${JSON.stringify(change)}`);
+    await assert.rejects(validateLeafPackageAdmission({
+      ...fixture(exampleLeaf).input, leaves: [...LEAF_PACKAGES, row],
+    }), pattern);
+  }
+});
+
+// Two implemented rows are each validated, and Core cannot import the second.
+test("every implemented row is admitted and guarded at once", async () => {
+  const rows = ROWS.map(leaf => fixture(leaf));
+  const sources = new Map(ROWS.map(leaf => [`${leaf.root}/src/index.ts`, substantiveSource]));
+  const input = {
+    ...rows[0].input,
+    productionArtifacts: ["packages/core/package.json", ...rows.flatMap(row => row.admitted)],
+    readPackageManifest: async path => {
+      const leaf = ROWS.find(row => leafManifestPath(row) === path);
+      return { name: leaf.name, private: true, type: "module",
+        exports: rootExport(), files: ["dist", "README.md", "LICENSE"] };
+    },
+    readProductionSource: async path => sources.get(path),
+    packageJson: { scripts: Object.assign({}, ...ROWS.map(leaf => leaf.commands), {
+      check: ROWS.map(leaf => `pnpm ${leaf.gate}`).join(" && "),
+      "check:fast": ROWS.map(leaf => `pnpm ${leaf.gate}`).join(" && "),
+    }) },
+  };
+  assert.deepEqual(await validateLeafPackageAdmission(input), rows.flatMap(row => row.admitted));
+  for (const leaf of ROWS) {
+    input.productionArtifacts.push("packages/core/src/consumer.ts");
+    sources.set("packages/core/src/consumer.ts", `import type { Lease } from "${leaf.name}";\n`);
+    await assert.rejects(validateLeafPackageAdmission(input),
+      new RegExp(`must not import the leaf package ${leaf.name}`, "u"));
+    input.productionArtifacts.pop();
+    const { scripts } = input.packageJson;
+    const gate = scripts[leaf.gate];
+    scripts[leaf.gate] = "echo ok";
+    await assert.rejects(validateLeafPackageAdmission(input), new RegExp(`non-no-op ${leaf.gate}`, "u"));
+    scripts[leaf.gate] = gate;
+  }
 });
 
 for (const leaf of ROWS) {
@@ -257,7 +330,7 @@ for (const leaf of ROWS) {
     }
   });
 
-  test(`${leaf.id}: a private candidate leaves G1 on hold even with no package`, async () => {
+  test(`${leaf.id}: the row leaves G1 on hold even with no package`, async () => {
     const { input } = fixture(leaf);
     input.productionArtifacts = ["packages/core/package.json"];
     input.sdkGrowthStatus.activation = "active";
