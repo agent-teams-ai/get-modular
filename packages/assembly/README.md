@@ -36,7 +36,7 @@ handles under their own maps, and a Host prepares them together when every
 capability a handle uses has the identical contract in the preparing map; a handle
 that uses a capability the preparing map lacks is rejected. Pass handles to
 `prepare` as a literal array: an array typed as `AnyFactoryHandle<C>[]` beforehand
-skips that check.
+skips that check, and so does an explicit `prepare<R>()` type argument.
 
 Module, implementation, profile and capability identities, and exact compatibility
 tokens, use Core's portable grammar, for example `synthetic/store` and

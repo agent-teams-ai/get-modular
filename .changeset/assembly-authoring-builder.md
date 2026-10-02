@@ -14,7 +14,7 @@ Add the authoring builder and capability-scoped handles (ADR-0032).
 - A handle is invariant only in the capabilities its declaration uses. `prepare` accepts handles bound under
   different maps when each used capability has the identical contract in the preparing map, and rejects a
   handle that uses a capability the preparing map lacks. Pass handles as a literal array: an array typed as
-  `AnyFactoryHandle<C>[]` beforehand skips that check.
+  `AnyFactoryHandle<C>[]` beforehand skips that check, and so does an explicit `prepare<R>()` type argument.
 - `ModuleFactory<C, D, Instance, Context>` types a module factory with the module's own map.
 - New types: `AnyContract`, `CapabilitiesOf`, `CapabilityBrand`, `Cardinality`, `Contract`, `DeclarationSpec`,
   `Declared`, `KnownCapabilities`, `ModuleFactory`, `ProvidedEntry`, `SlotEntry`, `UsedCapability`.
@@ -23,6 +23,6 @@ Add the authoring builder and capability-scoped handles (ADR-0032).
 Migration: declarations written with Core's helpers and hand-written `CapabilityContract` maps keep working in
 0.3.0, and so does `AssemblyPrepareInput<C, R>`. Code that relied on whole-map handle invariance, or that names
 the internal brand of `FactoryHandle`, `AnyFactoryHandle` or `AnyInputHandle`, moves to the capability-scoped
-form.
+form. In 0.2.0 `FactoryHandle<C>` meant any handle of map `C`; use `AnyFactoryHandle<C>` for that now.
 
 Authoring surface changed: yes

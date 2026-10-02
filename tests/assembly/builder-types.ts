@@ -2,7 +2,7 @@
 import { required } from "@get-modular/core";
 import { assemblyFor, declareModule, defineContract } from "@get-modular/assembly";
 import type {
-  AssemblyPrepareInput, CapabilitiesOf, CapabilityContract, FactoryContext, ModuleFactory, SuccessfulComposition,
+  AssemblyPrepareInput, CapabilitiesOf, CapabilityContract, DeclarationSpec, FactoryContext, ModuleFactory, SuccessfulComposition,
 } from "@get-modular/assembly";
 
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;
@@ -62,6 +62,15 @@ const legacyInput: AssemblyPrepareInput<HostCapabilities, { readonly orders: typ
   composition, factories: [dbHandle, ordersHandle], roots: { orders: ordersHandle },
 };
 void host.prepare(legacyInput);
+// The 0.2.0 explicit type argument still compiles: prepare keeps R as its first parameter.
+void host.prepare<{ readonly orders: typeof ordersHandle }>({
+  composition, factories: [dbHandle, ordersHandle], roots: { orders: ordersHandle },
+});
+// A custom factory context type is honored by ModuleFactory.
+type RequestContext = FactoryContext & { readonly requestId: string };
+const contextual: ModuleFactory<OrdersCapabilities, typeof ordersDeclaration, string, RequestContext> =
+  async (_deps, context) => ({ instance: context.requestId, capabilities: { "acme/orders": { list: () => 1 } } });
+void contextual;
 // A hand-written map equals the derived one, so both kinds of map meet in one Host.
 type Manual = { readonly "acme/db": CapabilityContract<DbPort, "acme/db/r3"> };
 const derived: Equal<Manual, CapabilitiesOf<typeof Db>> = true;
@@ -118,3 +127,14 @@ host.bindFactory(dbDeclaration, async () => ({ instance: 0, capabilities: { "acm
 // @ts-expect-error A module factory is typed by its own map, not widened by the Host.
 const wrongFactory: ModuleFactory<OrdersCapabilities, typeof ordersDeclaration, number> = async (deps) => ({ instance: deps.db.missing, capabilities: { "acme/orders": { list: () => 1 } } });
 void wrongFactory;
+// @ts-expect-error A property missing on the custom context type is rejected.
+const missingContext: ModuleFactory<OrdersCapabilities, typeof ordersDeclaration, string, RequestContext> = async (_deps, context) => ({ instance: context.missing, capabilities: { "acme/orders": { list: () => 1 } } });
+void missingContext;
+// @ts-expect-error schemaVersion is supplied by declareModule, never written by the author.
+declareModule({ schemaVersion: 1, moduleId: "x/y", implementationId: "x/y", owner: { authority: "x", path: ["x"] }, provides: [], slots: [] });
+// @ts-expect-error A hand-written slot entry is not accepted; only descriptor-made entries are.
+declareModule({ moduleId: "x/y", implementationId: "x/y", owner: { authority: "x", path: ["x"] }, provides: [], slots: [{ slotId: "db", capabilityId: "acme/db", compatibility: { family: "exact", familyVersion: 1, token: "acme/db/r3" }, cardinality: required() }] });
+// A spec typed as the plain DeclarationSpec keeps declareModule typed, so a wrong factory is still rejected.
+declare const widenedSpec: DeclarationSpec;
+// @ts-expect-error A widened spec must not turn the bound declaration into never and disable checking.
+void host.bindFactory(declareModule(widenedSpec), async () => ({ capabilities: { "acme/whatever": 42 } }));

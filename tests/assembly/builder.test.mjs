@@ -31,6 +31,7 @@ test("the builder emits exactly the current wire generation and refuses wire fie
   });
   assert.ok(Object.isFrozen(Db) && Object.isFrozen(orders) && Object.isFrozen(orders.slots[0])
     && Object.isFrozen(orders.slots[0].compatibility));
+  assert.ok(Object.isFrozen(orders.provides[0]) && Object.isFrozen(orders.provides[0].compatibility));
   const spec = { moduleId: "acme/db", implementationId: "acme/db/pg", owner: owner("db"), provides: [Db.provide()], slots: [] };
   assert.deepEqual(JSON.parse(JSON.stringify(declareModule(spec))), JSON.parse(JSON.stringify(database)));
   for (const invalid of [{ ...orders }, { ...spec, kind: undefined }, { ...spec, schemaVersion: 1 }, null, "acme/db"]) {

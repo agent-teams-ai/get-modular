@@ -56,9 +56,6 @@ export type DeclarationSpec = {
   readonly owner: ModuleDeclaration["owner"];
   readonly provides: readonly ProvidedEntry<string, number>[];
   readonly slots: readonly SlotEntry<string, number, string, Cardinality>[];
-  /** `declareModule` supplies the wire discriminators; a spec never carries them. */
-  readonly kind?: never;
-  readonly schemaVersion?: never;
 };
 /** A module declaration in the current wire generation, produced by `declareModule`. */
 export type Declared<T extends DeclarationSpec> = T & {

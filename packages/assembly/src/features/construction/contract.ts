@@ -45,7 +45,10 @@ export function defineContract<V>(): <const Id extends string, const Rev extends
 }
 
 /** Module author: identities, owner and descriptor entries; never `kind`, `schemaVersion` or `compatibility`. */
-export function declareModule<const T extends DeclarationSpec>(spec: T): Declared<T> {
+export function declareModule<const T extends DeclarationSpec>(
+  // `declareModule` supplies the wire discriminators; a spec never carries them.
+  spec: T & { readonly kind?: never; readonly schemaVersion?: never },
+): Declared<T> {
   const candidate: unknown = spec;
   if (typeof candidate !== "object" || candidate === null) {
     refuse("declareModule() requires a declaration spec");
