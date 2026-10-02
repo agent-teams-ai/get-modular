@@ -8,9 +8,7 @@ import test from "node:test";
 import { promisify } from "node:util";
 
 const execute = promisify(execFile);
-// The public CLI starts a new Node runner, outside this fixture runner context.
-const childEnvironment = { ...process.env };
-delete childEnvironment.NODE_TEST_CONTEXT;
+// Inherit the real test parent context; the public CLI owns standalone startup.
 const require = createRequire(import.meta.url);
 const manifestPath = require.resolve("@agent-teams/engineering-foundation/package.json");
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
@@ -22,7 +20,7 @@ const ordinary = 'import test from "node:test"; import assert from "node:assert/
 
 async function run(executable, args, cwd) {
   try {
-    const result = await execute(executable, args, { cwd, env: childEnvironment, timeout: 30000, maxBuffer: 2000000 });
+    const result = await execute(executable, args, { cwd, env: process.env, timeout: 30000, maxBuffer: 2000000 });
     return { exit: 0, text: result.stdout + result.stderr };
   } catch (error) {
     assert.equal(error.killed, false, String(error));
