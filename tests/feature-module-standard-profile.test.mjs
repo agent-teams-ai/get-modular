@@ -15,6 +15,7 @@ import {
   publicationBlockers,
   validateFirstProductionPackageAdmission,
 } from "../architecture/checks/feature-module-standard-profile.mjs";
+import { LEAF_PACKAGES, leafManifestPath } from "../architecture/checks/leaf-packages.mjs";
 import {
   manifestCarrierViolations,
   packageIdentityViolations,
@@ -935,6 +936,33 @@ test("ADR-0023 and ADR-0025 admit historical private and canonical public Assemb
     ...manifest, scripts: { install: "node install.mjs" },
   }));
   assert.deepEqual(lifecycle[0].scripts, ["scripts.install"]);
+});
+
+test("profile admission rejects a leaf manifest outside its private candidate shape", async () => {
+  for (const leaf of LEAF_PACKAGES) {
+    const manifestPath = leafManifestPath(leaf);
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    const input = {
+      publicationBlockerIds: new Set(),
+      productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts",
+        manifestPath, `${leaf.root}/src/index.ts`],
+      productionPackageManifests: new Map([...coreManifest, [manifestPath, manifest]]),
+      admission: { ...profile.adoption.admission, status: "source-admitted" },
+      foundationConfig: { capabilities: foundationCapabilities() },
+      packageJson,
+      sourceDependencyPolicyPresent: true,
+    };
+    assert.equal(validateFirstProductionPackageAdmission(input), SOURCE_DEPENDENCY_POLICY_PATH);
+    for (const [change, message] of [
+      [{ private: false }, /candidate must remain private/u],
+      [{ version: "1.0.0" }, new RegExp(`version is not admitted by ${leaf.decision.id}`, "u")],
+      [{ dependencies: { "@get-modular/core": "workspace:*" } }, /dependencies must be absent or empty/u],
+    ]) {
+      assert.throws(() => validateFirstProductionPackageAdmission({ ...input,
+        productionPackageManifests: new Map([...coreManifest, [manifestPath, { ...manifest, ...change }]]),
+      }), message, JSON.stringify(change));
+    }
+  }
 });
 
 test("requires exactly one historical M2 replay in the contracts gate", () => {

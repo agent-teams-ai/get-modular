@@ -20,7 +20,7 @@
   },
   "files": ["dist", "LICENSE", "README.md", "CHANGELOG.md"],
   "scripts": {
-    "build": "node ../../architecture/tooling/build-lifecycle-kernel.mjs",
+    "build": "node ../../architecture/tooling/build-leaf-package.mjs lifecycle-kernel",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.types.json && tsc -p tsconfig.types.bundler.json",
     "test": "node --test tests/*.test.mjs",
     "check": "pnpm build && pnpm typecheck && pnpm test"

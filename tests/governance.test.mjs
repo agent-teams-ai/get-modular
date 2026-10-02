@@ -30,6 +30,7 @@ import {
   validateSourceMap,
   validateTraceability,
 } from "../architecture/checks/governance.mjs";
+import { LEAF_PACKAGES, leafManifestPath } from "../architecture/checks/leaf-packages.mjs";
 import {
   manifestCarrierViolations,
   packageManifestInventory,
@@ -293,7 +294,8 @@ test("supported Node preflight matches repository runtime custody", async () => 
 
   const packageJson = JSON.parse(await readFile("package.json", "utf8"));
   assert.equal(packageJson.engines.node, TOOLING_NODE_RANGE);
-  for (const path of ["packages/core/package.json", "packages/assembly/package.json"]) {
+  for (const path of ["packages/core/package.json", "packages/assembly/package.json",
+    ...LEAF_PACKAGES.map(leafManifestPath)]) {
     const manifest = JSON.parse(await readFile(path, "utf8"));
     assert.equal(manifest.engines.node, SUPPORTED_NODE_RANGE, path);
   }
