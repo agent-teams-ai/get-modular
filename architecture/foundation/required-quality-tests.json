@@ -46,14 +46,14 @@
     {
       "file": "tests/quality-activation.test.mjs",
       "names": [
-        "Foundation rejects an unadmitted unknown assertion bridge by default"
+        "Foundation rejects an unknown assertion bridge without admission by default"
       ],
       "kind": "test"
     },
     {
       "file": "tests/quality-activation.test.mjs",
       "names": [
-        "Foundation rejects missing and nonregular declared quality inputs"
+        "Foundation rejects declared quality inputs that are missing or not regular files"
       ],
       "kind": "test"
     },

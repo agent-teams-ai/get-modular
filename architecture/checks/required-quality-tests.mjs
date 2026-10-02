@@ -7,7 +7,7 @@ import { isDirectExecution } from "./node-version.mjs";
 // binds both the reviewed identity inventory and the complete entry selection.
 export const REQUIRED_QUALITY_COMMAND = "node architecture/checks/required-quality-tests.mjs && agent-teams-node-test --contract architecture/foundation/required-quality-tests.json -- tests/source-dependencies.test.mjs tests/quality-activation.test.mjs";
 export const REQUIRED_QUALITY_CONTRACT = "architecture/foundation/required-quality-tests.json";
-const CONTRACT_SHA256 = "d353019e90b04d516d32867cbe4c2248de75513c57effe28e3bb43aac70b5865";
+const CONTRACT_SHA256 = "e1dbfd834143095f023e141d2130508be1f37b5f5e6cf12d826259a9be8b9c7f";
 
 export async function validateRequiredQualityTests(root = process.cwd()) {
   const manifest = JSON.parse(await readFile(join(root, "package.json"), "utf8"));

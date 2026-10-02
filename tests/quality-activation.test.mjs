@@ -367,7 +367,7 @@ test("Foundation rejects hidden production suppressions", async () => {
   }
 });
 
-test("Foundation rejects an unadmitted unknown assertion bridge by default", async () => {
+test("Foundation rejects an unknown assertion bridge without admission by default", async () => {
   const root = await createFixture(files => {
     files.set("packages/core/src/index.ts", 'export const bridge = (value: { x: number }) => value as unknown as { y: number };\n');
   });
@@ -384,7 +384,7 @@ test("Foundation rejects an unadmitted unknown assertion bridge by default", asy
   }
 });
 
-test("Foundation rejects missing and nonregular declared quality inputs", async () => {
+test("Foundation rejects declared quality inputs that are missing or not regular files", async () => {
   const missing = await createFixture(files => {
     const policy = parse(files.get("architecture/foundation/source-dependencies.yaml"));
     policy.boundaries.find(boundary => boundary.id === "core-source").roots = [
