@@ -150,8 +150,11 @@ test("observations bind historical lock bytes, production importers and reviewed
   assert.equal(digest(currentCms),
     "sha256:33b41d5babf0a431c97e8e596a56e6ec1557ba1a0b26d39bf23e13d9a19e1fbd",
     "the current CMS successor must match its separately reviewed bytes");
+  // Package versions are observations at the evidence base; later releases move the working tree.
   for (const [name, version] of Object.entries(checkpoint.evidence.packages)) {
-    assert.equal(JSON.parse(readFileSync(`packages/${name}/package.json`, "utf8")).version, version);
+    const observed = execFileSync("git", ["show", `${checkpoint.evidence.base}:packages/${name}/package.json`],
+      { encoding: "utf8" });
+    assert.equal(JSON.parse(observed).version, version);
   }
 });
 

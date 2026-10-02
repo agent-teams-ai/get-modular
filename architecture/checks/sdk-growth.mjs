@@ -178,7 +178,7 @@ function validatePackages(model) {
       }
     }
     const baseline = model.baselines[pkg.packageName];
-    if (baseline.packageName !== pkg.packageName || baseline.packageVersion !== "0.2.0") fail(`${pkg.packageName} retained v1 baseline drifted`);
+    if (baseline.packageName !== pkg.packageName || baseline.packageVersion !== manifest.version) fail(`${pkg.packageName} retained v1 baseline drifted`);
     const history = model.histories[pkg.packageName];
     if (history.kind !== "published-release-history" || history.packageName !== pkg.packageName || history.classification !== "released") {
       fail(`${pkg.packageName} release history classification drifted`);

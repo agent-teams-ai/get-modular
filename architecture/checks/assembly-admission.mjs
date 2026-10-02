@@ -29,6 +29,29 @@ const ASSEMBLY_CORRECTION_REGISTRY_ENTRY = Object.freeze({
   path: ASSEMBLY_CORRECTION_DECISION_PATH,
   immutableDigest: "sha256:18d5bb55016d4c38856d415dc62599f0cbc445f0856d8365ff6e6b3535d6e505",
 });
+export const ASSEMBLY_RUN_SCOPE_DECISION_PATH =
+  "docs/decisions/0031-pass-a-per-run-scope-and-declared-inputs-to-assembly-runs.md";
+const ASSEMBLY_RUN_SCOPE_DECISION_BYTES_DIGEST =
+  "sha256:df489ff25d034fbc82f2db15587cb163fc02b7e815c951f6b1a1f9b2ca1e1fa5";
+const ASSEMBLY_RUN_SCOPE_REGISTRY_ENTRY = Object.freeze({
+  id: "ADR-0031",
+  path: ASSEMBLY_RUN_SCOPE_DECISION_PATH,
+  immutableDigest: "sha256:6576e43b28adc8643a3443a84412096fe465f26ab6768215c9ac8947f5743a74",
+});
+// Each public pair after 0.1.0 is authenticated by its own accepted decision;
+// the manifest shape alone is not authority.
+export const ASSEMBLY_PAIR_DECISIONS = Object.freeze({
+  "0.2.0": Object.freeze({
+    path: ASSEMBLY_CORRECTION_DECISION_PATH,
+    bytesDigest: ASSEMBLY_CORRECTION_DECISION_BYTES_DIGEST,
+    entry: ASSEMBLY_CORRECTION_REGISTRY_ENTRY,
+  }),
+  "0.3.0": Object.freeze({
+    path: ASSEMBLY_RUN_SCOPE_DECISION_PATH,
+    bytesDigest: ASSEMBLY_RUN_SCOPE_DECISION_BYTES_DIGEST,
+    entry: ASSEMBLY_RUN_SCOPE_REGISTRY_ENTRY,
+  }),
+});
 export const CORE_DEVELOPMENT_DEPENDENCIES = Object.freeze({
   ajv: "catalog:",
   canonicalize: "catalog:",
@@ -88,13 +111,14 @@ async function validateAssemblyPackage({ readBytes, readPackageManifest, current
   if (current) {
     const core = await readPackageManifest("packages/core/package.json");
     assert.equal(core?.version, manifest.version, "Assembly admission requires an exact Core/Assembly pair");
-    if (manifest.version === "0.2.0") {
-      assert.equal(digest(await readBytes(ASSEMBLY_CORRECTION_DECISION_PATH)),
-        ASSEMBLY_CORRECTION_DECISION_BYTES_DIGEST,
-        "Assembly admission next pair requires unchanged accepted ADR-0027 including approval metadata");
-      assert.deepEqual(registry.decisions.filter(entry => entry?.id === "ADR-0027"
-        || entry?.path === ASSEMBLY_CORRECTION_DECISION_PATH),
-      [ASSEMBLY_CORRECTION_REGISTRY_ENTRY], "Assembly admission next pair requires registered ADR-0027 identity");
+    const pair = Object.hasOwn(ASSEMBLY_PAIR_DECISIONS, manifest.version)
+      ? ASSEMBLY_PAIR_DECISIONS[manifest.version] : undefined;
+    if (pair !== undefined) {
+      assert.equal(digest(await readBytes(pair.path)), pair.bytesDigest,
+        `Assembly admission pair ${manifest.version} requires unchanged accepted ${pair.entry.id} including approval metadata`);
+      assert.deepEqual(registry.decisions.filter(entry => entry?.id === pair.entry.id
+        || entry?.path === pair.path),
+      [pair.entry], `Assembly admission pair ${manifest.version} requires registered ${pair.entry.id} identity`);
     }
   } else {
     assert.equal(manifest.version, "0.1.0", "historical admission retains only the first 0.1.0 release");

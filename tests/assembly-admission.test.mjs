@@ -10,7 +10,8 @@ import { parse, stringify } from "yaml";
 import { readCurrentM2Authority } from "../architecture/checks/m2-lock-witness.mjs";
 import { promisify } from "node:util";
 import {
-  ASSEMBLY_CORRECTION_DECISION_PATH, ASSEMBLY_PUBLICATION_DECISION_PATH, ASSEMBLY_DECISION_PATH, ASSEMBLY_MANIFEST_PATH, M2_HISTORICAL_LOCK_DIGEST,
+  ASSEMBLY_PAIR_DECISIONS, ASSEMBLY_PUBLICATION_DECISION_PATH, ASSEMBLY_DECISION_PATH, ASSEMBLY_MANIFEST_PATH,
+  ASSEMBLY_RUN_SCOPE_DECISION_PATH, M2_HISTORICAL_LOCK_DIGEST,
   createHistoricalM2EvidenceReader, validateAssemblyAdmission, validateLeafPackageWorkspaceAdmission,
 } from "../architecture/checks/assembly-admission.mjs";
 import { LEAF_PACKAGES, leafManifestPath } from "../architecture/checks/leaf-packages.mjs";
@@ -120,7 +121,7 @@ test("Assembly admission rejects malformed manifests, dependencies and package r
       { access: "public", registry: "https://registry.npmjs.org/", tag: "latest" }]
       .map(publishConfig => ({ publishConfig })),
     ...[undefined, null, {}, { type: "git", url: "https://example.com/", directory: "packages/assembly" }]
-      .map(repository => ({ repository })), { version: "0.2.0" },
+      .map(repository => ({ repository })), { version: "0.4.0" },
     ...[undefined, null, [], {}, true].map(dependencies => ({ dependencies })),
     { dependencies: { "@get-modular/core": "^0.1.0" } },
     { dependencies: { ...manifest.dependencies, extra: "1.0.0" } },
@@ -450,9 +451,9 @@ test("Assembly admission retains captured-index custody for every admission inpu
   const directory = await mkdtemp(join(tmpdir(), "gm-assembly-admission-"));
   const exec = promisify(execFile);
   const git = (...args) => exec("git", args, { cwd: directory });
+  const { version } = JSON.parse(read(ASSEMBLY_MANIFEST_PATH));
   const paths = [ASSEMBLY_MANIFEST_PATH, ASSEMBLY_DECISION_PATH, ASSEMBLY_PUBLICATION_DECISION_PATH,
-    ...(JSON.parse(read(ASSEMBLY_MANIFEST_PATH)).version === "0.2.0"
-      ? [ASSEMBLY_CORRECTION_DECISION_PATH] : []),
+    ...(Object.hasOwn(ASSEMBLY_PAIR_DECISIONS, version) ? [ASSEMBLY_PAIR_DECISIONS[version].path] : []),
     "architecture/decisions/accepted-decisions.json", "pnpm-lock.yaml",
     "pnpm-workspace.yaml", "package.json", "packages/core/package.json",
     ...LEAF_PACKAGES.map(leafManifestPath)];
@@ -578,7 +579,7 @@ test("next pair requires the exact accepted successor and retains first-release 
     readBytes: candidate => candidate === path ? replacement : next.readBytes(candidate),
   }), /ADR-002[357]/u);
   for (const [coreVersion, assemblyVersion] of [["0.1.0", "0.2.0"], ["0.2.0", "0.1.0"],
-    ["0.3.0", "0.3.0"], ["0.2.0-rc.0", "0.2.0-rc.0"]]) {
+    ["0.4.0", "0.4.0"], ["0.3.0", "0.2.0"], ["0.2.0", "0.3.0"], ["0.2.0-rc.0", "0.2.0-rc.0"]]) {
     await assert.rejects(admit({ ...next, readPackageManifest: async path => ({
       ...JSON.parse(read(path)), version: path === ASSEMBLY_MANIFEST_PATH ? assemblyVersion : coreVersion,
     }) }), /pair|manifest violates/u);
@@ -588,5 +589,40 @@ test("next pair requires the exact accepted successor and retains first-release 
     await assert.rejects(admit({ ...next, readPackageManifest: async path => ({
       ...await next.readPackageManifest(path), ...(path === ASSEMBLY_MANIFEST_PATH ? change : {}),
     }) }), /manifest violates/u);
+  }
+});
+
+test("0.3.0 pair requires the exact accepted ADR-0031 and retains earlier authority", async () => {
+  const accepted = read(ASSEMBLY_RUN_SCOPE_DECISION_PATH);
+  // A synthetic projection without approval metadata stands for the pending decision.
+  const proposed = Buffer.from(accepted.toString("utf8")
+    .replace(/^status: accepted$/mu, "status: proposed")
+    .replace(/^approved_by:.*\n/mu, "").replace(/^accepted_at:.*\n/mu, ""));
+  const registryPath = "architecture/decisions/accepted-decisions.json";
+  const registry = JSON.parse(read(registryPath));
+  const entry = registry.decisions.find(row => row.id === "ADR-0031");
+  const others = registry.decisions.filter(row => row.id !== "ADR-0031"
+    && row.path !== ASSEMBLY_RUN_SCOPE_DECISION_PATH);
+  const withDecisions = decisions => Buffer.from(JSON.stringify({ ...registry, decisions }));
+  const next = {
+    // The next Core/Assembly pair leaves every leaf package at its own version.
+    readPackageManifest: async path => LEAF_PACKAGES.some(leaf => leafManifestPath(leaf) === path)
+      ? JSON.parse(read(path)) : { ...JSON.parse(read(path)), version: "0.3.0" },
+  };
+  assert.deepEqual(await admit(next), artifacts.slice(2));
+  for (const [path, replacement, message] of [
+    [ASSEMBLY_RUN_SCOPE_DECISION_PATH, Buffer.from(accepted.toString("utf8").replace("0.3.0", "0.4.0")),
+      /accepted ADR-0031/u],
+    [ASSEMBLY_RUN_SCOPE_DECISION_PATH, proposed, /accepted ADR-0031/u],
+    [registryPath, withDecisions(others), /registered ADR-0031/u],
+    [registryPath, withDecisions([...others, { ...entry, immutableDigest: "sha256:" + "0".repeat(64) }]),
+      /registered ADR-0031/u],
+    [registryPath, withDecisions([...others, entry, entry]), /registered ADR-0031/u],
+    [ASSEMBLY_DECISION_PATH, Buffer.from("changed history"), /ADR-0023/u],
+    [ASSEMBLY_PUBLICATION_DECISION_PATH, Buffer.from("changed first release"), /ADR-0025/u],
+  ]) {
+    await assert.rejects(admit({ ...next,
+      readBytes: candidate => candidate === path ? replacement : read(candidate),
+    }), message);
   }
 });
