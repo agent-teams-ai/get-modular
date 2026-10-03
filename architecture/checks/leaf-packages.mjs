@@ -11,7 +11,8 @@ export const publicRepository = leaf => ({
 // Optional leaf packages admitted beside Core and Assembly. Each row is bound to
 // its accepted decision; the governance, workspace, manifest, build and profile
 // checks read this table instead of naming a package. A leaf has no runtime
-// dependency, and neither Core, Assembly nor another leaf imports it.
+// dependency except the Get Modular peers its row declares. Core and Assembly
+// import no leaf; a leaf imports another leaf only as a declared peer.
 export const LEAF_PACKAGES = Object.freeze([
   Object.freeze({
     id: "lifecycle-kernel",
@@ -84,9 +85,45 @@ export const LEAF_PACKAGES = Object.freeze([
   }),
 ]);
 
+// Get Modular packages that any public row may declare as a peer.
+const BASE_PEERS = Object.freeze(["@get-modular/core", "@get-modular/assembly"]);
+
+// A row without `peers` has none. Only a public row declares them, and each one
+// is Core, Assembly or an earlier public row, so row order is also gate order.
+export const leafPeers = leaf => leaf.peers ?? [];
+
+// Peers are declared with the workspace caret range, which `pnpm pack` turns
+// into the caret range of the one 0.x minor in the workspace.
+export const PEER_SPECIFIER = "workspace:^";
+
+export const expectedPeerDependencies = leaf =>
+  leafPeers(leaf).length === 0
+    ? undefined
+    : Object.fromEntries(leafPeers(leaf).toSorted().map(name => [name, PEER_SPECIFIER]));
+
+// The lock importer of a row: empty without peers, otherwise one workspace link
+// per declared peer and nothing else.
+export const expectedLeafImporter = leaf =>
+  leafPeers(leaf).length === 0
+    ? {}
+    : {
+      dependencies: Object.fromEntries(leafPeers(leaf).toSorted().map(name => [name, {
+        specifier: PEER_SPECIFIER, version: `link:../${name.slice("@get-modular/".length)}`,
+      }])),
+    };
+
+function peerProblem(leaf, rows, index) {
+  if (leaf.peers === undefined) return undefined;
+  if (!Array.isArray(leaf.peers) || leaf.peers.length === 0 || leaf.publication !== PUBLIC
+    || new Set(leaf.peers).size !== leaf.peers.length) return "peers";
+  const earlier = rows.slice(0, index).filter(row => row.publication === PUBLIC).map(row => row.name);
+  return leaf.peers.every(name => typeof name === "string"
+    && [...BASE_PEERS, ...earlier].includes(name)) ? undefined : "peers";
+}
+
 // A row names its own identity, root, decision and version pattern. It cannot
-// claim Core or Assembly, a differently named root, another row's decision or
-// an unanchored or stateful version pattern.
+// claim Core or Assembly, a differently named root, another row's decision, an
+// unanchored or stateful version pattern or a peer it may not depend on.
 function identityProblem(leaf, rows, index) {
   if (!/^[a-z][a-z0-9-]*$/u.test(leaf.id) || ["core", "assembly"].includes(leaf.id)
     || rows.findIndex(other => other.id === leaf.id) !== index) return "id";
@@ -100,7 +137,7 @@ function identityProblem(leaf, rows, index) {
     || rows.findIndex(other => other.decision?.id === decision.id
       || other.decision?.path === decision.path) !== index) return "decision";
   if (leaf.extension?.authority !== decision.path) return "extension";
-  return undefined;
+  return peerProblem(leaf, rows, index);
 }
 
 // Every command belongs to the row's namespace, its gate runs exactly the other

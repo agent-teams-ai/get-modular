@@ -3,7 +3,8 @@ import { posix, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 
 import {
-  LEAF_PACKAGES, leafManifestPath, PRIVATE_CANDIDATE, PUBLIC, PUBLIC_FILES, PUBLIC_PUBLISH_CONFIG, publicRepository,
+  expectedPeerDependencies, LEAF_PACKAGES, leafManifestPath, PRIVATE_CANDIDATE, PUBLIC, PUBLIC_FILES,
+  PUBLIC_PUBLISH_CONFIG, publicRepository,
 } from "./leaf-packages.mjs";
 import {
   indexSnapshotPaths,
@@ -270,7 +271,7 @@ export function assemblyManifestViolations(manifest) {
   return violations;
 }
 
-// An admitted leaf remains a dependency-free package of its decided version.
+// An admitted leaf stays at its decided version with no dependency beyond the peers of its row.
 // A private candidate stays private until its separate release decision, and its
 // package carrier may expose a local build for qualification without making it
 // public. A public leaf carries the exact public npm shape of Core and Assembly.
@@ -298,11 +299,17 @@ export function leafManifestViolations(manifest) {
   } else {
     violations.push(`${leaf.name} has an unsupported publication class: ${leaf.publication}`);
   }
-  for (const field of ["dependencies", "optionalDependencies", "peerDependencies", "devDependencies"]) {
+  for (const field of ["dependencies", "optionalDependencies", "devDependencies"]) {
     const value = manifest[field];
     if (value !== undefined && (!plainObject(value) || Object.keys(value).length !== 0)) {
       violations.push(`${leaf.name} ${field} must be absent or empty`);
     }
+  }
+  if (!isDeepStrictEqual(manifest.peerDependencies, expectedPeerDependencies(leaf))) {
+    violations.push(`${leaf.name} peerDependencies must be exactly its row peers with workspace:^`);
+  }
+  if (manifest.peerDependenciesMeta !== undefined) {
+    violations.push(`${leaf.name} must not declare optional peers`);
   }
   return violations;
 }

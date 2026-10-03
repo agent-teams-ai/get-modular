@@ -226,7 +226,7 @@ for (const leaf of LEAF_PACKAGES) {
   const manifestPath = leafManifestPath(leaf);
   const leafAdmission = new RegExp(`${leaf.name} admission`, "u");
 
-  test(`${leaf.id}: workspace admission keeps the leaf of its publication class and dependency-free`, async () => {
+  test(`${leaf.id}: workspace admission keeps the leaf of its publication class and declared peers`, async () => {
     const candidateArtifacts = [manifestPath, `${leaf.root}/src/index.ts`];
     assert.deepEqual(await validateLeafPackageWorkspaceAdmission({
       ...inputs, productionArtifacts: [...artifacts, ...candidateArtifacts],

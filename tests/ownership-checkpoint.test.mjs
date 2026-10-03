@@ -9,7 +9,7 @@ import Ajv from "ajv";
 import ts from "typescript-minimum";
 import { parse } from "yaml";
 import { packageIdentityViolations, packageManifestInventory } from "../architecture/checks/production-artifacts.mjs";
-import { LEAF_PACKAGES, leafManifestPath } from "../architecture/checks/leaf-packages.mjs";
+import { expectedLeafImporter, LEAF_PACKAGES, leafManifestPath } from "../architecture/checks/leaf-packages.mjs";
 
 const directory = "architecture/contracts/ownership/";
 const checkpoint = JSON.parse(readFileSync(`${directory}checkpoint.json`, "utf8"));
@@ -138,9 +138,9 @@ test("observations bind historical lock bytes, production importers and reviewed
   assert.deepEqual(Object.keys(currentImporters).sort(), [
     ...Object.keys(historicalImporters), ...leafRoots,
   ].sort());
-  for (const root of leafRoots) {
-    assert.deepEqual(currentImporters[root], {},
-      `the separately decided leaf package ${root} adds no runtime dependency importer`);
+  for (const leaf of LEAF_PACKAGES.filter(leaf => leafRoots.includes(leaf.root))) {
+    assert.deepEqual(currentImporters[leaf.root], expectedLeafImporter(leaf),
+      `the separately decided leaf package ${leaf.root} adds only the peer links of its row`);
   }
   for (const [path, importer] of Object.entries(historicalImporters)) {
     for (const field of ["dependencies", "optionalDependencies"]) {
