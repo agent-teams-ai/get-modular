@@ -28,7 +28,7 @@ export const TRACEABILITY_PATH = "docs/traceability/module-system-v1.yaml";
 
 const FOUNDATION_ADMISSION = Object.freeze({
   package: "@agent-teams/engineering-foundation",
-  version: "1.7.1",
+  version: "1.7.2",
   command: "agent-teams-foundation check",
   capability: "architecture.source-dependencies",
   policy: SOURCE_DEPENDENCY_POLICY_PATH,

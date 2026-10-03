@@ -74,7 +74,7 @@ async function runGrowth(root) {
   assert.equal(typedCoverage?.status, "limited", `typed report coverage missing: ${JSON.stringify(typedCoverage)}`);
   assert.deepEqual(Object.keys(report.candidate.value).toSorted(), [
     "artifactDigests", "lockDigest", "sourceCommit", "sourceTree", "surfaceDigest", "toolchainDigest", "topologyDigest",
-  ], "Foundation 1.7.1 reports a candidate observation reference, not invented surface entries");
+  ], "Foundation 1.7.2 reports a candidate observation reference, not invented surface entries");
   return report;
 }
 
@@ -269,7 +269,7 @@ acceptedBaselinePath: architecture/decisions/accepted-decisions.json
   const removal = await observeTypedSurface(temporary);
   assertTypedSymbols(removal, [], "removal");
 
-  process.stdout.write(`${JSON.stringify({ status: "passed", subject: "Foundation 1.7.1 v2 admission",
+  process.stdout.write(`${JSON.stringify({ status: "passed", subject: "Foundation 1.7.2 v2 admission",
     authority: "unverified", activation: "hold", observedTypedSurfaces: 5, observedTransitions: 4,
     transitionComparison: "unavailable-without-trusted-base" })}\n`);
 } finally {

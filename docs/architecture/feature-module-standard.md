@@ -102,10 +102,10 @@ production. The first production package must atomically:
 - change the admission state to `source-admitted`;
 - enable Engineering Foundation's `architecture.source-dependencies`
   capability at `architecture/foundation/source-dependencies.yaml`; and
-- execute the pinned `@agent-teams/engineering-foundation` `1.7.1` command
+- execute the pinned `@agent-teams/engineering-foundation` `1.7.2` command
   `agent-teams-foundation check` through both the complete and fast gates.
 
-The tooling activation pins Foundation `1.7.1`. SDK growth admission remains
+The tooling activation pins Foundation `1.7.2`. SDK growth admission remains
 explicitly pending: the active public-API capability retains schema v1 until a
 trusted external authority binds the PR base and candidate to authenticated
 released Core and Assembly artifacts. Local qualification records cannot
@@ -117,7 +117,7 @@ no waivers. Activation does not claim that existing source passes typed lint
 or establish structural or runtime conformance. Docs retains its portable
 workflow without a managed adapter or cohort binding.
 
-The Foundation 1.7.1 migration keeps the immutable Feature Module Standard and
+The Foundation 1.7.2 migration keeps the immutable Feature Module Standard and
 Consumer Module Standard pins. The retained current Consumer Module Standard
 adds the optional ADR-0029 dynamic Host guidance; it does not expand passive
 composition or confer SDK authority. The current SDK tooling binding advances

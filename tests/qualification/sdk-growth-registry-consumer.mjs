@@ -49,9 +49,9 @@ try {
   assert.equal(result.stdout, "ok");
   // Qualify the current exact registry installation separately. The original
   // archive and publication-time checks remain bound to their retained version.
-  const currentVersion = "1.7.1";
-  const currentIntegrity = "sha512-w7iCTZd/toljAMG0BnbU7al6SKTdl0MlFfxIATMP8IlOGucO8mpljxM1B0AHF0Qt0tLRz58jueb9AW7D/d+V0Q==";
-  const currentTarball = "https://registry.npmjs.org/@agent-teams/engineering-foundation/-/engineering-foundation-1.7.1.tgz";
+  const currentVersion = "1.7.2";
+  const currentIntegrity = "sha512-2wmq4g8rWgXQ2qBVY2Tb7HVP9LFsuBAUMcDhgCqixLA0RA9H3OrwXy7b7jK2gS6SggK9XCplNb03mVLR2EyzRg==";
+  const currentTarball = "https://registry.npmjs.org/@agent-teams/engineering-foundation/-/engineering-foundation-1.7.2.tgz";
   const current = join(directory, "current");
   await mkdir(current);
   await writeFile(join(current, "package.json"), JSON.stringify({ name: "gm-current-foundation-registry", private: true, type: "module" }));
@@ -74,7 +74,8 @@ try {
   assert.ok(currentArchive);
   const currentBytes = await readFile(join(current, currentArchive));
   assert.equal("sha512-" + createHash("sha512").update(currentBytes).digest("base64"), currentIntegrity);
-  assert.equal(createHash("sha1").update(currentBytes).digest("hex"), "d07d1a63d42314502f656b27d48c9da8eb340c88");
+  // The exact SRI above binds the archive; also verify the registry SHA-1 agrees.
+  assert.equal(createHash("sha1").update(currentBytes).digest("hex"), packument.versions[currentVersion].dist.shasum);
   const currentImport = await execute(process.execPath, ["--input-type=module", "--eval",
     'const sdk=await import("@agent-teams/engineering-foundation/sdk-growth-authority");if(typeof sdk.createSdkGrowthAuthorityVerifier!=="function")throw new Error("missing SDK verifier");process.stdout.write("ok")'],
     { cwd: current, timeout: 30_000 });
