@@ -4,8 +4,8 @@ import { posix } from "node:path";
 import ts from "typescript-minimum";
 import { GENERATED_PRODUCTION_PATH } from "./generated-production-source.mjs";
 import {
-  assertLeafPackageTable, LEAF_PACKAGES, leafManifestPath, PUBLIC, PUBLIC_FILES, PUBLIC_PUBLISH_CONFIG,
-  publicRepository,
+  assertLeafPackageTable, expectedPeerDependencies, LEAF_PACKAGES, leafManifestPath, leafPeers, PUBLIC,
+  PUBLIC_FILES, PUBLIC_PUBLISH_CONFIG, publicRepository,
 } from "./leaf-packages.mjs";
 
 const PUBLICATION_FIELDS = Object.freeze([
@@ -68,6 +68,10 @@ function parseSource(path, source, forbidDynamic = true) {
 function assertSourceEdges(leaf, path, source) {
   const { parsed, specifiers } = parseSource(path, source);
   for (const specifier of specifiers) {
+    // A declared peer is imported through its package root only.
+    if (leafPeers(leaf).includes(specifier)) continue;
+    const deepPeer = leafPeers(leaf).find(peer => specifier.startsWith(`${peer}/`));
+    assert(deepPeer === undefined, `${path} has a forbidden deep import of peer ${deepPeer}: ${specifier}`);
     assert(specifier.startsWith("./") || specifier.startsWith("../"),
       `${path} has a forbidden package or builtin import: ${specifier}`);
     const target = posix.normalize(posix.join(posix.dirname(path), specifier));
@@ -138,11 +142,15 @@ async function assertLeafManifest(leaf, readPackageManifest) {
       && /^(?:dist|README\.md|LICENSE|CHANGELOG\.md)(?:\/[A-Za-z0-9._/-]+)?$/u.test(path)
       && !path.split("/").includes("..")),
   `${leaf.name} requires a bounded archive files allowlist`);
-  for (const field of ["dependencies", "optionalDependencies", "peerDependencies"]) {
+  for (const field of ["dependencies", "optionalDependencies", "devDependencies"]) {
     assert(manifest[field] === undefined
       || record(manifest[field]) && Object.keys(manifest[field]).length === 0,
     `${leaf.name} must have zero ${field}`);
   }
+  assert.deepEqual(manifest.peerDependencies, expectedPeerDependencies(leaf),
+    `${leaf.name} must declare exactly its row peers with the workspace caret range`);
+  assert.equal(manifest.peerDependenciesMeta, undefined,
+    `${leaf.name} must not declare optional peers`);
   assert(manifest.scripts === undefined || record(manifest.scripts),
     `${leaf.name} scripts must be an object`);
   for (const script of Object.keys(manifest.scripts ?? {})) {

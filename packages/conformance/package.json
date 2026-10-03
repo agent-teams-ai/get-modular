@@ -1,0 +1,38 @@
+{
+  "name": "@get-modular/conformance",
+  "version": "0.0.0",
+  "description": "Test harness and contract suites for Get Modular modules and composition roots.",
+  "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org/" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agent-teams-ai/get-modular.git",
+    "directory": "packages/conformance"
+  },
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=24.18.0 <25 || >=26.10.0 <27"
+  },
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "LICENSE", "README.md", "CHANGELOG.md"],
+  "peerDependencies": {
+    "@get-modular/assembly": "workspace:^",
+    "@get-modular/core": "workspace:^",
+    "@get-modular/resources": "workspace:^"
+  },
+  "scripts": {
+    "build": "node ../../architecture/tooling/build-leaf-package.mjs conformance",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.types.json && tsc -p tsconfig.types.bundler.json",
+    "test": "node --test tests/*.test.mjs",
+    "check": "pnpm build && pnpm typecheck && pnpm test"
+  }
+}

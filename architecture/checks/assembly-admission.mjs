@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { parse } from "yaml";
-import { LEAF_PACKAGES, leafManifestPath } from "./leaf-packages.mjs";
+import { expectedLeafImporter, LEAF_PACKAGES, leafManifestPath } from "./leaf-packages.mjs";
 import {
   manifestCarrierViolations,
   packageManifestInventory,
@@ -198,7 +198,7 @@ async function validateCurrentAssemblyInputs({ readBytes, readPackageManifest, r
         readPackageManifest: async () => manifest,
       });
       assert.deepEqual(manifestCarrierViolations(inventory), [],
-        `${leaf.name} admission requires a dependency-free ESM package of its publication class`);
+        `${leaf.name} admission requires an ESM package of its publication class with exactly its declared peers`);
     }
     assert.equal(rootManifest.devDependencies?.[leaf.name], present ? "workspace:*" : undefined,
       `${leaf.name} admission requires an exact optional root development workspace edge`);
@@ -226,8 +226,8 @@ async function validateCurrentAssemblyInputs({ readBytes, readPackageManifest, r
       assert.equal(importers["."][field]?.[leaf.name], undefined,
         `${leaf.name} admission forbids a root ${field} lock edge`);
     }
-    if (present) assert.deepEqual(importers[leaf.root], {},
-      `${leaf.name} admission requires a dependency-free importer`);
+    if (present) assert.deepEqual(importers[leaf.root], expectedLeafImporter(leaf),
+      `${leaf.name} admission requires an importer with exactly its declared peers`);
   }
   const coreImporter = importers["packages/core"];
   assert(coreImporter && typeof coreImporter === "object" && !Array.isArray(coreImporter),

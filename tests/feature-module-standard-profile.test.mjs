@@ -81,6 +81,7 @@ test("exposes the qualified nested FMS v1 topology consumed by Foundation", () =
       workspaceContainers: ["packages"],
       productionRoots: [
         "packages/core/src", "packages/assembly/src", "packages/lifecycle-kernel/src", "packages/resources/src",
+        "packages/conformance/src",
       ],
       modules: [
         {
@@ -102,6 +103,11 @@ test("exposes the qualified nested FMS v1 topology consumed by Foundation", () =
           moduleRoot: "packages/resources",
           sourceRoot: "packages/resources/src",
           testRoot: "packages/resources/tests",
+        },
+        {
+          moduleRoot: "packages/conformance",
+          sourceRoot: "packages/conformance/src",
+          testRoot: "packages/conformance/tests",
         },
       ],
     },
@@ -968,6 +974,9 @@ test("profile admission rejects a leaf manifest outside its publication class sh
         : [{ private: false }, /candidate must remain private/u],
       [{ version: "1.0.0" }, new RegExp(`version is not admitted by ${leaf.decision.id}`, "u")],
       [{ dependencies: { "@get-modular/core": "workspace:*" } }, /dependencies must be absent or empty/u],
+      [{ peerDependencies: { ...manifest.peerDependencies, "@example/extra": "workspace:^" } },
+        /peerDependencies must be exactly its row peers/u],
+      [{ peerDependenciesMeta: { "@get-modular/core": { optional: true } } }, /must not declare optional peers/u],
     ]) {
       assert.throws(() => validateFirstProductionPackageAdmission({ ...input,
         productionPackageManifests: new Map([...coreManifest, [manifestPath, { ...manifest, ...change }]]),

@@ -10,7 +10,7 @@
   },
   "scope": {
     "workspaceContainers": ["packages"],
-    "productionRoots": ["packages/core/src", "packages/assembly/src", "packages/lifecycle-kernel/src", "packages/resources/src"],
+    "productionRoots": ["packages/core/src", "packages/assembly/src", "packages/lifecycle-kernel/src", "packages/resources/src", "packages/conformance/src"],
     "productionModules": [
       {
         "id": "core",
@@ -31,6 +31,11 @@
         "id": "resources",
         "moduleRoot": "packages/resources",
         "sourceRoot": "packages/resources/src"
+      },
+      {
+        "id": "conformance",
+        "moduleRoot": "packages/conformance",
+        "sourceRoot": "packages/conformance/src"
       }
     ]
   },
@@ -74,6 +79,14 @@
           "moduleComposition": "packages/resources/src/composition",
           "publicEntrypoint": "packages/resources/src/index.ts",
           "testRoot": "packages/resources/tests"
+        },
+        {
+          "moduleRoot": "packages/conformance",
+          "sourceRoot": "packages/conformance/src",
+          "featuresRoot": "packages/conformance/src/features",
+          "moduleComposition": "packages/conformance/src/composition",
+          "publicEntrypoint": "packages/conformance/src/index.ts",
+          "testRoot": "packages/conformance/tests"
         }
       ]
     },
@@ -101,6 +114,10 @@
       {
         "id": "module-resource-scopes",
         "authority": "docs/decisions/0030-admit-the-module-resource-scope-package.md"
+      },
+      {
+        "id": "module-conformance-kit",
+        "authority": "docs/decisions/0033-admit-the-module-conformance-kit.md"
       }
     ],
     "deviations": [],

@@ -5,8 +5,8 @@ import test from "node:test";
 
 import { validateLeafPackageAdmission } from "../architecture/checks/leaf-package-admission.mjs";
 import {
-  assertLeafPackageTable, LEAF_PACKAGES, leafManifestPath, leafPackageById, PRIVATE_CANDIDATE, PUBLIC,
-  PUBLIC_FILES, PUBLIC_PUBLISH_CONFIG, publicRepository,
+  assertLeafPackageTable, expectedLeafImporter, expectedPeerDependencies, LEAF_PACKAGES, leafManifestPath,
+  leafPackageById, PRIVATE_CANDIDATE, PUBLIC, PUBLIC_FILES, PUBLIC_PUBLISH_CONFIG, publicRepository,
 } from "../architecture/checks/leaf-packages.mjs";
 
 const registryPath = "architecture/decisions/accepted-decisions.json";
@@ -60,19 +60,45 @@ const examplePublic = Object.freeze({
   }),
   gate: "example-public:check",
 });
-const ROWS = Object.freeze([...LEAF_PACKAGES, exampleLeaf, examplePublic]);
+// A synthetic public row with declared peers: Core, Assembly and an earlier public row.
+const examplePeerDecision = Buffer.from("# ADR-9997: Admit an example public leaf with peers\n");
+const examplePeer = Object.freeze({
+  ...examplePublic,
+  id: "example-peer",
+  name: "@get-modular/example-peer",
+  root: "packages/example-peer",
+  decision: Object.freeze({
+    id: "ADR-9997",
+    path: "docs/decisions/9997-admit-an-example-public-leaf-with-peers.md",
+    fileDigest: sha256(examplePeerDecision),
+    immutableDigest: `sha256:${"c".repeat(64)}`,
+  }),
+  extension: Object.freeze({
+    id: "example-peer", authority: "docs/decisions/9997-admit-an-example-public-leaf-with-peers.md",
+  }),
+  peers: Object.freeze(["@get-modular/core", "@get-modular/assembly", "@get-modular/example-public"]),
+  requiredTests: Object.freeze(["packages/example-peer/tests/example.test.mjs"]),
+  commands: Object.freeze({
+    "example-peer:test": "node --test packages/example-peer/tests/example.test.mjs",
+    "example-peer:check": "pnpm example-peer:test",
+  }),
+  gate: "example-peer:check",
+});
+const ROWS = Object.freeze([...LEAF_PACKAGES, exampleLeaf, examplePublic, examplePeer]);
 
 const realRegistry = JSON.parse(await readFile(registryPath));
 const registry = Buffer.from(JSON.stringify({ ...realRegistry, decisions: [
   ...realRegistry.decisions,
   { id: "ADR-9999", path: exampleLeaf.decision.path, immutableDigest: exampleLeaf.decision.immutableDigest },
   { id: "ADR-9998", path: examplePublic.decision.path, immutableDigest: examplePublic.decision.immutableDigest },
+  { id: "ADR-9997", path: examplePeer.decision.path, immutableDigest: examplePeer.decision.immutableDigest },
 ] }));
 const decisions = new Map([
   ...await Promise.all(LEAF_PACKAGES.map(async leaf =>
     [leaf.decision.path, await readFile(leaf.decision.path)])),
   [exampleLeaf.decision.path, exampleDecision],
   [examplePublic.decision.path, examplePublicDecision],
+  [examplePeer.decision.path, examplePeerDecision],
 ]);
 const rootExport = () => ({ ".": {
   import: { types: "./dist/index.d.ts", default: "./dist/index.js" },
@@ -83,8 +109,24 @@ const manifestFor = leaf => leaf.publication === PUBLIC
   ? {
     name: leaf.name, type: "module", exports: rootExport(), files: [...PUBLIC_FILES],
     publishConfig: { ...PUBLIC_PUBLISH_CONFIG }, repository: publicRepository(leaf),
+    ...expectedPeerDependencies(leaf) === undefined ? {} : { peerDependencies: expectedPeerDependencies(leaf) },
   }
   : { name: leaf.name, private: true, type: "module", exports: rootExport(), files: ["dist", "README.md", "LICENSE"] };
+
+// Every way a manifest can differ from the peers its row declares.
+const peerChanges = leaf => {
+  const expected = expectedPeerDependencies(leaf) ?? {};
+  const names = Object.keys(expected);
+  return [
+    { peerDependencies: { ...expected, "@get-modular/extra": "workspace:^" } },
+    { peerDependencies: Object.fromEntries([...names, "@get-modular/core"].map(name => [name, "^0.3.0"])) },
+    { peerDependencies: Object.fromEntries([...names, "@get-modular/core"].map(name => [name, "workspace:*"])) },
+    { peerDependenciesMeta: { "@get-modular/core": { optional: true } } },
+    ...names.map(name => ({ peerDependencies: Object.fromEntries(
+      names.filter(other => other !== name).map(other => [other, "workspace:^"])) })),
+    ...names.length === 0 ? [] : [{ peerDependencies: undefined }],
+  ];
+};
 
 function fixture(leaf) {
   const files = new Map([[registryPath, registry], ...decisions]);
@@ -148,6 +190,31 @@ test("the resources row keeps its reviewed public class, tests and command chain
   for (const version of ["1.0.0", "0.1", "0.1.0-rc.1", "0.01.0"]) assert.doesNotMatch(version, resources.version);
 });
 
+// ADR-0033 admits the public row with declared peers; a release changes only its version within 0.x.
+test("the conformance row keeps its reviewed peers, tests and command chain", () => {
+  const conformance = leafPackageById("conformance");
+  assert.equal(conformance.publication, PUBLIC);
+  assert.equal(String(conformance.version), "/^0\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$/u");
+  assert.deepEqual(conformance.peers, ["@get-modular/assembly", "@get-modular/core", "@get-modular/resources"]);
+  assert.deepEqual(expectedPeerDependencies(conformance), {
+    "@get-modular/assembly": "workspace:^", "@get-modular/core": "workspace:^", "@get-modular/resources": "workspace:^",
+  });
+  assert.deepEqual(conformance.requiredTests, [
+    "packages/conformance/tests/conformance.test.mjs",
+    "packages/conformance/tests/packed-root.test.mjs",
+  ]);
+  assert.deepEqual(Object.keys(conformance.commands), [
+    "conformance:build", "conformance:typecheck", "conformance:test", "conformance:pack", "conformance:check",
+  ]);
+  assert.match(conformance.commands["conformance:typecheck"],
+    /typescript-minimum\/bin\/tsc -p packages\/conformance\/tsconfig\.types\.bundler\.json/u);
+  assert.equal(conformance.commands["conformance:test"], "node --test packages/conformance/tests/conformance.test.mjs");
+  assert.equal(conformance.gate, "conformance:check");
+  // The gate order follows the row order, so the peer it depends on is checked first.
+  const names = LEAF_PACKAGES.map(leaf => leaf.id);
+  assert.ok(names.indexOf("resources") < names.indexOf("conformance"));
+});
+
 test("a root outside the table stays rejected", async () => {
   const { input } = fixture(exampleLeaf);
   await assert.rejects(validateLeafPackageAdmission({ ...input, leaves: LEAF_PACKAGES }),
@@ -195,6 +262,47 @@ test("the table rejects rows that would admit less than their decision requires"
       ...fixture(exampleLeaf).input, leaves: [...LEAF_PACKAGES, row],
     }), pattern);
   }
+});
+
+// Peers belong to public rows only and name Core, Assembly or an earlier public row.
+test("the table rejects peers that are not Core, Assembly or an earlier public row", async () => {
+  assert.doesNotThrow(() => assertLeafPackageTable([...LEAF_PACKAGES, examplePublic, examplePeer]));
+  const later = { ...examplePeer, peers: ["@get-modular/example-later"] };
+  const laterRow = { ...examplePublic, id: "example-later", name: "@get-modular/example-later",
+    root: "packages/example-later", decision: { ...examplePublic.decision, id: "ADR-9996",
+      path: "docs/decisions/9996-later.md" },
+    extension: { id: "example-later", authority: "docs/decisions/9996-later.md" },
+    requiredTests: ["packages/example-later/tests/example.test.mjs"],
+    commands: { "example-later:test": "node --test packages/example-later/tests/example.test.mjs",
+      "example-later:check": "pnpm example-later:test" },
+    gate: "example-later:check" };
+  for (const [label, rows] of [
+    ["a peer on a private candidate", [...LEAF_PACKAGES, { ...exampleLeaf, peers: ["@get-modular/core"] }]],
+    ["a peer on a later row", [...LEAF_PACKAGES, later, laterRow]],
+    ["a peer on a private earlier row", [...LEAF_PACKAGES, { ...examplePeer, peers: ["@get-modular/lifecycle-kernel"] }]],
+    ["an unknown peer", [...LEAF_PACKAGES, { ...examplePeer, peers: ["@get-modular/unknown"] }]],
+    ["a peer on itself", [...LEAF_PACKAGES, { ...examplePeer, peers: [examplePeer.name] }]],
+    ["a foreign peer", [...LEAF_PACKAGES, { ...examplePeer, peers: ["@example/other"] }]],
+    ["a repeated peer", [...LEAF_PACKAGES, { ...examplePeer, peers: ["@get-modular/core", "@get-modular/core"] }]],
+    ["an empty peer list", [...LEAF_PACKAGES, { ...examplePeer, peers: [] }]],
+    ["a non-array peer list", [...LEAF_PACKAGES, { ...examplePeer, peers: "@get-modular/core" }]],
+  ]) {
+    assert.throws(() => assertLeafPackageTable(rows), /LEAF_PACKAGE_TABLE_INVALID: example-[a-z]+: peers$/u, label);
+  }
+});
+
+test("declared peers fix the manifest peers and the lock importer of a row", () => {
+  assert.equal(expectedPeerDependencies(exampleLeaf), undefined);
+  assert.deepEqual(expectedLeafImporter(exampleLeaf), {});
+  assert.deepEqual(expectedPeerDependencies(examplePeer), {
+    "@get-modular/assembly": "workspace:^", "@get-modular/core": "workspace:^",
+    "@get-modular/example-public": "workspace:^",
+  });
+  assert.deepEqual(expectedLeafImporter(examplePeer), { dependencies: {
+    "@get-modular/assembly": { specifier: "workspace:^", version: "link:../assembly" },
+    "@get-modular/core": { specifier: "workspace:^", version: "link:../core" },
+    "@get-modular/example-public": { specifier: "workspace:^", version: "link:../example-public" },
+  } });
 });
 
 // Two implemented rows are each validated, and Core cannot import the second.
@@ -334,20 +442,42 @@ for (const leaf of ROWS) {
       input.readPackageManifest = async () => ({ ...manifestFor(leaf), ...change });
       await assert.rejects(validateLeafPackageAdmission(input), undefined, JSON.stringify(change));
     }
+    for (const change of peerChanges(leaf)) {
+      input.readPackageManifest = async () => ({ ...manifestFor(leaf), ...change });
+      await assert.rejects(validateLeafPackageAdmission(input),
+        /exactly its row peers|optional peers/u, JSON.stringify(change));
+    }
   });
 
   test(`${leaf.id}: type-only, runtime and deep imports cannot pierce the package boundary`, async () => {
-    const { input, sources, sourcePath } = fixture(leaf);
+    const { input, sources, sourcePath, admitted } = fixture(leaf);
+    const peers = leaf.peers ?? [];
     for (const edge of [
-      'import type { Core } from "@get-modular/core";',
+      ...[
+        'import type { Core } from "@get-modular/core";',
+        'type Secret = import("@get-modular/assembly").Secret;',
+      ].filter(edge => !peers.some(peer => edge.includes(`"${peer}"`))),
       'import "node:fs";',
+      'import type { Lease } from "@get-modular/lifecycle-kernel";',
       'export type { Secret } from "../../core/src/secret.js";',
-      'type Secret = import("@get-modular/assembly").Secret;',
       'void import("./internal.js");',
+      ...peers.flatMap(peer => [
+        `import type { Deep } from "${peer}/internal";`,
+        `void import("${peer}");`,
+        `export * from "${peer}/dist/index.js";`,
+      ]),
     ]) {
       sources.set(sourcePath, `${substantiveSource}${edge}\n`);
       await assert.rejects(validateLeafPackageAdmission(input),
         new RegExp(`forbidden|outside ${leaf.id} source|dynamic import`, "u"), edge);
+    }
+    // A declared peer is legal through its package root, as a value or a type.
+    for (const peer of peers) {
+      for (const edge of [`import type { Peer } from "${peer}";`, `export { peer } from "${peer}";`,
+        `type Peer = import("${peer}").Peer;`]) {
+        sources.set(sourcePath, `${substantiveSource}${edge}\n`);
+        assert.deepEqual(await validateLeafPackageAdmission(input), admitted, edge);
+      }
     }
   });
 
