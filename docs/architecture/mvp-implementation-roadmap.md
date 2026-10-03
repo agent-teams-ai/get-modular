@@ -809,10 +809,10 @@ smaller split would make it unverifiable.
    maps the organization standard ([canonical document](https://github.com/agent-teams-ai/.github/blob/eef92e7fd40f538b4e9ba03e01bbd4e2d23f12f2/docs/architecture/feature-module-standard/v1.md),
    revision `eef92e7`). Keep domain semantics independent from Foundation,
    Docs Protocol, DI containers and plugin runtime types.
-2. Preserve ADR-0003's public development-only
-   `@get-modular/conformance` identity without creating an empty package. Its
-   substantive vectors, fixtures and packed-consumer tooling may be published
-   after their surface gate; runner, subject, report and attestation contracts
+2. ADR-0033 admits ADR-0003's `@get-modular/conformance` identity as public
+   development tooling for module authors and contract owners. Get Modular's
+   own vectors, fixtures and packed-consumer qualification stay in
+   `tests/qualification`; runner, subject, report and attestation contracts
    remain private until a separate compatibility decision accepts them.
 3. Freeze one public export map only after the first substantive compiler behavior is
    present. `ModuleDeclaration`, `CompositionProfile`, `CompositionPlan`,
@@ -1262,8 +1262,9 @@ envelope.
 
 ### Phase 5 implementation
 
-1. Keep implementation-independent vectors and fixtures in the development-only
-   conformance package. Accepted contracts, ledgers and independently owned
+1. Keep implementation-independent vectors and fixtures in `tests/qualification`;
+   the conformance package is module-author and contract-owner tooling (ADR-0033).
+   Accepted contracts, ledgers and independently owned
    vectors are authority; packed Core is only the subject under test. Runner,
    report, attestation and promotion surfaces remain private and unclaimed until
    an accepted compatibility and custody decision defines them.

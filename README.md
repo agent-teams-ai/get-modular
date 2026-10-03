@@ -47,9 +47,11 @@ consume both.
   instances ordered, cooperative cleanup scopes. A module registers how to
   release what it acquired; the Host decides when a scope closes, how long to
   wait and whether to retry. `scoped()` needs Assembly 0.3.0 `run({ scope })`.
-- `@get-modular/conformance` is reserved for a development-only conformance suite for core,
-  alternative implementations, and adapters. Applications do not install it at
-  runtime.
+- [`@get-modular/conformance`](packages/conformance/README.md) is development
+  tooling for module authors and contract owners: it builds one module the way a
+  Host does, smoke-checks a composition root and runs a contract suite against
+  any implementation. Core, Assembly and resources are its peers. Applications
+  do not install it at runtime.
 
 `conformance` uses the conventional protocol-testing meaning: independently
 owned fixtures prove that an implementation follows the contract. The
