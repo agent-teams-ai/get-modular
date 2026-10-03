@@ -71,6 +71,11 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
       path: "docs/decisions/0032-give-assembly-an-authoring-builder-and-capability-scoped-handles.md",
       immutableDigest: "sha256:8d929a7f40c1864f3fc898e68700c51ea171bcf48ec9fa32a967d4d4d2e1066a",
     },
+    {
+      id: "ADR-0033",
+      path: "docs/decisions/0033-admit-the-module-conformance-kit.md",
+      immutableDigest: "sha256:41e6d18087f5fe147b5a843b37fa5be925fa2f87cb1dc83c949a80520e7dbeb5",
+    },
   ]);
   const paths = execFileSync("git", ["ls-tree", "-r", "--name-only", checkpoint.evidence.base,
     "docs/decisions"], { encoding: "utf8" }).trim().split("\n");
