@@ -17,6 +17,8 @@ summary: Index of Get Modular architecture decisions.
 
 ## Accepted decisions
 
+- [ADR-0033: Admit the module conformance kit](0033-admit-the-module-conformance-kit.md)
+
 - [ADR-0032: Give Assembly an authoring builder and capability-scoped handles](0032-give-assembly-an-authoring-builder-and-capability-scoped-handles.md)
 - [ADR-0031: Pass a per-run scope and declared inputs to Assembly runs](0031-pass-a-per-run-scope-and-declared-inputs-to-assembly-runs.md)
 - [ADR-0030: Admit the module resource scope package](0030-admit-the-module-resource-scope-package.md)
