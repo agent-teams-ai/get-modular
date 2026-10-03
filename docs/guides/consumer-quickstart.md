@@ -38,17 +38,23 @@ if (!composition.ok) {
   throw new Error(composition.diagnostics.map(({ code }) => code).join(", "));
 }
 
-const preparation = await api.prepare({ composition, factories, roots, inputs });
+// Input handles come from `api.bindInput`; each run supplies their values.
+const inputHandles = { session: api.bindInput(sessionDeclaration) };
+const inputValues = { session: { "acme/session-id": { id: sessionId } } };
+
+const preparation = await api.prepare({ composition, factories, roots, inputs: inputHandles });
 if (preparation.status === "failed") {
   // No factory has run. Inspect error.code and preparation.diagnostics.
   throw preparation.error;
 }
 
-const outcome = await preparation.prepared.run({ signal, scope, inputs });
+const outcome = await preparation.prepared.run({ signal, scope, inputs: inputValues });
 ```
 
 Write declarations with `defineContract` and `declareModule`; `scope` and `inputs`
-are optional unless the Host uses resources or declares inputs. The
+are optional unless the Host uses resources or declares inputs. `inputHandles`
+maps aliases to `bindInput` handles; `inputValues` maps the same aliases to plain
+records keyed by capability ID. The
 [Consumer Module Standard](../architecture/common-assembly.md#module-packages-and-contracts)
 describes the authoring rules.
 
@@ -68,7 +74,7 @@ Unexpected infrastructure failures may reject the async call. Do not convert
 them into domain diagnostics owned by Core.
 
 Identify errors of every Get Modular package by `code`, never by class or
-message; see the last bullet of
+message; see the error-code bullet in
 [Module packages and contracts](../architecture/common-assembly.md#module-packages-and-contracts).
 
 ## Cancellation

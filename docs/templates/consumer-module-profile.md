@@ -24,7 +24,7 @@ packages:
   conformance: 0.1.0 # optional
 
 identity:
-  namespaces: []
+  namespaces: [] # namespaces this consumer owns; see "Identity and namespaces" in the standard
 
 scope:
   roots:
