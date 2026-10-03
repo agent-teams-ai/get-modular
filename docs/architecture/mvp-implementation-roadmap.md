@@ -910,6 +910,12 @@ discovery or a second identity authority.
 
 ### Capability evolution and namespace admission
 
+For contracts declared with Assembly's builder, the Consumer Module Standard
+sections [Module packages and contracts](common-assembly.md#module-packages-and-contracts)
+and [Identity and namespaces](common-assembly.md#identity-and-namespaces) take
+precedence ([ADR-0032](../decisions/0032-give-assembly-an-authoring-builder-and-capability-scoped-handles.md));
+the decision for the next wire generation replaces items 2-4.
+
 Exact compatibility deliberately makes migration explicit. It does not require
 a flag-day deployment:
 
