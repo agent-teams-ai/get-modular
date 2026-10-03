@@ -324,4 +324,21 @@ export async function runSemanticSuite({ createScope, CloseIncompleteError }, co
       await scope.control.close();
     }
   });
+
+  await context.test("R17 a close request reaches the whole subtree synchronously", async () => {
+    const root = createScope({ name: "r" });
+    const child = root.resources.child({ name: "c" });
+    const grandchild = child.resources.child({ name: "g" });
+    const gate = deferred();
+    root.resources.use({ [Symbol.asyncDispose]: () => gate.promise }, "slow"); // released before c
+    const closing = root.control.close();
+    assert.equal(grandchild.resources.signal.aborted, true);
+    let invoked = false;
+    await assert.rejects(grandchild.resources.setup({ name: "late", setup: () => { invoked = true; }, cleanup: () => {} }),
+      coded("resources.scope.closed"));
+    assert.equal(invoked, false);
+    assert.throws(() => child.resources.child({ name: "late" }), coded("resources.scope.closed"));
+    gate.resolve();
+    assert.equal((await closing).complete, true);
+  });
 }

@@ -137,8 +137,10 @@ test("A4 cancelling run() reaches a hung setup; the module lifetime is not tied 
   const api = assemblyFor();
   let mode = "hang";
   let captured;
+  let nested;
   const handle = api.bindFactory(declarations[0], scoped("m1", async (_deps, context) => {
     assert.deepEqual(Object.keys(context).sort(), ["resources", "signal"]);
+    nested = context.resources.child({ name: "nested" }).resources;
     await context.resources.setup({ name: "conn", cleanup: () => {}, setup: ({ signal }) => new Promise((resolve, reject) => {
       if (mode === "hang") signal.addEventListener("abort", () => { reject(signal.reason); }, { once: true });
       else resolve(1);
@@ -161,6 +163,7 @@ test("A4 cancelling run() reaches a hung setup; the module lifetime is not tied 
   assert.equal(settled.status, "failed");
   assert.equal(settled.code, "assembly.run.factory-rejected");
   assert.equal(settled.cancellation.reason, reason);
+  assert.equal(nested.signal.aborted, true, "run cancellation reaches the module's child scopes");
   assert.equal((await attempt.control.close()).complete, true);
   mode = "ok";
   const live = host.resources.child({ name: "live" });
