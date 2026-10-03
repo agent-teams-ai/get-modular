@@ -149,7 +149,7 @@ a `Promise`.
 
 | Code | Meaning |
 | --- | --- |
-| `conformance.argument.invalid` | a call was malformed; nothing ran. `isolate` and `smoke` reject, `contractSuite`, `runContractSuite` and `guardHandles` throw. `smoke` finds an unknown `at` id only after its first run |
+| `conformance.argument.invalid` | a call was malformed; `isolate` and `smoke` reject, the other functions throw. Raised before any module runs, except an unknown `at` id, which `smoke` detects after the run without injection |
 | `conformance.isolate.construction-failed` | the module could not be built |
 | `conformance.smoke.failed` | a smoke step broke an expectation |
 | `conformance.suite.revision-mismatch` | the subject provides another revision than the suite checks |

@@ -221,6 +221,12 @@ test("S2 a debt in the first run does not hide an unknown at id", async () => {
   const error = await smoke({ api: assemblyFor(), compose: stuck.compose, at: ["t/missing"] })
     .then(() => undefined, caught => caught);
   assert.equal(code(error), "conformance.argument.invalid");
+  // The first run succeeded with a debt: every injection step still runs and is reported.
+  const all = await smoke({ api: assemblyFor(), compose: stuck.compose }).then(() => undefined, caught => caught);
+  assert.equal(code(all), "conformance.smoke.failed");
+  assert.equal(all.details.steps.length, 11);
+  assert.equal(all.details.steps[0].outcome, "succeeded");
+  assert.match(all.details.steps[0].problem, /debt/u);
 });
 
 test("S3 an abort injected right after a module is called reaches its setup", { timeout: 20000 }, async () => {
