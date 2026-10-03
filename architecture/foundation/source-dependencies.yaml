@@ -474,6 +474,7 @@ boundaries:
       - packages/resources/tests/packed-root.test.mjs
       - packages/resources/tests/semantic-suite.mjs
       - packages/resources/tests/gc-probe.mjs
+      - packages/resources/tests/s1-probe.mjs
       - packages/resources/tests/types.ts
     allow:
       boundaries:
