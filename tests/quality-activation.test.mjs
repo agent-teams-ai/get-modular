@@ -68,7 +68,7 @@ async function createFixture(mutator = () => {}) {
         "lint:typed": "agent-teams-foundation quality check --consumer .",
       },
       devDependencies: {
-        "@agent-teams/engineering-foundation": "1.5.1",
+        "@agent-teams/engineering-foundation": "1.7.2",
         oxlint: "1.83.0",
         "oxlint-tsgolint": "7.0.2001",
         typescript: "7.0.2",
@@ -186,7 +186,7 @@ async function createFixture(mutator = () => {}) {
     ["packages/assembly/src/index.ts", "export const assembly = 1;\n"],
     [
       "node_modules/@agent-teams/engineering-foundation/package.json",
-      JSON.stringify({ name: "@agent-teams/engineering-foundation", version: "1.5.1" }),
+      JSON.stringify({ name: "@agent-teams/engineering-foundation", version: "1.7.2" }),
     ],
     [
       "node_modules/@agent-teams/engineering-foundation/presets/oxlint/base.json",
@@ -260,7 +260,7 @@ function ruleIds(report) {
 }
 
 test("activates exact published Foundation quality pins", () => {
-  assert.equal(foundationPackage.version, "1.5.1");
+  assert.equal(foundationPackage.version, "1.7.2");
   assert.equal(oxlintPackage.version, "1.83.0");
   assert.equal(typedPackage.version, "7.0.2001");
   assert.equal(typescriptPackage.version, "7.0.2");
@@ -320,6 +320,21 @@ test("Foundation selects gitignored generated production sources", async () => {
     await copyQualityToolchain(generated);
     const report = await fullQualityCheck(generated);
     assert.equal(report.outcome, "passed", JSON.stringify(report));
+    await writeFixtureFile(generated, "packages/core/src/generated.ts",
+      "async function prepare(): Promise<void> {}\nprepare();\nexport const generated = 1;\n");
+    const rejected = await fullQualityCheck(generated);
+    assert.equal(rejected.outcome, "violations", JSON.stringify(rejected));
+    assert.ok(rejected.capabilities[0].diagnostics.some(diagnostic =>
+      diagnostic.ruleId === "quality.source-coverage.lint-violation" &&
+      JSON.stringify(diagnostic).includes("packages/core/src/generated.ts") &&
+      diagnostic.evidence.some(evidence =>
+        evidence.kind === "tool-rule" &&
+        evidence.value === "typescript(no-floating-promises)",
+      )), JSON.stringify(rejected));
+    await writeFixtureFile(generated, "packages/core/src/generated.ts",
+      "async function prepare(): Promise<void> {}\nawait prepare();\nexport const generated = 1;\n");
+    const corrected = await fullQualityCheck(generated);
+    assert.equal(corrected.outcome, "passed", JSON.stringify(corrected));
   } finally {
     await rm(generated, { recursive: true, force: true });
   }
@@ -364,5 +379,50 @@ test("Foundation rejects hidden production suppressions", async () => {
       .includes("quality.suppression-governance.legacy-suppression"));
   } finally {
     await rm(suppressed, { recursive: true, force: true });
+  }
+});
+
+test("Foundation rejects an unknown assertion bridge without admission by default", async () => {
+  const root = await createFixture(files => {
+    files.set("packages/core/src/index.ts", 'export const bridge = (value: { x: number }) => value as unknown as { y: number };\n');
+  });
+  try {
+    await copyQualityToolchain(root);
+    const rejected = await fullQualityCheck(root);
+    assert.equal(rejected.outcome, "violations", JSON.stringify(rejected));
+    assert.ok(ruleIds(rejected).includes("quality.source-coverage.explicit-unknown"), JSON.stringify(rejected));
+    await writeFixtureFile(root, "packages/core/src/index.ts", 'export const bridge = (value: { x: number }) => ({ y: value.x });\n');
+    const corrected = await fullQualityCheck(root);
+    assert.equal(corrected.outcome, "passed", JSON.stringify(corrected));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("Foundation rejects declared quality inputs that are missing or not regular files", async () => {
+  const missing = await createFixture(files => {
+    const policy = parse(files.get("architecture/foundation/source-dependencies.yaml"));
+    policy.boundaries.find(boundary => boundary.id === "core-source").roots = [
+      "packages/core/src/index.ts", "packages/core/src/generated.ts",
+    ];
+    files.set("architecture/foundation/source-dependencies.yaml", stringify(policy));
+  });
+  const nonregular = await createFixture();
+  try {
+    for (const root of [missing, nonregular]) {
+      await copyQualityToolchain(root);
+      const baseline = await fullQualityCheck(root);
+      assert.equal(baseline.outcome, "passed", JSON.stringify(baseline));
+    }
+    await rm(join(missing, "packages/core/src/generated.ts"));
+    const missingReport = await fullQualityCheck(missing);
+    assert.equal(missingReport.outcome, "invalid-input", JSON.stringify(missingReport));
+    await rm(join(nonregular, "packages/core/tsconfig.json"));
+    await mkdir(join(nonregular, "packages/core/tsconfig.json"));
+    const nonregularReport = await fullQualityCheck(nonregular);
+    assert.equal(nonregularReport.outcome, "invalid-input", JSON.stringify(nonregularReport));
+  } finally {
+    await rm(missing, { recursive: true, force: true });
+    await rm(nonregular, { recursive: true, force: true });
   }
 });

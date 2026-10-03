@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "required": [
+    {
+      "file": "tests/source-dependencies.test.mjs",
+      "names": [
+        "Foundation rejects consumer imports of a concrete provider"
+      ],
+      "kind": "test"
+    },
+    {
+      "file": "tests/source-dependencies.test.mjs",
+      "names": [
+        "Foundation rejects private deep imports even across an allowed edge"
+      ],
+      "kind": "test"
+    },
+    {
+      "file": "tests/source-dependencies.test.mjs",
+      "names": [
+        "source v3 rejects includeRootPackage as an unknown public field"
+      ],
+      "kind": "test"
+    },
+    {
+      "file": "tests/quality-activation.test.mjs",
+      "names": [
+        "Foundation rejects weakened protected typed lint configuration"
+      ],
+      "kind": "test"
+    },
+    {
+      "file": "tests/quality-activation.test.mjs",
+      "names": [
+        "Foundation selects gitignored generated production sources"
+      ],
+      "kind": "test"
+    },
+    {
+      "file": "tests/quality-activation.test.mjs",
+      "names": [
+        "Foundation rejects a real typed lint violation through the public route"
+      ],
+      "kind": "test"
+    },
+    {
+      "file": "tests/quality-activation.test.mjs",
+      "names": [
+        "Foundation rejects an unknown assertion bridge without admission by default"
+      ],
+      "kind": "test"
+    },
+    {
+      "file": "tests/quality-activation.test.mjs",
+      "names": [
+        "Foundation rejects declared quality inputs that are missing or not regular files"
+      ],
+      "kind": "test"
+    },
+    {
+      "file": "tests/source-dependencies.test.mjs",
+      "names": [
+        "Foundation rejects missing governed roots and checks ignored dist sources"
+      ],
+      "kind": "test"
+    }
+  ],
+  "exceptions": []
+}

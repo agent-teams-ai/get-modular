@@ -7,7 +7,7 @@
   "type": "module",
   "packageManager": "pnpm@11.20.0",
   "engines": {
-    "node": ">=24.18.0 <25",
+    "node": ">=24.21.0 <25",
     "pnpm": ">=11.20.0 <12"
   },
   "repository": {
@@ -18,7 +18,7 @@
     "precheck": "pnpm ownership:checkpoint:test",
     "check": "pnpm runtime:preflight && pnpm governance:check && pnpm release-owned-files:check && pnpm assembly:build && pnpm lifecycle:check && pnpm foundation:check && pnpm sdk-growth:check && pnpm lint:typed && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm core:typecheck:prepared && pnpm core:test && pnpm assembly:typecheck && pnpm assembly:test && pnpm contracts:check && pnpm contracts:test && pnpm qualification:resource-profile && pnpm qualification:v1-diagnostics-protocol && pnpm qualification:v1-graph-semantics && pnpm qualification:self-composition-templates && pnpm governance:test",
     "check:changed": "agent-teams-foundation agent-workflow changed --consumer .",
-    "check:fast": "pnpm runtime:preflight && pnpm assembly:build && pnpm lifecycle:check && pnpm foundation:check && pnpm sdk-growth:check && pnpm quality:coverage:scope && pnpm architecture:feature-module-profile && pnpm docs:check && pnpm core:typecheck:prepared && pnpm core:test && pnpm assembly:typecheck && pnpm assembly:test",
+    "check:fast": "pnpm runtime:preflight && pnpm assembly:build && pnpm lifecycle:check && pnpm foundation:check && pnpm sdk-growth:check && pnpm quality:coverage:scope && pnpm architecture:feature-module-profile && pnpm quality:critical:test && pnpm docs:check && pnpm core:typecheck:prepared && pnpm core:test && pnpm assembly:typecheck && pnpm assembly:test",
     "docs:changed": "pnpm docs:check && pnpm docs:quality",
     "docs:check": "agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml",
     "docs:doctor": "agent-teams-docs doctor --consumer . --profile architecture/foundation/docs-protocol.yaml",
@@ -38,7 +38,7 @@
     "lint:typed": "agent-teams-foundation quality check --consumer .",
     "foundation:status": "agent-teams-foundation status",
     "architecture:feature-module-profile": "node architecture/checks/feature-module-standard-profile.mjs",
-    "architecture:feature-module-profile:test": "node --test tests/feature-module-standard-profile.test.mjs tests/source-dependencies.test.mjs tests/quality-activation.test.mjs tests/release-owned-files.test.mjs tests/public-api-compatibility.test.mjs",
+    "architecture:feature-module-profile:test": "pnpm quality:critical:test && node --test tests/feature-module-standard-profile.test.mjs tests/release-owned-files.test.mjs tests/public-api-compatibility.test.mjs tests/required-quality-tests.test.mjs",
     "governance:check": "node architecture/checks/governance.mjs",
     "governance:test": "node --test tests/governance.test.mjs tests/node-runtime-compatibility.test.mjs tests/assembly-admission.test.mjs tests/private-core-start.test.mjs tests/m3-start.test.mjs tests/generated-production-source.test.mjs tests/leaf-package-admission.test.mjs tests/ci-check-lanes.test.mjs",
     "qualification:resource-profile": "node tests/qualification/v1-resource-profile.mjs",
@@ -65,11 +65,12 @@
     "lifecycle:typecheck": "node node_modules/typescript/bin/tsc -p packages/lifecycle-kernel/tsconfig.json --noEmit && node node_modules/typescript/bin/tsc -p packages/lifecycle-kernel/tsconfig.types.json --noEmit && node node_modules/typescript/bin/tsc -p packages/lifecycle-kernel/tsconfig.types.bundler.json --noEmit",
     "lifecycle:test": "node --test packages/lifecycle-kernel/tests/kernel.test.mjs",
     "lifecycle:pack": "node --test packages/lifecycle-kernel/tests/packed-root.test.mjs",
-    "lifecycle:check": "pnpm lifecycle:build && pnpm lifecycle:typecheck && pnpm lifecycle:test && pnpm lifecycle:pack"
+    "lifecycle:check": "pnpm lifecycle:build && pnpm lifecycle:typecheck && pnpm lifecycle:test && pnpm lifecycle:pack",
+    "quality:critical:test": "node architecture/checks/required-quality-tests.mjs && agent-teams-node-test --contract architecture/foundation/required-quality-tests.json -- tests/source-dependencies.test.mjs tests/quality-activation.test.mjs"
   },
   "devDependencies": {
     "@agent-teams/docs-protocol": "0.6.0",
-    "@agent-teams/engineering-foundation": "1.5.1",
+    "@agent-teams/engineering-foundation": "1.7.2",
     "@changesets/cli": "catalog:",
     "@get-modular/assembly": "workspace:*",
     "@get-modular/core": "workspace:*",

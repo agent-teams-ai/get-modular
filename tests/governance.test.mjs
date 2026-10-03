@@ -283,11 +283,11 @@ test("supported Node preflight matches repository runtime custody", async () => 
     assert.equal(isSupportedNodeVersion(version), false, version);
     assert.throws(() => assertSupportedNodeVersion(version), /NODE_VERSION_PREFLIGHT_FAILED/u);
   }
-  for (const version of ["24.18.0", "v24.21.0", "24.99.0"]) {
+  for (const version of ["24.21.0", "v24.21.0", "24.99.0"]) {
     assert.equal(isSupportedToolingNodeVersion(version), true, version);
     assert.doesNotThrow(() => assertSupportedToolingNodeVersion(version));
   }
-  for (const version of ["24.17.9", "25.0.0", "26.10.0", "v26.99.0", "invalid"]) {
+  for (const version of ["24.17.9", "24.18.0", "24.20.9", "24.21.0-rc.1", "25.0.0", "26.10.0", "v26.99.0", "invalid"]) {
     assert.equal(isSupportedToolingNodeVersion(version), false, version);
     assert.throws(() => assertSupportedToolingNodeVersion(version), /NODE_VERSION_PREFLIGHT_FAILED/u);
   }
@@ -299,7 +299,7 @@ test("supported Node preflight matches repository runtime custody", async () => 
     const manifest = JSON.parse(await readFile(path, "utf8"));
     assert.equal(manifest.engines.node, SUPPORTED_NODE_RANGE, path);
   }
-  assert.equal(await readFile(".node-version", "utf8"), "24.18.0\n");
+  assert.equal(await readFile(".node-version", "utf8"), "24.21.0\n");
   assert.equal(packageJson.scripts["runtime:preflight"],
     "node architecture/checks/node-version.mjs");
   for (const script of ["check", "check:fast"]) {

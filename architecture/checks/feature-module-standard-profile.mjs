@@ -28,7 +28,7 @@ export const TRACEABILITY_PATH = "docs/traceability/module-system-v1.yaml";
 
 const FOUNDATION_ADMISSION = Object.freeze({
   package: "@agent-teams/engineering-foundation",
-  version: "1.5.1",
+  version: "1.7.2",
   command: "agent-teams-foundation check",
   capability: "architecture.source-dependencies",
   policy: SOURCE_DEPENDENCY_POLICY_PATH,
@@ -38,11 +38,12 @@ const FOUNDATION_CHECK_SCRIPT =
 // Leaf commands come first, so a table row can never replace a closed
 // definition below; a colliding row leaves its own admission unsatisfiable.
 const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
+  "quality:critical:test": "node architecture/checks/required-quality-tests.mjs && agent-teams-node-test --contract architecture/foundation/required-quality-tests.json -- tests/source-dependencies.test.mjs tests/quality-activation.test.mjs",
   ...Object.fromEntries(LEAF_PACKAGES.flatMap(leaf => Object.entries(leaf.commands))),
   "architecture:feature-module-profile":
     "node architecture/checks/feature-module-standard-profile.mjs",
   "architecture:feature-module-profile:test":
-    "node --test tests/feature-module-standard-profile.test.mjs tests/source-dependencies.test.mjs tests/quality-activation.test.mjs tests/release-owned-files.test.mjs tests/public-api-compatibility.test.mjs",
+    "pnpm quality:critical:test && node --test tests/feature-module-standard-profile.test.mjs tests/release-owned-files.test.mjs tests/public-api-compatibility.test.mjs tests/required-quality-tests.test.mjs",
   "core:typecheck":
     "node architecture/tooling/generate-core.mjs --typecheck",
   "core:typecheck:prepared":
@@ -114,6 +115,7 @@ const ROOT_SCRIPT_COMMANDS = Object.freeze({
     "sdk-growth:check",
     "quality:coverage:scope",
     "architecture:feature-module-profile",
+    "quality:critical:test",
     "docs:check",
     "core:typecheck:prepared",
     "core:test",
