@@ -83,6 +83,43 @@ export const LEAF_PACKAGES = Object.freeze([
     }),
     gate: "resources:check",
   }),
+  Object.freeze({
+    id: "conformance",
+    name: "@get-modular/conformance",
+    root: "packages/conformance",
+    publication: PUBLIC,
+    // ADR-0033: public 0.x; 0.0.0 only until the first Changesets release; 1.0.0 needs a decision.
+    version: /^0\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u,
+    peers: Object.freeze(["@get-modular/assembly", "@get-modular/core", "@get-modular/resources"]),
+    decision: Object.freeze({
+      id: "ADR-0033",
+      path: "docs/decisions/0033-admit-the-module-conformance-kit.md",
+      fileDigest: "sha256:4f2c8cdcca014731f4eed8ce2ee026f7d0863e289468923d7164e866125cf7a0",
+      immutableDigest: "sha256:41e6d18087f5fe147b5a843b37fa5be925fa2f87cb1dc83c949a80520e7dbeb5",
+    }),
+    extension: Object.freeze({
+      id: "module-conformance-kit",
+      authority: "docs/decisions/0033-admit-the-module-conformance-kit.md",
+    }),
+    requiredTests: Object.freeze([
+      "packages/conformance/tests/conformance.test.mjs",
+      "packages/conformance/tests/packed-root.test.mjs",
+    ]),
+    commands: Object.freeze({
+      "conformance:build": "node architecture/tooling/build-leaf-package.mjs conformance",
+      "conformance:typecheck":
+        "node node_modules/typescript/bin/tsc -p packages/conformance/tsconfig.json --noEmit"
+        + " && node node_modules/typescript/bin/tsc -p packages/conformance/tsconfig.types.json --noEmit"
+        + " && node node_modules/typescript/bin/tsc -p packages/conformance/tsconfig.types.bundler.json --noEmit"
+        + " && node node_modules/typescript-minimum/bin/tsc -p packages/conformance/tsconfig.types.json --noEmit"
+        + " && node node_modules/typescript-minimum/bin/tsc -p packages/conformance/tsconfig.types.bundler.json --noEmit",
+      "conformance:test": "node --test packages/conformance/tests/conformance.test.mjs",
+      "conformance:pack": "node --test packages/conformance/tests/packed-root.test.mjs",
+      "conformance:check":
+        "pnpm conformance:build && pnpm conformance:typecheck && pnpm conformance:test && pnpm conformance:pack",
+    }),
+    gate: "conformance:check",
+  }),
 ]);
 
 // Get Modular packages that any public row may declare as a peer.

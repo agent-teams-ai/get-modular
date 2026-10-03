@@ -4,6 +4,7 @@ workspace:
   manifest: pnpm-workspace.yaml
 packageRoots:
   - packages/assembly
+  - packages/conformance
   - packages/core
   - packages/lifecycle-kernel
   - packages/resources
@@ -15,6 +16,8 @@ governedRoots:
   - packages/assembly/examples
   - packages/assembly/src
   - packages/assembly/tests
+  - packages/conformance/src
+  - packages/conformance/tests
   - packages/core/dist-seed
   - packages/core/dist-stage0
   - packages/core/dist-test
@@ -490,6 +493,119 @@ boundaries:
         - node:events
         - node:fs/promises
         - node:module
+        - node:os
+        - node:path
+        - node:test
+        - node:url
+      runtimeReferences: []
+  # ADR-0033 admits one optional public conformance package. Its only packages
+  # are the Get Modular peers it tests with, and it imports no Node builtin.
+  - id: conformance-errors
+    roots:
+      - packages/conformance/src/features/errors/errors.ts
+    entrypoints:
+      - packages/conformance/src/features/errors/errors.ts
+    allow:
+      boundaries: []
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: conformance-harness
+    roots:
+      - packages/conformance/src/features/harness/types.ts
+      - packages/conformance/src/features/harness/isolate.ts
+      - packages/conformance/src/features/harness/smoke.ts
+    entrypoints:
+      - packages/conformance/src/features/harness/types.ts
+      - packages/conformance/src/features/harness/isolate.ts
+      - packages/conformance/src/features/harness/smoke.ts
+    allow:
+      boundaries:
+        - conformance-errors
+      packages:
+        - "@get-modular/assembly"
+        - "@get-modular/core"
+        - "@get-modular/resources"
+      builtins: []
+      runtimeReferences: []
+  - id: conformance-suites
+    roots:
+      - packages/conformance/src/features/suites/types.ts
+      - packages/conformance/src/features/suites/suite.ts
+    entrypoints:
+      - packages/conformance/src/features/suites/types.ts
+      - packages/conformance/src/features/suites/suite.ts
+    allow:
+      boundaries:
+        - conformance-errors
+      packages:
+        - "@get-modular/assembly"
+        - "@get-modular/core"
+        - "@get-modular/resources"
+      builtins: []
+      runtimeReferences: []
+  - id: conformance-handles
+    roots:
+      - packages/conformance/src/features/handles/guard.ts
+    entrypoints:
+      - packages/conformance/src/features/handles/guard.ts
+    allow:
+      boundaries:
+        - conformance-errors
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: conformance-composition
+    roots:
+      - packages/conformance/src/composition/root.ts
+    entrypoints:
+      - packages/conformance/src/composition/root.ts
+    allow:
+      boundaries:
+        - conformance-harness
+        - conformance-suites
+        - conformance-handles
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: conformance-public-entrypoint
+    packageExports:
+      - "."
+    roots:
+      - packages/conformance/src/index.ts
+    entrypoints:
+      - packages/conformance/src/index.ts
+    allow:
+      boundaries:
+        - conformance-errors
+        - conformance-harness
+        - conformance-suites
+        - conformance-handles
+        - conformance-composition
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: conformance-development
+    dependencyMode: development
+    roots:
+      - packages/conformance/tests
+    entrypoints:
+      - packages/conformance/tests/conformance.test.mjs
+      - packages/conformance/tests/packed-root.test.mjs
+      - packages/conformance/tests/handle-probe.mjs
+      - packages/conformance/tests/types.ts
+    allow:
+      boundaries: []
+      packages:
+        - "@get-modular/assembly"
+        - "@get-modular/core"
+        - "@get-modular/resources"
+      builtins:
+        - node:assert/strict
+        - node:child_process
+        - node:fs/promises
+        - node:module
+        - node:net
         - node:os
         - node:path
         - node:test

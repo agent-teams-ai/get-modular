@@ -17,7 +17,7 @@ const hosts = { ubuntu: "ubuntu-24.04", macos: "macos-15", windows: "windows-202
 // Independent oracle copied from check/precheck at 0a81957c, not from the matrix.
 const baseline = [
   "runtime:preflight", "governance:check", "release-owned-files:check",
-  "assembly:build", "lifecycle:check", "resources:check", "foundation:check", "sdk-growth:check",
+  "assembly:build", "lifecycle:check", "resources:check", "conformance:check", "foundation:check", "sdk-growth:check",
   "lint:typed", "docs:protocol:check", "architecture:feature-module-profile",
   "architecture:feature-module-profile:test", "core:typecheck:prepared", "core:test",
   "assembly:typecheck", "assembly:test", "contracts:check", "contracts:test",
@@ -28,7 +28,7 @@ const baseline = [
 const primary = {
   core: ["core:typecheck:prepared", "core:test"],
   assembly: ["assembly:typecheck", "assembly:test"],
-  packaging: ["lifecycle:check", "resources:check", "foundation:check", "sdk-growth:check", "lint:typed"],
+  packaging: ["lifecycle:check", "resources:check", "conformance:check", "foundation:check", "sdk-growth:check", "lint:typed"],
   governance: ["ownership:checkpoint:test", "governance:check", "release-owned-files:check", "governance:test"],
   static: [
     "docs:protocol:check", "architecture:feature-module-profile",

@@ -222,6 +222,21 @@ test("current admission rejects malformed, missing, extra and redirected importe
   }));
 });
 
+// A row with peers must declare exactly them: none missing, none extra, none optional, none loosely ranged.
+const peerMutations = leaf => {
+  const peers = leaf.peers ?? [];
+  if (peers.length === 0) return [];
+  const ranged = range => Object.fromEntries(peers.map(name => [name, range]));
+  return [
+    { peerDependencies: Object.fromEntries(peers.slice(1).map(name => [name, "workspace:^"])) },
+    { peerDependencies: ranged("^0.3.0") },
+    { peerDependencies: ranged("workspace:*") },
+    { peerDependencies: { ...ranged("workspace:^"), "@get-modular/lifecycle-kernel": "workspace:^" } },
+    { peerDependenciesMeta: { [peers[0]]: { optional: true } } },
+    { peerDependencies: undefined },
+  ];
+};
+
 for (const leaf of LEAF_PACKAGES) {
   const manifestPath = leafManifestPath(leaf);
   const leafAdmission = new RegExp(`${leaf.name} admission`, "u");
@@ -243,6 +258,7 @@ for (const leaf of LEAF_PACKAGES) {
       { publishConfig: { access: "public" } },
       ...["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"]
         .map(field => ({ [field]: { "@get-modular/core": "workspace:*" } })),
+      ...peerMutations(leaf),
       { scripts: { postinstall: "node install.mjs" } },
       { exports: { "./internal": "./dist/internal.js" } },
     ]) {
@@ -297,6 +313,25 @@ for (const leaf of LEAF_PACKAGES) {
       if (value === undefined) delete changed.importers[leaf.root];
       else changed.importers[leaf.root] = value;
       locks.push(encode(changed));
+    }
+    // The importer of a row with peers holds exactly their workspace links.
+    const peerLinks = current.importers[leaf.root].dependencies;
+    if (peerLinks !== undefined) {
+      const [first] = Object.keys(peerLinks);
+      for (const importer of [
+        { dependencies: Object.fromEntries(Object.entries(peerLinks).slice(1)) },
+        { dependencies: { ...peerLinks, [first]: { ...peerLinks[first], specifier: "workspace:*" } } },
+        { dependencies: { ...peerLinks, [first]: { ...peerLinks[first], specifier: "^0.3.0" } } },
+        { dependencies: { ...peerLinks, [first]: { ...peerLinks[first], version: "link:../other" } } },
+        { dependencies: { ...peerLinks, [first]: { ...peerLinks[first], injected: true } } },
+        { dependencies: { ...peerLinks, "@get-modular/lifecycle-kernel": { specifier: "workspace:^", version: "link:../lifecycle-kernel" } } },
+        { devDependencies: peerLinks },
+        { dependencies: peerLinks, devDependencies: peerLinks },
+      ]) {
+        const changed = structuredClone(current);
+        changed.importers[leaf.root] = importer;
+        locks.push(encode(changed));
+      }
     }
     for (const edge of [
       { specifier: "^0.1.0", version: `link:${leaf.root}` },

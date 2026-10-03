@@ -26,7 +26,7 @@ jobs:
           - lane: assembly
             scripts: runtime:preflight governance:check assembly:build lifecycle:build resources:build assembly:typecheck assembly:test
           - lane: packaging
-            scripts: runtime:preflight governance:check assembly:build lifecycle:check resources:check foundation:check sdk-growth:check lint:typed
+            scripts: runtime:preflight governance:check assembly:build lifecycle:check resources:check conformance:check foundation:check sdk-growth:check lint:typed
           - lane: governance
             scripts: ownership:checkpoint:test runtime:preflight governance:check release-owned-files:check assembly:build lifecycle:build resources:build governance:test
           - lane: static

@@ -2066,15 +2066,14 @@ test("the ESM carrier rules bind core, the lifecycle rule binds every identity",
     readPackageManifest: async path => manifests.get(path),
   });
 
-  // The conformance package is not the ESM carrier of ADR-0012, so its own
-  // shape is not constrained by that decision.
+  // ADR-0033 admits conformance as a leaf, so the ADR-0012 carrier binds it like Core.
   manifests.set("packages/conformance/package.json", {
     name: "@get-modular/conformance",
     main: "./dist/index.cjs",
     types: "./dist/index.d.ts",
     exports: { ".": "./dist/index.js", "./vectors": "./dist/vectors.js" },
   });
-  await assert.doesNotReject(validate());
+  await assert.rejects(validate(), /packages\/conformance\/package\.json: .*main/u);
 
   // An install-time script runs code on every consumer, so it binds both.
   manifests.set("packages/conformance/package.json", {

@@ -16,9 +16,9 @@
   },
   "scripts": {
     "precheck": "pnpm ownership:checkpoint:test",
-    "check": "pnpm runtime:preflight && pnpm governance:check && pnpm release-owned-files:check && pnpm assembly:build && pnpm lifecycle:check && pnpm resources:check && pnpm foundation:check && pnpm sdk-growth:check && pnpm lint:typed && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm core:typecheck:prepared && pnpm core:test && pnpm assembly:typecheck && pnpm assembly:test && pnpm contracts:check && pnpm contracts:test && pnpm qualification:resource-profile && pnpm qualification:v1-diagnostics-protocol && pnpm qualification:v1-graph-semantics && pnpm qualification:self-composition-templates && pnpm governance:test",
+    "check": "pnpm runtime:preflight && pnpm governance:check && pnpm release-owned-files:check && pnpm assembly:build && pnpm lifecycle:check && pnpm resources:check && pnpm conformance:check && pnpm foundation:check && pnpm sdk-growth:check && pnpm lint:typed && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm core:typecheck:prepared && pnpm core:test && pnpm assembly:typecheck && pnpm assembly:test && pnpm contracts:check && pnpm contracts:test && pnpm qualification:resource-profile && pnpm qualification:v1-diagnostics-protocol && pnpm qualification:v1-graph-semantics && pnpm qualification:self-composition-templates && pnpm governance:test",
     "check:changed": "agent-teams-foundation agent-workflow changed --consumer .",
-    "check:fast": "pnpm runtime:preflight && pnpm assembly:build && pnpm lifecycle:check && pnpm resources:check && pnpm foundation:check && pnpm sdk-growth:check && pnpm quality:coverage:scope && pnpm architecture:feature-module-profile && pnpm quality:critical:test && pnpm docs:check && pnpm core:typecheck:prepared && pnpm core:test && pnpm assembly:typecheck && pnpm assembly:test",
+    "check:fast": "pnpm runtime:preflight && pnpm assembly:build && pnpm lifecycle:check && pnpm resources:check && pnpm conformance:check && pnpm foundation:check && pnpm sdk-growth:check && pnpm quality:coverage:scope && pnpm architecture:feature-module-profile && pnpm quality:critical:test && pnpm docs:check && pnpm core:typecheck:prepared && pnpm core:test && pnpm assembly:typecheck && pnpm assembly:test",
     "docs:changed": "pnpm docs:check && pnpm docs:quality",
     "docs:check": "agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml",
     "docs:doctor": "agent-teams-docs doctor --consumer . --profile architecture/foundation/docs-protocol.yaml",
@@ -71,13 +71,19 @@
     "resources:typecheck": "node node_modules/typescript/bin/tsc -p packages/resources/tsconfig.json --noEmit && node node_modules/typescript/bin/tsc -p packages/resources/tsconfig.types.json --noEmit && node node_modules/typescript/bin/tsc -p packages/resources/tsconfig.types.bundler.json --noEmit && node node_modules/typescript-minimum/bin/tsc -p packages/resources/tsconfig.types.json --noEmit && node node_modules/typescript-minimum/bin/tsc -p packages/resources/tsconfig.types.bundler.json --noEmit",
     "resources:test": "node --test packages/resources/tests/scope.test.mjs tests/resources/assembly-scope.test.mjs",
     "resources:pack": "node --test packages/resources/tests/packed-root.test.mjs",
-    "resources:check": "pnpm resources:build && pnpm resources:typecheck && pnpm resources:test && pnpm resources:pack"
+    "resources:check": "pnpm resources:build && pnpm resources:typecheck && pnpm resources:test && pnpm resources:pack",
+    "conformance:build": "node architecture/tooling/build-leaf-package.mjs conformance",
+    "conformance:typecheck": "node node_modules/typescript/bin/tsc -p packages/conformance/tsconfig.json --noEmit && node node_modules/typescript/bin/tsc -p packages/conformance/tsconfig.types.json --noEmit && node node_modules/typescript/bin/tsc -p packages/conformance/tsconfig.types.bundler.json --noEmit && node node_modules/typescript-minimum/bin/tsc -p packages/conformance/tsconfig.types.json --noEmit && node node_modules/typescript-minimum/bin/tsc -p packages/conformance/tsconfig.types.bundler.json --noEmit",
+    "conformance:test": "node --test packages/conformance/tests/conformance.test.mjs",
+    "conformance:pack": "node --test packages/conformance/tests/packed-root.test.mjs",
+    "conformance:check": "pnpm conformance:build && pnpm conformance:typecheck && pnpm conformance:test && pnpm conformance:pack"
   },
   "devDependencies": {
     "@agent-teams/docs-protocol": "0.6.0",
     "@agent-teams/engineering-foundation": "1.7.2",
     "@changesets/cli": "catalog:",
     "@get-modular/assembly": "workspace:*",
+    "@get-modular/conformance": "workspace:*",
     "@get-modular/core": "workspace:*",
     "@get-modular/lifecycle-kernel": "workspace:*",
     "@get-modular/resources": "workspace:*",

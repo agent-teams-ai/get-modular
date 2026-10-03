@@ -62,6 +62,9 @@ importers:
       '@get-modular/assembly':
         specifier: workspace:*
         version: link:packages/assembly
+      '@get-modular/conformance':
+        specifier: workspace:*
+        version: link:packages/conformance
       '@get-modular/core':
         specifier: workspace:*
         version: link:packages/core
@@ -113,6 +116,18 @@ importers:
       '@get-modular/core':
         specifier: workspace:*
         version: link:../core
+
+  packages/conformance:
+    dependencies:
+      '@get-modular/assembly':
+        specifier: workspace:^
+        version: link:../assembly
+      '@get-modular/core':
+        specifier: workspace:^
+        version: link:../core
+      '@get-modular/resources':
+        specifier: workspace:^
+        version: link:../resources
 
   packages/core:
     devDependencies:

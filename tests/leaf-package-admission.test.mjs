@@ -190,6 +190,31 @@ test("the resources row keeps its reviewed public class, tests and command chain
   for (const version of ["1.0.0", "0.1", "0.1.0-rc.1", "0.01.0"]) assert.doesNotMatch(version, resources.version);
 });
 
+// ADR-0033 admits the public row with declared peers; a release changes only its version within 0.x.
+test("the conformance row keeps its reviewed peers, tests and command chain", () => {
+  const conformance = leafPackageById("conformance");
+  assert.equal(conformance.publication, PUBLIC);
+  assert.equal(String(conformance.version), "/^0\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$/u");
+  assert.deepEqual(conformance.peers, ["@get-modular/assembly", "@get-modular/core", "@get-modular/resources"]);
+  assert.deepEqual(expectedPeerDependencies(conformance), {
+    "@get-modular/assembly": "workspace:^", "@get-modular/core": "workspace:^", "@get-modular/resources": "workspace:^",
+  });
+  assert.deepEqual(conformance.requiredTests, [
+    "packages/conformance/tests/conformance.test.mjs",
+    "packages/conformance/tests/packed-root.test.mjs",
+  ]);
+  assert.deepEqual(Object.keys(conformance.commands), [
+    "conformance:build", "conformance:typecheck", "conformance:test", "conformance:pack", "conformance:check",
+  ]);
+  assert.match(conformance.commands["conformance:typecheck"],
+    /typescript-minimum\/bin\/tsc -p packages\/conformance\/tsconfig\.types\.bundler\.json/u);
+  assert.equal(conformance.commands["conformance:test"], "node --test packages/conformance/tests/conformance.test.mjs");
+  assert.equal(conformance.gate, "conformance:check");
+  // The gate order follows the row order, so the peer it depends on is checked first.
+  const names = LEAF_PACKAGES.map(leaf => leaf.id);
+  assert.ok(names.indexOf("resources") < names.indexOf("conformance"));
+});
+
 test("a root outside the table stays rejected", async () => {
   const { input } = fixture(exampleLeaf);
   await assert.rejects(validateLeafPackageAdmission({ ...input, leaves: LEAF_PACKAGES }),
