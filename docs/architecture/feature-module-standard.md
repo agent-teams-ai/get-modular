@@ -41,6 +41,7 @@ package or empty feature layout is created by this adoption.
 Initial package boundaries are owned by `ADR-0003`, which resolves `OD-001`.
 `ADR-0029` adds the optional candidate-only lifecycle kernel module and retains
 G1 public qualification and npm namespace verification as release gates.
+`ADR-0030` adds the optional public resource scope module.
 
 ## Local extensions
 
@@ -70,6 +71,11 @@ G1 public qualification and npm namespace verification as release gates.
   thin `src/composition/root.ts` package factory, and a curated root export.
   Its local bookkeeping identities are not product generation IDs or Host
   cleanup resources. Runtime dependencies and Core/Assembly imports are absent.
+- The resource scope package has one feature for ordered cooperative cleanup, a
+  thin `src/composition/root.ts` seam and a curated root export. It has no
+  runtime dependency, imports neither Core, Assembly nor a builtin, and Core
+  and Assembly do not import it. Its Assembly integration tests live in root
+  `tests/resources` because a leaf package declares no workspace dependency.
 - No deviation from organization `v1` is declared.
 
 ## Enforcement
@@ -79,7 +85,7 @@ repository mapping, local authorities, navigation, gate wiring, and explicit
 qualification states. `pnpm governance:check` uses the same repository-wide
 production-artifact inventory. It always rejects production artifacts outside
 `packages`. Accepted ADR-0015 admits source only inside a package identity
-accepted by ADR-0003, ADR-0023 or the bounded ADR-0029 successor and, on its
+accepted by ADR-0003, ADR-0023, the bounded ADR-0029 successor or ADR-0030 and, on its
 own, only while that manifest is
 `private: true` and declares no publication field. Accepted ADR-0017 supersedes
 those two conditions and blocks publication surfaces only while an open
@@ -112,7 +118,7 @@ released Core and Assembly artifacts. Local qualification records cannot
 activate that route. The published
 `quality.source-coverage` route uses the existing production profile and source
 policy: `quality:coverage:scope` runs in the fast gate and `lint:typed` runs in
-the complete gate. Suppression governance covers Core, Assembly and lifecycle kernel source with
+the complete gate. Suppression governance covers Core, Assembly, lifecycle kernel and resources source with
 no waivers. Activation does not claim that existing source passes typed lint
 or establish structural or runtime conformance. Docs retains its portable
 workflow without a managed adapter or cohort binding.
@@ -139,9 +145,9 @@ fixture exception on POSIX.
 
 | Installed mechanism | Applicability and enforcement | Command |
 | --- | --- | --- |
-| Source dependencies v3 | Root development tooling, Core, Assembly and lifecycle kernel; preserve declared roots, generated output and dependency budgets | `pnpm foundation:check` |
+| Source dependencies v3 | Root development tooling, Core, Assembly, lifecycle kernel and resources; preserve declared roots, generated output and dependency budgets | `pnpm foundation:check` |
 | Source coverage and typed quality | All declared compiler projects; missing inputs fail; the default unknown assertion bridge gate remains active with no admissions | `pnpm quality:coverage:scope`, `pnpm lint:typed` |
-| Suppression governance | All three production source roots, no waivers | `pnpm foundation:check` |
+| Suppression governance | All four production source roots, no waivers | `pnpm foundation:check` |
 | Required Node execution | Nine critical identities in two existing files; complete selected file list is bound | `pnpm quality:critical:test` |
 | Documentation, decisions, workflow and dependency declarations | Existing installed profiles and repository routes remain active | `pnpm foundation:check`, `pnpm docs:protocol:check` |
 | Public API compatibility | Existing v1 profiles and released baselines; baseline mutation guard retained | `pnpm foundation:check`, `pnpm release-owned-files:check` |

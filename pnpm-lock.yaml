@@ -68,6 +68,9 @@ importers:
       '@get-modular/lifecycle-kernel':
         specifier: workspace:*
         version: link:packages/lifecycle-kernel
+      '@get-modular/resources':
+        specifier: workspace:*
+        version: link:packages/resources
       ajv:
         specifier: 'catalog:'
         version: 8.20.0
@@ -136,6 +139,8 @@ importers:
         version: 2.9.0
 
   packages/lifecycle-kernel: {}
+
+  packages/resources: {}
 
 packages:
 

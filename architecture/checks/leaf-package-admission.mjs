@@ -3,7 +3,10 @@ import { createHash } from "node:crypto";
 import { posix } from "node:path";
 import ts from "typescript-minimum";
 import { GENERATED_PRODUCTION_PATH } from "./generated-production-source.mjs";
-import { assertLeafPackageTable, LEAF_PACKAGES, leafManifestPath } from "./leaf-packages.mjs";
+import {
+  assertLeafPackageTable, LEAF_PACKAGES, leafManifestPath, PUBLIC, PUBLIC_FILES, PUBLIC_PUBLISH_CONFIG,
+  publicRepository,
+} from "./leaf-packages.mjs";
 
 const PUBLICATION_FIELDS = Object.freeze([
   "bin", "browser", "main", "module", "publishConfig",
@@ -110,11 +113,23 @@ async function assertLeafManifest(leaf, readPackageManifest) {
   const manifest = await readPackageManifest(leafManifestPath(leaf));
   assert(record(manifest) && manifest.name === leaf.name,
     `${leaf.name} requires its exact package identity`);
-  assert.equal(manifest.private, true, `${leaf.name} candidate must remain private`);
+  const isPublic = leaf.publication === PUBLIC;
+  if (isPublic) {
+    assert.equal(manifest.private, undefined, `${leaf.name} public package must not be private`);
+    assert.deepEqual(manifest.publishConfig, PUBLIC_PUBLISH_CONFIG,
+      `${leaf.name} public package requires the exact npm publishConfig`);
+    assert.deepEqual(manifest.repository, publicRepository(leaf),
+      `${leaf.name} public package requires its exact repository directory`);
+    assert.deepEqual(manifest.files, PUBLIC_FILES,
+      `${leaf.name} public package requires the exact files list`);
+  } else {
+    assert.equal(manifest.private, true, `${leaf.name} candidate must remain private`);
+  }
   assert.equal(manifest.type, "module", `${leaf.name} must use ESM`);
   for (const field of PUBLICATION_FIELDS) {
+    if (isPublic && field === "publishConfig") continue;
     assert.equal(manifest[field], undefined,
-      `${leaf.name} candidate must not claim publication through ${field}`);
+      `${leaf.name} must not claim publication through ${field}`);
   }
   assert.deepEqual(manifest.exports, ROOT_EXPORT,
     `${leaf.name} requires one root-only ESM export and no deep import`);

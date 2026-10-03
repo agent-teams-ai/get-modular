@@ -1,6 +1,12 @@
-// The only publication class admitted so far: a private, unpublished candidate.
-// Its rules apply to every row until a decision admits another class.
-const PRIVATE_CANDIDATE = "private-candidate";
+// Publication classes. A private candidate is never published. A public leaf is
+// published from 0.x under its decision with the npm shape of Core and Assembly.
+export const PRIVATE_CANDIDATE = "private-candidate";
+export const PUBLIC = "public";
+export const PUBLIC_PUBLISH_CONFIG = Object.freeze({ access: "public", registry: "https://registry.npmjs.org/" });
+export const PUBLIC_FILES = Object.freeze(["dist", "LICENSE", "README.md", "CHANGELOG.md"]);
+export const publicRepository = leaf => ({
+  type: "git", url: "git+https://github.com/agent-teams-ai/get-modular.git", directory: leaf.root,
+});
 
 // Optional leaf packages admitted beside Core and Assembly. Each row is bound to
 // its accepted decision; the governance, workspace, manifest, build and profile
@@ -40,6 +46,42 @@ export const LEAF_PACKAGES = Object.freeze([
     }),
     gate: "lifecycle:check",
   }),
+  Object.freeze({
+    id: "resources",
+    name: "@get-modular/resources",
+    root: "packages/resources",
+    publication: PUBLIC,
+    // ADR-0030: public 0.x; 0.0.0 only until the first Changesets release; 1.0.0 needs a decision.
+    version: /^0\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u,
+    decision: Object.freeze({
+      id: "ADR-0030",
+      path: "docs/decisions/0030-admit-the-module-resource-scope-package.md",
+      fileDigest: "sha256:8b2dd245de55ebea734c6a74460f37a210dfe0ee0af7ce7069f9cb41592f729e",
+      immutableDigest: "sha256:9ab491290ea3614714f6f3d17bb44ba31c578e37e68e8f68e87575567291c5c9",
+    }),
+    extension: Object.freeze({
+      id: "module-resource-scopes",
+      authority: "docs/decisions/0030-admit-the-module-resource-scope-package.md",
+    }),
+    requiredTests: Object.freeze([
+      "packages/resources/tests/scope.test.mjs",
+      "packages/resources/tests/packed-root.test.mjs",
+    ]),
+    commands: Object.freeze({
+      "resources:build": "node architecture/tooling/build-leaf-package.mjs resources",
+      "resources:typecheck":
+        "node node_modules/typescript/bin/tsc -p packages/resources/tsconfig.json --noEmit"
+        + " && node node_modules/typescript/bin/tsc -p packages/resources/tsconfig.types.json --noEmit"
+        + " && node node_modules/typescript/bin/tsc -p packages/resources/tsconfig.types.bundler.json --noEmit"
+        + " && node node_modules/typescript-minimum/bin/tsc -p packages/resources/tsconfig.types.json --noEmit"
+        + " && node node_modules/typescript-minimum/bin/tsc -p packages/resources/tsconfig.types.bundler.json --noEmit",
+      "resources:test": "node --test packages/resources/tests/scope.test.mjs tests/resources/assembly-scope.test.mjs",
+      "resources:pack": "node --test packages/resources/tests/packed-root.test.mjs",
+      "resources:check":
+        "pnpm resources:build && pnpm resources:typecheck && pnpm resources:test && pnpm resources:pack",
+    }),
+    gate: "resources:check",
+  }),
 ]);
 
 // A row names its own identity, root, decision and version pattern. It cannot
@@ -49,7 +91,7 @@ function identityProblem(leaf, rows, index) {
   if (!/^[a-z][a-z0-9-]*$/u.test(leaf.id) || ["core", "assembly"].includes(leaf.id)
     || rows.findIndex(other => other.id === leaf.id) !== index) return "id";
   if (leaf.root !== `packages/${leaf.id}` || leaf.name !== `@get-modular/${leaf.id}`) return "root";
-  if (leaf.publication !== PRIVATE_CANDIDATE) return "publication";
+  if (![PRIVATE_CANDIDATE, PUBLIC].includes(leaf.publication)) return "publication";
   const { version } = leaf;
   if (!(version instanceof RegExp) || version.global || version.sticky || version.multiline
     || !version.source.startsWith("^") || !version.source.endsWith("$")) return "version";

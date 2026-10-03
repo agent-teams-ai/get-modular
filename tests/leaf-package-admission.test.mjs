@@ -5,7 +5,8 @@ import test from "node:test";
 
 import { validateLeafPackageAdmission } from "../architecture/checks/leaf-package-admission.mjs";
 import {
-  assertLeafPackageTable, LEAF_PACKAGES, leafManifestPath, leafPackageById,
+  assertLeafPackageTable, LEAF_PACKAGES, leafManifestPath, leafPackageById, PRIVATE_CANDIDATE, PUBLIC,
+  PUBLIC_FILES, PUBLIC_PUBLISH_CONFIG, publicRepository,
 } from "../architecture/checks/leaf-packages.mjs";
 
 const registryPath = "architecture/decisions/accepted-decisions.json";
@@ -36,22 +37,54 @@ const exampleLeaf = Object.freeze({
   }),
   gate: "example:check",
 });
-const ROWS = Object.freeze([...LEAF_PACKAGES, exampleLeaf]);
+// A synthetic public row keeps the public class rules table-driven as well.
+const examplePublicDecision = Buffer.from("# ADR-9998: Admit an example public leaf\n");
+const examplePublic = Object.freeze({
+  ...exampleLeaf,
+  id: "example-public",
+  name: "@get-modular/example-public",
+  root: "packages/example-public",
+  publication: PUBLIC,
+  version: /^0\.\d+\.\d+$/u,
+  decision: Object.freeze({
+    id: "ADR-9998",
+    path: "docs/decisions/9998-admit-an-example-public-leaf.md",
+    fileDigest: sha256(examplePublicDecision),
+    immutableDigest: `sha256:${"b".repeat(64)}`,
+  }),
+  extension: Object.freeze({ id: "example-public", authority: "docs/decisions/9998-admit-an-example-public-leaf.md" }),
+  requiredTests: Object.freeze(["packages/example-public/tests/example.test.mjs"]),
+  commands: Object.freeze({
+    "example-public:test": "node --test packages/example-public/tests/example.test.mjs",
+    "example-public:check": "pnpm example-public:test",
+  }),
+  gate: "example-public:check",
+});
+const ROWS = Object.freeze([...LEAF_PACKAGES, exampleLeaf, examplePublic]);
 
 const realRegistry = JSON.parse(await readFile(registryPath));
 const registry = Buffer.from(JSON.stringify({ ...realRegistry, decisions: [
   ...realRegistry.decisions,
   { id: "ADR-9999", path: exampleLeaf.decision.path, immutableDigest: exampleLeaf.decision.immutableDigest },
+  { id: "ADR-9998", path: examplePublic.decision.path, immutableDigest: examplePublic.decision.immutableDigest },
 ] }));
 const decisions = new Map([
   ...await Promise.all(LEAF_PACKAGES.map(async leaf =>
     [leaf.decision.path, await readFile(leaf.decision.path)])),
   [exampleLeaf.decision.path, exampleDecision],
+  [examplePublic.decision.path, examplePublicDecision],
 ]);
 const rootExport = () => ({ ".": {
   import: { types: "./dist/index.d.ts", default: "./dist/index.js" },
   default: "./dist/index.js",
 } });
+// The valid manifest of each publication class.
+const manifestFor = leaf => leaf.publication === PUBLIC
+  ? {
+    name: leaf.name, type: "module", exports: rootExport(), files: [...PUBLIC_FILES],
+    publishConfig: { ...PUBLIC_PUBLISH_CONFIG }, repository: publicRepository(leaf),
+  }
+  : { name: leaf.name, private: true, type: "module", exports: rootExport(), files: ["dist", "README.md", "LICENSE"] };
 
 function fixture(leaf) {
   const files = new Map([[registryPath, registry], ...decisions]);
@@ -61,10 +94,7 @@ function fixture(leaf) {
   const input = {
     productionArtifacts: ["packages/core/package.json", ...admitted],
     readBytes: async path => files.get(path),
-    readPackageManifest: async () => ({
-      name: leaf.name, private: true, type: "module",
-      exports: rootExport(), files: ["dist", "README.md", "LICENSE"],
-    }),
+    readPackageManifest: async () => manifestFor(leaf),
     readProductionSource: async path => sources.get(path),
     packageJson: { scripts: {
       ...leaf.commands, check: `pnpm ${leaf.gate}`, "check:fast": `pnpm ${leaf.gate}`,
@@ -99,6 +129,25 @@ test("the lifecycle-kernel row keeps its reviewed tests and command chain", () =
   assert.equal(kernel.gate, "lifecycle:check");
 });
 
+// ADR-0030 admits the public row; a release changes only its version within 0.x.
+test("the resources row keeps its reviewed public class, tests and command chain", () => {
+  const resources = leafPackageById("resources");
+  assert.equal(resources.publication, PUBLIC);
+  assert.equal(String(resources.version), "/^0\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$/u");
+  assert.deepEqual(resources.requiredTests, [
+    "packages/resources/tests/scope.test.mjs",
+    "packages/resources/tests/packed-root.test.mjs",
+  ]);
+  assert.deepEqual(Object.keys(resources.commands),
+    ["resources:build", "resources:typecheck", "resources:test", "resources:pack", "resources:check"]);
+  assert.match(resources.commands["resources:typecheck"],
+    /typescript-minimum\/bin\/tsc -p packages\/resources\/tsconfig\.types\.bundler\.json/u);
+  assert.match(resources.commands["resources:test"], /tests\/resources\/assembly-scope\.test\.mjs/u);
+  assert.equal(resources.gate, "resources:check");
+  for (const version of ["0.0.0", "0.1.0", "0.12.3"]) assert.match(version, resources.version);
+  for (const version of ["1.0.0", "0.1", "0.1.0-rc.1", "0.01.0"]) assert.doesNotMatch(version, resources.version);
+});
+
 test("a root outside the table stays rejected", async () => {
   const { input } = fixture(exampleLeaf);
   await assert.rejects(validateLeafPackageAdmission({ ...input, leaves: LEAF_PACKAGES }),
@@ -114,7 +163,7 @@ test("the table rejects rows that would admit less than their decision requires"
     ["id", { id: "lifecycle-kernel" }],
     ["root", { root: "packages/example-copy" }],
     ["root", { name: "@get-modular/example-copy" }],
-    ["publication", { publication: "public" }],
+    ["publication", { publication: "internal" }],
     ["publication", { publication: undefined }],
     ["version", { version: /.*/u }],
     ["version", { version: /0\.1\.0/u }],
@@ -157,8 +206,7 @@ test("every implemented row is admitted and guarded at once", async () => {
     productionArtifacts: ["packages/core/package.json", ...rows.flatMap(row => row.admitted)],
     readPackageManifest: async path => {
       const leaf = ROWS.find(row => leafManifestPath(row) === path);
-      return { name: leaf.name, private: true, type: "module",
-        exports: rootExport(), files: ["dist", "README.md", "LICENSE"] };
+      return manifestFor(leaf);
     },
     readProductionSource: async path => sources.get(path),
     packageJson: { scripts: Object.assign({}, ...ROWS.map(leaf => leaf.commands), {
@@ -236,9 +284,7 @@ for (const leaf of ROWS) {
     input.productionArtifacts.push(`${leaf.root}/src/nested/package.json`);
     await assert.rejects(validateLeafPackageAdmission(input), /nested manifests/u);
     input.productionArtifacts.pop();
-    input.readPackageManifest = async () => ({
-      name: `${leaf.name}-copy`, private: true, type: "module",
-    });
+    input.readPackageManifest = async () => ({ ...manifestFor(leaf), name: `${leaf.name}-copy` });
     await assert.rejects(validateLeafPackageAdmission(input), /exact package identity/u);
   });
 
@@ -272,27 +318,21 @@ for (const leaf of ROWS) {
 
   test(`${leaf.id}: the manifest cannot run install hooks, depend on runtime packages or claim publication`, async () => {
     const { input } = fixture(leaf);
-    const manifest = {
-      name: leaf.name, private: true, type: "module",
-      exports: rootExport(), files: ["dist", "README.md", "LICENSE"],
-    };
-    input.readPackageManifest = async () => manifest;
+    const classChanges = leaf.publication === PUBLIC
+      ? [{ private: true }, { publishConfig: undefined }, { repository: undefined },
+        { repository: { ...publicRepository(leaf), directory: "packages/core" } },
+        { files: ["dist"] }, { main: "./dist/index.js" }]
+      : [{ publishConfig: { access: "public" } }, { private: false }];
     for (const change of [
       { scripts: { postinstall: "node install.mjs" } },
       { dependencies: { "@get-modular/core": "workspace:*" } },
       { publishConfig: { access: "public" } },
       { exports: { ".": "./dist/index.js", "./internal": "./dist/internal.js" } },
       { files: ["**"] },
-      { private: false },
+      ...classChanges,
     ]) {
-      Object.assign(manifest, change);
-      await assert.rejects(validateLeafPackageAdmission(input));
-      for (const key of Object.keys(change)) {
-        if (key === "private") manifest.private = true;
-        else if (key === "exports") manifest.exports = rootExport();
-        else if (key === "files") manifest.files = ["dist", "README.md", "LICENSE"];
-        else delete manifest[key];
-      }
+      input.readPackageManifest = async () => ({ ...manifestFor(leaf), ...change });
+      await assert.rejects(validateLeafPackageAdmission(input), undefined, JSON.stringify(change));
     }
   });
 
@@ -330,7 +370,7 @@ for (const leaf of ROWS) {
     }
   });
 
-  test(`${leaf.id}: the row leaves G1 on hold even with no package`, async () => {
+  if (leaf.publication === PRIVATE_CANDIDATE) test(`${leaf.id}: the row leaves G1 on hold even with no package`, async () => {
     const { input } = fixture(leaf);
     input.productionArtifacts = ["packages/core/package.json"];
     input.sdkGrowthStatus.activation = "active";

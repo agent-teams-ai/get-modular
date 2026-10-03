@@ -14,7 +14,7 @@ import {
   ASSEMBLY_RUN_SCOPE_DECISION_PATH, M2_HISTORICAL_LOCK_DIGEST,
   createHistoricalM2EvidenceReader, validateAssemblyAdmission, validateLeafPackageWorkspaceAdmission,
 } from "../architecture/checks/assembly-admission.mjs";
-import { LEAF_PACKAGES, leafManifestPath } from "../architecture/checks/leaf-packages.mjs";
+import { LEAF_PACKAGES, leafManifestPath, PUBLIC } from "../architecture/checks/leaf-packages.mjs";
 import {
   packageIdentityViolations, packageManifestInventory,
   productionArtifactPaths, productionArtifactSymlinkPaths,
@@ -232,8 +232,13 @@ for (const leaf of LEAF_PACKAGES) {
       ...inputs, productionArtifacts: [...artifacts, ...candidateArtifacts],
     }), candidateArtifacts);
     const manifest = JSON.parse(read(manifestPath));
+    // Each publication class rejects the other class's shape and any partial publication.
+    const classMutations = leaf.publication === PUBLIC
+      ? [{ private: true }, { private: false }, { publishConfig: undefined }, { repository: undefined },
+        { repository: { ...manifest.repository, directory: "packages/core" } }, { files: ["dist"] }]
+      : [{ private: false }, { private: undefined }];
     for (const mutation of [
-      { private: false }, { private: undefined },
+      ...classMutations,
       ...["0.2.0", "1.0.0"].filter(version => !leaf.version.test(version)).map(version => ({ version })),
       { publishConfig: { access: "public" } },
       ...["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"]

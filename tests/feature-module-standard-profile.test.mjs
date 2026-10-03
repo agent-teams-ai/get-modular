@@ -15,7 +15,7 @@ import {
   publicationBlockers,
   validateFirstProductionPackageAdmission,
 } from "../architecture/checks/feature-module-standard-profile.mjs";
-import { LEAF_PACKAGES, leafManifestPath } from "../architecture/checks/leaf-packages.mjs";
+import { LEAF_PACKAGES, leafManifestPath, PUBLIC } from "../architecture/checks/leaf-packages.mjs";
 import {
   manifestCarrierViolations,
   packageIdentityViolations,
@@ -79,7 +79,9 @@ test("exposes the qualified nested FMS v1 topology consumed by Foundation", () =
     {
       authority: ["agent-teams.feature-module-standard", "v1"],
       workspaceContainers: ["packages"],
-      productionRoots: ["packages/core/src", "packages/assembly/src", "packages/lifecycle-kernel/src"],
+      productionRoots: [
+        "packages/core/src", "packages/assembly/src", "packages/lifecycle-kernel/src", "packages/resources/src",
+      ],
       modules: [
         {
           moduleRoot: "packages/core",
@@ -95,6 +97,11 @@ test("exposes the qualified nested FMS v1 topology consumed by Foundation", () =
           moduleRoot: "packages/lifecycle-kernel",
           sourceRoot: "packages/lifecycle-kernel/src",
           testRoot: "packages/lifecycle-kernel/tests",
+        },
+        {
+          moduleRoot: "packages/resources",
+          sourceRoot: "packages/resources/src",
+          testRoot: "packages/resources/tests",
         },
       ],
     },
@@ -940,7 +947,7 @@ test("ADR-0023 and ADR-0025 admit historical private and canonical public Assemb
   assert.deepEqual(lifecycle[0].scripts, ["scripts.install"]);
 });
 
-test("profile admission rejects a leaf manifest outside its private candidate shape", async () => {
+test("profile admission rejects a leaf manifest outside its publication class shape", async () => {
   for (const leaf of LEAF_PACKAGES) {
     const manifestPath = leafManifestPath(leaf);
     const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
@@ -956,7 +963,9 @@ test("profile admission rejects a leaf manifest outside its private candidate sh
     };
     assert.equal(validateFirstProductionPackageAdmission(input), SOURCE_DEPENDENCY_POLICY_PATH);
     for (const [change, message] of [
-      [{ private: false }, /candidate must remain private/u],
+      leaf.publication === PUBLIC
+        ? [{ private: true }, /public package must omit private/u]
+        : [{ private: false }, /candidate must remain private/u],
       [{ version: "1.0.0" }, new RegExp(`version is not admitted by ${leaf.decision.id}`, "u")],
       [{ dependencies: { "@get-modular/core": "workspace:*" } }, /dependencies must be absent or empty/u],
     ]) {

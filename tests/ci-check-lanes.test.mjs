@@ -17,7 +17,7 @@ const hosts = { ubuntu: "ubuntu-24.04", macos: "macos-15", windows: "windows-202
 // Independent oracle copied from check/precheck at 0a81957c, not from the matrix.
 const baseline = [
   "runtime:preflight", "governance:check", "release-owned-files:check",
-  "assembly:build", "lifecycle:check", "foundation:check", "sdk-growth:check",
+  "assembly:build", "lifecycle:check", "resources:check", "foundation:check", "sdk-growth:check",
   "lint:typed", "docs:protocol:check", "architecture:feature-module-profile",
   "architecture:feature-module-profile:test", "core:typecheck:prepared", "core:test",
   "assembly:typecheck", "assembly:test", "contracts:check", "contracts:test",
@@ -28,7 +28,7 @@ const baseline = [
 const primary = {
   core: ["core:typecheck:prepared", "core:test"],
   assembly: ["assembly:typecheck", "assembly:test"],
-  packaging: ["lifecycle:check", "foundation:check", "sdk-growth:check", "lint:typed"],
+  packaging: ["lifecycle:check", "resources:check", "foundation:check", "sdk-growth:check", "lint:typed"],
   governance: ["ownership:checkpoint:test", "governance:check", "release-owned-files:check", "governance:test"],
   static: [
     "docs:protocol:check", "architecture:feature-module-profile",
@@ -82,12 +82,12 @@ function validateLanes(value, manifest = packageJson) {
       const scripts = scriptsOf(row);
       assert.equal(new Set(scripts).size, scripts.length, `${host}/${row.lane}: duplicate script`);
       assert(scripts.every(script =>
-        [...baseline, "ownership:checkpoint:test", "lifecycle:build"].includes(script)), "unknown script");
+        [...baseline, "ownership:checkpoint:test", "lifecycle:build", "resources:build"].includes(script)), "unknown script");
       assert(scripts.every(script => typeof manifest.scripts[script] === "string"), "undefined script");
       // Shared preparation is repeated per checkout, not counted as extra obligations.
       const setup = ["runtime:preflight", "assembly:build"];
-      // Packaging already builds lifecycle through its primary lifecycle:check.
-      if (row.lane !== "packaging") setup.push("lifecycle:build");
+      // Packaging already builds lifecycle and resources through its primary leaf checks.
+      if (row.lane !== "packaging") setup.push("lifecycle:build", "resources:build");
       if (row.lane !== "governance") setup.push("governance:check");
       assert.deepEqual(scripts.filter(script => !setup.includes(script)),
         primary[row.lane], `${host}/${row.lane}: obligations`);
@@ -96,6 +96,9 @@ function validateLanes(value, manifest = packageJson) {
       assert(position("governance:check") < position("assembly:build"), "governance must precede builds");
       const lifecycle = position(row.lane === "packaging" ? "lifecycle:check" : "lifecycle:build");
       assert(position("assembly:build") >= 0 && lifecycle > position("assembly:build"), "build prerequisites");
+      if (row.lane !== "packaging") {
+        assert.equal(position("resources:build"), lifecycle + 1, "resources build follows lifecycle build");
+      }
       for (const script of baseline.slice(baseline.indexOf("lifecycle:check") + 1)) {
         if (scripts.includes(script)) assert(position(script) > lifecycle, `${script}: lifecycle prerequisite`);
       }

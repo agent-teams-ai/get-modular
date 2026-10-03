@@ -10,7 +10,7 @@
   },
   "scope": {
     "workspaceContainers": ["packages"],
-    "productionRoots": ["packages/core/src", "packages/assembly/src", "packages/lifecycle-kernel/src"],
+    "productionRoots": ["packages/core/src", "packages/assembly/src", "packages/lifecycle-kernel/src", "packages/resources/src"],
     "productionModules": [
       {
         "id": "core",
@@ -26,6 +26,11 @@
         "id": "lifecycle-kernel",
         "moduleRoot": "packages/lifecycle-kernel",
         "sourceRoot": "packages/lifecycle-kernel/src"
+      },
+      {
+        "id": "resources",
+        "moduleRoot": "packages/resources",
+        "sourceRoot": "packages/resources/src"
       }
     ]
   },
@@ -61,6 +66,14 @@
           "moduleComposition": "packages/lifecycle-kernel/src/composition",
           "publicEntrypoint": "packages/lifecycle-kernel/src/index.ts",
           "testRoot": "packages/lifecycle-kernel/tests"
+        },
+        {
+          "moduleRoot": "packages/resources",
+          "sourceRoot": "packages/resources/src",
+          "featuresRoot": "packages/resources/src/features",
+          "moduleComposition": "packages/resources/src/composition",
+          "publicEntrypoint": "packages/resources/src/index.ts",
+          "testRoot": "packages/resources/tests"
         }
       ]
     },
@@ -84,6 +97,10 @@
       {
         "id": "lifecycle-generation-and-lease",
         "authority": "docs/decisions/0029-admit-an-optional-lifecycle-kernel-candidate.md"
+      },
+      {
+        "id": "module-resource-scopes",
+        "authority": "docs/decisions/0030-admit-the-module-resource-scope-package.md"
       }
     ],
     "deviations": [],

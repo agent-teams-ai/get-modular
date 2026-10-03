@@ -16,9 +16,9 @@
   },
   "scripts": {
     "precheck": "pnpm ownership:checkpoint:test",
-    "check": "pnpm runtime:preflight && pnpm governance:check && pnpm release-owned-files:check && pnpm assembly:build && pnpm lifecycle:check && pnpm foundation:check && pnpm sdk-growth:check && pnpm lint:typed && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm core:typecheck:prepared && pnpm core:test && pnpm assembly:typecheck && pnpm assembly:test && pnpm contracts:check && pnpm contracts:test && pnpm qualification:resource-profile && pnpm qualification:v1-diagnostics-protocol && pnpm qualification:v1-graph-semantics && pnpm qualification:self-composition-templates && pnpm governance:test",
+    "check": "pnpm runtime:preflight && pnpm governance:check && pnpm release-owned-files:check && pnpm assembly:build && pnpm lifecycle:check && pnpm resources:check && pnpm foundation:check && pnpm sdk-growth:check && pnpm lint:typed && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm core:typecheck:prepared && pnpm core:test && pnpm assembly:typecheck && pnpm assembly:test && pnpm contracts:check && pnpm contracts:test && pnpm qualification:resource-profile && pnpm qualification:v1-diagnostics-protocol && pnpm qualification:v1-graph-semantics && pnpm qualification:self-composition-templates && pnpm governance:test",
     "check:changed": "agent-teams-foundation agent-workflow changed --consumer .",
-    "check:fast": "pnpm runtime:preflight && pnpm assembly:build && pnpm lifecycle:check && pnpm foundation:check && pnpm sdk-growth:check && pnpm quality:coverage:scope && pnpm architecture:feature-module-profile && pnpm quality:critical:test && pnpm docs:check && pnpm core:typecheck:prepared && pnpm core:test && pnpm assembly:typecheck && pnpm assembly:test",
+    "check:fast": "pnpm runtime:preflight && pnpm assembly:build && pnpm lifecycle:check && pnpm resources:check && pnpm foundation:check && pnpm sdk-growth:check && pnpm quality:coverage:scope && pnpm architecture:feature-module-profile && pnpm quality:critical:test && pnpm docs:check && pnpm core:typecheck:prepared && pnpm core:test && pnpm assembly:typecheck && pnpm assembly:test",
     "docs:changed": "pnpm docs:check && pnpm docs:quality",
     "docs:check": "agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml",
     "docs:doctor": "agent-teams-docs doctor --consumer . --profile architecture/foundation/docs-protocol.yaml",
@@ -66,7 +66,12 @@
     "lifecycle:test": "node --test packages/lifecycle-kernel/tests/kernel.test.mjs",
     "lifecycle:pack": "node --test packages/lifecycle-kernel/tests/packed-root.test.mjs",
     "lifecycle:check": "pnpm lifecycle:build && pnpm lifecycle:typecheck && pnpm lifecycle:test && pnpm lifecycle:pack",
-    "quality:critical:test": "node architecture/checks/required-quality-tests.mjs && agent-teams-node-test --contract architecture/foundation/required-quality-tests.json -- tests/source-dependencies.test.mjs tests/quality-activation.test.mjs"
+    "quality:critical:test": "node architecture/checks/required-quality-tests.mjs && agent-teams-node-test --contract architecture/foundation/required-quality-tests.json -- tests/source-dependencies.test.mjs tests/quality-activation.test.mjs",
+    "resources:build": "node architecture/tooling/build-leaf-package.mjs resources",
+    "resources:typecheck": "node node_modules/typescript/bin/tsc -p packages/resources/tsconfig.json --noEmit && node node_modules/typescript/bin/tsc -p packages/resources/tsconfig.types.json --noEmit && node node_modules/typescript/bin/tsc -p packages/resources/tsconfig.types.bundler.json --noEmit && node node_modules/typescript-minimum/bin/tsc -p packages/resources/tsconfig.types.json --noEmit && node node_modules/typescript-minimum/bin/tsc -p packages/resources/tsconfig.types.bundler.json --noEmit",
+    "resources:test": "node --test packages/resources/tests/scope.test.mjs tests/resources/assembly-scope.test.mjs",
+    "resources:pack": "node --test packages/resources/tests/packed-root.test.mjs",
+    "resources:check": "pnpm resources:build && pnpm resources:typecheck && pnpm resources:test && pnpm resources:pack"
   },
   "devDependencies": {
     "@agent-teams/docs-protocol": "0.6.0",
@@ -75,6 +80,7 @@
     "@get-modular/assembly": "workspace:*",
     "@get-modular/core": "workspace:*",
     "@get-modular/lifecycle-kernel": "workspace:*",
+    "@get-modular/resources": "workspace:*",
     "ajv": "catalog:",
     "canonicalize": "catalog:",
     "cspell": "catalog:",
