@@ -52,11 +52,13 @@ port. There is no override container and no automatic fake.
   `undefined` for `optional`. Getters are never called.
 - The ids of the declaration must not start with `conformance/`, which is
   reserved for the generated fakes.
-- A failed build, including a composition that Core rejects or an Assembly
-  preparation that fails (`details.preparation`), rejects with
-  `conformance.isolate.construction-failed`: its
-  `cause` is the original error and `details` holds the Assembly outcome and
-  the close report of the scope.
+- A failed build rejects with `conformance.isolate.construction-failed`. There
+  are three cases. When the Assembly run did not succeed, `cause` is the
+  original error and `details` holds the Assembly outcome and the close report
+  of the scope. When Core rejects the composition, `details.diagnostics` holds
+  the diagnostics and there is no `cause`. When Assembly fails to prepare,
+  `details.preparation` holds the result, `cause` is its error cause and no
+  scope was opened.
 - `close()` never rejects and returns the `CloseReport`. `await using` (or
   `[Symbol.asyncDispose]`) throws `resources.close.incomplete` when a cleanup
   left a debt.
@@ -72,7 +74,9 @@ const steps = await smoke({ api: assemblyFor<Host>(), compose: composeProduction
 ```
 
 Write the production composition root as a function of Assembly and pass it as
-`compose`; `smoke` calls it once. It then runs the prepared root without
+`compose`; `smoke` calls it once. Every factory must be bound through the `api`
+passed to `compose`: a factory bound elsewhere never sees an injection, so
+`smoke` rejects. It then runs the prepared root without
 injection, and again with a failure and an abort injected right after each
 module (`inject` and `at` narrow the list). Every attempt runs in a scope of its
 own that must close with `complete: true`. It rejects with
@@ -149,7 +153,7 @@ a `Promise`.
 
 | Code | Meaning |
 | --- | --- |
-| `conformance.argument.invalid` | a call was malformed; `isolate` and `smoke` reject, the other functions throw. Raised before any module runs, except an unknown `at` id, which `smoke` detects after the run without injection |
+| `conformance.argument.invalid` | a call was malformed; `isolate` and `smoke` reject, the other functions throw. An unknown `at` id is found only after the first run of `smoke` |
 | `conformance.isolate.construction-failed` | the module could not be built |
 | `conformance.smoke.failed` | a smoke step broke an expectation |
 | `conformance.suite.revision-mismatch` | the subject provides another revision than the suite checks |

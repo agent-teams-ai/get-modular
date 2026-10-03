@@ -76,7 +76,8 @@ optional public conformance module.
   thin `src/composition/root.ts` seam and a curated root export. It has no
   runtime dependency, imports neither Core, Assembly nor a builtin, and Core
   and Assembly do not import it. Its Assembly integration tests live in root
-  `tests/resources` because a leaf package declares no workspace dependency.
+  `tests/resources` because a leaf package declares no workspace dependency except
+  declared peers (ADR-0033).
 - The conformance package has four features (errors, harness, suites and
   handles), a thin `src/composition/root.ts` seam and a curated root export. It
   is development tooling for module authors and contract owners. Its only

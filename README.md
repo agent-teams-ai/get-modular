@@ -55,7 +55,8 @@ consume both.
 
 `conformance` uses the conventional protocol-testing meaning: independently
 owned fixtures prove that an implementation follows the contract. The
-conformance package may depend on core; core never depends on conformance.
+conformance package has peer dependencies on Core, Assembly and resources; Core and
+Assembly never depend on it.
 
 Core and Assembly `0.1.0` are available from npm. Install both when the Host
 needs construction, or Core alone when it only needs a portable plan:
