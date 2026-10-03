@@ -17,8 +17,12 @@ Assembly when the Host also needs to construct already selected and authorized
 factories.
 
 ```sh
-npm install @get-modular/core@0.1.0 @get-modular/assembly@0.1.0
+npm install @get-modular/core@0.3.0 @get-modular/assembly@0.3.0
 ```
+
+Add `@get-modular/resources@0.1.0` when modules own resources that need cleanup,
+and `@get-modular/conformance@0.1.0` as a development dependency for module and
+composition tests.
 
 The complete [basic Host example](../../packages/assembly/examples/basic-host.mjs)
 defines a configuration provider, a greeting feature, and an application root.
@@ -34,14 +38,19 @@ if (!composition.ok) {
   throw new Error(composition.diagnostics.map(({ code }) => code).join(", "));
 }
 
-const preparation = await api.prepare({ composition, factories, roots });
+const preparation = await api.prepare({ composition, factories, roots, inputs });
 if (preparation.status === "failed") {
   // No factory has run. Inspect error.code and preparation.diagnostics.
   throw preparation.error;
 }
 
-const outcome = await preparation.prepared.run({ signal });
+const outcome = await preparation.prepared.run({ signal, scope, inputs });
 ```
+
+Write declarations with `defineContract` and `declareModule`; `scope` and `inputs`
+are optional unless the Host uses resources or declares inputs. The
+[Consumer Module Standard](../architecture/common-assembly.md#module-packages-and-contracts)
+describes the authoring rules.
 
 ## Errors
 
@@ -57,6 +66,10 @@ Keep the three failure layers separate:
 
 Unexpected infrastructure failures may reject the async call. Do not convert
 them into domain diagnostics owned by Core.
+
+Identify errors of every Get Modular package by `code`, never by class or
+message; see the last bullet of
+[Module packages and contracts](../architecture/common-assembly.md#module-packages-and-contracts).
 
 ## Cancellation
 
@@ -99,6 +112,11 @@ preserves cleanup failure alongside any primary failure, including
 `throw undefined`; CLI success requires successful work and no cleanup failure.
 An async acquisition provider must clean up allocations it never successfully
 hands back: registration after `await acquire()` cannot recover an unreturned resource.
+
+Modules that acquire their own resources register cleanup through the optional
+resources package. The Host passes one scope per run and decides when to close
+it; see [Module resource scopes](../architecture/common-assembly.md#module-resource-scopes)
+for the rules and a Host template.
 
 Readiness, retries, permissions, routing, drain, recovery, and long-lived
 lifecycle state also remain Host policies. Keep them outside module factories
@@ -168,8 +186,8 @@ of product-owned code, not another Get Modular package or a production Host.
    only inside the admitted factory path. Check Host authority immediately
    before invoking its loader, then again after an async import and before
    calling the candidate factory.
-4. **Retain one lifetime owner.** Create the product Host before
-   `prepared.run({ signal })` and publish its construction flight synchronously
+4. **Retain one lifetime owner.** Create the product Host and a scope for the
+   attempt before `prepared.run({ signal, scope })` and publish its construction flight synchronously
    before invoking that run. Reserve ownership before an asynchronous acquire;
    register each acquired resource with that same owner as soon as it exists.
    If acquisition fails after an unreturned allocation, the provider must clean
