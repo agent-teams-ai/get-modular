@@ -2,7 +2,7 @@ import type { AnyContract, CapabilitiesOf } from "@get-modular/assembly";
 import type { ModuleDeclaration } from "@get-modular/core";
 import type { ModuleContext } from "@get-modular/resources";
 
-/** node:test `test` or `t.test`, Vitest `it`, tape: any `(name, body)` registrar. */
+/** Any `(name, body)` registrar: node:test `test`, Vitest `it`, or `(name, body) => t.test(name, body)`; an unbound `t.test` crashes. */
 export type TestFn = (name: string, body: () => Promise<void>) => unknown;
 
 export type ContractValue<T extends AnyContract> = CapabilitiesOf<T>[T["id"]]["value"];

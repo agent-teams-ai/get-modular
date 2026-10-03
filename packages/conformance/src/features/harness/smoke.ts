@@ -35,8 +35,13 @@ const label = (step: SmokeStep): string =>
 /** The first way a step broke an expectation, or undefined when it kept them all. */
 function check(plan: Plan, outcome: LooseOutcome, order: readonly string[]): string | undefined {
   if (plan.inject === "none") {
-    return outcome.status === "succeeded" ? undefined : `expected succeeded, got ${outcome.status}${
-      outcome.status === "failed" ? ` (${outcome.code})` : ""}`;
+    if (outcome.status !== "succeeded") {
+      return `expected succeeded, got ${outcome.status}${outcome.status === "failed" ? ` (${outcome.code})` : ""}`;
+    }
+    // Handles are global in Assembly: a factory bound outside the given api would run but never see an injection.
+    const unwrapped = outcome.created.map(entry => entry.implementationId).filter(id => !plan.called.includes(id));
+    return unwrapped.length === 0 ? undefined
+      : `compose bound ${unwrapped.join(", ")} outside the api it was given, so no injection reaches them`;
   }
   if (plan.inject === "fail") {
     if (outcome.status !== "failed") {
@@ -69,6 +74,9 @@ export async function smoke<C, R extends RootHandles<C>, N extends InputHandles<
     readonly at?: readonly string[] | undefined;
   } & ({} extends N ? { readonly inputs?: RunInputs<N> | undefined } : { readonly inputs: RunInputs<N> }),
 ): Promise<readonly SmokeStep[]> {
+  if (typeof (input as unknown) !== "object" || (input as unknown) === null) {
+    throw invalid("smoke() requires an input record");
+  }
   const { api, compose, inputs } = input as {
     readonly api: Assembly<C>;
     readonly compose: (api: Assembly<C>) => Promise<LoosePreparation>;
