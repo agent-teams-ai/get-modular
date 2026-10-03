@@ -216,8 +216,8 @@ command or absent subject as passed.
 
 CI runs Core, Assembly, packaging, governance and static lanes in independent
 checkouts on each of Ubuntu, macOS and Windows. Each lane runs runtime preflight
-and governance before explicit builds; later checks retain their Assembly and
-lifecycle build prerequisites. The governance lane retains the ownership
+and governance before explicit builds; later checks retain the builds of Assembly
+and of every leaf package. The governance lane retains the ownership
 checkpoint before runtime preflight. The required `check (ubuntu-24.04)`,
 `check (macos-15)` and `check (windows-2025)` aggregates require every lane to
 succeed, including rejection of skipped dependencies. The

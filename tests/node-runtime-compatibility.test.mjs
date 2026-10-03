@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { resolveNpmCli, resolvePnpmCli } from "./qualification/support/npm-cli.mjs";
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const packageNames = ["core", "assembly", "resources"];
+const packageNames = ["core", "assembly", "resources", "conformance"];
 
 // The Node 26 CI consumer is outside the source workspace. Its package manager
 // must be the physically provisioned source pin, not a shim selected by cwd.
@@ -41,12 +41,14 @@ import { createRequire } from "node:module";
 import * as core from "@get-modular/core";
 import * as assembly from "@get-modular/assembly";
 import * as resources from "@get-modular/resources";
+import * as conformance from "@get-modular/conformance";
 
 const require = createRequire(import.meta.url);
 for (const [name, namespace, expected] of [
   ["core", core, ["compileComposition", "compileCompositionJson", "defineModule", "many", "optional", "required"]],
   ["assembly", assembly, ["AssemblyBindingError", "assemblyFor", "declareModule", "defineContract"]],
   ["resources", resources, ["CloseIncompleteError", "InvalidArgumentError", "ScopeClosedError", "createScope", "scoped"]],
+  ["conformance", conformance, ["ConformanceError", "contractSuite", "guardHandles", "isolate", "runContractSuite", "smoke"]],
 ]) {
   const specifier = "@get-modular/" + name;
   assert.deepEqual(Object.keys(namespace).sort(), expected.sort());
@@ -102,6 +104,12 @@ assert.equal(outcome.status, "succeeded", JSON.stringify(outcome));
 assert.equal(outcome.roots.consumer, 42);
 assert.deepEqual(await attempt.control.close(), { complete: true, settled: true, debts: [] });
 assert.deepEqual(released, [42]);
+const isolated = await conformance.isolate(api, {
+  declaration: consumer, dependencies: { value: 42 },
+  factory: async (dependencies) => ({ instance: dependencies.value, capabilities: {} }),
+});
+assert.equal(isolated.instance, 42);
+assert.equal((await isolated.close()).complete, true);
 console.log("public-consumer:passed");
 `;
 
