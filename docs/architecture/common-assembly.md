@@ -142,9 +142,9 @@ than treating custody as invocation authority.
 | Exact implementation and capability | Instance fallback or second resolver | Independent mapping and zero-call negative tests |
 | Local private parser or helper | Node per class or endpoint | Positive fixture and semantic review |
 | Composition adapter imports | Assembly inside domain/application | Existing source policy and negative import fixture |
-| Existing Host cleanup | Duplicate disposal through shared capabilities | Failure, cancellation and handoff tests |
+| Host cleanup for what the Host itself acquires | Duplicate disposal through shared capabilities | Failure, cancellation and handoff tests |
 | Independent direct test reference | Production fallback or oracle derived from profile | Binding mutant and parity test |
-| Module resources through `setup`/`use` | Host-written cleanup lists | [`tests/resources/assembly-scope.test.mjs`](../../tests/resources/assembly-scope.test.mjs) |
+| Module resources through `setup`/`use` | Host-written cleanup lists for module-acquired resources | [`tests/resources/assembly-scope.test.mjs`](../../tests/resources/assembly-scope.test.mjs) |
 | One scope per run through `scoped()` | Parent scope captured at bind time | Same file, two concurrent runs |
 | Declared run inputs | Closures captured at bind time | [`tests/assembly/inputs.test.mjs`](../../tests/assembly/inputs.test.mjs) |
 | Descriptors and `declareModule` | Hand-written compatibility literals | [`tests/assembly/builder-types.ts`](../../tests/assembly/builder-types.ts) |
@@ -245,6 +245,7 @@ export async function closeWithin(
 
 // The composition root is a function of Assembly, so `smoke` can pass its own api.
 export function composeOrders(api: Assembly<CapabilitiesOf<typeof Db | typeof Orders>>) {
+  // A Host-local stand-in; module packages export their factory as createOrders does.
   const database = api.bindFactory(declareModule({
     moduleId: "acme/db", implementationId: "acme/db/pg",
     owner: { authority: "acme", path: ["db"] }, provides: [Db.provide()], slots: [],
@@ -344,9 +345,9 @@ mutation, rebinding, hot replacement or code unloading.
 <!-- consumer-standard-example: instances -->
 
 ```ts
-import { assemblyFor, declareModule, defineContract, type Assembly, type CapabilitiesOf } from "@get-modular/assembly";
+import { assemblyFor, declareModule, defineContract, type Assembly, type CapabilitiesOf, type ModuleFactory } from "@get-modular/assembly";
 import { required } from "@get-modular/core";
-import { scoped, type Resources } from "@get-modular/resources";
+import { scoped, type ModuleContext, type Resources } from "@get-modular/resources";
 
 const SessionId = defineContract<{ readonly id: string }>()({ id: "acme/session-id", revision: 1 });
 const Chat = defineContract<ChatPort>()({ id: "acme/chat", revision: 1 });
@@ -356,22 +357,24 @@ const sessionInput = declareModule({
   moduleId: "acme/session", implementationId: "acme/session/input",
   owner: { authority: "acme", path: ["session"] }, provides: [SessionId.provide()], slots: [],
 });
-const chatDeclaration = declareModule({
+export const chatDeclaration = declareModule({
   moduleId: "acme/chat", implementationId: "acme/chat/default",
   owner: { authority: "acme", path: ["chat"] },
   provides: [Chat.provide()], slots: [SessionId.slot("session", required())],
 });
 
+export const createChat: ModuleFactory<Capabilities, typeof chatDeclaration, ChatPort, ModuleContext> = async (deps, { resources }) => {
+  const lease = await resources.setup({
+    name: "lease", setup: () => acquireLease(deps.session.id), cleanup: (held) => held.release(),
+  });
+  const port = createChatPort(lease);
+  return { instance: port, capabilities: { "acme/chat": port } };
+};
+
 // The template root is a function of Assembly, so `smoke` can pass its own api.
 export function composeSessions(api: Assembly<Capabilities>) {
   const session = api.bindInput(sessionInput);
-  const chat = api.bindFactory(chatDeclaration, scoped(chatDeclaration.implementationId, async (deps, { resources }) => {
-    const lease = await resources.setup({
-      name: "lease", setup: () => acquireLease(deps.session.id), cleanup: (held) => held.release(),
-    });
-    const port = createChatPort(lease);
-    return { instance: port, capabilities: { "acme/chat": port } };
-  }));
+  const chat = api.bindFactory(chatDeclaration, scoped(chatDeclaration.implementationId, createChat));
   return api.prepare({ composition, factories: [chat], roots: { chat }, inputs: { session } });
 }
 // Prepared once; each session is one run with its own scope and input.
@@ -385,7 +388,7 @@ export async function openSession(sessions: Resources, id: string, signal: Abort
   const outcome = await prepared.run({
     signal, scope: instance.resources, inputs: { session: { "acme/session-id": { id } } },
   });
-  if (outcome.status !== "succeeded") { // closeWithin: the Host deadline from the template above
+  if (outcome.status !== "succeeded") { // closeWithin is the Host deadline helper from Module resource scopes
     throw new ConstructionFailed(outcome, await closeWithin(instance.control, 5_000, 5_000));
   }
   return { chat: outcome.roots.chat, lifetime: instance.control }; // the caller owns the instance
@@ -412,8 +415,9 @@ Contracts:
   written with the builder keep working, only the builder and Core change.
 - A module package lists the contract packages it provides or consumes as
   ordinary dependencies; that version fixes the revision the module was built
-  against. A contract package releases a new minor version whenever it raises
-  a revision.
+  against. Whenever a contract package raises a revision, it releases a version
+  that a caret range does not accept: a new minor while it is 0.x, a new major
+  from 1.0.
 - Declare port members as function-typed properties, not methods: TypeScript
   checks method parameters bivariantly and accepts a breaking change silently.
 
@@ -454,9 +458,9 @@ it authenticates nothing.
 2. `moduleId` and `implementationId` lie in the namespace of the product that
    supplies the code. Within one release of that product, declarations with
    different slots or provides never share an `implementationId`, even in
-   different compositions. A later release keeps its `implementationId` when it
-   changes its slots or provides, and raising a contract revision keeps every
-   `implementationId` that uses it.
+   different compositions. A module keeps its `implementationId` across
+   releases, also when a later release changes its slots or provides, and
+   raising a contract revision keeps every `implementationId` that uses it.
 3. A `capabilityId` lies in the namespace of the contract owner, the product or
    context that defines the port, not of the provider. The owner publishes the
    descriptor and, for a contract that others implement, its suite and fake.
@@ -477,15 +481,17 @@ it authenticates nothing.
 kit `@get-modular/conformance`.
 
 1. Export each module factory as a named `ModuleFactory` typed by the module's
-   own contract map, and bind the same function in production.
+   own contract map, and bind the same function in production, wrapped with
+   `scoped()` when it registers resources.
 2. Type fakes with `FactoryDependencies<C, typeof declaration>`. No `any`,
    `as never` or double cast on a dependency record.
 3. The contract owner keeps one fake per contract that others implement and a
    suite created with `contractSuite(contract, cases)`, published from an
    entrypoint that production code does not import. The fake and every
    implementation pass that suite through `runContractSuite`, which takes any
-   `(name, body)` registrar as `test`. Pass `(name, body) => t.test(name, body)`,
-   because an unbound `t.test` crashes. A suite covers errors and cancellation,
+   `(name, body)` registrar as `test`, such as `node:test` `test` or Vitest `it`.
+   From inside a `node:test` test, pass `(name, body) => t.test(name, body)`; an
+   unbound `t.test` crashes. A suite covers errors and cancellation,
    not only success, and is required once a capability has two implementations,
    the fake included.
 4. Test one module with `isolate(api, { declaration, factory, dependencies })`
@@ -591,7 +597,8 @@ causes a stable binding error before any factory call; Core owns semantic rules.
 result, the exact selected factory handles, an alias-to-root-handle mapping and an
 alias-to-input-handle mapping. Factory and input handles together are unique and
 cover every selection exactly once; an input handle appears only in `inputs`,
-under one alias, and is never a root (`assembly.prepare.input-handles`). Each root
+under one alias, and is never a root (`assembly.prepare.input-handles`); an uncovered
+selection stays `assembly.prepare.handles`. Each root
 has exactly one alias and refers to the same supplied handle. No extra handles or
 alias getters.
 
@@ -619,7 +626,7 @@ Inspect own data descriptors, dense arrays and exact shapes without invoking
 getters. Pre-count individual and aggregate sizes before proportional copying.
 Reject unexpected keys before projecting the supplied plan into a profile.
 
-The local carrier ceiling for supported Core pair is: 4096 handles, selections and
+The local carrier ceiling for the supported Core pair is: 4096 handles, selections and
 order entries; 1024 roots; 65536 bindings; 1024 providers per row; 262144 provider
 occurrences overall. Declarations have at most 64 provides and 128 slots each,
 65536 of each overall; owner paths at most 8 segments. Every metadata identifier
