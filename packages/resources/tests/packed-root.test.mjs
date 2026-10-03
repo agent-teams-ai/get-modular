@@ -41,10 +41,10 @@ test("the public archive installs one root-only ESM package with the full scope 
   try {
     const filename = run(process.execPath,
       [await pinnedPnpmCli(), "pack", "--pack-destination", temporary], packageRoot)
-      .split("\n").at(-1);
+      .split(/\r?\n/u).at(-1);
     assert.match(filename, /\.tgz$/u);
     const archive = resolve(temporary, filename);
-    const entries = run("tar", ["-tzf", archive], temporary).split("\n").map(entry => entry.replace(/^package\//u, ""));
+    const entries = run("tar", ["-tzf", archive], temporary).split(/\r?\n/u).map(entry => entry.replace(/^package\//u, ""));
     assert.deepEqual(entries.filter(entry => !entry.startsWith("dist/")).sort(),
       ["CHANGELOG.md", "LICENSE", "README.md", "package.json"]);
     assert.ok(entries.includes("dist/index.js") && entries.includes("dist/index.d.ts"));
@@ -62,9 +62,7 @@ test("the public archive installs one root-only ESM package with the full scope 
     // governance:test binds the source range to SUPPORTED_NODE_RANGE; the archive must keep it.
     const source = JSON.parse(await readFile(join(packageRoot, "package.json"), "utf8"));
     assert.deepEqual(manifest.engines, source.engines);
-    for (const field of ["dependencies", "optionalDependencies", "peerDependencies", "devDependencies", "scripts"]) {
-      if (field !== "scripts") assert.equal(manifest[field], undefined, field);
-    }
+    for (const field of ["dependencies", "optionalDependencies", "peerDependencies", "devDependencies"]) assert.equal(manifest[field], undefined, field);
 
     await writeFile(join(consumer, "package.json"), '{"type":"module"}\n');
     const suiteURL = pathToFileURL(join(packageRoot, "tests/semantic-suite.mjs")).href;
