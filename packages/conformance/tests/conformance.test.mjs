@@ -238,6 +238,15 @@ test("S2 factories bound outside the api given to compose fail smoke", async () 
   assert.equal(code(error), "conformance.smoke.failed");
   assert.equal(error.details.steps.length, 1);
   assert.match(error.details.steps[0].problem, /outside the api/u);
+  const partial = chain();
+  const mixed = async api => partial.compose({
+    bindFactory: (declaration, factory) => (declaration.implementationId === "t/m5" ? separate : api).bindFactory(declaration, factory),
+    bindInput: declaration => api.bindInput(declaration), prepare: prepareInput => api.prepare(prepareInput),
+  });
+  const some = await smoke({ api: assemblyFor(), compose: mixed }).then(() => undefined, caught => caught);
+  assert.equal(code(some), "conformance.smoke.failed");
+  assert.equal(some.details.steps.length, 9);
+  assert.match(some.details.steps[0].problem, /compose bound t\/m5 outside/u);
 });
 
 test("S2 smoke rejects a missing input record", async () => {
