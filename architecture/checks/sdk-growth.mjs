@@ -83,6 +83,7 @@ export async function loadSdkGrowthModel(root = process.cwd()) {
     try { await access(join(root, path)); tracked.push(path); } catch {}
   }
   const profile = await readYaml(root, PROFILE_PATH);
+  const cmsReview = await readJson(root, CMS_PATH);
   return {
     root,
     profile,
@@ -96,8 +97,11 @@ export async function loadSdkGrowthModel(root = process.cwd()) {
     manifests: Object.fromEntries(await Promise.all(PACKAGES.map(async pkg => [pkg.packageName, await readJson(root, pkg.manifestPath)]))),
     baselines: Object.fromEntries(await Promise.all(PACKAGES.map(async pkg => [pkg.packageName, await readJson(root, pkg.releasedBaselinePath)]))),
     histories: Object.fromEntries(await Promise.all(PACKAGES.map(async pkg => [pkg.packageName, await readJson(root, pkg.historyPath)]))),
-    cmsReview: await readJson(root, CMS_PATH),
-    cmsBytes: await readFile(join(root, "docs/architecture/common-assembly.md")),
+    cmsReview,
+    // P0 reviewed the standard at its accepted commit; later revisions of the live document do not
+    // change that frozen observation (owner decision A, 2026-10-01).
+    cmsBytes: (await execute("git", ["show", `${cmsReview.acceptedCurrent.commit}:docs/architecture/common-assembly.md`],
+      { cwd: root, encoding: "buffer", maxBuffer: 1 << 20 })).stdout,
     feasibility: await readJson(root, FEASIBILITY_PATH),
     rootClassification: await readJson(root, ROOT_CLASSIFICATION_PATH),
     tracked,
