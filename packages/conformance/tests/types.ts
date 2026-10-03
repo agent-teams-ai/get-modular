@@ -6,7 +6,7 @@ import {
 import type { ModuleContext } from "@get-modular/resources";
 import {
   contractSuite, guardHandles, isolate, runContractSuite, smoke,
-  type CaseContext, type ConformanceError, type ConformanceErrorCode, type ContractSubject, type ContractValue,
+  type CaseContext, type ConformanceError, type ConformanceErrorCode, type ContractSubject,
   type HandleGuard, type Isolated, type SmokeInjection, type SmokeStep, type TestFn,
 } from "../dist/index.js";
 
@@ -64,7 +64,7 @@ const suite = contractSuite(Orders, {
     void context.resources.signal; void rows;
   },
   // @ts-expect-error the case sees the contract's value type, not any
-  "reads a member the port lacks": (subject: ContractValue<typeof Orders>) => { void subject.lisst(); },
+  "reads a member the port lacks": subject => { void subject.lisst(); },
 });
 const subject: ContractSubject<typeof Orders> = {
   name: "default", declaration: orders, create: async ({ resources }) => ({ list: () => resources.signal.aborted ? 0 : 1 }),

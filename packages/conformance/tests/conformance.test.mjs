@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { many, optional, required } from "@get-modular/core";
 import { assemblyFor, declareModule, defineContract } from "@get-modular/assembly";
 import { createScope, scoped } from "@get-modular/resources";
-import { ConformanceError, contractSuite, isolate, runContractSuite, smoke } from "../dist/index.js";
+import { ConformanceError, contractSuite, guardHandles, isolate, runContractSuite, smoke } from "../dist/index.js";
 
 // ADR-0033: the real Core, Assembly and resources of this workspace build every module here.
 const tests = dirname(fileURLToPath(import.meta.url));
@@ -227,6 +227,113 @@ test("S2 a debt in the first run does not hide an unknown at id", async () => {
   assert.equal(all.details.steps.length, 11);
   assert.equal(all.details.steps[0].outcome, "succeeded");
   assert.match(all.details.steps[0].problem, /debt/u);
+});
+
+test("S2 factories bound outside the api given to compose fail smoke", async () => {
+  const separate = assemblyFor();
+  const outside = chain();
+  // The root binds with its own Assembly and only returns the preparation.
+  const compose = async () => outside.compose(separate);
+  const error = await smoke({ api: assemblyFor(), compose }).then(() => undefined, caught => caught);
+  assert.equal(code(error), "conformance.smoke.failed");
+  assert.equal(error.details.steps.length, 1);
+  assert.match(error.details.steps[0].problem, /outside the api/u);
+});
+
+test("S2 smoke rejects a missing input record", async () => {
+  const error = await smoke(undefined).then(() => undefined, caught => caught);
+  assert.equal(code(error), "conformance.argument.invalid");
+});
+
+// A scripted Assembly: it runs the bound factories in order, so smoke's own expectations can be broken at will.
+function scripted(tweak) {
+  const ids = ["t/a", "t/b", "t/c"];
+  const api = {
+    bindFactory: (declaration, factory) => ({ declaration, factory }),
+    bindInput: declaration => declaration,
+    prepare: async ({ factories }) => ({
+      status: "prepared",
+      prepared: {
+        run: async ({ signal }) => {
+          const created = [];
+          for (const { declaration, factory } of factories) {
+            try {
+              await factory({}, { signal, scope: undefined });
+            } catch (cause) {
+              return tweak({ status: "failed", phase: "factory", code: "assembly.run.factory-rejected",
+                implementationId: declaration.implementationId, cause, created: [...created], returned: undefined, cancellation: undefined });
+            }
+            created.push({ moduleId: declaration.moduleId, implementationId: declaration.implementationId, instance: 1, capabilities: {} });
+            if (signal.aborted) return { status: "cancelled", reason: signal.reason, created: [...created] };
+          }
+          return { status: "succeeded", roots: {}, created };
+        },
+      },
+    }),
+  };
+  const compose = async given => given.prepare({ composition: undefined, roots: {}, factories: ids.map(id =>
+    given.bindFactory({ moduleId: id, implementationId: id }, async () => ({ instance: 1, capabilities: {} }))) });
+  return { api, compose };
+}
+
+test("S1 smoke checks the cause and the created prefix of an injected failure", async () => {
+  const honest = scripted(outcome => outcome);
+  assert.equal((await smoke({ api: honest.api, compose: honest.compose })).length, 7);
+  for (const [tweak, pattern] of [
+    [outcome => ({ ...outcome, cause: new Error("another failure") }), /expected the injected failure/u],
+    [outcome => ({ ...outcome, created: [...outcome.created, { implementationId: "extra" }] }), /expected created/u],
+  ]) {
+    const { api, compose } = scripted(tweak);
+    const error = await smoke({ api, compose, inject: ["fail"] }).then(() => undefined, caught => caught);
+    assert.equal(code(error), "conformance.smoke.failed");
+    const problems = error.details.steps.filter(step => step.inject === "fail").map(step => step.problem);
+    assert.equal(problems.length, 3);
+    assert.ok(problems.every(problem => pattern.test(problem)), String(problems));
+  }
+});
+
+test("H2 an id that only starts with the reserved prefix is accepted", async () => {
+  const declaration = declareModule({ ...ordersSpec, moduleId: "conformancex/orders", implementationId: "conformancex/orders/default" });
+  await using isolated = await isolate(assemblyFor(), { declaration, dependencies: dependencies(), factory: async () => product(1) });
+  assert.equal(isolated.instance, 1);
+});
+
+test("H3 within puts the module scope under the caller's scope, and the signal reaches the run", async () => {
+  const declaration = declareModule({
+    moduleId: "t/within", implementationId: "t/within/default", owner, provides: [Orders.provide()], slots: [],
+  });
+  const registered = [];
+  const subject = { name: "within-subject", declaration, create: () => ({ list: () => 0 }) };
+  runContractSuite(contractSuite(Orders, {
+    "builds inside the case scope": async (_value, context) => {
+      await isolate(assemblyFor(), {
+        declaration, dependencies: {}, within: context.resources,
+        factory: async (_deps, { resources }) => {
+          await resources.setup({ name: "conn", setup: () => 1, cleanup: () => { throw new Error("stuck"); } });
+          return product(0);
+        },
+      });
+    },
+  }), subject, (name, body) => registered.push({ name, body }));
+  const failure = await registered[0].body().then(() => undefined, error => error);
+  assert.equal(code(failure), "resources.close.incomplete");
+  assert.deepEqual(failure.report.debts.map(debt => debt.path), [["within-subject", "isolate", "t/within/default", "conn"]]);
+
+  const cancelled = await isolate(assemblyFor(), {
+    declaration, dependencies: {}, signal: AbortSignal.abort(), factory: async () => product(0),
+  }).then(() => undefined, error => error);
+  assert.equal(code(cancelled), "conformance.isolate.construction-failed");
+  assert.equal(cancelled.details.outcome.status, "cancelled");
+});
+
+test("G1 a runtime without process diagnostics is reported, not guessed", () => {
+  const original = process.getActiveResourcesInfo;
+  process.getActiveResourcesInfo = undefined;
+  try {
+    assert.throws(() => guardHandles(), { code: "conformance.handles.unsupported-runtime" });
+  } finally {
+    process.getActiveResourcesInfo = original;
+  }
 });
 
 test("S3 an abort injected right after a module is called reaches its setup", { timeout: 20000 }, async () => {
