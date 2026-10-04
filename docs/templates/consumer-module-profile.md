@@ -18,8 +18,13 @@ standard:
   acceptedBy: replace-with-local-adr-id
 
 packages:
-  core: 0.1.0
-  assembly: 0.1.0
+  core: 0.3.0
+  assembly: 0.3.0
+  resources: 0.1.0 # optional
+  conformance: 0.1.0 # optional
+
+identity:
+  namespaces: [] # namespaces this consumer owns; see "Identity and namespaces" in the standard
 
 scope:
   roots:
