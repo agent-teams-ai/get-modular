@@ -236,7 +236,7 @@ production composition retains its existing contract. Complete OS qualification
 and measured acceleration require CI evidence on the exact head.
 
 The Node 26 root routes remain source-only drafts. Full qualification of the
-exact Docs Protocol 0.6.0 `portable-v1` closure and installed mandatory runner
+exact Docs Protocol 0.6.2 `portable-v1` closure and installed mandatory runner
 remains pending. Configured routes and public archive tests do not confer
 production tooling qualification, a managed cohort binding or release authority.
 
