@@ -281,8 +281,13 @@ export async function prepareM1PackedConsumers({ archive, workspace, toolchain, 
   const nodeCases = surface === 'm2' ? await m2NodeCaseDefinitions(objectSubjectCases) : m1NodeCaseDefinitions(objectSubjectCases);
   const pins = [['typescript', '7.0.2'], ['typescript-minimum', '5.8.3']];
   assert.deepEqual(toolchain.compilers.map(({ name, version }) => [name, version]), pins);
-  assert.match(toolchain.node.version, /^v24\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u);
-  assert.ok(Number(toolchain.node.version.split('.')[1]) >= 18, 'Node must be in >=24.18.0 <25');
+  const nodeVersion = /^v(24|26)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/u.exec(toolchain.node.version);
+  // Full equality also rejects the final line terminator that $ alone admits.
+  assert.ok(nodeVersion !== null && nodeVersion[0] === toolchain.node.version
+    && nodeVersion.slice(1).map(Number).every(Number.isSafeInteger)
+    && ((nodeVersion[1] === '24' && Number(nodeVersion[2]) >= 18)
+      || (nodeVersion[1] === '26' && Number(nodeVersion[2]) >= 10)),
+    'Node must be a canonical release in >=24.18.0 <25 || >=26.10.0 <27');
   assert.match(toolchain.npm.version, /^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/u);
   async function admitProgram(value) {
     assert.match(value.sha256, /^[a-f0-9]{64}$/u);
