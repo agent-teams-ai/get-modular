@@ -12,11 +12,21 @@ const read = path => readFile(new URL(path, root), "utf8");
 const workflow = parse(await read(".github/workflows/ci.yml"));
 const packageJson = JSON.parse(await read("package.json"));
 const clone = value => JSON.parse(JSON.stringify(value));
-const hosts = { ubuntu: "ubuntu-24.04", macos: "macos-15", windows: "windows-2025" };
+const hosts = {
+  ubuntu: "ubuntu-24.04",
+  macos: "macos-15",
+  windows: "windows-2025",
+  "node26-ubuntu": "ubuntu-24.04",
+  "node26-macos": "macos-15",
+  "node26-windows": "windows-2025",
+};
 
-// Independent oracle copied from check/precheck at 0a81957c, not from the matrix.
+// Independent oracle retains every check/precheck obligation at 0a81957c
+// and adds the explicit root peer and runtime policy gates. Never derive it
+// from the matrix or the profile checker's command definitions.
 const baseline = [
-  "runtime:preflight", "governance:check", "release-owned-files:check",
+  "runtime:preflight", "lockfile:peers:check", "runtime:policy:typecheck",
+  "runtime:policy:test", "governance:check", "release-owned-files:check",
   "assembly:build", "lifecycle:check", "resources:check", "conformance:check", "foundation:check", "sdk-growth:check",
   "lint:typed", "docs:protocol:check", "architecture:feature-module-profile",
   "architecture:feature-module-profile:test", "core:typecheck:prepared", "core:test",
@@ -29,7 +39,10 @@ const primary = {
   core: ["core:typecheck:prepared", "core:test"],
   assembly: ["assembly:typecheck", "assembly:test"],
   packaging: ["lifecycle:check", "resources:check", "conformance:check", "foundation:check", "sdk-growth:check", "lint:typed"],
-  governance: ["ownership:checkpoint:test", "governance:check", "release-owned-files:check", "governance:test"],
+  governance: [
+    "ownership:checkpoint:test", "runtime:policy:typecheck", "runtime:policy:test",
+    "governance:check", "release-owned-files:check", "governance:test",
+  ],
   static: [
     "docs:protocol:check", "architecture:feature-module-profile",
     "architecture:feature-module-profile:test", "contracts:check", "contracts:test",
@@ -46,11 +59,25 @@ function validateLanes(value, manifest = packageJson) {
   assert.equal(value.defaults?.run?.shell, undefined, "payload needs the platform default shell");
   assert.equal(manifest.scripts.precheck, "pnpm ownership:checkpoint:test", "precheck drift");
   assert.equal(manifest.scripts.check, baseline.map(script => `pnpm ${script}`).join(" && "), "check chain drift");
-  assert.deepEqual(Object.values(primary).flat().sort(),
+  assert.equal(manifest.scripts["runtime:preflight"],
+    "node architecture/checks/node-version.mjs", "dependency-free preflight drift");
+  assert.equal(manifest.scripts["precheck:changed"], "pnpm runtime:preflight", "changed precheck drift");
+  assert.equal(manifest.scripts["lockfile:peers:check"], "pnpm peers check --lockfile-only", "peer gate drift");
+  assert.equal(manifest.scripts["runtime:policy:typecheck"],
+    "node node_modules/typescript/bin/tsc -p tests/tsconfig.tooling-node-policy.json --noEmit", "policy compiler drift");
+  assert.equal(manifest.scripts["runtime:policy:test"],
+    "node --test tests/tooling-node-policy.test.mts", "policy test drift");
+  // Every independent checkout validates peers before its lane payload.
+  assert.deepEqual([...Object.values(primary).flat(), "lockfile:peers:check"].sort(),
     ["ownership:checkpoint:test", ...baseline.filter(script => !["runtime:preflight", "assembly:build"].includes(script))].sort());
   for (const [host, os] of Object.entries(hosts)) {
+    const node26 = host.startsWith("node26-");
     const job = laneJob(value, host);
     assert(job, `${host}: missing lane job`);
+    assert.equal(job.name, `check lane (${os}, `
+      + (node26 ? "Node 26, " : "") + "${{ matrix.lane }})");
+    assert.deepEqual(job.env, node26 ? { ROOT_CI_NODE_VERSION: "26.10.0" } : undefined,
+      "default runtime or candidate selection drift");
     assert.equal(job["runs-on"], os);
     assert.equal(job["timeout-minutes"], 15);
     assert.equal(job.strategy["fail-fast"], false);
@@ -64,7 +91,16 @@ function validateLanes(value, manifest = packageJson) {
     assert.match(job.steps[0].uses, /^actions\/checkout@[a-f0-9]{40}$/u);
     assert.equal(job.steps[0].with["fetch-depth"], 0);
     assert.equal(job.steps[0].with["persist-credentials"], false);
-    assert.equal(job.steps[3].run, "pnpm install --frozen-lockfile --ignore-scripts");
+    assert.deepEqual(job.steps[2].with, {
+      "node-version": "${{ env.ROOT_CI_NODE_VERSION }}",
+      "node-version-file": ".node-version",
+      cache: "pnpm",
+    }, "runtime selection must retain the Node 24 default and explicit Node 26 override");
+    assert.equal(job.steps.length, 7, "checkout, provisioning, install, peers, payload and integrity");
+    assert.equal(job.steps[3].run,
+      "pnpm install --frozen-lockfile --ignore-scripts --engine-strict --strict-peer-dependencies");
+    assert.equal(job.steps[4].run, "pnpm lockfile:peers:check",
+      "committed peer validation must follow frozen installation");
     for (const step of job.steps) {
       assert.equal(step.if, undefined, "lane step must not be skipped");
       assert.equal(step["continue-on-error"], undefined);
@@ -92,6 +128,8 @@ function validateLanes(value, manifest = packageJson) {
       assert.deepEqual(scripts.filter(script => !setup.includes(script)),
         primary[row.lane], `${host}/${row.lane}: obligations`);
       const position = script => scripts.indexOf(script);
+      assert.equal(position("runtime:preflight"), row.lane === "governance" ? 1 : 0,
+        "runtime preflight must precede installed lane gates after any ownership checkpoint");
       assert(position("runtime:preflight") >= 0 && position("runtime:preflight") < position("governance:check"), "runtime prerequisite");
       assert(position("governance:check") < position("assembly:build"), "governance must precede builds");
       const lifecycle = position(row.lane === "packaging" ? "lifecycle:check" : "lifecycle:build");
@@ -105,12 +143,18 @@ function validateLanes(value, manifest = packageJson) {
       }
       if (row.lane === "governance") {
         assert.equal(position("ownership:checkpoint:test"), 0, "ownership precheck must run first");
+        assert.equal(position("runtime:policy:typecheck"), position("runtime:preflight") + 1,
+          "strict policy typecheck must follow pure preflight");
+        assert.equal(position("runtime:policy:test"), position("runtime:policy:typecheck") + 1,
+          "policy tests must follow their compiler gate");
+        assert.equal(position("governance:check"), position("runtime:policy:test") + 1,
+          "policy gates must precede governance preparation");
         assert(position("release-owned-files:check") < position("assembly:build"), "release check ordering");
       }
     }
     const gate = aggregate(value, host);
     assert(gate, `${host}: missing aggregate`);
-    assert.equal(gate.name, `check (${os})`, "required context");
+    assert.equal(gate.name, node26 ? `check (${os}, Node 26)` : `check (${os})`, "required context");
     assert.equal(gate["runs-on"], os);
     assert.deepEqual(gate.needs, [`lanes-${host}`], "aggregate dependency omission");
     assert.equal(gate.if, "always()", "aggregate must run after failures/skips");
@@ -153,6 +197,8 @@ function lane(step, cwd, environment) {
 }
 
 async function prepareLane(cwd) {
+  await writeFile(join(cwd, "package.json"),
+    JSON.stringify({ private: true, type: "commonjs" }) + "\n");
   await mkdir(join(cwd, "architecture", "tooling"), { recursive: true });
   await copyFile(new URL("architecture/tooling/run-ci-check-lane.mjs", root),
     join(cwd, "architecture", "tooling", "run-ci-check-lane.mjs"));
@@ -208,6 +254,26 @@ test("rejects missing, duplicate, unknown and reordered obligations on any OS", 
         .replace("governance:check assembly:build", "assembly:build governance:check");
     });
     mutate(job => { job.steps[4].if = "false"; });
+    mutate(job => { job.steps[3].run = "pnpm install --frozen-lockfile --ignore-scripts"; });
+    mutate(job => { job.steps[4].run = "pnpm peers check"; });
+    mutate(job => { job.steps.splice(4, 1); });
+    mutate(job => { job.env = { ROOT_CI_NODE_VERSION: "26.9.9" }; });
+    mutate(job => { job.steps[2].with["node-version"] = "26.9.9"; });
+    mutate(job => { delete job.steps[2].with["node-version-file"]; });
+    mutate(job => {
+      const row = job.strategy.matrix.include.find(item => item.lane === "governance");
+      row.scripts = row.scripts.replace(
+        "runtime:policy:typecheck runtime:policy:test",
+        "runtime:policy:test runtime:policy:typecheck",
+      );
+    });
+    mutate(job => {
+      const row = job.strategy.matrix.include.find(item => item.lane === "governance");
+      row.scripts = row.scripts.replace(
+        "runtime:preflight runtime:policy:typecheck",
+        "runtime:policy:typecheck runtime:preflight",
+      );
+    });
     mutate(job => { job["continue-on-error"] = true; });
     mutate(job => { job.strategy["fail-fast"] = true; });
     mutate(job => { runner(job).shell = "bash"; });

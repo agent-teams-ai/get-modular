@@ -41,6 +41,7 @@
     "emittable",
     "getmodular",
     "parameterless",
+    "precheck",
     "productization",
     "protectable",
     "quiescing",

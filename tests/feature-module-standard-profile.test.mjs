@@ -164,7 +164,7 @@ test("rejects wildcard and mismatched module, source, and test roots", () => {
 test("pins the accepted Foundation and Docs source versions without age exclusions", async () => {
   const workspace = parse(await readFile("pnpm-workspace.yaml", "utf8"));
   assert.equal(packageJson.devDependencies["@agent-teams/engineering-foundation"], "1.7.2");
-  assert.equal(packageJson.devDependencies["@agent-teams/docs-protocol"], "0.6.0");
+  assert.equal(packageJson.devDependencies["@agent-teams/docs-protocol"], "0.6.2");
   assert.equal(profile.adoption.admission.foundation.version, "1.7.2");
   assert.equal(workspace.minimumReleaseAge, 0);
   assert.equal(workspace.minimumReleaseAgeStrict, undefined);
@@ -418,11 +418,47 @@ test("requires profile enforcement in complete and fast gates", () => {
     "qualification:v1-graph-semantics",
     "qualification:self-composition-templates",
     "runtime:preflight",
+    "precheck:changed",
+    "lockfile:peers:check",
+    "runtime:policy:typecheck",
+    "runtime:policy:test",
   ]) {
     const noOp = clone(packageJson);
     noOp.scripts[scriptName] = ":";
     assert.throws(() => validate({ packageJson: noOp }),
       new RegExp(`${scriptName} must use its closed command definition`, "u"));
+  }
+
+  for (const installedGate of [
+    "lockfile:peers:check", "runtime:policy:typecheck", "runtime:policy:test",
+  ]) {
+    for (const scriptName of ["runtime:preflight", "precheck:changed"]) {
+      const nested = clone(packageJson);
+      nested.scripts[scriptName] += ` && pnpm ${installedGate}`;
+      assert.throws(() => validate({ packageJson: nested }),
+        new RegExp(`${scriptName} must use its closed command definition`, "u"));
+    }
+  }
+
+  for (const scriptName of ["check", "check:fast"]) {
+    const commands = packageJson.scripts[scriptName].split(" && ");
+    assert.deepEqual(commands.slice(0, 4), [
+      "pnpm runtime:preflight", "pnpm lockfile:peers:check",
+      "pnpm runtime:policy:typecheck", "pnpm runtime:policy:test",
+    ]);
+    for (const index of [1, 2, 3]) {
+      const reordered = clone(packageJson);
+      const candidate = [...commands];
+      [candidate[0], candidate[index]] = [candidate[index], candidate[0]];
+      reordered.scripts[scriptName] = candidate.join(" && ");
+      assert.throws(() => validate({ packageJson: reordered }),
+        /must use its exact closed pnpm command chain/u);
+    }
+    const testsBeforeCompiler = clone(packageJson);
+    [commands[2], commands[3]] = [commands[3], commands[2]];
+    testsBeforeCompiler.scripts[scriptName] = commands.join(" && ");
+    assert.throws(() => validate({ packageJson: testsBeforeCompiler }),
+      /must use its exact closed pnpm command chain/u);
   }
 });
 

@@ -7,7 +7,7 @@
   "type": "module",
   "packageManager": "pnpm@11.20.0",
   "engines": {
-    "node": ">=24.21.0 <25",
+    "node": ">=24.21.0 <25 || >=26.10.0 <27",
     "pnpm": ">=11.20.0 <12"
   },
   "repository": {
@@ -16,9 +16,9 @@
   },
   "scripts": {
     "precheck": "pnpm ownership:checkpoint:test",
-    "check": "pnpm runtime:preflight && pnpm governance:check && pnpm release-owned-files:check && pnpm assembly:build && pnpm lifecycle:check && pnpm resources:check && pnpm conformance:check && pnpm foundation:check && pnpm sdk-growth:check && pnpm lint:typed && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm core:typecheck:prepared && pnpm core:test && pnpm assembly:typecheck && pnpm assembly:test && pnpm contracts:check && pnpm contracts:test && pnpm qualification:resource-profile && pnpm qualification:v1-diagnostics-protocol && pnpm qualification:v1-graph-semantics && pnpm qualification:self-composition-templates && pnpm governance:test",
+    "check": "pnpm runtime:preflight && pnpm lockfile:peers:check && pnpm runtime:policy:typecheck && pnpm runtime:policy:test && pnpm governance:check && pnpm release-owned-files:check && pnpm assembly:build && pnpm lifecycle:check && pnpm resources:check && pnpm conformance:check && pnpm foundation:check && pnpm sdk-growth:check && pnpm lint:typed && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm core:typecheck:prepared && pnpm core:test && pnpm assembly:typecheck && pnpm assembly:test && pnpm contracts:check && pnpm contracts:test && pnpm qualification:resource-profile && pnpm qualification:v1-diagnostics-protocol && pnpm qualification:v1-graph-semantics && pnpm qualification:self-composition-templates && pnpm governance:test",
     "check:changed": "agent-teams-foundation agent-workflow changed --consumer .",
-    "check:fast": "pnpm runtime:preflight && pnpm assembly:build && pnpm lifecycle:check && pnpm resources:check && pnpm conformance:check && pnpm foundation:check && pnpm sdk-growth:check && pnpm quality:coverage:scope && pnpm architecture:feature-module-profile && pnpm quality:critical:test && pnpm docs:check && pnpm core:typecheck:prepared && pnpm core:test && pnpm assembly:typecheck && pnpm assembly:test",
+    "check:fast": "pnpm runtime:preflight && pnpm lockfile:peers:check && pnpm runtime:policy:typecheck && pnpm runtime:policy:test && pnpm assembly:build && pnpm lifecycle:check && pnpm resources:check && pnpm conformance:check && pnpm foundation:check && pnpm sdk-growth:check && pnpm quality:coverage:scope && pnpm architecture:feature-module-profile && pnpm quality:critical:test && pnpm docs:check && pnpm core:typecheck:prepared && pnpm core:test && pnpm assembly:typecheck && pnpm assembly:test",
     "docs:changed": "pnpm docs:check && pnpm docs:quality",
     "docs:check": "agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml",
     "docs:doctor": "agent-teams-docs doctor --consumer . --profile architecture/foundation/docs-protocol.yaml",
@@ -48,6 +48,9 @@
     "release-owned-files:check": "node architecture/checks/release-owned-files.mjs",
     "precheck:changed": "pnpm runtime:preflight",
     "runtime:preflight": "node architecture/checks/node-version.mjs",
+    "lockfile:peers:check": "pnpm peers check --lockfile-only",
+    "runtime:policy:typecheck": "node node_modules/typescript/bin/tsc -p tests/tsconfig.tooling-node-policy.json --noEmit",
+    "runtime:policy:test": "node --test tests/tooling-node-policy.test.mts",
     "sdk-growth:check": "node architecture/checks/sdk-growth.mjs && node --test tests/sdk-growth.test.mjs && node tests/qualification/sdk-growth-admission.mjs && node tests/qualification/sdk-growth-packed-consumers.mjs && node tests/qualification/sdk-growth-registry-consumer.mjs",
     "sdk-growth:test": "node --test tests/sdk-growth.test.mjs",
     "sdk-growth:admission": "node tests/qualification/sdk-growth-admission.mjs",
@@ -79,7 +82,7 @@
     "conformance:check": "pnpm conformance:build && pnpm conformance:typecheck && pnpm conformance:test && pnpm conformance:pack"
   },
   "devDependencies": {
-    "@agent-teams/docs-protocol": "0.6.0",
+    "@agent-teams/docs-protocol": "0.6.2",
     "@agent-teams/engineering-foundation": "1.7.2",
     "@changesets/cli": "catalog:",
     "@get-modular/assembly": "workspace:*",
