@@ -6,6 +6,7 @@ import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { resolveNpmCli, resolvePnpmCli } from "./qualification/support/npm-cli.mjs";
+import { assertSupportedToolingNodeVersion } from "../architecture/checks/node-version.mjs";
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageNames = ["core", "assembly", "resources", "conformance"];
@@ -118,8 +119,8 @@ test("disposable installed public roots compile and assemble on the selected Nod
   try {
     let archiveDirectory = process.env.GET_MODULAR_COMPAT_ARCHIVE_DIR;
     if (!archiveDirectory) {
-      assert.equal(process.versions.node.split(".")[0], "24",
-        "Node 26 requires archives built and packed under the qualified Node 24 toolchain");
+      // Actual root lanes pack their fresh build on the runtime being qualified.
+      assertSupportedToolingNodeVersion();
       archiveDirectory = join(root, "archives");
       await mkdir(archiveDirectory);
       const pnpm = await fixturePnpmCli();

@@ -22,6 +22,10 @@ Use `pnpm check:changed` while editing, `pnpm check:fast` before handoff, and
 `pnpm check` as the complete gate, including the installed
 `architecture.source-dependencies` schema v3 gate (`rootPackage: true` and
 `packageRoots` for Core/Assembly) and `pnpm release-owned-files:check`.
+`runtime:preflight` remains the dependency-free Node version guard;
+`precheck:changed` invokes only that guard. Full and fast gates explicitly run
+`lockfile:peers:check`, `runtime:policy:typecheck` and `runtime:policy:test`
+before preparation.
 
 When `package.public-api-compatibility` or `pnpm release-owned-files:check`
 fails, fix the source. Do not shrink yaml entrypoints, retarget

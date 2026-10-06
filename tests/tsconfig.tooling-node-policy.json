@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "lib": ["ES2024"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "erasableSyntaxOnly": true,
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": false,
+    "types": []
+  },
+  "files": ["tooling-node-policy.test.mts"],
+  "include": []
+}

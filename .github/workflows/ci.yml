@@ -28,7 +28,7 @@ jobs:
           - lane: packaging
             scripts: runtime:preflight governance:check assembly:build lifecycle:check resources:check conformance:check foundation:check sdk-growth:check lint:typed
           - lane: governance
-            scripts: ownership:checkpoint:test runtime:preflight governance:check release-owned-files:check assembly:build lifecycle:build resources:build conformance:build governance:test
+            scripts: ownership:checkpoint:test runtime:preflight runtime:policy:typecheck runtime:policy:test governance:check release-owned-files:check assembly:build lifecycle:build resources:build conformance:build governance:test
           - lane: static
             scripts: runtime:preflight governance:check assembly:build lifecycle:build resources:build conformance:build docs:protocol:check architecture:feature-module-profile architecture:feature-module-profile:test contracts:check contracts:test qualification:resource-profile qualification:v1-diagnostics-protocol qualification:v1-graph-semantics qualification:self-composition-templates
     steps: &check-lane-steps
@@ -39,9 +39,13 @@ jobs:
       - uses: pnpm/action-setup@008330803749db0355799c700092d9a85fd074e9 # v6.0.9
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
+          node-version: ${{ env.ROOT_CI_NODE_VERSION }}
           node-version-file: .node-version
           cache: pnpm
-      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Install the actual root with strict frozen policy
+        run: pnpm install --frozen-lockfile --ignore-scripts --engine-strict --strict-peer-dependencies
+      - name: Validate the committed peer graph
+        run: pnpm lockfile:peers:check
       - name: Run check lane with its build prerequisites
         env:
           LANE_SCRIPTS: ${{ matrix.scripts }}
@@ -94,6 +98,58 @@ jobs:
     name: check (windows-2025)
     runs-on: windows-2025
     needs: [lanes-windows]
+    if: always()
+    steps: *check-aggregate-steps
+
+  lanes-node26-ubuntu:
+    name: check lane (ubuntu-24.04, Node 26, ${{ matrix.lane }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env: &node26-root-runtime
+      ROOT_CI_NODE_VERSION: 26.10.0
+    strategy:
+      fail-fast: false
+      matrix: *check-lane-matrix
+    steps: *check-lane-steps
+
+  lanes-node26-macos:
+    name: check lane (macos-15, Node 26, ${{ matrix.lane }})
+    runs-on: macos-15
+    timeout-minutes: 15
+    env: *node26-root-runtime
+    strategy:
+      fail-fast: false
+      matrix: *check-lane-matrix
+    steps: *check-lane-steps
+
+  lanes-node26-windows:
+    name: check lane (windows-2025, Node 26, ${{ matrix.lane }})
+    runs-on: windows-2025
+    timeout-minutes: 15
+    env: *node26-root-runtime
+    strategy:
+      fail-fast: false
+      matrix: *check-lane-matrix
+    steps: *check-lane-steps
+
+  check-node26-ubuntu:
+    name: check (ubuntu-24.04, Node 26)
+    runs-on: ubuntu-24.04
+    needs: [lanes-node26-ubuntu]
+    if: always()
+    steps: *check-aggregate-steps
+
+  check-node26-macos:
+    name: check (macos-15, Node 26)
+    runs-on: macos-15
+    needs: [lanes-node26-macos]
+    if: always()
+    steps: *check-aggregate-steps
+
+  check-node26-windows:
+    name: check (windows-2025, Node 26)
+    runs-on: windows-2025
+    needs: [lanes-node26-windows]
     if: always()
     steps: *check-aggregate-steps
 

@@ -139,20 +139,51 @@ while the earlier Foundation archive and P0 records remain historical evidence.
 SDK status stays pending, activation stays on hold and release eligibility stays
 false.
 
-Repository tooling uses Node 24.21.0 and pnpm 11.20.0. Node 24.18.0 remains the
-library consumer floor; the existing Node 26 package compatibility lane remains
-separate. The installed mandatory runner requires Node 24.21.0 for execution
-events. `pnpm quality:critical:test` runs the existing source dependency and
-quality activation entries through `agent-teams-node-test`. Its consumer
-checker binds the complete selected file command and the SHA-256 of the reviewed
-required identity contract. Fast and full gates execute this route; other tests
-retain their existing Node runners. The consumer inventory has no OS exceptions.
+Node 24.21.0 remains the repository default and production tooling choice, with
+pnpm 11.20.0. The root/tooling policy is `>=24.21.0 <25 || >=26.10.0 <27`;
+the public library policy retains the separate Node 24.18.0 floor. Node 25,
+Node 26 below 26.10.0, Node 27 and malformed versions remain rejected. The
+existing runtime helper owns this narrow version mechanism; executable selection
+and deployment policy remain with the Host.
+
+`runtime:preflight` is exactly `node architecture/checks/node-version.mjs` and
+requires no installed repository dependencies. `precheck:changed` invokes only
+`pnpm runtime:preflight`. Both full and fast gates explicitly execute
+`lockfile:peers:check`, `runtime:policy:typecheck` and `runtime:policy:test`
+after preflight and before preparation. The peer gate validates the committed
+graph with `pnpm peers check --lockfile-only`; strict frozen installation alone
+does not replace it. The policy compiler gate uses the pinned TypeScript 7.0.2
+compiler and the existing strict NodeNext configuration, including
+`erasableSyntaxOnly`, `noUncheckedIndexedAccess` and
+`exactOptionalPropertyTypes`. Native Node type stripping does not replace that
+gate.
+
+The Node 24 and candidate Node 26.10.0 CI routes each retain five independent
+lanes on Ubuntu, macOS and Windows, including strict frozen installation,
+committed peer validation, the complete gate union and tracked workspace
+integrity. The governance lane explicitly executes policy typechecking and
+tests. The existing installed public archive compatibility lane remains
+separate. Docs Protocol is pinned exactly to `0.6.2`, the published stable
+successor declaring Node `^24.18.0 || ^26.0.0`; `0.6.0` excludes Node 26.
+The `portable-v1` profile and schema remain unchanged. These Node 26 root
+routes remain a source-only draft: qualification of the exact Docs `0.6.2`
+closure and installed mandatory runner remains pending, including fresh
+strict frozen Node 24/26 installations under pnpm 11.20.0, Foundation and Docs
+checks, and the complete mandatory gates. This mapping declares no managed
+cohort binding, production qualification or release eligibility.
+
+`pnpm quality:critical:test` runs the existing source dependency and quality
+activation entries through `agent-teams-node-test`. Its consumer checker binds
+the complete selected file command and the SHA-256 of the reviewed required
+identity contract. Fast and full gates execute this route; other tests retain
+their existing Node runners. The consumer inventory has no OS exceptions.
 Disposable regressions reject missing identities, skip, todo, late failure,
 removed selected files and changed contracts, and exercise an exact Windows-only
 fixture exception on POSIX.
 
 | Installed mechanism | Applicability and enforcement | Command |
 | --- | --- | --- |
+| Root runtime and committed peers | Dependency-free preflight; explicit strict policy typecheck and tests in full/fast gates; committed peer validation after frozen installation | `pnpm runtime:preflight`, `pnpm lockfile:peers:check`, `pnpm runtime:policy:typecheck`, `pnpm runtime:policy:test` |
 | Source dependencies v3 | Root development tooling, Core, Assembly, lifecycle kernel, resources and conformance; preserve declared roots, generated output and dependency budgets | `pnpm foundation:check` |
 | Source coverage and typed quality | All declared compiler projects; missing inputs fail; the default unknown assertion bridge gate remains active with no admissions | `pnpm quality:coverage:scope`, `pnpm lint:typed` |
 | Suppression governance | All five production source roots, no waivers | `pnpm foundation:check` |

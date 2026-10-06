@@ -76,6 +76,10 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "release-owned-files:check":
     "node architecture/checks/release-owned-files.mjs",
   "runtime:preflight": "node architecture/checks/node-version.mjs",
+  "precheck:changed": "pnpm runtime:preflight",
+  "lockfile:peers:check": "pnpm peers check --lockfile-only",
+  "runtime:policy:typecheck": "node node_modules/typescript/bin/tsc -p tests/tsconfig.tooling-node-policy.json --noEmit",
+  "runtime:policy:test": "node --test tests/tooling-node-policy.test.mts",
   "sdk-growth:check": "node architecture/checks/sdk-growth.mjs && node --test tests/sdk-growth.test.mjs && node tests/qualification/sdk-growth-admission.mjs && node tests/qualification/sdk-growth-packed-consumers.mjs && node tests/qualification/sdk-growth-registry-consumer.mjs",
   "sdk-growth:admission": "node tests/qualification/sdk-growth-admission.mjs",
   "sdk-growth:test": "node --test tests/sdk-growth.test.mjs",
@@ -85,6 +89,9 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
 const ROOT_SCRIPT_COMMANDS = Object.freeze({
   check: Object.freeze([
     "runtime:preflight",
+    "lockfile:peers:check",
+    "runtime:policy:typecheck",
+    "runtime:policy:test",
     "governance:check",
     "release-owned-files:check",
     "assembly:build",
@@ -109,6 +116,9 @@ const ROOT_SCRIPT_COMMANDS = Object.freeze({
   ]),
   "check:fast": Object.freeze([
     "runtime:preflight",
+    "lockfile:peers:check",
+    "runtime:policy:typecheck",
+    "runtime:policy:test",
     "assembly:build",
     ...LEAF_PACKAGES.map(leaf => leaf.gate),
     "foundation:check",

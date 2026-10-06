@@ -215,17 +215,30 @@ and its guard together as the current contract requires; never mark a future
 command or absent subject as passed.
 
 CI runs Core, Assembly, packaging, governance and static lanes in independent
-checkouts on each of Ubuntu, macOS and Windows. Each lane runs runtime preflight
-and governance before explicit builds; later checks retain the builds of Assembly
-and of every leaf package. The governance lane retains the ownership
-checkpoint before runtime preflight. The required `check (ubuntu-24.04)`,
-`check (macos-15)` and `check (windows-2025)` aggregates require every lane to
-succeed, including rejection of skipped dependencies. The
-[lane parity tests](../../tests/ci-check-lanes.test.mjs) retain the original
-command chain as an independent oracle and exercise the shell failure boundary
-in disposable TEST fixtures. This is private CI tooling; production composition
-and the local gate chains retain their existing contracts. Complete OS
-qualification and measured acceleration require CI evidence on the exact head.
+checkouts on each of Ubuntu, macOS and Windows. Node 24.21.0 remains the default
+through `.node-version`; candidate Node 26.10.0 jobs use the same five-lane
+matrix on all three operating systems. Every checkout performs strict frozen
+installation with lifecycle scripts disabled, followed by
+`pnpm lockfile:peers:check`. Each lane runs pure runtime preflight and governance
+before explicit builds; later checks retain the builds of Assembly and every
+leaf package. The governance lane retains the ownership checkpoint before
+runtime preflight, then explicitly runs runtime policy typechecking and tests
+before governance preparation.
+
+The required `check (ubuntu-24.04)`, `check (macos-15)` and
+`check (windows-2025)` aggregates and their corresponding Node 26 aggregates
+require every lane to succeed, including rejection of skipped dependencies. The
+[lane parity tests](../../tests/ci-check-lanes.test.mjs) retain every original
+command-chain obligation as an independent oracle, add the explicit peer and
+policy obligations, validate both runtime selections, and exercise the shell
+failure boundary in disposable TEST fixtures. This is private CI tooling;
+production composition retains its existing contract. Complete OS qualification
+and measured acceleration require CI evidence on the exact head.
+
+The Node 26 root routes remain source-only drafts. Full qualification of the
+exact Docs Protocol 0.6.0 `portable-v1` closure and installed mandatory runner
+remains pending. Configured routes and public archive tests do not confer
+production tooling qualification, a managed cohort binding or release authority.
 
 A phase's implementation is complete only when its scoped behavior and focused
 checks pass. A milestone is complete only when its actual subject passes the
