@@ -299,7 +299,7 @@ export async function validateSdkGrowth(model) {
     growthQualification: "v2", activation: "pending", status: "hold" };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const result = await validateSdkGrowth(await loadSdkGrowthModel());
   process.stdout.write(`${JSON.stringify({ result: "passed", ...result })}\n`);
 }
