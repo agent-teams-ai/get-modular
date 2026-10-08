@@ -165,7 +165,7 @@ Read-only аудит 2026-09-29 закрепил EF main `6503c8fe`, RR `62ac1c8
 аутентифицированной связи registry archive с source. Core Actions artifact
 10025685624 побайтово совпал с npm tarball, но historical upload custody не
 доказана; для Assembly retained build artifact не найден. Эти разные исходы
-записаны в плане G1 (workspace-документ, пока не перенесён) и слитом GM PR #123;
+записаны в плане G1 (хранится в приватном инфраструктурном репозитории владельца) и слитом GM PR #123;
 `hold` сохраняется. GM pin EF 1.5.1, тогда как
 RR v3 adapter использует 1.6.0, а текущий EF source 1.6.1. Это разные exact
 subjects; миграция требует проверки опубликованного архива, а не смены числа.

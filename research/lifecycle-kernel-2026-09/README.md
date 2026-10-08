@@ -36,8 +36,8 @@ The copy differs from the workspace original (SHA-256 `99350d9d…`) only by:
   are allowed;
 - the link to the previous TEST stand plan now points to the identical
   `docs/implementation-plan.md` in modularity-host-test at `fcc10b25`;
-- the link to the G1 authority plan is plain text, because that workspace
-  document has not been moved;
+- the link to the G1 authority plan is plain text: that plan now lives in the
+  owner's private infrastructure repository;
 - one local machine path is replaced with a description;
 - the private infrastructure repository's revision and a planned
   infrastructure provider move are described without their identifiers, and
