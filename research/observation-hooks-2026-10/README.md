@@ -21,6 +21,7 @@ reviewed.
 | Path | What it is |
 | --- | --- |
 | [design.md](design.md) | Revision 4 of the research and recommended design, edited for this repository: links adjusted to this layout, rule 10 updated with the error-code agreement of 2026-10-02, workspace `AGENTS.md` citations marked as outside this repository, reviewer naming as described below, lint and spelling fixes (a note and directive for the deliberate rule numbering, "fan-out", one reworded sentence about timers), the stale-response countermeasure scoped to derived results, and a pointer to the known sketch v4 defects |
+| [errata.md](errata.md) | Corrections to the preserved reports and sketch fixtures found after the move |
 | [sketch-v4-known-defects.md](sketch-v4-known-defects.md) | Defects in the frozen sketch v4 confirmed after the move and its drift against the resources package on main, as input for the implementation delivery |
 | [raw/revisions/](raw/revisions/) | Revisions 1-3 (originals SHA-256 `3709c3a7…`, `eee3f342…`, `9754799b…`; revision 1 is byte-identical, revisions 2 and 3 carry the redacted details below); their internal links refer to the former workspace layout |
 | [raw/original-reports/](raw/original-reports/) | The five original hook research reports (Flutter/Riverpod, reactive UI, DI frameworks, plugin systems, scale), raw results, identities and their task scope; hashes in `research-document-hashes.json` |
@@ -99,7 +100,8 @@ inputs (authority snapshots, relayed sources, macOS metadata files) are not part
 of this archive at all. The original reports themselves (`hooks-*.md` and their
 `*.result.json`) are unchanged and still match `research-document-hashes.json`.
 Being hash-pinned, they still contain hosted worker workspace links under
-`/srv/workers/` (in `hooks-reactive.md` and its result). Job ids everywhere,
-including the edited identity files, keep their last letter, which names a
-worker account slot, because they are the cross-reference between files;
-neither carries credentials.
+`/srv/workers/` (in `hooks-reactive.md` and its result). The five research job
+ids (`…-std-20261001-ro-u`), including in the edited identity files, keep their
+last letter, which names a worker account slot, because they are the
+cross-reference between files; the critic job ids carry no slot. Neither
+carries credentials.
