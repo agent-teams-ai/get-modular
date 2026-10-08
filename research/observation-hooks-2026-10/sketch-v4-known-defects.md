@@ -13,10 +13,25 @@ test. The implementation delivery must cover them with rejecting tests.
 | Projections (`keyed-source.ts`) | A key named `__proto__` is assigned through the inherited setter, so the projection loses that value. | Define projection properties explicitly (or use null-prototype records) and test the key. |
 | Revisions (`latest-derivation.ts`) | `offer` accepts `NaN`, which disables the stale-revision check afterwards; `Infinity` blocks all later offers. | Accept only non-negative safe integers. |
 
+## Drift against the delivered resources package
+
+Checked against main after the 0.3.0 train (2026-10-08). The sketch was built
+against a stand-in for `@get-modular/resources`; the delivered package
+(ADR-0030, ADR-0031) differs in ways the implementation must follow:
+
+| Sketch v4 | Delivered | Consequence |
+| --- | --- | --- |
+| Cleanup context `{ signal }` (`hub.ts`, `HubResources`) | `CleanupContext` is `{ escalate }` | The drain cleanup must read `escalate`; the structural port as written is not satisfied by `Resources`. A declared peer dependency on the package (as `@get-modular/conformance` does) avoids a second copy of these types. |
+| Scope-closed check compares `code === "scope-closed"` | Code is `resources.scope.closed` | Compare the delivered code; keep the dev test against the real package that the design already requires. |
+| `scoped(parent, name, factory)` | `scoped(name, factory)`; the run scope comes from `run({ signal, scope })` | Host wiring in the TEST experiment follows the Consumer Module Standard examples. |
+
+## Resources stand-in
+
 Two further reports concern the `@get-modular/resources` stand-in used by the
 sketch, not this package: close waits for pending setups without honouring
-`abandon`, and each released entry keeps its `abandon` listener. They were
-passed to the resources stream, whose package owns those semantics.
+`abandon`, and each released entry keeps its `abandon` listener. The
+resources stream, which owns those semantics, confirmed on 2026-10-02 that its
+design handles both.
 
 Other review comments on the archive targeted the superseded sketches v1-v3
 (fixed in v4) or asked to change preserved reports; preserved evidence is not

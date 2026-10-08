@@ -8,6 +8,8 @@ related:
   - ADR-0015
   - ADR-0017
   - ADR-0026
+  - ADR-0030
+  - ADR-0033
   - ADR-0029
   - ARCH-COMMON-ASSEMBLY
   - ARCH-SYSTEM-BOUNDARY
@@ -42,9 +44,14 @@ The full design, evidence and remaining limits are in the
 
 ## Constraints
 
-- Core and Assembly do not import the package; it has zero package
-  dependencies and uses resource scopes only through a structural port that
-  the planned resources package satisfies.
+- Core and Assembly do not import the package. It uses the resource scopes of
+  `@get-modular/resources` (ADR-0030). The admitting ADR chooses between a
+  declared peer dependency, the pattern ADR-0033 uses for
+  `@get-modular/conformance`, and a structural port. The research sketch's
+  structural port does not match the delivered package (cleanup receives
+  `{ escalate }`, not `{ signal }`); the
+  [known defects](../../research/observation-hooks-2026-10/sketch-v4-known-defects.md)
+  list this drift.
 - Mechanism only: deadlines, escalation, readiness decisions, health, sealing
   and commit policy stay with the product Host. No universal manager, service
   bag, global scheduler, reactive engine, source status or health contract,
@@ -55,21 +62,23 @@ The full design, evidence and remaining limits are in the
 - The admitting ADR must reconcile `system-boundary.md` ("does not … execute
   product lifecycle", no "second lifecycle authority") and the Consumer Module
   Standard's "explicit demonstrated need" rule, separating mechanism from
-  Host authority as the resources package does.
-- Publication: the package identity is not yet accepted by the production
-  artifact gate, and the G1 SDK status is on hold
-  (`architecture/sdk-growth/status.json`). The admitting ADR must accept the
-  identity and its qualification and release path, and reconcile the owner's
-  "public `0.x` from the first release" with that hold and with the ADR-0029
-  precedent, which kept a new package private until separate qualification.
-- Integration follows the resources package deliveries (leaf-package table,
-  shared error-code scheme `<pkg>.<area>.<reason>`, channel and signal matrix in
-  the Consumer Module Standard); no parallel edit of pinned shared files.
+  Host authority as ADR-0030 does for resources.
+- Publication: the admitting ADR adds the package's row to the leaf package
+  table (`architecture/checks/leaf-packages.mjs`). ADR-0030 and ADR-0033 are
+  the precedent for the owner's "public `0.x` from the first release": public
+  from the first Changesets release through the bounded release operator, and,
+  while G1 is on hold (`architecture/sdk-growth/status.json`), not enrolled in
+  `package.public-api-compatibility` or G1 SDK growth.
+- The 0.3.0 train delivered what this package builds on: the resources
+  package, the leaf package table and the shared error-code scheme
+  `<pkg>.<area>.<reason>` in the Consumer Module Standard. The admitting
+  delivery adds the `observation.*` codes and the configuration rule to that
+  standard.
 
 ## Blocking effect
 
-Proposed classification under ADR-0017, for the owner to confirm with this
-record: OD-007 is **not a publication blocker** and is therefore absent from
+Owner classification under ADR-0017, confirmed on 2026-10-08: OD-007 is
+**not a publication blocker** and is therefore absent from
 `publicationBlockers`. Core, Assembly and every other publishable surface are
 unaffected, because the new package cannot ship without its own admitting ADR
 anyway. As an active open decision it does, under
@@ -90,8 +99,9 @@ LOC is roughly ×2 uncertain.
 
 ## Acceptance criteria
 
-- An accepted ADR admits the exact public API before package source, reconciles
-  the system boundary and records the owner exceptions above.
+- An accepted ADR admits the exact public API and the leaf package row before
+  package source, reconciles the system boundary and records the owner
+  exceptions above.
 - The bounded TEST experiment in the research archive passes on the supported
   Node range with negative type fixtures on the minimum and pinned TypeScript
   compilers; any failure returns the design to review.

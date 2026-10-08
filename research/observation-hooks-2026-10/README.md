@@ -35,7 +35,9 @@ reviewed.
   factories, not classes; first proof on a TEST consumer (Agent Runtime has no
   fitting consumer today, see `raw/evidence/code-sketch/critic-reports/agent-runtime-consumer-scan.md`).
 - The error-code scheme `<pkg>.<area>.<reason>` is agreed with the resources
-  stream; integration follows the resources package deliveries.
+  stream. The resources package shipped in the 0.3.0 train (ADR-0030); the
+  design's resource port predates it, see
+  [sketch-v4-known-defects.md](sketch-v4-known-defects.md#drift-against-the-delivered-resources-package).
 - Nothing here is implemented in `packages/`; no build, test or release gate
   depends on these files.
 
