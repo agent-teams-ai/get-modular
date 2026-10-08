@@ -25,7 +25,14 @@ next free ADR number at creation time.
    worktree. `pnpm docs:info` lists type `adr` with identity `adr-four-digits`.
    (`pnpm docs:new --help` exits 2 by design.)
 6. This PR is documentation and may land before train 1 is released. It adds no
-   package root, leaf row or changeset.
+   package root, leaf row or changeset. It changes
+   `architecture/decisions/accepted-decisions.json`, a release input, so it is
+   merged only while no release PR is open:
+   `gh pr list --repo agent-teams-ai/get-modular --state open --head changeset-release/main`
+   prints nothing. Otherwise wait, or ask the owner.
+7. If an ADR with a higher number than NNNN was accepted first (for example
+   train 2's T2-1), run the promote command of step 2 in a scratch checkout first
+   and check that it accepts an out-of-order id. If it does not: stop and report.
 
 ## Owner decisions (facts)
 
@@ -107,6 +114,13 @@ asks for go in new commits.
    and 2026-10-08: resources is a declared peer instead of a structural port,
    0.1.0 contains `sync`, `derived` and the escape hatch, and the package is
    released with train 2. OD-007 never blocked publication.
+
+   The acceptance criteria above move with the owner's sequencing of
+   2026-10-08: the Consumer Module Standard rule lands before the release pull
+   request opens, and the bounded TEST experiment runs on the release archives
+   and must pass before the release pull request is merged. If the experiment
+   fails, the package is not released and a successor decision replaces
+   ADR-NNNN.
    ```
 
    Leave every other section of OD-007 unchanged.
@@ -161,8 +175,9 @@ archived in `research/observation-hooks-2026-10/`.
 
 Admit one optional runtime package, `@get-modular/observation` at
 `packages/observation`, as an additive exception to the ADR-0003 topology, like
-ADR-0030 and ADR-0033. The package owns substantive behavior: in-process keyed
-sources and the delivery of their changes to opted-in participants.
+ADR-0023, ADR-0029 and ADR-0030. The package owns substantive behavior:
+in-process keyed sources and the delivery of their changes to opted-in
+participants.
 
 - `@get-modular/resources` is its only peer and its only dependency. It imports
   resources by root name only; it imports neither Core, Assembly, the lifecycle
@@ -178,9 +193,12 @@ sources and the delivery of their changes to opted-in participants.
 ### Contract
 
 The root exports the values `createKeyedSource`, `participantsFor`, `startHub`,
-`createLatestDerivation` and `ObservationError`, and the types that belong to
-them. The package README and its rejecting tests own the exact invariants. In
-summary:
+`createLatestDerivation` and `ObservationError`, and the types `Values`, `Key`,
+`Keys`, `SourceId`, `Snapshot`, `SnapshotRef`, `Reader`, `View`, `Observation`,
+`ObserveOptions`, `ObservationPort`, `KeyedSource`, `Participant`,
+`ParticipantFactory`, `ParticipantOutcome`, `Hub`, `LatestDerivation` and
+`ObservationErrorCode`. The package README and its rejecting tests own the exact
+invariants. In summary:
 
 - A keyed source holds one immutable record. Every key exists in the initial
   record; a type with optional properties is rejected. Values are plain data
@@ -199,7 +217,8 @@ summary:
   may coalesce revisions. A non-newer revision is ignored. Nothing is delivered
   and nothing new is observed after the Host seals the source. Order between
   registrations is deterministic but not part of the contract.
-- Callbacks are synchronous and typed to return `undefined`. Each callback runs
+- The callbacks `recordDesired`, `apply` and `fail` are synchronous and typed
+  to return `undefined`; `derive` returns a promise. Each callback runs
   isolated: a throw or a returned value goes to the caller's `reportError` and
   never stops another delivery. `reportError` must be synchronous and must not
   throw; a throwing reporter is surfaced as an uncaught error.
@@ -221,9 +240,12 @@ summary:
   is an input to the Host's readiness decision.
 - `createLatestDerivation` is the same one-active-run kit for a module-owned
   subscription (escape hatch). Its settlement is reported by the module itself.
-- Every error the package throws or rejects with carries a stable `code` of the
-  form `observation.<area>.<reason>`. `resources.scope.closed` passes through
-  unwrapped. Consumers compare codes, never classes.
+- Every error the package throws or rejects with, and every error the hub
+  reports for a participant, carries a stable `code` of the form
+  `observation.<area>.<reason>`; the hub's report names the participant and
+  keeps the original cause. `resources.scope.closed` passes through unwrapped.
+  The only exception is the uncaught error that surfaces a throwing
+  `reportError`. Consumers compare codes, never classes.
 - Record type parameters are invariant (`in out`), so a port for one record
   type is never accepted as a port for another.
 
@@ -254,14 +276,31 @@ participant callbacks and derivations only as a library call by the holder of a
 source or a hub, as Assembly runs Host-supplied factories only when the Host
 calls `run()` and resources runs cleanups only on `close()`. Get Modular decides
 no product lifecycle and holds no lifecycle authority; a participant is data,
-not a lifecycle method, and nothing is discovered by reflection. This decision
-and the Consumer Module Standard record that split.
+not a lifecycle method, and nothing is discovered by reflection. Three words of
+the boundary need a precise reading:
+
+- **Drain.** The hub's drain is a cleanup entry in a resources scope that the
+  Host closes. It waits only for the package's own derivations; it never
+  drains product traffic or routes.
+- **Fencing.** Publishing a derived result only for the current revision is a
+  data check on one source, not fencing of routes or generations.
+- **Readiness.** A participant's first outcome is data. Whether the product is
+  ready stays the Host's decision.
+
+This decision and the Consumer Module Standard record that split.
 
 The owner direction recorded in OD-007 is the demonstrated need that the
 Consumer Module Standard asks for before a module takes part in an
 independently managed lifecycle. The first proof is a disposable TEST consumer;
 the owner accepted that no production consumer lands in the same delivery. A
 production adoption follows the Consumer Module Standard of its consumer.
+
+### Trust
+
+A source, a hub and their participants run trusted in-process module code. The
+package cannot stop a `derive` that ignores its signal or revoke a value a
+module kept. Third-party or untrusted code runs in a runtime the Host can
+terminate, as ADR-0030 requires for cleanup. Participants are not a plugin SPI.
 
 ### Configuration rule
 
@@ -276,7 +315,9 @@ a Host reconstruction. Reading durable authority per operation stays valid.
 `@get-modular/resources` is a peer declared with the workspace caret range, so a
 packed archive names exactly one 0.x minor of resources. Every minor release of
 resources is accompanied by a minor release of observation, as ADR-0033 requires
-for conformance. Admission extends the existing leaf-package checks: the row
+for conformance; the release that bumps resources carries its own minor
+changeset for observation, because Changesets gives an out-of-range peer
+dependent only a patch. Admission extends the existing leaf-package checks: the row
 declares resources as its only peer and lists after the resources row. The
 admission entry arrives in the same change as the package root and its
 implementation. No entry, stub or pending root precedes them; until then the
@@ -301,7 +342,9 @@ throwing abort listener. Typed fixtures, including negative fixtures for
 variance and optional keys, cover TypeScript 7.0.2 and 5.8.3 with NodeNext and
 Bundler resolution. A packed-root test installs the exact archive together with
 the resources archive, and the Node 26 job installs it on the supported Node 26
-line.
+line. The bounded TEST experiment of the research archive runs on the release
+archives and must pass before the release pull request is merged; if it fails,
+the package is not released and a successor decision replaces this one.
 
 ### Resolution of OD-007
 
@@ -386,8 +429,8 @@ locally and in CI, owner approval linked in the PR.
   `docs/open-decisions/README.md`, `docs/traceability/module-system-v1.yaml`,
   `.cspell.json` only if needed.
 - The ADR body equals this brief's text except the number and approved edits.
-- `rg -n "structural port" docs/decisions/NNNN-*` hits only the rejected
-  alternative; `rg -n "peer" docs/decisions/NNNN-*` names only
+- `rg -n "structural" docs/decisions/NNNN-*` hits only the rejected
+  alternative "A structural resources port"; `rg -n "peer" docs/decisions/NNNN-*` names only
   `@get-modular/resources`.
 - The registry digest comes from the Foundation promote command:
   `pnpm foundation:check` and `pnpm ownership:checkpoint:test` exit 0 on the PR

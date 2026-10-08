@@ -69,6 +69,9 @@ from these briefs, the briefs and the owner decisions below win.
 | P7 | OBS-2 amends the REL-2 brief in the same PR | the PR that adds the changeset explains it; REL-2 stops otherwise | 8 / 8 |
 | P8 | The standard's rule waits for T2-5 | consumers then review one revised standard instead of two | 8 / 8 |
 | P9 | One brief per PR, as in train 2 | same review and stop discipline | 9 / 9 |
+| P10 | OBS-1 resolves OD-007; its remaining acceptance criteria move to OBS-3 (before REL-2 opens) and OBS-T (before REL-2 merges); a failed OBS-T means no release and a successor ADR | follows owner decision 3; an accepted ADR cannot be edited afterwards | 8 / 8 |
+| P11 | The hub reports participant failures as `observation.participant.callback-failed` with the participant id and the original cause | the ADR promises coded errors; sketch v4 reported a plain `Error` | 8 / 8 |
+| P12 | OBS-1 merges only while no release PR is open | `accepted-decisions.json` is a release input; merging during REL-1 would force its regeneration | 9 / 8 |
 
 ## 4. PR set, dependencies and size
 
@@ -93,9 +96,11 @@ owner publishes, observation last.
   `.github/workflows/ci.yml`, `tests/ci-check-lanes.test.mjs` and
   `tests/node-runtime-compatibility.test.mjs`. The PR that lands second rebases
   and re-runs every gate; nobody drops the other's edits.
-- **REL-2.** OBS-2 amends `briefs/REL-2-release.md` and the train 2 README
-  (section 3.1, item 9). If a train 2 PR has those files open, coordinate with
-  its author instead.
+- **REL-2.** OBS-2 amends `briefs/REL-2-release.md` (titles, owner decisions,
+  re-verify 1, 3 and 4, build, paths, pack and manifest checks, PR body,
+  merge condition with OBS-T, the no-observation fallback) and the train 2
+  README (section 3.1, item 9). If a train 2 PR has those files open,
+  coordinate with its author instead.
 - **Consumer pins.** Train 2's AR-3 and TEST-2 move consumer pins to the T2-5
   commit. If OBS-3 lands before they start, point them at OBS-3's merge commit
   so consumers review the standard once.
@@ -130,6 +135,26 @@ experiment", with these changes:
 | The TEST experiment fails | the observation release stops; the design returns to review |
 | A gate is in the way | never weaken it; stop |
 
-## 8. Independent review of these briefs
+## 8. Independent review of these briefs (2026-10-08) and its disposition
 
-To be recorded here before OBS-1 starts: findings and their disposition.
+| Finding | Disposition |
+| --- | --- |
+| P1 the edge list of OBS-2 missed `hub -> isolation` (`Report` type) | applied: edges for `hub`, `composition` and `index` listed; the test development boundary named |
+| P1 OD-007 resolved against its own acceptance criteria | applied: P10; the resolution text and the ADR state where the criteria moved and what a failed OBS-T means |
+| P2 the system boundary words drain, fencing and readiness | applied: ADR "Mechanism and authority" reads each of them |
+| P2 no Trust section | applied |
+| P2 the public types were not listed | applied: the ADR lists every exported type |
+| P2 test boundary allowed resources only for `hub` | applied: the development boundary allows resources and the test built-ins |
+| P2 REL-2 amendment incomplete | applied: owner decisions line, OBS-3 precondition, PR body, merge condition, fallback |
+| P2 OBS-1 during an open release PR | applied: P12 |
+| P2 the standard's example skipped `declareModule`/`ModuleFactory` and the Host wiring | applied: rewritten in the style of the standard's `host` example with a hub module; type-checked on TypeScript 7.0.2 and 5.8.3, NodeNext and Bundler, against Core, Assembly and resources on `main` with stub observation types |
+| P3 precedents, callback wording, coded reports, C3 test target, model-test invariant after `seal`, C6 `defineProperty`, the exact sketch checks to port, #141 test files, Node 26 pack destination, builds before the example test, `shasum`, the review `rg`, registry order | all applied (C13, C14, OBS-1 re-verify 7) |
+
+Verified by the review: the C9 type rule rejects optional keys and accepts
+`T | undefined` keys and interfaces on TypeScript 7.0.2 and 5.8.3 (with and
+without `exactOptionalPropertyTypes`); `mock.timers` with `tick(0)` runs nested
+`setImmediate` and `runAll()` throws; a throwing abort listener gives exactly
+one uncaught exception on Node 24 and 26; deep test imports of `dist` files
+work and the export map blocks them from the archive; the C3 fix matches the
+resources implementation; the governance steps for resolving OD-007 match
+`validateDecisionResolutions`.

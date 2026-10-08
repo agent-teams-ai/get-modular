@@ -96,31 +96,66 @@ Rules for the Host:
 
 <!-- consumer-standard-example: observation -->
 ```ts
-// Product, once:
-export const settings = participantsFor<AppSettings>();
+import { declareModule, defineContract, type CapabilitiesOf, type ModuleFactory } from "@get-modular/assembly";
+import { many, required } from "@get-modular/core";
+import { participantsFor, startHub, type Hub, type Participant, type Reader } from "@get-modular/observation";
+import { scoped } from "@get-modular/resources";
 
-// Module factory:
-export function greeterFactory(deps: { readonly settings: Reader<AppSettings> }) {
+// Product, once: the record type and its contracts.
+export const settings = participantsFor<AppSettings>();
+export const SettingsReader = defineContract<Reader<AppSettings>>()({ id: "acme/settings-reader", revision: 1 });
+export const SettingsParticipant = defineContract<Participant<AppSettings>>()({ id: "acme/settings-participant", revision: 1 });
+export const Greeting = defineContract<GreetingPort>()({ id: "acme/greeting", revision: 1 });
+
+// A module that follows two settings: one read, one participant.
+export const greeterDeclaration = declareModule({
+  moduleId: "acme/greeter", implementationId: "acme/greeter/default",
+  owner: { authority: "acme", path: ["greeter"] },
+  provides: [Greeting.provide(), SettingsParticipant.provide()],
+  slots: [SettingsReader.slot("settings", required())],
+});
+export const createGreeter: ModuleFactory<
+  CapabilitiesOf<typeof SettingsReader | typeof Greeting | typeof SettingsParticipant>, typeof greeterDeclaration, Greeter
+> = async (deps) => {
   const initial = deps.settings.read(["locale", "greetingStyle"]);
   const greeter = new Greeter(initial.values.locale, initial.values.greetingStyle);
   return {
     instance: greeter,
     capabilities: {
-      "greeting/greeter": { greet: (name: string) => greeter.greet(name) },
-      "settings/participant": settings.sync({
+      "acme/greeting": { greet: (name: string) => greeter.greet(name) },
+      "acme/settings-participant": settings.sync({
         initial,
         apply: ({ values }) => greeter.configure(values.locale, values.greetingStyle),
       }),
     },
   };
+};
+
+// The Host: one hub per source; the participant ids come from the declarations
+// that provide the participant capability, in the order the hub's slot binds them.
+export const hubDeclaration = declareModule({
+  moduleId: "acme/settings-hub", implementationId: "acme/settings-hub/default",
+  owner: { authority: "acme", path: ["settings-hub"] },
+  provides: [],
+  slots: [SettingsParticipant.slot("participants", many({ min: 0, max: 1024 }))],
+});
+export function hubFactory(
+  port: SettingsPort, participantIds: readonly string[], reportError: (cause: unknown) => undefined,
+) {
+  return scoped("acme/settings-hub", (deps: { readonly participants: readonly Participant<AppSettings>[] }, { resources }) =>
+    startHub({ port, participants: deps.participants }, { resources, participantIds, reportError }));
 }
+export type SettingsHub = Hub;
 ```
 ````
 
 Copy the text between the four-backtick fences exactly (the inner `ts` fence
-belongs to the standard). If train 2 changed how factories return capabilities
-(T2-4/T2-5), adapt only the example's return shape to the current standard's
-other examples and say so in the PR body.
+belongs to the standard). The example is written against the 0.3.0 authoring
+API of the standard's `host` example. T2-4/T2-5 change that API (revision
+windows, `compatibleFrom`); adapt the contract, declaration and factory lines
+to the standard's other examples at that time, keep the observation lines
+unchanged, and list every adaptation in the PR body. If the hub's slot or the
+`scoped` call cannot be written in the current API: stop and ask.
 
 ### 2. Error codes
 
@@ -131,12 +166,15 @@ codes: add `observation.<area>.<reason>` in the same style.
 ### 3. Example placeholder
 
 `tests/assembly/consumer-standard-examples.test.mjs`: add `"observation"` to the
-symlinked package names and a placeholder:
+symlinked package names and a placeholder (the test builds no package itself:
+run `pnpm assembly:build && pnpm resources:build && pnpm observation:build`
+before it):
 
 ```js
-  observation: `import { participantsFor } from "@get-modular/observation";
-import type { Reader } from "@get-modular/observation";
+  observation: `import type { ObservationPort } from "@get-modular/observation";
 type AppSettings = { readonly locale: string; readonly greetingStyle: "plain" | "formal" };
+type GreetingPort = { readonly greet: (name: string) => string };
+type SettingsPort = ObservationPort<AppSettings>;
 declare class Greeter {
   constructor(locale: string, style: "plain" | "formal");
   greet(name: string): string;
@@ -148,11 +186,12 @@ declare class Greeter {
 ### 4. Digest and links
 
 - `tests/ownership-checkpoint.test.mjs`: replace the CMS digest literal with
-  `sha256sum docs/architecture/common-assembly.md` of the new file.
+  the output of `shasum -a 256 docs/architecture/common-assembly.md` for the
+  new file.
 - `packages/observation/README.md`: link the new section.
 
 Commit: `docs(architecture): add the settings and change observation rule to the consumer standard`.
-Gates, each exit 0: `pnpm docs:protocol:check`,
+Gates, each exit 0: `pnpm docs:protocol:check`, the three builds above, then
 `node --test tests/assembly/consumer-standard-examples.test.mjs`,
 `pnpm ownership:checkpoint:test`, `pnpm governance:check`, then after the
 commit the full `pnpm check` with the no-hooks git config of OBS-1.

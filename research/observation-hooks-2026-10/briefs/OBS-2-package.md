@@ -93,9 +93,13 @@ Layout (one feature per folder, imports with `.js` suffixes as in conformance):
 Allowed edges (declare them as boundaries in A5): `isolation -> errors`;
 `source -> errors, isolation`; `derivation -> errors, isolation`;
 `participants -> source (types), isolation, derivation`;
-`hub -> errors, source (types), participants, @get-modular/resources (types and
-the closed code only)`; `composition -> all features`. No other edge. Only `hub`
-imports resources.
+`hub -> errors, isolation, source (types), participants (including the internal
+`planOf`), @get-modular/resources (types only)`; `composition -> source,
+participants, hub, derivation`; `index -> composition, errors, source,
+participants, hub, derivation`. No other edge. Only `hub` imports resources. The
+development boundary of the tests (A5) may import `@get-modular/resources` and
+the Node built-in modules the tests use (`node:test`, `node:assert`,
+`node:child_process`, `node:fs`, `node:os`, `node:path`, `node:url`).
 
 ### A2.1 Public root
 
@@ -127,9 +131,12 @@ export type { LatestDerivation } from "./features/derivation/latest-derivation.j
 - **C3 start race** (known defect "Hub start"). Record the started `Running` in
   the participant's drain cell inside the subscription's `setup` callback,
   before it returns, so a scope that closes during start still drains the
-  derivation. Test: close the hub's scope while the second participant starts;
-  the report must not be `complete` while the first derivation runs, and the
-  derivation's abort must be observed.
+  derivation. Test: two derived participants; request the scope's close from
+  inside the second participant's first `derive` call, while `startHub` is
+  still inside that participant's `setup`; the close must wait for that
+  participant's derivation and its abort must be observed (`startHub` rejects
+  with `resources.scope.closed`). With the cell recorded after `setup` resolves,
+  this test must fail.
 - **C4 seal during delivery** (known defect "Delivery"). The flush loop checks
   `sealed` before each registration. Test: the first registration's callback
   seals the source; no later registration receives that batch.
@@ -141,8 +148,8 @@ export type { LatestDerivation } from "./features/derivation/latest-derivation.j
   read through spread). Tests: a getter on the patch record, on `initial`, and
   nested; each throws and leaves the source unchanged.
 - **C6 `__proto__` keys** (known defect "Projections"). Projections and merged
-  records are built with `Object.defineProperty` (or null-prototype objects
-  frozen afterwards) so every key, including `__proto__`, is an own data
+  records are plain objects built with `Object.defineProperty` (enumerable,
+  writable until frozen) so every key, including `__proto__`, is an own data
   property. Test: a source with key `__proto__` reads, observes and commits it.
 - **C7 revisions** (known defect "Revisions"). `LatestDerivation.offer` throws
   `ObservationError("observation.derivation.invalid-revision")` unless the
@@ -172,6 +179,13 @@ export type { LatestDerivation } from "./features/derivation/latest-derivation.j
   nothing else does.
 - **C12 comments.** Port the sketch comments that state contract rules; drop
   comments that refer to the sketch, TEST stand-ins or review rounds.
+- **C13 coded reports.** The hub wraps a participant's callback failure in
+  `new ObservationError("observation.participant.callback-failed", "participant <id>", { cause })`
+  instead of a plain `Error`. Add the code to `ObservationErrorCode`. Test: a
+  throwing `apply` reaches the Host's `reportError` as that code, with the
+  participant id in the message and the original error as `cause`.
+- **C14 a later minor of resources.** No code change: the README states that a
+  resources minor release ships with its own observation minor changeset.
 
 Everything else follows sketch v4 behavior. When the sketch and ADR-NNNN
 differ, the ADR wins; when the ADR is silent and the sketch looks wrong: stop
@@ -182,19 +196,27 @@ and ask.
 `packages/observation/tests/observation.test.mjs` (`node:test`, imports
 `../dist/index.js` and resources from its package name):
 
-1. Every check of sketch v4 `main.ts` that concerns the package (30 checks;
-   skip the Greeter, price-table and tax-table fixture assertions, which belong
-   to OBS-T), rewritten as `test(...)` cases against the real resources
-   package.
+1. Port the checks of sketch v4 `main.ts.txt` lines 75-193 (keys, values,
+   `since`, seal, duplicates, foreign participants, closed-code pass-through,
+   catch-up, interface records, G-1, G-2, G-3, G-8) as `test(...)` cases
+   against the real resources package. Reproduce the behaviors of lines 43,
+   59-60 and 68-69 (first outcomes, a complete shutdown with no listeners left,
+   an escalated stuck drain as a failed debt naming the participant with LIFO
+   continuing) with minimal participants. Lines 46-57 use the Greeter,
+   price-table, tax-table and passive fixtures and belong to OBS-T.
 2. C3 to C10 above.
 3. A seeded model-based test: 200 seeds x 200 steps of random `commit`,
    `observe`, `unsubscribe`, `seal` and `tick`; after each quiescent point
-   assert: the last delivered snapshot equals `read(keys)`; revisions strictly
+   assert for every attached registration of an unsealed source: the last
+   delivered snapshot equals `read(keys)`; revisions strictly
    increase per registration; deliveries never exceed the commits that touched
-   the keys; nothing after `seal` or `unsubscribe`; listener counts return to
-   baseline after every unsubscribe. Use `mock.timers` with `tick(0)`; never
-   `runAll()` (it throws `ERR_INVALID_ARG_VALUE` with a pending `setImmediate`
-   on Node 24 and 26).
+   the keys; nothing after `seal` or `unsubscribe` (commits not yet delivered
+   at `seal` are dropped by design); listener counts return to baseline after
+   every unsubscribe. Use `mock.timers` (`setImmediate`, `setTimeout`) with
+   `tick(0)`; never `runAll()` (it throws `ERR_INVALID_ARG_VALUE` with a
+   pending `setImmediate` on Node 24 and 26). Promise jobs do not run between
+   mocked `setImmediate` callbacks: `await` after each tick in tests with
+   derived participants.
 4. Dispatch cost: 10,000 registrations on an unrelated key do not change the
    registration visits of a commit to key `K` (internal diagnostics).
 5. A throwing `reportError` surfaces as one uncaught error in a child process
@@ -234,15 +256,19 @@ assert the manifest (`peerDependencies` exactly resources with a `^0.` range, no
   `conformance:build` in the core, assembly, governance and static lanes;
   `observation:check` right after `conformance:check` in the packaging lane;
   in the Node 26 job `pnpm observation:build` and
-  `pnpm --dir packages/observation pack` after conformance.
+  `pnpm --dir packages/observation pack --pack-destination "$RUNNER_TEMP/node26-pack"`
+  after conformance, and install the observation archive wherever that job
+  installs the conformance archive.
 
 ## A5. Admission configuration and tests (follow #141 file by file)
 
 Make for observation exactly the kind of edit #141 made for conformance in:
 `architecture/foundation/source-dependencies.yaml` (`packageRoots`,
 `governedRoots` src and tests, one boundary per feature with the edges of A2,
-the composition and public-entrypoint boundaries, the `-development` boundary,
-`allow.packages` with `@get-modular/resources` only where A2 allows it);
+the composition and public-entrypoint boundaries, and the `-development`
+boundary of the tests with `@get-modular/resources` and the built-in modules
+listed in A2, as conformance's development boundary does; in production
+boundaries `allow.packages` lists `@get-modular/resources` only for `hub`);
 `architecture/foundation/quality-source-coverage.yaml`;
 `architecture/foundation/suppression-governance.yaml`;
 `architecture/feature-module-standard-profile.json`;
@@ -252,9 +278,10 @@ its test list in `tests/repository-agent-workflow.test.mts`;
 `tests/leaf-package-admission.test.mjs` (pin test for the row);
 `tests/assembly-admission.test.mjs`; `tests/feature-module-standard-profile.test.mjs`;
 `tests/ci-check-lanes.test.mjs`; `tests/node-runtime-compatibility.test.mjs`;
-`tests/governance.test.mjs` and `tests/ownership-checkpoint.test.mjs` where
-PR #141 added conformance; `README.md` and `docs/architecture/feature-module-standard.md`
-package lists.
+`README.md` and `docs/architecture/feature-module-standard.md` package lists.
+PR #141 changed `tests/governance.test.mjs` and `tests/ownership-checkpoint.test.mjs`
+only for peer edges in general; edit them only if a check there enumerates leaf
+rows and fails without observation.
 
 A failing admission check is fixed in the source or the configuration listed
 here, never by narrowing a gate or skipping a root (AGENTS.md).
@@ -291,29 +318,44 @@ Train 2's `research/contract-evolution-2026-10/briefs/REL-2-release.md` stops
 on any changeset it does not list. In this PR, amend it so the observation
 release is explained:
 
-- title and commit subject: "... conformance 0.2.0 and observation 0.1.0";
-- re-verify 1: expect also `add-observation-package.md`;
+- title, PR title and commit subject: "... conformance 0.2.0 and observation
+  0.1.0";
+- "Owner decisions": replace "plugins and observation are out of scope" with
+  "plugins are out of scope; observation 0.1.0 is released here as a separate
+  track (`research/observation-hooks-2026-10/briefs/`)";
+- re-verify 1: expect also `add-observation-package.md`, and require that OBS-3
+  is merged;
 - re-verify 3: add `observation` to the `npm view` inventory; 0.1.0 must not
   exist;
 - re-verify 4: add "observation minor 0.1.0";
-- build: `pnpm observation:build` after conformance;
+- build: `pnpm observation:build` after `pnpm conformance:build`;
 - expected paths: `D` the observation changeset, `M`
   `packages/observation/package.json` (version only) and its `CHANGELOG.md`;
-- pack loop and manifest checks: observation peers `@get-modular/resources` with
-  the current resources minor; record its SHA-256 and SHA-512;
-- publication order: observation last.
+- pack loop: add `observation`; manifest checks: observation peers exactly
+  `@get-modular/resources` with the current resources minor, no `workspace:`;
+  record its SHA-256 and SHA-512;
+- PR body: add OBS-T to the outstanding work and to the merge line ("Do not
+  merge before the owner signs off TEST-2, AR-3 and OBS-T"); add "publish
+  observation after the other packages" to the publication note;
+- "Must not": the merge command comes after the owner signs off TEST-2, AR-3
+  and OBS-T;
+- risks: "OBS-T fails" -> stop; if the owner decides to release train 2
+  without observation, remove the observation changeset on `main` by a
+  separate PR and regenerate REL-2 through "When `main` moves" step 3.
 
 Also amend `research/contract-evolution-2026-10/README.md` section 3.1 item 9
-("Out of scope: ... hooks/observation") to "hooks/observation are a separate
-track (`research/observation-hooks-2026-10/briefs/`); its package is released
-with REL-2". If a train 2 PR has these files open: coordinate with its author
-instead of editing them.
+("Out of scope: ... hooks/observation") to "Out of scope: plugins and
+everything for them (`checkNamespaces`, grants, isolation). Observation is a
+separate track (`research/observation-hooks-2026-10/briefs/`) whose package is
+released with REL-2". Do not change the scope lines of T2-2 to T2-5: their own
+work stays without observation. If a train 2 PR has these files open:
+coordinate with its author instead of editing them.
 
 ## Landing
 
 Full `pnpm check` locally after the last commit (with the no-hooks git config of
 OBS-1), then CI: all 30 lanes and six aggregates green, every lane under 810 s.
-PR body: what the package is, the ADR, the C1-C12 list with test names, the
+PR body: what the package is, the ADR, the C1-C14 list with test names, the
 admission files, the REL-2 amendment, measured gate times.
 
 ## Risks and stop conditions
@@ -341,7 +383,7 @@ admission files, the REL-2 amendment, measured gate times.
 
 ## Done
 
-Package admitted with its row, implementation and tests in one PR; C1-C12
+Package admitted with its row, implementation and tests in one PR; C1-C14
 covered by named tests; every gate green locally and in CI; REL-2 brief amended;
 README and changeset present.
 
@@ -358,7 +400,8 @@ README and changeset present.
   per-registration `sealed` check (C4); read a patch value twice (C5); assign
   projection keys with `=` (C6); accept `NaN` in `offer` (C7); force
   `isCurrent` to `true` (C10); record the drain cell after `setup` resolves
-  (C3); swap the drain and subscription registration order (LIFO test).
+  (C3); swap the drain and subscription registration order (LIFO test); report
+  a plain `Error` from the hub (C13).
 - The packed manifest names exactly one peer, `@get-modular/resources`, with a
   caret range of the current resources minor.
 - The REL-2 amendment lists exactly the observation additions and nothing else.
