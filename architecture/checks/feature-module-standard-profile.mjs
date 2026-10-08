@@ -38,7 +38,7 @@ const FOUNDATION_CHECK_SCRIPT =
 // Leaf commands come first, so a table row can never replace a closed
 // definition below; a colliding row leaves its own admission unsatisfiable.
 const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
-  "quality:critical:test": "node architecture/checks/required-quality-tests.mjs && agent-teams-node-test --contract architecture/foundation/required-quality-tests.json -- tests/source-dependencies.test.mjs tests/quality-activation.test.mjs",
+  "quality:critical:test": "node architecture/checks/required-quality-tests.mjs && node node_modules/typescript/bin/tsc -p tests/tsconfig.repository-agent-workflow.json --noEmit && agent-teams-node-test --contract architecture/foundation/required-quality-tests.json -- tests/source-dependencies.test.mjs tests/quality-activation.test.mjs tests/repository-agent-workflow.test.mts",
   ...Object.fromEntries(LEAF_PACKAGES.flatMap(leaf => Object.entries(leaf.commands))),
   "architecture:feature-module-profile":
     "node architecture/checks/feature-module-standard-profile.mjs",

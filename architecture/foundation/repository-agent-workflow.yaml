@@ -13,7 +13,43 @@ changedChecks:
     script: docs:changed
     extensions: [.md, .yaml, .yml]
     passPaths: false
+  - id: code
+    script: check:fast
+    extensions: [.js, .jsx, .mjs, .cjs, .ts, .tsx, .mts, .cts]
+    passPaths: false
 fullScanPaths:
+  - .gitignore
+  - .node-version
+  - .npmrc
+  - .oxlintrc.json
+  - .cspell.json
+  - .markdownlint-cli2.jsonc
+  - tsconfig.base.json
+  - packages/core/package.json
+  - packages/core/tsconfig.json
+  - packages/core/tsconfig.seed.json
+  - packages/core/tsconfig.stage0.json
+  - packages/core/tsconfig.test.json
+  - packages/core/tsconfig.typecheck.json
+  - packages/assembly/tsconfig.json
+  - packages/assembly/package.json
+  - packages/assembly/tsconfig.types.json
+  - packages/assembly/tsconfig.types.bundler.json
+  - packages/lifecycle-kernel/tsconfig.json
+  - packages/lifecycle-kernel/package.json
+  - packages/lifecycle-kernel/tsconfig.types.json
+  - packages/lifecycle-kernel/tsconfig.types.bundler.json
+  - packages/resources/tsconfig.json
+  - packages/resources/package.json
+  - packages/resources/tsconfig.types.json
+  - packages/resources/tsconfig.types.bundler.json
+  - packages/conformance/tsconfig.json
+  - packages/conformance/package.json
+  - packages/conformance/tsconfig.types.json
+  - packages/conformance/tsconfig.types.bundler.json
+  - tests/tsconfig.tooling-node-policy.json
+  - tests/tsconfig.repository-agent-workflow.json
+  - tests/qualification/implementation-readiness/api-authoring
   - architecture/checks/sdk-growth.mjs
   - architecture/sdk-growth
   - tests/sdk-growth.test.mjs

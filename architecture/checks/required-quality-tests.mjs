@@ -5,9 +5,9 @@ import { isDirectExecution } from "./node-version.mjs";
 
 // The installed runner protects identities in selected entries. This consumer
 // binds both the reviewed identity inventory and the complete entry selection.
-export const REQUIRED_QUALITY_COMMAND = "node architecture/checks/required-quality-tests.mjs && agent-teams-node-test --contract architecture/foundation/required-quality-tests.json -- tests/source-dependencies.test.mjs tests/quality-activation.test.mjs";
+export const REQUIRED_QUALITY_COMMAND = "node architecture/checks/required-quality-tests.mjs && node node_modules/typescript/bin/tsc -p tests/tsconfig.repository-agent-workflow.json --noEmit && agent-teams-node-test --contract architecture/foundation/required-quality-tests.json -- tests/source-dependencies.test.mjs tests/quality-activation.test.mjs tests/repository-agent-workflow.test.mts";
 export const REQUIRED_QUALITY_CONTRACT = "architecture/foundation/required-quality-tests.json";
-const CONTRACT_SHA256 = "e1dbfd834143095f023e141d2130508be1f37b5f5e6cf12d826259a9be8b9c7f";
+const CONTRACT_SHA256 = "0b69a38756c846ad72fd7e739d676d9cbda26fd41ab692298670744b5ec71d1c";
 
 export async function validateRequiredQualityTests(root = process.cwd()) {
   const manifest = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
