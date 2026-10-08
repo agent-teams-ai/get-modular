@@ -1,0 +1,15 @@
+import type { CapabilitiesOf, ModuleFactory } from "@get-modular/assembly";
+import { Db } from "./contract.js";
+export declare const declaration: import("@get-modular/assembly").Declared<{
+    readonly moduleId: "acme/old";
+    readonly implementationId: "acme/old/default";
+    readonly owner: {
+        readonly authority: "acme";
+        readonly path: readonly ["old"];
+    };
+    readonly provides: readonly [];
+    readonly slots: readonly [import("@get-modular/assembly").SlotEntry<"acme/db", 3, "db", Readonly<{
+        kind: "required";
+    }>>];
+}>;
+export declare const createOld: ModuleFactory<CapabilitiesOf<typeof Db>, typeof declaration, string>;

@@ -1,0 +1,557 @@
+diff -ru -x node_modules -x dist* -x generated a/packages/core/src/features/authoring/diagnostic-types.ts b/packages/core/src/features/authoring/diagnostic-types.ts
+--- a/packages/core/src/features/authoring/diagnostic-types.ts
++++ b/packages/core/src/features/authoring/diagnostic-types.ts
+@@ -103,16 +103,11 @@
+           readonly expectedCardinality: "required" | "optional" | "many";
+           readonly actualCardinality: number;
+         } : K extends "binding.compatibility-mismatch" ? {
+-          readonly expectedCompatibility: {
+-            readonly family: "exact";
+-            readonly familyVersion: 1;
+-            readonly token: string;
+-          };
+-          readonly actualCompatibility: {
+-            readonly family: "exact";
+-            readonly familyVersion: 1;
+-            readonly token: string;
+-          };
++          readonly capabilityId: string;
++          readonly reason: "consumer-too-old" | "provider-too-old";
++          readonly consumerRevision: number;
++          readonly providerRevision: number;
++          readonly providerCompatibleFrom: number;
+         } : K extends "graph.cycle" ? { readonly component: readonly string[] }
+           : K extends "diagnostics.truncated" ? { readonly omitted: number }
+           : {
+diff -ru -x node_modules -x dist* -x generated a/packages/core/src/features/authoring/wire-types.ts b/packages/core/src/features/authoring/wire-types.ts
+--- a/packages/core/src/features/authoring/wire-types.ts
++++ b/packages/core/src/features/authoring/wire-types.ts
+@@ -2,25 +2,18 @@
+ // numeric bounds, exact keys, and relationships between records.
+ export type ModuleDeclaration = {
+   readonly kind: "get-modular.module-declaration";
+-  readonly schemaVersion: 1;
++  readonly schemaVersion: 2;
+   readonly moduleId: string;
+   readonly implementationId: string;
+   readonly owner: { readonly authority: string; readonly path: readonly string[] };
+   readonly provides: readonly {
+     readonly capabilityId: string;
+-    readonly compatibility: {
+-      readonly family: "exact";
+-      readonly familyVersion: 1;
+-      readonly token: string;
+-    };
++    readonly revision: number;
++    readonly compatibleFrom: number;
+   }[];
+   readonly slots: readonly {
+     readonly capabilityId: string;
+-    readonly compatibility: {
+-      readonly family: "exact";
+-      readonly familyVersion: 1;
+-      readonly token: string;
+-    };
++    readonly revision: number;
+     readonly slotId: string;
+     readonly cardinality:
+       | Readonly<{ kind: "required" }>
+@@ -47,7 +40,7 @@
+ 
+ export type CompositionPlan = {
+   readonly kind: "get-modular.composition-plan";
+-  readonly schemaVersion: 1;
++  readonly schemaVersion: 2;
+   readonly profileId: string;
+   readonly roots: readonly string[];
+   readonly selections: readonly {
+@@ -59,11 +52,7 @@
+     readonly slotId: string;
+     readonly providerImplementationIds: readonly string[];
+     readonly capabilityId: string;
+-    readonly compatibility: {
+-      readonly family: "exact";
+-      readonly familyVersion: 1;
+-      readonly token: string;
+-    };
++    readonly revision: number;
+   }[];
+   readonly dependencyOrder: readonly string[];
+ };
+diff -ru -x node_modules -x dist* -x generated a/packages/core/src/features/canonicalization/owned-jcs/declaration.ts b/packages/core/src/features/canonicalization/owned-jcs/declaration.ts
+--- a/packages/core/src/features/canonicalization/owned-jcs/declaration.ts
++++ b/packages/core/src/features/canonicalization/owned-jcs/declaration.ts
+@@ -9,13 +9,13 @@
+ 
+ export const ownedJcsDeclaration: ModuleDeclaration = Object.freeze<ModuleDeclaration>({
+   kind: "get-modular.module-declaration",
+-  schemaVersion: 1,
++  schemaVersion: 2,
+   moduleId: canonicalizationModuleId,
+   implementationId: ownedJcsImplementation,
+   owner: Object.freeze({ authority: "get-modular", path: Object.freeze(["canonicalization"]) }),
+   provides: Object.freeze([Object.freeze({
+     capabilityId: canonicalBytesCapabilityId,
+-    compatibility: Object.freeze({ family: "exact", familyVersion: 1, token: canonicalBytesToken }),
++    revision: 1, compatibleFrom: 1,
+   })]),
+   slots: Object.freeze([]),
+ });
+diff -ru -x node_modules -x dist* -x generated a/packages/core/src/features/compiler-facade/declaration.ts b/packages/core/src/features/compiler-facade/declaration.ts
+--- a/packages/core/src/features/compiler-facade/declaration.ts
++++ b/packages/core/src/features/compiler-facade/declaration.ts
+@@ -6,19 +6,19 @@
+ export const compilerFacadeModuleId = "get-modular/compiler-facade";
+ export const compilerFacadeImplementation: `${typeof compilerFacadeModuleId}/default` = `${compilerFacadeModuleId}/default`;
+ export const compilerFacadeDeclaration: ModuleDeclaration = Object.freeze<ModuleDeclaration>({
+-  kind: "get-modular.module-declaration", schemaVersion: 1,
++  kind: "get-modular.module-declaration", schemaVersion: 2,
+   moduleId: compilerFacadeModuleId, implementationId: compilerFacadeImplementation,
+   owner: Object.freeze({ authority: "get-modular", path: Object.freeze(["compiler-facade"]) }),
+   provides: Object.freeze([]),
+   slots: Object.freeze([
+     Object.freeze({ slotId: "admission", capabilityId: admittedInputCapabilityId,
+-      compatibility: Object.freeze({ family: "exact", familyVersion: 1, token: admittedInputToken }),
++      revision: 1,
+       cardinality: Object.freeze({ kind: "required" }) }),
+     Object.freeze({ slotId: "semantics", capabilityId: semanticAnalysisCapabilityId,
+-      compatibility: Object.freeze({ family: "exact", familyVersion: 1, token: semanticAnalysisToken }),
++      revision: 1,
+       cardinality: Object.freeze({ kind: "required" }) }),
+     Object.freeze({ slotId: "output", capabilityId: planEmissionCapabilityId,
+-      compatibility: Object.freeze({ family: "exact", familyVersion: 1, token: planEmissionToken }),
++      revision: 1,
+       cardinality: Object.freeze({ kind: "required" }) }),
+   ]),
+ });
+diff -ru -x node_modules -x dist* -x generated a/packages/core/src/features/composition-semantics/binding-record.ts b/packages/core/src/features/composition-semantics/binding-record.ts
+--- a/packages/core/src/features/composition-semantics/binding-record.ts
++++ b/packages/core/src/features/composition-semantics/binding-record.ts
+@@ -53,10 +53,13 @@
+       // An absent/ambiguous capability supplies no compatibility value.
+       continue;
+     }
+-    if (capability.compatibility.token !== slot.compatibility.token) {
++    const consumerRevision = slot.revision;
++    if (consumerRevision < capability.compatibleFrom || consumerRevision > capability.revision) {
+       add(Object.freeze({ code: "binding.compatibility-mismatch", phase: "binding", path,
+-        coordinate: providerCoordinate, details: Object.freeze({ expectedCompatibility: slot.compatibility,
+-          actualCompatibility: capability.compatibility }) }));
++        coordinate: providerCoordinate, details: Object.freeze({ capabilityId: slot.capabilityId,
++          reason: consumerRevision < capability.compatibleFrom ? "consumer-too-old" : "provider-too-old",
++          consumerRevision, providerRevision: capability.revision,
++          providerCompatibleFrom: capability.compatibleFrom }) }));
+     }
+   }
+   return valid;
+diff -ru -x node_modules -x dist* -x generated a/packages/core/src/features/composition-semantics/declaration.ts b/packages/core/src/features/composition-semantics/declaration.ts
+--- a/packages/core/src/features/composition-semantics/declaration.ts
++++ b/packages/core/src/features/composition-semantics/declaration.ts
+@@ -8,18 +8,18 @@
+ 
+ export const compositionSemanticsDeclaration: ModuleDeclaration = Object.freeze<ModuleDeclaration>({
+   kind: "get-modular.module-declaration",
+-  schemaVersion: 1,
++  schemaVersion: 2,
+   moduleId: compositionSemanticsModuleId,
+   implementationId: compositionSemanticsImplementation,
+   owner: Object.freeze({ authority: "get-modular", path: Object.freeze(["composition-semantics"]) }),
+   provides: Object.freeze([Object.freeze({
+     capabilityId: semanticAnalysisCapabilityId,
+-    compatibility: Object.freeze({ family: "exact", familyVersion: 1, token: semanticAnalysisToken }),
++    revision: 1, compatibleFrom: 1,
+   })]),
+   slots: Object.freeze([Object.freeze({
+     slotId: "canonicalizer",
+     capabilityId: canonicalBytesCapabilityId,
+-    compatibility: Object.freeze({ family: "exact", familyVersion: 1, token: canonicalBytesToken }),
++    revision: 1,
+     cardinality: Object.freeze({ kind: "required" }),
+   })]),
+ });
+diff -ru -x node_modules -x dist* -x generated a/packages/core/src/features/composition-semantics/semantic-analysis.ts b/packages/core/src/features/composition-semantics/semantic-analysis.ts
+--- a/packages/core/src/features/composition-semantics/semantic-analysis.ts
++++ b/packages/core/src/features/composition-semantics/semantic-analysis.ts
+@@ -56,12 +56,12 @@
+ function createPlan(input: SemanticInput & { readonly profile: CompositionProfile },
+   bindings: SelectedBindings, graph: Graph & { readonly dependencyOrder: readonly string[] }): CompositionPlan {
+   const profile = input.profile;
+-  return Object.freeze({ kind: "get-modular.composition-plan", schemaVersion: 1, profileId: profile.profileId,
++  return Object.freeze({ kind: "get-modular.composition-plan", schemaVersion: 2, profileId: profile.profileId,
+     roots: Object.freeze(ordered(profile.roots, (left, right) => left < right ? -1 : left > right ? 1 : 0)),
+     selections: Object.freeze(ordered(profile.selections.map(selection => Object.freeze({ ...selection })),
+       (a, b) => a.moduleId < b.moduleId ? -1 : a.moduleId > b.moduleId ? 1 : 0)),
+     bindings: Object.freeze(bindings.validBindings.map(({ binding, slot }) => Object.freeze({ ...binding,
+-      capabilityId: slot.capabilityId, compatibility: Object.freeze({ ...slot.compatibility }) }))),
++      capabilityId: slot.capabilityId, revision: slot.revision }))),
+     dependencyOrder: graph.dependencyOrder });
+ }
+ 
+diff -ru -x node_modules -x dist* -x generated a/packages/core/src/features/diagnostics/collector.ts b/packages/core/src/features/diagnostics/collector.ts
+--- a/packages/core/src/features/diagnostics/collector.ts
++++ b/packages/core/src/features/diagnostics/collector.ts
+@@ -14,10 +14,7 @@
+ function snapshot(candidate: DiagnosticCandidate): DiagnosticCandidate {
+   const details = candidate.code === "graph.cycle"
+     ? { component: Object.freeze([...candidate.details.component]) }
+-    : candidate.code === "binding.compatibility-mismatch"
+-      ? { expectedCompatibility: Object.freeze({ ...candidate.details.expectedCompatibility }),
+-          actualCompatibility: Object.freeze({ ...candidate.details.actualCompatibility }) }
+-      : { ...candidate.details };
++    : { ...candidate.details };
+   // These fixed-depth containers are already closed and normalized by producers.
+   // Copy only retained candidates; never collect the complete failure stream.
+   return Object.freeze({ ...candidate,
+diff -ru -x node_modules -x dist* -x generated a/packages/core/src/features/input-admission/declaration.ts b/packages/core/src/features/input-admission/declaration.ts
+--- a/packages/core/src/features/input-admission/declaration.ts
++++ b/packages/core/src/features/input-admission/declaration.ts
+@@ -8,18 +8,18 @@
+ 
+ export const inputAdmissionDeclaration: ModuleDeclaration = Object.freeze<ModuleDeclaration>({
+   kind: "get-modular.module-declaration",
+-  schemaVersion: 1,
++  schemaVersion: 2,
+   moduleId: inputAdmissionModuleId,
+   implementationId: inputAdmissionImplementation,
+   owner: Object.freeze({ authority: "get-modular", path: Object.freeze(["input-admission"]) }),
+   provides: Object.freeze([Object.freeze({
+     capabilityId: admittedInputCapabilityId,
+-    compatibility: Object.freeze({ family: "exact", familyVersion: 1, token: admittedInputToken }),
++    revision: 1, compatibleFrom: 1,
+   })]),
+   slots: Object.freeze([Object.freeze({
+     slotId: "scanner",
+     capabilityId: rawScannerCapabilityId,
+-    compatibility: Object.freeze({ family: "exact", familyVersion: 1, token: rawScannerToken }),
++    revision: 1,
+     cardinality: Object.freeze({ kind: "required" }),
+   })]),
+ });
+diff -ru -x node_modules -x dist* -x generated a/packages/core/src/features/input-admission/document-shape.ts b/packages/core/src/features/input-admission/document-shape.ts
+--- a/packages/core/src/features/input-admission/document-shape.ts
++++ b/packages/core/src/features/input-admission/document-shape.ts
+@@ -49,9 +49,7 @@
+ // This static description contains no document values or reader handles.
+ const portable = identity(isPortableIdFormat, 3, admissionLimits.identifierBytes);
+ const local = identity(isLocalTokenFormat, 1, 64);
+-const compatibility = record({
+-  family: literal("exact"), familyVersion: literal(1), token: portable,
+-});
++const revision = integer(1, 2147483647);
+ const cardinality: Shape = {
+   type: "cardinality",
+   variants: {
+@@ -62,14 +60,14 @@
+     optional: record({ kind: literal("optional") }),
+   },
+ };
+-const provided = record({ capabilityId: portable, compatibility });
+-const slot = record({ slotId: local, capabilityId: portable, compatibility, cardinality });
++const provided = record({ capabilityId: portable, revision, compatibleFrom: revision });
++const slot = record({ slotId: local, capabilityId: portable, revision, cardinality });
+ const selection = record({ moduleId: portable, implementationId: portable });
+ const binding = record({
+   consumerImplementationId: portable, slotId: local, providerImplementationIds: array(0, 1024, portable),
+ });
+ const declarationShape = record({
+-  kind: literal("get-modular.module-declaration"), schemaVersion: literal(1),
++  kind: literal("get-modular.module-declaration"), schemaVersion: literal(2),
+   moduleId: portable, implementationId: portable,
+   owner: record({ authority: local,
+     path: array(1, admissionLimits.ownerPathSegments, local, "ownerPathSegments") }),
+@@ -241,12 +239,12 @@
+     }
+   }
+ 
+-  function supportedDocumentVersion(value: Value): boolean {
++  function supportedDocumentVersion(value: Value, expected: number): boolean {
+     if (reader.kind(value) !== "record") {return true;}
+     const member = reader.own(value, "schemaVersion");
+     if (!member.present || reader.kind(member.value) !== "number") {return true;}
+     const version = reader.integer(member.value);
+-    if (version.admitted && version.value !== 1) {
++    if (version.admitted && version.value !== expected) {
+       fail("unsupported-version", ["schemaVersion"]);
+       return false;
+     }
+@@ -255,12 +253,12 @@
+ 
+   return {
+     declaration(value: Value): boolean {
+-      if (!supportedDocumentVersion(value)) {return false;}
++      if (!supportedDocumentVersion(value, 2)) {return false;}
+       check(declarationShape, value, []);
+       return valid;
+     },
+     profile(value: Value): boolean {
+-      if (!supportedDocumentVersion(value)) {return false;}
++      if (!supportedDocumentVersion(value, 1)) {return false;}
+       check(profileShape, value, []);
+       return valid;
+     },
+diff -ru -x node_modules -x dist* -x generated a/packages/core/src/features/input-admission/document-snapshot.ts b/packages/core/src/features/input-admission/document-snapshot.ts
+--- a/packages/core/src/features/input-admission/document-snapshot.ts
++++ b/packages/core/src/features/input-admission/document-snapshot.ts
+@@ -1,7 +1,6 @@
+ import type { CompositionProfile, ModuleDeclaration } from "../authoring/internal.js";
+ import { objectDocument, type DocumentView } from "./document-reader.js";
+ 
+-type Compatibility = ModuleDeclaration["provides"][number]["compatibility"];
+ type Cardinality = ModuleDeclaration["slots"][number]["cardinality"];
+ 
+ function record<Value extends object>(fields: Value): Value {
+@@ -35,9 +34,6 @@
+     for (let index = 0; index < length; index += 1) {result.push(copy(reader.item(source, index)));}
+     return Object.freeze(result);
+   }
+-  function compatibility(value: Value): Compatibility {
+-    return record<Compatibility>({ family: "exact", familyVersion: 1, token: text(value, "token") });
+-  }
+   function cardinality(value: Value): Cardinality {
+     const kind = text(value, "kind");
+     if (kind === "many") {return record<Cardinality>({ kind, min: integer(value, "min"), max: integer(value, "max"), order: "profile" });}
+@@ -49,13 +45,13 @@
+       const value = view.root;
+       const owner = member(value, "owner");
+       return record<ModuleDeclaration>({
+-        kind: "get-modular.module-declaration", schemaVersion: 1,
++        kind: "get-modular.module-declaration", schemaVersion: 2,
+         moduleId: text(value, "moduleId"), implementationId: text(value, "implementationId"),
+         owner: record({ authority: text(owner, "authority"), path: list(owner, "path", item => reader.text(item)) }),
+         provides: list(value, "provides", item => record({ capabilityId: text(item, "capabilityId"),
+-          compatibility: compatibility(member(item, "compatibility")) })),
++          revision: integer(item, "revision"), compatibleFrom: integer(item, "compatibleFrom") })),
+         slots: list(value, "slots", item => record({ slotId: text(item, "slotId"), capabilityId: text(item, "capabilityId"),
+-          compatibility: compatibility(member(item, "compatibility")), cardinality: cardinality(member(item, "cardinality")) })),
++          revision: integer(item, "revision"), cardinality: cardinality(member(item, "cardinality")) })),
+       });
+     },
+     profile(): CompositionProfile {
+diff -ru -x node_modules -x dist* -x generated a/packages/core/src/features/plan-output/declaration.ts b/packages/core/src/features/plan-output/declaration.ts
+--- a/packages/core/src/features/plan-output/declaration.ts
++++ b/packages/core/src/features/plan-output/declaration.ts
+@@ -8,18 +8,18 @@
+ 
+ export const planOutputDeclaration: ModuleDeclaration = Object.freeze<ModuleDeclaration>({
+   kind: "get-modular.module-declaration",
+-  schemaVersion: 1,
++  schemaVersion: 2,
+   moduleId: planOutputModuleId,
+   implementationId: planOutputImplementation,
+   owner: Object.freeze({ authority: "get-modular", path: Object.freeze(["plan-output"]) }),
+   provides: Object.freeze([Object.freeze({
+     capabilityId: planEmissionCapabilityId,
+-    compatibility: Object.freeze({ family: "exact", familyVersion: 1, token: planEmissionToken }),
++    revision: 1, compatibleFrom: 1,
+   })]),
+   slots: Object.freeze([Object.freeze({
+     slotId: "canonicalizer",
+     capabilityId: canonicalBytesCapabilityId,
+-    compatibility: Object.freeze({ family: "exact", familyVersion: 1, token: canonicalBytesToken }),
++    revision: 1,
+     cardinality: Object.freeze({ kind: "required" }),
+   })]),
+ });
+diff -ru -x node_modules -x dist* -x generated a/packages/core/src/features/plan-output/factory.ts b/packages/core/src/features/plan-output/factory.ts
+--- a/packages/core/src/features/plan-output/factory.ts
++++ b/packages/core/src/features/plan-output/factory.ts
+@@ -17,11 +17,7 @@
+       consumerImplementationId: binding.consumerImplementationId,
+       slotId: binding.slotId,
+       capabilityId: binding.capabilityId,
+-      compatibility: Object.freeze({
+-        family: binding.compatibility.family,
+-        familyVersion: binding.compatibility.familyVersion,
+-        token: binding.compatibility.token,
+-      }),
++      revision: binding.revision,
+       providerImplementationIds: Object.freeze([...binding.providerImplementationIds]),
+     }))),
+     dependencyOrder: Object.freeze([...normalized.dependencyOrder]),
+diff -ru -x node_modules -x dist* -x generated a/packages/core/src/features/raw-scanner/owned-iterative/declaration.ts b/packages/core/src/features/raw-scanner/owned-iterative/declaration.ts
+--- a/packages/core/src/features/raw-scanner/owned-iterative/declaration.ts
++++ b/packages/core/src/features/raw-scanner/owned-iterative/declaration.ts
+@@ -9,13 +9,13 @@
+ 
+ export const ownedRawScannerDeclaration: ModuleDeclaration = Object.freeze<ModuleDeclaration>({
+   kind: "get-modular.module-declaration",
+-  schemaVersion: 1,
++  schemaVersion: 2,
+   moduleId: rawScannerModuleId,
+   implementationId: ownedRawScannerImplementation,
+   owner: Object.freeze({ authority: "get-modular", path: Object.freeze(["raw-scanner"]) }),
+   provides: Object.freeze([Object.freeze({
+     capabilityId: rawScannerCapabilityId,
+-    compatibility: Object.freeze({ family: "exact", familyVersion: 1, token: rawScannerToken }),
++    revision: 1, compatibleFrom: 1,
+   })]),
+   slots: Object.freeze([]),
+ });
+diff -ru a/packages/core/self-composition/emit.ts b/packages/core/self-composition/emit.ts
+--- a/packages/core/self-composition/emit.ts
++++ b/packages/core/self-composition/emit.ts
+@@ -56,31 +56,23 @@
+     && !reserved.has(value);
+ }
+ 
+-type Compatibility = ModuleDeclaration["provides"][number]["compatibility"];
+-
+-function compatibility(value: Compatibility): boolean {
+-  return fields(value, ["family", "familyVersion", "token"])
+-    && value.family === "exact" && value.familyVersion === 1 && portable(value.token);
++function revision(value: unknown): value is number {
++  return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 2147483647;
+ }
+ 
+-function same(left: Compatibility, right: Compatibility): boolean {
+-  return left.family === right.family && left.familyVersion === right.familyVersion
+-    && left.token === right.token;
+-}
+-
+ function validateDeclaration(declaration: ModuleDeclaration): void {
+   check(fields(declaration, ["kind", "schemaVersion", "moduleId", "implementationId",
+     "owner", "provides", "slots"]), "emitter.invalid-declaration");
+-  check(declaration.kind === "get-modular.module-declaration" && declaration.schemaVersion === 1
++  check(declaration.kind === "get-modular.module-declaration" && declaration.schemaVersion === 2
+     && portable(declaration.moduleId) && portable(declaration.implementationId)
+     && Array.isArray(declaration.slots) && Array.isArray(declaration.provides),
+   "emitter.invalid-declaration");
+   const slots = new Set<string>();
+   for (const slot of declaration.slots) {
+-    check(fields(slot, ["slotId", "capabilityId", "compatibility", "cardinality"])
++    check(fields(slot, ["slotId", "capabilityId", "revision", "cardinality"])
+       && typeof slot.slotId === "string" && /^[a-z][a-z0-9]{0,63}$/u.test(slot.slotId)
+       && !forbiddenSlots.has(slot.slotId) && !slots.has(slot.slotId)
+-      && portable(slot.capabilityId) && compatibility(slot.compatibility),
++      && portable(slot.capabilityId) && revision(slot.revision),
+     "emitter.invalid-declaration");
+     check(fields(slot.cardinality, ["kind"]) && slot.cardinality.kind === "required",
+       "emitter.unsupported-cardinality");
+@@ -88,8 +80,9 @@
+   }
+   const capabilities = new Set<string>();
+   for (const provided of declaration.provides) {
+-    check(fields(provided, ["capabilityId", "compatibility"])
+-      && portable(provided.capabilityId) && compatibility(provided.compatibility)
++    check(fields(provided, ["capabilityId", "revision", "compatibleFrom"])
++      && portable(provided.capabilityId) && revision(provided.revision) && revision(provided.compatibleFrom)
++      && provided.compatibleFrom <= provided.revision
+       && !capabilities.has(provided.capabilityId), "emitter.invalid-declaration");
+     capabilities.add(provided.capabilityId);
+   }
+@@ -113,7 +106,7 @@
+   const plan = result.plan;
+   check(fields(plan, ["kind", "schemaVersion", "profileId", "roots", "selections",
+     "bindings", "dependencyOrder"]) && plan.kind === "get-modular.composition-plan"
+-    && plan.schemaVersion === 1 && portable(plan.profileId)
++    && plan.schemaVersion === 2 && portable(plan.profileId)
+     && Array.isArray(plan.roots) && plan.roots.length === 1
+     && plan.roots[0] === compilerFacadeModuleId && Array.isArray(plan.selections)
+     && plan.selections.length > 0 && Array.isArray(plan.bindings)
+@@ -183,7 +176,7 @@
+   }
+   for (const binding of plan.bindings) {
+     check(fields(binding, ["consumerImplementationId", "slotId", "providerImplementationIds",
+-      "capabilityId", "compatibility"]), "emitter.invalid-binding");
++      "capabilityId", "revision"]), "emitter.invalid-binding");
+     const consumer = selected.get(binding.consumerImplementationId);
+     const slot = consumer?.declaration.slots.find(item => item.slotId === binding.slotId);
+     const bindings = rows.get(binding.consumerImplementationId);
+@@ -195,8 +188,8 @@
+     const provider = selected.get(providerId);
+     const provided = provider?.declaration.provides.find(item => item.capabilityId === slot.capabilityId);
+     check(provided !== undefined && binding.capabilityId === slot.capabilityId
+-      && compatibility(binding.compatibility) && same(binding.compatibility, slot.compatibility)
+-      && same(provided.compatibility, slot.compatibility), "emitter.invalid-binding");
++      && revision(binding.revision) && binding.revision === slot.revision
++      && provided.compatibleFrom <= slot.revision && slot.revision <= provided.revision, "emitter.invalid-binding");
+     const providerPosition = position.get(providerId);
+     const consumerPosition = position.get(binding.consumerImplementationId);
+     check(providerPosition !== undefined && consumerPosition !== undefined
+--- a/tests/qualification/support/construction-witness.mjs
++++ b/tests/qualification/support/construction-witness.mjs
+@@ -342,16 +342,12 @@
+ function featureModule(module, qualification) {
+   return /^src\/features\/[a-z][a-z0-9-]*(?:\/[a-z][a-z0-9-]*)?\/(?:declaration|factory)\.js$/u.test(module)
+     || (qualification && (module === `${variantDirectory}/declaration.js` || module === `${variantDirectory}/factory.js`));
+-}
+-function compatibility(value) {
+-  fields(value, ['family', 'familyVersion', 'token'], 'compatibility');
+-  check(value.family === 'exact' && value.familyVersion === 1 && portable(value.token), 'compatibility');
+ }
+-function sameCompatibility(left, right) {
+-  return left.family === right.family && left.familyVersion === right.familyVersion && left.token === right.token;
++function revision(value) {
++  check(Number.isInteger(value) && value >= 1 && value <= 2147483647, 'compatibility');
+ }
+ function declarationMaps(declaration) {
+-  check(declaration?.kind === 'get-modular.module-declaration' && declaration.schemaVersion === 1
++  check(declaration?.kind === 'get-modular.module-declaration' && declaration.schemaVersion === 2
+     && portable(declaration.moduleId) && portable(declaration.implementationId)
+     && Array.isArray(declaration.slots) && Array.isArray(declaration.provides), 'declaration');
+   const slots = new Map();
+@@ -360,12 +356,13 @@
+     check(slotName(slot?.slotId) && !slots.has(slot.slotId), 'declared-slot');
+     fields(slot.cardinality, ['kind'], 'required-cardinality');
+     check(slot.cardinality.kind === 'required' && portable(slot.capabilityId), 'required-cardinality');
+-    compatibility(slot.compatibility);
++    revision(slot.revision);
+     slots.set(slot.slotId, slot);
+   }
+   for (const provided of declaration.provides) {
+     check(portable(provided?.capabilityId) && !provides.has(provided.capabilityId), 'provided-capability');
+-    compatibility(provided.compatibility);
++    revision(provided.revision); revision(provided.compatibleFrom);
++    check(provided.compatibleFrom <= provided.revision, 'compatibility');
+     provides.set(provided.capabilityId, provided);
+   }
+   return { slots, provides };
+@@ -496,7 +493,7 @@
+ 
+ function checkPlan(plan, handles) {
+   fields(plan, ['kind', 'schemaVersion', 'profileId', 'roots', 'selections', 'bindings', 'dependencyOrder'], 'plan-shape');
+-  check(plan.kind === 'get-modular.composition-plan' && plan.schemaVersion === 1 && portable(plan.profileId), 'plan-shape');
++  check(plan.kind === 'get-modular.composition-plan' && plan.schemaVersion === 2 && portable(plan.profileId), 'plan-shape');
+   check(Array.isArray(plan.roots) && plan.roots.length === 1 && plan.roots[0] === 'get-modular/compiler-facade'
+     && Array.isArray(plan.selections) && plan.selections.length > 0
+     && Array.isArray(plan.bindings) && Array.isArray(plan.dependencyOrder), 'finite-plan-shape');
+@@ -521,18 +518,18 @@
+   }
+   check(position.size === selected.size, 'dependency-order');
+   for (const binding of plan.bindings) {
+-    fields(binding, ['consumerImplementationId', 'slotId', 'providerImplementationIds', 'capabilityId', 'compatibility'], 'binding-shape');
++    fields(binding, ['consumerImplementationId', 'slotId', 'providerImplementationIds', 'capabilityId', 'revision'], 'binding-shape');
+     const consumer = selected.get(binding.consumerImplementationId);
+     const slot = consumer?.slots.get(binding.slotId);
+     check(slot && Array.isArray(binding.providerImplementationIds)
+       && binding.providerImplementationIds.length === 1, 'required-binding');
+-    compatibility(binding.compatibility);
++    revision(binding.revision);
+     const providerId = binding.providerImplementationIds[0];
+     const provider = selected.get(providerId);
+     const provided = provider?.provides.get(slot.capabilityId);
+     check(provided && binding.capabilityId === slot.capabilityId
+-      && sameCompatibility(binding.compatibility, slot.compatibility)
+-      && sameCompatibility(provided.compatibility, slot.compatibility), 'binding-correspondence');
++      && binding.revision === slot.revision
++      && provided.compatibleFrom <= slot.revision && slot.revision <= provided.revision, 'binding-correspondence');
+     check(position.get(providerId) < position.get(binding.consumerImplementationId), 'provider-order');
+     const bindings = rows.get(binding.consumerImplementationId);
+     check(!bindings.has(binding.slotId), 'duplicate-plan-binding');
+--- a/packages/core/tests/features/canonicalization/witness-variant/declaration.ts
++++ b/packages/core/tests/features/canonicalization/witness-variant/declaration.ts
+@@ -6,12 +6,12 @@
+ export const witnessVariantImplementation: `${typeof canonicalizationModuleId}/witness-variant` = `${canonicalizationModuleId}/witness-variant`;
+ 
+ export const witnessVariantDeclaration: ModuleDeclaration = Object.freeze<ModuleDeclaration>({
+-  kind: "get-modular.module-declaration", schemaVersion: 1,
++  kind: "get-modular.module-declaration", schemaVersion: 2,
+   moduleId: canonicalizationModuleId, implementationId: witnessVariantImplementation,
+   owner: Object.freeze({ authority: "get-modular", path: Object.freeze(["canonicalization"]) }),
+   provides: Object.freeze([Object.freeze({
+     capabilityId: canonicalBytesCapabilityId,
+-    compatibility: Object.freeze({ family: "exact", familyVersion: 1, token: canonicalBytesToken }),
++    revision: 1, compatibleFrom: 1,
+   })]),
+   slots: Object.freeze([]),
+ });
