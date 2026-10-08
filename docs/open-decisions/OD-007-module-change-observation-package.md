@@ -8,9 +8,9 @@ related:
   - ADR-0015
   - ADR-0017
   - ADR-0026
+  - ADR-0029
   - ADR-0030
   - ADR-0033
-  - ADR-0029
   - ARCH-COMMON-ASSEMBLY
   - ARCH-SYSTEM-BOUNDARY
 ---
@@ -46,8 +46,8 @@ The full design, evidence and remaining limits are in the
 
 - Core and Assembly do not import the package. It uses the resource scopes of
   `@get-modular/resources` (ADR-0030). The admitting ADR chooses between a
-  declared peer dependency, the pattern ADR-0033 uses for
-  `@get-modular/conformance`, and a structural port. The research sketch's
+  declared peer dependency (the pattern ADR-0033 uses for
+  `@get-modular/conformance`) and a structural port. The research sketch's
   structural port does not match the delivered package (cleanup receives
   `{ escalate }`, not `{ signal }`); the
   [known defects](../../research/observation-hooks-2026-10/sketch-v4-known-defects.md)
@@ -63,14 +63,16 @@ The full design, evidence and remaining limits are in the
   product lifecycle", no "second lifecycle authority") and the Consumer Module
   Standard's "explicit demonstrated need" rule, separating mechanism from
   Host authority as ADR-0030 does for resources.
-- Publication: the admitting ADR adds the package's row to the leaf package
-  table (`architecture/checks/leaf-packages.mjs`). ADR-0030 and ADR-0033 are
+- Publication: the admitting ADR specifies the package's leaf row; the row
+  lands in `architecture/checks/leaf-packages.mjs` together with the package
+  root and implementation, as ADR-0030 and ADR-0033 require. ADR-0030 and ADR-0033 are
   the precedent for the owner's "public `0.x` from the first release": public
   from the first Changesets release through the bounded release operator, and,
   while G1 is on hold (`architecture/sdk-growth/status.json`), not enrolled in
   `package.public-api-compatibility` or G1 SDK growth.
-- The 0.3.0 train delivered what this package builds on: the resources
-  package, the leaf package table and the shared error-code scheme
+- What this package builds on landed on main for the 0.3.0 train (not yet
+  released when this record was updated): the resources package, the leaf
+  package table and the shared error-code scheme
   `<pkg>.<area>.<reason>` in the Consumer Module Standard. The admitting
   delivery adds the `observation.*` codes and the configuration rule to that
   standard.
@@ -99,10 +101,11 @@ LOC is roughly ×2 uncertain.
 
 ## Acceptance criteria
 
-- An accepted ADR admits the exact public API and the leaf package row before
-  package source, reconciles the system boundary and records the owner
+- An accepted ADR admits the exact public API and specifies the leaf row
+  before package source, reconciles the system boundary and records the owner
   exceptions above.
-- The bounded TEST experiment in the research archive passes on the supported
+- The bounded TEST experiment in the research archive, run against
+  `@get-modular/resources` from main rather than the sketch stand-in, passes on the supported
   Node range with negative type fixtures on the minimum and pinned TypeScript
   compilers; any failure returns the design to review.
 - The Consumer Module Standard gains the configuration rule and examples in the

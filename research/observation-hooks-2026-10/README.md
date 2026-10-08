@@ -21,7 +21,7 @@ reviewed.
 | Path | What it is |
 | --- | --- |
 | [design.md](design.md) | Revision 4 of the research and recommended design, edited for this repository: links adjusted to this layout, rule 10 updated with the error-code agreement of 2026-10-02, workspace `AGENTS.md` citations marked as outside this repository, reviewer naming as described below, lint and spelling fixes (a note and directive for the deliberate rule numbering, "fan-out", one reworded sentence about timers), the stale-response countermeasure scoped to derived results, and a pointer to the known sketch v4 defects |
-| [sketch-v4-known-defects.md](sketch-v4-known-defects.md) | Defects in the frozen sketch v4 confirmed after the move, as input for the implementation delivery |
+| [sketch-v4-known-defects.md](sketch-v4-known-defects.md) | Defects in the frozen sketch v4 confirmed after the move and its drift against the resources package on main, as input for the implementation delivery |
 | [raw/revisions/](raw/revisions/) | Revisions 1-3 (originals SHA-256 `3709c3a7…`, `eee3f342…`, `9754799b…`; revision 1 is byte-identical, revisions 2 and 3 carry the redacted details below); their internal links refer to the former workspace layout |
 | [raw/original-reports/](raw/original-reports/) | The five original hook research reports (Flutter/Riverpod, reactive UI, DI frameworks, plugin systems, scale), raw results, identities and their task scope; hashes in `research-document-hashes.json` |
 | [raw/evidence/](raw/evidence/README.md) | Hosted critiques of revision 1, root-verified online sources, the review of revision 2, runtime capability check |
@@ -35,9 +35,10 @@ reviewed.
   factories, not classes; first proof on a TEST consumer (Agent Runtime has no
   fitting consumer today, see `raw/evidence/code-sketch/critic-reports/agent-runtime-consumer-scan.md`).
 - The error-code scheme `<pkg>.<area>.<reason>` is agreed with the resources
-  stream. The resources package shipped in the 0.3.0 train (ADR-0030); the
-  design's resource port predates it, see
-  [sketch-v4-known-defects.md](sketch-v4-known-defects.md#drift-against-the-delivered-resources-package).
+  stream. The resources package landed on main for the 0.3.0 train
+  (ADR-0030, not yet released on 2026-10-08); the design's resource port
+  predates it, see
+  [sketch-v4-known-defects.md](sketch-v4-known-defects.md#drift-against-the-resources-package-on-main).
 - Nothing here is implemented in `packages/`; no build, test or release gate
   depends on these files.
 
