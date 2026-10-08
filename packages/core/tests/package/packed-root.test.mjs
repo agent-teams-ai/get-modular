@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { access, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
@@ -122,6 +122,50 @@ test('packed M2 exposes one root across Node and TypeScript consumers', async t 
   const workspace = join(temporary, 'consumers');
   await mkdir(workspace);
   try {
+    // Boundary probes prepare plans using the selected physical entry bytes.
+    // The complete matrix below verifies the selected binary's reported version.
+    for (const version of ['v24.18.0', 'v24.20.1', 'v26.10.0', 'v26.100.1']) {
+      await t.test(`packed preparation admits public Node ${version}`, async () => {
+        const boundaryWorkspace = join(temporary, `node-version-accepted-${version}`);
+        await mkdir(boundaryWorkspace);
+        const boundary = await prepareM1PackedConsumers({ diagnosticGeneration: 2, surface: 'm2',
+          archive: { path: archive, identity, files: audited.files }, workspace: boundaryWorkspace,
+          toolchain: { node: { ...node, version }, npm, compilers },
+          contextId: `node-version-accepted-${version}`, osEnvironment });
+        assert.equal(boundary.toolchain.node.version, version);
+      });
+    }
+    const invalidVersions = [
+      ['Node 24 below the public floor', 'v24.17.999'],
+      ['Node 26 below the public floor', 'v26.9.999'],
+      ['Node 25', 'v25.10.0'],
+      ['Node 27', 'v27.0.0'],
+      ['a prerelease', 'v26.10.0-rc.1'],
+      ['build metadata', 'v26.10.0+build.1'],
+      ['a leading-zero major', 'v026.10.0'],
+      ['a leading-zero minor', 'v26.010.0'],
+      ['a leading-zero patch', 'v26.10.00'],
+      ['an unprefixed version', '26.10.0'],
+      ['a missing patch', 'v26.10'],
+      ['an extra component', 'v26.10.0.1'],
+      ['a trailing newline', 'v24.18.0\n'],
+      ['trailing whitespace', 'v26.10.0 '],
+      ['an unsafe minor', 'v26.9007199254740992.0'],
+      ['an unsafe patch', 'v26.10.9007199254740992'],
+    ];
+    for (const [index, [label, version]] of invalidVersions.entries()) {
+      await t.test(`packed preparation rejects ${label}`, async () => {
+        const boundaryWorkspace = join(temporary, `node-version-rejected-${index}`);
+        await mkdir(boundaryWorkspace);
+        await assert.rejects(() => prepareM1PackedConsumers({ diagnosticGeneration: 2, surface: 'm2',
+          archive: { path: archive, identity, files: audited.files }, workspace: boundaryWorkspace,
+          toolchain: { node: { ...node, version }, npm, compilers },
+          contextId: `node-version-rejected-${index}`, osEnvironment }),
+        { code: 'ERR_ASSERTION',
+          message: /Node must be a canonical release in >=24\.18\.0 <25 \|\| >=26\.10\.0 <27/u });
+        assert.deepEqual(await readdir(boundaryWorkspace), [], 'invalid Node metadata must fail before preparation writes');
+      });
+    }
     const prepared = await prepareM1PackedConsumers({ diagnosticGeneration: 2, surface: 'm2', archive: { path: archive, identity, files: audited.files },
       workspace, toolchain: { node, npm, compilers }, contextId: 'disposable-packed-root', osEnvironment });
     let lastCommand;

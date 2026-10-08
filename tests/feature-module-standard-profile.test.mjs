@@ -15,6 +15,7 @@ import {
   publicationBlockers,
   validateFirstProductionPackageAdmission,
 } from "../architecture/checks/feature-module-standard-profile.mjs";
+import { LEAF_PACKAGES, leafManifestPath, PUBLIC } from "../architecture/checks/leaf-packages.mjs";
 import {
   manifestCarrierViolations,
   packageIdentityViolations,
@@ -78,7 +79,10 @@ test("exposes the qualified nested FMS v1 topology consumed by Foundation", () =
     {
       authority: ["agent-teams.feature-module-standard", "v1"],
       workspaceContainers: ["packages"],
-      productionRoots: ["packages/core/src", "packages/assembly/src", "packages/lifecycle-kernel/src"],
+      productionRoots: [
+        "packages/core/src", "packages/assembly/src", "packages/lifecycle-kernel/src", "packages/resources/src",
+        "packages/conformance/src",
+      ],
       modules: [
         {
           moduleRoot: "packages/core",
@@ -94,6 +98,16 @@ test("exposes the qualified nested FMS v1 topology consumed by Foundation", () =
           moduleRoot: "packages/lifecycle-kernel",
           sourceRoot: "packages/lifecycle-kernel/src",
           testRoot: "packages/lifecycle-kernel/tests",
+        },
+        {
+          moduleRoot: "packages/resources",
+          sourceRoot: "packages/resources/src",
+          testRoot: "packages/resources/tests",
+        },
+        {
+          moduleRoot: "packages/conformance",
+          sourceRoot: "packages/conformance/src",
+          testRoot: "packages/conformance/tests",
         },
       ],
     },
@@ -149,9 +163,9 @@ test("rejects wildcard and mismatched module, source, and test roots", () => {
 // Accepted source pins; the profile gate verifies the final published archive binding.
 test("pins the accepted Foundation and Docs source versions without age exclusions", async () => {
   const workspace = parse(await readFile("pnpm-workspace.yaml", "utf8"));
-  assert.equal(packageJson.devDependencies["@agent-teams/engineering-foundation"], "1.5.1");
-  assert.equal(packageJson.devDependencies["@agent-teams/docs-protocol"], "0.6.0");
-  assert.equal(profile.adoption.admission.foundation.version, "1.5.1");
+  assert.equal(packageJson.devDependencies["@agent-teams/engineering-foundation"], "1.7.2");
+  assert.equal(packageJson.devDependencies["@agent-teams/docs-protocol"], "0.6.2");
+  assert.equal(profile.adoption.admission.foundation.version, "1.7.2");
   assert.equal(workspace.minimumReleaseAge, 0);
   assert.equal(workspace.minimumReleaseAgeStrict, undefined);
   assert.equal(workspace.minimumReleaseAgeExclude, undefined);
@@ -174,15 +188,15 @@ function versionAdmissionInput() {
 
 // Literal counterexamples must not follow the checker or an installed package's version.
 const rejectedFoundationPins = [
-  "0.21.0", "1.0.1", "1.1.0", "1.1.1", "1.2.0", "1.4.0", "1.4.1", "1.4.2", "1.5.0", "2.0.0",
-  "^1.5.1", "~1.5.1",
+  "0.21.0", "1.0.1", "1.1.0", "1.1.1", "1.2.0", "1.4.0", "1.4.1", "1.4.2", "1.5.0", "1.5.1", "1.6.1", "1.7.0", "1.7.1", "2.0.0",
+  "^1.7.1", "~1.7.1", "^1.7.2", "~1.7.2",
   "*", undefined,
 ];
 
-test("accepts exactly Foundation 1.5.1 for source and empty pre-production guard inputs", () => {
+test("accepts exactly Foundation 1.7.2 for source and empty pre-production guard inputs", () => {
   const input = versionAdmissionInput();
-  input.packageJson.devDependencies["@agent-teams/engineering-foundation"] = "1.5.1";
-  input.admission.foundation.version = "1.5.1";
+  input.packageJson.devDependencies["@agent-teams/engineering-foundation"] = "1.7.2";
+  input.admission.foundation.version = "1.7.2";
   assert.equal(validateFirstProductionPackageAdmission(input), SOURCE_DEPENDENCY_POLICY_PATH);
   input.productionArtifacts = [];
   input.admission.status = "pre-production";
@@ -199,7 +213,7 @@ test("rejects stale, mismatched, ranged and missing Foundation manifest pins bef
         input.admission.status = "pre-production";
       }
       assert.throws(() => validateFirstProductionPackageAdmission(input),
-        /@agent-teams\/engineering-foundation must remain pinned to 1\.5\.1/u,
+        /@agent-teams\/engineering-foundation must remain pinned to 1\.7\.2/u,
         `manifest ${String(version)}, empty inventory ${empty}`);
     }
   }
@@ -223,7 +237,7 @@ test("matching manifest and profile versions cannot replace the exact Foundation
     input.packageJson.devDependencies["@agent-teams/engineering-foundation"] = version;
     input.admission.foundation.version = version;
     assert.throws(() => validateFirstProductionPackageAdmission(input),
-      /@agent-teams\/engineering-foundation must remain pinned to 1\.5\.1/u);
+      /@agent-teams\/engineering-foundation must remain pinned to 1\.7\.2/u);
     const changed = clone(profile);
     changed.adoption.admission = input.admission;
     assert.throws(() => validate({ profile: changed, packageJson: input.packageJson }),
@@ -231,7 +245,7 @@ test("matching manifest and profile versions cannot replace the exact Foundation
   }
 });
 
-test("admits current Core and Assembly only with the exact Foundation 1.5.1 binding", async () => {
+test("admits current Core and Assembly only with the exact Foundation 1.7.2 binding", async () => {
   const manifests = new Map(await Promise.all([
     "packages/core/package.json", "packages/assembly/package.json",
   ].map(async path => [path, JSON.parse(await readFile(path, "utf8"))])));
@@ -260,7 +274,7 @@ test("admits current Core and Assembly only with the exact Foundation 1.5.1 bind
       if (binding !== "manifest") changed.admission.foundation.version = version;
       assert.throws(() => validateFirstProductionPackageAdmission(changed),
         binding === "profile" ? /Foundation admission binding does not match/u
-          : /@agent-teams\/engineering-foundation must remain pinned to 1\.5\.1/u,
+          : /@agent-teams\/engineering-foundation must remain pinned to 1\.7\.2/u,
         `Core+Assembly ${binding} ${String(version)}`);
     }
   }
@@ -404,11 +418,47 @@ test("requires profile enforcement in complete and fast gates", () => {
     "qualification:v1-graph-semantics",
     "qualification:self-composition-templates",
     "runtime:preflight",
+    "precheck:changed",
+    "lockfile:peers:check",
+    "runtime:policy:typecheck",
+    "runtime:policy:test",
   ]) {
     const noOp = clone(packageJson);
     noOp.scripts[scriptName] = ":";
     assert.throws(() => validate({ packageJson: noOp }),
       new RegExp(`${scriptName} must use its closed command definition`, "u"));
+  }
+
+  for (const installedGate of [
+    "lockfile:peers:check", "runtime:policy:typecheck", "runtime:policy:test",
+  ]) {
+    for (const scriptName of ["runtime:preflight", "precheck:changed"]) {
+      const nested = clone(packageJson);
+      nested.scripts[scriptName] += ` && pnpm ${installedGate}`;
+      assert.throws(() => validate({ packageJson: nested }),
+        new RegExp(`${scriptName} must use its closed command definition`, "u"));
+    }
+  }
+
+  for (const scriptName of ["check", "check:fast"]) {
+    const commands = packageJson.scripts[scriptName].split(" && ");
+    assert.deepEqual(commands.slice(0, 4), [
+      "pnpm runtime:preflight", "pnpm lockfile:peers:check",
+      "pnpm runtime:policy:typecheck", "pnpm runtime:policy:test",
+    ]);
+    for (const index of [1, 2, 3]) {
+      const reordered = clone(packageJson);
+      const candidate = [...commands];
+      [candidate[0], candidate[index]] = [candidate[index], candidate[0]];
+      reordered.scripts[scriptName] = candidate.join(" && ");
+      assert.throws(() => validate({ packageJson: reordered }),
+        /must use its exact closed pnpm command chain/u);
+    }
+    const testsBeforeCompiler = clone(packageJson);
+    [commands[2], commands[3]] = [commands[3], commands[2]];
+    testsBeforeCompiler.scripts[scriptName] = commands.join(" && ");
+    assert.throws(() => validate({ packageJson: testsBeforeCompiler }),
+      /must use its exact closed pnpm command chain/u);
   }
 });
 
@@ -890,13 +940,15 @@ test("ADR-0023 and ADR-0025 admit historical private and canonical public Assemb
   }
 
   // Shape validation does not confer the separately authenticated successor authority.
-  assert.deepEqual(manifestCarrierViolations(await inventory({ ...publicManifest, version: "0.2.0" })), []);
-  const privateNext = manifestCarrierViolations(await inventory({ ...manifest, version: "0.2.0" }));
-  assert.equal(privateNext.length, 1);
-  assert.match(privateNext[0].scripts.join("\n"), /version requires historical/u);
+  for (const version of ["0.2.0", "0.3.0"]) {
+    assert.deepEqual(manifestCarrierViolations(await inventory({ ...publicManifest, version })), []);
+    const privateNext = manifestCarrierViolations(await inventory({ ...manifest, version }));
+    assert.equal(privateNext.length, 1);
+    assert.match(privateNext[0].scripts.join("\n"), /version requires historical/u);
+  }
 
   for (const [change, message] of [
-    [{ version: "0.3.0" }, /version requires historical 0\.1\.0 or public 0\.2\.0 admission/u],
+    [{ version: "0.4.0" }, /version requires historical 0\.1\.0 or public 0\.2\.0\/0\.3\.0 admission/u],
     [{ dependencies: {} }, /dependencies must contain only/u],
     [{ dependencies: { "@get-modular/core": "^0.1.0" } }, /dependencies must contain only/u],
     [{ dependencies: { ...manifest.dependencies, "@example/extra": "1.0.0" } },
@@ -935,6 +987,38 @@ test("ADR-0023 and ADR-0025 admit historical private and canonical public Assemb
     ...manifest, scripts: { install: "node install.mjs" },
   }));
   assert.deepEqual(lifecycle[0].scripts, ["scripts.install"]);
+});
+
+test("profile admission rejects a leaf manifest outside its publication class shape", async () => {
+  for (const leaf of LEAF_PACKAGES) {
+    const manifestPath = leafManifestPath(leaf);
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    const input = {
+      publicationBlockerIds: new Set(),
+      productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts",
+        manifestPath, `${leaf.root}/src/index.ts`],
+      productionPackageManifests: new Map([...coreManifest, [manifestPath, manifest]]),
+      admission: { ...profile.adoption.admission, status: "source-admitted" },
+      foundationConfig: { capabilities: foundationCapabilities() },
+      packageJson,
+      sourceDependencyPolicyPresent: true,
+    };
+    assert.equal(validateFirstProductionPackageAdmission(input), SOURCE_DEPENDENCY_POLICY_PATH);
+    for (const [change, message] of [
+      leaf.publication === PUBLIC
+        ? [{ private: true }, /public package must omit private/u]
+        : [{ private: false }, /candidate must remain private/u],
+      [{ version: "1.0.0" }, new RegExp(`version is not admitted by ${leaf.decision.id}`, "u")],
+      [{ dependencies: { "@get-modular/core": "workspace:*" } }, /dependencies must be absent or empty/u],
+      [{ peerDependencies: { ...manifest.peerDependencies, "@example/extra": "workspace:^" } },
+        /peerDependencies must be exactly its row peers/u],
+      [{ peerDependenciesMeta: { "@get-modular/core": { optional: true } } }, /must not declare optional peers/u],
+    ]) {
+      assert.throws(() => validateFirstProductionPackageAdmission({ ...input,
+        productionPackageManifests: new Map([...coreManifest, [manifestPath, { ...manifest, ...change }]]),
+      }), message, JSON.stringify(change));
+    }
+  }
 });
 
 test("requires exactly one historical M2 replay in the contracts gate", () => {

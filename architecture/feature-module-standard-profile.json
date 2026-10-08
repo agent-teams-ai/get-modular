@@ -10,7 +10,7 @@
   },
   "scope": {
     "workspaceContainers": ["packages"],
-    "productionRoots": ["packages/core/src", "packages/assembly/src", "packages/lifecycle-kernel/src"],
+    "productionRoots": ["packages/core/src", "packages/assembly/src", "packages/lifecycle-kernel/src", "packages/resources/src", "packages/conformance/src"],
     "productionModules": [
       {
         "id": "core",
@@ -26,6 +26,16 @@
         "id": "lifecycle-kernel",
         "moduleRoot": "packages/lifecycle-kernel",
         "sourceRoot": "packages/lifecycle-kernel/src"
+      },
+      {
+        "id": "resources",
+        "moduleRoot": "packages/resources",
+        "sourceRoot": "packages/resources/src"
+      },
+      {
+        "id": "conformance",
+        "moduleRoot": "packages/conformance",
+        "sourceRoot": "packages/conformance/src"
       }
     ]
   },
@@ -61,6 +71,22 @@
           "moduleComposition": "packages/lifecycle-kernel/src/composition",
           "publicEntrypoint": "packages/lifecycle-kernel/src/index.ts",
           "testRoot": "packages/lifecycle-kernel/tests"
+        },
+        {
+          "moduleRoot": "packages/resources",
+          "sourceRoot": "packages/resources/src",
+          "featuresRoot": "packages/resources/src/features",
+          "moduleComposition": "packages/resources/src/composition",
+          "publicEntrypoint": "packages/resources/src/index.ts",
+          "testRoot": "packages/resources/tests"
+        },
+        {
+          "moduleRoot": "packages/conformance",
+          "sourceRoot": "packages/conformance/src",
+          "featuresRoot": "packages/conformance/src/features",
+          "moduleComposition": "packages/conformance/src/composition",
+          "publicEntrypoint": "packages/conformance/src/index.ts",
+          "testRoot": "packages/conformance/tests"
         }
       ]
     },
@@ -84,6 +110,14 @@
       {
         "id": "lifecycle-generation-and-lease",
         "authority": "docs/decisions/0029-admit-an-optional-lifecycle-kernel-candidate.md"
+      },
+      {
+        "id": "module-resource-scopes",
+        "authority": "docs/decisions/0030-admit-the-module-resource-scope-package.md"
+      },
+      {
+        "id": "module-conformance-kit",
+        "authority": "docs/decisions/0033-admit-the-module-conformance-kit.md"
       }
     ],
     "deviations": [],
@@ -102,7 +136,7 @@
       "productionRoot": "packages",
       "foundation": {
         "package": "@agent-teams/engineering-foundation",
-        "version": "1.5.1",
+        "version": "1.7.2",
         "command": "agent-teams-foundation check",
         "capability": "architecture.source-dependencies",
         "policy": "architecture/foundation/source-dependencies.yaml"

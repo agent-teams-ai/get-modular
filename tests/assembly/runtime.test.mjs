@@ -141,3 +141,34 @@ test("Host cleanup can deduplicate resources shared by instances and capabilitie
   for (const resource of resources) resource.dispose();
   assert.equal(disposed, 1);
 });
+
+test("every factory of a run receives that run's opaque scope and Assembly never touches it", async () => {
+  let traps = 0;
+  // Every trap lookup on this handler counts, so any read, freeze, await or key listing is observed.
+  const handler = new Proxy({}, { get: () => { traps++; return undefined; } });
+  const left = new Proxy({}, handler), right = new Proxy({}, handler);
+  const seen = new Map();
+  const record = (_deps, context) => {
+    const runs = seen.get(context.scope) ?? [];
+    runs.push(context);
+    seen.set(context.scope, runs);
+  };
+  const host = await synthetic({
+    storeFactory: async (deps, context) => {
+      record(deps, context);
+      await new Promise((resolve) => { setImmediate(resolve); });
+      return { instance: {}, capabilities: { "synthetic/store": { initial: "" } } };
+    },
+    appFactory: async (deps, context) => { record(deps, context); return { instance: {}, capabilities: {} }; },
+  });
+  const outcomes = await Promise.all([host.prepared.run({ scope: left }), host.prepared.run({ scope: right }), host.prepared.run()]);
+  assert.deepEqual(outcomes.map(({ status }) => status), ["succeeded", "succeeded", "succeeded"]);
+  for (const scope of [left, right, undefined]) {
+    const contexts = seen.get(scope);
+    assert.equal(contexts.length, 2);
+    assert.ok(Object.isFrozen(contexts[0]));
+    assert.deepEqual(Object.keys(contexts[0]).sort(), ["scope", "signal"]);
+    assert.ok(Object.hasOwn(contexts[0], "scope"));
+  }
+  assert.equal(traps, 0);
+});

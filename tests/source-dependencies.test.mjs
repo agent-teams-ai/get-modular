@@ -398,3 +398,24 @@ test("source v3 rejects includeRootPackage as an unknown public field", async ()
   assert.notEqual(report.outcome, "passed", JSON.stringify(report));
   assert.match(JSON.stringify(report), /includeRootPackage|unknown property|invalid-input/iu);
 });
+
+test("Foundation rejects missing governed roots and checks ignored dist sources", async () => {
+  const missing = await checkFixture((_files, configuration) => {
+    configuration.governedRoots.push("packages/core/dist-seed");
+  });
+  assert.equal(missing.outcome, "invalid-input", JSON.stringify(missing));
+  const dist = (files, configuration, source) => {
+    configuration.governedRoots.push("packages/core/dist-seed");
+    configuration.boundaries.push({ id: "seed-output", roots: ["packages/core/dist-seed"],
+      entrypoints: ["packages/core/dist-seed/index.js"],
+      allow: { boundaries: [], packages: [], builtins: [], runtimeReferences: [] } });
+    files.set(".gitignore", "dist-seed/\n");
+    files.set("packages/core/dist-seed/index.js", source);
+  };
+  const clean = await checkFixture((files, configuration) => dist(files, configuration, "export const seed = 1;\n"));
+  assert.equal(clean.outcome, "passed", JSON.stringify(clean));
+  const broken = await checkFixture((files, configuration) => dist(files, configuration,
+    'import { readFileSync } from "node:fs"; export const seed = readFileSync;\n'));
+  assert.equal(broken.outcome, "violations", JSON.stringify(broken));
+  assert.match(JSON.stringify(broken), /packages\/core\/dist-seed\/index.js/u);
+});

@@ -8,11 +8,35 @@ consumer floor 5.8.3.
 See the repository's [consumer quickstart](https://github.com/agent-teams-ai/get-modular/blob/main/docs/guides/consumer-quickstart.md)
 for an executable Host with diagnostics, cancellation, and cleanup.
 
-`assemblyFor<C>()` returns `bindFactory` and `prepare`. Describe each Host-owned
-capability in `C` using `CapabilityContract<Value, ExactToken>`. Pass a literal
-Core declaration to `bindFactory`; its slots determine the callback's dependency
-record. The callback receives that record and `{ signal }`, and returns an
-ordinary current-realm Promise fulfilling with `{ instance, capabilities }`.
+A contract owner publishes one descriptor per capability with
+`defineContract<Value>()({ id, revision })`, where `revision` is an integer from 1
+to 2147483647. Module authors write declarations with `declareModule`, for example
+`declareModule({ moduleId, implementationId, owner, provides: [Orders.provide()], slots: [Db.slot("db", required())] })`.
+`declareModule` supplies `kind` and `schemaVersion`, and each entry carries the exact
+compatibility token `<id>/r<revision>`, so Core rejects a slot built from another
+revision. `CapabilitiesOf<typeof Db | typeof Orders>` derives the capability map `C`.
+Name a map over many descriptors as an interface,
+`interface HostCapabilities extends CapabilitiesOf<typeof Db | typeof Orders> {}`;
+a type alias over hundreds of contracts multiplies type-check time. In 0.3.0,
+hand-written `CapabilityContract<Value, ExactToken>` maps and literal Core
+declarations remain valid.
+
+`assemblyFor<C>()` returns `bindFactory`, `bindInput` and `prepare`. Pass a literal
+declaration to `bindFactory`; its slots determine the callback's dependency record.
+The callback receives that record and `{ signal, scope }`, where `scope` is the
+opaque value passed to `run()`, and returns an ordinary current-realm Promise
+fulfilling with `{ instance, capabilities }`. Assembly never reads, awaits, freezes
+or disposes `scope`. A module package names that callback type as
+`ModuleFactory<C, typeof declaration, Instance>`, with its own map as `C`.
+`bindInput` binds a declaration without slots whose capability record every run
+supplies instead of a factory.
+
+A handle is invariant only in the capabilities its declaration uses. Teams bind
+handles under their own maps, and a Host prepares them together when every
+capability a handle uses has the identical contract in the preparing map; a handle
+that uses a capability the preparing map lacks is rejected. Pass handles to
+`prepare` as a literal array: an array typed as `AnyFactoryHandle<C>[]` beforehand
+skips that check, and so does an explicit `prepare<R>()` type argument.
 
 Module, implementation, profile and capability identities, and exact compatibility
 tokens, use Core's portable grammar, for example `synthetic/store` and
@@ -21,10 +45,17 @@ Returned capability records use the full capability IDs as keys; dependency
 records use the consumer's local slot IDs.
 
 Compile with public Core, then call
-`prepare({ composition, factories, roots: { app: appHandle } })`.
-A `"prepared"` result exposes `prepared.run({ signal })`; an omitted signal gets
-a fresh signal for that attempt. Preparation failures have `status: "failed"`,
-a stable `error.code`, an opaque cause, and separate Core `diagnostics`.
+`prepare({ composition, factories, roots: { app: appHandle }, inputs })`.
+Factory handles appear only in `factories` and input handles only in `inputs`,
+each under one alias; together they cover every selected module, and an input is
+never a root. A `"prepared"` result exposes `prepared.run({ signal, scope, inputs })`.
+Every option may be omitted or `undefined`, except that an assembly prepared with
+inputs needs one capability record per input alias on every run. An omitted signal
+gets a fresh signal for that attempt. Invalid inputs fail with phase `"inputs"` and
+code `assembly.run.invalid-inputs` before any factory runs; inputs are borrowed and
+never appear in `created`. One prepared assembly serves many concurrent runs.
+Preparation failures have `status: "failed"`, a stable `error.code`, an opaque
+cause, and separate Core `diagnostics`.
 
 Run outcomes have status `"succeeded"`, `"failed"` or `"cancelled"`. Successful
 `roots.app` has the instance type inferred from `appHandle`. Every outcome has
@@ -38,10 +69,10 @@ resource several times; Host cleanup must account for that sharing. Cancellation
 waits for an in-flight factory to settle. Construction does not establish readiness.
 
 The package freezes its metadata, records, arrays and journals. Instance objects,
-capability values, causes and signals remain opaque. Direct thenable objects, Promise
-subclasses and Promises with own string properties or symbol accessors are
-unsupported factory carriers. Own symbol data properties used by Node async context
-tracking are permitted and ignored.
+capability values, causes, signals and run scopes remain opaque. Input records are borrowed and never frozen; only their own data properties are read.
+Direct thenable objects, Promise subclasses and Promises with own string properties
+or symbol accessors are unsupported factory carriers. Own symbol data properties
+used by Node async context tracking are permitted and ignored.
 
 Build Core first, then run this package's `build`, `typecheck` and `test` commands.
 The runtime test command also invokes the minimum and build TypeScript compilers
@@ -50,11 +81,13 @@ and `erasableSyntaxOnly`; production compiler settings remain independently enfo
 
 Packed tests install local Core and assembly archives into a disposable consumer,
 exercise the synthetic Host, and check typed wiring, deliberate negative fixtures
-and 1000 literal declarations. The scale fixture is only typechecked.
+and 1000 literal declarations. The scale fixture is only typechecked. A separate
+test type-checks 500 handles bound by 20 team maps and prepared under one Host map
+against the workspace build.
 
-Assembly 0.1.0 is published with exactly Core 0.1.0. Later releases still
-require registry reconciliation and downloaded-byte consumer checks; source
-tests alone do not establish publication or conformance.
+Each Assembly release is published with exactly the Core release of the same
+version. Every release still requires registry reconciliation and downloaded-byte
+consumer checks; source tests alone do not establish publication or conformance.
 
 Release validation can reuse the same consumer checks without packing or deleting
 supplied archives. Set `GET_MODULAR_ASSEMBLY_ARCHIVE` and

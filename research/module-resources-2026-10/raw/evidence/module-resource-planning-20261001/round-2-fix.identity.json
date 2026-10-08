@@ -1,0 +1,12 @@
+{
+  "jobId": "ar-research-resource-round2-fix-fast-20261001",
+  "sha256": "0bc4796fb7b19586dbcaed332aba6bcea313288a7432c9afdfb95cf544dc301e",
+  "requested": {
+    "model": "gpt-6.1-sol",
+    "reasoningEffort": "xhigh",
+    "serviceTier": "fast",
+    "accounts": [
+      "account-u"
+    ]
+  }
+}

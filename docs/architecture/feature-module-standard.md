@@ -41,6 +41,8 @@ package or empty feature layout is created by this adoption.
 Initial package boundaries are owned by `ADR-0003`, which resolves `OD-001`.
 `ADR-0029` adds the optional candidate-only lifecycle kernel module and retains
 G1 public qualification and npm namespace verification as release gates.
+`ADR-0030` adds the optional public resource scope module and `ADR-0033` the
+optional public conformance module.
 
 ## Local extensions
 
@@ -70,6 +72,18 @@ G1 public qualification and npm namespace verification as release gates.
   thin `src/composition/root.ts` package factory, and a curated root export.
   Its local bookkeeping identities are not product generation IDs or Host
   cleanup resources. Runtime dependencies and Core/Assembly imports are absent.
+- The resource scope package has one feature for ordered cooperative cleanup, a
+  thin `src/composition/root.ts` seam and a curated root export. It has no
+  runtime dependency, imports neither Core, Assembly nor a builtin, and Core
+  and Assembly do not import it. Its Assembly integration tests live in root
+  `tests/resources` because a leaf package declares no workspace dependency except
+  declared peers (ADR-0033).
+- The conformance package has four features (errors, harness, suites and
+  handles), a thin `src/composition/root.ts` seam and a curated root export. It
+  is development tooling for module authors and contract owners. Its only
+  packages are the Core, Assembly and resources peers, imported by root name,
+  and it imports no builtin. Its tests live in the package. Get Modular's own
+  qualification stays in `tests/qualification`.
 - No deviation from organization `v1` is declared.
 
 ## Enforcement
@@ -79,7 +93,7 @@ repository mapping, local authorities, navigation, gate wiring, and explicit
 qualification states. `pnpm governance:check` uses the same repository-wide
 production-artifact inventory. It always rejects production artifacts outside
 `packages`. Accepted ADR-0015 admits source only inside a package identity
-accepted by ADR-0003, ADR-0023 or the bounded ADR-0029 successor and, on its
+accepted by ADR-0003, ADR-0023, the bounded ADR-0029 successor, ADR-0030 or ADR-0033 and, on its
 own, only while that manifest is
 `private: true` and declares no publication field. Accepted ADR-0017 supersedes
 those two conditions and blocks publication surfaces only while an open
@@ -102,20 +116,96 @@ production. The first production package must atomically:
 - change the admission state to `source-admitted`;
 - enable Engineering Foundation's `architecture.source-dependencies`
   capability at `architecture/foundation/source-dependencies.yaml`; and
-- execute the pinned `@agent-teams/engineering-foundation` `1.5.1` command
+- execute the pinned `@agent-teams/engineering-foundation` `1.7.2` command
   `agent-teams-foundation check` through both the complete and fast gates.
 
-The tooling activation pins Foundation `1.5.1`. SDK growth admission remains
+The tooling activation pins Foundation `1.7.2`. SDK growth admission remains
 explicitly pending: the active public-API capability retains schema v1 until a
 trusted external authority binds the PR base and candidate to authenticated
 released Core and Assembly artifacts. Local qualification records cannot
 activate that route. The published
 `quality.source-coverage` route uses the existing production profile and source
 policy: `quality:coverage:scope` runs in the fast gate and `lint:typed` runs in
-the complete gate. Suppression governance covers Core and Assembly source with
+the complete gate. Suppression governance covers Core, Assembly, lifecycle kernel, resources and conformance source with
 no waivers. Activation does not claim that existing source passes typed lint
 or establish structural or runtime conformance. Docs retains its portable
 workflow without a managed adapter or cohort binding.
+
+The Foundation 1.7.2 migration keeps the immutable Feature Module Standard and
+Consumer Module Standard pins. The retained current Consumer Module Standard
+adds the optional ADR-0029 dynamic Host guidance; it does not expand passive
+composition or confer SDK authority. The current SDK tooling binding advances
+while the earlier Foundation archive and P0 records remain historical evidence.
+SDK status stays pending, activation stays on hold and release eligibility stays
+false.
+
+The local changed workflow remains on the published Foundation 1.7.2 schema.
+JS and TS edits select the existing project-wide `check:fast` script with
+`passPaths: false`; changed file names never become compiler arguments.
+Compiler projects and root check configuration select the same fast gate through
+explicit configuration triggers. Root Markdown-only edits retain `docs:changed`;
+the existing `docs` and `architecture` full-scan triggers remain.
+A mixed docs and code change still runs the code gate. Version 1 changed reports
+are editing feedback: their `coverage: changed` label does not claim that typed
+lint or the full gate ran. `pnpm check` remains the complete required gate.
+This corrects routing inside the existing development-tooling boundary; it adds
+no production composition node, consumer adoption scope or public contract.
+
+Node 24.21.0 remains the repository default and production tooling choice, with
+pnpm 11.20.0. The root/tooling policy is `>=24.21.0 <25 || >=26.10.0 <27`;
+the public library policy retains the separate Node 24.18.0 floor. Node 25,
+Node 26 below 26.10.0, Node 27 and malformed versions remain rejected. The
+existing runtime helper owns this narrow version mechanism; executable selection
+and deployment policy remain with the Host.
+
+`runtime:preflight` is exactly `node architecture/checks/node-version.mjs` and
+requires no installed repository dependencies. `precheck:changed` invokes only
+`pnpm runtime:preflight`. Both full and fast gates explicitly execute
+`lockfile:peers:check`, `runtime:policy:typecheck` and `runtime:policy:test`
+after preflight and before preparation. The peer gate validates the committed
+graph with `pnpm peers check --lockfile-only`; strict frozen installation alone
+does not replace it. The policy compiler gate uses the pinned TypeScript 7.0.2
+compiler and the existing strict NodeNext configuration, including
+`erasableSyntaxOnly`, `noUncheckedIndexedAccess` and
+`exactOptionalPropertyTypes`. Native Node type stripping does not replace that
+gate.
+
+The Node 24 and candidate Node 26.10.0 CI routes each retain five independent
+lanes on Ubuntu, macOS and Windows, including strict frozen installation,
+committed peer validation, the complete gate union and tracked workspace
+integrity. The governance lane explicitly executes policy typechecking and
+tests. The existing installed public archive compatibility lane remains
+separate. Docs Protocol is pinned exactly to `0.6.2`, the published stable
+successor declaring Node `^24.18.0 || ^26.0.0`; `0.6.0` excludes Node 26.
+The `portable-v1` profile and schema remain unchanged. These Node 26 root
+routes remain a source-only draft: qualification of the exact Docs `0.6.2`
+closure and installed mandatory runner remains pending, including fresh
+strict frozen Node 24/26 installations under pnpm 11.20.0, Foundation and Docs
+checks, and the complete mandatory gates. This mapping declares no managed
+cohort binding, production qualification or release eligibility.
+
+`pnpm quality:critical:test` runs the existing source dependency and quality
+activation entries through `agent-teams-node-test`. Its consumer checker binds
+the complete selected file command and the SHA-256 of the reviewed required
+identity contract. Fast and full gates execute this route; other tests retain
+their existing Node runners. The consumer inventory has no OS exceptions.
+Disposable regressions reject missing identities, skip, todo, late failure,
+removed selected files and changed contracts, and exercise an exact Windows-only
+fixture exception on POSIX.
+
+| Installed mechanism | Applicability and enforcement | Command |
+| --- | --- | --- |
+| Root runtime and committed peers | Dependency-free preflight; explicit strict policy typecheck and tests in full/fast gates; committed peer validation after frozen installation | `pnpm runtime:preflight`, `pnpm lockfile:peers:check`, `pnpm runtime:policy:typecheck`, `pnpm runtime:policy:test` |
+| Source dependencies v3 | Root development tooling, Core, Assembly, lifecycle kernel, resources and conformance; preserve declared roots, generated output and dependency budgets | `pnpm foundation:check` |
+| Source coverage and typed quality | All declared compiler projects; missing inputs fail; the default unknown assertion bridge gate remains active with no admissions | `pnpm quality:coverage:scope`, `pnpm lint:typed` |
+| Suppression governance | All five production source roots, no waivers | `pnpm foundation:check` |
+| Required Node execution | Nine critical identities in two existing files; complete selected file list is bound | `pnpm quality:critical:test` |
+| Documentation, decisions, workflow and dependency declarations | Existing installed profiles and repository routes remain active | `pnpm foundation:check`, `pnpm docs:protocol:check` |
+| Public API compatibility | Existing v1 profiles and released baselines; baseline mutation guard retained | `pnpm foundation:check`, `pnpm release-owned-files:check` |
+| SDK growth authority | Current installed verifier and disposable qualification; activation remains pending without external authority | `pnpm sdk-growth:check` |
+| JSON schema release evolution and executable specifications | No installed release profile/catalog adopted; current immutable contracts use their existing owner gates | `pnpm contracts:check`, `pnpm governance:check` |
+| Protobuf, property testing and repository security capabilities | No adopted capability profiles; no protobuf production root or property-testing toolchain is declared | Review `foundation.config.yaml` and `package.json` |
+| Scaffolding, local mode and native managed processes | No requested scaffold owner, native boundary or managed adapter; registry mode remains required | `pnpm foundation:assert-registry` |
 
 The gate resolves the checked-in `foundation:check` script to that actual
 Foundation command, so replacing the script with a successful no-op cannot

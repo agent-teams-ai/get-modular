@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "../..",
+    "noEmit": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "isolatedDeclarations": false,
+    "skipLibCheck": false
+  },
+  "files": [
+    "tests/types.ts",
+    "../../tests/resources/assembly-types.ts"
+  ],
+  "include": []
+}

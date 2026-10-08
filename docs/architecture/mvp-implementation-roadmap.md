@@ -214,6 +214,32 @@ exists until the first package introduces it. Update the exact script chain
 and its guard together as the current contract requires; never mark a future
 command or absent subject as passed.
 
+CI runs Core, Assembly, packaging, governance and static lanes in independent
+checkouts on each of Ubuntu, macOS and Windows. Node 24.21.0 remains the default
+through `.node-version`; candidate Node 26.10.0 jobs use the same five-lane
+matrix on all three operating systems. Every checkout performs strict frozen
+installation with lifecycle scripts disabled, followed by
+`pnpm lockfile:peers:check`. Each lane runs pure runtime preflight and governance
+before explicit builds; later checks retain the builds of Assembly and every
+leaf package. The governance lane retains the ownership checkpoint before
+runtime preflight, then explicitly runs runtime policy typechecking and tests
+before governance preparation.
+
+The required `check (ubuntu-24.04)`, `check (macos-15)` and
+`check (windows-2025)` aggregates and their corresponding Node 26 aggregates
+require every lane to succeed, including rejection of skipped dependencies. The
+[lane parity tests](../../tests/ci-check-lanes.test.mjs) retain every original
+command-chain obligation as an independent oracle, add the explicit peer and
+policy obligations, validate both runtime selections, and exercise the shell
+failure boundary in disposable TEST fixtures. This is private CI tooling;
+production composition retains its existing contract. Complete OS qualification
+and measured acceleration require CI evidence on the exact head.
+
+The Node 26 root routes remain source-only drafts. Full qualification of the
+exact Docs Protocol 0.6.2 `portable-v1` closure and installed mandatory runner
+remains pending. Configured routes and public archive tests do not confer
+production tooling qualification, a managed cohort binding or release authority.
+
 A phase's implementation is complete only when its scoped behavior and focused
 checks pass. A milestone is complete only when its actual subject passes the
 full applicable exit gate. A merged algorithm slice can therefore be complete
@@ -796,10 +822,10 @@ smaller split would make it unverifiable.
    maps the organization standard ([canonical document](https://github.com/agent-teams-ai/.github/blob/eef92e7fd40f538b4e9ba03e01bbd4e2d23f12f2/docs/architecture/feature-module-standard/v1.md),
    revision `eef92e7`). Keep domain semantics independent from Foundation,
    Docs Protocol, DI containers and plugin runtime types.
-2. Preserve ADR-0003's public development-only
-   `@get-modular/conformance` identity without creating an empty package. Its
-   substantive vectors, fixtures and packed-consumer tooling may be published
-   after their surface gate; runner, subject, report and attestation contracts
+2. ADR-0033 admits ADR-0003's `@get-modular/conformance` identity as public
+   development tooling for module authors and contract owners. Get Modular's
+   own vectors, fixtures and packed-consumer qualification stay in
+   `tests/qualification`; runner, subject, report and attestation contracts
    remain private until a separate compatibility decision accepts them.
 3. Freeze one public export map only after the first substantive compiler behavior is
    present. `ModuleDeclaration`, `CompositionProfile`, `CompositionPlan`,
@@ -896,6 +922,12 @@ discovery or a second identity authority.
    compatibility and closed profile rules.
 
 ### Capability evolution and namespace admission
+
+For contracts declared with Assembly's builder, the Consumer Module Standard
+sections [Module packages and contracts](common-assembly.md#module-packages-and-contracts)
+and [Identity and namespaces](common-assembly.md#identity-and-namespaces) take
+precedence ([ADR-0032](../decisions/0032-give-assembly-an-authoring-builder-and-capability-scoped-handles.md));
+the decision for the next wire generation replaces items 2-4.
 
 Exact compatibility deliberately makes migration explicit. It does not require
 a flag-day deployment:
@@ -1249,8 +1281,9 @@ envelope.
 
 ### Phase 5 implementation
 
-1. Keep implementation-independent vectors and fixtures in the development-only
-   conformance package. Accepted contracts, ledgers and independently owned
+1. Keep implementation-independent vectors and fixtures in `tests/qualification`;
+   the conformance package is module-author and contract-owner tooling (ADR-0033).
+   Accepted contracts, ledgers and independently owned
    vectors are authority; packed Core is only the subject under test. Runner,
    report, attestation and promotion surfaces remain private and unclaimed until
    an accepted compatibility and custody decision defines them.

@@ -1,4 +1,4 @@
-import type { AssemblyOutcome, CreatedEntry, ReturnedProduct, RootInstances, RunErrorCode, RunOptions } from "./types.js";
+import type { AssemblyOutcome, CreatedEntry, FactoryContext, ReturnedProduct, RootInstances, RunErrorCode, RunOptions } from "./types.js";
 import type { CommitCreated, Metadata, Program } from "./ports.js";
 import { SnapshotFault, data, record } from "./snapshot.js";
 
@@ -75,6 +75,45 @@ function rootInstances<R>(program: Readonly<Program>, createdById: ReadonlyMap<s
   }
   return Object.freeze(roots) as RootInstances<R>;
 }
+// Every input is checked before the first factory. Values stay opaque and borrowed:
+// only data descriptors are read, so no accessor runs and nothing is frozen.
+function admitInputs(program: Program, value: unknown): ReadonlyMap<string, CreatedEntry> | SnapshotFault {
+  const supplied = new Map<string, CreatedEntry>();
+  try {
+    if (program.inputs.length === 0 && value === undefined) {return supplied;}
+    const given = record(value, program.inputs.map((entry) => entry.alias));
+    for (const { alias, metadata } of program.inputs) {
+      const capabilities = data(given, alias);
+      supplied.set(metadata.declaration.implementationId, snapshotProduct({ instance: capabilities, capabilities }, metadata));
+    }
+  } catch (cause) {
+    if (cause instanceof SnapshotFault) {return cause;}
+    throw cause;
+  }
+  return supplied;
+}
+type Invocation =
+  | { readonly kind: "returned"; readonly product: unknown }
+  | { readonly kind: "failed"; readonly code: RunErrorCode; readonly cause: unknown };
+// One factory call and its carrier observation, kept apart so runAttempt stays within the complexity limit.
+async function invokeFactory(step: Program["steps"][number], dependencies: Readonly<Record<string, unknown>>,
+  context: FactoryContext): Promise<Invocation> {
+  let carrier: unknown;
+  try {
+    carrier = step.metadata.factory(dependencies, context);
+  } catch (cause) {
+    return { kind: "failed", code: "assembly.run.factory-threw", cause };
+  }
+  let settlement: Settlement;
+  try {
+    ({ settlement } = await observe(carrier));
+  } catch (cause) {
+    return { kind: "failed", code: "assembly.run.unsupported-carrier", cause };
+  }
+  if (settlement.kind === "rejected") {return { kind: "failed", code: "assembly.run.factory-rejected", cause: settlement.cause };}
+  if (settlement.kind === "unsupported") {return { kind: "failed", code: "assembly.run.unsupported-carrier", cause: settlement.cause };}
+  return { kind: "returned", product: settlement.product };
+}
 export async function runAttempt<R>(
   program: Program, options: RunOptions | undefined, commit: CommitCreated,
 ): Promise<AssemblyOutcome<R>> {
@@ -83,7 +122,7 @@ export async function runAttempt<R>(
   let signal: AbortSignal | undefined;
   let current: string | undefined;
   let returned: ReturnedProduct | undefined;
-  const failed = (phase: "factory" | "completion" | "internal", code: RunErrorCode, cause: unknown): AssemblyOutcome<R> => Object.freeze({
+  const failed = (phase: "inputs" | "factory" | "completion" | "internal", code: RunErrorCode, cause: unknown): AssemblyOutcome<R> => Object.freeze({
     status: "failed", phase, code, cause, implementationId: current, returned,
     created: Object.freeze(journal),
     cancellation: signal?.aborted === true ? Object.freeze({ reason: signal.reason as unknown }) : undefined,
@@ -99,34 +138,26 @@ export async function runAttempt<R>(
   try {
     const activeSignal = options?.signal ?? new AbortController().signal;
     signal = activeSignal;
-    const context = Object.freeze({ signal: activeSignal });
+    const context: FactoryContext = Object.freeze({ signal: activeSignal, scope: options?.scope });
     const cancelledBeforeRun = cancelledIfAborted(activeSignal);
     if (cancelledBeforeRun !== undefined) {return cancelledBeforeRun;}
+    const supplied = admitInputs(program, options?.inputs);
+    if (supplied instanceof SnapshotFault) {return failed("inputs", "assembly.run.invalid-inputs", supplied);}
     for (const step of program.steps) {
       const implementationId = step.metadata.declaration.implementationId;
       current = implementationId;
       const cancelledBeforeFactory = cancelledIfAborted(activeSignal);
       if (cancelledBeforeFactory !== undefined) {return cancelledBeforeFactory;}
-      const dependencies = dependenciesFor(step, capability);
-      let carrier: unknown;
-      try {
-        carrier = step.metadata.factory(dependencies, context);
-      } catch (cause) {
-        return failed("factory", "assembly.run.factory-threw", cause);
-      }
-      let settlement: Settlement;
-      try {
-        ({ settlement } = await observe(carrier));
-      } catch (cause) {
-        return failed("factory", "assembly.run.unsupported-carrier", cause);
-      }
-      if (settlement.kind === "rejected") {return failed("factory", "assembly.run.factory-rejected", settlement.cause);}
-      if (settlement.kind === "unsupported") {return failed("factory", "assembly.run.unsupported-carrier", settlement.cause);}
+      const input = supplied.get(implementationId);
+      // A borrowed input provides capabilities but never enters `created`.
+      if (input !== undefined) { createdById.set(implementationId, input); continue; }
+      const invoked = await invokeFactory(step, dependenciesFor(step, capability), context);
+      if (invoked.kind === "failed") {return failed("factory", invoked.code, invoked.cause);}
       // Retain the raw fulfillment before inspecting any part of the product.
-      returned = Object.freeze({ implementationId, product: settlement.product });
+      returned = Object.freeze({ implementationId, product: invoked.product });
       let entry: CreatedEntry;
       try {
-        entry = snapshotProduct(settlement.product, step.metadata);
+        entry = snapshotProduct(invoked.product, step.metadata);
       } catch (cause) {
         if (cause instanceof SnapshotFault) {return failed("completion", "assembly.run.invalid-product", cause);}
         throw cause;

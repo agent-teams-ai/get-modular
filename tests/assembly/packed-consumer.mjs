@@ -6,7 +6,7 @@ import * as assembly from "@get-modular/assembly";
 import * as core from "@get-modular/core";
 
 const require = createRequire(import.meta.url);
-assert.deepEqual(Object.keys(assembly).sort(), ["AssemblyBindingError", "assemblyFor"]);
+assert.deepEqual(Object.keys(assembly).sort(), ["AssemblyBindingError", "assemblyFor", "declareModule", "defineContract"]);
 assert.deepEqual(Object.keys(core).sort(), ["compileComposition", "compileCompositionJson", "defineModule", "many", "optional", "required"]);
 for (const [name, namespace] of [["@get-modular/assembly", assembly], ["@get-modular/core", core]]) {
   assert.equal(require(name), namespace);

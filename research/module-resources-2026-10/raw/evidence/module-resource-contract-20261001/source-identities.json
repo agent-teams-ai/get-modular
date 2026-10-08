@@ -1,0 +1,16 @@
+{
+  "getModularCommit": "9c722ceff4ede307d06d7a4b63fdebe615f54c53",
+  "arSourceScaffold": "c9b8efe485e2736bbaba4e9c47914fe3ac849b8a",
+  "arCleanupMerged": "b0bcb265d1466da3272078f9dfdb7c6784624283",
+  "role": "retained source evidence and proposal only, not adopted package",
+  "files": {
+    "engineering-quality-standard.md": "e97a2d9f5ec7d05f9a515c28df38fb921c5048d4e2cab850561717f7dedff5d7",
+    "common-assembly.md": "33b41d5babf0a431c97e8e596a56e6ec1557ba1a0b26d39bf23e13d9a19e1fbd",
+    "ADR-0028.md": "6edd5c84db53f63525f03df6da21f6b4da284b770cbc727f7a4ed8e170551973",
+    "lifecycle-kernel-README.md": "f2d7ea848d6cf1ac6b84fccc3cbc51f488c51f37c36c3a3d9b3e958193de57f6",
+    "ownership-contract.d.ts": "b69c3dbfe5f81d3e344cf48ebed07efb6eaf01b93756891a2cddbf97cddca88d",
+    "research-20260930.md": "9222105cd36f330d371a1e5125b9d8b218a6179e5ac31b246bd7658e8f19c1fc",
+    "ADR-0029.md": "9247eb2c2eb70cbbc215426446101314b1085d1d03fee02b6dc0467a737eac00",
+    "industry-primary-sources.txt": "fca33ac8f39fd3eac1d09b51ae914d9b7039f7226db5069dc6ba213c67b3d6d7"
+  }
+}

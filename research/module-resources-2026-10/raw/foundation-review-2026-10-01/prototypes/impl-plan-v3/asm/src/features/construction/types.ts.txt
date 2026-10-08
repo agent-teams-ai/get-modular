@@ -1,0 +1,225 @@
+import type { CompileCompositionResult, CompositionPlan, Diagnostic, ModuleDeclaration, PlanDigest } from "@get-modular/core";
+
+export type CapabilityContract<Value, Token extends string> = {
+  readonly value: Value;
+  readonly compatibility: { readonly family: "exact"; readonly familyVersion: 1; readonly token: Token; };
+};
+export type CapabilitySchema<C> = { readonly [K in keyof C]: CapabilityContract<unknown, string> };
+
+declare const uses: unique symbol;
+declare const detail: unique symbol;
+declare const input: unique symbol;
+declare const contractEntry: unique symbol;
+declare const contractValue: unique symbol;
+
+// ---- authoring builder (train 1 emits the current wire generation; train 2 changes only contract.ts) ----
+export type Cardinality = ModuleDeclaration["slots"][number]["cardinality"];
+/** Wire compatibility of one contract revision. Private to the wire generation: authors never spell it. */
+export type ContractCompatibility<Id extends string, Rev extends number> = {
+  readonly family: "exact"; readonly familyVersion: 1; readonly token: `${Id}/r${Rev}`;
+};
+export type ProvidedEntry<Id extends string, Rev extends number> = {
+  readonly capabilityId: Id;
+  readonly compatibility: ContractCompatibility<Id, Rev>;
+  /** Type-only: the entry was produced by a contract descriptor, never written by hand. */
+  readonly [contractEntry]: true;
+};
+export type SlotEntry<Id extends string, Rev extends number, S extends string, K extends Cardinality> = {
+  readonly slotId: S;
+  readonly capabilityId: Id;
+  readonly compatibility: ContractCompatibility<Id, Rev>;
+  readonly cardinality: K;
+  readonly [contractEntry]: true;
+};
+/** One descriptor per capability, owned by the contract owner. */
+export type Contract<Id extends string, V, Rev extends number> = {
+  readonly id: Id;
+  readonly revision: Rev;
+  readonly provide: () => ProvidedEntry<Id, Rev>;
+  readonly slot: <const S extends string, const K extends Cardinality>(slotId: S, cardinality: K) => SlotEntry<Id, Rev, S, K>;
+  /** Type-only: the capability value at this revision. */
+  readonly [contractValue]?: V;
+};
+export type AnyContract = Contract<string, unknown, number>;
+/** The capability map of a module, a fragment or a Host, derived from descriptors instead of written by hand. */
+export type CapabilitiesOf<T extends AnyContract> = {
+  readonly [Id in T["id"]]: T extends { readonly id: Id; readonly revision: infer Rev extends number; readonly [contractValue]?: infer V }
+    ? CapabilityContract<V, `${Id}/r${Rev}`> : never;
+};
+export type DeclarationSpec = {
+  readonly moduleId: string;
+  readonly implementationId: string;
+  readonly owner: ModuleDeclaration["owner"];
+  readonly provides: readonly ProvidedEntry<string, number>[];
+  readonly slots: readonly SlotEntry<string, number, string, Cardinality>[];
+  /** declareModule() supplies the wire discriminators; a spec never carries them. */
+  readonly kind?: never;
+  readonly schemaVersion?: never;
+};
+export type Declared<T extends DeclarationSpec> = T & {
+  readonly kind: "get-modular.module-declaration";
+  readonly schemaVersion: 1;
+};
+
+// ---- handles: invariant only in the capabilities a declaration uses ----
+type UsedCapability<D extends ModuleDeclaration> = D["provides"][number]["capabilityId"] | D["slots"][number]["capabilityId"];
+/** A named alias, so handles that use the same capabilities share one brand instantiation (measured: ~20% less check time). */
+type CapabilityBrand<C, K extends keyof C> = { readonly [P in K]: (capability: C[P]) => C[P] };
+export type FactoryHandle<C, D extends ModuleDeclaration = ModuleDeclaration, I = unknown> = {
+  readonly [uses]: CapabilityBrand<C, UsedCapability<D> & keyof C>;
+  readonly [detail]: { readonly declaration: D; readonly instance: I };
+};
+/** A factory handle that a map C accepts: every used capability has the identical contract in C. */
+export type AnyFactoryHandle<C> = {
+  readonly [uses]: { readonly [K in keyof C]?: (capability: C[K]) => C[K] };
+  readonly [detail]: { readonly declaration: ModuleDeclaration; readonly instance: unknown };
+  readonly [input]?: never;
+};
+export type RootHandles<C> = Readonly<Record<string, AnyFactoryHandle<C>>>;
+export type RootInstances<R> = {
+  readonly [K in keyof R]: R[K] extends { readonly [detail]: { readonly instance: infer I } } ? I : never;
+};
+
+export type IsUnion<T, Whole = T> = T extends Whole ? [Whole] extends [T] ? false : true : never;
+export type ValidDeclaration<C, D extends ModuleDeclaration> =
+  true extends IsUnion<D> | IsUnion<D["slots"]> | IsUnion<D["provides"]>
+    | (D["slots"] extends infer Slots extends readonly unknown[]
+      ? { [K in keyof Slots]: IsUnion<Slots[K]> }[number]
+      : never)
+    | (D["provides"] extends infer Provides extends readonly unknown[]
+      ? { [K in keyof Provides]: IsUnion<Provides[K]> }[number]
+      : never) ? never :
+  number extends D["provides"]["length"] | D["slots"]["length"] ? never
+    : [(
+      D["provides"][number] | D["slots"][number] extends infer P
+        ? P extends { readonly capabilityId: infer K extends string; readonly compatibility: infer T }
+          ? string extends K ? P
+            : true extends IsUnion<K> ? P
+            : K extends keyof C
+              ? [T, (K extends keyof C ? C[K] extends { readonly compatibility: infer Compat } ? Compat : never : never)] extends
+                [(K extends keyof C ? C[K] extends { readonly compatibility: infer Compat } ? Compat : never : never), T]
+                ? never : P
+              : P
+          : P
+        : never
+    ) | (
+      D["slots"][number] extends infer S
+        ? S extends { readonly slotId: infer K extends string; readonly cardinality: { readonly kind: infer Q } }
+          ? string extends K ? S : true extends IsUnion<K> | IsUnion<Q> ? S : never
+          : S
+        : never
+    )] extends [never] ? unknown : never;
+export type FactoryCapabilities<C, D extends ModuleDeclaration> = {
+  readonly [P in D["provides"][number] as P["capabilityId"]]: P["capabilityId"] extends keyof C
+    ? C[P["capabilityId"]] extends { readonly value: infer V } ? V : never
+    : never;
+};
+export type FactoryDependencies<C, D extends ModuleDeclaration> = {
+  readonly [S in D["slots"][number] as S["slotId"]]: S["cardinality"]["kind"] extends "many"
+    ? readonly (S["capabilityId"] extends keyof C
+      ? C[S["capabilityId"]] extends { readonly value: infer V } ? V : never
+      : never)[]
+    : S["cardinality"]["kind"] extends "optional"
+      ? (S["capabilityId"] extends keyof C
+        ? C[S["capabilityId"]] extends { readonly value: infer V } ? V : never
+        : never) | undefined
+      : S["capabilityId"] extends keyof C
+        ? C[S["capabilityId"]] extends { readonly value: infer V } ? V : never
+        : never;
+};
+/** Lifetime only. `scope` is opaque: Assembly never reads, awaits, freezes or disposes it. */
+export type FactoryContext = { readonly signal: AbortSignal; readonly scope: unknown };
+export type FactoryProduct<I, P> = { readonly instance: I; readonly capabilities: P };
+/**
+ * One named factory type for module packages. C is the module's own contract map (for example
+ * CapabilitiesOf<typeof Db | typeof Orders>), never the Host's; X is the context the factory reads.
+ */
+export type ModuleFactory<C, D extends ModuleDeclaration, I, X = FactoryContext> =
+  (dependencies: FactoryDependencies<C, D>, context: X) => Promise<FactoryProduct<I, FactoryCapabilities<C, D>>>;
+
+/** A slot-free module whose capability values each run supplies. */
+export type InputHandle<C, D extends ModuleDeclaration = ModuleDeclaration> =
+  FactoryHandle<C, D, FactoryCapabilities<C, D>> & { readonly [input]: true };
+export type AnyInputHandle<C> = {
+  readonly [uses]: { readonly [K in keyof C]?: (capability: C[K]) => C[K] };
+  readonly [detail]: { readonly declaration: ModuleDeclaration; readonly instance: unknown };
+  readonly [input]: true;
+};
+export type InputHandles<C> = Readonly<Record<string, AnyInputHandle<C>>>;
+export type RunInputs<N> = {
+  readonly [K in keyof N]: N[K] extends { readonly [detail]: { readonly instance: infer I } } ? I : never;
+};
+
+type UsedKeysOf<H> = H extends { readonly [uses]: infer U } ? keyof U : never;
+/** Every capability any handle uses must be part of the preparing map C (its contract is compared by AnyFactoryHandle). */
+export type KnownCapabilities<C, F extends readonly unknown[], N> =
+  [Exclude<UsedKeysOf<F[number]> | UsedKeysOf<N[keyof N]>, keyof C>] extends [never]
+    ? unknown
+    : { readonly "capabilities missing from the preparing map": Exclude<UsedKeysOf<F[number]> | UsedKeysOf<N[keyof N]>, keyof C> };
+
+export type SuccessfulComposition = Extract<CompileCompositionResult, { readonly plan: CompositionPlan; readonly digest: PlanDigest }>;
+export type AssemblyPrepareInput<C, F extends readonly AnyFactoryHandle<C>[], R extends RootHandles<C>, N extends InputHandles<C> = {}> = {
+  readonly composition: SuccessfulComposition;
+  readonly factories: F & KnownCapabilities<C, F, N>;
+  readonly roots: R;
+  readonly inputs?: N | undefined;
+};
+export type RunOptions<N = {}> = {
+  readonly signal?: AbortSignal | undefined;
+  readonly scope?: unknown;
+  readonly inputs?: RunInputs<N> | undefined;
+};
+export type CreatedEntry = {
+  readonly moduleId: string;
+  readonly implementationId: string;
+  readonly instance: unknown;
+  readonly capabilities: Readonly<Record<string, unknown>>;
+};
+export type ReturnedProduct = { readonly implementationId: string; readonly product: unknown };
+export type ObservedCancellation = { readonly reason: unknown };
+export type RunErrorCode =
+  | "assembly.run.factory-threw" | "assembly.run.unsupported-carrier"
+  | "assembly.run.factory-rejected" | "assembly.run.invalid-product" | "assembly.run.internal"
+  | "assembly.run.invalid-inputs";
+export type AssemblyOutcome<R> =
+  | { readonly status: "succeeded"; readonly roots: RootInstances<R>; readonly created: readonly CreatedEntry[] }
+  | { readonly status: "cancelled"; readonly reason: unknown; readonly created: readonly CreatedEntry[] }
+  | {
+    readonly status: "failed";
+    readonly phase: "inputs" | "factory" | "completion" | "internal";
+    readonly code: RunErrorCode;
+    readonly implementationId: string | undefined;
+    readonly cause: unknown;
+    readonly created: readonly CreatedEntry[];
+    readonly returned: ReturnedProduct | undefined;
+    readonly cancellation: ObservedCancellation | undefined;
+  };
+export type PreparedAssembly<R, N = {}> = {
+  readonly run: (...options: {} extends N
+    ? [options?: RunOptions<N>]
+    : [options: RunOptions<N> & { readonly inputs: RunInputs<N> }]) => Promise<AssemblyOutcome<R>>;
+};
+export type PreparationErrorCode =
+  | "assembly.prepare.invalid-input" | "assembly.prepare.limit"
+  | "assembly.prepare.handles" | "assembly.prepare.roots"
+  | "assembly.prepare.core-rejected" | "assembly.prepare.plan-mismatch" | "assembly.prepare.inputs";
+export type AssemblyPreparationResult<R, N = {}> =
+  | { readonly status: "prepared"; readonly prepared: PreparedAssembly<R, N> }
+  | {
+    readonly status: "failed";
+    readonly error: { readonly code: PreparationErrorCode; readonly cause: unknown };
+    readonly diagnostics: readonly Diagnostic[];
+  };
+export type BindingErrorCode = "assembly.bind.invalid-declaration" | "assembly.bind.limit" | "assembly.bind.invalid-factory";
+export type Assembly<C> = {
+  readonly bindFactory: <const D extends ModuleDeclaration, I>(
+    declaration: D & ValidDeclaration<C, NoInfer<D>>,
+    factory: (dependencies: FactoryDependencies<C, NoInfer<D>>, context: FactoryContext) => Promise<FactoryProduct<I, FactoryCapabilities<C, NoInfer<D>>>>,
+  ) => FactoryHandle<C, D, I>;
+  readonly bindInput: <const D extends ModuleDeclaration & { readonly slots: readonly [] }>(
+    declaration: D & ValidDeclaration<C, NoInfer<D>>,
+  ) => InputHandle<C, D>;
+  readonly prepare: <const F extends readonly AnyFactoryHandle<C>[], const R extends RootHandles<C>, const N extends InputHandles<C> = {}>(
+    input: AssemblyPrepareInput<C, F, R, N>,
+  ) => Promise<AssemblyPreparationResult<R, N>>;
+};

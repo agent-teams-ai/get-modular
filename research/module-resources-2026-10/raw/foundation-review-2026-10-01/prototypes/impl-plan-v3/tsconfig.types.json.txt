@@ -1,0 +1,4 @@
+{ "compilerOptions": { "strict": true, "noEmit": true, "target": "ES2024", "module": "NodeNext", "moduleResolution": "NodeNext",
+  "lib": ["ES2024", "ESNext.Disposable", "ESNext.Promise", "DOM"], "types": [], "allowImportingTsExtensions": true,
+  "exactOptionalPropertyTypes": true, "noUncheckedIndexedAccess": true, "verbatimModuleSyntax": true, "skipLibCheck": false },
+  "files": ["types-fixture.ts", "builder-fixture.ts"] }

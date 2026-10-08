@@ -1,0 +1,11 @@
+{
+  "repo": "https://github.com/agent-teams-ai/modularity-host-test.git",
+  "localHead": "fcc10b2501420aacf9f904e976a4d230d3f02e68",
+  "classification": "explicit TEST consumer",
+  "files": {
+    "test-consumer__package.json": "1e9fed16e36263fe72ca27ae5b99a480f883986aa567cc8ddfe9fb47bd956685",
+    "test-consumer__AGENTS.md": "813f6dbd4118b5f037cc57d5bf9a2f8914d185272261e21b7e3e6959ad41e636",
+    "test-consumer__README.md": "c1037f5510df600515654d7e0a3f46a75484e2de3adc9636626caee2b7dccb30",
+    "test-consumer__docs__lifecycle-kernel-l2c1.md": "2b40a4a3fcda076462085057e898a9f70cf1054bd95ae7e4eb5f8cbe5c0ccb46"
+  }
+}

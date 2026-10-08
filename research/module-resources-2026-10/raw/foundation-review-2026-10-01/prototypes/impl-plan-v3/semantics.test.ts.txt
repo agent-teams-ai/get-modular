@@ -1,0 +1,285 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { getEventListeners } from "node:events";
+import { createScope, CloseIncompleteError, ScopeClosedError } from "./res/index.ts";
+
+const code = (expected: string) => (error: unknown) => (error as { code?: unknown }).code === expected;
+
+const tick = () => new Promise<void>(resolve => setImmediate(resolve));
+function deferred<T = void>() {
+  let resolve!: (value: T) => void; let reject!: (e: unknown) => void;
+  const promise = new Promise<T>((a, b) => { resolve = a; reject = b; });
+  return { promise, resolve, reject };
+}
+
+test("1 LIFO slot at fulfil: nested setup closes after its owner", async () => {
+  const { resources, control } = createScope({ name: "m" });
+  const log: string[] = [];
+  await resources.setup({
+    name: "subscription",
+    setup: async () => {
+      await resources.setup({ name: "conn", setup: async () => "c", cleanup: () => { log.push("conn"); } });
+      return "s";
+    },
+    cleanup: () => { log.push("subscription"); },
+  });
+  assert.equal((await control.close()).complete, true);
+  assert.deepEqual(log, ["subscription", "conn"]);
+});
+
+test("2 throw does not skip the rest; cause preserved; repeated close retries only the failed entry", async () => {
+  const { resources, control } = createScope({ name: "m" });
+  const log: string[] = [];
+  const boom = new Error("boom");
+  let bCalls = 0;
+  resources.use({ [Symbol.dispose]: () => { log.push("a"); } }, "a");
+  resources.use({ [Symbol.dispose]: () => { bCalls += 1; if (bCalls === 1) throw boom; log.push("b"); } }, "b"); // sync throw
+  resources.use({ [Symbol.asyncDispose]: async () => { log.push("c"); } }, "c");
+  const first = await control.close();
+  assert.deepEqual(log, ["c", "a"]);
+  assert.deepEqual(first.debts, [{ path: ["m", "b"], state: "failed", cause: boom }]);
+  assert.equal(first.debts[0]!.cause, boom);
+  const second = await control.close();
+  assert.equal(second.complete, true);
+  assert.equal(bCalls, 2);
+  assert.deepEqual(log, ["c", "a", "b"]);
+});
+
+test("3 single flight: close and asyncDispose join; neither resolves early", async () => {
+  const { resources, control } = createScope({ name: "m" });
+  const gate = deferred();
+  let calls = 0;
+  resources.use({ [Symbol.asyncDispose]: async () => { calls += 1; await gate.promise; } }, "slow");
+  const order: string[] = [];
+  const first = control.close().then(() => order.push("close"));
+  const second = control[Symbol.asyncDispose]().then(() => order.push("dispose"));
+  await tick();
+  assert.deepEqual(order, []);
+  gate.resolve();
+  await Promise.all([first, second]);
+  assert.equal(calls, 1);
+});
+
+test("4 close() from inside a synchronous cleanup returns the same flight", async () => {
+  const { resources, control } = createScope({ name: "m" });
+  let inner: Promise<unknown> | undefined;
+  let calls = 0;
+  resources.use({ [Symbol.dispose]: () => { calls += 1; inner = control.close(); } }, "self");
+  const outer = control.close();
+  assert.equal(inner, outer);
+  await outer;
+  assert.equal(calls, 1);
+});
+
+test("5 close waits for a started setup; late value released; author gets ScopeClosedError; no unhandled", async () => {
+  const unhandled: unknown[] = [];
+  const onUnhandled = (reason: unknown) => { unhandled.push(reason); };
+  process.on("unhandledRejection", onUnhandled);
+  try {
+    const { resources, control } = createScope({ name: "m" });
+    const gate = deferred<string>();
+    const log: string[] = [];
+    const author = resources.setup({ name: "late", setup: () => gate.promise, cleanup: v => { log.push(`clean:${v}`); } });
+    const closing = control.close();
+    gate.resolve("v");
+    const report = await closing;
+    assert.deepEqual(log, ["clean:v"]);
+    assert.equal(report.complete, true);
+    await tick(); await tick();
+    assert.deepEqual(unhandled, []);
+    await assert.rejects(author, code("resources.scope.closed"));
+  } finally { process.off("unhandledRejection", onUnhandled); }
+});
+
+test("6 after close is requested nothing new is accepted: setup not called, use() keeps custody with the caller, child throws", async () => {
+  for (const state of ["detached", "closing", "closed-with-debt"] as const) {
+    const { resources, control } = createScope({ name: "m" });
+    const gate = deferred();
+    if (state === "closing") resources.use({ [Symbol.asyncDispose]: () => gate.promise }, "slow");
+    if (state === "closed-with-debt") resources.use({ [Symbol.dispose]: () => { throw new Error("x"); } }, "bad");
+    const closing = control.close();
+    if (state !== "closing") await closing;
+    let invoked = false;
+    await assert.rejects(resources.setup({ name: "late", setup: () => { invoked = true; }, cleanup: () => {} }), code("resources.scope.closed"));
+    assert.equal(invoked, false);
+    let released = 0;
+    assert.throws(() => resources.use({ [Symbol.dispose]: () => { released += 1; } }, "late"), code("resources.scope.closed"));
+    assert.throws(() => resources.child({ name: "late" }), code("resources.scope.closed"));
+    gate.resolve();
+    await closing; await control.close(); await tick();
+    assert.equal(released, 0, `${state}: refused value must stay with the caller`);
+  }
+});
+
+test("7 cleanup signal: not aborted by close alone, aborted by escalate; a later retry is soft again", async () => {
+  const { resources, control } = createScope({ name: "m" });
+  const seen: boolean[] = [];
+  const gate = deferred();
+  let first = true;
+  await resources.setup({ name: "slow", setup: () => 1, cleanup: async (_v, { escalate }) => {
+    seen.push(escalate.aborted);
+    if (first) { first = false; await gate.promise; seen.push(escalate.aborted); throw new Error("retry me"); }
+  } });
+  const escalate = new AbortController();
+  const closing = control.close({ escalate: escalate.signal });
+  await tick();
+  escalate.abort();
+  gate.resolve();
+  assert.equal((await closing).complete, false);
+  assert.equal((await control.close()).complete, true);
+  assert.deepEqual(seen, [false, true, false]);
+  assert.equal(resources.signal.aborted, true);
+});
+
+test("8 abandon is per caller: snapshot now, flight continues in order, patient caller gets the full result", async () => {
+  const { resources, control } = createScope({ name: "m" });
+  const log: string[] = [];
+  const gate = deferred();
+  let running = 0; let maxRunning = 0;
+  const enter = () => { running += 1; maxRunning = Math.max(maxRunning, running); };
+  resources.use({ [Symbol.dispose]: () => { enter(); log.push("a"); running -= 1; } }, "a");
+  resources.use({ [Symbol.asyncDispose]: async () => { enter(); log.push("b:start"); await gate.promise; log.push("b:end"); running -= 1; } }, "b");
+  const patient = control.close();
+  const abandon = new AbortController();
+  const hurried = control.close({ abandon: abandon.signal });
+  await tick();
+  abandon.abort();
+  const snapshot = await hurried;
+  assert.equal(snapshot.settled, false);
+  assert.deepEqual(snapshot.debts.map(d => [d.path.join("/"), d.state]), [["m/b", "pending"], ["m/a", "not-run"]]);
+  await tick();
+  assert.deepEqual(log, ["b:start"], "nothing starts while b runs");
+  gate.resolve();
+  const full = await patient;
+  assert.equal(full.complete, true);
+  assert.equal(full.settled, true);
+  assert.deepEqual(log, ["b:start", "b:end", "a"]);
+  assert.equal(maxRunning, 1);
+});
+
+test("9 the parent never moves past a child whose cleanup still runs, even if the child's own caller abandons", async () => {
+  const parent = createScope({ name: "p" });
+  const log: string[] = [];
+  const gate = deferred();
+  parent.resources.use({ [Symbol.dispose]: () => { log.push("conn"); } }, "conn");
+  const session = parent.resources.child({ name: "session" });
+  session.resources.use({ [Symbol.asyncDispose]: async () => { log.push("drain:start"); await gate.promise; log.push("drain:end"); } }, "drain");
+  const deadline = new AbortController();
+  const sessionClosing = session.control.close({ abandon: deadline.signal }); // Host per-session deadline
+  const parentClosing = parent.control.close();                               // shutdown without deadline
+  await tick();
+  deadline.abort();
+  assert.equal((await sessionClosing).complete, false);
+  await tick(); await tick();
+  assert.deepEqual(log, ["drain:start"]);
+  gate.resolve();
+  assert.equal((await parentClosing).complete, true);
+  assert.deepEqual(log, ["drain:start", "drain:end", "conn"]);
+});
+
+test("10 escalate reaches a self-closing grandchild through an idle child; root abandon returns at once", async () => {
+  const root = createScope({ name: "r" });
+  const child = root.resources.child({ name: "c" });
+  const grandchild = child.resources.child({ name: "g" });
+  const gate = deferred();
+  const seen: boolean[] = [];
+  grandchild.resources.use({ [Symbol.dispose]: () => {} }, "early");
+  await grandchild.resources.setup({ name: "slow", setup: () => 1, cleanup: async (_v, { escalate }) => { seen.push(escalate.aborted); await gate.promise; seen.push(escalate.aborted); } });
+  const gClosing = grandchild.control.close();            // closes on its own, no escalate
+  const top = deferred();
+  root.resources.use({ [Symbol.asyncDispose]: () => top.promise }, "top"); // keeps the root busy above the idle child c
+  await tick();
+  const escalate = new AbortController();
+  const abandon = new AbortController();
+  const rootClosing = root.control.close({ escalate: escalate.signal, abandon: abandon.signal });
+  escalate.abort();
+  abandon.abort();
+  const snapshot = await rootClosing;
+  assert.equal(snapshot.complete, false);
+  assert.deepEqual(snapshot.debts.map(d => [d.path.join("/"), d.state]), [["r/top", "pending"], ["r/c/g/slow", "pending"], ["r/c/g/early", "not-run"]]);
+  gate.resolve();
+  top.resolve();
+  assert.equal((await gClosing).complete, true);
+  assert.equal((await root.control.close()).complete, true);
+  assert.deepEqual(seen, [false, true]);
+});
+
+test("11 children never subscribe to parent signals; detached children leave the parent", async () => {
+  const parent = createScope({ name: "p" });
+  const live = Array.from({ length: 2000 }, (_, i) => parent.resources.child({ name: `s${i}` }));
+  assert.equal(getEventListeners(parent.resources.signal, "abort").length, 0);
+  for (const c of live) { c.resources.use({ [Symbol.dispose]: () => {} }, "r"); await c.control.close(); }
+  const bad = parent.resources.child({ name: "bad" });
+  bad.resources.use({ [Symbol.dispose]: () => { throw new Error("leak"); } }, "y");
+  assert.equal((await bad.control.close()).complete, false);
+  const report = await parent.control.close();
+  assert.deepEqual(report.debts.map(d => [d.path.join("/"), d.state]), [["p/bad/y", "failed"]]);
+});
+
+test("12 escalate listeners do not accumulate across Host retries", async () => {
+  const hostEscalate = new AbortController();
+  const s = createScope({ name: "m" });
+  s.resources.use({ [Symbol.dispose]: () => { throw new Error("stuck"); } }, "stuck");
+  for (let i = 0; i < 200; i += 1) await s.control.close({ escalate: hostEscalate.signal });
+  assert.equal(getEventListeners(hostEscalate.signal, "abort").length, 0);
+});
+
+test("13 asyncDispose throws CloseIncompleteError with the report", async () => {
+  const s = createScope({ name: "m" });
+  const x = new Error("x");
+  s.resources.use({ [Symbol.dispose]: () => { throw x; } }, "bad");
+  await assert.rejects(s.control[Symbol.asyncDispose](), (error: unknown) =>
+    error instanceof CloseIncompleteError && error.code === "resources.close.incomplete" && error.report.debts[0]!.state === "failed"
+    && (error.report.debts[0] as { cause: unknown }).cause === x && error.errors[0] === x);
+});
+
+test("14 order concurrent: peers released together, failures recorded, escalate reaches all", async () => {
+  const sessions = createScope({ name: "sessions", order: "concurrent" });
+  const gate = deferred();
+  let running = 0; let maxRunning = 0; const escalated: boolean[] = [];
+  for (let i = 0; i < 5; i += 1) {
+    const s = sessions.resources.child({ name: `s${i}` });
+    s.resources.setup({ name: "work", setup: () => i, cleanup: async (v, { escalate }) => {
+      running += 1; maxRunning = Math.max(maxRunning, running); await gate.promise; escalated.push(escalate.aborted); running -= 1;
+      if (v === 3) throw new Error("s3");
+    } });
+  }
+  await tick();
+  const escalate = new AbortController();
+  const closing = sessions.control.close({ escalate: escalate.signal });
+  await tick();
+  assert.equal(maxRunning, 5);
+  escalate.abort();
+  gate.resolve();
+  const report = await closing;
+  assert.deepEqual(report.debts.map(d => [d.path.join("/"), d.state]), [["sessions/s3/work", "failed"]]);
+  assert.deepEqual(escalated, [true, true, true, true, true]);
+});
+
+test("15 invalid arguments throw a coded TypeError before any state change; names are required", async () => {
+  const s = createScope({ name: "m" });
+  const bad = (error: unknown) => error instanceof TypeError && code("resources.argument.invalid")(error);
+  assert.throws(() => s.control.close({ escalate: new AbortController() as unknown as AbortSignal }), bad);
+  assert.throws(() => s.resources.use({ [Symbol.dispose]: () => {} }, undefined as unknown as string), bad);
+  assert.throws(() => s.resources.setup({ setup: () => 1, cleanup: () => {} } as never), bad);
+  assert.throws(() => s.resources.child({} as never), bad);
+  assert.throws(() => createScope({ name: "" }), bad);
+  assert.equal(s.resources.signal.aborted, false);
+  s.resources.use({ [Symbol.dispose]: () => {} }, "still-open");
+  assert.equal((await s.control.close()).complete, true);
+});
+
+test("16 no double debt between fulfil and pending removal", async () => {
+  for (let delay = 0; delay < 6; delay += 1) {
+    const s = createScope({ name: "m" });
+    const setup = deferred<string>();
+    s.resources.setup({ name: "conn", setup: () => setup.promise, cleanup: () => {} }).catch(() => {});
+    const abandon = new AbortController();
+    const closing = s.control.close({ abandon: abandon.signal });
+    setup.resolve("v");
+    let k = delay; const fire = () => { if (k-- === 0) abandon.abort(); else queueMicrotask(fire); }; queueMicrotask(fire);
+    const report = await closing;
+    assert.ok(report.debts.length <= 1, `delay ${delay}: ${JSON.stringify(report.debts.map(d => d.state))}`);
+    await s.control.close();
+  }
+});

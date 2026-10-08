@@ -126,6 +126,26 @@
       "id": "ADR-0029",
       "path": "docs/decisions/0029-admit-an-optional-lifecycle-kernel-candidate.md",
       "immutableDigest": "sha256:4162e78542ac053ee03e3b330880495ddd9ffd261c0a578fe100035bdf910d64"
+    },
+    {
+      "id": "ADR-0030",
+      "path": "docs/decisions/0030-admit-the-module-resource-scope-package.md",
+      "immutableDigest": "sha256:9ab491290ea3614714f6f3d17bb44ba31c578e37e68e8f68e87575567291c5c9"
+    },
+    {
+      "id": "ADR-0031",
+      "path": "docs/decisions/0031-pass-a-per-run-scope-and-declared-inputs-to-assembly-runs.md",
+      "immutableDigest": "sha256:6576e43b28adc8643a3443a84412096fe465f26ab6768215c9ac8947f5743a74"
+    },
+    {
+      "id": "ADR-0032",
+      "path": "docs/decisions/0032-give-assembly-an-authoring-builder-and-capability-scoped-handles.md",
+      "immutableDigest": "sha256:8d929a7f40c1864f3fc898e68700c51ea171bcf48ec9fa32a967d4d4d2e1066a"
+    },
+    {
+      "id": "ADR-0033",
+      "path": "docs/decisions/0033-admit-the-module-conformance-kit.md",
+      "immutableDigest": "sha256:41e6d18087f5fe147b5a843b37fa5be925fa2f87cb1dc83c949a80520e7dbeb5"
     }
   ]
 }

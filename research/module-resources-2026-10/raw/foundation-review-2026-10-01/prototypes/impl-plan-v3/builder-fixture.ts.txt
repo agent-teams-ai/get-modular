@@ -1,0 +1,110 @@
+// Authoring builder + capability-scoped handles (Assembly 0.3.0 candidate), compile-time only.
+import { required } from "@get-modular/core";
+import {
+  assemblyFor, declareModule, defineContract,
+  type CapabilitiesOf, type CapabilityContract, type ModuleFactory, type SuccessfulComposition,
+} from "./asm/dist/index.js";
+import { scoped, type ModuleContext } from "./res/index.ts";
+
+// ---- contract owners: one descriptor per capability ----
+type DbPort = { readonly query: (q: string) => number };
+type OrdersPort = { readonly list: () => number };
+type BillingPort = { readonly charge: (n: number) => void };
+const Db = defineContract<DbPort>()({ id: "acme/db", revision: 3 });
+const Orders = defineContract<OrdersPort>()({ id: "acme/orders", revision: 1 });
+const Billing = defineContract<BillingPort>()({ id: "acme/billing", revision: 2 });
+const SessionId = defineContract<string>()({ id: "acme/session-id", revision: 1 });
+const DbOld = defineContract<DbPort>()({ id: "acme/db", revision: 2 }); // a team still built against revision 2
+
+// ---- team "orders" (own repository): its own map, its own declarations and factories ----
+type OrdersCaps = CapabilitiesOf<typeof Db | typeof Orders>;
+const ordersDecl = declareModule({
+  moduleId: "acme/orders", implementationId: "acme/orders/default", owner: { authority: "acme", path: ["orders"] },
+  provides: [Orders.provide()], slots: [Db.slot("db", required())],
+});
+export const createOrders: ModuleFactory<OrdersCaps, typeof ordersDecl, { readonly n: number }, ModuleContext> =
+  async (deps, { resources }) => {
+    const n = await resources.setup({ name: "conn", setup: () => deps.db.query("x"), cleanup: () => {} });
+    return { instance: { n }, capabilities: { "acme/orders": { list: () => n } } };
+  };
+const ordersTeam = assemblyFor<OrdersCaps>();
+export const ordersHandle = ordersTeam.bindFactory(ordersDecl, scoped(ordersDecl.implementationId, createOrders));
+
+// ---- team "billing": a different subset ----
+type BillingCaps = CapabilitiesOf<typeof Billing>;
+const billingDecl = declareModule({
+  moduleId: "acme/billing", implementationId: "acme/billing/default", owner: { authority: "acme", path: ["billing"] },
+  provides: [Billing.provide()], slots: [],
+});
+export const billingHandle = assemblyFor<BillingCaps>().bindFactory(billingDecl, async () => ({
+  instance: 0, capabilities: { "acme/billing": { charge: (n: number) => { void n; } } },
+}));
+
+// ---- Host: derives its map from descriptors and assembles fragments it never re-binds ----
+type HostCaps = CapabilitiesOf<typeof Db | typeof Orders | typeof Billing | typeof SessionId>;
+const host = assemblyFor<HostCaps>();
+const dbDecl = declareModule({
+  moduleId: "acme/db", implementationId: "acme/db/pg", owner: { authority: "acme", path: ["db"] }, provides: [Db.provide()], slots: [],
+});
+const dbHandle = host.bindFactory(dbDecl, async () => ({ instance: 0, capabilities: { "acme/db": { query: () => 1 } } }));
+const sessionDecl = declareModule({
+  moduleId: "acme/session", implementationId: "acme/session/input", owner: { authority: "acme", path: ["session"] },
+  provides: [SessionId.provide()], slots: [],
+});
+const session = host.bindInput(sessionDecl);
+declare const composition: SuccessfulComposition;
+declare const maybe: AbortSignal | undefined;
+export async function assemble(): Promise<void> {
+  const ready = await host.prepare({
+    composition, factories: [dbHandle, ordersHandle, billingHandle], roots: { orders: ordersHandle }, inputs: { session },
+  });
+  if (ready.status !== "prepared") { return; }
+  const outcome = await ready.prepared.run({ signal: maybe, scope: undefined, inputs: { session: { "acme/session-id": "s1" } } });
+  if (outcome.status === "succeeded") { const n: number = outcome.roots.orders.n; void n; }
+  // @ts-expect-error a declared input must be supplied
+  await ready.prepared.run({});
+  // @ts-expect-error input values follow the contract
+  await ready.prepared.run({ inputs: { session: { "acme/session-id": 1 } } });
+}
+
+// ---- rejections ----
+// A team compiled against an older revision of a shared contract: identical id, different contract.
+type StaleCaps = CapabilitiesOf<typeof DbOld | typeof Orders>;
+const staleDecl = declareModule({
+  moduleId: "acme/orders", implementationId: "acme/orders/stale", owner: { authority: "acme", path: ["orders"] },
+  provides: [Orders.provide()], slots: [DbOld.slot("db", required())],
+});
+const staleHandle = assemblyFor<StaleCaps>().bindFactory(staleDecl, async () => ({ instance: 0, capabilities: { "acme/orders": { list: () => 1 } } }));
+// @ts-expect-error "acme/db" differs between the fragment map and the Host map
+void host.prepare({ composition, factories: [dbHandle, staleHandle], roots: { orders: staleHandle } });
+// A fragment that uses a capability the Host map does not know.
+const Audit = defineContract<{ readonly write: (s: string) => void }>()({ id: "acme/audit", revision: 1 });
+const auditDecl = declareModule({
+  moduleId: "acme/audit", implementationId: "acme/audit/file", owner: { authority: "acme", path: ["audit"] }, provides: [Audit.provide()], slots: [],
+});
+const auditHandle = assemblyFor<CapabilitiesOf<typeof Audit>>().bindFactory(auditDecl, async () => ({ instance: 0, capabilities: { "acme/audit": { write: () => {} } } }));
+// @ts-expect-error every capability a handle uses must be in the preparing map
+void host.prepare({ composition, factories: [dbHandle, auditHandle], roots: { audit: auditHandle } });
+// A fragment that uses one known and one unknown capability: only the explicit check catches it.
+const mixedDecl = declareModule({
+  moduleId: "acme/audited-orders", implementationId: "acme/audited-orders", owner: { authority: "acme", path: ["audit"] },
+  provides: [Audit.provide()], slots: [Db.slot("db", required())],
+});
+const mixedHandle = assemblyFor<CapabilitiesOf<typeof Audit | typeof Db>>().bindFactory(mixedDecl, async () => ({ instance: 0, capabilities: { "acme/audit": { write: () => {} } } }));
+// @ts-expect-error "acme/audit" is missing from the preparing map
+void host.prepare({ composition, factories: [dbHandle, mixedHandle], roots: { db: dbHandle } });
+// @ts-expect-error an input handle is never listed as a factory
+void host.prepare({ composition, factories: [dbHandle, session], roots: { db: dbHandle }, inputs: { session } });
+// @ts-expect-error an input handle is never a root
+void host.prepare({ composition, factories: [dbHandle], roots: { session }, inputs: { session } });
+// @ts-expect-error authors never write wire compatibility by hand
+declareModule({ moduleId: "x/y", implementationId: "x/y", owner: { authority: "x", path: ["x"] }, provides: [{ capabilityId: "acme/db", compatibility: { family: "exact", familyVersion: 1, token: "acme/db/r3" } }], slots: [] });
+// @ts-expect-error declareModule supplies kind and schemaVersion
+declareModule({ kind: "get-modular.module-declaration", moduleId: "x/y", implementationId: "x/y", owner: { authority: "x", path: ["x"] }, provides: [], slots: [] });
+// @ts-expect-error a slot built from another revision of a contract does not match the map
+host.bindFactory(staleDecl, async () => ({ instance: 0, capabilities: { "acme/orders": { list: () => 1 } } }));
+// @ts-expect-error capability values follow the contract owner's type
+host.bindFactory(dbDecl, async () => ({ instance: 0, capabilities: { "acme/db": { query: () => "no" } } }));
+// Hand-written maps stay possible and equal the derived one.
+type Manual = { readonly "acme/db": CapabilityContract<DbPort, "acme/db/r3"> };
+const sameMap: Manual = {} as CapabilitiesOf<typeof Db>; void sameMap;

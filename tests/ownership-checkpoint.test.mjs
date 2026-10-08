@@ -9,6 +9,7 @@ import Ajv from "ajv";
 import ts from "typescript-minimum";
 import { parse } from "yaml";
 import { packageIdentityViolations, packageManifestInventory } from "../architecture/checks/production-artifacts.mjs";
+import { expectedLeafImporter, LEAF_PACKAGES, leafManifestPath } from "../architecture/checks/leaf-packages.mjs";
 
 const directory = "architecture/contracts/ownership/";
 const checkpoint = JSON.parse(readFileSync(`${directory}checkpoint.json`, "utf8"));
@@ -16,6 +17,9 @@ const schema = JSON.parse(readFileSync(`${directory}checkpoint.schema.json`, "ut
 const validate = new Ajv({ allErrors: true, strict: true }).compile(schema);
 const digest = bytes => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const declaration = readFileSync(checkpoint.contract.path, "utf8");
+// Separately decided leaf packages beside Core and Assembly whose root exists.
+const presentLeafRoots = () => LEAF_PACKAGES
+  .filter(leaf => existsSync(leafManifestPath(leaf))).map(leaf => leaf.root);
 
 test("the complete gate runs the ownership checkpoint suite with failure propagation", () => {
   const { scripts } = JSON.parse(readFileSync("package.json", "utf8"));
@@ -40,6 +44,8 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
     `${checkpoint.evidence.base}:${indexPath}`], { encoding: "utf8" }));
   assert.deepEqual(index.decisions.slice(0, previousIndex.decisions.length),
     previousIndex.decisions);
+  // ADR-0030 supersedes ADR-0028 in its own text. ADR-0028 keeps its accepted
+  // bytes and status because the frozen checkpoint authenticates the whole file.
   assert.deepEqual(index.decisions.slice(previousIndex.decisions.length), [
     {
       id: "ADR-0028", path,
@@ -49,6 +55,26 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
       id: "ADR-0029",
       path: "docs/decisions/0029-admit-an-optional-lifecycle-kernel-candidate.md",
       immutableDigest: "sha256:4162e78542ac053ee03e3b330880495ddd9ffd261c0a578fe100035bdf910d64",
+    },
+    {
+      id: "ADR-0030",
+      path: "docs/decisions/0030-admit-the-module-resource-scope-package.md",
+      immutableDigest: "sha256:9ab491290ea3614714f6f3d17bb44ba31c578e37e68e8f68e87575567291c5c9",
+    },
+    {
+      id: "ADR-0031",
+      path: "docs/decisions/0031-pass-a-per-run-scope-and-declared-inputs-to-assembly-runs.md",
+      immutableDigest: "sha256:6576e43b28adc8643a3443a84412096fe465f26ab6768215c9ac8947f5743a74",
+    },
+    {
+      id: "ADR-0032",
+      path: "docs/decisions/0032-give-assembly-an-authoring-builder-and-capability-scoped-handles.md",
+      immutableDigest: "sha256:8d929a7f40c1864f3fc898e68700c51ea171bcf48ec9fa32a967d4d4d2e1066a",
+    },
+    {
+      id: "ADR-0033",
+      path: "docs/decisions/0033-admit-the-module-conformance-kit.md",
+      immutableDigest: "sha256:41e6d18087f5fe147b5a843b37fa5be925fa2f87cb1dc83c949a80520e7dbeb5",
     },
   ]);
   const paths = execFileSync("git", ["ls-tree", "-r", "--name-only", checkpoint.evidence.base,
@@ -108,14 +134,13 @@ test("observations bind historical lock bytes, production importers and reviewed
   assert.equal(digest(historicalLockBytes), checkpoint.evidence.lockDigest);
   const historicalImporters = parse(historicalLockBytes.toString("utf8")).importers;
   const currentImporters = parse(readFileSync("pnpm-lock.yaml", "utf8")).importers;
-  const lifecycleRoot = "packages/lifecycle-kernel";
-  const lifecyclePresent = existsSync(`${lifecycleRoot}/package.json`);
+  const leafRoots = presentLeafRoots();
   assert.deepEqual(Object.keys(currentImporters).sort(), [
-    ...Object.keys(historicalImporters), ...(lifecyclePresent ? [lifecycleRoot] : []),
+    ...Object.keys(historicalImporters), ...leafRoots,
   ].sort());
-  if (lifecyclePresent) {
-    assert.deepEqual(currentImporters[lifecycleRoot], {},
-      "the separate ADR-0029 candidate adds no runtime dependency importer");
+  for (const leaf of LEAF_PACKAGES.filter(leaf => leafRoots.includes(leaf.root))) {
+    assert.deepEqual(currentImporters[leaf.root], expectedLeafImporter(leaf),
+      `the separately decided leaf package ${leaf.root} adds only the peer links of its row`);
   }
   for (const [path, importer] of Object.entries(historicalImporters)) {
     for (const field of ["dependencies", "optionalDependencies"]) {
@@ -128,10 +153,13 @@ test("observations bind historical lock bytes, production importers and reviewed
     "C0 retains the CMS bytes observed at its base");
   const currentCms = readFileSync(cmsPath);
   assert.equal(digest(currentCms),
-    "sha256:33b41d5babf0a431c97e8e596a56e6ec1557ba1a0b26d39bf23e13d9a19e1fbd",
+    "sha256:49d08b6d1762e94308157fb59b3aa82ac1630c91f529f6efcd4915dfffee7ba7",
     "the current CMS successor must match its separately reviewed bytes");
+  // Package versions are observations at the evidence base; later releases move the working tree.
   for (const [name, version] of Object.entries(checkpoint.evidence.packages)) {
-    assert.equal(JSON.parse(readFileSync(`packages/${name}/package.json`, "utf8")).version, version);
+    const observed = execFileSync("git", ["show", `${checkpoint.evidence.base}:packages/${name}/package.json`],
+      { encoding: "utf8" });
+    assert.equal(JSON.parse(observed).version, version);
   }
 });
 
@@ -144,11 +172,9 @@ test("C0 preserves rejecting runtime package admission until K1", async () => {
   const policy = parse(readFileSync("architecture/foundation/source-dependencies.yaml", "utf8"));
   assert.equal(policy.schemaVersion, 3);
   assert.equal(policy.rootPackage, true);
-  const lifecyclePresent = existsSync("packages/lifecycle-kernel/package.json");
   assert.deepEqual(policy.packageRoots, [
-    "packages/assembly", "packages/core",
-    ...(lifecyclePresent ? ["packages/lifecycle-kernel"] : []),
-  ]);
+    "packages/assembly", "packages/core", ...presentLeafRoots(),
+  ].sort());
   for (const boundary of policy.boundaries.filter(b => b.dependencyMode !== "development")) {
     assert.equal(boundary.allow.packages.includes("@get-modular/ownership"), false);
   }

@@ -9,6 +9,7 @@ policies:
   reservedScopes:
     - "@get-modular/"
   developmentOnlyPackages:
+    - "@types/node"
     - ajv
     - canonicalize
     - cspell
