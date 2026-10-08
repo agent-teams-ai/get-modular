@@ -1,0 +1,176 @@
+// `@get-modular/observation` (candidate): in-process keyed source. Products feed
+// it from their real adapters; only the Host holds `commit`/`seal`.
+
+import {
+  ObservationError,
+  type Key, type Keys, type Observation, type ObservationPort, type ObserveOptions,
+  type Reader, type Snapshot, type SourceId, type Values,
+} from "./contract.ts";
+import { invokeIsolated } from "./callback-isolation.ts";
+import { registerDiagnostics } from "./internal-diagnostics.ts";
+
+export type KeyedSource<V extends Values> = Readonly<{
+  reader: Reader<V>;
+  port: ObservationPort<V>;
+  /** Host-only. Returns the commit number; a no-op patch commits nothing. Unknown keys throw. */
+  commit: (patch: Partial<V>) => number;
+  /** Host-only: refuse commits and new observations; stop scheduled delivery. */
+  seal: () => undefined;
+}>;
+
+interface Registration { readonly order: number; flush(): void }
+
+/** A later task (not a microtask): `setImmediate` in Node, else a 0 ms timer. */
+const later: (run: () => void) => void =
+  typeof (globalThis as { setImmediate?: unknown }).setImmediate === "function"
+    ? (run) => { (globalThis as unknown as { setImmediate: (fn: () => void) => void }).setImmediate(run); }
+    : (run) => { setTimeout(run, 0); };
+
+/**
+ * Values are plain data (primitives, plain objects, arrays). `commit` takes
+ * ownership: plain objects and arrays are frozen in place. Anything else (Date,
+ * Map, Set, class instances, functions) is rejected, because it could change
+ * without a commit.
+ */
+function freezePlain(value: unknown, path: string, seen: WeakSet<object>): void {
+  if (value === null || typeof value !== "object") {
+    if (typeof value === "function") throw new ObservationError("observation.values.not-plain", `${path} is a function`);
+    return;
+  }
+  if (seen.has(value)) return;
+  const proto: unknown = Object.getPrototypeOf(value);
+  if (!Array.isArray(value) && proto !== Object.prototype && proto !== null) {
+    throw new ObservationError("observation.values.not-plain", `${path} is not plain data`);
+  }
+  seen.add(value);
+  for (const [key, nested] of Object.entries(value)) freezePlain(nested, `${path}.${key}`, seen);
+  Object.freeze(value);
+}
+
+export function createKeyedSource<V extends Values>(initial: V): KeyedSource<V> {
+  const id: SourceId = Object.freeze({}) as SourceId; // identity only
+  const keySet = new Set<string>(Object.keys(initial));
+  const buckets = new Map<Key<V>, Set<Registration>>();
+  const lastTouched = new Map<Key<V>, number>();
+  const dirty = new Set<Registration>();
+  for (const key of keySet) freezePlain((initial as Record<string, unknown>)[key], key, new WeakSet());
+  let values: V = Object.freeze({ ...initial });
+  let commitNumber = 0;
+  let registrations = 0;
+  let sealed = false;
+  let flushScheduled = false;
+
+  const checkKeys = <K extends Key<V>>(keys: readonly K[]): readonly [K, ...K[]] => {
+    if (!Array.isArray(keys) || keys.length === 0) throw new ObservationError("observation.keys.empty", "at least one key is required");
+    const unique = [...new Set(keys)];
+    const unknown = unique.filter((key) => !keySet.has(key));
+    if (unknown.length > 0) throw new ObservationError("observation.keys.unknown", `unknown keys: ${unknown.join(", ")}`);
+    return Object.freeze(unique) as unknown as readonly [K, ...K[]]; // own frozen copy, non-empty by the check above
+  };
+  const latest = (keys: readonly Key<V>[]): number => Math.max(0, ...keys.map((key) => lastTouched.get(key) ?? 0));
+  const pick = <K extends Key<V>>(keys: readonly K[]): Readonly<Pick<V, K>> => {
+    const out: Partial<Pick<V, K>> = {};
+    for (const key of keys) out[key] = values[key];
+    return Object.freeze(out) as Readonly<Pick<V, K>>; // projection: exactly `keys`
+  };
+  const snapshot = <K extends Key<V>>(keys: readonly [K, ...K[]], revision = latest(keys)): Snapshot<V, K> =>
+    Object.freeze({ source: id, keys, revision, values: pick(keys) });
+
+  const scheduleFlush = (): void => {
+    if (flushScheduled) return;
+    flushScheduled = true;
+    later(() => {
+      flushScheduled = false;
+      if (sealed) return;
+      const batch = [...dirty].sort((a, b) => a.order - b.order);
+      dirty.clear();
+      for (const registration of batch) registration.flush();
+    });
+  };
+
+  const observe = <const S extends Keys<V>>(
+    requested: S, record: (next: Snapshot<V, S[number]>) => undefined, options: ObserveOptions,
+  ): Observation<V, S[number]> => {
+    if (sealed) throw new ObservationError("observation.source.sealed", "the source is sealed");
+    const keys = checkKeys<S[number]>(requested);
+    const since = options.since;
+    if (since !== undefined && (since.source !== id || !Number.isInteger(since.revision) || since.revision < 0
+      || since.revision > commitNumber || !keys.every((key) => since.keys.includes(key)))) {
+      throw new ObservationError("observation.since.invalid", "`since` must come from this source, cover the observed keys and not be newer");
+    }
+    const initialSnapshot = snapshot(keys);
+    let cached = initialSnapshot;
+    let delivered = initialSnapshot.revision;
+    let attached = true;
+    const current = (): Snapshot<V, S[number]> => {
+      const revision = latest(keys);
+      if (cached.revision !== revision) cached = snapshot(keys, revision);
+      return cached;
+    };
+    const registration: Registration = {
+      order: registrations += 1,
+      flush: () => {
+        if (!attached) return;
+        const next = current();
+        if (next.revision <= delivered) return;
+        delivered = next.revision;
+        diagnostics.deliveries += 1;
+        invokeIsolated(() => record(next), options.reportError);
+      },
+    };
+    for (const key of keys) {
+      let bucket = buckets.get(key);
+      if (bucket === undefined) buckets.set(key, bucket = new Set());
+      bucket.add(registration);
+    }
+    if (since !== undefined && since.revision < initialSnapshot.revision) {
+      delivered = since.revision; // catch-up through the same isolated, seal-aware flush
+      dirty.add(registration);
+      scheduleFlush();
+    }
+    const unsubscribe = (): undefined => {
+      attached = false;
+      dirty.delete(registration);
+      for (const key of keys) buckets.get(key)?.delete(registration); // own frozen key copy: removal is complete
+      return undefined;
+    };
+    return Object.freeze({
+      view: Object.freeze({ initial: initialSnapshot, current, admits: (revision: number) => attached && revision === latest(keys) }),
+      unsubscribe,
+      [Symbol.dispose]: (): void => { unsubscribe(); },
+    });
+  };
+
+  const diagnostics = { commits: 0, registrationVisits: 0, deliveries: 0 };
+  const source: KeyedSource<V> = Object.freeze({
+    reader: Object.freeze({ read: <const S extends Keys<V>>(keys: S): Snapshot<V, S[number]> => snapshot(checkKeys<S[number]>(keys)) }),
+    port: Object.freeze({ observe }),
+    commit(patch: Partial<V>): number {
+      if (sealed) throw new ObservationError("observation.source.sealed", "the source is sealed");
+      const unknown = Object.keys(patch).filter((key) => !keySet.has(key));
+      if (unknown.length > 0) throw new ObservationError("observation.keys.unknown", `unknown keys: ${unknown.join(", ")}`);
+      for (const [key, value] of Object.entries(patch)) freezePlain(value, key, new WeakSet()); // only the patch
+      const next: V = Object.freeze({ ...values, ...patch });
+      const changed = [...keySet].filter((key) => !Object.is((next as Record<string, unknown>)[key], (values as Record<string, unknown>)[key])) as Key<V>[];
+      if (changed.length === 0) return commitNumber;
+      values = next;
+      commitNumber += 1;
+      diagnostics.commits += 1;
+      for (const key of changed) {
+        lastTouched.set(key, commitNumber);
+        for (const registration of buckets.get(key) ?? []) {
+          diagnostics.registrationVisits += 1;
+          dirty.add(registration);
+        }
+      }
+      scheduleFlush();
+      return commitNumber;
+    },
+    seal(): undefined { sealed = true; dirty.clear(); return undefined; },
+  });
+  registerDiagnostics(source, {
+    stats: () => Object.freeze({ ...diagnostics }),
+    listenerCount: (key: string) => buckets.get(key as Key<V>)?.size ?? 0,
+  });
+  return source;
+}

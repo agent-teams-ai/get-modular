@@ -1,0 +1,9 @@
+{
+  "jobId": "ar-research-hooks-reactive-std-20261001-ro-u",
+  "sha256": "2a2fa8190ced0e43ed281e5176f45d8f2648454cfbc24ffdb2d31afdfb00b19b",
+  "requested": {
+    "model": "gpt-6.1-sol",
+    "reasoningEffort": "max",
+    "serviceTier": "default"
+  }
+}

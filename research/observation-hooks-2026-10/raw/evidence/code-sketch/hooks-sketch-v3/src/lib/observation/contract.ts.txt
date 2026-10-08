@@ -1,0 +1,98 @@
+// Candidate GM package (working name `@get-modular/observation`): contract.
+// Generic over the observed record type V. Types and data constructors only.
+// Delivery contract: registration + `initial` are atomic; delivery runs in a
+// later task, at most once per commit per registration, may coalesce
+// revisions, is never awaited; order between registrations is deterministic but
+// not part of the contract; nothing is delivered after the source is sealed.
+
+/** Any object record; `interface` and `type` declarations both work. */
+export type Values = object;
+export type Key<V extends Values> = keyof V & string;
+/** Non-empty key list: `observe([])` does not compile. */
+export type Keys<V extends Values> = readonly [Key<V>, ...Key<V>[]];
+
+/** Opaque identity for equality only; revisions compare within one source. */
+export class SourceId {
+  readonly #nominal = true;
+}
+
+export type Snapshot<V extends Values, K extends Key<V>> = Readonly<{
+  source: SourceId;
+  keys: readonly [K, ...K[]];
+  /** Commit number of the latest commit that changed a selected key. */
+  revision: number;
+  values: Readonly<Pick<V, K>>;
+}>;
+
+export interface Reader<V extends Values> {
+  read<const S extends Keys<V>>(keys: S): Snapshot<V, S[number]>;
+}
+
+export interface View<V extends Values, K extends Key<V>> {
+  readonly initial: Snapshot<V, K>;
+  current(): Snapshot<V, K>;
+  admits(revision: number): boolean;
+}
+
+export interface Observation<V extends Values, K extends Key<V>> {
+  readonly view: View<V, K>;
+  unsubscribe(): undefined;
+  isAttached(): boolean;
+}
+
+export type ObserveOptions = Readonly<{
+  reportError: (cause: unknown) => undefined;
+  /**
+   * Catch-up: the revision the caller already holds (e.g. a construction read).
+   * If the source is newer, one delivery is scheduled through the normal
+   * isolated, seal-aware path.
+   */
+  since?: number;
+}>;
+
+export interface ObservationPort<V extends Values> {
+  observe<const S extends Keys<V>>(
+    keys: S,
+    recordDesired: (next: Snapshot<V, S[number]>) => undefined,
+    options: ObserveOptions,
+  ): Observation<V, S[number]>;
+}
+
+// ---- Data-only participation in a hub (one hub per event family) ----
+
+export type SyncParticipant<V extends Values, K extends Key<V>> = Readonly<{
+  initial: Snapshot<V, K>;
+  apply: (next: Snapshot<V, K>) => undefined;
+}>;
+
+export type DerivedParticipant<V extends Values, S extends Keys<V>, T> = Readonly<{
+  keys: S;
+  derive: (values: Readonly<Pick<V, S[number]>>, signal: AbortSignal) => Promise<T>;
+  commit: (result: T, snapshot: Snapshot<V, S[number]>) => undefined;
+  fail: (cause: unknown, snapshot: Snapshot<V, S[number]>) => undefined;
+}>;
+
+/** Implemented by the hub; its methods must be effect-free (they only return plans). */
+export interface ParticipantVisitor<V extends Values, R> {
+  sync<K extends Key<V>>(spec: SyncParticipant<V, K>): R;
+  derived<S extends Keys<V>, T>(spec: DerivedParticipant<V, S, T>): R;
+}
+
+export interface Participant<V extends Values> {
+  open<R>(visit: ParticipantVisitor<V, R>): R;
+}
+
+export function syncParticipant<V extends Values, K extends Key<V>>(
+  initial: Snapshot<V, K>,
+  apply: (next: Snapshot<V, K>) => undefined,
+): Participant<V> {
+  const spec: SyncParticipant<V, K> = Object.freeze({ initial, apply });
+  return Object.freeze({ open: <R>(visit: ParticipantVisitor<V, R>): R => visit.sync(spec) });
+}
+
+export function derivedParticipant<V extends Values, const S extends Keys<V>, T>(
+  spec: DerivedParticipant<V, S, T>,
+): Participant<V> {
+  const frozen = Object.freeze({ ...spec });
+  return Object.freeze({ open: <R>(visit: ParticipantVisitor<V, R>): R => visit.derived(frozen) });
+}

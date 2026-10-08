@@ -1,0 +1,22 @@
+// OPTION 1 participant, feature composition factory (consumer-owned deps record).
+// Opting in = `read` once + PROVIDE `settings/applier`. No subscription, no cleanup code.
+
+import {
+  settingsApplier, type SettingsApplierV1, type SettingsReaderV1,
+} from "../settings/published/settings-v1.ts";
+import { Greeter } from "./application/greeter.ts";
+
+export type GreetingDeps = Readonly<{ settings: SettingsReaderV1 }>;
+export type GreeterApi = Readonly<{ greet: (name: string) => string }>;
+
+export async function createGreeting(deps: GreetingDeps) {
+  const initial = deps.settings.read(["locale", "greetingStyle"]);
+  const greeter = new Greeter(initial);
+  return {
+    instance: greeter,
+    capabilities: {
+      "greeting/greeter": { greet: (name: string) => greeter.greet(name) } satisfies GreeterApi,
+      "settings/applier": settingsApplier(["locale", "greetingStyle"], initial.revision, greeter.applySettings) satisfies SettingsApplierV1,
+    },
+  };
+}

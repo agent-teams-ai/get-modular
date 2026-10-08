@@ -1,0 +1,26 @@
+// Published Language V1, part 1: construction-time read (`IOptions<T>` analogue).
+// Types only. Every passive module that reads settings depends on this file alone.
+
+import type { AppSettings, SettingKey } from "../domain/app-settings.ts";
+
+/** Opaque identity used only for equality: revisions compare within one source. Grants nothing. */
+export class SettingsSourceId {
+  readonly #nominal = true;
+}
+
+/** Non-empty key list: `read([])` / `observe([])` do not compile. */
+export type SettingsKeys = readonly [SettingKey, ...SettingKey[]];
+
+export type SettingsSnapshot<K extends SettingKey> = Readonly<{
+  source: SettingsSourceId;
+  /** The selected keys (lets a participant reuse its construction read without repeating them). */
+  keys: readonly [K, ...K[]];
+  /** Commit number of the latest commit that changed a selected key (A→B→A advances it). */
+  revision: number;
+  /** Exactly the selected keys; the same frozen object while they are unchanged. */
+  values: Readonly<Pick<AppSettings, K>>;
+}>;
+
+export interface SettingsReaderV1 {
+  read<const Keys extends SettingsKeys>(keys: Keys): SettingsSnapshot<Keys[number]>;
+}

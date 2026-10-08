@@ -1,0 +1,10 @@
+// Public root of the candidate `@get-modular/observation` package.
+// Depends on nothing except the `Resources` type of `@get-modular/resources`.
+export {
+  SourceId, derivedParticipant, syncParticipant,
+  type DerivedParticipant, type Key, type Keys, type Observation, type ObservationPort, type ObserveOptions,
+  type Participant, type ParticipantVisitor, type Reader, type Snapshot, type SyncParticipant, type Values, type View,
+} from "./contract.ts";
+export { createKeyedSource, type KeyedSource } from "./keyed-source.ts";
+export { latestDerivation, type LatestDerivation } from "./latest-derivation.ts";
+export { startHub, type ParticipantOutcome } from "./hub.ts";
