@@ -74,13 +74,14 @@ export async function retainSdkGrowthFailure(result: unknown, destination: Desti
     if (!(await lstat(directory)).isDirectory()
       || relative(await realpath(directory), resolve(directory)) !== "") throw new Error();
     const signal = own(result, "signal");
+    // These classify observations, not causes. A termination request proves no timeout.
     const transportStatus = exit === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER" ? "buffer-limit"
-      : own(result, "killed") === true ? "timeout"
       : typeof signal === "string" && signal.length > 0 ? "signal"
-      : numericExit(exit) ? "exit" : "unavailable";
+      : numericExit(exit) ? "exit"
+      : own(result, "killed") === true ? "killed" : "unavailable";
     const bytes = JSON.stringify({
       checkoutSha, nodeVersion: process.version, capabilityId, producer,
-      ...(transportStatus === "exit" && numericExit(exit) ? { exit } : {}), transportStatus,
+      ...(numericExit(exit) ? { exit } : {}), transportStatus,
       messageOmission: "producer-safety-not-admitted",
       ...(transportStatus === "exit" ? publicSelection(own(result, "stdout")) : { reportStatus: "unavailable" }),
     }) + "\n";

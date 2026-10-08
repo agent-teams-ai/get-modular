@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -13,8 +13,8 @@ const secret = "SYNTHETIC-SECRET-never-retain";
 const report = { schemaVersion: 1, capabilities: [{ capabilityId: "package.public-api-compatibility",
   outcome: "failed", problem: { code: "UNEXPECTED_PROCESS_FAILURE", retryable: false, message: secret },
   evidence: { grant: secret }, diagnostics: [secret] }], env: secret };
-async function fixture(run: (directory: string) => Promise<void>) {
-  const directory = await mkdtemp(join(tmpdir(), "sdk-retention-TEST-"));
+async function fixture(run: (directory: string) => Promise<void>, parent = tmpdir()) {
+  const directory = await realpath(await mkdtemp(join(parent, "sdk-retention-TEST-")));
   try { await run(directory); } finally { await rm(directory, { recursive: true, force: true }); }
 }
 const destination = (directory: string) => ({ directory, artifact: join(directory, "sdk-growth-failure.json"),
@@ -73,11 +73,11 @@ test("malformed, oversized, spoofed and unknown-field reports remain bounded", a
     });
   }
 });
-// Regression: inferring a numeric exit from signal/timeout or reading stdout getters fabricates facts.
+// Regression: inferring a numeric exit or a timeout, or reading stdout getters, fabricates facts.
 test("metadata fallbacks never fabricate exits or execute observation getters", async () => {
   await fixture(async directory => {
     for (const [source, options, status] of [
-      ["setInterval(() => {}, 1000)", { timeout: 100 }, "timeout"],
+      ["setInterval(() => {}, 1000)", { timeout: 100 }, "signal"],
       ['process.kill(process.pid, "SIGTERM")', {}, process.platform === "win32" ? "exit" : "signal"],
       ['process.stdout.write("x".repeat(4096)); setInterval(() => {}, 1000)', { maxBuffer: 8 }, "buffer-limit"],
     ] as const) {
@@ -93,7 +93,7 @@ test("metadata fallbacks never fabricate exits or execute observation getters", 
       await rm(destination(directory).artifact);
     }
   });
-  for (const [result, status] of [[{ killed: true, signal: "SIGTERM" }, "timeout"],
+  for (const [result, status] of [[{ killed: true, signal: "SIGTERM" }, "signal"],
     [{ signal: "SIGTERM" }, "signal"], [{ code: "ENOENT" }, "unavailable"], [{ code: NaN }, "unavailable"]] as const) {
     await fixture(async directory => {
       let calls = 0;
@@ -108,6 +108,82 @@ test("metadata fallbacks never fabricate exits or execute observation getters", 
       assert.equal(JSON.parse(await bytes(directory)).publicCapability, undefined);
     });
   }
+});
+// Regression: killed records a termination request, never its cause; specific observations survive.
+test("killed metadata preserves observed signal and numeric exits without timeout inference", async t => {
+  for (const [name, result, status, exit] of [
+    ["killed alone", { killed: true }, "killed", undefined],
+    ["killed with empty signal", { killed: true, signal: "" }, "killed", undefined],
+    ["killed with signal", { killed: true, signal: "SIGTERM" }, "signal", undefined],
+    ["killed with numeric code", { killed: true, code: 3 }, "exit", 3],
+    ["killed with numeric status", { killed: true, status: 9 }, "exit", 9],
+    ["killed with signal and numeric code", { killed: true, code: 3, signal: "SIGTERM" }, "signal", 3],
+    ["buffer limit precedes killed and signal", { killed: true, code: "ERR_CHILD_PROCESS_STDIO_MAXBUFFER", signal: "SIGTERM" }, "buffer-limit", undefined],
+  ] as const) {
+    await t.test(name, async () => fixture(async directory => {
+      let calls = 0;
+      await retainSdkGrowthFailure({ ...result, get stdout() { calls++; throw new Error(); } }, destination(directory));
+      const retained = JSON.parse(await bytes(directory));
+      assert.equal(retained.transportStatus, status);
+      assert.equal(retained.exit, exit);
+      assert.equal(retained.publicCapability, undefined);
+      assert.equal(calls, 0);
+      await rm(destination(directory).artifact);
+      await retainSdkGrowthFailure({ ...result, stdout: JSON.stringify(report) }, destination(directory));
+      const selected = JSON.parse(await bytes(directory));
+      assert.equal(selected.transportStatus, status);
+      assert.equal(selected.exit, exit);
+      assert.equal(selected.reportStatus, status === "exit" ? "selected" : "unavailable");
+      assert.deepEqual(selected.publicCapability, status === "exit"
+        ? { outcome: "failed", code: "UNEXPECTED_PROCESS_FAILURE", retryable: false } : undefined);
+      assert(!(await bytes(directory)).includes(secret));
+    }));
+  }
+});
+
+// A junction exercises the same directory alias on Windows without a file-symlink privilege waiver.
+async function directoryAlias(directory: string): Promise<{ alias: string } | { prohibited: string }> {
+  const alias = join(directory, "alias");
+  try { await symlink(directory, alias, process.platform === "win32" ? "junction" : "dir"); }
+  catch (error) {
+    if (error instanceof Error && "code" in error
+      && ["EPERM", "EACCES", "ENOSYS", "ENOTSUP", "EOPNOTSUPP"].includes(String(error.code))) {
+      return { prohibited: String(error.code) };
+    }
+    throw error;
+  }
+  return { alias };
+}
+test("fixtures canonicalize an aliased temporary root before successful retention", async t => {
+  await fixture(async directory => {
+    const created = await directoryAlias(directory);
+    if ("prohibited" in created) { t.skip(`directory alias creation prohibited: ${created.prohibited}; alias IO not exercised`); return; }
+    const { alias } = created;
+    await fixture(async canonical => {
+      await retainSdkGrowthFailure(await invocation(canonical, JSON.stringify(report), 3), destination(canonical));
+      assert.equal(JSON.parse(await bytes(canonical)).reportStatus, "selected");
+      assert.equal(canonical, await realpath(canonical));
+      assert(!canonical.startsWith(alias));
+    }, alias);
+  });
+});
+test("aliased directories are rejected without creating an artifact in the canonical directory", async t => {
+  await fixture(async directory => {
+    const created = await directoryAlias(directory);
+    if ("prohibited" in created) { t.skip(`directory alias creation prohibited: ${created.prohibited}; alias IO not exercised`); return; }
+    const { alias } = created;
+    assert.equal(await realpath(alias), directory);
+    const driver = join(directory, "alias-rejection.mts");
+    await writeFile(driver, `import { retainSdkGrowthFailure } from ${JSON.stringify(new URL("./sdk-growth-failure-retention.mts", import.meta.url).href)};
+await retainSdkGrowthFailure({ code: 3 }, ${JSON.stringify(destination(alias))});
+`);
+    const captured = await execute(process.execPath, [driver]);
+    assert.equal(captured.stderr, "sdk-growth-retention-failed\n");
+    assert.equal(captured.stdout, "");
+    await assert.rejects(bytes(directory), { code: "ENOENT" });
+    await retainSdkGrowthFailure({ code: 3 }, destination(directory));
+    assert.equal(JSON.parse(await bytes(directory)).exit, 3);
+  });
 });
 // Regression: overwrite, link following, escaping the directory or IO rejection could replace the primary failure.
 test("exclusive creation and invalid destinations preserve the primary assertion object", async () => {
