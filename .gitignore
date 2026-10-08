@@ -11,3 +11,4 @@ dist-qualification/
 dist-seed/
 packages/core/src/composition/generated/stage1.ts
 packages/core/src/composition/generated/stage1.variant.ts
+!research/releases/*/*.tgz
