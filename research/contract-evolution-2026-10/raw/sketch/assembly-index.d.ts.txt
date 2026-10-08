@@ -1,0 +1,161 @@
+import type { CompileCompositionResult, CompositionPlan, ModuleDeclaration, PlanDigest } from "@get-modular/core";
+
+// Train 2: a map entry carries only the value; the key `${id}@${revision}` carries the revision.
+export type CapabilityContract<Value> = { readonly value: Value };
+export type CapabilitySchema<C> = { readonly [K in keyof C]: CapabilityContract<unknown> };
+
+declare const uses: unique symbol;
+declare const detail: unique symbol;
+declare const input: unique symbol;
+declare const contractEntry: unique symbol;
+declare const contractValues: unique symbol;
+
+export type Cardinality = ModuleDeclaration["slots"][number]["cardinality"];
+export type ProvidedEntry<Id extends string, Rev extends number, From extends number = Rev, Window extends number = Rev> = {
+  readonly capabilityId: Id;
+  readonly revision: Rev;
+  readonly compatibleFrom: From;
+  readonly [contractEntry]: { readonly window: Window };
+};
+export type SlotEntry<Id extends string, Rev extends number, S extends string, K extends Cardinality> = {
+  readonly slotId: S;
+  readonly capabilityId: Id;
+  readonly revision: Rev;
+  readonly cardinality: K;
+  readonly [contractEntry]: { readonly window: Rev };
+};
+export type EarlierValues = { readonly [revision: number]: unknown };
+export type Contract<Id extends string, V, Rev extends number, From extends number = Rev, Earlier extends EarlierValues = {}> = {
+  readonly id: Id;
+  readonly revision: Rev;
+  readonly compatibleFrom: From;
+  readonly provide: () => ProvidedEntry<Id, Rev, From, Rev | (keyof Earlier & number)>;
+  readonly slot: <const S extends string, const K extends Cardinality>(slotId: S, cardinality: K) => SlotEntry<Id, Rev, S, K>;
+  readonly [contractValues]?: Earlier & { readonly [R in Rev]: V };
+};
+export type AnyContract = Contract<string, unknown, number, number, EarlierValues>;
+
+type ValuesOf<T> = T extends { readonly [contractValues]?: infer M } ? M : never;
+/** One `{ key, value }` pair per revision of each descriptor; a single key-remapped mapped type then builds the map. */
+type RevisionPairs<T> = T extends AnyContract
+  ? { readonly [R in keyof ValuesOf<T> & number]: { readonly key: `${T["id"]}@${R}`; readonly value: ValuesOf<T>[R] } }[keyof ValuesOf<T> & number]
+  : never;
+export type CapabilitiesOf<T extends AnyContract> = {
+  readonly [E in RevisionPairs<T> as E["key"]]: CapabilityContract<E["value"]>;
+};
+export type DeclarationSpec = {
+  readonly moduleId: string;
+  readonly implementationId: string;
+  readonly owner: ModuleDeclaration["owner"];
+  readonly provides: readonly ProvidedEntry<string, number, number, number>[];
+  readonly slots: readonly SlotEntry<string, number, string, Cardinality>[];
+};
+export type Declared<T extends DeclarationSpec> = T & {
+  readonly kind: "get-modular.module-declaration";
+  readonly schemaVersion: 2;
+};
+
+/** Map keys of one entry: every revision in a provider's window, or the slot's revision. */
+type EntryKeys<P> = P extends { readonly capabilityId: infer Id extends string; readonly [contractEntry]: { readonly window: infer W extends number } }
+  ? `${Id}@${W}` : never;
+type ValueAt<C, K> = K extends keyof C ? C[K] extends { readonly value: infer V } ? V : never : never;
+/** Intersection of the values at keys K, distributing over keys only (a union value stays a union). */
+type ValuesAll<C, K> = (K extends unknown ? (value: ValueAt<C, K>) => void : never) extends (value: infer I) => void ? I : never;
+
+export type UsedCapability<D extends ModuleDeclaration> = EntryKeys<D["provides"][number]> | EntryKeys<D["slots"][number]>;
+export type CapabilityBrand<C, K extends keyof C> = { readonly [P in K]: (capability: C[P]) => C[P] };
+export type FactoryHandle<C, D extends ModuleDeclaration = ModuleDeclaration, I = unknown> = {
+  readonly [uses]: CapabilityBrand<C, UsedCapability<D> & keyof C>;
+  readonly [detail]: { readonly declaration: D; readonly instance: I };
+};
+export type AnyFactoryHandle<C> = {
+  readonly [uses]: { readonly [K in keyof C]?: (capability: C[K]) => C[K] };
+  readonly [detail]: { readonly declaration: ModuleDeclaration; readonly instance: unknown };
+  readonly [input]?: never;
+};
+export type RootHandles<C> = Readonly<Record<string, AnyFactoryHandle<C>>>;
+export type RootInstances<R> = { readonly [K in keyof R]: R[K] extends { readonly [detail]: { readonly instance: infer I } } ? I : never };
+
+export type IsUnion<T, Whole = T> = T extends Whole ? [Whole] extends [T] ? false : true : never;
+export type ValidDeclaration<C, D extends ModuleDeclaration> =
+  true extends IsUnion<D> | IsUnion<D["slots"]> | IsUnion<D["provides"]>
+    | (D["slots"] extends infer Slots extends readonly unknown[] ? { [K in keyof Slots]: IsUnion<Slots[K]> }[number] : never)
+    | (D["provides"] extends infer Provides extends readonly unknown[] ? { [K in keyof Provides]: IsUnion<Provides[K]> }[number] : never)
+    ? never :
+  number extends D["provides"]["length"] | D["slots"]["length"] ? never
+    : [(
+      D["provides"][number] | D["slots"][number] extends infer P
+        ? P extends { readonly capabilityId: infer K extends string; readonly [contractEntry]: { readonly window: infer W extends number } }
+          ? string extends K ? P
+            : true extends IsUnion<K> ? P
+            : number extends W ? P
+            : [EntryKeys<P>] extends [keyof C] ? never : P
+          : P
+        : never
+    ) | (
+      D["slots"][number] extends infer S
+        ? S extends { readonly slotId: infer K extends string; readonly revision: infer R; readonly cardinality: { readonly kind: infer Q } }
+          ? string extends K ? S : true extends IsUnion<K> | IsUnion<Q> | IsUnion<R> ? S : never
+          : S
+        : never
+    )] extends [never] ? unknown : never;
+export type FactoryCapabilities<C, D extends ModuleDeclaration> = {
+  readonly [P in D["provides"][number] as P["capabilityId"]]: ValuesAll<C, EntryKeys<P>>;
+};
+export type FactoryDependencies<C, D extends ModuleDeclaration> = {
+  readonly [S in D["slots"][number] as S["slotId"]]: S["cardinality"]["kind"] extends "many"
+    ? readonly ValueAt<C, EntryKeys<S>>[]
+    : S["cardinality"]["kind"] extends "optional" ? ValueAt<C, EntryKeys<S>> | undefined
+    : ValueAt<C, EntryKeys<S>>;
+};
+export type FactoryContext = { readonly signal: AbortSignal; readonly scope: unknown };
+export type FactoryProduct<I, P> = { readonly instance: I; readonly capabilities: P };
+export type ModuleFactory<C, D extends ModuleDeclaration, I, X = FactoryContext> =
+  (dependencies: FactoryDependencies<C, D>, context: X) => Promise<FactoryProduct<I, FactoryCapabilities<C, D>>>;
+export type InputHandle<C, D extends ModuleDeclaration = ModuleDeclaration> =
+  FactoryHandle<C, D, FactoryCapabilities<C, D>> & { readonly [input]: true };
+export type AnyInputHandle<C> = {
+  readonly [uses]: { readonly [K in keyof C]?: (capability: C[K]) => C[K] };
+  readonly [detail]: { readonly declaration: ModuleDeclaration; readonly instance: unknown };
+  readonly [input]: true;
+};
+export type InputHandles<C> = Readonly<Record<string, AnyInputHandle<C>>>;
+export type SuccessfulComposition = Extract<CompileCompositionResult, { readonly plan: CompositionPlan; readonly digest: PlanDigest }>;
+export type KnownCapabilities<C, F extends readonly unknown[], N> = [Exclude<
+  (F[number] | N[keyof N]) extends infer H ? H extends { readonly [uses]: infer U } ? keyof U : never : never,
+  keyof C>] extends [infer Missing]
+  ? [Missing] extends [never] ? unknown : { readonly "capabilities missing from the preparing map": Missing }
+  : never;
+export type AssemblyPrepareInput<C, R extends RootHandles<C>, N extends InputHandles<C> = {},
+  F extends readonly AnyFactoryHandle<C>[] = readonly AnyFactoryHandle<C>[]> = {
+  readonly composition: SuccessfulComposition;
+  readonly factories: F & KnownCapabilities<C, F, N>;
+  readonly roots: R;
+  readonly inputs?: N | undefined;
+};
+export type Assembly<C> = {
+  readonly bindFactory: <const D extends ModuleDeclaration, I>(
+    declaration: D & ValidDeclaration<C, NoInfer<D>>,
+    factory: (dependencies: FactoryDependencies<C, NoInfer<D>>, context: FactoryContext) => Promise<FactoryProduct<I, FactoryCapabilities<C, NoInfer<D>>>>,
+  ) => FactoryHandle<C, D, I>;
+  readonly bindInput: <const D extends ModuleDeclaration & { readonly slots: readonly [] }>(
+    declaration: D & ValidDeclaration<C, NoInfer<D>>,
+  ) => InputHandle<C, D>;
+  readonly prepare: <const R extends RootHandles<C>, const N extends InputHandles<C> = {},
+    const F extends readonly AnyFactoryHandle<C>[] = readonly AnyFactoryHandle<C>[]>(
+    input: AssemblyPrepareInput<C, R, N, F>,
+  ) => Promise<{ readonly status: "prepared" } | { readonly status: "failed" }>;
+};
+export declare function assemblyFor<C extends CapabilitySchema<C>>(): Assembly<C>;
+
+/** Owner: `defineContract<V5, { 3: V3; 4: V4 }>()({ id, revision: 5, compatibleFrom: 3 })`. */
+export declare function defineContract<V, Earlier extends EarlierValues = {}>():
+  <const Id extends string, const Rev extends number, const From extends number = Rev>(spec: {
+    readonly id: Id;
+    readonly revision: Rev;
+    readonly compatibleFrom?: From & ([From] extends [Rev | keyof Earlier] ? unknown
+      : { readonly "compatibleFrom needs a value type in Earlier": From });
+  }) => Contract<Id, V, Rev, From, Earlier>;
+export declare function declareModule<const T extends DeclarationSpec>(
+  spec: T & { readonly kind?: never; readonly schemaVersion?: never },
+): Declared<T>;

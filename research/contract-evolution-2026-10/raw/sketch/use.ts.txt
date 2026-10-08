@@ -1,0 +1,120 @@
+import { assemblyFor, declareModule, defineContract } from "@get-modular/assembly";
+import type { CapabilitiesOf, ModuleFactory, FactoryDependencies, FactoryCapabilities } from "@get-modular/assembly";
+import { required } from "@get-modular/core";
+import type { SuccessfulComposition } from "@get-modular/assembly";
+declare const composition: SuccessfulComposition;
+const owner = { authority: "acme", path: ["x"] } as const;
+
+// Contract package copy A (version with revision 3).
+namespace A {
+  export type DbR3 = { readonly query: (q: string) => number; readonly legacyPing: () => void };
+  export const Db = defineContract<DbR3>()({ id: "acme/db", revision: 3 });
+}
+// Contract package copy B (revision 5, window 3..5; r5 removed legacyPing, r4 added begin).
+namespace B {
+  export type DbR3 = { readonly query: (q: string) => number; readonly legacyPing: () => void };
+  export type DbR4 = DbR3 & { readonly begin: () => void };
+  export type DbR5 = { readonly query: (q: string) => number; readonly begin: () => void };
+  export const Db = defineContract<DbR5, { 3: DbR3; 4: DbR4 }>()({ id: "acme/db", revision: 5, compatibleFrom: 3 });
+  export type Orders = { readonly list: () => readonly string[] };
+  export const Orders = defineContract<Orders>()({ id: "acme/orders", revision: 1 });
+}
+// A narrow copy that no longer serves revision 3.
+namespace Narrow {
+  export type DbR4 = B.DbR4;
+  export const Db = defineContract<B.DbR5, { 4: DbR4 }>()({ id: "acme/db", revision: 5, compatibleFrom: 4 });
+}
+// A copy whose revision 3 was mutated after publication.
+namespace Mutated {
+  export type DbR3 = { readonly query: (q: string) => string; readonly legacyPing: () => void };
+  export const Db = defineContract<DbR3>()({ id: "acme/db", revision: 3 });
+}
+
+// Consumer built against A (slot revision 3), with its own map.
+const consumerOld = declareModule({ moduleId: "acme/old", implementationId: "acme/old/default", owner,
+  provides: [], slots: [A.Db.slot("db", required())] });
+type OldMap = CapabilitiesOf<typeof A.Db>;
+export const createOld: ModuleFactory<OldMap, typeof consumerOld, string> = async ({ db }) => {
+  db.legacyPing();
+  // @ts-expect-error revision 3 has no begin
+  db.begin();
+  return { instance: String(db.query("x")), capabilities: {} };
+};
+// Consumer built against B (slot revision 5).
+const consumerNew = declareModule({ moduleId: "acme/new", implementationId: "acme/new/default", owner,
+  provides: [], slots: [B.Db.slot("db", required())] });
+type NewMap = CapabilitiesOf<typeof B.Db>;
+export const createNew: ModuleFactory<NewMap, typeof consumerNew, number> = async ({ db }) => {
+  db.begin();
+  // @ts-expect-error revision 5 removed legacyPing
+  db.legacyPing();
+  return { instance: db.query("y"), capabilities: {} };
+};
+// Provider built against B: serves 3..5, so its value must satisfy every revision in the window.
+const provider = declareModule({ moduleId: "acme/db", implementationId: "acme/db/pg", owner,
+  provides: [B.Db.provide()], slots: [] });
+export const createProvider: ModuleFactory<NewMap, typeof provider, null> = async () => ({
+  instance: null,
+  capabilities: { "acme/db": { query: () => 1, legacyPing: () => {}, begin: () => {} } },
+});
+// @ts-expect-error a window provider must still implement legacyPing for revision 3
+export const createProviderMissingOld: ModuleFactory<NewMap, typeof provider, null> = async () => ({
+  instance: null,
+  capabilities: { "acme/db": { query: () => 1, begin: () => {} } },
+});
+
+// Teams bind under their own maps; the Host prepares with one map derived from the newest descriptor.
+const oldApi = assemblyFor<OldMap>();
+const newApi = assemblyFor<NewMap>();
+const hOld = oldApi.bindFactory(consumerOld, createOld);
+const hNew = newApi.bindFactory(consumerNew, createNew);
+const hProvider = newApi.bindFactory(provider, createProvider);
+interface HostCaps extends CapabilitiesOf<typeof B.Db | typeof B.Orders> {}
+const host = assemblyFor<HostCaps>();
+void host.prepare({ composition, factories: [hOld, hNew, hProvider], roots: { old: hOld, now: hNew } });
+
+// A Host whose descriptor dropped revision 3 cannot prepare the old consumer.
+const narrowHost = assemblyFor<CapabilitiesOf<typeof Narrow.Db>>();
+// @ts-expect-error acme/db@3 is missing from the preparing map
+void narrowHost.prepare({ composition, factories: [hOld], roots: {} });
+
+// A consumer bound under a mutated revision 3 is refused by the Host map.
+const mutatedApi = assemblyFor<CapabilitiesOf<typeof Mutated.Db>>();
+const consumerMut = declareModule({ moduleId: "acme/mut", implementationId: "acme/mut/default", owner,
+  provides: [], slots: [Mutated.Db.slot("db", required())] });
+const hMut = mutatedApi.bindFactory(consumerMut, async ({ db }) => ({ instance: db.query("z"), capabilities: {} }));
+// @ts-expect-error revision 3 differs between the Host map and the handle's map
+void host.prepare({ composition, factories: [hMut], roots: { mut: hMut } });
+
+// compatibleFrom must name a revision with a value type.
+// @ts-expect-error compatibleFrom 2 has no value type in Earlier
+defineContract<B.DbR5, { 3: B.DbR3; 4: B.DbR4 }>()({ id: "acme/db", revision: 5, compatibleFrom: 2 });
+
+// Hand-written entries are refused.
+void declareModule({ moduleId: "acme/hand", implementationId: "acme/hand/default", owner,
+  // @ts-expect-error only descriptor entries are accepted
+  provides: [{ capabilityId: "acme/db", revision: 5, compatibleFrom: 3 }], slots: [] });
+
+// A widened revision is refused at binding.
+declare const someRevision: number;
+const Wide = defineContract<B.DbR3>()({ id: "acme/db", revision: someRevision });
+const wideDecl = declareModule({ moduleId: "acme/wide", implementationId: "acme/wide/default", owner,
+  provides: [], slots: [Wide.slot("db", required())] });
+// @ts-expect-error a widened slot revision gives no exact map key
+newApi.bindFactory(wideDecl, async () => ({ instance: 1, capabilities: {} }));
+
+// A Host map without a capability a handle uses.
+interface OrdersOnly extends CapabilitiesOf<typeof B.Orders> {}
+// @ts-expect-error acme/db is not part of this map
+void assemblyFor<OrdersOnly>().prepare({ composition, factories: [hProvider], roots: {} });
+
+// Union-typed values stay unions in a single-revision window.
+const Mode = defineContract<"a" | "b">()({ id: "acme/mode", revision: 1 });
+const modeProvider = declareModule({ moduleId: "acme/mode", implementationId: "acme/mode/default", owner,
+  provides: [Mode.provide()], slots: [] });
+type ModeCaps = FactoryCapabilities<CapabilitiesOf<typeof Mode>, typeof modeProvider>;
+const modeOk: ModeCaps = { "acme/mode": "b" };
+void modeOk;
+type OldDeps = FactoryDependencies<OldMap, typeof consumerOld>;
+const deps: OldDeps = { db: { query: () => 1, legacyPing: () => {} } };
+void deps;
