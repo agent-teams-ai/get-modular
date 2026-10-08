@@ -1,0 +1,24 @@
+// Runtime body sketch for the train-2 builder (mirrors packages/assembly/src/features/construction/contract.ts).
+const KIND = "get-modular.module-declaration"; const SCHEMA_VERSION = 2; const MAXIMUM_REVISION = 2147483647;
+class AssemblyBindingError extends Error { constructor(code, cause) { super(code, { cause }); this.code = code; } }
+const refuse = message => { throw new AssemblyBindingError("assembly.bind.invalid-declaration", new TypeError(message)); };
+const isRevision = value => Number.isInteger(value) && value >= 1 && value <= MAXIMUM_REVISION;
+export function defineContract() {
+  return spec => {
+    if (typeof spec !== "object" || spec === null) refuse("defineContract() requires a contract spec");
+    const { id, revision } = spec;
+    const compatibleFrom = Object.hasOwn(spec, "compatibleFrom") && spec.compatibleFrom !== undefined ? spec.compatibleFrom : revision;
+    if (typeof id !== "string" || id.length === 0) refuse("A contract needs a capability id");
+    if (!isRevision(revision)) refuse("A contract revision is an integer from 1 to 2147483647");
+    if (!isRevision(compatibleFrom) || compatibleFrom > revision) refuse("compatibleFrom is an integer from 1 to the contract revision");
+    return Object.freeze({ id, revision, compatibleFrom,
+      provide: () => Object.freeze({ capabilityId: id, revision, compatibleFrom }),
+      slot: (slotId, cardinality) => Object.freeze({ slotId, capabilityId: id, revision, cardinality }) });
+  };
+}
+const Db = defineContract()({ id: "acme/db", revision: 5, compatibleFrom: 3 });
+console.log(JSON.stringify(Db.provide()), JSON.stringify(Db.slot("db", { kind: "required" })));
+console.log(JSON.stringify(defineContract()({ id: "acme/x", revision: 2 }).provide()));
+for (const bad of [{ revision: 0 }, { revision: 1.5 }, { revision: 2 ** 31 }, { revision: 3, compatibleFrom: 4 }, { revision: 3, compatibleFrom: 0 }, { revision: 3, compatibleFrom: "1" }]) {
+  try { defineContract()({ id: "acme/x", ...bad }); console.log("ACCEPTED", JSON.stringify(bad)); } catch (e) { console.log("refused", JSON.stringify(bad), e.code); }
+}
