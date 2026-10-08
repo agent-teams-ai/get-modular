@@ -1,0 +1,116 @@
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
+import canonicalize from 'canonicalize';
+import * as production from '../dist/index.js';
+import { duplicateRecordBaseCases, duplicateRecordRowFailureCases, duplicateRecordOverlapCases, duplicateRecordPermutationCases } from './qualification-support/m2-candidate/duplicate-record-cases.mjs';
+import { duplicateRecordOrderingCases, duplicateRecordShuffledOrderingCases, duplicateRecordCollectorCases } from './qualification-support/m2-candidate/duplicate-record-ordering.mjs';
+import { duplicateRecordExtendedOverlapCases } from './qualification-support/m2-candidate/duplicate-record-extended-overlaps.mjs';
+import { m2ResourceOutcomeCases } from './qualification-support/support/m2-resource-outcomes.mjs';
+import { rawDocumentCases, materializeRawDocumentInput } from './qualification-support/m2-candidate/raw-document-cases.mjs';
+
+const schema = JSON.parse(readFileSync(new URL('../../../architecture/contracts/v1/composition.schema.json', import.meta.url)));
+const pid = schema.$defs.portableId; const re = new RegExp(pid.pattern, 'u');
+const isPortableId = v => typeof v === 'string' && v.length >= 3 && v.length <= 128 && re.test(v);
+const isRecord = v => v !== null && typeof v === 'object' && !Array.isArray(v);
+const entries = d => isRecord(d) ? ['provides', 'slots'].flatMap(s => Array.isArray(d[s]) ? d[s].filter(isRecord).map(e => ({ s, e })) : []) : [];
+function allocate(decls) {
+  const per = new Map();
+  for (const d of decls) for (const { e } of entries(d)) {
+    const c = e.compatibility; if (!isRecord(c) || !isPortableId(e.capabilityId) || !isPortableId(c.token)) continue;
+    if (!per.has(e.capabilityId)) per.set(e.capabilityId, []);
+    if (!per.get(e.capabilityId).includes(c.token)) per.get(e.capabilityId).push(c.token);
+  }
+  const map = new Map();
+  for (const [cap, tokens] of per) {
+    const taken = new Set(), m = new Map();
+    for (const t of tokens) { let n; const v = t.match(/\/v([1-9][0-9]*)$/u); if (v) n = Number(v[1]); else if (t === cap) n = 1;
+      if (n !== undefined && !taken.has(n)) { m.set(t, n); taken.add(n); } }
+    let next = 1; for (const t of tokens) if (!m.has(t)) { while (taken.has(next)) next++; m.set(t, next); taken.add(next); }
+    map.set(cap, m);
+  }
+  return map;
+}
+const N = (alloc, cap, tok) => alloc.get(cap)?.get(tok);
+function lift(decl, alloc) {
+  if (!isRecord(decl)) return { value: decl, ok: true };
+  const out = { ...decl };
+  if (out.schemaVersion === 2) out.schemaVersion = 3;
+  for (const side of ['provides', 'slots']) if (Array.isArray(decl[side])) out[side] = decl[side].map(e => {
+    if (!isRecord(e) || !isRecord(e.compatibility)) return e;
+    const c = e.compatibility;
+    if (!isPortableId(e.capabilityId) || !isPortableId(c.token)) return e;
+    return { ...e, compatibility: { ...c, token: `${e.capabilityId}/r${N(alloc, e.capabilityId, c.token)}` } };
+  });
+  return { value: out, ok: true };
+}
+const digest = plan => 'gm-plan:v1:sha-256:' + createHash('sha256').update(canonicalize({ kind: 'get-modular.plan-content', protocolVersion: 1, canonicalization: 'RFC8785', hashAlgorithm: 'SHA-256', plan })).digest('hex');
+function transformExpected(expected, decls, alloc) {
+  const e = structuredClone(expected);
+  if (e.plan) {
+    e.plan.schemaVersion = 2;
+    e.plan.bindings = e.plan.bindings.map(b => { const { compatibility, ...rest } = b; return { ...rest, revision: N(alloc, b.capabilityId, compatibility.token) }; });
+    e.digest = digest(e.plan);
+  }
+  if (Array.isArray(e.diagnostics)) e.diagnostics = e.diagnostics.map(d => {
+    if (d.code !== 'binding.compatibility-mismatch') return d;
+    const slotTok = d.details.expectedCompatibility.token, provTok = d.details.actualCompatibility.token;
+    // capability id: find the slot in any declaration with that implementationId
+    let cap;
+    for (const x of decls) if (isRecord(x) && x.implementationId === d.coordinate.implementationId) for (const s of x.slots ?? []) if (s?.slotId === d.coordinate.slotId) cap = s.capabilityId;
+    const c = N(alloc, cap, slotTok), p = N(alloc, cap, provTok);
+    return { ...d, details: { capabilityId: cap, reason: c < p ? 'consumer-too-old' : 'provider-too-old', consumerRevision: c, providerRevision: p, providerCompatibleFrom: p } };
+  });
+  return e;
+}
+const categories = [duplicateRecordBaseCases, duplicateRecordRowFailureCases, duplicateRecordOverlapCases, duplicateRecordPermutationCases,
+  duplicateRecordOrderingCases, duplicateRecordShuffledOrderingCases, duplicateRecordCollectorCases, duplicateRecordExtendedOverlapCases, m2ResourceOutcomeCases];
+const stats = { equal: 0, sameMultiset: 0, differ: 0, notLiftable: 0 }; const diffs = [];
+for (const gen of categories) for (const row of gen()) {
+  if (row.expected === undefined) continue;
+  const decls = row.input.declarations; const alloc = allocate(decls);
+  const lifted = decls.map(d => lift(d, alloc));
+  if (lifted.some(l => !l.ok)) { stats.notLiftable++; continue; }
+  const input = { ...row.input, declarations: lifted.map(l => l.value) };
+  const actual = await production.compileComposition(input);
+  const expected = transformExpected(row.expected, decls, alloc);
+  if (isDeepStrictEqual(actual, expected)) stats.equal++;
+  else {
+    const key = x => JSON.stringify(x);
+    const same = actual.ok === expected.ok && Array.isArray(actual.diagnostics) && actual.diagnostics.length === expected.diagnostics?.length
+      && actual.diagnostics.map(key).sort().join() === expected.diagnostics.map(key).sort().join();
+    if (same) stats.sameMultiset++; else { stats.differ++; if (diffs.length < 12) diffs.push({ id: row.caseId, expected: expected.diagnostics?.map(d => d.code + (d.details?.limitName ? ':' + d.details.limitName + ':' + d.details.actual : '')), actual: actual.diagnostics?.map(d => d.code + (d.details?.limitName ? ':' + d.details.limitName + ':' + d.details.actual : '')) }); }
+  }
+}
+console.log('OBJECT', JSON.stringify(stats)); for (const d of diffs) console.log(JSON.stringify(d));
+// Raw documents: structural text edit of the compact compatibility members.
+const rawStats = { equal: 0, differ: 0 }; const rawDiffs = [];
+const compatRe = /"compatibility":\{"family":"exact","familyVersion":1,"token":"([^"\\]+)"\}/gu;
+for (const row of rawDocumentCases()) {
+  const input = materializeRawDocumentInput(row.caseId);
+  const strict = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
+  const texts = input.declarations.map(v => { if (!(v instanceof Uint8Array) || v.buffer.byteLength === 0 && v.byteLength === 0 && v.buffer.detached) return null;
+    try { const t = strict.decode(v); JSON.parse(t); return t; } catch { return null; } });
+  const parsed = texts.map(t => { try { return JSON.parse(t); } catch { return null; } });
+  const alloc = allocate(parsed.filter(Boolean));
+  const newDecls = input.declarations.map((v, i) => {
+    if (texts[i] === null) return v;
+    let t = texts[i];
+    // provides vs slots: slot objects contain "slotId" before compatibility in these compact sources
+    t = t.replace(/(\{"slotId":"[^"]*","capabilityId":"([^"]+)","compatibility":\{"family":"exact","familyVersion":1,"token":")([^"\\]+)(")/gu, (m, pre, cap, tok, end) => isPortableId(cap) && isPortableId(tok) ? `${pre}${cap}/r${N(alloc, cap, tok)}${end}` : m);
+    t = t.replace(/(\{"capabilityId":"([^"]+)","compatibility":\{"family":"exact","familyVersion":1,"token":")([^"\\]+)(")/gu, (m, pre, cap, tok, end) => isPortableId(cap) && isPortableId(tok) ? `${pre}${cap}/r${N(alloc, cap, tok)}${end}` : m);
+    t = t.replace(/"schemaVersion":(-?[0-9.eE+-]+)/u, (m, lex) => {
+      let v; try { v = JSON.parse(lex); } catch { return m; }
+      if (v !== 2) return m;
+      const i = [...lex].findIndex(ch => ch >= '1' && ch <= '9');
+      if (i < 0 || lex[i] !== '2') return m;
+      const out = lex.slice(0, i) + '3' + lex.slice(i + 1);
+      return JSON.parse(out) === 3 ? `"schemaVersion":${out}` : m;
+    });
+    return new TextEncoder().encode(t);
+  });
+  const actual = await production.compileCompositionJson({ declarations: newDecls, profile: input.profile });
+  const expected = transformExpected(row.expected, parsed.filter(Boolean), alloc);
+  if (isDeepStrictEqual(actual, expected)) rawStats.equal++; else { rawStats.differ++; if (rawDiffs.length < 25) rawDiffs.push(row.caseId.replace('od005.raw-document.v1/', '')); }
+}
+console.log('RAW', JSON.stringify(rawStats)); console.log(JSON.stringify(rawDiffs));

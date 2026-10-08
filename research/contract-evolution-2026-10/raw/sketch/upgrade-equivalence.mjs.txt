@@ -1,0 +1,66 @@
+import { readFileSync } from 'node:fs';
+import { isDeepStrictEqual } from 'node:util';
+const base = await import(process.env.BASE_DIST);
+const next = await import('../dist/index.js');
+const norm = JSON.parse(readFileSync(new URL('../../../architecture/qualification/v1/normalization-vectors.json', import.meta.url))).cases[0];
+const world = () => {
+  const w = structuredClone({ declarations: norm.declarations, profile: norm.equivalentProfiles[0] });
+  for (const d of w.declarations) for (const side of ['provides', 'slots']) for (const e of d[side]) e.compatibility.token = `${e.capabilityId}/r1`;
+  return w;
+};
+const firstSlot = w => { const d = w.declarations.find(x => x.slots.length); return d.slots[0]; };
+const firstProvided = w => { const d = w.declarations.find(x => x.provides.length); return d.provides[0]; };
+const cases = {
+  'token-grammar': w => { firstSlot(w).compatibility.token = 'Bad Token'; },
+  'token-too-long': w => { firstSlot(w).compatibility.token = 'example/' + 'x'.repeat(130); },
+  'family': w => { firstSlot(w).compatibility.family = 'inexact'; },
+  'family-version-2': w => { firstProvided(w).compatibility.familyVersion = 2; },
+  'family-version-string': w => { firstProvided(w).compatibility.familyVersion = '1'; },
+  'family-version-float': w => { firstProvided(w).compatibility.familyVersion = 1.5; },
+  'compatibility-missing': w => { delete firstSlot(w).compatibility; },
+  'compatibility-array': w => { firstSlot(w).compatibility = []; },
+  'compatibility-string': w => { firstProvided(w).compatibility = 'x'; },
+  'compatibility-extra-member': w => { firstSlot(w).compatibility.extra = true; },
+  'token-missing': w => { delete firstProvided(w).compatibility.token; },
+  'entry-foreign-revision': w => { firstProvided(w).revision = 1; },
+  'slot-foreign-compatible-from': w => { firstSlot(w).compatibleFrom = 1; },
+  'entry-foreign-and-unknown': w => { const e = firstProvided(w); e.revision = 1; e.other = 1; },
+  'capability-invalid': w => { firstSlot(w).capabilityId = 'Bad'; },
+  'many-errors': w => { w.declarations[0].moduleId = 'Bad'; firstSlot(w).compatibility.family = 'x'; firstProvided(w).compatibility.token = 'Nope'; },
+  'version-missing-with-errors': w => { const d = w.declarations.find(x => x.slots.length); delete d.schemaVersion; d.slots[0].compatibility.family = 'x'; },
+  'version-string': w => { const d = w.declarations.find(x => x.slots.length); d.schemaVersion = '1'; },
+  'version-missing-schema2-entries': w => { const d = w.declarations.find(x => x.slots.length); delete d.schemaVersion; for (const e of d.slots) { delete e.compatibility; e.revision = 1; } },
+  'version-3': w => { w.declarations[0].schemaVersion = 3; },
+  'non-builder-token': w => { for (const d of w.declarations) for (const side of ['provides', 'slots']) for (const e of d[side]) e.compatibility.token = e.compatibility.token.replace('/r1', '/v1'); },
+};
+const rawCases = {
+  'raw-duplicate-token': t => t.replace(/("token":"[^"]+")/u, '$1,$1'),
+  'raw-family-version-1.0': t => t.replace('"familyVersion":1', '"familyVersion":1.0'),
+  'raw-family-version-1.5': t => t.replace('"familyVersion":1', '"familyVersion":1.5'),
+  'raw-family-version-minus-zero': t => t.replace('"familyVersion":1', '"familyVersion":-0'),
+  'raw-escaped-token': t => t.replace(/"token":"e/u, '"token":"\\u0065'),
+};
+let same = 0, differ = 0, expectedDiffer = 0;
+const strip = r => ({ ok: r.ok, diagnostics: r.diagnostics });
+for (const [name, mutate] of Object.entries(cases)) {
+  const input = world(); mutate(input);
+  const a = await base.compileComposition(structuredClone(input));
+  const b = await next.compileComposition(structuredClone(input));
+  const designed = name === 'non-builder-token' || name === 'version-missing-schema2-entries';
+  const eq = a.ok === b.ok && (a.ok || isDeepStrictEqual(strip(a), strip(b)));
+  if (eq) same++; else if (designed) expectedDiffer++; else { differ++; console.log('DIFF', name, JSON.stringify(a.diagnostics?.map(d => [d.code, d.path.map(p => p.value).join('.')])), JSON.stringify(b.diagnostics?.map(d => [d.code, d.path.map(p => p.value).join('.')]))); }
+  if (designed) console.log('DESIGNED', name, 'base:', JSON.stringify(a.ok ? 'ok' : a.diagnostics.map(d => [d.code, d.path.map(p => p.value).join('.')])), 'D:', JSON.stringify(b.ok ? 'ok' : b.diagnostics.map(d => [d.code, d.path.map(p => p.value).join('.')])));
+}
+const enc = v => new TextEncoder().encode(typeof v === 'string' ? v : JSON.stringify(v));
+for (const [name, mutate] of Object.entries(rawCases)) {
+  const input = world();
+  const texts = input.declarations.map(d => JSON.stringify(d));
+  const i = texts.findIndex(t => t.includes('"slotId"'));
+  texts[i] = mutate(texts[i]);
+  const raw = () => ({ declarations: texts.map(enc), profile: enc(input.profile) });
+  const a = await base.compileCompositionJson(raw());
+  const b = await next.compileCompositionJson(raw());
+  const eq = a.ok === b.ok && (a.ok || isDeepStrictEqual(strip(a), strip(b)));
+  if (eq) same++; else { differ++; console.log('DIFF', name, JSON.stringify(a.ok ? 'ok' : a.diagnostics.map(d => [d.code, d.path.map(p => p.value).join('.')])), JSON.stringify(b.ok ? 'ok' : b.diagnostics.map(d => [d.code, d.path.map(p => p.value).join('.')]))); }
+}
+console.log(JSON.stringify({ same, differ, expectedDiffer }));

@@ -1,0 +1,21 @@
+// Removes each @ts-expect-error in turn and requires an error exactly on the guarded line.
+import { execFileSync } from "node:child_process";
+import { readFileSync, writeFileSync, copyFileSync } from "node:fs";
+const [compiler, project] = process.argv.slice(2);
+const source = readFileSync("use.ts", "utf8");
+const lines = source.split("\n");
+const directives = lines.flatMap((line, index) => line.includes("@ts-expect-error") ? [index] : []);
+const run = () => { try { execFileSync(compiler.split(" ")[0], [...compiler.split(" ").slice(1), "-p", project], { encoding: "utf8" }); return ""; } catch (e) { return e.stdout; } };
+copyFileSync("use.ts", "use.ts.orig");
+let failures = 0;
+try {
+  for (const index of directives) {
+    const copy = [...lines]; copy[index] = "";
+    writeFileSync("use.ts", copy.join("\n"));
+    const out = run();
+    const errorLines = [...out.matchAll(/use\.ts\((\d+),\d+\): error/g)].map(m => Number(m[1]) - 1);
+    const ok = errorLines.length > 0 && errorLines.every(line => line === index + 1);
+    if (!ok) { failures += 1; console.log("FAIL directive at line", index + 1, "errors at", errorLines.map(l => l + 1)); }
+  }
+} finally { copyFileSync("use.ts.orig", "use.ts"); }
+console.log(JSON.stringify({ directives: directives.length, failures }));

@@ -1,0 +1,47 @@
+import type { Cardinality, Contract, ProvidedEntry, SlotEntry } from "@get-modular/assembly";
+class AssemblyBindingError extends Error { constructor(readonly code: string, cause: unknown) { super(code, { cause }); } }
+function refuse(message: string): never {
+  throw new AssemblyBindingError("assembly.bind.invalid-declaration", new TypeError(message));
+}
+const MAXIMUM_REVISION = 2147483647;
+const isRevision = (value: unknown): value is number =>
+  typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= MAXIMUM_REVISION;
+type ContractSpec<Id extends string, Rev extends number, From extends number, Earlier> = {
+  readonly id: Id;
+  readonly revision: Rev;
+  readonly compatibleFrom?: From & ([From] extends [Rev | keyof Earlier] ? unknown
+    : { readonly "compatibleFrom needs a value type in Earlier": From });
+};
+export function defineContractImpl<V, Earlier extends { readonly [revision: number]: unknown } = {}>():
+  <const Id extends string, const Rev extends number, const From extends number = Rev>(
+    spec: ContractSpec<Id, Rev, From, Earlier>,
+  ) => Contract<Id, V, Rev, From, Earlier> {
+  return <const Id extends string, const Rev extends number, const From extends number = Rev>(
+    spec: ContractSpec<Id, Rev, From, Earlier>,
+  ): Contract<Id, V, Rev, From, Earlier> => {
+    const candidate: unknown = spec;
+    if (typeof candidate !== "object" || candidate === null) { refuse("defineContract() requires a contract spec"); }
+    const { id, revision } = spec;
+    const from = (spec.compatibleFrom === undefined ? revision : spec.compatibleFrom) as From;
+    if (typeof id !== "string" || id.length === 0) { refuse("A contract needs a capability id"); }
+    if (!isRevision(revision)) { refuse("A contract revision is an integer from 1 to 2147483647"); }
+    if (!isRevision(from) || from > revision) { refuse("compatibleFrom is an integer from 1 to the contract revision"); }
+    type Window = Rev | (keyof Earlier & number);
+    return Object.freeze({
+      id, revision, compatibleFrom: from,
+      provide: (): ProvidedEntry<Id, Rev, From, Window> =>
+        Object.freeze({ capabilityId: id, revision, compatibleFrom: from }) as ProvidedEntry<Id, Rev, From, Window>,
+      slot: <const S extends string, const K extends Cardinality>(slotId: S, cardinality: K): SlotEntry<Id, Rev, S, K> =>
+        Object.freeze({ slotId, capabilityId: id, revision, cardinality }) as SlotEntry<Id, Rev, S, K>,
+    });
+  };
+}
+type DbR3 = { readonly q: () => number };
+type DbR5 = { readonly q: () => number; readonly b: () => void };
+const Db = defineContractImpl<DbR5, { 3: DbR3; 4: DbR3 }>()({ id: "acme/db", revision: 5, compatibleFrom: 3 });
+const check: Contract<"acme/db", DbR5, 5, 3, { 3: DbR3; 4: DbR3 }> = Db;
+// @ts-expect-error compatibleFrom 2 has no value type
+defineContractImpl<DbR5, { 3: DbR3 }>()({ id: "acme/db", revision: 5, compatibleFrom: 2 });
+const plain = defineContractImpl<DbR3>()({ id: "acme/x", revision: 2 });
+const p2: Contract<"acme/x", DbR3, 2> = plain;
+void check; void p2;
