@@ -10,9 +10,42 @@ import { retainSdkGrowthFailure } from "./sdk-growth-failure-retention.mts";
 const execute = promisify(execFile);
 const sha = "8fc8242049442a6c8838146b92dc1cb029ff8280";
 const secret = "SYNTHETIC-SECRET-never-retain";
-const report = { schemaVersion: 1, capabilities: [{ capabilityId: "package.public-api-compatibility",
+const report = { reportSchemaVersion: 1, capabilities: [{ capabilityId: "package.public-api-compatibility",
   outcome: "failed", problem: { code: "UNEXPECTED_PROCESS_FAILURE", retryable: false, message: secret },
   evidence: { grant: secret }, diagnostics: [secret] }], env: secret };
+// Exact captured Foundation 1.7.2 producer bytes, kept as an immutable TEST input.
+// SHA-256: 2b45524ae510077d7f76a7ce600d12b276af7286dc0f699e874ec9bf77f1921e.
+const publishedReport = `{
+  "reportSchemaVersion": 1,
+  "foundationVersion": "1.7.2",
+  "coverage": "selected",
+  "outcome": "failed",
+  "summary": {
+    "errors": 0,
+    "warnings": 0,
+    "infos": 0
+  },
+  "capabilities": [
+    {
+      "capabilityId": "package.public-api-compatibility",
+      "capabilityConfigSchemaVersion": 2,
+      "diagnostics": [],
+      "outcome": "failed",
+      "problem": {
+        "code": "UNEXPECTED_PROCESS_FAILURE",
+        "message": "An unexpected process failure occurred.",
+        "phase": "public-api-compatibility-execution",
+        "retryable": false
+      },
+      "summary": {
+        "errors": 0,
+        "warnings": 0,
+        "infos": 0
+      }
+    }
+  ]
+}
+`;
 async function fixture(run: (directory: string) => Promise<void>, parent = tmpdir()) {
   const directory = await realpath(await mkdtemp(join(parent, "sdk-retention-TEST-")));
   try { await run(directory); } finally { await rm(directory, { recursive: true, force: true }); }
@@ -28,11 +61,11 @@ async function invocation(directory: string, stdout: string, exit: number): Prom
 }
 
 // Regression: cleanup used to erase the only report after the real child exit 3.
-test("unexpected invocation retains exact selected bytes before fixture removal; no message admission", async () => {
+test("published Foundation 1.7.2 invocation retains exact selected bytes before fixture removal; no message admission", async () => {
   await fixture(async directory => {
     const invocationRoot = join(directory, "fixture");
     await mkdir(invocationRoot);
-    const result = await invocation(invocationRoot, JSON.stringify(report), 3);
+    const result = await invocation(invocationRoot, publishedReport, 3);
     await retainSdkGrowthFailure(result, destination(directory));
     await rm(invocationRoot, { recursive: true, force: true });
     assert.equal(await bytes(directory), JSON.stringify({ checkoutSha: sha, nodeVersion: process.version,
@@ -61,7 +94,7 @@ test("malformed, oversized, spoofed and unknown-field reports remain bounded", a
     ["", "missing"], [JSON.stringify({ ...report, capabilities: Array(2000).fill(secret) }), "oversized"],
     [JSON.stringify({ ...report, capabilities: [report.capabilities[0], report.capabilities[0]] }), "malformed"],
     [JSON.stringify({ ...report, capabilities: [{ ...report.capabilities[0], problem: { code: secret, retryable: secret } }] }), "malformed"],
-    [JSON.stringify({ ...report, schemaVersion: 2 }), "malformed"], [JSON.stringify(spoofed), "selected"]] as const) {
+    [JSON.stringify({ ...report, reportSchemaVersion: 2 }), "malformed"], [JSON.stringify(spoofed), "selected"]] as const) {
     await fixture(async directory => {
       await retainSdkGrowthFailure(await invocation(directory, stdout, 3), destination(directory));
       const retained = await bytes(directory);
@@ -71,6 +104,28 @@ test("malformed, oversized, spoofed and unknown-field reports remain bounded", a
       if (status === "selected") assert.deepEqual(JSON.parse(retained).publicCapability, { retryable: false });
       else assert.equal(JSON.parse(retained).publicCapability, undefined);
     });
+  }
+});
+// Regression: a legacy schemaVersion cannot supply or override the canonical version.
+test("missing, wrong and spoofed report versions reject without selecting public fields", async t => {
+  for (const [name, version] of [
+    ["missing canonical version", {}],
+    ["legacy schemaVersion 1 only", { schemaVersion: 1 }],
+    ["canonical version 2", { reportSchemaVersion: 2 }],
+    ["legacy version 1 cannot override canonical version 2", { schemaVersion: 1, reportSchemaVersion: 2 }],
+    ["string canonical version", { reportSchemaVersion: "1" }],
+  ] as const) {
+    await t.test(name, async () => fixture(async directory => {
+      await retainSdkGrowthFailure({ code: 3, stdout: JSON.stringify({ ...version, capabilities: report.capabilities }) },
+        destination(directory));
+      const retained = await bytes(directory);
+      assert.equal(JSON.parse(retained).reportStatus, "malformed");
+      assert.equal(JSON.parse(retained).publicCapability, undefined);
+      assert.equal(JSON.parse(retained).exit, 3);
+      assert.equal(JSON.parse(retained).messageOmission, "producer-safety-not-admitted");
+      assert(!retained.includes(secret));
+      assert(Buffer.byteLength(retained) <= 32 * 1024);
+    }));
   }
 });
 // Regression: inferring a numeric exit or a timeout, or reading stdout getters, fabricates facts.

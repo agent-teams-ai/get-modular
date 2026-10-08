@@ -37,7 +37,7 @@ function publicSelection(stdout: unknown): PublicSelection {
   try {
     const report: unknown = JSON.parse(stdout);
     const rows = own(report, "capabilities");
-    if (own(report, "schemaVersion") !== 1 || !Array.isArray(rows) || rows.length !== 1
+    if (own(report, "reportSchemaVersion") !== 1 || !Array.isArray(rows) || rows.length !== 1
       || own(rows[0], "capabilityId") !== capabilityId) return { reportStatus: "malformed" };
     const problem = own(rows[0], "problem");
     if (typeof problem !== "object" || problem === null || Array.isArray(problem)) return { reportStatus: "malformed" };
