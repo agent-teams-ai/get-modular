@@ -1,0 +1,130 @@
+// `@get-modular/observation` (candidate): opaque, data-only participants.
+// Only `participantsFor<V>()` creates them. The subscribe plan lives in a
+// package-private registry: user code can neither forge a participant nor run
+// its plan (no hidden subscribe authority), and adding a participant kind later
+// does not break consumers.
+
+import type { Key, Keys, ObservationPort, Snapshot, Values } from "./contract.ts";
+import { invokeIsolated, type Report } from "./callback-isolation.ts";
+import { createLatestDerivation } from "./latest-derivation.ts";
+
+declare const participantBrand: unique symbol;
+/** Opaque. Created only by `participantsFor<V>()`. */
+export interface Participant<in out V extends Values> {
+  readonly [participantBrand]: V;
+}
+
+export type ParticipantOutcome =
+  | Readonly<{ id: string; kind: "ready"; revision: number }>
+  | Readonly<{ id: string; kind: "failed"; revision: number; cause: unknown }>;
+
+/** Package-internal running state of one participant. */
+export type Running = Readonly<{
+  unsubscribe: () => undefined;
+  /** Only derived participants have work to drain. */
+  closeAndDrain: ((escalate: AbortSignal) => Promise<void>) | undefined;
+  firstOutcome: Promise<ParticipantOutcome>;
+}>;
+export type Plan<V extends Values> = Readonly<{
+  hasWork: boolean;
+  start: (port: ObservationPort<V>, id: string, report: Report) => Running;
+}>;
+
+const plans = new WeakMap<object, Plan<never>>();
+
+/** Package-internal: the plan behind an opaque participant (undefined if forged). */
+export function planOf<V extends Values>(participant: Participant<V>): Plan<V> | undefined {
+  return plans.get(participant) as Plan<V> | undefined; // sound: only participantsFor<V> registers
+}
+
+function register<V extends Values>(plan: Plan<V>): Participant<V> {
+  // One package copy per process: participants from another copy are reported as foreign.
+  const participant = Object.freeze({}) as Participant<V>;
+  plans.set(participant, plan as unknown as Plan<never>);
+  return participant;
+}
+
+export interface ParticipantFactory<V extends Values> {
+  /** Sync apply after a construction read; a missed commit arrives as one isolated catch-up. */
+  sync<K extends Key<V>>(spec: Readonly<{
+    initial: Snapshot<V, K>;
+    apply: (next: Snapshot<V, K>) => undefined;
+  }>): Participant<V>;
+  /** Async derivation; the hub owns the lane, fencing, drain and first outcome. */
+  derived<const S extends Keys<V>, T>(spec: Readonly<{
+    keys: S;
+    derive: (values: Readonly<Pick<V, S[number]>>, signal: AbortSignal) => Promise<T>;
+    apply: (result: T, snapshot: Snapshot<V, S[number]>) => undefined;
+    fail: (cause: unknown, snapshot: Snapshot<V, S[number]>) => undefined;
+  }>): Participant<V>;
+}
+
+/** Fix the record type once (like `assemblyFor<C>()`), then build participants. */
+export function participantsFor<V extends Values>(): ParticipantFactory<V> {
+  return Object.freeze({
+    sync<K extends Key<V>>(spec: Readonly<{ initial: Snapshot<V, K>; apply: (next: Snapshot<V, K>) => undefined }>): Participant<V> {
+      return register<V>({ hasWork: false, start: (port, id, report) => {
+        let applied = spec.initial.revision;
+        const apply = (next: Snapshot<V, K>): undefined => {
+          if (next.revision <= applied) return undefined;
+          applied = next.revision;
+          return spec.apply(next); // the source's isolation checks the returned value
+        };
+        // `since` makes the source verify the construction read's origin and deliver
+        // one catch-up through its isolated, seal-aware path.
+        const observation = port.observe(spec.initial.keys, apply, { reportError: report, since: spec.initial });
+        return {
+          unsubscribe: observation.unsubscribe,
+          closeAndDrain: undefined,
+          firstOutcome: Promise.resolve({ id, kind: "ready", revision: applied }),
+        };
+      } });
+    },
+
+    derived<const S extends Keys<V>, T>(spec: Readonly<{
+      keys: S;
+      derive: (values: Readonly<Pick<V, S[number]>>, signal: AbortSignal) => Promise<T>;
+      apply: (result: T, snapshot: Snapshot<V, S[number]>) => undefined;
+      fail: (cause: unknown, snapshot: Snapshot<V, S[number]>) => undefined;
+    }>): Participant<V> {
+      return register<V>({ hasWork: true, start: (port, id, report) => {
+        let first!: (outcome: ParticipantOutcome) => void;
+        const firstOutcome = new Promise<ParticipantOutcome>((resolve) => { first = resolve; });
+        let admits = (_revision: number): boolean => false;
+        let latest: Snapshot<V, S[number]> | undefined;
+        const lane = createLatestDerivation<Snapshot<V, S[number]>, T>({
+          derive: (snapshot, signal) => spec.derive(snapshot.values, signal),
+          isCurrent: (revision) => admits(revision) && latest?.revision === revision,
+          apply: (result, { revision }): undefined => {
+            const snapshot = latest;
+            if (snapshot === undefined) return undefined;
+            let failure: { cause: unknown } | undefined;
+            // Throws and illegal returns (e.g. an async apply smuggled through a cast)
+            // are reported and make the first outcome `failed`.
+            invokeIsolated(() => spec.apply(result, snapshot), (cause) => {
+              failure ??= { cause };
+              return report(cause);
+            });
+            first(failure === undefined ? { id, kind: "ready", revision } : { id, kind: "failed", revision, cause: failure.cause });
+            return undefined;
+          },
+          fail: (cause, { revision }): undefined => {
+            first({ id, kind: "failed", revision, cause });
+            return latest === undefined ? undefined : spec.fail(cause, latest);
+          },
+          reportError: report,
+        });
+        const offer = (next: Snapshot<V, S[number]>): undefined => { latest = next; return lane.offer(next.revision, next); };
+        const observation = port.observe(spec.keys, offer, { reportError: report });
+        admits = observation.view.admits;
+        offer(observation.view.initial);
+        return {
+          unsubscribe: () => { observation.unsubscribe(); lane.close(); return undefined; },
+          closeAndDrain: (escalate) => lane.closeAndDrain(escalate),
+          firstOutcome,
+        };
+      } });
+    },
+  });
+}
+

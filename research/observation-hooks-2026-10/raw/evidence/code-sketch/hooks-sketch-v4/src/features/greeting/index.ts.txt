@@ -1,0 +1,20 @@
+// Sync participant: read once at construction, provide one participant.
+import { settings, type SettingsReader } from "../settings/index.ts";
+import { Greeter } from "./greeter.ts";
+
+export type GreeterApi = Readonly<{ greet: (name: string) => string }>;
+
+export async function createGreeting(deps: Readonly<{ settings: SettingsReader }>) {
+  const initial = deps.settings.read(["locale", "greetingStyle"]);
+  const greeter = new Greeter({ locale: initial.values.locale, style: initial.values.greetingStyle });
+  return {
+    instance: greeter,
+    capabilities: {
+      "greeting/greeter": { greet: (name: string) => greeter.greet(name) } satisfies GreeterApi,
+      "settings/participant": settings.sync({
+        initial,
+        apply: ({ values }) => greeter.configure({ locale: values.locale, style: values.greetingStyle }),
+      }),
+    },
+  };
+}

@@ -1,0 +1,28 @@
+// Settings feature: the product's instantiation of the observation library.
+// Product owns the record shape, the real source adapter and commit policy.
+import {
+  derivedParticipant, syncParticipant,
+  type DerivedParticipant, type Keys, type ObservationPort, type Participant, type Reader, type Snapshot,
+} from "../../lib/observation/index.ts";
+
+export type AppSettings = Readonly<{
+  locale: string;
+  greetingStyle: "short" | "formal";
+  priceCurrency: string;
+  taxRegion: string;
+  auditVerbose: boolean;
+}>;
+export type SettingsReader = Reader<AppSettings>;
+export type SettingsPort = ObservationPort<AppSettings>;
+export type SettingsParticipant = Participant<AppSettings>;
+export type SettingsSnapshot<K extends keyof AppSettings> = Snapshot<AppSettings, K>;
+export type SettingsKeys = Keys<AppSettings>;
+
+/** Typed helpers so modules never spell the record type. */
+export const followSettings = <K extends keyof AppSettings>(
+  initial: SettingsSnapshot<K>, apply: (next: SettingsSnapshot<K>) => undefined,
+): SettingsParticipant => syncParticipant<AppSettings, K>(initial, apply);
+
+export const deriveFromSettings = <const S extends SettingsKeys, T>(
+  spec: DerivedParticipant<AppSettings, S, T>,
+): SettingsParticipant => derivedParticipant<AppSettings, S, T>(spec);

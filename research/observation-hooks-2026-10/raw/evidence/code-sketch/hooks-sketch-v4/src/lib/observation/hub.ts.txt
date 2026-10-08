@@ -1,0 +1,95 @@
+// `@get-modular/observation` (candidate): the hub for ONE event family.
+// Zero package dependencies: it needs only a structural `HubResources`, which
+// `@get-modular/resources`' `Resources` satisfies. Registration order: all drain
+// records first, then one subscription per participant, so LIFO unsubscribes
+// everyone before draining. Debt paths name the participant. A drain that is
+// escalated while work is still running fails with
+// `observation.derivation.still-running` (a debt) so LIFO continues instead of
+// blocking until `abandon`.
+
+import { ObservationError, type ObservationPort, type Values } from "./contract.ts";
+import type { Report } from "./callback-isolation.ts";
+import { planOf, type Participant, type ParticipantOutcome, type Running } from "./participants.ts";
+
+/** Structural subset of `@get-modular/resources` `Resources`. */
+export interface HubResources {
+  setup<T>(spec: Readonly<{
+    name?: string;
+    setup: (ctx: Readonly<{ signal: AbortSignal }>) => T | PromiseLike<T>;
+    cleanup: (value: T, ctx: Readonly<{ signal: AbortSignal }>) => void | PromiseLike<void>;
+  }>): Promise<T>;
+}
+
+export interface Hub {
+  /** Per-participant first outcome (input to Host readiness; the Host decides). */
+  outcomes(): ReadonlyArray<Readonly<{ id: string; outcome: Promise<ParticipantOutcome> }>>;
+}
+
+const isScopeClosed = (cause: unknown): boolean =>
+  typeof cause === "object" && cause !== null && (cause as { code?: unknown }).code === "scope-closed";
+
+export async function startHub<V extends Values>(
+  deps: Readonly<{ port: ObservationPort<V>; participants: readonly Participant<V>[] }>,
+  context: Readonly<{ resources: HubResources; participantIds: readonly string[]; reportError: Report }>,
+): Promise<Hub> {
+  const { participants } = deps;
+  const ids = context.participantIds;
+  if (participants.length !== ids.length) {
+    throw new ObservationError("observation.hub.participant-mismatch", `${participants.length} participants, ${ids.length} ids`);
+  }
+  const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
+  if (duplicates.length > 0) throw new ObservationError("observation.hub.duplicate-participant", `duplicate ids: ${duplicates.join(", ")}`);
+
+  // Validate everything before any subscription (no partial start on bad input).
+  if (new Set(participants).size !== participants.length) {
+    throw new ObservationError("observation.hub.duplicate-participant", "the same participant appears twice");
+  }
+  const plans = participants.map((participant, index) => {
+    const plan = planOf(participant);
+    if (plan === undefined) {
+      throw new ObservationError("observation.participant.foreign",
+        `participant ${ids[index]} was not created by participantsFor() of this package copy`);
+    }
+    return plan;
+  });
+
+  // Drain records first (only participants with work): LIFO runs them after every unsubscribe.
+  const cells = new Map<string, { running: Running | undefined }>();
+  for (const [index, plan] of plans.entries()) {
+    if (!plan.hasWork) continue;
+    const id = ids[index]!;
+    cells.set(id, await context.resources.setup({
+      name: `drain:${id}`,
+      setup: () => ({ running: undefined as Running | undefined }),
+      cleanup: async (cell, { signal }) => {
+        try {
+          await cell.running?.closeAndDrain?.(signal);
+        } catch (cause) {
+          throw new ObservationError("observation.derivation.still-running", `participant ${id} still has work after escalation`, { cause });
+        }
+      },
+    }));
+  }
+  const started: Array<Readonly<{ id: string; running: Running }>> = [];
+  for (const [index, plan] of plans.entries()) {
+    const id = ids[index]!;
+    const report: Report = (cause) => context.reportError(new Error(`participant ${id}`, { cause }));
+    let running: Running;
+    try {
+      running = await context.resources.setup({
+        name: `subscription:${id}`,
+        setup: () => plan.start(deps.port, id, report), // the single subscribe point; atomic
+        cleanup: (value) => { value.unsubscribe(); },
+      });
+    } catch (cause) {
+      if (isScopeClosed(cause)) throw cause; // keep `scope-closed` visible
+      throw new ObservationError("observation.hub.participant-start", `participant ${id} failed to start`, { cause });
+    }
+    const cell = cells.get(id);
+    if (cell !== undefined) cell.running = running;
+    started.push({ id, running });
+  }
+  return Object.freeze({
+    outcomes: () => started.map(({ id, running }) => ({ id, outcome: running.firstOutcome })),
+  });
+}

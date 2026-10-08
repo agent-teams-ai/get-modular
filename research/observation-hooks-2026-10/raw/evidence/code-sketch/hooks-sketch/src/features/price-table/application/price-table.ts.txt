@@ -1,0 +1,65 @@
+// OPTION 2 participant, application layer. Owns its async derivation via the
+// private `latestDerivation` helper. Depends on its own RatesPort (consumer-owned).
+
+import { latestDerivation, type LatestDerivation } from "../../../shared/latest-derivation.ts";
+import type {
+  SettingsConsumerV1, SettingsSnapshot, SettingsView,
+} from "../../settings/published/settings-v1.ts";
+
+export interface RatesPort {
+  fetchRate(currency: string, signal: AbortSignal): Promise<number>;
+}
+
+type Keys = "priceCurrency";
+
+export type PriceState =
+  | Readonly<{ kind: "pending" }>
+  | Readonly<{ kind: "ready"; currency: string; rate: number; revision: number }>;
+
+export class PriceTable implements SettingsConsumerV1<Keys> {
+  #view: SettingsView<Keys> | undefined;
+  #state: PriceState = { kind: "pending" };
+  #lastFailure: Readonly<{ revision: number; cause: unknown }> | undefined;
+  #lookups = 0; // survives settings updates
+  readonly #derivation: LatestDerivation<string>;
+
+  constructor(rates: RatesPort) {
+    this.#derivation = latestDerivation<string, Readonly<{ currency: string; rate: number }>>({
+      derive: async (currency, signal) => ({ currency, rate: await rates.fetchRate(currency, signal) }),
+      isCurrent: (revision) => this.#view?.current().revision === revision,
+      commit: (revision, { currency, rate }) => {
+        this.#state = { kind: "ready", currency, rate, revision };
+        return undefined;
+      },
+      fail: (revision, cause) => {
+        this.#lastFailure = { revision, cause }; // previous ready state is kept
+        return undefined;
+      },
+    });
+  }
+
+  attach(view: SettingsView<Keys>): undefined {
+    this.#view = view;
+    this.#derivation.offer(view.initial.revision, view.initial.values.priceCurrency);
+    return undefined;
+  }
+
+  onSettings(next: SettingsSnapshot<Keys>): undefined {
+    this.#derivation.offer(next.revision, next.values.priceCurrency);
+    return undefined;
+  }
+
+  async detach(): Promise<void> {
+    this.#derivation.close();
+    await this.#derivation.drain();
+  }
+
+  price(base: number): Readonly<{ amount: number; currency: string }> | undefined {
+    this.#lookups += 1;
+    return this.#state.kind === "ready" ? { amount: base * this.#state.rate, currency: this.#state.currency } : undefined;
+  }
+
+  snapshot(): Readonly<{ state: PriceState; lookups: number; lastFailure: unknown }> {
+    return { state: this.#state, lookups: this.#lookups, lastFailure: this.#lastFailure?.cause };
+  }
+}

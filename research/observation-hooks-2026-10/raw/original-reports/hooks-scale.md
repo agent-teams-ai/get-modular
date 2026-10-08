@@ -1,0 +1,123 @@
+# Optional module notifications at scale: experimental report
+
+**Recommendation.** Use a consumer-owned, versioned settings port and explicit updates to module-owned state for one bounded TEST experiment. Hundreds of modules do not, by themselves, justify a shared lifecycle hook runtime. A static composition graph describes bindings; something must explicitly publish changes before consumers can observe them.
+
+Keep this research separate from `module.resources.setup({ setup, cleanup })`. Resource ownership, state observation, dependency health and readiness require different contracts. Pure and borrow-only modules need no dummy hooks or disposers.
+
+**Evidence and limits.** I read the scope, plan-improve workflow, proposal, earlier hierarchy/async critiques, primary-scale bundle and relevant retained sources. All **38 manifest-listed SHA-256 hashes matched**. Primary webpage bundles record root-relay retrievals on **2026-10-01, approximately 13:28 UTC**. Internet evidence was supplied indirectly; this worker performed no native browsing.
+
+The owner-requested profile is `gpt-6.1-sol`, `max`, `serviceTier: default`. Earlier critiques requested `priority`; their manifests do not attest this task’s effective backend tier. No override was requested here.
+
+This was approximately 17 minutes of read-only research. No repository or scratch files were written, and no Git actions, builds, tests, installs or runtime flows ran.
+
+**Authority remains unchanged.** Supplied Get Modular revision `9c722ceff4ede307d06d7a4b63fdebe615f54c53` retains ADR-0028’s callback-free ownership bookkeeping and ADR-0029’s synchronous, non-executing lifecycle kernel. Neither admits the proposed callbacks. G1 remains `hold`; K1 remains pending.
+
+I compared the complete current Consumer Module Standard bytes, SHA-256 `33b41d5babf0a431c97e8e596a56e6ec1557ba1a0b26d39bf23e13d9a19e1fbd`, against Agent Runtime’s retained `ac49bb3374946330ec820591f8195a22d2c90900` pin. The delta adds ADR-0029 and its dynamic Host guidance. This comparison does not migrate the passive consumer pin. A future shared callback API needs its own bounded admission decision, current guidance, affected profiles and rejecting checks.
+
+**What mature systems actually supply.** The behavior column below is primary-source evidence; the implications are inference.
+
+| Primary source | Documented behavior | Implication for this proposal |
+| --- | --- | --- |
+| [Flutter State](https://api.flutter.dev/flutter/widgets/State-class.html), [InheritedModel](https://api.flutter.dev/flutter/widgets/InheritedModel-class.html) | `initState` runs once per State object. `didChangeDependencies` follows initialization and registered inherited-dependency changes. `didUpdateWidget` handles configuration replacement with matching type/key. `deactivate` permits reinsertion; `dispose` is terminal. InheritedModel supports aspect-qualified notifications. | These hooks work inside an explicit observation and identity system. Their names alone supply neither dependency monitoring nor async resource custody. |
+| [React reactive Effects](https://react.dev/learn/lifecycle-of-reactive-effects), [useEffect](https://react.dev/reference/react/useEffect) | Synchronization can restart while a component survives. Dependencies use `Object.is`; unstable identities cause extra runs. Cleanup precedes replacement setup. | Module identity and synchronization identity should differ. Repeated synchronization must not repeat unrelated irreversible effects. Async physical release requires another contract. |
+| [Angular lifecycle](https://angular.dev/guide/components/lifecycle) | Hooks participate in a traversal; changing state during traversal is discouraged. Frequent checking hooks can harm performance. | A generic callback on every graph visit creates avoidable work and order dependence. |
+| [.NET DI](https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection/guidelines), [Nest lifecycle source](https://github.com/nestjs/docs.nestjs.com/blob/cc4542f80d03a9f78cb255a1c11812becb2a50f7/content/fundamentals/lifecycle-events.md) | Consumers do not dispose injected dependencies; .NET scopes are not hierarchical. Nest awaits module lifecycle phases, but request-scoped classes do not receive these application hooks. | DI lifetime and ownership must be specified explicitly; tree depth cannot establish every cleanup prerequisite. |
+| [OSGi DS 8.1, §§112.3.7–112.3.11](https://docs.osgi.org/specification/osgi.cmpn/8.1.0/service.component.html) | Static references can cause reconstruction; dynamic references support bind/update/unbind and may change on any thread. Replacement bind can precede old unbind. Required activation cycles are rejected. | Rebinding requires policy, concurrency and exclusivity rules. Copying bind/unbind callbacks cannot establish safe replacement. |
+| [IntelliJ Disposer](https://plugins.jetbrains.com/docs/intellij/disposers.html), [dynamic plugins](https://plugins.jetbrains.com/docs/intellij/dynamic-plugins.html) | Children dispose before parents. Dynamic unload requires restrictions and can require restart after failure. | An ownership tree is useful but does not represent cross-tree borrowing or prove arbitrary unloadability. |
+
+[Effect v3 Scope](https://effect.website/docs/v3/resource-management/scope/) documents protected acquisition and registered release. It also explicitly shows that closing a scope does not necessarily interrupt pending work. [OpenClaw’s supplied source](https://github.com/openclaw/openclaw/blob/c3425e1d7b9550c7ff36deda1c1b0fc0f97332a1/src/plugins/plugin-instance.ts) separates ordinary calls, consumers and timed-out call settlement; final disposal waits for retained settlement. These are useful protections, not evidence that native effects disappeared. This revision differs from the proposal’s historical `92108db8` citation.
+
+**Scale model and distinct meanings of “changed.”**
+
+Consider **600 module instances**, ownership depth **64**, **1,800 dependency edges**, a pool borrowed by **120 consumers across branches**, and one settings aspect used by **12 consumers**. This is an adversarial model, not a measured benchmark. Current Assembly’s 4,096-handle ceiling is structural; its eight-segment owner-path limit must not be confused with arbitrary instance hierarchy support.
+
+| Change | Required meaning |
+| --- | --- |
+| Binding identity | Exact old/new provider instance and binding epoch; explicit rebind or reconstruction. |
+| Dependency health | Availability and health epoch; adapter-mediated admission and local product policy. |
+| Value/configuration | Immutable desired snapshot; selective recomputation. |
+| Module-owned state | Consumer-owned mutation and observation, independent of construction. |
+| Readiness | Evidence that the selected capability can serve; callback completion alone is insufficient. |
+| Cleanup | Observed release or retained debt; health loss and timeout are insufficient. |
+
+A mutable object can change while retaining its reference. Conversely, a new wrapper can contain equal values. A parameterless `didChangeDependencies()` explains neither case. It also cannot distinguish pool failure, configuration edits, provider replacement and module-local counters.
+
+**Minimal experimental seam: explicit settings observation.**
+
+The concrete use case is refreshing a module-owned derived lookup table after selected settings change, while preserving counters and an unchanged event subscription.
+
+Keep the port at the consumer boundary and its source in the TEST Host adapter. Do not add Core declarations, a global registry, a service bag or extra composition nodes. The illustrative local operation is:
+
+```ts
+watchSettings(keys, onChange)
+// returns { initial, snapshot, stop }
+```
+
+Its proposed contract is:
+
+1. **Atomic registration.** Installing observation and capturing `initial` are one synchronous source-owner operation. Notifications are deferred. Reading first and subscribing later is prohibited because an update can fall between them.
+2. **Immutable views.** Each view contains source identity, monotonic commit revision, relevant-input revision and selected inert values. Related settings commit together. No atomicity across independent sources is claimed.
+3. **Explicit selection.** Keys are declared before work begins. Source commits advance relevant revisions synchronously, before callback delivery. An index selects subscriptions for touched keys; selectors suppress irrelevant notifications. Notification work scales with candidate subscriptions, not hierarchy depth. Worst-case fanout still reaches all 600 consumers.
+4. **Defined coalescing.** Configuration is latest-state data. A pending frame retains the earliest undelivered “before,” latest “after” and union of changed keys. Intermediate configurations may disappear. Commands, acknowledgements and health-loss transitions cannot use this channel’s lossy semantics.
+5. **Bounded execution.** Each consumer has one active computation and one latest pending input. Its lane is serial. Independent lanes may progress concurrently; shared resource mutations remain synchronized by the resource owner. No global callback barrier is introduced.
+6. **Guarded publication.** A run captures instance identity, run identity and relevant revision. Immediately before publishing, it synchronously checks live admission and the current relevant revision through `snapshot()`. Checking only the last delivered notification is insufficient.
+7. **Narrow effects.** The first experiment computes candidate state from immutable inputs. It cannot acquire resources, rebind dependencies, write its source or await its own future notification. Its subscription uses existing Host cleanup ownership.
+
+One JavaScript execution agent owns commits; messages from workers or external sources enter that owner explicitly. A source revision does not establish distributed transactions.
+
+Maintain desired and applied revisions separately. If computation fails, retain the cause and expose stale/degraded state according to the consumer’s policy. Do not report readiness or revert the already committed source globally.
+
+**Counterexamples and required boundaries for broader hooks.**
+
+- **Repeated effects:** after initialization, a generic dependency hook subscribes again on every unrelated configuration notification. Subscriptions multiply. An unchanged binding must retain its existing synchronization obligation; state recomputation must not rerun factory setup.
+- **Stale async completion:** run A opens a handle, awaits, and returns after run B or shutdown. Discarding A’s result leaks its handle. Resourceful hooks need a strong attempt owner before invocation, immediate partial-resource custody and retained late-result cleanup. Cancellation requests and observer deadlines do not settle that action.
+- **Loss followed by recovery:** a dependency becomes unavailable and available again before queued notifications run. Coalescing to `available: true` hides the loss. Managed effect admission must change immediately, with a new health epoch. Continuations recheck before supported effects; submitted IO remains observed or uncertain.
+- **Replacement exclusivity:** binding A→B→A can fool pointer comparison. Binding epochs must distinguish these transitions. An old cleanup with unknown outcome blocks exclusive replacement. Neither hook completion nor a new snapshot permits silent replay against a replacement.
+- **Non-tree cleanup:** child A’s cleanup needs a pool owned in another branch, also used by external C. Disposing the parent subtree does not prove the pool is free. Preserve prerequisites until all dependent work and required cleanup settle. Borrowers have no pool-disposal authority.
+- **Producers during shutdown:** an interval or queued event keeps adding work while drain waits. Close ordinary admission and stop the producer according to its adapter protocol before waiting. Preserve private cleanup access. If unsubscribe or cleanup remains unresolved, retain custody and report incomplete.
+- **Reentrancy and cycles:** inline notification recursively writes its source; alternatively, hook A waits for B, which waits for A. Defer notifications and reject feedback/self-wait in the first experiment. Broader declared cycles need rejection or a specific local protocol before effects. A composition DAG does not prove notification or cleanup graphs are acyclic.
+- **Failure propagation:** one failing hook must not prevent unrelated notifications or safe cleanup. Retain original and cleanup causes. Dependents become unavailable only through their explicit capability/readiness policy; blanket recursive destruction is unjustified.
+- **Move versus rebuild:** reordering metadata does not notify existing references. Reconstruction creates a new instance, even with the same definition ID. State-preserving reparenting needs an explicit identity, borrowing and custody handoff; it is outside this slice.
+- **State custody:** private mutable state belongs to the instance owner; observers receive inert views. Rebuilding, transferring resources and preserving state are separate operations. Cache keys need instance/generation identity. Flutter’s [dispose documentation](https://api.flutter.dev/flutter/widgets/State/dispose.html) also warns that process termination may skip cleanup; no in-process hook can promise otherwise.
+
+The earlier hierarchy and async critiques remain applicable. Adding notifications cannot repair missing recovery ownership, infer arbitrary dependency loss or make raw escaped handles revocable.
+
+**Three viable choices.** Scores are design judgment out of 10; higher complexity is worse. LOC estimates are incremental, approximately ×2 uncertain, and exclude the resource-helper implementation, physical drivers and framework internals.
+
+| Option | Confidence / reliability / complexity | Production LOC | Test LOC | Docs LOC |
+| --- | --- | ---: | ---: | ---: |
+| **1. Explicit settings port and consumer methods — recommended** | 8 / 8 / 3 | 260–460 | 420–750 | 100–180 |
+| **2. Optional Host change-callback driver** with declared aspects, exact change frames and per-instance lanes | 7 / 7 / 7 | 700–1,200 | 950–1,600 | 180–300 |
+| **3. Existing Effect runtime in the Host adapter**, using explicit state streams and scoped jobs | 7 / 8 / 8 | 350–650 | 550–950 | 150–260 |
+
+Option 1 addresses the concrete observation problem with few new concepts. Option 2 becomes reasonable when repeated real cases share stable callback semantics; it remains a research alternative requiring separate admission. Option 3 is plausible for an existing Effect Host and reuses mature execution/resource machinery, but introduces substantial concepts into a plain-Promise Host. The retained v3 Scope page does not establish its state-stream semantics or select a current dependency version.
+
+None is qualified as more reliable than the reference systems.
+
+**Future acceptance evidence.** These are proposed observable checks, not executed tests. Use actual source/consumer interactions and independently expected outputs, rather than mock callback counts alone.
+
+| Scenario | Regression that must fail |
+| --- | --- |
+| Update related settings during observation registration | Missing the update or publishing a mixed-version derived result. |
+| 600-instance model; change an aspect used by 12 consumers | Changing unrelated consumers’ state or scanning the entire hierarchy per notification. |
+| Burst of 1,000 configurations while computation is held | Unbounded pending work, overlapping runs within one lane or failure to converge to the latest value. |
+| Hold an old computation; commit a newer input or close the instance | Old publication overwrites current state or occurs after closure. |
+| One computation throws while an independent consumer updates | Peer progress stops, the failure disappears or stale state is reported ready. |
+| Preserve an instance across configuration updates; reconstruct separately | Updates reset its private state, or distinct instances accidentally share state. |
+| Health loss/recovery across `await` through a managed port | A subsequent effect uses revoked authority or silently targets a replacement. |
+| Resourceful extension: partial setup and late success | Failed construction loses its reachable cleanup owner or stale success escapes publication fencing. |
+| Resourceful extension: producer, cross-branch borrower and cleanup deadline | Parent release precedes dependent settlement, or a deadline deletes custody. |
+
+The final resourceful scenarios are admission boundaries for a later extension. Reuse unchanged resource-plan evidence rather than duplicating scenarios at every layer.
+
+**Bounded delivery and rollback.** Root should retain this as experimental evidence separate from the resource proposal. A subsequent authorized TEST task should implement only Option 1, record exact source/standard/artifact identities, and demonstrate the configuration cases before considering shared extraction.
+
+The retained TEST consumer provides `pnpm typecheck`, `pnpm test` and `pnpm evidence`; future evidence must actually include the new behavior. Existing lifecycle evidence does not prove observation semantics. Any later AR/GM changes require their applicable changed, fast and full gates. No passing gate is claimed here.
+
+Compatibility is additive: existing factories, capability records and passive consumers acquire no hooks. Rollback disables TEST observation, closes admission, detaches subscriptions and retains outstanding owners until settlement. It cannot discard cleanup debt or introduce a parallel obligation ledger.
+
+**Exact missing primary sources/questions for root relay.**
+
+- https://github.com/flutter/flutter/blob/stable/packages/flutter/lib/src/widgets/framework.dart — Return an exact commit and relevant implementation: how are inherited invalidations coalesced, moves processed and reentrant dependency notifications scheduled? Documentation alone does not prove notification complexity.
+- https://react.dev/reference/react/useSyncExternalStore — What immutable/cached snapshot and subscribe requirements prevent missed changes and inconsistent reads? Its guarantees have not been borrowed into this proposal.
+- https://effect.website/docs/v3/state-management/subscriptionref/ — What atomicity, subscription, buffering and update-delivery semantics support Option 3? Also identify the exact applicable Effect version before any dependency decision.

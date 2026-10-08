@@ -1,0 +1,20 @@
+// Application layer: plain domain behavior. Knows nothing about settings,
+// hooks, Core or Assembly (consumer-owned input type).
+
+export type GreeterConfig = Readonly<{ locale: string; style: "short" | "formal" }>;
+
+export class Greeter {
+  #config: GreeterConfig;
+  #greeted = 0; // instance state that survives configuration updates
+
+  constructor(config: GreeterConfig) { this.#config = config; }
+
+  configure(config: GreeterConfig): undefined { this.#config = config; return undefined; }
+
+  greet(name: string): string {
+    this.#greeted += 1;
+    const hello = this.#config.locale === "ru" ? "Привет" : "Hello";
+    const who = this.#config.style === "formal" ? `уважаемый ${name}` : name;
+    return `${hello}, ${who} (#${this.#greeted})`;
+  }
+}
