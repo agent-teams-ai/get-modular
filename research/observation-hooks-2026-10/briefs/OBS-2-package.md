@@ -98,8 +98,10 @@ Allowed edges (declare them as boundaries in A5): `isolation -> errors`;
 participants, hub, derivation`; `index -> composition, errors, source,
 participants, hub, derivation`. No other edge. Only `hub` imports resources. The
 development boundary of the tests (A5) may import `@get-modular/resources` and
-the Node built-in modules the tests use (`node:test`, `node:assert`,
-`node:child_process`, `node:fs`, `node:os`, `node:path`, `node:url`).
+the Node built-in modules the tests use, listed by their exact specifiers as in
+conformance's development boundary (for example `node:test`,
+`node:assert/strict`, `node:child_process`, `node:fs/promises`, `node:os`,
+`node:path`, `node:url`).
 
 ### A2.1 Public root
 
@@ -198,7 +200,8 @@ and ask.
 
 1. Port the checks of sketch v4 `main.ts.txt` lines 75-193 (keys, values,
    `since`, seal, duplicates, foreign participants, closed-code pass-through,
-   catch-up, interface records, G-1, G-2, G-3, G-8) as `test(...)` cases
+   catch-up, a local interface record type, G-1, G-2, G-3, G-7, G-8) as
+   `test(...)` cases
    against the real resources package. Reproduce the behaviors of lines 43,
    59-60 and 68-69 (first outcomes, a complete shutdown with no listeners left,
    an escalated stuck drain as a failed debt naming the participant with LIFO
@@ -339,9 +342,15 @@ release is explained:
   observation after the other packages" to the publication note;
 - "Must not": the merge command comes after the owner signs off TEST-2, AR-3
   and OBS-T;
+- the line of the PR body that moves consumer pins "to the T2-5 commit":
+  "to the OBS-3 merge commit, the last revision of the standard in this
+  release";
+- "Done": the archives are recorded for TEST-2, AR-3 and OBS-T;
 - risks: "OBS-T fails" -> stop; if the owner decides to release train 2
   without observation, remove the observation changeset on `main` by a
-  separate PR and regenerate REL-2 through "When `main` moves" step 3.
+  separate PR and regenerate REL-2 through "When `main` moves" step 3; in that
+  case the observation items of this brief do not apply, and the PR body
+  records the owner decision.
 
 Also amend `research/contract-evolution-2026-10/README.md` section 3.1 item 9
 ("Out of scope: ... hooks/observation") to "Out of scope: plugins and

@@ -83,12 +83,17 @@ Rules for the Host:
 
 - The Host owns `commit` and `seal`. Feeders keep the identity of unchanged
   values or compare before `commit`.
-- One hub per source and event family. Participant identifiers are the
-  implementation ids of the declarations that provide the participant
-  capability, in the order of the composition's binding for that slot.
-- The hub takes a `Resources` facet. Shutdown is `seal()`, then the close of
-  the hub's scope with `escalate` and `abandon` driven by timers that keep the
-  process alive (`AbortSignal.timeout()` does not).
+- One hub per source and event family. The hub module provides nothing, so it
+  is a root of the profile. Bind it as
+  `scoped(hubDeclaration.implementationId, createSettingsHub(...))`, like every
+  owning factory.
+- Participant identifiers are the `providerImplementationIds` of the plan
+  binding for the hub's `participants` slot, in that order; the hub receives
+  the participants in the same order.
+- Shutdown is `seal()` on the source, then the close of the construction
+  attempt that owns the hub's scope (`closeWithin(attempt.control, ...)` from
+  the resource example), with `escalate` and `abandon` driven by timers that
+  keep the process alive (`AbortSignal.timeout()` does not).
 - Each participant's first outcome is an input to readiness; the Host decides
   readiness.
 - Install one copy of `@get-modular/observation` and of its peer
@@ -99,7 +104,7 @@ Rules for the Host:
 import { declareModule, defineContract, type CapabilitiesOf, type ModuleFactory } from "@get-modular/assembly";
 import { many, required } from "@get-modular/core";
 import { participantsFor, startHub, type Hub, type Participant, type Reader } from "@get-modular/observation";
-import { scoped } from "@get-modular/resources";
+import type { ModuleContext } from "@get-modular/resources";
 
 // Product, once: the record type and its contracts.
 export const settings = participantsFor<AppSettings>();
@@ -131,21 +136,22 @@ export const createGreeter: ModuleFactory<
   };
 };
 
-// The Host: one hub per source; the participant ids come from the declarations
-// that provide the participant capability, in the order the hub's slot binds them.
+// The Host: one hub per source, a profile root that provides nothing. Bind it as
+// scoped(hubDeclaration.implementationId, createSettingsHub(port, participantIds, reportError)).
 export const hubDeclaration = declareModule({
   moduleId: "acme/settings-hub", implementationId: "acme/settings-hub/default",
   owner: { authority: "acme", path: ["settings-hub"] },
   provides: [],
   slots: [SettingsParticipant.slot("participants", many({ min: 0, max: 1024 }))],
 });
-export function hubFactory(
+export function createSettingsHub(
   port: SettingsPort, participantIds: readonly string[], reportError: (cause: unknown) => undefined,
-) {
-  return scoped("acme/settings-hub", (deps: { readonly participants: readonly Participant<AppSettings>[] }, { resources }) =>
-    startHub({ port, participants: deps.participants }, { resources, participantIds, reportError }));
+): ModuleFactory<CapabilitiesOf<typeof SettingsParticipant>, typeof hubDeclaration, Hub, ModuleContext> {
+  return async (deps, { resources }) => ({
+    instance: await startHub({ port, participants: deps.participants }, { resources, participantIds, reportError }),
+    capabilities: {},
+  });
 }
-export type SettingsHub = Hub;
 ```
 ````
 

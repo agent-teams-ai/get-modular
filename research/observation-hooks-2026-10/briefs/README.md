@@ -69,7 +69,7 @@ from these briefs, the briefs and the owner decisions below win.
 | P7 | OBS-2 amends the REL-2 brief in the same PR | the PR that adds the changeset explains it; REL-2 stops otherwise | 8 / 8 |
 | P8 | The standard's rule waits for T2-5 | consumers then review one revised standard instead of two | 8 / 8 |
 | P9 | One brief per PR, as in train 2 | same review and stop discipline | 9 / 9 |
-| P10 | OBS-1 resolves OD-007; its remaining acceptance criteria move to OBS-3 (before REL-2 opens) and OBS-T (before REL-2 merges); a failed OBS-T means no release and a successor ADR | follows owner decision 3; an accepted ADR cannot be edited afterwards | 8 / 8 |
+| P10 | OBS-1 resolves OD-007; its remaining acceptance criteria move to OBS-3 (before REL-2 opens) and OBS-T (before REL-2 merges); a failed OBS-T stops the release of those archives, the fix lands on `main` and OBS-T runs again; a successor ADR only if the decision changes | follows owner decision 3; an accepted ADR cannot be edited afterwards, so it must not promise more than the plan | 8 / 8 |
 | P11 | The hub reports participant failures as `observation.participant.callback-failed` with the participant id and the original cause | the ADR promises coded errors; sketch v4 reported a plain `Error` | 8 / 8 |
 | P12 | OBS-1 merges only while no release PR is open | `accepted-decisions.json` is a release input; merging during REL-1 would force its regeneration | 9 / 8 |
 
@@ -147,8 +147,11 @@ experiment", with these changes:
 | P2 test boundary allowed resources only for `hub` | applied: the development boundary allows resources and the test built-ins |
 | P2 REL-2 amendment incomplete | applied: owner decisions line, OBS-3 precondition, PR body, merge condition, fallback |
 | P2 OBS-1 during an open release PR | applied: P12 |
-| P2 the standard's example skipped `declareModule`/`ModuleFactory` and the Host wiring | applied: rewritten in the style of the standard's `host` example with a hub module; type-checked on TypeScript 7.0.2 and 5.8.3, NodeNext and Bundler, against Core, Assembly and resources on `main` with stub observation types |
+| P2 the standard's example skipped `declareModule`/`ModuleFactory` and the Host wiring | applied in two rounds: the module and the hub are typed `ModuleFactory`s (the hub returns `{ instance, capabilities: {} }`), the hub is a profile root bound with `scoped(implementationId, ...)`, participant ids come from the plan binding's `providerImplementationIds`; the example type-checks on TypeScript 7.0.2 and 5.8.3 against Core, Assembly and resources on `main` with stub observation types |
 | P3 precedents, callback wording, coded reports, C3 test target, model-test invariant after `seal`, C6 `defineProperty`, the exact sketch checks to port, #141 test files, Node 26 pack destination, builds before the example test, `shasum`, the review `rg`, registry order | all applied (C13, C14, OBS-1 re-verify 7) |
+| Re-review: the ADR promised "no release and a successor ADR" on any OBS-T failure | applied: a failure stops those archives; fix on `main` and run again; successor only if the decision changes |
+| Re-review: the no-observation fallback broke REL-2's own path checks | applied: the fallback switches the observation items off and records the owner decision |
+| Re-review P3: REL-2 pin line and "Done", ADR-0023/0029 in OBS-1, exact test built-ins, G-7, attempt-scope shutdown wording | all applied |
 
 Verified by the review: the C9 type rule rejects optional keys and accepts
 `T | undefined` keys and interfaces on TypeScript 7.0.2 and 5.8.3 (with and

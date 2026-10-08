@@ -17,7 +17,7 @@ next free ADR number at creation time.
    `implementationBlockers: [OD-007]` and `publicationBlockers: []`. Anything
    else: stop and report.
 3. Accepted ADRs that this ADR cites are still accepted and unchanged in meaning:
-   0003, 0009, 0012, 0015, 0017, 0019, 0025, 0026, 0029, 0030, 0031, 0033. If
+   0003, 0009, 0012, 0015, 0017, 0019, 0023, 0025, 0026, 0029, 0030, 0031, 0033. If
    one was superseded: stop and report.
 4. The owner decisions below match `research/observation-hooks-2026-10/briefs/README.md`
    section "Owner decisions". Any difference: stop.
@@ -78,8 +78,8 @@ metadata and the diagnostics, then repeat with
 `--apply --expect sha256:<digest from the dry run>` and identical other
 arguments. Replace the template body with the text in "ADR body" (everything
 from `# ADR-NNNN` on). Set `related:` to OD-007, ADR-0003, ADR-0009, ADR-0012,
-ADR-0015, ADR-0017, ADR-0019, ADR-0025, ADR-0026, ADR-0029, ADR-0030, ADR-0031,
-ADR-0033. Keep every other front matter field the tool wrote.
+ADR-0015, ADR-0017, ADR-0019, ADR-0023, ADR-0025, ADR-0026, ADR-0029, ADR-0030,
+ADR-0031, ADR-0033. Keep every other front matter field the tool wrote.
 
 Commit 1: `docs(architecture): propose ADR-NNNN for module change observation`.
 Gates, each exit 0: `pnpm docs:protocol:check` (fix cspell by rewording or by
@@ -118,9 +118,10 @@ asks for go in new commits.
    The acceptance criteria above move with the owner's sequencing of
    2026-10-08: the Consumer Module Standard rule lands before the release pull
    request opens, and the bounded TEST experiment runs on the release archives
-   and must pass before the release pull request is merged. If the experiment
-   fails, the package is not released and a successor decision replaces
-   ADR-NNNN.
+   and must pass before the release pull request is merged. A failure stops the
+   release of those archives; the fix lands on `main` and the experiment runs
+   again on regenerated archives. A successor decision is needed only if the
+   decision itself changes.
    ```
 
    Leave every other section of OD-007 unchanged.
@@ -325,8 +326,8 @@ existing checks keep rejecting `packages/observation`.
 
 ### Publication and versioning
 
-The package is public from 0.1.0 and is released with train 2. Versions come
-from Changesets in a release pull request. Uploads follow the release rules that
+The package is public from 0.1.0, released through a Changesets release pull
+request planned together with train 2. Versions come from Changesets. Uploads follow the release rules that
 ADR-0030 applies to resources; no unattended publisher is created. Pre-1.0
 breaking changes ship as minor releases with a CHANGELOG entry and a migration
 note, without compatibility aliases (ADR-0009). Version 1.0.0 needs a separate
@@ -343,8 +344,10 @@ variance and optional keys, cover TypeScript 7.0.2 and 5.8.3 with NodeNext and
 Bundler resolution. A packed-root test installs the exact archive together with
 the resources archive, and the Node 26 job installs it on the supported Node 26
 line. The bounded TEST experiment of the research archive runs on the release
-archives and must pass before the release pull request is merged; if it fails,
-the package is not released and a successor decision replaces this one.
+archives and must pass before the release pull request is merged. A failure
+stops the release of those archives; the fix lands on `main` and the experiment
+runs again on regenerated archives. A successor decision is needed only if this
+decision itself changes.
 
 ### Resolution of OD-007
 
@@ -440,4 +443,4 @@ locally and in CI, owner approval linked in the PR.
   drop `OD-007` from the ADR `related` -> `pnpm governance:check` fails; put
   OD-007 back into `implementationBlockers` -> `pnpm governance:check` fails.
 - Every ADR the text cites says what the text attributes to it (open 0003,
-  0009, 0012, 0030, 0033 and find the passage).
+  0009, 0012, 0023, 0029, 0030, 0033 and find the passage).
