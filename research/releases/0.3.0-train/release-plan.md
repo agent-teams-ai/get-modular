@@ -413,8 +413,11 @@ Required checks are strict, so the branch must be up to date with `main`. Never 
    `<fresh>` is used only to build the tree. Its commit is never pushed; delete the worktree with
    `git -C <gm> worktree remove <fresh>` once `NEW` is pushed. In `<rel>`, rerun 5.4 in full and 5.5, then push as in
    5.6 with `OLD` instead of `f29200dc`. Record the new base SHA as `<REL base>` (5.1, last line) and update the PR
-   body (5.7) with the new 5.4 results and the new intended hashes and digests. If R-1a exists, create it again
-   (6.3) and repeat the consumer checks.
+   body (5.7) with the new 5.4 results and the new intended hashes and digests. If R-1a exists, run its source
+   check (6.4) on `NEW`. Create it again (6.3) and repeat the consumer checks only if that check fails. Owner
+   decision 2026-10-08: when a release input changes but a fresh pack at the updated head is byte-identical for
+   Core, Assembly and resources and has the same normalized content digest for conformance, the bundle and its
+   consumer checks stay valid.
 4. Ask for review again. The reviewer's checks of 11.1 and 11.13 stay mandatory after every update.
 
 ### 5.9 Merge (owner only, after the consumer checks are signed off)
@@ -529,7 +532,7 @@ Status: retained, awaiting owner review. Nothing is published.
 - Package trees: `packages/core` `<id>`, `packages/assembly` `<id>`, `packages/resources` `<id>`,
   `packages/conformance` `<id>`.
 - Toolchain: Node `<.node-version>`, pnpm `<packageManager>`.
-- CI on the exact source: `<run URL>` (all required checks and `node-26-compatibility` passed).
+- CI on the exact source: [run `<id>`](<run URL>) (all required checks and `node-26-compatibility` passed).
 
 ## Archives
 
