@@ -1,0 +1,18 @@
+// Settings feature: the product's instantiation of the observation package.
+import { participantsFor, type Keys, type ObservationPort, type Participant, type Reader, type Snapshot } from "../../lib/observation/index.ts";
+
+export type AppSettings = Readonly<{
+  locale: string;
+  greetingStyle: "short" | "formal";
+  priceCurrency: string;
+  taxRegion: string;
+  auditVerbose: boolean;
+}>;
+export type SettingsReader = Reader<AppSettings>;
+export type SettingsPort = ObservationPort<AppSettings>;
+export type SettingsParticipant = Participant<AppSettings>;
+export type SettingsSnapshot<K extends keyof AppSettings> = Snapshot<AppSettings, K>;
+export type SettingsKeys = Keys<AppSettings>;
+
+/** Fixed once; modules call `settings.sync(...)` / `settings.derived(...)`. */
+export const settings = participantsFor<AppSettings>();

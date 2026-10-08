@@ -1,0 +1,154 @@
+// Published Language of the settings feature, version 1.
+// Consumers import only these types/helpers; never the adapter or Assembly.
+// Any semantic change (awaiting callbacks, lossless delivery, ...) gets a NEW
+// file/token (`settings-v2`), never an edit of this contract.
+
+import type { AppSettings, SettingKey } from "../domain/app-settings.ts";
+import { latestDerivation } from "../../../shared/latest-derivation.ts";
+
+/** Nominal source identity (private field), minted only by the source adapter. */
+export class SettingsSourceId {
+  readonly #nominal = true;
+  get nominal(): boolean { return this.#nominal; }
+}
+
+/** Non-empty key list: `observe([])` does not compile. */
+export type SettingsKeys = readonly [SettingKey, ...SettingKey[]];
+
+export type SettingsSnapshot<K extends SettingKey> = Readonly<{
+  source: SettingsSourceId;
+  /** Commit number of the latest source commit that changed one of the selected keys. */
+  revision: number;
+  /** Exactly the selected keys; same frozen object while they are unchanged. */
+  values: Readonly<Pick<AppSettings, K>>;
+}>;
+
+/** Construction-time read (the `IOptions<T>` analogue). No notifications. */
+export interface SettingsReaderV1 {
+  read<const Keys extends SettingsKeys>(keys: Keys): SettingsSnapshot<Keys[number]>;
+}
+
+export interface SettingsView<K extends SettingKey> {
+  readonly initial: SettingsSnapshot<K>;
+  /** Authoritative latest committed state, also before the deferred delivery runs. */
+  current(): SettingsSnapshot<K>;
+}
+
+/** Owner-only facet. Borrowers receive `SettingsView` only. */
+export interface Detachable {
+  /** Idempotent, synchronous; drops queued deliveries; never closes the source. */
+  unsubscribe(): undefined;
+  /** Independent check against the source's listener index. */
+  isAttached(): boolean;
+}
+
+export interface SettingsObservation<K extends SettingKey> extends SettingsView<K>, Detachable {}
+
+export type ObserveOptions = Readonly<{
+  /** Receives exceptions thrown by `recordDesired`; other registrations keep receiving. */
+  reportError: (cause: unknown) => undefined;
+}>;
+
+/**
+ * Option 2 port. Registration and `initial` are atomic; deliveries are deferred
+ * (never inside `observe` or a commit), at most one per commit per registration,
+ * may coalesce intermediate revisions, and are never awaited.
+ */
+export interface SettingsObservationPortV1 {
+  observe<const Keys extends SettingsKeys>(
+    keys: Keys,
+    recordDesired: (next: SettingsSnapshot<Keys[number]>) => undefined,
+    options: ObserveOptions,
+  ): SettingsObservation<Keys[number]>;
+}
+
+// ---------------------------------------------------------------------------
+// Option 1: the module PROVIDES an applier; a Host fan-out owns subscriptions.
+// ---------------------------------------------------------------------------
+
+/** Opaque to the fan-out: it only knows how to attach. Keeps key typing sound. */
+export interface SettingsApplierV1 {
+  attachTo(port: SettingsObservationPortV1, options: ObserveOptions): Detachable;
+}
+
+/**
+ * `appliedRevision` is the revision the module was constructed with. Attaching
+ * replays the current state if it moved since then (no lost commit between the
+ * construction read and the attach), and older/duplicate revisions are ignored.
+ */
+export function settingsApplier<const Keys extends SettingsKeys>(
+  keys: Keys,
+  appliedRevision: number,
+  apply: (next: SettingsSnapshot<Keys[number]>) => undefined,
+): SettingsApplierV1 {
+  let lastApplied = appliedRevision;
+  const guarded = (next: SettingsSnapshot<Keys[number]>): undefined => {
+    if (next.revision <= lastApplied) return undefined;
+    lastApplied = next.revision;
+    apply(next);
+    return undefined;
+  };
+  return Object.freeze({
+    attachTo(port: SettingsObservationPortV1, options: ObserveOptions): Detachable {
+      const observation = port.observe(keys, guarded, options);
+      queueMicrotask(() => {
+        if (!observation.isAttached()) return;
+        try { guarded(observation.current()); } catch (cause) { options.reportError(cause); }
+      });
+      return observation;
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Option 2: the module REQUIRES the port and owns its own registration.
+// ---------------------------------------------------------------------------
+
+/** What an option-2 module implements; application code, no framework imports. */
+export interface SettingsConsumerV1<K extends SettingKey> {
+  /** Called synchronously inside registration, before any delivery can run. */
+  attach(view: SettingsView<K>): undefined;
+  onSettings(next: SettingsSnapshot<K>): undefined;
+  /** Stops publication and settles in-flight derivation; never closes the source. */
+  detach(): Promise<void>;
+}
+
+// ---------------------------------------------------------------------------
+// Option 3: the module PROVIDES a declarative async derivation; a Host driver
+// owns subscription, lanes, error isolation and drain.
+// ---------------------------------------------------------------------------
+
+export interface RunningDerivation extends Detachable {
+  drain(): Promise<void>;
+}
+
+export interface SettingsDerivationV1 {
+  start(port: SettingsObservationPortV1, options: ObserveOptions): RunningDerivation;
+}
+
+export function settingsDerivation<const Keys extends SettingsKeys, T>(spec: Readonly<{
+  keys: Keys;
+  derive: (values: Readonly<Pick<AppSettings, Keys[number]>>, signal: AbortSignal) => Promise<T>;
+  commit: (result: T, revision: number) => undefined;
+  fail: (cause: unknown, revision: number) => undefined;
+}>): SettingsDerivationV1 {
+  return Object.freeze({
+    start(port: SettingsObservationPortV1, options: ObserveOptions): RunningDerivation {
+      let observation: SettingsObservation<Keys[number]> | undefined;
+      const lane = latestDerivation<Readonly<Pick<AppSettings, Keys[number]>>, T>({
+        derive: spec.derive,
+        isCurrent: (revision) => observation?.isAttached() === true && observation.current().revision === revision,
+        commit: (revision, result) => spec.commit(result, revision),
+        fail: (revision, cause) => spec.fail(cause, revision),
+      });
+      observation = port.observe(spec.keys, (next) => lane.offer(next.revision, next.values), options);
+      lane.offer(observation.initial.revision, observation.initial.values);
+      const attached = observation;
+      return Object.freeze({
+        unsubscribe(): undefined { attached.unsubscribe(); lane.close(); return undefined; },
+        isAttached: () => attached.isAttached(),
+        drain: () => lane.drain(),
+      });
+    },
+  });
+}

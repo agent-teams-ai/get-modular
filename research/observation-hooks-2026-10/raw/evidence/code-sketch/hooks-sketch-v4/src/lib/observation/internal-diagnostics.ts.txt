@@ -1,0 +1,18 @@
+// Package-internal TEST diagnostics (not exported from the package root).
+
+export type SourceDiagnostics = Readonly<{
+  stats: () => Readonly<{ commits: number; registrationVisits: number; deliveries: number }>;
+  listenerCount: (key: string) => number;
+}>;
+
+const registry = new WeakMap<object, SourceDiagnostics>();
+
+export function registerDiagnostics(source: object, diagnostics: SourceDiagnostics): void {
+  registry.set(source, diagnostics);
+}
+
+export function inspectSource(source: object): SourceDiagnostics {
+  const found = registry.get(source);
+  if (found === undefined) throw new Error("not a keyed source");
+  return found;
+}

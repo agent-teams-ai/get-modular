@@ -1,0 +1,34 @@
+// Option 2 composition helper (settings feature's public composition kit).
+// One call per opted-in module: registers the observation as ONE owned
+// obligation; cleanup = unsubscribe, drain in-flight derivation, verify detach.
+
+import { RELEASED, unresolved, type ResourceAuthor } from "../../../kernel/resource-owner.stand-in.ts";
+import type { SettingKey } from "../domain/app-settings.ts";
+import type {
+  ObserveOptions, SettingsConsumerV1, SettingsKeys, SettingsObservation,
+  SettingsObservationPortV1, SettingsView,
+} from "./settings-v1.ts";
+
+export function observeOwned<const Keys extends SettingsKeys>(
+  resources: ResourceAuthor,
+  port: SettingsObservationPortV1,
+  keys: Keys,
+  consumer: SettingsConsumerV1<Keys[number]>,
+  options: ObserveOptions,
+): Promise<SettingsView<Keys[number]>> {
+  return resources.setup<SettingsObservation<Keys[number]>>({
+    setup: () => {
+      const observation = port.observe(keys, (next) => consumer.onSettings(next), options);
+      consumer.attach(observation); // handle stored before any delivery can run
+      return observation;
+    },
+    cleanup: async (outcome) => {
+      if (outcome.kind === "failed") return RELEASED; // observe() is atomic: nothing installed
+      outcome.value.unsubscribe();
+      await consumer.detach(); // unbounded by design: Host deadline reports, never settles
+      return outcome.value.isAttached() ? unresolved(new Error("listener still attached")) : RELEASED;
+    },
+  });
+}
+
+export type { SettingKey };

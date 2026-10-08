@@ -1,0 +1,15 @@
+// Settings feature domain: plain immutable data, no framework imports.
+
+export type AppSettings = Readonly<{
+  locale: string;
+  greetingStyle: "short" | "formal";
+  priceCurrency: string;
+  taxRegion: string;
+  auditVerbose: boolean;
+}>;
+
+export type SettingKey = keyof AppSettings;
+
+export const SETTING_KEYS = [
+  "locale", "greetingStyle", "priceCurrency", "taxRegion", "auditVerbose",
+] as const satisfies readonly SettingKey[];

@@ -1,0 +1,13 @@
+{
+  "jobId": "ar-research-hooks-critic-hierarchy-fast-20261001",
+  "sha256": "5f26cf9bd1f55d694bb240d7f73ec53dbd4b97a812c00966f29bfc3a6bb2590f",
+  "markdownSha256": "4fb3e89e89572da30dbdce1bdab0bf92aabff04dce9cde5215be8c12f0b5d618",
+  "requested": {
+    "model": "gpt-6.1-sol",
+    "reasoningEffort": "xhigh",
+    "serviceTier": "fast",
+    "editMode": "read-only",
+    "workerRole": "reviewer",
+    "networkAccess": "restricted"
+  }
+}

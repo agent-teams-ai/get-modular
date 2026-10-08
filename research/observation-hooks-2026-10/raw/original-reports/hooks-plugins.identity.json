@@ -1,0 +1,9 @@
+{
+  "jobId": "ar-research-hooks-plugins-std-20261001-ro-u",
+  "sha256": "f3c438e81fd2e8cc492687aa6da15316c5f7b9c67e269df6a28f6b4f53f47fe6",
+  "requested": {
+    "model": "gpt-6.1-sol",
+    "reasoningEffort": "max",
+    "serviceTier": "default"
+  }
+}

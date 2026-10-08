@@ -1,0 +1,135 @@
+// Executable sketch check v3: generic observation library + resources-design scopes.
+import { composeHost } from "./host/composition.ts";
+import { controllableRates, taxRules } from "./host/test-adapters.ts";
+import { createScope } from "./kernel/resources.stand-in.ts";
+import { createKeyedSource, derivedParticipant, startHub, syncParticipant, type Participant } from "./lib/observation/index.ts";
+import type { AppSettings } from "./features/settings/index.ts";
+import { flagsDemo } from "./features/flags/index.ts";
+
+let failures = 0;
+const check = (ok: boolean, label: string, detail: unknown = ""): void => {
+  if (!ok) failures += 1;
+  console.log(`${ok ? "PASS" : "FAIL"}  ${label}${ok ? "" : `  -> ${JSON.stringify(detail, (_k, v) => (v instanceof Error ? v.message : v))}`}`);
+};
+const tick = (ms = 0): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+const settle = async (): Promise<void> => { for (let i = 0; i < 5; i += 1) await tick(); };
+const initial: AppSettings = { locale: "en", greetingStyle: "short", priceCurrency: "USD", taxRegion: "FR", auditVerbose: false };
+
+{ // 1. normal life
+  const fx = controllableRates({ USD: 1, EUR: 0.9 });
+  const host = await composeHost({ initial, rates: fx.rates, rules: taxRules });
+  const { settings, greeting, price, tax, audit, clock } = host.roots;
+  check(JSON.stringify(host.participantIds) === '["feature/greeting","feature/tax-table"]', "participants derived from declarations");
+  const readiness = await host.participantReadiness(500);
+  check(readiness.ready.length === 2 && readiness.pending.length === 0, "participant readiness", readiness);
+  check(greeting.greet("Ann") === "Hello, Ann (#1)", "opt1 initial");
+  const before = settings.stats();
+  settings.commit({ locale: "ru", greetingStyle: "formal" });
+  await settle();
+  check(greeting.greet("Ann") === "Привет, уважаемый Ann (#2)", "opt1 applied, instance state kept");
+  check(settings.stats().deliveries - before.deliveries === 1, "multi-key commit -> one delivery");
+  fx.hold("EUR");
+  settings.commit({ priceCurrency: "EUR" }); await settle();
+  settings.commit({ priceCurrency: "USD" }); await settle();
+  fx.release("EUR"); await settle();
+  const priced = price.snapshot();
+  check(priced.state.kind === "ready" && priced.state.currency === "USD", "opt2 A->B->A: stale result dropped", priced);
+  settings.commit({ taxRegion: "XX" }); await settle();
+  check(tax.region() === "FR" && tax.lastFailure() !== undefined, "opt3 failure keeps previous state");
+  settings.commit({ taxRegion: "DE" }); await settle();
+  check(tax.region() === "DE" && tax.lastFailure() === undefined, "opt3 recovers");
+  const quiet = settings.stats();
+  settings.commit({ auditVerbose: true }); await settle();
+  check(settings.stats().registrationVisits === quiet.registrationVisits && audit.verbose === false && clock.now() === 1, "passive modules untouched");
+  const report = await host.shutdown(500);
+  check(report.complete && report.debts.length === 0, "shutdown: attempt scope complete", report);
+  check((["locale", "greetingStyle", "priceCurrency", "taxRegion"] as const).every((k) => settings.listenerCount(k) === 0), "no listeners left");
+  check(host.errors.length === 0, "no errors", host.errors.map((e) => e.message));
+}
+
+{ // 2. hung derive -> Host abandon; debt path names the participant
+  const host = await composeHost({ initial, rates: controllableRates({ USD: 1 }).rates, rules: taxRules });
+  host.roots.settings.commit({ taxRegion: "HANG" }); await settle();
+  const started = Date.now();
+  const report = await host.shutdown(50);
+  const paths = report.debts.map((d) => `${d.state}:${d.path.join("/")}`);
+  check(Date.now() - started < 1_000 && !report.complete, "hung derive: bounded, incomplete (never 'released')", paths);
+  check(paths.some((p) => p.startsWith("pending:") && p.includes("drain:feature/tax-table")), "hung derive: debt path names the participant", paths);
+  check(host.roots.settings.listenerCount("taxRegion") === 0, "hung derive: hub unsubscribed all participants before draining");
+  // Documented consequence of resources v1 (sequential LIFO + owner decision Q3): modules
+  // constructed before the hub stay `not-run` after abandon, so price-table's own
+  // subscription is still attached. Not a hooks bug; recorded as a limitation.
+  check(host.roots.settings.listenerCount("priceCurrency") === 1 && paths.some((p) => p.startsWith("not-run:") && p.includes("feature/price-table")),
+    "hung derive: earlier modules stay not-run (resources v1 Q3), as documented", paths);
+}
+
+{ // 3. factory hang during construction -> bounded failure, attempt closed
+  let probe: ReturnType<typeof createKeyedSource<AppSettings>> | undefined;
+  let error: unknown;
+  try {
+    await composeHost({ initial, rates: controllableRates({ USD: 1 }).rates, rules: taxRules,
+      injectFactoryHang: "settings/hub", constructionBudgetMs: 100, sourceProbe: (s) => { probe = s; } });
+  } catch (caught) { error = caught; }
+  check(error instanceof Error, "hung factory: construction fails within budget");
+  check(probe !== undefined && probe.listenerCount("taxRegion") === 0 && probe.listenerCount("priceCurrency") === 0, "hung factory: nothing left subscribed");
+}
+
+{ // 4. visitor plans are effect-free; throwing commit is a failed outcome
+  const source = createKeyedSource<AppSettings>(initial);
+  const scope = createScope({ name: "unit" });
+  const kept: unknown[] = [];
+  const sneaky = { open: <R>(visit: { sync: (s: never) => R }): R => {
+    const spec = { initial: source.reader.read(["locale"]), apply: () => undefined } as never;
+    kept.push(visit.sync(spec));
+    return visit.sync(spec);
+  } } as unknown as Participant<AppSettings>;
+  const bad = derivedParticipant<AppSettings, ["taxRegion"], string>({ keys: ["taxRegion"], derive: async ({ taxRegion }) => taxRegion,
+    commit: () => { throw new Error("commit bug"); }, fail: () => undefined });
+  const hub = await startHub({ port: source.port, participants: [sneaky, bad] },
+    { resources: scope.resources, participantIds: ["sneaky", "bad"], reportError: () => undefined });
+  const badOutcome = await hub.outcomes()[1]?.outcome;
+  check(badOutcome?.kind === "failed", "throwing commit -> failed outcome", badOutcome);
+  const report = await scope.control.close();
+  check(report.complete && source.listenerCount("locale") === 0 && kept.length === 1, "visitor plans have no effect; one subscription per participant");
+}
+
+{ // 4b. sync catch-up (commit between construction read and hub start) is isolated and seal-aware (final review F-1)
+  const source = createKeyedSource<AppSettings>(initial);
+  const scope = createScope({ name: "catch-up" });
+  const seen: string[] = [];
+  const errors: unknown[] = [];
+  const read = source.reader.read(["locale"]);
+  source.commit({ locale: "ru" }); // after the read, before the hub subscribes
+  const throwing = syncParticipant(read, ({ values }) => { seen.push(values.locale); throw new Error("apply bug"); });
+  await startHub({ port: source.port, participants: [throwing] }, { resources: scope.resources, participantIds: ["late"], reportError: (c) => { errors.push(c); return undefined; } });
+  await settle();
+  check(seen.join() === "ru" && errors.length === 1, "catch-up delivered once and isolated", { seen, errors: errors.length });
+  const sealedSource = createKeyedSource<AppSettings>(initial);
+  const read2 = sealedSource.reader.read(["locale"]);
+  sealedSource.commit({ locale: "de" });
+  const applied: string[] = [];
+  await startHub({ port: sealedSource.port, participants: [syncParticipant(read2, ({ values }) => { applied.push(values.locale); return undefined; })] },
+    { resources: createScope().resources, participantIds: ["sealed"], reportError: () => undefined });
+  sealedSource.seal();
+  await settle();
+  check(applied.length === 0, "no catch-up after seal", applied);
+  await scope.control.close();
+}
+
+{ // 4c. an interface-declared record type is accepted (final review F-7)
+  interface Limits { readonly maxResults: number }
+  const limits = createKeyedSource<Limits>({ maxResults: 5 });
+  check(limits.reader.read(["maxResults"]).values.maxResults === 5, "interface record type works");
+}
+
+{ // 5. the same library with another record type
+  const flags = flagsDemo();
+  const scope = createScope({ name: "flags" });
+  await startHub({ port: flags.source.port, participants: [flags.participant] }, { resources: scope.resources, participantIds: ["search"], reportError: () => undefined });
+  flags.source.commit({ maxResults: 25 }); await settle();
+  check(flags.limit() === 25, "generic library: second record type works");
+  check((await scope.control.close()).complete, "generic library: clean close");
+}
+
+console.log(failures === 0 ? "\nALL CHECKS PASSED" : `\n${failures} CHECK(S) FAILED`);
+process.exitCode = failures === 0 ? 0 : 1;
