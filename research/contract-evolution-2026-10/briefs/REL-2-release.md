@@ -38,13 +38,14 @@ ask.
 
 ## Build (own disposable clone, plain fast-forward history)
 
-Work in your own disposable clone of `agent-teams-ai/get-modular`, never a shared checkout: Changesets needs a local
-`main` branch, and moving it is safe only there.
+Work in your own disposable clone `<clone>` of `agent-teams-ai/get-modular`, never a shared checkout: Changesets needs
+a local `main` branch, and moving it is safe only there.
 
 ```sh
 git fetch origin main changeset-release/main
 REL1=$(git rev-parse origin/changeset-release/main)   # must equal the head checked in re-verify step 2
 git checkout --detach origin/main                      # a fresh clone has main checked out; leave it first
+git rev-parse HEAD                                     # the <REL base>; record it in the PR body
 git branch -f main origin/main                         # `changeset status` compares with a local main
 git merge -s ours -m "chore(release): continue changeset-release/main from main" "$REL1"
 test "$(git rev-parse 'HEAD^{tree}')" = "$(git rev-parse 'origin/main^{tree}')"   # the merge keeps main's tree
@@ -79,6 +80,11 @@ pnpm install --frozen-lockfile --ignore-scripts --engine-strict --strict-peer-de
 for p in core assembly conformance; do pnpm --dir packages/$p pack --pack-destination <tmp>/rel2; done
 ```
 
+Verify the packed manifests: assembly `dependencies` exactly `{ "@get-modular/core": "0.4.0" }`; conformance peers
+`@get-modular/core` and `@get-modular/assembly` `^0.4.0`, `@get-modular/resources` the current minor; no `workspace:`,
+`link:` or `file:`; files outside `dist/` exactly `LICENSE`, `package.json`, `CHANGELOG.md`, `README.md`. Record
+SHA-256 and SHA-512 of each archive (conformance packs may differ only in peer key order; compare normalized content).
+
 Before every push:
 
 ```sh
@@ -90,30 +96,68 @@ Push: `git push origin HEAD:refs/heads/changeset-release/main`, a plain fast-for
 means stop; never `--force`, never delete the branch. An uncertain push result: run `git ls-remote` and reconcile; no
 blind retry.
 
-When `main` moves before the merge (the required checks are strict), follow the same procedure as REL-1:
+### When `main` moves before the merge
 
-- Decide with
-  `git diff --quiet <REL base> origin/main -- .changeset packages architecture package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json .node-version`,
-  where `<REL base>` is the `main` commit the current release head was generated from. Exit 0 (no release input
-  changed): update by merging `origin/main` into the release head, check
-  that the result's tree equals the tree a fresh regeneration from the new `main` produces, run the gates again and
-  push plainly.
-- Exit 1: regenerate from scratch on the new `main` (the whole build above in a fresh detached checkout; call its
-  release commit `FRESH`), then put that tree on top of the published head `OLD` with one tree-replacement commit:
-  `NEW=$(git commit-tree "${FRESH}^{tree}" -p "${OLD}" -p origin/main -F <message file>)`; verify
-  `git diff --stat "$FRESH" "$NEW"` is empty, `git rev-parse "$NEW^1"` is `OLD` and `"$NEW^2"` is `origin/main`, run the
-  gates on `NEW` and push `NEW` plainly. Never rebase the generated commit.
+The required checks are strict, so the branch must be up to date with `main`. Never rebase, never force, never delete.
+`<REL base>` is the `main` commit the current release head was generated from; `<head>` is the current REL-2 head.
 
-Verify the packed manifests: assembly `dependencies` exactly `{ "@get-modular/core": "0.4.0" }`; conformance peers
-`@get-modular/core` and `@get-modular/assembly` `^0.4.0`, `@get-modular/resources` the current minor; no `workspace:`,
-`link:` or `file:`; files outside `dist/` exactly `LICENSE`, `package.json`, `CHANGELOG.md`, `README.md`. Record
-SHA-256 and SHA-512 of each archive (conformance packs may differ only in peer key order; compare normalized content).
+1. `git fetch origin && git ls-remote origin refs/heads/changeset-release/main` must print `<head>`, and `<clone>` must
+   be at it (`git rev-parse HEAD`). Anything else: stop.
+2. Pin the `main` commit you check and check whether it changed a release input since `<REL base>`:
+
+   ```sh
+   CHECKED="$(git rev-parse origin/main)"              # the exact main commit checked and merged below
+   git diff --quiet <REL base> "${CHECKED}" -- .changeset packages architecture package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json .node-version
+   ```
+
+   Exit 0 means `main` moved only outside the release inputs. Update with a normal merge of exactly that commit and
+   keep `<REL base>`:
+
+   ```sh
+   git merge --no-edit -m "chore(release): merge main into changeset-release/main" "${CHECKED}"
+   git diff --quiet HEAD^1 HEAD -- .changeset packages architecture package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json .node-version && echo "merge brought no release input"
+   git diff --name-status "${CHECKED}...HEAD"           # still exactly the release paths listed above
+   ```
+
+   Run the gates above in full again, then push as above with `<head>` instead of `$REL1`. The generated files stay
+   byte-identical.
+3. Exit 1 means a release input changed: regenerate the release tree on the new `main`, then put that exact tree on
+   top of `<head>` as a tree-replacement commit:
+
+   ```sh
+   git worktree add --detach <fresh> origin/main
+   cd <fresh> && FRESH_BASE="$(git rev-parse HEAD)"    # the new <REL base>
+   git branch -f main "${FRESH_BASE}"                  # `changeset status` compares with a local main
+   # here: the build above from `pnpm install --frozen-lockfile` on, including the approvals removal, then the
+   # release commit (no continuation merge in <fresh>)
+   FRESH="$(git rev-parse HEAD)"
+   test "$(git rev-parse "${FRESH}^")" = "${FRESH_BASE}" && echo "fresh commit sits on its base"
+   cd <clone>
+   OLD="$(git rev-parse HEAD)"                         # must equal <head> (step 1)
+   NEW="$(git commit-tree "${FRESH}^{tree}" -p "${OLD}" -p "${FRESH_BASE}" \
+     -m "chore(release): regenerate the release on main $(git rev-parse --short "${FRESH_BASE}")")"
+   git diff --quiet "${FRESH}" "${NEW}" && echo "tree equals the fresh release tree"
+   git merge-base --is-ancestor "${OLD}" "${NEW}" && echo "fast-forward"
+   git checkout --detach "${NEW}" && pnpm install --frozen-lockfile
+   git diff --name-status "${FRESH_BASE}...HEAD"       # exactly the release paths listed above
+   ```
+
+   The second parent is always the exact `main` commit the fresh tree was generated from (`FRESH_BASE`), never a later
+   `origin/main`. A later parent would make the squash merge silently revert the newer `main` commits. If `main` moved
+   again meanwhile, push `NEW` first, then repeat from step 1.
+
+   `<fresh>` is used only to build the tree. Its commit is never pushed; remove the worktree with
+   `git worktree remove <fresh>` once `NEW` is pushed. In `<clone>`, run the gates above in full again, pack again,
+   then push `NEW` as above with `OLD` instead of `$REL1`. Never rebase the generated commit. Record `FRESH_BASE` as
+   the new `<REL base>` and update the PR body with the new gate results and archive hashes.
+4. Ask for review again; the history checks of the review checklist stay mandatory after every update.
 
 ## PR
 
 `gh pr create --repo agent-teams-ai/get-modular --base main --head changeset-release/main --title "chore(release): prepare Core and Assembly 0.4.0 and conformance 0.2.0" --body-file <file>`.
 
-Body (English, plain): versions table; the generated paths; promote delta per package (Core: the wire types and
+Body (English, plain): versions table; the `<REL base>` SHA (and, after updates, every earlier REL-2 head); the
+generated paths; promote delta per package (Core: the wire types and
 `Diagnostic`; Assembly: the types of T2-4, including the six added helper types `ContractSpec`, `ValuesOf`,
 `RevisionPairs`, `EntryKeys`, `ValueAt`, `ValuesAll`) with names; the removed fingerprints quoted; registry inventory with date;
 `pnpm check` time; packed manifests and archive hashes; CI lane durations (stop above 810 s); "This PR does not
@@ -127,7 +171,7 @@ before the owner signs off TEST-2 and AR-3; the consumer archives are packed fro
 | --- | --- |
 | the release branch on origin is not REL-1's final head (or the last merged release head) | stop |
 | a push is rejected | stop; never force, never delete the branch |
-| `main` moves before merge | merge update when no release input changed, otherwise a verified tree-replacement commit; plain push |
+| `main` moves before merge | merge update of the checked `main` commit when no release input changed, otherwise a tree-replacement commit whose second parent is the fresh tree's base; plain push |
 | promote fails or reports a delta outside T2-3/T2-4 | stop; never edit baselines or approvals to get past it |
 | packed manifest differs from the expected shape | stop |
 | a TEST-2 or AR-3 finding needs an API change | stop; owner decides (fix on `main` and regenerate, or ship) |
@@ -138,9 +182,9 @@ before the owner signs off TEST-2 and AR-3; the consumer archives are packed fro
 - Edit any path outside the list; hand-edit `architecture/public-api/*.json` or CHANGELOGs.
 - Merge without the owner's explicit command, which comes after the owner signs off TEST-2 and AR-3. The merge is
   `gh pr merge <N> --repo agent-teams-ai/get-modular --squash --match-head-commit <head-sha> --subject "<title> (#<N>)" --body "<commit body>"`,
-  without `--delete-branch`; afterwards `git rev-parse 'origin/main^{tree}'` equals `<head-sha>^{tree}`, the new main
-  commit has exactly one parent (`git rev-list --parents -n 1 origin/main` prints two hashes), and the branch stays at
-  the final REL-2 head.
+  without `--delete-branch`; afterwards run `git fetch origin main`, then `git rev-parse 'origin/main^{tree}'` equals
+  `<head-sha>^{tree}`, the new main commit has exactly one parent (`git rev-list --parents -n 1 origin/main` prints two
+  hashes), and the branch stays at the final REL-2 head.
 - Override the git identity, add co-author trailers or tool attribution.
 
 ## Done
@@ -155,3 +199,20 @@ REL-2 PR open, reproducible, CI green; archives recorded for TEST-2 and AR-3.
 - Packed manifests and hashes as stated.
 - Mutation spot-check: with `GITHUB_HEAD_REF=feat/not-a-release`, `pnpm release-owned-files:check` must fail naming
   both `architecture/public-api` files.
+- History, no force, no deletion. `git log --format='%h %p | %an <%ae> | %cn <%ce> | %s' origin/main..<head>` lists
+  only the earlier release commits, the continuation merge `M`, the release commit and update commits; every commit
+  has the repository's local identity as author and committer.
+  - `M` keeps `main`'s tree and joins REL-1's final head:
+    `test "$(git rev-parse 'M^{tree}')" = "$(git rev-parse 'M^1^{tree}')"`, and `git rev-parse M^2` prints that head.
+  - Each merge update `U` brings no release input:
+    `git diff --quiet U^1 U -- .changeset packages architecture package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json .node-version` exits 0.
+  - Each regeneration commit `R` has its regeneration base as `R^2`: regenerate yourself at `R^2` in a disposable
+    clone; `git diff --quiet <your commit> R` exits 0.
+  - No force push and no deletion ever happened on the branch, including before the PR existed:
+    `gh api 'repos/agent-teams-ai/get-modular/activity?ref=refs/heads/changeset-release/main' --paginate --jq '.[] | select(.activity_type == "force_push" or .activity_type == "branch_deletion") | .activity_type'`
+    prints nothing.
+  - No force push and no deletion while the PR was open:
+    `gh api repos/agent-teams-ai/get-modular/issues/<N>/timeline --paginate --jq '.[] | select(.event == "head_ref_force_pushed" or .event == "head_ref_deleted") | .event'`
+    prints nothing.
+  - `git merge-base --is-ancestor <REL-1 final head> <head>` succeeds, and so does the same check for every earlier
+    REL-2 head recorded in the PR body.
