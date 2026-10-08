@@ -2,6 +2,20 @@
   "schemaVersion": 1,
   "required": [
     {
+      "file": "tests/repository-agent-workflow.test.mts",
+      "names": [
+        "changed workflow rejects invalid TypeScript through published Foundation"
+      ],
+      "kind": "test"
+    },
+    {
+      "file": "tests/repository-agent-workflow.test.mts",
+      "names": [
+        "changed workflow escalates compiler and check configuration"
+      ],
+      "kind": "test"
+    },
+    {
       "file": "tests/source-dependencies.test.mjs",
       "names": [
         "Foundation rejects consumer imports of a concrete provider"

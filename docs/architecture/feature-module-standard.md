@@ -139,6 +139,18 @@ while the earlier Foundation archive and P0 records remain historical evidence.
 SDK status stays pending, activation stays on hold and release eligibility stays
 false.
 
+The local changed workflow remains on the published Foundation 1.7.2 schema.
+JS and TS edits select the existing project-wide `check:fast` script with
+`passPaths: false`; changed file names never become compiler arguments.
+Compiler projects and root check configuration select the same fast gate through
+explicit configuration triggers. Root Markdown-only edits retain `docs:changed`;
+the existing `docs` and `architecture` full-scan triggers remain.
+A mixed docs and code change still runs the code gate. Version 1 changed reports
+are editing feedback: their `coverage: changed` label does not claim that typed
+lint or the full gate ran. `pnpm check` remains the complete required gate.
+This corrects routing inside the existing development-tooling boundary; it adds
+no production composition node, consumer adoption scope or public contract.
+
 Node 24.21.0 remains the repository default and production tooling choice, with
 pnpm 11.20.0. The root/tooling policy is `>=24.21.0 <25 || >=26.10.0 <27`;
 the public library policy retains the separate Node 24.18.0 floor. Node 25,
