@@ -1,0 +1,199 @@
+// Real Core 0.2.0 + Assembly 0.3.0 candidate (scope + inputs) + resources v2.
+import assert from "node:assert/strict";
+import test from "node:test";
+import { compileComposition, defineModule } from "@get-modular/core";
+import { assemblyFor } from "./asm/dist/index.js";
+import { createScope, scoped } from "./res/index.ts";
+
+const runScopeError = (outcome: any) => outcome.status === "failed" && outcome.cause instanceof TypeError
+  && outcome.cause.code === "resources.scoped.invalid-run-scope";
+
+const tick = () => new Promise<void>(resolve => setImmediate(resolve));
+const compatibility = { family: "exact", familyVersion: 1, token: "t/v1" } as const;
+const label = { authority: "t", path: ["t"] };
+const M = (i: number) => `t/m${i}`; const C = (i: number) => `t/c${i}`;
+const mod = (id: string, provides: string[], slots: [string, string][] = []) => defineModule({
+  kind: "get-modular.module-declaration", schemaVersion: 1, moduleId: id, implementationId: id, owner: label,
+  provides: provides.map(c => ({ capabilityId: c, compatibility })),
+  slots: slots.map(([s, c]) => ({ slotId: s, capabilityId: c, compatibility, cardinality: { kind: "required" } })),
+} as any);
+const profile = (decls: any[], roots: string[], bindings: any[]) => ({ kind: "get-modular.composition-profile", schemaVersion: 1,
+  profileId: "t/p", roots, selections: decls.map(d => ({ moduleId: d.moduleId, implementationId: d.implementationId })), bindings });
+const bind = (consumer: string, slot: string, provider: string) => ({ consumerImplementationId: consumer, slotId: slot, providerImplementationIds: [provider] });
+
+// chain m1 <- m2 <- ... <- m5 (m5 root)
+async function chain(n: number) {
+  const decls = Array.from({ length: n }, (_, i) => mod(M(i + 1), [C(i + 1)], i === 0 ? [] : [["dep", C(i)]]));
+  const bindings = decls.slice(1).map((_, i) => bind(M(i + 2), "dep", M(i + 1)));
+  const composition = await compileComposition({ declarations: decls, profile: profile(decls, [M(n)], bindings) as any });
+  assert.ok(composition.plan, JSON.stringify(composition));
+  return { decls, composition };
+}
+
+test("A1 failure at module k releases k..1 in reverse; later modules never created", async () => {
+  const { decls, composition } = await chain(5);
+  const api = assemblyFor<any>();
+  const log: string[] = [];
+  const handles = decls.map((d, i) => api.bindFactory(d, scoped(d.implementationId, async (_deps, { resources }) => {
+    await resources.setup({ name: "r", setup: () => i, cleanup: () => { log.push(`m${i + 1}`); } });
+    if (i === 2) throw new Error("m3 failed");
+    return { instance: i, capabilities: { [C(i + 1)]: i } };
+  })));
+  const prepared = (await api.prepare({ composition, factories: handles, roots: { root: handles[4]! } }) as any).prepared;
+  const attempt = createScope({ name: "attempt" });
+  const outcome = await prepared.run({ scope: attempt.resources });
+  assert.equal(outcome.status, "failed");
+  assert.equal(outcome.code, "assembly.run.factory-rejected");
+  const report = await attempt.control.close();
+  assert.equal(report.complete, true);
+  assert.deepEqual(log, ["m3", "m2", "m1"]);
+});
+
+test("A2 one prepared assembly, two concurrent runs: closing run 1 never touches run 2", async () => {
+  const { decls, composition } = await chain(2);
+  const api = assemblyFor<any>();
+  const released: string[] = [];
+  const handles = decls.map((d, i) => api.bindFactory(d, scoped(d.implementationId, async (_deps, { resources }) => {
+    await tick(); // interleave the runs
+    const conn = await resources.setup({ name: "conn", setup: () => ({ id: "" }), cleanup: c => { released.push(c.id); } });
+    return { instance: conn, capabilities: { [C(i + 1)]: conn } };
+  })));
+  const prepared = (await api.prepare({ composition, factories: handles, roots: { root: handles[1]! } }) as any).prepared; // ONCE
+  const one = createScope({ name: "session-1" });
+  const two = createScope({ name: "session-2" });
+  const [a, b] = await Promise.all([prepared.run({ scope: one.resources }), prepared.run({ scope: two.resources })]);
+  assert.equal(a.status, "succeeded"); assert.equal(b.status, "succeeded");
+  (a.created as any[]).forEach((e: any) => { e.instance.id = `1:${e.implementationId}`; });
+  (b.created as any[]).forEach((e: any) => { e.instance.id = `2:${e.implementationId}`; });
+  assert.equal((await one.control.close()).complete, true);
+  assert.deepEqual(released, ["1:t/m2", "1:t/m1"]);
+  assert.equal(two.resources.signal.aborted, false);
+  const three = createScope({ name: "session-3" });
+  assert.equal((await prepared.run({ scope: three.resources })).status, "succeeded"); // no scope-closed on reuse
+  assert.equal((await two.control.close()).complete, true);
+  assert.deepEqual(released, ["1:t/m2", "1:t/m1", "2:t/m2", "2:t/m1"]);
+  let acquired = 0;
+  const strict = assemblyFor<any>();
+  const h = [strict.bindFactory(decls[0]!, scoped("m1", async (_d, { resources }) => {
+    await resources.setup({ name: "r", setup: () => { acquired += 1; }, cleanup: () => {} });
+    return { instance: 1, capabilities: { [C(1)]: 1 } };
+  }))];
+  const c1 = await compileComposition({ declarations: [decls[0]!], profile: profile([decls[0]!], [M(1)], []) as any });
+  const p1 = (await strict.prepare({ composition: c1, factories: h, roots: { root: h[0]! } }) as any).prepared;
+  for (const scope of [undefined, {}, { child() {} }, one.resources.child, one]) { // `one` is the typical mistake: the Scope, not its resources
+    assert.ok(runScopeError(await p1.run({ scope })));
+  }
+  assert.equal(acquired, 0);
+});
+
+test("A3 concurrent runs never mix inputs; inputs are not in created", async () => {
+  const input = mod("s/input", ["session/id"]);
+  const store = mod("s/store", ["s/store"], [["id", "session/id"]]);
+  const decls = [input, store];
+  const composition = await compileComposition({ declarations: decls, profile: profile(decls, ["s/store"], [bind("s/store", "id", "s/input")]) as any });
+  const api = assemblyFor<any>();
+  const inputHandle = api.bindInput(input);
+  const storeHandle = api.bindFactory(store, scoped("s/store", async (deps: any) => { await tick(); return { instance: deps.id, capabilities: { "s/store": deps.id } }; }));
+  const prepared = (await api.prepare({ composition, factories: [storeHandle], roots: { store: storeHandle }, inputs: { session: inputHandle } }) as any).prepared;
+  // Input handles appear only in `inputs`: never in `factories`, never as roots, always named.
+  const code = async (input: any) => ((await api.prepare({ composition, ...input })) as any).error?.code;
+  assert.equal(await code({ factories: [inputHandle, storeHandle], roots: { store: storeHandle }, inputs: { session: inputHandle } }), "assembly.prepare.inputs");
+  assert.equal(await code({ factories: [storeHandle], roots: { store: inputHandle }, inputs: { session: inputHandle } }), "assembly.prepare.inputs");
+  assert.equal(await code({ factories: [storeHandle], roots: { store: storeHandle } }), "assembly.prepare.handles");
+  assert.equal(await code({ factories: [storeHandle], roots: { store: storeHandle }, inputs: { a: inputHandle, b: inputHandle } }), "assembly.prepare.inputs");
+  assert.equal(await code({ factories: [], roots: { store: storeHandle }, inputs: { session: inputHandle, store: storeHandle } }), "assembly.prepare.inputs");
+  const host = createScope({ name: "host" });
+  const outs = await Promise.all(Array.from({ length: 64 }, (_, i) => prepared.run({
+    scope: host.resources.child({ name: `s${i}` }).resources, inputs: { session: { "session/id": `s${i}` } } })));
+  assert.deepEqual(outs.map((o: any) => o.roots.store), outs.map((_: unknown, i: number) => `s${i}`));
+  assert.ok(outs.every((o: any) => o.created.length === 1 && o.created[0].implementationId === "s/store"));
+  assert.equal((await host.control.close()).complete, true);
+});
+
+test("A4 Host template with an attempt child: cancelling run() reaches the hung setup; the lifetime is not tied to the run signal", async () => {
+  const { decls, composition } = await chain(1);
+  const api = assemblyFor<any>();
+  let captured: any;
+  const h = [api.bindFactory(decls[0]!, scoped("m1", async (_d, context) => {
+    assert.deepEqual(Object.keys(context).sort(), ["resources", "signal"]); // the run scope is stripped
+    await context.resources.setup({ name: "conn", cleanup: () => {},
+      setup: ({ signal }) => new Promise((resolve, reject) => {
+        if (mode === "hang") signal.addEventListener("abort", () => reject(signal.reason), { once: true }); else resolve(1);
+      }) });
+    captured = context.resources;
+    return { instance: 1, capabilities: { [C(1)]: 1 } };
+  }))];
+  let mode = "hang";
+  const prepared = (await api.prepare({ composition, factories: h, roots: { root: h[0]! } }) as any).prepared;
+  const host = createScope({ name: "host" });
+  const attempt = host.resources.child({ name: "attempt" }); // no signal on the attempt
+  const run = new AbortController();
+  const outcome = prepared.run({ signal: run.signal, scope: attempt.resources });
+  await tick();
+  const reason = new Error("cancel construction");
+  run.abort(reason);
+  const settled = await Promise.race([outcome, new Promise(r => setTimeout(() => r("HANG"), 500))]);
+  assert.notEqual(settled, "HANG");
+  assert.equal((settled as any).status, "failed");
+  assert.equal((settled as any).code, "assembly.run.factory-rejected");
+  assert.equal((settled as any).cancellation.reason, reason);
+  assert.equal((await attempt.control.close()).complete, true);
+  mode = "ok";
+  const live = host.resources.child({ name: "live" });
+  const run2 = new AbortController();
+  assert.equal((await prepared.run({ signal: run2.signal, scope: live.resources })).status, "succeeded");
+  run2.abort(); // a request-scoped signal ends after construction
+  assert.equal(captured.signal.aborted, false);
+  await assert.doesNotReject(captured.setup({ name: "later", setup: () => 3, cleanup: () => {} }));
+  assert.equal((await host.control.close()).complete, true);
+});
+
+test("A5 scoped() forwards every context field except the run scope", async () => {
+  const host = createScope({ name: "host" });
+  const seen: string[] = [];
+  const wrapped = scoped("m", (_deps: unknown, context: any) => { seen.push(...Object.keys(context).sort()); return 1; });
+  wrapped({}, { signal: new AbortController().signal, scope: host.resources, extra: 7 } as any);
+  assert.deepEqual(seen, ["extra", "resources", "signal"]);
+  assert.equal((await host.control.close()).complete, true);
+});
+
+test("A6 builder emits today's wire; fragments bound by different maps assemble in one Host", async () => {
+  const { declareModule, defineContract } = await import("./asm/dist/index.js");
+  const { required } = await import("@get-modular/core");
+  const Db = defineContract<{ query(): number }>()({ id: "acme/db", revision: 3 });
+  const Orders = defineContract<{ list(): number }>()({ id: "acme/orders", revision: 1 });
+  const dbDecl = declareModule({ moduleId: "acme/db", implementationId: "acme/db/pg", owner: { authority: "acme", path: ["db"] }, provides: [Db.provide()], slots: [] });
+  const ordersDecl = declareModule({ moduleId: "acme/orders", implementationId: "acme/orders/default", owner: { authority: "acme", path: ["orders"] },
+    provides: [Orders.provide()], slots: [Db.slot("db", required())] });
+  assert.deepEqual(JSON.parse(JSON.stringify(ordersDecl)), { moduleId: "acme/orders", implementationId: "acme/orders/default",
+    owner: { authority: "acme", path: ["orders"] }, provides: [{ capabilityId: "acme/orders", compatibility: { family: "exact", familyVersion: 1, token: "acme/orders/r1" } }],
+    slots: [{ slotId: "db", capabilityId: "acme/db", compatibility: { family: "exact", familyVersion: 1, token: "acme/db/r3" }, cardinality: { kind: "required" } }],
+    kind: "get-modular.module-declaration", schemaVersion: 1 });
+  assert.throws(() => declareModule({ ...ordersDecl } as any), (e: any) => e.code === "assembly.bind.invalid-declaration");
+  const composition = await compileComposition({ declarations: [dbDecl, ordersDecl], profile: { kind: "get-modular.composition-profile", schemaVersion: 1,
+    profileId: "acme/main", roots: ["acme/orders"], selections: [dbDecl, ordersDecl].map(({ moduleId, implementationId }) => ({ moduleId, implementationId })),
+    bindings: [{ consumerImplementationId: "acme/orders/default", slotId: "db", providerImplementationIds: ["acme/db/pg"] }] } });
+  assert.ok(composition.ok, JSON.stringify(composition));
+  const team = assemblyFor<any>();   // the fragment's own map
+  const hostApi = assemblyFor<any>(); // the Host's map
+  const orders = team.bindFactory(ordersDecl, scoped(ordersDecl.implementationId, async (deps: any, { resources }) => {
+    const n = await resources.setup({ name: "conn", setup: () => deps.db.query(), cleanup: () => {} });
+    return { instance: n, capabilities: { "acme/orders": { list: () => n } } };
+  }));
+  const db = hostApi.bindFactory(dbDecl, async () => ({ instance: 0, capabilities: { "acme/db": { query: () => 42 } } }));
+  const ready: any = await hostApi.prepare({ composition: composition as any, factories: [db, orders], roots: { orders } });
+  assert.equal(ready.status, "prepared");
+  const attempt = createScope({ name: "attempt" });
+  const outcome = await ready.prepared.run({ scope: attempt.resources });
+  assert.equal(outcome.status, "succeeded");
+  assert.equal(outcome.roots.orders, 42);
+  assert.equal((await attempt.control.close()).complete, true);
+  const stale = defineContract<{ query(): number }>()({ id: "acme/db", revision: 2 });
+  const staleDecl = declareModule({ ...{ moduleId: "acme/orders", implementationId: "acme/orders/default", owner: { authority: "acme", path: ["orders"] } },
+    provides: [Orders.provide()], slots: [stale.slot("db", required())] });
+  const rejected: any = await compileComposition({ declarations: [dbDecl, staleDecl], profile: { kind: "get-modular.composition-profile", schemaVersion: 1,
+    profileId: "acme/main", roots: ["acme/orders"], selections: [dbDecl, staleDecl].map(({ moduleId, implementationId }) => ({ moduleId, implementationId })),
+    bindings: [{ consumerImplementationId: "acme/orders/default", slotId: "db", providerImplementationIds: ["acme/db/pg"] }] } });
+  assert.equal(rejected.ok, false);
+  assert.ok(rejected.diagnostics.some((d: any) => d.code === "binding.compatibility-mismatch"), JSON.stringify(rejected.diagnostics));
+});

@@ -1,0 +1,12 @@
+{
+  "jobId": "ar-research-hooks-frameworks-std-20261001-ro-u",
+  "sha256": "b13338a1f8c2cc1ffe80a14119bd3263aa6291ae97106b6415ccb288f964edef",
+  "requested": {
+    "model": "gpt-6.1-sol",
+    "reasoningEffort": "max",
+    "serviceTier": "default",
+    "accounts": [
+      "account-u"
+    ]
+  }
+}

@@ -1,0 +1,58 @@
+[
+  {
+    "repo": "agent-teams-ai/get-modular",
+    "sha": "9c722ceff4ede307d06d7a4b63fdebe615f54c53",
+    "path": "docs/architecture/common-assembly.md",
+    "retained": "agent-teams-ai_get-modular__docs__architecture__common-assembly.md",
+    "sha256": "33b41d5babf0a431c97e8e596a56e6ec1557ba1a0b26d39bf23e13d9a19e1fbd"
+  },
+  {
+    "repo": "agent-teams-ai/get-modular",
+    "sha": "9c722ceff4ede307d06d7a4b63fdebe615f54c53",
+    "path": "docs/decisions/0028-authorize-the-optional-ownership-contract-checkpoint.md",
+    "retained": "agent-teams-ai_get-modular__docs__decisions__0028-authorize-the-optional-ownership-contract-checkpoint.md",
+    "sha256": "6edd5c84db53f63525f03df6da21f6b4da284b770cbc727f7a4ed8e170551973"
+  },
+  {
+    "repo": "agent-teams-ai/get-modular",
+    "sha": "9c722ceff4ede307d06d7a4b63fdebe615f54c53",
+    "path": "docs/decisions/0029-admit-an-optional-lifecycle-kernel-candidate.md",
+    "retained": "agent-teams-ai_get-modular__docs__decisions__0029-admit-an-optional-lifecycle-kernel-candidate.md",
+    "sha256": "9247eb2c2eb70cbbc215426446101314b1085d1d03fee02b6dc0467a737eac00"
+  },
+  {
+    "repo": "agent-teams-ai/get-modular",
+    "sha": "9c722ceff4ede307d06d7a4b63fdebe615f54c53",
+    "path": "packages/lifecycle-kernel/README.md",
+    "retained": "agent-teams-ai_get-modular__packages__lifecycle-kernel__README.md",
+    "sha256": "f2d7ea848d6cf1ac6b84fccc3cbc51f488c51f37c36c3a3d9b3e958193de57f6"
+  },
+  {
+    "repo": "agent-teams-ai/get-modular",
+    "sha": "9c722ceff4ede307d06d7a4b63fdebe615f54c53",
+    "path": "package.json",
+    "retained": "agent-teams-ai_get-modular__package.json",
+    "sha256": "db7b4ac8bb46d5cb98fbf8c03dbb609827c4a310b8ad23b92a0df7dfab8d8c07"
+  },
+  {
+    "repo": "agent-teams-ai/.github",
+    "sha": "3fe0f135ffc446b3bb174397c6b5783f72a008a2",
+    "path": "docs/engineering-quality-standard.md",
+    "retained": "agent-teams-ai_.github__docs__engineering-quality-standard.md",
+    "sha256": "e97a2d9f5ec7d05f9a515c28df38fb921c5048d4e2cab850561717f7dedff5d7"
+  },
+  {
+    "repo": "openclaw/openclaw",
+    "sha": "c3425e1d7b9550c7ff36deda1c1b0fc0f97332a1",
+    "path": "src/plugins/plugin-instance.ts",
+    "retained": "openclaw_openclaw__src__plugins__plugin-instance.ts",
+    "sha256": "8ec1cda1501abc5dc2b9721d5387984e7824628439454559dab0cfec2c7d9fa4"
+  },
+  {
+    "repo": "openclaw/openclaw",
+    "sha": "c3425e1d7b9550c7ff36deda1c1b0fc0f97332a1",
+    "path": "docs/plugins/sdk-runtime.md",
+    "retained": "openclaw_openclaw__docs__plugins__sdk-runtime.md",
+    "sha256": "91c556e57f3bbff3535c80a739f9a384ffc579921572be30ededf3dca579d4cd"
+  }
+]

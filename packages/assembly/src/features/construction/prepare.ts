@@ -1,5 +1,5 @@
 import type { CompositionPlan, CompositionProfile } from "@get-modular/core";
-import type { AssemblyPreparationResult, AssemblyPrepareInput, PreparationErrorCode, RootHandles, RunOptions } from "./types.js";
+import type { AnyFactoryHandle, AssemblyPreparationResult, AssemblyPrepareInput, InputHandles, PreparationErrorCode, PreparedAssembly, RootHandles, RunOptions } from "./types.js";
 import type { ConstructionPorts, Metadata, Program } from "./ports.js";
 import { appendCreated } from "./ports.js";
 import { SnapshotFault, copyPlan, data, dataObject, denseArray, envelope, inspectPlan, limits, record, rootKeys, snapshotPlan } from "./snapshot.js";
@@ -48,27 +48,32 @@ function profileFrom(plan: CompositionPlan): CompositionProfile {
   });
 }
 
-function collectMetadata(factories: readonly unknown[]): {
+// Factory handles come only through `factories` and input handles only through `inputs`;
+// together they cover every selection exactly once.
+function collectMetadata(factories: readonly unknown[], inputHandles: readonly unknown[]): {
   readonly byHandle: Map<object, Metadata>;
   readonly byId: Map<string, Metadata>;
 } {
   let provides = 0;
   let slots = 0;
-  for (const handle of factories) {
+  const handles = [...factories, ...inputHandles];
+  const misplaced = (index: number): PreparationErrorCode =>
+    index < factories.length ? "assembly.prepare.handles" : "assembly.prepare.input-handles";
+  for (const [index, handle] of handles.entries()) {
     const metadata = metadataFor(handle);
-    if (!metadata) {refuse("assembly.prepare.handles");}
+    if (!metadata) {refuse(misplaced(index));}
+    if ((metadata.input === true) !== (index >= factories.length)) {refuse("assembly.prepare.input-handles");}
     provides += metadata.declaration.provides.length;
     slots += metadata.declaration.slots.length;
     if (provides > limits.aggregateProvides || slots > limits.aggregateSlots) {throw new SnapshotFault("limit");}
   }
   const byHandle = new Map<object, Metadata>();
   const byId = new Map<string, Metadata>();
-  for (const handle of factories) {
-    if (handle === null || typeof handle !== "object") {refuse("assembly.prepare.handles");}
+  for (const [index, handle] of handles.entries()) {
     const metadata = metadataFor(handle);
-    if (!metadata) {refuse("assembly.prepare.handles");}
+    if (handle === null || typeof handle !== "object" || !metadata) {refuse(misplaced(index));}
     const id = metadata.declaration.implementationId;
-    if (byHandle.has(handle) || byId.has(id)) {refuse("assembly.prepare.handles");}
+    if (byHandle.has(handle) || byId.has(id)) {refuse(misplaced(index));}
     byHandle.set(handle, metadata);
     byId.set(id, metadata);
   }
@@ -94,6 +99,8 @@ function bindRoots(aliases: Readonly<ReturnType<typeof rootKeys>>, plan: Composi
     const handle = data(aliases.object, alias);
     if (handle === null || typeof handle !== "object") {refuse("assembly.prepare.roots");}
     const metadata = byHandle.get(handle);
+    // A borrowed input is never a root.
+    if (metadata?.input === true) {refuse("assembly.prepare.input-handles");}
     if (!metadata || rootHandles.has(handle) || !rootIds.has(metadata.declaration.moduleId)) {
       refuse("assembly.prepare.roots");
     }
@@ -102,7 +109,18 @@ function bindRoots(aliases: Readonly<ReturnType<typeof rootKeys>>, plan: Composi
   }));
 }
 
-function createProgram(plan: CompositionPlan, roots: Program["roots"], byId: ReadonlyMap<string, Metadata>): Program {
+function bindInputs(aliases: readonly string[], handles: readonly unknown[],
+  byHandle: ReadonlyMap<object, Metadata>): Program["inputs"] {
+  return Object.freeze(aliases.map((alias, index) => {
+    const handle = handles[index];
+    const metadata = handle !== null && typeof handle === "object" ? byHandle.get(handle) : undefined;
+    if (metadata?.input !== true) {refuse("assembly.prepare.input-handles");}
+    return Object.freeze({ alias, metadata });
+  }));
+}
+
+function createProgram(plan: CompositionPlan, roots: Program["roots"], inputs: Program["inputs"],
+  byId: ReadonlyMap<string, Metadata>): Program {
   const bindings = new Map<string, Map<string, CompositionPlan["bindings"][number]>>();
   for (const binding of plan.bindings) {
     let rows = bindings.get(binding.consumerImplementationId);
@@ -110,7 +128,7 @@ function createProgram(plan: CompositionPlan, roots: Program["roots"], byId: Rea
     rows.set(binding.slotId, binding);
   }
   return Object.freeze({
-    roots,
+    roots, inputs,
     steps: Object.freeze(plan.dependencyOrder.map((id) => {
       const metadata = byId.get(id);
       if (!metadata) {refuse("assembly.prepare.handles");}
@@ -125,21 +143,26 @@ function createProgram(plan: CompositionPlan, roots: Program["roots"], byId: Rea
     })),
   });
 }
-export async function prepareConstruction<C, R extends RootHandles<C>>(
-  input: AssemblyPrepareInput<C, R>, ports: ConstructionPorts,
-): Promise<AssemblyPreparationResult<R>> {
+export async function prepareConstruction<C, R extends RootHandles<C>, N extends InputHandles<C>,
+  F extends readonly AnyFactoryHandle<C>[]>(
+  input: AssemblyPrepareInput<C, R, N, F>, ports: ConstructionPorts,
+): Promise<AssemblyPreparationResult<R, N>> {
   try {
-    const supplied = record(input, ["composition", "factories", "roots"]);
+    const supplied = record(input, ["composition", "factories", "roots"], ["inputs"]);
     const factories = denseArray(data(supplied, "factories"), limits.handles);
     const aliases = rootKeys(data(supplied, "roots"));
+    const suppliedInputs = Object.hasOwn(supplied, "inputs") ? data(supplied, "inputs") : undefined;
+    const inputAliases = rootKeys(suppliedInputs === undefined ? {} : suppliedInputs);
+    const inputHandles = inputAliases.keys.map((alias) => data(inputAliases.object, alias));
     const composition = dataObject(data(supplied, "composition"));
     const header = envelope(composition);
     const census = inspectPlan(data(composition, "plan"));
     // All individual and aggregate counts precede proportional snapshot copies.
-    const { byHandle, byId } = collectMetadata(factories);
+    const { byHandle, byId } = collectMetadata(factories, inputHandles);
     const plan = copyPlan(census);
     validateSelections(plan, byId);
     const roots = bindRoots(aliases, plan, byHandle);
+    const inputs = bindInputs(inputAliases.keys, inputHandles, byHandle);
     const declarations = Object.freeze(Array.from(byId.values(), (metadata) => metadata.declaration));
     const profile = profileFrom(plan);
     const compile = ports.compileComposition, commit = ports.commitCreated ?? appendCreated;
@@ -154,8 +177,11 @@ export async function prepareConstruction<C, R extends RootHandles<C>>(
     if (!sameEnvelope(header, envelope(checked)) || !samePlan(plan, snapshotPlan(checked.plan))) {
       return refuse("assembly.prepare.plan-mismatch");
     }
-    const program = createProgram(plan, roots, byId);
-    const prepared = Object.freeze({ run: async (options?: RunOptions) => runAttempt<R>(program, options, commit) });
+    const program = createProgram(plan, roots, inputs, byId);
+    // Run options are checked at run time; the declared shape exists only for callers.
+    const prepared = Object.freeze({
+      run: async (options?: RunOptions) => runAttempt<R>(program, options, commit),
+    }) as PreparedAssembly<R, N>;
     return Object.freeze({ status: "prepared", prepared });
   } catch (cause) {
     const code = cause instanceof PreparationFault ? cause.code

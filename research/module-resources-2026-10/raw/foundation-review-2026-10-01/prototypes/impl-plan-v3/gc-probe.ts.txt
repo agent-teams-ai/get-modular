@@ -1,0 +1,15 @@
+// usage: node --expose-gc gc-probe.ts <path-to-index.ts>
+const { createScope } = await import(process.argv[2] ?? "./res/index.ts");
+const parent = createScope({ name: "host" });
+const refs: WeakRef<object>[] = [];
+for (let i = 0; i < 2000; i += 1) {
+  const c = parent.resources.child({ name: `s${i}` });
+  c.resources.use({ [Symbol.dispose]: () => {} }, "r");
+  refs.push(new WeakRef(c.resources));
+  await c.control.close();
+}
+for (let i = 0; i < 3; i += 1) { await new Promise(r => setTimeout(r, 5)); (globalThis as any).gc(); }
+const alive = refs.filter(r => r.deref() !== undefined).length;
+const parentReport = await parent.control.close(); // keeps the parent reachable during the GC above
+console.log(JSON.stringify({ alive, parentComplete: parentReport.complete }));
+process.exitCode = alive > 20 ? 1 : 0;

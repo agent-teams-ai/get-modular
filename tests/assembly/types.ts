@@ -74,7 +74,7 @@ api.bindFactory(widened, async () => ({ instance: {}, capabilities: {} }));
 type Narrower = { "synthetic/store": CapabilityContract<Store & { readonly extra: true }, "synthetic/v1">; "synthetic/filter": Capabilities["synthetic/filter"]; "synthetic/logger": Capabilities["synthetic/logger"] };
 const narrower = assemblyFor<Narrower>();
 declare const composition: SuccessfulComposition;
-// @ts-expect-error Host mappings are invariant even when values are covariantly assignable.
+// @ts-expect-error Handles are invariant in the capabilities they use, even when values are covariantly assignable.
 narrower.prepare({ composition, factories: [store], roots: { store } });
 type OtherIdentity = { "synthetic/store": CapabilityContract<Store, "synthetic/v2"> };
 // @ts-expect-error Handles with different exact identities cannot cross mappings.
@@ -114,3 +114,57 @@ declare const alternativeSlot: ReturnType<typeof largeSlot<"left">> | ReturnType
 const unionElement = defineModule({ ...rootDeclaration, slots: [alternativeSlot] });
 // @ts-expect-error A tuple element must have one definite slot identity.
 api.bindFactory(unionElement, async () => ({ instance: {}, capabilities: {} }));
+
+// ADR-0031: the factory context is closed; every run supplies its scope and declared inputs.
+type ExactKeys<T, K> = [keyof T] extends [K] ? [K] extends [keyof T] ? true : false : false;
+const closedContext: ExactKeys<import("@get-modular/assembly").FactoryContext, "signal" | "scope"> = true;
+void closedContext;
+type SessionCapabilities = {
+  "synthetic/session": CapabilityContract<string, "synthetic/v1">;
+  "synthetic/store": CapabilityContract<Store, "synthetic/v1">;
+};
+const sessionApi = assemblyFor<SessionCapabilities>();
+const sessionDeclaration = defineModule({
+  kind: "get-modular.module-declaration", schemaVersion: 1, moduleId: "synthetic/session", implementationId: "synthetic/session", owner,
+  provides: [{ capabilityId: "synthetic/session", compatibility: exact("synthetic/v1") }], slots: [],
+});
+const sessionStoreDeclaration = defineModule({
+  kind: "get-modular.module-declaration", schemaVersion: 1, moduleId: "synthetic/store", implementationId: "synthetic/store", owner,
+  provides: [{ capabilityId: "synthetic/store", compatibility: exact("synthetic/v1") }],
+  slots: [{ slotId: "session", capabilityId: "synthetic/session", compatibility: exact("synthetic/v1"), cardinality: required() }],
+});
+const sessionInput = sessionApi.bindInput(sessionDeclaration);
+const sessionStore = sessionApi.bindFactory(sessionStoreDeclaration, async (deps, context) => {
+  const owned: unknown = context.scope;
+  void owned;
+  // @ts-expect-error The factory context is closed.
+  void context.context;
+  return { instance: { session: deps.session }, capabilities: { "synthetic/store": { value: deps.session } } };
+});
+async function runSessions(composition: SuccessfulComposition, maybe: AbortSignal | undefined) {
+  const result = await sessionApi.prepare({ composition, factories: [sessionStore], roots: { store: sessionStore }, inputs: { session: sessionInput } });
+  if (result.status !== "prepared") return;
+  const outcome = await result.prepared.run({ signal: maybe, scope: undefined, inputs: { session: { "synthetic/session": "s1" } } });
+  if (outcome.status === "succeeded") { const session: string = outcome.roots.store.session; void session; }
+  // @ts-expect-error Declared inputs are required.
+  await result.prepared.run();
+  // @ts-expect-error Declared inputs are required.
+  await result.prepared.run({ signal: maybe });
+  // @ts-expect-error Every declared input alias is required.
+  await result.prepared.run({ inputs: {} });
+  // @ts-expect-error Input values follow the capability contract.
+  await result.prepared.run({ inputs: { session: { "synthetic/session": 1 } } });
+  // @ts-expect-error Unknown input aliases are rejected.
+  await result.prepared.run({ inputs: { session: { "synthetic/session": "s1" }, other: {} } });
+  // @ts-expect-error Input records are closed.
+  await result.prepared.run({ inputs: { session: { "synthetic/session": "s1", extra: 1 } } });
+}
+void runSessions;
+// @ts-expect-error An input declares no slots.
+sessionApi.bindInput(sessionStoreDeclaration);
+// @ts-expect-error An input handle is never a factory.
+void sessionApi.prepare({ composition, factories: [sessionInput, sessionStore], roots: { store: sessionStore } });
+// @ts-expect-error An input handle is never a root.
+void sessionApi.prepare({ composition, factories: [sessionStore], roots: { session: sessionInput }, inputs: { session: sessionInput } });
+// @ts-expect-error A factory handle is never an input.
+void sessionApi.prepare({ composition, factories: [sessionStore], roots: { store: sessionStore }, inputs: { store: sessionStore } });

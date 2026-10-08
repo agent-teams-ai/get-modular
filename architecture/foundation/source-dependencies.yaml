@@ -4,8 +4,10 @@ workspace:
   manifest: pnpm-workspace.yaml
 packageRoots:
   - packages/assembly
+  - packages/conformance
   - packages/core
   - packages/lifecycle-kernel
+  - packages/resources
 rootPackage: true
 governedRoots:
   - architecture/contracts/ownership
@@ -14,6 +16,8 @@ governedRoots:
   - packages/assembly/examples
   - packages/assembly/src
   - packages/assembly/tests
+  - packages/conformance/src
+  - packages/conformance/tests
   - packages/core/dist-seed
   - packages/core/dist-stage0
   - packages/core/dist-test
@@ -22,6 +26,8 @@ governedRoots:
   - packages/core/tests
   - packages/lifecycle-kernel/src
   - packages/lifecycle-kernel/tests
+  - packages/resources/src
+  - packages/resources/tests
   - tests
 boundaries:
   # Module consumers see only ports and identities. Only a composition root
@@ -411,6 +417,200 @@ boundaries:
         - node:test
         - node:url
       runtimeReferences: []
+  # ADR-0030 admits one optional public cleanup-scope package. It imports no
+  # package, builtin or composition package; only module code and Hosts use it.
+  - id: resources-contract
+    roots:
+      - packages/resources/src/features/scope/types.ts
+      - packages/resources/src/features/scope/errors.ts
+    entrypoints:
+      - packages/resources/src/features/scope/types.ts
+      - packages/resources/src/features/scope/errors.ts
+    allow:
+      boundaries: []
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: resources-implementation
+    roots:
+      - packages/resources/src/features/scope/arguments.ts
+      - packages/resources/src/features/scope/scope.ts
+    entrypoints:
+      - packages/resources/src/features/scope/scope.ts
+    allow:
+      boundaries:
+        - resources-contract
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: resources-composition
+    roots:
+      - packages/resources/src/composition/root.ts
+    entrypoints:
+      - packages/resources/src/composition/root.ts
+    allow:
+      boundaries:
+        - resources-implementation
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: resources-public-entrypoint
+    packageExports:
+      - "."
+    roots:
+      - packages/resources/src/index.ts
+    entrypoints:
+      - packages/resources/src/index.ts
+    allow:
+      boundaries:
+        - resources-contract
+        - resources-composition
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: resources-development
+    dependencyMode: development
+    roots:
+      - packages/resources/tests
+    entrypoints:
+      - packages/resources/tests/scope.test.mjs
+      - packages/resources/tests/packed-root.test.mjs
+      - packages/resources/tests/semantic-suite.mjs
+      - packages/resources/tests/gc-probe.mjs
+      - packages/resources/tests/s1-probe.mjs
+      - packages/resources/tests/types.ts
+    allow:
+      boundaries:
+        - resources-contract
+        - resources-implementation
+        - resources-composition
+        - resources-public-entrypoint
+      packages:
+        - "@get-modular/resources"
+      builtins:
+        - node:assert/strict
+        - node:child_process
+        - node:events
+        - node:fs/promises
+        - node:module
+        - node:os
+        - node:path
+        - node:test
+        - node:url
+      runtimeReferences: []
+  # ADR-0033 admits one optional public conformance package. Its only packages
+  # are the Get Modular peers it tests with, and it imports no Node builtin.
+  - id: conformance-errors
+    roots:
+      - packages/conformance/src/features/errors/errors.ts
+    entrypoints:
+      - packages/conformance/src/features/errors/errors.ts
+    allow:
+      boundaries: []
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: conformance-harness
+    roots:
+      - packages/conformance/src/features/harness/types.ts
+      - packages/conformance/src/features/harness/isolate.ts
+      - packages/conformance/src/features/harness/smoke.ts
+    entrypoints:
+      - packages/conformance/src/features/harness/types.ts
+      - packages/conformance/src/features/harness/isolate.ts
+      - packages/conformance/src/features/harness/smoke.ts
+    allow:
+      boundaries:
+        - conformance-errors
+      packages:
+        - "@get-modular/assembly"
+        - "@get-modular/core"
+        - "@get-modular/resources"
+      builtins: []
+      runtimeReferences: []
+  - id: conformance-suites
+    roots:
+      - packages/conformance/src/features/suites/types.ts
+      - packages/conformance/src/features/suites/suite.ts
+    entrypoints:
+      - packages/conformance/src/features/suites/types.ts
+      - packages/conformance/src/features/suites/suite.ts
+    allow:
+      boundaries:
+        - conformance-errors
+      packages:
+        - "@get-modular/assembly"
+        - "@get-modular/core"
+        - "@get-modular/resources"
+      builtins: []
+      runtimeReferences: []
+  - id: conformance-handles
+    roots:
+      - packages/conformance/src/features/handles/guard.ts
+    entrypoints:
+      - packages/conformance/src/features/handles/guard.ts
+    allow:
+      boundaries:
+        - conformance-errors
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: conformance-composition
+    roots:
+      - packages/conformance/src/composition/root.ts
+    entrypoints:
+      - packages/conformance/src/composition/root.ts
+    allow:
+      boundaries:
+        - conformance-harness
+        - conformance-suites
+        - conformance-handles
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: conformance-public-entrypoint
+    packageExports:
+      - "."
+    roots:
+      - packages/conformance/src/index.ts
+    entrypoints:
+      - packages/conformance/src/index.ts
+    allow:
+      boundaries:
+        - conformance-errors
+        - conformance-harness
+        - conformance-suites
+        - conformance-handles
+        - conformance-composition
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: conformance-development
+    dependencyMode: development
+    roots:
+      - packages/conformance/tests
+    entrypoints:
+      - packages/conformance/tests/conformance.test.mjs
+      - packages/conformance/tests/packed-root.test.mjs
+      - packages/conformance/tests/handle-probe.mjs
+      - packages/conformance/tests/types.ts
+    allow:
+      boundaries: []
+      packages:
+        - "@get-modular/assembly"
+        - "@get-modular/core"
+        - "@get-modular/resources"
+      builtins:
+        - node:assert/strict
+        - node:child_process
+        - node:fs/promises
+        - node:module
+        - node:net
+        - node:os
+        - node:path
+        - node:test
+        - node:url
+      runtimeReferences: []
   - id: core-development
     dependencyMode: development
     roots:
@@ -548,11 +748,13 @@ boundaries:
         - assembly-public-entrypoint
         - core-public-entrypoint
         - lifecycle-kernel-public-entrypoint
+        - resources-public-entrypoint
       packages:
         - "@agent-teams/engineering-foundation"
         - "@get-modular/assembly"
         - "@get-modular/core"
         - "@get-modular/lifecycle-kernel"
+        - "@get-modular/resources"
         - ajv
         - canonicalize
         - json-canonicalize

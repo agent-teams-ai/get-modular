@@ -1,0 +1,103 @@
+// Generates a 500-handle composition in three shapes and is run by measure.sh.
+//  fragments: 20 team fragments, each bound with its own CapabilitiesOf map; the Host prepares all 500 handles.
+//  global:    the same builder declarations, every handle bound by the Host's single map (0.2.0 habit).
+//  literal:   published Assembly 0.2.0, hand-written wire literals and a hand-written global map.
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+const MODULES = Number(process.argv[2] ?? 500);
+const TEAMS = 20;
+const PER = MODULES / TEAMS;
+const slotsOf = (i) => (i === 0 ? [] : i === 1 ? [0] : [i - 1, Math.floor(i / 2)]);
+const header = (asm) => [
+  `import { required } from "@get-modular/core";`,
+  `import { assemblyFor, declareModule, defineContract, type CapabilitiesOf, type SuccessfulComposition } from "${asm}";`,
+];
+function builder(shape) {
+  rmSync(shape, { recursive: true, force: true }); mkdirSync(shape);
+  const asm = "../../asm/dist/index.js";
+  writeFileSync(`${shape}/contracts.ts`, [
+    `import { defineContract } from "${asm}";`,
+    ...Array.from({ length: MODULES }, (_, i) => `export const C${i} = defineContract<{ readonly v${i}: (x: number) => number }>()({ id: "scale/c${i}", revision: ${1 + (i % 3)} });`),
+  ].join("\n") + "\n");
+  for (let t = 0; t < TEAMS; t += 1) {
+    const mods = Array.from({ length: PER }, (_, k) => t * PER + k);
+    const used = [...new Set(mods.flatMap((i) => [i, ...slotsOf(i)]))].sort((a, b) => a - b);
+    const lines = [
+      `import { required } from "@get-modular/core";`,
+      `import { assemblyFor, declareModule } from "${asm}";`,
+      `import type { CapabilitiesOf } from "${asm}";`,
+      `import { ${used.map((i) => `C${i}`).join(", ")} } from "./contracts.js";`,
+      `export interface TeamCaps extends CapabilitiesOf<${used.map((i) => `typeof C${i}`).join(" | ")}> {}`,
+      ...mods.map((i) => `export const d${i} = declareModule({ moduleId: "scale/m${i}", implementationId: "scale/m${i}", owner: { authority: "scale", path: ["t${t}"] }, provides: [C${i}.provide()], slots: [${slotsOf(i).map((j) => `C${j}.slot("s${j}", required())`).join(", ")}] });`),
+    ];
+    if (shape === "fragments") {
+      lines.push(`const api = assemblyFor<TeamCaps>();`);
+      for (const i of mods) {
+        const body = slotsOf(i).map((j) => `deps.s${j}.v${j}(1)`).join(" + ") || "0";
+        lines.push(`export const h${i} = api.bindFactory(d${i}, async (deps) => ({ instance: { n: ${body} }, capabilities: { "scale/c${i}": { v${i}: (x: number) => x } } }));`);
+      }
+    }
+    writeFileSync(`${shape}/team${t}.ts`, lines.join("\n") + "\n");
+  }
+  const all = Array.from({ length: MODULES }, (_, i) => i);
+  const host = [
+    `import { assemblyFor, type CapabilitiesOf, type SuccessfulComposition } from "${asm}";`,
+    `import { ${all.map((i) => `C${i}`).join(", ")} } from "./contracts.js";`,
+    `interface HostCaps extends CapabilitiesOf<${all.map((i) => `typeof C${i}`).join(" | ")}> {}`,
+    `const host = assemblyFor<HostCaps>();`,
+  ];
+  for (let t = 0; t < TEAMS; t += 1) {
+    const mods = Array.from({ length: PER }, (_, k) => t * PER + k);
+    host.push(`import { ${mods.map((i) => (shape === "fragments" ? `h${i}` : `d${i}`)).join(", ")} } from "./team${t}.js";`);
+  }
+  if (shape === "global") {
+    for (const i of all) {
+      const body = slotsOf(i).map((j) => `deps.s${j}.v${j}(1)`).join(" + ") || "0";
+      host.push(`const h${i} = host.bindFactory(d${i}, async (deps) => ({ instance: { n: ${body} }, capabilities: { "scale/c${i}": { v${i}: (x: number) => x } } }));`);
+    }
+  }
+  host.push(
+    `declare const composition: SuccessfulComposition;`,
+    `export async function consume(): Promise<number> {`,
+    `  const ready = await host.prepare({ composition, factories: [${all.map((i) => `h${i}`).join(", ")}], roots: { last: h${MODULES - 1} } });`,
+    `  if (ready.status !== "prepared") { return 0; }`,
+    `  const outcome = await ready.prepared.run({ scope: undefined });`,
+    `  return outcome.status === "succeeded" ? outcome.roots.last.n : 0;`,
+    `}`,
+  );
+  writeFileSync(`${shape}/host.ts`, host.join("\n") + "\n");
+}
+function literal() {
+  const shape = "literal";
+  rmSync(shape, { recursive: true, force: true }); mkdirSync(shape);
+  const tok = (i) => `{ family: "exact", familyVersion: 1, token: "scale/c${i}/r${1 + (i % 3)}" }`;
+  const lines = [
+    `import { defineModule } from "@get-modular/core";`,
+    `import { assemblyFor, type CapabilityContract, type SuccessfulComposition } from "@get-modular/assembly";`,
+    `type C = {`,
+    ...Array.from({ length: MODULES }, (_, i) => `  "scale/c${i}": CapabilityContract<{ readonly v${i}: (x: number) => number }, "scale/c${i}/r${1 + (i % 3)}">;`),
+    `};`,
+    `const host = assemblyFor<C>();`,
+  ];
+  for (let i = 0; i < MODULES; i += 1) {
+    const slots = slotsOf(i).map((j) => `{ slotId: "s${j}", capabilityId: "scale/c${j}", compatibility: ${tok(j)}, cardinality: { kind: "required" } }`).join(", ");
+    const body = slotsOf(i).map((j) => `deps.s${j}.v${j}(1)`).join(" + ") || "0";
+    lines.push(`const h${i} = host.bindFactory(defineModule({ kind: "get-modular.module-declaration", schemaVersion: 1, moduleId: "scale/m${i}", implementationId: "scale/m${i}", owner: { authority: "scale", path: ["t"] }, provides: [{ capabilityId: "scale/c${i}", compatibility: ${tok(i)} }], slots: [${slots}] }), async (deps) => ({ instance: { n: ${body} }, capabilities: { "scale/c${i}": { v${i}: (x: number) => x } } }));`);
+  }
+  lines.push(
+    `declare const composition: SuccessfulComposition;`,
+    `export async function consume(): Promise<number> {`,
+    `  const ready = await host.prepare({ composition, factories: [${Array.from({ length: MODULES }, (_, i) => `h${i}`).join(", ")}], roots: { last: h${MODULES - 1} } });`,
+    `  if (ready.status !== "prepared") { return 0; }`,
+    `  const outcome = await ready.prepared.run();`,
+    `  return outcome.status === "succeeded" ? outcome.roots.last.n : 0;`,
+    `}`,
+  );
+  writeFileSync(`${shape}/host.ts`, lines.join("\n") + "\n");
+}
+builder("fragments"); builder("global"); literal();
+for (const shape of ["fragments", "global", "literal"]) {
+  writeFileSync(`tsconfig.${shape}.json`, JSON.stringify({ compilerOptions: {
+    strict: true, noEmit: true, target: "ES2024", module: "NodeNext", moduleResolution: "NodeNext", lib: ["ES2024", "DOM"], types: [],
+    exactOptionalPropertyTypes: true, noUncheckedIndexedAccess: true, skipLibCheck: true, allowImportingTsExtensions: true,
+  }, files: [`${shape}/host.ts`] }));
+}

@@ -30,6 +30,7 @@ import {
   validateSourceMap,
   validateTraceability,
 } from "../architecture/checks/governance.mjs";
+import { LEAF_PACKAGES, leafManifestPath } from "../architecture/checks/leaf-packages.mjs";
 import {
   manifestCarrierViolations,
   packageManifestInventory,
@@ -282,22 +283,30 @@ test("supported Node preflight matches repository runtime custody", async () => 
     assert.equal(isSupportedNodeVersion(version), false, version);
     assert.throws(() => assertSupportedNodeVersion(version), /NODE_VERSION_PREFLIGHT_FAILED/u);
   }
-  for (const version of ["24.18.0", "v24.21.0", "24.99.0"]) {
+  for (const version of [
+    "24.21.0", "v24.21.0", "24.21.1", "24.99.0",
+    "26.10.0", "v26.10.0", "26.10.1", "26.11.0", "26.99.0", "v26.99.0",
+  ]) {
     assert.equal(isSupportedToolingNodeVersion(version), true, version);
     assert.doesNotThrow(() => assertSupportedToolingNodeVersion(version));
   }
-  for (const version of ["24.17.9", "25.0.0", "26.10.0", "v26.99.0", "invalid"]) {
+  for (const version of [
+    "24.17.9", "24.18.0", "v24.18.0", "24.20.9", "24.21.0-rc.1",
+    "25.0.0", "25.99.0", "26.0.0", "26.9.9", "v26.9.9",
+    "26.10.0-rc.1", "26.10.0+build.1", "27.0.0", "invalid", "", "24.21",
+  ]) {
     assert.equal(isSupportedToolingNodeVersion(version), false, version);
     assert.throws(() => assertSupportedToolingNodeVersion(version), /NODE_VERSION_PREFLIGHT_FAILED/u);
   }
 
   const packageJson = JSON.parse(await readFile("package.json", "utf8"));
   assert.equal(packageJson.engines.node, TOOLING_NODE_RANGE);
-  for (const path of ["packages/core/package.json", "packages/assembly/package.json"]) {
+  for (const path of ["packages/core/package.json", "packages/assembly/package.json",
+    ...LEAF_PACKAGES.map(leafManifestPath)]) {
     const manifest = JSON.parse(await readFile(path, "utf8"));
     assert.equal(manifest.engines.node, SUPPORTED_NODE_RANGE, path);
   }
-  assert.equal(await readFile(".node-version", "utf8"), "24.18.0\n");
+  assert.equal(await readFile(".node-version", "utf8"), "24.21.0\n");
   assert.equal(packageJson.scripts["runtime:preflight"],
     "node architecture/checks/node-version.mjs");
   for (const script of ["check", "check:fast"]) {
@@ -308,10 +317,21 @@ test("supported Node preflight matches repository runtime custody", async () => 
   assert.equal(packageJson.scripts["precheck:changed"], "pnpm runtime:preflight");
 });
 
-test("Node preflight recognizes a symlinked direct entry in a subprocess", async () => {
+test("Node preflight executes without dependencies and recognizes a symlinked direct entry in a subprocess", async () => {
   const fixture = await mkdtemp(join(tmpdir(), "get-modular-node-preflight-"));
   try {
     const preflightPath = resolve("architecture/checks/node-version.mjs");
+    // Execute the actual helper bytes outside the installed workspace. The
+    // fixture has no package manifest, node_modules, compiler or pnpm on PATH.
+    const isolatedDirectory = join(fixture, "architecture", "checks");
+    await mkdir(isolatedDirectory, { recursive: true });
+    const isolatedPath = join(isolatedDirectory, "node-version.mjs");
+    await writeFile(isolatedPath, await readFile(preflightPath));
+    const executionOptions = {
+      cwd: fixture,
+      timeout: 30_000,
+      env: { ...process.env, PATH: "", NODE_PATH: "", NODE_OPTIONS: "" },
+    };
     const aliasedPath = join(fixture, "node-preflight-alias.mjs");
     await symlink(preflightPath, aliasedPath, "file");
 
@@ -320,17 +340,21 @@ test("Node preflight recognizes a symlinked direct entry in a subprocess", async
       import.meta.url,
     ).href, aliasedPath), true);
 
-    if (isSupportedToolingNodeVersion(process.versions.node)) {
-      const { stdout } = await execFileAsync(process.execPath, [aliasedPath]);
-      assert.match(stdout, /satisfies/u);
-    } else {
-      await assert.rejects(
-        execFileAsync(process.execPath, [aliasedPath]),
-        error => {
-          assert.match(error.stderr, /NODE_VERSION_PREFLIGHT_FAILED/u);
-          return true;
-        },
-      );
+    for (const entry of [isolatedPath, aliasedPath]) {
+      if (isSupportedToolingNodeVersion(process.versions.node)) {
+        const { stdout, stderr } = await execFileAsync(process.execPath, [entry], executionOptions);
+        assert.equal(stdout,
+          `Node ${process.versions.node} satisfies tooling >=24.21.0 <25 || >=26.10.0 <27.\n`);
+        assert.equal(stderr, "");
+      } else {
+        await assert.rejects(
+          execFileAsync(process.execPath, [entry], executionOptions),
+          error => {
+            assert.match(error.stderr, /NODE_VERSION_PREFLIGHT_FAILED/u);
+            return true;
+          },
+        );
+      }
     }
   } finally {
     await rm(fixture, { recursive: true, force: true });
@@ -2064,15 +2088,14 @@ test("the ESM carrier rules bind core, the lifecycle rule binds every identity",
     readPackageManifest: async path => manifests.get(path),
   });
 
-  // The conformance package is not the ESM carrier of ADR-0012, so its own
-  // shape is not constrained by that decision.
+  // ADR-0033 admits conformance as a leaf, so the ADR-0012 carrier binds it like Core.
   manifests.set("packages/conformance/package.json", {
     name: "@get-modular/conformance",
     main: "./dist/index.cjs",
     types: "./dist/index.d.ts",
     exports: { ".": "./dist/index.js", "./vectors": "./dist/vectors.js" },
   });
-  await assert.doesNotReject(validate());
+  await assert.rejects(validate(), /packages\/conformance\/package\.json: .*main/u);
 
   // An install-time script runs code on every consumer, so it binds both.
   manifests.set("packages/conformance/package.json", {

@@ -78,9 +78,9 @@ conformance or `release-eligible` claim follows from implementation; generated
 publication still requires the complete M3 and packed-consumer gates.
 
 Standalone `pnpm governance:check` performs a fresh build after validating the
-accepted implementation scope against one captured Git index. The full
-`pnpm check` invokes this governance entry first and shares its completed build;
-its later gates still run normally. Only the fixed generated root may differ from tracked
+accepted implementation scope against one captured Git index. After the explicit runtime, committed peer and policy gates, `pnpm check`
+invokes this governance entry before the remaining build gates and shares its
+completed build; its later gates still run normally. Only the fixed generated root may differ from tracked
 source: governance compares its complete bytes with the fresh emission held
 in the same process, then applies the existing source checks. A previous build
 or a writable receipt cannot authorize that exception. This local verification
@@ -499,9 +499,11 @@ package:
   `architecture/tooling/generate-core.mjs` uses `tsconfig.stage0.json` as the
   production seed; `tsconfig.seed.json` remains the qualification variant seed.
   Standalone `core:typecheck` prepares verified wiring before its no-emit check.
-  Aggregate gates run `core:build` immediately after runtime preflight, before
-  Foundation and the internal already-prepared typecheck. Standalone source-policy
-  fixtures require `core:build` first. Production-oriented typecheck and component
+  Full and fast gates begin with dependency-free runtime preflight, committed
+  peer validation, strict runtime policy typechecking and policy tests. Full
+  governance prepares verified Core wiring; `assembly:build` and the leaf
+  package gates precede Foundation and the internal already-prepared typecheck.
+  Standalone source-policy fixtures require `core:build` first. Production-oriented typecheck and component
   globs exclude `stage1.variant.ts`; qualification owns it. Qualification tooling
   stays outside the production source closure and package allowlist.
 - The `core:typecheck`, `core:build`, and `core:test` scripts run the first

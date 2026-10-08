@@ -2,7 +2,7 @@ import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 export const SUPPORTED_NODE_RANGE = ">=24.18.0 <25 || >=26.10.0 <27";
-export const TOOLING_NODE_RANGE = ">=24.18.0 <25";
+export const TOOLING_NODE_RANGE = ">=24.21.0 <25 || >=26.10.0 <27";
 
 export function isSupportedNodeVersion(version) {
   const match = /^(?:v)?([0-9]+)\.([0-9]+)\.([0-9]+)$/u.exec(version ?? "");
@@ -20,7 +20,11 @@ export function assertSupportedNodeVersion(version = process.versions.node) {
 }
 
 export function isSupportedToolingNodeVersion(version) {
-  return isSupportedNodeVersion(version) && /^(?:v)?24\./u.test(version);
+  const match = /^(?:v)?(24|26)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/u.exec(version ?? "");
+  if (match === null) return false;
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  return (major === 24 && minor >= 21) || (major === 26 && minor >= 10);
 }
 
 export function assertSupportedToolingNodeVersion(version = process.versions.node) {

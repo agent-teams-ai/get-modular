@@ -1,0 +1,10 @@
+Reproduce (Node v26.9.0, tsc7 7.0.2):
+  node bench.mjs published | patched      # E1 compile/bind/prepare/run, E2 concurrency, E3 nested
+  node bench15.mjs                          # AR-sized 15-module DAG
+  node --expose-gc mem.mjs; node --expose-gc mem2.mjs <kind>   # E4 memory
+  node churn.mjs; node churn-fast.mjs       # E5 scope tree O(n) vs O(1)
+  node --expose-gc adversarial.mjs          # E6 owner, E7 inputs, E11 close during runs, E12 leaks
+  node drain.mjs                            # E8 drain under traffic, E9 failed update, E10 stale root
+  tsc7 -p tsconfig.types.json               # proposed Assembly 0.3.0 + scoped() type fixture
+asm/: GM assembly src @9c722ce + owner/inputs patch (asm/inputs.patch, +91/-29)
+res/: resources prototype from impl-plan; resfast/: O(1) tree variant (+30/-15)

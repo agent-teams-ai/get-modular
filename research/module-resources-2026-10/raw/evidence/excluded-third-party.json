@@ -1,0 +1,125 @@
+{
+  "note": "Third-party source files and crawled web pages used as research inputs. Bodies are not committed (no bundled licenses); identities only. Paths are relative to research/module-resources-2026-10/raw/evidence/.",
+  "files": [
+    {
+      "path": "module-resource-contract-20261001/inputs/industry-primary-sources.txt",
+      "bytes": 35536,
+      "sha256": "fca33ac8f39fd3eac1d09b51ae914d9b7039f7226db5069dc6ba213c67b3d6d7"
+    },
+    {
+      "path": "module-resource-planning-20261001/nestjs__injection-scopes.md",
+      "bytes": 13901,
+      "sha256": "51ceda153201139a8419bda8e2efc318061f285b2fb5bdd7fd03a0ad73fd66b2"
+    },
+    {
+      "path": "module-resource-planning-20261001/nestjs__lifecycle-events.md",
+      "bytes": 9190,
+      "sha256": "880a2bbb41cb978f767795d1e8237a8e1e4368e5e2a52fbedb9c3ea18a5b4bb2"
+    },
+    {
+      "path": "module-resource-planning-20261001/openclaw_openclaw__docs__plugins__sdk-runtime.md",
+      "bytes": 26474,
+      "sha256": "91c556e57f3bbff3535c80a739f9a384ffc579921572be30ededf3dca579d4cd"
+    },
+    {
+      "path": "module-resource-planning-20261001/openclaw_openclaw__src__plugins__plugin-instance.ts",
+      "bytes": 27270,
+      "sha256": "8ec1cda1501abc5dc2b9721d5387984e7824628439454559dab0cfec2c7d9fa4"
+    },
+    {
+      "path": "module-resource-planning-20261001/previous-inputs/industry-primary-sources.txt",
+      "bytes": 35536,
+      "sha256": "fca33ac8f39fd3eac1d09b51ae914d9b7039f7226db5069dc6ba213c67b3d6d7"
+    },
+    {
+      "path": "module-resource-planning-20261001/primary-flutter.json",
+      "bytes": 39043,
+      "sha256": "84c9788755bec7c6c86f95078ae7d8e34d00ef1c06a0db4ba0b60c58b70288d5"
+    },
+    {
+      "path": "module-resource-planning-20261001/primary-frameworks.json",
+      "bytes": 94124,
+      "sha256": "b108088eeb67c7c995177f3f573f998374a2c7792cde5aa6ba8395d5e655c3a4"
+    },
+    {
+      "path": "module-resource-planning-20261001/primary-plugins.json",
+      "bytes": 370661,
+      "sha256": "642965273cb685fc797ca03cf3868c85aa21a39ecd980af2c266bf8b61a0bbc8"
+    },
+    {
+      "path": "module-resource-planning-20261001/primary-reactive.json",
+      "bytes": 149412,
+      "sha256": "976b7a34855389dfa21c09a367028574f03aa756234400d27d7940b5f2a6c29a"
+    },
+    {
+      "path": "module-resource-planning-20261001/primary-scale.json",
+      "bytes": 107104,
+      "sha256": "89b01f79e070ee9afe4f8f2acab77a67abd71ccfba2a87944c8977588db2e843"
+    },
+    {
+      "path": "module-resource-planning-20261001/primary-source-relay/primary-flutter.json",
+      "bytes": 39043,
+      "sha256": "84c9788755bec7c6c86f95078ae7d8e34d00ef1c06a0db4ba0b60c58b70288d5"
+    },
+    {
+      "path": "module-resource-planning-20261001/primary-source-relay/primary-frameworks.json",
+      "bytes": 94124,
+      "sha256": "b108088eeb67c7c995177f3f573f998374a2c7792cde5aa6ba8395d5e655c3a4"
+    },
+    {
+      "path": "module-resource-planning-20261001/primary-source-relay/primary-plugins.json",
+      "bytes": 370661,
+      "sha256": "642965273cb685fc797ca03cf3868c85aa21a39ecd980af2c266bf8b61a0bbc8"
+    },
+    {
+      "path": "module-resource-planning-20261001/primary-source-relay/primary-reactive.json",
+      "bytes": 149412,
+      "sha256": "976b7a34855389dfa21c09a367028574f03aa756234400d27d7940b5f2a6c29a"
+    },
+    {
+      "path": "module-resource-planning-20261001/primary-source-relay/primary-scale.json",
+      "bytes": 107104,
+      "sha256": "89b01f79e070ee9afe4f8f2acab77a67abd71ccfba2a87944c8977588db2e843"
+    },
+    {
+      "path": "module-resource-planning-20261001/primary-source-relay/root-web-supplement.txt",
+      "bytes": 31973,
+      "sha256": "6492a93d872ff0c82c06ee81338f762938bac0130e7317387fdba89d9f77172d"
+    },
+    {
+      "path": "module-resource-planning-20261001/source-supplement/facebook_react__packages__react-reconciler__src__ReactFiberCommitEffects.js",
+      "bytes": 32201,
+      "sha256": "eae02d27e3e3edd266c87fef4c3d6531e6c7c42ff9211c4c5bb87b0d5e74d844"
+    },
+    {
+      "path": "module-resource-planning-20261001/source-supplement/nestjs_nest__packages__core__hooks__on-module-destroy.hook.ts",
+      "bytes": 2556,
+      "sha256": "7068bde561c078fdb0ac7037972f397372f3cc6fd47f0cd1a3e3b9e338d076a6"
+    },
+    {
+      "path": "module-resource-planning-20261001/source-supplement/nestjs_nest__packages__core__hooks__on-module-init.hook.ts",
+      "bytes": 2073,
+      "sha256": "f468a31e21e1226eea5e6949cee8abdd9ab0c5cbc5de2d8548415b1a335ff29e"
+    },
+    {
+      "path": "module-resource-planning-20261001/source-supplement/nestjs_nest__packages__core__nest-application-context.ts",
+      "bytes": 16571,
+      "sha256": "63f61faf9a328e30067f4fe00d3d09b748089d2ed8b8c8df53780328c44f1ae5"
+    },
+    {
+      "path": "module-resource-planning-20261001/source-supplement/spring-projects_spring-framework__spring-context__src__main__java__org__springframework__context__support__DefaultLifecycleProcessor.java",
+      "bytes": 27223,
+      "sha256": "3037d1f6cbfb29fa69241b83f9a5630dd031d94dddb0872b69019e3cba819dad"
+    },
+    {
+      "path": "module-resource-planning-20261001/source-supplement/sveltejs_svelte__packages__svelte__src__internal__client__reactivity__effects.js",
+      "bytes": 18358,
+      "sha256": "e5fe83a0b7580836ecee8f9cd985ef8de920a711fd1ced77579bc854101d07b6"
+    },
+    {
+      "path": "module-resource-planning-20261001/source-supplement/vuejs_core__packages__reactivity__src__watch.ts",
+      "bytes": 9633,
+      "sha256": "d0dcce0566ceff5db841870036027c53cd881291c9b335653696c3fa91a31548"
+    }
+  ]
+}

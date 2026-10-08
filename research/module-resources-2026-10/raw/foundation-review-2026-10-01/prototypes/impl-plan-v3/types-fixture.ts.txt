@@ -1,0 +1,73 @@
+import { defineModule } from "@get-modular/core";
+import { assemblyFor, type FactoryDependencies } from "./asm/dist/index.js";
+import { assemblyFor as assembly020 } from "@get-modular/assembly";
+import {
+  createScope, scoped, type CloseOptions, type ModuleContext, type Resources, type ResourcesErrorCode, type ScopeControl,
+} from "./res/index.ts";
+
+const compatibility = { family: "exact", familyVersion: 1, token: "t/v1" } as const;
+type Caps = { "t/db": { value: { query(q: string): number }; compatibility: typeof compatibility }; "t/orders": { value: { list(): number }; compatibility: typeof compatibility } };
+const ordersDecl = defineModule({ kind: "get-modular.module-declaration", schemaVersion: 1, moduleId: "t/orders", implementationId: "t/orders",
+  owner: { authority: "t", path: ["t"] }, provides: [{ capabilityId: "t/orders", compatibility }],
+  slots: [{ slotId: "db", capabilityId: "t/db", compatibility, cardinality: { kind: "required" } }] } as const);
+const api = assemblyFor<Caps>();
+api.bindFactory(ordersDecl, scoped("t/orders", async (deps, { resources, signal }) => {
+  const n: number = deps.db.query("x");
+  const five = await resources.setup({ name: "five", setup: ({ signal: stop }) => { void stop; return 5 as const; }, cleanup: (v: 5, { escalate }) => { void v; void escalate; } });
+  void signal; void n; void five;
+  const ctx: ModuleContext = { signal, resources }; void ctx;
+  return { instance: 1, capabilities: { "t/orders": { list: () => 1 } } };
+}));
+api.bindFactory(ordersDecl, scoped("t/orders", async (deps, context) => {
+  // @ts-expect-error a module cannot read the run scope
+  void context.scope;
+  // @ts-expect-error no closing authority through Resources
+  void context.resources.close;
+  // @ts-expect-error no control through Resources
+  void context.resources.control;
+  // @ts-expect-error nonexistent slot
+  void deps.cache;
+  return { instance: 1, capabilities: { "t/orders": { list: () => 1 } } };
+}));
+// @ts-expect-error Assembly 0.2.0 has no run scope: scoped() does not compile against it
+assembly020<Caps>().bindFactory(ordersDecl, scoped("t/orders", async () => ({ instance: 1, capabilities: { "t/orders": { list: () => 1 } } })));
+// The same rejection without a 0.2.0 package in the workspace (the form the GM test uses):
+declare function bindLegacy<D>(factory: (deps: D, context: { readonly signal: AbortSignal }) => Promise<unknown>): void;
+// @ts-expect-error a wrapped factory needs FactoryContext.scope
+bindLegacy(scoped("m", async () => 1));
+// A future context field reaches wrapped modules without a resources release.
+declare function bindFuture(f: (deps: { db: number }, ctx: { readonly signal: AbortSignal; readonly scope: unknown; readonly attempt: number }) => number): void;
+bindFuture(scoped("m", (deps, ctx) => { const attempt: number = ctx.attempt; void attempt; void deps.db; return 1; }));
+
+const s = createScope({ name: "sessions", order: "concurrent" });
+// @ts-expect-error ScopeControl is not Resources
+const r: Resources = s.control;
+// @ts-expect-error invalid order
+createScope({ name: "x", order: "parallel" });
+// @ts-expect-error a scope needs a name
+createScope({});
+// @ts-expect-error a child needs a name
+s.resources.child({});
+// @ts-expect-error no scope option whose abort does not close the scope
+s.resources.child({ name: "c", signal: new AbortController().signal });
+// @ts-expect-error an entry needs a name
+s.resources.setup({ setup: () => 5, cleanup: () => {} });
+// @ts-expect-error an entry needs a name
+s.resources.use({ [Symbol.dispose]() {} });
+// @ts-expect-error cleanup receives T
+s.resources.setup({ name: "n", setup: () => 5, cleanup: (v: string) => { void v; } });
+// @ts-expect-error cleanup gets { escalate }, not the setup signal: `if (signal.aborted) return` cannot pass as released
+s.resources.setup({ name: "n", setup: () => 5, cleanup: (_v, { signal }) => { void signal; } });
+// @ts-expect-error use() needs a disposable
+s.resources.use({ close() {} }, "x");
+// exactOptionalPropertyTypes: wrappers may forward an optional signal without conditional spreads
+declare const maybe: AbortSignal | undefined;
+const options: CloseOptions = { escalate: maybe, abandon: maybe }; void options;
+void s.control.close({ escalate: maybe });
+const control: ScopeControl = s.control; void control; void r;
+declare const error: { code: ResourcesErrorCode };
+switch (error.code) {
+  case "resources.scope.closed": case "resources.close.incomplete": case "resources.argument.invalid": case "resources.scoped.invalid-run-scope": break;
+  default: { const exhaustive: never = error.code; void exhaustive; }
+}
+type D = FactoryDependencies<Caps, typeof ordersDecl>; const d: D = { db: { query: () => 1 } }; void d;

@@ -1,0 +1,22 @@
+{
+  "recordedAt": "2026-10-01T15:58:06.518940+00:00",
+  "ownerDecision": "Approve the new callback-contract successor ADR within the scope of the referenced resource plan.",
+  "ownerMessage": "Новый setup/cleanup вызывает переданные функции, поэтому это расширение нужно явно разрешить новым ADR - даю апрув, но так как в плане <workspace>/plans/shared-module-resource-contract-2026-10-01.md написано (он ща может ещё редаткироваться)",
+  "planPath": "<workspace>/plans/shared-module-resource-contract-2026-10-01.md",
+  "observedPlanSha256": "46e869cefe261dab667f87f6249c63bfb301f3b1581e52f87cf42f270dc0eea7",
+  "planRevisionHandling": "The plan may be edited concurrently. Re-read the latest plan and review its delta before materializing the successor or implementation. Routine corrections inside the approved bounded scope retain this authorization; this record does not pre-approve arbitrary scope expansion.",
+  "approvedScope": [
+    "Optional module-local setup/cleanup callback and Promise contract",
+    "Private ownership candidate and the two planned TEST protocols",
+    "Preserved Core/Assembly/kernel boundaries and original-attempt custody"
+  ],
+  "notAuthorizedByThisMessage": [
+    "Lifecycle-hook implementation",
+    "Production integration",
+    "Public package publication",
+    "G1/K1 qualification closure"
+  ],
+  "successorAdrMaterialization": "Still required before package source; this record retains owner authorization and is not the successor ADR itself.",
+  "g1": "hold",
+  "acceptedPriorAdrBytes": "Preserve ADR-0028/0029 and frozen C0 evidence."
+}

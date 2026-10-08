@@ -3,11 +3,12 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 
+import { LEAF_PACKAGES } from "./leaf-packages.mjs";
 import {
   ACCEPTED_PACKAGE_NAMES,
   assemblyManifestViolations,
   isProductionSourceArtifactPath,
-  lifecycleKernelManifestViolations,
+  leafManifestViolations,
   PUBLICATION_FIELDS,
   productionArtifactPaths,
   productionArtifactSymlinkPaths,
@@ -27,18 +28,22 @@ export const TRACEABILITY_PATH = "docs/traceability/module-system-v1.yaml";
 
 const FOUNDATION_ADMISSION = Object.freeze({
   package: "@agent-teams/engineering-foundation",
-  version: "1.5.1",
+  version: "1.7.2",
   command: "agent-teams-foundation check",
   capability: "architecture.source-dependencies",
   policy: SOURCE_DEPENDENCY_POLICY_PATH,
 });
 const FOUNDATION_CHECK_SCRIPT =
   "agent-teams-foundation check && pnpm foundation:assert-dev-only && pnpm foundation:assert-registry";
+// Leaf commands come first, so a table row can never replace a closed
+// definition below; a colliding row leaves its own admission unsatisfiable.
 const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
+  "quality:critical:test": "node architecture/checks/required-quality-tests.mjs && node node_modules/typescript/bin/tsc -p tests/tsconfig.repository-agent-workflow.json --noEmit && agent-teams-node-test --contract architecture/foundation/required-quality-tests.json -- tests/source-dependencies.test.mjs tests/quality-activation.test.mjs tests/repository-agent-workflow.test.mts",
+  ...Object.fromEntries(LEAF_PACKAGES.flatMap(leaf => Object.entries(leaf.commands))),
   "architecture:feature-module-profile":
     "node architecture/checks/feature-module-standard-profile.mjs",
   "architecture:feature-module-profile:test":
-    "node --test tests/feature-module-standard-profile.test.mjs tests/source-dependencies.test.mjs tests/quality-activation.test.mjs tests/release-owned-files.test.mjs tests/public-api-compatibility.test.mjs",
+    "pnpm quality:critical:test && node --test tests/feature-module-standard-profile.test.mjs tests/release-owned-files.test.mjs tests/public-api-compatibility.test.mjs tests/required-quality-tests.test.mjs",
   "core:typecheck":
     "node architecture/tooling/generate-core.mjs --typecheck",
   "core:typecheck:prepared":
@@ -48,15 +53,6 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "assembly:build": "pnpm core:build && node architecture/tooling/build-assembly.mjs",
   "assembly:typecheck": "node node_modules/typescript/bin/tsc -p packages/assembly/tsconfig.json --noEmit",
   "assembly:test": 'node --test "tests/assembly/**/*.test.mjs" "packages/assembly/tests/**/*.test.mjs"',
-  "lifecycle:build": "node architecture/tooling/build-lifecycle-kernel.mjs",
-  "lifecycle:typecheck":
-    "node node_modules/typescript/bin/tsc -p packages/lifecycle-kernel/tsconfig.json --noEmit"
-    + " && node node_modules/typescript/bin/tsc -p packages/lifecycle-kernel/tsconfig.types.json --noEmit"
-    + " && node node_modules/typescript/bin/tsc -p packages/lifecycle-kernel/tsconfig.types.bundler.json --noEmit",
-  "lifecycle:test": "node --test packages/lifecycle-kernel/tests/kernel.test.mjs",
-  "lifecycle:pack": "node --test packages/lifecycle-kernel/tests/packed-root.test.mjs",
-  "lifecycle:check":
-    "pnpm lifecycle:build && pnpm lifecycle:typecheck && pnpm lifecycle:test && pnpm lifecycle:pack",
   "contracts:check": "node architecture/checks/v1-contract.mjs",
   "contracts:test": "node --test tests/v1-contract.test.mjs tests/compiler-engineer-examples.test.mjs tests/implementation-clarifications.test.mjs tests/qualification/m2-candidate/generation-two-artifacts.test.mjs tests/qualification/m2-candidate/raw-carrier-oracle.test.mjs tests/qualification/m2-candidate/duplicate-record-cases.test.mjs tests/qualification/m2-candidate/duplicate-record-extended-overlaps.test.mjs tests/qualification/m2-candidate/raw-invocation-oracle.test.mjs tests/qualification/m2-candidate/duplicate-record-resources.test.mjs tests/qualification/m2-candidate/raw-document-cases.test.mjs tests/qualification/m2-candidate/mutation-evidence.test.mjs tests/qualification/m2-candidate/retained-object-descriptors.test.mjs tests/qualification/m2-candidate/combined-case-inventory.test.mjs tests/qualification/m2-candidate/boundary-source-mutations.test.mjs tests/assembly-admission-retained.test.mjs tests/m2-lock-witness.test.mjs",
   "docs:check": "agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml",
@@ -69,7 +65,7 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
     "agent-teams-foundation quality check --consumer . --scope-only",
   "lint:typed": "agent-teams-foundation quality check --consumer .",
   "governance:check": "node architecture/checks/governance.mjs",
-  "governance:test": "node --test tests/governance.test.mjs tests/node-runtime-compatibility.test.mjs tests/assembly-admission.test.mjs tests/private-core-start.test.mjs tests/m3-start.test.mjs tests/generated-production-source.test.mjs tests/lifecycle-candidate-admission.test.mjs",
+  "governance:test": "node --test tests/governance.test.mjs tests/node-runtime-compatibility.test.mjs tests/assembly-admission.test.mjs tests/private-core-start.test.mjs tests/m3-start.test.mjs tests/generated-production-source.test.mjs tests/leaf-package-admission.test.mjs tests/ci-check-lanes.test.mjs",
   "qualification:resource-profile": "node tests/qualification/v1-resource-profile.mjs",
   "qualification:v1-diagnostics-protocol":
     "node --test tests/qualification/v1-diagnostics-protocol.mjs",
@@ -80,6 +76,10 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "release-owned-files:check":
     "node architecture/checks/release-owned-files.mjs",
   "runtime:preflight": "node architecture/checks/node-version.mjs",
+  "precheck:changed": "pnpm runtime:preflight",
+  "lockfile:peers:check": "pnpm peers check --lockfile-only",
+  "runtime:policy:typecheck": "node node_modules/typescript/bin/tsc -p tests/tsconfig.tooling-node-policy.json --noEmit",
+  "runtime:policy:test": "node --test tests/tooling-node-policy.test.mts",
   "sdk-growth:check": "node architecture/checks/sdk-growth.mjs && node --test tests/sdk-growth.test.mjs && node tests/qualification/sdk-growth-admission.mjs && node tests/qualification/sdk-growth-packed-consumers.mjs && node tests/qualification/sdk-growth-registry-consumer.mjs",
   "sdk-growth:admission": "node tests/qualification/sdk-growth-admission.mjs",
   "sdk-growth:test": "node --test tests/sdk-growth.test.mjs",
@@ -89,10 +89,13 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
 const ROOT_SCRIPT_COMMANDS = Object.freeze({
   check: Object.freeze([
     "runtime:preflight",
+    "lockfile:peers:check",
+    "runtime:policy:typecheck",
+    "runtime:policy:test",
     "governance:check",
     "release-owned-files:check",
     "assembly:build",
-    "lifecycle:check",
+    ...LEAF_PACKAGES.map(leaf => leaf.gate),
     "foundation:check",
     "sdk-growth:check",
     "lint:typed",
@@ -113,12 +116,16 @@ const ROOT_SCRIPT_COMMANDS = Object.freeze({
   ]),
   "check:fast": Object.freeze([
     "runtime:preflight",
+    "lockfile:peers:check",
+    "runtime:policy:typecheck",
+    "runtime:policy:test",
     "assembly:build",
-    "lifecycle:check",
+    ...LEAF_PACKAGES.map(leaf => leaf.gate),
     "foundation:check",
     "sdk-growth:check",
     "quality:coverage:scope",
     "architecture:feature-module-profile",
+    "quality:critical:test",
     "docs:check",
     "core:typecheck:prepared",
     "core:test",
@@ -138,42 +145,28 @@ const EXPECTED_AUTHORITY = Object.freeze({
   sha256: "851653f96643cf0466b67ab22963661976b00de44840fa3144a48a8c054f95fa",
 });
 
+const PRODUCTION_MODULES = Object.freeze([
+  { id: "core", moduleRoot: "packages/core" },
+  { id: "assembly", moduleRoot: "packages/assembly" },
+  ...LEAF_PACKAGES.map(leaf => ({ id: leaf.id, moduleRoot: leaf.root })),
+]);
+
 const EXPECTED_SCOPE = Object.freeze({
   workspaceContainers: ["packages"],
-  productionRoots: ["packages/core/src", "packages/assembly/src", "packages/lifecycle-kernel/src"],
-  productionModules: [
-    { id: "core", moduleRoot: "packages/core", sourceRoot: "packages/core/src" },
-    { id: "assembly", moduleRoot: "packages/assembly", sourceRoot: "packages/assembly/src" },
-    { id: "lifecycle-kernel", moduleRoot: "packages/lifecycle-kernel", sourceRoot: "packages/lifecycle-kernel/src" },
-  ],
+  productionRoots: PRODUCTION_MODULES.map(({ moduleRoot }) => `${moduleRoot}/src`),
+  productionModules: PRODUCTION_MODULES.map(({ id, moduleRoot }) => ({
+    id, moduleRoot, sourceRoot: `${moduleRoot}/src`,
+  })),
 });
 
-const EXPECTED_LAYOUT_MODULES = Object.freeze([
-  {
-    moduleRoot: "packages/core",
-    sourceRoot: "packages/core/src",
-    featuresRoot: "packages/core/src/features",
-    moduleComposition: "packages/core/src/composition",
-    publicEntrypoint: "packages/core/src/index.ts",
-    testRoot: "packages/core/tests",
-  },
-  {
-    moduleRoot: "packages/assembly",
-    sourceRoot: "packages/assembly/src",
-    featuresRoot: "packages/assembly/src/features",
-    moduleComposition: "packages/assembly/src/composition",
-    publicEntrypoint: "packages/assembly/src/index.ts",
-    testRoot: "packages/assembly/tests",
-  },
-  {
-    moduleRoot: "packages/lifecycle-kernel",
-    sourceRoot: "packages/lifecycle-kernel/src",
-    featuresRoot: "packages/lifecycle-kernel/src/features",
-    moduleComposition: "packages/lifecycle-kernel/src/composition",
-    publicEntrypoint: "packages/lifecycle-kernel/src/index.ts",
-    testRoot: "packages/lifecycle-kernel/tests",
-  },
-]);
+const EXPECTED_LAYOUT_MODULES = Object.freeze(PRODUCTION_MODULES.map(({ moduleRoot }) => ({
+  moduleRoot,
+  sourceRoot: `${moduleRoot}/src`,
+  featuresRoot: `${moduleRoot}/src/features`,
+  moduleComposition: `${moduleRoot}/src/composition`,
+  publicEntrypoint: `${moduleRoot}/src/index.ts`,
+  testRoot: `${moduleRoot}/tests`,
+})));
 
 const EXPECTED_EXTENSIONS = Object.freeze([
   {
@@ -192,10 +185,7 @@ const EXPECTED_EXTENSIONS = Object.freeze([
     id: "internal-self-composition",
     authority: "docs/decisions/0008-bounded-internal-engine-self-composition.md",
   },
-  {
-    id: "lifecycle-generation-and-lease",
-    authority: "docs/decisions/0029-admit-an-optional-lifecycle-kernel-candidate.md",
-  },
+  ...LEAF_PACKAGES.map(({ extension }) => ({ id: extension.id, authority: extension.authority })),
 ]);
 
 const EXPECTED_ENFORCEMENT = Object.freeze([
@@ -436,15 +426,15 @@ export function validateFirstProductionPackageAdmission({
     const manifest = productionPackageManifests.get(manifestPath);
     assert(manifest !== undefined,
       `missing production package manifest: ${manifestPath}`);
-    // ADR-0003 identity, extended by ADR-0023 and ADR-0029, holds regardless of open decisions.
+    // ADR-0003 identity, extended by ADR-0023 and each leaf decision, holds regardless of open decisions.
     assert(ACCEPTED_PACKAGE_NAMES.has(manifest?.name),
       `${manifestPath} must use an accepted package identity`);
     const assemblyViolations = assemblyManifestViolations(manifest);
     assert(assemblyViolations.length === 0,
       `${manifestPath}: ${assemblyViolations.join("; ")}`);
-    const lifecycleViolations = lifecycleKernelManifestViolations(manifest);
-    assert(lifecycleViolations.length === 0,
-      `${manifestPath}: ${lifecycleViolations.join("; ")}`);
+    const leafViolations = leafManifestViolations(manifest);
+    assert(leafViolations.length === 0,
+      `${manifestPath}: ${leafViolations.join("; ")}`);
     // ADR-0017 blocks the publication surface only through the publication
     // blockers recorded in the traceability catalog.
     if (publicationBlockerIds.size > 0) {

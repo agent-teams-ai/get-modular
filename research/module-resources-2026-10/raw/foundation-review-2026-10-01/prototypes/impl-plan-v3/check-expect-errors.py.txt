@@ -1,0 +1,29 @@
+# Removes each @ts-expect-error in turn and records the first diagnostic on the guarded line.
+import json, os, re, shutil, subprocess, sys
+GM = os.environ.get("GM", "<workspace>/get-modular")
+compilers = {"7.0.2": ["tsc7"], "5.8.3": ["node", f"{GM}/node_modules/typescript-minimum/bin/tsc"]}
+files = sys.argv[1:] or ["types-fixture.ts", "builder-fixture.ts"]
+config = json.load(open("tsconfig.types.json"))
+results = []
+for name in files:
+    lines = open(name).read().split("\n")
+    for index, line in enumerate(lines):
+        if "@ts-expect-error" not in line:
+            continue
+        reason = line.split("@ts-expect-error", 1)[1].strip()
+        probe = f"probe-{os.path.basename(name)}"
+        edited = lines[:index] + [""] + lines[index + 1:]
+        open(probe, "w").write("\n".join(edited))
+        cfg = dict(config); cfg["files"] = [probe]
+        json.dump(cfg, open("tsconfig.probe.json", "w"))
+        for version, command in compilers.items():
+            out = subprocess.run(command + ["-p", "tsconfig.probe.json"], capture_output=True, text=True).stdout
+            hits = [l for l in out.splitlines() if l.startswith(f"{probe}(") and re.match(rf"{re.escape(probe)}\({index + 2},", l)]
+            results.append((name, index + 2, version, reason, hits[0].split(": ", 1)[1][:150] if hits else "NO ERROR ON GUARDED LINE"))
+        os.remove(probe)
+os.remove("tsconfig.probe.json")
+bad = [r for r in results if r[4] == "NO ERROR ON GUARDED LINE"]
+for r in results:
+    print(f"{r[0]}:{r[1]} [{r[2]}] {r[3][:60]} -> {r[4]}")
+print(f"directives checked: {len(results)}; without a guarded-line error: {len(bad)}")
+sys.exit(1 if bad else 0)

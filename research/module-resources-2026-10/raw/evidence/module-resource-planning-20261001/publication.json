@@ -1,0 +1,12 @@
+{
+  "path": "../../shared-module-resource-contract-2026-10-01.md",
+  "rawRound4PlanSha256": "aa63421d4777900150e86c7decbe023c43f16771f823672f1fa9604aa2164bc6",
+  "publishedPlanSha256": "46e869cefe261dab667f87f6249c63bfb301f3b1581e52f87cf42f270dc0eea7",
+  "changes": [
+    "Completion/proposal status",
+    "Portable evidence links with explicit round artifacts",
+    "Correct root/worker provenance and actual requested profiles",
+    "Separate hooks and Node migration scope clarification"
+  ],
+  "sourceSemantics": "No public surface or state-transition changes after round-four fix."
+}

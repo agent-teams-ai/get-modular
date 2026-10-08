@@ -33,6 +33,11 @@ const OBSOLETE_ACTIVE_RECORDS = Object.freeze([
 ]);
 const FOUNDATION = Object.freeze({
   package: "@agent-teams/engineering-foundation",
+  version: "1.7.2",
+  integrity: "sha512-2wmq4g8rWgXQ2qBVY2Tb7HVP9LFsuBAUMcDhgCqixLA0RA9H3OrwXy7b7jK2gS6SggK9XCplNb03mVLR2EyzRg==",
+});
+const RETAINED_FOUNDATION = Object.freeze({
+  package: "@agent-teams/engineering-foundation",
   version: "1.5.1",
   integrity: "sha512-29r5QUvMIFdvsPaJ5m0Yx1Uo6bL85J/teP1p1ThNg7jMEz54cVxyrEnsLx/DN5cc/2CAzq2i8iLnPKgZN1cT8A==",
   tarballSha256: "bd0c476d2940168ac1b020f42726107cce81580b7b1b014e74aceabbafa9e951",
@@ -78,6 +83,7 @@ export async function loadSdkGrowthModel(root = process.cwd()) {
     try { await access(join(root, path)); tracked.push(path); } catch {}
   }
   const profile = await readYaml(root, PROFILE_PATH);
+  const cmsReview = await readJson(root, CMS_PATH);
   return {
     root,
     profile,
@@ -91,8 +97,11 @@ export async function loadSdkGrowthModel(root = process.cwd()) {
     manifests: Object.fromEntries(await Promise.all(PACKAGES.map(async pkg => [pkg.packageName, await readJson(root, pkg.manifestPath)]))),
     baselines: Object.fromEntries(await Promise.all(PACKAGES.map(async pkg => [pkg.packageName, await readJson(root, pkg.releasedBaselinePath)]))),
     histories: Object.fromEntries(await Promise.all(PACKAGES.map(async pkg => [pkg.packageName, await readJson(root, pkg.historyPath)]))),
-    cmsReview: await readJson(root, CMS_PATH),
-    cmsBytes: await readFile(join(root, "docs/architecture/common-assembly.md")),
+    cmsReview,
+    // P0 reviewed the standard at its accepted commit; later revisions of the live document do not
+    // change that frozen observation (owner decision A, 2026-10-01).
+    cmsBytes: (await execute("git", ["show", `${cmsReview.acceptedCurrent.commit}:docs/architecture/common-assembly.md`],
+      { cwd: root, encoding: "buffer", maxBuffer: 1 << 20 })).stdout,
     feasibility: await readJson(root, FEASIBILITY_PATH),
     rootClassification: await readJson(root, ROOT_CLASSIFICATION_PATH),
     tracked,
@@ -101,6 +110,7 @@ export async function loadSdkGrowthModel(root = process.cwd()) {
 
 async function validateInstalledFoundation(model) {
   same(model.profile.foundation, FOUNDATION, "Foundation identity");
+  same(model.profile.retainedFoundation, RETAINED_FOUNDATION, "retained Foundation evidence identity");
   if (model.packageJson.devDependencies?.[FOUNDATION.package] !== FOUNDATION.version) fail("Foundation must be an exact dev dependency");
   if (!model.lockText.includes(`'${FOUNDATION.package}@${FOUNDATION.version}':`) || !model.lockText.includes(FOUNDATION.integrity)) {
     fail("lockfile lacks exact Foundation registry identity");
@@ -178,7 +188,7 @@ function validatePackages(model) {
       }
     }
     const baseline = model.baselines[pkg.packageName];
-    if (baseline.packageName !== pkg.packageName || baseline.packageVersion !== "0.2.0") fail(`${pkg.packageName} retained v1 baseline drifted`);
+    if (baseline.packageName !== pkg.packageName || baseline.packageVersion !== manifest.version) fail(`${pkg.packageName} retained v1 baseline drifted`);
     const history = model.histories[pkg.packageName];
     if (history.kind !== "published-release-history" || history.packageName !== pkg.packageName || history.classification !== "released") {
       fail(`${pkg.packageName} release history classification drifted`);
@@ -217,7 +227,7 @@ function validateP0Evidence(model) {
   if (evidence.schemaVersion !== 1 || evidence.kind !== "g1-p0-feasibility-not-qualification"
     || evidence.sourceCommit !== cms.acceptedCurrent.commit || evidence.disposition !== "hold"
     || evidence.standard?.currentSha256 !== CMS_SHA256 || evidence.standard?.reviewPath !== CMS_PATH) fail("P0 disposition or standard drifted");
-  if (evidence.foundation?.installedPublishedVersion !== FOUNDATION.version
+  if (evidence.foundation?.installedPublishedVersion !== RETAINED_FOUNDATION.version
     || evidence.foundation?.semanticC0Revision !== 6
     || evidence.foundation?.frozenConsumerPolicyLiteral !== "foundation:sdk-growth:c0:5"
     || evidence.foundation?.currentSourcePublication !== "unverified"
@@ -289,7 +299,7 @@ export async function validateSdkGrowth(model) {
     growthQualification: "v2", activation: "pending", status: "hold" };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const result = await validateSdkGrowth(await loadSdkGrowthModel());
   process.stdout.write(`${JSON.stringify({ result: "passed", ...result })}\n`);
 }

@@ -1,0 +1,519 @@
+import { CloseIncompleteError, InvalidArgumentError, ScopeClosedError } from "./errors.ts";
+import type {
+  CleanupContext, CloseOptions, CloseReport, Debt, Resources, Scope, ScopeControl, ScopeOptions, SetupSpec,
+} from "./types.ts";
+
+type Where = "live" | "active" | "failed" | "gone";
+type Entry = {
+  readonly name: string;
+  readonly release: ((context: CleanupContext) => unknown) | undefined;
+  child: ScopeNode | undefined;
+  where: Where;
+  cause: unknown;
+};
+type PendingSetup = { readonly name: string; readonly settled: Promise<void> };
+type Flight = {
+  readonly escalate: AbortController;
+  readonly done: Promise<CloseReport>;
+  readonly finish: (report: CloseReport) => void;
+  readonly unlink: (() => void)[]; // caller escalate listeners, removed when the flight settles
+};
+type Order = "reverse" | "concurrent";
+
+const noop = (): void => {};
+const freeze = Object.freeze;
+const COMPLETE: CloseReport = freeze({ complete: true, settled: true, debts: freeze([]) });
+const COMPACT_AT = 32;
+const nodes = new WeakMap<object, ScopeNode>(); // Resources facade -> node: identity brand of this package copy
+
+function invalid(message: string): InvalidArgumentError {
+  return new InvalidArgumentError("resources.argument.invalid", message);
+}
+function isSignal(value: unknown): value is AbortSignal {
+  return value instanceof AbortSignal;
+}
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+  return typeof value === "object" && value !== null;
+}
+function checkName(value: unknown, what: string): string {
+  if (typeof value !== "string" || value.length === 0) {
+    throw invalid(`${what} requires a non-empty name`);
+  }
+  return value;
+}
+function checkScopeOptions(options: unknown): { readonly name: string; readonly order: Order } {
+  if (!isRecord(options)) {
+    throw invalid("scope options must be an object with a name");
+  }
+  const name = checkName(options.name, "a scope");
+  const order = options.order;
+  if (order === undefined) {
+    return { name, order: "reverse" };
+  }
+  if (order !== "reverse" && order !== "concurrent") {
+    throw invalid('scope order must be "reverse" or "concurrent"');
+  }
+  return { name, order };
+}
+function checkCloseOptions(options: unknown): CloseOptions {
+  if (options === undefined) {
+    return {};
+  }
+  if (!isRecord(options)) {
+    throw invalid("close() options must be an object");
+  }
+  const { escalate, abandon } = options;
+  if ((escalate !== undefined && !isSignal(escalate)) || (abandon !== undefined && !isSignal(abandon))) {
+    throw invalid("close() options must be { escalate?: AbortSignal, abandon?: AbortSignal }");
+  }
+  return { escalate, abandon };
+}
+function follow(signal: AbortSignal, onAbort: () => void): () => void {
+  if (signal.aborted) {
+    onAbort();
+    return noop;
+  }
+  signal.addEventListener("abort", onAbort, { once: true });
+  return () => {
+    signal.removeEventListener("abort", onAbort);
+  };
+}
+function disposer(value: unknown): (context: CleanupContext) => unknown {
+  if ((typeof value !== "object" && typeof value !== "function") || value === null) {
+    throw invalid("use() requires a disposable object");
+  }
+  const asyncDispose: unknown = Reflect.get(value, Symbol.asyncDispose); // read once; `then` is never touched
+  if (typeof asyncDispose === "function") {
+    return () => Reflect.apply(asyncDispose, value, []);
+  }
+  const dispose: unknown = Reflect.get(value, Symbol.dispose);
+  if (typeof dispose === "function") {
+    return () => {
+      Reflect.apply(dispose, value, []); // result ignored, as in TC39
+    };
+  }
+  throw invalid("use() requires Symbol.asyncDispose or Symbol.dispose");
+}
+
+class ScopeNode {
+  readonly path: readonly string[];
+  readonly resources: Resources;
+  readonly facade: Scope;
+  readonly #parent: ScopeNode | undefined;
+  readonly #entry: Entry | undefined;
+  readonly #order: Order;
+  readonly #setupAbort = new AbortController();
+  readonly #children = new Set<ScopeNode>(); // registry: signals walk it, children never subscribe to the parent
+  readonly #pending = new Set<PendingSetup>();
+  readonly #active = new Set<Entry>();
+  #live: Entry[] = []; // LIFO; detached children leave tombstones that are compacted
+  #tombstones = 0;
+  #failed: Entry[] = []; // attempted and failed, in attempt order
+  #requested = false;
+  #detached = false;
+  #flight: Flight | undefined;
+
+  constructor(name: string, parent: ScopeNode | undefined, order: Order) {
+    this.path = freeze([...(parent?.path ?? []), name]);
+    this.#parent = parent;
+    this.#order = order;
+    if (parent && parent.#setupAbort.signal.aborted) {
+      this.#setupAbort.abort(parent.#setupAbort.signal.reason);
+    }
+    const resources: Resources = freeze({
+      signal: this.#setupAbort.signal,
+      setup: <T>(spec: SetupSpec<T>) => this.#setup(spec),
+      use: <T extends AsyncDisposable | Disposable>(value: T, entryName: string) => this.#use(value, entryName),
+      child: (childOptions: ScopeOptions) => this.#child(childOptions).facade,
+    });
+    const close = (closeOptions?: CloseOptions): Promise<CloseReport> => this.#close(closeOptions);
+    const control: ScopeControl = freeze({
+      close,
+      async [Symbol.asyncDispose]() {
+        const report = await close();
+        if (!report.complete) {
+          throw new CloseIncompleteError(report);
+        }
+      },
+    });
+    nodes.set(resources, this);
+    this.resources = resources;
+    this.facade = freeze({ resources, control });
+    if (parent) {
+      this.#entry = { name, release: undefined, child: this, where: "live", cause: undefined };
+      parent.#live.push(this.#entry);
+      parent.#children.add(this);
+    }
+  }
+
+  // ---- registration ----
+  #setup<T>(spec: SetupSpec<T>): Promise<T> {
+    const candidate: unknown = spec;
+    if (!isRecord(candidate) || typeof candidate.setup !== "function" || typeof candidate.cleanup !== "function") {
+      throw invalid("setup() requires { name, setup, cleanup }"); // synchronous: a programming error, not a runtime outcome
+    }
+    const name = checkName(candidate.name, "setup()");
+    const { setup, cleanup } = spec; // captured once, like Assembly captures factories at bind
+    if (this.#requested) {
+      return Promise.reject(new ScopeClosedError(this.path));
+    }
+    let settle!: () => void;
+    const record: PendingSetup = { name, settled: new Promise<void>((resolve) => { settle = resolve; }) };
+    this.#pending.add(record); // registered before the user callback runs
+    let resolveAuthor!: (value: T) => void;
+    let rejectAuthor!: (cause: unknown) => void;
+    const author = new Promise<T>((resolve, reject) => { resolveAuthor = resolve; rejectAuthor = reject; });
+    const acquire = async (): Promise<void> => {
+      let value: T;
+      try {
+        value = await Promise.try(setup, { signal: this.#setupAbort.signal });
+      } catch (cause) {
+        this.#pending.delete(record);
+        settle();
+        rejectAuthor(cause);
+        return;
+      }
+      this.#pending.delete(record); // same turn as the push: never two debts for one resource
+      this.#live.push({ name, release: (context) => cleanup(value, context), child: undefined, where: "live", cause: undefined });
+      settle();
+      if (this.#requested) {
+        author.catch(noop); // only the late refusal is pre-handled
+        rejectAuthor(new ScopeClosedError(this.path));
+      } else {
+        resolveAuthor(value);
+      }
+    };
+    void acquire();
+    return author;
+  }
+
+  #use<T>(value: T, name: string): T {
+    const release = disposer(value);
+    const entryName = checkName(name, "use()");
+    if (this.#requested) {
+      throw new ScopeClosedError(this.path); // no custody: the caller still owns value
+    }
+    this.#live.push({ name: entryName, release, child: undefined, where: "live", cause: undefined });
+    return value;
+  }
+
+  #child(options: ScopeOptions): ScopeNode {
+    const checked = checkScopeOptions(options);
+    if (this.#requested) {
+      throw new ScopeClosedError(this.path);
+    }
+    return new ScopeNode(checked.name, this, checked.order);
+  }
+
+  /** scoped(): a module scope whose setups stop when the run is cancelled, until the factory settles. */
+  static openModule(context: unknown, name: string): { node: ScopeNode; unlink: () => void } {
+    const scope = isRecord(context) ? context.scope : undefined;
+    const parent = isRecord(scope) ? nodes.get(scope) : undefined;
+    if (parent === undefined) {
+      throw new InvalidArgumentError("resources.scoped.invalid-run-scope",
+        "scoped() requires run({ scope }) with the Resources of a scope of this @get-modular/resources copy; pass scope.resources");
+    }
+    const node = parent.#child({ name });
+    const runSignal = isRecord(context) ? context.signal : undefined;
+    const unlink = isSignal(runSignal) ? follow(runSignal, () => { node.#abortSetups(runSignal.reason); }) : noop;
+    return { node, unlink };
+  }
+
+  // ---- tree signals (walk the registry; O(1) child attach and detach) ----
+  #abortSetups(reason: unknown): void {
+    if (this.#setupAbort.signal.aborted) {
+      return;
+    }
+    this.#setupAbort.abort(reason);
+    for (const child of this.#children) {
+      child.#abortSetups(reason);
+    }
+  }
+
+  #request(): void {
+    if (this.#requested) {
+      return;
+    }
+    this.#requested = true;
+    if (!this.#setupAbort.signal.aborted) {
+      this.#setupAbort.abort(new ScopeClosedError(this.path));
+    }
+    for (const child of this.#children) {
+      child.#request();
+    }
+  }
+
+  #escalateTree(reason: unknown): void {
+    const flight = this.#flight;
+    if (flight && !flight.escalate.signal.aborted) {
+      flight.escalate.abort(reason);
+    }
+    for (const child of this.#children) {
+      child.#escalateTree(reason);
+    }
+  }
+
+  // ---- close ----
+  #close(options: CloseOptions | undefined): Promise<CloseReport> {
+    const { escalate, abandon } = checkCloseOptions(options); // before any state change
+    this.#request();
+    const started = this.#flight === undefined;
+    const flight = this.#flight ?? this.#open();
+    if (flight === undefined) {
+      return Promise.resolve(COMPLETE);
+    }
+    if (escalate && !flight.escalate.signal.aborted) {
+      const unlink = follow(escalate, () => { this.#escalateTree(escalate.reason); });
+      if (unlink !== noop) {
+        flight.unlink.push(unlink);
+      }
+    }
+    if (started) {
+      void this.#run(flight); // after escalate is linked: the first cleanup already sees it
+    }
+    if (abandon === undefined) {
+      return flight.done;
+    }
+    if (abandon.aborted) {
+      return Promise.resolve(this.#report(false));
+    }
+    // abandon is per caller: this call resolves with a snapshot, the flight continues in order for everyone else
+    return new Promise<CloseReport>((resolve) => {
+      const onAbandon = (): void => { resolve(this.#report(false)); };
+      abandon.addEventListener("abort", onAbandon, { once: true });
+      void (async () => {
+        const report = await flight.done;
+        abandon.removeEventListener("abort", onAbandon);
+        resolve(report);
+      })();
+    });
+  }
+
+  /** Called by the parent's flight: joins or starts this scope's flight; never rejects. */
+  #join(escalated: AbortSignal): Promise<CloseReport> {
+    this.#request();
+    const started = this.#flight === undefined;
+    const flight = this.#flight ?? this.#open();
+    if (flight === undefined) {
+      return Promise.resolve(COMPLETE);
+    }
+    if (escalated.aborted) {
+      this.#escalateTree(escalated.reason);
+    }
+    if (started) {
+      void this.#run(flight);
+    }
+    return flight.done;
+  }
+
+  #open(): Flight | undefined {
+    if (this.#failed.length > 0) { // every new flight retries what is still unreleased (Q2)
+      for (const entry of this.#failed.toReversed()) {
+        if (entry.where === "failed") {
+          entry.where = "live";
+          this.#live.push(entry);
+        }
+      }
+      this.#failed = [];
+    }
+    if (this.#live.length === this.#tombstones && this.#pending.size === 0) {
+      this.#detach();
+      return undefined;
+    }
+    let finish!: (report: CloseReport) => void;
+    const done = new Promise<CloseReport>((resolve) => { finish = resolve; });
+    const flight: Flight = { escalate: new AbortController(), done, finish, unlink: [] };
+    this.#flight = flight; // published before the first user callback
+    for (let parent = this.#parent; parent; parent = parent.#parent) { // an escalated ancestor flight covers new subtree flights
+      const ancestor = parent.#flight?.escalate.signal;
+      if (ancestor?.aborted === true) {
+        flight.escalate.abort(ancestor.reason);
+        break;
+      }
+    }
+    return flight;
+  }
+
+  #pop(): Entry | undefined {
+    for (;;) {
+      const entry = this.#live.pop();
+      if (entry === undefined) {
+        return undefined;
+      }
+      if (entry.where !== "gone") {
+        return entry;
+      }
+      this.#tombstones -= 1;
+    }
+  }
+
+  async #run(flight: Flight): Promise<void> {
+    for (;;) {
+      if (this.#pending.size > 0) {
+        await Promise.all(Array.from(this.#pending, (record) => record.settled));
+        continue;
+      }
+      if (this.#order === "concurrent") {
+        const batch: Entry[] = [];
+        for (let entry = this.#pop(); entry; entry = this.#pop()) {
+          batch.push(entry);
+        }
+        if (batch.length === 0) {
+          break;
+        }
+        await Promise.all(batch.map(async (entry) => this.#invoke(entry, flight)));
+        continue;
+      }
+      const entry = this.#pop();
+      if (entry === undefined) {
+        break;
+      }
+      await this.#invoke(entry, flight); // strictly one cleanup at a time
+    }
+    this.#settle(flight);
+  }
+
+  async #invoke(entry: Entry, flight: Flight): Promise<void> {
+    entry.where = "active";
+    this.#active.add(entry);
+    try {
+      const child = entry.child;
+      if (child) {
+        const report = await child.#join(flight.escalate.signal); // the parent waits for the child, whoever else abandons
+        if (!report.complete && entry.where === "active") {
+          this.#fail(entry, null); // the child's own debts carry the causes
+        }
+        return;
+      }
+      await entry.release?.({ escalate: flight.escalate.signal });
+      entry.where = "gone"; // released: the closure is dropped with the entry
+    } catch (cause) {
+      this.#fail(entry, cause); // continue with the next entry (Q1)
+    } finally {
+      this.#active.delete(entry);
+    }
+  }
+
+  #fail(entry: Entry, cause: unknown): void {
+    entry.where = "failed";
+    entry.cause = cause;
+    this.#failed.push(entry);
+  }
+
+  #settle(flight: Flight): void {
+    for (const unlink of flight.unlink.splice(0)) {
+      unlink();
+    }
+    this.#flight = undefined;
+    const report = this.#report(true);
+    if (report.complete) {
+      this.#detach();
+    }
+    flight.finish(report);
+  }
+
+  #detach(): void {
+    if (this.#detached) {
+      return;
+    }
+    this.#detached = true;
+    const parent = this.#parent;
+    const entry = this.#entry;
+    if (parent && entry) {
+      parent.#children.delete(this);
+      parent.#forget(entry);
+    }
+  }
+
+  #forget(entry: Entry): void {
+    const where = entry.where;
+    entry.where = "gone";
+    entry.child = undefined;
+    if (where !== "live") {
+      return; // active: the running flight finishes it; failed: dropped at the next flight
+    }
+    this.#tombstones += 1;
+    if (this.#tombstones > COMPACT_AT && this.#tombstones * 2 > this.#live.length) {
+      this.#live = this.#live.filter((candidate) => candidate.where !== "gone");
+      this.#tombstones = 0;
+    }
+  }
+
+  // ---- report: release order (failed, running, pending setups, not yet run) ----
+  #debts(out: Debt[]): void {
+    for (const entry of this.#failed) {
+      if (entry.where === "failed") {
+        this.#debt(entry, "failed", out);
+      }
+    }
+    for (const entry of this.#active) {
+      if (entry.where === "active") {
+        this.#debt(entry, "pending", out);
+      }
+    }
+    for (const record of this.#pending) {
+      out.push(freeze({ path: freeze([...this.path, record.name]), state: "pending" }));
+    }
+    for (const entry of this.#live.toReversed()) {
+      if (entry.where === "live") {
+        this.#debt(entry, "not-run", out);
+      }
+    }
+  }
+
+  #debt(entry: Entry, state: Debt["state"], out: Debt[]): void {
+    if (entry.child) {
+      entry.child.#debts(out);
+      return;
+    }
+    const path = freeze([...this.path, entry.name]);
+    out.push(freeze(state === "failed" ? { path, state, cause: entry.cause } : { path, state }));
+  }
+
+  #report(settled: boolean): CloseReport {
+    const debts: Debt[] = [];
+    this.#debts(debts);
+    if (debts.length === 0 && settled) {
+      return COMPLETE;
+    }
+    return freeze({ complete: debts.length === 0, settled, debts: freeze(debts) });
+  }
+}
+
+export function createScope(options: ScopeOptions): Scope {
+  const checked = checkScopeOptions(options);
+  return new ScopeNode(checked.name, undefined, checked.order).facade;
+}
+
+/**
+ * Opens one module scope per factory call, synchronously, under run({ scope }).
+ * The factory receives every other field of the Assembly context unchanged, plus `resources`; never the run scope.
+ */
+export function scoped<Deps, R, X extends { readonly signal: AbortSignal; readonly scope: unknown }>(
+  name: string,
+  factory: (deps: Deps, context: Omit<X, "scope"> & { readonly resources: Resources }) => R,
+): (deps: Deps, context: X) => R {
+  checkName(name, "scoped()");
+  if (typeof factory !== "function") {
+    throw invalid("scoped() requires a factory function");
+  }
+  return (deps, context) => {
+    const { node, unlink } = ScopeNode.openModule(context, name); // coded TypeError before the body
+    const { scope: _runScope, ...forwarded } = context;
+    const moduleContext: Omit<X, "scope"> & { readonly resources: Resources } = { ...forwarded, resources: node.resources };
+    freeze(moduleContext);
+    let result: R;
+    try {
+      result = factory(deps, moduleContext);
+    } catch (cause) {
+      unlink();
+      throw cause;
+    }
+    if (result instanceof Promise) {
+      void Promise.prototype.then.call(result, unlink, unlink);
+    } else {
+      unlink();
+    }
+    return result;
+  };
+}

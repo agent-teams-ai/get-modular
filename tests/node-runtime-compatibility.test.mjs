@@ -6,9 +6,10 @@ import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { resolveNpmCli, resolvePnpmCli } from "./qualification/support/npm-cli.mjs";
+import { assertSupportedToolingNodeVersion } from "../architecture/checks/node-version.mjs";
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const packageNames = ["core", "assembly"];
+const packageNames = ["core", "assembly", "resources", "conformance"];
 
 // The Node 26 CI consumer is outside the source workspace. Its package manager
 // must be the physically provisioned source pin, not a shim selected by cwd.
@@ -40,11 +41,15 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import * as core from "@get-modular/core";
 import * as assembly from "@get-modular/assembly";
+import * as resources from "@get-modular/resources";
+import * as conformance from "@get-modular/conformance";
 
 const require = createRequire(import.meta.url);
 for (const [name, namespace, expected] of [
   ["core", core, ["compileComposition", "compileCompositionJson", "defineModule", "many", "optional", "required"]],
-  ["assembly", assembly, ["AssemblyBindingError", "assemblyFor"]],
+  ["assembly", assembly, ["AssemblyBindingError", "assemblyFor", "declareModule", "defineContract"]],
+  ["resources", resources, ["CloseIncompleteError", "InvalidArgumentError", "ScopeClosedError", "createScope", "scoped"]],
+  ["conformance", conformance, ["ConformanceError", "contractSuite", "guardHandles", "isolate", "runContractSuite", "smoke"]],
 ]) {
   const specifier = "@get-modular/" + name;
   assert.deepEqual(Object.keys(namespace).sort(), expected.sort());
@@ -85,15 +90,27 @@ const api = assembly.assemblyFor();
 const providerFactory = api.bindFactory(provider, async () => ({
   instance: { provider: true }, capabilities: { "smoke/value": 42 },
 }));
-const consumerFactory = api.bindFactory(consumer, async (dependencies) => ({
-  instance: dependencies.value, capabilities: {},
-}));
+const released = [];
+const consumerFactory = api.bindFactory(consumer, resources.scoped(consumer.implementationId,
+  async (dependencies, { resources: scope }) => {
+    await scope.setup({ name: "value", setup: () => dependencies.value, cleanup: (value) => { released.push(value); } });
+    return { instance: dependencies.value, capabilities: {} };
+  }));
 const preparation = await api.prepare({ composition,
   factories: [providerFactory, consumerFactory], roots: { consumer: consumerFactory } });
 assert.equal(preparation.status, "prepared", JSON.stringify(preparation));
-const outcome = await preparation.prepared.run();
+const attempt = resources.createScope({ name: "attempt" });
+const outcome = await preparation.prepared.run({ scope: attempt.resources });
 assert.equal(outcome.status, "succeeded", JSON.stringify(outcome));
 assert.equal(outcome.roots.consumer, 42);
+assert.deepEqual(await attempt.control.close(), { complete: true, settled: true, debts: [] });
+assert.deepEqual(released, [42]);
+const isolated = await conformance.isolate(api, {
+  declaration: consumer, dependencies: { value: 42 },
+  factory: async (dependencies) => ({ instance: dependencies.value, capabilities: {} }),
+});
+assert.equal(isolated.instance, 42);
+assert.equal((await isolated.close()).complete, true);
 console.log("public-consumer:passed");
 `;
 
@@ -102,8 +119,8 @@ test("disposable installed public roots compile and assemble on the selected Nod
   try {
     let archiveDirectory = process.env.GET_MODULAR_COMPAT_ARCHIVE_DIR;
     if (!archiveDirectory) {
-      assert.equal(process.versions.node.split(".")[0], "24",
-        "Node 26 requires archives built and packed under the qualified Node 24 toolchain");
+      // Actual root lanes pack their fresh build on the runtime being qualified.
+      assertSupportedToolingNodeVersion();
       archiveDirectory = join(root, "archives");
       await mkdir(archiveDirectory);
       const pnpm = await fixturePnpmCli();
