@@ -1,0 +1,16 @@
+import { assemblyFor, defineContract } from "@get-modular/assembly";
+import type { CapabilitiesOf, SuccessfulComposition } from "@get-modular/assembly";
+import { createOld, declaration } from "old-module";
+declare const composition: SuccessfulComposition;
+type DbR3 = { readonly query: (q: string) => number; readonly legacyPing: () => void };
+type DbR4 = DbR3 & { readonly begin: () => void };
+type DbR5 = { readonly query: (q: string) => number; readonly begin: () => void };
+const Db = defineContract<DbR5, { 3: DbR3; 4: DbR4 }>()({ id: "acme/db", revision: 5, compatibleFrom: 3 });
+interface HostCaps extends CapabilitiesOf<typeof Db> {}
+// The module package was built against 0.3.0 d.ts; it binds under its own map and the Host prepares it.
+const own = assemblyFor<CapabilitiesOf<typeof import("old-module/contract").Db>>();
+const handle = own.bindFactory(declaration, createOld);
+void assemblyFor<HostCaps>().prepare({ composition, factories: [handle], roots: { old: handle } });
+// The Host may also bind it directly under its own map.
+const direct = assemblyFor<HostCaps>().bindFactory(declaration, createOld);
+void direct;

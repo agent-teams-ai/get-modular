@@ -1,0 +1,16 @@
+import { defineContract } from "@get-modular/assembly";
+import type { AnyContract, CapabilitiesOf } from "@get-modular/assembly";
+// Conformance's ContractValue for train 2: the value at the descriptor's own revision.
+type Entry<M> = M extends { readonly value: infer V } ? V : never;
+export type ContractValue<T extends AnyContract> =
+  Entry<CapabilitiesOf<T>[`${T["id"]}@${T["revision"]}` & keyof CapabilitiesOf<T>]>;
+type DbR3 = { readonly query: (q: string) => number; readonly legacyPing: () => void };
+type DbR5 = { readonly query: (q: string) => number; readonly begin: () => void };
+const Db = defineContract<DbR5, { 3: DbR3 }>()({ id: "acme/db", revision: 5, compatibleFrom: 3 });
+const Db3 = defineContract<DbR3>()({ id: "acme/db", revision: 3 });
+const v5: ContractValue<typeof Db> = { query: () => 1, begin: () => {} };
+const v3: ContractValue<typeof Db3> = { query: () => 1, legacyPing: () => {} };
+// @ts-expect-error revision 5 has no legacyPing
+const bad: ContractValue<typeof Db> = { query: () => 1, begin: () => {}, legacyPing: () => {} };
+function generic<T extends AnyContract>(value: ContractValue<T>): ContractValue<T> { return value; }
+void v5; void v3; void bad; void generic;

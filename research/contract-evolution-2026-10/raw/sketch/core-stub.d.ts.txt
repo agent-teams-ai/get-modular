@@ -1,0 +1,23 @@
+// Train-2 Core wire stub (schema 2), only what Assembly types need.
+export type ModuleDeclaration = {
+  readonly kind: "get-modular.module-declaration";
+  readonly schemaVersion: 2;
+  readonly moduleId: string;
+  readonly implementationId: string;
+  readonly owner: { readonly authority: string; readonly path: readonly string[] };
+  readonly provides: readonly { readonly capabilityId: string; readonly revision: number; readonly compatibleFrom: number }[];
+  readonly slots: readonly {
+    readonly slotId: string; readonly capabilityId: string; readonly revision: number;
+    readonly cardinality:
+      | Readonly<{ kind: "required" }> | Readonly<{ kind: "optional" }>
+      | Readonly<{ kind: "many"; min: number; max: number; order: "profile" }>;
+  }[];
+};
+export type CompositionPlan = { readonly kind: "get-modular.composition-plan"; readonly schemaVersion: 2 };
+export type PlanDigest = `gm-plan:v1:sha-256:${string}`;
+export type Diagnostic = { readonly code: string };
+export type CompileCompositionResult =
+  | { readonly ok: true; readonly plan: CompositionPlan; readonly digest: PlanDigest; readonly diagnostics: readonly [] }
+  | { readonly ok: false; readonly diagnostics: readonly Diagnostic[] };
+export declare function required(): Readonly<{ kind: "required" }>;
+export declare function optional(): Readonly<{ kind: "optional" }>;

@@ -1,0 +1,45 @@
+import { writeFileSync } from "node:fs";
+import { fragmentSource } from "./type-scale-main.mjs";
+// Windowed variant: every contract has revision r = 3 + (i % 3) and window r-2..r; even teams slot an older copy.
+function windowed(count = 500, teams = 20) {
+  const perTeam = count / teams;
+  const slotsOf = (index) => (index === 0 ? [] : index === 1 ? [0] : [index - 1, Math.floor(index / 2)]);
+  const all = Array.from({ length: count }, (_, index) => index);
+  const lines = [
+    'import { required } from "@get-modular/core";',
+    'import { assemblyFor, declareModule, defineContract } from "@get-modular/assembly";',
+    'import type { CapabilitiesOf, SuccessfulComposition } from "@get-modular/assembly";',
+  ];
+  for (const i of all) {
+    const r = 3 + (i % 3);
+    lines.push(`type V${i} = { readonly v${i}: (x: number) => number };`);
+    lines.push(`const C${i} = defineContract<V${i}, { ${r - 2}: V${i}; ${r - 1}: V${i} }>()({ id: "fragment/c${i}", revision: ${r}, compatibleFrom: ${r - 2} });`);
+    lines.push(`const O${i} = defineContract<V${i}, { ${r - 2}: V${i} }>()({ id: "fragment/c${i}", revision: ${r - 1}, compatibleFrom: ${r - 2} });`);
+  }
+  for (let team = 0; team < teams; team += 1) {
+    const modules = Array.from({ length: perTeam }, (_, offset) => team * perTeam + offset);
+    const old = team % 2 === 0;
+    const provided = modules.map((i) => `typeof C${i}`);
+    const slotted = [...new Set(modules.flatMap(slotsOf))].map((i) => `typeof ${old ? "O" : "C"}${i}`);
+    lines.push(`interface Team${team} extends CapabilitiesOf<${[...new Set([...provided, ...slotted])].join(" | ")}> {}`);
+    lines.push(`const team${team} = assemblyFor<Team${team}>();`);
+    for (const index of modules) {
+      const slots = slotsOf(index).map((slot) => `${old ? "O" : "C"}${slot}.slot("s${slot}", required())`).join(", ");
+      const body = slotsOf(index).map((slot) => `deps.s${slot}.v${slot}(1)`).join(" + ") || "0";
+      lines.push(`const h${index} = team${team}.bindFactory(declareModule({ moduleId: "fragment/m${index}", implementationId: "fragment/m${index}", owner: { authority: "fragment", path: ["t${team}"] }, provides: [C${index}.provide()], slots: [${slots}] }), async (deps) => ({ instance: { n: ${body} }, capabilities: { "fragment/c${index}": { v${index}: (x: number) => x } } }));`);
+    }
+  }
+  lines.push(
+    `interface HostCapabilities extends CapabilitiesOf<${all.map((i) => `typeof C${i}`).join(" | ")}> {}`,
+    "const host = assemblyFor<HostCapabilities>();",
+    "declare const composition: SuccessfulComposition;",
+    "export async function consumeFragments(): Promise<unknown> {",
+    `  return host.prepare({ composition, factories: [${all.map((i) => `h${i}`).join(", ")}], roots: { last: h${count - 1} } });`,
+    "}",
+  );
+  return lines.join("\n") + "\n";
+}
+const n = Number(process.argv[2] ?? 500);
+writeFileSync("old/scale.ts", fragmentSource(n).replace(/const outcome = await ready\.prepared\.run\(\{ scope: undefined \}\);\n.*\n/u, "return 1;\n"));
+writeFileSync("scale1.ts", fragmentSource(n).replace(/const outcome = await ready\.prepared\.run\(\{ scope: undefined \}\);\n.*\n/u, "return 1;\n"));
+writeFileSync("scale3.ts", windowed(n));
