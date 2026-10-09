@@ -1,11 +1,11 @@
 # Get Modular 0.3.0 train: retained release archives (R-1a)
 
-Status: retained, awaiting owner review. Nothing is published.
+Status: retained; approved for publication by the owner on 2026-10-09. Nothing is published yet.
 
 ## Source
 
 - Repository: `agent-teams-ai/get-modular`.
-- Source commit `9e529d69150c1738c29d56a05de7cada60547808` (final head of REL PR #150), tree `af44844998d44e5d6ce3477c5bbae12ec1cf4bce`; merged as `<40 hex>` (filled in after the merge).
+- Source commit `9e529d69150c1738c29d56a05de7cada60547808` (final head of REL PR #150), tree `af44844998d44e5d6ce3477c5bbae12ec1cf4bce`; merged as `bb364ac8ca461b5e8277eeb3f7867b26187f99e8`.
 - Source check (6.4) on later REL heads: `87cb92324f1de7a0b5fd5631ac46f1f58002fde2` passed (Core, Assembly and resources byte-identical to `SHA256SUMS`; all four normalized content digests equal).
 - Package trees: `packages/core` `9fb434c6f1b00959ec607bcd753fac2d11ce425f`, `packages/assembly` `3a941f9f3ede53e97f24707e2e8c443eb854846e`, `packages/resources` `33ce8d44e61856c1748f3ded62d632324d2cc149`, `packages/conformance` `c6fcc28e8491235fbac1cecfd15667e1b66b847f`.
 - Toolchain: Node 24.21.0, pnpm 11.20.0.
@@ -51,7 +51,7 @@ An uncertain result is reconciled read-only, never retried blindly.
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| TEST-1 | passed | [modularity-host-test PR #16](https://github.com/agent-teams-ai/modularity-host-test/pull/16), reviewed head `822988b05580b03c62486fabfd28a7214859817a`: independent review clean on 2026-10-09, CI green; Linux evidence archive SHA-256 `dee2029d575212ef8fa257a3f0116b8244afed031b4057d011d290d9d358e877`; 184 of 184 tests; mutants M1-M9 as expected; tested on the four retained archives of source `9e529d69150c1738c29d56a05de7cada60547808` |
+| TEST-1 | passed | [modularity-host-test PR #16](https://github.com/agent-teams-ai/modularity-host-test/pull/16), reviewed head `822988b05580b03c62486fabfd28a7214859817a`: independent review clean on 2026-10-09; repository CI checks (identity, CodeQL) green; tests run locally and on Linux; Linux evidence archive SHA-256 `dee2029d575212ef8fa257a3f0116b8244afed031b4057d011d290d9d358e877`; 184 of 184 tests; mutants M1-M9 as expected; tested on the four retained archives of source `9e529d69150c1738c29d56a05de7cada60547808` |
 | agent-runtime draft branch (all four archives, including conformance) | not run | The owner decided on 2026-10-09 that TEST-1 and the Node 26.10+ check are sufficient for publication; the Agent Runtime migration lands as AR-1a to AR-2 on the published versions |
 | Node 26.10+ consumer | passed | `tests/node-runtime-compatibility.test.mjs` at source `9e529d6` with the retained archives: Node v26.11.0, pnpm 11.20.0, 3 of 3 tests passed, exit 0 (2026-10-09) |
 
