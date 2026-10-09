@@ -1,0 +1,23 @@
+// PASSIVE modules: the code every one of the hundreds of non-participants keeps.
+// `audit-log` reads one setting at construction (IOptions-style) and never changes.
+// `clock` has no settings dependency at all. Neither knows hooks exist.
+
+import type { SettingsReaderV1 } from "../settings/published/settings-v1.ts";
+
+export type AuditApi = Readonly<{ record: (event: string) => string }>;
+
+export async function createAuditLog(deps: Readonly<{ settings: SettingsReaderV1 }>) {
+  const verbose = deps.settings.read(["auditVerbose"]).values.auditVerbose;
+  return {
+    instance: { verbose },
+    capabilities: { "audit/log": { record: (event: string) => (verbose ? `[verbose] ${event}` : event) } satisfies AuditApi },
+  };
+}
+
+export type ClockApi = Readonly<{ now: () => number }>;
+
+export async function createClock() {
+  let ticks = 0;
+  const clock: ClockApi = { now: () => ++ticks };
+  return { instance: clock, capabilities: { "time/clock": clock } };
+}

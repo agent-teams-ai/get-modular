@@ -1,0 +1,118 @@
+**Experimental report: optional module hooks in plugin systems — 2026-10-01**
+
+Optional hooks can help a module preserve its state while a declared dependency changes. Hundreds of modules alone do not justify them. The strongest initial strategy remains instance-owned setup/cleanup with explicit dependency ports. A small experiment should establish whether dependency notifications improve one concrete workflow before admitting a shared hook API.
+
+This report applies `plan-improve.md` to the experimental lane. It does not rewrite the resource implementation plan or authorize implementation, dynamic loading, production adoption, durable recovery or a general reactive lifecycle runtime.
+
+All 38 retained inputs matched `input-hashes.json`. Primary documents arrived through the root’s source relay, retrieved on 2026-10-01 around 13:28 UTC; this was **indirect internet access**, without worker-native browsing. Hash agreement verifies retained bytes, not independent authenticity or freshness. No files were written and no Git commands, builds, tests, installs or runtime flows were run.
+
+The requested execution profile was `gpt-6.1-sol`, `max`, `serviceTier: default`, without fast. No configuration changes were made. The supplied research inputs do not independently attest the effective provider profile.
+
+The supplied current OpenClaw identity is **`c3425e1d7b9550c7ff36deda1c1b0fc0f97332a1`**. The older `92108db80c1fab3685ec0d0c3ed76fc1dcb9be0d` citation in `plan.md` remains historical evidence.
+
+The primary systems establish different contracts:
+
+| System | Verified lifecycle behavior | Relevant protection and limit |
+| --- | --- | --- |
+| [VS Code extension anatomy](https://code.visualstudio.com/api/get-started/extension-anatomy) | Activation events invoke `activate`; `deactivate` offers cleanup and can be omitted. The example places registered command disposables in `context.subscriptions`. | Convenient activation and cleanup registration do not establish dependency rebinding, partial async construction recovery, drain guarantees or exclusive replacement. Detailed subscription disposal semantics require the API source listed below. |
+| [IntelliJ Disposer](https://plugins.jetbrains.com/docs/intellij/disposers.html) and [dynamic plugins](https://plugins.jetbrains.com/docs/intellij/dynamic-plugins.html) | Disposable services receive cleanup on plugin unload; project services also on project close. Disposer releases children before parents. Extensions declared in `plugin.xml` are not automatically disposed. | Plugin resources should use the shortest suitable service lifetime; using Application or Project directly as parent can retain resources beyond plugin unload. Dynamic listeners can cancel work or veto unloading. Failed unload requires an IDE restart; disposal is not proof of successful classloader unloading. |
+| [OSGi Declarative Services 8.1](https://docs.osgi.org/specification/osgi.cmpn/8.1.0/service.component.html) | §112.3.2 separates `bind`, service-property `updated`, and `unbind`. §§112.3.7–8 distinguish static/dynamic and reluctant/greedy policies. §§112.5.6–18 define activation, modification, replacement and deactivation. | Dynamic references can change without reconstructing the component. Falling below minimum cardinality deactivates it. Unary replacement binds the successor before unbinding the predecessor: continuity does not guarantee exclusive resource use. |
+| OpenClaw at the supplied commit: [instance source](https://github.com/openclaw/openclaw/blob/c3425e1d7b9550c7ff36deda1c1b0fc0f97332a1/src/plugins/plugin-instance.ts), [SDK runtime](https://github.com/openclaw/openclaw/blob/c3425e1d7b9550c7ff36deda1c1b0fc0f97332a1/docs/plugins/sdk-runtime.md) | Managed instances expose optional `signal`/`onDispose`, fence managed calls, retain consumers, and distinguish ordinary work from cleanup. Documentation describes draining and disposing the predecessor before successor registration. | These are substantial protections. Cleanup remains best effort for native resources, and native ESM evaluation may remain resident after replacement. The supplied files do not establish a general dependency-change hook contract. |
+
+OSGi supplies particularly useful counterexamples. Static-reference changes can require a new component instance; dynamic references preserve the existing instance but require concurrency-safe handling. Changes may arrive on any thread. Its replacement example uses identity-sensitive compare-and-set during unbind so an old removal cannot erase the newly bound service.
+
+OSGi also separates service-property `updated` from component-configuration `modified`. A throwing `activate` prevents activation. A throwing bind does not necessarily prevent activation; throwing modified, deactivate or unbind methods are logged while processing continues. Deactivation calls `deactivate` before unbinding dependencies. None of these callback outcomes independently proves physical resource release or supplies our required partial-construction recovery owner.
+
+The current OpenClaw source makes several distinctions worth preserving:
+
+- `quiesce()` closes ordinary admission. `runInRegistry()` refuses fresh ordinary calls, while exact retained-consumer tokens can preserve their own use after ordinary closure. That retained authority is broader than the first Get Modular kernel contract.
+- `retainWork()` tracks finite Host work without granting invocation authority or automatically joining disposal. It differs from executable consumers and idle custody.
+- Replacement reservation rejects self-replacement from an active call. Reservation alone is not the physical exclusivity barrier; the Host must compose it with drain, cleanup and publication.
+- Disposal has a five-second deadline path that reports unfinished cleanup and retains late-call settlement information. Final module cleanup waits for timed-out calls to settle. Plugin cleanup callbacks can begin earlier; “all cleanup waits for all work” would overstate the source.
+- Cleanup callbacks run in reverse registration order. Errors are collected and remaining cleanup is attempted. This does not demonstrate a retry/readback owner for every unreleased native resource.
+
+The SDK documentation further distinguishes a config snapshot from current configuration, retains unchanged instances across unrelated changes, and describes predecessor-code recovery through fresh registration rather than assuming a stopped instance can restart. An instance can participate in a changed registry; therefore registry generation, source generation, module definition and module instance are not interchangeable identities.
+
+The proposed module contract needs the following independent concepts:
+
+| Concept | Required interpretation |
+| --- | --- |
+| Dependency identity/rebinding | An explicit change from dependency E1 to E2. Preserve the consumer instance only when its contract supports rebinding. |
+| Dependency health | E1 becoming unavailable is not E2 appearing. Reject affected new use and apply local policy; do not silently replay old work. |
+| Optional/missing dependency | Absence can leave independent capabilities usable. “Instance exists” does not mean every capability is ready. |
+| Values/configuration | A changed value does not inherently require rebinding, resource recreation or a new generation. |
+| Module-owned state | Belongs to the instance. Replacement loses or explicitly migrates it; migration is outside this experiment. |
+| Retained active work | Keep admitted work and cleanup prerequisites owned until actual settlement. An observer deadline changes no ownership fact. |
+| Exclusivity/unload | Successor acquisition waits for proven predecessor release when overlap is forbidden. Logical retirement, failed unload and process termination are distinct outcomes. |
+
+A static graph does not automatically observe any of these changes. Hook registration cannot detect an escaped raw handle’s failure or revoke arbitrary native effects. An ownership tree also cannot describe every cross-module cleanup prerequisite.
+
+The three viable strategies are below. Scores are design judgments under this scope, not measured qualification. Complexity **10 means most complex**. LOC estimates are separate incremental production/test/documentation ranges, excluding the resource-helper implementation, dynamic loaders and durable recovery; uncertainty is approximately ×2.
+
+| Strategy | Confidence /10 | Reliability /10 | Complexity /10 | Production LOC | Test LOC | Docs LOC |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| **1. Instance setup/cleanup plus explicit Host operations and dependency ports** | 9 | 8 | 3 | 80–160 | 180–320 | 60–100 |
+| **2. Optional notifications for explicitly declared dependency slots** | 8 | 7 | 6 | 240–440 | 380–650 | 120–200 |
+| **3. Explicit instance replacement with generation fencing and stop-before-start** | 8 | 8 | 8 | 450–850 | 650–1,050 | 180–300 |
+
+**Strategy 1 is the recommended default.** It retains the owner-selected `module.resources.setup({ setup, cleanup })` direction and makes dependency changes ordinary, named Host operations. Pure and borrow-only modules need no dummy hooks. Its weakness is repeated manual coordination if many independent consumers demonstrably need rebinding.
+
+**Strategy 2 is the experimental candidate.** A module can preserve counters or other local state while one dependency disappears and returns. Its costs include stale async completions, hook reentrancy, notification storms and order-dependent effects. Identity, health and configuration need separate meanings; a generic `didChangeDependencies` callback would conceal those distinctions.
+
+**Strategy 3 fits dependencies that cannot safely rebind.** An explicit replacement creates a fresh instance after the predecessor’s work and cleanup settle. It simplifies some invariants but adds readiness, rollback and state-loss concerns. Applying it to every transient health event could amplify disruption through a large hierarchy.
+
+These options do not establish superiority over VS Code, IntelliJ, OSGi or OpenClaw. Each mature system addresses a different execution model.
+
+The minimum safe experiment is a separate TEST Host slice comparing strategies 1 and 2 against the same observable contract.
+
+1. **Fix the use case and ownership.** One subscription consumer retains an event counter while its optional event source E1 becomes unavailable and is explicitly replaced by E2. Use a parent resource owner, two borrowing children and an unrelated sibling. One child uses the experimental notification; the other demonstrates that borrow-only modules need no hook. `modularity-host-test` TestHost owns physical adapters, admission, health, observations and recovery. Core/Assembly remain pure; helpers introduce no composition nodes.
+
+2. **Record a bounded proposal before implementation.** Propose a TEST scope amendment for one optional `events` slot and one Host-private callback:
+
+   ```ts
+   onEventSourceChange?: (change: {
+     revision: number;
+     previous: EventSourceView | undefined;
+     current: EventSourceView | undefined;
+   }) => void | Promise<void>;
+   ```
+
+   Each view carries an exact opaque source identity, immutable health facts and a narrow use port. It exposes no parent disposal authority. Configuration changes and arbitrary dependency discovery are excluded. This is proposed syntax, not an existing export; acceptance remains pending.
+
+3. **Define independent state.** Instance state is constructing, ready, closing, closed or failed-with-retained-work. Binding state is missing, usable or unavailable, with a monotonic revision. A health change or rebind does not change instance identity or generation. Host readiness remains explicit. The existing authoritative resource owner records pending acquisition, owned resources, cleanup in flight and released/unresolved outcomes; no second cleanup ledger is introduced.
+
+4. **Bound concurrency.** Publish the operation owner, revision and raw action before calling fallible module code. Permit one transition action per instance. Concurrent or reentrant transition requests receive `busy` and the current operation identity; they do not recursively invoke the hook. Dependency loss fences ordinary effects synchronously, even during a pending hook. Duplicate notifications for the same revision do nothing. A stale completion retains acquired resources for cleanup and cannot publish readiness.
+
+5. **Specify failure behavior.** Register custody before fallible setup. Partial allocation followed by rejection preserves the original cause and reachable cleanup owner. Late success during closing is retained for cleanup. An unresolved E1 release blocks E2 subscription acquisition when overlap is forbidden. Hook failure does not trigger automatic retry, tree destruction or reconstruction. Observer timeout retains the original action. Normal parent shutdown waits for dependent work and required child cleanup while preserving a private cleanup path.
+
+6. **Keep scope and rollback narrow.** No dynamic loading, stream transfer, durable recovery, process supervisor, global cancellation or retry scheduler. Disable the optional notification path and use the explicit Host operation baseline. Switching paths waits for existing operations to settle and never creates parallel cleanup owners.
+
+Future evidence must observe effects and ownership independently:
+
+| Regression | Observation that makes the test fail |
+| --- | --- |
+| Health loss after `await` permits another effect | The retired source’s effect counter increases; unrelated sibling use must still work. |
+| Partial setup or late completion loses custody | A live subscription has no reachable cleanup owner, or a stale revision becomes usable. |
+| Reentrancy/concurrent cleanup duplicates actions | More than one physical action starts for the same operation. |
+| Old removal clears a new binding | E2 disappears after E1’s delayed completion. |
+| Exclusivity or shutdown ordering breaks | E2 acquires before proven E1 release, or the parent closes before required child cleanup. |
+| Deadline or exception is treated as release | Ownership vanishes or shutdown reports completion while the raw action remains pending/unresolved. |
+| Hooks scale through blanket propagation | A 500-instance, ten-level fixture invokes unrelated consumers or repeats setup on unchanged revisions. |
+| A cyclic/invalid selected graph reaches callbacks | Construction or hook counters become nonzero before preparation rejects it. |
+
+Measure affected callback counts, duplicate subscriptions, retained owners and publication revisions. Timing measurements are exploratory, not qualification thresholds. If one dependency affects all 500 consumers, proportional work is unavoidable; hierarchy depth alone should not trigger notifications.
+
+The supplied TEST consumer at **`fcc10b2501420aacf9f904e976a4d230d3f02e68`** defines `pnpm typecheck`, `pnpm test` and `pnpm evidence`. After separate authorization and integration, run the new focused fixture, those existing checks, and exact-revision evidence replay. Extend the evidence scenario inventory before claiming it covers hooks. None was executed here.
+
+Admission must preserve [ADR-0028](https://github.com/agent-teams-ai/get-modular/blob/9c722ceff4ede307d06d7a4b63fdebe615f54c53/docs/decisions/0028-authorize-the-optional-ownership-contract-checkpoint.md), [ADR-0029](https://github.com/agent-teams-ai/get-modular/blob/9c722ceff4ede307d06d7a4b63fdebe615f54c53/docs/decisions/0029-admit-an-optional-lifecycle-kernel-candidate.md) and the [Consumer Module Standard](https://github.com/agent-teams-ai/get-modular/blob/9c722ceff4ede307d06d7a4b63fdebe615f54c53/docs/architecture/common-assembly.md#consumer-module-standard). Ownership and kernel contracts do not authorize shared callback execution. G1 stays hold; K1 stays pending. Any shared API requires an exact admission/successor decision, reviewed consumer-pin delta, current guidance and rejecting checks. Process termination remains outside an in-memory cleanup guarantee.
+
+Missing primary sources and exact relay questions:
+
+- https://code.visualstudio.com/api/references/vscode-api — What are `ExtensionContext.subscriptions` disposal ordering and asynchronous disposal guarantees? What does `deactivate` completion guarantee?
+- https://code.visualstudio.com/api/references/extension-manifest — What dependency activation and missing-dependency guarantees exist? Supply fixed-commit Host source for activation failure and deactivation deadlines.
+- https://plugins.jetbrains.com/docs/intellij/plugin-dependencies.html — How do optional dependencies behave during dependency unload/reload, and which consumer services are recreated?
+- https://github.com/openclaw/openclaw/blob/c3425e1d7b9550c7ff36deda1c1b0fc0f97332a1/src/plugins/plugin-instance-disposal.ts — How do disposal results distinguish settled failure from still-retained cleanup?
+- https://github.com/openclaw/openclaw/tree/c3425e1d7b9550c7ff36deda1c1b0fc0f97332a1/src/plugins — Supply the replacement coordinator and rejecting tests proving exclusivity and recovery.
+- https://github.com/agent-teams-ai/modularity-host-test/tree/fcc10b2501420aacf9f904e976a4d230d3f02e68 — Supply the full implementation plan, current Host source and evidence runner before selecting exact experiment integration paths.
+
+Recorded research duration: approximately ten minutes.

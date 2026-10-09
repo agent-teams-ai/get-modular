@@ -1,0 +1,133 @@
+// Adapter: one in-process settings source. Owns commits, revisions, the key
+// index and deferred delivery. Product policy (who may commit) stays outside.
+
+import { SETTING_KEYS, type AppSettings, type SettingKey } from "../domain/app-settings.ts";
+import {
+  SettingsSourceId,
+  type ObserveOptions, type SettingsKeys, type SettingsObservation,
+  type SettingsObservationPortV1, type SettingsReaderV1, type SettingsSnapshot,
+} from "../published/settings-v1.ts";
+
+/** Type-erased registration: closures keep each registration's key typing sound. */
+interface Registration {
+  markChanged(revision: number): undefined;
+  flush(): undefined;
+}
+
+export type SourceStats = Readonly<{ commits: number; registrationVisits: number; deliveries: number }>;
+
+function pick<K extends SettingKey>(values: AppSettings, keys: readonly K[]): Readonly<Pick<AppSettings, K>> {
+  const out: Partial<Pick<AppSettings, K>> = {};
+  for (const key of keys) out[key] = values[key];
+  // Single projection cast: `out` now holds exactly `keys`.
+  return Object.freeze(out) as Readonly<Pick<AppSettings, K>>;
+}
+
+export class InMemorySettingsSource implements SettingsObservationPortV1, SettingsReaderV1 {
+  readonly #id = new SettingsSourceId();
+  readonly #buckets = new Map<SettingKey, Set<Registration>>();
+  readonly #lastTouched = new Map<SettingKey, number>();
+  readonly #dirty = new Set<Registration>();
+  #values: AppSettings;
+  #commitNumber = 0;
+  #flushScheduled = false;
+  #stats = { commits: 0, registrationVisits: 0, deliveries: 0 };
+
+  constructor(initial: AppSettings) {
+    this.#values = Object.freeze({ ...initial });
+  }
+
+  stats(): SourceStats { return Object.freeze({ ...this.#stats }); }
+
+  listenerCount(key: SettingKey): number { return this.#buckets.get(key)?.size ?? 0; }
+
+  /** Returns the commit number; a no-op patch commits nothing. */
+  commit(patch: Partial<AppSettings>): number {
+    const next: AppSettings = Object.freeze({ ...this.#values, ...patch });
+    const changed = SETTING_KEYS.filter((key) => !Object.is(next[key], this.#values[key]));
+    if (changed.length === 0) return this.#commitNumber;
+    this.#values = next;
+    this.#commitNumber += 1;
+    this.#stats.commits += 1;
+    const touched = new Set<Registration>();
+    for (const key of changed) {
+      this.#lastTouched.set(key, this.#commitNumber);
+      for (const registration of this.#buckets.get(key) ?? []) {
+        this.#stats.registrationVisits += 1;
+        touched.add(registration); // dedupe: multi-key change => one delivery
+      }
+    }
+    for (const registration of touched) {
+      registration.markChanged(this.#commitNumber);
+      this.#dirty.add(registration);
+    }
+    this.#scheduleFlush();
+    return this.#commitNumber;
+  }
+
+  read<const Keys extends SettingsKeys>(keys: Keys): SettingsSnapshot<Keys[number]> {
+    return this.#snapshot(keys);
+  }
+
+  observe<const Keys extends SettingsKeys>(
+    keys: Keys,
+    recordDesired: (next: SettingsSnapshot<Keys[number]>) => undefined,
+    options: ObserveOptions,
+  ): SettingsObservation<Keys[number]> {
+    if (keys.length === 0) throw new Error("settings.observe.empty-keys"); // for untyped callers
+    const initial = this.#snapshot(keys);
+    let cached = initial;
+    let latest = initial.revision;
+    let delivered = initial.revision;
+    let attached = true;
+    const current = (): SettingsSnapshot<Keys[number]> => {
+      if (cached.revision !== latest) cached = this.#snapshot(keys, latest);
+      return cached;
+    };
+    const registration: Registration = {
+      markChanged(revision: number): undefined { latest = revision; return undefined; },
+      flush: (): undefined => {
+        if (!attached || latest <= delivered) return undefined;
+        delivered = latest;
+        this.#stats.deliveries += 1;
+        try { recordDesired(current()); } catch (cause) { options.reportError(cause); }
+        return undefined;
+      },
+    };
+    // Atomic with `initial`: synchronous, no commit can interleave.
+    for (const key of new Set(keys)) this.#bucket(key).add(registration);
+    return Object.freeze({
+      initial,
+      current,
+      unsubscribe: (): undefined => {
+        attached = false;
+        this.#dirty.delete(registration);
+        for (const key of keys) this.#buckets.get(key)?.delete(registration);
+        return undefined;
+      },
+      isAttached: (): boolean => keys.some((key) => this.#buckets.get(key)?.has(registration) === true),
+    });
+  }
+
+  #snapshot<K extends SettingKey>(keys: readonly K[], revision?: number): SettingsSnapshot<K> {
+    const touched = revision ?? Math.max(0, ...keys.map((key) => this.#lastTouched.get(key) ?? 0));
+    return Object.freeze({ source: this.#id, revision: touched, values: pick(this.#values, keys) });
+  }
+
+  #bucket(key: SettingKey): Set<Registration> {
+    let bucket = this.#buckets.get(key);
+    if (bucket === undefined) this.#buckets.set(key, bucket = new Set());
+    return bucket;
+  }
+
+  #scheduleFlush(): void {
+    if (this.#flushScheduled) return;
+    this.#flushScheduled = true;
+    queueMicrotask(() => {
+      this.#flushScheduled = false;
+      const batch = [...this.#dirty];
+      this.#dirty.clear();
+      for (const registration of batch) registration.flush();
+    });
+  }
+}

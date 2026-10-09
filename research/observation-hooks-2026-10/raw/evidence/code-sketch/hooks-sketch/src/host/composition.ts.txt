@@ -1,0 +1,160 @@
+// Outer composition adapter (the only place that imports Core/Assembly):
+// capability schema, declarations, Host owners via factory closure, profile.
+
+import { compileComposition, defineModule, many, required } from "@get-modular/core";
+import { assemblyFor, type CapabilityContract, type FactoryContext } from "@get-modular/assembly";
+import { createStandInOwner, type CleanupResult, type StandInOwner } from "../kernel/resource-owner.stand-in.ts";
+import type { AppSettings } from "../features/settings/domain/app-settings.ts";
+import type {
+  SettingsApplierV1, SettingsDerivationV1, SettingsObservationPortV1, SettingsReaderV1,
+} from "../features/settings/published/settings-v1.ts";
+import { createGreeting, type GreeterApi } from "../features/greeting/index.ts";
+import { createPriceTable, type PriceApi } from "../features/price-table/index.ts";
+import type { RatesPort } from "../features/price-table/application/price-table.ts";
+import { createTaxTable, type TaxApi, type TaxRulesPort } from "../features/tax-table/index.ts";
+import { createAuditLog, createClock, type AuditApi, type ClockApi } from "../features/passive/index.ts";
+import {
+  createSettingsDerivationDriver, createSettingsFanout, createSettingsModule, type HostContext,
+} from "./settings-modules.ts";
+
+type Capabilities = {
+  "settings/read": CapabilityContract<SettingsReaderV1, "settings/read/v1">;
+  "settings/observation": CapabilityContract<SettingsObservationPortV1, "settings/observation/v1">;
+  "settings/applier": CapabilityContract<SettingsApplierV1, "settings/applier/v1">;
+  "settings/derivation": CapabilityContract<SettingsDerivationV1, "settings/derivation/v1">;
+  "greeting/greeter": CapabilityContract<GreeterApi, "greeting/greeter/v1">;
+  "pricing/rates": CapabilityContract<RatesPort, "pricing/rates/v1">;
+  "pricing/price-table": CapabilityContract<PriceApi, "pricing/price-table/v1">;
+  "tax/rules": CapabilityContract<TaxRulesPort, "tax/rules/v1">;
+  "tax/table": CapabilityContract<TaxApi, "tax/table/v1">;
+  "audit/log": CapabilityContract<AuditApi, "audit/log/v1">;
+  "time/clock": CapabilityContract<ClockApi, "time/clock/v1">;
+};
+
+const exact = <const T extends string>(token: T) => ({ family: "exact", familyVersion: 1, token }) as const;
+const owner = (...path: string[]) => ({ authority: "test-host", path });
+const id = <const T extends string>(value: T) => ({ moduleId: value, implementationId: value }) as const;
+const head = { kind: "get-modular.module-declaration", schemaVersion: 1 } as const;
+
+const settingsDecl = defineModule({ ...head, ...id("host/settings"), owner: owner("host", "settings"),
+  provides: [
+    { capabilityId: "settings/read", compatibility: exact("settings/read/v1") },
+    { capabilityId: "settings/observation", compatibility: exact("settings/observation/v1") },
+  ], slots: [] });
+
+// OPTION 1 participant: provides an applier.
+const greetingDecl = defineModule({ ...head, ...id("feature/greeting"), owner: owner("greeting"),
+  provides: [
+    { capabilityId: "greeting/greeter", compatibility: exact("greeting/greeter/v1") },
+    { capabilityId: "settings/applier", compatibility: exact("settings/applier/v1") },
+  ],
+  slots: [{ slotId: "settings", capabilityId: "settings/read", compatibility: exact("settings/read/v1"), cardinality: required() }] });
+
+// OPTION 2 participant: requires the observation port.
+const priceDecl = defineModule({ ...head, ...id("feature/price-table"), owner: owner("pricing"),
+  provides: [{ capabilityId: "pricing/price-table", compatibility: exact("pricing/price-table/v1") }],
+  slots: [
+    { slotId: "settings", capabilityId: "settings/observation", compatibility: exact("settings/observation/v1"), cardinality: required() },
+    { slotId: "rates", capabilityId: "pricing/rates", compatibility: exact("pricing/rates/v1"), cardinality: required() },
+  ] });
+
+// OPTION 3 participant: provides a derivation spec.
+const taxDecl = defineModule({ ...head, ...id("feature/tax-table"), owner: owner("tax"),
+  provides: [
+    { capabilityId: "tax/table", compatibility: exact("tax/table/v1") },
+    { capabilityId: "settings/derivation", compatibility: exact("settings/derivation/v1") },
+  ],
+  slots: [{ slotId: "rules", capabilityId: "tax/rules", compatibility: exact("tax/rules/v1"), cardinality: required() }] });
+
+// PASSIVE modules: unchanged by any of the options.
+const auditDecl = defineModule({ ...head, ...id("feature/audit-log"), owner: owner("audit"),
+  provides: [{ capabilityId: "audit/log", compatibility: exact("audit/log/v1") }],
+  slots: [{ slotId: "settings", capabilityId: "settings/read", compatibility: exact("settings/read/v1"), cardinality: required() }] });
+const clockDecl = defineModule({ ...head, ...id("feature/clock"), owner: owner("time"),
+  provides: [{ capabilityId: "time/clock", compatibility: exact("time/clock/v1") }], slots: [] });
+
+// Host-owned infrastructure for options 1 and 3.
+const fanoutDecl = defineModule({ ...head, ...id("host/settings-fanout"), owner: owner("host", "settings-fanout"),
+  provides: [],
+  slots: [
+    { slotId: "settings", capabilityId: "settings/observation", compatibility: exact("settings/observation/v1"), cardinality: required() },
+    { slotId: "appliers", capabilityId: "settings/applier", compatibility: exact("settings/applier/v1"), cardinality: many({ min: 0, max: 1024 }) },
+  ] });
+const driverDecl = defineModule({ ...head, ...id("host/settings-driver"), owner: owner("host", "settings-driver"),
+  provides: [],
+  slots: [
+    { slotId: "settings", capabilityId: "settings/observation", compatibility: exact("settings/observation/v1"), cardinality: required() },
+    { slotId: "derivations", capabilityId: "settings/derivation", compatibility: exact("settings/derivation/v1"), cardinality: many({ min: 0, max: 1024 }) },
+  ] });
+const ratesDecl = defineModule({ ...head, ...id("adapter/rates"), owner: owner("adapters", "rates"),
+  provides: [{ capabilityId: "pricing/rates", compatibility: exact("pricing/rates/v1") }], slots: [] });
+const rulesDecl = defineModule({ ...head, ...id("adapter/tax-rules"), owner: owner("adapters", "tax-rules"),
+  provides: [{ capabilityId: "tax/rules", compatibility: exact("tax/rules/v1") }], slots: [] });
+
+export type HostInput = Readonly<{ initial: AppSettings; rates: RatesPort; rules: TaxRulesPort }>;
+
+export async function composeHost(input: HostInput) {
+  const api = assemblyFor<Capabilities>();
+  const owners: StandInOwner[] = [];
+  const errors: unknown[] = [];
+  const reportError = (cause: unknown): undefined => { errors.push(cause); return undefined; };
+
+  // Host closure: only modules wrapped with `owned` get a resource owner.
+  const owned = <Deps, P>(label: string, factory: (deps: Deps, context: HostContext) => Promise<P>) =>
+    (deps: Deps, context: FactoryContext): Promise<P> => {
+      const created = createStandInOwner(label);
+      owners.push(created); // Host custody before the factory runs
+      return factory(deps, { signal: context.signal, resources: created.resources, reportError });
+    };
+
+  const handles = {
+    settings: api.bindFactory(settingsDecl, () => createSettingsModule(input.initial)),
+    rates: api.bindFactory(ratesDecl, async () => ({ instance: {}, capabilities: { "pricing/rates": input.rates } })),
+    rules: api.bindFactory(rulesDecl, async () => ({ instance: {}, capabilities: { "tax/rules": input.rules } })),
+    greeting: api.bindFactory(greetingDecl, createGreeting),
+    price: api.bindFactory(priceDecl, owned("feature/price-table", createPriceTable)),
+    tax: api.bindFactory(taxDecl, createTaxTable),
+    audit: api.bindFactory(auditDecl, createAuditLog),
+    clock: api.bindFactory(clockDecl, createClock),
+    fanout: api.bindFactory(fanoutDecl, owned("host/settings-fanout", createSettingsFanout)),
+    driver: api.bindFactory(driverDecl, owned("host/settings-driver", createSettingsDerivationDriver)),
+  };
+  const declarations = [settingsDecl, ratesDecl, rulesDecl, greetingDecl, priceDecl, taxDecl, auditDecl, clockDecl, fanoutDecl, driverDecl];
+  const bind = (consumer: string, slotId: string, providers: string[]) =>
+    ({ consumerImplementationId: consumer, slotId, providerImplementationIds: providers });
+  const composition = await compileComposition({
+    declarations,
+    profile: {
+      kind: "get-modular.composition-profile", schemaVersion: 1, profileId: "test-host/settings-hooks",
+      roots: declarations.map((d) => d.implementationId),
+      selections: declarations.map(({ moduleId, implementationId }) => ({ moduleId, implementationId })),
+      bindings: [
+        bind("feature/greeting", "settings", ["host/settings"]),
+        bind("feature/price-table", "settings", ["host/settings"]),
+        bind("feature/price-table", "rates", ["adapter/rates"]),
+        bind("feature/tax-table", "rules", ["adapter/tax-rules"]),
+        bind("feature/audit-log", "settings", ["host/settings"]),
+        bind("host/settings-fanout", "settings", ["host/settings"]),
+        bind("host/settings-fanout", "appliers", ["feature/greeting"]),
+        bind("host/settings-driver", "settings", ["host/settings"]),
+        bind("host/settings-driver", "derivations", ["feature/tax-table"]),
+      ],
+    },
+  });
+  if (!("plan" in composition)) throw new Error(JSON.stringify(composition));
+  const ready = await api.prepare({ composition, factories: Object.values(handles), roots: handles });
+  if (ready.status !== "prepared") throw new Error(JSON.stringify(ready));
+  const outcome = await ready.prepared.run();
+  if (outcome.status !== "succeeded") throw new Error(JSON.stringify(outcome));
+
+  return {
+    roots: outcome.roots,
+    errors,
+    /** Reverse construction order: fan-out/driver (dependents) before participants. */
+    async shutdown(): Promise<ReadonlyArray<Readonly<{ owner: string; results: readonly CleanupResult[] }>>> {
+      const report = [];
+      for (const created of [...owners].reverse()) report.push({ owner: created.label, results: await created.cleanup() });
+      return report;
+    },
+  };
+}

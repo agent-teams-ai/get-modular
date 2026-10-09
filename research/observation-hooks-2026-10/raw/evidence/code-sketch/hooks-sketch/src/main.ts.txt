@@ -1,0 +1,84 @@
+// Executable sketch check (not a test suite): real Core/Assembly, stand-in owner.
+
+import { composeHost } from "./host/composition.ts";
+import { controllableRates, taxRules } from "./host/test-adapters.ts";
+
+let failures = 0;
+const check = (ok: boolean, label: string, detail: unknown = ""): void => {
+  if (!ok) failures += 1;
+  console.log(`${ok ? "PASS" : "FAIL"}  ${label}${ok ? "" : `  -> ${JSON.stringify(detail)}`}`);
+};
+const settle = async (): Promise<void> => { for (let i = 0; i < 20; i += 1) await Promise.resolve(); };
+
+const fx = controllableRates({ USD: 1, EUR: 0.9, GBP: 0.8, JPY: 150 });
+const host = await composeHost({
+  initial: { locale: "en", greetingStyle: "short", priceCurrency: "USD", taxRegion: "FR", auditVerbose: false },
+  rates: fx.rates,
+  rules: taxRules,
+});
+const { settings, greeting, price, tax, audit, clock } = host.roots;
+await settle();
+
+// Baseline.
+check(greeting.greet("Ann") === "Hello, Ann (#1)", "opt1 initial greeting");
+check(price.price(10)?.currency === "USD", "opt2 initial derivation published", price.snapshot());
+check(tax.region() === "FR", "opt3 initial derivation published");
+const auditBefore = audit.verbose;
+
+// Option 1: sync update keeps instance state (counter continues).
+const before = settings.stats();
+settings.commit({ locale: "ru", greetingStyle: "formal" });
+await settle();
+check(greeting.greet("Ann") === "Привет, уважаемый Ann (#2)", "opt1 applied, counter preserved", greeting.greet);
+const after = settings.stats();
+check(after.deliveries - before.deliveries === 1, "multi-key commit -> exactly one delivery", after);
+
+// Option 2: A -> B(held) -> A. The held EUR result must never publish.
+fx.hold("EUR");
+settings.commit({ priceCurrency: "EUR" });
+await settle();
+settings.commit({ priceCurrency: "USD" });
+await settle();
+fx.release("EUR");
+await settle();
+const priced = price.snapshot();
+check(priced.state.kind === "ready" && priced.state.currency === "USD", "opt2 stale EUR dropped after A->B->A", priced);
+check(priced.lookups === 1, "opt2 instance state (lookups) preserved", priced.lookups);
+
+// Option 3: failure isolation; previous rules kept, other modules unaffected.
+settings.commit({ taxRegion: "XX" });
+await settle();
+check(tax.region() === "FR" && tax.failures() === 1, "opt3 failure keeps previous state", { region: tax.region(), failures: tax.failures() });
+settings.commit({ taxRegion: "DE" });
+await settle();
+check(tax.region() === "DE" && tax.vat() === 0.19, "opt3 recovers on newer revision");
+
+// Passive modules: unrelated commit visits nobody; construction value kept.
+const quiet = settings.stats();
+settings.commit({ auditVerbose: true });
+await settle();
+const loud = settings.stats();
+check(loud.registrationVisits === quiet.registrationVisits && loud.deliveries === quiet.deliveries, "unsubscribed key -> zero visits/deliveries", loud);
+check(audit.verbose === auditBefore, "passive audit keeps construction value (IOptions-style)");
+check(clock.now() === 1, "passive clock untouched");
+
+// Shutdown while an option-2 derivation is held: no publication after unsubscribe,
+// cleanup reports released only after the held run settles.
+fx.hold("JPY");
+settings.commit({ priceCurrency: "JPY" });
+await settle();
+let shutdownDone = false;
+const shutdown = host.shutdown().then((report) => { shutdownDone = true; return report; });
+await settle();
+check(!shutdownDone, "cleanup waits for the in-flight derivation (drain)");
+fx.release("JPY");
+const report = await shutdown;
+const all = report.flatMap((entry) => entry.results);
+check(all.length > 0 && all.every((result) => result.kind === "released"), "all owned obligations released", report);
+const final = price.snapshot();
+check(final.state.kind === "ready" && final.state.currency === "USD", "no publication after unsubscribe", final);
+check((["locale", "greetingStyle", "priceCurrency", "taxRegion"] as const).every((key) => settings.listenerCount(key) === 0), "no listeners left");
+check(host.errors.length === 0, "no callback errors reported", host.errors);
+console.log(`\nowners cleaned (reverse order): ${report.map((entry) => entry.owner).join(" -> ")}`);
+console.log(failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`);
+process.exitCode = failures === 0 ? 0 : 1;

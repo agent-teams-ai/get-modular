@@ -1,0 +1,11 @@
+// Public root of the candidate `@get-modular/observation` package (0.x).
+// Zero runtime dependencies. Not exported: participant plans, TEST diagnostics.
+export {
+  ObservationError,
+  type Key, type Keys, type Observation, type ObservationErrorCode, type ObservationPort, type ObserveOptions,
+  type Reader, type Snapshot, type SnapshotRef, type SourceId, type Values, type View,
+} from "./contract.ts";
+export { createKeyedSource, type KeyedSource } from "./keyed-source.ts";
+export { participantsFor, type Participant, type ParticipantFactory, type ParticipantOutcome } from "./participants.ts";
+export { startHub, type Hub, type HubResources } from "./hub.ts";
+export { createLatestDerivation, type LatestDerivation } from "./latest-derivation.ts";

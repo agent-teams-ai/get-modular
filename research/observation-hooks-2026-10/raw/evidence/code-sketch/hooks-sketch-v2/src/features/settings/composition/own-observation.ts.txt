@@ -1,0 +1,38 @@
+// Settings feature composition kit, OPTION 2 escape hatch: a module that must own
+// its own registration. One owned obligation; the handle is retained BEFORE any
+// further fallible step; borrowers get the view only.
+
+import { RELEASED, unresolved, type ResourceAuthor } from "../../../kernel/resource-owner.stand-in.ts";
+import type { SettingsKeys, SettingsSnapshot } from "../published/settings-read.v1.ts";
+import type {
+  ObserveOptions, SettingsObservation, SettingsObservationPortV1, SettingsView,
+} from "../published/settings-observation.v1.ts";
+
+export function ownObservation<const Keys extends SettingsKeys>(
+  resources: ResourceAuthor,
+  port: SettingsObservationPortV1,
+  keys: Keys,
+  handlers: Readonly<{
+    onSettings: (next: SettingsSnapshot<Keys[number]>) => undefined;
+    /** Runs after the handle is retained; may throw, cleanup still detaches. */
+    onAttached?: (view: SettingsView<Keys[number]>) => undefined;
+    /** Module-reported settlement of its in-flight work (self-report; the owner cannot see inside). */
+    settle?: () => Promise<void>;
+  }>,
+  options: ObserveOptions,
+): Promise<SettingsView<Keys[number]>> {
+  let cell: SettingsObservation<Keys[number]> | undefined;
+  return resources.setup<SettingsView<Keys[number]>>({
+    setup: () => {
+      cell = port.observe(keys, handlers.onSettings, options);
+      handlers.onAttached?.(cell.view);
+      return cell.view;
+    },
+    cleanup: async () => {
+      if (cell === undefined) return RELEASED; // observe() itself threw: nothing installed
+      cell.unsubscribe();
+      await handlers.settle?.();
+      return cell.isAttached() ? unresolved(new Error("listener still attached")) : RELEASED;
+    },
+  });
+}

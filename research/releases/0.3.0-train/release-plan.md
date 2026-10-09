@@ -68,7 +68,7 @@ In scope:
 - rehearsal #3 (repeat it only if check 1 requires it);
 - one release PR from `changeset-release/main` with exactly the 17 generated paths of section 5.3;
 - intended archive hashes in the PR body;
-- creating the R-1a bundle from the final REL head after review and CI, following section 6 exactly, and its
+- creating the R-1a bundle from the REL head at packing time after review and CI, following section 6 exactly, and its
   bundle PR (6.6).
 
 Not in scope: npm login, publication or dist-tags; git tags or GitHub releases; TEST-1; the agent-runtime draft
@@ -112,8 +112,8 @@ change in get-modular beyond the 17 REL paths and the bundle PR of 6.6; observat
 - Standing rule for later releases (for example REL-2 of train 2): the next release starts the same way, with an
   `-s ours` merge of the then-current `changeset-release/main` head (the final REL head of the previous release)
   onto `origin/main`. Never force, never delete.
-- Owner decision (2026-10-08), timing: REL stays open after a clean review and green CI. R-1a is packed from that
-  final head (section 6). The owner merges REL only after signing off the consumer checks (TEST-1 and the
+- Owner decision (2026-10-08), timing: REL stays open after a clean review and green CI. R-1a is packed from the REL
+  head at packing time (section 6). The owner merges REL only after signing off the consumer checks (TEST-1 and the
   agent-runtime draft branch).
 - Planning decision (2026-10-04): TEST-1 and agent-runtime pin the Consumer Module Standard at its accepting commit
   `81063ad` (#142). REL changes no standard byte.
@@ -313,8 +313,8 @@ for f in *.tgz; do tar -xzOf "$f" package/package.json; tar -tzf "$f" | grep -v 
 ```
 
 These archives only feed the PR body and later comparisons. They are never R-1a: R-1a is created only by 6.3, from
-a fresh clone at the final REL head (6.2). Keep `<tmp>/intended` until the R-1a bundle has been compared with it (6.4),
-then delete it.
+a fresh clone at the REL head at packing time (6.2). Keep `<tmp>/intended` until the R-1a bundle has been compared
+with it (6.4), then delete it.
 
 ### 5.6 Push (plain fast-forward only)
 
@@ -386,7 +386,7 @@ Required checks are strict, so the branch must be up to date with `main`. Never 
 
    Rerun 5.4 in full, then push as in 5.6, with the current head instead of `f29200dc`
    (`git merge-base --is-ancestor <head> HEAD` must succeed). The generated files stay byte-identical. If R-1a
-   exists, run its source check (6.4).
+   exists, run its source check (6.4) and record it as 6.4 says.
 3. Exit 1 means a release input changed: regenerate the release tree on the new `main`, then put that exact tree on
    top of the current REL head as a tree-replacement commit:
 
@@ -413,8 +413,11 @@ Required checks are strict, so the branch must be up to date with `main`. Never 
    `<fresh>` is used only to build the tree. Its commit is never pushed; delete the worktree with
    `git -C <gm> worktree remove <fresh>` once `NEW` is pushed. In `<rel>`, rerun 5.4 in full and 5.5, then push as in
    5.6 with `OLD` instead of `f29200dc`. Record the new base SHA as `<REL base>` (5.1, last line) and update the PR
-   body (5.7) with the new 5.4 results and the new intended hashes and digests. If R-1a exists, create it again
-   (6.3) and repeat the consumer checks.
+   body (5.7) with the new 5.4 results and the new intended hashes and digests. If R-1a exists, run its source
+   check (6.4) on `NEW`. Create it again (6.3) and repeat the consumer checks only if that check fails. Owner
+   decision 2026-10-08: when a release input changes but a fresh pack at the updated head is byte-identical for
+   Core, Assembly and resources and has the same normalized content digest for conformance, the bundle and its
+   consumer checks stay valid. Recording and timing follow 6.4.
 4. Ask for review again. The reviewer's checks of 11.1 and 11.13 stay mandatory after every update.
 
 ### 5.9 Merge (owner only, after the consumer checks are signed off)
@@ -456,13 +459,15 @@ dependency (`smoke` and `isolate`) and installs its peers under strict peer depe
 
 ### 6.2 Source and timing
 
-Source = the final REL head `<head>`, packed only after the review is clean and every required CI check is green
+Source = `<bundle source>`, the REL head at packing time (the final head when packed; a later REL update keeps the
+bundle only through a passed 6.4 source check). `<bundle source>` is the `Source commit` recorded in
+`release-intent.md`. It is packed only after the review is clean and every required CI check is green
 on that exact head, before the merge. Never pack earlier.
 
 The record names the source commit, its tree (`git rev-parse <commit>^{tree}`) and the tree of each package
 directory (`git rev-parse <commit>:packages/<name>`).
 
-### 6.3 Creation (once; never re-pack afterwards)
+### 6.3 Creation (once; never re-pack a retained bundle; a new bundle only after a failed 6.4 source check)
 
 ```sh
 git clone --no-checkout <gm> <tmp>/r1a-src && cd <tmp>/r1a-src
@@ -505,7 +510,13 @@ deviation: stop.
 - Source still valid after a REL update or merge: in a fresh clone at the merged REL commit (or the new
   head), build and pack the four packages into a separate comparison directory, never into the bundle. Every
   normalized content digest must equal the bundle's; Core, Assembly and resources must also match `SHA256SUMS`
-  byte-for-byte. Otherwise create a new bundle and repeat the consumer checks.
+  byte-for-byte: `grep -v conformance <bundle dir>/SHA256SUMS | (cd <comparison dir> && shasum -a 256 -c -)`
+  (a plain `shasum -c SHA256SUMS` always fails on conformance, which is not deterministic). Pack with the Node and
+  pnpm versions recorded in `release-intent.md`. If `.node-version`, `engines` or `packageManager` differ at that
+  commit, the source check fails. After a REL update (5.8 step 2 or step 3), record a passed check (the checked SHA
+  and the per-archive result) in the REL PR body and in `release-intent.md`. If it fails, create a new bundle (6.3)
+  only after 5.8 step 4 (clean review and green required CI on the final head, as 6.2 requires), then repeat the
+  consumer checks.
 - Node 26.10 or newer, on the retained bytes. Provide pnpm 11.20.0 for the fixture the same way CI does:
   `npm install --prefix <tmp>/node26-pnpm --no-save --ignore-scripts --no-audit --no-fund pnpm@11.20.0`, then
   `node <tmp>/node26-pnpm/node_modules/pnpm/bin/pnpm.mjs --version` must print `11.20.0`. Then
@@ -525,11 +536,13 @@ Status: retained, awaiting owner review. Nothing is published.
 ## Source
 
 - Repository: `agent-teams-ai/get-modular`.
-- Source commit `<40 hex>` (final head of REL PR #N), tree `<40 hex>`; merged as `<40 hex>` (filled in after the merge).
+- Source commit `<40 hex>` (REL head at packing time, PR #N), tree `<40 hex>`; merged as `<40 hex>` (filled in after the
+  merge).
+- Source check (6.4) on later REL heads: `<40 hex>` passed (one line per check).
 - Package trees: `packages/core` `<id>`, `packages/assembly` `<id>`, `packages/resources` `<id>`,
   `packages/conformance` `<id>`.
 - Toolchain: Node `<.node-version>`, pnpm `<packageManager>`.
-- CI on the exact source: `<run URL>` (all required checks and `node-26-compatibility` passed).
+- CI on the exact source: [run `<id>`](<run URL>) (all required checks and `node-26-compatibility` passed).
 
 ## Archives
 
@@ -611,10 +624,11 @@ files from the PR head by SHA (`git fetch origin pull/<bundle PR>/head`, then
 Required checks are strict, so after the REL merge the bundle PR is behind `main`. Before the owner merges it, run
 `git merge --no-edit origin/main` in `<evidence>`, push plainly and wait for CI again.
 
-`release-intent.md` changes after the first merge with the consumer-check results and the publication checkpoints
+Until the bundle PR is merged, source-check lines (6.4) may be added to `release-intent.md` in it. After the first
+merge, `release-intent.md` changes with the consumer-check results and the publication checkpoints
 of R-1b. Make one follow-up docs PR after the owner signs off the consumer checks, and one after the publication
-read-back. The archives, `SHA256SUMS` and `INTEGRITY` never change after the first merge. A new bundle (5.8 step 3)
-replaces all three files in one PR and says why.
+read-back. The archives, `SHA256SUMS` and `INTEGRITY` never change after the first merge. A new bundle (after a failed
+6.4 source check) replaces all three files in one PR and says why.
 
 ---
 
@@ -653,7 +667,7 @@ replaces all three files in one PR and says why.
 | a CI lane above 13.5 min | stop and report |
 | a packed manifest deviates from section 4 | stop |
 | conformance SHA-256 differs from the intended one | expected; compare normalized content digests (6.4); a digest difference: stop |
-| a Core or Assembly defect found by the consumer checks while REL is open | stop and report to the owner. The fix lands on `main` as a normal feature PR (for an API-shape fix with a new cumulative approval); then REL is regenerated (5.8 step 3) and R-1a is created again. Keeping REL open exists for this: after the merge, an API-shape fix would need 0.3.1 or 0.4.0, a new pair decision and gate edits |
+| a Core or Assembly defect found by the consumer checks while REL is open | stop and report to the owner. The fix lands on `main` as a normal feature PR (for an API-shape fix with a new cumulative approval); then REL is regenerated (5.8 step 3) and R-1a is created again only if the 6.4 source check fails. Keeping REL open exists for this: after the merge, an API-shape fix would need 0.3.1 or 0.4.0, a new pair decision and gate edits |
 | an uncertain push, PR or merge result | read-only reconcile (`git ls-remote`, `gh pr view`); no blind retry |
 | disk full (ENOSPC) | stop; delete only your own disposable copies |
 | any ambiguity or mismatch with this brief | stop and ask |
@@ -672,7 +686,8 @@ replaces all three files in one PR and says why.
 - No destructive git commands (`checkout --`, `restore`, `reset --hard`, `clean -f`, `stash drop`, `branch -D`) in
   shared checkouts.
 - No GitHub comments, labels, reviewer requests or merges. Review and merge belong to the owner.
-- Never replace or re-pack the retained bundle. Packs made only for comparison go to a separate directory.
+- Never replace or re-pack the retained bundle, except by a new bundle after a failed 6.4 source check. Packs made
+  only for comparison go to a separate directory.
 
 ---
 
@@ -682,7 +697,8 @@ replaces all three files in one PR and says why.
   plain fast-forward pushes; every 5.4 gate as expected;
   CI green within the lane limit; the PR body complete (5.7).
 - The owner's reviewer has signed off the checklist of section 11.
-- R-1a bundle created from the final `<head>` after review and green CI (section 6), consumer checks handed off.
+- R-1a bundle created from `<bundle source>` after review and green CI (section 6), consumer
+  checks handed off.
   The owner merges REL (5.9) after signing off the consumer checks. The 6.4 source check passes for the merged
   commit.
 - The bundle PR (6.6) is open with green CI, and the owner merges it after REL.

@@ -1,0 +1,129 @@
+// STAND-IN for the accepted `@get-modular/resources` design
+// (plans/module-resource-scopes-design-2026-10-01.md, sections 2-4). Not the
+// package: only setup (atomic, LIFO slot at fulfil), child, sequential close,
+// single flight, abandon -> pending/not-run, late setup cleaned first, scoped().
+// Includes escalate (cleanup ctx.signal). No use(), retry of debts or dev-mode stacks.
+
+export type Debt = Readonly<{ path: readonly string[]; state: "failed" | "pending" | "not-run"; cause?: unknown }>;
+export type CloseReport = Readonly<{ complete: boolean; debts: readonly Debt[] }>;
+export type CloseOptions = Readonly<{ escalate?: AbortSignal; abandon?: AbortSignal }>;
+
+export class ScopeClosedError extends Error {
+  readonly code = "scope-closed" as const;
+}
+
+export type SetupSpec<T> = Readonly<{
+  name?: string;
+  setup: (ctx: Readonly<{ signal: AbortSignal }>) => T | PromiseLike<T>;
+  cleanup: (value: T, ctx: Readonly<{ signal: AbortSignal }>) => void | PromiseLike<void>;
+}>;
+
+export interface Resources {
+  readonly signal: AbortSignal;
+  setup<T>(spec: SetupSpec<T>): Promise<T>;
+  child(options?: Readonly<{ name?: string }>): Scope;
+}
+export interface ScopeControl {
+  close(options?: CloseOptions): Promise<CloseReport>;
+}
+export type Scope = Readonly<{ resources: Resources; control: ScopeControl }>;
+
+type Entry = Readonly<{ name: string; child: boolean; release: (options: CloseOptions) => Promise<CloseReport> }>;
+
+export function createScope(options: Readonly<{ name?: string }> = {}): Scope {
+  const name = options.name ?? "scope";
+  const controller = new AbortController();
+  const stack: Entry[] = [];
+  const pendingSetups = new Set<Promise<unknown>>();
+  let flight: Promise<CloseReport> | undefined;
+
+  const resources: Resources = {
+    signal: controller.signal,
+    async setup<T>(spec: SetupSpec<T>): Promise<T> {
+      if (controller.signal.aborted) throw new ScopeClosedError(`${name}: closed`);
+      const entryName = spec.name ?? "resource";
+      const running: Promise<T> = Promise.resolve().then(() => spec.setup({ signal: controller.signal }));
+      pendingSetups.add(running);
+      let value: T;
+      try {
+        value = await running; // a rejected setup leaves no record (atomic setup)
+      } finally {
+        pendingSetups.delete(running);
+      }
+      stack.push({ // LIFO slot at fulfil
+        name: entryName,
+        child: false,
+        release: async (closeOptions) => {
+          try {
+            await spec.cleanup(value, { signal: closeOptions.escalate ?? new AbortController().signal });
+            return { complete: true, debts: [] };
+          } catch (cause) {
+            return { complete: false, debts: [{ path: [entryName], state: "failed", cause }] };
+          }
+        },
+      });
+      if (controller.signal.aborted) throw new ScopeClosedError(`${name}: closed during setup (value is cleaned first)`);
+      return value;
+    },
+    child(childOptions = {}): Scope {
+      if (controller.signal.aborted) throw new ScopeClosedError(`${name}: closed`);
+      const created = createScope(childOptions);
+      const childName = childOptions.name ?? "child";
+      stack.push({ name: childName, child: true, release: (closeOptions) => created.control.close(closeOptions) });
+      return created;
+    },
+  };
+
+  const run = async (closeOptions: CloseOptions): Promise<CloseReport> => {
+    controller.abort(); // stop new acquisition in this subtree
+    await Promise.allSettled([...pendingSetups]); // started setups first
+    const debts: Debt[] = [];
+    const entries = [...stack].reverse();
+    for (let index = 0; index < entries.length; index += 1) {
+      const entry = entries[index]!;
+      if (closeOptions.abandon?.aborted) {
+        for (const rest of entries.slice(index)) debts.push({ path: [name, rest.name], state: "not-run" });
+        break;
+      }
+      if (entry.child) { // a child honours `abandon` itself and reports its own paths
+        const childReport = await entry.release(closeOptions);
+        for (const debt of childReport.debts) debts.push({ ...debt, path: [name, ...debt.path] });
+        if (closeOptions.abandon?.aborted && !childReport.complete) {
+          for (const rest of entries.slice(index + 1)) debts.push({ path: [name, rest.name], state: "not-run" });
+          break;
+        }
+        continue;
+      }
+      const released = entry.release(closeOptions);
+      const abandoned = new Promise<"abandoned">((resolve) => {
+        if (closeOptions.abandon === undefined) return;
+        closeOptions.abandon.addEventListener("abort", () => resolve("abandoned"), { once: true });
+      });
+      const result = await Promise.race([released, abandoned]);
+      if (result === "abandoned") {
+        debts.push({ path: [name, entry.name], state: "pending" });
+        for (const rest of entries.slice(index + 1)) debts.push({ path: [name, rest.name], state: "not-run" });
+        break;
+      }
+      for (const debt of result.debts) debts.push({ ...debt, path: [name, ...debt.path] });
+    }
+    return Object.freeze({ complete: debts.length === 0, debts });
+  };
+
+  return Object.freeze({
+    resources,
+    control: { close: (closeOptions: CloseOptions = {}) => (flight ??= run(closeOptions)) }, // single flight
+  });
+}
+
+/** Host wrapper from the design (section 4): a child scope per module, created synchronously. */
+export function scoped<Deps, Ctx extends object, R>(
+  parent: Resources,
+  name: string,
+  factory: (deps: Deps, ctx: Ctx & { readonly resources: Resources }) => R,
+): (deps: Deps, ctx: Ctx) => R {
+  return (deps, ctx) => {
+    const module = parent.child({ name });
+    return factory(deps, Object.freeze({ ...ctx, resources: module.resources }));
+  };
+}

@@ -1,0 +1,9 @@
+// Public entry of the settings feature (A8: no cross-feature deep imports).
+// Published Language for module code; composition kit for module factories.
+
+export type { AppSettings, SettingKey } from "./domain/app-settings.ts";
+export type { SettingsKeys, SettingsReaderV1, SettingsSnapshot } from "./published/settings-read.v1.ts";
+export type { SettingsObservationPortV1, SettingsView } from "./published/settings-observation.v1.ts";
+export { derivedSettings, syncSettings, type SettingsParticipantV1 } from "./published/settings-participant.v1.ts";
+export { latestDerivation, type LatestDerivation } from "./composition/latest-derivation.ts";
+export { ownObservation } from "./composition/own-observation.ts";

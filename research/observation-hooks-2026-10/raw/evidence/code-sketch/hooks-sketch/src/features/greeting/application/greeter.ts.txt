@@ -1,0 +1,30 @@
+// OPTION 1 participant, application layer. Plain class; no Core/Assembly imports.
+// It only knows the settings Published Language types.
+
+import type { SettingsSnapshot } from "../../settings/published/settings-v1.ts";
+
+export type GreeterSettings = SettingsSnapshot<"locale" | "greetingStyle">;
+
+export class Greeter {
+  #locale: string;
+  #style: "short" | "formal";
+  #greeted = 0; // instance state that must survive settings updates
+
+  constructor(initial: GreeterSettings) {
+    this.#locale = initial.values.locale;
+    this.#style = initial.values.greetingStyle;
+  }
+
+  /** Synchronous apply; the `settingsApplier` wrapper already dropped stale revisions. */
+  readonly applySettings = (next: GreeterSettings): undefined => {
+    this.#locale = next.values.locale;
+    this.#style = next.values.greetingStyle;
+    return undefined;
+  };
+
+  greet(name: string): string {
+    this.#greeted += 1;
+    const hello = this.#locale === "ru" ? "Привет" : "Hello";
+    return this.#style === "formal" ? `${hello}, уважаемый ${name} (#${this.#greeted})` : `${hello}, ${name} (#${this.#greeted})`;
+  }
+}

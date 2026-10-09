@@ -1,0 +1,212 @@
+// Outer composition adapter: the ONLY file importing Core/Assembly.
+// Schema, declarations, Host owners via factory closure, derived hub binding,
+// failure cleanup, readiness and shutdown policy (Host-owned).
+
+import { compileComposition, defineModule, many, required, type ModuleDeclaration } from "@get-modular/core";
+import { assemblyFor, type CapabilityContract, type FactoryContext } from "@get-modular/assembly";
+import {
+  createStandInOwner, type CleanupResult, type OwnerContext, type StandInOwner,
+} from "../kernel/resource-owner.stand-in.ts";
+import type { AppSettings } from "../features/settings/domain/app-settings.ts";
+import type { SettingsReaderV1 } from "../features/settings/published/settings-read.v1.ts";
+import type { SettingsObservationPortV1 } from "../features/settings/published/settings-observation.v1.ts";
+import type { SettingsParticipantV1 } from "../features/settings/published/settings-participant.v1.ts";
+import { createSettingsModule } from "../features/settings/composition/settings-module.ts";
+import { createSettingsHub, type ParticipantOutcome } from "../features/settings/composition/settings-hub.ts";
+import type { InMemorySettingsSource } from "../features/settings/adapters/in-memory-settings-source.ts";
+import { createGreeting, type GreeterApi } from "../features/greeting/index.ts";
+import { createPriceTable, type PriceApi, type RatesPort } from "../features/price-table/index.ts";
+import { createTaxTable, type TaxApi, type TaxRulesPort } from "../features/tax-table/index.ts";
+import { createAuditLog, createClock, type AuditApi, type ClockApi } from "../features/passive/index.ts";
+
+type Capabilities = {
+  "settings/read": CapabilityContract<SettingsReaderV1, "settings/read/v1">;
+  "settings/observation": CapabilityContract<SettingsObservationPortV1, "settings/observation/v1">;
+  "settings/participant": CapabilityContract<SettingsParticipantV1, "settings/participant/v1">;
+  "greeting/greeter": CapabilityContract<GreeterApi, "greeting/greeter/v1">;
+  "pricing/rates": CapabilityContract<RatesPort, "pricing/rates/v1">;
+  "pricing/price-table": CapabilityContract<PriceApi, "pricing/price-table/v1">;
+  "tax/rules": CapabilityContract<TaxRulesPort, "tax/rules/v1">;
+  "tax/table": CapabilityContract<TaxApi, "tax/table/v1">;
+  "audit/log": CapabilityContract<AuditApi, "audit/log/v1">;
+  "time/clock": CapabilityContract<ClockApi, "time/clock/v1">;
+};
+
+const exact = <const T extends string>(token: T) => ({ family: "exact", familyVersion: 1, token }) as const;
+const head = { kind: "get-modular.module-declaration", schemaVersion: 1 } as const;
+const module = <const T extends string>(value: T) =>
+  ({ ...head, moduleId: value, implementationId: value, owner: { authority: "test-host", path: value.split("/") } }) as const;
+const PARTICIPANT = { capabilityId: "settings/participant", compatibility: exact("settings/participant/v1") } as const;
+const READ = { capabilityId: "settings/read", compatibility: exact("settings/read/v1") } as const;
+const OBSERVE = { capabilityId: "settings/observation", compatibility: exact("settings/observation/v1") } as const;
+
+const decl = {
+  settings: defineModule({ ...module("settings/source"), provides: [READ, OBSERVE], slots: [] }),
+  hub: defineModule({ ...module("settings/hub"), provides: [], slots: [
+    { slotId: "settings", ...OBSERVE, cardinality: required() },
+    { slotId: "participants", ...PARTICIPANT, cardinality: many({ min: 0, max: 1024 }) },
+  ] }),
+  rates: defineModule({ ...module("adapter/rates"), provides: [{ capabilityId: "pricing/rates", compatibility: exact("pricing/rates/v1") }], slots: [] }),
+  rules: defineModule({ ...module("adapter/tax-rules"), provides: [{ capabilityId: "tax/rules", compatibility: exact("tax/rules/v1") }], slots: [] }),
+  // OPTION 1 participant: one extra `provides` entry.
+  greeting: defineModule({ ...module("feature/greeting"),
+    provides: [{ capabilityId: "greeting/greeter", compatibility: exact("greeting/greeter/v1") }, PARTICIPANT],
+    slots: [{ slotId: "settings", ...READ, cardinality: required() }] }),
+  // OPTION 2 escape hatch: requires the port.
+  price: defineModule({ ...module("feature/price-table"),
+    provides: [{ capabilityId: "pricing/price-table", compatibility: exact("pricing/price-table/v1") }],
+    slots: [
+      { slotId: "settings", ...OBSERVE, cardinality: required() },
+      { slotId: "rates", capabilityId: "pricing/rates", compatibility: exact("pricing/rates/v1"), cardinality: required() },
+    ] }),
+  // OPTION 3 participant: one extra `provides` entry.
+  tax: defineModule({ ...module("feature/tax-table"),
+    provides: [{ capabilityId: "tax/table", compatibility: exact("tax/table/v1") }, PARTICIPANT],
+    slots: [{ slotId: "rules", capabilityId: "tax/rules", compatibility: exact("tax/rules/v1"), cardinality: required() }] }),
+  // PASSIVE.
+  audit: defineModule({ ...module("feature/audit-log"),
+    provides: [{ capabilityId: "audit/log", compatibility: exact("audit/log/v1") }],
+    slots: [{ slotId: "settings", ...READ, cardinality: required() }] }),
+  clock: defineModule({ ...module("feature/clock"), provides: [{ capabilityId: "time/clock", compatibility: exact("time/clock/v1") }], slots: [] }),
+};
+
+export type HostInput = Readonly<{
+  initial: AppSettings;
+  rates: RatesPort;
+  rules: TaxRulesPort;
+  /** TEST: make one module's factory reject after its real work ran. */
+  injectFactoryFailure?: string;
+  /** Host policy: construction observation budget (default 5 s). */
+  constructionBudgetMs?: number;
+  /** TEST: make one module's factory hang after its real work ran. */
+  injectFactoryHang?: string;
+  /** TEST: observe the source even if construction fails. */
+  sourceProbe?: (source: InMemorySettingsSource) => void;
+}>;
+
+export type OwnerReport = ReadonlyArray<Readonly<{ owner: string; results: readonly CleanupResult[] }>>;
+
+export async function composeHost(input: HostInput) {
+  const api = assemblyFor<Capabilities>();
+  const owners: StandInOwner[] = [];
+  const errors: Error[] = [];
+
+  /** Host closure: only modules wrapped with `owned` get an owner; errors are attributed. */
+  const owned = <Deps, P>(label: string, factory: (deps: Deps, context: OwnerContext) => Promise<P>) =>
+    (deps: Deps, context: FactoryContext): Promise<P> => {
+      const created = createStandInOwner(label);
+      owners.push(created); // Host custody before the factory runs
+      const reportError = (cause: unknown): undefined => { errors.push(new Error(label, { cause })); return undefined; };
+      return factory(deps, { signal: context.signal, resources: created.resources, reportError });
+    };
+  const faulty = <A extends unknown[], P>(id: string, factory: (...args: A) => Promise<P>) =>
+    input.injectFactoryFailure !== id && input.injectFactoryHang !== id ? factory : async (...args: A): Promise<P> => {
+      await factory(...args);
+      if (input.injectFactoryHang === id) await new Promise<never>(() => {});
+      throw new Error(`injected failure in ${id}`);
+    };
+  const cleanupOwners = async (budgetMs: number): Promise<OwnerReport> => {
+    const report = [];
+    for (const created of [...owners].reverse()) report.push({ owner: created.label, results: await created.cleanup(budgetMs) });
+    return report;
+  };
+
+  const declarations: ModuleDeclaration[] = Object.values(decl);
+  // Fail-closed participation: the hub's row is DERIVED from what modules provide,
+  // so a participant cannot be forgotten and no central list is edited by teams.
+  const providersOf = (capabilityId: string): string[] => declarations
+    .filter((declaration) => declaration.provides.some((provided) => provided.capabilityId === capabilityId))
+    .map((declaration) => declaration.implementationId)
+    .sort();
+  const participantIds = providersOf("settings/participant");
+
+  const handles = {
+    settings: api.bindFactory(decl.settings, async () => {
+      const created = await createSettingsModule(input.initial);
+      input.sourceProbe?.(created.instance);
+      return created;
+    }),
+    hub: api.bindFactory(decl.hub, faulty("settings/hub",
+      owned("settings/hub", (deps: Parameters<typeof createSettingsHub>[0], context) => createSettingsHub(deps, { ...context, participantIds })))),
+    rates: api.bindFactory(decl.rates, async () => ({ instance: {}, capabilities: { "pricing/rates": input.rates } })),
+    rules: api.bindFactory(decl.rules, async () => ({ instance: {}, capabilities: { "tax/rules": input.rules } })),
+    greeting: api.bindFactory(decl.greeting, createGreeting),
+    price: api.bindFactory(decl.price, owned("feature/price-table", createPriceTable)),
+    tax: api.bindFactory(decl.tax, createTaxTable),
+    audit: api.bindFactory(decl.audit, createAuditLog),
+    clock: api.bindFactory(decl.clock, createClock),
+  };
+  const bind = (consumer: string, slotId: string, providers: readonly string[]) =>
+    ({ consumerImplementationId: consumer, slotId, providerImplementationIds: providers });
+  const composition = await compileComposition({
+    declarations,
+    profile: {
+      kind: "get-modular.composition-profile", schemaVersion: 1, profileId: "test-host/settings-hooks-v2",
+      roots: declarations.map((declaration) => declaration.implementationId),
+      selections: declarations.map(({ moduleId, implementationId }) => ({ moduleId, implementationId })),
+      bindings: [
+        bind("settings/hub", "settings", ["settings/source"]),
+        bind("settings/hub", "participants", participantIds),
+        bind("feature/greeting", "settings", ["settings/source"]),
+        bind("feature/price-table", "settings", ["settings/source"]),
+        bind("feature/price-table", "rates", ["adapter/rates"]),
+        bind("feature/tax-table", "rules", ["adapter/tax-rules"]),
+        bind("feature/audit-log", "settings", ["settings/source"]),
+      ],
+    },
+  });
+  if (!("plan" in composition)) throw new Error("composition rejected", { cause: composition.diagnostics });
+  const ready = await api.prepare({ composition, factories: Object.values(handles), roots: handles });
+  if (ready.status !== "prepared") throw new Error("preparation failed", { cause: ready.error });
+  // N2: a hung factory cannot keep the Host from cleaning what was already created.
+  const controller = new AbortController();
+  let constructionTimer: ReturnType<typeof setTimeout> | undefined;
+  const outcome = await Promise.race([
+    ready.prepared.run({ signal: controller.signal }),
+    new Promise<"timeout">((resolve) => { constructionTimer = setTimeout(() => resolve("timeout"), input.constructionBudgetMs ?? 5_000); }),
+  ]);
+  clearTimeout(constructionTimer);
+  if (outcome === "timeout") {
+    controller.abort();
+    const cleanup = await cleanupOwners(1_000);
+    throw new Error("construction exceeded its budget", { cause: { cleanup } });
+  }
+  if (outcome.status !== "succeeded") {
+    // Host-owned cleanup after failure: no orphaned subscriptions or lanes.
+    const cleanup = await cleanupOwners(1_000);
+    throw new Error(`construction ${outcome.status}`, {
+      cause: { outcome: outcome.status === "failed"
+        ? { phase: outcome.phase, code: outcome.code, implementationId: outcome.implementationId, cause: outcome.cause }
+        : { reason: outcome.reason }, cleanup },
+    });
+  }
+  const { roots } = outcome;
+
+  return {
+    roots,
+    errors,
+    participantIds,
+    /**
+     * Host policy over hub participants only (option-2 modules report their own state):
+     * which participants produced a first outcome within the budget, and which are pending.
+     */
+    async participantReadiness(budgetMs: number) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const deadline = new Promise<undefined>((resolve) => { timer = setTimeout(() => resolve(undefined), budgetMs); });
+      const settled = await Promise.all(roots.hub.outcomes().map(async ({ id, outcome }) => ({ id, result: await Promise.race([outcome, deadline]) })));
+      clearTimeout(timer);
+      const outcomes = settled.flatMap(({ result }): ParticipantOutcome[] => (result === undefined ? [] : [result]));
+      return {
+        ready: outcomes.filter((outcome) => outcome.kind === "ready"),
+        failed: outcomes.filter((outcome) => outcome.kind === "failed"),
+        pending: settled.filter(({ result }) => result === undefined).map(({ id }) => id),
+      };
+    },
+    /** Seal the source first, then dependents-first cleanup with an observation budget. */
+    async shutdown(budgetMs: number): Promise<Readonly<{ owners: OwnerReport; undrainedParticipants: readonly string[] }>> {
+      roots.settings.seal();
+      const owners = await cleanupOwners(budgetMs);
+      return { owners, undrainedParticipants: roots.hub.undrained() };
+    },
+  };
+}

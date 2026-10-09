@@ -1,0 +1,198 @@
+// Executable sketch check v4: research round 4 fixes on top of v3.
+import { composeHost } from "./host/composition.ts";
+import { controllableRates, taxRules } from "./host/test-adapters.ts";
+import { createScope, ScopeClosedError, type Resources } from "./kernel/resources.stand-in.ts";
+import {
+  createKeyedSource, createLatestDerivation, participantsFor, startHub, ObservationError,
+  type HubResources, type ObservationPort, type Participant,
+} from "./lib/observation/index.ts";
+import { inspectSource } from "./lib/observation/internal-diagnostics.ts";
+import type { AppSettings } from "./features/settings/index.ts";
+import { flagsDemo, type Flags } from "./features/flags/index.ts";
+
+let failures = 0;
+const check = (ok: boolean, label: string, detail: unknown = ""): void => {
+  if (!ok) failures += 1;
+  console.log(`${ok ? "PASS" : "FAIL"}  ${label}${ok ? "" : `  -> ${JSON.stringify(detail, (_k, v) => (v instanceof Error ? `${v.name}:${v.message}` : v))}`}`);
+};
+const tick = (ms = 0): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+const settle = async (): Promise<void> => { for (let i = 0; i < 5; i += 1) await tick(); };
+const codeOf = (run: () => unknown): string | undefined => {
+  try { run(); return undefined; } catch (error) { return error instanceof ObservationError ? error.code : String(error); }
+};
+const initial: AppSettings = { locale: "en", greetingStyle: "short", priceCurrency: "USD", taxRegion: "FR", auditVerbose: false };
+
+// ---- type-level fixtures (checked by tsc on 5.8.3 and 7.0.2) ----
+interface Other { readonly x: number }
+/** Type fixtures only: typechecked on 5.8.3 and 7.0.2, never executed. */
+export function typeFixtures(flagsPort: ObservationPort<Flags>, flagsParticipant: Participant<Flags>, resources: Resources): void {
+  // @ts-expect-error a port for one record type is not a port for another (in out V)
+  const wrongPort: ObservationPort<Other> = flagsPort;
+  // @ts-expect-error participants are invariant in the record type
+  const wrongParticipant: Participant<Other> = flagsParticipant;
+  const hubResources: HubResources = resources; // structural: zero package dependency
+  void wrongPort; void wrongParticipant; void hubResources;
+}
+
+{ // 1. normal life (from v3)
+  const fx = controllableRates({ USD: 1, EUR: 0.9 });
+  const host = await composeHost({ initial, rates: fx.rates, rules: taxRules });
+  const { settings, greeting, price, tax, audit, clock } = host.roots;
+  const diag = inspectSource(settings);
+  const readiness = await host.participantReadiness(500);
+  check(readiness.ready.length === 2 && readiness.pending.length === 0, "participant readiness", readiness);
+  const before = diag.stats();
+  settings.commit({ locale: "ru", greetingStyle: "formal" }); await settle();
+  check(greeting.greet("Ann") === "Привет, уважаемый Ann (#1)" && diag.stats().deliveries - before.deliveries === 1, "sync participant: one delivery, state kept");
+  fx.hold("EUR");
+  settings.commit({ priceCurrency: "EUR" }); await settle();
+  settings.commit({ priceCurrency: "USD" }); await settle();
+  fx.release("EUR"); await settle();
+  check(price.snapshot().state.kind === "ready" && (price.snapshot().state as { currency?: string }).currency === "USD", "escape hatch: A->B->A stale result dropped");
+  settings.commit({ taxRegion: "XX" }); await settle();
+  settings.commit({ taxRegion: "DE" }); await settle();
+  check(tax.region() === "DE" && tax.lastFailure() === undefined, "derived participant: failure then recovery");
+  const quiet = diag.stats();
+  settings.commit({ auditVerbose: true }); await settle();
+  check(diag.stats().registrationVisits === quiet.registrationVisits && audit.verbose === false && clock.now() === 1, "passive modules untouched");
+  const report = await host.shutdown(500);
+  check(report.complete, "shutdown complete", report);
+  check((["locale", "greetingStyle", "priceCurrency", "taxRegion"] as const).every((k) => diag.listenerCount(k) === 0) && host.errors.length === 0, "no listeners, no errors");
+}
+
+{ // 2. hung derive: escalate turns the stuck drain into a named failed debt and LIFO continues
+  const host = await composeHost({ initial, rates: controllableRates({ USD: 1 }).rates, rules: taxRules });
+  host.roots.settings.commit({ taxRegion: "HANG" }); await settle();
+  const report = await host.shutdown(100);
+  const paths = report.debts.map((d) => `${d.state}:${d.path.join("/")}`);
+  check(!report.complete && paths.some((p) => p.startsWith("failed:") && p.includes("drain:feature/tax-table")), "escalate: stuck drain is a failed debt naming the participant", paths);
+  check(inspectSource(host.roots.settings).listenerCount("priceCurrency") === 0 && !paths.some((p) => p.startsWith("not-run:")), "escalate: LIFO continued, earlier modules closed", paths);
+}
+
+{ // 3. source contract fixes (research A/B/C)
+  type Sparse = Readonly<{ limit: number | undefined; tags: readonly string[] }>;
+  const sparse = createKeyedSource<Sparse>({ limit: undefined, tags: ["a"] });
+  check(sparse.commit({ limit: 5 }) === 1 && sparse.reader.read(["limit"]).values.limit === 5, "declared optional key (explicit undefined) commits");
+  check(codeOf(() => sparse.commit({ nope: 1 } as unknown as Partial<Sparse>)) === "observation.keys.unknown", "unknown key in commit rejected");
+  check(codeOf(() => sparse.reader.read(["nope"] as unknown as ["limit"])) === "observation.keys.unknown", "unknown key in read rejected");
+  const tags = sparse.reader.read(["tags"]).values.tags;
+  check(codeOf(() => (tags as string[]).push("b")) !== undefined && sparse.reader.read(["tags"]).values.tags.length === 1, "values are deep-frozen: in-place mutation impossible");
+  const keys: ["limit" | "tags", ...("limit" | "tags")[]] = ["limit", "tags"];
+  const observed = sparse.port.observe(keys, () => undefined, { reportError: () => undefined });
+  keys[0] = "tags";
+  observed.unsubscribe();
+  check(inspectSource(sparse).listenerCount("limit") === 0 && inspectSource(sparse).listenerCount("tags") === 0, "caller's key array copied: unsubscribe removes every registration");
+  const otherSource = createKeyedSource<Sparse>({ limit: 1, tags: [] });
+  check(codeOf(() => sparse.port.observe(["limit"], () => undefined, { reportError: () => undefined, since: otherSource.reader.read(["limit"]) })) === "observation.since.invalid", "since from another source rejected");
+  check(codeOf(() => sparse.port.observe(["limit"], () => undefined, { reportError: () => undefined, since: { ...sparse.reader.read(["limit"]), revision: 999 } })) === "observation.since.invalid", "since newer than the source rejected");
+  check(codeOf(() => sparse.port.observe(["limit"], () => undefined, { reportError: () => undefined, since: sparse.reader.read(["tags"]) })) === "observation.since.invalid", "since from other keys rejected (G-5)");
+  check(codeOf(() => sparse.commit({ tags: [new Date() as unknown as string] })) === "observation.values.not-plain", "non-plain values rejected (G-4)");
+  const owned = ["x"];
+  sparse.commit({ tags: owned });
+  check(Object.isFrozen(owned), "commit takes ownership: plain arrays frozen in place (documented)");
+  sparse.seal();
+  check(codeOf(() => sparse.port.observe(["limit"], () => undefined, { reportError: () => undefined })) === "observation.source.sealed", "observe after seal rejected");
+}
+
+{ // 4. hub contract fixes
+  const source = createKeyedSource<AppSettings>(initial);
+  const make = participantsFor<AppSettings>();
+  const p1 = make.sync({ initial: source.reader.read(["locale"]), apply: () => undefined });
+  const dup = await startHub({ port: source.port, participants: [p1, p1] },
+    { resources: createScope().resources, participantIds: ["same", "same"], reportError: () => undefined }).then(() => "ok", (e: unknown) => e instanceof ObservationError ? e.code : String(e));
+  check(dup === "observation.hub.duplicate-participant", "duplicate participant ids rejected", dup);
+  const forged = Object.freeze({}) as Participant<AppSettings>;
+  const foreign = await startHub({ port: source.port, participants: [forged] },
+    { resources: createScope().resources, participantIds: ["forged"], reportError: () => undefined }).then(() => "ok", (e: unknown) => e instanceof ObservationError ? e.code : String(e));
+  check(foreign === "observation.participant.foreign" && inspectSource(source).listenerCount("locale") === 0, "forged participant rejected; nothing subscribed");
+  const closed = createScope();
+  await closed.control.close();
+  const passthrough = await startHub({ port: source.port, participants: [p1] },
+    { resources: closed.resources, participantIds: ["late"], reportError: () => undefined }).then(() => "ok", (e: unknown) => e);
+  check(passthrough instanceof ScopeClosedError, "ScopeClosedError passes through unwrapped", passthrough);
+}
+
+{ // 5. catch-up, genericity
+  const source = createKeyedSource<AppSettings>(initial);
+  const scope = createScope();
+  const seen: string[] = [];
+  const read = source.reader.read(["locale"]);
+  source.commit({ locale: "ru" });
+  await startHub({ port: source.port, participants: [participantsFor<AppSettings>().sync({ initial: read, apply: ({ values }) => { seen.push(values.locale); return undefined; } })] },
+    { resources: scope.resources, participantIds: ["late"], reportError: () => undefined });
+  await settle();
+  check(seen.join() === "ru", "catch-up delivered once through the source");
+  await scope.control.close();
+  const flags = flagsDemo();
+  const flagsScope = createScope();
+  await startHub({ port: flags.source.port, participants: [flags.participant] }, { resources: flagsScope.resources, participantIds: ["search"], reportError: () => undefined });
+  flags.source.commit({ maxResults: 25 }); await settle();
+  check(flags.limit() === 25 && (await flagsScope.control.close()).complete, "interface record type works end to end");
+}
+
+{ // 6. final-review regressions G-1, G-2, G-3, G-7, G-8
+  // G-1: escalate already aborted at cleanup time -> idle participants produce no debts.
+  const source = createKeyedSource<AppSettings>(initial);
+  const scope = createScope({ name: "g1" });
+  const make = participantsFor<AppSettings>();
+  await startHub({ port: source.port, participants: [
+    make.sync({ initial: source.reader.read(["locale"]), apply: () => undefined }),
+    make.derived({ keys: ["taxRegion"], derive: async ({ taxRegion }) => taxRegion, apply: () => undefined, fail: () => undefined }),
+  ] }, { resources: scope.resources, participantIds: ["idle-sync", "idle-derived"], reportError: () => undefined });
+  await settle();
+  const escalated = new AbortController(); escalated.abort();
+  const g1 = await scope.control.close({ escalate: escalated.signal });
+  check(g1.complete, "G-1: pre-aborted escalate gives idle participants no debts", g1);
+
+  // G-2: escape-hatch lane hung + escalate -> failed debt, LIFO continues (no not-run).
+  const lanes = createScope({ name: "g2" });
+  const lane = await lanes.resources.setup({
+    name: "rate-lane",
+    setup: () => createLatestDerivation<string, string>({ derive: () => new Promise<string>(() => {}), isCurrent: () => true,
+      apply: () => undefined, fail: () => undefined, reportError: () => undefined }),
+    cleanup: (created, { signal }) => created.closeAndDrain(signal),
+  });
+  let earlierClosed = false;
+  await lanes.resources.setup({ name: "later", setup: () => 1, cleanup: () => { earlierClosed = true; } });
+  lane.offer(1, "x"); await settle();
+  const escalate2 = new AbortController();
+  const closing = lanes.control.close({ escalate: escalate2.signal });
+  await tick(5); escalate2.abort();
+  const g2 = await closing;
+  check(earlierClosed && g2.debts.some((d) => d.state === "failed" && d.path.includes("rate-lane")) && !g2.debts.some((d) => d.state === "not-run"),
+    "G-2: escape-hatch lane hang becomes a failed debt; LIFO continues", g2.debts.map((d) => `${d.state}:${d.path.join("/")}`));
+
+  // G-3: async apply smuggled through a cast is reported; derived outcome is failed.
+  const reports: unknown[] = [];
+  const scope3 = createScope({ name: "g3" });
+  const hub3 = await startHub({ port: source.port, participants: [
+    make.derived({ keys: ["priceCurrency"], derive: async ({ priceCurrency }) => priceCurrency,
+      apply: (async () => { throw new Error("async apply"); }) as unknown as () => undefined, fail: () => undefined }),
+  ] }, { resources: scope3.resources, participantIds: ["async-apply"], reportError: (c) => { reports.push(c); return undefined; } });
+  const outcome3 = await hub3.outcomes()[0]?.outcome;
+  await settle();
+  check(outcome3?.kind === "failed" && reports.length >= 1, "G-3: async apply reported and outcome failed", { kind: outcome3?.kind, reports: reports.length });
+  await scope3.control.close();
+
+  // G-7: the same participant twice / forged after valid -> rejected before any subscription.
+  const p = make.sync({ initial: source.reader.read(["greetingStyle"]), apply: () => undefined });
+  const twice = await startHub({ port: source.port, participants: [p, p] }, { resources: createScope().resources, participantIds: ["x", "y"], reportError: () => undefined })
+    .then(() => "ok", (e: unknown) => (e instanceof ObservationError ? e.code : String(e)));
+  const forgedAfter = await startHub({ port: source.port, participants: [p, Object.freeze({}) as Participant<AppSettings>] },
+    { resources: createScope().resources, participantIds: ["valid", "forged"], reportError: () => undefined })
+    .then(() => "ok", (e: unknown) => (e instanceof ObservationError ? e.code : String(e)));
+  check(twice === "observation.hub.duplicate-participant" && forgedAfter === "observation.participant.foreign"
+    && inspectSource(source).listenerCount("greetingStyle") === 0, "G-7: duplicates and forged participants rejected before subscribing", { twice, forgedAfter });
+
+  // G-8: a hostile thenable does not break delivery to the next registration.
+  const hostile = source.port.observe(["auditVerbose"], (() => ({ then: () => { throw new Error("hostile then"); } })) as unknown as () => undefined, { reportError: () => undefined });
+  let received = 0;
+  const victim = source.port.observe(["auditVerbose"], () => { received += 1; return undefined; }, { reportError: () => undefined });
+  source.commit({ auditVerbose: true }); await settle();
+  source.commit({ auditVerbose: false }); await settle();
+  check(received === 2, "G-8: hostile thenable isolated; next registration still delivered", received);
+  hostile.unsubscribe(); victim.unsubscribe();
+}
+
+console.log(failures === 0 ? "\nALL CHECKS PASSED" : `\n${failures} CHECK(S) FAILED`);
+process.exitCode = failures === 0 ? 0 : 1;
