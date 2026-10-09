@@ -82,6 +82,7 @@ from these briefs, the briefs and the owner decisions below win.
 | P10 | OBS-1 resolves OD-007; its remaining acceptance criteria move to OBS-3 (before REL-2 opens) and OBS-T (before REL-2 merges); a failed OBS-T stops the release of those archives, the fix lands on `main` and OBS-T runs again; a successor ADR only if the decision changes | follows owner decision 3; an accepted ADR cannot be edited afterwards, so it must not promise more than the plan | 8 / 8 |
 | P11 | The hub reports participant failures as `observation.participant.callback-failed` with the participant id and the original cause | the ADR promises coded errors; sketch v4 reported a plain `Error` | 8 / 8 |
 | P12 | OBS-1 merges only while no release PR is open | `accepted-decisions.json` is a release input; merging during REL-1 would force its regeneration | 9 / 8 |
+| P13 | Malformed arguments throw `observation.argument.invalid` (C15), as resources does with `resources.argument.invalid` | the ADR promises a code for every error the package throws; sketch v4 threw plain `TypeError`s for null inputs | 8 / 8 |
 
 ## 4. PR set, dependencies and size
 
@@ -165,6 +166,9 @@ experiment", with these changes:
 | Re-review: the ADR promised "no release and a successor ADR" on any OBS-T failure | applied: a failure stops those archives; fix on `main` and run again; successor only if the decision changes |
 | Re-review: the no-observation fallback broke REL-2's own path checks | applied: the fallback switches the observation items off and records the owner decision |
 | Re-review P3: REL-2 pin line and "Done", ADR-0023/0029 in OBS-1, exact test built-ins, G-7, attempt-scope shutdown wording | all applied |
+| ADR review (2026-10-09, before acceptance): "the only exception" next to a second exception, and `TypeError`s without a code for malformed arguments | applied: both exceptions named; C15 and P13 add `observation.argument.invalid` |
+| ADR review P2: the demonstrated-need sentence, `derive` under "each callback runs isolated", invariance of every record type, the release sentence without owner decision 6, "library call by the holder" excluding the escape hatch | all applied in the ADR text of OBS-1 and PR #154 |
+| ADR review P3: "rejected as foreign", a running derivation after `seal`, "subscribes on its behalf", where the split is recorded, the Changesets version, the `recordDesired` name | all applied |
 
 Verified by the review: the C9 type rule rejects optional keys and accepts
 `T | undefined` keys and interfaces on TypeScript 7.0.2 and 5.8.3 (with and

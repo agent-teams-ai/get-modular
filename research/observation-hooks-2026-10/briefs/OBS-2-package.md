@@ -192,6 +192,19 @@ export type { LatestDerivation } from "./features/derivation/latest-derivation.j
   participant id in the message and the original error as `cause`.
 - **C14 a later minor of resources.** No code change: the README states that a
   resources minor release ships with its own observation minor changeset.
+- **C15 argument checks** (ADR-NNNN promises a code for every error the
+  package throws). Add `observation.argument.invalid` to
+  `ObservationErrorCode`. `createKeyedSource`, `commit`, `read`, `observe`,
+  `startHub`, `sync`, `derived`, `createLatestDerivation` and `offer` check the
+  shape of their arguments synchronously before any other work: objects where
+  objects are required, key arrays as arrays of strings, functions where
+  callbacks are required, `options` an object with a `reportError` function.
+  They throw `ObservationError("observation.argument.invalid")`; `startHub`
+  rejects with it. The more specific codes stay (`keys.empty`, `keys.unknown`,
+  `values.not-plain`, `since.invalid`, `derivation.invalid-revision`). Follow
+  `packages/resources/src/features/scope/arguments.ts`. Tests:
+  `createKeyedSource(null)`, `commit(null)`, `observe(keys, fn, undefined)`,
+  `startHub(undefined, ctx)` and `sync({})` each give the code.
 
 Everything else follows sketch v4 behavior. When the sketch and ADR-NNNN
 differ, the ADR wins; when the ADR is silent and the sketch looks wrong: stop
@@ -370,7 +383,7 @@ coordinate with its author instead of editing them.
 
 Full `pnpm check` locally after the last commit (with the no-hooks git config of
 OBS-1), then CI: all 30 lanes and six aggregates green, every lane under 810 s.
-PR body: what the package is, the ADR, the C1-C14 list with test names, the
+PR body: what the package is, the ADR, the C1-C15 list with test names, the
 admission files, the REL-2 amendment, measured gate times.
 
 ## Risks and stop conditions
@@ -398,7 +411,7 @@ admission files, the REL-2 amendment, measured gate times.
 
 ## Done
 
-Package admitted with its row, implementation and tests in one PR; C1-C14
+Package admitted with its row, implementation and tests in one PR; C1-C15
 covered by named tests; every gate green locally and in CI; REL-2 brief amended;
 README and changeset present.
 
@@ -416,7 +429,8 @@ README and changeset present.
   projection keys with `=` (C6); accept `NaN` in `offer` (C7); force
   `isCurrent` to `true` (C10); record the drain cell after `setup` resolves
   (C3); swap the drain and subscription registration order (LIFO test); report
-  a plain `Error` from the hub (C13).
+  a plain `Error` from the hub (C13); drop the argument check of `commit`
+  (C15).
 - The packed manifest names exactly one peer, `@get-modular/resources`, with a
   caret range of the current resources minor.
 - The REL-2 amendment lists exactly the observation additions and nothing else.
