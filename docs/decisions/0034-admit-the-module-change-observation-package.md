@@ -1,8 +1,10 @@
 ---
 id: ADR-0034
 type: adr
-status: proposed
+status: accepted
 owner: architecture
+approved_by: product-owner
+accepted_at: 2026-10-09
 summary: Admits @get-modular/observation as an optional public package for in-process settings sources and opt-in change participants, with resources as its only peer, and resolves OD-007.
 related:
   - OD-007

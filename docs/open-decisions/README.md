@@ -23,12 +23,11 @@ key, and the gate rejects any mismatch between that key, the
 
 ## Active
 
-- [OD-007: Module change observation package](OD-007-module-change-observation-package.md)
-
-The separate proposed dependency and custody ADRs retain their own gates.
+None. The separate proposed dependency and custody ADRs retain their own gates.
 
 ## Resolved
 
+- [OD-007: Module change observation package](OD-007-module-change-observation-package.md)
 - [OD-005: Raw input carrier semantics](OD-005-raw-input-carrier-semantics.md)
 - [OD-006: Duplicate binding-record diagnostics](OD-006-duplicate-binding-record-diagnostics.md)
 - [OD-004: Package carrier and resolution policy](OD-004-package-carrier-and-resolution-policy.md)

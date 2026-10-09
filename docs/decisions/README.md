@@ -14,10 +14,10 @@ summary: Index of Get Modular architecture decisions.
 - [ADR-0011: Define private self-composition evidence and release custody](0011-define-private-self-composition-evidence-and-release-custody.md)
 - [ADR-0013: Close trusted-object and raw-carrier semantics](0013-close-trusted-object-and-raw-carrier-semantics.md)
 - [ADR-0014: Close duplicate binding-record semantics](0014-close-duplicate-binding-record-semantics.md)
-- [ADR-0034: Admit the module change observation package](0034-admit-the-module-change-observation-package.md)
 
 ## Accepted decisions
 
+- [ADR-0034: Admit the module change observation package](0034-admit-the-module-change-observation-package.md)
 - [ADR-0033: Admit the module conformance kit](0033-admit-the-module-conformance-kit.md)
 
 - [ADR-0032: Give Assembly an authoring builder and capability-scoped handles](0032-give-assembly-an-authoring-builder-and-capability-scoped-handles.md)
