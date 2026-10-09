@@ -171,7 +171,7 @@ experiment", with these changes:
 | ADR review P3: "rejected as foreign", a running derivation after `seal`, "subscribes on its behalf", where the split is recorded, the Changesets version, the `recordDesired` name | all applied |
 | ADR re-review: a proposed ADR must be listed under "Proposed decisions" (`foundation:check`) | applied: OBS-1 step 1 adds the line, step 2 moves it |
 | ADR re-review: a pending derivation may also publish after `seal`; a stale `derive` failure does not reach `fail`; "a `close()`" covers the escape hatch; line breaks | applied in the ADR text |
-| ADR re-review: uncoded errors for `closeAndDrain("x")`, `since: null`, `resources: {}` and deep nesting | applied: C15 and C5 extended |
+| ADR re-review: errors without a code for `closeAndDrain("x")`, `since: null`, `resources: {}` and deep nesting | applied: C15 and C5 extended |
 
 Verified by the review: the C9 type rule rejects optional keys and accepts
 `T | undefined` keys and interfaces on TypeScript 7.0.2 and 5.8.3 (with and
