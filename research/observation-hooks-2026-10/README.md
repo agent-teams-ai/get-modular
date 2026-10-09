@@ -20,6 +20,7 @@ reviewed.
 
 | Path | What it is |
 | --- | --- |
+| [briefs/](briefs/README.md) | Execution briefs for the observation track (ADR, package, Consumer Module Standard rule) |
 | [design.md](design.md) | Revision 4 of the research and recommended design, edited for this repository: links adjusted to this layout, rule 10 updated with the error-code agreement of 2026-10-02, workspace `AGENTS.md` citations marked as outside this repository, reviewer naming as described below, lint and spelling fixes (a note and directive for the deliberate rule numbering, "fan-out", one reworded sentence about timers), the stale-response countermeasure scoped to derived results, and a pointer to the known sketch v4 defects |
 | [errata.md](errata.md) | Corrections to the preserved reports and sketch fixtures found after the move |
 | [sketch-v4-known-defects.md](sketch-v4-known-defects.md) | Defects in the frozen sketch v4 confirmed after the move and its drift against the resources package on main, as input for the implementation delivery |
