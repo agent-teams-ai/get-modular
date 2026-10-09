@@ -63,7 +63,7 @@ participants.
   packages.
 - Participants are recognized through a registry of the package copy that
   created them. A Host installs one copy of this package; a participant from
-  another copy is reported as foreign.
+  another copy is rejected as foreign.
 
 ### Contract
 
@@ -81,7 +81,7 @@ invariants. In summary:
   `Date`, `Map` and `Set` are rejected, because they could change without a
   commit. `commit` takes ownership of what it receives and freezes it.
 - The source has three facets: `reader.read(keys)` returns a snapshot with a
-  revision; `port.observe(keys, recordDesired, options)` registers interest;
+  revision; `port.observe(keys, callback, options)` registers interest;
   `commit` and `seal` stay with the Host. A revision is a commit number, not
   proof that a value changed; delivering A, then B, then A again delivers
   again, so participants apply idempotently.
@@ -90,17 +90,19 @@ invariants. In summary:
   path as every other delivery.
 - Delivery runs in a later task, at most once per commit per registration, and
   may coalesce revisions. A non-newer revision is ignored. Nothing is delivered
-  and nothing new is observed after the Host seals the source. Order between
-  registrations is deterministic but not part of the contract.
-- The callbacks `recordDesired`, `apply` and `fail` are synchronous and typed
-  to return `undefined`; `derive` returns a promise. Each callback runs
-  isolated: a throw or a returned value goes to the caller's `reportError` and
-  never stops another delivery. `reportError` must be synchronous and must not
-  throw; a throwing reporter is surfaced as an uncaught error.
+  and nothing new is observed after the Host seals the source; a derivation
+  already running may still publish until its registration is detached. Order
+  between registrations is deterministic but not part of the contract.
+- The observe callback, `apply` and `fail` are synchronous and typed to
+  return `undefined`; `derive` returns a promise. Each synchronous callback
+  runs isolated: a throw or a returned value goes to the caller's
+  `reportError` and never stops another delivery. A `derive` that throws or
+  rejects is a failure and reaches `fail`. `reportError` must be synchronous
+  and must not throw; a throwing reporter is surfaced as an uncaught error.
 - Participants are opaque values created only by `participantsFor<V>()`:
   `sync({ initial, apply })` or `derived({ keys, derive, apply, fail })`. A
   module opts in by providing one participant as a capability value; it gains
-  no subscription authority. Only the hub subscribes.
+  no subscription authority. Only the hub subscribes on its behalf.
 - A derived participant has one active run and one latest pending input. A
   result publishes only while the registration is attached and its revision is
   current; a failure calls `fail` instead of `apply`; a superseded or closed run
@@ -118,11 +120,13 @@ invariants. In summary:
 - Every error the package throws or rejects with, and every error the hub
   reports for a participant, carries a stable `code` of the form
   `observation.<area>.<reason>`; the hub's report names the participant and
-  keeps the original cause. `resources.scope.closed` passes through unwrapped.
-  The only exception is the uncaught error that surfaces a throwing
-  `reportError`. Consumers compare codes, never classes.
-- Record type parameters are invariant (`in out`), so a port for one record
-  type is never accepted as a port for another.
+  keeps the original cause. Two errors are excepted:
+  `resources.scope.closed`, which passes through unwrapped, and the uncaught
+  error that surfaces a throwing `reportError`. Consumers compare codes, never
+  classes.
+- The record type parameters of `Reader`, `ObservationPort` and `Participant`
+  are invariant (`in out`), so a reader, port or participant for one record
+  type is not accepted for another.
 
 ### Signals and scheduling
 
@@ -147,9 +151,10 @@ to escalate or abandon, how to read the first outcomes, and whether a change
 that a module does not observe needs a reconstruction with a new identity.
 
 `docs/architecture/system-boundary.md` stays unchanged. The package runs
-participant callbacks and derivations only as a library call by the holder of a
-source or a hub, as Assembly runs Host-supplied factories only when the Host
-calls `run()` and resources runs cleanups only on `close()`. Get Modular decides
+participant callbacks and derivations only in response to a library call
+(`commit`, `observe`, `startHub`, `offer` or a scope's `close()`), as Assembly
+runs Host-supplied factories only when the Host calls `run()` and resources
+runs cleanups only on `close()`. Get Modular decides
 no product lifecycle and holds no lifecycle authority; a participant is data,
 not a lifecycle method, and nothing is discovered by reflection. Three words of
 the boundary need a precise reading:
@@ -162,13 +167,16 @@ the boundary need a precise reading:
 - **Readiness.** A participant's first outcome is data. Whether the product is
   ready stays the Host's decision.
 
-This decision and the Consumer Module Standard record that split.
+This decision records that split; the Consumer Module Standard records it for
+module authors with the configuration rule.
 
-The owner direction recorded in OD-007 is the demonstrated need that the
-Consumer Module Standard asks for before a module takes part in an
-independently managed lifecycle. The first proof is a disposable TEST consumer;
-the owner accepted that no production consumer lands in the same delivery. A
-production adoption follows the Consumer Module Standard of its consumer.
+The Consumer Module Standard asks for an explicit demonstrated need before a
+consumer adopts a runtime mechanism for independently managed lifecycle. For
+this package and its disposable TEST consumer, the owner direction recorded in
+OD-007 is that need, and the owner accepted that no production consumer lands
+in the same delivery. A production consumer that adopts a source, a hub or a
+participant demonstrates its own need under the Consumer Module Standard it
+pins.
 
 ### Trust
 
@@ -191,18 +199,22 @@ a Host reconstruction. Reading durable authority per operation stays valid.
 packed archive names exactly one 0.x minor of resources. Every minor release of
 resources is accompanied by a minor release of observation, as ADR-0033 requires
 for conformance; the release that bumps resources carries its own minor
-changeset for observation, because Changesets gives an out-of-range peer
-dependent only a patch. Admission extends the existing leaf-package checks: the row
-declares resources as its only peer and lists after the resources row. The
+changeset for observation, because Changesets
+(`@changesets/assemble-release-plan` 7.0.0) gives an out-of-range peer
+dependent only a patch. Admission extends the existing leaf-package checks:
+the row declares resources as its only peer and lists after the resources
+row. The
 admission entry arrives in the same change as the package root and its
 implementation. No entry, stub or pending root precedes them; until then the
 existing checks keep rejecting `packages/observation`.
 
 ### Publication and versioning
 
-The package is public from 0.1.0, released through a Changesets release pull
-request planned together with train 2. Versions come from Changesets. Uploads follow the release rules that
-ADR-0030 applies to resources; no unattended publisher is created. Pre-1.0
+The package is public from 0.1.0. Versions come from Changesets in a release
+pull request. 0.1.0 is planned for the release pull request of train 2, which
+does not wait for it (owner decision of 2026-10-09); otherwise 0.1.0 follows in
+its own release pull request. Uploads follow the release rules that ADR-0030
+applies to resources; no unattended publisher is created. Pre-1.0
 breaking changes ship as minor releases with a CHANGELOG entry and a migration
 note, without compatibility aliases (ADR-0009). Version 1.0.0 needs a separate
 decision. While G1 is on hold, the package is not enrolled in
