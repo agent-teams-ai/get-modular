@@ -1,0 +1,13 @@
+{
+  "jobId": "ar-research-hooks-critic-arch-fast-20261001",
+  "sha256": "c22be8ed3d960be00f90366b395648e42045dcc56223b02981e934af9c5265c9",
+  "markdownSha256": "6af273dc9c031d8332187e2618e7f71a4c1541960f0466c35a38c86b9647939d",
+  "requested": {
+    "model": "gpt-6.1-sol",
+    "reasoningEffort": "xhigh",
+    "serviceTier": "fast",
+    "editMode": "read-only",
+    "workerRole": "reviewer",
+    "networkAccess": "restricted"
+  }
+}

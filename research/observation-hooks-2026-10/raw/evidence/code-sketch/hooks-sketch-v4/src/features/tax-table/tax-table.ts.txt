@@ -1,0 +1,25 @@
+// Application layer: pure state plus a consumer-owned port.
+
+export interface TaxRulesPort {
+  load(region: string, signal: AbortSignal): Promise<Readonly<{ region: string; vat: number }>>;
+}
+
+export class TaxTable {
+  #rules: Readonly<{ region: string; vat: number }> | undefined;
+  #lastFailure: Readonly<{ revision: number; cause: unknown }> | undefined;
+
+  replace(rules: Readonly<{ region: string; vat: number }>): undefined {
+    this.#rules = rules;
+    this.#lastFailure = undefined; // a newer success supersedes an older failure
+    return undefined;
+  }
+
+  recordFailure(revision: number, cause: unknown): undefined {
+    this.#lastFailure = { revision, cause }; // previous rules are kept
+    return undefined;
+  }
+
+  region(): string | undefined { return this.#rules?.region; }
+  vat(): number | undefined { return this.#rules?.vat; }
+  lastFailure(): Readonly<{ revision: number; cause: unknown }> | undefined { return this.#lastFailure; }
+}

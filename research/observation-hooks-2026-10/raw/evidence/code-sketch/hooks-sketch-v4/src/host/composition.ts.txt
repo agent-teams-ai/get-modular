@@ -1,0 +1,191 @@
+// Outer composition adapter (only file importing Core/Assembly). Resource scopes
+// per the accepted resources design: one attempt scope, `scoped()` child per module,
+// LIFO = reverse construction order. Host owns seal, deadlines and readiness policy.
+
+import { compileComposition, defineModule, many, required, type ModuleDeclaration } from "@get-modular/core";
+import { assemblyFor, type CapabilityContract, type FactoryContext } from "@get-modular/assembly";
+import { createScope, scoped, type CloseReport, type Resources } from "../kernel/resources.stand-in.ts";
+import { createKeyedSource, startHub, type KeyedSource, type ParticipantOutcome } from "../lib/observation/index.ts";
+import type { AppSettings, SettingsParticipant, SettingsPort, SettingsReader } from "../features/settings/index.ts";
+import { createGreeting, type GreeterApi } from "../features/greeting/index.ts";
+import { createPriceTable, type PriceApi, type RatesPort } from "../features/price-table/index.ts";
+import { createTaxTable, type TaxApi, type TaxRulesPort } from "../features/tax-table/index.ts";
+import { createAuditLog, createClock, type AuditApi, type ClockApi } from "../features/passive/index.ts";
+
+type Capabilities = {
+  "settings/read": CapabilityContract<SettingsReader, "settings/read/v1">;
+  "settings/observation": CapabilityContract<SettingsPort, "settings/observation/v1">;
+  "settings/participant": CapabilityContract<SettingsParticipant, "settings/participant/v1">;
+  "greeting/greeter": CapabilityContract<GreeterApi, "greeting/greeter/v1">;
+  "pricing/rates": CapabilityContract<RatesPort, "pricing/rates/v1">;
+  "pricing/price-table": CapabilityContract<PriceApi, "pricing/price-table/v1">;
+  "tax/rules": CapabilityContract<TaxRulesPort, "tax/rules/v1">;
+  "tax/table": CapabilityContract<TaxApi, "tax/table/v1">;
+  "audit/log": CapabilityContract<AuditApi, "audit/log/v1">;
+  "time/clock": CapabilityContract<ClockApi, "time/clock/v1">;
+};
+
+const exact = <const T extends string>(token: T) => ({ family: "exact", familyVersion: 1, token }) as const;
+const head = { kind: "get-modular.module-declaration", schemaVersion: 1 } as const;
+const mod = <const T extends string>(value: T) =>
+  ({ ...head, moduleId: value, implementationId: value, owner: { authority: "test-host", path: value.split("/") } }) as const;
+const PARTICIPANT = { capabilityId: "settings/participant", compatibility: exact("settings/participant/v1") } as const;
+const READ = { capabilityId: "settings/read", compatibility: exact("settings/read/v1") } as const;
+const OBSERVE = { capabilityId: "settings/observation", compatibility: exact("settings/observation/v1") } as const;
+
+const decl = {
+  settings: defineModule({ ...mod("settings/source"), provides: [READ, OBSERVE], slots: [] }),
+  hub: defineModule({ ...mod("settings/hub"), provides: [], slots: [
+    { slotId: "settings", ...OBSERVE, cardinality: required() },
+    { slotId: "participants", ...PARTICIPANT, cardinality: many({ min: 0, max: 1024 }) },
+  ] }),
+  rates: defineModule({ ...mod("adapter/rates"), provides: [{ capabilityId: "pricing/rates", compatibility: exact("pricing/rates/v1") }], slots: [] }),
+  rules: defineModule({ ...mod("adapter/tax-rules"), provides: [{ capabilityId: "tax/rules", compatibility: exact("tax/rules/v1") }], slots: [] }),
+  greeting: defineModule({ ...mod("feature/greeting"),
+    provides: [{ capabilityId: "greeting/greeter", compatibility: exact("greeting/greeter/v1") }, PARTICIPANT],
+    slots: [{ slotId: "settings", ...READ, cardinality: required() }] }),
+  price: defineModule({ ...mod("feature/price-table"),
+    provides: [{ capabilityId: "pricing/price-table", compatibility: exact("pricing/price-table/v1") }],
+    slots: [
+      { slotId: "settings", ...OBSERVE, cardinality: required() },
+      { slotId: "rates", capabilityId: "pricing/rates", compatibility: exact("pricing/rates/v1"), cardinality: required() },
+    ] }),
+  tax: defineModule({ ...mod("feature/tax-table"),
+    provides: [{ capabilityId: "tax/table", compatibility: exact("tax/table/v1") }, PARTICIPANT],
+    slots: [{ slotId: "rules", capabilityId: "tax/rules", compatibility: exact("tax/rules/v1"), cardinality: required() }] }),
+  audit: defineModule({ ...mod("feature/audit-log"),
+    provides: [{ capabilityId: "audit/log", compatibility: exact("audit/log/v1") }],
+    slots: [{ slotId: "settings", ...READ, cardinality: required() }] }),
+  clock: defineModule({ ...mod("feature/clock"), provides: [{ capabilityId: "time/clock", compatibility: exact("time/clock/v1") }], slots: [] }),
+};
+
+export type HostInput = Readonly<{
+  initial: AppSettings;
+  rates: RatesPort;
+  rules: TaxRulesPort;
+  constructionBudgetMs?: number;
+  /** TEST: make one module's factory hang after its real work ran. */
+  injectFactoryHang?: string;
+  /** TEST: see the source even if construction fails. */
+  sourceProbe?: (source: KeyedSource<AppSettings>) => void;
+}>;
+
+/**
+ * Host deadline policy: escalate at half the budget (cleanups hurry; a hub drain
+ * with work still running becomes a debt and LIFO continues), abandon at the full
+ * budget. REF'd timers on purpose: `AbortSignal.timeout()` is unref'd in Node.
+ */
+async function closeWithin(control: { close(options: { escalate: AbortSignal; abandon: AbortSignal }): Promise<CloseReport> }, budgetMs: number): Promise<CloseReport> {
+  const escalate = new AbortController();
+  const abandon = new AbortController();
+  const escalateTimer = setTimeout(() => escalate.abort(), Math.floor(budgetMs / 2));
+  const abandonTimer = setTimeout(() => abandon.abort(), budgetMs);
+  try {
+    return await control.close({ escalate: escalate.signal, abandon: abandon.signal });
+  } finally {
+    clearTimeout(escalateTimer);
+    clearTimeout(abandonTimer);
+  }
+}
+
+type ModuleContext = FactoryContext & Readonly<{ resources: Resources; reportError: (cause: unknown) => undefined }>;
+
+export async function composeHost(input: HostInput) {
+  const api = assemblyFor<Capabilities>();
+  const attempt = createScope({ name: "attempt" });
+  const errors: Error[] = [];
+
+  /** Host wrapper: child scope per module (scoped) + attributed error channel. */
+  const module = <Deps, R>(id: string, factory: (deps: Deps, ctx: ModuleContext) => R) =>
+    scoped<Deps, FactoryContext, R>(attempt.resources, id, (deps, ctx) => {
+      const reportError = (cause: unknown): undefined => { errors.push(new Error(id, { cause })); return undefined; };
+      if (input.injectFactoryHang === id) {
+        return (async () => { await factory(deps, { ...ctx, reportError }); return new Promise<never>(() => {}); })() as R;
+      }
+      return factory(deps, { ...ctx, reportError });
+    });
+
+  const declarations: ModuleDeclaration[] = Object.values(decl);
+  const participantIds = declarations
+    .filter((d) => d.provides.some((p) => p.capabilityId === "settings/participant"))
+    .map((d) => d.implementationId)
+    .sort(); // fail-closed: derived from what modules provide
+
+  const handles = {
+    settings: api.bindFactory(decl.settings, module("settings/source", async () => {
+      const source = createKeyedSource<AppSettings>(input.initial);
+      input.sourceProbe?.(source);
+      return { instance: source, capabilities: { "settings/read": source.reader, "settings/observation": source.port } };
+    })),
+    hub: api.bindFactory(decl.hub, module("settings/hub", async (deps: { settings: SettingsPort; participants: readonly SettingsParticipant[] }, ctx) => ({
+      instance: await startHub({ port: deps.settings, participants: deps.participants }, { resources: ctx.resources, participantIds, reportError: ctx.reportError }),
+      capabilities: {},
+    }))),
+    rates: api.bindFactory(decl.rates, module("adapter/rates", async () => ({ instance: {}, capabilities: { "pricing/rates": input.rates } }))),
+    rules: api.bindFactory(decl.rules, module("adapter/tax-rules", async () => ({ instance: {}, capabilities: { "tax/rules": input.rules } }))),
+    greeting: api.bindFactory(decl.greeting, module("feature/greeting", createGreeting)),
+    price: api.bindFactory(decl.price, module("feature/price-table", createPriceTable)),
+    tax: api.bindFactory(decl.tax, module("feature/tax-table", createTaxTable)),
+    audit: api.bindFactory(decl.audit, module("feature/audit-log", createAuditLog)),
+    clock: api.bindFactory(decl.clock, module("feature/clock", createClock)),
+  };
+  const bind = (consumer: string, slotId: string, providers: readonly string[]) =>
+    ({ consumerImplementationId: consumer, slotId, providerImplementationIds: providers });
+  const composition = await compileComposition({
+    declarations,
+    profile: {
+      kind: "get-modular.composition-profile", schemaVersion: 1, profileId: "test-host/observation-v3",
+      roots: declarations.map((d) => d.implementationId),
+      selections: declarations.map(({ moduleId, implementationId }) => ({ moduleId, implementationId })),
+      bindings: [
+        bind("settings/hub", "settings", ["settings/source"]),
+        bind("settings/hub", "participants", participantIds),
+        bind("feature/greeting", "settings", ["settings/source"]),
+        bind("feature/price-table", "settings", ["settings/source"]),
+        bind("feature/price-table", "rates", ["adapter/rates"]),
+        bind("feature/tax-table", "rules", ["adapter/tax-rules"]),
+        bind("feature/audit-log", "settings", ["settings/source"]),
+      ],
+    },
+  });
+  if (!("plan" in composition)) throw new Error("composition rejected", { cause: composition.diagnostics });
+  const ready = await api.prepare({ composition, factories: Object.values(handles), roots: handles });
+  if (ready.status !== "prepared") throw new Error("preparation failed", { cause: ready.error });
+
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const outcome = await Promise.race([
+    ready.prepared.run({ signal: controller.signal }),
+    new Promise<"timeout">((resolve) => { timer = setTimeout(() => resolve("timeout"), input.constructionBudgetMs ?? 5_000); }),
+  ]);
+  clearTimeout(timer);
+  if (outcome === "timeout" || outcome.status !== "succeeded") {
+    controller.abort();
+    const report = await closeWithin(attempt.control, 1_000);
+    throw new Error(outcome === "timeout" ? "construction exceeded its budget" : `construction ${outcome.status}`, { cause: { outcome, report } });
+  }
+  const { roots } = outcome;
+
+  return {
+    roots,
+    errors,
+    participantIds,
+    async participantReadiness(budgetMs: number) {
+      let deadline: ReturnType<typeof setTimeout> | undefined;
+      const expired = new Promise<undefined>((resolve) => { deadline = setTimeout(() => resolve(undefined), budgetMs); });
+      const settled = await Promise.all(roots.hub.outcomes().map(async ({ id, outcome: o }) => ({ id, result: await Promise.race([o, expired]) })));
+      clearTimeout(deadline);
+      const outcomes = settled.flatMap(({ result }): ParticipantOutcome[] => (result === undefined ? [] : [result]));
+      return {
+        ready: outcomes.filter((o) => o.kind === "ready"),
+        failed: outcomes.filter((o) => o.kind === "failed"),
+        pending: settled.filter(({ result }) => result === undefined).map(({ id }) => id),
+      };
+    },
+    /** Seal first, then one close of the attempt scope with a Host deadline. */
+    async shutdown(budgetMs: number): Promise<CloseReport> {
+      roots.settings.seal();
+      return closeWithin(attempt.control, budgetMs);
+    },
+  };
+}

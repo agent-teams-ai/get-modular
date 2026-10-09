@@ -1,0 +1,9 @@
+{
+  "jobId": "ar-research-hooks-flutter-std-20261001-ro-u",
+  "sha256": "63e74d3de5ff1c34aff571c42842928286f457756f6d03f8e73ebda842ff9b75",
+  "requested": {
+    "model": "gpt-6.1-sol",
+    "reasoningEffort": "max",
+    "serviceTier": "default"
+  }
+}

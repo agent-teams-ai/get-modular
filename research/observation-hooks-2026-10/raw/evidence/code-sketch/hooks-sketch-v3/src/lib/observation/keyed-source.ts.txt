@@ -1,0 +1,131 @@
+// Candidate GM package: an in-process keyed source with revisions, a key index
+// and deferred delivery. Products feed it from their real configuration
+// adapters; who may commit is product policy (only the Host gets `commit`/`seal`).
+
+import {
+  SourceId,
+  type Key, type Keys, type Observation, type ObservationPort, type ObserveOptions,
+  type Reader, type Snapshot, type Values,
+} from "./contract.ts";
+import { invokeIsolated } from "./callback-isolation.ts";
+
+interface Registration { readonly order: number; flush(): void }
+
+export type KeyedSource<V extends Values> = Readonly<{
+  reader: Reader<V>;
+  port: ObservationPort<V>;
+  /** Host-only. Returns the commit number; a no-op patch commits nothing. */
+  commit: (patch: Partial<V>) => number;
+  /** Host-only: refuse commits and stop scheduled delivery before shutdown. */
+  seal: () => undefined;
+  /** TEST diagnostics. */
+  stats: () => Readonly<{ commits: number; registrationVisits: number; deliveries: number }>;
+  listenerCount: (key: Key<V>) => number;
+}>;
+
+export function createKeyedSource<V extends Values>(initial: V): KeyedSource<V> {
+  const id = new SourceId();
+  const keysOfRecord = Object.keys(initial) as Key<V>[]; // the record's own keys, fixed at creation
+  const buckets = new Map<Key<V>, Set<Registration>>();
+  const lastTouched = new Map<Key<V>, number>();
+  const dirty = new Set<Registration>();
+  const stats = { commits: 0, registrationVisits: 0, deliveries: 0 };
+  let values: V = Object.freeze({ ...initial });
+  let commitNumber = 0;
+  let registrations = 0;
+  let sealed = false;
+  let flushScheduled = false;
+
+  const latest = (keys: readonly Key<V>[]): number => Math.max(0, ...keys.map((key) => lastTouched.get(key) ?? 0));
+  const pick = <K extends Key<V>>(keys: readonly K[]): Readonly<Pick<V, K>> => {
+    const out: Partial<Pick<V, K>> = {};
+    for (const key of keys) out[key] = values[key];
+    return Object.freeze(out) as Readonly<Pick<V, K>>; // projection cast: exactly `keys`
+  };
+  const snapshot = <K extends Key<V>>(keys: readonly [K, ...K[]], revision = latest(keys)): Snapshot<V, K> =>
+    Object.freeze({ source: id, keys, revision, values: pick(keys) });
+
+  const scheduleFlush = (): void => {
+    if (flushScheduled) return;
+    flushScheduled = true;
+    setTimeout(() => { // a later task: self-feeding callbacks cannot starve timers
+      flushScheduled = false;
+      if (sealed) return;
+      const batch = [...dirty].sort((a, b) => a.order - b.order);
+      dirty.clear();
+      for (const registration of batch) registration.flush();
+    }, 0);
+  };
+
+  const observe = <const S extends Keys<V>>(
+    keys: S, record: (next: Snapshot<V, S[number]>) => undefined, options: ObserveOptions,
+  ): Observation<V, S[number]> => {
+    if (!Array.isArray(keys) || keys.length === 0) throw new TypeError("observation.observe.empty-keys");
+    const initialSnapshot = snapshot<S[number]>(keys);
+    let cached = initialSnapshot;
+    let delivered = initialSnapshot.revision;
+    let attached = true;
+    const current = (): Snapshot<V, S[number]> => {
+      const revision = latest(keys);
+      if (cached.revision !== revision) cached = snapshot<S[number]>(keys, revision);
+      return cached;
+    };
+    const registration: Registration = {
+      order: registrations += 1,
+      flush: () => {
+        if (!attached) return;
+        const next = current();
+        if (next.revision <= delivered) return;
+        delivered = next.revision;
+        stats.deliveries += 1;
+        invokeIsolated(() => record(next), options.reportError);
+      },
+    };
+    for (const key of new Set(keys)) {
+      let bucket = buckets.get(key);
+      if (bucket === undefined) buckets.set(key, bucket = new Set());
+      bucket.add(registration); // atomic with `initial`
+    }
+    if (options.since !== undefined && options.since < initialSnapshot.revision) {
+      delivered = options.since; // catch-up goes through the same isolated, seal-aware flush
+      dirty.add(registration);
+      scheduleFlush();
+    }
+    return Object.freeze({
+      view: Object.freeze({ initial: initialSnapshot, current, admits: (revision: number) => attached && revision === latest(keys) }),
+      unsubscribe: (): undefined => {
+        attached = false;
+        dirty.delete(registration);
+        for (const key of keys) buckets.get(key)?.delete(registration);
+        return undefined;
+      },
+      isAttached: () => keys.some((key) => buckets.get(key)?.has(registration) === true),
+    });
+  };
+
+  return Object.freeze({
+    reader: Object.freeze({ read: <const S extends Keys<V>>(keys: S) => snapshot<S[number]>(keys) }),
+    port: Object.freeze({ observe }),
+    commit(patch: Partial<V>): number {
+      if (sealed) throw new Error("observation.commit.sealed");
+      const next: V = Object.freeze({ ...values, ...patch });
+      const changed = keysOfRecord.filter((key) => !Object.is(next[key], values[key]));
+      if (changed.length === 0) return commitNumber;
+      values = next;
+      commitNumber += 1;
+      stats.commits += 1;
+      for (const key of changed) {
+        lastTouched.set(key, commitNumber);
+        for (const registration of buckets.get(key) ?? []) {
+          stats.registrationVisits += 1;
+          dirty.add(registration);
+        }
+      }
+      scheduleFlush();
+      return commitNumber;
+    },
+    seal(): undefined { sealed = true; dirty.clear(); return undefined; },
+    stats: () => Object.freeze({ ...stats }),
+    listenerCount: (key: Key<V>) => buckets.get(key)?.size ?? 0,
+  });
+}

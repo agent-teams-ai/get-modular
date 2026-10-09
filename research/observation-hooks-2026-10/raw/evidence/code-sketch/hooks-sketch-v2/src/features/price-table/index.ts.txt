@@ -1,0 +1,37 @@
+// Feature composition. OPTION 2 = escape hatch: the module REQUIRES the
+// observation port and owns its registration and its own async lane.
+// Use only when the hub's sync/derived shapes do not fit.
+
+import type { OwnerContext } from "../../kernel/resource-owner.stand-in.ts";
+import { latestDerivation, ownObservation, type SettingsObservationPortV1, type SettingsView } from "../settings/index.ts";
+import { PriceTable, type RatesPort } from "./application/price-table.ts";
+
+export type { RatesPort } from "./application/price-table.ts";
+export type PriceApi = Readonly<{ price: (base: number) => ReturnType<PriceTable["price"]> }>;
+
+export async function createPriceTable(
+  deps: Readonly<{ settings: SettingsObservationPortV1; rates: RatesPort }>,
+  context: OwnerContext,
+) {
+  const table = new PriceTable();
+  let view: SettingsView<"priceCurrency"> | undefined;
+  const lane = latestDerivation<string, Readonly<{ currency: string; rate: number }>>({
+    derive: async (currency, signal) => ({ currency, rate: await deps.rates.fetchRate(currency, signal) }),
+    isCurrent: (revision) => view?.admits(revision) === true,
+    commit: (_revision, { currency, rate }) => table.setRate(currency, rate),
+    fail: (revision, cause) => context.reportError(new Error(`price rate for revision ${revision}`, { cause })),
+    report: context.reportError,
+  });
+  await ownObservation(context.resources, deps.settings, ["priceCurrency"], {
+    onSettings: (next) => lane.offer(next.revision, next.values.priceCurrency),
+    onAttached: (attached) => {
+      view = attached;
+      return lane.offer(attached.initial.revision, attached.initial.values.priceCurrency);
+    },
+    settle: () => { lane.close(); return lane.drain(); },
+  }, { reportError: context.reportError });
+  return {
+    instance: table,
+    capabilities: { "pricing/price-table": { price: (base: number) => table.price(base) } satisfies PriceApi },
+  };
+}

@@ -1,0 +1,28 @@
+// Application layer: pure state; consumer-owned RatesPort. No settings types.
+
+export interface RatesPort {
+  fetchRate(currency: string, signal: AbortSignal): Promise<number>;
+}
+
+export type PriceState =
+  | Readonly<{ kind: "pending" }>
+  | Readonly<{ kind: "ready"; currency: string; rate: number }>;
+
+export class PriceTable {
+  #state: PriceState = { kind: "pending" };
+  #lookups = 0; // survives configuration updates
+
+  setRate(currency: string, rate: number): undefined {
+    this.#state = { kind: "ready", currency, rate };
+    return undefined;
+  }
+
+  price(base: number): Readonly<{ amount: number; currency: string }> | undefined {
+    this.#lookups += 1;
+    return this.#state.kind === "ready" ? { amount: base * this.#state.rate, currency: this.#state.currency } : undefined;
+  }
+
+  snapshot(): Readonly<{ state: PriceState; lookups: number }> {
+    return { state: this.#state, lookups: this.#lookups };
+  }
+}

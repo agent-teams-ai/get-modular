@@ -1,0 +1,73 @@
+// Private, owner-local helper (option 2's DRY tool, option 3's engine).
+// One active derivation, one latest pending input, guarded publication.
+// No acquisition, retry, health, readiness or disposal. Imports nothing.
+
+export interface LatestDerivation<I> {
+  /** Synchronous. Older or duplicate revisions are ignored and never retry a failure. */
+  offer(revision: number, input: I): undefined;
+  /** Closes admission, drops pending input, aborts (cooperatively) the active run. */
+  close(): undefined;
+  /** Resolves once no run is active. Never resolves if derive never settles. */
+  drain(): Promise<void>;
+}
+
+type Job<I> = Readonly<{ revision: number; input: I }>;
+
+export function latestDerivation<I, T>(spec: Readonly<{
+  derive: (input: I, signal: AbortSignal) => Promise<T>;
+  /** Checked right before publication: admission AND current source revision. */
+  isCurrent: (revision: number) => boolean;
+  commit: (revision: number, result: T) => undefined;
+  fail: (revision: number, cause: unknown) => undefined;
+}>): LatestDerivation<I> {
+  let open = true;
+  let lastOffered = Number.NEGATIVE_INFINITY;
+  let pending: Job<I> | undefined;
+  let active: Readonly<{ controller: AbortController; settled: Promise<void> }> | undefined;
+
+  const publish = (job: Job<I>, outcome: () => undefined): void => {
+    if (open && spec.isCurrent(job.revision)) outcome();
+  };
+
+  const start = (job: Job<I>): void => {
+    const controller = new AbortController();
+    // `active` is set before user code runs (derive starts in a later microtask).
+    const settled = Promise.resolve()
+      .then(() => spec.derive(job.input, controller.signal))
+      .then(
+        (result) => publish(job, () => spec.commit(job.revision, result)),
+        (cause: unknown) => publish(job, () => spec.fail(job.revision, cause)),
+      )
+      .catch((cause: unknown) => publish(job, () => spec.fail(job.revision, cause)))
+      .finally(() => {
+        active = undefined;
+        const next = pending;
+        pending = undefined;
+        if (open && next !== undefined) start(next);
+      });
+    active = Object.freeze({ controller, settled });
+  };
+
+  return Object.freeze({
+    offer(revision: number, input: I): undefined {
+      if (!open || revision <= lastOffered) return undefined;
+      lastOffered = revision;
+      if (active === undefined) {
+        start({ revision, input });
+      } else {
+        pending = { revision, input };
+        active.controller.abort();
+      }
+      return undefined;
+    },
+    close(): undefined {
+      open = false;
+      pending = undefined;
+      active?.controller.abort();
+      return undefined;
+    },
+    async drain(): Promise<void> {
+      while (active !== undefined) await active.settled;
+    },
+  });
+}

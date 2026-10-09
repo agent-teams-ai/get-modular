@@ -1,0 +1,22 @@
+// OPTION 3 (derived participant). Pure derive + synchronous commit/fail.
+import { deriveFromSettings } from "../settings/index.ts";
+import { TaxTable, type TaxRulesPort } from "./tax-table.ts";
+
+export type { TaxRulesPort } from "./tax-table.ts";
+export type TaxApi = Readonly<{ vat: () => number | undefined }>;
+
+export async function createTaxTable(deps: Readonly<{ rules: TaxRulesPort }>) {
+  const table = new TaxTable();
+  return {
+    instance: table,
+    capabilities: {
+      "tax/table": { vat: () => table.vat() } satisfies TaxApi,
+      "settings/participant": deriveFromSettings({
+        keys: ["taxRegion"],
+        derive: ({ taxRegion }, signal) => deps.rules.load(taxRegion, signal),
+        commit: (rules) => table.replace(rules),
+        fail: (cause, { revision }) => table.recordFailure(revision, cause),
+      }),
+    },
+  };
+}

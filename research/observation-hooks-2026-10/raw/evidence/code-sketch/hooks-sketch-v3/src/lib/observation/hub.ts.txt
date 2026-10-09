@@ -1,0 +1,125 @@
+// Candidate GM package: the participation hub for ONE event family.
+// Uses the module's `Resources` (from @get-modular/resources) exactly as the
+// resources design rules 4-5 prescribe: drain records first, then one
+// subscription record per participant, so LIFO = unsubscribe all -> drain all.
+// Debt paths name the participant. Deadlines/readiness decisions stay Host policy.
+
+import type { Resources } from "../../kernel/resources.stand-in.ts";
+import type { Key, Keys, ObservationPort, Participant, ParticipantVisitor, Snapshot, Values, View } from "./contract.ts";
+import type { Report } from "./callback-isolation.ts";
+import { latestDerivation } from "./latest-derivation.ts";
+
+export type ParticipantOutcome =
+  | Readonly<{ id: string; kind: "ready"; revision: number }>
+  | Readonly<{ id: string; kind: "failed"; revision: number; cause: unknown }>;
+
+type Running = Readonly<{
+  unsubscribe: () => undefined;
+  isAttached: () => boolean;
+  drain: () => Promise<void>;
+  firstOutcome: Promise<ParticipantOutcome>;
+}>;
+type Prepared = () => Running;
+
+function visitor<V extends Values>(port: ObservationPort<V>, id: string, report: Report): ParticipantVisitor<V, Prepared> {
+  return {
+    sync: <K extends Key<V>>(spec: { initial: Snapshot<V, K>; apply: (next: Snapshot<V, K>) => undefined }): Prepared => () => {
+      let applied = spec.initial.revision;
+      const apply = (next: Snapshot<V, K>): undefined => {
+        if (next.revision <= applied) return undefined;
+        applied = next.revision;
+        spec.apply(next);
+        return undefined;
+      };
+      const observation = port.observe(spec.initial.keys, apply, { reportError: report, since: spec.initial.revision });
+      if (observation.view.initial.source !== spec.initial.source) {
+        observation.unsubscribe();
+        throw new Error("construction read and observation port use different sources");
+      }
+      return {
+        unsubscribe: observation.unsubscribe, isAttached: observation.isAttached,
+        drain: async () => {}, firstOutcome: Promise.resolve({ id, kind: "ready", revision: applied }),
+      };
+    },
+    derived: <S extends Keys<V>, T>(spec: {
+      keys: S;
+      derive: (values: Readonly<Pick<V, S[number]>>, signal: AbortSignal) => Promise<T>;
+      commit: (result: T, snapshot: Snapshot<V, S[number]>) => undefined;
+      fail: (cause: unknown, snapshot: Snapshot<V, S[number]>) => undefined;
+    }): Prepared => () => {
+      let first!: (outcome: ParticipantOutcome) => void;
+      const firstOutcome = new Promise<ParticipantOutcome>((resolve) => { first = resolve; });
+      let view: View<V, S[number]> | undefined;
+      let latest: Snapshot<V, S[number]> | undefined;
+      const lane = latestDerivation<Snapshot<V, S[number]>, T>({
+        derive: (snapshot, signal) => spec.derive(snapshot.values, signal),
+        isCurrent: (revision) => view?.admits(revision) === true && latest?.revision === revision,
+        commit: (revision, result) => {
+          try {
+            if (latest !== undefined) spec.commit(result, latest);
+          } catch (cause) {
+            first({ id, kind: "failed", revision, cause });
+            throw cause;
+          }
+          first({ id, kind: "ready", revision });
+          return undefined;
+        },
+        fail: (revision, cause) => {
+          first({ id, kind: "failed", revision, cause });
+          if (latest !== undefined) spec.fail(cause, latest);
+          return undefined;
+        },
+        report,
+      });
+      const offer = (next: Snapshot<V, S[number]>): undefined => { latest = next; return lane.offer(next.revision, next); };
+      const observation = port.observe(spec.keys, offer, { reportError: report });
+      view = observation.view;
+      offer(observation.view.initial);
+      return {
+        unsubscribe: () => { observation.unsubscribe(); lane.close(); return undefined; },
+        isAttached: observation.isAttached,
+        drain: () => lane.drain(),
+        firstOutcome,
+      };
+    },
+  };
+}
+
+export async function startHub<V extends Values>(
+  deps: Readonly<{ port: ObservationPort<V>; participants: readonly Participant<V>[] }>,
+  context: Readonly<{ resources: Resources; participantIds: readonly string[]; reportError: (cause: unknown) => undefined }>,
+) {
+  if (deps.participants.length !== context.participantIds.length) throw new Error("observation.hub.participant-ids-mismatch");
+  const cells = new Map<string, { running: Running | undefined }>();
+  for (const id of context.participantIds) { // drain records first (LIFO: they run after every unsubscribe)
+    cells.set(id, await context.resources.setup({
+      name: `drain:${id}`,
+      setup: () => ({ running: undefined as Running | undefined }),
+      cleanup: async (cell) => { await cell.running?.drain(); },
+    }));
+  }
+  const running: Array<Readonly<{ id: string; entry: Running }>> = [];
+  for (const [index, participant] of deps.participants.entries()) {
+    const id = context.participantIds[index]!;
+    const report: Report = (cause) => context.reportError(new Error(`participant ${id}`, { cause }));
+    let entry: Running;
+    try {
+      const prepared = participant.open(visitor(deps.port, id, report)); // effect-free
+      entry = await context.resources.setup({
+        name: `subscription:${id}`,
+        setup: () => prepared(), // the single subscribe point; atomic
+        cleanup: (value) => {
+          value.unsubscribe();
+          if (value.isAttached()) throw new Error("still attached");
+        },
+      });
+    } catch (cause) {
+      throw new Error(`participant ${id} failed to start`, { cause });
+    }
+    cells.get(id)!.running = entry;
+    running.push({ id, entry });
+  }
+  return Object.freeze({
+    outcomes: () => running.map(({ id, entry }) => ({ id, outcome: entry.firstOutcome })),
+  });
+}

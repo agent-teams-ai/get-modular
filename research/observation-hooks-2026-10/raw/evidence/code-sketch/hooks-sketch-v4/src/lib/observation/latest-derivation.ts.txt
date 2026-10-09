@@ -1,0 +1,112 @@
+// `@get-modular/observation` (candidate): one active derivation, one latest
+// pending input, guarded and isolated publication. Used by the hub and by
+// escape-hatch module composition code. No acquisition, retry or disposal policy.
+
+import { ObservationError } from "./contract.ts";
+import { invokeIsolated, safeReport, type Report } from "./callback-isolation.ts";
+
+export interface LatestDerivation<I> extends AsyncDisposable {
+  /** Synchronous. Older or duplicate revisions are ignored and never retry a failure. */
+  offer(revision: number, input: I): undefined;
+  /** Closes admission, drops pending input, aborts (cooperatively) the active run. */
+  close(): undefined;
+  /** True while a run is active. */
+  busy(): boolean;
+  /**
+   * Close, then wait for the active run. If `escalate` aborts while a run is still
+   * active, reject with `observation.derivation.still-running` (a cleanup debt), so
+   * a resources scope can continue its LIFO instead of waiting for `abandon`.
+   */
+  closeAndDrain(escalate?: AbortSignal): Promise<void>;
+}
+
+type Job<I> = Readonly<{ revision: number; input: I }>;
+
+export function createLatestDerivation<I, T>(spec: Readonly<{
+  derive: (input: I, signal: AbortSignal) => Promise<T>;
+  /** Checked right before publication: admission AND current revision. */
+  isCurrent: (revision: number) => boolean;
+  apply: (result: T, meta: Readonly<{ revision: number }>) => undefined;
+  fail: (cause: unknown, meta: Readonly<{ revision: number }>) => undefined;
+  reportError: Report;
+}>): LatestDerivation<I> {
+  let open = true;
+  let lastOffered = Number.NEGATIVE_INFINITY;
+  let pending: Job<I> | undefined;
+  let active: Readonly<{ controller: AbortController; settled: Promise<void> }> | undefined;
+
+  const abort = (controller: AbortController): void =>
+    invokeIsolated(() => { controller.abort(); return undefined; }, spec.reportError);
+
+  const publish = (job: Job<I>, outcome: () => unknown): void => {
+    let current = false;
+    invokeIsolated(() => { current = open && spec.isCurrent(job.revision); return undefined; }, spec.reportError);
+    if (current) invokeIsolated(outcome, spec.reportError);
+  };
+
+  const start = (job: Job<I>): void => {
+    const controller = new AbortController();
+    const settled = (async () => {
+      await Promise.resolve(); // `active` is assigned before user code runs
+      if (!open || controller.signal.aborted) return;
+      let result: T;
+      try {
+        result = await spec.derive(job.input, controller.signal);
+      } catch (cause) {
+        publish(job, () => spec.fail(cause, { revision: job.revision }));
+        return;
+      }
+      publish(job, () => spec.apply(result, { revision: job.revision }));
+    })()
+      .catch((cause: unknown) => safeReport(spec.reportError, cause))
+      .finally(() => {
+        active = undefined;
+        const next = pending;
+        pending = undefined;
+        if (open && next !== undefined) start(next);
+      });
+    active = Object.freeze({ controller, settled });
+  };
+
+  const close = (): undefined => {
+    open = false;
+    pending = undefined;
+    if (active !== undefined) abort(active.controller);
+    return undefined;
+  };
+  const drain = async (): Promise<void> => {
+    while (active !== undefined) await active.settled;
+  };
+  const closeAndDrain = async (escalate?: AbortSignal): Promise<void> => {
+    close();
+    if (active === undefined) return;
+    if (escalate === undefined) return drain();
+    const escalated = new Promise<"escalated">((resolve) => {
+      if (escalate.aborted) resolve("escalated");
+      else escalate.addEventListener("abort", () => resolve("escalated"), { once: true });
+    });
+    const result = await Promise.race([drain().then(() => "drained" as const), escalated]);
+    if (result !== "escalated") return;
+    await new Promise<void>((resolve) => { setTimeout(resolve, 0); }); // one task for a cooperative abort to settle
+    if (active !== undefined) {
+      throw new ObservationError("observation.derivation.still-running", "derivation still running after escalation");
+    }
+  };
+
+  return Object.freeze({
+    offer(revision: number, input: I): undefined {
+      if (!open || revision <= lastOffered) return undefined;
+      lastOffered = revision;
+      if (active === undefined) start({ revision, input });
+      else {
+        pending = { revision, input };
+        abort(active.controller);
+      }
+      return undefined;
+    },
+    close,
+    busy: () => active !== undefined,
+    closeAndDrain,
+    [Symbol.asyncDispose]: () => closeAndDrain(),
+  });
+}

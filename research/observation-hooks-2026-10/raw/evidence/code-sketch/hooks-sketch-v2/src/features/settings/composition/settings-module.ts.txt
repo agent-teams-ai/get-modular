@@ -1,0 +1,13 @@
+// Settings feature module: the source. The instance (with commit/seal) goes to
+// the Host root only; capabilities are frozen read/observe facades.
+
+import type { AppSettings } from "../domain/app-settings.ts";
+import { InMemorySettingsSource } from "../adapters/in-memory-settings-source.ts";
+
+export async function createSettingsModule(initial: AppSettings) {
+  const source = new InMemorySettingsSource(initial);
+  return {
+    instance: source,
+    capabilities: { "settings/read": source.reader, "settings/observation": source.port },
+  };
+}
