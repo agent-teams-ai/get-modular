@@ -17,6 +17,7 @@ summary: Index of Get Modular architecture decisions.
 
 ## Accepted decisions
 
+- [ADR-0034: Admit the module change observation package](0034-admit-the-module-change-observation-package.md)
 - [ADR-0033: Admit the module conformance kit](0033-admit-the-module-conformance-kit.md)
 
 - [ADR-0032: Give Assembly an authoring builder and capability-scoped handles](0032-give-assembly-an-authoring-builder-and-capability-scoped-handles.md)
