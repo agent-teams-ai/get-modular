@@ -1,6 +1,6 @@
 {
   "name": "@get-modular/conformance",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Test harness and contract suites for Get Modular modules and composition roots.",
   "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org/" },
   "repository": {

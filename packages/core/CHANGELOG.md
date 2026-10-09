@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0
+
+### Minor Changes
+
+- fcb3a32: Align Core with Assembly 0.3.0 under the exact-pair rule (ADR-0027, ADR-0031). No API or behavior change.
+  
+  Authoring surface changed: no
+
 ## 0.2.0
 
 ### Minor Changes
