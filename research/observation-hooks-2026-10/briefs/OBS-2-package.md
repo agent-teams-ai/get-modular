@@ -151,8 +151,11 @@ export type { LatestDerivation } from "./features/derivation/latest-derivation.j
   accessor with `observation.values.not-plain`, at every depth and on the
   top-level `initial` and `patch` records. `commit` and `createKeyedSource`
   validate once and merge only the values captured during validation (no second
-  read through spread). Tests: a getter on the patch record, on `initial`, and
-  nested; each throws and leaves the source unchanged.
+  read through spread). A throw while validating a value, including an
+  exhausted stack on deep nesting, is rethrown as `observation.values.not-plain`
+  with the original cause. Tests: a getter on the patch record, on `initial`,
+  and nested; a nesting depth of 200,000; each throws and leaves the source
+  unchanged.
 - **C6 `__proto__` keys** (known defect "Projections"). Projections and merged
   records are plain objects built with `Object.defineProperty` (enumerable,
   writable until frozen) so every key, including `__proto__`, is an own data
@@ -201,8 +204,12 @@ export type { LatestDerivation } from "./features/derivation/latest-derivation.j
   callbacks are required, `options` an object with a `reportError` function.
   They throw `ObservationError("observation.argument.invalid")`; `startHub`
   rejects with it. The more specific codes stay (`keys.empty`, `keys.unknown`,
-  `values.not-plain`, `since.invalid`, `derivation.invalid-revision`). Follow
-  `packages/resources/src/features/scope/arguments.ts`. Tests:
+  `values.not-plain`, `since.invalid`, `derivation.invalid-revision`).
+  `closeAndDrain` takes `undefined` or an `AbortSignal`; `since` is `undefined`
+  or an object with a `source`, a string array `keys` and a `revision`;
+  `startHub`'s `port` has an `observe` function and `resources` a `setup`
+  function. Follow `packages/resources/src/features/scope/arguments.ts`. Tests
+  also cover `closeAndDrain("x")`, `since: null` and `resources: {}`. Tests:
   `createKeyedSource(null)`, `commit(null)`, `observe(keys, fn, undefined)`,
   `startHub(undefined, ctx)` and `sync({})` each give the code.
 

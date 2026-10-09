@@ -169,6 +169,9 @@ experiment", with these changes:
 | ADR review (2026-10-09, before acceptance): "the only exception" next to a second exception, and `TypeError`s without a code for malformed arguments | applied: both exceptions named; C15 and P13 add `observation.argument.invalid` |
 | ADR review P2: the demonstrated-need sentence, `derive` under "each callback runs isolated", invariance of every record type, the release sentence without owner decision 6, "library call by the holder" excluding the escape hatch | all applied in the ADR text of OBS-1 and PR #154 |
 | ADR review P3: "rejected as foreign", a running derivation after `seal`, "subscribes on its behalf", where the split is recorded, the Changesets version, the `recordDesired` name | all applied |
+| ADR re-review: a proposed ADR must be listed under "Proposed decisions" (`foundation:check`) | applied: OBS-1 step 1 adds the line, step 2 moves it |
+| ADR re-review: a pending derivation may also publish after `seal`; a stale `derive` failure does not reach `fail`; "a `close()`" covers the escape hatch; line breaks | applied in the ADR text |
+| ADR re-review: uncoded errors for `closeAndDrain("x")`, `since: null`, `resources: {}` and deep nesting | applied: C15 and C5 extended |
 
 Verified by the review: the C9 type rule rejects optional keys and accepts
 `T | undefined` keys and interfaces on TypeScript 7.0.2 and 5.8.3 (with and

@@ -89,9 +89,15 @@ from `# ADR-NNNN` on). Set `related:` to OD-007, ADR-0003, ADR-0009, ADR-0012,
 ADR-0015, ADR-0017, ADR-0019, ADR-0023, ADR-0025, ADR-0026, ADR-0029, ADR-0030,
 ADR-0031, ADR-0033. Keep every other front matter field the tool wrote.
 
+`docs/decisions/README.md`: add
+`- [ADR-NNNN: Admit the module change observation package](NNNN-admit-the-module-change-observation-package.md)`
+as the last item under "## Proposed decisions" (Foundation requires every
+proposed ADR there exactly once).
+
 Commit 1: `docs(architecture): propose ADR-NNNN for module change observation`.
 Gates, each exit 0: `pnpm docs:protocol:check` (fix cspell by rewording or by
-adding real words to `.cspell.json`), `pnpm governance:check`.
+adding real words to `.cspell.json`), `pnpm governance:check`,
+`pnpm foundation:check`.
 
 Open the PR as a draft. Run an independent review of the ADR text against the
 cited ADRs, `system-boundary.md`, `AGENTS.md` and the research archive; changes
@@ -106,9 +112,8 @@ go in new commits. When the review is clean, record the approval in the PR
    appends the registry entry to `architecture/decisions/accepted-decisions.json`
    (never edit that file by hand). The diff is one appended object
    `{ id, path, immutableDigest }`.
-3. `docs/decisions/README.md`: add
-   `- [ADR-NNNN: Admit the module change observation package](NNNN-admit-the-module-change-observation-package.md)`
-   as the first item under "## Accepted decisions".
+3. `docs/decisions/README.md`: move the ADR-NNNN line from "## Proposed
+   decisions" to the first item under "## Accepted decisions".
 4. `tests/ownership-checkpoint.test.mjs`: append
    `{ id: "ADR-NNNN", path: "docs/decisions/NNNN-admit-the-module-change-observation-package.md", immutableDigest: "<value from the registry>" }`
    to the array of decisions after the checkpoint base (the block that ends
@@ -229,14 +234,16 @@ invariants. In summary:
 - Delivery runs in a later task, at most once per commit per registration, and
   may coalesce revisions. A non-newer revision is ignored. Nothing is delivered
   and nothing new is observed after the Host seals the source; a derivation
-  already running may still publish until its registration is detached. Order
-  between registrations is deterministic but not part of the contract.
+  offered before the seal, running or pending, may still publish until its
+  registration is detached. Order between registrations is deterministic but
+  not part of the contract.
 - The observe callback, `apply` and `fail` are synchronous and typed to
   return `undefined`; `derive` returns a promise. Each synchronous callback
   runs isolated: a throw or a returned value goes to the caller's
   `reportError` and never stops another delivery. A `derive` that throws or
-  rejects is a failure and reaches `fail`. `reportError` must be synchronous
-  and must not throw; a throwing reporter is surfaced as an uncaught error.
+  rejects is a failure and reaches `fail` under the same publication rule as a
+  result. `reportError` must be synchronous and must not throw; a throwing
+  reporter is surfaced as an uncaught error.
 - Participants are opaque values created only by `participantsFor<V>()`:
   `sync({ initial, apply })` or `derived({ keys, derive, apply, fail })`. A
   module opts in by providing one participant as a capability value; it gains
@@ -290,12 +297,12 @@ that a module does not observe needs a reconstruction with a new identity.
 
 `docs/architecture/system-boundary.md` stays unchanged. The package runs
 participant callbacks and derivations only in response to a library call
-(`commit`, `observe`, `startHub`, `offer` or a scope's `close()`), as Assembly
-runs Host-supplied factories only when the Host calls `run()` and resources
-runs cleanups only on `close()`. Get Modular decides
-no product lifecycle and holds no lifecycle authority; a participant is data,
-not a lifecycle method, and nothing is discovered by reflection. Three words of
-the boundary need a precise reading:
+(`commit`, `observe`, `startHub`, `offer` or a `close()`), as Assembly runs
+Host-supplied factories only when the Host calls `run()` and resources runs
+cleanups only on `close()`. Get Modular decides no product lifecycle and holds
+no lifecycle authority; a participant is data, not a lifecycle method, and
+nothing is discovered by reflection. Three words of the boundary need a
+precise reading:
 
 - **Drain.** The hub's drain is a cleanup entry in a resources scope that the
   Host closes. It waits only for the package's own derivations; it never
@@ -341,10 +348,9 @@ changeset for observation, because Changesets
 (`@changesets/assemble-release-plan` 7.0.0) gives an out-of-range peer
 dependent only a patch. Admission extends the existing leaf-package checks:
 the row declares resources as its only peer and lists after the resources
-row. The
-admission entry arrives in the same change as the package root and its
-implementation. No entry, stub or pending root precedes them; until then the
-existing checks keep rejecting `packages/observation`.
+row. The admission entry arrives in the same change as the package root and
+its implementation. No entry, stub or pending root precedes them; until then
+the existing checks keep rejecting `packages/observation`.
 
 ### Publication and versioning
 
