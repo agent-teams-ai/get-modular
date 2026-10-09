@@ -55,6 +55,16 @@ from these briefs, the briefs and the owner decisions below win.
 4. 2026-10-08: `@get-modular/resources` is a declared peer, not a structural
    port.
 5. 2026-10-08: 0.1.0 contains `sync`, `derived` and the escape hatch.
+6. 2026-10-09: train 2 does not wait for observation. If OBS-2 is not on
+   `main` when REL-2 opens, or OBS-T fails on the REL-2 archives, REL-2 ships
+   without observation, and observation 0.1.0 follows in its own release pull
+   request as soon as it is ready.
+7. 2026-10-09: the owner delegates the track to the planning side. It
+   prepares OBS-1 and approves the ADR text after an independent review; OBS-2
+   and OBS-3 are implemented by a separate implementer and reviewed
+   independently; the planning side merges each PR after that review and green
+   CI and signs off OBS-T. Only points that the planning side cannot settle
+   with confidence go to the owner.
 
 ## 3. Decisions taken by this plan (reliability / confidence out of 10)
 
@@ -82,6 +92,8 @@ from these briefs, the briefs and the owner decisions below win.
 | OBS-2 `feat(observation): add @get-modular/observation` | OBS-1 merged, train 1 released, REL-2 not open | src ~650-800, tests ~900-1,300, config ~250-400, README ~200 | 3-4 |
 | OBS-3 `docs(architecture): add the settings and change observation rule to the consumer standard` | OBS-2 and T2-5 merged | docs ~80, test ~15 | 0.5-1 |
 | OBS-T (modularity-host-test) | REL-2 final head and archives | 300-450 / 550-850 / 100-150 | 1.5-2 |
+
+If observation is not ready in time, train 2 does not wait (owner decision 6).
 
 Order: OBS-0 -> OBS-1 (any time) -> train 1 released -> OBS-2 (parallel to
 T2-2..T2-4) -> T2-5 -> OBS-3 -> REL-2 opens with observation -> OBS-T and
@@ -119,16 +131,17 @@ experiment", with these changes:
   adapter queues every waiter and checks own keys; participants copy or freeze
   port results they keep; the greeter picks the honorific by locale;
 - Host wiring follows the Consumer Module Standard after OBS-3;
-- any failure stops REL-2's observation part and returns the design to review;
-  Core, Assembly, resources and conformance may still be released without it if
-  the owner decides so.
+- a failure takes observation out of REL-2 (owner decision 6): the
+  observation changeset leaves `main` by a separate PR, REL-2 is regenerated
+  and released without it, and observation follows in its own release pull
+  request after the fix and a new OBS-T run on its own archives.
 
 ## 7. Risks and global stop rules
 
 | Risk | Mitigation / stop |
 | --- | --- |
 | The package lands on unreleased train 1 | hard stop in OBS-2 |
-| REL-2 opens before OBS-2 lands | OBS-2 stops; the owner decides between a separate release PR and waiting |
+| REL-2 opens before OBS-2 lands | OBS-2 waits until REL-2 is merged, then lands without the REL-2 amendment; observation gets its own release pull request (owner decision 6) |
 | The type rule for optional keys fails on one compiler | stop with measurements; no partial rule |
 | A shared gate file conflicts with train 2 | rebase and re-run gates; never drop edits |
 | A lane exceeds 810 s | stop and report |

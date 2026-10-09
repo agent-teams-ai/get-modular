@@ -22,7 +22,10 @@ with peers), read with `gh pr diff 141 --repo agent-teams-ai/get-modular`.
    stop: the new changeset would fold into the train 1 release.
 3. `ls .changeset/` and `gh pr list --repo agent-teams-ai/get-modular --state open`:
    note every open train 2 PR (T2-2 to T2-5, REL-2). If REL-2 is already open:
-   stop and ask (the package then needs its own release PR).
+   do not land while it is open (the changeset is a release input). Wait until
+   REL-2 is merged, then land without A7; observation 0.1.0 then gets its own
+   release pull request, briefed by the planning side (owner decision 6 of
+   the index).
 4. `git log --oneline 9e09e90..origin/main -- architecture/checks/leaf-packages.mjs architecture/checks/leaf-package-admission.mjs package.json .github/workflows/ci.yml architecture/foundation tests/leaf-package-admission.test.mjs tests/ci-check-lanes.test.mjs`:
    read every change since this brief was written; the rule "a leaf may peer
    only on Core, Assembly or an earlier public row" must still hold
@@ -37,7 +40,8 @@ with peers), read with `gh pr diff 141 --repo agent-teams-ai/get-modular`.
 
 ## Owner decisions (facts) and open questions
 
-See OBS-1 "Owner decisions". In short: public 0.1.0 released with train 2;
+See OBS-1 "Owner decisions". In short: public 0.1.0 planned with train 2,
+which does not wait for it;
 resources is the only peer; 0.1.0 contains `sync`, `derived` and the escape
 hatch; no production consumer in this delivery (TEST first). Open questions:
 none. Anything this brief does not cover: stop and ask.
@@ -338,19 +342,21 @@ release is explained:
   `@get-modular/resources` with the current resources minor, no `workspace:`;
   record its SHA-256 and SHA-512;
 - PR body: add OBS-T to the outstanding work and to the merge line ("Do not
-  merge before the owner signs off TEST-2, AR-3 and OBS-T"); add "publish
+  merge before the owner signs off TEST-2 and AR-3 and the planning side signs
+  off OBS-T"); add "publish
   observation after the other packages" to the publication note;
-- "Must not": the merge command comes after the owner signs off TEST-2, AR-3
-  and OBS-T;
+- "Must not": the merge command comes after the owner signs off TEST-2 and
+  AR-3 and the planning side signs off OBS-T (owner delegation of
+  2026-10-09);
 - the line of the PR body that moves consumer pins "to the T2-5 commit":
   "to the OBS-3 merge commit, the last revision of the standard in this
   release";
 - "Done": the archives are recorded for TEST-2, AR-3 and OBS-T;
-- risks: "OBS-T fails" -> stop; if the owner decides to release train 2
-  without observation, remove the observation changeset on `main` by a
-  separate PR and regenerate REL-2 through "When `main` moves" step 3; in that
-  case the observation items of this brief do not apply, and the PR body
-  records the owner decision.
+- risks: "OBS-T fails" -> train 2 does not wait (owner decision of
+  2026-10-09): remove the observation changeset on `main` by a separate PR and
+  regenerate REL-2 through "When `main` moves" step 3; from then on the
+  observation items of this brief do not apply, the PR body records the
+  decision, and observation follows in its own release pull request.
 
 Also amend `research/contract-evolution-2026-10/README.md` section 3.1 item 9
 ("Out of scope: ... hooks/observation") to "Out of scope: plugins and

@@ -29,7 +29,7 @@ next free ADR number at creation time.
    `architecture/decisions/accepted-decisions.json`, a release input, so it is
    merged only while no release PR is open:
    `gh pr list --repo agent-teams-ai/get-modular --state open --head changeset-release/main`
-   prints nothing. Otherwise wait, or ask the owner.
+   prints nothing. Otherwise wait.
 7. If an ADR with a higher number than NNNN was accepted first (for example
    train 2's T2-1), run the promote command of step 2 in a scratch checkout first
    and check that it accepts an out-of-order id. If it does not: stop and report.
@@ -47,14 +47,22 @@ next free ADR number at creation time.
   ADR-0033), not through a structural port; 0.1.0 contains `sync`, `derived`
   and the escape hatch; the track runs in parallel with train 2 after train 1
   is released, and 0.1.0 is released together with train 2 (REL-2).
+- 2026-10-09: train 2 does not wait for observation; if the package is not
+  ready when REL-2 opens or the TEST experiment fails, REL-2 ships without it
+  and 0.1.0 follows in its own release pull request.
 
-The ADR text is approved by the owner in this PR before acceptance. Anything
-this brief does not cover: stop and ask.
+- 2026-10-09: the owner delegates the approval of the ADR text to the
+  planning side, after an independent review of this PR; only a point that the
+  review cannot settle goes to the owner.
+
+The ADR text is approved in this PR before acceptance, under that delegation;
+`approved_by: product-owner` records the owner's authority. Anything this brief
+does not cover: stop and ask.
 
 ## Scope
 
 - Create the ADR with `pnpm docs:new` and insert the body below.
-- After the owner approves the text: acceptance metadata, registry entry, index
+- After the text is approved: acceptance metadata, registry entry, index
   line, ownership checkpoint pin (precedent: PR #140), and the resolution of
   OD-007 (precedent: OD-006 resolved by ADR-0021).
 
@@ -85,10 +93,12 @@ Commit 1: `docs(architecture): propose ADR-NNNN for module change observation`.
 Gates, each exit 0: `pnpm docs:protocol:check` (fix cspell by rewording or by
 adding real words to `.cspell.json`), `pnpm governance:check`.
 
-Open the PR as a draft and ask the owner to approve the text. Changes the owner
-asks for go in new commits.
+Open the PR as a draft. Run an independent review of the ADR text against the
+cited ADRs, `system-boundary.md`, `AGENTS.md` and the research archive; changes
+go in new commits. When the review is clean, record the approval in the PR
+(delegated approval of 2026-10-09 and the review result).
 
-### 2. Accept and resolve OD-007 (only after the owner's explicit approval in the PR)
+### 2. Accept and resolve OD-007 (only after the approval is recorded in the PR)
 
 1. ADR front matter: `status: accepted`, `approved_by: product-owner`,
    `accepted_at: <YYYY-MM-DD of approval>` (same key order as ADR-0033).
@@ -113,7 +123,8 @@ asks for go in new commits.
    on <YYYY-MM-DD>. It selects option A with the owner decisions of 2026-10-01
    and 2026-10-08: resources is a declared peer instead of a structural port,
    0.1.0 contains `sync`, `derived` and the escape hatch, and the package is
-   released with train 2. OD-007 never blocked publication.
+   planned for release with train 2, which does not wait for it. OD-007 never
+   blocked publication.
 
    The acceptance criteria above move with the owner's sequencing of
    2026-10-08: the Consumer Module Standard rule lands before the release pull
@@ -142,7 +153,8 @@ a global git hook breaks the fixture tests that create repositories).
 
 Mark the PR ready. Body (English, plain): what the decision admits, that it
 resolves OD-007, "implementation follows in OBS-2 (package) and OBS-3 (Consumer
-Module Standard)", and the owner approval reference.
+Module Standard)", and the approval reference (the delegation and the
+review).
 
 ## ADR body
 
@@ -405,16 +417,16 @@ fences.
 | `docs:new` writes a different path or rejects the id | stop; never create the file by hand |
 | cspell or markdownlint fails on the text | reword or add a real word; never disable a rule for `docs/` |
 | governance rejects the OD-007 resolution | read `validateDecisionResolutions` in `architecture/checks/governance.mjs`; the ADR must be accepted and list OD-007 in `related`, OD-007 must list the ADR; fix the metadata, never the check |
-| the owner changes the text after acceptance metadata is set | regenerate the registry entry and the checkpoint digest in the same commit; never amend an accepted file on `main` |
+| the text changes after acceptance metadata is set | regenerate the registry entry and the checkpoint digest in the same commit; never amend an accepted file on `main` |
 | any accepted ADR byte changes (`ownership:checkpoint:test` fails on an existing ADR) | stop; revert your edit to that file |
-| owner approval not explicit | the PR stays draft |
+| the approval is not recorded in the PR, or the review leaves a point open | the PR stays draft; an open point goes to the owner |
 
 ## Must not
 
 - Edit any accepted ADR, the CMS, code, gates or CI. Hand-edit
   `accepted-decisions.json`. Remove OD-007 from `decisionCatalog` or the
   open-decision history.
-- Set `status: accepted` before the owner approves in the PR.
+- Set `status: accepted` before the approval is recorded in the PR.
 - Merge, request reviewers or comment outside the own PR. Override the git
   identity, add co-author trailers or tool attribution anywhere.
 
@@ -422,7 +434,7 @@ fences.
 
 ADR accepted and registered, index and checkpoint pin updated, OD-007 resolved
 and listed under "Resolved", `implementationBlockers: []`, all gates green
-locally and in CI, owner approval linked in the PR.
+locally and in CI, the approval and its review linked in the PR.
 
 ## Review checklist
 
