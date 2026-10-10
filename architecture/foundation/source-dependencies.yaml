@@ -405,18 +405,22 @@ boundaries:
         - lifecycle-kernel-implementation
         - lifecycle-kernel-composition
         - lifecycle-kernel-public-entrypoint
+        - repository.development
       packages:
         - "@get-modular/lifecycle-kernel"
       builtins:
         - node:assert/strict
         - node:child_process
+        - node:crypto
+        - node:fs
         - node:fs/promises
         - node:module
         - node:os
         - node:path
         - node:test
         - node:url
-      runtimeReferences: []
+      runtimeReferences:
+        - dynamic
   # ADR-0030 admits one optional public cleanup-scope package. It imports no
   # package, builtin or composition package; only module code and Hosts use it.
   - id: resources-contract
@@ -758,6 +762,8 @@ boundaries:
       - tests/codemods/codemods.test.mjs
       - tests/quality-activation.test.mjs
       - tests/source-dependencies.test.mjs
+      - tests/qualification/lifecycle-tool-prepare.mts
+      - tests/qualification/lifecycle-qualification-contracts.mts
     allow:
       boundaries:
         - assembly-examples
@@ -787,6 +793,7 @@ boundaries:
         - node:buffer
         - node:child_process
         - node:crypto
+        - node:events
         - node:fs
         - node:fs/promises
         - node:http
@@ -795,6 +802,7 @@ boundaries:
         - node:path
         - node:perf_hooks
         - node:process
+        - node:stream
         - node:test
         - node:timers/promises
         - node:url

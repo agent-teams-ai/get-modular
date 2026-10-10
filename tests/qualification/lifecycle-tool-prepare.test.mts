@@ -10,7 +10,8 @@ import { createRequire } from "node:module";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { preparedToolEntries, verifyPreparedPackagePayload, signedRelease, packageArchiveRoot, extractPreparationArchive, preparationPath } from "./lifecycle-tool-prepare.mts";
-import { verifyToolEntryEnvelope, verifyToolClosureEntries, verifyPublicToolRoots, type PreparedToolEntry, verifyPackagePayload, verifyPhysicalSupportPayload, projectPackagePayload, packagePayloadInventory, parseQualificationEvidenceJSON, verifySupportOrigins, supportVersions, type PackagePayloadProjection, restoredDependencyGraph, frozenInventory, nodeSignerPolicy, inputIdentity, verifyToolOrigins, freshPublishedManifest, verifyFreshArchivePayload, archiveEntryPath } from "../../packages/lifecycle-kernel/tests/run-node20-qualification.mts";
+import { verifyToolEntryEnvelope, verifyToolClosureEntries, verifyPublicToolRoots, verifyPackagePayload, verifyPhysicalSupportPayload, projectPackagePayload, packagePayloadInventory, parseQualificationEvidenceJSON, verifySupportOrigins, supportVersions, restoredDependencyGraph, frozenInventory, nodeSignerPolicy, inputIdentity, verifyToolOrigins, freshPublishedManifest, verifyFreshArchivePayload, archiveEntryPath } from "./lifecycle-tool-prepare.mts";
+import type { PreparedToolEntry, PackagePayloadProjection } from "./lifecycle-qualification-contracts.mts";
 
 // Synthetic status/receipt fixtures test parsing and policy, never GPG or origin custody.
 const commit = "ae5a0f40b5787a369b6cde39c36fb2760a4cd309";
