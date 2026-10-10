@@ -8,7 +8,11 @@ import factoryHandle from "./0.2-0.3/factory-handle.mjs";
 
 // One entry per breaking minor: `<from>-<to>` runs these transforms in order.
 const CODEMODS = { "0.2-0.3": [factoryHandle] };
-const CHECKOUT = realpathSync.native(resolve(dirname(fileURLToPath(import.meta.url)), "../../.."));
+// realpathSync.native canonicalizes letter case on case-insensitive volumes but can throw on some Windows ones.
+const canonical = (path) => {
+  try { return realpathSync.native(path); } catch { return realpathSync(path); }
+};
+const CHECKOUT = canonical(resolve(dirname(fileURLToPath(import.meta.url)), "../../.."));
 const SKIPPED = new Set(["node_modules", "dist", ".git"]);
 const SOURCE = /\.(?:ts|tsx|mts|cts)$/u;
 
@@ -45,7 +49,7 @@ export function main(argv) {
   // `pnpm --dir <checkout> codemod` runs with the checkout as cwd; INIT_CWD is where the user typed the command.
   const requested = target ? resolve(process.env.INIT_CWD ?? process.cwd(), target) : undefined;
   if (!requested || !existsSync(requested) || !statSync(requested).isDirectory()) return usage(`not a directory: ${target}`);
-  const directory = realpathSync.native(requested); // a symlinked path must not slip past the checkout refusal
+  const directory = canonical(requested); // a symlinked path must not slip past the checkout refusal
   const inside = relative(CHECKOUT, directory);
   if (inside === "" || (inside !== ".." && !inside.startsWith(`..${sep}`) && !isAbsolute(inside))) {
     return usage(`refusing to run inside the Get Modular checkout itself: ${directory}`);

@@ -4,6 +4,11 @@ const SPECIFIER = "@get-modular/assembly";
 const OLD = "FactoryHandle";
 const NEW = "AnyFactoryHandle";
 
+function starLabel(declaration) {
+  const namespace = declaration.getNamespaceExport();
+  return `export${declaration.isTypeOnly() ? " type" : ""} *${namespace ? ` as ${namespace.getName()}` : ""}`;
+}
+
 // 0.3.0: FactoryHandle<C> no longer means "any handle of map C"; that is AnyFactoryHandle<C>.
 // Only references that resolve to the import from @get-modular/assembly are touched.
 /** @param {import("ts-morph").SourceFile} file  @param {(message: string) => void} manual */
@@ -71,7 +76,7 @@ export default function transform(file, manual) {
   for (const declaration of file.getExportDeclarations()) {
     if (declaration.getModuleSpecifierValue() !== SPECIFIER) continue;
     if (!declaration.hasNamedExports()) {
-      manual(`line ${declaration.getStartLineNumber()}: ${declaration.getText().split(" from ")[0]} re-exports the package; `
+      manual(`line ${declaration.getStartLineNumber()}: ${starLabel(declaration)} re-exports the package; `
         + `importers of FactoryHandle through this module are not rewritten, check them by hand`);
     }
     for (const entry of declaration.getNamedExports()) {
