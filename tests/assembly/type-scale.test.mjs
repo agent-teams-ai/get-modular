@@ -81,7 +81,7 @@ test("type-check cost at 500 handles stays within the recorded budget", { timeou
       skipLibCheck: false, types: [], isolatedDeclarations: false, erasableSyntaxOnly: false,
     }, files: ["fragment-scale.ts"] }));
     const measured = {};
-    for (const handles of [500, 1000]) {
+    for (const handles of [100, 200, 500, 1000]) {
       await writeFile(join(directory, "fragment-scale.ts"), fragmentSource(handles));
       measured[handles] = measure(directory, handles, compiler);
     }
