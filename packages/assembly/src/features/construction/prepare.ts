@@ -1,4 +1,4 @@
-import type { CompositionPlan, CompositionProfile, Diagnostic } from "@get-modular/core";
+import type { CompositionPlan, CompositionProfile, Diagnostic, ModuleDeclaration } from "@get-modular/core";
 import type { AnyFactoryHandle, AssemblyPreparationResult, AssemblyPrepareInput, InputHandles, PreparationErrorCode, PreparedAssembly, RootHandles, RunOptions, SuccessfulComposition } from "./types.js";
 import type { ConstructionPorts, Metadata, Program } from "./ports.js";
 import { appendCreated } from "./ports.js";
@@ -162,6 +162,20 @@ function rootModuleIds(aliases: Readonly<ReturnType<typeof rootKeys>>, byHandle:
     return metadata.declaration.moduleId;
   });
 }
+type Completion = { readonly plan: CompositionPlan; readonly composition: SuccessfulComposition };
+async function completeProfile(compile: ConstructionPorts["compileComposition"], declarations: readonly ModuleDeclaration[],
+  input: Parameters<typeof deriveProfile>[0]): Promise<Completion | AssemblyPreparationResult<never>> {
+  const derived = deriveProfile(input);
+  if (!derived.ok) {
+    return Object.freeze<AssemblyPreparationResult<never>>({
+      status: "failed", error: Object.freeze({ code: "assembly.prepare.unresolved-binding", cause: derived.unresolved }),
+      diagnostics: Object.freeze([]),
+    });
+  }
+  const checked = await compile({ declarations, profile: derived.profile });
+  if (!checked.ok) {return rejectedByCore(checked.diagnostics);}
+  return { plan: snapshotPlan(checked.plan), composition: checked };
+}
 export async function prepareConstruction<C, R extends RootHandles<C>, N extends InputHandles<C>,
   F extends readonly AnyFactoryHandle<C>[]>(
   input: AssemblyPrepareInput<C, R, N, F>, ports: ConstructionPorts,
@@ -185,28 +199,15 @@ export async function prepareConstruction<C, R extends RootHandles<C>, N extends
     const { byHandle, byId } = collectMetadata(factories, inputHandles);
     const declarations = Object.freeze(Array.from(byId.values(), (metadata) => metadata.declaration));
     const compile = ports.compileComposition, commit = ports.commitCreated ?? appendCreated;
-    let plan: CompositionPlan;
-    let composition: SuccessfulComposition;
-    if (explicit) {
-      plan = copyPlan(explicit.census);
-      composition = explicit.composition as SuccessfulComposition;
-    } else {
-      const derived = deriveProfile({
+    const resolved = explicit
+      ? { plan: copyPlan(explicit.census), composition: explicit.composition as SuccessfulComposition }
+      : await completeProfile(compile, declarations, {
         profileId: data(supplied, "profileId"),
         bindings: Object.hasOwn(supplied, "bindings") ? data(supplied, "bindings") : undefined,
         byId, rootModuleIds: rootModuleIds(aliases, byHandle),
       });
-      if (!derived.ok) {
-        return Object.freeze({
-          status: "failed", error: Object.freeze({ code: "assembly.prepare.unresolved-binding", cause: derived.unresolved }),
-          diagnostics: Object.freeze([]),
-        });
-      }
-      const checked = await compile({ declarations, profile: derived.profile });
-      if (!checked.ok) {return rejectedByCore(checked.diagnostics);}
-      plan = snapshotPlan(checked.plan);
-      composition = checked;
-    }
+    if ("status" in resolved) {return resolved;}
+    const { plan, composition } = resolved;
     validateSelections(plan, byId);
     const roots = bindRoots(aliases, plan, byHandle);
     const inputs = bindInputs(inputAliases.keys, inputHandles, byHandle);

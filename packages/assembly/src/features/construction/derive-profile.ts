@@ -19,6 +19,15 @@ function compareCodePoints(a: string, b: string): number {
   }
   return left.length - right.length;
 }
+function sorted<T>(values: readonly T[], compare: (a: T, b: T) => number): T[] {
+  const result = [...values];
+  result.sort(compare);
+  return result;
+}
+function compareRows(a: { readonly consumerImplementationId: string; readonly slotId: string },
+  b: { readonly consumerImplementationId: string; readonly slotId: string }): number {
+  return compareCodePoints(a.consumerImplementationId, b.consumerImplementationId) || compareCodePoints(a.slotId, b.slotId);
+}
 function snapshotRows(value: unknown): readonly Row[] {
   return Object.freeze(denseArray(value, limits.bindings).map((rowValue) => {
     const row = record(rowValue, ["consumerImplementationId", "slotId", "providerImplementationIds"]);
@@ -55,8 +64,9 @@ export function deriveProfile(input: {
     for (const slot of metadata.declaration.slots) {
       if (keys.has(JSON.stringify([consumerImplementationId, slot.slotId]))) {continue;}
       const candidates = (providersOf.get(slot.capabilityId) ?? [])
-        .filter((id) => id !== consumerImplementationId).sort(compareCodePoints);
-      const [only] = candidates;
+        .filter((id) => id !== consumerImplementationId);
+      candidates.sort(compareCodePoints);
+      const only = candidates.at(0);
       if (slot.cardinality.kind === "required" && candidates.length === 1 && only !== undefined) {
         completed.push(Object.freeze({
           consumerImplementationId, slotId: slot.slotId, providerImplementationIds: Object.freeze([only]),
@@ -70,20 +80,19 @@ export function deriveProfile(input: {
     }
   }
   if (unresolved.length > 0) {
-    return { ok: false, unresolved: Object.freeze(unresolved.sort((a, b) =>
-      compareCodePoints(a.consumerImplementationId, b.consumerImplementationId) || compareCodePoints(a.slotId, b.slotId))) };
+    return { ok: false, unresolved: Object.freeze(sorted(unresolved, compareRows)) };
   }
   const selections = [...input.byId.values()].map((metadata) => Object.freeze({
     moduleId: metadata.declaration.moduleId, implementationId: metadata.declaration.implementationId,
-  })).sort((a, b) => compareCodePoints(a.implementationId, b.implementationId));
+  }));
+  selections.sort((a, b) => compareCodePoints(a.implementationId, b.implementationId));
   return {
     ok: true,
     profile: Object.freeze({
       kind: "get-modular.composition-profile", schemaVersion: 1, profileId,
-      roots: Object.freeze([...input.rootModuleIds].sort(compareCodePoints)),
+      roots: Object.freeze(sorted(input.rootModuleIds, compareCodePoints)),
       selections: Object.freeze(selections),
-      bindings: Object.freeze(completed.sort((a, b) =>
-        compareCodePoints(a.consumerImplementationId, b.consumerImplementationId) || compareCodePoints(a.slotId, b.slotId))),
+      bindings: Object.freeze(sorted(completed, compareRows)),
     }),
   };
 }
