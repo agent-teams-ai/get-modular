@@ -40,7 +40,8 @@ test("500 fragment handles prepare under one interface map on both compilers", {
 // --singleThreaded; the counters are then deterministic. Instantiations and Types are gated at 500
 // handles, other sizes and the check time are only printed. TypeScript 5.8.3 is not gated.
 const budgetTolerance = 1.05;
-const budgetFile = join(workspace, "tests/assembly/type-scale-budget.json");
+const budgetPath = "tests/assembly/type-scale-budget.json";
+const budgetFile = join(workspace, budgetPath);
 
 function measure(directory, handles, compiler) {
   const result = spawnSync(process.execPath, [compiler, "--project", join(directory, "tsconfig.json"),
@@ -49,15 +50,22 @@ function measure(directory, handles, compiler) {
     cwd: directory, encoding: "utf8", timeout: 180000, maxBuffer: 16 * 1024 * 1024,
     env: { ...process.env, NODE_PATH: "", NODE_OPTIONS: "" },
   });
+  if (result.error) throw result.error;
+  assert.equal(result.signal, null, `${handles} handles: tsc terminated by ${result.signal}`);
   assert.equal(result.status, 0, `${handles} handles\n${result.stdout}\n${result.stderr}`);
   const read = (label) => {
-    const match = new RegExp(`^${label}:\\s+([\\d.,]+)\\s*(\\S*)$`, "mu").exec(result.stdout);
+    const match = new RegExp(`^${label}:\\s+(\\S+)$`, "mu").exec(result.stdout);
     assert.ok(match, `tsc did not report ${label}\n${result.stdout}`);
-    return match[1] + match[2];
+    return match[1];
+  };
+  const count = (label) => {
+    const value = read(label);
+    assert.match(value, /^\d+$/u, `tsc reported ${label} "${value}"`);
+    return Number(value);
   };
   return {
-    instantiations: Number(read("Instantiations")),
-    types: Number(read("Types")),
+    instantiations: count("Instantiations"),
+    types: count("Types"),
     checkTime: read("Check time"),
     memoryUsed: read("Memory used"),
   };
@@ -87,14 +95,20 @@ test("type-check cost at 500 handles stays within the recorded budget", { timeou
     }
     t.diagnostic(JSON.stringify({ compiler: version, measured }));
     const [major, minor] = version.split(".");
-    assert.equal(`${major}.${minor}`, budget.compiler,
-      `Compiler ${version} differs from the budget compiler ${budget.compiler}; measured rows to record: ${JSON.stringify(measured)}`);
+    const record = { compiler: `${major}.${minor}`, gated: { 500: {
+      instantiations: measured[500].instantiations, types: measured[500].types } } };
+    assert.equal(record.compiler, budget.compiler,
+      `Compiler ${version} differs from the budget compiler ${budget.compiler}; record in ${budgetPath}: ${JSON.stringify(record)}`);
     const gated = budget.gated?.[500];
-    if (!gated) return;
+    assert.ok(gated, `${budgetPath} has no gated row for 500 handles`);
     for (const metric of ["instantiations", "types"]) {
-      const limit = Math.floor(gated[metric] * budgetTolerance);
-      assert.ok(measured[500][metric] <= limit,
-        `500 handles: ${metric} ${measured[500][metric]} exceeds budget ${gated[metric]} +5% (${limit})`);
+      const value = measured[500][metric];
+      const upper = Math.floor(gated[metric] * budgetTolerance);
+      const lower = Math.ceil(gated[metric] / budgetTolerance);
+      assert.ok(value <= upper,
+        `500 handles: ${metric} ${value} exceeds budget ${gated[metric]} by more than 5% (limit ${upper}); raise the row in ${budgetPath} and explain why`);
+      assert.ok(value >= lower,
+        `500 handles: ${metric} ${value} is more than 5% below budget ${gated[metric]}; lower the row in ${budgetPath}`);
     }
   } finally {
     await rm(directory, { recursive: true, force: true });
