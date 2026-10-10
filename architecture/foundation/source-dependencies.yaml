@@ -735,11 +735,13 @@ boundaries:
       - architecture/checks/v1-qualification.mjs
       - architecture/tooling/build-assembly.mjs
       - architecture/tooling/build-core.mjs
+      - architecture/tooling/codemods/run.mjs
       - architecture/tooling/first-core-release.mjs
       - architecture/tooling/generate-core.mjs
       - architecture/tooling/test-assembly-types.mjs
       - tests/qualification/m2-candidate/combined-case-inventory.mjs
       - tests/qualification/m2-candidate/generation-two-artifacts.mjs
+      - tests/codemods/codemods.test.mjs
       - tests/quality-activation.test.mjs
       - tests/source-dependencies.test.mjs
     allow:
@@ -760,6 +762,7 @@ boundaries:
         - json-canonicalize
         - jsonc-parser
         - tar
+        - ts-morph
         - typescript
         - typescript-minimum
         - yaml

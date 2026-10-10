@@ -441,6 +441,11 @@ Module packages:
   `devDependencies` for their own tests. A Host installs one copy of each Get
   Modular package. Widen a range only when the release notes of the newer
   minor say that the authoring surface did not change.
+- To cross a breaking minor, read its changeset "Migration" block, then run
+  `pnpm --dir <get-modular checkout> codemod <from>-<to> <your repository> --write`
+  on a clean Git tree (`--dry` lists the edits, `--check` fails while edits
+  remain) and typecheck. The codemod lists what it cannot change under "fix by
+  hand".
 - Identify errors by `code`, never by class or message:
   `assembly.<area>.<reason>`, `resources.<area>.<reason>` and
   `conformance.<area>.<reason>`. Core diagnostics carry their catalog codes in

@@ -65,6 +65,16 @@ Protocol, Extension Foundation, DI containers, product types, and plugin
 runtime types. These dependencies are allowed only in development tooling or
 product-owned adapters outside this repository.
 
+A changeset that ships a breaking minor of a `@get-modular/*` package ends with
+a "Migration (0.N -> 0.N+1)" block: `Better:` (what the new form gives),
+`Codemod:` (`pnpm --dir <get-modular> codemod 0.N-0.N+1 <repo> --write`, or
+`none - <reason>`), `By hand:` and `Check:` (typecheck, then the composition
+smoke tests). Write a codemod under `architecture/tooling/codemods/` with
+fixtures in `tests/codemods/` for a rename, a moved import, a changed call shape
+or a type-argument change; say `none` for a pure addition, a new union member or
+a change that needs a semantic decision. The codemod lands in the same PR as the
+break.
+
 Get Modular compiles composition semantics. It does not own artifact trust,
 authorization, executable discovery, desired state, readiness, generations,
 routing, drain, recovery, or retirement.

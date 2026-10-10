@@ -37,6 +37,8 @@
     "bivariantly",
     "canonicalization",
     "canonicalizer",
+    "codemod",
+    "codemods",
     "cutover",
     "dogfooding",
     "effectful",
