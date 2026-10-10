@@ -14,6 +14,7 @@ summary: Index of Get Modular architecture decisions.
 - [ADR-0011: Define private self-composition evidence and release custody](0011-define-private-self-composition-evidence-and-release-custody.md)
 - [ADR-0013: Close trusted-object and raw-carrier semantics](0013-close-trusted-object-and-raw-carrier-semantics.md)
 - [ADR-0014: Close duplicate binding-record semantics](0014-close-duplicate-binding-record-semantics.md)
+- [ADR-0035: Complete composition profiles in prepare and make CapabilitiesOf linear](0035-complete-composition-profiles-in-prepare-and-make-capabilitiesof-linear.md)
 
 ## Accepted decisions
 
