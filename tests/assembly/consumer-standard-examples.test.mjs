@@ -11,29 +11,26 @@ const standard = await readFile(join(workspace, "docs/architecture/common-assemb
 
 // The names the examples assume a consumer already has.
 const placeholders = {
-  host: `import type { SuccessfulComposition } from "@get-modular/assembly";
-type DbPort = { readonly query: (q: string) => number };
+  host: `type DbPort = { readonly query: (q: string) => number };
 type OrdersPort = { readonly list: () => number };
 type Connection = { readonly close: () => Promise<void> };
 declare const url: string;
 declare function connect(url: string, options: { readonly signal: AbortSignal }): Promise<Connection>;
 declare function createOrdersPort(db: DbPort, conn: Connection): OrdersPort;
-declare const composition: SuccessfulComposition;
 declare class ConstructionFailed extends Error { constructor(...details: readonly unknown[]); }
 `,
-  instances: `import type { SuccessfulComposition } from "@get-modular/assembly";
-import type { CloseReport, ScopeControl } from "@get-modular/resources";
+  instances: `import type { CloseReport, ScopeControl } from "@get-modular/resources";
 type ChatPort = { readonly send: (text: string) => Promise<void> };
 type Lease = { readonly release: () => Promise<void> };
 declare function acquireLease(sessionId: string): Promise<Lease>;
 declare function createChatPort(lease: Lease): ChatPort;
-declare const composition: SuccessfulComposition;
 declare class ConstructionFailed extends Error { constructor(...details: readonly unknown[]); }
 declare function closeWithin(control: ScopeControl, graceMs: number, abandonMs: number): Promise<CloseReport>;
 `,
   // The template carries its own names; the test block imports the module block as ./module.js.
+  contracts: "",
   module: "",
-  "module-test": "",
+  "module-test": "/// <reference types=\"node\" />\n",
 };
 
 function example(name) {
@@ -61,9 +58,22 @@ test("the Consumer Module Standard examples compile on both compilers", { timeou
     for (const name of Object.keys(placeholders)) {
       await writeFile(join(directory, `${name}.ts`), `${placeholders[name]}${example(name)}\n`);
     }
+    // The composition-root line the module block shows in a comment must compile as written.
+    const rootLine = example("module").match(/^\/\/ {3}(const counter = .*)$/mu)?.[1];
+    assert.ok(rootLine, "the module block must show its bindFactory line");
+    files.push("root.ts");
+    await writeFile(join(directory, "root.ts"), `import type { Assembly, CapabilitiesOf } from "@get-modular/assembly";
+import { scoped } from "@get-modular/resources";
+import type { Counter, Store } from "./contracts.js";
+import { counterDeclaration, createCounter } from "./module.js";
+export function composeCounter(api: Assembly<CapabilitiesOf<typeof Store | typeof Counter>>) {
+  ${rootLine}
+  return counter;
+}
+`);
     const project = join(directory, "tsconfig.json");
     await writeFile(project, JSON.stringify({ compilerOptions: {
-      target: "ES2022", lib: ["ES2024", "ESNext.Disposable", "ESNext.Promise", "DOM"], types: ["node"],
+      target: "ES2022", lib: ["ES2024", "ESNext.Disposable", "ESNext.Promise", "DOM"], types: [],
       strict: true, exactOptionalPropertyTypes: true, noUncheckedIndexedAccess: true,
       noEmit: true, skipLibCheck: false,
     }, files }));

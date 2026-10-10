@@ -148,14 +148,14 @@ than treating custody as invocation authority.
 | Independent direct test reference | Production fallback or oracle derived from profile | Binding mutant and parity test |
 | Module resources through `setup`/`use` | Host-written cleanup lists for module-acquired resources | [`tests/resources/assembly-scope.test.mjs`](../../tests/resources/assembly-scope.test.mjs) |
 | One scope per run through `scoped()` | Parent scope captured at bind time | Same file, two concurrent runs |
+| Declared run inputs | Closures captured at bind time | [`tests/assembly/inputs.test.mjs`](../../tests/assembly/inputs.test.mjs) |
+| Descriptors and `declareModule` | Hand-written compatibility literals | [`tests/assembly/builder-types.ts`](../../tests/assembly/builder-types.ts) |
 
 Completing a profile in `prepare` ([ADR-0035](../decisions/0035-complete-composition-profiles-in-prepare-and-make-capabilitiesof-linear.md))
 is not a second resolver: it runs once, before any factory, over the handles the
 root binds, and writes explicit rows into the compiled plan. It never guesses,
 and no factory receives a resolver, a container or a registry
 ([ADR-0031](../decisions/0031-pass-a-per-run-scope-and-declared-inputs-to-assembly-runs.md)).
-| Declared run inputs | Closures captured at bind time | [`tests/assembly/inputs.test.mjs`](../../tests/assembly/inputs.test.mjs) |
-| Descriptors and `declareModule` | Hand-written compatibility literals | [`tests/assembly/builder-types.ts`](../../tests/assembly/builder-types.ts) |
 
 ### Module resource scopes
 
@@ -458,9 +458,12 @@ Module packages:
   Modular package. Widen a range only when the release notes of the newer
   minor say that the authoring surface did not change.
 - A breaking minor of a Get Modular package ships its migration note, and a codemod
-  when the change is a mechanical rename, move or call-shape edit. Apply it with
+  when the change is a mechanical rename, move or call-shape edit. Codemods live in
+  the Get Modular repository under `architecture/tooling/codemods`, not in a package.
+  From a checkout with dependencies installed, apply one with
   `pnpm --dir <get-modular checkout> codemod <from>-<to> <consumer dir> --write`
-  (`--dry` previews, `--check` exits 1 while a change is pending), then typecheck.
+  (`--dry` previews, `--check` exits 1 while a change is pending; `--write` refuses
+  a dirty Git tree unless `--allow-dirty`), then typecheck.
 - Identify errors by `code`, never by class or message:
   `assembly.<area>.<reason>`, `resources.<area>.<reason>` and
   `conformance.<area>.<reason>`. Core diagnostics carry their catalog codes in
@@ -469,22 +472,30 @@ Module packages:
 #### Module template
 
 Copy this for a new module; replace `acme/counter` and `acme/store` with your
-identities and your own contract packages. The first block is the module
-package, the second its test.
+identities and your own contract packages. The first block is the contract
+package, the second the module package, the third its test.
 
-<!-- consumer-standard-example: module -->
+<!-- consumer-standard-example: contracts -->
 
 ```ts
-// src/counter/module.ts
-import { declareModule, defineContract, type CapabilitiesOf, type ModuleFactory } from "@get-modular/assembly";
-import { required } from "@get-modular/core";
-import type { ModuleContext } from "@get-modular/resources";
+// src/counter/contracts.ts (or your contract package)
+import { defineContract } from "@get-modular/assembly";
 
 // Contract packages hold ports with function-typed properties and their descriptors.
 export type StorePort = { readonly bump: (key: string) => number };
 export type CounterPort = { readonly increment: (key: string) => number };
 export const Store = defineContract<StorePort>()({ id: "acme/store", revision: 1 });
 export const Counter = defineContract<CounterPort>()({ id: "acme/counter", revision: 1 });
+```
+
+<!-- consumer-standard-example: module -->
+
+```ts
+// src/counter/module.ts
+import { declareModule, type CapabilitiesOf, type ModuleFactory } from "@get-modular/assembly";
+import { required } from "@get-modular/core";
+import type { ModuleContext } from "@get-modular/resources";
+import { Counter, Store, type CounterPort } from "./contracts.js";
 
 export const counterDeclaration = declareModule({
   moduleId: "acme/counter", implementationId: "acme/counter/default",
@@ -501,10 +512,8 @@ export const createCounter: ModuleFactory<
 };
 
 // In the composition root, a function of Assembly that prepares with `{ profileId }`, adding the module
-// is one line, and Assembly completes the `required` slot:
-//   const counter = api.bindFactory(counterDeclaration, createCounter);
-// A module that registers cleanup with `resources.setup` binds it as
-//   api.bindFactory(counterDeclaration, scoped(counterDeclaration.implementationId, createCounter));
+// is one line, and Assembly completes the `required` slot when one bound module provides `acme/store`:
+//   const counter = api.bindFactory(counterDeclaration, scoped(counterDeclaration.implementationId, createCounter));
 ```
 
 <!-- consumer-standard-example: module-test -->
@@ -515,7 +524,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { assemblyFor, type CapabilitiesOf } from "@get-modular/assembly";
 import { checkNamespaces, isolate } from "@get-modular/conformance";
-import { Counter, Store, counterDeclaration, createCounter, type StorePort } from "./module.js";
+import { Counter, Store, type StorePort } from "./contracts.js";
+import { counterDeclaration, createCounter } from "./module.js";
 
 // The contract owner's typed fake, never an `any` or a cast.
 const store: StorePort = { bump: (key) => key.length };
@@ -564,9 +574,9 @@ it authenticates nothing.
 7. Session, tenant and instance IDs never enter module IDs; they name scopes
    or run inputs.
 
-Check rules 1, 2 and 6 in a test with `checkNamespaces` from
-`@get-modular/conformance`, over every declaration of the product, input modules
-and fakes included.
+Check rule 1, the namespace part of rule 2 and rule 6 in a test with
+`checkNamespaces` from `@get-modular/conformance`, over every declaration the
+product supplies, its input modules and fakes included.
 
 ### Testing modules
 
@@ -595,8 +605,9 @@ kit `@get-modular/conformance`.
    factory of the root through the `api` that `smoke` passes to `compose`:
    `smoke` rejects when a factory is bound elsewhere, because it never sees an
    injection. Effectful leaves use their owners' fakes. A root that prepares with
-   `{ profileId }` lists its handles statically; a handle list that depends on run-time
-   values is a different root with its own `profileId`, `smoke` and oracle.
+   `{ profileId }` lists its handles statically: its handle list does not depend on
+   run-time values, and a variant is a separate root with its own `profileId`,
+   `smoke` and oracle.
 6. `smoke` does not prove wiring. Keep the independent binding oracle from the
    table above, and never derive expected bindings from the profile or the
    implementation. When Assembly completes bindings, the oracle compares every row
@@ -699,7 +710,8 @@ id, at any revision (Core still rejects a revision mismatch as
 `assembly.prepare.core-rejected`). Any other slot without a row (`optional`,
 `many`, or `required` with zero or several candidates) fails with
 `assembly.prepare.unresolved-binding` before any factory runs; `error.cause` lists
-every such slot with its candidates. Completion does not depend on the order of
+every such slot with its candidates. An `optional` slot always needs a row: `[]`
+or one provider. Completion does not depend on the order of
 `factories`, `roots` or `inputs`. A `"prepared"` result also carries the compiled
 `composition`. Give exactly one of `composition` and `profileId`.
 
@@ -731,7 +743,8 @@ key. Different capabilities and instance may be three different objects.
 
 ## Preparation and resource envelope
 
-Before the first await, capture the successful result, handle list, root map and input map.
+Before the first await, capture the successful result or the `profileId` and
+`bindings`, the handle list, root map and input map.
 Inspect own data descriptors, dense arrays and exact shapes without invoking
 getters. Pre-count individual and aggregate sizes before proportional copying.
 Reject unexpected keys before projecting the supplied plan into a profile.
