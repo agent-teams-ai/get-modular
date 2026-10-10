@@ -1,0 +1,6 @@
+{
+  "compiler": "7.0",
+  "gated": {
+    "500": { "instantiations": 1383390, "types": 105446 }
+  }
+}
