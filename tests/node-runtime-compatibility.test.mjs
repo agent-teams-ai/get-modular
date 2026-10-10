@@ -49,7 +49,7 @@ for (const [name, namespace, expected] of [
   ["core", core, ["compileComposition", "compileCompositionJson", "defineModule", "many", "optional", "required"]],
   ["assembly", assembly, ["AssemblyBindingError", "assemblyFor", "declareModule", "defineContract"]],
   ["resources", resources, ["CloseIncompleteError", "InvalidArgumentError", "ScopeClosedError", "createScope", "scoped"]],
-  ["conformance", conformance, ["ConformanceError", "contractSuite", "guardHandles", "isolate", "runContractSuite", "smoke"]],
+  ["conformance", conformance, ["ConformanceError", "checkNamespaces", "contractSuite", "guardHandles", "isolate", "runContractSuite", "smoke"]],
 ]) {
   const specifier = "@get-modular/" + name;
   assert.deepEqual(Object.keys(namespace).sort(), expected.sort());
