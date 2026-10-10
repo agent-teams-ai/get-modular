@@ -1,6 +1,8 @@
 # Train 2: contract revision windows (Core and Assembly 0.4.0) - plan index
 
-Status: planned, not started. Written 2026-10-04 against get-modular `main` `81063ad` (#142); revised 2026-10-08 after
+Status: deferred by the owner on 2026-10-10. While Get Modular is used only by our own projects, a contract changes in place: the provider and all consumers are updated in the same change (the 0.3.0 exact-revision scheme), with a short changelog note. Per-capability revision windows return when separately built plugins appear. The 0.3.0 descriptor call form already means a window of one revision, so adopting windows later is additive for module authors. This plan stays as the design for that moment.
+
+Original status before the deferral: planned, not started. Written 2026-10-04 against get-modular `main` `81063ad` (#142); revised 2026-10-08 after
 an independent review, two re-checks, prototype measurements and the owner's decision on Q1 (schema 1 is refused).
 Drift up to `8fe924d` is noted in section 1. Train 2 starts
 after train 1 is released and Agent Runtime has migrated to it (owner decision). Every brief starts with a
