@@ -1,9 +1,18 @@
 ---
 id: ADR-0035
 type: adr
-status: proposed
+status: accepted
 owner: architecture
+approved_by: product-owner-delegated-orchestrator
+accepted_at: 2026-10-10
 summary: Prepare completes a composition profile from bound handles, and CapabilitiesOf uses key remapping so its type cost is linear.
+related:
+  - ADR-0004
+  - ADR-0006
+  - ADR-0023
+  - ADR-0026
+  - ADR-0031
+  - ADR-0032
 ---
 
 # ADR-0035: Complete composition profiles in prepare and make CapabilitiesOf linear
@@ -26,15 +35,16 @@ Host interface map), tsc 7.0.2 `--singleThreaded`: 1,383,390 instantiations at 5
 
 `prepare` also accepts `{ profileId, bindings?, factories, roots, inputs? }` instead of a compiled composition. Assembly
 completes the profile from the bound handles: selections are all factory and input handles, roots are the `moduleId`s
-of the root handles, and an explicit row is kept as written. A `required` slot without a row receives the single other
-handle that provides its capability; that is its only legal completion. Any other slot without a row (`optional`,
+of the root handles, and an explicit row in `bindings` is kept as written. A `required` slot without a row receives the single other
+bound handle that provides its capability id, at any revision; that is its only legal completion, and Core still
+rejects a revision mismatch. Any other slot without a row (`optional`,
 `many`, or `required` with zero or several candidates) fails preparation with `assembly.prepare.unresolved-binding`,
-which lists every such slot with its candidates, before any factory runs. Assembly compiles the completed profile
-through Core unchanged and returns the compiled composition with the prepared result. Completion runs once in
+which lists every such slot with its candidates, before any factory runs. Completion does not depend on the order of `factories`, `roots` or `inputs`. Assembly
+compiles the completed profile through the unchanged Core compiler and returns the compiled composition with the prepared result. Completion runs once in
 `prepare`; nothing is resolved at run time, and factories still receive closed dependency records (ADR-0031).
 
 `prepare({ composition })` remains for a Host that compiles a profile itself, such as from bytes or a desired profile,
-and for `isolate`. Production composition roots use `profileId`.
+and for `isolate`. From Assembly 0.4.0, production composition roots use `profileId`.
 
 ### Precedence
 
@@ -44,19 +54,25 @@ among several eligible providers, and absence of an `optional` slot is an explic
 bound handles, which already cover every selection exactly once. Core semantics, the wire format and the plan digest do
 not change.
 
+For Assembly 0.4.0 this decision also takes precedence over the Assembly contract and testing rules in
+`docs/architecture/common-assembly.md` and over `docs/architecture/system-boundary.md` wherever they differ. The
+revision of those documents for this release replaces those passages.
+
 ### Make CapabilitiesOf linear
 
 `CapabilitiesOf` is a mapped type with key remapping, `[X in T as X["id"]]`, so each contract is visited once and the
 type cost grows linearly with the number of contracts. Measured on the same fixture: 500 contracts 1,383,390 to
 542,552 instantiations on tsc 7.0.2 and 1,560,108 to 715,445 on TypeScript 5.8.3; 1,000 contracts 4,393,176 to
-1,051,988 on tsc 7.0.2. For concrete contract unions the result equals the former one, including one id at two
+1,051,988 on tsc 7.0.2. For contracts with literal ids the result equals the former one, including one id at two
 revisions (a union of the capability contracts); type tests in `tests/assembly/builder-types.ts` check this.
 
-Consumer-visible break: indexing `CapabilitiesOf<T>[T["id"]]` with a generic `T` no longer type-checks (TS2536),
-because a remapped key cannot be resolved for an unresolved `T`. Read the value from the descriptor instead:
-`T extends Contract<string, infer V, number> ? V : never`, as `ContractValue` in `@get-modular/conformance` now does.
-Concrete uses are unaffected. The public declaration text of `CapabilitiesOf` changes, so Assembly ships this as a
-minor release with a migration note and an approved breaking-change fingerprint.
+Consumer-visible break: in code generic over contracts `T`, an entry of `CapabilitiesOf<T>` is no longer known to be a
+capability contract, because a remapped key cannot be resolved for an unresolved `T`. `CapabilitiesOf<T>[T["id"]]["value"]`
+fails with TS2536 and `assemblyFor<CapabilitiesOf<T>>()` with TS2344. Read the value from the descriptor instead,
+`T extends Contract<string, infer V, number> ? V : never`, as `ContractValue` in `@get-modular/conformance` now does, and
+make such a helper generic over the map `C` instead of its contracts. Concrete uses are unaffected. The public
+declaration text of `CapabilitiesOf` changes, so Assembly ships this as a minor release with a migration note and an
+approved breaking-change fingerprint.
 
 ## Consequences
 
@@ -65,7 +81,7 @@ minor release with a migration note and an approved breaking-change fingerprint.
 - A second provider of a capability fails preparation loudly; replacing a provider changes the plan and fails the oracle.
 - A root's handle list does not depend on run-time values.
 - Type-checking a large capability map is about linear (roughly 1,000 instantiations per module) instead of quadratic.
-- Code that indexes `CapabilitiesOf<T>` with a generic `T` needs the one-line rewrite above.
+- Code generic over contracts `T` that reads an entry of `CapabilitiesOf<T>` or passes it as a map needs the rewrite above.
 
 ## Rejected alternatives
 
