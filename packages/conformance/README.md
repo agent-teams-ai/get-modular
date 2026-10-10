@@ -118,6 +118,30 @@ separate package such as `<contract>-conformance`, or export them from an entry
 point of the contract package that production code does not import. The suite is
 a plain value, so it carries no path and no test runner.
 
+## Check module identities with `checkNamespaces`
+
+```ts
+import { checkNamespaces } from "@get-modular/conformance";
+
+checkNamespaces({ namespace: "acme/orders", declarations: [ordersDeclaration, auditDeclaration] });
+```
+
+It checks rules 1, 2 and 6 of "Identity and namespaces" in the Consumer Module
+Standard: `moduleId` and `implementationId` lie in `namespace` at a segment
+boundary (`agent` does not cover `agent-runtime/x`), and `owner.authority`
+equals the first segment of `moduleId`. It does not check `capabilityId`, which
+belongs to the contract owner and may lie in another namespace, nor the history
+of IDs or session IDs. Pass every declaration of the product, input modules and
+fakes included.
+
+The call is synchronous and collects every violation before it throws
+`conformance.namespaces.violation`. `details.violations` lists
+`{ implementationId, rule, value, expected }`, with `rule` one of `"module-id"`,
+`"implementation-id"` and `"owner-authority"`. An empty namespace, a namespace
+with a leading, trailing or double `/`, declarations that are not an array and a
+declaration without string ids or `owner.authority` throw
+`conformance.argument.invalid`. Only own data properties are read.
+
 ## Find leaked handles with `guardHandles`
 
 ```ts
@@ -146,9 +170,9 @@ Every error of this package is a `ConformanceError` with a `code`; compare the
 unwrapped.
 
 Functions that return a `Promise` (`isolate`, `smoke` and `HandleGuard.check`)
-always reject, including for invalid arguments; `contractSuite`,
-`runContractSuite` and `guardHandles` throw synchronously. This differs from
-`@get-modular/resources`, which throws synchronously from functions that return
+always reject, including for invalid arguments; `checkNamespaces`,
+`contractSuite`, `runContractSuite` and `guardHandles` throw synchronously. This differs
+from `@get-modular/resources`, which throws synchronously from functions that return
 a `Promise`.
 
 | Code | Meaning |
@@ -156,6 +180,7 @@ a `Promise`.
 | `conformance.argument.invalid` | a call was malformed; `isolate` and `smoke` reject, the other functions throw. An unknown `at` id is found only after the first run of `smoke` |
 | `conformance.isolate.construction-failed` | the module could not be built |
 | `conformance.smoke.failed` | a smoke step broke an expectation |
+| `conformance.namespaces.violation` | a declaration breaks a namespace rule; `details.violations` lists them all |
 | `conformance.suite.revision-mismatch` | the subject provides another revision than the suite checks |
 | `conformance.suite.case-failed` | a case failed and its scope also closed with debts |
 | `conformance.handles.leaked` | handles opened after the guard are still active |

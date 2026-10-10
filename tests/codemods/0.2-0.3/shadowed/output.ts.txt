@@ -1,0 +1,7 @@
+import { AnyFactoryHandle } from "@get-modular/assembly";
+
+export type Any = AnyFactoryHandle<HostCapabilities>;
+export function local(): number[] {
+  type FactoryHandle<T> = T[];
+  return [] as FactoryHandle<number>;
+}
