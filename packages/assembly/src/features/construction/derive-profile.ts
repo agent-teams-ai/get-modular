@@ -1,7 +1,7 @@
 import type { CompositionProfile } from "@get-modular/core";
 import type { Metadata } from "./ports.js";
 import type { UnresolvedBinding } from "./types.js";
-import { data, denseArray, identifier, limits, record } from "./snapshot.js";
+import { SnapshotFault, data, denseArray, identifier, limits, record } from "./snapshot.js";
 
 export type DerivedProfile =
   | { readonly ok: true; readonly profile: CompositionProfile }
@@ -29,7 +29,15 @@ function compareRows(a: { readonly consumerImplementationId: string; readonly sl
   return compareCodePoints(a.consumerImplementationId, b.consumerImplementationId) || compareCodePoints(a.slotId, b.slotId);
 }
 function snapshotRows(value: unknown): readonly Row[] {
-  return Object.freeze(denseArray(value, limits.bindings).map((rowValue) => {
+  const rows = denseArray(value, limits.bindings);
+  // The aggregate bound precedes every proportional copy, as for a supplied plan.
+  let occurrences = 0;
+  for (const rowValue of rows) {
+    const row = record(rowValue, ["consumerImplementationId", "slotId", "providerImplementationIds"]);
+    occurrences += denseArray(data(row, "providerImplementationIds"), limits.providers).length;
+    if (occurrences > limits.providerOccurrences) {throw new SnapshotFault("limit");}
+  }
+  return Object.freeze(rows.map((rowValue) => {
     const row = record(rowValue, ["consumerImplementationId", "slotId", "providerImplementationIds"]);
     return Object.freeze({
       consumerImplementationId: identifier(data(row, "consumerImplementationId")),
@@ -54,8 +62,9 @@ export function deriveProfile(input: {
   for (const [implementationId, metadata] of input.byId) {
     for (const provided of metadata.declaration.provides) {
       const providers = providersOf.get(provided.capabilityId);
+      // A module that declares one capability twice is still one candidate; Core reports the duplicate.
       if (providers === undefined) {providersOf.set(provided.capabilityId, [implementationId]);}
-      else {providers.push(implementationId);}
+      else if (!providers.includes(implementationId)) {providers.push(implementationId);}
     }
   }
   const completed: Row[] = [...explicit];

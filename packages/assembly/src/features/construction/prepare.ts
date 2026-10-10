@@ -183,9 +183,11 @@ export async function prepareConstruction<C, R extends RootHandles<C>, N extends
   try {
     const supplied = record(input, ["factories", "roots"], ["composition", "profileId", "bindings", "inputs"]);
     // Exactly one of `composition` and `profileId`; `bindings` only completes a `profileId`.
-    const withComposition = Object.hasOwn(supplied, "composition");
-    if (withComposition === Object.hasOwn(supplied, "profileId")) {refuse("assembly.prepare.invalid-input");}
-    if (withComposition && Object.hasOwn(supplied, "bindings")) {refuse("assembly.prepare.invalid-input");}
+    // A key set to `undefined` counts as absent, as the optional types allow.
+    const given = (key: string): boolean => Object.hasOwn(supplied, key) && data(supplied, key) !== undefined;
+    const withComposition = given("composition");
+    if (withComposition === given("profileId")) {refuse("assembly.prepare.invalid-input");}
+    if (withComposition && given("bindings")) {refuse("assembly.prepare.invalid-input");}
     const factories = denseArray(data(supplied, "factories"), limits.handles);
     const aliases = rootKeys(data(supplied, "roots"));
     const suppliedInputs = Object.hasOwn(supplied, "inputs") ? data(supplied, "inputs") : undefined;
@@ -203,7 +205,7 @@ export async function prepareConstruction<C, R extends RootHandles<C>, N extends
       ? { plan: copyPlan(explicit.census), composition: explicit.composition as SuccessfulComposition }
       : await completeProfile(compile, declarations, {
         profileId: data(supplied, "profileId"),
-        bindings: Object.hasOwn(supplied, "bindings") ? data(supplied, "bindings") : undefined,
+        bindings: given("bindings") ? data(supplied, "bindings") : undefined,
         byId, rootModuleIds: rootModuleIds(aliases, byHandle),
       });
     if ("status" in resolved) {return resolved;}
