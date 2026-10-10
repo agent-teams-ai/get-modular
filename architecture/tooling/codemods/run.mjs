@@ -1,14 +1,16 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, statSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { Project } from "ts-morph";
 import factoryHandle from "./0.2-0.3/factory-handle.mjs";
 
 // One entry per breaking minor: `<from>-<to>` runs these transforms in order.
 const CODEMODS = { "0.2-0.3": [factoryHandle] };
+const CHECKOUT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const SKIPPED = new Set(["node_modules", "dist", ".git"]);
-const SOURCE = /\.(?:ts|mts|cts)$/u;
+const SOURCE = /\.(?:ts|tsx|mts|cts)$/u;
 
 function usage(message) {
   console.error(`${message}\nusage: codemod <from>-<to> <directory> [--dry | --check | --write [--allow-dirty]]\n`
@@ -17,7 +19,8 @@ function usage(message) {
 }
 
 function sourceFiles(directory) {
-  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+  const entries = readdirSync(directory, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  return entries.flatMap((entry) => {
     const path = join(directory, entry.name);
     if (entry.isDirectory()) return SKIPPED.has(entry.name) ? [] : sourceFiles(path);
     return entry.isFile() && SOURCE.test(entry.name) ? [path] : [];
@@ -39,9 +42,14 @@ export function main(argv) {
   const modes = ["dry", "check", "write"].filter((mode) => values[mode]);
   if (modes.length > 1) return usage("choose one of --dry, --check, --write");
   if (!Object.hasOwn(CODEMODS, name ?? "")) return usage(`unknown codemod "${name}"`);
-  if (!target || !existsSync(target) || !statSync(target).isDirectory()) return usage(`not a directory: ${target}`);
+  // `pnpm --dir <checkout> codemod` runs with the checkout as cwd; INIT_CWD is where the user typed the command.
+  const directory = target ? resolve(process.env.INIT_CWD ?? process.cwd(), target) : undefined;
+  if (!directory || !existsSync(directory) || !statSync(directory).isDirectory()) return usage(`not a directory: ${target}`);
+  const inside = relative(CHECKOUT, directory);
+  if (inside === "" || (!inside.startsWith("..") && !isAbsolute(inside))) {
+    return usage(`refusing to run inside the Get Modular checkout itself: ${directory}`);
+  }
   const mode = modes[0] ?? "dry";
-  const directory = resolve(target);
   if (mode === "write" && !values["allow-dirty"]) {
     const reason = dirtyTree(directory);
     if (reason) { console.error(`refusing to write: ${reason}`); return 2; }

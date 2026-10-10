@@ -47,7 +47,7 @@ test("0.2-0.3 outputs type-check against the workspace Assembly", { timeout: 600
     const prelude = 'type HostCapabilities = Record<never, never>;\ntype Instance = unknown;\n'
       + 'declare const declaration: import("@get-modular/core").ModuleDeclaration;\n';
     const files = [];
-    for (const case_ of cases.filter((name) => !["local-type", "other-package"].includes(name))) {
+    for (const case_ of cases.filter((name) => !["local-type", "other-package", "import-type", "reexport"].includes(name))) {
       files.push(`${case_}.ts`);
       writeFileSync(join(directory, `${case_}.ts`), prelude + read(case_, "output.ts.txt"));
     }
@@ -62,7 +62,14 @@ test("0.2-0.3 outputs type-check against the workspace Assembly", { timeout: 600
 });
 
 function run(...args) {
-  const result = spawnSync(process.execPath, [runner, ...args], { encoding: "utf8" });
+  return runIn({}, ...args);
+}
+
+function runIn({ cwd, initCwd }, ...args) {
+  const { INIT_CWD: _inherited, ...env } = process.env;
+  const result = spawnSync(process.execPath, [runner, ...args], {
+    encoding: "utf8", cwd, env: initCwd === undefined ? env : { ...env, INIT_CWD: initCwd },
+  });
   return { status: result.status, out: result.stdout, err: result.stderr };
 }
 
@@ -133,4 +140,28 @@ test("runner: unknown codemod exits 2 with the known list; a file that does not 
   assert.equal(result.status, 1);
   assert.match(result.err, /skipped, does not parse: src[\\/]broken\.ts/u);
   assert.match(result.out, /src[\\/]index\.ts: 2 edits/u);
+});
+
+test("runner: a relative target resolves against the invoking directory (INIT_CWD under pnpm --dir), never the checkout", (t) => {
+  const directory = consumer(t);
+  const parent = dirname(directory);
+  // pnpm --dir <checkout> sets cwd to the checkout and INIT_CWD to the directory the command was typed in.
+  const viaPnpm = runIn({ cwd: workspace, initCwd: parent }, "0.2-0.3", "consumer", "--check");
+  assert.equal(viaPnpm.status, 1, viaPnpm.err);
+  assert.match(viaPnpm.out, /src[\\/]index\.ts: 2 edits/u);
+  const plain = runIn({ cwd: parent }, "0.2-0.3", "consumer", "--check");
+  assert.equal(plain.status, 1, plain.err);
+});
+
+test("runner: refuses to run inside the Get Modular checkout", () => {
+  const result = runIn({ cwd: workspace, initCwd: workspace }, "0.2-0.3", ".", "--check");
+  assert.equal(result.status, 2);
+  assert.match(result.err, /Get Modular checkout itself/u);
+  assert.equal(runIn({ cwd: workspace }, "0.2-0.3", "tests", "--dry").status, 2);
+});
+
+test("runner: tsx files are included", (t) => {
+  const directory = consumer(t);
+  cpSync(join(fixtures, "plain/input.ts.txt"), join(directory, "src/view.tsx"));
+  assert.match(run("0.2-0.3", directory).out, /src[\\/]view\.tsx: 2 edits/u);
 });

@@ -1,0 +1,2 @@
+export { FactoryHandle } from "@get-modular/assembly";
+export type { FactoryHandle as Handle } from "@get-modular/assembly";
