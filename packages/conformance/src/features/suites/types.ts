@@ -1,11 +1,11 @@
-import type { AnyContract, CapabilitiesOf } from "@get-modular/assembly";
+import type { AnyContract, Contract } from "@get-modular/assembly";
 import type { ModuleDeclaration } from "@get-modular/core";
 import type { ModuleContext } from "@get-modular/resources";
 
 /** Any `(name, body)` registrar: node:test `test`, Vitest `it`, or `(name, body) => t.test(name, body)`; an unbound `t.test` crashes. */
 export type TestFn = (name: string, body: () => Promise<void>) => unknown;
 
-export type ContractValue<T extends AnyContract> = CapabilitiesOf<T>[T["id"]]["value"];
+export type ContractValue<T extends AnyContract> = T extends Contract<string, infer V, number> ? V : never;
 /** `{ signal, resources }` of a fresh scope per case. */
 export type CaseContext = ModuleContext;
 export type ContractCase<V> = (subject: V, context: CaseContext) => void | Promise<void>;
