@@ -475,6 +475,9 @@ it authenticates nothing.
 7. Session, tenant and instance IDs never enter module IDs; they name scopes
    or run inputs.
 
+Check rules 1, 2 and 6 in a test with `checkNamespaces` from
+`@get-modular/conformance`.
+
 ### Testing modules
 
 [ADR-0033](../decisions/0033-admit-the-module-conformance-kit.md) admits the
