@@ -37,7 +37,7 @@ English summary.
 - **Release trains.** Train 1: Core/Assembly 0.3.0 (Assembly scope, inputs,
   builder, fragment typing; Core version only) and `@get-modular/resources`
   0.1.0; a thin `@get-modular/conformance` may join train 1 or the next minor.
-  Train 2: Core/Assembly 0.4.0 with the contract evolution wire format; the
+  Train 2: Core/Assembly 0.4.0 (deferred on 2026-10-10) with the contract evolution wire format; the
   namespace helper `checkNamespaces` ships in conformance.
 - **Contract evolution.** One monotonic line per contract, no versioned ids:
   provider `revision` and `compatibleFrom`; the consumer's revision is fixed by
