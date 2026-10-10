@@ -1,0 +1,3 @@
+import { FactoryHandle } from "@other/assembly";
+
+export type Mine = FactoryHandle<HostCapabilities>;

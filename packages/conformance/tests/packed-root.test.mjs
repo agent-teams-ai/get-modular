@@ -108,7 +108,7 @@ test("the archive installs beside its peer archives as one root-only ESM package
     await writeFile(join(consumer, "check.mjs"), `
       import * as conformance from '@get-modular/conformance';
       const names = Object.keys(conformance).sort().join(',');
-      if (names !== 'ConformanceError,contractSuite,guardHandles,isolate,runContractSuite,smoke') throw Error(names);
+      if (names !== 'ConformanceError,checkNamespaces,contractSuite,guardHandles,isolate,runContractSuite,smoke') throw Error(names);
       try {
         await import('@get-modular/conformance/dist/index.js');
         throw Error('deep import succeeded');

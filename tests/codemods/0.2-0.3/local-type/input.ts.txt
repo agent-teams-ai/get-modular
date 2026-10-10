@@ -1,0 +1,5 @@
+import { AnyFactoryHandle } from "@get-modular/assembly";
+import { FactoryHandle } from "./handles.js";
+
+export type Mine = FactoryHandle<HostCapabilities>;
+export type Theirs = AnyFactoryHandle<HostCapabilities>;

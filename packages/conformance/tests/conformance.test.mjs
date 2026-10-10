@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { many, optional, required } from "@get-modular/core";
 import { assemblyFor, declareModule, defineContract } from "@get-modular/assembly";
 import { createScope, scoped } from "@get-modular/resources";
-import { ConformanceError, contractSuite, guardHandles, isolate, runContractSuite, smoke } from "../dist/index.js";
+import { ConformanceError, checkNamespaces, contractSuite, guardHandles, isolate, runContractSuite, smoke } from "../dist/index.js";
 
 // ADR-0033: the real Core, Assembly and resources of this workspace build every module here.
 const tests = dirname(fileURLToPath(import.meta.url));
@@ -469,4 +469,63 @@ test("G1 a handle opened and never closed is reported; a closed one never is, ru
   const allowed = probe("allow");
   assert.equal(allowed.status, 0, allowed.stderr);
   assert.deepEqual(JSON.parse(allowed.stdout), { code: null });
+});
+
+const declared = (moduleId, implementationId, authority = moduleId.split("/")[0]) =>
+  declareModule({ moduleId, implementationId, owner: { authority, path: ["m"] }, provides: [], slots: [] });
+const violations = (input) => {
+  try {
+    checkNamespaces(input);
+  } catch (error) {
+    assert.equal(code(error), "conformance.namespaces.violation");
+    return error.details.violations;
+  }
+  return [];
+};
+
+test("N1 declarations inside the namespace with the matching authority pass", () => {
+  checkNamespaces({ namespace: "acme", declarations: [declared("acme/a", "acme/a/default"), declared("acme", "acme/b")] });
+  checkNamespaces({ namespace: "acme/orders", declarations: [declared("acme/orders/x", "acme/orders/x/default", "acme")] });
+  checkNamespaces({ namespace: "acme", declarations: [] });
+});
+
+test("N2 membership holds only at a segment boundary", () => {
+  assert.deepEqual(violations({ namespace: "agent", declarations: [declared("agent-runtime/x", "agent/x")] }), [
+    { implementationId: "agent/x", rule: "module-id", value: "agent-runtime/x", expected: "agent" },
+  ]);
+  // A multi-segment namespace does not cover its sibling or its own prefix.
+  assert.equal(violations({ namespace: "acme/orders", declarations: [declared("acme/orders-x/m", "acme/orders/m")] }).length, 1);
+  assert.equal(violations({ namespace: "acme/orders", declarations: [declared("acme/orders", "acme")] })[0].rule, "implementation-id");
+});
+
+test("N3 owner.authority must equal the first segment of moduleId", () => {
+  assert.deepEqual(violations({ namespace: "acme", declarations: [declared("acme/a", "acme/a/default", "other")] }), [
+    { implementationId: "acme/a/default", rule: "owner-authority", value: "other", expected: "acme" },
+  ]);
+});
+
+test("N4 one throw lists every violation of a mixed set", () => {
+  const found = violations({
+    namespace: "acme",
+    declarations: [declared("acme/ok", "acme/ok/default"), declared("x/a", "y/a", "z"), declared("acme/b", "acme/b/default", "q")],
+  });
+  assert.deepEqual(found.map(entry => `${entry.implementationId}:${entry.rule}`),
+    ["y/a:module-id", "y/a:implementation-id", "y/a:owner-authority", "acme/b/default:owner-authority"]);
+});
+
+test("N5 a malformed call is an argument error and reads own data only", () => {
+  const good = declared("acme/a", "acme/a/default");
+  for (const bad of [undefined, { namespace: "", declarations: [] }, { namespace: "/acme", declarations: [] },
+    { namespace: "acme/", declarations: [] }, { namespace: "acme//x", declarations: [] }, { namespace: "acme", declarations: good },
+    { namespace: "acme", declarations: [null] }, { namespace: "acme", declarations: [{ ...good, moduleId: 1 }] },
+    { namespace: "acme", declarations: [{ ...good, owner: undefined }] },
+    { namespace: "acme", declarations: [,] },
+    { namespace: Object.create({ x: 1 }), declarations: [] }]) {
+    assert.throws(() => checkNamespaces(bad), error => code(error) === "conformance.argument.invalid");
+  }
+  let calls = 0;
+  const getter = { namespace: "acme" };
+  Object.defineProperty(getter, "declarations", { enumerable: true, get() { calls += 1; return []; } });
+  assert.throws(() => checkNamespaces(getter), error => code(error) === "conformance.argument.invalid");
+  assert.equal(calls, 0);
 });

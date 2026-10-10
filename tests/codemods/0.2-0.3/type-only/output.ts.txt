@@ -1,0 +1,3 @@
+import type { AnyFactoryHandle } from "@get-modular/assembly";
+
+export type Roots = Readonly<Record<string, AnyFactoryHandle<HostCapabilities>>>;

@@ -5,7 +5,7 @@ import {
 } from "@get-modular/assembly";
 import type { ModuleContext } from "@get-modular/resources";
 import {
-  contractSuite, guardHandles, isolate, runContractSuite, smoke,
+  checkNamespaces, contractSuite, guardHandles, isolate, runContractSuite, smoke,
   type CaseContext, type ConformanceError, type ConformanceErrorCode, type ContractSubject,
   type HandleGuard, type Isolated, type SmokeInjection, type SmokeStep, type TestFn,
 } from "../dist/index.js";
@@ -106,6 +106,7 @@ switch (reason) {
   case "conformance.argument.invalid":
   case "conformance.isolate.construction-failed":
   case "conformance.smoke.failed":
+  case "conformance.namespaces.violation":
   case "conformance.suite.revision-mismatch":
   case "conformance.suite.case-failed":
   case "conformance.handles.leaked":
@@ -116,3 +117,8 @@ switch (reason) {
     void exhaustive;
   }
 }
+
+// Namespace rules are checked synchronously over declarations of the caller's own types.
+checkNamespaces({ namespace: "acme", declarations: [orders] });
+// @ts-expect-error a bare declaration is not a list
+checkNamespaces({ namespace: "acme", declarations: orders });

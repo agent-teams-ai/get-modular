@@ -38,6 +38,8 @@
     "canonicalization",
     "canonicalizer",
     "capabilitiesof",
+    "codemod",
+    "codemods",
     "cutover",
     "dogfooding",
     "effectful",

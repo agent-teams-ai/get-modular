@@ -3,6 +3,7 @@ export type ConformanceErrorCode =
   | "conformance.argument.invalid"
   | "conformance.isolate.construction-failed"
   | "conformance.smoke.failed"
+  | "conformance.namespaces.violation"
   | "conformance.suite.revision-mismatch"
   | "conformance.suite.case-failed"
   | "conformance.handles.leaked"

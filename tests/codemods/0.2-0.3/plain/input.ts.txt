@@ -1,0 +1,6 @@
+import { type AssemblyOutcome, FactoryHandle } from "@get-modular/assembly";
+
+export function roots(handles: readonly FactoryHandle<HostCapabilities>[]): number {
+  const first: FactoryHandle<HostCapabilities> | undefined = handles[0];
+  return first === undefined ? 0 : handles.length;
+}

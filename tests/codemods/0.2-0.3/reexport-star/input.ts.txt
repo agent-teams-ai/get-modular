@@ -1,0 +1,2 @@
+export * from "@get-modular/assembly";
+export * as gm from "@get-modular/assembly";

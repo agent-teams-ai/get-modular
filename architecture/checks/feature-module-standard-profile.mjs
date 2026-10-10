@@ -65,7 +65,7 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
     "agent-teams-foundation quality check --consumer . --scope-only",
   "lint:typed": "agent-teams-foundation quality check --consumer .",
   "governance:check": "node architecture/checks/governance.mjs",
-  "governance:test": "node --test tests/governance.test.mjs tests/node-runtime-compatibility.test.mjs tests/assembly-admission.test.mjs tests/private-core-start.test.mjs tests/m3-start.test.mjs tests/generated-production-source.test.mjs tests/leaf-package-admission.test.mjs tests/ci-check-lanes.test.mjs",
+  "governance:test": "node --test tests/governance.test.mjs tests/node-runtime-compatibility.test.mjs tests/assembly-admission.test.mjs tests/private-core-start.test.mjs tests/m3-start.test.mjs tests/generated-production-source.test.mjs tests/leaf-package-admission.test.mjs tests/ci-check-lanes.test.mjs tests/codemods/codemods.test.mjs",
   "qualification:resource-profile": "node tests/qualification/v1-resource-profile.mjs",
   "qualification:v1-diagnostics-protocol":
     "node --test tests/qualification/v1-diagnostics-protocol.mjs",

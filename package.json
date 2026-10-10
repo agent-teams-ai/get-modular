@@ -15,6 +15,7 @@
     "url": "git+https://github.com/agent-teams-ai/get-modular.git"
   },
   "scripts": {
+    "codemod": "node architecture/tooling/codemods/run.mjs",
     "precheck": "pnpm ownership:checkpoint:test",
     "check": "pnpm runtime:preflight && pnpm lockfile:peers:check && pnpm runtime:policy:typecheck && pnpm runtime:policy:test && pnpm governance:check && pnpm release-owned-files:check && pnpm assembly:build && pnpm lifecycle:check && pnpm resources:check && pnpm conformance:check && pnpm foundation:check && pnpm sdk-growth:check && pnpm lint:typed && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm core:typecheck:prepared && pnpm core:test && pnpm assembly:typecheck && pnpm assembly:test && pnpm contracts:check && pnpm contracts:test && pnpm qualification:resource-profile && pnpm qualification:v1-diagnostics-protocol && pnpm qualification:v1-graph-semantics && pnpm qualification:self-composition-templates && pnpm governance:test",
     "check:changed": "agent-teams-foundation agent-workflow changed --consumer .",
@@ -40,7 +41,7 @@
     "architecture:feature-module-profile": "node architecture/checks/feature-module-standard-profile.mjs",
     "architecture:feature-module-profile:test": "pnpm quality:critical:test && node --test tests/feature-module-standard-profile.test.mjs tests/release-owned-files.test.mjs tests/public-api-compatibility.test.mjs tests/required-quality-tests.test.mjs",
     "governance:check": "node architecture/checks/governance.mjs",
-    "governance:test": "node --test tests/governance.test.mjs tests/node-runtime-compatibility.test.mjs tests/assembly-admission.test.mjs tests/private-core-start.test.mjs tests/m3-start.test.mjs tests/generated-production-source.test.mjs tests/leaf-package-admission.test.mjs tests/ci-check-lanes.test.mjs",
+    "governance:test": "node --test tests/governance.test.mjs tests/node-runtime-compatibility.test.mjs tests/assembly-admission.test.mjs tests/private-core-start.test.mjs tests/m3-start.test.mjs tests/generated-production-source.test.mjs tests/leaf-package-admission.test.mjs tests/ci-check-lanes.test.mjs tests/codemods/codemods.test.mjs",
     "qualification:resource-profile": "node tests/qualification/v1-resource-profile.mjs",
     "qualification:v1-diagnostics-protocol": "node --test tests/qualification/v1-diagnostics-protocol.mjs",
     "qualification:v1-graph-semantics": "node --test tests/qualification/v1-graph-semantics.mjs",
@@ -100,6 +101,7 @@
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "tar": "catalog:",
+    "ts-morph": "catalog:",
     "typescript": "catalog:",
     "typescript-minimum": "catalog:",
     "yaml": "catalog:"
