@@ -149,3 +149,20 @@ declareModule({ moduleId: "x/y", implementationId: "x/y", owner: { authority: "x
 declare const widenedSpec: DeclarationSpec;
 // @ts-expect-error A widened spec must not turn the bound declaration into never and disable checking.
 void host.bindFactory(declareModule(widenedSpec), async () => ({ instance: 0, capabilities: { "acme/whatever": 42 } }));
+
+// ADR-0035: a profileId root completes the profile from its handles and returns the compiled composition.
+export async function assembleFromProfile(): Promise<SuccessfulComposition | undefined> {
+  const ready = await host.prepare({
+    profileId: "acme/production", bindings: [], factories: [dbHandle, ordersHandle, billingHandle], roots: { orders: ordersHandle },
+    inputs: { session },
+  });
+  return ready.status === "prepared" ? ready.composition : undefined;
+}
+// @ts-expect-error profileId root: every used capability must be part of the preparing map.
+void host.prepare({ profileId: "acme/production", factories: [dbHandle, auditHandle], roots: { audit: auditHandle } });
+// @ts-expect-error composition and profileId are exclusive.
+void host.prepare({ composition, profileId: "acme/production", factories: [dbHandle], roots: { db: dbHandle } });
+// @ts-expect-error One of composition and profileId is required.
+void host.prepare({ factories: [dbHandle], roots: { db: dbHandle } });
+// @ts-expect-error bindings complete a profileId and do not accompany a composition.
+void host.prepare({ composition, bindings: [], factories: [dbHandle], roots: { db: dbHandle } });

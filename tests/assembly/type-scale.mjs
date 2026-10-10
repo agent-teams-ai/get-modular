@@ -37,7 +37,7 @@ export function fragmentSource(count = 500, teams = 20) {
   const lines = [
     'import { required } from "@get-modular/core";',
     'import { assemblyFor, declareModule, defineContract } from "@get-modular/assembly";',
-    'import type { CapabilitiesOf, SuccessfulComposition } from "@get-modular/assembly";',
+    'import type { CapabilitiesOf } from "@get-modular/assembly";',
     ...all.map((index) => `const C${index} = defineContract<{ readonly v${index}: (x: number) => number }>()({ id: "fragment/c${index}", revision: ${1 + (index % 3)} });`),
   ];
   for (let team = 0; team < teams; team += 1) {
@@ -54,9 +54,8 @@ export function fragmentSource(count = 500, teams = 20) {
   lines.push(
     `interface HostCapabilities extends CapabilitiesOf<${all.map((index) => `typeof C${index}`).join(" | ")}> {}`,
     "const host = assemblyFor<HostCapabilities>();",
-    "declare const composition: SuccessfulComposition;",
     "export async function consumeFragments(): Promise<number> {",
-    `  const ready = await host.prepare({ composition, factories: [${all.map((index) => `h${index}`).join(", ")}], roots: { last: h${count - 1} } });`,
+    `  const ready = await host.prepare({ profileId: "fragment/root", factories: [${all.map((index) => `h${index}`).join(", ")}], roots: { last: h${count - 1} } });`,
     '  if (ready.status !== "prepared") return 0;',
     "  const outcome = await ready.prepared.run({ scope: undefined });",
     '  return outcome.status === "succeeded" ? outcome.roots.last.n : 0;',

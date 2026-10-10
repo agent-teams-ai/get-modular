@@ -44,8 +44,23 @@ tokens, use Core's portable grammar, for example `synthetic/store` and
 Returned capability records use the full capability IDs as keys; dependency
 records use the consumer's local slot IDs.
 
-Compile with public Core, then call
-`prepare({ composition, factories, roots: { app: appHandle }, inputs })`.
+A production root lists its modules once and lets Assembly complete the profile
+(ADR-0035): `prepare({ profileId, bindings, factories, roots: { app: appHandle }, inputs })`.
+Selections are all factory and input handles, and roots are the modules of the root
+handles. A `required` slot without a row in `bindings` binds to the single other
+bound handle that provides its capability id, at any revision; Core still rejects
+a revision mismatch with `assembly.prepare.core-rejected`. Every other slot without
+a row (`optional`, `many`, or `required` with zero or several candidates) fails
+with `assembly.prepare.unresolved-binding` before any factory runs. `error.cause`
+lists every such slot as `UnresolvedBinding` entries with its candidates; an
+`optional` slot always needs a row, `[]` or one provider. Completion does not depend
+on the order of `factories`, `roots` or `inputs`, and it runs once in `prepare`.
+A `"prepared"` result also carries the compiled `composition`.
+
+A Host that compiles a profile itself, such as from bytes or a desired profile,
+compiles with public Core and calls
+`prepare({ composition, factories, roots: { app: appHandle }, inputs })`; give
+exactly one of `composition` and `profileId`.
 Factory handles appear only in `factories` and input handles only in `inputs`,
 each under one alias; together they cover every selected module, and an input is
 never a root. A `"prepared"` result exposes `prepared.run({ signal, scope, inputs })`.

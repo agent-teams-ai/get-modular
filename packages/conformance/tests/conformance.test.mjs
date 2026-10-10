@@ -107,13 +107,16 @@ test("H3 dispose reports the debt, and a later close retries it", async () => {
   assert.equal((await isolated.close()).complete, true);
 });
 
-// Five modules in a chain, each owning one resource whose release is recorded.
-function chain({ onCleanup = () => {}, onStart = () => {}, onDone = () => {}, wait = () => undefined, carrier, throws } = {}) {
-  const declarations = [1, 2, 3, 4, 5].map(index => declareModule({
+function chainDeclarations() {
+  return [1, 2, 3, 4, 5].map(index => declareModule({
     moduleId: `t/m${String(index)}`, implementationId: `t/m${String(index)}`, owner,
     provides: [defineContract()({ id: `t/c${String(index)}`, revision: 1 }).provide()],
     slots: index === 1 ? [] : [defineContract()({ id: `t/c${String(index - 1)}`, revision: 1 }).slot("dep", required())],
   }));
+}
+// Five modules in a chain, each owning one resource whose release is recorded.
+function chain({ onCleanup = () => {}, onStart = () => {}, onDone = () => {}, wait = () => undefined, carrier, throws } = {}) {
+  const declarations = chainDeclarations();
   const calls = { compose: 0 };
   const compose = async api => {
     calls.compose += 1;
@@ -151,6 +154,21 @@ async function compileChain(declarations) {
   assert.equal(result.ok, true);
   return result;
 }
+
+test("S1b smoke runs a profileId root whose bindings Assembly completes", async () => {
+  const calls = { compose: 0 };
+  const compose = async api => {
+    calls.compose += 1;
+    const handles = chainDeclarations().map(declaration => api.bindFactory(declaration, async () => ({
+      instance: declaration.implementationId, capabilities: Object.fromEntries(declaration.provides.map(({ capabilityId }) => [capabilityId, {}])),
+    })));
+    return api.prepare({ profileId: "t/chain", factories: handles, roots: { root: handles[4] } });
+  };
+  const steps = await smoke({ api: assemblyFor(), compose });
+  assert.equal(calls.compose, 1);
+  assert.equal(steps.length, 11);
+  assert.ok(steps.every(step => step.problem === undefined && step.report.complete));
+});
 
 test("S1 one composition root, a failure injected at every module, every attempt released", async () => {
   const everything = chain();
