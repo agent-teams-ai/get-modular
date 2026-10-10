@@ -158,7 +158,7 @@ test("observations bind historical lock bytes, production importers and reviewed
     "C0 retains the CMS bytes observed at its base");
   const currentCms = readFileSync(cmsPath);
   assert.equal(digest(currentCms),
-    "sha256:c53eb4cd03a998ff4abb786ae84d94e1fc588a1c48cfd6f9a0fe41665f67160b",
+    "sha256:859fbca1e8a0c61b6ae873bea0057735a55b80230100e6e73a74de22e123165a",
     "the current CMS successor must match its separately reviewed bytes");
   // Package versions are observations at the evidence base; later releases move the working tree.
   for (const [name, version] of Object.entries(checkpoint.evidence.packages)) {

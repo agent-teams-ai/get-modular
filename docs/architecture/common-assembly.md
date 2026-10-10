@@ -463,7 +463,7 @@ Module packages:
   From a checkout with dependencies installed, apply one with
   `pnpm --dir <get-modular checkout> codemod <from>-<to> <consumer dir> --write`
   (`--dry` previews, `--check` exits 1 while a change is pending; `--write` refuses
-  a dirty Git tree unless `--allow-dirty`), then typecheck.
+  a dirty Git tree, or a directory outside Git, unless `--allow-dirty`), then typecheck.
 - Identify errors by `code`, never by class or message:
   `assembly.<area>.<reason>`, `resources.<area>.<reason>` and
   `conformance.<area>.<reason>`. Core diagnostics carry their catalog codes in
@@ -585,7 +585,7 @@ kit `@get-modular/conformance`.
 
 1. Export each module factory as a named `ModuleFactory` typed by the module's
    own contract map, and bind the same function in production, wrapped with
-   `scoped()` when it registers resources.
+   `scoped()` when it takes `ModuleContext`.
 2. Type fakes with `FactoryDependencies<C, typeof declaration>`. No `any`,
    `as never` or double cast on a dependency record.
 3. The contract owner keeps one fake per contract that others implement and a
@@ -714,6 +714,9 @@ every such slot with its candidates. An `optional` slot always needs a row: `[]`
 or one provider. Completion does not depend on the order of
 `factories`, `roots` or `inputs`. A `"prepared"` result also carries the compiled
 `composition`. Give exactly one of `composition` and `profileId`.
+From Assembly 0.4.0, production composition roots use `profileId`;
+`prepare({ composition })` remains for a Host that compiles a profile itself,
+such as from bytes or a desired profile, and for `isolate`.
 
 `prepare({ composition, factories, roots, inputs })` accepts a successful Core
 result, the exact selected factory handles, an alias-to-root-handle mapping and an
