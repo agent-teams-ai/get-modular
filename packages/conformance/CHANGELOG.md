@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.2.0
+
+### Minor Changes
+
+- d817bf7: Add `checkNamespaces({ namespace, declarations })`: one synchronous call checks the namespace rules of the Consumer Module Standard for a product. `moduleId` and `implementationId` lie in the namespace at a segment boundary, and `owner.authority` equals the first segment of `moduleId`. It collects every violation and throws `conformance.namespaces.violation` with `details.violations`.
+  
+  Migration:
+  
+  - Better: one call checks the namespace rules instead of a hand-written loop.
+  - Codemod: none - one new union member of `ConformanceErrorCode`.
+  - By hand: exhaustive maps over `ConformanceErrorCode` add `conformance.namespaces.violation`.
+  
+  Authoring surface changed: no
+
+### Patch Changes
+
+- d171008: `ContractValue` reads the value type from the contract descriptor instead of indexing `CapabilitiesOf`. The resulting type is unchanged.
+  
+  Authoring surface changed: no
+- Updated dependencies [d171008]
+- Updated dependencies
+- Updated dependencies [2a83057]
+  - @get-modular/assembly@0.4.0
+  - @get-modular/core@0.4.0
+
 ## 0.1.0
 
 ### Minor Changes
