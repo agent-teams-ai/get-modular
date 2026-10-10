@@ -1,11 +1,11 @@
 # Get Modular 0.3.0 train: retained release archives (R-1a)
 
-Status: retained; approved for publication by the owner on 2026-10-09. Nothing is published yet.
+Status: published to npm on 2026-10-09 under dist-tag `candidate-0-3-0` and promoted to `latest` on 2026-10-10 (Core and Assembly 0.3.0; resources and conformance 0.1.0 got `latest` automatically as new packages).
 
 ## Source
 
 - Repository: `agent-teams-ai/get-modular`.
-- Source commit `9e529d69150c1738c29d56a05de7cada60547808` (final head of REL PR #150), tree `af44844998d44e5d6ce3477c5bbae12ec1cf4bce`; merged as `bb364ac8ca461b5e8277eeb3f7867b26187f99e8`.
+- Source commit `9e529d69150c1738c29d56a05de7cada60547808` (REL head at packing time), tree `af44844998d44e5d6ce3477c5bbae12ec1cf4bce`; merged as `bb364ac8ca461b5e8277eeb3f7867b26187f99e8`. The final head of REL PR #150 was `87cb92324f1de7a0b5fd5631ac46f1f58002fde2` (regenerated on main `4ffa0ab`, tree equal to the merge `bb364ac8`).
 - Source check (6.4) on later REL heads: `87cb92324f1de7a0b5fd5631ac46f1f58002fde2` passed (Core, Assembly and resources byte-identical to `SHA256SUMS`; all four normalized content digests equal).
 - Package trees: `packages/core` `9fb434c6f1b00959ec607bcd753fac2d11ce425f`, `packages/assembly` `3a941f9f3ede53e97f24707e2e8c443eb854846e`, `packages/resources` `33ce8d44e61856c1748f3ded62d632324d2cc149`, `packages/conformance` `c6fcc28e8491235fbac1cecfd15667e1b66b847f`.
 - Toolchain: Node 24.21.0, pnpm 11.20.0.
@@ -34,7 +34,20 @@ pnpm 11.20.0 packs the conformance archive non-deterministically (the order of i
 - Outside `dist/`, each archive holds exactly `package/LICENSE`, `package/package.json`, `package/CHANGELOG.md` and `package/README.md`.
 - All four normalized content digests equal the values in the PR #150 description, and core, assembly and resources also equal its SHA-256 values.
 
-## Registry state (read 2026-10-08)
+## Publication
+
+Published 2026-10-09 in the order Core, Assembly, resources, conformance under dist-tag `candidate-0-3-0`; `latest` moved on 2026-10-10. The registry `dist.integrity` read back equals the `INTEGRITY` file:
+
+| Package | Version | Registry `dist.integrity` |
+| --- | --- | --- |
+| `@get-modular/core` | 0.3.0 | `sha512-we9Sr1pU+mK7MPDF1tZc9b9SC+wBp0bzIeahmaESXFplILfgE16avp+j2e3Zl7mYd9LyCeQk1c21UyGkd0p8RQ==` |
+| `@get-modular/assembly` | 0.3.0 | `sha512-41GrHEavrA6BHeVassm5H/Nx3Av8nNIui5ShfiiTYxios100/Fj2bXI9ZiSyz8FiLT5VMv3SEVmoiO6UcRudeA==` |
+| `@get-modular/resources` | 0.1.0 | `sha512-sIC+ZYI196qK11Dmz9s9U/Va4UAOU5G8m9beCp3zIIbEK0fKLAWGssd4l72aS0ycRBi5AhsbKFysKS9EVVax8g==` |
+| `@get-modular/conformance` | 0.1.0 | `sha512-yIxQqJd/RRIxtO3uoo3MQXNdfeMk96qjzzW3ggfxTyfg9/UDUl7qfB3nOTWVkDN+Zg/gLFY+24grd1zGUQSWmw==` |
+
+The tarballs downloaded from the registry with `npm pack` are byte-identical to the retained archives (`shasum -a 256 -c SHA256SUMS` passed for all four).
+
+## Registry state before publication (read 2026-10-08)
 
 - `@get-modular/core`: versions `0.1.0`, `0.2.0`; dist-tags `latest=0.2.0`, `candidate-0-1-0=0.1.0`, `candidate-0-2-0=0.2.0`.
 - `@get-modular/assembly`: versions `0.1.0`, `0.2.0`; dist-tags `latest=0.2.0`, `candidate-0-1-0=0.1.0`, `candidate-0-2-0=0.2.0`.
