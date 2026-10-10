@@ -73,7 +73,9 @@ smoke tests). Write a codemod under `architecture/tooling/codemods/` with
 fixtures in `tests/codemods/` for a rename, a moved import, a changed call shape
 or a type-argument change; say `none` for a pure addition, a new union member or
 a change that needs a semantic decision. The codemod lands in the same PR as the
-break.
+break. A consumer runs it on a clean Git tree (`--dry` lists the edits,
+`--check` exits 1 while edits remain, `--write` applies them), then typechecks;
+anything it cannot change is printed under "fix by hand".
 
 Get Modular compiles composition semantics. It does not own artifact trust,
 authorization, executable discovery, desired state, readiness, generations,
