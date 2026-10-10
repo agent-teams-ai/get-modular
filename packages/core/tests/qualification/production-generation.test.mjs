@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { chmod, cp, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -83,11 +83,15 @@ async function bounded(promise, milliseconds, message) {
 }
 
 async function withWindowsFileLock(path, action) {
+  const started = performance.now();
   const releasePath = `${path}.${randomUUID()}.release`;
   // Both fixture-owned paths travel through the environment, never script text.
   // FileShare.None denies deletion while the child owns the open handle.
   const script = `
     $ErrorActionPreference = 'Stop'
+    # Refs #148: distinguish shell startup from an exclusive-open stall.
+    [Console]::Error.WriteLine('LOCK_OPENING')
+    [Console]::Error.Flush()
     $stream = [System.IO.File]::Open(
       $env:GM_CLEANUP_LOCK_PATH,
       [System.IO.FileMode]::Open,
@@ -106,6 +110,8 @@ async function withWindowsFileLock(path, action) {
       }
     } finally {
       $stream.Dispose()
+      [Console]::Error.WriteLine('LOCK_RELEASED')
+      [Console]::Error.Flush()
     }
   `;
   const child = spawn("powershell.exe", [
@@ -119,10 +125,21 @@ async function withWindowsFileLock(path, action) {
   let output = "";
   let diagnostics = "";
   let childError;
+  let spawnedAt;
+  let exitedAt;
+  let closedAt;
   let didClose = false;
   let markerCreated = false;
   const errors = [];
-  const status = () => `exitCode=${child.exitCode}, signalCode=${child.signalCode}; ` +
+  const elapsed = () => Math.round(performance.now() - started);
+  // Spawn confirms OS process creation, not PowerShell script execution or a
+  // file lock. Only the existing stdout acknowledgment authorizes the action.
+  child.once("spawn", () => { spawnedAt = elapsed(); });
+  child.once("exit", () => { exitedAt = elapsed(); });
+  const status = () => `elapsedMs=${elapsed()}, spawnedAtMs=${spawnedAt ?? "absent"}, ` +
+    `exitedAtMs=${exitedAt ?? "absent"}, closedAtMs=${closedAt ?? "absent"}; ` +
+    `exitCode=${child.exitCode}, signalCode=${child.signalCode}; ` +
+    `stdoutEnded=${child.stdout.readableEnded}, stderrEnded=${child.stderr.readableEnded}; ` +
     `stdout=${JSON.stringify(output)}; stderr=${JSON.stringify(diagnostics)}`;
   child.stderr.setEncoding("utf8");
   child.stderr.on("data", chunk => {
@@ -130,6 +147,7 @@ async function withWindowsFileLock(path, action) {
   });
   const closed = new Promise(resolve => {
     child.once("close", (code, signal) => {
+      closedAt = elapsed();
       didClose = true;
       resolve({ code, signal });
     });
@@ -186,6 +204,46 @@ async function withWindowsFileLock(path, action) {
   if (errors.length === 1) throw errors[0];
   if (errors.length > 1) throw new AggregateError(errors, "Windows file lock action/readiness and teardown failed");
 }
+
+test("Windows lock helper reports failed acquisition and settles without running the action", {
+  skip: process.platform !== "win32",
+}, async t => {
+  const directory = await mkdtemp(join(tmpdir(), "gm-lock-acquisition-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  let called = false;
+  await assert.rejects(withWindowsFileLock(join(directory, "missing.ts"), async () => {
+    called = true;
+  }), error => {
+    const failures = error instanceof AggregateError ? error.errors : [error];
+    assert.ok(failures.some(failure =>
+      /lock child exited before readiness:/u.test(failure.message)
+      && /LOCK_OPENING/u.test(failure.message)
+      && !/LOCK_READY/u.test(failure.message)), String(error));
+    return true;
+  });
+  assert.equal(called, false);
+  assert.deepEqual(await readdir(directory), []);
+});
+
+test("Windows lock helper releases its real handle and marker after an action failure", {
+  skip: process.platform !== "win32",
+}, async t => {
+  const directory = await mkdtemp(join(tmpdir(), "gm-lock-release-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const path = join(directory, "owned.ts");
+  await writeFile(path, "owned fixture\n");
+  const actionError = new Error("owned action failure");
+  await assert.rejects(withWindowsFileLock(path, async () => {
+    await assert.rejects(rm(path), error => {
+      assert.ok(["EPERM", "EACCES", "EBUSY"].includes(error.code), String(error));
+      return true;
+    });
+    throw actionError;
+  }), error => error === actionError);
+  assert.equal(await readFile(path, "utf8"), "owned fixture\n");
+  await rm(path);
+  assert.deepEqual(await readdir(directory), []);
+});
 
 test("generated cleanup failure still removes stale production output", async t => {
   const f = await fixture(t);

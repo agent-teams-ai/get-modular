@@ -4,6 +4,7 @@ import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { performance } from "node:perf_hooks";
 import { promisify } from "node:util";
 
 import { resolveNpmCli } from "./support/npm-cli.mjs";
@@ -21,10 +22,25 @@ const directory = await mkdtemp(join(tmpdir(), "gm-g1-registry-"));
 const npmEnvironment = { ...process.env, npm_config_cache: join(directory, "npm-cache"), npm_config_update_notifier: "false" };
 try {
   await writeFile(join(directory, "package.json"), JSON.stringify({ name: "gm-g1-registry-consumer", private: true, type: "module" }));
-  await execute(process.execPath, [npmCli, "install", "--ignore-scripts", "--package-lock=true", "--no-audit", "--no-fund",
-    "--registry=https://registry.npmjs.org/", `${PACKAGE}@${VERSION}`], {
-    cwd: directory, timeout: 120_000, maxBuffer: 8_000_000, env: npmEnvironment,
-  });
+  const phase = { phase: "retained-foundation-registry-install", budgetMs: process.platform === "win32" ? 300_000 : 120_000 };
+  const startedAt = performance.now();
+  let outcome = "failed";
+  try {
+    try {
+      console.log(JSON.stringify({ ...phase, event: "start", elapsedMs: 0 }));
+    } catch { /* Phase logging must not interrupt the install. */ }
+    await execute(process.execPath, [npmCli, "install", "--ignore-scripts", "--package-lock=true", "--no-audit", "--no-fund",
+      "--registry=https://registry.npmjs.org/", `${PACKAGE}@${VERSION}`], {
+      cwd: directory, timeout: phase.budgetMs, maxBuffer: 8_000_000, env: npmEnvironment,
+    });
+    outcome = "completed";
+  } finally {
+    try {
+      const elapsed = performance.now() - startedAt;
+      const elapsedMs = Number.isFinite(elapsed) ? Math.max(0, Math.floor(elapsed)) : 0;
+      console.log(JSON.stringify({ ...phase, event: "final", elapsedMs, outcome }));
+    } catch { /* Preserve the original operation error if phase logging fails. */ }
+  }
   const manifest = JSON.parse(await readFile(join(directory, "node_modules", PACKAGE, "package.json")));
   assert.equal(manifest.version, VERSION);
   const lock = JSON.parse(await readFile(join(directory, "package-lock.json")));

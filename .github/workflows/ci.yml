@@ -50,11 +50,21 @@ jobs:
         env:
           LANE_SCRIPTS: ${{ matrix.scripts }}
           FOUNDATION_PR_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          SDK_GROWTH_FAILURE_ARTIFACT: ${{ runner.temp }}/sdk-growth-failure.json
+          SDK_GROWTH_CHECKOUT_SHA: ${{ github.sha }}
         run: node architecture/tooling/run-ci-check-lane.mjs
       - name: Verify tracked workspace integrity
         env:
           EXPECTED_HEAD_SHA: ${{ github.sha }}
         run: node architecture/checks/tracked-workspace-integrity.mjs
+      # Earlier packaging failures and expected SDK exits may leave no SDK file.
+      - name: Retain bounded SDK growth failure evidence
+        if: failure() && matrix.lane == 'packaging'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1, reused from m3-runtime-matrix
+        with:
+          name: sdk-growth-${{ runner.os }}-${{ env.ROOT_CI_NODE_VERSION || '24.21.0' }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/sdk-growth-failure.json
+          if-no-files-found: ignore
 
   lanes-macos:
     name: check lane (macos-15, ${{ matrix.lane }})

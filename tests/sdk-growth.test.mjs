@@ -1,7 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { spawnSync } from "node:child_process";
+import "./qualification/sdk-growth-failure-retention.test.mts";
 
 import { loadSdkGrowthModel, validateSdkGrowth } from "../architecture/checks/sdk-growth.mjs";
+
+// Regression: Node stripping alone would admit a helper/test with invalid types.
+test("SDK retention helper and IO tests pass strict typechecking", () => {
+  const result = spawnSync(process.execPath, ["node_modules/typescript/bin/tsc",
+    "-p", "tests/qualification/tsconfig.sdk-growth-retention.json", "--noEmit"], {
+    cwd: new URL("../", import.meta.url), encoding: "utf8", timeout: 60_000,
+  });
+  assert.ifError(result.error);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+});
 
 async function rejects(change, pattern) {
   const model = await loadSdkGrowthModel();
