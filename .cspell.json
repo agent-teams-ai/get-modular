@@ -37,6 +37,7 @@
     "bivariantly",
     "canonicalization",
     "canonicalizer",
+    "capabilitiesof",
     "codemod",
     "codemods",
     "cutover",

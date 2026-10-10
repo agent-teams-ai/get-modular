@@ -2,7 +2,7 @@
 import { required } from "@get-modular/core";
 import { assemblyFor, declareModule, defineContract } from "@get-modular/assembly";
 import type {
-  AssemblyPrepareInput, CapabilitiesOf, CapabilityContract, DeclarationSpec, FactoryContext, ModuleFactory, SuccessfulComposition,
+  AnyContract, AssemblyPrepareInput, CapabilitiesOf, CapabilityContract, Contract, DeclarationSpec, FactoryContext, ModuleFactory, SuccessfulComposition,
 } from "@get-modular/assembly";
 
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;
@@ -75,6 +75,17 @@ void contextual;
 type Manual = { readonly "acme/db": CapabilityContract<DbPort, "acme/db/r3"> };
 const derived: Equal<Manual, CapabilitiesOf<typeof Db>> = true;
 void derived;
+// Key remapping keeps the result of the former per-key distribution, also for one id at two revisions.
+type DistributedCapabilities<T extends AnyContract> = {
+  readonly [Id in T["id"]]: T extends Contract<Id, infer V, infer Rev> ? CapabilityContract<V, `${Id}/r${Rev}`> : never;
+};
+const singleUnchanged: Equal<DistributedCapabilities<typeof Db>, CapabilitiesOf<typeof Db>> = true;
+const duplicateIdUnchanged: Equal<DistributedCapabilities<typeof Db | typeof DbOld>, CapabilitiesOf<typeof Db | typeof DbOld>> = true;
+const mixedUnchanged: Equal<DistributedCapabilities<typeof Db | typeof DbOld | typeof Orders>, CapabilitiesOf<typeof Db | typeof DbOld | typeof Orders>> = true;
+const duplicateIdUnion: Equal<CapabilitiesOf<typeof Db | typeof DbOld>, {
+  readonly "acme/db": CapabilityContract<DbPort, "acme/db/r3"> | CapabilityContract<DbPort, "acme/db/r2">;
+}> = true;
+void duplicateIdUnion; void singleUnchanged; void duplicateIdUnchanged; void mixedUnchanged;
 
 // Rejections.
 const staleDeclaration = declareModule({

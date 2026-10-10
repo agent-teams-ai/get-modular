@@ -46,7 +46,7 @@ export type AnyContract = Contract<string, unknown, number>;
  * Name a map over many descriptors as an interface: `interface Host extends CapabilitiesOf<typeof A | typeof B> {}`.
  */
 export type CapabilitiesOf<T extends AnyContract> = {
-  readonly [Id in T["id"]]: T extends { readonly id: Id; readonly revision: infer Rev extends number; readonly [contractValue]?: infer V }
+  readonly [X in T as X["id"]]: X extends { readonly id: infer Id extends string; readonly revision: infer Rev extends number; readonly [contractValue]?: infer V }
     ? CapabilityContract<V, `${Id}/r${Rev}`> : never;
 };
 /** What a module author writes: identities, owner and descriptor entries, never wire discriminators. */

@@ -40,6 +40,7 @@ test("500 fragment handles prepare under one interface map on both compilers", {
 // --singleThreaded; the counters are then deterministic. Instantiations and Types are gated at 500
 // handles, other sizes and the check time are only printed. TypeScript 5.8.3 is not gated.
 const budgetTolerance = 1.05;
+const budgetFloor = 0.95;
 const budgetPath = "tests/assembly/type-scale-budget.json";
 const budgetFile = join(workspace, budgetPath);
 
@@ -102,9 +103,10 @@ test("type-check cost at 500 handles stays within the recorded budget", { timeou
     const gated = budget.gated?.[500];
     assert.ok(gated, `${budgetPath} has no gated row for 500 handles`);
     for (const metric of ["instantiations", "types"]) {
+      assert.ok(Number.isSafeInteger(gated[metric]), `${budgetPath}: gated 500 row has no integer "${metric}"`);
       const value = measured[500][metric];
       const upper = Math.floor(gated[metric] * budgetTolerance);
-      const lower = Math.ceil(gated[metric] / budgetTolerance);
+      const lower = Math.ceil(gated[metric] * budgetFloor);
       assert.ok(value <= upper,
         `500 handles: ${metric} ${value} exceeds budget ${gated[metric]} by more than 5% (limit ${upper}); raise the row in ${budgetPath} and explain why`);
       assert.ok(value >= lower,

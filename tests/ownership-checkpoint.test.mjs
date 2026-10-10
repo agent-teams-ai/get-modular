@@ -76,6 +76,11 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
       path: "docs/decisions/0033-admit-the-module-conformance-kit.md",
       immutableDigest: "sha256:41e6d18087f5fe147b5a843b37fa5be925fa2f87cb1dc83c949a80520e7dbeb5",
     },
+    {
+      id: "ADR-0035",
+      path: "docs/decisions/0035-complete-composition-profiles-in-prepare-and-make-capabilitiesof-linear.md",
+      immutableDigest: "sha256:f229a2067471f7e49e7243d8d1ba5174fab699e1fbcdb298384aaafd6a27e81d",
+    },
   ]);
   const paths = execFileSync("git", ["ls-tree", "-r", "--name-only", checkpoint.evidence.base,
     "docs/decisions"], { encoding: "utf8" }).trim().split("\n");
