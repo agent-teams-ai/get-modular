@@ -12,6 +12,7 @@ related:
   - ADR-0031
   - ADR-0032
   - ADR-0033
+  - ADR-0035
   - ARCH-CURRENT-CONTRACT
   - ARCH-MVP-IMPLEMENTATION-ROADMAP
 ---
@@ -88,7 +89,8 @@ narrow typed factories and consumer-owned dependency records. Preserve owned
 Published Language and anti-corruption boundaries; shared domain identities or
 generic repositories are not justified by similar code alone.
 
-There is one production composition authority: the profile selects bindings,
+There is one production composition authority: the profile, written or completed
+by Assembly from the bound modules, selects bindings,
 owner-local factories materialize capabilities, and Host receives closed roots.
 Do not retain a second direct production assembly, instance fallback, string
 lookup, mutable registry, global container or registration-order semantics.
@@ -148,6 +150,12 @@ than treating custody as invocation authority.
 | One scope per run through `scoped()` | Parent scope captured at bind time | Same file, two concurrent runs |
 | Declared run inputs | Closures captured at bind time | [`tests/assembly/inputs.test.mjs`](../../tests/assembly/inputs.test.mjs) |
 | Descriptors and `declareModule` | Hand-written compatibility literals | [`tests/assembly/builder-types.ts`](../../tests/assembly/builder-types.ts) |
+
+Completing a profile in `prepare` ([ADR-0035](../decisions/0035-complete-composition-profiles-in-prepare-and-make-capabilitiesof-linear.md))
+is not a second resolver: it runs once, before any factory, over the handles the
+root binds, and writes explicit rows into the compiled plan. It never guesses,
+and no factory receives a resolver, a container or a registry
+([ADR-0031](../decisions/0031-pass-a-per-run-scope-and-declared-inputs-to-assembly-runs.md)).
 
 ### Module resource scopes
 
@@ -251,7 +259,9 @@ export function composeOrders(api: Assembly<CapabilitiesOf<typeof Db | typeof Or
     owner: { authority: "acme", path: ["db"] }, provides: [Db.provide()], slots: [],
   }), async () => ({ instance: undefined, capabilities: { "acme/db": { query: () => 0 } } }));
   const orders = api.bindFactory(ordersDeclaration, scoped(ordersDeclaration.implementationId, createOrders));
-  return api.prepare({ composition, factories: [database, orders], roots: { orders } });
+  // `orders` has one `required` slot and `database` is the only provider of its capability, so Assembly
+  // completes the row; the profile follows the module list.
+  return api.prepare({ profileId: "acme/orders-host", factories: [database, orders], roots: { orders } });
 }
 // Bind and prepare once; every run gets its own scope.
 const preparation = await composeOrders(assemblyFor<CapabilitiesOf<typeof Db | typeof Orders>>());
@@ -375,7 +385,7 @@ export const createChat: ModuleFactory<Capabilities, typeof chatDeclaration, Cha
 export function composeSessions(api: Assembly<Capabilities>) {
   const session = api.bindInput(sessionInput);
   const chat = api.bindFactory(chatDeclaration, scoped(chatDeclaration.implementationId, createChat));
-  return api.prepare({ composition, factories: [chat], roots: { chat }, inputs: { session } });
+  return api.prepare({ profileId: "acme/sessions", factories: [chat], roots: { chat }, inputs: { session } });
 }
 // Prepared once; each session is one run with its own scope and input.
 const preparation = await composeSessions(assemblyFor<Capabilities>());
@@ -420,6 +430,12 @@ Contracts:
   from 1.0.
 - Declare port members as function-typed properties, not methods: TypeScript
   checks method parameters bivariantly and accepts a breaking change silently.
+  Enforce it with one oxlint line for every file that declares a contract value
+  type, or for the whole repository:
+  `"typescript/method-signature-style": ["error", "property"]` (ESLint users: the
+  typescript-eslint rule of the same name). The rule cannot see a value type
+  inferred from an implementation such as `ReturnType<...>`; declare contract
+  value types explicitly.
 
 Module packages:
 
@@ -437,14 +453,97 @@ Module packages:
 - A Host prepares with a map that contains every capability any handle uses,
   with the identical contract.
 - Module packages list Get Modular packages only in `peerDependencies`, with a
-  range of one 0.x minor such as `^0.3.0`, and pin exact versions in
+  range of one 0.x minor such as `^0.4.0`, and pin exact versions in
   `devDependencies` for their own tests. A Host installs one copy of each Get
   Modular package. Widen a range only when the release notes of the newer
   minor say that the authoring surface did not change.
+- A breaking minor of a Get Modular package ships its migration note, and a codemod
+  when the change is a mechanical rename, move or call-shape edit. Codemods live in
+  the Get Modular repository under `architecture/tooling/codemods`, not in a package.
+  From a checkout with dependencies installed, apply one with
+  `pnpm --dir <get-modular checkout> codemod <from>-<to> <consumer dir> --write`
+  (`--dry` previews, `--check` exits 1 while a change is pending; `--write` refuses
+  a dirty Git tree, or a directory outside Git, unless `--allow-dirty`), then typecheck.
 - Identify errors by `code`, never by class or message:
   `assembly.<area>.<reason>`, `resources.<area>.<reason>` and
   `conformance.<area>.<reason>`. Core diagnostics carry their catalog codes in
   `Diagnostic.code`.
+
+#### Module template
+
+Copy this for a new module; replace `acme/counter` and `acme/store` with your
+identities and your own contract packages. The first block is the contract
+package, the second the module package, the third its test.
+
+<!-- consumer-standard-example: contracts -->
+
+```ts
+// src/counter/contracts.ts (or your contract package)
+import { defineContract } from "@get-modular/assembly";
+
+// Contract packages hold ports with function-typed properties and their descriptors.
+export type StorePort = { readonly bump: (key: string) => number };
+export type CounterPort = { readonly increment: (key: string) => number };
+export const Store = defineContract<StorePort>()({ id: "acme/store", revision: 1 });
+export const Counter = defineContract<CounterPort>()({ id: "acme/counter", revision: 1 });
+```
+
+<!-- consumer-standard-example: module -->
+
+```ts
+// src/counter/module.ts
+import { declareModule, type CapabilitiesOf, type ModuleFactory } from "@get-modular/assembly";
+import { required } from "@get-modular/core";
+import type { ModuleContext } from "@get-modular/resources";
+import { Counter, Store, type CounterPort } from "./contracts.js";
+
+export const counterDeclaration = declareModule({
+  moduleId: "acme/counter", implementationId: "acme/counter/default",
+  owner: { authority: "acme", path: ["counter"] },
+  provides: [Counter.provide()], slots: [Store.slot("store", required())],
+});
+
+// Unbound: the composition root binds it and the module never imports the Host's map.
+export const createCounter: ModuleFactory<
+  CapabilitiesOf<typeof Store | typeof Counter>, typeof counterDeclaration, CounterPort, ModuleContext
+> = async (deps) => {
+  const port: CounterPort = { increment: (key) => deps.store.bump(key) };
+  return { instance: port, capabilities: { "acme/counter": port } };
+};
+
+// In the composition root, a function of Assembly that prepares with `{ profileId }`, adding the module
+// is one line, and Assembly completes the `required` slot when one bound module provides `acme/store`:
+//   const counter = api.bindFactory(counterDeclaration, scoped(counterDeclaration.implementationId, createCounter));
+```
+
+<!-- consumer-standard-example: module-test -->
+
+```ts
+// src/counter/module.test.ts
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { assemblyFor, type CapabilitiesOf } from "@get-modular/assembly";
+import { checkNamespaces, isolate } from "@get-modular/conformance";
+import { Counter, Store, type StorePort } from "./contracts.js";
+import { counterDeclaration, createCounter } from "./module.js";
+
+// The contract owner's typed fake, never an `any` or a cast.
+const store: StorePort = { bump: (key) => key.length };
+
+test("counts through the real construction path", async () => {
+  await using counter = await isolate(assemblyFor<CapabilitiesOf<typeof Store | typeof Counter>>(), {
+    declaration: counterDeclaration, factory: createCounter, dependencies: { store },
+  });
+  assert.equal(counter.capabilities["acme/counter"].increment("abc"), 3);
+});
+
+test("identities lie in the product namespace", () => {
+  checkNamespaces({ namespace: "acme", declarations: [counterDeclaration] });
+});
+
+// Once a second implementation of Counter exists, run the contract owner's suite against both with
+// runContractSuite(counterSuite, subject, test).
+```
 
 ### Identity and namespaces
 
@@ -475,6 +574,10 @@ it authenticates nothing.
 7. Session, tenant and instance IDs never enter module IDs; they name scopes
    or run inputs.
 
+Check rule 1, the namespace part of rule 2 and rule 6 in a test with
+`checkNamespaces` from `@get-modular/conformance`, over every declaration the
+product supplies, its input modules and fakes included.
+
 ### Testing modules
 
 [ADR-0033](../decisions/0033-admit-the-module-conformance-kit.md) admits the
@@ -482,7 +585,7 @@ kit `@get-modular/conformance`.
 
 1. Export each module factory as a named `ModuleFactory` typed by the module's
    own contract map, and bind the same function in production, wrapped with
-   `scoped()` when it registers resources.
+   `scoped()` when it takes `ModuleContext`.
 2. Type fakes with `FactoryDependencies<C, typeof declaration>`. No `any`,
    `as never` or double cast on a dependency record.
 3. The contract owner keeps one fake per contract that others implement and a
@@ -501,10 +604,15 @@ kit `@get-modular/conformance`.
    every module and requires every attempt scope to close complete. Bind every
    factory of the root through the `api` that `smoke` passes to `compose`:
    `smoke` rejects when a factory is bound elsewhere, because it never sees an
-   injection. Effectful leaves use their owners' fakes.
+   injection. Effectful leaves use their owners' fakes. A root that prepares with
+   `{ profileId }` lists its handles statically: its handle list does not depend on
+   run-time values, and a variant is a separate root with its own `profileId`,
+   `smoke` and oracle.
 6. `smoke` does not prove wiring. Keep the independent binding oracle from the
    table above, and never derive expected bindings from the profile or the
-   implementation.
+   implementation. When Assembly completes bindings, the oracle compares every row
+   of the prepared plan, with consumer, slot, providers, capability and token,
+   against a hand-written table.
 7. `guardHandles` is a per-file diagnostic, and `complete` is not proof of
    physical release. Check real adapters in disposable TEST projects.
 8. Close every scope a test creates. No sleeps; use the test runner's
@@ -561,7 +669,7 @@ cover the public carrier. The [resource scope tests](../../tests/resources/assem
 [input tests](../../tests/assembly/inputs.test.mjs), [builder tests](../../tests/assembly/builder.test.mjs),
 the [template compile test](../../tests/assembly/consumer-standard-examples.test.mjs)
 for the examples of this document and the [packed conformance consumer](../../packages/conformance/tests/packed-root.test.mjs)
-extend them. These belong to the existing `pnpm assembly:test`, `pnpm resources:check`
+extend them, with the [profile completion tests](../../tests/assembly/profile-completion.test.mjs). These belong to the existing `pnpm assembly:test`, `pnpm resources:check`
 and `pnpm conformance:check` commands, invoked by both fast and full gates, after
 `pnpm assembly:build`.
 Consumers must additionally link their own executable slice and independent
@@ -593,6 +701,23 @@ Preparation and execution use this same snapshot. Mutation from required to many
 must never change an existing callback's injection contract. Malformed metadata
 causes a stable binding error before any factory call; Core owns semantic rules.
 
+`prepare({ profileId, bindings, factories, roots, inputs })` completes the profile
+from the bound handles ([ADR-0035](../decisions/0035-complete-composition-profiles-in-prepare-and-make-capabilitiesof-linear.md)):
+selections are all factory and input handles, roots are the modules of the root
+handles, and an explicit row in `bindings` is kept as written. A `required` slot
+without a row binds to the single other bound handle that provides its capability
+id, at any revision (Core still rejects a revision mismatch as
+`assembly.prepare.core-rejected`). Any other slot without a row (`optional`,
+`many`, or `required` with zero or several candidates) fails with
+`assembly.prepare.unresolved-binding` before any factory runs; `error.cause` lists
+every such slot with its candidates. An `optional` slot always needs a row: `[]`
+or one provider. Completion does not depend on the order of
+`factories`, `roots` or `inputs`. A `"prepared"` result also carries the compiled
+`composition`. Give exactly one of `composition` and `profileId`.
+From Assembly 0.4.0, production composition roots use `profileId`;
+`prepare({ composition })` remains for a Host that compiles a profile itself,
+such as from bytes or a desired profile, and for `isolate`.
+
 `prepare({ composition, factories, roots, inputs })` accepts a successful Core
 result, the exact selected factory handles, an alias-to-root-handle mapping and an
 alias-to-input-handle mapping. Factory and input handles together are unique and
@@ -621,7 +746,8 @@ key. Different capabilities and instance may be three different objects.
 
 ## Preparation and resource envelope
 
-Before the first await, capture the successful result, handle list, root map and input map.
+Before the first await, capture the successful result or the `profileId` and
+`bindings`, the handle list, root map and input map.
 Inspect own data descriptors, dense arrays and exact shapes without invoking
 getters. Pre-count individual and aggregate sizes before proportional copying.
 Reject unexpected keys before projecting the supplied plan into a profile.
@@ -635,7 +761,12 @@ entries. Validate alias own-key counts too. These are structural allocation
 ceilings, not another graph engine. No private Core imports. Changes to supported
 Core require rechecking this table against its successful-plan envelope.
 
-Restore a complete profile from the captured plan and invoke public
+With `profileId`, complete the profile from the captured handles and the captured
+`bindings`, counting rows and provider occurrences against the same ceilings first,
+and compile it once through public `compileComposition`; the returned plan is the
+prepared plan and there is nothing to compare it with.
+
+Otherwise restore a complete profile from the captured plan and invoke public
 `compileComposition` on captured handle declarations. Compare the entire returned
 plan and digest to the supplied snapshot, including every ordering, capability and
 compatibility field. Core alone validates grammar, cardinality, graph closure and
