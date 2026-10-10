@@ -1,1 +1,2 @@
-line 1: export * re-exports FactoryHandle; decide by hand whether it should export AnyFactoryHandle
+line 1: export * re-exports the package; importers of FactoryHandle through this module are not rewritten, check them by hand
+line 2: export * as gm re-exports the package; importers of FactoryHandle through this module are not rewritten, check them by hand

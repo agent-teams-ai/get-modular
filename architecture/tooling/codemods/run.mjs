@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, realpathSync, statSync } from "node:fs";
-import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { Project } from "ts-morph";
@@ -8,7 +8,7 @@ import factoryHandle from "./0.2-0.3/factory-handle.mjs";
 
 // One entry per breaking minor: `<from>-<to>` runs these transforms in order.
 const CODEMODS = { "0.2-0.3": [factoryHandle] };
-const CHECKOUT = realpathSync(resolve(dirname(fileURLToPath(import.meta.url)), "../../.."));
+const CHECKOUT = realpathSync.native(resolve(dirname(fileURLToPath(import.meta.url)), "../../.."));
 const SKIPPED = new Set(["node_modules", "dist", ".git"]);
 const SOURCE = /\.(?:ts|tsx|mts|cts)$/u;
 
@@ -45,9 +45,9 @@ export function main(argv) {
   // `pnpm --dir <checkout> codemod` runs with the checkout as cwd; INIT_CWD is where the user typed the command.
   const requested = target ? resolve(process.env.INIT_CWD ?? process.cwd(), target) : undefined;
   if (!requested || !existsSync(requested) || !statSync(requested).isDirectory()) return usage(`not a directory: ${target}`);
-  const directory = realpathSync(requested); // a symlinked path must not slip past the checkout refusal
+  const directory = realpathSync.native(requested); // a symlinked path must not slip past the checkout refusal
   const inside = relative(CHECKOUT, directory);
-  if (inside === "" || (!inside.startsWith("..") && !isAbsolute(inside))) {
+  if (inside === "" || (inside !== ".." && !inside.startsWith(`..${sep}`) && !isAbsolute(inside))) {
     return usage(`refusing to run inside the Get Modular checkout itself: ${directory}`);
   }
   const mode = modes[0] ?? "dry";
