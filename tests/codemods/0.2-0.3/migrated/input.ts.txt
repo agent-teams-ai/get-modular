@@ -1,0 +1,3 @@
+import { AnyFactoryHandle } from "@get-modular/assembly";
+
+export type Any = AnyFactoryHandle<HostCapabilities>;

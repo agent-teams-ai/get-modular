@@ -1,0 +1,3 @@
+import { AnyFactoryHandle as Handle } from "@get-modular/assembly";
+
+export const list: Handle<HostCapabilities>[] = [];

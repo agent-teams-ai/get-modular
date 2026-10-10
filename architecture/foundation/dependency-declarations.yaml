@@ -19,6 +19,7 @@ policies:
     - oxlint
     - oxlint-tsgolint
     - tar
+    - ts-morph
     - typescript
     - typescript-minimum
   exactRegistryDevelopmentOnlyPackages:

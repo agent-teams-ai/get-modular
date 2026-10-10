@@ -1,0 +1,2 @@
+export type Any = import("@get-modular/assembly").FactoryHandle<HostCapabilities>;
+export type Other = import("@other/assembly").FactoryHandle<HostCapabilities>;
