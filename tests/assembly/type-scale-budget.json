@@ -1,5 +1,11 @@
 {
   "compiler": "7.0",
-  "gated": {},
-  "observed": {}
+  "gated": {
+    "500": { "instantiations": 1383390, "types": 105446 }
+  },
+  "observed": {
+    "100": { "instantiations": 169900, "types": 45866 },
+    "200": { "instantiations": 372116, "types": 60742 },
+    "1000": { "instantiations": 4393176, "types": 179902 }
+  }
 }
