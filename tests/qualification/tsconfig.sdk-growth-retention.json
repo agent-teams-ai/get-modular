@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": false,
+    "types": ["node"]
+  },
+  "files": ["sdk-growth-failure-retention.mts", "sdk-growth-failure-retention.test.mts"],
+  "include": []
+}

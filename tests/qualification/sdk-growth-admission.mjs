@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
+import { retainSdkGrowthFailure } from "./sdk-growth-failure-retention.mts";
 
 const execute = promisify(execFile);
 const workspace = resolve(import.meta.dirname, "../..");
@@ -58,6 +59,17 @@ async function runGrowth(root) {
       "--consumer", root, "--format", "json"], { cwd: root, timeout: 120_000, maxBuffer: 8_000_000 });
   } catch (error) {
     result = error;
+  }
+  if (process.env.SDK_GROWTH_FAILURE_ARTIFACT && (result.code ?? result.status) !== 2) {
+    let checkoutSha;
+    try {
+      const { stdout } = await execute("git", ["rev-parse", "HEAD"], { cwd: workspace, timeout: 5_000, maxBuffer: 1024 });
+      if (stdout.trim() === process.env.SDK_GROWTH_CHECKOUT_SHA) checkoutSha = stdout.trim();
+    } catch { /* Invalid checkout metadata fails retention, preserving the assertion below. */ }
+    await retainSdkGrowthFailure(result, {
+      artifact: process.env.SDK_GROWTH_FAILURE_ARTIFACT, directory: process.env.RUNNER_TEMP,
+      checkoutSha, producerVersion: foundationManifest.version,
+    });
   }
   assert.equal(result.code ?? result.status, 2, `${result.stdout ?? ""}\n${result.stderr ?? ""}`);
   const commandReport = JSON.parse(result.stdout);
