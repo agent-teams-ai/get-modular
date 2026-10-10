@@ -36,7 +36,8 @@ flowchart TB
   implementations, and local slots;
 - inert declarations and explicit `required`, `optional`, and bounded ordered
   `many` dependencies;
-- complete normalized profiles and explicit bindings or explicit absence;
+- complete normalized profiles and explicit bindings or explicit absence; a `required` row that Assembly
+  completes from the bound handles is explicit in the profile and the plan;
 - deterministic graph validation and compilation;
 - bounded structured diagnostics;
 - canonical immutable plan representation and digest;
