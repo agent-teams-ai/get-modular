@@ -70,6 +70,10 @@ export default function transform(file, manual) {
   }
   for (const declaration of file.getExportDeclarations()) {
     if (declaration.getModuleSpecifierValue() !== SPECIFIER) continue;
+    if (!declaration.hasNamedExports() && !declaration.getNamespaceExport()) {
+      manual(`line ${declaration.getStartLineNumber()}: export * re-exports FactoryHandle; `
+        + `decide by hand whether it should export AnyFactoryHandle`);
+    }
     for (const entry of declaration.getNamedExports()) {
       if (entry.getName() === OLD) {
         manual(`line ${entry.getStartLineNumber()}: re-export of FactoryHandle stays; `

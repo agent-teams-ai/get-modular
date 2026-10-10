@@ -47,7 +47,7 @@ test("0.2-0.3 outputs type-check against the workspace Assembly", { timeout: 600
     const prelude = 'type HostCapabilities = Record<never, never>;\ntype Instance = unknown;\n'
       + 'declare const declaration: import("@get-modular/core").ModuleDeclaration;\n';
     const files = [];
-    for (const case_ of cases.filter((name) => !["local-type", "other-package", "import-type", "reexport"].includes(name))) {
+    for (const case_ of cases.filter((name) => !["local-type", "other-package", "import-type", "reexport", "reexport-star"].includes(name))) {
       files.push(`${case_}.ts`);
       writeFileSync(join(directory, `${case_}.ts`), prelude + read(case_, "output.ts.txt"));
     }
@@ -158,6 +158,15 @@ test("runner: refuses to run inside the Get Modular checkout", () => {
   assert.equal(result.status, 2);
   assert.match(result.err, /Get Modular checkout itself/u);
   assert.equal(runIn({ cwd: workspace }, "0.2-0.3", "tests", "--dry").status, 2);
+});
+
+test("runner: a symlink to the Get Modular checkout is refused too", (t) => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "get-modular-codemod-link-")));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  symlinkSync(workspace, join(root, "checkout"), "junction");
+  const result = runIn({ cwd: root }, "0.2-0.3", "checkout", "--check");
+  assert.equal(result.status, 2);
+  assert.match(result.err, /Get Modular checkout itself/u);
 });
 
 test("runner: tsx files are included", (t) => {
