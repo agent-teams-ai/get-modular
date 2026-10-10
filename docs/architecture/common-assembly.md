@@ -453,7 +453,7 @@ Module packages:
 - A Host prepares with a map that contains every capability any handle uses,
   with the identical contract.
 - Module packages list Get Modular packages only in `peerDependencies`, with a
-  range of one 0.x minor such as `^0.3.0`, and pin exact versions in
+  range of one 0.x minor such as `^0.4.0`, and pin exact versions in
   `devDependencies` for their own tests. A Host installs one copy of each Get
   Modular package. Widen a range only when the release notes of the newer
   minor say that the authoring surface did not change.
