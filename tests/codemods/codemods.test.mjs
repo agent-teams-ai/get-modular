@@ -174,3 +174,20 @@ test("runner: tsx files are included", (t) => {
   cpSync(join(fixtures, "plain/input.ts.txt"), join(directory, "src/view.tsx"));
   assert.match(run("0.2-0.3", directory).out, /src[\\/]view\.tsx: 2 edits/u);
 });
+
+test("runner: a directory named like ..foo inside the checkout is still refused", (t) => {
+  const inside = join(workspace, "..codemod-test-dir");
+  mkdirSync(inside, { recursive: true });
+  t.after(() => rmSync(inside, { recursive: true, force: true }));
+  const result = runIn({ cwd: workspace }, "0.2-0.3", "..codemod-test-dir", "--check");
+  assert.equal(result.status, 2);
+  assert.match(result.err, /Get Modular checkout itself/u);
+});
+
+test("runner: the checkout path in another letter case is refused on case-insensitive volumes", { skip: process.platform !== "darwin" }, (t) => {
+  const variant = workspace.toUpperCase();
+  if (variant === workspace || !existsSync(variant)) return t.skip("the volume is case-sensitive");
+  const result = runIn({ cwd: tmpdir() }, "0.2-0.3", variant, "--check");
+  assert.equal(result.status, 2);
+  assert.match(result.err, /Get Modular checkout itself/u);
+});
