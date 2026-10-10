@@ -1,4 +1,4 @@
-import type { CompileCompositionResult, CompositionPlan, Diagnostic, ModuleDeclaration, PlanDigest } from "@get-modular/core";
+import type { CompileCompositionResult, CompositionPlan, CompositionProfile, Diagnostic, ModuleDeclaration, PlanDigest } from "@get-modular/core";
 
 export type CapabilityContract<Value, Token extends string> = {
   readonly value: Value;
@@ -170,13 +170,19 @@ export type KnownCapabilities<C, F extends readonly unknown[], N> = [Exclude<
   keyof C>] extends [infer Missing]
   ? [Missing] extends [never] ? unknown : { readonly "capabilities missing from the preparing map": Missing }
   : never;
+/**
+ * Either a compiled `composition`, or a `profileId` from which Assembly completes the profile out of the bound
+ * handles (ADR-0035) with optional explicit `bindings` rows.
+ */
 export type AssemblyPrepareInput<C, R extends RootHandles<C>, N extends InputHandles<C> = {},
   F extends readonly AnyFactoryHandle<C>[] = readonly AnyFactoryHandle<C>[]> = {
-  readonly composition: SuccessfulComposition;
   readonly factories: F & KnownCapabilities<C, F, N>;
   readonly roots: R;
   readonly inputs?: N | undefined;
-};
+} & (
+  | { readonly composition: SuccessfulComposition; readonly profileId?: never; readonly bindings?: never }
+  | { readonly profileId: string; readonly bindings?: CompositionProfile["bindings"]; readonly composition?: never }
+);
 export type RunOptions<N = {}> = {
   readonly signal?: AbortSignal | undefined;
   readonly scope?: unknown;
@@ -216,9 +222,19 @@ export type PreparedAssembly<R, N = {}> = {
 export type PreparationErrorCode =
   | "assembly.prepare.invalid-input" | "assembly.prepare.limit"
   | "assembly.prepare.handles" | "assembly.prepare.roots"
-  | "assembly.prepare.core-rejected" | "assembly.prepare.plan-mismatch" | "assembly.prepare.input-handles";
+  | "assembly.prepare.core-rejected" | "assembly.prepare.plan-mismatch" | "assembly.prepare.input-handles"
+  | "assembly.prepare.unresolved-binding";
+/** A slot without a row that completion would not guess; `error.cause` of `assembly.prepare.unresolved-binding` lists all of them. */
+export type UnresolvedBinding = {
+  readonly consumerImplementationId: string;
+  readonly slotId: string;
+  readonly capabilityId: string;
+  readonly cardinality: "required" | "optional" | "many";
+  /** Other bound handles that provide the capability id at any revision, by code point. */
+  readonly candidates: readonly string[];
+};
 export type AssemblyPreparationResult<R, N = {}> =
-  | { readonly status: "prepared"; readonly prepared: PreparedAssembly<R, N> }
+  | { readonly status: "prepared"; readonly prepared: PreparedAssembly<R, N>; readonly composition: SuccessfulComposition }
   | {
     readonly status: "failed";
     readonly error: { readonly code: PreparationErrorCode; readonly cause: unknown };

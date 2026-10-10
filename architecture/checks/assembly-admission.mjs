@@ -38,6 +38,15 @@ const ASSEMBLY_RUN_SCOPE_REGISTRY_ENTRY = Object.freeze({
   path: ASSEMBLY_RUN_SCOPE_DECISION_PATH,
   immutableDigest: "sha256:6576e43b28adc8643a3443a84412096fe465f26ab6768215c9ac8947f5743a74",
 });
+export const ASSEMBLY_PROFILE_COMPLETION_DECISION_PATH =
+  "docs/decisions/0035-complete-composition-profiles-in-prepare-and-make-capabilitiesof-linear.md";
+const ASSEMBLY_PROFILE_COMPLETION_DECISION_BYTES_DIGEST =
+  "sha256:dd67d60d38a9ba33c794bdaf7ab30ce966d45aca39f5870e6b916c34e58c58dc";
+const ASSEMBLY_PROFILE_COMPLETION_REGISTRY_ENTRY = Object.freeze({
+  id: "ADR-0035",
+  path: ASSEMBLY_PROFILE_COMPLETION_DECISION_PATH,
+  immutableDigest: "sha256:f229a2067471f7e49e7243d8d1ba5174fab699e1fbcdb298384aaafd6a27e81d",
+});
 // Each public pair after 0.1.0 is authenticated by its own accepted decision;
 // the manifest shape alone is not authority.
 export const ASSEMBLY_PAIR_DECISIONS = Object.freeze({
@@ -50,6 +59,11 @@ export const ASSEMBLY_PAIR_DECISIONS = Object.freeze({
     path: ASSEMBLY_RUN_SCOPE_DECISION_PATH,
     bytesDigest: ASSEMBLY_RUN_SCOPE_DECISION_BYTES_DIGEST,
     entry: ASSEMBLY_RUN_SCOPE_REGISTRY_ENTRY,
+  }),
+  "0.4.0": Object.freeze({
+    path: ASSEMBLY_PROFILE_COMPLETION_DECISION_PATH,
+    bytesDigest: ASSEMBLY_PROFILE_COMPLETION_DECISION_BYTES_DIGEST,
+    entry: ASSEMBLY_PROFILE_COMPLETION_REGISTRY_ENTRY,
   }),
 });
 export const CORE_DEVELOPMENT_DEPENDENCIES = Object.freeze({

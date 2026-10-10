@@ -6,6 +6,6 @@ export type {
   Cardinality, Contract, CreatedEntry, DeclarationSpec, Declared, FactoryCapabilities, FactoryContext,
   FactoryDependencies, FactoryHandle, FactoryProduct, InputHandle, InputHandles, KnownCapabilities, ModuleFactory,
   ObservedCancellation, PreparationErrorCode, PreparedAssembly, ProvidedEntry, ReturnedProduct, RootHandles,
-  RootInstances, RunErrorCode, RunInputs, RunOptions, SlotEntry, SuccessfulComposition, UsedCapability, IsUnion,
-  ValidDeclaration,
+  RootInstances, RunErrorCode, RunInputs, RunOptions, SlotEntry, SuccessfulComposition, UnresolvedBinding, UsedCapability,
+  IsUnion, ValidDeclaration,
 } from "./features/construction/types.js";

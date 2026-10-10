@@ -1,10 +1,11 @@
-import type { CompositionPlan, CompositionProfile } from "@get-modular/core";
-import type { AnyFactoryHandle, AssemblyPreparationResult, AssemblyPrepareInput, InputHandles, PreparationErrorCode, PreparedAssembly, RootHandles, RunOptions } from "./types.js";
+import type { CompositionPlan, CompositionProfile, Diagnostic } from "@get-modular/core";
+import type { AnyFactoryHandle, AssemblyPreparationResult, AssemblyPrepareInput, InputHandles, PreparationErrorCode, PreparedAssembly, RootHandles, RunOptions, SuccessfulComposition } from "./types.js";
 import type { ConstructionPorts, Metadata, Program } from "./ports.js";
 import { appendCreated } from "./ports.js";
 import { SnapshotFault, copyPlan, data, dataObject, denseArray, envelope, inspectPlan, limits, record, rootKeys, snapshotPlan } from "./snapshot.js";
 import { metadataFor } from "./bind.js";
 import { runAttempt } from "./run.js";
+import { deriveProfile } from "./derive-profile.js";
 
 class PreparationFault extends Error {
   readonly code: PreparationErrorCode;
@@ -143,46 +144,85 @@ function createProgram(plan: CompositionPlan, roots: Program["roots"], inputs: P
     })),
   });
 }
+function rejectedByCore(diagnostics: readonly Diagnostic[]): AssemblyPreparationResult<never> {
+  return Object.freeze({
+    status: "failed", error: Object.freeze({ code: "assembly.prepare.core-rejected", cause: undefined }),
+    diagnostics: Object.freeze([...diagnostics]),
+  });
+}
+// Root handles name the profile roots; a missing, borrowed or repeated handle is a roots fault.
+function rootModuleIds(aliases: Readonly<ReturnType<typeof rootKeys>>, byHandle: ReadonlyMap<object, Metadata>): readonly string[] {
+  const seen = new Set<string>();
+  return aliases.keys.map((alias) => {
+    const handle = data(aliases.object, alias);
+    const metadata = handle !== null && typeof handle === "object" ? byHandle.get(handle) : undefined;
+    if (metadata?.input === true) {refuse("assembly.prepare.input-handles");}
+    if (!metadata || seen.has(metadata.declaration.moduleId)) {refuse("assembly.prepare.roots");}
+    seen.add(metadata.declaration.moduleId);
+    return metadata.declaration.moduleId;
+  });
+}
 export async function prepareConstruction<C, R extends RootHandles<C>, N extends InputHandles<C>,
   F extends readonly AnyFactoryHandle<C>[]>(
   input: AssemblyPrepareInput<C, R, N, F>, ports: ConstructionPorts,
 ): Promise<AssemblyPreparationResult<R, N>> {
   try {
-    const supplied = record(input, ["composition", "factories", "roots"], ["inputs"]);
+    const supplied = record(input, ["factories", "roots"], ["composition", "profileId", "bindings", "inputs"]);
+    // Exactly one of `composition` and `profileId`; `bindings` only completes a `profileId`.
+    const withComposition = Object.hasOwn(supplied, "composition");
+    if (withComposition === Object.hasOwn(supplied, "profileId")) {refuse("assembly.prepare.invalid-input");}
+    if (withComposition && Object.hasOwn(supplied, "bindings")) {refuse("assembly.prepare.invalid-input");}
     const factories = denseArray(data(supplied, "factories"), limits.handles);
     const aliases = rootKeys(data(supplied, "roots"));
     const suppliedInputs = Object.hasOwn(supplied, "inputs") ? data(supplied, "inputs") : undefined;
     const inputAliases = rootKeys(suppliedInputs === undefined ? {} : suppliedInputs);
     const inputHandles = inputAliases.keys.map((alias) => data(inputAliases.object, alias));
-    const composition = dataObject(data(supplied, "composition"));
-    const header = envelope(composition);
-    const census = inspectPlan(data(composition, "plan"));
+    const explicit = withComposition ? (() => {
+      const composition = dataObject(data(supplied, "composition"));
+      return { composition, header: envelope(composition), census: inspectPlan(data(composition, "plan")) };
+    })() : undefined;
     // All individual and aggregate counts precede proportional snapshot copies.
     const { byHandle, byId } = collectMetadata(factories, inputHandles);
-    const plan = copyPlan(census);
+    const declarations = Object.freeze(Array.from(byId.values(), (metadata) => metadata.declaration));
+    const compile = ports.compileComposition, commit = ports.commitCreated ?? appendCreated;
+    let plan: CompositionPlan;
+    let composition: SuccessfulComposition;
+    if (explicit) {
+      plan = copyPlan(explicit.census);
+      composition = explicit.composition as SuccessfulComposition;
+    } else {
+      const derived = deriveProfile({
+        profileId: data(supplied, "profileId"),
+        bindings: Object.hasOwn(supplied, "bindings") ? data(supplied, "bindings") : undefined,
+        byId, rootModuleIds: rootModuleIds(aliases, byHandle),
+      });
+      if (!derived.ok) {
+        return Object.freeze({
+          status: "failed", error: Object.freeze({ code: "assembly.prepare.unresolved-binding", cause: derived.unresolved }),
+          diagnostics: Object.freeze([]),
+        });
+      }
+      const checked = await compile({ declarations, profile: derived.profile });
+      if (!checked.ok) {return rejectedByCore(checked.diagnostics);}
+      plan = snapshotPlan(checked.plan);
+      composition = checked;
+    }
     validateSelections(plan, byId);
     const roots = bindRoots(aliases, plan, byHandle);
     const inputs = bindInputs(inputAliases.keys, inputHandles, byHandle);
-    const declarations = Object.freeze(Array.from(byId.values(), (metadata) => metadata.declaration));
-    const profile = profileFrom(plan);
-    const compile = ports.compileComposition, commit = ports.commitCreated ?? appendCreated;
-    const checked = await compile({ declarations, profile });
-    if (!checked.ok) {
-      const diagnostics = checked.diagnostics;
-      return Object.freeze({
-        status: "failed", error: Object.freeze({ code: "assembly.prepare.core-rejected", cause: undefined }),
-        diagnostics: Object.freeze([...diagnostics]),
-      });
-    }
-    if (!sameEnvelope(header, envelope(checked)) || !samePlan(plan, snapshotPlan(checked.plan))) {
-      return refuse("assembly.prepare.plan-mismatch");
+    if (explicit) {
+      const checked = await compile({ declarations, profile: profileFrom(plan) });
+      if (!checked.ok) {return rejectedByCore(checked.diagnostics);}
+      if (!sameEnvelope(explicit.header, envelope(checked)) || !samePlan(plan, snapshotPlan(checked.plan))) {
+        return refuse("assembly.prepare.plan-mismatch");
+      }
     }
     const program = createProgram(plan, roots, inputs, byId);
     // Run options are checked at run time; the declared shape exists only for callers.
     const prepared = Object.freeze({
       run: async (options?: RunOptions) => runAttempt<R>(program, options, commit),
     }) as PreparedAssembly<R, N>;
-    return Object.freeze({ status: "prepared", prepared });
+    return Object.freeze({ status: "prepared", prepared, composition });
   } catch (cause) {
     const code = cause instanceof PreparationFault ? cause.code
       : cause instanceof SnapshotFault ? cause.kind === "limit" ? "assembly.prepare.limit" : "assembly.prepare.invalid-input" : undefined;
