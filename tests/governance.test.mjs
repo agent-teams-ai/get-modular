@@ -306,7 +306,7 @@ test("supported Node preflight matches repository runtime custody", async () => 
     const manifest = JSON.parse(await readFile(path, "utf8"));
     assert.equal(manifest.engines.node, SUPPORTED_NODE_RANGE, path);
   }
-  assert.equal(await readFile(".node-version", "utf8"), "24.21.0\n");
+  assert.equal(await readFile(".node-version", "utf8"), "26.11.1\n");
   assert.equal(packageJson.scripts["runtime:preflight"],
     "node architecture/checks/node-version.mjs");
   for (const script of ["check", "check:fast"]) {
