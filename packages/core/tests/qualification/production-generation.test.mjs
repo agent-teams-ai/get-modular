@@ -95,12 +95,22 @@ class LockAcquisitionError extends Error {
   }
 }
 
+// The child emits exactly these three fields; any other payload is a protocol
+// violation, never an acquisition failure.
 function parseLockFailure(line) {
+  let value;
   try {
-    return JSON.parse(line.slice(LOCK_FAILED_PREFIX.length));
+    value = JSON.parse(line.slice(LOCK_FAILED_PREFIX.length));
   } catch (error) {
-    return { unparsed: line, parseError: String(error) };
+    throw new Error(`malformed LOCK_FAILED record ${JSON.stringify(line)}`, { cause: error });
   }
+  const isRecord = value !== null && typeof value === "object" && !Array.isArray(value);
+  if (!isRecord || Object.keys(value).sort().join() !== "hresult,message,type"
+    || typeof value.type !== "string" || value.type === ""
+    || !Number.isInteger(value.hresult) || typeof value.message !== "string") {
+    throw new Error(`invalid LOCK_FAILED record shape ${JSON.stringify(line)}`);
+  }
+  return value;
 }
 
 // Both fixture-owned paths travel through the environment, never script text.
@@ -183,7 +193,19 @@ async function withWindowsFileLock(path, action, spawnLock = spawnPowerShellLock
     `exitedAtMs=${exitedAt ?? "absent"}, closedAtMs=${closedAt ?? "absent"}; ` +
     `exitCode=${child.exitCode}, signalCode=${child.signalCode}; ` +
     `stdoutEnded=${child.stdout.readableEnded}, stderrEnded=${child.stderr.readableEnded}; ` +
+    `protocol=${JSON.stringify(protocol)}; ` +
     `stdout=${JSON.stringify(output)}; stderr=${JSON.stringify(diagnostics)}`;
+  // Chronology and violations persist until natural close: the first decisive
+  // line settles readiness, but a later contradictory line is still a failure.
+  const protocol = [];
+  const protocolErrors = [];
+  const counts = { ready: 0, failed: 0 };
+  let pending = "";
+  const violation = message => {
+    const error = new Error(`lock child protocol violation: ${message}: ${status()}`);
+    protocolErrors.push(error);
+    return error;
+  };
   child.stderr.setEncoding("utf8");
   child.stderr.on("data", chunk => {
     diagnostics = (diagnostics + chunk).slice(-8_192);
@@ -201,21 +223,38 @@ async function withWindowsFileLock(path, action, spawnLock = spawnPowerShellLock
       reject(error);
     });
     child.stdout.setEncoding("utf8");
+    // Settling is idempotent, so a rejection after the first outcome only
+    // reaches the final report through protocolErrors.
+    const handleLine = line => {
+      if (line === "LOCK_READY") {
+        counts.ready += 1;
+        protocol.push(`${elapsed()}ms READY`);
+        if (counts.ready > 1) reject(violation("duplicate LOCK_READY"));
+        else if (counts.failed > 0) reject(violation("LOCK_READY after LOCK_FAILED"));
+        else resolve({ acquired: true });
+      } else if (line.startsWith(LOCK_FAILED_PREFIX)) {
+        counts.failed += 1;
+        protocol.push(`${elapsed()}ms FAILED`);
+        if (counts.failed > 1) reject(violation("duplicate LOCK_FAILED"));
+        else if (counts.ready > 0) reject(violation("LOCK_FAILED after LOCK_READY"));
+        else {
+          try {
+            resolve({ acquired: false, failure: parseLockFailure(line) });
+          } catch (error) {
+            reject(violation(error.message));
+          }
+        }
+      }
+    };
     child.stdout.on("data", chunk => {
       output = (output + chunk).slice(-8_192);
       // Only complete lines count; the unterminated tail may be a partial record.
-      const lines = output.split(/\r?\n/u).slice(0, -1);
-      const failedLine = lines.find(line => line.startsWith(LOCK_FAILED_PREFIX));
-      const isReady = lines.includes("LOCK_READY");
-      if (isReady && failedLine !== undefined) {
-        reject(new Error(`lock child reported both readiness and failure: ${status()}`));
-      } else if (isReady) {
-        resolve({ acquired: true });
-      } else if (failedLine !== undefined) {
-        resolve({ acquired: false, failure: parseLockFailure(failedLine) });
-      }
+      const lines = (pending + chunk).split(/\r?\n/u);
+      pending = lines.pop();
+      lines.forEach(handleLine);
     });
     child.once("close", () => {
+      if (pending !== "") violation(`unterminated stdout record ${JSON.stringify(pending)}`);
       reject(new Error(`lock child exited before readiness: ${status()}`));
     });
   });
@@ -263,8 +302,11 @@ async function withWindowsFileLock(path, action, spawnLock = spawnPowerShellLock
       }
     }
   }
+  for (const error of protocolErrors) {
+    if (!errors.includes(error)) errors.push(error);
+  }
   // A clean, acknowledged failed acquisition is the only expected rejection; any
-  // teardown failure beside it is reported together with it.
+  // protocol or teardown failure beside it is reported together with it.
   if (acquisitionFailure !== undefined) {
     errors.unshift(new LockAcquisitionError(acquisitionFailure, status()));
   }
@@ -299,6 +341,7 @@ test("Windows lock helper reports failed acquisition and settles without running
 
 // Platform-neutral host protocol checks; the child below only emits the lines
 // under test and holds no file lock.
+const probeFailure = { type: "Probe.Failure", hresult: 1, message: "nested" };
 const nodeLockChild = source => env => spawn(process.execPath, ["-e", source], {
   env, stdio: ["ignore", "pipe", "pipe"], timeout: 30_000,
 });
@@ -345,7 +388,7 @@ test("lock host rejects a failed-open acknowledgment with an unexpected exit cod
   t.after(() => rm(directory, { recursive: true, force: true }));
   await assert.rejects(withWindowsFileLock(join(directory, "missing.ts"), async () => {},
     nodeLockChild(`
-      console.log('${LOCK_FAILED_PREFIX}' + JSON.stringify({ type: "Probe.Failure" }));
+      console.log('${LOCK_FAILED_PREFIX}' + JSON.stringify(${JSON.stringify(probeFailure)}));
       process.exitCode = 0;
     `)), error => {
     assert.ok(error instanceof AggregateError, String(error));
@@ -354,6 +397,61 @@ test("lock host rejects a failed-open acknowledgment with an unexpected exit cod
     return true;
   });
   assert.deepEqual(await readdir(directory), []);
+});
+
+test("lock host rejects malformed and non-record failure payloads as protocol errors", async t => {
+  const directory = await mkdtemp(join(tmpdir(), "gm-lock-protocol-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const cases = [
+    ["{not json", /malformed LOCK_FAILED record/u],
+    ["null", /invalid LOCK_FAILED record shape/u],
+    ["[]", /invalid LOCK_FAILED record shape/u],
+    ['"text"', /invalid LOCK_FAILED record shape/u],
+    [JSON.stringify({ type: "Probe.Failure" }), /invalid LOCK_FAILED record shape/u],
+    [JSON.stringify({ ...probeFailure, hresult: "1" }), /invalid LOCK_FAILED record shape/u],
+  ];
+  for (const [payload, expected] of cases) {
+    let called = false;
+    await assert.rejects(withWindowsFileLock(join(directory, "missing.ts"), async () => {
+      called = true;
+    }, nodeLockChild(`
+      console.log(${JSON.stringify(LOCK_FAILED_PREFIX + payload)});
+      process.exitCode = ${LOCK_ACQUISITION_FAILED_EXIT};
+    `)), error => {
+      assert.equal(error instanceof LockAcquisitionError, false, payload);
+      assert.match(error.message, expected, payload);
+      return true;
+    });
+    assert.equal(called, false, payload);
+    assert.deepEqual(await readdir(directory), [], payload);
+  }
+});
+
+test("lock host rejects readiness and failure split across stdout chunks in either order", async t => {
+  const directory = await mkdtemp(join(tmpdir(), "gm-lock-protocol-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const failed = LOCK_FAILED_PREFIX + JSON.stringify(probeFailure);
+  // The pause between writes keeps the two records in separate chunks, after the
+  // first one has already settled readiness.
+  const splitChild = (first, second, exitCode) => nodeLockChild(`
+    const lines = ${JSON.stringify([first, second])};
+    process.stdout.write(lines[0] + "\\n", () => setTimeout(() => {
+      process.stdout.write(lines[1] + "\\n", () => { process.exitCode = ${exitCode}; });
+    }, 200));
+  `);
+  const orders = [
+    ["failed then ready", failed, "LOCK_READY", LOCK_ACQUISITION_FAILED_EXIT, /LOCK_READY after LOCK_FAILED/u],
+    ["ready then failed", "LOCK_READY", failed, 0, /LOCK_FAILED after LOCK_READY/u],
+  ];
+  for (const [name, first, second, exitCode, expected] of orders) {
+    await assert.rejects(withWindowsFileLock(join(directory, "missing.ts"), async () => {},
+      splitChild(first, second, exitCode)), error => {
+      assert.match(error.message, expected, name);
+      assert.match(error.message, /protocol=\["\d+ms (READY|FAILED)","\d+ms (READY|FAILED)"\]/u, name);
+      return true;
+    });
+    assert.deepEqual(await readdir(directory), [], name);
+  }
 });
 
 test("Windows lock helper releases its real handle and marker after an action failure", {
