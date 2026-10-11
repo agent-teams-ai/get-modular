@@ -1,6 +1,6 @@
 # Get Modular 0.4.0 train: retained release archives (R-1a)
 
-Status: retained, awaiting owner review. Nothing is published.
+Status: published to npm on 2026-10-11 under dist-tag `next` (Core 0.4.0, Assembly 0.4.0, conformance 0.2.0). `latest` is unchanged: Core and Assembly 0.3.0, conformance 0.1.0, resources 0.1.0. Promotion to `latest` waits for the TEST project to adopt the registry versions.
 
 ## Source
 
@@ -69,17 +69,32 @@ Authoring surface changed: no
 - No `workspace:`, `link:`, `file:` or `catalog:` specifier in any manifest.
 - Outside `dist/`, each archive holds exactly `package/LICENSE`, `package/package.json`, `package/CHANGELOG.md` and `package/README.md`.
 
-## Registry state (read 2026-10-11)
+## Registry state before publication (read 2026-10-11)
 
 - `@get-modular/core`: versions `0.1.0`, `0.2.0`, `0.3.0`; dist-tags `latest=0.3.0`, `candidate-0-1-0=0.1.0`, `candidate-0-2-0=0.2.0`, `candidate-0-3-0=0.3.0`.
 - `@get-modular/assembly`: the same versions and dist-tags as core.
 - `@get-modular/resources`: versions `0.0.0-stage`, `0.1.0`; dist-tags `latest=0.1.0`, `candidate-0-3-0=0.1.0`.
 - `@get-modular/conformance`: versions `0.0.0-stage`, `0.1.0`; dist-tags `latest=0.1.0`, `candidate-0-3-0=0.1.0`.
 
-## Proposed publication (owner only)
+## Publication
 
-Publish Core, Assembly and conformance in this order: `npm publish ./<archive> --tag next --access public`. Resources is not published (0.1.0 stays). Dist-tag `next`. Then a read-back of `dist.integrity` and a byte comparison of the downloaded tarball; `latest` only after all three.
-An uncertain result is reconciled read-only, never retried blindly.
+The owner published the retained archives on 2026-10-11 with `npm publish ./<archive> --tag next --access public`, in the order Core, Assembly, conformance (web authentication with a passkey). Resources was not published; 0.1.0 stays. Registry publish times:
+
+| Package | Version | Published (UTC) | Registry `dist.integrity` |
+| --- | --- | --- | --- |
+| `@get-modular/core` | 0.4.0 | 2026-10-11 12:15:02 | `sha512-AzQWfqj/lHZz7C391hQo5ruM/1B8m7YnW+VQ6V4cAsnTANhw2VDKvHz4oLRcptT12LyMsvEY29OJbJqkrc3YGg==` |
+| `@get-modular/assembly` | 0.4.0 | 2026-10-11 12:15:57 | `sha512-8gCPsPPy1uv3fngKTMmy5BEDDW2S9Afn1hzBs8ICtEOn8Oc1bJ9XTQiuSopH23TGN1W369ez9396jEa+KXaLzw==` |
+| `@get-modular/conformance` | 0.2.0 | 2026-10-11 12:17:32 | `sha512-2DFUfAVsNc/VlDKeAt7iTtkQZopDeu5eiKl9EESr35nvfduIwwd0bdmKuOm3u3Iodeiv74kOv69InrEbfmQ9FA==` |
+
+Read-back (2026-10-11, read-only): each registry `dist.integrity` equals its line in the `INTEGRITY` file. The tarballs downloaded with `npm pack @get-modular/<package>@<version>` are byte-identical to the retained archives (`shasum -a 256 -c SHA256SUMS` passed for Core, Assembly and conformance; the conformance bytes also match exactly, not only by the normalized digest). Resources is not on the registry at a new version (`0.0.0-stage`, `0.1.0`).
+
+Dist-tags after publication:
+
+- `@get-modular/core` and `@get-modular/assembly`: `latest=0.3.0`, `next=0.4.0`, plus the older `candidate-*` tags.
+- `@get-modular/conformance`: `latest=0.1.0`, `next=0.2.0`, `candidate-0-3-0=0.1.0`.
+- `@get-modular/resources`: `latest=0.1.0`, `candidate-0-3-0=0.1.0`.
+
+`latest` moves only after the TEST project has adopted the registry versions. The promotion is an owner step with the passkey, for all three packages together.
 
 ## Consumer checks on these bytes
 
@@ -91,4 +106,4 @@ An uncertain result is reconciled read-only, never retried blindly.
 
 ## Owner publication approval
 
-Pending.
+Publication of the three archives under `next` was done by the owner on 2026-10-11. Promotion to `latest` is not done and needs a separate owner step after the TEST adoption.
