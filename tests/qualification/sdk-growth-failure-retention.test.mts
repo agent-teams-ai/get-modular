@@ -13,7 +13,9 @@ const secret = "SYNTHETIC-SECRET-never-retain";
 const report = { reportSchemaVersion: 1, capabilities: [{ capabilityId: "package.public-api-compatibility",
   outcome: "failed", problem: { code: "UNEXPECTED_PROCESS_FAILURE", retryable: false, message: secret },
   evidence: { grant: secret }, diagnostics: [secret] }], env: secret };
-// Exact captured Foundation 1.7.2 producer bytes, kept as an immutable TEST input.
+// HISTORICAL parser-compatibility input only: exact captured Foundation 1.7.2 bytes,
+// kept immutable. It is neither the current producer's CLI output nor evidence of the
+// old Windows failure; the retained producer metadata below is the current pin.
 // SHA-256: 2b45524ae510077d7f76a7ce600d12b276af7286dc0f699e874ec9bf77f1921e.
 const publishedReport = `{
   "reportSchemaVersion": 1,
@@ -46,12 +48,47 @@ const publishedReport = `{
   ]
 }
 `;
+// Exact stdout of the published, SRI-verified Foundation 1.7.4 public CLI as captured
+// by the owner (exit 3, signal null, installed 1.7.4; valid admission fixture, then a
+// job-owned empty-PATH Git lookup fault; cleanup passed). Embedded, not executed here.
+// 674 bytes, SHA-256: 9786d7eff27418851608a667b1b3b2600956deefe6e762af497c041e7a1c5a27.
+const currentReport = `{
+  "reportSchemaVersion": 1,
+  "foundationVersion": "1.7.4",
+  "coverage": "selected",
+  "outcome": "failed",
+  "summary": {
+    "errors": 0,
+    "warnings": 0,
+    "infos": 0
+  },
+  "capabilities": [
+    {
+      "capabilityId": "package.public-api-compatibility",
+      "capabilityConfigSchemaVersion": 2,
+      "diagnostics": [],
+      "outcome": "failed",
+      "problem": {
+        "code": "UNEXPECTED_PROCESS_FAILURE",
+        "message": "The process could not be started.",
+        "phase": "public-api-compatibility-execution",
+        "retryable": false
+      },
+      "summary": {
+        "errors": 0,
+        "warnings": 0,
+        "infos": 0
+      }
+    }
+  ]
+}
+`;
 async function fixture(run: (directory: string) => Promise<void>, parent = tmpdir()) {
   const directory = await realpath(await mkdtemp(join(parent, "sdk-retention-TEST-")));
   try { await run(directory); } finally { await rm(directory, { recursive: true, force: true }); }
 }
 const destination = (directory: string) => ({ directory, artifact: join(directory, "sdk-growth-failure.json"),
-  checkoutSha: sha, producerVersion: "1.7.2" });
+  checkoutSha: sha, producerVersion: "1.7.4" });
 const bytes = (directory: string) => readFile(destination(directory).artifact, "utf8");
 async function invocation(directory: string, stdout: string, exit: number): Promise<unknown> {
   await writeFile(join(directory, "command.mjs"),
@@ -61,21 +98,28 @@ async function invocation(directory: string, stdout: string, exit: number): Prom
 }
 
 // Regression: cleanup used to erase the only report after the real child exit 3.
-test("published Foundation 1.7.2 invocation retains exact selected bytes before fixture removal; no message admission", async () => {
-  await fixture(async directory => {
-    const invocationRoot = join(directory, "fixture");
-    await mkdir(invocationRoot);
-    const result = await invocation(invocationRoot, publishedReport, 3);
-    await retainSdkGrowthFailure(result, destination(directory));
-    await rm(invocationRoot, { recursive: true, force: true });
-    assert.equal(await bytes(directory), JSON.stringify({ checkoutSha: sha, nodeVersion: process.version,
-      capabilityId: "package.public-api-compatibility", producer: {
-        package: "@agent-teams/engineering-foundation", version: "1.7.2",
-        integrity: "sha512-2wmq4g8rWgXQ2qBVY2Tb7HVP9LFsuBAUMcDhgCqixLA0RA9H3OrwXy7b7jK2gS6SggK9XCplNb03mVLR2EyzRg==",
-      }, exit: 3, transportStatus: "exit", messageOmission: "producer-safety-not-admitted",
-      reportStatus: "selected", publicCapability: { outcome: "failed", code: "UNEXPECTED_PROCESS_FAILURE", retryable: false },
-    }) + "\n");
-  });
+test("historical 1.7.2 and current 1.7.4 reports retain exact selected bytes under the current producer pin before fixture removal; no message admission", async () => {
+  for (const [stdout, message] of [
+    [publishedReport, "An unexpected process failure occurred."],
+    [currentReport, "The process could not be started."],
+  ] as const) {
+    await fixture(async directory => {
+      const invocationRoot = join(directory, "fixture");
+      await mkdir(invocationRoot);
+      const result = await invocation(invocationRoot, stdout, 3);
+      await retainSdkGrowthFailure(result, destination(directory));
+      await rm(invocationRoot, { recursive: true, force: true });
+      const retained = await bytes(directory);
+      assert.equal(retained, JSON.stringify({ checkoutSha: sha, nodeVersion: process.version,
+        capabilityId: "package.public-api-compatibility", producer: {
+          package: "@agent-teams/engineering-foundation", version: "1.7.4",
+          integrity: "sha512-BU9SqHvrPYtizl0u1J1UwGl89GmfHsKrwvExY7v8bpa2AD0C9YS71qDHIxcZU1zfzzORGk1SjJwNrPXR5MmZRA==",
+        }, exit: 3, transportStatus: "exit", messageOmission: "producer-safety-not-admitted",
+        reportStatus: "selected", publicCapability: { outcome: "failed", code: "UNEXPECTED_PROCESS_FAILURE", retryable: false },
+      }) + "\n");
+      assert(!retained.includes(message));
+    });
+  }
 });
 // Regression: retaining every captured report would create artifacts for expected exit 2.
 test("expected invocation and disabled destination leave no artifact", async () => {
