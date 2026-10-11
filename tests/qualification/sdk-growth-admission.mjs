@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
+import { retainSdkGrowthFailure } from "./sdk-growth-failure-retention.mts";
 
 const execute = promisify(execFile);
 const workspace = resolve(import.meta.dirname, "../..");
@@ -59,6 +60,17 @@ async function runGrowth(root) {
   } catch (error) {
     result = error;
   }
+  if (process.env.SDK_GROWTH_FAILURE_ARTIFACT && (result.code ?? result.status) !== 2) {
+    let checkoutSha;
+    try {
+      const { stdout } = await execute("git", ["rev-parse", "HEAD"], { cwd: workspace, timeout: 5_000, maxBuffer: 1024 });
+      if (stdout.trim() === process.env.SDK_GROWTH_CHECKOUT_SHA) checkoutSha = stdout.trim();
+    } catch { /* Invalid checkout metadata fails retention, preserving the assertion below. */ }
+    await retainSdkGrowthFailure(result, {
+      artifact: process.env.SDK_GROWTH_FAILURE_ARTIFACT, directory: process.env.RUNNER_TEMP,
+      checkoutSha, producerVersion: foundationManifest.version,
+    });
+  }
   assert.equal(result.code ?? result.status, 2, `${result.stdout ?? ""}\n${result.stderr ?? ""}`);
   const commandReport = JSON.parse(result.stdout);
   assert.equal(commandReport.capabilities[0].problem.code, "SDK_GROWTH_EVIDENCE_INCOMPLETE", JSON.stringify(commandReport));
@@ -74,7 +86,7 @@ async function runGrowth(root) {
   assert.equal(typedCoverage?.status, "limited", `typed report coverage missing: ${JSON.stringify(typedCoverage)}`);
   assert.deepEqual(Object.keys(report.candidate.value).toSorted(), [
     "artifactDigests", "lockDigest", "sourceCommit", "sourceTree", "surfaceDigest", "toolchainDigest", "topologyDigest",
-  ], "Foundation 1.7.2 reports a candidate observation reference, not invented surface entries");
+  ], `Foundation ${foundationManifest.version} reports a candidate observation reference, not invented surface entries`);
   return report;
 }
 
@@ -269,7 +281,7 @@ acceptedBaselinePath: architecture/decisions/accepted-decisions.json
   const removal = await observeTypedSurface(temporary);
   assertTypedSymbols(removal, [], "removal");
 
-  process.stdout.write(`${JSON.stringify({ status: "passed", subject: "Foundation 1.7.2 v2 admission",
+  process.stdout.write(`${JSON.stringify({ status: "passed", subject: `Foundation ${foundationManifest.version} v2 admission`,
     authority: "unverified", activation: "hold", observedTypedSurfaces: 5, observedTransitions: 4,
     transitionComparison: "unavailable-without-trusted-base" })}\n`);
 } finally {
