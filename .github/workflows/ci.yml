@@ -62,7 +62,7 @@ jobs:
         if: failure() && matrix.lane == 'packaging'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1, reused from m3-runtime-matrix
         with:
-          name: sdk-growth-${{ runner.os }}-${{ env.ROOT_CI_NODE_VERSION || '24.21.0' }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: sdk-growth-${{ runner.os }}-${{ env.ROOT_CI_NODE_VERSION || '26.11.1' }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/sdk-growth-failure.json
           if-no-files-found: ignore
 
@@ -111,60 +111,60 @@ jobs:
     if: always()
     steps: *check-aggregate-steps
 
-  lanes-node26-ubuntu:
-    name: check lane (ubuntu-24.04, Node 26, ${{ matrix.lane }})
+  lanes-node24-ubuntu:
+    name: check lane (ubuntu-24.04, Node 24, ${{ matrix.lane }})
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    env: &node26-root-runtime
-      ROOT_CI_NODE_VERSION: 26.10.0
+    env: &node24-root-runtime
+      ROOT_CI_NODE_VERSION: 24.21.0
     strategy:
       fail-fast: false
       matrix: *check-lane-matrix
     steps: *check-lane-steps
 
-  lanes-node26-macos:
-    name: check lane (macos-15, Node 26, ${{ matrix.lane }})
+  lanes-node24-macos:
+    name: check lane (macos-15, Node 24, ${{ matrix.lane }})
     runs-on: macos-15
     timeout-minutes: 15
-    env: *node26-root-runtime
+    env: *node24-root-runtime
     strategy:
       fail-fast: false
       matrix: *check-lane-matrix
     steps: *check-lane-steps
 
-  lanes-node26-windows:
-    name: check lane (windows-2025, Node 26, ${{ matrix.lane }})
+  lanes-node24-windows:
+    name: check lane (windows-2025, Node 24, ${{ matrix.lane }})
     runs-on: windows-2025
     timeout-minutes: 15
-    env: *node26-root-runtime
+    env: *node24-root-runtime
     strategy:
       fail-fast: false
       matrix: *check-lane-matrix
     steps: *check-lane-steps
 
-  check-node26-ubuntu:
-    name: check (ubuntu-24.04, Node 26)
+  check-node24-ubuntu:
+    name: check (ubuntu-24.04, Node 24)
     runs-on: ubuntu-24.04
-    needs: [lanes-node26-ubuntu]
+    needs: [lanes-node24-ubuntu]
     if: always()
     steps: *check-aggregate-steps
 
-  check-node26-macos:
-    name: check (macos-15, Node 26)
+  check-node24-macos:
+    name: check (macos-15, Node 24)
     runs-on: macos-15
-    needs: [lanes-node26-macos]
+    needs: [lanes-node24-macos]
     if: always()
     steps: *check-aggregate-steps
 
-  check-node26-windows:
-    name: check (windows-2025, Node 26)
+  check-node24-windows:
+    name: check (windows-2025, Node 24)
     runs-on: windows-2025
-    needs: [lanes-node26-windows]
+    needs: [lanes-node24-windows]
     if: always()
     steps: *check-aggregate-steps
 
-  node-26-compatibility:
-    name: Node 26 package root compatibility
+  node-24-compatibility:
+    name: Node 24 package root compatibility
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -177,27 +177,27 @@ jobs:
         with:
           node-version-file: .node-version
           cache: pnpm
-      - name: Build and pack libraries with qualified Node 24 tooling
+      - name: Build and pack libraries with the default Node 26 tooling
         run: |
           pnpm install --frozen-lockfile --ignore-scripts
           pnpm peers check --lockfile-only
           pnpm assembly:build
           pnpm resources:build
           pnpm conformance:build
-          mkdir -p "$RUNNER_TEMP/node26-pack"
-          pnpm --dir packages/core pack --pack-destination "$RUNNER_TEMP/node26-pack"
-          pnpm --dir packages/assembly pack --pack-destination "$RUNNER_TEMP/node26-pack"
-          pnpm --dir packages/resources pack --pack-destination "$RUNNER_TEMP/node26-pack"
-          pnpm --dir packages/conformance pack --pack-destination "$RUNNER_TEMP/node26-pack"
+          mkdir -p "$RUNNER_TEMP/node24-pack"
+          pnpm --dir packages/core pack --pack-destination "$RUNNER_TEMP/node24-pack"
+          pnpm --dir packages/assembly pack --pack-destination "$RUNNER_TEMP/node24-pack"
+          pnpm --dir packages/resources pack --pack-destination "$RUNNER_TEMP/node24-pack"
+          pnpm --dir packages/conformance pack --pack-destination "$RUNNER_TEMP/node24-pack"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 26.10.0
-      - name: Provision pinned pnpm for disposable Node 26 fixtures
+          node-version: 24.21.0
+      - name: Provision pinned pnpm for disposable Node 24 fixtures
         run: |
-          npm install --prefix "$RUNNER_TEMP/node26-pnpm" --no-save --ignore-scripts --no-audit --no-fund pnpm@11.20.0
-          node "$RUNNER_TEMP/node26-pnpm/node_modules/pnpm/bin/pnpm.mjs" --version | grep -Fx 11.20.0
-      - name: Verify disposable installed public consumer on Node 26
+          npm install --prefix "$RUNNER_TEMP/node24-pnpm" --no-save --ignore-scripts --no-audit --no-fund pnpm@11.20.0
+          node "$RUNNER_TEMP/node24-pnpm/node_modules/pnpm/bin/pnpm.mjs" --version | grep -Fx 11.20.0
+      - name: Verify disposable installed public consumer on Node 24
         env:
-          GET_MODULAR_COMPAT_ARCHIVE_DIR: ${{ runner.temp }}/node26-pack
-          GET_MODULAR_COMPAT_PNPM_CLI: ${{ runner.temp }}/node26-pnpm/node_modules/pnpm/bin/pnpm.mjs
+          GET_MODULAR_COMPAT_ARCHIVE_DIR: ${{ runner.temp }}/node24-pack
+          GET_MODULAR_COMPAT_PNPM_CLI: ${{ runner.temp }}/node24-pnpm/node_modules/pnpm/bin/pnpm.mjs
         run: node --no-warnings --test tests/node-runtime-compatibility.test.mjs

@@ -11,7 +11,7 @@ import { assertSupportedToolingNodeVersion } from "../architecture/checks/node-v
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageNames = ["core", "assembly", "resources", "conformance"];
 
-// The Node 26 CI consumer is outside the source workspace. Its package manager
+// The Node 24 compatibility CI consumer is outside the source workspace. Its package manager
 // must be the physically provisioned source pin, not a shim selected by cwd.
 async function fixturePnpmCli() {
   return process.env.GET_MODULAR_COMPAT_PNPM_CLI || await resolvePnpmCli();
