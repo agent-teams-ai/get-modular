@@ -2,7 +2,7 @@
 
 Optional pre-1.0 construction support above the public `@get-modular/core` root.
 Node.js `>=24.18.0 <25` or `>=26.10.0 <27`; Node.js 25 is unsupported and
-Node.js 24.18 remains the production/default toolchain. ESM; TypeScript
+Node.js 26.11 is the production/default toolchain. ESM; TypeScript
 consumer floor 5.8.3.
 
 See the repository's [consumer quickstart](https://github.com/agent-teams-ai/get-modular/blob/main/docs/guides/consumer-quickstart.md)
