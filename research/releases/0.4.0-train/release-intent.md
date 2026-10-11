@@ -1,6 +1,6 @@
 # Get Modular 0.4.0 train: retained release archives (R-1a)
 
-Status: published to npm on 2026-10-11 under dist-tag `next` (Core 0.4.0, Assembly 0.4.0, conformance 0.2.0). `latest` is unchanged: Core and Assembly 0.3.0, conformance 0.1.0, resources 0.1.0. Promotion to `latest` waits for modularity-host-test #17 (consuming the published bytes) to merge.
+Status: published to npm on 2026-10-11 under dist-tag `next` (Core 0.4.0, Assembly 0.4.0, conformance 0.2.0) and promoted to `latest` the same day (about 13:05 UTC). Resources 0.1.0 is unchanged and stays `latest`.
 
 ## Source
 
@@ -88,13 +88,20 @@ The owner published the retained archives on 2026-10-11 with `npm publish ./<arc
 
 Read-back (2026-10-11, read-only): each registry `dist.integrity` equals its line in the `INTEGRITY` file. The tarballs downloaded with `npm pack @get-modular/<package>@<version>` are byte-identical to the retained archives (`shasum -a 256 -c SHA256SUMS` passed for Core, Assembly and conformance; the conformance bytes also match exactly, not only by the normalized digest). Resources is not on the registry at a new version (`0.0.0-stage`, `0.1.0`).
 
-Dist-tags after publication:
+Dist-tags right after publication:
 
 - `@get-modular/core` and `@get-modular/assembly`: `latest=0.3.0`, `next=0.4.0`, plus the older `candidate-*` tags.
 - `@get-modular/conformance`: `latest=0.1.0`, `next=0.2.0`, `candidate-0-3-0=0.1.0`.
 - `@get-modular/resources`: `latest=0.1.0`, `candidate-0-3-0=0.1.0`.
 
-`latest` moves after modularity-host-test #17 (consuming the published bytes) merges, as a separate owner step with the passkey, for all three packages together.
+## Promotion to `latest`
+
+The condition was met first: modularity-host-test #17 (consuming the published bytes) merged as `695b91f5`. Then the owner promoted `latest` for Core, Assembly and conformance together on 2026-10-11, at about 13:05 UTC (web authentication with a passkey). Read back from the registry afterwards:
+
+- `@get-modular/core`: `latest=0.4.0`, `next=0.4.0`, `candidate-0-3-0=0.3.0`.
+- `@get-modular/assembly`: `latest=0.4.0`, `next=0.4.0`, `candidate-0-3-0=0.3.0`.
+- `@get-modular/conformance`: `latest=0.2.0`, `next=0.2.0`, `candidate-0-3-0=0.1.0`.
+- `@get-modular/resources`: `latest=0.1.0`, unchanged.
 
 ## Consumer checks on these bytes
 
@@ -108,4 +115,4 @@ TEST stays on the retained archives by design (its evidence signs archive bytes,
 
 ## Owner publication approval
 
-Publication of the three archives under `next` was done by the owner on 2026-10-11. Promotion to `latest` is not done; it is a separate owner step after modularity-host-test #17 merges.
+Publication of the three archives under `next` and the promotion to `latest` were done by the owner on 2026-10-11.
