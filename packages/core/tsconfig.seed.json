@@ -9,5 +9,11 @@
     "self-composition/own-profile.variant.ts",
     "self-composition/allowlist.variant.ts"
   ],
-  "include": []
+  "include": [
+    "src/features/**/*.ts",
+    "self-composition/*.variant.ts",
+    "self-composition/allowlist*.ts",
+    "self-composition/own-profile.ts",
+    "tests/features/canonicalization/witness-variant/**/*.ts"
+  ]
 }
