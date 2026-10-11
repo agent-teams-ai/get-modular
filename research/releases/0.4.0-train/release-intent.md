@@ -6,7 +6,8 @@ Status: retained, awaiting owner review. Nothing is published.
 
 - Repository: `agent-teams-ai/get-modular`.
 - Source commit `269f02c67aa0091d12c3f47a3cec4cb52bb2720d` (REL head at packing time, PR #165), tree `0db42a5187f2d228cc71e714c6dc610fb12ad9d5`; merged as (filled in after the merge). REL base: main `d9f6277ad97090a8f7f3823b3877f457d7032d35`.
-- Source check (6.4) on later REL heads: none yet.
+- Review: An independent delta review of `269f02c` ran before packing and was clean: it reproduced the regeneration byte for byte, all 27 `pnpm check` steps passed, and CI run 38124380389 was green. The 6.2 precondition (clean review and green CI on the exact head) was met.
+- Source check (6.4) on later REL heads: none yet. (none until after the #165 merge).
 - Package trees: `packages/core` `4de51f6b5e943cf45e4873710a9c4483de73b739`, `packages/assembly` `3ca9976dba8613a5541e3506388e43a5153e585c`, `packages/resources` `33ce8d44e61856c1748f3ded62d632324d2cc149`, `packages/conformance` `c4ec60aed7971aef4082d108a888b43fe425cf4f`.
 - Toolchain: Node 24.21.0, pnpm 11.20.0.
 - CI on the exact source: [run 38124380389](https://github.com/agent-teams-ai/get-modular/actions/runs/38124380389) (all required checks and `Node 26 package root compatibility` passed).
@@ -77,7 +78,7 @@ Authoring surface changed: no
 
 ## Proposed publication (owner only)
 
-Publish Core, Assembly and conformance in this order: `npm publish ./<archive> --tag candidate-0-4-0 --access public`. Resources is not published (0.1.0 stays). Then a read-back of `dist.integrity` and a byte comparison of the downloaded tarball; `latest` only after all three.
+Publish Core, Assembly and conformance in this order: `npm publish ./<archive> --tag next --access public`. Resources is not published (0.1.0 stays). Dist-tag `next`. Then a read-back of `dist.integrity` and a byte comparison of the downloaded tarball; `latest` only after all three.
 An uncertain result is reconciled read-only, never retried blindly.
 
 ## Consumer checks on these bytes
