@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { constants } from "node:fs";
 import { lstat, open, realpath } from "node:fs/promises";
 import { resolve, sep } from "node:path";
@@ -13,6 +13,11 @@ const GIT_OBJECT_ID = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u;
 const REGULAR_FILE_MODE = /^(?:100644|100755)$/u;
 const SYMBOLIC_LINK_MODE = "120000";
 const MAX_GIT_OUTPUT_BYTES = 16 * 1024 * 1024;
+// Every tracked blob of HEAD is read through one cat-file stream, so this bound is on the whole
+// repository, not on one command's text output. It is far above any real repository (about 16 MiB
+// tracked today) and exists only to stop a runaway stream.
+const MAX_BLOB_BATCH_BYTES = 512 * 1024 * 1024;
+const STDERR_TAIL_BYTES = 64 * 1024;
 const INDEX_SNAPSHOT_VERSION = 1;
 const EMPTY_BLOB_OIDS = new Set([
   "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
@@ -544,42 +549,101 @@ export async function historicalFileVersions(relativePath, repositoryRoot) {
   return readBlobBatch(repositoryRoot, oids);
 }
 
-// One cat-file process for every historical blob; the stream is
-// "<oid> blob <size>\n<bytes>\n" per requested object.
-async function readBlobBatch(repositoryRoot, oids) {
+// One cat-file process for every requested blob; the stream is
+// "<oid> blob <size>\n<bytes>\n" per requested object. The stream is read with spawn and no
+// execFile maxBuffer: when execFile exceeds maxBuffer it destroys stdout and kills git, and the
+// caller sees a truncated stream or a killed child instead of a size error. The explicit bound
+// below fails loudly instead. The promise settles only in "close", so the function never returns
+// while git is alive (on Windows a live git.exe still holds the working directory).
+export async function readBlobBatch(
+  repositoryRoot,
+  oids,
+  { maxOutputBytes = MAX_BLOB_BATCH_BYTES } = {},
+) {
   if (oids.length === 0) return [];
-  const child = execFile("git", [
+  const child = spawn("git", [
     "--no-replace-objects", "cat-file", "--batch=%(objectname) %(objecttype) %(objectsize)",
   ], {
     cwd: repositoryRoot,
-    encoding: "buffer",
     env: hermeticGitEnvironment(),
-    maxBuffer: MAX_GIT_OUTPUT_BYTES,
+    stdio: ["pipe", "pipe", "pipe"],
   });
   const finished = new Promise((resolveOutput, reject) => {
     const chunks = [];
-    child.stdout.on("data", chunk => chunks.push(chunk));
+    let received = 0;
+    let overflow = null;
+    let stdinError = null;
+    let stderrTail = Buffer.alloc(0);
+    child.stdout.on("data", chunk => {
+      if (overflow) return;
+      received += chunk.length;
+      if (received > maxOutputBytes) {
+        overflow = new Error(
+          `TRACKED_FILE_CUSTODY_FAILED: git cat-file --batch output exceeds the ${maxOutputBytes}-byte limit `
+          + `(received at least ${received} bytes for ${oids.length} objects)`,
+        );
+        child.kill();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    child.stderr.on("data", chunk => {
+      stderrTail = Buffer.concat([stderrTail, chunk]).subarray(-STDERR_TAIL_BYTES);
+    });
+    // A spawn failure leaves no process to wait for.
     child.on("error", reject);
-    child.on("close", code => {
-      if (code !== 0) reject(new Error(`git cat-file --batch exited with ${code}`));
+    // EPIPE after an early exit or a kill is reported from "close", after the exit status.
+    child.stdin.on("error", error => { stdinError = error; });
+    child.on("close", (code, signal) => {
+      if (overflow) reject(overflow);
+      else if (code !== 0) {
+        const detail = stderrTail.toString("utf8").trim();
+        reject(new Error(
+          `TRACKED_FILE_CUSTODY_FAILED: git cat-file --batch exited with ${code ?? signal}`
+          + (detail ? `: ${detail}` : ""),
+        ));
+      } else if (stdinError) reject(stdinError);
       else resolveOutput(Buffer.concat(chunks));
     });
   });
   child.stdin.end(`${oids.join("\n")}\n`);
-  const output = await finished;
+  return parseBlobBatchOutput(await finished, oids);
+}
+
+export function parseBlobBatchOutput(output, oids) {
   const versions = [];
   let offset = 0;
   for (const oid of oids) {
     const newline = output.indexOf(0x0a, offset);
-    if (newline < 0) throw new Error("invalid git cat-file batch stream");
+    if (newline < 0) {
+      throw new Error(
+        `TRACKED_FILE_CUSTODY_FAILED: git cat-file batch stream ended before the header of ${oid} `
+        + `(${output.length} bytes received, ${versions.length} of ${oids.length} objects read)`,
+      );
+    }
     const header = /^(\S+) (\S+) ([0-9]+)$/u.exec(output.subarray(offset, newline).toString("ascii"));
     if (!header || header[1] !== oid || header[2] !== "blob") {
-      throw new Error(`historical custody blob ${oid} is missing or not a blob`);
+      throw new Error(`TRACKED_FILE_CUSTODY_FAILED: custody blob ${oid} is missing or not a blob`);
     }
     const size = Number(header[3]);
     const start = newline + 1;
+    if (start + size + 1 > output.length) {
+      throw new Error(
+        `TRACKED_FILE_CUSTODY_FAILED: git cat-file batch stream is truncated in ${oid}: `
+        + `${output.length} bytes received, at least ${start + size + 1} expected `
+        + `(${versions.length} of ${oids.length} objects read)`,
+      );
+    }
+    if (output[start + size] !== 0x0a) {
+      throw new Error(`TRACKED_FILE_CUSTODY_FAILED: git cat-file batch object ${oid} is not followed by a line feed`);
+    }
     versions.push(output.subarray(start, start + size));
     offset = start + size + 1;
+  }
+  if (offset !== output.length) {
+    throw new Error(
+      `TRACKED_FILE_CUSTODY_FAILED: git cat-file batch stream has ${output.length - offset} unexpected trailing bytes`,
+    );
   }
   return versions;
 }

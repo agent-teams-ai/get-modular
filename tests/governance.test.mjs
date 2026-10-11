@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -53,7 +53,9 @@ import {
   inspectIndexSnapshotFile,
   readIndexSnapshotFile,
   inspectAcceptedAuthorityFile,
+  parseBlobBatchOutput,
   readAcceptedAuthorityFile,
+  readBlobBatch,
 } from "../architecture/checks/tracked-file-custody.mjs";
 import {
   productionArtifactsBlockedByOpenDecisions,
@@ -2431,4 +2433,72 @@ test("known external consumers are pending references, not accepted evidence", a
     assert.throws(() => validate(mutated), /invalid pending known external consumer record/u);
   }
   assert.throws(() => validate({}), /invalid pending known external consumer record/u);
+});
+
+const MIB = 1024 * 1024;
+const gitSync = (cwd, args, input) => execFileSync("git", args, {
+  cwd,
+  input,
+  env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_SYSTEM: "/dev/null" },
+}).toString("utf8").trim();
+
+async function repositoryWithBlobs(sizes) {
+  const root = await mkdtemp(join(tmpdir(), "get-modular-blob-batch-"));
+  gitSync(root, ["init", "-q"]);
+  const blobs = sizes.map((size, index) => {
+    const bytes = Buffer.alloc(size, 0x61 + index);
+    return { bytes, oid: gitSync(root, ["hash-object", "-w", "--stdin"], bytes) };
+  });
+  return { root, blobs };
+}
+
+// Regression: the batch reader used execFile with a 16 MiB maxBuffer. A larger stream was cut short
+// or killed git, and the check failed on a truncated stream or a killed child instead of reading the blobs.
+test("readBlobBatch reads a stream above the former 16 MiB buffer", async () => {
+  const { root, blobs } = await repositoryWithBlobs([8 * MIB, 9 * MIB, 1024, 0]);
+  try {
+    const versions = await readBlobBatch(root, blobs.map(blob => blob.oid));
+    assert.equal(versions.length, blobs.length);
+    versions.forEach((bytes, index) => assert.ok(bytes.equals(blobs[index].bytes)));
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  }
+});
+
+test("readBlobBatch fails with the byte totals when the stream passes its explicit limit", async () => {
+  const { root, blobs } = await repositoryWithBlobs([4096, 4096]);
+  try {
+    await assert.rejects(
+      readBlobBatch(root, blobs.map(blob => blob.oid), { maxOutputBytes: 1024 }),
+      /exceeds the 1024-byte limit \(received at least \d+ bytes for 2 objects\)/u,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  }
+});
+
+test("parseBlobBatchOutput rejects truncated and trailing streams with byte totals", () => {
+  const oid = "a".repeat(40);
+  const complete = Buffer.concat([Buffer.from(`${oid} blob 5\n`), Buffer.from("hello\n")]);
+  assert.deepEqual(parseBlobBatchOutput(complete, [oid]).map(bytes => bytes.toString()), ["hello"]);
+  assert.throws(
+    () => parseBlobBatchOutput(complete.subarray(0, complete.length - 3), [oid]),
+    /truncated in a{40}: \d+ bytes received, at least \d+ expected/u,
+  );
+  assert.throws(
+    () => parseBlobBatchOutput(Buffer.from(`${oid} blob 5`), [oid]),
+    /ended before the header of a{40} \(\d+ bytes received, 0 of 1 objects read\)/u,
+  );
+  assert.throws(
+    () => parseBlobBatchOutput(Buffer.concat([complete, Buffer.from("x")]), [oid]),
+    /1 unexpected trailing bytes/u,
+  );
+  assert.throws(
+    () => parseBlobBatchOutput(Buffer.from(`${oid} blob 5\nhelloX`), [oid]),
+    /not followed by a line feed/u,
+  );
+  assert.throws(
+    () => parseBlobBatchOutput(Buffer.from(`${oid} missing\n`), [oid]),
+    /missing or not a blob/u,
+  );
 });
