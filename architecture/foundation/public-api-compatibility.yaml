@@ -22,6 +22,4 @@ packages:
     nonTypeExports: []
     tsconfigPath: packages/assembly/tsconfig.json
     releasedBaselinePath: architecture/public-api/assembly.json
-    approvedBreakingChanges:
-      - fingerprint: "sha256:cca41a17163b4cfca9550cc9c05fb2beaeb3d7f000001605aa62b90e6fc0bc2a"
-        decisionId: ADR-0035
+    approvedBreakingChanges: []

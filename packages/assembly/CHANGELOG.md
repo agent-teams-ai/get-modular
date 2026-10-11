@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.4.0
+
+### Minor Changes
+
+- d171008: `CapabilitiesOf` maps each contract once (ADR-0035): type-check cost of large capability maps drops from quadratic to about linear (500 handles under one map: 1,383,390 to 542,552 instantiations on TypeScript 7, 1,560,108 to 715,445 on 5.8.3). Results for contracts with literal ids are unchanged.
+  
+  Migration:
+  
+  - Better: a 1,000-module root checks in about 2 s instead of about 5 s on TypeScript 7, and the cost no longer grows with the square of the module count.
+  - Codemod: none. The only affected pattern is generic and too varied to rewrite mechanically.
+  - By hand: in code generic over contracts `T`, an entry of `CapabilitiesOf<T>` is no longer known to be a capability contract. `CapabilitiesOf<T>[T["id"]]["value"]` now fails with TS2536: replace it with `T extends Contract<string, infer V, number> ? V : never`. `assemblyFor<CapabilitiesOf<T>>()` now fails with TS2344: make the helper generic over the map, `<C extends CapabilitySchema<C>>`, and pass `CapabilitiesOf<typeof A | typeof B>` at the call site.
+  - Check: run your TypeScript build; concrete maps need no change.
+  
+  Authoring surface changed: no
+- 2a83057: `prepare` accepts `profileId` (and optional `bindings`) instead of a compiled `composition` and completes the profile from the bound handles (ADR-0035). A `required` slot without a row takes its only other provider; any other slot without a row fails with the new code `assembly.prepare.unresolved-binding`, listing every such slot with its candidates before any factory runs. A prepared result also carries `composition`.
+  
+  Migration:
+  
+  - Better: adding a module to a composition root is one `bindFactory` line, and the profile follows the module list.
+  - Codemod: none. `prepare({ composition })` keeps working.
+  - By hand: update exhaustive handling of `PreparationErrorCode` and custom `Assembly` implementations for the new code and the `composition` result field. Moving production roots to `profileId` is optional until the CMS revision for 0.4.0 (ADR-0035): replace `compileComposition` and the written profile with `profileId`, keep rows only for `optional`, `many` and several-candidate slots, and compare every row of `composition.plan.bindings` against a hand-written table.
+  - Check: run your TypeScript build and your composition root's smoke and binding-oracle tests.
+  
+  Authoring surface changed: no
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+  - @get-modular/core@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes
