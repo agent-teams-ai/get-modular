@@ -11,7 +11,7 @@ import { createRequire } from "node:module";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { preparedToolEntries, verifyPreparedPackagePayload, signedRelease, packageArchiveRoot, extractPreparationArchive, preparationPath } from "./lifecycle-tool-prepare.mts";
-import { verifyToolEntryEnvelope, verifyToolClosureEntries, verifyPublicToolRoots, verifyPackagePayload, verifyPhysicalSupportPayload, projectPackagePayload, packagePayloadInventory, parseQualificationEvidenceJSON, verifySupportOrigins, supportVersions, restoredDependencyGraph, frozenInventory, nodeSignerPolicy, inputIdentity, verifyToolOrigins, freshPublishedManifest, verifyFreshArchivePayload, archiveEntryPath } from "./lifecycle-tool-prepare.mts";
+import { verifyToolEntryEnvelope, verifyToolClosureEntries, verifyPublicToolRoots, verifyPackagePayload, verifyPhysicalSupportPayload, projectPackagePayload, packagePayloadInventory, parseQualificationEvidenceJSON, verifySupportOrigins, supportVersions, restoredDependencyGraph, frozenInventory, nodeSignerPolicy, inputIdentity, verifyToolOrigins, freshPublishedManifest, verifyFreshArchivePayload, archiveEntryPath, registryMetadataUrl } from "./lifecycle-tool-prepare.mts";
 import type { PreparedToolEntry, PackagePayloadProjection } from "./lifecycle-qualification-contracts.mts";
 
 // Synthetic status/receipt fixtures test parsing and policy, never GPG or origin custody.
@@ -243,6 +243,11 @@ test("retained @types/node archive uses the exact pinned root and matches every 
     assert.equal(frozenInventory(join(root, "payload"), true).length, 75);
     assert.equal(JSON.parse(readFileSync(join(root, "payload/package.json"), "utf8")).version, "24.19.1");
   } finally { rmSync(root, { recursive: true }); }
+});
+test("registry metadata URL encodes every slash and keeps admitted public URLs byte-identical", () => {
+  assert.equal(registryMetadataUrl("tar", "7.5.22"), "https://registry.npmjs.org/tar/7.5.22");
+  assert.equal(registryMetadataUrl("@agent-teams/engineering-foundation", "1.7.2"), "https://registry.npmjs.org/@agent-teams%2fengineering-foundation/1.7.2");
+  assert.equal(registryMetadataUrl("@a/b/c", "1.0.0"), "https://registry.npmjs.org/@a%2fb%2fc/1.0.0");
 });
 test("other pinned package versions retain package root and shared path guards", () => {
   for (const [id, version] of [["@types/node", "24.19.2"], ["typescript", "6.0.3"], ["pnpm", "11.20.0"]]) {
@@ -679,7 +684,7 @@ test("retained SRI Foundation archive qualifies both real payload callsites and 
   const supportRows = Object.entries(supportVersions("linux", "x64")).map(([id, version]) => id === origin.id ? origin : {
     id, version, platform: "linux", arch: "x64", status: "verified" as const, method: "package-sri" as const,
     archiveSha256: "a".repeat(64), payloadSha256: "b".repeat(64), sri: "sha512-" + Buffer.alloc(64).toString("base64"),
-    source: `https://registry.npmjs.org/${id.replace("/", "%2f")}/${version}`,
+    source: registryMetadataUrl(id, version),
   });
   const pnpmMetadata = JSON.parse(readFileSync(join(correctionInputs, "archive-inputs/pnpm-metadata.json"), "utf8"));
   const generatorOrigin = { id: "pnpm", version: "11.20.0", platform: "linux", arch: "x64", status: "verified" as const,
@@ -946,7 +951,7 @@ test("helper manifest configuration entries reach actual main and reject finite 
   const support = Object.entries(supportVersions(process.platform, process.arch)).map(([id, version]) => ({
     id, version, platform: process.platform, arch: process.arch, status: "verified", method: "package-sri",
     archiveSha256: "a".repeat(64), payloadSha256: "b".repeat(64), sri: "sha512-" + Buffer.alloc(64).toString("base64"),
-    source: `https://registry.npmjs.org/${id.replace("/", "%2f")}/${version}`,
+    source: registryMetadataUrl(id, version),
   }));
   const driver = resolve("packages/lifecycle-kernel/tests/run-node20-qualification.mts");
   function run(label: string, rows: typeof entries, expected: RegExp): void {

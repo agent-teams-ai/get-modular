@@ -99,6 +99,12 @@ export function supportVersions(platform: string, arch: string): Record<string, 
   return { tar: "7.5.22", "@isaacs/fs-minipass": "4.0.1", chownr: "3.0.0", minipass: "7.1.3", minizlib: "3.1.0", yallist: "5.0.0",
     "@types/node": "24.19.1", "undici-types": "7.24.6", "@agent-teams/engineering-foundation": "1.7.2", [`@typescript/typescript-${platform}-${arch}`]: "7.0.2" };
 }
+// Registry metadata URL for an admitted package id. Admitted ids are lowercase
+// [a-z0-9._-] with an optional "@scope/" prefix; only every "/" is encoded, in the
+// historical lowercase spelling, so ordinary and scoped public URLs stay byte-identical.
+export function registryMetadataUrl(name: string, version: string): string {
+  return `https://registry.npmjs.org/${name.replaceAll("/", "%2f")}/${version}`;
+}
 // Qualification-only discovery: root resolvers select anchors; declaring packages
 // select their dependency edges. No acquisition or operator trust policy lives here.
 export function restoredDependencyGraph(workspace: string, platform: string, arch: string): RestoredDependencyGraph {
@@ -495,7 +501,7 @@ export function verifySupportOrigins(rows: readonly SupportOrigin[], platform: s
     }
     assert.equal(row.version, versions[row.id]); assert.equal(row.platform, platform); assert.equal(row.arch, arch);
     assert.equal(row.status, "verified"); assert.equal(row.method, "package-sri");
-    assert.equal(row.source, `https://registry.npmjs.org/${row.id.replace("/", "%2f")}/${row.version}`, "unofficial support origin");
+    assert.equal(row.source, registryMetadataUrl(row.id, row.version), "unofficial support origin");
     assert.match(row.sri, /^sha512-[A-Za-z0-9+/]{86}==$/u);
     for (const value of [row.archiveSha256, row.payloadSha256]) assert.match(value, /^[a-f0-9]{64}$/u);
   }
@@ -826,7 +832,7 @@ async function main(): Promise<void> {
   const tar = require("tar") as PreparationTar;
   async function provePackage(id: string, version: string, output?: string) {
     const name = id.startsWith("typescript") ? "typescript" : id;
-    const source = `https://registry.npmjs.org/${name.replace("/", "%2f")}/${version}`;
+    const source = registryMetadataUrl(name, version);
     const metadata = JSON.parse((await get(source, id.replaceAll("/", "-") + "-metadata.json")).toString());
     assert.equal(metadata.name, name); assert.equal(metadata.version, version);
     assert.match(metadata.dist.integrity, /^sha512-[A-Za-z0-9+/]{86}==$/u);
