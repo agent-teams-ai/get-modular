@@ -108,7 +108,7 @@ The condition was met first: modularity-host-test #17 (consuming the published b
 | Check | Result | Evidence |
 | --- | --- | --- |
 | TEST (modularity-host-test #17) | passed | Installed the exact R-1a archives from #167 and `pnpm evidence` was accepted: at head `5e8b1b7` on Node 24.21.0 and pnpm 11.20.0 (189 of 189 tests), and again at head `933bf9b` on Node 26.11.1 after the TEST default Node moved. Signed off on 2026-10-11 under the owner's delegation, as recorded in the PR #165 description. |
-| agent-runtime draft branch | pending | |
+| agent-runtime draft branch | not applicable | By owner decision (2026-10-11) agent-runtime skips 0.4.0 and adopts Get Modular 0.5.0 directly from 0.3.0. |
 | Node 26.10+ consumer | passed | The TEST run at `933bf9b` on Node 26.11.1 (see the TEST row). |
 
 TEST stays on the retained archives by design (its evidence signs archive bytes, as in the 0.3.0 train). Those archives are byte-identical to the published packages (same integrity, see Publication), so the check holds for the published bytes.
