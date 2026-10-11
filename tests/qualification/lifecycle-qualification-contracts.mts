@@ -34,3 +34,9 @@ export interface InstallerWitness {
   binName: string; binDeclaration: string; binSha256: string;
   shimPath: string; shimSha256: string; shimMode: number; originalTarget: string; nodePaths: string[];
 }
+
+export interface CompilationSeal {
+  runId: string; parentInvocation: string; compiledRoot: string;
+  source: string; toolManifest: string; config: InputIdentity; compiler: InputIdentity;
+  emission: InputIdentity[]; production: InputIdentity[];
+}

@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import type { PreparedToolEntry, PackagePayloadProjection, SupportOrigin, PackagePayloadRow, InputIdentity, RestoredDependencyGraph, ToolOrigin, InstallerWitness } from "./lifecycle-qualification-contracts.mts";
 
 // Root-owned qualification validation shared by preparation and the package-local runner.
+export function preparationInputIdentity(): InputIdentity { return inputIdentity(fileURLToPath(import.meta.url)); }
 
 export function inputIdentity(path: string): InputIdentity {
   return { path: resolve(path), realpath: realpathSync(path), sha256: createHash("sha256").update(readFileSync(path)).digest("hex"),

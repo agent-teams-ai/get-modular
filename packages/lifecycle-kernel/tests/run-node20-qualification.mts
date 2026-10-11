@@ -8,6 +8,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
+  preparationInputIdentity,
   verifyPackagePayload,
   restoredDependencyGraph,
   verifySupportOrigins,
@@ -31,7 +32,7 @@ import {
   manifestOracle,
   expectedExports
 } from "../../../tests/qualification/lifecycle-tool-prepare.mts";
-import type { PreparedToolEntry, SupportOrigin, InputIdentity, ToolOrigin } from "../../../tests/qualification/lifecycle-qualification-contracts.mts";
+import type { PreparedToolEntry, SupportOrigin, InputIdentity, ToolOrigin, CompilationSeal } from "../../../tests/qualification/lifecycle-qualification-contracts.mts";
 export { verifyPackagePayload, restoredDependencyGraph, supportVersions, verifySupportOrigins, nodeSignerPolicy, frozenInventory, inputIdentity, verifyIdentities, verifyInventory, childEnvironment, verifyToolOrigins, verifyToolEntryEnvelope, verifyToolClosureEntries, verifyPublicToolRoots, verifyPhysicalSupportPayload, projectPackagePayload, packagePayloadInventory, parseQualificationEvidenceJSON, freshPublishedManifest, verifyFreshArchivePayload, archiveEntryPath, finitePath, closedFields } from "../../../tests/qualification/lifecycle-tool-prepare.mts";
 export type { PreparedToolEntry, PackagePayloadProjection, PackagePayloadRow, InputIdentity, RestoredDependencyGraph, InstallerWitness } from "../../../tests/qualification/lifecycle-qualification-contracts.mts";
 
@@ -162,11 +163,6 @@ export function verifyInputReferences(reference: { path: string; sha256: string 
   verifyIdentities(rows);
   return [...rows, inputIdentity(reference.path), ...chunks.map(row => inputIdentity(row.path))];
 }
-interface CompilationSeal {
-  runId: string; parentInvocation: string; compiledRoot: string;
-  source: string; toolManifest: string; config: InputIdentity; compiler: InputIdentity;
-  emission: InputIdentity[]; production: InputIdentity[];
-}
 export function verifyCompilationSeal(seal: CompilationSeal, expected: {
   runId: string; parentInvocation: string; compiledRoot: string; source: string; toolManifest: string;
   config: InputIdentity; compiler: InputIdentity;
@@ -174,10 +170,20 @@ export function verifyCompilationSeal(seal: CompilationSeal, expected: {
   const { emission, production, ...identities } = seal;
   assert.deepEqual(identities, expected, "parent compilation seal mismatch");
   assert.deepEqual(emission.map(row => row.path).sort(), actualEmission.map(path => resolve(path)).sort(), "partial or swapped emission");
-  assert.deepEqual(emission.map(row => basename(row.path)).sort(), ["node20-qualification.test.mjs", "qualification-admission.test.mjs", "run-node20-qualification.mjs"], "required compiled inputs");
+  const paths = emission.map(row => relative(expected.compiledRoot, row.path).split(process.platform === "win32" ? "\\" : "/").join("/"));
+  const companion = "tests/qualification/lifecycle-qualification-contracts.mjs";
+  assert.deepEqual(paths.filter(path => path !== companion).sort(), [
+    "packages/lifecycle-kernel/tests/node20-qualification.test.mjs",
+    "packages/lifecycle-kernel/tests/qualification-admission.test.mjs",
+    "packages/lifecycle-kernel/tests/run-node20-qualification.mjs",
+    "tests/qualification/lifecycle-tool-prepare.mjs",
+  ], "required compiled runtime inputs");
+  // Type-only imports erase. Some compilers still emit this inert byproduct;
+  // it is not a runtime dependency and is never required for driver execution.
+  if (paths.includes(companion)) assert.match(readFileSync(finitePath(expected.compiledRoot, companion), "utf8"), /^export \{\};\r?\n?$/u, "executable type-only companion");
   assert.ok(production.length > 0, "missing production emission");
   assert.deepEqual(production.map(row => row.path).sort(), actualProduction.map(path => resolve(path)).sort(), "partial or swapped production emission");
-  for (const row of emission) assert.equal(dirname(row.path), expected.compiledRoot, "emission root escape");
+  for (const path of paths) finitePath(expected.compiledRoot, path);
   verifyIdentities([seal.config, seal.compiler, ...emission, ...production]);
 }
 
@@ -339,6 +345,8 @@ assert.ok(parentInvocation !== "root" || !["--build-child", "--compiled", "--sea
 const mode = process.argv.includes("--prepare") ? "validate-tools" : process.argv.includes("--compiled") ? "compiled" : process.argv.includes("--build-child") ? "build" : "root";
 const driverInput = inputIdentity(fileURLToPath(import.meta.url)); immutable.set(driverInput.path, driverInput);
 bindings.driver = driverInput.sha256;
+const preparationInput = preparationInputIdentity(); immutable.set(preparationInput.path, preparationInput);
+bindings.preparation = preparationInput.sha256;
 const rootRuntime = inputIdentity(process.execPath); immutable.set(rootRuntime.path, rootRuntime);
 Object.assign(bindings, { rootRuntime: rootRuntime.sha256, rootRuntimePath: rootRuntime.realpath, platform: process.platform, arch: process.arch });
 const toolReceipts: { path: string; sha256: string; version: string }[] = [];
@@ -459,11 +467,16 @@ function execute(command: string, args: string[], cwd = workspace, reject = fals
 function invokeChild(args: string[], gate: string) {
   const expectedInvocation = globalThis.crypto.randomUUID();
   environment.LIFECYCLE_INVOCATION_ID = expectedInvocation;
+  // Source children use the same helper; compiled children use the member of
+  // the parent-validated emitted seal, never an unsealed external helper.
+  environment.LIFECYCLE_EXPECTED_PREPARATION_SHA256 = args.includes("--compiled")
+    ? inputIdentity(join(args[args.indexOf("--compiled-root") + 1]!, "tests/qualification/lifecycle-tool-prepare.mjs")).sha256
+    : preparationInput.sha256;
   try {
     const stdout = execute(node24, args, workspace, false, gate);
     receipts.at(-1)!.bindings!.childInvocation = expectedInvocation;
     return { expectedInvocation, proof: JSON.parse(stdout) as Parameters<typeof verifyTerminalAssociation>[0] };
-  } finally { delete environment.LIFECYCLE_INVOCATION_ID; }
+  } finally { delete environment.LIFECYCLE_INVOCATION_ID; delete environment.LIFECYCLE_EXPECTED_PREPARATION_SHA256; }
 }
 function absorbChildInputs(child: TerminalReceipt): void {
   assert.ok(child.terminalInputs && child.inventorySeals, "missing final child input custody");
@@ -544,15 +557,15 @@ async function childExpectations(child: TerminalReceipt, childArtifacts: string,
     add("build:current", [current, "-p", "packages/lifecycle-kernel/tsconfig.json", "--noEmit", "--skipLibCheck", "false"]);
     add("build:strict", [compiler, "--noEmit", "-p", "packages/lifecycle-kernel/tsconfig.qualification-all.json"]);
     add("build:emit", [compiler, "-p", leafConfig, "--outDir", compilation]);
-    add("child:compiled", [join(compilation, "run-node20-qualification.mjs"), sourceTest, admissionTest, "--public-tool-root", tools,
+    add("child:compiled", [join(compilation, "packages/lifecycle-kernel/tests/run-node20-qualification.mjs"), sourceTest, admissionTest, "--public-tool-root", tools,
       "--build-child", "--compiled", "--compiled-root", compilation, "--seal", sealPath, "--parent-artifacts", childArtifacts]);
   } else {
-    add("admission", ["--test", join(compilation, "qualification-admission.test.mjs")]);
+    add("admission", ["--test", join(compilation, "packages/lifecycle-kernel/tests/qualification-admission.test.mjs")]);
     add("pack", [pnpm, "pack", "--pack-destination", childArtifacts], leaf);
-    const sealedDriver = await import(pathToFileURL(join(compilation, "run-node20-qualification.mjs")).href) as { archiveReader: string };
+    const sealedDriver = await import(pathToFileURL(join(compilation, "packages/lifecycle-kernel/tests/run-node20-qualification.mjs")).href) as { archiveReader: string };
     add("archive:read", ["--eval", sealedDriver.archiveReader, archivePath]);
     add("archive:extract", ["--eval", archiveExtractor, archivePath, join(consumer, "node_modules/@get-modular/lifecycle-kernel")]);
-    const linked = relocateRoot(syntax("test.mjs", readFileSync(join(compilation, "node20-qualification.test.mjs"), "utf8")), readFileSync(join(compilation, "node20-qualification.test.mjs"), "utf8"));
+    const linked = relocateRoot(syntax("test.mjs", readFileSync(join(compilation, "packages/lifecycle-kernel/tests/node20-qualification.test.mjs"), "utf8")), readFileSync(join(compilation, "packages/lifecycle-kernel/tests/node20-qualification.test.mjs"), "utf8"));
     assert.equal(readFileSync(join(consumer, "qualification.test.mjs"), "utf8"), linked, "swapped effective runtime test");
     for (const [root, version] of [["node20-minimum", "20.0.0"], ["node20", "20.20.0"], ["node24", "24.21.0"], ["node26", "26.10.0"]]) {
       add(`runtime:${version}`, ["--test", "qualification.test.mjs", "legacy.test.mjs"], consumer, join(tools, root!, nativeNode));
@@ -578,7 +591,8 @@ async function childExpectations(child: TerminalReceipt, childArtifacts: string,
     const test = /^(runtime|baseline|mutant):/u.test(gate) ? inputIdentity(join(cwd, "qualification.test.mjs"))
       : gate.startsWith("types:") ? inputIdentity(join(cwd, gate.endsWith(":negative") ? "negative.mts" : "types.mts")) : undefined;
     const env = gate === "child:compiled" ? { ...baseEnvironment, LIFECYCLE_COMPILATION_SEAL_SHA256: inputIdentity(sealPath).sha256,
-      LIFECYCLE_INVOCATION_ID: child.receipts.find(row => row.bindings?.gate === gate)!.bindings!.childInvocation! } : baseEnvironment;
+      LIFECYCLE_INVOCATION_ID: child.receipts.find(row => row.bindings?.gate === gate)!.bindings!.childInvocation!,
+      LIFECYCLE_EXPECTED_PREPARATION_SHA256: seal.emission.find(row => row.path === join(compilation, "tests/qualification/lifecycle-tool-prepare.mjs"))!.sha256 } : baseEnvironment;
     return [gate, { command, cwd, bindings: { source: bindings.source!, toolManifest: bindings.toolManifest!, rootRuntime: inputIdentity(node24).sha256,
       executable: executable.sha256, environment: createHash("sha256").update(JSON.stringify(env)).digest("hex"), effectiveFiles: JSON.stringify(files),
       ...([minimum, compiler, current].includes(command[1]!) ? { compiler: inputIdentity(command[1]!).sha256 } : {}),
@@ -620,6 +634,8 @@ async function inventory(root: string, prefix = ""): Promise<string[]> {
 }
 try {
   if (process.env.LIFECYCLE_EXPECTED_DRIVER_SHA256 !== undefined) assert.equal(driverInput.sha256, process.env.LIFECYCLE_EXPECTED_DRIVER_SHA256, "driver source drift before qualification");
+  if (process.env.LIFECYCLE_EXPECTED_PREPARATION_SHA256 !== undefined) assert.equal(preparationInput.sha256,
+    process.env.LIFECYCLE_EXPECTED_PREPARATION_SHA256, "preparation source drift before qualification");
   const manifestPath = process.env.LIFECYCLE_TOOL_MANIFEST;
   assert.ok(manifestPath, "NOT_RUN: LIFECYCLE_TOOL_MANIFEST must identify the prepared offline closure");
   const manifestBytes = await readFile(manifestPath);
@@ -782,12 +798,15 @@ try {
       config: inputIdentity(join(leaf, "tsconfig.qualification.json")), compiler: inputIdentity(compiler),
       emission: (await inventory(join(runRoot, "compiled"))).map(path => inputIdentity(join(runRoot, "compiled", path))),
       production: (await inventory(join(leaf, "dist"))).map(path => inputIdentity(join(leaf, "dist", path))) };
+    verifyCompilationSeal(seal, { runId, parentInvocation: invocationId, compiledRoot: seal.compiledRoot,
+      source: bindings.source!, toolManifest: bindings.toolManifest!, config: inputIdentity(join(leaf, "tsconfig.qualification.json")),
+      compiler: inputIdentity(compiler) }, frozenInventory(seal.compiledRoot).map(row => row.path), frozenInventory(join(leaf, "dist")).map(row => row.path));
     const sealPath = join(artifacts, "compilation-seal.json");
     await writeFile(sealPath, JSON.stringify(seal));
     environment.LIFECYCLE_COMPILATION_SEAL_SHA256 = inputIdentity(sealPath).sha256;
     immutable.set(sealPath, inputIdentity(sealPath));
     await save();
-    const { proof, expectedInvocation } = invokeChild([join(runRoot, "compiled/run-node20-qualification.mjs"), sourceTest, admissionTest,
+    const { proof, expectedInvocation } = invokeChild([join(runRoot, "compiled/packages/lifecycle-kernel/tests/run-node20-qualification.mjs"), sourceTest, admissionTest,
       "--public-tool-root", tools, "--build-child", "--compiled", "--compiled-root", join(runRoot, "compiled"), "--seal", sealPath, "--parent-artifacts", artifacts], "child:compiled");
     const childPath = join(artifacts, "child-receipt.json");
     const childBytes = await readFile(childPath);
@@ -820,12 +839,12 @@ try {
     verifyCompilationSeal(seal, { runId, parentInvocation, compiledRoot: await realpath(compiled), source: bindings.source!,
       toolManifest: bindings.toolManifest!, config: inputIdentity(join(leaf, "tsconfig.qualification.json")), compiler: inputIdentity(compiler) },
       (await inventory(compiled)).map(path => join(compiled, path)), (await inventory(join(leaf, "dist"))).map(path => join(leaf, "dist", path)));
-    assert.equal(await realpath(fileURLToPath(import.meta.url)), join(seal.compiledRoot, "run-node20-qualification.mjs"), "arbitrary compiled driver");
+    assert.equal(await realpath(fileURLToPath(import.meta.url)), join(seal.compiledRoot, "packages/lifecycle-kernel/tests/run-node20-qualification.mjs"), "arbitrary compiled driver");
     for (const row of [sealIdentity, ...seal.emission, ...seal.production]) immutable.set(row.path, row);
     sealInventory(compiled);
     sealInventory(join(leaf, "dist"));
     bindings.compilationSeal = sealIdentity.sha256;
-    execute(node24, ["--test", join(compiled, "qualification-admission.test.mjs")], workspace, false, "admission");
+    execute(node24, ["--test", join(compiled, "packages/lifecycle-kernel/tests/qualification-admission.test.mjs")], workspace, false, "admission");
     completed.push("admission");
     const packed = execute(node24, [pnpm, "pack", "--pack-destination", artifacts], leaf, false, "pack");
     const filename = packed.split("\n").at(-1);
@@ -860,7 +879,7 @@ try {
       importOracle(file, await readFile(join(installed, file), "utf8"), files);
     }
     await writeFile(join(consumer, "package.json"), '{"type":"module","private":true}\n');
-    const emitted = await readFile(join(compiled, "node20-qualification.test.mjs"), "utf8");
+    const emitted = await readFile(join(compiled, "packages/lifecycle-kernel/tests/node20-qualification.test.mjs"), "utf8");
     const linked = relocateRoot(syntax("test.mjs", emitted), emitted);
     await writeFile(join(consumer, "qualification.test.mjs"), linked);
     await writeFile(join(artifacts, "qualification.test.mjs.txt"), linked);
@@ -957,6 +976,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       runId: process.env.LIFECYCLE_QUALIFICATION_RUN_ID ?? null, error: String(error), command: process.argv,
       runtime: { path: process.execPath, version: process.version, sha256: await digest(await readFile(process.execPath)) },
       source: { path: fileURLToPath(import.meta.url), sha256: await digest(await readFile(fileURLToPath(import.meta.url))) },
+      preparation: preparationInputIdentity(),
     }, null, 2) + "\n");
     throw error;
   }

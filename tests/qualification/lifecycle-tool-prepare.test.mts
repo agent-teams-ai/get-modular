@@ -5,6 +5,7 @@ import { Writable } from "node:stream";
 import { gzipSync } from "node:zlib";
 import { mkdtempSync, writeFileSync, rmSync, mkdirSync, symlinkSync, readFileSync, realpathSync, existsSync, readlinkSync, cpSync, chmodSync, lstatSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { pathToFileURL } from "node:url";
 import { join, dirname, relative, resolve } from "node:path";
 import { createRequire } from "node:module";
 import { createHash } from "node:crypto";
@@ -1013,31 +1014,41 @@ test("actual root/build/compiled driver stale identity refuses with correspondin
     ["root", sourceDriver, []], ["build", sourceDriver, ["--build-child"]],
     ["compiled", resolve(compiledCorrectionDriver!), ["--compiled", "--build-child"]],
   ] as const) {
-    const scratch = mkdtempSync(join(tmpdir(), `lifecycle-driver-${mode}-`));
+    for (const stale of ["driver", "preparation", "both"] as const) {
+    const preparation = mode === "compiled" ? resolve(dirname(driver), "../../../tests/qualification/lifecycle-tool-prepare.mjs")
+      : resolve("tests/qualification/lifecycle-tool-prepare.mts");
+    const hash = (bytes: Uint8Array | string) => createHash("sha256").update(bytes).digest("hex");
+    const expected = stale === "preparation" ? /preparation source drift before qualification/u : /driver source drift before qualification/u;
+    const scratch = mkdtempSync(join(tmpdir(), `lifecycle-driver-${mode}-${stale}-`));
     const tools = join(scratch, "tools"); mkdirSync(tools);
     const invocationId = "11111111-1111-4111-8111-111111111111";
     const args = [driver, ...sources, ...flags];
     const child = spawnSync(process.execPath, args, { cwd: process.cwd(), encoding: "utf8", env: {
       ...process.env, TMPDIR: scratch, LIFECYCLE_PUBLIC_TOOL_ROOT: tools, LIFECYCLE_QUALIFICATION_OUTPUT: scratch,
       LIFECYCLE_PARENT_INVOCATION: mode === "root" ? "root" : "test-parent", LIFECYCLE_INVOCATION_ID: invocationId,
-      LIFECYCLE_EXPECTED_DRIVER_SHA256: "a723c200fe9eadf65f0a599ebfbcd9ee01eacf2f1e73095427e750a0b1381922",
+      LIFECYCLE_EXPECTED_DRIVER_SHA256: stale === "preparation" ? hash(readFileSync(driver)) : "a723c200fe9eadf65f0a599ebfbcd9ee01eacf2f1e73095427e750a0b1381922",
+      LIFECYCLE_EXPECTED_PREPARATION_SHA256: stale === "driver" ? hash(readFileSync(preparation)) : "a".repeat(64),
     } });
     assert.equal(child.error, undefined); assert.equal(child.signal, null); assert.equal(child.status, 1);
-    assert.match(child.stderr, /driver source drift before qualification/u);
+    assert.match(child.stderr, expected);
     const printed = child.stdout.trim().split("\n").map(line => JSON.parse(line) as { receipts: string; sha256: string; status: string }).at(-1)!;
     assert.equal(printed.status, "FAIL");
     const receiptBytes = readFileSync(printed.receipts), receipt = JSON.parse(receiptBytes.toString());
-    const hash = (bytes: Uint8Array | string) => createHash("sha256").update(bytes).digest("hex");
     assert.equal(printed.sha256, hash(receiptBytes)); assert.equal(receipt.terminal, "FAIL");
     assert.equal(receipt.bindings.driver, hash(readFileSync(driver))); assert.equal(receipt.mode, mode);
-    assert.match(receipt.terminalError, /driver source drift before qualification/u);
+    assert.match(receipt.terminalError, expected);
+    assert.equal(receipt.bindings.preparation, hash(readFileSync(preparation)));
+    assert.deepEqual(receipt.completed, []); assert.deepEqual(receipt.receipts, []);
     assert.deepEqual(readFileSync(receipt.terminalReceiptPath), receiptBytes);
     const refusalPath = readdirSync(scratch).find(name => name.startsWith("refusal-")); assert.ok(refusalPath);
     const refusal = JSON.parse(readFileSync(join(scratch, refusalPath), "utf8"));
     assert.equal(refusal.source.sha256, hash(readFileSync(driver))); assert.equal(refusal.terminal, "FAIL");
-    const evidence = { case: `stale-${mode}-driver-finally`, argv: [process.execPath, ...args], exitCode: child.status,
-      stdoutSHA256: hash(child.stdout), stderrSHA256: hash(child.stderr), driverSHA256: receipt.bindings.driver, terminalSHA256: printed.sha256 };
+    assert.deepEqual(refusal.preparation, inputIdentity(preparation));
+    assert.match(refusal.error, expected);
+    const evidence = { case: `stale-${mode}-${stale}-finally`, argv: [process.execPath, ...args], exitCode: child.status,
+      stdoutSHA256: hash(child.stdout), stderrSHA256: hash(child.stderr), driverSHA256: receipt.bindings.driver, preparationSHA256: receipt.bindings.preparation, terminalSHA256: printed.sha256 };
     writeFileSync(join(scratch, "case-receipt.json"), JSON.stringify(evidence)); console.log(JSON.stringify(evidence));
+    }
   }
 });
 
@@ -1129,4 +1140,58 @@ test("fresh archive manifest: actual old RED, exact pnpm published bytes GREEN a
     payloadEntries: payload.length, rejected: cases, inventoriesRejected: ["missing", "duplicate", "unknown"], fullE2E: false };
   writeFileSync(join(leaf, "red-green.json"), JSON.stringify(evidence, null, 2) + "\n");
   console.log(JSON.stringify(evidence));
+});
+
+// This boundary test uses the real strict-emitted driver and helper. The two
+// external qualification test sources are absent here; inert entry placeholders
+// exercise seal membership only and never stand in for qualification execution.
+test("strict emitted runtime closure admits normal members and rejects missing extra changed members", { skip: !compiledCorrectionDriver }, async () => {
+  const scratch = mkdtempSync(join(tmpdir(), "lifecycle-emitted-seal-"));
+  const root = join(scratch, "compiled");
+  const driverPath = "packages/lifecycle-kernel/tests/run-node20-qualification.mjs";
+  const helperPath = "tests/qualification/lifecycle-tool-prepare.mjs";
+  const contractsPath = "tests/qualification/lifecycle-qualification-contracts.mjs";
+  const externalTests = ["node20-qualification.test.mjs", "qualification-admission.test.mjs"].map(name => `packages/lifecycle-kernel/tests/${name}`);
+  const emittedRoot = resolve(dirname(compiledCorrectionDriver!), "../../..");
+  cpSync(emittedRoot, root, { recursive: true });
+  for (const path of externalTests) writeFileSync(join(root, path), "export {};\n");
+  // Erased contracts are not imported at runtime. Prove loading without them.
+  rmSync(join(root, contractsPath), { force: true });
+  const driver = await import(pathToFileURL(join(root, driverPath)).href) as {
+    verifyCompilationSeal(seal: import("./lifecycle-qualification-contracts.mts").CompilationSeal,
+      expected: Omit<import("./lifecycle-qualification-contracts.mts").CompilationSeal, "emission" | "production">,
+      emission: readonly string[], production: readonly string[]): void;
+  };
+  const config = join(scratch, "nearest-config.json"), production = join(scratch, "production.mjs");
+  writeFileSync(config, "{}\n"); writeFileSync(production, "export {};\n");
+  const expected = { runId: "nearest-seal", parentInvocation: "nearest-parent", compiledRoot: realpathSync(root),
+    source: "a".repeat(64), toolManifest: "b".repeat(64), config: inputIdentity(config), compiler: inputIdentity(realpathSync("node_modules/typescript/bin/tsc")) };
+  const seal = { ...expected, emission: frozenInventory(root), production: [inputIdentity(production)] };
+  const verify = (candidate = seal, identity = expected) => driver.verifyCompilationSeal(candidate, identity,
+    frozenInventory(root).map(row => row.path), [production]);
+  verify();
+  assert.deepEqual(seal.emission.map(row => relative(root, row.path).split("\\").join("/")).sort(), [driverPath, helperPath, ...externalTests].sort());
+  for (const path of [driverPath, helperPath, ...externalTests]) {
+    const full = join(root, path), bytes = readFileSync(full);
+    rmSync(full); assert.throws(() => verify()); writeFileSync(full, bytes);
+    writeFileSync(full, Buffer.concat([bytes, Buffer.from("\n// changed runtime member\n")]));
+    assert.throws(() => verify(), /immutable input drift/u); writeFileSync(full, bytes);
+    // A newly sealed incomplete set must also fail, not just a stale digest.
+    assert.throws(() => verify({ ...seal, emission: seal.emission.filter(row => row.path !== full) }));
+  }
+  const extra = join(root, "extra.mjs"); writeFileSync(extra, "export {};\n");
+  assert.throws(() => verify());
+  assert.throws(() => verify({ ...seal, emission: frozenInventory(root) })); rmSync(extra);
+  for (const key of ["source", "toolManifest", "parentInvocation", "compiledRoot"] as const)
+    assert.throws(() => verify(seal, { ...expected, [key]: "swapped" }), /parent compilation seal mismatch/u);
+  // A compiler may leave its erased type-only companion. It is optional,
+  // sealed as a byproduct, and cannot carry executable code or imports.
+  writeFileSync(join(root, contractsPath), "export {};\n");
+  const companionSeal = { ...seal, emission: frozenInventory(root) }; verify(companionSeal);
+  writeFileSync(join(root, contractsPath), "import './injected.mjs';\n");
+  assert.throws(() => verify({ ...seal, emission: frozenInventory(root) }));
+  rmSync(join(root, contractsPath)); verify();
+  console.log(JSON.stringify({ scope: "nearest real emitted driver/helper seal; external tests are inert membership placeholders",
+    runtimeMembers: seal.emission.map(row => relative(root, row.path)), contractsRequired: false, normalClosure: "PASS",
+    rejected: ["missing", "resealed-missing", "extra", "resealed-extra", "changed", "source", "tools", "parent", "root", "executable-contracts"] }));
 });
