@@ -16,9 +16,9 @@ const hosts = {
   ubuntu: "ubuntu-24.04",
   macos: "macos-15",
   windows: "windows-2025",
-  "node26-ubuntu": "ubuntu-24.04",
-  "node26-macos": "macos-15",
-  "node26-windows": "windows-2025",
+  "node24-ubuntu": "ubuntu-24.04",
+  "node24-macos": "macos-15",
+  "node24-windows": "windows-2025",
 };
 
 // Independent oracle retains every check/precheck obligation at 0a81957c
@@ -71,12 +71,12 @@ function validateLanes(value, manifest = packageJson) {
   assert.deepEqual([...Object.values(primary).flat(), "lockfile:peers:check"].sort(),
     ["ownership:checkpoint:test", ...baseline.filter(script => !["runtime:preflight", "assembly:build"].includes(script))].sort());
   for (const [host, os] of Object.entries(hosts)) {
-    const node26 = host.startsWith("node26-");
+    const node24 = host.startsWith("node24-");
     const job = laneJob(value, host);
     assert(job, `${host}: missing lane job`);
     assert.equal(job.name, `check lane (${os}, `
-      + (node26 ? "Node 26, " : "") + "${{ matrix.lane }})");
-    assert.deepEqual(job.env, node26 ? { ROOT_CI_NODE_VERSION: "26.10.0" } : undefined,
+      + (node24 ? "Node 24, " : "") + "${{ matrix.lane }})");
+    assert.deepEqual(job.env, node24 ? { ROOT_CI_NODE_VERSION: "24.21.0" } : undefined,
       "default runtime or candidate selection drift");
     assert.equal(job["runs-on"], os);
     assert.equal(job["timeout-minutes"], 15);
@@ -95,7 +95,7 @@ function validateLanes(value, manifest = packageJson) {
       "node-version": "${{ env.ROOT_CI_NODE_VERSION }}",
       "node-version-file": ".node-version",
       cache: "pnpm",
-    }, "runtime selection must retain the Node 24 default and explicit Node 26 override");
+    }, "runtime selection must retain the Node 26 default and explicit Node 24 override");
     assert.equal(job.steps.length, 8, "checkout, provisioning, install, peers, payload, integrity and failure evidence");
     assert.equal(job.steps[3].run,
       "pnpm install --frozen-lockfile --ignore-scripts --engine-strict --strict-peer-dependencies");
@@ -117,7 +117,7 @@ function validateLanes(value, manifest = packageJson) {
     assert.equal(upload.uses, "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a");
     assert.equal(upload["continue-on-error"], undefined);
     assert.deepEqual(upload.with, {
-      name: "sdk-growth-${{ runner.os }}-${{ env.ROOT_CI_NODE_VERSION || '24.21.0' }}-${{ github.run_id }}-${{ github.run_attempt }}",
+      name: "sdk-growth-${{ runner.os }}-${{ env.ROOT_CI_NODE_VERSION || '26.11.1' }}-${{ github.run_id }}-${{ github.run_attempt }}",
       path: "${{ runner.temp }}/sdk-growth-failure.json", "if-no-files-found": "ignore",
     });
     const integrity = job.steps.at(-2);
@@ -164,7 +164,7 @@ function validateLanes(value, manifest = packageJson) {
     }
     const gate = aggregate(value, host);
     assert(gate, `${host}: missing aggregate`);
-    assert.equal(gate.name, node26 ? `check (${os}, Node 26)` : `check (${os})`, "required context");
+    assert.equal(gate.name, node24 ? `check (${os}, Node 24)` : `check (${os})`, "required context");
     assert.equal(gate["runs-on"], os);
     assert.deepEqual(gate.needs, [`lanes-${host}`], "aggregate dependency omission");
     assert.equal(gate.if, "always()", "aggregate must run after failures/skips");
