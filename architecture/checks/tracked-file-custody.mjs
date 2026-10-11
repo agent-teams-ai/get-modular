@@ -17,6 +17,7 @@ const MAX_GIT_OUTPUT_BYTES = 16 * 1024 * 1024;
 // repository, not on one command's text output. It is far above any real repository (about 16 MiB
 // tracked today) and exists only to stop a runaway stream.
 const MAX_BLOB_BATCH_BYTES = 512 * 1024 * 1024;
+const STDERR_TAIL_BYTES = 64 * 1024;
 const INDEX_SNAPSHOT_VERSION = 1;
 const EMPTY_BLOB_OIDS = new Set([
   "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
@@ -550,8 +551,10 @@ export async function historicalFileVersions(relativePath, repositoryRoot) {
 
 // One cat-file process for every requested blob; the stream is
 // "<oid> blob <size>\n<bytes>\n" per requested object. The stream is read with spawn and no
-// execFile maxBuffer: when execFile exceeds maxBuffer it destroys stdout and the output is
-// silently cut short. The explicit bound below fails loudly instead.
+// execFile maxBuffer: when execFile exceeds maxBuffer it destroys stdout and kills git, and the
+// caller sees a truncated stream or a killed child instead of a size error. The explicit bound
+// below fails loudly instead. The promise settles only in "close", so the function never returns
+// while git is alive (on Windows a live git.exe still holds the working directory).
 export async function readBlobBatch(
   repositoryRoot,
   oids,
@@ -568,31 +571,41 @@ export async function readBlobBatch(
   const finished = new Promise((resolveOutput, reject) => {
     const chunks = [];
     let received = 0;
-    let exceeded = false;
+    let overflow = null;
+    let stdinError = null;
+    let stderrTail = Buffer.alloc(0);
     child.stdout.on("data", chunk => {
-      if (exceeded) return;
+      if (overflow) return;
       received += chunk.length;
       if (received > maxOutputBytes) {
-        exceeded = true;
-        child.kill();
-        reject(new Error(
+        overflow = new Error(
           `TRACKED_FILE_CUSTODY_FAILED: git cat-file --batch output exceeds the ${maxOutputBytes}-byte limit `
           + `(received at least ${received} bytes for ${oids.length} objects)`,
-        ));
+        );
+        child.kill();
         return;
       }
       chunks.push(chunk);
     });
+    child.stderr.on("data", chunk => {
+      stderrTail = Buffer.concat([stderrTail, chunk]).subarray(-STDERR_TAIL_BYTES);
+    });
+    // A spawn failure leaves no process to wait for.
     child.on("error", reject);
-    child.stdin.on("error", reject);
+    // EPIPE after an early exit or a kill is reported from "close", after the exit status.
+    child.stdin.on("error", error => { stdinError = error; });
     child.on("close", (code, signal) => {
-      if (exceeded) return;
-      if (code !== 0) reject(new Error(`git cat-file --batch exited with ${code ?? signal}`));
+      if (overflow) reject(overflow);
+      else if (code !== 0) {
+        const detail = stderrTail.toString("utf8").trim();
+        reject(new Error(
+          `TRACKED_FILE_CUSTODY_FAILED: git cat-file --batch exited with ${code ?? signal}`
+          + (detail ? `: ${detail}` : ""),
+        ));
+      } else if (stdinError) reject(stdinError);
       else resolveOutput(Buffer.concat(chunks));
     });
   });
-  // A rejection before the stream ends must not leave the other branch unhandled.
-  finished.catch(() => {});
   child.stdin.end(`${oids.join("\n")}\n`);
   return parseBlobBatchOutput(await finished, oids);
 }
@@ -610,7 +623,7 @@ export function parseBlobBatchOutput(output, oids) {
     }
     const header = /^(\S+) (\S+) ([0-9]+)$/u.exec(output.subarray(offset, newline).toString("ascii"));
     if (!header || header[1] !== oid || header[2] !== "blob") {
-      throw new Error(`historical custody blob ${oid} is missing or not a blob`);
+      throw new Error(`TRACKED_FILE_CUSTODY_FAILED: custody blob ${oid} is missing or not a blob`);
     }
     const size = Number(header[3]);
     const start = newline + 1;
@@ -620,6 +633,9 @@ export function parseBlobBatchOutput(output, oids) {
         + `${output.length} bytes received, at least ${start + size + 1} expected `
         + `(${versions.length} of ${oids.length} objects read)`,
       );
+    }
+    if (output[start + size] !== 0x0a) {
+      throw new Error(`TRACKED_FILE_CUSTODY_FAILED: git cat-file batch object ${oid} is not followed by a line feed`);
     }
     versions.push(output.subarray(start, start + size));
     offset = start + size + 1;

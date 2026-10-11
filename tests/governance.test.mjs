@@ -2453,7 +2453,7 @@ async function repositoryWithBlobs(sizes) {
 }
 
 // Regression: the batch reader used execFile with a 16 MiB maxBuffer. A larger stream was cut short
-// while git still exited 0, and the check failed with a stream error instead of reading the blobs.
+// or killed git, and the check failed on a truncated stream or a killed child instead of reading the blobs.
 test("readBlobBatch reads a stream above the former 16 MiB buffer", async () => {
   const { root, blobs } = await repositoryWithBlobs([8 * MIB, 9 * MIB, 1024, 0]);
   try {
@@ -2461,7 +2461,7 @@ test("readBlobBatch reads a stream above the former 16 MiB buffer", async () => 
     assert.equal(versions.length, blobs.length);
     versions.forEach((bytes, index) => assert.ok(bytes.equals(blobs[index].bytes)));
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
   }
 });
 
@@ -2473,7 +2473,7 @@ test("readBlobBatch fails with the byte totals when the stream passes its explic
       /exceeds the 1024-byte limit \(received at least \d+ bytes for 2 objects\)/u,
     );
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
   }
 });
 
@@ -2492,6 +2492,10 @@ test("parseBlobBatchOutput rejects truncated and trailing streams with byte tota
   assert.throws(
     () => parseBlobBatchOutput(Buffer.concat([complete, Buffer.from("x")]), [oid]),
     /1 unexpected trailing bytes/u,
+  );
+  assert.throws(
+    () => parseBlobBatchOutput(Buffer.from(`${oid} blob 5\nhelloX`), [oid]),
+    /not followed by a line feed/u,
   );
   assert.throws(
     () => parseBlobBatchOutput(Buffer.from(`${oid} missing\n`), [oid]),
