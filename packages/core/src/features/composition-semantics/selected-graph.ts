@@ -74,12 +74,12 @@ function analyzeResidual(nodes: readonly string[], cyclic: Uint8Array,
   let depthEdgeVisits = 0;
   let residualSize = 0;
   for (let node = 0; node < nodes.length; node += 1) {
-    if (cyclic[node]) {continue;}
+    if (cyclic[node] === 1) {continue;}
     residualSize += 1;
     depth[node] = 1;
     for (const provider of defined(incoming[node])) {
       depthEdgeVisits += 1;
-      if (!cyclic[provider]) {indegree[node] = defined(indegree[node]) + 1;}
+      if (cyclic[provider] !== 1) {indegree[node] = defined(indegree[node]) + 1;}
     }
     if (indegree[node] === 0) {ready.push(node);}
   }
@@ -91,7 +91,7 @@ function analyzeResidual(nodes: readonly string[], cyclic: Uint8Array,
     residualDepth = Math.max(residualDepth, defined(depth[node]));
     for (const consumer of defined(outgoing[node])) {
       depthEdgeVisits += 1;
-      if (cyclic[consumer]) {continue;}
+      if (cyclic[consumer] === 1) {continue;}
       depth[consumer] = Math.min(selectedGraphDepthLimit + 1, Math.max(defined(depth[consumer]), defined(depth[node]) + 1));
       indegree[consumer] = defined(indegree[consumer]) - 1;
       if (indegree[consumer] === 0) {ready.push(consumer);}
@@ -109,21 +109,21 @@ function findRootClosure(nodes: readonly string[], roots: readonly string[], ver
   let closureEdgeVisits = 0;
   for (const id of roots) {
     const node = vertex(id);
-    if (!reached[node]) { reached[node] = 1; pending.push(node); }
+    if (reached[node] !== 1) { reached[node] = 1; pending.push(node); }
   }
   peakTraversalFrames = Math.max(peakTraversalFrames, pending.length);
   while (pending.length > 0) {
     const node = pending.pop()!;
     for (const provider of defined(incoming[node])) {
       closureEdgeVisits += 1;
-      if (!reached[provider]) {
+      if (reached[provider] !== 1) {
         reached[provider] = 1;
         pending.push(provider);
         peakTraversalFrames = Math.max(peakTraversalFrames, pending.length);
       }
     }
   }
-  return { rootClosure: nodes.filter((_node, index) => reached[index]), closureEdgeVisits, peakTraversalFrames };
+  return { rootClosure: nodes.filter((_node, index) => reached[index] === 1), closureEdgeVisits, peakTraversalFrames };
 }
 
 /**

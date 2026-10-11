@@ -50,7 +50,7 @@ function isReport(value: unknown): value is ChangedReport {
 const require = createRequire(import.meta.url);
 const foundationPath = require.resolve("@agent-teams/engineering-foundation/package.json");
 const foundation: unknown = JSON.parse(await readFile(foundationPath, "utf8"));
-assert.ok(isRecord(foundation) && foundation.version === "1.7.2" && isRecord(foundation.bin));
+assert.ok(isRecord(foundation) && foundation.version === "1.7.4" && isRecord(foundation.bin));
 const cliBin = foundation.bin["agent-teams-foundation"];
 assert.ok(typeof cliBin === "string");
 const cli = join(dirname(foundationPath), cliBin);
@@ -128,6 +128,16 @@ async function fixture(
       ].join("\n"),
     };
     for (const [path, contents] of Object.entries(files)) await put(root, path, contents);
+    // Pinned pnpm writes pnpm-lock.yaml on its first public script run. Run the existing,
+    // valid docs script once now so that genuine lock lives in the baseline commit instead
+    // of appearing as a changed path (and a fast-full escalation) in the first measured run.
+    const primed = spawnSync("pnpm", ["docs:changed"], {
+      cwd: root, env: identity, encoding: "utf8", timeout: 60_000,
+      shell: process.platform === "win32",
+    });
+    assert.equal(primed.error, undefined, primed.stderr);
+    assert.equal(primed.signal, null, primed.stderr);
+    assert.equal(primed.status, 0, primed.stdout + primed.stderr);
     git(root, "init", "--initial-branch=main");
     assert.equal(await realpath(git(root, "rev-parse", "--show-toplevel")), root);
     for (const variable of ["GIT_AUTHOR_IDENT", "GIT_COMMITTER_IDENT"]) {

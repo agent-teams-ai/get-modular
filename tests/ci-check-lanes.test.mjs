@@ -96,12 +96,12 @@ function validateLanes(value, manifest = packageJson) {
       "node-version-file": ".node-version",
       cache: "pnpm",
     }, "runtime selection must retain the Node 24 default and explicit Node 26 override");
-    assert.equal(job.steps.length, 7, "checkout, provisioning, install, peers, payload and integrity");
+    assert.equal(job.steps.length, 8, "checkout, provisioning, install, peers, payload, integrity and failure evidence");
     assert.equal(job.steps[3].run,
       "pnpm install --frozen-lockfile --ignore-scripts --engine-strict --strict-peer-dependencies");
     assert.equal(job.steps[4].run, "pnpm lockfile:peers:check",
       "committed peer validation must follow frozen installation");
-    for (const step of job.steps) {
+    for (const step of job.steps.slice(0, -1)) {
       assert.equal(step.if, undefined, "lane step must not be skipped");
       assert.equal(step["continue-on-error"], undefined);
     }
@@ -110,10 +110,20 @@ function validateLanes(value, manifest = packageJson) {
     assert.equal(execution.env.LANE_SCRIPTS, "${{ matrix.scripts }}");
     assert.equal(execution.env.FOUNDATION_PR_HEAD_REPOSITORY,
       "${{ github.event.pull_request.head.repo.full_name }}");
-    const integrity = job.steps.at(-1);
+    assert.equal(execution.env.SDK_GROWTH_FAILURE_ARTIFACT, "${{ runner.temp }}/sdk-growth-failure.json");
+    assert.equal(execution.env.SDK_GROWTH_CHECKOUT_SHA, "${{ github.sha }}");
+    const upload = job.steps.at(-1);
+    assert.equal(upload.if, "failure() && matrix.lane == 'packaging'");
+    assert.equal(upload.uses, "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a");
+    assert.equal(upload["continue-on-error"], undefined);
+    assert.deepEqual(upload.with, {
+      name: "sdk-growth-${{ runner.os }}-${{ env.ROOT_CI_NODE_VERSION || '24.21.0' }}-${{ github.run_id }}-${{ github.run_attempt }}",
+      path: "${{ runner.temp }}/sdk-growth-failure.json", "if-no-files-found": "ignore",
+    });
+    const integrity = job.steps.at(-2);
     assert.equal(integrity.run, "node architecture/checks/tracked-workspace-integrity.mjs");
     assert.equal(integrity.env.EXPECTED_HEAD_SHA, "${{ github.sha }}");
-    assert.equal(job.steps.indexOf(execution), job.steps.length - 2, "integrity must follow payload");
+    assert.equal(job.steps.indexOf(execution), job.steps.length - 3, "integrity must follow payload");
     for (const row of rows) {
       const scripts = scriptsOf(row);
       assert.equal(new Set(scripts).size, scripts.length, `${host}/${row.lane}: duplicate script`);
@@ -280,7 +290,14 @@ test("rejects missing, duplicate, unknown and reordered obligations on any OS", 
     mutate(job => { job.defaults = { run: { shell: "bash" } }; });
     mutate(job => { delete runner(job).env.FOUNDATION_PR_HEAD_REPOSITORY; });
     mutate(job => { job.steps.pop(); });
-    mutate(job => { delete job.steps.at(-1).env.EXPECTED_HEAD_SHA; });
+    mutate(job => { delete job.steps.at(-2).env.EXPECTED_HEAD_SHA; });
+    // Regression: broad upload paths or conditions would retain unrelated packaging data.
+    mutate(job => { job.steps.at(-1).with.path = "${{ runner.temp }}/**"; });
+    mutate(job => { job.steps.at(-1).if = "failure()"; });
+    mutate(job => { job.steps.at(-1).with.name = "sdk-growth"; });
+    mutate(job => { job.steps.at(-1).uses = "actions/upload-artifact@v7"; });
+    mutate(job => { delete runner(job).env.SDK_GROWTH_FAILURE_ARTIFACT; });
+    mutate(job => { delete runner(job).env.SDK_GROWTH_CHECKOUT_SHA; });
   }
   const drift = clone(packageJson);
   drift.scripts.check += " && pnpm new:check";
