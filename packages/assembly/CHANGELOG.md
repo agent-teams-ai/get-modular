@@ -28,6 +28,7 @@
 ### Patch Changes
 
 - Updated dependencies
+- Updated dependencies
   - @get-modular/core@0.4.0
 
 ## 0.3.0
