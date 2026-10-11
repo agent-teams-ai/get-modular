@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "packageName": "@get-modular/assembly",
-  "packageVersion": "0.3.0",
+  "packageVersion": "0.4.0",
   "extractorVersion": "7.58.12",
   "entrypoints": [
     {
@@ -68,14 +68,14 @@
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
-          "signature": "export type AssemblyPreparationResult<R, N = {}> = {\n    readonly status: \"prepared\";\n    readonly prepared: PreparedAssembly<R, N>;\n} | {\n    readonly status: \"failed\";\n    readonly error: {\n        readonly code: PreparationErrorCode;\n        readonly cause: unknown;\n    };\n    readonly diagnostics: readonly Diagnostic[];\n};"
+          "signature": "export type AssemblyPreparationResult<R, N = {}> = {\n    readonly status: \"prepared\";\n    readonly prepared: PreparedAssembly<R, N>;\n    readonly composition: SuccessfulComposition;\n} | {\n    readonly status: \"failed\";\n    readonly error: {\n        readonly code: PreparationErrorCode;\n        readonly cause: unknown;\n    };\n    readonly diagnostics: readonly Diagnostic[];\n};"
         },
         {
           "canonicalReference": "@get-modular/assembly!AssemblyPrepareInput:type",
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
-          "signature": "export type AssemblyPrepareInput<C, R extends RootHandles<C>, N extends InputHandles<C> = {}, F extends readonly AnyFactoryHandle<C>[] = readonly AnyFactoryHandle<C>[]> = {\n    readonly composition: SuccessfulComposition;\n    readonly factories: F & KnownCapabilities<C, F, N>;\n    readonly roots: R;\n    readonly inputs?: N | undefined;\n};"
+          "signature": "export type AssemblyPrepareInput<C, R extends RootHandles<C>, N extends InputHandles<C> = {}, F extends readonly AnyFactoryHandle<C>[] = readonly AnyFactoryHandle<C>[]> = {\n    readonly factories: F & KnownCapabilities<C, F, N>;\n    readonly roots: R;\n    readonly inputs?: N | undefined;\n} & ({\n    readonly composition: SuccessfulComposition;\n    readonly profileId?: never;\n    readonly bindings?: never;\n} | {\n    readonly profileId: string;\n    readonly bindings?: CompositionProfile[\"bindings\"];\n    readonly composition?: never;\n});"
         },
         {
           "canonicalReference": "@get-modular/assembly!BindingErrorCode:type",
@@ -89,7 +89,7 @@
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
-          "signature": "export type CapabilitiesOf<T extends AnyContract> = {\n    readonly [Id in T[\"id\"]]: T extends {\n        readonly id: Id;\n        readonly revision: infer Rev extends number;\n        readonly [contractValue]?: infer V;\n    } ? CapabilityContract<V, `${Id}/r${Rev}`> : never;\n};"
+          "signature": "export type CapabilitiesOf<T extends AnyContract> = {\n    readonly [X in T as X[\"id\"]]: X extends {\n        readonly id: infer Id extends string;\n        readonly revision: infer Rev extends number;\n        readonly [contractValue]?: infer V;\n    } ? CapabilityContract<V, `${Id}/r${Rev}`> : never;\n};"
         },
         {
           "canonicalReference": "@get-modular/assembly!CapabilityBrand:type",
@@ -229,7 +229,7 @@
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
-          "signature": "export type PreparationErrorCode = \"assembly.prepare.invalid-input\" | \"assembly.prepare.limit\" | \"assembly.prepare.handles\" | \"assembly.prepare.roots\" | \"assembly.prepare.core-rejected\" | \"assembly.prepare.plan-mismatch\" | \"assembly.prepare.input-handles\";"
+          "signature": "export type PreparationErrorCode = \"assembly.prepare.invalid-input\" | \"assembly.prepare.limit\" | \"assembly.prepare.handles\" | \"assembly.prepare.roots\" | \"assembly.prepare.core-rejected\" | \"assembly.prepare.plan-mismatch\" | \"assembly.prepare.input-handles\" | \"assembly.prepare.unresolved-binding\";"
         },
         {
           "canonicalReference": "@get-modular/assembly!PreparedAssembly:type",
@@ -300,6 +300,13 @@
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
           "signature": "export type SuccessfulComposition = Extract<CompileCompositionResult, {\n    readonly plan: CompositionPlan;\n    readonly digest: PlanDigest;\n}>;"
+        },
+        {
+          "canonicalReference": "@get-modular/assembly!UnresolvedBinding:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/assembly!",
+          "parentKind": "EntryPoint",
+          "signature": "export type UnresolvedBinding = {\n    readonly consumerImplementationId: string;\n    readonly slotId: string;\n    readonly capabilityId: string;\n    readonly cardinality: \"required\" | \"optional\" | \"many\";\n    readonly candidates: readonly string[];\n};"
         },
         {
           "canonicalReference": "@get-modular/assembly!UsedCapability:type",

@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.2.0
+
+### Minor Changes
+
+- d817bf7: Add `checkNamespaces({ namespace, declarations })`: one synchronous call checks the namespace rules of the Consumer Module Standard for a product. `moduleId` and `implementationId` lie in the namespace at a segment boundary, and `owner.authority` equals the first segment of `moduleId`. It collects every violation and throws `conformance.namespaces.violation` with `details.violations`.
+  
+  Migration:
+  
+  - Better: one call checks the namespace rules instead of a hand-written loop.
+  - Codemod: none - one new union member of `ConformanceErrorCode`.
+  - By hand: exhaustive maps over `ConformanceErrorCode` add `conformance.namespaces.violation`.
+  
+  Authoring surface changed: no
+
+### Patch Changes
+
+- d171008: `ContractValue` reads the value type from the contract descriptor instead of indexing `CapabilitiesOf`. The resulting type is unchanged.
+  
+  Authoring surface changed: no
+- d9f6277: Upgrade `@get-modular/conformance` to 0.2.0 together with `@get-modular/core` and `@get-modular/assembly` 0.4.0: conformance 0.2.0 declares them as `^0.4.0` peers (`@get-modular/resources` stays `^0.1.0`), and conformance 0.1.0 fails against Assembly 0.4.0 (its peer ranges end at `^0.3.0`, and its `ContractValue` indexes `CapabilitiesOf<T>`, which fails with TS2536 under `skipLibCheck: false`).
+  
+  Migration:
+  
+  - Better: one upgrade step keeps the test kit and the packages it checks in agreement.
+  - Codemod: none. This is a version note.
+  - By hand: raise `@get-modular/conformance` to `^0.2.0` in the same change that raises `@get-modular/core` and `@get-modular/assembly` to `^0.4.0`.
+  - Check: typecheck, then the composition smoke tests.
+  
+  Authoring surface changed: no
+- Updated dependencies [d171008]
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies [2a83057]
+  - @get-modular/assembly@0.4.0
+  - @get-modular/core@0.4.0
+
 ## 0.1.0
 
 ### Minor Changes
