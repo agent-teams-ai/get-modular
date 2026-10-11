@@ -1,6 +1,6 @@
 # Get Modular 0.4.0 train: retained release archives (R-1a)
 
-Status: published to npm on 2026-10-11 under dist-tag `next` (Core 0.4.0, Assembly 0.4.0, conformance 0.2.0) and promoted to `latest` the same day (about 13:05 UTC). Resources 0.1.0 is unchanged and stays `latest`.
+Status: published to npm on 2026-10-11 under dist-tag `next` (Core 0.4.0, Assembly 0.4.0, conformance 0.2.0) and promoted to `latest` the same day (between 12:49 and 12:53 UTC). Resources 0.1.0 is unchanged and stays `latest`.
 
 ## Source
 
@@ -88,7 +88,7 @@ The owner published the retained archives on 2026-10-11 with `npm publish ./<arc
 
 Read-back (2026-10-11, read-only): each registry `dist.integrity` equals its line in the `INTEGRITY` file. The tarballs downloaded with `npm pack @get-modular/<package>@<version>` are byte-identical to the retained archives (`shasum -a 256 -c SHA256SUMS` passed for Core, Assembly and conformance; the conformance bytes also match exactly, not only by the normalized digest). Resources is not on the registry at a new version (`0.0.0-stage`, `0.1.0`).
 
-Dist-tags right after publication:
+Dist-tags right after publication (before the promotion below):
 
 - `@get-modular/core` and `@get-modular/assembly`: `latest=0.3.0`, `next=0.4.0`, plus the older `candidate-*` tags.
 - `@get-modular/conformance`: `latest=0.1.0`, `next=0.2.0`, `candidate-0-3-0=0.1.0`.
@@ -96,10 +96,10 @@ Dist-tags right after publication:
 
 ## Promotion to `latest`
 
-The condition was met first: modularity-host-test #17 (consuming the published bytes) merged as `695b91f5`. Then the owner promoted `latest` for Core, Assembly and conformance together on 2026-10-11, at about 13:05 UTC (web authentication with a passkey). Read back from the registry afterwards:
+The condition was met first: modularity-host-test #17 (consuming the retained archives, byte-identical to the published packages) merged as `695b91f5`. Then the owner promoted `latest` for Core, Assembly and conformance together on 2026-10-11, between 12:49 and 12:53 UTC (web authentication with a passkey); these are the registry `time.modified` values (core 12:49:33Z, assembly 12:51:36Z, conformance 12:52:39Z), read back afterwards. Read back from the registry afterwards:
 
-- `@get-modular/core`: `latest=0.4.0`, `next=0.4.0`, `candidate-0-3-0=0.3.0`.
-- `@get-modular/assembly`: `latest=0.4.0`, `next=0.4.0`, `candidate-0-3-0=0.3.0`.
+- `@get-modular/core`: `latest=0.4.0`, `next=0.4.0`, plus the older `candidate-*` tags.
+- `@get-modular/assembly`: `latest=0.4.0`, `next=0.4.0`, plus the older `candidate-*` tags.
 - `@get-modular/conformance`: `latest=0.2.0`, `next=0.2.0`, `candidate-0-3-0=0.1.0`.
 - `@get-modular/resources`: `latest=0.1.0`, unchanged.
 
@@ -107,9 +107,9 @@ The condition was met first: modularity-host-test #17 (consuming the published b
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| TEST (modularity-host-test #17) | passed | Installed the exact R-1a archives from #167 and `pnpm evidence` was accepted: at head `5e8b1b7` on Node 24.21.0 and pnpm 11.20.0 (189 of 189 tests), and again at head `933bf9b` on Node 26.11.1 after the TEST default Node moved. Signed off on 2026-10-11 under the owner's delegation, as recorded in the PR #165 description. |
+| TEST (modularity-host-test #17) | passed | Installed the exact R-1a archives from #167 and `pnpm evidence` was accepted: at head `5e8b1b7` on Node 24.21.0 and pnpm 11.20.0 (189 of 189 tests), and again at head `2df6aebb` (merged as `695b91f5`) on Node 26.11.1 and pnpm 11.20.0 (189 of 189 tests) after the TEST default Node moved. The Node 24 run is recorded in the PR #165 description, the Node 26 run in the modularity-host-test #17 description. Signed off on 2026-10-11 under the owner's delegation, as recorded in the PR #165 description. |
 | agent-runtime draft branch | not applicable | By owner decision (2026-10-11) agent-runtime skips 0.4.0 and adopts Get Modular 0.5.0 directly from 0.3.0. |
-| Node 26.10+ consumer | passed | The TEST run at `933bf9b` on Node 26.11.1 (see the TEST row). |
+| Node 26.10+ consumer | passed | The TEST run at `2df6aebb` on Node 26.11.1 (see the TEST row), recorded in the modularity-host-test #17 description. |
 
 TEST stays on the retained archives by design (its evidence signs archive bytes, as in the 0.3.0 train). Those archives are byte-identical to the published packages (same integrity, see Publication), so the check holds for the published bytes.
 
