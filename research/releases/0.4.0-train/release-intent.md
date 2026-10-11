@@ -1,6 +1,6 @@
 # Get Modular 0.4.0 train: retained release archives (R-1a)
 
-Status: published to npm on 2026-10-11 under dist-tag `next` (Core 0.4.0, Assembly 0.4.0, conformance 0.2.0). `latest` is unchanged: Core and Assembly 0.3.0, conformance 0.1.0, resources 0.1.0. Promotion to `latest` waits for the TEST project to adopt the registry versions.
+Status: published to npm on 2026-10-11 under dist-tag `next` (Core 0.4.0, Assembly 0.4.0, conformance 0.2.0). `latest` is unchanged: Core and Assembly 0.3.0, conformance 0.1.0, resources 0.1.0. Promotion to `latest` waits for modularity-host-test #17 (consuming the published bytes) to merge.
 
 ## Source
 
@@ -94,16 +94,18 @@ Dist-tags after publication:
 - `@get-modular/conformance`: `latest=0.1.0`, `next=0.2.0`, `candidate-0-3-0=0.1.0`.
 - `@get-modular/resources`: `latest=0.1.0`, `candidate-0-3-0=0.1.0`.
 
-`latest` moves only after the TEST project has adopted the registry versions. The promotion is an owner step with the passkey, for all three packages together.
+`latest` moves after modularity-host-test #17 (consuming the published bytes) merges, as a separate owner step with the passkey, for all three packages together.
 
 ## Consumer checks on these bytes
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| TEST project | pending | |
+| TEST (modularity-host-test #17) | passed | Installed the exact R-1a archives from #167 and `pnpm evidence` was accepted: at head `5e8b1b7` on Node 24.21.0 and pnpm 11.20.0 (189 of 189 tests), and again at head `933bf9b` on Node 26.11.1 after the TEST default Node moved. Signed off on 2026-10-11 under the owner's delegation, as recorded in the PR #165 description. |
 | agent-runtime draft branch | pending | |
-| Node 26.10+ consumer | pending | |
+| Node 26.10+ consumer | passed | The TEST run at `933bf9b` on Node 26.11.1 (see the TEST row). |
+
+TEST stays on the retained archives by design (its evidence signs archive bytes, as in the 0.3.0 train). Those archives are byte-identical to the published packages (same integrity, see Publication), so the check holds for the published bytes.
 
 ## Owner publication approval
 
-Publication of the three archives under `next` was done by the owner on 2026-10-11. Promotion to `latest` is not done and needs a separate owner step after the TEST adoption.
+Publication of the three archives under `next` was done by the owner on 2026-10-11. Promotion to `latest` is not done; it is a separate owner step after modularity-host-test #17 merges.
