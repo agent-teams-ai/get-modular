@@ -31,6 +31,34 @@ The four normalized content digests equal the values in the PR #165 description;
 
 Core 0.4.0 carries internal hardening from the Node 26 qualification (#149). Three `dist` files differ from the published 0.3.0 archive: `features/composition-semantics/graph-components.js`, `features/composition-semantics/selected-graph.js` and `features/raw-scanner/owned-iterative/scanner.js`. Every `.d.ts` is byte-identical, and the public API baseline `architecture/public-api/core.json` changes only `packageVersion`.
 
+## Core changesets (restore verbatim on a regeneration)
+
+These two files were created in the release worktree and consumed by the version step; they are not in git. Each file ends with one newline.
+
+`.changeset/core-0-4-0-pair.md`:
+
+````markdown
+---
+"@get-modular/core": minor
+---
+
+Align Core with Assembly 0.4.0 under the exact-pair rule (ADR-0027, ADR-0035). No API or behavior change.
+
+Authoring surface changed: no
+````
+
+`.changeset/core-internal-hardening.md`:
+
+````markdown
+---
+"@get-modular/core": patch
+---
+
+Internal hardening carried from the Node 26 qualification (#149): the composition-semantics graph and selected-graph checks compare their `Uint8Array` marks explicitly with 1, and the owned raw scanner returns an invalid token when asked to read past the input. Observable behavior, declarations and the public API are unchanged.
+
+Authoring surface changed: no
+````
+
 ## Packed manifests
 
 - Assembly `dependencies` are exactly `{"@get-modular/core": "0.4.0"}`.
