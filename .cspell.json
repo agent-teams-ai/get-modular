@@ -86,6 +86,11 @@
     "Flagsmith",
     "lifecycles",
     "nanostores",
-    "Riverpod"
+    "Riverpod",
+    "bivariant",
+    "codegen",
+    "contravariantly",
+    "forgeable",
+    "subpaths"
   ]
 }
