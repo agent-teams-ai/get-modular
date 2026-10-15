@@ -1,0 +1,5 @@
+// expect: an error: an input entry appears only in `inputs`.
+import { assemblyFor, input } from "@get-modular/assembly";
+import { clockDeclaration, clockEntry, HostMap } from "./shared.js";
+const clockInput = input<HostMap>()({ ...clockDeclaration, implementationId: "s0/clock/input" });
+export const result = assemblyFor<HostMap>().prepare({ profileId: "s0/n6", modules: [clockEntry, clockInput], roots: { clock: clockEntry } });

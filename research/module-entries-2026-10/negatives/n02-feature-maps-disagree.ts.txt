@@ -1,0 +1,6 @@
+// expect: TS2320 (two feature maps that disagree on a contract cannot be merged by interface extension).
+import type { CapabilitiesOf } from "@get-modular/assembly";
+import { Clock, ClockV2 } from "./shared.js";
+export interface A extends CapabilitiesOf<typeof Clock> {}
+export interface B extends CapabilitiesOf<typeof ClockV2> {}
+export interface Both extends A, B {}

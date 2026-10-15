@@ -1,0 +1,9 @@
+// expect: an error in the prepare call: the entry sits two groups deep, uses s0/clock at revision 2 and the Host map has revision 1. (the root is valid, so the error comes from the module list)
+import { assemblyFor, declareModule, group, implement } from "@get-modular/assembly";
+import type { CapabilitiesOf } from "@get-modular/assembly";
+import { ClockV2, clockEntry, HostMap } from "./shared.js";
+interface V2Map extends CapabilitiesOf<typeof ClockV2> {}
+const clockV2 = implement<V2Map>()(declareModule({
+  moduleId: "s0/clock", implementationId: "s0/clock/v2", owner: { authority: "s0", path: ["n4"] }, provides: [ClockV2.provide()], slots: [],
+}), async () => ({ instance: {}, capabilities: { "s0/clock": { now: () => 2 } } }));
+export const result = assemblyFor<HostMap>().prepare({ profileId: "s0/n4", modules: [group("outer", [group("inner", [clockV2])])], roots: { clock: clockEntry } });
