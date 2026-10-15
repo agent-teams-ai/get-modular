@@ -2,7 +2,7 @@
 
 The implementation plan of the Get Modular 0.5.0 train (entries and groups,
 feature layout, provider oracle, module authoring guide, the agent-runtime and
-TEST adoption) and the draft of the Feature Module Standard v1.1 edits for
+modularity-host-test (TEST) adoption) and the draft of the Feature Module Standard v1.1 edits for
 nested features. The standard is owned by the organization repository; the
 draft here is a draft, not the standard.
 
@@ -26,9 +26,12 @@ through pull requests here.
 
 ## Retained outside this repository
 
-- The critic reports whose findings the plan applies (listed in its "Critic
-  findings applied" sections).
+- The critic reports: the scale critic report of 2026-10-11, whose design is
+  restated in "API of the train" and "Phase 2", and the two critic passes whose
+  findings the plan applies in its "Critic findings applied" sections.
+- The earlier 0.4.0 train briefs.
 - The planning log.
+- The owner's npm confirmation and delivery procedures.
 - The agent-runtime module rules handoff, which the owner gives to the
   agent-runtime refactoring agent and which agent-runtime files in its own
   repository.
@@ -37,8 +40,9 @@ through pull requests here.
 
 The copies differ from the planning originals only by removed personal and
 workstation details: local paths and toolchain locations, the owner's browser
-and identity details, internal effort settings and scratch directory names, and
-workspace-only role and progress notes. Meaning is unchanged.
+and identity details, internal review settings and scratch directory names, and
+workspace-only role and progress notes. Meaning is unchanged. One sentence of the draft is also reworded for
+markdownlint (MD038); its meaning is unchanged.
 
 ## Implementation status
 
