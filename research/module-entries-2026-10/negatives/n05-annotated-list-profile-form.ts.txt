@@ -1,0 +1,6 @@
+// expect: TS2322; an error: a module list annotated as an array loses the per-entry check, so the profileId form rejects it
+import { assemblyFor } from "@get-modular/assembly";
+import type { AnyModuleEntry, ModuleGroup } from "@get-modular/assembly";
+import { clockEntry, HostMap, ordersGroup } from "./shared.js";
+const list: (AnyModuleEntry<HostMap> | ModuleGroup<AnyModuleEntry<HostMap>>)[] = [clockEntry, ordersGroup];
+export const result = assemblyFor<HostMap>().prepare({ profileId: "s0/n5", modules: list, roots: { clock: clockEntry } });

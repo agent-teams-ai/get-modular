@@ -1,0 +1,25 @@
+// Module hooks: replaces `@get-modular/assembly` by a wrapper whose `assemblyFor()` reports created capabilities to probe.mjs.
+// Nothing under node_modules is modified. Use: node --import ./hook-register.mjs ...
+const probeUrl = new URL("./probe.mjs", import.meta.url).href;
+const PREFIX = "gm-port-probe:";
+
+export async function resolve(specifier, context, nextResolve) {
+  if (specifier === "@get-modular/assembly" && !context.parentURL?.startsWith(PREFIX)) {
+    const real = await nextResolve(specifier, context);
+    return { url: `${PREFIX}${encodeURIComponent(real.url)}`, shortCircuit: true };
+  }
+  if (context.parentURL?.startsWith(PREFIX) && specifier.startsWith("file:")) return nextResolve(specifier, { ...context, parentURL: undefined });
+  return nextResolve(specifier, context);
+}
+export async function load(url, context, nextLoad) {
+  if (!url.startsWith(PREFIX)) return nextLoad(url, context);
+  const real = decodeURIComponent(url.slice(PREFIX.length));
+  const names = Object.keys(await import(real)).filter((name) => name !== "assemblyFor" && name !== "default");
+  const source = [
+    `import * as real from ${JSON.stringify(real)};`,
+    `import { wrapApi } from ${JSON.stringify(probeUrl)};`,
+    ...names.map((name) => `export const ${name} = real.${name};`),
+    "export const assemblyFor = (...args) => wrapApi(real.assemblyFor(...args));",
+  ].join("\n");
+  return { format: "module", source, shortCircuit: true };
+}

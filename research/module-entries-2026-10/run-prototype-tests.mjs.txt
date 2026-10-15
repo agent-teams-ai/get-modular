@@ -1,0 +1,18 @@
+// S0 0A: runs the converted tests against a built prototype checkout.
+//   node run-prototype-tests.mjs --workspace <built prototype checkout>
+// The tests are copied into <workspace>/tests/s0-entries/ so that the workspace packages resolve.
+import { spawnSync } from "node:child_process";
+import { cp, mkdir, rm } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
+import { parseArgs } from "node:util";
+import { fileURLToPath } from "node:url";
+
+const { values } = parseArgs({ options: { workspace: { type: "string" } } });
+if (!values.workspace) throw new Error("--workspace is required");
+const workspace = resolve(values.workspace);
+const target = join(workspace, "tests/s0-entries");
+await rm(target, { recursive: true, force: true });
+await mkdir(target, { recursive: true });
+await cp(join(dirname(fileURLToPath(import.meta.url)), "converted"), target, { recursive: true });
+const run = spawnSync(process.execPath, ["--test", join(target, "preparation.test.mjs"), join(target, "entries.test.mjs")], { cwd: workspace, stdio: "inherit" });
+process.exitCode = run.status ?? 1;

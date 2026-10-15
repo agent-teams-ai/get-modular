@@ -1,0 +1,215 @@
+// S0 0E: oxlint probes for the P4 snippet and the QN6 preset question, on one or more oxlint binaries.
+//   node oxlint-probe.mjs --oxlint <path to oxlint binary> [--oxlint <another>] [--out results.json]
+// Everything happens in disposable directories under the OS temp directory; nothing is installed globally.
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { parseArgs } from "node:util";
+
+const { values } = parseArgs({ options: { oxlint: { type: "string", multiple: true }, out: { type: "string" } } });
+if (!values.oxlint?.length) throw new Error("--oxlint is required");
+
+// The P4 snippet (TEST paths), as in the train plan.
+const snippet = {
+  overrides: [
+    { files: ["src/features/**/*.ts"], excludeFiles: ["**/*.test.ts"], rules: {
+      "max-lines": ["error", { max: 300, skipBlankLines: true, skipComments: true }],
+      "max-lines-per-function": ["error", { max: 60, skipBlankLines: true, skipComments: true }],
+      "max-params": ["error", { max: 4 }] } },
+    { files: ["src/features/**/composition/*.module.ts"], rules: {
+      "max-lines": ["error", { max: 80, skipBlankLines: true, skipComments: true }] } },
+    { files: ["src/features/**/contracts/**", "src/features/**/domain/**", "src/features/**/application/**", "src/features/**/adapters/**"], rules: {
+      "no-restricted-imports": ["error", { patterns: [{ group: ["@get-modular/*"], message: "Get Modular is imported only in composition/ and tests" }] }] } },
+    { files: ["src/features/**/composition/*.declaration.ts"], rules: {
+      "no-restricted-imports": ["error", {
+        patterns: [{ group: ["*", "!@get-modular/assembly", "!@get-modular/core", "!*.contracts.js", "!*.contracts.ts"],
+          message: "a declaration imports only declareModule, cardinality helpers and contract descriptors" }],
+        paths: [
+          { name: "@get-modular/assembly", allowImportNames: ["declareModule"] },
+          { name: "@get-modular/core", allowImportNames: ["required", "optional", "many"] }] }] } },
+  ],
+};
+
+// Feature roots at depths 1 to 4 (decision B: features/<parent>/features/<child>/ ...).
+const roots = [
+  "src/features/orders",
+  "src/features/orders/features/payments",
+  "src/features/orders/features/payments/features/cards",
+  "src/features/orders/features/payments/features/cards/features/tokens",
+];
+const up = (n) => "../".repeat(n);
+// [label, source line, expectation: "pass" | "reject"]
+const declarationCases = (depth) => [
+  ["A1 declareModule from assembly", 'import { declareModule } from "@get-modular/assembly";', "pass"],
+  ["A2 cardinality helpers from core", 'import { required, optional, many } from "@get-modular/core";', "pass"],
+  ["A3 own descriptor file", 'import { X } from "./own.contracts.js";', "pass"],
+  ["A3b own descriptor file (.ts extension)", 'import { X } from "./own.contracts.ts";', "pass"],
+  ["A4 sibling descriptor file", `import { X } from "${up(2)}billing/composition/billing.contracts.js";`, "pass"],
+  ["A5 child descriptor file", `import { X } from "${up(1)}features/child/composition/child.contracts.js";`, "pass"],
+  ...(depth > 1 ? [["A6 parent descriptor file", `import { X } from "${up(3)}composition/parent.contracts.js";`, "pass"]] : []),
+  ...(depth > 2 ? [["A6b grandparent descriptor file", `import { X } from "${up(5)}composition/grand.contracts.js";`, "pass"]] : []),
+  ["A7 seven levels up", `import { X } from "${up(7)}composition/root.contracts.js";`, "pass"],
+  ["R1 module file", 'import { X } from "./checkout.module.js";', "reject"],
+  ["R2 node builtin", 'import { readFileSync } from "node:fs";', "reject"],
+  ["R3 use case", `import { X } from "${up(1)}application/use-cases/apply-discount.js";`, "reject"],
+  ["R4 implement from assembly", 'import { implement } from "@get-modular/assembly";', "reject"],
+  ["R5 compileComposition from core", 'import { compileComposition } from "@get-modular/core";', "reject"],
+  ["R6 resources", 'import { scoped } from "@get-modular/resources";', "reject"],
+  ["R7 port type", `import type { Port } from "${up(1)}contracts/ports.js";`, "reject"],
+  ["R8 another module's declaration", 'import { X } from "./other.declaration.js";', "reject"],
+  ["H1 hole: descriptor-named file in adapters", `import { X } from "${up(1)}adapters/outbound/evil.contracts.ts";`, "pass (known hole, closed by checkModuleLayout)"],
+  ["H2 hole: package descriptor-named file", 'import { X } from "some-pkg/thing.contracts.js";', "pass (known hole, closed by checkModuleLayout)"],
+];
+const banCases = [
+  ["contracts", "contracts/ports.ts", "reject"], ["domain", "domain/rules.ts", "reject"], ["application", "application/use-cases/do-it.ts", "reject"],
+  ["application/ports", "application/ports/store.ts", "reject"], ["adapters/outbound", "adapters/outbound/db.ts", "reject"], ["adapters/inbound", "adapters/inbound/http.ts", "reject"],
+  ["composition (allowed)", "composition/thing.module.ts", "pass"],
+];
+
+function build(directory, config) {
+  const files = [];
+  const write = (path, text) => { mkdirSync(dirname(join(directory, path)), { recursive: true }); writeFileSync(join(directory, path), text); files.push(path); };
+  const expectations = new Map();
+  roots.forEach((root, index) => {
+    const depth = index + 1;
+    declarationCases(depth).forEach(([label, line, expected], n) => {
+      const path = `${root}/composition/d${n}.declaration.ts`;
+      write(path, `${line}\nexport const value = 1;\n`);
+      expectations.set(path, { group: `declaration depth ${depth}`, label, expected });
+    });
+    banCases.forEach(([label, rel, expected], n) => {
+      const path = `${root}/${rel.replace(/(\.module)?\.ts$/u, (m) => `-${n}${m}`)}`;
+      write(path, 'import { assemblyFor } from "@get-modular/assembly";\nexport const value = assemblyFor;\n');
+      expectations.set(path, { group: `ban depth ${depth}`, label, expected });
+    });
+    // Size: counted lines exclude blank lines and comments.
+    const lines = (count, filler) => Array.from({ length: count }, (_, i) => `export const v${i} = ${i};`).concat(filler).join("\n") + "\n";
+    const filler = Array.from({ length: 40 }, (_, i) => (i % 2 === 0 ? "" : "// comment"));
+    write(`${root}/composition/m80.module.ts`, lines(80, filler)); expectations.set(`${root}/composition/m80.module.ts`, { group: `size depth ${depth}`, label: "module file 80 counted lines (+40 blank/comment)", expected: "pass" });
+    write(`${root}/composition/m81.module.ts`, lines(81, [])); expectations.set(`${root}/composition/m81.module.ts`, { group: `size depth ${depth}`, label: "module file 81 counted lines", expected: "reject" });
+    write(`${root}/adapters/outbound/a300.ts`, lines(300, filler)); expectations.set(`${root}/adapters/outbound/a300.ts`, { group: `size depth ${depth}`, label: "other file 300 counted lines (+40 blank/comment)", expected: "pass" });
+    write(`${root}/adapters/outbound/a301.ts`, lines(301, [])); expectations.set(`${root}/adapters/outbound/a301.ts`, { group: `size depth ${depth}`, label: "other file 301 counted lines", expected: "reject" });
+    write(`${root}/adapters/outbound/big.test.ts`, lines(400, [])); expectations.set(`${root}/adapters/outbound/big.test.ts`, { group: `size depth ${depth}`, label: "test file 400 lines (excludeFiles)", expected: "pass" });
+    const body = (count) => Array.from({ length: count }, (_, i) => `  const w${i} = ${i};`).join("\n");
+    write(`${root}/domain/f60.ts`, `export function f() {\n${body(57)}\n  return 1;\n}\n`); expectations.set(`${root}/domain/f60.ts`, { group: `size depth ${depth}`, label: "function 60 counted lines (signature, 57 statements, return, brace)", expected: "pass" });
+    write(`${root}/domain/f61.ts`, `export function f() {\n${body(58)}\n  return 1;\n}\n`); expectations.set(`${root}/domain/f61.ts`, { group: `size depth ${depth}`, label: "function 61 counted lines", expected: "reject" });
+    write(`${root}/domain/p5.ts`, "export function f(a: number, b: number, c: number, d: number, e: number) { return a + b + c + d + e; }\n"); expectations.set(`${root}/domain/p5.ts`, { group: `size depth ${depth}`, label: "five parameters", expected: "reject" });
+    write(`${root}/domain/p4.ts`, "export function f(a: number, b: number, c: number, d: number) { return a + b + c + d; }\n"); expectations.set(`${root}/domain/p4.ts`, { group: `size depth ${depth}`, label: "four parameters", expected: "pass" });
+  });
+  // Outside src/features nothing applies; a warn-level rule shows --deny-warnings.
+  write("src/other/free.ts", 'import { implement } from "@get-modular/assembly";\nexport const value = implement;\n');
+  expectations.set("src/other/free.ts", { group: "outside features", label: "src/other is not matched", expected: "pass" });
+  write("warn.ts", 'export const same = (a: unknown) => a == null;\n');
+  writeFileSync(join(directory, ".oxlintrc.json"), JSON.stringify(config, null, 2));
+  return expectations;
+}
+
+function run(binary, directory, args = []) {
+  const result = spawnSync(binary, ["-c", ".oxlintrc.json", "--format", "json", ...args, "."], { cwd: directory, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  let diagnostics = [];
+  try { diagnostics = JSON.parse(result.stdout).diagnostics ?? []; } catch { /* leave empty; the raw output is returned */ }
+  return { status: result.status, diagnostics, raw: diagnostics.length === 0 ? result.stdout.slice(0, 400) + result.stderr.slice(0, 400) : undefined };
+}
+const version = (binary) => spawnSync(binary, ["--version"], { encoding: "utf8" }).stdout.trim().replace(/^Version:\s*/u, "");
+
+const report = [];
+for (const binary of values.oxlint.map((p) => resolve(p))) {
+  const entry = { oxlint: version(binary) };
+  const only = { categories: { correctness: "off" } }; // no default category: the probes measure the snippet's rules alone
+  const directory = mkdtempSync(join(tmpdir(), "gm-s0-oxlint-"));
+  try {
+    // 1. The P4 snippet.
+    const expectations = build(directory, { ...only, ...snippet, rules: { eqeqeq: "warn" } });
+    const first = run(binary, directory);
+    const byFile = new Map();
+    for (const d of first.diagnostics) {
+      const file = d.filename ?? d.labels?.[0]?.file ?? "";
+      byFile.set(file, [...(byFile.get(file) ?? []), `${d.code ?? d.rule ?? "?"}`]);
+    }
+    const matrix = [];
+    for (const [path, { group, label, expected }] of expectations) {
+      const got = byFile.get(path) ?? [];
+      const restricted = got.filter((c) => /restricted-imports/u.test(c)), size = got.filter((c) => /max-lines|max-params/u.test(c));
+      const observed = group.startsWith("size") ? (size.length ? "reject" : "pass") : (restricted.length ? "reject" : "pass");
+      const want = expected.startsWith("reject") ? "reject" : "pass";
+      matrix.push({ group, label, expected, observed, ok: observed === want, rules: [...new Set(got)] });
+    }
+    entry.snippet = { exitCode: first.status, filesChecked: expectations.size, mismatches: matrix.filter((m) => !m.ok), cases: matrix.length, byGroup: Object.fromEntries([...new Set(matrix.map((m) => m.group))].map((g) => [g, matrix.filter((m) => m.group === g).every((m) => m.ok) ? "all as expected" : "MISMATCH"])) };
+    entry.snippet.rejectMessages = Object.fromEntries(first.diagnostics.filter((d) => /restricted-imports/u.test(d.code ?? "")).slice(0, 400).reduce((acc, d) => (acc.has(d.message) ? acc : acc.set(d.message, d.code)), new Map()));
+    // 2. --deny-warnings: only `eqeqeq` is a warning; remove the errors by linting that one file.
+    const warnOnly = spawnSync(binary, ["-c", ".oxlintrc.json", "warn.ts"], { cwd: directory, encoding: "utf8" });
+    const denied = spawnSync(binary, ["-c", ".oxlintrc.json", "--deny-warnings", "warn.ts"], { cwd: directory, encoding: "utf8" });
+    entry.denyWarnings = { withoutFlagExit: warnOnly.status, withFlagExit: denied.status };
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+
+  // 3. QN6: do override globs of an extended preset match the consumer's own paths?
+  entry.preset = {};
+  for (const [name, glob] of [["unanchored **/features/**", "**/features/**/composition/*.module.ts"], ["anchored src/features/**", "src/features/**/composition/*.module.ts"]]) {
+    for (const [layout, linked] of [["plain node_modules path", false], ["pnpm-style symlinked package", true]]) {
+      const dir = mkdtempSync(join(tmpdir(), "gm-s0-preset-"));
+      try {
+        const presetDirectory = linked ? join(dir, "node_modules/.pnpm/@get-modular+conformance@0.3.0/node_modules/@get-modular/conformance") : join(dir, "node_modules/@get-modular/conformance");
+        mkdirSync(presetDirectory, { recursive: true });
+        writeFileSync(join(presetDirectory, "oxlint.json"), JSON.stringify({ overrides: [
+          { files: [glob], rules: { "max-lines": ["error", { max: 3, skipBlankLines: true, skipComments: true }] } },
+          { files: ["**/features/**/domain/**"], rules: { "no-restricted-imports": ["error", { patterns: [{ group: ["@get-modular/*"], message: "preset" }] }] } },
+        ] }));
+        if (linked) { mkdirSync(join(dir, "node_modules/@get-modular"), { recursive: true }); symlinkSync(presetDirectory, join(dir, "node_modules/@get-modular/conformance"), "dir"); }
+        writeFileSync(join(dir, ".oxlintrc.json"), JSON.stringify({ ...only, extends: ["./node_modules/@get-modular/conformance/oxlint.json"] }));
+        for (const path of ["src/features/orders/composition/a.module.ts", "src/features/orders/features/pay/composition/b.module.ts", "packages/x/src/features/orders/composition/c.module.ts"]) {
+          mkdirSync(dirname(join(dir, path)), { recursive: true });
+          writeFileSync(join(dir, path), "export const a = 1;\nexport const b = 2;\nexport const c = 3;\nexport const d = 4;\n");
+        }
+        mkdirSync(join(dir, "src/features/orders/domain"), { recursive: true });
+        writeFileSync(join(dir, "src/features/orders/domain/r.ts"), 'import { x } from "@get-modular/assembly";\nexport const v = x;\n');
+        const result = run(binary, dir);
+        const hits = (needle) => result.diagnostics.filter((d) => (d.filename ?? "").includes(needle)).map((d) => d.code);
+        entry.preset[`${name}, ${layout}`] = {
+          exitCode: result.status,
+          "src/features/orders/composition/a.module.ts (4 counted lines, max 3)": hits("a.module.ts"),
+          "nested src/features/orders/features/pay/composition/b.module.ts": hits("b.module.ts"),
+          "packages/x/src/features/.../c.module.ts": hits("c.module.ts"),
+          "domain file importing @get-modular/*": hits("r.ts"),
+          rawWhenEmpty: result.raw,
+        };
+      } finally { rmSync(dir, { recursive: true, force: true }); }
+    }
+  }
+  // 4. Test-root files: unanchored preset globs also match <test-root>/features/**, so a preset needs a test-root exclusion.
+  entry.testRoot = {};
+  for (const [name, exclude] of [["no exclusion", undefined], ["excludeFiles **/tests/** and **/*.test.ts", ["**/tests/**", "**/*.test.ts"]]]) {
+    const dir = mkdtempSync(join(tmpdir(), "gm-s0-testroot-"));
+    try {
+      mkdirSync(join(dir, "node_modules/@get-modular/conformance"), { recursive: true });
+      const withExclude = (rules) => ({ files: ["**/features/**/*.ts"], ...(exclude ? { excludeFiles: exclude } : {}), rules });
+      writeFileSync(join(dir, "node_modules/@get-modular/conformance/oxlint.json"), JSON.stringify({ overrides: [
+        withExclude({ "max-lines": ["error", { max: 3, skipBlankLines: true, skipComments: true }] }),
+        { files: ["**/features/**/adapters/**"], ...(exclude ? { excludeFiles: exclude } : {}),
+          rules: { "no-restricted-imports": ["error", { patterns: [{ group: ["@get-modular/*"], message: "preset" }] }] } },
+      ] }));
+      writeFileSync(join(dir, ".oxlintrc.json"), JSON.stringify({ ...only, extends: ["./node_modules/@get-modular/conformance/oxlint.json"] }));
+      const big = "export const a = 1;\nexport const b = 2;\nexport const c = 3;\nexport const d = 4;\n";
+      for (const [path, text] of [
+        ["src/features/orders/application/big.ts", big],
+        ["tests/features/orders/big.test.ts", big],
+        ["tests/features/orders/testing.ts", big],
+        ["src/features/orders/adapters/outbound/db.ts", 'import { x } from "@get-modular/assembly";\nexport const v = x;\n'],
+        ["tests/features/orders/adapters/db.test.ts", 'import { x } from "@get-modular/assembly";\nexport const v = x;\n'],
+      ]) { mkdirSync(dirname(join(dir, path)), { recursive: true }); writeFileSync(join(dir, path), text); }
+      const result = run(binary, dir);
+      const hits = (needle) => result.diagnostics.filter((d) => (d.filename ?? "").endsWith(needle)).map((d) => d.code);
+      entry.testRoot[name] = {
+        "src production file over the limit": hits("src/features/orders/application/big.ts"),
+        "tests/features/orders/big.test.ts": hits("big.test.ts"),
+        "tests/features/orders/testing.ts (not *.test.ts)": hits("tests/features/orders/testing.ts"),
+        "src adapter importing @get-modular/*": hits("src/features/orders/adapters/outbound/db.ts"),
+        "tests adapter test importing @get-modular/*": hits("adapters/db.test.ts"),
+      };
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  }
+  report.push(entry);
+}
+const text = JSON.stringify(report, null, 2);
+if (values.out) writeFileSync(values.out, text);
+console.log(text);

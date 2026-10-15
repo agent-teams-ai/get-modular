@@ -1,0 +1,34 @@
+// S0 0C: the own-property port check, as a pure function (the P1b check is this walk plus a code and a message).
+// A capability object is a port when its callable members are own properties. The walk reads descriptors only and never
+// invokes a getter; a Proxy trap can run (`getPrototypeOf`, `ownKeys`, `getOwnPropertyDescriptor`): documented, not avoided.
+const intrinsicPrototypes = new Set([
+  Array, Map, Set, WeakMap, WeakSet, Date, RegExp, Promise, Error, ArrayBuffer, DataView, Uint8Array, Int8Array, Uint8ClampedArray, Int16Array,
+  Uint16Array, Int32Array, Uint32Array, Float32Array, Float64Array, BigInt64Array, BigUint64Array,
+  ...(typeof SharedArrayBuffer === "function" ? [SharedArrayBuffer] : []), ...(typeof globalThis.Buffer === "function" ? [globalThis.Buffer] : []),
+].map((constructor) => constructor.prototype));
+intrinsicPrototypes.add(Object.getPrototypeOf(Uint8Array.prototype));
+
+const isForeignObjectPrototype = (prototype) => Object.getPrototypeOf(prototype) === null && Object.hasOwn(prototype, "hasOwnProperty");
+
+/** The prototype members of a capability value that make it a non-port. Functions and primitives are skipped. */
+export function prototypeMembers(value) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return []; // Array.isArray is correct across realms
+  const violations = [];
+  for (let prototype = Object.getPrototypeOf(value); prototype !== null && prototype !== Object.prototype; prototype = Object.getPrototypeOf(prototype)) {
+    if (intrinsicPrototypes.has(prototype) || isForeignObjectPrototype(prototype)) break;
+    for (const key of Reflect.ownKeys(prototype)) {
+      if (key === "constructor") continue;
+      const descriptor = Object.getOwnPropertyDescriptor(prototype, key);
+      if (descriptor === undefined) continue;
+      if (typeof descriptor.value === "function") violations.push({ key: String(key), kind: "method" });
+      else if (descriptor.get !== undefined || descriptor.set !== undefined) violations.push({ key: String(key), kind: "accessor" });
+    }
+  }
+  return violations;
+}
+
+/** The constructor name of the first non-intrinsic prototype, for classification. */
+export function ownerName(value) {
+  const prototype = value === null || typeof value !== "object" ? null : Object.getPrototypeOf(value);
+  return prototype === null ? "null-prototype" : (Object.getOwnPropertyDescriptor(prototype, "constructor")?.value?.name ?? "anonymous");
+}
