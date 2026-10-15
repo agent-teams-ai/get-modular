@@ -95,11 +95,11 @@ and 1,352,992 against 1,420,303; growth is linear.
 
 ## Rejected alternatives
 
-Runtime discovery or glob imports (GM-REQ-011); decorators (GM-REQ-012); generated group files with a check mode (one
-line per module saved for a generator, a build step and generated files). G2 alone does not reduce conflicts; G3 (group plus
-aggregated per-module pins) cut conflicted merges from 0.47 to 0.10 at K=6 and from 0.55 to 0.16 at K=10; the decision on
-cost (b) is recorded by the owner (pending). M2 is excluded from "best hand-written" because of its invalid merges
-(interpretation); deduplicating a twice-reached entry (features would pull other features in silently);
+Runtime discovery or glob imports (GM-REQ-011); decorators (GM-REQ-012); generated group files with a check mode (S0 merge experiment: generating the group alone does not reduce conflicts;
+generating the group and aggregating per-module oracle pins cut conflicted merges from 0.47 to 0.10 with six parallel
+branches and from 0.55 to 0.16 with ten, at the cost of a generator step before every typecheck, test and editor session in
+every consumer and a new tooling package; rejected on that cost by the owner on 2026-10-15; groups keep one import and one
+member per line, so a later generator can adopt them); deduplicating a twice-reached entry (features would pull other features in silently);
 keeping `bindFactory` beside entries (two ways to bind); feature functions taking a narrowed `api` (double listing
 stays); lazy validation in `prepare` (new codes, weaker snapshot rule); a `smoke` hook in Assembly (public inert fields
 suffice); a JSON manifest as the source of truth now (TypeScript keeps type linkage, single ids and refactors; a manifest

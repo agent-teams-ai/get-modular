@@ -34,7 +34,7 @@ Type cost, 20 groups, declarations in files separate from the entries, `--single
 
 Growth from 500 to 1,000 is linear. The tuple rule for `members` and `modules` is inside these numbers; its own cost was not isolated, so the plan's 1% allowance is not separately confirmed.
 
-Finding that changes the API text (the numbers of the first formulation are from an interim run of the prototype and are not reproducible from the files here; the final shape is): the first formulation, where `prepare` re-derived the used keys from the union of all
+Finding that changes the API text (the numbers of the first formulation are from an interim run of the prototype and are not reproducible from the files here; the final shape is reproducible with `type-cost.mjs`): the first formulation, where `prepare` re-derived the used keys from the union of all
 entries (`EntriesOf` over the group types), measured 569,475 instantiations (+4.96%) on tsc 7 and 755,455 (+5.59%, over
 budget) on TS 5.8.3. Giving `ModuleGroup` a phantom second parameter `K`, the union of the keys its entries use,
 computed once when `group` is called, removed the cost. P1a keeps `ModuleGroup<E, K>`. An entry also carries the used part
@@ -123,8 +123,10 @@ Verdict by the rule written before the run:
 - My recommendation, labeled as my judgment: do not select codegen for 0.5.0. Ten agents adding to one 12-module feature in
   parallel is beyond the split signal (about 12 modules), where the guide already says to split; at K=3 M1 conflicts in 23%
   of merges (7 of 30) and 5 of those 7 (71%) are resolved by keeping both sides; at K=10, 33 of 55 (60%). Hand-written groups plus the orphan check, and no
-  `merge=union` recommendation (22% silent invalid merges). If the owner weighs the 0.16 against 0.55 at K=10 more
-  heavily, the decision selects G3 and the plan's "If 0B selects codegen" section applies.
+  `merge=union` recommendation (22% silent invalid merges). Owner decision of 2026-10-15: no codegen in 0.5.0. Hand-written groups plus the orphan check of
+  `checkModuleLayout`; `merge=union` is not recommended; the file shapes (one import and one member per line in
+  `<feature>.group.ts`, one pin per line in `<feature>.wiring.ts`) stay compatible with a later generator. The plan's "If 0B
+  selects codegen" section does not apply.
 
 ## 0C Own-property port check
 
@@ -133,7 +135,7 @@ containers of this realm and at a foreign `Object.prototype`, reports function-v
 than `constructor`, reads descriptors only. `Array.isArray` is checked first because it holds across realms.
 `port-check.test.mjs` covers the cases the plan names, including that no getter runs and that a Proxy trap runs. Known
 limit found: a Map or Date of another realm (a `vm` context) is flagged, because only this realm's prototypes are captured;
-whether P1b exempts them (for example by `Object.prototype.toString` tags) is an open decision for P1b.
+whether P1b exempts them (for example by an intrinsic brand check: calling this realm's `Map.prototype.size` getter or `Date.prototype.getTime` on the value inside try/catch, which reads internal slots and runs no user code) is an open decision for P1b.
 
 Counts (`hook-loader.mjs` wraps `assemblyFor` through Node module hooks and reports what runs create; nothing under
 `node_modules` is edited):
@@ -161,8 +163,8 @@ How the counts were produced (materialized scripts, Node 26.11.1). Every run set
   ancestor of agent-runtime `main`; it was used because a checkout with a built `dist` existed. Two tests fail there and are
   unrelated: "pinned compiler enforces the positive and negative Assembly consumer contract" (a missing pnpm hook file) and
   "default import and bootstrap remain passive under effect traps".
-- Observation sketch: `node port-check/observation-sketch.mjs --repo <get-modular checkout> --rev origin/pr-153`; `--rev bfb7cff` is not usable
-  (the sketch lives only in the branch of #153).
+- Observation sketch: `node port-check/observation-sketch.mjs --repo <get-modular checkout> --rev origin/pr-153`; `--rev bfb7cff` also works (the sketch v3
+  is on `main` since #127; `origin/pr-153` holds identical blobs).
 
 The one hit is `PostgresOrdinaryOperationStore` (`agent-runtime/ordinary/store/postgres`), a class port with eight
 prototype methods; the module must wrap it in a port object (P7b). No legitimate data-valued capability was flagged, so the
@@ -226,6 +228,6 @@ repository through the directory of the materialized copy, so pass `--repo <chec
 
 ## Questions for the coordinator
 
-1. 0B: accept "no codegen in 0.5.0" or select G3 (see the verdict).
-2. P1a: the three open points of 0A (group width code, generic `entriesOf`, input path in `duplicate-module`).
-3. P1b: the preset ships (0E); AR's `PostgresOrdinaryOperationStore` needs a port wrapper in P7b.
+1. 0B: decided by the owner on 2026-10-15, no codegen in 0.5.0 (see 0B).
+2. P1a: the open points of 0A (group width code, generic `entriesOf`, input path in `duplicate-module`, the second argument of `ModuleItem<C>`, the public type set).
+3. P1b: the preset ships only with test-root exclusions and under `dist/` (0E); AR's `PostgresOrdinaryOperationStore` needs a port wrapper in P7b.

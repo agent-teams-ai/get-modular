@@ -8,4 +8,4 @@ interface OtherMap extends CapabilitiesOf<typeof Other> {}
 const other = implement<OtherMap>()(declareModule({
   moduleId: "s0/other", implementationId: "s0/other/a", owner: { authority: "s0", path: ["n3"] }, provides: [Other.provide()], slots: [],
 }), async () => ({ instance: {}, capabilities: { "s0/other": { x: 1 } } }));
-export const result = assemblyFor<HostMap>().prepare({ profileId: "s0/n3", modules: [group("g", [other])], roots: { other } });
+export const result = assemblyFor<HostMap>().prepare({ profileId: "s0/n3", modules: [clockEntry, group("g", [other])], roots: { clock: clockEntry } });
