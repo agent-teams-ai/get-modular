@@ -8,9 +8,9 @@ draft here is a draft, not the standard.
 
 ## Status
 
-Planning only. No phase is started. Open owner questions: QN7, QN9 and QN10
-(see "Open questions (revision 4.2)" in the plan). The plan, not this README,
-is the source for phases, decisions and owner steps.
+Planning only. No phase is started. One open owner question: QN7 (see
+"Open question (revision 4.2)" in the plan). The plan, not this README, is the
+source for phases, decisions and owner steps.
 
 ## Canonical copy
 
