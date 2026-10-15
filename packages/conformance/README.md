@@ -142,6 +142,70 @@ with a leading, trailing or double `/`, declarations that are not an array and a
 declaration without string ids or `owner.authority` throw
 `conformance.argument.invalid`. Only own data properties are read.
 
+## Check a completed root with the wiring oracle
+
+```ts
+import { checkWiring, describeWiring } from "@get-modular/conformance";
+
+const ordersWiring = {
+  providers: {
+    "acme/db": "acme/db/postgres",
+    "acme/orders": "acme/orders/default",
+  },
+  roots: ["acme/orders/default"],
+};
+
+checkWiring(composition, [ordersWiring]);
+console.log(describeWiring(composition));
+```
+
+`checkWiring` compares a completed composition with hand-written `WiringOracle`
+parts. Keep each part in test code at
+`<test-root>/features/<feature>/<feature>.wiring.ts`; never derive it from the
+profile, plan or implementation. Equal parts may repeat a pin or row. Parts
+that pin one capability to different provider sets, or list different provider
+orders for one `consumer` and `slot`, conflict.
+
+The merged oracle pins the implementation providing every stated capability,
+the root implementations and every row that profile completion does not
+produce: optional, `many`, explicit and several-provider rows. Plan selections
+must equal pinned providers plus roots, plan roots must equal the oracle roots,
+and each listed row must match its plan row including provider order. An
+unlisted row passes only when its capability has one pinned provider and the
+row binds exactly that provider. This accepts a newly declared `required` slot
+without changing the oracle; review that weakening as a declaration change.
+Every difference is collected before one `conformance.wiring.mismatch` is
+thrown, with the rows in `details.differences`.
+
+`describeWiring` is a debugging view, not an oracle format. It prints roots and
+selections, then one `consumer.slot <- providers [capability rN]` row per line.
+
+## Check source layout with `checkModuleLayout`
+
+```ts
+import { checkModuleLayout } from "@get-modular/conformance";
+
+const report = checkModuleLayout({
+  files,
+  imports,
+  useCaseExports,
+});
+```
+
+The caller resolves source paths and import specifiers and passes normalized
+records: repository-relative `files`, `imports` with `from`, `to` and a `type`
+or `value` mode, and the runtime exports of each `application/use-cases` file.
+The function is pure and imports nothing it scans.
+
+It reports every Get Modular rule with a stable violation code:
+`orphan-module`, `orphan-declaration`, `group-count`,
+`child-group-outside-parent`, `root-imports-sub-feature-group`,
+`nested-composition`, `descriptor-path`, `use-case-export` and
+`application-file`. A passing call returns `featureCount`, `moduleCount` and
+`modulesPerFeature`. A failing call throws one `conformance.layout.violation`;
+`details.violations` lists every violation and `details` also carries the same
+metrics.
+
 ## Find leaked handles with `guardHandles`
 
 ```ts
@@ -181,6 +245,8 @@ a `Promise`.
 | `conformance.isolate.construction-failed` | the module could not be built |
 | `conformance.smoke.failed` | a smoke step broke an expectation |
 | `conformance.namespaces.violation` | a declaration breaks a namespace rule; `details.violations` lists them all |
+| `conformance.wiring.mismatch` | a completed plan differs from the provider oracle; `details.differences` lists every difference |
+| `conformance.layout.violation` | source records break a Get Modular layout rule; `details.violations` lists every violation |
 | `conformance.suite.revision-mismatch` | the subject provides another revision than the suite checks |
 | `conformance.suite.case-failed` | a case failed and its scope also closed with debts |
 | `conformance.handles.leaked` | handles opened after the guard are still active |

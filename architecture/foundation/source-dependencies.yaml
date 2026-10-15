@@ -571,6 +571,35 @@ boundaries:
         - "@get-modular/core"
       builtins: []
       runtimeReferences: []
+  - id: conformance-wiring
+    roots:
+      - packages/conformance/src/features/wiring/types.ts
+      - packages/conformance/src/features/wiring/check.ts
+      - packages/conformance/src/features/wiring/describe.ts
+    entrypoints:
+      - packages/conformance/src/features/wiring/types.ts
+      - packages/conformance/src/features/wiring/check.ts
+      - packages/conformance/src/features/wiring/describe.ts
+    allow:
+      boundaries:
+        - conformance-errors
+      packages:
+        - "@get-modular/assembly"
+      builtins: []
+      runtimeReferences: []
+  - id: conformance-layout
+    roots:
+      - packages/conformance/src/features/layout/types.ts
+      - packages/conformance/src/features/layout/check.ts
+    entrypoints:
+      - packages/conformance/src/features/layout/types.ts
+      - packages/conformance/src/features/layout/check.ts
+    allow:
+      boundaries:
+        - conformance-errors
+      packages: []
+      builtins: []
+      runtimeReferences: []
   - id: conformance-composition
     roots:
       - packages/conformance/src/composition/root.ts
@@ -582,6 +611,8 @@ boundaries:
         - conformance-suites
         - conformance-handles
         - conformance-namespaces
+        - conformance-wiring
+        - conformance-layout
       packages: []
       builtins: []
       runtimeReferences: []
@@ -599,6 +630,8 @@ boundaries:
         - conformance-suites
         - conformance-handles
         - conformance-namespaces
+        - conformance-wiring
+        - conformance-layout
         - conformance-composition
       packages: []
       builtins: []
