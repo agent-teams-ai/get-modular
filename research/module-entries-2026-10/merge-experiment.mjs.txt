@@ -1,0 +1,346 @@
+// S0 0B: merge conflicts when several agents add modules to one feature in parallel (hand-written group lists vs generated).
+//   node merge-experiment.mjs [--ks 3,6,10] [--seeds 10] [--variants M1,M2,G2,G3,M4] [--git <git binary>] [--tsc <path to a built prototype checkout>] [--out results.json]
+// A disposable Git repository per run, in the decision-1 layout, feature `orders` with 12 modules:
+//   src/features/orders/composition/<m>.declaration.ts, <m>.module.ts, orders.group.ts, orders.contracts.ts
+//   tests/features/orders/orders.wiring.ts   (G3: tests/features/orders/wiring/<m>.wiring.ts, aggregated)
+// Variants: M1 hand-written sorted insertion; M2 M1 plus `merge=union` on the group, wiring and contracts files;
+// G2 group file generated from composition/*.module.ts and ignored by Git; G3 G2 plus per-module pin files aggregated
+// into the oracle part. M4 is informational and outside the decision rule: M1 with a blank line between the lines of
+// the three hand-written files, so that inserts at neighbouring positions do not touch. Protocol: K branches from one base; each adds one module; half also add a contract; max(1, round(K/5))
+// of them also remove or rename a module. In a fixed order each branch merges the current main (git `ort`), resolves
+// (a conflict is resolved by keeping both sides, the only mechanical resolution), then main merges it with --no-ff.
+import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { parseArgs } from "node:util";
+
+const { values } = parseArgs({ options: {
+  ks: { type: "string", default: "3,6,10" }, seeds: { type: "string", default: "10" },
+  variants: { type: "string", default: "M1,M2,G2,G3,M4" }, tsc: { type: "string" }, out: { type: "string" }, git: { type: "string", default: "git" },
+  quiet: { type: "boolean", default: false },
+} });
+const KS = values.ks.split(",").map(Number);
+const SEEDS = Number(values.seeds);
+const VARIANTS = values.variants.split(",");
+const FEATURE = "orders";
+const COMPOSITION = `src/features/${FEATURE}/composition`;
+const WIRING_DIR = `tests/features/${FEATURE}`;
+const GROUP_FILE = `${COMPOSITION}/${FEATURE}.group.ts`;
+const CONTRACTS_FILE = `${COMPOSITION}/${FEATURE}.contracts.ts`;
+const WIRING_FILE = `${WIRING_DIR}/${FEATURE}.wiring.ts`;
+const spaced = (lines, variant) => (variant === "M4" ? lines.flatMap((line, index) => (index === 0 ? [line] : ["", line])) : lines);
+const hand = (variant) => ({ group: variant.startsWith("M"), wiring: variant !== "G3" });
+
+const WORDS = ("account address approval archive audit basket billing booking brand cache calendar campaign carrier cart catalog channel checkout claim " +
+  "coupon credit currency customer dispatch document draft escrow export fee feedback freight gateway inventory invoice journal ledger loyalty " +
+  "mailbox margin merchant notice offer order packing payment payout pricing profile promotion quote rating receipt refund region report return " +
+  "review route sales schedule session shipment shipping stock subscription supplier survey tax ticket tracking transfer vendor voucher warehouse wishlist").split(" ");
+
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+const shuffled = (list, random) => { const copy = [...list]; for (let i = copy.length - 1; i > 0; i -= 1) { const j = Math.floor(random() * (i + 1)); [copy[i], copy[j]] = [copy[j], copy[i]]; } return copy; };
+
+// Model: modules by file name -> { id: implementation id, contract: contract name }; contracts: names.
+const cloneModel = (model) => ({ modules: new Map([...model.modules].map(([k, v]) => [k, { ...v }])), contracts: new Set(model.contracts) });
+const sortedKeys = (iterable) => [...iterable].sort();
+const cap = (name) => name;
+
+function render(model, variant) {
+  const files = new Map();
+  const names = sortedKeys(model.modules.keys());
+  const contracts = sortedKeys(model.contracts);
+  files.set(CONTRACTS_FILE, [
+    'import { defineContract } from "@get-modular/assembly";',
+    'import type { CapabilitiesOf } from "@get-modular/assembly";',
+    "",
+    ...spaced(contracts.map((c) => `export const ${c}Contract = defineContract<{ readonly ${c}: () => number }>()({ id: "${FEATURE}/${c}", revision: 1 });`), variant),
+    "",
+    `export interface OrdersMap extends CapabilitiesOf<`,
+    ...spaced(contracts.map((c) => `  | typeof ${c}Contract`), variant),
+    "> {}",
+    "",
+  ].join("\n"));
+  for (const name of names) {
+    const { id, contract } = model.modules.get(name);
+    files.set(`${COMPOSITION}/${name}.declaration.ts`, [
+      'import { declareModule } from "@get-modular/assembly";',
+      `import { ${contract}Contract } from "./${FEATURE}.contracts.js";`,
+      `export const ${cap(name)}Declaration = declareModule({ moduleId: "${FEATURE}/${contract}", implementationId: "${FEATURE}/${id}", owner: { authority: "${FEATURE}", path: ["${FEATURE}"] }, provides: [${contract}Contract.provide()], slots: [] });`,
+      "",
+    ].join("\n"));
+    files.set(`${COMPOSITION}/${name}.module.ts`, [
+      'import { implement } from "@get-modular/assembly";',
+      `import type { OrdersMap } from "./${FEATURE}.contracts.js";`,
+      `import { ${cap(name)}Declaration } from "./${name}.declaration.js";`,
+      `export const ${cap(name)}Module = implement<OrdersMap>()(${cap(name)}Declaration, async () => ({ instance: {}, capabilities: { "${FEATURE}/${contract}": { ${contract}: () => 1 } } }));`,
+      "",
+    ].join("\n"));
+    if (!hand(variant).wiring) {
+      files.set(`${WIRING_DIR}/wiring/${name}.wiring.ts`, `export const pin = { implementation: "${FEATURE}/${id}", provides: "${FEATURE}/${contract}" } as const;\n`);
+    }
+  }
+  if (hand(variant).group) files.set(GROUP_FILE, renderGroup(names, variant));
+  if (hand(variant).wiring) {
+    files.set(WIRING_FILE, [
+      "export const ordersPins = [",
+      ...spaced(names.map((name) => { const { id, contract } = model.modules.get(name); return `  { implementation: "${FEATURE}/${id}", provides: "${FEATURE}/${contract}" },`; }).sort(), variant),
+      "] as const;",
+      "",
+    ].join("\n"));
+  }
+  return files;
+}
+const renderGroup = (names, variant = "") => [
+  'import { group } from "@get-modular/assembly";',
+  ...spaced(names.map((name) => `import { ${cap(name)}Module } from "./${name}.module.js";`), variant),
+  "",
+  `export const ordersGroup = group("${FEATURE}", [`,
+  ...spaced(names.map((name) => `  ${cap(name)}Module,`), variant),
+  "]);",
+  "",
+].join("\n");
+
+// The generators (G2, G3): read file names, write sorted literal import lists; they import and execute nothing.
+function generate(repo, variant) {
+  if (!variant.startsWith("G")) return;
+  const names = readdirSync(join(repo, COMPOSITION)).filter((f) => f.endsWith(".module.ts")).map((f) => f.slice(0, -".module.ts".length)).sort();
+  writeFileSync(join(repo, GROUP_FILE), renderGroup(names));
+  if (variant === "G3") {
+    const pins = existsSync(join(repo, WIRING_DIR, "wiring")) ? readdirSync(join(repo, WIRING_DIR, "wiring")).filter((f) => f.endsWith(".wiring.ts")).map((f) => f.slice(0, -".wiring.ts".length)).sort() : [];
+    writeFileSync(join(repo, WIRING_FILE), [
+      ...pins.map((p) => `import { pin as ${p}Pin } from "./wiring/${p}.wiring.js";`),
+      "export const ordersPins = [",
+      ...pins.map((p) => `  ${p}Pin,`),
+      "] as const;",
+      "",
+    ].join("\n"));
+  }
+}
+
+// The layout checks' view of a repository: what the group, the oracle part and the contracts say, compared with the model.
+function verify(repo, model, variant) {
+  generate(repo, variant);
+  const read = (path) => (existsSync(join(repo, path)) ? readFileSync(join(repo, path), "utf8") : null);
+  const problems = [];
+  const files = readdirSync(join(repo, COMPOSITION));
+  const moduleFiles = files.filter((f) => f.endsWith(".module.ts")).map((f) => f.slice(0, -".module.ts".length));
+  const declFiles = files.filter((f) => f.endsWith(".declaration.ts")).map((f) => f.slice(0, -".declaration.ts".length));
+  const want = sortedKeys(model.modules.keys());
+  if (JSON.stringify(sortedKeys(moduleFiles)) !== JSON.stringify(want)) problems.push("module-files");
+  if (JSON.stringify(sortedKeys(declFiles)) !== JSON.stringify(want)) problems.push("declaration-files");
+  const group = read(GROUP_FILE) ?? "";
+  const imports = [...group.matchAll(/^import \{ (\w+)Module \} from "\.\/(\w+)\.module\.js";$/gmu)].map((m) => m[2]);
+  const members = [...group.matchAll(/^  (\w+)Module,$/gmu)].map((m) => m[1]);
+  if (new Set(imports).size !== imports.length || new Set(members).size !== members.length) problems.push("group-duplicate-line");
+  if (JSON.stringify(sortedKeys(new Set(imports))) !== JSON.stringify(want)) problems.push("group-imports");
+  if (JSON.stringify(sortedKeys(new Set(members))) !== JSON.stringify(want)) problems.push("group-members");
+  for (const imported of new Set(imports)) if (!moduleFiles.includes(imported)) problems.push(`dangling-import:${imported}`);
+  for (const file of moduleFiles) if (!imports.includes(file)) problems.push(`orphan:${file}`);
+  const wiring = read(WIRING_FILE) ?? "";
+  const pins = variant === "G3" ? null : [...wiring.matchAll(/^  \{ implementation: "([^"]+)", provides: "([^"]+)" \},$/gmu)].map((m) => `${m[1]}>${m[2]}`);
+  const wantPins = want.map((n) => { const { id, contract } = model.modules.get(n); return `${FEATURE}/${id}>${FEATURE}/${contract}`; });
+  if (pins !== null) {
+    if (new Set(pins).size !== pins.length) problems.push("wiring-duplicate-line");
+    if (JSON.stringify(sortedKeys(new Set(pins))) !== JSON.stringify(sortedKeys(wantPins))) problems.push("wiring-pins");
+  } else {
+    const pinFiles = existsSync(join(repo, WIRING_DIR, "wiring")) ? readdirSync(join(repo, WIRING_DIR, "wiring")).map((f) => f.slice(0, -".wiring.ts".length)) : [];
+    if (JSON.stringify(sortedKeys(pinFiles)) !== JSON.stringify(want)) problems.push("wiring-pins");
+  }
+  const contractsText = read(CONTRACTS_FILE) ?? "";
+  const descriptors = [...contractsText.matchAll(/^export const (\w+)Contract = /gmu)].map((m) => m[1]);
+  const mapLines = [...contractsText.matchAll(/^  \| typeof (\w+)Contract$/gmu)].map((m) => m[1]);
+  if (new Set(descriptors).size !== descriptors.length || new Set(mapLines).size !== mapLines.length) problems.push("contracts-duplicate-line");
+  const wantContracts = sortedKeys(model.contracts);
+  if (JSON.stringify(sortedKeys(new Set(descriptors))) !== JSON.stringify(wantContracts)) problems.push("contracts-descriptors");
+  if (JSON.stringify(sortedKeys(new Set(mapLines))) !== JSON.stringify(wantContracts)) problems.push("contracts-map");
+  return problems;
+}
+
+const env = { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1", GIT_AUTHOR_NAME: "harness", GIT_AUTHOR_EMAIL: "harness@example.invalid",
+  GIT_COMMITTER_NAME: "harness", GIT_COMMITTER_EMAIL: "harness@example.invalid", LC_ALL: "C" };
+function git(repo, args, { allowFail = false } = {}) {
+  const result = spawnSync(values.git, ["-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", "-c", "core.autocrlf=false", ...args], { cwd: repo, encoding: "utf8", env });
+  if (result.status !== 0 && !allowFail) throw new Error(`git ${args.join(" ")}\n${result.stdout}\n${result.stderr}`);
+  return result;
+}
+function writeTree(repo, files, previous) {
+  // Only the feature's own files are rewritten; .gitignore, .gitattributes and package.json stay.
+  for (const path of previous ?? []) if ((path.startsWith("src/") || path.startsWith("tests/")) && !files.has(path)) { try { unlinkSync(join(repo, path)); } catch { /* already gone */ } }
+  for (const [path, text] of files) { mkdirSync(dirname(join(repo, path)), { recursive: true }); writeFileSync(join(repo, path), text); }
+}
+const trackedFiles = (repo) => new Set(git(repo, ["ls-files"]).stdout.split("\n").filter(Boolean));
+
+function tscOk(repo, tsc) {
+  if (!tsc) return null;
+  const compiler = resolve(tsc, "node_modules/typescript/bin/tsc");
+  const result = spawnSync(process.execPath, [compiler, "--noEmit", "--strict", "--target", "ES2022", "--lib", "ES2023,DOM", "--module", "NodeNext",
+    "--moduleResolution", "NodeNext", "--types", "", "--skipLibCheck", "--pretty", "false",
+    ...readdirSync(join(repo, COMPOSITION)).map((f) => join(COMPOSITION, f))], { cwd: repo, encoding: "utf8" });
+  return result.status === 0;
+}
+
+function plan(seed, k) {
+  const random = mulberry32(seed * 1000 + k);
+  const names = shuffled(WORDS, random);
+  const base = names.slice(0, 12);
+  const fresh = names.slice(12);
+  const baseModel = { modules: new Map(base.map((n) => [n, { id: n, contract: n }])), contracts: new Set(base) };
+  const withContract = new Set(shuffled([...Array(k).keys()], random).slice(0, Math.floor(k / 2)));
+  const editors = shuffled([...Array(k).keys()], random).slice(0, Math.max(1, Math.round(k / 5)));
+  const targets = shuffled(base, random);
+  const branches = [];
+  let freshIndex = 0;
+  const take = () => fresh[freshIndex++];
+  for (let i = 0; i < k; i += 1) {
+    const name = take();
+    const ops = [{ op: "add", name, contract: withContract.has(i) ? name : base[Math.floor(random() * base.length)] }];
+    if (editors.includes(i)) {
+      const target = targets.pop();
+      ops.push(random() < 0.5 ? { op: "remove", name: target } : { op: "rename", name: target, to: take() });
+    }
+    branches.push(ops);
+  }
+  return { baseModel, branches };
+}
+function apply(model, ops) {
+  for (const o of ops) {
+    if (o.op === "add") { model.modules.set(o.name, { id: o.name, contract: o.contract }); model.contracts.add(o.contract); }
+    else if (o.op === "remove") model.modules.delete(o.name);
+    else { const entry = model.modules.get(o.name); model.modules.delete(o.name); model.modules.set(o.to, entry); }
+  }
+  return model;
+}
+
+async function oneRun(variant, k, seed) {
+  const repo = mkdtempSync(join(tmpdir(), `gm-s0-merge-${variant}-`));
+  const { baseModel, branches } = plan(seed, k);
+  const stats = { variant, k, seed, merges: [], addFiles: [] };
+  try {
+    git(repo, ["init", "-q", "-b", "main"]);
+    const ignored = ["node_modules/"];
+    if (variant.startsWith("G")) ignored.push(GROUP_FILE);
+    if (variant === "G3") ignored.push(WIRING_FILE);
+    writeFileSync(join(repo, ".gitignore"), ignored.join("\n") + "\n");
+    if (variant === "M2") writeFileSync(join(repo, ".gitattributes"), [GROUP_FILE, WIRING_FILE, CONTRACTS_FILE].map((p) => `${p} merge=union`).join("\n") + "\n");
+    if (tscRoot) { mkdirSync(join(repo, "node_modules/@get-modular"), { recursive: true }); for (const n of ["core", "assembly"]) symlinkSync(join(tscRoot, "packages", n), join(repo, "node_modules/@get-modular", n), "junction"); writeFileSync(join(repo, "package.json"), '{"type":"module","private":true}\n'); }
+    let tracked = new Set();
+    const baseFiles = render(baseModel, variant);
+    writeTree(repo, baseFiles, null);
+    git(repo, ["add", "-A"]); git(repo, ["commit", "-q", "-m", "base"]);
+    tracked = trackedFiles(repo);
+    const baseSha = git(repo, ["rev-parse", "HEAD"]).stdout.trim();
+    for (let i = 0; i < k; i += 1) {
+      git(repo, ["checkout", "-q", "-b", `b${i}`, baseSha]);
+      const model = apply(cloneModel(baseModel), branches[i]);
+      writeTree(repo, render(model, variant), tracked);
+      generate(repo, variant);
+      git(repo, ["add", "-A"]); git(repo, ["commit", "-q", "-m", `branch ${i}`]);
+      const diff = git(repo, ["diff", "--name-status", "-M", baseSha, "HEAD"]).stdout.trim().split("\n").filter(Boolean);
+      stats.addFiles.push({ added: diff.filter((l) => l.startsWith("A")).length, modified: diff.filter((l) => l.startsWith("M")).length, other: diff.filter((l) => !/^[AM]/u.test(l)).length,
+        remoteOps: branches[i].length });
+    }
+    git(repo, ["checkout", "-q", "main"]);
+    let truth = cloneModel(baseModel);
+    for (let i = 0; i < k; i += 1) {
+      truth = apply(truth, branches[i]);
+      git(repo, ["checkout", "-q", `b${i}`]);
+      const merged = git(repo, ["merge", "-q", "--no-edit", "main"], { allowFail: true });
+      const row = { branch: i, conflict: false, files: [], resolution: "none", invalid: [] };
+      if (merged.status !== 0) {
+        row.conflict = true;
+        row.files = git(repo, ["diff", "--name-only", "--diff-filter=U"]).stdout.split("\n").filter(Boolean);
+        let union = true;
+        for (const path of row.files) {
+          const stage = (n) => git(repo, ["show", `:${n}:${path}`], { allowFail: true });
+          const [s1, s2, s3] = [stage(1), stage(2), stage(3)];
+          if (s1.status !== 0 || s2.status !== 0 || s3.status !== 0) { union = false; continue; }
+          const work = mkdtempSync(join(tmpdir(), "gm-s0-union-"));
+          writeFileSync(join(work, "ours"), s2.stdout); writeFileSync(join(work, "base"), s1.stdout); writeFileSync(join(work, "theirs"), s3.stdout);
+          const out = spawnSync(values.git, ["merge-file", "-p", "--union", join(work, "ours"), join(work, "base"), join(work, "theirs")], { encoding: "utf8", env });
+          rmSync(work, { recursive: true, force: true });
+          writeFileSync(join(repo, path), out.stdout);
+        }
+        if (union) { git(repo, ["add", "-A"]); git(repo, ["commit", "-q", "--no-edit"]); }
+        row.resolution = union ? "keep-both" : "manual";
+      }
+      let problems = verify(repo, truth, variant);
+      row.invalid = problems;
+      if (tscRoot) row.tscOk = tscOk(repo, tscRoot);
+      if (problems.length > 0) {
+        // A person would repair the result: write the intended files, as the model says.
+        if (row.conflict && row.resolution === "keep-both") row.resolution = "keep-both-invalid";
+        writeTree(repo, render(truth, variant), trackedFiles(repo));
+        generate(repo, variant);
+        git(repo, ["add", "-A"]);
+        git(repo, ["commit", "-q", "--allow-empty", "-m", "manual repair"]);
+        const after = verify(repo, truth, variant);
+        if (after.length > 0) throw new Error(`repair failed for ${variant} K=${k} seed=${seed}: ${after.join(",")}`);
+      } else if (row.conflict && row.resolution === "manual") {
+        git(repo, ["add", "-A"]); git(repo, ["commit", "-q", "--no-edit"]);
+      }
+      git(repo, ["checkout", "-q", "main"]);
+      git(repo, ["merge", "-q", "--no-ff", "--no-edit", `b${i}`]);
+      const onMain = verify(repo, truth, variant);
+      if (onMain.length > 0) throw new Error(`main invalid after merging b${i}: ${onMain.join(",")} (${variant} K=${k} seed=${seed})`);
+      stats.merges.push(row);
+    }
+    // A branch that adds a module but forgets the group line: the orphan check must see it in M*, and G* cannot forget.
+    const orphanProbe = apply(cloneModel(truth), [{ op: "add", name: "zzprobe", contract: "zzprobe" }]);
+    const files = render(orphanProbe, variant);
+    if (hand(variant).group) files.set(GROUP_FILE, readFileSync(join(repo, GROUP_FILE), "utf8"));
+    writeTree(repo, files, trackedFiles(repo));
+    const probe = verify(repo, orphanProbe, variant);
+    stats.orphanDetected = probe.length === 0 ? "impossible (the group is generated)" : probe.some((p) => p.startsWith("orphan:")) ? "detected" : `missed (${probe.join(",")})`;
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
+  return stats;
+}
+
+const tscRoot = values.tsc ? resolve(values.tsc) : null;
+const all = [];
+for (const variant of VARIANTS) {
+  for (const k of KS) {
+    for (let seed = 1; seed <= SEEDS; seed += 1) {
+      all.push(await oneRun(variant, k, seed));
+    }
+    if (!values.quiet) console.error(`${variant} K=${k} done`);
+  }
+}
+
+// Aggregate.
+const summary = [];
+for (const variant of VARIANTS) {
+  for (const k of KS) {
+    const runs = all.filter((r) => r.variant === variant && r.k === k);
+    const merges = runs.flatMap((r) => r.merges);
+    const conflicted = merges.filter((m) => m.conflict);
+    const cleanInvalid = merges.filter((m) => !m.conflict && m.invalid.length > 0);
+    const perFile = {};
+    for (const m of conflicted) for (const f of m.files) perFile[f.replace(/\/\w+\.(declaration|module)\.ts$/u, "/<m>.$1.ts").replace(/wiring\/\w+\.wiring\.ts$/u, "wiring/<m>.wiring.ts")] = (perFile[f.replace(/\/\w+\.(declaration|module)\.ts$/u, "/<m>.$1.ts").replace(/wiring\/\w+\.wiring\.ts$/u, "wiring/<m>.wiring.ts")] ?? 0) + 1;
+    const adds = runs.flatMap((r) => r.addFiles);
+    const avg = (key, rows = adds) => Number((rows.reduce((s, a) => s + a[key], 0) / rows.length).toFixed(2));
+    const addOnly = adds.filter((a) => a.remoteOps === 1);
+    summary.push({
+      variant, k, runs: runs.length, merges: merges.length, conflictedMerges: conflicted.length,
+      conflictedShare: Number((conflicted.length / merges.length).toFixed(3)),
+      conflictsPerFile: perFile,
+      resolvedByKeepBoth: conflicted.filter((m) => m.resolution === "keep-both").length,
+      keepBothInvalid: conflicted.filter((m) => m.resolution === "keep-both-invalid").length,
+      manual: conflicted.filter((m) => m.resolution === "manual").length,
+      invalidAfterCleanMerge: cleanInvalid.length,
+      invalidReasons: [...new Set([...cleanInvalid, ...conflicted.filter((m) => m.resolution === "keep-both-invalid")].flatMap((m) => m.invalid.map((p) => p.replace(/:.*/u, ""))))].sort(),
+      branchFilesNewAvg: avg("added", addOnly), branchFilesEditedAvg: avg("modified", addOnly),
+      orphan: [...new Set(runs.map((r) => r.orphanDetected))],
+      tscDisagreements: values.tsc ? merges.filter((m) => m.tscOk !== (m.invalid.filter((p) => !p.startsWith("wiring")).length === 0)).length : undefined,
+    });
+  }
+}
+const digest = createHash("sha256").update(JSON.stringify(all, (key, value) => (key === "tscOk" ? undefined : value))).digest("hex").slice(0, 16);
+const output = { node: process.version, git: spawnSync(values.git, ["--version"], { encoding: "utf8" }).stdout.trim(), seeds: SEEDS, digest, summary };
+if (values.out) writeFileSync(values.out, JSON.stringify({ ...output, runs: all }, null, 1));
+console.log(JSON.stringify(output, null, 2));

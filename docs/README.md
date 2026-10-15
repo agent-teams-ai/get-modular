@@ -52,6 +52,7 @@ resource policy is the single profile described in the current contract.
 - [Train 1 release plan](../research/releases/0.3.0-train/release-plan.md) - rehearsal 3 and release PR plan for Core and Assembly 0.3.0, resources 0.1.0 and conformance 0.1.0; not an accepted decision.
 - [Contract revision windows train plan](../research/contract-evolution-2026-10/README.md) - plan and briefs for Core and Assembly 0.4.0; deferred by the owner on 2026-10-10; not an accepted decision.
 - [Module DX 0.5.0 train plan](../research/module-dx-2026-10/README.md) - implementation plan of the 0.5.0 train and the Feature Module Standard v1.1 nested features draft; planning only, not an accepted decision.
+- [Module entries spike results](../research/module-entries-2026-10/README.md) - measurements and prototype diff behind the entries-and-groups design, merge experiment, port check, oxlint probes and ADR-0036 and ADR-0037 drafts; research only, not an accepted decision.
 - [Lifecycle kernel extraction plan](../research/lifecycle-kernel-2026-09/README.md) - archived working plan behind ADR-0029; the current authority listed in its README takes precedence.
 - [Compiler engineer handbook](qualification/compiler-engineer-handbook.md) - seventeen fact derivations, partial failure rules and independent examples.
 - [Growth and first-publication readiness review](qualification/growth-and-release-readiness-review.md) - reconciled capability migration, namespace admission and release-mechanics findings.

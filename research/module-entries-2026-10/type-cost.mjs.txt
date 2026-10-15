@@ -1,0 +1,137 @@
+// S0 0A: type-check cost of the entries-and-groups shape against today's fragment fixture.
+//   node type-cost.mjs --workspace <built checkout> --variant today|today-split|entries [--counts 500,1000] [--teams 20]
+// `today` needs a built checkout of the base commit (bindFactory); `entries` one with prototype.diff applied (see prepare-workspace.mjs).
+// Counters are only comparable inside one run: same tsconfig, same compiler, `--singleThreaded` on tsc 7.
+import { spawnSync } from "node:child_process";
+import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { parseArgs } from "node:util";
+import { pathToFileURL } from "node:url";
+
+const { values } = parseArgs({ options: {
+  workspace: { type: "string" }, counts: { type: "string", default: "500,1000" }, teams: { type: "string", default: "20" },
+  variant: { type: "string", default: "entries" },
+} });
+if (!values.workspace) throw new Error("--workspace is required");
+const workspace = resolve(values.workspace);
+const teams = Number(values.teams);
+const counts = values.counts.split(",").map(Number);
+const require = createRequire(join(workspace, "package.json"));
+
+const slotsOf = (index) => (index === 0 ? [] : index === 1 ? [0] : [index - 1, Math.floor(index / 2)]);
+
+// The entries variant: contracts, declarations and entries in separate files, one group per team, one root.
+export function entriesFiles(count, teamCount, style = "entries") {
+  if (!Number.isInteger(count / teamCount)) throw new Error("count must be a multiple of teams");
+  const perTeam = count / teamCount;
+  const all = Array.from({ length: count }, (_, i) => i);
+  const files = {};
+  files["contracts.ts"] = [
+    'import { defineContract } from "@get-modular/assembly";',
+    ...all.map((i) => `export const C${i} = defineContract<{ readonly v${i}: (x: number) => number }>()({ id: "fragment/c${i}", revision: ${1 + (i % 3)} });`),
+  ].join("\n") + "\n";
+  const rootImports = [];
+  for (let team = 0; team < teamCount; team += 1) {
+    const modules = Array.from({ length: perTeam }, (_, o) => team * perTeam + o);
+    const used = [...new Set(modules.flatMap((i) => [i, ...slotsOf(i)]))].sort((a, b) => a - b);
+    files[`team${team}.declarations.ts`] = [
+      'import { required } from "@get-modular/core";',
+      'import { declareModule } from "@get-modular/assembly";',
+      `import { ${used.map((i) => `C${i}`).join(", ")} } from "./contracts.js";`,
+      ...modules.map((i) => `export const d${i} = declareModule({ moduleId: "fragment/m${i}", implementationId: "fragment/m${i}", owner: { authority: "fragment", path: ["t${team}"] }, provides: [C${i}.provide()], slots: [${slotsOf(i).map((s) => `C${s}.slot("s${s}", required())`).join(", ")}] });`),
+    ].join("\n") + "\n";
+    files[`team${team}.group.ts`] = [
+      style !== "handles" ? 'import { group, implement } from "@get-modular/assembly";' : 'import { assemblyFor } from "@get-modular/assembly";',
+      'import type { CapabilitiesOf } from "@get-modular/assembly";',
+      `import { ${used.map((i) => `C${i}`).join(", ")} } from "./contracts.js";`,
+      `import { ${modules.map((i) => `d${i}`).join(", ")} } from "./team${team}.declarations.js";`,
+      `interface Team${team} extends CapabilitiesOf<${used.map((i) => `typeof C${i}`).join(" | ")}> {}`,
+      style !== "handles" ? `const entry = implement<Team${team}>();` : `const api = assemblyFor<Team${team}>();`,
+      ...modules.map((i) => {
+        const body = slotsOf(i).map((s) => `deps.s${s}.v${s}(1)`).join(" + ") || "0";
+        return `export const e${i} = ${style !== "handles" ? "entry" : "api.bindFactory"}(d${i}, async (deps) => ({ instance: { n: ${body} }, capabilities: { "fragment/c${i}": { v${i}: (x: number) => x } } }));`;
+      }),
+      style === "entries" ? `export const team${team} = group("team${team}", [${modules.map((i) => `e${i}`).join(", ")}]);` : `export const team${team} = [${modules.map((i) => `e${i}`).join(", ")}] as const;`,
+    ].join("\n") + "\n";
+    rootImports.push(`import { team${team}${team === teamCount - 1 ? `, e${count - 1}` : ""} } from "./team${team}.group.js";`);
+  }
+  files["root.ts"] = [
+    'import { assemblyFor } from "@get-modular/assembly";',
+    'import type { CapabilitiesOf } from "@get-modular/assembly";',
+    `import { ${all.map((i) => `C${i}`).join(", ")} } from "./contracts.js";`,
+    ...rootImports,
+    `interface HostCapabilities extends CapabilitiesOf<${all.map((i) => `typeof C${i}`).join(" | ")}> {}`,
+    "const host = assemblyFor<HostCapabilities>();",
+    "export async function consumeEntries(): Promise<number> {",
+    style === "entries"
+      ? `  const ready = await host.prepare({ profileId: "fragment/root", modules: [${Array.from({ length: teamCount }, (_, t) => `team${t}`).join(", ")}], roots: { last: e${count - 1} } });`
+      : style === "entries-flat" ? `  const ready = await host.prepare({ profileId: "fragment/root", modules: [${Array.from({ length: teamCount }, (_, t) => `...team${t}`).join(", ")}], roots: { last: e${count - 1} } });`
+      : `  const ready = await host.prepare({ profileId: "fragment/root", factories: [${Array.from({ length: teamCount }, (_, t) => `...team${t}`).join(", ")}], roots: { last: e${count - 1} } });`,
+    '  if (ready.status !== "prepared") return 0;',
+    "  const outcome = await ready.prepared.run({ scope: undefined });",
+    '  return outcome.status === "succeeded" ? outcome.roots.last.n : 0;',
+    "}",
+  ].join("\n") + "\n";
+  return files;
+}
+
+async function measure(directory, compilerName, module, resolution, entries) {
+  const manifestPath = require.resolve(`${compilerName}/package.json`);
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  const compiler = join(dirname(manifestPath), "bin/tsc");
+  const args = [compiler, "--project", join(directory, "tsconfig.json"), "--module", module, "--moduleResolution", resolution,
+    "--extendedDiagnostics", "--pretty", "false"];
+  if (manifest.version.startsWith("7.")) args.push("--singleThreaded");
+  const started = performance.now();
+  const result = spawnSync(process.execPath, args, { cwd: directory, encoding: "utf8", timeout: 900000, maxBuffer: 64 * 1024 * 1024,
+    env: { ...process.env, NODE_PATH: "", NODE_OPTIONS: "" } });
+  const read = (label) => Number(new RegExp(`^${label}:\\s+(\\d+)$`, "mu").exec(result.stdout)?.[1] ?? NaN);
+  const errors = [...result.stdout.matchAll(/error TS(\d+)/gu)].map((m) => `TS${m[1]}`);
+  return { compiler: manifest.version, resolution, status: result.status, errors: errors.slice(0, 5),
+    instantiations: read("Instantiations"), types: read("Types"), wallMs: Math.round(performance.now() - started), files: entries };
+}
+
+async function scratch(sources) {
+  const directory = await realpath(await mkdtemp(join(tmpdir(), "gm-s0-typecost-")));
+  await mkdir(join(directory, "node_modules/@get-modular"), { recursive: true });
+  for (const name of ["core", "assembly"]) {
+    await symlink(join(workspace, "packages", name), join(directory, "node_modules/@get-modular", name), "junction");
+  }
+  await writeFile(join(directory, "package.json"), JSON.stringify({ name: "type-cost", private: true, type: "module" }));
+  for (const [name, text] of Object.entries(sources)) await writeFile(join(directory, name), text);
+  await writeFile(join(directory, "tsconfig.json"), JSON.stringify({ compilerOptions: {
+    target: "ES2022", lib: ["ES2023", "DOM"], strict: true, noEmit: true,
+    skipLibCheck: false, types: [], isolatedDeclarations: false, erasableSyntaxOnly: false,
+  }, files: Object.keys(sources) }));
+  return directory;
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const rows = [];
+  for (const count of counts) {
+    let sources;
+    if (values.variant === "entries-flat") {
+      sources = entriesFiles(count, teams, "entries-flat");
+    } else if (values.variant === "today-split") {
+      sources = entriesFiles(count, teams, "handles");
+    } else if (values.variant === "today") {
+      const { fragmentSource } = await import(pathToFileURL(join(workspace, "tests/assembly/type-scale.mjs")).href);
+      sources = { "fragment-scale.ts": fragmentSource(count, teams) };
+    } else {
+      sources = entriesFiles(count, teams);
+    }
+    const directory = await scratch(sources);
+    try {
+      for (const compilerName of ["typescript", "typescript-minimum"]) {
+        for (const [module, resolution] of [["NodeNext", "NodeNext"], ["ESNext", "Bundler"]]) {
+          const row = { count, variant: values.variant, ...(await measure(directory, compilerName, module, resolution, Object.keys(sources).length)) };
+          rows.push(row);
+          console.error(JSON.stringify(row));
+        }
+      }
+    } finally { await rm(directory, { recursive: true, force: true }); }
+  }
+  console.log(JSON.stringify(rows, null, 2));
+}

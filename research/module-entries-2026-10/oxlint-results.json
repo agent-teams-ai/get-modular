@@ -1,0 +1,226 @@
+[
+  {
+    "oxlint": "1.83.0",
+    "snippet": {
+      "exitCode": 1,
+      "filesChecked": 138,
+      "mismatches": [],
+      "cases": 138,
+      "byGroup": {
+        "declaration depth 1": "all as expected",
+        "ban depth 1": "all as expected",
+        "size depth 1": "all as expected",
+        "declaration depth 2": "all as expected",
+        "ban depth 2": "all as expected",
+        "size depth 2": "all as expected",
+        "declaration depth 3": "all as expected",
+        "ban depth 3": "all as expected",
+        "size depth 3": "all as expected",
+        "declaration depth 4": "all as expected",
+        "ban depth 4": "all as expected",
+        "size depth 4": "all as expected",
+        "outside features": "all as expected"
+      },
+      "rejectMessages": {
+        "'@get-modular/resources' import is restricted from being used by a pattern.": "eslint(no-restricted-imports)",
+        "'../application/use-cases/apply-discount.js' import is restricted from being used by a pattern.": "eslint(no-restricted-imports)",
+        "'@get-modular/assembly' import is restricted from being used by a pattern.": "eslint(no-restricted-imports)",
+        "'node:fs' import is restricted from being used by a pattern.": "eslint(no-restricted-imports)",
+        "'compileComposition' import from '@get-modular/core' is restricted because only required, optional, many import(s) is/are allowed.": "eslint(no-restricted-imports)",
+        "'../contracts/ports.js' import is restricted from being used by a pattern.": "eslint(no-restricted-imports)",
+        "'./checkout.module.js' import is restricted from being used by a pattern.": "eslint(no-restricted-imports)",
+        "'implement' import from '@get-modular/assembly' is restricted because only declareModule import(s) is/are allowed.": "eslint(no-restricted-imports)",
+        "'./other.declaration.js' import is restricted from being used by a pattern.": "eslint(no-restricted-imports)"
+      }
+    },
+    "denyWarnings": {
+      "withoutFlagExit": 0,
+      "withFlagExit": 1
+    },
+    "preset": {
+      "unanchored **/features/**, plain node_modules path": {
+        "exitCode": 1,
+        "src/features/orders/composition/a.module.ts (4 counted lines, max 3)": [
+          "eslint(max-lines)"
+        ],
+        "nested src/features/orders/features/pay/composition/b.module.ts": [
+          "eslint(max-lines)"
+        ],
+        "packages/x/src/features/.../c.module.ts": [
+          "eslint(max-lines)"
+        ],
+        "domain file importing @get-modular/*": [
+          "eslint(no-restricted-imports)"
+        ]
+      },
+      "unanchored **/features/**, pnpm-style symlinked package": {
+        "exitCode": 1,
+        "src/features/orders/composition/a.module.ts (4 counted lines, max 3)": [
+          "eslint(max-lines)"
+        ],
+        "nested src/features/orders/features/pay/composition/b.module.ts": [
+          "eslint(max-lines)"
+        ],
+        "packages/x/src/features/.../c.module.ts": [
+          "eslint(max-lines)"
+        ],
+        "domain file importing @get-modular/*": [
+          "eslint(no-restricted-imports)"
+        ]
+      },
+      "anchored src/features/**, plain node_modules path": {
+        "exitCode": 1,
+        "src/features/orders/composition/a.module.ts (4 counted lines, max 3)": [
+          "eslint(max-lines)"
+        ],
+        "nested src/features/orders/features/pay/composition/b.module.ts": [
+          "eslint(max-lines)"
+        ],
+        "packages/x/src/features/.../c.module.ts": [],
+        "domain file importing @get-modular/*": [
+          "eslint(no-restricted-imports)"
+        ]
+      },
+      "anchored src/features/**, pnpm-style symlinked package": {
+        "exitCode": 1,
+        "src/features/orders/composition/a.module.ts (4 counted lines, max 3)": [
+          "eslint(max-lines)"
+        ],
+        "nested src/features/orders/features/pay/composition/b.module.ts": [
+          "eslint(max-lines)"
+        ],
+        "packages/x/src/features/.../c.module.ts": [],
+        "domain file importing @get-modular/*": [
+          "eslint(no-restricted-imports)"
+        ]
+      }
+    },
+    "testRoot": {
+      "no exclusion": {
+        "src production file over the limit": [
+          "eslint(max-lines)"
+        ],
+        "tests/features/orders/big.test.ts": [
+          "eslint(max-lines)"
+        ],
+        "tests/features/orders/testing.ts (not *.test.ts)": [
+          "eslint(max-lines)"
+        ],
+        "src adapter importing @get-modular/*": [
+          "eslint(no-restricted-imports)"
+        ],
+        "tests adapter test importing @get-modular/*": [
+          "eslint(no-restricted-imports)"
+        ]
+      },
+      "excludeFiles **/tests/** and **/*.test.ts": {
+        "src production file over the limit": [
+          "eslint(max-lines)"
+        ],
+        "tests/features/orders/big.test.ts": [],
+        "tests/features/orders/testing.ts (not *.test.ts)": [],
+        "src adapter importing @get-modular/*": [
+          "eslint(no-restricted-imports)"
+        ],
+        "tests adapter test importing @get-modular/*": []
+      }
+    }
+  },
+  {
+    "oxlint": "1.88.0",
+    "snippet": {
+      "exitCode": 1,
+      "filesChecked": 136,
+      "mismatches": [],
+      "cases": 136,
+      "byGroup": {
+        "declaration depth 1": "all as expected",
+        "ban depth 1": "all as expected",
+        "size depth 1": "all as expected",
+        "declaration depth 2": "all as expected",
+        "ban depth 2": "all as expected",
+        "size depth 2": "all as expected",
+        "declaration depth 3": "all as expected",
+        "ban depth 3": "all as expected",
+        "size depth 3": "all as expected",
+        "declaration depth 4": "all as expected",
+        "ban depth 4": "all as expected",
+        "size depth 4": "all as expected",
+        "outside features": "all as expected"
+      },
+      "rejectMessages": {
+        "'@get-modular/assembly' import is restricted from being used by a pattern.": "eslint(no-restricted-imports)",
+        "'implement' import from '@get-modular/assembly' is restricted because only declareModule import(s) is/are allowed.": "eslint(no-restricted-imports)",
+        "'node:fs' import is restricted from being used by a pattern.": "eslint(no-restricted-imports)",
+        "'../application/use-cases/apply-discount.js' import is restricted from being used by a pattern.": "eslint(no-restricted-imports)",
+        "'./other.declaration.js' import is restricted from being used by a pattern.": "eslint(no-restricted-imports)",
+        "'compileComposition' import from '@get-modular/core' is restricted because only required, optional, many import(s) is/are allowed.": "eslint(no-restricted-imports)",
+        "'@get-modular/resources' import is restricted from being used by a pattern.": "eslint(no-restricted-imports)",
+        "'../contracts/ports.js' import is restricted from being used by a pattern.": "eslint(no-restricted-imports)",
+        "'./checkout.module.js' import is restricted from being used by a pattern.": "eslint(no-restricted-imports)"
+      }
+    },
+    "denyWarnings": {
+      "withoutFlagExit": 0,
+      "withFlagExit": 1
+    },
+    "preset": {
+      "unanchored **/features/**, plain node_modules path": {
+        "exitCode": 1,
+        "src/features/orders/composition/a.module.ts (4 counted lines, max 3)": [
+          "eslint(max-lines)"
+        ],
+        "nested src/features/orders/features/pay/composition/b.module.ts": [
+          "eslint(max-lines)"
+        ],
+        "packages/x/src/features/.../c.module.ts": [
+          "eslint(max-lines)"
+        ],
+        "domain file importing @get-modular/*": [
+          "eslint(no-restricted-imports)"
+        ]
+      },
+      "unanchored **/features/**, pnpm-style symlinked package": {
+        "exitCode": 1,
+        "src/features/orders/composition/a.module.ts (4 counted lines, max 3)": [
+          "eslint(max-lines)"
+        ],
+        "nested src/features/orders/features/pay/composition/b.module.ts": [
+          "eslint(max-lines)"
+        ],
+        "packages/x/src/features/.../c.module.ts": [
+          "eslint(max-lines)"
+        ],
+        "domain file importing @get-modular/*": [
+          "eslint(no-restricted-imports)"
+        ]
+      },
+      "anchored src/features/**, plain node_modules path": {
+        "exitCode": 1,
+        "src/features/orders/composition/a.module.ts (4 counted lines, max 3)": [
+          "eslint(max-lines)"
+        ],
+        "nested src/features/orders/features/pay/composition/b.module.ts": [
+          "eslint(max-lines)"
+        ],
+        "packages/x/src/features/.../c.module.ts": [],
+        "domain file importing @get-modular/*": [
+          "eslint(no-restricted-imports)"
+        ]
+      },
+      "anchored src/features/**, pnpm-style symlinked package": {
+        "exitCode": 1,
+        "src/features/orders/composition/a.module.ts (4 counted lines, max 3)": [
+          "eslint(max-lines)"
+        ],
+        "nested src/features/orders/features/pay/composition/b.module.ts": [
+          "eslint(max-lines)"
+        ],
+        "packages/x/src/features/.../c.module.ts": [],
+        "domain file importing @get-modular/*": [
+          "eslint(no-restricted-imports)"
+        ]
+      }
+    }
+  }
+]

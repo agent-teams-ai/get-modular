@@ -1,0 +1,7 @@
+// expect: TS2345; an error at implement: the declaration uses a contract its feature map does not contain
+import { implement } from "@get-modular/assembly";
+import { clockDeclaration } from "./shared.js";
+import type { CapabilitiesOf } from "@get-modular/assembly";
+import { Orders } from "./shared.js";
+interface Only extends CapabilitiesOf<typeof Orders> {}
+export const broken = implement<Only>()(clockDeclaration, async () => ({ instance: {}, capabilities: { "s0/clock": { now: () => 1 } } }));

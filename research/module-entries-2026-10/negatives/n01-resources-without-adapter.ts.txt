@@ -1,0 +1,6 @@
+// expect: TS2339 in the module file (a factory that reads `resources` without the adapter); today the error is TS2345 in the root
+import { implement } from "@get-modular/assembly";
+import { ordersDeclaration, type OrdersMap } from "./shared.js";
+export const broken = implement<OrdersMap>()(ordersDeclaration, async (deps, context) => ({
+  instance: { total: deps.clock.now() + (context.resources === undefined ? 0 : 1) }, capabilities: { "s0/orders": { count: () => 2 } },
+}));

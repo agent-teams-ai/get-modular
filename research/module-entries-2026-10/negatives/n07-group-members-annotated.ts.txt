@@ -1,0 +1,6 @@
+// expect: TS2345; an error: group members must be a tuple, so an annotated array is rejected at group()
+import { group } from "@get-modular/assembly";
+import type { AnyEntry } from "@get-modular/assembly";
+import { clockEntry, ordersEntry } from "./shared.js";
+const members: AnyEntry[] = [clockEntry, ordersEntry];
+export const broken = group("annotated", members);
