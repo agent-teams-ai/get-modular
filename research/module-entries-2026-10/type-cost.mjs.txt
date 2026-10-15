@@ -1,6 +1,6 @@
 // S0 0A: type-check cost of the entries-and-groups shape against today's fragment fixture.
 //   node type-cost.mjs --workspace <built checkout> --variant today|today-split|entries [--counts 500,1000] [--teams 20]
-// `today` needs a built checkout of the base commit (bindFactory); `entries` one with prototype.patch applied (see lib.mjs).
+// `today` needs a built checkout of the base commit (bindFactory); `entries` one with prototype.diff applied (see prepare-workspace.mjs).
 // Counters are only comparable inside one run: same tsconfig, same compiler, `--singleThreaded` on tsc 7.
 import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";

@@ -1,4 +1,4 @@
-// expect: an error: isolate(entry) types the dependencies from the entry.
+// expect: TS2322; an error: isolate(entry) types the dependencies from the entry
 import { isolate } from "@get-modular/conformance";
 import { ordersEntry } from "./shared.js";
 export const result = isolate(ordersEntry, { dependencies: { clock: 5, audit: undefined } });

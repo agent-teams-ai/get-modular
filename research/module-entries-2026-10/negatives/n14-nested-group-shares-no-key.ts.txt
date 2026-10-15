@@ -1,4 +1,4 @@
-// expect: an error in the prepare call: the entry sits in a group and shares no key with the Host map. (the root is valid, so the error comes from the module list)
+// expect: TS2322; an error in the prepare call: the entry sits in a group and shares no key with the Host map; the root is valid, so the error comes from the module list
 import { assemblyFor, declareModule, group, implement } from "@get-modular/assembly";
 import { defineContract } from "@get-modular/assembly";
 import { clockEntry, HostMap } from "./shared.js";

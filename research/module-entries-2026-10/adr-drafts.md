@@ -63,11 +63,14 @@ every module lands in one flat root.
 ### Precedence
 
 Supersedes the binding API of ADR-0032 and, in ADR-0035, the rejected alternatives "A separate compose method" and "A
-bindAll helper", and the rejection of "A generated root with a check mode" on cost grounds only: a file-name convention
-loads no module (ADR-0006 allows generated inventories). If a later record adopts generated group files, that record
-supersedes the last point. Also supersedes the ADR-0031 rejected alternatives "names stay explicit in `scoped(name,
-factory)`" (the name is now the implementation id Assembly passes when it applies the adapter; the factory context stays
-closed) and "An opaque `context: X` for every factory" (ADR-0031: an adapter other than `scoped` would recreate it), the
+bindAll helper". Narrows the ADR-0035 rejection of "A generated root with a check mode" to its cost ground (a generator, a
+build step and drift): a generator that reads file names loads no module, so the ADR-0006 ground does not apply (ADR-0006
+allows generated inventories); ADR-0023 still rejects publishing a general generator. If a later record adopts generated
+group files, it supersedes this point. Amends the reason of the ADR-0031 rejected alternative "`implementationId` in the
+context to name scopes automatically": names are no longer written in `scoped(name, factory)` because Assembly passes the
+implementation id when it applies the adapter; the context stays closed, so that rejection stands. Keeps the ADR-0031
+rejection of "An opaque `context: X` for every factory": an adapter other than `scoped` would recreate it, so `scoped` is the
+only admitted adapter. Also supersedes the
 Consumer Module Standard testing rule 5 and the API section until its revision, and admits the exact pair Core 0.5.0 and
 Assembly 0.5.0 (ADR-0027 rule). GM-REQ-002, -011 and -012 are unchanged: `implement` adds the entry to a private WeakSet
 at import, which is authentication, not a registry (nothing is looked up by key, nothing is discovered); groups are inert
@@ -93,8 +96,10 @@ and 1,352,992 against 1,420,303; growth is linear.
 ## Rejected alternatives
 
 Runtime discovery or glob imports (GM-REQ-011); decorators (GM-REQ-012); generated group files with a check mode (one
-line per module saved for a generator, a build step and generated files; superseded by the codegen record if the spike's
-merge experiment selected it); deduplicating a twice-reached entry (features would pull other features in silently);
+line per module saved for a generator, a build step and generated files). G2 alone does not reduce conflicts; G3 (group plus
+aggregated per-module pins) cut conflicted merges from 0.47 to 0.10 at K=6 and from 0.55 to 0.16 at K=10; the decision on
+cost (b) is recorded by the owner (pending). M2 is excluded from "best hand-written" because of its invalid merges
+(interpretation); deduplicating a twice-reached entry (features would pull other features in silently);
 keeping `bindFactory` beside entries (two ways to bind); feature functions taking a narrowed `api` (double listing
 stays); lazy validation in `prepare` (new codes, weaker snapshot rule); a `smoke` hook in Assembly (public inert fields
 suffice); a JSON manifest as the source of truth now (TypeScript keeps type linkage, single ids and refactors; a manifest
@@ -115,7 +120,11 @@ Points S0 settled or leaves open for P1a:
   or with `assembly.bind.limit`; the plan names only the depth case. `entriesOf` is generic in the prototype so that the
   result keeps entry types (the plan lists a non-generic signature).
 - Open, decide in P1a: the path reported for an input entry in `duplicate-module` (the prototype reports
-  `["(inputs)", alias]`; the plan does not say).
+  `["(inputs)", alias]`, which collides with a valid group named `(inputs)`; the plan does not say).
+- Open, decide in P1a (found in review, not re-run by me): `ModuleItem<C>` must be `AnyModuleEntry<C> |
+  ModuleGroup<AnyModuleEntry<C>, keyof C>`; with `unknown` a `readonly ModuleItem<HostMap>[]` list fails with TS2322.
+  P1a also decides the public type set (`AnyEntry`, `EntriesOf`, `DependenciesOf`, `CapabilitiesProvidedBy`, `InstanceOf`,
+  `ModuleItem`, `KnownModules`, `TupleOnly`) and records it in this ADR and `public-api-compatibility.yaml`.
 
 ## ADR-0037: Pin providers, not completed rows, in the binding oracle
 
@@ -138,6 +147,8 @@ maintained by copying output, the main risk ADR-0035 names.
   listed row equals its plan row; a conflict between oracle parts fails. It reports every difference.
 - A feature may keep its own oracle part. The oracle is never derived from the profile, the plan or the implementation.
   Oracle parts are test code. `describeWiring` exists for debugging only.
+- Error style: a mismatch throws a `ConformanceError` with code `conformance.wiring.mismatch` whose `details.differences`
+  lists every difference.
 
 ### Precedence
 

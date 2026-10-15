@@ -1,3 +1,3 @@
-// expect: an error: a group lists only entries and groups.
+// expect: TS2345; an error: a group lists only entries and groups
 import { group } from "@get-modular/assembly";
 export const broken = group("junk", [{ declaration: 1 }]);

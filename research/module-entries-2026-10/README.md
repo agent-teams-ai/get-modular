@@ -2,7 +2,7 @@
 
 Research only. This directory holds the results and the scripts of phase 0 of the Get Modular 0.5.0 train (plan:
 `research/module-dx-2026-10/0.5.0-train.md`, "Phase 0: spike"). It changes no package: the prototype of entries and
-groups is a patch (`prototype.patch`) that the scripts apply to a disposable checkout, and P1a rewrites it.
+groups is a patch (`prototype.diff`) that the scripts apply to a disposable checkout, and P1a rewrites it.
 
 Base: `bfb7cff`. Toolchain: Node 26.11.1, pnpm 11.20.0, TypeScript 7.0.2 (`typescript`) and 5.8.3 (`typescript-minimum`),
 oxlint 1.83.0 and 1.88.0 (latest stable on 2026-10-15), git 2.38.1 and Apple Git 2.39.5.
@@ -19,7 +19,7 @@ oxlint 1.83.0 and 1.88.0 (latest stable on 2026-10-15), git 2.38.1 and Apple Git
 
 ## 0A Runtime and types
 
-Prototype in `prototype.patch` (assembly: `implement`, `input`, `group`, `entriesOf`, `prepare({ modules })`; conformance:
+Prototype in `prototype.diff` (assembly: `implement`, `input`, `group`, `entriesOf`, `prepare({ modules })`; conformance:
 `smoke` rebuild, `isolate(entry)`). `prepare-workspace.mjs` builds a checkout with and without it.
 
 Type cost, 20 groups, declarations in files separate from the entries, `--singleThreaded` on tsc 7
@@ -32,9 +32,9 @@ Type cost, 20 groups, declarations in files separate from the entries, `--single
 | tsc 7.0.2 | 1,000 | 1,051,998 / 177,956 | 1,075,118 / 186,229 | 1,034,123 / 181,660 | -1.7% inst |
 | TS 5.8.3 | 1,000 | 1,420,303 / 173,516 | 1,362,700 / 173,711 | 1,352,992 / 169,142 | -4.7% inst |
 
-Growth from 500 to 1,000 is linear. The tuple rule for `members` and `modules` is inside these numbers (the plan allowed 1%).
+Growth from 500 to 1,000 is linear. The tuple rule for `members` and `modules` is inside these numbers; its own cost was not isolated, so the plan's 1% allowance is not separately confirmed.
 
-Finding that changes the API text: the first formulation, where `prepare` re-derived the used keys from the union of all
+Finding that changes the API text (the numbers of the first formulation are from an interim run of the prototype and are not reproducible from the files here; the final shape is): the first formulation, where `prepare` re-derived the used keys from the union of all
 entries (`EntriesOf` over the group types), measured 569,475 instantiations (+4.96%) on tsc 7 and 755,455 (+5.59%, over
 budget) on TS 5.8.3. Giving `ModuleGroup` a phantom second parameter `K`, the union of the keys its entries use,
 computed once when `group` is called, removed the cost. P1a keeps `ModuleGroup<E, K>`. An entry also carries the used part
@@ -76,7 +76,13 @@ another api fails with `conformance.smoke.failed` (tested). `isolate(entry, { de
 `scoped`. Conformance now imports `implement`, `group` and `assemblyFor` as values, so one copy of Assembly must resolve.
 
 Open for P1a: `group` wider than 4096 throws `assembly.bind.invalid-group` in the prototype (the plan names only depth);
-`entriesOf` is generic in the prototype; the path reported for an input entry in `duplicate-module` is `["(inputs)", alias]`.
+`entriesOf` is generic in the prototype; the path reported for an input entry in `duplicate-module` is `["(inputs)", alias]`,
+which collides with a valid group named `(inputs)`. Found in the independent review (not re-run by me): `ModuleItem<C>`
+must be `AnyModuleEntry<C> | ModuleGroup<AnyModuleEntry<C>, keyof C>`; with `unknown` as the second argument a
+`readonly ModuleItem<HostMap>[]` list fails with TS2322, the fix compiles, the negatives still fail as before and it costs
+6 instantiations. P1a also decides the public type set (`AnyEntry`, `EntriesOf`, `DependenciesOf`,
+`CapabilitiesProvidedBy`, `InstanceOf`, `ModuleItem`, `KnownModules`, `TupleOnly`) and records it in ADR-0036 and
+`public-api-compatibility.yaml`.
 
 ## 0B Codegen of group lists against hand-written groups
 
@@ -95,7 +101,7 @@ Merges with a textual conflict (conflicted / merges), any file counted:
 | M2 M1 + `merge=union` | 0/30 | 0/60 | 0/100 | none reported | n/a | 22 of 100 (7 at K=6, 2 at K=3) |
 | G2 group generated | 4/30 (0.13) | 25/60 (0.42) | 51/100 (0.51) | oracle 51, contracts 16 | 18 of 51 | 0 |
 | G3 group and oracle generated | 0/30 | 6/60 (0.10) | 16/100 (0.16) | contracts 16 | 0 of 16 | 0 |
-| M4 spaced lines (informational) | 7/30 | 27/60 (0.45) | 50/100 (0.50) | as M1 | 25 of 50 | 0 |
+| M4 spaced lines (informational) | 7/30 | 27/60 (0.45) | 50/100 (0.50) | group 46, oracle 45, contracts 16 | 25 of 50 | 0 |
 
 Invalid cases are removed or renamed modules whose line comes back, duplicate lines and imports of deleted files. Files per
 module add (K=3): M1 2 new and 2.4 edited; G2 2 new, 1.4 edited; G3 3 new, 0.4 edited, plus one generator run before every
@@ -103,20 +109,20 @@ typecheck, test and editor session, one build step and one CI step. A branch tha
 the orphan check detects it in M1, M2 and M4 (tested in every run); it cannot happen in G2 and G3.
 
 The run is deterministic: git 2.38.1 (with tsc cross-check) and Apple Git 2.39.5 produce the same digest of all runs
-(`dbd8806bc1f5294b`). No second machine was available; a second operating system would be a CI job (the scripts
-need only node and git).
+(`dbd8806bc1f5294b`). The stop condition "different results on two machines" was checked only with two git versions on one
+Mac; no second machine was available, and a second operating system would be a CI job (the scripts need only node and git).
 
 Verdict by the rule written before the run:
 
-- (a) Best hand-written variant with zero invalid merges is M1 (M2 has silent invalid merges, 22% at K=10, so it is not
-  recommended). G2 does not reach half of M1's share (0.42 against 0.47 at K=6, 0.51 against 0.55 at K=10). G3 does
-  (0.10 against 0.47 and 0.16 against 0.55, about a fifth to a third) with zero invalid merges.
+- (a) Interpretation: M2 is excluded from "best hand-written variant" because of its silent invalid merges (22% at K=10),
+  so the best hand-written variant is M1 (otherwise M2's zero reported conflicts could not be matched by any variant). G2 does not reach half of M1's share (0.42 against 0.47 at K=6, 0.51 against 0.55 at K=10). G3 passes
+  at K=6 (0.10 against 0.47) and at K=10 (0.16 against 0.55), about a fifth to a third, with zero invalid merges.
 - (b) is a cost judgment the measurement does not make. The cost: a generator step before every typecheck, test and editor
   session in every consumer, a vendored script or a new CLI package (a new admission; a leaf package may not carry `bin`).
   G3's gain comes from two generated files together (group and oracle aggregation); G2 alone gains nothing.
 - My recommendation, labeled as my judgment: do not select codegen for 0.5.0. Ten agents adding to one 12-module feature in
   parallel is beyond the split signal (about 12 modules), where the guide already says to split; at K=3 M1 conflicts in 23%
-  of merges and 60% of conflicts are resolved by keeping both sides. Hand-written groups plus the orphan check, and no
+  of merges (7 of 30) and 5 of those 7 (71%) are resolved by keeping both sides; at K=10, 33 of 55 (60%). Hand-written groups plus the orphan check, and no
   `merge=union` recommendation (22% silent invalid merges). If the owner weighs the 0.16 against 0.55 at K=10 more
   heavily, the decision selects G3 and the plan's "If 0B selects codegen" section applies.
 
@@ -126,7 +132,8 @@ Verdict by the rule written before the run:
 containers of this realm and at a foreign `Object.prototype`, reports function-valued data properties and accessors other
 than `constructor`, reads descriptors only. `Array.isArray` is checked first because it holds across realms.
 `port-check.test.mjs` covers the cases the plan names, including that no getter runs and that a Proxy trap runs. Known
-limit found: a Map or Date of another realm (a `vm` context) is flagged, because only this realm's prototypes are captured.
+limit found: a Map or Date of another realm (a `vm` context) is flagged, because only this realm's prototypes are captured;
+whether P1b exempts them (for example by `Object.prototype.toString` tags) is an open decision for P1b.
 
 Counts (`hook-loader.mjs` wraps `assemblyFor` through Node module hooks and reports what runs create; nothing under
 `node_modules` is edited):
@@ -138,10 +145,28 @@ Counts (`hook-loader.mjs` wraps `assemblyFor` through Node module hooks and repo
 | agent-runtime at `4d8a5ff30`, both roots (`ordinary-runtime-assembly` and `runtime-setup-assembly` tests) | 20 | 17 | 1 | class port |
 | Observation sketch v3 of #153 (`observation-sketch.mjs`: reader, port, sync and derived participant, snapshot) | 5 | 5 | 0 | n/a |
 
+How the counts were produced (materialized scripts, Node 26.11.1). Every run sets
+`GM_PORT_PROBE_FILE=<file>.jsonl` and `NODE_OPTIONS="--import <dir>/port-check/hook-register.mjs"`, then
+`node port-check/summarize.mjs <file>.jsonl`:
+
+- Get Modular, in a checkout of the base with core, assembly, resources and conformance built:
+  `node --test "tests/assembly/**/*.test.mjs" "packages/assembly/tests/**/*.test.mjs" "packages/conformance/tests/*.test.mjs"
+  "packages/resources/tests/*.test.mjs" "tests/resources/**/*.test.mjs" tests/self-composition-templates.test.mjs`
+  (two packed-archive tests fail there for lack of packed archives and are unrelated).
+- TEST at `695b91f`, with the archives of `third_party/archives` extracted into `node_modules/@get-modular/`: `node --test`
+  in the repository root.
+- agent-runtime at `4d8a5ff30`, in `packages/apps/embedded-runtime`:
+  `node --test --test-concurrency=1 tests/package/ordinary-runtime-assembly.test.ts tests/package/runtime-setup-assembly.test.ts`.
+  `4d8a5ff30` is the head of `origin/feat/provider-access-grant-scopes` before the squash of agent-runtime #223 and is not an
+  ancestor of agent-runtime `main`; it was used because a checkout with a built `dist` existed. Two tests fail there and are
+  unrelated: "pinned compiler enforces the positive and negative Assembly consumer contract" (a missing pnpm hook file) and
+  "default import and bootstrap remain passive under effect traps".
+- Observation sketch: `node port-check/observation-sketch.mjs --repo <get-modular checkout> --rev origin/pr-153`; `--rev bfb7cff` is not usable
+  (the sketch lives only in the branch of #153).
+
 The one hit is `PostgresOrdinaryOperationStore` (`agent-runtime/ordinary/store/postgres`), a class port with eight
 prototype methods; the module must wrap it in a port object (P7b). No legitimate data-valued capability was flagged, so the
-stop condition does not apply. The agent-runtime checkout is at `4d8a5ff30` (a commit with a built `dist`), not at `main`;
-two of its tests that need pnpm tooling fail for reasons unrelated to the probe. The module instance may stay a class
+stop condition does not apply. The module instance may stay a class
 (`new Greeter()` in the sketch is the `instance`; only the plain object over it is a capability).
 
 ## 0D ADR drafts
@@ -151,24 +176,34 @@ prototype's, and the points left open for P1a. Drafts only.
 
 ## 0E oxlint probes
 
-`oxlint-probe.mjs`, results in `oxlint-results.json`, on 1.83.0 and 1.88.0 with identical outcomes. 136 files per run (the
+`oxlint-probe.mjs`, results in `oxlint-results.json`, on 1.83.0 and 1.88.0 with identical outcomes (1.88.0 was installed with `npm install oxlint@1.88.0 --ignore-scripts` into a scratch
+prefix; the final run added two cases, the grandparent descriptor file and the test-root probe below, and could be repeated
+only for 1.83.0 because 1.88.0 was no longer installed). 136 files per run (138 on 1.83.0) (the
 declaration allow-list, the `@get-modular/*` ban in the four non-composition roles, the size overrides, at feature depths 1
 to 4, plus a file outside `src/features`): 0 mismatches. Exit code 1 with errors; the warning-level rule exits 0 and with
 `--deny-warnings` exits 1.
 
 - Allow-list with the basename negation `!*.contracts.js` and `!*.contracts.ts` admits: `@get-modular/assembly` for
   `declareModule`, `@get-modular/core` for `required`, `optional`, `many`, own, sibling, child, parent descriptor files and
-  seven levels up, at depths 1 to 4. It rejects `./checkout.module.js`, `node:fs`, a use case, `implement`,
+  the grandparent (checked at depths 3 and 4) and seven levels up, at depths 1 to 4. It rejects `./checkout.module.js`, `node:fs`, a use case, `implement`,
   `compileComposition`, `@get-modular/resources`, a port type and another module's declaration file, with
   `eslint(no-restricted-imports)` and messages such as `'implement' import from '@get-modular/assembly' is restricted
   because only declareModule import(s) is/are allowed.` The known holes pass (`../adapters/outbound/evil.contracts.ts`,
   `some-pkg/thing.contracts.js`); `checkModuleLayout` closes them.
 - Size: a module file of 80 counted lines passes with 40 blank and comment lines added, 81 fails; other files 300 and 301;
   functions 60 and 61 lines; four and five parameters; a 400-line `*.test.ts` is excluded.
-- QN6: override globs of a preset that a consumer `extends` from `./node_modules/@get-modular/conformance/oxlint.json`
-  match the consumer's own paths, on both versions, also through a pnpm-style symlinked package. Globs are matched against
-  the consumer's root config, so the preset must use `**/features/**/...`: `src/features/**/...` matches the consumer's
-  `src/` but not `packages/x/src/features/...`. The preset can ship in P1b, written with `**/features/**` globs.
+- QN6: Override globs of an extended preset (by file path) are matched against the consumer's root config on both versions, also
+  through a pnpm-style symlink, and `excludeFiles` works through `extends`. The preset must use `**/features/**` globs
+  (`src/features/**` misses `packages/x/src/features/...`). Unanchored globs also match `<test-root>/features/**`: on 1.83.0
+  the probe shows `tests/features/orders/big.test.ts`, `tests/features/orders/testing.ts` and an adapter test importing
+  `@get-modular/*` all flagged without an exclusion, and none flagged with `excludeFiles: ["**/tests/**", "**/*.test.ts"]`
+  (the production file stays flagged). So every preset override needs a test-root exclusion (for TEST and agent-runtime
+  `**/tests/**` plus `**/*.test.ts`) and P1b adds a rejecting probe for it. Leaf admission
+  (`architecture/checks/leaf-package-admission.mjs:127`, `:138`) admits only `dist` files and a root export: the preset ships
+  under `dist/` and is extended by file path, or P1b changes admission by its own decision, or it does not ship (the plan's
+  fallback).
+- The matrix gives each file exactly the rules of its own override (the declaration override and the role-ban override match
+  disjoint files); a file matched by both `no-restricted-imports` overrides was not probed.
 - The declaration allow-list works on the latest stable, so the stop condition does not apply, and TEST need not pin an
   older oxlint.
 

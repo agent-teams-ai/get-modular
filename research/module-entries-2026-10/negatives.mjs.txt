@@ -1,7 +1,8 @@
 // S0 0A: positive and negative type cases on tsc 7.0.2 and TS 5.8.3, NodeNext and Bundler.
 //   node negatives.mjs --workspace <built prototype checkout>
 // Every file in negatives/ except positive.ts and shared.ts states `// expect: ...` on its first line; a file whose
-// expectation starts with NO error must compile, every other file must fail, with the same TS codes in all four runs.
+// expectation starts with NO error must compile; every other file must fail with the TS code its expectation names first
+// (positions are not checked), the same code in all four runs.
 import { spawnSync } from "node:child_process";
 import { cp, mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -60,7 +61,8 @@ try {
     const codes = [...results].map(([label, byFile]) => [label, [...new Set((byFile.get(name) ?? []).map((d) => d.code))].sort().join("+") || "none"]);
     const unique = new Set(codes.map(([, c]) => c));
     const mustPass = name === "positive.ts" || name === "shared.ts" || expected?.startsWith("NO error");
-    const ok = mustPass ? unique.size === 1 && unique.has("none") : unique.size === 1 && !unique.has("none");
+    const wanted = /^(TS\d+)/u.exec(expected ?? "")?.[1];
+    const ok = mustPass ? unique.size === 1 && unique.has("none") : unique.size === 1 && !unique.has("none") && (wanted === undefined || unique.has(wanted));
     if (!ok) failures += 1;
     const first = (results.values().next().value.get(name) ?? [])[0];
     rows.push({ file: name, ok, codes: Object.fromEntries(codes), expected, firstMessage: first?.message?.slice(0, 200) });

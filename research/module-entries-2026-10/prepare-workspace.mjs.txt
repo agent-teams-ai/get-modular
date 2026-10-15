@@ -1,6 +1,6 @@
 // Builds a disposable checkout that the other scripts measure.
 //   node prepare-workspace.mjs --dir <empty directory> [--repo <checkout>] [--base <revision>] [--prototype]
-// Exports the repository at <revision> (default: the base of the S0 branch, bfb7cff), applies prototype.patch with
+// Exports the repository at <revision> (default: the base of the S0 branch, bfb7cff), applies prototype.diff with
 // --prototype, installs from the lockfile and builds core, assembly, resources and conformance. Prints the directory.
 // The repository that holds this script is only read.
 import { spawnSync } from "node:child_process";
@@ -23,7 +23,7 @@ const step = (command, args, options = {}) => {
 const archive = spawnSync("git", ["-C", root, "archive", values.base], { maxBuffer: 512 * 1024 * 1024 });
 if (archive.status !== 0) throw new Error(`git archive ${values.base} failed`);
 step("tar", ["-x", "-C", directory], { input: archive.stdout, stdio: ["pipe", "inherit", "inherit"] });
-if (values.prototype) step("git", ["apply", join(here, "prototype.patch")]);
+if (values.prototype) step("git", ["apply", join(here, "prototype.diff")]);
 step("pnpm", ["install", "--frozen-lockfile"]);
 for (const script of ["assembly:build", "resources:build", "conformance:build"]) step("pnpm", [script]);
 console.log(directory);

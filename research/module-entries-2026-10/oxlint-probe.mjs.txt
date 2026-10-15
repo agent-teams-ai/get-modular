@@ -48,6 +48,7 @@ const declarationCases = (depth) => [
   ["A4 sibling descriptor file", `import { X } from "${up(2)}billing/composition/billing.contracts.js";`, "pass"],
   ["A5 child descriptor file", `import { X } from "${up(1)}features/child/composition/child.contracts.js";`, "pass"],
   ...(depth > 1 ? [["A6 parent descriptor file", `import { X } from "${up(3)}composition/parent.contracts.js";`, "pass"]] : []),
+  ...(depth > 2 ? [["A6b grandparent descriptor file", `import { X } from "${up(5)}composition/grand.contracts.js";`, "pass"]] : []),
   ["A7 seven levels up", `import { X } from "${up(7)}composition/root.contracts.js";`, "pass"],
   ["R1 module file", 'import { X } from "./checkout.module.js";', "reject"],
   ["R2 node builtin", 'import { readFileSync } from "node:fs";', "reject"],
@@ -174,6 +175,38 @@ for (const binary of values.oxlint.map((p) => resolve(p))) {
         };
       } finally { rmSync(dir, { recursive: true, force: true }); }
     }
+  }
+  // 4. Test-root files: unanchored preset globs also match <test-root>/features/**, so a preset needs a test-root exclusion.
+  entry.testRoot = {};
+  for (const [name, exclude] of [["no exclusion", undefined], ["excludeFiles **/tests/** and **/*.test.ts", ["**/tests/**", "**/*.test.ts"]]]) {
+    const dir = mkdtempSync(join(tmpdir(), "gm-s0-testroot-"));
+    try {
+      mkdirSync(join(dir, "node_modules/@get-modular/conformance"), { recursive: true });
+      const withExclude = (rules) => ({ files: ["**/features/**/*.ts"], ...(exclude ? { excludeFiles: exclude } : {}), rules });
+      writeFileSync(join(dir, "node_modules/@get-modular/conformance/oxlint.json"), JSON.stringify({ overrides: [
+        withExclude({ "max-lines": ["error", { max: 3, skipBlankLines: true, skipComments: true }] }),
+        { files: ["**/features/**/adapters/**"], ...(exclude ? { excludeFiles: exclude } : {}),
+          rules: { "no-restricted-imports": ["error", { patterns: [{ group: ["@get-modular/*"], message: "preset" }] }] } },
+      ] }));
+      writeFileSync(join(dir, ".oxlintrc.json"), JSON.stringify({ ...only, extends: ["./node_modules/@get-modular/conformance/oxlint.json"] }));
+      const big = "export const a = 1;\nexport const b = 2;\nexport const c = 3;\nexport const d = 4;\n";
+      for (const [path, text] of [
+        ["src/features/orders/application/big.ts", big],
+        ["tests/features/orders/big.test.ts", big],
+        ["tests/features/orders/testing.ts", big],
+        ["src/features/orders/adapters/outbound/db.ts", 'import { x } from "@get-modular/assembly";\nexport const v = x;\n'],
+        ["tests/features/orders/adapters/db.test.ts", 'import { x } from "@get-modular/assembly";\nexport const v = x;\n'],
+      ]) { mkdirSync(dirname(join(dir, path)), { recursive: true }); writeFileSync(join(dir, path), text); }
+      const result = run(binary, dir);
+      const hits = (needle) => result.diagnostics.filter((d) => (d.filename ?? "").endsWith(needle)).map((d) => d.code);
+      entry.testRoot[name] = {
+        "src production file over the limit": hits("src/features/orders/application/big.ts"),
+        "tests/features/orders/big.test.ts": hits("big.test.ts"),
+        "tests/features/orders/testing.ts (not *.test.ts)": hits("tests/features/orders/testing.ts"),
+        "src adapter importing @get-modular/*": hits("src/features/orders/adapters/outbound/db.ts"),
+        "tests adapter test importing @get-modular/*": hits("adapters/db.test.ts"),
+      };
+    } finally { rmSync(dir, { recursive: true, force: true }); }
   }
   report.push(entry);
 }

@@ -1,4 +1,4 @@
-// expect: an error at implement: the declaration uses a contract its feature map does not contain.
+// expect: TS2345; an error at implement: the declaration uses a contract its feature map does not contain
 import { implement } from "@get-modular/assembly";
 import { clockDeclaration } from "./shared.js";
 import type { CapabilitiesOf } from "@get-modular/assembly";
