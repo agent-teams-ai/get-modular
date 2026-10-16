@@ -5,6 +5,7 @@ import type { ModuleDeclaration } from "@get-modular/core";
 import { createScope } from "@get-modular/resources";
 import type { Resources, Scope } from "@get-modular/resources";
 import { ConformanceError, invalid } from "../errors/errors.js";
+import { ownMemberViolations, portViolationError } from "../ports/own-members.js";
 import type { Isolated, LooseAssembly, LooseOutcome } from "./types.js";
 
 const makeInput: (declaration: ModuleDeclaration) => unknown = inputEntry() as never;
@@ -199,6 +200,17 @@ export async function isolate<const E extends AnyEntry>(
       failure(declaration.implementationId, outcome, report.complete, report.debts.length),
       { cause: outcome.status === "failed" ? outcome.cause : outcome.status === "cancelled" ? outcome.reason : undefined,
         details: { outcome, report } });
+  }
+  let violations: ReturnType<typeof ownMemberViolations>;
+  try {
+    violations = ownMemberViolations([created]);
+  } catch (error) {
+    await scope.control.close();
+    throw error;
+  }
+  if (violations.length > 0) {
+    const report = await scope.control.close();
+    throw portViolationError(violations, { report });
   }
   return {
     instance: outcome.roots["module"] as InstanceOf<E>,

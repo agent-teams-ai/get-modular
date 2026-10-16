@@ -65,6 +65,8 @@ port. There is no override container and no automatic fake.
   left a debt.
 - Pass `within` to open the module scope under a scope of your own, and
   `signal` to cancel the run.
+- After construction, `isolate` checks the module's own capabilities as port
+  objects; the fakes it supplies are run inputs and are not checked.
 
 ## Smoke-check a composition root with `smoke`
 
@@ -87,12 +89,76 @@ own that must close with `complete: true`. It rejects with
 `conformance.smoke.failed` when any step broke an expectation, and
 `details.steps` lists every step with its `problem`. If the first run does not succeed there is no trustworthy order to inject into, so
 `smoke` rejects after it; a first run that succeeds but leaves a debt does not stop it.
+After that first run and the `at` check, `smoke` checks the capabilities of the
+factory-built modules in `created` before it starts an injected run.
 
 What `smoke` does not prove: that the bindings are right (write an independent
 oracle for that), that anything was physically released, the order of release
 inside a module, and resources acquired outside `setup` and `use`. It sets no
 timers: a cleanup that never settles hangs the test, and the limit belongs to
 your test runner.
+
+## Capabilities are port objects
+
+A port object keeps its callable members as own properties. After a module is
+constructed, every object-valued capability it provides must meet that rule.
+Functions, primitives, `null` and arrays are skipped. For every other value,
+the check walks its prototype chain until `null` or this realm's
+`Object.prototype`.
+
+The walk stops at the captured prototype of a container: `Array`, `Map`, `Set`,
+`WeakMap`, `WeakSet`, `Date`, `RegExp`, `Promise`, `Error`, `ArrayBuffer`,
+`SharedArrayBuffer`, `DataView`, every typed array and `Buffer`. It also stops
+at the `Object.prototype` of another realm. On every other prototype, each own
+string or symbol key except `constructor` is a member when its descriptor is a
+function-valued data property or an accessor. The check reads descriptors only
+and never invokes a getter.
+
+```ts
+class Orders {
+  list(): readonly Order[] {
+    return readOrders();
+  }
+}
+
+const orders = new Orders();
+export const ordersPort = {
+  list: (): readonly Order[] => orders.list(),
+};
+```
+
+The fix is a port object of arrow functions in front of the class. The class
+stays behind the port and keeps its implementation and its `this` binding.
+Members survive destructuring because each function is already bound to the
+state it needs.
+
+`isolate` runs the check after its run succeeds and the module is found in
+`created`. It checks only the capabilities of the module under test, never its
+instance, dependencies or run inputs, and never the fakes that `isolate` adds.
+Before it rejects, `isolate` closes its own scope. When `within` is used, the
+caller's scope remains open.
+
+`smoke` runs the check after its first successful run, once the `at` ids have
+been checked. It checks every factory-built module in that run's `created`, in
+created order and then capability order, and rejects before any injected run
+starts. `details.steps` contains the first run and its close report.
+
+The result is `conformance.ports.prototype-member`. `details.violations` has
+one entry per failing capability with its `implementationId`, `capabilityId`
+and distinct `members`, nearest prototype first.
+
+This check does not prove that every callable member is bound correctly:
+
+- an own method in an object literal may still use `this`;
+- a method handed out unbound as a function-valued capability is invisible;
+- nested objects are not checked;
+- run inputs and the fakes of `isolate` are not checked;
+- own accessors on the capability itself are not checked;
+- a `Map` capability passes because `Map.prototype` stops the walk;
+- a `Map`, `Date` or `Buffer` from another realm is reported, because only
+  this realm's container prototypes are captured;
+- Proxy traps for `getPrototypeOf`, `ownKeys` and `getOwnPropertyDescriptor`
+  run during the walk, and their errors pass through unchanged.
 
 ## Check a contract with `contractSuite` and `runContractSuite`
 
@@ -282,6 +348,7 @@ a `Promise`.
 | `conformance.isolate.construction-failed` | the module could not be built |
 | `conformance.smoke.failed` | a smoke step broke an expectation |
 | `conformance.namespaces.violation` | a declaration breaks a namespace rule; `details.violations` lists them all |
+| `conformance.ports.prototype-member` | a capability that a constructed module provides has methods or accessors on its prototype chain; `details.violations` lists every such capability with its members |
 | `conformance.wiring.mismatch` | a completed plan or its declarations differ from the provider oracle; `details.differences` lists every difference. Malformed declarations are `conformance.argument.invalid` |
 | `conformance.layout.violation` | source records break a Get Modular layout rule; `details.violations` lists every violation |
 | `conformance.suite.revision-mismatch` | the subject provides another revision than the suite checks |
