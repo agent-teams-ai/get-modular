@@ -131,7 +131,7 @@ void host.prepare({ composition, modules: [dbEntry], roots: { db: dbEntry }, inp
 declareModule({ moduleId: "x/y", implementationId: "x/y", owner: { authority: "x", path: ["x"] }, provides: [{ capabilityId: "acme/db", compatibility: { family: "exact", familyVersion: 1, token: "acme/db/r3" } }], slots: [] });
 // @ts-expect-error declareModule supplies kind and schemaVersion.
 declareModule({ kind: "get-modular.module-declaration", moduleId: "x/y", implementationId: "x/y", owner: { authority: "x", path: ["x"] }, provides: [], slots: [] });
-// The entry is valid under its own map; prepare rejects it against the Host map.
+// The entry is valid under its own map; tests/assembly/types.ts and types-s0-negative.ts cover prepare rejecting a stale revision against the Host map.
 implement<CapabilitiesOf<typeof DbOld | typeof Orders>>()(staleDeclaration, async () => ({ instance: 0, capabilities: { "acme/orders": { list: () => 1 } } }));
 // @ts-expect-error Capability values follow the contract owner's type.
 implement<CapabilitiesOf<typeof Db>>()(dbDeclaration, async () => ({ instance: 0, capabilities: { "acme/db": { query: () => "no" } } }));

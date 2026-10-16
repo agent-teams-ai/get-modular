@@ -29,13 +29,19 @@ Assembly never reads, awaits, freezes or disposes `scope`. A module package name
 the callback type as `ModuleFactory<C, typeof declaration, Instance>`, with its
 own map as `C`. The optional third argument is a `ContextAdapter`, such as
 `scoped` from `@get-modular/resources`; it runs once with the implementation ID
-and the factory, and its returned function is stored in the entry.
+and the factory. The entry stores a function that calls the adapted factory. An
+adapter that is not a function, throws, or returns no function fails with
+`assembly.bind.invalid-factory`.
 
 An entry is a frozen null-prototype `{ declaration, factory }` pair and is
 invariant only in the capabilities its declaration uses. Teams create entries
 under their own maps, and a Host prepares them together when every capability an
 entry uses has the identical contract in the preparing map. `group(name, members)`
 creates a frozen static group and records the union of its members' used keys.
+The name is a non-empty label of at most 128 UTF-8 bytes; `members` is a dense
+array of at most 4096 entries and groups, never an input entry; groups nest at
+most 16 levels with `modules` as level 0. Any broken rule throws
+`assembly.bind.invalid-group` when the group is created, and no getter runs.
 `entriesOf(modules)` returns a frozen depth-first flattened array. Groups carry
 navigation labels only; nesting and order never change the profile, plan or
 digest.

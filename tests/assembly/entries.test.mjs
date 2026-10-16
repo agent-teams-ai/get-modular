@@ -38,6 +38,9 @@ test("implement validates synchronously and calls the adapter once with the impl
   throwsCode(() => implement()(d, "nope"), "assembly.bind.invalid-factory");
   throwsCode(() => implement()(d, product("a"), "nope"), "assembly.bind.invalid-factory");
   throwsCode(() => implement()(d, product("a"), () => null), "assembly.bind.invalid-factory");
+  const boom = new Error("boom");
+  assert.throws(() => implement()(d, product("a"), () => { throw boom; }),
+    (error) => error instanceof AssemblyBindingError && error.code === "assembly.bind.invalid-factory" && error.cause === boom);
   throwsCode(() => implement()({ ...d, kind: "other" }, product("a")), "assembly.bind.invalid-declaration");
   const names = [];
   const adapter = (name, factory) => { names.push(name); return (deps, context) => factory(deps, { ...context, adapted: true }); };
@@ -109,10 +112,14 @@ const HOST_SHAPED_DIGEST = "gm-plan:v1:sha-256:59ad3be4783ba49226fe08d482ab59934
 test("the synthetic Host keeps its 0.4.0 plan digest through modules, flat, grouped, nested and reordered", async () => {
   const { api, input, declarations } = await synthetic();
   const [store, a, b, app] = input.modules;
+  // The rows come from the compiled plan, but the profile and the plan are derived again by prepare from the entries.
+  const rows = input.composition.plan.bindings.map(({ consumerImplementationId, slotId, providerImplementationIds }) =>
+    ({ consumerImplementationId, slotId, providerImplementationIds }));
   assert.equal(declarations.length, 4);
   for (const modules of [input.modules, [group("all", input.modules)], [group("outer", [store, group("inner", [a, b])]), app], [...input.modules].toReversed()]) {
-    const result = await api.prepare({ ...input, modules });
+    const result = await api.prepare({ profileId: "synthetic/profile", bindings: rows, modules, roots: input.roots });
     assert.equal(result.status, "prepared", JSON.stringify(result));
+    assert.notEqual(result.composition, input.composition);
     assert.equal(result.composition.digest, SYNTHETIC_DIGEST);
   }
 });
@@ -149,6 +156,7 @@ test("duplicates fail with every occurrence listed and no deduplication", async 
   const reached = await api.prepare({ profileId: "synthetic/p", modules: [group("one", [a, b]), group("two", [group("deep", [a])])], roots: { b } });
   assert.equal(reached.error.code, "assembly.prepare.duplicate-module");
   assert.deepEqual(reached.error.cause, [{ implementationId: "synthetic/m0", paths: [["one"], ["two", "deep"]], inputs: [] }]);
+  assert.equal(Object.isFrozen(reached.error.cause[0]), true);
   const same = await api.prepare({ profileId: "synthetic/p", modules: [a, b, group("g", [twin])], roots: { b } });
   assert.equal(same.error.code, "assembly.prepare.duplicate-module");
   assert.deepEqual(same.error.cause, [{ implementationId: "synthetic/m0", paths: [[], ["g"]], inputs: [] }]);
@@ -231,6 +239,17 @@ test("isolate(entry) builds one module with fakes as inputs and no api argument"
   assert.equal(isolated.instance.value, 41);
   assert.equal(isolated.capabilities["synthetic/app"].read(), 41);
   assert.deepEqual(keys, ["resources", "signal"]);
+});
+
+test("isolate(entry) builds a plain module without an adapter", async () => {
+  let keys;
+  const entry = implement()(declaration("plain", ["synthetic/plain"]), async (_deps, context) => {
+    keys = Object.keys(context).toSorted();
+    return { instance: { plain: true }, capabilities: { "synthetic/plain": {} } };
+  });
+  await using isolated = await isolate(entry, { dependencies: {} });
+  assert.deepEqual(isolated.instance, { plain: true });
+  assert.deepEqual(keys, ["scope", "signal"]);
 });
 
 test("a contract revision that differs from the consumer's slot is rejected by prepare through Core", async () => {
