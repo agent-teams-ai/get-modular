@@ -1,10 +1,13 @@
-import type { Assembly, FactoryCapabilities, FactoryContext, FactoryDependencies, ModuleFactory, ValidDeclaration } from "@get-modular/assembly";
+import { assemblyFor, input as inputEntry } from "@get-modular/assembly";
+import type { AnyEntry, CapabilitiesProvidedBy, DependenciesOf, InstanceOf } from "@get-modular/assembly";
 import { compileComposition } from "@get-modular/core";
 import type { ModuleDeclaration } from "@get-modular/core";
-import { createScope, scoped } from "@get-modular/resources";
-import type { ModuleContext, Resources, Scope } from "@get-modular/resources";
+import { createScope } from "@get-modular/resources";
+import type { Resources, Scope } from "@get-modular/resources";
 import { ConformanceError, invalid } from "../errors/errors.js";
 import type { Isolated, LooseAssembly, LooseOutcome } from "./types.js";
+
+const makeInput: (declaration: ModuleDeclaration) => unknown = inputEntry() as never;
 
 /** Ids with this prefix belong to the fakes `isolate` generates; a module under test cannot use them. */
 const SYNTHETIC = "conformance";
@@ -123,27 +126,26 @@ function failure(implementationId: string, outcome: LooseOutcome, complete: bool
 
 /**
  * Builds one module through a real Assembly run: each dependency becomes an input module of its own, so the
- * module sees the same frozen records, the same product check and the same scope as in production.
+ * module sees the same frozen records, the same product check and the same scope as in production. The entry
+ * already carries its adapter, so no `scoped` is applied here.
  */
-export async function isolate<C, const D extends ModuleDeclaration, I>(
-  api: Assembly<C>,
+export async function isolate<const E extends AnyEntry>(
+  entry: E,
   input: {
-    readonly declaration: D & ValidDeclaration<C, NoInfer<D>>;
-    readonly factory: ModuleFactory<C, NoInfer<D>, I, ModuleContext>;
-    readonly dependencies: FactoryDependencies<C, NoInfer<D>>;
+    readonly dependencies: DependenciesOf<E>;
     readonly signal?: AbortSignal | undefined;
     /** Open the module's scope under this one instead of a new root scope. */
     readonly within?: Resources | undefined;
   },
-): Promise<Isolated<I, FactoryCapabilities<C, D>>> {
-  if (!isRecord(input) || typeof input.factory !== "function") {
-    throw invalid("isolate() requires an input record with a factory function");
+): Promise<Isolated<InstanceOf<E>, CapabilitiesProvidedBy<E>>> {
+  if (!isRecord(entry) || !isRecord(input)) {
+    throw invalid("isolate() requires a module entry and an input record");
   }
-  const { fakes, providers } = wire(input.declaration, input.dependencies);
-  const declaration: ModuleDeclaration = input.declaration;
-  const assembly = api as LooseAssembly;
+  const { fakes, providers } = wire(entry.declaration, input.dependencies);
+  const declaration: ModuleDeclaration = entry.declaration;
+  const assembly: LooseAssembly = assemblyFor<{}>() as never;
 
-  const declarations: ModuleDeclaration[] = [declaration, ...fakes.map(entry => entry.declaration)];
+  const declarations: ModuleDeclaration[] = [declaration, ...fakes.map(fake => fake.declaration)];
   const composition = await compileComposition({
     declarations,
     profile: {
@@ -159,17 +161,14 @@ export async function isolate<C, const D extends ModuleDeclaration, I>(
   });
   if (!composition.ok) {
     throw new ConformanceError("conformance.isolate.construction-failed",
-      `${declaration.implementationId} cannot be composed with its dependencies: ${composition.diagnostics.map(entry => entry.code).join(", ")}`,
+      `${declaration.implementationId} cannot be composed with its dependencies: ${composition.diagnostics.map(diagnostic => diagnostic.code).join(", ")}`,
       { details: { diagnostics: composition.diagnostics } });
   }
 
-  const inputHandles = Object.fromEntries(fakes.map(entry => [entry.alias, assembly.bindInput(entry.declaration)]));
-  const handle = assembly.bindFactory(declaration,
-    scoped<unknown, Promise<unknown>, FactoryContext>(declaration.implementationId,
-      input.factory as (dependencies: unknown, context: ModuleContext) => Promise<unknown>));
+  const inputEntries = Object.fromEntries(fakes.map(fake => [fake.alias, makeInput(fake.declaration)]));
   const preparation = await assembly.prepare({
-    composition, factories: [handle], roots: { module: handle },
-    ...fakes.length === 0 ? {} : { inputs: inputHandles },
+    composition, modules: [entry], roots: { module: entry },
+    ...fakes.length === 0 ? {} : { inputs: inputEntries },
   });
   if (preparation.status !== "prepared") {
     throw new ConformanceError("conformance.isolate.construction-failed",
@@ -185,16 +184,16 @@ export async function isolate<C, const D extends ModuleDeclaration, I>(
     outcome = await preparation.prepared.run({
       ...input.signal === undefined ? {} : { signal: input.signal },
       scope: scope.resources,
-      ...fakes.length === 0 ? {} : { inputs: Object.fromEntries(fakes.map(entry => [entry.alias, entry.record])) },
+      ...fakes.length === 0 ? {} : { inputs: Object.fromEntries(fakes.map(fake => [fake.alias, fake.record])) },
     });
   } catch (error) {
     await scope.control.close();
     throw error;
   }
-  const entry = outcome.status === "succeeded"
-    ? outcome.created.find(created => created.implementationId === declaration.implementationId)
+  const created = outcome.status === "succeeded"
+    ? outcome.created.find(candidate => candidate.implementationId === declaration.implementationId)
     : undefined;
-  if (outcome.status !== "succeeded" || entry === undefined) {
+  if (outcome.status !== "succeeded" || created === undefined) {
     const report = await scope.control.close();
     throw new ConformanceError("conformance.isolate.construction-failed",
       failure(declaration.implementationId, outcome, report.complete, report.debts.length),
@@ -202,8 +201,8 @@ export async function isolate<C, const D extends ModuleDeclaration, I>(
         details: { outcome, report } });
   }
   return {
-    instance: outcome.roots["module"] as I,
-    capabilities: entry.capabilities as FactoryCapabilities<C, D>,
+    instance: outcome.roots["module"] as InstanceOf<E>,
+    capabilities: created.capabilities as CapabilitiesProvidedBy<E>,
     close: () => scope.control.close(),
     [Symbol.asyncDispose]: () => scope.control[Symbol.asyncDispose](),
   };

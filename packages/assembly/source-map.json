@@ -7,7 +7,8 @@
   "construction": {
     "factory": ["src/features/construction/factory.ts"],
     "authoring": ["src/features/construction/contract.ts"],
-    "bind": ["src/features/construction/bind.ts", "src/features/construction/snapshot.ts"],
+    "entries": ["src/features/construction/entry.ts", "src/features/construction/snapshot.ts"],
+    "groups": ["src/features/construction/group.ts"],
     "prepare": ["src/features/construction/prepare.ts"],
     "run": ["src/features/construction/run.ts", "src/features/construction/ports.ts", "src/features/construction/types.ts"]
   }

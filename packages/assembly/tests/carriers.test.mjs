@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { compileComposition } from "@get-modular/core";
+import { implement } from "../dist/index.js";
 import { prepareConstruction } from "../dist/features/construction/prepare.js";
 import { deferred, synthetic } from "./fixture.mjs";
 
@@ -89,12 +90,12 @@ test("internal journal seam proves handoff before and after commit", async () =>
     const host = await synthetic();
     let product;
     const original = host.declarations.at(-1);
-    const replacement = host.api.bindFactory(original, async () => {
+    const replacement = implement()(original, async () => {
       product = { instance: {}, capabilities: {} };
       controller.abort("observed");
       return product;
     });
-    const input = { ...host.input, factories: [...host.input.factories.slice(0, -1), replacement], roots: { app: replacement } };
+    const input = { ...host.input, modules: [...host.input.modules.slice(0, -1), replacement], roots: { app: replacement } };
     const result = await prepareConstruction(input, {
       compileComposition,
       commitCreated(journal, entry) {

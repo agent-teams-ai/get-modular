@@ -1,5 +1,5 @@
 import { compileComposition, defineModule, many, optional, required } from "@get-modular/core";
-import { assemblyFor } from "@get-modular/assembly";
+import { assemblyFor, implement } from "@get-modular/assembly";
 import type { CapabilityContract } from "@get-modular/assembly";
 
 type Counter = { readonly value: number };
@@ -117,91 +117,91 @@ export const profile = {
 export async function runMixedGraph() {
   const api = assemblyFor<C>();
   const product = (value: number) => ({ instance: { value }, capabilities: { "mixed/counter": { value } } });
-  const f00 = api.bindFactory(n00, async () => product(1));
-  const f01 = api.bindFactory(n01, async (deps) => {
+  const f00 = implement<C>()(n00, async () => product(1));
+  const f01 = implement<C>()(n01, async (deps) => {
     exactType<Equal<typeof deps.previous, Counter>>();
     return product(deps.previous.value + 1);
   });
-  const f02 = api.bindFactory(n02, async (deps) => {
+  const f02 = implement<C>()(n02, async (deps) => {
     exactType<Equal<typeof deps.previous, Counter>>();
     return product(deps.previous.value + 1);
   });
-  const f03 = api.bindFactory(n03, async (deps) => {
+  const f03 = implement<C>()(n03, async (deps) => {
     exactType<Equal<typeof deps.previous, Counter>>();
     return product(deps.previous.value + 1);
   });
-  const f04 = api.bindFactory(n04, async (deps) => {
+  const f04 = implement<C>()(n04, async (deps) => {
     exactType<Equal<typeof deps.previous, Counter>>();
     return product(deps.previous.value + 1);
   });
-  const f05 = api.bindFactory(n05, async (deps) => {
+  const f05 = implement<C>()(n05, async (deps) => {
     exactType<Equal<typeof deps.previous, Counter>>();
     return product(deps.previous.value + 1);
   });
-  const f06 = api.bindFactory(n06, async (deps) => {
+  const f06 = implement<C>()(n06, async (deps) => {
     exactType<Equal<typeof deps.previous, Counter>>();
     return product(deps.previous.value + 1);
   });
-  const f07 = api.bindFactory(n07, async (deps) => {
+  const f07 = implement<C>()(n07, async (deps) => {
     exactType<Equal<typeof deps.previous, Counter>>();
     return product(deps.previous.value + 1);
   });
-  const f08 = api.bindFactory(n08, async (deps) => {
+  const f08 = implement<C>()(n08, async (deps) => {
     exactType<Equal<typeof deps.previous, Counter>>();
     return product(deps.previous.value + 1);
   });
-  const f09 = api.bindFactory(n09, async (deps) => {
+  const f09 = implement<C>()(n09, async (deps) => {
     exactType<Equal<typeof deps.previous, Counter>>();
     return product(deps.previous.value + 1);
   });
-  const f10 = api.bindFactory(n10, async (deps) => {
+  const f10 = implement<C>()(n10, async (deps) => {
     exactType<Equal<typeof deps.previous, Counter>>();
     return product(deps.previous.value + 1);
   });
-  const f11 = api.bindFactory(n11, async (deps) => {
+  const f11 = implement<C>()(n11, async (deps) => {
     exactType<Equal<typeof deps.previous, Counter>>();
     return product(deps.previous.value + 1);
   });
-  const f12 = api.bindFactory(n12, async (deps) => {
+  const f12 = implement<C>()(n12, async (deps) => {
     exactType<Equal<typeof deps.previous, Counter>>();
     return product(deps.previous.value + 1);
   });
-  const f13 = api.bindFactory(n13, async (deps) => {
+  const f13 = implement<C>()(n13, async (deps) => {
     exactType<Equal<typeof deps.previous, Counter>>();
     return product(deps.previous.value + 1);
   });
-  const f14 = api.bindFactory(n14, async (deps) => {
+  const f14 = implement<C>()(n14, async (deps) => {
     exactType<Equal<typeof deps.previous, Counter>>();
     return product(deps.previous.value + 1);
   });
-  const f15 = api.bindFactory(n15, async (deps) => {
+  const f15 = implement<C>()(n15, async (deps) => {
     exactType<Equal<typeof deps.previous, Counter>>();
     return product(deps.previous.value + 1);
   });
-  const f16 = api.bindFactory(n16, async (deps) => {
+  const f16 = implement<C>()(n16, async (deps) => {
     exactType<Equal<typeof deps.previous, Counter>>();
     return product(deps.previous.value + 1);
   });
-  const f17 = api.bindFactory(n17, async (deps) => {
+  const f17 = implement<C>()(n17, async (deps) => {
     exactType<Equal<typeof deps.previous, Counter>>();
     return product(deps.previous.value + 1);
   });
-  const fLeft = api.bindFactory(left, async (deps) => ({ instance: {}, capabilities: {
+  const fLeft = implement<C>()(left, async (deps) => ({ instance: {}, capabilities: {
     "mixed/filter": { counter: deps.previous, apply: (input: string) => input + "L" },
   } }));
-  const fRight = api.bindFactory(right, async (deps) => ({ instance: {}, capabilities: {
+  const fRight = implement<C>()(right, async (deps) => ({ instance: {}, capabilities: {
     "mixed/filter": { counter: deps.previous, apply: (input: string) => input + "R" },
   } }));
-  const fLog = api.bindFactory(log, async () => ({ instance: {}, capabilities: { "mixed/logger": { label: "enabled" } } }));
-  const fPresent = api.bindFactory(present, async (deps) => {
+  const fLog = implement<C>()(log, async () => ({ instance: {}, capabilities: { "mixed/logger": { label: "enabled" } } }));
+  const fPresent = implement<C>()(present, async (deps) => {
     exactType<Equal<typeof deps.logger, Logger | undefined>>();
     return { instance: { deps }, capabilities: { "mixed/text": deps.logger?.label ?? "absent" } };
   });
-  const fAbsent = api.bindFactory(absent, async (deps) => {
+  const fAbsent = implement<C>()(absent, async (deps) => {
     exactType<Equal<typeof deps.logger, Logger | undefined>>();
     return { instance: { deps }, capabilities: { "mixed/text": deps.logger?.label ?? "absent" } };
   });
-  const fRoot = api.bindFactory(root, async (deps) => {
+  const fRoot = implement<C>()(root, async (deps) => {
     exactType<Equal<typeof deps.previous, Counter>>();
     exactType<Equal<typeof deps.filters, readonly Filter[]>>();
     exactType<Equal<typeof deps.present, string>>();
@@ -212,7 +212,7 @@ export async function runMixedGraph() {
   const composition = await compileComposition({ declarations, profile });
   if (!("plan" in composition)) throw new Error(JSON.stringify(composition));
   const ready = await api.prepare({ composition,
-    factories: [f00, f01, f02, f03, f04, f05, f06, f07, f08,
+    modules: [f00, f01, f02, f03, f04, f05, f06, f07, f08,
       f09, f10, f11, f12, f13, f14, f15, f16, f17, fLeft, fRight, fLog, fPresent, fAbsent, fRoot],
     roots: { app: fRoot, last: f17 },
   });
@@ -228,12 +228,12 @@ export async function runMixedGraph() {
 // Compile-only rejecting sites; each differs from a valid declaration/callback above.
 function rejectingTypes() {
   const api = assemblyFor<C>();
-  api.bindFactory(present, async (deps) => {
+  implement<C>()(present, async (deps) => {
     // @ts-expect-error mixed-optional-required: optional is not guaranteed present.
     const requiredLogger: Logger = deps.logger;
     return { instance: requiredLogger, capabilities: { "mixed/text": "ok" } };
   });
-  api.bindFactory(root, async (deps) => {
+  implement<C>()(root, async (deps) => {
     // @ts-expect-error mixed-many-scalar: ordered many is not a scalar filter.
     const scalar: Filter = deps.filters;
     // @ts-expect-error mixed-dependency-value: counter is not a string.
@@ -243,5 +243,5 @@ function rejectingTypes() {
   const wrongToken = defineModule({ ...n00, provides: [{ ...counter,
     compatibility: { ...compatibility, token: "mixed/v2" } }] });
   // @ts-expect-error mixed-token: otherwise identical declaration uses an unsupported token.
-  api.bindFactory(wrongToken, async () => ({ instance: {}, capabilities: { "mixed/counter": { value: 1 } } }));
+  implement<C>()(wrongToken, async () => ({ instance: {}, capabilities: { "mixed/counter": { value: 1 } } }));
 }

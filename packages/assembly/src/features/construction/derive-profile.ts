@@ -47,12 +47,13 @@ function snapshotRows(value: unknown): readonly Row[] {
   }));
 }
 
-// ADR-0035: the profile follows the bound handles. An explicit row is kept as written; a `required` slot
+// ADR-0035: the profile follows the module entries. An explicit row is kept as written; a `required` slot
 // without a row takes its only other provider; every other missing row is reported, never guessed.
 export function deriveProfile(input: {
   readonly profileId: unknown;
   readonly bindings: unknown;
   readonly byId: ReadonlyMap<string, Metadata>;
+  readonly groupPaths: ReadonlyMap<string, readonly string[]>;
   readonly rootModuleIds: readonly string[];
 }): DerivedProfile {
   const profileId = identifier(input.profileId);
@@ -83,7 +84,8 @@ export function deriveProfile(input: {
       } else {
         unresolved.push(Object.freeze({
           consumerImplementationId, slotId: slot.slotId, capabilityId: slot.capabilityId,
-          cardinality: slot.cardinality.kind, candidates: Object.freeze(candidates),
+          cardinality: slot.cardinality.kind, groupPath: Object.freeze([...input.groupPaths.get(consumerImplementationId) ?? []]),
+          candidates: Object.freeze(candidates),
         }));
       }
     }

@@ -1,0 +1,21 @@
+import type { Assembly } from "@get-modular/assembly";
+
+type Capabilities = Record<never, never>;
+declare const runtimeDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const ordinaryDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const buildHost: (...args: any[]) => any;
+
+export function bindRuntime(api: Assembly<Capabilities>, ordinary?: boolean) {
+  const runtimeHost = ordinary === undefined
+    ? api.bindFactory(runtimeDeclaration, buildHost)
+    : api.bindFactory(ordinaryDeclaration, buildHost);
+  return { factories: [runtimeHost], roots: { runtimeHost } };
+}
+
+export function prepareRuntime(
+  api: Assembly<Capabilities>,
+  bound: { factories: unknown[]; roots: Record<string, unknown> },
+  composition: unknown,
+) {
+  return api.prepare({ composition, factories: bound.factories, roots: bound.roots });
+}

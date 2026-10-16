@@ -1,9 +1,10 @@
 import { many, optional, required } from "@get-modular/core";
 import {
-  assemblyFor, declareModule, defineContract,
+  assemblyFor, declareModule, defineContract, implement, input,
   type CapabilitiesOf, type FactoryContext, type ModuleFactory, type SuccessfulComposition,
 } from "@get-modular/assembly";
 import type { ModuleContext } from "@get-modular/resources";
+import { scoped } from "@get-modular/resources";
 import {
   checkModuleLayout, checkNamespaces, checkWiring, contractSuite, describeWiring, guardHandles, isolate,
   runContractSuite, smoke,
@@ -33,11 +34,11 @@ const createOrders: ModuleFactory<Capabilities, typeof orders, number, ModuleCon
   return { instance: rows, capabilities: { "acme/orders": { list: () => rows } } };
 };
 const db: Query = { query: () => 1 };
+const ordersEntry = implement<Capabilities>()(orders, createOrders, scoped);
 
 // A module is built with typed fakes and its instance and capabilities keep their types.
-const built: Promise<Isolated<number, { readonly "acme/orders": List }>> = isolate(api, {
-  declaration: orders, factory: createOrders, dependencies: { db, audit: undefined, replicas: [db] },
-});
+const built: Promise<Isolated<number, { readonly "acme/orders": List }>> =
+  isolate(ordersEntry, { dependencies: { db, audit: undefined, replicas: [db] } });
 void built.then(async isolated => {
   const instance: number = isolated.instance;
   const rows: number = isolated.capabilities["acme/orders"].list();
@@ -45,20 +46,14 @@ void built.then(async isolated => {
   await using _disposable: AsyncDisposable = isolated;
   void instance; void rows; void report;
 });
-void isolate(api, {
-  declaration: orders, factory: createOrders, dependencies: { db, audit: undefined, replicas: [] },
+void isolate(ordersEntry, {
+  dependencies: { db, audit: undefined, replicas: [] },
   signal: new AbortController().signal,
 });
 // @ts-expect-error a fake with a renamed method is not the contract's port
-void isolate(api, { declaration: orders, factory: createOrders, dependencies: { db: { qurey: () => 1 }, audit: undefined, replicas: [] } });
+void isolate(ordersEntry, { dependencies: { db: { qurey: () => 1 }, audit: undefined, replicas: [] } });
 // @ts-expect-error a required slot needs a fake
-void isolate(api, { declaration: orders, factory: createOrders, dependencies: { audit: undefined, replicas: [] } });
-void isolate(api, {
-  declaration: orders,
-  // @ts-expect-error a module that reads the run scope cannot be built here: its context is a ModuleContext
-  factory: async (_deps: unknown, context: FactoryContext) => ({ instance: 1, capabilities: { "acme/orders": { list: () => context.scope === undefined ? 1 : 2 } } }),
-  dependencies: { db, audit: undefined, replicas: [] },
-});
+void isolate(ordersEntry, { dependencies: { audit: undefined, replicas: [] } });
 
 // A contract owner publishes a suite whose cases see the contract's value type.
 const suite = contractSuite(Orders, {
@@ -89,7 +84,7 @@ const sessionInput = declareModule({
 });
 interface SessionCapabilities extends CapabilitiesOf<typeof Session | typeof Orders> {}
 declare const sessionApi: ReturnType<typeof assemblyFor<SessionCapabilities>>;
-const session = sessionApi.bindInput(sessionInput);
+const session = input<SessionCapabilities>()(sessionInput);
 declare const withInputs: (api: typeof sessionApi) => ReturnType<typeof sessionApi.prepare<{ readonly root: never }, { readonly session: typeof session }>>;
 declare const withoutInputs: (api: typeof sessionApi) => ReturnType<typeof sessionApi.prepare<{ readonly root: never }>>;
 const steps: Promise<readonly SmokeStep[]> = smoke({

@@ -1,0 +1,15 @@
+import { implement, input } from "@get-modular/assembly";
+import { scoped } from "@get-modular/resources";
+import { isolate } from "@get-modular/conformance";
+
+type Capabilities = Record<never, never>;
+declare const moduleDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const inputDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const factory: (...args: any[]) => any;
+
+export function compose(api: unknown) {
+  const module = implement<Capabilities>()(moduleDeclaration, factory, scoped);
+  const supplied = input<Capabilities>()(inputDeclaration);
+  void api;
+  return isolate(module, { dependencies: { supplied } });
+}

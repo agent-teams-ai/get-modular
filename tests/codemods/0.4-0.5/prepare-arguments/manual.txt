@@ -1,0 +1,2 @@
+line 8: prepare argument stays; pass one object literal
+line 9: prepare argument stays; remove its object spread and list the properties explicitly

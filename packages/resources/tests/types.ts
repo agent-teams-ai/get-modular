@@ -4,7 +4,7 @@ import {
   type ResourcesErrorCode, type Scope, type ScopeControl,
 } from "../dist/index.js";
 
-// A stand-in for Assembly 0.3.0 bindFactory: the context carries signal and the opaque run scope.
+// A stand-in for a direct Assembly entry factory: the context carries signal and the opaque run scope.
 declare function bindCurrent<D>(
   factory: (deps: D, context: { readonly signal: AbortSignal; readonly scope: unknown }) => Promise<number>,
 ): void;

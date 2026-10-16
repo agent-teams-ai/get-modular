@@ -82,6 +82,11 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
       immutableDigest: "sha256:f229a2067471f7e49e7243d8d1ba5174fab699e1fbcdb298384aaafd6a27e81d",
     },
     {
+      id: "ADR-0036",
+      path: "docs/decisions/0036-compose-roots-from-module-entries-and-static-groups.md",
+      immutableDigest: "sha256:2ab03f4cd3844bfe5a9673c3da719a4bd7c29a745dfb11b6d5c8f0783142e675",
+    },
+    {
       id: "ADR-0037",
       path: "docs/decisions/0037-pin-providers-not-completed-rows-in-the-binding-oracle.md",
       immutableDigest: "sha256:1c49f7bbfd5ec7df2dbfaefbfd58da7ea2c3583421fc22a3122acd15648718a6",
@@ -163,7 +168,7 @@ test("observations bind historical lock bytes, production importers and reviewed
     "C0 retains the CMS bytes observed at its base");
   const currentCms = readFileSync(cmsPath);
   assert.equal(digest(currentCms),
-    "sha256:859fbca1e8a0c61b6ae873bea0057735a55b80230100e6e73a74de22e123165a",
+    "sha256:e4a157b97a103fd1836d1a44bacaafab57eebdd7a6fcafb5e00d67bef680e20b",
     "the current CMS successor must match its separately reviewed bytes");
   // Package versions are observations at the evidence base; later releases move the working tree.
   for (const [name, version] of Object.entries(checkpoint.evidence.packages)) {

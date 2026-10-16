@@ -1,0 +1,2 @@
+line 1: re-export of FactoryHandle stays; importers of it through this module are not rewritten
+line 2: export * from @get-modular/assembly stays; importers of renamed types through this module need manual review

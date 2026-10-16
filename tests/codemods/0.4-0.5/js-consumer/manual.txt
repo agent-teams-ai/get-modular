@@ -1,0 +1,4 @@
+line 13: bindFactory call stays; make its Assembly receiver a local assemblyFor() value or an Assembly<M> parameter
+line 16: prepare argument stays; give the Assembly prepare call an object literal with factories and roots
+line 6: factories property stays; rename the helper property and its callers to modules by hand
+line 10: factories property stays; rename the helper property and its callers to modules by hand

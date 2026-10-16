@@ -47,6 +47,15 @@ const ASSEMBLY_PROFILE_COMPLETION_REGISTRY_ENTRY = Object.freeze({
   path: ASSEMBLY_PROFILE_COMPLETION_DECISION_PATH,
   immutableDigest: "sha256:f229a2067471f7e49e7243d8d1ba5174fab699e1fbcdb298384aaafd6a27e81d",
 });
+export const ASSEMBLY_MODULE_ENTRIES_DECISION_PATH =
+  "docs/decisions/0036-compose-roots-from-module-entries-and-static-groups.md";
+const ASSEMBLY_MODULE_ENTRIES_DECISION_BYTES_DIGEST =
+  "sha256:79e9640e226ca959c167cda51b44875ad478aa5bba0081a3d571341269004c47";
+const ASSEMBLY_MODULE_ENTRIES_REGISTRY_ENTRY = Object.freeze({
+  id: "ADR-0036",
+  path: ASSEMBLY_MODULE_ENTRIES_DECISION_PATH,
+  immutableDigest: "sha256:2ab03f4cd3844bfe5a9673c3da719a4bd7c29a745dfb11b6d5c8f0783142e675",
+});
 // Each public pair after 0.1.0 is authenticated by its own accepted decision;
 // the manifest shape alone is not authority.
 export const ASSEMBLY_PAIR_DECISIONS = Object.freeze({
@@ -64,6 +73,11 @@ export const ASSEMBLY_PAIR_DECISIONS = Object.freeze({
     path: ASSEMBLY_PROFILE_COMPLETION_DECISION_PATH,
     bytesDigest: ASSEMBLY_PROFILE_COMPLETION_DECISION_BYTES_DIGEST,
     entry: ASSEMBLY_PROFILE_COMPLETION_REGISTRY_ENTRY,
+  }),
+  "0.5.0": Object.freeze({
+    path: ASSEMBLY_MODULE_ENTRIES_DECISION_PATH,
+    bytesDigest: ASSEMBLY_MODULE_ENTRIES_DECISION_BYTES_DIGEST,
+    entry: ASSEMBLY_MODULE_ENTRIES_REGISTRY_ENTRY,
   }),
 });
 export const CORE_DEVELOPMENT_DEPENDENCIES = Object.freeze({

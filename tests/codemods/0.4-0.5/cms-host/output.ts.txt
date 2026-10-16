@@ -1,0 +1,17 @@
+import { implement } from "@get-modular/assembly";
+import type { Assembly } from "@get-modular/assembly";
+import { scoped } from "@get-modular/resources";
+
+type Capabilities = Record<never, never>;
+declare const databaseDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const ordersDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const createDatabase: (...args: any[]) => any;
+declare const createOrders: (...args: any[]) => any;
+
+export function composeOrders(api: Assembly<Capabilities>) {
+  const database = implement<Capabilities>()(databaseDeclaration, createDatabase);
+  const orders = implement<Capabilities>()(ordersDeclaration, createOrders, scoped);
+  return api.prepare({
+    profileId: "acme/orders-host", modules: [database, orders], roots: { orders },
+  });
+}

@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { compileComposition, many, optional, required } from "@get-modular/core";
-import { assemblyFor, declareModule, defineContract } from "@get-modular/assembly";
+import { assemblyFor, declareModule, defineContract, implement, input } from "@get-modular/assembly";
 import { createScope, scoped } from "@get-modular/resources";
 import {
   ConformanceError, checkModuleLayout, checkNamespaces, checkWiring, contractSuite, describeWiring, guardHandles,
@@ -27,17 +27,15 @@ const ordersDeclaration = declareModule(ordersSpec);
 const dependencies = () => ({ logs: [{ id: 1 }, { id: 2 }], audit: undefined, db: { query: () => 7 } });
 const product = value => ({ instance: value, capabilities: { "t/orders": { list: () => value } } });
 const code = error => error?.code;
+const entryFor = (declaration, factory) => implement()(declaration, factory, scoped);
 
 test("H1 the module sees the records and context of a production run", async () => {
   const seen = [];
-  await using isolated = await isolate(assemblyFor(), {
-    declaration: ordersDeclaration, dependencies: dependencies(),
-    factory: async (deps, context) => {
+  await using isolated = await isolate(entryFor(ordersDeclaration, async (deps, context) => {
       seen.push(Object.isFrozen(deps.logs), Object.getPrototypeOf(deps), Object.hasOwn(deps, "audit"),
         Object.keys(context).sort());
       return product(deps.db.query() + deps.logs.length);
-    },
-  });
+    }), { dependencies: dependencies() });
   assert.deepEqual(seen, [true, null, true, ["resources", "signal"]]);
   assert.equal(isolated.instance, 9);
   assert.equal(isolated.capabilities["t/orders"].list(), 9);
@@ -45,25 +43,16 @@ test("H1 the module sees the records and context of a production run", async () 
 
 test("H1 a supplied optional dependency and a many array of the declared size are wired in order", async () => {
   let observed;
-  await using _isolated = await isolate(assemblyFor(), {
-    declaration: ordersDeclaration, dependencies: { ...dependencies(), audit: { who: "me" } },
-    factory: async deps => { observed = [deps.audit.who, deps.logs.map(log => log.id)]; return product(0); },
-  });
+  await using _isolated = await isolate(entryFor(ordersDeclaration, async deps => { observed = [deps.audit.who, deps.logs.map(log => log.id)]; return product(0); }), { dependencies: { ...dependencies(), audit: { who: "me" } } });
   assert.deepEqual(observed, ["me", [1, 2]]);
 });
 
 test("H2 a wrong product and a mutated dependency fail as they do in production", async () => {
-  const wrong = await isolate(assemblyFor(), {
-    declaration: ordersDeclaration, dependencies: dependencies(),
-    factory: async () => ({ instance: 1, capabilities: {} }),
-  }).then(() => undefined, error => error);
+  const wrong = await isolate(entryFor(ordersDeclaration, async () => ({ instance: 1, capabilities: {} })), { dependencies: dependencies() }).then(() => undefined, error => error);
   assert.equal(code(wrong), "conformance.isolate.construction-failed");
   assert.equal(wrong.details.outcome.code, "assembly.run.invalid-product");
   assert.equal(wrong.details.report.complete, true);
-  const mutating = await isolate(assemblyFor(), {
-    declaration: ordersDeclaration, dependencies: dependencies(),
-    factory: async deps => { deps.logs.push({ id: 3 }); return product(0); },
-  }).then(() => undefined, error => error);
+  const mutating = await isolate(entryFor(ordersDeclaration, async deps => { deps.logs.push({ id: 3 }); return product(0); }), { dependencies: dependencies() }).then(() => undefined, error => error);
   assert.equal(code(mutating), "conformance.isolate.construction-failed");
   assert.ok(mutating.cause instanceof TypeError);
 });
@@ -76,12 +65,12 @@ test("H2 an invalid or untrusted dependency record is refused before anything ru
   const { db: _db, ...missing } = dependencies();
   for (const bad of [getter, missing, { ...dependencies(), logs: { length: 0 } },
     { ...dependencies(), logs: [, 1] }, { ...dependencies(), logs: Object.defineProperty([], 0, { get() { calls += 1; return 1; } }) }]) {
-    const error = await isolate(assemblyFor(), { declaration: ordersDeclaration, dependencies: bad, factory })
+    const error = await isolate(entryFor(ordersDeclaration, factory), { dependencies: bad })
       .then(() => undefined, caught => caught);
     assert.equal(code(error), "conformance.argument.invalid");
   }
   const reserved = declareModule({ ...ordersSpec, moduleId: "conformance/orders" });
-  const error = await isolate(assemblyFor(), { declaration: reserved, dependencies: dependencies(), factory })
+  const error = await isolate(entryFor(reserved, factory), { dependencies: dependencies() })
     .then(() => undefined, caught => caught);
   assert.equal(code(error), "conformance.argument.invalid");
   assert.equal(calls, 0);
@@ -93,17 +82,14 @@ test("H3 dispose reports the debt, and a later close retries it", async () => {
   const declaration = declareModule({
     moduleId: "t/resources", implementationId: "t/resources/default", owner, provides: [Orders.provide()], slots: [],
   });
-  const isolated = await isolate(assemblyFor(), {
-    declaration, dependencies: {},
-    factory: async (_deps, { resources }) => {
+  const isolated = await isolate(entryFor(declaration, async (_deps, { resources }) => {
       await resources.setup({ name: "a", setup: () => 1, cleanup: () => { journal.push("a"); } });
       await resources.setup({
         name: "b", setup: () => 2,
         cleanup: () => { journal.push("b"); if (failures-- > 0) throw new Error("b is stuck"); },
       });
       return product(0);
-    },
-  });
+    }), { dependencies: {} });
   const failure = await isolated[Symbol.asyncDispose]().then(() => undefined, error => error);
   assert.equal(code(failure), "resources.close.incomplete");
   assert.deepEqual(journal, ["b", "a"]);
@@ -123,7 +109,7 @@ function chain({ onCleanup = () => {}, onStart = () => {}, onDone = () => {}, wa
   const calls = { compose: 0 };
   const compose = async api => {
     calls.compose += 1;
-    const handles = declarations.map((declaration, position) => api.bindFactory(declaration,
+    const handles = declarations.map((declaration, position) => implement()(declaration,
       scoped(declaration.implementationId, (_deps, { resources, signal }) => {
         if (throws && position === 2) { throw new Error("synchronous failure"); }
         const body = (async () => {
@@ -137,7 +123,7 @@ function chain({ onCleanup = () => {}, onStart = () => {}, onDone = () => {}, wa
         })();
         return carrier && position === 2 ? carrier(body) : body;
       })));
-    return api.prepare({ composition: await compileChain(declarations), factories: handles, roots: { root: handles[4] } });
+    return api.prepare({ composition: await compileChain(declarations), modules: handles, roots: { root: handles[4] } });
   };
   return { calls, compose };
 }
@@ -162,10 +148,10 @@ test("S1b smoke runs a profileId root whose bindings Assembly completes", async 
   const calls = { compose: 0 };
   const compose = async api => {
     calls.compose += 1;
-    const handles = chainDeclarations().map(declaration => api.bindFactory(declaration, async () => ({
+    const handles = chainDeclarations().map(declaration => implement()(declaration, async () => ({
       instance: declaration.implementationId, capabilities: Object.fromEntries(declaration.provides.map(({ capabilityId }) => [capabilityId, {}])),
     })));
-    return api.prepare({ profileId: "t/chain", factories: handles, roots: { root: handles[4] } });
+    return api.prepare({ profileId: "t/chain", modules: handles, roots: { root: handles[4] } });
   };
   const steps = await smoke({ api: assemblyFor(), compose });
   assert.equal(calls.compose, 1);
@@ -250,24 +236,14 @@ test("S2 a debt in the first run does not hide an unknown at id", async () => {
   assert.match(all.details.steps[0].problem, /debt/u);
 });
 
-test("S2 factories bound outside the api given to compose fail smoke", async () => {
+test("S2 modules bound outside the api given to compose fail smoke", async () => {
   const separate = assemblyFor();
   const outside = chain();
   // The root binds with its own Assembly and only returns the preparation.
   const compose = async () => outside.compose(separate);
   const error = await smoke({ api: assemblyFor(), compose }).then(() => undefined, caught => caught);
   assert.equal(code(error), "conformance.smoke.failed");
-  assert.equal(error.details.steps.length, 1);
-  assert.match(error.details.steps[0].problem, /outside the api/u);
-  const partial = chain();
-  const mixed = async api => partial.compose({
-    bindFactory: (declaration, factory) => (declaration.implementationId === "t/m5" ? separate : api).bindFactory(declaration, factory),
-    bindInput: declaration => api.bindInput(declaration), prepare: prepareInput => api.prepare(prepareInput),
-  });
-  const some = await smoke({ api: assemblyFor(), compose: mixed }).then(() => undefined, caught => caught);
-  assert.equal(code(some), "conformance.smoke.failed");
-  assert.equal(some.details.steps.length, 9);
-  assert.match(some.details.steps[0].problem, /compose bound t\/m5 outside/u);
+  assert.match(error.message, /did not produce/u);
 });
 
 test("S2 smoke rejects a missing input record", async () => {
@@ -275,18 +251,19 @@ test("S2 smoke rejects a missing input record", async () => {
   assert.equal(code(error), "conformance.argument.invalid");
 });
 
-// A scripted Assembly: it runs the bound factories in order, so smoke's own expectations can be broken at will.
+// A scripted Assembly: it runs the bound modules in order, so smoke's own expectations can be broken at will.
 function scripted(tweak) {
   const ids = ["t/a", "t/b", "t/c"];
+  const declarations = ids.map(id => declareModule({
+    moduleId: id, implementationId: id, owner, provides: [], slots: [],
+  }));
   const api = {
-    bindFactory: (declaration, factory) => ({ declaration, factory }),
-    bindInput: declaration => declaration,
-    prepare: async ({ factories }) => ({
+    prepare: async ({ modules }) => ({
       status: "prepared",
       prepared: {
         run: async ({ signal }) => {
           const created = [];
-          for (const { declaration, factory } of factories) {
+          for (const { declaration, factory } of modules) {
             try {
               await factory({}, { signal, scope: undefined });
             } catch (cause) {
@@ -301,8 +278,8 @@ function scripted(tweak) {
       },
     }),
   };
-  const compose = async given => given.prepare({ composition: undefined, roots: {}, factories: ids.map(id =>
-    given.bindFactory({ moduleId: id, implementationId: id }, async () => ({ instance: 1, capabilities: {} }))) });
+  const compose = async given => given.prepare({ composition: undefined, roots: {}, modules: declarations.map(declaration =>
+    implement()(declaration, async () => ({ instance: 1, capabilities: {} }))) });
   return { api, compose };
 }
 
@@ -324,7 +301,7 @@ test("S1 smoke checks the cause and the created prefix of an injected failure", 
 
 test("H2 an id that only starts with the reserved prefix is accepted", async () => {
   const declaration = declareModule({ ...ordersSpec, moduleId: "conformancex/orders", implementationId: "conformancex/orders/default" });
-  await using isolated = await isolate(assemblyFor(), { declaration, dependencies: dependencies(), factory: async () => product(1) });
+  await using isolated = await isolate(entryFor(declaration, async () => product(1)), { dependencies: dependencies() });
   assert.equal(isolated.instance, 1);
 });
 
@@ -336,22 +313,17 @@ test("H3 within puts the module scope under the caller's scope, and the signal r
   const subject = { name: "within-subject", declaration, create: () => ({ list: () => 0 }) };
   runContractSuite(contractSuite(Orders, {
     "builds inside the case scope": async (_value, context) => {
-      await isolate(assemblyFor(), {
-        declaration, dependencies: {}, within: context.resources,
-        factory: async (_deps, { resources }) => {
+      await isolate(entryFor(declaration, async (_deps, { resources }) => {
           await resources.setup({ name: "conn", setup: () => 1, cleanup: () => { throw new Error("stuck"); } });
           return product(0);
-        },
-      });
+        }), { dependencies: {}, within: context.resources });
     },
   }), subject, (name, body) => registered.push({ name, body }));
   const failure = await registered[0].body().then(() => undefined, error => error);
   assert.equal(code(failure), "resources.close.incomplete");
   assert.deepEqual(failure.report.debts.map(debt => debt.path), [["within-subject", "isolate", "t/within/default", "conn"]]);
 
-  const cancelled = await isolate(assemblyFor(), {
-    declaration, dependencies: {}, signal: AbortSignal.abort(), factory: async () => product(0),
-  }).then(() => undefined, error => error);
+  const cancelled = await isolate(entryFor(declaration, async () => product(0)), { dependencies: {}, signal: AbortSignal.abort() }).then(() => undefined, error => error);
   assert.equal(code(cancelled), "conformance.isolate.construction-failed");
   assert.equal(cancelled.details.outcome.status, "cancelled");
 });
@@ -403,9 +375,9 @@ test("S4 run inputs are passed to every attempt, and a root that needs them fail
     },
   });
   const compose = async api => {
-    const input = api.bindInput(sessionModule);
-    const handle = api.bindFactory(store, scoped("t/store", async deps => product(deps.session)));
-    return api.prepare({ composition, factories: [handle], roots: { store: handle }, inputs: { session: input } });
+    const inputEntry = input()(sessionModule);
+    const handle = implement()(store, scoped("t/store", async deps => product(deps.session)));
+    return api.prepare({ composition, modules: [handle], roots: { store: handle }, inputs: { session: inputEntry } });
   };
   const steps = await smoke({ api: assemblyFor(), compose, inputs: { session: { "t/session": "s1" } } });
   assert.equal(steps.length, 3);

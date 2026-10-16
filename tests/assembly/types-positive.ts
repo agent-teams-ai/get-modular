@@ -1,5 +1,5 @@
 import { compileComposition, defineModule, many, optional, required } from "@get-modular/core";
-import { assemblyFor } from "@get-modular/assembly";
+import { assemblyFor, implement, input } from "@get-modular/assembly";
 import type { CapabilityContract } from "@get-modular/assembly";
 
 type Capabilities = {
@@ -26,10 +26,10 @@ const rootDeclaration = defineModule({
   ],
 });
 const api = assemblyFor<Capabilities>();
-const store = api.bindFactory(storeDeclaration, async () => {
+const store = implement<Capabilities>()(storeDeclaration, async () => {
   return { instance: { host: true }, capabilities: { "synthetic/store": { value: "data" } } };
 });
-const root = api.bindFactory(rootDeclaration, async (deps) => {
+const root = implement<Capabilities>()(rootDeclaration, async (deps) => {
   const value: string = deps.store.value;
   deps.logger?.log(value);
   return { instance: { render: () => deps.filters.reduce((input, filter) => filter.apply(input), value) }, capabilities: {} };
@@ -48,7 +48,7 @@ const composition = await compileComposition({
   },
 });
 if (!("plan" in composition)) throw new Error(JSON.stringify(composition));
-const ready = await api.prepare({ composition, factories: [store, root], roots: { app: root, storage: store } });
+const ready = await api.prepare({ composition, modules: [store, root], roots: { app: root, storage: store } });
 if (ready.status !== "prepared") throw new Error(JSON.stringify(ready));
 const outcome = await ready.prepared.run();
 if (outcome.status !== "succeeded") throw new Error(JSON.stringify(outcome));
@@ -73,8 +73,8 @@ const greetingDeclaration = defineModule({
   provides: [{ capabilityId: "synthetic/greeting", compatibility: exact() }],
   slots: [{ slotId: "session", capabilityId: "synthetic/session", compatibility: exact(), cardinality: required() }],
 });
-const sessionInput = sessionApi.bindInput(sessionDeclaration);
-const greeting = sessionApi.bindFactory(greetingDeclaration, async (deps, { scope }) => ({
+const sessionInput = input<SessionCapabilities>()(sessionDeclaration);
+const greeting = implement<SessionCapabilities>()(greetingDeclaration, async (deps, { scope }) => ({
   instance: { text: `${deps.session}:${String(scope)}` }, capabilities: { "synthetic/greeting": deps.session },
 }));
 const sessions = await compileComposition({
@@ -87,7 +87,7 @@ const sessions = await compileComposition({
   },
 });
 if (!("plan" in sessions)) throw new Error(JSON.stringify(sessions));
-const sessionReady = await sessionApi.prepare({ composition: sessions, factories: [greeting], roots: { greeting }, inputs: { session: sessionInput } });
+const sessionReady = await sessionApi.prepare({ composition: sessions, modules: [greeting], roots: { greeting }, inputs: { session: sessionInput } });
 if (sessionReady.status !== "prepared") throw new Error(JSON.stringify(sessionReady));
 const [first, second] = await Promise.all(["a", "b"].map((id) => sessionReady.prepared.run({ scope: id, inputs: { session: { "synthetic/session": id } } })));
 if (first?.status !== "succeeded" || second?.status !== "succeeded"

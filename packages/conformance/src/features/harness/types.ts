@@ -1,5 +1,4 @@
 import type { CreatedEntry, FactoryContext } from "@get-modular/assembly";
-import type { ModuleDeclaration } from "@get-modular/core";
 import type { CloseReport } from "@get-modular/resources";
 
 /** One module built exactly as a production run builds it; dispose it, or close it and read the report. */
@@ -22,7 +21,7 @@ export type SmokeStep = {
   readonly problem?: string | undefined;
 };
 
-// Assembly derives its handle and outcome types from the capability map of one caller. The harness
+// Assembly derives its entry and outcome types from the capability map of one caller. The harness
 // builds declarations at run time, so it talks to Assembly through these map-free views of the same
 // shapes; the public signatures keep the caller's types.
 export type LooseFactory = (dependencies: unknown, context: FactoryContext) => Promise<unknown>;
@@ -46,15 +45,14 @@ export type LooseRunOptions = {
 };
 export type LoosePrepared = { readonly run: (options?: LooseRunOptions) => Promise<LooseOutcome> };
 export type LoosePreparation =
-  | { readonly status: "prepared"; readonly prepared: LoosePrepared }
+  | { readonly status: "prepared"; readonly prepared: LoosePrepared; readonly composition?: unknown }
   | { readonly status: "failed"; readonly error: { readonly code: string; readonly cause: unknown }; readonly diagnostics: readonly unknown[] };
-export type LooseAssembly = {
-  readonly bindFactory: (declaration: ModuleDeclaration, factory: LooseFactory) => unknown;
-  readonly bindInput: (declaration: ModuleDeclaration) => unknown;
-  readonly prepare: (input: {
-    readonly composition: unknown;
-    readonly factories: readonly unknown[];
-    readonly roots: Readonly<Record<string, unknown>>;
-    readonly inputs?: Readonly<Record<string, unknown>> | undefined;
-  }) => Promise<LoosePreparation>;
+export type LoosePrepareInput = {
+  readonly modules: readonly unknown[];
+  readonly roots: Readonly<Record<string, unknown>>;
+  readonly inputs?: Readonly<Record<string, unknown>> | undefined;
+  readonly composition?: unknown;
+  readonly profileId?: unknown;
+  readonly bindings?: unknown;
 };
+export type LooseAssembly = { readonly prepare: (input: LoosePrepareInput) => Promise<LoosePreparation> };

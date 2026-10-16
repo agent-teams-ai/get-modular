@@ -60,12 +60,12 @@ test("the Consumer Module Standard examples compile on both compilers", { timeou
     }
     // The composition-root line the module block shows in a comment must compile as written.
     const rootLine = example("module").match(/^\/\/ {3}(const counter = .*)$/mu)?.[1];
-    assert.ok(rootLine, "the module block must show its bindFactory line");
+    assert.ok(rootLine, "the module block must show its entry root line");
     files.push("root.ts");
     await writeFile(join(directory, "root.ts"), `import type { Assembly, CapabilitiesOf } from "@get-modular/assembly";
 import { scoped } from "@get-modular/resources";
 import type { Counter, Store } from "./contracts.js";
-import { counterDeclaration, createCounter } from "./module.js";
+import { counterEntry } from "./module.js";
 export function composeCounter(api: Assembly<CapabilitiesOf<typeof Store | typeof Counter>>) {
   ${rootLine}
   return counter;

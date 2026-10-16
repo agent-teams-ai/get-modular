@@ -1,0 +1,15 @@
+import type {
+  FactoryHandle,
+  AnyFactoryHandle,
+  InputHandle,
+  AnyInputHandle,
+  RootHandles,
+  InputHandles,
+} from "@get-modular/assembly";
+
+type A = FactoryHandle<Record<never, never>>;
+type B = AnyFactoryHandle<Record<never, never>>;
+type C = InputHandle<Record<never, never>>;
+type D = AnyInputHandle<Record<never, never>>;
+type E = RootHandles<Record<never, never>>;
+type F = InputHandles<Record<never, never>>;
