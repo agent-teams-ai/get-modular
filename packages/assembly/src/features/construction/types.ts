@@ -197,18 +197,13 @@ export type RunInputs<N> = {
 };
 
 export type SuccessfulComposition = Extract<CompileCompositionResult, { readonly plan: CompositionPlan; readonly digest: PlanDigest }>;
-/**
- * Every capability any factory or input entry uses must be part of the preparing map `C`. Entries passed as a
- * literal array keep their used capabilities; an array typed as `AnyModuleEntry<C>[]` beforehand does not.
- */
-export type KnownCapabilities<C, F extends readonly unknown[], N> = [Exclude<
-  (F[number] | N[keyof N]) extends infer H ? H extends { readonly [uses]: infer U } ? keyof U : never : never,
-  keyof C>] extends [infer Missing]
-  ? [Missing] extends [never] ? unknown : { readonly "capabilities missing from the preparing map": Missing }
-  : never;
 /** The members of `modules`: entries and groups of entries. */
 export type ModuleItem<C> = AnyModuleEntry<C> | ModuleGroup<AnyModuleEntry<C>, keyof C>;
-export type KnownModules<C, M extends readonly unknown[], N> = [Exclude<
+/**
+ * Every capability any module entry, group or input entry uses must be part of the preparing map `C`. A group
+ * carries its used keys, so the check reads them once per group; a list typed as `AnyModuleEntry<C>[]` loses them.
+ */
+export type KnownCapabilities<C, M extends readonly unknown[], N> = [Exclude<
   UsedKeysOf<M[number]> | (N[keyof N] extends infer H ? H extends { readonly [uses]: infer U } ? keyof U : never : never),
   keyof C>] extends [infer Missing]
   ? [Missing] extends [never] ? unknown : { readonly "capabilities missing from the preparing map": Missing }
@@ -221,7 +216,7 @@ export type TupleOnly<M extends readonly unknown[]> = number extends M["length"]
  */
 export type AssemblyPrepareInput<C, R extends RootEntries<C>, N extends InputEntries<C> = {},
   M extends readonly ModuleItem<C>[] = readonly ModuleItem<C>[]> = {
-  readonly modules: M & KnownModules<C, M, N>;
+  readonly modules: M & KnownCapabilities<C, M, N>;
   readonly roots: R;
   readonly inputs?: N | undefined;
 } & (
