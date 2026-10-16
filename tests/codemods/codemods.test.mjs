@@ -63,12 +63,18 @@ test("0.4-0.5 outputs type-check against the workspace Assembly", { timeout: 600
     writeFileSync(join(directory, "package.json"), JSON.stringify({ name: "codemod-types", private: true, type: "module" }));
     const prelude = 'type HostCapabilities = Record<never, never>;\ntype Instance = unknown;\n'
       + 'type SessionCapabilities = Record<never, never>;\ntype Contracts = Record<never, never>;\n'
-      + 'declare const declaration: import("@get-modular/core").ModuleDeclaration;\n';
+      + 'type StaticDeclaration = { readonly kind: "get-modular.module-declaration"; readonly schemaVersion: 1;\n'
+      + '  readonly moduleId: "codemod/module"; readonly implementationId: "codemod/module/default";\n'
+      + '  readonly owner: { readonly authority: "codemod"; readonly path: readonly ["module"] };\n'
+      + '  readonly provides: readonly []; readonly slots: readonly [] };\n'
+      + 'declare const declaration: StaticDeclaration;\n';
     const files = [];
     const typeCases = casesFor("0.4-0.5").filter((case_) => !existsSync(join(fixtures, "0.4-0.5", case_, "manual.txt")));
     for (const case_ of typeCases) {
       files.push(`${case_}.ts`);
-      writeFileSync(join(directory, `${case_}.ts`), prelude + read("0.4-0.5", case_, "output.ts.txt"));
+      // `implement` and `input` need a literal declaration type; the fixtures declare the wide one.
+      const output = read("0.4-0.5", case_, "output.ts.txt").replaceAll('import("@get-modular/core").ModuleDeclaration', "StaticDeclaration");
+      writeFileSync(join(directory, `${case_}.ts`), prelude + output);
     }
     writeFileSync(join(directory, "tsconfig.json"), JSON.stringify({ compilerOptions: {
       target: "ES2022", lib: ["ES2023", "ESNext.Disposable", "DOM"], strict: true, noEmit: true, skipLibCheck: false, types: [],
