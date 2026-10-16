@@ -52,7 +52,7 @@ export function input<C>() {
     const entry = sealed({ declaration: captured });
     metadata.set(entry, Object.freeze({ declaration: captured, factory: inputFactory, input: true as const }));
     inputEntries.add(entry);
-    return entry as unknown as InputEntry<C, D>;
+    return entry as never;
   };
 }
 

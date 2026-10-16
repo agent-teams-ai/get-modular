@@ -120,8 +120,8 @@ export async function smoke<C, R extends RootEntries<C>, N extends InputEntries<
     };
   // Entries and groups are public inert data: rebuild the same tree with every factory wrapped, using the
   // public `implement` and `group` only. The real `prepare` runs first, so a forged entry fails as in production.
-  const makeEntry = implement() as unknown as (declaration: ModuleDeclaration, factory: LooseFactory) => unknown;
-  const makeGroup = group as unknown as (name: string, members: readonly unknown[]) => unknown;
+  const makeEntry: (declaration: ModuleDeclaration, factory: LooseFactory) => unknown = implement() as never;
+  const makeGroup: (name: string, members: readonly unknown[]) => unknown = group as never;
   const copies = new Map<unknown, unknown>();
   const produced = new WeakSet<object>();
   const rebuild = (member: unknown): unknown => {
@@ -146,7 +146,7 @@ export async function smoke<C, R extends RootEntries<C>, N extends InputEntries<
     },
   } satisfies LooseAssembly;
 
-  const preparation = await compose(wrapped as unknown as Assembly<C>);
+  const preparation = await compose(wrapped as Assembly<C>);
   if (!produced.has(preparation)) {
     throw new ConformanceError("conformance.smoke.failed",
       "compose resolved with a preparation its api did not produce, so no injection reaches its factories");

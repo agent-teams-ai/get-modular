@@ -7,7 +7,7 @@ import type { Resources, Scope } from "@get-modular/resources";
 import { ConformanceError, invalid } from "../errors/errors.js";
 import type { Isolated, LooseAssembly, LooseOutcome } from "./types.js";
 
-const makeInput = inputEntry() as unknown as (declaration: ModuleDeclaration) => unknown;
+const makeInput: (declaration: ModuleDeclaration) => unknown = inputEntry() as never;
 
 /** Ids with this prefix belong to the fakes `isolate` generates; a module under test cannot use them. */
 const SYNTHETIC = "conformance";
@@ -143,7 +143,7 @@ export async function isolate<const E extends AnyEntry>(
   }
   const { fakes, providers } = wire(entry.declaration, input.dependencies);
   const declaration: ModuleDeclaration = entry.declaration;
-  const assembly = assemblyFor<{}>() as unknown as LooseAssembly;
+  const assembly: LooseAssembly = assemblyFor<{}>() as never;
 
   const declarations: ModuleDeclaration[] = [declaration, ...fakes.map(fake => fake.declaration)];
   const composition = await compileComposition({
