@@ -28,7 +28,7 @@ pnpm 11.20.0 can pack the conformance archive non-deterministically (the order o
 
 ## Core 0.5.0 against the published 0.4.0
 
-Core 0.5.0 is the exact-pair alignment with Assembly 0.5.0 (ADR-0027, ADR-0036). Every file under `dist/` is byte-identical to the retained Core 0.4.0 archive; only `package.json` (version) and `CHANGELOG.md` differ. The public API baseline `architecture/public-api/core.json` changes only `packageVersion`.
+Core 0.5.0 is the exact-pair alignment with Assembly 0.5.0 (ADR-0027, ADR-0036). Every file under `dist/` is byte-identical to the retained Core 0.4.0 archive; only `package.json` (version), `CHANGELOG.md` and `README.md` (the Node 26 default toolchain wording from #168) differ. The public API baseline `architecture/public-api/core.json` changes only `packageVersion`.
 
 ## Packed manifests
 
@@ -57,11 +57,16 @@ npm publish ./get-modular-assembly-0.5.0.tgz --tag next --access public
 npm publish ./get-modular-conformance-0.3.0.tgz --tag next --access public
 ```
 
-Resources is not published. Read-back afterwards: each `npm view @get-modular/<package>@<version> dist.integrity` equals its `INTEGRITY` line, and `npm pack @get-modular/<package>@<version>` bytes pass `shasum -a 256 -c SHA256SUMS`. Promotion to `latest` is a separate owner step after the TEST migration (P6) merges.
+Resources is not published. Read-back afterwards, for core, assembly and conformance:
+
+1. `npm view @get-modular/<package>@<version> dist.integrity` equals its `INTEGRITY` line.
+2. `npm pack @get-modular/<package>@<version> --pack-destination <empty dir>` for each of the three, then `grep -v resources SHA256SUMS | (cd <empty dir> && shasum -a 256 -c -)` passes (the conformance bytes match exactly, not only by the normalized digest). Resources is not published, so its line is left out.
+
+An uncertain result is reconciled read-only, never retried blindly. Stop after a failed publish: do not publish the next package until the state is reconciled. Promotion to `latest` is a separate owner step after the TEST migration (P6) merges.
 
 ## Consumer checks on these bytes
 
-Pending. They run in a TEST branch of modularity-host-test on the retained archives; the result is recorded here by the record PR after publication.
+Pending. They run in a TEST branch of modularity-host-test on the retained archives; the result is recorded here by the record PR after publication. Publication waits for the TEST consumer check on these bytes.
 
 ## Owner publication approval
 
