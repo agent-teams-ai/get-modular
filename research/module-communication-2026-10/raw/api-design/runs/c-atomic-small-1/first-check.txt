@@ -1,0 +1,18 @@
+== a-logger
+[c-atomic] tsc7: OK (0 errors)
+[c-atomic] ts5.8.3: OK (0 errors)
+== b-catalog
+[c-atomic] tsc7: OK (0 errors)
+[c-atomic] ts5.8.3: OK (0 errors)
+== c-pricing-context
+[c-atomic] tsc7: OK (0 errors)
+[c-atomic] ts5.8.3: OK (0 errors)
+== d-greeter
+[c-atomic] tsc7: OK (0 errors)
+[c-atomic] ts5.8.3: OK (0 errors)
+
+Variant c-atomic, solutions in scratchpad/api-shape/runs/c-atomic-small-1
+  a-logger: PASS
+  b-catalog: PASS
+  c-pricing-context: PASS
+  d-greeter: PASS

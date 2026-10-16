@@ -1,0 +1,8 @@
+// Variant B runtime prototype, used by the probes in this directory.
+// It is the B adapter (../runtime/b-snapshot.ts) over the engine shared with variants A and C (../runtime/core.ts),
+// so one engine is mutation-tested (tools/mutations.sh) instead of two copies drifting apart. Delivery mechanics follow
+// sketch v4: per-key index, a coalescing dirty set flushed in a later task (setImmediate), one active and one pending
+// load with an AbortController per run, stale results dropped, drain on close.
+export { createStore, ObservationError } from "../runtime/b-snapshot.ts";
+export { MAX_CASCADE_DEPTH, stats, type ListenerError, type Stats } from "../runtime/core.ts";
+export { asyncDetection, delivered, liveSubscriptions, settled } from "../runtime/testing.ts";

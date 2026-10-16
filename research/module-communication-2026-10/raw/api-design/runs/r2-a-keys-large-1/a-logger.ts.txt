@@ -1,0 +1,21 @@
+import type { ModuleContext } from "@get-modular/resources";
+import { createConsoleSink, type LoggerDeps, type LoggerProduct } from "./a-logger.types.js";
+
+export async function createLoggerModule(deps: LoggerDeps, { resources }: ModuleContext): Promise<LoggerProduct> {
+  const first = deps.settings.read(["logLevel"]);
+  const sink = createConsoleSink(first.values.logLevel);
+  deps.settings.watch(resources, {
+    name: "logger/level",
+    keys: ["logLevel"],
+    changesAfter: first,
+    onChange: ({ values }) => { sink.setThreshold(values.logLevel); },
+  });
+  return {
+    instance: sink,
+    capabilities: {
+      "acme/logger": {
+        log: (level, message): undefined => { sink.write(level, message); return undefined; },
+      },
+    },
+  };
+}

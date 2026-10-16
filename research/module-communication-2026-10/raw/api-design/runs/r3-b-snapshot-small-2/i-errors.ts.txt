@@ -1,0 +1,27 @@
+import type { ModuleContext } from "@get-modular/resources";
+import { createStore } from "@get-modular/observation";
+import {
+  createNotifier, parseQuietHours, type NotificationStatus, type NotificationsDeps, type NotificationsPort,
+  type NotificationsProduct,
+} from "./i-errors.types.js";
+
+export async function createNotificationsModule(deps: NotificationsDeps, { resources }: ModuleContext): Promise<NotificationsProduct> {
+  const quietHours = deps.settings.read(["quietHours"]);
+  const notifier = createNotifier(parseQuietHours(quietHours.values.quietHours));
+  // An invalid value throws out of the handler: the settings store reports it with this subscription's name
+  // and revision, and the last valid quiet hours stay in place.
+  deps.settings.watch(quietHours, {
+    resources, name: "notifications/quiet-hours",
+    onChange: ({ values }) => { notifier.setQuietHours(parseQuietHours(values.quietHours)); },
+  });
+  const status = createStore<NotificationStatus>({ muted: false }, {
+    name: "notifications/status", resources, reportError: deps.errors.report,
+  });
+  const port: NotificationsPort = {
+    mute: (muted) => { status.set({ muted }); },
+  };
+  return {
+    instance: notifier,
+    capabilities: { "acme/notifications": port, "acme/notifications/status": status.readonly() },
+  };
+}

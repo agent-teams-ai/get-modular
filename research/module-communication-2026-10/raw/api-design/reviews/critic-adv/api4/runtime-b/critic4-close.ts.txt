@@ -1,0 +1,39 @@
+// Critic round 4: attacks on the bounded delivery context of the current B (not the critic's prototype).
+import { createScope } from "@get-modular/resources";
+import { createStore, type ListenerError } from "./observation.ts";
+const scenario = process.argv[2];
+const reports: ListenerError[] = [];
+const report = (r: ListenerError): undefined => { reports.push(r); return undefined; };
+const codes = (): string => reports.map((r) => `${r.subscription}:${(r.cause as { code?: string }).code}`).join(", ") || "none";
+process.on("exit", (code) => { console.log(`[${scenario}] exit ${code}; reports ${codes()}`); });
+const host = createScope({ name: "host" });
+const store = createStore<{ readonly level: number; readonly status: string; readonly server: string }>({ level: 0, status: "idle", server: "a" }, { name: "s", resources: host.resources, reportError: report });
+const facet = store.readonly();
+const module = host.resources.child({ name: "m" });
+const tick = (): Promise<void> => new Promise((r) => { setTimeout(r, 20); });
+const once = (handler: (level: number) => void): void => {
+  let fired = false;
+  facet.watch(facet.read(["level"]), { resources: module.resources, name: `m/${scenario}`, onChange: ({ values }) => { if (!fired) { fired = true; handler(values.level); } } });
+};
+const outcome = (): string => { try { return "no throw"; } finally { /* */ } };
+void outcome;
+if (scenario === "awaits-1000") once((level) => { void (async () => { for (let i = 0; i < 1000; i += 1) await Promise.resolve(i); try { store.set({ level: level + 1 }); } catch { /* reported */ } })(); });
+if (scenario === "thenable") once((level) => { void (async () => { await { then: (r: (v: number) => void) => { r(1); } }; try { store.set({ level: level + 1 }); } catch { /* reported */ } })(); });
+if (scenario === "nexttick") once((level) => { process.nextTick(() => { try { store.set({ level: level + 1 }); } catch { /* reported */ } }); });
+if (scenario === "await-immediate") once((level) => { void (async () => { await new Promise((r) => { setImmediate(r); }); try { store.set({ level: level + 1 }); } catch { /* reported */ } })(); });
+if (scenario === "await-io") once((level) => { void (async () => { await (process.getBuiltinModule("node:fs/promises") as typeof import("node:fs/promises")).readFile(import.meta.filename); try { store.set({ level: level + 1 }); } catch { /* reported */ } })(); });
+if (scenario === "loader-heartbeat") {
+  // A load follows [server, status]; its loader asks the owner to connect (the owner lazily starts a heartbeat that writes
+  // status) and then waits 200 ms for its fetch. The heartbeat is the owner's own timer.
+  let heartbeat: ReturnType<typeof setInterval> | undefined;
+  const ensureConnected = (): void => { heartbeat ??= setInterval(() => { store.set({ status: `alive ${Date.now()}` }); }, 10); };
+  facet.load(facet.read(["server", "status"]), {
+    resources: module.resources, name: "m/diagnostics",
+    loader: async ({ values }) => { ensureConnected(); await new Promise((r) => { setTimeout(r, 200); }); return values.server; },
+    onLoading: () => undefined, onResult: () => undefined, onError: () => undefined,
+  });
+  setTimeout(() => { clearInterval(heartbeat); }, 400);
+}
+if (scenario !== "loader-heartbeat") store.set({ level: 1 });
+for (let i = 0; i < 10; i += 1) await tick();
+console.log(`[${scenario}] level ${store.read(["level"]).values.level}`);

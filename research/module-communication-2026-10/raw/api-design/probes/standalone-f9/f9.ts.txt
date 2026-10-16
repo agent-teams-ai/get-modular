@@ -1,0 +1,23 @@
+type Key<V> = keyof V & string;
+type Frozen<T> = T extends readonly (infer U)[] ? readonly Frozen<U>[] : T extends object ? { readonly [P in keyof T]: Frozen<T[P]> } : T;
+type FixedKeys<V> = {} extends Record<keyof V, unknown> ? never : unknown;
+declare function createStore<V extends object & Required<V> & FixedKeys<V>>(initial: V): { set: <const K extends Key<V>>(patch: { readonly [P in K]: Frozen<V[P]> }) => number; read: <const K extends readonly [Key<V>, ...Key<V>[]]>(keys: K) => Frozen<Pick<V, K[number]>> };
+type Rows = { readonly ids: number[]; readonly theme: string; readonly opt: string | undefined };
+const s = createStore<Rows>({ ids: [1], theme: "x", opt: undefined });
+s.set({ theme: "y" });
+s.set({ ids: s.read(["ids"]).ids });           // readonly array back into set
+s.set({ ids: [1, 2] });                         // mutable array
+// @ts-expect-error push on frozen
+s.read(["ids"]).ids.push(2);
+// @ts-expect-error unknown key
+s.set({ colour: 1 });
+// @ts-expect-error undefined for string
+s.set({ theme: undefined });
+// @ts-expect-error index signature
+createStore<Record<string, number>>({});
+// @ts-expect-error optional key
+createStore<{ readonly a?: string }>({});
+interface I { readonly a: string }
+createStore<I>({ a: "x" });
+const inferred = createStore({ a: 1, b: [1] });
+void inferred;

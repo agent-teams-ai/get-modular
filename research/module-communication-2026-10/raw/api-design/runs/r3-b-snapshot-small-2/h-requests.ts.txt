@@ -1,0 +1,37 @@
+import type { ModuleContext } from "@get-modular/resources";
+import type { QuotesDeps, QuotesPort, QuotesProduct, Screen, Ticker } from "./h-requests.types.js";
+
+export async function createQuotesModule(deps: QuotesDeps, { resources }: ModuleContext): Promise<QuotesProduct> {
+  const rate = deps.settings.read(["eurUsd"]);
+  // One subscription fans out to all open tickers: a watch per ticker would count against the store's watcher limit.
+  const receivers = new Set<{ readonly screen: Screen }>();
+  deps.settings.watch(rate, {
+    resources, name: "quotes/rate",
+    onChange: ({ values }) => {
+      let failure: { readonly cause: unknown } | undefined = undefined;
+      for (const receiver of receivers) {
+        try {
+          receiver.screen.show(values.eurUsd);
+        } catch (cause) {
+          // One failing screen must not stop the others; the first failure is rethrown to the store's error report.
+          failure ??= { cause };
+        }
+      }
+      if (failure !== undefined) { throw failure.cause; }
+    },
+  });
+  const quotes: QuotesPort = {
+    // Read per call: a change is delivered to watchers in a later task, but this must be right after the change.
+    convert: (eur) => eur * deps.settings.read(["eurUsd"]).values.eurUsd,
+    openTicker: (screen): Ticker => {
+      // Shown before anything is registered, so a failing screen leaves nothing behind.
+      screen.show(deps.settings.read(["eurUsd"]).values.eurUsd);
+      const work = resources.child({ name: "quotes/ticker" });
+      const receiver = { screen };
+      receivers.add(receiver);
+      work.resources.use({ [Symbol.dispose]: () => { receivers.delete(receiver); } }, "quotes/ticker/receiver");
+      return { close: async () => { await work.control[Symbol.asyncDispose](); } };
+    },
+  };
+  return { instance: undefined, capabilities: { "acme/quotes": quotes } };
+}

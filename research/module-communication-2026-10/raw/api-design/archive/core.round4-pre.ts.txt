@@ -1,0 +1,599 @@
+// Test-only runtime stub of the observation engine shared by the API variants. Not a release: it exists to
+// measure the lifetime, memory and scaling claims (runtime/probes.test.ts, runtime-b/probes.test.ts).
+//
+// Lifetime model:
+// - watch: one `resources.use({ [Symbol.dispose] }, "watch:<name>")` entry, plus an `abort` listener on
+//   `resources.signal` that detaches the subscription when the scope starts closing, before any cleanup runs.
+//   The entry holds only a slot that is cleared on detach, so a detached subscription retains nothing.
+// - load: one `resources.child({ name: "load:<name>" })` scope holding one `setup` entry "drain" whose cleanup
+//   receives `escalate`. `child()` takes its slot synchronously, so `load` stays a synchronous call.
+// - store: one `resources.use(..., "store:<name>")` entry in the owner's scope.
+// Cascade guard: every commit has a depth (0 outside delivery callbacks, depth of the running delivery + 1 inside
+// one); a delivery takes the largest depth among the commits it coalesces; a commit deeper than MAX_CASCADE_DEPTH
+// throws observation.delivery.cascade and changes nothing. The depth is shared by every store of this module copy.
+import type { Resources } from "@get-modular/resources";
+
+export type ObservationErrorCode =
+  | "observation.argument.invalid"
+  | "observation.keys.empty"
+  | "observation.keys.unknown"
+  | "observation.values.not-plain"
+  | "observation.store.closed"
+  | "observation.snapshot.foreign"
+  | "observation.subscription.duplicate-name"
+  | "observation.subscriptions.limit"
+  | "observation.delivery.cascade"
+  | "observation.callback.returned-value"
+  | "observation.source.closed"
+  | "observation.load.still-running";
+
+export class ObservationError extends Error {
+  readonly code: ObservationErrorCode;
+  constructor(code: ObservationErrorCode, message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "ObservationError";
+    this.code = code;
+  }
+}
+
+export type RawValues = Readonly<Record<string, unknown>>;
+export type RawSnapshot = { readonly revision: number; readonly values: RawValues };
+export type ListenerError = {
+  readonly source: string;
+  readonly subscription: string;
+  readonly path?: readonly string[];
+  readonly revision: number;
+  readonly cause: unknown;
+};
+export type EngineOptions = {
+  readonly name: string;
+  readonly resources: Resources;
+  readonly reportError: (report: ListenerError) => undefined;
+  readonly maxSubscriptionsPerScope?: number;
+  readonly maxSubscriptions?: number;
+};
+type Origin = { readonly engine: object; readonly keys: readonly string[]; readonly revision: number };
+type Registration = {
+  readonly id: number;
+  readonly keys: readonly string[];
+  readonly name: string;
+  readonly resources: Resources;
+  /** Largest cascade depth among the commits waiting to be delivered to this registration. */
+  depth: number;
+  readonly flush: () => void;
+  readonly detach: () => void;
+  /** Releases the subscriber's side after the source closed (load: closes the lane scope). */
+  readonly release: () => void;
+};
+type Job = { readonly revision: number; readonly snapshot: RawSnapshot; readonly depth: number };
+
+/** Counters for probes. `visits` counts registrations touched by `set`; it must depend only on the changed keys. */
+export type Stats = {
+  readonly commits: number;
+  readonly visits: number;
+  /** Lookups in the per-key index made by `set`: one per changed key. */
+  readonly indexLookups: number;
+  readonly deliveries: number;
+  readonly live: number;
+  readonly dirty: number;
+  readonly buckets: number;
+  readonly loaderCalls: number;
+  readonly loadsActive: number;
+  readonly loadsPending: number;
+};
+
+export const DEFAULT_MAX_SUBSCRIPTIONS_PER_SCOPE = 64;
+export const DEFAULT_MAX_SUBSCRIPTIONS = 8192;
+export const MAX_CASCADE_DEPTH = 64;
+/**
+ * Probe sensitivity only: `OBSERVATION_STUB_MUTATION` switches on one deliberate defect, and the probes must then
+ * fail (tools/mutations*.sh). Unset in every normal run.
+ */
+const mutation: string | undefined =
+  (globalThis as { readonly process?: { readonly env?: Readonly<Record<string, string | undefined>> } }).process?.env?.OBSERVATION_STUB_MUTATION;
+const graveyard: unknown[] = []; // mutation "leak-detached" only
+const origins = new WeakMap<object, Origin>(); // snapshot -> where it came from; weak, so snapshots hold nothing alive
+type EngineInfo = { readonly stats: () => Stats; readonly liveIn: (resources?: object) => number };
+const infoOf = new WeakMap<object, EngineInfo>();
+const frozenNodes = new WeakSet<object>(); // nodes this module validated and froze: never walked again
+const noop = (): void => {};
+
+// Package-wide state for the cascade guard and for the testing entry point.
+let deliveringDepth: number | undefined; // depth of the delivery callback that is running, if any
+const pending = { flushes: 0, loads: 0 };
+
+export function stats(storeOrFacet: object): Stats {
+  const info = infoOf.get(storeOrFacet);
+  if (info === undefined) throw new TypeError("not a store of this stub");
+  return info.stats();
+}
+/** For the testing entry point: live subscriptions of a store, optionally only those in one scope. */
+export function liveSubscriptions(storeOrFacet: object, resources?: object): number {
+  const info = infoOf.get(storeOrFacet);
+  if (info === undefined) throw new TypeError("not a store of this stub");
+  return info.liveIn(resources);
+}
+/** For the testing entry point: scheduled deliveries and running or queued loads, across every store. */
+export function pendingWork(): { readonly flushes: number; readonly loads: number } {
+  return { flushes: pending.flushes, loads: pending.loads };
+}
+
+declare function setImmediate(callback: () => void): unknown; // Node global; this stub compiles without @types/node
+/** A later task (not a microtask), so a burst of commits coalesces into one delivery. */
+const later = (run: () => void): void => { setImmediate(run); };
+
+function invalid(message: string): ObservationError {
+  return new ObservationError("observation.argument.invalid", message);
+}
+
+function isResources(value: unknown): value is Resources {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as { readonly signal?: unknown; readonly use?: unknown; readonly child?: unknown };
+  return candidate.signal instanceof AbortSignal && typeof candidate.use === "function" && typeof candidate.child === "function";
+}
+/** `Resources.path` is planned for @get-modular/resources 0.2; reports carry it when it exists. */
+function pathOf(resources: Resources): readonly string[] | undefined {
+  const path: unknown = (resources as { readonly path?: unknown }).path;
+  return Array.isArray(path) && path.every((part) => typeof part === "string") ? Object.freeze([...path] as string[]) : undefined;
+}
+
+/**
+ * Plain data only: primitives, arrays and plain objects, data properties only (no accessors), frozen in place.
+ * The store takes ownership: the caller's objects are frozen, and nodes frozen before are not walked again.
+ */
+function freezePlain(value: unknown, path: string): void {
+  if (typeof value === "function" || typeof value === "symbol") {
+    throw new ObservationError("observation.values.not-plain", `${path} is not plain data`);
+  }
+  if (value === null || typeof value !== "object" || (frozenNodes.has(value) && mutation !== "rewalk-frozen")) return;
+  const proto: unknown = Object.getPrototypeOf(value);
+  if (!Array.isArray(value) && proto !== Object.prototype && proto !== null) {
+    throw new ObservationError("observation.values.not-plain", `${path} is not plain data`);
+  }
+  frozenNodes.add(value); // added before the walk, so cycles terminate; removed again if the walk fails
+  try {
+    for (const key of Reflect.ownKeys(value)) {
+      if (Array.isArray(value) && key === "length") continue;
+      const descriptor = Reflect.getOwnPropertyDescriptor(value, key);
+      if (typeof key === "symbol" || descriptor === undefined || !("value" in descriptor)) {
+        throw new ObservationError("observation.values.not-plain", `${path}.${String(key)} is not a data property`);
+      }
+      freezePlain(descriptor.value, `${path}.${key}`);
+    }
+  } catch (error) {
+    frozenNodes.delete(value);
+    throw error;
+  }
+  Object.freeze(value);
+}
+
+/** Reads each own data property once; the values returned are the ones validated. */
+function captureRecord(record: unknown, what: string): [string, unknown][] {
+  if (typeof record !== "object" || record === null || Array.isArray(record)) throw invalid(`${what} must be a plain object`);
+  const entries: [string, unknown][] = [];
+  for (const key of Reflect.ownKeys(record)) {
+    const descriptor = Reflect.getOwnPropertyDescriptor(record, key);
+    if (typeof key === "symbol" || descriptor === undefined || !("value" in descriptor)) {
+      throw new ObservationError("observation.values.not-plain", `${what}.${String(key)} is not a data property`);
+    }
+    entries.push([key, descriptor.value]);
+  }
+  for (const [key, value] of entries) freezePlain(value, key);
+  return entries;
+}
+
+function defineRecord(entries: Iterable<readonly [string, unknown]>): RawValues {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of entries) Object.defineProperty(out, key, { value, enumerable: true }); // no `__proto__` setter
+  return Object.freeze(out);
+}
+
+/**
+ * The scope entry of a subscription. It holds only a slot; detaching clears the slot, so an open subscriber scope
+ * keeps no reference to a detached subscription, its handler or its store. Defined at module level so that its
+ * closures capture nothing else.
+ */
+function releasableEntry(detach: () => void): { readonly entry: Disposable; readonly clear: () => void } {
+  const slot: { current: (() => void) | undefined } = { current: detach };
+  return {
+    entry: { [Symbol.dispose]: () => { const run = slot.current; slot.current = undefined; run?.(); } },
+    clear: () => { if (mutation !== "retain-after-close") slot.current = undefined; },
+  };
+}
+
+export type Engine = {
+  readonly read: (keys: unknown) => RawSnapshot;
+  readonly set: (patch: unknown) => number;
+  readonly close: () => undefined;
+  readonly checkKeys: (keys: unknown) => readonly string[];
+  readonly originOf: (snapshot: unknown) => Origin;
+  readonly watch: (spec: {
+    readonly resources: unknown; readonly name: unknown; readonly keys: readonly string[]; readonly startRevision: number;
+    readonly onChange: (next: RawSnapshot) => unknown;
+  }) => undefined;
+  readonly load: (spec: {
+    readonly resources: unknown; readonly name: unknown; readonly keys: readonly string[];
+    readonly loader: (next: RawSnapshot, context: { readonly signal: AbortSignal }) => unknown;
+    readonly onLoading: (snapshot: RawSnapshot) => unknown;
+    readonly onResult: (result: unknown, snapshot: RawSnapshot) => unknown;
+    readonly onError: (cause: unknown, snapshot: RawSnapshot) => unknown;
+  }) => undefined;
+  readonly register: (target: object) => void;
+};
+
+export function createEngine(initial: unknown, options: EngineOptions): Engine {
+  if (typeof options !== "object" || options === null) throw invalid("options must be { name, resources, reportError }");
+  const { name: storeName, resources: ownerResources, reportError } = options;
+  const maxPerScope = options.maxSubscriptionsPerScope ?? DEFAULT_MAX_SUBSCRIPTIONS_PER_SCOPE;
+  const maxTotal = options.maxSubscriptions ?? DEFAULT_MAX_SUBSCRIPTIONS;
+  if (typeof storeName !== "string" || storeName.length === 0) throw invalid("a store requires a non-empty name");
+  if (!isResources(ownerResources)) throw invalid("a store requires resources");
+  if (typeof reportError !== "function") throw invalid("a store requires reportError");
+  for (const [option, value] of [["maxSubscriptionsPerScope", maxPerScope], ["maxSubscriptions", maxTotal]] as const) {
+    if (!Number.isSafeInteger(value) || value < 1) throw invalid(`${option} must be a positive safe integer`);
+  }
+
+  const token: object = Object.freeze({});
+  const initialEntries = captureRecord(initial, "initial");
+  const keySet = new Set(initialEntries.map(([key]) => key));
+  const values = new Map<string, unknown>(initialEntries); // internal only: snapshots copy what they expose
+  const lastTouched = new Map<string, number>();
+  const buckets = new Map<string, Set<Registration>>(); // per-key index: `set` visits only changed keys
+  const registrations = new Set<Registration>();
+  const dirty = new Set<Registration>(); // at most one entry per registration: coalescing
+  const duplicates: Registration[] = []; // mutation "unbounded-dirty" only
+  const namesByScope = new WeakMap<object, Set<string>>(); // weak: a dropped scope is not kept alive
+  let commit = 0;
+  let sequence = 0;
+  let closed = false;
+  let flushScheduled = false;
+  const counters = { commits: 0, visits: 0, indexLookups: 0, deliveries: 0, loaderCalls: 0, loadsActive: 0, loadsPending: 0 };
+
+  const checkKeys = (keys: unknown): readonly string[] => {
+    if (!Array.isArray(keys) || keys.length === 0) throw new ObservationError("observation.keys.empty", "at least one key is required");
+    const unique = [...new Set<unknown>(keys)];
+    const unknown = unique.filter((key) => typeof key !== "string" || !keySet.has(key));
+    if (unknown.length > 0) throw new ObservationError("observation.keys.unknown", `unknown keys: ${unknown.map(String).join(", ")}`);
+    return Object.freeze(unique as string[]); // checked above: every element is a known string key
+  };
+  const latest = (keys: readonly string[]): number => {
+    let revision = 0;
+    for (const key of keys) revision = Math.max(revision, lastTouched.get(key) ?? 0);
+    return revision;
+  };
+  const snapshot = (keys: readonly string[], revision: number): RawSnapshot => {
+    const snap: RawSnapshot = Object.freeze({ revision, values: defineRecord(keys.map((key) => [key, values.get(key)] as const)) });
+    origins.set(snap, Object.freeze({ engine: token, keys, revision }));
+    return snap;
+  };
+  const report = (registration: Pick<Registration, "name" | "resources">, revision: number, cause: unknown): void => {
+    const path = pathOf(registration.resources);
+    try {
+      reportError(Object.freeze({ source: storeName, subscription: registration.name, ...(path === undefined ? {} : { path }), revision, cause }));
+    } catch (reporterFailure) {
+      queueMicrotask(() => { throw reporterFailure; }); // a throwing reporter is a Host bug: surface it, never swallow
+    }
+  };
+  /** Runs one delivery callback at a cascade depth, isolated: a throw or a returned value is reported. */
+  const invoke = (registration: Registration, revision: number, depth: number, callback: () => unknown): void => {
+    const outer = deliveringDepth;
+    deliveringDepth = depth;
+    let result: unknown;
+    try {
+      result = callback();
+    } catch (cause) {
+      report(registration, revision, cause);
+      return;
+    } finally {
+      deliveringDepth = outer;
+    }
+    if (result !== undefined) {
+      report(registration, revision, new ObservationError("observation.callback.returned-value", `${registration.name} returned a value`));
+      if (typeof (result as { readonly then?: unknown }).then === "function") {
+        Promise.resolve(result).catch((cause: unknown) => { report(registration, revision, cause); });
+      }
+    }
+  };
+  const flush = (): void => {
+    flushScheduled = false;
+    pending.flushes -= 1;
+    const batch = [...dirty].sort((a, b) => a.id - b.id);
+    dirty.clear();
+    duplicates.length = 0;
+    for (const registration of batch) {
+      if (closed) return; // rechecked per registration: a callback may close the store
+      registration.flush();
+    }
+  };
+  const schedule = (): void => {
+    if (flushScheduled) return;
+    flushScheduled = true;
+    pending.flushes += 1;
+    later(flush);
+  };
+
+  const requireFunctions = (spec: object, members: readonly string[]): void => {
+    for (const member of members) {
+      if (typeof (spec as Readonly<Record<string, unknown>>)[member] !== "function") throw invalid(`${member} must be a function`);
+    }
+  };
+  /** Common admission for watch and load: the scope is open, the name is free, and both limits hold. */
+  const admit = (resources: unknown, name: unknown): { readonly resources: Resources; readonly name: string; readonly names: Set<string> } => {
+    if (closed) throw new ObservationError("observation.store.closed", `store ${storeName} is closed`);
+    if (!isResources(resources)) throw invalid("watch and load require resources");
+    if (typeof name !== "string" || name.length === 0) throw invalid("watch and load require a non-empty name");
+    resources.signal.throwIfAborted(); // resources.scope.closed, or the Host's reason for a cancelled run
+    let names = namesByScope.get(resources);
+    if (names === undefined) namesByScope.set(resources, names = new Set());
+    const where = pathOf(resources)?.join("/") ?? "this scope";
+    if (names.has(name) && mutation !== "no-name-check") {
+      throw new ObservationError("observation.subscription.duplicate-name",
+        `${name} is already subscribed to ${storeName} in ${where}; use a distinct name or a child scope per piece of work`);
+    }
+    if (names.size >= maxPerScope && mutation !== "no-scope-limit") {
+      throw new ObservationError("observation.subscriptions.limit",
+        `${where} already holds ${maxPerScope} live subscriptions on ${storeName} (maxSubscriptionsPerScope)`);
+    }
+    if (registrations.size >= maxTotal) {
+      throw new ObservationError("observation.subscriptions.limit",
+        `${storeName} already has ${maxTotal} live subscriptions (maxSubscriptions); the newest came from ${where}`);
+    }
+    return { resources, name, names };
+  };
+  const attach = (registration: Registration, names: Set<string>): void => {
+    registrations.add(registration);
+    for (const key of registration.keys) {
+      let bucket = buckets.get(key);
+      if (bucket === undefined) buckets.set(key, bucket = new Set());
+      bucket.add(registration);
+    }
+    names.add(registration.name);
+    if (mutation !== "late-detach") registration.resources.signal.addEventListener("abort", registration.detach, { once: true });
+  };
+  const unlink = (registration: Registration, names: Set<string>): void => {
+    registrations.delete(registration);
+    dirty.delete(registration);
+    if (mutation === "leak-detached") graveyard.push(registration);
+    for (const key of registration.keys) {
+      const bucket = buckets.get(key);
+      bucket?.delete(registration);
+      if (bucket?.size === 0) buckets.delete(key);
+    }
+    names.delete(registration.name);
+    registration.resources.signal.removeEventListener("abort", registration.detach);
+  };
+
+  const watch: Engine["watch"] = (spec) => {
+    requireFunctions(spec, ["onChange"]);
+    const { resources, name, names } = admit(spec.resources, spec.name);
+    const keys = spec.keys;
+    let delivered = spec.startRevision;
+    let attached = true;
+    const scopeEntry = releasableEntry(() => { registration.detach(); });
+    const registration: Registration = {
+      id: sequence += 1,
+      keys, name, resources, depth: 0,
+      detach: () => {
+        if (!attached) return;
+        attached = false;
+        unlink(registration, names);
+        scopeEntry.clear();
+      },
+      release: noop,
+      flush: () => {
+        if (!attached) return; // a subscription removed during this delivery is never called again
+        const depth = registration.depth;
+        registration.depth = 0;
+        const revision = latest(keys);
+        if (revision <= delivered) return;
+        delivered = revision;
+        counters.deliveries += 1;
+        const next = snapshot(keys, revision);
+        invoke(registration, revision, depth, () => spec.onChange(next));
+      },
+    };
+    resources.use(scopeEntry.entry, `watch:${name}`); // throws resources.scope.closed: nothing attached yet
+    attach(registration, names);
+    if (latest(keys) > delivered) { // a commit after the snapshot the caller read: catch up once
+      dirty.add(registration);
+      schedule();
+    }
+    return undefined;
+  };
+
+  const load: Engine["load"] = (spec) => {
+    requireFunctions(spec, ["loader", "onLoading", "onResult", "onError"]);
+    const { resources, name, names } = admit(spec.resources, spec.name);
+    const keys = spec.keys;
+    const laneScope = resources.child({ name: `load:${name}` }); // synchronous slot in the subscriber's scope
+    let open = true;
+    let lastOffered = -1;
+    let pendingJob: Job | undefined;
+    let active: { readonly controller: AbortController; readonly settled: Promise<void> } | undefined;
+    const abort = (controller: AbortController): void => {
+      try { controller.abort(); } catch (cause) { report(registration, lastOffered, cause); }
+    };
+    // A result is current only if no commit has touched the keys since its snapshot: compared with the store,
+    // not with the last offered job, so a result that lands after set() but before the next delivery is dropped.
+    const isCurrent = (job: Job, controller: AbortController): boolean =>
+      mutation === "publish-stale" || (open && !controller.signal.aborted && job.revision === lastOffered
+        && (mutation === "compare-last-offered" || job.revision === latest(keys)));
+    const clearPending = (): Job | undefined => {
+      const job = pendingJob;
+      if (job !== undefined) { pendingJob = undefined; counters.loadsPending -= 1; pending.loads -= 1; }
+      return job;
+    };
+    const start = (job: Job): void => {
+      const controller = new AbortController();
+      counters.loadsActive += 1;
+      pending.loads += 1;
+      const settled = (async (): Promise<void> => {
+        await Promise.resolve(); // `active` is assigned before user code runs
+        if (!open || controller.signal.aborted) return;
+        counters.loaderCalls += 1;
+        let result: unknown;
+        try {
+          result = await spec.loader(job.snapshot, Object.freeze({ signal: controller.signal }));
+        } catch (cause) {
+          if (isCurrent(job, controller)) invoke(registration, job.revision, job.depth, () => spec.onError(cause, job.snapshot));
+          return;
+        }
+        if (isCurrent(job, controller)) invoke(registration, job.revision, job.depth, () => spec.onResult(result, job.snapshot));
+      })().finally(() => {
+        counters.loadsActive -= 1;
+        pending.loads -= 1;
+        active = undefined;
+        const next = clearPending();
+        if (open && next !== undefined) start(next);
+      });
+      active = { controller, settled };
+    };
+    const offer = (job: Job): void => {
+      if (!open || job.revision <= lastOffered) return;
+      lastOffered = job.revision;
+      // Called when the run is queued, before the superseded run settles, so stale data is never shown meanwhile.
+      if (mutation !== "no-loading-signal") invoke(registration, job.revision, job.depth, () => spec.onLoading(job.snapshot));
+      if (active === undefined) {
+        start(job);
+        return;
+      }
+      if (mutation === "queue-loads") {
+        counters.loadsPending += 1;
+        pending.loads += 1;
+        const settled = active.settled;
+        void settled.then(() => { if (open) start(job); });
+        return;
+      }
+      if (pendingJob === undefined) { counters.loadsPending += 1; pending.loads += 1; }
+      pendingJob = job; // one slot: the newest job replaces the waiting one
+      abort(active.controller);
+    };
+    const closeLane = (): void => {
+      open = false;
+      clearPending();
+      if (active !== undefined) abort(active.controller);
+    };
+    const closeAndDrain = async (escalate: AbortSignal): Promise<void> => {
+      closeLane();
+      if (active === undefined) return;
+      let onEscalate = noop;
+      const escalated = new Promise<"escalated">((resolve) => {
+        onEscalate = () => { resolve("escalated"); };
+        if (escalate.aborted) resolve("escalated");
+        else escalate.addEventListener("abort", onEscalate, { once: true });
+      });
+      const drained = (async (): Promise<"drained"> => {
+        while (active !== undefined) await active.settled;
+        return "drained";
+      })();
+      const outcome = await Promise.race([drained, escalated]);
+      escalate.removeEventListener("abort", onEscalate);
+      if (outcome === "drained") return;
+      await new Promise<void>((resolve) => { setTimeout(resolve, 0); }); // one task for a cooperative abort to settle
+      if (active !== undefined) {
+        throw new ObservationError("observation.load.still-running", `load ${name} is still running after escalation`);
+      }
+    };
+
+    let delivered = -1; // the first flush offers the current values
+    let attached = true;
+    const registration: Registration = {
+      id: sequence += 1,
+      keys, name, resources, depth: 0,
+      detach: () => {
+        if (!attached) return;
+        attached = false;
+        unlink(registration, names);
+        closeLane();
+      },
+      // After the source closed: close the lane scope now, so that once the run settles nothing stays in the
+      // subscriber's scope. Its debts, if any, surface when the subscriber's scope closes (it joins this close).
+      release: () => { if (mutation !== "retain-after-close") void laneScope.control.close(); },
+      flush: () => {
+        if (!attached) return;
+        const depth = registration.depth;
+        registration.depth = 0;
+        const revision = latest(keys);
+        if (revision <= delivered) return;
+        delivered = revision;
+        counters.deliveries += 1;
+        offer({ revision, snapshot: snapshot(keys, revision), depth });
+      },
+    };
+    laneScope.resources.setup({
+      name: "drain",
+      setup: () => closeAndDrain,
+      cleanup: (drain, { escalate }) => { registration.detach(); return drain(escalate); },
+    }).then(noop, (cause: unknown) => {
+      // The entry is registered even when the lane scope was closed meanwhile; any other failure is a stub bug.
+      if ((cause as { readonly code?: unknown } | null)?.code !== "resources.scope.closed") report(registration, lastOffered, cause);
+    });
+    attach(registration, names);
+    dirty.add(registration);
+    schedule();
+    return undefined;
+  };
+
+  const read = (keys: unknown): RawSnapshot => {
+    if (closed) throw new ObservationError("observation.store.closed", `store ${storeName} is closed`);
+    const checked = checkKeys(keys);
+    return snapshot(checked, latest(checked));
+  };
+  const set = (patch: unknown): number => {
+    if (closed) throw new ObservationError("observation.store.closed", `store ${storeName} is closed`);
+    const depth = deliveringDepth === undefined ? 0 : deliveringDepth + 1;
+    if (depth > MAX_CASCADE_DEPTH && mutation !== "no-cascade-guard") {
+      throw new ObservationError("observation.delivery.cascade",
+        `a commit to ${storeName} is ${depth} delivery steps deep (limit ${MAX_CASCADE_DEPTH}): a handler changes what notified it`);
+    }
+    const entries = captureRecord(patch, "patch");
+    const unknown = entries.filter(([key]) => !keySet.has(key)).map(([key]) => key);
+    if (unknown.length > 0) throw new ObservationError("observation.keys.unknown", `unknown keys: ${unknown.join(", ")}`);
+    const changed = entries.filter(([key, value]) => !Object.is(values.get(key), value));
+    if (changed.length === 0) return commit;
+    for (const [key, value] of changed) values.set(key, value); // O(changed keys), not O(all keys)
+    commit += 1;
+    counters.commits += 1;
+    for (const [key] of changed) {
+      lastTouched.set(key, commit);
+      counters.indexLookups += 1;
+      for (const registration of mutation === "no-key-index" ? registrations : buckets.get(key) ?? []) {
+        counters.visits += 1;
+        if (mutation === "no-key-index" && !registration.keys.includes(key)) continue;
+        if (mutation === "unbounded-dirty") duplicates.push(registration);
+        registration.depth = Math.max(registration.depth, depth); // coalesced commits keep the largest depth
+        dirty.add(registration);
+      }
+    }
+    schedule();
+    return commit;
+  };
+  const close = (): undefined => {
+    if (closed) return undefined;
+    closed = true;
+    dirty.clear();
+    for (const registration of [...registrations]) {
+      report(registration, commit, new ObservationError("observation.source.closed", `store ${storeName} closed before ${registration.name}`));
+      registration.detach(); // drops every subscriber callback and clears the subscriber's scope entry
+      registration.release();
+    }
+    return undefined;
+  };
+  const originOf = (candidate: unknown): Origin => {
+    const origin = typeof candidate === "object" && candidate !== null ? origins.get(candidate) : undefined;
+    if (origin === undefined || origin.engine !== token) {
+      throw new ObservationError("observation.snapshot.foreign", "pass a snapshot that this store returned");
+    }
+    return origin;
+  };
+  const info: EngineInfo = {
+    stats: () => Object.freeze({ ...counters, live: registrations.size, dirty: dirty.size + duplicates.length, buckets: buckets.size }),
+    liveIn: (resources) => (resources === undefined ? registrations.size : namesByScope.get(resources)?.size ?? 0),
+  };
+
+  ownerResources.use({ [Symbol.dispose]: close }, `store:${storeName}`);
+  return Object.freeze({
+    read, set, close, checkKeys, originOf, watch, load,
+    register: (target: object) => { infoOf.set(target, info); },
+  });
+}

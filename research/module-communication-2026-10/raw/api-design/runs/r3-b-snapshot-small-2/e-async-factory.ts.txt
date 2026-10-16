@@ -1,0 +1,21 @@
+import type { ModuleContext } from "@get-modular/resources";
+import { openAuditLog, type AuditDeps, type AuditPort, type AuditProduct } from "./e-async-factory.types.js";
+
+export async function createAuditModule(deps: AuditDeps, { resources }: ModuleContext): Promise<AuditProduct> {
+  const retention = deps.settings.read(["retentionDays"]);
+  // Acquired inside setup: released with the scope even if the scope starts closing during the await.
+  const log = await resources.setup({
+    name: "audit/log",
+    setup: ({ signal }) => openAuditLog(retention.values.retentionDays, { signal }),
+    cleanup: (opened) => opened.close(),
+  });
+  // Follows from the snapshot read before the await, so a change made while opening is delivered.
+  deps.settings.watch(retention, {
+    resources, name: "audit/retention",
+    onChange: ({ values }) => { log.setRetention(values.retentionDays); },
+  });
+  const audit: AuditPort = {
+    record: (entry) => { log.append(entry); },
+  };
+  return { instance: log, capabilities: { "acme/audit": audit } };
+}

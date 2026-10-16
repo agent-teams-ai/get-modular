@@ -1,0 +1,8 @@
+import type { Resources } from "@get-modular/resources";
+import type { ReadonlyStore } from "@get-modular/observation";
+type App = { readonly theme: string; readonly region: string };
+declare const resources: Resources;
+declare const wide: ReadonlyStore<App>;
+const slice: ReadonlyStore<{ readonly theme: string }> = wide;
+// a snapshot read through the slice facet, followed through the wide facet of the same store
+wide.watch(slice.read(["theme"]), { resources, name: "m/theme", onChange: () => undefined });

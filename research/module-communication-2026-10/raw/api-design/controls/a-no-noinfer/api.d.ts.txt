@@ -1,0 +1,128 @@
+// @get-modular/observation, variant A "keys and changesAfter" (the critic's example with `since` renamed and required).
+// Review sketch of the public types. A test-only runtime stub is in ../runtime/a-keys.ts; not a release.
+import type { Resources } from "@get-modular/resources";
+
+/** A key of the record `V`. Declare every key of a store record: write `T | undefined`, never `?:`. */
+export type Key<V> = keyof V & string;
+/** A non-empty list of keys of `V`. */
+export type Keys<V> = readonly [Key<V>, ...Key<V>[]];
+
+declare const snapshotBrand: unique symbol;
+
+/** Frozen values of the keys you read and the revision they were read at. Only `read` and deliveries create snapshots. */
+export type Snapshot<V, K extends keyof V = keyof V> = {
+  /** Number of the latest commit that changed one of these keys; 0 before any change. Not proof that a value differs. */
+  readonly revision: number;
+  /** Exactly the keys you read. */
+  readonly values: Readonly<Pick<V, K>>;
+  /** Type-only brand: there is no such property at run time. */
+  readonly [snapshotBrand]: true;
+};
+
+/**
+ * A snapshot you already read that covers the keys `K`. It must come from this store, or `watch` throws
+ * `observation.snapshot.foreign` at run time.
+ */
+export type ReadSnapshot<K extends PropertyKey> = {
+  readonly revision: number;
+  readonly values: { readonly [P in K]: unknown };
+  readonly [snapshotBrand]: true;
+};
+
+/** What `loader` receives besides the snapshot. */
+export type LoadContext = {
+  /** Aborted when a newer change supersedes this run, the store closes, or your scope starts closing. */
+  readonly signal: AbortSignal;
+};
+
+/**
+ * Lifetime shared by `watch` and `load`. The subscription is detached the moment `resources` starts closing,
+ * before any cleanup or drain runs. A subscription buffers at most one undelivered revision; `set` visits only
+ * the subscriptions of the keys it changed.
+ */
+export type Subscription<K> = {
+  /** Non-empty; labels `reportError` and debt paths. Unique per store within one scope (`observation.watch.duplicate-name`). */
+  readonly name: string;
+  /** Non-empty list of keys to follow. */
+  readonly keys: readonly [K, ...K[]];
+};
+
+export type WatchSpec<V, K extends keyof V> = Subscription<K> & {
+  /**
+   * The snapshot you already read. Every commit to `keys` made after it is delivered, including one made
+   * while your factory awaited. Must cover `keys`.
+   */
+  readonly changesAfter: ReadSnapshot<K>;
+  /** Called in a later task with the newest values after one or more commits. Synchronous: return nothing. */
+  readonly onChange: (next: Snapshot<V, K>) => undefined;
+};
+
+export type LoadSpec<V, K extends keyof V, T> = Subscription<K> & {
+  /**
+   * Runs in the next task for the current values, then after each change. One run at a time; the newest change
+   * waits. Drained in entry `load:<name>/drain`; still running after escalation: debt `observation.load.still-running`.
+   */
+  readonly loader: (next: Snapshot<V, K>, context: LoadContext) => Promise<T>;
+  /** The result of the current run; older results are dropped. Synchronous: return nothing. */
+  readonly onResult: (result: T, snapshot: Snapshot<V, K>) => undefined;
+  /** The failure of the current run; a superseded run reports nothing. Synchronous: return nothing. */
+  readonly onError: (cause: unknown, snapshot: Snapshot<V, K>) => undefined;
+};
+
+/** The facet other modules receive: read and follow, never write. Covariant: a store of a wider record serves a slice. */
+export type ReadonlyStore<out V> = {
+  /** Frozen values of `keys` now. An unknown key throws `observation.keys.unknown`. */
+  readonly read: <const K extends Keys<V>>(keys: K) => Snapshot<V, K[number]>;
+  /** Follow `keys` in the scope `resources` (entry `watch:<name>`). */
+  readonly watch: <const K extends Key<V>>(resources: Resources, spec: WatchSpec<V, K>) => undefined;
+  /** Keep an asynchronous result in step with `keys`: latest only, cancellable, stale results dropped. */
+  readonly load: <const K extends Key<V>, T>(resources: Resources, spec: LoadSpec<V, K, T>) => undefined;
+};
+
+/** The owner's facet. Keep it inside the owning module; hand out `readonly()`. Invariant in `V`. */
+export type Store<in out V> = {
+  readonly read: <const K extends Keys<V>>(keys: K) => Snapshot<V, K[number]>;
+  /** Commits a change and returns the new revision; a patch that changes nothing returns the current one. */
+  readonly set: <const K extends Key<V>>(patch: Readonly<Pick<V, K>>) => number;
+  /** The facet to hand to other modules. The same frozen object on every call. */
+  readonly readonly: () => ReadonlyStore<V>;
+  /** Detaches every subscription and drops their callbacks; then `set`, `watch`, `load` throw `observation.store.closed`. */
+  readonly close: () => undefined;
+};
+
+/** One failed callback of one subscription. */
+export type ListenerError = {
+  readonly store: string;
+  readonly subscription: string;
+  readonly revision: number;
+  readonly cause: unknown;
+};
+
+export type StoreOptions = {
+  readonly name: string;
+  readonly resources: Resources;
+  readonly reportError: (report: ListenerError) => undefined;
+  /** Live subscriptions this store accepts. Default 1024; one more throws `observation.watchers.limit`. */
+  readonly maxWatchers?: number;
+};
+
+/** Creates a store with one writer. `V` must declare every key (no `?:`). */
+export declare function createStore<V extends object & Required<V>>(initial: V, options: StoreOptions): Store<V>;
+
+export type ObservationErrorCode =
+  | "observation.argument.invalid"
+  | "observation.keys.empty"
+  | "observation.keys.unknown"
+  | "observation.values.not-plain"
+  | "observation.store.closed"
+  | "observation.scope.closing"
+  | "observation.snapshot.foreign"
+  | "observation.watch.duplicate-name"
+  | "observation.watchers.limit"
+  | "observation.load.still-running"
+  | "observation.callback.returned-value";
+
+/** Compare `code`, never the class or the message. */
+export declare class ObservationError extends Error {
+  readonly code: ObservationErrorCode;
+}

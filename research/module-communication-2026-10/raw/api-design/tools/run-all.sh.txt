@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# Reproduces every measurement; raw outputs go to results/. Exit 0 only if every step has its expected outcome
+# (some controls are expected to fail). Variant C was dropped after round 1 (archive/round1-c-atomic/).
+set -uo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$root"
+mkdir -p results
+rm -rf .build  # generated compile directories of tools/tsc-both.mjs and tools/run-scenario.mjs
+failures=0
+
+step() { # step <expect: pass|fail> <name> <command...>
+  local expect="$1" name="$2"; shift 2
+  "$@" >"results/$name.txt" 2>&1
+  local code=$?
+  local outcome="pass"; [[ $code -ne 0 ]] && outcome="fail"
+  if [[ "$outcome" == "$expect" ]]; then echo "ok    $name ($outcome, as expected)"; else echo "WRONG $name ($outcome, expected $expect)"; failures=$((failures + 1)); fi
+}
+
+{ echo "tsc7: $(tsc7 --version)"; echo "ts: $(.toolchain/node_modules/.bin/tsc --version)"; echo "node: $(node --version)";
+  echo "resources (runtime-b): get-modular origin/main $(cat .gm-resources-main/SOURCE_COMMIT)";
+  echo "assembly and resources sources (--gm-main probes): get-modular origin/main $(cat .gm-main/SOURCE_COMMIT)"; } > results/toolchain.txt
+
+for v in a-keys b-snapshot; do
+  step pass "$v.type-tests" node tools/tsc-both.mjs --expect "$v" "$v/type-tests.ts"
+  step pass "$v.readme-examples" node tools/readme-check.mjs "$v"
+  step pass "$v.gm-contracts" node tools/tsc-both.mjs --expect "$v" "probes/p5-gm-contracts.${v%%-*}.ts"
+  step pass "$v.set-loose-optional" node tools/tsc-both.mjs --expect --loose-optional "$v" probes/p7-set-without-exact-optional.ts
+  # The nine default tasks: rules, compile on both compilers, behaviour scenario on the runtime stub.
+  step pass "$v.reference-solutions" ./check.sh "$v" "reference/$v"
+done
+
+# Variant B only (after the adversarial review): structural slices (F1), traps (F9, F13), GM main sources (F1).
+step pass b-snapshot.structural-slices node tools/tsc-both.mjs --expect b-snapshot probes/p8-structural.b.ts
+step pass b-snapshot.traps node tools/tsc-both.mjs --expect b-snapshot probes/p9-traps.b.ts
+step pass b-snapshot.gm-main-implement node tools/tsc-both.mjs --expect --gm-main b-snapshot probes/p10-gm-main-implement.b.ts
+step pass probe.f9-shapes bash -c 'cd probes/standalone-f9 && tsc7 -p . --pretty false && ../../.toolchain/node_modules/.bin/tsc -p . --pretty false'
+# The tsc7 divergence from the review (alias without annotation or marker): tsc7 accepts, TS 5.8.3 rejects. A note, not
+# a dependency: the marker makes it irrelevant for this API. Passes while the divergence exists.
+step pass probe.tsc7-variance-divergence bash -c 'cd probes/standalone-sig && tsc7 -p . --pretty false && ! ../../.toolchain/node_modules/.bin/tsc -p . --pretty false'
+
+# Wrong solutions must fail check.sh: compile and rules (round 1), behaviour (round 2), for B and for A.
+step fail control.negative-rules-compile ./check.sh b-snapshot reference/negative/b-rules-compile a-logger b-catalog d-greeter
+step fail control.negative-b-behaviour-1 ./check.sh b-snapshot reference/negative/b-behaviour-1
+step fail control.negative-b-behaviour-2 ./check.sh b-snapshot reference/negative/b-behaviour-2 e-async-factory g-hierarchy h-requests i-errors
+step fail control.negative-a-behaviour-1 ./check.sh a-keys reference/negative/a-behaviour-1 e-async-factory b-catalog
+step fail control.negative-b-behaviour-3 ./check.sh b-snapshot reference/negative/b-behaviour-3 h-requests
+step fail control.negative-b-behaviour-4 ./check.sh b-snapshot reference/negative/b-behaviour-4 h-requests
+step fail control.negative-b-behaviour-5 ./check.sh b-snapshot reference/negative/b-behaviour-5 e-async-factory
+step fail control.negative-b-behaviour-6 ./check.sh b-snapshot reference/negative/b-behaviour-6 e-async-factory
+# An alternative correct design must pass: the gates test requirements, not one design.
+step fail control.negative-b-behaviour-7 ./check.sh b-snapshot reference/negative/b-behaviour-7 h-requests
+# An alternative correct design must pass: the gates test requirements, not one design.
+step pass control.alternative-h-fanout-aggregate ./check.sh b-snapshot reference/alternative/b-snapshot-2 h-requests
+# e-sessions is outside the default task list; it still runs by name.
+step pass control.e-sessions-by-name bash -c "./check.sh a-keys reference/a-keys e-sessions && ./check.sh b-snapshot reference/b-snapshot e-sessions"
+step pass control.negative-every-task-fails bash -c '
+  for dir_tasks in "b-snapshot reference/negative/b-behaviour-1 a-logger b-catalog c-pricing-context d-greeter e-async-factory e-sessions f-watch-and-load g-hierarchy h-requests i-errors" \
+                   "b-snapshot reference/negative/b-behaviour-2 e-async-factory g-hierarchy h-requests i-errors" \
+                   "a-keys reference/negative/a-behaviour-1 e-async-factory b-catalog" \
+                   "b-snapshot reference/negative/b-behaviour-3 h-requests" \
+                   "b-snapshot reference/negative/b-behaviour-4 h-requests" \
+                   "b-snapshot reference/negative/b-behaviour-5 e-async-factory" \
+                   "b-snapshot reference/negative/b-behaviour-6 e-async-factory" \
+                   "b-snapshot reference/negative/b-behaviour-7 h-requests"; do
+    set -- $dir_tasks; variant=$1; dir=$2; shift 2
+    for task in "$@"; do
+      if ./check.sh "$variant" "$dir" "$task" >/dev/null 2>&1; then echo "PASSED but must fail: $variant $dir $task"; exit 1; fi
+      echo "fails as required: $variant $dir $task"
+    done
+  done'
+
+# Runtime stub: typecheck on both compilers, then lifetime, memory and scaling probes per variant.
+step pass runtime.typecheck bash -c 'cd runtime && tsc7 -p . --pretty false && ../.toolchain/node_modules/.bin/tsc -p . --pretty false'
+for v in a-keys b-snapshot; do
+  step pass "$v.runtime-probes" env VARIANT="$v" node --expose-gc runtime/probes.test.ts
+done
+# Without AsyncLocalStorage (browsers, other bundles) synchronous echoes and cascades are still caught.
+step pass runtime.sync-guards-without-async-context env OBSERVATION_STUB_MUTATION=no-async-context VARIANT=b-snapshot node --expose-gc --test-name-pattern="^1[89]\\." runtime/probes.test.ts
+# L2/L3: a fake global setImmediate installed before import, and a browser-like environment (separate processes).
+step pass runtime-b.env-fake-timers-before-import node runtime-b/env-probe.ts fake-before
+step pass runtime-b.env-without-node-builtins node runtime-b/env-probe.ts no-node
+# N5/M3: heap per live watch and per closed source: signal binding (default), child scope, scope entry (informative).
+step pass runtime-b.watch-memory bash -c 'node --expose-gc runtime-b/measure-watch-memory.ts && OBSERVATION_STUB_WATCH_SCOPE=child node --expose-gc runtime-b/measure-watch-memory.ts && OBSERVATION_STUB_WATCH_SCOPE=entry node --expose-gc runtime-b/measure-watch-memory.ts'
+# Each deliberate defect in the stub must make at least one probe fail.
+step pass runtime.mutations tools/mutations.sh
+# Variant B probes against @get-modular/resources built from get-modular origin/main (.gm-resources-main).
+step pass runtime-b.typecheck bash -c 'cd runtime-b && tsc7 -p . --pretty false && ../.toolchain/node_modules/.bin/tsc -p . --pretty false'
+step pass runtime-b.probes node --expose-gc runtime-b/probes.test.ts
+step pass runtime-b.mutations tools/mutations-b.sh
+
+# Controls: each removes one design element and must fail.
+step fail control.b-v-in-param node tools/tsc-both.mjs controls/b-v-in-param b-snapshot/type-tests.ts
+# With the type marker, `out V` is a confirmation only: without the annotation every expectation still holds.
+step pass control.b-no-variance-annotation node tools/tsc-both.mjs --expect controls/b-no-variance-annotation probes/p3-variance-controls.ts probes/p8-structural.b.ts
+step pass control.a-no-noinfer node tools/tsc-both.mjs --expect controls/a-no-noinfer probes/p4-noinfer.ts
+# Cases only the run time can reject (they compile).
+step pass probe.b-runtime-only node tools/tsc-both.mjs b-snapshot probes/p6-runtime-only.b.ts
+# Standalone probes without the package types. They fail by design: p1 shows which watch shapes break
+# `out V` (TS2636), p2 records the error messages of a union spec (onChange | load in one watch).
+step fail probe.standalone bash -c 'cd probes/standalone && echo "== tsc7" && tsc7 -p . --pretty false; a=$?; echo "== 5.8.3" && ../../.toolchain/node_modules/.bin/tsc -p . --pretty false; b=$?; exit $((a + b))'
+
+echo
+[[ $failures -eq 0 ]] && echo "all steps as expected" || echo "$failures step(s) not as expected"
+exit $(( failures > 0 ))

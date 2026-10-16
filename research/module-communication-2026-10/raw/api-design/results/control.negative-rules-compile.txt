@@ -1,0 +1,24 @@
+== a-logger
+[b-snapshot] tsc7: 1 error(s)
+  a-logger.ts:9 TS2322 Type 'void' is not assignable to type 'undefined'.
+[b-snapshot] ts5.8.3: 1 error(s)
+  a-logger.ts:9 TS2322 Type 'void' is not assignable to type 'undefined'.
+== b-catalog
+  RULE b-catalog: uses a type assertion (as)
+[b-snapshot] tsc7: 2 error(s)
+  b-catalog.ts:6 TS2345 Argument of type '{ resources: Resources; name: string; loader: ({ values }: Snapshot<RegionSettings, "region">, { signal }: LoadContext) => Promise<readonly Model[]>; onResult: (models: unknown, { values }: Snapshot<...>) => undefined; onError: (cause: unknown, { values }: Snapshot<...>) => undefined; }' is not assignable to parameter of type 'LoadSpec<Snapshot<RegionSettings, "region">, unknown>'.
+  b-catalog.ts:9 TS2322 Type 'unknown' is not assignable to type 'readonly Model[]'.
+[b-snapshot] ts5.8.3: 2 error(s)
+  b-catalog.ts:6 TS2345 Argument of type '{ resources: Resources; name: string; loader: ({ values }: Snapshot<RegionSettings, "region">, { signal }: LoadContext) => Promise<readonly Model[]>; onResult: (models: unknown, { values }: Snapshot<...>) => undefined; onError: (cause: unknown, { values }: Snapshot<...>) => undefined; }' is not assignable to parameter of type 'LoadSpec<Snapshot<RegionSettings, "region">, unknown>'.
+  b-catalog.ts:9 TS2322 Type 'unknown' is not assignable to type 'readonly Model[]'.
+== d-greeter
+  RULE d-greeter: calls .watch(...), which this task must not use
+[b-snapshot] tsc7: 1 error(s)
+  d-greeter.ts:6 TS2322 Type '() => Promise<void>' is not assignable to type '(next: Snapshot<GreetingSettings, "locale">) => undefined'.
+[b-snapshot] ts5.8.3: 1 error(s)
+  d-greeter.ts:6 TS2322 Type '() => Promise<void>' is not assignable to type '(next: Snapshot<GreetingSettings, "locale">) => undefined'.
+
+Variant b-snapshot, solutions in reference/negative/b-rules-compile
+  a-logger: FAIL (compile)
+  b-catalog: FAIL (rules,compile)
+  d-greeter: FAIL (rules,compile)

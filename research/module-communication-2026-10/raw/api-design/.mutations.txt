@@ -1,0 +1,26 @@
+caught      leak-detached  by probes: 3,4
+caught      no-key-index  by probes: 7
+caught      unbounded-dirty  by probes: 5
+caught      queue-loads  by probes: 6
+caught      late-detach  by probes: 2
+caught      no-name-check  by probes: 8
+caught      publish-stale  by probes: 11,12,14,17,2,6
+caught      compare-last-offered  by probes: 17
+caught      no-loading-signal  by probes: 17
+caught      no-cascade-guard  by probes: 18,19
+caught      retain-after-close  by probes: 4
+caught      no-scope-limit  by probes: 8
+exit 0
+caught      leak-detached  by R2
+caught      no-key-index  by R4
+caught      unbounded-dirty  by R3
+caught      queue-loads  by R3
+caught      late-detach  by R1
+caught      no-name-check  by R5
+caught      publish-stale  by R1,R3,R6,R7
+caught      compare-last-offered  by R7
+caught      no-loading-signal  by R7
+caught      no-cascade-guard  by R9
+caught      retain-after-close  by R2
+caught      no-scope-limit  by R5
+exit 0

@@ -13,6 +13,7 @@
     "research/module-resources-2026-10/raw/**",
     "research/contract-evolution-2026-10/raw/**",
     "research/observation-hooks-2026-10/raw/**",
+    "research/module-communication-2026-10/raw/**",
     "research/implementation-readiness/evidence/combined-workers.json",
     "research/implementation-readiness/evidence/worker-index.json",
     "tests/qualification/implementation-readiness/api-authoring/**/evidence.json"

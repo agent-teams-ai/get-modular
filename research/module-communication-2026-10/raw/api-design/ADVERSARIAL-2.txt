@@ -1,0 +1,223 @@
+Повторная атака на B после правок по ADVERSARIAL.txt
+====================================================
+
+Дата: 2026-10-16. Режим: только чтение. В api-shape/ я записал только этот файл.
+Копия текущего состояния: scratchpad/critic-adv/api2/. Мои новые пробы:
+  - типы: critic-adv/api2/critic-probes/ergo.ts, fk-msg.ts, и прежние v1-structural.ts, traps.ts, leak.ts,
+    slice-to-wide.ts;
+  - рантайм: critic-adv/api2/runtime-b/critic2.test.ts (C1-C9), critic2b.test.ts (C10), critic2c.test.ts (C11),
+    critic-entries.test.ts, и прежние critic-retention, critic-set-large, critic-read-cost;
+  - варианты исправлений: critic-adv/api2/critic-variants/b-frozen2, b-fixedkeys-msg и прототип
+    critic-adv/api2/runtime-als + runtime-b-als (глубина каскада через AsyncLocalStorage).
+Метки: VERIFIED (прочитал), MEASURED (запустил), ASSUMPTION (мой вывод).
+Перед записью отчёта я сверил: b-snapshot/api.d.ts, README.md, RATIONALE.txt, testing.d.ts, runtime/core.ts и
+runtime/testing.ts совпадают с моей копией байт в байт.
+Воспроизведение: tools/run-all.sh в critic-adv/api2 дал "all steps as expected", 39 шагов ok (MEASURED).
+GM origin/main сдвинулся на a6fb863, но после ca879f7/bcd4c9a там изменились только .changeset/* и .cspell.json,
+так что пробы на исходниках main остаются репрезентативными (VERIFIED, git diff --stat).
+
+
+1. Статус прежних находок
+-------------------------
+| #   | Статус | Доказательство |
+| --- | ------ | -------------- |
+| F1  | Закрыто | MEASURED v1-structural: отвергаются 8 из 10 путей, включая Readonly<>, Pick<"read">, свой порт, тип члена read, пересечение, Promise и массив. Остаток: порты только из `watch` (строки 15 и 32); он задокументирован в RATIONALE.txt:120-121. leak.ts: TS2739. p10 на GM main: exit 0 |
+| F2  | Частично | README:38 исправлен (теперь README.md:13 и api.d.ts:78-79). Синхронный каскад ограничен: C3 даёт 65 доставок и один код. Асинхронный не ограничен вообще (C1, C2, C10), см. N2 и N3 |
+| F3  | Частично | Точка входа есть (testing.d.ts). Но ожидание глобальное, без таймаута, и импорт из продакшена не запрещён: N6 |
+| F4  | Частично | Лимит на scope работает. Утечка через незакрытые child-scope обходит его и снова валит невиновный модуль на 8192, причём сообщение не называет виновника: N7 |
+| F5  | Закрыто как рецепт | README.md:177-185, RATIONALE.txt раздел 7. Проверки на реальном потребителе нет (ASSUMPTION: это работа ADR) |
+| F6  | Частично | Движок и обработчик больше не удерживаются (critic-retention: 0/50 и 0/50). Но запись в scope подписчика остаётся (N5), и правка добавила ловушку потери данных (N4) |
+| F7  | Закрыто | Владение задокументировано (api.d.ts:133-134, README.md:224-225), стоит WeakSet. MEASURED: 8,69 мс на добавление строки к 50 000 (было 20,18). Мелочь N9 |
+| F8  | Закрыто с зависимостью | source, subscription.*, maxSubscriptions сделаны. path? ждёт Resources.path в resources 0.2 |
+| F9  | Закрыто по ловушкам, есть регрессии | T1 ловится на createStore (TS2344), T3 ловится (TS2339). Но Frozen ломает брендированные ID и кортежи (N1); сообщение FixedKeys непонятное (N8) |
+| F10 | Закрыто | runtime/core.ts:325 "resources.signal.throwIfAborted();" |
+| F11 | Закрыто | В сценарии h два бросающих экрана (h-requests.scenario.mjs:8, :70). Вариант "только первая ошибка" переехал в reference/negative/b-behaviour-7 и обязан падать |
+| F12 | Частично | Черновик b-snapshot/CMS-RULE5-DRAFT.txt хороший. По правилу workspace он должен попасть в common-assembly.md в той же поставке |
+| F13 | Закрыто | README.md:12 (": undefined"), README.md:70 (команда возвращает типизированный результат), api.d.ts:193-198 (список кодов разделён на брошенные и сообщённые) |
+
+
+2. Новые и оставшиеся дефекты
+-----------------------------
+| #   | Sev | Conf | Кратко |
+| --- | --- | ---- | ------ |
+| N1  | P1  | 8    | Frozen ломает брендированные ID и кортежи; исправление в одну строку проверено |
+| N2  | P1  | 8    | Защита от каскада ловит только синхронные цепочки; эхо через async-команду, microtask или тело loader бесконечно и молчит |
+| N4  | P1  | 7    | "read после close бросает" вместе с LIFO теряет финальное состояние при сохранении на закрытии |
+| N3  | P2  | 7    | Эхо ловится только после 64 кругов: пагинация через load падает на 65-й странице и только на реальных данных |
+| N5  | P2  | 8    | После закрытия источника в долгоживущем scope подписчика остаётся ~515 байт на источник; фраза "nothing of it is retained" неверна |
+| N6  | P2  | 7    | Тестовая точка входа: глобальное ожидание зависает, таймаута нет, из продакшена импорт не запрещён |
+| N7  | P2  | 6    | Лимит на весь store по-прежнему валит невиновного, и сообщение указывает на него |
+| N8  | P3  | 7    | FixedKeys даёт сообщение "does not satisfy the constraint 'never'" |
+| N9  | P3  | 7    | Неудачный set оставляет объекты вызывающего замороженными |
+| N10 | P3  | 6    | Frozen несовместим с изменяемыми доменными типами; обобщённый помощник не может сделать watch того, что прочитал |
+| N11 | P3  | 5    | Поддельные таймеры в тестах (ASSUMPTION) |
+
+N1 [P1, уверенность 8] Frozen ломает брендированные ID и кортежи
+VERIFIED: api.d.ts:11 "export type Frozen<T> = T extends readonly (infer U)[] ? readonly Frozen<U>[] : T extends object ?
+{ readonly [P in keyof T]: Frozen<T[P]> } : T;"
+MEASURED (critic-probes/ergo.ts, оба компилятора):
+  - ergo.ts:25. type UserId = string & { readonly __brand: "UserId" }: loadUser(snap.values.user) даёт TS2345,
+    Frozen превратил ID в объект со всеми методами string ("readonly toString: {}; readonly charAt: {}; ...
+    45 more ...; readonly __brand"). Строка & { ... } проходит `T extends object`.
+  - ergo.ts:26. readonly [string, number] стал readonly (string | number)[], а pair[0] теперь
+    "string | number | undefined".
+Брендированные ID (sessionId, userId) очень распространены, а правило 1 прямо говорит "plain data or an ID".
+Агенту останется только `as`, а CMS запрещает приведения.
+В старом B (Readonly<Pick>) обе строки компилировались, так что это регрессия правки F9.
+Моё предложение (critic-variants/b-frozen2/api.d.ts):
+  type Primitive = string | number | boolean | bigint | symbol | null | undefined;
+  export type Frozen<T> = T extends Primitive ? T : T extends readonly unknown[] ? { readonly [I in keyof T]: Frozen<T[I]> }
+    : { readonly [P in keyof T]: Frozen<T[P]> };
+MEASURED на обоих компиляторах: type-tests 34/34, p8, p9, p10 (GM main) проходят; ergo.ts:25 и :26 компилируются.
+Добавить эти два случая в p9.
+
+N2 [P1, уверенность 8] Защита от каскада ловит только синхронные цепочки
+VERIFIED: runtime/core.ts:102 "let deliveringDepth: number | undefined" выставляется только на время синхронного
+обработчика (core.ts:278-289). set берёт глубину из него (core.ts:544).
+VERIFIED: RATIONALE.txt:210 "Not covered: commits made inside a loader body (asynchronous, outside callbacks) start at
+depth 0." В README этого нет. README.md:13 утверждает: "NEVER change, in a handler, what notified you, neither with
+`set` nor through a command (a runaway cascade fails with `observation.delivery.cascade` after 64 steps)".
+MEASURED (runtime-b/critic2.test.ts, critic2b.test.ts):
+  - C1: эхо через асинхронную команду (await внутри команды, потом set) дало 300 доставок за 300 задач, отчётов 0.
+    Команды по правилу 3 возвращают типизированный результат и часто асинхронны (валидация, сохранение);
+  - C2: эхо через queueMicrotask дало 300 доставок за 300 задач, отчётов 0;
+  - C10: курсор двигается в теле loader. 2000 загрузок за 2000 задач, отчётов 0: бесконечные сетевые запросы.
+Главный риск: агент получает observation.delivery.cascade (C4) и "чинит" его, перенося set в loader или в microtask.
+Громкий отказ превращается в тихий бесконечный цикл. Правило 7 (AGENTS.md:107: "a runaway cascade fails with a coded
+error") для асинхронных каскадов не выполнено.
+Моё предложение (прототип runtime-als/core.ts, 5 правок): глубину нести через AsyncLocalStorage. Запуск обработчика
+идёт в depthContext.run(depth, ...), loader в depthContext.run(job.depth, ...), set берёт
+deliveringDepth ?? depthContext.getStore(), а запланированная доставка выходит из контекста (depthContext.exit).
+MEASURED: C1, C2 и C10 останавливаются на 65; прежние наборы проб проходят (runtime-als/probes.test.ts: pass 22, fail 0;
+runtime-b-als/probes.test.ts: pass 21, fail 0).
+Вторая часть обязательна. В асинхронном продолжении брошенный cascade становится uncaught exception или unhandled
+rejection (MEASURED: node:test сообщает "triggered an uncaughtException event"), а в loader его глотает onError.
+Поэтому store должен в момент обнаружения ещё и сообщать в reportError того store, в который коммитят ("report and
+throw"). Тогда Host видит каскад всегда.
+Ограничение: AsyncLocalStorage есть только в Node. Для браузера или renderer Electron нужно записать в ADR, что
+асинхронные каскады там не ловятся, пока нет AsyncContext (ASSUMPTION о будущих средах; список сред уже открытый
+пункт RATIONALE.txt:287-288).
+Если владелец не хочет AsyncLocalStorage, минимум такой: README.md:13 и README.md:215-218 честно говорят, что
+ловится только синхронная цепочка, а правило 7 в ADR сужается явно, с решением владельца.
+
+N3 [P2, уверенность 7] Эхо ловится только после 64 кругов
+MEASURED: C3 (синхронное эхо) дало 65 доставок до кода. C4: пагинация через load, где onResult двигает cursor, за
+которым load следит. Загружено 64 страницы из 100, затем observation.delivery.cascade.
+Тест с 3-10 страницами проходит, а продакшен падает на 65-й странице. По правилу 7 это эхо, и оно запрещено, но
+обнаруживается слишком поздно и только на объёме.
+Моё предложение: проверять эхо сразу. Если коммит из обработчика подписки R (синхронно, а с N2 и асинхронно) меняет
+ключ, за которым следует сама R в том же store, сразу бросить и сообщить (например,
+observation.delivery.echo или тот же cascade с понятным текстом). Это детерминированно ловится в первом же тесте.
+Глубину 64 оставить для циклов через несколько store.
+
+N4 [P1, уверенность 7] "read после close бросает" вместе с LIFO теряет данные при сохранении на закрытии
+VERIFIED: api.d.ts:144 "Then `read`, `set`, `watch` and `load` throw `observation.store.closed`." Store закрывается
+в своём LIFO-слоте (api.d.ts:176).
+Естественный порядок владельца: сначала открыть файл или БД (из них читаются начальные значения), потом
+createStore, а в cleanup файла сохранить финальное состояние. Cleanup файла по LIFO выполняется после закрытия store.
+MEASURED (runtime-b/critic2c.test.ts, C11): "complete false; debts host/prefs/prefs/file:failed:observation.store.closed;
+saved """. Последнее изменение пользователя ("dark") потеряно. До правки Q3 read после close отдавал последнее
+значение, и этот код работал.
+Моё предложение: Store.read у владельца продолжает работать после close (последние значения, только чтение), а
+бросает только ReadonlyStore.read у чужих фасетов. Это и есть смысл E6: ошибкой считается использование чужого
+источника после его закрытия. В README добавить рецепт "сохранение при закрытии": отдельная запись после createStore.
+Сохранность данных у владельца не ослабляется (глобальные инструкции владельца), поэтому P1.
+
+N5 [P2, уверенность 8] После закрытия источника в scope подписчика всё равно что-то остаётся
+VERIFIED: api.d.ts:142-143 "released on the subscriber's side (nothing of it is retained)"; README.md:205-206 то же.
+VERIFIED: runtime/core.ts:395 "resources.use(scopeEntry.entry, `watch:${name}`)". Слот очищается (core.ts:196-202), но
+сама запись остаётся в #live scope подписчика до его закрытия: у resources нет удаления записи заранее.
+MEASURED (runtime-b/critic-entries.test.ts): 50 000 закрытых источников при открытом scope "dashboard" дают
+"25.7 MB (515 bytes per closed source)". После закрытия dashboard остаётся 2,0 МБ.
+Долгоживущий подписчик, который следит за store сессий (1 млн сессий), копит около 0,5 ГБ, и сам он от этого
+избавиться не может: уведомления ему нет. У load такой проблемы нет: core.ts:511 закрывает child-scope дорожки, и он
+отцепляется.
+Моё предложение: делать watch тоже child-scope (как load) и закрывать его при закрытии источника, либо добавить в
+resources запись, которая может удалить себя сама (PRACTICES E3). Пока этого нет, исправить текст в api.d.ts:142 и
+README.md:206.
+
+N6 [P2, уверенность 7] Тестовая точка входа: ожидание глобальное, без таймаута, импорт не ограничен
+VERIFIED: testing.d.ts:13 "no delivery is scheduled in any store of this package copy"; runtime/testing.ts:13
+"do { await nextTask(); } while (pendingWork().flushes > 0);". Таймаута и signal нет.
+MEASURED (critic2.test.ts):
+  - C5: delivered() не завершается за 500 мс, если любой другой store где угодно коммитит каждую задачу (тикер,
+    прогресс);
+  - C6: settled() одного теста не завершается за 500 мс, пока у постороннего модуля открыт long-poll load.
+Длинный опрос в load (удалённый конфиг) делает settled() непригодным в любом составном тесте. Тест тогда либо
+зависает, либо возвращается к подсчёту тиков.
+Злоупотребление в продакшене: импорт "@get-modular/observation/testing" ничем не ограничен. `await delivered()` в
+модуле станет скрытой глобальной точкой синхронизации всех модулей (правило 2 против ambient), а при постоянном
+коммитере ещё и зависанием.
+MEASURED C9: liveSubscriptions(facet, scopeМодуля) после закрытия модуля даёт 0, а подписка, сделанная по ошибке в
+scope Host, жива (всего 1). README.md:24 не говорит, какой вариант утверждать.
+Моё предложение:
+  - delivered({ signal }) и settled({ signal }); без signal по умолчанию таймаут с кодом, а не вечное ожидание;
+  - необязательная область ожидания: settled({ stores: [facet] }) или по resources;
+  - правило Engineering Foundation или зависимостей: "/testing" импортируют только тестовые файлы;
+  - README: в проверке утечек утверждать общий liveSubscriptions(facet) === 0;
+  - N11: поведение с mock.timers (setImmediate) записать в README (ASSUMPTION: delivered() тогда не завершится, пока
+    тест сам не продвинет таймеры).
+
+N7 [P2, уверенность 6] Лимит на весь store по-прежнему бьёт невиновного
+MEASURED (C7): модуль открывает child-scope на запрос и не закрывает его. Лимит на scope (по одной подписке на
+child) не срабатывает. Утечка доходит до 8192, после чего падает подписка невиновного модуля:
+"settings already has 8192 live subscriptions (maxSubscriptions); the newest came from this scope". "this scope" здесь
+означает scope невиновного, а виновника сообщение не называет.
+Оговорка в пользу правки: первым на 8193-й упал сам протекающий модуль (MEASURED), так что первая ошибка указывает
+на него правильно.
+Моё предложение: в ошибку общего лимита добавить число scope и максимум на один scope, а когда появится
+Resources.path, ещё и верхних держателей. Мелочь (P3): maxSubscriptionsPerScope задаёт владелец store, хотя
+ограничивает он scope подписчиков.
+
+N8 [P3, уверенность 7] Сообщение FixedKeys
+MEASURED (critic-probes/fk-msg.ts): "Type 'Record<string, number>' does not satisfy the constraint 'never'." и при
+выводе типа "is not assignable to parameter of type 'never'". Это тот класс сообщений, который RATIONALE отвергал для
+NoInfer.
+Моё предложение (critic-variants/b-fixedkeys-msg): FixedKeys<V> = {} extends Record<keyof V, unknown> ?
+{ readonly "a store record needs literal keys, not an index signature": never } : unknown. Текст причины тогда
+попадает прямо в сообщение компилятора. MEASURED: type-tests, p8, p9, p10 проходят.
+
+N9 [P3, уверенность 7] Неудачный set не атомарен по побочным эффектам
+MEASURED (C8): set({ a: mine, b: new Date() }) бросает observation.values.not-plain, ничего не коммитит, но mine и
+mine.list уже заморожены. Причина: core.ts:181 замораживает значения по одному. Сначала проверять, потом
+замораживать. В README добавить: "не передавайте в createStore/set объекты, полученные от других модулей;
+скопируйте их".
+
+N10 [P3, уверенность 6] Эргономика Frozen
+MEASURED: ergo.ts:28 и :37. Frozen<Model> с tags: readonly string[] нельзя передать в render(model: Model), где tags
+это string[]. Это намеренная строгость. В README одна строка: "доменные типы, которые принимают значения из store,
+объявляйте readonly".
+ergo.ts:33: обобщённый помощник `function follow<V extends object>(facet: ReadonlyStore<V>, key, ...)` не может сделать
+watch того, что прочитал (TS2345). Так было и в исходном B (VERIFIED на старой копии), это не регрессия. В README:
+"watch пишется на конкретных типах".
+
+
+3. Ответы на прямые вопросы
+---------------------------
+- Определение глубины при коалесцировании. Корректно для синхронных цепочек: максимум из слитых коммитов не даёт
+  цепочке "отмыться", а 10 000 коммитов на глубине 0 доставляются один раз (их проба 19). Ложных срабатываний на
+  законных цепочках я не нашёл. Сброса до "чистой" глубины не бывает, пока каскад реально не прервался.
+- Асинхронный load. Глубина правильно переносится через loader в onLoading, onResult и onError (job.depth). Но
+  коммит в теле loader и любое продолжение после await или в microtask начинаются с 0: N2 и C10.
+- Можно ли злоупотребить тестовой точкой входа в продакшене? Да: импорт не ограничен, а ожидание глобальное (N6).
+- Лимит на scope. Работает для утечек в одном scope (их пробы 8 и 10). Child-scope на запрос его обходит (N7).
+- Заморозка при передаче владения. Стоимость и документация в порядке. Побочный эффект неудачного set (N9) и
+  повторное использование чужих объектов надо оговорить в README.
+- Frozen и FixedKeys для агентов. FixedKeys полезен, но с непонятным текстом ошибки (N8). Frozen в текущем виде
+  вреден для брендов и кортежей (N1), исправление проверено.
+
+
+4. Вердикт
+----------
+К ADR: ПОКА НЕТ. Основа сильная, большинство находок закрыто, 39 шагов воспроизводятся. Но правки внесли две
+регрессии (N1, N4), а правило 7 для асинхронных цепочек не выполнено (N2).
+Обязательно до ADR:
+1. N1: Frozen с примитивами и кортежами (одна строка) плюс два случая в p9.
+2. N2: глубина каскада через AsyncLocalStorage (в Node) и "report and throw". Либо явное решение владельца сузить
+   правило 7 до синхронных цепочек, с честным текстом в README.md:13 и :215-218.
+3. N4: Store.read у владельца работает после close (или другое решение с тем же эффектом) и рецепт сохранения при
+   закрытии.
+4. Исправить неверные утверждения: api.d.ts:142-143 и README.md:205-206 (N5) и README.md:13 (N2).
+5. F12: CMS-RULE5-DRAFT.txt перенести в common-assembly.md в той же поставке.
+После этих пяти пунктов готов. N3, N5 (механизм), N6, N7 и P3 можно оформить в ADR как известные пункты с
+владельцем и триггером.

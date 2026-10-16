@@ -1,0 +1,7 @@
+== h-requests
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  h-requests: behaviour OK
+
+Variant b-snapshot, solutions in reference/alternative/b-snapshot-2
+  h-requests: PASS

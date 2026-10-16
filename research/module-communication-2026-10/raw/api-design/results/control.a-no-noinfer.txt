@@ -1,0 +1,6 @@
+[controls/a-no-noinfer] tsc7: OK (0 errors)
+[controls/a-no-noinfer] ts5.8.3: OK (0 errors)
+
+| File:line | Expectation | tsc7 | TS 5.8.3 |
+| --- | --- | --- | --- |
+| p4-noinfer.ts:9 | region is not watched | TS2339 | TS2339 |

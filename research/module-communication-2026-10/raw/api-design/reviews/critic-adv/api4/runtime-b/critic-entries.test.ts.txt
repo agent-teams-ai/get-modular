@@ -1,0 +1,24 @@
+// Critic round 2: after source close, does the subscriber's long-lived scope still grow by one entry per closed store?
+import { createScope } from "@get-modular/resources";
+import { createStore } from "./observation.ts";
+const gc = (globalThis as { readonly gc?: () => void }).gc!;
+const tick = (): Promise<void> => new Promise((resolve) => { setImmediate(resolve); });
+const host = createScope({ name: "host" });
+const dashboard = host.resources.child({ name: "dashboard" }); // long-lived subscriber
+async function round(n: number, offset: number): Promise<void> {
+  for (let i = 0; i < n; i += 1) {
+    const owner = host.resources.child({ name: "session" });
+    const store = createStore<{ readonly status: string }>({ status: "open" }, { name: "session/status", resources: owner.resources, reportError: () => undefined });
+    const facet = store.readonly();
+    facet.watch(facet.read(["status"]), { resources: dashboard.resources, name: `dashboard/session-${offset + i}`, onChange: () => undefined });
+    await owner.control.close(); // the session ends first: source.closed path
+  }
+}
+await round(1_000, 0); for (let i = 0; i < 4; i += 1) { await tick(); gc(); }
+const before = process.memoryUsage().heapUsed;
+await round(50_000, 1_000); for (let i = 0; i < 6; i += 1) { await tick(); gc(); }
+const after = process.memoryUsage().heapUsed;
+console.log(`heap growth after 50 000 closed sources with the dashboard scope open: ${((after - before) / 1e6).toFixed(1)} MB (${((after - before) / 50_000).toFixed(0)} bytes per closed source)`);
+const report = await dashboard.control.close();
+for (let i = 0; i < 6; i += 1) { await tick(); gc(); }
+console.log(`after closing the dashboard scope (complete ${report.complete}): heap delta ${((process.memoryUsage().heapUsed - before) / 1e6).toFixed(1)} MB`);

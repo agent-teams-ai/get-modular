@@ -1,0 +1,20 @@
+// Critic probe: cost of read() on a hot path (README: "once per call or request? Call read").
+import { createScope } from "@get-modular/resources";
+import { createStore } from "./observation.ts";
+const host = createScope({ name: "host" });
+const store = createStore<{ readonly eurUsd: number; readonly region: string }>({ eurUsd: 1.1, region: "eu" }, {
+  name: "settings", resources: host.resources, reportError: () => undefined,
+});
+const facet = store.readonly();
+let sum = 0;
+for (let i = 0; i < 200_000; i += 1) sum += facet.read(["eurUsd"]).values.eurUsd; // warm up
+const n = 2_000_000;
+const before = process.memoryUsage().heapUsed;
+const started = performance.now();
+for (let i = 0; i < n; i += 1) sum += facet.read(["eurUsd"]).values.eurUsd;
+const elapsed = performance.now() - started;
+console.log(`read(["eurUsd"]): ${((elapsed * 1000) / n).toFixed(3)} us per call over ${n} calls; heap delta ${((process.memoryUsage().heapUsed - before) / 1e6).toFixed(1)} MB; ${sum > 0}`);
+const plain = { eurUsd: 1.1 };
+const s2 = performance.now();
+for (let i = 0; i < n; i += 1) sum += plain.eurUsd;
+console.log(`baseline property read: ${(((performance.now() - s2) * 1000) / n).toFixed(4)} us`);

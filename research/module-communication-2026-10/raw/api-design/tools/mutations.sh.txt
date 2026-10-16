@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Proves the runtime probes can fail: each mutation switches on one deliberate defect in the stub engine, and at
+# least one probe must fail for it (or never finish: a 90 s watchdog counts that as caught). Variant B; shared engine.
+set -uo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$root"
+status=0
+for mutation in leak-detached no-key-index unbounded-dirty queue-loads late-detach no-name-check publish-stale compare-last-offered no-loading-signal no-cascade-guard retain-after-close no-scope-limit no-echo-guard no-async-context facet-read-after-close; do
+  output="$(perl -e 'alarm 90; exec @ARGV' env OBSERVATION_STUB_MUTATION="$mutation" VARIANT=b-snapshot node --expose-gc runtime/probes.test.ts 2>&1)"
+  code=$?
+  failed="$(printf '%s\n' "$output" | grep -E '^  ✖ ' | sed -E 's/^  ✖ ([0-9A-Z]+)\..*/\1/' | sort -u | paste -sd, -)"
+  if [[ -z "$failed" && $code -eq 142 ]]; then failed="a probe that never finished (killed after 90 s)"; fi
+  if [[ -z "$failed" ]]; then
+    echo "NOT CAUGHT  $mutation"
+    status=1
+  else
+    echo "caught      $mutation  by probes: $failed"
+  fi
+done
+exit $status

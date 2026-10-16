@@ -1,0 +1,26 @@
+import { createScope } from "scratchpad/api-shape/.toolchain/node_modules/@get-modular/resources/dist/index.js";
+const [variant, file] = process.argv.slice(2);
+const runtime = { a: "a-keys", b: "b-snapshot", c: "c-atomic" }[variant];
+const { createStore } = await import(`./runtime/${runtime}.ts`);
+const { createPricingContextModule } = await import(`./${variant}/${file}.ts`);
+const task = () => new Promise((r) => setImmediate(r));
+const hostErrors = []; const childErrors = [];
+const host = createScope({ name: "host" });
+const settings = createStore({ currency: "EUR", region: "de", theme: "light" }, { name: "settings", resources: host.resources, reportError: (r) => { hostErrors.push(r); } });
+const mod = host.resources.child({ name: "pricing" });
+const pending = createPricingContextModule({ settings: settings.readonly(), errors: { report: (r) => { childErrors.push(r); } } }, { signal: mod.resources.signal, resources: mod.resources });
+settings.set({ region: "fr" });                       // right after the module read the settings
+const ctx = (await pending).capabilities["acme/pricing/context"];
+for (let i = 0; i < 5; i += 1) await task();
+const v = ctx.read(["currency", "vatRate"]).values;
+console.log(`[${variant}/${file}] currency=${v.currency} vatRate=${v.vatRate} (want EUR 0.2) writable=${typeof ctx.set === "function"} hostErrors=${hostErrors.length}`);
+// a child subscriber that throws goes to deps.errors.report
+const childScope = mod.resources.child({ name: "child" });
+const snap = ctx.read(["vatRate"]);
+if (variant === "a") ctx.watch(childScope.resources, { name: "boom", keys: ["vatRate"], changesAfter: snap, onChange: () => { throw new Error("boom"); } });
+if (variant === "b") ctx.watch(snap, { resources: childScope.resources, name: "boom", onChange: () => { throw new Error("boom"); } });
+if (variant === "c") ctx.watch({ resources: childScope.resources, name: "boom", keys: ["vatRate"], onChange: () => { throw new Error("boom"); } });
+settings.set({ region: "de" });
+for (let i = 0; i < 5; i += 1) await task();
+console.log(`[${variant}/${file}] child failure reported via deps.errors.report: ${childErrors.length === 1 ? "yes (store=" + childErrors[0].store + ")" : "no (" + childErrors.length + ")"}; hostErrors=${hostErrors.length}`);
+await mod.control.close(); await host.control.close();

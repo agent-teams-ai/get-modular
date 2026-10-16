@@ -1,0 +1,132 @@
+// Critic round 2: the new mechanisms of B (cascade guard, testing entry point, per-scope limit, ownership freezing).
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { createScope } from "@get-modular/resources";
+import { createStore, delivered, liveSubscriptions, settled, stats, type ListenerError } from "./observation.ts";
+
+const tick = (): Promise<void> => new Promise((resolve) => { setImmediate(resolve); });
+const codeOf = (error: unknown): unknown => (error as { readonly code?: unknown } | null)?.code;
+const within = async (promise: Promise<unknown>, ms: number): Promise<"resolved" | "timeout"> =>
+  Promise.race([promise.then(() => "resolved" as const), new Promise<"timeout">((r) => { setTimeout(() => { r("timeout"); }, ms); })]);
+
+function world() {
+  const reports: ListenerError[] = [];
+  const host = createScope({ name: "host" });
+  const owner = host.resources.child({ name: "owner" });
+  const store = createStore<{ readonly level: number; readonly other: number }>({ level: 0, other: 0 }, {
+    name: "settings", resources: owner.resources, reportError: (r) => { reports.push(r); return undefined; },
+  });
+  const module = host.resources.child({ name: "module" });
+  return { host, owner, module, store, facet: store.readonly(), reports };
+}
+
+test("C1 echo through an async command is never stopped by the cascade guard", async () => {
+  const { store, facet, module, reports } = world();
+  const requestLevel = async (level: number): Promise<"accepted"> => { await Promise.resolve(); store.set({ level }); return "accepted"; };
+  let deliveries = 0;
+  facet.watch(facet.read(["level"]), { resources: module.resources, name: "m/echo-async", onChange: ({ values }) => { deliveries += 1; void requestLevel(values.level + 1); } });
+  store.set({ level: 1 });
+  for (let i = 0; i < 300; i += 1) await tick();
+  console.log(`C1 async echo: ${deliveries} deliveries in 300 tasks, level ${facet.read(["level"]).values.level}, reports ${reports.length}`);
+  await module.control.close();
+});
+
+test("C2 echo deferred with queueMicrotask is never stopped either", async () => {
+  const { store, facet, module, reports } = world();
+  let deliveries = 0;
+  facet.watch(facet.read(["level"]), { resources: module.resources, name: "m/echo-micro", onChange: ({ values }) => { deliveries += 1; queueMicrotask(() => { store.set({ level: values.level + 1 }); }); } });
+  store.set({ level: 1 });
+  for (let i = 0; i < 300; i += 1) await tick();
+  console.log(`C2 microtask echo: ${deliveries} deliveries in 300 tasks, reports ${reports.length}`);
+  await module.control.close();
+});
+
+test("C3 a synchronous echo is detected only after 64 rounds, not at the first one", async () => {
+  const { store, facet, module, reports } = world();
+  let deliveries = 0;
+  facet.watch(facet.read(["level"]), { resources: module.resources, name: "m/echo", onChange: ({ values }) => { deliveries += 1; store.set({ level: values.level + 1 }); } });
+  store.set({ level: 1 });
+  await delivered();
+  console.log(`C3 sync echo: ${deliveries} deliveries before the guard; reports ${reports.map((r) => String(codeOf(r.cause))).join(",")}`);
+  await module.control.close();
+});
+
+test("C4 pagination through load (onResult advances the cursor it follows) fails at page ~65, only with real data", async () => {
+  const reports: ListenerError[] = [];
+  const host = createScope({ name: "host" });
+  const pages = createStore<{ readonly cursor: number; readonly rows: readonly number[] }>({ cursor: 0, rows: [] }, {
+    name: "catalog/pages", resources: host.resources, reportError: (r) => { reports.push(r); return undefined; },
+  });
+  const facet = pages.readonly();
+  const module = host.resources.child({ name: "catalog" });
+  const total = 100;
+  facet.load(facet.read(["cursor"]), {
+    resources: module.resources, name: "catalog/page",
+    loader: async ({ values }) => (values.cursor < total ? [values.cursor] : []),
+    onLoading: () => undefined,
+    onResult: (rows, { values }) => { if (rows.length > 0) pages.set({ rows: [...pages.read(["rows"]).values.rows, ...rows], cursor: values.cursor + 1 }); },
+    onError: () => undefined,
+  });
+  await settled();
+  console.log(`C4 pagination: ${pages.read(["rows"]).values.rows.length} of ${total} pages loaded; reports ${reports.map((r) => String(codeOf(r.cause))).join(",")}`);
+  await host.control.close();
+});
+
+test("C5 delivered() never resolves while any store anywhere commits every task", async () => {
+  const { store, module, host } = world();
+  let running = true;
+  const ticker = async (): Promise<void> => { let n = 0; while (running) { store.set({ other: n += 1 }); await tick(); } };
+  void ticker();
+  const outcome = await within(delivered(), 500);
+  running = false;
+  console.log(`C5 delivered() with an unrelated per-task committer: ${outcome}`);
+  await module.control.close(); await host.control.close();
+});
+
+test("C6 settled() of one test waits for an unrelated module's long-poll load", async () => {
+  const a = world();
+  let release!: () => void;
+  a.facet.load(a.facet.read(["level"]), { resources: a.module.resources, name: "other/long-poll",
+    loader: () => new Promise<number>((resolve) => { release = () => { resolve(1); }; }), onLoading: () => undefined, onResult: () => undefined, onError: () => undefined });
+  const b = world();
+  b.store.set({ level: 5 });
+  const outcome = await within(settled(), 500);
+  console.log(`C6 settled() while an unrelated load is open: ${outcome}`);
+  release();
+  await a.module.control.close(); await b.module.control.close();
+});
+
+test("C7 a leak of unclosed child scopes passes the per-scope limit and fails an innocent module at the store limit", async () => {
+  const { facet, module, host } = world();
+  let leaked = 0;
+  try {
+    for (let i = 0; i < 9000; i += 1) {
+      const request = module.resources.child({ name: "request" }); // never closed: the leak
+      facet.watch(facet.read(["level"]), { resources: request.resources, name: "m/request", onChange: () => undefined });
+      leaked += 1;
+    }
+  } catch (error) { console.log(`C7 leaking module stopped after ${leaked}: ${String(codeOf(error))}`); }
+  const innocent = host.resources.child({ name: "innocent" });
+  try {
+    facet.watch(facet.read(["level"]), { resources: innocent.resources, name: "innocent/level", onChange: () => undefined });
+    console.log("C7 innocent module subscribed");
+  } catch (error) { console.log(`C7 innocent module failed: ${String(codeOf(error))}: ${(error as Error).message}`); }
+  await host.control.close();
+});
+
+test("C8 a failed set leaves the caller's objects frozen", () => {
+  const host = createScope({ name: "host" });
+  const store = createStore<{ readonly a: { readonly list: number[] }; readonly b: unknown }>({ a: { list: [] }, b: 0 }, {
+    name: "s", resources: host.resources, reportError: () => undefined,
+  });
+  const mine = { list: [1, 2] };
+  try { store.set({ a: mine, b: new Date() }); } catch (error) { console.log(`C8 set threw ${String(codeOf(error))}; caller's object frozen: ${Object.isFrozen(mine)}, its list frozen: ${Object.isFrozen(mine.list)}; committed a: ${store.read(["a"]).values.a === mine}`); }
+});
+
+test("C9 liveSubscriptions(facet, scope) misses a subscription made in another scope", async () => {
+  const { facet, module, host } = world();
+  facet.watch(facet.read(["level"]), { resources: host.resources, name: "m/wrong-scope", onChange: () => undefined }); // module used the Host's scope by mistake
+  await module.control.close();
+  console.log(`C9 after closing the module: in its scope ${liveSubscriptions(facet, module.resources)}, in total ${liveSubscriptions(facet)}`);
+  void stats; await host.control.close();
+});

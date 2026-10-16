@@ -1,0 +1,12 @@
+▶ b-snapshot
+  ✔ 18. echo: a handler that changes a key it follows fails at the first delivery, reported and thrown (3.9235ms)
+  ✔ 19. cascade guard: shared across stores (ping-pong), legitimate chains pass, coalescing keeps the largest depth (13.062917ms)
+✔ b-snapshot (18.295ms)
+ℹ tests 2
+ℹ suites 1
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 21.422833

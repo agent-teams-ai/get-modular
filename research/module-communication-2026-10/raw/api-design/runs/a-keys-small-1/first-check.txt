@@ -1,0 +1,18 @@
+== a-logger
+[a-keys] tsc7: OK (0 errors)
+[a-keys] ts5.8.3: OK (0 errors)
+== b-catalog
+[a-keys] tsc7: OK (0 errors)
+[a-keys] ts5.8.3: OK (0 errors)
+== c-pricing-context
+[a-keys] tsc7: OK (0 errors)
+[a-keys] ts5.8.3: OK (0 errors)
+== d-greeter
+[a-keys] tsc7: OK (0 errors)
+[a-keys] ts5.8.3: OK (0 errors)
+
+Variant a-keys, solutions in scratchpad/api-shape/runs/a-keys-small-1
+  a-logger: PASS
+  b-catalog: PASS
+  c-pricing-context: PASS
+  d-greeter: PASS

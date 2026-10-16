@@ -1,0 +1,40 @@
+▶ a-keys
+  ✔ 1. a commit between reading and subscribing is not lost (2.699208ms)
+  ✔ 2. the subscription is detached when its scope starts closing, before the drain finishes (2.671375ms)
+  ✔ 3. after the subscriber scope closes, the store holds no reference to its callbacks (GC) (13.2445ms)
+  ✔ 4. store.close() while the subscriber scope stays open: nothing is retained, one source.closed report each (GC, with control) (28.815125ms)
+  ✔ 5. coalescing: 10 000 commits in one task give one delivery of the newest value (8.26225ms)
+  ✔ 6. load: one active and one pending run; a stale result never publishes (12.266125ms)
+  ✔ 7. dispatch visits only subscriptions of the changed keys (hundreds of watchers) (19.656ms)
+  ℹ a-keys: 10 watchers on a, set(b) x2000: 1.132 us per set
+  ℹ a-keys: 100 watchers on a, set(b) x2000: 0.730 us per set
+  ℹ a-keys: 1000 watchers on a, set(b) x2000: 0.684 us per set
+  ✔ 8. a repeated watch in a long-lived scope fails with a coded error, in that scope only (0.5175ms)
+  ✔ 9. the documented pattern: one child scope per request does not accumulate (9.931416ms)
+  ✔ 10. limits: 64 per subscriber scope by default; the owner's per-store safety limit across scopes (0.546333ms)
+  ✔ 11. closing the subscriber scope during a cooperative load: complete, no debts, nothing published (1.278125ms)
+  ✔ 12. a load that ignores abort: escalate gives a failed debt with a code; a retry completes (1.065333ms)
+  ✔ 13. a load that ignores abort: abandon gives a pending debt and settled: false (0.392291ms)
+  ✔ 14. store.close() during a load aborts it; the drain stays in the subscriber scope (0.273875ms)
+  ✔ 17. load: onLoading when a newer run is queued; a result that lands after set() is dropped (0.3815ms)
+  ✔ 18. echo: a handler that changes a key it follows fails at the first delivery, reported and thrown (1.642291ms)
+  ✔ 19. cascade guard: shared across stores (ping-pong), legitimate chains pass, coalescing keeps the largest depth (10.250166ms)
+  ✔ 20. a subscription removed during a delivery is never called again in that delivery (0.266292ms)
+  ✔ 21. set takes ownership: values are frozen in place; frozen nodes are not walked again (1818.412875ms)
+  ℹ a-keys: append one row to 50 000 rows: 8.95 ms per set
+  ✔ 22. asynchronous echo is caught at the first round: async command, microtask, loader body (Node) (0.989291ms)
+  ✔ 23. an asynchronous ping-pong across two stores stops at 64 steps (Node) (2.290167ms)
+  ✔ 24. pagination as a loop inside one loader passes 100 pages (0.401875ms)
+  ✔ 25. the owner's read works after close; a save-on-close entry registered after createStore sees the last values (0.187ms)
+  ✔ 26. a failed set leaves the caller's objects unfrozen; the global limit names scope counts (0.9145ms)
+  ✔ 15. callback failures go to reportError with the subscription name (0.269125ms)
+  ✔ 16. after subscribing, nothing is called back synchronously (0.106ms)
+✔ a-keys (1941.1875ms)
+ℹ tests 26
+ℹ suites 1
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1944.226833

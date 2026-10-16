@@ -1,0 +1,22 @@
+// "@get-modular/observation/testing": deterministic waiting and leak checks for module tests.
+// Review sketch of the public types; the stub is ../runtime/testing.ts.
+import type { Resources } from "@get-modular/resources";
+import type { ReadonlyStore } from "./api.js";
+
+/**
+ * Live subscriptions (`watch` plus `load`) on `store`; with `resources`, only those registered in that scope.
+ * A module test asserts 0 after closing the module's scope.
+ */
+export declare function liveSubscriptions(store: ReadonlyStore<object>, resources?: Resources): number;
+
+/**
+ * Resolves at the first task boundary at which no delivery is scheduled in any store of this package copy,
+ * including deliveries caused by deliveries. Loads may still be running.
+ */
+export declare function delivered(): Promise<void>;
+
+/**
+ * Like `delivered`, and additionally waits until no load is running or queued. Never use it while a test holds a
+ * loader open on purpose; use `delivered` there.
+ */
+export declare function settled(): Promise<void>;

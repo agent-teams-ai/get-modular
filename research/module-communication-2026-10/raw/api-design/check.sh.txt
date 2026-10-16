@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# Checks task solutions written against one API variant.
+#
+#   ./check.sh <variant> <dir> [task...]
+#
+# <variant>: a-keys | b-snapshot   (c-atomic was dropped after round 1; see archive/)
+# <dir>:     a directory with the solution files, for example b-catalog.ts
+# [task...]: optional subset, for example "b-catalog e-async-factory"; default: the nine round 2 tasks
+#            (e-sessions is not in the default list; run it by name: ./check.sh <variant> <dir> e-sessions)
+#
+# Per task, three gates, all required for PASS:
+#   1. rules:     no any, no `as`, no @ts- directives, the intended API members are used (tools/static-rules.mjs);
+#   2. compile:   fixed types + solution + acceptance file on tsc7 (TS 7) and TypeScript 5.8.3;
+#   3. behaviour: the task's scenario on the fixed runtime stub (tools/run-scenario.mjs): no lost update across
+#                 await, no stale data while loading, release on close, no write to a watched store, and so on.
+set -uo pipefail
+
+here="$(cd "$(dirname "$0")" && pwd)"
+variant="${1:-}"
+dir="${2:-}"
+if [[ -z "$variant" || -z "$dir" || ! -f "$here/$variant/api.d.ts" || ! -f "$here/runtime/$variant.ts" || ! -d "$dir" ]]; then
+  echo "usage: ./check.sh <a-keys|b-snapshot> <dir> [task...]" >&2
+  exit 2
+fi
+if ! command -v tsc7 >/dev/null 2>&1 && [[ -z "${TSC7:-}" ]]; then
+  echo "tsc7 not found (set TSC7=/path/to/tsc7)" >&2
+  exit 2
+fi
+if [[ ! -x "$here/.toolchain/node_modules/.bin/tsc" ]]; then
+  echo "TypeScript 5.8.3 missing: (cd $here/.toolchain && npm ci)" >&2
+  exit 2
+fi
+shift 2
+tasks=("$@")
+if [[ ${#tasks[@]} -eq 0 ]]; then
+  tasks=(a-logger b-catalog c-pricing-context d-greeter e-async-factory f-watch-and-load g-hierarchy h-requests i-errors)
+fi
+
+status=0
+summary=()
+for task in "${tasks[@]}"; do
+  solution="$dir/$task.ts"
+  if [[ ! -f "$here/tasks/$task.types.ts" ]]; then
+    summary+=("$task: UNKNOWN TASK")
+    status=1
+    continue
+  fi
+  if [[ ! -f "$solution" ]]; then
+    summary+=("$task: MISSING")
+    status=1
+    continue
+  fi
+  echo "== $task"
+  failed=()
+  node "$here/tools/static-rules.mjs" "$variant" "$task" "$solution" || failed+=("rules")
+  if node "$here/tools/tsc-both.mjs" "$variant" "$here/tasks/$task.types.ts" "$solution" "$here/tasks/$task.accept.ts"; then
+    node "$here/tools/run-scenario.mjs" "$variant" "$task" "$solution" || failed+=("behaviour")
+  else
+    failed+=("compile")
+  fi
+  if [[ ${#failed[@]} -eq 0 ]]; then
+    summary+=("$task: PASS")
+  else
+    summary+=("$task: FAIL ($(IFS=,; echo "${failed[*]}"))")
+    status=1
+  fi
+done
+
+echo
+echo "Variant $variant, solutions in $dir"
+printf '  %s\n' "${summary[@]}"
+exit $status

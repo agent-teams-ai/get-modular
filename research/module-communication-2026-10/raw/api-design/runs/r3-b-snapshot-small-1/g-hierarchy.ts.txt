@@ -1,0 +1,53 @@
+import { createStore } from "@get-modular/observation";
+import type { ModuleContext } from "@get-modular/resources";
+import {
+  createTotalDisplay, discountFor, grossTotal, vatRateFor,
+  type CheckoutDeps, type CheckoutPort, type CheckoutProduct, type DiscountRequests, type PricingContext,
+  type PricingOwnerDeps, type PricingOwnerProduct, type PricingSettings,
+} from "./g-hierarchy.types.js";
+
+export async function createPricingOwnerModule(deps: PricingOwnerDeps, { resources }: ModuleContext): Promise<PricingOwnerProduct> {
+  const settings = deps.settings.read(["currency", "region"]);
+  // Only the settings-derived keys: `set` keeps `discountPercent`, so an accepted discount survives a settings change.
+  const toPricing = (values: PricingSettings): Pick<PricingContext, "currency" | "vatRate"> =>
+    ({ currency: values.currency, vatRate: vatRateFor(values.region) });
+  const store = createStore<PricingContext>({ ...toPricing(settings.values), discountPercent: 0 }, {
+    name: "pricing/context", resources, reportError: deps.errors.report,
+  });
+  deps.settings.watch(settings, {
+    resources, name: "pricing/settings",
+    onChange: ({ values }) => { store.set(toPricing(values)); },
+  });
+  const discounts: DiscountRequests = {
+    requestDiscount: (code) => {
+      const discountPercent = discountFor(code);
+      if (discountPercent === undefined) { return "rejected"; }
+      store.set({ discountPercent });
+      return "accepted";
+    },
+  };
+  return {
+    instance: undefined,
+    capabilities: { "acme/pricing/context": store.readonly(), "acme/pricing/discounts": discounts },
+  };
+}
+
+export async function createCheckoutModule(deps: CheckoutDeps, { resources }: ModuleContext): Promise<CheckoutProduct> {
+  const display = createTotalDisplay();
+  const pricing = deps.pricing.read(["vatRate", "discountPercent"]);
+  let net = 0;
+  // Reads the newest rates at show time, so a total never uses values older than the store.
+  const showTotal = () => {
+    const { values } = deps.pricing.read(["vatRate", "discountPercent"]);
+    display.show(grossTotal(net, values.vatRate, values.discountPercent));
+  };
+  deps.pricing.watch(pricing, {
+    resources, name: "checkout/pricing",
+    onChange: () => { showTotal(); },
+  });
+  const checkout: CheckoutPort = {
+    setNet: (amount) => { net = amount; showTotal(); return undefined; },
+    applyCode: (code) => deps.discounts.requestDiscount(code),
+  };
+  return { instance: display, capabilities: { "acme/checkout": checkout } };
+}

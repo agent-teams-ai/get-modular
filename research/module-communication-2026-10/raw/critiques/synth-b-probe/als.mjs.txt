@@ -1,0 +1,13 @@
+import { AsyncLocalStorage } from "node:async_hooks";
+const als = new AsyncLocalStorage();
+// Minimal model of the sketch's coalescing flush: first commit schedules, later commits join the batch.
+let scheduled = false; const dirty = [];
+function commit(tag) {
+  dirty.push(tag);
+  if (scheduled) return;
+  scheduled = true;
+  setImmediate(() => { scheduled = false; const batch = dirty.splice(0); console.log("flush for", batch.join("+"), "runs in context:", als.getStore()); });
+}
+als.run("trace-A", () => commit("A"));
+als.run("trace-B", () => commit("B"));
+setImmediate(() => als.run("trace-C", () => commit("C")));

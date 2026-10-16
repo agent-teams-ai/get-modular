@@ -1,0 +1,4 @@
+[controls/b-v-in-param] tsc7: 1 error(s)
+  api.d.ts:110 TS2636 Type 'ReadonlyStore<sub-V>' is not assignable to type 'ReadonlyStore<super-V>' as implied by variance annotation.
+[controls/b-v-in-param] ts5.8.3: 1 error(s)
+  api.d.ts:110 TS2636 Type 'ReadonlyStore<sub-V>' is not assignable to type 'ReadonlyStore<super-V>' as implied by variance annotation.

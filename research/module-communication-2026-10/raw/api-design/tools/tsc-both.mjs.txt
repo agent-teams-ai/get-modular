@@ -1,0 +1,115 @@
+// Compiles TypeScript files against one API variant on tsc7 (TS 7) and TypeScript 5.8.3.
+//
+//   node tools/tsc-both.mjs <variant> <file.ts...>            plain compile, exit 1 on any error
+//   node tools/tsc-both.mjs --expect <variant> <file.ts...>   also proves every `@ts-expect-error <label>`
+//                                                            fails for its own line, and prints the codes
+//
+// The files are copied into a fresh directory under .build/, so their location does not matter.
+import { execFileSync } from "node:child_process";
+import { cpSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const compilers = [
+  { id: "tsc7", bin: process.env.TSC7 ?? "tsc7" },
+  { id: "ts5.8.3", bin: join(root, ".toolchain/node_modules/.bin/tsc") },
+];
+
+const args = process.argv.slice(2);
+const flag = (name) => { const at = args.indexOf(name); if (at >= 0) args.splice(at, 1); return at >= 0; };
+const expect = flag("--expect");
+// Consumers whose tsconfig lacks exactOptionalPropertyTypes.
+const looseOptional = flag("--loose-optional");
+// Assembly and resources from get-modular origin/main sources (.gm-main/SOURCE_COMMIT), core from the 0.4.0 package.
+const gmMain = flag("--gm-main");
+const [variant, ...files] = args;
+if (!variant || files.length === 0 || !existsSync(join(root, variant, "api.d.ts"))) {
+  console.error("usage: node tools/tsc-both.mjs [--expect] [--loose-optional] [--gm-main] <variant> <file.ts...>");
+  process.exit(2);
+}
+
+function buildDir(tag) {
+  mkdirSync(join(root, ".build"), { recursive: true });
+  const dir = mkdtempSync(join(root, ".build", `${variant.replaceAll("/", "_")}-${tag}-`));
+  writeFileSync(join(dir, "tsconfig.json"), JSON.stringify({
+    extends: join(root, "tsconfig.base.json"),
+    compilerOptions: {
+      ...(looseOptional ? { exactOptionalPropertyTypes: false } : {}),
+      ...(gmMain ? { lib: ["ESNext", "ESNext.Disposable", "DOM"] } : {}),
+      paths: {
+        "@get-modular/observation": [join(root, variant, "api.d.ts")],
+        "@get-modular/observation/testing": [join(root, variant, "testing.d.ts")],
+        "@get-modular/resources": [gmMain ? join(root, ".gm-main/packages/resources/src/index.ts") : join(root, ".toolchain/node_modules/@get-modular/resources/dist/index.d.ts")],
+        "@get-modular/assembly": [gmMain ? join(root, ".gm-main/packages/assembly/src/index.ts") : join(root, ".toolchain/node_modules/@get-modular/assembly/dist/index.d.ts")],
+        "@get-modular/core": [join(root, ".toolchain/node_modules/@get-modular/core/dist/index.d.ts")],
+      },
+    },
+    include: ["*.ts"],
+  }, null, 2));
+  return dir;
+}
+
+function compile(bin, dir) {
+  try {
+    execFileSync(bin, ["-p", dir, "--pretty", "false"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    return [];
+  } catch (error) {
+    const output = `${error.stdout ?? ""}${error.stderr ?? ""}`;
+    const lines = output.split("\n");
+    const errors = [];
+    for (const line of lines) {
+      const match = /^(.+?)\((\d+),(\d+)\): error (TS\d+): (.*)$/.exec(line);
+      if (match) errors.push({ file: basename(match[1]), line: Number(match[2]), code: match[4], message: match[5] });
+      else if (/error TS\d+/.test(line)) errors.push({ file: "?", line: 0, code: "?", message: line });
+    }
+    if (errors.length === 0) errors.push({ file: "?", line: 0, code: "?", message: output.trim() || String(error) });
+    return errors;
+  }
+}
+
+let failed = false;
+const plain = buildDir("plain");
+for (const file of files) cpSync(file, join(plain, basename(file)));
+for (const { id, bin } of compilers) {
+  const errors = compile(bin, plain);
+  console.log(`[${variant}] ${id}: ${errors.length === 0 ? "OK (0 errors)" : `${errors.length} error(s)`}`);
+  for (const e of errors) console.log(`  ${e.file}:${e.line} ${e.code} ${e.message}`);
+  if (errors.length > 0) failed = true;
+}
+
+if (expect) {
+  // Replace each directive with a plain comment of the same line count, then compile and attribute errors.
+  const stripped = buildDir("stripped");
+  const directives = [];
+  for (const file of files) {
+    const lines = readFileSync(file, "utf8").split("\n");
+    lines.forEach((text, index) => {
+      const match = /^(\s*)\/\/ @ts-expect-error\s*(.*)$/.exec(text);
+      if (match) {
+        directives.push({ file: basename(file), line: index + 2, label: match[2] });
+        lines[index] = `${match[1]}// (expected error) ${match[2]}`;
+      }
+    });
+    writeFileSync(join(stripped, basename(file)), lines.join("\n"));
+  }
+  const table = directives.map((d) => ({ ...d, codes: {} }));
+  for (const { id, bin } of compilers) {
+    const errors = compile(bin, stripped);
+    for (const row of table) {
+      const own = errors.filter((e) => e.file === row.file && e.line === row.line);
+      row.codes[id] = own.length === 0 ? "NONE" : [...new Set(own.map((e) => e.code))].join(",");
+      if (own.length === 0) failed = true;
+    }
+    const stray = errors.filter((e) => !table.some((row) => row.file === e.file && row.line === e.line));
+    for (const e of stray) {
+      console.log(`  STRAY ${id} ${e.file}:${e.line} ${e.code} ${e.message}`);
+      failed = true;
+    }
+  }
+  console.log(`\n| File:line | Expectation | tsc7 | TS 5.8.3 |\n| --- | --- | --- | --- |`);
+  for (const row of table) {
+    console.log(`| ${row.file}:${row.line} | ${row.label} | ${row.codes.tsc7} | ${row.codes["ts5.8.3"]} |`);
+  }
+}
+process.exit(failed ? 1 : 0);

@@ -1,0 +1,7 @@
+[a-keys] tsc7: OK (0 errors)
+[a-keys] ts5.8.3: OK (0 errors)
+
+| File:line | Expectation | tsc7 | TS 5.8.3 |
+| --- | --- | --- | --- |
+| p5-gm-contracts.a.ts:43 | the owner cannot hand out the writable store | TS2322 | TS2322 |
+| p5-gm-contracts.a.ts:46 | a store of a different value type cannot serve the slice | TS2322 | TS2322 |

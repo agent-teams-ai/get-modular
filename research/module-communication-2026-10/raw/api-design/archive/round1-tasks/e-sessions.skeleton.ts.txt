@@ -1,0 +1,7 @@
+// Solution file for task (e). Save as e-sessions.ts. Keep the exported signature; fill in the body.
+import type { ModuleContext } from "@get-modular/resources";
+import type { Screen, Session, SessionsDeps, SessionsProduct } from "./e-sessions.types.js";
+
+export async function createSessionsModule(deps: SessionsDeps, { resources }: ModuleContext): Promise<SessionsProduct> {
+  // TODO
+}

@@ -1,0 +1,7 @@
+// Preserved research evidence: keep the original bytes instead of reformatting
+// them, so Markdown lint rules are off for this directory only.
+{
+  "config": {
+    "default": false
+  }
+}

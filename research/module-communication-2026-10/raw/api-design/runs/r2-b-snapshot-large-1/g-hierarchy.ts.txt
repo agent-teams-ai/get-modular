@@ -1,0 +1,66 @@
+import { createStore } from "@get-modular/observation";
+import type { ModuleContext } from "@get-modular/resources";
+import {
+  createTotalDisplay, discountFor, grossTotal, vatRateFor,
+  type CheckoutDeps, type CheckoutProduct, type PricingContext, type PricingOwnerDeps, type PricingOwnerProduct,
+} from "./g-hierarchy.types.js";
+
+const fromSettings = (values: { readonly currency: string; readonly region: string }) =>
+  ({ currency: values.currency, vatRate: vatRateFor(values.region) });
+
+export async function createPricingOwnerModule(deps: PricingOwnerDeps, { resources }: ModuleContext): Promise<PricingOwnerProduct> {
+  const settings = deps.settings.read(["currency", "region"]);
+  const pricing = createStore<PricingContext>({ ...fromSettings(settings.values), discountPercent: 0 }, {
+    name: "pricing",
+    resources,
+    reportError: deps.errors.report,
+  });
+  deps.settings.watch(settings, {
+    resources,
+    name: "pricing/settings",
+    onChange: ({ values }) => {
+      pricing.set(fromSettings(values));
+    },
+  });
+  return {
+    instance: undefined,
+    capabilities: {
+      "acme/pricing/context": pricing.readonly(),
+      "acme/pricing/discounts": {
+        requestDiscount: (code) => {
+          const discountPercent = discountFor(code);
+          if (discountPercent === undefined) return "rejected";
+          pricing.set({ discountPercent });
+          return "accepted";
+        },
+      },
+    },
+  };
+}
+
+export async function createCheckoutModule(deps: CheckoutDeps, { resources }: ModuleContext): Promise<CheckoutProduct> {
+  const display = createTotalDisplay();
+  const pricing = deps.pricing.read(["vatRate", "discountPercent"]);
+  let net = 0;
+  deps.pricing.watch(pricing, {
+    resources,
+    name: "checkout/pricing",
+    onChange: ({ values }) => {
+      display.show(grossTotal(net, values.vatRate, values.discountPercent));
+    },
+  });
+  return {
+    instance: display,
+    capabilities: {
+      "acme/checkout": {
+        setNet: (value): undefined => {
+          net = value;
+          const { values } = deps.pricing.read(["vatRate", "discountPercent"]);
+          display.show(grossTotal(net, values.vatRate, values.discountPercent));
+          return undefined;
+        },
+        applyCode: (code) => deps.discounts.requestDiscount(code),
+      },
+    },
+  };
+}
