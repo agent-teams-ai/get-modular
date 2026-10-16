@@ -21,6 +21,8 @@ factories.
 npm install @get-modular/core@0.5.0 @get-modular/assembly@0.5.0
 ```
 
+These versions are published with 0.5.0.
+
 Add `@get-modular/resources@0.1.0` when modules own resources that need cleanup,
 and `@get-modular/conformance@0.3.0` as a development dependency for module and
 composition tests. To add a feature or a module to a consumer, read the

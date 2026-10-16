@@ -342,7 +342,8 @@ and a later plugin manifest can be generated from these files.
 
 One provide and several provides are both fine; each provided capability gets one
 pin in the oracle. Two implementations of one contract have distinct
-`implementationId`s; a `bindings` row in the root chooses between them for each
+`moduleId`s and `implementationId`s (Core rejects a profile that selects one `moduleId` twice with
+`profile.duplicate-selection`); a `bindings` row in the root chooses between them for each
 consumer (section 12), or two roots install one each. Both implementations pass the
 contract owner's suite (section 11). The example declares a postgres store and a
 memory store:
