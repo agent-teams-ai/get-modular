@@ -73,14 +73,14 @@ export async function runBasicHost({
 
   const resources = new AsyncDisposableStack();
   const api = assemblyFor();
-  const configurationHandle = implement()(configuration, async () => {
+  const configurationEntry = implement()(configuration, async () => {
     const resource = { audience: "consumer" };
     resources.defer(async () => onConfigurationDisposed?.());
     // Distinct wrappers share one resource; neither receives cleanup authority.
     const value = { get audience() { return resource.audience; } };
     return { instance: { configuration: value }, capabilities: { "example/configuration": value } };
   });
-  const greetingHandle = implement()(greeting, async ({ configuration }) => {
+  const greetingEntry = implement()(greeting, async ({ configuration }) => {
     const greet = greetingPort.greet;
     return {
       instance: {},
@@ -91,15 +91,15 @@ export async function runBasicHost({
       },
     };
   });
-  const applicationHandle = implement()(application, async ({ greeting }) => ({
+  const applicationEntry = implement()(application, async ({ greeting }) => ({
     instance: { run: (name) => greeting.greet(name) },
     capabilities: {},
   }));
 
   const preparation = await api.prepare({
     composition,
-    modules: [configurationHandle, greetingHandle, applicationHandle],
-    roots: { application: applicationHandle },
+    modules: [configurationEntry, greetingEntry, applicationEntry],
+    roots: { application: applicationEntry },
   });
   if (preparation.status === "failed") throw preparation.error;
 

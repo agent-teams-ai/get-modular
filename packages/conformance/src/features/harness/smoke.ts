@@ -39,7 +39,7 @@ function check(plan: Plan, outcome: LooseOutcome, order: readonly string[]): str
     if (outcome.status !== "succeeded") {
       return `expected succeeded, got ${outcome.status}${outcome.status === "failed" ? ` (${outcome.code})` : ""}`;
     }
-    // Handles are global in Assembly: a factory bound outside the given api would run but never see an injection.
+    // Entries are global in Assembly: a factory implemented outside the given api would run but never see an injection.
     const unwrapped = outcome.created.map(entry => entry.implementationId).filter(id => !plan.called.includes(id));
     return unwrapped.length === 0 ? undefined
       : `compose bound ${unwrapped.join(", ")} outside the api it was given, so no injection reaches them`;

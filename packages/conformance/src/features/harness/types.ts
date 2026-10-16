@@ -21,7 +21,7 @@ export type SmokeStep = {
   readonly problem?: string | undefined;
 };
 
-// Assembly derives its handle and outcome types from the capability map of one caller. The harness
+// Assembly derives its entry and outcome types from the capability map of one caller. The harness
 // builds declarations at run time, so it talks to Assembly through these map-free views of the same
 // shapes; the public signatures keep the caller's types.
 export type LooseFactory = (dependencies: unknown, context: FactoryContext) => Promise<unknown>;

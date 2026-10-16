@@ -112,7 +112,7 @@ test("invalid inputs fail before an earlier ordinary factory runs", async () => 
   assert.equal(host.clockCalls(), 0);
 });
 
-test("input handles must match the prepared selection", async () => {
+test("input entries must match the prepared selection", async () => {
   const api = assemblyFor();
   const lone = declaration("lone", ["synthetic/lone"]);
   const extra = declaration("extra", ["synthetic/extra"]);

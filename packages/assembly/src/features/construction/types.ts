@@ -278,7 +278,7 @@ export type UnresolvedBinding = {
   readonly cardinality: "required" | "optional" | "many";
   /** Group names from `modules` down to the consumer; `[]` at top level. */
   readonly groupPath: readonly string[];
-  /** Other bound handles that provide the capability id at any revision, by code point. */
+  /** Other entries that provide the capability id at any revision, by code point. */
   readonly candidates: readonly string[];
 };
 export type AssemblyPreparationResult<R, N = {}> =

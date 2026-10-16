@@ -66,20 +66,20 @@ test("all individual declaration, plan and alias ceilings accept boundary and re
 
 test("aggregate provider census refuses overflow before any compiler invocation", async () => {
   const api = assemblyFor(), item = declaration("root");
-  const handle = implement()(item, async () => ({ instance: {}, capabilities: {} }));
+  const entry = implement()(item, async () => ({ instance: {}, capabilities: {} }));
   const original = await compile([item]), composition = structuredClone(original);
   composition.plan.bindings = Array.from({ length: 256 }, () => row(1024));
   snapshotPlan(composition.plan);
   composition.plan.bindings.push(row(1));
   let calls = 0;
-  const result = await prepareConstruction({ composition, modules: [handle], roots: { root: handle } }, {
+  const result = await prepareConstruction({ composition, modules: [entry], roots: { root: entry } }, {
     compileComposition: async () => { calls++; return original; },
   });
   assert.equal(result.error.code, "assembly.prepare.limit");
   assert.equal(calls, 0);
 });
 
-test("aggregate declarations and handle count are checked before compilation", async () => {
+test("aggregate declarations and entry count are checked before compilation", async () => {
   const api = assemblyFor(), original = await compile([declaration("seed")]);
   for (const field of ["provides", "slots"]) {
     const composition = structuredClone(original), modules = [];
@@ -127,11 +127,11 @@ test("public Core accepts 4096 selected implementations and 1024 providers per r
   const rows = groups.map((group, index) => binding("synthetic/root", `group-${index}`, group.map((item) => item.implementationId)));
   const composition = await compile(declarations, profile(declarations, rows));
   const api = assemblyFor();
-  const handles = declarations.map((item) => implement()(item, async (dependencies) => ({
+  const entries = declarations.map((item) => implement()(item, async (dependencies) => ({
     instance: item === root ? dependencies : item.implementationId,
     capabilities: item === root ? {} : { "synthetic/value": item.implementationId },
   })));
-  const result = await api.prepare({ composition, modules: handles, roots: { root: handles.at(-1) } });
+  const result = await api.prepare({ composition, modules: entries, roots: { root: entries.at(-1) } });
   assert.equal(result.status, "prepared");
   const outcome = await result.prepared.run();
   assert.equal(outcome.status, "succeeded");

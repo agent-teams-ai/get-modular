@@ -74,10 +74,10 @@ implement<Capabilities>()(widened, async () => ({ instance: {}, capabilities: {}
 type Narrower = { "synthetic/store": CapabilityContract<Store & { readonly extra: true }, "synthetic/v1">; "synthetic/filter": Capabilities["synthetic/filter"]; "synthetic/logger": Capabilities["synthetic/logger"] };
 const narrower = assemblyFor<Narrower>();
 declare const composition: SuccessfulComposition;
-// @ts-expect-error Handles are invariant in the capabilities they use, even when values are covariantly assignable.
+// @ts-expect-error Entries are invariant in the capabilities they use, even when values are covariantly assignable.
 narrower.prepare({ composition, modules: [store], roots: { store } });
 type OtherIdentity = { "synthetic/store": CapabilityContract<Store, "synthetic/v2"> };
-// @ts-expect-error Handles with different exact identities cannot cross mappings.
+// @ts-expect-error Entries with different exact identities cannot cross mappings.
 assemblyFor<OtherIdentity>().prepare({ composition, modules: [store], roots: { store } });
 function largeSlot<const S extends string>(slotId: S) {
   return { slotId, capabilityId: "synthetic/store" as const, compatibility: exact("synthetic/v1"), cardinality: required() };
@@ -162,9 +162,9 @@ async function runSessions(composition: SuccessfulComposition, maybe: AbortSigna
 void runSessions;
 // @ts-expect-error An input declares no slots.
 input<SessionCapabilities>()(sessionStoreDeclaration);
-// @ts-expect-error An input handle is never a factory.
+// @ts-expect-error An input entry is never a factory.
 void sessionApi.prepare({ composition, modules: [sessionInput, sessionStore], roots: { store: sessionStore } });
-// @ts-expect-error An input handle is never a root.
+// @ts-expect-error An input entry is never a root.
 void sessionApi.prepare({ composition, modules: [sessionStore], roots: { session: sessionInput }, inputs: { session: sessionInput } });
-// @ts-expect-error A factory handle is never an input.
+// @ts-expect-error A module entry is never an input.
 void sessionApi.prepare({ composition, modules: [sessionStore], roots: { store: sessionStore }, inputs: { store: sessionStore } });

@@ -33,7 +33,7 @@ test("all plan fields, digest and closed shapes participate in preflight", async
   assert.deepEqual(host.trace, []);
 });
 
-test("exact authenticated handles, complete roots and data-only aliases are required", async () => {
+test("exact authenticated entries, complete roots and data-only aliases are required", async () => {
   const host = await synthetic(), { modules } = host.input;
   const forged = Object.create(Object.getPrototypeOf(modules[0]), Object.getOwnPropertyDescriptors(modules[0]));
   const equivalent = implement()(host.declarations[0], async () => ({ instance: {}, capabilities: { "synthetic/store": {} } }));
@@ -117,7 +117,7 @@ test("Core binds a parent port passed as an input like any provider", async () =
   assert.equal((await ready.run({ inputs: { session: { "synthetic/session": 7 } } })).roots.store, 7);
 });
 
-test("input handles appear only in inputs, under one alias, and are never roots", async () => {
+test("input entries appear only in inputs, under one alias, and are never roots", async () => {
   const api = assemblyFor();
   let calls = 0, reads = 0;
   const session = declaration("session", ["synthetic/session"]);

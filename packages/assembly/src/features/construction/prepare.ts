@@ -51,7 +51,7 @@ function profileFrom(plan: CompositionPlan): CompositionProfile {
 }
 
 type Collected = {
-  readonly byHandle: Map<object, Metadata>;
+  readonly byEntry: Map<object, Metadata>;
   readonly byId: Map<string, Metadata>;
   readonly groupPaths: Map<string, readonly string[]>;
 };
@@ -69,30 +69,30 @@ function sortIds(values: Iterable<string>): string[] {
 }
 // Module entries come only through `modules` (groups flattened depth first) and input entries only through
 // `inputs`; together they cover every selection exactly once.
-function collectMetadata(modules: readonly unknown[], inputHandles: readonly unknown[], inputAliases: readonly string[]): Collected {
+function collectMetadata(modules: readonly unknown[], inputEntries: readonly unknown[], inputAliases: readonly string[]): Collected {
   const walked = walkModules(modules, (kind) => refuse(kind === "input" ? "assembly.prepare.input-handles" : "assembly.prepare.handles"));
   let provides = 0;
   let slots = 0;
-  const all: { readonly handle: unknown; readonly metadata: Metadata; readonly path: readonly string[]; readonly inputAlias?: string }[] = [];
+  const all: { readonly entry: unknown; readonly metadata: Metadata; readonly path: readonly string[]; readonly inputAlias?: string }[] = [];
   for (const { entry, path } of walked.entries) {
-    all.push({ handle: entry, metadata: metadataFor(entry) as Metadata, path });
+    all.push({ entry, metadata: metadataFor(entry) as Metadata, path });
   }
-  for (const [index, handle] of inputHandles.entries()) {
-    const found = metadataFor(handle);
+  for (const [index, entry] of inputEntries.entries()) {
+    const found = metadataFor(entry);
     if (found?.input !== true) {refuse("assembly.prepare.input-handles");}
-    all.push({ handle, metadata: found, path: [], inputAlias: inputAliases[index] ?? "" });
+    all.push({ entry, metadata: found, path: [], inputAlias: inputAliases[index] ?? "" });
   }
   for (const { metadata } of all) {
     provides += metadata.declaration.provides.length;
     slots += metadata.declaration.slots.length;
     if (provides > limits.aggregateProvides || slots > limits.aggregateSlots) {throw new SnapshotFault("limit");}
   }
-  const byHandle = new Map<object, Metadata>();
+  const byEntry = new Map<object, Metadata>();
   const byId = new Map<string, Metadata>();
   const groupPaths = new Map<string, readonly string[]>();
   const paths = new Map<string, (readonly string[])[]>();
   const inputs = new Map<string, string[]>();
-  for (const { handle, metadata, path, inputAlias } of all) {
+  for (const { entry, metadata, path, inputAlias } of all) {
     const id = metadata.declaration.implementationId;
     if (inputAlias === undefined) {
       const list = paths.get(id) ?? [];
@@ -103,7 +103,7 @@ function collectMetadata(modules: readonly unknown[], inputHandles: readonly unk
       list.push(inputAlias);
       inputs.set(id, list);
     }
-    byHandle.set(handle as object, metadata);
+    byEntry.set(entry as object, metadata);
     byId.set(id, metadata);
     if (inputAlias === undefined) {groupPaths.set(id, path);}
   }
@@ -117,7 +117,7 @@ function collectMetadata(modules: readonly unknown[], inputHandles: readonly unk
   if (duplicated.length > 0) {
     throw new DuplicateFault(Object.freeze(duplicated));
   }
-  return { byHandle, byId, groupPaths };
+  return { byEntry, byId, groupPaths };
 }
 
 function validateSelections(plan: CompositionPlan, byId: ReadonlyMap<string, Metadata>): void {
@@ -131,29 +131,29 @@ function validateSelections(plan: CompositionPlan, byId: ReadonlyMap<string, Met
 }
 
 function bindRoots(aliases: Readonly<ReturnType<typeof rootKeys>>, plan: CompositionPlan,
-  byHandle: ReadonlyMap<object, Metadata>): Program["roots"] {
+  byEntry: ReadonlyMap<object, Metadata>): Program["roots"] {
   const rootIds = new Set(plan.roots);
-  const rootHandles = new Set<object>();
+  const rootEntries = new Set<object>();
   if (aliases.keys.length !== plan.roots.length || rootIds.size !== plan.roots.length) {refuse("assembly.prepare.roots");}
   return Object.freeze(aliases.keys.map((alias) => {
-    const handle = data(aliases.object, alias);
-    if (handle === null || typeof handle !== "object") {refuse("assembly.prepare.roots");}
-    const metadata = byHandle.get(handle);
+    const entry = data(aliases.object, alias);
+    if (entry === null || typeof entry !== "object") {refuse("assembly.prepare.roots");}
+    const metadata = byEntry.get(entry);
     // A borrowed input is never a root.
     if (metadata?.input === true) {refuse("assembly.prepare.input-handles");}
-    if (!metadata || rootHandles.has(handle) || !rootIds.has(metadata.declaration.moduleId)) {
+    if (!metadata || rootEntries.has(entry) || !rootIds.has(metadata.declaration.moduleId)) {
       refuse("assembly.prepare.roots");
     }
-    rootHandles.add(handle);
+    rootEntries.add(entry);
     return Object.freeze({ alias, implementationId: metadata.declaration.implementationId });
   }));
 }
 
-function bindInputs(aliases: readonly string[], handles: readonly unknown[],
-  byHandle: ReadonlyMap<object, Metadata>): Program["inputs"] {
+function bindInputs(aliases: readonly string[], entries: readonly unknown[],
+  byEntry: ReadonlyMap<object, Metadata>): Program["inputs"] {
   return Object.freeze(aliases.map((alias, index) => {
-    const handle = handles[index];
-    const metadata = handle !== null && typeof handle === "object" ? byHandle.get(handle) : undefined;
+    const entry = entries[index];
+    const metadata = entry !== null && typeof entry === "object" ? byEntry.get(entry) : undefined;
     if (metadata?.input !== true) {refuse("assembly.prepare.input-handles");}
     return Object.freeze({ alias, metadata });
   }));
@@ -189,12 +189,12 @@ function rejectedByCore(diagnostics: readonly Diagnostic[]): AssemblyPreparation
     diagnostics: Object.freeze([...diagnostics]),
   });
 }
-// Root handles name the profile roots; a missing, borrowed or repeated handle is a roots fault.
-function rootModuleIds(aliases: Readonly<ReturnType<typeof rootKeys>>, byHandle: ReadonlyMap<object, Metadata>): readonly string[] {
+// Root entries name the profile roots; a missing, borrowed or repeated entry is a roots fault.
+function rootModuleIds(aliases: Readonly<ReturnType<typeof rootKeys>>, byEntry: ReadonlyMap<object, Metadata>): readonly string[] {
   const seen = new Set<string>();
   return aliases.keys.map((alias) => {
-    const handle = data(aliases.object, alias);
-    const metadata = handle !== null && typeof handle === "object" ? byHandle.get(handle) : undefined;
+    const entry = data(aliases.object, alias);
+    const metadata = entry !== null && typeof entry === "object" ? byEntry.get(entry) : undefined;
     if (metadata?.input === true) {refuse("assembly.prepare.input-handles");}
     if (!metadata || seen.has(metadata.declaration.moduleId)) {refuse("assembly.prepare.roots");}
     seen.add(metadata.declaration.moduleId);
@@ -247,10 +247,10 @@ export async function prepareConstruction<C, R extends RootEntries<C>, N extends
     const aliases = rootKeys(data(supplied, "roots"));
     const suppliedInputs = Object.hasOwn(supplied, "inputs") ? data(supplied, "inputs") : undefined;
     const inputAliases = rootKeys(suppliedInputs === undefined ? {} : suppliedInputs);
-    const inputHandles = inputAliases.keys.map((alias) => data(inputAliases.object, alias));
+    const inputEntries = inputAliases.keys.map((alias) => data(inputAliases.object, alias));
     const explicit = withComposition ? explicitComposition(supplied) : undefined;
     // All individual and aggregate counts precede proportional snapshot copies.
-    const { byHandle, byId, groupPaths } = collectMetadata(modules, inputHandles, inputAliases.keys);
+    const { byEntry, byId, groupPaths } = collectMetadata(modules, inputEntries, inputAliases.keys);
     const declarations = Object.freeze(Array.from(byId.values(), (metadata) => metadata.declaration));
     const compile = ports.compileComposition, commit = ports.commitCreated ?? appendCreated;
     const resolved = explicit
@@ -258,13 +258,13 @@ export async function prepareConstruction<C, R extends RootEntries<C>, N extends
       : await completeProfile(compile, declarations, {
         profileId: data(supplied, "profileId"),
         bindings: given("bindings") ? data(supplied, "bindings") : undefined,
-        byId, groupPaths, rootModuleIds: rootModuleIds(aliases, byHandle),
+        byId, groupPaths, rootModuleIds: rootModuleIds(aliases, byEntry),
       });
     if ("status" in resolved) {return resolved;}
     const { plan, composition } = resolved;
     validateSelections(plan, byId);
-    const roots = bindRoots(aliases, plan, byHandle);
-    const inputs = bindInputs(inputAliases.keys, inputHandles, byHandle);
+    const roots = bindRoots(aliases, plan, byEntry);
+    const inputs = bindInputs(inputAliases.keys, inputEntries, byEntry);
     if (explicit) {
       const failed = await verifyExplicit(compile, declarations, plan, explicit);
       if (failed) {return failed;}

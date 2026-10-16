@@ -165,10 +165,10 @@ export async function isolate<const E extends AnyEntry>(
       { details: { diagnostics: composition.diagnostics } });
   }
 
-  const inputHandles = Object.fromEntries(fakes.map(fake => [fake.alias, makeInput(fake.declaration)]));
+  const inputEntries = Object.fromEntries(fakes.map(fake => [fake.alias, makeInput(fake.declaration)]));
   const preparation = await assembly.prepare({
     composition, modules: [entry], roots: { module: entry },
-    ...fakes.length === 0 ? {} : { inputs: inputHandles },
+    ...fakes.length === 0 ? {} : { inputs: inputEntries },
   });
   if (preparation.status !== "prepared") {
     throw new ConformanceError("conformance.isolate.construction-failed",
