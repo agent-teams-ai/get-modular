@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { EventEmitter } from "node:events";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import vm from "node:vm";
 import { compileComposition, many, optional, required } from "@get-modular/core";
 import { assemblyFor, declareModule, defineContract, implement, input } from "@get-modular/assembly";
 import { createScope, scoped } from "@get-modular/resources";
@@ -28,6 +30,183 @@ const dependencies = () => ({ logs: [{ id: 1 }, { id: 2 }], audit: undefined, db
 const product = value => ({ instance: value, capabilities: { "t/orders": { list: () => value } } });
 const code = error => error?.code;
 const entryFor = (declaration, factory) => implement()(declaration, factory, scoped);
+
+const Port = defineContract()({ id: "t/port", revision: 1 });
+const portName = name => name.toLowerCase().replace(/[^a-z0-9]+/gu, "-").replace(/^-+|-+$/gu, "");
+const portDeclaration = (name = "port") => declareModule({
+  moduleId: `t/${portName(name)}`, implementationId: `t/${portName(name)}/default`, owner, provides: [Port.provide()], slots: [],
+});
+const portEntry = (value, name = "port", setup = async () => {}) => {
+  const declaration = portDeclaration(name);
+  return entryFor(declaration, async (_deps, { resources }) => {
+    await setup(resources);
+    return { instance: 0, capabilities: { "t/port": value } };
+  });
+};
+const portViolation = (implementationId, members) => ({
+  implementationId, capabilityId: "t/port", members,
+});
+const rejection = promise => promise.then(() => null, caught => caught);
+
+test("P1 ports whose members are own properties build and close completely", async () => {
+  class ArrowFields { static marker = true; constructor() { this.read = () => 1; } }
+  const values = [
+    ["class arrow fields", new ArrowFields()],
+    ["own method using this", { read() { return this; } }],
+    ["Map", new Map()],
+    ["array", []],
+    ["Buffer", Buffer.from("x")],
+    ["SharedArrayBuffer", new SharedArrayBuffer(8)],
+    ["typed array", new Uint8Array(1)],
+    ["Date", new Date()],
+    ["null prototype", Object.create(null)],
+    ["function", () => 1],
+    ["number", 1],
+    ["cross-realm object", vm.runInNewContext("({ read: () => 1 })")],
+    ["cross-realm array", vm.runInNewContext("[1]")],
+  ];
+  for (const [name, value] of values) {
+    const isolated = await isolate(portEntry(value, `p1-${name.replaceAll(" ", "-")}`), { dependencies: {} });
+    const report = await isolated.close();
+    assert.equal(report.complete, true, name);
+  }
+});
+
+test("P2 prototype members fail with exact violations", async () => {
+  class Method { read() { return 1; } }
+  class Accessor { get size() { return 1; } set size(value) { void value; } }
+  class Base { base() {} other() {} }
+  class Derived extends Base { own() {} }
+  class MapSub extends Map { read() {} }
+  const symbol = Symbol("call");
+  const symbolPrototype = {};
+  Object.defineProperty(symbolPrototype, symbol, { value() {} });
+  const cases = [
+    ["class method", new Method(), ["read"]],
+    ["Object.create method", Object.create({ read() {} }), ["read"]],
+    ["prototype accessor", new Accessor(), ["size"]],
+    ["EventEmitter", new EventEmitter(), "emit"],
+    ["URL", new URL("https://example.invalid/"), "href"],
+    ["Map subclass", new MapSub(), ["read"]],
+    ["derived class", new Derived(), ["own", "base", "other"]],
+    ["symbol method", Object.create(symbolPrototype), [String(symbol)]],
+  ];
+  for (const [name, value, members] of cases) {
+    const error = await rejection(isolate(portEntry(value, `p2-${name.replaceAll(" ", "-")}`), { dependencies: {} }));
+    assert.equal(code(error), "conformance.ports.prototype-member", name);
+    const [found, ...rest] = error.details.violations;
+    assert.equal(rest.length, 0, name);
+    assert.equal(found.implementationId, `t/${portName(`p2-${name}`)}/default`, name);
+    assert.equal(found.capabilityId, "t/port", name);
+    if (typeof members === "string") {
+      assert.ok(found.members.includes(members), name);
+    } else {
+      assert.deepEqual(found.members, members, name);
+    }
+    assert.equal(error.details.report.complete, true, name);
+  }
+});
+
+test("P2b a prototype that is a function and carries a method is walked", async () => {
+  const prototype = function carrier() {};
+  prototype.read = () => 1;
+  const error = await rejection(isolate(portEntry(Object.setPrototypeOf({}, prototype), "p2b-function"), { dependencies: {} }));
+  assert.equal(code(error), "conformance.ports.prototype-member");
+  assert.ok(error.details.violations[0].members.includes("read"));
+});
+
+test("P3 a prototype getter is reported without being called, and an own getter is not", async () => {
+  let calls = 0;
+  const withPrototypeGetter = Object.create({
+    get read() { calls += 1; return () => 1; },
+  });
+  const error = await rejection(isolate(portEntry(withPrototypeGetter, "p3-prototype"), { dependencies: {} }));
+  assert.equal(code(error), "conformance.ports.prototype-member");
+  assert.deepEqual(error.details.violations, [portViolation("t/p3-prototype/default", ["read"])]);
+  const ownGetter = {};
+  Object.defineProperty(ownGetter, "read", {
+    enumerable: true,
+    get() { calls += 1; return () => 1; },
+  });
+  const isolated = await isolate(portEntry(ownGetter, "p3-own"), { dependencies: {} });
+  assert.equal((await isolated.close()).complete, true);
+  assert.equal(calls, 0);
+});
+
+test("P4 isolate closes its scope before a ports error and a walk error", async () => {
+  class Method { read() {} }
+  let cleanup = 0;
+  const parent = createScope({ name: "parent" });
+  const error = await rejection(isolate(
+    portEntry(new Method(), "p4-violation", async resources => {
+      await resources.setup({ name: "cleanup", setup: () => 1, cleanup: () => { cleanup += 1; } });
+    }),
+    { dependencies: {}, within: parent.resources },
+  ));
+  assert.equal(code(error), "conformance.ports.prototype-member");
+  assert.equal(error.details.report.complete, true);
+  assert.equal(cleanup, 1);
+  const parentReport = await parent.control.close();
+  assert.equal(parentReport.complete, true);
+  assert.deepEqual(parentReport.debts, []);
+
+  const trap = new Error("getPrototypeOf trap");
+  const proxy = new Proxy({}, { getPrototypeOf() { throw trap; } });
+  let proxyCleanup = 0;
+  const walkError = await rejection(isolate(
+    portEntry(proxy, "p4-proxy", async resources => {
+      await resources.setup({ name: "cleanup", setup: () => 1, cleanup: () => { proxyCleanup += 1; } });
+    }),
+    { dependencies: {} },
+  ));
+  assert.equal(walkError, trap);
+  assert.equal(proxyCleanup, 1);
+});
+
+test("P5 smoke reports the first run's ports before any injected run", async () => {
+  class Method { read() {} }
+  const run = async values => {
+    const calls = [0, 0];
+    const compose = async api => {
+      const declarations = values.map((_, index) => portDeclaration(`p5-${String(index)}`));
+      const handles = declarations.map((declaration, index) => entryFor(declaration, async () => {
+        calls[index] += 1;
+        return { instance: 0, capabilities: { "t/port": values[index] } };
+      }));
+      const composition = await compileComposition({
+        declarations,
+        profile: {
+          kind: "get-modular.composition-profile", schemaVersion: 1, profileId: "t/p5",
+          roots: declarations.map(declaration => declaration.moduleId),
+          selections: declarations.map(({ moduleId, implementationId }) => ({ moduleId, implementationId })),
+          bindings: [],
+        },
+      });
+      assert.equal(composition.ok, true);
+      return api.prepare({
+        composition, modules: handles, roots: { first: handles[0], second: handles[1] },
+      });
+    };
+    const error = await rejection(smoke({ api: assemblyFor(), compose }));
+    return { calls, error };
+  };
+  const one = await run([new Method(), {}]);
+  assert.equal(code(one.error), "conformance.ports.prototype-member");
+  assert.deepEqual(one.calls, [1, 1]);
+  assert.deepEqual(one.error.details.violations, [portViolation("t/p5-0/default", ["read"])]);
+  assert.equal(one.error.details.steps.length, 1);
+  assert.equal(one.error.details.steps[0].report.complete, true);
+
+  const two = await run([new Method(), Object.create({ read() {} })]);
+  assert.deepEqual(two.error.details.violations.map(violation => violation.implementationId),
+    ["t/p5-0/default", "t/p5-1/default"]);
+});
+
+test("P6 a Map from another realm is reported as the known container limit", async () => {
+  const error = await rejection(isolate(portEntry(vm.runInNewContext("new Map()"), "p6"), { dependencies: {} }));
+  assert.equal(code(error), "conformance.ports.prototype-member");
+  assert.ok(error.details.violations[0].members.includes("get"));
+});
 
 test("H1 the module sees the records and context of a production run", async () => {
   const seen = [];
@@ -872,6 +1051,32 @@ test("L1 checkModuleLayout passes a TEST-shaped tree with a sub-feature, inputs 
     featureCount: 2, moduleCount: 3, violations: [],
     modulesPerFeature: { [orders]: 1, [payments]: 1 },
   });
+});
+
+test("L1b a root may import its root module and the group of that module without owning it", () => {
+  const o = `${orders}/composition`;
+  const rows = testShapedTree().map(row => row.path === "src/composition/app.root.ts"
+    ? layoutFile(row.path, [edge(`${o}/orders.group.ts`), edge(`${o}/orders.module.ts`), edge("src/composition/shared.module.ts")])
+    : row);
+  assert.deepEqual(checkModuleLayout(layoutRecords(rows)).violations, []);
+});
+
+test("L1c a module imported only by a root is still an orphan", () => {
+  const o = `${orders}/composition`;
+  const rows = [
+    layoutFile(`${o}/orders.declaration.ts`),
+    layoutFile(`${o}/orders.module.ts`, [edge(`${o}/orders.declaration.ts`)]),
+    layoutFile("src/composition/app.root.ts", [edge(`${o}/orders.module.ts`)]),
+  ];
+  const error = failure(() => checkModuleLayout(layoutRecords(rows)), "conformance.layout.violation");
+  assert.deepEqual(pairs(error), [["orphan-module", `${o}/orders.module.ts`]]);
+});
+
+test("L1d two roots importing one Host-level module without a group is a group-count violation", () => {
+  const rows = testShapedTree();
+  rows.push(layoutFile("src/composition/other.root.ts", [edge("src/composition/shared.module.ts")]));
+  const error = failure(() => checkModuleLayout(layoutRecords(rows)), "conformance.layout.violation");
+  assert.deepEqual(pairs(error), [["group-count", "src/composition/shared.module.ts"]]);
 });
 
 test("L2 one throw lists every Get Modular layout violation kind with its code and path", () => {

@@ -6,6 +6,7 @@ export { ConformanceError } from "./features/errors/errors.js";
 export type { ConformanceErrorCode } from "./features/errors/errors.js";
 export type { Isolated, SmokeInjection, SmokeStep } from "./features/harness/types.js";
 export type { NamespaceViolation } from "./features/namespaces/check.js";
+export type { PortViolation } from "./features/ports/own-members.js";
 export type {
   WiringDifference, WiringDifferenceRule, WiringOptions, WiringOracle, WiringRow,
 } from "./features/wiring/types.js";

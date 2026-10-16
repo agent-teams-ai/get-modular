@@ -9,7 +9,7 @@ import {
   checkModuleLayout, checkNamespaces, checkWiring, contractSuite, describeWiring, guardHandles, isolate,
   runContractSuite, smoke,
   type CaseContext, type ConformanceError, type ConformanceErrorCode, type ContractSubject,
-  type HandleGuard, type Isolated, type LayoutExport, type LayoutImport, type LayoutViolation,
+  type HandleGuard, type Isolated, type LayoutExport, type LayoutImport, type LayoutViolation, type PortViolation,
   type ModuleLayoutMetrics, type ModuleLayoutRecords, type ModuleLayoutReport, type SmokeInjection,
   type SmokeStep, type TestFn, type WiringDifference, type WiringOracle, type WiringRow,
 } from "../dist/index.js";
@@ -98,6 +98,13 @@ void steps;
 const guard: HandleGuard = guardHandles({ allow: ["TCPServerWrap"] });
 void guard.check();
 
+const portViolation: PortViolation = {
+  implementationId: "acme/orders/default",
+  capabilityId: "acme/orders",
+  members: ["list"],
+};
+void portViolation;
+
 declare const error: ConformanceError;
 const reason: ConformanceErrorCode = error.code;
 switch (reason) {
@@ -105,6 +112,7 @@ switch (reason) {
   case "conformance.isolate.construction-failed":
   case "conformance.smoke.failed":
   case "conformance.namespaces.violation":
+  case "conformance.ports.prototype-member":
   case "conformance.wiring.mismatch":
   case "conformance.layout.violation":
   case "conformance.suite.revision-mismatch":
