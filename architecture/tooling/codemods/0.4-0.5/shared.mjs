@@ -503,14 +503,18 @@ export function inspectPrepare(file) {
   return sites.sort((a, b) => a.node.getStart() - b.node.getStart());
 }
 
-/** Start offsets of every comment in the text; the scanner skips strings and keeps comments as trivia. */
-function commentStarts(text) {
-  const scanner = ts.createScanner(ts.ScriptTarget.Latest, false, ts.LanguageVariant.Standard, text);
-  const starts = [];
-  for (let kind = scanner.scan(); kind !== ts.SyntaxKind.EndOfFileToken; kind = scanner.scan()) {
-    if (kind === ts.SyntaxKind.SingleLineCommentTrivia || kind === ts.SyntaxKind.MultiLineCommentTrivia) starts.push(scanner.getTokenStart());
-  }
-  return starts;
+/** Every comment inside the call, found through the syntax tree so that strings and templates cannot hide or fake one. */
+function callComments(file, call) {
+  const text = file.getFullText();
+  const source = file.compilerNode;
+  const found = new Map();
+  const visit = (node) => {
+    for (const range of ts.getLeadingCommentRanges(text, node.pos) ?? []) found.set(range.pos, range);
+    for (const range of ts.getTrailingCommentRanges(text, node.end) ?? []) found.set(range.pos, range);
+    for (const child of node.getChildren(source)) visit(child);
+  };
+  visit(call.compilerNode);
+  return [...found.values()].filter((range) => range.pos >= call.getStart() && range.end <= call.getEnd());
 }
 
 function isolateTarget(file, expression) {
@@ -549,16 +553,16 @@ function isolateInspection(file, call) {
   // A comment anywhere else would be lost silently: leave the call to a hand edit.
   const betweenStart = args[0].getEnd();
   const betweenEnd = options.getStart();
-  const lost = commentStarts(call.getText()).some((start) => {
-    const at = call.getStart() + start;
-    return at < betweenStart || at >= betweenEnd;
-  });
-  if (lost) return { ...site, status: "report", message: `${line(call)}: isolate stays; move the comments out of the call or rewrite it by hand` };
+  const comments = callComments(file, call);
+  const keptComments = comments.filter((range) => range.pos >= betweenStart && range.end <= betweenEnd);
+  if (keptComments.length < comments.length) {
+    return { ...site, status: "report", message: `${line(call)}: isolate stays; move the comments out of the call or rewrite it by hand` };
+  }
   const between = file.getFullText().slice(betweenStart, betweenEnd);
-  const kept = commentStarts(between).length > 0;
+  const kept = keptComments.length > 0;
   const separator = kept ? between : ", ";
-  const note = kept && /@ts-expect-error/u.test(between)
-    ? `${line(call)}: check the placement of @ts-expect-error after the isolate rewrite` : undefined;
+  const directive = /@ts-(?:expect-error|ignore)/u.exec(between)?.[0];
+  const note = kept && directive ? `${line(call)}: check the placement of ${directive} after the isolate rewrite` : undefined;
   return {
     ...site, status: "rewrite", note,
     replacement: `${importedIsolate.local}(${implement.expression}${generic(target.typeArguments)}()(${declarationValue.getText()}, ${factoryValue.getText()}, ${scoped.expression})${separator}{${restText}})`,

@@ -1,0 +1,12 @@
+import { assemblyFor } from "@get-modular/assembly";
+import { isolate } from "@get-modular/conformance";
+
+type Capabilities = Record<never, never>;
+declare const cacheDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const createCache: (...args: any[]) => any;
+declare const cacheDependencies: any;
+declare const x: string;
+
+export const isolatedCache = () => isolate(assemblyFor<Capabilities>(), {
+  declaration: cacheDeclaration, factory: createCache, dependencies: Object.assign(cacheDependencies, { t: `${x} http://a` }),
+});

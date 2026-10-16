@@ -230,3 +230,9 @@ test("0.4-0.5 isolate: a kept ts-expect-error between the arguments asks for a p
   assert.deepEqual(result.findings, ["line 9: check the placement of @ts-expect-error after the isolate rewrite"]);
   assert.match(result.text, /\/\/ @ts-expect-error stays above the options/u);
 });
+
+test("0.4-0.5 isolate: a kept ts-ignore asks for a placement check too", () => {
+  const result = apply(read("0.4-0.5", "isolate-comment", "input.ts.txt").replace("a comment (a ts-expect-error directive is kept the same way)", "@ts-ignore"),
+    "ts", [isolate]);
+  assert.deepEqual(result.findings, ["line 9: check the placement of @ts-ignore after the isolate rewrite"]);
+});
