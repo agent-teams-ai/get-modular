@@ -535,9 +535,12 @@ function isolateInspection(file, call) {
   if (scoped.collision) return { ...site, status: "report", message: `${line(call)}: isolate stays; rename the local binding that collides with scoped` };
   const rest = options.getProperties().filter((property) => property !== declaration && property !== factory);
   const restText = rest.length === 0 ? "" : ` ${rest.map((property) => property.getText()).join(", ")} `;
+  // Comments between the two arguments (a `// @ts-expect-error` above the options) stay in front of the options.
+  const between = file.getFullText().slice(args[0].getEnd(), options.getStart());
+  const separator = /\/\/|\/\*/.test(between) ? between : ", ";
   return {
     ...site, status: "rewrite",
-    replacement: `${importedIsolate.local}(${implement.expression}${generic(target.typeArguments)}()(${declarationValue.getText()}, ${factoryValue.getText()}, ${scoped.expression}), {${restText}})`,
+    replacement: `${importedIsolate.local}(${implement.expression}${generic(target.typeArguments)}()(${declarationValue.getText()}, ${factoryValue.getText()}, ${scoped.expression})${separator}{${restText}})`,
     imports: [["implement", ASSEMBLY], ["scoped", RESOURCES]],
   };
 }

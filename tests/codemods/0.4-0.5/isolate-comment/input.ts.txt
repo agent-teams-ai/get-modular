@@ -1,0 +1,11 @@
+import { assemblyFor } from "@get-modular/assembly";
+import { isolate } from "@get-modular/conformance";
+
+type Capabilities = Record<never, never>;
+declare const cacheDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const createCache: (...args: any[]) => any;
+declare const cacheDependencies: any;
+
+export const isolatedCache = () => isolate(assemblyFor<Capabilities>(),
+  // a comment (a ts-expect-error directive is kept the same way) stays above the options
+  { declaration: cacheDeclaration, factory: createCache, dependencies: cacheDependencies });
