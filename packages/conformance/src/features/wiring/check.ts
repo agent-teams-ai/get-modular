@@ -1,7 +1,9 @@
-import { ConformanceError, invalid } from "../errors/errors.js";
 import type { SuccessfulComposition } from "@get-modular/assembly";
+import { ConformanceError, invalid } from "../errors/errors.js";
+import { readDeclarations, type DeclarationFacts } from "../records/declarations.js";
+import { ownData } from "../records/own.js";
 import type {
-  WiringDifference, WiringOracle, WiringRow,
+  WiringDifference, WiringOptions, WiringOracle, WiringRow,
 } from "./types.js";
 
 type ProviderMap = Map<string, readonly string[]>;
@@ -13,14 +15,6 @@ type PlanData = {
   readonly roots: readonly string[];
   readonly bindings: readonly PlanBinding[];
 };
-
-function ownData(record: unknown, key: string): unknown {
-  if (typeof record !== "object" || record === null) {
-    return undefined;
-  }
-  const descriptor = Object.getOwnPropertyDescriptor(record, key);
-  return descriptor !== undefined && "value" in descriptor ? descriptor.value : undefined;
-}
 
 function ownRecord(record: unknown, path: string): Record<string, unknown> {
   if (typeof record !== "object" || record === null || Array.isArray(record)) {
@@ -148,9 +142,12 @@ function mergeOracles(oracles: readonly WiringOracle[]): {
   return { providers, roots: sorted(roots), rows, differences };
 }
 
+type DeclarationIndex = ReadonlyMap<string, DeclarationFacts>;
+
 function checkRows(
   bindings: readonly PlanBinding[],
   merged: ReturnType<typeof mergeOracles>,
+  declarations: DeclarationIndex,
   differences: WiringDifference[],
 ): void {
   const actualRows: RowMap = new Map();
@@ -167,6 +164,19 @@ function checkRows(
         message: `plan row ${binding.consumer}.${binding.slot} uses an unpinned capability`,
       });
     }
+    const slot = declarations.get(binding.consumer)?.slots.get(binding.slot);
+    const subject = `${binding.consumer}.${binding.slot}`;
+    if (declarations.has(binding.consumer) && slot === undefined) {
+      differences.push({
+        rule: "row-slot", subject, expected: [], actual: row.providers,
+        message: `plan row ${subject} names a slot its consumer's declaration does not have`,
+      });
+    } else if (slot !== undefined && slot.capabilityId !== binding.capability) {
+      differences.push({
+        rule: "row-capability", subject, expected: [slot.capabilityId], actual: [binding.capability],
+        message: `plan row ${subject} uses capability ${binding.capability}, its declared slot uses ${slot.capabilityId}`,
+      });
+    }
     const listed = merged.rows.get(rowKey);
     if (listed !== undefined) {
       if (!sameIds(listed.providers, row.providers)) {
@@ -178,14 +188,13 @@ function checkRows(
       }
       continue;
     }
-    const accepted = pinned !== undefined && pinned.length === 1 && sameIds(row.providers, pinned);
+    const accepted = slot?.cardinality === "required"
+      && pinned !== undefined && pinned.length === 1 && sameIds(row.providers, pinned);
     if (!accepted) {
       differences.push({
         rule: "unlisted-row", subject: `${binding.consumer}.${binding.slot}`, expected: pinned ?? [],
         actual: row.providers,
-        message: pinned !== undefined && pinned.length > 1
-          ? `every row of multi-provider capability ${binding.capability} must be listed`
-          : `unlisted plan row ${binding.consumer}.${binding.slot} does not bind its single pinned provider`,
+        message: unlistedMessage(slot?.cardinality, pinned, binding),
       });
     }
   }
@@ -199,14 +208,75 @@ function checkRows(
   }
 }
 
+function checkDeclarations(
+  declarations: DeclarationIndex,
+  selected: ReadonlySet<string>,
+  providers: ProviderMap,
+  differences: WiringDifference[],
+): void {
+  const declaredIds = sorted(declarations.keys());
+  const selectedIds = sorted(selected);
+  if (!sameIds(declaredIds, selectedIds)) {
+    differences.push({
+      rule: "declaration-selection", subject: "declarations", expected: selectedIds, actual: declaredIds,
+      message: "declarations must cover the plan selections exactly",
+    });
+  }
+  for (const entry of declarations.values()) {
+    if (!selected.has(entry.implementationId)) {
+      continue;
+    }
+    for (const capability of new Set(entry.provides)) {
+      const pinned = providers.get(capability);
+      if (pinned === undefined || !pinned.includes(entry.implementationId)) {
+        differences.push({
+          rule: "provided-capability", subject: capability, expected: pinned ?? [], actual: [entry.implementationId],
+          message: `${entry.implementationId} provides ${capability}, which the oracle does not pin to it`,
+        });
+      }
+    }
+  }
+}
+
+function unlistedMessage(
+  cardinality: "required" | "optional" | "many" | undefined,
+  pinned: readonly string[] | undefined,
+  binding: PlanBinding,
+): string {
+  const subject = `${binding.consumer}.${binding.slot}`;
+  if (cardinality === undefined) {
+    return `unlisted plan row ${subject} has no declared slot to prove it is required`;
+  }
+  if (cardinality !== "required") {
+    return `unlisted plan row ${subject} is ${cardinality}; only a required row may be left out`;
+  }
+  return pinned !== undefined && pinned.length > 1
+    ? `every row of multi-provider capability ${binding.capability} must be listed`
+    : `unlisted plan row ${subject} does not bind its single pinned provider`;
+}
+
 /**
  * Compares a completed composition with the independent provider oracle. It collects every difference before it
  * throws `conformance.wiring.mismatch`; the accepted weakening for an unlisted single-provider `required` row is
- * deliberate and is documented by its accepting test.
+ * deliberate and is documented by its accepting test. The declarations the test already passes to
+ * `compileComposition` and `checkNamespaces` prove what the plan cannot show: which capabilities a module provides and
+ * the cardinality of each slot.
  */
-export function checkWiring(composition: SuccessfulComposition, oracles: readonly WiringOracle[]): void {
+export function checkWiring(
+  composition: SuccessfulComposition,
+  oracles: readonly WiringOracle[],
+  options: WiringOptions,
+): void {
   if (!Array.isArray(oracles)) {
     throw invalid("checkWiring() requires oracles to be an array");
+  }
+  const declared = readDeclarations(ownData(options, "declarations"), "options.declarations", "checkWiring");
+  const declarations: Map<string, DeclarationFacts> = new Map();
+  for (const entry of declared) {
+    if (declarations.has(entry.implementationId)) {
+      throw invalid(`checkWiring() requires options.declarations to contain distinct implementation ids (${entry.implementationId})`);
+    }
+    declarations.set(entry.implementationId, entry);
   }
   const { selections, roots, bindings } = readPlan(composition);
   const merged = mergeOracles(oracles);
@@ -238,7 +308,8 @@ export function checkWiring(composition: SuccessfulComposition, oracles: readonl
       });
     }
   }
-  checkRows(bindings, merged, differences);
+  checkDeclarations(declarations, selected, merged.providers, differences);
+  checkRows(bindings, merged, declarations, differences);
   if (differences.length > 0) {
     throw new ConformanceError("conformance.wiring.mismatch",
       `${String(differences.length)} wiring difference${differences.length === 1 ? "" : "s"}: ${

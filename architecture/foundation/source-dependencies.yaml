@@ -514,6 +514,20 @@ boundaries:
       packages: []
       builtins: []
       runtimeReferences: []
+  - id: conformance-records
+    roots:
+      - packages/conformance/src/features/records/own.ts
+      - packages/conformance/src/features/records/declarations.ts
+    entrypoints:
+      - packages/conformance/src/features/records/own.ts
+      - packages/conformance/src/features/records/declarations.ts
+    allow:
+      boundaries:
+        - conformance-errors
+      packages:
+        - "@get-modular/core"
+      builtins: []
+      runtimeReferences: []
   - id: conformance-harness
     roots:
       - packages/conformance/src/features/harness/types.ts
@@ -567,6 +581,7 @@ boundaries:
     allow:
       boundaries:
         - conformance-errors
+        - conformance-records
       packages:
         - "@get-modular/core"
       builtins: []
@@ -583,8 +598,10 @@ boundaries:
     allow:
       boundaries:
         - conformance-errors
+        - conformance-records
       packages:
         - "@get-modular/assembly"
+        - "@get-modular/core"
       builtins: []
       runtimeReferences: []
   - id: conformance-layout
@@ -597,6 +614,7 @@ boundaries:
     allow:
       boundaries:
         - conformance-errors
+        - conformance-records
       packages: []
       builtins: []
       runtimeReferences: []

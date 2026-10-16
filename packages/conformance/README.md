@@ -156,27 +156,43 @@ const ordersWiring = {
   roots: ["acme/orders/default"],
 };
 
-checkWiring(composition, [ordersWiring]);
+checkWiring(composition, [ordersWiring], { declarations });
 console.log(describeWiring(composition));
 ```
 
-`checkWiring` compares a completed composition with hand-written `WiringOracle`
-parts. Keep each part in test code at
+`checkWiring(composition, oracles, { declarations })` compares a completed
+composition with hand-written `WiringOracle` parts. Pass the same declarations
+you pass to `compileComposition` and `checkNamespaces`: the plan shows neither
+the capabilities a module provides nor the cardinality of a slot, so the
+declarations supply them. Keep each oracle part in test code at
 `<test-root>/features/<feature>/<feature>.wiring.ts`; never derive it from the
 profile, plan or implementation. Equal parts may repeat a pin or row. Parts
 that pin one capability to different provider sets, or list different provider
 orders for one `consumer` and `slot`, conflict.
 
-The merged oracle pins the implementation providing every stated capability,
-the root implementations and every row that profile completion does not
-produce: optional, `many`, explicit and several-provider rows. Plan selections
-must equal pinned providers plus roots, plan roots must equal the oracle roots,
-and each listed row must match its plan row including provider order. An
-unlisted row passes only when its capability has one pinned provider and the
-row binds exactly that provider. This accepts a newly declared `required` slot
-without changing the oracle; review that weakening as a declaration change.
-Every difference is collected before one `conformance.wiring.mismatch` is
-thrown, with the rows in `details.differences`.
+The merged oracle pins the implementation providing every capability a selected
+module provides, the root implementations and every row that profile completion
+does not produce: optional, `many`, explicit and several-provider rows. The
+check reports a difference when:
+
+- plan selections differ from pinned providers plus roots, or plan roots differ
+  from the oracle roots (`selection`, `root`);
+- the declarations do not cover the plan selections exactly, by
+  `implementationId` (`declaration-selection`);
+- a selected declaration provides a capability that the oracle does not pin to
+  it (`provided-capability`);
+- a listed row differs from its plan row, provider order included (`row`,
+  `row-order`), or a listed row is absent from the plan;
+- an unlisted plan row is not a `required` slot bound to the single pinned
+  provider of its capability (`unlisted-row`); an unlisted `optional` or `many`
+  row, and every row of a several-provider capability, must be listed;
+- a plan row names a slot its consumer's declaration lacks (`row-slot`) or uses
+  another capability than the declared slot (`row-capability`).
+
+A newly declared `required` slot bound to its single pinned provider therefore
+needs no oracle change; review that as a declaration change. Every difference is
+collected before one `conformance.wiring.mismatch` is thrown, with the rows in
+`details.differences`.
 
 `describeWiring` is a debugging view, not an oracle format. It prints roots and
 selections, then one `consumer.slot <- providers [capability rN]` row per line.
@@ -260,7 +276,7 @@ a `Promise`.
 | `conformance.isolate.construction-failed` | the module could not be built |
 | `conformance.smoke.failed` | a smoke step broke an expectation |
 | `conformance.namespaces.violation` | a declaration breaks a namespace rule; `details.violations` lists them all |
-| `conformance.wiring.mismatch` | a completed plan differs from the provider oracle; `details.differences` lists every difference |
+| `conformance.wiring.mismatch` | a completed plan or its declarations differ from the provider oracle; `details.differences` lists every difference. Malformed declarations are `conformance.argument.invalid` |
 | `conformance.layout.violation` | source records break a Get Modular layout rule; `details.violations` lists every violation |
 | `conformance.suite.revision-mismatch` | the subject provides another revision than the suite checks |
 | `conformance.suite.case-failed` | a case failed and its scope also closed with debts |

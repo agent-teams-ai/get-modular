@@ -1,3 +1,5 @@
+import type { DeclarationList } from "../records/declarations.js";
+
 /** One hand-written part of a root's provider oracle. Keep parts in test code, never in production source. */
 export type WiringOracle = {
   /** Capability id -> the implementation id(s) providing it. Every capability a selected module provides is pinned. */
@@ -16,11 +18,15 @@ export type WiringRow = {
 
 export type WiringDifferenceRule =
   | "capability-provider"
+  | "declaration-selection"
   | "oracle-provider-conflict"
   | "oracle-row-conflict"
+  | "provided-capability"
   | "root"
   | "row"
+  | "row-capability"
   | "row-order"
+  | "row-slot"
   | "selection"
   | "unlisted-row";
 
@@ -33,3 +39,12 @@ export type WiringDifference = {
   readonly message: string;
 };
 
+
+/**
+ * The declarations of every selected module, the same list the test passes to `compileComposition` and
+ * `checkNamespaces`. They prove what the plan alone cannot show: the capabilities a module provides and the
+ * cardinality of each slot.
+ */
+export type WiringOptions = {
+  readonly declarations: DeclarationList;
+};

@@ -135,6 +135,8 @@ const oracle: WiringOracle = {
   roots: [orders.implementationId],
   rows: [{ consumer: orders.implementationId, slot: "db", providers: [orders.implementationId] }],
 };
+checkWiring(composition, [oracle], { declarations: [orders] });
+// @ts-expect-error the declarations are required
 checkWiring(composition, [oracle]);
 const wiringDescription: string = describeWiring(composition);
 void wiringDescription;

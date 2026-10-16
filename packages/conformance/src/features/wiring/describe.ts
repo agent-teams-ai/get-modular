@@ -1,12 +1,5 @@
 import type { SuccessfulComposition } from "@get-modular/assembly";
-
-function ownData(record: unknown, key: string): unknown {
-  if (typeof record !== "object" || record === null) {
-    return undefined;
-  }
-  const descriptor = Object.getOwnPropertyDescriptor(record, key);
-  return descriptor !== undefined && "value" in descriptor ? descriptor.value : undefined;
-}
+import { ownData } from "../records/own.js";
 
 function list(value: unknown): readonly unknown[] {
   return Array.isArray(value) ? value : [];

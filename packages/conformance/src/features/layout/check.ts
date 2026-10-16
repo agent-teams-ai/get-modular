@@ -1,4 +1,5 @@
 import { ConformanceError, invalid } from "../errors/errors.js";
+import { ownData } from "../records/own.js";
 import type {
   LayoutExport, LayoutImport, LayoutViolation, ModuleLayoutMetrics, ModuleLayoutRecords, ModuleLayoutReport,
 } from "./types.js";
@@ -37,14 +38,6 @@ function normalize(path: string, label: string): string {
     throw invalid(`checkModuleLayout() requires ${label} to be a normalized relative path`);
   }
   return value;
-}
-
-function ownData(record: unknown, key: string): unknown {
-  if (typeof record !== "object" || record === null) {
-    return undefined;
-  }
-  const descriptor = Object.getOwnPropertyDescriptor(record, key);
-  return descriptor !== undefined && "value" in descriptor ? descriptor.value : undefined;
 }
 
 function array(record: unknown, path: string): readonly unknown[] {

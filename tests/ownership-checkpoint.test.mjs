@@ -81,6 +81,11 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
       path: "docs/decisions/0035-complete-composition-profiles-in-prepare-and-make-capabilitiesof-linear.md",
       immutableDigest: "sha256:f229a2067471f7e49e7243d8d1ba5174fab699e1fbcdb298384aaafd6a27e81d",
     },
+    {
+      id: "ADR-0037",
+      path: "docs/decisions/0037-pin-providers-not-completed-rows-in-the-binding-oracle.md",
+      immutableDigest: "sha256:ba3026cabbcf7103919d7bd7d0b4e24440d976fe8e7907160f8122625a7cc3da",
+    },
   ]);
   const paths = execFileSync("git", ["ls-tree", "-r", "--name-only", checkpoint.evidence.base,
     "docs/decisions"], { encoding: "utf8" }).trim().split("\n");

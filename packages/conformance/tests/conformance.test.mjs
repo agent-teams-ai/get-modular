@@ -556,6 +556,10 @@ const wiringDeclaration = (id, capability, slots = []) => declareModule({
   moduleId: `t/${id}`, implementationId: `t/${id}/default`, owner,
   provides: provides(capability), slots,
 });
+const DECLARATIONS = Symbol("declarations");
+const declarationsOf = composition => composition[DECLARATIONS];
+const check = (composition, oracles, declarations = declarationsOf(composition)) =>
+  checkWiring(composition, oracles, { declarations });
 const wiringComposition = async (declarations, roots, bindings) => {
   const result = await compileComposition({
     declarations,
@@ -569,7 +573,7 @@ const wiringComposition = async (declarations, roots, bindings) => {
     },
   });
   assert.equal(result.ok, true, result.ok ? "" : JSON.stringify(result.diagnostics));
-  return result;
+  return { ...result, [DECLARATIONS]: declarations };
 };
 const binding = (declaration, slot, capability, providers) => {
   void capability;
@@ -581,7 +585,7 @@ const binding = (declaration, slot, capability, providers) => {
 const changedPlan = (composition, change) => ({ ...composition, plan: { ...composition.plan, ...change(composition.plan) } });
 const differences = input => {
   try {
-    checkWiring(input.composition, input.oracles);
+    check(input.composition, input.oracles, input.declarations ?? declarationsOf(input.composition));
   } catch (error) {
     assert.equal(code(error), "conformance.wiring.mismatch");
     return error.details.differences;
@@ -609,23 +613,24 @@ test("W1 provider pins and one root pass, and selection and root changes name th
     providers: { "t/logs": logs.implementationId, "t/db": db.implementationId, "t/orders": orders.implementationId },
     roots: [orders.implementationId],
   };
-  checkWiring(composition, [oracle]);
+  check(composition, [oracle]);
 
   const replacement = changedPlan(composition, plan => ({
     selections: plan.selections.map(entry => entry.implementationId === logs.implementationId
       ? { ...entry, implementationId: "t/logs/replaced" } : entry),
   }));
   assert.deepEqual(differences({ composition: replacement, oracles: [oracle] }).map(entry => entry.rule),
-    ["selection", "capability-provider"]);
+    ["selection", "capability-provider", "declaration-selection"]);
   const removed = changedPlan(composition, plan => ({
     selections: plan.selections.filter(entry => entry.implementationId !== logs.implementationId),
   }));
   assert.deepEqual(differences({ composition: removed, oracles: [oracle] }).map(entry => entry.rule),
-    ["selection", "capability-provider"]);
+    ["selection", "capability-provider", "declaration-selection"]);
   const added = changedPlan(composition, plan => ({
     selections: [...plan.selections, { moduleId: "t/extra", implementationId: "t/extra/default" }],
   }));
-  assert.deepEqual(differences({ composition: added, oracles: [oracle] }).map(entry => entry.rule), ["selection"]);
+  assert.deepEqual(differences({ composition: added, oracles: [oracle] }).map(entry => entry.rule),
+    ["selection", "declaration-selection"]);
   const changedRoot = changedPlan(composition, () => ({ roots: ["t/extra"] }));
   assert.deepEqual(differences({ composition: changedRoot, oracles: [oracle] }).map(entry => entry.rule), ["root"]);
 });
@@ -658,7 +663,7 @@ test("W2 optional, many and several-provider rows are listed exactly, including 
       consumer: row.consumerImplementationId, slot: row.slotId, providers: row.providerImplementationIds,
     })),
   };
-  checkWiring(composition, [oracle]);
+  check(composition, [oracle]);
   assert.equal(differences({ composition, oracles: [{ ...oracle, rows: [] }] }).filter(entry =>
     entry.rule === "unlisted-row").length, 3);
   const reordered = changedPlan(composition, plan => ({
@@ -685,7 +690,7 @@ test("W3 equal oracle parts pass, pins compare as sets and one throw lists every
     roots: [orders.implementationId],
     rows: [{ consumer: orders.implementationId, slot: "db", providers: [db.implementationId] }],
   };
-  checkWiring(composition, [first, structuredClone(first)]);
+  check(composition, [first, structuredClone(first)]);
   const conflicting = {
     providers: { ...first.providers, "t/logs": "t/logs/other" },
     roots: [orders.implementationId],
@@ -699,7 +704,7 @@ test("W3 equal oracle parts pass, pins compare as sets and one throw lists every
     .some(entry => entry.rule === "oracle-provider-conflict"), false);
   const sparse = ["t/f1/default"];
   sparse.length = 2;
-  assert.throws(() => checkWiring(composition, [{ providers: { "t/f1": sparse } }]), {
+  assert.throws(() => check(composition, [{ providers: { "t/f1": sparse } }]), {
     code: "conformance.argument.invalid",
   });
 });
@@ -709,7 +714,7 @@ test("W4 a new required row bound to its single pinned provider is the accepted 
   const consumer = wiringDeclaration("weakening-consumer", Orders, [Logs.slot("logs", required())]);
   const composition = await wiringComposition([logs, consumer], ["t/weakening-consumer"],
     [binding(consumer, "logs", Logs, [logs.implementationId])]);
-  checkWiring(composition, [{
+  check(composition, [{
     providers: { "t/logs": logs.implementationId, "t/orders": consumer.implementationId },
     roots: [consumer.implementationId],
   }]);
@@ -729,6 +734,93 @@ test("W5 describeWiring prints roots, selections and rows in its debug format", 
     "rows:",
     "  t/describe-consumer/default.logs <- t/describe-logs/default [t/logs r1]",
   ].join("\n"));
+});
+
+test("W6 an unlisted optional or many row is a difference, and a listed one equal to the plan passes", async () => {
+  const logs = wiringDeclaration("w6-logs", Logs);
+  const audit = wiringDeclaration("w6-audit", Audit);
+  const consumer = wiringDeclaration("w6-consumer", Orders, [
+    Audit.slot("audit", optional()), Logs.slot("logs", many({ min: 0, max: 2 })),
+  ]);
+  const rows = [
+    binding(consumer, "audit", Audit, [audit.implementationId]),
+    binding(consumer, "logs", Logs, [logs.implementationId]),
+  ];
+  const composition = await wiringComposition([logs, audit, consumer], [consumer.moduleId], rows);
+  const oracle = {
+    providers: {
+      "t/logs": logs.implementationId, "t/audit": audit.implementationId, "t/orders": consumer.implementationId,
+    },
+    roots: [consumer.implementationId],
+    rows: rows.map(row => ({
+      consumer: row.consumerImplementationId, slot: row.slotId, providers: row.providerImplementationIds,
+    })),
+  };
+  check(composition, [oracle]);
+  const unlisted = differences({ composition, oracles: [{ ...oracle, rows: [] }] });
+  assert.deepEqual(unlisted.map(entry => `${entry.rule} ${entry.subject}`), [
+    `unlisted-row ${consumer.implementationId}.audit`, `unlisted-row ${consumer.implementationId}.logs`,
+  ]);
+  assert.match(unlisted[0].message, /is optional/u);
+  assert.match(unlisted[1].message, /is many/u);
+});
+
+test("W7 declarations must cover the plan selections and every provided capability must be pinned", async () => {
+  const logs = wiringDeclaration("w7-logs", Logs);
+  const consumer = wiringDeclaration("w7-consumer", Orders, [Logs.slot("logs", required())]);
+  const both = declareModule({
+    moduleId: "t/w7-both", implementationId: "t/w7-both/default", owner,
+    provides: [Audit.provide(), Db.provide()], slots: [],
+  });
+  const composition = await wiringComposition([logs, consumer, both], [consumer.moduleId, both.moduleId],
+    [binding(consumer, "logs", Logs, [logs.implementationId])]);
+  const oracle = {
+    providers: {
+      "t/logs": logs.implementationId, "t/orders": consumer.implementationId, "t/audit": both.implementationId,
+      "t/db": both.implementationId,
+    },
+    roots: [consumer.implementationId, both.implementationId],
+  };
+  check(composition, [oracle]);
+  const unpinned = differences({
+    composition, oracles: [{ ...oracle, providers: { ...oracle.providers, "t/db": "t/elsewhere" } }],
+  });
+  assert.ok(unpinned.some(entry => entry.rule === "provided-capability" && entry.subject === "t/db"
+    && entry.actual[0] === both.implementationId));
+  assert.ok(unpinned.every(entry => entry.rule !== "provided-capability" || entry.subject === "t/db"));
+  assert.deepEqual(differences({ composition, oracles: [oracle], declarations: [logs, consumer] })
+    .map(entry => `${entry.rule} ${entry.expected.join()}|${entry.actual.join()}`), [
+    `declaration-selection ${[both.implementationId, consumer.implementationId, logs.implementationId].toSorted().join()}`
+    + `|${[consumer.implementationId, logs.implementationId].toSorted().join()}`,
+  ]);
+  const extra = wiringDeclaration("w7-extra", Audit);
+  assert.deepEqual(differences({ composition, oracles: [oracle], declarations: [logs, consumer, both, extra] })
+    .map(entry => entry.rule), ["declaration-selection"]);
+  assert.throws(() => check(composition, [oracle], [logs, logs, consumer, both]), {
+    code: "conformance.argument.invalid",
+  });
+  assert.throws(() => checkWiring(composition, [oracle], {}), { code: "conformance.argument.invalid" });
+});
+
+test("W8 a plan row must use the capability and the slot its consumer's declaration states", async () => {
+  const logs = wiringDeclaration("w8-logs", Logs);
+  const consumer = wiringDeclaration("w8-consumer", Orders, [Logs.slot("logs", required())]);
+  const composition = await wiringComposition([logs, consumer], [consumer.moduleId],
+    [binding(consumer, "logs", Logs, [logs.implementationId])]);
+  const oracle = {
+    providers: { "t/logs": logs.implementationId, "t/orders": consumer.implementationId },
+    roots: [consumer.implementationId],
+  };
+  const moved = changedPlan(composition, plan => ({
+    bindings: plan.bindings.map(row => ({ ...row, capabilityId: "t/db" })),
+  }));
+  const found = differences({ composition: moved, oracles: [oracle], declarations: declarationsOf(composition) });
+  assert.deepEqual(found.map(entry => entry.rule), ["capability-provider", "row-capability", "unlisted-row"]);
+  const ghost = changedPlan(composition, plan => ({
+    bindings: plan.bindings.map(row => ({ ...row, slotId: "ghost" })),
+  }));
+  assert.deepEqual(differences({ composition: ghost, oracles: [oracle], declarations: declarationsOf(composition) })
+    .map(entry => entry.rule), ["row-slot", "unlisted-row"]);
 });
 
 const layoutFile = (path, imports = [], useCaseExports = undefined) => ({ path, imports, useCaseExports });

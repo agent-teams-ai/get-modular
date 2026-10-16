@@ -2,7 +2,8 @@
 "@get-modular/conformance": minor
 ---
 
-Add `checkWiring` and `describeWiring` for hand-written provider oracles, and
+Add `checkWiring(composition, oracles, { declarations })` and `describeWiring` for hand-written provider
+oracles, and
 `checkModuleLayout` for the Get Modular module layout rules and the
 modules-per-feature metric. Both checks collect every difference or violation
 before throwing one structured error.
