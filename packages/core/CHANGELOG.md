@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0
+
+### Minor Changes
+
+- 2f33631: Align Core with Assembly 0.5.0 under the exact-pair rule (ADR-0027, ADR-0036). No API or behavior change.
+  
+  Authoring surface changed: no
+
 ## 0.4.0
 
 ### Minor Changes
