@@ -2,7 +2,7 @@
   "version": "0.2",
   "language": "en",
   "useGitignore": true,
-  "files": ["**/*.{md,yaml,yml,json,jsonc}"],
+  "files": ["**/*.{md,yaml,yml,json,jsonc}", ".changeset/*.md"],
   "ignorePaths": [
     "**/node_modules/**",
     "architecture/public-api/**",
