@@ -144,6 +144,27 @@ function mergeOracles(oracles: readonly WiringOracle[]): {
 
 type DeclarationIndex = ReadonlyMap<string, DeclarationFacts>;
 
+function checkRowDeclaration(
+  binding: PlanBinding,
+  row: WiringRow,
+  declarations: DeclarationIndex,
+  differences: WiringDifference[],
+): void {
+  const subject = `${binding.consumer}.${binding.slot}`;
+  const slot = declarations.get(binding.consumer)?.slots.get(binding.slot);
+  if (declarations.has(binding.consumer) && slot === undefined) {
+    differences.push({
+      rule: "row-slot", subject, expected: [], actual: row.providers,
+      message: `plan row ${subject} names a slot its consumer's declaration does not have`,
+    });
+  } else if (slot !== undefined && slot.capabilityId !== binding.capability) {
+    differences.push({
+      rule: "row-capability", subject, expected: [slot.capabilityId], actual: [binding.capability],
+      message: `plan row ${subject} uses capability ${binding.capability}, its declared slot uses ${slot.capabilityId}`,
+    });
+  }
+}
+
 function checkRows(
   bindings: readonly PlanBinding[],
   merged: ReturnType<typeof mergeOracles>,
@@ -165,18 +186,7 @@ function checkRows(
       });
     }
     const slot = declarations.get(binding.consumer)?.slots.get(binding.slot);
-    const subject = `${binding.consumer}.${binding.slot}`;
-    if (declarations.has(binding.consumer) && slot === undefined) {
-      differences.push({
-        rule: "row-slot", subject, expected: [], actual: row.providers,
-        message: `plan row ${subject} names a slot its consumer's declaration does not have`,
-      });
-    } else if (slot !== undefined && slot.capabilityId !== binding.capability) {
-      differences.push({
-        rule: "row-capability", subject, expected: [slot.capabilityId], actual: [binding.capability],
-        message: `plan row ${subject} uses capability ${binding.capability}, its declared slot uses ${slot.capabilityId}`,
-      });
-    }
+    checkRowDeclaration(binding, row, declarations, differences);
     const listed = merged.rows.get(rowKey);
     if (listed !== undefined) {
       if (!sameIds(listed.providers, row.providers)) {
