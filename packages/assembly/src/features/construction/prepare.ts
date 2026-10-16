@@ -59,14 +59,6 @@ class DuplicateFault extends Error {
   readonly occurrences: readonly DuplicateModule[];
   constructor(occurrences: DuplicateFault["occurrences"]) { super("assembly.prepare.duplicate-module"); this.occurrences = occurrences; }
 }
-function sortIds(values: Iterable<string>): string[] {
-  const ids: string[] = [];
-  for (const value of values) {
-    const next = ids.findIndex((candidate) => candidate > value);
-    ids.splice(next < 0 ? ids.length : next, 0, value);
-  }
-  return ids;
-}
 // Module entries come only through `modules` (groups flattened depth first) and input entries only through
 // `inputs`; together they cover every selection exactly once.
 function collectMetadata(modules: readonly unknown[], inputEntries: readonly unknown[], inputAliases: readonly string[]): Collected {
@@ -107,13 +99,12 @@ function collectMetadata(modules: readonly unknown[], inputEntries: readonly unk
     byId.set(id, metadata);
     if (inputAlias === undefined) {groupPaths.set(id, path);}
   }
-  const ids = sortIds(new Set([...paths.keys(), ...inputs.keys()]));
-  const duplicated = ids.flatMap((id): DuplicateModule[] => {
-    const modulePaths = paths.get(id) ?? [];
-    const inputAliasesForId = inputs.get(id) ?? [];
-    return modulePaths.length + inputAliasesForId.length > 1
-      ? [{ implementationId: id, paths: Object.freeze(modulePaths), inputs: Object.freeze(inputAliasesForId) }] : [];
-  });
+  // Only duplicated ids are sorted, by code unit order.
+  const repeated = [...new Set([...paths.keys(), ...inputs.keys()])]
+    .filter((id) => (paths.get(id)?.length ?? 0) + (inputs.get(id)?.length ?? 0) > 1).toSorted();
+  const duplicated = repeated.map((id): DuplicateModule => Object.freeze({
+    implementationId: id, paths: Object.freeze(paths.get(id) ?? []), inputs: Object.freeze(inputs.get(id) ?? []),
+  }));
   if (duplicated.length > 0) {
     throw new DuplicateFault(Object.freeze(duplicated));
   }

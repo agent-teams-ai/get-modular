@@ -67,8 +67,14 @@ export function implement<C>(): {
     if (typeof factory !== "function") {throw new AssemblyBindingError("assembly.bind.invalid-factory", new TypeError("Expected a factory function"));}
     if (adapter !== undefined && typeof adapter !== "function") {throw new AssemblyBindingError("assembly.bind.invalid-factory", new TypeError("Expected an adapter function"));}
     const captured = captureDeclaration(declaration);
-    const adapted: unknown = adapter === undefined ? factory
-      : (adapter as (name: string, factory: unknown) => unknown)(captured.implementationId, factory);
+    let adapted: unknown = factory;
+    if (adapter !== undefined) {
+      try {
+        adapted = (adapter as (name: string, factory: unknown) => unknown)(captured.implementationId, factory);
+      } catch (cause) {
+        throw new AssemblyBindingError("assembly.bind.invalid-factory", cause);
+      }
+    }
     if (typeof adapted !== "function") {throw new AssemblyBindingError("assembly.bind.invalid-factory", new TypeError("An adapter returns a factory function"));}
     const executable: ExecutableFactory = function forwardFactory(this: unknown, dependencies, context) {
       return Reflect.apply(adapted, this, [dependencies, context]);
