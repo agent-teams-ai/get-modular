@@ -5,8 +5,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { assemblyFor, AssemblyBindingError, entriesOf, group, implement, input as inputEntry } from "@get-modular/assembly";
 import { isolate, smoke, ConformanceError } from "@get-modular/conformance";
-import { scoped } from "@get-modular/resources";
-import { binding, declaration, slot } from "./fixture.mjs";
+import { createScope, scoped } from "@get-modular/resources";
+import { binding, declaration, slot, synthetic } from "./fixture.mjs";
+import { hostShaped } from "./host-shaped.mjs";
 
 const throwsCode = (fn, expected) => { assert.throws(fn, (error) => error instanceof AssemblyBindingError && error.code === expected); };
 const product = (id, value = {}) => async () => ({ instance: { id }, capabilities: { [`synthetic/${id}`]: value } });
@@ -99,6 +100,46 @@ test("order and nesting never change the profile, the plan or the digest", async
   assert.equal(reversed.composition.digest, flat.composition.digest);
   assert.deepEqual(nested.composition.plan, flat.composition.plan);
   assert.equal((await nested.prepared.run()).status, "succeeded");
+});
+
+// Literals recorded with the 0.4.0 build (handle API) on the same declarations and rows.
+const SYNTHETIC_DIGEST = "gm-plan:v1:sha-256:dc20f9178abac35b4a538cd65eb3e12b5324794e68e243cc8b4ef7a0edc13efb";
+const HOST_SHAPED_DIGEST = "gm-plan:v1:sha-256:59ad3be4783ba49226fe08d482ab5993445f4dd1852d118a56383da85aad24c8";
+
+test("the synthetic Host keeps its 0.4.0 plan digest through modules, flat, grouped, nested and reordered", async () => {
+  const { api, input, declarations } = await synthetic();
+  const [store, a, b, app] = input.modules;
+  assert.equal(declarations.length, 4);
+  for (const modules of [input.modules, [group("all", input.modules)], [group("outer", [store, group("inner", [a, b])]), app], [...input.modules].toReversed()]) {
+    const result = await api.prepare({ ...input, modules });
+    assert.equal(result.status, "prepared", JSON.stringify(result));
+    assert.equal(result.composition.digest, SYNTHETIC_DIGEST);
+  }
+});
+
+test("a Host-shaped fixture with two inputs and scoped modules keeps its 0.4.0 digest and debt paths", async () => {
+  const shape = hostShaped();
+  const make = (name) => implement()(shape.modules[name], async (_deps, { resources }) => {
+    await resources.setup({ name: "conn", setup: () => 1, cleanup: () => { throw new Error(`${name} cleanup`); } });
+    return { instance: { name }, capabilities: name === "app" ? {} : { [`synthetic/${name}`]: {} } };
+  }, scoped);
+  const [store, service, app] = ["store", "service", "app"].map(make);
+  const inputs = { session: inputEntry()(shape.inputs.session), settings: inputEntry()(shape.inputs.settings) };
+  const common = { profileId: "synthetic/host", bindings: shape.bindings, roots: { app }, inputs };
+  const api = assemblyFor();
+  for (const modules of [[store, service, app], [app, service, store], [group("outer", [store, group("inner", [service, app])])]]) {
+    const result = await api.prepare({ ...common, modules });
+    assert.equal(result.status, "prepared", JSON.stringify(result));
+    assert.equal(result.composition.digest, HOST_SHAPED_DIGEST);
+  }
+  const ready = await api.prepare({ ...common, modules: [group("outer", [store, group("inner", [service, app])])] });
+  const scope = createScope({ name: "attempt" });
+  const run = await ready.prepared.run({ scope: scope.resources, inputs: { session: { "synthetic/session": 1 }, settings: { "synthetic/settings": 2 } } });
+  assert.equal(run.status, "succeeded");
+  const report = await scope.control.close();
+  assert.equal(report.complete, false);
+  assert.deepEqual(report.debts.map(({ path, state }) => ({ path, state })), ["host-app", "host-service", "host-store"]
+    .map((name) => ({ path: ["attempt", `synthetic/${name}`, "conn"], state: "failed" })));
 });
 
 test("duplicates fail with every occurrence listed and no deduplication", async () => {
