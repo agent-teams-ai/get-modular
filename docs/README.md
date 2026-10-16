@@ -13,6 +13,8 @@ summary: Canonical navigation for Get Modular architecture and evidence.
 - [Consumer quickstart](guides/consumer-quickstart.md) - install, compile,
   construct, diagnose, cancel, clean up, and apply the optional executable
   module Host recipe.
+- [Module authoring guide](guides/module-authoring.md) - add and grow features and modules in the
+  Consumer Module Standard layout, with compiled examples, recipes, anti-patterns and checklists.
 - [Consumer profile template](templates/consumer-module-profile.md) - a
   copyable checklist for scoped Consumer Module Standard adoption.
 - [Consumer module standard](architecture/common-assembly.md#consumer-module-standard) - scoped adoption rules and executable evidence.
