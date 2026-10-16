@@ -1,0 +1,6 @@
+import "@get-modular/assembly";
+import { declareModule, defineContract } from "@get-modular/assembly";
+import { scoped } from "@get-modular/resources";
+
+// Imports this file never used are not part of the migration and stay as they are.
+export const answer = 42;

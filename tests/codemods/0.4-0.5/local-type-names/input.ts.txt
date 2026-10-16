@@ -1,0 +1,10 @@
+import type { InputEntries } from "@get-modular/assembly";
+import type { FactoryHandle } from "./barrel.js";
+
+// Names that Assembly 0.4 exported, bound to something else here: none of them is renamed.
+type RootHandles = { readonly a: 1 };
+type InputHandles = { readonly b: 2 };
+
+export const roots: RootHandles = { a: 1 };
+export type Inputs = InputHandles & InputEntries<Record<never, never>>;
+export type Wrapped = FactoryHandle<Record<never, never>>;

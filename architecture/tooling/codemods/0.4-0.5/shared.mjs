@@ -582,24 +582,13 @@ function typeImportInspection(file, declaration, specifier) {
 
 export function inspectTypes(file) {
   const sites = [];
-  const handledIdentifiers = new Set();
   for (const declaration of file.getImportDeclarations()) {
     if (declaration.getModuleSpecifierValue() !== ASSEMBLY) continue;
     for (const specifier of declaration.getNamedImports()) {
       const found = typeImportInspection(file, declaration, specifier);
       if (found) {
         sites.push(...found);
-        handledIdentifiers.add(specifier.getNameNode());
-        if (specifier.getAliasNode()) handledIdentifiers.add(specifier.getAliasNode());
-        for (const site of found) handledIdentifiers.add(site.node);
       }
-    }
-  }
-  for (const name of file.getDescendantsOfKind(SyntaxKind.Identifier)) {
-    if (!TYPE_NAMES.has(name.getText()) || handledIdentifiers.has(name)) continue;
-    const reference = name.getParentIfKind(SyntaxKind.TypeReference);
-    if (reference?.getTypeName() === name) {
-      sites.push(typeInspection(file, name, name.getText(), reference.getTypeArguments().length));
     }
   }
   for (const name of file.getDescendantsOfKind(SyntaxKind.QualifiedName)) {
@@ -763,22 +752,48 @@ function usedImport(file, target) {
   });
 }
 
+const localName = (target) => target.getAliasNode?.()?.getText() ?? target.getNameNode?.()?.getText() ?? target.getText();
+// Imports that were in use before any rewrite. Only these may be dropped when the rewrite leaves them unused.
+const importsInUse = new WeakMap();
+
+/** Call before the first rewrite of a file. */
+export function recordImports(file) {
+  const names = new Set();
+  const bare = new Set();
+  file.getImportDeclarations().forEach((declaration, index) => {
+    if (![ASSEMBLY, RESOURCES].includes(declaration.getModuleSpecifierValue())) return;
+    const specifiers = [...declaration.getNamedImports(), ...(declaration.getNamespaceImport() ? [declaration.getNamespaceImport()] : [])];
+    if (specifiers.length === 0 && !declaration.getDefaultImport()) bare.add(index);
+    for (const specifier of specifiers) {
+      if (usedImport(file, specifier)) names.add(`${declaration.getModuleSpecifierValue()}|${localName(specifier)}`);
+    }
+  });
+  importsInUse.set(file, { names, bare });
+}
+
 export function transformImports(file) {
+  const recorded = importsInUse.get(file);
+  if (!recorded) return 0;
   let edits = 0;
-  for (const declaration of file.getImportDeclarations().slice().reverse()) {
-    if (![ASSEMBLY, RESOURCES].includes(declaration.getModuleSpecifierValue())) continue;
+  const declarations = file.getImportDeclarations();
+  for (const [index, declaration] of [...declarations.entries()].reverse()) {
+    const module = declaration.getModuleSpecifierValue();
+    if (![ASSEMBLY, RESOURCES].includes(module) || recorded.bare.has(index)) continue;
+    let removed = 0;
+    const dropped = (specifier) => recorded.names.has(`${module}|${localName(specifier)}`) && !usedImport(file, specifier);
     for (const specifier of declaration.getNamedImports().slice().reverse()) {
-      if (usedImport(file, specifier)) continue;
+      if (!dropped(specifier)) continue;
       specifier.remove();
-      edits += 1;
+      removed += 1;
     }
     const namespace = declaration.getNamespaceImport();
-    if (namespace && !usedImport(file, namespace)) {
+    if (namespace && dropped(namespace)) {
       declaration.removeNamespaceImport();
-      edits += 1;
+      removed += 1;
     }
-    if (!declaration.isModuleSpecifierRelative() && declaration.getNamedImports().length === 0 && !declaration.getNamespaceImport()
-      && !declaration.getDefaultImport() && !declaration.isTypeOnly()) {
+    edits += removed;
+    if (removed > 0 && !declaration.isModuleSpecifierRelative() && declaration.getNamedImports().length === 0
+      && !declaration.getNamespaceImport() && !declaration.getDefaultImport() && !declaration.isTypeOnly()) {
       declaration.remove();
       edits += 1;
     }
