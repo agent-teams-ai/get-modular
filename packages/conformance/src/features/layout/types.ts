@@ -1,6 +1,10 @@
 export type LayoutImportMode = "type" | "value";
 
-/** One import edge after the collector has resolved its specifier to a repository-relative path. */
+/**
+ * One import edge after the collector has resolved its specifier to a repository-relative path. `from` must be a
+ * collected file. `to` may lie outside the collected files (an external or unresolved target, for example
+ * `some-pkg/thing.contracts.js`); only a `*.contracts.*` target outside the files is a violation.
+ */
 export type LayoutImport = {
   readonly from: string;
   readonly to: string;
@@ -26,6 +30,7 @@ export type LayoutViolationCode =
   | "child-group-outside-parent"
   | "descriptor-path"
   | "group-count"
+  | "module-declaration"
   | "nested-composition"
   | "orphan-declaration"
   | "orphan-module"

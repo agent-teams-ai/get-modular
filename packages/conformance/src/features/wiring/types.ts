@@ -1,5 +1,3 @@
-import type { SuccessfulComposition } from "@get-modular/assembly";
-
 /** One hand-written part of a root's provider oracle. Keep parts in test code, never in production source. */
 export type WiringOracle = {
   /** Capability id -> the implementation id(s) providing it. Every capability a selected module provides is pinned. */
@@ -19,7 +17,6 @@ export type WiringRow = {
 export type WiringDifferenceRule =
   | "capability-provider"
   | "oracle-provider-conflict"
-  | "oracle-root-conflict"
   | "oracle-row-conflict"
   | "root"
   | "row"
@@ -36,4 +33,3 @@ export type WiringDifference = {
   readonly message: string;
 };
 
-export type WiringInput = SuccessfulComposition;

@@ -9,8 +9,9 @@ admits the package. It is development tooling: production code does not import
 it, and Core and Assembly do not either.
 
 The package qualifies nothing by itself. It does not qualify Core or Assembly,
-it derives no expected value from the implementation under test, and it has no
-oracle for bindings: the author of a test supplies the expected data.
+it derives no expected value from the implementation under test: the author of
+a test supplies the expected data, including the provider decisions that
+`checkWiring` compares with a completed composition.
 
 ## Install
 
@@ -197,14 +198,28 @@ records: repository-relative `files`, `imports` with `from`, `to` and a `type`
 or `value` mode, and the runtime exports of each `application/use-cases` file.
 The function is pure and imports nothing it scans.
 
+Pass production files only, never tests: `isolate` tests import module files
+too, and only production importers may count for ownership. Every `from` must
+be one of `files`. A `to` may lie outside `files` (an external package or an
+unresolved specifier); the collector drops Node builtins. Only `value` imports
+own, place or use a file; a `type` import never does. A feature is the
+directory below the last `features/` segment, and its key in the metrics is
+that directory's path, so the same feature name under two source roots stays
+apart. Host-level files (`src/composition/`) belong to no feature.
+
 It reports every Get Modular rule with a stable violation code:
+`module-declaration` (a module imports no declaration of its feature),
 `orphan-module`, `orphan-declaration`, `group-count`,
 `child-group-outside-parent`, `root-imports-sub-feature-group`,
 `nested-composition`, `descriptor-path`, `use-case-export` and
-`application-file`. A passing call returns `featureCount`, `moduleCount` and
-`modulesPerFeature`. A failing call throws one `conformance.layout.violation`;
-`details.violations` lists every violation and `details` also carries the same
-metrics.
+`application-file`. A `*.contracts.*` file must be
+`composition/<own segment>.contracts.*` of its feature or a flat Host-level
+`composition/*.contracts.*`, and a declaration import of a contracts file must
+resolve to such a collected file. Whether a declaration imports anything else
+(`node:fs`, a module file, an application file) stays with the lint rules. A
+passing call returns `featureCount`, `moduleCount` and `modulesPerFeature`. A
+failing call throws one `conformance.layout.violation`; `details.violations`
+lists every violation and `details` also carries the same metrics.
 
 ## Find leaked handles with `guardHandles`
 

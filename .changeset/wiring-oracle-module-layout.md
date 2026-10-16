@@ -14,6 +14,8 @@ layout without a separate parser.
 
 Codemod: none - pure addition.
 
+Authoring surface changed: no.
+
 By hand: add the new `ConformanceErrorCode` values
   `conformance.wiring.mismatch` and `conformance.layout.violation` to exhaustive
   error-code maps when they must cover every code.

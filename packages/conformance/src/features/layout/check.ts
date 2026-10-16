@@ -3,20 +3,30 @@ import type {
   LayoutExport, LayoutImport, LayoutViolation, ModuleLayoutMetrics, ModuleLayoutRecords, ModuleLayoutReport,
 } from "./types.js";
 
+const EXTENSION = /\.[cm]?tsx?$/u;
 const MODULE = /\.module\.[cm]?tsx?$/u;
 const DECLARATION = /\.declaration\.[cm]?tsx?$/u;
 const GROUP = /\.group\.[cm]?tsx?$/u;
 const ROOT = /\.root\.[cm]?tsx?$/u;
 const INPUTS = /\.inputs\.[cm]?tsx?$/u;
-const CONTRACTS = /\.contracts\.[cm]?tsx?$/u;
-const SOURCE = /\.[cm]?tsx?$/u;
+const CONTRACTS = /\.contracts\.[cm]?[jt]sx?$/u;
 
-type Importers = Map<string, LayoutImport[]>;
+type FeatureSite = {
+  /** Path of the feature root, for example `src/features/orders/features/child`; unique across source roots. */
+  readonly key: string;
+  readonly name: string;
+  /** The parent feature's site, when the feature is a sub-feature. */
+  readonly parent?: FeatureSite | undefined;
+  /** Path segments below the feature root. */
+  readonly rest: readonly string[];
+};
+
 type LayoutContext = {
   readonly files: ReadonlySet<string>;
-  readonly imports: readonly LayoutImport[];
-  readonly importers: Importers;
-  readonly groups: ReadonlyMap<string, string>;
+  readonly sites: ReadonlyMap<string, FeatureSite | undefined>;
+  readonly outgoing: ReadonlyMap<string, readonly LayoutImport[]>;
+  /** Value-import edges by target; a type-only import never owns, uses or places a file. */
+  readonly importers: ReadonlyMap<string, readonly LayoutImport[]>;
   readonly useCaseExports: ReadonlyMap<string, readonly LayoutExport[]>;
 };
 
@@ -51,35 +61,30 @@ function text(record: unknown, path: string): string {
   return record;
 }
 
-function routeOf(path: string): readonly string[] {
-  const segments = path.split("/");
-  const route: string[] = [];
-  for (let index = 0; index < segments.length - 1; index += 1) {
-    if (segments[index] === "features" && segments[index + 1] !== undefined) {
-      route.push(segments[index + 1] ?? "");
-      index += 1;
-    }
-  }
-  return Object.freeze(route);
-}
-
-const routeText = (route: readonly string[]): string => route.join("/");
 const basename = (path: string): string => path.slice(path.lastIndexOf("/") + 1);
 
-function isDescriptor(path: string): boolean {
-  const route = routeOf(path);
-  const own = route.at(-1);
-  return CONTRACTS.test(path) && own !== undefined
-    && path.endsWith(`/composition/${own}.contracts.ts`);
+/** The innermost `features/<name>/` directory of a path that has at least one more segment below it. */
+function siteOf(path: string): FeatureSite | undefined {
+  const segments = path.split("/");
+  let site: FeatureSite | undefined;
+  for (let index = 0; index < segments.length - 2; index += 1) {
+    const name = segments[index + 1];
+    if (segments[index] === "features" && name !== undefined) {
+      site = {
+        key: segments.slice(0, index + 2).join("/"), name, parent: site, rest: segments.slice(index + 2),
+      };
+    }
+  }
+  return site;
 }
 
-function featureFile(files: ReadonlySet<string>, route: readonly string[], suffix: string): string | undefined {
-  const name = route.at(-1);
-  if (name === undefined) {
-    return undefined;
+/** The segments after the last `composition/` directory of a Host-level path, or of a feature's own rest. */
+function belowComposition(segments: readonly string[], feature: boolean): readonly string[] | undefined {
+  if (feature) {
+    return segments[0] === "composition" ? segments.slice(1) : undefined;
   }
-  return [...files].find(path => routeText(routeOf(path)) === routeText(route)
-    && path.includes("/composition/") && basename(path) === `${name}${suffix}`);
+  const at = segments.lastIndexOf("composition");
+  return at < 0 ? undefined : segments.slice(at + 1);
 }
 
 function violation(code: LayoutViolation["code"], path: string, message: string, relatedPath?: string): LayoutViolation {
@@ -91,22 +96,32 @@ function readRecords(records: ModuleLayoutRecords): {
   readonly imports: readonly LayoutImport[];
   readonly useCaseExports: ReadonlyMap<string, readonly LayoutExport[]>;
 } {
-  const paths = array(ownData(records, "files"), "records.files").map((entry, index) =>
-    normalize(text(entry, `records.files[${String(index)}]`), `records.files[${String(index)}]`));
+  const entries = array(ownData(records, "files"), "records.files");
+  const paths: string[] = [];
+  for (let index = 0; index < entries.length; index += 1) {
+    const label = `records.files[${String(index)}]`;
+    paths.push(normalize(text(ownData(entries, String(index)), label), label));
+  }
   const files = new Set(paths);
   if (files.size !== paths.length) {
     throw invalid("checkModuleLayout() requires records.files to contain distinct paths");
   }
-  const imports = array(ownData(records, "imports"), "records.imports").map((entry, index) => {
+  const edges = array(ownData(records, "imports"), "records.imports");
+  const imports: LayoutImport[] = [];
+  for (let index = 0; index < edges.length; index += 1) {
     const path = `records.imports[${String(index)}]`;
+    const entry = ownData(edges, String(index));
     const from = normalize(text(ownData(entry, "from"), `${path}.from`), `${path}.from`);
     const to = normalize(text(ownData(entry, "to"), `${path}.to`), `${path}.to`);
     const mode = ownData(entry, "mode");
     if (mode !== "type" && mode !== "value") {
       throw invalid(`checkModuleLayout() requires ${path}.mode to be "type" or "value"`);
     }
-    return Object.freeze({ from, to, mode });
-  });
+    if (!files.has(from)) {
+      throw invalid(`checkModuleLayout() requires every import source in records.files (${from})`);
+    }
+    imports.push(Object.freeze({ from, to, mode }));
+  }
   const exportsInput = ownData(records, "useCaseExports");
   const useCaseExports = new Map<string, readonly LayoutExport[]>();
   if (typeof exportsInput !== "object" || exportsInput === null || Array.isArray(exportsInput)) {
@@ -114,61 +129,68 @@ function readRecords(records: ModuleLayoutRecords): {
   }
   for (const key of Object.keys(exportsInput)) {
     const path = normalize(key, "records.useCaseExports key");
-    const values = array(ownData(exportsInput, key), `records.useCaseExports.${key}`).map((entry, index) => {
+    const list = array(ownData(exportsInput, key), `records.useCaseExports.${key}`);
+    const values: LayoutExport[] = [];
+    for (let index = 0; index < list.length; index += 1) {
       const item = `records.useCaseExports.${key}[${String(index)}]`;
+      const entry = ownData(list, String(index));
       const name = text(ownData(entry, "name"), `${item}.name`);
       const kind = ownData(entry, "kind");
       if (kind !== "function" && kind !== "value") {
         throw invalid(`checkModuleLayout() requires ${item}.kind to be "function" or "value"`);
       }
-      return Object.freeze({ name, kind });
-    });
+      values.push(Object.freeze({ name, kind }));
+    }
     useCaseExports.set(path, Object.freeze(values));
   }
   return { files, imports: Object.freeze(imports), useCaseExports };
 }
 
-function indexImports(files: ReadonlySet<string>, imports: readonly LayoutImport[]): Importers {
-  const importers: Importers = new Map();
+function buildContext(records: ModuleLayoutRecords): LayoutContext {
+  const { files, imports, useCaseExports } = readRecords(records);
+  const outgoing = new Map<string, LayoutImport[]>();
+  const importers = new Map<string, LayoutImport[]>();
   for (const edge of imports) {
-    if (!files.has(edge.from) || !files.has(edge.to)) {
-      throw invalid(`checkModuleLayout() requires every import endpoint in records.files (${edge.from} -> ${edge.to})`);
-    }
-    const edges = importers.get(edge.to) ?? [];
-    edges.push(edge);
-    importers.set(edge.to, edges);
-  }
-  return importers;
-}
-
-function groupsOf(files: ReadonlySet<string>): ReadonlyMap<string, string> {
-  const groups = new Map<string, string>();
-  for (const path of files) {
-    if (GROUP.test(path)) {
-      groups.set(routeText(routeOf(path)), path);
+    outgoing.set(edge.from, [...outgoing.get(edge.from) ?? [], edge]);
+    if (edge.mode === "value") {
+      importers.set(edge.to, [...importers.get(edge.to) ?? [], edge]);
     }
   }
-  return groups;
+  const sites = new Map([...files].map(path => [path, siteOf(path)] as const));
+  return { files, sites, outgoing, importers, useCaseExports };
 }
 
-function placementViolations(path: string, useCaseExports: ReadonlyMap<string, readonly LayoutExport[]>):
-LayoutViolation[] {
+/** A descriptor is `composition/<own segment>.contracts.*` of its feature, or a flat Host-level `composition/*.contracts.*`. */
+function isDescriptor(path: string, site: FeatureSite | undefined): boolean {
+  if (!CONTRACTS.test(path)) {
+    return false;
+  }
+  const segments = path.split("/");
+  const below = belowComposition(site === undefined ? segments : site.rest, site !== undefined);
+  if (below === undefined || below.length !== 1) {
+    return false;
+  }
+  return site === undefined || basename(path).replace(CONTRACTS, "") === site.name;
+}
+
+function placementViolations(path: string, context: LayoutContext): LayoutViolation[] {
   const violations: LayoutViolation[] = [];
-  if (CONTRACTS.test(path) && !isDescriptor(path)) {
+  const site = context.sites.get(path);
+  if (CONTRACTS.test(path) && !isDescriptor(path, site)) {
     violations.push(violation("descriptor-path", path,
-      "a *.contracts.ts file must be composition/<own segment>.contracts.ts"));
+      "a *.contracts.ts file must be composition/<own segment>.contracts.ts or a flat Host-level composition/*.contracts.ts"));
   }
-  const afterComposition = /\/composition\/(.+)$/u.exec(path)?.[1];
-  if (afterComposition !== undefined && afterComposition.includes("/")) {
+  const below = belowComposition(site === undefined ? path.split("/") : site.rest, site !== undefined);
+  if (below !== undefined && below.length > 1) {
     violations.push(violation("nested-composition", path, "composition/ must stay flat"));
   }
   const application = path.lastIndexOf("/application/");
   const rest = application < 0 ? "" : path.slice(application + "/application/".length);
-  if (application >= 0 && !rest.includes("/") && SOURCE.test(rest)) {
+  if (application >= 0 && !rest.includes("/") && EXTENSION.test(rest)) {
     violations.push(violation("application-file", path, "a source file must not sit directly in application/"));
   }
-  if (path.includes("/application/use-cases/") && SOURCE.test(path)) {
-    const exports = useCaseExports.get(path) ?? [];
+  if (path.includes("/application/use-cases/") && EXTENSION.test(path)) {
+    const exports = context.useCaseExports.get(path) ?? [];
     if (exports.length !== 1 || exports[0]?.kind !== "function") {
       violations.push(violation("use-case-export", path, "a use-case file must export exactly one function"));
     }
@@ -178,30 +200,37 @@ LayoutViolation[] {
 
 function moduleDeclarationViolations(path: string, context: LayoutContext): LayoutViolation[] {
   const violations: LayoutViolation[] = [];
-  const route = routeOf(path);
+  const site = context.sites.get(path);
+  const edges = context.outgoing.get(path) ?? [];
   if (MODULE.test(path)) {
-    const declarations = context.imports.filter(edge => edge.from === path && DECLARATION.test(edge.to)
-      && routeText(routeOf(edge.to)) === routeText(route));
-    if (declarations.length === 0) {
-      violations.push(violation("orphan-module", path,
+    const declares = edges.some(edge => edge.mode === "value" && DECLARATION.test(edge.to)
+      && context.sites.get(edge.to)?.key === site?.key);
+    if (!declares) {
+      violations.push(violation("module-declaration", path,
         "a *.module.ts file must import a *.declaration.* file of its feature"));
     }
   }
   if (!DECLARATION.test(path)) {
     return violations;
   }
-  const ownInputs = `${route.at(-1) ?? ""}.inputs.ts`;
-  const consumers = (context.importers.get(path) ?? []).filter(edge =>
-    (MODULE.test(edge.from) || INPUTS.test(edge.from)) && routeText(routeOf(edge.from)) === routeText(route)
-    && (!INPUTS.test(edge.from) || basename(edge.from) === ownInputs));
+  const consumers = (context.importers.get(path) ?? []).filter(edge => {
+    const from = context.sites.get(edge.from);
+    if (from?.key !== site?.key) {
+      return false;
+    }
+    const ownInputs = INPUTS.test(edge.from)
+      && (site === undefined || basename(edge.from).replace(INPUTS, "") === site.name);
+    return MODULE.test(edge.from) || ownInputs;
+  });
   if (consumers.length === 0) {
     violations.push(violation("orphan-declaration", path,
       "a *.declaration.ts file must be imported by one *.module.ts file or its feature inputs file"));
   }
-  for (const edge of context.imports.filter(entry => entry.from === path && CONTRACTS.test(entry.to))) {
-    if (!context.files.has(edge.to) || !isDescriptor(edge.to)) {
+  for (const edge of edges) {
+    if (CONTRACTS.test(edge.to) && !(context.files.has(edge.to) && isDescriptor(edge.to, context.sites.get(edge.to)))) {
       violations.push(violation("descriptor-path", path,
-        "a declaration import must resolve to composition/<own segment>.contracts.ts", edge.to));
+        "a declaration import must resolve to a collected composition/<own segment>.contracts.ts or Host-level descriptor",
+        edge.to));
     }
   }
   return violations;
@@ -210,10 +239,12 @@ function moduleDeclarationViolations(path: string, context: LayoutContext): Layo
 function fileViolations(context: LayoutContext): LayoutViolation[] {
   const violations: LayoutViolation[] = [];
   for (const path of context.files) {
-    violations.push(...placementViolations(path, context.useCaseExports), ...moduleDeclarationViolations(path, context));
+    violations.push(...placementViolations(path, context), ...moduleDeclarationViolations(path, context));
   }
   return violations;
 }
+
+const groupPathOf = (site: FeatureSite): string => `${site.key}/composition/${site.name}.group.ts`;
 
 function ownerViolations(context: LayoutContext): LayoutViolation[] {
   const violations: LayoutViolation[] = [];
@@ -221,9 +252,9 @@ function ownerViolations(context: LayoutContext): LayoutViolation[] {
     if (!MODULE.test(path)) {
       continue;
     }
-    const route = routeOf(path);
+    const site = context.sites.get(path);
+    const ownGroup = site === undefined ? undefined : groupPathOf(site);
     const owners = (context.importers.get(path) ?? []).filter(edge => GROUP.test(edge.from) || ROOT.test(edge.from));
-    const ownGroup = featureFile(context.files, route, ".group.ts");
     const valid = owners.filter(edge => ROOT.test(edge.from) || edge.from === ownGroup);
     if (owners.length === 0) {
       violations.push(violation("orphan-module", path,
@@ -238,18 +269,17 @@ function ownerViolations(context: LayoutContext): LayoutViolation[] {
 
 function groupViolations(context: LayoutContext): LayoutViolation[] {
   const violations: LayoutViolation[] = [];
-  for (const [groupRoute, groupPath] of context.groups) {
-    const route = groupRoute.split("/").filter(Boolean);
+  for (const groupPath of context.files) {
+    const site = context.sites.get(groupPath);
+    if (!GROUP.test(groupPath) || site?.parent === undefined) {
+      continue;
+    }
+    const expected = groupPathOf(site.parent);
     for (const edge of context.importers.get(groupPath) ?? []) {
       if (ROOT.test(edge.from)) {
-        if (route.length > 1) {
-          violations.push(violation("root-imports-sub-feature-group", edge.from,
-            "a root must not import a sub-feature group", groupPath));
-        }
-        continue;
-      }
-      const expected = featureFile(context.files, route.slice(0, -1), ".group.ts");
-      if (!GROUP.test(edge.from) || edge.from !== expected) {
+        violations.push(violation("root-imports-sub-feature-group", edge.from,
+          "a root must not import a sub-feature group", groupPath));
+      } else if (edge.from !== expected) {
         violations.push(violation("child-group-outside-parent", edge.from,
           "a child group may be imported only by its parent group", groupPath));
       }
@@ -258,17 +288,18 @@ function groupViolations(context: LayoutContext): LayoutViolation[] {
   return violations;
 }
 
-function metrics(files: ReadonlySet<string>): ModuleLayoutMetrics {
-  const featureRoutes = new Set([...files].map(path => routeText(routeOf(path))).filter(Boolean));
+function metrics(context: LayoutContext): ModuleLayoutMetrics {
+  const perFeature = new Map<string, number>();
+  for (const [path, site] of context.sites) {
+    if (site !== undefined) {
+      perFeature.set(site.key, (perFeature.get(site.key) ?? 0) + (MODULE.test(path) ? 1 : 0));
+    }
+  }
   return {
-    featureCount: featureRoutes.size,
-    moduleCount: [...files].filter(path => MODULE.test(path)).length,
-    modulesPerFeature: Object.freeze(Object.fromEntries(
-      [...featureRoutes].toSorted().map(route => [
-        route,
-        [...files].filter(path => MODULE.test(path) && routeText(routeOf(path)) === route).length,
-      ]),
-    )),
+    featureCount: perFeature.size,
+    moduleCount: [...context.files].filter(path => MODULE.test(path)).length,
+    modulesPerFeature: Object.freeze(Object.fromEntries([...perFeature].toSorted(([left], [right]) =>
+      left < right ? -1 : 1))),
   };
 }
 
@@ -278,15 +309,11 @@ function metrics(files: ReadonlySet<string>): ModuleLayoutMetrics {
  * violation and those metrics in `details` otherwise.
  */
 export function checkModuleLayout(records: ModuleLayoutRecords): ModuleLayoutReport {
-  array(ownData(records, "files"), "records.files");
-  const { files, imports, useCaseExports } = readRecords(records);
-  const context: LayoutContext = {
-    files, imports, importers: indexImports(files, imports), groups: groupsOf(files), useCaseExports,
-  };
+  const context = buildContext(records);
   const violations = [
     ...fileViolations(context), ...ownerViolations(context), ...groupViolations(context),
   ];
-  const report: ModuleLayoutReport = Object.freeze({ ...metrics(files), violations: Object.freeze(violations) });
+  const report: ModuleLayoutReport = Object.freeze({ ...metrics(context), violations: Object.freeze(violations) });
   if (violations.length > 0) {
     throw new ConformanceError("conformance.layout.violation",
       `${String(violations.length)} layout violation${violations.length === 1 ? "" : "s"}: ${

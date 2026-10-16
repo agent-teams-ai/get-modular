@@ -1,4 +1,4 @@
-import type { WiringInput } from "./types.js";
+import type { SuccessfulComposition } from "@get-modular/assembly";
 
 function ownData(record: unknown, key: string): unknown {
   if (typeof record !== "object" || record === null) {
@@ -18,7 +18,7 @@ function revision(token: unknown): string {
 }
 
 /** Prints a compact debug view of roots, selections and completed rows. It is not an oracle format. */
-export function describeWiring(composition: WiringInput): string {
+export function describeWiring(composition: SuccessfulComposition): string {
   const plan = ownData(composition, "plan");
   const selectionRecords = list(ownData(plan, "selections"));
   const implementationByModule = new Map(selectionRecords.map(entry => [

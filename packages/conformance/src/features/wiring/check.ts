@@ -1,6 +1,7 @@
 import { ConformanceError, invalid } from "../errors/errors.js";
+import type { SuccessfulComposition } from "@get-modular/assembly";
 import type {
-  WiringDifference, WiringInput, WiringOracle, WiringRow,
+  WiringDifference, WiringOracle, WiringRow,
 } from "./types.js";
 
 type ProviderMap = Map<string, readonly string[]>;
@@ -42,9 +43,15 @@ function ownText(record: unknown, path: string): string {
   return record;
 }
 
-function idList(value: unknown, path: string): readonly string[] {
-  const values = typeof value === "string" ? [value] : ownArray(value, path);
-  const ids = values.map((entry, index) => ownText(entry, `${path}[${String(index)}]`));
+function idList(value: unknown, path: string, allowText = false): readonly string[] {
+  if (allowText && typeof value === "string") {
+    return Object.freeze([ownText(value, path)]);
+  }
+  const values = ownArray(value, path);
+  const ids: string[] = [];
+  for (let index = 0; index < values.length; index += 1) {
+    ids.push(ownText(ownData(values, String(index)), `${path}[${String(index)}]`));
+  }
   if (new Set(ids).size !== ids.length) {
     throw invalid(`checkWiring() requires ${path} to contain distinct ids`);
   }
@@ -54,10 +61,12 @@ function idList(value: unknown, path: string): readonly string[] {
 const sameIds = (left: readonly string[], right: readonly string[]): boolean =>
   left.length === right.length && left.every((id, index) => id === right[index]);
 
+const sameSet = (left: readonly string[], right: readonly string[]): boolean =>
+  sameIds(sorted(left), sorted(right));
 const sorted = (ids: Iterable<string>): readonly string[] => Object.freeze([...new Set(ids)].toSorted());
 const key = (consumer: string, slot: string): string => `${consumer}\u0000${slot}`;
 
-function readPlan(composition: WiringInput): PlanData {
+function readPlan(composition: SuccessfulComposition): PlanData {
   const compositionRecord = ownRecord(composition, "composition");
   const plan = ownRecord(ownData(compositionRecord, "plan"), "composition.plan");
   const selections = ownArray(ownData(plan, "selections"), "composition.plan.selections").map((entry, index) => {
@@ -96,9 +105,9 @@ function mergeOracles(oracles: readonly WiringOracle[]): {
     const oracle: unknown = ownData(oracles, String(index));
     const providerRecord = ownRecord(ownData(oracle, "providers"), `${path}.providers`);
     for (const capability of Object.keys(providerRecord)) {
-      const value = idList(ownData(providerRecord, capability), `${path}.providers.${capability}`);
+      const value = idList(ownData(providerRecord, capability), `${path}.providers.${capability}`, true);
       const earlier = providers.get(capability);
-      if (earlier !== undefined && !sameIds(earlier, value)) {
+      if (earlier !== undefined && !sameSet(earlier, value)) {
         differences.push({
           rule: "oracle-provider-conflict", subject: capability, expected: earlier, actual: value,
           message: `oracle parts pin ${capability} to different providers`,
@@ -152,7 +161,7 @@ function checkRows(
     const rowKey = key(binding.consumer, binding.slot);
     actualRows.set(rowKey, row);
     const pinned = merged.providers.get(binding.capability);
-    if (pinned === undefined) {
+    if (pinned === undefined && binding.providers.length > 0) {
       differences.push({
         rule: "capability-provider", subject: binding.capability, expected: [], actual: binding.providers,
         message: `plan row ${binding.consumer}.${binding.slot} uses an unpinned capability`,
@@ -161,7 +170,7 @@ function checkRows(
     const listed = merged.rows.get(rowKey);
     if (listed !== undefined) {
       if (!sameIds(listed.providers, row.providers)) {
-        const rule = listed.providers.length === row.providers.length ? "row-order" : "row";
+        const rule = sameSet(listed.providers, row.providers) ? "row-order" : "row";
         differences.push({
           rule, subject: `${binding.consumer}.${binding.slot}`, expected: listed.providers, actual: row.providers,
           message: `plan row ${binding.consumer}.${binding.slot} differs from its listed oracle row`,
@@ -195,7 +204,7 @@ function checkRows(
  * throws `conformance.wiring.mismatch`; the accepted weakening for an unlisted single-provider `required` row is
  * deliberate and is documented by its accepting test.
  */
-export function checkWiring(composition: WiringInput, oracles: readonly WiringOracle[]): void {
+export function checkWiring(composition: SuccessfulComposition, oracles: readonly WiringOracle[]): void {
   if (!Array.isArray(oracles)) {
     throw invalid("checkWiring() requires oracles to be an array");
   }

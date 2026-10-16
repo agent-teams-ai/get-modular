@@ -7,7 +7,7 @@ export type { ConformanceErrorCode } from "./features/errors/errors.js";
 export type { Isolated, SmokeInjection, SmokeStep } from "./features/harness/types.js";
 export type { NamespaceViolation } from "./features/namespaces/check.js";
 export type {
-  WiringDifference, WiringDifferenceRule, WiringInput, WiringOracle, WiringRow,
+  WiringDifference, WiringDifferenceRule, WiringOracle, WiringRow,
 } from "./features/wiring/types.js";
 export type {
   LayoutExport, LayoutExportKind, LayoutImport, LayoutImportMode, LayoutViolation, LayoutViolationCode,

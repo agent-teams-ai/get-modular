@@ -620,13 +620,14 @@ test("W1 provider pins and one root pass, and selection and root changes name th
   const removed = changedPlan(composition, plan => ({
     selections: plan.selections.filter(entry => entry.implementationId !== logs.implementationId),
   }));
-  assert.ok(differences({ composition: removed, oracles: [oracle] }).some(entry => entry.rule === "selection"));
+  assert.deepEqual(differences({ composition: removed, oracles: [oracle] }).map(entry => entry.rule),
+    ["selection", "capability-provider"]);
   const added = changedPlan(composition, plan => ({
     selections: [...plan.selections, { moduleId: "t/extra", implementationId: "t/extra/default" }],
   }));
-  assert.ok(differences({ composition: added, oracles: [oracle] }).some(entry => entry.rule === "selection"));
+  assert.deepEqual(differences({ composition: added, oracles: [oracle] }).map(entry => entry.rule), ["selection"]);
   const changedRoot = changedPlan(composition, () => ({ roots: ["t/extra"] }));
-  assert.ok(differences({ composition: changedRoot, oracles: [oracle] }).some(entry => entry.rule === "root"));
+  assert.deepEqual(differences({ composition: changedRoot, oracles: [oracle] }).map(entry => entry.rule), ["root"]);
 });
 
 test("W2 optional, many and several-provider rows are listed exactly, including provider order", async () => {
@@ -649,7 +650,6 @@ test("W2 optional, many and several-provider rows are listed exactly, including 
   const oracle = {
     providers: {
       "t/logs": [logs1.implementationId, logs2.implementationId],
-      "t/audit": [],
       "t/db": [db1.implementationId, db2.implementationId],
       "t/orders": consumer.implementationId,
     },
@@ -666,9 +666,14 @@ test("W2 optional, many and several-provider rows are listed exactly, including 
       ? { ...row, providerImplementationIds: [logs1.implementationId, logs2.implementationId] } : row),
   }));
   assert.deepEqual(differences({ composition: reordered, oracles: [oracle] }).map(entry => entry.rule), ["row-order"]);
+  const replaced = changedPlan(composition, plan => ({
+    bindings: plan.bindings.map(row => row.slotId === "logs"
+      ? { ...row, providerImplementationIds: [logs2.implementationId, "t/logs-3/default"] } : row),
+  }));
+  assert.deepEqual(differences({ composition: replaced, oracles: [oracle] }).map(entry => entry.rule), ["row"]);
 });
 
-test("W3 equal oracle parts pass and one throw lists conflicting parts with plan differences", async () => {
+test("W3 equal oracle parts pass, pins compare as sets and one throw lists every conflict", async () => {
   const logs = wiringDeclaration("conflict-logs", Logs);
   const db = wiringDeclaration("conflict-db", Db);
   const orders = wiringDeclaration("conflict-orders", Orders, [Logs.slot("logs", required()), Db.slot("db", required())]);
@@ -687,8 +692,16 @@ test("W3 equal oracle parts pass and one throw lists conflicting parts with plan
     rows: [{ consumer: orders.implementationId, slot: "db", providers: [logs.implementationId] }],
   };
   const found = differences({ composition, oracles: [first, conflicting] });
-  assert.deepEqual(found.slice(0, 2).map(entry => entry.rule),
-    ["oracle-provider-conflict", "oracle-row-conflict"]);
+  assert.deepEqual(found.map(entry => entry.rule), ["oracle-provider-conflict", "oracle-row-conflict"]);
+  const reorderedPin = { providers: { "t/many": ["a", "b"] } };
+  const sameSet = { providers: { "t/many": ["b", "a"] } };
+  assert.equal(differences({ composition, oracles: [reorderedPin, sameSet] })
+    .some(entry => entry.rule === "oracle-provider-conflict"), false);
+  const sparse = ["t/f1/default"];
+  sparse.length = 2;
+  assert.throws(() => checkWiring(composition, [{ providers: { "t/f1": sparse } }]), {
+    code: "conformance.argument.invalid",
+  });
 });
 
 test("W4 a new required row bound to its single pinned provider is the accepted weakening", async () => {
@@ -726,70 +739,144 @@ const layoutRecords = rows => ({
     .map(row => [row.path, row.useCaseExports])),
 });
 const edge = (to, mode = "value") => ({ to, mode });
+const pairs = error => error.details.violations.map(entry => [entry.code, entry.path]);
 
-test("L1 checkModuleLayout passes a TEST-shaped tree and reports its modules-per-feature metric", () => {
-  const descriptor = "src/features/orders/composition/orders.contracts.ts";
-  const declaration = "src/features/orders/composition/orders.declaration.ts";
-  const module = "src/features/orders/composition/orders.module.ts";
-  const group = "src/features/orders/composition/orders.group.ts";
-  const root = "src/composition/app.root.ts";
-  const useCase = "src/features/orders/application/use-cases/create-order.ts";
-  const report = checkModuleLayout(layoutRecords([
-    layoutFile(descriptor),
-    layoutFile(declaration, [edge(descriptor, "type")]),
-    layoutFile(module, [edge(declaration)]),
-    layoutFile(group, [edge(module)]),
-    layoutFile(root, [edge(group)]),
-    layoutFile(useCase, [], [{ name: "createOrder", kind: "function" }]),
-  ]));
-  assert.deepEqual(report, {
-    featureCount: 1, moduleCount: 1, modulesPerFeature: { orders: 1 }, violations: [],
+const orders = "src/features/orders";
+const payments = "src/features/orders/features/payments";
+const testShapedTree = () => [
+  layoutFile(`${orders}/composition/orders.contracts.ts`),
+  layoutFile(`${orders}/composition/orders.declaration.ts`, [
+    edge(`${orders}/composition/orders.contracts.ts`, "type"), edge("src/composition/shared.contracts.ts", "type"),
+  ]),
+  layoutFile(`${orders}/composition/orders.module.ts`, [edge(`${orders}/composition/orders.declaration.ts`)]),
+  layoutFile(`${orders}/composition/orders.session.declaration.ts`),
+  layoutFile(`${orders}/composition/orders.inputs.ts`, [edge(`${orders}/composition/orders.session.declaration.ts`)]),
+  layoutFile(`${orders}/composition/orders.group.ts`, [
+    edge(`${orders}/composition/orders.module.ts`), edge(`${payments}/composition/payments.group.ts`),
+  ]),
+  layoutFile(`${payments}/composition/payments.contracts.ts`),
+  layoutFile(`${payments}/composition/payments.declaration.ts`, [edge(`${payments}/composition/payments.contracts.ts`, "type")]),
+  layoutFile(`${payments}/composition/payments.module.ts`, [edge(`${payments}/composition/payments.declaration.ts`)]),
+  layoutFile(`${payments}/composition/payments.group.ts`, [edge(`${payments}/composition/payments.module.ts`)]),
+  layoutFile(`${orders}/application/use-cases/create-order.ts`, [], [{ name: "createOrder", kind: "function" }]),
+  layoutFile("src/composition/shared.contracts.ts"),
+  layoutFile("src/composition/shared.declaration.ts", [edge("src/composition/shared.contracts.ts", "type")]),
+  layoutFile("src/composition/shared.module.ts", [edge("src/composition/shared.declaration.ts")]),
+  layoutFile("src/composition/app.root.ts", [edge(`${orders}/composition/orders.group.ts`), edge("src/composition/shared.module.ts")]),
+];
+
+test("L1 checkModuleLayout passes a TEST-shaped tree with a sub-feature, inputs and Host-level files", () => {
+  assert.deepEqual(checkModuleLayout(layoutRecords(testShapedTree())), {
+    featureCount: 2, moduleCount: 3, violations: [],
+    modulesPerFeature: { [orders]: 1, [payments]: 1 },
   });
 });
 
-test("L2 one throw lists every Get Modular layout violation kind with its stable code", () => {
+test("L2 one throw lists every Get Modular layout violation kind with its code and path", () => {
+  const o = `${orders}/composition`;
   const rows = [
-    layoutFile("src/features/orders/composition/orders.contracts.ts"),
-    layoutFile("src/features/orders/composition/orders.declaration.ts", [edge("src/features/orders/composition/orders.contracts.ts", "type")]),
-    layoutFile("src/features/orders/composition/orders.module.ts", [edge("src/features/orders/composition/orders.declaration.ts")]),
-    layoutFile("src/features/orders/composition/orders.group.ts", [edge("src/features/orders/composition/orders.module.ts")]),
-    layoutFile("src/features/orders/composition/orphan.module.ts", [edge("src/features/orders/composition/orphan.declaration.ts")]),
-    layoutFile("src/features/orders/composition/orphan.declaration.ts"),
-    layoutFile("src/features/orders/composition/unowned.declaration.ts"),
-    layoutFile("src/features/orders/composition/shared.module.ts", [edge("src/features/orders/composition/shared.declaration.ts")]),
-    layoutFile("src/features/orders/composition/shared.declaration.ts"),
-    layoutFile("src/features/orders/composition/orders-extra.group.ts", [edge("src/features/orders/composition/shared.module.ts")]),
-    layoutFile("src/features/orders/features/child/composition/child.group.ts"),
-    layoutFile("src/features/other/composition/other.group.ts", [edge("src/features/orders/features/child/composition/child.group.ts")]),
-    layoutFile("src/features/orders/features/child/composition/nested/late.ts"),
-    layoutFile("src/features/orders/contracts/orders.contracts.ts"),
-    layoutFile("src/features/orders/application/use-cases/two.ts", [], [
+    layoutFile(`${o}/orders.contracts.ts`),
+    layoutFile(`${o}/orders.declaration.ts`, [edge(`${o}/orders.contracts.ts`, "type")]),
+    layoutFile(`${o}/orders.module.ts`, [edge(`${o}/orders.declaration.ts`)]),
+    layoutFile(`${o}/orders.group.ts`, [edge(`${o}/orders.module.ts`)]),
+    layoutFile(`${o}/orphan.module.ts`, [edge(`${o}/orphan.declaration.ts`)]),
+    layoutFile(`${o}/orphan.declaration.ts`),
+    layoutFile(`${o}/unowned.declaration.ts`),
+    layoutFile(`${o}/bare.module.ts`),
+    layoutFile(`${o}/shared.module.ts`, [edge(`${o}/shared.declaration.ts`)]),
+    layoutFile(`${o}/shared.declaration.ts`, [edge(`${orders}/contracts/orders.contracts.ts`, "type")]),
+    layoutFile(`${o}/orders-extra.group.ts`, [edge(`${o}/shared.module.ts`)]),
+    layoutFile(`${payments}/composition/payments.group.ts`),
+    layoutFile(`src/features/other/composition/other.group.ts`, [edge(`${payments}/composition/payments.group.ts`)]),
+    layoutFile(`${payments}/composition/nested/late.ts`),
+    layoutFile(`${orders}/contracts/orders.contracts.ts`),
+    layoutFile(`${orders}/application/use-cases/two.ts`, [], [
       { name: "one", kind: "function" }, { name: "two", kind: "function" },
     ]),
-    layoutFile("src/features/orders/application/stray.ts"),
+    layoutFile(`${orders}/application/stray.ts`),
     layoutFile("src/composition/app.root.ts", [
-      edge("src/features/orders/composition/orders.group.ts"),
-      edge("src/features/orders/features/child/composition/child.group.ts"),
+      edge(`${o}/orders.group.ts`), edge(`${payments}/composition/payments.group.ts`),
     ]),
   ];
   const error = failure(() => checkModuleLayout(layoutRecords(rows)), "conformance.layout.violation");
-  const codes = new Set(error.details.violations.map(entry => entry.code));
-  assert.deepEqual([...codes].sort(), [
-    "application-file", "child-group-outside-parent", "descriptor-path", "group-count", "nested-composition",
-    "orphan-declaration", "orphan-module", "root-imports-sub-feature-group", "use-case-export",
-  ]);
-  assert.deepEqual(error.details.modulesPerFeature, {
-    "orders": 3, "orders/child": 0, "other": 0,
-  });
+  assert.deepEqual(pairs(error).toSorted((a, b) => (a.join() < b.join() ? -1 : 1)), [
+    ["application-file", `${orders}/application/stray.ts`],
+    ["child-group-outside-parent", "src/features/other/composition/other.group.ts"],
+    ["descriptor-path", `${o}/shared.declaration.ts`],
+    ["descriptor-path", `${orders}/contracts/orders.contracts.ts`],
+    ["group-count", `${o}/shared.module.ts`],
+    ["module-declaration", `${o}/bare.module.ts`],
+    ["nested-composition", `${payments}/composition/nested/late.ts`],
+    ["orphan-declaration", `${o}/unowned.declaration.ts`],
+    ["orphan-module", `${o}/bare.module.ts`],
+    ["orphan-module", `${o}/orphan.module.ts`],
+    ["root-imports-sub-feature-group", "src/composition/app.root.ts"],
+    ["use-case-export", `${orders}/application/use-cases/two.ts`],
+  ].toSorted((a, b) => (a.join() < b.join() ? -1 : 1)));
 });
 
-test("L3 malformed layout records are argument errors and import endpoints must be collected files", () => {
+test("L4 a group file that shares its feature with another group is still checked", () => {
+  const rows = testShapedTree();
+  rows.push(layoutFile(`${orders}/composition/zz.group.ts`));
+  rows.push(layoutFile("src/composition/other.root.ts", [edge(`${payments}/composition/payments.group.ts`)]));
+  const error = failure(() => checkModuleLayout(layoutRecords(rows)), "conformance.layout.violation");
+  assert.deepEqual(pairs(error), [["root-imports-sub-feature-group", "src/composition/other.root.ts"]]);
+});
+
+test("L5 type-only imports own and place nothing, and the same feature name under two roots stays apart", () => {
+  const rows = testShapedTree().map(row => row.path === `${orders}/composition/orders.group.ts`
+    ? layoutFile(row.path, [edge(`${orders}/composition/orders.module.ts`, "type"), edge(`${payments}/composition/payments.group.ts`)])
+    : row);
+  const error = failure(() => checkModuleLayout(layoutRecords(rows)), "conformance.layout.violation");
+  assert.deepEqual(pairs(error), [["orphan-module", `${orders}/composition/orders.module.ts`]]);
+  const twin = [
+    layoutFile("packages/a/src/features/orders/composition/orders.module.ts", [
+      edge("packages/a/src/features/orders/composition/orders.declaration.ts"),
+    ]),
+    layoutFile("packages/a/src/features/orders/composition/orders.declaration.ts"),
+    layoutFile("packages/b/src/features/orders/composition/orders.group.ts", [
+      edge("packages/a/src/features/orders/composition/orders.module.ts"),
+    ]),
+    layoutFile("packages/a/src/composition/a.root.ts"),
+  ];
+  const twinError = failure(() => checkModuleLayout(layoutRecords(twin)), "conformance.layout.violation");
+  assert.deepEqual(pairs(twinError), [["group-count", "packages/a/src/features/orders/composition/orders.module.ts"]]);
+  assert.deepEqual(Object.keys(twinError.details.modulesPerFeature), [
+    "packages/a/src/features/orders", "packages/b/src/features/orders",
+  ]);
+});
+
+test("L6 a Windows-style path and a file directly in features/ are read as written", () => {
+  const report = checkModuleLayout({
+    files: ["src\\features\\orders\\composition\\orders.group.ts", "src/features/readme.ts"],
+    imports: [], useCaseExports: {},
+  });
+  assert.deepEqual(report.modulesPerFeature, { [orders]: 0 });
+});
+
+test("L3 malformed layout records are argument errors and an import source must be a collected file", () => {
   assert.throws(() => checkModuleLayout({ files: "bad", imports: [], useCaseExports: {} }), {
     code: "conformance.argument.invalid",
   });
   assert.throws(() => checkModuleLayout({
     files: ["src/features/orders/composition/orders.module.ts"],
-    imports: [{ from: "src/features/orders/composition/orders.module.ts", to: "missing.ts", mode: "value" }],
+    imports: [{ from: "missing.ts", to: "src/features/orders/composition/orders.module.ts", mode: "value" }],
     useCaseExports: {},
   }), { code: "conformance.argument.invalid" });
+  assert.throws(() => checkModuleLayout({
+    files: ["src/a.ts"], imports: [{ from: "src/a.ts", to: "src/b.ts", mode: "other" }], useCaseExports: {},
+  }), { code: "conformance.argument.invalid" });
+});
+
+test("L7 a declaration import of a contracts file outside the collected files is a descriptor violation", () => {
+  const o = `${orders}/composition`;
+  const rows = [
+    layoutFile(`${o}/orders.declaration.ts`, [edge("some-pkg/thing.contracts.js", "type"), edge("zod", "value")]),
+    layoutFile(`${o}/orders.module.ts`, [edge(`${o}/orders.declaration.ts`)]),
+    layoutFile(`${o}/orders.group.ts`, [edge(`${o}/orders.module.ts`)]),
+    layoutFile("src/composition/app.root.ts", [edge(`${o}/orders.group.ts`)]),
+  ];
+  const error = failure(() => checkModuleLayout(layoutRecords(rows)), "conformance.layout.violation");
+  assert.deepEqual(pairs(error), [["descriptor-path", `${o}/orders.declaration.ts`]]);
+  assert.equal(error.details.violations[0].relatedPath, "some-pkg/thing.contracts.js");
 });
