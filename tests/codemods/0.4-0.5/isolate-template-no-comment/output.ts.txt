@@ -1,0 +1,11 @@
+import { scoped } from "@get-modular/resources";
+import { implement } from "@get-modular/assembly";
+import { isolate } from "@get-modular/conformance";
+
+type Capabilities = Record<never, never>;
+declare const cacheDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const createCache: (...args: any[]) => any;
+declare const cacheDependencies: any;
+declare const x: string;
+
+export const isolatedCache = () => isolate(implement<Capabilities>()(cacheDeclaration, createCache, scoped), { dependencies: Object.assign(cacheDependencies, { t: `${x} http://a` }) });
