@@ -190,8 +190,8 @@ feature at any depth is a unit of meaning and ownership. Nest a tightly bound pa
 that moves with its parent; keep independent parts as siblings.
 
 Write the feature card in the feature's `README.md` when you create it and update it
-with each module. It is a `## Feature card` section with these fields; the consumer's
-check rejects a feature README without that section:
+with each module. It is a `## Feature card` section with these fields; a consumer's layout
+check may reject a feature README without that section (TEST's does):
 
 ```markdown
 ## Feature card
@@ -1271,7 +1271,9 @@ test("the rows match the oracle", async () => {
 ## 13. Groups and the root
 
 One line per module in `<feature>.group.ts`, sorted, one member per line, never in
-the root and never behind a condition. A parent's group also lists the groups of its
+the root and never behind a condition. Host-level modules that several roots share go in a
+Host-level group, `src/composition/<name>.group.ts`; a Host-level module of one root is
+listed directly in that root. A parent's group also lists the groups of its
 direct sub-features, so the group tree mirrors the feature tree and `groupPath`
 reads like the feature path. A new top-level feature adds one line to the root
 `modules`, one `extends` to the root map and one oracle part; a new sub-feature adds

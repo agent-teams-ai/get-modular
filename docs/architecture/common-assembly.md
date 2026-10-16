@@ -259,19 +259,21 @@ export async function closeWithin(
   }
 }
 
+// A one-file sketch: in a consumer each entry lives at the top level of its module file (Module template).
+// A Host-local stand-in; module packages export their entry the way `orders` is made here.
+const database = implement<CapabilitiesOf<typeof Db>>()(declareModule({
+  moduleId: "acme/db", implementationId: "acme/db/pg",
+  owner: { authority: "acme", path: ["db"] }, provides: [Db.provide()], slots: [],
+}), async () => ({ instance: undefined, capabilities: { "acme/db": { query: () => 0 } } }));
+const orders = implement<CapabilitiesOf<typeof Db | typeof Orders>>()(ordersDeclaration, createOrders, scoped);
+
 // The composition root is a function of Assembly, so `smoke` can pass its own api.
 export function composeOrders(api: Assembly<CapabilitiesOf<typeof Db | typeof Orders>>) {
-  // A Host-local stand-in; module packages export their factory as createOrders does.
-  const database = implement<CapabilitiesOf<typeof Db>>()(declareModule({
-    moduleId: "acme/db", implementationId: "acme/db/pg",
-    owner: { authority: "acme", path: ["db"] }, provides: [Db.provide()], slots: [],
-  }), async () => ({ instance: undefined, capabilities: { "acme/db": { query: () => 0 } } }));
-  const orders = implement<CapabilitiesOf<typeof Db | typeof Orders>>()(ordersDeclaration, createOrders, scoped);
   // `orders` has one `required` slot and `database` is the only provider of its capability, so Assembly
   // completes the row; the profile follows the module list.
   return api.prepare({ profileId: "acme/orders-host", modules: [database, orders], roots: { orders } });
 }
-// Bind and prepare once; every run gets its own scope.
+// Prepare once; every run gets its own scope.
 const preparation = await composeOrders(assemblyFor<CapabilitiesOf<typeof Db | typeof Orders>>());
 if (preparation.status === "failed") { throw new ConstructionFailed(preparation); }
 const { prepared } = preparation;
@@ -393,10 +395,12 @@ export const createChat: ModuleFactory<Capabilities, typeof chatDeclaration, Cha
   return { instance: port, capabilities: { "acme/chat": port } };
 };
 
+// A one-file sketch: in a consumer each entry lives at the top level of its module file.
+const session = input<Capabilities>()(sessionInput);
+const chat = implement<Capabilities>()(chatDeclaration, createChat, scoped);
+
 // The template root is a function of Assembly, so `smoke` can pass its own api.
 export function composeSessions(api: Assembly<Capabilities>) {
-  const session = input<Capabilities>()(sessionInput);
-  const chat = implement<Capabilities>()(chatDeclaration, createChat, scoped);
   return api.prepare({ profileId: "acme/sessions", modules: [chat], roots: { chat }, inputs: { session } });
 }
 // Prepared once; each session is one run with its own scope and input.
@@ -456,12 +460,12 @@ compiled examples and the recipes for growing a feature.
    wiring.
    `composition/` is flat at every depth: it has no subdirectory. A `*.contracts.ts`
    file exists only as `composition/<own segment>.contracts.ts`, or flat in the Host's
-   `src/composition/`. Every `*.module.ts` imports a declaration of its own feature and
-   is owned by exactly one production file: its feature's group, or, for a Host-level
-   module outside `features/`, the root that lists it as its own entry. A root's import
-   of a module only to name it in `roots` does not count when a group owns that module;
-   several roots importing one Host-level module that no group lists is a violation
-   (`group-count`). Every `*.declaration.ts` is imported by a module file or by
+   `src/composition/`. Every `*.module.ts` imports a declaration of its own feature (a Host-level module: a Host-level declaration) and
+   is owned by exactly one production file: a feature module by its feature's group; a
+   Host-level module outside `features/` by one Host-level group or, when no group lists
+   it, by the one root that lists it as its own entry. A root's import of a module only
+   to name it in `roots` does not count when a group owns that module; several roots
+   importing one Host-level module that no group lists is a violation (`group-count`). Every `*.declaration.ts` is imported by a module file or by
    `composition/<feature>.inputs.ts`, which holds the feature's input entries. No
    source file sits directly in `application/`, and a use-case file has exactly one
    runtime export, its function, and may also export types. `checkModuleLayout` reports
@@ -480,8 +484,8 @@ compiled examples and the recipes for growing a feature.
 8. A feature README SHOULD carry a `## Feature card` section with the fields of the
    [guide](../guides/module-authoring.md#2-designing-a-feature): Purpose, Parent,
    Publishes, Consumes, Modules, Sub-features, Expected growth, Likely split seams and
-   Split signals now (`<n>/12` modules, `<n>/20` use cases, depth `<n>/3`,
-   aggregates). The split signals, the depth warning and their thresholds are
+   Split signals now (modules, use cases and depth against the consumer's
+   thresholds, for example `<n>/12`, and aggregates). The split signals, the depth warning and their thresholds are
    consumer policy; the [guide](../guides/module-authoring.md#8-when-and-how-to-split)
    gives the recipes. The size limits below are this standard's.
 
@@ -536,15 +540,18 @@ profile, the plan or the digest.
 2. The group tree mirrors the feature tree. A parent's group lists its own modules and
    the groups of its direct sub-features; a group's name is its feature's own path
    segment, so `groupPath` in an `unresolved-binding` cause reads like the feature path.
-3. A root's `modules` lists the groups of top-level features and its own entries, and
-   nothing else. It never lists a module of a feature, and never the group of a
-   sub-feature, which is private to its parent. A root file is
-   `src/composition/<root>.root.ts`. Groups own feature modules: the root imports a
-   feature's module file only to name that entry in `roots`, and the entry stays listed
-   in its feature's group and nowhere else in `modules`. A root owns the Host-level
-   modules outside `features/` that it lists as its own entries
-   (`src/composition/<module>.declaration.ts` and `<module>.module.ts`), listed
-   directly in its `modules`; one such module belongs to one root.
+3. A root's `modules` lists the groups of top-level features, Host-level groups and its
+   own entries, and nothing else. It never lists a module of a feature, and never the
+   group of a sub-feature, which is private to its parent. A root file is
+   `src/composition/<root>.root.ts`. Groups own modules: a feature's group owns that
+   feature's modules, and a Host-level group, `src/composition/<name>.group.ts`, owns
+   the Host-level modules it lists, so several roots, such as variants, can share them.
+   A root imports a module file only to name that entry in `roots`; that import does not
+   count when a group owns the module, and the entry stays listed in its group and
+   nowhere else in `modules`. A root owns the Host-level modules outside `features/`
+   that no group lists and that it lists as its own entries
+   (`src/composition/<module>.declaration.ts` and `<module>.module.ts`), directly in
+   its `modules`; one such module belongs to one root.
 4. The list a root passes to `prepare` never depends on run-time values; a variant is
    a separate root with its own `profileId`. Names are labels, never identities.
 5. An entry listed twice, or two entries with one `implementationId`, fail with
