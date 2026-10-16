@@ -29,14 +29,14 @@ for (const [index, copy] of copies.entries()) {
   const producer = copy.assembly.assemblyFor();
   const receiver = copy.assembly.assemblyFor();
   assert.notEqual(producer, receiver);
-  const handle = producer.bindFactory(item, async () => {
+  const handle = implement()(item, async () => {
     calls[index]++;
     return { instance: { value: "local" }, capabilities: {} };
   });
   const composition = await copy.core.compileComposition({ declarations: [item], profile: selectedProfile });
   assert.ok("plan" in composition, JSON.stringify(composition));
   // Same-copy assemblyFor instances exchange handles successfully, in each copy.
-  const input = { composition, factories: [handle], roots: { app: handle } };
+  const input = { composition, modules: [handle], roots: { app: handle } };
   const ready = await receiver.prepare(input);
   assert.equal(ready.status, "prepared", JSON.stringify(ready));
   const outcome = await ready.prepared.run();
@@ -49,7 +49,7 @@ assert.deepEqual(subjects[0].input.composition, subjects[1].input.composition);
 calls.fill(0);
 for (const [local, foreign] of [[subjects[0], subjects[1]], [subjects[1], subjects[0]]]) {
   const refused = await local.receiver.prepare({ ...local.input,
-    factories: [foreign.handle], roots: { app: foreign.handle },
+    modules: [foreign.handle], roots: { app: foreign.handle },
   });
   assert.equal(refused.status, "failed");
   assert.equal(refused.error.code, "assembly.prepare.handles");

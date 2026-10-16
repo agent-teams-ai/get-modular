@@ -46,15 +46,14 @@ export type LooseRunOptions = {
 };
 export type LoosePrepared = { readonly run: (options?: LooseRunOptions) => Promise<LooseOutcome> };
 export type LoosePreparation =
-  | { readonly status: "prepared"; readonly prepared: LoosePrepared }
+  | { readonly status: "prepared"; readonly prepared: LoosePrepared; readonly composition?: unknown }
   | { readonly status: "failed"; readonly error: { readonly code: string; readonly cause: unknown }; readonly diagnostics: readonly unknown[] };
-export type LooseAssembly = {
-  readonly bindFactory: (declaration: ModuleDeclaration, factory: LooseFactory) => unknown;
-  readonly bindInput: (declaration: ModuleDeclaration) => unknown;
-  readonly prepare: (input: {
-    readonly composition: unknown;
-    readonly factories: readonly unknown[];
-    readonly roots: Readonly<Record<string, unknown>>;
-    readonly inputs?: Readonly<Record<string, unknown>> | undefined;
-  }) => Promise<LoosePreparation>;
+export type LoosePrepareInput = {
+  readonly modules: readonly unknown[];
+  readonly roots: Readonly<Record<string, unknown>>;
+  readonly inputs?: Readonly<Record<string, unknown>> | undefined;
+  readonly composition?: unknown;
+  readonly profileId?: unknown;
+  readonly bindings?: unknown;
 };
+export type LooseAssembly = { readonly prepare: (input: LoosePrepareInput) => Promise<LoosePreparation> };

@@ -1,6 +1,6 @@
 import { pathToFileURL } from "node:url";
 import { compileComposition, required } from "@get-modular/core";
-import { assemblyFor, declareModule, defineContract } from "../dist/index.js";
+import { assemblyFor, declareModule, defineContract, implement } from "../dist/index.js";
 
 // Each contract owner publishes one descriptor per capability.
 const Configuration = defineContract()({ id: "example/configuration", revision: 1 });
@@ -73,14 +73,14 @@ export async function runBasicHost({
 
   const resources = new AsyncDisposableStack();
   const api = assemblyFor();
-  const configurationHandle = api.bindFactory(configuration, async () => {
+  const configurationHandle = implement()(configuration, async () => {
     const resource = { audience: "consumer" };
     resources.defer(async () => onConfigurationDisposed?.());
     // Distinct wrappers share one resource; neither receives cleanup authority.
     const value = { get audience() { return resource.audience; } };
     return { instance: { configuration: value }, capabilities: { "example/configuration": value } };
   });
-  const greetingHandle = api.bindFactory(greeting, async ({ configuration }) => {
+  const greetingHandle = implement()(greeting, async ({ configuration }) => {
     const greet = greetingPort.greet;
     return {
       instance: {},
@@ -91,14 +91,14 @@ export async function runBasicHost({
       },
     };
   });
-  const applicationHandle = api.bindFactory(application, async ({ greeting }) => ({
+  const applicationHandle = implement()(application, async ({ greeting }) => ({
     instance: { run: (name) => greeting.greet(name) },
     capabilities: {},
   }));
 
   const preparation = await api.prepare({
     composition,
-    factories: [configurationHandle, greetingHandle, applicationHandle],
+    modules: [configurationHandle, greetingHandle, applicationHandle],
     roots: { application: applicationHandle },
   });
   if (preparation.status === "failed") throw preparation.error;

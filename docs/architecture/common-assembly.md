@@ -208,7 +208,7 @@ Host template (policy belongs to the Host, not to the library):
 <!-- consumer-standard-example: host -->
 
 ```ts
-import { assemblyFor, declareModule, defineContract, type Assembly, type CapabilitiesOf, type ModuleFactory } from "@get-modular/assembly";
+import { assemblyFor, declareModule, defineContract, implement, type Assembly, type CapabilitiesOf, type ModuleFactory } from "@get-modular/assembly";
 import { required } from "@get-modular/core";
 import { scoped, type CloseReport, type ModuleContext, type Resources, type ScopeControl } from "@get-modular/resources";
 
@@ -254,14 +254,15 @@ export async function closeWithin(
 // The composition root is a function of Assembly, so `smoke` can pass its own api.
 export function composeOrders(api: Assembly<CapabilitiesOf<typeof Db | typeof Orders>>) {
   // A Host-local stand-in; module packages export their factory as createOrders does.
-  const database = api.bindFactory(declareModule({
+  const database = implement<CapabilitiesOf<typeof Db>>()(declareModule({
     moduleId: "acme/db", implementationId: "acme/db/pg",
     owner: { authority: "acme", path: ["db"] }, provides: [Db.provide()], slots: [],
   }), async () => ({ instance: undefined, capabilities: { "acme/db": { query: () => 0 } } }));
-  const orders = api.bindFactory(ordersDeclaration, scoped(ordersDeclaration.implementationId, createOrders));
+  const orders = implement<CapabilitiesOf<typeof Db | typeof Orders>>()(ordersDeclaration,
+    scoped(ordersDeclaration.implementationId, createOrders));
   // `orders` has one `required` slot and `database` is the only provider of its capability, so Assembly
   // completes the row; the profile follows the module list.
-  return api.prepare({ profileId: "acme/orders-host", factories: [database, orders], roots: { orders } });
+  return api.prepare({ profileId: "acme/orders-host", modules: [database, orders], roots: { orders } });
 }
 // Bind and prepare once; every run gets its own scope.
 const preparation = await composeOrders(assemblyFor<CapabilitiesOf<typeof Db | typeof Orders>>());
@@ -355,7 +356,7 @@ mutation, rebinding, hot replacement or code unloading.
 <!-- consumer-standard-example: instances -->
 
 ```ts
-import { assemblyFor, declareModule, defineContract, type Assembly, type CapabilitiesOf, type ModuleFactory } from "@get-modular/assembly";
+import { assemblyFor, declareModule, defineContract, implement, input, type Assembly, type CapabilitiesOf, type ModuleFactory } from "@get-modular/assembly";
 import { required } from "@get-modular/core";
 import { scoped, type ModuleContext, type Resources } from "@get-modular/resources";
 
@@ -383,9 +384,9 @@ export const createChat: ModuleFactory<Capabilities, typeof chatDeclaration, Cha
 
 // The template root is a function of Assembly, so `smoke` can pass its own api.
 export function composeSessions(api: Assembly<Capabilities>) {
-  const session = api.bindInput(sessionInput);
-  const chat = api.bindFactory(chatDeclaration, scoped(chatDeclaration.implementationId, createChat));
-  return api.prepare({ profileId: "acme/sessions", factories: [chat], roots: { chat }, inputs: { session } });
+  const session = input<Capabilities>()(sessionInput);
+  const chat = implement<Capabilities>()(chatDeclaration, scoped(chatDeclaration.implementationId, createChat));
+  return api.prepare({ profileId: "acme/sessions", modules: [chat], roots: { chat }, inputs: { session } });
 }
 // Prepared once; each session is one run with its own scope and input.
 const preparation = await composeSessions(assemblyFor<Capabilities>());
@@ -492,9 +493,9 @@ export const Counter = defineContract<CounterPort>()({ id: "acme/counter", revis
 
 ```ts
 // src/counter/module.ts
-import { declareModule, type CapabilitiesOf, type ModuleFactory } from "@get-modular/assembly";
+import { declareModule, implement, type CapabilitiesOf, type ModuleFactory } from "@get-modular/assembly";
 import { required } from "@get-modular/core";
-import type { ModuleContext } from "@get-modular/resources";
+import { scoped, type ModuleContext } from "@get-modular/resources";
 import { Counter, Store, type CounterPort } from "./contracts.js";
 
 export const counterDeclaration = declareModule({
@@ -503,7 +504,7 @@ export const counterDeclaration = declareModule({
   provides: [Counter.provide()], slots: [Store.slot("store", required())],
 });
 
-// Unbound: the composition root binds it and the module never imports the Host's map.
+// The module package exports its entry; the module never imports the Host's map.
 export const createCounter: ModuleFactory<
   CapabilitiesOf<typeof Store | typeof Counter>, typeof counterDeclaration, CounterPort, ModuleContext
 > = async (deps) => {
@@ -511,9 +512,12 @@ export const createCounter: ModuleFactory<
   return { instance: port, capabilities: { "acme/counter": port } };
 };
 
+export const counterEntry = implement<CapabilitiesOf<typeof Store | typeof Counter>>()(
+  counterDeclaration, scoped(counterDeclaration.implementationId, createCounter));
+
 // In the composition root, a function of Assembly that prepares with `{ profileId }`, adding the module
 // is one line, and Assembly completes the `required` slot when one bound module provides `acme/store`:
-//   const counter = api.bindFactory(counterDeclaration, scoped(counterDeclaration.implementationId, createCounter));
+//   const counter = counterEntry;
 ```
 
 <!-- consumer-standard-example: module-test -->
@@ -522,18 +526,16 @@ export const createCounter: ModuleFactory<
 // src/counter/module.test.ts
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { assemblyFor, type CapabilitiesOf } from "@get-modular/assembly";
+import type { CapabilitiesOf } from "@get-modular/assembly";
 import { checkNamespaces, isolate } from "@get-modular/conformance";
 import { Counter, Store, type StorePort } from "./contracts.js";
-import { counterDeclaration, createCounter } from "./module.js";
+import { counterDeclaration, counterEntry } from "./module.js";
 
 // The contract owner's typed fake, never an `any` or a cast.
 const store: StorePort = { bump: (key) => key.length };
 
 test("counts through the real construction path", async () => {
-  await using counter = await isolate(assemblyFor<CapabilitiesOf<typeof Store | typeof Counter>>(), {
-    declaration: counterDeclaration, factory: createCounter, dependencies: { store },
-  });
+  await using counter = await isolate(counterEntry, { dependencies: { store } });
   assert.equal(counter.capabilities["acme/counter"].increment("abc"), 3);
 });
 

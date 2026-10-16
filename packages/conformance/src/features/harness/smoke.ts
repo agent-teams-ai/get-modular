@@ -1,12 +1,13 @@
+import { group, implement } from "@get-modular/assembly";
 import type {
-  Assembly, AssemblyPreparationResult, FactoryContext, InputHandles, RootHandles, RunInputs,
+  Assembly, AssemblyPreparationResult, FactoryContext, InputEntries, RootEntries, RunInputs,
 } from "@get-modular/assembly";
 import type { ModuleDeclaration } from "@get-modular/core";
 import { createScope } from "@get-modular/resources";
 import type { CloseReport } from "@get-modular/resources";
 import { ConformanceError, invalid } from "../errors/errors.js";
 import type {
-  LooseAssembly, LooseFactory, LooseOutcome, LoosePrepared, LoosePreparation, SmokeInjection, SmokeStep,
+  LooseAssembly, LooseFactory, LooseOutcome, LoosePrepared, LoosePreparation, LoosePrepareInput, SmokeInjection, SmokeStep,
 } from "./types.js";
 
 const MODES: readonly SmokeInjection[] = ["fail", "abort"];
@@ -65,7 +66,7 @@ function check(plan: Plan, outcome: LooseOutcome, order: readonly string[]): str
  * Runs the production composition root once and then rebuilds it under injected failures and aborts, to
  * show that every attempt releases what its modules registered. It proves nothing about the bindings.
  */
-export async function smoke<C, R extends RootHandles<C>, N extends InputHandles<C> = {}>(
+export async function smoke<C, R extends RootEntries<C>, N extends InputEntries<C> = {}>(
   input: {
     readonly api: Assembly<C>;
     /** The production composition root, written as a function of Assembly. Called once. */
@@ -117,14 +118,39 @@ export async function smoke<C, R extends RootHandles<C>, N extends InputHandles<
       }
       return carrier;
     };
+  // Entries and groups are public inert data: rebuild the same tree with every factory wrapped, using the
+  // public `implement` and `group` only. The real `prepare` runs first, so a forged entry fails as in production.
+  const makeEntry = implement() as unknown as (declaration: ModuleDeclaration, factory: LooseFactory) => unknown;
+  const makeGroup = group as unknown as (name: string, members: readonly unknown[]) => unknown;
+  const copies = new Map<unknown, unknown>();
+  const produced = new WeakSet<object>();
+  const rebuild = (member: unknown): unknown => {
+    const node = member as { readonly name: string; readonly members: readonly unknown[] } | { readonly declaration: ModuleDeclaration; readonly factory: LooseFactory };
+    if ("members" in node) {return makeGroup(node.name, node.members.map(rebuild));}
+    const copy = copies.get(member) ?? makeEntry(node.declaration, wrap(node.declaration, node.factory));
+    copies.set(member, copy);
+    return copy;
+  };
   const wrapped = {
-    bindFactory: (declaration: ModuleDeclaration, factory: LooseFactory) =>
-      real.bindFactory(declaration, wrap(declaration, factory)),
-    bindInput: (declaration: ModuleDeclaration) => real.bindInput(declaration),
-    prepare: (prepareInput: Parameters<LooseAssembly["prepare"]>[0]) => real.prepare(prepareInput),
+    prepare: async (prepareInput: LoosePrepareInput) => {
+      const first = await real.prepare(prepareInput);
+      if (first.status === "prepared") {
+        const modules = prepareInput.modules.map(rebuild);
+        const roots = Object.fromEntries(Object.entries(prepareInput.roots).map(([alias, root]) => [alias, copies.get(root) ?? root]));
+        const second = await real.prepare({ ...prepareInput, modules, roots });
+        produced.add(second);
+        return second;
+      }
+      produced.add(first);
+      return first;
+    },
   } satisfies LooseAssembly;
 
-  const preparation = await compose(wrapped as Assembly<C>);
+  const preparation = await compose(wrapped as unknown as Assembly<C>);
+  if (!produced.has(preparation)) {
+    throw new ConformanceError("conformance.smoke.failed",
+      "compose resolved with a preparation its api did not produce, so no injection reaches its factories");
+  }
   if (preparation.status !== "prepared") {
     throw new ConformanceError("conformance.smoke.failed",
       `the composition root was not prepared: ${preparation.error.code}`, { cause: preparation.error.cause, details: { preparation } });

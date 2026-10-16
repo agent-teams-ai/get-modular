@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { many, optional, required } from "@get-modular/core";
-import { assemblyFor } from "@get-modular/assembly";
+import { assemblyFor, implement, input } from "@get-modular/assembly";
 import { binding, compile, declaration, profile, slot, synthetic } from "./fixture.mjs";
 
 // ADR-0035: prepare completes the profile from the bound handles and never guesses.
 function bindAll(api, declarations, calls = []) {
-  return declarations.map((item) => api.bindFactory(item, async () => {
+  return declarations.map((item) => implement()(item, async () => {
     calls.push(item.implementationId);
     return { instance: item.implementationId, capabilities: Object.fromEntries(item.provides.map(({ capabilityId }) => [capabilityId, {}])) };
   }));
@@ -18,7 +18,7 @@ test("a profileId root plans exactly like the explicit composition", async () =>
     const rows = host.input.composition.plan.bindings;
     const explicit = rows.filter(({ slotId }) => slotId === "logger" || slotId === "filters")
       .map(({ consumerImplementationId, slotId, providerImplementationIds }) => binding(consumerImplementationId, slotId, providerImplementationIds));
-    const result = await host.api.prepare({ profileId: "synthetic/profile", bindings: explicit, factories: host.input.factories, roots: host.input.roots });
+    const result = await host.api.prepare({ profileId: "synthetic/profile", bindings: explicit, modules: host.input.modules, roots: host.input.roots });
     assert.equal(result.status, "prepared", JSON.stringify(result));
     assert.equal(result.composition.digest, host.input.composition.digest);
     assert.deepEqual(result.composition.plan, host.input.composition.plan);
@@ -36,14 +36,14 @@ test("inputs take part in completion like any other provider", async () => {
     binding("synthetic/store", "session", ["synthetic/session"]), binding("synthetic/app", "store", ["synthetic/store"]),
     binding("synthetic/app", "session", ["synthetic/session"]),
   ]));
-  const input = api.bindInput(session);
+  const inputEntry = input()(session);
   const [storeHandle, appHandle] = bindAll(api, [store, app]);
-  const result = await api.prepare({ profileId: "synthetic/profile", factories: [storeHandle, appHandle], roots: { app: appHandle }, inputs: { session: input } });
+  const result = await api.prepare({ profileId: "synthetic/profile", modules: [storeHandle, appHandle], roots: { app: appHandle }, inputs: { session: inputEntry } });
   assert.equal(result.status, "prepared", JSON.stringify(result));
   assert.equal(result.composition.digest, explicit.digest);
 });
 
-test("the order of factories, roots and bindings never changes the plan", async () => {
+test("the order of modules, roots and bindings never changes the plan", async () => {
   const api = assemblyFor();
   const base = declaration("base", ["synthetic/base"]);
   const left = declaration("left", ["synthetic/left"], [slot("base", "synthetic/base")]);
@@ -53,11 +53,11 @@ test("the order of factories, roots and bindings never changes the plan", async 
   const [baseHandle, leftHandle, rightHandle, topHandle] = handles;
   const rows = [binding("synthetic/top", "list", []), binding("synthetic/left", "base", ["synthetic/base"])];
   const digests = new Set();
-  for (const [factories, roots, bindings] of [
+  for (const [modules, roots, bindings] of [
     [[baseHandle, leftHandle, rightHandle, topHandle], { top: topHandle, right: rightHandle }, rows],
     [[topHandle, rightHandle, leftHandle, baseHandle], { right: rightHandle, top: topHandle }, [...rows].reverse()],
   ]) {
-    const result = await api.prepare({ profileId: "synthetic/order", bindings, factories, roots });
+    const result = await api.prepare({ profileId: "synthetic/order", bindings, modules, roots });
     assert.equal(result.status, "prepared", JSON.stringify(result));
     digests.add(result.composition.digest);
   }
@@ -74,7 +74,7 @@ test("slots without a safe completion fail together, with their candidates, befo
     slot("ok", "synthetic/solo", required()),
   ]);
   const handles = bindAll(api, [one, two, solo, consumer], calls);
-  const result = await api.prepare({ profileId: "synthetic/open", factories: handles, roots: { consumer: handles[3] } });
+  const result = await api.prepare({ profileId: "synthetic/open", modules: handles, roots: { consumer: handles[3] } });
   assert.equal(result.status, "failed");
   assert.equal(result.error.code, "assembly.prepare.unresolved-binding");
   assert.deepEqual(result.error.cause, [
@@ -86,7 +86,7 @@ test("slots without a safe completion fail together, with their candidates, befo
   assert.deepEqual(calls, []);
   // Explicit rows settle every one of them, including the ambiguous slot, and keep what was written.
   const settled = await api.prepare({
-    profileId: "synthetic/open", factories: handles, roots: { consumer: handles[3] },
+    profileId: "synthetic/open", modules: handles, roots: { consumer: handles[3] },
     bindings: [
       binding("synthetic/consumer", "dup", ["synthetic/two"]),
       binding("synthetic/consumer", "opt-one", []), binding("synthetic/consumer", "opt-none", []),
@@ -104,7 +104,7 @@ test("a required slot with no provider is reported with no candidates", async ()
   const api = assemblyFor(), calls = [];
   const orphan = declaration("orphan", [], [slot("none", "synthetic/missing")]);
   const handles = bindAll(api, [orphan], calls);
-  const result = await api.prepare({ profileId: "synthetic/none", factories: handles, roots: { orphan: handles[0] } });
+  const result = await api.prepare({ profileId: "synthetic/none", modules: handles, roots: { orphan: handles[0] } });
   assert.equal(result.error.code, "assembly.prepare.unresolved-binding");
   assert.deepEqual(result.error.cause, [{
     consumerImplementationId: "synthetic/orphan", slotId: "none", capabilityId: "synthetic/missing", cardinality: "required", candidates: [],
@@ -117,7 +117,7 @@ test("a completed binding with another revision is rejected by Core, not by Asse
   const provider = { ...declaration("provider", []), provides: [{ capabilityId: "synthetic/value", compatibility: { family: "exact", familyVersion: 1, token: "synthetic/v2" } }] };
   const consumer = declaration("consumer", [], [slot("value", "synthetic/value")]);
   const handles = bindAll(api, [provider, consumer], calls);
-  const result = await api.prepare({ profileId: "synthetic/mismatch", factories: handles, roots: { consumer: handles[1] } });
+  const result = await api.prepare({ profileId: "synthetic/mismatch", modules: handles, roots: { consumer: handles[1] } });
   assert.equal(result.status, "failed");
   assert.equal(result.error.code, "assembly.prepare.core-rejected");
   assert.ok(result.diagnostics.length > 0);
@@ -126,10 +126,10 @@ test("a completed binding with another revision is rejected by Core, not by Asse
 
 test("composition, profileId and bindings are exclusive", async () => {
   const host = await synthetic();
-  const { factories, roots, composition } = host.input;
+  const { modules, roots, composition } = host.input;
   for (const input of [
-    { factories, roots }, { composition, profileId: "p", factories, roots },
-    { composition, bindings: [], factories, roots }, { profileId: "p", bindings: "rows", factories, roots },
+    { modules, roots }, { composition, profileId: "p", modules, roots },
+    { composition, bindings: [], modules, roots }, { profileId: "p", bindings: "rows", modules, roots },
   ]) {
     const result = await host.api.prepare(input);
     assert.equal(result.status, "failed");
@@ -143,7 +143,7 @@ test("an explicit row on a completable slot is kept as written, not replaced", a
   const consumer = declaration("consumer", [], [slot("ok", "synthetic/solo", required())]);
   const handles = bindAll(api, [solo, consumer], calls);
   const result = await api.prepare({
-    profileId: "synthetic/explicit", factories: handles, roots: { consumer: handles[1] },
+    profileId: "synthetic/explicit", modules: handles, roots: { consumer: handles[1] },
     bindings: [binding("synthetic/consumer", "ok", [])],
   });
   assert.equal(result.status, "failed");
@@ -153,15 +153,15 @@ test("an explicit row on a completable slot is kept as written, not replaced", a
 
 test("keys set to undefined count as absent", async () => {
   const host = await synthetic();
-  const { factories, roots, composition } = host.input;
-  const explicit = await host.api.prepare({ composition, profileId: undefined, bindings: undefined, factories, roots });
+  const { modules, roots, composition } = host.input;
+  const explicit = await host.api.prepare({ composition, profileId: undefined, bindings: undefined, modules, roots });
   assert.equal(explicit.status, "prepared", JSON.stringify(explicit));
   const rows = composition.plan.bindings.filter(({ slotId }) => slotId === "logger" || slotId === "filters")
     .map(({ consumerImplementationId, slotId, providerImplementationIds }) => binding(consumerImplementationId, slotId, providerImplementationIds));
-  const derived = await host.api.prepare({ composition: undefined, profileId: "synthetic/profile", bindings: rows, factories, roots });
+  const derived = await host.api.prepare({ composition: undefined, profileId: "synthetic/profile", bindings: rows, modules, roots });
   assert.equal(derived.status, "prepared", JSON.stringify(derived));
   assert.equal(derived.composition.digest, composition.digest);
-  const neither = await host.api.prepare({ composition: undefined, profileId: undefined, factories, roots });
+  const neither = await host.api.prepare({ composition: undefined, profileId: undefined, modules, roots });
   assert.equal(neither.error.code, "assembly.prepare.invalid-input");
 });
 
@@ -170,7 +170,7 @@ test("a module declaring one capability twice is reported by Core, not as an unr
   const twice = declaration("twice", ["synthetic/dup", "synthetic/dup"]);
   const consumer = declaration("consumer", [], [slot("dup", "synthetic/dup")]);
   const handles = bindAll(api, [twice, consumer]);
-  const result = await api.prepare({ profileId: "synthetic/twice", factories: handles, roots: { consumer: handles[1] } });
+  const result = await api.prepare({ profileId: "synthetic/twice", modules: handles, roots: { consumer: handles[1] } });
   assert.equal(result.error.code, "assembly.prepare.core-rejected");
   assert.ok(result.diagnostics.some(({ code }) => code === "declaration.duplicate-capability"), JSON.stringify(result.diagnostics));
 });
@@ -179,7 +179,7 @@ test("the same module twice as a root fails as roots in profileId mode", async (
   const api = assemblyFor(), calls = [];
   const solo = declaration("solo", ["synthetic/solo"]);
   const [handle] = bindAll(api, [solo], calls);
-  const result = await api.prepare({ profileId: "synthetic/roots", factories: [handle], roots: { a: handle, b: handle } });
+  const result = await api.prepare({ profileId: "synthetic/roots", modules: [handle], roots: { a: handle, b: handle } });
   assert.equal(result.status, "failed");
   assert.equal(result.error.code, "assembly.prepare.roots");
   assert.deepEqual(calls, []);
@@ -191,6 +191,6 @@ test("explicit rows beyond the aggregate provider bound fail as a limit before a
   const [handle] = bindAll(api, [solo]);
   const providers = Array.from({ length: 1024 }, (_, index) => `synthetic/p${index}`);
   const bindings = Array.from({ length: 257 }, (_, index) => binding("synthetic/solo", `s${index}`, providers));
-  const result = await api.prepare({ profileId: "synthetic/limit", bindings, factories: [handle], roots: { solo: handle } });
+  const result = await api.prepare({ profileId: "synthetic/limit", bindings, modules: [handle], roots: { solo: handle } });
   assert.equal(result.error.code, "assembly.prepare.limit");
 });

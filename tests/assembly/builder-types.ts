@@ -1,6 +1,6 @@
 // ADR-0032: descriptor-built declarations and handles invariant only in the capabilities they use.
 import { required } from "@get-modular/core";
-import { assemblyFor, declareModule, defineContract } from "@get-modular/assembly";
+import { assemblyFor, declareModule, defineContract, implement, input } from "@get-modular/assembly";
 import type {
   AnyContract, AssemblyPrepareInput, CapabilitiesOf, CapabilityContract, Contract, DeclarationSpec, FactoryContext, ModuleFactory, SuccessfulComposition,
 } from "@get-modular/assembly";
@@ -26,12 +26,12 @@ const createOrders: ModuleFactory<OrdersCapabilities, typeof ordersDeclaration, 
     const n = deps.db.query(String(context.scope));
     return { instance: { n }, capabilities: { "acme/orders": { list: () => n } } };
   };
-const ordersHandle = assemblyFor<OrdersCapabilities>().bindFactory(ordersDeclaration, createOrders);
+const ordersHandle = implement<OrdersCapabilities>()(ordersDeclaration, createOrders);
 const billingDeclaration = declareModule({
   moduleId: "acme/billing", implementationId: "acme/billing/default", owner: { authority: "acme", path: ["billing"] },
   provides: [Billing.provide()], slots: [],
 });
-const billingHandle = assemblyFor<CapabilitiesOf<typeof Billing>>().bindFactory(billingDeclaration, async () => ({
+const billingHandle = implement<CapabilitiesOf<typeof Billing>>()(billingDeclaration, async () => ({
   instance: 0, capabilities: { "acme/billing": { charge: (amount: number) => { void amount; } } },
 }));
 
@@ -41,17 +41,17 @@ const host = assemblyFor<HostCapabilities>();
 const dbDeclaration = declareModule({
   moduleId: "acme/db", implementationId: "acme/db/pg", owner: { authority: "acme", path: ["db"] }, provides: [Db.provide()], slots: [],
 });
-const dbHandle = host.bindFactory(dbDeclaration, async () => ({ instance: 0, capabilities: { "acme/db": { query: () => 1 } } }));
+const dbHandle = implement<CapabilitiesOf<typeof Db>>()(dbDeclaration, async () => ({ instance: 0, capabilities: { "acme/db": { query: () => 1 } } }));
 const sessionDeclaration = declareModule({
   moduleId: "acme/session", implementationId: "acme/session/input", owner: { authority: "acme", path: ["session"] },
   provides: [SessionId.provide()], slots: [],
 });
-const session = host.bindInput(sessionDeclaration);
+const session = input<CapabilitiesOf<typeof SessionId>>()(sessionDeclaration);
 declare const composition: SuccessfulComposition;
 declare const maybe: AbortSignal | undefined;
 export async function assemble(): Promise<number> {
   const ready = await host.prepare({
-    composition, factories: [dbHandle, ordersHandle, billingHandle], roots: { orders: ordersHandle }, inputs: { session },
+    composition, modules: [dbHandle, ordersHandle, billingHandle], roots: { orders: ordersHandle }, inputs: { session },
   });
   if (ready.status !== "prepared") return 0;
   const outcome = await ready.prepared.run({ signal: maybe, scope: undefined, inputs: { session: { "acme/session-id": "s1" } } });
@@ -59,12 +59,12 @@ export async function assemble(): Promise<number> {
 }
 // The 0.2.0 spelling of the prepare input still names a valid input.
 const legacyInput: AssemblyPrepareInput<HostCapabilities, { readonly orders: typeof ordersHandle }> = {
-  composition, factories: [dbHandle, ordersHandle], roots: { orders: ordersHandle },
+  composition, modules: [dbHandle, ordersHandle], roots: { orders: ordersHandle },
 };
 void host.prepare(legacyInput);
 // The 0.2.0 explicit type argument still compiles: prepare keeps R as its first parameter.
 void host.prepare<{ readonly orders: typeof ordersHandle }>({
-  composition, factories: [dbHandle, ordersHandle], roots: { orders: ordersHandle },
+  composition, modules: [dbHandle, ordersHandle], roots: { orders: ordersHandle },
 });
 // A custom factory context type is honored by ModuleFactory.
 type RequestContext = FactoryContext & { readonly requestId: string };
@@ -92,49 +92,49 @@ const staleDeclaration = declareModule({
   moduleId: "acme/orders", implementationId: "acme/orders/stale", owner: { authority: "acme", path: ["orders"] },
   provides: [Orders.provide()], slots: [DbOld.slot("db", required())],
 });
-const staleHandle = assemblyFor<CapabilitiesOf<typeof DbOld | typeof Orders>>().bindFactory(staleDeclaration,
+const staleHandle = implement<CapabilitiesOf<typeof DbOld | typeof Orders>>()(staleDeclaration,
   async () => ({ instance: 0, capabilities: { "acme/orders": { list: () => 1 } } }));
 // @ts-expect-error A used capability bound under an older revision differs from the Host contract.
-void host.prepare({ composition, factories: [dbHandle, staleHandle], roots: { orders: staleHandle } });
+void host.prepare({ composition, modules: [dbHandle, staleHandle], roots: { orders: staleHandle } });
 // A copy of the Db descriptor that promises more than the Host contract under the same id and revision.
 const DbWider = defineContract<DbPort & { readonly close: () => void }>()({ id: "acme/db", revision: 3 });
-const widerHandle = assemblyFor<CapabilitiesOf<typeof DbWider | typeof Orders>>().bindFactory(declareModule({
+const widerHandle = implement<CapabilitiesOf<typeof DbWider | typeof Orders>>()(declareModule({
   moduleId: "acme/orders", implementationId: "acme/orders/wider", owner: { authority: "acme", path: ["orders"] },
   provides: [Orders.provide()], slots: [DbWider.slot("db", required())],
 }), async ({ db }) => ({ instance: 0, capabilities: { "acme/orders": { list: () => { db.close(); return 1; } } } }));
 // @ts-expect-error A consumer expecting more of a used capability than the Host contract is rejected.
-void host.prepare({ composition, factories: [dbHandle, widerHandle], roots: { orders: widerHandle } });
+void host.prepare({ composition, modules: [dbHandle, widerHandle], roots: { orders: widerHandle } });
 const Audit = defineContract<{ readonly write: (line: string) => void }>()({ id: "acme/audit", revision: 1 });
 const auditDeclaration = declareModule({
   moduleId: "acme/audit", implementationId: "acme/audit/file", owner: { authority: "acme", path: ["audit"] },
   provides: [Audit.provide()], slots: [],
 });
-const auditHandle = assemblyFor<CapabilitiesOf<typeof Audit>>().bindFactory(auditDeclaration,
+const auditHandle = implement<CapabilitiesOf<typeof Audit>>()(auditDeclaration,
   async () => ({ instance: 0, capabilities: { "acme/audit": { write: () => {} } } }));
 // @ts-expect-error Every capability a handle uses must be part of the preparing map.
-void host.prepare({ composition, factories: [dbHandle, auditHandle], roots: { audit: auditHandle } });
+void host.prepare({ composition, modules: [dbHandle, auditHandle], roots: { audit: auditHandle } });
 const mixedDeclaration = declareModule({
   moduleId: "acme/audited", implementationId: "acme/audited/default", owner: { authority: "acme", path: ["audit"] },
   provides: [Audit.provide()], slots: [Db.slot("db", required())],
 });
-const mixedHandle = assemblyFor<CapabilitiesOf<typeof Audit | typeof Db>>().bindFactory(mixedDeclaration,
+const mixedHandle = implement<CapabilitiesOf<typeof Audit | typeof Db>>()(mixedDeclaration,
   async () => ({ instance: 0, capabilities: { "acme/audit": { write: () => {} } } }));
 // @ts-expect-error One known and one unknown used capability is still rejected.
-void host.prepare({ composition, factories: [dbHandle, mixedHandle], roots: { db: dbHandle } });
-const auditedSession = assemblyFor<CapabilitiesOf<typeof Audit | typeof SessionId>>().bindInput(declareModule({
+void host.prepare({ composition, modules: [dbHandle, mixedHandle], roots: { db: dbHandle } });
+const auditedSession = input<CapabilitiesOf<typeof Audit | typeof SessionId>>()(declareModule({
   moduleId: "acme/audited-session", implementationId: "acme/audited-session/input", owner: { authority: "acme", path: ["session"] },
   provides: [SessionId.provide(), Audit.provide()], slots: [],
 }));
 // @ts-expect-error An input handle with one known and one unknown capability is rejected too.
-void host.prepare({ composition, factories: [dbHandle], roots: { db: dbHandle }, inputs: { session: auditedSession } });
+void host.prepare({ composition, modules: [dbHandle], roots: { db: dbHandle }, inputs: { session: auditedSession } });
 // @ts-expect-error Authors never write wire compatibility by hand.
 declareModule({ moduleId: "x/y", implementationId: "x/y", owner: { authority: "x", path: ["x"] }, provides: [{ capabilityId: "acme/db", compatibility: { family: "exact", familyVersion: 1, token: "acme/db/r3" } }], slots: [] });
 // @ts-expect-error declareModule supplies kind and schemaVersion.
 declareModule({ kind: "get-modular.module-declaration", moduleId: "x/y", implementationId: "x/y", owner: { authority: "x", path: ["x"] }, provides: [], slots: [] });
-// @ts-expect-error A slot built from another revision does not match the binding map.
-host.bindFactory(staleDeclaration, async () => ({ instance: 0, capabilities: { "acme/orders": { list: () => 1 } } }));
+// The entry is valid under its own map; prepare rejects it against the Host map.
+implement<CapabilitiesOf<typeof DbOld | typeof Orders>>()(staleDeclaration, async () => ({ instance: 0, capabilities: { "acme/orders": { list: () => 1 } } }));
 // @ts-expect-error Capability values follow the contract owner's type.
-host.bindFactory(dbDeclaration, async () => ({ instance: 0, capabilities: { "acme/db": { query: () => "no" } } }));
+implement<CapabilitiesOf<typeof Db>>()(dbDeclaration, async () => ({ instance: 0, capabilities: { "acme/db": { query: () => "no" } } }));
 // @ts-expect-error A module factory is typed by its own map, not widened by the Host.
 const wrongFactory: ModuleFactory<OrdersCapabilities, typeof ordersDeclaration, number> = async (deps) => ({ instance: deps.db.missing, capabilities: { "acme/orders": { list: () => 1 } } });
 void wrongFactory;
@@ -148,21 +148,21 @@ declareModule({ moduleId: "x/y", implementationId: "x/y", owner: { authority: "x
 // A spec typed as the plain DeclarationSpec keeps declareModule typed, so a wrong factory is still rejected.
 declare const widenedSpec: DeclarationSpec;
 // @ts-expect-error A widened spec must not turn the bound declaration into never and disable checking.
-void host.bindFactory(declareModule(widenedSpec), async () => ({ instance: 0, capabilities: { "acme/whatever": 42 } }));
+void implement<CapabilitiesOf<typeof Db>>()(declareModule(widenedSpec), async () => ({ instance: 0, capabilities: { "acme/whatever": 42 } }));
 
 // ADR-0035: a profileId root completes the profile from its handles and returns the compiled composition.
 export async function assembleFromProfile(): Promise<SuccessfulComposition | undefined> {
   const ready = await host.prepare({
-    profileId: "acme/production", bindings: [], factories: [dbHandle, ordersHandle, billingHandle], roots: { orders: ordersHandle },
+    profileId: "acme/production", bindings: [], modules: [dbHandle, ordersHandle, billingHandle], roots: { orders: ordersHandle },
     inputs: { session },
   });
   return ready.status === "prepared" ? ready.composition : undefined;
 }
 // @ts-expect-error profileId root: every used capability must be part of the preparing map.
-void host.prepare({ profileId: "acme/production", factories: [dbHandle, auditHandle], roots: { audit: auditHandle } });
+void host.prepare({ profileId: "acme/production", modules: [dbHandle, auditHandle], roots: { audit: auditHandle } });
 // @ts-expect-error composition and profileId are exclusive.
-void host.prepare({ composition, profileId: "acme/production", factories: [dbHandle], roots: { db: dbHandle } });
+void host.prepare({ composition, profileId: "acme/production", modules: [dbHandle], roots: { db: dbHandle } });
 // @ts-expect-error One of composition and profileId is required.
-void host.prepare({ factories: [dbHandle], roots: { db: dbHandle } });
+void host.prepare({ modules: [dbHandle], roots: { db: dbHandle } });
 // @ts-expect-error bindings complete a profileId and do not accompany a composition.
-void host.prepare({ composition, bindings: [], factories: [dbHandle], roots: { db: dbHandle } });
+void host.prepare({ composition, bindings: [], modules: [dbHandle], roots: { db: dbHandle } });

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { compileComposition, required } from "@get-modular/core";
-import { assemblyFor, declareModule, defineContract } from "@get-modular/assembly";
+import { assemblyFor, declareModule, defineContract, implement } from "@get-modular/assembly";
 
 // ADR-0032: contract descriptors and declareModule emit the current wire generation.
 const isDeclarationError = (error) => error?.code === "assembly.bind.invalid-declaration";
@@ -50,9 +50,9 @@ test("handles bound by different Assembly instances prepare and run together", a
   const composition = await compileComposition({ declarations: [database, orders], profile: ordersProfile([database, orders]) });
   assert.equal(composition.ok, true, JSON.stringify(composition.diagnostics));
   const team = assemblyFor(), host = assemblyFor();
-  const ordersHandle = team.bindFactory(orders, async ({ db }) => ({ instance: db.query(), capabilities: { "acme/orders": {} } }));
-  const dbHandle = host.bindFactory(database, async () => ({ instance: 0, capabilities: { "acme/db": { query: () => 42 } } }));
-  const ready = await host.prepare({ composition, factories: [dbHandle, ordersHandle], roots: { orders: ordersHandle } });
+  const ordersHandle = implement()(orders, async ({ db }) => ({ instance: db.query(), capabilities: { "acme/orders": {} } }));
+  const dbHandle = implement()(database, async () => ({ instance: 0, capabilities: { "acme/db": { query: () => 42 } } }));
+  const ready = await host.prepare({ composition, modules: [dbHandle, ordersHandle], roots: { orders: ordersHandle } });
   assert.equal(ready.status, "prepared", JSON.stringify(ready));
   const outcome = await ready.prepared.run();
   assert.equal(outcome.status, "succeeded");

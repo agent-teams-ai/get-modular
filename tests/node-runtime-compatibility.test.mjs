@@ -87,17 +87,17 @@ const composition = await core.compileComposition({
 assert.equal(composition.ok, true, JSON.stringify(composition.diagnostics));
 assert.match(composition.digest, /^gm-plan:v1:sha-256:/u);
 const api = assembly.assemblyFor();
-const providerFactory = api.bindFactory(provider, async () => ({
+const providerFactory = implement()(provider, async () => ({
   instance: { provider: true }, capabilities: { "smoke/value": 42 },
 }));
 const released = [];
-const consumerFactory = api.bindFactory(consumer, resources.scoped(consumer.implementationId,
+const consumerFactory = implement()(consumer, resources.scoped(consumer.implementationId,
   async (dependencies, { resources: scope }) => {
     await scope.setup({ name: "value", setup: () => dependencies.value, cleanup: (value) => { released.push(value); } });
     return { instance: dependencies.value, capabilities: {} };
   }));
 const preparation = await api.prepare({ composition,
-  factories: [providerFactory, consumerFactory], roots: { consumer: consumerFactory } });
+  modules: [providerFactory, consumerFactory], roots: { consumer: consumerFactory } });
 assert.equal(preparation.status, "prepared", JSON.stringify(preparation));
 const attempt = resources.createScope({ name: "attempt" });
 const outcome = await preparation.prepared.run({ scope: attempt.resources });

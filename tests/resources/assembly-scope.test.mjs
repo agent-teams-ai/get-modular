@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { compileComposition, defineModule, required } from "@get-modular/core";
-import { assemblyFor, declareModule, defineContract } from "@get-modular/assembly";
+import { assemblyFor, declareModule, defineContract, implement, input } from "@get-modular/assembly";
 import { createScope, scoped } from "@get-modular/resources";
 
 // ADR-0030 with ADR-0031: real Core and Assembly from this workspace construct
@@ -47,13 +47,13 @@ test("A1 a failure at module k releases k..1 in reverse; later modules are never
   const { declarations, composition } = await chain(5);
   const api = assemblyFor();
   const log = [];
-  const handles = declarations.map((declaration, index) => api.bindFactory(declaration,
+  const handles = declarations.map((declaration, index) => implement()(declaration,
     scoped(declaration.implementationId, async (_deps, { resources }) => {
       await resources.setup({ name: "r", setup: () => index, cleanup: () => { log.push(`m${index + 1}`); } });
       if (index === 2) throw new Error("m3 failed");
       return { instance: index, capabilities: { [capabilityId(index + 1)]: index } };
     })));
-  const prepared = await prepare(api, { composition, factories: handles, roots: { root: handles[4] } });
+  const prepared = await prepare(api, { composition, modules: handles, roots: { root: handles[4] } });
   const attempt = createScope({ name: "attempt" });
   const outcome = await prepared.run({ scope: attempt.resources });
   assert.equal(outcome.status, "failed");
@@ -66,7 +66,7 @@ test("A2 one prepared assembly, two concurrent runs: closing run 1 never touches
   const { declarations, composition } = await chain(2);
   const api = assemblyFor();
   const released = [];
-  const handles = declarations.map((declaration, index) => api.bindFactory(declaration,
+  const handles = declarations.map((declaration, index) => implement()(declaration,
     scoped(declaration.implementationId, async (_deps, { resources }) => {
       await tick();
       const connection = await resources.setup({
@@ -74,7 +74,7 @@ test("A2 one prepared assembly, two concurrent runs: closing run 1 never touches
       });
       return { instance: connection, capabilities: { [capabilityId(index + 1)]: connection } };
     })));
-  const prepared = await prepare(api, { composition, factories: handles, roots: { root: handles[1] } });
+  const prepared = await prepare(api, { composition, modules: handles, roots: { root: handles[1] } });
   const one = createScope({ name: "session-1" });
   const two = createScope({ name: "session-2" });
   const [first, second] = await Promise.all([
@@ -94,12 +94,12 @@ test("A2 one prepared assembly, two concurrent runs: closing run 1 never touches
   let acquired = 0;
   const strict = assemblyFor();
   const [single] = declarations;
-  const handle = strict.bindFactory(single, scoped("m1", async (_deps, { resources }) => {
+  const handle = implement()(single, scoped("m1", async (_deps, { resources }) => {
     await resources.setup({ name: "r", setup: () => { acquired += 1; }, cleanup: () => {} });
     return { instance: 1, capabilities: { [capabilityId(1)]: 1 } };
   }));
   const alone = await compileComposition({ declarations: [single], profile: profile([single], [moduleId(1)], []) });
-  const lone = await prepare(strict, { composition: alone, factories: [handle], roots: { root: handle } });
+  const lone = await prepare(strict, { composition: alone, modules: [handle], roots: { root: handle } });
   // The Scope itself instead of scope.resources is the typical Host mistake.
   for (const scope of [undefined, {}, { child() {} }, one.resources.child, one]) {
     assert.ok(invalidRunScope(await lone.run({ scope })), String(scope));
@@ -108,19 +108,19 @@ test("A2 one prepared assembly, two concurrent runs: closing run 1 never touches
 });
 
 test("A3 concurrent runs of one prepared assembly never mix inputs, and inputs never enter created", async () => {
-  const input = declare("s/input", ["session/id"]);
+  const inputModule = declare("s/input", ["session/id"]);
   const store = declare("s/store", ["s/store"], [["id", "session/id"]]);
   const composition = await compileComposition({
-    declarations: [input, store], profile: profile([input, store], ["s/store"], [bind("s/store", "id", "s/input")]),
+    declarations: [inputModule, store], profile: profile([inputModule, store], ["s/store"], [bind("s/store", "id", "s/input")]),
   });
   const api = assemblyFor();
-  const inputHandle = api.bindInput(input);
-  const storeHandle = api.bindFactory(store, scoped("s/store", async (deps) => {
+  const inputHandle = input()(inputModule);
+  const storeHandle = implement()(store, scoped("s/store", async (deps) => {
     await tick();
     return { instance: deps.id, capabilities: { "s/store": deps.id } };
   }));
   const prepared = await prepare(api, {
-    composition, factories: [storeHandle], roots: { store: storeHandle }, inputs: { session: inputHandle },
+    composition, modules: [storeHandle], roots: { store: storeHandle }, inputs: { session: inputHandle },
   });
   const host = createScope({ name: "host" });
   const outcomes = await Promise.all(Array.from({ length: 64 }, (_, index) => prepared.run({
@@ -138,7 +138,7 @@ test("A4 cancelling run() reaches a hung setup; the module lifetime is not tied 
   let mode = "hang";
   let captured;
   let nested;
-  const handle = api.bindFactory(declarations[0], scoped("m1", async (_deps, context) => {
+  const handle = implement()(declarations[0], scoped("m1", async (_deps, context) => {
     assert.deepEqual(Object.keys(context).sort(), ["resources", "signal"]);
     nested = context.resources.child({ name: "nested" }).resources;
     await context.resources.setup({ name: "conn", cleanup: () => {}, setup: ({ signal }) => new Promise((resolve, reject) => {
@@ -148,7 +148,7 @@ test("A4 cancelling run() reaches a hung setup; the module lifetime is not tied 
     captured = context.resources;
     return { instance: 1, capabilities: { [capabilityId(1)]: 1 } };
   }));
-  const prepared = await prepare(api, { composition, factories: [handle], roots: { root: handle } });
+  const prepared = await prepare(api, { composition, modules: [handle], roots: { root: handle } });
   const host = createScope({ name: "host" });
   const attempt = host.resources.child({ name: "attempt" });
   const run = new AbortController();
@@ -200,12 +200,12 @@ test("A6 a builder fragment bound under its own map runs scoped inside the Host'
   const released = [];
   const team = assemblyFor();
   const host = assemblyFor();
-  const ordersHandle = team.bindFactory(orders, scoped(orders.implementationId, async (deps, { resources }) => {
+  const ordersHandle = implement()(orders, scoped(orders.implementationId, async (deps, { resources }) => {
     const count = await resources.setup({ name: "conn", setup: () => deps.db.query(), cleanup: () => { released.push("conn"); } });
     return { instance: count, capabilities: { "acme/orders": { list: () => count } } };
   }));
-  const databaseHandle = host.bindFactory(database, async () => ({ instance: 0, capabilities: { "acme/db": { query: () => 42 } } }));
-  const prepared = await prepare(host, { composition, factories: [databaseHandle, ordersHandle], roots: { orders: ordersHandle } });
+  const databaseHandle = implement()(database, async () => ({ instance: 0, capabilities: { "acme/db": { query: () => 42 } } }));
+  const prepared = await prepare(host, { composition, modules: [databaseHandle, ordersHandle], roots: { orders: ordersHandle } });
   const attempt = createScope({ name: "attempt" });
   const outcome = await prepared.run({ scope: attempt.resources });
   assert.equal(outcome.status, "succeeded");

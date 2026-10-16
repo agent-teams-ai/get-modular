@@ -1,5 +1,5 @@
 import type { Cardinality, Contract, DeclarationSpec, Declared, ProvidedEntry, SlotEntry } from "./types.js";
-import { AssemblyBindingError } from "./bind.js";
+import { AssemblyBindingError } from "./entry.js";
 
 // The only place that spells the wire generation (ADR-0032). The next generation changes
 // these bodies, not the declarations that call them.

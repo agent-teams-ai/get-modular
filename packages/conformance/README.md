@@ -20,9 +20,11 @@ npm install --save-dev @get-modular/conformance
 
 Supported Node.js: `>=24.18.0 <25 || >=26.10.0 <27`. Core, Assembly and
 resources are peer dependencies, each with a range of one 0.x minor, and nothing
-else is a dependency. Your project loads one copy of each, so the `scoped()`
-brand of resources matches. The package imports no test runner and no Node
-built-in module.
+else is a dependency. Exactly one copy of `@get-modular/assembly` must resolve:
+`smoke` calls its public `implement` and `group` functions to rebuild entries and
+groups, and their private authentication must see the production objects. Your
+project also loads one copy of resources, so the `scoped()` brand matches. The
+package imports no test runner and no Node built-in module.
 
 TypeScript consumers need `AbortSignal`, `Disposable` and `AsyncDisposable`:
 either `lib` with `ES2024`, `ESNext.Disposable` and `DOM`, or `@types/node`.
@@ -30,18 +32,16 @@ either `lib` with `ES2024`, `ESNext.Disposable` and `DOM`, or `@types/node`.
 ## Test one module with `isolate`
 
 ```ts
-import { assemblyFor } from "@get-modular/assembly";
 import { isolate } from "@get-modular/conformance";
 
-await using orders = await isolate(assemblyFor<Capabilities>(), {
-  declaration: ordersDeclaration,
-  factory: createOrders,
-  dependencies: { db: fakeDb, audit: undefined, replicas: [] },
-});
+await using orders = await isolate(ordersEntry, {
+  dependencies: { db: fakeDb, audit: undefined, replicas: [] } });
 orders.capabilities["acme/orders"].list();
 ```
 
-`isolate` builds the module through a real Assembly run. Each dependency
+`isolate(entry, { dependencies, signal?, within? })` builds the entry through a
+real Assembly run. The entry carries its adapter, so no adapter is applied here.
+Each dependency
 becomes an input module of its own, so the module sees the same frozen
 dependency record, the same product check and the same scope as in production.
 Fakes are plain typed values: the compiler checks them against the contract
@@ -74,9 +74,12 @@ const steps = await smoke({ api: assemblyFor<Host>(), compose: composeProduction
 ```
 
 Write the production composition root as a function of Assembly and pass it as
-`compose`; `smoke` calls it once. Every factory must be bound through the `api`
-passed to `compose`: a factory bound elsewhere never sees an injection, so
-`smoke` rejects. It then runs the prepared root without
+`compose`; `smoke` calls it once. It first calls the real `prepare` with the
+input as given and returns any failure unchanged. It then rebuilds every entry
+with `implement()(entry.declaration, wrap(entry.factory))`, every group with
+`group(name, members)`, remaps roots by identity and prepares the rebuilt tree.
+If `compose` resolves with a preparation that its wrapped `prepare` did not
+produce, `smoke` rejects. It then runs the prepared root without
 injection, and again with a failure and an abort injected right after each
 module (`inject` and `at` narrow the list). Every attempt runs in a scope of its
 own that must close with `complete: true`. It rejects with
