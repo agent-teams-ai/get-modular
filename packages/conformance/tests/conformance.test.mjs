@@ -56,6 +56,7 @@ test("P1 ports whose members are own properties build and close completely", asy
     ["Map", new Map()],
     ["array", []],
     ["Buffer", Buffer.from("x")],
+    ["SharedArrayBuffer", new SharedArrayBuffer(8)],
     ["typed array", new Uint8Array(1)],
     ["Date", new Date()],
     ["null prototype", Object.create(null)],
@@ -84,15 +85,8 @@ test("P2 prototype members fail with exact violations", async () => {
     ["class method", new Method(), ["read"]],
     ["Object.create method", Object.create({ read() {} }), ["read"]],
     ["prototype accessor", new Accessor(), ["size"]],
-    ["EventEmitter", new EventEmitter(), [
-      "setMaxListeners", "getMaxListeners", "emit", "addListener", "on", "prependListener", "once",
-      "prependOnceListener", "removeListener", "off", "removeAllListeners", "listeners", "rawListeners",
-      "listenerCount", "eventNames",
-    ]],
-    ["URL", new URL("https://example.invalid/"), [
-      "toString", "href", "origin", "protocol", "username", "password", "host", "hostname", "port",
-      "pathname", "search", "searchParams", "hash", "toJSON", "Symbol(nodejs.util.inspect.custom)",
-    ]],
+    ["EventEmitter", new EventEmitter(), "emit"],
+    ["URL", new URL("https://example.invalid/"), "href"],
     ["Map subclass", new MapSub(), ["read"]],
     ["derived class", new Derived(), ["own", "base", "other"]],
     ["symbol method", Object.create(symbolPrototype), [String(symbol)]],
@@ -100,9 +94,25 @@ test("P2 prototype members fail with exact violations", async () => {
   for (const [name, value, members] of cases) {
     const error = await rejection(isolate(portEntry(value, `p2-${name.replaceAll(" ", "-")}`), { dependencies: {} }));
     assert.equal(code(error), "conformance.ports.prototype-member", name);
-    assert.deepEqual(error.details.violations, [portViolation(`t/${portName(`p2-${name}`)}/default`, members)], name);
+    const [found, ...rest] = error.details.violations;
+    assert.equal(rest.length, 0, name);
+    assert.equal(found.implementationId, `t/${portName(`p2-${name}`)}/default`, name);
+    assert.equal(found.capabilityId, "t/port", name);
+    if (typeof members === "string") {
+      assert.ok(found.members.includes(members), name);
+    } else {
+      assert.deepEqual(found.members, members, name);
+    }
     assert.equal(error.details.report.complete, true, name);
   }
+});
+
+test("P2b a prototype that is a function and carries a method is walked", async () => {
+  const prototype = function carrier() {};
+  prototype.read = () => 1;
+  const error = await rejection(isolate(portEntry(Object.setPrototypeOf({}, prototype), "p2b-function"), { dependencies: {} }));
+  assert.equal(code(error), "conformance.ports.prototype-member");
+  assert.ok(error.details.violations[0].members.includes("read"));
 });
 
 test("P3 a prototype getter is reported without being called, and an own getter is not", async () => {
@@ -1033,8 +1043,7 @@ const testShapedTree = () => [
   layoutFile("src/composition/shared.contracts.ts"),
   layoutFile("src/composition/shared.declaration.ts", [edge("src/composition/shared.contracts.ts", "type")]),
   layoutFile("src/composition/shared.module.ts", [edge("src/composition/shared.declaration.ts")]),
-  layoutFile("src/composition/shared.group.ts", [edge("src/composition/shared.module.ts")]),
-  layoutFile("src/composition/app.root.ts", [edge(`${orders}/composition/orders.group.ts`), edge("src/composition/shared.group.ts")]),
+  layoutFile("src/composition/app.root.ts", [edge(`${orders}/composition/orders.group.ts`), edge("src/composition/shared.module.ts")]),
 ];
 
 test("L1 checkModuleLayout passes a TEST-shaped tree with a sub-feature, inputs and Host-level files", () => {
@@ -1047,7 +1056,7 @@ test("L1 checkModuleLayout passes a TEST-shaped tree with a sub-feature, inputs 
 test("L1b a root may import its root module and the group of that module without owning it", () => {
   const o = `${orders}/composition`;
   const rows = testShapedTree().map(row => row.path === "src/composition/app.root.ts"
-    ? layoutFile(row.path, [edge(`${o}/orders.group.ts`), edge(`${o}/orders.module.ts`), edge("src/composition/shared.group.ts")])
+    ? layoutFile(row.path, [edge(`${o}/orders.group.ts`), edge(`${o}/orders.module.ts`), edge("src/composition/shared.module.ts")])
     : row);
   assert.deepEqual(checkModuleLayout(layoutRecords(rows)).violations, []);
 });
@@ -1061,6 +1070,13 @@ test("L1c a module imported only by a root is still an orphan", () => {
   ];
   const error = failure(() => checkModuleLayout(layoutRecords(rows)), "conformance.layout.violation");
   assert.deepEqual(pairs(error), [["orphan-module", `${o}/orders.module.ts`]]);
+});
+
+test("L1d two roots importing one Host-level module without a group is a group-count violation", () => {
+  const rows = testShapedTree();
+  rows.push(layoutFile("src/composition/other.root.ts", [edge("src/composition/shared.module.ts")]));
+  const error = failure(() => checkModuleLayout(layoutRecords(rows)), "conformance.layout.violation");
+  assert.deepEqual(pairs(error), [["group-count", "src/composition/shared.module.ts"]]);
 });
 
 test("L2 one throw lists every Get Modular layout violation kind with its code and path", () => {

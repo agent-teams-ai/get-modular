@@ -29,7 +29,7 @@ const intrinsicPrototypes = new Set<object>([
 for (const value of [
   (globalThis as ContainerGlobals).Buffer,
   (globalThis as ContainerGlobals).Float16Array,
-  typeof SharedArrayBuffer === "function" ? SharedArrayBuffer.prototype : undefined,
+  typeof SharedArrayBuffer === "function" ? SharedArrayBuffer : undefined,
 ]) {
   const prototype = containerPrototype(value);
   if (prototype !== undefined) {
@@ -39,7 +39,7 @@ for (const value of [
 
 function parentOf(value: object): object | null {
   const parent: unknown = Object.getPrototypeOf(value);
-  return typeof parent === "object" ? parent : null;
+  return parent !== null && (typeof parent === "object" || typeof parent === "function") ? parent : null;
 }
 
 const isForeignObjectPrototype = (prototype: object): boolean =>

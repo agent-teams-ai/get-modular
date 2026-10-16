@@ -247,16 +247,26 @@ function ownerViolations(context: LayoutContext): LayoutViolation[] {
     }
     const site = context.sites.get(path);
     const ownGroup = site === undefined ? undefined : groupPathOf(site);
-    // Only group files own modules; a root may import a module to name it in `roots` without owning it.
-    const owners = (context.importers.get(path) ?? []).filter(edge => GROUP.test(edge.from));
-    const valid = owners.filter(edge => site === undefined
-      ? context.sites.get(edge.from) === undefined : edge.from === ownGroup);
-    if (owners.length === 0) {
-      violations.push(violation("orphan-module", path,
-        "a *.module.ts file must be imported by its feature group"));
-    } else if (owners.length !== 1 || valid.length !== 1) {
+    const importers = context.importers.get(path) ?? [];
+    const groups = importers.filter(edge => GROUP.test(edge.from));
+    if (groups.length > 0) {
+      // A root that imports a module to name it in `roots` does not count when a group already owns it.
+      const valid = groups.filter(edge => site === undefined
+        ? context.sites.get(edge.from) === undefined : edge.from === ownGroup);
+      if (groups.length !== 1 || valid.length !== 1) {
+        violations.push(violation("group-count", path,
+          "a *.module.ts file must be imported by exactly one own feature group"));
+      }
+      continue;
+    }
+    // Without a group, only a Host-level module listed as the root's own entry is owned, by exactly one root.
+    const roots = importers.filter(edge => ROOT.test(edge.from));
+    if (site === undefined && roots.length > 1) {
       violations.push(violation("group-count", path,
-        "a *.module.ts file must be imported by exactly one own feature group"));
+        "a Host-level *.module.ts file must be imported by exactly one root"));
+    } else if (site !== undefined || roots.length === 0) {
+      violations.push(violation("orphan-module", path,
+        "a *.module.ts file must be imported by its feature group, or by one root when it sits outside every feature"));
     }
   }
   return violations;
