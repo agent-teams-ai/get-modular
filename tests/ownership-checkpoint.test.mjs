@@ -84,7 +84,7 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
     {
       id: "ADR-0037",
       path: "docs/decisions/0037-pin-providers-not-completed-rows-in-the-binding-oracle.md",
-      immutableDigest: "sha256:ce487d2ac160142f3258e0c0a611a6a6a290b6c5adc0c0b148d53b62a5f403dd",
+      immutableDigest: "sha256:1c49f7bbfd5ec7df2dbfaefbfd58da7ea2c3583421fc22a3122acd15648718a6",
     },
   ]);
   const paths = execFileSync("git", ["ls-tree", "-r", "--name-only", checkpoint.evidence.base,

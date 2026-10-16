@@ -723,18 +723,23 @@ test("W4 a new required row bound to its single pinned provider is the accepted 
 test("W4b a required slot moved to another capability passes with the same oracle", async () => {
   const logs = wiringDeclaration("moved-logs", Logs);
   const db = wiringDeclaration("moved-db", Db);
+  const keeper = wiringDeclaration("moved-keeper", Audit, [Logs.slot("a", required()), Db.slot("b", required())]);
   const before = wiringDeclaration("moved-consumer", Orders, [Logs.slot("store", required())]);
   const after = wiringDeclaration("moved-consumer", Orders, [Db.slot("store", required())]);
   const oracle = {
     providers: {
-      "t/logs": logs.implementationId, "t/db": db.implementationId, "t/orders": before.implementationId,
+      "t/logs": logs.implementationId, "t/db": db.implementationId, "t/audit": keeper.implementationId,
+      "t/orders": before.implementationId,
     },
-    roots: [before.implementationId],
+    roots: [keeper.implementationId, before.implementationId],
   };
-  check(await wiringComposition([logs, db, before], [before.moduleId],
-    [binding(before, "store", Logs, [logs.implementationId])]), [oracle]);
-  check(await wiringComposition([logs, db, after], [after.moduleId],
-    [binding(after, "store", Db, [db.implementationId])]), [oracle]);
+  const keeperRows = [
+    binding(keeper, "a", Logs, [logs.implementationId]), binding(keeper, "b", Db, [db.implementationId]),
+  ];
+  check(await wiringComposition([logs, db, keeper, before], [keeper.moduleId, before.moduleId],
+    [...keeperRows, binding(before, "store", Logs, [logs.implementationId])]), [oracle]);
+  check(await wiringComposition([logs, db, keeper, after], [keeper.moduleId, after.moduleId],
+    [...keeperRows, binding(after, "store", Db, [db.implementationId])]), [oracle]);
 });
 
 test("W9 a pinned implementation must provide its pinned capability in its declaration", async () => {
