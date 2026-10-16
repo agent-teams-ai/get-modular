@@ -59,6 +59,14 @@ class DuplicateFault extends Error {
   readonly occurrences: readonly DuplicateModule[];
   constructor(occurrences: DuplicateFault["occurrences"]) { super("assembly.prepare.duplicate-module"); this.occurrences = occurrences; }
 }
+function sortIds(values: Iterable<string>): string[] {
+  const ids: string[] = [];
+  for (const value of values) {
+    const next = ids.findIndex((candidate) => candidate > value);
+    ids.splice(next < 0 ? ids.length : next, 0, value);
+  }
+  return ids;
+}
 // Module entries come only through `modules` (groups flattened depth first) and input entries only through
 // `inputs`; together they cover every selection exactly once.
 function collectMetadata(modules: readonly unknown[], inputEntries: readonly unknown[], inputAliases: readonly string[]): Collected {
@@ -100,9 +108,8 @@ function collectMetadata(modules: readonly unknown[], inputEntries: readonly unk
     if (inputAlias === undefined) {groupPaths.set(id, path);}
   }
   // Only duplicated ids are sorted, by code unit order.
-  const repeated = [...new Set([...paths.keys(), ...inputs.keys()])]
-    .filter((id) => (paths.get(id)?.length ?? 0) + (inputs.get(id)?.length ?? 0) > 1)
-    .sort((x, y) => (x < y ? -1 : x > y ? 1 : 0));
+  const repeated = sortIds([...new Set([...paths.keys(), ...inputs.keys()])]
+    .filter((id) => (paths.get(id)?.length ?? 0) + (inputs.get(id)?.length ?? 0) > 1));
   const duplicated = repeated.map((id): DuplicateModule => Object.freeze({
     implementationId: id, paths: Object.freeze(paths.get(id) ?? []), inputs: Object.freeze(inputs.get(id) ?? []),
   }));
