@@ -1,0 +1,2 @@
+line 2: custom Assembly bindFactory member stays; only its prepare member maps to the new Assembly
+line 3: custom Assembly bindInput member stays; only its prepare member maps to the new Assembly

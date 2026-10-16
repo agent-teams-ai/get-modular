@@ -1,0 +1,5 @@
+export const custom = {
+  bindFactory: (declaration: unknown, factory: unknown) => ({ declaration, factory }),
+  bindInput: (declaration: unknown) => declaration,
+  prepare: (input: unknown) => input,
+};

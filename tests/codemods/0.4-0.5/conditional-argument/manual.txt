@@ -1,0 +1,1 @@
+line 10: bindFactory declaration or factory stays; choose both at module scope before the call

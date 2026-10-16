@@ -1,0 +1,8 @@
+import type { Assembly } from "@get-modular/assembly";
+
+type Capabilities = Record<never, never>;
+declare const entries: unknown[];
+
+export function prepare(api: Assembly<Capabilities>) {
+  return api.prepare({ profileId: "test/tuple", factories: [...entries], roots: {} });
+}

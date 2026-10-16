@@ -5,16 +5,21 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { Project } from "ts-morph";
 import factoryHandle from "./0.2-0.3/factory-handle.mjs";
+import entries from "./0.4-0.5/entries.mjs";
+import prepare from "./0.4-0.5/prepare.mjs";
+import isolate from "./0.4-0.5/isolate.mjs";
+import typeNames from "./0.4-0.5/type-names.mjs";
+import imports from "./0.4-0.5/imports.mjs";
 
 // One entry per breaking minor: `<from>-<to>` runs these transforms in order.
-const CODEMODS = { "0.2-0.3": [factoryHandle] };
+const CODEMODS = { "0.2-0.3": [factoryHandle], "0.4-0.5": [entries, prepare, isolate, typeNames, imports] };
 // realpathSync.native canonicalizes letter case on case-insensitive volumes but can throw on some Windows ones.
 const canonical = (path) => {
   try { return realpathSync.native(path); } catch { return realpathSync(path); }
 };
 const CHECKOUT = canonical(resolve(dirname(fileURLToPath(import.meta.url)), "../../.."));
 const SKIPPED = new Set(["node_modules", "dist", ".git"]);
-const SOURCE = /\.(?:ts|tsx|mts|cts)$/u;
+const SOURCE = /\.(?:ts|tsx|mts|cts|mjs|js|cjs)$/u;
 
 function usage(message) {
   console.error(`${message}\nusage: codemod <from>-<to> <directory> [--dry | --check | --write [--allow-dirty]]\n`
@@ -62,6 +67,7 @@ export function main(argv) {
 
   const tsConfigFilePath = join(directory, "tsconfig.json");
   const project = new Project({
+    allowJs: true,
     skipAddingFilesFromTsConfig: true,
     ...(existsSync(tsConfigFilePath) ? { tsConfigFilePath } : {}),
   });

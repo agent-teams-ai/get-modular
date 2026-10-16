@@ -1,0 +1,10 @@
+import type { Assembly } from "@get-modular/assembly";
+
+type Capabilities = Record<never, never>;
+declare const firstDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const secondDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const firstFactory: (...args: any[]) => any;
+declare const secondFactory: (...args: any[]) => any;
+
+export const entry = (api: Assembly<Capabilities>, ordinary?: boolean) =>
+  api.bindFactory(ordinary ? firstDeclaration : secondDeclaration, ordinary ? firstFactory : secondFactory);

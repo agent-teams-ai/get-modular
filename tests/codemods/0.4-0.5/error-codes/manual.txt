@@ -1,0 +1,2 @@
+line 3: BindingErrorCode reference stays; add assembly.bind.invalid-group and assembly.prepare.duplicate-module to exhaustive handling
+line 3: PreparationErrorCode reference stays; add assembly.bind.invalid-group and assembly.prepare.duplicate-module to exhaustive handling

@@ -1,0 +1,13 @@
+import { assemblyFor } from "@get-modular/assembly";
+
+type Capabilities = Record<never, never>;
+declare const moduleDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const factory: (...args: any[]) => any;
+
+const api = assemblyFor<Capabilities>();
+const { bindFactory } = api;
+bindFactory(moduleDeclaration, factory);
+api["bindInput"](moduleDeclaration);
+api?.bindFactory(moduleDeclaration, factory);
+this.api.bindFactory(moduleDeclaration, factory);
+assemblyFor<Capabilities>().bindFactory(moduleDeclaration, factory);
