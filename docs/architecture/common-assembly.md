@@ -457,8 +457,11 @@ compiled examples and the recipes for growing a feature.
    `composition/` is flat at every depth: it has no subdirectory. A `*.contracts.ts`
    file exists only as `composition/<own segment>.contracts.ts`, or flat in the Host's
    `src/composition/`. Every `*.module.ts` imports a declaration of its own feature and
-   is listed by exactly one production file, its feature's group (a Host-level module:
-   a root). Every `*.declaration.ts` is imported by a module file or by
+   is owned by exactly one production file: its feature's group, or, for a Host-level
+   module outside `features/`, the root that lists it as its own entry. A root's import
+   of a module only to name it in `roots` does not count when a group owns that module;
+   several roots importing one Host-level module that no group lists is a violation
+   (`group-count`). Every `*.declaration.ts` is imported by a module file or by
    `composition/<feature>.inputs.ts`, which holds the feature's input entries. No
    source file sits directly in `application/`, and a use-case file has exactly one
    runtime export, its function, and may also export types. `checkModuleLayout` reports
@@ -536,10 +539,12 @@ profile, the plan or the digest.
 3. A root's `modules` lists the groups of top-level features and its own entries, and
    nothing else. It never lists a module of a feature, and never the group of a
    sub-feature, which is private to its parent. A root file is
-   `src/composition/<root>.root.ts`. It imports a feature's module file only to name
-   that entry in `roots`; the entry stays listed in its feature's group and nowhere
-   else in `modules`. A Host-level module, `src/composition/<module>.declaration.ts`
-   and `<module>.module.ts`, is listed directly in the root's `modules`.
+   `src/composition/<root>.root.ts`. Groups own feature modules: the root imports a
+   feature's module file only to name that entry in `roots`, and the entry stays listed
+   in its feature's group and nowhere else in `modules`. A root owns the Host-level
+   modules outside `features/` that it lists as its own entries
+   (`src/composition/<module>.declaration.ts` and `<module>.module.ts`), listed
+   directly in its `modules`; one such module belongs to one root.
 4. The list a root passes to `prepare` never depends on run-time values; a variant is
    a separate root with its own `profileId`. Names are labels, never identities.
 5. An entry listed twice, or two entries with one `implementationId`, fail with
