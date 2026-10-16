@@ -37,7 +37,8 @@ capability that nobody binds.
   difference in one `conformance.wiring.mismatch` error:
   - selections equal the pinned providers plus the roots, and plan roots equal the oracle roots;
   - the declarations cover the plan selections exactly, by `implementationId`;
-  - every capability a selected declaration provides is pinned to that implementation;
+  - every capability a selected declaration provides is pinned to that implementation, and every pinned implementation
+    that is selected and declared provides its pinned capability in its declaration;
   - every listed row equals its plan row, provider order included;
   - an unlisted row is accepted only when its slot, looked up in the consumer's declaration, is `required` and the row
     binds the single pinned provider of its capability; unlisted `optional` and `many` rows, and every row of a
@@ -60,10 +61,11 @@ not change Core, Assembly, the plan or the plan digest.
 
 ## Consequences
 
-- Provider replacement, an added or removed module, a changed root, a provided capability that is not pinned, a slot
-  moved to another capability and every explicit, optional or many row fail the oracle.
-- Accepted weakening: a new `required` slot bound to its single pinned provider needs no oracle change; review it as a
-  declaration change.
+- Provider replacement, an added or removed module, a changed root, a provided capability that is not pinned, a pinned
+  provider that does not provide its capability, and every explicit, optional or many row fail the oracle; so does a
+  plan row whose slot or capability differs from the declarations passed.
+- Accepted weakening: a new `required` slot, or a `required` slot moved to another capability, bound to the single
+  pinned provider of its capability needs no oracle change; review it as a declaration change.
 - The oracle needs the declarations the test already has for `compileComposition` and `checkNamespaces`; it adds no new
   input to a root test.
 - The agent-runtime and TEST oracles are rewritten from row tables to pins.

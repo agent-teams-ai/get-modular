@@ -21,6 +21,7 @@ export type WiringDifferenceRule =
   | "declaration-selection"
   | "oracle-provider-conflict"
   | "oracle-row-conflict"
+  | "pinned-provider"
   | "provided-capability"
   | "root"
   | "row"

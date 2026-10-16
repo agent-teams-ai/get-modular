@@ -180,7 +180,8 @@ check reports a difference when:
 - the declarations do not cover the plan selections exactly, by
   `implementationId` (`declaration-selection`);
 - a selected declaration provides a capability that the oracle does not pin to
-  it (`provided-capability`);
+  it (`provided-capability`), or a pinned implementation that is selected and
+  declared does not provide its pinned capability (`pinned-provider`);
 - a listed row differs from its plan row, provider order included (`row`,
   `row-order`), or a listed row is absent from the plan;
 - an unlisted plan row is not a `required` slot bound to the single pinned
@@ -221,7 +222,9 @@ unresolved specifier); the collector drops Node builtins. Only `value` imports
 own, place or use a file; a `type` import never does. A feature is the
 directory below the last `features/` segment, and its key in the metrics is
 that directory's path, so the same feature name under two source roots stays
-apart. Host-level files (`src/composition/`) belong to no feature.
+apart. Host-level files (`src/composition/`) belong to no feature. A Host-level
+file under a directory literally named `composition` (for example
+`packages/composition/src/index.ts`) is reported as `nested-composition`.
 
 It reports every Get Modular rule with a stable violation code:
 `module-declaration` (a module imports no declaration of its feature),

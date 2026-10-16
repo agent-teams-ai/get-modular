@@ -720,6 +720,39 @@ test("W4 a new required row bound to its single pinned provider is the accepted 
   }]);
 });
 
+test("W4b a required slot moved to another capability passes with the same oracle", async () => {
+  const logs = wiringDeclaration("moved-logs", Logs);
+  const db = wiringDeclaration("moved-db", Db);
+  const before = wiringDeclaration("moved-consumer", Orders, [Logs.slot("store", required())]);
+  const after = wiringDeclaration("moved-consumer", Orders, [Db.slot("store", required())]);
+  const oracle = {
+    providers: {
+      "t/logs": logs.implementationId, "t/db": db.implementationId, "t/orders": before.implementationId,
+    },
+    roots: [before.implementationId],
+  };
+  check(await wiringComposition([logs, db, before], [before.moduleId],
+    [binding(before, "store", Logs, [logs.implementationId])]), [oracle]);
+  check(await wiringComposition([logs, db, after], [after.moduleId],
+    [binding(after, "store", Db, [db.implementationId])]), [oracle]);
+});
+
+test("W9 a pinned implementation must provide its pinned capability in its declaration", async () => {
+  const logs = wiringDeclaration("w9-logs", Logs);
+  const consumer = wiringDeclaration("w9-consumer", Orders, [Logs.slot("logs", required())]);
+  const composition = await wiringComposition([logs, consumer], [consumer.moduleId],
+    [binding(consumer, "logs", Logs, [logs.implementationId])]);
+  const oracle = {
+    providers: { "t/logs": logs.implementationId, "t/orders": consumer.implementationId },
+    roots: [consumer.implementationId],
+  };
+  check(composition, [oracle]);
+  const wrong = differences({
+    composition, oracles: [{ ...oracle, providers: { ...oracle.providers, "t/db": logs.implementationId } }],
+  });
+  assert.deepEqual(wrong.map(entry => `${entry.rule} ${entry.subject}`), ["pinned-provider t/db"]);
+});
+
 test("W5 describeWiring prints roots, selections and rows in its debug format", async () => {
   const logs = wiringDeclaration("describe-logs", Logs);
   const consumer = wiringDeclaration("describe-consumer", Orders, [Logs.slot("logs", required())]);

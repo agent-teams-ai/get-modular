@@ -232,6 +232,17 @@ function checkDeclarations(
       message: "declarations must cover the plan selections exactly",
     });
   }
+  for (const [capability, pinned] of providers) {
+    for (const id of pinned) {
+      const entry = declarations.get(id);
+      if (entry !== undefined && selected.has(id) && !entry.provides.includes(capability)) {
+        differences.push({
+          rule: "pinned-provider", subject: capability, expected: [id], actual: entry.provides,
+          message: `${id} is pinned as a provider of ${capability}, but its declaration does not provide it`,
+        });
+      }
+    }
+  }
   for (const entry of declarations.values()) {
     if (!selected.has(entry.implementationId)) {
       continue;
