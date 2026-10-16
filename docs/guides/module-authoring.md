@@ -158,7 +158,6 @@ export function composeAcme(api: Assembly<AcmeCapabilities>) {
 }
 ```
 
-
 ## 2. Designing a feature
 
 A feature is a cohesive capability, never one per class or endpoint. A module is a
@@ -252,7 +251,6 @@ export type Receipt = { readonly total: number; readonly at: number };
 export type OrdersPort = { readonly checkout: (orderId: string, cents: number) => Receipt };
 ```
 
-
 The declaration and the module (about 20 lines; the module file may hold only wiring):
 
 <!-- module-authoring-example: project -->
@@ -288,7 +286,6 @@ export const checkoutModule = implement<OrdersCapabilities>()(checkoutDeclaratio
 });
 ```
 
-
 Its `isolate` test builds the module exactly as production does and passes typed
 fakes:
 
@@ -310,7 +307,6 @@ test("checkout prices through discounts and stamps the time", async () => {
   assert.deepEqual(orders.capabilities["acme/orders/orders"].checkout("o1", 100), { total: 99, at: 42 });
 });
 ```
-
 
 The group and the oracle part each gain a line:
 
@@ -376,7 +372,6 @@ export const storeMemoryDeclaration = declareModule({
 });
 ```
 
-
 An input is a declaration without slots, in its own file; its entry lives in
 `<feature>.inputs.ts` (section 14):
 
@@ -404,7 +399,6 @@ import type { SessionsCapabilities } from "./sessions.contracts.js";
 // Input entries are listed in the root's `inputs`, never in a group.
 export const sessionIdInput = input<SessionsCapabilities>()(sessionIdDeclaration);
 ```
-
 
 Variants from one spec may share a file when they differ only by values.
 
@@ -440,7 +434,6 @@ import type { ClockPort } from "../contracts/clock.js";
 export const Clock = defineContract<ClockPort>()({ id: "acme/infra/clock", revision: 1 });
 export interface InfraCapabilities extends CapabilitiesOf<typeof Clock> {}
 ```
-
 
 Visible features and the paths of their descriptors from `orders` `discounts`:
 `../../../composition/orders.contracts.js` for the parent (upward),
@@ -531,7 +524,6 @@ export const orderLinesModule = implement<OrdersCapabilities>()(orderLinesDeclar
 });
 ```
 
-
 A sub-feature is private. Code outside its parent uses the parent's republication
 (`export { Discounts } from '../features/discounts/composition/discounts.contracts.js'`),
 one level at a time. Downward and lateral edges must stay acyclic, type-only
@@ -569,7 +561,6 @@ export const invoicingDeclaration = declareModule({
   provides: [Invoices.provide()], slots: [Discounts.slot("discounts", required())],
 });
 ```
-
 
 ## 6. Ports as factory functions
 
@@ -615,7 +606,6 @@ export const clockModule = implement<InfraCapabilities>()(clockDeclaration, asyn
   return { instance: clock, capabilities: { "acme/infra/clock": clock } };
 });
 ```
-
 
 The contrast is a class with prototype methods:
 
@@ -694,7 +684,6 @@ export const pricingModule = implement<DiscountsCapabilities>()(pricingDeclarati
 });
 ```
 
-
 Unit tests use plain object fakes and no Get Modular:
 
 <!-- module-authoring-example: project -->
@@ -710,7 +699,6 @@ test("ten lines earn ten percent", () => {
   assert.equal(applyDiscount({ lines: { count: () => 10 } }, { orderId: "o1", cents: 1000 }), 900);
 });
 ```
-
 
 `billing` follows the same shape for its invoice use case:
 
@@ -745,7 +733,6 @@ export const invoicingModule = implement<BillingCapabilities>()(invoicingDeclara
   return { instance: port, capabilities: { "acme/billing/invoices": port } };
 });
 ```
-
 
 ## 8. When and how to split
 
@@ -917,7 +904,6 @@ export const orderStoreModule = implement<OrderStoreCapabilities>()(orderStoreDe
   }, scoped);
 ```
 
-
 ## 10. A stateful adapter as a class
 
 A class is allowed for state with identity, an SDK or client wrapper, or a test fake
@@ -953,7 +939,6 @@ export class PgOrders {
   };
 }
 ```
-
 
 The module of section 9 creates `PgOrders` inside `resources.setup` and builds the
 port from its fields. The check of section 6 would fail the module if it returned
@@ -1004,7 +989,6 @@ import { clockSuite, createClockFake } from "./testing.js";
 runContractSuite(clockSuite, { name: "system", declaration: clockDeclaration, create: async () => createSystemClock() }, test);
 runContractSuite(clockSuite, { name: "fake", declaration: clockDeclaration, create: async () => createClockFake(1) }, test);
 ```
-
 
 ## 12. Optional, many and several providers: explicit bindings
 
@@ -1196,7 +1180,6 @@ export function composeReports(api: Assembly<ReportsCapabilities>) {
 }
 ```
 
-
 The matching oracle rows, written from the decision, not copied from the plan:
 
 <!-- module-authoring-example: bind -->
@@ -1241,7 +1224,6 @@ test("the rows match the oracle", async () => {
   checkWiring(preparation.composition, [reportsWiring], { declarations });
 });
 ```
-
 
 ## 13. Groups and the root
 
@@ -1300,7 +1282,6 @@ export const billingGroup = group("billing", [
   invoicingModule,
 ]);
 ```
-
 
 The root diff for a new feature:
 
@@ -1461,7 +1442,6 @@ export async function createSessions(transport: TransportPort) {
 }
 ```
 
-
 ## 15. Reading errors
 
 Identify errors by `code`, never by class or message.
@@ -1574,7 +1554,6 @@ export const infraWiring: WiringOracle = {
 };
 ```
 
-
 The root test with all root checks:
 
 <!-- module-authoring-example: project -->
@@ -1608,7 +1587,6 @@ test("identities lie in the product namespace", () => {
   checkNamespaces({ namespace: "acme", declarations });
 });
 ```
-
 
 ## 18. Identities, namespaces and plugins
 
