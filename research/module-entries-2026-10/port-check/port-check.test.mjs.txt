@@ -1,0 +1,58 @@
+// S0 0C: the walk on the cases the plan names. `node --test port-check.test.mjs`
+import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
+import test from "node:test";
+import vm from "node:vm";
+import { prototypeMembers } from "./port-check.mjs";
+
+const keys = (value) => prototypeMembers(value).map((v) => `${v.kind}:${v.key}`).sort();
+
+test("ports that pass", () => {
+  class Arrow { constructor() { this.read = () => 1; } }
+  assert.deepEqual(keys(new Arrow()), []);
+  assert.deepEqual(keys({ read() { return this; } }), []); // an own method with `this` is a blind spot, not a hit
+  for (const data of [new Map(), new Set(), new WeakMap(), new Date(), /x/u, Promise.resolve(), new Error("x"), new ArrayBuffer(1), new DataView(new ArrayBuffer(1)),
+    new Uint8Array(1), new Float64Array(1), Buffer.from("x"), [], Object.create(null), () => 1, 5, "text", null, undefined]) {
+    assert.deepEqual(keys(data), [], String(data?.constructor?.name));
+  }
+  assert.deepEqual(keys(vm.runInNewContext("({ a: 1 })")), []); // an Object.prototype of another realm
+  assert.deepEqual(keys(vm.runInNewContext("[1]")), []); // Array.isArray holds across realms
+});
+
+test("ports that fail and are wrapped in a port object", () => {
+  class WithMethod { read() { return 1; } }
+  assert.deepEqual(keys(new WithMethod()), ["method:read"]);
+  assert.deepEqual(keys(Object.create({ read() {} })), ["method:read"]);
+  class WithAccessor { get size() { return 1; } set size(v) { void v; } }
+  assert.deepEqual(keys(new WithAccessor()), ["accessor:size"]);
+  assert.ok(keys(new EventEmitter()).includes("method:emit"));
+  assert.ok(keys(new URL("https://example.invalid/")).includes("accessor:href"));
+  assert.ok(keys(new AbortController().signal).includes("method:throwIfAborted"));
+  assert.ok(keys([1][Symbol.iterator]()).includes("method:next"));
+  const symbol = Symbol("call");
+  assert.deepEqual(keys(Object.create({ [symbol]() {} })), [`method:${String(symbol)}`]);
+  class Base { base() {} }
+  class Derived extends Base { own() {} }
+  assert.deepEqual(keys(new Derived()), ["method:base", "method:own"]);
+});
+
+test("known limit: a container of another realm is flagged, because only this realm's prototypes are captured", () => {
+  assert.ok(keys(vm.runInNewContext("new Map()")).includes("method:get"));
+  assert.ok(keys(vm.runInNewContext("new Date()")).includes("method:getTime"));
+});
+
+test("a getter is never invoked and an own accessor on the capability is not a prototype member", () => {
+  let calls = 0;
+  const proto = { get read() { calls += 1; return () => 1; } };
+  assert.deepEqual(keys(Object.create(proto)), ["accessor:read"]);
+  const own = { get read() { calls += 1; return () => 1; } };
+  assert.deepEqual(keys(own), []); // a documented blind spot
+  assert.equal(calls, 0);
+});
+
+test("a Proxy trap runs during the walk (documented)", () => {
+  let traps = 0;
+  const proxy = new Proxy({}, { getPrototypeOf() { traps += 1; return Object.prototype; } });
+  keys(proxy);
+  assert.equal(traps, 1);
+});

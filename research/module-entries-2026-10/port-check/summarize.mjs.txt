@@ -1,0 +1,12 @@
+// Reads probe JSON lines and prints one row per distinct (implementation, capability, owner, violations).
+//   node summarize.mjs <probe.jsonl>
+import { readFileSync } from "node:fs";
+const rows = new Map();
+for (const line of readFileSync(process.argv[2], "utf8").split("\n").filter(Boolean)) {
+  const r = JSON.parse(line);
+  const key = JSON.stringify([r.implementationId, r.capability, r.kind, r.owner, r.violations]);
+  rows.set(key, (rows.get(key) ?? 0) + 1);
+}
+const out = [...rows].map(([k, count]) => { const [implementationId, capability, kind, owner, violations] = JSON.parse(k); return { implementationId, capability, kind, owner, violations, count }; });
+const hits = out.filter((r) => r.violations.length > 0);
+console.log(JSON.stringify({ distinctCapabilityValues: out.length, objectValues: out.filter((r) => r.kind === "object").length, hits: hits.length, rows: hits }, null, 2));

@@ -1,0 +1,33 @@
+import { assemblyFor, entriesOf, group, input } from "@get-modular/assembly";
+import type { AnyModuleEntry, DependenciesOf, ModuleGroup } from "@get-modular/assembly";
+import { isolate } from "@get-modular/conformance";
+import { Clock, clockDeclaration, clockEntry, HostMap, ordersEntry, ordersGroup, timeGroup } from "./shared.js";
+
+const host = assemblyFor<HostMap>();
+// A tuple of groups, the profileId form: accepted; the instance of a root is typed.
+export async function profileForm(): Promise<number> {
+  const ready = await host.prepare({ profileId: "s0/root", modules: [timeGroup, ordersGroup], roots: { orders: ordersEntry } });
+  if (ready.status !== "prepared") return 0;
+  const outcome = await ready.prepared.run({ scope: undefined });
+  return outcome.status === "succeeded" ? outcome.roots.orders.total : 0;
+}
+// The composition form accepts a plain array: a Host that compiles its own profile builds its list at run time.
+export async function compositionForm(list: readonly AnyModuleEntry<HostMap>[], composition: Parameters<typeof host.prepare>[0] extends infer P ? P extends { composition: infer X } ? X : never : never) {
+  return host.prepare({ composition, modules: list, roots: { orders: ordersEntry } });
+}
+// Nested groups; literal module ids are readable from a group type (AR needs them for RuntimeSetupModuleId).
+const nested = group("root-feature", [timeGroup, ordersGroup]);
+type EntriesOfGroup<G> = G extends ModuleGroup<infer E> ? E : never;
+type ModuleIds = EntriesOfGroup<typeof nested>["declaration"]["moduleId"];
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;
+export const idsAreLiteral: Equal<ModuleIds, "s0/clock" | "s0/orders"> = true;
+export const flattened = entriesOf([nested] as const);
+// isolate(entry): dependencies are typed from the entry, on both compilers.
+export async function isolated() {
+  const deps: DependenciesOf<typeof ordersEntry> = { clock: { now: () => 5 }, audit: undefined };
+  await using result = await isolate(ordersEntry, { dependencies: deps });
+  const total: number = result.instance.total;
+  return total;
+}
+export const inputEntry = input<HostMap>()({ ...clockDeclaration, moduleId: "s0/clock-input", implementationId: "s0/clock/input" });
+void Clock; void clockEntry;

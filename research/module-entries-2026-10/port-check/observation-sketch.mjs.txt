@@ -1,0 +1,40 @@
+// S0 0C: the own-property check on the objects of the observation sketch v3 (get-modular PR #153,
+// research/observation-hooks-2026-10/raw/evidence/code-sketch/hooks-sketch-v3).
+//   node observation-sketch.mjs --repo <get-modular checkout> --rev <git revision that holds the sketch, e.g. origin/pr-153>
+// The sketch files are .txt copies of TypeScript; they are written to a temporary directory as .ts and run with
+// Node's type stripping. Nothing is imported from the checkout.
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { parseArgs } from "node:util";
+import { pathToFileURL } from "node:url";
+import { ownerName, prototypeMembers } from "./port-check.mjs";
+
+const { values } = parseArgs({ options: { repo: { type: "string" }, rev: { type: "string" } } });
+const base = "research/observation-hooks-2026-10/raw/evidence/code-sketch/hooks-sketch-v3/src";
+const files = ["lib/observation/contract.ts", "lib/observation/keyed-source.ts", "lib/observation/callback-isolation.ts"];
+const directory = mkdtempSync(join(tmpdir(), "gm-s0-observation-"));
+try {
+  for (const file of files) {
+    const text = spawnSync("git", ["-C", values.repo, "show", `${values.rev}:${base}/${file}.txt`], { encoding: "utf8" });
+    if (text.status !== 0) throw new Error(text.stderr);
+    mkdirSync(join(directory, "lib/observation"), { recursive: true });
+    writeFileSync(join(directory, file), text.stdout);
+  }
+  const contract = await import(pathToFileURL(join(directory, "lib/observation/contract.ts")).href);
+  const keyed = await import(pathToFileURL(join(directory, "lib/observation/keyed-source.ts")).href);
+  const source = keyed.createKeyedSource({ locale: "en", greetingStyle: "plain" });
+  const rows = [
+    ["KeyedSource.reader (Reader)", source.reader],
+    ["KeyedSource.port (ObservationPort)", source.port],
+    ["sync participant (settings.sync)", contract.syncParticipant({ initial: source.reader.read(["locale"]), apply: () => undefined })],
+    ["derived participant (settings.derived)", contract.derivedParticipant({ keys: ["locale"], derive: () => 1, apply: () => undefined, fail: () => undefined })],
+    ["Snapshot returned by reader.read", source.reader.read(["locale"])],
+  ];
+  const out = rows.map(([name, value]) => ({ name, owner: ownerName(value), violations: prototypeMembers(value).map((v) => `${v.kind}:${v.key}`) }));
+  // The module's instance is a class, but only a plain object over it is a capability (sketch v3 greeting/index.ts).
+  class Greeter { greet(name) { return name; } }
+  out.push({ name: "module instance `new Greeter()` (a class; it is `instance`, not a capability)", owner: "Greeter", violations: prototypeMembers(new Greeter()).map((v) => `${v.kind}:${v.key}`) });
+  console.log(JSON.stringify(out, null, 2));
+} finally { rmSync(directory, { recursive: true, force: true }); }

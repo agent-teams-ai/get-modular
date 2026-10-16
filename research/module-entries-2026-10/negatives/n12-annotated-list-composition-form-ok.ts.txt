@@ -1,0 +1,7 @@
+// expect: NO error: the composition form accepts a plain array (a Host that compiles its own profile).
+import { assemblyFor } from "@get-modular/assembly";
+import type { AnyModuleEntry } from "@get-modular/assembly";
+import { clockEntry, HostMap } from "./shared.js";
+declare const composition: Parameters<ReturnType<typeof assemblyFor<HostMap>>["prepare"]>[0] extends infer P ? P extends { readonly composition: infer X } ? X : never : never;
+const list: readonly AnyModuleEntry<HostMap>[] = [clockEntry];
+export const result = assemblyFor<HostMap>().prepare({ composition, modules: list, roots: { clock: clockEntry } });

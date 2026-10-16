@@ -1,0 +1,30 @@
+// Probe: wraps the api of `assemblyFor()` so that every successful run reports the capability values it created.
+// Loaded in the app thread by the generated wrapper module of hook-loader.mjs. Output: JSON lines in $GM_PORT_PROBE_FILE.
+import { appendFileSync } from "node:fs";
+import { ownerName, prototypeMembers } from "./port-check.mjs";
+
+const file = process.env.GM_PORT_PROBE_FILE;
+function report(created) {
+  if (!file) return;
+  for (const entry of created) {
+    for (const [capability, value] of Object.entries(entry.capabilities ?? {})) {
+      const kind = value === null ? "null" : typeof value;
+      const violations = prototypeMembers(value);
+      appendFileSync(file, JSON.stringify({ implementationId: entry.implementationId, capability, kind, owner: kind === "object" ? ownerName(value) : undefined,
+        violations: violations.map((v) => `${v.kind}:${v.key}`), argv: process.argv[1] }) + "\n");
+    }
+  }
+}
+export function wrapApi(api) {
+  const prepare = async (input) => {
+    const result = await api.prepare(input);
+    if (result.status !== "prepared") return result;
+    const prepared = Object.freeze({ run: async (...args) => {
+      const outcome = await result.prepared.run(...args);
+      if (outcome.status === "succeeded" || outcome.created) report(outcome.created ?? []);
+      return outcome;
+    } });
+    return Object.freeze({ ...result, prepared });
+  };
+  return Object.freeze({ ...api, prepare });
+}
