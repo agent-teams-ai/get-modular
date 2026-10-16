@@ -6,6 +6,7 @@ import type { ModuleDeclaration } from "@get-modular/core";
 import { createScope } from "@get-modular/resources";
 import type { CloseReport } from "@get-modular/resources";
 import { ConformanceError, invalid } from "../errors/errors.js";
+import { ownMemberViolations, portViolationError } from "../ports/own-members.js";
 import type {
   LooseAssembly, LooseFactory, LooseOutcome, LoosePrepared, LoosePreparation, LoosePrepareInput, SmokeInjection, SmokeStep,
 } from "./types.js";
@@ -19,6 +20,11 @@ type Plan = {
   readonly at: string | undefined;
   readonly injected: Error;
   readonly called: string[];
+};
+
+type Attempt = {
+  readonly plan: Plan;
+  readonly created: LooseOutcome["created"];
 };
 
 const isModes = (value: unknown): value is readonly SmokeInjection[] =>
@@ -158,7 +164,9 @@ export async function smoke<C, R extends RootEntries<C>, N extends InputEntries<
   const prepared: LoosePrepared = preparation.prepared;
 
   const steps: SmokeStep[] = [];
-  const attempt = async (inject: "none" | SmokeInjection, at: string | undefined, order: readonly string[]): Promise<Plan> => {
+  const attempt = async (
+    inject: "none" | SmokeInjection, at: string | undefined, order: readonly string[],
+  ): Promise<Attempt> => {
     const controller = new AbortController();
     const plan: Plan = {
       controller, inject, at, called: [],
@@ -176,11 +184,11 @@ export async function smoke<C, R extends RootEntries<C>, N extends InputEntries<
       inject, ...at === undefined ? {} : { at }, outcome: outcome.status, report,
       ...problem === "" ? {} : { problem },
     });
-    return plan;
+    return { plan, created: outcome.created };
   };
 
   const first = await attempt("none", undefined, []);
-  const order = first.called;
+  const order = first.plan.called;
   const failed = (): never => {
     const broken = steps.filter(step => step.problem !== undefined);
     throw new ConformanceError("conformance.smoke.failed",
@@ -196,6 +204,10 @@ export async function smoke<C, R extends RootEntries<C>, N extends InputEntries<
   const unknown = targets.find(id => !order.includes(id));
   if (unknown !== undefined) {
     throw invalid(`smoke() at names ${unknown}, which the run did not construct; it constructed ${order.join(", ")}`);
+  }
+  const violations = ownMemberViolations(first.created);
+  if (violations.length > 0) {
+    throw portViolationError(violations, { steps });
   }
   for (const id of targets) {
     for (const mode of modes) {

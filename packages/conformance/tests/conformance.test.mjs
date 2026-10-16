@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { EventEmitter } from "node:events";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import vm from "node:vm";
 import { compileComposition, many, optional, required } from "@get-modular/core";
 import { assemblyFor, declareModule, defineContract, implement, input } from "@get-modular/assembly";
 import { createScope, scoped } from "@get-modular/resources";
@@ -28,6 +30,173 @@ const dependencies = () => ({ logs: [{ id: 1 }, { id: 2 }], audit: undefined, db
 const product = value => ({ instance: value, capabilities: { "t/orders": { list: () => value } } });
 const code = error => error?.code;
 const entryFor = (declaration, factory) => implement()(declaration, factory, scoped);
+
+const Port = defineContract()({ id: "t/port", revision: 1 });
+const portName = name => name.toLowerCase().replace(/[^a-z0-9]+/gu, "-").replace(/^-+|-+$/gu, "");
+const portDeclaration = (name = "port") => declareModule({
+  moduleId: `t/${portName(name)}`, implementationId: `t/${portName(name)}/default`, owner, provides: [Port.provide()], slots: [],
+});
+const portEntry = (value, name = "port", setup = async () => {}) => {
+  const declaration = portDeclaration(name);
+  return entryFor(declaration, async (_deps, { resources }) => {
+    await setup(resources);
+    return { instance: 0, capabilities: { "t/port": value } };
+  });
+};
+const portViolation = (implementationId, members) => ({
+  implementationId, capabilityId: "t/port", members,
+});
+const rejection = promise => promise.then(() => null, caught => caught);
+
+test("P1 ports whose members are own properties build and close completely", async () => {
+  class ArrowFields { static marker = true; constructor() { this.read = () => 1; } }
+  const values = [
+    ["class arrow fields", new ArrowFields()],
+    ["own method using this", { read() { return this; } }],
+    ["Map", new Map()],
+    ["array", []],
+    ["Buffer", Buffer.from("x")],
+    ["typed array", new Uint8Array(1)],
+    ["Date", new Date()],
+    ["null prototype", Object.create(null)],
+    ["function", () => 1],
+    ["number", 1],
+    ["cross-realm object", vm.runInNewContext("({ read: () => 1 })")],
+    ["cross-realm array", vm.runInNewContext("[1]")],
+  ];
+  for (const [name, value] of values) {
+    const isolated = await isolate(portEntry(value, `p1-${name.replaceAll(" ", "-")}`), { dependencies: {} });
+    const report = await isolated.close();
+    assert.equal(report.complete, true, name);
+  }
+});
+
+test("P2 prototype members fail with exact violations", async () => {
+  class Method { read() { return 1; } }
+  class Accessor { get size() { return 1; } set size(value) { void value; } }
+  class Base { base() {} other() {} }
+  class Derived extends Base { own() {} }
+  class MapSub extends Map { read() {} }
+  const symbol = Symbol("call");
+  const symbolPrototype = {};
+  Object.defineProperty(symbolPrototype, symbol, { value() {} });
+  const cases = [
+    ["class method", new Method(), ["read"]],
+    ["Object.create method", Object.create({ read() {} }), ["read"]],
+    ["prototype accessor", new Accessor(), ["size"]],
+    ["EventEmitter", new EventEmitter(), [
+      "setMaxListeners", "getMaxListeners", "emit", "addListener", "on", "prependListener", "once",
+      "prependOnceListener", "removeListener", "off", "removeAllListeners", "listeners", "rawListeners",
+      "listenerCount", "eventNames",
+    ]],
+    ["URL", new URL("https://example.invalid/"), [
+      "toString", "href", "origin", "protocol", "username", "password", "host", "hostname", "port",
+      "pathname", "search", "searchParams", "hash", "toJSON", "Symbol(nodejs.util.inspect.custom)",
+    ]],
+    ["Map subclass", new MapSub(), ["read"]],
+    ["derived class", new Derived(), ["own", "base", "other"]],
+    ["symbol method", Object.create(symbolPrototype), [String(symbol)]],
+  ];
+  for (const [name, value, members] of cases) {
+    const error = await rejection(isolate(portEntry(value, `p2-${name.replaceAll(" ", "-")}`), { dependencies: {} }));
+    assert.equal(code(error), "conformance.ports.prototype-member", name);
+    assert.deepEqual(error.details.violations, [portViolation(`t/${portName(`p2-${name}`)}/default`, members)], name);
+    assert.equal(error.details.report.complete, true, name);
+  }
+});
+
+test("P3 a prototype getter is reported without being called, and an own getter is not", async () => {
+  let calls = 0;
+  const withPrototypeGetter = Object.create({
+    get read() { calls += 1; return () => 1; },
+  });
+  const error = await rejection(isolate(portEntry(withPrototypeGetter, "p3-prototype"), { dependencies: {} }));
+  assert.equal(code(error), "conformance.ports.prototype-member");
+  assert.deepEqual(error.details.violations, [portViolation("t/p3-prototype/default", ["read"])]);
+  const ownGetter = {};
+  Object.defineProperty(ownGetter, "read", {
+    enumerable: true,
+    get() { calls += 1; return () => 1; },
+  });
+  const isolated = await isolate(portEntry(ownGetter, "p3-own"), { dependencies: {} });
+  assert.equal((await isolated.close()).complete, true);
+  assert.equal(calls, 0);
+});
+
+test("P4 isolate closes its scope before a ports error and a walk error", async () => {
+  class Method { read() {} }
+  let cleanup = 0;
+  const parent = createScope({ name: "parent" });
+  const error = await rejection(isolate(
+    portEntry(new Method(), "p4-violation", async resources => {
+      await resources.setup({ name: "cleanup", setup: () => 1, cleanup: () => { cleanup += 1; } });
+    }),
+    { dependencies: {}, within: parent.resources },
+  ));
+  assert.equal(code(error), "conformance.ports.prototype-member");
+  assert.equal(error.details.report.complete, true);
+  assert.equal(cleanup, 1);
+  const parentReport = await parent.control.close();
+  assert.equal(parentReport.complete, true);
+  assert.deepEqual(parentReport.debts, []);
+
+  const trap = new Error("getPrototypeOf trap");
+  const proxy = new Proxy({}, { getPrototypeOf() { throw trap; } });
+  let proxyCleanup = 0;
+  const walkError = await rejection(isolate(
+    portEntry(proxy, "p4-proxy", async resources => {
+      await resources.setup({ name: "cleanup", setup: () => 1, cleanup: () => { proxyCleanup += 1; } });
+    }),
+    { dependencies: {} },
+  ));
+  assert.equal(walkError, trap);
+  assert.equal(proxyCleanup, 1);
+});
+
+test("P5 smoke reports the first run's ports before any injected run", async () => {
+  class Method { read() {} }
+  const run = async values => {
+    const calls = [0, 0];
+    const compose = async api => {
+      const declarations = values.map((_, index) => portDeclaration(`p5-${String(index)}`));
+      const handles = declarations.map((declaration, index) => entryFor(declaration, async () => {
+        calls[index] += 1;
+        return { instance: 0, capabilities: { "t/port": values[index] } };
+      }));
+      const composition = await compileComposition({
+        declarations,
+        profile: {
+          kind: "get-modular.composition-profile", schemaVersion: 1, profileId: "t/p5",
+          roots: declarations.map(declaration => declaration.moduleId),
+          selections: declarations.map(({ moduleId, implementationId }) => ({ moduleId, implementationId })),
+          bindings: [],
+        },
+      });
+      assert.equal(composition.ok, true);
+      return api.prepare({
+        composition, modules: handles, roots: { first: handles[0], second: handles[1] },
+      });
+    };
+    const error = await rejection(smoke({ api: assemblyFor(), compose }));
+    return { calls, error };
+  };
+  const one = await run([new Method(), {}]);
+  assert.equal(code(one.error), "conformance.ports.prototype-member");
+  assert.deepEqual(one.calls, [1, 1]);
+  assert.deepEqual(one.error.details.violations, [portViolation("t/p5-0/default", ["read"])]);
+  assert.equal(one.error.details.steps.length, 1);
+  assert.equal(one.error.details.steps[0].report.complete, true);
+
+  const two = await run([new Method(), Object.create({ read() {} })]);
+  assert.deepEqual(two.error.details.violations.map(violation => violation.implementationId),
+    ["t/p5-0/default", "t/p5-1/default"]);
+});
+
+test("P6 a Map from another realm is reported as the known container limit", async () => {
+  const error = await rejection(isolate(portEntry(vm.runInNewContext("new Map()"), "p6"), { dependencies: {} }));
+  assert.equal(code(error), "conformance.ports.prototype-member");
+  assert.ok(error.details.violations[0].members.includes("get"));
+});
 
 test("H1 the module sees the records and context of a production run", async () => {
   const seen = [];

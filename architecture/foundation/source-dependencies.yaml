@@ -528,6 +528,17 @@ boundaries:
         - "@get-modular/core"
       builtins: []
       runtimeReferences: []
+  - id: conformance-ports
+    roots:
+      - packages/conformance/src/features/ports/own-members.ts
+    entrypoints:
+      - packages/conformance/src/features/ports/own-members.ts
+    allow:
+      boundaries:
+        - conformance-errors
+      packages: []
+      builtins: []
+      runtimeReferences: []
   - id: conformance-harness
     roots:
       - packages/conformance/src/features/harness/types.ts
@@ -540,6 +551,7 @@ boundaries:
     allow:
       boundaries:
         - conformance-errors
+        - conformance-ports
       packages:
         - "@get-modular/assembly"
         - "@get-modular/core"
@@ -650,6 +662,7 @@ boundaries:
         - conformance-namespaces
         - conformance-wiring
         - conformance-layout
+        - conformance-ports
         - conformance-composition
       packages: []
       builtins: []
@@ -672,6 +685,7 @@ boundaries:
       builtins:
         - node:assert/strict
         - node:child_process
+        - node:events
         - node:fs/promises
         - node:module
         - node:net
@@ -679,6 +693,7 @@ boundaries:
         - node:path
         - node:test
         - node:url
+        - node:vm
       runtimeReferences: []
   - id: core-development
     dependencyMode: development

@@ -4,6 +4,7 @@ export type ConformanceErrorCode =
   | "conformance.isolate.construction-failed"
   | "conformance.smoke.failed"
   | "conformance.namespaces.violation"
+  | "conformance.ports.prototype-member"
   | "conformance.wiring.mismatch"
   | "conformance.layout.violation"
   | "conformance.suite.revision-mismatch"
