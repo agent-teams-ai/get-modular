@@ -1,0 +1,10 @@
+import type { Assembly } from "@get-modular/assembly";
+
+type Capabilities = Record<never, never>;
+declare const request: unknown;
+declare const entries: unknown[];
+
+export function prepare(api: Assembly<Capabilities>) {
+  api.prepare(request);
+  api.prepare({ composition: request, factories: entries, roots: {}, ...request });
+}

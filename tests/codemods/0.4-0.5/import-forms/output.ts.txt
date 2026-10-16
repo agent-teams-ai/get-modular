@@ -1,0 +1,18 @@
+import * as gm from "@get-modular/assembly";
+import {
+  type ModuleEntry as FirstEntry,
+  type AnyModuleEntry as AnyFirstEntry,
+  type InputEntry,
+  type AnyInputEntry,
+  type RootEntries,
+  type InputEntries,
+} from "@get-modular/assembly";
+
+type A = FirstEntry<Record<never, never>>;
+type B = AnyFirstEntry<Record<never, never>>;
+type C = InputEntry<Record<never, never>>;
+type D = AnyInputEntry<Record<never, never>>;
+type E = RootEntries<Record<never, never>>;
+type F = InputEntries<Record<never, never>>;
+type G = gm.ModuleEntry<Record<never, never>>;
+type H = import("@get-modular/assembly").ModuleEntry<Record<never, never>>;

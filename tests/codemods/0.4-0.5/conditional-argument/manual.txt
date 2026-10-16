@@ -1,0 +1,2 @@
+line 10: bindFactory declaration or factory stays; choose both at module scope before the call
+line 13: bindInput declaration stays; choose the declaration at module scope before the call

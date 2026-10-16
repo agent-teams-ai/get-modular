@@ -1,0 +1,18 @@
+import * as gm from "@get-modular/assembly";
+import {
+  type FactoryHandle as FirstEntry,
+  type AnyFactoryHandle as AnyFirstEntry,
+  type InputHandle,
+  type AnyInputHandle,
+  type RootHandles,
+  type InputHandles,
+} from "@get-modular/assembly";
+
+type A = FirstEntry<Record<never, never>>;
+type B = AnyFirstEntry<Record<never, never>>;
+type C = InputHandle<Record<never, never>>;
+type D = AnyInputHandle<Record<never, never>>;
+type E = RootHandles<Record<never, never>>;
+type F = InputHandles<Record<never, never>>;
+type G = gm.FactoryHandle<Record<never, never>>;
+type H = import("@get-modular/assembly").FactoryHandle<Record<never, never>>;

@@ -1,0 +1,16 @@
+import { input, implement } from "@get-modular/assembly";
+import type { Assembly } from "@get-modular/assembly";
+import { scoped } from "@get-modular/resources";
+
+type Capabilities = Record<never, never>;
+declare const sessionInput: import("@get-modular/core").ModuleDeclaration;
+declare const chatDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const createChat: (...args: any[]) => any;
+
+export function composeSessions(api: Assembly<Capabilities>) {
+  const session = input<Capabilities>()(sessionInput);
+  const chat = implement<Capabilities>()(chatDeclaration, createChat, scoped);
+  return api.prepare({
+    profileId: "acme/sessions", modules: [chat], roots: { chat }, inputs: { session },
+  });
+}

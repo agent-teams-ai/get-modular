@@ -1,0 +1,13 @@
+import type { Assembly } from "@get-modular/assembly";
+import { first as implement, second as input } from "example";
+
+type Capabilities = Record<never, never>;
+declare const moduleDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const inputDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const factory: (...args: any[]) => any;
+
+export function compose(api: Assembly<Capabilities>) {
+  const entry = api.bindFactory(moduleDeclaration, factory);
+  const supplied = api.bindInput(inputDeclaration);
+  return { entry, supplied, implement, input };
+}

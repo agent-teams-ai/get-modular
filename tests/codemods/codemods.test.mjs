@@ -8,51 +8,70 @@ import { fileURLToPath } from "node:url";
 import { Project } from "ts-morph";
 import { testAssemblyTypes } from "../../architecture/tooling/test-assembly-types.mjs";
 import factoryHandle from "../../architecture/tooling/codemods/0.2-0.3/factory-handle.mjs";
+import entries from "../../architecture/tooling/codemods/0.4-0.5/entries.mjs";
+import prepare from "../../architecture/tooling/codemods/0.4-0.5/prepare.mjs";
+import isolate from "../../architecture/tooling/codemods/0.4-0.5/isolate.mjs";
+import typeNames from "../../architecture/tooling/codemods/0.4-0.5/type-names.mjs";
+import imports from "../../architecture/tooling/codemods/0.4-0.5/imports.mjs";
+import { reportAll } from "../../architecture/tooling/codemods/0.4-0.5/shared.mjs";
 
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const runner = join(workspace, "architecture/tooling/codemods/run.mjs");
-const fixtures = join(workspace, "tests/codemods/0.2-0.3");
-const cases = readdirSync(fixtures).sort();
-const read = (case_, name) => readFileSync(join(fixtures, case_, name), "utf8");
+const fixtures = join(workspace, "tests/codemods");
+const codemods = new Map([
+  ["0.2-0.3", [factoryHandle]],
+  ["0.4-0.5", [entries, prepare, isolate, typeNames, imports]],
+]);
+const casesFor = (name) => readdirSync(join(fixtures, name)).sort();
+const read = (name, case_, file) => readFileSync(join(fixtures, name, case_, file), "utf8");
 
-function apply(text) {
+function apply(text, extension = "ts", transforms = [factoryHandle]) {
   const project = new Project({ useInMemoryFileSystem: true, skipAddingFilesFromTsConfig: true });
-  const file = project.createSourceFile("input.ts", text);
+  const file = project.createSourceFile(`input.${extension}`, text, { overwrite: true, allowJs: true });
   const findings = [];
-  const edits = factoryHandle(file, (message) => findings.push(message));
-  return { text: file.getFullText(), edits, findings };
+  let edits = 0;
+  for (const transform of transforms) edits += transform(file, (message) => findings.push(message)) ?? 0;
+  return { text: file.getFullText(), edits, findings: transforms.includes(entries) ? reportAll(file) : findings };
 }
 
-for (const case_ of cases) {
-  test(`0.2-0.3 ${case_}: output matches and a second run changes nothing`, () => {
-    const result = apply(read(case_, "input.ts.txt"));
-    assert.equal(result.text, read(case_, "output.ts.txt"));
-    const manual = existsSync(join(fixtures, case_, "manual.txt")) ? read(case_, "manual.txt").trimEnd().split("\n") : [];
-    assert.deepEqual(result.findings, manual);
-    const again = apply(result.text);
-    assert.equal(again.text, result.text);
-    assert.equal(again.edits, 0);
-  });
+for (const [name, transforms] of codemods) {
+  for (const case_ of casesFor(name)) {
+    const inputName = readdirSync(join(fixtures, name, case_)).find((file) => /^input\.(?:ts|mjs)\.txt$/u.test(file));
+    const extension = inputName.slice("input.".length, -".txt".length);
+    test(`${name} ${case_}: output matches and a second run changes nothing`, () => {
+      const result = apply(read(name, case_, inputName), extension, transforms);
+      assert.equal(result.text, read(name, case_, `output.${extension}.txt`));
+      const manualPath = join(fixtures, name, case_, "manual.txt");
+      const manual = existsSync(manualPath) ? read(name, case_, "manual.txt").trimEnd().split("\n") : [];
+      assert.deepEqual(result.findings, manual);
+      const again = apply(result.text, extension, transforms);
+      assert.equal(again.text, result.text);
+      assert.equal(again.edits, 0);
+      assert.deepEqual(again.findings, manual);
+    });
+  }
 }
 
-// The outputs compile against the workspace Assembly on both compilers. Each gets the names the fixtures leave free.
-test("0.2-0.3 outputs type-check against the workspace Assembly", { timeout: 600000 }, () => {
+// 0.2-0.3 outputs target the 0.3 API, which the workspace no longer has.
+test("0.4-0.5 outputs type-check against the workspace Assembly", { timeout: 600000 }, () => {
   const directory = realpathSync(mkdtempSync(join(tmpdir(), "get-modular-codemod-types-")));
   try {
     mkdirSync(join(directory, "node_modules/@get-modular"), { recursive: true });
-    for (const name of ["core", "assembly"]) {
+    for (const name of ["core", "assembly", "resources", "conformance"]) {
       symlinkSync(join(workspace, "packages", name), join(directory, "node_modules/@get-modular", name), "junction");
     }
     writeFileSync(join(directory, "package.json"), JSON.stringify({ name: "codemod-types", private: true, type: "module" }));
     const prelude = 'type HostCapabilities = Record<never, never>;\ntype Instance = unknown;\n'
+      + 'type SessionCapabilities = Record<never, never>;\ntype Contracts = Record<never, never>;\n'
       + 'declare const declaration: import("@get-modular/core").ModuleDeclaration;\n';
     const files = [];
-    for (const case_ of cases.filter((name) => !["local-type", "other-package", "import-type", "reexport", "reexport-star"].includes(name))) {
+    const typeCases = casesFor("0.4-0.5").filter((case_) => !existsSync(join(fixtures, "0.4-0.5", case_, "manual.txt")));
+    for (const case_ of typeCases) {
       files.push(`${case_}.ts`);
-      writeFileSync(join(directory, `${case_}.ts`), prelude + read(case_, "output.ts.txt"));
+      writeFileSync(join(directory, `${case_}.ts`), prelude + read("0.4-0.5", case_, "output.ts.txt"));
     }
     writeFileSync(join(directory, "tsconfig.json"), JSON.stringify({ compilerOptions: {
-      target: "ES2022", lib: ["ES2023", "DOM"], strict: true, noEmit: true, skipLibCheck: false, types: [],
+      target: "ES2022", lib: ["ES2023", "ESNext.Disposable", "DOM"], strict: true, noEmit: true, skipLibCheck: false, types: [],
       isolatedDeclarations: false, erasableSyntaxOnly: false,
     }, files }));
     testAssemblyTypes({ directory, project: join(directory, "tsconfig.json") });
@@ -88,8 +107,8 @@ function consumer(t) {
   const directory = join(root, "consumer");
   mkdirSync(join(directory, "src"), { recursive: true });
   mkdirSync(join(directory, "node_modules/dep"), { recursive: true });
-  cpSync(join(fixtures, "plain/input.ts.txt"), join(directory, "src/index.ts"));
-  cpSync(join(fixtures, "plain/input.ts.txt"), join(directory, "node_modules/dep/index.ts"));
+  cpSync(join(fixtures, "0.2-0.3/plain/input.ts.txt"), join(directory, "src/index.ts"));
+  cpSync(join(fixtures, "0.2-0.3/plain/input.ts.txt"), join(directory, "node_modules/dep/index.ts"));
   return directory;
 }
 
@@ -109,7 +128,7 @@ test("runner: --check exits 1 while changes are pending and 0 after --write", (t
   const written = run("0.2-0.3", directory, "--write", "--allow-dirty");
   assert.equal(written.status, 0, written.err);
   assert.match(written.out, /run your typecheck/u);
-  assert.equal(readFileSync(join(directory, "src/index.ts"), "utf8"), read("plain", "output.ts.txt"));
+  assert.equal(readFileSync(join(directory, "src/index.ts"), "utf8"), read("0.2-0.3", "plain", "output.ts.txt"));
   assert.equal(run("0.2-0.3", directory, "--check").status, 0);
 });
 
@@ -127,14 +146,14 @@ test("runner: --write refuses a dirty tree and writes on a clean one", (t) => {
   git(directory, "commit", "-q", "-m", "init");
   const written = run("0.2-0.3", directory, "--write");
   assert.equal(written.status, 0, written.err);
-  assert.equal(readFileSync(file, "utf8"), read("plain", "output.ts.txt"));
+  assert.equal(readFileSync(file, "utf8"), read("0.2-0.3", "plain", "output.ts.txt"));
 });
 
 test("runner: unknown codemod exits 2 with the known list; a file that does not parse is skipped and fails the run", (t) => {
   const directory = consumer(t);
   const unknown = run("9.9-9.10", directory);
   assert.equal(unknown.status, 2);
-  assert.match(unknown.err, /known: 0\.2-0\.3/u);
+  assert.match(unknown.err, /known: 0\.2-0\.3, 0\.4-0\.5/u);
   writeFileSync(join(directory, "src/broken.ts"), "export const = ;\n");
   const result = run("0.2-0.3", directory);
   assert.equal(result.status, 1);
@@ -171,8 +190,15 @@ test("runner: a symlink to the Get Modular checkout is refused too", (t) => {
 
 test("runner: tsx files are included", (t) => {
   const directory = consumer(t);
-  cpSync(join(fixtures, "plain/input.ts.txt"), join(directory, "src/view.tsx"));
+  cpSync(join(fixtures, "0.2-0.3/plain/input.ts.txt"), join(directory, "src/view.tsx"));
   assert.match(run("0.2-0.3", directory).out, /src[\\/]view\.tsx: 2 edits/u);
+});
+
+test("runner: .mjs files are included and run the 0.4-0.5 transforms", (t) => {
+  const directory = consumer(t);
+  rmSync(join(directory, "src/index.ts"));
+  cpSync(join(fixtures, "0.4-0.5/js-consumer/input.mjs.txt"), join(directory, "src/consumer.mjs"));
+  assert.match(run("0.4-0.5", directory).out, /src[\\/]consumer\.mjs: \d+ edits?/u);
 });
 
 test("runner: a directory named like ..foo inside the checkout is still refused", (t) => {
