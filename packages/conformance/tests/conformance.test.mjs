@@ -1079,6 +1079,15 @@ test("L1d two roots importing one Host-level module without a group is a group-c
   assert.deepEqual(pairs(error), [["group-count", "src/composition/shared.module.ts"]]);
 });
 
+test("L1e a Host-level group listed by two roots owns its modules and passes", () => {
+  const rows = testShapedTree().filter(row => row.path !== "src/composition/app.root.ts");
+  rows.push(
+    layoutFile("src/composition/runtime.group.ts", [edge("src/composition/shared.module.ts")]),
+    layoutFile("src/composition/app.root.ts", [edge(`${orders}/composition/orders.group.ts`), edge("src/composition/runtime.group.ts")]),
+    layoutFile("src/composition/other.root.ts", [edge("src/composition/runtime.group.ts")]));
+  assert.deepEqual(checkModuleLayout(layoutRecords(rows)).violations, []);
+});
+
 test("L2 one throw lists every Get Modular layout violation kind with its code and path", () => {
   const o = `${orders}/composition`;
   const rows = [

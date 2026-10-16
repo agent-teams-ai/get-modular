@@ -954,9 +954,9 @@ kit `@get-modular/conformance`.
    see an object-literal method that uses `this`, a method extracted unbound, a
    nested object, own accessors on the capability itself, a run input or a fake you
    pass as a dependency; those stay review rules. A `Map` capability passes; a `Map`,
-   `Date` or `Buffer` from another realm is reported. A negative test is a module whose capability is a class instance with a
-   method.
-   <!-- VERIFY(P1b part 2): code, scope and limits above against the merged own-property check before this PR merges -->
+   `Date` or `Buffer` from another realm is reported. The walk reads descriptors only, but
+   Proxy traps run during it. A negative test is a module whose capability is a class
+   instance with a method.
 8. `guardHandles` is a per-file diagnostic, and `complete` is not proof of
    physical release. Check real adapters in disposable TEST projects.
 9. Close every scope a test creates. No sleeps; use the test runner's

@@ -654,8 +654,6 @@ class SystemClock {
 }                                       // and smoke / isolate fail with conformance.ports.prototype-member
 ```
 
-<!-- VERIFY(P1b part 2): the check described in the CMS testing rule 7 and in section 10; confirm against the merged code before this PR merges -->
-
 The check walks the prototype chain of each capability a module returns and fails
 on a function or accessor that lives on a prototype. It does not see an
 object-literal method that uses `this`, a method extracted unbound as a capability,
