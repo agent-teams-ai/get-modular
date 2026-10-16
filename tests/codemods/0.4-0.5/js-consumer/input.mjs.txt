@@ -11,5 +11,6 @@ function harness(make) {
 }
 
 const h = harness((local) => local.bindFactory(declaration, factory));
-h.api.prepare({ composition, factories: h.factories, roots: {} });
+const { factories } = h;
+h.api.prepare({ composition, factories, roots: {} });
 h.api.prepare(request);

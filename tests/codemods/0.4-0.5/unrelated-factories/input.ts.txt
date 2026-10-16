@@ -1,4 +1,11 @@
+import type { Assembly } from "@get-modular/assembly";
+
+declare const assembly: Assembly<Record<never, never>>;
+declare const machineA: unknown;
+declare const machineB: unknown;
+
 export const observations = {
   factories: { enabled: true },
   counts: { factories: 0 },
+  inventory: { factories: [machineA, machineB] },
 };

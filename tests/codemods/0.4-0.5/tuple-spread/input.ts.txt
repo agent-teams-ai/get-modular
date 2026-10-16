@@ -5,4 +5,5 @@ declare const entries: unknown[];
 
 export function prepare(api: Assembly<Capabilities>) {
   return api.prepare({ profileId: "test/tuple", factories: [...entries], roots: {} });
+  api.prepare({ profileId: "test/dynamic", factories: entries, roots: {} });
 }

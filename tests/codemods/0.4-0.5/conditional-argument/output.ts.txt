@@ -8,3 +8,6 @@ declare const secondFactory: (...args: any[]) => any;
 
 export const entry = (api: Assembly<Capabilities>, ordinary?: boolean) =>
   api.bindFactory(ordinary ? firstDeclaration : secondDeclaration, ordinary ? firstFactory : secondFactory);
+
+export const supplied = (api: Assembly<Capabilities>, ordinary?: boolean) =>
+  api.bindInput(ordinary ? firstDeclaration : secondDeclaration);

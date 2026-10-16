@@ -1,0 +1,9 @@
+line 14: bindInput with 2 arguments stays; pass exactly one module declaration
+line 15: bindFactory with 1 arguments stays; pass one declaration and one factory
+line 16: bindFactory call stays; rename the local binding that collides with scoped
+line 18: prepare destructured method stays; use a direct Assembly method call
+line 19: isolate api argument stays; use a local Assembly receiver or assemblyFor()
+line 20: isolate declaration or factory stays; choose both at module scope before the call
+line 21: isolate stays; rename the local binding that collides with scoped
+line 22: isolate stays; pass one entry source and one options object literal
+line 26: isolate stays; rename the local binding that collides with implement

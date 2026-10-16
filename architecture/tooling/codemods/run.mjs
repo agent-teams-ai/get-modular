@@ -10,6 +10,7 @@ import prepare from "./0.4-0.5/prepare.mjs";
 import isolate from "./0.4-0.5/isolate.mjs";
 import typeNames from "./0.4-0.5/type-names.mjs";
 import imports from "./0.4-0.5/imports.mjs";
+import { reportAll } from "./0.4-0.5/shared.mjs";
 
 // One entry per breaking minor: `<from>-<to>` runs these transforms in order.
 const CODEMODS = { "0.2-0.3": [factoryHandle], "0.4-0.5": [entries, prepare, isolate, typeNames, imports] };
@@ -82,7 +83,8 @@ export function main(argv) {
     if (unparsable.has(file)) continue;
     const path = relative(directory, file.getFilePath());
     let edits = 0;
-    for (const transform of CODEMODS[name]) edits += transform(file, (message) => findings.push(`${path}: ${message}`)) ?? 0;
+    for (const transform of CODEMODS[name]) edits += transform(file, () => {}) ?? 0;
+    findings.push(...reportAll(file).map((message) => `${path}: ${message}`));
     if (edits === 0) continue;
     changed += 1;
     console.log(`${path}: ${edits} edit${edits === 1 ? "" : "s"}`);

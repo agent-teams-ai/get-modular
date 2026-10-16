@@ -13,6 +13,7 @@ import prepare from "../../architecture/tooling/codemods/0.4-0.5/prepare.mjs";
 import isolate from "../../architecture/tooling/codemods/0.4-0.5/isolate.mjs";
 import typeNames from "../../architecture/tooling/codemods/0.4-0.5/type-names.mjs";
 import imports from "../../architecture/tooling/codemods/0.4-0.5/imports.mjs";
+import { reportAll } from "../../architecture/tooling/codemods/0.4-0.5/shared.mjs";
 
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const runner = join(workspace, "architecture/tooling/codemods/run.mjs");
@@ -30,7 +31,7 @@ function apply(text, extension = "ts", transforms = [factoryHandle]) {
   const findings = [];
   let edits = 0;
   for (const transform of transforms) edits += transform(file, (message) => findings.push(message)) ?? 0;
-  return { text: file.getFullText(), edits, findings };
+  return { text: file.getFullText(), edits, findings: transforms.includes(entries) ? reportAll(file) : findings };
 }
 
 for (const [name, transforms] of codemods) {

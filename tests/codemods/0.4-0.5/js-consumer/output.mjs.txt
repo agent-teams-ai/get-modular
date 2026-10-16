@@ -1,8 +1,8 @@
-import { assemblyFor } from "@get-modular/assembly";
+import { assemblyFor, implement } from "@get-modular/assembly";
 import { scoped } from "@get-modular/resources";
 
 const api = assemblyFor();
-const entry = api.bindFactory(declaration, scoped(declaration.implementationId, factory));
+const entry = implement()(declaration, factory, scoped);
 const request = { composition, factories: [entry], roots: { entry } };
 
 function harness(make) {
@@ -11,5 +11,6 @@ function harness(make) {
 }
 
 const h = harness((local) => local.bindFactory(declaration, factory));
-h.api.prepare({ composition, modules: h.factories, roots: {} });
+const { factories } = h;
+h.api.prepare({ composition, modules: factories, roots: {} });
 h.api.prepare(request);

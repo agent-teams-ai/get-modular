@@ -1,0 +1,30 @@
+import { assemblyFor } from "@get-modular/assembly";
+import { isolate } from "@get-modular/conformance";
+import type { scoped } from "@get-modular/resources";
+import * as example from "example";
+
+type Capabilities = Record<never, never>;
+declare const firstDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const secondDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const factory: (...args: any[]) => any;
+declare const dependencies: unknown;
+declare const unknownApi: unknown;
+
+const api = assemblyFor<Capabilities>();
+api.bindInput(firstDeclaration, secondDeclaration);
+api.bindFactory(firstDeclaration);
+api.bindFactory(firstDeclaration, scoped(firstDeclaration.implementationId, factory));
+const { prepare } = api;
+prepare({ factories: [], roots: {} });
+isolate(unknownApi, { declaration: firstDeclaration, factory });
+isolate(assemblyFor<Capabilities>(), { declaration: true ? firstDeclaration : secondDeclaration, factory });
+isolate(assemblyFor<Capabilities>(), { declaration: firstDeclaration, factory });
+isolate(assemblyFor<Capabilities>(), firstDeclaration);
+
+function collideImplement() {
+  const implement = example.third;
+  isolate(assemblyFor<Capabilities>(), { declaration: firstDeclaration, factory });
+  return implement;
+}
+
+export const local = collideImplement;

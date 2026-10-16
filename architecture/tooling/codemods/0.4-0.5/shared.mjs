@@ -15,6 +15,7 @@ const TYPE_NAMES = new Map([
 
 const line = (node) => `line ${node.getStartLineNumber()}`;
 const imported = (specifier) => (specifier.getAliasNode() ?? specifier.getNameNode()).getText();
+const javascript = (file) => /\.(?:mjs|js|cjs)$/u.test(file.getFilePath());
 
 function namedImports(file, name, module) {
   const found = [];
@@ -34,13 +35,32 @@ function namespaceImports(file, module) {
     .filter(Boolean);
 }
 
+function declarationsFor(identifier) {
+  const symbolDeclarations = safeSymbolDeclarations(identifier);
+  return symbolDeclarations.length > 0
+    ? symbolDeclarations
+    : fileOf(identifier).getDescendantsOfKind(SyntaxKind.VariableDeclaration)
+      .filter((declaration) => declarationName(declaration) === identifier.getText());
+}
+
+function safeSymbolDeclarations(identifier) {
+  try {
+    return identifier.getSymbol()?.getDeclarations() ?? [];
+  } catch {
+    return [];
+  }
+}
+
 function refersTo(identifier, target) {
-  return identifier.getSymbol()?.getDeclarations().some((declaration) => declaration === target) === true;
+  const declarations = safeSymbolDeclarations(identifier);
+  if (declarations.length > 0) return declarations.some((declaration) => declaration === target);
+  return identifier.getText() === imported(target);
 }
 
 function refersToNamespace(identifier, target) {
-  return identifier.getSymbol()?.getDeclarations()
-    .some((declaration) => declaration === target || declaration === target.getParent()) === true;
+  const declarations = safeSymbolDeclarations(identifier);
+  if (declarations.length > 0) return declarations.some((declaration) => declaration === target || declaration === target.getParent());
+  return identifier.getText() === target.getText();
 }
 
 function importedIdentifier(identifier, name, module, { valueOnly = false } = {}) {
@@ -115,13 +135,13 @@ function bindingNames(node, result = new Set()) {
   return result;
 }
 
-function scopeNames(node, result = new Set()) {
+function scopeNames(node, result = new Set(), ignored = new Set()) {
   const add = (name) => {
     const names = bindingNames(name, new Set());
     for (const value of names) result.add(value);
   };
-  if (Node.isVariableDeclaration(node)) add(node.getNameNode());
-  if (node.getKind() === SyntaxKind.Parameter) add(node.getNameNode());
+  if (Node.isVariableDeclaration(node) && !ignored.has(node)) add(node.getNameNode());
+  if (node.getKind() === SyntaxKind.Parameter && !ignored.has(node)) add(node.getNameNode());
   if (Node.isFunctionDeclaration(node) || Node.isClassDeclaration(node) || Node.isEnumDeclaration(node)
     || Node.isInterfaceDeclaration(node) || Node.isTypeAliasDeclaration(node)) {
     const name = node.getNameNode?.();
@@ -130,6 +150,15 @@ function scopeNames(node, result = new Set()) {
   if (Node.isCatchClause(node)) {
     const variable = node.getVariableDeclaration();
     if (variable) add(variable.getNameNode());
+  }
+  if (Node.isImportDeclaration(node)) {
+    const defaultImport = node.getDefaultImport();
+    const namespaceImport = node.getNamespaceImport();
+    if (defaultImport) result.add(defaultImport.getText());
+    if (namespaceImport) result.add(namespaceImport.getText());
+    for (const specifier of node.getNamedImports()) {
+      if (!ignored.has(specifier)) result.add(imported(specifier));
+    }
   }
   return result;
 }
@@ -145,31 +174,30 @@ function scopeOwner(node) {
   return undefined;
 }
 
-function namesInScope(scope) {
+function namesInScope(scope, ignored) {
   const names = new Set();
   if (!scope) return names;
   const nodes = Node.isSourceFile(scope) ? scope.getStatements() : scope.getStatements?.() ?? [];
   for (const statement of nodes) {
     if (Node.isVariableStatement(statement)) {
-      for (const declaration of statement.getDeclarations()) scopeNames(declaration, names);
-    } else scopeNames(statement, names);
+      for (const declaration of statement.getDeclarations()) scopeNames(declaration, names, ignored);
+    } else scopeNames(statement, names, ignored);
   }
   if (!Node.isSourceFile(scope)) {
     if (Node.isFunctionDeclaration(scope) || Node.isFunctionExpression(scope) || Node.isArrowFunction(scope)) {
-      for (const parameter of scope.getParameters()) scopeNames(parameter, names);
+      for (const parameter of scope.getParameters()) scopeNames(parameter, names, ignored);
     }
-    if (Node.isCatchClause(scope)) scopeNames(scope, names);
+    if (Node.isCatchClause(scope)) scopeNames(scope, names, ignored);
   }
   return names;
 }
 
-export function nameWouldCollide(file, name, at) {
-  if (namedImports(file, name, ASSEMBLY).length > 0 || namedImports(file, name, RESOURCES).length > 0) return false;
+export function nameWouldCollide(file, name, at, ignored = new Set()) {
   let current = at;
   while (current) {
     const scope = scopeOwner(current);
     if (!scope) break;
-    if (namesInScope(scope).has(name)) return true;
+    if (namesInScope(scope, ignored).has(name)) return true;
     current = Node.isSourceFile(scope) ? undefined : scope.getParent();
   }
   return false;
@@ -180,31 +208,31 @@ export function receiver(file, expression, { inline = true } = {}) {
   if (fromCall) {
     if (!inline) return { ok: false, reason: "inline assemblyFor()" };
     const noArguments = fromCall.typeArguments === "";
-    return file.getFilePath().match(/\\.(?:mjs|js|cjs)$/u) && !noArguments
+    return javascript(file) && !noArguments
       ? { ok: false, reason: "JavaScript assemblyFor() with a type argument" }
       : { ok: true, typeArguments: fromCall.typeArguments, inline: true };
   }
   if (!Node.isIdentifier(expression)) return { ok: false, reason: "receiver is not a local identifier" };
-  const declarations = expression.getSymbol()?.getDeclarations() ?? [];
+  const declarations = declarationsFor(expression);
   for (const declaration of declarations) {
     if (Node.isVariableDeclaration(declaration) && declarationName(declaration) === expression.getText()) {
       const initializer = declaration.getInitializer();
       const initialized = initializer ? assemblyForCall(initializer) : undefined;
       if (initialized) {
         const noArguments = initialized.typeArguments === "";
-        if (file.getFilePath().match(/\\.(?:mjs|js|cjs)$/u) && !noArguments) {
+        if (javascript(file) && !noArguments) {
           return { ok: false, reason: "JavaScript assemblyFor() with a type argument" };
         }
         return { ok: true, typeArguments: initialized.typeArguments };
       }
       const typeNode = declaration.getTypeNode();
       const annotated = typeNode ? assemblyType(typeNode) : undefined;
-      if (annotated && !file.getFilePath().match(/\\.(?:mjs|js|cjs)$/u)) return { ok: true, typeArguments: annotated.typeArguments };
+      if (annotated && !javascript(file)) return { ok: true, typeArguments: annotated.typeArguments };
     }
     if (declaration.getKind() === SyntaxKind.Parameter && declarationName(declaration) === expression.getText()) {
       const typeNode = declaration.getTypeNode();
       const annotated = typeNode ? assemblyType(typeNode) : undefined;
-      if (annotated && !file.getFilePath().match(/\\.(?:mjs|js|cjs)$/u)) return { ok: true, typeArguments: annotated.typeArguments };
+      if (annotated && !javascript(file)) return { ok: true, typeArguments: annotated.typeArguments };
     }
   }
   return { ok: false, reason: "receiver does not resolve to an Assembly binding in this file" };
@@ -213,7 +241,7 @@ export function receiver(file, expression, { inline = true } = {}) {
 function methodName(call) {
   const expression = call.getExpression();
   if (Node.isIdentifier(expression)) {
-    const declaration = expression.getSymbol()?.getDeclarations().find((entry) => Node.isBindingElement(entry))
+    const declaration = safeSymbolDeclarations(expression).find((entry) => Node.isBindingElement(entry))
       ?? fileOf(expression).getDescendantsOfKind(SyntaxKind.BindingElement)
         .find((entry) => entry.getName() === expression.getText()
           && ["bindFactory", "bindInput", "prepare"].includes(entry.getPropertyNameNode()?.getText() ?? entry.getName()));
@@ -252,7 +280,7 @@ function runtimePicked(expression, file) {
 
 function scopedCall(file, expression) {
   if (!Node.isCallExpression(expression)) return undefined;
-  const target = importedCall(expression.getExpression(), "scoped", RESOURCES);
+  const target = importedCall(expression.getExpression(), "scoped", RESOURCES, { valueOnly: false });
   return target ? { expression, target } : undefined;
 }
 
@@ -262,12 +290,18 @@ function generic(typeArgumentsText) {
 
 function valueImport(file, name, at) {
   const existing = namedImports(file, name, ASSEMBLY).find((entry) => !entry.declaration.isTypeOnly());
-  if (existing) return { expression: existing.local, collision: false };
+  if (existing) return {
+    expression: existing.local,
+    collision: nameWouldCollide(file, existing.local, at, new Set([existing.specifier])),
+  };
   const namespaces = namespaceImports(file, ASSEMBLY);
   if (name !== "scoped" && namespaces.length > 0) return { expression: `${namespaces[0].getText()}.${name}`, collision: false };
   if (name === "scoped") {
     const resource = namedImports(file, "scoped", RESOURCES).find((entry) => !entry.declaration.isTypeOnly());
-    if (resource) return { expression: resource.local, collision: false };
+    if (resource) return {
+      expression: resource.local,
+      collision: nameWouldCollide(file, resource.local, at, new Set([resource.specifier])),
+    };
     const resourceNamespace = namespaceImports(file, RESOURCES)[0];
     if (resourceNamespace) return { expression: `${resourceNamespace.getText()}.scoped`, collision: false };
   }
@@ -367,10 +401,51 @@ function propertyName(property) {
 function objectWithFactories(expression) {
   if (Node.isObjectLiteralExpression(expression)) return expression.getProperties().some((property) => propertyName(property) === "factories");
   if (Node.isIdentifier(expression)) {
-    const declaration = expression.getSymbol()?.getDeclarations().find((entry) => Node.isVariableDeclaration(entry));
+    const declaration = declarationsFor(expression).find((entry) => Node.isVariableDeclaration(entry));
     return declaration ? objectWithFactories(declaration.getInitializer()) : false;
   }
   return false;
+}
+
+function unwrapExpression(expression) {
+  let current = expression;
+  while (current && (Node.isParenthesizedExpression(current) || Node.isAsExpression(current)
+    || current.getKind() === SyntaxKind.TypeAssertionExpression || Node.isSatisfiesExpression(current)
+    || Node.isNonNullExpression(current))) {
+    current = current.getExpression();
+  }
+  return current;
+}
+
+function entryFactoryCall(call) {
+  const method = methodName(call);
+  if (method && ["bindFactory", "bindInput"].includes(method.name)) return true;
+  const target = unwrapExpression(call.getExpression());
+  if (!Node.isCallExpression(target)) return false;
+  return ["implement", "input"].some((name) => importedCall(target.getExpression(), name, ASSEMBLY));
+}
+
+function entryValue(expression) {
+  const value = unwrapExpression(expression);
+  if (!value) return false;
+  if (Node.isSpreadElement(value)) return entryValue(value.getExpression());
+  if (Node.isConditionalExpression(value)) return entryValue(value.getWhenTrue()) || entryValue(value.getWhenFalse());
+  if (Node.isArrayLiteralExpression(value)) return value.getElements().some(entryValue);
+  if (Node.isCallExpression(value)) return entryFactoryCall(value);
+  if (Node.isPropertyAccessExpression(value)) return value.getName() === "factories";
+  if (Node.isIdentifier(value)) {
+    const declarations = declarationsFor(value);
+    const initializers = declarations.filter((declaration) => Node.isVariableDeclaration(declaration))
+      .map((declaration) => declaration.getInitializer()).filter(Boolean);
+    if (initializers.some(entryValue)) return true;
+    return /^(?:bound|entry|factor(?:y|ies)|handle|module)s?$/iu.test(value.getText());
+  }
+  return false;
+}
+
+function holdsHandles(property) {
+  if (Node.isShorthandPropertyAssignment(property)) return entryValue(property.getNameNode());
+  return entryValue(property.getInitializer());
 }
 
 function prepareInspection(file, call, method) {
@@ -407,7 +482,7 @@ function prepareInspection(file, call, method) {
   }
   if (!factories) return undefined;
   const profileId = object.getProperties().some((property) => propertyName(property) === "profileId");
-  if (profileId && !file.getFilePath().match(/\\.(?:mjs|js|cjs)$/u)) {
+  if (profileId && !javascript(file)) {
     const value = Node.isPropertyAssignment(factories) ? factories.getInitializer() : undefined;
     const tuple = Node.isArrayLiteralExpression(value) && !value.getElements().some((element) => Node.isSpreadElement(element));
     if (!tuple) {
@@ -494,7 +569,6 @@ function typeImportInspection(file, declaration, specifier) {
     .filter((identifier) => identifier.getText() === local && refersTo(identifier, specifier)
       && identifier !== specifier.getNameNode() && identifier !== specifier.getAliasNode());
   return references.map((identifier) => {
-    const reference = identifier.getParentIfKind(SyntaxKind.TypeReference);
     const site = { kind: "type", type: original, node: identifier, counted: true };
     if (collision) {
       return { ...site, status: "report", message: `${line(identifier)}: ${original} reference stays; rename the local binding that collides with ${replacement}` };
@@ -569,14 +643,11 @@ function reportExtras(file) {
   }
   for (const property of file.getDescendantsOfKind(SyntaxKind.PropertyAssignment)) {
     if (handledFactories.has(property) || propertyName(property) !== "factories") continue;
-    const value = property.getInitializer();
-    const holdsHandles = Node.isArrayLiteralExpression(value) || Node.isIdentifier(value) || Node.isPropertyAccessExpression(value)
-      || Node.isCallExpression(value) || /factor|handle|entr|module|bind/iu.test(value?.getText() ?? "");
-    if (holdsHandles) extras.push({ status: "report", message: `${line(property)}: factories property stays; rename the helper property and its callers to modules by hand` });
+    if (holdsHandles(property)) extras.push({ status: "report", message: `${line(property)}: factories property stays; rename the helper property and its callers to modules by hand` });
   }
   for (const property of file.getDescendantsOfKind(SyntaxKind.ShorthandPropertyAssignment)) {
     if (handledFactories.has(property) || property.getName() !== "factories") continue;
-    extras.push({ status: "report", message: `${line(property)}: factories property stays; rename the helper property and its callers to modules by hand` });
+    if (holdsHandles(property)) extras.push({ status: "report", message: `${line(property)}: factories property stays; rename the helper property and its callers to modules by hand` });
   }
   for (const identifier of file.getDescendantsOfKind(SyntaxKind.Identifier)) {
     if (!["BindingErrorCode", "PreparationErrorCode"].includes(identifier.getText())) continue;
@@ -611,6 +682,17 @@ export function inspectAll(file) {
     types: inspectTypes(file),
     extras: reportExtras(file),
   };
+}
+
+export function reportAll(file) {
+  const inspected = inspectAll(file);
+  return [
+    ...inspected.entries,
+    ...inspected.prepare,
+    ...inspected.isolate,
+    ...inspected.types,
+    ...inspected.extras,
+  ].filter((site) => site.status === "report").map((site) => site.message);
 }
 
 function applyInspections(file, sites, manual) {
@@ -719,6 +801,5 @@ export function measure(file) {
     reported: sites.filter((site) => site.status === "report").length,
     errorReferences: inspected.extras.filter((site) => /BindingErrorCode|PreparationErrorCode/u.test(site.message)).length,
     manualExtras: inspected.extras.filter((site) => !/BindingErrorCode|PreparationErrorCode/u.test(site.message)).length,
-    inspected,
   };
 }
