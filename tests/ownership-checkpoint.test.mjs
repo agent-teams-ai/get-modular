@@ -86,6 +86,11 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
       path: "docs/decisions/0036-compose-roots-from-module-entries-and-static-groups.md",
       immutableDigest: "sha256:2ab03f4cd3844bfe5a9673c3da719a4bd7c29a745dfb11b6d5c8f0783142e675",
     },
+    {
+      id: "ADR-0037",
+      path: "docs/decisions/0037-pin-providers-not-completed-rows-in-the-binding-oracle.md",
+      immutableDigest: "sha256:1c49f7bbfd5ec7df2dbfaefbfd58da7ea2c3583421fc22a3122acd15648718a6",
+    },
   ]);
   const paths = execFileSync("git", ["ls-tree", "-r", "--name-only", checkpoint.evidence.base,
     "docs/decisions"], { encoding: "utf8" }).trim().split("\n");

@@ -1,14 +1,17 @@
 import { many, optional, required } from "@get-modular/core";
 import {
   assemblyFor, declareModule, defineContract, implement, input,
-  type CapabilitiesOf, type FactoryContext, type ModuleFactory,
+  type CapabilitiesOf, type FactoryContext, type ModuleFactory, type SuccessfulComposition,
 } from "@get-modular/assembly";
 import type { ModuleContext } from "@get-modular/resources";
 import { scoped } from "@get-modular/resources";
 import {
-  checkNamespaces, contractSuite, guardHandles, isolate, runContractSuite, smoke,
+  checkModuleLayout, checkNamespaces, checkWiring, contractSuite, describeWiring, guardHandles, isolate,
+  runContractSuite, smoke,
   type CaseContext, type ConformanceError, type ConformanceErrorCode, type ContractSubject,
-  type HandleGuard, type Isolated, type SmokeInjection, type SmokeStep, type TestFn,
+  type HandleGuard, type Isolated, type LayoutExport, type LayoutImport, type LayoutViolation,
+  type ModuleLayoutMetrics, type ModuleLayoutRecords, type ModuleLayoutReport, type SmokeInjection,
+  type SmokeStep, type TestFn, type WiringDifference, type WiringOracle, type WiringRow,
 } from "../dist/index.js";
 
 // ADR-0033: the signatures keep the capability types of the caller's own map.
@@ -102,6 +105,8 @@ switch (reason) {
   case "conformance.isolate.construction-failed":
   case "conformance.smoke.failed":
   case "conformance.namespaces.violation":
+  case "conformance.wiring.mismatch":
+  case "conformance.layout.violation":
   case "conformance.suite.revision-mismatch":
   case "conformance.suite.case-failed":
   case "conformance.handles.leaked":
@@ -117,3 +122,40 @@ switch (reason) {
 checkNamespaces({ namespace: "acme", declarations: [orders] });
 // @ts-expect-error a bare declaration is not a list
 checkNamespaces({ namespace: "acme", declarations: orders });
+
+declare const composition: SuccessfulComposition;
+const provider: string | readonly string[] = orders.implementationId;
+const oracle: WiringOracle = {
+  providers: { "acme/db": provider, "acme/orders": [orders.implementationId] },
+  roots: [orders.implementationId],
+  rows: [{ consumer: orders.implementationId, slot: "db", providers: [orders.implementationId] }],
+};
+checkWiring(composition, [oracle], { declarations: [orders] });
+// @ts-expect-error the declarations are required
+checkWiring(composition, [oracle]);
+const wiringDescription: string = describeWiring(composition);
+void wiringDescription;
+
+const layoutImport: LayoutImport = {
+  from: "src/features/orders/composition/orders.module.ts",
+  to: "src/features/orders/composition/orders.declaration.ts",
+  mode: "value",
+};
+const layoutExport: LayoutExport = { name: "createOrder", kind: "function" };
+const records: ModuleLayoutRecords = {
+  files: [layoutImport.from, layoutImport.to],
+  imports: [layoutImport],
+  useCaseExports: {
+    "src/features/orders/application/use-cases/create-order.ts": [layoutExport],
+  },
+};
+const layoutReport: ModuleLayoutReport = checkModuleLayout(records);
+const metrics: ModuleLayoutMetrics = layoutReport;
+const violations: readonly LayoutViolation[] = layoutReport.violations;
+const row: WiringRow = oracle.rows?.[0] ?? { consumer: "x", slot: "y", providers: [] };
+const difference: WiringDifference = {
+  rule: "row", subject: `${row.consumer}.${row.slot}`, expected: row.providers, actual: [], message: "changed",
+};
+void metrics; void violations; void difference;
+// @ts-expect-error the difference rule is a closed union
+void ({ rule: "unknown", subject: "", expected: [], actual: [], message: "" }) satisfies WiringDifference;

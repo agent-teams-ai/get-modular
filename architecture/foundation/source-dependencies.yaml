@@ -514,6 +514,20 @@ boundaries:
       packages: []
       builtins: []
       runtimeReferences: []
+  - id: conformance-records
+    roots:
+      - packages/conformance/src/features/records/own.ts
+      - packages/conformance/src/features/records/declarations.ts
+    entrypoints:
+      - packages/conformance/src/features/records/own.ts
+      - packages/conformance/src/features/records/declarations.ts
+    allow:
+      boundaries:
+        - conformance-errors
+      packages:
+        - "@get-modular/core"
+      builtins: []
+      runtimeReferences: []
   - id: conformance-harness
     roots:
       - packages/conformance/src/features/harness/types.ts
@@ -567,8 +581,41 @@ boundaries:
     allow:
       boundaries:
         - conformance-errors
+        - conformance-records
       packages:
         - "@get-modular/core"
+      builtins: []
+      runtimeReferences: []
+  - id: conformance-wiring
+    roots:
+      - packages/conformance/src/features/wiring/types.ts
+      - packages/conformance/src/features/wiring/check.ts
+      - packages/conformance/src/features/wiring/describe.ts
+    entrypoints:
+      - packages/conformance/src/features/wiring/types.ts
+      - packages/conformance/src/features/wiring/check.ts
+      - packages/conformance/src/features/wiring/describe.ts
+    allow:
+      boundaries:
+        - conformance-errors
+        - conformance-records
+      packages:
+        - "@get-modular/assembly"
+        - "@get-modular/core"
+      builtins: []
+      runtimeReferences: []
+  - id: conformance-layout
+    roots:
+      - packages/conformance/src/features/layout/types.ts
+      - packages/conformance/src/features/layout/check.ts
+    entrypoints:
+      - packages/conformance/src/features/layout/types.ts
+      - packages/conformance/src/features/layout/check.ts
+    allow:
+      boundaries:
+        - conformance-errors
+        - conformance-records
+      packages: []
       builtins: []
       runtimeReferences: []
   - id: conformance-composition
@@ -582,6 +629,8 @@ boundaries:
         - conformance-suites
         - conformance-handles
         - conformance-namespaces
+        - conformance-wiring
+        - conformance-layout
       packages: []
       builtins: []
       runtimeReferences: []
@@ -599,6 +648,8 @@ boundaries:
         - conformance-suites
         - conformance-handles
         - conformance-namespaces
+        - conformance-wiring
+        - conformance-layout
         - conformance-composition
       packages: []
       builtins: []

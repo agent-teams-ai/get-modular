@@ -9,8 +9,9 @@ admits the package. It is development tooling: production code does not import
 it, and Core and Assembly do not either.
 
 The package qualifies nothing by itself. It does not qualify Core or Assembly,
-it derives no expected value from the implementation under test, and it has no
-oracle for bindings: the author of a test supplies the expected data.
+it derives no expected value from the implementation under test: the author of
+a test supplies the expected data, including the provider decisions that
+`checkWiring` compares with a completed composition.
 
 ## Install
 
@@ -145,6 +146,103 @@ with a leading, trailing or double `/`, declarations that are not an array and a
 declaration without string ids or `owner.authority` throw
 `conformance.argument.invalid`. Only own data properties are read.
 
+## Check a completed root with the wiring oracle
+
+```ts
+import { checkWiring, describeWiring } from "@get-modular/conformance";
+
+const ordersWiring = {
+  providers: {
+    "acme/db": "acme/db/postgres",
+    "acme/orders": "acme/orders/default",
+  },
+  roots: ["acme/orders/default"],
+};
+
+checkWiring(composition, [ordersWiring], { declarations });
+console.log(describeWiring(composition));
+```
+
+`checkWiring(composition, oracles, { declarations })` compares a completed
+composition with hand-written `WiringOracle` parts. Pass the same declarations
+you pass to `compileComposition` and `checkNamespaces`: the plan shows neither
+the capabilities a module provides nor the cardinality of a slot, so the
+declarations supply them. Keep each oracle part in test code at
+`<test-root>/features/<feature>/<feature>.wiring.ts`; never derive it from the
+profile, plan or implementation. Equal parts may repeat a pin or row. Parts
+that pin one capability to different provider sets, or list different provider
+orders for one `consumer` and `slot`, conflict.
+
+The merged oracle pins the implementation providing every capability a selected
+module provides, the root implementations and every row that profile completion
+does not produce: optional, `many`, explicit and several-provider rows. The
+check reports a difference when:
+
+- plan selections differ from pinned providers plus roots, or plan roots differ
+  from the oracle roots (`selection`, `root`);
+- the declarations do not cover the plan selections exactly, by
+  `implementationId` (`declaration-selection`);
+- a selected declaration provides a capability that the oracle does not pin to
+  it (`provided-capability`), or a pinned implementation that is selected and
+  declared does not provide its pinned capability (`pinned-provider`);
+- a listed row differs from its plan row, provider order included (`row`,
+  `row-order`), or a listed row is absent from the plan;
+- an unlisted plan row is not a `required` slot bound to the single pinned
+  provider of its capability (`unlisted-row`); an unlisted `optional` or `many`
+  row, and every row of a several-provider capability, must be listed;
+- a plan row names a slot its consumer's declaration lacks (`row-slot`) or uses
+  another capability than the declared slot (`row-capability`).
+
+A newly declared `required` slot bound to its single pinned provider therefore
+needs no oracle change; review that as a declaration change. Every difference is
+collected before one `conformance.wiring.mismatch` is thrown, with the rows in
+`details.differences`.
+
+`describeWiring` is a debugging view, not an oracle format. It prints roots and
+selections, then one `consumer.slot <- providers [capability rN]` row per line.
+
+## Check source layout with `checkModuleLayout`
+
+```ts
+import { checkModuleLayout } from "@get-modular/conformance";
+
+const report = checkModuleLayout({
+  files,
+  imports,
+  useCaseExports,
+});
+```
+
+The caller resolves source paths and import specifiers and passes normalized
+records: repository-relative `files`, `imports` with `from`, `to` and a `type`
+or `value` mode, and the runtime exports of each `application/use-cases` file.
+The function is pure and imports nothing it scans.
+
+Pass production files only, never tests: `isolate` tests import module files
+too, and only production importers may count for ownership. Every `from` must
+be one of `files`. A `to` may lie outside `files` (an external package or an
+unresolved specifier); the collector drops Node builtins. Only `value` imports
+own, place or use a file; a `type` import never does. A feature is the
+directory below the last `features/` segment, and its key in the metrics is
+that directory's path, so the same feature name under two source roots stays
+apart. Host-level files (`src/composition/`) belong to no feature. A Host-level
+file under a directory literally named `composition` (for example
+`packages/composition/src/index.ts`) is reported as `nested-composition`.
+
+It reports every Get Modular rule with a stable violation code:
+`module-declaration` (a module imports no declaration of its feature),
+`orphan-module`, `orphan-declaration`, `group-count`,
+`child-group-outside-parent`, `root-imports-sub-feature-group`,
+`nested-composition`, `descriptor-path`, `use-case-export` and
+`application-file`. A `*.contracts.*` file must be
+`composition/<own segment>.contracts.*` of its feature or a flat Host-level
+`composition/*.contracts.*`, and a declaration import of a contracts file must
+resolve to such a collected file. Whether a declaration imports anything else
+(`node:fs`, a module file, an application file) stays with the lint rules. A
+passing call returns `featureCount`, `moduleCount` and `modulesPerFeature`. A
+failing call throws one `conformance.layout.violation`; `details.violations`
+lists every violation and `details` also carries the same metrics.
+
 ## Find leaked handles with `guardHandles`
 
 ```ts
@@ -184,6 +282,8 @@ a `Promise`.
 | `conformance.isolate.construction-failed` | the module could not be built |
 | `conformance.smoke.failed` | a smoke step broke an expectation |
 | `conformance.namespaces.violation` | a declaration breaks a namespace rule; `details.violations` lists them all |
+| `conformance.wiring.mismatch` | a completed plan or its declarations differ from the provider oracle; `details.differences` lists every difference. Malformed declarations are `conformance.argument.invalid` |
+| `conformance.layout.violation` | source records break a Get Modular layout rule; `details.violations` lists every violation |
 | `conformance.suite.revision-mismatch` | the subject provides another revision than the suite checks |
 | `conformance.suite.case-failed` | a case failed and its scope also closed with debts |
 | `conformance.handles.leaked` | handles opened after the guard are still active |

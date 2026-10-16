@@ -3,10 +3,13 @@ import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { many, optional, required } from "@get-modular/core";
+import { compileComposition, many, optional, required } from "@get-modular/core";
 import { assemblyFor, declareModule, defineContract, implement, input } from "@get-modular/assembly";
 import { createScope, scoped } from "@get-modular/resources";
-import { ConformanceError, checkNamespaces, contractSuite, guardHandles, isolate, runContractSuite, smoke } from "../dist/index.js";
+import {
+  ConformanceError, checkModuleLayout, checkNamespaces, checkWiring, contractSuite, describeWiring, guardHandles,
+  isolate, runContractSuite, smoke,
+} from "../dist/index.js";
 
 // ADR-0033: the real Core, Assembly and resources of this workspace build every module here.
 const tests = dirname(fileURLToPath(import.meta.url));
@@ -518,4 +521,464 @@ test("N5 a malformed call is an argument error and reads own data only", () => {
   Object.defineProperty(getter, "declarations", { enumerable: true, get() { calls += 1; return []; } });
   assert.throws(() => checkNamespaces(getter), error => code(error) === "conformance.argument.invalid");
   assert.equal(calls, 0);
+});
+
+const provides = descriptor => [descriptor.provide()];
+const wiringDeclaration = (id, capability, slots = []) => declareModule({
+  moduleId: `t/${id}`, implementationId: `t/${id}/default`, owner,
+  provides: provides(capability), slots,
+});
+const DECLARATIONS = Symbol("declarations");
+const declarationsOf = composition => composition[DECLARATIONS];
+const check = (composition, oracles, declarations = declarationsOf(composition)) =>
+  checkWiring(composition, oracles, { declarations });
+const wiringComposition = async (declarations, roots, bindings) => {
+  const result = await compileComposition({
+    declarations,
+    profile: {
+      kind: "get-modular.composition-profile", schemaVersion: 1, profileId: "t/wiring",
+      roots,
+      selections: declarations.map(declaration => ({
+        moduleId: declaration.moduleId, implementationId: declaration.implementationId,
+      })),
+      bindings,
+    },
+  });
+  assert.equal(result.ok, true, result.ok ? "" : JSON.stringify(result.diagnostics));
+  return { ...result, [DECLARATIONS]: declarations };
+};
+const binding = (declaration, slot, capability, providers) => {
+  void capability;
+  return {
+    consumerImplementationId: declaration.implementationId, slotId: slot,
+    providerImplementationIds: providers,
+  };
+};
+const changedPlan = (composition, change) => ({ ...composition, plan: { ...composition.plan, ...change(composition.plan) } });
+const differences = input => {
+  try {
+    check(input.composition, input.oracles, input.declarations ?? declarationsOf(input.composition));
+  } catch (error) {
+    assert.equal(code(error), "conformance.wiring.mismatch");
+    return error.details.differences;
+  }
+  return [];
+};
+const failure = (body, expected) => {
+  try {
+    body();
+  } catch (error) {
+    assert.equal(code(error), expected);
+    return error;
+  }
+  assert.fail(`expected ${expected}`);
+};
+
+test("W1 provider pins and one root pass, and selection and root changes name their differences", async () => {
+  const logs = wiringDeclaration("logs", Logs);
+  const db = wiringDeclaration("db", Db);
+  const orders = wiringDeclaration("wiring-orders", Orders, [Logs.slot("logs", required()), Db.slot("db", required())]);
+  const composition = await wiringComposition([logs, db, orders], ["t/wiring-orders"], [
+    binding(orders, "logs", Logs, [logs.implementationId]), binding(orders, "db", Db, [db.implementationId]),
+  ]);
+  const oracle = {
+    providers: { "t/logs": logs.implementationId, "t/db": db.implementationId, "t/orders": orders.implementationId },
+    roots: [orders.implementationId],
+  };
+  check(composition, [oracle]);
+
+  const replacement = changedPlan(composition, plan => ({
+    selections: plan.selections.map(entry => entry.implementationId === logs.implementationId
+      ? { ...entry, implementationId: "t/logs/replaced" } : entry),
+  }));
+  assert.deepEqual(differences({ composition: replacement, oracles: [oracle] }).map(entry => entry.rule),
+    ["selection", "capability-provider", "declaration-selection"]);
+  const removed = changedPlan(composition, plan => ({
+    selections: plan.selections.filter(entry => entry.implementationId !== logs.implementationId),
+  }));
+  assert.deepEqual(differences({ composition: removed, oracles: [oracle] }).map(entry => entry.rule),
+    ["selection", "capability-provider", "declaration-selection"]);
+  const added = changedPlan(composition, plan => ({
+    selections: [...plan.selections, { moduleId: "t/extra", implementationId: "t/extra/default" }],
+  }));
+  assert.deepEqual(differences({ composition: added, oracles: [oracle] }).map(entry => entry.rule),
+    ["selection", "declaration-selection"]);
+  const changedRoot = changedPlan(composition, () => ({ roots: ["t/extra"] }));
+  assert.deepEqual(differences({ composition: changedRoot, oracles: [oracle] }).map(entry => entry.rule), ["root"]);
+});
+
+test("W2 optional, many and several-provider rows are listed exactly, including provider order", async () => {
+  const logs1 = wiringDeclaration("logs-1", Logs);
+  const logs2 = wiringDeclaration("logs-2", Logs);
+  const db1 = wiringDeclaration("db-1", Db);
+  const db2 = wiringDeclaration("db-2", Db);
+  const consumer = wiringDeclaration("row-consumer", Orders, [
+    Audit.slot("audit", optional()), Logs.slot("logs", many({ min: 0, max: 2 })),
+    Db.slot("copies", many({ min: 0, max: 2 })),
+  ]);
+  const rows = [
+    binding(consumer, "audit", Audit, []),
+    binding(consumer, "logs", Logs, [logs2.implementationId, logs1.implementationId]),
+    binding(consumer, "copies", Db, [db2.implementationId, db1.implementationId]),
+  ];
+  const composition = await wiringComposition(
+    [logs1, logs2, db1, db2, consumer], [consumer.moduleId], rows,
+  );
+  const oracle = {
+    providers: {
+      "t/logs": [logs1.implementationId, logs2.implementationId],
+      "t/db": [db1.implementationId, db2.implementationId],
+      "t/orders": consumer.implementationId,
+    },
+    roots: [consumer.implementationId],
+    rows: rows.map(row => ({
+      consumer: row.consumerImplementationId, slot: row.slotId, providers: row.providerImplementationIds,
+    })),
+  };
+  check(composition, [oracle]);
+  assert.equal(differences({ composition, oracles: [{ ...oracle, rows: [] }] }).filter(entry =>
+    entry.rule === "unlisted-row").length, 3);
+  const reordered = changedPlan(composition, plan => ({
+    bindings: plan.bindings.map(row => row.slotId === "logs"
+      ? { ...row, providerImplementationIds: [logs1.implementationId, logs2.implementationId] } : row),
+  }));
+  assert.deepEqual(differences({ composition: reordered, oracles: [oracle] }).map(entry => entry.rule), ["row-order"]);
+  const replaced = changedPlan(composition, plan => ({
+    bindings: plan.bindings.map(row => row.slotId === "logs"
+      ? { ...row, providerImplementationIds: [logs2.implementationId, "t/logs-3/default"] } : row),
+  }));
+  assert.deepEqual(differences({ composition: replaced, oracles: [oracle] }).map(entry => entry.rule), ["row"]);
+});
+
+test("W3 equal oracle parts pass, pins compare as sets and one throw lists every conflict", async () => {
+  const logs = wiringDeclaration("conflict-logs", Logs);
+  const db = wiringDeclaration("conflict-db", Db);
+  const orders = wiringDeclaration("conflict-orders", Orders, [Logs.slot("logs", required()), Db.slot("db", required())]);
+  const composition = await wiringComposition([logs, db, orders], ["t/conflict-orders"], [
+    binding(orders, "logs", Logs, [logs.implementationId]), binding(orders, "db", Db, [db.implementationId]),
+  ]);
+  const first = {
+    providers: { "t/logs": logs.implementationId, "t/db": db.implementationId, "t/orders": orders.implementationId },
+    roots: [orders.implementationId],
+    rows: [{ consumer: orders.implementationId, slot: "db", providers: [db.implementationId] }],
+  };
+  check(composition, [first, structuredClone(first)]);
+  const conflicting = {
+    providers: { ...first.providers, "t/logs": "t/logs/other" },
+    roots: [orders.implementationId],
+    rows: [{ consumer: orders.implementationId, slot: "db", providers: [logs.implementationId] }],
+  };
+  const found = differences({ composition, oracles: [first, conflicting] });
+  assert.deepEqual(found.map(entry => entry.rule), ["oracle-provider-conflict", "oracle-row-conflict"]);
+  const reorderedPin = { providers: { "t/many": ["a", "b"] } };
+  const sameSet = { providers: { "t/many": ["b", "a"] } };
+  assert.equal(differences({ composition, oracles: [reorderedPin, sameSet] })
+    .some(entry => entry.rule === "oracle-provider-conflict"), false);
+  const sparse = ["t/f1/default"];
+  sparse.length = 2;
+  assert.throws(() => check(composition, [{ providers: { "t/f1": sparse } }]), {
+    code: "conformance.argument.invalid",
+  });
+});
+
+test("W4 a new required row bound to its single pinned provider is the accepted weakening", async () => {
+  const logs = wiringDeclaration("weakening-logs", Logs);
+  const consumer = wiringDeclaration("weakening-consumer", Orders, [Logs.slot("logs", required())]);
+  const composition = await wiringComposition([logs, consumer], ["t/weakening-consumer"],
+    [binding(consumer, "logs", Logs, [logs.implementationId])]);
+  check(composition, [{
+    providers: { "t/logs": logs.implementationId, "t/orders": consumer.implementationId },
+    roots: [consumer.implementationId],
+  }]);
+});
+
+test("W4b a required slot moved to another capability passes with the same oracle", async () => {
+  const logs = wiringDeclaration("moved-logs", Logs);
+  const db = wiringDeclaration("moved-db", Db);
+  const keeper = wiringDeclaration("moved-keeper", Audit, [Logs.slot("a", required()), Db.slot("b", required())]);
+  const before = wiringDeclaration("moved-consumer", Orders, [Logs.slot("store", required())]);
+  const after = wiringDeclaration("moved-consumer", Orders, [Db.slot("store", required())]);
+  const oracle = {
+    providers: {
+      "t/logs": logs.implementationId, "t/db": db.implementationId, "t/audit": keeper.implementationId,
+      "t/orders": before.implementationId,
+    },
+    roots: [keeper.implementationId, before.implementationId],
+  };
+  const keeperRows = [
+    binding(keeper, "a", Logs, [logs.implementationId]), binding(keeper, "b", Db, [db.implementationId]),
+  ];
+  check(await wiringComposition([logs, db, keeper, before], [keeper.moduleId, before.moduleId],
+    [...keeperRows, binding(before, "store", Logs, [logs.implementationId])]), [oracle]);
+  check(await wiringComposition([logs, db, keeper, after], [keeper.moduleId, after.moduleId],
+    [...keeperRows, binding(after, "store", Db, [db.implementationId])]), [oracle]);
+});
+
+test("W9 a pinned implementation must provide its pinned capability in its declaration", async () => {
+  const logs = wiringDeclaration("w9-logs", Logs);
+  const consumer = wiringDeclaration("w9-consumer", Orders, [Logs.slot("logs", required())]);
+  const composition = await wiringComposition([logs, consumer], [consumer.moduleId],
+    [binding(consumer, "logs", Logs, [logs.implementationId])]);
+  const oracle = {
+    providers: { "t/logs": logs.implementationId, "t/orders": consumer.implementationId },
+    roots: [consumer.implementationId],
+  };
+  check(composition, [oracle]);
+  const wrong = differences({
+    composition, oracles: [{ ...oracle, providers: { ...oracle.providers, "t/db": logs.implementationId } }],
+  });
+  assert.deepEqual(wrong.map(entry => `${entry.rule} ${entry.subject}`), ["pinned-provider t/db"]);
+});
+
+test("W5 describeWiring prints roots, selections and rows in its debug format", async () => {
+  const logs = wiringDeclaration("describe-logs", Logs);
+  const consumer = wiringDeclaration("describe-consumer", Orders, [Logs.slot("logs", required())]);
+  const composition = await wiringComposition([logs, consumer], ["t/describe-consumer"],
+    [binding(consumer, "logs", Logs, [logs.implementationId])]);
+  assert.equal(describeWiring(composition), [
+    "roots:",
+    "  t/describe-consumer/default",
+    "selections:",
+    "  t/describe-consumer <- t/describe-consumer/default",
+    "  t/describe-logs <- t/describe-logs/default",
+    "rows:",
+    "  t/describe-consumer/default.logs <- t/describe-logs/default [t/logs r1]",
+  ].join("\n"));
+});
+
+test("W6 an unlisted optional or many row is a difference, and a listed one equal to the plan passes", async () => {
+  const logs = wiringDeclaration("w6-logs", Logs);
+  const audit = wiringDeclaration("w6-audit", Audit);
+  const consumer = wiringDeclaration("w6-consumer", Orders, [
+    Audit.slot("audit", optional()), Logs.slot("logs", many({ min: 0, max: 2 })),
+  ]);
+  const rows = [
+    binding(consumer, "audit", Audit, [audit.implementationId]),
+    binding(consumer, "logs", Logs, [logs.implementationId]),
+  ];
+  const composition = await wiringComposition([logs, audit, consumer], [consumer.moduleId], rows);
+  const oracle = {
+    providers: {
+      "t/logs": logs.implementationId, "t/audit": audit.implementationId, "t/orders": consumer.implementationId,
+    },
+    roots: [consumer.implementationId],
+    rows: rows.map(row => ({
+      consumer: row.consumerImplementationId, slot: row.slotId, providers: row.providerImplementationIds,
+    })),
+  };
+  check(composition, [oracle]);
+  const unlisted = differences({ composition, oracles: [{ ...oracle, rows: [] }] });
+  assert.deepEqual(unlisted.map(entry => `${entry.rule} ${entry.subject}`), [
+    `unlisted-row ${consumer.implementationId}.audit`, `unlisted-row ${consumer.implementationId}.logs`,
+  ]);
+  assert.match(unlisted[0].message, /is optional/u);
+  assert.match(unlisted[1].message, /is many/u);
+});
+
+test("W7 declarations must cover the plan selections and every provided capability must be pinned", async () => {
+  const logs = wiringDeclaration("w7-logs", Logs);
+  const consumer = wiringDeclaration("w7-consumer", Orders, [Logs.slot("logs", required())]);
+  const both = declareModule({
+    moduleId: "t/w7-both", implementationId: "t/w7-both/default", owner,
+    provides: [Audit.provide(), Db.provide()], slots: [],
+  });
+  const composition = await wiringComposition([logs, consumer, both], [consumer.moduleId, both.moduleId],
+    [binding(consumer, "logs", Logs, [logs.implementationId])]);
+  const oracle = {
+    providers: {
+      "t/logs": logs.implementationId, "t/orders": consumer.implementationId, "t/audit": both.implementationId,
+      "t/db": both.implementationId,
+    },
+    roots: [consumer.implementationId, both.implementationId],
+  };
+  check(composition, [oracle]);
+  const unpinned = differences({
+    composition, oracles: [{ ...oracle, providers: { ...oracle.providers, "t/db": "t/elsewhere" } }],
+  });
+  assert.ok(unpinned.some(entry => entry.rule === "provided-capability" && entry.subject === "t/db"
+    && entry.actual[0] === both.implementationId));
+  assert.ok(unpinned.every(entry => entry.rule !== "provided-capability" || entry.subject === "t/db"));
+  assert.deepEqual(differences({ composition, oracles: [oracle], declarations: [logs, consumer] })
+    .map(entry => `${entry.rule} ${entry.expected.join()}|${entry.actual.join()}`), [
+    `declaration-selection ${[both.implementationId, consumer.implementationId, logs.implementationId].toSorted().join()}`
+    + `|${[consumer.implementationId, logs.implementationId].toSorted().join()}`,
+  ]);
+  const extra = wiringDeclaration("w7-extra", Audit);
+  assert.deepEqual(differences({ composition, oracles: [oracle], declarations: [logs, consumer, both, extra] })
+    .map(entry => entry.rule), ["declaration-selection"]);
+  assert.throws(() => check(composition, [oracle], [logs, logs, consumer, both]), {
+    code: "conformance.argument.invalid",
+  });
+  assert.throws(() => checkWiring(composition, [oracle], {}), { code: "conformance.argument.invalid" });
+});
+
+test("W8 a plan row must use the capability and the slot its consumer's declaration states", async () => {
+  const logs = wiringDeclaration("w8-logs", Logs);
+  const consumer = wiringDeclaration("w8-consumer", Orders, [Logs.slot("logs", required())]);
+  const composition = await wiringComposition([logs, consumer], [consumer.moduleId],
+    [binding(consumer, "logs", Logs, [logs.implementationId])]);
+  const oracle = {
+    providers: { "t/logs": logs.implementationId, "t/orders": consumer.implementationId },
+    roots: [consumer.implementationId],
+  };
+  const moved = changedPlan(composition, plan => ({
+    bindings: plan.bindings.map(row => ({ ...row, capabilityId: "t/db" })),
+  }));
+  const found = differences({ composition: moved, oracles: [oracle], declarations: declarationsOf(composition) });
+  assert.deepEqual(found.map(entry => entry.rule), ["capability-provider", "row-capability", "unlisted-row"]);
+  const ghost = changedPlan(composition, plan => ({
+    bindings: plan.bindings.map(row => ({ ...row, slotId: "ghost" })),
+  }));
+  assert.deepEqual(differences({ composition: ghost, oracles: [oracle], declarations: declarationsOf(composition) })
+    .map(entry => entry.rule), ["row-slot", "unlisted-row"]);
+});
+
+const layoutFile = (path, imports = [], useCaseExports = undefined) => ({ path, imports, useCaseExports });
+const layoutRecords = rows => ({
+  files: rows.map(row => row.path),
+  imports: rows.flatMap(row => row.imports.map(edge => ({ from: row.path, ...edge }))),
+  useCaseExports: Object.fromEntries(rows.filter(row => row.useCaseExports !== undefined)
+    .map(row => [row.path, row.useCaseExports])),
+});
+const edge = (to, mode = "value") => ({ to, mode });
+const pairs = error => error.details.violations.map(entry => [entry.code, entry.path]);
+
+const orders = "src/features/orders";
+const payments = "src/features/orders/features/payments";
+const testShapedTree = () => [
+  layoutFile(`${orders}/composition/orders.contracts.ts`),
+  layoutFile(`${orders}/composition/orders.declaration.ts`, [
+    edge(`${orders}/composition/orders.contracts.ts`, "type"), edge("src/composition/shared.contracts.ts", "type"),
+  ]),
+  layoutFile(`${orders}/composition/orders.module.ts`, [edge(`${orders}/composition/orders.declaration.ts`)]),
+  layoutFile(`${orders}/composition/orders.session.declaration.ts`),
+  layoutFile(`${orders}/composition/orders.inputs.ts`, [edge(`${orders}/composition/orders.session.declaration.ts`)]),
+  layoutFile(`${orders}/composition/orders.group.ts`, [
+    edge(`${orders}/composition/orders.module.ts`), edge(`${payments}/composition/payments.group.ts`),
+  ]),
+  layoutFile(`${payments}/composition/payments.contracts.ts`),
+  layoutFile(`${payments}/composition/payments.declaration.ts`, [edge(`${payments}/composition/payments.contracts.ts`, "type")]),
+  layoutFile(`${payments}/composition/payments.module.ts`, [edge(`${payments}/composition/payments.declaration.ts`)]),
+  layoutFile(`${payments}/composition/payments.group.ts`, [edge(`${payments}/composition/payments.module.ts`)]),
+  layoutFile(`${orders}/application/use-cases/create-order.ts`, [], [{ name: "createOrder", kind: "function" }]),
+  layoutFile("src/composition/shared.contracts.ts"),
+  layoutFile("src/composition/shared.declaration.ts", [edge("src/composition/shared.contracts.ts", "type")]),
+  layoutFile("src/composition/shared.module.ts", [edge("src/composition/shared.declaration.ts")]),
+  layoutFile("src/composition/app.root.ts", [edge(`${orders}/composition/orders.group.ts`), edge("src/composition/shared.module.ts")]),
+];
+
+test("L1 checkModuleLayout passes a TEST-shaped tree with a sub-feature, inputs and Host-level files", () => {
+  assert.deepEqual(checkModuleLayout(layoutRecords(testShapedTree())), {
+    featureCount: 2, moduleCount: 3, violations: [],
+    modulesPerFeature: { [orders]: 1, [payments]: 1 },
+  });
+});
+
+test("L2 one throw lists every Get Modular layout violation kind with its code and path", () => {
+  const o = `${orders}/composition`;
+  const rows = [
+    layoutFile(`${o}/orders.contracts.ts`),
+    layoutFile(`${o}/orders.declaration.ts`, [edge(`${o}/orders.contracts.ts`, "type")]),
+    layoutFile(`${o}/orders.module.ts`, [edge(`${o}/orders.declaration.ts`)]),
+    layoutFile(`${o}/orders.group.ts`, [edge(`${o}/orders.module.ts`)]),
+    layoutFile(`${o}/orphan.module.ts`, [edge(`${o}/orphan.declaration.ts`)]),
+    layoutFile(`${o}/orphan.declaration.ts`),
+    layoutFile(`${o}/unowned.declaration.ts`),
+    layoutFile(`${o}/bare.module.ts`),
+    layoutFile(`${o}/shared.module.ts`, [edge(`${o}/shared.declaration.ts`)]),
+    layoutFile(`${o}/shared.declaration.ts`, [edge(`${orders}/contracts/orders.contracts.ts`, "type")]),
+    layoutFile(`${o}/orders-extra.group.ts`, [edge(`${o}/shared.module.ts`)]),
+    layoutFile(`${payments}/composition/payments.group.ts`),
+    layoutFile(`src/features/other/composition/other.group.ts`, [edge(`${payments}/composition/payments.group.ts`)]),
+    layoutFile(`${payments}/composition/nested/late.ts`),
+    layoutFile(`${orders}/contracts/orders.contracts.ts`),
+    layoutFile(`${orders}/application/use-cases/two.ts`, [], [
+      { name: "one", kind: "function" }, { name: "two", kind: "function" },
+    ]),
+    layoutFile(`${orders}/application/stray.ts`),
+    layoutFile("src/composition/app.root.ts", [
+      edge(`${o}/orders.group.ts`), edge(`${payments}/composition/payments.group.ts`),
+    ]),
+  ];
+  const error = failure(() => checkModuleLayout(layoutRecords(rows)), "conformance.layout.violation");
+  assert.deepEqual(pairs(error).toSorted((a, b) => (a.join() < b.join() ? -1 : 1)), [
+    ["application-file", `${orders}/application/stray.ts`],
+    ["child-group-outside-parent", "src/features/other/composition/other.group.ts"],
+    ["descriptor-path", `${o}/shared.declaration.ts`],
+    ["descriptor-path", `${orders}/contracts/orders.contracts.ts`],
+    ["group-count", `${o}/shared.module.ts`],
+    ["module-declaration", `${o}/bare.module.ts`],
+    ["nested-composition", `${payments}/composition/nested/late.ts`],
+    ["orphan-declaration", `${o}/unowned.declaration.ts`],
+    ["orphan-module", `${o}/bare.module.ts`],
+    ["orphan-module", `${o}/orphan.module.ts`],
+    ["root-imports-sub-feature-group", "src/composition/app.root.ts"],
+    ["use-case-export", `${orders}/application/use-cases/two.ts`],
+  ].toSorted((a, b) => (a.join() < b.join() ? -1 : 1)));
+});
+
+test("L4 a group file that shares its feature with another group is still checked", () => {
+  const rows = testShapedTree();
+  rows.push(layoutFile(`${orders}/composition/zz.group.ts`));
+  rows.push(layoutFile("src/composition/other.root.ts", [edge(`${payments}/composition/payments.group.ts`)]));
+  const error = failure(() => checkModuleLayout(layoutRecords(rows)), "conformance.layout.violation");
+  assert.deepEqual(pairs(error), [["root-imports-sub-feature-group", "src/composition/other.root.ts"]]);
+});
+
+test("L5 type-only imports own and place nothing, and the same feature name under two roots stays apart", () => {
+  const rows = testShapedTree().map(row => row.path === `${orders}/composition/orders.group.ts`
+    ? layoutFile(row.path, [edge(`${orders}/composition/orders.module.ts`, "type"), edge(`${payments}/composition/payments.group.ts`)])
+    : row);
+  const error = failure(() => checkModuleLayout(layoutRecords(rows)), "conformance.layout.violation");
+  assert.deepEqual(pairs(error), [["orphan-module", `${orders}/composition/orders.module.ts`]]);
+  const twin = [
+    layoutFile("packages/a/src/features/orders/composition/orders.module.ts", [
+      edge("packages/a/src/features/orders/composition/orders.declaration.ts"),
+    ]),
+    layoutFile("packages/a/src/features/orders/composition/orders.declaration.ts"),
+    layoutFile("packages/b/src/features/orders/composition/orders.group.ts", [
+      edge("packages/a/src/features/orders/composition/orders.module.ts"),
+    ]),
+    layoutFile("packages/a/src/composition/a.root.ts"),
+  ];
+  const twinError = failure(() => checkModuleLayout(layoutRecords(twin)), "conformance.layout.violation");
+  assert.deepEqual(pairs(twinError), [["group-count", "packages/a/src/features/orders/composition/orders.module.ts"]]);
+  assert.deepEqual(Object.keys(twinError.details.modulesPerFeature), [
+    "packages/a/src/features/orders", "packages/b/src/features/orders",
+  ]);
+});
+
+test("L6 a Windows-style path and a file directly in features/ are read as written", () => {
+  const report = checkModuleLayout({
+    files: ["src\\features\\orders\\composition\\orders.group.ts", "src/features/readme.ts"],
+    imports: [], useCaseExports: {},
+  });
+  assert.deepEqual(report.modulesPerFeature, { [orders]: 0 });
+});
+
+test("L3 malformed layout records are argument errors and an import source must be a collected file", () => {
+  assert.throws(() => checkModuleLayout({ files: "bad", imports: [], useCaseExports: {} }), {
+    code: "conformance.argument.invalid",
+  });
+  assert.throws(() => checkModuleLayout({
+    files: ["src/features/orders/composition/orders.module.ts"],
+    imports: [{ from: "missing.ts", to: "src/features/orders/composition/orders.module.ts", mode: "value" }],
+    useCaseExports: {},
+  }), { code: "conformance.argument.invalid" });
+  assert.throws(() => checkModuleLayout({
+    files: ["src/a.ts"], imports: [{ from: "src/a.ts", to: "src/b.ts", mode: "other" }], useCaseExports: {},
+  }), { code: "conformance.argument.invalid" });
+});
+
+test("L7 a declaration import of a contracts file outside the collected files is a descriptor violation", () => {
+  const o = `${orders}/composition`;
+  const rows = [
+    layoutFile(`${o}/orders.declaration.ts`, [edge("some-pkg/thing.contracts.js", "type"), edge("zod", "value")]),
+    layoutFile(`${o}/orders.module.ts`, [edge(`${o}/orders.declaration.ts`)]),
+    layoutFile(`${o}/orders.group.ts`, [edge(`${o}/orders.module.ts`)]),
+    layoutFile("src/composition/app.root.ts", [edge(`${o}/orders.group.ts`)]),
+  ];
+  const error = failure(() => checkModuleLayout(layoutRecords(rows)), "conformance.layout.violation");
+  assert.deepEqual(pairs(error), [["descriptor-path", `${o}/orders.declaration.ts`]]);
+  assert.equal(error.details.violations[0].relatedPath, "some-pkg/thing.contracts.js");
 });
