@@ -101,7 +101,8 @@ function collectMetadata(modules: readonly unknown[], inputEntries: readonly unk
   }
   // Only duplicated ids are sorted, by code unit order.
   const repeated = [...new Set([...paths.keys(), ...inputs.keys()])]
-    .filter((id) => (paths.get(id)?.length ?? 0) + (inputs.get(id)?.length ?? 0) > 1).toSorted();
+    .filter((id) => (paths.get(id)?.length ?? 0) + (inputs.get(id)?.length ?? 0) > 1)
+    .sort((x, y) => (x < y ? -1 : x > y ? 1 : 0));
   const duplicated = repeated.map((id): DuplicateModule => Object.freeze({
     implementationId: id, paths: Object.freeze(paths.get(id) ?? []), inputs: Object.freeze(inputs.get(id) ?? []),
   }));
