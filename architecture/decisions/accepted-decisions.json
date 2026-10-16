@@ -151,6 +151,11 @@
       "id": "ADR-0035",
       "path": "docs/decisions/0035-complete-composition-profiles-in-prepare-and-make-capabilitiesof-linear.md",
       "immutableDigest": "sha256:f229a2067471f7e49e7243d8d1ba5174fab699e1fbcdb298384aaafd6a27e81d"
+    },
+    {
+      "id": "ADR-0037",
+      "path": "docs/decisions/0037-pin-providers-not-completed-rows-in-the-binding-oracle.md",
+      "immutableDigest": "sha256:1c49f7bbfd5ec7df2dbfaefbfd58da7ea2c3583421fc22a3122acd15648718a6"
     }
   ]
 }

@@ -4,6 +4,8 @@ export type ConformanceErrorCode =
   | "conformance.isolate.construction-failed"
   | "conformance.smoke.failed"
   | "conformance.namespaces.violation"
+  | "conformance.wiring.mismatch"
+  | "conformance.layout.violation"
   | "conformance.suite.revision-mismatch"
   | "conformance.suite.case-failed"
   | "conformance.handles.leaked"
