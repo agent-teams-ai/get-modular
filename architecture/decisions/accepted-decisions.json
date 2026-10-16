@@ -151,6 +151,11 @@
       "id": "ADR-0035",
       "path": "docs/decisions/0035-complete-composition-profiles-in-prepare-and-make-capabilitiesof-linear.md",
       "immutableDigest": "sha256:f229a2067471f7e49e7243d8d1ba5174fab699e1fbcdb298384aaafd6a27e81d"
+    },
+    {
+      "id": "ADR-0036",
+      "path": "docs/decisions/0036-compose-roots-from-module-entries-and-static-groups.md",
+      "immutableDigest": "sha256:2ab03f4cd3844bfe5a9673c3da719a4bd7c29a745dfb11b6d5c8f0783142e675"
     }
   ]
 }
