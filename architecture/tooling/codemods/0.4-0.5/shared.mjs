@@ -1,4 +1,4 @@
-import { Node, SyntaxKind } from "ts-morph";
+import { Node, SyntaxKind, ts } from "ts-morph";
 
 export const ASSEMBLY = "@get-modular/assembly";
 export const RESOURCES = "@get-modular/resources";
@@ -503,6 +503,16 @@ export function inspectPrepare(file) {
   return sites.sort((a, b) => a.node.getStart() - b.node.getStart());
 }
 
+/** Start offsets of every comment in the text; the scanner skips strings and keeps comments as trivia. */
+function commentStarts(text) {
+  const scanner = ts.createScanner(ts.ScriptTarget.Latest, false, ts.LanguageVariant.Standard, text);
+  const starts = [];
+  for (let kind = scanner.scan(); kind !== ts.SyntaxKind.EndOfFileToken; kind = scanner.scan()) {
+    if (kind === ts.SyntaxKind.SingleLineCommentTrivia || kind === ts.SyntaxKind.MultiLineCommentTrivia) starts.push(scanner.getTokenStart());
+  }
+  return starts;
+}
+
 function isolateTarget(file, expression) {
   const qualified = receiver(file, expression);
   if (qualified.ok) return qualified;
@@ -535,11 +545,22 @@ function isolateInspection(file, call) {
   if (scoped.collision) return { ...site, status: "report", message: `${line(call)}: isolate stays; rename the local binding that collides with scoped` };
   const rest = options.getProperties().filter((property) => property !== declaration && property !== factory);
   const restText = rest.length === 0 ? "" : ` ${rest.map((property) => property.getText()).join(", ")} `;
-  // Comments between the two arguments (a `// @ts-expect-error` above the options) stay in front of the options.
-  const between = file.getFullText().slice(args[0].getEnd(), options.getStart());
-  const separator = /\/\/|\/\*/.test(between) ? between : ", ";
+  // The rewrite rebuilds the call, so only comments between the two arguments stay (in front of the options).
+  // A comment anywhere else would be lost silently: leave the call to a hand edit.
+  const betweenStart = args[0].getEnd();
+  const betweenEnd = options.getStart();
+  const lost = commentStarts(call.getText()).some((start) => {
+    const at = call.getStart() + start;
+    return at < betweenStart || at >= betweenEnd;
+  });
+  if (lost) return { ...site, status: "report", message: `${line(call)}: isolate stays; move the comments out of the call or rewrite it by hand` };
+  const between = file.getFullText().slice(betweenStart, betweenEnd);
+  const kept = commentStarts(between).length > 0;
+  const separator = kept ? between : ", ";
+  const note = kept && /@ts-expect-error/u.test(between)
+    ? `${line(call)}: check the placement of @ts-expect-error after the isolate rewrite` : undefined;
   return {
-    ...site, status: "rewrite",
+    ...site, status: "rewrite", note,
     replacement: `${importedIsolate.local}(${implement.expression}${generic(target.typeArguments)}()(${declarationValue.getText()}, ${factoryValue.getText()}, ${scoped.expression})${separator}{${restText}})`,
     imports: [["implement", ASSEMBLY], ["scoped", RESOURCES]],
   };
@@ -694,6 +715,8 @@ function applyInspections(file, sites, manual) {
   for (const site of ordered) {
     if (site.status === "report") {
       manual(site.message);
+    } else if (site.note) {
+      manual(site.note);
     }
   }
   for (const site of ordered.slice().reverse()) {

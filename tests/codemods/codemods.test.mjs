@@ -223,3 +223,10 @@ test("runner: the checkout path in another letter case is refused on case-insens
   assert.equal(result.status, 2);
   assert.match(result.err, /Get Modular checkout itself/u);
 });
+
+test("0.4-0.5 isolate: a kept ts-expect-error between the arguments asks for a placement check", () => {
+  const result = apply(read("0.4-0.5", "isolate-comment", "input.ts.txt").replace("a comment (a ts-expect-error directive is kept the same way)", "@ts-expect-error"),
+    "ts", [isolate]);
+  assert.deepEqual(result.findings, ["line 9: check the placement of @ts-expect-error after the isolate rewrite"]);
+  assert.match(result.text, /\/\/ @ts-expect-error stays above the options/u);
+});
