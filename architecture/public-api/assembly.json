@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "packageName": "@get-modular/assembly",
-  "packageVersion": "0.4.0",
+  "packageVersion": "0.5.0",
   "extractorVersion": "7.58.12",
   "entrypoints": [
     {
@@ -15,25 +15,32 @@
           "signature": "export type AnyContract = Contract<string, unknown, number>;"
         },
         {
-          "canonicalReference": "@get-modular/assembly!AnyFactoryHandle:type",
+          "canonicalReference": "@get-modular/assembly!AnyEntry:type",
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
-          "signature": "export type AnyFactoryHandle<C> = {\n    readonly [uses]: {\n        readonly [K in keyof C]?: (capability: C[K]) => C[K];\n    };\n    readonly [detail]: {\n        readonly declaration: ModuleDeclaration;\n        readonly instance: unknown;\n    };\n    readonly [input]?: never;\n};"
+          "signature": "export type AnyEntry = {\n    readonly declaration: ModuleDeclaration;\n    readonly factory: EntryFactory;\n};"
         },
         {
-          "canonicalReference": "@get-modular/assembly!AnyInputHandle:type",
+          "canonicalReference": "@get-modular/assembly!AnyInputEntry:type",
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
-          "signature": "export type AnyInputHandle<C> = {\n    readonly [uses]: {\n        readonly [K in keyof C]?: (capability: C[K]) => C[K];\n    };\n    readonly [detail]: {\n        readonly declaration: ModuleDeclaration;\n        readonly instance: unknown;\n    };\n    readonly [input]: true;\n};"
+          "signature": "export type AnyInputEntry<C> = {\n    readonly [uses]: {\n        readonly [K in keyof C]?: (capability: C[K]) => C[K];\n    };\n    readonly [detail]: {\n        readonly declaration: ModuleDeclaration;\n        readonly instance: unknown;\n    };\n    readonly declaration: ModuleDeclaration;\n    readonly [input]: true;\n};"
+        },
+        {
+          "canonicalReference": "@get-modular/assembly!AnyModuleEntry:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/assembly!",
+          "parentKind": "EntryPoint",
+          "signature": "export type AnyModuleEntry<C> = {\n    readonly [uses]: {\n        readonly [K in keyof C]?: (capability: C[K]) => C[K];\n    };\n    readonly [detail]: {\n        readonly declaration: ModuleDeclaration;\n        readonly instance: unknown;\n    };\n    readonly declaration: ModuleDeclaration;\n    readonly factory: EntryFactory;\n    readonly [input]?: never;\n};"
         },
         {
           "canonicalReference": "@get-modular/assembly!Assembly:type",
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
-          "signature": "export type Assembly<C> = {\n    readonly bindFactory: <const D extends ModuleDeclaration, I>(declaration: D & ValidDeclaration<C, NoInfer<D>>, factory: (dependencies: FactoryDependencies<C, NoInfer<D>>, context: FactoryContext) => Promise<FactoryProduct<I, FactoryCapabilities<C, NoInfer<D>>>>) => FactoryHandle<C, D, I>;\n    readonly bindInput: <const D extends ModuleDeclaration & {\n        readonly slots: readonly [];\n    }>(declaration: D & ValidDeclaration<C, NoInfer<D>>) => InputHandle<C, D>;\n    readonly prepare: <const R extends RootHandles<C>, const N extends InputHandles<C> = {}, const F extends readonly AnyFactoryHandle<C>[] = readonly AnyFactoryHandle<C>[]>(input: AssemblyPrepareInput<C, R, N, F>) => Promise<AssemblyPreparationResult<R, N>>;\n};"
+          "signature": "export type Assembly<C> = {\n    readonly prepare: <const R extends RootEntries<C>, const N extends InputEntries<C> = {}, const M extends readonly ModuleItem<C>[] = readonly ModuleItem<C>[]>(input: AssemblyPrepareInput<C, R, N, M>) => Promise<AssemblyPreparationResult<R, N>>;\n};"
         },
         {
           "canonicalReference": "@get-modular/assembly!AssemblyBindingError#code:member",
@@ -75,14 +82,14 @@
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
-          "signature": "export type AssemblyPrepareInput<C, R extends RootHandles<C>, N extends InputHandles<C> = {}, F extends readonly AnyFactoryHandle<C>[] = readonly AnyFactoryHandle<C>[]> = {\n    readonly factories: F & KnownCapabilities<C, F, N>;\n    readonly roots: R;\n    readonly inputs?: N | undefined;\n} & ({\n    readonly composition: SuccessfulComposition;\n    readonly profileId?: never;\n    readonly bindings?: never;\n} | {\n    readonly profileId: string;\n    readonly bindings?: CompositionProfile[\"bindings\"];\n    readonly composition?: never;\n});"
+          "signature": "export type AssemblyPrepareInput<C, R extends RootEntries<C>, N extends InputEntries<C> = {}, M extends readonly ModuleItem<C>[] = readonly ModuleItem<C>[]> = {\n    readonly modules: M & KnownCapabilities<C, M, N>;\n    readonly roots: R;\n    readonly inputs?: N | undefined;\n} & ({\n    readonly composition: SuccessfulComposition;\n    readonly profileId?: never;\n    readonly bindings?: never;\n} | {\n    readonly profileId: string;\n    readonly bindings?: CompositionProfile[\"bindings\"];\n    readonly composition?: never;\n    readonly modules: TupleOnly<M>;\n});"
         },
         {
           "canonicalReference": "@get-modular/assembly!BindingErrorCode:type",
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
-          "signature": "export type BindingErrorCode = \"assembly.bind.invalid-declaration\" | \"assembly.bind.limit\" | \"assembly.bind.invalid-factory\";"
+          "signature": "export type BindingErrorCode = \"assembly.bind.invalid-declaration\" | \"assembly.bind.limit\" | \"assembly.bind.invalid-factory\" | \"assembly.bind.invalid-group\";"
         },
         {
           "canonicalReference": "@get-modular/assembly!CapabilitiesOf:type",
@@ -90,6 +97,13 @@
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
           "signature": "export type CapabilitiesOf<T extends AnyContract> = {\n    readonly [X in T as X[\"id\"]]: X extends {\n        readonly id: infer Id extends string;\n        readonly revision: infer Rev extends number;\n        readonly [contractValue]?: infer V;\n    } ? CapabilityContract<V, `${Id}/r${Rev}`> : never;\n};"
+        },
+        {
+          "canonicalReference": "@get-modular/assembly!CapabilitiesProvidedBy:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/assembly!",
+          "parentKind": "EntryPoint",
+          "signature": "export type CapabilitiesProvidedBy<E> = E extends {\n    readonly [detail]: {\n        readonly declaration: infer D extends ModuleDeclaration;\n        readonly used: infer U;\n    };\n} ? FactoryCapabilities<U, D> : never;"
         },
         {
           "canonicalReference": "@get-modular/assembly!CapabilityBrand:type",
@@ -120,6 +134,13 @@
           "signature": "export type Cardinality = ModuleDeclaration[\"slots\"][number][\"cardinality\"];"
         },
         {
+          "canonicalReference": "@get-modular/assembly!ContextAdapter:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/assembly!",
+          "parentKind": "EntryPoint",
+          "signature": "export type ContextAdapter<X> = <Deps, R>(name: string, factory: (dependencies: Deps, context: X) => R) => (dependencies: Deps, context: FactoryContext) => R;"
+        },
+        {
           "canonicalReference": "@get-modular/assembly!Contract:type",
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
@@ -148,6 +169,34 @@
           "signature": "export type Declared<T extends DeclarationSpec> = T & {\n    readonly kind: \"get-modular.module-declaration\";\n    readonly schemaVersion: 1;\n};"
         },
         {
+          "canonicalReference": "@get-modular/assembly!DependenciesOf:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/assembly!",
+          "parentKind": "EntryPoint",
+          "signature": "export type DependenciesOf<E> = E extends {\n    readonly [detail]: {\n        readonly declaration: infer D extends ModuleDeclaration;\n        readonly used: infer U;\n    };\n} ? FactoryDependencies<U, D> : never;"
+        },
+        {
+          "canonicalReference": "@get-modular/assembly!DuplicateModule:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/assembly!",
+          "parentKind": "EntryPoint",
+          "signature": "export type DuplicateModule = {\n    readonly implementationId: string;\n    readonly paths: readonly (readonly string[])[];\n    readonly inputs: readonly string[];\n};"
+        },
+        {
+          "canonicalReference": "@get-modular/assembly!EntriesOf:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/assembly!",
+          "parentKind": "EntryPoint",
+          "signature": "export type EntriesOf<M> = M extends ModuleGroup<infer E> ? E : M;"
+        },
+        {
+          "canonicalReference": "@get-modular/assembly!EntryFactory:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/assembly!",
+          "parentKind": "EntryPoint",
+          "signature": "export type EntryFactory = (dependencies: never, context: FactoryContext) => Promise<unknown>;"
+        },
+        {
           "canonicalReference": "@get-modular/assembly!FactoryCapabilities:type",
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
@@ -169,13 +218,6 @@
           "signature": "export type FactoryDependencies<C, D extends ModuleDeclaration> = {\n    readonly [S in D[\"slots\"][number] as S[\"slotId\"]]: S[\"cardinality\"][\"kind\"] extends \"many\" ? readonly (S[\"capabilityId\"] extends keyof C ? C[S[\"capabilityId\"]] extends {\n        readonly value: infer V;\n    } ? V : never : never)[] : S[\"cardinality\"][\"kind\"] extends \"optional\" ? (S[\"capabilityId\"] extends keyof C ? C[S[\"capabilityId\"]] extends {\n        readonly value: infer V;\n    } ? V : never : never) | undefined : S[\"capabilityId\"] extends keyof C ? C[S[\"capabilityId\"]] extends {\n        readonly value: infer V;\n    } ? V : never : never;\n};"
         },
         {
-          "canonicalReference": "@get-modular/assembly!FactoryHandle:type",
-          "kind": "TypeAlias",
-          "parentReference": "@get-modular/assembly!",
-          "parentKind": "EntryPoint",
-          "signature": "export type FactoryHandle<C, D extends ModuleDeclaration = ModuleDeclaration, I = unknown> = {\n    readonly [uses]: CapabilityBrand<C, UsedCapability<D> & keyof C>;\n    readonly [detail]: {\n        readonly declaration: D;\n        readonly instance: I;\n    };\n};"
-        },
-        {
           "canonicalReference": "@get-modular/assembly!FactoryProduct:type",
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
@@ -183,18 +225,25 @@
           "signature": "export type FactoryProduct<I, P> = {\n    readonly instance: I;\n    readonly capabilities: P;\n};"
         },
         {
-          "canonicalReference": "@get-modular/assembly!InputHandle:type",
+          "canonicalReference": "@get-modular/assembly!InputEntries:type",
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
-          "signature": "export type InputHandle<C, D extends ModuleDeclaration = ModuleDeclaration> = FactoryHandle<C, D, FactoryCapabilities<C, D>> & {\n    readonly [input]: true;\n};"
+          "signature": "export type InputEntries<C> = Readonly<Record<string, AnyInputEntry<C>>>;"
         },
         {
-          "canonicalReference": "@get-modular/assembly!InputHandles:type",
+          "canonicalReference": "@get-modular/assembly!InputEntry:type",
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
-          "signature": "export type InputHandles<C> = Readonly<Record<string, AnyInputHandle<C>>>;"
+          "signature": "export type InputEntry<C, D extends ModuleDeclaration = ModuleDeclaration> = {\n    readonly [uses]: CapabilityBrand<C, UsedCapability<D> & keyof C>;\n    readonly [detail]: {\n        readonly declaration: D;\n        readonly instance: FactoryCapabilities<C, D>;\n    };\n    readonly declaration: D;\n    readonly [input]: true;\n};"
+        },
+        {
+          "canonicalReference": "@get-modular/assembly!InstanceOf:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/assembly!",
+          "parentKind": "EntryPoint",
+          "signature": "export type InstanceOf<E> = E extends {\n    readonly [detail]: {\n        readonly instance: infer I;\n    };\n} ? I : never;"
         },
         {
           "canonicalReference": "@get-modular/assembly!IsUnion:type",
@@ -208,7 +257,14 @@
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
-          "signature": "export type KnownCapabilities<C, F extends readonly unknown[], N> = [\n    Exclude<(F[number] | N[keyof N]) extends infer H ? H extends {\n        readonly [uses]: infer U;\n    } ? keyof U : never : never, keyof C>\n] extends [infer Missing] ? [Missing] extends [never] ? unknown : {\n    readonly \"capabilities missing from the preparing map\": Missing;\n} : never;"
+          "signature": "export type KnownCapabilities<C, M extends readonly unknown[], N> = [\n    Exclude<UsedKeysOf<M[number]> | (N[keyof N] extends infer H ? H extends {\n        readonly [uses]: infer U;\n    } ? keyof U : never : never), keyof C>\n] extends [infer Missing] ? [Missing] extends [never] ? unknown : {\n    readonly \"capabilities missing from the preparing map\": Missing;\n} : never;"
+        },
+        {
+          "canonicalReference": "@get-modular/assembly!ModuleEntry:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/assembly!",
+          "parentKind": "EntryPoint",
+          "signature": "export type ModuleEntry<C, D extends ModuleDeclaration = ModuleDeclaration, I = unknown> = {\n    readonly [uses]: CapabilityBrand<C, UsedCapability<D> & keyof C>;\n    readonly [detail]: {\n        readonly declaration: D;\n        readonly instance: I;\n        readonly used: UsedMap<C, UsedCapability<D> & keyof C>;\n    };\n    readonly declaration: D;\n    readonly factory: EntryFactory;\n};"
         },
         {
           "canonicalReference": "@get-modular/assembly!ModuleFactory:type",
@@ -216,6 +272,20 @@
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
           "signature": "export type ModuleFactory<C, D extends ModuleDeclaration, I, X = FactoryContext> = (dependencies: FactoryDependencies<C, D>, context: X) => Promise<FactoryProduct<I, FactoryCapabilities<C, D>>>;"
+        },
+        {
+          "canonicalReference": "@get-modular/assembly!ModuleGroup:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/assembly!",
+          "parentKind": "EntryPoint",
+          "signature": "export type ModuleGroup<E = AnyEntry, K = unknown> = {\n    readonly name: string;\n    readonly members: readonly (AnyEntry | ModuleGroup)[];\n    readonly [groupEntries]?: E;\n    readonly [groupUses]?: K;\n};"
+        },
+        {
+          "canonicalReference": "@get-modular/assembly!ModuleItem:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/assembly!",
+          "parentKind": "EntryPoint",
+          "signature": "export type ModuleItem<C> = AnyModuleEntry<C> | ModuleGroup<AnyModuleEntry<C>, keyof C>;"
         },
         {
           "canonicalReference": "@get-modular/assembly!ObservedCancellation:type",
@@ -229,7 +299,7 @@
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
-          "signature": "export type PreparationErrorCode = \"assembly.prepare.invalid-input\" | \"assembly.prepare.limit\" | \"assembly.prepare.handles\" | \"assembly.prepare.roots\" | \"assembly.prepare.core-rejected\" | \"assembly.prepare.plan-mismatch\" | \"assembly.prepare.input-handles\" | \"assembly.prepare.unresolved-binding\";"
+          "signature": "export type PreparationErrorCode = \"assembly.prepare.invalid-input\" | \"assembly.prepare.limit\" | \"assembly.prepare.handles\" | \"assembly.prepare.roots\" | \"assembly.prepare.core-rejected\" | \"assembly.prepare.plan-mismatch\" | \"assembly.prepare.input-handles\" | \"assembly.prepare.unresolved-binding\" | \"assembly.prepare.duplicate-module\";"
         },
         {
           "canonicalReference": "@get-modular/assembly!PreparedAssembly:type",
@@ -253,11 +323,11 @@
           "signature": "export type ReturnedProduct = {\n    readonly implementationId: string;\n    readonly product: unknown;\n};"
         },
         {
-          "canonicalReference": "@get-modular/assembly!RootHandles:type",
+          "canonicalReference": "@get-modular/assembly!RootEntries:type",
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
-          "signature": "export type RootHandles<C> = Readonly<Record<string, AnyFactoryHandle<C>>>;"
+          "signature": "export type RootEntries<C> = Readonly<Record<string, AnyModuleEntry<C>>>;"
         },
         {
           "canonicalReference": "@get-modular/assembly!RootInstances:type",
@@ -302,11 +372,18 @@
           "signature": "export type SuccessfulComposition = Extract<CompileCompositionResult, {\n    readonly plan: CompositionPlan;\n    readonly digest: PlanDigest;\n}>;"
         },
         {
+          "canonicalReference": "@get-modular/assembly!TupleOnly:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/assembly!",
+          "parentKind": "EntryPoint",
+          "signature": "export type TupleOnly<M extends readonly unknown[]> = number extends M[\"length\"] ? never : unknown;"
+        },
+        {
           "canonicalReference": "@get-modular/assembly!UnresolvedBinding:type",
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
-          "signature": "export type UnresolvedBinding = {\n    readonly consumerImplementationId: string;\n    readonly slotId: string;\n    readonly capabilityId: string;\n    readonly cardinality: \"required\" | \"optional\" | \"many\";\n    readonly candidates: readonly string[];\n};"
+          "signature": "export type UnresolvedBinding = {\n    readonly consumerImplementationId: string;\n    readonly slotId: string;\n    readonly capabilityId: string;\n    readonly cardinality: \"required\" | \"optional\" | \"many\";\n    readonly groupPath: readonly string[];\n    readonly candidates: readonly string[];\n};"
         },
         {
           "canonicalReference": "@get-modular/assembly!UsedCapability:type",
@@ -314,6 +391,20 @@
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
           "signature": "export type UsedCapability<D extends ModuleDeclaration> = D[\"provides\"][number][\"capabilityId\"] | D[\"slots\"][number][\"capabilityId\"];"
+        },
+        {
+          "canonicalReference": "@get-modular/assembly!UsedKeysOf:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/assembly!",
+          "parentKind": "EntryPoint",
+          "signature": "export type UsedKeysOf<M> = M extends {\n    readonly [uses]: infer U;\n} ? keyof U : M extends {\n    readonly [groupUses]?: infer K;\n} ? K : never;"
+        },
+        {
+          "canonicalReference": "@get-modular/assembly!UsedMap:type",
+          "kind": "TypeAlias",
+          "parentReference": "@get-modular/assembly!",
+          "parentKind": "EntryPoint",
+          "signature": "export type UsedMap<C, K extends keyof C> = {\n    readonly [P in K]: C[P];\n};"
         },
         {
           "canonicalReference": "@get-modular/assembly!ValidDeclaration:type",
@@ -342,6 +433,34 @@
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
           "signature": "export declare function defineContract<V>(): <const Id extends string, const Rev extends number>(spec: {\n    readonly id: Id;\n    readonly revision: Rev;\n}) => Contract<Id, V, Rev>;"
+        },
+        {
+          "canonicalReference": "@get-modular/assembly!entriesOf:function(1)",
+          "kind": "Function",
+          "parentReference": "@get-modular/assembly!",
+          "parentKind": "EntryPoint",
+          "signature": "export declare function entriesOf<const M extends readonly (AnyEntry | ModuleGroup)[]>(modules: M): readonly EntriesOf<M[number]>[];"
+        },
+        {
+          "canonicalReference": "@get-modular/assembly!group:function(1)",
+          "kind": "Function",
+          "parentReference": "@get-modular/assembly!",
+          "parentKind": "EntryPoint",
+          "signature": "export declare function group<const M extends readonly (AnyEntry | ModuleGroup)[]>(name: string, members: M & (number extends M[\"length\"] ? never : unknown)): ModuleGroup<EntriesOf<M[number]>, UsedKeysOf<M[number]>>;"
+        },
+        {
+          "canonicalReference": "@get-modular/assembly!implement:function(1)",
+          "kind": "Function",
+          "parentReference": "@get-modular/assembly!",
+          "parentKind": "EntryPoint",
+          "signature": "export declare function implement<C>(): {\n    <const D extends ModuleDeclaration, I>(declaration: D & ValidDeclaration<C, NoInfer<D>>, factory: ModuleFactory<C, NoInfer<D>, I>): ModuleEntry<C, D, I>;\n    <const D extends ModuleDeclaration, I, X>(declaration: D & ValidDeclaration<C, NoInfer<D>>, factory: ModuleFactory<C, NoInfer<D>, I, X>, adapter: ContextAdapter<X>): ModuleEntry<C, D, I>;\n};"
+        },
+        {
+          "canonicalReference": "@get-modular/assembly!input:function(1)",
+          "kind": "Function",
+          "parentReference": "@get-modular/assembly!",
+          "parentKind": "EntryPoint",
+          "signature": "export declare function input<C>(): <const D extends ModuleDeclaration & {\n    readonly slots: readonly [];\n}>(declaration: D & ValidDeclaration<C, NoInfer<D>>) => InputEntry<C, D>;"
         }
       ]
     }
