@@ -37,8 +37,13 @@ for (const value of [
   }
 }
 
+function parentOf(value: object): object | null {
+  const parent: unknown = Object.getPrototypeOf(value);
+  return typeof parent === "object" ? parent : null;
+}
+
 const isForeignObjectPrototype = (prototype: object): boolean =>
-  Object.getPrototypeOf(prototype) === null && Object.hasOwn(prototype, "hasOwnProperty");
+  parentOf(prototype) === null && Object.hasOwn(prototype, "hasOwnProperty");
 
 /** The distinct prototype member names that make an object-valued capability a non-port, nearest first. */
 export function prototypeMembers(value: unknown): readonly string[] {
@@ -47,9 +52,9 @@ export function prototypeMembers(value: unknown): readonly string[] {
   }
   const members = new Set<string>();
   for (
-    let prototype = Object.getPrototypeOf(value);
+    let prototype = parentOf(value);
     prototype !== null && prototype !== Object.prototype;
-    prototype = Object.getPrototypeOf(prototype)
+    prototype = parentOf(prototype)
   ) {
     if (intrinsicPrototypes.has(prototype) || isForeignObjectPrototype(prototype)) {
       break;
