@@ -51,6 +51,9 @@ remains the sole authority for semantic ownership, layers, feature layout,
 dependency mechanisms and extraction. Its immutable identity is Git blob
 `d0bfff2033faf544fe65268c1dcdfd524d093015`, SHA-256
 `851653f96643cf0466b67ab22963661976b00de44840fa3144a48a8c054f95fa`.
+Its published successor v1.1 (Git blob `bd949a9a670862fea851a7791fce772fdef3b4fc`, SHA-256
+`cfa088ef7396139554fe5e3bcc839271b23299c6b60c569a3a7f1cd7c9f0bc6c`) adds sub-features and
+composition contracts; a consumer follows the version its profile pins.
 The linked local profile maps Get Modular itself, not all consumers.
 
 The [current contract](current-contract.md) and this Assembly contract own graph
@@ -287,9 +290,10 @@ Host rules:
 
 - Pass `scoped` as the adapter of `implement` for every owning factory
   (`implement<C>()(declaration, factory, scoped)`); Assembly names the module
-  scope by its implementation id, and `scoped` is the only adapter an entry
-  admits, because another adapter could read `scope` or add to the context a
-  module receives. Pass one scope per run: `run({ signal, scope: attempt.resources })`,
+  scope by its implementation id, and `scoped` is the only adapter this standard
+  admits: another adapter could read `scope` or add to the context a module
+  receives, and Assembly cannot tell `scoped` from another function of the same
+  type, so review enforces the rule. Pass one scope per run: `run({ signal, scope: attempt.resources })`,
   never the `Scope` itself. Never capture a scope when creating entries. Close the attempt only
   after `run()` settles. Load exactly one copy of `@get-modular/resources` per
   Host.
@@ -340,7 +344,7 @@ mutation, rebinding, hot replacement or code unloading.
 - Pass per-instance data and parent ports as inputs: declarations without
   slots made with `input<C>()(declaration)`, one capability each. Each run supplies them in
   `run({ inputs })` as plain records keyed by capability ID; a value may be a
-  port. Never pass them through closures captured at bind time. An input must
+  port. Never pass them through closures captured when an entry is created. An input must
   outlive every instance that received it. Roots of an instance do not escape
   its owner except through a facade.
 - The factory context stays closed: `{ signal, scope }` from Assembly and
@@ -415,11 +419,14 @@ export async function openSession(sessions: Resources, id: string, signal: Abort
 
 ### Feature layout and implementation form
 
-These rules strengthen a consumer's profile of the organization
-[Feature Module Standard v1](feature-module-standard.md#adoption); they are stated
-in its roles. Where a consumer's profile constrains placement, the profile wins and
-the consumer records the mapping. A profile that pins v1 admits no sub-features, so
-the consumer does not nest. Cite Feature Module Standard v1.1 only after it is published.
+These rules strengthen a consumer's profile of the organization Feature Module
+Standard and are stated in its roles. Sub-features, republication and composition
+contracts follow [Feature Module Standard v1.1](https://github.com/agent-teams-ai/.github/blob/f5653f5630057524a4ee44e50c16e138442a9b42/docs/architecture/feature-module-standard/v1.1.md)
+(Git blob `bd949a9a670862fea851a7791fce772fdef3b4fc`, SHA-256
+`cfa088ef7396139554fe5e3bcc839271b23299c6b60c569a3a7f1cd7c9f0bc6c`), sections
+"Sub-features" and "Composition contracts". Where a consumer's profile constrains
+placement, the profile wins and the consumer records the mapping. A consumer whose
+profile pins v1 does not nest until its profile pins v1.1.
 The [module authoring guide](../guides/module-authoring.md) shows each rule with
 compiled examples and the recipes for growing a feature.
 
@@ -429,8 +436,10 @@ compiled examples and the recipes for growing a feature.
 2. A feature may hold sub-features at `features/<parent>/features/<child>/` to any
    depth, each with the same layout. A sub-feature is private to its parent: code
    outside the parent reaches it only through contracts the parent republishes from
-   its own `<parent>.contracts.ts`, one level at a time. A feature depends on other
-   features only through the public contracts of features it can see: its own
+   its own `<parent>.contracts.ts` (and port types from its own `contracts/`), one level
+   at a time; every republication is declared where the consumer declares its
+   sub-features. A feature depends on other
+   features only through the public contracts of features it can see: its direct
    sub-features, its ancestors and the siblings of itself and of its ancestors.
    Downward and lateral edges stay acyclic, type-only references included; an upward
    use of an ancestor's contracts never counts. No load-time import cycle may cross
@@ -440,11 +449,20 @@ compiled examples and the recipes for growing a feature.
    case types its dependencies only with `application/ports/`, and the module file
    maps between them.
 4. Descriptors live in `composition/<feature>.contracts.ts`, the feature's
-   composition contract, imported only by composition code. One declaration file per
+   composition contract, imported only by composition code and tests. One declaration file per
    implementation, `composition/<module>.declaration.ts`, imports only
    `declareModule`, the cardinality helpers and contract descriptors and holds
    only the declaration. `composition/<module>.module.ts` holds only the `implement`
    wiring.
+   `composition/` is flat at every depth: it has no subdirectory. A `*.contracts.ts`
+   file exists only as `composition/<own segment>.contracts.ts`, or flat in the Host's
+   `src/composition/`. Every `*.module.ts` imports a declaration of its own feature and
+   is listed by exactly one production file, its feature's group (a Host-level module:
+   a root). Every `*.declaration.ts` is imported by a module file or by
+   `composition/<feature>.inputs.ts`, which holds the feature's input entries. No
+   source file sits directly in `application/`, and a use-case file has exactly one
+   runtime export, its function, and may also export types. `checkModuleLayout` reports
+   each of these rules by code.
 5. A use case is `application/use-cases/<verb-noun>.ts` exporting one function
    `(deps, input) => result`; `deps` is a narrow record of port types. Pure rules go in
    `domain/`, DB, SDK and HTTP code in `adapters/`.
@@ -456,9 +474,13 @@ compiled examples and the recipes for growing a feature.
 7. Tests, fakes and oracle parts live under the feature's test root at the path that
    mirrors the feature's path, sub-features included. Oracle parts and fakes are
    test code.
-8. A feature README SHOULD carry the feature card. The split signals, the depth
-   warning, the size limits and their thresholds are consumer policy; the
-   [guide](../guides/module-authoring.md#8-when-and-how-to-split) gives the recipes.
+8. A feature README SHOULD carry a `## Feature card` section with the fields of the
+   [guide](../guides/module-authoring.md#2-designing-a-feature): Purpose, Parent,
+   Publishes, Consumes, Modules, Sub-features, Expected growth, Likely split seams and
+   Split signals now (`<n>/12` modules, `<n>/20` use cases, depth `<n>/3`,
+   aggregates). The split signals, the depth warning and their thresholds are
+   consumer policy; the [guide](../guides/module-authoring.md#8-when-and-how-to-split)
+   gives the recipes. The size limits below are this standard's.
 
 Enforce the import and size rules with the lint rules below and the Get Modular
 layout checks (`checkModuleLayout` in `@get-modular/conformance`); the oxlint
@@ -487,11 +509,13 @@ preset is not shipped, so a consumer copies this snippet and adapts the paths:
 ] }
 ```
 
-The size limits are 80 lines for `*.module.ts`, 300 for any other non-test file of an
+The size limits are the owner's decision: 80 lines for `*.module.ts`, 300 for any other non-test file of an
 adopted feature, 60 for a function and 4 parameters, with blank lines and comments not
-counted and tests exempt. The two import rules for `application/` and `domain/` that
-this snippet cannot express (no `contracts/` import, not even their own) are checked
-by `checkModuleLayout`.
+counted and tests exempt. The rule that `application/` and `domain/` never import
+`contracts/`, not even their own, is not expressed by this snippet and is not part of
+`checkModuleLayout`: the consumer's Feature Module Standard checks enforce it (its own
+checker, or the Feature Module Standard package of Engineering Foundation once
+released), and review covers it until they run.
 
 ### Feature groups
 
@@ -501,14 +525,21 @@ the group is [ADR-0036](../decisions/0036-compose-roots-from-module-entries-and-
 profile, the plan or the digest.
 
 1. `composition/<feature>.group.ts` exports `<feature>Group`, a module-level constant
-   made with `group("<feature segment>", [...])`: one module per line, sorted, each
-   imported by name, with no conditional member.
+   made with `group("<feature segment>", [...])`: one member per line, sorted by imported
+   name, each imported by name, with no conditional member. When an entry of the
+   feature closes over Host-level values, the file instead exports
+   `create<Feature>Group(values)`, which takes only those values and returns the same
+   static list.
 2. The group tree mirrors the feature tree. A parent's group lists its own modules and
    the groups of its direct sub-features; a group's name is its feature's own path
    segment, so `groupPath` in an `unresolved-binding` cause reads like the feature path.
 3. A root's `modules` lists the groups of top-level features and its own entries, and
    nothing else. It never lists a module of a feature, and never the group of a
-   sub-feature, which is private to its parent.
+   sub-feature, which is private to its parent. A root file is
+   `src/composition/<root>.root.ts`. It imports a feature's module file only to name
+   that entry in `roots`; the entry stays listed in its feature's group and nowhere
+   else in `modules`. A Host-level module, `src/composition/<module>.declaration.ts`
+   and `<module>.module.ts`, is listed directly in the root's `modules`.
 4. The list a root passes to `prepare` never depends on run-time values; a variant is
    a separate root with its own `profileId`. Names are labels, never identities.
 5. An entry listed twice, or two entries with one `implementationId`, fail with
@@ -560,9 +591,10 @@ Module packages:
   generation.
 - A module is a declaration file and one entry made with
   `implement<its feature map>()(declaration, factory, scoped)` in its module
-  file. The factory is typed
-  `ModuleFactory<its map, typeof declaration, Instance, ModuleContext>` and
-  takes the `scoped` adapter when it reads `resources`. The entry is created once,
+  file. The factory is written inline in `implement`, which infers its types, or, when
+  exported on its own, typed
+  `ModuleFactory<its map, typeof declaration, Instance, ModuleContext>`; it takes
+  the `scoped` adapter when it reads `resources`. The entry is created once,
   at the top level of the module file, and listed in its feature's group
   ([Feature groups](#feature-groups)). A factory that closes over Host-level values
   gets its entry from a function of the composition adapter whose module list
@@ -595,12 +627,13 @@ Module packages:
 #### Module template
 
 Copy this for a new module in the layout above; replace `acme/counter` and `acme/store`
-with your identities and your own contract packages. The blocks are one project, each
+with your identities and your own features. The blocks are one project, each
 named by its first line: the store feature's port type and descriptor, then the counter
 feature's port type, its own `application/ports/` type, use case, descriptors,
-declaration, module, group, the oracle part and the module test, the root, and the root
-test with `smoke`, `checkWiring` and `checkNamespaces`. The store feature has no module
-here; the root supplies a Host-local stand-in.
+declaration, module, group, the oracle part and the module test, the Host-level store
+module (declaration and module, flat in `src/composition/`), the root, and the root test
+with `smoke`, `checkWiring` and `checkNamespaces`. The store feature has no module
+here; the Host supplies a stand-in.
 
 <!-- consumer-standard-example: template -->
 
@@ -698,24 +731,40 @@ export const counterGroup = group("counter", [
 ```
 
 ```ts
-// src/composition/root.ts
-import { declareModule, implement, type Assembly } from "@get-modular/assembly";
+// src/composition/memory-store.declaration.ts
+import { declareModule } from "@get-modular/assembly";
+import { Store } from "../features/store/composition/store.contracts.js";
+
+// A Host-level module sits flat in src/composition/, listed directly in a root's `modules`.
+export const memoryStoreDeclaration = declareModule({
+  moduleId: "acme/store/memory", implementationId: "acme/store/memory/default",
+  owner: { authority: "acme", path: ["store"] }, provides: [Store.provide()], slots: [],
+});
+```
+
+```ts
+// src/composition/memory-store.module.ts
+import { implement } from "@get-modular/assembly";
+import type { CounterCapabilities } from "../features/counter/composition/counter.contracts.js";
+import { memoryStoreDeclaration } from "./memory-store.declaration.js";
+
+export const memoryStoreModule = implement<CounterCapabilities>()(memoryStoreDeclaration, async () => ({
+  instance: undefined, capabilities: { "acme/store/store": { bump: (key: string) => key.length } },
+}));
+```
+
+```ts
+// src/composition/production.root.ts
+import type { Assembly } from "@get-modular/assembly";
 import type { CounterCapabilities } from "../features/counter/composition/counter.contracts.js";
 import { counterGroup } from "../features/counter/composition/counter.group.js";
 import { counterModule } from "../features/counter/composition/counter.module.js";
-import { Store } from "../features/store/composition/store.contracts.js";
+import { memoryStoreModule } from "./memory-store.module.js";
 
-// A Host-local stand-in for the store feature's module.
-const memoryStore = implement<CounterCapabilities>()(declareModule({
-  moduleId: "acme/store/memory", implementationId: "acme/store/memory/default",
-  owner: { authority: "acme", path: ["store"] }, provides: [Store.provide()], slots: [],
-}), async () => ({
-  instance: undefined, capabilities: { "acme/store/store": { bump: (key: string) => key.length } },
-}));
-
-// A root lists feature groups and its own entries, nothing else, and never builds the list conditionally.
-// The list is a module-level constant so that tests can read the declarations of the same entries.
-export const productionModules = [counterGroup, memoryStore] as const;
+// A root lists feature groups and its own Host-level entries, nothing else, and never builds the list
+// conditionally. It imports `counterModule` only to name that entry in `roots`; the entry stays listed in
+// its feature's group.
+export const productionModules = [counterGroup, memoryStoreModule] as const;
 
 // A root is a function of Assembly, so `smoke` can pass its own api.
 export function composeProduction(api: Assembly<CounterCapabilities>) {
@@ -748,13 +797,13 @@ test("counts through the real construction path", async () => {
 ```
 
 ```ts
-// tests/module/root.test.ts
+// tests/module/production.root.test.ts
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { assemblyFor, entriesOf } from "@get-modular/assembly";
 import { checkNamespaces, checkWiring, smoke, type WiringOracle } from "@get-modular/conformance";
 import type { CounterCapabilities } from "../../src/features/counter/composition/counter.contracts.js";
-import { composeProduction, productionModules } from "../../src/composition/root.js";
+import { composeProduction, productionModules } from "../../src/composition/production.root.js";
 import { counterWiring } from "../features/counter/counter.wiring.js";
 
 // The root's own decisions: the store provider and the root implementations.
@@ -820,7 +869,8 @@ it authenticates nothing.
 Check rule 1, the namespace part of rule 2 and rule 6 in a test with
 `checkNamespaces` from `@get-modular/conformance`, over every declaration the
 product supplies, its input modules and fakes included: the declarations of
-`entriesOf(modules)` plus those of the input entries and fakes.
+`entriesOf(modules)` plus those of the input entries and fakes. That list is wider
+than the one `checkWiring` takes (testing rule 6).
 
 ### Testing modules
 
@@ -828,8 +878,8 @@ product supplies, its input modules and fakes included: the declarations of
 kit `@get-modular/conformance`.
 
 1. Make each module one entry with `implement<feature map>()(declaration,
-   factory, scoped)` at the top level of its module file, with the factory typed
-   `ModuleFactory` by the module's own contract map and `scoped` as the adapter
+   factory, scoped)` at the top level of its module file, with the factory written inline or typed
+   `ModuleFactory` by the module's own contract map, and `scoped` as the adapter
    when it takes `ModuleContext`. Production, the group and the tests use that
    one entry.
 2. Type fakes with `FactoryDependencies<C, typeof declaration>`. No `any`,
@@ -844,15 +894,17 @@ kit `@get-modular/conformance`.
    not only success, and is required once a capability has two implementations,
    the fake included.
 4. Test one module with `isolate(entry, { dependencies })` and release it with
-   `await using`; a debt fails the test. Each dependency is a run input, so
-   `isolate` does not check its shape.
+   `await using`; a debt fails the test. `isolate` passes each dependency as a run
+   input: it requires one own property per slot (an array for `many`) and never runs
+   the port check on it.
 5. Write each production composition root as a function of `Assembly<C>`. One
    `smoke` test per root prepares it once, fails and aborts construction at
    every module and requires every attempt scope to close complete. `smoke`
    rebuilds every entry and group with `implement` and `group` and prepares the
    rebuilt tree through the `api` it passes to `compose`; it rejects when
    `compose` resolves with a preparation that api did not produce. Entries and
-   groups are module-level constants. Effectful leaves use their owners' fakes.
+   groups are module-level constants, or are created by a composition-adapter
+   function whose list never depends on run-time values. Effectful leaves use their owners' fakes.
    A root that prepares with `{ profileId }` lists its modules statically: the
    list does not depend on run-time values, and a variant is a separate root
    with its own `profileId`, `smoke` and oracle.
@@ -864,19 +916,23 @@ kit `@get-modular/conformance`.
    implementations that provide it; the root implementations; inputs pinned like
    providers; and every row that completion does not produce (`optional`, `many`
    and explicit rows) as written. Call
-   `checkWiring(composition, oracles, { declarations })` with the declarations
-   the test already passes to `compileComposition` and `checkNamespaces`. It
-   fails on: a selection that is not a pinned provider or a root
-   (`selection`); plan roots that differ (`root`); declarations that do not
-   cover the plan selections (`declaration-selection`); a provided capability
-   nobody pins (`provided-capability`); a pinned implementation that does not
+   `checkWiring(composition, oracles, { declarations })` with the declarations of
+   exactly the plan's selections: those of `entriesOf(modules)` and of the root's
+   input entries. A declaration that is not selected, such as a fake's, fails
+   `declaration-selection`. It fails on: selections that differ from the pinned providers plus the roots
+   (`selection`; a pinned provider that is not selected also fails
+   `capability-provider`); plan roots that differ (`root`); declarations that do not
+   cover the plan selections (`declaration-selection`); a capability a selected
+   module provides that the oracle does not pin to that implementation
+   (`provided-capability`); a pinned implementation that does not
    provide its pinned capability in its declaration (`pinned-provider`); a
    listed row that differs from its plan row, order included; an unlisted row
    that is not a `required` slot bound to the single pinned provider of its
    capability (`unlisted-row`); and a plan row that uses another slot or
    capability than its consumer's declaration. A feature may keep its own
    oracle part; equal duplicates across parts are allowed, a conflict fails.
-   Oracle parts are test code. A new `required` slot bound to the single pinned
+   Oracle parts are test code. Roots are the root's decision: keep them in the root
+   test's own part, not in a feature part. A new `required` slot bound to the single pinned
    provider of its capability needs no oracle change; review it as a
    declaration change. `describeWiring` is for debugging only.
 7. Port members are own properties. `smoke` and `isolate` check the capabilities a
@@ -884,8 +940,9 @@ kit `@get-modular/conformance`.
    accessor that lives on a prototype, such as a class method: build the port as an
    object of arrow functions, or wrap a class instance in one. The check does not
    see an object-literal method that uses `this`, a method extracted unbound, a
-   nested object, a run input or a fake you pass as a dependency; those stay review
-   rules. A negative test is a module whose capability is a class instance with a
+   nested object, own accessors on the capability itself, a run input or a fake you
+   pass as a dependency; those stay review rules. A `Map` capability passes; a `Map`,
+   `Date` or `Buffer` from another realm is reported. A negative test is a module whose capability is a class instance with a
    method.
    <!-- VERIFY(P1b part 2): code, scope and limits above against the merged own-property check before this PR merges -->
 8. `guardHandles` is a per-file diagnostic, and `complete` is not proof of
@@ -1012,12 +1069,12 @@ result, the exact selected module entries (a plain `readonly` list is accepted
 here, because a Host that compiles its own profile builds the list at run time and
 Core checks the plan), an alias-to-root-entry mapping and an alias-to-input-entry
 mapping. Module and input entries together are unique and cover every selection
-exactly once; an input entry appears only in `inputs`, under one alias, and is
-never a root (`assembly.prepare.input-handles`); an uncovered or forged selection
-stays `assembly.prepare.handles`. An entry reached twice, two entries with one
-implementation id, or an input entry that shares an id with a module entry fail
-with `assembly.prepare.duplicate-module`, whose `cause` lists every duplicated id
-with its group paths and input aliases. Each root has exactly one alias and refers
+exactly once; an input entry appears only in `inputs` and is never a root
+(`assembly.prepare.input-handles`); an uncovered or forged selection stays
+`assembly.prepare.handles`. In both forms an entry reached twice, two entries with one
+implementation id, an input entry under two aliases, or an input entry that shares an
+id with a module entry fail with `assembly.prepare.duplicate-module`, whose `cause`
+lists every duplicated id with its group paths and input aliases. Each root has exactly one alias and refers
 to the same supplied entry. No extra entries or alias getters.
 
 An entry is invariant in the capabilities its declaration uses: preparation

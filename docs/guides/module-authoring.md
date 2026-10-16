@@ -87,7 +87,7 @@ sub-feature has the same layout under `features/`, to any depth):
 
 ```text
 src/
-  composition/root.ts
+  composition/acme.root.ts
   features/
     infra/        contracts/ adapters/outbound/ composition/
     billing/      contracts/ application/{ports,use-cases}/ composition/
@@ -97,20 +97,20 @@ src/
         discounts/   contracts/ domain/ application/{ports,use-cases}/ composition/
 tests/
   features/<path mirrors src/features>/   (wiring parts, testing.ts, tests)
-  module/root.test.ts
+  module/acme.root.test.ts
 ```
 
 What each file may import, who may see whom, and what checks it:
 
 | File | May import | Checked by |
 | --- | --- | --- |
-| `contracts/`, `domain/`, `application/`, `adapters/` | no `@get-modular/*`; `application/` and `domain/` not even `contracts/` | oxlint, `checkModuleLayout` |
+| `contracts/`, `domain/`, `application/`, `adapters/` | no `@get-modular/*`; `application/` and `domain/` not even `contracts/` | oxlint (the `@get-modular/*` ban), the consumer's Feature Module Standard checks (the `contracts/` ban), review |
 | `composition/<m>.declaration.ts` | `declareModule`, cardinality helpers, descriptor files | oxlint, `checkModuleLayout` |
-| `composition/<m>.module.ts` | `implement`, its declaration, its use cases, ports, its own map | oxlint size limit, review |
-| `composition/<f>.contracts.ts` | `defineContract` and port types | review |
-| tests | their own code, `testing.ts` of features they may see, Get Modular | review |
+| `composition/<m>.module.ts` | `implement`, `scoped`, its declaration, its use cases, adapters, port types, its own map | oxlint size limit, review |
+| `composition/<f>.contracts.ts` | `defineContract`, port types, `import type` of the maps of visible features, republication | review |
+| tests | their own code, the public surfaces and `testing.ts` of features they may see, Get Modular | review |
 
-A feature may see its own sub-features (downward), its ancestors (upward) and the
+A feature may see its direct sub-features (downward), its ancestors (upward) and the
 siblings of itself and of its ancestors (lateral). A sub-feature is private to its
 parent: outsiders use the parent's republication. Downward and lateral edges must
 stay acyclic. The shared checks are wired by the consumer, never copied from a
@@ -120,12 +120,26 @@ feature edges, the Engineering Foundation baseline and size budgets, and
 (orphan modules, group trees, descriptor paths, use-case exports). The oxlint rules
 are the snippet in the CMS; the preset is not shipped.
 
-The root of the example (all of it in `composition/`):
+Wiring the layout checks: the consumer collects production files only (never tests),
+resolves each import to a repository-relative path and marks it `type` or `value`,
+records the runtime exports of every `application/use-cases` file, and drops Node
+builtins; then one call checks the Get Modular layout rules, and the report carries
+the feature and module counts for the growth report. See "Check source layout with
+`checkModuleLayout`" in the conformance README.
+
+```text
+const records = collectLayoutRecords("src");   // the consumer's own collector
+const report = checkModuleLayout(records);     // throws conformance.layout.violation
+console.log(report.modulesPerFeature);
+```
+
+A root file is `src/composition/<root>.root.ts`. The example project's root (all of it in
+`composition/`):
 
 <!-- module-authoring-example: project -->
 
 ```ts
-// src/composition/root.ts
+// src/composition/acme.root.ts
 import type { Assembly } from "@get-modular/assembly";
 import { billingGroup } from "../features/billing/composition/billing.group.js";
 import { invoicingModule } from "../features/billing/composition/invoicing.module.js";
@@ -143,6 +157,7 @@ export interface AcmeCapabilities extends
   OrdersCapabilities {}
 
 // Top-level feature groups, sorted, and the root's own entries: nothing else, nothing conditional.
+// The root imports a module only to name it in `roots`; the entries stay listed in their groups.
 export const acmeModules = [
   billingGroup,
   infraGroup,
@@ -175,30 +190,53 @@ feature at any depth is a unit of meaning and ownership. Nest a tightly bound pa
 that moves with its parent; keep independent parts as siblings.
 
 Write the feature card in the feature's `README.md` when you create it and update it
-with each module:
+with each module. It is a `## Feature card` section with these fields; the consumer's
+check rejects a feature README without that section:
 
 ```markdown
-# orders
+## Feature card
 
-Parent: none
-Purpose: take an order from basket to a priced receipt.
-Provides: acme/orders/orders, acme/orders/order-lines
-Uses: acme/infra/clock (infra), acme/orders/discounts/discounts (own sub-feature)
-Modules: checkout, order-lines
-Sub-features: discounts
-Split signals: none yet (2 modules, 1 use case)
+- Purpose: <one sentence>
+- Parent: <parent feature, or none>
+- Publishes: <capability id> r<revision> - <who uses it>
+- Consumes: <capability id> r<revision> from <feature>
+- Modules: <implementation id> - <what it does>
+- Sub-features: <name> - <what it does>, or none
+- Expected growth: <what will probably be added>
+- Likely split seams: <part> as a <sub-feature or sibling feature> (contract: <name>)
+- Split signals now: <modules>/12 modules, <use cases>/20 use cases, depth <n>/3, aggregates: <names>
+```
+
+Filled cards for `orders` and its sub-feature `discounts`:
+
+```markdown
+## Feature card
+
+- Purpose: take an order from basket to a priced receipt.
+- Parent: none
+- Publishes: acme/orders/orders r1 - the root (checkout)
+- Publishes: acme/orders/order-lines r1 - discounts
+- Publishes: acme/orders/discounts/discounts r1 (republished) - billing
+- Consumes: acme/infra/clock r1 from infra
+- Modules: acme/orders/checkout/default - prices and stamps an order; acme/orders/order-lines/memory - order lines
+- Sub-features: discounts - price after discounts for the order size
+- Expected growth: payment intents, order history
+- Likely split seams: payment intents as a sibling feature (contract: PaymentIntents)
+- Split signals now: 2/12 modules, 1/20 use cases, depth 1/3, aggregates: order
 ```
 
 ```markdown
-# discounts
+## Feature card
 
-Parent: orders
-Purpose: price an order after discounts for its size.
-Provides: acme/orders/discounts/discounts
-Uses: acme/orders/order-lines (parent, upward)
-Modules: pricing
-Sub-features: none
-Split signals: none yet (1 module, 1 use case)
+- Purpose: price an order after discounts for its size.
+- Parent: orders
+- Publishes: acme/orders/discounts/discounts r1 - orders, billing (through the republication)
+- Consumes: acme/orders/order-lines r1 from orders (upward)
+- Modules: acme/orders/discounts/pricing/default - applies the size discount
+- Sub-features: none
+- Expected growth: coupon codes
+- Likely split seams: coupons as a sibling feature (contract: Coupons)
+- Split signals now: 1/12 modules, 1/20 use cases, depth 2/3, aggregates: none
 ```
 
 The first module is the one that provides the feature's main capability; add it by
@@ -338,8 +376,9 @@ and a later plugin manifest can be generated from these files.
 
 One provide and several provides are both fine; each provided capability gets one
 pin in the oracle. Two implementations of one contract have distinct
-`moduleId`s and `implementationId`s (Core rejects a profile that selects one `moduleId` twice with
-`profile.duplicate-selection`); a `bindings` row in the root chooses between them for each
+`implementationId`s. In one root they also need distinct `moduleId`s (Core rejects a profile that selects
+one `moduleId` twice with `profile.duplicate-selection`); two roots that install one each may share the
+`moduleId`. A `bindings` row in the root chooses between them for each
 consumer (section 12), or two roots install one each. Both implementations pass the
 contract owner's suite (section 11). The example declares a postgres store and a
 memory store:
@@ -620,7 +659,7 @@ class SystemClock {
 The check walks the prototype chain of each capability a module returns and fails
 on a function or accessor that lives on a prototype. It does not see an
 object-literal method that uses `this`, a method extracted unbound as a capability,
-nested objects, run inputs (your fakes) or a `Map`; those remain review rules.
+nested objects, own accessors on the capability itself, run inputs (your fakes) or a `Map` (a `Map` capability passes); a `Map`, `Date` or `Buffer` from another realm is reported. Those remain review rules.
 
 ## 7. Use cases and pure logic
 
@@ -852,13 +891,13 @@ export type OrderStorePort = { readonly find: (orderId: string) => Promise<strin
 ```
 
 ```ts
-// src/features/orders/composition/order-store.contracts.ts
+// src/features/orders/composition/orders.contracts.ts
 import { defineContract, type CapabilitiesOf } from "@get-modular/assembly";
 import type { InfraCapabilities } from "../../infra/composition/infra.contracts.js";
 import type { OrderStorePort } from "../contracts/order-store.js";
 
 export const OrderStore = defineContract<OrderStorePort>()({ id: "acme/orders/order-store", revision: 1 });
-export interface OrderStoreCapabilities extends
+export interface OrdersCapabilities extends
   InfraCapabilities,
   CapabilitiesOf<typeof OrderStore> {}
 ```
@@ -868,7 +907,7 @@ export interface OrderStoreCapabilities extends
 import { declareModule } from "@get-modular/assembly";
 import { required } from "@get-modular/core";
 import { Events } from "../../infra/composition/infra.contracts.js";
-import { OrderStore } from "./order-store.contracts.js";
+import { OrderStore } from "./orders.contracts.js";
 
 export const orderStoreDeclaration = declareModule({
   moduleId: "acme/orders/order-store", implementationId: "acme/orders/order-store/postgres",
@@ -883,11 +922,11 @@ import { implement } from "@get-modular/assembly";
 import { scoped } from "@get-modular/resources";
 import { PgOrders } from "../adapters/outbound/pg-orders.js";
 import type { OrderStorePort } from "../contracts/order-store.js";
-import type { OrderStoreCapabilities } from "./order-store.contracts.js";
+import type { OrdersCapabilities } from "./orders.contracts.js";
 import { orderStoreDeclaration } from "./order-store.declaration.js";
 
 // `scoped` gives the factory `resources`; Assembly names the scope by the implementation id.
-export const orderStoreModule = implement<OrderStoreCapabilities>()(orderStoreDeclaration,
+export const orderStoreModule = implement<OrdersCapabilities>()(orderStoreDeclaration,
   async (deps, { resources }) => {
     // The client is created inside `setup`, so a cancelled run stops it and cleanup closes it.
     const pg = await resources.setup({
@@ -896,11 +935,10 @@ export const orderStoreModule = implement<OrderStoreCapabilities>()(orderStoreDe
       cleanup: (client) => client.close(),
     });
     // The subscription lives in this module's scope: its disposer runs before the client closes.
-    const stale = new Set<string>();
-    resources.use({ [Symbol.dispose]: deps.events.subscribe((orderId) => { stale.add(orderId); }) }, "events");
-    // Never pass the instance as the port: build it from the port members so `close` stays with the owner.
-    const port: OrderStorePort = { find: (orderId) => stale.has(orderId) ? Promise.resolve(undefined) : pg.find(orderId) };
-    return { instance: pg, capabilities: { "acme/orders/order-store": port } };
+    resources.use({ [Symbol.dispose]: deps.events.subscribe(pg.forget) }, "events");
+    // Never pass the client as the port: expose only the port members so `close` stays with the owner.
+    const port: OrderStorePort = { find: pg.find };
+    return { instance: port, capabilities: { "acme/orders/order-store": port } };
   }, scoped);
 ```
 
@@ -932,6 +970,10 @@ export class PgOrders {
 
   readonly find = async (orderId: string): Promise<string | undefined> => {
     return this.#closed ? undefined : this.#rows.get(orderId);
+  };
+
+  readonly forget = (orderId: string): void => {
+    this.#rows.delete(orderId);
   };
 
   readonly close = async (): Promise<void> => {
@@ -1153,7 +1195,7 @@ export const reportsGroup = group("reports", [
 ```
 
 ```ts
-// src/composition/root.ts
+// src/composition/reports.root.ts
 import type { Assembly } from "@get-modular/assembly";
 import { renderDeclaration } from "../features/reports/composition/render.declaration.js";
 import { renderModule } from "../features/reports/composition/render.module.js";
@@ -1196,7 +1238,6 @@ export const reportsWiring: WiringOracle = {
     "acme/reports/reports": "acme/reports/render/default",
     "acme/reports/store": ["acme/reports/store-memory/default", "acme/reports/store-postgres/default"],
   },
-  roots: ["acme/reports/render/default"],
   rows: [
     { consumer: "acme/reports/render/default", slot: "audit", providers: [] },
     { consumer: "acme/reports/render/default", slot: "filters",
@@ -1211,17 +1252,19 @@ export const reportsWiring: WiringOracle = {
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { assemblyFor, entriesOf } from "@get-modular/assembly";
-import { checkWiring } from "@get-modular/conformance";
-import { composeReports, reportsModules } from "../../src/composition/root.js";
+import { checkWiring, type WiringOracle } from "@get-modular/conformance";
+import { composeReports, reportsModules } from "../../src/composition/reports.root.js";
 import type { ReportsCapabilities } from "../../src/features/reports/composition/reports.contracts.js";
 import { reportsWiring } from "../features/reports/reports.wiring.js";
+
+const rootWiring: WiringOracle = { providers: {}, roots: ["acme/reports/render/default"] };
 
 test("the rows match the oracle", async () => {
   const preparation = await composeReports(assemblyFor<ReportsCapabilities>());
   assert.equal(preparation.status, "prepared");
   if (preparation.status !== "prepared") { return; }
   const declarations = entriesOf(reportsModules).map((entry) => entry.declaration);
-  checkWiring(preparation.composition, [reportsWiring], { declarations });
+  checkWiring(preparation.composition, [reportsWiring, rootWiring], { declarations });
 });
 ```
 
@@ -1394,7 +1437,7 @@ export function createSessionsGroup(adapters: { readonly transport: TransportPor
 ```
 
 ```ts
-// src/composition/root.ts
+// src/composition/sessions.root.ts
 import type { Assembly } from "@get-modular/assembly";
 import { chatModule } from "../features/sessions/composition/chat.module.js";
 import type { SessionsCapabilities } from "../features/sessions/composition/sessions.contracts.js";
@@ -1418,7 +1461,7 @@ export function createSessionsRoot(adapters: { readonly transport: TransportPort
 // src/composition/open-session.ts
 import { assemblyFor } from "@get-modular/assembly";
 import type { Resources } from "@get-modular/resources";
-import { createSessionsRoot } from "./root.js";
+import { createSessionsRoot } from "./sessions.root.js";
 import type { SessionsCapabilities } from "../features/sessions/composition/sessions.contracts.js";
 import type { TransportPort } from "../features/sessions/contracts/sessions.js";
 
@@ -1508,7 +1551,7 @@ feature's tests import only its own code, the public surfaces and `testing.ts` o
 features it may see, and Get Modular. A sub-feature's tests live at the mirrored path
 (`tests/features/orders/features/discounts/`). No sleeps; close every scope.
 
-Oracle parts, one per feature, at the feature's mirrored path:
+Oracle parts, one per feature, at the feature's mirrored path. Roots are the root's decision, so they live in the root test's own part, never in a feature part:
 
 <!-- module-authoring-example: project -->
 
@@ -1521,7 +1564,6 @@ export const ordersWiring: WiringOracle = {
     "acme/orders/order-lines": "acme/orders/order-lines/memory",
     "acme/orders/orders": "acme/orders/checkout/default",
   },
-  roots: ["acme/orders/checkout/default"],
 };
 ```
 
@@ -1541,7 +1583,6 @@ import type { WiringOracle } from "@get-modular/conformance";
 
 export const billingWiring: WiringOracle = {
   providers: { "acme/billing/invoices": "acme/billing/invoicing/default" },
-  roots: ["acme/billing/invoicing/default"],
 };
 ```
 
@@ -1559,17 +1600,22 @@ The root test with all root checks:
 <!-- module-authoring-example: project -->
 
 ```ts
-// tests/module/root.test.ts
+// tests/module/acme.root.test.ts
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { assemblyFor, entriesOf } from "@get-modular/assembly";
-import { checkNamespaces, checkWiring, smoke } from "@get-modular/conformance";
-import { acmeModules, composeAcme, type AcmeCapabilities } from "../../src/composition/root.js";
+import { checkNamespaces, checkWiring, smoke, type WiringOracle } from "@get-modular/conformance";
+import { acmeModules, composeAcme, type AcmeCapabilities } from "../../src/composition/acme.root.js";
 import { billingWiring } from "../features/billing/billing.wiring.js";
 import { infraWiring } from "../features/infra/infra.wiring.js";
 import { discountsWiring } from "../features/orders/features/discounts/discounts.wiring.js";
 import { ordersWiring } from "../features/orders/orders.wiring.js";
 
+// Roots are the root's decision, so they live in the root test's own part, not in a feature part.
+const rootWiring: WiringOracle = {
+  providers: {},
+  roots: ["acme/billing/invoicing/default", "acme/orders/checkout/default"],
+};
 const declarations = entriesOf(acmeModules).map((entry) => entry.declaration);
 
 test("the root builds and cleans up after a failure at every module", async () => {
@@ -1580,7 +1626,7 @@ test("the root wires what the oracle parts state", async () => {
   const preparation = await composeAcme(assemblyFor<AcmeCapabilities>());
   assert.equal(preparation.status, "prepared");
   if (preparation.status !== "prepared") { return; }
-  checkWiring(preparation.composition, [billingWiring, discountsWiring, infraWiring, ordersWiring], { declarations });
+  checkWiring(preparation.composition, [billingWiring, discountsWiring, infraWiring, ordersWiring, rootWiring], { declarations });
 });
 
 test("identities lie in the product namespace", () => {
