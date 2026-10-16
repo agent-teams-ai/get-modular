@@ -774,6 +774,7 @@ boundaries:
       packages:
         - "@agent-teams/engineering-foundation"
         - "@get-modular/assembly"
+        - "@get-modular/conformance"
         - "@get-modular/core"
         - "@get-modular/lifecycle-kernel"
         - "@get-modular/resources"
