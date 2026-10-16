@@ -8,9 +8,15 @@ related:
   - ARCH-COMMON-ASSEMBLY
   - ARCH-CURRENT-CONTRACT
   - ADR-0023
+  - ADR-0036
 ---
 
 # Consumer quickstart
+
+Assembly 0.5.0 note: [ADR-0036](../decisions/0036-compose-roots-from-module-entries-and-static-groups.md) replaces
+handles with module entries and static groups (`implement`, `input`, `group`, `entriesOf`, `prepare({ modules })` and `isolate(entry, ...)`). Where this guide still describes `bindFactory`,
+`bindInput`, `factories` or `isolate(api, ...)`, ADR-0036 takes precedence until its revision in phase P4 of the 0.5.0
+train.
 
 Use Core to validate composition data and create a deterministic plan. Add
 Assembly when the Host also needs to construct already selected and authorized

@@ -13,6 +13,7 @@ related:
   - ADR-0032
   - ADR-0033
   - ADR-0035
+  - ADR-0036
   - ARCH-CURRENT-CONTRACT
   - ARCH-MVP-IMPLEMENTATION-ROADMAP
 ---
@@ -20,6 +21,11 @@ related:
 # Common assembly
 
 ## Scope and authority
+
+Assembly 0.5.0 note: [ADR-0036](../decisions/0036-compose-roots-from-module-entries-and-static-groups.md) replaces
+handles with module entries and static groups (`implement`, `input`, `group`, `entriesOf`, `prepare({ modules })` and `isolate(entry, ...)`). Where this document still describes `bindFactory`,
+`bindInput`, `factories` or `isolate(api, ...)`, ADR-0036 takes precedence until its revision in phase P4 of the 0.5.0
+train; only the compiled example blocks already use entries.
 
 The owner approved a thin optional `@get-modular/assembly` package. Core remains
 pure and unchanged. Assembly depends only on the public Core root; Host supplies
