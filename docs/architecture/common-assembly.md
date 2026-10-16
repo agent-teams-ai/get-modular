@@ -612,8 +612,7 @@ kit `@get-modular/conformance`.
    table above, and never derive expected bindings from the profile or the
    implementation. When Assembly completes bindings, the oracle compares every row
    of the prepared plan, with consumer, slot, providers, capability and token,
-   against a hand-written table. ADR-0037 replaces the full-row table with pinned
-   providers plus listed non-completed rows.
+   against a hand-written table.
 7. `guardHandles` is a per-file diagnostic, and `complete` is not proof of
    physical release. Check real adapters in disposable TEST projects.
 8. Close every scope a test creates. No sleeps; use the test runner's
