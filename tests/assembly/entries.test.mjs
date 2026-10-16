@@ -1,13 +1,14 @@
+/// <reference types="node" />
+/// <reference lib="esnext.disposable" />
 // S0 0A: runtime behaviour of the prototype (implement, input, group, entriesOf, prepare({ modules }), smoke, isolate).
 import assert from "node:assert/strict";
 import test from "node:test";
 import { assemblyFor, AssemblyBindingError, entriesOf, group, implement, input as inputEntry } from "@get-modular/assembly";
 import { isolate, smoke, ConformanceError } from "@get-modular/conformance";
 import { scoped } from "@get-modular/resources";
-import { binding, declaration, profile, slot } from "./fixture.mjs";
+import { binding, declaration, slot } from "./fixture.mjs";
 
-const code = (error) => error?.code;
-const throwsCode = (fn, expected) => assert.throws(fn, (error) => error instanceof AssemblyBindingError && error.code === expected);
+const throwsCode = (fn, expected) => { assert.throws(fn, (error) => error instanceof AssemblyBindingError && error.code === expected); };
 const product = (id, value = {}) => async () => ({ instance: { id }, capabilities: { [`synthetic/${id}`]: value } });
 // A chain of modules m0 <- m1 <- ... where each depends on the previous one.
 function chain(count, prefix = "m") {
@@ -20,7 +21,7 @@ test("an entry is a frozen null-prototype pair; copying its fields forges nothin
   const entry = implement()(d, product("a"));
   assert.equal(Object.getPrototypeOf(entry), null);
   assert.equal(Object.isFrozen(entry), true);
-  assert.deepEqual(Object.keys(entry).sort(), ["declaration", "factory"]);
+  assert.deepEqual(Object.keys(entry).toSorted(), ["declaration", "factory"]);
   assert.equal(Object.isFrozen(entry.declaration), true);
   d.provides.length = 0; // the snapshot is taken at implement
   assert.equal(entry.declaration.provides.length, 1);
@@ -35,7 +36,7 @@ test("implement validates synchronously and calls the adapter once with the impl
   const d = declaration("a", ["synthetic/a"]);
   throwsCode(() => implement()(d, "nope"), "assembly.bind.invalid-factory");
   throwsCode(() => implement()(d, product("a"), "nope"), "assembly.bind.invalid-factory");
-  throwsCode(() => implement()(d, product("a"), () => undefined), "assembly.bind.invalid-factory");
+  throwsCode(() => implement()(d, product("a"), () => null), "assembly.bind.invalid-factory");
   throwsCode(() => implement()({ ...d, kind: "other" }, product("a")), "assembly.bind.invalid-declaration");
   const names = [];
   const adapter = (name, factory) => { names.push(name); return (deps, context) => factory(deps, { ...context, adapted: true }); };
@@ -51,7 +52,7 @@ test("implement validates synchronously and calls the adapter once with the impl
 test("scoped is the adapter: the factory reads resources and the run scope never reaches it", async () => {
   const d = declaration("a", ["synthetic/a"]);
   let keys;
-  const entry = implement()(d, async (_deps, context) => { keys = Object.keys(context).sort(); return { instance: {}, capabilities: { "synthetic/a": {} } }; }, scoped);
+  const entry = implement()(d, async (_deps, context) => { keys = Object.keys(context).toSorted(); return { instance: {}, capabilities: { "synthetic/a": {} } }; }, scoped);
   const ready = await assemblyFor().prepare({ profileId: "synthetic/p", modules: [entry], roots: { a: entry } });
   const { createScope } = await import("@get-modular/resources");
   const scope = createScope({ name: "t" });
@@ -66,7 +67,7 @@ test("a group is a frozen static list; names, members, kinds and depth are valid
   assert.equal(Object.isFrozen(g), true);
   assert.equal(Object.isFrozen(g.members), true);
   assert.equal(Object.getPrototypeOf(g), null);
-  assert.deepEqual(Object.keys(g).sort(), ["members", "name"]);
+  assert.deepEqual(Object.keys(g).toSorted(), ["members", "name"]);
   throwsCode(() => group("", entries), "assembly.bind.invalid-group");
   throwsCode(() => group("x".repeat(129), entries), "assembly.bind.invalid-group");
   assert.doesNotThrow(() => group("\u00e9".repeat(64), entries));
@@ -81,7 +82,7 @@ test("a group is a frozen static list; names, members, kinds and depth are valid
   assert.equal(reads, 0);
   // Depth: `modules` is level 0, so sixteen nested groups pass and the seventeenth throws at creation.
   let nested = group("level-1", [entries[0]]);
-  for (let level = 2; level <= 16; level += 1) nested = group(`level-${level}`, [nested]);
+  for (let level = 2; level <= 16; level += 1) { nested = group(`level-${level}`, [nested]); }
   throwsCode(() => group("level-17", [nested]), "assembly.bind.invalid-group");
 });
 
@@ -92,8 +93,8 @@ test("order and nesting never change the profile, the plan or the digest", async
   const prepare = (modules) => api.prepare({ profileId: "synthetic/p", modules, roots: { last: entries[5] } });
   const flat = await prepare(entries);
   const nested = await prepare([group("a", [entries[3], group("b", [entries[0], entries[5]])]), entries[1], group("c", [entries[4], entries[2]])]);
-  const reversed = await prepare([...entries].reverse());
-  for (const result of [flat, nested, reversed]) assert.equal(result.status, "prepared", JSON.stringify(result));
+  const reversed = await prepare([...entries].toReversed());
+  for (const result of [flat, nested, reversed]) { assert.equal(result.status, "prepared", JSON.stringify(result)); }
   assert.equal(nested.composition.digest, flat.composition.digest);
   assert.equal(reversed.composition.digest, flat.composition.digest);
   assert.deepEqual(nested.composition.plan, flat.composition.plan);
@@ -181,7 +182,7 @@ test("isolate(entry) builds one module with fakes as inputs and no api argument"
   const consumer = declaration("app", ["synthetic/app"], [slot("store", "synthetic/store")]);
   let keys;
   const entry = implement()(consumer, async (deps, context) => {
-    keys = Object.keys(context).sort();
+    keys = Object.keys(context).toSorted();
     return { instance: { value: deps.store.value }, capabilities: { "synthetic/app": { read: () => deps.store.value } } };
   }, scoped);
   void provider;

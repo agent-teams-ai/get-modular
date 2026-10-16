@@ -1,13 +1,13 @@
 import type { ModuleDeclaration } from "@get-modular/core";
 import type {
-  BindingErrorCode, ContextAdapter, FactoryContext, InputEntry, ModuleEntry, ModuleFactory, ValidDeclaration,
+  BindingErrorCode, ContextAdapter, InputEntry, ModuleEntry, ModuleFactory, ValidDeclaration,
 } from "./types.js";
 import type { ExecutableFactory, Metadata } from "./ports.js";
 import { SnapshotFault, snapshotDeclaration } from "./snapshot.js";
 
 const metadata = new WeakMap<object, Metadata>();
-const moduleEntries = new WeakSet<object>();
-const inputEntries = new WeakSet<object>();
+const moduleEntries: WeakSet<object> = new WeakSet();
+const inputEntries: WeakSet<object> = new WeakSet();
 export class AssemblyBindingError extends Error {
   readonly code: BindingErrorCode;
   constructor(code: BindingErrorCode, cause: unknown) {
@@ -59,7 +59,7 @@ export function input<C>() {
 /** Creates a module entry; the optional adapter turns a factory for another context into one for `FactoryContext`. */
 export function implement<C>(): {
   <const D extends ModuleDeclaration, I>(declaration: D & ValidDeclaration<C, NoInfer<D>>,
-    factory: ModuleFactory<C, NoInfer<D>, I, FactoryContext>): ModuleEntry<C, D, I>;
+    factory: ModuleFactory<C, NoInfer<D>, I>): ModuleEntry<C, D, I>;
   <const D extends ModuleDeclaration, I, X>(declaration: D & ValidDeclaration<C, NoInfer<D>>,
     factory: ModuleFactory<C, NoInfer<D>, I, X>, adapter: ContextAdapter<X>): ModuleEntry<C, D, I>;
 } {

@@ -145,7 +145,7 @@ export async function isolate<const E extends AnyEntry>(
   const declaration: ModuleDeclaration = entry.declaration;
   const assembly = assemblyFor<{}>() as unknown as LooseAssembly;
 
-  const declarations: ModuleDeclaration[] = [declaration, ...fakes.map(entry => entry.declaration)];
+  const declarations: ModuleDeclaration[] = [declaration, ...fakes.map(fake => fake.declaration)];
   const composition = await compileComposition({
     declarations,
     profile: {
@@ -161,7 +161,7 @@ export async function isolate<const E extends AnyEntry>(
   });
   if (!composition.ok) {
     throw new ConformanceError("conformance.isolate.construction-failed",
-      `${declaration.implementationId} cannot be composed with its dependencies: ${composition.diagnostics.map(entry => entry.code).join(", ")}`,
+      `${declaration.implementationId} cannot be composed with its dependencies: ${composition.diagnostics.map(diagnostic => diagnostic.code).join(", ")}`,
       { details: { diagnostics: composition.diagnostics } });
   }
 
@@ -184,7 +184,7 @@ export async function isolate<const E extends AnyEntry>(
     outcome = await preparation.prepared.run({
       ...input.signal === undefined ? {} : { signal: input.signal },
       scope: scope.resources,
-      ...fakes.length === 0 ? {} : { inputs: Object.fromEntries(fakes.map(entry => [entry.alias, entry.record])) },
+      ...fakes.length === 0 ? {} : { inputs: Object.fromEntries(fakes.map(fake => [fake.alias, fake.record])) },
     });
   } catch (error) {
     await scope.control.close();

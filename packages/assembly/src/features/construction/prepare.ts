@@ -3,7 +3,7 @@ import type { AssemblyPreparationResult, AssemblyPrepareInput, DuplicateModule, 
 import type { ConstructionPorts, Metadata, Program } from "./ports.js";
 import { appendCreated } from "./ports.js";
 import { SnapshotFault, copyPlan, data, dataObject, denseArray, envelope, inspectPlan, limits, record, rootKeys, snapshotPlan } from "./snapshot.js";
-import { isInputEntry, isModuleEntry, metadataFor } from "./entry.js";
+import { metadataFor } from "./entry.js";
 import { walkModules } from "./group.js";
 import { runAttempt } from "./run.js";
 import { deriveProfile } from "./derive-profile.js";
@@ -59,6 +59,14 @@ class DuplicateFault extends Error {
   readonly occurrences: readonly DuplicateModule[];
   constructor(occurrences: DuplicateFault["occurrences"]) { super("assembly.prepare.duplicate-module"); this.occurrences = occurrences; }
 }
+function sortIds(values: Iterable<string>): string[] {
+  const ids: string[] = [];
+  for (const value of values) {
+    const next = ids.findIndex((candidate) => candidate > value);
+    ids.splice(next < 0 ? ids.length : next, 0, value);
+  }
+  return ids;
+}
 // Module entries come only through `modules` (groups flattened depth first) and input entries only through
 // `inputs`; together they cover every selection exactly once.
 function collectMetadata(modules: readonly unknown[], inputHandles: readonly unknown[], inputAliases: readonly string[]): Collected {
@@ -99,7 +107,7 @@ function collectMetadata(modules: readonly unknown[], inputHandles: readonly unk
     byId.set(id, metadata);
     if (inputAlias === undefined) {groupPaths.set(id, path);}
   }
-  const ids = [...new Set([...paths.keys(), ...inputs.keys()])].sort();
+  const ids = sortIds(new Set([...paths.keys(), ...inputs.keys()]));
   const duplicated = ids.flatMap((id): DuplicateModule[] => {
     const modulePaths = paths.get(id) ?? [];
     const inputAliasesForId = inputs.get(id) ?? [];
@@ -207,27 +215,40 @@ async function completeProfile(compile: ConstructionPorts["compileComposition"],
   if (!checked.ok) {return rejectedByCore(checked.diagnostics);}
   return { plan: snapshotPlan(checked.plan), composition: checked };
 }
+type Supplied = Record<string, unknown>;
+function preparationMode(supplied: Supplied): { readonly withComposition: boolean; readonly given: (key: string) => boolean } {
+  const given = (key: string): boolean => Object.hasOwn(supplied, key) && data(supplied, key) !== undefined;
+  const withComposition = given("composition");
+  if (withComposition === given("profileId")) {refuse("assembly.prepare.invalid-input");}
+  if (withComposition && given("bindings")) {refuse("assembly.prepare.invalid-input");}
+  return { withComposition, given };
+}
+function explicitComposition(supplied: Supplied): { readonly composition: Record<string, unknown>; readonly header: Readonly<Record<string, unknown>>; readonly census: ReturnType<typeof inspectPlan> } {
+  const composition = dataObject(data(supplied, "composition"));
+  return { composition, header: envelope(composition), census: inspectPlan(data(composition, "plan")) };
+}
+async function verifyExplicit(compile: ConstructionPorts["compileComposition"], declarations: readonly ModuleDeclaration[],
+  plan: CompositionPlan, explicit: ReturnType<typeof explicitComposition>): Promise<AssemblyPreparationResult<never> | undefined> {
+  const checked = await compile({ declarations, profile: profileFrom(plan) });
+  if (!checked.ok) {return rejectedByCore(checked.diagnostics);}
+  if (!sameEnvelope(explicit.header, envelope(checked)) || !samePlan(plan, snapshotPlan(checked.plan))) {
+    return refuse("assembly.prepare.plan-mismatch");
+  }
+  return undefined;
+}
 export async function prepareConstruction<C, R extends RootEntries<C>, N extends InputEntries<C>,
   M extends readonly ModuleItem<C>[]>(
   input: AssemblyPrepareInput<C, R, N, M>, ports: ConstructionPorts,
 ): Promise<AssemblyPreparationResult<R, N>> {
   try {
     const supplied = record(input, ["modules", "roots"], ["composition", "profileId", "bindings", "inputs"]);
-    // Exactly one of `composition` and `profileId`; `bindings` only completes a `profileId`.
-    // A key set to `undefined` counts as absent, as the optional types allow.
-    const given = (key: string): boolean => Object.hasOwn(supplied, key) && data(supplied, key) !== undefined;
-    const withComposition = given("composition");
-    if (withComposition === given("profileId")) {refuse("assembly.prepare.invalid-input");}
-    if (withComposition && given("bindings")) {refuse("assembly.prepare.invalid-input");}
+    const { withComposition, given } = preparationMode(supplied);
     const modules = denseArray(data(supplied, "modules"), limits.handles);
     const aliases = rootKeys(data(supplied, "roots"));
     const suppliedInputs = Object.hasOwn(supplied, "inputs") ? data(supplied, "inputs") : undefined;
     const inputAliases = rootKeys(suppliedInputs === undefined ? {} : suppliedInputs);
     const inputHandles = inputAliases.keys.map((alias) => data(inputAliases.object, alias));
-    const explicit = withComposition ? (() => {
-      const composition = dataObject(data(supplied, "composition"));
-      return { composition, header: envelope(composition), census: inspectPlan(data(composition, "plan")) };
-    })() : undefined;
+    const explicit = withComposition ? explicitComposition(supplied) : undefined;
     // All individual and aggregate counts precede proportional snapshot copies.
     const { byHandle, byId, groupPaths } = collectMetadata(modules, inputHandles, inputAliases.keys);
     const declarations = Object.freeze(Array.from(byId.values(), (metadata) => metadata.declaration));
@@ -245,11 +266,8 @@ export async function prepareConstruction<C, R extends RootEntries<C>, N extends
     const roots = bindRoots(aliases, plan, byHandle);
     const inputs = bindInputs(inputAliases.keys, inputHandles, byHandle);
     if (explicit) {
-      const checked = await compile({ declarations, profile: profileFrom(plan) });
-      if (!checked.ok) {return rejectedByCore(checked.diagnostics);}
-      if (!sameEnvelope(explicit.header, envelope(checked)) || !samePlan(plan, snapshotPlan(checked.plan))) {
-        return refuse("assembly.prepare.plan-mismatch");
-      }
+      const failed = await verifyExplicit(compile, declarations, plan, explicit);
+      if (failed) {return failed;}
     }
     const program = createProgram(plan, roots, inputs, byId);
     // Run options are checked at run time; the declared shape exists only for callers.

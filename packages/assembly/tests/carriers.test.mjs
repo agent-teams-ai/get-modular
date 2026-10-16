@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { compileComposition } from "@get-modular/core";
+import { implement } from "../dist/index.js";
 import { prepareConstruction } from "../dist/features/construction/prepare.js";
 import { deferred, synthetic } from "./fixture.mjs";
 

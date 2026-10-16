@@ -101,7 +101,7 @@ declare const groupUses: unique symbol;
  */
 export type ModuleGroup<E = AnyEntry, K = unknown> = {
   readonly name: string;
-  readonly members: readonly (AnyEntry | ModuleGroup<AnyEntry>)[];
+  readonly members: readonly (AnyEntry | ModuleGroup)[];
   readonly [groupEntries]?: E;
   readonly [groupUses]?: K;
 };
@@ -198,8 +198,8 @@ export type RunInputs<N> = {
 
 export type SuccessfulComposition = Extract<CompileCompositionResult, { readonly plan: CompositionPlan; readonly digest: PlanDigest }>;
 /**
- * Every capability any factory or input handle uses must be part of the preparing map `C`. Handles passed as a
- * literal array keep their used capabilities; an array typed as `AnyFactoryHandle<C>[]` beforehand does not.
+ * Every capability any factory or input entry uses must be part of the preparing map `C`. Entries passed as a
+ * literal array keep their used capabilities; an array typed as `AnyModuleEntry<C>[]` beforehand does not.
  */
 export type KnownCapabilities<C, F extends readonly unknown[], N> = [Exclude<
   (F[number] | N[keyof N]) extends infer H ? H extends { readonly [uses]: infer U } ? keyof U : never : never,

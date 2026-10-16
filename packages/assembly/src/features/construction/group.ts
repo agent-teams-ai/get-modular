@@ -1,9 +1,9 @@
-import type { AnyEntry, AnyModuleEntry, EntriesOf, ModuleGroup, UsedKeysOf } from "./types.js";
+import type { AnyEntry, EntriesOf, ModuleGroup, UsedKeysOf } from "./types.js";
 import { AssemblyBindingError, isInputEntry, isModuleEntry, metadataFor } from "./entry.js";
 import { SnapshotFault, data, denseArray, limits } from "./snapshot.js";
 
-const groups = new WeakSet<object>();
-const heights = new WeakMap<object, number>();
+const groups: WeakSet<object> = new WeakSet();
+const heights: WeakMap<object, number> = new WeakMap();
 /** Deepest group level below a group, counting the group itself: `modules` is level 0. */
 export const MAXIMUM_GROUP_DEPTH = 16;
 const MAXIMUM_GROUP_NAME_BYTES = 128;
@@ -31,7 +31,7 @@ function groupHeight(value: unknown): number | undefined {
 }
 
 /** Creates a static group; `name` is a label that never enters the profile, the plan or the digest. */
-export function group<const M extends readonly (AnyEntry | ModuleGroup<AnyEntry>)[]>(
+export function group<const M extends readonly (AnyEntry | ModuleGroup)[]>(
   name: string,
   members: M & (number extends M["length"] ? never : unknown),
 ): ModuleGroup<EntriesOf<M[number]>, UsedKeysOf<M[number]>> {
@@ -72,7 +72,7 @@ export function walkModules(modules: readonly unknown[], fail: (kind: "handles" 
       const found = metadataFor(member);
       if (found !== undefined) {
         if (!isModuleEntry(member) || found.input === true) {fail("input");}
-        entries.push({ entry: member as object, path });
+        entries.push({ entry: member, path });
       } else if (isGroup(member)) {
         const name = data(member, "name");
         const members = denseArray(data(member, "members"), limits.handles);
@@ -88,7 +88,7 @@ export function walkModules(modules: readonly unknown[], fail: (kind: "handles" 
 }
 
 /** The entries of a module list, depth first, groups flattened. */
-export function entriesOf<const M extends readonly (AnyEntry | ModuleGroup<AnyEntry>)[]>(modules: M): readonly EntriesOf<M[number]>[] {
+export function entriesOf<const M extends readonly (AnyEntry | ModuleGroup)[]>(modules: M): readonly EntriesOf<M[number]>[] {
   try {
     const list = denseArray(modules, limits.handles);
     return Object.freeze(walkModules(list, () => invalidGroup("entriesOf lists only module entries and groups")).entries.map((walked) => walked.entry)) as never;

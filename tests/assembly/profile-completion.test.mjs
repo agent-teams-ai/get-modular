@@ -78,10 +78,10 @@ test("slots without a safe completion fail together, with their candidates, befo
   assert.equal(result.status, "failed");
   assert.equal(result.error.code, "assembly.prepare.unresolved-binding");
   assert.deepEqual(result.error.cause, [
-    { consumerImplementationId: "synthetic/consumer", slotId: "dup", capabilityId: "synthetic/dup", cardinality: "required", candidates: ["synthetic/one", "synthetic/two"] },
-    { consumerImplementationId: "synthetic/consumer", slotId: "list", capabilityId: "synthetic/dup", cardinality: "many", candidates: ["synthetic/one", "synthetic/two"] },
-    { consumerImplementationId: "synthetic/consumer", slotId: "opt-none", capabilityId: "synthetic/missing", cardinality: "optional", candidates: [] },
-    { consumerImplementationId: "synthetic/consumer", slotId: "opt-one", capabilityId: "synthetic/solo", cardinality: "optional", candidates: ["synthetic/solo"] },
+    { consumerImplementationId: "synthetic/consumer", slotId: "dup", capabilityId: "synthetic/dup", cardinality: "required", groupPath: [], candidates: ["synthetic/one", "synthetic/two"] },
+    { consumerImplementationId: "synthetic/consumer", slotId: "list", capabilityId: "synthetic/dup", cardinality: "many", groupPath: [], candidates: ["synthetic/one", "synthetic/two"] },
+    { consumerImplementationId: "synthetic/consumer", slotId: "opt-none", capabilityId: "synthetic/missing", cardinality: "optional", groupPath: [], candidates: [] },
+    { consumerImplementationId: "synthetic/consumer", slotId: "opt-one", capabilityId: "synthetic/solo", cardinality: "optional", groupPath: [], candidates: ["synthetic/solo"] },
   ]);
   assert.deepEqual(calls, []);
   // Explicit rows settle every one of them, including the ambiguous slot, and keep what was written.
@@ -107,7 +107,7 @@ test("a required slot with no provider is reported with no candidates", async ()
   const result = await api.prepare({ profileId: "synthetic/none", modules: handles, roots: { orphan: handles[0] } });
   assert.equal(result.error.code, "assembly.prepare.unresolved-binding");
   assert.deepEqual(result.error.cause, [{
-    consumerImplementationId: "synthetic/orphan", slotId: "none", capabilityId: "synthetic/missing", cardinality: "required", candidates: [],
+    consumerImplementationId: "synthetic/orphan", slotId: "none", capabilityId: "synthetic/missing", cardinality: "required", groupPath: [], candidates: [],
   }]);
   assert.deepEqual(calls, []);
 });

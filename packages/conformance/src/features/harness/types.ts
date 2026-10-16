@@ -1,5 +1,4 @@
 import type { CreatedEntry, FactoryContext } from "@get-modular/assembly";
-import type { ModuleDeclaration } from "@get-modular/core";
 import type { CloseReport } from "@get-modular/resources";
 
 /** One module built exactly as a production run builds it; dispose it, or close it and read the report. */

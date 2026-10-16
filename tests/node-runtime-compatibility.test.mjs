@@ -47,7 +47,7 @@ import * as conformance from "@get-modular/conformance";
 const require = createRequire(import.meta.url);
 for (const [name, namespace, expected] of [
   ["core", core, ["compileComposition", "compileCompositionJson", "defineModule", "many", "optional", "required"]],
-  ["assembly", assembly, ["AssemblyBindingError", "assemblyFor", "declareModule", "defineContract"]],
+  ["assembly", assembly, ["AssemblyBindingError", "assemblyFor", "declareModule", "defineContract", "entriesOf", "group", "implement", "input"]],
   ["resources", resources, ["CloseIncompleteError", "InvalidArgumentError", "ScopeClosedError", "createScope", "scoped"]],
   ["conformance", conformance, ["ConformanceError", "checkNamespaces", "contractSuite", "guardHandles", "isolate", "runContractSuite", "smoke"]],
 ]) {
@@ -105,10 +105,7 @@ assert.equal(outcome.status, "succeeded", JSON.stringify(outcome));
 assert.equal(outcome.roots.consumer, 42);
 assert.deepEqual(await attempt.control.close(), { complete: true, settled: true, debts: [] });
 assert.deepEqual(released, [42]);
-const isolated = await conformance.isolate(api, {
-  declaration: consumer, dependencies: { value: 42 },
-  factory: async (dependencies) => ({ instance: dependencies.value, capabilities: {} }),
-});
+const isolated = await conformance.isolate(consumerFactory, { dependencies: { value: 42 } });
 assert.equal(isolated.instance, 42);
 assert.equal((await isolated.close()).complete, true);
 console.log("public-consumer:passed");
