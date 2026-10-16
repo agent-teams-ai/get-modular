@@ -247,14 +247,16 @@ function ownerViolations(context: LayoutContext): LayoutViolation[] {
     }
     const site = context.sites.get(path);
     const ownGroup = site === undefined ? undefined : groupPathOf(site);
-    const owners = (context.importers.get(path) ?? []).filter(edge => GROUP.test(edge.from) || ROOT.test(edge.from));
-    const valid = owners.filter(edge => ROOT.test(edge.from) || edge.from === ownGroup);
+    // Only group files own modules; a root may import a module to name it in `roots` without owning it.
+    const owners = (context.importers.get(path) ?? []).filter(edge => GROUP.test(edge.from));
+    const valid = owners.filter(edge => site === undefined
+      ? context.sites.get(edge.from) === undefined : edge.from === ownGroup);
     if (owners.length === 0) {
       violations.push(violation("orphan-module", path,
-        "a *.module.ts file must be imported by its feature group or a root"));
+        "a *.module.ts file must be imported by its feature group"));
     } else if (owners.length !== 1 || valid.length !== 1) {
       violations.push(violation("group-count", path,
-        "a *.module.ts file must be imported by exactly one own feature group or root"));
+        "a *.module.ts file must be imported by exactly one own feature group"));
     }
   }
   return violations;

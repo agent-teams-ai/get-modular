@@ -1033,7 +1033,8 @@ const testShapedTree = () => [
   layoutFile("src/composition/shared.contracts.ts"),
   layoutFile("src/composition/shared.declaration.ts", [edge("src/composition/shared.contracts.ts", "type")]),
   layoutFile("src/composition/shared.module.ts", [edge("src/composition/shared.declaration.ts")]),
-  layoutFile("src/composition/app.root.ts", [edge(`${orders}/composition/orders.group.ts`), edge("src/composition/shared.module.ts")]),
+  layoutFile("src/composition/shared.group.ts", [edge("src/composition/shared.module.ts")]),
+  layoutFile("src/composition/app.root.ts", [edge(`${orders}/composition/orders.group.ts`), edge("src/composition/shared.group.ts")]),
 ];
 
 test("L1 checkModuleLayout passes a TEST-shaped tree with a sub-feature, inputs and Host-level files", () => {
@@ -1041,6 +1042,25 @@ test("L1 checkModuleLayout passes a TEST-shaped tree with a sub-feature, inputs 
     featureCount: 2, moduleCount: 3, violations: [],
     modulesPerFeature: { [orders]: 1, [payments]: 1 },
   });
+});
+
+test("L1b a root may import its root module and the group of that module without owning it", () => {
+  const o = `${orders}/composition`;
+  const rows = testShapedTree().map(row => row.path === "src/composition/app.root.ts"
+    ? layoutFile(row.path, [edge(`${o}/orders.group.ts`), edge(`${o}/orders.module.ts`), edge("src/composition/shared.group.ts")])
+    : row);
+  assert.deepEqual(checkModuleLayout(layoutRecords(rows)).violations, []);
+});
+
+test("L1c a module imported only by a root is still an orphan", () => {
+  const o = `${orders}/composition`;
+  const rows = [
+    layoutFile(`${o}/orders.declaration.ts`),
+    layoutFile(`${o}/orders.module.ts`, [edge(`${o}/orders.declaration.ts`)]),
+    layoutFile("src/composition/app.root.ts", [edge(`${o}/orders.module.ts`)]),
+  ];
+  const error = failure(() => checkModuleLayout(layoutRecords(rows)), "conformance.layout.violation");
+  assert.deepEqual(pairs(error), [["orphan-module", `${o}/orders.module.ts`]]);
 });
 
 test("L2 one throw lists every Get Modular layout violation kind with its code and path", () => {
