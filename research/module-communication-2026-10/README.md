@@ -53,6 +53,7 @@ probes, a runtime prototype, writer agents and adversarial reviews.
 
 | Path | What it is |
 | --- | --- |
+| [findings.md](findings.md) | Everything the study concluded in one place: owner decisions in order, the module communication rules, why the API has its shape, what each review found, writer results per round, open items and process lessons |
 | [implementation-brief.md](implementation-brief.md) | The brief for implementing `@get-modular/observation` 0.1.0 under ADR-0034; it replaces the observation execution briefs of pull request #153 |
 | [raw/practices/practices-catalog-v2.md](raw/practices/practices-catalog-v2.md) | Practices catalog v2 (2026-10-16): best and worst practices for each direction, lessons from what projects dropped, disagreements between sources, verification notes. A draft for a future guide, not a standard |
 | [raw/practices/practices-catalog-v1.md](raw/practices/practices-catalog-v1.md) | The first, interim catalog (2026-10-15) |
