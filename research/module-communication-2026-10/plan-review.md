@@ -233,7 +233,7 @@ material blocker. Root adopted both material corrections and two small optional 
 | Reviewer finding | Disposition |
 | --- | --- |
 | Execution F1: the TS7 checkpoint is too late for Phase 1a | §2.3 and Phase 0/1a now require it before the first parser-dependent command. The inventory explicitly includes current leaf-admission/governance and ownership parser consumers, Core declaration/JavaScript audits and their owned copies. TS7 root version metadata is not the legacy compiler API; migrate to actual pinned exported TS7 API/CLI paths while preserving existing typed/syntax/ownership policies. No below-floor fallback or new gate. |
-| Semantics F1: a returned promise re-reports an already-reported guard error | §7.4 and R18/T114 apply the existing `reportedByStore` identity exception across direct throw, return inspection/assimilation and async rejection observation. The invalid-return report stays; distinct ordinary causes stay; observation remains nonblocking. One count/identity case in the existing shared path. |
+| Semantics F1: a returned promise re-reports an already-reported guard error | §7.4 and R18/T114 apply the existing `reportedByStore` identity exception across direct throw, return inspection/assimilation and async rejection observation. The invalid-return report stays; distinct ordinary causes stay; the observer does not wait. One count/identity case in the existing shared path. |
 | Consumer/types optional precision note | §8.1 explicitly permits conservative optionality for a required suffix after an unbounded rest. Place known keys before the rest for precision. No suffix algorithm or additional type-test campaign. |
 | Execution optional release bookkeeping | The compiler checkpoint records consumed/pending package changesets and version base; Phase 2b expectations distinguish its legitimate predecessor changes from unexplained observation changes. No new release is required. |
 
@@ -293,3 +293,11 @@ The package is still unimplemented. The plan's Phase 0/TS7/#183 prerequisites an
 CMS and release-archive checks remain real work. The T01–T119 table records obligations, not passed test results.
 This review campaign approves the implementation direction and closes its documented
 planning gaps; it does not make an implementation or release-ready claim.
+
+### Documentation verification
+
+`pnpm docs:protocol:check` passed on Node 26.11.1 with the pinned pnpm 11.20.0: catalog complete
+(65 documents), adoption valid, Markdown clean (277 files), spelling clean (248 files). The two spelling findings
+from the first final pass were corrected in ordinary prose, without adding an ignore rule. Earlier `docs:info`,
+observation discovery and the documented context CLI also passed. The selected changed-files route is documentation
+only; no new below-floor compiler run or unrelated runtime campaign is part of this plan-only delivery.

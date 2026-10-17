@@ -65,6 +65,11 @@ NodeNext и Bundler. Динамические ключи не обещают л�
 Во втором круге отдельный критик также проверил p5/p10 на реальных workspace-декларациях Assembly/Core/resources
 и прежние variance controls в обоих resolver modes. Это feasibility кандидата; итоговый пакет ещё нужно собрать.
 
+Финальный `pnpm docs:protocol:check` прошёл на Node 26.11.1 и pnpm 11.20.0: полный каталог из 65 документов,
+валидный adoption, Markdown — 277 файлов без ошибок, cspell — 248 файлов без ошибок. Две опечатки первого
+прохода исправлены обычной редактурой, без новых исключений. Ранее успешно выполнены `docs:info`, поиск
+observation и документированный context CLI. Скоуп этой поставки — три исследовательских Markdown-файла.
+
 Для документации использовать `docs-authoring`, `docs:info`, `docs:find`, context/check и
 `docs:protocol:check`; changed/fast/full routes применять по фактическому скоупу и инструкции владельца об
 отсутствии лишних проверок. Не запускать новый observation случай через helper с legacy 5.8.3.

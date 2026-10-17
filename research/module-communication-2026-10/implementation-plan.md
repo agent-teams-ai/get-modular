@@ -767,7 +767,7 @@ unhandled rejection; its rejection is a separate reported cause from the invalid
 `then` twice. Apply the same `reportedByStore` identity check to **every** failure path: direct throw, return
 inspection/assimilation failure and asynchronous returned-promise rejection. An already-reported guard error is
 observed without reporting it again; the invalid-return diagnostic and a distinct ordinary rejection/getter cause
-remain reported. Check the existing WeakSet, never suppress by error code. This observer stays nonblocking: do not
+remain reported. Check the existing WeakSet, never suppress by error code. The observer does not wait: do not
 await an invalid callback promise in a flush or keep a load active for it. None of these paths detaches the
 subscription or prevents a healthy sibling or later delivery.
 `reportError` runs in `try`; its throw is rethrown through the captured `queueMicrotask` as an uncaught exception and
