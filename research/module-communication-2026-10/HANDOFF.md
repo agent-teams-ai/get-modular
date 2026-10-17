@@ -74,10 +74,19 @@ directory внутри `.git` каждого disposable fixture и задаёт 
 Подключены active commit writers governance, private-core-start, SDK-growth и repository-agent-workflow.
 Codemod/M3 fixtures уже имели собственную изоляцию. Frozen historical execution fixtures не переписываются.
 
+Точный проверенный и запушенный коммит:
+[`153805b0e3bd1908e68700b35db2af087bdda35b`](https://github.com/agent-teams-ai/get-modular/commit/153805b0e3bd1908e68700b35db2af087bdda35b).
+Владелец работы — трек hooks/e2e этой продолжающей сессии (`hook_fix`); независимое code review проверило тот же SHA.
+PR пока не создан: GitHub integration вернула HTTP 403 `Resource not accessible by integration` на create PR.
+Обновление metadata PR #185 получило такой же отказ; push обеих веток прошёл. Следующий шаг — создать PR этой
+ветки с write-доступом и дождаться его CI на обеих линиях Node и трёх ОС. До этого локальные результаты ниже не
+выдаются за CI этой ветки. Патч хуков доставляется отдельно от будущей реализации observation.
+
 Новая регрессия сначала доказывает отказ обычного контрольного commit, запускает те же четыре исходных теста,
 проверяет неизменность внешнего config и снова доказывает отказ контрольного commit. Наблюдаемый результат:
 исходные четыре падения воспроизведены до исправления; после исправления проходят четыре теста и родительская
-регрессия. Дополнительный hostile-hook прогон прошёл для repository-agent-workflow (2 tests), SDK-growth admission
+регрессия на Linux, Node 24.21.0 и 26.11.1 (5/5 на каждой линии). Дополнительный hostile-hook прогон на Node 26
+прошёл для repository-agent-workflow (2 tests), SDK-growth admission
 (5 surfaces / 4 transitions, статус authority unverified / activation hold сохранён) и codemod commit fixture.
 Глобальные hooks и policy рабочего репозитория этим не отключаются.
 
@@ -107,6 +116,7 @@ required checks ради обхода этого сбоя. Проверять li
 | #184 | `docs/fixture-scale-readiness` | Другой трек, самостоятельные consumer/scale fixtures. Не расширять observation delivery этим скоупом. |
 | #185 | `docs/observation-impl-plan-handoff` | Этот план, хендофф и review record. Все runtime/test строки матрицы пока являются заданием, а не выполненным package evidence. |
 | #186 | `docs/agents-cms-maintenance` | Отдельная доставка навигационного правила CMS. Перечитать актуальные инструкции после её merge. |
+| PR не создан (API 403) | `fix/isolate-fixture-git-hooks` | Владелец: hooks/e2e этой сессии (`hook_fix`). Head `153805b0e3bd1908e68700b35db2af087bdda35b` запушен и локально проверен; ссылка и ограничения в §4. С write-доступом создать PR, пройти CI и передать владельцу на merge approval. |
 
 Разрешение на merge по V13 отсутствует, пока текущая сессия явно его не дала. Завершённые изменения нужно довести
 до проверенных PR и показать владельцу конкретный результат. После разрешённого merge prerequisites следующий
