@@ -79,7 +79,7 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
     {
       id: "ADR-0034",
       path: "docs/decisions/0034-admit-the-module-change-observation-package.md",
-      immutableDigest: "sha256:36867eb91a422bd0a5d93edfd3402a6aad3641476c6402ff6b650c2b0a73bc61",
+      immutableDigest: "sha256:62653b314316c336067c18d6a4562b50042d5b548c0da93bdae18eea6ecadf95",
     },
     {
       id: "ADR-0035",

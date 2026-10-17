@@ -336,10 +336,11 @@ admission.
 
 ### Module communication rules
 
-The Consumer Module Standard, its examples and the `consumer-module-standard`
-SDK-growth evidence change in the delivery that adds the package, and every
-consumer that pins the Standard reviews the delta and migrates its pin in that
-delivery or records the outstanding work:
+The Consumer Module Standard and its examples change in the delivery that adds
+the package; the reviewed bytes of the Standard are pinned again where the
+repository pins them today, the frozen SDK-growth observation of the Standard
+stays as recorded, and every consumer that pins the Standard reviews the delta
+and migrates its pin in that delivery or records the outstanding work:
 
 - Rule 5 of the module resource scopes: a subscriber subscribes in its own
   scope through an API that takes its `resources` and binds to its signal; work
