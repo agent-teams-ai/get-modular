@@ -1,7 +1,8 @@
 ---
 id: OD-007
 type: open-decision
-status: open
+status: resolved
+resolved_by: ADR-0034
 owner: architecture
 summary: Defines how modules opt into configuration change notifications without migrating non-participating modules, as a public Get Modular package.
 related:
@@ -11,6 +12,7 @@ related:
   - ADR-0029
   - ADR-0030
   - ADR-0033
+  - ADR-0034
   - ARCH-COMMON-ASSEMBLY
   - ARCH-SYSTEM-BOUNDARY
 ---
@@ -113,5 +115,21 @@ LOC is roughly ×2 uncertain.
 
 ## Resolution
 
-Open. When resolved, set `status: resolved`, add `resolved_by: ADR-NNNN`, and
-retain the deciding ADR in `related`.
+Resolved by accepted [ADR-0034](../decisions/0034-admit-the-module-change-observation-package.md)
+on 2026-10-17. It admits the public package that option A proposed, with a
+keyed store as its source, and takes option C's placement: every subscription
+belongs to the subscriber's scope, and there is no hub. The owner decision of
+2026-10-16 replaced item 2 and the first sentence of item 3 of the direction of
+2026-10-01 (a hub with opaque participants as the default, participation as one
+provided value); items 1 and 4 and the decision of 2026-10-08 (a declared peer
+on resources, no publication blocker) stand. OD-007 never blocked publication.
+A first text of this resolution, from 2026-10-09, was replaced before it
+merged.
+
+The acceptance criteria above move with the owner's sequencing of
+2026-10-08: the Consumer Module Standard rules land in the delivery that adds
+the package, and the bounded TEST experiment runs on the release archives and
+must pass before the release pull request is merged. A failure stops the
+release of those archives; the fix lands on `main` and the experiment runs
+again on regenerated archives. A successor decision is needed only if the
+decision itself changes.
