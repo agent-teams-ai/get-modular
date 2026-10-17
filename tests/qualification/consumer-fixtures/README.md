@@ -13,7 +13,7 @@ owns verification routes and the limits of each claim.
 | --- | --- | --- |
 | `semantic` | A useful session and runner, real resource ownership, and independent consumer expectations | P0–P2: C-01 through C-05, L-01 through L-10 and one complete A construction smoke |
 | `record-only` / `restart-pending` | A bounded persistent fixture with one worker writer and a live supervisor retaining real effect processes | P3: R-01 through R-10 under both schedules |
-| `growth` | Actual generated TypeScript feature trees with inherited capability maps and independent arithmetic and wiring expectations | Separate P5 delivery; large-tree measurements are optional and bounded |
+| `growth` | Actual generated TypeScript feature trees with inherited capability maps and independent arithmetic and wiring expectations | P5 G-01 at eight features in ordinary `assembly:test`; larger measurements remain optional and bounded |
 
 The profiles share only driver materialization. This is test-owned composition:
 Get Modular does not gain a Host, readiness API, work scheduler or recovery policy.
@@ -26,6 +26,16 @@ the existing public FMS kernel and public Get Modular conformance. The replay
 records its artifact and source hashes. The kernel identifies FMS v1.1 while the
 adopted GM profile pins v1, so this evidence preserves `source: incomplete` and
 does not add an ordinary source gate or change the installed dependency.
+
+P5's small G-01 entry runs one current TypeScript/NodeNext compilation and the
+actual generated tree's literal arithmetic, independent provider/input/root pins,
+wrong-provider mutation and complete smoke. The retained N=100 pass and N=500
+cold-compile timeout belong to earlier driver identities, before the supervision
+correction; they do not measure the current driver. The accepted inherited-map
+N=500 subject reached its unchanged 180-second cap, and N=1000 was not created
+or run. The bounded compiler investigation produced no verified remedy or
+compiler adoption. See the [growth fixture](growth/README.md) for exact historical
+identities, current commands and the remaining compiler-owner handoff.
 
 ## Semantic ownership and behavior
 
@@ -73,6 +83,7 @@ The bounded snapshot exposes identity and phase, with no factory attribution.
 | C-05 | `semantic/tests/module/packed-entry.ts` | [Conformance packed test](../../../packages/conformance/tests/packed-root.test.mjs) |
 | L-01–L-10 | `semantic/tests/module/lifetime.test.ts` | Same Assembly fixture test and current runtime emit |
 | R-01–R-10 | `recovery/tests/recovery.test.ts` | [Assembly restart test](../../assembly/consumer-restart.test.mjs); one current compiler emit |
+| G-01 | Generated eight-feature tree and `growth/run.mjs` | [Assembly growth test](../../assembly/consumer-growth.test.mjs); current compiler/NodeNext, independent oracles and one full smoke |
 
 The owner contract suite lives in `semantic/tests/features/session/testing.ts`.
 It runs the same three success, error and cancellation cases against a typed
@@ -132,6 +143,7 @@ stale, prepare them with `pnpm assembly:build`, `pnpm resources:build` and
 ```sh
 node --test tests/assembly/consumer-fixtures.test.mjs
 node --test tests/assembly/consumer-restart.test.mjs
+node --test tests/assembly/consumer-growth.test.mjs
 pnpm conformance:pack
 ```
 
