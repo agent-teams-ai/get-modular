@@ -29,6 +29,18 @@ The [system boundary](../architecture/system-boundary.md) and
 [Consumer Module Standard](../architecture/common-assembly.md#consumer-module-standard)
 remain authoritative; this plan selects test subjects and acceptance evidence.
 
+Accepted ADR semantics are binding. Changing their meaning through code, a
+profile, this plan or a successor requires the user's explicit approval before
+implementation. A proposal must identify the accepted text, proposed change,
+reason, consequences and a compliant alternative. Review, passing tests and an
+open successor PR do not supply that approval. Corrections that preserve accepted
+semantics can proceed within the assigned owner scope.
+
+The phase map is context, not automatic activation of every phase. Each agent
+brief selects one useful slice, its question, allowed files and exit. P0+P1 is
+the default first delivery; P2 is separate unless its complete ownership protocol
+fits that same bounded change. No empty future-phase scaffolding is required.
+
 Keep four results separate: public runtime behavior, packed-package behavior,
 source architecture coverage, and measured scale/load. A passing result in one
 column cannot fill a missing result in another. Source checks may remain
@@ -66,7 +78,7 @@ copy the Runtime scanner, or introduce a third parser.
 
 | Profile | Purpose | Shape |
 | --- | --- | --- |
-| `semantic` | Human-readable end-to-end behavior and lifetime | Two active factory entries, two input entries, two selectable implementations of one runner port |
+| `semantic` | Human-readable end-to-end behavior and lifetime | One static A root, two factory entries and two inputs; B is a test-only provider mutation |
 | `growth` | Compiler, composition, disk and scanner cost | Generated flat tree, initially 8 entries, then 100, 500 and 1000 in separate measurements |
 
 Both use public package roots and ordinary typed factories. Share only boring
@@ -79,7 +91,7 @@ The semantic owner map is fixed for the first delivery:
 
 - `session` owns command normalization and the accepted operation callbacks.
 - `runner` owns its test resource and implements a narrow consumer-owned port.
-  A and B satisfy one revision and produce distinct observable results.
+  A and test-only B satisfy one revision and produce distinct observable results.
 - `identity` and borrowed `journal` are explicit per-run inputs. Their values
   are not closure singletons or entries hidden in a group.
 - A test attempt owner retains startup, readiness, facade publication and stop.
@@ -124,6 +136,8 @@ migration, Observation package or new lifetime library is required.
 **Allowed paths.** `consumer-fixtures/semantic/`, `consumer-fixtures/support/`,
 new `tests/assembly/consumer-fixtures.test.mjs`, and the existing
 `packages/conformance/tests/packed-root.test.mjs` integration point.
+The handoff names the narrow extension for configuration-only routing in the
+existing workflow configuration and its regression test.
 The assembly driver may import root qualification support. The packed package
 test instead reads/copies canonical consumer files and uses small local invocation
 glue; it must not import root support across its current development boundary.
@@ -145,17 +159,21 @@ No source-policy change is needed merely to share that helper.
    import may hide an entry, slot or capability mismatch.
 4. Add C-01 through C-05: meaningful output, independent provider oracle,
    two isolated runs, negative revision and closed package boundary cases.
-   Use `checkWiring`, `checkNamespaces`, owner `contractSuite` and `smoke`
-   where each checks a distinct guarantee; do not repeat the same full smoke
-   in every scenario or compiler mode.
+   Run the owner's success/error/cancellation suite against its typed fake,
+   A and B, using the actual implementation entries through `isolate`.
+   `checkWiring` uses exactly the selected declarations; `checkNamespaces`
+   also checks the alternative/fake inventory. Keep feature provider pins in
+   feature tests and root pins in the root test. Run one full A-root `smoke`.
 5. Add the same small consumer to the existing packed conformance test. That
    test already packs and extracts four archives into its temporary
    `node_modules`. Consume those ready files; do not invoke another build,
    installer, pack loop or full small smoke inside the hook.
 
-**Success oracle.** Both provider implementations pass their contract suite;
-selection A produces A's exact result; changing to compatible B is rejected by
-A's handwritten wiring expectation. Both instances retain their own identity.
+**Success oracle.** The fake and both implementations pass the same owner suite.
+A's static root passes its independent oracle and both normalized payload cases;
+test-only B is rejected by A's provider expectation. B is not a second supported
+root recipe. Both instances retain their own identity, and right remains usable
+after left closes.
 The packed consumer executes one connected operation and close with all four
 package resolutions inside its extracted consumer directory.
 
@@ -172,20 +190,24 @@ Host, lifecycle-kernel adoption, TaskSet or reusable scheduler package.
 
 **Ordered work.**
 
-1. Add a minimal attempt owner containing startup flight, ingress state,
-   publication state and the stop flight. Session owns accepted work once.
+1. Add a minimal attempt owner retaining startup, ingress/publication state,
+   close authority, one active stop flight and its last settled report.
+   Session owns accepted work once. Do not permanently memoize an incomplete
+   stop result or replace the owner's result with an abandoning waiter's snapshot.
 2. Make `requestStop()` synchronously close ingress and signal the session's
    operation controller, then return without awaiting its own participants.
    Signal construction cancellation too. External test code awaits stop.
 3. Retain construction/readiness until settlement. A late result remains
    owned but cannot publish after stop. Commit publication synchronously,
    without foreign callbacks, after the live stopping check.
-4. Await the work owner after initiating cancellation, then close the attempt
-   resources. If a future lane stops by cleanup, close its specific child
-   scope to initiate drain while keeping borrowed prerequisites live.
-5. Retry failed cleanup while the journal is usable; close the journal only
-   after terminal writes and required retries settle. Preserve unresolved
-   obligations when an observer abandons waiting.
+4. Await startup/readiness and the work owner after initiating cancellation,
+   then close the attempt resources. Before the session exists, stop still
+   closes ingress and aborts construction; no operation can be admitted.
+5. Inspect `{ complete, settled, debts }`; `control.close()` does not reject
+   for cleanup failure. After an incomplete settled flight, a later stop/close
+   retries its debts. Keep the journal usable until work/startup settle, inner
+   cleanup is `complete: true` and terminal writes finish. An incomplete or
+   abandoned observation retains close authority and the live journal.
 6. Execute L-01 through L-10 with explicit barriers and an outer watchdog.
    Keep one case where work actually waits on the selected cancellation
    signal; manually releasing every barrier would miss a drain deadlock.
@@ -193,7 +215,8 @@ Host, lifecycle-kernel adoption, TaskSet or reusable scheduler package.
 **Success oracle.** The L table's concrete event orders, external journal
 records and resource usability checks pass. Stop-before-publication never
 publishes; publication-before-stop is not retroactively erased. A participant
-requesting stop can finish, and cleanup retry works after caller errors are lost.
+requesting stop can finish, and cleanup retry works after the first report is
+discarded. L-06 requires actual partial release; an unresolved label is not a pass.
 
 **Stop/defer and handoff.** Unknown physical release stays unknown. Do not
 invent per-factory inspection by importing private Assembly state. Report the
@@ -208,10 +231,14 @@ and new `tests/assembly/consumer-restart.test.mjs`. No database service,
 provider SDK, product migration or Runtime operation engine is introduced.
 
 **Concrete store and topology.** Use one bounded JSON snapshot in a temporary
-directory, one worker writer and a live parent supervisor. A transition writes
+directory. The test process is the live supervisor and directly spawns both
+the worker writer and effect child, retaining their actual handles. The worker
+runs the semantic consumer and requests child launch through IPC. A transition writes
 a new temporary file in that directory, syncs and closes it, then renames it
 over the current snapshot. Acknowledgement follows successful replacement.
-Failed/ambiguous writes trigger a reread and no success acknowledgement.
+Failed/ambiguous write, sync, close or rename freezes ordinary owner transitions
+and new launches until canonical reread/reconciliation succeeds; no success
+acknowledgement is fabricated. Local stop and exit observation remain available.
 Malformed/missing expected state fails closed; it is not silently reset.
 This profile tests process restart on a live machine, not power-loss durability,
 filesystem rollback protection, concurrent writers or an HA store.
@@ -220,25 +247,29 @@ filesystem rollback protection, concurrent writers or an HA store.
 
 1. Implement only fixture operations `submit`, `claim`, `cancel`, `recordResult`
    and read/reconcile, serialized by the single operation owner. This is a
-   finite test adapter, not a public persistence or transaction framework.
-2. Give the supervisor the exclusive writer grant. It confirms old-worker
-   exit before granting a fresh worker; two simultaneous startup requests
-   receive at most one grant. Restored snapshot data cannot grant authority.
+   finite test adapter; serialize transitions, not the whole child lifetime.
+2. The supervisor allocates one worker writer grant after confirming the old
+   worker's exit. With valid state and no incumbent, exactly one competing
+   startup wins. Separately consume one launch permission per operation/claim
+   before spawning; cancellation/freeze revokes it. Replayed or delayed requests
+   cannot spawn again. Restored snapshot data grants neither kind of authority.
 3. Persist identity, chosen profile, pending/claimed/terminal state and the
-   minimum effect witness needed by the named scenarios. The initial test limits
-   are 64 records, 64 KiB canonical bytes and 1 KiB per request fingerprint/input;
-   reject overflow explicitly. These are fixture safety caps, not product limits.
+   minimum effect witness needed by the named scenarios. Use the catalog's
+   bounded full-record schema and retain space for terminal transitions at
+   admission. Reject overflow explicitly; these are fixture caps, not product limits.
 4. Execute both `record-only` and `restart-pending` under identical schedules.
    Start a genuinely fresh worker reading the same directory. New objects
    in the old process do not count as a restart.
-5. Let the live supervisor retain a spawned test child's handle when a worker
-   dies. Use child/supervisor messages as the launch oracle. Never relabel
+5. Let the supervisor retain child custody when a worker dies. Use observed
+   spawn/handshake/exit, not a send callback or `killed` flag, as evidence.
+   Cooperative stop uses child IPC on every supported lane. Never relabel
    that retained custody as discovery of an orphan after supervisor death.
 6. Run R-01 through R-10, including exact positive launch counts, unknown-start
    quarantine, control during store failure and read/reconcile-only restore.
 
 **Success oracle.** Every row has its exact count and final state. In particular,
-restarted committed pending work launches once and produces the expected result;
+restarted committed pending work launches once and produces the expected result
+before any resubmission;
 pre-claim cancellation launches zero times; claimed unknown work never gets a
 second launch. Record-only no-start is accepted only in its named loss schedule.
 
@@ -252,25 +283,31 @@ results and limits; future Runtime policy selection remains a separate task.
 **Prerequisites.** A real P1 source tree; the Foundation acceptance table in the
 handoff. This branch may proceed in parallel with P2/P3.
 **Allowed paths.** Test consumer source profile and source-check adapter inside
-the canonical subtree; any Foundation change belongs to a separate Foundation
-branch. A dependency/adoption PR is separate from the initial fixture PR.
+the canonical subtree, its existing assembly fixture entry and the handoff's
+configuration-routing extension. Foundation changes and GM dependency/adoption
+changes belong to their separate owner branches.
 
 **Ordered work.** Independently enumerate actual disk source; run the installed
 source dependency gate with a fixture-specific profile; supply observed facts
 to existing FMS and CMS owners. Never use a generator's expected edges as the
-observed import graph. Verify A-01 through A-08, including the source-fact gaps.
+observed import graph. Freeze the TEST profile's exact standard pin and selected
+surfaces, then use the catalog's A-row applicability table. Run integrated
+checks/mutations through `tests/assembly/consumer-fixtures.test.mjs`.
 Main/source, open PR, released tarball, installed dependency and qualified
 consumer are separate statuses. Recheck those statuses before adopting tools.
 
 **Success oracle.** The selected flat scope has actual-disk positives and
 rejecting mutations, with full observed inventory and no dropped unresolved
 facts. The root GM FMS profile's pass is not this result. Missing facts route
-to the existing Foundation owner with the exact acceptance predicate.
+to the existing Foundation owner with the exact acceptance predicate. The eight
+A rows cover named source facts; other accepted CMS/FMS constraints retain their
+existing enforcement/review or an explicit incomplete status.
 
 **Stop/defer and handoff.** Preserve `source: incomplete` until the needed chain
-exists. No copied parser or private import is an interim substitute. Nested
-features and FMS v1.1 composition-contract claims wait for their scoped facts
-and rules qualification; an old flat check cannot authorize them. A flat
+exists. No copied parser or private import is an interim substitute. The flat
+recipe's CMS composition contracts still need their applicable A-06 evidence;
+they cannot be waived by deferring nested features. Broader v1.1/nested adoption
+remains unselected; an old flat check cannot authorize it. A flat
 experiment does not wait for an unrelated whole-repository migration.
 
 ## P5 — Measure one real growth step at a time
@@ -280,7 +317,9 @@ experiment does not wait for an unrelated whole-repository migration.
 assembly fixture test. Generated source/output stays in temporary directories.
 
 **Ordered work.** Materialize the corrected 8-feature tree, run literal small
-oracle and full smoke once, then measure 100, 500 and 1000 in order. Each next
+oracle and full smoke once, then measure 100, 500 and 1000 in order. Every selected
+root also passes independently owned provider/input/root pins through `checkWiring`.
+Each next
 size follows a report of the preceding size; do not create a Cartesian matrix.
 Use the scenario catalog's deduplicated edges, `6N+3` TypeScript file census,
 compiler edits and separate scanner budgets. Keep inputs outside groups.
@@ -294,43 +333,55 @@ Only the 8-entry correctness case joins ordinary mandatory `assembly:test`.
 **Success oracle.** G rows pass, actual census matches the topology, complete
 smoke coverage is retained, and cold/incremental/scanner/runtime costs are
 reported with identities. No time budget is selected from a pleasing result.
-**Stop/defer.** Limit, watchdog or agreed experiment budget failure stops growth
-with nonzero status and retained evidence. No 2000/3500 experiment before 1000
-passes and a separate next-size choice is recorded. Hand off one measured delta.
+**Stop/defer.** Limit, watchdog or declared stage/aggregate budget failure stops
+growth with nonzero status and retained evidence. A later 2000-feature run needs
+its own question and budget. At 3500 this topology already exceeds accepted
+walk/depth limits; it is not a positive growth target. Do not raise limits or
+split roots to make a result pass. Hand off one measured delta.
 
 ## P6 — Exercise bounded concurrent work separately
 
 **Prerequisites.** P2; P3 only for a claimed restart workload.
-**Allowed paths.** Semantic fixture load scenarios and growth measurement driver;
-no shared admission or queueing library.
+**Allowed paths.** Semantic fixture load scenarios and
+`tests/assembly/consumer-fixtures.test.mjs`; no shared admission/queueing library
+or prerequisite on the optional growth driver. P4's actual status remains visible.
 
 **Ordered work.** Run W-01 on two semantic instances, then W-02 with 16 instances,
-four requests each and 16 active admissions globally. These are experimental
-constants, not product SLOs. Reject remaining requests with explicit overload;
-no hidden queue. Hold the accepted set at barriers, cancel one request, inject
-one cleanup failure, finish the remaining work, retry and close prerequisites.
+four requests each and 16 active admissions globally. Use W-02's uneven accepted
+distribution to distinguish global admission from per-instance serialization.
+These are experimental constants, not product SLOs. Hold accepted work and record
+all admission outcomes before cancellation returns a permit. Cancel one through
+its signal, finish the other work, observe one failed cleanup report, retry, then
+close prerequisites. There is no hidden queue.
 Do not run a full graph smoke per operation or per instance.
 
 **Success oracle.** Exact accepted/rejected counts, effects, identities and
-settlement match W rows; physical capacity and storage debt remain separate.
+settlement match W rows. Every instance, including one without accepted work,
+has settled work, complete inner cleanup, an external release witness and a
+closed borrowed journal. Physical capacity and storage debt remain separate.
 **Stop/defer and handoff.** Keep watchers at zero and remote services absent.
 Stop on leaked work, lost custody or missing terminal evidence. Report raw
 observations; no Runtime throughput or reliability claim follows.
 
 ## P7 — Validate authoring and deliver the bounded result
 
-**Prerequisites.** A documented recipe and honest source status from P4.
+**Prerequisites.** Working P1 recipe and P4's current coverage statement, which
+may be incomplete. Held-startup diagnosis also needs P2. P3/P5/P6 are not
+prerequisites; run the author exercise before accepting broad recipe replication.
 **Allowed paths.** Fixture examples, their tests and these qualification records.
-A fresh agent adds a leaf or alternative provider; another diagnoses an injected
-bad edge and held startup using only the available reports. Nested authoring is
-included only after the scoped v1.1 prerequisite passes.
+A fresh author completes H-01's withheld test-only B provider; another completes
+the fixed C-02 wiring and L-01 held-startup diagnoses in H-02/H-03. Use only the
+specified public and attempt-owner observations. Exact pending-factory attribution
+is unavailable; an honest attempt-level diagnosis is the expected result.
 
 Use the handoff's existing focused/changed/fast/full route once per relevant
 input state. Record unexplained guesses, unnecessary cross-owner edits and
 repeated mechanical work. Propose a generator or public successor only when
 this exercise demonstrates a specific missing contract; do not add one by default.
 
-**Exit.** Deliver source/packed/runtime/recovery/scale statuses, exact revisions,
-executed scenarios, failed predicates and remaining unclaimed guarantees. The next Runtime
+**Exit.** One authored patch and both diagnoses either satisfy the stated oracle
+or finish with a reproducible bounded blocker and the missing recipe instruction.
+Record selected/passed, failed, incomplete and not-selected statuses on exact
+inputs. Do not activate a successor to make the exercise finish. The next Runtime
 rewrite receives ports and scenario contracts, not a new production framework.
 The optional branches and their triggers are listed in the handoff.

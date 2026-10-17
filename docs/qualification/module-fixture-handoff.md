@@ -16,23 +16,26 @@ related:
 
 ## Delivery boundaries and PR sequence
 
-The [plan](module-fixture-plan.md) supplies phase authority; the
+The [plan](module-fixture-plan.md) supplies phase scope and sequencing,
+subordinate to accepted authority and the explicitly assigned slice; the
 [scenarios](module-fixture-scenarios.md) supply independent oracles. All new test
 support uses `tests/qualification/consumer-fixtures/`. Do not retain competing
 `consumer-e2e` or `consumer-scale` subtrees from earlier proposals.
 
 | Delivery | Scope | Dependency and exit |
 | --- | --- | --- |
-| First PR | P0 planning plus useful P1; include P2 if still small | Real connected consumer, assembly entry and packed hook; no scaffolding-only PR |
-| Lifetime PR, if separate | P2 only | P1; full L-row ownership protocol |
+| First PR | P0 planning plus useful P1 | Exit on C-01–C-05 and required gates; include complete P2 only when the branch brief explicitly selects it |
+| Lifetime PR, separate by default | P2 only | P1; full L-row ownership protocol |
 | Recovery PR | P3 snapshot/worker experiment | P2; separate exact R results for both fixture profiles |
 | Foundation owner PR | Remaining public source-fact/runner gaps | Existing owner work; proceed beside runtime fixtures |
 | GM source adoption PR | P4 tool pin/profile/parity | Exact released artifact and scoped A evidence; no implicit whole-repository migration |
 | Growth PRs | P5 small, then one measured next size | Correctness before growth; source coverage status stays explicit |
-| Load and author exercise | P6/P7 | P2 and the relevant P4 recipe; no unrelated optional dependency |
+| Load PR | P6 | P2 and the semantic assembly entry; no growth/source-tool completion prerequisite |
+| Author exercise | P7, runnable early | P1 recipe plus actual P4 coverage statement; held-startup diagnosis additionally needs P2 |
 
 For each branch, put the phase, base SHA, allowed files and expected scenario IDs
-in the first agent brief. The normal allowlist is the canonical subtree, named
+in the first agent brief, together with the question and the selected exit.
+Later rows are available follow-ups, not automatic activation. The normal allowlist is the canonical subtree, named
 `tests/assembly/consumer-*.test.mjs` entries, the existing conformance packed test
 and these three qualification records. Changes to root config, source coverage,
 quality scopes or package pins require an explicitly listed extension with a
@@ -41,9 +44,12 @@ baselines, accepted ADRs and unrelated refactors are outside that boundary.
 
 If a scenario exposes a library defect, retain a minimal reproduction and route
 a separate small fix to the owning feature. A correction under current semantics
-uses current authority. Changed semantics or public types require the owning
-successor decision, normal package tests and release/migration policy. The fixture
-PR must not silently admit the successor or waive a failing accepted invariant.
+uses current authority. Any change to accepted ADR semantics, including an
+indirect plan/profile override or a successor, requires explicit user approval
+before implementation. Record the accepted text, proposed delta, reason,
+consequences and compliant alternative; the proposal remains unimplemented
+until approved. Changed public types also follow their owning decision, package
+tests and release/migration policy. This review grants no successor approval.
 
 ## Existing entrypoints and proposed focused commands
 
@@ -59,7 +65,8 @@ commands naming them do not exist until their implementation lands.
 | Focused restart cases, NEW file | `node --test tests/assembly/consumer-restart.test.mjs` |
 | Mandatory owner of those test entries | Existing `pnpm assembly:test` includes `tests/assembly/**/*.test.mjs` |
 | Packed archive consumer owner | Existing `pnpm conformance:pack`, through `packages/conformance/tests/packed-root.test.mjs` |
-| Fixture source dependency check | Existing `pnpm exec agent-teams-foundation check architecture.source-dependencies --consumer <disposable-consumer>` with its own profile |
+| Fixture source dependency check | Existing `pnpm exec agent-teams-foundation check architecture.source-dependencies --consumer <disposable-consumer> --format json` with its own profile |
+| Integrated P4 CMS/FMS mutations and bounded P6 cases | Same `tests/assembly/consumer-fixtures.test.mjs` entry; not just the source-dependency CLI or optional growth driver |
 | Changed-input routing | `pnpm check:changed` |
 | Before handoff | `pnpm check:fast` |
 | Complete repository gate | `pnpm check` and the existing required CI contexts |
@@ -75,6 +82,7 @@ For the focused assembly driver, copy each ready package's `package.json` and
 complete `dist/` into the temporary consumer's
 `node_modules/@get-modular/{core,assembly,resources,conformance}`. Copy the
 canonical semantic tree beside that directory and hash the copied outputs.
+Write its own `package.json` as `{ "private": true, "type": "module" }`.
 There is one physical copy of each public package, with all four resolutions
 inside the consumer. No package manager runs, so workspace peer ranges remain
 manifest metadata. This is runtime evidence from built outputs; only the packed
@@ -89,7 +97,12 @@ generic consumer runtime runner. Compile the fixture's actual entry separately
 with pinned current TypeScript and execute emitted JavaScript once per chosen
 subject. Do not invoke runtime smoke in every type-check mode.
 
-Use a fixture `tsconfig.types.json` with `strict: true`, `noEmit: true`,
+The checked-in projects live at `consumer-fixtures/semantic/tsconfig.types.json`,
+`tsconfig.runtime.json` and `tsconfig.negative.json`, copied to the disposable
+semantic root. No project there extends a path back into the repository.
+The positive project explicitly includes `src/**/*.ts`, `tests/features/**/*.ts`,
+`tests/module/**/*.ts` and `tests/support/**/*.ts`, excluding `out/` and
+`tests/negative/`. Use `strict: true`, `noEmit: true`,
 `skipLibCheck: false`, target/lib ES2024 plus ESNext.Disposable and DOM,
 and `types: ["node"]`. Materialization sets `typeRoots` to the absolute parent
 of the pinned repository `@types/node` package directory resolved through
@@ -97,12 +110,21 @@ of the pinned repository `@types/node` package directory resolved through
 development tree. Record the pin and resolved locations. The four extracted GM
 archives alone do not provide Node declarations. No handwritten Node shims,
 `any` declarations, network install or production-source alias fills this gap.
-A separate `tsconfig.runtime.json` uses current TypeScript, NodeNext, real emit
-and an isolated output directory. Copy all of `semantic/`, including its
+A separate `tsconfig.runtime.json` uses current TypeScript, NodeNext, real emit,
+`rootDir: "."` and `outDir: "out"`, with the same positive inventory.
+Copy all of `semantic/`, including its
 `tests/support/`, then execute `out/tests/module/packed-entry.js` for the packed
 hook or the selected semantic test entry for the assembly driver. Root
 `consumer-fixtures/support/` contains only driver tooling and is not imported
 by the copied consumer. Verify every relative import after materialization.
+
+C-04b uses `tsconfig.negative.json` with only
+`tests/negative/empty-runner.ts`, `include: []`, strict NodeNext/noEmit and the
+same language libraries. Invoke each supported compiler directly, once, through
+a bounded local process call and require exactly one TS2741 at the intended
+assignment, nonzero exit and no other diagnostic/timeout. Do not pass this
+project to `testAssemblyTypes.negativeProject`: that existing option deliberately
+expects eight TS2307 closed-import errors. Keep the helper unchanged.
 
 ## Keep the two current packed harnesses distinct
 
@@ -116,6 +138,11 @@ qualification support. Read/copy the canonical consumer source bytes and keep
 tiny invocation glue local; root assembly drivers alone import the root helper.
 Consumer and conformance must resolve one physical copy of
 Assembly and resources. Preserve its existing export, peer and deep-import tests.
+Preserve the four existing declaration projects' `types: []` environment and
+`check.ts` inventory. Adding Node ambient declarations to them would weaken their
+current guarantee. The focused fixture owns its four compatibility modes; the
+packed hook adds only one current-compiler NodeNext emit and operation/close with
+the fixture's declared Node types, not another four-mode fixture matrix.
 
 The [SDK growth packed consumer](../../tests/qualification/sdk-growth-packed-consumers.mjs)
 is different: it installs Core/Assembly archives using offline npm and checks
@@ -128,8 +155,14 @@ requires its own existing owner path and exact artifact identity.
 ## Fast feedback without removing the complete gate
 
 Run the changed scenario first, then `check:changed` at a coherent patch.
-Current code-extension routing already selects `check:fast`; inspect whether a
-new JSON fixture configuration needs an explicit routing path. Existing
+Current code-extension routing selects `check:fast`, but the new JSON projects
+need explicit routing. In the P1 PR, extend existing `fullScanPaths` in
+`architecture/foundation/repository-agent-workflow.yaml` for the three semantic
+`tsconfig.*.json` paths above, and extend the configuration-only case in
+`tests/repository-agent-workflow.test.mts`. This narrow two-file extension is in
+scope; do not globally route all JSON. P4 adds its exact checked-in
+`consumer-fixtures/source/source-dependencies.yaml` path to the same route.
+Other new configuration paths must be named there when introduced. Existing
 `architecture`, docs and manifest changes can select full scans.
 Before handoff, retain a valid fast result and one complete `pnpm check` result
 on the final relevant inputs. Reuse a completed matching result instead of
@@ -163,6 +196,11 @@ PR400 was observed open/draft at
 `bad38466c9130275d136eba71a3d97935acb4706`; it proposes the Node runner and
 re-export fact. Refresh main, PR head, release and installed artifact before work.
 An open PR with conflicts is not an admitted dependency or merge authorization.
+The installed 1.7.4 manifest does not export `./source-graph`. Main's graph
+projection omits computed-loader unresolved records, direct export provenance
+and runtime-export kind/count; aliases/workspace/self imports remain external.
+Its file inventory has no directory inventory. Preserve complementary installed
+policy rejections instead of dropping these facts or claiming completion.
 
 The neutral graph/source facts belong to Foundation. FMS rules belong to its
 existing opt-in package. CMS rules belong to `@get-modular/conformance`.
@@ -171,24 +209,29 @@ consumer. Keep production independent of all development tooling.
 
 | Required fact | Handoff acceptance predicate |
 | --- | --- |
-| Files and coverage | Independent on-disk inventory covers every selected root; absent root, unseen file, path identity and overflow fail closed |
+| Files and coverage | Independent disk inventory covers selected roots; missing root/file, path identity and overflow fail closed; empty-role claims additionally need directory coverage |
 | Unresolved/external references | Facts survive producer-to-runner projection; missing relative target and unknown specifier cannot silently disappear |
 | Aliases/workspace/self imports | Resolve the real owned target or enforce an explicit supported subset; public positive and private negative are separate cases |
 | Loading with computed specifiers | Existing owner exposes the reference or a real complementary gate rejects it; no local parser copy |
 | Republication | Direct re-export and import-then-export retain provenance, or an enforced subset rejects unsupported syntax |
 | Timing and composition | Pass `moduleComposition` to the kernel; distinguish allowed type-only relations, use cycles and actual load-time cycles |
 | CMS runtime exports | Observe use-case export kind/count from actual source through the owned public chain; no generator-supplied expected records |
-| Execution | The actual consumer command runs the selected checks and returns nonzero for its named mutations; a passing pure kernel alone is insufficient |
+| Execution | The existing assembly fixture entry invokes the selected CMS/FMS checks and A mutations; the source-dependency CLI alone is insufficient |
 
-Close the handoff only when an exact packed tool artifact processes actual-disk
-positive and A-row mutations, with no unsupported form falling through as pass.
+Close the selected handoff only when an exact packed tool artifact processes
+actual-disk positives and applicable A mutations, with no unsupported selected
+form falling through as pass. Use the catalog's flat/nested applicability table;
+record the consumer's v1 pin separately from a candidate kernel's v1.1 identity.
+The flat recipe already contains CMS composition contracts: its A-06 surfaces and
+`moduleComposition` are required research predicates, not deferred nested work.
+Keep the accepted GM adoption profile separate from those test observations.
 Support for every JavaScript syntax form is not required; truthful enforced
 restrictions are acceptable. Keep a short fact-to-producer/coverage table, not
 a new governance platform. A source candidate can support an explicitly labeled
 research run before release; it cannot silently become an approved main dependency.
 
 Fallback: use current public source-dependency checking with a fixture-specific
-flat profile and continue independent C/L/R/G/W observations. Preserve any
+flat profile and continue independent C/L/R/G/W and flat P7 observations. Preserve any
 incomplete A cells. The root repository's broad `repository.development`
 boundary does not enforce the fixture's internal feature architecture for it.
 In the disposable consumer, `foundation.config.yaml` maps
@@ -198,8 +241,16 @@ In the disposable consumer, `foundation.config.yaml` maps
 [source dependency tests](../../tests/source-dependencies.test.mjs), with the
 fixture's own roots and edges; do not import the test file as a runner.
 Do not copy the Runtime collector or deep-import Foundation internals.
-Nested v1.1 and composition-contract claims remain deferred until their selected
-facts/rules chain is qualified; whole-repository migration is not a prerequisite.
+The selected installed policy reports capability-owned rejection codes, including
+`cross-boundary-local-import-not-entrypoint`, `unresolved-local-import`,
+`undeclared-external-dependency`, `source-parse-error` and
+`unresolved-runtime-reference`; require the intended code/stage, not any failure.
+At the observed Foundation source, reader bounds are 100,000 files, 4 MiB per
+file and 512 MiB total. One oversized source tests overflow cheaply; refresh
+the selected artifact's limits before adoption rather than making these public policy.
+Missing facts for the recipe's composition contracts remain incomplete. Nested
+v1.1 adoption and republication remain unselected; whole-repository migration is
+not a prerequisite for the flat experiment.
 
 ## Source freshness and measurement evidence
 
@@ -210,25 +261,42 @@ also requires the same factory set, not only an equal plan digest.
 Baseline and candidate use separate directories and build-info files.
 No shared writable output or cache can stand in for immutable subject evidence.
 
-One compact report per comparison contains scenario IDs and their stage statuses,
-actual source census, limits, command/stage/exit, values, expected/actual attempts,
-effects, admission peak, unresolved obligations and raw log paths.
-Measure cold preparation, reused run/close, full smoke, compiler cold/incremental
-stages, scanner cost and the complete CI wall time plus summed lane time.
-Use pinned current TypeScript with `--extendedDiagnostics`, `--incremental` and
-a subject-specific `--tsBuildInfoFile` for G-03. Measure subprocess wall time with
+One compact report identifies the selected scenarios, command/stage/exit,
+expected/actual values, retained obligations and raw logs. Scope other fields
+to the question instead of imposing every phase's measurements on each PR:
+
+| Work | Additional evidence |
+| --- | --- |
+| P1/P2/P3 | Output/package/compiler identity, selected C/L/R results, effects/releases and retained ownership |
+| P4 | Selected profile/tool pins, real disk census, observed fact coverage and mutation diagnostics |
+| P5 | Census/graph counts, independent pins/checksum, prepare/run/close/full-smoke cost, selected compiler/scanner stages |
+| P6 | All admission/runner-entered IDs, peak/final active count, terminal records, cleanup attempts/reports/releases for every instance |
+| P7 | One author's patch and fixed diagnoses, successful result or reproducible blocker, actual missing recipe instructions |
+
+Use pinned current TypeScript/NodeNext with `--singleThreaded`,
+`--extendedDiagnostics`, `--incremental` and a subject-specific
+`--tsBuildInfoFile` for G-03. Use real emit as in the fixture runtime project.
+Per subject, start with empty output/build-info; run cold, unchanged incremental,
+then the leaf patch. Restore baseline source and rewarm before applying the
+independent shared-contract patch; label rewarm as setup. Measure subprocess wall time with
 the parent's monotonic clock and retain raw diagnostics, including Types,
 Instantiations, Memory used and check/total time when emitted. Use the scenario
 catalog's fixed patches. Compiler Memory used is not subprocess RSS; record RSS
 only with an available platform observer, otherwise report `not-collected` rather
 than estimating it from TypeScript output.
 
-Start with one full measurement of each subject. If timing affects the decision
-and noise prevents comparison, add two independent samples and show all samples
-and their median. Three samples do not establish tail percentiles or an SLO.
+Start with one measurement of each selected stage. If timing affects the decision
+and noise prevents comparison, add at most two samples of that stage only, showing
+all samples and their median. Do not repeat unrelated smoke, compiler modes or CI
+to resolve another stage's noise. Reuse the final-input CI evidence; collect wall
+and summed lane time only for an actual gate-cost question, otherwise `not-collected`.
+Three samples do not establish tail percentiles or an SLO.
 Keep existing 180-second compiler subprocess and 600-second type-test watchdogs
-as engineering caps, not promised latency. New experiment budgets are declared
-before a run; do not raise ceilings, reduce smoke targets or split roots for green.
+as engineering caps, not promised latency. Declare compiler, scanner, runtime/smoke
+and aggregate experiment deadlines before running. Enforce the aggregate deadline
+outside blocking child work; an in-process timer cannot interrupt `spawnSync`.
+A ceiling/watchdog failure stops the experiment, not another sample. Do not raise
+ceilings, reduce smoke targets or split roots for green.
 
 At the observed source, Core accepts at most 4096 declarations; Assembly counts
 entries plus groups separately up to 4096, with group depth 16. Input entries
@@ -238,6 +306,10 @@ follows that an old 4096-file scanner can process it. Report actual disk bytes,
 import occurrences and source inventory along with graph counts.
 
 ## Optional successors and final handoff
+
+Every successor below remains subject to the explicit user-approval rule in
+the delivery boundary if it changes accepted ADR semantics. A measured gap
+supports a proposal; it does not activate that proposal's implementation.
 
 | Trigger | Separate owner route; not baseline work |
 | --- | --- |
@@ -258,9 +330,10 @@ Observation scenario. Do not copy a sketch engine into these fixtures or begin a
 parallel unapproved package. Passive consumers and the selected load experiment
 need no Observation dependency.
 
-Final delivery states which phase/scenario ran on which exact inputs, which
-predicates failed or remain incomplete, and which guarantees are intentionally
-unclaimed. Preserve retained physical custody and storage debts in the report.
+Final delivery distinguishes selected-and-passed, failed, incomplete and
+not-selected work on exact inputs. Unselected later phases do not prevent the
+assigned slice from finishing. Preserve retained physical custody and storage
+debts in the report.
 The future Runtime rewrite still owns product acceptance, trust, restoration,
 legacy writers, rollout, target environment and SLOs; none is selected by a TEST
 profile. These future questions do not block the fixture comparisons now.
