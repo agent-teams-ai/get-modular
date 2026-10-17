@@ -2,9 +2,11 @@
 
 # Implementation plan: `@get-modular/observation` 0.1.0
 
-Planning document for the implementing track, written on 2026-10-17 against get-modular `main` at `a20d261`, the
-ADR-0034 text of pull request #154 at `6cfeb2d` and this research directory on branch
-`docs/module-communication-research` at `b43ef11` (pull request #182). It implements nothing.
+Planning document for the implementing track, revised on 2026-10-17 against get-modular `main` at
+`a3a079baca2c6af48c9d45bc08992825be1c2bbd`, the ADR-0034 text of pull request #154 at
+`945e9a151a516ce4ce6e73b6e18893d4e5b27cfe`, and the reviewed corrections in pull request #183 at
+`cfdaa18f152aac614194be710a474f4d4b06f59a` (section 2.2). Pull request #182 is merged; #154 and #183 were still open at this review.
+This is an implementation plan, not package implementation or completed admission evidence.
 
 A fresh agent starts at section 5, Phase 0, and works through the phase cards in order. Each card names its inputs,
 outputs, commands, done criteria and stop conditions. When a source is silent, section 4 gives the default and section
@@ -43,40 +45,53 @@ higher one wins and the pull request description records the difference.
 | # | Where | Difference | Resolution |
 | --- | --- | --- | --- |
 | 1 | Brief vs ADR | The brief asks for one pull request; the ADR says the Standard changes "in the delivery that adds the package". | Two consecutive pull requests, both merged before the release pull request (Q1). |
-| 2 | ADR vs repository | The ADR says the `consumer-module-standard` SDK-growth evidence changes. That file is a frozen P0 observation: `validateP0Evidence` in `architecture/checks/sdk-growth.mjs` hard-codes its `pinned`, `acceptedCurrent` and `delta` (owner decision A, 2026-10-01), and CMS revisions #164 and #176 did not touch it. The reviewed bytes of the current CMS are pinned in `tests/ownership-checkpoint.test.mjs`. | Q3. |
-| 3 | ADR vs prototype | "One internal deferral queue per package copy"; the prototype schedules a pair of immediates per store with package-wide pending counters. | Keep the measured per-store scheduling; the package-copy deferral state is the scheduler resolved at load plus the package-wide counters. No new global queue, which would change measured ordering. Say so in PR 1. |
+| 2 | Old brief and plan vs current ADR | The earlier instruction to change the CMS SDK-growth evidence is obsolete. The current ADR explicitly preserves that frozen observation; `validateP0Evidence` pins its historical fields and reads its historical CMS commit. Current CMS bytes have a separate pin in `tests/ownership-checkpoint.test.mjs`. | Q3: preserve the entire SDK-growth evidence file; update only the reviewed current CMS pin and describe the consumer delta. |
+| 3 | ADR vs prototype | The ADR requires one internal deferral queue per package copy; the prototype registers per-store task pairs directly with the captured scheduler. | Put one private FIFO behind `delivery/context.ts`'s `later`. Enqueue and immediately register one native task per callback, removing exactly one queue item per native task. Preserve each store's consecutive flush/context-close pair and coalescing; do not batch callbacks or wait for a previous task to finish before scheduling the next. Nothing is public or configurable. |
 | 4 | Types and README vs ADR | `Subscription.resources` JSDoc and README line 37 say "composition or adapter code". | Rule 11: "in the module's composition file" (known fix of the brief). |
 | 5 | Types vs brief | `loader` has two JSDoc blocks in a row. | Merge them (known fix). |
 | 6 | README vs ADR | "Bun verified". | ADR wording: Bun 1.3 observed to behave the same except for unhandled rejections; not in the admission matrix. |
 | 7 | Types and prototype vs ADR known item | `ListenerError.path` "planned in resources 0.2"; the prototype reads `resources.path` by duck typing. | Keep `path?` in the type, never set it in 0.1.0, no duck typing. |
-| 8 | Prototype vs ADR | `TypeError("not a store of this stub")`, `setTimeout` in the drain, global `queueMicrotask`, `OBSERVATION_STUB_*` switches. | Every package error is an `ObservationError`; the drain and the rethrow use the scheduler and microtask function captured at load; no switch of any kind (mutations patch a copy, section 9.3). |
+| 8 | Prototype vs ADR | `TypeError("not a store of this stub")`, `setTimeout` in the drain, global `queueMicrotask`, `OBSERVATION_STUB_*` switches. | Every package error is an `ObservationError`; the drain and the rethrow use the scheduler and microtask function captured at load; the timer fallback also captures its function at load; no switch of any kind (mutations patch a copy, section 9.3). |
 | 9 | Prototype probes vs ADR | W1 asserts elapsed time below 2 s; probe 21 measures milliseconds. | Counts and order only (section 9). |
 | 10 | `CMS-RULE5-DRAFT.txt` vs ADR | The draft predates the ADR. | ADR wording only (section 12). |
 | 11 | CMS snippet vs ADR | A later oxlint override replaces `no-restricted-imports` for its files, and `@get-modular/*` does not match a two-segment subpath. Verified on 2026-10-17 with oxlint 1.83.0: an `adapters/` file could then import `/testing`. | The `paths` entry goes into a new override and into the layer override (section 12.4). |
+| 12 | Original archive vs subsequent review | The original callback context, global clock and `FixedKeys` admitted the defects reproduced in #183; the synchronous loader also needs its context entered after the startup await. | Sections 7 to 9 include the corrected algorithms and R16/R17, fake-clock and mixed-key controls. Original passing archive results do not prove these fixes. |
 
 ## 2. Re-verify before start
 
-Run in a fresh worktree of get-modular (`$GM`) and record the outputs in the PR 1 description.
+Run in a fresh worktree of get-modular (`$GM`) based on the fetched `origin/main`, and record the outputs in the
+PR 1 description. Select the executables as described in section 2.1 first. Commands stop on a missing ADR instead
+of hashing empty output. Compute both digests from the same fetched `origin/main`; never copy old digest literals
+from a planning snapshot and never edit the accepted registry to make a leaf row pass.
 
 ```sh
-cd "$GM" && A=docs/decisions/0034-admit-the-module-change-observation-package.md && git fetch origin
+set -eu
+cd "$GM"
+GM_ADR=docs/decisions/0034-admit-the-module-change-observation-package.md
+git fetch origin
+git merge-base --is-ancestor origin/main HEAD
+git cat-file -e "origin/main:$GM_ADR"   # missing ADR: STOP before installing/building the package
 git rev-parse origin/main                                                                                  # 1
-git show "origin/main:$A" | head -8; git show "origin/main:$A" | shasum -a 256                             # 2
-jq '.decisions[] | select(.id == "ADR-0034")' architecture/decisions/accepted-decisions.json               # 2
-jq -r .version packages/resources/package.json; npm view @get-modular/resources dist-tags; git diff a20d261 origin/main --stat -- packages/resources/src  # 3
+git show "origin/main:$GM_ADR" | head -8
+git show "origin/main:$GM_ADR" | shasum -a 256                                                               # 2 fileDigest
+git show origin/main:architecture/decisions/accepted-decisions.json | jq '.decisions[] | select(.id == "ADR-0034")'  # 2 immutableDigest
+pnpm install --frozen-lockfile --ignore-scripts --engine-strict --strict-peer-dependencies
+jq -r .version packages/resources/package.json
+if ! npm view @get-modular/resources dist-tags; then printf '%s\n' 'Record the V2 registry-unavailable fallback'; fi
+git diff a20d261 origin/main --stat -- packages/resources/src                                                # 3
 node node_modules/typescript/bin/tsc -v; node node_modules/typescript-minimum/bin/tsc -v                   # 4
 cat .node-version; node -e 'console.log(typeof process.getBuiltinModule("node:timers").setImmediate)'     # 5
 jq -r .version node_modules/oxlint/package.json node_modules/@agent-teams/engineering-foundation/package.json  # 6, 8
-grep -n "lane: \|timeout-minutes\|ROOT_CI_NODE_VERSION: \|node-version: 24" .github/workflows/ci.yml       # 5, 7
-jq -r .version node_modules/@changesets/cli/package.json; ls node_modules/.pnpm | grep assemble-release    # 9
+rg -n "lane: |timeout-minutes|ROOT_CI_NODE_VERSION: |node-version: 24" .github/workflows/ci.yml             # 5, 7
+jq -r .version node_modules/@changesets/cli/package.json; ls node_modules/.pnpm | rg assemble-release       # 9
 git show origin/main:research/module-communication-2026-10/README.md | head -3                            # 10
-shasum -a 256 docs/architecture/common-assembly.md; grep -n -B2 "current CMS successor" tests/ownership-checkpoint.test.mjs  # 11
+shasum -a 256 docs/architecture/common-assembly.md; rg -n -B2 "current CMS successor" tests/ownership-checkpoint.test.mjs  # 11
 ```
 
 | # | Expected on 2026-10-17 | If different |
 | --- | --- | --- |
-| 1 | `a20d261` or a descendant. | Read `git log a20d261..origin/main --stat`; re-read every file this plan edits and adapt. |
-| 2 | ADR-0034 accepted on `main`; file SHA-256 `dfaf70b8…924f` and registry `immutableDigest` `sha256:36867eb9…bc61`, as at `6cfeb2d`. These become the row's `fileDigest` and `immutableDigest`. | Not merged: STOP, PR 1 cannot pass `authenticateLeafDecision`. Other file digest: the text changed; diff it against `6cfeb2d` and update this plan first. Only `immutableDigest` differs: use the value on `main`. |
+| 1 | `a3a079b` or a descendant. | Read `git log a3a079b..origin/main --stat`; re-read every file this plan edits and adapt. |
+| 2 | ADR-0034 accepted on `main`; `fileDigest` is SHA-256 of its exact merged file bytes, while `immutableDigest` is the ADR-0034 registry value from that same commit. | Not merged: STOP, PR 1 cannot pass `authenticateLeafDecision`. Compare the merged text with reviewed `945e9a1`; a difference needs review and plan reconciliation, not an automatic ADR rewrite. Record the actual digests even when the text matches. |
 | 3 | Resources `0.1.0` (`latest=0.1.0`); no source change; no `Resources.path`. | A new resources minor needs an observation minor (ADR). `Resources.path` exists: a known-item trigger fired; STOP and ask. |
 | 4 | `7.0.2` and `5.8.3`. | Use the catalog pins; run the type controls first after a compiler update. |
 | 5 | `26.11.1`; Node 24 lanes `24.21.0`; `function`. | Change engines only together with every other leaf. |
@@ -84,8 +99,51 @@ shasum -a 256 docs/architecture/common-assembly.md; grep -n -B2 "current CMS suc
 | 7 | Lanes core, assembly, packaging, governance, static on three OS and two Node lines, `timeout-minutes: 15`, plus `node-24-compatibility`. | Re-plan Q2. |
 | 8 | `1.7.4`, source-dependencies schema v3 with `packageExports`. | Check that `packageExports` still accepts `./testing`. |
 | 9 | `3.0.2` and `assemble-release-plan@7.0.0`. | Re-check the peer bump rule of section 13. |
-| 10 | Pull request #182 merged. | Copy fixtures from branch `docs/module-communication-research` at `b43ef11` and cite it. |
+| 10 | Pull request #182 merged (`a3a079b`); the #183 corrections reconciled as section 2.2 requires. | Missing research/corrections: resolve the predecessor before Phase 1b; do not copy the original known defects from an old branch. |
 | 11 | `e5cb510c…0919` in both places. | The CMS changed meanwhile: rebase PR 2 and recompute. |
+
+### 2.1 Executable paths and bootstrap
+
+The root/tooling Node 24 floor is 24.21.0; public packages retain the separate 24.18.0 floor. Use Node 26.11.1 for
+the default gate and Node 24.21.0 for the compatibility run. Resolve absolute executable paths first and record
+`process.execPath`, `node --version` and `pnpm --version`; the shell's default Node is not evidence of either pin.
+The original machine used `/usr/local/n/versions/node/26.11.1/bin/node` and
+`/usr/local/n/versions/node/24.21.0/bin/node`. Those paths are examples, not portable prerequisites. On a different
+machine, use existing installations or restore the exact versions to a disposable tool directory; do not change
+global installations or repository engine policy.
+
+Set `GM_NODE26` and `GM_NODE24` to those absolute executables, and `GM_PNPM_BIN` to the directory containing
+the pinned pnpm 11.20.0 executable. The command below establishes the default shell for this plan:
+
+```sh
+test -x "$GM_NODE26" && test -x "$GM_NODE24" && test -x "$GM_PNPM_BIN/pnpm"
+"$GM_NODE26" --version
+"$GM_NODE24" --version
+export PATH="$(dirname "$GM_NODE26"):$GM_PNPM_BIN:$PATH"
+node -p 'process.execPath'
+pnpm --version
+```
+
+If a pnpm launcher selects its own Node, invoke the pinned pnpm CLI with the selected executable instead:
+`"$GM_NODE26" /absolute/path/to/pnpm/bin/pnpm.cjs <command>`. Keep the selected Node first on `PATH` for child
+processes. Run Node 24 checks with `PATH="$(dirname "$GM_NODE24"):$GM_PNPM_BIN:$PATH"` and that executable.
+Once section 2's ADR check passes, the frozen install restores dependencies without editing the lockfile;
+`pnpm resources:build` must precede the first observation source compile. Network-dependent registry observation
+is V2 evidence, not permission to upgrade any pin.
+
+### 2.2 Research correction predecessor
+
+The reviewed #183 head is `cfdaa18f152aac614194be710a474f4d4b06f59a`; re-read its current head and the diff before implementation because it is
+owned by another track. Its corrections must be on `main`, or supplied as an explicitly coordinated reviewed
+predecessor, before Phase 1b. This plan changes none of #183's files and does not claim that its evidence is merged.
+Use `raw/api-design/corrections-2026-10-17/README.md`,
+`raw/api-design/runtime-b/review-regressions.test.ts.txt`, the revised `runtime-b/env-probe.ts.txt`,
+`probes/p9-traps.b.ts.txt`, `runtime/core.ts.txt`, `runtime/testing.ts.txt` and `b-snapshot/api.d.ts.txt` from that
+predecessor. Record the exact commit used. R16/R17 and the strengthened stale/close oracles join the original probes;
+historical writer outputs and their original 43-step result remain historical evidence.
+
+PR #184 owns the independent consumer fixture/scale plan and #186 the CMS maintenance instruction. Read their live
+state for coordination; neither authorizes changing those branches, adopting a new consumer scope or rewriting ADRs.
 
 ## 3. Decisions to confirm before coding
 
@@ -101,13 +159,11 @@ otherwise; record the choice in the PR description.
   `tests/ci-check-lanes.test.mjs`, and `observation:check` is estimated at 4 to 7 minutes on Windows; 9 and 7. The
   packaging lane like other leaves: 5 and 8 (likely timeout). Packaging plus moving the heavy evidence to a root script
   in another lane: 6 and 6 (every Windows lane is at 7 to 9 minutes).
-- **Q3, SDK-growth evidence (difference 2).** (Recommended) Keep the frozen P0 fields byte-identical and add a top-level
-  `successorReviews` array with one entry: `fromSha256` (the digest of the ownership test before PR 2), `sha256` and
-  `gitBlob` of the new CMS bytes (`shasum -a 256`, `git hash-object`), `classification: "module-communication-rules"`,
-  `semanticChanges` (one string per changed rule), `changesGetModularCompositionContract: false`,
-  `pinAction: "consumers-review-delta"`; review checks the digests; 7 and 6. The same plus a check in
-  `architecture/checks/sdk-growth.mjs` and a rejecting test: 8 and 5 (a second pin of the same bytes). Advancing
-  `acceptedCurrent`: rejected, it rewrites frozen P0 evidence; 3.
+- **Q3, SDK-growth evidence (resolved by the current ADR, not a new choice).** Keep the entire
+  `architecture/sdk-growth/evidence/consumer-module-standard.json` byte-identical, including its historical
+  `pinned`, `acceptedCurrent` and `delta`. Add no `successorReviews` field. Recompute only the current CMS successor
+  digest in `tests/ownership-checkpoint.test.mjs`; record the previous/current SHA-256, new Git blob, changed rules
+  and each consumer's pin migration or outstanding work in PR 2. The existing historical SDK checker remains intact.
 - **Q4, resources release for its documentation change.** (Recommended) A resources patch changeset, so the published
   README and JSDoc match the Standard; the TEST consumer then runs on resources 0.1.1; 8 and 6. No changeset; the text
   ships with the next resources release and the owner has one publication fewer: 7 and 7.
@@ -119,7 +175,7 @@ default never overrides a STOP of a phase card.
 
 | # | Item | Default when it cannot be checked | Evidence to record |
 | --- | --- | --- | --- |
-| V1 | ADR-0034 merged with the digests of section 2 | none: without it STOP | output of section 2 check 2 |
+| V1 | ADR-0034 merged; digests calculated from that merged commit | none: without it STOP | output of section 2 check 2 |
 | V2 | npm registry state of resources | `latest=0.1.0`, as `research/releases/0.5.0-train/release-intent.md` records | "registry not reachable on <date>" |
 | V3 | Foundation accepts `packageExports: ["./testing"]` | yes: schema v3 `exactPackageExport` admits it (read on 2026-10-17) | `pnpm foundation:check` output |
 | V4 | Foundation ignores `process.getBuiltinModule(...)` calls | yes: it parses imports, `require` and dynamic imports | `pnpm foundation:check` output; if it fails, STOP |
@@ -154,7 +210,7 @@ case.
 - **Outputs:** a draft PR 1 description with the section 2 outputs, the choices for Q1 to Q4 and the VERIFY evidence.
 - **Commands:** the block of section 2.
 - **Done:** every row of section 2 matches, or its "if different" action is done.
-- **Stop:** ADR-0034 not on `main`; its file digest differs; `Resources.path` exists; a resources minor was released; a
+- **Stop:** ADR-0034 not on `main`; its merged text has an unreconciled difference; `Resources.path` exists; a resources minor was released; a
   compiler or oxlint update makes a section 2 check fail.
 
 ### Phase 1a: the checks learn row subpaths (PR 1, commit 1)
@@ -174,20 +230,20 @@ case.
   `testing.d.ts.txt`, `README.md`, `raw/api-design/runtime/core.ts.txt`, `runtime/testing.ts.txt`,
   `packages/resources/src/**` (style).
 - **Outputs:** every `packages/observation` file of section 6 marked `1b`.
-- **Commands:** `node architecture/tooling/build-leaf-package.mjs observation` fails until Phase 1d adds the row; use
-  `node node_modules/typescript/bin/tsc -p packages/observation/tsconfig.json` to build meanwhile. Commit
+- **Commands:** `pnpm resources:build`; `node architecture/tooling/build-leaf-package.mjs observation` fails until
+  Phase 1d adds the row, so use `node node_modules/typescript/bin/tsc -p packages/observation/tsconfig.json` meanwhile. Commit
   `feat(observation): add the store, facets, subscriptions and the testing entry`.
 - **Done:** the build emits exactly the `dist/` files of section 6;
   `rg -n "process.env|from \"node:" packages/observation/src` finds nothing; the public types equal `api.d.ts.txt` and
   `testing.d.ts.txt` except the fixes of section 8.
-- **Stop:** a public type or name would need to differ from the sources beyond section 8; a lint rule forces a design
+- **Stop:** the section 2.2 correction predecessor is missing; a public type or name would need to differ from the sources beyond section 8; a lint rule forces a design
   change of the public API.
 
 ### Phase 1c: tests and fixtures (PR 1, commit 3)
 
 - **Inputs:** section 9 and section 10; `raw/api-design/runtime/probes.test.ts.txt`, `runtime-b/probes.test.ts.txt`,
-  `runtime-b/env-probe.ts.txt`, `b-snapshot/type-tests.ts.txt`, `probes/p3`, `p5`, `p6`, `p7`, `p8`, `p9`, `p10`
-  (`.txt`), `tools/mutations*.sh.txt`, `tools/static-rules.mjs.txt`, `tools/tsc-both.mjs.txt`, `check.sh.txt`,
+  `runtime-b/env-probe.ts.txt`, `runtime-b/review-regressions.test.ts.txt`, `b-snapshot/type-tests.ts.txt`, the exact
+  variant B probe paths in section 9.0, `tools/mutations*.sh.txt`, `tools/static-rules.mjs.txt`, `tools/tsc-both.mjs.txt`, `check.sh.txt`,
   `tasks/**`, `reference/**`, `results/control.*.txt`; `packages/resources/tests/**` and
   `packages/conformance/tests/packed-root.test.mjs` (style).
 - **Outputs:** every test file of section 6 marked `1c` (the root `tests/observation/*` files come in Phase 1d).
@@ -259,11 +315,17 @@ pnpm architecture:feature-module-profile && pnpm architecture:feature-module-pro
   `architecture/sdk-growth/evidence/consumer-module-standard.json`.
 - **Outputs:** the `Resources.signal` text in `packages/resources/src/features/scope/types.ts` and
   `packages/resources/README.md`, `.changeset/resources-signal-documentation.md`, the new CMS digest in the ownership
-  test, the `successorReviews` entry.
+  test, and the reviewed CMS delta/consumer pin record in the PR description. The frozen SDK-growth evidence is unchanged.
 - **Commands:** `pnpm resources:check`, `pnpm ownership:checkpoint:test`, `pnpm sdk-growth:check`,
   `pnpm changeset status --verbose`; commit; `pnpm check`.
 - **Done:** all green; the changeset status shows only observation (minor) and resources (patch).
 - **Stop:** the changeset status shows a bump of conformance or of observation beyond minor.
+
+Apply these edits after merging the #154 predecessor and updating PR 2 from PR 1. In
+`tests/ownership-checkpoint.test.mjs`, preserve the accepted ADR list and ADR-0034 digest introduced by #154,
+and preserve every historical CMS digest. Change only the assertion labeled `current CMS successor` to the SHA-256
+of the reviewed `docs/architecture/common-assembly.md` bytes. Recompute after resolving any content conflict; never
+resolve this shared-file overlap by taking one side's whole file. `pnpm ownership:checkpoint:test` checks both pins.
 
 ### Phase 2c: review and merge readiness (PR 2)
 
@@ -283,13 +345,22 @@ pnpm architecture:feature-module-profile && pnpm architecture:feature-module-pro
 
 ```sh
 pnpm changeset status --verbose && pnpm release:version
-pnpm observation:build && pnpm resources:build
-OUT="<a scratch directory outside the repository>"; mkdir -p "$OUT" && pnpm --dir packages/observation pack --pack-destination "$OUT" && pnpm --dir packages/resources pack --pack-destination "$OUT"
-(cd "$OUT" && shasum -a 256 *.tgz > SHA256SUMS)
+pnpm assembly:build && pnpm resources:build && pnpm conformance:build && pnpm observation:build
+GM_ARCHIVES="<an empty scratch directory outside the repository>"
+mkdir -p "$GM_ARCHIVES"
+for GM_PACKAGE in core assembly resources conformance observation; do
+  pnpm --dir "packages/$GM_PACKAGE" pack --pack-destination "$GM_ARCHIVES"
+done
+(cd "$GM_ARCHIVES" && shasum -a 256 *.tgz > SHA256SUMS)
 ```
 
 - **Done:** CI green on the release head; the archive SHA-256s recorded.
 - **Stop:** the changeset status shows a resources minor without an observation minor (T93); any CI failure.
+
+The TEST consumer uses all five archives from this exact head. Packing Core, Assembly and conformance supplies
+the existing peers and does not bump or republish them. The release intent lists the complete input set and limits
+the owner's publication commands to packages actually changed by this release. Retain the tested archives; a later
+fresh pack is a comparison subject, not an untested replacement for the bytes that passed TEST.
 
 ### Phase 3b: TEST consumer on the release archives
 
@@ -331,7 +402,7 @@ packages/observation/
   src/composition/testing.ts           1b seam: the four testing values (the root never loads this file)
   src/features/errors/errors.ts        1b ObservationError, ObservationErrorCode, invalidArgument()
   src/features/delivery/platform.ts    1b scheduler, AsyncLocalStorage, clock, queueMicrotask, resolved at load
-  src/features/delivery/context.ts     1b DeliveryOrigin, Live, DeliveryContext, runInContext, currentContext, later
+  src/features/delivery/context.ts     1b DeliveryOrigin, Live, DeliveryContext, context helpers, private FIFO, later
   src/features/delivery/pending.ts     1b package-wide counts of scheduled flushes and running or queued loads
   src/features/store/types.ts          1b the public types of api.d.ts
   src/features/store/values.ts         1b plain-data validation, ownership freezing, frozenNodes, walk count
@@ -361,6 +432,7 @@ packages/observation/
   tests/gc-probe.mjs                   1c garbage-collection probe, run with --expose-gc
   tests/env-probe.mjs                  1c delivery and detection under a prepared environment
   tests/env-setup-fake-before.mjs      1c preload: a global setImmediate that never fires
+  tests/env-setup-fake-clock-before.mjs 1c preload: frozen global performance and Date clocks
   tests/env-setup-no-builtin-module.mjs  1c preload: process.getBuiltinModule undefined
   tests/env-setup-no-node.mjs          1c preload: no getBuiltinModule and no global setImmediate
   tests/process-probe.mjs              1c echo-exit, abort-listener, abort-listener-unhandled, throwing-reporter, import-idle
@@ -433,10 +505,15 @@ parameters) and type-aware rules. Feature imports are acyclic: `errors` and `del
 ### 7.1 Platform and values (`delivery/platform.ts`, `store/values.ts`; core.ts 132–139, 185–207, 224–275)
 
 Read `process` structurally from `globalThis`. Scheduler: `setImmediate` of `getBuiltinModule("node:timers")` called
-through `Reflect.apply`, else the global `setImmediate` bound to `globalThis`, else `setTimeout(callback, 0)`; never a
+through `Reflect.apply`, else the global `setImmediate` bound to `globalThis`, else the captured global
+`setTimeout(callback, 0)`; never a
 bare `setImmediate` identifier, so importing never throws a `ReferenceError`. Context storage: `new AsyncLocalStorage()`
 from `getBuiltinModule("node:async_hooks")`, else `undefined`; `asyncDetection` is `storage !== undefined`. Clock:
-`performance.now` bound at load, else `Date.now`. Microtask: the global `queueMicrotask` captured at load, else the
+obtain `performance.now` through `getBuiltinModule("node:perf_hooks")` and bind it at load; otherwise capture the
+global `performance.now`, then `Date.now` as the last fallback. Freezing or replacing the global clocks before import
+does not replace the builtin clock. A mock that replaces the builtin method itself must be installed after import;
+without the builtin, a pre-faked global clock remains a documented fallback limitation. Microtask: the global
+`queueMicrotask` captured at load, else the
 scheduler. No `import` of a `node:` module, no top-level `await` (it breaks `require(esm)`), no `process.env`.
 
 Port `captureRecord`, `collectPlain`, `freezeNodes` and `defineRecord`: own data properties only; symbol keys and
@@ -453,18 +530,27 @@ store's.
 of its keys. `buckets: Map<key, Set<Registration>>`: `set` looks up only the changed keys (one index lookup each), marks
 their registrations dirty and keeps on each the largest commit depth. A patch that changes nothing by `Object.is`
 commits nothing and returns the current revision. `dirty: Set<Registration>` holds at most one entry per subscription.
-`schedule()` is idempotent per store: it increments the pending flush count, creates `live = { open: true }`, calls
-`later(() => flush(live))` and right behind it `later(() => { live.open = false; })`. `later` leaves any delivery
-context (`storage.exit(() => scheduler(fn))`), so a flush never inherits the context that scheduled it; the two
-callbacks are adjacent in the immediate queue, so the context closes after the flush's microtask checkpoint and before
-any timer or I/O callback. `flush` snapshots `dirty` sorted by registration id, clears it and rechecks `closed` before
-each registration; a commit made during a flush schedules a new flush.
+`delivery/context.ts` owns one module-scoped linked FIFO of deferred callbacks per installed package copy.
+`later(fn)` appends one task and immediately registers one callback with the captured scheduler, outside the current
+delivery context (`storage.exit` when available). That callback removes exactly one queue node before invoking it,
+clears the removed link and clears both head/tail when empty. Enqueue during a callback appends and registers its own
+native task immediately. Do not batch-drain the FIFO or schedule the next task only after the previous one finishes:
+either would change interleaving and microtask checkpoints. No queue length enters testing pending counts.
+
+`schedule()` is idempotent per store while its flush is scheduled: increment the pending flush count, create
+`live = { open: true }` and consecutively enqueue `flush(live)` and the callback that closes `live`. The two native
+callbacks stay adjacent, so the context closes after the flush's microtask checkpoint and before a timer or I/O
+callback from a later loop iteration. The pair belongs to one store flush, not to each subscriber. `flush` clears its
+scheduled flag/count, snapshots `dirty` sorted by registration id, clears it and invokes registrations synchronously,
+rechecking `closed` before each; a commit made during a flush can schedule a new pair. Result/error publication uses
+the same queue for its own delivery/context-close pair and the pending-publication accounting of section 7.4.
 
 `context.ts` defines `DeliveryOrigin = { engine: object; keys: readonly string[]; name: string }`, implemented by the
 store's registrations, so `delivery` never imports `store`. `DeliveryContext = { depth, origin, live }`. `runInContext`
 sets a module-level `syncContext` for the synchronous part and runs the callback in `storage.run` when storage exists;
 `currentContext()` returns `syncContext ?? storage?.getStore()` only while `live.open`. A handler's context lives until
-its flush task ends; a loader's run has its own `runLive`, closed in the run's `finally`. In `set`, after validation and
+its delivery task ends, including that task's microtasks; a loader's run has its own `runLive`, closed in the run's
+`finally`. `onResult` and `onError` receive a new delivery context, not the completed loader's context. In `set`, after validation and
 before freezing: with a live context whose origin belongs to this store and follows a changed key, create
 `observation.delivery.echo`; otherwise with `context.depth + 1 > 64`, create `observation.delivery.cascade`. Add the
 error to the package-wide `reportedByStore` WeakSet (in `context.ts`), report it to this store's `reportError` with the
@@ -493,9 +579,13 @@ another store or package copy is foreign. Limits are positive safe integers (64 
   revisions at or below `lastOffered`, records the new one, invokes `onLoading` in the delivery context (the first run
   included), then starts the run or replaces the pending job and aborts the active `AbortController`. A run awaits one
   microtask so `active` is set before user code, skips if already aborted, calls
-  `loader(snapshot, Object.freeze({ signal }))` inside `runInContext` with its `runLive`, and delivers `onResult` or
-  `onError` only if the lane is open, the signal not aborted, the job the last offered and its revision still the
-  store's revision for the keys. The first run uses the newest values.
+  `loader(snapshot, Object.freeze({ signal }))` directly inside `runInContext` with its `runLive` after that await.
+  When the loader settles, enqueue `onResult` or `onError` as its own delivery task, with a new live context that
+  includes the complete callback microtask checkpoint. Immediately before invoking it, recheck that the lane is open,
+  the signal is not aborted, the job is the last offered and its revision is still the store's revision for the keys.
+  A commit after publication was queued must suppress the old result. The first run uses the newest values.
+  End the loader's active run and `runLive` independently of queued publication; a settled loader must not become
+  drain debt merely because its callback is waiting for a delivery task.
 - `closeAndDrain(escalate)`: close the lane, wait for the active run or `escalate`; after escalation wait one task with
   the captured scheduler and throw `observation.load.still-running` if the run is still active, so resources records a
   failed debt.
@@ -522,6 +612,13 @@ values and unknown stores are `observation.argument.invalid`. `registry.ts` hold
 `{ commits, visits, indexLookups, deliveries, live, dirty, buckets, walked, loaderCalls, loadsActive, loadsPending }`.
 It is exported from `registry.ts` only, never from an entry; counters are always on.
 
+Pending delivery includes both a scheduled store flush and queued result/error publication. Track publication
+counts per store and per package, increment before enqueue, and decrement only in the paired callback that closes
+the delivery context after its microtasks, including when publication is canceled. `pendingFlush()` stays truthy
+until both kinds are drained. `delivered()` waits for pending deliveries but not active loaders; `settled()` also
+waits for running and queued loaders. Both filtered and package-wide waits must observe queued publication. These
+delivery counts do not keep a settled loader active for the drain; R17 independently checks that distinction.
+
 ### 7.5 Port versus rewrite
 
 Port the algorithms above. Rewrite the 420-line `createEngine` closure as `StoreEngine`, `WatchRegistration` and
@@ -531,7 +628,8 @@ call, including non-object specs. Delete every `mutation` and `OBSERVATION_STUB_
 `duplicates` arrays, the `watchMode` measurement modes and `releasableEntry`, `pathOf`, and every `TypeError` the
 package creates. The facet and the owner `Store` are frozen objects of own arrow-function properties: they are returned
 as capabilities, and conformance rejects prototype members. Behaviors the sources do not decide keep the prototype's:
-`createStore({})` is accepted, duplicate keys in `read` are deduplicated, `set({})` returns the current revision.
+an untyped JavaScript `createStore({})` is accepted (the TypeScript fixed-key constraint already rejects an empty
+record), duplicate keys in `read` are deduplicated, and `set({})` returns the current revision.
 
 ## 8. Types and README
 
@@ -544,6 +642,10 @@ as capabilities, and conformance rejects prototype members. Behaviors the source
   that ends earlier. Call `watch` and `load` in the module's composition file, which receives `resources`; adapters
   receive values or a consumer-owned port."; `ListenerError.path`: "Present once `@get-modular/resources` provides
   `Resources.path`."
+- Carry forward the reviewed #183 `FixedKeys` correction: check every constituent of `keyof V` for an open key set,
+  so a named property does not hide a numeric or template index signature. Keep the existing empty-record type
+  rejection and finite literal-key positive controls. This repairs enforcement of the accepted fixed-key contract;
+  it does not introduce a new public type/name or authorize another API redesign.
 - Explicit types on every export (`isolatedDeclarations`), no enums or parameter properties (`erasableSyntaxOnly`);
   `ReadonlyStore<out V>` and `Store<in out V>` stay; the marker carries the slice check.
 - README: title `@get-modular/observation`, no variant or task references (line 170), differences 4 to 7 of section 1.3,
@@ -556,8 +658,27 @@ as capabilities, and conformance rejects prototype members. Behaviors the source
 
 Lane "observation" is the lane of Q2 (three OS, Node 26 and 24). M1, M2 and R: MUST before PR 1, PR 2 or the release
 pull request merges. Package test paths are under `packages/observation/tests/`. Archived probe IDs: P1 to P26 and PB
-(`runtime/probes.test.ts.txt`), R1 to R15 (`runtime-b/probes.test.ts.txt`); each ported test title carries them in
-brackets after its T-IDs.
+(`runtime/probes.test.ts.txt`), R1 to R15 (`runtime-b/probes.test.ts.txt`), plus R16/R17 from
+`runtime-b/review-regressions.test.ts.txt` in the section 2.2 predecessor. Each ported test title carries its archived
+ID in brackets after its T-IDs.
+
+### 9.0 Exact archived type-probe paths
+
+Paths in this table are relative to `research/module-communication-2026-10/raw/api-design/`. Labels such as p3 and
+p5 in the test inventory refer to these files; they are not executable paths.
+
+| Label | Exact source | Destination / selection |
+| --- | --- | --- |
+| p3 | `probes/p3-variance-controls.ts.txt` | `types-structural.ts` and variance controls |
+| p5 B | `probes/p5-gm-contracts.b.ts.txt` | `tests/observation/assembly-contracts-types.ts` |
+| p5 A | `probes/p5-gm-contracts.a.ts.txt` | Do not port: the unselected variant A |
+| p6 | `probes/p6-runtime-only.b.ts.txt` | `types-runtime-only.ts` |
+| p7 | `probes/p7-set-without-exact-optional.ts.txt` | `types-loose-optional.ts` and loose compiler control |
+| p8 | `probes/p8-structural.b.ts.txt` | `types-structural.ts` |
+| p9 | `probes/p9-traps.b.ts.txt` | `types-traps.ts`, including the #183 mixed-open-key regressions |
+| p10 | `probes/p10-gm-main-implement.b.ts.txt` | `tests/observation/assembly-implement-types.ts` |
+
+### Required test inventory
 
 | Archived check | Test | Lane | Level |
 | --- | --- | --- | --- |
@@ -566,10 +687,11 @@ brackets after its T-IDs.
 | p7 without `exactOptionalPropertyTypes`; controls `b-no-variance-annotation` (passes) and `b-v-in-param` (TS2636) | `type-controls.test.mjs` | observation | M1 |
 | `readme-examples` | `tests/observation/readme-examples.test.mjs` | observation | M1 |
 | P1, P15, P16, P21, P25, P26, PB; R11, R15; sketch v4 value defects | `store.test.mjs` | observation | M1 |
-| P2, P5, P7, P8, P9, P10, P20; R1, R3, R4, R5, R8; 1000 watches on one signal without a process warning | `subscriptions.test.mjs` | observation | M1 |
+| P2, P5, P7, P8, P9, P10, P20; R1, R3, R4, R5, R8; 1000 watches on one signal with an explicitly raised stress-fixture scope limit, without a process warning | `subscriptions.test.mjs` | observation | M1 |
 | P6, P11, P12, P13, P14, P17, P24; R6, R7 | `load.test.mjs` | observation | M1 |
 | P18, P19, P22, P23; R9; R13 heartbeat, server, depth and C4; event-loop order probe | `guards.test.mjs` | observation | M1 |
 | R10, R12, R14 (W1, W2, `asyncDetection`) | `testing-entry.test.mjs` | observation | M1 |
+| R16/R17 (all 19 cases), strengthened P2/P11/P17 and R1/R6/R7, fake-clock and synchronous-loader environment controls | `guards.test.mjs`, `load.test.mjs`, `testing-entry.test.mjs`, `processes.test.mjs` | observation | M1 |
 | P3, P4 and R2 (garbage collection); env-probe; `sync-guards-without-async-context`; ADR subprocess cases | `gc-probe.mjs`, `env-probe.mjs`, `process-probe.mjs` via `processes.test.mjs` | observation | M1 |
 | `runtime.mutations`, `runtime-b.mutations` | `mutations.test.mjs` | observation | M1 |
 | references, `alternative-h`, `e-sessions` by name, negative controls, every negative task fails | `writer-gate.test.mjs` | observation | M1 |
@@ -593,11 +715,31 @@ the package by name, and no environment variable ever selects the package under 
 `.mjs`: `stats()` becomes `storeStats()`; drivers and `VARIANT` loops disappear (call variant B directly); wall-clock
 assertions become counts (W1 asserts the rejection code; a test-level `timeout` guards hangs); P21 asserts `walked`
 (appending one row to a frozen 50 000-element array walks two nodes); timing printouts are dropped. Servers listen on
-`127.0.0.1` port 0; heartbeats wait for a count of beats with a deadline. Add the sketch v4 regressions: patch accessors
-read once, `__proto__` keys kept, a flush that stops after `close()` inside a handler, and every publication recorded so
+`127.0.0.1` port 0; heartbeats wait for a count of beats with a deadline. Carry the applicable sketch v4 regressions
+under the accepted plain-data contract: reject accessors without invoking their getters, keep `__proto__` data keys,
+stop a flush after `close()` inside a handler, and record every publication so
 a stale result in A, B, A never appears. The order probe asserts that an immediate's `nextTick`, promise and
 `queueMicrotask` callbacks all run before the next immediate
-(`raw/api-design/reviews/critic-adv/bunprobe/order.mjs.txt`).
+(`raw/api-design/reviews/critic-adv/bunprobe/order.mjs.txt`). Extend that probe with two stores, an external immediate
+between their pairs, and a third store scheduled by a microtask: preserve separate task checkpoints and context
+closure. Extend the existing `store-closed` GC mode to drain queued deliveries before dropping its store references;
+the retained control and closed-store collection then reject a FIFO that retains completed callbacks. No public
+queue accessor or separate queue-counter API is needed. A timing-only comparison of the old prototype is insufficient.
+
+Port all 19 R16/R17 cases from section 2.2. Preserve the distinction between a settled loader, queued publication,
+the callback's microtask checkpoint and a later independent timer. For the stale-result witness, prove publication
+is queued before the invalidating commit, then assert that its callback never appears. For close/cancellation,
+await `delivered()` after closing before asserting no result was published; an assertion made before the queued
+callback could run is insufficient. Include filtered and global waits and no false drain debt after loader settlement.
+
+T40 uses one table over `onChange`, `onLoading`, `onResult` and `onError`, with a thrown sentinel and an invalid
+returned value for each. Assert the report's subscription/revision/cause, another subscription's delivery, and a later
+valid delivery to the offending subscription. These are behavioral oracles, not a test of the shared `invoke` helper.
+
+For T43's detach-during-delivery case, put two handlers in the same child scope and let either handler close it on
+entry. Assert one total call without fixing which handler runs first. For T21/T54, an echo/cascade-rejected patch
+contains a new plain object: it remains unfrozen and the store's values/revision stay unchanged. These checks
+exercise the accepted ordering of validation, guards and ownership transfer.
 
 ### 9.2 Process probes
 
@@ -616,6 +758,11 @@ never durations.
   the global `setImmediate`; `asyncDetection` false; a synchronous echo is caught at the first round. `no-node`: a
   delivery through `setTimeout`; `asyncDetection` false; a synchronous echo caught at the first round; a synchronous
   ping-pong across two stores stopped with `observation.delivery.cascade`. Each prints `ok <mode>` and exits 0.
+- The `fake-clock-before` mode freezes both global clocks before import while leaving the builtin clock intact.
+  A never-settling loader still causes `settled()` to reject with `observation.testing.timeout`; a separate parent
+  watchdog prevents a broken implementation hanging the suite. Assert the error code and frozen globals, not an
+  elapsed-time threshold. In both `no-builtin-module` and `no-node`, also call a synchronous loader that writes a
+  followed key: exactly one loader call and one echo report prove context entry after the startup await.
 - `process-probe.mjs <mode>`: `echo-exit` (a handler calls an async function without awaiting it; the function awaits
   once and then sets the followed key; exit code 1; stdout has exactly one `REPORT observation.delivery.echo` line
   printed by `reportError`); `abort-listener` (a loader adds an abort listener that throws `listener boom`; a
@@ -637,9 +784,12 @@ never durations.
 2. Runs `node --test` on the copied `store`, `subscriptions`, `load`, `guards`, `testing-entry` and `processes` test
    files: the unmodified copy must pass, otherwise the harness is broken.
 3. Per defect: a fresh copy; asserts that `find` occurs exactly once in `file`; replaces it; runs the same files with a
-   120 s timeout. Caught means at least one failing test, or a timeout when `mayHang` is set.
-4. Runs defects with concurrency `Math.max(1, availableParallelism() - 1)`, prints which tests failed per defect, fails
-   if any defect is not caught.
+   120 s timeout. Caught means a failing semantic probe that exercised the intended defect, or its explicitly
+   designated bounded hang when `mayHang` is set. Syntax/import errors, fixture setup failure and harness failure
+   never count as detection; report them as a broken mutation run.
+4. Runs defects with concurrency `Math.max(1, Math.min(2, availableParallelism() - 1))`, prints the failing semantic
+   test identities per defect, and fails if any defect is not caught. Avoid multiplying child-test concurrency merely
+   because a machine advertises many CPUs; batch compiler work before considering more parallelism.
 
 | Defect (16 of `tools/mutations*.sh.txt`, two from `RATIONALE.txt`) | Expected to be caught by |
 | --- | --- |
@@ -717,8 +867,8 @@ to `consumer/copy/` (`observation.snapshot.foreign`); `import.meta.resolve` stay
 `dist/testing.js`, `package.json` and `unknown` fail with `ERR_PACKAGE_PATH_NOT_EXPORTED`; `tests/semantic-suite.mjs`
 passes on the installed copy. Types: a `check.ts` importing both entries and passing a root facet to `liveSubscriptions`
 compiles with `typescript` and `typescript-minimum`, NodeNext and Bundler, `skipLibCheck: false`. Source rules on
-`dist/**/*.js`: no `process.env`, no `node:` import, `getBuiltinModule` only with `"node:timers"` and
-`"node:async_hooks"`, and the import graph of `dist/testing.js` is relative files only.
+`dist/**/*.js`: no `process.env`, no `node:` import, `getBuiltinModule` only with `"node:timers"`,
+`"node:async_hooks"` and `"node:perf_hooks"`, and the import graph of `dist/testing.js` is relative files only.
 
 `type-controls.test.mjs` copies `package.json` and `dist/**/*.d.ts` into `<tmp>/node_modules/@get-modular/observation`,
 links resources, writes the test type files with `"../dist/index.js"` and `"../dist/testing.js"` replaced by the package
@@ -738,8 +888,11 @@ directory with junctions `node_modules/@get-modular/{core,assembly,resources,obs
 `architecture/tooling/test-assembly-types.mjs`. `assembly-integration.test.mjs`: an owner built with
 `implement(..., scoped)` returns `store.readonly()` as a capability; a consumer with a `required` slot watches it;
 `prepare`, `run` with an attempt scope, `set`, `delivered`, close: complete report and `liveSubscriptions(facet) === 0`;
-`isolate` from conformance accepts the owner (own-property port check); a run cancelled while the consumer awaits
-rethrows the Host's reason. PR 2's `consumer-standard-lint.test.mjs` writes the CMS JSON snippet as `.oxlintrc.json` in
+`isolate` from conformance accepts the owner (own-property port check). For cancellation while the consumer factory
+awaits, resume it after abort and prove `watch`/`load` throws the identical Host reason without registering anything.
+Assembly `run()` returns its existing failed outcome, with `assembly.run.factory-rejected` carrying that cause and
+`cancellation.reason` identical to the Host reason; do not expect `run()` itself to reject. Follow the A4 case in
+`tests/resources/assembly-scope.test.mjs`. PR 2's `consumer-standard-lint.test.mjs` writes the CMS JSON snippet as `.oxlintrc.json` in
 a temporary directory with `src/features/a/composition/a.module.ts`, `src/features/a/adapters/outbound/x.ts` and
 `src/features/a/composition/a.test.ts`, each importing `@get-modular/observation/testing`, runs
 `node node_modules/oxlint/bin/oxlint -c .oxlintrc.json .` and asserts exit code 1 with two `no-restricted-imports`
@@ -766,13 +919,13 @@ comment above a type case) start with the row ID. Reviewers tick the IDs in the 
 | T12 | No global or ambient channel; the only ambient state is the internal delivery context, which no API exposes. | `context.ts` | doc only for the absence; T13 pins that no context API is exported | 1 |
 | T13 | Root: `createStore`, `ObservationError` and the 15 types; `./testing`: `liveSubscriptions`, `delivered`, `settled`, `asyncDetection`, `WaitOptions`. | `src/index.ts`, `src/testing.ts` | `t/packed-root.test.mjs` (exact runtime names); `t/types.ts` and `t/types-testing.ts` (every type imports) | 1 |
 | T14 | `createStore(initial, { name, resources, reportError })`; the key set is that of `initial`. | `store.ts`, `engine.ts` | `t/store.test.mjs` (unknown key in `read` and `set`; option validation) | 1 |
-| T15 | Optional properties or an index signature do not compile. | `types.ts` | `t/types.ts`; `t/types-traps.ts` | 1 |
+| T15 | Optional properties or any open index signature do not compile, including beside a fixed property. | `types.ts` | `t/types.ts`; `t/types-traps.ts`: all #183 mixed numeric/template negatives and finite-key positive controls | 1 |
 | T16 | Plain data only: accessors, class instances, functions, `Date`, `Map` and `Set` rejected. | `values.ts` | `t/store.test.mjs` (each kind, nested, in `initial` and in `set`) | 1 |
 | T17 | The store closes when the owner's scope releases its entry. | `store.ts` | `t/store.test.mjs` (owner scope closed: facet `read` throws `observation.store.closed`) | 1 |
 | T18 | The owner's `Store` has `read`, `set`, `readonly` and `close`. | `store.ts` | `t/types.ts`; `t/semantic-suite.mjs` | 1 |
 | T19 | `set(patch)` commits the patch keys, keeps the others and returns the revision. | `engine.ts` | `t/store.test.mjs` | 1 |
 | T20 | A patch that changes nothing by `Object.is` commits nothing. | `engine.ts` | `t/store.test.mjs` (`NaN`, `-0` and `+0`, same object; `commits` unchanged) | 1 |
-| T21 | `set` validates every value first, then takes ownership and freezes in place. | `values.ts` | `t/store.test.mjs` [P21, P26] | 1 |
+| T21 | `set` validates every value first, then takes ownership and freezes in place. | `values.ts` | `t/store.test.mjs` [P21, P26]; `t/guards.test.mjs`: echo/cascade rejection leaves new patch objects unfrozen | 1 |
 | T22 | `readonly()` returns the facet other modules receive. | `store.ts` | `t/store.test.mjs` (same frozen object, own properties); `tests/observation/assembly-integration.test.mjs` | 1 |
 | T23 | The facet has `read`, `watch` and `load` and no way to write or close. | `store.ts`, `types.ts` | `t/types.ts`; `t/store.test.mjs` (no `set` or `close` at run time) | 1 |
 | T24 | The marker rejects another record through aliases, `Readonly`, intersections, containers, `Pick` and hand-written ports with `read`; a wider record serves a narrower slice. | `types.ts` | `t/types-structural.ts`; `tests/observation/assembly-implement-types.ts`; `t/type-controls.test.mjs` | 1 |
@@ -783,20 +936,20 @@ comment above a type case) start with the row ID. Reviewers tick the IDs in the 
 | T29 | `watch` follows every key of the snapshot from its revision; a commit between `read` and `watch`, also across `await`, is delivered. | `watch.ts` | `t/subscriptions.test.mjs` [P1]; writer gate `e-async-factory` | 1 |
 | T30 | No separate starting revision and no key list. | `types.ts` | `t/types.ts` (unknown option) | 1 |
 | T31 | `load` uses the snapshot for its keys only; the first run uses the newest values. | `load.ts` | `t/load.test.mjs` (commit between `read` and `load`) | 1 |
-| T32 | One active run, at most one pending; a change aborts the run; `onLoading` when a newer run is queued; results only if no commit touched the keys since the run started. | `load.ts` | `t/load.test.mjs` [P6, P17, R3, R7]; four mutations | 1 |
+| T32 | One active run, at most one pending; a change aborts the run; `onLoading` when a newer run is queued; results only if no commit touched the keys since the run started. | `load.ts` | `t/load.test.mjs` [P6, P17, R3, R7, R17], including a commit after publication is queued; four mutations | 1 |
 | T33 | `resources` is required. | `types.ts`, `admission.ts` | `t/types.ts`; `t/store.test.mjs` (missing or invalid: `observation.argument.invalid`) | 1 |
 | T34 | A watch binds to `resources.signal` and detaches when it aborts: scope or ancestor closing, or the constructing run cancelled. | `watch.ts` | `t/subscriptions.test.mjs` [P2, R1]; `tests/observation/assembly-integration.test.mjs` | 1 |
-| T35 | Nothing is registered in the scope for a watch. | `watch.ts` | `t/gc-probe.mjs` `store-closed` [P4, R2]; mutation `retain-after-close` | 1 |
+| T35 | Nothing is registered in the scope for a watch. | `watch.ts` | `t/subscriptions.test.mjs`: a counting Resources wrapper proves zero `use`/`setup`/`child` calls for watch; real-scope GC [P4, R2] independently proves release | 1 |
 | T36 | A load opens `load:<name>` that drains its run; a run still going after escalation is a failed debt. | `load.ts` | `t/load.test.mjs` [P11, P12, P13, P14, R6] | 1 |
 | T37 | `name` is required and unique per store within one scope; a duplicate throws. | `admission.ts` | `t/subscriptions.test.mjs` [P8, R5]; `t/types.ts` | 1 |
-| T38 | Limits 64 per scope and store, 8192 per store; at the store limit every new subscription fails until released; the message gives scopes and the largest count. | `admission.ts` | `t/subscriptions.test.mjs` [P8, P10, P26, R5] | 1 |
+| T38 | Default limits: 64 subscriptions per scope per store and 8192 per store; at the store limit every new subscription fails until released; the message gives scopes and the largest count. | `admission.ts` | `t/subscriptions.test.mjs`: exact default 64/65 and 8192/8193 boundaries, capacity recovered after detach, independent scopes/stores, configurable limits [P8, P10, P26, R5] | 1 |
 | T39 | Handlers are synchronous and typed to return `undefined`. | `types.ts` | `t/types.ts`; `t/types-traps.ts` | 1 |
-| T40 | Each callback is isolated: a throw or returned value is reported with name and revision, stops no other delivery, keeps the subscription. | `engine.ts` (`invoke`) | `t/subscriptions.test.mjs` [P15] | 1 |
+| T40 | Each callback is isolated: a throw or returned value is reported with name and revision, stops no other delivery, keeps the subscription. | `engine.ts` (`invoke`) | `t/subscriptions.test.mjs` and `t/load.test.mjs`: the four-callback table in section 9.1, with sibling and subsequent delivery controls [P15] | 1 |
 | T41 | `ListenerError` is branded; only the store creates reports. | `types.ts` | `t/types.ts` | 1 |
 | T42 | `reportError` must not throw; a throw is rethrown as an uncaught exception. | `engine.ts` (`report`) | `t/processes.test.mjs` (`throwing-reporter`) | 1 |
-| T43 | A detached subscription is never called again, also mid-delivery; one added during a delivery waits for the next. | `engine.ts` (`flush`) | `t/subscriptions.test.mjs` [P20] and an added-during-delivery case | 1 |
+| T43 | A detached subscription is never called again, also mid-delivery; one added during a delivery waits for the next. | `engine.ts` (`flush`) | `t/subscriptions.test.mjs` [P20]: either first handler closes their shared scope, one total call without pinning order; added-during-delivery case | 1 |
 | T44 | Call order within one delivery is deterministic but not part of the contract. | `engine.ts` | doc only: no test may pin the order | 1 |
-| T45 | `close()` detaches every live subscription, sends each one `observation.source.closed` and aborts running loads. | `engine.ts` | `t/store.test.mjs` [P4]; `t/load.test.mjs` [P14]; `t/gc-probe.mjs` | 1 |
+| T45 | `close()` detaches every live subscription, sends each one `observation.source.closed` and aborts running loads. | `engine.ts` | `t/store.test.mjs` [P4]; `t/load.test.mjs` [P14, R17], asserting no publication after `delivered()`; `t/gc-probe.mjs` | 1 |
 | T46 | After `close()`, `set`, `watch`, `load` and the facet's `read` throw `observation.store.closed`; the owner's `read` returns the last values. | `engine.ts`, `store.ts` | `t/store.test.mjs` [P25, R11, R15] | 1 |
 | T47 | Every package error is an `ObservationError` with an `observation.<area>.<reason>` code; a report keeps the handler's throw as `cause`. | `errors.ts` | `t/store.test.mjs` (a table of every thrown code; `cause` identity) | 1 |
 | T48 | An already aborted `resources.signal`: nothing registered, its reason rethrown as it is. | `admission.ts` | `t/subscriptions.test.mjs` [R8] | 1 |
@@ -804,12 +957,12 @@ comment above a type case) start with the row ID. Reviewers tick the IDs in the 
 | T50 | Deliveries and load runs carry a delivery context. | `context.ts` | `t/guards.test.mjs` (with T51 to T60) | 1 |
 | T51 | A live-context commit to a key the delivering subscription follows on the same store fails at once with `observation.delivery.echo`. | `engine.ts` (`set`) | `t/guards.test.mjs` [P18, P22, R9, C4]; mutation `no-echo-guard` | 1 |
 | T52 | Other live-context commits are one step deeper; outside any context depth 0; a delivery takes the largest coalesced depth. | `engine.ts`, `context.ts` | `t/guards.test.mjs` [P19] | 1 |
-| T53 | A commit deeper than 64 steps fails with `observation.delivery.cascade`. | `engine.ts` | `t/guards.test.mjs` [P19, P23, R9]; mutation `no-cascade-guard` | 1 |
+| T53 | A commit deeper than 64 steps fails with `observation.delivery.cascade`. | `engine.ts` | `t/guards.test.mjs` [P19, P23, R9, R16]: depth 64 succeeds, 65 fails, first rejected commit changes nothing; mutation `no-cascade-guard` | 1 |
 | T54 | A failing commit changes nothing, is reported to the committing store's `reportError`, then throws. | `engine.ts` | `t/guards.test.mjs` (value unchanged; one report; error thrown) | 1 |
 | T55 | In a fire-and-forget continuation it is an unhandled rejection that ends a Node process. | platform | `t/processes.test.mjs` (`echo-exit`) | 1 |
 | T56 | A Host may choose its own unhandled-rejection policy. | README | doc only: Host policy | 1 |
-| T57 | The context is carried synchronously everywhere and through `await` where `AsyncLocalStorage` exists. | `context.ts` | `t/guards.test.mjs` [P22]; `t/processes.test.mjs` (`no-node`) | 1 |
-| T58 | It counts only while live: a handler until its delivery task ends, a loader while its run is active. | `context.ts`, `engine.ts`, `load.ts` | `t/guards.test.mjs` [R13] and the order probe; mutation `unbounded-context` | 1 |
+| T57 | The context is carried synchronously everywhere and through `await` where `AsyncLocalStorage` exists. | `context.ts` | `t/guards.test.mjs` [P22, R16]; `t/processes.test.mjs`: both no-ALS modes exercise synchronous watch and loader echoes | 1 |
+| T58 | It counts only while live: a handler until its delivery task ends, a loader while its run is active. | `context.ts`, `engine.ts`, `load.ts` | `t/guards.test.mjs` [R13, R16/R17]: callback microtasks included, later timers excluded, settled loader creates no false debt; order probe; mutation `unbounded-context` | 1 |
 | T59 | Work started in a context that commits after the window has depth zero: no false echo. | `context.ts` | `t/guards.test.mjs` [R13 heartbeat, server, depth] | 1 |
 | T60 | A loader's window is its whole run: long-lived work it starts that writes a followed key during the run is an echo. | `load.ts` | `t/guards.test.mjs` (pins the documented behavior); README rule | 1 |
 | T61 | Delivery runs in a later task. | `engine.ts`, `platform.ts` | `t/subscriptions.test.mjs` [P16] (none during `watch` or after 50 microtasks) | 1 |
@@ -822,9 +975,9 @@ comment above a type case) start with the row ID. Reviewers tick the IDs in the 
 | T68 | Supported: Node 24 and 26 with asynchronous detection and `setImmediate` ordering. | engines; CI | `observation` lane on both lines; `t/testing-entry.test.mjs`; order probe | 1 |
 | T69 | Bun 1.3 observed, not in the admission matrix. | README | doc only: not in the matrix | 1 |
 | T70 | Without `getBuiltinModule` or `AsyncLocalStorage`: imports and works with synchronous detection only. | `platform.ts` | `t/processes.test.mjs` (`no-builtin-module`, `no-node`) | 1 |
-| T71 | `./testing` gives `liveSubscriptions(facet, resources?)`, `delivered`, `settled` with `stores`, `signal` and deadline, and `asyncDetection`. | `waits.ts` | `t/testing-entry.test.mjs` [R10, R12]; `t/types-testing.ts` | 1 |
+| T71 | `./testing` gives `liveSubscriptions(facet, resources?)`, `delivered`, `settled` with `stores`, `signal` and deadline, and `asyncDetection`. | `waits.ts` | `t/testing-entry.test.mjs` [R10, R12, R17]: filtered/global waits include queued publication; `t/types-testing.ts` | 1 |
 | T72 | The deadline is on by default (5000 ms); only an explicit `Infinity` removes it; a signal ends earlier without removing it. | `waits.ts` | `t/testing-entry.test.mjs` [R14 W1] (default deadline, `Infinity`, `NaN`, 0) | 1 |
-| T73 | `setImmediate` and the clock are captured at load, so fake timers before or after the import stall nothing; `mock.timers` after import. | `platform.ts` | `t/testing-entry.test.mjs` [R14 W2]; `t/processes.test.mjs` (`fake-before`) | 1 |
+| T73 | Builtin `setImmediate` and clock are captured at load, so fake globals before or after import stall neither deliveries nor waits; mocks of builtin methods come after import. | `platform.ts` | `t/testing-entry.test.mjs` [R14 W2]; `t/processes.test.mjs` (`fake-before`, `fake-clock-before`) | 1 |
 | T74 | Without `getBuiltinModule`, fake timers installed before the import can stall deliveries. | `platform.ts` | doc only: a documented limitation | 1 |
 | T75 | A module test closes its scopes and asserts `liveSubscriptions(facet) === 0`. | README; CMS | writer gate scenarios; CMS testing rule 11 | 1, 2 |
 | T76 | Production code does not import `./testing`. | CMS snippet | `tests/assembly/consumer-standard-lint.test.mjs` | 2 |
@@ -841,7 +994,7 @@ comment above a type case) start with the row ID. Reviewers tick the IDs in the 
 | T87 | The error-code namespaces gain `observation.<area>.<reason>`. | CMS | review | 2 |
 | T88 | `Resources.signal` documentation. | resources `types.ts`, README | review; `pnpm resources:check` | 2 |
 | T89 | The guide gains a module communication section; the Standard links it. | guide | `pnpm docs:check`; the examples test | 2 |
-| T90 | The Standard, its examples and the SDK-growth evidence change in the delivery; pinning consumers review the delta. | CMS; evidence | `pnpm sdk-growth:check`; PR 2 description (V9) | 2 |
+| T90 | The Standard and examples change in the delivery; its current reviewed bytes are pinned again; the entire frozen SDK-growth observation stays unchanged; pinning consumers migrate or record outstanding work. | CMS; current ownership pin; PR 2 delta | `pnpm ownership:checkpoint:test`; unchanged frozen evidence diff; `pnpm sdk-growth:check`; PR 2 description (V9) | 2 |
 | T91 | Reading a durable authority each time stays valid; a store is not a cache. | CMS rule 6 | doc only: guidance | 2 |
 | T92 | The packed archive names exactly one 0.x minor of resources. | `workspace:^` | `t/packed-root.test.mjs` | 1 |
 | T93 | A resources minor needs its own observation minor changeset. | process | Phase 3a stop condition | 3 |
@@ -850,7 +1003,7 @@ comment above a type case) start with the row ID. Reviewers tick the IDs in the 
 | T96 | The leaf build requires `dist/testing.js` and `dist/testing.d.ts`. | `build-leaf-package.mjs` | `tests/leaf-package-admission.test.mjs` (`leafBuildOutputs`); `pnpm observation:build` | 1 |
 | T97 | Packed root: `import` and `require(esm)` for both; deep-import, manifest and unknown-subpath negatives. | — | `t/packed-root.test.mjs` | 1 |
 | T98 | The admission entry arrives with the root and implementation; nothing precedes them. | PR 1 | commit 1a adds no row; "a root outside the table stays rejected" stays green | 1 |
-| T99 | Public from 0.1.0 through Changesets in the first release pull request; TEST consumer on its archives. | Phase 3 | Phase 3a and 3b done criteria | 3 |
+| T99 | Public from 0.1.0 through Changesets in the first release pull request; TEST consumer on its archives; 1.0.0 needs a separate decision. | Phase 3; leaf version rule | Phase 3a and 3b done criteria; leaf admission rejects 1.0.0 under the current row | 1, 3 |
 | T100 | Uploads follow ADR-0030's release rules; no unattended publisher. | Phase 3c | doc only: the owner publishes | 3 |
 | T101 | Pre-1.0 breaks ship as minors with a changelog entry and a migration note. | `AGENTS.md` | doc only: future releases | later |
 | T102 | Not enrolled in `package.public-api-compatibility` or G1. | do-not-touch list | `pnpm sdk-growth:check`; `public-api-compatibility.yaml` unchanged | 1 |
@@ -864,6 +1017,7 @@ comment above a type case) start with the row ID. Reviewers tick the IDs in the 
 | T110 | The packed-root test installs the archive with the resources archive on the supported Node lines. | tests | `t/packed-root.test.mjs` in both Node lanes; `tests/node-runtime-compatibility.test.mjs` | 1 |
 | T111 | A bounded TEST consumer passes on the release archives before the release pull request merges. | TEST project | Phase 3b | 3 |
 | T112 | Every known item has an owner and a trigger. | README | doc only: listed with links to ADR-0034 | 1 |
+| T113 | One internal deferral queue per package copy, not configurable or exposed to production modules. | `src/features/delivery/context.ts` private FIFO | Source review of its single owner; multi-store ordering in `t/guards.test.mjs`; drained `store-closed` GC control; T13/T97 verify one installed copy across entries and no exported queue | 1 |
 
 ## 11. Repository check changes (PR 1)
 
@@ -884,16 +1038,23 @@ export const leafBuildOutputs = leaf => leafSubpaths(leaf)
   .flatMap(subpath => [`dist/${subpathFile(subpath)}.js`, `dist/${subpathFile(subpath)}.d.ts`]);
 ```
 
-`identityProblem` returns `"subpaths"` when `subpaths` is present and is not an array whose first element is `"."`,
-whose elements are unique and whose others match `/^\.\/[a-z][a-z0-9-]*$/u`, or when the row is not `PUBLIC`.
-`leaf-package-admission.mjs`: compare `manifest.exports` with `expectedLeafExports(leaf)` (message "requires exactly its
-row's ESM export subpaths and no deep import") and require every `leafEntrySources(leaf)` file; drop `ROOT_EXPORT`.
+Validate `subpaths` only when explicitly present; omission retains the root-only default for existing public and
+private rows. `identityProblem` returns `"subpaths"` if an explicit value is not an array of unique strings with `"."`
+first and all other elements matching `/^\.\/[a-z][a-z0-9-]*$/u`, or if that explicit field belongs to a non-`PUBLIC`
+row. Reject `"./index"`, which would alias the root's source and output. `leaf-package-admission.mjs` compares
+`manifest.exports` with `expectedLeafExports(leaf)` and requires every `leafEntrySources(leaf)` file; drop `ROOT_EXPORT`.
+For root-only rows, preserve all existing diagnostic text and validation order, including outer export-map errors,
+`requires one root-only ESM export and no deep import` and `requires src/index.ts`. Only rows admitting additional
+subpaths use new messages such as "requires exactly its row's ESM export subpaths and no deep import".
 `production-artifacts.mjs`: `exportMapViolations(exportsField, publicationBlocked, subpaths)` checks that the keys equal
 `subpaths` and validates each subpath with the existing carrier rules (labels `exports["<subpath>"]`, the `.` messages
-unchanged); `manifestCarrierViolations` passes `leafSubpaths` of the row, or `["."]` for Core and Assembly.
+unchanged); `manifestCarrierViolations` passes `leafSubpaths` for existing leaf checks and `["."]` for Core.
+Keep `ESM_CARRIER_NAMES` and the existing separate Assembly validation route unchanged.
 `build-leaf-package.mjs`: `access` every `leafBuildOutputs(leaf)` path under the package root. Tests in
-`tests/leaf-package-admission.test.mjs`: fixtures from `expectedLeafExports`; a synthetic row with `./testing` that is
-admitted only with both exports and both `src` entries; invalid `subpaths` values rejected.
+`tests/leaf-package-admission.test.mjs`: keep the independent `rootExport()` literal and define a separate literal
+for the synthetic `./testing` row. Compare the helpers to those literals; never generate both fixture and expected
+answer with the helper under test. Admit the synthetic row only with both exports and both `src` entries; reject
+invalid `subpaths` values. Preserve condition-key ordering tests and add the corresponding `./testing` negatives.
 
 ### 11.2 The observation row (Phase 1d)
 
@@ -995,7 +1156,7 @@ shown is `[]`; `S` stands for `packages/observation/src`):
 ```yaml
   - id: observation-errors          # roots and entrypoints: S/features/errors/errors.ts
   - id: observation-delivery        # roots and entrypoints: S/features/delivery/platform.ts, context.ts, pending.ts
-  - id: observation-store           # roots: the nine files of S/features/store/; entrypoints: types.ts, registry.ts, store.ts
+  - id: observation-store           # roots: explicit file list below; entrypoints: types.ts, registry.ts, store.ts
     # allow: boundaries [observation-errors, observation-delivery]; packages ["@get-modular/resources"]
   - id: observation-testing         # roots and entrypoints: S/features/testing/waits.ts
     # allow: boundaries [observation-errors, observation-delivery, observation-store]; packages ["@get-modular/resources"]
@@ -1012,7 +1173,11 @@ shown is `[]`; `S` stands for `packages/observation/src`):
 ```
 
 Write each boundary in the full form of the resources boundaries (explicit `roots`, `entrypoints` and the four `allow`
-lists); the comments above only give the content. Add `"@get-modular/observation"` to the packages of
+lists); the comments above only give the content. The nine `observation-store` roots are
+`S/features/store/types.ts`, `S/features/store/values.ts`, `S/features/store/registry.ts`,
+`S/features/store/arguments.ts`, `S/features/store/engine.ts`, `S/features/store/admission.ts`,
+`S/features/store/watch.ts`, `S/features/store/load.ts` and `S/features/store/store.ts`.
+Expand `S` to `packages/observation/src` in every actual YAML path. Add `"@get-modular/observation"` to the packages of
 `repository.development`. Add the observation entries next to conformance in
 `architecture/foundation/quality-source-coverage.yaml` (`packages/observation/tsconfig.json`),
 `suppression-governance.yaml` (`packages/observation/src`) and the `fullScanPaths` of `repository-agent-workflow.yaml`
@@ -1021,7 +1186,8 @@ lists); the comments above only give the content. Add `"@get-modular/observation
 ### 11.5 Do not touch
 
 `architecture/public-api/**`, `architecture/foundation/public-api-compatibility.yaml` (no G1 enrolment),
-`architecture/sdk-growth/status.json`, `architecture/contracts/**`, `architecture/checks/release-owned-files.mjs`
+`architecture/sdk-growth/status.json`, `architecture/sdk-growth/evidence/consumer-module-standard.json`,
+`architecture/contracts/**`, `architecture/checks/release-owned-files.mjs`
 (nothing here is release-owned; run its check) and `docs/architecture/system-boundary.md` (the ADR keeps it).
 
 ### 11.6 Documentation listing (Phase 1e)
@@ -1132,6 +1298,12 @@ pattern already covers it):
 
 ## 13. Changesets
 
+`Authoring surface changed: yes/no` is an established release-note convention, not a Changesets schema field or a
+new machine gate. Sources: `git show 3c28a0257817868ec4453e5e297fc4fc3baadb96:.changeset/add-resources-package.md`
+and `git show a01a129d39fe6574dba39e6187bb03ef6bcf9945:.changeset/add-conformance-package.md`; both changesets were
+consumed by releases and their text remains in the package changelogs. CMS "Module packages and contracts" uses
+the release-note declaration when a consumer reviews whether widening a peer range is safe.
+
 `.changeset/add-observation-package.md` (PR 1):
 
 ```markdown
@@ -1181,7 +1353,7 @@ Changesets 3.0.2 gives an out-of-range peer dependent only a patch.
 - Inputs: the release head's exact archives (observation 0.1.0, resources per Q4, Core and Assembly 0.5.0, conformance
   0.3.0), SHA-256 checked, installed from the tarballs offline with engine checks; Node 24.21.0 and 26.11.1; TypeScript
   5.8.3 and 7.0.2. The fixtures come from `packages/observation/tests/writer-tasks/**` and
-  `tests/support/static-rules.mjs` at the release head; record that commit.
+  `packages/observation/tests/support/static-rules.mjs` at the release head; record that commit.
 - Checks, bounded and without network: (1) the writer gate of section 9.4 against the installed archives instead of
   junctions; (2) one composition of a settings owner with area contracts and the `a-logger`, `b-catalog` and
   `c-pricing-context` references as `implement(..., scoped)` entries in a group under one root: `prepare`, `run` with an
@@ -1196,7 +1368,8 @@ Changesets 3.0.2 gives an out-of-range peer dependent only a patch.
 ## 15. Questions a fresh agent will ask
 
 1. **Where does the scheduler live?** `src/features/delivery/platform.ts` resolves "a later task" once at load;
-   `StoreEngine.schedule()` in `src/features/store/engine.ts` queues the flush and the closing immediate per store;
+   `src/features/delivery/context.ts` owns the one private FIFO. `StoreEngine.schedule()` enqueues a flush/close pair,
+   and result/error publication enqueues its own pair; one queue item always gets one native task;
    `src/features/delivery/pending.ts` counts scheduled flushes and loads for the waits.
 2. **How does `./testing` reach internal state without exporting it?** `src/testing.ts` re-exports
    `src/composition/testing.ts`, which re-exports `src/features/testing/waits.ts`; `waits.ts` imports
@@ -1226,14 +1399,16 @@ Changesets 3.0.2 gives an out-of-range peer dependent only a patch.
     and no waivers exist. Rewrite the code.
 11. **Why `.txt` fixtures?** Their relative imports resolve only inside the temporary project; as `.ts` they would be
     parsed by Foundation, lint and the typecheck in place and fail.
-12. **Which Node do I use locally?** 26.11.1 by default and 24.21.0 for the Node 24 line, from existing installations;
-    do not install Node versions globally.
+12. **Which Node do I use locally?** 26.11.1 by default and 24.21.0 for the Node 24 line. Section 2.1 names the
+    executable variables, original machine paths and direct pnpm invocation. Restore a missing pinned runtime only
+    in a disposable tool directory; do not install Node versions globally.
 13. **How do environment probes set up the runtime before the package loads?** With a preload:
     `node --import ./tests/env-setup-<mode>.mjs tests/env-probe.mjs <mode>`; no dynamic import is needed.
 14. **What do I do when a writer negative fails at a different gate?** STOP and report the gate table; never edit the
     manifest to match (V7).
-15. **What if Windows CI is slower than 13 minutes allow?** Batch compiler runs and raise test concurrency; then split
-    the `observation` lane in two and update `tests/ci-check-lanes.test.mjs`; never raise `timeout-minutes`.
+15. **What if Windows CI is slower than 13 minutes allow?** Batch compiler runs and inspect subprocess contention;
+    keep mutation concurrency bounded. If needed, split the `observation` lane in two and update
+    `tests/ci-check-lanes.test.mjs` while preserving the full obligation union; never raise `timeout-minutes`.
 16. **Who merges and who publishes?** Merging needs the lead's explicit permission (V13); publishing is the owner's step
     (Phase 3c).
 17. **What if the sources do not decide a behavior?** Keep the prototype's behavior (section 7.5), add no rule, and list
@@ -1266,3 +1441,16 @@ Changesets 3.0.2 gives an out-of-range peer dependent only a patch.
 7. The release pull request ships observation 0.1.0 (and resources 0.1.1 per Q4) only after the TEST consumer passed on
    its exact archives; the archives and record are retained; publication stays with the owner.
 8. The README lists the ADR-0034 known items with owner and trigger; nothing out of scope (section 1.1) was added.
+
+## 18. Hand-off
+
+Before another executor starts, record the exact branch/head and predecessor, current phase, changed files,
+executed commands with outcomes, unexecuted platform/release checks, and the next bounded action. Link the current
+PRs and their observed heads; a previous green result applies only to unchanged inputs. Include section 2's merged
+ADR file/registry digests, the #183 correction predecessor, choices Q1/Q2/Q4 and the resolved Q3 rule, and any consumer
+pin work still outstanding. Do not mark future tests in section 10 as passed merely because their cases are planned.
+
+Start with [HANDOFF.md](HANDOFF.md), then Phase 0. At this planning checkpoint the package is unimplemented and
+Phase 0 is blocked while ADR-0034 is absent from `main`. The absent "Hand-off" link alleged in the original dry-run
+notes was not present in the supplied plan; this section adds an explicit delivery record rather than repairing a
+reproduced broken link. V13 still requires explicit permission to merge; publication remains the owner's action.
