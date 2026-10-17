@@ -358,6 +358,18 @@ for (const driver of selected) {
       gates[2]?.release("br models");
       await settle();
       assert.deepEqual(events.slice(4), ["result br models"]);
+      // A commit may also land after publication was queued but before its delivery task. Comparing only lastOffered
+      // would publish the old result ahead of the newer load's flush.
+      store.set({ region: "au" });
+      await settle();
+      gates[3]?.release("au models");
+      await Promise.resolve();
+      store.set({ region: "ca" });
+      await settle();
+      assert.deepEqual(events.slice(5), ["loading au", "loading ca"], "queued publication rechecks the store revision");
+      gates[4]?.release("ca models");
+      await settle();
+      assert.deepEqual(events.slice(7), ["result ca models"]);
       await module.control.close();
     });
 

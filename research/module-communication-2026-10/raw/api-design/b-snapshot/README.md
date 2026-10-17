@@ -35,7 +35,7 @@ import type { ModuleContext, Resources } from "@get-modular/resources";
 `ModuleContext` is `{ signal, resources }`, which Assembly passes to your factory: `resources` is your module's scope,
 and everything registered there is released when the module closes; `signal` aborts if the run that constructs the
 module is cancelled. If your factory does not need the context, name the parameter `_context`. Call `watch` and `load`
-in the factory or in adapter code: domain and application code never see `Resources`.
+in the module's composition file: domain and application code never see `Resources`.
 
 A module that follows a value:
 
@@ -93,10 +93,11 @@ deps.settings.load(deps.settings.read(["region"]), {        // this snapshot onl
 ```
 
 `loader` runs in the next task for the newest values and again after each change. One run at a time: a change aborts
-the running one and only the newest change waits. `onResult` and `onError` arrive only for values that are still
-current in the store. `onLoading` is called once in every delivery (several coalesced changes are one delivery), before the older run can
+the running one and only the newest change waits. `onResult` and `onError` arrive in a later delivery task after
+the loader's Promise settles, only for values that are still current in the store immediately before the callback.
+`onLoading` is called once in every delivery (several coalesced changes are one delivery), before the older run can
 finish, so the state above never shows models of an older region once the change is delivered: no extra region check at call time is
-needed. Like every subscriber, the state is one task behind the commit itself: code that calls `current()` in the same
+needed. Like every subscriber, the state updates in later tasks: code that calls `current()` in the same
 synchronous turn as `set` still sees the previous state. One snapshot may be passed to both `watch` and `load`, with
 different names.
 
@@ -266,7 +267,9 @@ delivery (commits outside any context have depth 0; a delivery has the largest d
 a commit deeper than 64 fails with `observation.delivery.cascade`. A failing commit changes nothing, is reported to the
 `reportError` of the store it was made to, and then throws.
 How long a context counts: a handler's context until the end of its delivery task, including what that task does
-through `await` and microtasks; a loader's context while its run is active. Timers, servers and connections that a
+through `await` and microtasks; a loader's context until its returned Promise settles. `onResult` and `onError`
+receive a separate delivery task and context; their currentness is checked again immediately before the callback.
+Timers, servers and connections that a
 handler creates do not inherit it: their later commits start at depth 0, so a heartbeat or a restarted server never
 reports a false echo. Where it is carried: synchronously everywhere; across `await` and microtasks in Node, which
 provides AsyncLocalStorage (reached through `process.getBuiltinModule`, no import). Not caught: an echo that crosses a
@@ -298,7 +301,10 @@ Testing. `@get-modular/observation/testing` exports `liveSubscriptions(facet, re
 their running and queued loads) and `asyncDetection` (true where asynchronous echoes are detected; a test preset
 asserts it). The waits always have a deadline: `options.timeoutMs`, 5000 ms of real time by default (`Infinity` only
 when passed); `options.signal`, for example `t.signal`, ends a wait earlier but never switches the deadline off.
-Both give `observation.testing.timeout`. The package takes `setImmediate` from `node:timers` and captures it and
-`performance.now` when it loads, so fake global timers (Jest, Vitest, sinon), even installed before the package
-loads, stall neither deliveries nor the deadline; node:test `mock.timers` also replaces `node:timers`, so enable it
-after importing the package. Import this entry point only from test files.
+Both give `observation.testing.timeout`. In Node the package captures `setImmediate` from `node:timers` and
+`performance.now` from `node:perf_hooks` through `process.getBuiltinModule`, so fake global timers and clocks,
+even installed before the package loads, stall neither deliveries nor the deadline. A mock that also replaces the
+builtins, including node:test `mock.timers` for `node:timers`, must be enabled after importing the package.
+Without the builtins, the available global scheduler and clock are captured at import; that fallback cannot make
+a previously faked clock or scheduler real. Queued `onResult` and `onError` deliveries count toward `delivered()`;
+`settled()` also waits for running and queued loads. Import this entry point only from test files.

@@ -2,10 +2,15 @@
 import type * as Api from "../b-snapshot/testing.js";
 import { asyncCascadeDetection, liveSubscriptions as liveIn, ObservationError, pendingWork, scheduleTask } from "./core.ts";
 
-// The engine's task scheduler (node:timers where available) and a clock captured at module load: fake timers cannot
-// stall the waits or switch the deadline off.
-const realNow: () => number = typeof globalThis.performance?.now === "function"
-  ? globalThis.performance.now.bind(globalThis.performance) : Date.now;
+// Capture the builtin clock as well as the engine's builtin task scheduler. A fake global performance installed
+// before import must not disable the deadline. Outside Node, capture the available global clock at import instead.
+const realNow: () => number = (() => {
+  const runtime = (globalThis as { readonly process?: { readonly getBuiltinModule?: (id: string) => unknown } }).process;
+  const hooks = typeof runtime?.getBuiltinModule === "function"
+    ? runtime.getBuiltinModule("node:perf_hooks") as { readonly performance?: { readonly now?: () => number } } | undefined : undefined;
+  const clock = typeof hooks?.performance?.now === "function" ? hooks.performance : globalThis.performance;
+  return typeof clock?.now === "function" ? clock.now.bind(clock) : Date.now;
+})();
 const nextTask = (): Promise<void> => new Promise((resolve) => { scheduleTask(resolve); });
 const DEFAULT_TIMEOUT_MS = 5_000;
 

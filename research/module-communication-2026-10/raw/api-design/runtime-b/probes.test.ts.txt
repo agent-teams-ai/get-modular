@@ -352,6 +352,17 @@ describe("R7. load never shows data of older values while newer values load", ()
     await settle();
     assert.deepEqual(shown, ["loading", "ready eu: eu models", "loading", "loading", "ready br: br models"],
       "eu is never shown while us loads, and the late us result is never shown");
+    // Recheck the independent publication task too: its source can change after the loader settled.
+    store.set({ region: "au" });
+    await settle();
+    gates[3]?.release("au models");
+    await Promise.resolve();
+    store.set({ region: "ca" });
+    await settle();
+    assert.deepEqual(shown.slice(5), ["loading", "loading"], "the queued au result is dropped before ca is delivered");
+    gates[4]?.release("ca models");
+    await settle();
+    assert.deepEqual(shown.slice(7), ["ready ca: ca models"]);
     await module.control.close();
   });
 });

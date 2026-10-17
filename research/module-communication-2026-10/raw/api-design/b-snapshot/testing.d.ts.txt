@@ -27,12 +27,13 @@ export type WaitOptions = {
 
 /**
  * Resolves at the first task boundary at which no delivery is scheduled (in `stores`, or anywhere), including
- * deliveries caused by deliveries. Loads may still be running. Rejects with `observation.testing.timeout` when the
- * signal aborts or the deadline passes. The package takes `setImmediate` from node:timers (through
- * process.getBuiltinModule) and captures it and `performance.now` when it loads, so fake global timers (Jest, Vitest,
- * sinon), even installed before the package loads, and fake timers installed afterwards (node:test `mock.timers`)
- * neither stall deliveries nor the deadline. node:test `mock.timers` also replaces node:timers: enable it after
- * importing the package.
+ * deliveries caused by deliveries and queued load result/error callbacks. Loads may still be running. Rejects with
+ * `observation.testing.timeout` when the signal aborts or the deadline passes. In Node the package captures
+ * `setImmediate` from node:timers and `performance.now` from node:perf_hooks through process.getBuiltinModule.
+ * Fake global timers and clocks installed before or after import then stall neither deliveries nor the deadline.
+ * A mock that also replaces the builtins, including node:test `mock.timers` for node:timers, must be enabled after
+ * importing the package. Without the builtins the available global scheduler and clock are captured at import;
+ * that fallback cannot make a previously faked clock or scheduler real.
  */
 export declare function delivered(options?: WaitOptions): Promise<void>;
 

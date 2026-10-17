@@ -1,0 +1,31 @@
+▶ R16. load result and error callbacks own a complete delivery task
+  ✔ onResult: synchronous echo is rejected at the first result (5.904567ms)
+  ✔ onResult: microtask echo is rejected at the first result (0.898909ms)
+  ✔ onResult: nested microtasks echo is rejected at the first result (1.016722ms)
+  ✔ onResult: awaited command echo is rejected at the first result (0.728139ms)
+  ✔ onResult: a timer started by the callback is a later independent action (2.279602ms)
+  ✔ onError: synchronous echo is rejected at the first result (0.565369ms)
+  ✔ onError: microtask echo is rejected at the first result (0.506394ms)
+  ✔ onError: nested microtasks echo is rejected at the first result (0.469409ms)
+  ✔ onError: awaited command echo is rejected at the first result (0.53814ms)
+  ✔ onError: a timer started by the callback is a later independent action (2.0841ms)
+  ✔ a load callback and a watcher preserve cascade depth across stores (7.343565ms)
+✔ R16. load result and error callbacks own a complete delivery task (25.165072ms)
+▶ R17. scheduled load publication stays current and is visible to testing waits
+  ✔ onResult: a commit before its queued delivery drops the old outcome (1.008931ms)
+  ✔ onResult: closing before publication drops it and drains the lane (0.771593ms)
+  ✔ onResult: escalation never turns a completed loader into a drain debt (7.371872ms)
+  ✔ onError: a commit before its queued delivery drops the old outcome (0.586892ms)
+  ✔ onError: closing before publication drops it and drains the lane (0.465223ms)
+  ✔ onError: escalation never turns a completed loader into a drain debt (5.652328ms)
+  ✔ delivered({ stores }) includes queued callbacks and their microtasks (0.749921ms)
+  ✔ delivered() includes queued callbacks and their microtasks (0.433116ms)
+✔ R17. scheduled load publication stays current and is visible to testing waits (18.121353ms)
+ℹ tests 19
+ℹ suites 2
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 47.978172
