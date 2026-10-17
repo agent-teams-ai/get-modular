@@ -1,0 +1,40 @@
+// "@get-modular/observation/testing": deterministic waiting and leak checks. Import it only from test files.
+// Review sketch of the public types; the stub is ../runtime/testing.ts.
+import type { Resources } from "@get-modular/resources";
+import type { ReadonlyStore } from "./api.js";
+
+/**
+ * Live subscriptions (`watch` plus `load`) on `store`; with `resources`, only those registered in that scope.
+ * A module's leak check asserts the store-wide count, `liveSubscriptions(facet) === 0`, after closing the module's
+ * scope: a subscription made by mistake in another scope is then caught too.
+ */
+export declare function liveSubscriptions(store: ReadonlyStore<object>, resources?: Resources): number;
+
+/**
+ * True where asynchronous echoes and cascades are detected (Node: AsyncLocalStorage through process.getBuiltinModule).
+ * A test preset asserts it, so that tests do not silently run without the detection production on Node has.
+ */
+export declare const asyncDetection: boolean;
+
+export type WaitOptions = {
+  /** Only these stores are awaited; without it, every store of this package copy. Prefer listing the stores under test. */
+  readonly stores?: readonly ReadonlyStore<object>[];
+  /** Ends the wait earlier with `observation.testing.timeout` (for example `t.signal`); it never switches the deadline off. */
+  readonly signal?: AbortSignal;
+  /** The deadline, always on: default 5000 ms of real time; `Infinity` only when passed explicitly. */
+  readonly timeoutMs?: number;
+};
+
+/**
+ * Resolves at the first task boundary at which no delivery is scheduled (in `stores`, or anywhere), including
+ * deliveries caused by deliveries. Loads may still be running. Rejects with `observation.testing.timeout` when the
+ * signal aborts or the deadline passes. The package takes `setImmediate` from node:timers (through
+ * process.getBuiltinModule) and captures it and `performance.now` when it loads, so fake global timers (Jest, Vitest,
+ * sinon), even installed before the package loads, and fake timers installed afterwards (node:test `mock.timers`)
+ * neither stall deliveries nor the deadline. node:test `mock.timers` also replaces node:timers: enable it after
+ * importing the package.
+ */
+export declare function delivered(options?: WaitOptions): Promise<void>;
+
+/** Like `delivered`, and additionally waits until no load of those stores is running or queued. */
+export declare function settled(options?: WaitOptions): Promise<void>;

@@ -1,0 +1,52 @@
+== a-logger
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  a-logger: behaviour OK
+== b-catalog
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  b-catalog: behaviour OK
+== c-pricing-context
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  c-pricing-context: behaviour OK
+== d-greeter
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  d-greeter: behaviour OK
+== e-async-factory
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  e-async-factory: behaviour OK
+== f-watch-and-load
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  f-watch-and-load: behaviour OK
+== g-hierarchy
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  g-hierarchy: behaviour OK
+== h-requests
+  RULE h-requests: does not call .child(...)
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  BEHAVIOUR h-requests: convert() left subscriptions behind
+  BEHAVIOUR h-requests: after closing 100 of 200 tickers, 1 subscriptions remain (expected 100)
+  BEHAVIOUR h-requests: closed tickers left subscriptions behind
+  h-requests: 3 behaviour failure(s)
+== i-errors
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  i-errors: behaviour OK
+
+Variant b-snapshot, solutions in runs/r2-b-snapshot-small-1
+  a-logger: PASS
+  b-catalog: PASS
+  c-pricing-context: PASS
+  d-greeter: PASS
+  e-async-factory: PASS
+  e-sessions: MISSING
+  f-watch-and-load: PASS
+  g-hierarchy: PASS
+  h-requests: FAIL (rules,behaviour)
+  i-errors: PASS

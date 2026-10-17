@@ -1,0 +1,9 @@
+// Solution file for task (i). Save as i-errors.ts. Keep the exported signature; fill in the body.
+import type { ModuleContext } from "@get-modular/resources";
+import {
+  createNotifier, parseQuietHours, type NotificationStatus, type NotificationsDeps, type NotificationsProduct,
+} from "./i-errors.types.js";
+
+export async function createNotificationsModule(deps: NotificationsDeps, { resources }: ModuleContext): Promise<NotificationsProduct> {
+  // TODO
+}

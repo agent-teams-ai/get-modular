@@ -1,0 +1,37 @@
+// Variant B on the shared stub engine: watch(snapshot, { resources, name, onChange }).
+import type * as Api from "../b-snapshot/api.js";
+import { createEngine, ObservationError, type EngineOptions, type RawSnapshot } from "./core.ts";
+
+export { ObservationError };
+
+type Spec = { readonly resources: unknown; readonly name: unknown };
+type WatchSpec = Spec & { readonly onChange: (next: RawSnapshot) => unknown };
+type LoadSpec = Spec & {
+  readonly loader: (next: RawSnapshot, context: { readonly signal: AbortSignal }) => unknown;
+  readonly onLoading: (snapshot: RawSnapshot) => unknown;
+  readonly onResult: (result: unknown, snapshot: RawSnapshot) => unknown;
+  readonly onError: (cause: unknown, snapshot: RawSnapshot) => unknown;
+};
+
+export function createStore<V extends object & Required<V> & Api.FixedKeys<V>>(initial: V, options: Api.StoreOptions): Api.Store<V> {
+  // The engine creates every ListenerError, so the type-only brand of the public type holds by construction.
+  const engine = createEngine(initial, options as unknown as EngineOptions);
+  const facet = Object.freeze({
+    read: (keys: unknown) => engine.read(keys),
+    watch: (snapshot: unknown, spec: WatchSpec) => {
+      const origin = engine.originOf(snapshot); // keys and start revision come from the snapshot
+      return engine.watch({ resources: spec.resources, name: spec.name, keys: origin.keys, startRevision: origin.revision, onChange: spec.onChange });
+    },
+    load: (snapshot: unknown, spec: LoadSpec) => {
+      const origin = engine.originOf(snapshot);
+      return engine.load({ resources: spec.resources, name: spec.name, keys: origin.keys, loader: spec.loader, onLoading: spec.onLoading, onResult: spec.onResult, onError: spec.onError });
+    },
+  });
+  // The owner's read keeps working after close (the last values); the facet's read throws observation.store.closed.
+  const store = Object.freeze({ read: (keys: unknown) => engine.readOwner(keys), set: engine.set, readonly: () => facet, close: engine.close });
+  engine.register(store);
+  engine.register(facet);
+  return store as unknown as Api.Store<V>; // the stub engine is untyped; the public shape is the declaration
+}
+const conforms: typeof Api.createStore = createStore;
+void conforms;

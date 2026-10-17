@@ -1,0 +1,38 @@
+// Ergonomics of Frozen and FixedKeys for code agents write. Lines without a directive are expected to compile.
+import type { Resources } from "@get-modular/resources";
+import { createStore, type ListenerError, type ReadonlyStore, type Snapshot } from "@get-modular/observation";
+declare const resources: Resources;
+declare const reportError: (report: ListenerError) => undefined;
+const o = { name: "s", resources, reportError };
+
+// E1 inferred V from a dictionary variable: what does the agent see?
+declare const counts: Record<string, number>;
+// @ts-expect-error E1 dictionary inferred
+createStore(counts, o);
+
+// E2 interface records with literal keys must pass
+interface PrefsI { readonly theme: string; readonly size: number }
+createStore<PrefsI>({ theme: "light", size: 1 }, o);
+
+// E3 branded IDs survive Frozen?
+type UserId = string & { readonly __brand: "UserId" };
+declare function loadUser(id: UserId): void;
+type Session = { readonly user: UserId; readonly pair: readonly [string, number]; readonly model: Model };
+type Model = { readonly id: string; readonly tags: string[] };
+declare const s0: Session;
+const sessions = createStore<Session>(s0, o);
+const snap = sessions.read(["user", "pair", "model"]);
+loadUser(snap.values.user);                         // E3 a branded id read back must still be a UserId
+const first: string = snap.values.pair[0];          // E4 a tuple element keeps its type
+declare function render(model: Model): void;
+render(snap.values.model);                          // E5 domain function typed with a mutable array inside
+sessions.set({ model: snap.values.model });         // E6 a frozen value read back can be written again
+sessions.set({ model: { id: "m", tags: ["a"] } });  // E7 a fresh value
+// E8 generic helper over any store
+function follow<V extends object>(facet: ReadonlyStore<V>, key: keyof V & string, resources: Resources, show: (v: unknown) => void): void {
+  facet.watch(facet.read([key]), { resources, name: "m/x", onChange: (next) => { show(next.values); } });
+}
+void [first, follow];
+// E9 a named handler for a nested value
+const onModel = (next: Snapshot<Session, "model">): undefined => { render(next.values.model); return undefined; };
+void onModel;

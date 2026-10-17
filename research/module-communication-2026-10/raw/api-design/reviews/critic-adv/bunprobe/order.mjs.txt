@@ -1,0 +1,4 @@
+const log = [];
+setImmediate(() => { log.push("imm1"); Promise.resolve().then(() => log.push("micro-from-imm1")); queueMicrotask(() => log.push("qm-from-imm1")); process.nextTick(() => log.push("tick-from-imm1")); });
+setImmediate(() => { log.push("imm2"); });
+setTimeout(() => { console.log(`${typeof Bun !== "undefined" ? "bun " + Bun.version : "node " + process.version}: ${log.join(" > ")}`); }, 20);

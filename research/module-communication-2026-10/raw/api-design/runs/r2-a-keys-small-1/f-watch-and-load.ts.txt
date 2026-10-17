@@ -1,0 +1,26 @@
+import type { ModuleContext } from "@get-modular/resources";
+import {
+  fetchHolidays, regionLabel, type Holidays, type PanelDeps, type PanelProduct, type PanelView,
+} from "./f-watch-and-load.types.js";
+
+export async function createRegionPanelModule(deps: PanelDeps, { resources }: ModuleContext): Promise<PanelProduct> {
+  const settings = deps.settings.read(["region"]);
+  let label = regionLabel(settings.values.region);
+  let holidays: Holidays = { status: "loading" };
+  deps.settings.watch(resources, {
+    name: "region-panel/label",
+    keys: ["region"],
+    changesAfter: settings,
+    onChange: ({ values }) => { label = regionLabel(values.region); },
+  });
+  deps.settings.load(resources, {
+    name: "region-panel/holidays",
+    keys: ["region"],
+    loader: ({ values }, { signal }) => fetchHolidays(values.region, { signal }),
+    onLoading: () => { holidays = { status: "loading" }; },
+    onResult: (days, { values }) => { holidays = { status: "ready", region: values.region, days }; },
+    onError: (cause, { values }) => { holidays = { status: "failed", region: values.region, cause }; },
+  });
+  const view = (): PanelView => ({ label, holidays });
+  return { instance: undefined, capabilities: { "acme/region-panel": { view } } };
+}

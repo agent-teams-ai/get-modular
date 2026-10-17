@@ -1,0 +1,52 @@
+// "@get-modular/observation/testing" on the stub engine: deterministic waiting and leak checks for module tests.
+import type * as Api from "../b-snapshot/testing.js";
+import { asyncCascadeDetection, liveSubscriptions as liveIn, ObservationError, pendingWork, scheduleTask } from "./core.ts";
+
+// The engine's task scheduler (node:timers where available) and a clock captured at module load: fake timers cannot
+// stall the waits or switch the deadline off.
+const realNow: () => number = typeof globalThis.performance?.now === "function"
+  ? globalThis.performance.now.bind(globalThis.performance) : Date.now;
+const nextTask = (): Promise<void> => new Promise((resolve) => { scheduleTask(resolve); });
+const DEFAULT_TIMEOUT_MS = 5_000;
+
+type WaitOptions = { readonly stores?: readonly object[]; readonly signal?: AbortSignal; readonly timeoutMs?: number };
+
+/** True where asynchronous echoes and cascades are detected (AsyncLocalStorage available); a test preset can assert it. */
+export const asyncDetection: boolean = asyncCascadeDetection;
+
+export function liveSubscriptions(store: object, resources?: object): number {
+  return liveIn(store, resources);
+}
+/**
+ * Waits task by task until the condition holds at a task boundary. The deadline is always on (timeoutMs, default 5 s,
+ * Infinity only when passed explicitly); a signal ends the wait earlier, it never switches the deadline off.
+ */
+async function waitUntil(quiet: () => boolean, options: WaitOptions, what: string): Promise<void> {
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  if (!(timeoutMs > 0)) throw new ObservationError("observation.argument.invalid", "timeoutMs must be a positive number or Infinity");
+  const deadline = realNow() + timeoutMs;
+  for (;;) {
+    await nextTask();
+    if (quiet()) return;
+    if (options.signal?.aborted === true) {
+      throw new ObservationError("observation.testing.timeout", `${what} was abandoned: the signal aborted`, { cause: options.signal.reason });
+    }
+    if (realNow() > deadline) {
+      throw new ObservationError("observation.testing.timeout",
+        `${what} did not happen within ${timeoutMs} ms; another store may commit every task, or a load stays open (pass { stores })`);
+    }
+  }
+}
+/** Resolves when no delivery is scheduled (in `stores`, or anywhere); deliveries caused by deliveries are included. */
+export async function delivered(options: WaitOptions = {}): Promise<void> {
+  await waitUntil(() => pendingWork(options.stores).flushes === 0, options, "delivered()");
+}
+/** Like delivered(), and until no load (of `stores`, or anywhere) is running or queued. */
+export async function settled(options: WaitOptions = {}): Promise<void> {
+  await waitUntil(() => { const work = pendingWork(options.stores); return work.flushes === 0 && work.loads === 0; }, options, "settled()");
+}
+const conforms: {
+  readonly live: typeof Api.liveSubscriptions; readonly delivered: typeof Api.delivered; readonly settled: typeof Api.settled;
+  readonly detection: typeof Api.asyncDetection;
+} = { live: liveSubscriptions, delivered, settled, detection: asyncDetection };
+void conforms;

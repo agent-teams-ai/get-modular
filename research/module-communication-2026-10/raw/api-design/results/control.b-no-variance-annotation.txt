@@ -1,0 +1,18 @@
+[controls/b-no-variance-annotation] tsc7: OK (0 errors)
+[controls/b-no-variance-annotation] ts5.8.3: OK (0 errors)
+
+| File:line | Expectation | tsc7 | TS 5.8.3 |
+| --- | --- | --- | --- |
+| p3-variance-controls.ts:8 | unrelated record | TS2322 | TS2322 |
+| p3-variance-controls.ts:10 | same key, other type | TS2322 | TS2322 |
+| p3-variance-controls.ts:12 | slice -> wide | TS2322 | TS2322 |
+| p8-structural.b.ts:12 | Readonly<> unrelated | TS2322 | TS2322 |
+| p8-structural.b.ts:14 | Readonly<> wrong value type | TS2322 | TS2322 |
+| p8-structural.b.ts:16 | Pick<"read"> wrong value type | TS2322 | TS2322 |
+| p8-structural.b.ts:18 | intersection unrelated | TS2322 | TS2322 |
+| p8-structural.b.ts:21 | a hand-written port of read and watch with a wrong value type | TS2322 | TS2322 |
+| p8-structural.b.ts:23 | member type read with a wrong value type | TS2322 | TS2322 |
+| p8-structural.b.ts:25 | promise of unrelated | TS2322 | TS2322 |
+| p8-structural.b.ts:27 | array of wrong value type | TS2322 | TS2322 |
+| p8-structural.b.ts:35 | Store instead of readonly() | TS2739 | TS2739 |
+| p8-structural.b.ts:39 | slice snapshot passed to the wide facet | TS2345 | TS2345 |

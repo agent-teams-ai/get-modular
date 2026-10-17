@@ -1,0 +1,21 @@
+// Critic round 4: fake timers installed BEFORE the package loads (Jest enableGlobally, a Vitest setup file).
+const realSetTimeout = globalThis.setTimeout;
+const realImmediate = globalThis.setImmediate;
+const fakeQueue: (() => void)[] = [];
+(globalThis as { setImmediate: unknown }).setImmediate = (cb: () => void) => { fakeQueue.push(cb); return 0; }; // a fake clock: runs only when advanced
+const timersModule = process.getBuiltinModule("node:timers") as { setImmediate: typeof setImmediate };
+console.log(`node:timers.setImmediate is the real one: ${timersModule.setImmediate === realImmediate}`);
+const { createScope } = await import("@get-modular/resources");
+const { createStore, delivered } = await import("./observation.ts");
+const host = createScope({ name: "host" });
+const store = createStore<{ readonly n: number }>({ n: 0 }, { name: "s", resources: host.resources, reportError: () => undefined });
+const seen: number[] = [];
+const facet = store.readonly();
+facet.watch(facet.read(["n"]), { resources: host.resources, name: "m/n", onChange: ({ values }) => { seen.push(values.n); } });
+store.set({ n: 1 });
+const outcome = await Promise.race([
+  delivered().then(() => "resolved", (e: unknown) => `rejected ${(e as { code?: string }).code}`),
+  new Promise<string>((r) => { realSetTimeout(() => { r("still pending after 7000 ms"); }, 7000); }),
+]);
+console.log(`fake setImmediate installed before load: delivered() ${outcome}; deliveries seen ${seen.length}; fake queue ${fakeQueue.length}`);
+process.exit(0);

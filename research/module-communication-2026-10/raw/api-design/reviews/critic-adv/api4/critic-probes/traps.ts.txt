@@ -1,0 +1,45 @@
+// Each line marked TRAP compiles but misbehaves or throws at run time. `@ts-expect-error` marks what we WANT rejected.
+import type { Resources } from "@get-modular/resources";
+import { createStore, type ListenerError, type ReadonlyStore, type Snapshot } from "@get-modular/observation";
+declare const resources: Resources;
+declare const reportError: (report: ListenerError) => undefined;
+const o = { name: "s", resources, reportError };
+
+// T1 dictionary-shaped state: key set is fixed at createStore, so a new key throws observation.keys.unknown
+const sessions = createStore<Record<string, "open" | "closed">>({}, o);
+// @ts-expect-error T1 set of a key that does not exist at run time
+sessions.set({ "session-42": "open" });
+// @ts-expect-error T1 read of a key that does not exist at run time
+sessions.read(["session-42"]);
+
+// T2 non-plain values: Date, Map, class instances throw observation.values.not-plain at run time
+// @ts-expect-error T2 Date value
+createStore<{ readonly at: Date }>({ at: new Date() }, o);
+// @ts-expect-error T2 Map value
+createStore<{ readonly byId: ReadonlyMap<string, number> }>({ byId: new Map() }, o);
+
+// T3 deep mutation of frozen values: compiles, TypeError at run time
+const lists = createStore<{ readonly ids: number[] }>({ ids: [1] }, o);
+// @ts-expect-error T3 push into a frozen array from a snapshot
+lists.read(["ids"]).values.ids.push(2);
+
+// T4 conditional patch (update only what the user changed)
+type Prefs = { readonly theme: string; readonly density: "compact" | "comfortable" };
+const prefs = createStore<Prefs>({ theme: "light", density: "compact" }, o);
+declare const changedTheme: string | undefined;
+prefs.set({ ...(changedTheme === undefined ? {} : { theme: changedTheme }) }); // want: compiles
+
+// T5 same-typed snapshot of another store: compiles, observation.snapshot.foreign at run time
+declare const a: ReadonlyStore<Prefs>;
+declare const b: ReadonlyStore<Prefs>;
+// @ts-expect-error T5 snapshot of another store of the same type
+a.watch(b.read(["theme"]), { resources, name: "m/x", onChange: () => undefined });
+
+// T6 handler ignores its argument and keeps showing the first snapshot
+const first = a.read(["theme"]);
+declare function show(theme: string): void;
+a.watch(first, { resources, name: "m/theme", onChange: () => { show(first.values.theme); } }); // TRAP, stale forever
+
+// T7 a typed helper handler `(n) => void` (common style) is rejected; agents then wrap or cast
+const handler = (next: Snapshot<Prefs, "theme">): void => { show(next.values.theme); };
+a.watch(first, { resources, name: "m/theme2", onChange: handler }); // want: compiles? (it does not)

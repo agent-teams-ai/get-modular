@@ -1,0 +1,14 @@
+import type { ModuleContext } from "@get-modular/resources";
+import { openAuditLog, type AuditDeps, type AuditProduct } from "./e-async-factory.types.js";
+
+export async function createAuditModule(deps: AuditDeps, { resources }: ModuleContext): Promise<AuditProduct> {
+  const settings = deps.settings.read(["retentionDays"]);
+  const log = await openAuditLog(settings.values.retentionDays);
+  deps.settings.watch(resources, {
+    name: "audit/retention",
+    keys: ["retentionDays"],
+    changesAfter: settings,
+    onChange: ({ values }) => { log.setRetention(values.retentionDays); },
+  });
+  return { instance: log, capabilities: { "acme/audit": { record: (entry) => { log.append(entry); return undefined; } } } };
+}

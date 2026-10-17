@@ -1,0 +1,10 @@
+// Run against probe-a-no-noinfer: does a wider changesAfter widen the watched keys (a type lie)?
+import type { ReadonlyStore } from "@get-modular/observation";
+type App = { readonly theme: string; readonly region: string };
+declare const facet: ReadonlyStore<App>;
+declare const resources: import("@get-modular/resources").Resources;
+facet.watch(resources, { name: "x", keys: ["theme"], changesAfter: facet.read(["theme", "region"]), onChange: ({ values }) => {
+  // With NoInfer this line fails (region is not watched). Without it, K widens to "theme" | "region".
+  // @ts-expect-error region is not watched
+  void values.region;
+} });

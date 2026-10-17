@@ -1,0 +1,13 @@
+// Run against probe-b-no-annotation: is out V load-bearing?
+import type { ReadonlyStore } from "@get-modular/observation";
+type App = { readonly theme: string; readonly region: string };
+type Unrelated = { readonly color: number };
+type WrongType = { readonly theme: number };
+declare const facet: ReadonlyStore<App>;
+// @ts-expect-error unrelated record
+const unrelated: ReadonlyStore<Unrelated> = facet;
+// @ts-expect-error same key, other type
+const wrong: ReadonlyStore<WrongType> = facet;
+// @ts-expect-error slice -> wide
+const wide: ReadonlyStore<App> = facet as ReadonlyStore<{ readonly theme: string }>;
+void [unrelated, wrong, wide];

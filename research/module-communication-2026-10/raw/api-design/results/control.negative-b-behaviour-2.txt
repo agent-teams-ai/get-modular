@@ -1,0 +1,28 @@
+== e-async-factory
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  BEHAVIOUR e-async-factory: a change made while the log was opening was lost
+  e-async-factory: 1 behaviour failure(s)
+== g-hierarchy
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  BEHAVIOUR g-hierarchy: the parent did not follow a region change
+  BEHAVIOUR g-hierarchy: the child did not follow the parent's change (shown: 107.1)
+  BEHAVIOUR g-hierarchy: subscriptions on the parent's store remain after the child closed
+  g-hierarchy: 3 behaviour failure(s)
+== h-requests
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  BEHAVIOUR h-requests: convert() used a rate that was no longer current in 1999 of 2000 calls
+  h-requests: 1 behaviour failure(s)
+== i-errors
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  BEHAVIOUR i-errors: a failure of another module's handler on the status store did not reach deps.errors.report
+  i-errors: 1 behaviour failure(s)
+
+Variant b-snapshot, solutions in reference/negative/b-behaviour-2
+  e-async-factory: FAIL (behaviour)
+  g-hierarchy: FAIL (behaviour)
+  h-requests: FAIL (behaviour)
+  i-errors: FAIL (behaviour)

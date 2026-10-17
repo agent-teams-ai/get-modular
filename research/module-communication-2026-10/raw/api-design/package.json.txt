@@ -1,0 +1,5 @@
+{
+  "name": "observation-api-shape",
+  "private": true,
+  "type": "module"
+}

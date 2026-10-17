@@ -1,0 +1,101 @@
+// Type tests for variant C. Each `@ts-expect-error` must fail on its own line on tsc7 and TypeScript 5.8.3.
+import type { Resources } from "@get-modular/resources";
+import { createStore, type ListenerError, type ReadonlyStore } from "@get-modular/observation";
+
+type AppSettings = { readonly theme: string; readonly logLevel: "debug" | "info"; readonly region: string };
+type ThemeSlice = { readonly theme: string };
+type RegionSlice = { readonly region: string };
+type Unrelated = { readonly color: number };
+type WrongType = { readonly theme: number };
+
+declare const resources: Resources;
+declare const reportError: (report: ListenerError) => undefined;
+declare function show(theme: string): void;
+declare function createPicker(theme: string): { readonly show: (theme: string) => undefined };
+declare function fetchCatalog(region: string, options: { readonly signal: AbortSignal }): Promise<readonly string[]>;
+
+const store = createStore<AppSettings>({ theme: "light", logLevel: "info", region: "eu" }, { name: "settings", resources, reportError });
+const facet = store.readonly();
+
+// Slices by variance.
+const themes: ReadonlyStore<ThemeSlice> = facet;
+const regions: ReadonlyStore<RegionSlice> = store.readonly();
+// @ts-expect-error slice -> wide record
+const widened: ReadonlyStore<AppSettings> = themes;
+// @ts-expect-error unrelated record
+const unrelated: ReadonlyStore<Unrelated> = facet;
+// @ts-expect-error same key, other value type
+const wrongType: ReadonlyStore<WrongType> = facet;
+// @ts-expect-error owner hands out the writable store instead of readonly()
+const leaked: ReadonlyStore<AppSettings> = store;
+
+// No writes through the facet.
+// @ts-expect-error set through readonly facet
+facet.set({ theme: "dark" });
+// @ts-expect-error close through readonly facet
+themes.close();
+
+// Keys.
+// @ts-expect-error read a key outside the slice
+themes.read(["region"]);
+// @ts-expect-error read a key the store does not have
+facet.read(["colour"]);
+// @ts-expect-error read no keys
+facet.read([]);
+
+// watch subscribes and returns the starting snapshot; name is optional.
+const first = themes.watch({ resources, keys: ["theme"], onChange: ({ values }) => { show(values.theme); } });
+const themeName: string = first.values.theme;
+// NOT CAUGHT: the handler closes over `picker`, which is created after watch. If the factory awaits between
+// these two lines, a delivery can run while `picker` is still in its temporal dead zone (ReferenceError).
+const theme = themes.watch({ resources, keys: ["theme"], onChange: ({ values }) => { picker.show(values.theme); } });
+const picker = createPicker(theme.values.theme);
+// NOT CAUGHT: two subscriptions in different modules get the same default name "theme".
+themes.watch({ resources, keys: ["theme"], onChange: () => undefined });
+// @ts-expect-error watch a key outside the slice (foreign key)
+themes.watch({ resources, keys: ["region"], onChange: () => undefined });
+// @ts-expect-error watch no keys
+themes.watch({ resources, keys: [], onChange: () => undefined });
+// @ts-expect-error async onChange
+themes.watch({ resources, keys: ["theme"], onChange: async ({ values }) => { show(values.theme); } });
+// @ts-expect-error expression body returns a value
+themes.watch({ resources, keys: ["theme"], onChange: ({ values }) => values.theme.length });
+// @ts-expect-error expression body returns void (braces required)
+themes.watch({ resources, keys: ["theme"], onChange: ({ values }) => show(values.theme) });
+// @ts-expect-error missing resources
+themes.watch({ keys: ["theme"], onChange: () => undefined });
+// @ts-expect-error AbortSignal is not a scope
+themes.watch({ resources: resources.signal, keys: ["theme"], onChange: () => undefined });
+// @ts-expect-error handler reads a key it does not follow
+facet.watch({ resources, keys: ["theme"], onChange: ({ values }) => { void values.region; } });
+// @ts-expect-error the returned snapshot has only the watched keys
+void facet.watch({ resources, keys: ["theme"], onChange: () => undefined }).values.region;
+
+// load.
+const region = regions.load({
+  resources, name: "catalog", keys: ["region"],
+  loader: ({ values }, { signal }) => fetchCatalog(values.region, { signal }),
+  onResult: (models, from) => { const list: readonly string[] = models; void [list, from.values.region]; },
+  onError: (cause) => { void cause; },
+});
+// @ts-expect-error loader returns a value, not a Promise
+regions.load({ resources, keys: ["region"], loader: ({ values }) => [values.region], onResult: () => undefined, onError: () => undefined });
+// @ts-expect-error missing onError
+regions.load({ resources, keys: ["region"], loader: async () => 1, onResult: () => undefined });
+// @ts-expect-error async onResult
+regions.load({ resources, keys: ["region"], loader: async () => 1, onResult: async () => { }, onError: () => undefined });
+// @ts-expect-error onResult result type does not match the loader
+regions.load({ resources, keys: ["region"], loader: async () => 1, onResult: (value: string) => { void value; }, onError: () => undefined });
+
+// Owner facet.
+const revision: number = store.set({ theme: "dark" });
+// @ts-expect-error unknown key in set
+store.set({ colour: "red" });
+// @ts-expect-error wrong value type in set
+store.set({ logLevel: "verbose" });
+// @ts-expect-error optional keys are not allowed in a store record
+createStore<{ readonly mode?: string }>({}, { name: "x", resources, reportError });
+// @ts-expect-error a store needs resources
+createStore<ThemeSlice>({ theme: "light" }, { name: "x", reportError });
+
+void [widened, unrelated, wrongType, leaked, themeName, revision, region];

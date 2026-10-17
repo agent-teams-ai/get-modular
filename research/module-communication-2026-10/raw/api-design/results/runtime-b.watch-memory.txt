@@ -1,0 +1,6 @@
+signal binding only: 1064 bytes per live watch (20 000 live)
+signal binding only: 22 bytes kept per closed source while the subscriber scope stays open
+child scope per watch: 3080 bytes per live watch (20 000 live)
+child scope per watch: -92 bytes kept per closed source while the subscriber scope stays open
+entry per watch: 1282 bytes per live watch (20 000 live)
+entry per watch: 511 bytes kept per closed source while the subscriber scope stays open

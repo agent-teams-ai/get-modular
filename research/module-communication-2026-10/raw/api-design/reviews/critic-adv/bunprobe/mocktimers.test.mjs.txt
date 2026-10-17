@@ -1,0 +1,8 @@
+import { test, mock } from "node:test";
+test("mock.timers patches node:timers?", () => {
+  const timers = process.getBuiltinModule("node:timers");
+  const before = timers.setImmediate; const globalBefore = globalThis.setImmediate;
+  mock.timers.enable({ apis: ["setImmediate"] });
+  console.log(`after enable: global replaced ${globalThis.setImmediate !== globalBefore}; node:timers replaced ${process.getBuiltinModule("node:timers").setImmediate !== before}`);
+  mock.timers.reset();
+});

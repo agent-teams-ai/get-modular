@@ -1,0 +1,12 @@
+// Critic round 4: one scope with many watches = many abort listeners on one AbortSignal. Any Node warning?
+import { createScope } from "@get-modular/resources";
+import { createStore } from "./observation.ts";
+process.on("warning", (w) => { console.log(`WARNING ${w.name}: ${w.message}`); });
+const host = createScope({ name: "host" });
+const module = host.resources.child({ name: "m" });
+for (let s = 0; s < 20; s += 1) {
+  const store = createStore<{ readonly v: number }>({ v: 0 }, { name: `s${s}`, resources: host.resources, reportError: () => undefined });
+  const facet = store.readonly();
+  for (let i = 0; i < 50; i += 1) facet.watch(facet.read(["v"]), { resources: module.resources, name: `m/w${i}`, onChange: () => undefined });
+}
+setTimeout(async () => { const report = await module.control.close(); console.log(`1000 watches in one scope; close complete ${report.complete}`); }, 50);

@@ -1,0 +1,8 @@
+import type { Resources } from "@get-modular/resources";
+import { createStore, type ListenerError } from "@get-modular/observation";
+declare const resources: Resources;
+declare const reportError: (report: ListenerError) => undefined;
+const o = { name: "s", resources, reportError };
+declare const counts: Record<string, number>;
+createStore<Record<string, number>>({}, o);
+createStore(counts, o);

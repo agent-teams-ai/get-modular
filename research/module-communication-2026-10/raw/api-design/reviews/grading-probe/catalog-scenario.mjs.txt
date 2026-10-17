@@ -1,0 +1,40 @@
+// Scenario for task (b): what current() returns while a newer region is still loading.
+import { createScope } from "scratchpad/api-shape/.toolchain/node_modules/@get-modular/resources/dist/index.js";
+const variant = process.argv[2];
+const runtime = { a: "a-keys", b: "b-snapshot", c: "c-atomic" }[variant];
+const { createStore } = await import(`./runtime/${runtime}.ts`);
+const { createCatalogModule } = await import(`./${variant}/b-catalog.ts`);
+const { calls } = await import(`./${variant}/b-catalog.types.js`);
+const task = () => new Promise((r) => setImmediate(r));
+const settle = async () => { for (let i = 0; i < 5; i += 1) await task(); };
+const show = (label, s) => console.log(`[${variant}] ${label}: ${s.status}${s.region ? " " + s.region : ""}${s.models ? " models=" + s.models.map((m) => m.id).join(",") : ""}`);
+const errors = [];
+const host = createScope({ name: "host" });
+const settings = createStore({ region: "eu", theme: "light" }, { name: "settings", resources: host.resources, reportError: (r) => { errors.push(r); } });
+const mod = host.resources.child({ name: "catalog" });
+const product = await createCatalogModule({ settings: settings.readonly() }, { signal: mod.resources.signal, resources: mod.resources });
+const current = product.capabilities["acme/catalog"].current;
+show("after factory", current());
+await settle();
+console.log(`[${variant}] fetch calls so far: ${calls.map((c) => c.region).join(",")}`);
+calls[0].resolve(); await settle();
+show("eu resolved", current());
+// Scenario 1: newer region chosen; its fetch is in flight.
+settings.set({ region: "us" });
+show("right after set(us), same task", current());
+await settle();
+console.log(`[${variant}] fetch calls so far: ${calls.map((c) => c.region).join(",")}`);
+show("us fetch in flight", current());
+calls[1].resolve(); await settle();
+show("us resolved", current());
+// Scenario 2: an older fetch resolves after a newer region was set but before the store delivers the change.
+settings.set({ region: "jp" }); await settle();          // jp fetch starts
+settings.set({ region: "br" });                            // br chosen; jp still in flight, not yet aborted
+calls[2].resolve();                                        // jp result arrives in the same task
+await settle();
+console.log(`[${variant}] fetch calls so far: ${calls.map((c) => c.region).join(",")}`);
+show("br chosen, jp resolved late, br in flight", current());
+calls[3].resolve(); await settle();
+show("br resolved", current());
+console.log(`[${variant}] reportError: ${errors.length}`);
+await mod.control.close(); await host.control.close();

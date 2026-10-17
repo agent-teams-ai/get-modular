@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# The same deliberate defects as tools/mutations.sh, against the variant B probes in runtime-b/ (origin/main resources).
+set -uo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$root"
+status=0
+for mutation in leak-detached no-key-index unbounded-dirty queue-loads late-detach no-name-check publish-stale compare-last-offered no-loading-signal no-cascade-guard retain-after-close no-scope-limit no-echo-guard no-async-context facet-read-after-close unbounded-context; do
+  output="$(perl -e 'alarm 90; exec @ARGV' env OBSERVATION_STUB_MUTATION="$mutation" node --expose-gc runtime-b/probes.test.ts 2>&1)"
+  code=$?
+  caught="$(printf '%s\n' "$output" | grep -E '^✖ R[0-9]' | sed -E 's/^✖ (R[0-9]+)\..*/\1/' | sort -u | paste -sd, -)"
+  if [[ -z "$caught" && $code -eq 142 ]]; then caught="a probe that never finished (killed after 90 s)"; fi
+  if [[ -z "$caught" ]]; then echo "NOT CAUGHT  $mutation"; status=1; else echo "caught      $mutation  by $caught"; fi
+done
+exit $status

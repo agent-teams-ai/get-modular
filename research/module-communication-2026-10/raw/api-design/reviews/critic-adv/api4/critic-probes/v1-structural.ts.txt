@@ -1,0 +1,38 @@
+// Does `out V` protect only alias-to-alias comparisons? Structural paths that lose the alias.
+import type { ReadonlyStore } from "@get-modular/observation";
+type App = { readonly theme: string; readonly region: string };
+type Unrelated = { readonly color: number };
+type WrongType = { readonly theme: number };
+declare const facet: ReadonlyStore<App>;
+
+// 1. Readonly<> mapped over the alias
+// @ts-expect-error Readonly<> unrelated
+const r1: Readonly<ReadonlyStore<Unrelated>> = facet;
+// @ts-expect-error Readonly<> wrong type
+const r2: Readonly<ReadonlyStore<WrongType>> = facet;
+// 2. Pick<> of one member
+// @ts-expect-error Pick watch unrelated
+const p1: Pick<ReadonlyStore<Unrelated>, "watch"> = facet;
+// @ts-expect-error Pick read wrong type
+const p2: Pick<ReadonlyStore<WrongType>, "read"> = facet;
+// 3. Intersection with something else
+// @ts-expect-error intersection unrelated
+const i1: ReadonlyStore<Unrelated> & { readonly tag?: string } = facet;
+// 4. A hand-written structural port, as CMS application/ports recommend ("The use case types what it needs with its own port")
+type ThemeSource = {
+  readonly read: ReadonlyStore<WrongType>["read"];
+  readonly watch: ReadonlyStore<WrongType>["watch"];
+};
+// @ts-expect-error hand-written port wrong type
+const h1: ThemeSource = facet;
+// 5. Indexed member types directly
+// @ts-expect-error member read wrong type
+const m1: ReadonlyStore<WrongType>["read"] = facet.read;
+// @ts-expect-error member watch unrelated
+const m2: ReadonlyStore<Unrelated>["watch"] = facet.watch;
+// 6. Inside a generic container (Promise / array)
+// @ts-expect-error promise unrelated
+const g1: Promise<ReadonlyStore<Unrelated>> = Promise.resolve(facet);
+// @ts-expect-error array unrelated
+const g2: readonly ReadonlyStore<WrongType>[] = [facet];
+void [r1, r2, p1, p2, i1, h1, m1, m2, g1, g2];

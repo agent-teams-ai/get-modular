@@ -1,0 +1,8 @@
+== e-async-factory
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  BEHAVIOUR e-async-factory: a log that was opened while its module was closing was never closed
+  e-async-factory: 1 behaviour failure(s)
+
+Variant b-snapshot, solutions in reference/negative/b-behaviour-5
+  e-async-factory: FAIL (behaviour)

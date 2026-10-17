@@ -1,0 +1,48 @@
+== a-logger
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  a-logger: behaviour OK
+== b-catalog
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  b-catalog: behaviour OK
+== c-pricing-context
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  c-pricing-context: behaviour OK
+== d-greeter
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  d-greeter: behaviour OK
+== e-async-factory
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  e-async-factory: behaviour OK
+== f-watch-and-load
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  f-watch-and-load: behaviour OK
+== g-hierarchy
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  g-hierarchy: behaviour OK
+== h-requests
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  h-requests: behaviour OK
+== i-errors
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  i-errors: behaviour OK
+
+Variant b-snapshot, solutions in runs/r2-b-snapshot-large-1
+  a-logger: PASS
+  b-catalog: PASS
+  c-pricing-context: PASS
+  d-greeter: PASS
+  e-async-factory: PASS
+  e-sessions: MISSING
+  f-watch-and-load: PASS
+  g-hierarchy: PASS
+  h-requests: PASS
+  i-errors: PASS

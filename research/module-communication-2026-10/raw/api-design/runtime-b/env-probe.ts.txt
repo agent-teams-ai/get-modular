@@ -1,0 +1,41 @@
+// L2 and L3: environments prepared BEFORE the package loads. Run as separate processes (load order matters):
+//   node runtime-b/env-probe.ts fake-before   a fake global setImmediate that never fires, installed before import
+//   node runtime-b/env-probe.ts no-node       no global setImmediate and no process.getBuiltinModule (browser-like)
+import assert from "node:assert/strict";
+
+const mode = process.argv[2];
+const realTimeout = globalThis.setTimeout;
+const pause = (ms: number): Promise<void> => new Promise((resolve) => { realTimeout(resolve, ms); });
+if (mode === "fake-before") {
+  (globalThis as { setImmediate: unknown }).setImmediate = (): undefined => undefined; // like a fake installed globally
+} else if (mode === "no-node") {
+  delete (globalThis as { setImmediate?: unknown }).setImmediate;
+  Object.defineProperty(process, "getBuiltinModule", { value: undefined, configurable: true });
+} else {
+  throw new Error("usage: node runtime-b/env-probe.ts fake-before|no-node");
+}
+
+const { createScope } = await import("@get-modular/resources");
+const observation = await import("./observation.ts"); // must not throw a ReferenceError
+const host = createScope({ name: "host" });
+const store = observation.createStore<{ readonly level: number; readonly other: number }>({ level: 0, other: 0 },
+  { name: "settings", resources: host.resources, reportError: () => undefined });
+const facet = store.readonly();
+const module = host.resources.child({ name: "m" });
+const seen: number[] = [];
+facet.watch(facet.read(["level"]), { resources: module.resources, name: "m/level", onChange: ({ values }) => { seen.push(values.level); } });
+store.set({ level: 1 });
+await observation.delivered({ stores: [facet], timeoutMs: 2_000 }); // must not hang
+assert.deepEqual(seen, [1], "the delivery ran");
+if (mode === "no-node") {
+  assert.equal(observation.asyncDetection, false, "no AsyncLocalStorage without getBuiltinModule");
+  // Synchronous echo detection still works.
+  let calls = 0;
+  facet.watch(facet.read(["other"]), { resources: module.resources, name: "m/echo", onChange: ({ values }) => { calls += 1; if (calls < 100) store.set({ other: values.other + 1 }); } });
+  store.set({ other: 1 });
+  await pause(50);
+  assert.equal(calls, 1, "a synchronous echo is caught at the first round");
+} else {
+  assert.equal(observation.asyncDetection, true);
+}
+console.log(`${mode}: import ok; delivery ok; asyncDetection ${observation.asyncDetection}`);

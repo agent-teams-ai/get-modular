@@ -1,0 +1,10 @@
+== h-requests
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  BEHAVIOUR h-requests: the failure "screen 1 broke" of a throwing screen was not reported
+  BEHAVIOUR h-requests: the failure "screen 2 broke" of a throwing screen was not reported
+  BEHAVIOUR h-requests: 50 of 50 closed tickers' screens are still referenced after close
+  h-requests: 3 behaviour failure(s)
+
+Variant b-snapshot, solutions in reference/negative/b-behaviour-4
+  h-requests: FAIL (behaviour)

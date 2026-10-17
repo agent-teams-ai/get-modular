@@ -1,0 +1,60 @@
+// Critic round 3: does the delivery context leak into work that outlives the handler and serves other initiators?
+import { createServer, request, type Server } from "node:http";
+import { createScope } from "@get-modular/resources";
+import { createStore, type ListenerError } from "./observation.ts";
+const scenario = process.argv[2];
+const reports: ListenerError[] = [];
+const report = (r: ListenerError): undefined => { reports.push(r); return undefined; };
+const codes = (): string => reports.map((r) => `${r.subscription}:${(r.cause as { code?: string }).code}`).join(", ");
+process.on("exit", (code) => { console.log(`[${scenario}] exit code ${code}; reports: ${codes() || "none"}`); });
+const host = createScope({ name: "host" });
+
+if (scenario === "heartbeat") {
+  // Owner A: a connection store. ensureConnected() starts a heartbeat lazily, on first use.
+  const connection = createStore<{ readonly server: string; readonly status: string }>({ server: "a", status: "idle" }, { name: "connection", resources: host.resources, reportError: report });
+  let heartbeat: ReturnType<typeof setInterval> | undefined;
+  let beats = 0;
+  const ensureConnected = (): "accepted" => {
+    heartbeat ??= setInterval(() => { beats += 1; connection.set({ status: `alive ${beats}` }); }, 10); // A's own timer
+    return "accepted";
+  };
+  // Module X shows server and status, and asks A to connect when the server changes (a command, no echo by intent).
+  const facet = connection.readonly();
+  const ui = host.resources.child({ name: "ui" });
+  facet.watch(facet.read(["server", "status"]), { resources: ui.resources, name: "ui/connection", onChange: () => { ensureConnected(); } });
+  connection.set({ server: "b" }); // user action outside any delivery
+  setTimeout(() => { clearInterval(heartbeat); console.log(`[heartbeat] beats ${beats}`); }, 200);
+}
+
+if (scenario === "server") {
+  // Settings owner with an admin command; module S restarts its HTTP server whenever the port setting changes.
+  const settings = createStore<{ readonly port: number; readonly motd: string }>({ port: 1, motd: "hi" }, { name: "settings", resources: host.resources, reportError: report });
+  const requestSettings = (patch: { readonly port: number }): "accepted" => { settings.set(patch); return "accepted"; }; // owner command
+  let server: Server | undefined;
+  let served = 0;
+  const start = (): void => {
+    server?.close();
+    server = createServer((req, res) => { // admin endpoint: changes the port setting (a user action)
+      served += 1;
+      try { requestSettings({ port: served + 1 }); res.end("ok"); } catch (error) { res.end(`failed: ${(error as { code?: string }).code}`); }
+    });
+    server.listen(0);
+  };
+  start(); // in the factory, outside any delivery
+  const facet = settings.readonly();
+  const module = host.resources.child({ name: "server-module" });
+  facet.watch(facet.read(["port"]), { resources: module.resources, name: "server/port", onChange: () => { start(); } });
+  const call = (): Promise<string> => new Promise((resolve) => {
+    const address = server?.address();
+    const port = typeof address === "object" && address !== null ? address.port : 0;
+    request({ port, path: "/" }, (res) => { let body = ""; res.on("data", (c) => { body += String(c); }); res.on("end", () => { resolve(body); }); }).end();
+  });
+  const results: string[] = [];
+  for (let i = 0; i < 70; i += 1) {
+    results.push(await call());
+    await new Promise((r) => { setTimeout(r, 5); }); // let the delivery restart the server
+  }
+  const failures = results.map((r, i) => [i + 1, r] as const).filter(([, r]) => r !== "ok");
+  console.log(`[server] ${results.length} admin requests; first failure at request ${failures[0]?.[0] ?? "none"} (${failures[0]?.[1] ?? ""}); failures ${failures.length}`);
+  server?.close();
+}

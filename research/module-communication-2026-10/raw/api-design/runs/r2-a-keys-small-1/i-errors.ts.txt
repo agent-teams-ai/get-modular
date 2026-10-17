@@ -1,0 +1,34 @@
+import { createStore } from "@get-modular/observation";
+import type { ModuleContext } from "@get-modular/resources";
+import {
+  createNotifier, parseQuietHours, type NotificationStatus, type NotificationsDeps, type NotificationsProduct,
+} from "./i-errors.types.js";
+
+const quietHoursSubscription = "notifications/quiet-hours";
+
+export async function createNotificationsModule(deps: NotificationsDeps, { resources }: ModuleContext): Promise<NotificationsProduct> {
+  const settings = deps.settings.read(["quietHours"]);
+  const notifier = createNotifier(parseQuietHours(settings.values.quietHours));
+  const status = createStore<NotificationStatus>({ muted: false }, {
+    name: "notifications/status", resources, reportError: deps.errors.report,
+  });
+  deps.settings.watch(resources, {
+    name: quietHoursSubscription,
+    keys: ["quietHours"],
+    changesAfter: settings,
+    onChange: (next) => {
+      try {
+        notifier.setQuietHours(parseQuietHours(next.values.quietHours));
+      } catch (cause) {
+        deps.errors.report({ store: "settings", subscription: quietHoursSubscription, revision: next.revision, cause });
+      }
+    },
+  });
+  return {
+    instance: notifier,
+    capabilities: {
+      "acme/notifications": { mute: (muted) => { status.set({ muted }); return undefined; } },
+      "acme/notifications/status": status.readonly(),
+    },
+  };
+}

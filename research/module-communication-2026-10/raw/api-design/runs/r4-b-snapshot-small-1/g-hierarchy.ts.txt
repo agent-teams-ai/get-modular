@@ -1,0 +1,75 @@
+import { createStore } from "@get-modular/observation";
+import type { ModuleContext } from "@get-modular/resources";
+import {
+  createTotalDisplay, discountFor, grossTotal, vatRateFor,
+  type CheckoutDeps, type CheckoutProduct, type DiscountRequests, type PricingContext, type PricingOwnerDeps,
+  type PricingOwnerProduct, type PricingSettings,
+} from "./g-hierarchy.types.js";
+
+export async function createPricingOwnerModule(deps: PricingOwnerDeps, { resources }: ModuleContext): Promise<PricingOwnerProduct> {
+  const toContext = (values: PricingSettings): Pick<PricingContext, "currency" | "vatRate"> => ({
+    currency: values.currency,
+    vatRate: vatRateFor(values.region),
+  });
+  const settings = deps.settings.read(["currency", "region"]);
+  // Settings commits patch only currency and vatRate, so an accepted discount survives them.
+  const context = createStore<PricingContext>({ ...toContext(settings.values), discountPercent: 0 }, {
+    name: "pricing/context",
+    resources,
+    reportError: deps.errors.report,
+  });
+  deps.settings.watch(settings, {
+    resources,
+    name: "pricing-owner/settings",
+    onChange: ({ values }) => {
+      context.set(toContext(values));
+    },
+  });
+  const discounts: DiscountRequests = {
+    requestDiscount: (code: string): "accepted" | "rejected" => {
+      const percent = discountFor(code);
+      if (percent === undefined) {
+        return "rejected";
+      }
+      context.set({ discountPercent: percent });
+      return "accepted";
+    },
+  };
+  return {
+    instance: undefined,
+    capabilities: { "acme/pricing/context": context.readonly(), "acme/pricing/discounts": discounts },
+  };
+}
+
+export async function createCheckoutModule(deps: CheckoutDeps, { resources }: ModuleContext): Promise<CheckoutProduct> {
+  const display = createTotalDisplay();
+  const rates = deps.pricing.read(["vatRate", "discountPercent"]);
+  let net = 0;
+  let latest = rates.values;
+  const showTotal = (): undefined => {
+    display.show(grossTotal(net, latest.vatRate, latest.discountPercent));
+    return undefined;
+  };
+  deps.pricing.watch(rates, {
+    resources,
+    name: "checkout/rates",
+    onChange: ({ values }) => {
+      latest = values;
+      showTotal();
+    },
+  });
+  showTotal();
+  return {
+    instance: display,
+    capabilities: {
+      "acme/checkout": {
+        setNet: (amount: number): undefined => {
+          net = amount;
+          showTotal();
+          return undefined;
+        },
+        applyCode: (code: string): "accepted" | "rejected" => deps.discounts.requestDiscount(code),
+      },
+    },
+  };
+}

@@ -1,0 +1,5 @@
+tsc7: Version 7.0.2
+ts: Version 5.8.3
+node: v26.11.0
+resources (runtime-b): get-modular origin/main ca879f773fbbf8977bba8a348cc5a34660603067
+assembly and resources sources (--gm-main probes): get-modular origin/main bcd4c9ad0fe47e58dccdfa172f1cb58e6a501ac3

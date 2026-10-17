@@ -1,0 +1,29 @@
+// Critic round 3: the default 5 s guard of delivered()/settled().
+import { test, mock } from "node:test";
+import { createScope } from "@get-modular/resources";
+import { createStore, delivered } from "./observation.ts";
+const outcome = async (p: Promise<unknown>, ms: number): Promise<string> => {
+  const real = globalThis.setTimeout;
+  return Promise.race([p.then(() => "resolved", (e: unknown) => `rejected ${(e as { code?: string }).code}`), new Promise<string>((r) => { real(() => { r(`still pending after ${ms} ms`); }, ms); })]);
+};
+function busyStore() {
+  const host = createScope({ name: "host" });
+  const store = createStore<{ readonly n: number }>({ n: 0 }, { name: "busy", resources: host.resources, reportError: () => undefined });
+  let running = true;
+  void (async () => { let n = 0; while (running) { store.set({ n: n += 1 }); await new Promise((r) => { setImmediate(r); }); } })();
+  return { stop: () => { running = false; }, host };
+}
+test("W1 a signal that never aborts (for example node:test t.signal) switches the 5 s guard off", async (t) => {
+  const busy = busyStore();
+  console.log(`W1 delivered({ signal: t.signal }) next to a per-task committer: ${await outcome(delivered({ signal: t.signal }), 7_000)}`);
+  console.log(`W1 delivered() without a signal: ${await outcome(delivered(), 7_000)}`);
+  busy.stop();
+});
+test("W2 mock.timers with setImmediate: the 5 s guard never runs", async () => {
+  const host = createScope({ name: "host" });
+  const store = createStore<{ readonly n: number }>({ n: 0 }, { name: "s", resources: host.resources, reportError: () => undefined });
+  mock.timers.enable({ apis: ["setImmediate"] });
+  store.set({ n: 1 });
+  console.log(`W2 delivered() with setImmediate mocked: ${await outcome(delivered(), 7_000)}`);
+  mock.timers.reset();
+});

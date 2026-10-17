@@ -1,0 +1,710 @@
+// Variant B: resource, memory and scaling probes against @get-modular/resources built from get-modular origin/main
+// (runtime-b/node_modules/@get-modular/resources -> ../.gm-resources-main, commit in its SOURCE_COMMIT file).
+//   node --expose-gc runtime-b/probes.test.ts
+import assert from "node:assert/strict";
+import { createServer, request, type Server } from "node:http";
+import { describe, mock, test } from "node:test";
+import { createScope, scoped, type CloseReport, type ModuleContext, type Resources } from "@get-modular/resources";
+import { asyncDetection, createStore, delivered, liveSubscriptions, MAX_CASCADE_DEPTH, settled, stats, type ListenerError } from "./observation.ts";
+import type { FixedKeys } from "../b-snapshot/api.js";
+
+const gc = (globalThis as { readonly gc?: () => void }).gc;
+const tick = (): Promise<void> => new Promise((resolve) => { setImmediate(resolve); });
+const settle = delivered; // the testing entry point: no tuned tick counts
+const collect = async (): Promise<void> => {
+  assert.ok(gc, "run with node --expose-gc");
+  for (let i = 0; i < 6; i += 1) { await tick(); gc(); }
+};
+const codeOf = (error: unknown): unknown => (error as { readonly code?: unknown } | null)?.code;
+const debtsOf = (report: CloseReport) =>
+  report.debts.map((debt) => ({ path: debt.path.join("/"), state: debt.state, code: debt.state === "failed" ? codeOf(debt.cause) : undefined }));
+
+type Settings = { readonly level: string; readonly region: string; readonly theme: string };
+type Gate = { readonly region: string; readonly signal: AbortSignal; readonly release: (value: string) => void };
+
+type Limits = { readonly maxSubscriptionsPerScope?: number; readonly maxSubscriptions?: number };
+function world<V extends object & Required<V> & FixedKeys<V>>(initial: V, limits: Limits = {}) {
+  const reports: ListenerError[] = [];
+  const host = createScope({ name: "host" });
+  const owner = host.resources.child({ name: "owner" });
+  const store = createStore<V>(initial, {
+    name: "settings", resources: owner.resources,
+    reportError: (report) => { reports.push(report); return undefined; },
+    ...limits,
+  });
+  const module = host.resources.child({ name: "module" });
+  return { host, owner, module, store, facet: store.readonly(), reports };
+}
+
+/** A catalog-style load on `region`. `stubborn` loaders ignore their signal until released. */
+function regionLoad(facet: ReturnType<typeof world<Settings>>["facet"], resources: Resources, stubborn: boolean) {
+  const runs: Gate[] = [];
+  const published: string[] = [];
+  facet.load(facet.read(["region"]), {
+    resources, name: "catalog",
+    loader: ({ values }, { signal }) => new Promise<string>((resolve, reject) => {
+      runs.push({ region: values.region, signal, release: resolve });
+      if (!stubborn) signal.addEventListener("abort", () => { reject(signal.reason); }, { once: true });
+    }),
+    onLoading: () => undefined,
+    onResult: (result) => { published.push(result); },
+    onError: (cause) => { published.push(`error:${String(cause)}`); },
+  });
+  return { runs, published };
+}
+
+describe("B: the resources package in use", () => {
+  test("is the origin/main build", () => {
+    const resolved = import.meta.resolve("@get-modular/resources");
+    assert.match(resolved, /\.gm-resources-main\/packages\/resources\/dist\/index\.js$/);
+  });
+});
+
+describe("R1. the subscription is released when the subscriber scope closes", () => {
+  test("no delivery and no new load after close() is called, while the drain is still waiting", async () => {
+    const { store, facet, module } = world<Settings>({ level: "info", region: "eu", theme: "light" });
+    const seen: string[] = [];
+    facet.watch(facet.read(["level"]), { resources: module.resources, name: "logger", onChange: ({ values }) => { seen.push(values.level); } });
+    const load = regionLoad(facet, module.resources, true);
+    store.set({ level: "debug" });
+    await settle();
+    assert.deepEqual(seen, ["debug"]);
+    assert.equal(stats(store).live, 2);
+
+    let closed = false;
+    const closing = module.control.close().then((report) => { closed = true; return report; });
+    assert.equal(stats(store).live, 0, "both subscriptions detached synchronously by close()");
+    store.set({ level: "warn", region: "us" });
+    await settle();
+    assert.equal(closed, false, "the drain still waits for the running load");
+    assert.deepEqual(seen, ["debug"], "no delivery after close() was called");
+    assert.equal(load.runs.length, 1, "no new load after close() was called");
+    load.runs[0]?.release("late");
+    const report = await closing;
+    assert.equal(report.complete, true);
+    assert.deepEqual(load.published, [], "the late result of a closed load is dropped");
+  });
+});
+
+describe("R2. after close the store keeps no reference to subscriber closures", () => {
+  test("subscriber scope closed: internal maps are empty and the handler is collected", async () => {
+    const { host, store, facet } = world<Settings>({ level: "info", region: "eu", theme: "light" });
+    let ref: WeakRef<object> | undefined;
+    let closing: Promise<CloseReport> | undefined;
+    (() => {
+      const module = host.resources.child({ name: "short-lived" });
+      const onChange = (): undefined => undefined;
+      ref = new WeakRef(onChange);
+      facet.watch(facet.read(["level"]), { resources: module.resources, name: "w", onChange });
+      closing = module.control.close();
+    })();
+    assert.equal((await closing)?.complete, true);
+    const after = stats(store);
+    assert.deepEqual({ live: after.live, buckets: after.buckets, dirty: after.dirty }, { live: 0, buckets: 0, dirty: 0 });
+    await collect();
+    assert.equal(ref?.deref(), undefined);
+  });
+
+  test("store.close() while the subscriber scope stays open and referenced: nothing retained, one source.closed report (with control)", async () => {
+    const open = world<Settings>({ level: "info", region: "eu", theme: "light" });
+    const closedStore = world<Settings>({ level: "info", region: "eu", theme: "light" });
+    const refs: WeakRef<object>[] = [];
+    for (const { facet, module } of [open, closedStore]) {
+      (() => {
+        const onChange = (): undefined => undefined;
+        refs.push(new WeakRef(onChange));
+        facet.watch(facet.read(["level"]), { resources: module.resources, name: "dashboard/level", onChange });
+      })();
+    }
+    closedStore.store.close();
+    assert.deepEqual(closedStore.reports.map((r) => [r.source, r.subscription, codeOf(r.cause)]),
+      [["settings", "dashboard/level", "observation.source.closed"]]);
+    assert.throws(() => closedStore.facet.read(["level"]), (error: unknown) => codeOf(error) === "observation.store.closed");
+    assert.deepEqual([stats(closedStore.store).live, stats(closedStore.store).buckets], [0, 0]);
+    await collect();
+    assert.notEqual(refs[0]?.deref(), undefined, "control: an open store retains a live subscriber");
+    assert.equal(refs[1]?.deref(), undefined, "a closed store's subscriber is released while its scope is still open");
+    assert.equal((await closedStore.module.control.close()).complete, true);
+    void open.module; // the subscriber scopes stay referenced until here
+  });
+});
+
+describe("R3. buffers stay bounded under 10 000 rapid set calls", () => {
+  test("10 000 sets in one task: one delivery per subscription, one buffered entry per subscription", async () => {
+    const { store, facet, module } = world<Settings>({ level: "0", region: "eu", theme: "light" });
+    const deliveries = [0, 0, 0];
+    for (const index of [0, 1, 2]) {
+      facet.watch(facet.read(["level"]), { resources: module.resources, name: `w${index}`, onChange: () => { deliveries[index] = (deliveries[index] ?? 0) + 1; } });
+    }
+    let maxDirty = 0;
+    for (let i = 1; i <= 10_000; i += 1) { store.set({ level: String(i) }); maxDirty = Math.max(maxDirty, stats(store).dirty); }
+    await settle();
+    assert.deepEqual(deliveries, [1, 1, 1]);
+    assert.equal(maxDirty, 3, "the buffer is the set of subscriptions, not the list of commits");
+  });
+
+  test("10 000 sets over 100 tasks: at most one delivery per task per subscription, the newest value", async () => {
+    const { store, facet, module } = world<Settings>({ level: "0", region: "eu", theme: "light" });
+    let task = 0;
+    const perTask = new Map<number, number>();
+    let last = "";
+    facet.watch(facet.read(["level"]), {
+      resources: module.resources, name: "w",
+      onChange: ({ values }) => { perTask.set(task, (perTask.get(task) ?? 0) + 1); last = values.level; },
+    });
+    for (let i = 1; i <= 10_000; i += 1) {
+      store.set({ level: String(i) });
+      if (i % 100 === 0) { await tick(); task += 1; }
+    }
+    await settle();
+    assert.ok(Math.max(...perTask.values()) <= 1, "never two deliveries in one task");
+    assert.ok(perTask.size <= 101);
+    assert.equal(last, "10000");
+  });
+
+  test("10 000 region changes while a load runs: one active, at most one pending, 2 loader calls", async () => {
+    const { store, facet, module } = world<Settings>({ level: "info", region: "r0", theme: "light" });
+    const load = regionLoad(facet, module.resources, true);
+    await settle();
+    let maxPending = 0;
+    for (let i = 1; i <= 10_000; i += 1) {
+      store.set({ region: `r${i}` });
+      if (i % 10 === 0) await tick(); // 1 000 deliveries, each replaces the single pending slot
+      maxPending = Math.max(maxPending, stats(store).loadsPending);
+    }
+    assert.equal(maxPending, 1);
+    assert.equal(load.runs.length, 1);
+    load.runs[0]?.release("r0 result");
+    await settle();
+    assert.equal(load.runs.length, 2);
+    assert.equal(load.runs[1]?.region, "r10000");
+    load.runs[1]?.release("r10000 result");
+    await settle();
+    assert.deepEqual(load.published, ["r10000 result"]);
+    await module.control.close();
+  });
+});
+
+describe("R4. dispatch cost: 500 subscriptions on different keys versus one changed key", () => {
+  test("a set of one key: 1 index lookup, 1 visit, 1 callback; ten keys: 10 of each", async (t) => {
+    type Digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9";
+    type Key500 = `k${"0" | "1" | "2" | "3" | "4"}${Digit}${Digit}`; // 500 literal keys, k000 .. k499
+    const keys = Array.from({ length: 500 }, (_, i) => `k${String(i).padStart(3, "0")}` as Key500); // test data only
+    const { store, facet, module } = world<Record<Key500, number>>(Object.fromEntries(keys.map((key) => [key, 0])) as Record<Key500, number>, { maxSubscriptionsPerScope: 1024 });
+    const calls = new Map<string, number>();
+    for (const key of keys) {
+      facet.watch(facet.read([key]), { resources: module.resources, name: key, onChange: () => { calls.set(key, (calls.get(key) ?? 0) + 1); } });
+    }
+    const before = stats(store);
+    store.set({ k123: 1 });
+    await settle();
+    const one = stats(store);
+    assert.deepEqual({ lookups: one.indexLookups - before.indexLookups, visits: one.visits - before.visits, callbacks: [...calls.values()].reduce((a, b) => a + b, 0) },
+      { lookups: 1, visits: 1, callbacks: 1 });
+    store.set({ k000: 2, k001: 2, k002: 2, k003: 2, k004: 2, k005: 2, k006: 2, k007: 2, k008: 2, k009: 2 });
+    await settle();
+    const ten = stats(store);
+    assert.deepEqual({ lookups: ten.indexLookups - one.indexLookups, visits: ten.visits - one.visits, callbacks: [...calls.values()].reduce((a, b) => a + b, 0) - 1 },
+      { lookups: 10, visits: 10, callbacks: 10 });
+    const started = performance.now();
+    for (let i = 3; i < 10_003; i += 1) store.set({ k499: i });
+    t.diagnostic(`500 subscriptions on 500 keys: set of one key ${((performance.now() - started) / 10).toFixed(3)} us`);
+    await module.control.close();
+  });
+
+  test("contrast: 500 subscriptions on the same key get 500 callbacks from one set", async () => {
+    const { store, facet, module } = world<Settings>({ level: "info", region: "eu", theme: "light" }, { maxSubscriptionsPerScope: 1024 });
+    let callbacks = 0;
+    for (let i = 0; i < 500; i += 1) facet.watch(facet.read(["level"]), { resources: module.resources, name: `w${i}`, onChange: () => { callbacks += 1; } });
+    const before = stats(store);
+    store.set({ theme: "dark" });
+    await settle();
+    assert.equal(stats(store).visits - before.visits, 0, "a key nobody follows costs no visit");
+    store.set({ level: "debug" });
+    await settle();
+    assert.equal(callbacks, 500);
+    await module.control.close();
+  });
+});
+
+describe("R5. repeated watch in one long-lived scope (per-request pattern)", () => {
+  test("same name: observation.subscription.duplicate-name, the first subscription stays", () => {
+    const { store, facet, module } = world<Settings>({ level: "info", region: "eu", theme: "light" });
+    const handle = (): void => { facet.watch(facet.read(["level"]), { resources: module.resources, name: "request", onChange: () => undefined }); };
+    handle();
+    assert.throws(handle, (error: unknown) => codeOf(error) === "observation.subscription.duplicate-name");
+    assert.equal(stats(store).live, 1);
+  });
+
+  test("generated names: observation.subscriptions.limit at 64 in the leaking scope; other scopes are not affected", () => {
+    const { store, facet, module, host } = world<Settings>({ level: "info", region: "eu", theme: "light" });
+    let accepted = 0;
+    assert.throws(() => {
+      for (let i = 0; i < 5_000; i += 1) {
+        facet.watch(facet.read(["level"]), { resources: module.resources, name: `request-${i}`, onChange: () => undefined });
+        accepted += 1;
+      }
+    }, (error: unknown) => codeOf(error) === "observation.subscriptions.limit");
+    assert.equal(accepted, 64);
+    const healthy = host.resources.child({ name: "healthy" });
+    facet.watch(facet.read(["level"]), { resources: healthy.resources, name: "healthy/level", onChange: () => undefined });
+    assert.deepEqual([liveSubscriptions(facet, module.resources), liveSubscriptions(facet, healthy.resources), stats(store).live], [64, 1, 65]);
+  });
+
+  test("recommended guard: a child scope per request, closed when the request ends (10 000 requests)", async () => {
+    const { store, facet, module } = world<Settings>({ level: "info", region: "eu", theme: "light" });
+    for (let i = 0; i < 10_000; i += 1) {
+      const request = module.resources.child({ name: "request" });
+      facet.watch(facet.read(["level"]), { resources: request.resources, name: "level", onChange: () => undefined });
+      const report = await request.control.close();
+      assert.equal(report.complete, true);
+    }
+    assert.deepEqual([stats(store).live, stats(store).buckets], [0, 0]);
+  });
+});
+
+describe("R6. closing while a load is still running", () => {
+  test("subscriber scope closes, loader honors abort: abort reaches the loader, complete, no debts", async () => {
+    const { facet, module } = world<Settings>({ level: "info", region: "eu", theme: "light" });
+    const load = regionLoad(facet, module.resources, false);
+    await settle();
+    const report = await module.control.close();
+    assert.equal(load.runs[0]?.signal.aborted, true);
+    assert.equal(report.complete, true);
+    assert.deepEqual(debtsOf(report), []);
+    assert.deepEqual(load.published, [], "an aborted run reports neither result nor error");
+  });
+
+  test("subscriber scope closes, loader ignores abort, Host escalates: failed debt with a code; a retry completes", async () => {
+    const { facet, module } = world<Settings>({ level: "info", region: "eu", theme: "light" });
+    const load = regionLoad(facet, module.resources, true);
+    await settle();
+    const escalate = new AbortController();
+    const closing = module.control.close({ escalate: escalate.signal });
+    assert.equal(load.runs[0]?.signal.aborted, true, "abort reaches the loader when the close starts");
+    escalate.abort();
+    const report = await closing;
+    assert.equal(report.complete, false);
+    assert.deepEqual(debtsOf(report), [{ path: "host/module/load:catalog/drain", state: "failed", code: "observation.load.still-running" }]);
+    load.runs[0]?.release("late");
+    await settle();
+    assert.deepEqual(load.published, []);
+    assert.equal((await module.control.close()).complete, true);
+  });
+
+  test("subscriber scope closes, loader ignores abort, Host abandons: pending debt, settled false", async () => {
+    const { facet, module } = world<Settings>({ level: "info", region: "eu", theme: "light" });
+    const load = regionLoad(facet, module.resources, true);
+    await settle();
+    const abandon = new AbortController();
+    const closing = module.control.close({ abandon: abandon.signal });
+    await settle();
+    abandon.abort();
+    const report = await closing;
+    assert.equal(report.settled, false);
+    assert.deepEqual(debtsOf(report), [{ path: "host/module/load:catalog/drain", state: "pending", code: undefined }]);
+    load.runs[0]?.release("late");
+    assert.equal((await module.control.close()).complete, true);
+  });
+
+  test("store.close() during a load: abort reaches the loader; the owner closes clean; the subscriber's drain owns the debt", async () => {
+    const { store, facet, module, owner, reports } = world<Settings>({ level: "info", region: "eu", theme: "light" });
+    const load = regionLoad(facet, module.resources, true);
+    await settle();
+    store.close();
+    assert.equal(load.runs[0]?.signal.aborted, true);
+    assert.equal(stats(store).live, 0);
+    assert.deepEqual(reports.map((r) => codeOf(r.cause)), ["observation.source.closed"]);
+    const ownerReport = await owner.control.close();
+    assert.equal(ownerReport.complete, true, "store close is synchronous and leaves no debt in the owner's scope");
+    const escalate = new AbortController();
+    escalate.abort();
+    const moduleReport = await module.control.close({ escalate: escalate.signal });
+    assert.deepEqual(debtsOf(moduleReport), [{ path: "host/module/load:catalog/drain", state: "failed", code: "observation.load.still-running" }]);
+    load.runs[0]?.release("late");
+    await settle();
+    assert.deepEqual(load.published, []);
+    assert.equal((await module.control.close()).complete, true);
+  });
+});
+
+describe("R7. load never shows data of older values while newer values load", () => {
+  test("onLoading on queue; a result that lands after set() but before delivery is dropped (store revision)", async () => {
+    const { store, facet, module } = world<Settings>({ level: "info", region: "eu", theme: "light" });
+    const shown: string[] = []; // every state the module ever published, so a transient stale state is visible
+    const gates: { readonly region: string; readonly release: (value: string) => void }[] = [];
+    facet.load(facet.read(["region"]), {
+      resources: module.resources, name: "catalog",
+      loader: ({ values }) => new Promise<string>((resolve) => { gates.push({ region: values.region, release: resolve }); }),
+      onLoading: () => { shown.push("loading"); },
+      onResult: (models, { values }) => { shown.push(`ready ${values.region}: ${models}`); },
+      onError: () => undefined,
+    });
+    await settle();
+    gates[0]?.release("eu models");
+    await settle();
+    store.set({ region: "us" });
+    await settle();
+    store.set({ region: "br" });
+    gates[1]?.release("us models"); // lands after set(br), before its delivery
+    await settle();
+    gates[2]?.release("br models");
+    await settle();
+    assert.deepEqual(shown, ["loading", "ready eu: eu models", "loading", "loading", "ready br: br models"],
+      "eu is never shown while us loads, and the late us result is never shown");
+    await module.control.close();
+  });
+});
+
+describe("R8. watch and load when resources.signal is already aborted: its reason is rethrown, nothing registered", () => {
+  test("the scope's close was requested while the factory awaited: resources.scope.closed", async () => {
+    const { store, facet, module } = world<Settings>({ level: "info", region: "eu", theme: "light" });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const factory = (async () => {
+      const level = facet.read(["level"]);
+      await gate;
+      facet.watch(level, { resources: module.resources, name: "m/level", onChange: () => undefined });
+    })();
+    const closing = module.control.close();
+    release();
+    await assert.rejects(factory, (error: unknown) => codeOf(error) === "resources.scope.closed");
+    assert.equal(stats(store).live, 0);
+    assert.equal((await closing).complete, true);
+  });
+
+  test("the run that constructs the module was cancelled while the factory awaited (scoped()): the Host's reason", async () => {
+    const { store, facet, host } = world<Settings>({ level: "info", region: "eu", theme: "light" });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const run = new AbortController();
+    const reason = new Error("the Host cancelled this construction");
+    const factory = scoped("acme/module", async (_deps: undefined, { resources }: ModuleContext) => {
+      const region = facet.read(["region"]);
+      await gate;
+      facet.load(region, {
+        resources, name: "m/catalog",
+        loader: async () => "never", onLoading: () => undefined, onResult: () => undefined, onError: () => undefined,
+      });
+      return "built";
+    });
+    const pending = factory(undefined, { signal: run.signal, scope: host.resources });
+    run.abort(reason);
+    release();
+    await assert.rejects(pending, (error: unknown) => error === reason);
+    assert.equal(stats(store).live, 0);
+    assert.equal((await host.control.close()).complete, true);
+  });
+});
+
+describe("R9. echo and cascade guards", () => {
+  test("a handler that changes the key it follows: one delivery, observation.delivery.echo reported once", async () => {
+    const { store, facet, module, reports } = world<Settings>({ level: "0", region: "eu", theme: "light" });
+    let calls = 0;
+    facet.watch(facet.read(["level"]), {
+      resources: module.resources, name: "m/echo",
+      onChange: ({ values }) => { calls += 1; if (calls <= 1000) store.set({ level: String(Number(values.level) + 1) }); },
+    });
+    store.set({ level: "1" });
+    await settle();
+    assert.equal(calls, 1);
+    assert.deepEqual(reports.map((r) => [r.subscription, codeOf(r.cause)]), [["m/echo", "observation.delivery.echo"]]);
+  });
+
+  test("C1, C2, C10: async command, queueMicrotask and loader body echo are caught at the first round (Node)", async () => {
+    const { store, facet, module, reports } = world<{ readonly level: number; readonly cursor: number }>({ level: 0, cursor: 0 });
+    const thrown: unknown[] = [];
+    const requestLevel = async (level: number): Promise<"accepted"> => { await Promise.resolve(); store.set({ level }); return "accepted"; };
+    let c1 = 0;
+    facet.watch(facet.read(["level"]), { resources: module.resources, name: "m/echo-async", onChange: ({ values }) => {
+      c1 += 1; if (c1 <= 1000) requestLevel(values.level + 1).catch((e: unknown) => { thrown.push(e); });
+    } });
+    let c2 = 0;
+    facet.watch(facet.read(["level"]), { resources: module.resources, name: "m/echo-micro", onChange: ({ values }) => {
+      c2 += 1; if (c2 <= 1000) queueMicrotask(() => { try { store.set({ level: values.level + 10 }); } catch (e) { thrown.push(e); } });
+    } });
+    let fetches = 0;
+    facet.load(facet.read(["cursor"]), {
+      resources: module.resources, name: "m/pages",
+      loader: async ({ values }) => { fetches += 1; await Promise.resolve(); if (fetches <= 1000) store.set({ cursor: values.cursor + 1 }); return values.cursor; },
+      onLoading: () => undefined, onResult: () => undefined, onError: (cause) => { thrown.push(cause); },
+    });
+    store.set({ level: 1 });
+    for (let round = 0; round < 3; round += 1) await settle();
+    assert.deepEqual([c1, c2, fetches], [1, 1, 1]);
+    assert.ok(thrown.length === 3 && thrown.every((e) => codeOf(e) === "observation.delivery.echo"));
+    assert.deepEqual(reports.map((r) => [r.subscription, codeOf(r.cause)]).sort(),
+      [["m/echo-async", "observation.delivery.echo"], ["m/echo-micro", "observation.delivery.echo"], ["m/pages", "observation.delivery.echo"]]);
+    await module.control.close();
+  });
+
+  test("an asynchronous ping-pong across two stores through commands stops at 65 deliveries (Node)", async () => {
+    const one = world<Settings>({ level: "0", region: "eu", theme: "light" });
+    const two = world<Settings>({ level: "0", region: "eu", theme: "light" });
+    let calls = 0;
+    const thrown: unknown[] = [];
+    const bump = (target: typeof one.store) => async (level: string): Promise<void> => { await Promise.resolve(); target.set({ level }); };
+    const toTwo = bump(two.store);
+    const toOne = bump(one.store);
+    one.facet.watch(one.facet.read(["level"]), { resources: one.module.resources, name: "one/ping", onChange: ({ values }) => {
+      calls += 1; if (calls <= 1000) toTwo(String(Number(values.level) + 1)).catch((e: unknown) => { thrown.push(e); });
+    } });
+    two.facet.watch(two.facet.read(["level"]), { resources: two.module.resources, name: "two/pong", onChange: ({ values }) => {
+      calls += 1; if (calls <= 1000) toOne(String(Number(values.level) + 1)).catch((e: unknown) => { thrown.push(e); });
+    } });
+    one.store.set({ level: "1" });
+    for (let round = 0; round < 3; round += 1) await settle();
+    assert.equal(calls, MAX_CASCADE_DEPTH + 1);
+    assert.deepEqual(thrown.map(codeOf), ["observation.delivery.cascade"]);
+    assert.equal(one.reports.length + two.reports.length, 1);
+  });
+});
+
+describe("R11. the owner keeps reading after close: save on close (C11)", () => {
+  test("a resource opened before the store saves the last value in its cleanup", async () => {
+    const host = createScope({ name: "host" });
+    const module = host.resources.child({ name: "prefs" });
+    const file = await module.resources.setup({
+      name: "prefs/file",
+      setup: () => ({ saved: "", initial: { theme: "light" } }),
+      cleanup: (opened) => { opened.saved = store.read(["theme"]).values.theme; },
+    });
+    const store = createStore<{ readonly theme: string }>({ ...file.initial }, { name: "prefs", resources: module.resources, reportError: () => undefined });
+    store.set({ theme: "dark" });
+    const report = await module.control.close();
+    assert.equal(report.complete, true);
+    assert.equal(file.saved, "dark");
+    assert.throws(() => store.readonly().read(["theme"]), (error: unknown) => codeOf(error) === "observation.store.closed");
+  });
+});
+
+describe("R10. the testing entry point", () => {
+  test("liveSubscriptions per store and per scope; settled() waits for loads, delivered() does not", async () => {
+    const { store, facet, module, host } = world<Settings>({ level: "info", region: "eu", theme: "light" });
+    const request = host.resources.child({ name: "request" });
+    facet.watch(facet.read(["level"]), { resources: module.resources, name: "m/level", onChange: () => undefined });
+    facet.watch(facet.read(["level"]), { resources: request.resources, name: "r/level", onChange: () => undefined });
+    assert.deepEqual([liveSubscriptions(facet), liveSubscriptions(facet, module.resources), liveSubscriptions(facet, request.resources)], [2, 1, 1]);
+    await request.control.close();
+    assert.equal(liveSubscriptions(facet, request.resources), 0);
+    let release!: (value: string) => void;
+    const results: string[] = [];
+    facet.load(facet.read(["region"]), {
+      resources: module.resources, name: "m/catalog",
+      loader: () => new Promise<string>((resolve) => { release = resolve; }),
+      onLoading: () => undefined, onResult: (value) => { results.push(value); }, onError: () => undefined,
+    });
+    await delivered(); // the load is queued and running; delivered() does not wait for it
+    assert.deepEqual(results, []);
+    const done = settled();
+    release("eu models");
+    await done;
+    assert.deepEqual(results, ["eu models"]);
+    void store;
+    await module.control.close();
+  });
+});
+
+describe("R12. the testing entry point waits only for what it is asked, and never forever", () => {
+  test("C5: delivered({ stores }) resolves while an unrelated store commits every task", async () => {
+    const busy = world<Settings>({ level: "0", region: "eu", theme: "light" });
+    const quiet = world<Settings>({ level: "0", region: "eu", theme: "light" });
+    let running = true;
+    void (async () => { let n = 0; while (running) { busy.store.set({ level: String(n += 1) }); await new Promise<void>((resolve) => { setImmediate(resolve); }); } })();
+    quiet.store.set({ level: "1" });
+    await delivered({ stores: [quiet.facet] });
+    const abort = new AbortController();
+    const pending = delivered({ signal: abort.signal });
+    abort.abort();
+    await assert.rejects(pending, (error: unknown) => codeOf(error) === "observation.testing.timeout");
+    running = false;
+  });
+
+  test("C6: settled({ stores }) ignores an unrelated open long-poll; a global settled() gives up with a code", async () => {
+    const other = world<Settings>({ level: "0", region: "eu", theme: "light" });
+    let release!: () => void;
+    other.facet.load(other.facet.read(["level"]), { resources: other.module.resources, name: "other/long-poll",
+      loader: () => new Promise<number>((resolve) => { release = () => { resolve(1); }; }), onLoading: () => undefined, onResult: () => undefined, onError: () => undefined });
+    const mine = world<Settings>({ level: "0", region: "eu", theme: "light" });
+    mine.store.set({ level: "5" });
+    await settled({ stores: [mine.facet] });
+    const abort = new AbortController();
+    setTimeout(() => { abort.abort(); }, 50);
+    await assert.rejects(settled({ signal: abort.signal }), (error: unknown) => codeOf(error) === "observation.testing.timeout");
+    release();
+    await other.module.control.close();
+  });
+});
+
+describe("R13. the delivery context ends with the delivery task (M1): no false echo or cascade from work that outlives it", () => {
+  const httpGet = (server: Server | undefined): Promise<string> => new Promise((resolve) => {
+    const address = server?.address();
+    const port = typeof address === "object" && address !== null ? address.port : 0;
+    request({ port, path: "/" }, (res) => { let body = ""; res.on("data", (chunk) => { body += String(chunk); }); res.on("end", () => { resolve(body); }); }).end();
+  });
+  const pause = (ms: number): Promise<void> => new Promise((resolve) => { setTimeout(resolve, ms); });
+
+  test("heartbeat: a timer the owner starts from a command called by a handler writes freely", async () => {
+    const reports: ListenerError[] = [];
+    const host = createScope({ name: "host" });
+    const connection = createStore<{ readonly server: string; readonly status: string }>({ server: "a", status: "idle" },
+      { name: "connection", resources: host.resources, reportError: (r) => { reports.push(r); return undefined; } });
+    let heartbeat: ReturnType<typeof setInterval> | undefined;
+    let beats = 0;
+    const ensureConnected = (): "accepted" => {
+      heartbeat ??= setInterval(() => { beats += 1; connection.set({ status: `alive ${beats}` }); }, 5); // the owner's own timer
+      return "accepted";
+    };
+    const facet = connection.readonly();
+    const ui = host.resources.child({ name: "ui" });
+    facet.watch(facet.read(["server", "status"]), { resources: ui.resources, name: "ui/connection", onChange: () => { ensureConnected(); } });
+    connection.set({ server: "b" });
+    await pause(100);
+    clearInterval(heartbeat);
+    assert.ok(beats >= 5, `the heartbeat ran (${beats} beats)`);
+    assert.deepEqual(reports, [], "no false echo from the owner's timer");
+    await host.control.close();
+  });
+
+  test("server: requests to a server restarted by a handler are independent user actions", async () => {
+    const reports: ListenerError[] = [];
+    const host = createScope({ name: "host" });
+    const settings = createStore<{ readonly port: number; readonly motd: string }>({ port: 1, motd: "hi" },
+      { name: "settings", resources: host.resources, reportError: (r) => { reports.push(r); return undefined; } });
+    const requestPort = (port: number): "accepted" => { settings.set({ port }); return "accepted"; }; // the owner's command
+    let server: Server | undefined;
+    let served = 0;
+    const start = (): void => {
+      server?.close();
+      server = createServer((_req, res) => {
+        served += 1;
+        try { requestPort(served + 1); res.end("ok"); } catch (error) { res.end(`failed: ${String(codeOf(error))}`); }
+      });
+      server.listen(0);
+    };
+    start();
+    const facet = settings.readonly();
+    const module = host.resources.child({ name: "server-module" });
+    facet.watch(facet.read(["port"]), { resources: module.resources, name: "server/port", onChange: () => { start(); } });
+    const results: string[] = [];
+    for (let i = 0; i < 30; i += 1) { results.push(await httpGet(server)); await pause(3); }
+    server?.close();
+    assert.deepEqual(results.filter((r) => r !== "ok"), [], "every admin request succeeded");
+    assert.deepEqual(reports, []);
+    await host.control.close();
+  });
+
+  test("depth: independent requests through a restarted server do not accumulate cascade depth", async () => {
+    const reports: ListenerError[] = [];
+    const host = createScope({ name: "host" });
+    const report = (r: ListenerError): undefined => { reports.push(r); return undefined; };
+    const config = createStore<{ readonly listen: number }>({ listen: 0 }, { name: "config", resources: host.resources, reportError: report });
+    const hits = createStore<{ readonly hits: number }>({ hits: 0 }, { name: "stats", resources: host.resources, reportError: report });
+    let server: Server | undefined;
+    const start = (): void => {
+      server?.close();
+      server = createServer((_req, res) => {
+        try { hits.set({ hits: hits.read(["hits"]).values.hits + 1 }); res.end("ok"); } catch (error) { res.end(`failed: ${String(codeOf(error))}`); }
+      });
+      server.listen(0);
+    };
+    start();
+    const module = host.resources.child({ name: "m" });
+    const c = config.readonly();
+    const h = hits.readonly();
+    c.watch(c.read(["listen"]), { resources: module.resources, name: "server/restart", onChange: () => { start(); } });
+    h.watch(h.read(["hits"]), { resources: module.resources, name: "config/derive", onChange: ({ values }) => { config.set({ listen: values.hits }); } });
+    const results: string[] = [];
+    for (let i = 0; i < 40; i += 1) { results.push(await httpGet(server)); await pause(3); }
+    await settle();
+    server?.close();
+    assert.deepEqual(results.filter((r) => r !== "ok"), []);
+    assert.deepEqual(reports, [], "no cascade report: depth starts at 0 for every request");
+    assert.equal(config.read(["listen"]).values.listen, hits.read(["hits"]).values.hits);
+    await host.control.close();
+  });
+
+  test("C4: pagination through a load that advances the cursor it follows fails at the first page", async () => {
+    const reports: ListenerError[] = [];
+    const host = createScope({ name: "host" });
+    const pages = createStore<{ readonly cursor: number; readonly rows: readonly number[] }>({ cursor: 0, rows: [] },
+      { name: "catalog/pages", resources: host.resources, reportError: (r) => { reports.push(r); return undefined; } });
+    const facet = pages.readonly();
+    const module = host.resources.child({ name: "catalog" });
+    let loads = 0;
+    facet.load(facet.read(["cursor"]), {
+      resources: module.resources, name: "catalog/page",
+      loader: async ({ values }) => { loads += 1; return [values.cursor]; },
+      onLoading: () => undefined,
+      onResult: (rows, { values }) => { if (loads <= 1000) pages.set({ rows: [...pages.read(["rows"]).values.rows, ...rows], cursor: values.cursor + 1 }); },
+      onError: () => undefined,
+    });
+    await settled({ stores: [facet] });
+    assert.equal(loads, 1);
+    assert.deepEqual(reports.map((r) => [r.subscription, codeOf(r.cause)]), [["catalog/page", "observation.delivery.echo"]]);
+    await host.control.close();
+  });
+});
+
+describe("R14. the testing deadline is always on and fake timers cannot stall it (M4)", () => {
+  test("W1: a signal that never aborts does not switch the deadline off", async () => {
+    const busy = world<Settings>({ level: "0", region: "eu", theme: "light" });
+    let running = true;
+    void (async () => { let n = 0; while (running) { busy.store.set({ level: String(n += 1) }); await new Promise<void>((resolve) => { setImmediate(resolve); }); } })();
+    const never = new AbortController();
+    const started = performance.now();
+    await assert.rejects(delivered({ signal: never.signal, timeoutMs: 200 }), (error: unknown) => codeOf(error) === "observation.testing.timeout");
+    assert.ok(performance.now() - started < 2_000);
+    running = false;
+  });
+
+  test("W2: mock.timers on setImmediate, setTimeout and Date after import: deliveries and the deadline keep working", async () => {
+    const { store, facet, module } = world<Settings>({ level: "0", region: "eu", theme: "light" });
+    const seen: string[] = [];
+    facet.watch(facet.read(["level"]), { resources: module.resources, name: "m/level", onChange: ({ values }) => { seen.push(values.level); } });
+    let release!: () => void;
+    facet.load(facet.read(["region"]), { resources: module.resources, name: "m/never", loader: () => new Promise<number>((resolve) => { release = () => { resolve(1); }; }),
+      onLoading: () => undefined, onResult: () => undefined, onError: () => undefined });
+    mock.timers.enable({ apis: ["setImmediate", "setTimeout", "Date"] });
+    try {
+      store.set({ level: "7" });
+      await delivered({ stores: [facet], timeoutMs: 1_000 });
+      assert.deepEqual(seen, ["7"], "the delivery ran on the real setImmediate");
+      await assert.rejects(settled({ stores: [facet], timeoutMs: 200 }), (error: unknown) => codeOf(error) === "observation.testing.timeout");
+    } finally {
+      mock.timers.reset();
+    }
+    release();
+    await module.control.close();
+  });
+
+  test("the detection flag tells a test preset whether async echoes are detected (Node: true)", () => {
+    assert.equal(asyncDetection, true);
+  });
+});
+
+describe("R15. save on close with an asynchronous writer (M5)", () => {
+  test("an asyncDispose entry registered after createStore is awaited before the file closes", async () => {
+    const host = createScope({ name: "host" });
+    const module = host.resources.child({ name: "prefs" });
+    const log: string[] = [];
+    const file = await module.resources.setup({
+      name: "prefs/file",
+      setup: () => ({
+        initial: { theme: "light" },
+        write: async (values: { readonly theme: string }): Promise<void> => {
+          await new Promise<void>((resolve) => { setTimeout(resolve, 5); });
+          log.push(`wrote ${values.theme}`);
+        },
+        close: async (): Promise<void> => { log.push("closed"); },
+      }),
+      cleanup: (opened) => opened.close(),
+    });
+    const store = createStore<{ readonly theme: string }>({ ...file.initial }, { name: "prefs", resources: module.resources, reportError: () => undefined });
+    module.resources.use({ [Symbol.asyncDispose]: async () => { await file.write(store.read(["theme"]).values); } }, "prefs/save");
+    store.set({ theme: "dark" });
+    const report = await module.control.close();
+    assert.equal(report.complete, true);
+    assert.deepEqual(log, ["wrote dark", "closed"], "the write finished before the file closed");
+  });
+});

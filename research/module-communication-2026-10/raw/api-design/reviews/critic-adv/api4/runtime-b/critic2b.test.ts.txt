@@ -1,0 +1,21 @@
+// Critic round 2: the "fix" an agent applies after observation.delivery.cascade: move the cursor update into the loader.
+import { test } from "node:test";
+import { createScope } from "@get-modular/resources";
+import { createStore, type ListenerError } from "./observation.ts";
+const tick = (): Promise<void> => new Promise((resolve) => { setImmediate(resolve); });
+test("C10 pagination with the cursor advanced inside the loader body: no guard, runs until the data ends (or forever)", async () => {
+  const reports: ListenerError[] = [];
+  const host = createScope({ name: "host" });
+  const pages = createStore<{ readonly cursor: number }>({ cursor: 0 }, { name: "pages", resources: host.resources, reportError: (r) => { reports.push(r); return undefined; } });
+  const facet = pages.readonly();
+  const module = host.resources.child({ name: "catalog" });
+  let fetches = 0;
+  facet.load(facet.read(["cursor"]), {
+    resources: module.resources, name: "catalog/page",
+    loader: async ({ values }) => { fetches += 1; await Promise.resolve(); pages.set({ cursor: values.cursor + 1 }); return values.cursor; },
+    onLoading: () => undefined, onResult: () => undefined, onError: () => undefined,
+  });
+  for (let i = 0; i < 2000; i += 1) await tick();
+  console.log(`C10 loader-body echo: ${fetches} fetches in 2000 tasks, cursor ${facet.read(["cursor"]).values.cursor}, reports ${reports.length}`);
+  await module.control.close();
+});

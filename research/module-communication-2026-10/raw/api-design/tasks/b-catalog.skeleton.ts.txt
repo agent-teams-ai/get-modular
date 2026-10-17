@@ -1,0 +1,7 @@
+// Solution file for task (b). Save as b-catalog.ts. Keep the exported signature; fill in the body.
+import type { ModuleContext } from "@get-modular/resources";
+import { fetchModels, type CatalogDeps, type CatalogProduct, type CatalogState } from "./b-catalog.types.js";
+
+export async function createCatalogModule(deps: CatalogDeps, { resources }: ModuleContext): Promise<CatalogProduct> {
+  // TODO
+}

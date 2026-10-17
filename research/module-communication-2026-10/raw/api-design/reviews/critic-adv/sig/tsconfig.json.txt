@@ -1,0 +1,1 @@
+{ "extends": "../api/tsconfig.base.json", "compilerOptions": { "types": [] }, "include": ["*.ts"] }
