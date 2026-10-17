@@ -97,9 +97,10 @@ generic consumer runtime runner. Compile the fixture's actual entry separately
 with pinned current TypeScript and execute emitted JavaScript once per chosen
 subject. Do not invoke runtime smoke in every type-check mode.
 
-The checked-in projects live at `consumer-fixtures/semantic/tsconfig.types.json`,
-`tsconfig.runtime.json` and `tsconfig.negative.json`, copied to the disposable
-semantic root. No project there extends a path back into the repository.
+The proposed projects are `tsconfig.types.json`, `tsconfig.runtime.json` and
+`tsconfig.negative.json` under `tests/qualification/consumer-fixtures/semantic/`.
+Add them during implementation and copy them to the disposable semantic root.
+No project there extends a path back into the repository.
 The positive project explicitly includes `src/**/*.ts`, `tests/features/**/*.ts`,
 `tests/module/**/*.ts` and `tests/support/**/*.ts`, excluding `out/` and
 `tests/negative/`. Use `strict: true`, `noEmit: true`,
