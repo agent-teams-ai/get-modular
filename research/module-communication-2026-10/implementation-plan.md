@@ -757,7 +757,12 @@ another store or package copy is foreign. Limits are positive safe integers (64 
 value**. Report a thrown value unchanged; a non-`undefined` return produces `observation.callback.returned-value`.
 `null` is a scalar invalid return, never an object to dereference. Reading a thenable's `then`, calling/assimilating
 it and attaching rejection handling all belong inside the isolation boundary; a getter/call failure is reported
-with that raw cause and cannot escape the flush. A returned rejected promise is observed so it does not create an
+with that raw cause and cannot escape the flush. Execute user-controlled return inspection and initiate assimilation
+under the callback's **same detached origin, depth and existing live token**, so a returned getter or Node promise
+assimilation job cannot make a followed-key write after the package accidentally drops its context. Re-entering
+`runInContext` for that initiation is sufficient; keep the invalid-return report and `reportError` policy as before.
+The existing paired task still closes the token: do not create a return-specific window, extend `live.open` or add
+pending-work accounting. A returned thenable's later timer remains outside the ended window. A returned rejected promise is observed so it does not create an
 unhandled rejection; its rejection is a separate reported cause from the invalid-return report. Avoid reading
 `then` twice. Apply the same `reportedByStore` identity check to **every** failure path: direct throw, return
 inspection/assimilation failure and asynchronous returned-promise rejection. An already-reported guard error is
@@ -1264,7 +1269,7 @@ The schedules below are sufficient to recreate the relevant counterexamples with
 
 | Case / matrix | Smallest failing schedule and required result | Existing test destination |
 | --- | --- | --- |
-| R18 / T114, callback returns | An offending callback and a healthy sibling observe a commit. Return `null`, an object whose `then` getter throws a sentinel, and an ordinary rejected promise in separate cases. No uncaught failure; invalid return reported once, distinct getter/rejection cause preserved; sibling and later offender delivery succeed. Also return an invalid async promise whose microtask attempts an echo: one invalid-return report plus exactly one guard report, unchanged failed write, healthy delivery. The observer must not report that same guard object twice. Keep ordinary throw/scalar controls and the T40 four-callback table; exotic cases exercise the shared path without a cross-product. | `subscriptions.test.mjs`, `load.test.mjs`, one `process-probe.mjs` isolation mode through `processes.test.mjs` |
+| R18 / T114, callback returns | An offending callback and a healthy sibling observe a commit. Return `null`, an object whose `then` getter throws a sentinel, and an ordinary rejected promise in separate cases. No uncaught failure; invalid return reported once, distinct getter/rejection cause preserved; sibling and later offender delivery succeed. An invalid async promise whose microtask attempts an echo produces one invalid-return plus exactly one guard report. A returned `then` getter/call that writes a followed key must also reject at the first write: unchanged value/revision, one member read/call, the same two reports and one healthy sibling delivery. Isolation without the originating context must fail this oracle. Keep ordinary throw/scalar controls and the T40 table; exotic cases exercise the shared path without a cross-product. | `subscriptions.test.mjs`, `load.test.mjs`, one `process-probe.mjs` isolation mode through `processes.test.mjs` |
 | R19 / T115, ALS retention | A callback captures a payload and starts a timer with a module-level no-op callback under a separate still-live owner. Close subscriber/source scopes, release their handles and drain delivery tasks, retaining only the timer handle outside the callback. Payload is collectible before that timer is cleared; an explicitly retained control stays live. Keep R13 heartbeat/no-false-echo and active-loader guard cases. A narrowed annotation around an actual Registration must fail this oracle. | Extend `gc-probe.mjs` and its existing process driver; `guards.test.mjs` |
 | R20 / T116, arrays | An Array subclass has a private mutable offset and inherited getter; `move()` changes a read value while revision stays zero in the prototype. Reject it and a custom-prototype array before ownership transfer, including nested initial/patch positions; no getter call and no freezing on rejection. Ordinary arrays, holes, nested records and a repeated frozen child remain positive controls. | `store.test.mjs` |
 | R21 / T117, read/future types and writer widening | Narrow an origin-valid snapshot to `status: "ready"`, then watch/load while the owner commits `"loading"`. Every future callback uses the full declared value union. Both `read` members reject required-value dereferences for dynamic union keys, tuple alternatives and broad `Keys<V>`; fixed tuples/duplicates and a required prefix keep their guarantees. Broad `SnapshotOf` preserves optionality; a union of valid snapshots supports ordinary `in` narrowing. Reject widened writer aliases/spread/member extraction; same writer and wider facet-to-area assignment stay valid. | `types-structural.ts`, `types-traps.ts`, `store.test.mjs`, `load.test.mjs`; packed declarations reuse the same fixtures |
@@ -1419,7 +1424,7 @@ comment above a type case) start with the row ID. Reviewers tick the IDs in the 
 | T111 | A bounded TEST consumer passes on the release archives before the release pull request merges. | TEST project | Phase 3b | 3 |
 | T112 | Every known item has an owner and a trigger. | README | doc only: listed with links to ADR-0034 | 1 |
 | T113 | One internal deferral queue per package copy, not configurable or exposed to production modules. | `src/features/delivery/context.ts` private FIFO | Source review of its single owner; multi-store ordering in `t/guards.test.mjs`; drained `store-closed` GC control; T13/T97 verify one installed copy across entries and no exported queue | 1 |
-| T114 | T40 isolation includes invalid returned values; T54's already-reported guard identity is honored throughout return handling. | `engine.ts` invocation path | R18, ordinary-rejection/guard-identity and healthy/subsequent-delivery controls | 1 |
+| T114 | T40 isolation includes invalid returned values; user-controlled inspection/assimilation keeps the originating context and T54's already-reported guard identity. | `engine.ts` invocation path | R18, return-context/guard-identity and healthy/subsequent-delivery controls | 1 |
 | T115 | Closed delivery context retains no Registration, engine, resources or subscriber payload. | `context.ts`, detached origin construction | R19 plus T58/T59 window controls | 1 |
 | T116 | T16/T21 plain-data validation also rejects mutable behavior hidden behind array prototypes. | `values.ts` | R20 and ordinary-array positive controls | 1 |
 | T117 | T26 read types guarantee only selected keys; future snapshots preserve key alternatives and use the declared value domain; T49 writer invariance survives member extraction. | `types.ts` | R21, both resolver modes and packed declaration fixtures | 1 |
@@ -1787,6 +1792,15 @@ The independent consumer scenario has these fixed checkpoints:
 4. Produce one controlled callback failure and assert its attributed report while another subscription remains
    usable. The Host test sink retains reports through cleanup. Ordinary callback isolation and guard process policy
    have their primitive checks already; do not multiply this whole composition for every bad return type.
+
+Keep the existing CMS/ADR-0037 **test-owned independent provider/input/root oracle** for this selected root; write
+only the non-completed rows explicitly. Before the connected scenario, call
+`checkWiring(composition, oracles, { declarations })` with exactly the selected module declarations from
+`entriesOf(modules)` and the root's selected input declarations. Handwritten expected pins express the intended
+composition; never derive them from the completed plan, profile, `describeWiring` or implementation. Record this
+result separately: a compatible unintended provider can preserve all behavioral outputs and still be wired wrong.
+Use the same consumer test and existing conformance archive, with no new oracle builder, alternative root or
+wrong-provider campaign. This is existing CMS binding evidence, not the deferred source-fact work of #184.
 
 Run one `smoke` over the unchanged selected root and the consumer typecheck in NodeNext/Bundler with
 `skipLibCheck: false`; do not run the same runtime smoke in every compiler/resolver cell. Assert

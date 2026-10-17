@@ -189,7 +189,7 @@ assignments now reject with TS2322. The archive is unchanged; this candidate is 
 | --- | --- | --- |
 | 1 | `1bc5912e15916e2a4b2e4ee4e1d9dcf03d58c1a8`; `plan_r1_authority`, `plan_r1_types`, `plan_r1_runtime`, each Astra xhigh | Three complete independent reports; all material findings incorporated below. |
 | 2 | `0ae0f81e4db3266a3d4b2ccbb40cf2638af31c6e`; `plan_r2_execution`, `plan_r2_semantics`, `plan_r2_consumer_types`, each Astra xhigh | Three complete reports: two bounded revisions, one approval; findings incorporated below. |
-| 3 | Whole revised plan plus both earlier rounds; final independent review | pending |
+| 3 | `883624a308e128bb97a0d9e6abcab202bb6f94a6`; `plan_r3_contract`, `plan_r3_runtime`, `plan_r3_authoring`, each Astra xhigh | Three complete reports: one approval, two bounded revisions; findings incorporated below. |
 
 ### Round 1: findings and dispositions
 
@@ -256,4 +256,40 @@ edit or another request for permission.
 
 All three reviews retained the finite watch table, separate keys-only initial-load seeding, close/start/publication
 boundaries, detached origin, private FIFO and bounded connected consumer. No extra framework, library dependency,
-large graph campaign or broad test gate was added. Round 3 remains pending until its three actual reports exist.
+large graph campaign or broad test gate was added.
+
+### Round 3: findings and dispositions
+
+All three final reviewers read the complete vision/research packet, the full current plan and all six earlier
+reports. Contract review returned **approve** with no material or optional finding. Runtime and authoring each
+returned **revise** for one medium, bounded omission. Root applied both after receiving all three reports:
+
+| Reviewer finding | Disposition |
+| --- | --- |
+| Runtime F1: return inspection/assimilation can lose the delivery context even with isolation and deduplication | §7.4/R18/T114 now initiate user-controlled return processing under the originating detached origin/depth/existing live token. Re-entry does not extend the token or change reporter policy, await the invalid promise, retain a loader or add pending counts. The shared getter/then-call oracle requires rejection of the first followed-key write, one invalid-return plus one guard report, one member read/call and healthy delivery. |
+| Authoring F1: §14's connected checklist omits the existing independent binding oracle | §14 now explicitly calls CMS/ADR-0037 `checkWiring` with handwritten provider/input/root pins and exactly the selected module/input declarations. The same consumer test keeps this proof separate from useful output and its one smoke. No new suite, root, oracle builder, provider campaign or source-fact work. |
+
+**Focused evidence.** On exact corrected #183, a returned then getter/body that changes its followed key reached
+the five-callback safety cap without an echo; the direct-body control stopped after one callback. An isolated
+candidate with complete isolation, one read and identity deduplication still failed. Initiating that user-code
+processing under the same existing context made both return cases stop after one callback with one invalid-return
+and one echo report, unchanged value/revision and one healthy sibling call. The final narrow candidate retained the
+invalid-return report outside the added context entry, so its success did not depend on changing reporter policy.
+These are Node 26.11.1 feasibility results, not production implementation or GC/cross-platform qualification.
+
+The authoring correction is established by current CMS Testing rule 6, ADR-0037 and the actual smoke/checkWiring
+boundaries: smoke and behavioral identities cannot independently pin the intended provider. Root inspected those
+same controlling sources and inserted the existing call into the current consumer, without a new experiment.
+
+### Completion and evidence limits
+
+All **nine requested Astra xhigh reviews** are complete, in three sequential rounds, with all material findings
+disposed in the operative plan. The last round's input is the SHA above; the final two corrections are root's
+post-review edits, not an assertion that every reviewer approved bytes they never saw. There is no fourth review
+round or unresolved material plan finding carried forward. Optional expansions were limited to the small wording
+clarifications recorded above; no new framework, event implementation or broad verification campaign was selected.
+
+The package is still unimplemented. The plan's Phase 0/TS7/#183 prerequisites and future package, platform, packed,
+CMS and release-archive checks remain real work. The T01–T119 table records obligations, not passed test results.
+This review campaign approves the implementation direction and closes its documented
+planning gaps; it does not make an implementation or release-ready claim.
