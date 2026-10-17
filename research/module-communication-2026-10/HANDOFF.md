@@ -115,9 +115,12 @@ CI-lanes, все файлы `raw/api-design/*` — на месте.
 
 - `.worktrees/gm-module-communication-research` — ветка этого PR.
 - `.worktrees/get-modular-obs-1-adr` — ветка ADR (#154).
-- Главный чекаут `get-modular` на `main`: лежит НЕзакоммиченный `AGENTS.md` (+6 строк,
-  раздел «Consumer Module Standard maintenance») — оставлен другой сессией, не трогать и не
-  терять при `checkout`/`reset`; выяснить владельца.
+- Правило «Consumer Module Standard maintenance» (общий org-стандарт, есть в AGENTS.md
+  agent-runtime и других репозиториях) подано в get-modular отдельным PR 186
+  (`docs/agents-cms-maintenance`). До его влития в главном чекауте `get-modular` лежит его же
+  незакоммиченная копия в `AGENTS.md`; после влития PR 186 эту копию можно удалить
+  (`git checkout -- AGENTS.md`). На саму работу по observation правило влияет напрямую:
+  Phase 2b меняет профиль CMS в той же поставке, что и пакет.
 
 ## 6. Порядок работы для подхватывающего агента
 
