@@ -219,6 +219,7 @@ test("changed workflow escalates compiler and check configuration", async () => 
     "tests/qualification/consumer-fixtures/semantic/tsconfig.types.json",
     "tests/qualification/consumer-fixtures/semantic/tsconfig.runtime.json",
     "tests/qualification/consumer-fixtures/semantic/tsconfig.negative.json",
+    "tests/qualification/consumer-fixtures/recovery/tsconfig.runtime.json",
   ]) {
     await fixture(currentPolicy, async root => {
       if (path === "tsconfig.base.json") {
