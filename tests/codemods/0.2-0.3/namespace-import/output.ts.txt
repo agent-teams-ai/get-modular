@@ -1,0 +1,4 @@
+import * as gm from "@get-modular/assembly";
+
+export type Any = gm.AnyFactoryHandle<HostCapabilities>;
+export type Bound = gm.FactoryHandle<HostCapabilities, typeof declaration, Instance>;

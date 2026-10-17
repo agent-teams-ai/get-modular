@@ -108,7 +108,7 @@ test("the archive installs beside its peer archives as one root-only ESM package
     await writeFile(join(consumer, "check.mjs"), `
       import * as conformance from '@get-modular/conformance';
       const names = Object.keys(conformance).sort().join(',');
-      if (names !== 'ConformanceError,contractSuite,guardHandles,isolate,runContractSuite,smoke') throw Error(names);
+      if (names !== 'ConformanceError,checkModuleLayout,checkNamespaces,checkWiring,contractSuite,describeWiring,guardHandles,isolate,runContractSuite,smoke') throw Error(names);
       try {
         await import('@get-modular/conformance/dist/index.js');
         throw Error('deep import succeeded');
@@ -120,7 +120,7 @@ test("the archive installs beside its peer archives as one root-only ESM package
 
     // The published declarations compile with exactly the libraries the README requires.
     await writeFile(join(consumer, "check.ts"), `
-      import { assemblyFor, declareModule, defineContract, type CapabilitiesOf } from '@get-modular/assembly';
+      import { declareModule, defineContract, implement, type CapabilitiesOf } from '@get-modular/assembly';
       import { required } from '@get-modular/core';
       import { contractSuite, isolate, type Isolated } from '@get-modular/conformance';
       type Port = { read(): number };
@@ -131,14 +131,13 @@ test("the archive installs beside its peer archives as one root-only ESM package
         moduleId: 'acme/reader', implementationId: 'acme/reader/default', owner: { authority: 'acme', path: ['reader'] },
         provides: [Reader.provide()], slots: [Db.slot('db', required())],
       });
-      const built: Promise<Isolated<number, { readonly 'acme/reader': Port }>> = isolate(assemblyFor<Capabilities>(), {
-        declaration: reader,
-        factory: async deps => ({ instance: deps.db.read(), capabilities: { 'acme/reader': deps.db } }),
-        dependencies: { db: { read: () => 1 } },
-      });
+      const entry = implement<Capabilities>()(reader,
+        async deps => ({ instance: deps.db.read(), capabilities: { 'acme/reader': deps.db } }));
+      const built: Promise<Isolated<number, { readonly 'acme/reader': Port }>> =
+        isolate(entry, { dependencies: { db: { read: () => 1 } } });
       contractSuite(Reader, { reads: port => { const value: number = port.read(); void value; } });
       // @ts-expect-error a fake with a renamed method is not the contract's port
-      void isolate(assemblyFor<Capabilities>(), { declaration: reader, factory: async () => ({ instance: 1, capabilities: { 'acme/reader': { read: () => 1 } } }), dependencies: { db: { red: () => 1 } } });
+      void isolate(entry, { dependencies: { db: { red: () => 1 } } });
       void built;
     `);
     for (const packageName of ["typescript", "typescript-minimum"]) {

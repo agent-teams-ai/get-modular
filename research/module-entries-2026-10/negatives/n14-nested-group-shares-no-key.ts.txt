@@ -1,0 +1,11 @@
+// expect: TS2322; an error in the prepare call: the entry sits in a group and shares no key with the Host map; the root is valid, so the error comes from the module list
+import { assemblyFor, declareModule, group, implement } from "@get-modular/assembly";
+import { defineContract } from "@get-modular/assembly";
+import { clockEntry, HostMap } from "./shared.js";
+const Other = defineContract<{ readonly x: number }>()({ id: "s0/other", revision: 1 });
+import type { CapabilitiesOf } from "@get-modular/assembly";
+interface OtherMap extends CapabilitiesOf<typeof Other> {}
+const other = implement<OtherMap>()(declareModule({
+  moduleId: "s0/other", implementationId: "s0/other/a", owner: { authority: "s0", path: ["n3"] }, provides: [Other.provide()], slots: [],
+}), async () => ({ instance: {}, capabilities: { "s0/other": { x: 1 } } }));
+export const result = assemblyFor<HostMap>().prepare({ profileId: "s0/n3", modules: [clockEntry, group("g", [other])], roots: { clock: clockEntry } });

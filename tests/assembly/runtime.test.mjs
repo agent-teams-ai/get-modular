@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { assemblyFor } from "@get-modular/assembly";
+import { assemblyFor, implement } from "@get-modular/assembly";
 import { compile, declaration, deferred, prepared, synthetic } from "./fixture.mjs";
 
 test("ordered many, optional presence, diamond sharing, roots without provides", async () => {
@@ -51,7 +51,7 @@ test("a pending provider prevents later invocations and concurrent attempts are 
 test("repeated and finite nested runs use separate journals and dependency maps", async () => {
   const api = assemblyFor(), item = declaration("nested", ["synthetic/value"]);
   let nesting = false, runnable, inner, count = 0;
-  const handle = api.bindFactory(item, async () => {
+  const moduleEntry = implement()(item, async () => {
     const instance = { sequence: ++count };
     if (!nesting) {
       nesting = true;
@@ -60,7 +60,7 @@ test("repeated and finite nested runs use separate journals and dependency maps"
     }
     return { instance, capabilities: { "synthetic/value": instance } };
   });
-  runnable = await prepared(api, { composition: await compile([item]), factories: [handle], roots: { root: handle } });
+  runnable = await prepared(api, { composition: await compile([item]), modules: [moduleEntry], roots: { root: moduleEntry } });
   const first = await runnable.run(), firstInner = inner, second = await runnable.run();
   assert.equal(first.status, "succeeded");
   assert.equal(firstInner.status, "succeeded");
@@ -73,8 +73,8 @@ test("repeated and finite nested runs use separate journals and dependency maps"
 test("several capabilities and defined undefined values never fall back to instance", async () => {
   const api = assemblyFor(), provider = declaration("provider", ["synthetic/left", "synthetic/right", "synthetic/empty"]);
   const instance = {}, left = {}, right = {};
-  const handle = api.bindFactory(provider, async () => ({ instance, capabilities: { "synthetic/left": left, "synthetic/right": right, "synthetic/empty": undefined } }));
-  const result = await (await prepared(api, { composition: await compile([provider]), factories: [handle], roots: { root: handle } })).run();
+  const moduleEntry = implement()(provider, async () => ({ instance, capabilities: { "synthetic/left": left, "synthetic/right": right, "synthetic/empty": undefined } }));
+  const result = await (await prepared(api, { composition: await compile([provider]), modules: [moduleEntry], roots: { root: moduleEntry } })).run();
   assert.equal(result.status, "succeeded");
   assert.equal(result.roots.root, instance);
   assert.equal(result.created[0].capabilities["synthetic/left"], left);

@@ -116,10 +116,10 @@ production. The first production package must atomically:
 - change the admission state to `source-admitted`;
 - enable Engineering Foundation's `architecture.source-dependencies`
   capability at `architecture/foundation/source-dependencies.yaml`; and
-- execute the pinned `@agent-teams/engineering-foundation` `1.7.2` command
+- execute the pinned `@agent-teams/engineering-foundation` `1.7.4` command
   `agent-teams-foundation check` through both the complete and fast gates.
 
-The tooling activation pins Foundation `1.7.2`. SDK growth admission remains
+The tooling activation pins Foundation `1.7.4`. SDK growth admission remains
 explicitly pending: the active public-API capability retains schema v1 until a
 trusted external authority binds the PR base and candidate to authenticated
 released Core and Assembly artifacts. Local qualification records cannot
@@ -131,7 +131,8 @@ no waivers. Activation does not claim that existing source passes typed lint
 or establish structural or runtime conformance. Docs retains its portable
 workflow without a managed adapter or cohort binding.
 
-The Foundation 1.7.2 migration keeps the immutable Feature Module Standard and
+The Foundation 1.7.4 binding, which follows the earlier 1.7.2 migration and its
+retained records, keeps the immutable Feature Module Standard and
 Consumer Module Standard pins. The retained current Consumer Module Standard
 adds the optional ADR-0029 dynamic Host guidance; it does not expand passive
 composition or confer SDK authority. The current SDK tooling binding advances
@@ -139,7 +140,8 @@ while the earlier Foundation archive and P0 records remain historical evidence.
 SDK status stays pending, activation stays on hold and release eligibility stays
 false.
 
-The local changed workflow remains on the published Foundation 1.7.2 schema.
+The local changed workflow keeps the schema published with Foundation 1.7.2;
+the 1.7.4 binding does not change it.
 JS and TS edits select the existing project-wide `check:fast` script with
 `passPaths: false`; changed file names never become compiler arguments.
 Compiler projects and root check configuration select the same fast gate through
@@ -151,8 +153,11 @@ lint or the full gate ran. `pnpm check` remains the complete required gate.
 This corrects routing inside the existing development-tooling boundary; it adds
 no production composition node, consumer adoption scope or public contract.
 
-Node 24.21.0 remains the repository default and production tooling choice, with
-pnpm 11.20.0. The root/tooling policy is `>=24.21.0 <25 || >=26.10.0 <27`;
+Node 26.11.1 is the repository default and production tooling choice, with
+pnpm 11.20.0. The current owner explicitly authorized this cutover before Node 26
+reached LTS status, so no LTS or further approval condition applies; accepted
+decisions that predate it are unchanged. Node 24.21.0 remains a supported
+tooling compatibility runtime. The root/tooling policy is `>=24.21.0 <25 || >=26.10.0 <27`;
 the public library policy retains the separate Node 24.18.0 floor. Node 25,
 Node 26 below 26.10.0, Node 27 and malformed versions remain rejected. The
 existing runtime helper owns this narrow version mechanism; executable selection
@@ -170,19 +175,22 @@ compiler and the existing strict NodeNext configuration, including
 `exactOptionalPropertyTypes`. Native Node type stripping does not replace that
 gate.
 
-The Node 24 and candidate Node 26.10.0 CI routes each retain five independent
+The default Node 26.11.1 and Node 24.21.0 compatibility CI routes each retain five independent
 lanes on Ubuntu, macOS and Windows, including strict frozen installation,
 committed peer validation, the complete gate union and tracked workspace
 integrity. The governance lane explicitly executes policy typechecking and
 tests. The existing installed public archive compatibility lane remains
 separate. Docs Protocol is pinned exactly to `0.6.2`, the published stable
 successor declaring Node `^24.18.0 || ^26.0.0`; `0.6.0` excludes Node 26.
-The `portable-v1` profile and schema remain unchanged. These Node 26 root
-routes remain a source-only draft: qualification of the exact Docs `0.6.2`
-closure and installed mandatory runner remains pending, including fresh
-strict frozen Node 24/26 installations under pnpm 11.20.0, Foundation and Docs
-checks, and the complete mandatory gates. This mapping declares no managed
-cohort binding, production qualification or release eligibility.
+The `portable-v1` profile and schema remain unchanged. The Node 24.21.0 and
+Node 26.10.0 root routes, with the exact Docs `0.6.2` closure, strict frozen
+installations under pnpm 11.20.0, Foundation and Docs checks and the complete
+mandatory gates, were qualified by genuine CI on all three operating systems in
+PR #149 (merge `557b713`). The Node 26.11.1 default and the Node 24.21.0
+compatibility routes are verified by the exact-head CI of each change, which must
+pass on both before merge; this document records no CI result for any head. This does not change the published packages. This mapping
+and repository gate declare no managed cohort binding, installer authorization,
+production qualification of a product or release eligibility.
 
 `pnpm quality:critical:test` runs the existing source dependency and quality
 activation entries through `agent-teams-node-test`. Its consumer checker binds

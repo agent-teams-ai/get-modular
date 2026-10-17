@@ -1,0 +1,1 @@
+line 9: bindFactory scoped name stays; use moduleDeclaration.implementationId

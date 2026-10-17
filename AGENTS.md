@@ -16,6 +16,7 @@ For implementation tasks, follow the [agent execution route](docs/architecture/m
 For admission, graph or diagnostic work, also read the [compiler engineer handbook](docs/qualification/compiler-engineer-handbook.md) and its linked complete examples.
 Task ownership and the milestone callable surface are explicit; the full roadmap does not authorize implementing every phase.
 For consumer composition work, read the [Consumer module standard](docs/architecture/common-assembly.md#consumer-module-standard).
+For module authoring, read docs/guides/module-authoring.md.
 For dynamic plugin lifecycle work, read its [lifecycle-kernel decision boundary](docs/architecture/common-assembly.md#optional-dynamic-host-lifecycle-candidate) and the [candidate package contract](packages/lifecycle-kernel/README.md) before selecting a package. Static composition and passive setup do not require this candidate; product adoption and public release remain separate decisions.
 
 Use `pnpm check:changed` while editing, `pnpm check:fast` before handoff, and
@@ -64,6 +65,18 @@ Production code must remain independent from Engineering Foundation, Docs
 Protocol, Extension Foundation, DI containers, product types, and plugin
 runtime types. These dependencies are allowed only in development tooling or
 product-owned adapters outside this repository.
+
+A changeset that ships a breaking minor of a `@get-modular/*` package ends with
+a "Migration (0.N -> 0.N+1)" block: `Better:` (what the new form gives),
+`Codemod:` (`pnpm --dir <get-modular> codemod 0.N-0.N+1 <repo> --write`, or
+`none - <reason>`), `By hand:` and `Check:` (typecheck, then the composition
+smoke tests). Write a codemod under `architecture/tooling/codemods/` with
+fixtures in `tests/codemods/` for a rename, a moved import, a changed call shape
+or a type-argument change; say `none` for a pure addition, a new union member or
+a change that needs a semantic decision. The codemod lands in the same PR as the
+break. A consumer runs it on a clean Git tree (`--dry` lists the edits,
+`--check` exits 1 while edits remain, `--write` applies them), then runs its typecheck;
+anything it cannot change is printed under "fix by hand".
 
 Get Modular compiles composition semantics. It does not own artifact trust,
 authorization, executable discovery, desired state, readiness, generations,

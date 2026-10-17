@@ -1,13 +1,17 @@
 import { many, optional, required } from "@get-modular/core";
 import {
-  assemblyFor, declareModule, defineContract,
-  type CapabilitiesOf, type FactoryContext, type ModuleFactory,
+  assemblyFor, declareModule, defineContract, implement, input,
+  type CapabilitiesOf, type FactoryContext, type ModuleFactory, type SuccessfulComposition,
 } from "@get-modular/assembly";
 import type { ModuleContext } from "@get-modular/resources";
+import { scoped } from "@get-modular/resources";
 import {
-  contractSuite, guardHandles, isolate, runContractSuite, smoke,
+  checkModuleLayout, checkNamespaces, checkWiring, contractSuite, describeWiring, guardHandles, isolate,
+  runContractSuite, smoke,
   type CaseContext, type ConformanceError, type ConformanceErrorCode, type ContractSubject,
-  type HandleGuard, type Isolated, type SmokeInjection, type SmokeStep, type TestFn,
+  type HandleGuard, type Isolated, type LayoutExport, type LayoutImport, type LayoutViolation, type PortViolation,
+  type ModuleLayoutMetrics, type ModuleLayoutRecords, type ModuleLayoutReport, type SmokeInjection,
+  type SmokeStep, type TestFn, type WiringDifference, type WiringOracle, type WiringRow,
 } from "../dist/index.js";
 
 // ADR-0033: the signatures keep the capability types of the caller's own map.
@@ -30,11 +34,11 @@ const createOrders: ModuleFactory<Capabilities, typeof orders, number, ModuleCon
   return { instance: rows, capabilities: { "acme/orders": { list: () => rows } } };
 };
 const db: Query = { query: () => 1 };
+const ordersEntry = implement<Capabilities>()(orders, createOrders, scoped);
 
 // A module is built with typed fakes and its instance and capabilities keep their types.
-const built: Promise<Isolated<number, { readonly "acme/orders": List }>> = isolate(api, {
-  declaration: orders, factory: createOrders, dependencies: { db, audit: undefined, replicas: [db] },
-});
+const built: Promise<Isolated<number, { readonly "acme/orders": List }>> =
+  isolate(ordersEntry, { dependencies: { db, audit: undefined, replicas: [db] } });
 void built.then(async isolated => {
   const instance: number = isolated.instance;
   const rows: number = isolated.capabilities["acme/orders"].list();
@@ -42,20 +46,14 @@ void built.then(async isolated => {
   await using _disposable: AsyncDisposable = isolated;
   void instance; void rows; void report;
 });
-void isolate(api, {
-  declaration: orders, factory: createOrders, dependencies: { db, audit: undefined, replicas: [] },
+void isolate(ordersEntry, {
+  dependencies: { db, audit: undefined, replicas: [] },
   signal: new AbortController().signal,
 });
 // @ts-expect-error a fake with a renamed method is not the contract's port
-void isolate(api, { declaration: orders, factory: createOrders, dependencies: { db: { qurey: () => 1 }, audit: undefined, replicas: [] } });
+void isolate(ordersEntry, { dependencies: { db: { qurey: () => 1 }, audit: undefined, replicas: [] } });
 // @ts-expect-error a required slot needs a fake
-void isolate(api, { declaration: orders, factory: createOrders, dependencies: { audit: undefined, replicas: [] } });
-void isolate(api, {
-  declaration: orders,
-  // @ts-expect-error a module that reads the run scope cannot be built here: its context is a ModuleContext
-  factory: async (_deps: unknown, context: FactoryContext) => ({ instance: 1, capabilities: { "acme/orders": { list: () => context.scope === undefined ? 1 : 2 } } }),
-  dependencies: { db, audit: undefined, replicas: [] },
-});
+void isolate(ordersEntry, { dependencies: { audit: undefined, replicas: [] } });
 
 // A contract owner publishes a suite whose cases see the contract's value type.
 const suite = contractSuite(Orders, {
@@ -86,7 +84,7 @@ const sessionInput = declareModule({
 });
 interface SessionCapabilities extends CapabilitiesOf<typeof Session | typeof Orders> {}
 declare const sessionApi: ReturnType<typeof assemblyFor<SessionCapabilities>>;
-const session = sessionApi.bindInput(sessionInput);
+const session = input<SessionCapabilities>()(sessionInput);
 declare const withInputs: (api: typeof sessionApi) => ReturnType<typeof sessionApi.prepare<{ readonly root: never }, { readonly session: typeof session }>>;
 declare const withoutInputs: (api: typeof sessionApi) => ReturnType<typeof sessionApi.prepare<{ readonly root: never }>>;
 const steps: Promise<readonly SmokeStep[]> = smoke({
@@ -100,12 +98,23 @@ void steps;
 const guard: HandleGuard = guardHandles({ allow: ["TCPServerWrap"] });
 void guard.check();
 
+const portViolation: PortViolation = {
+  implementationId: "acme/orders/default",
+  capabilityId: "acme/orders",
+  members: ["list"],
+};
+void portViolation;
+
 declare const error: ConformanceError;
 const reason: ConformanceErrorCode = error.code;
 switch (reason) {
   case "conformance.argument.invalid":
   case "conformance.isolate.construction-failed":
   case "conformance.smoke.failed":
+  case "conformance.namespaces.violation":
+  case "conformance.ports.prototype-member":
+  case "conformance.wiring.mismatch":
+  case "conformance.layout.violation":
   case "conformance.suite.revision-mismatch":
   case "conformance.suite.case-failed":
   case "conformance.handles.leaked":
@@ -116,3 +125,45 @@ switch (reason) {
     void exhaustive;
   }
 }
+
+// Namespace rules are checked synchronously over declarations of the caller's own types.
+checkNamespaces({ namespace: "acme", declarations: [orders] });
+// @ts-expect-error a bare declaration is not a list
+checkNamespaces({ namespace: "acme", declarations: orders });
+
+declare const composition: SuccessfulComposition;
+const provider: string | readonly string[] = orders.implementationId;
+const oracle: WiringOracle = {
+  providers: { "acme/db": provider, "acme/orders": [orders.implementationId] },
+  roots: [orders.implementationId],
+  rows: [{ consumer: orders.implementationId, slot: "db", providers: [orders.implementationId] }],
+};
+checkWiring(composition, [oracle], { declarations: [orders] });
+// @ts-expect-error the declarations are required
+checkWiring(composition, [oracle]);
+const wiringDescription: string = describeWiring(composition);
+void wiringDescription;
+
+const layoutImport: LayoutImport = {
+  from: "src/features/orders/composition/orders.module.ts",
+  to: "src/features/orders/composition/orders.declaration.ts",
+  mode: "value",
+};
+const layoutExport: LayoutExport = { name: "createOrder", kind: "function" };
+const records: ModuleLayoutRecords = {
+  files: [layoutImport.from, layoutImport.to],
+  imports: [layoutImport],
+  useCaseExports: {
+    "src/features/orders/application/use-cases/create-order.ts": [layoutExport],
+  },
+};
+const layoutReport: ModuleLayoutReport = checkModuleLayout(records);
+const metrics: ModuleLayoutMetrics = layoutReport;
+const violations: readonly LayoutViolation[] = layoutReport.violations;
+const row: WiringRow = oracle.rows?.[0] ?? { consumer: "x", slot: "y", providers: [] };
+const difference: WiringDifference = {
+  rule: "row", subject: `${row.consumer}.${row.slot}`, expected: row.providers, actual: [], message: "changed",
+};
+void metrics; void violations; void difference;
+// @ts-expect-error the difference rule is a closed union
+void ({ rule: "unknown", subject: "", expected: [], actual: [], message: "" }) satisfies WiringDifference;

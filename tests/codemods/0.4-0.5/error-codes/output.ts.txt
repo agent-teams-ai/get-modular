@@ -1,0 +1,4 @@
+import type { BindingErrorCode, PreparationErrorCode } from "@get-modular/assembly";
+
+type Known = BindingErrorCode | PreparationErrorCode;
+declare const code: Known;

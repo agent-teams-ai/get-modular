@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { compileComposition, required } from "@get-modular/core";
-import { assemblyFor, declareModule, defineContract } from "@get-modular/assembly";
+import { assemblyFor, declareModule, defineContract, implement } from "@get-modular/assembly";
 
 // ADR-0032: contract descriptors and declareModule emit the current wire generation.
 const isDeclarationError = (error) => error?.code === "assembly.bind.invalid-declaration";
@@ -46,13 +46,13 @@ test("the builder emits exactly the current wire generation and refuses wire fie
   assert.equal(defineContract()({ id: "acme/db", revision: 2147483647 }).provide().compatibility.token, "acme/db/r2147483647");
 });
 
-test("handles bound by different Assembly instances prepare and run together", async () => {
+test("entries made by different Assembly instances prepare and run together", async () => {
   const composition = await compileComposition({ declarations: [database, orders], profile: ordersProfile([database, orders]) });
   assert.equal(composition.ok, true, JSON.stringify(composition.diagnostics));
   const team = assemblyFor(), host = assemblyFor();
-  const ordersHandle = team.bindFactory(orders, async ({ db }) => ({ instance: db.query(), capabilities: { "acme/orders": {} } }));
-  const dbHandle = host.bindFactory(database, async () => ({ instance: 0, capabilities: { "acme/db": { query: () => 42 } } }));
-  const ready = await host.prepare({ composition, factories: [dbHandle, ordersHandle], roots: { orders: ordersHandle } });
+  const ordersEntry = implement()(orders, async ({ db }) => ({ instance: db.query(), capabilities: { "acme/orders": {} } }));
+  const dbEntry = implement()(database, async () => ({ instance: 0, capabilities: { "acme/db": { query: () => 42 } } }));
+  const ready = await host.prepare({ composition, modules: [dbEntry, ordersEntry], roots: { orders: ordersEntry } });
   assert.equal(ready.status, "prepared", JSON.stringify(ready));
   const outcome = await ready.prepared.run();
   assert.equal(outcome.status, "succeeded");

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { compileComposition, many, optional, required } from "@get-modular/core";
-import { assemblyFor } from "@get-modular/assembly";
+import { assemblyFor, implement } from "@get-modular/assembly";
 
 export const exact = (compatibilityToken = "synthetic/v1") => ({ family: "exact", familyVersion: 1, "token": compatibilityToken });
 export const provide = (capabilityId) => ({ capabilityId, compatibility: exact() });
@@ -53,7 +53,7 @@ export async function synthetic({ logger = false, reverse = false, appFactory, s
     binding("synthetic/app", "store", ["synthetic/store"]), binding("synthetic/app", "logger", logger ? ["synthetic/logger"] : []),
     binding("synthetic/app", "filters", reverse ? ["synthetic/filter-a", "synthetic/filter-b"] : ["synthetic/filter-b", "synthetic/filter-a"]),
   ];
-  const factories = declarations.map((item) => api.bindFactory(item, (deps, context) => {
+  const modules = declarations.map((item) => implement()(item, (deps, context) => {
     trace.push(item.implementationId);
     if (item === store && storeFactory) return storeFactory(deps, context);
     if (item === app && appFactory) return appFactory(deps, context);
@@ -62,6 +62,6 @@ export async function synthetic({ logger = false, reverse = false, appFactory, s
     if (item === app) return Promise.resolve({ instance: { deps, output: deps.filters.reduce((value, filter) => filter.apply(value), deps.store.initial) }, capabilities: {} });
     return Promise.resolve({ instance: {}, capabilities: { "synthetic/filter": { store: deps.store, apply: (value) => value + (item === a ? "A" : "B") } } });
   }));
-  const input = { composition: await compile(declarations, profile(declarations, rows)), factories, roots: { app: factories.at(-1) } };
+  const input = { composition: await compile(declarations, profile(declarations, rows)), modules, roots: { app: modules.at(-1) } };
   return { api, trace, input, declarations, prepared: await prepared(api, input) };
 }

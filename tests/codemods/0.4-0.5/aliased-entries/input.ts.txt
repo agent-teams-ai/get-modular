@@ -1,0 +1,16 @@
+import {
+  assemblyFor as forAssembly,
+  implement as makeModule,
+  input as supply,
+} from "@get-modular/assembly";
+import { scoped as withScope } from "@get-modular/resources";
+
+type Capabilities = Record<never, never>;
+declare const moduleDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const inputDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const factory: (...args: any[]) => any;
+
+const api = forAssembly<Capabilities>();
+export const scopedEntry = api.bindFactory(moduleDeclaration, withScope(moduleDeclaration.implementationId, factory));
+export const plainEntry = api.bindFactory(moduleDeclaration, factory);
+export const supplied = api.bindInput(inputDeclaration);

@@ -5,6 +5,7 @@
     "noEmit": true,
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "lib": ["ES2023", "ESNext.Disposable", "DOM"],
     "strict": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
@@ -17,7 +18,9 @@
     "../../tests/assembly/types.ts",
     "../../tests/assembly/types-positive.ts",
     "../../tests/assembly/mixed-graph.ts",
-    "../../tests/assembly/builder-types.ts"
+    "../../tests/assembly/builder-types.ts",
+    "../../tests/assembly/types-s0-shared.ts",
+    "../../tests/assembly/types-s0-negative.ts"
   ],
   "include": []
 }

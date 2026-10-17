@@ -1,0 +1,2 @@
+line 10: bindFactory call stays; rename the local binding that collides with implement
+line 11: bindInput call stays; rename the local binding that collides with input

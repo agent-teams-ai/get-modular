@@ -1,0 +1,8 @@
+import {
+  AnyFactoryHandle
+} from "@get-modular/assembly";
+
+const   spaced  =   1 ;   // untouched
+export type Any = AnyFactoryHandle<
+  HostCapabilities
+>;

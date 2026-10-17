@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { assemblyFor } from "../dist/index.js";
+import { assemblyFor, implement } from "../dist/index.js";
 import { many } from "@get-modular/core";
 import { prepareConstruction } from "../dist/features/construction/prepare.js";
 import { rootKeys, snapshotDeclaration, snapshotPlan } from "../dist/features/construction/snapshot.js";
@@ -66,43 +66,43 @@ test("all individual declaration, plan and alias ceilings accept boundary and re
 
 test("aggregate provider census refuses overflow before any compiler invocation", async () => {
   const api = assemblyFor(), item = declaration("root");
-  const handle = api.bindFactory(item, async () => ({ instance: {}, capabilities: {} }));
+  const entry = implement()(item, async () => ({ instance: {}, capabilities: {} }));
   const original = await compile([item]), composition = structuredClone(original);
   composition.plan.bindings = Array.from({ length: 256 }, () => row(1024));
   snapshotPlan(composition.plan);
   composition.plan.bindings.push(row(1));
   let calls = 0;
-  const result = await prepareConstruction({ composition, factories: [handle], roots: { root: handle } }, {
+  const result = await prepareConstruction({ composition, modules: [entry], roots: { root: entry } }, {
     compileComposition: async () => { calls++; return original; },
   });
   assert.equal(result.error.code, "assembly.prepare.limit");
   assert.equal(calls, 0);
 });
 
-test("aggregate declarations and handle count are checked before compilation", async () => {
+test("aggregate declarations and entry count are checked before compilation", async () => {
   const api = assemblyFor(), original = await compile([declaration("seed")]);
   for (const field of ["provides", "slots"]) {
-    const composition = structuredClone(original), factories = [];
+    const composition = structuredClone(original), modules = [];
     for (let index = 0; index < 4096; index++) {
       const item = declaration(`item-${index}`);
       item[field] = Array.from({ length: 16 }, (_, slotIndex) => field === "provides" ? provide(`synthetic/value-${slotIndex}`) : slot(`slot-${slotIndex}`, "synthetic/value"));
-      factories.push(api.bindFactory(item, async () => ({ instance: {}, capabilities: {} })));
+      modules.push(implement()(item, async () => ({ instance: {}, capabilities: {} })));
     }
-    composition.plan.selections = factories.map((_, index) => ({ moduleId: `synthetic/item-${index}`, implementationId: `synthetic/item-${index}` }));
-    composition.plan.dependencyOrder = factories.map((_, index) => `synthetic/item-${index}`);
+    composition.plan.selections = modules.map((_, index) => ({ moduleId: `synthetic/item-${index}`, implementationId: `synthetic/item-${index}` }));
+    composition.plan.dependencyOrder = modules.map((_, index) => `synthetic/item-${index}`);
     composition.plan.roots = ["synthetic/item-0"];
     let calls = 0;
     const ports = { compileComposition: async () => { calls++; return original; } };
-    await prepareConstruction({ composition, factories, roots: { root: factories[0] } }, ports);
+    await prepareConstruction({ composition, modules, roots: { root: modules[0] } }, ports);
     assert.equal(calls, 1);
     const extra = declaration("item-4095");
     extra[field] = Array.from({ length: 17 }, (_, index) => field === "provides" ? provide(`synthetic/value-${index}`) : slot(`slot-${index}`, "synthetic/value"));
-    factories[4095] = api.bindFactory(extra, async () => ({ instance: {}, capabilities: {} }));
-    const result = await prepareConstruction({ composition, factories, roots: { root: factories[0] } }, ports);
+    modules[4095] = implement()(extra, async () => ({ instance: {}, capabilities: {} }));
+    const result = await prepareConstruction({ composition, modules, roots: { root: modules[0] } }, ports);
     assert.equal(result.error.code, "assembly.prepare.limit");
     assert.equal(calls, 1);
-    factories.push(factories[0]);
-    assert.equal((await api.prepare({ composition, factories, roots: { root: factories[0] } })).error.code, "assembly.prepare.limit");
+    modules.push(modules[0]);
+    assert.equal((await api.prepare({ composition, modules, roots: { root: modules[0] } })).error.code, "assembly.prepare.limit");
   }
 });
 
@@ -127,11 +127,11 @@ test("public Core accepts 4096 selected implementations and 1024 providers per r
   const rows = groups.map((group, index) => binding("synthetic/root", `group-${index}`, group.map((item) => item.implementationId)));
   const composition = await compile(declarations, profile(declarations, rows));
   const api = assemblyFor();
-  const handles = declarations.map((item) => api.bindFactory(item, async (dependencies) => ({
+  const entries = declarations.map((item) => implement()(item, async (dependencies) => ({
     instance: item === root ? dependencies : item.implementationId,
     capabilities: item === root ? {} : { "synthetic/value": item.implementationId },
   })));
-  const result = await api.prepare({ composition, factories: handles, roots: { root: handles.at(-1) } });
+  const result = await api.prepare({ composition, modules: entries, roots: { root: entries.at(-1) } });
   assert.equal(result.status, "prepared");
   const outcome = await result.prepared.run();
   assert.equal(outcome.status, "succeeded");

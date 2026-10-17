@@ -1,0 +1,6 @@
+// expect: TS2345; an error: only a ContextAdapter is accepted as the third argument
+import { implement } from "@get-modular/assembly";
+import { ordersDeclaration, type OrdersMap } from "./shared.js";
+export const broken = implement<OrdersMap>()(ordersDeclaration, async (deps) => ({
+  instance: { total: deps.clock.now() }, capabilities: { "s0/orders": { count: () => 2 } },
+}), (factory: () => void) => factory);

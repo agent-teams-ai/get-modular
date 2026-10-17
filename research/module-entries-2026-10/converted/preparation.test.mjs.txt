@@ -1,0 +1,163 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { assemblyFor, AssemblyBindingError, implement, input as inputEntry } from "@get-modular/assembly";
+import { compileComposition, required } from "@get-modular/core";
+import { binding, compile, declaration, prepared, profile, slot, synthetic } from "./fixture.mjs";
+// Hand conversion of tests/assembly/preparation.test.mjs to entries and groups (S0 0A). Each deliberate difference
+// from the original is marked "S0:"; everything else is the same assertion on the same data.
+
+test("all plan fields, digest and closed shapes participate in preflight", async () => {
+  const host = await synthetic();
+  const changes = [
+    (c) => { c.digest = c.digest.slice(0, -1) + (c.digest.endsWith("0") ? "1" : "0"); },
+    (c) => { c.plan.profileId = "synthetic/changed"; },
+    (c) => { c.plan.kind = "other"; },
+    (c) => { c.plan.schemaVersion = 2; },
+    (c) => { c.plan.dependencyOrder.reverse(); },
+    (c) => { c.plan.selections.reverse(); },
+    (c) => { c.plan.bindings.reverse(); },
+    (c) => { c.plan.selections[0].moduleId = "synthetic/other"; },
+    (c) => { c.plan.bindings[0].capabilityId = "synthetic/other"; },
+    (c) => { c.plan.bindings[0].compatibility["token"] = "synthetic/changed"; },
+    (c) => { c.plan.bindings[0].compatibility.familyVersion = 2; },
+    (c) => { c.plan.bindings.find((b) => b.slotId === "filters").providerImplementationIds.reverse(); },
+    (c) => { c.plan.bindings = c.plan.bindings.filter((b) => b.slotId !== "logger"); },
+    (c) => { c.plan.roots = ["synthetic/store"]; },
+    (c) => { c.plan.extra = true; },
+    (c) => { c.plan.selections[0].extra = true; },
+    (c) => { c.plan.bindings[0].extra = true; },
+  ];
+  for (const change of changes) {
+    const composition = structuredClone(host.input.composition);
+    change(composition);
+    assert.equal((await host.api.prepare({ ...host.input, composition })).status, "failed");
+  }
+  assert.deepEqual(host.trace, []);
+});
+
+test("exact authenticated handles, complete roots and data-only aliases are required", async () => {
+  const host = await synthetic(), { modules } = host.input;
+  const forged = Object.create(Object.getPrototypeOf(modules[0]), Object.getOwnPropertyDescriptors(modules[0]));
+  const equivalent = implement()(host.declarations[0], async () => ({ instance: {}, capabilities: { "synthetic/store": {} } }));
+  const changes = [
+    { modules: modules.slice(1) },
+    { modules: [...modules, modules[0]] },
+    { modules: [forged, ...modules.slice(1)] },
+    { modules: [...modules, equivalent] },
+    { roots: {} },
+    { roots: { app: modules.at(-1), duplicate: modules.at(-1) } },
+    { roots: { app: modules[0] } },
+    { roots: { app: equivalent } },
+  ];
+  let reads = 0;
+  changes.push({ roots: { get app() { reads++; return modules.at(-1); } } });
+  const codes = [];
+  for (const change of changes) {
+    const result = await host.api.prepare({ ...host.input, ...change });
+    assert.equal(result.status, "failed");
+    codes.push(result.error.code);
+  }
+  // S0: the original only asserts failure. An entry reached twice, or two entries with one implementation id, now
+  // fail with duplicate-module (every occurrence listed); a forged entry keeps handles; a root outside modules keeps roots.
+  assert.deepEqual(codes, ["assembly.prepare.handles", "assembly.prepare.duplicate-module", "assembly.prepare.handles",
+    "assembly.prepare.duplicate-module", "assembly.prepare.roots", "assembly.prepare.roots", "assembly.prepare.roots",
+    "assembly.prepare.roots", "assembly.prepare.invalid-input"]);
+  assert.equal(reads, 0);
+  assert.deepEqual(host.trace, []);
+});
+
+test("binding and synchronous preparation snapshots survive later input mutation", async () => {
+  const api = assemblyFor();
+  const provider = declaration("provider", ["synthetic/value"]), consumer = declaration("consumer", [], [slot("value", "synthetic/value")]);
+  const declarations = [provider, consumer], value = {};
+  const composition = structuredClone(await compile(declarations, profile(declarations, [binding("synthetic/consumer", "value", ["synthetic/provider"])])));
+  const p = implement()(provider, async () => ({ instance: {}, capabilities: { "synthetic/value": value } }));
+  const c = implement()(consumer, async (deps) => ({ instance: deps.value, capabilities: {} }));
+  consumer.slots[0].cardinality = { kind: "many", min: 0, max: 1, order: "profile" };
+  provider.provides.length = 0;
+  assert.equal(Object.isFrozen(provider), false);
+  const modules = [p, c], roots = { result: c };
+  const pending = api.prepare({ composition, modules, roots });
+  modules.length = 0;
+  delete roots.result;
+  composition.plan.bindings[0].providerImplementationIds.length = 0;
+  composition.plan.dependencyOrder.reverse();
+  const result = await pending;
+  assert.equal(result.status, "prepared");
+  const outcome = await result.prepared.run();
+  assert.equal(outcome.status, "succeeded");
+  assert.equal(outcome.roots.result, value);
+});
+
+test("malformed declarations and plan getters are refused without invoking accessors", async () => {
+  const api = assemblyFor();
+  let reads = 0;
+  const malformed = declaration("bad");
+  Object.defineProperty(malformed, "provides", { get() { reads++; return []; }, enumerable: true });
+  assert.throws(() => implement()(malformed, async () => ({})), (error) => error instanceof AssemblyBindingError && error.code === "assembly.bind.invalid-declaration");
+  const host = await synthetic(), composition = structuredClone(host.input.composition);
+  Object.defineProperty(composition.plan.bindings[0], "compatibility", { get() { reads++; return {}; }, enumerable: true });
+  assert.equal((await host.api.prepare({ ...host.input, composition })).status, "failed");
+  assert.equal(reads, 0);
+  assert.deepEqual(host.trace, []);
+});
+
+test("a late incompatible declaration preserves separate Core diagnostics and calls no factory", async () => {
+  const host = await synthetic(), altered = structuredClone(host.declarations.at(-1));
+  altered.slots.find((s) => s.slotId === "logger").cardinality = required();
+  const replacement = implement()(altered, async () => { throw new Error("must not run"); });
+  const modules = [...host.input.modules.slice(0, -1), replacement];
+  const result = await host.api.prepare({ ...host.input, modules, roots: { app: replacement } });
+  assert.equal(result.status, "failed");
+  assert.equal(result.error.code, "assembly.prepare.core-rejected");
+  assert.ok(result.diagnostics.length > 0);
+  assert.deepEqual(host.trace, []);
+});
+
+test("Core binds a parent port passed as an input like any provider", async () => {
+  const session = declaration("session", ["synthetic/session"]);
+  const store = declaration("store", ["synthetic/store"], [slot("session", "synthetic/session")]);
+  const rows = [binding("synthetic/store", "session", ["synthetic/session"])];
+  const without = await compileComposition({ declarations: [store], profile: profile([store], rows) });
+  assert.equal(without.ok, false);
+  assert.ok(without.diagnostics.some(({ code }) => code === "binding.unknown-provider"), JSON.stringify(without.diagnostics));
+  const api = assemblyFor();
+  const input = inputEntry()(session);
+  const factory = implement()(store, async (deps) => ({ instance: deps.session, capabilities: { "synthetic/store": deps.session } }));
+  const composition = await compile([session, store], profile([session, store], rows));
+  const ready = await prepared(api, { composition, modules: [factory], roots: { store: factory }, inputs: { session: input } });
+  assert.equal((await ready.run({ inputs: { session: { "synthetic/session": 7 } } })).roots.store, 7);
+});
+
+test("input handles appear only in inputs, under one alias, and are never roots", async () => {
+  const api = assemblyFor();
+  let calls = 0, reads = 0;
+  const session = declaration("session", ["synthetic/session"]);
+  const store = declaration("store", ["synthetic/store"], [slot("session", "synthetic/session")]);
+  const composition = await compile([session, store],
+    profile([session, store], [binding("synthetic/store", "session", ["synthetic/session"])]));
+  const input = inputEntry()(session);
+  const factory = implement()(store, async () => { calls++; return { instance: {}, capabilities: { "synthetic/store": {} } }; });
+  const sessionFactory = implement()(session, async () => { calls++; return { instance: {}, capabilities: { "synthetic/session": {} } }; });
+  const getter = {};
+  Object.defineProperty(getter, "session", { enumerable: true, get() { reads++; return input; } });
+  for (const [change, code] of [
+    [{ modules: [input, factory] }, "assembly.prepare.input-handles"],
+    [{ modules: [input, factory], inputs: { session: input } }, "assembly.prepare.input-handles"],
+    [{ roots: { store: input }, inputs: { session: input } }, "assembly.prepare.input-handles"],
+    // S0: the same input entry under two aliases is a duplicate module now; the original reported input-handles.
+    [{ inputs: { first: input, second: input } }, "assembly.prepare.duplicate-module"],
+    [{ modules: [sessionFactory, factory], inputs: { session: sessionFactory } }, "assembly.prepare.input-handles"],
+    [{ inputs: { session: {} } }, "assembly.prepare.input-handles"],
+    [{ inputs: getter }, "assembly.prepare.invalid-input"],
+    [{ inputs: null }, "assembly.prepare.invalid-input"],
+    // S0: with the session provided by neither modules nor inputs the plan selects a module that is missing.
+    [{ inputs: undefined }, "assembly.prepare.handles"],
+  ]) {
+    const result = await api.prepare({ composition, modules: [factory], roots: { store: factory }, ...change });
+    assert.equal(result.status, "failed", JSON.stringify(Object.keys(change)));
+    assert.equal(result.error.code, code, JSON.stringify(Object.keys(change)));
+  }
+  assert.equal(calls, 0);
+  assert.equal(reads, 0);
+});

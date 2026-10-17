@@ -17,7 +17,14 @@ summary: Index of Get Modular architecture decisions.
 
 ## Accepted decisions
 
+- [ADR-0037: Pin providers, not completed rows, in the binding oracle](0037-pin-providers-not-completed-rows-in-the-binding-oracle.md)
+
+- [ADR-0036: Compose roots from module entries and static groups](0036-compose-roots-from-module-entries-and-static-groups.md)
+
+- [ADR-0035: Complete composition profiles in prepare and make CapabilitiesOf linear](0035-complete-composition-profiles-in-prepare-and-make-capabilitiesof-linear.md)
+
 - [ADR-0034: Admit the module change observation package](0034-admit-the-module-change-observation-package.md)
+
 - [ADR-0033: Admit the module conformance kit](0033-admit-the-module-conformance-kit.md)
 
 - [ADR-0032: Give Assembly an authoring builder and capability-scoped handles](0032-give-assembly-an-authoring-builder-and-capability-scoped-handles.md)

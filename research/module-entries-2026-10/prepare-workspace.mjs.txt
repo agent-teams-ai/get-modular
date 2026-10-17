@@ -1,0 +1,29 @@
+// Builds a disposable checkout that the other scripts measure.
+//   node prepare-workspace.mjs --dir <empty directory> [--repo <checkout>] [--base <revision>] [--prototype]
+// Exports the repository at <revision> (default: the base of the S0 branch, bfb7cff), applies prototype.diff with
+// --prototype, installs from the lockfile and builds core, assembly, resources and conformance. Prints the directory.
+// The repository that holds this script is only read.
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, readdirSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { parseArgs } from "node:util";
+import { fileURLToPath } from "node:url";
+
+const { values } = parseArgs({ options: { repo: { type: "string" }, dir: { type: "string" }, base: { type: "string", default: "bfb7cff" }, prototype: { type: "boolean", default: false } } });
+if (!values.dir) throw new Error("--dir is required");
+const here = dirname(fileURLToPath(import.meta.url));
+const directory = resolve(values.dir);
+if (existsSync(directory) && readdirSync(directory).length > 0) throw new Error(`${directory} is not empty`);
+mkdirSync(directory, { recursive: true });
+const root = values.repo ? resolve(values.repo) : spawnSync("git", ["-C", here, "rev-parse", "--show-toplevel"], { encoding: "utf8" }).stdout.trim();
+const step = (command, args, options = {}) => {
+  const result = spawnSync(command, args, { stdio: "inherit", cwd: directory, ...options });
+  if (result.status !== 0) throw new Error(`${command} ${args.join(" ")} failed`);
+};
+const archive = spawnSync("git", ["-C", root, "archive", values.base], { maxBuffer: 512 * 1024 * 1024 });
+if (archive.status !== 0) throw new Error(`git archive ${values.base} failed`);
+step("tar", ["-x", "-C", directory], { input: archive.stdout, stdio: ["pipe", "inherit", "inherit"] });
+if (values.prototype) step("git", ["apply", join(here, "prototype.diff")]);
+step("pnpm", ["install", "--frozen-lockfile"]);
+for (const script of ["assembly:build", "resources:build", "conformance:build"]) step("pnpm", [script]);
+console.log(directory);

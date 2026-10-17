@@ -215,8 +215,9 @@ and its guard together as the current contract requires; never mark a future
 command or absent subject as passed.
 
 CI runs Core, Assembly, packaging, governance and static lanes in independent
-checkouts on each of Ubuntu, macOS and Windows. Node 24.21.0 remains the default
-through `.node-version`; candidate Node 26.10.0 jobs use the same five-lane
+checkouts on each of Ubuntu, macOS and Windows. Node 26.11.1 is the default
+through `.node-version`; the owner authorized this cutover before Node 26 LTS
+status, and the supported Node 24.21.0 compatibility jobs use the same five-lane
 matrix on all three operating systems. Every checkout performs strict frozen
 installation with lifecycle scripts disabled, followed by
 `pnpm lockfile:peers:check`. Each lane runs pure runtime preflight and governance
@@ -226,7 +227,7 @@ runtime preflight, then explicitly runs runtime policy typechecking and tests
 before governance preparation.
 
 The required `check (ubuntu-24.04)`, `check (macos-15)` and
-`check (windows-2025)` aggregates and their corresponding Node 26 aggregates
+`check (windows-2025)` aggregates and their corresponding Node 24 aggregates
 require every lane to succeed, including rejection of skipped dependencies. The
 [lane parity tests](../../tests/ci-check-lanes.test.mjs) retain every original
 command-chain obligation as an independent oracle, add the explicit peer and
@@ -235,10 +236,14 @@ failure boundary in disposable TEST fixtures. This is private CI tooling;
 production composition retains its existing contract. Complete OS qualification
 and measured acceleration require CI evidence on the exact head.
 
-The Node 26 root routes remain source-only drafts. Full qualification of the
-exact Docs Protocol 0.6.2 `portable-v1` closure and installed mandatory runner
-remains pending. Configured routes and public archive tests do not confer
-production tooling qualification, a managed cohort binding or release authority.
+The Node 24.21.0 and Node 26.10.0 root routes, with the exact Docs Protocol
+0.6.2 `portable-v1` closure and installed mandatory runner, were qualified by
+genuine CI on all three operating systems in PR #149 (merge `557b713`). The
+Node 26.11.1 default and the Node 24.21.0 compatibility routes are verified by the
+exact-head CI of each change, which must pass on both before merge; this document
+records no CI result for any head. This does
+not change the published packages. Configured routes and public archive tests do
+not confer a managed cohort binding, installer authorization or release authority.
 
 A phase's implementation is complete only when its scoped behavior and focused
 checks pass. A milestone is complete only when its actual subject passes the

@@ -1,0 +1,12 @@
+import * as gm from "@get-modular/assembly";
+import * as resources from "@get-modular/resources";
+
+type Capabilities = Record<never, never>;
+declare const moduleDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const inputDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const factory: (...args: any[]) => any;
+
+const api = gm.assemblyFor<Capabilities>();
+export const scopedEntry = gm.implement<Capabilities>()(moduleDeclaration, factory, resources.scoped);
+export const plainEntry = gm.implement<Capabilities>()(moduleDeclaration, factory);
+export const supplied = gm.input<Capabilities>()(inputDeclaration);

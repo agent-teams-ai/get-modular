@@ -1,0 +1,5 @@
+import type { FactoryHandle } from "@get-modular/assembly";
+
+type ModuleEntry = Record<string, never>;
+type Old = FactoryHandle<Record<never, never>>;
+type Both = ModuleEntry | Old;

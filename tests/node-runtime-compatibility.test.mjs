@@ -11,7 +11,7 @@ import { assertSupportedToolingNodeVersion } from "../architecture/checks/node-v
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageNames = ["core", "assembly", "resources", "conformance"];
 
-// The Node 26 CI consumer is outside the source workspace. Its package manager
+// The Node 24 compatibility CI consumer is outside the source workspace. Its package manager
 // must be the physically provisioned source pin, not a shim selected by cwd.
 async function fixturePnpmCli() {
   return process.env.GET_MODULAR_COMPAT_PNPM_CLI || await resolvePnpmCli();
@@ -47,9 +47,9 @@ import * as conformance from "@get-modular/conformance";
 const require = createRequire(import.meta.url);
 for (const [name, namespace, expected] of [
   ["core", core, ["compileComposition", "compileCompositionJson", "defineModule", "many", "optional", "required"]],
-  ["assembly", assembly, ["AssemblyBindingError", "assemblyFor", "declareModule", "defineContract"]],
+  ["assembly", assembly, ["AssemblyBindingError", "assemblyFor", "declareModule", "defineContract", "entriesOf", "group", "implement", "input"]],
   ["resources", resources, ["CloseIncompleteError", "InvalidArgumentError", "ScopeClosedError", "createScope", "scoped"]],
-  ["conformance", conformance, ["ConformanceError", "contractSuite", "guardHandles", "isolate", "runContractSuite", "smoke"]],
+  ["conformance", conformance, ["ConformanceError", "checkModuleLayout", "checkNamespaces", "checkWiring", "contractSuite", "describeWiring", "guardHandles", "isolate", "runContractSuite", "smoke"]],
 ]) {
   const specifier = "@get-modular/" + name;
   assert.deepEqual(Object.keys(namespace).sort(), expected.sort());
@@ -87,17 +87,17 @@ const composition = await core.compileComposition({
 assert.equal(composition.ok, true, JSON.stringify(composition.diagnostics));
 assert.match(composition.digest, /^gm-plan:v1:sha-256:/u);
 const api = assembly.assemblyFor();
-const providerFactory = api.bindFactory(provider, async () => ({
+const providerEntry = assembly.implement()(provider, async () => ({
   instance: { provider: true }, capabilities: { "smoke/value": 42 },
 }));
 const released = [];
-const consumerFactory = api.bindFactory(consumer, resources.scoped(consumer.implementationId,
+const consumerEntry = assembly.implement()(consumer,
   async (dependencies, { resources: scope }) => {
     await scope.setup({ name: "value", setup: () => dependencies.value, cleanup: (value) => { released.push(value); } });
     return { instance: dependencies.value, capabilities: {} };
-  }));
+  }, resources.scoped);
 const preparation = await api.prepare({ composition,
-  factories: [providerFactory, consumerFactory], roots: { consumer: consumerFactory } });
+  modules: [providerEntry, consumerEntry], roots: { consumer: consumerEntry } });
 assert.equal(preparation.status, "prepared", JSON.stringify(preparation));
 const attempt = resources.createScope({ name: "attempt" });
 const outcome = await preparation.prepared.run({ scope: attempt.resources });
@@ -105,10 +105,7 @@ assert.equal(outcome.status, "succeeded", JSON.stringify(outcome));
 assert.equal(outcome.roots.consumer, 42);
 assert.deepEqual(await attempt.control.close(), { complete: true, settled: true, debts: [] });
 assert.deepEqual(released, [42]);
-const isolated = await conformance.isolate(api, {
-  declaration: consumer, dependencies: { value: 42 },
-  factory: async (dependencies) => ({ instance: dependencies.value, capabilities: {} }),
-});
+const isolated = await conformance.isolate(consumerEntry, { dependencies: { value: 42 } });
 assert.equal(isolated.instance, 42);
 assert.equal((await isolated.close()).complete, true);
 console.log("public-consumer:passed");

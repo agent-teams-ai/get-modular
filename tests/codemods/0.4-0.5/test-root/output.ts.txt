@@ -1,0 +1,24 @@
+import type { Assembly } from "@get-modular/assembly";
+import { assemblyFor, input, implement } from "@get-modular/assembly";
+import { scoped } from "@get-modular/resources";
+
+type Capabilities = Record<never, never>;
+declare const journalInput: import("@get-modular/core").ModuleDeclaration;
+declare const sessionInput: import("@get-modular/core").ModuleDeclaration;
+declare const storeDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const cacheDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const createStore: (...args: any[]) => any;
+declare const createCache: (...args: any[]) => any;
+
+export function compose(api: Assembly<Capabilities>) {
+  const journal = input<Capabilities>()(journalInput);
+  const session = input<Capabilities>()(sessionInput);
+  const store = implement<Capabilities>()(storeDeclaration, createStore, scoped);
+  const cache = implement<Capabilities>()(cacheDeclaration, createCache);
+  return api.prepare({
+    profileId: "test/sessions", modules: [store, cache], roots: { cache },
+    inputs: { journal, session },
+  });
+}
+
+export const prepared = compose(assemblyFor<Capabilities>());

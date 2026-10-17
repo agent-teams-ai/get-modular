@@ -11,8 +11,8 @@ This checkpoint is `not-claimed`; it claims neither `self-composed-qualified`
 nor runtime conformance or release eligibility.
 
 The Node support intervals are `>=24.18.0 <25` and `>=26.10.0 <27`; Node.js 25
-is unsupported. Node.js 24.18 remains the production/default toolchain until
-Node.js 26 reaches LTS and the owner authorizes cutover. Browser execution
+is unsupported. Node.js 26.11 is the production/default toolchain by explicit
+owner authorization; Node.js 24.18 remains supported. Browser execution
 requires a secure context with Web Crypto; the native diagnostic runs do not
 constitute an official browser support or runtime-conformance claim.
 

@@ -1,0 +1,9 @@
+import type { Assembly } from "@get-modular/assembly";
+import { scoped } from "@get-modular/resources";
+
+type Capabilities = Record<never, never>;
+declare const moduleDeclaration: import("@get-modular/core").ModuleDeclaration;
+declare const factory: (...args: any[]) => any;
+
+export const entry = (api: Assembly<Capabilities>) =>
+  api.bindFactory(moduleDeclaration, scoped("m1", factory));

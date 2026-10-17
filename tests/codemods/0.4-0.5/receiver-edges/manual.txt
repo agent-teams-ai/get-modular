@@ -1,0 +1,5 @@
+line 9: bindFactory destructured method stays; use a direct Assembly method call
+line 10: bindInput element-access method stays; use a direct Assembly method call
+line 11: bindFactory optional method call stays; use a direct Assembly method call
+line 12: bindFactory call stays; make its Assembly receiver a local assemblyFor() value or an Assembly<M> parameter
+line 13: bindFactory call stays; make its Assembly receiver a local assemblyFor() value or an Assembly<M> parameter

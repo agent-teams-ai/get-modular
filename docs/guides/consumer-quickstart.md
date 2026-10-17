@@ -8,6 +8,7 @@ related:
   - ARCH-COMMON-ASSEMBLY
   - ARCH-CURRENT-CONTRACT
   - ADR-0023
+  - ADR-0036
 ---
 
 # Consumer quickstart
@@ -17,12 +18,15 @@ Assembly when the Host also needs to construct already selected and authorized
 factories.
 
 ```sh
-npm install @get-modular/core@0.3.0 @get-modular/assembly@0.3.0
+npm install @get-modular/core@0.5.0 @get-modular/assembly@0.5.0
 ```
 
+These versions are published with 0.5.0.
+
 Add `@get-modular/resources@0.1.0` when modules own resources that need cleanup,
-and `@get-modular/conformance@0.1.0` as a development dependency for module and
-composition tests.
+and `@get-modular/conformance@0.3.0` as a development dependency for module and
+composition tests. To add a feature or a module to a consumer, read the
+[module authoring guide](module-authoring.md).
 
 The complete [basic Host example](../../packages/assembly/examples/basic-host.mjs)
 defines a configuration provider, a greeting feature, and an application root.
@@ -32,17 +36,14 @@ drift from the public API.
 The essential flow is:
 
 ```js
-const composition = await compileComposition({ declarations, profile });
-if (!composition.ok) {
-  // Translate stable diagnostic codes at the Host boundary.
-  throw new Error(composition.diagnostics.map(({ code }) => code).join(", "));
-}
-
-// Input handles come from `api.bindInput`; each run supplies their values.
-const inputHandles = { session: api.bindInput(sessionDeclaration) };
+// Each module makes its entry beside its declaration: implement<Map>()(declaration, factory, scoped).
+// A feature lists its entries in one static group; the root lists feature groups.
+const modules = [ordersGroup, billingGroup];
+// An input entry comes from `input<Map>()(declaration)`; each run supplies its value.
+const inputs = { session: sessionInput };
 const inputValues = { session: { "acme/session-id": { id: sessionId } } };
 
-const preparation = await api.prepare({ composition, factories, roots, inputs: inputHandles });
+const preparation = await api.prepare({ profileId: "acme/app", modules, roots, inputs });
 if (preparation.status === "failed") {
   // No factory has run. Inspect error.code and preparation.diagnostics.
   throw preparation.error;
@@ -52,9 +53,12 @@ const outcome = await preparation.prepared.run({ signal, scope, inputs: inputVal
 ```
 
 Write declarations with `defineContract` and `declareModule`; `scope` and `inputs`
-are optional unless the Host uses resources or declares inputs. `inputHandles`
-maps aliases to `bindInput` handles; `inputValues` maps the same aliases to plain
-records keyed by capability ID. The
+are optional unless the Host uses resources or declares inputs. `inputs` maps
+aliases to input entries; `inputValues` maps the same aliases to plain
+records keyed by capability ID. A Host that compiles a profile itself, such as from
+bytes, calls `compileComposition` and passes `{ composition, modules, roots }`
+instead of `profileId`; a failed compilation returns `ok: false` with stable
+diagnostic codes to translate at the Host boundary. The
 [Consumer Module Standard](../architecture/common-assembly.md#module-packages-and-contracts)
 describes the authoring rules.
 
@@ -139,7 +143,7 @@ They do not introduce another standard or qualify a new runtime scope.
 | --- | --- |
 | Give every module a context with all services or `resolve(id)` | Pass only that consumer's declared, typed dependency record. Keep selection in the composition adapter. |
 | Make every parser, DTO or class a graph node | Keep fixed private helpers in their cohesive feature; model independently assembled relationships. |
-| Add a global registry to share handles across package copies | Handles are local authenticated identities. Transfer inert declarations and create handles in the receiving Assembly copy. |
+| Add a global registry to share entries across package copies | Entries and groups are local authenticated identities. Transfer inert declarations and create entries in the receiving Assembly copy. |
 | Pull product types or host internals into a convenient shared SDK | Keep ports consumer-owned and adapters at the product boundary; use public package roots. |
 | Select whichever provider registered first or use an instance fallback | Author a complete profile with exact implementation/capability bindings and explicit many ordering. |
 | Hide a capability/token mismatch behind `any` or a double cast | Correct the declaration, factory or binding; preserve rejecting type fixtures. |
@@ -186,7 +190,7 @@ of product-owned code, not another Get Modular package or a production Host.
    metadata and `owner.authority` strings as claims, not trusted principals.
 3. **Compile and prepare exact wiring.** Project the admitted snapshot to one
    complete Core profile; call public `compileComposition`; map every selected
-   implementation ID to exactly one Host-owned lazy loader and factory handle;
+   implementation ID to exactly one Host-owned lazy loader and module entry;
    then call public Assembly `prepare`. Refuse any selected implementation ID
    without exactly one loader before invoking a candidate loader. Import code
    only inside the admitted factory path. Check Host authority immediately

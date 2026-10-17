@@ -38,22 +38,26 @@ const assemblyFactoryPath = "packages/assembly/src/features/construction/factory
 // Fixtures invoke the installed Foundation CLI. This harness neither parses
 // source nor reproduces its classifier, dependency rules, or cycle algorithm.
 async function checkFixture(change = () => {}) {
+  const files = new Map(source);
+  const configuration = structuredClone(policy);
+  configuration.schemaVersion = 3;
+  configuration.packageRoots = ["packages/core", "packages/assembly"];
+  delete configuration.rootPackage;
+  configuration.governedRoots = ["packages/core/src", "packages/assembly/src"];
+  configuration.boundaries = configuration.boundaries.filter(boundary =>
+    (boundary.roots ?? []).every(root =>
+      root.startsWith("packages/core/src") || root.startsWith("packages/assembly/src")));
+  change(files, configuration);
+  files.set("package.json", JSON.stringify({ name: "source-policy-fixture", private: true, type: "module" }));
+  files.set("pnpm-workspace.yaml", 'packages:\n  - "packages/*"\n');
+  files.set("packages/core/package.json", coreManifest);
+  files.set("packages/assembly/package.json", assemblyManifest);
+  return runPolicyFixture(files, configuration);
+}
+
+async function runPolicyFixture(files, configuration) {
   const directory = await mkdtemp(join(tmpdir(), "gm-source-policy-"));
   try {
-    const files = new Map(source);
-    const configuration = structuredClone(policy);
-    configuration.schemaVersion = 3;
-    configuration.packageRoots = ["packages/core", "packages/assembly"];
-    delete configuration.rootPackage;
-    configuration.governedRoots = ["packages/core/src", "packages/assembly/src"];
-    configuration.boundaries = configuration.boundaries.filter(boundary =>
-      (boundary.roots ?? []).every(root =>
-        root.startsWith("packages/core/src") || root.startsWith("packages/assembly/src")));
-    change(files, configuration);
-    files.set("package.json", JSON.stringify({ name: "source-policy-fixture", private: true, type: "module" }));
-    files.set("pnpm-workspace.yaml", 'packages:\n  - "packages/*"\n');
-    files.set("packages/core/package.json", coreManifest);
-    files.set("packages/assembly/package.json", assemblyManifest);
     files.set("foundation.config.yaml", stringify({ schemaVersion: 1, project: { id: "source-policy-fixture" }, capabilities: { "architecture.source-dependencies": { configPath: policyPath } } }));
     files.set(policyPath, stringify(configuration));
     for (const [path, contents] of files) {
@@ -418,4 +422,81 @@ test("Foundation rejects missing governed roots and checks ignored dist sources"
     'import { readFileSync } from "node:fs"; export const seed = readFileSync;\n'));
   assert.equal(broken.outcome, "violations", JSON.stringify(broken));
   assert.match(JSON.stringify(broken), /packages\/core\/dist-seed\/index.js/u);
+});
+
+// Finite qualification development edges. Production fixtures above remain intact.
+const qualificationRunner = "packages/lifecycle-kernel/tests/run-node20-qualification.mts";
+const qualificationPrepare = "tests/qualification/lifecycle-tool-prepare.mts";
+const qualificationTest = "tests/qualification/lifecycle-tool-prepare.test.mts";
+const qualificationContract = "tests/qualification/lifecycle-qualification-contracts.mts";
+async function checkQualificationFixture(change = () => {}) {
+  const files = new Map([
+    ["package.json", JSON.stringify({ name: "@get-modular/repository", private: true, type: "module" })],
+    ["pnpm-workspace.yaml", 'packages:\n  - "packages/*"\n'],
+    ["packages/lifecycle-kernel/package.json", await readFile("packages/lifecycle-kernel/package.json", "utf8")],
+    [qualificationRunner, 'import "node:crypto"; import "node:fs"; export {};\n'],
+    [qualificationPrepare, 'export const prepared = true;\n'],
+    [qualificationTest, 'import "node:events"; import "node:stream"; export {};\n'],
+    [qualificationContract, 'export interface InputIdentity { path: string; sha256: string }\n'],
+  ]);
+  const configuration = structuredClone(policy);
+  configuration.packageRoots = ["packages/lifecycle-kernel"];
+  configuration.governedRoots = ["packages/lifecycle-kernel/tests", "tests/qualification"];
+  configuration.boundaries = configuration.boundaries.filter(boundary =>
+    ["repository.development", "lifecycle-kernel-development"].includes(boundary.id));
+  for (const boundary of configuration.boundaries) {
+    if (boundary.id === "repository.development") boundary.roots = ["tests/qualification"];
+    boundary.entrypoints = boundary.entrypoints.filter(path => files.has(path));
+    boundary.allow.boundaries = boundary.allow.boundaries.filter(id =>
+      configuration.boundaries.some(target => target.id === id));
+  }
+  change(files, configuration);
+  return runPolicyFixture(files, configuration);
+}
+
+test("Foundation admits the finite qualification builtin allowances", async () => {
+  const report = await checkQualificationFixture();
+  assert.equal(report.outcome, "passed", JSON.stringify(report));
+  assert.equal(rules(report), "");
+});
+
+for (const [owner, path, builtin] of [
+  ["lifecycle-kernel-development", qualificationRunner, "node:crypto"],
+  ["lifecycle-kernel-development", qualificationRunner, "node:fs"],
+  ["repository.development", qualificationTest, "node:events"],
+  ["repository.development", qualificationTest, "node:stream"],
+]) {
+  test(`Foundation rejects qualification ${builtin} when its finite allowance is removed`, async () => {
+    const report = await checkQualificationFixture((_files, configuration) => {
+      const boundary = configuration.boundaries.find(item => item.id === owner);
+      boundary.allow.builtins = boundary.allow.builtins.filter(item => item !== builtin);
+    });
+    assert.equal(report.outcome, "violations", JSON.stringify(report));
+    assert.ok(report.capabilities[0].diagnostics.some(item =>
+      item.ruleId === "architecture.source-dependencies.forbidden-builtin-dependency"
+      && item.location.path === path && item.subject === `${owner}->${builtin}`), JSON.stringify(report));
+  });
+}
+
+for (const [path, builtin] of [[qualificationRunner, "node:worker_threads"], [qualificationTest, "node:net"]]) {
+  test(`Foundation keeps unrelated qualification ${builtin} forbidden`, async () => {
+    const report = await checkQualificationFixture(files => files.set(path,
+      files.get(path) + `import "${builtin}";\n`));
+    assert.equal(report.outcome, "violations", JSON.stringify(report));
+    assert.match(rules(report), /architecture\.source-dependencies\.forbidden-builtin-dependency/u);
+  });
+}
+
+test("Foundation rejects root qualification imports of the private package runner", async () => {
+  const report = await checkQualificationFixture(files => files.set(qualificationPrepare,
+    'import "../../packages/lifecycle-kernel/tests/run-node20-qualification.mts";\n'));
+  assert.equal(report.outcome, "violations", JSON.stringify(report));
+  assert.match(rules(report), /architecture\.source-dependencies\.cross-package-relative-import/u);
+});
+
+test("Foundation admits the declared package-development to root-development contract direction", async () => {
+  const report = await checkQualificationFixture(files => files.set(qualificationRunner,
+    'import type { InputIdentity } from "../../../tests/qualification/lifecycle-qualification-contracts.mts";\nexport type Identity = InputIdentity;\n'));
+  assert.equal(report.outcome, "passed", JSON.stringify(report));
+  assert.equal(rules(report), "");
 });

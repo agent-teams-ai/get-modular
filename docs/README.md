@@ -13,6 +13,8 @@ summary: Canonical navigation for Get Modular architecture and evidence.
 - [Consumer quickstart](guides/consumer-quickstart.md) - install, compile,
   construct, diagnose, cancel, clean up, and apply the optional executable
   module Host recipe.
+- [Module authoring guide](guides/module-authoring.md) - add and grow features and modules in the
+  Consumer Module Standard layout, with compiled examples, recipes, anti-patterns and checklists.
 - [Consumer profile template](templates/consumer-module-profile.md) - a
   copyable checklist for scoped Consumer Module Standard adoption.
 - [Consumer module standard](architecture/common-assembly.md#consumer-module-standard) - scoped adoption rules and executable evidence.
@@ -50,7 +52,9 @@ resource policy is the single profile described in the current contract.
 - [Historical implementation-readiness audit](../research/implementation-readiness/report.md) - dispositions belong to the recorded historical subjects; use the current contract and roadmap for today's start conditions.
 - [Module resource scopes and foundation review](../research/module-resources-2026-10/README.md) - research and planning archive for the resources package, Assembly 0.3.0 and the foundation decisions; not an accepted decision.
 - [Train 1 release plan](../research/releases/0.3.0-train/release-plan.md) - rehearsal 3 and release PR plan for Core and Assembly 0.3.0, resources 0.1.0 and conformance 0.1.0; not an accepted decision.
-- [Contract revision windows train plan](../research/contract-evolution-2026-10/README.md) - plan and briefs for Core and Assembly 0.4.0; not an accepted decision.
+- [Contract revision windows train plan](../research/contract-evolution-2026-10/README.md) - plan and briefs for Core and Assembly 0.4.0; deferred by the owner on 2026-10-10; not an accepted decision.
+- [Module DX 0.5.0 train plan](../research/module-dx-2026-10/README.md) - implementation plan of the 0.5.0 train and the Feature Module Standard v1.1 nested features draft; planning only, not an accepted decision.
+- [Module entries spike results](../research/module-entries-2026-10/README.md) - measurements and prototype diff behind the entries-and-groups design, merge experiment, port check, oxlint probes and ADR-0036 and ADR-0037 drafts; research only, not an accepted decision.
 - [Lifecycle kernel extraction plan](../research/lifecycle-kernel-2026-09/README.md) - archived working plan behind ADR-0029; the current authority listed in its README takes precedence.
 - [Compiler engineer handbook](qualification/compiler-engineer-handbook.md) - seventeen fact derivations, partial failure rules and independent examples.
 - [Growth and first-publication readiness review](qualification/growth-and-release-readiness-review.md) - reconciled capability migration, namespace admission and release-mechanics findings.

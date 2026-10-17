@@ -1,0 +1,4 @@
+line 1: export * re-exports the package; importers of FactoryHandle through this module are not rewritten, check them by hand
+line 2: export * as gm re-exports the package; importers of FactoryHandle through this module are not rewritten, check them by hand
+line 3: export * re-exports the package; importers of FactoryHandle through this module are not rewritten, check them by hand
+line 5: export type * as from re-exports the package; importers of FactoryHandle through this module are not rewritten, check them by hand

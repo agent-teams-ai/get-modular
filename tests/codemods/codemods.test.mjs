@@ -1,0 +1,238 @@
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import test from "node:test";
+import { fileURLToPath } from "node:url";
+import { Project } from "ts-morph";
+import { testAssemblyTypes } from "../../architecture/tooling/test-assembly-types.mjs";
+import factoryHandle from "../../architecture/tooling/codemods/0.2-0.3/factory-handle.mjs";
+import entries from "../../architecture/tooling/codemods/0.4-0.5/entries.mjs";
+import prepare from "../../architecture/tooling/codemods/0.4-0.5/prepare.mjs";
+import isolate from "../../architecture/tooling/codemods/0.4-0.5/isolate.mjs";
+import typeNames from "../../architecture/tooling/codemods/0.4-0.5/type-names.mjs";
+import imports from "../../architecture/tooling/codemods/0.4-0.5/imports.mjs";
+import { reportAll } from "../../architecture/tooling/codemods/0.4-0.5/shared.mjs";
+
+const workspace = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const runner = join(workspace, "architecture/tooling/codemods/run.mjs");
+const fixtures = join(workspace, "tests/codemods");
+const codemods = new Map([
+  ["0.2-0.3", [factoryHandle]],
+  ["0.4-0.5", [entries, prepare, isolate, typeNames, imports]],
+]);
+const casesFor = (name) => readdirSync(join(fixtures, name)).sort();
+const read = (name, case_, file) => readFileSync(join(fixtures, name, case_, file), "utf8");
+
+function apply(text, extension = "ts", transforms = [factoryHandle]) {
+  const project = new Project({ useInMemoryFileSystem: true, skipAddingFilesFromTsConfig: true });
+  const file = project.createSourceFile(`input.${extension}`, text, { overwrite: true, allowJs: true });
+  const findings = [];
+  let edits = 0;
+  for (const transform of transforms) edits += transform(file, (message) => findings.push(message)) ?? 0;
+  return { text: file.getFullText(), edits, findings: transforms.includes(entries) ? reportAll(file) : findings };
+}
+
+for (const [name, transforms] of codemods) {
+  for (const case_ of casesFor(name)) {
+    const inputName = readdirSync(join(fixtures, name, case_)).find((file) => /^input\.(?:ts|mjs)\.txt$/u.test(file));
+    const extension = inputName.slice("input.".length, -".txt".length);
+    test(`${name} ${case_}: output matches and a second run changes nothing`, () => {
+      const result = apply(read(name, case_, inputName), extension, transforms);
+      assert.equal(result.text, read(name, case_, `output.${extension}.txt`));
+      const manualPath = join(fixtures, name, case_, "manual.txt");
+      const manual = existsSync(manualPath) ? read(name, case_, "manual.txt").trimEnd().split("\n") : [];
+      assert.deepEqual(result.findings, manual);
+      const again = apply(result.text, extension, transforms);
+      assert.equal(again.text, result.text);
+      assert.equal(again.edits, 0);
+      assert.deepEqual(again.findings, manual);
+    });
+  }
+}
+
+// 0.2-0.3 outputs target the 0.3 API, which the workspace no longer has.
+test("0.4-0.5 outputs type-check against the workspace Assembly", { timeout: 600000 }, () => {
+  const directory = realpathSync(mkdtempSync(join(tmpdir(), "get-modular-codemod-types-")));
+  try {
+    mkdirSync(join(directory, "node_modules/@get-modular"), { recursive: true });
+    for (const name of ["core", "assembly", "resources", "conformance"]) {
+      symlinkSync(join(workspace, "packages", name), join(directory, "node_modules/@get-modular", name), "junction");
+    }
+    writeFileSync(join(directory, "package.json"), JSON.stringify({ name: "codemod-types", private: true, type: "module" }));
+    const prelude = 'type HostCapabilities = Record<never, never>;\ntype Instance = unknown;\n'
+      + 'type SessionCapabilities = Record<never, never>;\ntype Contracts = Record<never, never>;\n'
+      + 'type StaticDeclaration = { readonly kind: "get-modular.module-declaration"; readonly schemaVersion: 1;\n'
+      + '  readonly moduleId: "codemod/module"; readonly implementationId: "codemod/module/default";\n'
+      + '  readonly owner: { readonly authority: "codemod"; readonly path: readonly ["module"] };\n'
+      + '  readonly provides: readonly []; readonly slots: readonly [] };\n'
+      + 'declare const declaration: StaticDeclaration;\n';
+    const files = [];
+    const typeCases = casesFor("0.4-0.5").filter((case_) => !existsSync(join(fixtures, "0.4-0.5", case_, "manual.txt")));
+    for (const case_ of typeCases) {
+      files.push(`${case_}.ts`);
+      // `implement` and `input` need a literal declaration type; the fixtures declare the wide one.
+      const output = read("0.4-0.5", case_, "output.ts.txt").replaceAll('import("@get-modular/core").ModuleDeclaration', "StaticDeclaration");
+      writeFileSync(join(directory, `${case_}.ts`), prelude + output);
+    }
+    writeFileSync(join(directory, "tsconfig.json"), JSON.stringify({ compilerOptions: {
+      target: "ES2022", lib: ["ES2023", "ESNext.Disposable", "DOM"], strict: true, noEmit: true, skipLibCheck: false, types: [],
+      isolatedDeclarations: false, erasableSyntaxOnly: false,
+    }, files }));
+    testAssemblyTypes({ directory, project: join(directory, "tsconfig.json") });
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+function run(...args) {
+  return runIn({}, ...args);
+}
+
+function runIn({ cwd, initCwd }, ...args) {
+  const { INIT_CWD: _inherited, ...env } = process.env;
+  const result = spawnSync(process.execPath, [runner, ...args], {
+    encoding: "utf8", cwd, env: initCwd === undefined ? env : { ...env, INIT_CWD: initCwd },
+  });
+  return { status: result.status, out: result.stdout, err: result.stderr };
+}
+
+function git(directory, ...args) {
+  // An empty hooks directory keeps machine-wide commit hooks out of the throwaway repository.
+  const hooks = join(directory, "..", "no-hooks");
+  mkdirSync(hooks, { recursive: true });
+  const result = spawnSync("git", ["-c", `core.hooksPath=${hooks}`, "-c", "user.name=fixture", "-c", "user.email=fixture@example.invalid",
+    "-c", "commit.gpgsign=false", "-C", directory, ...args], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+}
+
+function consumer(t) {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "get-modular-codemod-run-")));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const directory = join(root, "consumer");
+  mkdirSync(join(directory, "src"), { recursive: true });
+  mkdirSync(join(directory, "node_modules/dep"), { recursive: true });
+  cpSync(join(fixtures, "0.2-0.3/plain/input.ts.txt"), join(directory, "src/index.ts"));
+  cpSync(join(fixtures, "0.2-0.3/plain/input.ts.txt"), join(directory, "node_modules/dep/index.ts"));
+  return directory;
+}
+
+test("runner: --dry is the default and leaves files unchanged, node_modules is skipped", (t) => {
+  const directory = consumer(t);
+  const before = readFileSync(join(directory, "src/index.ts"), "utf8");
+  const result = run("0.2-0.3", directory);
+  assert.equal(result.status, 0, result.err);
+  assert.match(result.out, /src[\\/]index\.ts: 2 edits/u);
+  assert.doesNotMatch(result.out, /node_modules/u);
+  assert.equal(readFileSync(join(directory, "src/index.ts"), "utf8"), before);
+});
+
+test("runner: --check exits 1 while changes are pending and 0 after --write", (t) => {
+  const directory = consumer(t);
+  assert.equal(run("0.2-0.3", directory, "--check").status, 1);
+  const written = run("0.2-0.3", directory, "--write", "--allow-dirty");
+  assert.equal(written.status, 0, written.err);
+  assert.match(written.out, /run your typecheck/u);
+  assert.equal(readFileSync(join(directory, "src/index.ts"), "utf8"), read("0.2-0.3", "plain", "output.ts.txt"));
+  assert.equal(run("0.2-0.3", directory, "--check").status, 0);
+});
+
+test("runner: --write refuses a dirty tree and writes on a clean one", (t) => {
+  const directory = consumer(t);
+  const file = join(directory, "src/index.ts");
+  const before = readFileSync(file, "utf8");
+  git(directory, "init", "-q");
+  const refused = run("0.2-0.3", directory, "--write");
+  assert.equal(refused.status, 2);
+  assert.match(refused.err, /refusing to write/u);
+  assert.equal(readFileSync(file, "utf8"), before);
+  writeFileSync(join(directory, ".gitignore"), "node_modules\n");
+  git(directory, "add", ".");
+  git(directory, "commit", "-q", "-m", "init");
+  const written = run("0.2-0.3", directory, "--write");
+  assert.equal(written.status, 0, written.err);
+  assert.equal(readFileSync(file, "utf8"), read("0.2-0.3", "plain", "output.ts.txt"));
+});
+
+test("runner: unknown codemod exits 2 with the known list; a file that does not parse is skipped and fails the run", (t) => {
+  const directory = consumer(t);
+  const unknown = run("9.9-9.10", directory);
+  assert.equal(unknown.status, 2);
+  assert.match(unknown.err, /known: 0\.2-0\.3, 0\.4-0\.5/u);
+  writeFileSync(join(directory, "src/broken.ts"), "export const = ;\n");
+  const result = run("0.2-0.3", directory);
+  assert.equal(result.status, 1);
+  assert.match(result.err, /skipped, does not parse: src[\\/]broken\.ts/u);
+  assert.match(result.out, /src[\\/]index\.ts: 2 edits/u);
+});
+
+test("runner: a relative target resolves against the invoking directory (INIT_CWD under pnpm --dir), never the checkout", (t) => {
+  const directory = consumer(t);
+  const parent = dirname(directory);
+  // pnpm --dir <checkout> sets cwd to the checkout and INIT_CWD to the directory the command was typed in.
+  const viaPnpm = runIn({ cwd: workspace, initCwd: parent }, "0.2-0.3", "consumer", "--check");
+  assert.equal(viaPnpm.status, 1, viaPnpm.err);
+  assert.match(viaPnpm.out, /src[\\/]index\.ts: 2 edits/u);
+  const plain = runIn({ cwd: parent }, "0.2-0.3", "consumer", "--check");
+  assert.equal(plain.status, 1, plain.err);
+});
+
+test("runner: refuses to run inside the Get Modular checkout", () => {
+  const result = runIn({ cwd: workspace, initCwd: workspace }, "0.2-0.3", ".", "--check");
+  assert.equal(result.status, 2);
+  assert.match(result.err, /Get Modular checkout itself/u);
+  assert.equal(runIn({ cwd: workspace }, "0.2-0.3", "tests", "--dry").status, 2);
+});
+
+test("runner: a symlink to the Get Modular checkout is refused too", (t) => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "get-modular-codemod-link-")));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  symlinkSync(workspace, join(root, "checkout"), "junction");
+  const result = runIn({ cwd: root }, "0.2-0.3", "checkout", "--check");
+  assert.equal(result.status, 2);
+  assert.match(result.err, /Get Modular checkout itself/u);
+});
+
+test("runner: tsx files are included", (t) => {
+  const directory = consumer(t);
+  cpSync(join(fixtures, "0.2-0.3/plain/input.ts.txt"), join(directory, "src/view.tsx"));
+  assert.match(run("0.2-0.3", directory).out, /src[\\/]view\.tsx: 2 edits/u);
+});
+
+test("runner: .mjs files are included and run the 0.4-0.5 transforms", (t) => {
+  const directory = consumer(t);
+  rmSync(join(directory, "src/index.ts"));
+  cpSync(join(fixtures, "0.4-0.5/js-consumer/input.mjs.txt"), join(directory, "src/consumer.mjs"));
+  assert.match(run("0.4-0.5", directory).out, /src[\\/]consumer\.mjs: \d+ edits?/u);
+});
+
+test("runner: a directory named like ..foo inside the checkout is still refused", (t) => {
+  const inside = join(workspace, "..codemod-test-dir");
+  mkdirSync(inside, { recursive: true });
+  t.after(() => rmSync(inside, { recursive: true, force: true }));
+  const result = runIn({ cwd: workspace }, "0.2-0.3", "..codemod-test-dir", "--check");
+  assert.equal(result.status, 2);
+  assert.match(result.err, /Get Modular checkout itself/u);
+});
+
+test("runner: the checkout path in another letter case is refused on case-insensitive volumes", { skip: process.platform !== "darwin" }, (t) => {
+  const variant = workspace.toUpperCase();
+  if (variant === workspace || !existsSync(variant)) return t.skip("the volume is case-sensitive");
+  const result = runIn({ cwd: tmpdir() }, "0.2-0.3", variant, "--check");
+  assert.equal(result.status, 2);
+  assert.match(result.err, /Get Modular checkout itself/u);
+});
+
+test("0.4-0.5 isolate: a kept ts-expect-error between the arguments asks for a placement check", () => {
+  const result = apply(read("0.4-0.5", "isolate-comment", "input.ts.txt").replace("a comment (a ts-expect-error directive is kept the same way)", "@ts-expect-error"),
+    "ts", [isolate]);
+  assert.deepEqual(result.findings, ["line 9: check the placement of @ts-expect-error after the isolate rewrite"]);
+  assert.match(result.text, /\/\/ @ts-expect-error stays above the options/u);
+});
+
+test("0.4-0.5 isolate: a kept ts-ignore asks for a placement check too", () => {
+  const result = apply(read("0.4-0.5", "isolate-comment", "input.ts.txt").replace("a comment (a ts-expect-error directive is kept the same way)", "@ts-ignore"),
+    "ts", [isolate]);
+  assert.deepEqual(result.findings, ["line 9: check the placement of @ts-ignore after the isolate rewrite"]);
+});

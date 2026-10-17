@@ -405,18 +405,22 @@ boundaries:
         - lifecycle-kernel-implementation
         - lifecycle-kernel-composition
         - lifecycle-kernel-public-entrypoint
+        - repository.development
       packages:
         - "@get-modular/lifecycle-kernel"
       builtins:
         - node:assert/strict
         - node:child_process
+        - node:crypto
+        - node:fs
         - node:fs/promises
         - node:module
         - node:os
         - node:path
         - node:test
         - node:url
-      runtimeReferences: []
+      runtimeReferences:
+        - dynamic
   # ADR-0030 admits one optional public cleanup-scope package. It imports no
   # package, builtin or composition package; only module code and Hosts use it.
   - id: resources-contract
@@ -510,6 +514,31 @@ boundaries:
       packages: []
       builtins: []
       runtimeReferences: []
+  - id: conformance-records
+    roots:
+      - packages/conformance/src/features/records/own.ts
+      - packages/conformance/src/features/records/declarations.ts
+    entrypoints:
+      - packages/conformance/src/features/records/own.ts
+      - packages/conformance/src/features/records/declarations.ts
+    allow:
+      boundaries:
+        - conformance-errors
+      packages:
+        - "@get-modular/core"
+      builtins: []
+      runtimeReferences: []
+  - id: conformance-ports
+    roots:
+      - packages/conformance/src/features/ports/own-members.ts
+    entrypoints:
+      - packages/conformance/src/features/ports/own-members.ts
+    allow:
+      boundaries:
+        - conformance-errors
+      packages: []
+      builtins: []
+      runtimeReferences: []
   - id: conformance-harness
     roots:
       - packages/conformance/src/features/harness/types.ts
@@ -522,6 +551,7 @@ boundaries:
     allow:
       boundaries:
         - conformance-errors
+        - conformance-ports
       packages:
         - "@get-modular/assembly"
         - "@get-modular/core"
@@ -555,6 +585,51 @@ boundaries:
       packages: []
       builtins: []
       runtimeReferences: []
+  - id: conformance-namespaces
+    roots:
+      - packages/conformance/src/features/namespaces/check.ts
+    entrypoints:
+      - packages/conformance/src/features/namespaces/check.ts
+    allow:
+      boundaries:
+        - conformance-errors
+        - conformance-records
+      packages:
+        - "@get-modular/core"
+      builtins: []
+      runtimeReferences: []
+  - id: conformance-wiring
+    roots:
+      - packages/conformance/src/features/wiring/types.ts
+      - packages/conformance/src/features/wiring/check.ts
+      - packages/conformance/src/features/wiring/describe.ts
+    entrypoints:
+      - packages/conformance/src/features/wiring/types.ts
+      - packages/conformance/src/features/wiring/check.ts
+      - packages/conformance/src/features/wiring/describe.ts
+    allow:
+      boundaries:
+        - conformance-errors
+        - conformance-records
+      packages:
+        - "@get-modular/assembly"
+        - "@get-modular/core"
+      builtins: []
+      runtimeReferences: []
+  - id: conformance-layout
+    roots:
+      - packages/conformance/src/features/layout/types.ts
+      - packages/conformance/src/features/layout/check.ts
+    entrypoints:
+      - packages/conformance/src/features/layout/types.ts
+      - packages/conformance/src/features/layout/check.ts
+    allow:
+      boundaries:
+        - conformance-errors
+        - conformance-records
+      packages: []
+      builtins: []
+      runtimeReferences: []
   - id: conformance-composition
     roots:
       - packages/conformance/src/composition/root.ts
@@ -565,6 +640,9 @@ boundaries:
         - conformance-harness
         - conformance-suites
         - conformance-handles
+        - conformance-namespaces
+        - conformance-wiring
+        - conformance-layout
       packages: []
       builtins: []
       runtimeReferences: []
@@ -581,6 +659,10 @@ boundaries:
         - conformance-harness
         - conformance-suites
         - conformance-handles
+        - conformance-namespaces
+        - conformance-wiring
+        - conformance-layout
+        - conformance-ports
         - conformance-composition
       packages: []
       builtins: []
@@ -603,6 +685,7 @@ boundaries:
       builtins:
         - node:assert/strict
         - node:child_process
+        - node:events
         - node:fs/promises
         - node:module
         - node:net
@@ -610,6 +693,7 @@ boundaries:
         - node:path
         - node:test
         - node:url
+        - node:vm
       runtimeReferences: []
   - id: core-development
     dependencyMode: development
@@ -735,13 +819,17 @@ boundaries:
       - architecture/checks/v1-qualification.mjs
       - architecture/tooling/build-assembly.mjs
       - architecture/tooling/build-core.mjs
+      - architecture/tooling/codemods/run.mjs
       - architecture/tooling/first-core-release.mjs
       - architecture/tooling/generate-core.mjs
       - architecture/tooling/test-assembly-types.mjs
       - tests/qualification/m2-candidate/combined-case-inventory.mjs
       - tests/qualification/m2-candidate/generation-two-artifacts.mjs
+      - tests/codemods/codemods.test.mjs
       - tests/quality-activation.test.mjs
       - tests/source-dependencies.test.mjs
+      - tests/qualification/lifecycle-tool-prepare.mts
+      - tests/qualification/lifecycle-qualification-contracts.mts
     allow:
       boundaries:
         - assembly-examples
@@ -752,6 +840,7 @@ boundaries:
       packages:
         - "@agent-teams/engineering-foundation"
         - "@get-modular/assembly"
+        - "@get-modular/conformance"
         - "@get-modular/core"
         - "@get-modular/lifecycle-kernel"
         - "@get-modular/resources"
@@ -760,6 +849,7 @@ boundaries:
         - json-canonicalize
         - jsonc-parser
         - tar
+        - ts-morph
         - typescript
         - typescript-minimum
         - yaml
@@ -770,6 +860,7 @@ boundaries:
         - node:buffer
         - node:child_process
         - node:crypto
+        - node:events
         - node:fs
         - node:fs/promises
         - node:http
@@ -778,6 +869,7 @@ boundaries:
         - node:path
         - node:perf_hooks
         - node:process
+        - node:stream
         - node:test
         - node:timers/promises
         - node:url

@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.5.0
+
+### Minor Changes
+
+- 2f33631: Align Core with Assembly 0.5.0 under the exact-pair rule (ADR-0027, ADR-0036). No API or behavior change.
+  
+  Authoring surface changed: no
+
+## 0.4.0
+
+### Minor Changes
+
+- Align Core with Assembly 0.4.0 under the exact-pair rule (ADR-0027, ADR-0035). No API or behavior change.
+  
+  Authoring surface changed: no
+
+### Patch Changes
+
+- Internal hardening carried from the Node 26 qualification (#149): the composition-semantics graph and selected-graph checks compare their `Uint8Array` marks explicitly with 1, and the owned raw scanner returns an invalid token when asked to read past the input. Observable behavior, declarations and the public API are unchanged.
+  
+  Authoring surface changed: no
+
+## 0.3.0
+
+### Minor Changes
+
+- fcb3a32: Align Core with Assembly 0.3.0 under the exact-pair rule (ADR-0027, ADR-0031). No API or behavior change.
+  
+  Authoring surface changed: no
+
 ## 0.2.0
 
 ### Minor Changes

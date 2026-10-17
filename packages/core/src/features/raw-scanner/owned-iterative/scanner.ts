@@ -234,6 +234,8 @@ function scanKeyword(bytes: Uint8Array, start: number, kind: "true" | "false" | 
 
 function tokenAt(bytes: Uint8Array, start: number): RawToken {
   const byte = bytes[start];
+  // An absent byte takes the same invalid-token path as the default branch below.
+  if (byte === undefined) {return invalidToken(start, start, bytes.length);}
   switch (byte) {
     case 0x7b: return { kind: "object-start", start, end: start + 1 };
     case 0x7d: return { kind: "object-end", start, end: start + 1 };

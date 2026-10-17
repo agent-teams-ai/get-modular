@@ -1,0 +1,4 @@
+import { FactoryHandle, AnyFactoryHandle } from "@get-modular/assembly";
+
+export type Any = AnyFactoryHandle<HostCapabilities>;
+export type Bound = FactoryHandle<HostCapabilities, typeof declaration, Instance>;
