@@ -17,6 +17,8 @@ test("consumer restart profiles preserve durable boundaries and real process cus
     assert.equal(runtime.status, 0, `${runtime.stdout}\n${runtime.stderr}`);
     assert.match(runtime.stdout, /^# tests [1-9]\d*$/mu, "Recovery scenarios must actually execute.");
     assert.match(runtime.stdout, /^# fail 0$/mu, runtime.stdout);
+    assert.match(runtime.stdout, /^# skipped 0$/mu, runtime.stdout);
+    assert.match(runtime.stdout, /^# todo 0$/mu, runtime.stdout);
     context.diagnostic(runtime.stdout.trim());
     context.diagnostic(JSON.stringify({ profiles: ["record-only", "restart-pending"], runtime: "passed",
       compiler: { version: compiler.version, resolution: "NodeNext" }, source: "incomplete",
