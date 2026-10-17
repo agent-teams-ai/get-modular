@@ -331,6 +331,25 @@ test("L-09: the effect port checks permission after its hold while terminal and 
   } finally { holdEffect.release(); }
 });
 
+test("L-10: capacity is available immediately after an awaited success or failure", watchdog, async () => {
+  const controls = lifetimeControls();
+  const journal = await createFileJournal();
+  await using attempt = createAttempt(await prepare(controls), "capacity-reuse", journal, { capacity: 1 });
+  assert.equal(await attempt.ready, true);
+  const request = (id: string, payload: string) => ({ id, payload, signal: attempt.signal });
+  assert.equal(await attempt.run(request("first", "hello")), "capacity-reuse:A:hello");
+  assert.equal(attempt.snapshot().activeWork, 0);
+  await assert.rejects(attempt.run(request("failed", "!fail")), { code: "fixture.runner.failed" });
+  assert.equal(attempt.snapshot().activeWork, 0);
+  assert.equal(await attempt.run(request("last", "world")), "capacity-reuse:A:world");
+  assert.equal(attempt.snapshot().activeWork, 0);
+  assert.deepEqual(controls.enteredIds, ["first", "failed", "last"]);
+  assert.deepEqual((await journal.read()).filter(record => record.kind === "terminal").map(record => record.id),
+    ["first", "failed", "last"]);
+  assert.deepEqual(await attempt.stop(), complete);
+  await released(controls, journal);
+});
+
 test("L-10: capacity one rejects overload without entry, and private stop cancels the accepted operation", watchdog, async () => {
   const controls = lifetimeControls({ waitForCancellation: true });
   const journal = await createFileJournal();
