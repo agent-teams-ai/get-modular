@@ -156,9 +156,12 @@ test("C-01/C-02: one owner contract suite qualifies the typed fake and isolated 
         if (journal) {
           report ??= closeSubject ? await closeSubject() : complete;
           if (!report.complete) {
-            throw Object.assign(new Error("Subject cleanup retained debt and its open journal.", { cause: failure }), {
-              code: "fixture.suite.close-incomplete", report, retained: { journal, close: closeSubject },
+            const cleanupFailure = Object.assign(new Error("Subject cleanup retained debt and its open journal.", { cause: failure }), {
+              code: "fixture.suite.close-incomplete", report,
             });
+            // Retain retry authority without printing handles in ordinary diagnostics.
+            Object.defineProperty(cleanupFailure, "retained", { value: { journal, close: closeSubject } });
+            throw cleanupFailure;
           }
           await journal[Symbol.asyncDispose]();
         }
