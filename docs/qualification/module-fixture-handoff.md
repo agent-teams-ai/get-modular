@@ -294,14 +294,16 @@ Three samples do not establish tail percentiles or an SLO.
 Keep existing 180-second compiler subprocess and 600-second type-test watchdogs
 as engineering caps, not promised latency. Declare compiler, scanner, runtime/smoke
 and aggregate experiment deadlines before running. Enforce the aggregate deadline
-outside blocking child work; an in-process timer cannot interrupt `spawnSync`.
+with an external supervisor enclosing generation, copying, patching, hashing and
+all compiler/runtime child work; terminate its owned descendants on expiry.
+An in-process timer cannot interrupt `spawnSync`.
 A ceiling/watchdog failure stops the experiment, not another sample. Do not raise
 ceilings, reduce smoke targets or split roots for green.
 
 At the observed source, Core accepts at most 4096 declarations; Assembly counts
 entries plus groups separately up to 4096, with group depth 16. Input entries
 consume Core declarations but not that Assembly walk. Other active source/graph
-limits still apply. The 1000-entry recipe writes 6003 TypeScript files; no claim
+limits still apply. The 1000-entry recipe writes 7003 TypeScript files; no claim
 follows that an old 4096-file scanner can process it. Report actual disk bytes,
 import occurrences and source inventory along with graph counts.
 
@@ -313,6 +315,7 @@ supports a proposal; it does not activate that proposal's implementation.
 
 | Trigger | Separate owner route; not baseline work |
 | --- | --- |
+| Required larger target exceeds its compiler budget on the prescribed feature maps | Preserve the failing consumer, reduced type-only witness and exact compiler pins; route a bounded investigation to the compiler/package owner. A representation or standard change remains a separate approval proposal |
 | Concrete live watch/load consumer | Existing Observation admission/implementation work; first update authority and qualify its package, then add one consumer scenario |
 | Need exact pending factory attribution | Named Assembly-owned inspection successor and experiment; retain honest attempt-level diagnostics meanwhile |
 | Demonstrated repeated task-ownership contract | Consider TaskSet with one owner; direct fixture session ledger remains the baseline |

@@ -33,18 +33,19 @@ features. Only add role directories that contain actual behavior.
 
 | Path or family | Responsibility |
 | --- | --- |
+| `src/features/session/contracts/session.ts` | Public structural port/request types for the session-owned capabilities; no imports from application |
 | `src/features/session/application/ports/{runner,journal,identity}.ts` | Narrow consumer contracts, function-valued properties, no GM imports |
-| `src/features/session/application/use-cases/run-job.ts` | One exported function coordinating normalization, runner and journal |
+| `src/features/session/application/use-cases/run-job.ts` | One exported `(deps, input)` function coordinating normalization, runner and journal |
 | `src/features/session/composition/session.contracts.ts` | Descriptors and the session capability map; consumer owns needed contracts |
 | `src/features/session/composition/session.declaration.ts` | Session module declaration with exact descriptors and required slots |
 | `src/features/session/composition/session.module.ts` | Thin typed factory adapter; concrete workflow remains in the use case |
 | `src/features/session/composition/{identity,journal}.declaration.ts` | Slot-free input declarations |
 | `src/features/session/composition/session.inputs.ts` | Imports both own input declarations and creates inputs |
 | `src/features/session/composition/session.group.ts` | Lists the session factory entry, never the input entries |
-| `src/features/runner/application/use-cases/run.ts` | Useful bounded runner behavior without a lifecycle base class |
+| `src/features/runner/application/use-cases/run-job.ts` | One exported `(deps, input)` function for useful bounded runner behavior |
 | `src/features/runner/application/ports/release-journal.ts` | Narrow runner-owned release-journal shape, with no cross-feature application import |
 | `src/features/runner/adapters/outbound/test-resource.ts` | Test resource acquisition, effect and release witness |
-| `src/features/runner/composition/runner.contracts.ts` | Runner map and descriptor imports from the visible contract owner |
+| `src/features/runner/composition/runner.contracts.ts` | Runner map extends the imported session feature map; descriptors come from their visible owner |
 | `src/features/runner/composition/runner-a.declaration.ts` | A's implementation identity of the runner capability revision |
 | `src/features/runner/composition/runner-a.module.ts` | Typed factory; `scoped` exposes its resource scope |
 | `src/features/runner/composition/runner.group.ts` | One static group containing A |
@@ -66,6 +67,14 @@ The runner adapter uses typed dependency values selected by composition. Its own
 consuming boundary declares the narrow release-journal shape it needs; structural
 assignment in composition connects it to the input. Application code imports
 neither another feature's application files nor composition descriptors.
+Public descriptors parameterize the explicit types in `contracts/`; application
+code uses only its own narrow ports, including for capabilities owned by that
+same feature. Module wiring makes the structural assignments. The session map
+owns its descriptors; the runner map extends the session map through `import type`,
+so the consumer-owned abstraction does not introduce a reverse map dependency.
+Use `<feature>Group` exports with one member per line. Keep feature expectations
+under their mirrored `tests/features/<feature>/` roots and graph expectations
+under the root's own test.
 Group membership is an assembly convenience, not a privacy boundary. A is the
 only supported root recipe. C-02 constructs B's deliberately wrong subject in
 test code, with exactly the selected B declaration inventory; no runtime selector
@@ -76,6 +85,11 @@ C-01 uses two unequal handwritten cases on the same prepared subject:
 `" hello "` becomes `left:A:hello` and `" world "` becomes `left:A:world`.
 Each has a distinct operation identity and exactly one matching journal effect.
 B preserves the payload with tag B. These cases reject a constant-result stub.
+They do not alone prove forwarding of the runner's returned value: in the same
+C-01 test, use `isolate` on the session entry with a typed runner returning the
+opaque literal `runner-result-7`. Require the session return and its terminal
+record to equal that literal. This rejects reconstruction of an A-shaped result
+after discarding the runner return, without adding another supported root.
 The session-owned suite runs through `runContractSuite` against its typed fake,
 A and B; implementation subjects use their actual entries through `isolate`.
 Pin success/payload preservation, rejection of the named `!fail` request with
@@ -118,7 +132,8 @@ The selected baseline stop sequence is concrete:
 
 Retain one active stop flight and its last settled close report. Cleanup failure
 is an incomplete report, not a rejected `control.close()` promise. A subsequent
-call after that flight settles retries debts; do not cache the incomplete result
+call to the same attempt owner's `stop()` after that flight settles retries debts;
+do not cache the incomplete result
 forever. An observer's `abandon` snapshot does not replace the owner's report or
 release its authority/journal. `Symbol.asyncDispose` has a distinct throwing
 contract. A cleanup awaiting its own or an ancestor's close deadlocks under the
@@ -132,7 +147,7 @@ contract. A cleanup awaiting its own or an ancestor's close deadlocks under the
 | L-04 | Accepted callback calls `requestStop`, then finishes | Callback completes; externally awaited stop completes; stop is not in its own drain set |
 | L-05 | Accepted work waits for the operation cancellation signal | Stop itself triggers settlement without manually releasing that wait; journal remains writable until completion |
 | L-06 | Acquire, then inject failure before returning the setup value; adapter catches it, awaits its successful partial release, then rethrows the named setup error | Exactly one physical release and the expected setup failure; no unowned partial handle or green-report-only substitute |
-| L-07 | First cleanup fails before release; discard its report; invoke stop/close again after that flight settles | First report is settled/incomplete with the named failed debt; two cleanup attempts, one release; journal append/read works during retry, and journal closes last |
+| L-07 | First cleanup fails before release; discard its report; invoke `stop()` on the same retained attempt owner after that flight settles | First report is settled/incomplete with the named failed debt; two cleanup attempts, one release; journal append/read works during retry, and journal closes last |
 | L-08 | Two observers join one close flight; one abandons while release is held, then release finishes | Abandoning observer gets `settled: false`; the other gets complete settlement; exactly one cleanup flight and one release |
 | L-09 | Hold immediately before the effect port's post-await permission check; revoke ordinary effect permission, then release the hold | Exact effect refusal and zero ordinary effects; cleanup/terminal journal operations remain authorized and succeed |
 | L-10 | With capacity 1 and no queue, hold one operation waiting on cancellation; reject a second; request private stop; submit a third after stop | Stop signal settles the first without manual release; second overloads without runner entry; third refuses closed ingress; zero effects |
@@ -259,8 +274,10 @@ byte limits separately from process scheduling.
 Mutate canonical bytes to invalid state. Parameterize one storage-failure check
 over write, sync, close and rename using a narrow filesystem-call fault seam;
 keep the real files and retain handles for teardown. Do not multiply these faults
-by every R row/profile or depend on OS permission tricks. Retain the old canonical
-file and verify no ordinary command/launch passes the freeze. Admission fails closed;
+by every R row/profile or depend on OS permission tricks. For faults known to
+precede replacement, verify that old canonical bytes remain unchanged. After
+ambiguous completion, reread and reconcile the actual canonical bytes instead.
+Verify that no ordinary command/launch passes the freeze. Admission fails closed;
 restore of an older file is permitted only through the named read/reconcile-only
 entrypoint. These are test storage checks, not production backup or rollback
 protection. Same-machine process restart is the only persistence claim here;
@@ -311,14 +328,25 @@ do not supply this fixture's structural result.
 
 ## G — A real file tree with bounded useful computation
 
-For N features, generate six files per feature: `application/ports/value.ts`,
-`application/use-cases/read.ts`, `composition/<feature>.contracts.ts`,
+For N features, generate seven files per feature: `contracts/value.ts`,
+`application/ports/value.ts`, `application/use-cases/read-value.ts`,
+`composition/<feature>.contracts.ts`,
 `composition/value.declaration.ts`, `composition/value.module.ts`, and
 `composition/<feature>.group.ts`. Add the root and, in `f000/composition/`,
 `input.declaration.ts` plus `f000.inputs.ts`. The latter imports the declaration
 and exports the input entry; root includes it only in `inputs`.
-Thus the baseline is **6N+3 TypeScript files**, plus separately counted configs,
+Thus the baseline is **7N+3 TypeScript files**, plus separately counted configs,
 feature cards, test oracle files and generated output. No file is counted twice.
+
+The provided port type lives in `contracts/value.ts`; each application owns its
+narrow read port and never imports another feature's application or its own
+public contracts. The `(deps, input)` use case reads those local ports; the
+module maps provider values into them. Each feature map extends its consumed
+feature maps through `import type` plus its own `CapabilitiesOf`, one member per
+line. Do not replace this inherited-map subject with a shallow descriptor union
+and transfer the resulting compiler timings. Keep counters in test-owned wrappers
+using public `implement`, with module source limited to typed wiring. Groups and
+feature/root oracle ownership follow the semantic recipe's accepted rules.
 
 Entry 0 consumes the input. Entry 1 consumes entry 0. Entry i for i >= 2 consumes
 the sorted unique set `{i-1, floor(i/2)}`. In particular i=2 has one predecessor,
@@ -351,10 +379,10 @@ seed 23 yields root `603377`. These values make ignored dependency results visib
 
 | N | Declarations, including input | Entries + groups | Required rows/occurrences/distinct edges | DAG path nodes | TS source files | Full smoke attempts / factory calls |
 | --- | --- | --- | --- | --- | --- | --- |
-| 8 | 9 | 16 | 13 | 9 | 51 | 17 / 80 |
-| 100 | 101 | 200 | 197 | 101 | 603 | 201 / 10,200 |
-| 500 | 501 | 1000 | 997 | 501 | 3003 | 1001 / 251,000 |
-| 1000 | 1001 | 2000 | 1997 | 1001 | 6003 | 2001 / 1,002,000 |
+| 8 | 9 | 16 | 13 | 9 | 59 | 17 / 80 |
+| 100 | 101 | 200 | 197 | 101 | 703 | 201 / 10,200 |
+| 500 | 501 | 1000 | 997 | 501 | 3503 | 1001 / 251,000 |
+| 1000 | 1001 | 2000 | 1997 | 1001 | 7003 | 2001 / 1,002,000 |
 
 Full ordinary smoke is `1+2N` attempts and `N(N+2)` factory calls, excluding
 preparation, allocations, lookup and cleanup costs. For 1-based construction
@@ -372,9 +400,11 @@ Record actual values and distribution; these formulas are not timings.
 The sparse profile already contains a chain; another chain is unnecessary until
 a specific depth boundary is investigated. G-03 uses fixed patches: the last
 feature changes its own checksum term from `17*(i+1)` to `17*(i+1)+1`; its expected
-root changes by one modulo M. The shared-contract patch renames f003's port method
-from `read` to `readValue`, changes that provider and its actual consumers f004,
-f006 and f007, and advances f003's descriptor revision from 1 to 2. All consumers
+root changes by one modulo M. The shared-contract patch changes exactly six
+files: f003's public port renames `read` to `readValue`, its descriptor revision
+advances from 1 to 2, its provider module implements the renamed method, and the
+module mappings in f004, f006 and f007 adapt that method into their unchanged
+local read ports. Consumer application ports/use cases do not change. All consumers
 use the same descriptor, the checksum stays equal, and no type cast bridges the
 change. Freeze those patches before comparing baseline and candidate. Current compiler/NodeNext measures growth; the small
 case retains the supported current/minimum compiler and NodeNext/Bundler checks.
@@ -385,7 +415,7 @@ case retains the supported current/minimum compiler and NodeNext/Bundler checks.
 | --- | --- | --- |
 | W-01 | Two instances; hold left, complete right, cancel/close left, then run another right operation | Fresh right result/effect after left release; left settles from cancellation; no cross-instance contamination |
 | W-02 | 16 instances, four requests each, no queue, one shared limit 16; hold accepted counts `(2, 1×14, 0)` across instances 0–15, then submit the rest | Exactly 16 accepted/48 overloaded and peak 16; only accepted IDs enter runner; cancel a singleton instance before effect, giving 15 successes and one cancellation |
-| W-03 | After W-02 work settles, fail instance 15's resource cleanup before physical release; discard the first report, then retry | First report is settled/incomplete with the named debt; second flight completes; 17 total cleanup attempts and 16 single physical releases; every attempt/journal closes, including instance 15 with no accepted work |
+| W-03 | After W-02 work settles, fail instance 15's resource cleanup before physical release; discard the first report, then call the same attempt owner's `stop()` again | First report is settled/incomplete with the named debt; second flight completes; 17 total cleanup attempts and 16 single physical releases; every attempt/journal closes, including instance 15 with no accepted work |
 
 The shared synchronous admission count is test orchestration; each accepted
 operation remains owned only by its session. Release its permit on terminal work
@@ -397,6 +427,10 @@ Each of the 16 instances acquires one witnessed runner resource; W-03's injected
 failure is before release, not a post-release storage debt. Final active work is
 zero, every inner close is settled/complete without debts, and terminal writes
 and retries precede each borrowed journal's close.
+At the existing final journal read after stop/retry settlement, compare the
+complete observed runner-entry list with the accepted IDs, sorting both lists
+without removing duplicates. Serialize that observed list. A check only at the admission
+barrier cannot exclude a rejected or duplicate request entering later.
 Watchers are zero. Preparation is reused for the unchanged factory set;
 per-run inputs, scopes and state are distinct. Neither this workload nor G-02
 establishes a product SLO, network behavior, OS containment or Runtime capacity.
@@ -416,7 +450,10 @@ H-01 keeps B test-only, A's production group/root and all contracts unchanged;
 there is no extra supported-root smoke obligation. The supplied owner suite and
 independent expected identities are not editable to hide a failure. H-02/H-03
 reuse their existing cases, not another diagnostic framework. Injector knowledge
-is test-control evidence, not a public inspection result. A watchdog alone does
+is test-control evidence, not a public inspection result. Use a separate fresh
+diagnostician with only the public error code/details, recipe/file map and owner
+observations; exclude authoring tests, injector code, answer annotations and the
+author's report. A watchdog alone does
 not pass H-03. Record actual changed files and unexplained guesses once. One
 successful task/diagnosis or one reproducible blocker ends each exercise; full
 gates run on the coherent final patch, not on every intentionally broken mutation.

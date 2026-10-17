@@ -117,7 +117,9 @@ ADRs and dependency upgrades are outside the default branch boundary.
    Read changed owner contracts if main has advanced; do not silently replace
    the pinned premise with historical research.
 2. Write `tests/qualification/consumer-fixtures/README.md` with the two profiles,
-   scenario-to-entrypoint map and test-only policy choices.
+   scenario-to-entrypoint map and test-only policy choices. Freeze the concrete
+   port/request shapes and effect/release witnesses in those actual files;
+   do not leave the first implementer to invent competing contracts.
 3. Lay out the semantic files listed in the scenario catalog. Start with actual
    useful factories and tests; do not create empty domain or adapter layers.
 4. Record `runtime`, `packed`, `source` and `measurement` statuses independently.
@@ -148,12 +150,20 @@ No source-policy change is needed merely to share that helper.
 1. Declare contracts with `defineContract`, declarations with `declareModule`,
    factories with `implement<C>()`, inputs with `input`, and groups with `group`.
    Use `required` for the initial slots. Domain/application code imports none
-   of Core, Assembly, resources, conformance or Foundation.
+   of Core, Assembly, resources, conformance or Foundation. Public provided
+   port types live in the owning feature's `contracts/`; each application uses
+   its own narrow ports, connected structurally by composition. Use cases have
+   the accepted `(deps, input)` shape. Feature maps extend the consumed feature
+   maps through type imports rather than flattening their descriptors.
 2. Prepare through `assemblyFor<C>()` and the fixture root's `api.prepare`.
    Keep one prepared object for an unchanged factory set. Run with
    `prepared.run({ signal, scope: attempt.resources, inputs })`; allocate each
    attempt before construction begins. Inputs are capability records keyed
    by the root's input names, following the current guide.
+   P1 retains the allocated scope and startup promise through settlement and
+   close, with its real file journal usable through terminal writes and complete
+   cleanup. P2 extends that same owner with the full stop/readiness/retry
+   protocol; do not create a second owner or empty future-phase helpers.
 3. Compile real TypeScript files and execute emitted JavaScript. Preserve
    literal types; no `any`, double cast, runtime type assertion or private
    import may hide an entry, slot or capability mismatch.
@@ -161,6 +171,8 @@ No source-policy change is needed merely to share that helper.
    two isolated runs, negative revision and closed package boundary cases.
    Run the owner's success/error/cancellation suite against its typed fake,
    A and B, using the actual implementation entries through `isolate`.
+   Within C-01, isolate the session with one opaque runner result and assert
+   that both its return and terminal record preserve that exact result.
    `checkWiring` uses exactly the selected declarations; `checkNamespaces`
    also checks the alternative/fake inventory. Keep feature provider pins in
    feature tests and root pins in the root test. Run one full A-root `smoke`.
@@ -204,10 +216,12 @@ Host, lifecycle-kernel adoption, TaskSet or reusable scheduler package.
    then close the attempt resources. Before the session exists, stop still
    closes ingress and aborts construction; no operation can be admitted.
 5. Inspect `{ complete, settled, debts }`; `control.close()` does not reject
-   for cleanup failure. After an incomplete settled flight, a later stop/close
-   retries its debts. Keep the journal usable until work/startup settle, inner
-   cleanup is `complete: true` and terminal writes finish. An incomplete or
-   abandoned observation retains close authority and the live journal.
+   for cleanup failure. After an incomplete settled flight, call `stop()` again
+   on the same retained attempt owner to retry its debts; direct resource-control
+   retry alone does not qualify that owner. Keep the journal usable until
+   work/startup settle, inner cleanup is `complete: true` and terminal writes
+   finish. An incomplete or abandoned observation retains close authority and
+   the live journal.
 6. Execute L-01 through L-10 with explicit barriers and an outer watchdog.
    Keep one case where work actually waits on the selected cancellation
    signal; manually releasing every barrier would miss a drain deadlock.
@@ -321,7 +335,7 @@ oracle and full smoke once, then measure 100, 500 and 1000 in order. Every selec
 root also passes independently owned provider/input/root pins through `checkWiring`.
 Each next
 size follows a report of the preceding size; do not create a Cartesian matrix.
-Use the scenario catalog's deduplicated edges, `6N+3` TypeScript file census,
+Use the scenario catalog's deduplicated edges, `7N+3` TypeScript file census,
 compiler edits and separate scanner budgets. Keep inputs outside groups.
 
 The optional command proposed for this phase is
@@ -353,6 +367,9 @@ These are experimental constants, not product SLOs. Hold accepted work and recor
 all admission outcomes before cancellation returns a permit. Cancel one through
 its signal, finish the other work, observe one failed cleanup report, retry, then
 close prerequisites. There is no hidden queue.
+After stop/retry settlement, compare the final observed runner-entry IDs with
+the accepted IDs as sorted lists, preserving duplicate entries. A check only
+at the admission barrier misses late entry. Report the observed IDs.
 Do not run a full graph smoke per operation or per instance.
 
 **Success oracle.** Exact accepted/rejected counts, effects, identities and
@@ -373,6 +390,9 @@ A fresh author completes H-01's withheld test-only B provider; another completes
 the fixed C-02 wiring and L-01 held-startup diagnoses in H-02/H-03. Use only the
 specified public and attempt-owner observations. Exact pending-factory attribution
 is unavailable; an honest attempt-level diagnosis is the expected result.
+The separate diagnostician's packet excludes the authoring tests, injector code,
+answer annotations and the author's report. Reuse the existing observations;
+no second runtime execution is needed merely to separate the readers.
 
 Use the handoff's existing focused/changed/fast/full route once per relevant
 input state. Record unexplained guesses, unnecessary cross-owner edits and
