@@ -188,7 +188,7 @@ assignments now reject with TS2322. The archive is unchanged; this candidate is 
 | Round | Input and reviewer emphasis | State |
 | --- | --- | --- |
 | 1 | `1bc5912e15916e2a4b2e4ee4e1d9dcf03d58c1a8`; `plan_r1_authority`, `plan_r1_types`, `plan_r1_runtime`, each Astra xhigh | Three complete independent reports; all material findings incorporated below. |
-| 2 | Whole revised plan plus round-1 findings/dispositions; independent integration review | pending |
+| 2 | `0ae0f81e4db3266a3d4b2ccbb40cf2638af31c6e`; `plan_r2_execution`, `plan_r2_semantics`, `plan_r2_consumer_types`, each Astra xhigh | Three complete reports: two bounded revisions, one approval; findings incorporated below. |
 | 3 | Whole revised plan plus both earlier rounds; final independent review | pending |
 
 ### Round 1: findings and dispositions
@@ -224,4 +224,36 @@ NodeNext and Bundler; root independently repeated both compiler runs successfull
 expectation changed beyond the two p8 cases already named. Emitted declarations, Assembly and packed qualification
 remain future gates.
 
-Rounds 2 and 3 remain pending until their actual reports and dispositions are recorded.
+### Round 2: findings and dispositions
+
+Each reviewer read the complete original packet, current whole plan and all three full round-1 reports. The runtime
+and execution reviews each returned one bounded **revise**; the consumer/types review returned **approve** with no
+material blocker. Root adopted both material corrections and two small optional clarifications:
+
+| Reviewer finding | Disposition |
+| --- | --- |
+| Execution F1: the TS7 checkpoint is too late for Phase 1a | §2.3 and Phase 0/1a now require it before the first parser-dependent command. The inventory explicitly includes current leaf-admission/governance and ownership parser consumers, Core declaration/JavaScript audits and their owned copies. TS7 root version metadata is not the legacy compiler API; migrate to actual pinned exported TS7 API/CLI paths while preserving existing typed/syntax/ownership policies. No below-floor fallback or new gate. |
+| Semantics F1: a returned promise re-reports an already-reported guard error | §7.4 and R18/T114 apply the existing `reportedByStore` identity exception across direct throw, return inspection/assimilation and async rejection observation. The invalid-return report stays; distinct ordinary causes stay; observation remains nonblocking. One count/identity case in the existing shared path. |
+| Consumer/types optional precision note | §8.1 explicitly permits conservative optionality for a required suffix after an unbounded rest. Place known keys before the rest for precision. No suffix algorithm or additional type-test campaign. |
+| Execution optional release bookkeeping | The compiler checkpoint records consumed/pending package changesets and version base; Phase 2b expectations distinguish its legitimate predecessor changes from unexplained observation changes. No new release is required. |
+
+**Focused evidence.** The corrected #183 two-case Node 26.11.1 return probe produced invalid-return plus ordinary
+sentinel once in the control, but invalid-return plus the same echo error object twice in the defect. Both retained
+healthy sibling delivery and the rejected write did not commit. This supplies the R18 identity oracle; it does not
+claim the future package is fixed.
+
+The consumer/types reviewer checked the revised declaration with archived p5 and p10 against current workspace
+Assembly/Core/resources declarations on TypeScript 7.0.2 in NodeNext and Bundler; both passed. That reviewer and
+the execution reviewer independently checked the retained variance controls: removing `out` stays clean; the
+parameter-form watch yields exactly one TS2636 in the edited declaration with no extra fixture diagnostic. The
+existing controls therefore need no relaxed oracle. These are isolated declaration checks, not emitted observation
+artifacts, packed installation or Assembly runtime evidence.
+
+The execution reviewer inspected the installed TS7 root API: only `version`/`versionMajorMinor` are exported there,
+while the manifest names explicit `./unstable/*` API paths. Root also inspected that manifest and the active legacy
+parser imports. The checkpoint is substantive API migration under the already-authorized floor, not an assertion
+edit or another request for permission.
+
+All three reviews retained the finite watch table, separate keys-only initial-load seeding, close/start/publication
+boundaries, detached origin, private FIFO and bounded connected consumer. No extra framework, library dependency,
+large graph campaign or broad test gate was added. Round 3 remains pending until its three actual reports exist.

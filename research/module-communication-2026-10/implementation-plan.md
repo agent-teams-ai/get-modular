@@ -197,13 +197,24 @@ inventory, not permission to change immutable evidence or an observation-specifi
 | Active owner | Migration subject |
 | --- | --- |
 | Workspace compiler pins and leaf script contracts | `pnpm-workspace.yaml`, `package.json`, `pnpm-lock.yaml`, `architecture/checks/leaf-packages.mjs` and its assertions in `tests/leaf-package-admission.test.mjs` still select or pin the 5.8.3 minimum. |
+| Active governance and ownership parsers | `architecture/checks/leaf-package-admission.mjs` imports the legacy parser for current leaf source checks; Phase 1a's leaf/governance tests already invoke it. `tests/ownership-checkpoint.test.mjs` uses that parser for the current ownership declaration and runs through full-gate `precheck`. |
 | Shared Assembly/example type gate | `architecture/tooling/test-assembly-types.mjs` asserts 5.8.3 and returns four observations; `tests/assembly/consumer-standard-examples.test.mjs` pins that count. Keep this helper and update its callers/counts after deduplication. |
-| Current Core archive and declaration audit | `packages/core/tests/package/packed-root.test.mjs` packs the current package; its `qualification-support/support/m1-packed-consumers.mjs` and `m1-declarations-closure.mjs` still assert a 5.8.3 compiler/parser. Their historical names do not make these active uses immutable replays. Follow existing ownership/copy rules for the related root-owned helper copies. |
+| Current Core archive and declaration/JavaScript audit | `packages/core/tests/package/packed-root.test.mjs` packs the current package; its `qualification-support/support/m1-packed-consumers.mjs`, `m1-declarations-closure.mjs`, `m1-javascript-closure.mjs` and `qualification-support/m3-stage-direct.mjs` use/assert legacy compiler/parser APIs. Follow existing ownership/copy rules for their `tests/qualification/` counterparts. Historical names do not make active uses immutable replays. |
 | Current support documentation and authority | Core/Assembly READMEs and `docs/architecture/current-contract.md` describe the old floor/diagnostic cases. ADR-0030's admission-evidence clause and ADR-0034's compiler sentence both name 5.8.3; record their already-authorized compiler-policy successor through the owning route. |
 
 Importing the shared helper unchanged would silently compile the new observation example with a forbidden compiler.
 
-Before Phase 1b, integrate one compiler-owner checkpoint into the implementation base:
+The installed TypeScript 7.0.2 package root resolves to `lib/version.cjs` and exposes version metadata, not the old
+`createSourceFile`, `createProgram` or `preProcessFile` JavaScript API. The manifest instead exposes explicit
+`./unstable/*` APIs alongside the compiler CLI. Thus changing an alias/version assertion alone is not a parser
+migration. The existing owners must record their exact pinned TS7 API/CLI paths and adapt their callers. Preserve
+the source-edge, ownership-declaration, syntax/purpose and typed declaration-closure policies, including checker
+semantics where currently required; syntax-only or text matching is not a substitute for that evidence. Qualify
+the adapter with those owners' existing positive/rejecting cases. No third parser, generic compiler framework or
+observation-local compatibility helper is introduced by this plan.
+
+Before the **first parser/compiler-dependent Phase 1a command**, integrate one compiler-owner checkpoint into the
+implementation base. Read-only planning and source inspection can proceed while it is pending:
 
 1. Align the active inventory and search its tooling/callers for remaining legacy selections. Migrate current-subject
    adapters, declaration-parser uses, compiler identities, meaningful diagnostic oracles and owned helper copies
@@ -222,7 +233,11 @@ Before Phase 1b, integrate one compiler-owner checkpoint into the implementation
    changed negative oracle merely to make the run pass.
 
 This planning PR records the migration; it changes no package pins or implementation. If the compiler checkpoint
-is not yet on the implementation base, the dependent compiler/package gate remains pending. Documentation and
+is not yet on the implementation base, the dependent Phase 1a governance/parser commands and later package gates
+remain pending. Record the checkpoint's package-version/changeset disposition: if it leaves legitimate pending
+support changesets, reconcile Phase 2b/3 release expectations against that exact base rather than treating them as
+unexpected observation bumps; if already consumed, record that release base. No additional release is mandated.
+Documentation and
 research can proceed. When the pinned current compiler later advances, keep 7.0.2 as minimum and run each distinct
 version; update the literal observation script and existing helper together at that compiler upgrade.
 
@@ -293,18 +308,20 @@ case.
 - **Done:** every row of section 2 matches, or its "if different" action is done.
 - **Stop:** ADR-0034 not on `main`; its merged text has an unreconciled difference; `Resources.path` exists; a resources minor was released; a
   compiler or oxlint update makes a section 2 check fail. Record the authorized compiler checkpoint of section 2.3;
-  missing migration blocks Phase 1b, not this plan update.
+  missing migration blocks Phase 1a's parser-dependent commands, not this plan update.
 
 ### Phase 1a: the checks learn row subpaths (PR 1, commit 1)
 
 - **Inputs:** `architecture/checks/leaf-packages.mjs`, `leaf-package-admission.mjs`, `production-artifacts.mjs` (lines
-  315 to 400), `architecture/tooling/build-leaf-package.mjs`, `tests/leaf-package-admission.test.mjs`; section 11.1.
+  315 to 400), `architecture/tooling/build-leaf-package.mjs`, `tests/leaf-package-admission.test.mjs`; section 11.1;
+  the completed section 2.3 compiler/parser checkpoint on this base.
 - **Outputs:** the helpers and checks of section 11.1; synthetic-row tests. No observation row, no package file.
 - **Commands:** `node --test tests/leaf-package-admission.test.mjs tests/governance.test.mjs`, `pnpm governance:check`,
   then commit `feat(architecture): let a leaf row list package subpaths`.
 - **Done:** every existing row behaves as before (one root); a synthetic row with `subpaths: [".", "./testing"]` is
   admitted only with both exports and both `src` entries; all tests green.
-- **Stop:** an existing test needs a changed expectation for Core, Assembly or an existing leaf.
+- **Stop:** the compiler/parser checkpoint is missing (do not execute the old parser); an existing test needs a
+  changed expectation for Core, Assembly or an existing leaf beyond that already-integrated checkpoint.
 
 ### Phase 1b: skeleton and source (PR 1, commit 2)
 
@@ -401,8 +418,10 @@ pnpm architecture:feature-module-profile && pnpm architecture:feature-module-pro
   test, and the reviewed CMS delta/consumer pin record in the PR description. The frozen SDK-growth evidence is unchanged.
 - **Commands:** `pnpm resources:check`, `pnpm ownership:checkpoint:test`, `pnpm sdk-growth:check`,
   `pnpm changeset status --verbose`; commit; `pnpm check`.
-- **Done:** all green; the changeset status shows only observation (minor) and resources (patch).
-- **Stop:** the changeset status shows a bump of conformance or of observation beyond minor.
+- **Done:** all green; after the section 2.3 predecessor disposition, this phase adds only observation (minor) and
+  resources (patch), or leaves the compiler checkpoint's already-recorded legitimate pending changesets present.
+- **Stop:** an unexplained conformance bump or observation bump beyond minor. Reconcile a legitimate compiler
+  predecessor's package versions/changesets before applying these phase-local expectations; never silently discard it.
 
 Apply these edits after merging the #154 predecessor and updating PR 2 from PR 1. In
 `tests/ownership-checkpoint.test.mjs`, preserve the accepted ADR list and ADR-0034 digest introduced by #154,
@@ -740,7 +759,12 @@ value**. Report a thrown value unchanged; a non-`undefined` return produces `obs
 it and attaching rejection handling all belong inside the isolation boundary; a getter/call failure is reported
 with that raw cause and cannot escape the flush. A returned rejected promise is observed so it does not create an
 unhandled rejection; its rejection is a separate reported cause from the invalid-return report. Avoid reading
-`then` twice. None of these paths detaches the subscription or prevents a healthy sibling or later delivery.
+`then` twice. Apply the same `reportedByStore` identity check to **every** failure path: direct throw, return
+inspection/assimilation failure and asynchronous returned-promise rejection. An already-reported guard error is
+observed without reporting it again; the invalid-return diagnostic and a distinct ordinary rejection/getter cause
+remain reported. Check the existing WeakSet, never suppress by error code. This observer stays nonblocking: do not
+await an invalid callback promise in a flush or keep a load active for it. None of these paths detaches the
+subscription or prevents a healthy sibling or later delivery.
 `reportError` runs in `try`; its throw is rethrown through the captured `queueMicrotask` as an uncaught exception and
 delivery continues. A throwing abort listener is not isolated (platform behavior); `abort()` stays in `try`.
 
@@ -883,7 +907,7 @@ is `"ready"`; the corrected prototype can actually deliver `"loading"`. The same
 First correct both owner and facet `read` return types. `K[number]` describes possible keys, not necessarily keys
 present in this call: `read([choose ? "status" : "count"])` reads one key, although the old signature makes both
 values required. A future helper cannot repair that false guarantee after it has entered the starting snapshot.
-Keep guaranteed tuple keys required, merely possible keys optional and other keys inaccessible. Do not ban dynamic
+Keep fixed tuples and provable required prefixes precise, merely possible keys optional and other keys inaccessible. Do not ban dynamic
 selection, read additional keys at runtime, or repeat a key list at `watch`/`load`.
 
 Private feasibility sketch, exercised on TypeScript 7.0.2 with both resolutions; these are helpers to qualify in
@@ -936,6 +960,10 @@ occurrence; a union-valued element or unbounded rest alone proves none. The supp
 | `["status"] \| ["count"]` | none, or an equivalent sound snapshot union | possible alternatives |
 | `["status", ...("status" \| "count")[]]` | `status` | `count` |
 | Broad `Keys<V>`, also supplied as an explicit type argument | only what that key type guarantees | other possible keys |
+
+The sketch is deliberately conservative after an unbounded rest: in `["status", ...extra, "count"]`, `count` can
+remain optional even though it occurs at runtime. Put known required keys before the rest when that precision is
+useful. No suffix-aware type algorithm or extra qualification campaign is required for this delivery.
 
 A naive `Snapshot<V, keyof S["values"] & keyof V>` is insufficient for broad `SnapshotOf<V>`: its possible keys
 may not have been read. Also distribute `FutureSnapshot` over `S` **before** computing each branch's keys.
@@ -1236,7 +1264,7 @@ The schedules below are sufficient to recreate the relevant counterexamples with
 
 | Case / matrix | Smallest failing schedule and required result | Existing test destination |
 | --- | --- | --- |
-| R18 / T114, callback returns | An offending callback and a healthy sibling observe a commit. Return `null`, an object whose `then` getter throws a sentinel, and an ordinary rejected promise in separate cases. No uncaught failure; invalid return reported once, getter/rejection cause preserved where applicable; sibling and later offender delivery succeed. Keep ordinary throw/scalar controls. Cover all four callbacks with the existing T40 table, placing exotic return cases on the shared invocation path rather than multiplying identical processes. | `subscriptions.test.mjs`, `load.test.mjs`, one `process-probe.mjs` isolation mode through `processes.test.mjs` |
+| R18 / T114, callback returns | An offending callback and a healthy sibling observe a commit. Return `null`, an object whose `then` getter throws a sentinel, and an ordinary rejected promise in separate cases. No uncaught failure; invalid return reported once, distinct getter/rejection cause preserved; sibling and later offender delivery succeed. Also return an invalid async promise whose microtask attempts an echo: one invalid-return report plus exactly one guard report, unchanged failed write, healthy delivery. The observer must not report that same guard object twice. Keep ordinary throw/scalar controls and the T40 four-callback table; exotic cases exercise the shared path without a cross-product. | `subscriptions.test.mjs`, `load.test.mjs`, one `process-probe.mjs` isolation mode through `processes.test.mjs` |
 | R19 / T115, ALS retention | A callback captures a payload and starts a timer with a module-level no-op callback under a separate still-live owner. Close subscriber/source scopes, release their handles and drain delivery tasks, retaining only the timer handle outside the callback. Payload is collectible before that timer is cleared; an explicitly retained control stays live. Keep R13 heartbeat/no-false-echo and active-loader guard cases. A narrowed annotation around an actual Registration must fail this oracle. | Extend `gc-probe.mjs` and its existing process driver; `guards.test.mjs` |
 | R20 / T116, arrays | An Array subclass has a private mutable offset and inherited getter; `move()` changes a read value while revision stays zero in the prototype. Reject it and a custom-prototype array before ownership transfer, including nested initial/patch positions; no getter call and no freezing on rejection. Ordinary arrays, holes, nested records and a repeated frozen child remain positive controls. | `store.test.mjs` |
 | R21 / T117, read/future types and writer widening | Narrow an origin-valid snapshot to `status: "ready"`, then watch/load while the owner commits `"loading"`. Every future callback uses the full declared value union. Both `read` members reject required-value dereferences for dynamic union keys, tuple alternatives and broad `Keys<V>`; fixed tuples/duplicates and a required prefix keep their guarantees. Broad `SnapshotOf` preserves optionality; a union of valid snapshots supports ordinary `in` narrowing. Reject widened writer aliases/spread/member extraction; same writer and wider facet-to-area assignment stay valid. | `types-structural.ts`, `types-traps.ts`, `store.test.mjs`, `load.test.mjs`; packed declarations reuse the same fixtures |
@@ -1391,7 +1419,7 @@ comment above a type case) start with the row ID. Reviewers tick the IDs in the 
 | T111 | A bounded TEST consumer passes on the release archives before the release pull request merges. | TEST project | Phase 3b | 3 |
 | T112 | Every known item has an owner and a trigger. | README | doc only: listed with links to ADR-0034 | 1 |
 | T113 | One internal deferral queue per package copy, not configurable or exposed to production modules. | `src/features/delivery/context.ts` private FIFO | Source review of its single owner; multi-store ordering in `t/guards.test.mjs`; drained `store-closed` GC control; T13/T97 verify one installed copy across entries and no exported queue | 1 |
-| T114 | T40 isolation includes validation/observation of invalid returned values. | `engine.ts` invocation path | R18, healthy-neighbor and subsequent-delivery controls | 1 |
+| T114 | T40 isolation includes invalid returned values; T54's already-reported guard identity is honored throughout return handling. | `engine.ts` invocation path | R18, ordinary-rejection/guard-identity and healthy/subsequent-delivery controls | 1 |
 | T115 | Closed delivery context retains no Registration, engine, resources or subscriber payload. | `context.ts`, detached origin construction | R19 plus T58/T59 window controls | 1 |
 | T116 | T16/T21 plain-data validation also rejects mutable behavior hidden behind array prototypes. | `values.ts` | R20 and ordinary-array positive controls | 1 |
 | T117 | T26 read types guarantee only selected keys; future snapshots preserve key alternatives and use the declared value domain; T49 writer invariance survives member extraction. | `types.ts` | R21, both resolver modes and packed declaration fixtures | 1 |
