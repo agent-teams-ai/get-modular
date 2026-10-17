@@ -21,7 +21,7 @@ export interface IdentityPort {
 }
 
 export interface JournalRecord {
-  readonly kind: "effect" | "terminal" | "resource-acquired" | "resource-released";
+  readonly kind: "effect" | "terminal" | "resource-acquired" | "resource-released" | "cleanup-attempt";
   readonly scope: string;
   readonly id: string;
   readonly value: string;

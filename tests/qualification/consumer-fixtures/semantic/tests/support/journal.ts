@@ -15,7 +15,7 @@ function decodeRecord(line: string): JournalRecord {
   if (typeof record !== "object" || record === null ||
     !("kind" in record) || !("scope" in record) || !("id" in record) || !("value" in record) ||
     (record.kind !== "effect" && record.kind !== "terminal" &&
-      record.kind !== "resource-acquired" && record.kind !== "resource-released") ||
+      record.kind !== "resource-acquired" && record.kind !== "resource-released" && record.kind !== "cleanup-attempt") ||
     typeof record.scope !== "string" || typeof record.id !== "string" || typeof record.value !== "string") {
     throw new Error("fixture.journal.invalid-record");
   }
