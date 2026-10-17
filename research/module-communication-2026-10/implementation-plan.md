@@ -3,7 +3,7 @@
 # Implementation plan: `@get-modular/observation` 0.1.0
 
 Planning document for the implementing track, revised on 2026-10-17 against get-modular `main` at
-`4773f6e603d5a3cdba8ae4ef4a1073ad268c2439`, the ADR-0034 text of pull request #154 at
+`132317e14bbc01b788e56b8e4f21c381b3277262`, the ADR-0034 text of pull request #154 at
 `945e9a151a516ce4ce6e73b6e18893d4e5b27cfe`, and the reviewed corrections in pull request #183 at
 `cfdaa18f152aac614194be710a474f4d4b06f59a` (section 2.2). Pull request #182 is merged; #154 and #183 were still open at this review.
 The owner then requested incorporation of the ten-critic API/watch study, TypeScript 7.0.2 or newer, and three
@@ -126,7 +126,7 @@ shasum -a 256 docs/architecture/common-assembly.md; rg -n -B2 "current CMS succe
 
 | # | Expected on 2026-10-17 | If different |
 | --- | --- | --- |
-| 1 | `4773f6e` or a descendant. | Read `git log 4773f6e..origin/main --stat`; re-read every file this plan edits and adapt. |
+| 1 | `132317e` or a descendant. | Read `git log 132317e..origin/main --stat`; re-read every file this plan edits and adapt. |
 | 2 | ADR-0034 accepted on `main`; `fileDigest` is SHA-256 of its exact merged file bytes, while `immutableDigest` is the ADR-0034 registry value from that same commit. | Not merged: STOP, PR 1 cannot pass `authenticateLeafDecision`. Compare the merged text with reviewed `945e9a1`; a difference needs review and plan reconciliation, not an automatic ADR rewrite. Record the actual digests even when the text matches. |
 | 3 | Resources `0.1.0` (`latest=0.1.0`); no source change; no `Resources.path`. | A new resources minor needs an observation minor (ADR). `Resources.path` exists: a known-item trigger fired; STOP and ask. |
 | 4 | Build/current compiler `7.0.2`; every new observation compiler is at least `7.0.2`. | Follow the already authorized floor migration in section 2.3 before claiming the package gate. Never run a new observation fixture on 5.8.3. |
@@ -179,7 +179,8 @@ predecessor. Record the exact commit used. R16/R17 and the strengthened stale/cl
 historical writer outputs and their original 43-step result remain historical evidence.
 
 PR #184 is merged in `4773f6e`; its three files under `docs/qualification/module-fixture-*.md` own the separate
-consumer/scale track. Section 14 reuses its small consumer direction without making its recovery or growth phases
+consumer/scale track. Its documentation correction #187 is merged in `132317e`: the semantic projects are proposed
+implementation, and the existing record-size bound uses four `false` values. Section 14 reuses its small consumer direction without making its recovery or growth phases
 observation prerequisites. PR #186 still owns the CMS maintenance instruction. Read its live state and the current
 `AGENTS.md` for coordination; neither track authorizes rewriting accepted ADRs or expanding this delivery.
 
@@ -191,7 +192,7 @@ The supported test set is the exact pinned minimum and exact pinned current comp
 today it has one compiler and two resolver cases, NodeNext and Bundler, with `skipLibCheck: false`. Record the
 resolved manifest version. Do not use a floating `latest`, a nightly, `npx` or `dlx` to choose a compiler.
 
-The repository has not completed that floor migration at `4773f6e`. The following is the concrete active-owner
+The repository has not completed that floor migration at `132317e`. The following is the concrete active-owner
 inventory, not permission to change immutable evidence or an observation-specific bypass:
 
 | Active owner | Migration subject |
@@ -1810,7 +1811,7 @@ fire-and-forget echo exit after one report. Keep process policy in that process 
 **Coordination with merged #184.** Read
 [the module fixture plan](../../docs/qualification/module-fixture-plan.md),
 [scenario catalog](../../docs/qualification/module-fixture-scenarios.md) and
-[handoff](../../docs/qualification/module-fixture-handoff.md) from `4773f6e` or the reviewed successor. Their P1/C
+[handoff](../../docs/qualification/module-fixture-handoff.md) from `132317e` or the reviewed successor. Their P1/C
 patterns for a useful independent result oracle, distinct identities, retained close ownership and ready archives
 inform this TEST. If their implemented boring helpers are available and reusable within allowed boundaries, use
 them; do not copy package engines or create a second fixture hierarchy in Get Modular. Observation does not make

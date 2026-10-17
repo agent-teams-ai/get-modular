@@ -151,7 +151,7 @@ Astra xhigh plan critics. The complete vision, accepted contract, source pins, t
 and current owner constraints are supplied to every new reviewer. The reviewer emphasis differs; the scope is
 always the complete plan. Review comments never change accepted authority by themselves.
 
-Current base: main `4773f6e603d5a3cdba8ae4ef4a1073ad268c2439`, merged locally as
+Review campaign base: main `4773f6e603d5a3cdba8ae4ef4a1073ad268c2439`, merged locally as
 `1bdf07d54bc291d84ad6a3af2193cb187f40f9e8`. #154/#183 keep the pins above and remain unmerged. #184 is now on main.
 The owner explicitly raised the compiler floor to 7.0.2; the plan records the authorized transition and current
 legacy routes without editing production pins or frozen compiler evidence.
@@ -301,3 +301,12 @@ planning gaps; it does not make an implementation or release-ready claim.
 from the first final pass were corrected in ordinary prose, without adding an ignore rule. Earlier `docs:info`,
 observation discovery and the documented context CLI also passed. The selected changed-files route is documentation
 only; no new below-floor compiler run or unrelated runtime campaign is part of this plan-only delivery.
+
+### Final main synchronization
+
+Before push, main advanced to `132317e14bbc01b788e56b8e4f21c381b3277262` (#187). Root read the complete two-file
+diff and merged it without conflicts as `de23cd4313d5eefa5642bf16c11ce13d2806d9d4`. It clarifies that the fixture
+semantic projects are proposed implementation and that the existing maximum record vector uses four `false`
+values. The plan's current base and fixture references now use that successor. It changes no observation API,
+runtime, compiler or governance contract, so the review inputs and dispositions above remain intact. No fourth
+review round or separate fixture implementation was added.
