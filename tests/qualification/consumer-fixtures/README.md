@@ -12,11 +12,12 @@ owns verification routes and the limits of each claim.
 | Profile | Purpose | Current delivery |
 | --- | --- | --- |
 | `semantic` | A useful session and runner, real resource ownership, and independent consumer expectations | P0–P2: C-01 through C-05, L-01 through L-10 and one complete A construction smoke |
+| `record-only` / `restart-pending` | A bounded persistent fixture with one worker writer and a live supervisor retaining real effect processes | P3: R-01 through R-10 under both schedules |
 | `growth` | Actual generated TypeScript feature trees with inherited capability maps and independent arithmetic and wiring expectations | Separate P5 delivery; large-tree measurements are optional and bounded |
 
 The profiles share only driver materialization. This is test-owned composition:
 Get Modular does not gain a Host, readiness API, work scheduler or recovery policy.
-Recovery, source facts, workload and author exercises remain separate plan
+Source facts, workload and author exercises remain separate plan
 slices. Source qualification is currently incomplete.
 
 ## Semantic ownership and behavior
@@ -64,6 +65,7 @@ The bounded snapshot exposes identity and phase, with no factory attribution.
 | C-04b | `semantic/tests/negative/empty-runner.ts` and its separate negative project | Same Assembly fixture test; exactly TS2741 under each supported compiler |
 | C-05 | `semantic/tests/module/packed-entry.ts` | [Conformance packed test](../../../packages/conformance/tests/packed-root.test.mjs) |
 | L-01–L-10 | `semantic/tests/module/lifetime.test.ts` | Same Assembly fixture test and current runtime emit |
+| R-01–R-10 | `recovery/tests/recovery.test.ts` | [Assembly restart test](../../assembly/consumer-restart.test.mjs); one current compiler emit |
 
 The owner contract suite lives in `semantic/tests/features/session/testing.ts`.
 It runs the same three success, error and cancellation cases against a typed
@@ -79,6 +81,41 @@ capacity-one refusal before runner entry. Native file probes establish physical
 release. The one early-journal-close counterexample first proves retry debt, then
 restores only its test writer to finish cleanup through the retained owner.
 
+## Recovery ownership and limits
+
+The recovery fixture composes the same semantic session with an IPC runner. The
+live test supervisor directly owns worker and effect child handles. It grants a
+new writer only after observing the old worker's exit; a separate one-use launch
+permission is consumed before spawning an effect. Cancellation and storage freeze
+revoke outstanding permission. Restored records never grant process authority.
+
+The finite operation owner serializes transitions around one bounded JSON
+snapshot: temporary write, sync, close, then rename over the canonical file.
+Acknowledgement follows replacement. A failed or ambiguous storage operation
+freezes ordinary transitions and launch until canonical reconciliation, while
+local cancellation and exit observation remain available. The closed schema
+reserves terminal growth within 32 records and 64 KiB, with 1792-byte records
+and a 4096-byte envelope budget.
+
+Live execution has a fixed finite result catalog: new operations require scope
+`recovery` and an input that trims to `hello`. Unsupported inputs reject with
+`fixture.operation.unsupported-input` before reservation or canonical replacement.
+The same limit applies before dispatching restored pending work. Storage-only
+schema and capacity cases retain the full bounded string domain. An unrepresentable
+child result remains an owned protocol failure through cooperative stop and
+observed exit; reconciliation records no fabricated terminal result.
+
+Both profiles use the same loss schedules. `restart-pending` starts confirmed
+pending work once before any resubmission; `record-only` leaves it pending in
+that schedule. Claimed work with an unknown start is quarantined. A surviving
+effect remains under the live supervisor's custody after worker loss, and its
+capacity slot is released only after observed exit. Cleanup debt and its real
+file remain retryable through that owner.
+
+These checks cover process restart on a live machine. They do not select Runtime
+recovery policy, qualify supervisor death, discover orphan processes, establish
+power-loss durability or introduce an HA store.
+
 ## Run and interpret the evidence
 
 Use the repository's pinned Node and pnpm. When package outputs are absent or
@@ -87,6 +124,7 @@ stale, prepare them with `pnpm assembly:build`, `pnpm resources:build` and
 
 ```sh
 node --test tests/assembly/consumer-fixtures.test.mjs
+node --test tests/assembly/consumer-restart.test.mjs
 pnpm conformance:pack
 ```
 
@@ -98,6 +136,11 @@ assignment. The packed hook reuses its four existing extracted archives and runs
 one connected operation and close. It retains the original declaration checks
 with no Node ambient types.
 
+The restart entry materializes `semantic` and `recovery` as siblings with the same
+public package copies, emits once with current TypeScript in NodeNext mode, and
+runs the real worker/effect scenarios. Its configuration-only changes route to
+the existing complete fast scan, alongside the three semantic projects.
+
 Reports distinguish `runtime`, `packed`, `source` and `measurement`. A successful
 Assembly run reports runtime success, delegates packed evidence to the existing
 packed owner, keeps source incomplete, and selects no measurement. Source-tree
@@ -107,6 +150,6 @@ identify the tested input. The packed report records archive hashes and all four
 resolved package entries inside the extracted consumer. Neither route claims a
 registry release, source-standard completion or large-tree performance.
 
-Both test entries are included by the existing repository gates. Use the focused
+These test entries are included by the existing repository gates. Use the focused
 scenario while editing, `pnpm check:changed` for the coherent diff, and retain
 matching fast/full gate results before delivery as specified in the handoff.
