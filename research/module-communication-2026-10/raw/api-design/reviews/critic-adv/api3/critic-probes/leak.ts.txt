@@ -1,0 +1,8 @@
+import type { Resources } from "@get-modular/resources";
+import { createStore, type ListenerError, type ReadonlyStore } from "@get-modular/observation";
+declare const resources: Resources;
+declare const reportError: (report: ListenerError) => undefined;
+const store = createStore<{ readonly theme: string }>({ theme: "light" }, { name: "s", resources, reportError });
+// @ts-expect-error owner hands out the writable store even though Store now also has watch and load
+const leaked: ReadonlyStore<{ readonly theme: string }> = store;
+void leaked;

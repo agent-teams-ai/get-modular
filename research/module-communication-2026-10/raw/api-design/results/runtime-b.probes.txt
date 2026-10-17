@@ -1,0 +1,75 @@
+▶ B: the resources package in use
+  ✔ is the origin/main build (0.404583ms)
+✔ B: the resources package in use (0.904458ms)
+▶ R1. the subscription is released when the subscriber scope closes
+  ✔ no delivery and no new load after close() is called, while the drain is still waiting (4.867959ms)
+✔ R1. the subscription is released when the subscriber scope closes (5.044583ms)
+▶ R2. after close the store keeps no reference to subscriber closures
+  ✔ subscriber scope closed: internal maps are empty and the handler is collected (15.129666ms)
+  ✔ store.close() while the subscriber scope stays open and referenced: nothing retained, one source.closed report (with control) (14.068583ms)
+✔ R2. after close the store keeps no reference to subscriber closures (29.526708ms)
+▶ R3. buffers stay bounded under 10 000 rapid set calls
+  ✔ 10 000 sets in one task: one delivery per subscription, one buffered entry per subscription (8.367666ms)
+  ✔ 10 000 sets over 100 tasks: at most one delivery per task per subscription, the newest value (8.452375ms)
+  ✔ 10 000 region changes while a load runs: one active, at most one pending, 2 loader calls (31.962208ms)
+✔ R3. buffers stay bounded under 10 000 rapid set calls (49.283083ms)
+▶ R4. dispatch cost: 500 subscriptions on different keys versus one changed key
+  ✔ a set of one key: 1 index lookup, 1 visit, 1 callback; ten keys: 10 of each (9.370792ms)
+  ℹ 500 subscriptions on 500 keys: set of one key 0.356 us
+  ✔ contrast: 500 subscriptions on the same key get 500 callbacks from one set (3.037042ms)
+✔ R4. dispatch cost: 500 subscriptions on different keys versus one changed key (12.753458ms)
+▶ R5. repeated watch in one long-lived scope (per-request pattern)
+  ✔ same name: observation.subscription.duplicate-name, the first subscription stays (0.203417ms)
+  ✔ generated names: observation.subscriptions.limit at 64 in the leaking scope; other scopes are not affected (0.304ms)
+  ✔ recommended guard: a child scope per request, closed when the request ends (10 000 requests) (78.836792ms)
+✔ R5. repeated watch in one long-lived scope (per-request pattern) (79.57025ms)
+▶ R6. closing while a load is still running
+  ✔ subscriber scope closes, loader honors abort: abort reaches the loader, complete, no debts (0.36975ms)
+  ✔ subscriber scope closes, loader ignores abort, Host escalates: failed debt with a code; a retry completes (1.868916ms)
+  ✔ subscriber scope closes, loader ignores abort, Host abandons: pending debt, settled false (0.382625ms)
+  ✔ store.close() during a load: abort reaches the loader; the owner closes clean; the subscriber's drain owns the debt (1.546166ms)
+✔ R6. closing while a load is still running (4.511209ms)
+▶ R7. load never shows data of older values while newer values load
+  ✔ onLoading on queue; a result that lands after set() but before delivery is dropped (store revision) (0.48775ms)
+✔ R7. load never shows data of older values while newer values load (0.611458ms)
+▶ R8. watch and load when resources.signal is already aborted: its reason is rethrown, nothing registered
+  ✔ the scope's close was requested while the factory awaited: resources.scope.closed (0.211458ms)
+  ✔ the run that constructs the module was cancelled while the factory awaited (scoped()): the Host's reason (0.278375ms)
+✔ R8. watch and load when resources.signal is already aborted: its reason is rethrown, nothing registered (0.594792ms)
+▶ R9. echo and cascade guards
+  ✔ a handler that changes the key it follows: one delivery, observation.delivery.echo reported once (0.243542ms)
+  ✔ C1, C2, C10: async command, queueMicrotask and loader body echo are caught at the first round (Node) (0.483792ms)
+  ✔ an asynchronous ping-pong across two stores through commands stops at 65 deliveries (Node) (2.258792ms)
+✔ R9. echo and cascade guards (3.208125ms)
+▶ R11. the owner keeps reading after close: save on close (C11)
+  ✔ a resource opened before the store saves the last value in its cleanup (0.200917ms)
+✔ R11. the owner keeps reading after close: save on close (C11) (0.262916ms)
+▶ R10. the testing entry point
+  ✔ liveSubscriptions per store and per scope; settled() waits for loads, delivered() does not (0.293666ms)
+✔ R10. the testing entry point (0.348167ms)
+▶ R12. the testing entry point waits only for what it is asked, and never forever
+  ✔ C5: delivered({ stores }) resolves while an unrelated store commits every task (0.211292ms)
+  ✔ C6: settled({ stores }) ignores an unrelated open long-poll; a global settled() gives up with a code (49.858459ms)
+✔ R12. the testing entry point waits only for what it is asked, and never forever (50.24875ms)
+▶ R13. the delivery context ends with the delivery task (M1): no false echo or cascade from work that outlives it
+  ✔ heartbeat: a timer the owner starts from a command called by a handler writes freely (101.721292ms)
+  ✔ server: requests to a server restarted by a handler are independent user actions (161.855625ms)
+  ✔ depth: independent requests through a restarted server do not accumulate cascade depth (189.634167ms)
+  ✔ C4: pagination through a load that advances the cursor it follows fails at the first page (0.494166ms)
+✔ R13. the delivery context ends with the delivery task (M1): no false echo or cascade from work that outlives it (454.227375ms)
+▶ R14. the testing deadline is always on and fake timers cannot stall it (M4)
+  ✔ W1: a signal that never aborts does not switch the deadline off (200.223ms)
+  ✔ W2: mock.timers on setImmediate, setTimeout and Date after import: deliveries and the deadline keep working (200.818583ms)
+  ✔ the detection flag tells a test preset whether async echoes are detected (Node: true) (0.046833ms)
+✔ R14. the testing deadline is always on and fake timers cannot stall it (M4) (401.372958ms)
+▶ R15. save on close with an asynchronous writer (M5)
+  ✔ an asyncDispose entry registered after createStore is awaited before the file closes (6.597292ms)
+✔ R15. save on close with an asynchronous writer (M5) (6.688625ms)
+ℹ tests 34
+ℹ suites 16
+ℹ pass 34
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1103.566667

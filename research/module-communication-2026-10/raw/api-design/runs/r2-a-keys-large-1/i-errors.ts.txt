@@ -1,0 +1,27 @@
+import type { ModuleContext } from "@get-modular/resources";
+import { createStore } from "@get-modular/observation";
+import {
+  createNotifier, parseQuietHours, type NotificationStatus, type NotificationsDeps, type NotificationsProduct,
+} from "./i-errors.types.js";
+
+export async function createNotificationsModule(deps: NotificationsDeps, { resources }: ModuleContext): Promise<NotificationsProduct> {
+  const first = deps.settings.read(["quietHours"]);
+  const notifier = createNotifier(parseQuietHours(first.values.quietHours));
+  deps.settings.watch(resources, {
+    name: "notifications/quiet-hours",
+    keys: ["quietHours"],
+    changesAfter: first,
+    // A RangeError from parseQuietHours is left to throw: it goes to the settings owner's reportError with this name.
+    onChange: ({ values }) => { notifier.setQuietHours(parseQuietHours(values.quietHours)); },
+  });
+  const status = createStore<NotificationStatus>({ muted: false }, {
+    name: "notifications", resources, reportError: deps.errors.report,
+  });
+  return {
+    instance: notifier,
+    capabilities: {
+      "acme/notifications": { mute: (muted): undefined => { status.set({ muted }); return undefined; } },
+      "acme/notifications/status": status.readonly(),
+    },
+  };
+}

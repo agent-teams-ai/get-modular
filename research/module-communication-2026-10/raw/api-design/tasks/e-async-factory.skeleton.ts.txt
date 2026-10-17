@@ -1,0 +1,7 @@
+// Solution file for task (e). Save as e-async-factory.ts. Keep the exported signature; fill in the body.
+import type { ModuleContext } from "@get-modular/resources";
+import { openAuditLog, type AuditDeps, type AuditProduct } from "./e-async-factory.types.js";
+
+export async function createAuditModule(deps: AuditDeps, { resources }: ModuleContext): Promise<AuditProduct> {
+  // TODO
+}

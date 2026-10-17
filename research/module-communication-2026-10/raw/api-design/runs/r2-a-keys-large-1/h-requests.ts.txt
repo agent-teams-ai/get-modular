@@ -1,0 +1,38 @@
+import type { ModuleContext } from "@get-modular/resources";
+import type { QuotesDeps, QuotesProduct, Screen, Ticker } from "./h-requests.types.js";
+
+export async function createQuotesModule(deps: QuotesDeps, { resources }: ModuleContext): Promise<QuotesProduct> {
+  let opened = 0;
+  const openTicker = (screen: Screen): Ticker => {
+    const first = deps.settings.read(["eurUsd"]);
+    screen.show(first.values.eurUsd);
+    opened += 1;
+    const work = resources.child({ name: `quotes/ticker-${opened}` });
+    try {
+      deps.settings.watch(work.resources, {
+        name: "quotes/ticker",
+        keys: ["eurUsd"],
+        changesAfter: first,
+        onChange: ({ values }) => { screen.show(values.eurUsd); },
+      });
+    } catch (error) {
+      void work.control.close();
+      throw error;
+    }
+    return {
+      close: async () => {
+        const report = await work.control.close();
+        if (!report.complete) throw new Error("quotes: ticker was not released completely");
+      },
+    };
+  };
+  return {
+    instance: undefined,
+    capabilities: {
+      "acme/quotes": {
+        convert: (eur) => eur * deps.settings.read(["eurUsd"]).values.eurUsd,
+        openTicker,
+      },
+    },
+  };
+}

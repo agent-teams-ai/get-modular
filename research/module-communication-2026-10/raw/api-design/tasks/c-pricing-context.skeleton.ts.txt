@@ -1,0 +1,7 @@
+// Solution file for task (c). Save as c-pricing-context.ts. Keep the exported signature; fill in the body.
+import type { ModuleContext } from "@get-modular/resources";
+import { vatRateFor, type PricingContext, type PricingContextDeps, type PricingContextProduct } from "./c-pricing-context.types.js";
+
+export async function createPricingContextModule(deps: PricingContextDeps, { resources }: ModuleContext): Promise<PricingContextProduct> {
+  // TODO
+}

@@ -1,0 +1,22 @@
+// Critic probe: set() of a large value. Values are validated and frozen on every set; is the walk proportional to the
+// whole value even when only one item changed (structural sharing)? And is the caller's own object frozen in place?
+import { createScope } from "@get-modular/resources";
+import { createStore } from "./observation.ts";
+const host = createScope({ name: "host" });
+type Row = { readonly id: number; readonly label: string };
+const rows: Row[] = Array.from({ length: 50_000 }, (_, id) => ({ id, label: `row ${id}` }));
+const store = createStore<{ readonly rows: readonly Row[]; readonly cursor: number }>({ rows, cursor: 0 }, {
+  name: "table", resources: host.resources, reportError: () => undefined,
+});
+console.log(`caller's array frozen in place by createStore: ${Object.isFrozen(rows)}; a caller's row frozen: ${Object.isFrozen(rows[0])}`);
+let current = store.read(["rows"]).values.rows;
+let started = performance.now();
+for (let i = 0; i < 200; i += 1) { current = [...current, { id: 50_000 + i, label: "new" }]; store.set({ rows: current }); }
+console.log(`append one row x200 to 50k rows: ${((performance.now() - started) / 200).toFixed(2)} ms per set`);
+started = performance.now();
+for (let i = 0; i < 200; i += 1) store.set({ cursor: i + 1 });
+console.log(`set of a number key x200: ${(((performance.now() - started) * 1000) / 200).toFixed(1)} us per set`);
+const shared = { theme: "light" };
+const other = createStore<{ readonly config: { theme: string } }>({ config: shared }, { name: "other", resources: host.resources, reportError: () => undefined });
+void other;
+try { shared.theme = "dark"; console.log("mutating the caller's own object after createStore: allowed"); } catch (e) { console.log(`mutating the caller's own object after createStore: ${(e as Error).constructor.name}: ${(e as Error).message}`); }

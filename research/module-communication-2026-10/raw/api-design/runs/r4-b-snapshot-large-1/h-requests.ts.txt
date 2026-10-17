@@ -1,0 +1,47 @@
+import type { ModuleContext } from "@get-modular/resources";
+import type { QuotesDeps, QuotesProduct, Screen, Ticker } from "./h-requests.types.js";
+
+export async function createQuotesModule(deps: QuotesDeps, { resources }: ModuleContext): Promise<QuotesProduct> {
+  type OpenTicker = { readonly screen: Screen };
+  const open = new Set<OpenTicker>();
+
+  // One module-level subscription fans out to every open ticker.
+  deps.settings.watch(deps.settings.read(["eurUsd"]), {
+    resources,
+    name: "quotes/rate",
+    onChange: ({ values }) => {
+      const failures: unknown[] = [];
+      for (const entry of open) {
+        try {
+          entry.screen.show(values.eurUsd);
+        } catch (error) {
+          failures.push(error);
+        }
+      }
+      if (failures.length > 0) {
+        throw new AggregateError(failures, "some tickers failed to show the rate");
+      }
+    },
+  });
+
+  const openTicker = (screen: Screen): Ticker => {
+    screen.show(deps.settings.read(["eurUsd"]).values.eurUsd);
+    const entry: OpenTicker = { screen };
+    open.add(entry);
+    return {
+      close: async (): Promise<void> => {
+        open.delete(entry);
+      },
+    };
+  };
+
+  return {
+    instance: undefined,
+    capabilities: {
+      "acme/quotes": {
+        convert: (eur) => eur * deps.settings.read(["eurUsd"]).values.eurUsd,
+        openTicker,
+      },
+    },
+  };
+}

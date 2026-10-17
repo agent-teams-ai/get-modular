@@ -1,0 +1,31 @@
+import type { Resources } from "@get-modular/resources";
+import { watch, type ReadonlyStore, type Snapshot } from "@get-modular/observation";
+type App = { readonly theme: string; readonly region: string };
+type Slice = { readonly theme: string };
+type Other = { readonly rate: number };
+declare const resources: Resources;
+declare const app: ReadonlyStore<App>;
+declare const other: ReadonlyStore<Other>;
+declare function show(theme: string): void;
+const slice: ReadonlyStore<Slice> = app;
+// @ts-expect-error wrong type through Pick is still unsound? (expect error if sound)
+const picked: Pick<ReadonlyStore<{ readonly theme: number }>, "read"> = app;
+const theme = slice.read(["theme"]);
+watch(theme, { resources, name: "m/theme", onChange: ({ values }) => { show(values.theme); } });
+// several stores at once, typed tuple
+const rate = other.read(["rate"]);
+watch([theme, rate], { resources, name: "m/both", onChange: ([t, r]) => { show(`${t.values.theme} ${r.values.rate}`); } });
+// @ts-expect-error hand-built snapshot
+watch({ revision: 0, values: { theme: "x" } }, { resources, name: "m/x", onChange: () => undefined });
+// @ts-expect-error handler reads a key it does not follow
+watch(theme, { resources, name: "m/theme", onChange: ({ values }) => { void values.region; } });
+// @ts-expect-error async handler
+watch(theme, { resources, name: "m/theme", onChange: async () => { } });
+// @ts-expect-error slice -> wide
+const wide: ReadonlyStore<App> = slice;
+// @ts-expect-error unrelated
+const unrelated: ReadonlyStore<Other> = app;
+// @ts-expect-error Readonly<> wrong type
+const r2: Readonly<ReadonlyStore<{ readonly theme: number }>> = app;
+declare const s: Snapshot<App, "theme">;
+void [picked, wide, unrelated, r2, s];

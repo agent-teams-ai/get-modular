@@ -1,0 +1,17 @@
+// Critic round 2: an owner that loads initial values from a file and saves the final state when the file closes.
+import { test } from "node:test";
+import { createScope } from "@get-modular/resources";
+import { createStore } from "./observation.ts";
+test("C11 save-on-close through a resource opened before the store", async () => {
+  const host = createScope({ name: "host" });
+  const module = host.resources.child({ name: "prefs" });
+  const file = await module.resources.setup({
+    name: "prefs/file",
+    setup: () => ({ saved: "", initial: { theme: "light" } }),          // opened first: the store needs its contents
+    cleanup: (opened) => { opened.saved = store.read(["theme"]).values.theme; }, // save the final state on close
+  });
+  const store = createStore<{ readonly theme: string }>({ ...file.initial }, { name: "prefs", resources: module.resources, reportError: () => undefined });
+  store.set({ theme: "dark" });
+  const report = await module.control.close();
+  console.log(`C11 complete ${report.complete}; debts ${report.debts.map((d) => `${d.path.join("/")}:${d.state}:${String((d as { cause?: { code?: unknown } }).cause?.code)}`).join(", ")}; saved "${file.saved}"`);
+});

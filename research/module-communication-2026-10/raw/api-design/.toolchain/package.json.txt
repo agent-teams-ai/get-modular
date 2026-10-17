@@ -1,0 +1,13 @@
+{
+  "name": "api-shape-toolchain",
+  "private": true,
+  "dependencies": {
+    "@get-modular/assembly": "0.4.0",
+    "@get-modular/core": "0.4.0",
+    "@get-modular/resources": "0.1.0",
+    "typescript": "5.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5"
+  }
+}

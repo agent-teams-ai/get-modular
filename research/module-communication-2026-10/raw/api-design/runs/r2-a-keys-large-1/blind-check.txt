@@ -1,0 +1,48 @@
+== a-logger
+[a-keys] tsc7: OK (0 errors)
+[a-keys] ts5.8.3: OK (0 errors)
+  a-logger: behaviour OK
+== b-catalog
+[a-keys] tsc7: OK (0 errors)
+[a-keys] ts5.8.3: OK (0 errors)
+  b-catalog: behaviour OK
+== c-pricing-context
+[a-keys] tsc7: OK (0 errors)
+[a-keys] ts5.8.3: OK (0 errors)
+  c-pricing-context: behaviour OK
+== d-greeter
+[a-keys] tsc7: OK (0 errors)
+[a-keys] ts5.8.3: OK (0 errors)
+  d-greeter: behaviour OK
+== e-async-factory
+[a-keys] tsc7: OK (0 errors)
+[a-keys] ts5.8.3: OK (0 errors)
+  e-async-factory: behaviour OK
+== f-watch-and-load
+[a-keys] tsc7: OK (0 errors)
+[a-keys] ts5.8.3: OK (0 errors)
+  f-watch-and-load: behaviour OK
+== g-hierarchy
+[a-keys] tsc7: OK (0 errors)
+[a-keys] ts5.8.3: OK (0 errors)
+  g-hierarchy: behaviour OK
+== h-requests
+[a-keys] tsc7: OK (0 errors)
+[a-keys] ts5.8.3: OK (0 errors)
+  h-requests: behaviour OK
+== i-errors
+[a-keys] tsc7: OK (0 errors)
+[a-keys] ts5.8.3: OK (0 errors)
+  i-errors: behaviour OK
+
+Variant a-keys, solutions in runs/r2-a-keys-large-1
+  a-logger: PASS
+  b-catalog: PASS
+  c-pricing-context: PASS
+  d-greeter: PASS
+  e-async-factory: PASS
+  e-sessions: MISSING
+  f-watch-and-load: PASS
+  g-hierarchy: PASS
+  h-requests: PASS
+  i-errors: PASS

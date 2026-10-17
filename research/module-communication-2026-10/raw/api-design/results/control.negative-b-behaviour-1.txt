@@ -1,0 +1,72 @@
+== a-logger
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  BEHAVIOUR a-logger: a subscription is still registered after the module closed
+  BEHAVIOUR a-logger: the sink still follows the level after the module closed
+  a-logger: 2 behaviour failure(s)
+== b-catalog
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  BEHAVIOUR b-catalog: while us is loading, current() is not loading (it still shows eu)
+  BEHAVIOUR b-catalog: while br is loading, current() is not loading
+  b-catalog: 2 behaviour failure(s)
+== c-pricing-context
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  BEHAVIOUR c-pricing-context: a region change did not update vatRate the same way as the first value
+  BEHAVIOUR c-pricing-context: a failure of a child's handler did not reach deps.errors.report
+  c-pricing-context: 2 behaviour failure(s)
+== d-greeter
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  BEHAVIOUR d-greeter: the greeter followed a later change
+  d-greeter: 1 behaviour failure(s)
+== e-async-factory
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  BEHAVIOUR e-async-factory: a change made while the log was opening was lost
+  e-async-factory: 1 behaviour failure(s)
+== f-watch-and-load
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  BEHAVIOUR f-watch-and-load: the factory: threw observation.subscription.duplicate-name: region-panel/region is already subscribed to settings in this scope; use a distinct name or a child scope per piece of work
+  f-watch-and-load: 1 behaviour failure(s)
+== g-hierarchy
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  BEHAVIOUR g-hierarchy: the parent dropped the accepted discount when the settings changed
+  BEHAVIOUR g-hierarchy: the child did not follow the parent's change (shown: 120)
+  g-hierarchy: 2 behaviour failure(s)
+== h-requests
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  BEHAVIOUR h-requests: convert() used a rate that was no longer current in 1999 of 2000 calls
+  BEHAVIOUR h-requests: openTicker x200: threw observation.subscriptions.limit: this scope already holds 64 live subscriptions on settings (maxSubscriptionsPerScope)
+  BEHAVIOUR h-requests: a ticker did not show the current rate at once
+  BEHAVIOUR h-requests: an open ticker did not show a change
+  BEHAVIOUR h-requests: a closed ticker still shows changes
+  BEHAVIOUR h-requests: after all tickers closed, 63 registrations beyond the baseline remain
+  BEHAVIOUR h-requests: open and close 1100 tickers one after another: threw observation.subscriptions.limit: this scope already holds 64 live subscriptions on settings (maxSubscriptionsPerScope)
+  BEHAVIOUR h-requests: after 1100 open/close cycles, 63 registrations beyond the baseline remain
+  BEHAVIOUR h-requests: open and close 50 tickers, then drop the screens: threw observation.subscriptions.limit: this scope already holds 64 live subscriptions on settings (maxSubscriptionsPerScope)
+  h-requests: 9 behaviour failure(s)
+== i-errors
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  BEHAVIOUR i-errors: an invalid value must reach the Host error port once; it arrived 0 times
+  BEHAVIOUR i-errors: the invalid value was not reported by the settings store (was the report built by the module?)
+  BEHAVIOUR i-errors: the report of the invalid value does not name the subscription
+  BEHAVIOUR i-errors: the report of the invalid value does not carry the revision
+  BEHAVIOUR i-errors: the report of the invalid value does not carry the parse failure unchanged
+  i-errors: 5 behaviour failure(s)
+
+Variant b-snapshot, solutions in reference/negative/b-behaviour-1
+  a-logger: FAIL (behaviour)
+  b-catalog: FAIL (behaviour)
+  c-pricing-context: FAIL (behaviour)
+  d-greeter: FAIL (behaviour)
+  e-async-factory: FAIL (behaviour)
+  f-watch-and-load: FAIL (behaviour)
+  g-hierarchy: FAIL (behaviour)
+  h-requests: FAIL (behaviour)
+  i-errors: FAIL (behaviour)

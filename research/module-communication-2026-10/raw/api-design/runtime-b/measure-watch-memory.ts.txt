@@ -1,0 +1,54 @@
+// N5 measurement (not a test): heap per live watch, and what a long-lived subscriber scope keeps per closed source.
+//   node --expose-gc runtime-b/measure-watch-memory.ts                                   (bound to resources.signal only)
+//   OBSERVATION_STUB_WATCH_SCOPE=child node --expose-gc runtime-b/measure-watch-memory.ts (a child scope per watch)
+//   OBSERVATION_STUB_WATCH_SCOPE=entry node --expose-gc runtime-b/measure-watch-memory.ts (one entry per watch)
+import { createScope } from "@get-modular/resources";
+import { createStore } from "./observation.ts";
+
+const gc = (globalThis as { readonly gc?: () => void }).gc;
+if (gc === undefined) throw new Error("run with --expose-gc");
+const tick = (): Promise<void> => new Promise((resolve) => { setImmediate(resolve); });
+const collect = async (): Promise<void> => { for (let i = 0; i < 6; i += 1) { await tick(); gc(); } };
+const heap = (): number => process.memoryUsage().heapUsed;
+const mode = { child: "child scope per watch", entry: "entry per watch" }[process.env.OBSERVATION_STUB_WATCH_SCOPE ?? ""] ?? "signal binding only";
+
+// 1. Live watches: 20 000 subscriptions of one store in one subscriber scope.
+{
+  const host = createScope({ name: "host" });
+  const store = createStore<{ readonly level: string }>({ level: "info" }, {
+    name: "settings", resources: host.resources, reportError: () => undefined, maxSubscriptionsPerScope: 50_000, maxSubscriptions: 50_000,
+  });
+  const facet = store.readonly();
+  const subscriber = host.resources.child({ name: "dashboard" });
+  const handler = (): undefined => undefined;
+  await collect();
+  const before = heap();
+  for (let i = 0; i < 20_000; i += 1) facet.watch(facet.read(["level"]), { resources: subscriber.resources, name: `w${i}`, onChange: handler });
+  await collect();
+  console.log(`${mode}: ${((heap() - before) / 20_000).toFixed(0)} bytes per live watch (20 000 live)`);
+  await subscriber.control.close();
+  await host.control.close();
+}
+
+// 2. Closed sources: 50 000 stores each followed by a long-lived scope and then closed first.
+{
+  const host = createScope({ name: "host" });
+  const dashboard = host.resources.child({ name: "dashboard" });
+  const round = async (n: number, offset: number): Promise<void> => {
+    for (let i = 0; i < n; i += 1) {
+      const owner = host.resources.child({ name: "session" });
+      const store = createStore<{ readonly status: string }>({ status: "open" }, { name: "session/status", resources: owner.resources, reportError: () => undefined });
+      const facet = store.readonly();
+      facet.watch(facet.read(["status"]), { resources: dashboard.resources, name: `dashboard/session-${offset + i}`, onChange: () => undefined });
+      await owner.control.close();
+    }
+  };
+  await round(1_000, 0);
+  await collect();
+  const before = heap();
+  await round(50_000, 1_000);
+  await collect();
+  console.log(`${mode}: ${((heap() - before) / 50_000).toFixed(0)} bytes kept per closed source while the subscriber scope stays open`);
+  await dashboard.control.close();
+  await host.control.close();
+}

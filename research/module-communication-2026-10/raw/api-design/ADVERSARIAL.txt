@@ -1,0 +1,393 @@
+Состязательное ревью финального кандидата API B (@get-modular/observation, "watch what you read")
+=================================================================================================
+
+Дата: 2026-10-16. Режим: только чтение. В api-shape/ я записал только этот файл.
+Все эксперименты лежат в scratchpad/critic-adv/ (копия api-shape в critic-adv/api/, мои пробы в
+critic-adv/api/critic-probes/, варианты типов в critic-adv/api/critic-variants/, пробы рантайма
+critic-adv/api/runtime-b/critic-*.test.ts, проба на исходниках GM main в critic-adv/gm05/, минимальный
+репро tsc7 в critic-adv/sig/).
+
+Метки: VERIFIED (прочитал текст), MEASURED (запустил и увидел результат), ASSUMPTION (мой вывод).
+Пути без префикса даны относительно scratchpad/api-shape/.
+
+0. Оговорки
+-----------
+- Пока шло ревью, файлы B менялись: b-snapshot/api.d.ts (22:18), README.md (22:18), RATIONALE.txt (22:19),
+  AGENTS.md (видение расширено до 16 правил). Номера строк ниже даны по текущим версиям. Одна моя находка
+  (api.d.ts говорил "store closes when it starts closing", а RATIONALE и стаб закрывают в LIFO-слоте) за это
+  время исправлена: api.d.ts:121 и :147 теперь говорят "releases the entry store:<name>". Её я не считаю.
+- README теперь 189 строк, а не 155.
+- tools/run-all.sh я прогнал в своей копии (critic-adv/api): "all steps as expected", 33 шага, 2 мин 03 с
+  (MEASURED). Заявленные измерения воспроизводятся. Ниже речь о том, чего они НЕ покрывают.
+- Контекст GM: get-modular origin/main = bcd4c9a (после git fetch). Assembly 0.5.0 ещё не выпущен
+  (packages/assembly/package.json: "version": "0.4.0", changeset .changeset/quiet-modules-group.md).
+  Пробу на 0.5.0 я собрал из исходников origin/main (git archive в critic-adv/gm-main), core взят как d.ts 0.4.0,
+  потому что stage1.js генерируется сборкой. Changeset calm-core-pairs.md: "No API or behavior change".
+
+
+1. Сводка находок
+-----------------
+| #   | Sev | Conf | Кратко |
+| --- | --- | ---- | ------ |
+| F1  | P1  | 8    | Безопасность срезов держится только на сравнении алиас-к-алиасу; Pick/Readonly/тип члена/свой порт молча принимают чужой тип значения на обоих компиляторах. Есть проверенное исправление (тип-маркер) |
+| F2  | P1  | 8    | Правило 7 видения: README:38 советует ровно запрещённое "через команду", а "runaway cascade fails with a coded error" в API нет вовсе |
+| F3  | P1  | 7    | Правило 16 и E8: у модуля нет способа в тесте увидеть живую подписку или дождаться доставки; тесты пакета ждут магическим числом тиков |
+| F4  | P1  | 6    | maxWatchers общий на store: один протекший модуль ломает чужие фабрики, динамические экземпляры падают под нагрузкой, README толкает к ручному fan-out |
+| F5  | P1  | 7    | Срезы через контракты на сотнях модулей: либо центральный список provides у владельца (против правила 11), либо lockstep-ревизия у всех потребителей (CMS) |
+| F6  | P2  | 7    | Закрытый store удерживается живыми scope подписчиков (50 из 50, MEASURED); подписчик не узнаёт о закрытии; read после close молча отдаёт старое |
+| F7  | P2  | 7    | Значения замораживаются на месте (чужие объекты тоже) и обходятся целиком на каждом set: 20 мс на добавление строки к 50 000 |
+| F8  | P2  | 7    | Имена, которые сломаются при событиях и экземплярах: ListenerError.store, maxWatchers, watchers.limit, watch.duplicate-name; в отчёте нет пути scope |
+| F9  | P2  | 8    | Компилируется, падает в рантайме: store-словарь Record<string,X>, мутация замороженного массива, Date/Map |
+| F10 | P2  | 6    | observation.scope.closing дублирует resources.scope.closed; лучше семантика signal.throwIfAborted() |
+| F11 | P2  | 8    | Гейт h и эталон alternative/b-snapshot принимают fan-out, теряющий вторую и следующие ошибки |
+| F12 | P2  | 7    | Обязательства CMS в той же поставке: правило 5 ("returned disposer"), правило 11 (Resources только в composition-слое) |
+| F13 | P3  | 6    | Мелочи: d.ts:161, обработчики с ": void", setTheme без результата против правила 3, нейминг |
+
+P0 не нашёл: прямого противоречия, блокирующего реализацию, нет.
+
+
+2. Находки подробно
+-------------------
+
+F1 [P1, уверенность 8] Срезы по вариантности защищены только при сравнении алиас-к-алиасу
+VERIFIED: b-snapshot/api.d.ts:95 "export type ReadonlyStore<out V> = {".
+VERIFIED: RATIONALE.txt:112 "Evidence: MEASURED, type-tests (slice from wide passes; reverse, unrelated, same key with
+another type fail)". Все эти тесты сравнивают ReadonlyStore<A> с ReadonlyStore<B> напрямую.
+VERIFIED: RATIONALE.txt:95-96 "Invariant to keep: Store must never gain watch or load, or this protection disappears."
+MEASURED (critic-probes/v1-structural.ts, текущий B, tsc7 7.0.2 и TS 5.8.3): ReadonlyStore<App> молча
+присваивается всем этим типам:
+  - Readonly<ReadonlyStore<Unrelated>> и Readonly<ReadonlyStore<WrongType>>;
+  - Pick<ReadonlyStore<Unrelated>, "watch"> и Pick<ReadonlyStore<WrongType>, "read">;
+  - свой порт { readonly read: ReadonlyStore<WrongType>["read"]; readonly watch: ReadonlyStore<WrongType>["watch"] };
+  - типы членов ReadonlyStore<WrongType>["read"] и ReadonlyStore<Unrelated>["watch"].
+Пересечение, Promise<> и массив ловятся, но только пока стоит `out V`: в контроле без аннотации tsc7 пропускает
+и их.
+MEASURED на исходниках GM origin/main с implement<C>()(declaration, factory, scoped) (critic-adv/gm05/p05.ts):
+ReadonlyStore<WrongSlice> ловится (строка 46), а Pick<ReadonlyStore<WrongSlice>, "read"> нет (строка 53,
+"Unused '@ts-expect-error'" на обоих компиляторах).
+Почему это реально: CMS прямо учит писать свой порт приложения, который порт фичи удовлетворяет структурно.
+common-assembly.md:675 (origin/main): "The use case types what it needs with its own port; the store feature's port
+satisfies it structurally." Агент, который пишет application/ports для greeter, напишет Pick<ReadonlyStore<...>, "read">.
+Если тип значения у владельца поменяется, код соберётся и получит в рантайме другой тип.
+MEASURED, минимальный репро: critic-adv/sig/tsc7-variance-repro.ts. Без аннотаций TS 5.8.3 отвергает
+R1<App> -> R1<Wrong> (TS2322 x2), а tsc7 7.0.2 принимает. Это расхождение TS7 с TS5. Похоже на баг tsc7
+(ASSUMPTION). Репортить ли его в typescript-go, решает владелец; я ничего не публиковал.
+
+Моё предложение: тип-маркер записи, только на уровне типов, как уже сделаны бренды.
+  declare const storeValue: unique symbol;
+  ReadonlyStore<out V> = { readonly [storeValue]: V; read; watch; load }
+  Snapshot<V, K> и SnapshotOf<V> = { ...; readonly [storeValue]: V }
+Файл: critic-adv/api/critic-variants/b-marker2/api.d.ts. MEASURED на обоих компиляторах:
+  - b-snapshot/type-tests.ts: все 34 ожидания выполнены, лишних ошибок нет;
+  - probes/p5-gm-contracts.b.ts и probes/p3-variance-controls.ts проходят;
+  - то же самое БЕЗ `out V` (critic-variants/b-marker2-noout): все проверки проходят и на tsc7. Аннотация перестаёт
+    быть несущей, и риск раздела 7 RATIONALE (недокументированное поведение) снимается;
+  - v1-structural: Readonly<>, Pick<"read">, тип члена read и свой порт с read теперь отвергаются. Остались только
+    порты из одного watch: Pick<..., "watch"> и ReadonlyStore<X>["watch"]. Практический риск низкий, потому что без
+    read у такого порта нет своих снимков;
+  - p05 на GM main: Pick<ReadonlyStore<WrongSlice>, "read"> теперь отвергается;
+  - critic-probes/leak.ts: даже если Store получит watch и load, отдать store вместо readonly() не скомпилируется
+    (TS2741). Инвариант RATIONALE.txt:95-96 перестаёт быть случайным.
+Побочный эффект (MEASURED, critic-probes/slice-to-wide.ts): снимок, прочитанный через фасет-срез, больше нельзя
+передать в watch широкого фасета того же store (TS2345). По-моему, это приемлемо: каждый фасет следует за своими снимками.
+Плюс в README одна строка: "тип зависимости пишите только как ReadonlyStore<Slice>; Pick, Omit и типы членов
+не используйте". Пробы v1-structural добавить в CI пакета. Запасной вариант RATIONALE.txt:293 ("type the snapshot
+without the constraint") хуже: он теряет отказ на этапе компиляции.
+
+F2 [P1, уверенность 8] Правило 7 видения нарушено в README и не реализовано в API
+VERIFIED: b-snapshot/README.md:38 "Never write, in `onChange`, to the store you are watching. Ask its owner through a
+command port instead."
+VERIFIED: AGENTS.md:106 "Handlers are synchronous and never write what they were notified about, directly or through
+a command. No echo."
+VERIFIED: AGENTS.md:107 "Changes made during delivery are queued in order; a runaway cascade fails with a coded error."
+VERIFIED: PRACTICES.md:235 (F2) "`Gap`: a cascade guard; `Proposed` mechanism (observation)".
+VERIFIED: в ObservationErrorCode (api.d.ts:162-173) кода для каскада нет. В стабе (runtime/core.ts:220-234)
+защиты нет.
+1) Фраза README:38 естественно читается "в onChange вместо set позови командный порт владельца". Это и есть
+   эхо через команду. В прогонах агенты так не делали (VERIFIED по g-hierarchy в runs/r*-b-*), но задачи
+   их к этому и не подталкивали. ASSUMPTION: агенты будут следовать тексту буквально.
+2) Пинг-понг через задачи (A->B->A через команды или производные store) бесконечно крутит CPU и молчит.
+Моё предложение: переписать README:38 так: "A handler never changes what it was notified about, neither with set
+nor through a command port. Change requests come from user actions and other inputs, through the owner's command
+port." В ADR зафиксировать механизм: глубина каскада на уровне пакета, общая для всех store (а позже и событий).
+set внутри доставки ставится в очередь с глубиной d+1, при превышении порога код вида observation.delivery.cascade.
+Порог нужно согласовать с законными цепочками производных store (Home Assistant держит 10 000). В README добавить
+ещё правило 5: не кодировать одноразовые события в ключах store, потому что коалесцирование их теряет
+(AGENTS.md:94-97).
+
+F3 [P1, уверенность 7] Нечем проверить отсутствие утечек и нечем детерминированно дождаться доставки
+VERIFIED: AGENTS.md:146-147 "Every module test closes its scopes and fails on a debt or on a subscription still alive".
+VERIFIED: PRACTICES.md:211 (E8) "`Gap`: they cannot see a subscription still alive after close; `Proposed`: a
+watcher-count check from an observation testing entry point".
+VERIFIED: в api.d.ts нет ни stats, ни testing entry point. stats() есть только в стабе (runtime/core.ts:74).
+VERIFIED: тесты самого кандидата ждут подбором числа тиков: tasks/scenarios/harness.mjs:35 "settle: async (rounds = 6)",
+runtime-b/probes.test.ts:11 "const settle = async (rounds = 4)".
+Сотни модульных тестов, написанных агентами, будут подбирать число тиков сами. Это хрупко и недетерминированно,
+а требование видения сейчас выполнить нечем.
+Моё предложение: в ADR определить тестовую точку входа (например, @get-modular/observation/testing или
+@get-modular/conformance): liveSubscriptions(store) -> число и пути scope, whenIdle(store) -> Promise, который
+разрешается, когда нет отложенной доставки и активного load. Сделать это можно аддитивно, но в ADR это должно быть
+с первого дня, потому что правило 16 обязательное.
+
+F4 [P1, уверенность 6] Лимит maxWatchers общий на store, а не на подписчика
+VERIFIED: api.d.ts:154 "Live subscriptions (`watch` plus `load`) this store accepts. Default 1024; one more throws
+`observation.watchers.limit`." RATIONALE.txt:69 "Owner decision 2026-10-16: the 1024 default stays."
+Решение владельца касается значения по умолчанию. Здесь речь о гранулярности.
+1) Радиус поражения (ASSUMPTION по коду runtime/core.ts:250, MEASURED в R5 только для одного модуля): модуль A
+   с утечкой (сгенерированные имена в долгоживущем scope) набирает 1024 подписки. После этого watch невиновного
+   модуля B в его фабрике бросает watchers.limit. Сообщение называет только store, а не того, кто держит подписки.
+2) Динамические экземпляры: 200 сессий по 6 модулей, следящих за settings, дают 1200 подписок. Ошибка появляется
+   только под реальной нагрузкой, в тестах её нет.
+3) Поведение агентов (VERIFIED): runs/r3-b-snapshot-small-1/h-requests.ts:5 "a watch per ticker would count
+   against the store's watcher limit" и r3-b-snapshot-small-2/h-requests.ts:6 то же. Теперь README.md:58-67 прямо
+   направляет на ручной fan-out "when many pieces may be open at once (hundreds or more)". Автор модуля не может
+   знать, сколько подписок держат на этом store ДРУГИЕ модули. Каждый модуль переизобретает изоляцию ошибок,
+   которую библиотека уже даёт, и F11 показывает, что это делают с ошибками.
+Вопрос владельцу Q1 (раздел 9).
+
+F5 [P1, уверенность 7] Срезы через контракты не масштабируются ни в одной из двух форм
+VERIFIED: README.md:4-5 "typed with their own slice (`ReadonlyStore<{ readonly theme: string }>`), never with the app's
+whole settings type."
+VERIFIED: probes/p5-gm-contracts.b.ts:10 и :33. Срез оформлен контрактом потребителя
+("acme/logger/settings"), а владелец его provides: "provides: [LoggingSettingsContract.provide()]".
+Форма 1, контракт потребителя: владелец settings объявляет provides и строку capability на каждого потребителя и
+импортирует их пакеты контрактов. Получается центральный список и инверсия зависимости.
+AGENTS.md:127-128: "A plugin never edits the Host's list". Плагин так вообще не может получить свой срез.
+Форма 2, один широкий контракт ReadonlyStore<AppSettings>: common-assembly.md:575 "Raise `revision` with every change
+of the value type, additive changes included" и :578 "a provider and every consumer of a capability use the same
+revision". Каждый новый ключ настроек означает lockstep-релиз всех потребителей и ломает все плагины.
+MEASURED (critic-adv/gm05/p05.ts): форма 2 с сужением в слое приложения работает на implement 0.5.0, но опирается
+на сравнение, у которого есть дыра из F1.
+Вопрос владельцу Q2 (раздел 9).
+
+F6 [P2, уверенность 7] Закрытие источника: удержание памяти, тишина и read после close
+MEASURED (critic-adv/api/runtime-b/critic-retention.test.ts, resources с origin/main): 50 store закрыты через close(),
+а долгоживущий scope подписчика ещё открыт. Результат: "closed stores whose values are still reachable: 50/50;
+handlers still reachable: 50/50". После закрытия scope подписчика стало 0/50. Причина VERIFIED в runtime/core.ts:307:
+запись resources.use({ [Symbol.dispose]: registration.detach }, "watch:<name>") остаётся в scope подписчика и держит
+замыкание с движком и обработчиком.
+VERIFIED: RATIONALE.txt:103 "a closed store keeps no handler". Тест runtime-b/probes.test.ts:105 назван "even if the
+subscriber scope is never closed", но :111 делает scope недостижимым ("dropped without close"). Заявление шире,
+чем проба.
+VERIFIED: api.d.ts:119-120 "then `set`, `watch` and `load` throw `observation.store.closed`". read продолжает
+работать (runtime/core.ts:441-444), а PRACTICES.md:209 (E6) предлагает "`read` and `watch` on a closed store throw a
+coded error". Подписчик никак не узнаёт о закрытии источника и молча показывает старые данные. Для поколений
+плагинов (правило 11) это прямой сценарий.
+При статической композиции LIFO закрывает потребителей раньше владельца, так что проблема только в close() посреди
+жизни и в динамике (ASSUMPTION).
+Моё предложение: реализовать watch как child-scope или очищать замыкания при detach, чтобы закрытый store не
+удерживался; read после close бросает observation.store.closed. Политика уведомления: вопрос Q3. Публичный
+Store.close() дублирует закрытие через resources. Подумать, нужен ли он вообще.
+
+F7 [P2, уверенность 8 по измерению, 6 по важности] Заморозка на месте и стоимость set на больших значениях
+VERIFIED: api.d.ts:112 "Values are frozen". runtime/core.ts:112 "Object.freeze(value);" замораживает объект
+вызывающего.
+MEASURED (runtime-b/critic-set-large.test.ts): "caller's array frozen in place by createStore: true"; после
+createStore({ config: shared }) запись shared.theme = "dark" даёт "TypeError: Cannot assign to read only property".
+Если объект принадлежит другому модулю (данные порта, input), тот сломается позже и далеко от причины.
+MEASURED: "append one row x200 to 50k rows: 20.18 ms per set". Каждый set заново обходит уже замороженные строки,
+поэтому рост по одной строке квадратичен. "set of a number key: 0.9 us". RATIONALE.txt:271 "About 0.4 us per set"
+измерен только на примитивах.
+Правило 1 (AGENTS.md:77-78, "frozen by the mechanism") заморозку требует, но не говорит, на месте или копией.
+Моё предложение: в ADR выбрать явно. Либо копировать, либо замораживать на месте и написать это в README
+("set passes ownership of the objects to the store"). Обходить только новые узлы: WeakSet уже проверенных
+объектов даёт O(новых узлов).
+
+F8 [P2, уверенность 7] Имена и отчёт, которые придётся ломать при событиях и экземплярах
+VERIFIED: api.d.ts:133 "readonly store: string;" в ListenerError. У будущих createEvent/subscribe источник не
+store. Если Host-порт ошибок типизирован ListenerError, при событиях это будет ломка у всех Host.
+VERIFIED: api.d.ts:170-171 "observation.watch.duplicate-name" и "observation.watchers.limit", api.d.ts:155
+maxWatchers. Всё это относится и к load (api.d.ts:154 "(`watch` plus `load`)"), а позже и к subscribe.
+VERIFIED: RATIONALE.txt:180 "names derived from the scope path (Resources does not expose it)". В ListenerError
+только имя. 1000 сессий с "sessions/banner" неразличимы (правило 12 "Observable by construction").
+Моё предложение (дёшево сейчас, ломка потом): source вместо store; observation.subscription.duplicate-name,
+observation.subscriptions.limit, maxSubscriptions. В resources 0.2 добавить Resources.path (только чтение,
+аддитивно) и поле path в ListenerError.
+
+F9 [P2, уверенность 8] Компилируется, но падает в рантайме (critic-probes/traps.ts, MEASURED, оба компилятора)
+- createStore<Record<string, "open" | "closed">>({}, ...), затем set({ "session-42": "open" }) и
+  read(["session-42"]) компилируются. Набор ключей фиксирован при создании, поэтому в рантайме будет
+  observation.keys.unknown, возможно уже в продакшене. Словарь сессий для агента самая естественная форма.
+  Исправление: отвергать индексные сигнатуры в ограничении createStore (api.d.ts:159).
+- lists.read(["ids"]).values.ids.push(2) компилируется (api.d.ts:22 Readonly<Pick<>> мелкий), а в рантайме
+  бросает некодированный TypeError. Глубокий readonly-тип у values решить сейчас: позже это ломка.
+- Date и Map компилируются, в рантайме observation.values.not-plain. Это кодированный fail-fast, правило 15
+  формально соблюдено. P3.
+
+F10 [P2, уверенность 6] observation.scope.closing против resources.scope.closed
+VERIFIED: api.d.ts:168 и README.md:51-53. resources README (origin/main):109 "`resources.scope.closed` | `setup`,
+`use` or `child` after a close request".
+Одно состояние, закрывающийся scope, получает два кода в двух пакетах, а позже третий от событий. Отдельный случай
+"запуск отменён, scope жив" resources кодом не помечает: setup получает прерванный signal.
+Моё предложение: общий код не нужен. watch и load делают resources.signal.throwIfAborted(): при закрытии scope
+причина ScopeClosedError с кодом resources.scope.closed, при отмене запуска это собственная причина Host, которую
+Assembly и так сообщает как cancelled. Новых кодов ноль, семантика веб-платформы, одно значение на один смысл.
+
+F11 [P2, уверенность 8] Гейт и эталон принимают fan-out, теряющий ошибки
+VERIFIED: reference/alternative/b-snapshot/h-requests.ts:19 "failure ??= { cause };" бросает только первую
+ошибку. RATIONALE.txt:72 считает его правильным ("Both designs pass the task h gate"). runs/r3-b-snapshot-small-2/
+h-requests.ts:17 делает так же и проходит. Гейт этого не различает: в tasks/scenarios/h-requests.scenario.mjs:31-32
+бросает только один экран. README.md:64-67 теперь правильно предписывает AggregateError, а эталон противоречит README.
+Исправление: два бросающих экрана в сценарии; alternative/b-snapshot исправить или убрать.
+
+F12 [P2, уверенность 7] Обязательные правки CMS в той же поставке
+VERIFIED: common-assembly.md:194 (origin/main) "5. When subscribing to a provider, register the returned disposer in
+your own scope." В B disposer не возвращается: подписка сама регистрируется в переданном resources. Правило 5 надо
+переписать. AGENTS.md "Consumer Module Standard maintenance" требует обновлять стандарт в той же поставке.
+VERIFIED: common-assembly.md:208 "Domain and application code never sees `Resources`". Значит, watch и load можно
+вызывать только в слое composition или adapter. Сниппет README.md:71 (openTicker(rates, resources: Resources,
+screen)) выглядит как функция приложения. В README нужно одно предложение про слой.
+
+F13 [P3] Мелочи
+- api.d.ts:161 "/** Every code this package throws. */", но observation.callback.returned-value только сообщается,
+  а не бросается (уверенность 9).
+- Именованный обработчик с ": void" отвергается (MEASURED, traps.ts:45, TS2322 "Type 'void' is not assignable to
+  type 'undefined'"). Многие lint-конфиги требуют явный тип возврата. В README: "annotate named handlers
+  `: undefined`" (уверенность 7).
+- README.md:141 команда setTheme возвращает undefined, а AGENTS.md:86-87 говорит "the command returns a typed result
+  such as accepted or rejected". Пример стоит привести к правилу 3 (уверенность 6).
+- Условный патч: set({ ...(x === undefined ? {} : { theme: x }) }) не компилируется
+  (traps.ts:30, TS2345). Рецепт "set({ theme: x ?? current.theme })" в README (уверенность 5).
+
+
+3. Эволюция: что сломается
+--------------------------
+- События (createEvent, emit, subscribe). Спецификация { resources, name, on* } переиспользуется. Ломка
+  неизбежна, если не переименовать сейчас то, что перечислено в F8. Защиту от каскада (F2) делать на уровне пакета,
+  общей для store и событий, иначе её придётся переделывать.
+- Плагины и динамические экземпляры. Фасет передаётся как input-порт: это frozen-объект с функциями, правилам
+  CMS о портах соответствует. Риски: F4 (лимит под нагрузкой), F6 (смена поколения: тишина и удержание памяти),
+  F8 (нет пути в отчёте), F5 (плагин не может получить контракт-срез потребителя).
+  Владелец-sink reportError при плагинах инвертирует доверие: если Host следит за store плагина, ошибки
+  обработчиков Host вместе с cause уходят в reportError плагина, и плагин может их заглушить (ASSUMPTION; для
+  доверенного in-process кода допустимо, но в ADR это надо назвать).
+- Проекция readonly(keys) добавляется аддитивно, необязательным параметром. С маркером F1 тип проекции
+  ReadonlyStore<Pick<V,K>> согласован автоматически.
+- Подписка на несколько store сразу. Методная форма её не выражает, понадобится вторая форма. Я проверил
+  свободную функцию watch(snapshotOrTuple, spec) (critic-variants/b-free, MEASURED: кортеж [theme, rate] типизируется
+  на обоих компиляторах). Но рекомендовать её не стану: снимок становится capability, и подписку можно оформить на
+  store, к которому нет слота (правило 2). Методная форма в этом смысле герметична. Если делать мульти-store,
+  то формой с явными парами (фасет, снимок). Тогда сразу надо решить, куда идёт ошибка обработчика, следящего за
+  двумя владельцами с двумя reportError. Это единственный настоящий "угол" текущей модели ошибок.
+- Селекторы и производные значения. Необязательный select с выводом типа onChange добавляется аддитивно
+  (перегрузка). Производный store уже работает рецептом. Каждый шаг даёт ещё одну задачу задержки, и с защитой от
+  каскада (F2) глубина цепочки производных должна укладываться в порог.
+Аддитивно ломкой станет одно: если позже захочется ОБЯЗАТЕЛЬНЫЙ обработчик закрытия источника (в духе
+обязательных onError и onLoading). Это ломает каждый вызов watch. Отсюда Q3 сейчас.
+
+
+4. Согласованность
+------------------
+- CMS: порты свойствами-функциями соблюдены (api.d.ts:97-104); коды <pkg>.<area>.<reason> соблюдены; правила 5 и 11
+  нужно обновить (F12). implement<C>()(decl, factory, scoped) на GM main работает (MEASURED, p05).
+- resources: detach по abort на resources.signal до любого cleanup сильнее, чем CMS правило 6, это хорошо. Внимание:
+  в типах resources (types.ts) у signal написано "stops acquisition, never closes anything", а observation
+  использует его, чтобы отцеплять. Формулировку в resources стоит расширить. Коды: F10.
+- Видение, 16 правил: 1 (заморозка механизмом) да, но см. F7; 3 README-команда (F13); 5 и 7 (F2); 11 (F4, F5, F6);
+  12 (F8); 13 соблюдено; 15 (F1, F9, и строгое "a caller never repeats information": получатель deps.x.watch и
+  происхождение снимка повторяют одно и то же, несовпадение ловится кодом snapshot.foreign в рантайме. Это осознанная
+  плата за герметичность capability, см. раздел 3); 16 (F3, F6).
+- E7 PRACTICES ("A removed subscription is never called again, even in the middle of a delivery") в стабе
+  выполнено (VERIFIED, runtime/core.ts:298 "if (!attached) return;"), но пробы на это нет.
+
+
+5. Ресурсы и память: что подтверждено и что не покрыто
+-----------------------------------------------------
+Подтверждено (MEASURED, мой прогон run-all): коалесцирование, одна ожидающая задача load, индекс по ключам, лимит,
+detach до drain, долги load, scope.closing, отсутствие ссылок у закрытого store на обработчики при недостижимом
+подписчике.
+Не покрыто:
+1. Удержание закрытых store живыми scope подписчиков (F6, MEASURED 50/50).
+2. Большие значения и заморозка на месте (F7, MEASURED 20 мс на set).
+3. Лимит при динамических экземплярах и радиус поражения (F4, не измерялось никем).
+4. read на горячем пути: 0,505 мкс на вызов (MEASURED, runtime-b/critic-read-cost.test.ts). Это не проблема, просто
+   данные.
+5. Планировщик setImmediate есть только в Node (runtime/core.ts:81-82). README показывает UI (createThemePicker).
+   Если пакет попадёт в renderer Electron или браузер, "later task" надо определить заново (ASSUMPTION о будущем
+   применении). В ADR указать поддерживаемые среды.
+6. Изоляция abort-listener (RATIONALE раздел 9) остаётся открытой.
+
+
+6. Риск вариантности TypeScript
+-------------------------------
+- Насколько реален. Риск в RATIONALE.txt:287 ("constraints не сравниваются") ASSUMPTION-ом оцениваю как
+  умеренный и громкий: если TS начнёт проверять ограничения в аннотации, получится TS2636 в нашем d.ts, а не тихая
+  дыра. SnapshotOf со всеми необязательными полями при более строгом сравнении ограничений сохраняет направление
+  срезов. Реальный и уже действующий риск другой: структурные пути не проверяют V вообще (F1, MEASURED сегодня).
+  Плюс tsc7 расходится с TS5 даже на алиасах без аннотации (репро в critic-adv/sig).
+- Хватит ли зондов CI. Нет: они проверяют только алиас-к-алиасу. Нужны v1-structural и p05 (implement 0.5.0).
+  Ещё стоит канарейка на следующий tsc7 или RC.
+- Запасной вариант RATIONALE.txt:293 хуже маркера (F1): маркер делает `out V` подтверждением, а не несущей
+  конструкцией, и не теряет отказ на этапе компиляции. MEASURED на обоих компиляторах.
+
+
+7. Нейминг
+----------
+- load: в вызове deps.settings.load(...) читается как "загрузить настройки". Но имя принято владельцем
+  (AGENTS.md:134) и совпадает с Angular (loader). Лучшего имени я не знаю: "resource" путается с resources, а
+  "follow" размыт. Оставить. Уверенность, что переименование не нужно: 6.
+- readonly(): в d.ts получается "readonly readonly:" (api.d.ts:117), а store.readonly() можно прочитать как предикат.
+  У Angular есть WritableSignal.asReadonly(), у Kotlin asStateFlow() (KNOWLEDGE, онлайн не перепроверял). Имя
+  readonly владелец принял (AGENTS.md:134), поэтому только как опция, уверенность 5. С TS-модификатором readonly
+  на практике не путается: тип ReadonlyStore явный.
+- onLoading, loader, name, Snapshot: оставить. Это мейнстрим (Angular resource status "loading", loader;
+  useSyncExternalStore getSnapshot; name как в resources).
+- maxWatchers, watchers.limit, watch.duplicate-name, ListenerError.store: переименовать (F8).
+
+
+8. README
+---------
+Делить на два файла не советую: промпт писателя (tasks/README.md:43-45) даёт только README.md и api.d.ts. Второй
+файл агент может не открыть. Моё предложение: один файл в таком порядке:
+(1) чек-лист из 10-12 строк "MUST/NEVER", у каждой строки свой код ошибки или ошибка компиляции;
+(2) быстрый старт: потребитель, владелец, load;
+(3) рецепты: асинхронная фабрика, производный store, работа короче модуля, fan-out, доменные ошибки;
+(4) справочник: коды и лимиты.
+Обязательные правки текста: README.md:38 (F2), правило 5 про события (F2), ": undefined" (F13), рецепт команды с
+результатом (F13). Уверенность 6.
+
+
+9. Вердикт
+----------
+Ядро B выдерживает атаку и лучше A. Снимок первым аргументом закрывает гонку read/subscribe, resources обязателен,
+изоляция ошибок с sink у владельца, load с onLoading и проверкой по ревизии store, пробы воспроизводимы.
+Как основа ADR годится ПОСЛЕ обязательных правок:
+1. F1: тип-маркер в ReadonlyStore и Snapshot/SnapshotOf, правило README против Pick и типов членов, структурные
+   пробы в CI.
+2. F2: исправить README.md:38; в ADR механизм и код каскада (правило 7 обязательное); строка про события в README.
+3. F3: тестовая точка входа (живые подписки, ожидание простоя) в ADR (правило 16 обязательное).
+4. F8: переименования, пока они дёшевы.
+5. F12: в той же поставке обновить правило 5 CMS.
+6. Решения владельца Q1-Q3 или явно записанная отсрочка с владельцем и триггером.
+Без пунктов 2 и 3 API не соответствует обязательным правилам 7 и 16 текущего видения.
+
+
+10. Вопросы владельцу
+---------------------
+Q1. Где считать лимит подписок?
+  1) (Recommended) Лимит на scope подписчика (например, 64 на store в одном resources) плюс высокий страховочный
+     лимит на store, который задаёт владелец. Ошибка называет верхние scope по пути (нужен Resources.path).
+     Утечка падает в своём модуле, экземпляры масштабируются. Надёжность 8, уверенность 6.
+  2) Оставить общий лимит 1024 на store, но ошибка называет держателей, а README требует от владельца store,
+     которым пользуются экземпляры, задать maxWatchers явно. Надёжность 6, уверенность 7.
+  3) Без жёсткого лимита: только счётчики и предупреждение. Надёжность 4, уверенность 7.
+
+Q2. Как модуль получает свой срез через контракты на сотнях модулей и с плагинами?
+  1) (Recommended) Владелец публикует несколько контрактов по смысловым областям (theme, logging, region...) и
+     отдаёт один и тот же фасет под каждым. Потребитель берёт контракт своей области и сужает дальше в своём порте
+     ReadonlyStore<Slice> (с маркером F1). Ревизия растёт только у затронутой области, центрального списка
+     потребителей нет, плагины получают контракты Host. Надёжность 8, уверенность 6.
+  2) Один широкий контракт ReadonlyStore<AppSettings> и сужение у потребителя: каждый новый ключ даёт lockstep-
+     ревизию у всех и ломает плагины. Надёжность 6, уверенность 7.
+  3) Контракт среза на каждого потребителя, который владелец provides (как probes/p5): центральный список и
+     инверсия зависимости, плагинам недоступно. Надёжность 5, уверенность 7.
+
+Q3. Что видит подписчик, когда его источник закрылся раньше него?
+  1) (Recommended) Никакого нового обработчика. Закрытие store с живыми чужими подписками освобождает их сторону
+     (без удержания памяти), отправляет один кодированный отчёт на подписку (например, observation.source.closed)
+     в reportError, а read после закрытия бросает observation.store.closed. При статической композиции этого не
+     бывает, в динамике это громко. Надёжность 7, уверенность 6.
+  2) Обязательный onSourceClosed в WatchSpec и LoadSpec уже сейчас: подписчик решает сам (показать
+     "недоступно", переподписаться). Надёжность 8, уверенность 4 (шаблонный код почти всегда не нужен).
+  3) Отложить и позже добавить необязательный обработчик: до тех пор тишина и удержание памяти, а позже
+     обязательный станет ломкой. Надёжность 5, уверенность 6.

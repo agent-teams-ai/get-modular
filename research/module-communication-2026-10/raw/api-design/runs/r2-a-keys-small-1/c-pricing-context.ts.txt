@@ -1,0 +1,20 @@
+import { createStore } from "@get-modular/observation";
+import type { ModuleContext } from "@get-modular/resources";
+import {
+  vatRateFor, type PricingContext, type PricingContextDeps, type PricingContextProduct, type PricingSettings,
+} from "./c-pricing-context.types.js";
+
+export async function createPricingContextModule(deps: PricingContextDeps, { resources }: ModuleContext): Promise<PricingContextProduct> {
+  const toContext = (values: PricingSettings): PricingContext => ({ currency: values.currency, vatRate: vatRateFor(values.region) });
+  const settings = deps.settings.read(["currency", "region"]);
+  const store = createStore<PricingContext>(toContext(settings.values), {
+    name: "pricing-context", resources, reportError: deps.errors.report,
+  });
+  deps.settings.watch(resources, {
+    name: "pricing-context/settings",
+    keys: ["currency", "region"],
+    changesAfter: settings,
+    onChange: ({ values }) => { store.set(toContext(values)); },
+  });
+  return { instance: undefined, capabilities: { "acme/pricing/context": store.readonly() } };
+}

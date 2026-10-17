@@ -1,0 +1,38 @@
+Draft: Consumer Module Standard, "Module resource scopes", module author rules 5 and 11 (F12)
+==========================================================================================
+
+Current text (get-modular origin/main, docs/architecture/common-assembly.md, module authors, rule 5):
+  "5. When subscribing to a provider, register the returned disposer in your own scope."
+
+Proposed text for rule 5:
+  "5. Subscribe in your own scope. A subscription API takes your `resources` and binds itself to `resources.signal`,
+      so it is detached when your scope starts closing, before any cleanup runs; never hold an unsubscribe handle
+      instead. Work it must drain (an asynchronous load) is registered as a child scope of yours. For work shorter than
+      your module, subscribe in a `child()` scope and close it when the work ends, checking `report.complete`. If a
+      provider API still returns a disposer, register it with `resources.use`."
+
+Proposed addition to rule 11 (no change of meaning, one sentence):
+  "11. Domain and application code never sees `Resources`; only the composition or adapter layer of the module does.
+       Subscription calls such as `watch` and `load` of @get-modular/observation therefore belong to that layer."
+
+Related wording in @get-modular/resources (types.ts, Resources.signal):
+  current:  "Aborted when this scope or an ancestor starts closing; stops acquisition, never closes anything."
+  proposed: "Aborted when this scope or an ancestor starts closing, or when the run that constructs the module is
+             cancelled. It stops acquisition and detaches subscriptions that registered in this scope; it never closes
+             anything."
+
+Delivery note: the Consumer Module Standard maintenance rule (workspace AGENTS.md) requires the standard, its examples
+and the affected consumer profiles to change in the same delivery as the observation package.
+
+Draft rule: the observation testing entry point is imported only from test files (N6)
+-------------------------------------------------------------------------------------
+Rule text for the Consumer Module Standard, "Testing modules":
+  "`@get-modular/observation/testing` (liveSubscriptions, delivered, settled) is imported only from test files. In
+   production code its waits would be a hidden global synchronization point between modules."
+
+Enforcement (outside this scratchpad): one lint line in the CMS preset that every module package extends, for
+example oxlint `no-restricted-imports` with
+  paths: [{ name: "@get-modular/observation/testing", message: "test files only" }]
+in the base configuration, turned off in an override for test files (`**/*.test.ts`, `tests/**`). Whether oxlint's
+`no-restricted-imports` supports `paths` with messages in the pinned version is KNOWLEDGE, not checked here. The rule
+belongs to the same delivery as the package (Consumer Module Standard maintenance).

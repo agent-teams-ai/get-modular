@@ -1,0 +1,13 @@
+const gbm = globalThis.process?.getBuiltinModule;
+console.log(`runtime ${typeof Bun !== "undefined" ? "bun " + Bun.version : "node " + process.version}; getBuiltinModule: ${typeof gbm}`);
+const hooks = typeof gbm === "function" ? gbm("node:async_hooks") : undefined;
+const ALS = hooks?.AsyncLocalStorage;
+if (ALS) {
+  const als = new ALS();
+  als.run("ctx", () => {
+    queueMicrotask(() => console.log(`microtask sees: ${als.getStore()}`));
+    Promise.resolve().then(() => console.log(`then sees: ${als.getStore()}`));
+    setTimeout(() => console.log(`setTimeout sees: ${als.getStore()}`), 1);
+    setImmediate(() => console.log(`setImmediate sees: ${als.getStore()}`));
+  });
+}

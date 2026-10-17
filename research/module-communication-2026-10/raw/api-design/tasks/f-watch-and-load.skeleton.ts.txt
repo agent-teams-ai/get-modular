@@ -1,0 +1,7 @@
+// Solution file for task (f). Save as f-watch-and-load.ts. Keep the exported signature; fill in the body.
+import type { ModuleContext } from "@get-modular/resources";
+import { fetchHolidays, regionLabel, type Holidays, type PanelDeps, type PanelProduct } from "./f-watch-and-load.types.js";
+
+export async function createRegionPanelModule(deps: PanelDeps, { resources }: ModuleContext): Promise<PanelProduct> {
+  // TODO
+}

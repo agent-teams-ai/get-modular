@@ -1,0 +1,13 @@
+// Minimal repro: alias-to-alias assignability with no variance annotation. TS 5.8.3 rejects both, tsc7 7.0.2 accepts both.
+declare const brand: unique symbol;
+type Key<V> = keyof V & string;
+type Keys<V> = readonly [Key<V>, ...Key<V>[]];
+type Snap<V, K extends keyof V> = { readonly revision: number; readonly values: Readonly<Pick<V, K>>; readonly [brand]: true };
+type App = { readonly theme: string; readonly region: string };
+type Wrong = { readonly theme: number };
+type R1<V> = { readonly read: <const K extends Keys<V>>(keys: K) => Snap<V, K[number]> };
+declare const r1: R1<App>;
+export const r1w: R1<Wrong> = r1;
+type R2<V> = { readonly read: <const K extends Key<V>>(keys: readonly [K, ...K[]]) => Snap<V, K> };
+declare const r2: R2<App>;
+export const r2w: R2<Wrong> = r2;

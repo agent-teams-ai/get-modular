@@ -1,0 +1,46 @@
+// Probe: error quality of a union spec (onChange | load) versus two separate members; brand + weak type; F-bound.
+declare const snapshotBrand: unique symbol;
+type Key<V> = keyof V & string;
+type Keys<V> = readonly [Key<V>, ...Key<V>[]];
+type Snapshot<V, K extends keyof V = keyof V> = { readonly revision: number; readonly values: Readonly<Pick<V, K>>; readonly [snapshotBrand]: true };
+type SnapshotOf<V> = { readonly revision: number; readonly values: { readonly [P in keyof V]?: V[P] }; readonly [snapshotBrand]: true };
+type Base = { readonly resources: { readonly signal: AbortSignal }; readonly name: string };
+type OnChange<S> = Base & { readonly onChange: (next: S) => undefined; readonly load?: never; readonly onResult?: never; readonly onError?: never };
+type OnLoad<S, T> = Base & {
+  readonly load: (next: S, context: { readonly signal: AbortSignal }) => Promise<T>;
+  readonly onResult: (result: T, from: S) => undefined;
+  readonly onError: (cause: unknown, from: S) => undefined;
+  readonly onChange?: never;
+};
+type RU<out V> = {
+  readonly read: <const K extends Keys<V>>(keys: K) => Snapshot<V, K[number]>;
+  readonly watch: <S extends SnapshotOf<V>, T = never>(from: S, spec: OnChange<S> | OnLoad<S, T>) => undefined;
+};
+type App = { readonly theme: string; readonly region: string };
+declare const store: RU<App>;
+declare const resources: { readonly signal: AbortSignal };
+const s = store.read(["region"]);
+// L22 async onChange
+store.watch(s, { resources, name: "x", onChange: async () => { } });
+// L24 load returns non-promise
+store.watch(s, { resources, name: "x", load: (n) => n.values.region, onResult: () => undefined, onError: () => undefined });
+// L26 both
+store.watch(s, { resources, name: "x", onChange: () => undefined, load: async () => 1, onResult: () => undefined, onError: () => undefined });
+// L28 inference of T
+store.watch(s, { resources, name: "x", load: async (n, { signal }) => ({ items: [n.values.region], aborted: signal.aborted }), onResult: (r) => { const x: string[] = r.items; void x; }, onError: () => undefined });
+// L30 forged literal
+store.watch({ revision: 0, values: { region: "eu" } }, { resources, name: "x", onChange: () => undefined });
+// L32 weak-type foreign snapshot
+declare const foreign: Snapshot<{ readonly color: number }, "color">;
+store.watch(foreign, { resources, name: "x", onChange: () => undefined });
+// L35 expression body returning value
+store.watch(s, { resources, name: "x", onChange: (n) => n.values.region.length });
+// L37 expression body returning void
+declare function show(x: string): void;
+store.watch(s, { resources, name: "x", onChange: (n) => show(n.values.region) });
+// L40 missing onError
+store.watch(s, { resources, name: "x", load: async () => 1, onResult: () => undefined });
+// F-bound: optional keys rejected?
+declare function createStore<V extends Required<V>>(initial: V): RU<V>;
+createStore<{ readonly a: string | undefined }>({ a: undefined });
+createStore<{ readonly a?: string }>({});

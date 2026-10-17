@@ -1,0 +1,25 @@
+type Keys<V> = readonly [keyof V & string, ...(keyof V & string)[]];
+type Snapshot<V, K extends keyof V> = Readonly<{ revision: number; values: Readonly<Pick<V, K>> }>;
+// Readers and ports only hand values out, so they can be covariant.
+type Reader<out V> = { readonly read: <const S extends Keys<V>>(keys: S) => Snapshot<V, S[number]> };
+type Port<out V> = { readonly observe: <const S extends Keys<V>>(keys: S, onChange: (next: Snapshot<V, S[number]>) => undefined) => { readonly unsubscribe: () => undefined } };
+
+type AppSettings = { readonly theme: string; readonly logLevel: "debug" | "info"; readonly region: string };
+type ThemeSlice = { readonly theme: string };
+type Unrelated = { readonly color: number };
+type WrongType = { readonly theme: number };
+
+declare const reader: Reader<AppSettings>;
+declare const port: Port<AppSettings>;
+const themeReader: Reader<ThemeSlice> = reader;            // OK expected: a superset record serves a slice
+const themePort: Port<ThemeSlice> = port;                   // OK expected
+// @ts-expect-error unrelated record must be rejected
+const bad1: Reader<Unrelated> = reader;
+// @ts-expect-error same key with another type must be rejected
+const bad2: Port<WrongType> = port;
+// @ts-expect-error a slice reader cannot serve the full record
+const bad3: Reader<AppSettings> = themeReader;
+themeReader.read(["theme"]);
+// @ts-expect-error a slice reader cannot read keys outside the slice
+themeReader.read(["region"]);
+void bad1; void bad2; void bad3; void themePort;

@@ -1,0 +1,39 @@
+[a-keys] tsc7: OK (0 errors)
+[a-keys] ts5.8.3: OK (0 errors)
+
+| File:line | Expectation | tsc7 | TS 5.8.3 |
+| --- | --- | --- | --- |
+| type-tests.ts:23 | slice -> wide record | TS2322 | TS2322 |
+| type-tests.ts:25 | unrelated record | TS2322 | TS2322 |
+| type-tests.ts:27 | same key, other value type | TS2322 | TS2322 |
+| type-tests.ts:29 | owner hands out the writable store instead of readonly() | TS2739 | TS2739 |
+| type-tests.ts:33 | set through readonly facet | TS2339 | TS2339 |
+| type-tests.ts:35 | close through readonly facet | TS2339 | TS2339 |
+| type-tests.ts:41 | read a key outside the slice | TS2322 | TS2322 |
+| type-tests.ts:43 | read a key the store does not have | TS2322 | TS2322 |
+| type-tests.ts:45 | read no keys | TS2345 | TS2345 |
+| type-tests.ts:50 | changesAfter forgotten (a commit between read and watch would be lost) | TS2345 | TS2345 |
+| type-tests.ts:54 | watch a key outside the slice (foreign key) | TS2322 | TS2322 |
+| type-tests.ts:56 | watch no keys | TS2322 | TS2322 |
+| type-tests.ts:58 | changesAfter does not cover the watched keys (snapshot/subscription mismatch) | TS2322 | TS2322 |
+| type-tests.ts:60 | async onChange | TS2322 | TS2322 |
+| type-tests.ts:62 | expression body returns a value | TS2322 | TS2322 |
+| type-tests.ts:64 | expression body returns void (braces required) | TS2322 | TS2322 |
+| type-tests.ts:66 | missing resources | TS2554 | TS2554 |
+| type-tests.ts:68 | missing name | TS2345 | TS2345 |
+| type-tests.ts:70 | AbortSignal is not a scope | TS2739 | TS2345 |
+| type-tests.ts:73 | changesAfter from an unrelated record | TS2322 | TS2322 |
+| type-tests.ts:75 | hand-built changesAfter | TS2741 | TS2741 |
+| type-tests.ts:77 | handler reads a key it does not follow | TS2339 | TS2339 |
+| type-tests.ts:89 | loader returns a value, not a Promise | TS2739 | TS2739 |
+| type-tests.ts:91 | missing onError | TS2345 | TS2345 |
+| type-tests.ts:93 | async onResult | TS2322 | TS2322 |
+| type-tests.ts:95 | onResult result type does not match the loader | TS2322 | TS2322 |
+| type-tests.ts:98 | changesAfter is not part of load (load always starts with the current values) | TS2353 | TS2353 |
+| type-tests.ts:101 | missing onLoading | TS2345 | TS2345 |
+| type-tests.ts:103 | async onLoading | TS2322 | TS2322 |
+| type-tests.ts:108 | a subscriber cannot build a store report itself | TS2741 | TS2345 |
+| type-tests.ts:113 | unknown key in set | TS2353 | TS2353 |
+| type-tests.ts:115 | wrong value type in set | TS2322 | TS2322 |
+| type-tests.ts:117 | optional keys are not allowed in a store record | TS2344 | TS2344 |
+| type-tests.ts:119 | a store needs resources | TS2741 | TS2345 |

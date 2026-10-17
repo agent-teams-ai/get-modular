@@ -1,0 +1,57 @@
+// Probe: does `out V` hold when watch takes a snapshot (V only in a type-parameter constraint)?
+type Key<V> = keyof V & string;
+declare const storeBrand: unique symbol;
+type StoreId = { readonly [storeBrand]: true };
+type Snapshot<V, K extends keyof V = keyof V> = {
+  readonly store: StoreId; readonly keys: readonly K[]; readonly revision: number; readonly values: Readonly<Pick<V, K>>;
+};
+type AnySnapshotOf<V> = {
+  readonly store: StoreId; readonly keys: readonly Key<V>[]; readonly revision: number;
+  readonly values: { readonly [P in keyof V]?: V[P] };
+};
+type ChangeSpec<S> = { readonly name: string; readonly onChange: (next: S) => undefined };
+
+// B1: snapshot typed via constraint only
+type StoreB1<out V> = {
+  readonly read: <const K extends readonly [Key<V>, ...Key<V>[]]>(keys: K) => Snapshot<V, K[number]>;
+  readonly watch: <S extends AnySnapshotOf<V>>(from: S, spec: ChangeSpec<S>) => undefined;
+};
+// B2: snapshot typed with V in the parameter (expected to break `out V`)
+type StoreB2<out V> = {
+  readonly read: <const K extends readonly [Key<V>, ...Key<V>[]]>(keys: K) => Snapshot<V, K[number]>;
+  readonly watch: <K extends Key<V>>(from: Snapshot<V, K>, spec: ChangeSpec<Snapshot<V, K>>) => undefined;
+};
+// A: keys + since in the spec
+type StoreA<out V> = {
+  readonly watch: <const K extends readonly [Key<V>, ...Key<V>[]]>(spec: {
+    readonly keys: K; readonly since?: Snapshot<V, K[number]>; readonly onChange: (next: Snapshot<V, K[number]>) => undefined;
+  }) => undefined;
+};
+
+type App = { readonly theme: string; readonly level: "debug" | "info"; readonly region: string };
+type ThemeSlice = { readonly theme: string };
+type Unrelated = { readonly color: number };
+type WrongType = { readonly theme: number };
+
+declare const b1: StoreB1<App>;
+const b1s: StoreB1<ThemeSlice> = b1;
+// @ts-expect-error unrelated
+const b1u: StoreB1<Unrelated> = b1;
+// @ts-expect-error wrong type
+const b1w: StoreB1<WrongType> = b1;
+// @ts-expect-error reverse
+const b1r: StoreB1<App> = b1s;
+const snap = b1s.read(["theme"]);
+b1s.watch(snap, { name: "x", onChange: (next) => { const t: string = next.values.theme; void t; return undefined; } });
+declare const foreign: Snapshot<Unrelated, "color">;
+// @ts-expect-error foreign snapshot shape
+b1s.watch(foreign, { name: "x", onChange: () => undefined });
+declare const wrongTyped: Snapshot<WrongType, "theme">;
+// @ts-expect-error same key, other type
+b1s.watch(wrongTyped, { name: "x", onChange: () => undefined });
+
+declare const b2: StoreB2<App>;
+const b2s: StoreB2<ThemeSlice> = b2;
+declare const a: StoreA<App>;
+const as: StoreA<ThemeSlice> = a;
+void [b1u, b1w, b1r, b2s, as];

@@ -1,0 +1,53 @@
+import type { ModuleContext } from "@get-modular/resources";
+import type { QuotesDeps, QuotesProduct, Screen, Ticker } from "./h-requests.types.js";
+
+export async function createQuotesModule(deps: QuotesDeps, { resources }: ModuleContext): Promise<QuotesProduct> {
+  // One subscription for the whole module, not one per ticker: tickers open and close thousands of times a day.
+  const tickers = new Set<Screen>();
+  const showAll = (rate: number): undefined => {
+    const failures: unknown[] = [];
+    for (const screen of tickers) {
+      try {
+        screen.show(rate);
+      } catch (error) {
+        failures.push(error);
+      }
+    }
+    if (failures.length > 0) {
+      throw new AggregateError(failures, "ticker screens failed");
+    }
+    return undefined;
+  };
+  deps.settings.watch(deps.settings.read(["eurUsd"]), {
+    resources,
+    name: "quotes/rate",
+    onChange: ({ values }) => {
+      showAll(values.eurUsd);
+    },
+  });
+  return {
+    instance: undefined,
+    capabilities: {
+      "acme/quotes": {
+        convert: (eur: number): number => eur * deps.settings.read(["eurUsd"]).values.eurUsd,
+        openTicker: (screen: Screen): Ticker => {
+          // A fresh wrapper per ticker, so the same screen object can be opened twice.
+          const receiver: Screen = {
+            show: (rate: number) => {
+              screen.show(rate);
+            },
+          };
+          // Shown before registering: if the screen throws here, nothing is left registered.
+          receiver.show(deps.settings.read(["eurUsd"]).values.eurUsd);
+          tickers.add(receiver);
+          return {
+            close: (): Promise<void> => {
+              tickers.delete(receiver);
+              return Promise.resolve();
+            },
+          };
+        },
+      },
+    },
+  };
+}

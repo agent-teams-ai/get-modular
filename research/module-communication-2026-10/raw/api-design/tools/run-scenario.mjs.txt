@@ -1,0 +1,36 @@
+// Runs the behaviour scenario of one task against the fixed runtime stub of one variant.
+//   node tools/run-scenario.mjs <variant> <task> <solution.ts>
+// The solution's "@get-modular/observation" import is pointed at runtime/<variant>.ts, and "./<task>.types.js"
+// resolves to the instrumented fakes in tasks/fakes/. Nothing else in the solution is changed.
+import { spawnSync } from "node:child_process";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const [variant, task, solution] = process.argv.slice(2);
+const adapter = join(root, "runtime", `${variant}.ts`);
+const scenario = join(root, "tasks", "scenarios", `${task}.scenario.mjs`);
+if (!variant || !task || !solution || !existsSync(adapter) || !existsSync(scenario)) {
+  console.error("usage: node tools/run-scenario.mjs <a-keys|b-snapshot> <task> <solution.ts>");
+  process.exit(2);
+}
+mkdirSync(join(root, ".build"), { recursive: true });
+const dir = mkdtempSync(join(root, ".build", `scenario-${variant}-${task}-`));
+const source = readFileSync(solution, "utf8").replace(/(["'])@get-modular\/observation\1/g, JSON.stringify(adapter));
+writeFileSync(join(dir, `${task}.ts`), source);
+copyFileSync(join(root, "tasks", "fakes", `${task}.types.js`), join(dir, `${task}.types.js`));
+copyFileSync(join(root, "tasks", "scenarios", "harness.mjs"), join(dir, "harness.mjs"));
+copyFileSync(scenario, join(dir, `${task}.scenario.mjs`));
+const result = spawnSync(process.execPath, ["--expose-gc", join(dir, `${task}.scenario.mjs`), adapter, join(root, "runtime", "core.ts")],
+  { encoding: "utf8", timeout: 30_000 });
+process.stdout.write(result.stdout ?? "");
+if (result.error?.code === "ETIMEDOUT" || result.signal === "SIGTERM") {
+  console.log(`  BEHAVIOUR ${task}: the scenario did not finish within 30 s (a factory or close that never settles)`);
+  process.exit(1);
+}
+if (result.status !== 0 && !(result.stdout ?? "").includes("behaviour failure")) {
+  console.log(`  BEHAVIOUR ${task}: the solution could not be loaded or crashed the scenario`);
+  process.stdout.write((result.stderr ?? "").split("\n").slice(0, 8).map((line) => `    ${line}`).join("\n") + "\n");
+}
+process.exit(result.status === 0 ? 0 : 1);

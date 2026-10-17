@@ -1,0 +1,22 @@
+import { test } from "node:test";
+import { createScope } from "@get-modular/resources";
+import { createStore, delivered, settled } from "./observation.ts";
+test("S1 scoped waits next to a busy store and an unrelated open load", async () => {
+  const host = createScope({ name: "host" });
+  const busy = createStore<{ readonly n: number }>({ n: 0 }, { name: "busy", resources: host.resources, reportError: () => undefined });
+  const mine = createStore<{ readonly v: number }>({ v: 0 }, { name: "mine", resources: host.resources, reportError: () => undefined });
+  const other = busy.readonly();
+  const m = host.resources.child({ name: "m" });
+  other.load(other.read(["n"]), { resources: m.resources, name: "other/poll", loader: () => new Promise<number>(() => {}), onLoading: () => undefined, onResult: () => undefined, onError: () => undefined });
+  let running = true;
+  void (async () => { let n = 0; while (running) { busy.set({ n: n += 1 }); await new Promise((r) => { setImmediate(r); }); } })();
+  const seen: number[] = [];
+  const f = mine.readonly();
+  f.watch(f.read(["v"]), { resources: m.resources, name: "m/v", onChange: ({ values }) => { seen.push(values.v); } });
+  mine.set({ v: 1 });
+  const t0 = performance.now();
+  await delivered({ stores: [f] });
+  await settled({ stores: [f] });
+  console.log(`S1 scoped waits resolved in ${(performance.now() - t0).toFixed(1)} ms; seen ${seen.join(",")}`);
+  running = false;
+});

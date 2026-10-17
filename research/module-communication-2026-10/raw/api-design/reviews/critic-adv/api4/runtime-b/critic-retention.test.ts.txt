@@ -1,0 +1,42 @@
+// Critic probe: after store.close(), does a still-open subscriber scope keep the closed store (values) and its own
+// handler alive? R2 only covers the case where the subscriber scope itself becomes unreachable.
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { createScope } from "@get-modular/resources";
+import { createStore, stats } from "./observation.ts";
+
+const gc = (globalThis as { readonly gc?: () => void }).gc;
+const tick = (): Promise<void> => new Promise((resolve) => { setImmediate(resolve); });
+const collect = async (): Promise<void> => { for (let i = 0; i < 6; i += 1) { await tick(); gc?.(); } };
+
+test("closed stores stay reachable from a long-lived subscriber scope", async () => {
+  const host = createScope({ name: "host" });
+  const subscriber = host.resources.child({ name: "dashboard" }); // long-lived, never closed in this test
+  const valueRefs: WeakRef<object>[] = [];
+  const handlerRefs: WeakRef<object>[] = [];
+  for (let i = 0; i < 50; i += 1) {
+    (() => {
+      const owner = host.resources.child({ name: `session-${i}` });
+      const big = { rows: Array.from({ length: 10_000 }, (_, n) => n) };
+      valueRefs.push(new WeakRef(big));
+      const store = createStore<{ readonly big: { readonly rows: number[] } }>({ big }, {
+        name: `session-${i}/status`, resources: owner.resources, reportError: () => undefined,
+      });
+      const onChange = (): undefined => undefined;
+      handlerRefs.push(new WeakRef(onChange));
+      const facet = store.readonly();
+      facet.watch(facet.read(["big"]), { resources: subscriber.resources, name: `dashboard/session-${i}`, onChange });
+      store.close(); // the session ends; the dashboard is not told
+      assert.equal(stats(store).live, 0);
+      void owner.control.close();
+    })();
+  }
+  await collect();
+  const valuesAlive = valueRefs.filter((ref) => ref.deref() !== undefined).length;
+  const handlersAlive = handlerRefs.filter((ref) => ref.deref() !== undefined).length;
+  console.log(`closed stores whose values are still reachable: ${valuesAlive}/50; handlers still reachable: ${handlersAlive}/50`);
+  const report = await subscriber.control.close();
+  assert.equal(report.complete, true);
+  await collect();
+  console.log(`after closing the subscriber scope: values ${valueRefs.filter((ref) => ref.deref() !== undefined).length}/50, handlers ${handlerRefs.filter((ref) => ref.deref() !== undefined).length}/50`);
+});

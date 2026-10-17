@@ -1,0 +1,63 @@
+// F9 and F13 (adversarial review): forms that compiled and failed at run time, and forms that must compile.
+import type { Resources } from "@get-modular/resources";
+import { createStore, type ListenerError, type ReadonlyStore, type Snapshot } from "@get-modular/observation";
+declare const resources: Resources;
+declare const reportError: (report: ListenerError) => undefined;
+const o = { name: "s", resources, reportError };
+
+// @ts-expect-error index signature: the key set is fixed at createStore
+createStore<Record<string, "open" | "closed">>({}, o);
+// @ts-expect-error a template-pattern index signature is open too
+createStore<{ readonly [id: `session-${number}`]: "open" | "closed" }>({}, o);
+// @ts-expect-error a literal key plus an index signature
+createStore<{ readonly count: number; readonly [id: string]: number }>({ count: 0 }, o);
+interface Named { readonly a: string; readonly b: number }
+createStore<Named>({ a: "x", b: 1 }, o);   // interfaces with literal keys are fine
+const lists = createStore<{ readonly ids: number[] }>({ ids: [1] }, o);
+// @ts-expect-error values are deeply frozen
+lists.read(["ids"]).values.ids.push(2);
+lists.set({ ids: [...lists.read(["ids"]).values.ids, 2] });   // a new array: compiles
+lists.set({ ids: lists.read(["ids"]).values.ids });            // a frozen array back into set: compiles
+
+type Prefs = { readonly theme: string; readonly density: "compact" | "comfortable" };
+const prefs = createStore<Prefs>({ theme: "light", density: "compact" }, o);
+declare const changedTheme: string | undefined;
+// Conditional patch recipe: set only when there is a value.
+if (changedTheme !== undefined) { prefs.set({ theme: changedTheme }); }
+// @ts-expect-error a conditional spread does not compile (the patch keys must be known)
+prefs.set({ ...(changedTheme === undefined ? {} : { theme: changedTheme }) });
+
+declare function show(theme: string): void;
+const facet: ReadonlyStore<Prefs> = prefs.readonly();
+const first = facet.read(["theme"]);
+// A named handler annotated `: undefined` compiles; `: void` does not.
+const onTheme = (next: Snapshot<Prefs, "theme">): undefined => { show(next.values.theme); return undefined; };
+facet.watch(first, { resources, name: "m/theme", onChange: onTheme });
+const onThemeVoid = (next: Snapshot<Prefs, "theme">): void => { show(next.values.theme); };
+// @ts-expect-error a handler typed `: void`
+facet.watch(first, { resources, name: "m/theme2", onChange: onThemeVoid });
+// Reusing a key list: as const, or an annotated tuple.
+const keys = ["theme", "density"] as const;
+void facet.read(keys);
+const typedKeys: readonly ["theme", "density"] = ["theme", "density"];
+void facet.read(typedKeys);
+
+// N1 (second review): Frozen keeps primitives (branded IDs) and tuple element types.
+type UserId = string & { readonly __brand: "UserId" };
+declare function loadUser(id: UserId): void;
+type Session = { readonly user: UserId; readonly pair: readonly [string, number]; readonly model: Model };
+type Model = { readonly id: string; readonly tags: readonly string[] };
+declare const initialSession: Session;
+const sessions = createStore<Session>(initialSession, o);
+const sessionSnap = sessions.read(["user", "pair", "model"]);
+loadUser(sessionSnap.values.user);                          // a branded id read back is still a UserId
+const pairFirst: string = sessionSnap.values.pair[0];       // a tuple element keeps its type
+const pairSecond: number = sessionSnap.values.pair[1];
+sessions.set({ model: sessionSnap.values.model });          // a frozen value read back can be written again
+declare function render(model: Model): void;
+render(sessionSnap.values.model);                           // a readonly domain type accepts store values
+type MutableModel = { readonly id: string; readonly tags: string[] };
+declare function renderMutable(model: MutableModel): void;
+// @ts-expect-error a domain type with a mutable array does not accept frozen store values (declare it readonly)
+renderMutable(sessionSnap.values.model);
+void [pairFirst, pairSecond];

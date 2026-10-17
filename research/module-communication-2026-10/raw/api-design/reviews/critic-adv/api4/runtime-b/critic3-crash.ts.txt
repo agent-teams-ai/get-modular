@@ -1,0 +1,17 @@
+// Critic round 3: what an asynchronous echo does to a plain Node process (no test runner).
+import { createScope } from "@get-modular/resources";
+import { createStore, type ListenerError } from "./observation.ts";
+const mode = process.argv[2];
+const reports: ListenerError[] = [];
+const host = createScope({ name: "host" });
+const store = createStore<{ readonly level: number }>({ level: 0 }, { name: "settings", resources: host.resources, reportError: (r) => { reports.push(r); return undefined; } });
+const facet = store.readonly();
+const module = host.resources.child({ name: "module" });
+const requestLevel = async (level: number): Promise<"accepted"> => { await Promise.resolve(); store.set({ level }); return "accepted"; };
+facet.watch(facet.read(["level"]), { resources: module.resources, name: "m/echo", onChange: ({ values }) => {
+  if (mode === "command") void requestLevel(values.level + 1);
+  else queueMicrotask(() => { store.set({ level: values.level + 1 }); });
+} });
+store.set({ level: 1 });
+setTimeout(() => { console.log(`still alive after 200 ms; reports: ${reports.map((r) => (r.cause as { code?: string }).code).join(",")}`); }, 200);
+process.on("exit", (code) => { console.log(`exit code ${code}; reports before exit: ${reports.length}`); });

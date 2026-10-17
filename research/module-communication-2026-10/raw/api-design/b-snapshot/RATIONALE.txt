@@ -1,0 +1,404 @@
+@get-modular/observation, variant B "watch what you read": rationale for every public name and parameter
+=========================================================================================================
+
+Basis for the ADR text. Revised 2026-10-17 after three adversarial reviews (ADVERSARIAL.txt F1-F13, ADVERSARIAL-2.txt
+N1-N11, ADVERSARIAL-3.txt M1-M6) and the owner-level decisions Q1-Q3, N1-N10 and M1-M6. Paths are relative to
+scratchpad/api-shape/.
+
+Evidence labels
+- MEASURED: a compile probe, runtime probe or scenario in this directory; tools/run-all.sh reproduces it.
+- WRITERS: the agent-writer rounds (runs/, GRADING.md, the lead's blind results).
+- ARCHIVE: a precedent cited, with sources, in the research archive (research/observation-hooks-2026-10/design.md,
+  research/module-communication-2026-10/raw/synthesis-*.md), GRADING.md or ADVERSARIAL.txt. Not re-checked online here.
+- KNOWLEDGE: my own knowledge of a public API, not re-checked online in this session. Verify before an ADR quotes it.
+
+Model in one paragraph
+A store has one writer, its owner. Other modules receive a read-only facet through a contract and a required slot,
+typed with their own slice. A module reads a frozen snapshot and follows exactly the keys of that snapshot from its
+revision. A watch binds to the subscriber's resources.signal, and nothing is registered in the scope; a load also opens
+a child scope for its drain. Delivery is in a later task,
+coalesced, to synchronous handlers; asynchronous reactions go through a latest-only load lane. Failures of subscriber
+callbacks go to the owner's reportError. A cascade guard bounds chains of commits made by deliveries. Nothing is
+global or ambient: no bus, no proxies, no auto-tracking.
+
+
+1. createStore(initial, options): Store<V>
+------------------------------------------
+Why: the only way to create observable state; the writer is whoever holds the Store.
+Precedent: Redux createStore, Zustand create, Kotlin MutableStateFlow(initial) (KNOWLEDGE).
+Rejected: a hub of participants collected through many() (ADR-0034 draft), replaced by subscriptions in the
+subscriber's scope (synthesis A 2.1, owner decision).
+
+1.1 initial: V with V extends object & Required<V> & FixedKeys<V>
+Why: the key set of the store is the key set of `initial`, fixed at creation.
+Without Required: an optional key type-checks but does not exist at run time (sketch v4 defect "Key types").
+Without FixedKeys (F9): createStore<Record<string, X>>({}) compiled, and set/read of "session-42" failed at run time
+with observation.keys.unknown. FixedKeys rejects every index signature: string, number and template patterns
+(`k${number}`), also next to literal keys. Interfaces with literal keys pass.
+Evidence: MEASURED, probes/p9-traps.b.ts (TS2344 for Record<string,...>, `session-${number}`, a literal key plus an
+index signature) and type-tests ("optional keys are not allowed"), both compilers.
+Message (N8): the constraint names the reason, "a store record needs literal keys, not an index signature", instead of
+"does not satisfy the constraint 'never'" (MEASURED, both compilers).
+Rejected: a runtime schema; NoInfer tricks.
+
+1.2 options.name (required): names the store in ListenerError.source and in the entry "store:<name>".
+Precedent: every scope and entry of @get-modular/resources has a mandatory name.
+
+1.3 options.resources (required): the store's lifetime is the owner's scope; it closes at its LIFO slot.
+Evidence: MEASURED, runtime-b R2, R6. Precedent: ADR-0030; .NET IDisposable, VS Code Disposable (ARCHIVE).
+
+1.4 options.reportError (required)
+Why: subscriber callbacks are isolated; their failures, and observation.source.closed, go to one owner-side sink that
+the owner wires to the Host's error port.
+Evidence: MEASURED, runtime probe 15 and scenarios c, g, i (a negative with `reportError: () => undefined` fails).
+Precedent: VS Code Emitter onListenerError (ARCHIVE); isolation against Svelte #11555 and Jotai #2871 (ARCHIVE).
+Rejected: a global handler; throwing to the writer; a per-subscriber error callback.
+Known limit (ADVERSARIAL section 3): with plugins, a Host that follows a plugin's store sends its own handler failures
+to the plugin's reportError. Acceptable for trusted in-process code; name it in the ADR.
+
+1.5 options.maxSubscriptionsPerScope (default 64) and options.maxSubscriptions (default 8192)
+Why (owner decision Q1): a leak must fail in the scope that leaks, not in an innocent module's factory, and dynamic
+instances must scale. The per-scope limit counts live subscriptions of one store in one subscriber scope; the
+per-store limit is a safety net the owner sets. Both throw observation.subscriptions.limit; the message names the
+scope (by path once Resources.path exists).
+Without it (F4): with one per-store limit of 1024, one leaking module made the next innocent factory throw, and
+200 sessions x 6 modules (1200 subscriptions) failed only under load.
+Evidence: MEASURED, runtime probe 8 and runtime-b R5 (64 accepted in the leaking scope, the healthy scope still
+subscribes), runtime probe 10 (per-store safety across three scopes stops at 100 when set to 100).
+Message (N7): a leak through child scopes that are never closed passes the per-scope limit (one subscription each) and
+reaches the per-store limit; the first refused subscription is the leaking module's own, but later ones may be an
+innocent module's. The per-store message therefore states the number of scopes and the largest count in one ("in 3
+scopes, at most 1 in one", MEASURED, runtime probe 26) and names the pattern; once Resources.path exists it lists the
+three largest holders by path.
+Precedent: Get Modular's 1024 providers per binding row (synthesis A 2.1); VS Code leakWarningThreshold (ARCHIVE);
+Node EventEmitter defaultMaxListeners = 10 per emitter and event, warning only (KNOWLEDGE).
+Recipes against the limit: a child scope per piece of work, or one subscription that fans out (README "Recipes").
+Rejected: one per-store limit (F4); warnings only.
+
+
+2. Store<in out V> (the owner's facet): read, set, readonly, close
+------------------------------------------------------------------
+in out V: set consumes V and read produces it; a Store<Wide> is never a Store<Slice>.
+
+2.1 read: as 3.1.
+
+2.2 set<const K extends Key<V>>(patch: { readonly [P in K]: Frozen<V[P]> }): number
+Why: commits a change of some keys and returns the revision; other keys keep their values.
+- The mapped form infers K from the patch, so undefined for a string key is rejected even without
+  exactOptionalPropertyTypes (MEASURED, probes/p7), and unknown keys and wrong types are rejected.
+- Frozen<V[P]> accepts both a fresh mutable value and a frozen value read back from a snapshot (MEASURED, p9).
+- A conditional spread `set({ ...(x ? { theme: x } : {}) })` does not compile; the recipe is `if (x !== undefined)
+  { store.set({ theme: x }); }` (MEASURED, p9; README "Small things").
+Ownership (F7, owner decision): set and createStore take ownership of the objects and freeze them in place; nodes
+frozen before are not walked again (a WeakSet). They validate every value first and freeze only after every check
+passed (N9): a failing set (not-plain value, unknown key, echo, cascade) leaves the caller's objects unfrozen
+(MEASURED, runtime probe 26). README: copy objects that belong to another module before passing them. MEASURED, runtime probe 21: appending one row to 50 000 rows costs
+about 7-9 ms per set, against 16 ms when frozen nodes are walked again (mutation rewalk-frozen) and 20 ms in the
+review's measurement of the previous stub. The remaining cost is the walk of the new 50 000-slot array itself, linear
+in the size of each new container. A caller's object is frozen after set (MEASURED, probe 21).
+Rejected: copying every value (doubles memory for large values); walking the whole value on every set.
+Cascade guard (F2): a commit made by a delivery callback is one cascade step deeper; see section 5.
+
+2.3 readonly(): ReadonlyStore<V>
+Why: the facet other modules receive; no set, no close.
+Evidence: MEASURED, probes/p8 (`const leaked: ReadonlyStore<App> = store` fails, TS2741, because the facet carries the
+type marker that Store does not have; this holds even if Store ever gains watch and load) and p5 (GM contracts).
+Precedent: Svelte readonly(store), Kotlin asStateFlow(), Angular asReadonly() (KNOWLEDGE).
+Rejected: readonly(keys) runtime projection (deferred, additive; the marker types it as ReadonlyStore<Pick<V, K>>).
+
+2.4 close(): undefined (owner decision Q3, revised by N4 and N5)
+Why: closes the store mid-life (the owner's scope also closes it at the LIFO slot).
+Semantics: every live subscription is detached (a watch's signal listener is removed; a load's lane scope load:<name>
+is closed), so nothing stays in a long-lived subscriber scope; each subscription gets one report with
+observation.source.closed; running loads are aborted. Then set, watch, load and the facet's read throw
+observation.store.closed, while the owner's own read keeps returning the last values (N4).
+Why the owner keeps read (N4): an owner that opens a file first, creates the store from it, and saves the final state
+in the file's cleanup runs that cleanup after the store closed (LIFO). With read throwing, the last change was lost
+(review C11: debt store.closed, saved ""). MEASURED now: runtime-b R11 saves "dark"; runtime probe 25 shows the
+recommended form too (a save entry registered after createStore runs before the store closes).
+Why a watch is bound to resources.signal only (N5, then M3): with one scope entry per watch, a long-lived subscriber
+scope kept about 511 bytes per closed source until it closed itself (a session dashboard over a million sessions keeps
+about half a gigabyte). A child scope per watch removed that but cost three times the memory of a live watch. Nothing
+needs to be registered at all: resources aborts the signal synchronously before any cleanup (#request in #close and
+#join, VERIFIED in origin/main scope.ts), so the abort listener detaches the watch first; an entry or a child added no
+debt and only retention. MEASURED (runtime-b/measure-watch-memory.ts, results/runtime-b.watch-memory.txt):
+  signal binding only: 1064 B per live watch, 22 B kept per closed source (noise);
+  child scope per watch: 3080 B and -93 B; one entry per watch: 1282 B and 511 B.
+The signal binding is the default; at the limits (8192 per store) the worst case is about 9 MB per store.
+Without it (F6): 50 of 50 closed stores and their handlers stayed reachable from a long-lived subscriber scope, the
+subscriber was not told, and read after close silently returned old values.
+Evidence: MEASURED, runtime probe 4 and runtime-b R2 (the subscriber scope stays open and referenced; the handler is
+collected; the control with an open store keeps it); the mutation retain-after-close is caught.
+Rejected (Q3): a required onSourceClosed handler in every watch (boilerplate nearly always unused); deferring.
+
+
+3. ReadonlyStore<out V> (the facet): [storeValue], read, watch, load
+-------------------------------------------------------------------
+3.0 The type marker readonly [storeValue]: V (type-only unique symbol; no such property at run time)
+Why (F1): before the marker, a slice was protected only when a ReadonlyStore<A> was compared with a ReadonlyStore<B>
+alias to alias. Readonly<>, Pick<…, "read">, a hand-written port of member types, or a member type alone accepted a
+store of a different value type on both compilers, and CMS teaches writing one's own application port.
+Evidence: MEASURED, probes/p8-structural.b.ts: Readonly<>, Pick<"read">, intersections, hand-written read+watch ports,
+member type read, Promise and arrays of a wrong slice are now rejected on tsc7 and 5.8.3; probes/p10-gm-main-implement
+on get-modular origin/main sources (implement<C>()(declaration, factory, scoped)): Pick<ReadonlyStore<WrongSlice>,
+"read"> is now rejected.
+Residual (documented in p8): a port made of `watch` alone (Pick<…, "watch"> or the member type) still compiles; it has
+no snapshots of its own, so it cannot follow anything. README rule: type a dependency only as ReadonlyStore<Slice>.
+Side effect (accepted): a snapshot read through a slice facet cannot be passed to the wide facet's watch (p8).
+The marker is also on Snapshot and SnapshotOf, so every structural comparison sees V.
+
+3.1 read<const K extends Keys<V>>(keys: K): Snapshot<V, K[number]>
+Why: the current values of exactly the keys a module needs; the explicit dependency list. After close it throws
+observation.store.closed (Q3). Precedent: React useSyncExternalStore getSnapshot; Kubernetes list (ARCHIVE).
+
+3.2 Snapshot<V, K> = { revision, values: Frozen<Pick<V, K>>, [brand], [storeValue] }
+- revision: commit number of the latest commit that changed one of the keys (Kubernetes resourceVersion, etcd
+  revision, ARCHIVE). Not proof that a value changed.
+- values: deeply read-only at type level (F9): lists.read(["ids"]).values.ids.push(2) no longer compiles (MEASURED,
+  p9); at run time the values are frozen. Frozen keeps primitives as they are, so branded IDs (`string & { __brand }`)
+  survive, and maps tuples element by element (N1; MEASURED, p9: loadUser(snap.values.user) and
+  `const first: string = snap.values.pair[0]` compile). A domain type that receives store values is declared readonly;
+  a mutable array type does not accept a frozen value (MEASURED, p9, intended).
+- brand: a hand-built snapshot does not compile; a copy or a snapshot of another store with the same type is rejected
+  at run time with observation.snapshot.foreign (WeakMap origin; MEASURED, runtime probe B, probes/p6).
+
+3.3 watch<S extends SnapshotOf<V>>(snapshot: S, spec: { resources, name, onChange }): undefined
+Why: the keys and the start revision come from what the module read: keys are written once and the "read, then
+subscribe" race is closed by construction. No `since` concept.
+Evidence: MEASURED, runtime probe 1, scenario e-async-factory (a commit during a real await is delivered); WRITERS,
+round 2 and 3 blind runs (B: larger model 9/9 as recorded, smaller model 9/9 after gate calibration). Archive note
+(2026-10-17): the later, stricter gate of F11 finds that the round 2 smaller-model run and the second round 3
+smaller-model run report only the first screen failure in task h.
+Precedent: Kubernetes list+watch from resourceVersion, etcd watch from start_revision, React useSyncExternalStore,
+Vue watch(source, callback, options) (ARCHIVE, lead's brief).
+Rejected: A (keys + changesAfter; kept as the documented alternative); C (atomic watch returning the snapshot: lost
+update across one await, GRADING); a union watch spec (misleading errors, probes/standalone/p2).
+
+3.3.1 spec.resources (required)
+A watch is bound to this scope's signal (M3) and detached synchronously when the scope starts closing, before any
+cleanup or drain; a load also opens a child scope load:<name> for its drain. If resources.signal is already aborted, watch and load call
+signal.throwIfAborted() (F10): resources.scope.closed when the scope is closing, or the Host's own reason when the
+constructing run was cancelled. No observation-specific code; the module lets the factory fail.
+Evidence: MEASURED, runtime-b R1, R8 (both cases, the second through scoped() from origin/main).
+Layer (F12): watch and load are called in composition or adapter code; domain and application code never see
+Resources (CMS rule 11). CMS rule 5 must change in the same delivery: see CMS-RULE5-DRAFT.txt.
+Precedent: addEventListener(type, listener, { signal }); AbortSignal.throwIfAborted (web platform, KNOWLEDGE);
+Angular DestroyRef, VS Code Disposable, .NET IOptionsMonitor.OnChange (ARCHIVE).
+Rejected: a returned unsubscribe handle; an optional signal; a separate observation.scope.closing code (two codes in
+two packages for one state, F10).
+
+3.3.2 spec.name (required, unique per store within one scope)
+Why: attribution (ListenerError.subscription) and the guard against build-up: a second live subscription with the
+same name on one store in one scope throws observation.subscription.duplicate-name (renamed from
+watch.duplicate-name, F8, so that it fits load and later subscribe). Convention "<module>/<purpose>".
+Evidence: MEASURED, runtime probe 8, runtime-b R5; WRITERS round 1 (optional names in C were omitted 3/3 and collided).
+
+3.3.3 spec.onChange: (next: S) => undefined
+Synchronous, idempotent, in a later task, coalesced. `=> undefined` rejects async handlers, expression bodies that
+return a value (void included) and named handlers typed `: void`; a named handler is annotated `: undefined`
+(MEASURED, p9, F13). After a throw the same subscription keeps receiving later revisions. A handler never changes a
+key its subscription follows, neither with set nor through a command, also asynchronously (vision rule 7; guarded by
+observation.delivery.echo, section 5). Writing the module's own, different store is the derived-store recipe and is
+fine. `watch` is written on concrete types; a generic helper over ReadonlyStore<V> cannot follow what it read (TS2345,
+the constraint form of 3.3; unchanged since round 1).
+
+3.4 load<S extends SnapshotOf<V>, T>(snapshot: S, spec): undefined
+Latest-only lane: one active run, at most one pending; a change aborts the running run; results are delivered only if
+no commit has touched the snapshot's keys since (store revision).
+Evidence: MEASURED, runtime probes 6, 17, runtime-b R3, R7, R10; mutations queue-loads, compare-last-offered,
+no-loading-signal caught. Precedent: LaunchDarkly js-core #840/#842 (ARCHIVE); Angular resource status "loading",
+TanStack Query pending (GRADING, quoted).
+3.4.1 resources, name: as 3.3.1, 3.3.2. A load opens resources.child({ name: "load:<name>" }) with one setup entry
+"drain" whose cleanup receives escalate; close semantics MEASURED in runtime-b R6 (no debts for a cooperative loader;
+failed debt observation.load.still-running after escalation; pending debt after abandon).
+3.4.2 loader (signal-aware, returns a Promise); name as in Angular resource({ loader }) (KNOWLEDGE).
+3.4.3 onLoading (required): called when a run is queued, before the superseded run settles (GRADING F1/F2). It closes
+the gap from the delivery of a change on: no extra region check at call time is needed (round 4 writers asked). In the
+synchronous turn of the commit itself every subscriber still shows the previous state; closing that too would need
+synchronous delivery inside set, which the model rejects (re-entrancy into the writer).
+3.4.4 onResult and onError (required): delivered only for values still current in the store (GRADING F4).
+
+
+4. ListenerError = { source, subscription, path?, revision, cause, [brand] } (owner side only)
+---------------------------------------------------------------------------------------------
+Why public: it is the parameter type of reportError and of the Host's error port types.
+Why branded: only the store creates reports; a subscriber lets its handler throw. In round 2 both smaller-model writers built
+fake reports by hand (runs/r2-*-small-1/i-errors.ts); that is now a compile error (type-tests, TS2741/TS2345).
+Renamed (F8): `store` became `source`, so that events can report through the same type later.
+path (F8): the subscriber's scope path, present once @get-modular/resources provides Resources.path. DEPENDENCY: an
+additive, read-only Resources.path in resources 0.2 (owner of that package to confirm). The stub already includes a
+path when the Resources object has one.
+
+
+5. Echo and cascade guards (F2, N2, N3, M1, M2; vision rule 7: "a runaway cascade fails with a coded error")
+-----------------------------------------------------------------------------------------------------------
+Delivery context: onChange, onLoading, onResult, onError and the loader body run in a context { depth, origin
+subscription, live }. It is carried synchronously everywhere, and through await and microtasks where AsyncLocalStorage
+exists, reached without a static import through globalThis.process?.getBuiltinModule?.("node:async_hooks") (Node 22.3
+and later; the supported Node 24 and 26 have it; Bun 1.3.11 too, measured by the reviewer).
+Bounded lifetime (M1, P0 in the third review): AsyncLocalStorage captures the context when an async resource is
+created, so a timer, server or connection created inside a handler inherited it forever. MEASURED by the reviewer on
+the unbounded version: a heartbeat started by the owner from a command crashed the process with a false echo; 69 of 70
+admin requests to a server restarted by a handler failed; independent requests accumulated depth until the cascade
+guard broke a derived store after 32 requests. Now a context counts only while it is live: a handler's context until
+the end of its delivery task, a loader's context while its run is active. One live flag per flush task; it is closed
+by a second immediate queued right behind the flush when the flush is scheduled, so it closes after the flush's
+microtask checkpoint and before any timer or I/O callback of the next loop iteration. (An immediate queued from inside
+the flush would run only in the next iteration, after its timers and I/O.)
+Echo (N3): a commit made in a live context that changes a key the origin subscription follows on the same store fails
+at once with observation.delivery.echo.
+Cascade (N2): every other commit made in a live context is one step deeper than its delivery; a delivery takes the
+largest depth among the commits it coalesces; a commit deeper than 64 fails with observation.delivery.cascade.
+Report and throw, fail fast (M2): a failing commit changes nothing, is reported to the reportError of the store it was
+made to, and then throws. In a fire-and-forget async continuation the throw is an unhandled rejection, which Node's
+default policy turns into a process exit. That is intended for a programming bug (the alternative is a silent endless
+loop); the README says so, and a Host may choose its own unhandled-rejection policy. A synchronous handler's invoke does
+not report the same error a second time.
+Evidence: MEASURED.
+- Echo at the first round: runtime probe 18 (C3, synchronous), 22 (C1 async command, C2 queueMicrotask, C10 loader
+  body), runtime-b R9 and R13 (C4: a load whose onResult advances the cursor it follows).
+- No false reports from work that outlives the delivery (runtime-b R13): heartbeat (the owner's interval writes the
+  watched key: no report, no crash), server (30 admin requests through a server restarted by a handler: all ok),
+  depth (40 independent requests: no cascade report; the derived key equals the hits). The mutation unbounded-context
+  makes all three fail.
+- Cross-store asynchronous ping-pong through commands stops at 65 deliveries with one cascade report: probe 23, R9.
+- Synchronous ping-pong and a legitimate chain of 20 derived stores: probe 19. Pagination as a loop inside one loader
+  passes 100 pages: probe 24.
+- Without AsyncLocalStorage (mutation no-async-context), synchronous detection remains (probes 18, 19).
+Not caught (known item, section 13): an echo that crosses a timer or real I/O (a command that awaits a network call
+before it writes). Such a loop runs at the speed of that I/O and does not end by itself. Environments without
+getBuiltinModule (browsers, some Jest environments) catch synchronous chains only; tests there miss what production on
+Node throws, which is why /testing exports asyncDetection for a test preset to assert.
+Bound: 64 steps. Work started outside any live context (timers, input events, I/O) starts at depth 0.
+Loader window (L1): work a loader starts (a timer, a connection, a server) runs in the loader's context while the run
+is active, so its write to a key that load follows counts as an echo (the reviewer measured a false echo from an owner's
+heartbeat started by a command the loader called). Inside AsyncLocalStorage the loader's own continuation and a timer it
+created cannot be told apart, so the rule is documented instead: a loader does not start long-lived work (README
+checklist, LoadSpec.loader JSDoc).
+"A later task" (L2, L3): resolved once at module load: setImmediate from node:timers through
+process.getBuiltinModule where it exists, else a global setImmediate, else setTimeout(callback, 0). Importing never
+throws a ReferenceError (browsers, renderers), and a fake global setImmediate installed before the package loads cannot
+stall deliveries or the testing deadline. MEASURED, runtime-b/env-probe.ts: "fake-before" (a never-firing global
+setImmediate installed before import) delivers and delivered() resolves; "no-node" (no global setImmediate, no
+getBuiltinModule) imports, delivers through setTimeout, reports asyncDetection false and still catches a synchronous
+echo at the first round. With the global lookup only (mutation global-timers-only) "fake-before" hangs.
+Supported environments: Node 24 and 26 fully (asynchronous detection, setImmediate ordering); Bun verified by the
+reviewer (getBuiltinModule and AsyncLocalStorage propagation present). Elsewhere: synchronous detection only, and no
+ordering guarantee beyond "a later task".
+
+
+6. The testing entry point (F3, N6, M4; vision rule 16)
+------------------------------------------------------
+@get-modular/observation/testing: liveSubscriptions(facet, resources?), delivered(options?), settled(options?),
+asyncDetection. Options: { stores?, signal?, timeoutMs? }.
+Deadline always on (M4): timeoutMs defaults to 5000 ms of real time, Infinity only when passed; a signal (for example
+node:test t.signal) ends a wait earlier and never switches the deadline off. Both give observation.testing.timeout.
+The reviewer measured that a never-aborting t.signal and a mocked setImmediate each made the old wait hang forever.
+Captured timers (M4): the package captures setImmediate and performance.now when it loads, for deliveries and for the
+waits, so fake timers installed afterwards stall neither. MEASURED, runtime-b R14: a never-aborting signal with
+timeoutMs 200 gives the code; with node:test mock.timers on setImmediate, setTimeout and Date, a delivery still runs and
+settled() still reaches its deadline. Fake timers installed before the package loads are captured too; install them
+after importing it (README).
+Why the store filter (N6): a global wait never finished while any other store committed every task (C5) or another
+module held a long-poll load open (C6). MEASURED, runtime-b R12.
+asyncDetection (M6): true where asynchronous echoes are detected; a test preset asserts it (R14).
+Leak check: assert the store-wide liveSubscriptions(facet) === 0 after closing the module (C9).
+Import rule draft: /testing only from test files, enforced by one lint line in the CMS preset (CMS-RULE5-DRAFT.txt).
+Packaging: this is a second export; ADR-0034 spoke of one root export. The lead handles that in the ADR.
+
+
+7. Slices through contracts (owner decision Q2)
+-----------------------------------------------
+The owner publishes a few area contracts (theme, logging, region) and hands out the same facet under each; a consumer
+slots its area contract and narrows further in its own port type ReadonlyStore<Slice>, protected by the marker (3.0).
+Why: a revision of one area contract changes only that area's consumers; no central list of consumer contracts at the
+owner (vision rule 11); plugins receive the Host's area contracts.
+Rejected (F5): one wide ReadonlyStore<AppSettings> contract (every new key is a lockstep revision for every consumer);
+a consumer-owned slice contract that the owner provides (central list, inverted dependency, unavailable to plugins).
+Evidence: MEASURED, probes/p10 (narrowing through implement on GM main), probes/p5 (contracts on GM 0.4.0).
+
+
+8. Errors: ObservationError with code
+-------------------------------------
+Compare `code`, never class or message. Thrown: argument.invalid, keys.empty, keys.unknown, values.not-plain,
+store.closed, snapshot.foreign, subscription.duplicate-name, subscriptions.limit, delivery.cascade. Reported (as
+ListenerError.cause): what a handler threw, callback.returned-value, source.closed, delivery.cascade from a handler.
+Close debt: load.still-running. Removed: scope.closing (F10). Renamed (F8): watch.duplicate-name,
+watchers.limit, maxWatchers.
+
+
+9. Limits and costs (MEASURED; timings informative, not assertions)
+-------------------------------------------------------------------
+- Coalescing: one buffered entry per subscription (10 000 sets in one task -> one delivery each). Probe 5, R3.
+- At most one delivery per task per subscription. R3.
+- Load lane: one active run, at most one pending. Probe 6, R3.
+- Dispatch: 500 subscriptions on 500 keys, a set of one key: 1 index lookup, 1 visit, 1 callback, about 0.36 us. R4.
+- Limits: 64 per subscriber scope, 8192 per store (1.5). Echo: first round; cascade: 64 steps (5).
+- Heap: about 1.1 KB per live watch, about 0 B kept per closed source (2.4).
+- After close (subscriber scope or store), no reference to subscriber callbacks remains. Probe 3, 4, R2.
+- Large values: section 2.2.
+- Probe sensitivity: deliberate defects in the stub engine are each caught: 15 by runtime/probes, 16 by runtime-b
+  (unbounded-context only there) (tools/mutations*.sh, with a 90 s watchdog for defects that would hang).
+
+
+10. TypeScript variance: the risk, the CI probes and the fallback
+-----------------------------------------------------------------
+Now: the type marker [storeValue]: V makes every structural comparison check V. `out V` stays as a confirmation; it
+is no longer load-bearing: the control without the annotation (controls/b-no-variance-annotation) passes every
+expectation of probes/p3 and p8 on tsc7 and 5.8.3. The earlier risk (constraints not compared in variance checks)
+matters only for the compile-time rejection of a foreign snapshot shape in watch; the marker covers the slices.
+Note: tsc7 7.0.2 accepts R1<App> as R1<Wrong> for an alias without annotation or marker, where TS 5.8.3 rejects it
+(probes/standalone-sig/tsc7-variance-repro.ts, from the review; MEASURED again here). It looks like a tsc7 bug; whether
+to report it upstream is the owner's decision. With the marker it no longer affects this API.
+CI probes (both compilers): b-snapshot/type-tests.ts (--expect), probes/p8-structural.b.ts, probes/p9-traps.b.ts,
+probes/p5-gm-contracts.b.ts (GM 0.4.0), probes/p10-gm-main-implement.b.ts (--gm-main, origin/main sources),
+controls/b-v-in-param (must keep failing, TS2636), controls/b-no-variance-annotation (must keep passing: the marker
+carries the check). A canary on the next tsc7 release is advisable.
+Fallback if a compiler rejects the constraint form: watch<P>(snapshot: Snapshot<P>, …) with the marker kept; a foreign
+snapshot shape is then rejected at run time only.
+
+
+11. Deliberately not in the API
+-------------------------------
+Events (later; they will reuse the cascade guard and ListenerError.source), selectors and per-subscriber equality, a
+computed graph, a source status, history or replay, interop adapters, a readonly(keys) projection, an updater form of
+set, a free-function watch over several stores (the review found a tuple form workable but it turns a snapshot into a
+capability; the method form keeps the slot as the only capability).
+
+
+12. Open points
+---------------
+- Resources.path is a dependency on @get-modular/resources 0.2 (additive); until then reports carry no path.
+- CMS rule 5 must be rewritten in the same delivery (CMS-RULE5-DRAFT.txt); resources' own wording for signal ("stops
+  acquisition, never closes anything") should mention that observation detaches subscriptions on it.
+- Supported environments: section 5 and section 13 (Node 24 and 26 fully, Bun verified, elsewhere synchronous detection
+  only).
+- /testing is a second package export; ADR-0034 said one root export (the lead handles it in the ADR).
+- Abort-listener isolation (a throwing abort listener becomes an uncaught exception in Node) is still undecided.
+- One-task lag of load state after a commit; a synchronous status handle would remove it.
+- The cascade bound of 64 and the limits 64/8192 are judgement calls, not measured requirements.
+- An echo is defined on keys of the same store. A module that follows key a and, from its handler, writes key b of
+  the same store that another subscription of its own follows is not an echo; it is bounded by the cascade depth.
+
+
+13. ADR known items (owner and trigger for each)
+------------------------------------------------
+- An echo that crosses a timer or real I/O is not caught (the price of M1's bounded context). Owner: observation.
+  Trigger: AsyncContext (TC39) available in the supported runtimes, or the first incident of such a loop.
+- Holders by path in the subscriptions.limit message (N7) and ListenerError.path (F8). Owner: resources (an additive,
+  read-only Resources.path). Trigger: Resources.path in @get-modular/resources 0.2.
+- Supported environments: Node 24 and 26 fully; Bun verified. Elsewhere (browsers, Electron renderers without Node
+  integration, some Jest environments) the package imports and works with synchronous detection only and no ordering
+  guarantee beyond "a later task" (setImmediate, else setTimeout(0)). Owner: ADR author with observation. Trigger: the
+  first consumer outside Node, or a test runner where asyncDetection is false.
+- The loader window (L1): long-lived work started from a loader runs in its context while the run is active, so its
+  write to a key the load follows is reported as an echo. Documented as a rule, not prevented. Owner: observation.
+  Trigger: implementation of the load lane in the package, or the first such report.
+- A second package export (/testing) against ADR-0034's one root export. Owner: the lead, in the ADR. Trigger: ADR text.
+- CMS rules 5 and 11 and the /testing import rule (CMS-RULE5-DRAFT.txt) land in common-assembly.md and the CMS preset in
+  the same delivery as the package. Owner: Get Modular standard. Trigger: the package delivery.
+- Abort-listener isolation (a throwing listener on a native AbortSignal becomes an uncaught exception in Node).
+  Owner: observation. Trigger: implementation of the load lane in the package.
+- The bounds (64 cascade steps, 64 per scope, 8192 per store) are judgement calls. Owner: observation. Trigger: a real
+  consumer that hits one of them legitimately.
+- M3 (watch bound to the signal only) is done in this revision, not deferred.

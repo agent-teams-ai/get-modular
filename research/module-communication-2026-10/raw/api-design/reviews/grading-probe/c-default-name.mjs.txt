@@ -1,0 +1,11 @@
+import { createScope } from "scratchpad/api-shape/.toolchain/node_modules/@get-modular/resources/dist/index.js";
+const { createStore } = await import("./runtime/c-atomic.ts");
+const host = createScope({ name: "host" });
+const settings = createStore({ region: "eu" }, { name: "settings", resources: host.resources, reportError: () => undefined }).readonly();
+const mod = host.resources.child({ name: "catalog" });
+settings.load({ resources: mod.resources, keys: ["region"], loader: async () => 1, onResult: () => undefined, onError: () => undefined });
+try {
+  settings.watch({ resources: mod.resources, keys: ["region"], onChange: () => undefined }); // default name "region" again
+  console.log("second default-named subscription: accepted");
+} catch (e) { console.log("second default-named subscription threw", e.code); }
+await mod.control.close(); await host.control.close();

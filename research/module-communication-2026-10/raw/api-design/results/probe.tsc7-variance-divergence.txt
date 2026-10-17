@@ -1,0 +1,8 @@
+tsc7-variance-repro.ts(10,14): error TS2322: Type 'R1<App>' is not assignable to type 'R1<Wrong>'.
+  Type 'App' is not assignable to type 'Wrong'.
+    Types of property 'theme' are incompatible.
+      Type 'string' is not assignable to type 'number'.
+tsc7-variance-repro.ts(13,14): error TS2322: Type 'R2<App>' is not assignable to type 'R2<Wrong>'.
+  Type 'App' is not assignable to type 'Wrong'.
+    Types of property 'theme' are incompatible.
+      Type 'string' is not assignable to type 'number'.

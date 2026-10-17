@@ -1,0 +1,14 @@
+== e-sessions
+[a-keys] tsc7: OK (0 errors)
+[a-keys] ts5.8.3: OK (0 errors)
+  e-sessions: behaviour OK
+
+Variant a-keys, solutions in reference/a-keys
+  e-sessions: PASS
+== e-sessions
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+  e-sessions: behaviour OK
+
+Variant b-snapshot, solutions in reference/b-snapshot
+  e-sessions: PASS

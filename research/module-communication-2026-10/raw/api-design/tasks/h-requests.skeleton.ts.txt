@@ -1,0 +1,7 @@
+// Solution file for task (h). Save as h-requests.ts. Keep the exported signature; fill in the body.
+import type { ModuleContext } from "@get-modular/resources";
+import type { QuotesDeps, QuotesProduct, Screen, Ticker } from "./h-requests.types.js";
+
+export async function createQuotesModule(deps: QuotesDeps, { resources }: ModuleContext): Promise<QuotesProduct> {
+  // TODO
+}

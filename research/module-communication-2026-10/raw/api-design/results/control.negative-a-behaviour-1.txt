@@ -1,0 +1,15 @@
+== e-async-factory
+[a-keys] tsc7: OK (0 errors)
+[a-keys] ts5.8.3: OK (0 errors)
+  BEHAVIOUR e-async-factory: a change made while the log was opening was lost
+  e-async-factory: 1 behaviour failure(s)
+== b-catalog
+[a-keys] tsc7: OK (0 errors)
+[a-keys] ts5.8.3: OK (0 errors)
+  BEHAVIOUR b-catalog: while us is loading, current() is not loading (it still shows eu)
+  BEHAVIOUR b-catalog: while br is loading, current() is not loading
+  b-catalog: 2 behaviour failure(s)
+
+Variant a-keys, solutions in reference/negative/a-behaviour-1
+  e-async-factory: FAIL (behaviour)
+  b-catalog: FAIL (behaviour)

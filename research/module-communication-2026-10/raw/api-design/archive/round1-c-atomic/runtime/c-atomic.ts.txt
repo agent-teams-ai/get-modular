@@ -1,0 +1,37 @@
+// Variant C on the shared stub engine: watch({ resources, name?, keys, onChange }) returns the snapshot.
+import type * as Api from "../c-atomic/api.js";
+import { createEngine, ObservationError, type RawSnapshot } from "./core.ts";
+
+export { ObservationError };
+
+type Spec = { readonly resources: unknown; readonly name?: unknown; readonly keys: unknown };
+type WatchSpec = Spec & { readonly onChange: (next: RawSnapshot) => unknown };
+type LoadSpec = Spec & {
+  readonly loader: (next: RawSnapshot, context: { readonly signal: AbortSignal }) => unknown;
+  readonly onResult: (result: unknown, snapshot: RawSnapshot) => unknown;
+  readonly onError: (cause: unknown, snapshot: RawSnapshot) => unknown;
+};
+
+export function createStore<V extends object & Required<V>>(initial: V, options: Api.StoreOptions): Api.Store<V> {
+  const engine = createEngine(initial, options);
+  const facet = Object.freeze({
+    read: (keys: unknown) => engine.read(keys),
+    watch: (spec: WatchSpec) => {
+      const keys = engine.checkKeys(spec.keys);
+      const first = engine.read(keys); // read and register in the same synchronous turn: nothing can fall between
+      engine.watch({ resources: spec.resources, name: spec.name ?? keys.join("+"), keys, startRevision: first.revision, onChange: spec.onChange });
+      return first;
+    },
+    load: (spec: LoadSpec) => {
+      const keys = engine.checkKeys(spec.keys);
+      engine.load({ resources: spec.resources, name: spec.name ?? keys.join("+"), keys, loader: spec.loader, onResult: spec.onResult, onError: spec.onError });
+      return engine.read(keys);
+    },
+  });
+  const store = Object.freeze({ read: facet.read, set: engine.set, readonly: () => facet, close: engine.close });
+  engine.register(store);
+  engine.register(facet);
+  return store as unknown as Api.Store<V>; // the stub engine is untyped; the public shape is the declaration
+}
+const conforms: typeof Api.createStore = createStore;
+void conforms;

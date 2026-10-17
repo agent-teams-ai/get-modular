@@ -1,0 +1,19 @@
+import type { ModuleContext } from "@get-modular/resources";
+import { createStore, type Store } from "@get-modular/observation";
+import { vatRateFor, type PricingContext, type PricingContextDeps, type PricingContextProduct } from "./c-pricing-context.types.js";
+
+export async function createPricingContextModule(deps: PricingContextDeps, { resources }: ModuleContext): Promise<PricingContextProduct> {
+  const derive = (values: { readonly currency: string; readonly region: string }): PricingContext =>
+    ({ currency: values.currency, vatRate: vatRateFor(values.region) });
+  // The derived store needs the first snapshot, which watch returns, so the handler sees it only after assignment.
+  let context: Store<PricingContext> | undefined;
+  const settings = deps.settings.watch({
+    resources, name: "pricing-context/settings", keys: ["currency", "region"],
+    onChange: ({ values }) => { context?.set(derive(values)); },
+  });
+  const created = createStore<PricingContext>(derive(settings.values), {
+    name: "pricing-context", resources, reportError: deps.errors.report,
+  });
+  context = created;
+  return { instance: undefined, capabilities: { "acme/pricing/context": created.readonly() } };
+}

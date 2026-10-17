@@ -1,0 +1,200 @@
+Третий проход по B после правок N1-N10
+======================================
+
+Дата: 2026-10-17. Режим: только чтение. В api-shape/ я записал только этот файл.
+Копия текущего состояния: scratchpad/critic-adv/api3/. Перед записью отчёта я сверил: b-snapshot/api.d.ts,
+README.md, RATIONALE.txt, testing.d.ts, CMS-RULE5-DRAFT.txt, runtime/core.ts и runtime/testing.ts совпадают с копией
+байт в байт.
+Воспроизведение: tools/run-all.sh в critic-adv/api3 дал "all steps as expected", 41 шаг ok (MEASURED).
+Мои пробы этого прохода лежат в critic-adv/api3/runtime-b/:
+  - critic3-leak.ts: сценарии heartbeat и server;
+  - critic3-depth.ts;
+  - critic3-crash.ts;
+  - critic3-wait.test.ts;
+  - critic3-stores.test.ts.
+Прототипы исправлений:
+  - critic-adv/api3/runtime-bounded/core.ts (+ runtime-b-bounded): контекст доставки с ограниченным сроком;
+  - critic-adv/api3/runtime-signal/core.ts (+ runtime-b-signal): watch без записи в scope.
+Проба Bun: critic-adv/bunprobe/als.mjs.
+Метки: VERIFIED (прочитал), MEASURED (запустил), ASSUMPTION (мой вывод).
+
+
+1. Статус N1-N11
+----------------
+| #   | Статус | Доказательство |
+| --- | ------ | -------------- |
+| N1  | Закрыто | ergo.ts:25 (брендированный UserId) и :26 (элемент кортежа) компилируются на обоих компиляторах. p9-traps.b.ts:45-53 теперь это проверяет |
+| N2  | Закрыто по обнаружению, но механизм дефектен | C1, C2 и C10 ловятся на первом круге с одним отчётом. Но контекст утекает в долгоживущую работу и даёт ложные срабатывания: M1 (P0) |
+| N3  | Закрыто | C3 и C4: эхо на первом круге; пагинация через отслеживаемый cursor падает сразу, а не на 65-й странице |
+| N4  | Закрыто | C11: "complete true; saved "dark"" |
+| N5  | Закрыто | critic-entries: -67 байт на закрытый источник; critic-retention: 0/50 и 0/50. Есть дешевле при том же 0, см. M3 |
+| N6  | Частично | Ожидание с { stores } работает: S1 за 1,2 мс рядом с занятым store и открытым long-poll. Без signal отказ с кодом через 5 с. Но два случая зависают: M4 |
+| N7  | Частично (зависимость) | Сообщение C7 теперь "in 8192 scopes, at most 1 in one ... A module that opens a child scope per piece of work and never closes it leaks one subscription per piece". Пути держателей появятся только с Resources.path |
+| N8  | Закрыто | fk-msg.ts:7: "...{ readonly "a store record needs literal keys, not an index signature": never; }" |
+| N9  | Закрыто | C8: "caller's object frozen: false, its list frozen: false" |
+| N10 | Закрыто | README.md:23 |
+| N11 | Частично | mock.timers описан в README.md:287-288, но мок setImmediate по-прежнему зависает (W2, M4) |
+Прежние F1, F9 (traps) и F7 не регрессировали: v1-structural, traps, leak и critic-set-large (8,40 мс) MEASURED.
+
+
+2. Новые дефекты
+----------------
+| #  | Sev | Conf | Кратко |
+| -- | --- | ---- | ------ |
+| M1 | P0  | 9    | Контекст доставки через AsyncLocalStorage утекает в таймеры, серверы и соединения, созданные в обработчике: ложное эхо роняет процесс, 69 из 70 пользовательских запросов отказывают, глубина каскада копится и через 32 действия ломает производное состояние |
+| M2 | P2  | 7    | "Report and throw" в асинхронном продолжении завершает процесс Node (exit code 1) |
+| M3 | P2  | 8    | Child-scope на каждый watch избыточен: привязка только к resources.signal даёт 1064 байта на живой watch вместо 3080 при том же нуле удержания |
+| M4 | P2  | 8    | Тестовое ожидание зависает навсегда, если передать signal (например, t.signal) или замокать setImmediate: 5-секундная защита не срабатывает |
+| M5 | P2  | 7    | Рецепт "Save on close" теряет данные при асинхронной записи: синхронный Symbol.dispose не ожидается |
+| M6 | P3  | 6    | Мелочи README и API (ниже) |
+
+M1 [P0, уверенность 9] Контекст доставки утекает в работу, которая переживает обработчик
+VERIFIED:
+  - runtime/core.ts:123-129 берёт AsyncLocalStorage через process.getBuiltinModule;
+  - core.ts:339 запускает каждый обработчик в asyncContext.run;
+  - core.ts:620-634 считает эхом любой коммит в этом контексте.
+AsyncLocalStorage захватывает контекст в момент СОЗДАНИЯ асинхронного ресурса: таймера, сервера, сокета. Поэтому
+всё, что обработчик создал, навсегда наследует { origin: эта подписка, depth } (MEASURED: в Node и в Bun 1.3.11
+setTimeout и setImmediate видят контекст, critic-adv/bunprobe/als.mjs).
+README.md:13 даже закрепляет это правилом: "NEVER change a key your subscription follows, neither in its handler
+nor in anything the handler starts".
+MEASURED (critic3-leak.ts, critic3-depth.ts, обычный процесс Node 26.11.0):
+  - heartbeat. Модуль X следит за connection.[server, status] и на смену server вызывает команду владельца
+    ensureConnected(). Владелец лениво запускает собственный heartbeat (setInterval), который пишет status. Первый
+    же тик владельца объявлен эхом подписки X: "ui/connection changed status of connection, which it follows".
+    Ошибка брошена в колбэке таймера, процесс завершён: "exit code 1". X ничего неправильного не сделал;
+  - server. Модуль перезапускает HTTP-сервер при смене port (обычный паттерн "перезапуск по конфигу"), а
+    admin-эндпоинт меняет port через команду владельца. Каждый запрос пользователя исполняется в утёкшем контексте
+    обработчика. Итог: "70 admin requests; first failure at request 2 (failed: observation.delivery.echo);
+    failures 69";
+  - depth. Сервер перезапускается при смене config.listen, запросы пишут stats.hits, производный обработчик пишет
+    config.listen из hits. Каждое независимое действие пользователя удлиняет утёкшую цепочку на 2 шага. После 32
+    запросов производный обработчик получает observation.delivery.cascade: "cascade reports 8, first by
+    config/derive; hits 40, derived listen 32". Производное состояние молча отстаёт: бомба замедленного действия,
+    которая в тестах не видна.
+VERIFIED: RATIONALE.txt:253-254 рассматривает только работу, начатую ДО подписки ("a timer created before the
+subscription"), но не таймеры, созданные внутри обработчика.
+
+Моё предложение, проверено прототипом (runtime-bounded/core.ts, около 15 строк): контекст считается только пока он
+"открыт".
+  - Контекст обработчика закрывается в конце его задачи доставки, включая её microtask checkpoint. Это setImmediate,
+    поставленный вне контекста.
+  - Контекст loader закрывается, когда run завершился.
+  - Таймеры, серверы и соединения, созданные внутри, несут уже закрытый контекст, и их коммиты идут с глубины 0.
+MEASURED на прототипе:
+  - heartbeat: "exit code 0; reports: none";
+  - server: "failures 0";
+  - depth: "cascade reports 0; hits 40, derived listen 40";
+  - C1, C2, C3, C4 и C10 по-прежнему ловятся на первом круге (1 доставка или 1 загрузка, 1 отчёт);
+  - существующие наборы проходят: runtime-bounded/probes.test.ts a-keys pass 26, b-snapshot pass 27 (fail 0);
+    runtime-b-bounded/probes.test.ts pass 26 (fail 0).
+Цена прототипа: эхо, пересекающее задачу (команда, ждущая настоящий I/O; таймер), не ловится. Такой цикл ограничен
+скоростью I/O, но бесконечен. Это известный пункт для ADR с владельцем.
+Реализация: один общий "open"-флаг на задачу flush, а не setImmediate на каждый обработчик.
+Тогда README.md:13 и :256-264 переписать так: "в обработчике и в том, что он делает в той же задаче (await без I/O,
+microtask) и в теле loader пока идёт run".
+
+M2 [P2, уверенность 7] Брошенное в асинхронном продолжении эхо завершает процесс
+MEASURED (critic3-crash.ts, обычный Node): асинхронная команда без catch ("void requestLevel()") и queueMicrotask
+дают "exit code 1; reports before exit: 1". Отчёт успевает уйти, но Host с сотнями модулей падает целиком из-за
+ошибки одного модуля. С исправлением M1 сюда доходят только настоящие эхо.
+README.md:13 ("Both are reported and thrown") об этом не предупреждает.
+Решение для ADR:
+  1) (Recommended) оставить "report and throw" как fail-fast, в README прямо написать, что необработанное
+     асинхронное эхо завершает процесс Node, и что обработчик не запускает fire-and-forget async (асинхронная
+     реакция идёт только через load);
+  2) в асинхронных контекстах "report and refuse": не бросать, ничего не коммитить. Минус: set молча не
+     выполняется, вызывающий получает старую ревизию.
+
+M3 [P2, уверенность 8] Есть дешевле при том же нуле удержания
+VERIFIED: @get-modular/resources (origin/main) packages/resources/src/features/scope/scope.ts: и #close, и #join
+сначала вызывают #request(), а он синхронно прерывает signal, и только потом идут cleanup. Слушатель abort
+отцепляет watch раньше, чем scope доберётся до записи `watch:<name>`. Значит, ни запись, ни child-scope на каждый
+watch не нужны: долгов они не дают, удалить их рано нельзя (отсюда и было удержание N5).
+MEASURED (runtime-signal/core.ts, тот же скрипт runtime-b/measure-watch-memory.ts):
+  - только signal: "1064 bytes per live watch", удержание "22 bytes" (шум);
+  - child-scope: 3080 и -92;
+  - запись: 1282 и 511.
+Наборы проходят: runtime-signal a-keys pass 26, b-snapshot pass 27; runtime-b-signal pass 26; critic-retention 0/50.
+На пределах (64 на scope, 8192 на store) 3 КБ на watch приемлемы: 25 МБ на store в худшем случае. Но вариант
+"только signal" в 2,9 раза дешевле, проще и равноценен. Черновик правила 5 CMS тогда говорит "привязана к
+resources.signal вашего scope", а не "registers itself ... in its LIFO order".
+
+M4 [P2, уверенность 8] Ловушки 5-секундного таймаута
+VERIFIED: runtime/testing.ts:19 "const deadline = options.signal === undefined ? performance.now() +
+DEFAULT_TIMEOUT_MS : Number.POSITIVE_INFINITY;" и runtime/testing.ts:6, где nextTask зовёт глобальный setImmediate
+в момент вызова.
+MEASURED (critic3-wait.test.ts):
+  - W1: "delivered({ signal: t.signal }) next to a per-task committer: still pending after 7000 ms". t.signal из
+    node:test (по умолчанию таймаут теста бесконечный) естественно передать, и он выключает защиту. Без signal:
+    "rejected observation.testing.timeout";
+  - W2: "delivered() with setImmediate mocked: still pending after 7000 ms". Проверка дедлайна стоит после
+    `await nextTask()`, поэтому до неё дело не доходит.
+ASSUMPTION (не проверено здесь): fake timers Jest и Vitest по умолчанию подменяют setImmediate (а Jest и
+performance). Тогда зависание будет типичным, а не редким. Совет README.md:287-288 "or advance the mocked clock
+yourself" изнутри ожидаемого delivered() не выполнить.
+Моё предложение:
+  - таймаут всегда включён (timeoutMs, по умолчанию 5000; Infinity только явно), а signal работает дополнительно;
+  - пакет при загрузке запоминает настоящие setImmediate и часы и использует их и для доставки, и для ожидания;
+  - код testing.timeout вынести из ObservationErrorCode основного пакета в тип /testing (P3).
+
+M5 [P2, уверенность 7] Рецепт "Save on close" теряет данные при асинхронной записи
+VERIFIED: README.md:211 "resources.use({ [Symbol.dispose]: () => { saved.write(store.read(["theme",
+"density"]).values); } }, "prefs/save");". resources README (origin/main): "the result of a synchronous
+`Symbol.dispose` is not awaited". Если write асинхронный (fs.promises), промис не ожидается, следующий cleanup
+"prefs/file" закрывает файл во время записи, а отказ остаётся необработанным.
+Исправление: `[Symbol.asyncDispose]: async () => { await saved.write(...); }`.
+Именно в N4 речь шла о сохранности данных, поэтому рецепт должен быть безопасным.
+
+M6 [P3] Мелочи
+- README.md:136 "Every live subscription counts against the per-scope limit". Для схемы "child на кусок работы"
+  каждая подписка в своём scope, и её ограничивает только общий лимит 8192. Формулировку уточнить.
+- README.md:96 "onLoading is called in the delivery of every change": при коалесцировании это один вызов на
+  доставку, а не на каждое изменение.
+- В /testing экспортировать флаг асинхронного обнаружения (в стабе он есть: core.ts:131 asyncCascadeDetection).
+  Тогда тестовый пресет может утверждать, что тесты идут с обнаружением. ASSUMPTION: в Jest окружение подменяет
+  process, и getBuiltinModule может отсутствовать. Тогда тесты не поймают эхо, которое в продакшене на Node
+  уронит процесс.
+- Под бандлерами getBuiltinModule вызывается динамически, статического импорта нет, сборка не ломается; в браузере
+  и в renderer Electron без nodeIntegration остаётся только синхронное обнаружение (VERIFIED по коду
+  core.ts:123-129). Bun 1.3.11: getBuiltinModule и распространение AsyncLocalStorage есть (MEASURED). Deno, браузер
+  и Jest не проверял.
+
+
+3. Ответы на прямые вопросы
+---------------------------
+- Утекает ли контекст AsyncLocalStorage? Да: в таймер, созданный в обработчике, в сервер, перезапущенный в
+  обработчике, и через команды в чужие модули. Даёт ложное эхо, падение процесса и накопление глубины (M1).
+  Исправление с ограниченным сроком контекста проверено.
+- Приемлемы ли 2,4x памяти? Да, по абсолютным цифрам. Но есть вариант дешевле при том же нуле: только signal,
+  1064 байта на watch (M3).
+- getBuiltinModule под бандлерами и в не-Node раннерах ведёт себя корректно: сборка не ломается, Bun работает.
+  Риск в расхождении сред: в тестах без обнаружения, а в продакшене с броском (M6).
+- Ловушка ли 5-секундный таймаут? Да, в двух видах: signal выключает защиту, а мок setImmediate обходит её (M4).
+- Ошибки README: строка 13 (M1, M2), рецепт на 211 (M5), строки 136, 96 и 287-288 (M4, M6). Противоречий между README
+  и api.d.ts по кодам, лимитам и владению я не нашёл.
+
+
+4. Вердикт
+----------
+К ADR: НЕТ, но близко. Всё, что я просил во втором проходе, сделано, а N1, N3, N4, N5, N8, N9 и N10 закрыты с
+доказательствами. Блокирует один новый дефект, M1. Как специфицировано, асинхронное обнаружение роняет здоровые
+процессы и ломает обычные паттерны.
+
+Обязательно до ADR:
+1. M1: контекст доставки с ограниченным сроком (обработчик: до конца задачи доставки; loader: пока идёт run), или
+   отказ от асинхронного обнаружения. Переписать README.md:13 и :256-264. Пробы heartbeat, server и depth добавить в
+   run-all.
+2. M4: таймаут всегда включён, плюс таймеры, запомненные при загрузке.
+3. M5: рецепт с Symbol.asyncDispose.
+4. M2: решение записать в ADR (Recommended: fail-fast с прямой фразой в README).
+
+Можно вести в ADR как известные пункты (владелец и триггер):
+- M3: переход на watch только через signal. Владелец: observation. Триггер: до первого релиза, или когда память
+  станет заметной.
+- Эхо, пересекающее I/O, не ловится (цена M1). Владелец: observation. Триггер: появление AsyncContext или первый
+  такой инцидент.
+- N7: пути держателей. Владелец: resources. Триггер: Resources.path в resources 0.2.
+- Среды без AsyncLocalStorage: только синхронное обнаружение. Владелец: ADR. Триггер: использование в
+  браузере или renderer.
+- M6: мелкие правки текста.

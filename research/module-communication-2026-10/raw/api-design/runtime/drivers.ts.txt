@@ -1,0 +1,76 @@
+// One driver per API variant, so every probe runs through the variant's own public call shape.
+import type { Resources } from "@get-modular/resources";
+import * as a from "./a-keys.ts";
+import * as b from "./b-snapshot.ts";
+import type { ListenerError, RawSnapshot } from "./core.ts";
+
+export type Values = Record<string, unknown>;
+export type LooseFacet = {
+  readonly read: (keys: readonly string[]) => RawSnapshot;
+  readonly watch: (...args: readonly unknown[]) => unknown;
+  readonly load: (...args: readonly unknown[]) => unknown;
+};
+export type LooseStore = {
+  readonly read: (keys: readonly string[]) => RawSnapshot;
+  readonly set: (patch: Values) => number;
+  readonly readonly: () => LooseFacet;
+  readonly close: () => undefined;
+};
+export type StoreOptions = {
+  readonly name: string;
+  readonly resources: Resources;
+  readonly reportError: (report: ListenerError) => undefined;
+  readonly maxSubscriptionsPerScope?: number;
+  readonly maxSubscriptions?: number;
+};
+export type OnChange = (next: RawSnapshot) => undefined;
+export type LoadHandlers = {
+  readonly loader: (next: RawSnapshot, context: { readonly signal: AbortSignal }) => Promise<unknown>;
+  readonly onLoading: (snapshot: RawSnapshot) => undefined;
+  readonly onResult: (result: unknown, snapshot: RawSnapshot) => undefined;
+  readonly onError: (cause: unknown, snapshot: RawSnapshot) => undefined;
+};
+export type Driver = {
+  readonly variant: string;
+  readonly createStore: (initial: Values, options: StoreOptions) => LooseStore;
+  /**
+   * The module's normal pattern: take the starting values and follow `keys`. `between` runs where a factory
+   * could await: after `read` and before `watch`. (Variant C was dropped after round 1; see archive/.)
+   */
+  readonly follow: (facet: LooseFacet, resources: Resources, keys: readonly string[], name: string | undefined,
+    onChange: OnChange, between?: () => void) => RawSnapshot;
+  readonly load: (facet: LooseFacet, resources: Resources, keys: readonly string[], name: string, handlers: LoadHandlers) => void;
+};
+
+// The typed variant APIs are cast to one loose shape here, at the boundary of the probes only.
+const loose = (create: unknown): Driver["createStore"] => create as Driver["createStore"];
+
+const keysAndChangesAfter: Driver = {
+  variant: "a-keys",
+  createStore: loose(a.createStore),
+  follow: (facet, resources, keys, name, onChange, between) => {
+    const first = facet.read(keys);
+    between?.();
+    facet.watch(resources, { name, keys, changesAfter: first, onChange });
+    return first;
+  },
+  load: (facet, resources, keys, name, handlers) => { facet.load(resources, { name, keys, ...handlers }); },
+};
+
+const watchWhatYouRead: Driver = {
+  variant: "b-snapshot",
+  createStore: loose(b.createStore),
+  follow: (facet, resources, keys, name, onChange, between) => {
+    const first = facet.read(keys);
+    between?.();
+    facet.watch(first, { resources, name, onChange });
+    return first;
+  },
+  load: (facet, resources, keys, name, handlers) => { facet.load(facet.read(keys), { resources, name, ...handlers }); },
+};
+
+
+export const drivers: Readonly<Record<string, Driver>> = {
+  "a-keys": keysAndChangesAfter,
+  "b-snapshot": watchWhatYouRead,
+};

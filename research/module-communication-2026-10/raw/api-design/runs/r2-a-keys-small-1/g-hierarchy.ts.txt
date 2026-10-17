@@ -1,0 +1,60 @@
+import { createStore } from "@get-modular/observation";
+import type { ModuleContext } from "@get-modular/resources";
+import {
+  createTotalDisplay, discountFor, grossTotal, vatRateFor,
+  type CheckoutDeps, type CheckoutProduct, type DiscountRequests, type PricingContext, type PricingOwnerDeps,
+  type PricingOwnerProduct, type PricingSettings,
+} from "./g-hierarchy.types.js";
+
+export async function createPricingOwnerModule(deps: PricingOwnerDeps, { resources }: ModuleContext): Promise<PricingOwnerProduct> {
+  const toRate = (values: PricingSettings) => ({ currency: values.currency, vatRate: vatRateFor(values.region) });
+  const settings = deps.settings.read(["currency", "region"]);
+  const store = createStore<PricingContext>({ ...toRate(settings.values), discountPercent: 0 }, {
+    name: "pricing-owner", resources, reportError: deps.errors.report,
+  });
+  deps.settings.watch(resources, {
+    name: "pricing-owner/settings",
+    keys: ["currency", "region"],
+    changesAfter: settings,
+    onChange: ({ values }) => { store.set(toRate(values)); },
+  });
+  const discounts: DiscountRequests = {
+    requestDiscount: (code) => {
+      const percent = discountFor(code);
+      if (percent === undefined) return "rejected";
+      store.set({ discountPercent: percent });
+      return "accepted";
+    },
+  };
+  return {
+    instance: undefined,
+    capabilities: { "acme/pricing/context": store.readonly(), "acme/pricing/discounts": discounts },
+  };
+}
+
+export async function createCheckoutModule(deps: CheckoutDeps, { resources }: ModuleContext): Promise<CheckoutProduct> {
+  const display = createTotalDisplay();
+  const pricing = deps.pricing.read(["vatRate", "discountPercent"]);
+  let net = 0;
+  const showTotal = (): undefined => {
+    const { vatRate, discountPercent } = deps.pricing.read(["vatRate", "discountPercent"]).values;
+    display.show(grossTotal(net, vatRate, discountPercent));
+    return undefined;
+  };
+  showTotal();
+  deps.pricing.watch(resources, {
+    name: "checkout/pricing",
+    keys: ["vatRate", "discountPercent"],
+    changesAfter: pricing,
+    onChange: () => { showTotal(); },
+  });
+  return {
+    instance: display,
+    capabilities: {
+      "acme/checkout": {
+        setNet: (amount) => { net = amount; showTotal(); return undefined; },
+        applyCode: (code) => deps.discounts.requestDiscount(code),
+      },
+    },
+  };
+}

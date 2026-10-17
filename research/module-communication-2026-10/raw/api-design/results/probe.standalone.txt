@@ -1,0 +1,83 @@
+== tsc7
+p1-variance.ts(20,14): error TS2636: Type 'StoreB2<sub-V>' is not assignable to type 'StoreB2<super-V>' as implied by variance annotation.
+  Types of property 'watch' are incompatible.
+    Type '<K extends Key<sub-V>>(from: Snapshot<sub-V, K>, spec: ChangeSpec<Snapshot<sub-V, K>>) => undefined' is not assignable to type '<K extends Key<super-V>>(from: Snapshot<super-V, K>, spec: ChangeSpec<Snapshot<super-V, K>>) => undefined'.
+      Types of parameters 'from' and 'from' are incompatible.
+        Type 'Snapshot<super-V, any>' is not assignable to type 'Snapshot<sub-V, any>'.
+          Types of property 'values' are incompatible.
+            Type 'Readonly<Pick<super-V, any>>' is not assignable to type 'Readonly<Pick<sub-V, any>>'.
+              'string' index signatures are incompatible.
+                Type 'super-V[any]' is not assignable to type 'sub-V[any]'.
+                  Type 'super-V' is not assignable to type 'sub-V'.
+p1-variance.ts(25,13): error TS2636: Type 'StoreA<sub-V>' is not assignable to type 'StoreA<super-V>' as implied by variance annotation.
+  Types of property 'watch' are incompatible.
+    Type '<const K extends readonly [Key<sub-V>, ...Key<sub-V>[]]>(spec: { readonly keys: K; readonly since?: Snapshot<sub-V, K[number]>; readonly onChange: (next: Snapshot<sub-V, K[number]>) => undefined; }) => undefined' is not assignable to type '<const K extends readonly [Key<super-V>, ...Key<super-V>[]]>(spec: { readonly keys: K; readonly since?: Snapshot<super-V, K[number]>; readonly onChange: (next: Snapshot<super-V, K[number]>) => undefined; }) => undefined'.
+      Types of parameters 'spec' and 'spec' are incompatible.
+        Type '{ readonly keys: any; readonly since?: Snapshot<super-V, any>; readonly onChange: (next: Snapshot<super-V, any>) => undefined; }' is not assignable to type '{ readonly keys: any; readonly since?: Snapshot<sub-V, any>; readonly onChange: (next: Snapshot<sub-V, any>) => undefined; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+          The types of 'since.values' are incompatible between these types.
+            Type 'Readonly<Pick<super-V, any>>' is not assignable to type 'Readonly<Pick<sub-V, any>>'.
+              'string' index signatures are incompatible.
+                Type 'super-V[any]' is not assignable to type 'sub-V[any]'.
+                  Type 'super-V' is not assignable to type 'sub-V'.
+p2-union.ts(24,40): error TS2322: Type '() => Promise<void>' is not assignable to type '(next: Snapshot<App, "region">) => undefined'.
+  Type 'Promise<void>' is not assignable to type 'undefined'.
+p2-union.ts(26,40): error TS2322: Type '(n: Snapshot<App, "region">) => string' is not assignable to type '(next: Snapshot<App, "region">, context: { readonly signal: AbortSignal; }) => Promise<never>'.
+  Type 'string' is not assignable to type 'Promise<never>'.
+p2-union.ts(28,16): error TS2345: Argument of type '{ resources: { readonly signal: AbortSignal; }; name: string; onChange: () => undefined; load: () => Promise<number>; onResult: () => undefined; onError: () => undefined; }' is not assignable to parameter of type 'OnChange<Snapshot<App, "region">> | OnLoad<Snapshot<App, "region">, number>'.
+  Types of property 'load' are incompatible.
+    Type '() => Promise<number>' is not assignable to type 'undefined'.
+p2-union.ts(32,13): error TS2741: Property '[snapshotBrand]' is missing in type '{ revision: number; values: { region: string; }; }' but required in type 'SnapshotOf<App>'.
+p2-union.ts(35,13): error TS2345: Argument of type 'Snapshot<{ readonly color: number; }, "color">' is not assignable to parameter of type 'SnapshotOf<App>'.
+  Types of property 'values' are incompatible.
+    Type 'Readonly<Pick<{ readonly color: number; }, "color">>' has no properties in common with type '{ readonly theme?: string; readonly region?: string; }'.
+p2-union.ts(37,40): error TS2322: Type '(n: Snapshot<App, "region">) => number' is not assignable to type '(next: Snapshot<App, "region">) => undefined'.
+  Type 'number' is not assignable to type 'undefined'.
+p2-union.ts(40,40): error TS2322: Type '(n: Snapshot<App, "region">) => void' is not assignable to type '(next: Snapshot<App, "region">) => undefined'.
+  Type 'void' is not assignable to type 'undefined'.
+p2-union.ts(42,40): error TS2322: Type '() => Promise<number>' is not assignable to type '(next: Snapshot<App, "region">, context: { readonly signal: AbortSignal; }) => Promise<never>'.
+  Type 'Promise<number>' is not assignable to type 'Promise<never>'.
+    Type 'number' is not assignable to type 'never'.
+p2-union.ts(46,13): error TS2344: Type '{ readonly a?: string; }' does not satisfy the constraint 'Required<{ readonly a?: string; }>'.
+  Property 'a' is optional in type '{ readonly a?: string; }' but required in type 'Required<{ readonly a?: string; }>'.
+== 5.8.3
+p1-variance.ts(20,14): error TS2636: Type 'StoreB2<sub-V>' is not assignable to type 'StoreB2<super-V>' as implied by variance annotation.
+  Types of property 'watch' are incompatible.
+    Type '<K extends Key<sub-V>>(from: Snapshot<sub-V, K>, spec: ChangeSpec<Snapshot<sub-V, K>>) => undefined' is not assignable to type '<K extends Key<super-V>>(from: Snapshot<super-V, K>, spec: ChangeSpec<Snapshot<super-V, K>>) => undefined'.
+      Types of parameters 'from' and 'from' are incompatible.
+        Type 'Snapshot<super-V, any>' is not assignable to type 'Snapshot<sub-V, any>'.
+          Types of property 'values' are incompatible.
+            Type 'Readonly<Pick<super-V, any>>' is not assignable to type 'Readonly<Pick<sub-V, any>>'.
+              'string' index signatures are incompatible.
+                Type 'super-V[any]' is not assignable to type 'sub-V[any]'.
+                  Type 'super-V' is not assignable to type 'sub-V'.
+p1-variance.ts(25,13): error TS2636: Type 'StoreA<sub-V>' is not assignable to type 'StoreA<super-V>' as implied by variance annotation.
+  Types of property 'watch' are incompatible.
+    Type '<const K extends readonly [Key<sub-V>, ...Key<sub-V>[]]>(spec: { readonly keys: K; readonly since?: Snapshot<sub-V, K[number]>; readonly onChange: (next: Snapshot<sub-V, K[number]>) => undefined; }) => undefined' is not assignable to type '<const K extends readonly [Key<super-V>, ...Key<super-V>[]]>(spec: { readonly keys: K; readonly since?: Snapshot<super-V, K[number]>; readonly onChange: (next: Snapshot<super-V, K[number]>) => undefined; }) => undefined'.
+      Types of parameters 'spec' and 'spec' are incompatible.
+        Type '{ readonly keys: any; readonly since?: Snapshot<super-V, any>; readonly onChange: (next: Snapshot<super-V, any>) => undefined; }' is not assignable to type '{ readonly keys: any; readonly since?: Snapshot<sub-V, any>; readonly onChange: (next: Snapshot<sub-V, any>) => undefined; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+          The types of 'since.values' are incompatible between these types.
+            Type 'Readonly<Pick<super-V, any>>' is not assignable to type 'Readonly<Pick<sub-V, any>>'.
+              'string' index signatures are incompatible.
+                Type 'super-V[any]' is not assignable to type 'sub-V[any]'.
+                  Type 'super-V' is not assignable to type 'sub-V'.
+p2-union.ts(24,40): error TS2322: Type '() => Promise<void>' is not assignable to type '(next: Snapshot<App, "region">) => undefined'.
+  Type 'Promise<void>' is not assignable to type 'undefined'.
+p2-union.ts(26,40): error TS2322: Type '(n: Snapshot<App, "region">) => string' is not assignable to type '(next: Snapshot<App, "region">, context: { readonly signal: AbortSignal; }) => Promise<never>'.
+  Type 'string' is not assignable to type 'Promise<never>'.
+p2-union.ts(28,16): error TS2345: Argument of type '{ resources: { readonly signal: AbortSignal; }; name: string; onChange: () => undefined; load: () => Promise<number>; onResult: () => undefined; onError: () => undefined; }' is not assignable to parameter of type 'OnChange<Snapshot<App, "region">> | OnLoad<Snapshot<App, "region">, number>'.
+  Types of property 'load' are incompatible.
+    Type '() => Promise<number>' is not assignable to type 'undefined'.
+p2-union.ts(32,13): error TS2345: Argument of type '{ revision: number; values: { region: string; }; }' is not assignable to parameter of type 'SnapshotOf<App>'.
+  Property '[snapshotBrand]' is missing in type '{ revision: number; values: { region: string; }; }' but required in type 'SnapshotOf<App>'.
+p2-union.ts(35,13): error TS2345: Argument of type 'Snapshot<{ readonly color: number; }, "color">' is not assignable to parameter of type 'SnapshotOf<App>'.
+  Types of property 'values' are incompatible.
+    Type 'Readonly<Pick<{ readonly color: number; }, "color">>' has no properties in common with type '{ readonly theme?: string; readonly region?: string; }'.
+p2-union.ts(37,40): error TS2322: Type '(n: Snapshot<App, "region">) => number' is not assignable to type '(next: Snapshot<App, "region">) => undefined'.
+  Type 'number' is not assignable to type 'undefined'.
+p2-union.ts(40,40): error TS2322: Type '(n: Snapshot<App, "region">) => void' is not assignable to type '(next: Snapshot<App, "region">) => undefined'.
+  Type 'void' is not assignable to type 'undefined'.
+p2-union.ts(42,40): error TS2322: Type '() => Promise<number>' is not assignable to type '(next: Snapshot<App, "region">, context: { readonly signal: AbortSignal; }) => Promise<never>'.
+  Type 'Promise<number>' is not assignable to type 'Promise<never>'.
+    Type 'number' is not assignable to type 'never'.
+p2-union.ts(46,13): error TS2344: Type '{ readonly a?: string; }' does not satisfy the constraint 'Required<{ readonly a?: string; }>'.
+  Property 'a' is optional in type '{ readonly a?: string; }' but required in type 'Required<{ readonly a?: string; }>'.

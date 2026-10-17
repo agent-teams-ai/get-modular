@@ -1,0 +1,7 @@
+// Solution file for task (a). Save as a-logger.ts. Keep the exported signature; fill in the body.
+import type { ModuleContext } from "@get-modular/resources";
+import { createConsoleSink, type LoggerDeps, type LoggerProduct } from "./a-logger.types.js";
+
+export async function createLoggerModule(deps: LoggerDeps, { resources }: ModuleContext): Promise<LoggerProduct> {
+  // TODO
+}

@@ -1,0 +1,67 @@
+import { createStore } from "@get-modular/observation";
+import type { ModuleContext } from "@get-modular/resources";
+import {
+  createTotalDisplay, discountFor, grossTotal, vatRateFor,
+  type CheckoutDeps, type CheckoutProduct, type PricingContext, type PricingOwnerDeps, type PricingOwnerProduct,
+} from "./g-hierarchy.types.js";
+
+export async function createPricingOwnerModule(deps: PricingOwnerDeps, { resources }: ModuleContext): Promise<PricingOwnerProduct> {
+  const toDerived = (values: { readonly currency: string; readonly region: string }) => ({
+    currency: values.currency,
+    vatRate: vatRateFor(values.region),
+  });
+  const settings = deps.settings.read(["currency", "region"]);
+  const store = createStore<PricingContext>({ ...toDerived(settings.values), discountPercent: 0 }, {
+    name: "pricing-owner",
+    resources,
+    reportError: deps.errors.report,
+  });
+  deps.settings.watch(settings, {
+    resources,
+    name: "pricing-owner/settings",
+    onChange: ({ values }) => {
+      store.set(toDerived(values));
+    },
+  });
+  const discounts = {
+    requestDiscount: (code: string): "accepted" | "rejected" => {
+      const percent = discountFor(code);
+      if (percent === undefined) return "rejected";
+      store.set({ discountPercent: percent });
+      return "accepted";
+    },
+  };
+  return {
+    instance: undefined,
+    capabilities: { "acme/pricing/context": store.readonly(), "acme/pricing/discounts": discounts },
+  };
+}
+
+export async function createCheckoutModule(deps: CheckoutDeps, { resources }: ModuleContext): Promise<CheckoutProduct> {
+  const display = createTotalDisplay();
+  let net = 0;
+  const pricing = deps.pricing.read(["vatRate", "discountPercent"]);
+  const render = (values: { readonly vatRate: number; readonly discountPercent: number }): void => {
+    display.show(grossTotal(net, values.vatRate, values.discountPercent));
+  };
+  render(pricing.values);
+  deps.pricing.watch(pricing, {
+    resources,
+    name: "checkout/pricing",
+    onChange: ({ values }) => {
+      render(values);
+    },
+  });
+  return {
+    instance: display,
+    capabilities: {
+      "acme/checkout": {
+        setNet: (value) => {
+          net = value;
+          render(deps.pricing.read(["vatRate", "discountPercent"]).values);
+        },
+        applyCode: (code) => deps.discounts.requestDiscount(code),
+      },
+    },
+  };
+}
