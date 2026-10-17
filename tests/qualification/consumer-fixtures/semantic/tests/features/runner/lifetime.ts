@@ -69,8 +69,9 @@ function effects(resource: TestResource, controls: Controls): EffectsPort {
   } };
 }
 
-export function lifetimeRunner(controls: Controls) {
+export function lifetimeRunner(subject: Controls | ((journal: JournalPort) => Controls)) {
   return implement<RunnerCapabilities>()(runnerADeclaration, async (dependencies, context: ModuleContext) => {
+    const controls = typeof subject === "function" ? subject(dependencies.journal) : subject;
     const resource = await context.resources.setup({
       name: "runner-a",
       setup: ({ signal }) => acquire(dependencies.journal, controls, signal),
