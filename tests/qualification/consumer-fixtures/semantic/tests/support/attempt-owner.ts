@@ -77,11 +77,13 @@ export function createAttempt(prepared: PreparedSemantic, identity: string, jour
     }
     const acceptedSession = session;
     const signal = AbortSignal.any([operations.signal, request.signal]);
-    const result = Promise.resolve().then(() => acceptedSession.run({ ...request, signal }));
-    // Exactly one ledger owns each accepted operation, through its terminal append.
+    const result = Promise.resolve().then(() => acceptedSession.run({ ...request, signal })).finally(() => {
+      // Return capacity before the caller can observe settlement, after the terminal append.
+      acceptedWork.delete(settled);
+    });
+    // Exactly one ledger owns each accepted operation and observes either settlement.
     const settled = result.then(() => {}, () => {});
     acceptedWork.add(settled);
-    void settled.then(() => acceptedWork.delete(settled));
     return result;
   };
 
