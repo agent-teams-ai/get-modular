@@ -17,7 +17,8 @@ owns verification routes and the limits of each claim.
 
 The profiles share only driver materialization. This is test-owned composition:
 Get Modular does not gain a Host, readiness API, work scheduler or recovery policy.
-Source facts, workload and author exercises remain separate plan
+P6 adds the W-01 through W-03 bounded workload on these same semantic owners.
+Source facts and author exercises remain separate plan
 slices. Source qualification is currently incomplete.
 
 P4 has a separate [source research replay](source/README.md): 26 selected flat
@@ -84,6 +85,7 @@ The bounded snapshot exposes identity and phase, with no factory attribution.
 | L-01–L-10 | `semantic/tests/module/lifetime.test.ts` | Same Assembly fixture test and current runtime emit |
 | R-01–R-10 | `recovery/tests/recovery.test.ts` | [Assembly restart test](../../assembly/consumer-restart.test.mjs); one current compiler emit |
 | G-01 | Generated eight-feature tree and `growth/run.mjs` | [Assembly growth test](../../assembly/consumer-growth.test.mjs); current compiler/NodeNext, independent oracles and one full smoke |
+| W-01–W-03 | `semantic/tests/module/workload.test.ts` | Same Assembly fixture test and current runtime emit |
 
 The owner contract suite lives in `semantic/tests/features/session/testing.ts`.
 It runs the same three success, error and cancellation cases against a typed
@@ -98,6 +100,19 @@ same-owner retry after a discarded report, cancellation-driven settlement and
 capacity-one refusal before runner entry. Native file probes establish physical
 release. The one early-journal-close counterexample first proves retry debt, then
 restores only its test writer to finish cleanup through the retained owner.
+
+Workload reuses one preparation with distinct journals, scopes, signals and
+controls per run. W-01 stops held left work through its private cancellation
+signal, then performs fresh right work after physical left cleanup. W-02 admits
+64 requests across 16 instances under one shared limit of 16 without a queue;
+all admission outcomes precede release. The observed distribution is two accepted
+operations on one instance, one on each of fourteen, and none on the last. This
+distinguishes a shared limit from an accidental limit of one per instance.
+W-03 cancels one singleton, completes the other fifteen operations, then retries
+one named cleanup failure through the same owner after discarding its first
+report. Final complete entry lists preserve duplicates for comparison with the
+accepted IDs. Native probes witness 16 physical releases in 17 cleanup attempts.
+No watchers, product throughput target or Runtime reliability claim is selected.
 
 ## Recovery ownership and limits
 
