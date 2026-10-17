@@ -1,0 +1,44 @@
+import assert from "node:assert/strict";
+import { writeFile } from "node:fs/promises";
+import { assemblyFor, entriesOf } from "@get-modular/assembly";
+import { checkWiring } from "@get-modular/conformance";
+import { createScope } from "@get-modular/resources";
+import * as root from "../out/src/composition/growth.root.js";
+import { ValueContract } from "../out/src/features/f003/composition/f003.contracts.js";
+import { expectedValues, providerOracleParts } from "./oracle.mjs";
+
+const size = Number(process.argv[2]);
+const variant = process.argv[3];
+assert.ok(variant === "leaf" || variant === "shared-contract");
+assert.equal(ValueContract.revision, variant === "shared-contract" ? 2 : 1);
+const started = performance.now();
+const preparation = await root.compose(assemblyFor());
+assert.equal(preparation.status, "prepared");
+checkWiring(preparation.composition, providerOracleParts(size), {
+  declarations: [...entriesOf(root.modules).map(entry => entry.declaration), root.inputs.seed.declaration],
+});
+const observations = [];
+for (const seed of [17, 23]) {
+  const scope = createScope({ name: `growth-${variant}-${seed}` });
+  try {
+    const outcome = await preparation.prepared.run({
+      scope: scope.resources, inputs: { seed: { "fixture/growth/seed": { read: () => seed } } },
+    });
+    assert.equal(outcome.status, "succeeded");
+    const expected = expectedValues(size, seed);
+    if (variant === "leaf") expected[expected.length - 1] = (expected.at(-1) + 1) % 1000003;
+    assert.deepEqual(outcome.created.map(entry => entry.instance.value), expected);
+    assert.equal(outcome.roots.last.value, expected.at(-1));
+    const port = outcome.created.find(entry => entry.implementationId === "fixture/growth/f003/default")
+      .capabilities["fixture/growth/f003/value"];
+    assert.equal(Object.hasOwn(port, "readValue"), variant === "shared-contract");
+    assert.equal(Object.hasOwn(port, "read"), variant === "leaf");
+    observations.push({ seed, root: outcome.roots.last.value });
+  } finally {
+    assert.deepEqual(await scope.control.close(), { complete: true, settled: true, debts: [] });
+  }
+}
+const result = { scenario: "G-03", variant, observations, providerPins: "passed", complete: true,
+  smoke: "not-repeated; baseline full smoke is the selected G-02 coverage", wallMs: performance.now() - started };
+await writeFile(`verification-${variant}.json`, `${JSON.stringify(result, null, 2)}\n`);
+console.log(JSON.stringify(result));
