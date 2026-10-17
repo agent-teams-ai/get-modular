@@ -22,7 +22,14 @@ export async function runJob(dependencies: Dependencies, request: Request): Prom
   } catch (cause) {
     const code = typeof cause === "object" && cause !== null && "code" in cause &&
       typeof cause.code === "string" ? cause.code : "fixture.operation.failed";
-    await dependencies.journal.append({ kind: "terminal", scope, id: request.id, value: code });
+    try {
+      await dependencies.journal.append({ kind: "terminal", scope, id: request.id, value: code });
+    } catch (journalCause) {
+      // Preserve both failures without mutating the runner's possibly frozen thrown value.
+      throw Object.assign(new AggregateError([cause, journalCause], "Runner and terminal recording both failed.", { cause }), {
+        code: "fixture.terminal.failed",
+      });
+    }
     throw cause;
   }
   await dependencies.journal.append({ kind: "terminal", scope, id: request.id, value });

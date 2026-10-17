@@ -32,6 +32,8 @@ test("consumer fixtures compile through public packages and preserve C-01–C-04
     assert.equal(runtime.status, 0, `${runtime.stdout}\n${runtime.stderr}`);
     assert.match(runtime.stdout, /^# tests [1-9]\d*$/mu, "semantic scenarios must actually execute");
     assert.match(runtime.stdout, /^# fail 0$/mu, runtime.stdout);
+    assert.match(runtime.stdout, /^# skipped 0$/mu, runtime.stdout);
+    assert.match(runtime.stdout, /^# todo 0$/mu, runtime.stdout);
     t.diagnostic(runtime.stdout.trim());
     t.diagnostic(JSON.stringify({ scenarios: ["C-01", "C-02", "C-03", "C-04a", "C-04b"],
       runtime: "passed", packed: "owned-by-conformance-pack", source: "incomplete",

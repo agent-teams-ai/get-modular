@@ -77,6 +77,29 @@ test("C-01: the actual session module forwards the runner's opaque return value"
   ]);
 });
 
+test("C-01: failed terminal recording retains the original runner failure and native journal error", async () => {
+  await using journal = await createFileJournal();
+  const runnerCause = Object.freeze(Object.assign(new Error("Requested runner failure."), { code: "fixture.runner.failed" }));
+  await using subject = await isolate(sessionModule, { dependencies: {
+    identity: { read: () => "left" }, journal: journal.port,
+    runner: { run: async () => { throw runnerCause; } },
+  } });
+  await journal.close();
+  await assert.rejects(subject.capabilities["fixture/session/session"].run({
+    id: "terminal-failed", payload: "hello", signal: new AbortController().signal,
+  }), (error: unknown) => {
+    assert.ok(error instanceof AggregateError);
+    assert.equal(error.cause, runnerCause);
+    assert.equal(error.errors.length, 2);
+    assert.equal(error.errors[0], runnerCause);
+    assert.equal(error.errors[1].code, "EBADF");
+    assert.ok("code" in error);
+    assert.equal(error.code, "fixture.terminal.failed");
+    return true;
+  });
+  await assert.rejects(journal.read(), { code: "EBADF" });
+});
+
 test("C-01/C-02: one owner contract suite qualifies the typed fake and isolated A/B, including physical release", async () => {
   for (const tag of ["fake", "A", "B"] as const) {
     let journal: FileJournal | undefined;
@@ -235,7 +258,7 @@ test("the complete A smoke closes all five attempts, including failure and abort
   let cleanupComplete = false;
   try {
     const steps = await smoke({ api, compose: composeSemantic, inputs: makeInputs("smoke", journal) });
-    cleanupComplete = steps.length === 5 && steps.every(step => step.report.complete);
+    cleanupComplete = steps.every(step => step.report.complete);
     assert.deepEqual(steps.map(step => ({ inject: step.inject, at: step.at, outcome: step.outcome })), [
       { inject: "none", at: undefined, outcome: "succeeded" },
       { inject: "fail", at: "fixture/runner/runner-a/default", outcome: "failed" },
@@ -252,6 +275,14 @@ test("the complete A smoke closes all five attempts, including failure and abort
     assert.equal(records.filter(record => record.kind === "resource-released").length, 5);
     await journal.probe();
   } catch (cause) {
+    if (typeof cause === "object" && cause !== null && "code" in cause && "details" in cause &&
+      (cause.code === "conformance.smoke.failed" || cause.code === "conformance.ports.prototype-member")) {
+      const details = cause.details;
+      if (typeof details === "object" && details !== null && "steps" in details && Array.isArray(details.steps)) {
+        cleanupComplete = details.steps.every(step => typeof step === "object" && step !== null &&
+          "report" in step && typeof step.report === "object" && step.report !== null && step.report.complete === true);
+      }
+    }
     if (cleanupComplete) throw cause;
     const failure = Object.assign(new Error("Smoke cleanup is incomplete or unknown; its borrowed journal is retained.", { cause }), {
       code: "fixture.smoke.close-incomplete",
