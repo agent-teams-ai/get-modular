@@ -38,6 +38,26 @@ pass. The added sequence commits after publication is queued and before its call
 revision check at actual delivery, and both mutation suites reject that defect again. All original assertions and
 mutation entries remain in place.
 
+### Follow-up review of pull request #183
+
+Cubic found two gaps in the test evidence at `8a00836a1055ef4742585e0c59af698972cac498`:
+
+- Probes 2 and 11, and their R1 and cooperative R6 equivalents, asserted that nothing was published immediately
+  after `close()`. Closing drains the loader, while its callback has a later delivery task. These probes now await
+  `delivered()` before checking publication, retaining every original assertion. With `publish-stale` enabled, both
+  pairs previously passed: [stub before](close-oracle-before-runtime.txt),
+  [resources before](close-oracle-before-resources.txt). Both pairs now reject the forbidden publication:
+  [stub after](close-oracle-after-runtime.txt), [resources after](close-oracle-after-resources.txt). Those after logs
+  intentionally contain two failed assertions each; the same probes pass with the correct engine.
+- Probe 17 and R7 now assert `pendingWork([store]).flushes === 0` before releasing the loader and `=== 1` after its
+  continuation. This proves that the old result is queued before the next commit. The `compare-last-offered`
+  mutation still fails on the stale-result assertions, after both queue-state assertions have passed.
+
+This follow-up changes the probes and clarifies documentation and comments; executable engine, clock and type
+behavior is unchanged. Patches to the shared `performance.now` method exposed by `node:perf_hooks` require importing
+the package first. Capturing that builtin does not bypass a method patch installed before import; the clock
+guarantee has not been expanded.
+
 The [toolchain log](toolchain.txt) records Node **26.11.0**, TypeScript **7.0.2** and **5.8.3**, resources source
 `ca879f773fbbf8977bba8a348cc5a34660603067`, and Assembly/resources source for the type probe
 `bcd4c9ad0fe47e58dccdfa172f1cb58e6a501ac3`. Dependency restoration used pnpm **11.20.0** and the existing locked
@@ -53,7 +73,8 @@ scratch directory. Then run:
 bash tools/run-all.sh
 ```
 
-The retained before logs use the final regression fixtures with three source files restored from the baseline.
+The before logs for the four original findings use the final regression fixtures with three source files restored
+from the baseline.
 To repeat them, prepare another restored scratch copy with the same dependencies, set `repo` to the repository
 clone, and run the following there. Each of the last four commands is expected to exit with code 1:
 
@@ -73,9 +94,19 @@ node tools/tsc-both.mjs --expect b-snapshot probes/p9-traps.b.ts
 On the corrected sources, the same commands pass. Run `node runtime-b/review-regressions.test.ts` without the
 filter to include all nineteen callback, currentness, cancellation and testing-wait cases.
 
+The follow-up mutation logs use these focused commands. With the probes from `8a00836`, each command exits with
+code 0 despite the mutation; with the strengthened probes, each exits with code 1:
+
+```sh
+OBSERVATION_STUB_MUTATION=publish-stale VARIANT=b-snapshot node --expose-gc \
+  --test-name-pattern='^(2|11)\.' runtime/probes.test.ts
+OBSERVATION_STUB_MUTATION=publish-stale node --expose-gc \
+  --test-name-pattern='^R1\.|subscriber scope closes, loader honors abort' runtime-b/probes.test.ts
+```
+
 ## Limits
 
-The machine-specific baseline directory prefix in before logs is replaced with `<restored-archive>/`, and trailing
+Machine-specific restored-directory prefixes in the focused logs are replaced with `<restored-archive>/`, and trailing
 spaces on blank lines are removed. All nonblank assertion output, line numbers and observed timings are unchanged.
 The complete run used Node 26.11.0; it does not establish portable timing bounds or a fresh Bun result. The non-Node probe
 simulates missing Node builtins and verifies synchronous detection, rather than testing a browser distribution.

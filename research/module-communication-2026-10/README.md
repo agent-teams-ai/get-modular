@@ -45,8 +45,9 @@ probes, a runtime prototype, writer agents and adversarial reviews.
 ## Status
 
 - Research and design evidence only; nothing is implemented.
-- The rewritten observation design is in ADR-0034 (pull request #154). The implementation brief here replaces the
-  earlier hub-design execution briefs of pull request #153. Package admission still requires the governed ADR.
+- The rewritten observation design is proposed in ADR-0034, pending in [pull request #154](https://github.com/agent-teams-ai/get-modular/pull/154).
+  The implementation brief here replaces the earlier hub-design execution briefs of pull request #153. Package
+  admission still requires the governed ADR.
 - [OD-007](../../docs/open-decisions/OD-007-module-change-observation-package.md) stays the governed open decision
   until then. This directory is evidence, not authority.
 - The earlier observation research is in [observation-hooks-2026-10](../observation-hooks-2026-10/README.md).

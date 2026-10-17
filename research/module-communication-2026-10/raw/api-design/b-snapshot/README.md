@@ -35,7 +35,8 @@ import type { ModuleContext, Resources } from "@get-modular/resources";
 `ModuleContext` is `{ signal, resources }`, which Assembly passes to your factory: `resources` is your module's scope,
 and everything registered there is released when the module closes; `signal` aborts if the run that constructs the
 module is cancelled. If your factory does not need the context, name the parameter `_context`. Call `watch` and `load`
-in the module's composition file: domain and application code never see `Resources`.
+in the module's composition file: domain and application code never see `Resources`. The `openTicker` helper in
+the recipes below is local to that same composition file.
 
 A module that follows a value:
 
@@ -302,9 +303,11 @@ their running and queued loads) and `asyncDetection` (true where asynchronous ec
 asserts it). The waits always have a deadline: `options.timeoutMs`, 5000 ms of real time by default (`Infinity` only
 when passed); `options.signal`, for example `t.signal`, ends a wait earlier but never switches the deadline off.
 Both give `observation.testing.timeout`. In Node the package captures `setImmediate` from `node:timers` and
-`performance.now` from `node:perf_hooks` through `process.getBuiltinModule`, so fake global timers and clocks,
-even installed before the package loads, stall neither deliveries nor the deadline. A mock that also replaces the
-builtins, including node:test `mock.timers` for `node:timers`, must be enabled after importing the package.
+`performance.now` from `node:perf_hooks` through `process.getBuiltinModule`. With those builtins unmodified,
+replacing the global timers or `globalThis.performance` before or after import stalls neither deliveries nor the
+deadline. Patching `performance.now` on Node's shared performance object also changes the builtin clock: install
+that mock after import. The same import order applies to mocks of other builtins, including node:test
+`mock.timers` for `node:timers`.
 Without the builtins, the available global scheduler and clock are captured at import; that fallback cannot make
 a previously faked clock or scheduler real. Queued `onResult` and `onError` deliveries count toward `delivered()`;
 `settled()` also waits for running and queued loads. Import this entry point only from test files.

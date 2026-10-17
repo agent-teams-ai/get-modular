@@ -310,15 +310,17 @@ ordering guarantee beyond "a later task".
 ------------------------------------------------------
 @get-modular/observation/testing: liveSubscriptions(facet, resources?), delivered(options?), settled(options?),
 asyncDetection. Options: { stores?, signal?, timeoutMs? }.
-Deadline always on (M4): timeoutMs defaults to 5000 ms of real time, Infinity only when passed; a signal (for example
+Deadline configured by default (M4): timeoutMs defaults to 5000 ms of real time, Infinity only when passed; a signal (for example
 node:test t.signal) ends a wait earlier and never switches the deadline off. Both give observation.testing.timeout.
 The reviewer measured that a never-aborting t.signal and a mocked setImmediate each made the old wait hang forever.
 Captured timers (M4): in Node the package captures setImmediate from node:timers and performance.now from
-node:perf_hooks through process.getBuiltinModule, for deliveries and for the waits. Fake global clocks and timers
-installed before or after import stall neither. MEASURED, runtime-b R14: a never-aborting signal with
+node:perf_hooks through process.getBuiltinModule, for deliveries and for the waits. With those builtins unmodified,
+replacement global timers or a replacement globalThis.performance object installed before or after import stall
+neither. MEASURED, runtime-b R14: a never-aborting signal with
 timeoutMs 200 gives the code; with node:test mock.timers on setImmediate, setTimeout and Date, a delivery still runs and
-settled() still reaches its deadline. A mock that also changes the builtins, including node:test mock.timers for
-node:timers, must be installed after import. Without the builtins the package captures the available globals;
+settled() still reaches its deadline. Patching performance.now on Node's shared performance object also changes
+the builtin clock, so that mock must be installed after import. The same import order applies to other builtin
+mocks, including node:test mock.timers for node:timers. Without the builtins the package captures the available globals;
 that fallback cannot make previously faked globals real.
 Post-archive correction (2026-10-17): the original /testing captured an already-faked global performance.now and never
 expired its deadline. env-probe fake-clock-before freezes global performance.now and Date.now before import: a blocked

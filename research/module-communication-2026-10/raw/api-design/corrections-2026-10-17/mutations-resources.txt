@@ -4,7 +4,7 @@ caught      unbounded-dirty  by R3
 caught      queue-loads  by R10,R3
 caught      late-detach  by R1,R10,R2,R5
 caught      no-name-check  by R5
-caught      publish-stale  by R3,R6,R7
+caught      publish-stale  by R1,R3,R6,R7
 caught      compare-last-offered  by R10,R7
 caught      no-loading-signal  by R7
 caught      no-cascade-guard  by R9

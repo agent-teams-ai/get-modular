@@ -4,7 +4,7 @@ caught      unbounded-dirty  by probes: 5
 caught      queue-loads  by probes: 24,6
 caught      late-detach  by probes: 2,20,24,3,8,9
 caught      no-name-check  by probes: 8
-caught      publish-stale  by probes: 12,14,17,24,6
+caught      publish-stale  by probes: 11,12,14,17,2,24,6
 caught      compare-last-offered  by probes: 17,24
 caught      no-loading-signal  by probes: 17,24
 caught      no-cascade-guard  by probes: 19,23

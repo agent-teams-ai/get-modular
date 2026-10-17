@@ -7,8 +7,9 @@ which describe the earlier hub design.
 
 ## Sources of truth
 
-1. ADR-0034, "Admit the module change observation package". It holds the normative decision, the admission
-   evidence and the known items.
+1. Proposed ADR-0034, "Admit the module change observation package", pending in
+   [pull request #154](https://github.com/agent-teams-ai/get-modular/pull/154). It holds the proposed decision, the
+   admission evidence and the known items.
 2. `raw/api-design/b-snapshot/`:
    - `api.d.ts.txt` and `testing.d.ts.txt` are the exact public types;
    - `README.md` is the package README to start from;
@@ -59,7 +60,8 @@ prototype and selected B types include these cases; retain them when implementin
 - Echo and cascade detection through nested microtasks started by `onResult` and `onError`, with result freshness
   checked when the callback is delivered, and no false echo from work after that delivery task. Queued callbacks
   count as pending deliveries; cancelling them after the loader settled must not create a still-running load debt.
-- A real testing deadline when fake global timers and the global clock are installed before import.
+- A real testing deadline when the global clocks are frozen before import. The separate pre-import scheduler
+  probe checks delivery with a fake global `setImmediate`; the combined timer and clock mock runs after import.
 - Rejection of a named property combined with an infinite template index signature, on both supported compilers.
 - Synchronous echo detection at the start of a loader when `AsyncLocalStorage` is unavailable.
 
