@@ -1,4 +1,4 @@
-import { Node, SyntaxKind } from "ts-morph";
+import { Node, SyntaxKind, ts } from "ts-morph";
 
 export const ASSEMBLY = "@get-modular/assembly";
 export const RESOURCES = "@get-modular/resources";
@@ -503,6 +503,20 @@ export function inspectPrepare(file) {
   return sites.sort((a, b) => a.node.getStart() - b.node.getStart());
 }
 
+/** Every comment inside the call, found through the syntax tree so that strings and templates cannot hide or fake one. */
+function callComments(file, call) {
+  const text = file.getFullText();
+  const source = file.compilerNode;
+  const found = new Map();
+  const visit = (node) => {
+    for (const range of ts.getLeadingCommentRanges(text, node.pos) ?? []) found.set(range.pos, range);
+    for (const range of ts.getTrailingCommentRanges(text, node.end) ?? []) found.set(range.pos, range);
+    for (const child of node.getChildren(source)) visit(child);
+  };
+  visit(call.compilerNode);
+  return [...found.values()].filter((range) => range.pos >= call.getStart() && range.end <= call.getEnd());
+}
+
 function isolateTarget(file, expression) {
   const qualified = receiver(file, expression);
   if (qualified.ok) return qualified;
@@ -535,9 +549,23 @@ function isolateInspection(file, call) {
   if (scoped.collision) return { ...site, status: "report", message: `${line(call)}: isolate stays; rename the local binding that collides with scoped` };
   const rest = options.getProperties().filter((property) => property !== declaration && property !== factory);
   const restText = rest.length === 0 ? "" : ` ${rest.map((property) => property.getText()).join(", ")} `;
+  // The rewrite rebuilds the call, so only comments between the two arguments stay (in front of the options).
+  // A comment anywhere else would be lost silently: leave the call to a hand edit.
+  const betweenStart = args[0].getEnd();
+  const betweenEnd = options.getStart();
+  const comments = callComments(file, call);
+  const keptComments = comments.filter((range) => range.pos >= betweenStart && range.end <= betweenEnd);
+  if (keptComments.length < comments.length) {
+    return { ...site, status: "report", message: `${line(call)}: isolate stays; move the comments out of the call or rewrite it by hand` };
+  }
+  const between = file.getFullText().slice(betweenStart, betweenEnd);
+  const kept = keptComments.length > 0;
+  const separator = kept ? between : ", ";
+  const directive = /@ts-(?:expect-error|ignore)/u.exec(between)?.[0];
+  const note = kept && directive ? `${line(call)}: check the placement of ${directive} after the isolate rewrite` : undefined;
   return {
-    ...site, status: "rewrite",
-    replacement: `${importedIsolate.local}(${implement.expression}${generic(target.typeArguments)}()(${declarationValue.getText()}, ${factoryValue.getText()}, ${scoped.expression}), {${restText}})`,
+    ...site, status: "rewrite", note,
+    replacement: `${importedIsolate.local}(${implement.expression}${generic(target.typeArguments)}()(${declarationValue.getText()}, ${factoryValue.getText()}, ${scoped.expression})${separator}{${restText}})`,
     imports: [["implement", ASSEMBLY], ["scoped", RESOURCES]],
   };
 }
@@ -691,6 +719,8 @@ function applyInspections(file, sites, manual) {
   for (const site of ordered) {
     if (site.status === "report") {
       manual(site.message);
+    } else if (site.note) {
+      manual(site.note);
     }
   }
   for (const site of ordered.slice().reverse()) {
