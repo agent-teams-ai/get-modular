@@ -326,6 +326,15 @@ experiment does not wait for an unrelated whole-repository migration.
 
 ## P5 — Measure one real growth step at a time
 
+**Observed research status (2026-10-17).** The corrected inherited-map subject
+passed at 8 and 100 features. Its 500-feature cold TypeScript compilation timed
+out after 180.047 seconds at the unchanged 180-second cap; the corrected
+1000-feature subject was neither created nor run. Earlier shallow-map timings
+do not qualify this subject. The next step is a separate bounded investigation
+by the compiler/package owner, preserving accepted maps and public type
+semantics. These are selected spike results, not completion of P5; see the
+[retained research summary in PR #184](https://github.com/agent-teams-ai/get-modular/pull/184).
+
 **Prerequisites.** P1 helper contract and G-01; P4 for a complete structural claim.
 **Allowed paths.** `consumer-fixtures/growth/`, plus one small case in the existing
 assembly fixture test. Generated source/output stays in temporary directories.
