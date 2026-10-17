@@ -187,8 +187,9 @@ is one of the two below, and generation is a 32-character lowercase hexadecimal
 provenance value. Reject unknown/missing fields and out-of-bound values on both
 admission and recovery. Encoded-byte bounds include quotes and escaping. The
 fixed result catalog must fit before accepting work; never truncate a result.
-The maximal full record is 1596 bytes, and envelope/commas for 32 records add at
-most 132 bytes. Verify that upper-bound vector once, including escaped strings;
+The maximal full record is 1596 bytes with all four boolean fields set to
+`false` (five bytes each, compared with four for `true`). Envelope/commas for
+32 records add at most 132 bytes. Verify that upper-bound vector once, including escaped strings;
 it is not a new runtime quota mechanism. Keep diagnostics and histories outside
 canonical state. Persisted claim/generation values grant no live authority.
 
