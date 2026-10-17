@@ -2,10 +2,16 @@
 import type * as Api from "../b-snapshot/testing.js";
 import { asyncCascadeDetection, liveSubscriptions as liveIn, ObservationError, pendingWork, scheduleTask } from "./core.ts";
 
-// The engine's task scheduler (node:timers where available) and a clock captured at module load: fake timers cannot
-// stall the waits or switch the deadline off.
-const realNow: () => number = typeof globalThis.performance?.now === "function"
-  ? globalThis.performance.now.bind(globalThis.performance) : Date.now;
+// With unmodified Node builtins, replacing globalThis.performance before import must not disable the deadline.
+// Patching now on Node's shared performance object also changes the builtin: install such mocks after import.
+// Without the builtin API, the captured global clock may already be fake; that fallback cannot guarantee real time.
+const realNow: () => number = (() => {
+  const runtime = (globalThis as { readonly process?: { readonly getBuiltinModule?: (id: string) => unknown } }).process;
+  const hooks = typeof runtime?.getBuiltinModule === "function"
+    ? runtime.getBuiltinModule("node:perf_hooks") as { readonly performance?: { readonly now?: () => number } } | undefined : undefined;
+  const clock = typeof hooks?.performance?.now === "function" ? hooks.performance : globalThis.performance;
+  return typeof clock?.now === "function" ? clock.now.bind(clock) : Date.now;
+})();
 const nextTask = (): Promise<void> => new Promise((resolve) => { scheduleTask(resolve); });
 const DEFAULT_TIMEOUT_MS = 5_000;
 
@@ -18,8 +24,9 @@ export function liveSubscriptions(store: object, resources?: object): number {
   return liveIn(store, resources);
 }
 /**
- * Waits task by task until the condition holds at a task boundary. The deadline is always on (timeoutMs, default 5 s,
- * Infinity only when passed explicitly); a signal ends the wait earlier, it never switches the deadline off.
+ * Waits task by task until the condition holds at a task boundary. Subject to the clock requirements above,
+ * timeoutMs defaults to 5 s (Infinity only when passed explicitly). A signal ends the wait earlier;
+ * it never switches the deadline off.
  */
 async function waitUntil(quiet: () => boolean, options: WaitOptions, what: string): Promise<void> {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;

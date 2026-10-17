@@ -1,4 +1,4 @@
-<!-- cspell:ignore Akka coalescable cpuhp Lumino Modulith recalibrated rethrowing Ruecker -->
+<!-- cspell:ignore Akka coalescable cpuhp Lumino microtask Modulith recalibrated rethrowing Ruecker -->
 
 # Findings and decisions: module communication and observation (2026-10-15 to 2026-10-17)
 
@@ -8,7 +8,7 @@ ADR-0034 is the normative decision; this file is the record behind it. Sections:
 1. Owner decisions, in order
 2. The module communication rules
 3. The observation API and why it has this shape
-4. What the four adversarial reviews found and how each finding was closed
+4. What the adversarial reviews and the independent PR review found, and their corrections
 5. Writer test results, round by round
 6. Open items, proposals for other tracks, and decisions still pending
 7. Lessons about the process
@@ -145,7 +145,8 @@ Exact types: `raw/api-design/b-snapshot/api.d.ts.txt`; the reason for every name
   its delivery task, a loader's with its run. The unbounded first version crashed healthy processes through timers
   and servers started in a handler.
 - `./testing` gives `liveSubscriptions`, `delivered`, `settled` and `asyncDetection`. Waits have a deadline that is on
-  by default; timers are captured at load so fake timers do not hang tests. It is a second export, admitted by
+  by default; the built-in task scheduler and monotonic clock are captured at load where available, so fake global
+  timers do not hang tests. It is a second export, admitted by
   ADR-0034 as the successor decision that ADR-0012 requires.
 - Supported environments: Node 24 and 26 fully. Bun 1.3 behaves the same except that an unhandled rejection does not
   end the process. Elsewhere only synchronous detection, checked with a simulated runtime, not in a browser.
@@ -174,6 +175,29 @@ Exact types: `raw/api-design/b-snapshot/api.d.ts.txt`; the reason for every name
 - Two reviews of the ADR text then aligned it with the API and with the repository rules (ADR-0012 subpath, leaf
   manifest without `devDependencies`, no shipped oxlint preset, rule 11 against the lint snippet, call order not part
   of the contract, the throwing `reportError` invariant).
+
+### Independent review of pull request #182 (2026-10-17)
+
+The original 43-step suite passed again, but four new probes exposed missing coverage:
+
+- A synchronous `onResult` or `onError` could queue a microtask that wrote back to its observed key after the
+  loader's context had closed. This bypassed echo detection and reset cascade depth. Result and error callbacks
+  now have their own delivery task and microtask checkpoint; the result is checked for freshness at publication.
+  Queued callbacks remain visible to testing waits without keeping a settled loader in drain. Re-review caught
+  and corrected that distinction: cancelling a queued callback must not create a false still-running load debt.
+- A fake global `performance.now` installed before import could freeze the testing deadline. The testing entry
+  captures the built-in `node:perf_hooks` clock where available. The fallback outside that environment still
+  captures the global clock and retains the documented limitation for mocks installed before import.
+- `FixedKeys` rejected a pure index signature but admitted an infinite template index signature alongside a named
+  property. The check now examines each key constituent, with mixed-signature negative fixtures and finite-key
+  positive fixtures on TypeScript 5.8.3 and 7.0.2.
+- Without `AsyncLocalStorage`, the loader ran after an internal await outside the synchronous context, so even a
+  write before its first user await escaped the echo guard. Entering the context at the direct loader call fixes
+  this case; the environment probe now checks both synchronous watch and synchronous loader echoes.
+
+The [dated correction evidence](raw/api-design/corrections-2026-10-17/README.md) records the updated regressions and
+their verification. The original measurements and writer histories stay unchanged. These are corrections to the
+research prototype and selected public types; the real package still requires its admission tests.
 
 ## 5. Writer tests, round by round
 
