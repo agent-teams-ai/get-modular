@@ -231,21 +231,35 @@ test("C-04a: descriptor revision mismatch is synchronous and precedes registrati
 });
 
 test("the complete A smoke closes all five attempts, including failure and abort after each factory", async () => {
-  await using journal = await createFileJournal();
-  const steps = await smoke({ api, compose: composeSemantic, inputs: makeInputs("smoke", journal) });
-  assert.deepEqual(steps.map(step => ({ inject: step.inject, at: step.at, outcome: step.outcome })), [
-    { inject: "none", at: undefined, outcome: "succeeded" },
-    { inject: "fail", at: "fixture/runner/runner-a/default", outcome: "failed" },
-    { inject: "abort", at: "fixture/runner/runner-a/default", outcome: "cancelled" },
-    { inject: "fail", at: "fixture/session/session/default", outcome: "failed" },
-    { inject: "abort", at: "fixture/session/session/default", outcome: "cancelled" },
-  ]);
-  for (const step of steps) {
-    assert.deepEqual(step.report, complete);
-    assert.equal(step.problem, undefined);
+  const journal = await createFileJournal();
+  let cleanupComplete = false;
+  try {
+    const steps = await smoke({ api, compose: composeSemantic, inputs: makeInputs("smoke", journal) });
+    cleanupComplete = steps.length === 5 && steps.every(step => step.report.complete);
+    assert.deepEqual(steps.map(step => ({ inject: step.inject, at: step.at, outcome: step.outcome })), [
+      { inject: "none", at: undefined, outcome: "succeeded" },
+      { inject: "fail", at: "fixture/runner/runner-a/default", outcome: "failed" },
+      { inject: "abort", at: "fixture/runner/runner-a/default", outcome: "cancelled" },
+      { inject: "fail", at: "fixture/session/session/default", outcome: "failed" },
+      { inject: "abort", at: "fixture/session/session/default", outcome: "cancelled" },
+    ]);
+    for (const step of steps) {
+      assert.deepEqual(step.report, complete);
+      assert.equal(step.problem, undefined);
+    }
+    const records = await journal.read();
+    assert.equal(records.filter(record => record.kind === "resource-acquired").length, 5);
+    assert.equal(records.filter(record => record.kind === "resource-released").length, 5);
+    await journal.probe();
+  } catch (cause) {
+    if (cleanupComplete) throw cause;
+    const failure = Object.assign(new Error("Smoke cleanup is incomplete or unknown; its borrowed journal is retained.", { cause }), {
+      code: "fixture.smoke.close-incomplete",
+    });
+    // The public smoke error keeps its steps; no retry authority is exposed by smoke.
+    Object.defineProperty(failure, "retained", { value: { journal } });
+    throw failure;
+  } finally {
+    if (cleanupComplete) await journal[Symbol.asyncDispose]();
   }
-  const records = await journal.read();
-  assert.equal(records.filter(record => record.kind === "resource-acquired").length, 5);
-  assert.equal(records.filter(record => record.kind === "resource-released").length, 5);
-  await journal.probe();
 });
