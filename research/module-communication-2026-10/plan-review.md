@@ -187,9 +187,41 @@ assignments now reject with TS2322. The archive is unchanged; this candidate is 
 
 | Round | Input and reviewer emphasis | State |
 | --- | --- | --- |
-| 1 | Complete self-reviewed plan; authority/ownership, types/AI authoring, runtime causality/lifetime | pending |
+| 1 | `1bc5912e15916e2a4b2e4ee4e1d9dcf03d58c1a8`; `plan_r1_authority`, `plan_r1_types`, `plan_r1_runtime`, each Astra xhigh | Three complete independent reports; all material findings incorporated below. |
 | 2 | Whole revised plan plus round-1 findings/dispositions; independent integration review | pending |
 | 3 | Whole revised plan plus both earlier rounds; final independent review | pending |
 
-Each round's material findings, fixes and declined optional suggestions will be recorded here before the next
-round starts. There is no claim of nine completed reviews until all nine actual reports exist.
+### Round 1: findings and dispositions
+
+All three reviewers read the full context and whole plan, accepted ADR and corrected #183 sources. They each
+returned **revise**, while retaining the selected architecture. Root applied their findings before round 2:
+
+| Reviewer finding | Disposition in the revised plan |
+| --- | --- |
+| Authority F1; runtime F1: first `load` resets the set-then-subscribe chain too | §7.2/7.3 and R22/T118 now seed initial loads from a live registration context plus the current selected-key commits from the same plain live token. Input snapshot revision remains ignored; admission itself adds no depth. Outside a live context an initial load starts at zero. |
+| Runtime F1: vague watch window cannot distinguish deep-then-shallow missed changes and a read between them | Adopt 65 latest-revision slots per key for the store lifetime, queried after the starting revision. Remove invented flush expiration. R22 distinguishes old-snapshot catch-up, fresh independent state and ordinary ended-context depth-zero commits. No journal or new scheduler mechanism. |
+| Types F1: dynamic `read` falsely requires every possible key | §8.1 adds private required-key calculation for both read members. Union-valued keys, tuple alternatives, broad keys and rest portions remain honest; fixed keys, duplicates and fixed prefixes remain precise. R21/T117 owns the controls. |
+| Types F2: future helper erases the keys of union snapshots | Distribute over `S` before deriving each branch's key set. Future values still use declared `V`; ordinary `in` narrowing remains valid. One positive control, no new suite. |
+| Authority F2; types F3; runtime consistency note: T25 requires unsafe positives that §8.1 rejects | One explicit §8.1 disposition names the ADR's affirmative residual and the two archived p8 assignments. T25 now requires the full-facet rule, exact rejecting live expectations and same-record positives. Preserve accepted/archive bytes; record the enforcement correction and use the ADR owner route for normative text reconciliation. Do not claim the old positive is still proved. |
+| Authority F3: compiler checkpoint omits active Core/parser/support owners | §2.3 lists active leaf scripts, shared examples, current packed/parser helpers and owned copies, support docs, ADR-0030 and ADR-0034. Historical filenames do not exempt an active gate. Preserve old evidence without launching a new below-7 compiler. The explicit owner instruction already authorizes the floor. |
+| Authority F4: wrong package named for normalized archive comparison | Phase 3c now names conformance peer-key ordering. Exact retained TEST bytes stay the publication subject; an unexplained archive difference stops the release. |
+| Runtime F2: `onLoading` close is undone by the rest of `offer` | §7.3 rechecks canonical open/attached state immediately after the callback, before acquiring work. R23/T119 requires pending zero while a genuinely active held run remains drain-owned. |
+
+The authority review's optional M1/M2/R wording clarification was adopted: each level belongs to PR 1, PR 2 and
+release respectively. Other useful simplifications are retained in place: one compiler checkpoint, existing test
+files, one bounded consumer, no new type/runtime framework or whole-application test per primitive fault.
+
+**Focused evidence.** Authority reproduced the corrected #183 load defect with real resources: pre-attached
+positive-result chain 65 callbacks/one cascade, late chain 71/no report. Runtime's separate bounded candidate made
+the `onLoading` chain and all four saved/fresh × pre-attached/late `onResult` controls stop at 65 with one report and
+unchanged tail. Its post-callback guard changed closed-lane pending from 1 to 0 while the true active count stayed 1
+until that run settled. Its small metadata checks distinguish old/fresh revisions and retain 65 slots after repeated
+writes. These are isolated Node 26.11.1 candidate results, not an implemented package or all-platform evidence.
+
+Types reproduced absent dynamic-key values and a loader TypeError against corrected runtime. The repaired private
+read/future/writer declaration passed the four archived type groups plus focused controls on TypeScript 7.0.2 in
+NodeNext and Bundler; root independently repeated both compiler runs successfully. No additional archived
+expectation changed beyond the two p8 cases already named. Emitted declarations, Assembly and packed qualification
+remain future gates.
+
+Rounds 2 and 3 remain pending until their actual reports and dispositions are recorded.

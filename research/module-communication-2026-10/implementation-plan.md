@@ -77,8 +77,8 @@ Their useful findings are assigned to existing implementation files and tests be
 - Keep `read` followed by `watch` or `load`, scoped subscriptions, area facets, one writer and explicit command ports.
   A snapshot carries the selected keys and starting revision, so callers do not duplicate that information.
 - Repair the six reproduced fault groups in sections 7 to 9 before admitting the package: invalid callback returns,
-  async-context retention, array prototype escape, temporal/structural type holes, late-watch cascade depth and
-  obsolete loader startup. These are concrete counterexamples, not arguments for replacing the architecture.
+  async-context retention, array prototype escape, read/future/structural type holes, late watch/load cascade depth
+  and loader startup/close boundaries. These are concrete counterexamples, not arguments for replacing the architecture.
 - Add an author recipe distinguishing state, commands and events, one atomic aggregate for correlated state,
   explicit ownership of asynchronous completion, and diagnostic meanings. Keep the runtime surface unchanged.
 - Borrow specific lessons from the seven libraries in section 19. Adopt no library dependency, ambient reactive
@@ -191,26 +191,32 @@ The supported test set is the exact pinned minimum and exact pinned current comp
 today it has one compiler and two resolver cases, NodeNext and Bundler, with `skipLibCheck: false`. Record the
 resolved manifest version. Do not use a floating `latest`, a nightly, `npx` or `dlx` to choose a compiler.
 
-The repository has not completed that floor migration at `4773f6e`. `pnpm-workspace.yaml` still maps
-`typescript-minimum` to 5.8.3, active resources/conformance script strings invoke it, and
-`architecture/tooling/test-assembly-types.mjs` asserts 5.8.3 and returns four observations. The example driver
-`tests/assembly/consumer-standard-examples.test.mjs` also pins that count. Importing this helper unchanged would
-silently compile the new observation example with a forbidden compiler.
+The repository has not completed that floor migration at `4773f6e`. The following is the concrete active-owner
+inventory, not permission to change immutable evidence or an observation-specific bypass:
+
+| Active owner | Migration subject |
+| --- | --- |
+| Workspace compiler pins and leaf script contracts | `pnpm-workspace.yaml`, `package.json`, `pnpm-lock.yaml`, `architecture/checks/leaf-packages.mjs` and its assertions in `tests/leaf-package-admission.test.mjs` still select or pin the 5.8.3 minimum. |
+| Shared Assembly/example type gate | `architecture/tooling/test-assembly-types.mjs` asserts 5.8.3 and returns four observations; `tests/assembly/consumer-standard-examples.test.mjs` pins that count. Keep this helper and update its callers/counts after deduplication. |
+| Current Core archive and declaration audit | `packages/core/tests/package/packed-root.test.mjs` packs the current package; its `qualification-support/support/m1-packed-consumers.mjs` and `m1-declarations-closure.mjs` still assert a 5.8.3 compiler/parser. Their historical names do not make these active uses immutable replays. Follow existing ownership/copy rules for the related root-owned helper copies. |
+| Current support documentation and authority | Core/Assembly READMEs and `docs/architecture/current-contract.md` describe the old floor/diagnostic cases. ADR-0030's admission-evidence clause and ADR-0034's compiler sentence both name 5.8.3; record their already-authorized compiler-policy successor through the owning route. |
+
+Importing the shared helper unchanged would silently compile the new observation example with a forbidden compiler.
 
 Before Phase 1b, integrate one compiler-owner checkpoint into the implementation base:
 
-1. Align active compiler pins/routes and their existing expectation tests with the approved 7.0.2 floor. The
-   concrete edit inventory starts at `pnpm-workspace.yaml`, `package.json`, `pnpm-lock.yaml`, the Assembly type helper
-   above and its callers/count assertions; search active tooling for the same legacy minimum before editing.
-   Keep the existing helper and manifest resolution, deduplicate equal versions, and adjust actual expected counts.
-   Introduce no observation-specific bypass, compiler-selection framework or second helper.
-2. Align the ADR-0034 admission sentence that still says "today 5.8.3 and 7.0.2" through its owner. If it remains
-   unmerged, coordinate the authorized update with #154; if it has become accepted on main, use the normal
-   successor route. Preserve accepted bytes and frozen qualification archives. This instruction already authorizes
-   the floor increase; it does not require asking the owner to choose that floor again.
-3. Preserve historical 5.8.3 evidence as evidence of its original source, never as a current observation gate.
-   If an existing frozen replay owns a historical toolchain, keep that evidence outside the new observation support
-   claim; do not rewrite its expected outputs or silently execute it as a new 7.0.2 qualification.
+1. Align the active inventory and search its tooling/callers for remaining legacy selections. Migrate current-subject
+   adapters, declaration-parser uses, compiler identities, meaningful diagnostic oracles and owned helper copies
+   together. Keep manifest resolution, deduplicate equal versions, and adjust actual expected counts. Introduce no
+   observation-specific bypass, compiler-selection framework or second helper.
+2. Reconcile every still-binding compiler-evidence clause, including ADR-0030 and ADR-0034, and the current public
+   support text/release note. For the still-unmerged #154 coordinate the authorized update with its owner; accepted
+   records use the normal successor route. Preserve accepted bytes. This instruction already authorizes the floor
+   increase; it does not require asking the owner to choose that floor again.
+3. Preserve frozen historical bytes, logs and metadata as evidence of their original source. This permits retaining
+   old results, **not launching a new compiler below 7.0.2 in this delivery**. An active gate on today's package must
+   migrate even if its filename begins with `m1-`. If a genuinely immutable replay cannot be migrated under its
+   owner route, name its precise pending status; never weaken the full gate or claim a current TS7 pass for it.
 4. Run the current positive/negative consumer type cases on 7.0.2 with both resolutions; then integrate the
    observation soundness cases in section 8.1. A compiler diagnostic change needs inspection, not suppression or a
    changed negative oracle merely to make the run pass.
@@ -454,8 +460,11 @@ fresh pack is a comparison subject, not an untested replacement for the bytes th
 - **Outputs:** the merged release pull request (V13), a record pull request on branch
   `docs/release-archives-observation-0.1.0` with the archives, `SHA256SUMS`, `INTEGRITY` and `release-intent.md` under
   the V11 directory, including the publish commands for the owner (V12).
-- **Commands:** `gh pr checks`; `shasum -a 256 -c SHA256SUMS` on the merged commit's fresh pack (resources may differ
-  only by the normalized content digest, as in the 0.5.0 record).
+- **Commands:** `gh pr checks`; verify the retained TEST archives with `shasum -a 256 -c SHA256SUMS` and their
+  recorded integrity, then compare a fresh post-merge pack with them. The 0.5.0 record's normalized-content exception
+  concerns **conformance's peer-key ordering**, not resources. Use that established comparison only for this known
+  manifest-key variation; an unexplained difference in any archive remains a failure. The retained tested bytes
+  remain the publication subject, never the fresh comparison pack.
 - **Done:** the record pull request is reviewed and merged; the owner has the publish commands.
 - **Stop:** never publish; publication is the owner's step.
 
@@ -613,6 +622,23 @@ store's.
 of its keys. `buckets: Map<key, Set<Registration>>`: `set` looks up only the changed keys (one index lookup each), marks
 their registrations dirty and keeps on each the largest commit depth. A patch that changes nothing by `Object.is`
 commits nothing and returns the current revision. `dirty: Set<Registration>` holds at most one entry per subscription.
+
+For late watch admission, retain `latestRevisionAtDepth[key][0..64]`: the newest effective revision at each admitted
+depth for that key. An effective commit updates one numeric slot per changed key; a rejected/no-op patch updates
+nothing. A snapshot starting at revision `r` seeds the maximum depth whose slot is greater than `r`, over its actual
+selected keys, with zero as the empty maximum. This is at most 65 numeric slots per store key, independent of commit
+count and snapshot age; admission scans at most 65 slots per selected key. Already attached registrations retain
+their existing scalar maximum. No snapshot, user value, callback or per-revision log is retained by this table.
+Keep the table for the store lifetime and clear it on close. Do not invent expiration of an unseen committed depth
+when a flush ends: the ADR's live-window rule determines the depth of a **new commit**, whereas watch catch-up
+delivers the commits since its starting revision. A fresh independent read excludes old commits naturally.
+
+Initial load admission also needs the latest write's provenance for each selected key. Keep one private
+`lastWriteCause[key] = { revision, depth, live }` alongside the revision slots. `live` is only the existing plain
+`{ open }` token, never a context/origin/registration; outside a live context it is absent. Replace this record on an
+effective write and release it on close. Section 7.3 uses it only while its token is the registering call's current
+live token. This is one bounded record per key, not a retained async-resource graph.
+
 `delivery/context.ts` owns one module-scoped linked FIFO of deferred callbacks per installed package copy.
 `later(fn)` appends one task and immediately registers one callback with the captured scheduler, outside the current
 delivery context (`storage.exit` when available). That callback removes exactly one queue node before invoking it,
@@ -658,19 +684,32 @@ another store or package copy is foreign. Limits are positive safe integers (64 
   `resources.signal.addEventListener("abort", detach, { once: true })`; nothing is registered in the scope. `detach` is
   idempotent, unlinks everything and removes the listener, the only link from the subscriber's scope. If the keys'
   revision is already past the snapshot's, mark dirty and schedule (the commit between `read` and `watch`). Preserve
-  the depth of missed changes from the current causal delivery window when seeding that dirty registration; do not
-  unconditionally initialize a late watch at depth zero. Keep only bounded per-key metadata for that pending window,
-  clear it when the window ends, and take the maximum relevant depth when several keys contribute. A new independent
-  registration after that window starts at zero rather than inheriting ancient causal history. Section 9.7's late,
-  mixed-key and independent-registration schedules are the acceptance oracle for the implementation detail; no
-  per-revision journal, global epoch service or new public causal token is introduced. A flush
+  the depth of missed changes with section 7.2's revision-threshold query; do not initialize every late watch at zero.
+  For one key, revision 1 at depth 64 followed by revision 2 at depth 1 yields depth 64 from a revision-0 snapshot,
+  but depth 1 from a snapshot read after revision 1. This remains true after the original flush has ended: an old
+  snapshot deliberately catches up on an unseen commit. A new independent read after revision 2 has no catch-up;
+  a later outside-context commit has depth zero. This distinction preserves both catch-up and the ADR's finite
+  context lifetime without a new expiration policy. A flush
   delivers only when the revision moved past the last delivered one, with a fresh snapshot, in its delivery context.
   Never call back synchronously.
 - Load lane: `resources.child({ name: "load:<name>" })` takes its slot synchronously; its `setup` entry `drain` returns
   `closeAndDrain`, and the cleanup receives `{ escalate }`, detaches and drains (a setup rejection with
-  `resources.scope.closed` is expected, anything else is reported). One active run and one pending slot: `offer` ignores
+  `resources.scope.closed` is expected, anything else is reported). The input snapshot supplies **keys only**, including
+  for causal seeding; its revision never sets an initial-load history threshold. At registration, read
+  `currentContext()`. If absent, seed depth zero. If live, seed the maximum of its depth and the current selected-key
+  `lastWriteCause` depths whose `live` token is identical to that context's token. Do not add one at admission: only
+  a commit increases depth. Subsequent effective commits merge their depth into the attached registration normally.
+  Carry the resulting depth through first `onLoading`, the loader and its separate result/error publication. This
+  covers both saved and fresh input snapshots in a set-next-then-load chain; merely copying the current callback's
+  depth would erase the increment made by `set`. An independently registered initial load outside a live context
+  starts at zero, regardless of old committed state. Section 9.7 pins these distinct watch/load rules.
+
+  One active run and one pending slot: `offer` ignores
   revisions at or below `lastOffered`, records the new one, invokes `onLoading` in the delivery context (the first run
-  included), then starts the run or replaces the pending job and aborts the active `AbortController`. A run awaits one
+  included), **rechecks the lane's canonical open/attached state immediately after the callback**, then starts the run
+  or replaces the pending job and aborts the active `AbortController`. If `onLoading` or its synchronous error reporter
+  closed the scope/source, return before acquiring a run, changing pending counters or aborting again; closure must
+  not be undone by the rest of `offer`. A run awaits one
   microtask so `active` is set before user code. **After that await and immediately before calling user code**, skip
   the run when closed, aborted, no longer the last offered, or its selected-key revision differs from the store's
   current selected-key revision. This applies to the first run and to a pending run promoted after its predecessor
@@ -833,7 +872,7 @@ contracts and meaningful aggregate boundaries. Selectors or per-entity storage w
   triggers. Examples keep compiling with the prelude of `raw/api-design/tools/readme-check.mjs.txt`; add a prelude
   declaration only for a name a new example introduces.
 
-### 8.1 Sound future snapshots and structural writer types
+### 8.1 Sound read/future snapshots and structural writer types
 
 The selected shape stays `watch(snapshot, spec)` / `load(snapshot, spec)`. The correction is that **future values
 come from the facet's declared `V`, not from arbitrary refinements of the particular input snapshot `S`**. With
@@ -841,28 +880,68 @@ come from the facet's declared `V`, not from arbitrary refinements of the partic
 is `"ready"`; the corrected prototype can actually deliver `"loading"`. The same defect reaches `loader`,
 `onLoading`, `onResult`'s snapshot and `onError`'s snapshot. No cast or `any` is needed in the counterexample.
 
-Use a private future-snapshot helper, preserving key optionality for a broad `SnapshotOf<V>` input. Starting
-candidate, exercised in the independent TS 7.0.2 spike; this is a type sketch to qualify, not a published export:
+First correct both owner and facet `read` return types. `K[number]` describes possible keys, not necessarily keys
+present in this call: `read([choose ? "status" : "count"])` reads one key, although the old signature makes both
+values required. A future helper cannot repair that false guarantee after it has entered the starting snapshot.
+Keep guaranteed tuple keys required, merely possible keys optional and other keys inaccessible. Do not ban dynamic
+selection, read additional keys at runtime, or repeat a key list at `watch`/`load`.
+
+Private feasibility sketch, exercised on TypeScript 7.0.2 with both resolutions; these are helpers to qualify in
+emitted declarations, not new public exports:
 
 ```ts
+type ContainsReadKey<K extends readonly unknown[], P> =
+  K extends readonly [infer H, ...infer R]
+    ? [H] extends [P] ? true : ContainsReadKey<R, P>
+    : false;
+type RequiredReadKeys<K extends readonly string[]> = {
+  [P in K[number]]: false extends ContainsReadKey<K, P> ? never : P
+}[K[number]];
+type ReadSnapshot<V, K extends Keys<V>> =
+  Omit<Snapshot<V, K[number]>, "values"> & {
+    readonly values:
+      Frozen<Pick<V, RequiredReadKeys<K> & keyof V>> &
+      Partial<Frozen<Pick<V, Exclude<K[number], RequiredReadKeys<K>>>>>;
+  };
+// Both existing read members:
+// read: <const K extends Keys<V>>(keys: K) => ReadSnapshot<V, K>;
+
 type RequiredValueKeys<X> = {
   [P in keyof X]-?: {} extends Pick<X, P> ? never : P
 }[keyof X];
 type FutureSnapshot<V, S extends { readonly values: object }> =
-  Omit<Snapshot<V, keyof S["values"] & keyof V>, "values"> & {
-    readonly values:
-      Snapshot<V, RequiredValueKeys<S["values"]> & keyof V>["values"] &
-      Partial<Snapshot<V, Exclude<keyof S["values"], RequiredValueKeys<S["values"]>> & keyof V>["values"]>;
-  };
+  S extends unknown
+    ? Omit<Snapshot<V, keyof S["values"] & keyof V>, "values"> & {
+        readonly values:
+          Snapshot<V, RequiredValueKeys<S["values"]> & keyof V>["values"] &
+          Partial<Snapshot<
+            V,
+            Exclude<keyof S["values"], RequiredValueKeys<S["values"]>> & keyof V
+          >["values"]>;
+      }
+    : never;
 // Members of ReadonlyStore<out V>:
 // watch: <S extends SnapshotOf<V>>(snapshot: S, spec: WatchSpec<FutureSnapshot<V, S>>) => undefined;
 // load: <S extends SnapshotOf<V>, T>(snapshot: S, spec: LoadSpec<FutureSnapshot<V, S>, T>) => undefined;
 ```
 
-A naive `Snapshot<V, keyof S["values"] & keyof V>` is insufficient: if `S` is `SnapshotOf<V>`, every possible key
-is optional and may not have been read. Future callbacks must not manufacture guaranteed keys. Keep correct
-required keys precise, optional keys optional and unread keys inaccessible. Keep `T` inferred from the loader's
-actual result, independent of refinements on its starting snapshot. Preserve wider-record-to-narrower-area facet
+`ContainsReadKey` distributes over tuple alternatives. A key is required only when every alternative proves an
+occurrence; a union-valued element or unbounded rest alone proves none. The supported controls are:
+
+| Key selection | Required values | Optional values |
+| --- | --- | --- |
+| `["status"]`, including a duplicate `"status"` | `status` | none |
+| `["status", "count"]` | both | none |
+| `["status" \| "count"]` | none | both |
+| `["status"] \| ["count"]` | none, or an equivalent sound snapshot union | possible alternatives |
+| `["status", ...("status" \| "count")[]]` | `status` | `count` |
+| Broad `Keys<V>`, also supplied as an explicit type argument | only what that key type guarantees | other possible keys |
+
+A naive `Snapshot<V, keyof S["values"] & keyof V>` is insufficient for broad `SnapshotOf<V>`: its possible keys
+may not have been read. Also distribute `FutureSnapshot` over `S` **before** computing each branch's keys.
+For `choose ? facet.read(["status"]) : facet.read(["count"])`, the non-distributive helper erases non-common keys;
+the corrected helper preserves ordinary `in` narrowing while rebuilding every value from declared `V`.
+Keep `T` inferred from the loader's actual result, independent of refinements on its starting snapshot. Preserve wider-record-to-narrower-area facet
 assignment, mixed-key rejection from #183, branding and foreign-snapshot runtime rejection. This private helper
 must survive emitted declarations, both resolvers and the real Assembly contracts, not just a stand-alone alias.
 
@@ -888,8 +967,17 @@ publish or protect against explicit casts. Do not claim variance annotations alo
 Port the complete archived type groups first, then add these cases in `types-structural.ts` / `types-traps.ts` and
 their runtime witnesses in the existing store/load tests. If a formerly passing unsafe case now rejects, preserve
 its old archive and record the exact corrective reason; do not change arbitrary negative gates to fit output.
-The archived watch-only/member-port limitation remains a reason to require full `ReadonlyStore<Slice>` dependency
-contracts. It is not a promise that every unsafe watch-only assignment must continue compiling after this repair.
+**Disposition of the historical watch-only residual (T25).** ADR-0034's Contract describes a port containing only
+`watch`, or the extracted member, as structurally accepted and requires full `ReadonlyStore<Slice>` dependencies.
+The archived p8 lines 29/30 demonstrate wrong-record `Pick<ReadonlyStore<Unrelated>, "watch">` and
+`ReadonlyStore<Unrelated>["watch"]` assignments. These two cases now reject with TS2322 because future values depend
+on the facet's declared `V`. Preserve the archived bytes; mark exactly these two live-fixture expectations as
+deliberate rejecting corrections under T117 and retain same-record positives. The supported full-facet recipe and
+runtime behavior are unchanged. The ADR's affirmative residual observation no longer describes the corrected
+declarations; record that enforcement correction in the implementation port note and reconcile any normative text
+through the ADR owner route, preserving accepted bytes. Do not restore the hole or claim the old positive still
+passes. If an owner instead requires compatibility for that already-disallowed dependency shape, that is the
+specific competing semantic decision under section 1.4, not a new requirement to ask about the TypeScript floor.
 
 README and guide get the same short owner recipe: `State = { state: StateUnion }`, read that one key, narrow each
 fresh value, and publish one complete transition. Include a rejected impossible aggregate and a positive valid
@@ -897,8 +985,8 @@ transition. Do not introduce a ban on all top-level unions or a mandatory state-
 
 ## 9. Test plan
 
-Lane "observation" is the lane of Q2 (three OS, Node 26 and 24). M1, M2 and R: MUST before PR 1, PR 2 or the release
-pull request merges. Package test paths are under `packages/observation/tests/`. Archived probe IDs: P1 to P26 and PB
+Lane "observation" is the lane of Q2 (three OS, Node 26 and 24). M1, M2 and R are required before PR 1, PR 2 and the
+release pull request merge, respectively. Package test paths are under `packages/observation/tests/`. Archived probe IDs: P1 to P26 and PB
 (`runtime/probes.test.ts.txt`), R1 to R15 (`runtime-b/probes.test.ts.txt`), plus R16/R17 from
 `runtime-b/review-regressions.test.ts.txt` in the section 2.2 predecessor. Each ported test title carries its archived
 ID in brackets after its T-IDs.
@@ -1139,7 +1227,7 @@ a temporary directory with `src/features/a/composition/a.module.ts`, `src/featur
 `node node_modules/oxlint/bin/oxlint -c .oxlintrc.json .` and asserts exit code 1 with two `no-restricted-imports`
 errors (module and adapter) and none for the test file.
 
-### 9.7 Corrective cases from the ten-critic study
+### 9.7 Corrective cases from the research and plan reviews
 
 Add these cases to the existing test files; there is no new mandatory suite, benchmark service or full cross-product
 of every bad input with every callback. The earlier research ran on the corrected #183 prototype and real resources.
@@ -1151,15 +1239,27 @@ The schedules below are sufficient to recreate the relevant counterexamples with
 | R18 / T114, callback returns | An offending callback and a healthy sibling observe a commit. Return `null`, an object whose `then` getter throws a sentinel, and an ordinary rejected promise in separate cases. No uncaught failure; invalid return reported once, getter/rejection cause preserved where applicable; sibling and later offender delivery succeed. Keep ordinary throw/scalar controls. Cover all four callbacks with the existing T40 table, placing exotic return cases on the shared invocation path rather than multiplying identical processes. | `subscriptions.test.mjs`, `load.test.mjs`, one `process-probe.mjs` isolation mode through `processes.test.mjs` |
 | R19 / T115, ALS retention | A callback captures a payload and starts a timer with a module-level no-op callback under a separate still-live owner. Close subscriber/source scopes, release their handles and drain delivery tasks, retaining only the timer handle outside the callback. Payload is collectible before that timer is cleared; an explicitly retained control stays live. Keep R13 heartbeat/no-false-echo and active-loader guard cases. A narrowed annotation around an actual Registration must fail this oracle. | Extend `gc-probe.mjs` and its existing process driver; `guards.test.mjs` |
 | R20 / T116, arrays | An Array subclass has a private mutable offset and inherited getter; `move()` changes a read value while revision stays zero in the prototype. Reject it and a custom-prototype array before ownership transfer, including nested initial/patch positions; no getter call and no freezing on rejection. Ordinary arrays, holes, nested records and a repeated frozen child remain positive controls. | `store.test.mjs` |
-| R21 / T117, future types and writer widening | Narrow an origin-valid snapshot to `status: "ready"` with a normal predicate, then watch/load while the owner commits `"loading"`. Every future callback must be typed with the full declared value union; runtime shows the new value. A broad `SnapshotOf` keeps possibly-unread values optional; a narrow read does not gain other keys. Reject widened writer aliases/spread/member extraction; same writer and wider facet-to-area assignment stay valid. | `types-structural.ts`, `types-traps.ts`, `store.test.mjs`, `load.test.mjs`; packed declarations reuse the same fixtures |
-| R22 / T118, late-watch depth | In 71 stores, each callback sets the next store and immediately attaches its watch using a saved snapshot. The prototype makes 71 calls with no error; the pre-attached control makes 65 calls then rejects depth 65. Both forms must reject the same first forbidden commit, leave its target unchanged and report once. Also cover several missed keys with different depths, read-after-a-deeper-commit followed by a shallower missed commit, and a new independent registration after the original window has ended (no ancient inherited depth). | `guards.test.mjs`, using existing store/scope helpers and barriers |
-| R23 / T119, stale startup | Hold run 0; offer revision 1 as pending and observe run 0 aborted. In one synchronous turn commit revision 2 and settle run 0 before the revision-2 flush. The old prototype calls loaders for 0, 1 and 2; required calls are 0 and 2, with only result 2 published. Separately invalidate the first run before its startup await resumes. An untouched current run must still start, and a skipped job leaves no active/pending count or close debt. | `load.test.mjs`; reuse R17 publication/drain controls |
+| R21 / T117, read/future types and writer widening | Narrow an origin-valid snapshot to `status: "ready"`, then watch/load while the owner commits `"loading"`. Every future callback uses the full declared value union. Both `read` members reject required-value dereferences for dynamic union keys, tuple alternatives and broad `Keys<V>`; fixed tuples/duplicates and a required prefix keep their guarantees. Broad `SnapshotOf` preserves optionality; a union of valid snapshots supports ordinary `in` narrowing. Reject widened writer aliases/spread/member extraction; same writer and wider facet-to-area assignment stay valid. | `types-structural.ts`, `types-traps.ts`, `store.test.mjs`, `load.test.mjs`; packed declarations reuse the same fixtures |
+| R22 / T118, late watch/load depth | In 71 stores, set the next store and attach its watch with a saved snapshot. The prototype makes 71 calls; the pre-attached control makes 65 then rejects depth 65. Both forms must reject the same first forbidden commit, leave its target unchanged and report once. Repeat the distinguishing load chain from `onResult`, ignoring initial zero results, for saved/fresh argument snapshots and pre-attached/late registration; include the focused `onLoading` form. The precise provenance controls below distinguish catch-up from a new load's keys-only initial run. | `guards.test.mjs`, using existing store/scope helpers and barriers |
+| R23 / T119, startup and callback-close boundaries | Hold run 0; offer revision 1 as pending, then commit revision 2 and settle run 0 in one turn before flush 2. Required loader calls are 0 and 2, with only result 2 published; obsolete 1 never starts. Separately invalidate the first run before its startup await resumes. Also have `onLoading(1)` synchronously close its subscriber while run 0 is held: live/pending must immediately be zero, active remains one only until the real run settles; no later loader/publication. An untouched current run still starts, and a skipped job adds no active/pending count or fictitious debt. | `load.test.mjs`; reuse R17 publication/drain controls |
 
 R19 uses the existing bounded collection-round protocol with retained controls, not a wall-time memory promise.
 A timer callback that itself closes over the payload would test intentional user retention and is not this oracle.
-R22 must state the exact lifetime/reset of its bounded metadata in the implementation review: merely inheriting the
-current callback depth, retaining every historical depth forever, or adding one unqualified depth counter fails
-one of its controls. Keep the first-rejected-commit and independent-registration outcomes visible in the result.
+R22 uses the bounded representation in sections 7.2/7.3. Its additional small schedules are:
+
+| Schedule | Required causal result |
+| --- | --- |
+| One key: revision 1 at depth 64, revision 2 at depth 1; watch from revision 0 | Delivery depth 64. A latest-depth-only scalar is insufficient. |
+| The same changes, but the starting snapshot includes revision 1 | Delivery depth 1. A maximum-depth-only scalar is insufficient. |
+| Add another selected key changed after that starting snapshot at depth 9 | Delivery depth 9; an unrelated unselected key never contributes. |
+| Keep a revision-0 snapshot, make revision 1 at depth 64, finish all its delivery/context-close tasks, then watch the old snapshot | Catch-up retains depth 64; the callback's next non-echo commit rejects at 65. No flush-window expiry is invented. |
+| Instead read a fresh baseline after the deep commit; an independent action later changes a selected key outside any live context | No initial watch callback; the new commit/catch-up has depth zero and a callback's next non-echo commit succeeds at 1. R13 still excludes old timer contexts. |
+| Register an initial load outside a live context after old deep state exists, using either a saved or fresh snapshot | Initial depth zero and newest values; the input revision is ignored. |
+| Register an initial load inside a live context without any new commit | It inherits that depth without incrementing it: at depth 63 its next commit at 64 succeeds; at depth 64 its next commit at 65 rejects. |
+
+The 65-slot bound follows the finite depth range, not a timing or scale assumption. Clear store-owned causal
+metadata on close; no callback/resource/engine reference may hide in a retained live token. The isolated candidate
+checks support these choices but are not package qualification. Do not add a global epoch or an event journal.
 
 The author examples additionally demonstrate existing T19/T28/T32/T41/T77 semantics: one atomic aggregate patch,
 coalesced A-B-A state, closing before delivery, latest result versus external effect completion, and ordinary versus
@@ -1202,7 +1302,7 @@ comment above a type case) start with the row ID. Reviewers tick the IDs in the 
 | T22 | `readonly()` returns the facet other modules receive. | `store.ts` | `t/store.test.mjs` (same frozen object, own properties); `tests/observation/assembly-integration.test.mjs` | 1 |
 | T23 | The facet has `read`, `watch` and `load` and no way to write or close. | `store.ts`, `types.ts` | `t/types.ts`; `t/store.test.mjs` (no `set` or `close` at run time) | 1 |
 | T24 | The marker rejects another record through aliases, `Readonly`, intersections, containers, `Pick` and hand-written ports with `read`; a wider record serves a narrower slice. | `types.ts` | `t/types-structural.ts`; `tests/observation/assembly-implement-types.ts`; `t/type-controls.test.mjs` | 1 |
-| T25 | A port of `watch` alone is still accepted, so dependencies are typed only as `ReadonlyStore<Slice>`. | `types.ts` | `t/types-structural.ts` (pins that it compiles); README rule | 1 |
+| T25 | Dependencies use full `ReadonlyStore<Slice>`; the ADR's affirmative watch-only residual is a historical observation corrected as recorded in section 8.1. | `types.ts`; implementation port note | `t/types-structural.ts`: the two wrong-record p8 expectations deliberately reject under T117; same-record positives and README rule remain | 1 |
 | T26 | `read(keys)` returns the revision and the frozen values of exactly those keys. | `engine.ts` | `t/store.test.mjs` (keys, frozen, `observation.keys.empty`) | 1 |
 | T27 | Snapshots are branded: a hand-built one does not compile; a copied or foreign one fails at run time. | `types.ts`, `registry.ts` | `t/types.ts`; `t/types-runtime-only.ts`; `t/store.test.mjs` [PB] | 1 |
 | T28 | A revision is a commit number, not proof of a change; handlers apply idempotently. | `engine.ts` | `t/store.test.mjs` (one revision per effective commit); idempotence is doc only (a handler property) | 1 |
@@ -1294,9 +1394,9 @@ comment above a type case) start with the row ID. Reviewers tick the IDs in the 
 | T114 | T40 isolation includes validation/observation of invalid returned values. | `engine.ts` invocation path | R18, healthy-neighbor and subsequent-delivery controls | 1 |
 | T115 | Closed delivery context retains no Registration, engine, resources or subscriber payload. | `context.ts`, detached origin construction | R19 plus T58/T59 window controls | 1 |
 | T116 | T16/T21 plain-data validation also rejects mutable behavior hidden behind array prototypes. | `values.ts` | R20 and ordinary-array positive controls | 1 |
-| T117 | Future snapshots use the declared value domain; T49 writer invariance survives structural member extraction. | `types.ts` | R21, both resolver modes and packed declaration fixtures | 1 |
-| T118 | T29 catch-up does not erase a live chain's depth or retain an expired chain indefinitely. | `engine.ts`, watch admission | R22 with deep, mixed-key and independent-registration controls | 1 |
-| T119 | T31/T32 currentness is checked at loader startup after its internal await, as well as before publication. | `load.ts` | R23; untouched current run, counter and close controls | 1 |
+| T117 | T26 read types guarantee only selected keys; future snapshots preserve key alternatives and use the declared value domain; T49 writer invariance survives member extraction. | `types.ts` | R21, both resolver modes and packed declaration fixtures | 1 |
+| T118 | T29 watch catch-up retains bounded committed provenance; a first load preserves its live registration causality while its input remains keys-only. | `engine.ts`, watch/load admission | R22: deep, mixed-key, saved/fresh snapshot and independent-registration controls | 1 |
+| T119 | T31/T32 currentness is checked after startup await and before publication; T43/T45 close is rechecked after `onLoading` before work is acquired. | `load.ts` | R23; untouched current run, counter and close controls | 1 |
 
 ## 11. Repository check changes (PR 1)
 
