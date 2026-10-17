@@ -185,11 +185,14 @@ compilation on TypeScript 7 and 5.8.3, and runtime behavior graded them.
   state). C was dropped and `onLoading` added.
 - Round 2 (9 tasks, A and B, smaller and larger models): A larger 9/9, B larger 9/9, A smaller 9/9; B smaller
   failed `h-requests` in the recorded gate, but the solution (one subscription fanning out to a set) was correct and
-  the gate was recalibrated; it passes 9/9 on re-check.
+  the gate was recalibrated; it passed that re-check. Under the final, stricter gate it reports only the first of
+  two receiver failures in `h-requests`, and `e` and `i` fail only because the contract changed later on purpose.
 - Round 3 (final B before the reviews' changes): larger 9/9; smaller-1 failed `h-requests` in the recorded gate for
   rethrowing an `AggregateError`, which was correct, and passes after recalibration; smaller-2 passes, but under the
   later, stricter gate (every receiver failure must be reported) it reports only the first of two failures.
-- Rounds 4 and 5 (hardened B): three runs, 9/9 each on the final gate.
+- Rounds 4 and 5 (B after the first and the second review fixes; later changes touched the README, doc comments
+  and a few types such as `Frozen`, `FixedKeys`, error codes and `testing.d.ts`): three runs, 9/9 each, and their
+  solutions pass the final gate unchanged.
 - Some early runs fail later re-checks only because the contract changed on purpose (`openAuditLog` signal and
   release, branded `ListenerError`).
 
