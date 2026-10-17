@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
+import { isolateFixtureHooks } from "./qualification/support/fixture-git.mts";
 import {
   manifestExclusionViolations,
   validatePrivateCoreStart,
@@ -146,6 +147,7 @@ test("starting base survives descendant commits without per-commit approval", as
   const git = (...args) => exec("git", args, { cwd: directory });
   try {
     await git("init", "--quiet", "--initial-branch=main");
+    await isolateFixtureHooks(directory);
     await git("config", "user.name", "Fixture");
     await git("config", "user.email", "fixture@example.invalid");
     await git("config", "commit.gpgsign", "false");

@@ -8,6 +8,7 @@ import { promisify } from "node:util";
 import test from "node:test";
 import { parse } from "yaml";
 import Ajv2020 from "ajv/dist/2020.js";
+import { isolateFixtureHooks } from "./qualification/support/fixture-git.mts";
 import {
   ACCEPTED_AUTHORITY_LEDGER_ANCHOR,
   ACCEPTED_AUTHORITY_LEDGER_DIGEST,
@@ -70,10 +71,50 @@ const execFileAsync = promisify(execFile);
 const git = (cwd, ...args) => execFileAsync("git", args, { cwd });
 async function initFixtureRepository(fixture) {
   await git(fixture, "init", "--quiet", "--initial-branch=main");
+  await isolateFixtureHooks(fixture);
   await git(fixture, "config", "user.email", "fixture@example.invalid");
   await git(fixture, "config", "user.name", "Fixture");
   await git(fixture, "config", "commit.gpgsign", "false");
 }
+
+test("disposable Git fixtures do not run external commit hooks", async t => {
+  const directory = await mkdtemp(join(tmpdir(), "get-modular-fixture-hooks-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const hooks = join(directory, "external-hooks");
+  await mkdir(hooks);
+  const hook = join(hooks, "pre-commit");
+  await writeFile(hook, "#!/bin/sh\nprintf 'external commit hook rejected fixture\\n' >&2\nexit 1\n");
+  await chmod(hook, 0o755);
+  const config = join(directory, "global.gitconfig");
+  const env = {
+    ...Object.fromEntries(Object.entries(process.env)
+      .filter(([key]) => !key.startsWith("GIT_") && key !== "NODE_TEST_CONTEXT")),
+    GIT_CONFIG_GLOBAL: config,
+    GIT_CONFIG_NOSYSTEM: "1",
+  };
+  await execFileAsync("git", ["config", "--file", config, "core.hooksPath", hooks], { env });
+  const configBytes = await readFile(config);
+  const control = join(directory, "control");
+  await execFileAsync("git", ["init", "--quiet", control], { env });
+  const rejectedControl = () => assert.rejects(execFileAsync("git", [
+    "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false",
+    "commit", "--quiet", "--allow-empty", "-m", "control",
+  ], { cwd: control, env }), error => {
+    assert.match(error.stderr, /external commit hook rejected fixture/u);
+    return true;
+  });
+  await rejectedControl();
+
+  // Run the real four regressions in a child so no machine or parent-process config changes.
+  const { stdout } = await execFileAsync(process.execPath, [
+    "--test", "--test-reporter=tap",
+    "--test-name-pattern=^(tracked workspace integrity|starting base survives)",
+    "tests/governance.test.mjs", "tests/private-core-start.test.mjs",
+  ], { cwd: resolve(import.meta.dirname, ".."), env, timeout: 60_000 });
+  assert.match(stdout, /^# pass 4$/mu, stdout);
+  assert.deepEqual(await readFile(config), configBytes, "the external hook configuration stays intact");
+  await rejectedControl();
+});
 
 const sourceMap = {
   schemaVersion: 1,

@@ -6,6 +6,7 @@ import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { retainSdkGrowthFailure } from "./sdk-growth-failure-retention.mts";
+import { isolateFixtureHooks } from "./support/fixture-git.mts";
 
 const execute = promisify(execFile);
 const workspace = resolve(import.meta.dirname, "../..");
@@ -237,6 +238,7 @@ acceptedBaselinePath: architecture/decisions/accepted-decisions.json
   await put(temporary, "evidence/decisions.json", "[]\n");
   await mkdir(join(temporary, "reports"), { recursive: true });
   await execute("git", ["init", "--quiet"], { cwd: temporary });
+  await isolateFixtureHooks(temporary);
   await commit(temporary, "baseline fixture");
 
   await runGrowth(temporary);

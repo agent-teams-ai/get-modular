@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { parse, stringify } from "yaml";
+import { isolateFixtureHooks } from "./qualification/support/fixture-git.mts";
 
 interface Step {
   readonly id: string;
@@ -139,6 +140,7 @@ async function fixture(
     assert.equal(primed.signal, null, primed.stderr);
     assert.equal(primed.status, 0, primed.stdout + primed.stderr);
     git(root, "init", "--initial-branch=main");
+    await isolateFixtureHooks(root);
     assert.equal(await realpath(git(root, "rev-parse", "--show-toplevel")), root);
     for (const variable of ["GIT_AUTHOR_IDENT", "GIT_COMMITTER_IDENT"]) {
       assert.match(git(root, "var", variable), /^iliya <iliyazelenkog@gmail\.com> /u);
