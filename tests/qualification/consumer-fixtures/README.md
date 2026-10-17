@@ -15,7 +15,7 @@ owns verification routes and the limits of each claim.
 | `record-only` / `restart-pending` | A bounded persistent fixture with one worker writer and a live supervisor retaining real effect processes | P3: R-01 through R-10 under both schedules |
 | `growth` | Actual generated TypeScript feature trees with inherited capability maps and independent arithmetic and wiring expectations | Separate P5 delivery; large-tree measurements are optional and bounded |
 
-The profiles share only driver materialization. This is test-owned composition:
+The profiles share driver materialization. This is test-owned composition:
 Get Modular does not gain a Host, readiness API, work scheduler or recovery policy.
 Source facts, workload and author exercises remain separate plan
 slices. Source qualification is currently incomplete.
