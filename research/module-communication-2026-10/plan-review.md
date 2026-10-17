@@ -1,8 +1,10 @@
 <!-- cspell:ignore builtins microtask microtasks nodenext oxlint subpaths -->
 
-# Independent review of the observation implementation plan
+# Review record: observation implementation plan
 
-Date: 2026-10-17. This is a non-normative review record for
+Historical first plan review, 2026-10-17. Its verdict applies only to the plan blob recorded below.
+The current research integration and three-round review are recorded in the final section.
+This is a non-normative review record for
 [implementation-plan.md](implementation-plan.md), not another contract or an implementation approval.
 The reviewer did not edit the plan, package source, accepted decisions or parallel PR branches.
 
@@ -140,3 +142,54 @@ archives, complete TEST, merge a PR or publish a package. Full repository/CI res
 separate evidence. The archive results read from #183 belong to their recorded sources and environments. This
 review establishes plan reconciliation only; package admission, platform behavior and release readiness remain
 subject to the plan's implementation and release gates.
+
+## Research integration and three-round review, 2026-10-17
+
+The owner requested the useful findings from five API critics and five watch critics, all Astra xhigh, to be
+integrated into the implementation plan, followed by root self-improvement and three rounds of three independent
+Astra xhigh plan critics. The complete vision, accepted contract, source pins, ten-critic findings, library sources
+and current owner constraints are supplied to every new reviewer. The reviewer emphasis differs; the scope is
+always the complete plan. Review comments never change accepted authority by themselves.
+
+Current base: main `4773f6e603d5a3cdba8ae4ef4a1073ad268c2439`, merged locally as
+`1bdf07d54bc291d84ad6a3af2193cb187f40f9e8`. #154/#183 keep the pins above and remain unmerged. #184 is now on main.
+The owner explicitly raised the compiler floor to 7.0.2; the plan records the authorized transition and current
+legacy routes without editing production pins or frozen compiler evidence.
+
+### Root synthesis and self-improvement
+
+The previous ten perspectives covered API ownership, agent authoring, commands/state, lifetime/errors, whole
+architecture, event ordering, async lanes, event semantics, retention/scale and observability. Root reproduced the
+six concrete counterexample groups on the corrected #183 subject and real resources before integrating them:
+
+| Finding | Retained observation | Plan owner / disposition |
+| --- | --- | --- |
+| Invalid callback return | `null` and a throwing `then` getter escaped the flush; ordinary throw/scalar controls continued delivery. | §7.4 / R18: isolate the entire return-handling path and keep healthy/subsequent delivery. |
+| ALS payload retention | Closing source/subscriber scopes left payloads reachable while an unrelated timer retained the actual Registration through ALS; clearing the timer released them. | §7.2 / R19: detached runtime origin with an opaque identity token; preserve guard lifetime semantics. |
+| Array prototype escape | A subclass private-field/getter changed a frozen read from 10 to 15 at revision 0. Ordinary arrays froze; ordinary classes rejected. | §7.1 / R20: validate array prototypes before transfer; preserve positive plain-data controls. |
+| Temporal and structural types | A normal predicate made future `loading` statically `ready`; spread/Pick/extracted set widened a literal-union writer to string. | §8.1 / R21: canonical future values with honest optional keys and a private invariant witness on the callable writer. |
+| Late watch depth | Pre-attached 71-store chain stopped after 65 callbacks; set-then-attach chain ran all 71 with no cascade error. | §7.3 / R22: preserve live catch-up causality, with mixed-key and independent-registration controls; no historical event journal. |
+| Obsolete pending startup | Commit 2 and settle active 0 before flush 2; prototype started 0, 1, 2 but only published 2. | §7.3 / R23: recheck actual selected-key revision after startup await; calls 0, 2 only. |
+
+Other retained conclusions belong in §7.6, §12, §14 and §19: atomic aggregates; commands versus state whose updates may coalesce;
+physical completion ownership; precise report revisions; intentional owner retention; key fan-out costs; a bounded
+independent consumer; and primary-source library lessons. Optional transactions/selectors/events/transport/large
+scale work have explicit triggers instead of entering the 0.1.0 critical path.
+
+Root's second editing pass aligned the compiler references and active helper migration, connected all six new
+regression groups to T114–T119, removed an unnecessary duplicate fixture direction, and separated implemented
+package evidence from plan/spike evidence. A combined private future-snapshot plus writer-marker candidate compiled
+on TypeScript 7.0.2 in NodeNext and Bundler with the existing four archived type groups and focused new cases.
+The archived p8 lines 29/30 are the two deliberately changed expectations: their wrong-record watch-only
+assignments now reject with TS2322. The archive is unchanged; this candidate is not production qualification.
+
+### Review rounds and dispositions
+
+| Round | Input and reviewer emphasis | State |
+| --- | --- | --- |
+| 1 | Complete self-reviewed plan; authority/ownership, types/AI authoring, runtime causality/lifetime | pending |
+| 2 | Whole revised plan plus round-1 findings/dispositions; independent integration review | pending |
+| 3 | Whole revised plan plus both earlier rounds; final independent review | pending |
+
+Each round's material findings, fixes and declined optional suggestions will be recorded here before the next
+round starts. There is no claim of nine completed reviews until all nine actual reports exist.
