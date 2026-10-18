@@ -28,6 +28,29 @@ if (!asyncDetection) {
     onLoading: () => undefined, onResult: () => undefined, onError: () => undefined });
   await settled(); assert.equal(loads, 1);
   assert.equal(reports.filter(report => report.subscription === "load-echo" && report.cause.code === "observation.delivery.echo").length, 1);
+  for (const writeOnRead of [0, 1, 2]) {
+    const source = make(`constructor-${writeOnRead}`); const read = source.readonly();
+    let reads = 0; let calls = 0; const results = []; const errors = [];
+    read.load(read.read(["a"]), { resources: host.resources, name: `constructor-${writeOnRead}`,
+      loader: () => {
+        calls += 1;
+        const promise = Promise.resolve("result");
+        if (calls === 1) Object.defineProperty(promise, "constructor", { get() {
+          reads += 1; if (reads === writeOnRead) source.set({ a: 1 }); return Promise;
+        } });
+        return promise;
+      },
+      onLoading: () => undefined, onResult: value => { results.push(value); }, onError: cause => { errors.push(cause); },
+    });
+    await settled({ stores: [read] });
+    assert.equal(calls, 1); assert.equal(reads, 1); assert.equal(source.read(["a"]).revision, 0);
+    assert.equal(source.read(["a"]).values.a, 0);
+    assert.deepEqual(results, writeOnRead === 1 ? [] : ["result"]);
+    assert.deepEqual(errors.map(cause => cause.code), writeOnRead === 1 ? ["observation.delivery.echo"] : []);
+    const attributed = reports.filter(report => report.subscription === `constructor-${writeOnRead}`);
+    assert.equal(attributed.length, Number(writeOnRead === 1));
+    if (writeOnRead === 1) assert.equal(attributed[0].cause, errors[0]);
+  }
   const left = make("left"); const right = make("right"); let chain = 0;
   for (const [source, target] of [[left, right], [right, left]]) {
     const read = source.readonly(); read.watch(read.read(["a"]), { resources: host.resources, name: "cascade", onChange: ({ values }) => {

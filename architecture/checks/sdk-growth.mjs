@@ -1,3 +1,4 @@
+import { assertCompilerFloor } from "./compiler-floor.mjs";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { access, readFile } from "node:fs/promises";
@@ -21,7 +22,7 @@ const CMS_PATH = "architecture/sdk-growth/evidence/consumer-module-standard.json
 const FEASIBILITY_PATH = "architecture/sdk-growth/evidence/p0-feasibility.json";
 const ROOT_CLASSIFICATION_PATH = "architecture/sdk-growth/root-classification.json";
 const CMS_SHA256 = "33b41d5babf0a431c97e8e596a56e6ec1557ba1a0b26d39bf23e13d9a19e1fbd";
-const SDK_COMMAND = "node architecture/checks/sdk-growth.mjs && node --test tests/sdk-growth.test.mjs && node tests/qualification/sdk-growth-admission.mjs && node tests/qualification/sdk-growth-packed-consumers.mjs && node tests/qualification/sdk-growth-registry-consumer.mjs";
+const SDK_COMMAND = "node architecture/checks/compiler-floor.mjs && node architecture/checks/sdk-growth.mjs && node --test tests/sdk-growth.test.mjs && node tests/qualification/sdk-growth-admission.mjs && node tests/qualification/sdk-growth-packed-consumers.mjs && node tests/qualification/sdk-growth-registry-consumer.mjs";
 const OBSOLETE_ACTIVE_RECORDS = Object.freeze([
   "architecture/sdk-growth/activation.json",
   "architecture/sdk-growth/evidence/completion.json",
@@ -121,6 +122,7 @@ async function validateInstalledFoundation(model) {
     fail("installed Foundation SDK authority export drifted");
   }
   const sdkTarget = manifest.exports["./sdk-growth-authority"].import;
+  assertCompilerFloor();
   const sdk = await import(pathToFileURL(join(dirname(manifestPath), sdkTarget)));
   if (typeof sdk.createSdkGrowthAuthorityVerifier !== "function") fail("installed Foundation SDK verifier is unavailable");
 }

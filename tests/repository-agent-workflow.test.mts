@@ -152,6 +152,10 @@ async function fixture(
 }
 
 function changed(root: string): { readonly exit: number | null; readonly report: ChangedReport } {
+  const preflight = spawnSync(process.execPath, [join(import.meta.dirname, "../architecture/checks/compiler-floor.mjs")],
+    { encoding: "utf8", timeout: 10_000 });
+  assert.equal(preflight.error, undefined, preflight.stderr);
+  assert.equal(preflight.status, 0, preflight.stderr);
   const result = spawnSync(process.execPath, [
     cli, "agent-workflow", "changed", "--consumer", root,
     "--base", "refs/heads/main", "--format", "json",

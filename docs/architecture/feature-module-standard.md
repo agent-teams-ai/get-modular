@@ -213,7 +213,7 @@ fixture exception on POSIX.
 | Source dependencies v3 | Root development tooling, Core, Assembly, lifecycle kernel, resources, conformance and observation; preserve declared roots, generated output and dependency budgets | `pnpm foundation:check` |
 | Source coverage and typed quality | All declared compiler projects; missing inputs fail; the default unknown assertion bridge gate remains active with no admissions | `pnpm quality:coverage:scope`, `pnpm lint:typed` |
 | Suppression governance | All six production source roots, no waivers | `pnpm foundation:check` |
-| Required Node execution | Nine critical identities in two existing files; complete selected file list is bound | `pnpm quality:critical:test` |
+| Required Node execution | Eleven critical identities in three existing files; complete selected file list is bound | `pnpm quality:critical:test` |
 | Documentation, decisions, workflow and dependency declarations | Existing installed profiles and repository routes remain active | `pnpm foundation:check`, `pnpm docs:protocol:check` |
 | Public API compatibility | Existing v1 profiles and released baselines; baseline mutation guard retained | `pnpm foundation:check`, `pnpm release-owned-files:check` |
 | SDK growth authority | Current installed verifier and disposable qualification; activation remains pending without external authority | `pnpm sdk-growth:check` |

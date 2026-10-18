@@ -128,16 +128,18 @@ export class LoadRegistration implements Registration {
     if (!this.#isCurrent(job, controller)) {return;}
     const runLive: Live = { open: true };
     this.#engine.counters.loaderCalls += 1;
-    let callback: () => unknown;
-    try {
-      const value = await runInContext({ depth: job.depth, origin: this.origin, live: runLive },
-        () => Promise.resolve(this.#callbacks.loader(job.snapshot, Object.freeze({ signal: controller.signal }))));
-      callback = () => this.#callbacks.onResult(value, job.snapshot);
-    } catch (cause) {
-      callback = () => this.#callbacks.onError(cause, job.snapshot);
-    } finally { runLive.open = false; }
-    // Queued publication is delivery work, independent from physical loader completion.
-    this.#publish(job, controller, callback);
+    return runInContext({ depth: job.depth, origin: this.origin, live: runLive }, async () => {
+      let callback: () => unknown;
+      try {
+        // Await must begin inside the context: even a native Promise can have a constructor getter.
+        const value = await this.#callbacks.loader(job.snapshot, Object.freeze({ signal: controller.signal }));
+        callback = () => this.#callbacks.onResult(value, job.snapshot);
+      } catch (cause) {
+        callback = () => this.#callbacks.onError(cause, job.snapshot);
+      } finally { runLive.open = false; }
+      // Queue at loader settlement, before the outer startup coroutine adopts this completion.
+      this.#publish(job, controller, callback);
+    });
   }
   async #closeAndDrain(escalate: AbortSignal): Promise<void> {
     this.detach();

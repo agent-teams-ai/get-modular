@@ -1,3 +1,4 @@
+import { assertCompilerFloor } from "../architecture/checks/compiler-floor.mjs";
 import { supportedCompilers } from "../architecture/tooling/test-assembly-types.mjs";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -28,7 +29,7 @@ test("the complete gate runs the ownership checkpoint suite with failure propaga
   assert.equal(scripts.precheck, "pnpm ownership:checkpoint:test",
     "pnpm check must run the checkpoint suite through its precheck lifecycle");
   assert.equal(scripts["ownership:checkpoint:test"],
-    "node --test tests/ownership-checkpoint.test.mjs",
+    "node architecture/checks/compiler-floor.mjs && node --test tests/ownership-checkpoint.test.mjs",
     "the checkpoint script must execute the focused suite, not a no-op");
 });
 
@@ -116,6 +117,7 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
 // its real governance boundary. The independent reviewed value above prevents a
 // coordinated change to the document and registry from silently blessing itself.
 test("installed Foundation authenticates the accepted decision fingerprint", () => {
+  assertCompilerFloor();
   const report = JSON.parse(execFileSync(process.execPath, [
     resolve("node_modules/@agent-teams/engineering-foundation/dist/cli.js"),
     "check", "governance.architecture-decisions", "--consumer", process.cwd(),

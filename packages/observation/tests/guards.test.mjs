@@ -631,7 +631,7 @@ test("T58 T62 T68 T113 FIFO preserves each native task checkpoint and external i
 });
 
 
-for (const carrier of ["promise-subclass", "thenable-getter", "thenable-call", "ordinary-promise"]) {
+for (const carrier of ["promise-subclass", "thenable-getter", "thenable-call", "native-constructor-echo", "native-constructor-second-read", "native-constructor-plain", "ordinary-promise"]) {
   test(`T50 T51 T54 T57 T58 T60 loader ${carrier} assimilation remains inside its existing live context`, async () => {
     const { store, facet, module, reports } = world({ value: 0 });
     let calls = 0; let reads = 0; let attempts = 0; const errors = []; const results = []; const healthy = [];
@@ -644,6 +644,15 @@ for (const carrier of ["promise-subclass", "thenable-getter", "thenable-call", "
         calls += 1;
         if (calls > 1 || carrier === "ordinary-promise") return Promise.resolve(`current:${values.value}`);
         if (carrier === "promise-subclass") return new LoaderPromise(resolve => { resolve("obsolete"); });
+        if (carrier.startsWith("native-constructor")) {
+          const promise = Promise.resolve(`current:${values.value}`);
+          Object.defineProperty(promise, "constructor", { get() {
+            reads += 1;
+            if (carrier === "native-constructor-echo" || carrier === "native-constructor-second-read" && reads === 2) echo();
+            return Promise;
+          } });
+          return promise;
+        }
         if (carrier === "thenable-getter") return { get then() { reads += 1; echo(); return () => {}; } };
         return { get then() { reads += 1; return () => { echo(); }; } };
       },
@@ -656,9 +665,9 @@ for (const carrier of ["promise-subclass", "thenable-getter", "thenable-call", "
       onResult: result => { healthy.push(result); }, onError: cause => { throw cause; },
     });
     await settled({ stores: [facet] });
-    const guarded = carrier !== "ordinary-promise";
+    const guarded = !["ordinary-promise", "native-constructor-second-read", "native-constructor-plain"].includes(carrier);
     assert.equal(calls, 1); assert.equal(store.read(["value"]).revision, 0); assert.equal(store.read(["value"]).values.value, 0);
-    assert.equal(attempts, Number(guarded)); assert.equal(reads, Number(carrier.startsWith("thenable")));
+    assert.equal(attempts, Number(guarded)); assert.equal(reads, Number(carrier.startsWith("thenable") || carrier.startsWith("native-constructor")));
     assert.equal(reports.length, Number(guarded)); assert.equal(errors.length, Number(guarded));
     if (guarded) {
       assert.equal(errors[0], reports[0].cause); assert.equal(codeOf(errors[0]), "observation.delivery.echo");

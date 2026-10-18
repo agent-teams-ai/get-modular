@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { assertCompilerFloor } from "../../architecture/checks/compiler-floor.mjs";
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -9,6 +10,7 @@ import { retainSdkGrowthFailure } from "./sdk-growth-failure-retention.mts";
 
 const execute = promisify(execFile);
 const workspace = resolve(import.meta.dirname, "../..");
+assertCompilerFloor(workspace);
 const foundationManifestPath = resolve(workspace, "node_modules/@agent-teams/engineering-foundation/package.json");
 const foundationManifest = JSON.parse(await readFile(foundationManifestPath, "utf8"));
 const foundationRoot = dirname(foundationManifestPath);

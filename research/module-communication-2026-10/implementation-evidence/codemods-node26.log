@@ -1,0 +1,408 @@
+TAP version 13
+# context canceled
+# context canceled
+# Subtest: 0.2-0.3 aliased: output matches and a second run changes nothing
+ok 1 - 0.2-0.3 aliased: output matches and a second run changes nothing
+  ---
+  duration_ms: 22.053943
+  type: 'test'
+  ...
+# Subtest: 0.2-0.3 import-type: output matches and a second run changes nothing
+ok 2 - 0.2-0.3 import-type: output matches and a second run changes nothing
+  ---
+  duration_ms: 12.333757
+  type: 'test'
+  ...
+# Subtest: 0.2-0.3 keeps-formatting: output matches and a second run changes nothing
+ok 3 - 0.2-0.3 keeps-formatting: output matches and a second run changes nothing
+  ---
+  duration_ms: 13.234461
+  type: 'test'
+  ...
+# Subtest: 0.2-0.3 local-type: output matches and a second run changes nothing
+ok 4 - 0.2-0.3 local-type: output matches and a second run changes nothing
+  ---
+  duration_ms: 12.752757
+  type: 'test'
+  ...
+# Subtest: 0.2-0.3 migrated: output matches and a second run changes nothing
+ok 5 - 0.2-0.3 migrated: output matches and a second run changes nothing
+  ---
+  duration_ms: 11.872514
+  type: 'test'
+  ...
+# Subtest: 0.2-0.3 mixed-arity: output matches and a second run changes nothing
+ok 6 - 0.2-0.3 mixed-arity: output matches and a second run changes nothing
+  ---
+  duration_ms: 15.414759
+  type: 'test'
+  ...
+# Subtest: 0.2-0.3 namespace-import: output matches and a second run changes nothing
+ok 7 - 0.2-0.3 namespace-import: output matches and a second run changes nothing
+  ---
+  duration_ms: 12.805267
+  type: 'test'
+  ...
+# Subtest: 0.2-0.3 other-package: output matches and a second run changes nothing
+ok 8 - 0.2-0.3 other-package: output matches and a second run changes nothing
+  ---
+  duration_ms: 11.686519
+  type: 'test'
+  ...
+# Subtest: 0.2-0.3 plain: output matches and a second run changes nothing
+ok 9 - 0.2-0.3 plain: output matches and a second run changes nothing
+  ---
+  duration_ms: 16.06322
+  type: 'test'
+  ...
+# Subtest: 0.2-0.3 reexport: output matches and a second run changes nothing
+ok 10 - 0.2-0.3 reexport: output matches and a second run changes nothing
+  ---
+  duration_ms: 12.270071
+  type: 'test'
+  ...
+# Subtest: 0.2-0.3 reexport-star: output matches and a second run changes nothing
+ok 11 - 0.2-0.3 reexport-star: output matches and a second run changes nothing
+  ---
+  duration_ms: 11.536668
+  type: 'test'
+  ...
+# Subtest: 0.2-0.3 shadowed: output matches and a second run changes nothing
+ok 12 - 0.2-0.3 shadowed: output matches and a second run changes nothing
+  ---
+  duration_ms: 12.442872
+  type: 'test'
+  ...
+# Subtest: 0.2-0.3 type-only: output matches and a second run changes nothing
+ok 13 - 0.2-0.3 type-only: output matches and a second run changes nothing
+  ---
+  duration_ms: 12.477352
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 aliased-entries: output matches and a second run changes nothing
+ok 14 - 0.4-0.5 aliased-entries: output matches and a second run changes nothing
+  ---
+  duration_ms: 25.614113
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 ar-helper: output matches and a second run changes nothing
+ok 15 - 0.4-0.5 ar-helper: output matches and a second run changes nothing
+  ---
+  duration_ms: 24.880594
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 cms-host: output matches and a second run changes nothing
+ok 16 - 0.4-0.5 cms-host: output matches and a second run changes nothing
+  ---
+  duration_ms: 19.266793
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 cms-instances: output matches and a second run changes nothing
+ok 17 - 0.4-0.5 cms-instances: output matches and a second run changes nothing
+  ---
+  duration_ms: 17.767057
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 conditional-argument: output matches and a second run changes nothing
+ok 18 - 0.4-0.5 conditional-argument: output matches and a second run changes nothing
+  ---
+  duration_ms: 15.247329
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 custom-assembly: output matches and a second run changes nothing
+ok 19 - 0.4-0.5 custom-assembly: output matches and a second run changes nothing
+  ---
+  duration_ms: 10.537816
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 error-codes: output matches and a second run changes nothing
+ok 20 - 0.4-0.5 error-codes: output matches and a second run changes nothing
+  ---
+  duration_ms: 12.275129
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 import-close-comment-inline: output matches and a second run changes nothing
+ok 21 - 0.4-0.5 import-close-comment-inline: output matches and a second run changes nothing
+  ---
+  duration_ms: 15.253147
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 import-close-inline: output matches and a second run changes nothing
+ok 22 - 0.4-0.5 import-close-inline: output matches and a second run changes nothing
+  ---
+  duration_ms: 15.391454
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 import-comma-next-line: output matches and a second run changes nothing
+ok 23 - 0.4-0.5 import-comma-next-line: output matches and a second run changes nothing
+  ---
+  duration_ms: 14.384591
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 import-comment-newline: output matches and a second run changes nothing
+ok 24 - 0.4-0.5 import-comment-newline: output matches and a second run changes nothing
+  ---
+  duration_ms: 15.380258
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 import-comment-no-comma: output matches and a second run changes nothing
+ok 25 - 0.4-0.5 import-comment-no-comma: output matches and a second run changes nothing
+  ---
+  duration_ms: 14.17135
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 import-forms: output matches and a second run changes nothing
+ok 26 - 0.4-0.5 import-forms: output matches and a second run changes nothing
+  ---
+  duration_ms: 17.801258
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 import-tail-comment: output matches and a second run changes nothing
+ok 27 - 0.4-0.5 import-tail-comment: output matches and a second run changes nothing
+  ---
+  duration_ms: 15.417739
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 isolate: output matches and a second run changes nothing
+ok 28 - 0.4-0.5 isolate: output matches and a second run changes nothing
+  ---
+  duration_ms: 19.276888
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 isolate-comment: output matches and a second run changes nothing
+ok 29 - 0.4-0.5 isolate-comment: output matches and a second run changes nothing
+  ---
+  duration_ms: 18.009978
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 isolate-comment-after-options: output matches and a second run changes nothing
+ok 30 - 0.4-0.5 isolate-comment-after-options: output matches and a second run changes nothing
+  ---
+  duration_ms: 15.427466
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 isolate-comment-after-template: output matches and a second run changes nothing
+ok 31 - 0.4-0.5 isolate-comment-after-template: output matches and a second run changes nothing
+  ---
+  duration_ms: 16.228408
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 isolate-comment-before-entry: output matches and a second run changes nothing
+ok 32 - 0.4-0.5 isolate-comment-before-entry: output matches and a second run changes nothing
+  ---
+  duration_ms: 15.781624
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 isolate-comment-in-options: output matches and a second run changes nothing
+ok 33 - 0.4-0.5 isolate-comment-in-options: output matches and a second run changes nothing
+  ---
+  duration_ms: 15.636518
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 isolate-template-no-comment: output matches and a second run changes nothing
+ok 34 - 0.4-0.5 isolate-template-no-comment: output matches and a second run changes nothing
+  ---
+  duration_ms: 15.519626
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 js-consumer: output matches and a second run changes nothing
+ok 35 - 0.4-0.5 js-consumer: output matches and a second run changes nothing
+  ---
+  duration_ms: 21.916713
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 local-type-names: output matches and a second run changes nothing
+ok 36 - 0.4-0.5 local-type-names: output matches and a second run changes nothing
+  ---
+  duration_ms: 12.906592
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 manual-edges: output matches and a second run changes nothing
+ok 37 - 0.4-0.5 manual-edges: output matches and a second run changes nothing
+  ---
+  duration_ms: 39.735847
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 migrated: output matches and a second run changes nothing
+ok 38 - 0.4-0.5 migrated: output matches and a second run changes nothing
+  ---
+  duration_ms: 14.156221
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 namespace-entries: output matches and a second run changes nothing
+ok 39 - 0.4-0.5 namespace-entries: output matches and a second run changes nothing
+  ---
+  duration_ms: 13.033674
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 non-id-scope: output matches and a second run changes nothing
+ok 40 - 0.4-0.5 non-id-scope: output matches and a second run changes nothing
+  ---
+  duration_ms: 13.637631
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 prepare-arguments: output matches and a second run changes nothing
+ok 41 - 0.4-0.5 prepare-arguments: output matches and a second run changes nothing
+  ---
+  duration_ms: 13.119774
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 receiver-edges: output matches and a second run changes nothing
+ok 42 - 0.4-0.5 receiver-edges: output matches and a second run changes nothing
+  ---
+  duration_ms: 17.127658
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 reexports: output matches and a second run changes nothing
+ok 43 - 0.4-0.5 reexports: output matches and a second run changes nothing
+  ---
+  duration_ms: 14.01537
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 test-root: output matches and a second run changes nothing
+ok 44 - 0.4-0.5 test-root: output matches and a second run changes nothing
+  ---
+  duration_ms: 24.820914
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 tuple-spread: output matches and a second run changes nothing
+ok 45 - 0.4-0.5 tuple-spread: output matches and a second run changes nothing
+  ---
+  duration_ms: 14.224744
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 type-collision: output matches and a second run changes nothing
+ok 46 - 0.4-0.5 type-collision: output matches and a second run changes nothing
+  ---
+  duration_ms: 12.482851
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 type-renames: output matches and a second run changes nothing
+ok 47 - 0.4-0.5 type-renames: output matches and a second run changes nothing
+  ---
+  duration_ms: 13.42099
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 unrelated-factories: output matches and a second run changes nothing
+ok 48 - 0.4-0.5 unrelated-factories: output matches and a second run changes nothing
+  ---
+  duration_ms: 10.810592
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 unused-imports: output matches and a second run changes nothing
+ok 49 - 0.4-0.5 unused-imports: output matches and a second run changes nothing
+  ---
+  duration_ms: 9.740803
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 value-collision: output matches and a second run changes nothing
+ok 50 - 0.4-0.5 value-collision: output matches and a second run changes nothing
+  ---
+  duration_ms: 17.541941
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 import-tail-comment: preserves CRLF and a second run changes nothing
+ok 51 - 0.4-0.5 import-tail-comment: preserves CRLF and a second run changes nothing
+  ---
+  duration_ms: 33.27958
+  type: 'test'
+  ...
+# Subtest: project: refuses to save a transformation that introduces syntax errors
+ok 52 - project: refuses to save a transformation that introduces syntax errors
+  ---
+  duration_ms: 7.552473
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 outputs type-check against the workspace Assembly
+ok 53 - 0.4-0.5 outputs type-check against the workspace Assembly
+  ---
+  duration_ms: 665.300814
+  type: 'test'
+  ...
+# Subtest: runner: --dry is the default and leaves files unchanged, node_modules is skipped
+ok 54 - runner: --dry is the default and leaves files unchanged, node_modules is skipped
+  ---
+  duration_ms: 102.511183
+  type: 'test'
+  ...
+# Subtest: runner: --check exits 1 while changes are pending and 0 after --write
+ok 55 - runner: --check exits 1 while changes are pending and 0 after --write
+  ---
+  duration_ms: 298.258808
+  type: 'test'
+  ...
+# Subtest: runner: --write refuses a dirty tree and writes on a clean one
+ok 56 - runner: --write refuses a dirty tree and writes on a clean one
+  ---
+  duration_ms: 197.448959
+  type: 'test'
+  ...
+# Subtest: runner: unknown codemod exits 2 with the known list; a file that does not parse is skipped and fails the run
+ok 57 - runner: unknown codemod exits 2 with the known list; a file that does not parse is skipped and fails the run
+  ---
+  duration_ms: 178.780499
+  type: 'test'
+  ...
+# Subtest: runner: a relative target resolves against the invoking directory (INIT_CWD under pnpm --dir), never the checkout
+ok 58 - runner: a relative target resolves against the invoking directory (INIT_CWD under pnpm --dir), never the checkout
+  ---
+  duration_ms: 203.978314
+  type: 'test'
+  ...
+# Subtest: runner: refuses to run inside the Get Modular checkout
+ok 59 - runner: refuses to run inside the Get Modular checkout
+  ---
+  duration_ms: 155.42969
+  type: 'test'
+  ...
+# Subtest: runner: a symlink to the Get Modular checkout is refused too
+ok 60 - runner: a symlink to the Get Modular checkout is refused too
+  ---
+  duration_ms: 75.582059
+  type: 'test'
+  ...
+# Subtest: runner: tsx files are included
+ok 61 - runner: tsx files are included
+  ---
+  duration_ms: 99.475058
+  type: 'test'
+  ...
+# Subtest: runner: .mjs files are included and run the 0.4-0.5 transforms
+ok 62 - runner: .mjs files are included and run the 0.4-0.5 transforms
+  ---
+  duration_ms: 122.81874
+  type: 'test'
+  ...
+# Subtest: runner: a directory named like ..foo inside the checkout is still refused
+ok 63 - runner: a directory named like ..foo inside the checkout is still refused
+  ---
+  duration_ms: 70.85671
+  type: 'test'
+  ...
+# Subtest: runner: the checkout path in another letter case is refused on case-insensitive volumes
+ok 64 - runner: the checkout path in another letter case is refused on case-insensitive volumes # SKIP
+  ---
+  duration_ms: 0.057186
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 isolate: a kept ts-expect-error between the arguments asks for a placement check
+ok 65 - 0.4-0.5 isolate: a kept ts-expect-error between the arguments asks for a placement check
+  ---
+  duration_ms: 10.789169
+  type: 'test'
+  ...
+# Subtest: 0.4-0.5 isolate: a kept ts-ignore asks for a placement check too
+ok 66 - 0.4-0.5 isolate: a kept ts-ignore asks for a placement check too
+  ---
+  duration_ms: 9.341343
+  type: 'test'
+  ...
+1..66
+# tests 66
+# suites 0
+# pass 65
+# fail 0
+# cancelled 0
+# skipped 1
+# todo 0
+# duration_ms 3153.435528

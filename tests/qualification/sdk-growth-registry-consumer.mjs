@@ -1,3 +1,4 @@
+import { assertCompilerFloor, assertFoundationCompilerFloor } from "../../architecture/checks/compiler-floor.mjs";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
@@ -16,6 +17,7 @@ const INTEGRITY = "sha512-29r5QUvMIFdvsPaJ5m0Yx1Uo6bL85J/teP1p1ThNg7jMEz54cVxyrE
 const TARBALL_SHA256 = "bd0c476d2940168ac1b020f42726107cce81580b7b1b014e74aceabbafa9e951";
 const TARBALL_URL = "https://registry.npmjs.org/@agent-teams/engineering-foundation/-/engineering-foundation-1.5.1.tgz";
 const PUBLISHED_AT = "2026-09-22T08:23:18.839Z";
+assertCompilerFloor();
 const npmCli = await resolveNpmCli();
 
 const directory = await mkdtemp(join(tmpdir(), "gm-g1-registry-"));
@@ -59,6 +61,7 @@ try {
   const tarball = (await readdir(directory)).find(name => name.endsWith(".tgz"));
   assert.ok(tarball);
   assert.equal(createHash("sha256").update(await readFile(join(directory, tarball))).digest("hex"), TARBALL_SHA256);
+  assertFoundationCompilerFloor(directory);
   const result = await execute(process.execPath, ["--input-type=module", "--eval",
     `const sdk=await import(${JSON.stringify(`${PACKAGE}/sdk-growth-authority`)});if(typeof sdk.createSdkGrowthAuthorityVerifier!=="function")throw new Error("missing SDK verifier");process.stdout.write("ok")`],
   { cwd: directory, timeout: 30_000 });
@@ -92,6 +95,7 @@ try {
   assert.equal("sha512-" + createHash("sha512").update(currentBytes).digest("base64"), currentIntegrity);
   // The exact SRI above binds the archive; also verify the registry SHA-1 agrees.
   assert.equal(createHash("sha1").update(currentBytes).digest("hex"), packument.versions[currentVersion].dist.shasum);
+  assertFoundationCompilerFloor(current);
   const currentImport = await execute(process.execPath, ["--input-type=module", "--eval",
     'const sdk=await import("@agent-teams/engineering-foundation/sdk-growth-authority");if(typeof sdk.createSdkGrowthAuthorityVerifier!=="function")throw new Error("missing SDK verifier");process.stdout.write("ok")'],
     { cwd: current, timeout: 30_000 });
