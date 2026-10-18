@@ -38,7 +38,7 @@ const FOUNDATION_CHECK_SCRIPT =
 // Leaf commands come first, so a table row can never replace a closed
 // definition below; a colliding row leaves its own admission unsatisfiable.
 const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
-  "quality:critical:test": "node architecture/checks/compiler-floor.mjs && node architecture/checks/required-quality-tests.mjs && node node_modules/typescript/bin/tsc -p tests/tsconfig.repository-agent-workflow.json --noEmit && agent-teams-node-test --contract architecture/foundation/required-quality-tests.json -- tests/source-dependencies.test.mjs tests/quality-activation.test.mjs tests/repository-agent-workflow.test.mts",
+  "quality:critical:test": "node architecture/checks/compiler-floor.mjs && node architecture/checks/required-quality-tests.mjs && node node_modules/typescript/bin/tsc -p tests/tsconfig.repository-agent-workflow.json --noEmit && agent-teams-node-test --contract architecture/foundation/required-quality-tests.json -- tests/source-dependencies.test.mjs tests/quality-activation.test.mjs tests/repository-agent-workflow.test.ts",
   ...Object.fromEntries(LEAF_PACKAGES.flatMap(leaf => Object.entries(leaf.commands))),
   "architecture:feature-module-profile":
     "node architecture/checks/feature-module-standard-profile.mjs",
@@ -79,7 +79,7 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "precheck:changed": "pnpm runtime:preflight",
   "lockfile:peers:check": "pnpm peers check --lockfile-only",
   "runtime:policy:typecheck": "node node_modules/typescript/bin/tsc -p tests/tsconfig.tooling-node-policy.json --noEmit",
-  "runtime:policy:test": "node --test tests/tooling-node-policy.test.mts",
+  "runtime:policy:test": "node --test tests/tooling-node-policy.test.ts",
   "sdk-growth:check": "node architecture/checks/compiler-floor.mjs && node architecture/checks/sdk-growth.mjs && node --test tests/sdk-growth.test.mjs && node tests/qualification/sdk-growth-admission.mjs && node tests/qualification/sdk-growth-packed-consumers.mjs && node tests/qualification/sdk-growth-registry-consumer.mjs",
   "sdk-growth:admission": "node architecture/checks/compiler-floor.mjs && node tests/qualification/sdk-growth-admission.mjs",
   "sdk-growth:test": "node architecture/checks/compiler-floor.mjs && node --test tests/sdk-growth.test.mjs",

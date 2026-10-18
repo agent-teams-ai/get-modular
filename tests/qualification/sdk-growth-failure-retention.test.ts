@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
-import { retainSdkGrowthFailure } from "./sdk-growth-failure-retention.mts";
+import { retainSdkGrowthFailure } from "./sdk-growth-failure-retention.ts";
 
 const execute = promisify(execFile);
 const sha = "8fc8242049442a6c8838146b92dc1cb029ff8280";
@@ -85,7 +85,10 @@ const currentReport = `{
 `;
 async function fixture(run: (directory: string) => Promise<void>, parent = tmpdir()) {
   const directory = await realpath(await mkdtemp(join(parent, "sdk-retention-TEST-")));
-  try { await run(directory); } finally { await rm(directory, { recursive: true, force: true }); }
+  try {
+    await writeFile(join(directory, "package.json"), '{"type":"module"}\n');
+    await run(directory);
+  } finally { await rm(directory, { recursive: true, force: true }); }
 }
 const destination = (directory: string) => ({ directory, artifact: join(directory, "sdk-growth-failure.json"),
   checkoutSha: sha, producerVersion: "1.7.4" });
@@ -272,8 +275,8 @@ test("aliased directories are rejected without creating an artifact in the canon
     if ("prohibited" in created) { t.skip(`directory alias creation prohibited: ${created.prohibited}; alias IO not exercised`); return; }
     const { alias } = created;
     assert.equal(await realpath(alias), directory);
-    const driver = join(directory, "alias-rejection.mts");
-    await writeFile(driver, `import { retainSdkGrowthFailure } from ${JSON.stringify(new URL("./sdk-growth-failure-retention.mts", import.meta.url).href)};
+    const driver = join(directory, "alias-rejection.ts");
+    await writeFile(driver, `import { retainSdkGrowthFailure } from ${JSON.stringify(new URL("./sdk-growth-failure-retention.ts", import.meta.url).href)};
 await retainSdkGrowthFailure({ code: 3 }, ${JSON.stringify(destination(alias))});
 `);
     const captured = await execute(process.execPath, [driver]);
@@ -302,9 +305,9 @@ test("exclusive creation and invalid destinations preserve the primary assertion
       try { assert.equal(3, 2); } catch (error) { primary = error; }
       await assert.rejects(async () => { await retainSdkGrowthFailure(result, target); throw primary; },
         error => error === primary);
-      const driver = join(directory, "retention.mts");
+      const driver = join(directory, "retention.ts");
       await writeFile(driver, `import assert from "node:assert/strict";
-import { retainSdkGrowthFailure } from ${JSON.stringify(new URL("./sdk-growth-failure-retention.mts", import.meta.url).href)};
+import { retainSdkGrowthFailure } from ${JSON.stringify(new URL("./sdk-growth-failure-retention.ts", import.meta.url).href)};
 let primary; try { assert.equal(3, 2); } catch (error) { primary = error; }
 await retainSdkGrowthFailure({ code: 3, stdout: ${JSON.stringify(JSON.stringify(report))} }, ${JSON.stringify(target)});
 try { throw primary; } catch (error) { assert.equal(error, primary); }

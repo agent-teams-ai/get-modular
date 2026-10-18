@@ -13,6 +13,6 @@
     "checkJs": false,
     "types": ["node"]
   },
-  "files": ["sdk-growth-failure-retention.mts", "sdk-growth-failure-retention.test.mts"],
+  "files": ["sdk-growth-failure-retention.ts", "sdk-growth-failure-retention.test.ts"],
   "include": []
 }

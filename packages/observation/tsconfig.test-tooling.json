@@ -9,6 +9,6 @@
     "skipLibCheck": false,
     "noEmit": true
   },
-  "files": ["tests/type-controls.test.mts"],
+  "files": ["tests/type-controls.test.ts"],
   "include": []
 }

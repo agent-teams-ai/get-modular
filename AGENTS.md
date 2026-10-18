@@ -93,8 +93,8 @@ or certify existing code as conformant.
 ## TypeScript authoring
 
 Write new maintained source, tests and tooling in TypeScript 7.0.2 or newer;
-use `.ts`, or `.mts` when an explicit ESM file is needed. Include that source in
-the owning strict typecheck and normal verification command. Running a file
+use `.ts` with the owning package's `"type": "module"` for ESM. Include that source
+in the owning strict typecheck and normal verification command. Running a file
 through Node's type stripping is not type checking.
 
 Follow the organization standard's

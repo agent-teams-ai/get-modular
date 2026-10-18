@@ -96,8 +96,8 @@ async function fixture(
     const files: Record<string, string> = {
       "package.json": JSON.stringify({
         name: "get-modular-changed-workflow-test", private: true, type: "module",
-        scripts: { "check:changed": "node check-fast.mts", "check:fast": "node check-fast.mts",
-          check: "node check-fast.mts", "docs:changed": "node docs-check.mts" },
+        scripts: { "check:changed": "node check-fast.ts", "check:fast": "node check-fast.ts",
+          check: "node check-fast.ts", "docs:changed": "node docs-check.ts" },
       }),
       ".gitignore": "node_modules/\n",
       "AGENTS.md": "# TEST workflow\nUse pnpm check:changed, pnpm check:fast and pnpm check.\n",
@@ -113,7 +113,7 @@ async function fixture(
       "src/index.ts": source,
       "README.md": "# Disposable workflow test\n",
       // Real project-aware compiler, with no changed path arguments or shell quoting.
-      "check-fast.mts": [
+      "check-fast.ts": [
         'import assert from "node:assert/strict";',
         'import { spawnSync } from "node:child_process";',
         "assert.equal(process.argv.length, 2, 'check:fast must not receive changed paths');",
@@ -121,7 +121,7 @@ async function fixture(
         "if (result.error) throw result.error;",
         "process.exitCode = result.status ?? 1;",
       ].join("\n"),
-      "docs-check.mts": [
+      "docs-check.ts": [
         'import assert from "node:assert/strict";',
         'import { readFile } from "node:fs/promises";',
         'assert.match(await readFile("README.md", "utf8"), /^# /u);',

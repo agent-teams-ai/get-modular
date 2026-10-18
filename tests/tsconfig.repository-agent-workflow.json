@@ -11,6 +11,6 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "files": ["repository-agent-workflow.test.mts"],
+  "files": ["repository-agent-workflow.test.ts"],
   "include": []
 }

@@ -150,7 +150,7 @@ test("CLI and direct SDK admission stop before loading the incompatible extracto
   await fixture(async (root, paths) => {
     const registry = "tests/qualification/sdk-growth-registry-consumer.mjs";
     for (const path of [guard, "architecture/checks/node-version.mjs", admission, registry,
-      "tests/qualification/support/npm-cli.mjs", "tests/qualification/sdk-growth-failure-retention.mts"]) {
+      "tests/qualification/support/npm-cli.mjs", "tests/qualification/sdk-growth-failure-retention.ts"]) {
       await mkdir(dirname(join(root, path)), { recursive: true });
       await cp(join(repository, path), join(root, path));
     }
