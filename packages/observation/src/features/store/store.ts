@@ -43,6 +43,7 @@ export function createStore<V extends object & Required<V> & FixedKeys<V>>(initi
   });
   engine.register(owner);
   engine.register(facet);
-  // The validated runtime owns snapshots/reports and the writer. Their private brands are type-only.
-  return owner as unknown as Store<V>;
+  // Initial values and every operation are validated above or by the engine; it alone creates
+  // origin-registered snapshots. This boundary supplies the public type-only ownership brands.
+  return owner as Store<V>;
 }
