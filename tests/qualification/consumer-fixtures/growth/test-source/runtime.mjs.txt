@@ -1,0 +1,155 @@
+import assert from "node:assert/strict";
+import { writeFile } from "node:fs/promises";
+import { assemblyFor, entriesOf, group, implement } from "@get-modular/assembly";
+import { checkWiring, smoke } from "@get-modular/conformance";
+import { createScope } from "@get-modular/resources";
+import * as root from "../out/src/composition/growth.root.js";
+import { expectedInventory, expectedValues, providerOracleParts, smallSeed17, smallSeed23Root } from "./oracle.mjs";
+
+const size = Number(process.argv[2]);
+const expected = expectedInventory(size);
+const entries = entriesOf(root.modules);
+const declarations = [...entries.map(entry => entry.declaration), root.inputs.seed.declaration];
+const result = { size, scenarios: [size === 8 ? "G-01" : "G-02"], sourceCoverage: "incomplete; source scanner not selected", timingsMs: {} };
+let start = performance.now();
+const preparation = await root.compose(assemblyFor());
+result.timingsMs.prepare = performance.now() - start;
+assert.equal(preparation.status, "prepared", JSON.stringify(preparation));
+checkWiring(preparation.composition, providerOracleParts(size), { declarations });
+
+const rows = preparation.composition.plan.bindings;
+const dependencies = new Map(preparation.composition.plan.selections.map(selection => [selection.implementationId, []]));
+const edges = [];
+for (const row of rows) {
+  dependencies.get(row.consumerImplementationId).push(...row.providerImplementationIds);
+  for (const provider of row.providerImplementationIds) edges.push(`${row.consumerImplementationId}|${provider}`);
+}
+const depths = new Map();
+while (depths.size < dependencies.size) {
+  const before = depths.size;
+  for (const [id, providers] of dependencies) {
+    if (!depths.has(id) && providers.every(provider => depths.has(provider))) {
+      depths.set(id, 1 + Math.max(0, ...providers.map(provider => depths.get(provider))));
+    }
+  }
+  assert.ok(depths.size > before, "observed growth graph must be acyclic");
+}
+const reached = new Set();
+const selected = new Map(preparation.composition.plan.selections.map(selection => [selection.moduleId, selection.implementationId]));
+const pending = preparation.composition.plan.roots.map(id => selected.get(id) ?? id);
+while (pending.length > 0) {
+  const id = pending.pop();
+  if (reached.has(id)) continue;
+  reached.add(id);
+  pending.push(...dependencies.get(id));
+}
+result.graph = {
+  declarations: declarations.length, entriesAndGroups: root.modules.length + entries.length,
+  bindings: rows.length, providerOccurrences: edges.length, distinctEdges: new Set(edges).size,
+  pathNodes: Math.max(...depths.values()), reachableDeclarations: reached.size,
+};
+assert.equal(result.graph.declarations, expected.declarations);
+assert.equal(result.graph.entriesAndGroups, expected.entriesAndGroups);
+for (const name of ["bindings", "providerOccurrences", "distinctEdges"]) assert.equal(result.graph[name], expected.bindings);
+assert.equal(result.graph.pathNodes, expected.pathNodes);
+assert.equal(result.graph.reachableDeclarations, expected.declarations);
+assert.deepEqual(rows.filter(row => row.providerImplementationIds.includes("fixture/growth/f003/default"))
+  .map(row => row.consumerImplementationId).sort(),
+["fixture/growth/f004/default", "fixture/growth/f006/default", "fixture/growth/f007/default"]);
+
+async function runSeed(prepared, seed, label) {
+  const scope = createScope({ name: label });
+  let outcome;
+  let runMs;
+  let closeMs;
+  try {
+    const started = performance.now();
+    outcome = await prepared.run({ inputs: { seed: { "fixture/growth/seed": { read: () => seed } } }, scope: scope.resources });
+    runMs = performance.now() - started;
+    assert.equal(outcome.status, "succeeded", JSON.stringify(outcome));
+  } finally {
+    const started = performance.now();
+    const report = await scope.control.close();
+    closeMs = performance.now() - started;
+    assert.equal(report.complete, true);
+    assert.equal(report.settled, true);
+  }
+  return { outcome, runMs, closeMs };
+}
+
+result.seeds = [];
+for (const seed of [17, 23]) {
+  const { outcome, runMs, closeMs } = await runSeed(preparation.prepared, seed, `growth-${seed}`);
+  const values = outcome.created.map(created => created.instance.value);
+  assert.deepEqual(values, expectedValues(size, seed));
+  assert.equal(outcome.roots.last.value, values.at(-1));
+  if (size === 8 && seed === 17) assert.deepEqual(values, smallSeed17);
+  if (size === 8 && seed === 23) assert.equal(outcome.roots.last.value, smallSeed23Root);
+  result.seeds.push({ seed, root: outcome.roots.last.value, values, runMs, closeMs });
+}
+
+// Instrumentation stays in test-owned public wrappers; generated modules contain wiring only.
+const counts = entries.map(() => ({ factoryCalls: 0, portReads: 0 }));
+const measuredEntries = entries.map((original, index) => implement()(original.declaration, async (dependencies, context) => {
+  counts[index].factoryCalls += 1;
+  const product = await original.factory(dependencies, context);
+  const capabilities = Object.fromEntries(Object.entries(product.capabilities).map(([id, port]) => [id, {
+    read: () => { counts[index].portReads += 1; return port.read(); },
+  }]));
+  return { ...product, capabilities };
+}));
+const measuredByOriginal = new Map(entries.map((entry, index) => [entry, measuredEntries[index]]));
+let inputReads = 0;
+start = performance.now();
+const steps = await smoke({
+  api: assemblyFor(),
+  compose: api => root.compose({ prepare: input => api.prepare({ ...input,
+    modules: input.modules.map(feature => group(feature.name, feature.members.map(entry => {
+      assert.ok(measuredByOriginal.has(entry));
+      return measuredByOriginal.get(entry);
+    }))),
+    roots: Object.fromEntries(Object.entries(input.roots).map(([alias, entry]) => {
+      assert.ok(measuredByOriginal.has(entry));
+      return [alias, measuredByOriginal.get(entry)];
+    })),
+  }) }),
+  inputs: { seed: { "fixture/growth/seed": { read: () => { inputReads += 1; return 17; } } } },
+});
+result.timingsMs.fullSmoke = performance.now() - start;
+result.smoke = {
+  attempts: steps.length, factoryCalls: counts.reduce((total, row) => total + row.factoryCalls, 0),
+  dependencyPortReads: inputReads + counts.reduce((total, row) => total + row.portReads, 0),
+  inputReads, distribution: counts.map((row, index) => ({ implementationId: entries[index].declaration.implementationId, ...row })),
+  steps: steps.map(step => ({ inject: step.inject, at: step.at, outcome: step.outcome, closeComplete: step.report.complete })),
+};
+assert.equal(result.smoke.attempts, expected.smokeAttempts);
+assert.equal(result.smoke.factoryCalls, expected.smokeFactoryCalls);
+assert.equal(result.smoke.dependencyPortReads, expected.dependencyReads);
+assert.deepEqual(counts.map(row => row.factoryCalls), expected.callsByFeature);
+assert.ok(steps.every(step => step.report.complete && step.report.settled));
+assert.deepEqual(steps.map(step => [step.inject, step.at ?? null]), [
+  ["none", null], ...entries.flatMap(entry => [["fail", entry.declaration.implementationId], ["abort", entry.declaration.implementationId]]),
+]);
+
+if (size === 8) {
+  const { wrongEntry } = await import("../out/tests/features/f003/wrong-provider.js");
+  const changed = await assemblyFor().prepare({ profileId: "fixture/growth/wrong",
+    modules: root.modules.map((feature, index) => index === 3 ? group(feature.name, [wrongEntry]) : feature),
+    roots: root.roots, inputs: root.inputs });
+  assert.equal(changed.status, "prepared");
+  let failure;
+  try {
+    checkWiring(changed.composition, providerOracleParts(size), {
+      declarations: [...entries.map((entry, index) => index === 3 ? wrongEntry.declaration : entry.declaration), root.inputs.seed.declaration],
+    });
+  } catch (error) { failure = error; }
+  assert.equal(failure?.code, "conformance.wiring.mismatch");
+  assert.ok(failure.details.differences.some(difference => difference.rule === "capability-provider"
+    && difference.subject === "fixture/growth/f003/value"));
+  const { outcome } = await runSeed(changed.prepared, 17, "growth-wrong-provider");
+  assert.equal(outcome.roots.last.value, 25484);
+  assert.notEqual(outcome.roots.last.value, smallSeed17.at(-1));
+  result.wrongProvider = { root: outcome.roots.last.value, code: failure.code, differences: failure.details.differences };
+}
+await writeFile("runtime.json", `${JSON.stringify(result, null, 2)}\n`);
+console.log(JSON.stringify(result));
