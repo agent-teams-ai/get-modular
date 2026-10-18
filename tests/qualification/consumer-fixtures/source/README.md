@@ -131,10 +131,11 @@ pnpm --filter @agent-teams/engineering-foundation pack \
   --pack-destination .cache/source-facts-candidate/dd2d1848 --json
 ```
 
-The retained archive is the replay input. Its public `source-graph.d.ts` includes
-the final named fact types. This JavaScript replay binds runtime observations
-to that exact archive and declaration hash; it does not independently qualify
-the declarations with another typed consumer.
+The recorded replay is identified by the retained archive and declaration hashes
+below. Its public `source-graph.d.ts` includes the final named fact types. The
+harness uses the supplied installed public entrypoints and records their
+resolutions; it does not verify those installed bytes against the retained hashes
+or independently qualify the declarations with another typed consumer.
 
 ## Final recorded evidence
 

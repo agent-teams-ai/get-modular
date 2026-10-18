@@ -64,6 +64,7 @@ export async function runSourceScenarios(directory, tools, compile, rejectInputG
 
   await mutation("A-01", "missing required use case", [[`${runner}/application/use-cases/run-job.ts`, null]], result => {
     hasProblem(result, "missing-required-file");
+    hasProblem(result, "unresolved-reference");
     const failed = compile();
     assert.notEqual(failed.status, 0);
     assert.match(`${failed.stdout}\n${failed.stderr}`, /error TS2307:/u);
