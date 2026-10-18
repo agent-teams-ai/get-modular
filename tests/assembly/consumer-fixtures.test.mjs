@@ -5,6 +5,14 @@ import { testAssemblyTypes } from "../../architecture/tooling/test-assembly-type
 import {
   fixtureCompiler, invokeFixtureNode, withSemanticConsumer,
 } from "../qualification/consumer-fixtures/support/materialize.mjs";
+import { runInstalledSourcePolicyScenarios } from "../qualification/consumer-fixtures/source/policy.mjs";
+
+test("consumer fixtures enforce their installed flat source policy", { timeout: 600000 }, async (t) => {
+  await withSemanticConsumer(async ({ directory, evidence }) => {
+    const sourcePolicy = await runInstalledSourcePolicyScenarios(directory, evidence.packageOutputs);
+    t.diagnostic(JSON.stringify({ sourcePolicy, ...evidence }));
+  });
+});
 
 test("consumer fixtures compile through public packages and preserve C/L/W behavior", { timeout: 600000 }, async (t) => {
   await withSemanticConsumer(async ({ directory, evidence }) => {

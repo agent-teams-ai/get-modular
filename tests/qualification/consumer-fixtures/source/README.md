@@ -12,7 +12,32 @@ and [Foundation acceptance table](../../../../docs/qualification/module-fixture-
 own the requirements. This directory records bounded research evidence; it does
 not supersede their adoption or qualification conditions.
 
-## Public route and authority
+## Installed policy enforcement
+
+The ordinary [Assembly fixture entry](../../../assembly/consumer-fixtures.test.mjs)
+also invokes `policy.mjs` against the actual materialized semantic source using
+the installed Foundation public CLI. Its checked-in `source-dependencies.yaml`
+governs all of `src`, with separate application, adapter, public contract and
+composition boundaries. It declares the exact permitted sibling surfaces and
+keeps IO and Get Modular imports out of application code. A configuration-only
+edit to that YAML selects the existing fast scan.
+
+This route checks a complete independent disk inventory before its positive
+baseline, then requires specific Foundation diagnostics from real mutations:
+missing targets, forbidden sibling and non-entrypoint imports, unsupported bare
+alias/workspace/self-package forms, unknown externals, parse failures, computed
+loaders and application dependencies on composition, Get Modular or filesystem
+IO. The alias/workspace shapes are deliberately unsupported references; they do
+not qualify configured resolution for those mechanisms. Every mutation restores
+its source, and the restored tree must pass the installed policy again.
+
+These policy predicates are partial A-row enforcement on the existing installed
+Foundation version. They do not establish the remaining released source-fact
+chain and scoped CMS/FMS parity. The 26-observation candidate replay below
+remains separate research evidence, and overall `source: incomplete`,
+`adoption: unchanged` and `nested: not-selected` remain in force.
+
+## Public research route and authority
 
 The adapter independently enumerates actual source files and directories. It
 then calls `observeSourceGraph` from the public
@@ -169,5 +194,6 @@ artifact and a public FMS route matching the accepted semantics, or an explicit
 separate adoption decision. Its GM owner then pins the admitted artifact and
 profile, establishes scoped parity, and integrates the applicable A checks in
 the existing Assembly entry with its exact configuration routing. This
-directory adds no ordinary automated gate for the currently missing chain.
+directory's installed policy gate covers only the predicates described above;
+it does not automate the currently missing admitted FMS/CMS chain.
 Runtime fixture work can continue with source qualification incomplete.

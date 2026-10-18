@@ -1,0 +1,95 @@
+schemaVersion: 3
+workspace:
+  kind: pnpm
+  manifest: pnpm-workspace.yaml
+rootPackage: true
+packageRoots: []
+governedRoots: [src]
+boundaries:
+  - id: runner-application
+    roots: [src/features/runner/application]
+    entrypoints:
+      - src/features/runner/application/ports/effects.ts
+      - src/features/runner/application/ports/release-journal.ts
+      - src/features/runner/application/use-cases/run-job.ts
+    allow:
+      boundaries: []
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: runner-adapters
+    roots: [src/features/runner/adapters]
+    entrypoints: [src/features/runner/adapters/outbound/test-resource.ts]
+    allow:
+      boundaries: [runner-application]
+      packages: []
+      builtins: [node:fs/promises, node:os, node:path]
+      runtimeReferences: []
+  - id: runner-composition-contract
+    roots: [src/features/runner/composition/runner.contracts.ts]
+    entrypoints: [src/features/runner/composition/runner.contracts.ts]
+    allow:
+      boundaries: [session-composition-contract, session-public]
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: runner-composition
+    roots:
+      - src/features/runner/composition/runner-a.declaration.ts
+      - src/features/runner/composition/runner-a.module.ts
+      - src/features/runner/composition/runner.group.ts
+    entrypoints: [src/features/runner/composition/runner.group.ts]
+    allow:
+      boundaries: [runner-application, runner-adapters, runner-composition-contract, session-composition-contract]
+      packages: ["@get-modular/assembly", "@get-modular/core", "@get-modular/resources"]
+      builtins: []
+      runtimeReferences: []
+  - id: session-application
+    roots: [src/features/session/application]
+    entrypoints: [src/features/session/application/use-cases/run-job.ts]
+    allow:
+      boundaries: []
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: session-public
+    roots: [src/features/session/contracts]
+    entrypoints: [src/features/session/contracts/session.ts]
+    allow:
+      boundaries: []
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: session-composition-contract
+    roots: [src/features/session/composition/session.contracts.ts]
+    entrypoints: [src/features/session/composition/session.contracts.ts]
+    allow:
+      boundaries: [session-public]
+      packages: ["@get-modular/assembly"]
+      builtins: []
+      runtimeReferences: []
+  - id: session-composition
+    roots:
+      - src/features/session/composition/identity.declaration.ts
+      - src/features/session/composition/journal.declaration.ts
+      - src/features/session/composition/session.declaration.ts
+      - src/features/session/composition/session.group.ts
+      - src/features/session/composition/session.inputs.ts
+      - src/features/session/composition/session.module.ts
+    entrypoints:
+      - src/features/session/composition/session.group.ts
+      - src/features/session/composition/session.inputs.ts
+      - src/features/session/composition/session.module.ts
+    allow:
+      boundaries: [session-application, session-public, session-composition-contract]
+      packages: ["@get-modular/assembly", "@get-modular/core"]
+      builtins: []
+      runtimeReferences: []
+  - id: module-composition
+    roots: [src/composition]
+    entrypoints: [src/composition/semantic.root.ts]
+    allow:
+      boundaries: [runner-composition-contract, runner-composition, session-composition-contract, session-composition]
+      packages: ["@get-modular/assembly"]
+      builtins: []
+      runtimeReferences: []

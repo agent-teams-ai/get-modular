@@ -25,8 +25,11 @@ P4 has a separate [source research replay](source/README.md): 26 selected flat
 observations use actual disk facts from an exact packed Foundation candidate,
 the existing public FMS kernel and public Get Modular conformance. The replay
 records its artifact and source hashes. The kernel identifies FMS v1.1 while the
-adopted GM profile pins v1, so this evidence preserves `source: incomplete` and
-does not add an ordinary source gate or change the installed dependency.
+adopted GM profile pins v1, so this evidence preserves `source: incomplete`.
+The ordinary Assembly fixture entry also runs the installed Foundation policy
+against the actual semantic tree with its own checked-in source profile and
+rejecting mutations. This partial enforcement changes no tool pin and does not
+replace the remaining admitted FMS/CMS source-fact chain.
 
 P5's small G-01 entry runs one current TypeScript/NodeNext compilation and the
 actual generated tree's literal arithmetic, independent provider/input/root pins,
@@ -92,6 +95,7 @@ The bounded snapshot exposes identity and phase, with no factory attribution.
 | R-01–R-10 | `recovery/tests/recovery.test.ts` | [Assembly restart test](../../assembly/consumer-restart.test.mjs); one current compiler emit |
 | G-01 | Generated eight-feature tree and `growth/run.mjs` | [Assembly growth test](../../assembly/consumer-growth.test.mjs); current compiler/NodeNext, independent oracles and one full smoke |
 | W-01–W-03 | `semantic/tests/module/workload.test.ts` | Same Assembly fixture test and current runtime emit |
+| Selected A-01–A-04 and A-06 policy predicates | `source/policy.mjs` and `source/source-dependencies.yaml` | Same Assembly fixture test; installed public Foundation CLI, actual tree and rejecting mutations; overall source qualification remains incomplete |
 
 The owner contract suite lives in `semantic/tests/features/session/testing.ts`.
 It runs the same three success, error and cancellation cases against a typed
