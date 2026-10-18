@@ -115,6 +115,9 @@ executable JavaScript; no assertion bridge admission or suppression was added.
 
 ## Executed checks
 
+Command logs and their SHA-256 identities are retained in
+[implementation-evidence/manifest.json](implementation-evidence/manifest.json).
+
 The retained local environment is Linux x64, Node 26.11.1 and Node 24.21.0,
 pnpm 11.20.0, TypeScript 7.0.2. The following results are scoped observations,
 not substitutes for the blocked complete repository aggregate.
@@ -138,6 +141,37 @@ not substitutes for the blocked complete repository aggregate.
 | Required quality execution | All 11 required identities completed; the contract has no exceptions. |
 | Toolchain and lock | Runtime preflight, strict peer lock check, TS7 runtime-policy typecheck and runtime-policy test pass. |
 | Documentation | Docs Protocol, complete Markdown lint and spelling checks pass; final handoff update is checked again before push. |
+
+## Compiler guard and publication access
+
+A final tooling-only correction, `ea9ac84`, prevents an automatic PR workflow
+from launching the known below-floor extractor. The guard reads JSON manifests
+through each dependency owner's real resolution path, including Foundation's
+API Extractor and that extractor's compiler. It loads no compiler implementation.
+The three aggregate/admission commands retain their original obligations after
+this preflight. Direct SDK admission and typed compatibility fixtures also guard
+before their implementation imports or child processes. Ordinary CLI errors and
+this blocked preflight cannot masquerade as passing negative tests.
+
+The independent type critic verified the execution order and ran all 20 inert
+metadata controls on each Node line. The integrated root guard/SDK/CI/profile
+selection passed all 135 tests with zero skips; the final selected source
+dependency capability also passed. The real `pnpm foundation:check` now exits 1
+with `TYPESCRIPT_COMPILER_FLOOR_BLOCKED`, role
+`foundation.api-extractor.compiler`, and observed version `5.9.3`, before
+extraction. Both read-only public API policy tests pass; its two typed CLI tests
+remain explicitly blocked. This is the required red outcome until upstream
+compatibility exists, not a skipped or successful gate. No packed input changed.
+
+The final Git publication attempt is blocked by environment access. Both
+repository pushes fail because Git has no HTTPS credentials. Automatic approval
+review rejected creating the external branch from `main`: it requires the exact
+completed commit to be available remotely first. Read-only ref inspection confirms
+that both new branches are absent, and GitHub cannot find external commit
+`c2872eb9b89fbde8cc162e152c2cab5f813237cd`. No empty replacement branch was created.
+The completed commits, candidate and evidence are retained locally; no new
+implementation or TEST PR URL exists yet. An authenticated push of the exact
+branches is the remaining publication action, followed by draft PR creation.
 
 ## Maintained CMS and consumer adoption
 

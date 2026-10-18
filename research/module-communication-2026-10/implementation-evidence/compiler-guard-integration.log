@@ -1,0 +1,839 @@
+TAP version 13
+# Subtest: every OS executes the independent baseline obligations with their prerequisites
+ok 1 - every OS executes the independent baseline obligations with their prerequisites
+  ---
+  duration_ms: 4.499044
+  type: 'test'
+  ...
+# Subtest: the Node 24 consumer receives both observation entries from the default-runtime pack
+ok 2 - the Node 24 consumer receives both observation entries from the default-runtime pack
+  ---
+  duration_ms: 0.191348
+  type: 'test'
+  ...
+# Subtest: rejects missing, duplicate, unknown and reordered obligations on any OS
+ok 3 - rejects missing, duplicate, unknown and reordered obligations on any OS
+  ---
+  duration_ms: 237.735293
+  type: 'test'
+  ...
+# Subtest: rejects an unexpected packaging build before governance
+ok 4 - rejects an unexpected packaging build before governance
+  ---
+  duration_ms: 2.39413
+  type: 'test'
+  ...
+# Subtest: rejects an omitted dependency, skipped aggregate or renamed required context
+ok 5 - rejects an omitted dependency, skipped aggregate or renamed required context
+  ---
+  duration_ms: 13.944845
+  type: 'test'
+  ...
+# Subtest: the actual aggregate shell fails closed for failure, cancellation, skips and empty needs
+ok 6 - the actual aggregate shell fails closed for failure, cancellation, skips and empty needs
+  ---
+  duration_ms: 329.24912
+  type: 'test'
+  ...
+# Subtest: the actual native lane runner passes argv in order and preserves the first failed exit
+ok 7 - the actual native lane runner passes argv in order and preserves the first failed exit
+  ---
+  duration_ms: 5639.618221
+  type: 'test'
+  ...
+# Subtest: the native lane rejects empty or unsafe input before invoking any script
+ok 8 - the native lane rejects empty or unsafe input before invoking any script
+  ---
+  duration_ms: 322.809905
+  type: 'test'
+  ...
+# Subtest: the native lane fails for a terminated child or unavailable native tool
+ok 9 - the native lane fails for a terminated child or unavailable native tool
+  ---
+  duration_ms: 103.443691
+  type: 'test'
+  ...
+# Subtest: the feature profile rejects removing parity tests from the complete gate
+ok 10 - the feature profile rejects removing parity tests from the complete gate
+  ---
+  duration_ms: 3.659252
+  type: 'test'
+  ...
+# Subtest: compiler floor inspects each resolved owner without loading package implementations
+ok 11 - compiler floor inspects each resolved owner without loading package implementations
+  ---
+  duration_ms: 27.918829
+  type: 'test'
+  ...
+# Subtest: minimum and current may resolve to the same exact compiler manifest
+ok 12 - minimum and current may resolve to the same exact compiler manifest
+  ---
+  duration_ms: 29.797929
+  type: 'test'
+  ...
+# Subtest: every compiler ownership path rejects below-floor metadata before execution
+    # Subtest: repository.current
+    ok 1 - repository.current
+      ---
+      duration_ms: 9.978562
+      type: 'test'
+      ...
+    # Subtest: repository.minimum
+    ok 2 - repository.minimum
+      ---
+      duration_ms: 13.971926
+      type: 'test'
+      ...
+    # Subtest: foundation.compiler
+    ok 3 - foundation.compiler
+      ---
+      duration_ms: 12.200368
+      type: 'test'
+      ...
+    # Subtest: foundation.api-extractor.compiler
+    ok 4 - foundation.api-extractor.compiler
+      ---
+      duration_ms: 15.61099
+      type: 'test'
+      ...
+    1..4
+ok 13 - every compiler ownership path rejects below-floor metadata before execution
+  ---
+  duration_ms: 53.248891
+  type: 'test'
+  ...
+# Subtest: invalid identity, unstable versions, missing files and dependency overrides fail closed
+    # Subtest: wrong compiler
+    ok 1 - wrong compiler
+      ---
+      duration_ms: 9.294614
+      type: 'test'
+      ...
+    # Subtest: prerelease
+    ok 2 - prerelease
+      ---
+      duration_ms: 11.066562
+      type: 'test'
+      ...
+    # Subtest: malformed version
+    ok 3 - malformed version
+      ---
+      duration_ms: 9.970409
+      type: 'test'
+      ...
+    # Subtest: wrong Foundation
+    ok 4 - wrong Foundation
+      ---
+      duration_ms: 8.44026
+      type: 'test'
+      ...
+    # Subtest: wrong extractor
+    ok 5 - wrong extractor
+      ---
+      duration_ms: 12.388024
+      type: 'test'
+      ...
+    # Subtest: overridden Foundation compiler
+    ok 6 - overridden Foundation compiler
+      ---
+      duration_ms: 8.824177
+      type: 'test'
+      ...
+    # Subtest: overridden extractor
+    ok 7 - overridden extractor
+      ---
+      duration_ms: 9.306892
+      type: 'test'
+      ...
+    # Subtest: overridden compiler
+    ok 8 - overridden compiler
+      ---
+      duration_ms: 7.061226
+      type: 'test'
+      ...
+    # Subtest: missing compiler
+    ok 9 - missing compiler
+      ---
+      duration_ms: 11.399788
+      type: 'test'
+      ...
+    # Subtest: missing Foundation
+    ok 10 - missing Foundation
+      ---
+      duration_ms: 7.264021
+      type: 'test'
+      ...
+    1..10
+ok 14 - invalid identity, unstable versions, missing files and dependency overrides fail closed
+  ---
+  duration_ms: 97.209614
+  type: 'test'
+  ...
+# Subtest: CLI and direct SDK admission stop before loading the incompatible extractor
+ok 15 - CLI and direct SDK admission stop before loading the incompatible extractor
+  ---
+  duration_ms: 142.145546
+  type: 'test'
+  ...
+# Subtest: known extraction scripts retain their commands after the blocking preflight
+ok 16 - known extraction scripts retain their commands after the blocking preflight
+  ---
+  duration_ms: 0.892962
+  type: 'test'
+  ...
+# Subtest: accepts the checked-in Get Modular adoption profile
+ok 17 - accepts the checked-in Get Modular adoption profile
+  ---
+  duration_ms: 3.808676
+  type: 'test'
+  ...
+# Subtest: rejects the retired snake-case consumer profile schema
+ok 18 - rejects the retired snake-case consumer profile schema
+  ---
+  duration_ms: 0.662075
+  type: 'test'
+  ...
+# Subtest: exposes the qualified nested FMS v1 topology consumed by Foundation
+ok 19 - exposes the qualified nested FMS v1 topology consumed by Foundation
+  ---
+  duration_ms: 1.10479
+  type: 'test'
+  ...
+# Subtest: rejects missing and duplicate governed module records
+ok 20 - rejects missing and duplicate governed module records
+  ---
+  duration_ms: 2.358296
+  type: 'test'
+  ...
+# Subtest: rejects wildcard and mismatched module, source, and test roots
+ok 21 - rejects wildcard and mismatched module, source, and test roots
+  ---
+  duration_ms: 1.461407
+  type: 'test'
+  ...
+# Subtest: pins the accepted Foundation and Docs source versions without age exclusions
+ok 22 - pins the accepted Foundation and Docs source versions without age exclusions
+  ---
+  duration_ms: 22.187462
+  type: 'test'
+  ...
+# Subtest: accepts exactly Foundation 1.7.4 for source and empty pre-production guard inputs
+ok 23 - accepts exactly Foundation 1.7.4 for source and empty pre-production guard inputs
+  ---
+  duration_ms: 1.611252
+  type: 'test'
+  ...
+# Subtest: rejects stale, mismatched, ranged and missing Foundation manifest pins before admission
+ok 24 - rejects stale, mismatched, ranged and missing Foundation manifest pins before admission
+  ---
+  duration_ms: 3.127402
+  type: 'test'
+  ...
+# Subtest: rejects stale and mismatched profile bindings even with the correct manifest
+ok 25 - rejects stale and mismatched profile bindings even with the correct manifest
+  ---
+  duration_ms: 10.665525
+  type: 'test'
+  ...
+# Subtest: matching manifest and profile versions cannot replace the exact Foundation candidate
+ok 26 - matching manifest and profile versions cannot replace the exact Foundation candidate
+  ---
+  duration_ms: 6.923209
+  type: 'test'
+  ...
+# Subtest: admits current Core and Assembly only with the exact Foundation 1.7.4 binding
+ok 27 - admits current Core and Assembly only with the exact Foundation 1.7.4 binding
+  ---
+  duration_ms: 8.318055
+  type: 'test'
+  ...
+# Subtest: rejects central identity and digest drift
+ok 28 - rejects central identity and digest drift
+  ---
+  duration_ms: 2.37397
+  type: 'test'
+  ...
+# Subtest: rejects silent scope and extension-authority drift
+ok 29 - rejects silent scope and extension-authority drift
+  ---
+  duration_ms: 0.434743
+  type: 'test'
+  ...
+# Subtest: accepts ordered conformance states and rejects unsupported status values
+ok 30 - accepts ordered conformance states and rejects unsupported status values
+  ---
+  duration_ms: 1.63631
+  type: 'test'
+  ...
+# Subtest: keeps source admission distinct from structural and runtime conformance
+ok 31 - keeps source admission distinct from structural and runtime conformance
+  ---
+  duration_ms: 0.475665
+  type: 'test'
+  ...
+# Subtest: requires explicit owned deviation records
+ok 32 - requires explicit owned deviation records
+  ---
+  duration_ms: 0.436286
+  type: 'test'
+  ...
+# Subtest: requires profile enforcement in complete and fast gates
+ok 33 - requires profile enforcement in complete and fast gates
+  ---
+  duration_ms: 20.176804
+  type: 'test'
+  ...
+# Subtest: docs quality ignores nested workspace node_modules, not only the root tree
+ok 34 - docs quality ignores nested workspace node_modules, not only the root tree
+  ---
+  duration_ms: 5.393109
+  type: 'test'
+  ...
+# Subtest: rejects Foundation before generation and redundant aggregate preparation
+ok 35 - rejects Foundation before generation and redundant aggregate preparation
+  ---
+  duration_ms: 0.895086
+  type: 'test'
+  ...
+# Subtest: keeps the profile reachable for humans and agents
+ok 36 - keeps the profile reachable for humans and agents
+  ---
+  duration_ms: 0.600773
+  type: 'test'
+  ...
+# Subtest: keeps an empty pre-production repository honestly not-claimed
+ok 37 - keeps an empty pre-production repository honestly not-claimed
+  ---
+  duration_ms: 0.933764
+  type: 'test'
+  ...
+# Subtest: first production package requires the Foundation source-dependency gate
+ok 38 - first production package requires the Foundation source-dependency gate
+  ---
+  duration_ms: 2.040939
+  type: 'test'
+  ...
+# Subtest: first production package cannot use a no-op Foundation alias
+ok 39 - first production package cannot use a no-op Foundation alias
+  ---
+  duration_ms: 0.477889
+  type: 'test'
+  ...
+# Subtest: rejects unknown package identities even with no active publication blockers
+ok 40 - rejects unknown package identities even with no active publication blockers
+  ---
+  duration_ms: 0.250116
+  type: 'test'
+  ...
+# Subtest: rejects publication fields on an otherwise accepted private package
+ok 41 - rejects publication fields on an otherwise accepted private package
+  ---
+  duration_ms: 0.291589
+  type: 'test'
+  ...
+# Subtest: rejects an unmanifested or nested production package root
+ok 42 - rejects an unmanifested or nested production package root
+  ---
+  duration_ms: 0.315444
+  type: 'test'
+  ...
+# Subtest: first production package rejects a package symlink
+ok 43 - first production package rejects a package symlink
+  ---
+  duration_ms: 0.156285
+  type: 'test'
+  ...
+# Subtest: production source outside packages cannot bypass first-package admission
+ok 44 - production source outside packages cannot bypass first-package admission
+  ---
+  duration_ms: 0.136215
+  type: 'test'
+  ...
+# Subtest: production artifact discovery is repository-wide and deterministic
+ok 45 - production artifact discovery is repository-wide and deterministic
+  ---
+  duration_ms: 9.170718
+  type: 'test'
+  ...
+# Subtest: production package symlink discovery does not follow targets
+ok 46 - production package symlink discovery does not follow targets
+  ---
+  duration_ms: 3.394764
+  type: 'test'
+  ...
+# Subtest: admits the accepted export map once no publication blocker remains
+ok 47 - admits the accepted export map once no publication blocker remains
+  ---
+  duration_ms: 1.025501
+  type: 'test'
+  ...
+# Subtest: publication blockers come from the traceability catalog
+ok 48 - publication blockers come from the traceability catalog
+  ---
+  duration_ms: 0.188243
+  type: 'test'
+  ...
+# Subtest: requires the Assembly gates in dependency order in both root commands
+ok 49 - requires the Assembly gates in dependency order in both root commands
+  ---
+  duration_ms: 1.750652
+  type: 'test'
+  ...
+# Subtest: ADR-0023 and ADR-0025 admit historical private and canonical public Assembly shapes
+ok 50 - ADR-0023 and ADR-0025 admit historical private and canonical public Assembly shapes
+  ---
+  duration_ms: 4.581698
+  type: 'test'
+  ...
+# Subtest: profile admission rejects a leaf manifest outside its publication class shape
+ok 51 - profile admission rejects a leaf manifest outside its publication class shape
+  ---
+  duration_ms: 5.692328
+  type: 'test'
+  ...
+# Subtest: requires exactly one historical M2 replay in the contracts gate
+ok 52 - requires exactly one historical M2 replay in the contracts gate
+  ---
+  duration_ms: 0.96414
+  type: 'test'
+  ...
+# Subtest: routes Docs through portable v3 authoring without managed activation
+ok 53 - routes Docs through portable v3 authoring without managed activation
+  ---
+  duration_ms: 4.793426
+  type: 'test'
+  ...
+# Subtest: source admission rejects removed or redirected quality.source-coverage
+ok 54 - source admission rejects removed or redirected quality.source-coverage
+  ---
+  duration_ms: 0.434834
+  type: 'test'
+  ...
+# Subtest: source admission rejects removed or redirected quality.suppression-governance
+ok 55 - source admission rejects removed or redirected quality.suppression-governance
+  ---
+  duration_ms: 0.2529
+  type: 'test'
+  ...
+# Subtest: historical 1.7.2 and current 1.7.4 reports retain exact selected bytes under the current producer pin before fixture removal; no message admission
+ok 56 - historical 1.7.2 and current 1.7.4 reports retain exact selected bytes under the current producer pin before fixture removal; no message admission
+  ---
+  duration_ms: 86.31271
+  type: 'test'
+  ...
+# Subtest: expected invocation and disabled destination leave no artifact
+ok 57 - expected invocation and disabled destination leave no artifact
+  ---
+  duration_ms: 32.915456
+  type: 'test'
+  ...
+# Subtest: malformed, oversized, spoofed and unknown-field reports remain bounded
+ok 58 - malformed, oversized, spoofed and unknown-field reports remain bounded
+  ---
+  duration_ms: 244.455422
+  type: 'test'
+  ...
+# Subtest: missing, wrong and spoofed report versions reject without selecting public fields
+    # Subtest: missing canonical version
+    ok 1 - missing canonical version
+      ---
+      duration_ms: 2.21198
+      type: 'test'
+      ...
+    # Subtest: legacy schemaVersion 1 only
+    ok 2 - legacy schemaVersion 1 only
+      ---
+      duration_ms: 1.242258
+      type: 'test'
+      ...
+    # Subtest: canonical version 2
+    ok 3 - canonical version 2
+      ---
+      duration_ms: 2.071564
+      type: 'test'
+      ...
+    # Subtest: legacy version 1 cannot override canonical version 2
+    ok 4 - legacy version 1 cannot override canonical version 2
+      ---
+      duration_ms: 3.806753
+      type: 'test'
+      ...
+    # Subtest: string canonical version
+    ok 5 - string canonical version
+      ---
+      duration_ms: 1.400065
+      type: 'test'
+      ...
+    1..5
+ok 59 - missing, wrong and spoofed report versions reject without selecting public fields
+  ---
+  duration_ms: 12.174769
+  type: 'test'
+  ...
+# Subtest: metadata fallbacks never fabricate exits or execute observation getters
+ok 60 - metadata fallbacks never fabricate exits or execute observation getters
+  ---
+  duration_ms: 169.664219
+  type: 'test'
+  ...
+# Subtest: killed metadata preserves observed signal and numeric exits without timeout inference
+    # Subtest: killed alone
+    ok 1 - killed alone
+      ---
+      duration_ms: 2.402762
+      type: 'test'
+      ...
+    # Subtest: killed with empty signal
+    ok 2 - killed with empty signal
+      ---
+      duration_ms: 2.141279
+      type: 'test'
+      ...
+    # Subtest: killed with signal
+    ok 3 - killed with signal
+      ---
+      duration_ms: 2.541881
+      type: 'test'
+      ...
+    # Subtest: killed with numeric code
+    ok 4 - killed with numeric code
+      ---
+      duration_ms: 2.530865
+      type: 'test'
+      ...
+    # Subtest: killed with numeric status
+    ok 5 - killed with numeric status
+      ---
+      duration_ms: 2.723585
+      type: 'test'
+      ...
+    # Subtest: killed with signal and numeric code
+    ok 6 - killed with signal and numeric code
+      ---
+      duration_ms: 2.50118
+      type: 'test'
+      ...
+    # Subtest: buffer limit precedes killed and signal
+    ok 7 - buffer limit precedes killed and signal
+      ---
+      duration_ms: 3.965562
+      type: 'test'
+      ...
+    1..7
+ok 61 - killed metadata preserves observed signal and numeric exits without timeout inference
+  ---
+  duration_ms: 20.907713
+  type: 'test'
+  ...
+# Subtest: fixtures canonicalize an aliased temporary root before successful retention
+ok 62 - fixtures canonicalize an aliased temporary root before successful retention
+  ---
+  duration_ms: 41.25924
+  type: 'test'
+  ...
+# Subtest: aliased directories are rejected without creating an artifact in the canonical directory
+ok 63 - aliased directories are rejected without creating an artifact in the canonical directory
+  ---
+  duration_ms: 75.232131
+  type: 'test'
+  ...
+# sdk-growth-retention-failed
+# sdk-growth-retention-failed
+# sdk-growth-retention-failed
+# sdk-growth-retention-failed
+# sdk-growth-retention-failed
+# sdk-growth-retention-failed
+# Subtest: exclusive creation and invalid destinations preserve the primary assertion object
+ok 64 - exclusive creation and invalid destinations preserve the primary assertion object
+  ---
+  duration_ms: 610.282675
+  type: 'test'
+  ...
+# Subtest: SDK retention helper and IO tests pass strict typechecking
+ok 65 - SDK retention helper and IO tests pass strict typechecking
+  ---
+  duration_ms: 558.187451
+  type: 'test'
+  ...
+# Subtest: G1 remains on explicit HOLD without external authority or released custody
+ok 66 - G1 remains on explicit HOLD without external authority or released custody
+  ---
+  duration_ms: 685.046992
+  type: 'test'
+  ...
+# Subtest: rejects activation or qualification claims while authority is unavailable
+    # Subtest: active
+    ok 1 - active
+      ---
+      duration_ms: 149.076162
+      type: 'test'
+      ...
+    # Subtest: qualified
+    ok 2 - qualified
+      ---
+      duration_ms: 127.178505
+      type: 'test'
+      ...
+    # Subtest: admitted claim
+    ok 3 - admitted claim
+      ---
+      duration_ms: 127.665508
+      type: 'test'
+      ...
+    1..3
+ok 67 - rejects activation or qualification claims while authority is unavailable
+  ---
+  duration_ms: 405.074129
+  type: 'test'
+  ...
+# Subtest: rejects candidate-authored evidence masquerading as active authority
+    # Subtest: architecture/sdk-growth/activation.json
+    ok 1 - architecture/sdk-growth/activation.json
+      ---
+      duration_ms: 108.895278
+      type: 'test'
+      ...
+    # Subtest: architecture/sdk-growth/evidence/grant.json
+    ok 2 - architecture/sdk-growth/evidence/grant.json
+      ---
+      duration_ms: 136.462894
+      type: 'test'
+      ...
+    # Subtest: architecture/sdk-growth/evidence/receipt.json
+    ok 3 - architecture/sdk-growth/evidence/receipt.json
+      ---
+      duration_ms: 130.390244
+      type: 'test'
+      ...
+    1..3
+ok 68 - rejects candidate-authored evidence masquerading as active authority
+  ---
+  duration_ms: 376.555679
+  type: 'test'
+  ...
+# Subtest: retains v1 compatibility while v2 admission is only a qualification profile
+    # Subtest: active config cannot silently select v2
+    ok 1 - active config cannot silently select v2
+      ---
+      duration_ms: 106.043119
+      type: 'test'
+      ...
+    # Subtest: v2 profile cannot be downgraded
+    ok 2 - v2 profile cannot be downgraded
+      ---
+      duration_ms: 115.281408
+      type: 'test'
+      ...
+    1..2
+ok 69 - retains v1 compatibility while v2 admission is only a qualification profile
+  ---
+  duration_ms: 221.881585
+  type: 'test'
+  ...
+# Subtest: published packages cannot be reclassified as initial-unreleased
+    # Subtest: policy
+    ok 1 - policy
+      ---
+      duration_ms: 99.899969
+      type: 'test'
+      ...
+    # Subtest: history
+    ok 2 - history
+      ---
+      duration_ms: 134.480554
+      type: 'test'
+      ...
+    1..2
+ok 70 - published packages cannot be reclassified as initial-unreleased
+  ---
+  duration_ms: 234.946744
+  type: 'test'
+  ...
+# Subtest: unverified released bytes cannot be promoted into growth observations
+ok 71 - unverified released bytes cannot be promoted into growth observations
+  ---
+  duration_ms: 122.193535
+  type: 'test'
+  ...
+# Subtest: P0 feasibility cannot promote historical release leads
+    # Subtest: fabricated source binding
+    ok 1 - fabricated source binding
+      ---
+      duration_ms: 93.305008
+      type: 'test'
+      ...
+    # Subtest: fabricated publisher custody
+    ok 2 - fabricated publisher custody
+      ---
+      duration_ms: 117.321556
+      type: 'test'
+      ...
+    # Subtest: false completed disposition
+    ok 3 - false completed disposition
+      ---
+      duration_ms: 108.871822
+      type: 'test'
+      ...
+    1..3
+ok 72 - P0 feasibility cannot promote historical release leads
+  ---
+  duration_ms: 320.198689
+  type: 'test'
+  ...
+# Subtest: P0 rejects drifted CMS, artifact and gate identities
+    # Subtest: wrong current CMS hash
+    ok 1 - wrong current CMS hash
+      ---
+      duration_ms: 86.759367
+      type: 'test'
+      ...
+    # Subtest: changed CMS bytes
+    ok 2 - changed CMS bytes
+      ---
+      duration_ms: 93.937599
+      type: 'test'
+      ...
+    # Subtest: wrong Core ZIP
+    ok 3 - wrong Core ZIP
+      ---
+      duration_ms: 95.333408
+      type: 'test'
+      ...
+    # Subtest: wrong Core lead kind
+    ok 4 - wrong Core lead kind
+      ---
+      duration_ms: 99.409621
+      type: 'test'
+      ...
+    # Subtest: wrong Core contained file
+    ok 5 - wrong Core contained file
+      ---
+      duration_ms: 96.255405
+      type: 'test'
+      ...
+    # Subtest: Assembly artifact falsely retained
+    ok 6 - Assembly artifact falsely retained
+      ---
+      duration_ms: 61.942047
+      type: 'test'
+      ...
+    # Subtest: wrong Assembly lead kind
+    ok 7 - wrong Assembly lead kind
+      ---
+      duration_ms: 88.458602
+      type: 'test'
+      ...
+    # Subtest: gate marked complete
+    ok 8 - gate marked complete
+      ---
+      duration_ms: 111.284654
+      type: 'test'
+      ...
+    1..8
+ok 73 - P0 rejects drifted CMS, artifact and gate identities
+  ---
+  duration_ms: 735.224535
+  type: 'test'
+  ...
+# Subtest: rejects package-scope narrowing and entrypoint replacement
+    # Subtest: package omitted
+    ok 1 - package omitted
+      ---
+      duration_ms: 103.946142
+      type: 'test'
+      ...
+    # Subtest: entrypoint replaced at the same count
+    ok 2 - entrypoint replaced at the same count
+      ---
+      duration_ms: 111.448641
+      type: 'test'
+      ...
+    # Subtest: packed package scope emptied
+    ok 3 - packed package scope emptied
+      ---
+      duration_ms: 89.190162
+      type: 'test'
+      ...
+    # Subtest: packed exports emptied
+    ok 4 - packed exports emptied
+      ---
+      duration_ms: 95.194189
+      type: 'test'
+      ...
+    # Subtest: packed export replaced at the same count
+    ok 5 - packed export replaced at the same count
+      ---
+      duration_ms: 68.220505
+      type: 'test'
+      ...
+    1..5
+ok 74 - rejects package-scope narrowing and entrypoint replacement
+  ---
+  duration_ms: 469.09733
+  type: 'test'
+  ...
+# Subtest: rejects missing command and Foundation identity drift
+    # Subtest: no-op command
+    ok 1 - no-op command
+      ---
+      duration_ms: 89.458516
+      type: 'test'
+      ...
+    # Subtest: version range
+    ok 2 - version range
+      ---
+      duration_ms: 91.689374
+      type: 'test'
+      ...
+    # Subtest: stale exact 1.7.2 literal
+    ok 3 - stale exact 1.7.2 literal
+      ---
+      duration_ms: 95.448756
+      type: 'test'
+      ...
+    # Subtest: registry integrity
+    ok 4 - registry integrity
+      ---
+      duration_ms: 103.99439
+      type: 'test'
+      ...
+    1..4
+ok 75 - rejects missing command and Foundation identity drift
+  ---
+  duration_ms: 381.543567
+  type: 'test'
+  ...
+# Subtest: retained baseline describes the current manifest version
+    # Subtest: baseline behind its manifest
+    ok 1 - baseline behind its manifest
+      ---
+      duration_ms: 121.342521
+      type: 'test'
+      ...
+    # Subtest: manifest ahead of its baseline
+    ok 2 - manifest ahead of its baseline
+      ---
+      duration_ms: 122.179179
+      type: 'test'
+      ...
+    1..2
+ok 76 - retained baseline describes the current manifest version
+  ---
+  duration_ms: 244.164807
+  type: 'test'
+  ...
+# Subtest: rejects tracked ownership work outside G1
+ok 77 - rejects tracked ownership work outside G1
+  ---
+  duration_ms: 127.633714
+  type: 'test'
+  ...
+1..77
+# tests 135
+# suites 0
+# pass 135
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 6775.295993
