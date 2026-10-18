@@ -11,6 +11,10 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "files": ["repository-agent-workflow.test.ts"],
+  "files": [
+    "repository-agent-workflow.test.ts",
+    "fixtures/repository-agent-workflow/check-fast.ts",
+    "fixtures/repository-agent-workflow/docs-check.ts"
+  ],
   "include": []
 }
