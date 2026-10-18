@@ -46,8 +46,8 @@ catalogs:
       specifier: 7.0.2
       version: 7.0.2
     typescript-minimum:
-      specifier: npm:typescript@5.8.3
-      version: 5.8.3
+      specifier: npm:typescript@7.0.2
+      version: 7.0.2
     yaml:
       specifier: 2.9.0
       version: 2.9.0
@@ -118,7 +118,7 @@ importers:
         version: 7.0.2
       typescript-minimum:
         specifier: 'catalog:'
-        version: typescript@5.8.3
+        version: typescript@7.0.2
       yaml:
         specifier: 'catalog:'
         version: 2.9.0
@@ -160,7 +160,7 @@ importers:
         version: 7.0.2
       typescript-minimum:
         specifier: 'catalog:'
-        version: typescript@5.8.3
+        version: typescript@7.0.2
       yaml:
         specifier: 'catalog:'
         version: 2.9.0
@@ -1642,11 +1642,6 @@ packages:
 
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
-
-  typescript@5.8.3:
-    resolution: {integrity: sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==}
-    engines: {node: '>=14.17'}
-    hasBin: true
 
   typescript@5.9.3:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
@@ -3167,8 +3162,6 @@ snapshots:
 
   tslib@2.8.1:
     optional: true
-
-  typescript@5.8.3: {}
 
   typescript@5.9.3: {}
 
