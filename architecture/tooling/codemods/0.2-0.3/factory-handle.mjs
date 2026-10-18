@@ -1,90 +1,86 @@
-import { Node, SyntaxKind } from "ts-morph";
+import { syntax, SyntaxKind, lineNumber, parentOfKind, importedName, importNames, namespaceName,
+  exportNames, moduleName, symbolDeclarations, replaceNode, addNamedImport, removeNamedImports } from "../project.mjs";
 
 const SPECIFIER = "@get-modular/assembly";
 const OLD = "FactoryHandle";
 const NEW = "AnyFactoryHandle";
 
 function starLabel(declaration) {
-  const namespace = declaration.getNamespaceExport();
-  return `export${declaration.isTypeOnly() ? " type" : ""} *${namespace ? ` as ${namespace.getName()}` : ""}`;
+  const namespace = declaration.exportClause?.kind === SyntaxKind.NamespaceExport ? declaration.exportClause : undefined;
+  return `export${declaration.isTypeOnly ? " type" : ""} *${namespace ? ` as ${namespace.name.getText()}` : ""}`;
 }
 
-// 0.3.0: FactoryHandle<C> no longer means "any handle of map C"; that is AnyFactoryHandle<C>.
-// Only references that resolve to the import from @get-modular/assembly are touched.
-/** @param {import("ts-morph").SourceFile} file  @param {(message: string) => void} manual */
+// Only one-argument references resolved to the Assembly import are rewritten.
+/** @param {import("../project.mjs").CodemodFile} file @param {(message: string) => void} manual */
 export default function transform(file, manual) {
   let edits = 0;
-  // `gm.FactoryHandle<C>` and `import("@get-modular/assembly").FactoryHandle<C>` have no import specifier to rewrite:
-  // one type argument is renamed in place, anything else is reported.
-  const renameOrReport = (name, typeArguments, label) => {
-    if (typeArguments === 1) { name.replaceWithText(NEW); edits += 1; return; }
-    manual(`line ${name.getStartLineNumber()}: ${label} with ${typeArguments} type arguments stays; `
+  const replacements = [];
+  const renameOrReport = (name, count, label) => {
+    if (count === 1) { replacements.push(replaceNode(name, NEW)); edits += 1; return; }
+    manual(`line ${lineNumber(name)}: ${label} with ${count} type arguments stays; `
       + `choose AnyFactoryHandle or keep the bound handle form by hand`);
   };
-  for (const declaration of file.getImportDeclarations()) {
-    if (declaration.getModuleSpecifierValue() !== SPECIFIER) continue;
-    const specifier = declaration.getNamedImports().find((entry) => entry.getName() === OLD);
+  for (const declaration of file.imports) {
+    if (moduleName(declaration) !== SPECIFIER) continue;
+    const specifier = importNames(declaration).find(entry => importedName(entry) === OLD);
     if (!specifier) continue;
-    const localName = (specifier.getAliasNode() ?? specifier.getNameNode()).getText();
+    const localName = specifier.name.getText();
     const converted = [];
     let kept = 0;
-    for (const identifier of file.getDescendantsOfKind(SyntaxKind.Identifier)) {
-      if (identifier.getText() !== localName || identifier.getParent() === specifier) continue;
-      if (!identifier.getSymbol()?.getDeclarations().includes(specifier)) continue;
-      const reference = identifier.getParentIfKind(SyntaxKind.TypeReference);
-      if (reference?.getTypeName() === identifier && reference.getTypeArguments().length === 1) {
+    for (const identifier of file.descendants(SyntaxKind.Identifier)) {
+      if (identifier.getText() !== localName || identifier.parent === specifier) continue;
+      if (!symbolDeclarations(identifier).includes(specifier)) continue;
+      const reference = parentOfKind(identifier, SyntaxKind.TypeReference);
+      if (reference?.typeName === identifier && (reference.typeArguments ?? []).length === 1) {
         converted.push(identifier);
         continue;
       }
       kept += 1;
-      const count = reference?.getTypeArguments().length;
-      manual(`line ${identifier.getStartLineNumber()}: ${localName}${count ? ` with ${count} type arguments` : ""} stays; `
+      const count = reference?.typeArguments?.length ?? 0;
+      manual(`line ${lineNumber(identifier)}: ${localName}${count ? ` with ${count} type arguments` : ""} stays; `
         + `choose AnyFactoryHandle or keep the bound handle form by hand`);
     }
     if (converted.length === 0) continue;
-    if (kept === 0 && !declaration.getNamedImports().some((entry) => entry.getName() === NEW)) {
-      // Nothing else uses it: rename the imported name in place, an alias keeps every reference as written.
-      specifier.getNameNode().replaceWithText(NEW);
-      if (!specifier.getAliasNode()) for (const identifier of converted.reverse()) identifier.replaceWithText(NEW);
+    const present = importNames(declaration).find(entry => importedName(entry) === NEW);
+    if (kept === 0 && !present) {
+      replacements.push(replaceNode(specifier.propertyName ?? specifier.name, NEW));
+      if (!specifier.propertyName) for (const identifier of converted) replacements.push(replaceNode(identifier, NEW));
     } else {
-      const present = declaration.getNamedImports().find((entry) => entry.getName() === NEW);
-      const target = present ? (present.getAliasNode() ?? present.getNameNode()).getText() : NEW;
-      if (!present) declaration.addNamedImport({ name: NEW, isTypeOnly: specifier.isTypeOnly() });
-      for (const identifier of converted.reverse()) identifier.replaceWithText(target);
-      if (kept === 0) specifier.remove();
+      const target = present ? present.name.getText() : NEW;
+      if (!present) replacements.push(addNamedImport(file, declaration, `${specifier.isTypeOnly ? "type " : ""}${NEW}`));
+      for (const identifier of converted) replacements.push(replaceNode(identifier, target));
+      if (kept === 0) replacements.push(...[removeNamedImports(file, declaration, new Set([specifier]))].flat());
     }
     edits += converted.length;
   }
-  for (const declaration of file.getImportDeclarations()) {
-    const namespace = declaration.getModuleSpecifierValue() === SPECIFIER ? declaration.getNamespaceImport() : undefined;
+  for (const declaration of file.imports) {
+    const namespace = moduleName(declaration) === SPECIFIER ? namespaceName(declaration) : undefined;
     if (!namespace) continue;
-    for (const name of file.getDescendantsOfKind(SyntaxKind.QualifiedName)) {
-      const left = name.getLeft();
-      if (name.getRight().getText() !== OLD || !Node.isIdentifier(left)) continue;
-      if (!left.getSymbol()?.getDeclarations().some((entry) => entry === namespace || entry === namespace.getParent())) continue;
-      const reference = name.getParentIfKind(SyntaxKind.TypeReference);
-      if (reference?.getTypeName() === name) renameOrReport(name.getRight(), reference.getTypeArguments().length, name.getText());
-      else manual(`line ${name.getStartLineNumber()}: ${name.getText()} is used outside a type reference; change it by hand`);
+    for (const name of file.descendants(SyntaxKind.QualifiedName)) {
+      if (name.right.getText() !== OLD || !syntax.isIdentifier(name.left)) continue;
+      if (!symbolDeclarations(name.left).some(entry => entry === namespace || entry === namespace.parent)) continue;
+      const reference = parentOfKind(name, SyntaxKind.TypeReference);
+      if (reference?.typeName === name) renameOrReport(name.right, (reference.typeArguments ?? []).length, name.getText());
+      else manual(`line ${lineNumber(name)}: ${name.getText()} is used outside a type reference; change it by hand`);
     }
   }
-  for (const type of file.getDescendantsOfKind(SyntaxKind.ImportType)) {
-    const qualifier = type.getQualifier();
-    if (!Node.isIdentifier(qualifier) || qualifier.getText() !== OLD) continue;
-    if (type.getArgument().getText().slice(1, -1) !== SPECIFIER) continue;
-    renameOrReport(qualifier, type.getTypeArguments().length, `import("${SPECIFIER}").${OLD}`);
+  for (const type of file.descendants(SyntaxKind.ImportType)) {
+    const qualifier = type.qualifier;
+    if (!qualifier || !syntax.isIdentifier(qualifier) || qualifier.getText() !== OLD) continue;
+    if (type.argument.getText().slice(1, -1) !== SPECIFIER) continue;
+    renameOrReport(qualifier, (type.typeArguments ?? []).length, `import("${SPECIFIER}").${OLD}`);
   }
-  for (const declaration of file.getExportDeclarations()) {
-    if (declaration.getModuleSpecifierValue() !== SPECIFIER) continue;
-    if (!declaration.hasNamedExports()) {
-      manual(`line ${declaration.getStartLineNumber()}: ${starLabel(declaration)} re-exports the package; `
+  for (const declaration of file.exports) {
+    if (moduleName(declaration) !== SPECIFIER) continue;
+    if (declaration.exportClause?.kind !== SyntaxKind.NamedExports) {
+      manual(`line ${lineNumber(declaration)}: ${starLabel(declaration)} re-exports the package; `
         + `importers of FactoryHandle through this module are not rewritten, check them by hand`);
     }
-    for (const entry of declaration.getNamedExports()) {
-      if (entry.getName() === OLD) {
-        manual(`line ${entry.getStartLineNumber()}: re-export of FactoryHandle stays; `
-          + `importers of it through this module are not rewritten, check them by hand`);
-      }
+    for (const entry of exportNames(declaration)) {
+      if (importedName(entry) === OLD) manual(`line ${lineNumber(entry)}: re-export of FactoryHandle stays; `
+        + `importers of it through this module are not rewritten, check them by hand`);
     }
   }
+  file.apply(replacements);
   return edits;
 }

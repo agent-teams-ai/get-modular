@@ -1,9 +1,9 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync, realpathSync, statSync } from "node:fs";
+import { existsSync, readdirSync, realpathSync, statSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { Project } from "ts-morph";
+import { CodemodProject } from "./project.mjs";
 import factoryHandle from "./0.2-0.3/factory-handle.mjs";
 import entries from "./0.4-0.5/entries.mjs";
 import prepare from "./0.4-0.5/prepare.mjs";
@@ -67,34 +67,33 @@ export function main(argv) {
   }
 
   const tsConfigFilePath = join(directory, "tsconfig.json");
-  const project = new Project({
-    allowJs: true,
-    skipAddingFilesFromTsConfig: true,
-    ...(existsSync(tsConfigFilePath) ? { tsConfigFilePath } : {}),
+  const project = new CodemodProject(sourceFiles(directory).map(path => [path, readFileSync(path, "utf8")]), {
+    directory, ...(existsSync(tsConfigFilePath) ? { tsConfigFilePath } : {}),
   });
-  const files = sourceFiles(directory).map((path) => project.addSourceFileAtPath(path));
-  const program = project.getProgram();
-  const unparsable = new Set(files.filter((file) => program.getSyntacticDiagnostics(file).length > 0));
-  for (const file of unparsable) console.error(`skipped, does not parse: ${relative(directory, file.getFilePath())}`);
+  try {
+    const files = project.files;
+    const unparsable = new Set(files.filter(file => file.diagnostics.length > 0));
+    for (const file of unparsable) console.error(`skipped, does not parse: ${relative(directory, file.path)}`);
 
-  let changed = 0;
-  const findings = [];
-  for (const file of files) {
-    if (unparsable.has(file)) continue;
-    const path = relative(directory, file.getFilePath());
-    let edits = 0;
-    for (const transform of CODEMODS[name]) edits += transform(file, () => {}) ?? 0;
-    findings.push(...reportAll(file).map((message) => `${path}: ${message}`));
-    if (edits === 0) continue;
-    changed += 1;
-    console.log(`${path}: ${edits} edit${edits === 1 ? "" : "s"}`);
-    if (mode === "write") file.saveSync();
-  }
-  if (findings.length > 0) console.log(`\nfix by hand:\n${findings.map((line) => `  ${line}`).join("\n")}`);
-  console.log(`\n${changed} file${changed === 1 ? "" : "s"} ${mode === "write" ? "written" : "would change"}`
-    + (mode === "write" ? "; run your typecheck" : ""));
-  if (unparsable.size > 0) return 1;
-  return mode === "check" && changed > 0 ? 1 : 0;
+    let changed = 0;
+    const findings = [];
+    for (const file of files) {
+      if (unparsable.has(file)) continue;
+      const path = relative(directory, file.path);
+      let edits = 0;
+      for (const transform of CODEMODS[name]) edits += transform(file, () => {}) ?? 0;
+      findings.push(...reportAll(file).map((message) => `${path}: ${message}`));
+      if (edits === 0) continue;
+      changed += 1;
+      console.log(`${path}: ${edits} edit${edits === 1 ? "" : "s"}`);
+      if (mode === "write") file.save();
+    }
+    if (findings.length > 0) console.log(`\nfix by hand:\n${findings.map((line) => `  ${line}`).join("\n")}`);
+    console.log(`\n${changed} file${changed === 1 ? "" : "s"} ${mode === "write" ? "written" : "would change"}`
+      + (mode === "write" ? "; run your typecheck" : ""));
+    if (unparsable.size > 0) return 1;
+    return mode === "check" && changed > 0 ? 1 : 0;
+  } finally { project.close(); }
 }
 
 if (import.meta.main) process.exitCode = main(process.argv.slice(2));

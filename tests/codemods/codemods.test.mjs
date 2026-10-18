@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { Project } from "ts-morph";
+import { CodemodProject } from "../../architecture/tooling/codemods/project.mjs";
 import { testAssemblyTypes } from "../../architecture/tooling/test-assembly-types.mjs";
 import factoryHandle from "../../architecture/tooling/codemods/0.2-0.3/factory-handle.mjs";
 import entries from "../../architecture/tooling/codemods/0.4-0.5/entries.mjs";
@@ -26,12 +26,14 @@ const casesFor = (name) => readdirSync(join(fixtures, name)).sort();
 const read = (name, case_, file) => readFileSync(join(fixtures, name, case_, file), "utf8");
 
 function apply(text, extension = "ts", transforms = [factoryHandle]) {
-  const project = new Project({ useInMemoryFileSystem: true, skipAddingFilesFromTsConfig: true });
-  const file = project.createSourceFile(`input.${extension}`, text, { overwrite: true, allowJs: true });
-  const findings = [];
-  let edits = 0;
-  for (const transform of transforms) edits += transform(file, (message) => findings.push(message)) ?? 0;
-  return { text: file.getFullText(), edits, findings: transforms.includes(entries) ? reportAll(file) : findings };
+  const project = new CodemodProject([[resolve(tmpdir(), `codemod/input.${extension}`), text]], { directory: tmpdir(), isolated: true });
+  try {
+    const [file] = project.files;
+    const findings = [];
+    let edits = 0;
+    for (const transform of transforms) edits += transform(file, (message) => findings.push(message)) ?? 0;
+    return { text: file.text, edits, findings: transforms.includes(entries) ? reportAll(file) : findings };
+  } finally { project.close(); }
 }
 
 for (const [name, transforms] of codemods) {
