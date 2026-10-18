@@ -216,6 +216,9 @@ test("changed workflow escalates compiler and check configuration", async () => 
     "packages/assembly/tsconfig.json", "packages/lifecycle-kernel/tsconfig.json",
     "packages/resources/tsconfig.json", "packages/conformance/tsconfig.json",
     "tests/tsconfig.tooling-node-policy.json", ".oxlintrc.json", ".npmrc",
+    "tests/qualification/consumer-fixtures/semantic/tsconfig.types.json",
+    "tests/qualification/consumer-fixtures/semantic/tsconfig.runtime.json",
+    "tests/qualification/consumer-fixtures/semantic/tsconfig.negative.json",
   ]) {
     await fixture(currentPolicy, async root => {
       if (path === "tsconfig.base.json") {
