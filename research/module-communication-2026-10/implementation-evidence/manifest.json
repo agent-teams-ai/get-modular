@@ -26,7 +26,31 @@
     "compiler-guard-integration.log": "c80e336af8da0b96a038defc8c857ecb0080303183aac445f1900e12b306b94f",
     "foundation-blocked.log": "3746581087f4f45b6ba8c37c94b882e2a14ae3b000795c2939948519c3667e84",
     "final-source-dependencies.log": "d918400af8195afbd9164fe3c20eee4f4dda3ad33277e893c0136d85feda9be3",
-    "docs-final.log": "24322573e02cffbce4ff3981836aeb0c10db77e64c9d2ca7e87ab7c76e760f1b"
+    "docs-final.log": "24322573e02cffbce4ff3981836aeb0c10db77e64c9d2ca7e87ab7c76e760f1b",
+    "observation-followup-node26.log": "fb3eb8b1907c2d691cd3b5e50811723a99ba3979d37ffc3639d788c5b1a4f795",
+    "followup-check-changed-blocked.log": "9d72ead61d067b98b3a846a7bd0d917abd648fee37e09c5c932ba4e855250f90",
+    "followup-check-blocked.log": "ba0510c728d265e8dfab0a389b61a8c2a59acd437aa751c30a89a4b93ff20366",
+    "followup-quality-critical-test-blocked.log": "271d9cfe206db987fa54d4a9fd0d494366f8d05b5b7f000ebc1d5984a04ef039",
+    "followup-sdk-growth-registry-blocked.log": "918d8424e6bd3f8ac32096109ffc2464a3dd92e275914ad25a892e7bbe6d6d78",
+    "followup-docs.log": "bdf4a6a72d64255f34dba53fb516cdca2c46c9b78e7f0e9b7f4f6ff09167609d"
   },
-  "finalToolingCommit": "ea9ac84"
+  "finalToolingCommit": "ea9ac84",
+  "followUp": {
+    "implementationCommit": "3c4a3d96e8c71a23331297b1964ba9418c569183",
+    "runtimeFixCommit": "737d842ca7426d6fbc8d1179fb3bca96b1030b3a",
+    "preparedReleaseCommit": "d345e14970eca4ed1c69831d2a59f4754da0b0e9",
+    "externalTestedCommit": "dbb708e97a9cb20afe959d06dd85460fa0bf1349",
+    "files": [
+      "observation-followup-node26.log",
+      "followup-check-changed-blocked.log",
+      "followup-check-blocked.log",
+      "followup-quality-critical-test-blocked.log",
+      "followup-sdk-growth-registry-blocked.log",
+      "followup-docs.log"
+    ],
+    "reviewModel": "gpt-6.1-sol",
+    "reviewReasoningEffort": "xhigh",
+    "historicalFoundationLimitation": "Earlier Foundation CLI/Node runner and affected SDK entry imports initialized TypeScript 5.9.3 and scanners before command dispatch; no non-extractor project parsing is established. Original logs are preserved, not exclusive-TS7 qualification.",
+    "externalEvidenceCommit": "3ec107c5b16fd849ccf4c6e90ad80823fb469e02"
+  }
 }

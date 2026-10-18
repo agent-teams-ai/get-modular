@@ -23,9 +23,9 @@ conformance smoke covers the same root and every failure/abort injection target.
 
 ## Actual results
 
-- Prepared package source: `b2815314182221baac6b08750f86ef2644d2cdb8`.
-- Executed consumer source: `972dc2b9dfe9470a5e34ed4f28d75ecfc0fbec73`.
-- Evidence-only successor: `c2872eb9b89fbde8cc162e152c2cab5f813237cd`.
+- Prepared package source: `d345e14970eca4ed1c69831d2a59f4754da0b0e9`.
+- Executed consumer source: `dbb708e97a9cb20afe959d06dd85460fa0bf1349`.
+- Evidence-only successor: `3ec107c5b16fd849ccf4c6e90ad80823fb469e02`.
 - Offline strict install and frozen-lockfile reproduction passed.
 - TypeScript 7.0.2 NodeNext/Bundler passed with `skipLibCheck: false`.
 - Node 24.21.0 and 26.11.1 each passed all five connected/runtime predicates
@@ -34,13 +34,21 @@ conformance smoke covers the same root and every failure/abort injection target.
 - An independent critic verified all 25 executed-source hashes, five tarballs,
   176 installed files, 78 original writer inputs, lock/pins and actual outcomes.
 
-[Accepted record](https://github.com/agent-teams-ai/modularity-host-test/blob/c2872eb9b89fbde8cc162e152c2cab5f813237cd/observation-0.1.0/evidence/accepted-972dc2b/RECORD.md) and
-[machine-readable result](https://github.com/agent-teams-ai/modularity-host-test/blob/c2872eb9b89fbde8cc162e152c2cab5f813237cd/observation-0.1.0/evidence/accepted-972dc2b/result.json)
+[Accepted record](https://github.com/agent-teams-ai/modularity-host-test/blob/3ec107c5b16fd849ccf4c6e90ad80823fb469e02/observation-0.1.0/evidence/accepted-dbb708e/RECORD.md) and
+[machine-readable result](https://github.com/agent-teams-ai/modularity-host-test/blob/3ec107c5b16fd849ccf4c6e90ad80823fb469e02/observation-0.1.0/evidence/accepted-dbb708e/result.json)
 retain the command logs and the complete three-substitution harness diff.
 
-Two fixture defects were corrected without modifying archives: an ignored CMS
+The earlier qualification corrected two fixture defects without modifying its archives: an ignored CMS
 fixture location, and an overly strict abort-outcome count. The final smoke
 pins all targets and accepts the existing conformance cancellation contract.
+
+The additional GPT-6.1 xhigh review corrected loader Promise-constructor
+inspection in the production package. This PR retains the regenerated candidate
+and a complete rerun, with no consumer executable, semantic oracle or writer
+expectation changes. Four archives remain byte-identical; the new observation
+archive SHA-256 is
+`c48ac24d89c259bcf13088f5aa220bf3a1f8572e62a47c0928377759d4bb683a`.
+The previous accepted record remains unchanged in Git and in its own directory.
 
 ## Scope
 

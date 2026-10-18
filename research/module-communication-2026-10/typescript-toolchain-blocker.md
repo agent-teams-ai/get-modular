@@ -65,11 +65,30 @@ Paths beginning `dist/` below belong to installed Foundation 1.7.4.
    and calls that compiler's `createProgram`. This is a separate optional route;
    it is not needed to establish the active aggregate blocker above.
 
-The SDK growth registry consumer reads the exact installed package and its
-`./sdk-growth-authority` exports. Importing or inspecting those exports alone
-is not evidence that it invokes a compiler. Likewise, the public API policy
-negative tests intentionally reject inconsistent export declarations before
-extraction; their mere use of the capability CLI is not proof of a compiler run.
+### Follow-up: eager compiler initialization before command selection
+
+The additional GPT-6.1 xhigh review traced both installed public binaries,
+`dist/cli.js` and `dist/node-test-cli.js`. Each statically imports
+`composition/command-host.js`, which reaches `foundation-check.js`,
+`capability-registry.js` and `capability-modules.js`. That last module imports
+the public API capability and its API Extractor adapters before any command
+or positional capability is selected. API Extractor's `lib-commonjs/index.js:15`
+requires `api/CompilerState.js`; line 40 of that module requires its own
+TypeScript 5.9.3. That compiler constructs parser/service scanners at module
+initialization, including lines 33096, 139377, 180480 and 180486.
+
+The public `./sdk-growth-authority` entry also reaches the public API authority
+module and extractor adapters through static imports. Its independent
+`growth-invocation.js` adapter imports API Extractor too. This was established
+by source and manifest reads, without importing the legacy implementation.
+
+Consequently, earlier successful non-extractor Foundation commands initialized
+the below-floor compiler and scanners. Their logs remain actual observations,
+but they do not qualify as execution exclusively under TypeScript 7.0.2+.
+This corrects the initial investigation's assumption about import-only paths.
+It does not establish that those non-extractor commands parsed a project or
+performed API extraction. Observation package tests, native compiler readers
+and the isolated exact-archive consumer are separate execution paths.
 
 ## Commands affected and bounded checks available
 
@@ -87,25 +106,43 @@ full-scan path changes under the unchanged repository agent workflow policy.
 A documentation-only changed invocation can have a different selected plan.
 A failure before extraction is not completion of the blocked gate.
 
-Foundation's existing positional capability selection invokes only the selected
-capability's `run` method and reports selected coverage. Therefore the following
-commands can qualify their own scopes without calling the public API extractor:
+Positional capability selection invokes only the selected capability's `run`
+method, but cannot undo eager initialization. All repository-owned Foundation
+CLI and Node runner launch paths now have the manifest-only preflight, including
+`check:changed`, ownership precheck, quality commands and direct CLI fixtures.
+The direct SDK checker and admission paths guard their imports. Registry
+reproduction checks its initial closure before network work and each independently
+installed subject's own dependency closure before importing that subject's SDK.
+The historical registry subject remains blocked if its pinned compiler is below
+the floor, even after the current Foundation dependency is upgraded.
+
+The preflight uses only standard-library modules and JSON manifests. It preserves
+every downstream command, negative assertion, required identity and capability.
+Guards precede broad expected-failure catches, so an unavailable compiler cannot
+be counted as a passing policy rejection. `precheck:changed` stays runtime-only;
+the compiler guard is the first command in `check:changed` itself.
+
+An individually selected capability would also need this preflight:
 
 ```sh
-pnpm exec agent-teams-foundation check architecture.source-dependencies
-pnpm exec agent-teams-foundation check documentation.local-references
-pnpm exec agent-teams-foundation check governance.architecture-decisions
-pnpm exec agent-teams-foundation check repository.agent-workflow
-pnpm exec agent-teams-foundation check workspace.dependency-declarations
-pnpm exec agent-teams-foundation check quality.source-coverage
-pnpm exec agent-teams-foundation check quality.suppression-governance
+node architecture/checks/compiler-floor.mjs && \
+  pnpm exec agent-teams-foundation check architecture.source-dependencies
 ```
 
-These are individually selected diagnostics, not substitutes for the full
-aggregate. This investigation does not edit a command, profile, capability
-selection, approval, baseline, or success threshold to omit extraction.
-Foundation's source dependency and suppression adapters use Oxc; its ordinary
-quality compiler selection is separate from the API Extractor compiler.
+With the current dependency this command is blocked before Foundation starts.
+The same restriction covers local references, architecture decisions, agent
+workflow, dependency declarations, source coverage and suppression governance.
+Those adapters' own use of Oxc or a separate quality compiler does not make the
+eagerly loaded extractor compiler permissible. Their previously retained passes,
+typed-quality pass and mandatory-runner pass are historical results with this
+known limitation, not current compiler-floor qualification.
+
+The additional boundary controls passed 21 tests independently on each of
+Node 24.21.0 and 26.11.1. The author also passed the 70-test guard/CI/profile
+selection on both Nodes. Actual root `pnpm check:changed`, `pnpm check`,
+`pnpm quality:critical:test` and `pnpm sdk-growth:registry` now exit 1 with
+`TYPESCRIPT_COMPILER_FLOOR_BLOCKED`, observed version `5.9.3`, before their
+Foundation entrypoint. A required red gate stays red.
 
 ## Bounded native feasibility probe
 

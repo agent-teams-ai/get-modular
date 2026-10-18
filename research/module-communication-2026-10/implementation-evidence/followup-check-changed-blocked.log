@@ -1,0 +1,6 @@
+$ pnpm runtime:preflight
+$ node architecture/checks/node-version.mjs
+Node 26.11.1 satisfies tooling >=24.21.0 <25 || >=26.10.0 <27.
+$ node architecture/checks/compiler-floor.mjs && agent-teams-foundation agent-workflow changed --consumer .
+{"code":"TYPESCRIPT_COMPILER_FLOOR_BLOCKED","outcome":"blocked","minimumVersion":"7.0.2","role":"foundation.api-extractor.compiler","manifestPath":"/workspace/scratch/e04865d5cacb/get-modular/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/package.json","reason":"compiler-below-floor","observedVersion":"5.9.3","remediation":"A supported upstream compiler migration is required; retain the existing gates and extraction identities."}
+[ELIFECYCLE] Command failed with exit code 1.
