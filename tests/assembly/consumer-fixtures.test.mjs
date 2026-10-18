@@ -35,6 +35,12 @@ test("consumer fixtures compile through public packages and preserve C/L/W behav
       assert.match(runtime.stdout, /^# fail 0$/mu, runtime.stdout);
       assert.match(runtime.stdout, /^# skipped 0$/mu, runtime.stdout);
       assert.match(runtime.stdout, /^# todo 0$/mu, runtime.stdout);
+      if (entry === "workload") {
+        for (const row of ["W-01", "W-02", "W-03"]) {
+          assert.match(runtime.stdout, new RegExp(`^ok \\d+ - [^\\r\\n]*\\b${row}\\b`, "mu"),
+            `${row} must appear in a successful workload test`);
+        }
+      }
       t.diagnostic(runtime.stdout.trim());
     }
     t.diagnostic(JSON.stringify({ scenarios: ["C-01", "C-02", "C-03", "C-04a", "C-04b"],
