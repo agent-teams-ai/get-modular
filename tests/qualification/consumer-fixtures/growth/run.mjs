@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { mkdtemp, open, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ownDirectory = dirname(fileURLToPath(import.meta.url));
@@ -25,11 +25,14 @@ function terminateFamily(child) {
 }
 
 /** One selected size; its parent watchdog encloses all generation and child work. */
-export async function measureGrowth({ size, retain = true, incremental = size !== 8 }) {
+export async function measureGrowth({ size, retain = true, incremental = size !== 8,
+  compilerCandidate, directoryParent = tmpdir() }) {
   assert.ok([8, 100, 500, 1000].includes(size), "fixture.growth.unsupported-size");
   assert.ok(!incremental || size !== 8, "G-01 owns the small correctness run; G-03 starts at 100");
+  assert.ok(compilerCandidate === undefined || isAbsolute(compilerCandidate), "fixture.growth.candidate-manifest-path");
+  assert.ok(isAbsolute(directoryParent), "fixture.growth.directory-parent-path");
   const started = performance.now();
-  const directory = await mkdtemp(join(tmpdir(), `gm-growth-${size}-`));
+  const directory = await mkdtemp(join(directoryParent, `gm-growth-${size}-`));
   const stdout = await open(join(directory, "worker.stdout.log"), "w");
   const stderr = await open(join(directory, "worker.stderr.log"), "w");
   let expired = false;
@@ -40,7 +43,7 @@ export async function measureGrowth({ size, retain = true, incremental = size !=
   let stageTimer;
   const observedStages = [];
   const child = spawn(process.execPath, [join(ownDirectory, "worker.mjs"), String(size), directory,
-    incremental ? "measurement" : "correctness"], {
+    incremental ? "measurement" : "correctness", ...(compilerCandidate === undefined ? [] : [compilerCandidate])], {
     detached: process.platform !== "win32", stdio: ["ignore", stdout.fd, stderr.fd, "ipc"],
     env: { ...process.env, NODE_PATH: "", NODE_OPTIONS: "", NODE_TEST_CONTEXT: undefined },
   });
