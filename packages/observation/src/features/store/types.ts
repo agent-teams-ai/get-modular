@@ -159,6 +159,8 @@ export type ReadonlyStore<out V> = {
   readonly load: <S extends SnapshotOf<V>, T>(snapshot: S, spec: LoadSpec<FutureSnapshot<V, S>, T>) => undefined;
 };
 
+type StorePatch<V, K extends Key<V>> = { readonly [P in K]: Frozen<V[P]> };
+
 /** The owner's facet. Keep it inside the owning module; hand out `readonly()`. Invariant in `V`. */
 export type Store<in out V> = {
   /** Frozen values of `keys`. The owner may still read after `close`: the last values, for example to save them. */
@@ -176,7 +178,7 @@ export type Store<in out V> = {
    * rejection, which Node's default policy turns into a process exit (fail fast on a programming bug).
    */
   readonly set: {
-    <const K extends Key<V>>(patch: { readonly [P in K]: Frozen<V[P]> }): number;
+    <const K extends Key<V>>(patch: StorePatch<V, K>): number;
     /** Type-only invariant witness, preserved when the callable member is extracted. */
     readonly [storeValue]: (value: V) => V;
   };

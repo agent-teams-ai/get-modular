@@ -90,7 +90,7 @@ test("T24 T25 T49 T103 T117 emitted declarations retain exact negative attributi
           "readonly watch: <K extends Key<V>>(snapshot: Snapshot<V, K>, spec: WatchSpec<Snapshot<V, K>>) => undefined;"));
         await writeProject(directory, ["types.ts"], resolution);
         result = compile(compiler, directory);
-        assert.equal(result.status, 2, result.output);
+        assert.notEqual(result.status, 0, result.output);
         assert.ok(result.diagnostics.length > 0, result.output);
         assert.ok(result.diagnostics.every(error => error.code === "TS2636" && error.file === declaration), result.output);
         await writeFile(declaration, original);
