@@ -129,6 +129,21 @@ const BASE_PEERS = Object.freeze(["@get-modular/core", "@get-modular/assembly"])
 // is Core, Assembly or an earlier public row, so row order is also gate order.
 export const leafPeers = leaf => leaf.peers ?? [];
 
+// Each admitted subpath has one source entry and one ESM carrier.
+export const leafSubpaths = leaf => leaf.subpaths ?? ["."];
+const subpathFile = subpath => subpath === "." ? "index" : subpath.slice(2);
+export const expectedLeafExports = leaf => Object.fromEntries(leafSubpaths(leaf).map(subpath => {
+  const file = subpathFile(subpath);
+  return [subpath, {
+    import: { types: `./dist/${file}.d.ts`, default: `./dist/${file}.js` },
+    default: `./dist/${file}.js`,
+  }];
+}));
+export const leafEntrySources = leaf => leafSubpaths(leaf)
+  .map(subpath => `${leaf.root}/src/${subpathFile(subpath)}.ts`);
+export const leafBuildOutputs = leaf => leafSubpaths(leaf)
+  .flatMap(subpath => [`dist/${subpathFile(subpath)}.js`, `dist/${subpathFile(subpath)}.d.ts`]);
+
 // Peers are declared with the workspace caret range, which `pnpm pack` turns
 // into the caret range of the one 0.x minor in the workspace.
 export const PEER_SPECIFIER = "workspace:^";
@@ -166,6 +181,11 @@ function identityProblem(leaf, rows, index) {
     || rows.findIndex(other => other.id === leaf.id) !== index) return "id";
   if (leaf.root !== `packages/${leaf.id}` || leaf.name !== `@get-modular/${leaf.id}`) return "root";
   if (![PRIVATE_CANDIDATE, PUBLIC].includes(leaf.publication)) return "publication";
+  if (leaf.subpaths !== undefined
+    && (leaf.publication !== PUBLIC || !Array.isArray(leaf.subpaths)
+      || leaf.subpaths[0] !== "." || new Set(leaf.subpaths).size !== leaf.subpaths.length
+      || !leaf.subpaths.slice(1).every(subpath => typeof subpath === "string"
+        && /^\.\/[a-z][a-z0-9-]*$/u.test(subpath) && subpath !== "./index"))) return "subpaths";
   const { version } = leaf;
   if (!(version instanceof RegExp) || version.global || version.sticky || version.multiline
     || !version.source.startsWith("^") || !version.source.endsWith("$")) return "version";

@@ -5,8 +5,9 @@ import test from "node:test";
 
 import { validateLeafPackageAdmission } from "../architecture/checks/leaf-package-admission.mjs";
 import {
-  assertLeafPackageTable, expectedLeafImporter, expectedPeerDependencies, LEAF_PACKAGES, leafManifestPath,
-  leafPackageById, PRIVATE_CANDIDATE, PUBLIC, PUBLIC_FILES, PUBLIC_PUBLISH_CONFIG, publicRepository,
+  assertLeafPackageTable, expectedLeafExports, expectedLeafImporter, expectedPeerDependencies, LEAF_PACKAGES,
+  leafBuildOutputs, leafEntrySources, leafManifestPath, leafPackageById, leafSubpaths, PRIVATE_CANDIDATE,
+  PUBLIC, PUBLIC_FILES, PUBLIC_PUBLISH_CONFIG, publicRepository,
 } from "../architecture/checks/leaf-packages.mjs";
 
 const registryPath = "architecture/decisions/accepted-decisions.json";
@@ -146,6 +147,65 @@ function fixture(leaf) {
   };
   return { files, sources, input, sourcePath, admitted };
 }
+
+const twoEntryExports = () => ({
+  ".": {
+    import: { types: "./dist/index.d.ts", default: "./dist/index.js" },
+    default: "./dist/index.js",
+  },
+  "./testing": {
+    import: { types: "./dist/testing.d.ts", default: "./dist/testing.js" },
+    default: "./dist/testing.js",
+  },
+});
+
+test("T95 T96 [P1] row subpaths name exact sources, carriers and build outputs", () => {
+  assert.deepEqual(leafSubpaths(examplePublic), ["."]);
+  assert.deepEqual(expectedLeafExports(examplePublic), rootExport());
+  assert.deepEqual(leafEntrySources(examplePublic), ["packages/example-public/src/index.ts"]);
+  assert.deepEqual(leafBuildOutputs(examplePublic), ["dist/index.js", "dist/index.d.ts"]);
+  const row = { ...examplePublic, subpaths: [".", "./testing"] };
+  assert.deepEqual(expectedLeafExports(row), twoEntryExports());
+  assert.deepEqual(leafEntrySources(row), [
+    "packages/example-public/src/index.ts", "packages/example-public/src/testing.ts",
+  ]);
+  assert.deepEqual(leafBuildOutputs(row), [
+    "dist/index.js", "dist/index.d.ts", "dist/testing.js", "dist/testing.d.ts",
+  ]);
+});
+
+test("T95 [P1] only explicit valid public subpaths can extend a row", () => {
+  for (const subpaths of [null, ".", [], ["./testing"], [".", "."], [".", "./index"],
+    [".", "./testing", "./testing"], [".", 3], [".", "./Testing"], [".", "./deep/path"],
+    [".", "./../outside"], [".", "./*"], [".", "testing"]]) {
+    assert.throws(() => assertLeafPackageTable([...LEAF_PACKAGES, { ...examplePublic, subpaths }]),
+      /LEAF_PACKAGE_TABLE_INVALID: example-public: subpaths$/u);
+  }
+  assert.throws(() => assertLeafPackageTable([...LEAF_PACKAGES, { ...exampleLeaf, subpaths: ["."] }]),
+    /LEAF_PACKAGE_TABLE_INVALID: example-leaf: subpaths$/u);
+  assert.doesNotThrow(() => assertLeafPackageTable([
+    ...LEAF_PACKAGES, { ...examplePublic, subpaths: [".", "./testing"] },
+  ]));
+});
+
+test("T95 T98 [P1] a synthetic two-entry row requires both exports and both source entries", async () => {
+  const row = { ...examplePublic, subpaths: [".", "./testing"] };
+  const { input, sources } = fixture(row);
+  input.leaves = ROWS.map(leaf => leaf.id === row.id ? row : leaf);
+  const entry = "packages/example-public/src/testing.ts";
+  input.productionArtifacts.push(entry);
+  sources.set(entry, "export function inspect() { return 1; }\n");
+  input.readPackageManifest = async () => ({ ...manifestFor(row), exports: twoEntryExports() });
+  await validateLeafPackageAdmission(input);
+  input.productionArtifacts.pop();
+  await assert.rejects(validateLeafPackageAdmission(input), /requires src\/testing.ts/u);
+  input.productionArtifacts.push(entry);
+  for (const exports of [rootExport(), { "./testing": twoEntryExports()["./testing"] },
+    { ...twoEntryExports(), "./internal": twoEntryExports()["./testing"] }]) {
+    input.readPackageManifest = async () => ({ ...manifestFor(row), exports });
+    await assert.rejects(validateLeafPackageAdmission(input), /exactly its row's ESM export subpaths/u);
+  }
+});
 
 // The table carries the reviewed candidate chain, so editing a row is the
 // only way to change it and that edit has to change this pin too.
