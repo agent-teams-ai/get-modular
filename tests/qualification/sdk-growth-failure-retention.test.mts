@@ -48,9 +48,10 @@ const publishedReport = `{
   ]
 }
 `;
-// Exact stdout of the published, SRI-verified Foundation 1.7.4 public CLI as captured
-// by the owner (exit 3, signal null, installed 1.7.4; valid admission fixture, then a
-// job-owned empty-PATH Git lookup fault; cleanup passed). Embedded, not executed here.
+// HISTORICAL parser-compatibility input: exact stdout of the published,
+// SRI-verified Foundation 1.7.4 public CLI as captured by the owner (exit 3,
+// signal null, installed 1.7.4; valid admission fixture, then a job-owned
+// empty-PATH Git lookup fault; cleanup passed). Embedded, not executed here.
 // 674 bytes, SHA-256: 9786d7eff27418851608a667b1b3b2600956deefe6e762af497c041e7a1c5a27.
 const currentReport = `{
   "reportSchemaVersion": 1,
@@ -88,7 +89,7 @@ async function fixture(run: (directory: string) => Promise<void>, parent = tmpdi
   try { await run(directory); } finally { await rm(directory, { recursive: true, force: true }); }
 }
 const destination = (directory: string) => ({ directory, artifact: join(directory, "sdk-growth-failure.json"),
-  checkoutSha: sha, producerVersion: "1.7.4" });
+  checkoutSha: sha, producerVersion: "1.8.0" });
 const bytes = (directory: string) => readFile(destination(directory).artifact, "utf8");
 async function invocation(directory: string, stdout: string, exit: number): Promise<unknown> {
   await writeFile(join(directory, "command.mjs"),
@@ -98,7 +99,7 @@ async function invocation(directory: string, stdout: string, exit: number): Prom
 }
 
 // Regression: cleanup used to erase the only report after the real child exit 3.
-test("historical 1.7.2 and current 1.7.4 reports retain exact selected bytes under the current producer pin before fixture removal; no message admission", async () => {
+test("historical 1.7.2 and 1.7.4 reports retain exact selected bytes under the current producer pin before fixture removal; no message admission", async () => {
   for (const [stdout, message] of [
     [publishedReport, "An unexpected process failure occurred."],
     [currentReport, "The process could not be started."],
@@ -112,8 +113,8 @@ test("historical 1.7.2 and current 1.7.4 reports retain exact selected bytes und
       const retained = await bytes(directory);
       assert.equal(retained, JSON.stringify({ checkoutSha: sha, nodeVersion: process.version,
         capabilityId: "package.public-api-compatibility", producer: {
-          package: "@agent-teams/engineering-foundation", version: "1.7.4",
-          integrity: "sha512-BU9SqHvrPYtizl0u1J1UwGl89GmfHsKrwvExY7v8bpa2AD0C9YS71qDHIxcZU1zfzzORGk1SjJwNrPXR5MmZRA==",
+          package: "@agent-teams/engineering-foundation", version: "1.8.0",
+          integrity: "sha512-19KGXMEJIUInAUZaEC5Oh1m1ldZbQIzFL880xVG523h0vl7EbkqojqkF0y7JLnRjXi4qIW7vNcChWzam23uUmQ==",
         }, exit: 3, transportStatus: "exit", messageOmission: "producer-safety-not-admitted",
         reportStatus: "selected", publicCapability: { outcome: "failed", code: "UNEXPECTED_PROCESS_FAILURE", retryable: false },
       }) + "\n");

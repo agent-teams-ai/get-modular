@@ -260,7 +260,7 @@ function ruleIds(report) {
 }
 
 test("activates exact published Foundation quality pins", () => {
-  assert.equal(foundationPackage.version, "1.7.4");
+  assert.equal(foundationPackage.version, "1.8.0");
   assert.equal(oxlintPackage.version, "1.83.0");
   assert.equal(typedPackage.version, "7.0.2001");
   assert.equal(typescriptPackage.version, "7.0.2");

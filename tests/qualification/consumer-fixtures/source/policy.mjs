@@ -36,7 +36,7 @@ function rejects(result, suffix) {
     item.ruleId === `architecture.source-dependencies.${suffix}`), JSON.stringify(result.report));
 }
 
-/** Partial P4 enforcement; it does not replace the separately missing admitted FMS/CMS fact chain. */
+/** Complementary P4 policy enforcement; the installed source test separately owns the FMS/CMS fact chain. */
 export async function runInstalledSourcePolicyScenarios(directory, packageOutputs) {
   await mkdir(join(directory, "architecture/foundation"), { recursive: true });
   await writeFile(join(directory, configurationPath), configuration);

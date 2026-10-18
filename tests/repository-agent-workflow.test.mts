@@ -50,7 +50,7 @@ function isReport(value: unknown): value is ChangedReport {
 const require = createRequire(import.meta.url);
 const foundationPath = require.resolve("@agent-teams/engineering-foundation/package.json");
 const foundation: unknown = JSON.parse(await readFile(foundationPath, "utf8"));
-assert.ok(isRecord(foundation) && foundation.version === "1.7.4" && isRecord(foundation.bin));
+assert.ok(isRecord(foundation) && foundation.version === "1.8.0" && isRecord(foundation.bin));
 const cliBin = foundation.bin["agent-teams-foundation"];
 assert.ok(typeof cliBin === "string");
 const cli = join(dirname(foundationPath), cliBin);

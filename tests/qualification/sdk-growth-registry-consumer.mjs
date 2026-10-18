@@ -65,9 +65,9 @@ try {
   assert.equal(result.stdout, "ok");
   // Qualify the current exact registry installation separately. The original
   // archive and publication-time checks remain bound to their retained version.
-  const currentVersion = "1.7.4";
-  const currentIntegrity = "sha512-BU9SqHvrPYtizl0u1J1UwGl89GmfHsKrwvExY7v8bpa2AD0C9YS71qDHIxcZU1zfzzORGk1SjJwNrPXR5MmZRA==";
-  const currentTarball = "https://registry.npmjs.org/@agent-teams/engineering-foundation/-/engineering-foundation-1.7.4.tgz";
+  const currentVersion = "1.8.0";
+  const currentIntegrity = "sha512-19KGXMEJIUInAUZaEC5Oh1m1ldZbQIzFL880xVG523h0vl7EbkqojqkF0y7JLnRjXi4qIW7vNcChWzam23uUmQ==";
+  const currentTarball = "https://registry.npmjs.org/@agent-teams/engineering-foundation/-/engineering-foundation-1.8.0.tgz";
   const current = join(directory, "current");
   await mkdir(current);
   await writeFile(join(current, "package.json"), JSON.stringify({ name: "gm-current-foundation-registry", private: true, type: "module" }));

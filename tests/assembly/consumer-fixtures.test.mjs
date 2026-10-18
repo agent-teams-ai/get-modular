@@ -6,12 +6,14 @@ import {
   fixtureCompiler, invokeFixtureNode, withSemanticConsumer,
 } from "../qualification/consumer-fixtures/support/materialize.mjs";
 import { runInstalledSourcePolicyScenarios } from "../qualification/consumer-fixtures/source/policy.mjs";
+import { runInstalledSourceScenarios } from "../qualification/consumer-fixtures/source/installed.mjs";
 import { checkHeldStartupController } from "../qualification/consumer-fixtures/authoring/transport.mjs";
 
-test("consumer fixtures enforce their installed flat source policy", { timeout: 600000 }, async (t) => {
+test("consumer fixtures qualify their selected flat source through installed public owners", { timeout: 600000 }, async (t) => {
   await withSemanticConsumer(async ({ directory, evidence }) => {
     const sourcePolicy = await runInstalledSourcePolicyScenarios(directory, evidence.packageOutputs);
-    t.diagnostic(JSON.stringify({ sourcePolicy, ...evidence }));
+    const source = await runInstalledSourceScenarios(directory);
+    t.diagnostic(JSON.stringify({ source, sourcePolicy, ...evidence }));
   });
 });
 
@@ -58,7 +60,7 @@ test("consumer fixtures compile through public packages and preserve C/L/W/H beh
     t.diagnostic(JSON.stringify({ scenarios: ["C-01", "C-02", "C-03", "C-04a", "C-04b"],
       lifetime: ["L-01", "L-02", "L-03", "L-04", "L-05", "L-06", "L-07", "L-08", "L-09", "L-10"],
       workload: ["W-01", "W-02", "W-03"],
-      runtime: "passed", packed: "owned-by-conformance-pack", source: "incomplete",
+      runtime: "passed", packed: "owned-by-conformance-pack", source: "owned-by-installed-source-test",
       measurement: "not-selected", compatibility, ...evidence }));
   });
 });

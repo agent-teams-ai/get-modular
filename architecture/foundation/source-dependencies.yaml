@@ -839,6 +839,7 @@ boundaries:
         - resources-public-entrypoint
       packages:
         - "@agent-teams/engineering-foundation"
+        - "@agent-teams/feature-module-standard"
         - "@get-modular/assembly"
         - "@get-modular/conformance"
         - "@get-modular/core"
