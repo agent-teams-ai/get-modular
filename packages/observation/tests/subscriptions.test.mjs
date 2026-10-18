@@ -437,3 +437,30 @@ test("T114 [R18] an observed thenable keeps the original window and permits a la
   assert.equal(store.read(["a"]).values.a, 2); assert.equal(reads, 1); assert.equal(calls, 1);
   assert.deepEqual(reports.map(report => codeOf(report.cause)), ["observation.callback.returned-value"]);
 });
+
+
+for (const member of ["onChange", "loader", "onLoading", "onResult", "onError"]) {
+  test(`T34 T40 T43 T48 ${member} is captured once before admission, including callback-getter close`, async () => {
+    for (const closeOnRead of [1, 2]) {
+      const { store, facet, host } = world({ value: 0 }); const subscriber = host.resources.child({ name: "getter" });
+      let reads = 0; let calls = 0;
+      const callback = () => { calls += 1; return undefined; };
+      const spec = member === "onChange"
+        ? { resources: subscriber.resources, name: "getter/watch", onChange: callback }
+        : { resources: subscriber.resources, name: "getter/load", loader: callback, onLoading: callback, onResult: callback, onError: callback };
+      Object.defineProperty(spec, member, { get: () => {
+        reads += 1; if (reads === closeOnRead) void subscriber.control.close(); return callback;
+      } });
+      const snapshot = facet.read(["value"]);
+      const subscribe = () => { if (member === "onChange") facet.watch(snapshot, spec); else facet.load(snapshot, spec); };
+      if (closeOnRead === 1) {
+        assert.throws(subscribe, cause => cause === subscriber.resources.signal.reason);
+        assert.equal(liveSubscriptions(facet), 0);
+      } else {
+        subscribe(); assert.equal(liveSubscriptions(facet), 1);
+      }
+      assert.equal(reads, 1); await subscriber.control.close(); store.set({ value: 1 }); await delivered({ stores: [facet] });
+      assert.equal(liveSubscriptions(facet), 0); assert.equal(calls, 0); assert.equal(reads, 1);
+    }
+  });
+}

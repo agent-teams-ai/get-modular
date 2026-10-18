@@ -208,3 +208,14 @@ test("T18 T19 T29 public semantic suite on the local build", async context => {
   const { runSemanticSuite } = await import("./semantic-suite.mjs");
   await runSemanticSuite(observation, testing, context);
 });
+
+
+test("T17 T21 T40 T48 reportError is captured once before source ownership transfer", async () => {
+  const host = createScope({ name: "reporter-getter" }); const value = { nested: {} }; let reads = 0;
+  const options = { name: "getter", resources: host.resources, get reportError() {
+    reads += 1; void host.control.close(); return () => undefined;
+  } };
+  assert.throws(() => createStore({ value }, options), { code: "resources.scope.closed" });
+  assert.equal(reads, 1); assert.equal(Object.isFrozen(value), false); assert.equal(Object.isFrozen(value.nested), false);
+  assert.equal((await host.control.close()).complete, true);
+});

@@ -13,13 +13,9 @@ export function isResources(value: unknown): value is Resources {
   return candidate.signal instanceof AbortSignal && typeof candidate.use === "function"
     && typeof candidate.child === "function" && typeof candidate.setup === "function";
 }
-export function checkedSpec(spec: unknown, callbacks: readonly string[]): RawSpec {
+export function checkedSpec(spec: unknown): RawSpec {
   if (typeof spec !== "object" || spec === null) {throw invalidArgument("a subscription requires an object spec");}
-  const record = spec as RawSpec;
-  for (const callback of callbacks) {
-    if (typeof record[callback] !== "function") {throw invalidArgument(`${callback} must be a function`);}
-  }
-  return record;
+  return spec as RawSpec;
 }
 export function callbackOf(spec: RawSpec, name: string): (...args: unknown[]) => unknown {
   const callback = spec[name];
