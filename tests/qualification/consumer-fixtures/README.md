@@ -20,6 +20,13 @@ Get Modular does not gain a Host, readiness API, work scheduler or recovery poli
 Source facts, workload and author exercises remain separate plan
 slices. Source qualification is currently incomplete.
 
+P4 has a separate [source research replay](source/README.md): 26 selected flat
+observations use actual disk facts from an exact packed Foundation candidate,
+the existing public FMS kernel and public Get Modular conformance. The replay
+records its artifact and source hashes. The kernel identifies FMS v1.1 while the
+adopted GM profile pins v1, so this evidence preserves `source: incomplete` and
+does not add an ordinary source gate or change the installed dependency.
+
 ## Semantic ownership and behavior
 
 `semantic/src/composition/semantic.root.ts` is the only supported root recipe.
