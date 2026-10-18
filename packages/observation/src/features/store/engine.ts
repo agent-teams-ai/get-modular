@@ -231,7 +231,9 @@ export class StoreEngine {
     this.#dirty.clear();
     this.#latestRevisionAtDepth.clear();
     this.#lastWriteCause.clear();
-    for (const registration of this.#registrations) {
+    // A synchronous Host reporter may close scopes and unlink other registrations.
+    const registrations = [...this.#registrations];
+    for (const registration of registrations) {
       this.report(registration.name, this.counters.commits,
         new ObservationError("observation.source.closed", `store ${this.options.name} closed before ${registration.name}`));
       registration.detach();

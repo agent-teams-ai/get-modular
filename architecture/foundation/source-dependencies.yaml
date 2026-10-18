@@ -808,6 +808,7 @@ boundaries:
     roots:
       - packages/observation/tests
     entrypoints:
+      - packages/observation/tests/close-reporting.test.ts
       - packages/observation/tests/env-probe.mjs
       - packages/observation/tests/env-setup-fake-before.mjs
       - packages/observation/tests/env-setup-fake-clock-before.mjs

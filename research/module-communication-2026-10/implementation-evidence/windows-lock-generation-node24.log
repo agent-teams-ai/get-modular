@@ -1,0 +1,22 @@
+﹣ Windows lock helper reports failed acquisition and settles without running the action (0.766182ms) # SKIP
+✔ lock host treats an acknowledged failed open as the one expected rejection (50.932606ms)
+✔ lock host still rejects a child that exits before any acknowledgment (31.880254ms)
+✔ lock host rejects a failed-open acknowledgment with an unexpected exit code (31.876524ms)
+✔ lock host rejects malformed and non-record failure payloads as protocol errors (248.979921ms)
+✔ lock host rejects readiness and failure split across stdout chunks in either order (462.278238ms)
+﹣ Windows lock helper releases its real handle and marker after an action failure (0.183907ms) # SKIP
+✔ generated cleanup failure still removes stale production output (74.254652ms)
+﹣ permission failures attempt both removals and retain every cleanup error (0.266952ms) # requires a non-root process; POSIX permission cases are unproven under root
+✔ cold production executes generated M2 and retains direct qualification (2710.912677ms)
+✔ standalone typecheck prepares cold wiring and rejects unselected source (1772.171794ms)
+✔ correspondence fails before rendering or publishing and recovers in a fresh process (1641.626748ms)
+✔ rendered wrong construction fails before designated publication (409.337169ms)
+✔ production compilation failure removes verified wiring and every production output (1614.431574ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 3
+ℹ todo 0
+ℹ duration_ms 9118.159601
