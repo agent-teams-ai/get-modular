@@ -13,8 +13,8 @@ independently verified. Merge and release eligibility remain blocked as describe
 | Current main integrated into the implementation | `47a02a90a06f121c78086c7c5f72b085c42ee7ea`, including merged PR #183 and fresh author qualification |
 | Reviewed plan predecessor | PR #185, `a0c08187845019680d9a2bc764f4010c8cc52b1a` |
 | Exact ADR-0034 predecessor merged into this branch | PR #154, `945e9a151a516ce4ce6e73b6e18893d4e5b27cfe` |
-| Current implementation | `f0deed0af09915717f93bda11c570a82f456907e`, branch `feat/observation-0-1-e2e`; runtime from `737d842`, TypeScript test/manifest correction `4b3fa55` |
-| Unpublished prepared release | `106e3b0adca10e83d7a87ba57cb73baa9ee7ca6d`, branch `release/observation-0-1-candidate` |
+| Implementation before ordinary `.ts` follow-up | `f0deed0af09915717f93bda11c570a82f456907e`, branch `feat/observation-0-1-e2e`; runtime from `737d842`, TypeScript test/manifest correction `4b3fa55` |
+| Earlier unpublished prepared release | `106e3b0adca10e83d7a87ba57cb73baa9ee7ca6d`, branch `release/observation-0-1-candidate` |
 | External consumer | `agent-teams-ai/modularity-host-test`, `observation-0.1.0/`, branch `test/observation-0.1.0` |
 | Compiler policy successor | [ADR-0038](../../docs/decisions/0038-require-typescript-7-for-current-package-qualification.md) |
 
@@ -343,12 +343,149 @@ rerun. Consumer executable source and semantic oracles remain unchanged.
    compiler migration and explicit extractor-provenance upgrade. No compatible
    release or permission to execute the old compiler is assumed.
 3. Run the unchanged complete/fast/changed and SDK-growth aggregates after that
-   dependency is resolved, and observe every updated Node/OS CI lane. The first
-   run passed observation on Linux/macOS for both Nodes; the corrected Windows
-   lane and its 13-minute target require fresh CI. The 15-minute workflow
-   timeout remains unchanged.
+   dependency is resolved, and observe every updated Node/OS CI lane. The later
+   exact-head run `39122863587` on `e5999805` passed all six observation lanes;
+   Windows took 7:54 / 8:20. The ordinary `.ts` successor needs its own current
+   CI result. The 13-minute target and 15-minute workflow timeout remain unchanged.
 4. Obtain the existing owner decisions for merge and publication. Prepared
    versions and passing package/consumer checks do not grant release eligibility.
 
 Codex Review is ignored as the owner requested. No other gate, failure or
 unexecuted row is reclassified as passing.
+
+## Ordinary `.ts` follow-up and independent review
+
+The owner subsequently selected ordinary `.ts` for maintained source, tests,
+CLI and helpers. This follow-up supersedes the earlier `.mts` authoring choice;
+historical records above keep the extension and exact archive bytes they tested.
+Node ESM uses the owning package's `"type": "module"`. Runtime type stripping
+does not replace the existing strict compiler projects.
+
+### Reviewed source and policy
+
+| Subject | Final reviewed commit | Result |
+| --- | --- | --- |
+| Get Modular active tooling migration | `5102438e70a618a342c93fe003bcfc3f057a1041`, after `ae5036e` | Five active files use `.ts`; four fixture drivers have effective strict coverage |
+| Organization rule and compiler guard | `3d0b2be14b1eda315dc71a1bcdfbf1885445cf86`, after `40198f2` | Guard/test imports, discovery, strict inputs and source census agree |
+| Platform infrastructure instructions | `5589ef8cb20ba620b7e0b071c629d22c5b03fca9` | Root AGENTS, Claude, Copilot and README routes; [PR #484](https://github.com/777genius/platform-infra/pull/484) |
+| External consumer instructions | `6c6c16301eced4865e7f6fbf0bddad6102dd7705` | Ordinary `.ts` rule; archived and `.d.mts` semantic subjects preserved |
+
+Three independent GPT-6.1 xhigh critics received the full owner vision: explicit
+typed ports, one state writer, read-only facets, deferred/coalesced observation,
+serial physical load/drain, host-owned effects and the bounded 0.1.0 package.
+They reviewed integration, organization compiler/admission behavior and policy
+consistency across repositories. The first wave found two concrete P2 gaps:
+
+1. Four handwritten temporary drivers existed only as source strings. A wrong
+   type annotation passed the outer strict project and executed under type
+   stripping. The correction makes them real `.ts` files in the two existing
+   owning projects, copies their bytes unchanged and passes variable inputs as
+   data. Deliberately invalid workflow source remains a separate compiler subject.
+2. The organization's expanded `.ts` census accepted a new helper or test outside
+   its exact compiler inputs. The existing checker now requires each classified
+   ordinary `.ts` file in the already-bound strict inventory. Two counterexamples
+   join its existing mutation table; no additional checker or framework was added.
+
+Each original critic independently repeated the counterexample after correction
+and reported zero actionable findings. The policy critic found none in its first
+wave. The exact findings, commits, validation and preserved scope are in
+[`ordinary-ts-review.json`](implementation-evidence/ordinary-ts-review.json).
+
+### Actual focused verification
+
+The four existing Get Modular strict projects pass on Node 24.21.0 and 26.11.1
+with TypeScript 7.0.2. The final fixture correction was independently checked
+with both owning projects on both Nodes. Injecting `const coverageControl:
+string = 42;` into the four actual fixture sources makes each owning project
+reject exactly its two files with TS2322. Unmodified sources pass. Copied workflow
+drivers accept valid source/docs and reject the independent invalid source and
+heading; both retention driver scenarios pass on each Node with no skips.
+The complete affected harness selection has 21 passes and the two known
+Foundation blocks per Node, not a passing full suite.
+
+The organization uses exact pnpm 11.18.0: both Nodes pass strict TS7, 16 inert
+guard controls, 44 focused scope controls and the existing 32-file lint selection.
+Its complete scope suite has 44 passes and two Foundation blocks. The full gate
+stops before the below-floor compiler initializes. Required-quality identities
+in Get Modular remain eleven, with no exception added; their path-adjusted hash
+is `4370f4911f6a08fd8e031caef978112d1a28392ccb4a6ab0fafbdebb1c61db5d`.
+
+Four old lifecycle qualification `.mts` files remain outside this bounded change:
+`packages/lifecycle-kernel/tests/run-node20-qualification.mts`,
+`tests/qualification/lifecycle-qualification-contracts.mts`,
+`tests/qualification/lifecycle-tool-prepare.mts` and its `.test.mts` file.
+They refer to absent projects and old compiler/Node subjects; no current normal
+command calls that pipeline and it was not revived. They are not newly declared
+frozen. The organization also discloses its six earlier authority/qualification
+`.mts` sources and remaining legacy JavaScript gap. Localized legacy JavaScript
+edits only update imports, paths or the existing census; no new untyped helper
+responsibility is added and no fleet-wide migration is claimed.
+
+Platform policy is complete locally while the central proposal is pending.
+The four instruction files passed link/fact review and `git diff --check`;
+there is no root documentation gate for those paths. No infrastructure, host
+configuration or unrelated Python/Shell responsibility was changed.
+
+### Required organization CI after publication
+
+Live rules on main require six contexts for exact head `3d0b2be`. Four pass.
+The remaining two have the same independently inspected causes:
+
+- [`check`, run 39130429156](https://github.com/agent-teams-ai/.github/actions/runs/39130429156/job/117684294288)
+  stops at `scripts/compiler-floor.ts`: Foundation 1.7.2 owns API Extractor
+  7.58.12 and embedded TypeScript 5.9.3.
+- [`docs-source-successor-v1`, run 39130573514](https://github.com/agent-teams-ai/.github/actions/runs/39130573514/job/117684716139)
+  rejects `scripts/check-quality-scope.mjs` as a protected changed input. The
+  established separately staged checker-admission route remains required.
+
+No new required-context failure was observed. Informational historical
+transition jobs are not promoted into new required gates, and are not called
+successful. The shared policy remains in [PR #368](https://github.com/agent-teams-ai/.github/pull/368).
+
+### Fresh exact-archive consumer after ordinary `.ts` adoption
+
+| Subject | Exact identity |
+| --- | --- |
+| Reviewed implementation | `5102438e70a618a342c93fe003bcfc3f057a1041` |
+| Already-versioned release merge | `34bb4fae3d6a613f13cdbab9ca50b0bfdf4054e7` |
+| Committed consumer input, before execution | `a145931ec4522d3a4a5cd1e06a342814a876801e` |
+| Evidence-only successor | `5de8e039cbde6c4277e6220073ab7b57d3718078` |
+| Observation archive SHA-256 | `a0685247e9e00ec02c2abaeab1d4aceb2041468e5317d8bf5e786edf99ec02e5` |
+| Consumer lockfile SHA-256 | `850964806ea7a6dee6e0174261eeddb483c4e3aa9de901a04be33c125aec9b76` |
+| Result SHA-256 | `fe38ccbfb3dcf10e07a9cad8a4cc4971714ab3e2d5daea217fe7e47c8f950473` |
+
+The release merge has exactly the previous candidate `106e3b0` and reviewed
+implementation `5102438` as parents. No second `release:version` was run.
+All five packages were rebuilt and freshly packed with actual TS7.0.2 after
+an offline frozen strict install. The observation archive changes only the
+manifest test glob, `tests/*.test.mts` to `tests/*.test.ts`; its other 39 files
+are identical. Core, Assembly and resources reproduce exactly. Fresh conformance
+packing differs only in the established peer-key-order case; the original
+`9b0b7c3b...` pinned archive remains installed and tested. The other four pinned
+archive hashes are therefore the same as the earlier table.
+
+The consumer input commit changes four files: observation's archive and lock
+integrity, and the two candidate source-commit pins. It precedes the fresh
+removal of generated install/output trees, offline frozen strict installation,
+peer check and unchanged E2E. All ten runner stages finish with status zero.
+TS7 checks NodeNext and Bundler separately with `skipLibCheck: false`; Node
+24.21.0 and 26.11.1 each pass five actual runtime tests and all 33 original writer
+outcomes, eleven positive and 22 intended negative. One smoke executes all
+eleven exact baseline/failure/abort rows; each close is complete, settled and
+debt-free. No semantic oracle, expected gate or consumer executable changed.
+
+A separate GPT-6.1 xhigh critic independently checked the Git parent chain,
+five tarballs, 176 installed file hashes and five physical dependency/peer
+edges, 78 copied writer inputs, 25 executed source/config hashes, actual writer
+identities/gates, runtime predicates and smoke targets/close reports. It verified
+the final evidence-only successor and reported zero actionable findings without
+repeating the entire E2E. The three-substitution harness patch and all three old
+accepted evidence directories remain byte-identical.
+
+The [accepted record](https://github.com/agent-teams-ai/modularity-host-test/blob/5de8e039cbde6c4277e6220073ab7b57d3718078/observation-0.1.0/evidence/accepted-a145931/RECORD.md)
+and [result](https://github.com/agent-teams-ai/modularity-host-test/blob/5de8e039cbde6c4277e6220073ab7b57d3718078/observation-0.1.0/evidence/accepted-a145931/result.json)
+retain exact inputs, command logs and the unchanged expectations. This is bounded
+synthetic Linux package evidence, not complete source-architecture qualification,
+cross-platform CI, scale evidence, production adoption or publication.
+The current ordinary-`.ts` CI run is assessed on the published PR #195 head;
+this pre-push documentation record makes no advance success claim.

@@ -1,118 +1,129 @@
 <!-- cspell:disable -->
 
-# Хендофф: рабочий observation, TypeScript и точный E2E
+# Хендофф: observation, обычный .ts и точный E2E
 
-Обновлено 2026-10-18 после дополнительного ревью GPT-6.1 xhigh, первого CI
-и исправлений трёх дефектов проверок. Рабочая реализация находится в
-`packages/observation/src`: 18 TypeScript-файлов, включая `createStore`, `watch`,
-`load` и testing entry. Пакет ещё не опубликован и не влит в main.
+Обновлено 2026-10-18 после перевода активных инструментов на обычный `.ts`,
+двух волн ревью/исправлений GPT-6.1 xhigh и нового внешнего E2E.
+Рабочий пакет находится в `packages/observation/src`: 18 TypeScript-файлов,
+включая `createStore`, `watch`, `load` и testing entry. Пакет не опубликован.
 
 - Реализация: [get-modular #195](https://github.com/agent-teams-ai/get-modular/pull/195).
 - Точные архивы и внешний consumer: [modularity-host-test #20](https://github.com/agent-teams-ai/modularity-host-test/pull/20).
-- Общее правило TypeScript: [.github #368](https://github.com/agent-teams-ai/.github/pull/368).
+- Общая политика: [.github #368](https://github.com/agent-teams-ai/.github/pull/368).
+- Инструкции инфраструктуры: [platform-infra #484](https://github.com/777genius/platform-infra/pull/484).
 
 Полная запись: [implementation-port.md](implementation-port.md).
 План: [implementation-plan.md](implementation-plan.md).
-История девяти критиков плана: [plan-review.md](plan-review.md).
+Последнее ревью: [ordinary-ts-review.json](implementation-evidence/ordinary-ts-review.json).
+Предыдущие исследования и результаты остаются в git без переписывания.
 
-## Точные текущие субъекты
+## Точные субъекты
 
 | Что | Идентичность |
 | --- | --- |
-| Последний интегрированный main | `47a02a90a06f121c78086c7c5f72b085c42ee7ea` |
-| Реализация и исправления CI | `f0deed0af09915717f93bda11c570a82f456907e`, ветка `feat/observation-0-1-e2e` |
-| Последняя runtime-коррекция | `737d842ca7426d6fbc8d1179fb3bca96b1030b3a`; новые исправления не меняют исполняемые JS и публичные декларации |
-| TypeScript-тест и Windows-путь | `4b3fa554cc4cb90ed6156dddfbc63b3e9dd7c84a`; меняются команды в manifest observation |
-| Счётчики Core/Assembly | `c4db2cb22517034f39bc3dca2e4bf4965d219a5c`; две строки существующих фикстур |
-| Подготовленный релиз | `106e3b0adca10e83d7a87ba57cb73baa9ee7ca6d`, `release/observation-0-1-candidate` |
-| Выполненный внешний consumer | `4d10a1fb7041e44c61766400d6f1262e84c397e7` |
-| Внешний evidence-only commit | `4b33245c2b454e44aac4ea6f3bb241c02f7b9c59` |
-| Внешний результат | `observation-0.1.0/evidence/accepted-4d10a1f/RECORD.md` и `result.json` |
-| Политика организации | `578f822b36f3623cfee3c29f90510afe7facb131`, `docs/typescript-first-agent-standard` |
+| Интегрированный main | `47a02a90a06f121c78086c7c5f72b085c42ee7ea`; при повторной проверке не изменился |
+| Проверенный исполняемый код и инструменты | `5102438e70a618a342c93fe003bcfc3f057a1041`, после `ae5036e` |
+| Последнее изменение production runtime | `737d842ca7426d6fbc8d1179fb3bca96b1030b3a`; перевод расширений не меняет JS и декларации |
+| Подготовленный релиз | `34bb4fae3d6a613f13cdbab9ca50b0bfdf4054e7`, `release/observation-0-1-candidate` |
+| Выполненный внешний consumer | `a145931ec4522d3a4a5cd1e06a342814a876801e`, входной коммит создан до запуска |
+| Внешний evidence-only successor | `5de8e039cbde6c4277e6220073ab7b57d3718078`; независимое ревью точных входов и результатов без замечаний |
+| Внешняя запись | `observation-0.1.0/evidence/accepted-a145931/RECORD.md` и `result.json` в PR #20 |
+| Общая политика и guard | `3d0b2be14b1eda315dc71a1bcdfbf1885445cf86`, PR #368 |
+| Политика platform-infra | `5589ef8cb20ba620b7e0b071c629d22c5b03fca9`, PR #484 |
 
-## Исправления и проверки
+## Что исправлено после замечания про .mts
 
-1. Предыдущее runtime-ревью закрыло выход повторного Promise constructor getter
-   из loader-контекста. Сам `await`, обработка ошибки, закрытие live token и
-   публикация теперь входят в один контекст. 45 guard-тестов и 31 load-тест
-   проходят на каждом Node, как и fallback/GC/P17/R7/R17/R23 контроли.
-2. Все выявленные текущие Foundation CLI/Node runner/SDK границы защищены
-   JSON-only preflight до инициализации TS5.9.3. Старые успешные Foundation логи
-   остаются историческими и не считаются выполнением исключительно на TS7.
-3. Первый CI проверил head `30ccdf4` через merge checkout `54d1aec`.
-   Observation прошёл на Linux/macOS с Node 24 и 26; Node 24 package compatibility
-   тоже прошёл. Все 38 failures классифицированы: 18 compiler-floor блокировок,
-   6 Core и 6 Assembly счётчиков, 2 Windows пути, 6 корректно упавших агрегатов.
-4. Windows использовал `RUNNER~1` для временного каталога, а native compiler
-   возвращал canonical path. Тест теперь получает `realpath` до создания проекта
-   и написан на `.mts`. Все строгие TS2636/TS2322 и 92 negative-проверки на resolver
-   сохранены. Новый файл реально входит в strict typecheck и обычный test gate.
-5. Текущие sealed fixtures теперь содержат 272 строки, исторический transport
-   остаётся 282. Число packed runtime receipts соответствует одному уникальному
-   TS7 compiler и двум resolver. Все четыре removal/no-op контроли сохранены.
-   Затронутая выборка Core/Assembly: 24/24 на каждой Node 24.21.0 и 26.11.1.
-6. Интегрированный observation typecheck и 157/157 runtime-тестов прошли на Node 26.
-   Прежний полный пакетный гейт также прошёл 18 мутаций и 33 writer-задачи.
-   Свежий CI после исправлений надо проверять по его реальному head и результатам;
-   первые Linux/macOS результаты не подменяют новую Windows проверку.
-7. Изменение команд теста меняет архив manifest, поэтому архивы пересобраны,
-   consumer установлен заново offline и проверен без изменения оракулов:
-   пять реальных runtime-предикатов и 33 writer-задачи на каждом Node,
-   один smoke на 11 строках. Проверены 176 installed files, 78 writer inputs,
-   25 source/config hashes, оба resolver TS7.0.2 и строгие peers/engines.
+Пять активных файлов Get Modular и новый guard с тестом в центральном
+`.github` используют обычный `.ts`. Обновлены импорты, команды, test discovery,
+четыре строгих проекта и привязки required identities. ESM задаётся через
+`type: module`, в том числе в одноразовых тестовых пакетах.
 
-Все пять архивов сохраняют версии: Core/Assembly 0.6.0, resources 0.2.0,
-conformance 0.4.0, observation 0.1.0. Новый observation SHA-256:
-`2a72ad3080ecf72277ab707581633391b6af28cbed36a98f8eff2306563f5c91`.
-Остальные четыре SHA прежние. Clean comparison pack допускает только уже
-описанный в Phase 3c порядок peer-ключей conformance; публикационным субъектом
-остаются сохранённые протестированные байты. Предыдущие `accepted-972dc2b`
-и `accepted-dbb708e` не менялись. `release:version` повторно не запускался.
+Три независимых критика получили наше видение и границы: явные typed ports,
+один владелец изменяемого состояния, read-only facets, коалесцированный watch,
+физически последовательный load/drain, эффекты и lifecycle под управлением Host.
+Первый круг нашёл два конкретных P2; оба исправлены и независимо перепроверены:
 
-## TypeScript для новых изменений
+1. Четыре драйвера создавались из строк и не получали реальный strict typecheck.
+   Теперь это отдельные `.ts`-исходники в двух существующих проектах; тесты
+   копируют их байты и передают переменные данные отдельно. Исходный контрпример
+   `const coverageControl: string = 42;` теперь выдаёт TS2322 для каждого файла.
+2. Общий census принимал новый `.ts` helper/test вне точных входов компилятора.
+   Существующий checker связывает каждый такой файл с strict inventory.
+   Оба контрпримера отвергаются. Добавлены две проверки в существующую таблицу.
 
-Владелец требует TypeScript 7.0.2+ для нового поддерживаемого кода, тестов,
-CLI и helpers. Правило записано в общем Engineering Quality Standard и
-подключено к локальным AGENTS/Claude/Copilot routes. Node type stripping не
-заменяет strict typecheck. Generated JS, неизменяемые архивы и конкретные
-JS-semantic/host fixtures сохраняют нужный им формат. Две небольшие правки
-старых JavaScript-счётчиков не объявляются миграцией их полных harnesses.
+Повторные ревью закрыли оба замечания; новых actionable findings нет.
+Политика platform/consumer прошла первый круг без замечаний. Нового фреймворка
+проверок, ослабления оракулов или изменения public API нет.
 
-В `.github` правило и новый `.mts` guard независимо проверены: strict TS7,
-16 инертных контролей на каждом Node, lint/census, 40 focused scope и 11 community
-тестов проходят. Полный `pnpm check` честно блокируется Foundation 1.7.2,
-который тоже подтягивает TS5.9.3. Общая политика в PR, её merge ещё не выполнен.
-Фактический CI общей политики имеет ровно два failing required context:
-`check` останавливает старый compiler, а `docs-source-successor-v1` отклоняет
-изменение защищённого `scripts/check-quality-scope.mjs`. Второй блок требует
-установленного отдельного допуска изменения checker; отключать или переписывать
-защиту ради этого PR нельзя. Остальные четыре required context прошли.
-Исторические красные transition jobs сейчас не являются required checks main.
+## Реальные проверки
 
-## Оставшиеся ограничения
+Четыре Get Modular strict-проекта проходят на Node 24.21.0 и 26.11.1 с TS7.0.2.
+Повторная независимая проверка охватила два исправленных проекта и исходный
+TS2322-контрпример для всех четырёх драйверов. Их runtime-проверки проходят.
+Полная затронутая выборка harnesses: 21 pass и две прежние Foundation-блокировки
+на каждом Node; блокировки не названы успехом.
 
-- Foundation/API Extractor требует upstream native compiler migration и явной
-  квалификации нового provenance. Исторический SDK registry subject тоже должен
-  пройти собственный floor. Нельзя выполнять TS5, делать overrides, пропуски,
-  сужать gates или менять sealed baseline ради зелёного статуса.
+В организации на точном pnpm 11.18.0 и обоих Node проходят strict TS7, 16
+инертных guard-контролей, 44 focused scope-контроля и lint по 32 файлам.
+Полная scope-выборка: 44 pass и две Foundation-блокировки на каждом Node.
+
+Новый внешний consumer установлен заново offline с frozen lockfile,
+строгими engines и peers. Все десять этапов существующего runner прошли:
+TS7 NodeNext/Bundler с `skipLibCheck: false`, emission, по пять runtime-тестов
+и 33 writer-задачи на каждом Node, один smoke с 11 точными baseline/injection
+строками. Все closes завершены и settled, без долгов. Сохранены 176 installed
+file hashes, 78 writer input hashes, 25 source/config hashes и исходные оракулы.
+
+Новый observation SHA-256:
+`a0685247e9e00ec02c2abaeab1d4aceb2041468e5317d8bf5e786edf99ec02e5`.
+В архиве изменён только `package.json`: test glob `.mts` → `.ts`.
+Остальные четыре pinned архива прежние. Для comparison pack conformance
+применено только уже принятое исключение порядка peer-ключей; проверенным
+субъектом остаются исходные pinned байты. `release:version` не повторялся.
+Все три предыдущие записи `accepted-972dc2b`, `accepted-dbb708e` и
+`accepted-4d10a1f` сохранены побайтно.
+
+Предыдущий CI на `e5999805`, [run 39122863587](https://github.com/agent-teams-ai/get-modular/actions/runs/39122863587),
+прошёл все шесть Core, Assembly и Observation lanes: три OS × два Node.
+В каждом Observation lane прошли 157 runtime-тестов без skips, 18 мутаций,
+33 writer outcomes и packed check. Windows занял 7:54 / 8:20 при цели 13 минут.
+Новый CI после перевода на `.ts` проверяется отдельно на точном опубликованном
+head PR #195; эта запись до push не предвосхищает его результат.
+
+## Где действует правило и что остаётся
+
+Локальные AGENTS и маршруты Claude/Copilot задают обычный `.ts` для нового
+поддерживаемого JavaScript-runtime кода, тестов и helpers, TS7.0.2+ и фактический
+strict typecheck. В platform-infra правило полное локально даже до слияния
+центрального PR. Наличие PR не означает, что правило уже находится в main,
+автоматически наследуется другими репозиториями или установлено на live hosts.
+
+Generated package JS, неизменяемые архивы и конкретные semantic/host fixtures
+сохраняют необходимый формат. В get-modular остались четыре старых lifecycle
+qualification `.mts`, не вызываемых текущими командами и ссылающихся на
+отсутствующие проекты и старые компиляторы; их не возобновлять и не объявлять
+заново frozen. В центральном репозитории также отдельно описаны шесть прежних
+authority/qualification `.mts` и оставшаяся legacy JavaScript coverage.
+Массовая миграция этих границ не входит в текущую правку.
+
+## Обязательные ограничения
+
+- Foundation/API Extractor содержит TS5.9.3. Текущие metadata-only guards
+  останавливают его до инициализации. Нужна поддерживаемая upstream-миграция
+  и квалификация provenance; overrides, запуск старого TS и пропуски запрещены.
   [Исследование зависимости](typescript-toolchain-blocker.md).
-- ADR-0034 / #154 и план #185 ещё открыты. Их точные байты присутствуют в рабочей
-  ветке, но main-admission это не заменяет.
-- Полный и fast/changed/SDK-growth aggregate после upstream migration остаются
-  обязательными. Таймаут workflow 15 минут и цель Windows observation 13 минут
-  сохранены; результат нового CI и время брать только из реального запуска.
-- Другие consumers отдельно принимают новый CMS pin. Frozen SDK-growth CMS
-  JSON, принятые ADR и опубликованные API baselines не менялись.
-- Merge и npm publication не выполнены; публикация остаётся шагом владельца.
+- У центрального PR #368 на head `3d0b2be` четыре required contexts проходят.
+  `check` блокируется TS5.9.3, а `docs-source-successor-v1` требует отдельного
+  допуска изменения защищённого `scripts/check-quality-scope.mjs`.
+  Эти реальные причины перепроверены по новым CI-логам.
+- ADR-0034 / #154 и план #185 остаются открытыми. Их присутствие в рабочей
+  ветке не заменяет main-admission.
+- Полные/fast/changed/SDK-growth gates обязательны после upstream-исправления.
+  Frozen SDK-growth CMS JSON, принятые ADR и опубликованные API baselines
+  не менять ради зелёного результата.
+- Merge и npm publication не выполнены. Passing package/consumer tests
+  не дают автоматического допуска к релизу.
 
-Codex Review игнорируется по инструкции владельца. Остальные failures не скрывать.
-Далее использовать субагентов GPT-6.1 xhigh. Реализованная 0.1.0 наблюдает состояние
-с коалесцированием и использует явные command-порты; отдельный durable event bus
-не входил в принятый план.
-
-## Доступ и среда
-
-GitHub CLI авторизован владельцем; PR и push доступны. Использованы Node 24.21.0
-и 26.11.1, pnpm 11.20.0 (в центральном `.github` точный 11.18.0), TS7.0.2.
-Sandbox EPERM и file-wrapper-only тесты не считать семантическими успехами.
-При необходимости вложенного Node runner сохранять реальное выполнение identities.
+Игнорируется только Codex Review по инструкции владельца. Следующие субагенты —
+GPT-6.1 xhigh. Рабочая 0.1.0 реализует наблюдение состояния и явные command-порты;
+отдельный durable event bus не входит в принятый план.
