@@ -1,3 +1,4 @@
+import { assertCompilerFloor } from "./compiler-floor.mjs";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { access, readFile } from "node:fs/promises";
@@ -121,6 +122,7 @@ async function validateInstalledFoundation(model) {
     fail("installed Foundation SDK authority export drifted");
   }
   const sdkTarget = manifest.exports["./sdk-growth-authority"].import;
+  assertCompilerFloor();
   const sdk = await import(pathToFileURL(join(dirname(manifestPath), sdkTarget)));
   if (typeof sdk.createSdkGrowthAuthorityVerifier !== "function") fail("installed Foundation SDK verifier is unavailable");
 }

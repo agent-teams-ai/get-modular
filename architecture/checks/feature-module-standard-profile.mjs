@@ -38,7 +38,7 @@ const FOUNDATION_CHECK_SCRIPT =
 // Leaf commands come first, so a table row can never replace a closed
 // definition below; a colliding row leaves its own admission unsatisfiable.
 const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
-  "quality:critical:test": "node architecture/checks/required-quality-tests.mjs && node node_modules/typescript/bin/tsc -p tests/tsconfig.repository-agent-workflow.json --noEmit && agent-teams-node-test --contract architecture/foundation/required-quality-tests.json -- tests/source-dependencies.test.mjs tests/quality-activation.test.mjs tests/repository-agent-workflow.test.mts",
+  "quality:critical:test": "node architecture/checks/compiler-floor.mjs && node architecture/checks/required-quality-tests.mjs && node node_modules/typescript/bin/tsc -p tests/tsconfig.repository-agent-workflow.json --noEmit && agent-teams-node-test --contract architecture/foundation/required-quality-tests.json -- tests/source-dependencies.test.mjs tests/quality-activation.test.mjs tests/repository-agent-workflow.test.mts",
   ...Object.fromEntries(LEAF_PACKAGES.flatMap(leaf => Object.entries(leaf.commands))),
   "architecture:feature-module-profile":
     "node architecture/checks/feature-module-standard-profile.mjs",
@@ -58,12 +58,12 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "docs:check": "agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml",
   "docs:protocol:check": "pnpm docs:check && pnpm docs:quality",
   "docs:quality": "markdownlint-cli2 && cspell --config .cspell.json --no-progress",
-  "foundation:assert-dev-only": "agent-teams-foundation assert-dev-only",
-  "foundation:assert-registry": "agent-teams-foundation assert-registry",
+  "foundation:assert-dev-only": "node architecture/checks/compiler-floor.mjs && agent-teams-foundation assert-dev-only",
+  "foundation:assert-registry": "node architecture/checks/compiler-floor.mjs && agent-teams-foundation assert-registry",
   "foundation:check": FOUNDATION_CHECK_SCRIPT,
   "quality:coverage:scope":
-    "agent-teams-foundation quality check --consumer . --scope-only",
-  "lint:typed": "agent-teams-foundation quality check --consumer .",
+    "node architecture/checks/compiler-floor.mjs && agent-teams-foundation quality check --consumer . --scope-only",
+  "lint:typed": "node architecture/checks/compiler-floor.mjs && agent-teams-foundation quality check --consumer .",
   "governance:check": "node architecture/checks/governance.mjs",
   "governance:test": "node --test tests/governance.test.mjs tests/node-runtime-compatibility.test.mjs tests/assembly-admission.test.mjs tests/private-core-start.test.mjs tests/m3-start.test.mjs tests/generated-production-source.test.mjs tests/leaf-package-admission.test.mjs tests/ci-check-lanes.test.mjs tests/codemods/codemods.test.mjs",
   "qualification:resource-profile": "node tests/qualification/v1-resource-profile.mjs",
@@ -82,9 +82,9 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "runtime:policy:test": "node --test tests/tooling-node-policy.test.mts",
   "sdk-growth:check": "node architecture/checks/compiler-floor.mjs && node architecture/checks/sdk-growth.mjs && node --test tests/sdk-growth.test.mjs && node tests/qualification/sdk-growth-admission.mjs && node tests/qualification/sdk-growth-packed-consumers.mjs && node tests/qualification/sdk-growth-registry-consumer.mjs",
   "sdk-growth:admission": "node architecture/checks/compiler-floor.mjs && node tests/qualification/sdk-growth-admission.mjs",
-  "sdk-growth:test": "node --test tests/sdk-growth.test.mjs",
+  "sdk-growth:test": "node architecture/checks/compiler-floor.mjs && node --test tests/sdk-growth.test.mjs",
   "sdk-growth:pack": "node tests/qualification/sdk-growth-packed-consumers.mjs",
-  "sdk-growth:registry": "node tests/qualification/sdk-growth-registry-consumer.mjs",
+  "sdk-growth:registry": "node architecture/checks/compiler-floor.mjs && node tests/qualification/sdk-growth-registry-consumer.mjs",
 });
 const ROOT_SCRIPT_COMMANDS = Object.freeze({
   check: Object.freeze([

@@ -66,24 +66,35 @@ function assertDependencyPin(owner, name, actualVersion) {
   }
 }
 
-export function assertCompilerFloor(workspace = repositoryRoot) {
-  const repository = createRequire(join(resolve(workspace), "package.json"));
-  const compilers = [
-    compiler(repository, "typescript", "repository.current"),
-    compiler(repository, "typescript-minimum", "repository.minimum"),
-  ];
+function foundationCompilers(repository) {
   const foundation = readPackage(repository, "@agent-teams/engineering-foundation", "foundation");
   const foundationRequire = createRequire(foundation.manifestPath);
   const foundationCompiler = compiler(foundationRequire, "typescript", "foundation.compiler");
   if (Object.hasOwn(foundation.manifest.dependencies ?? {}, "typescript")) {
     assertDependencyPin(foundation, "typescript", foundationCompiler.version);
   }
-  compilers.push(foundationCompiler);
   const extractor = readPackage(foundationRequire, "@microsoft/api-extractor", "foundation.api-extractor");
   assertDependencyPin(foundation, "@microsoft/api-extractor", extractor.manifest.version);
   const extractorCompiler = compiler(createRequire(extractor.manifestPath), "typescript", "foundation.api-extractor.compiler");
   assertDependencyPin(extractor, "typescript", extractorCompiler.version);
-  compilers.push(extractorCompiler);
+  return [foundationCompiler, extractorCompiler];
+}
+
+export function assertFoundationCompilerFloor(workspace = repositoryRoot) {
+  const repository = createRequire(join(resolve(workspace), "package.json"));
+  return {
+    outcome: "passed", minimumVersion: TYPESCRIPT_COMPILER_FLOOR,
+    compilers: foundationCompilers(repository),
+  };
+}
+
+export function assertCompilerFloor(workspace = repositoryRoot) {
+  const repository = createRequire(join(resolve(workspace), "package.json"));
+  const compilers = [
+    compiler(repository, "typescript", "repository.current"),
+    compiler(repository, "typescript-minimum", "repository.minimum"),
+    ...foundationCompilers(repository),
+  ];
   return { outcome: "passed", minimumVersion: TYPESCRIPT_COMPILER_FLOOR, compilers };
 }
 

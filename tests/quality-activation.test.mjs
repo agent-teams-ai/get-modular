@@ -1,3 +1,4 @@
+import { assertCompilerFloor } from "../architecture/checks/compiler-floor.mjs";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -219,6 +220,7 @@ function commandFailureDetails(error) {
 }
 
 async function foundationCheck(root, capability) {
+  assertCompilerFloor();
   try {
     const result = await execute(process.execPath, [
       cli,
@@ -237,6 +239,7 @@ async function foundationCheck(root, capability) {
 }
 
 async function fullQualityCheck(root) {
+  assertCompilerFloor();
   try {
     const result = await execute(process.execPath, [
       cli,

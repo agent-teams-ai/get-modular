@@ -1,3 +1,4 @@
+import { assertCompilerFloor } from "../architecture/checks/compiler-floor.mjs";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { glob, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -56,6 +57,7 @@ async function checkFixture(change = () => {}) {
 }
 
 async function runPolicyFixture(files, configuration) {
+  assertCompilerFloor();
   const directory = await mkdtemp(join(tmpdir(), "gm-source-policy-"));
   try {
     files.set("foundation.config.yaml", stringify({ schemaVersion: 1, project: { id: "source-policy-fixture" }, capabilities: { "architecture.source-dependencies": { configPath: policyPath } } }));

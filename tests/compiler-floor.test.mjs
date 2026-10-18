@@ -4,7 +4,7 @@ import { cp, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
-import { assertCompilerFloor, CompilerFloorError } from "../architecture/checks/compiler-floor.mjs";
+import { assertCompilerFloor, assertFoundationCompilerFloor, CompilerFloorError } from "../architecture/checks/compiler-floor.mjs";
 
 const repository = resolve(import.meta.dirname, "..");
 const guard = "architecture/checks/compiler-floor.mjs";
@@ -91,6 +91,23 @@ test("minimum and current may resolve to the same exact compiler manifest", asyn
   });
 });
 
+test("an installed SDK subject checks its own Foundation closure without repository compiler aliases", async () => {
+  await fixture(async (root, paths) => {
+    await rm(join(root, "node_modules/typescript"), { recursive: true });
+    await rm(join(root, "node_modules/typescript-minimum"), { recursive: true });
+    const report = assertFoundationCompilerFloor(root);
+    assert.equal(report.outcome, "passed");
+    assert.deepEqual(report.compilers.map(row => row.role), ["foundation.compiler", "foundation.api-extractor.compiler"]);
+    await change(root, paths.extractor, { version: "5.9.3" });
+    assert.throws(() => assertFoundationCompilerFloor(root), error => {
+      assert.ok(error instanceof CompilerFloorError);
+      assert.equal(error.diagnostic.role, "foundation.api-extractor.compiler");
+      assert.equal(error.diagnostic.reason, "compiler-below-floor");
+      return true;
+    });
+  });
+});
+
 test("every compiler ownership path rejects below-floor metadata before execution", async context => {
   for (const [key, role] of [
     ["current", "repository.current"], ["minimum", "repository.minimum"],
@@ -131,8 +148,9 @@ test("invalid identity, unstable versions, missing files and dependency override
 
 test("CLI and direct SDK admission stop before loading the incompatible extractor", async () => {
   await fixture(async (root, paths) => {
-    for (const path of [guard, "architecture/checks/node-version.mjs", admission,
-      "tests/qualification/sdk-growth-failure-retention.mts"]) {
+    const registry = "tests/qualification/sdk-growth-registry-consumer.mjs";
+    for (const path of [guard, "architecture/checks/node-version.mjs", admission, registry,
+      "tests/qualification/support/npm-cli.mjs", "tests/qualification/sdk-growth-failure-retention.mts"]) {
       await mkdir(dirname(join(root, path)), { recursive: true });
       await cp(join(repository, path), join(root, path));
     }
@@ -141,7 +159,7 @@ test("CLI and direct SDK admission stop before loading the incompatible extracto
     assert.equal(compatible.status, 0, compatible.stderr);
     assert.equal(JSON.parse(compatible.stdout).outcome, "passed");
     await change(root, paths.extractor, { version: "5.9.3" });
-    for (const path of [guard, admission]) {
+    for (const path of [guard, admission, registry]) {
       const result = spawnSync(process.execPath, [join(root, path)], { cwd: root, encoding: "utf8", timeout: 10_000 });
       assert.equal(result.error, undefined);
       assert.equal(result.status, 1, result.stderr);
@@ -153,14 +171,25 @@ test("CLI and direct SDK admission stop before loading the incompatible extracto
   });
 });
 
-test("known extraction scripts retain their commands after the blocking preflight", async () => {
+test("Foundation CLI, mandatory runner and SDK scripts retain their commands after the blocking preflight", async () => {
   const { scripts } = JSON.parse(await readFile(join(repository, "package.json"), "utf8"));
   for (const [name, next] of [
     ["foundation:check", "agent-teams-foundation check"],
+    ["check:changed", "agent-teams-foundation agent-workflow changed --consumer ."],
+    ["ownership:checkpoint:test", "node --test tests/ownership-checkpoint.test.mjs"],
+    ["foundation:assert-dev-only", "agent-teams-foundation assert-dev-only"],
+    ["foundation:assert-registry", "agent-teams-foundation assert-registry"],
+    ["foundation:status", "agent-teams-foundation status"],
+    ["quality:coverage:scope", "agent-teams-foundation quality check --consumer . --scope-only"],
+    ["lint:typed", "agent-teams-foundation quality check --consumer ."],
+    ["quality:critical:test", "node architecture/checks/required-quality-tests.mjs"],
     ["sdk-growth:check", "node architecture/checks/sdk-growth.mjs"],
+    ["sdk-growth:test", "node --test tests/sdk-growth.test.mjs"],
     ["sdk-growth:admission", "node tests/qualification/sdk-growth-admission.mjs"],
+    ["sdk-growth:registry", "node tests/qualification/sdk-growth-registry-consumer.mjs"],
   ]) {
     assert.ok(scripts[name].startsWith(`node ${guard} && ${next}`), name);
   }
+  assert.equal(scripts["precheck:changed"], "pnpm runtime:preflight");
   assert.ok(scripts["architecture:feature-module-profile:test"].includes("tests/compiler-floor.test.mjs"));
 });
