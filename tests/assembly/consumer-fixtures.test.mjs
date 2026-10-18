@@ -6,6 +6,7 @@ import {
   fixtureCompiler, invokeFixtureNode, withSemanticConsumer,
 } from "../qualification/consumer-fixtures/support/materialize.mjs";
 import { runInstalledSourcePolicyScenarios } from "../qualification/consumer-fixtures/source/policy.mjs";
+import { checkHeldStartupController } from "../qualification/consumer-fixtures/authoring/transport.mjs";
 
 test("consumer fixtures enforce their installed flat source policy", { timeout: 600000 }, async (t) => {
   await withSemanticConsumer(async ({ directory, evidence }) => {
@@ -14,7 +15,7 @@ test("consumer fixtures enforce their installed flat source policy", { timeout: 
   });
 });
 
-test("consumer fixtures compile through public packages and preserve C/L/W behavior", { timeout: 600000 }, async (t) => {
+test("consumer fixtures compile through public packages and preserve C/L/W/H behavior", { timeout: 600000 }, async (t) => {
   await withSemanticConsumer(async ({ directory, evidence }) => {
     const compatibility = testAssemblyTypes({ directory, project: join(directory, "tsconfig.types.json") });
     for (const name of new Set(compatibility.map(item => item.compilerName))) {
@@ -51,6 +52,9 @@ test("consumer fixtures compile through public packages and preserve C/L/W behav
       }
       t.diagnostic(runtime.stdout.trim());
     }
+    await t.test("H-03: held startup closes its one-shot input and exits after actual cleanup", async () => {
+      t.diagnostic(JSON.stringify(await checkHeldStartupController(directory)));
+    });
     t.diagnostic(JSON.stringify({ scenarios: ["C-01", "C-02", "C-03", "C-04a", "C-04b"],
       lifetime: ["L-01", "L-02", "L-03", "L-04", "L-05", "L-06", "L-07", "L-08", "L-09", "L-10"],
       workload: ["W-01", "W-02", "W-03"],

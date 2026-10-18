@@ -46,6 +46,12 @@ H-03 exercise results, one three-file author patch and bounded diagnoses from
 the historical P1/P2 inputs. It adds no recurring test entry or supported root.
 Its single selected author runtime invocation and actual held-startup cleanup
 are recorded separately from source coverage, which remains incomplete.
+The current H-03 controller regression separately exercises held startup and
+physical cleanup, then requires natural child-process exit while the parent's
+stdin writer remains open. The controller closes its accepted one-shot input
+with `destroy()`; pausing that input alone does not qualify transport completion.
+This regression does not repeat the fresh diagnosis or change the historical
+authoring record.
 
 ## Semantic ownership and behavior
 
@@ -95,6 +101,7 @@ The bounded snapshot exposes identity and phase, with no factory attribution.
 | R-01–R-10 | `recovery/tests/recovery.test.ts` | [Assembly restart test](../../assembly/consumer-restart.test.mjs); one current compiler emit |
 | G-01 | Generated eight-feature tree and `growth/run.mjs` | [Assembly growth test](../../assembly/consumer-growth.test.mjs); current compiler/NodeNext, independent oracles and one full smoke |
 | W-01–W-03 | `semantic/tests/module/workload.test.ts` | Same Assembly fixture test and current runtime emit |
+| H-03 controller transport | `semantic/tests/support/held-startup-controller.ts` and `authoring/transport.mjs` | Same Assembly fixture test; actual cancellation/cleanup and natural exit with the parent writer held open |
 | Selected A-01–A-04 and A-06 policy predicates | `source/policy.mjs` and `source/source-dependencies.yaml` | Same Assembly fixture test; installed public Foundation CLI, actual tree and rejecting mutations; overall source qualification remains incomplete |
 
 The owner contract suite lives in `semantic/tests/features/session/testing.ts`.
