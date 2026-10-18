@@ -1,0 +1,32 @@
+docs.find: success
+Matches: 30
+ADR-0007 | adr | accepted | architecture | docs/decisions/0007-require-executable-v1-conformance-amendments.md | ADR-0007: Require executable V1 conformance amendments
+ADR-0011 | adr | proposed | architecture | docs/decisions/0011-define-private-self-composition-evidence-and-release-custody.md | ADR-0011: Define private self-composition evidence and release custody
+ADR-0013 | adr | proposed | architecture | docs/decisions/0013-close-trusted-object-and-raw-carrier-semantics.md | ADR-0013: Close trusted-object and raw-carrier semantics
+ADR-0019 | adr | accepted | architecture | docs/decisions/0019-separate-upload-admission-from-publication-completion.md | ADR-0019: Separate upload admission from publication completion
+ADR-0021 | adr | accepted | architecture | docs/decisions/0021-freeze-combined-diagnostic-generation-two-for-m2.md | ADR-0021: Freeze combined diagnostic generation two for M2
+ADR-0022 | adr | accepted | architecture | docs/decisions/0022-correct-two-in-envelope-m2-resource-outcomes.md | ADR-0022: Correct two in-envelope M2 resource outcomes
+ADR-0025 | adr | accepted | architecture | docs/decisions/0025-publish-assembly-0-1-0-with-core-0-1-0.md | ADR-0025: Publish Assembly 0.1.0 with Core 0.1.0
+ADR-0028 | adr | accepted | architecture | docs/decisions/0028-authorize-the-optional-ownership-contract-checkpoint.md | ADR-0028: Authorize the optional ownership contract checkpoint
+ADR-0029 | adr | accepted | architecture | docs/decisions/0029-admit-an-optional-lifecycle-kernel-candidate.md | ADR-0029: Admit an optional lifecycle kernel candidate
+ADR-0034 | adr | accepted | architecture | docs/decisions/0034-admit-the-module-change-observation-package.md | ADR-0034: Admit the module change observation package
+ADR-0038 | adr | accepted | architecture/tooling | docs/decisions/0038-require-typescript-7-for-current-package-qualification.md | ADR-0038: Require TypeScript 7 for current package qualification
+ADR-INDEX | index | active | architecture | docs/decisions/README.md | Architecture decisions
+ARCH-COMMON-ASSEMBLY | architecture | active | architecture | docs/architecture/common-assembly.md | Common assembly
+ARCH-CURRENT-CONTRACT | architecture | active | architecture | docs/architecture/current-contract.md | Current contract
+ARCH-FEATURE-MODULE-STANDARD | architecture | active | architecture | docs/architecture/feature-module-standard.md | Get Modular Feature Module Standard Profile
+ARCH-MVP-IMPLEMENTATION-ROADMAP | architecture | active | architecture | docs/architecture/mvp-implementation-roadmap.md | MVP implementation roadmap
+DOCS-INDEX | index | active | architecture | docs/README.md | Documentation
+GUIDE-CONSUMER-QUICKSTART | architecture | active | architecture | docs/guides/consumer-quickstart.md | Consumer quickstart
+GUIDE-MODULE-AUTHORING | architecture | active | architecture | docs/guides/module-authoring.md | Module authoring guide
+OD-004 | open-decision | resolved | architecture | docs/open-decisions/OD-004-package-carrier-and-resolution-policy.md | OD-004: Package carrier and resolution policy
+OD-005 | open-decision | resolved | architecture | docs/open-decisions/OD-005-raw-input-carrier-semantics.md | OD-005: Raw input carrier semantics
+OD-006 | open-decision | resolved | architecture | docs/open-decisions/OD-006-duplicate-binding-record-diagnostics.md | OD-006: Duplicate binding-record diagnostics
+OD-007 | open-decision | resolved | architecture | docs/open-decisions/OD-007-module-change-observation-package.md | OD-007: Module change observation package
+OD-INDEX | index | active | architecture | docs/open-decisions/README.md | Open decisions
+QUAL-BOOTSTRAP-FIVE-CRITICS | qualification | reviewed | architecture | docs/qualification/bootstrap-five-critic-review.md | Bootstrap five-critic review
+QUAL-COMPILER-ENGINEER-HANDBOOK | qualification | reviewed | architecture | docs/qualification/compiler-engineer-handbook.md | Compiler engineer handbook
+QUAL-GM02-API-ERRATUM | qualification | reviewed | architecture | docs/qualification/gm02-api-erratum.md | GM-02 API evidence erratum and versioned correction route
+QUAL-MODULE-FIXTURE-HANDOFF | qualification | reviewed | architecture/tooling | docs/qualification/module-fixture-handoff.md | Module fixture implementer handoff
+QUAL-MODULE-FIXTURE-PLAN | qualification | reviewed | architecture | docs/qualification/module-fixture-plan.md | Module fixture implementation plan
+QUAL-MODULE-FIXTURE-SCENARIOS | qualification | reviewed | architecture | docs/qualification/module-fixture-scenarios.md | Module fixture scenarios

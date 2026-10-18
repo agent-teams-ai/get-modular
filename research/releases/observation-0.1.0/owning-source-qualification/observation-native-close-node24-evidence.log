@@ -1,0 +1,64 @@
+$ node --test packages/observation/tests/mutations.test.mjs packages/observation/tests/writer-gate.test.mjs
+✔ T107 all eighteen archived defects fail semantic probes in isolated patched builds (259986.286682ms)
+ℹ no-key-index: caught by T63 T104 [P7] dispatch visits only subscriptions of the changed keys (hundreds of watchers); T63 T104 [R4] a set of one key: 1 index lookup, 1 visit, 1 callback; ten keys: 10 of each; T63 T104 [R4] contrast: 500 subscriptions on the same key get 500 callbacks from one set
+ℹ leak-detached: caught by T34 T35 T45 T58 T113 T115 [P3 P4 R2 R19] GC subscriber-closed; T34 T35 T45 T58 T113 T115 [P3 P4 R2 R19] GC store-closed; T34 T35 T45 T58 T113 T115 [P3 P4 R2 R19] GC als-retention
+ℹ unbounded-dirty: caught by T63 T104 [P5] coalescing: 10 000 commits in one task give one delivery of the newest value; T32 T63 T104 [R3] 10 000 sets in one task: one delivery per subscription, one buffered entry per subscription
+ℹ late-detach: caught by T34 [P2] the subscription is detached when its scope starts closing, before the drain finishes; T34 [R1] no delivery and no new load after close() is called, while the drain is still waiting
+ℹ no-name-check: caught by T37 T38 [P8] a repeated watch in a long-lived scope fails with a coded error, in that scope only; T37 T38 [R5] same name: observation.subscription.duplicate-name, the first subscription stays
+ℹ queue-loads: caught by T32 [P6] load: one active and one pending run; a stale result never publishes; T32 T63 T104 [R3] 10 000 region changes while a load runs: one active, at most one pending, 2 loader calls
+ℹ publish-stale: caught by T32 [P6] load: one active and one pending run; a stale result never publishes; T36 [P11] closing the subscriber scope during a cooperative load: complete, no debts, nothing published; T32 [R7] onLoading on queue; a result that lands after set() but before delivery is dropped (store revision)
+ℹ compare-last-offered: caught by T32 [P17] load: onLoading when a newer run is queued; a result that lands after set() is dropped; T32 [R7] onLoading on queue; a result that lands after set() but before delivery is dropped (store revision)
+ℹ no-cascade-guard: caught by T52 T53 [P19] cascade guard: shared across stores (ping-pong), legitimate chains pass, coalescing keeps the largest depth; T53 [P23] an asynchronous ping-pong across two stores stops at 64 steps (Node); T50 T51 T53 T57 [R9] an asynchronous ping-pong across two stores through commands stops at 65 deliveries (Node)
+ℹ no-loading-signal: caught by T32 [P17] load: onLoading when a newer run is queued; a result that lands after set() is dropped; T32 [R7] onLoading on queue; a result that lands after set() but before delivery is dropped (store revision)
+ℹ no-scope-limit: caught by T37 T38 [P8] a repeated watch in a long-lived scope fails with a coded error, in that scope only; T37 T38 [R5] generated names: observation.subscriptions.limit at 64 in the leaking scope; other scopes are not affected
+ℹ no-echo-guard: caught by T50 T51 T54 [P18] echo: a handler that changes a key it follows fails at the first delivery, reported and thrown; T51 T57 [P22] asynchronous echo is caught at the first round: async command, microtask, loader body (Node); T50 T51 T53 T57 [R9] a handler that changes the key it follows: one delivery, observation.delivery.echo reported once; T50 T51 T53 T57 [R9] C1, C2, C10: async command, queueMicrotask and loader body echo are caught at the first round (Node)
+ℹ no-async-context: caught by T51 T57 [P22] asynchronous echo is caught at the first round: async command, microtask, loader body (Node); T53 [P23] an asynchronous ping-pong across two stores stops at 64 steps (Node); T50 T51 T53 T57 [R9] C1, C2, C10: async command, queueMicrotask and loader body echo are caught at the first round (Node); T50 T51 T53 T57 [R9] an asynchronous ping-pong across two stores through commands stops at 65 deliveries (Node); T06 T57 T62 T70 T73 [R14] environment fake-before; T06 T57 T62 T70 T73 [R14] environment fake-clock-before; T06 T68 T72 T73 [R14] the detection flag tells a test preset whether async echoes are detected (Node: true)
+ℹ facet-read-after-close: caught by T46 [P25] the owner's read works after close; a save-on-close entry registered after createStore sees the last values; T46 [R11] a resource opened before the store saves the last value in its cleanup
+ℹ unbounded-context: caught by T58 T59 T60 [R13] server: requests to a server restarted by a handler are independent user actions; T58 T59 T60 [R13] depth: independent requests through a restarted server do not accumulate cascade depth
+ℹ global-timers-only: caught by T06 T57 T62 T70 T73 [R14] environment fake-before
+ℹ rewalk-frozen: caught by T21 [P21] set takes ownership: values are frozen in place; frozen nodes are not walked again
+ℹ retain-after-close: caught by T34 T35 T45 T58 T113 T115 [P3 P4 R2 R19] GC store-closed
+✔ T29 T75 T103 T108 archived writer references pass and every negative fails its exact gates (5332.72291ms)
+ℹ writer compile TypeScript 7.0.2 NodeNext: 4 attributed diagnostics
+ℹ writer compile TypeScript 7.0.2 Bundler: 4 attributed diagnostics
+ℹ reference/a-logger: PASS
+ℹ reference/b-catalog: PASS
+ℹ reference/c-pricing-context: PASS
+ℹ reference/d-greeter: PASS
+ℹ reference/e-async-factory: PASS
+ℹ reference/e-sessions: PASS
+ℹ reference/f-watch-and-load: PASS
+ℹ reference/g-hierarchy: PASS
+ℹ reference/h-requests: PASS
+ℹ reference/i-errors: PASS
+ℹ alternative/h-requests: PASS
+ℹ negative-b-behaviour-1/a-logger: FAIL (behaviour)
+ℹ negative-b-behaviour-1/b-catalog: FAIL (behaviour)
+ℹ negative-b-behaviour-1/c-pricing-context: FAIL (behaviour)
+ℹ negative-b-behaviour-1/d-greeter: FAIL (behaviour)
+ℹ negative-b-behaviour-1/e-async-factory: FAIL (behaviour)
+ℹ negative-b-behaviour-1/e-sessions: FAIL (rules, behaviour)
+ℹ negative-b-behaviour-1/f-watch-and-load: FAIL (behaviour)
+ℹ negative-b-behaviour-1/g-hierarchy: FAIL (behaviour)
+ℹ negative-b-behaviour-1/h-requests: FAIL (behaviour)
+ℹ negative-b-behaviour-1/i-errors: FAIL (behaviour)
+ℹ negative-b-behaviour-2/e-async-factory: FAIL (behaviour)
+ℹ negative-b-behaviour-2/g-hierarchy: FAIL (behaviour)
+ℹ negative-b-behaviour-2/h-requests: FAIL (behaviour)
+ℹ negative-b-behaviour-2/i-errors: FAIL (behaviour)
+ℹ negative-b-behaviour-3/h-requests: FAIL (behaviour)
+ℹ negative-b-behaviour-4/h-requests: FAIL (behaviour)
+ℹ negative-b-behaviour-5/e-async-factory: FAIL (behaviour)
+ℹ negative-b-behaviour-6/e-async-factory: FAIL (behaviour)
+ℹ negative-b-behaviour-7/h-requests: FAIL (behaviour)
+ℹ negative-rules-compile/a-logger: FAIL (compile)
+ℹ negative-rules-compile/b-catalog: FAIL (rules, compile)
+ℹ negative-rules-compile/d-greeter: FAIL (rules, compile)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 260052.201923

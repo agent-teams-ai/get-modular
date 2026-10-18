@@ -1,0 +1,12 @@
+$ pnpm docs:check && pnpm docs:quality
+$ agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml
+docs.check: success
+Project: get-modular
+Catalog: complete (67 documents)
+Adoption: valid
+$ markdownlint-cli2 && cspell --config .cspell.json --no-progress
+markdownlint-cli2 v0.23.2 (markdownlint v0.41.1)
+Finding: **/*.md !**/node_modules/**
+Linting: 291 files
+Summary: 0 issues in 0 files
+CSpell: Files checked: 284, Issues found: 0 in 0 files.

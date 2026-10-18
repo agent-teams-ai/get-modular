@@ -1,0 +1,559 @@
+{
+  "format": 1,
+  "sourceCommit": "3f5f3b303e99e4b8f919486d91d954f7f78e204d",
+  "checkout": "/workspace/scratch/e04865d5cacb/get-modular-native-e2e",
+  "cleanCheckout": true,
+  "nodes": {
+    "node24": {
+      "path": "/tmp/observation-toolchain/node-v24.21.0-linux-x64/bin/node",
+      "version": "v24.21.0"
+    },
+    "node26": {
+      "path": "/tmp/observation-toolchain/node-v26.11.1-linux-x64/bin/node",
+      "version": "v26.11.1"
+    }
+  },
+  "compilerAliases": {
+    "typescript": {
+      "name": "typescript",
+      "version": "7.0.2",
+      "manifest": "/workspace/scratch/e04865d5cacb/get-modular-native-e2e/node_modules/.pnpm/typescript@7.0.2/node_modules/typescript/package.json"
+    },
+    "typescript-minimum": {
+      "name": "typescript",
+      "version": "7.0.2",
+      "manifest": "/workspace/scratch/e04865d5cacb/get-modular-native-e2e/node_modules/.pnpm/typescript@7.0.2/node_modules/typescript/package.json"
+    }
+  },
+  "commands": [
+    "Node26 pnpm assembly:build",
+    "Node26 pnpm conformance:build",
+    "Node26 pnpm observation:check",
+    "Node24 pnpm observation:typecheck",
+    "Node24 pnpm observation:test",
+    "Node24 pnpm observation:evidence",
+    "Node24 pnpm observation:pack"
+  ],
+  "preparationNote": "Core/Assembly and conformance were prepared before the final commit from the same final working-tree bytes; the complete observation gate ran after commit. Root-prepared unchanged resources output was reused.",
+  "builtOutputReuse": {
+    "inputManifest": "/tmp/observation-native-close-built-inputs.json",
+    "inputManifestSha256": "c1b6b693fb91e79d5fa5cedd9f77649bf0114c221e7b4e9db6de423f7643ffc8",
+    "comparedFiles": 212,
+    "allIdenticalAfterNode24": true,
+    "node24BuildExecuted": false
+  },
+  "results": {
+    "node26": {
+      "runtimeTestsPassed": 159,
+      "runtimeFailures": 0,
+      "runtimeSkipped": 0,
+      "attributedMutationsCaught": 18,
+      "watchdogDetections": 0,
+      "writerOutcomes": [
+        {
+          "subject": "reference/a-logger",
+          "outcome": "PASS",
+          "failingGates": []
+        },
+        {
+          "subject": "reference/b-catalog",
+          "outcome": "PASS",
+          "failingGates": []
+        },
+        {
+          "subject": "reference/c-pricing-context",
+          "outcome": "PASS",
+          "failingGates": []
+        },
+        {
+          "subject": "reference/d-greeter",
+          "outcome": "PASS",
+          "failingGates": []
+        },
+        {
+          "subject": "reference/e-async-factory",
+          "outcome": "PASS",
+          "failingGates": []
+        },
+        {
+          "subject": "reference/e-sessions",
+          "outcome": "PASS",
+          "failingGates": []
+        },
+        {
+          "subject": "reference/f-watch-and-load",
+          "outcome": "PASS",
+          "failingGates": []
+        },
+        {
+          "subject": "reference/g-hierarchy",
+          "outcome": "PASS",
+          "failingGates": []
+        },
+        {
+          "subject": "reference/h-requests",
+          "outcome": "PASS",
+          "failingGates": []
+        },
+        {
+          "subject": "reference/i-errors",
+          "outcome": "PASS",
+          "failingGates": []
+        },
+        {
+          "subject": "alternative/h-requests",
+          "outcome": "PASS",
+          "failingGates": []
+        },
+        {
+          "subject": "negative-b-behaviour-1/a-logger",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-1/b-catalog",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-1/c-pricing-context",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-1/d-greeter",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-1/e-async-factory",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-1/e-sessions",
+          "outcome": "FAIL",
+          "failingGates": [
+            "rules",
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-1/f-watch-and-load",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-1/g-hierarchy",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-1/h-requests",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-1/i-errors",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-2/e-async-factory",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-2/g-hierarchy",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-2/h-requests",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-2/i-errors",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-3/h-requests",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-4/h-requests",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-5/e-async-factory",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-6/e-async-factory",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-7/h-requests",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-rules-compile/a-logger",
+          "outcome": "FAIL",
+          "failingGates": [
+            "compile"
+          ]
+        },
+        {
+          "subject": "negative-rules-compile/b-catalog",
+          "outcome": "FAIL",
+          "failingGates": [
+            "rules",
+            "compile"
+          ]
+        },
+        {
+          "subject": "negative-rules-compile/d-greeter",
+          "outcome": "FAIL",
+          "failingGates": [
+            "rules",
+            "compile"
+          ]
+        }
+      ],
+      "positiveWriterOutcomes": 11,
+      "intendedNegativeWriterOutcomes": 22,
+      "packedCarrierAndSemanticRegression": "passed",
+      "packedDeclarationResolvers": [
+        "NodeNext",
+        "Bundler"
+      ],
+      "packedTypeFixtureGroupsPerResolver": 6,
+      "independentlyAttributedTypeNegativesPerResolver": 92
+    },
+    "node24": {
+      "runtimeTestsPassed": 159,
+      "runtimeFailures": 0,
+      "runtimeSkipped": 0,
+      "attributedMutationsCaught": 18,
+      "watchdogDetections": 0,
+      "writerOutcomes": [
+        {
+          "subject": "reference/a-logger",
+          "outcome": "PASS",
+          "failingGates": []
+        },
+        {
+          "subject": "reference/b-catalog",
+          "outcome": "PASS",
+          "failingGates": []
+        },
+        {
+          "subject": "reference/c-pricing-context",
+          "outcome": "PASS",
+          "failingGates": []
+        },
+        {
+          "subject": "reference/d-greeter",
+          "outcome": "PASS",
+          "failingGates": []
+        },
+        {
+          "subject": "reference/e-async-factory",
+          "outcome": "PASS",
+          "failingGates": []
+        },
+        {
+          "subject": "reference/e-sessions",
+          "outcome": "PASS",
+          "failingGates": []
+        },
+        {
+          "subject": "reference/f-watch-and-load",
+          "outcome": "PASS",
+          "failingGates": []
+        },
+        {
+          "subject": "reference/g-hierarchy",
+          "outcome": "PASS",
+          "failingGates": []
+        },
+        {
+          "subject": "reference/h-requests",
+          "outcome": "PASS",
+          "failingGates": []
+        },
+        {
+          "subject": "reference/i-errors",
+          "outcome": "PASS",
+          "failingGates": []
+        },
+        {
+          "subject": "alternative/h-requests",
+          "outcome": "PASS",
+          "failingGates": []
+        },
+        {
+          "subject": "negative-b-behaviour-1/a-logger",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-1/b-catalog",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-1/c-pricing-context",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-1/d-greeter",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-1/e-async-factory",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-1/e-sessions",
+          "outcome": "FAIL",
+          "failingGates": [
+            "rules",
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-1/f-watch-and-load",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-1/g-hierarchy",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-1/h-requests",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-1/i-errors",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-2/e-async-factory",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-2/g-hierarchy",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-2/h-requests",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-2/i-errors",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-3/h-requests",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-4/h-requests",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-5/e-async-factory",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-6/e-async-factory",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-b-behaviour-7/h-requests",
+          "outcome": "FAIL",
+          "failingGates": [
+            "behaviour"
+          ]
+        },
+        {
+          "subject": "negative-rules-compile/a-logger",
+          "outcome": "FAIL",
+          "failingGates": [
+            "compile"
+          ]
+        },
+        {
+          "subject": "negative-rules-compile/b-catalog",
+          "outcome": "FAIL",
+          "failingGates": [
+            "rules",
+            "compile"
+          ]
+        },
+        {
+          "subject": "negative-rules-compile/d-greeter",
+          "outcome": "FAIL",
+          "failingGates": [
+            "rules",
+            "compile"
+          ]
+        }
+      ],
+      "positiveWriterOutcomes": 11,
+      "intendedNegativeWriterOutcomes": 22,
+      "packedCarrierAndSemanticRegression": "passed",
+      "packedDeclarationResolvers": [
+        "NodeNext",
+        "Bundler"
+      ],
+      "packedTypeFixtureGroupsPerResolver": 6,
+      "independentlyAttributedTypeNegativesPerResolver": 92
+    }
+  },
+  "logs": {
+    "prepare-assembly": {
+      "path": "/tmp/observation-native-close-prepare-assembly.log",
+      "sha256": "e546b3a32ca57e0faa2f974c6e25940b4234874920607286a247a1d590df6ee6",
+      "bytes": 109,
+      "exitCode": 0
+    },
+    "prepare-conformance": {
+      "path": "/tmp/observation-native-close-prepare-conformance.log",
+      "sha256": "16f1645599d88c49e105fc84d9b7622a1d6eef5498aadef9de4fc197876c5cfc",
+      "bytes": 63,
+      "exitCode": 0
+    },
+    "node26-check": {
+      "path": "/tmp/observation-native-close-node26-check.log",
+      "sha256": "0e1bf0d7c518d0c9933b932033e04494645a9ba445c885e72482404f23a86f1e",
+      "bytes": 28396,
+      "exitCode": 0
+    },
+    "node24-typecheck": {
+      "path": "/tmp/observation-native-close-node24-typecheck.log",
+      "sha256": "c08d9acf896ac23ae5737107d9cf8f1947822a3313ad503ebec6abb180ab8b0d",
+      "bytes": 288,
+      "exitCode": 0
+    },
+    "node24-test": {
+      "path": "/tmp/observation-native-close-node24-test.log",
+      "sha256": "44569ad73fcc3b3a2b8ccbd6a1be0923aa1ff274c81c1ff3b7cf595dfbb78923",
+      "bytes": 20504,
+      "exitCode": 0
+    },
+    "node24-evidence": {
+      "path": "/tmp/observation-native-close-node24-evidence.log",
+      "sha256": "d85c542e6c0c3f61f04fa4dee7978a42cfe2850a135f9d099a98ff2ed2d4c4a5",
+      "bytes": 6939,
+      "exitCode": 0
+    },
+    "node24-pack": {
+      "path": "/tmp/observation-native-close-node24-pack.log",
+      "sha256": "2f88201cefb9f5cbd0c6b9ed77e9e4f16979a8ed7a6d9e45d787357cae866883",
+      "bytes": 470,
+      "exitCode": 0
+    }
+  },
+  "scope": {
+    "foundationCliExecuted": false,
+    "repositoryFullGateClaimed": false,
+    "osMatrixClaimed": false,
+    "releaseArchiveConsumerRerun": false,
+    "releaseEligibilityClaimed": false,
+    "publicationPerformed": false
+  }
+}

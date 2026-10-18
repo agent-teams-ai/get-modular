@@ -1,0 +1,81 @@
+{
+  "format": 1,
+  "sourceCommit": "3b42d2641055c36c13ff0e2b7fae6cc02a945514",
+  "sourceTree": "790b3eeab17373cede189c185977d23bb03dba1b",
+  "implementationCommit": "3f5f3b303e99e4b8f919486d91d954f7f78e204d",
+  "executedConsumerCommit": "a32f628a11a8cd9e871d985ab09bcfbcaa708b1b",
+  "consumerResultSha256": "c101422b7e9cd73cff0316cf2aed5ddf5ad998bcdaa6e450daafee6b11fba65e",
+  "archives": [
+    {
+      "name": "@get-modular/core",
+      "version": "0.6.0",
+      "file": "archives/get-modular-core-0.6.0.tgz",
+      "sha256": "bac6f9e899b235124faf9d8eea9842eaaba5bb1ba543adb626fe21d6e3a5870f",
+      "filename": "get-modular-core-0.6.0.tgz",
+      "bytes": 50850,
+      "integrity": "sha512-vlctirmR707rIxvPwusOl2NbIQJAFuwOsP0pPnsKPpWgX5u4H3lcydiz2XXhrnnclhcmQDh3y62a4UzqynQ4cw==",
+      "packedDependencies": {}
+    },
+    {
+      "name": "@get-modular/assembly",
+      "version": "0.6.0",
+      "file": "archives/get-modular-assembly-0.6.0.tgz",
+      "sha256": "ac96072e21d7a6a4264685c25e8c5ee487cbe0302ede58ec384d34ad4ddf8f63",
+      "filename": "get-modular-assembly-0.6.0.tgz",
+      "bytes": 28890,
+      "integrity": "sha512-5AplYi/c21aDOwEYCtepl0cd/0xcg2rgz4ALIv5oLtE7DGi0LRvukE3Kst90XDKRaTdhYPHUiS0WWJl0KAhSlA==",
+      "packedDependencies": {
+        "dependencies": {
+          "@get-modular/core": "0.6.0"
+        }
+      }
+    },
+    {
+      "name": "@get-modular/resources",
+      "version": "0.2.0",
+      "file": "archives/get-modular-resources-0.2.0.tgz",
+      "sha256": "d9f6363d9c848be90c15e5d20acf07226e3b29ed55ae8af3d6ee0274e5a123d5",
+      "filename": "get-modular-resources-0.2.0.tgz",
+      "bytes": 14651,
+      "integrity": "sha512-kAxL3w1GFIJ3R/IQtlk+OPmDKIcimdB+wWPlntuMLi9XKGaT0hCWLMAvi+B8xbx5dRzFRkc7VhF7zzqKLRtn5Q==",
+      "packedDependencies": {}
+    },
+    {
+      "name": "@get-modular/conformance",
+      "version": "0.4.0",
+      "file": "archives/get-modular-conformance-0.4.0.tgz",
+      "sha256": "9b0b7c3bd1f64ebed48ddf6ac51782aab0cf70d72a1fb9fac99b591b3ade888b",
+      "filename": "get-modular-conformance-0.4.0.tgz",
+      "bytes": 33463,
+      "integrity": "sha512-pmqpUCjX4CqOGYTNRnSD4LX4vAkMVvLw3P1lc1W45kNFIABpbkJa9XcsWgbUQX+JDMHzCryAlGN4ZMIZWd06xg==",
+      "packedDependencies": {
+        "peerDependencies": {
+          "@get-modular/assembly": "^0.6.0",
+          "@get-modular/core": "^0.6.0",
+          "@get-modular/resources": "^0.2.0"
+        }
+      }
+    },
+    {
+      "name": "@get-modular/observation",
+      "version": "0.1.0",
+      "file": "archives/get-modular-observation-0.1.0.tgz",
+      "sha256": "c06879bcaefcf1b6120f99347502ccd461bd2aa67e93d9c98995cb34fd81b9e1",
+      "filename": "get-modular-observation-0.1.0.tgz",
+      "bytes": 32513,
+      "integrity": "sha512-H3BCrXREaXnYE/MLj87XBuSobg/f8kA3N2sKtfo6NeWVSxIRkI7DA9y9/bTQF46uNzTMzVew6707yNHATRbv2A==",
+      "packedDependencies": {
+        "peerDependencies": {
+          "@get-modular/resources": "^0.2.0"
+        }
+      }
+    }
+  ],
+  "releaseEligible": false,
+  "remaining": [
+    "main admission and green exact-head release CI",
+    "review and merge of release and record pull requests",
+    "fresh post-merge comparison against retained tested archives",
+    "owner-only publication and registry read-back"
+  ]
+}

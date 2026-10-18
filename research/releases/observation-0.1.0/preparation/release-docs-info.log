@@ -1,0 +1,11 @@
+$ agent-teams-docs info --consumer . --profile architecture/foundation/docs-protocol.yaml
+docs.info: success
+Project: get-modular
+Foundation profile: {"metadataSidecarPolicy":"foundation-profile-v3-strict-merge","path":"architecture/foundation/document-authoring.yaml","schemaVersion":3}
+Authority paths: architecture/foundation/document-authoring.yaml,docs/decisions/README.md,docs/metadata.schema.json,docs/open-decisions/README.md,docs/owners.yaml,docs/templates/adr.md,docs/templates/open-decision.md
+Catalog: {"collections":[{"kind":"markdown-tree","root":"docs"}],"excludedPrefixes":["docs/templates"]}
+Metadata schema: docs/metadata.schema.json | sidecar {"kind":"none"}
+Owners: architecture,architecture/tooling
+Type adr | initial proposed | owners architecture,architecture/tooling | identity adr-four-digits | placement collection | identityDetails {"kind":"explicit","format":"adr-four-digits"} | placementDetails {"kind":"collection","directory":"docs/decisions","filename":"numeric-id-slug"} | template docs/templates/adr.md | required id,owner,status,summary,type | reachability manual-fixed-index docs/decisions/README.md
+Type open-decision | initial open | owners architecture,architecture/tooling | identity open-decision-three-digits | placement collection | identityDetails {"kind":"explicit","format":"open-decision-three-digits"} | placementDetails {"kind":"collection","directory":"docs/open-decisions","filename":"id-slug"} | template docs/templates/open-decision.md | required id,owner,status,summary,type | reachability manual-fixed-index docs/open-decisions/README.md
+Semantic validators: none
