@@ -66,6 +66,8 @@ export async function measureGrowth({ size, retain = true, incremental = size !=
       activeStage = { stage: message.stage, kind: message.kind, capMs, started: performance.now() };
       const armed = activeStage;
       stageTimer = setTimeout(() => expire("stage", armed.stage, capMs, armed.started), capMs);
+      if (compilerCandidate !== undefined) console.log(JSON.stringify({ event: "fixture.growth.stage-begin",
+        stage: armed.stage, kind: armed.kind, capMs }));
       child.send({ type: "stage-armed", stage: armed.stage, capMs }, error => {
         if (error) { protocolError(`stage acknowledgement failed: ${error.message}`); }
       });
@@ -73,6 +75,7 @@ export async function measureGrowth({ size, retain = true, incremental = size !=
       clearTimeout(stageTimer);
       observedStages.push({ stage: activeStage.stage, kind: activeStage.kind, capMs: activeStage.capMs,
         wallMs: performance.now() - activeStage.started, status: "ended" });
+      if (compilerCandidate !== undefined) console.log(JSON.stringify({ event: "fixture.growth.stage-end", ...observedStages.at(-1) }));
       activeStage = undefined;
       child.send({ type: "stage-ended", stage: message.stage }, error => {
         if (error) { protocolError(`stage completion acknowledgement failed: ${error.message}`); }
