@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { createScope, type CloseReport, type Resources } from "@get-modular/resources";
-import { MAX_CASCADE_DEPTH, stats, type ListenerError, type RawSnapshot } from "./core.ts";
+import { MAX_CASCADE_DEPTH, pendingWork, stats, type ListenerError, type RawSnapshot } from "./core.ts";
 import { delivered, liveSubscriptions, settled } from "./testing.ts";
 import { drivers, type Driver, type LoadHandlers, type LooseFacet, type LooseStore } from "./drivers.ts";
 
@@ -116,6 +116,7 @@ for (const driver of selected) {
       const report = await closing;
       assert.deepEqual(debtsOf(report), []);
       assert.equal(report.complete, true);
+      await settle(); // close drains the loader; its later publication must also have a chance to run
       assert.deepEqual(load.published, [], "a result after close is dropped");
     });
 
@@ -275,6 +276,7 @@ for (const driver of selected) {
       assert.equal(report.complete, true);
       assert.deepEqual(debtsOf(report), []);
       assert.equal(load.calls[0]?.aborted, true);
+      await settle();
       assert.deepEqual(load.published, [], "an aborted run reports nothing");
     });
 
@@ -358,6 +360,20 @@ for (const driver of selected) {
       gates[2]?.release("br models");
       await settle();
       assert.deepEqual(events.slice(4), ["result br models"]);
+      // A commit may also land after publication was queued but before its delivery task. Comparing only lastOffered
+      // would publish the old result ahead of the newer load's flush.
+      store.set({ region: "au" });
+      await settle();
+      assert.equal(pendingWork([store]).flushes, 0, "the au load is running with no delivery queued");
+      gates[3]?.release("au models");
+      await Promise.resolve();
+      assert.equal(pendingWork([store]).flushes, 1, "the au publication is queued before ca is committed");
+      store.set({ region: "ca" });
+      await settle();
+      assert.deepEqual(events.slice(5), ["loading au", "loading ca"], "queued publication rechecks the store revision");
+      gates[4]?.release("ca models");
+      await settle();
+      assert.deepEqual(events.slice(7), ["result ca models"]);
       await module.control.close();
     });
 
