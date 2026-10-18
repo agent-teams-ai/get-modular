@@ -629,3 +629,44 @@ test("T58 T62 T68 T113 FIFO preserves each native task checkpoint and external i
   await delivered();
   assert.deepEqual(order, ["store0", "nextTick", "promise", "microtask", "external", "store1", "store2"]);
 });
+
+
+for (const carrier of ["promise-subclass", "thenable-getter", "thenable-call", "ordinary-promise"]) {
+  test(`T50 T51 T54 T57 T58 T60 loader ${carrier} assimilation remains inside its existing live context`, async () => {
+    const { store, facet, module, reports } = world({ value: 0 });
+    let calls = 0; let reads = 0; let attempts = 0; const errors = []; const results = []; const healthy = [];
+    const echo = () => { attempts += 1; store.set({ value: 1 }); };
+    class LoaderPromise extends Promise {
+      then(resolve, reject) { echo(); return super.then(resolve, reject); }
+    }
+    facet.load(facet.read(["value"]), { resources: module.resources, name: "loader/carrier",
+      loader: ({ values }) => {
+        calls += 1;
+        if (calls > 1 || carrier === "ordinary-promise") return Promise.resolve(`current:${values.value}`);
+        if (carrier === "promise-subclass") return new LoaderPromise(resolve => { resolve("obsolete"); });
+        if (carrier === "thenable-getter") return { get then() { reads += 1; echo(); return () => {}; } };
+        return { get then() { reads += 1; return () => { echo(); }; } };
+      },
+      onLoading: () => undefined,
+      onResult: result => { results.push(result); },
+      onError: cause => { errors.push(cause); },
+    });
+    facet.load(facet.read(["value"]), { resources: module.resources, name: "loader/healthy",
+      loader: ({ values }) => Promise.resolve(`healthy:${values.value}`), onLoading: () => undefined,
+      onResult: result => { healthy.push(result); }, onError: cause => { throw cause; },
+    });
+    await settled({ stores: [facet] });
+    const guarded = carrier !== "ordinary-promise";
+    assert.equal(calls, 1); assert.equal(store.read(["value"]).revision, 0); assert.equal(store.read(["value"]).values.value, 0);
+    assert.equal(attempts, Number(guarded)); assert.equal(reads, Number(carrier.startsWith("thenable")));
+    assert.equal(reports.length, Number(guarded)); assert.equal(errors.length, Number(guarded));
+    if (guarded) {
+      assert.equal(errors[0], reports[0].cause); assert.equal(codeOf(errors[0]), "observation.delivery.echo");
+      assert.deepEqual([reports[0].source, reports[0].subscription, reports[0].revision], ["settings", "loader/carrier", 0]);
+    }
+    assert.deepEqual(results, guarded ? [] : ["current:0"]); assert.deepEqual(healthy, ["healthy:0"]);
+    store.set({ value: 2 }); await settled({ stores: [facet] });
+    assert.equal(calls, 2); assert.equal(results.at(-1), "current:2"); assert.deepEqual(healthy, ["healthy:0", "healthy:2"]);
+    assert.equal(stats(facet).loadsActive, 0); assert.equal(stats(facet).loadsPending, 0);
+  });
+}
