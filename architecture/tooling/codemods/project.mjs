@@ -113,7 +113,10 @@ export class CodemodFile {
     }
     this.#project.update(this, text);
   }
-  save() { writeFileSync(this.path, this.text); }
+  save() {
+    assert.equal(this.diagnostics.length, 0, `refusing to write source that does not parse: ${this.path}`);
+    writeFileSync(this.path, this.text);
+  }
 }
 
 export const replaceNode = (node, text) => ({ start: node.getStart(), end: node.end, text });
@@ -124,19 +127,28 @@ export function addNamedImport(file, declaration, name) {
   const bindings = declaration.importClause.namedBindings;
   const names = importNames(declaration);
   const last = names.at(-1);
-  const tail = file.text.slice(last?.end ?? bindings.getStart() + 1, bindings.end - 1);
-  const multiline = /\r?\n/u.test(bindings.getText());
-  if (multiline) {
-    const indentation = /^\s*/u.exec(file.text.slice(file.text.lastIndexOf("\n", last.getStart()) + 1))[0];
+  if (!last) return { start: bindings.getStart() + 1, end: bindings.getStart() + 1, text: ` ${name}` };
+  const tail = file.text.slice(last.end, bindings.end - 1);
+  // Comments may precede a trailing comma or contain punctuation and newlines.
+  // Only actual tokens can separate a specifier or locate the closing line.
+  const scanner = syntax.createScanner(false, syntax.LanguageVariant.Standard, tail);
+  let commaEnd;
+  let closingLine;
+  for (let kind = scanner.scan(); kind !== SyntaxKind.EndOfFile; kind = scanner.scan()) {
+    if (kind === SyntaxKind.CommaToken) commaEnd = scanner.getTokenEnd();
+    if (kind === SyntaxKind.NewLineTrivia) closingLine = scanner.getTokenEnd();
+  }
+  if (closingLine !== undefined && closingLine > (commaEnd ?? 0)) {
+    const indentation = /^[^\S\r\n]*/u.exec(file.text.slice(file.text.lastIndexOf("\n", last.getStart()) + 1))[0];
     const newline = file.text.includes("\r\n") ? "\r\n" : "\n";
-    const trailingComma = /^\s*,/u.test(tail);
-    const closingLine = tail.lastIndexOf("\n") + 1;
+    const trailingComma = commaEnd !== undefined;
     const beforeClosing = `${trailingComma ? "" : ","}${tail.slice(0, closingLine)}`;
     const closingIndent = tail.slice(closingLine);
     return { start: last.end, end: bindings.end - 1,
       text: `${beforeClosing}${indentation}${name}${trailingComma ? "," : ""}${newline}${closingIndent}` };
   }
-  return { start: last?.end ?? bindings.getStart() + 1, end: last?.end ?? bindings.getStart() + 1, text: `${last ? ", " : " "}${name}` };
+  const position = last.end + (commaEnd ?? 0);
+  return { start: position, end: position, text: commaEnd === undefined ? `, ${name}` : ` ${name},` };
 }
 
 export function removeNamedImports(file, declaration, removed) {

@@ -29,9 +29,11 @@ function apply(text, extension = "ts", transforms = [factoryHandle]) {
   const project = new CodemodProject([[resolve(tmpdir(), `codemod/input.${extension}`), text]], { directory: tmpdir(), isolated: true });
   try {
     const [file] = project.files;
+    assert.deepEqual(file.diagnostics, [], "codemod input must parse");
     const findings = [];
     let edits = 0;
     for (const transform of transforms) edits += transform(file, (message) => findings.push(message)) ?? 0;
+    assert.deepEqual(file.diagnostics, [], "codemod output must reparse without syntax errors");
     return { text: file.text, edits, findings: transforms.includes(entries) ? reportAll(file) : findings };
   } finally { project.close(); }
 }
@@ -53,6 +55,37 @@ for (const [name, transforms] of codemods) {
     });
   }
 }
+
+test("0.4-0.5 import-tail-comment: preserves CRLF and a second run changes nothing", () => {
+  const input = read("0.4-0.5", "import-tail-comment", "input.ts.txt").replaceAll("\n", "\r\n");
+  const expected = read("0.4-0.5", "import-tail-comment", "output.ts.txt").replaceAll("\n", "\r\n");
+  const transforms = codemods.get("0.4-0.5");
+  const result = apply(input, "ts", transforms);
+  assert.equal(result.text, expected);
+  assert.deepEqual(result.findings, []);
+  const again = apply(result.text, "ts", transforms);
+  assert.equal(again.text, result.text);
+  assert.equal(again.edits, 0);
+  assert.deepEqual(again.findings, []);
+});
+
+test("project: refuses to save a transformation that introduces syntax errors", (t) => {
+  const directory = realpathSync(mkdtempSync(join(tmpdir(), "get-modular-codemod-invalid-save-")));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const path = join(directory, "input.ts");
+  const original = 'import { assemblyFor } from "@get-modular/assembly";\n';
+  writeFileSync(path, original);
+  const project = new CodemodProject([[path, original]], { directory, isolated: true });
+  try {
+    const [file] = project.files;
+    assert.deepEqual(file.diagnostics, []);
+    const position = original.indexOf("assemblyFor") + "assemblyFor".length;
+    file.apply([{ start: position, end: position, text: ",," }]);
+    assert(file.diagnostics.some(diagnostic => diagnostic.code === 1003));
+    assert.throws(() => file.save(), /refusing to write source that does not parse/u);
+    assert.equal(readFileSync(path, "utf8"), original);
+  } finally { project.close(); }
+});
 
 // 0.2-0.3 outputs target the 0.3 API, which the workspace no longer has.
 test("0.4-0.5 outputs type-check against the workspace Assembly", { timeout: 600000 }, () => {
