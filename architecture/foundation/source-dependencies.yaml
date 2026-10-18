@@ -828,7 +828,7 @@ boundaries:
       - packages/observation/tests/support/static-rules.mjs
       - packages/observation/tests/support/world.mjs
       - packages/observation/tests/testing-entry.test.mjs
-      - packages/observation/tests/type-controls.test.mjs
+      - packages/observation/tests/type-controls.test.mts
       - packages/observation/tests/types-loose-optional.ts
       - packages/observation/tests/types-runtime-only.ts
       - packages/observation/tests/types-structural.ts
