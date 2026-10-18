@@ -10,7 +10,8 @@ import { compile, resolutions, supportedCompilers, writeProject } from "./suppor
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 function run(command, args, cwd) {
-  const result = spawnSync(command, args, { cwd, encoding: "utf8", timeout: 120_000 });
+  const { NODE_TEST_CONTEXT: _testContext, ...environment } = process.env;
+  const result = spawnSync(command, args, { cwd, env: environment, encoding: "utf8", timeout: 120_000 });
   assert.equal(result.error, undefined);
   assert.equal(result.status, 0, `${command}: ${result.stderr}\n${result.stdout}`);
   return result.stdout.trim();
@@ -173,7 +174,8 @@ test("T02 T05 T07 T08 T09 T11 T13 T92 T97 T104 T110 T113 T117 exact archives exp
       import { runSemanticSuite } from './semantic-suite.mjs';
       test('packed observation semantics', async context => { await runSemanticSuite(observation, testing, context); });
     `);
-    run(process.execPath, ["--test", "semantic-packed.test.mjs"], consumer);
+    const semantics = run(process.execPath, ["--test", "--test-reporter=tap", "semantic-packed.test.mjs"], consumer);
+    assert.match(semantics, /ok \d+ - T\d+/u, "packed archive must execute attributed semantic probes");
     await assertSourceRules(installed);
     await checkTypes(consumer, context);
   } finally {

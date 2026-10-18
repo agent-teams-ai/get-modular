@@ -1,17 +1,17 @@
 /** Each archived defect patches one emitted JavaScript anchor in one isolated package copy. */
 export const defects = [
   {
-    id: "leak-detached", file: "features/store/engine.js", mayHang: false,
+    id: "leak-detached", probes: ["P3", "P4", "R2"], file: "features/store/engine.js", mayHang: false,
     find: "    unlink(registration) {\n        this.#registrations.delete(registration);",
     replace: "    unlink(registration) {\n        (StoreEngine.detachedRegistrations ??= []).push(registration);\n        this.#registrations.delete(registration);",
   },
   {
-    id: "no-key-index", file: "features/store/engine.js", mayHang: false,
+    id: "no-key-index", probes: ["P7", "R4"], file: "features/store/engine.js", mayHang: false,
     find: "for (const registration of this.#buckets.get(key) ?? []) {",
     replace: "for (const registration of this.#registrations) {",
   },
   {
-    id: "unbounded-dirty", file: "features/store/engine.js", mayHang: false,
+    id: "unbounded-dirty", probes: ["P5", "R3"], file: "features/store/engine.js", mayHang: false,
     find: "#dirty = new Set();",
     replace: `#dirty = new class {
       entries = [];
@@ -23,7 +23,7 @@ export const defects = [
     }();`,
   },
   {
-    id: "queue-loads", file: "features/store/load.js", mayHang: false,
+    id: "queue-loads", probes: ["P6", "P24", "R3", "R10"], file: "features/store/load.js", mayHang: false,
     find: `    #clearPending() {
         const job = this.#pending;
         if (job !== undefined) {
@@ -34,13 +34,15 @@ export const defects = [
         return job;
     }
     #offer(job, live) {
-        if (!this.#open || job.revision <= this.#lastOffered)
+        if (!this.#open || job.revision <= this.#lastOffered) {
             return;
+        }
         this.#lastOffered = job.revision;
         this.#engine.invoke({ depth: job.depth, origin: this.origin, live }, job.revision, () => this.#callbacks.onLoading(job.snapshot));
         // A callback or its reporter can synchronously close the subscriber or source.
-        if (!this.#open)
+        if (!this.#isOpen()) {
             return;
+        }
         if (this.#active === undefined) {
             this.#start(job);
             return;
@@ -75,65 +77,65 @@ export const defects = [
     }`,
   },
   {
-    id: "late-detach", file: "features/store/engine.js", mayHang: false,
+    id: "late-detach", probes: ["P2", "R1"], file: "features/store/engine.js", mayHang: false,
     find: 'registration.resources.signal.addEventListener("abort", registration.detach, { once: true });',
     replace: "void registration;",
   },
   {
-    id: "no-name-check", file: "features/store/admission.js", mayHang: false,
+    id: "no-name-check", probes: ["P8", "R5"], file: "features/store/admission.js", mayHang: false,
     find: "if (names.has(name)) {", replace: "if (false) {",
   },
   {
-    id: "publish-stale", file: "features/store/load.js", mayHang: false,
+    id: "publish-stale", probes: ["P6", "P11", "R7"], file: "features/store/load.js", mayHang: false,
     find: "return this.#open && !controller.signal.aborted && job.revision === this.#lastOffered\n            && job.revision === this.#engine.latest(this.keys);",
     replace: "return true;",
   },
   {
-    id: "compare-last-offered", file: "features/store/load.js", mayHang: false,
+    id: "compare-last-offered", probes: ["P17", "R7"], file: "features/store/load.js", mayHang: false,
     find: "return this.#open && !controller.signal.aborted && job.revision === this.#lastOffered\n            && job.revision === this.#engine.latest(this.keys);",
     replace: "return this.#open && !controller.signal.aborted && job.revision === this.#lastOffered;",
   },
   {
-    id: "no-loading-signal", file: "features/store/load.js", mayHang: false,
+    id: "no-loading-signal", probes: ["P17", "R7"], file: "features/store/load.js", mayHang: false,
     find: "this.#engine.invoke({ depth: job.depth, origin: this.origin, live }, job.revision, () => this.#callbacks.onLoading(job.snapshot));",
     replace: "void live;",
   },
   {
-    id: "no-cascade-guard", file: "features/store/engine.js", mayHang: true,
+    id: "no-cascade-guard", probes: ["P19", "P23", "R9"], file: "features/store/engine.js", mayHang: true,
     find: "else if (depth > MAX_CASCADE_DEPTH) {", replace: "else if (false) {",
   },
   {
-    id: "retain-after-close", file: "features/store/engine.js", mayHang: false,
+    id: "retain-after-close", probes: ["P4", "R2"], file: "features/store/engine.js", mayHang: false,
     find: "            registration.detach();\n            registration.release();",
     replace: "            void registration;",
   },
   {
-    id: "no-scope-limit", file: "features/store/admission.js", mayHang: false,
+    id: "no-scope-limit", probes: ["P8", "P10", "R5"], file: "features/store/admission.js", mayHang: false,
     find: "if (names.size >= engine.options.maxSubscriptionsPerScope) {", replace: "if (false) {",
   },
   {
-    id: "no-echo-guard", file: "features/store/engine.js", mayHang: true,
+    id: "no-echo-guard", probes: ["P18", "P22", "R9"], file: "features/store/engine.js", mayHang: true,
     find: "if (context.origin.engine === this.token && changed.some(([key]) => context.origin.keys.includes(key))) {",
     replace: "if (false) {",
   },
   {
-    id: "no-async-context", file: "features/delivery/platform.js", mayHang: false,
+    id: "no-async-context", probes: ["P22", "P23", "R9", "R14"], file: "features/delivery/platform.js", mayHang: false,
     find: 'const hooks = builtin("node:async_hooks");', replace: "const hooks = undefined;",
   },
   {
-    id: "facet-read-after-close", file: "features/store/store.js", mayHang: false,
+    id: "facet-read-after-close", probes: ["P25", "R11", "R2"], file: "features/store/store.js", mayHang: false,
     find: "read: (keys) => engine.read(keys),", replace: "read: (keys) => engine.readOwner(keys),",
   },
   {
-    id: "unbounded-context", file: "features/delivery/context.js", mayHang: false,
+    id: "unbounded-context", probes: ["R13"], file: "features/delivery/context.js", mayHang: false,
     find: "return context?.live.open === true ? context : undefined;", replace: "return context;",
   },
   {
-    id: "global-timers-only", file: "features/delivery/platform.js", mayHang: false,
+    id: "global-timers-only", probes: ["R14"], file: "features/delivery/platform.js", mayHang: false,
     find: "const fromTimers = timers?.setImmediate;", replace: "const fromTimers = undefined;",
   },
   {
-    id: "rewalk-frozen", file: "features/store/values.js", mayHang: false,
+    id: "rewalk-frozen", probes: ["P21"], file: "features/store/values.js", mayHang: false,
     find: " || frozenNodes.has(value)", replace: "",
   },
 ];

@@ -26,9 +26,10 @@ async function copySubject(parent, name) {
 }
 
 function runProbes(cwd) {
+  const { NODE_TEST_CONTEXT: _testContext, ...environment } = process.env;
   return new Promise((resolveRun, reject) => {
     const child = spawn(process.execPath, ["--test", "--test-concurrency=1", "--test-reporter=tap", ...semanticFiles], {
-      cwd, env: { ...process.env, NODE_OPTIONS: "" }, stdio: ["ignore", "pipe", "pipe"],
+      cwd, env: { ...environment, NODE_OPTIONS: "" }, stdio: ["ignore", "pipe", "pipe"],
     });
     let output = "";
     let timedOut = false;
@@ -45,14 +46,17 @@ function runProbes(cwd) {
 function detection(defect, result) {
   assert.doesNotMatch(result.output, /SyntaxError|ERR_MODULE_NOT_FOUND|ERR_PACKAGE_PATH_NOT_EXPORTED|Cannot find module/u,
     `broken mutation ${defect.id}: ${result.output}`);
-  const failed = [...result.output.matchAll(/^\s*not ok \d+ - (T\d+[^\r\n]*)/gmu)].map(match => match[1]);
+  const failures = [...result.output.matchAll(/^([ \t]*)not ok \d+ - (T\d+[^\r\n]*)\r?\n\1 {2}---\r?\n([\s\S]*?)^\1 {2}\.\.\.\r?$/gmu)]
+    .filter(match => /failureType: 'testCodeFailure'/u.test(match[3]) && /code: 'ERR_ASSERTION'/u.test(match[3]));
+  const failed = failures.map(match => match[2]).filter(title =>
+    defect.probes.some(probe => new RegExp(`\\b${probe}\\b`, "u").test(title)));
   if (result.timedOut) {
     assert.equal(defect.mayHang, true, `undesignated hang for ${defect.id}: ${result.output}`);
     return ["designated bounded semantic hang (120 s watchdog)"];
   }
   assert.equal(result.signal, null, `mutation process terminated: ${defect.id}: ${result.signal}`);
   assert.notEqual(result.status, 0, `NOT CAUGHT ${defect.id}`);
-  assert.ok(failed.length > 0, `no attributed semantic failure for ${defect.id}: ${result.output}`);
+  assert.ok(failed.length > 0, `no assertion failure in intended ${defect.probes.join("/")} probes for ${defect.id}: ${result.output}`);
   return [...new Set(failed)];
 }
 
@@ -64,6 +68,7 @@ test("T107 all eighteen archived defects fail semantic probes in isolated patche
     const baseline = await runProbes(await copySubject(temporary, "baseline"));
     assert.equal(baseline.timedOut, false, baseline.output);
     assert.equal(baseline.status, 0, `unmodified mutation subject must pass: ${baseline.output}`);
+    assert.match(baseline.output, /^ok \d+ - T\d+/mu, "baseline must execute attributed semantic probes");
     const queue = [...defects];
     const workers = Array.from({ length: Math.max(1, Math.min(2, availableParallelism() - 1)) }, async () => {
       while (queue.length > 0) {
@@ -77,7 +82,9 @@ test("T107 all eighteen archived defects fail semantic probes in isolated patche
         context.diagnostic(`${defect.id}: caught by ${failures.join("; ")}`);
       }
     });
-    await Promise.all(workers);
+    const outcomes = await Promise.allSettled(workers);
+    const errors = outcomes.filter(outcome => outcome.status === "rejected").map(outcome => outcome.reason);
+    assert.equal(errors.length, 0, errors.map(error => error.stack ?? String(error)).join("\n"));
   } finally {
     await rm(temporary, { recursive: true, force: true });
   }
