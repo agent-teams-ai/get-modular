@@ -1,0 +1,91 @@
+TAP version 13
+# Subtest: T107 all eighteen archived defects fail semantic probes in isolated patched builds
+ok 1 - T107 all eighteen archived defects fail semantic probes in isolated patched builds
+  ---
+  duration_ms: 261522.027446
+  type: 'test'
+  ...
+# no-key-index: caught by T63 T104 [P7] dispatch visits only subscriptions of the changed keys (hundreds of watchers); T63 T104 [R4] a set of one key: 1 index lookup, 1 visit, 1 callback; ten keys: 10 of each; T63 T104 [R4] contrast: 500 subscriptions on the same key get 500 callbacks from one set
+# leak-detached: caught by T34 T35 T45 T58 T113 T115 [P3 P4 R2 R19] GC subscriber-closed; T34 T35 T45 T58 T113 T115 [P3 P4 R2 R19] GC store-closed; T34 T35 T45 T58 T113 T115 [P3 P4 R2 R19] GC als-retention
+# unbounded-dirty: caught by T63 T104 [P5] coalescing: 10 000 commits in one task give one delivery of the newest value; T32 T63 T104 [R3] 10 000 sets in one task: one delivery per subscription, one buffered entry per subscription
+# late-detach: caught by T34 [P2] the subscription is detached when its scope starts closing, before the drain finishes; T34 [R1] no delivery and no new load after close() is called, while the drain is still waiting
+# no-name-check: caught by T37 T38 [P8] a repeated watch in a long-lived scope fails with a coded error, in that scope only; T37 T38 [R5] same name: observation.subscription.duplicate-name, the first subscription stays
+# queue-loads: caught by T32 [P6] load: one active and one pending run; a stale result never publishes; T32 T63 T104 [R3] 10 000 region changes while a load runs: one active, at most one pending, 2 loader calls
+# publish-stale: caught by T32 [P6] load: one active and one pending run; a stale result never publishes; T36 [P11] closing the subscriber scope during a cooperative load: complete, no debts, nothing published; T32 [R7] onLoading on queue; a result that lands after set() but before delivery is dropped (store revision)
+# compare-last-offered: caught by T32 [P17] load: onLoading when a newer run is queued; a result that lands after set() is dropped; T32 [R7] onLoading on queue; a result that lands after set() but before delivery is dropped (store revision)
+# no-cascade-guard: caught by T52 T53 [P19] cascade guard: shared across stores (ping-pong), legitimate chains pass, coalescing keeps the largest depth; T53 [P23] an asynchronous ping-pong across two stores stops at 64 steps (Node); T50 T51 T53 T57 [R9] an asynchronous ping-pong across two stores through commands stops at 65 deliveries (Node)
+# no-loading-signal: caught by T32 [P17] load: onLoading when a newer run is queued; a result that lands after set() is dropped; T32 [R7] onLoading on queue; a result that lands after set() but before delivery is dropped (store revision)
+# no-scope-limit: caught by T37 T38 [P8] a repeated watch in a long-lived scope fails with a coded error, in that scope only; T37 T38 [R5] generated names: observation.subscriptions.limit at 64 in the leaking scope; other scopes are not affected
+# no-echo-guard: caught by T50 T51 T54 [P18] echo: a handler that changes a key it follows fails at the first delivery, reported and thrown; T51 T57 [P22] asynchronous echo is caught at the first round: async command, microtask, loader body (Node); T50 T51 T53 T57 [R9] a handler that changes the key it follows: one delivery, observation.delivery.echo reported once; T50 T51 T53 T57 [R9] C1, C2, C10: async command, queueMicrotask and loader body echo are caught at the first round (Node)
+# no-async-context: caught by T51 T57 [P22] asynchronous echo is caught at the first round: async command, microtask, loader body (Node); T53 [P23] an asynchronous ping-pong across two stores stops at 64 steps (Node); T50 T51 T53 T57 [R9] C1, C2, C10: async command, queueMicrotask and loader body echo are caught at the first round (Node); T50 T51 T53 T57 [R9] an asynchronous ping-pong across two stores through commands stops at 65 deliveries (Node); T06 T57 T62 T70 T73 [R14] environment fake-before; T06 T57 T62 T70 T73 [R14] environment fake-clock-before; T06 T68 T72 T73 [R14] the detection flag tells a test preset whether async echoes are detected (Node: true)
+# facet-read-after-close: caught by T46 [P25] the owner's read works after close; a save-on-close entry registered after createStore sees the last values; T46 [R11] a resource opened before the store saves the last value in its cleanup
+# unbounded-context: caught by T58 T59 T60 [R13] server: requests to a server restarted by a handler are independent user actions; T58 T59 T60 [R13] depth: independent requests through a restarted server do not accumulate cascade depth
+# global-timers-only: caught by T06 T57 T62 T70 T73 [R14] environment fake-before
+# retain-after-close: caught by T34 T35 T45 T58 T113 T115 [P3 P4 R2 R19] GC store-closed
+# rewalk-frozen: caught by T21 [P21] set takes ownership: values are frozen in place; frozen nodes are not walked again
+# Subtest: T02 T05 T07 T08 T09 T11 T13 T92 T97 T104 T110 T113 T117 exact archives expose two ESM entries sharing one copy
+ok 2 - T02 T05 T07 T08 T09 T11 T13 T92 T97 T104 T110 T113 T117 exact archives expose two ESM entries sharing one copy
+  ---
+  duration_ms: 3112.819914
+  type: 'test'
+  ...
+# packed declarations TypeScript 7.0.2 NodeNext: all six fixture groups passed
+# packed declarations TypeScript 7.0.2 Bundler: all six fixture groups passed
+# Subtest: T24 T25 T49 T103 T117 emitted declarations retain exact negative attribution and variance controls
+ok 3 - T24 T25 T49 T103 T117 emitted declarations retain exact negative attribution and variance controls
+  ---
+  duration_ms: 6240.047002
+  type: 'test'
+  ...
+# TypeScript 7.0.2 NodeNext: clean baseline; variance controls; loose optional; 92 independently attributed negatives
+# TypeScript 7.0.2 Bundler: clean baseline; variance controls; loose optional; 92 independently attributed negatives
+# Subtest: T29 T75 T103 T108 archived writer references pass and every negative fails its exact gates
+ok 4 - T29 T75 T103 T108 archived writer references pass and every negative fails its exact gates
+  ---
+  duration_ms: 6418.792634
+  type: 'test'
+  ...
+# writer compile TypeScript 7.0.2 NodeNext: 4 attributed diagnostics
+# writer compile TypeScript 7.0.2 Bundler: 4 attributed diagnostics
+# reference/a-logger: PASS
+# reference/b-catalog: PASS
+# reference/c-pricing-context: PASS
+# reference/d-greeter: PASS
+# reference/e-async-factory: PASS
+# reference/e-sessions: PASS
+# reference/f-watch-and-load: PASS
+# reference/g-hierarchy: PASS
+# reference/h-requests: PASS
+# reference/i-errors: PASS
+# alternative/h-requests: PASS
+# negative-b-behaviour-1/a-logger: FAIL (behaviour)
+# negative-b-behaviour-1/b-catalog: FAIL (behaviour)
+# negative-b-behaviour-1/c-pricing-context: FAIL (behaviour)
+# negative-b-behaviour-1/d-greeter: FAIL (behaviour)
+# negative-b-behaviour-1/e-async-factory: FAIL (behaviour)
+# negative-b-behaviour-1/e-sessions: FAIL (rules, behaviour)
+# negative-b-behaviour-1/f-watch-and-load: FAIL (behaviour)
+# negative-b-behaviour-1/g-hierarchy: FAIL (behaviour)
+# negative-b-behaviour-1/h-requests: FAIL (behaviour)
+# negative-b-behaviour-1/i-errors: FAIL (behaviour)
+# negative-b-behaviour-2/e-async-factory: FAIL (behaviour)
+# negative-b-behaviour-2/g-hierarchy: FAIL (behaviour)
+# negative-b-behaviour-2/h-requests: FAIL (behaviour)
+# negative-b-behaviour-2/i-errors: FAIL (behaviour)
+# negative-b-behaviour-3/h-requests: FAIL (behaviour)
+# negative-b-behaviour-4/h-requests: FAIL (behaviour)
+# negative-b-behaviour-5/e-async-factory: FAIL (behaviour)
+# negative-b-behaviour-6/e-async-factory: FAIL (behaviour)
+# negative-b-behaviour-7/h-requests: FAIL (behaviour)
+# negative-rules-compile/a-logger: FAIL (compile)
+# negative-rules-compile/b-catalog: FAIL (rules, compile)
+# negative-rules-compile/d-greeter: FAIL (rules, compile)
+1..4
+# tests 4
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 261588.125824

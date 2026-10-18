@@ -10,6 +10,10 @@ The owner then requested incorporation of the ten-critic API/watch study, TypeSc
 rounds of three independent plan critics. Their dispositions belong to [plan-review.md](plan-review.md).
 This is an implementation plan, not package implementation or completed admission evidence.
 
+Implementation follow-through on 2026-10-18 is recorded in [implementation-port.md](implementation-port.md),
+including the actual package and exact-archive consumer results, independent fixes and remaining aggregate blockers.
+The historical planning checkpoint and review inputs below are preserved.
+
 A fresh agent starts at section 5, Phase 0, and works through the phase cards in order. Each card names its inputs,
 outputs, commands, done criteria and stop conditions. When a source is silent, section 4 gives the default and section
 15 answers the usual questions.

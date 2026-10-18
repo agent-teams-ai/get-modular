@@ -1,0 +1,24 @@
+{
+  "reportSchemaVersion": 1,
+  "foundationVersion": "1.7.4",
+  "coverage": "selected",
+  "outcome": "passed",
+  "summary": {
+    "errors": 0,
+    "warnings": 0,
+    "infos": 0
+  },
+  "capabilities": [
+    {
+      "capabilityId": "workspace.dependency-declarations",
+      "capabilityConfigSchemaVersion": 1,
+      "outcome": "passed",
+      "summary": {
+        "errors": 0,
+        "warnings": 0,
+        "infos": 0
+      },
+      "diagnostics": []
+    }
+  ]
+}

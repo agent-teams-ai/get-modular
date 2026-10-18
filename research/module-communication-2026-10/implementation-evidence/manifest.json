@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "implementationCommit": "0cfa39e4e8946b02f21bd4ba95f2c873489bfc19",
+  "preparedReleaseCommit": "b2815314182221baac6b08750f86ef2644d2cdb8",
+  "externalTestedCommit": "972dc2b9dfe9470a5e34ed4f28d75ecfc0fbec73",
+  "externalEvidenceCommit": "c2872eb9b89fbde8cc162e152c2cab5f813237cd",
+  "files": {
+    "admission-governance-ownership.log": "5a31ec3b6f7fd4c3ec53fb149d06eb2831f22145bd6945e6790fddccdb48c4cb",
+    "architecture.source-dependencies.log": "d918400af8195afbd9164fe3c20eee4f4dda3ad33277e893c0136d85feda9be3",
+    "codemods-node24.log": "ca5fe11db38e21eb3c849a2fe786e780a306443d13a6d859ddcca282d5bebd33",
+    "codemods-node26.log": "fbb9766761d87deb67f424a36960279410ff8cfa14838b1909a63fe946c3e6b6",
+    "critical-quality.log": "bee6161d83036242b0a55ff10101bc8a1c9edd11a52b58d8cdd855efc130942a",
+    "documentation.local-references.log": "72b37134c3c2265836c7433b9280cd46f8455ea067c637f2b848538b382bad6c",
+    "feature-module-profile.log": "a975f2b20b890aec1365c6ad723c440bcc06097f921ec2a1c283b040e993b52d",
+    "governance.architecture-decisions.log": "356aaaa6e4659cf4bbf1a859e463dcef55372dda65a6639caebc4abac5b7859b",
+    "observation-owned-node24.log": "535c8debe8e17cbfeab853b6c4cf92db260f6d7608cc812c7ee3ba58c9e3b07b",
+    "observation-package-node26.log": "8fdc509ad3aaefe2cdd284d7ea09d70e172e4217b1cb915b8e5c29a9792dcae7",
+    "observation-runtime-node24.log": "61cad010c53a5101e60491168f54f062a51a90b150b4bc3f1a2b8fa542746e88",
+    "observation-runtime-node26.log": "7d560f5e6bb5a79a97f9f2aaec431ab9c03c4772c9f09414979fd7160f1b643d",
+    "quality.source-coverage.log": "a52bade4c977229fc03ee9532b50c351d0852e0ded7217c931d9a1b29e52c715",
+    "quality.suppression-governance.log": "5cf853cc8b36b3c341b08e63c3a4bcace6ef3afb84df0d8ab4f59e2b069bc733",
+    "repository.agent-workflow.log": "31c7f2642178fe9424ec94c14d6caaa3c091a8071e50b11f2f451afea474786f",
+    "runtime-policy.log": "1a6343b1752edc3d45618754e1ced1ee295e5b2111d3a17b094c580fe63b6204",
+    "typed-quality.log": "d5270a5edc2523ab1c5faafaa91691aa3a2dbe530d2e8940ea237be4f616246e",
+    "workspace.dependency-declarations.log": "871ad155174be8471b7abdc7bfa03658c14d0b152432929df2208dbabd5549f7"
+  }
+}

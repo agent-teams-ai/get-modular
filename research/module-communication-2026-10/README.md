@@ -2,8 +2,9 @@
 
 <!-- cspell:words microtask microtasks -->
 
-Research and design evidence only. Nothing here is implemented in `packages/`, and no build, test or release
-gate depends on these files.
+The original contents are research and design evidence. The production follow-through is now recorded in
+[implementation-port.md](implementation-port.md), with current status in [HANDOFF.md](HANDOFF.md).
+The research prototypes remain separate from the implemented package; historical results are not refreshed.
 
 ## What this directory is
 
