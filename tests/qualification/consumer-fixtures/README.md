@@ -15,7 +15,7 @@ owns verification routes and the limits of each claim.
 | `record-only` / `restart-pending` | A bounded persistent fixture with one worker writer and a live supervisor retaining real effect processes | P3: R-01 through R-10 under both schedules |
 | `growth` | Actual generated TypeScript feature trees with inherited capability maps and independent arithmetic and wiring expectations | P5 G-01 at eight features in ordinary `assembly:test`; larger measurements remain optional and bounded |
 
-The profiles share only driver materialization. This is test-owned composition:
+The profiles share driver materialization. This is test-owned composition:
 Get Modular does not gain a Host, readiness API, work scheduler or recovery policy.
 P6 adds the W-01 through W-03 bounded workload on these same semantic owners.
 Source facts and author exercises remain separate plan
@@ -37,6 +37,12 @@ N=500 subject reached its unchanged 180-second cap, and N=1000 was not created
 or run. The bounded compiler investigation produced no verified remedy or
 compiler adoption. See the [growth fixture](growth/README.md) for exact historical
 identities, current commands and the remaining compiler-owner handoff.
+
+The [P7 authoring record](authoring/README.md) retains the selected H-01 through
+H-03 exercise results, one three-file author patch and bounded diagnoses from
+the historical P1/P2 inputs. It adds no recurring test entry or supported root.
+Its single selected author runtime invocation and actual held-startup cleanup
+are recorded separately from source coverage, which remains incomplete.
 
 ## Semantic ownership and behavior
 
