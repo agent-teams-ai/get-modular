@@ -38,7 +38,10 @@
     "ci-cardinalities-node24.log": "3326ec7f23b892c348fbc3b1871b087a74faafa0d9cf9f55f44a89fea889113a",
     "ci-cardinalities-node26.log": "13e35c05d19ee52711a2ba0a6952012d40dd1ab798a0c8efd89efa6a955321e0",
     "ci-typescript-docs.log": "fe241754f42c6b47cd7bc6de0914d2aab1dcc80a8b1860a87735215753728eed",
-    "ordinary-ts-review.json": "31047b60d87531727ea4eac1966bd4ef6c23d5b96281cbd198c060700c5b8438"
+    "ordinary-ts-review.json": "31047b60d87531727ea4eac1966bd4ef6c23d5b96281cbd198c060700c5b8438",
+    "windows-lock-readiness-review.json": "20b919e8199dec6896a2c980a6a774c90d91073f6e8615af176fd21d6ea39714",
+    "windows-lock-generation-node24.log": "1b34d143db768aa349423965a44c871b91cf9a55fa3665490da72de7f4db62a9",
+    "windows-lock-generation-node26.log": "4a281305dec896f8929dd73f9fd6ce71b33c4b26ba69a2ef15978c4b8897454a"
   },
   "finalToolingCommit": "ea9ac84",
   "followUp": {
@@ -108,5 +111,21 @@
       "ordinary-ts-review.json"
     ],
     "ciAfterPush": "Read the exact published PR195 head and its actual CI results; this pre-push record makes no advance success claim."
+  },
+  "windowsLockReadinessFollowUp": {
+    "correctionCommit": "0edaea195399998f8f22d12b86e2c28e523589a4",
+    "precedingCiRun": 39131898704,
+    "precedingCiHead": "bba50796e7d2e41f129dd6f3b3ed0615b43226d2",
+    "precedingCiCheckout": "3cbdcee08e842456c1eef841745438ec25a9ef62",
+    "reviewModel": "gpt-6.1-sol",
+    "reviewReasoningEffort": "xhigh",
+    "reviewResult": "zero actionable findings",
+    "packageInputsChanged": false,
+    "files": [
+      "windows-lock-readiness-review.json",
+      "windows-lock-generation-node24.log",
+      "windows-lock-generation-node26.log"
+    ],
+    "ciAfterPush": "Read the corrected exact PR195 head and its actual native Windows results; this pre-push record makes no advance success claim."
   }
 }

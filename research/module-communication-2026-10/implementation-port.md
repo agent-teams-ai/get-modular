@@ -489,3 +489,48 @@ synthetic Linux package evidence, not complete source-architecture qualification
 cross-platform CI, scale evidence, production adoption or publication.
 The current ordinary-`.ts` CI run is assessed on the published PR #195 head;
 this pre-push documentation record makes no advance success claim.
+
+### Native Windows readiness follow-up
+
+The first ordinary-`.ts` CI, [run 39131898704, attempt 1](https://github.com/agent-teams-ai/get-modular/actions/runs/39131898704),
+tested head `bba50796e7d2e41f129dd6f3b3ed0615b43226d2` against base
+`47a02a90a06f121c78086c7c5f72b085c42ee7ea`, with actual synthetic checkout
+`3cbdcee08e842456c1eef841745438ec25a9ef62`. All 43 jobs were classified:
+18 successes (Observation 6/6, Assembly 6/6, Core 5/6 and compatibility), 18
+exact Foundation compiler-floor blocks, one Core failure and six aggregates.
+Observation retained all 157 runtime tests without skips, 18 attributed
+mutations, 33 writer outcomes and packed checks per lane. Its Windows lanes
+took 7:40 and 8:20, below the unchanged 13-minute target. CodeQL and identity
+passed. No additional submitted or inline reviewer findings were present.
+
+The [Windows Node 24 Core job](https://github.com/agent-teams-ai/get-modular/actions/runs/39131898704/job/117688599632)
+failed the real missing-file acquisition control. The process spawned at 8 ms,
+but no acknowledgment, output, exit or close was observed by the 10,017 ms
+readiness timeout. By the 15,026 ms teardown timeout only `LOCK_OPENING` had
+arrived. The helper was unchanged from the base, and the same control passed on
+Windows Node 26. The log cannot separate PowerShell startup from first exception
+formatting; it establishes an exceeded first-acknowledgment allowance.
+
+Correction `0edaea195399998f8f22d12b86e2c28e523589a4` changes only the existing
+`packages/core/tests/qualification/production-generation.test.mjs`: first
+acknowledgment 10 to 30 seconds and native process lifetime 30 to 65 seconds,
+plus explanatory comments. The overall bound leaves the enlarged acknowledgment
+allowance, existing 25-second held-lock watchdog and two five-second close phases.
+No protocol, action authorization, failure-shape/exit-code assertion, cleanup
+rule or timeout-as-failure behavior changes. This bounded maintenance exception
+introduces no new helper or claimed strict coverage for the legacy file.
+
+A separate GPT-6.1 xhigh critic reviewed the exact file and independently
+repeated the five existing protocol controls on both pinned Nodes: all pass,
+without skips. The author also ran the complete owning file on both Nodes:
+11 pass and three existing conditional skips (two native Windows controls and
+the POSIX permission case under root). These Linux results do not establish
+native Windows success; the corrected head requires its fresh CI result.
+The [review record](implementation-evidence/windows-lock-readiness-review.json)
+retains the exact patch, observed failure, deadlines and local validation.
+
+Production source, build/package inputs and writer inputs are unchanged, and
+Core's explicit published-file inventory excludes this test. The exact candidate
+`34bb4fa`, executed consumer `a145931` and evidence successor `5de8e0` remain the
+same qualification subjects; no additional pack, release versioning or consumer
+execution is needed for this test-only correction. Earlier evidence stays intact.

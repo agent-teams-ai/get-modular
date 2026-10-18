@@ -67,8 +67,12 @@ Earlier follow-up review also closed the loader Promise-constructor context esca
 and incomplete compiler guard coverage. First-CI fixes retained exact Windows
 diagnostic attribution and corrected two stale Core/Assembly fixture counts.
 
-The final reviewed source is `5102438e70a618a342c93fe003bcfc3f057a1041`.
+The reviewed ordinary-`.ts` source is `5102438e70a618a342c93fe003bcfc3f057a1041`.
 Its production runtime and declarations match the preceding package qualification.
+The later Core test-only correction is `0edaea195399998f8f22d12b86e2c28e523589a4`:
+a bounded native lock acknowledgment allowance, independently reviewed by a
+GPT-6.1 xhigh critic with zero actionable findings. Package and writer inputs
+remain unchanged.
 
 ## Validation
 
@@ -83,8 +87,25 @@ Its production runtime and declarations match the preceding package qualificatio
   package compatibility. Each Observation lane passed **157 runtime tests with
   zero skips, 18 attributed mutations, 33 writer outcomes and the packed check**.
   Windows took 7:54 / 8:20, below the unchanged 13-minute target.
-- A new CI run is required for this ordinary-`.ts` successor. Its actual exact-head
-  results are recorded in the live PR checks; the earlier run does not replace it.
+- First ordinary-`.ts` CI [39131898704](https://github.com/agent-teams-ai/get-modular/actions/runs/39131898704)
+  on `bba50796` passed all six Observation and Assembly lanes and five Core lanes.
+  Its 43 jobs comprise 18 successes, 18 exact Foundation compiler-floor blocks,
+  one Windows Node 24 Core readiness failure and six aggregate failures. Every
+  Observation lane retains 157 runtime passes without skips, 18 attributed
+  mutations, 33 writer outcomes and packed checks; Windows took 7:40 / 8:20.
+- The Windows log exceeded the old 10-second first-acknowledgment budget; it
+  does not isolate PowerShell startup from first exception formatting. The
+  correction allows 30 seconds for acknowledgment and 65 seconds overall,
+  preserving the 25-second held-lock watchdog, both five-second close phases,
+  exact protocol, mandatory acknowledgment, exit code 3 and cleanup assertions.
+  Each pinned Node passes all five host protocol controls independently and
+  11 owning-file tests, with three existing Linux/root conditional skips.
+  This is a bounded maintenance exception in the existing
+  `packages/core/tests/qualification/production-generation.test.mjs`; no new
+  helper or legacy strict-coverage claim is introduced.
+- A fresh native Windows CI result is required on the corrected exact head.
+  Its results are recorded in the live PR checks; Linux protocol controls and
+  the prior runs do not replace that check.
 
 ## Fresh exact-archive external E2E
 
