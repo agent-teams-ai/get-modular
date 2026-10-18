@@ -14,6 +14,7 @@ export function admit(engine: StoreEngine, snapshot: unknown, spec: RawSpec): Ad
   if (!isResources(resources)) {throw invalidArgument("watch and load require resources");}
   if (typeof name !== "string" || name.length === 0) {throw invalidArgument("watch and load require a non-empty name");}
   resources.signal.throwIfAborted();
+  engine.assertOpen();
   const names = engine.scopeNames(resources);
   if (names.has(name)) {
     throw new ObservationError("observation.subscription.duplicate-name",

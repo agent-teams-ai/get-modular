@@ -464,3 +464,22 @@ for (const member of ["onChange", "loader", "onLoading", "onResult", "onError"])
     }
   });
 }
+
+for (const method of ["watch", "load"]) for (const member of ["name", "resources"]) {
+  test(`T34 T43 ${method} refuses a source closed by its ${member} getter during admission`, async () => {
+    const { store, facet, module, reports } = world({ value: 0 });
+    const snapshot = facet.read(["value"]); store.set({ value: 1 });
+    let reads = 0; let calls = 0;
+    const callback = () => { calls += 1; return undefined; };
+    const spec = { resources: module.resources, name: "source-closing", onChange: callback,
+      loader: callback, onLoading: callback, onResult: callback, onError: callback };
+    Object.defineProperty(spec, member, { get: () => {
+      reads += 1; store.close(); return member === "name" ? "source-closing" : module.resources;
+    } });
+    assert.throws(() => facet[method](snapshot, spec), { code: "observation.store.closed" });
+    assert.equal(reads, 1); assert.equal(liveSubscriptions(facet), 0);
+    await delivered({ stores: [facet] });
+    assert.equal(calls, 0); assert.equal(liveSubscriptions(facet), 0); assert.deepEqual(reports, []);
+    assert.equal(store.read(["value"]).values.value, 1);
+  });
+}
