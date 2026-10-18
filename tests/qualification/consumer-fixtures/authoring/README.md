@@ -11,12 +11,23 @@ author's three-file patch and a separate fresh reader's two bounded diagnoses.
 | Exercise | Historical source base | Selected result |
 | --- | --- | --- |
 | H-01: author test-only B | P1 `2f1b33069d1942911e16824d658e3582b62da6a7` | One compile and one selected runtime invocation passed |
-| H-02: diagnose provider selection | P2 `eec71521a8594a34ac8f614edd66e2d9af316ac0` | The public mismatch identified expected A and actual B |
+| H-02: diagnose provider selection | P2 `eec71521a8594a34ac8f614edd66e2d9af316ac0` (unverifiable local-only base, see below) | The public mismatch identified expected A and actual B |
 | H-03: diagnose retained startup | Same P2 base | Pending stop was diagnosed before controller release; actual cancellation and cleanup then passed |
 
 These are the exercise inputs, not claims about later P1 corrections or later
 source-tool adoption. Package output identities are retained separately from
 Git commits in [qualification.json](qualification.json).
+
+The H-01 P1 base resolves in the published repository history (commit
+`2f1b33069d1942911e16824d658e3582b62da6a7`). The recorded P2 base
+`eec71521a8594a34ac8f614edd66e2d9af316ac0` is **unverifiable / local-only**:
+it resolves in no available clone (`git cat-file -t` fails on a full history,
+and `git log --all` does not contain it) and the GitHub commits API returns no
+commit for the SHA (checked 2026-10-18). It is kept exactly as recorded — never
+replaced or inferred — and must be read as a base of the disposable exercise
+environment, not of this repository. The H-02/H-03 inputs therefore remain
+identified by their content hashes (`inputIdentity.H02H03SourceTree` and the
+frozen manifest in [qualification.json](qualification.json)).
 
 ## H-01: one fresh author
 

@@ -13,6 +13,23 @@
     "H02": "eec71521a8594a34ac8f614edd66e2d9af316ac0",
     "H03": "eec71521a8594a34ac8f614edd66e2d9af316ac0"
   },
+  "historicalBaseVerification": {
+    "checkedDate": "2026-10-18",
+    "method": "git cat-file -t and git rev-list --all on a full clone of agent-teams-ai/get-modular, plus GitHub REST GET /repos/agent-teams-ai/get-modular/commits/<sha>",
+    "H01": {
+      "status": "verified",
+      "resolution": "commit 2f1b33069d1942911e16824d658e3582b62da6a7 resolves in the published repository history (subject: test: retain borrowed journal after incomplete smoke)"
+    },
+    "H02": {
+      "status": "unverifiable-local-only",
+      "resolution": null
+    },
+    "H03": {
+      "status": "unverifiable-local-only",
+      "resolution": null
+    },
+    "note": "The P2 SHA is kept exactly as recorded; it is never replaced or inferred. It resolves in no available clone and no published GitHub commit, so it must be read as a base of the disposable exercise environment. The H-02/H-03 inputs remain identified by inputIdentity.H02H03SourceTree and the frozen manifest hashes."
+  },
   "inputIdentity": {
     "frozenManifest": {
       "sha256": "094e6397f1e0881d788e3c3a01aed5ee51cf97a0644603b251a0b79e7b42d733",
