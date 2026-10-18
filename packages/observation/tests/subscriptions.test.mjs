@@ -1,11 +1,8 @@
 // Archived P/R semantic probes, ported to the public package build and real resource scopes.
 import assert from "node:assert/strict";
-import { describe, mock, test } from "node:test";
-import { createServer, request } from "node:http";
-import { createStore, ObservationError } from "../dist/index.js";
-import { asyncDetection, delivered, liveSubscriptions, settled } from "../dist/testing.js";
-import { world, createScope, scoped, codeOf, debtsOf, deferred, tick, settle, follow, startLoad,
-  stubbornLoader, cooperativeLoader, regionLoad, stats, pendingWork, MAX_CASCADE_DEPTH } from "./support/world.mjs";
+import { describe, test } from "node:test";
+import { delivered, liveSubscriptions } from "../dist/testing.js";
+import { world, scoped, codeOf, debtsOf, deferred, tick, settle, follow, startLoad, stubbornLoader, regionLoad, stats } from "./support/world.mjs";
 
 test("T29 [P1] a commit between reading and subscribing is not lost", async () => {
     const { store, facet, module } = world();
@@ -391,7 +388,7 @@ test("T38 default store limit is exactly 8192 and detach recovers capacity", asy
 for (const kind of ["throw", "scalar", "null", "getter", "promise", "async-echo", "getter-echo", "then-echo"]) {
   test(`T40 T54 T114 [R18] ${kind} return isolation keeps sibling and later delivery`, async () => {
     const { store, facet, module, reports } = world({ a: 0 });
-    const sentinel = new Error("ordinary failure"); let reads = 0; let calls = 0; let sibling = 0;
+    const sentinel = new Error("ordinary failure"); let reads = 0; let thenCalls = 0; let calls = 0; let sibling = 0;
     const fail = () => { store.set({ a: 99 }); };
     facet.watch(facet.read(["a"]), { resources: module.resources, name: "offender", onChange: () => {
       calls += 1;
@@ -403,7 +400,7 @@ for (const kind of ["throw", "scalar", "null", "getter", "promise", "async-echo"
       if (kind === "async-echo") return Promise.resolve().then(fail);
       if (kind === "getter") return { get then() { reads += 1; throw sentinel; } };
       if (kind === "getter-echo") return { get then() { reads += 1; fail(); } };
-      return { get then() { reads += 1; return () => { fail(); }; } };
+      return { get then() { reads += 1; return () => { thenCalls += 1; fail(); }; } };
     } });
     facet.watch(facet.read(["a"]), { resources: module.resources, name: "healthy", onChange: () => { sibling += 1; } });
     store.set({ a: 1 }); await delivered();
@@ -414,7 +411,29 @@ for (const kind of ["throw", "scalar", "null", "getter", "promise", "async-echo"
     assert.equal(codes.filter(code => code === "observation.delivery.echo").length, kind.endsWith("echo") ? 1 : 0);
     if (["getter", "promise", "throw"].includes(kind)) assert.equal(reports.filter(report => report.cause === sentinel).length, 1);
     if (kind.startsWith("getter") || kind === "then-echo") assert.equal(reads, 1);
+    if (kind === "then-echo") assert.equal(thenCalls, 1);
     assert.ok(reports.every(report => report.subscription === "offender" && report.revision === 1 && Object.isFrozen(report)));
     store.set({ a: 2 }); await delivered(); assert.equal(calls, 2); assert.equal(sibling, 2);
   });
 }
+
+test("T114 [R18] an observed thenable keeps the original window and permits a later timer write", async () => {
+  const { store, facet, module, reports } = world({ a: 0 });
+  const completed = deferred(); let reads = 0; let calls = 0;
+  facet.watch(facet.read(["a"]), { resources: module.resources, name: "thenable", onChange: ({ values }) => {
+    if (values.a !== 1) return undefined;
+    return { get then() {
+      reads += 1;
+      return (resolve) => {
+        calls += 1;
+        setTimeout(() => {
+          try { store.set({ a: 2 }); resolve(undefined); completed.resolve(); }
+          catch (cause) { completed.reject(cause); }
+        }, 10);
+      };
+    } };
+  } });
+  store.set({ a: 1 }); await completed.promise; await delivered();
+  assert.equal(store.read(["a"]).values.a, 2); assert.equal(reads, 1); assert.equal(calls, 1);
+  assert.deepEqual(reports.map(report => codeOf(report.cause)), ["observation.callback.returned-value"]);
+});

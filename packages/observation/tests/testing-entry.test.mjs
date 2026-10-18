@@ -1,11 +1,8 @@
 // Archived P/R semantic probes, ported to the public package build and real resource scopes.
 import assert from "node:assert/strict";
 import { describe, mock, test } from "node:test";
-import { createServer, request } from "node:http";
-import { createStore, ObservationError } from "../dist/index.js";
 import { asyncDetection, delivered, liveSubscriptions, settled } from "../dist/testing.js";
-import { world, createScope, scoped, codeOf, debtsOf, deferred, tick, settle, follow, startLoad,
-  stubbornLoader, cooperativeLoader, regionLoad, stats, pendingWork, MAX_CASCADE_DEPTH } from "./support/world.mjs";
+import { world, codeOf, deferred } from "./support/world.mjs";
 
 describe("T71 [R10] the testing entry point", () => {
     test("T71 [R10] liveSubscriptions per store and per scope; settled() waits for loads, delivered() does not", async () => {

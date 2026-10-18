@@ -1,11 +1,10 @@
 // Archived P/R semantic probes, ported to the public package build and real resource scopes.
 import assert from "node:assert/strict";
-import { describe, mock, test } from "node:test";
+import { describe, test } from "node:test";
 import { createServer, request } from "node:http";
-import { createStore, ObservationError } from "../dist/index.js";
-import { asyncDetection, delivered, liveSubscriptions, settled } from "../dist/testing.js";
-import { world, createScope, scoped, codeOf, debtsOf, deferred, tick, settle, follow, startLoad,
-  stubbornLoader, cooperativeLoader, regionLoad, stats, pendingWork, MAX_CASCADE_DEPTH } from "./support/world.mjs";
+import { createStore } from "../dist/index.js";
+import { delivered, settled } from "../dist/testing.js";
+import { world, createScope, codeOf, deferred, settle, follow, startLoad, stats, MAX_CASCADE_DEPTH } from "./support/world.mjs";
 
 test("T50 T51 T54 [P18] echo: a handler that changes a key it follows fails at the first delivery, reported and thrown", async () => {
     const { store, facet, module, reports } = world();
