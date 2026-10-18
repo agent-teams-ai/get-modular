@@ -11,6 +11,19 @@ Modules need explicit read-only state contracts, subscriber-owned lifetimes and
 asynchronous work that cannot publish stale results or overlap physical cleanup.
 The owner also requires TypeScript 7.0.2 or newer for every executed compiler.
 
+## Where the implementation lives
+
+The working package is in
+[`packages/observation/src`](https://github.com/agent-teams-ai/get-modular/tree/feat/observation-0-1-e2e/packages/observation/src),
+with 18 TypeScript source files. The public API is `src/index.ts`; state ownership
+is implemented in `features/store/store.ts` and `engine.ts`, subscriptions in
+`watch.ts`, and serialized asynchronous work in `load.ts`. The package README
+contains compiled module-authoring examples.
+
+The [companion PR](https://github.com/agent-teams-ai/modularity-host-test/pull/20)
+installs this implementation's exact archives and checks a separate consumer.
+The package and the consumer are separate review subjects.
+
 ## Changes
 
 - Implement `@get-modular/observation`: one owner writer, read-only facets,

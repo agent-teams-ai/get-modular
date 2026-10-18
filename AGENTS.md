@@ -89,3 +89,15 @@ Apply it with this repository's instructions, accepted decisions and local
 adoption profiles. This reference does not change pinned architecture contracts
 or certify existing code as conformant.
 <!-- agent-teams:quality-standard:end -->
+
+## TypeScript authoring
+
+Write new maintained source, tests and tooling in TypeScript 7.0.2 or newer;
+use `.ts`, or `.mts` when an explicit ESM file is needed. Include that source in
+the owning strict typecheck and normal verification command. Running a file
+through Node's type stripping is not type checking.
+
+Follow the organization standard's
+[TypeScript rule](https://github.com/agent-teams-ai/.github/blob/main/docs/engineering-quality-standard.md#typescript-for-javascript-runtimes)
+for scope, migration and necessary JavaScript exceptions. Preserve generated
+package output and immutable evidence in their required formats.
