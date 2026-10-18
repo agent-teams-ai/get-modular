@@ -20,7 +20,7 @@ async function subject(index, control) {
     void payload.data;
     if (mode === "als-retention") timers.push(setInterval(noop, 60000));
   };
-  // A closed store must release its values even when its callback was detached.
+  // Completed callbacks must not retain an otherwise unreachable closed store's values.
   // The subscriber-only case keeps the store alive and therefore observes the handler.
   const reference = new WeakRef(mode === "subscriber-closed" ? handler : payload);
   facet.watch(facet.read(["value"]), { resources: mode === "store-closed" ? subscriber.resources : scope.resources,
