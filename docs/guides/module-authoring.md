@@ -6,6 +6,7 @@ owner: architecture
 summary: How to add and grow features and Get Modular modules in the Consumer Module Standard layout, with compiled examples.
 related:
   - ARCH-COMMON-ASSEMBLY
+  - ADR-0034
   - ADR-0036
   - ADR-0037
 ---
@@ -47,6 +48,7 @@ uses `Discounts` through the republication in `orders.contracts.ts`. Identities 
 | change a contract or upgrade Get Modular | 16 |
 | test a module, a feature or a root | 17 |
 | check what I must not do | 19 |
+| communicate changes, request a command or follow asynchronous data | [21](#21-module-communication) |
 
 The rules of the consumer `AGENTS.md` block, each with its CMS rule and the section
 that shows it:
@@ -850,6 +852,11 @@ features/orders/                         features/orders/
 ```
 
 ## 9. Resources
+
+Subscriptions use the receiving module's scope and bind to its signal. Prefer
+`watch` or `load` for observed state; wrap a returned disposer only for a
+provider that uses that older shape. See [module communication](#21-module-communication)
+and [CMS resource rule 5](../architecture/common-assembly.md#module-resource-scopes).
 
 A module owns something to release when it acquires it: a connection, a timer, a
 subscription. It receives `resources` by passing `scoped` as the adapter of
@@ -1662,6 +1669,11 @@ importing implementations. The manifest itself is a follow-up.
 | registries, `get(key)` inputs, service bags, per-instance data captured in closures | a service locator; instances leak into each other (ADR-0031) | declared inputs |
 | copying `describeWiring` or a plan into the oracle | the oracle then proves nothing | write it from the decision |
 | `any`, double casts or `as never` in wiring or fakes | false type claims | fix the declaration or the fake |
+| a string-topic bus or mediator between ordinary modules | hides the provider, payload contract and lifetime | explicit typed slots and commands; observe state through a narrow facet |
+| writing another module's store | bypasses its validation and single writer | ask through its command port |
+| following both raw and derived state for the same decision | can combine different revisions | follow one authoritative aggregate |
+| an event counter or occurrence as a store key | coalescing loses occurrences | a Host-owned delivery contract when every occurrence matters |
+| `@get-modular/observation/testing` in production | creates a global synchronization dependency | ordinary command completion and explicit Host readiness |
 
 The first four as short snippets:
 
@@ -1700,3 +1712,317 @@ Review a feature or module change:
 - group tree mirrors the feature tree; the root lists top-level groups only;
 - the oracle was written from the decision, not copied;
 - no decorators, discovery, registries, closures over per-instance data, `any` or casts.
+- subscriptions belong to the receiving module or a shorter child scope;
+- commands return their typed result; state handlers are synchronous and idempotent;
+- correlated values are published in one aggregate and narrowing is repeated for every snapshot;
+- async ports settle only after their owned cleanup; abort is a request;
+- tests close scopes, assert zero live subscriptions and use the public testing waits.
+
+## 21. Module communication
+
+[Module communication in the CMS](../architecture/common-assembly.md#module-communication)
+owns the rules. Observation is optional: add it when a module must follow state
+owned elsewhere. Its implementation does not give a module authority to change
+another owner's state, run work after its scope closes or decide Host readiness.
+
+### 21.1 Choose the mechanism
+
+| Question | Mechanism | Completion and ownership |
+| --- | --- | --- |
+| Is the value needed only while constructing the module? | Read once through its typed slot or use a declared input | No subscription |
+| Must each operation see the durable authority's current answer? | Call its query port | That operation owns its returned result |
+| Should a module converge to the newest value when changes arrive? | `ReadonlyStore<Slice>` with `watch` | The subscriber's resource scope owns the subscription |
+| Must async work follow the newest value? | The same facet with `load` and a typed query port | The query promise owns physical completion and cleanup |
+| Is the request allowed to be rejected, or must its caller know the result? | A command port with a typed result | The owner validates the request and commits its state |
+| Must every occurrence be delivered, including two identical occurrences? | An explicit Host/domain delivery contract | The owner specifies acknowledgement, ordering and durability |
+
+Use the last question as a concrete test: two payments must not become one
+payment because delivery was coalesced. Such occurrences are not store state.
+Observation 0.1.0 adds no `emit`, event bus, durable log, replay or retry protocol.
+A payment's latest status can still be observed through a store. Its command
+result and its status projection have different jobs.
+
+### 21.2 Own the store and publish area contracts
+
+The settings owner below gives two area contracts the same read-only facet.
+Adding a logging key later changes the logging contract's consumers, not theme
+consumers. The factory keeps the writer private. Its command returns a typed
+decision; consumers learn the confirmed new region through state.
+
+The files below form one compiled example. An actual module file wires these
+factories through `implement` and `scoped`, using the declaration and static group
+recipe in sections 3 and 13. Pass the Host's error port through a declared slot;
+each receiving factory takes its own `ModuleContext.resources`.
+
+<!-- module-authoring-example: communication -->
+
+```ts
+// src/features/settings/composition/settings.contracts.ts
+import { defineContract } from "@get-modular/assembly";
+import type { ListenerError, ReadonlyStore } from "@get-modular/observation";
+
+export type RegionName = "eu" | "us";
+export type SettingsState = { readonly theme: "light" | "dark"; readonly region: RegionName };
+export type CommandResult = { readonly ok: true } | { readonly ok: false; readonly reason: "unknown-region" };
+export type CommandsPort = { readonly requestRegion: (region: string) => CommandResult };
+export type ErrorsPort = { readonly report: (error: ListenerError) => undefined };
+export const Theme = defineContract<ReadonlyStore<Pick<SettingsState, "theme">>>()
+  ({ id: "acme/settings/theme", revision: 1 });
+export const Region = defineContract<ReadonlyStore<Pick<SettingsState, "region">>>()
+  ({ id: "acme/settings/region", revision: 1 });
+export const SettingsCommands = defineContract<CommandsPort>()
+  ({ id: "acme/settings/commands", revision: 1 });
+```
+
+<!-- module-authoring-example: communication -->
+
+```ts
+// src/features/settings/composition/create-settings.ts
+import { createStore } from "@get-modular/observation";
+import type { Resources } from "@get-modular/resources";
+import type { CommandsPort, ErrorsPort, SettingsState } from "./settings.contracts.js";
+
+export function createSettings(resources: Resources, errors: ErrorsPort) {
+  const store = createStore<SettingsState>({ theme: "light", region: "eu" }, {
+    name: "settings", resources, reportError: errors.report,
+  });
+  const commands: CommandsPort = {
+    requestRegion: (region) => {
+      if (region !== "eu" && region !== "us") return { ok: false, reason: "unknown-region" };
+      store.set({ region });
+      return { ok: true };
+    },
+  };
+  const facet = store.readonly();
+  return { theme: facet, region: facet, commands };
+}
+```
+
+`Pick` here selects fields of the ordinary data record. The dependency remains
+the full `ReadonlyStore<Slice>`. Pass that complete facet as the supported module contract instead of a
+hand-written subset of its methods. The corrected declarations also reject the
+known wrong-record assignments through an extracted `watch`; a method subset
+still omits the complete read-and-subscribe contract used by this recipe.
+
+The catalog follows only region. It calls an explicit query port and owns one
+result aggregate. A ready result can never pair another region's items with the
+current region inside one aggregate.
+
+<!-- module-authoring-example: communication -->
+
+```ts
+// src/features/catalog/application/ports/query-catalog.ts
+export type QueryCatalogPort = {
+  readonly query: (region: string, options: { readonly signal: AbortSignal }) => Promise<readonly string[]>;
+};
+export type CatalogResult =
+  | { readonly status: "loading" }
+  | { readonly status: "ready"; readonly region: string; readonly items: readonly string[] }
+  | { readonly status: "failed"; readonly region: string; readonly message: string };
+```
+
+<!-- module-authoring-example: communication -->
+
+```ts
+// src/features/catalog/composition/create-catalog.ts
+import { createStore, type ReadonlyStore } from "@get-modular/observation";
+import type { Resources } from "@get-modular/resources";
+import type { ErrorsPort, RegionName } from "../../settings/composition/settings.contracts.js";
+import type { CatalogResult, QueryCatalogPort } from "../application/ports/query-catalog.js";
+
+export function createCatalog(
+  deps: { readonly settings: ReadonlyStore<{ readonly region: RegionName }>;
+    readonly query: QueryCatalogPort; readonly errors: ErrorsPort },
+  resources: Resources,
+) {
+  const initial = deps.settings.read(["region"]);
+  let observedRegion: RegionName = initial.values.region;
+  const state = createStore<{ readonly result: CatalogResult }>({ result: { status: "loading" } }, {
+    name: "catalog", resources, reportError: deps.errors.report,
+  });
+  deps.settings.watch(initial, {
+    resources, name: "catalog/region",
+    onChange: ({ values }) => { observedRegion = values.region; },
+  });
+  deps.settings.load(initial, {
+    resources, name: "catalog/query",
+    loader: ({ values }, { signal }) => deps.query.query(values.region, { signal }),
+    onLoading: () => { state.set({ result: { status: "loading" } }); },
+    onResult: (items, { values }) => {
+      state.set({ result: { status: "ready", region: values.region, items: [...items] } });
+    },
+    onError: (cause, { values }) => {
+      state.set({ result: { status: "failed", region: values.region, message: String(cause) } });
+    },
+  });
+  return { state: state.readonly(), observedRegion: () => observedRegion };
+}
+```
+
+The separate `observedRegion` demonstrates a simple synchronous observer; no
+business decision combines it with `state.result`. Consumers of the catalog
+depend on the result aggregate alone. Domain and query adapter code receive
+ordinary values and their own ports, not `Resources`.
+
+### 21.3 Follow a snapshot, and narrow each new value
+
+Read the exact keys you need and pass that origin-valid snapshot to `watch`.
+A change between `read` and subscription registration is caught, including a
+change made while the factory awaits acquisition. Do not read a new snapshot
+after that await merely to start the subscription: it could hide the change
+that the constructed object has not applied.
+
+A snapshot revision counts successful commits. It is not a claim that this
+subscriber's values differ from its previous callback. Delivery coalesces
+changes and handlers should apply their input idempotently. No external code
+relies on callback order among subscribers.
+
+Initial narrowing never narrows future data. If the first catalog result is
+`ready`, the next one can still be `loading` or `failed`. A handler branches on
+its own fresh `values.result.status`. Literal tuples give exactly selected
+fields; a runtime-selected key gives an honestly optional field. Refine that
+field before reading it. Do not cast away either uncertainty.
+
+Keep values that must agree in one nested aggregate, as `result` above. Separate
+stores or separate raw and derived subscriptions do not form a transaction.
+Use one pure mapping function for the initial value and later changes when
+building a derived store. A custom equality function, computed dependency
+graph or framework-wide reducer is unnecessary for this recipe.
+
+### 21.4 Asynchronous data and completion
+
+`load` takes its first snapshot for keys only and starts with the newest values.
+Only one query runs at a time, with at most one newest pending run. A new
+followed commit aborts the old signal; after that run physically settles the
+newest run can start. A stale success or failure does not publish. There is an
+additional currentness check immediately before result publication.
+
+The query promise must include its owned cleanup. An abort notification,
+deadline or rejected observer wait does not mean a socket, worker or write has
+stopped. Await the actual owned operation before settling the query promise.
+If it ignores cancellation forever, the load remains an owned cleanup debt;
+the Host chooses escalation and health policy. Do not detach a producer and
+return an already-completed promise to make shutdown appear complete.
+
+`onLoading`, `onResult` and `onError` are synchronous. They return `undefined`,
+as does a watch handler. They may update a projection owned by the receiving module, but never a key
+their own subscription follows. Avoid
+long-lived background work started inside a loader: while that loader is
+active, its async continuations carry its echo and cascade context.
+
+### 21.5 A child asks through a command
+
+Pass the child `SettingsCommands` through an ordinary required slot. It calls
+`requestRegion` in response to its own user action and checks the typed result.
+An accepted command means that the owner's commit happened; notifications
+still run in later tasks. A same-turn read of a consumer's projection may see
+its previous value. Use an explicit command result when the caller needs an
+immediate decision, and leave readiness policy with the Host.
+
+Do not call that command from a handler following region in order to write
+region back. Such feedback is an echo even if it crosses an ordinary command
+port. Validate and normalize input before the owner's commit.
+
+### 21.6 A parent supplies derived state
+
+A parent owns its own derived store, computes initial state and updates it
+through one mapping function, then hands its facet to its children. Each child
+owns its subscriptions. A short request or session uses a child resource
+scope that closes when that work ends; it does not borrow the parent's
+subscription lifetime. Reuse the declared area contract instead of inventing
+one topic per child.
+
+### 21.7 Errors, feedback and bounded cost
+
+The Host's reporting port must not throw. A listener throw or invalid return
+is isolated and reported; another listener continues and the subscription
+remains. A throwing reporter is surfaced as an uncaught exception, so Host
+policy must observe it. Signal listeners also must not throw.
+
+In a `ListenerError`, `source` names the reporting store, `subscription` is the
+registered name, `revision` identifies the delivered or rejecting state, and
+`cause` retains the original failure. `path` is optional and appears only when
+the resources provider exposes it. Rejected writes create no revision.
+An echo reports at the committing store. Names aid attribution and do not
+grant authority or become a service lookup.
+
+The maximum live causal depth is 64; the next effective commit fails before
+state changes. The window lasts through a watch delivery task or through the
+actual loader run. Later independent work has depth zero. This is a bounded
+feedback guard, not durable history or a Host scheduler.
+
+The store retains 65 revision/depth slots per key and one bounded record of its
+last live write for initial loads. Memory does not grow with the number of
+commits. Snapshots, live subscriptions and active query results still hold
+their actual values. Defaults allow 64 subscriptions per scope per store and
+8192 per store; use child scopes for short work and choose a different owned
+fan-out only when a measured use case needs it. Keep the public API small.
+
+### 21.8 Test complete ownership
+
+This test checks a public result and releases the subscriber before its owner.
+It also proves that a rejected command changes no state. The complete fixture
+runner additionally checks controlled supersession, an await-time catch-up,
+two independent instances, close during work, error attribution, an independent
+binding oracle and one root smoke.
+
+<!-- module-authoring-example: communication -->
+
+```ts
+// tests/features/catalog/communication.test.ts
+import assert from "node:assert/strict";
+import test from "node:test";
+import { createScope } from "@get-modular/resources";
+import { liveSubscriptions, settled } from "@get-modular/observation/testing";
+import type { ListenerError } from "@get-modular/observation";
+import { createSettings } from "../../../src/features/settings/composition/create-settings.js";
+import { createCatalog } from "../../../src/features/catalog/composition/create-catalog.js";
+
+test("catalog follows confirmed region and releases its subscriptions", async t => {
+  const host = createScope({ name: "test" });
+  t.after(() => host.control.close());
+  const owner = host.resources.child({ name: "settings" });
+  const subscriber = host.resources.child({ name: "catalog" });
+  const reports: ListenerError[] = [];
+  const errors = { report: (error: ListenerError): undefined => { reports.push(error); } };
+  const settings = createSettings(owner.resources, errors);
+  const catalog = createCatalog({
+    settings: settings.region, errors,
+    query: { query: async (region, { signal }) => {
+      signal.throwIfAborted();
+      return [region];
+    } },
+  }, subscriber.resources);
+  assert.deepEqual(settings.commands.requestRegion("unknown"), { ok: false, reason: "unknown-region" });
+  assert.equal(settings.region.read(["region"]).values.region, "eu");
+  assert.deepEqual(settings.commands.requestRegion("us"), { ok: true });
+  await settled({ stores: [settings.region, catalog.state] });
+  assert.equal(catalog.observedRegion(), "us");
+  assert.deepEqual(catalog.state.read(["result"]).values.result, { status: "ready", region: "us", items: ["us"] });
+  assert.equal((await subscriber.control.close()).complete, true);
+  assert.equal(liveSubscriptions(settings.region), 0);
+  assert.equal(liveSubscriptions(catalog.state), 0);
+  assert.equal((await host.control.close()).complete, true);
+  assert.deepEqual(reports, []);
+});
+```
+
+Public testing waits have a 5000 ms deadline by default; an abort signal can
+end the wait earlier. Only explicit `Infinity` removes that deadline. Scope a
+wait to the involved stores. Production code never imports these waits and
+tests never infer completion from an arbitrary number of ticks.
+
+### 21.9 Practices to keep and practices to reject
+
+Keep explicit subscription ownership, immutable snapshots, honest type
+variance, structured completion and observable named errors. Modern state
+libraries demonstrate useful local techniques such as narrow subscriptions
+and immutable publication; these techniques do not make their whole
+architecture suitable for isolated Get Modular modules.
+
+Reject ambient dependency tracking, global buses, proxy-based mutation
+authority, subscription-by-import, silent handler failures and occurrence
+delivery through coalesced state. Framework batching, UI render timing or a
+global flush is not the module's correctness contract. The chosen API has one
+owner, an explicit slice and an explicit receiving scope, all visible to an
+agent reading the factory.

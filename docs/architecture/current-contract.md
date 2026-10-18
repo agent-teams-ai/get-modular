@@ -212,12 +212,15 @@ These source-build checks are not a completed M1. Disposable packed-consumer
 regressions also execute the same object expectations through the installed
 package root. They verify Node import/require identity, closed deep imports,
 conditional resolution and the four TypeScript modes with 1000 literal
-declarations, using both the pinned build compiler and the separate minimum
-consumer compiler, TypeScript 5.8.3. Negative modes assert the exact diagnostic
-codes for each compiler; historical resolution failures differ from removed
-options in TypeScript 7. These tests establish the consumer floor but do not
-retain publication evidence. The historical compiler is a development-only
-catalog alias; it does not replace the build compiler or enter Core's archive.
+declarations, using each distinct pinned build and minimum consumer compiler,
+both initially TypeScript 7.0.2 under
+[ADR-0038](../decisions/0038-require-typescript-7-for-current-package-qualification.md).
+Negative modes assert exact diagnostic codes: removed legacy resolution options
+use TS5108, while the unsupported Node16 CommonJS consumer uses TS1479.
+The current schedules contain 87 M1 commands and 272 combined M2 commands after
+removing ten duplicate compiler invocations; their semantic cases remain.
+These tests establish the current consumer floor but do not retain publication
+evidence. The aliases are development-only and do not enter Core's archive.
 Closure prerequisites require every selection to resolve, including non-root
 rows. Suppressed absence diagnostics from an incomplete declaration census do
 not turn an unresolved selection into positive closure evidence.
@@ -245,10 +248,12 @@ external references, extra exports, ambient declarations and private type
 leakage. Declaration checks preserve signatures, readonly shapes and diagnostic
 code/phase/limit associations. Independent mutations accompany both readers;
 these checks do not execute candidate code or establish algorithm correctness.
-A private Linux [retained session runner](../../tests/qualification/m1-retained-session.mjs)
+The historical private Linux [retained session runner](../../tests/qualification/m1-retained-session.mjs)
 now reuses the [packed consumer harness](../../tests/qualification/support/m1-packed-consumers.mjs).
 It builds a fresh checkout from exact Git objects, packs once, preserves the
-archive and executes all 97 prepared cases. The invoking checkout must have
+archive and describes its original 97 prepared cases. Its sealed old compiler
+subject is not run as new evidence under the exclusive TypeScript 7 floor. The
+current archive regressions use the migrated schedule above. The invoking checkout must have
 the pinned dependencies installed with workspace hoisting disabled, so its
 tool dependency snapshot has no link back to the workspace Core package.
 The runner rejects dependency links that escape that snapshot; it does not

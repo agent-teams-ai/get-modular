@@ -108,7 +108,8 @@ const rootExport = () => ({ ".": {
 // The valid manifest of each publication class.
 const manifestFor = leaf => leaf.publication === PUBLIC
   ? {
-    name: leaf.name, type: "module", exports: rootExport(), files: [...PUBLIC_FILES],
+    name: leaf.name, type: "module", exports: leaf.id === "observation" ? twoEntryExports() : rootExport(),
+    files: [...PUBLIC_FILES],
     publishConfig: { ...PUBLIC_PUBLISH_CONFIG }, repository: publicRepository(leaf),
     ...expectedPeerDependencies(leaf) === undefined ? {} : { peerDependencies: expectedPeerDependencies(leaf) },
   }
@@ -134,6 +135,11 @@ function fixture(leaf) {
   const sourcePath = `${leaf.root}/src/index.ts`;
   const sources = new Map([[sourcePath, substantiveSource]]);
   const admitted = [leafManifestPath(leaf), sourcePath, ...leaf.requiredTests];
+  if (leaf.id === "observation") {
+    const testingPath = "packages/observation/src/testing.ts";
+    sources.set(testingPath, "export {};\n");
+    admitted.splice(2, 0, testingPath);
+  }
   const input = {
     productionArtifacts: ["packages/core/package.json", ...admitted],
     readBytes: async path => files.get(path),
@@ -177,7 +183,7 @@ test("T95 T96 [P1] row subpaths name exact sources, carriers and build outputs",
 test("T95 [P1] only explicit valid public subpaths can extend a row", () => {
   for (const subpaths of [null, ".", [], ["./testing"], [".", "."], [".", "./index"],
     [".", "./testing", "./testing"], [".", 3], [".", "./Testing"], [".", "./deep/path"],
-    [".", "./../outside"], [".", "./*"], [".", "testing"]]) {
+    [".", "./../outside"], [".", "./*"], [".", "testing"], [".", ,]]) {
     assert.throws(() => assertLeafPackageTable([...LEAF_PACKAGES, { ...examplePublic, subpaths }]),
       /LEAF_PACKAGE_TABLE_INVALID: example-public: subpaths$/u);
   }
@@ -281,6 +287,32 @@ test("a root outside the table stays rejected", async () => {
     /unknown or differently named production root: packages\/example-leaf\//u);
 });
 
+test("the observation row binds the reviewed peer, two entries and complete gate", () => {
+  const observation = leafPackageById("observation");
+  assert.equal(observation.publication, PUBLIC);
+  assert.deepEqual(observation.peers, ["@get-modular/resources"]);
+  assert.deepEqual(observation.subpaths, [".", "./testing"]);
+  assert.deepEqual(LEAF_PACKAGES.filter(leaf => leaf.subpaths !== undefined).map(leaf => leaf.id), ["observation"]);
+  assert.deepEqual(expectedLeafExports(observation), twoEntryExports());
+  assert.deepEqual(observation.requiredTests, [
+    "packages/observation/tests/store.test.mjs", "packages/observation/tests/guards.test.mjs",
+    "packages/observation/tests/mutations.test.mjs", "packages/observation/tests/writer-gate.test.mjs",
+    "packages/observation/tests/packed-root.test.mjs",
+  ]);
+  assert.deepEqual(Object.keys(observation.commands), [
+    "observation:build", "observation:typecheck", "observation:test", "observation:evidence",
+    "observation:pack", "observation:check",
+  ]);
+  assert.match(observation.commands["observation:typecheck"],
+    /test-assembly-types\.mjs --projects packages\/observation\/tsconfig\.types\.json packages\/observation\/tsconfig\.types\.bundler\.json/u);
+  assert.match(observation.commands["observation:test"], /tests\/observation\/assembly-integration\.test\.mjs/u);
+  assert.match(observation.commands["observation:test"], /tests\/observation\/readme-examples\.test\.mjs/u);
+  assert.equal(observation.gate, "observation:check");
+  assert.ok(LEAF_PACKAGES.indexOf(leafPackageById("resources")) < LEAF_PACKAGES.indexOf(observation));
+  for (const version of ["0.0.0", "0.1.0", "0.12.3"]) assert.match(version, observation.version);
+  for (const version of ["1.0.0", "0.1", "0.1.0-rc.1"]) assert.doesNotMatch(version, observation.version);
+});
+
 // A malformed row would weaken every check that reads the table, so the table
 // rejects it on load and admission rejects it when rows are supplied directly.
 test("the table rejects rows that would admit less than their decision requires", async () => {
@@ -368,7 +400,7 @@ test("declared peers fix the manifest peers and the lock importer of a row", () 
 // Two implemented rows are each validated, and Core cannot import the second.
 test("every implemented row is admitted and guarded at once", async () => {
   const rows = ROWS.map(leaf => fixture(leaf));
-  const sources = new Map(ROWS.map(leaf => [`${leaf.root}/src/index.ts`, substantiveSource]));
+  const sources = new Map(rows.flatMap(row => [...row.sources]));
   const input = {
     ...rows[0].input,
     productionArtifacts: ["packages/core/package.json", ...rows.flatMap(row => row.admitted)],

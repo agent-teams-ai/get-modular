@@ -47,6 +47,10 @@ fullScanPaths:
   - packages/conformance/package.json
   - packages/conformance/tsconfig.types.json
   - packages/conformance/tsconfig.types.bundler.json
+  - packages/observation/tsconfig.json
+  - packages/observation/package.json
+  - packages/observation/tsconfig.types.json
+  - packages/observation/tsconfig.types.bundler.json
   - tests/tsconfig.tooling-node-policy.json
   - tests/tsconfig.repository-agent-workflow.json
   - tests/qualification/consumer-fixtures/semantic/tsconfig.types.json

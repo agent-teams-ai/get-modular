@@ -5,5 +5,6 @@ governedRoots:
   - packages/lifecycle-kernel/src
   - packages/resources/src
   - packages/conformance/src
+  - packages/observation/src
 nonWaivableRulePrefixes: []
 waivers: []

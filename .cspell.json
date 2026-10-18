@@ -35,6 +35,7 @@
     "TypeScript",
     "Wasmtime",
     "Waivable",
+    "behaviour",
     "bivariantly",
     "buildvcs",
     "canonicalization",

@@ -2006,6 +2006,47 @@ test("accepted carrier prohibitions hold with no publication blocker open", asyn
   await assert.doesNotReject(validate({ ...base, scripts: { build: "tsc" } }));
 });
 
+test("observation alone admits its second curated ESM carrier", async () => {
+  const exports = {
+    ".": {
+      import: { types: "./dist/index.d.ts", default: "./dist/index.js" },
+      default: "./dist/index.js",
+    },
+    "./testing": {
+      import: { types: "./dist/testing.d.ts", default: "./dist/testing.js" },
+      default: "./dist/testing.js",
+    },
+  };
+  const validate = (name, entries) => validateBlockedImplementation({
+    readProductionSource: async () => "export const x = 1;",
+    blockerIds: new Set(["OD-005", "OD-006"]),
+    publicationBlockerIds: new Set(),
+    productionArtifacts: [`packages/${name}/package.json`, `packages/${name}/src/index.ts`,
+      `packages/${name}/src/testing.ts`],
+    claimDocuments: [],
+    readPackageManifest: async () => ({
+      name: `@get-modular/${name}`, version: "0.1.0", type: "module", exports: entries,
+      publishConfig: { access: "public", registry: "https://registry.npmjs.org/" },
+      repository: { type: "git", url: "git+https://github.com/agent-teams-ai/get-modular.git",
+        directory: `packages/${name}` },
+      files: ["dist", "LICENSE", "README.md", "CHANGELOG.md"],
+      peerDependencies: name === "observation" ? { "@get-modular/resources": "workspace:^" }
+        : { "@get-modular/assembly": "workspace:^", "@get-modular/core": "workspace:^",
+          "@get-modular/resources": "workspace:^" },
+    }),
+  });
+  await assert.doesNotReject(validate("observation", exports));
+  await assert.rejects(validate("observation", { ".": exports["."] }), /\.\/testing/u);
+  await assert.rejects(validate("conformance", exports), /no subpath beyond "\."/u);
+  for (const testing of [
+    { default: "./dist/testing.js", import: exports["./testing"].import },
+    { import: { default: "./dist/testing.js", types: "./dist/testing.d.ts" }, default: "./dist/testing.js" },
+    { ...exports["./testing"], default: "./dist/other.js" },
+  ]) {
+    await assert.rejects(validate("observation", { ...exports, "./testing": testing }), /\.\/testing/u);
+  }
+});
+
 test("package source must not carry a generation-suffixed identifier", async () => {
   // ADR-0009 prohibits a generation-suffixed identifier in tests too, so this
   // file never spells one: every fixture name is assembled from its stem and

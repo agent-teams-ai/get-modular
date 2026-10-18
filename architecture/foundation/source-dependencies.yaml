@@ -7,6 +7,7 @@ packageRoots:
   - packages/conformance
   - packages/core
   - packages/lifecycle-kernel
+  - packages/observation
   - packages/resources
 rootPackage: true
 governedRoots:
@@ -18,6 +19,8 @@ governedRoots:
   - packages/assembly/tests
   - packages/conformance/src
   - packages/conformance/tests
+  - packages/observation/src
+  - packages/observation/tests
   - packages/core/dist-seed
   - packages/core/dist-stage0
   - packages/core/dist-test
@@ -485,6 +488,7 @@ boundaries:
       - packages/resources/tests/types.ts
     allow:
       boundaries:
+        - repository.development
         - resources-contract
         - resources-implementation
         - resources-composition
@@ -677,7 +681,8 @@ boundaries:
       - packages/conformance/tests/handle-probe.mjs
       - packages/conformance/tests/types.ts
     allow:
-      boundaries: []
+      boundaries:
+        - repository.development
       packages:
         - "@get-modular/assembly"
         - "@get-modular/core"
@@ -694,6 +699,159 @@ boundaries:
         - node:test
         - node:url
         - node:vm
+      runtimeReferences: []
+  # ADR-0034 admits subscriber-owned state observation with two curated entries.
+  - id: observation-errors
+    roots:
+      - packages/observation/src/features/errors/errors.ts
+    entrypoints:
+      - packages/observation/src/features/errors/errors.ts
+    allow:
+      boundaries: []
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: observation-delivery
+    roots:
+      - packages/observation/src/features/delivery/platform.ts
+      - packages/observation/src/features/delivery/context.ts
+      - packages/observation/src/features/delivery/pending.ts
+    entrypoints:
+      - packages/observation/src/features/delivery/platform.ts
+      - packages/observation/src/features/delivery/context.ts
+      - packages/observation/src/features/delivery/pending.ts
+    allow:
+      boundaries: []
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: observation-store
+    roots:
+      - packages/observation/src/features/store/types.ts
+      - packages/observation/src/features/store/values.ts
+      - packages/observation/src/features/store/registry.ts
+      - packages/observation/src/features/store/arguments.ts
+      - packages/observation/src/features/store/engine.ts
+      - packages/observation/src/features/store/admission.ts
+      - packages/observation/src/features/store/watch.ts
+      - packages/observation/src/features/store/load.ts
+      - packages/observation/src/features/store/store.ts
+    entrypoints:
+      - packages/observation/src/features/store/types.ts
+      - packages/observation/src/features/store/registry.ts
+      - packages/observation/src/features/store/store.ts
+    allow:
+      boundaries:
+        - observation-errors
+        - observation-delivery
+      packages:
+        - "@get-modular/resources"
+      builtins: []
+      runtimeReferences: []
+  - id: observation-testing
+    roots:
+      - packages/observation/src/features/testing/waits.ts
+    entrypoints:
+      - packages/observation/src/features/testing/waits.ts
+    allow:
+      boundaries:
+        - observation-errors
+        - observation-delivery
+        - observation-store
+      packages:
+        - "@get-modular/resources"
+      builtins: []
+      runtimeReferences: []
+  - id: observation-composition
+    roots:
+      - packages/observation/src/composition/root.ts
+      - packages/observation/src/composition/testing.ts
+    entrypoints:
+      - packages/observation/src/composition/root.ts
+      - packages/observation/src/composition/testing.ts
+    allow:
+      boundaries:
+        - observation-store
+        - observation-testing
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: observation-public-entrypoint
+    packageExports:
+      - "."
+    roots:
+      - packages/observation/src/index.ts
+    entrypoints:
+      - packages/observation/src/index.ts
+    allow:
+      boundaries:
+        - observation-composition
+        - observation-errors
+        - observation-store
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: observation-testing-entrypoint
+    packageExports:
+      - "./testing"
+    roots:
+      - packages/observation/src/testing.ts
+    entrypoints:
+      - packages/observation/src/testing.ts
+    allow:
+      boundaries:
+        - observation-composition
+        - observation-testing
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: observation-development
+    dependencyMode: development
+    roots:
+      - packages/observation/tests
+    entrypoints:
+      - packages/observation/tests/env-probe.mjs
+      - packages/observation/tests/env-setup-fake-before.mjs
+      - packages/observation/tests/env-setup-fake-clock-before.mjs
+      - packages/observation/tests/env-setup-no-builtin-module.mjs
+      - packages/observation/tests/env-setup-no-node.mjs
+      - packages/observation/tests/gc-probe.mjs
+      - packages/observation/tests/guards.test.mjs
+      - packages/observation/tests/load.test.mjs
+      - packages/observation/tests/mutations.test.mjs
+      - packages/observation/tests/mutations/defects.mjs
+      - packages/observation/tests/packed-root.test.mjs
+      - packages/observation/tests/process-probe.mjs
+      - packages/observation/tests/processes.test.mjs
+      - packages/observation/tests/semantic-suite.mjs
+      - packages/observation/tests/store.test.mjs
+      - packages/observation/tests/subscriptions.test.mjs
+      - packages/observation/tests/support/compilers.mjs
+      - packages/observation/tests/support/static-rules.mjs
+      - packages/observation/tests/support/world.mjs
+      - packages/observation/tests/testing-entry.test.mjs
+      - packages/observation/tests/type-controls.test.mjs
+      - packages/observation/tests/types-loose-optional.ts
+      - packages/observation/tests/types-runtime-only.ts
+      - packages/observation/tests/types-structural.ts
+      - packages/observation/tests/types-testing.ts
+      - packages/observation/tests/types-traps.ts
+      - packages/observation/tests/types.ts
+      - packages/observation/tests/writer-gate.test.mjs
+    allow:
+      boundaries: []
+      packages:
+        - "@get-modular/resources"
+      builtins:
+        - node:assert/strict
+        - node:child_process
+        - node:fs/promises
+        - node:http
+        - node:module
+        - node:os
+        - node:path
+        - node:test
+        - node:url
       runtimeReferences: []
   - id: core-development
     dependencyMode: development
@@ -820,6 +978,7 @@ boundaries:
       - architecture/tooling/build-assembly.mjs
       - architecture/tooling/build-core.mjs
       - architecture/tooling/codemods/run.mjs
+      - architecture/tooling/codemods/project.mjs
       - architecture/tooling/first-core-release.mjs
       - architecture/tooling/generate-core.mjs
       - architecture/tooling/test-assembly-types.mjs
@@ -843,13 +1002,13 @@ boundaries:
         - "@get-modular/conformance"
         - "@get-modular/core"
         - "@get-modular/lifecycle-kernel"
+        - "@get-modular/observation"
         - "@get-modular/resources"
         - ajv
         - canonicalize
         - json-canonicalize
         - jsonc-parser
         - tar
-        - ts-morph
         - typescript
         - typescript-minimum
         - yaml
