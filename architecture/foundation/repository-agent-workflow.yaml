@@ -49,6 +49,10 @@ fullScanPaths:
   - packages/conformance/tsconfig.types.bundler.json
   - tests/tsconfig.tooling-node-policy.json
   - tests/tsconfig.repository-agent-workflow.json
+  - tests/qualification/consumer-fixtures/semantic/tsconfig.types.json
+  - tests/qualification/consumer-fixtures/semantic/tsconfig.runtime.json
+  - tests/qualification/consumer-fixtures/semantic/tsconfig.negative.json
+  - tests/qualification/consumer-fixtures/recovery/tsconfig.runtime.json
   - tests/qualification/implementation-readiness/api-authoring
   - architecture/checks/sdk-growth.mjs
   - architecture/sdk-growth

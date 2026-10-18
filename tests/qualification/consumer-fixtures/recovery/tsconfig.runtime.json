@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2024", "ESNext.Disposable", "DOM"],
+    "types": ["node"],
+    "strict": true,
+    "skipLibCheck": false,
+    "rootDir": "..",
+    "outDir": "out",
+    "noEmitOnError": true
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts", "../semantic/src/**/*.ts", "../semantic/tests/support/**/*.ts"],
+  "exclude": ["out"]
+}

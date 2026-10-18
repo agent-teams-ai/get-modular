@@ -1,0 +1,14 @@
+import { implement } from "@get-modular/assembly";
+import { declaration } from "../../../src/features/f003/composition/value.declaration.js";
+import { readValue } from "../../../src/features/f003/application/use-cases/read-value.js";
+import type { FeatureCapabilities } from "../../../src/features/f003/composition/f003.contracts.js";
+import type { Value } from "../../../src/features/f003/contracts/value.js";
+
+export const wrongEntry = implement<FeatureCapabilities>()(
+  { ...declaration, implementationId: "fixture/growth/f003/wrong" },
+  async (dependencies) => {
+    const value = readValue({ p1: { read: () => dependencies.p1.read() }, p2: { read: () => dependencies.p2.read() } }, undefined) + 1;
+    const port: Value = { read: () => value };
+    return { instance: { value }, capabilities: { "fixture/growth/f003/value": port } };
+  },
+);
