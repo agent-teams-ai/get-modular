@@ -80,7 +80,6 @@ if (mode === "fake-clock-before") {
   realClearTimeout(watchdog);
   finish(); // also release the broken version so a failing deadline regression cannot hang its test process
   await waiting;
-  await host.control.close();
   assert.equal(outcome, "observation.testing.timeout", "the builtin real clock must expire the deadline before the watchdog");
 }
 await host.control.close();
