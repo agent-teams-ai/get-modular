@@ -102,3 +102,17 @@ export async function withSemanticConsumer(body) {
     await rm(temporary, { recursive: true, force: true });
   }
 }
+
+export async function withRecoveryConsumer(body) {
+  return withSemanticConsumer(async ({ consumer, evidence }) => {
+    const directory = join(consumer, "recovery");
+    await cp(join(workspace, "tests/qualification/consumer-fixtures/recovery"), directory, { recursive: true });
+    const recoverySourceTree = await treeIdentity(directory);
+    const path = join(directory, "tsconfig.runtime.json");
+    const config = JSON.parse(await readFile(path, "utf8"));
+    assert.equal(Object.hasOwn(config, "extends"), false);
+    config.compilerOptions.typeRoots = [evidence.nodeTypes.typeRoots];
+    await writeFile(path, `${JSON.stringify(config, null, 2)}\n`);
+    return body({ directory, consumer, evidence: { ...evidence, recoverySourceTree } });
+  });
+}
