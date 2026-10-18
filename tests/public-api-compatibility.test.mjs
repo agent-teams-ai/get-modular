@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { assertCompilerFloor } from "../architecture/checks/compiler-floor.mjs";
 import { execFile } from "node:child_process";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -79,6 +80,7 @@ capabilities:
     configPath: ${policyPath}
 `);
     await change(directory);
+    assertCompilerFloor();
     let result;
     try {
       result = await execute(
