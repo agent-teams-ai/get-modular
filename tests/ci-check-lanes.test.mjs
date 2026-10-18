@@ -67,7 +67,7 @@ function validateLanes(value, manifest = packageJson) {
   assert.equal(manifest.scripts["runtime:policy:typecheck"],
     "node node_modules/typescript/bin/tsc -p tests/tsconfig.tooling-node-policy.json --noEmit", "policy compiler drift");
   assert.equal(manifest.scripts["runtime:policy:test"],
-    "node --test tests/tooling-node-policy.test.mts", "policy test drift");
+    "node --test tests/tooling-node-policy.test.ts", "policy test drift");
   // Every independent checkout validates peers before its lane payload.
   assert.deepEqual([...Object.values(primary).flat(), "lockfile:peers:check"].sort(),
     ["ownership:checkpoint:test", ...baseline.filter(script => !["runtime:preflight", "assembly:build"].includes(script))].sort());

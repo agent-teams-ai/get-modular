@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -68,6 +68,7 @@ const invalidSource = "export const answer: string = 42;\n";
 const identity = {
   // Do not let inherited Git overrides route a TEST operation to another tree.
   ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_"))),
+  GET_MODULAR_TEST_COMPILER: compiler,
   GIT_AUTHOR_NAME: "iliya",
   GIT_AUTHOR_EMAIL: "iliyazelenkog@gmail.com",
   GIT_COMMITTER_NAME: "iliya",
@@ -96,8 +97,8 @@ async function fixture(
     const files: Record<string, string> = {
       "package.json": JSON.stringify({
         name: "get-modular-changed-workflow-test", private: true, type: "module",
-        scripts: { "check:changed": "node check-fast.mts", "check:fast": "node check-fast.mts",
-          check: "node check-fast.mts", "docs:changed": "node docs-check.mts" },
+        scripts: { "check:changed": "node check-fast.ts", "check:fast": "node check-fast.ts",
+          check: "node check-fast.ts", "docs:changed": "node docs-check.ts" },
       }),
       ".gitignore": "node_modules/\n",
       "AGENTS.md": "# TEST workflow\nUse pnpm check:changed, pnpm check:fast and pnpm check.\n",
@@ -112,22 +113,11 @@ async function fixture(
       }, files: ["src/index.ts"] }),
       "src/index.ts": source,
       "README.md": "# Disposable workflow test\n",
-      // Real project-aware compiler, with no changed path arguments or shell quoting.
-      "check-fast.mts": [
-        'import assert from "node:assert/strict";',
-        'import { spawnSync } from "node:child_process";',
-        "assert.equal(process.argv.length, 2, 'check:fast must not receive changed paths');",
-        `const result = spawnSync(process.execPath, [${JSON.stringify(compiler)}, "-p", "tsconfig.base.json", "--noEmit"], { stdio: "inherit" });`,
-        "if (result.error) throw result.error;",
-        "process.exitCode = result.status ?? 1;",
-      ].join("\n"),
-      "docs-check.mts": [
-        'import assert from "node:assert/strict";',
-        'import { readFile } from "node:fs/promises";',
-        'assert.match(await readFile("README.md", "utf8"), /^# /u);',
-      ].join("\n"),
     };
     for (const [path, contents] of Object.entries(files)) await put(root, path, contents);
+    for (const name of ["check-fast.ts", "docs-check.ts"]) {
+      await copyFile(new URL(`./fixtures/repository-agent-workflow/${name}`, import.meta.url), join(root, name));
+    }
     // Pinned pnpm writes pnpm-lock.yaml on its first public script run. Run the existing,
     // valid docs script once now so that genuine lock lives in the baseline commit instead
     // of appearing as a changed path (and a fast-full escalation) in the first measured run.

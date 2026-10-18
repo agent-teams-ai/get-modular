@@ -42,6 +42,21 @@ The package and the consumer are separate review subjects.
   entrypoints before their eager legacy compiler initialization. Every original
   downstream command and rejecting assertion remains present.
 
+## TypeScript authoring and first CI corrections
+
+All production observation source is TypeScript. The owning declaration-control
+test now also uses `.mts` and receives a strict typecheck in the normal gate.
+Its Windows fix canonicalizes the temporary-directory alias before checking
+exact diagnostic paths; none of its variance/negative assertions is weakened.
+Two stale Core/Assembly fixture counts now match the distinct TS7 compiler
+schedule while retaining historical transport evidence and all runtime receipts.
+
+Local agent instructions adopt TypeScript 7.0.2+ for new maintained source,
+tests and tooling, with the shared rule in
+[organization policy PR #368](https://github.com/agent-teams-ai/.github/pull/368).
+The two localized legacy JavaScript count fixes add no new responsibility;
+their harnesses remain explicitly outside strict TypeScript coverage.
+
 ## Validation and review
 
 - Complete observation gate after the final runtime correction: native build,
@@ -50,7 +65,7 @@ The package and the consumer are separate review subjects.
 - Independent follow-up on each Node 24.21.0 and 26.11.1: 45 guard tests,
   31 load tests, both no-ALS modes and three GC modes. Publication checkpoints,
   physical drain and currentness controls remain unchanged.
-- Exact unpublished candidate `d345e14970eca4ed1c69831d2a59f4754da0b0e9`: five
+- Exact unpublished candidate `106e3b0adca10e83d7a87ba57cb73baa9ee7ca6d`: five
   coordinated archives; external consumer passes both Node rows and TS7
   resolvers, 33 writer outcomes per runtime and one eleven-row smoke.
 - Three initial Astra xhigh critics and three additional **GPT-6.1 xhigh**
@@ -65,10 +80,23 @@ The package and the consumer are separate review subjects.
 The implementation record contains exact subjects, findings, corrections, logs
 and archive hashes:
 [implementation-port.md](https://github.com/agent-teams-ai/get-modular/blob/feat/observation-0-1-e2e/research/module-communication-2026-10/implementation-port.md).
-External tested source is `dbb708e97a9cb20afe959d06dd85460fa0bf1349`; its
-[evidence record](https://github.com/agent-teams-ai/modularity-host-test/blob/3ec107c5b16fd849ccf4c6e90ad80823fb469e02/observation-0.1.0/evidence/accepted-dbb708e/RECORD.md)
-is retained at evidence-only commit `3ec107c5b16fd849ccf4c6e90ad80823fb469e02`.
+External tested source is `4d10a1fb7041e44c61766400d6f1262e84c397e7`; its
+[evidence record](https://github.com/agent-teams-ai/modularity-host-test/blob/4b33245c2b454e44aac4ea6f3bb241c02f7b9c59/observation-0.1.0/evidence/accepted-4d10a1f/RECORD.md)
+is retained at evidence-only commit `4b33245c2b454e44aac4ea6f3bb241c02f7b9c59`.
 The consumer executable and semantic oracles were unchanged for this rerun.
+
+The first CI run passed observation on Linux/macOS for both Node lines and
+Node 24 package compatibility. Every failure was classified: three fixture
+integration defects above were fixed; 18 Foundation lanes correctly blocked
+its old compiler. Fresh CI after the corrections must be assessed separately.
+Locally, the integrated strict typecheck and all 157 observation tests pass,
+and the affected Core/Assembly selection passes 24 tests on each Node line.
+
+The current archive refresh changes only observation's package manifest scripts;
+all production JavaScript and public declarations match the preceding installed
+set. Its fresh offline install and complete external E2E passed. A clean repack
+retains only the plan's existing conformance peer-key-order exception, with the
+original pinned tested bytes kept as the subject.
 
 ## Blocks to merge and release
 

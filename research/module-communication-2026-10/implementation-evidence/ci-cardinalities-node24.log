@@ -1,0 +1,36 @@
+✔ bounded transport can interpret 282 rows without changing historical M1 semantics (41.686855ms)
+✔ transport rejects missing event even with an updated observation hash (0.701465ms)
+✔ transport rejects duplicate event even with an updated observation hash (0.626552ms)
+✔ transport rejects wrong archive even with an updated observation hash (1.864314ms)
+✔ transport rejects wrong seal even with an updated observation hash (0.607914ms)
+✔ transport rejects altered expectation even with an updated observation hash (0.402275ms)
+✔ transport rejects missing completion even with an updated observation hash (0.535285ms)
+✔ transport rejects duplicate case ID even with an updated observation hash (0.311278ms)
+✔ outside completion hash rejects altered observations independently of row semantics (0.914806ms)
+✔ runtime admission rejects foreign IDs, foreign OS and inexact source identities (0.775005ms)
+✔ invalid admission fails before output creation or execution (0.581404ms)
+✔ JavaScript profile admission is closed and preserves the direct default (0.656437ms)
+✔ versioned seals require their profile while historical direct seals remain admitted (61.655732ms)
+✔ outside seal identity binds the profile even when archive and case identities match (8.441534ms)
+✔ closure profiles reject the other assembly path regardless of candidate metadata (1.065322ms)
+✔ bounded retained-byte checks detect a same-size altered archive (16.306901ms)
+✔ retained Assembly manifest rejects metadata drift beyond dependency rewriting (11.885998ms)
+✔ disposable packed consumer checks closed roots, synthetic wiring and both TypeScript compilers (21635.281728ms)
+ℹ {"package":"@get-modular/core","archive":"/tmp/get-modular-assembly-consumer-1tFHxY/archives/get-modular-core-0.5.0.tgz","sha256":"511bb24f3a0546e6bdd8056f87f5aa81aadf192ed94a34d3d3dccddaee8edde1","integrity":"sha512-Aj3sdsow/D3xKXIFC3i4j9gatcfLfuMeXEGo1yCfckRQFfg/n4Po+7O+mYQAFmgVHGMKbnPkC+RalDFCifXrpw==","inventory":["CHANGELOG.md","LICENSE","README.md","dist/composition/generated/stage1.js","dist/features/authoring/diagnostic-types.d.ts","dist/features/authoring/helpers.d.ts","dist/features/authoring/helpers.js","dist/features/authoring/internal.d.ts","dist/features/authoring/internal.js","dist/features/authoring/wire-types.d.ts","dist/features/canonicalization/owned-jcs/factory.js","dist/features/compiler-facade/factory.js","dist/features/composition-semantics/binding-record.js","dist/features/composition-semantics/declaration-census.js","dist/features/composition-semantics/factory.js","dist/features/composition-semantics/graph-components.js","dist/features/composition-semantics/graph-diagnostics.js","dist/features/composition-semantics/graph-resources.js","dist/features/composition-semantics/profile-census.js","dist/features/composition-semantics/ready-queue.js","dist/features/composition-semantics/selected-bindings.js","dist/features/composition-semantics/selected-graph.js","dist/features/composition-semantics/semantic-analysis.js","dist/features/diagnostics/collector.js","dist/features/diagnostics/internal.js","dist/features/diagnostics/order.js","dist/features/input-admission/byte-carrier.js","dist/features/input-admission/document-path.js","dist/features/input-admission/document-reader.js","dist/features/input-admission/document-shape.js","dist/features/input-admission/document-snapshot.js","dist/features/input-admission/factory.js","dist/features/input-admission/identity-format.js","dist/features/input-admission/invocation-wrapper.js","dist/features/input-admission/object-admission.js","dist/features/input-admission/object-resource-meter.js","dist/features/input-admission/profile-resource-facts.js","dist/features/input-admission/raw-admission.js","dist/features/input-admission/raw-byte-input.js","dist/features/input-admission/raw-document.js","dist/features/input-admission/raw-duplicate-replay.js","dist/features/input-admission/raw-integer.js","dist/features/input-admission/raw-numeric-admission.js","dist/features/input-admission/resource-diagnostic.js","dist/features/input-admission/resource-limits.js","dist/features/input-admission/schema-diagnostic.js","dist/features/plan-output/factory.js","dist/features/raw-scanner/owned-iterative/factory.js","dist/features/raw-scanner/owned-iterative/scanner.js","dist/index.d.ts","dist/index.js","package.json"],"retained":false}
+ℹ {"package":"@get-modular/assembly","archive":"/tmp/get-modular-assembly-consumer-1tFHxY/archives/get-modular-assembly-0.5.0.tgz","sha256":"10f6a5ce5064037ad759794eff748f7d738a3a80b659b01dafa2820e285cb3fd","integrity":"sha512-YnMsC7EzCUnNjSyBTJN0f7gUURPNU7MLE+hv2xgmEDaKoKXGpPWj0+GCSjonBQDM/hemTEyriQftTbsWw40miw==","inventory":["CHANGELOG.md","LICENSE","README.md","dist/composition/root.d.ts","dist/composition/root.js","dist/features/construction/contract.d.ts","dist/features/construction/contract.js","dist/features/construction/derive-profile.d.ts","dist/features/construction/derive-profile.js","dist/features/construction/entry.d.ts","dist/features/construction/entry.js","dist/features/construction/factory.d.ts","dist/features/construction/factory.js","dist/features/construction/group.d.ts","dist/features/construction/group.js","dist/features/construction/ports.d.ts","dist/features/construction/ports.js","dist/features/construction/prepare.d.ts","dist/features/construction/prepare.js","dist/features/construction/run.d.ts","dist/features/construction/run.js","dist/features/construction/snapshot.d.ts","dist/features/construction/snapshot.js","dist/features/construction/types.d.ts","dist/features/construction/types.js","dist/index.d.ts","dist/index.js","package.json"],"retained":false}
+ℹ {"consumerChecks":"passed","compilers":[{"compilerName":"typescript","version":"7.0.2","resolution":"NodeNext"},{"compilerName":"typescript","version":"7.0.2","resolution":"Bundler"}],"retained":false,"registryOriginAuthenticatedByHarness":false}
+▶ packed runner rejects removed and successful no-op runtime links
+  ✔ positive (21441.784354ms)
+  ✔ package-copy removal (23497.763715ms)
+  ✔ package-copy no-op (30072.899319ms)
+  ✔ mixed-runtime removal (28166.718439ms)
+  ✔ mixed-runtime no-op (25224.150302ms)
+✔ packed runner rejects removed and successful no-op runtime links (128472.74676ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 128562.135222

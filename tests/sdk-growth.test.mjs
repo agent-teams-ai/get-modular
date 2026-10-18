@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { spawnSync } from "node:child_process";
-import "./qualification/sdk-growth-failure-retention.test.mts";
+import "./qualification/sdk-growth-failure-retention.test.ts";
 
 import { loadSdkGrowthModel, validateSdkGrowth } from "../architecture/checks/sdk-growth.mjs";
 

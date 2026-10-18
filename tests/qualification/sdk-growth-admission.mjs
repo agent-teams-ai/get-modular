@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
-import { retainSdkGrowthFailure } from "./sdk-growth-failure-retention.mts";
+import { retainSdkGrowthFailure } from "./sdk-growth-failure-retention.ts";
 
 const execute = promisify(execFile);
 const workspace = resolve(import.meta.dirname, "../..");

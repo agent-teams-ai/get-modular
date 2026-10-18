@@ -94,6 +94,8 @@
     "codegen",
     "contravariantly",
     "forgeable",
-    "subpaths"
+    "subpaths",
+    "jobid",
+    "runneradmin"
   ]
 }
