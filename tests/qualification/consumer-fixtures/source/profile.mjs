@@ -1,0 +1,68 @@
+// TEST declarations and handwritten required-file inventory. Observed facts
+// always come from disk and the public source producer, never these lists.
+export const sourceProfile = {
+  authority: {
+    adopted: { id: "agent-teams.feature-module-standard", version: "v1",
+      gitBlob: "d0bfff2033faf544fe65268c1dcdfd524d093015",
+      digest: "sha256:851653f96643cf0466b67ab22963661976b00de44840fa3144a48a8c054f95fa" },
+    researchKernel: { id: "agent-teams.feature-module-standard", version: "v1.1",
+      digest: "sha256:cfa088ef7396139554fe5e3bcc839271b23299c6b60c569a3a7f1cd7c9f0bc6c" },
+    compositionContracts: { gitBlob: "bd949a9a670862fea851a7791fce772fdef3b4fc" },
+  },
+  roots: ["src"],
+  externalSpecifiers: [
+    "@get-modular/assembly", "@get-modular/core", "@get-modular/resources",
+    "node:fs/promises", "node:os", "node:path",
+  ],
+  referenceKinds: ["static", "static-type"],
+  requiredFiles: [
+    "src/composition/semantic.root.ts",
+    "src/features/runner/adapters/outbound/test-resource.ts",
+    "src/features/runner/application/ports/effects.ts",
+    "src/features/runner/application/ports/release-journal.ts",
+    "src/features/runner/application/use-cases/run-job.ts",
+    "src/features/runner/composition/runner-a.declaration.ts",
+    "src/features/runner/composition/runner-a.module.ts",
+    "src/features/runner/composition/runner.contracts.ts",
+    "src/features/runner/composition/runner.group.ts",
+    "src/features/session/application/ports/identity.ts",
+    "src/features/session/application/ports/journal.ts",
+    "src/features/session/application/ports/runner.ts",
+    "src/features/session/application/use-cases/run-job.ts",
+    "src/features/session/composition/identity.declaration.ts",
+    "src/features/session/composition/journal.declaration.ts",
+    "src/features/session/composition/session.contracts.ts",
+    "src/features/session/composition/session.declaration.ts",
+    "src/features/session/composition/session.group.ts",
+    "src/features/session/composition/session.inputs.ts",
+    "src/features/session/composition/session.module.ts",
+    "src/features/session/contracts/session.ts",
+  ],
+  features: {
+    featuresRoots: ["src/features"],
+    featureRoots: ["src/features/runner", "src/features/session"],
+    roleRoots: [
+      { root: "src/features/runner/adapters", role: "adapters" },
+      { root: "src/features/runner/application", role: "application" },
+      { root: "src/features/runner/composition", role: "composition" },
+      { root: "src/features/session/application", role: "application" },
+      { root: "src/features/session/composition", role: "composition" },
+      { root: "src/features/session/contracts", role: "contracts" },
+    ],
+    surfaces: {
+      public: ["src/features/session/contracts/session.ts"],
+      compositionContract: [
+        "src/features/runner/composition/runner.contracts.ts",
+        "src/features/session/composition/session.contracts.ts",
+      ],
+      compositionSurface: [
+        "src/features/runner/composition/runner.group.ts",
+        "src/features/session/composition/session.group.ts",
+        "src/features/session/composition/session.inputs.ts",
+        "src/features/session/composition/session.module.ts",
+      ],
+    },
+    moduleComposition: ["src/composition/semantic.root.ts"],
+    useEdges: [{ from: "runner", to: "session" }],
+  },
+};

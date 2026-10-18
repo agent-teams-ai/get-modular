@@ -1,0 +1,104 @@
+import assert from "node:assert/strict";
+import { lstat, readdir } from "node:fs/promises";
+import { join } from "node:path";
+import { sourceProfile } from "./profile.mjs";
+
+const compare = (left, right) => left < right ? -1 : left > right ? 1 : 0;
+const useCase = path => path.includes("/application/use-cases/");
+
+// An independent directory census, not an import/export reader. Symlinks and
+// unsupported files cannot silently shrink the fixture's selected inventory.
+export async function sourceInventory(directory, roots) {
+  const files = [];
+  const emptyDirectories = [];
+  async function visit(relative) {
+    const entries = await readdir(join(directory, relative), { withFileTypes: true });
+    if (entries.length === 0) emptyDirectories.push(relative);
+    for (const entry of entries) {
+      const path = `${relative}/${entry.name}`;
+      assert.ok(!entry.isSymbolicLink(), `fixture.source.symlink: ${path}`);
+      if (entry.isDirectory()) await visit(path);
+      else {
+        assert.ok(entry.isFile(), `fixture.source.non-file: ${path}`);
+        files.push(path);
+      }
+    }
+  }
+  for (const root of roots) {
+    assert.ok((await lstat(join(directory, root))).isDirectory(), `fixture.source.non-directory: ${root}`);
+    await visit(root);
+  }
+  return { files: files.sort(compare), emptyDirectories: emptyDirectories.sort(compare) };
+}
+
+function exportProblems(graph, add) {
+  if (JSON.stringify(graph.runtimeExports.map(({ path }) => path)) !== JSON.stringify(graph.files)) {
+    add("export-inventory-mismatch", "src");
+  }
+  for (const item of graph.runtimeExports) {
+    if (useCase(item.path) && item.status !== "complete") add("use-case-exports-incomplete", item.path, item);
+    // Non-use-case factory values need no count. Aliased/re-exported bindings
+    // remain outside this deliberately static flat recipe instead of disappearing.
+    for (const unsupported of item.unsupported) {
+      if (["binding", "reexport", "module-format"].includes(unsupported.kind)) {
+        add("unsupported-export-form", item.path, unsupported);
+      }
+    }
+  }
+}
+
+function factProblems(graph, inventory, profile) {
+  const problems = [];
+  const add = (code, path, details) => problems.push({ code: `fixture.source.${code}`, path, details });
+  if (JSON.stringify(graph.files) !== JSON.stringify(inventory.files)) add("inventory-mismatch", "src", graph.files);
+  for (const path of profile.requiredFiles) {
+    if (!inventory.files.includes(path)) add("missing-required-file", path);
+  }
+  for (const path of inventory.files) {
+    if (!path.endsWith(".ts")) add("unsupported-file", path);
+  }
+  exportProblems(graph, add);
+  for (const path of graph.parseFailures) add("parse-failure", path);
+  for (const item of graph.unresolved) add("unresolved-reference", item.from, item);
+  for (const item of graph.unresolvedRuntimeReferences) add("unresolved-runtime-reference", item.from, item);
+  for (const item of graph.external) {
+    if (!profile.externalSpecifiers.includes(item.specifier)) add("unsupported-external", item.from, item);
+  }
+  for (const item of [...graph.edges, ...graph.external]) {
+    if (!profile.referenceKinds.includes(item.kind)) add("unsupported-reference-kind", item.from, item);
+  }
+  return problems;
+}
+
+/** Receives only public producer/kernel functions; it contains no architecture rule engine. */
+export async function checkFlatSource(directory, tools, profile = sourceProfile) {
+  assert.deepEqual(tools.standard, profile.authority.researchKernel, "fixture.source.kernel-identity");
+  const graph = await tools.observeSourceGraph({ consumerRoot: directory, roots: profile.roots });
+  const inventory = await sourceInventory(directory, profile.roots);
+  const problems = factProblems(graph, inventory, profile);
+  const facts = { graph, inventory, problems };
+  if (problems.length > 0) return { outcome: "rejected", factCoverage: "incomplete", ...facts };
+  const fms = tools.checkFeatureModule({
+    ...profile.features,
+    files: inventory.files,
+    emptyDirectories: inventory.emptyDirectories,
+    imports: graph.edges.map(({ from, to, mode, line }) => ({ from, to, mode, line })),
+  });
+  const records = {
+    files: inventory.files,
+    imports: graph.edges.map(({ from, to, mode }) => ({ from, to, mode: mode === "type-only" ? "type" : "value" })),
+    useCaseExports: Object.fromEntries(graph.runtimeExports.filter(({ path }) => useCase(path))
+      .map(({ path, exports }) => [path, exports.map(({ name, kind }) => ({ name, kind }))])),
+  };
+  let cms;
+  try {
+    cms = { outcome: "passed", report: tools.checkModuleLayout(records) };
+  } catch (error) {
+    if (error.code !== "conformance.layout.violation") throw error;
+    cms = { outcome: "rejected", code: error.code, report: error.details };
+  }
+  return {
+    outcome: fms.ok && cms.outcome === "passed" ? "passed" : "rejected",
+    factCoverage: "complete", ...facts, fms, cms,
+  };
+}
