@@ -42,7 +42,7 @@ export async function measureGrowth({ size, retain = true, incremental = size !=
   const child = spawn(process.execPath, [join(ownDirectory, "worker.mjs"), String(size), directory,
     incremental ? "measurement" : "correctness"], {
     detached: process.platform !== "win32", stdio: ["ignore", stdout.fd, stderr.fd, "ipc"],
-    env: { ...process.env, NODE_PATH: "", NODE_OPTIONS: "" },
+    env: { ...process.env, NODE_PATH: "", NODE_OPTIONS: "", NODE_TEST_CONTEXT: undefined },
   });
   const expire = (scope, stage, capMs, began) => {
     if (expired) { return; }
@@ -81,28 +81,37 @@ export async function measureGrowth({ size, retain = true, incremental = size !=
   const timer = setTimeout(() => expire("aggregate", activeStage?.stage, aggregateMs, started),
     Math.max(1, aggregateMs - (performance.now() - started)));
   let completion;
+  let workerError;
   try {
-    completion = await new Promise((resolve, reject) => {
-      child.once("error", reject);
+    completion = await new Promise(resolve => {
+      child.once("error", error => {
+        workerError = { name: error.name, code: error.code ?? null, message: error.message };
+        termination ??= terminateFamily(child);
+      });
       child.once("close", (code, signal) => resolve({ code, signal }));
     });
   } finally {
     clearTimeout(timer);
     clearTimeout(stageTimer);
     // Once exit is observed, its numeric PID is no longer authority for another tree kill.
-    const cleanup = child.exitCode === null && child.signalCode === null
-      ? terminateFamily(child) : { method: "observed-worker-exit", treeKillAfterExit: false };
+    const cleanup = child.pid === undefined ? { method: "worker-not-started" }
+      : child.exitCode === null && child.signalCode === null
+        ? terminateFamily(child) : { method: "observed-worker-exit", treeKillAfterExit: false };
     termination ??= cleanup;
     await stdout.close();
     await stderr.close();
   }
   const supervision = { aggregateMs, stageCapsMs, wallMs: performance.now() - started, expired,
-    deadline, protocolFailure, termination, observedStages, ...completion };
+    deadline, protocolFailure, workerError, termination, observedStages, ...completion };
   await writeFile(join(directory, "supervision.json"), `${JSON.stringify(supervision, null, 2)}\n`);
   let report;
   try { report = JSON.parse(await readFile(join(directory, "report.json"), "utf8")); }
   catch { report = { status: "failed", failure: { message: "worker did not finish a report" } }; }
   report.supervision = supervision;
+  if (workerError) {
+    report.status = "failed";
+    report.failure = workerError;
+  }
   if (expired || protocolFailure || activeStage !== undefined) {
     report.status = "failed";
     report.failure = { message: expired ? `${deadline.scope} deadline reached${deadline.stage ? ` during ${deadline.stage}` : ""}`
@@ -114,7 +123,7 @@ export async function measureGrowth({ size, retain = true, incremental = size !=
     }
   }
   await writeFile(join(directory, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
-  if (expired || protocolFailure || completion.code !== 0 || report.status !== "passed") {
+  if (expired || protocolFailure || workerError || completion.code !== 0 || report.status !== "passed") {
     throw new Error(`fixture.growth.failed: retained ${directory}; ${report.failure?.message ?? "aggregate watchdog or worker exit"}`);
   }
   if (!retain) { await rm(directory, { recursive: true, force: true }); }

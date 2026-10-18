@@ -60,7 +60,7 @@ async function invoke(stage, args, cap, setup = false) {
     // Only the parent enforces deadlines: killing a Windows wrapper here would orphan its native child.
     // File-backed logs survive a parent kill and cannot trigger spawnSync's maxBuffer wrapper termination.
     result = spawnSync(process.execPath, args, { cwd: directory, stdio: ["ignore", stdout.fd, stderr.fd],
-      env: { ...process.env, NODE_PATH: "", NODE_OPTIONS: "" } });
+      env: { ...process.env, NODE_PATH: "", NODE_OPTIONS: "", NODE_TEST_CONTEXT: undefined } });
     wallMs = performance.now() - started;
     await exchangeStage("stage-end", "stage-ended", stage);
   } finally {

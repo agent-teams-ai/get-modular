@@ -29,7 +29,7 @@ It retains one disposable subject and its report/logs. N=8 selects G-01 only.
 N=100, 500 and 1000 select G-02 plus these G-03 stages, once each:
 
 1. Cold real emit from empty output and subject-specific build information.
-2. Baseline independent pins, both seed checksums and one complete ordinary smoke.
+2. Baseline independent pins, exact values for both seeds and one complete ordinary smoke.
 3. Unchanged incremental emit, checking identical source and output identities.
 4. Fixed leaf-body edit, emit and lightweight two-seed result/pin verification.
 5. Restore baseline source and rewarm; this compiler invocation is labeled setup.
@@ -39,7 +39,7 @@ N=100, 500 and 1000 select G-02 plus these G-03 stages, once each:
 the independently expected root increases by one modulo 1,000,003. The shared
 patch renames f003's public `read` to `readValue`, advances its descriptor to
 revision 2, updates its provider and adapts f004/f006/f007 module mappings.
-Application ports/use cases remain unchanged and both checksums stay equal to
+Application ports/use cases remain unchanged and results for both seeds stay equal to
 baseline. No casts bridge the change. Each patch retains exact before/after
 source and hashes in the report. Full smoke is not repeated for edit stages.
 
