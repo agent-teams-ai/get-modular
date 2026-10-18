@@ -1,11 +1,54 @@
 # Changelog
 
+## 0.6.0
+
+### Minor Changes
+
+- ae7a4d1: Require TypeScript 7.0.2 or newer for declaration consumers and current package
+  qualification (ADR-0038). Current native compiler readers and codemods retain
+  their semantic checks and original fixtures. Distinct minimum/current compilers
+  are checked once in each required resolution mode with `skipLibCheck: false`.
+
+  Core and Assembly remain an exact version pair. This is a consumer support
+  change; it adds no runtime API behavior.
+
+  Authoring surface changed: yes
+
+  ## Migration (0.5 -> 0.6): Core and Assembly
+
+  - Better: one explicit supported compiler floor across packages and examples.
+  - Codemod: none - compiler installation is owned by the consumer's toolchain.
+  - By hand: update the consumer's exact TypeScript pin to 7.0.2 or newer and use
+    Core and Assembly 0.6 together; keep their versions paired.
+  - Check: compile the consumer's actual NodeNext and Bundler projects with
+    `skipLibCheck: false` and run its existing composition and ownership tests.
+
+  ## Migration (0.1 -> 0.2): resources
+
+  - Better: the same explicit compiler floor as the composition packages.
+  - Codemod: none - compiler installation belongs to the consumer toolchain.
+  - By hand: pin TypeScript 7.0.2 or newer and resources 0.2; install observation
+    0.1 alongside it when adopting subscriptions. The initial observation minor
+    declares the matching resources peer range.
+  - Check: typecheck the consumer with `skipLibCheck: false`, then run its
+    composition smoke tests and scope ownership tests.
+
+  ## Migration (0.3 -> 0.4): conformance
+
+  - Better: qualification uses the same supported compiler floor as the tested
+    contracts and composition packages.
+  - Codemod: none - compiler installation belongs to the consumer toolchain.
+  - By hand: pin TypeScript 7.0.2 or newer and conformance 0.4 with Core/Assembly
+    0.6 and resources 0.2. Existing contract and wiring calls keep their shape.
+  - Check: typecheck the consumer with `skipLibCheck: false`, then run its
+    contract, wiring and composition smoke tests.
+
 ## 0.5.0
 
 ### Minor Changes
 
 - 2f33631: Align Core with Assembly 0.5.0 under the exact-pair rule (ADR-0027, ADR-0036). No API or behavior change.
-  
+
   Authoring surface changed: no
 
 ## 0.4.0
@@ -13,13 +56,13 @@
 ### Minor Changes
 
 - Align Core with Assembly 0.4.0 under the exact-pair rule (ADR-0027, ADR-0035). No API or behavior change.
-  
+
   Authoring surface changed: no
 
 ### Patch Changes
 
 - Internal hardening carried from the Node 26 qualification (#149): the composition-semantics graph and selected-graph checks compare their `Uint8Array` marks explicitly with 1, and the owned raw scanner returns an invalid token when asked to read past the input. Observable behavior, declarations and the public API are unchanged.
-  
+
   Authoring surface changed: no
 
 ## 0.3.0
@@ -27,7 +70,7 @@
 ### Minor Changes
 
 - fcb3a32: Align Core with Assembly 0.3.0 under the exact-pair rule (ADR-0027, ADR-0031). No API or behavior change.
-  
+
   Authoring surface changed: no
 
 ## 0.2.0
