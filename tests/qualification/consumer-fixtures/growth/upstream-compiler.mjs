@@ -122,6 +122,7 @@ async function buildCandidate(directory) {
   }
   const observation = { capMs: buildCapMs, wallMs: performance.now() - started, expired, error, ...result };
   await save(join(directory, "build-supervision.json"), observation);
+  console.log(JSON.stringify({ event: "fixture.growth.build-ended", ...observation }));
   assert.ok(!expired && error === undefined && result.code === 0, "fixture.growth.candidate-build-failed");
 }
 
@@ -143,6 +144,7 @@ async function experiment(directory) {
   await mkdir(directory, { recursive: false });
   const host = await hostIdentity();
   await save(join(directory, "host-before.json"), host);
+  console.log(JSON.stringify({ event: "fixture.growth.host-before", ...host }));
   const finiteCgroup = /^\d+$/u.test(host.cgroup["memory.max"]) ? Number(host.cgroup["memory.max"]) : Infinity;
   assert.ok(Math.min(host.totalMemoryBytes, finiteCgroup) > 8 * 1024 ** 3, "fixture.growth.larger-disposable-host-required");
   const result = { status: "running", claim: "unreleased candidate diagnostic only; no supported-pin adoption or conformance promotion",
@@ -153,6 +155,7 @@ async function experiment(directory) {
     await buildCandidate(directory);
     const compilerCandidate = join(directory, "candidate.json");
     result.compiler = await readUpstreamCandidate(compilerCandidate);
+    console.log(JSON.stringify({ event: "fixture.growth.verified-candidate", ...result.compiler }));
     const { measureGrowth } = await import("./run.mjs");
     const measured = await measureGrowth({ size: 1000, compilerCandidate, directoryParent: directory });
     result.status = measured.status;
