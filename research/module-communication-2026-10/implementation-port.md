@@ -10,11 +10,11 @@ independently verified. Merge and release eligibility remain blocked as describe
 
 | Subject | Identity |
 | --- | --- |
-| Current main integrated into the implementation | `ccd815eac780b603a4cb6d01d07c995348c7b0f5`, including merged PR #183 |
+| Current main integrated into the implementation | `47a02a90a06f121c78086c7c5f72b085c42ee7ea`, including merged PR #183 and fresh author qualification |
 | Reviewed plan predecessor | PR #185, `a0c08187845019680d9a2bc764f4010c8cc52b1a` |
 | Exact ADR-0034 predecessor merged into this branch | PR #154, `945e9a151a516ce4ce6e73b6e18893d4e5b27cfe` |
-| Implementation source used for final package qualification | `0cfa39e`, branch `feat/observation-0-1-e2e` |
-| Unpublished prepared release | `b2815314182221baac6b08750f86ef2644d2cdb8`, branch `release/observation-0-1-candidate` |
+| Current implementation | `3c4a3d96e8c71a23331297b1964ba9418c569183`, branch `feat/observation-0-1-e2e`; final package inputs from `737d842` |
+| Unpublished prepared release | `d345e14970eca4ed1c69831d2a59f4754da0b0e9`, branch `release/observation-0-1-candidate` |
 | External consumer | `agent-teams-ai/modularity-host-test`, `observation-0.1.0/`, branch `test/observation-0.1.0` |
 | Compiler policy successor | [ADR-0038](../../docs/decisions/0038-require-typescript-7-for-current-package-qualification.md) |
 
@@ -26,10 +26,14 @@ condition or authorize a merge. Old accepted decisions and their existing
 registry entries were preserved; ADR-0038 was created through Docs Protocol and
 appended through the supported decision-baseline promotion command.
 
-Only TypeScript 7.0.2 or newer was executed for this delivery. The supported
-minimum and current aliases both resolve to 7.0.2, so each distinct compiler
-runs once per NodeNext and Bundler observation with `skipLibCheck: false`.
-The installed Foundation extraction dependency still uses 5.9.3; see
+Repository-owned compiler and parser paths use TypeScript 7.0.2. The minimum
+and current aliases both resolve to 7.0.2, so each distinct compiler runs once
+per NodeNext and Bundler observation with `skipLibCheck: false`. The follow-up
+review corrected the earlier claim that this entire delivery executed only TS7:
+prior Foundation CLI runs eagerly initialized its transitive 5.9.3 compiler and
+scanners, even for non-extractor commands. Their result logs remain historical
+observations, not compiler-floor qualification. All identified current launch
+boundaries now block before that initialization; see
 [the source investigation and upstream owner route](typescript-toolchain-blocker.md).
 
 ## Implemented behavior
@@ -93,7 +97,7 @@ No governed root was removed and no production dependency allowance was added.
 
 ## Independent implementation reviews
 
-All three reviewers used **Astra xhigh**, read the owner vision, organization
+The initial three reviewers used **Astra xhigh**, read the owner vision, organization
 standard, full plan and all prior plan-review dispositions, and authored none
 of the implementation they reviewed. Authors fixed the findings; the reviewers
 then checked the original counterexamples against the fixes.
@@ -113,7 +117,41 @@ ordering, package test dependency cycles, and an unnecessary double assertion
 through `unknown`. The last change preserves emitted public declarations and
 executable JavaScript; no assertion bridge admission or suppression was added.
 
-## Executed checks
+## Additional GPT-6.1 xhigh review and current qualification
+
+The owner requested a further review while authenticating GitHub. Three new
+independent reviewers used **GPT-6.1 xhigh** with the same complete vision,
+contracts, plan, earlier findings and current evidence. Two material findings
+were corrected and independently checked again:
+
+| Area | Finding and correction | Closure |
+| --- | --- | --- |
+| Loader return inspection | An ordinary Promise with a `constructor` getter was inspected inside `Promise.resolve`, then again by `await` outside the run context. A write on the second read bypassed echo detection. `737d842` enters the direct await, error handling, token closure and publication inside the same context. | Original counterexample and first-read/no-write controls pass on Node 24/26 with and without ALS. The getter runs once. All 45 guard tests and 31 load tests pass per Node; P17/R7 publication timing and R17/R23 drain/currentness stay intact. Both fallback environment modes and all three GC modes pass per Node, with zero retained payloads and 200 retained controls. |
+| Foundation launch boundaries | Foundation eagerly loads the old compiler before dispatch. `3c4a3d9` extends the JSON-only preflight to all current CLI/Node runner and affected SDK import boundaries, including direct fixtures and separately installed registry subjects. | All ten changed scripts retain their exact old suffix. The author passed 70 guard/CI/profile tests per Node; the independent reviewer passed 21 inert controls per Node and checked every changed boundary. Actual root changed/full/critical/registry commands exit 1 with the explicit compiler-floor block. |
+| Declarations and native tooling | No additional material defect found in future snapshot distribution, dynamic keys, writer variance, native closed filesystem readers or codemods. | Fresh Node 26 / TS7 controls retain 92 independently attributed negatives per resolver. Isolated native visibility and Unicode/BOM/comment codemod controls pass. |
+
+After the runtime correction, the complete `pnpm observation:check` passed on
+Node 26.11.1: native build, both declaration resolutions, **157 actual tests**,
+all **18 attributed mutation controls**, all **33 writer outcomes**, and installed
+packed qualification. No observation test was skipped. The run began on the
+three-file correction before it was committed as `737d842`; the package bytes
+are identical in `3c4a3d9`. Subsequent main/tooling integration changed no package
+input. The independent Node 24 follow-up is the affected runtime/process scope
+listed above, plus the new exact-archive E2E below; it is not a claim that the
+whole root aggregate ran on Node 24.
+
+All five archives were regenerated from prepared candidate `d345e149`. Four
+archive hashes stayed identical; observation changed to
+`c48ac24d89c259bcf13088f5aa220bf3a1f8572e62a47c0928377759d4bb683a`.
+The corrected candidate replaces the earlier `b281531` candidate for delivery.
+Its new consumer source is `dbb708e97a9cb20afe959d06dd85460fa0bf1349`.
+The old `accepted-972dc2b` record remains historical and unchanged.
+
+## Initial executed checks
+
+These retained rows describe the initial qualification subjects. The current
+package and additional review results are recorded immediately above. Historical
+Foundation CLI successes include the eager-initialization limitation below.
 
 Command logs and their SHA-256 identities are retained in
 [implementation-evidence/manifest.json](implementation-evidence/manifest.json).
@@ -136,16 +174,17 @@ not substitutes for the blocked complete repository aggregate.
 | CMS/guide examples | Nine example suites pass; actual pinned CMS lint snippet rejects forbidden production/testing-entry imports and accepts test-file controls. Thirteen package README blocks compile in both resolutions. |
 | Admission/governance/ownership test selection | 106 passed; one pre-existing C0 operator-plan-input skip in this source clone. Frozen authority controls remain active. |
 | Source admission and FMS profile | `governance:check` and `architecture:feature-module-profile` pass. |
-| Seven individual Foundation capabilities | Source dependencies, local references, architecture decisions, agent workflow, dependency declarations, source coverage and suppression governance each pass with selected coverage. |
-| Complete typed quality | `pnpm lint:typed` passes with zero diagnostics and no bridge admission. |
-| Required quality execution | All 11 required identities completed; the contract has no exceptions. |
+| Seven individual Foundation capabilities | Historical selected passes for source dependencies, local references, architecture decisions, agent workflow, dependency declarations, source coverage and suppression governance. Each CLI also initialized TS5.9.3; these are not current compiler-floor qualification. |
+| Complete typed quality | Historical zero-diagnostic pass with no bridge admission; that CLI also initialized TS5.9.3. The guarded current command is blocked. |
+| Required quality execution | Historical completion of all 11 identities with no contract exceptions; that runner also initialized TS5.9.3. The current command is blocked. |
 | Toolchain and lock | Runtime preflight, strict peer lock check, TS7 runtime-policy typecheck and runtime-policy test pass. |
 | Documentation | Docs Protocol, complete Markdown lint and spelling checks pass; final handoff update is checked again before push. |
 
 ## Compiler guard and publication access
 
-A final tooling-only correction, `ea9ac84`, prevents an automatic PR workflow
-from launching the known below-floor extractor. The guard reads JSON manifests
+The initial tooling-only correction, `ea9ac84`, blocked the known extraction
+commands. The additional `3c4a3d9` correction also blocks eager initialization
+through every identified current Foundation launch boundary. The guard reads JSON manifests
 through each dependency owner's real resolution path, including Foundation's
 API Extractor and that extractor's compiler. It loads no compiler implementation.
 The three aggregate/admission commands retain their original obligations after
@@ -163,15 +202,12 @@ extraction. Both read-only public API policy tests pass; its two typed CLI tests
 remain explicitly blocked. This is the required red outcome until upstream
 compatibility exists, not a skipped or successful gate. No packed input changed.
 
-The final Git publication attempt is blocked by environment access. Both
-repository pushes fail because Git has no HTTPS credentials. Automatic approval
-review rejected creating the external branch from `main`: it requires the exact
-completed commit to be available remotely first. Read-only ref inspection confirms
-that both new branches are absent, and GitHub cannot find external commit
-`c2872eb9b89fbde8cc162e152c2cab5f813237cd`. No empty replacement branch was created.
-The completed commits, candidate and evidence are retained locally; no new
-implementation or TEST PR URL exists yet. An authenticated push of the exact
-branches is the remaining publication action, followed by draft PR creation.
+The earlier Git pushes failed because HTTPS credentials were unavailable;
+automatic approval also rejected an empty replacement branch. The owner has now
+completed the official GitHub CLI device flow. Read-only API checks confirm push
+access to both repositories. The complete qualified commits can now be pushed
+and reviewed through draft PRs. This resolves the access blocker; it does not
+resolve the compiler, predecessor admission or release gates.
 
 ## Maintained CMS and consumer adoption
 
@@ -205,7 +241,7 @@ identity are checked before the consumer runs.
 | Assembly | 0.6.0 | `ac96072e21d7a6a4264685c25e8c5ee487cbe0302ede58ec384d34ad4ddf8f63` |
 | Resources | 0.2.0 | `d9f6363d9c848be90c15e5d20acf07226e3b29ed55ae8af3d6ee0274e5a123d5` |
 | Conformance | 0.4.0 | `9b0b7c3bd1f64ebed48ddf6ac51782aab0cf70d72a1fb9fac99b591b3ade888b` |
-| Observation | 0.1.0 | `3a3f235336fdeecf6a54b99c3585afd3440dd0f9cab03d99af043f38bf433597` |
+| Observation | 0.1.0 | `c48ac24d89c259bcf13088f5aa220bf3a1f8572e62a47c0928377759d4bb683a` |
 
 Assembly depends on exact Core 0.6.0. Conformance peers are Core/Assembly
 `^0.6.0` and resources `^0.2.0`; observation has only resources `^0.2.0`.
@@ -214,9 +250,9 @@ has the separately enforced 24.21.0 minimum. No package was published.
 
 ## Exact-archive external E2E result
 
-The executed consumer commit is `972dc2b9dfe9470a5e34ed4f28d75ecfc0fbec73`.
-An evidence-only successor retains the complete record under
-`observation-0.1.0/evidence/accepted-972dc2b/` in the external repository.
+The executed consumer commit is `dbb708e97a9cb20afe959d06dd85460fa0bf1349`.
+Evidence-only commit `3ec107c5b16fd849ccf4c6e90ad80823fb469e02` retains the complete record under
+`observation-0.1.0/evidence/accepted-dbb708e/` in the external repository.
 The five archives did not change during qualification.
 
 - Offline engine/peer-checked installation and offline frozen-lockfile
@@ -241,7 +277,10 @@ initially assumed every abort result was `cancelled`; the existing conformance
 contract also admits `failed` carrying cancellation metadata during async setup.
 The corrected oracle pins every injection target, preserves strict fail rows
 and complete-close checks, and accepts exactly the supported abort carriers.
-Production packages and their archives required no E2E correction.
+Those first-run fixture corrections required no package change. The later
+Promise finding did require a new observation archive; the complete external
+E2E above was rerun on that exact corrected candidate without changing the
+consumer executable or its semantic oracles.
 
 ## Remaining gates
 

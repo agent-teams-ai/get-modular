@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { cp, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,7 +10,7 @@ const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const fixtureNames = ["types.ts", "types-structural.ts", "types-traps.ts", "types-runtime-only.ts",
   "types-loose-optional.ts", "types-testing.ts"];
 
-async function project(directory) {
+async function project(directory: string): Promise<string> {
   const modules = join(directory, "node_modules/@get-modular");
   const installed = join(modules, "observation");
   await mkdir(installed, { recursive: true });
@@ -35,15 +35,15 @@ async function project(directory) {
   return join(installed, "dist/features/store/types.d.ts");
 }
 
-async function checkDirectives(directory, compiler, resolution) {
+async function checkDirectives(directory: string, compiler: { readonly path: string }, resolution: string): Promise<number> {
   const files = [...fixtureNames, "assembly-contracts-types.ts", "assembly-implement-types.ts"];
-  const expected = [];
+  const expected: { readonly file: string; readonly line: number; readonly label: string }[] = [];
   for (const file of files) {
     const lines = (await readFile(join(directory, file), "utf8")).split("\n");
     lines.forEach((line, index) => {
       const match = /^(\s*)\/\/ @ts-expect-error\s*(.*)$/u.exec(line);
       if (match) {
-        expected.push({ file, line: index + 2, label: match[2] });
+        expected.push({ file, line: index + 2, label: match[2] ?? "" });
         lines[index] = `${match[1]}// expected error: ${match[2]}`;
       }
     });
@@ -64,13 +64,14 @@ async function checkDirectives(directory, compiler, resolution) {
   return expected.length;
 }
 
-function replaceOnce(source, find, replace) {
+function replaceOnce(source: string, find: string, replace: string): string {
   assert.equal(source.split(find).length - 1, 1, `control anchor: ${find}`);
   return source.replace(find, replace);
 }
 
 test("T24 T25 T49 T103 T117 emitted declarations retain exact negative attribution and variance controls", { timeout: 240_000 }, async context => {
-  const temporary = await mkdtemp(join(tmpdir(), "observation-types-"));
+  // Windows TEMP may use an 8.3 alias; the native compiler reports its canonical path.
+  const temporary = await realpath(await mkdtemp(join(tmpdir(), "observation-types-")));
   try {
     for (const compiler of await supportedCompilers()) {
       for (const resolution of resolutions) {

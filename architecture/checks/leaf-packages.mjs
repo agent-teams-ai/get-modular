@@ -148,11 +148,11 @@ export const LEAF_PACKAGES = Object.freeze([
       "observation:typecheck":
         "node node_modules/typescript/bin/tsc -p packages/observation/tsconfig.json --noEmit"
         + " && node architecture/tooling/test-assembly-types.mjs --projects packages/observation/tsconfig.types.json"
-        + " packages/observation/tsconfig.types.bundler.json",
+        + " packages/observation/tsconfig.types.bundler.json packages/observation/tsconfig.test-tooling.json",
       "observation:test": "node --test packages/observation/tests/store.test.mjs packages/observation/tests/subscriptions.test.mjs"
         + " packages/observation/tests/load.test.mjs packages/observation/tests/guards.test.mjs"
         + " packages/observation/tests/testing-entry.test.mjs packages/observation/tests/processes.test.mjs"
-        + " packages/observation/tests/type-controls.test.mjs tests/observation/assembly-integration.test.mjs"
+        + " packages/observation/tests/type-controls.test.mts tests/observation/assembly-integration.test.mjs"
         + " tests/observation/readme-examples.test.mjs",
       "observation:evidence":
         "node --test packages/observation/tests/mutations.test.mjs packages/observation/tests/writer-gate.test.mjs",
