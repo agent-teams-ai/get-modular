@@ -37,6 +37,11 @@ with observation.keys.unknown. FixedKeys rejects every index signature: string, 
 (`k${number}`), also next to literal keys. Interfaces with literal keys pass.
 Evidence: MEASURED, probes/p9-traps.b.ts (TS2344 for Record<string,...>, `session-${number}`, a literal key plus an
 index signature) and type-tests ("optional keys are not allowed"), both compilers.
+Post-archive correction (2026-10-17): the original check tested the whole key union at once. A required literal key
+therefore hid an open template-pattern index signature beside it. FixedKeys now checks each member of keyof V and
+rejects any open member, while retaining the existing rejection of an empty key set. The expanded p9 probe rejects
+five mixed open-key forms on both compilers; finite literal and template-union records still compile. The original
+public types accept all five rejected forms. See ../corrections-2026-10-17/ for the before/after evidence.
 Message (N8): the constraint names the reason, "a store record needs literal keys, not an index signature", instead of
 "does not satisfy the constraint 'never'" (MEASURED, both compilers).
 Rejected: a runtime schema; NoInfer tricks.
@@ -180,7 +185,7 @@ cleanup or drain; a load also opens a child scope load:<name> for its drain. If 
 signal.throwIfAborted() (F10): resources.scope.closed when the scope is closing, or the Host's own reason when the
 constructing run was cancelled. No observation-specific code; the module lets the factory fail.
 Evidence: MEASURED, runtime-b R1, R8 (both cases, the second through scoped() from origin/main).
-Layer (F12): watch and load are called in composition or adapter code; domain and application code never see
+Layer (F12, clarified by the implementation brief): watch and load are called in the module's composition file; domain and application code never see
 Resources (CMS rule 11). CMS rule 5 must change in the same delivery: see CMS-RULE5-DRAFT.txt.
 Precedent: addEventListener(type, listener, { signal }); AbortSignal.throwIfAborted (web platform, KNOWLEDGE);
 Angular DestroyRef, VS Code Disposable, .NET IOptionsMonitor.OnChange (ARCHIVE).
@@ -241,10 +246,20 @@ created, so a timer, server or connection created inside a handler inherited it 
 the unbounded version: a heartbeat started by the owner from a command crashed the process with a false echo; 69 of 70
 admin requests to a server restarted by a handler failed; independent requests accumulated depth until the cascade
 guard broke a derived store after 32 requests. Now a context counts only while it is live: a handler's context until
-the end of its delivery task, a loader's context while its run is active. One live flag per flush task; it is closed
+the end of its delivery task, a loader's context until its returned Promise settles. One live flag per delivery task; it is closed
 by a second immediate queued right behind the flush when the flush is scheduled, so it closes after the flush's
 microtask checkpoint and before any timer or I/O callback of the next loop iteration. (An immediate queued from inside
 the flush would run only in the next iteration, after its timers and I/O.)
+Post-archive correction (2026-10-17): onResult and onError now get their own scheduled delivery task and live flag,
+separate from the loader window. The original shared flag closed before their microtasks ran, allowing repeated
+echoes and resetting cascade depth. Currentness is checked again at delivery, because a commit or close may happen
+after the Promise settled. Queued publication is counted for delivered() through its complete callback task,
+including nested microtasks. Loader drain tracks only actual loader work; a canceled queued callback cannot become
+an observation.load.still-running debt. Evidence: runtime-b/review-regressions.test.ts R16 and R17; the original engine
+fails all six callback microtask/await echo cases and the callback-to-watch cross-store cascade case.
+The existing runtime probe 17 and runtime-b R7 now also commit after publication is queued, before the callback task.
+The earlier commit-before-loader-settlement ordering alone no longer distinguished compare-last-offered once
+publication moved to a later task. Both strengthened probes reject that existing mutant; no mutation was removed.
 Echo (N3): a commit made in a live context that changes a key the origin subscription follows on the same store fails
 at once with observation.delivery.echo.
 Cascade (N2): every other commit made in a live context is one step deeper than its delivery; a delivery takes the
@@ -265,6 +280,9 @@ Evidence: MEASURED.
 - Synchronous ping-pong and a legitimate chain of 20 derived stores: probe 19. Pagination as a loop inside one loader
   passes 100 pages: probe 24.
 - Without AsyncLocalStorage (mutation no-async-context), synchronous detection remains (probes 18, 19).
+  Post-archive correction (2026-10-17): the loader invocation itself enters the synchronous context after the engine's
+  startup trampoline. The extended env-probe no-node case rejects a top-of-loader echo on the first run; the original
+  engine invokes the loader five times before the probe's safety cap.
 Not caught (known item, section 13): an echo that crosses a timer or real I/O (a command that awaits a network call
 before it writes). Such a loop runs at the speed of that I/O and does not end by itself. Environments without
 getBuiltinModule (browsers, some Jest environments) catch synchronous chains only; tests there miss what production on
@@ -281,7 +299,8 @@ throws a ReferenceError (browsers, renderers), and a fake global setImmediate in
 stall deliveries or the testing deadline. MEASURED, runtime-b/env-probe.ts: "fake-before" (a never-firing global
 setImmediate installed before import) delivers and delivered() resolves; "no-node" (no global setImmediate, no
 getBuiltinModule) imports, delivers through setTimeout, reports asyncDetection false and still catches a synchronous
-echo at the first round. With the global lookup only (mutation global-timers-only) "fake-before" hangs.
+watch echo at the first round. Its post-archive extension also checks the synchronous loader body. With the global
+lookup only (mutation global-timers-only) "fake-before" hangs.
 Supported environments: Node 24 and 26 fully (asynchronous detection, setImmediate ordering); Bun verified by the
 reviewer (getBuiltinModule and AsyncLocalStorage propagation present). Elsewhere: synchronous detection only, and no
 ordering guarantee beyond "a later task".
@@ -291,14 +310,22 @@ ordering guarantee beyond "a later task".
 ------------------------------------------------------
 @get-modular/observation/testing: liveSubscriptions(facet, resources?), delivered(options?), settled(options?),
 asyncDetection. Options: { stores?, signal?, timeoutMs? }.
-Deadline always on (M4): timeoutMs defaults to 5000 ms of real time, Infinity only when passed; a signal (for example
+Deadline configured by default (M4): timeoutMs defaults to 5000 ms of real time, Infinity only when passed; a signal (for example
 node:test t.signal) ends a wait earlier and never switches the deadline off. Both give observation.testing.timeout.
 The reviewer measured that a never-aborting t.signal and a mocked setImmediate each made the old wait hang forever.
-Captured timers (M4): the package captures setImmediate and performance.now when it loads, for deliveries and for the
-waits, so fake timers installed afterwards stall neither. MEASURED, runtime-b R14: a never-aborting signal with
+Captured timers (M4): in Node the package captures setImmediate from node:timers and performance.now from
+node:perf_hooks through process.getBuiltinModule, for deliveries and for the waits. With those builtins unmodified,
+replacement global timers or a replacement globalThis.performance object installed before or after import stall
+neither. MEASURED, runtime-b R14: a never-aborting signal with
 timeoutMs 200 gives the code; with node:test mock.timers on setImmediate, setTimeout and Date, a delivery still runs and
-settled() still reaches its deadline. Fake timers installed before the package loads are captured too; install them
-after importing it (README).
+settled() still reaches its deadline. Patching performance.now on Node's shared performance object also changes
+the builtin clock, so that mock must be installed after import. The same import order applies to other builtin
+mocks, including node:test mock.timers for node:timers. Without the builtins the package captures the available globals;
+that fallback cannot make previously faked globals real.
+Post-archive correction (2026-10-17): the original /testing captured an already-faked global performance.now and never
+expired its deadline. env-probe fake-clock-before freezes global performance.now and Date.now before import: a blocked
+load still gets observation.testing.timeout at 20 ms, before the independent 500 ms watchdog. The original engine
+reaches the watchdog instead. The preserved before/after evidence is in ../corrections-2026-10-17/.
 Why the store filter (N6): a global wait never finished while any other store committed every task (C5) or another
 module held a long-poll load open (C6). MEASURED, runtime-b R12.
 asyncDetection (M6): true where asynchronous echoes are detected; a test preset asserts it (R14).

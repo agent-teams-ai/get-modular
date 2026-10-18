@@ -13,11 +13,13 @@ type Primitive = string | number | boolean | bigint | symbol | null | undefined;
  * branded IDs such as `string & { readonly __brand: "UserId" }` survive; tuples keep their element types.
  */
 export type Frozen<T> = T extends Primitive ? T : T extends readonly unknown[] ? { readonly [I in keyof T]: Frozen<T[I]> } : { readonly [P in keyof T]: Frozen<T[P]> };
+type OpenKeys<V> = { [K in keyof V]-?: {} extends Record<K, unknown> ? K : never }[keyof V];
+type FixedKeysError = { readonly "a store record needs literal keys, not an index signature": never };
 /**
- * A record with a fixed, literal key set. Index signatures (`Record<string, X>`, `{ [id: `k${number}`]: X }`) are
- * rejected, because the store's key set is fixed at creation.
+ * A non-empty record with a fixed, literal key set. Index signatures (`Record<string, X>`, `{ [id: `k${number}`]: X }`)
+ * are rejected even beside a fixed property, because the store's key set is fixed at creation.
  */
-export type FixedKeys<V> = {} extends Record<keyof V, unknown> ? { readonly "a store record needs literal keys, not an index signature": never } : unknown;
+export type FixedKeys<V> = {} extends Record<keyof V, unknown> ? FixedKeysError : [OpenKeys<V>] extends [never] ? unknown : FixedKeysError;
 
 declare const snapshotBrand: unique symbol;
 declare const listenerErrorBrand: unique symbol;
@@ -61,7 +63,7 @@ export type LoadContext = {
 export type Subscription = {
   /**
    * Your module's scope, or a `child()` of it for work that ends earlier, such as one request. Call `watch` and
-   * `load` in composition or adapter code: domain and application code never see `Resources`.
+   * `load` in the module's composition file: domain and application code never see `Resources`.
    * If `resources.signal` is already aborted, `watch` and `load` register nothing and rethrow its reason
    * (`signal.throwIfAborted()`): `resources.scope.closed` when the scope started closing, or the Host's reason when
    * the run that constructs your module was cancelled. Do not catch it: let the factory fail.
@@ -94,8 +96,7 @@ export type LoadSpec<S, T> = Subscription & {
    * One run at a time: a change aborts the running one and only the newest change waits.
    * When the scope closes, the running load is aborted and drained: entry `load:<name>/drain` in the
    * scope. A load still running after the Host escalates becomes a failed debt `observation.load.still-running`.
-   */
-  /**
+   *
    * Do not start timers, connections or servers here: work a loader starts runs in its delivery context while the run is
    * active, so a write it makes to a key this load follows counts as an echo. Start long-lived work in the factory or in
    * the owner's `setup`.
@@ -108,8 +109,9 @@ export type LoadSpec<S, T> = Subscription & {
    */
   readonly onLoading: (snapshot: S) => undefined;
   /**
-   * The result of a run, delivered only if no commit has touched the snapshot's keys since the run's snapshot
-   * (compared with the store, not with the last run). Otherwise it is dropped. Synchronous: return nothing.
+   * The result of a run, delivered in a later delivery task only if no commit has touched the snapshot's keys since
+   * the run's snapshot (compared with the store immediately before the callback). Otherwise it is dropped.
+   * Synchronous: return nothing.
    */
   readonly onResult: (result: T, snapshot: S) => undefined;
   /** The failure of a run, under the same rule as `onResult`. A superseded or aborted run reports nothing. Synchronous. */

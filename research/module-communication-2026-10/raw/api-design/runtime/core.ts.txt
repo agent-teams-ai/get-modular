@@ -11,7 +11,8 @@
 // Delivery context: a delivery callback runs in a context { depth, origin subscription, live }. It is carried
 // synchronously, and through await and microtasks where AsyncLocalStorage exists (Node, via process.getBuiltinModule,
 // no static import). It counts only while it is live: a handler's context until the end of its delivery task (its
-// microtask checkpoint included), a loader's context while its run is active. Timers, servers and connections created
+// microtask checkpoint included), a loader's context until its returned Promise settles. Result/error publication is
+// a separate delivery task with its own live flag. Timers, servers and connections created
 // inside keep a closed context, so their later commits start at depth 0. A commit made in a live context that changes a
 // key the origin subscription follows on the same store fails with observation.delivery.echo; a commit deeper than
 // MAX_CASCADE_DEPTH fails with observation.delivery.cascade. Both are reported to the committing store's reportError and
@@ -205,6 +206,13 @@ const later = (run: () => void): void => {
   if (asyncContext === undefined) realSetImmediate(run);
   else asyncContext.exit(() => { realSetImmediate(run); });
 };
+/** Close after this task's complete microtask checkpoint, before timers or I/O in the next loop iteration. */
+const deliveryTask = (run: (live: Live) => void, complete: () => void = noop): void => {
+  const live: Live = { open: true };
+  later(() => { run(live); });
+  // Queue both immediates together: scheduling this from inside `run` would leave the context open until the next loop.
+  later(() => { live.open = false; complete(); });
+};
 
 function invalid(message: string): ObservationError {
   return new ObservationError("observation.argument.invalid", message);
@@ -336,6 +344,7 @@ export function createEngine(initial: unknown, options: EngineOptions): Engine {
   let sequence = 0;
   let closed = false;
   let flushScheduled = false;
+  let queuedPublications = 0;
   const counters = { commits: 0, visits: 0, indexLookups: 0, deliveries: 0, loaderCalls: 0, loadsActive: 0, loadsPending: 0 };
 
   const checkKeys = (keys: unknown): readonly string[] => {
@@ -395,11 +404,7 @@ export function createEngine(initial: unknown, options: EngineOptions): Engine {
     if (flushScheduled) return;
     flushScheduled = true;
     pending.flushes += 1;
-    // One live flag per flush task. The second immediate is queued right behind the flush, so it runs after the
-    // flush's microtask checkpoint and before any timer or I/O callback: the delivery context closes there.
-    const live: Live = { open: true };
-    later(() => { flush(live); });
-    later(() => { live.open = false; });
+    deliveryTask(flush);
   };
 
   const requireFunctions = (spec: object, members: readonly string[]): void => {
@@ -525,28 +530,42 @@ export function createEngine(initial: unknown, options: EngineOptions): Engine {
       if (job !== undefined) { pendingJob = undefined; counters.loadsPending -= 1; pending.loads -= 1; }
       return job;
     };
+    const publish = (job: Job, controller: AbortController, callback: () => unknown): void => {
+      if (!isCurrent(job, controller)) return;
+      queuedPublications += 1;
+      pending.flushes += 1;
+      deliveryTask((live) => {
+        // A commit or close may happen between the loader settling and this delivery task.
+        if (isCurrent(job, controller)) invoke(registration, job.revision, job.depth, live, callback);
+      }, () => {
+        queuedPublications -= 1;
+        pending.flushes -= 1;
+      });
+    };
     const start = (job: Job): void => {
       const controller = new AbortController();
       counters.loadsActive += 1;
       pending.loads += 1;
-      const runLive: Live = { open: true }; // the loader's context is live while this run is active
-      const settled = runInContext({ depth: job.depth, origin: registration, live: runLive }, async (): Promise<void> => {
+      const settled = (async (): Promise<void> => {
+        await Promise.resolve(); // `active` is assigned before user code runs
+        if (!open || controller.signal.aborted) return;
+        counters.loaderCalls += 1;
+        const runLive: Live = { open: true }; // only the loader's returned Promise owns this context window
+        let outcome: { readonly kind: "result"; readonly value: unknown } | { readonly kind: "error"; readonly cause: unknown };
         try {
-          await Promise.resolve(); // `active` is assigned before user code runs
-          if (!open || controller.signal.aborted) return;
-          counters.loaderCalls += 1;
-          let result: unknown;
-          try {
-            result = await spec.loader(job.snapshot, Object.freeze({ signal: controller.signal }));
-          } catch (cause) {
-            if (isCurrent(job, controller)) invoke(registration, job.revision, job.depth, runLive, () => spec.onError(cause, job.snapshot));
-            return;
-          }
-          if (isCurrent(job, controller)) invoke(registration, job.revision, job.depth, runLive, () => spec.onResult(result, job.snapshot));
+          // Enter at the invocation, after the startup trampoline, so the synchronous body is guarded without ALS too.
+          const value = await runInContext({ depth: job.depth, origin: registration, live: runLive },
+            () => spec.loader(job.snapshot, Object.freeze({ signal: controller.signal })));
+          outcome = { kind: "result", value };
+        } catch (cause) {
+          outcome = { kind: "error", cause };
         } finally {
           runLive.open = false;
         }
-      }).finally(() => {
+        // Publication counts as a pending delivery, not a running loader: an already-settled loader cannot owe a drain.
+        publish(job, controller, () => outcome.kind === "result"
+          ? spec.onResult(outcome.value, job.snapshot) : spec.onError(outcome.cause, job.snapshot));
+      })().finally(() => {
         counters.loadsActive -= 1;
         pending.loads -= 1;
         active = undefined;
@@ -717,7 +736,7 @@ export function createEngine(initial: unknown, options: EngineOptions): Engine {
   const info: EngineInfo = {
     stats: () => Object.freeze({ ...counters, live: registrations.size, dirty: dirty.size + duplicates.length, buckets: buckets.size }),
     liveIn: (resources) => (resources === undefined ? registrations.size : namesByScope.get(resources)?.size ?? 0),
-    pendingFlush: () => flushScheduled,
+    pendingFlush: () => flushScheduled || queuedPublications > 0,
     pendingLoads: () => counters.loadsActive + counters.loadsPending,
   };
 
