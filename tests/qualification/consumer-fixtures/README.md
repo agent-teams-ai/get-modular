@@ -11,7 +11,7 @@ owns verification routes and the limits of each claim.
 
 | Profile | Purpose | Current delivery |
 | --- | --- | --- |
-| `semantic` | A useful session and runner, real resource ownership, and independent consumer expectations | P0–P2: C-01 through C-05, L-01 through L-10 and one complete A construction smoke |
+| `semantic` | A useful session and runner, real resource ownership, and independent consumer expectations | P0–P2 and P6: C-01 through C-05, L-01 through L-10, W-01 through W-03 and one complete A construction smoke |
 | `record-only` / `restart-pending` | A bounded persistent fixture with one worker writer and a live supervisor retaining real effect processes | P3: R-01 through R-10 under both schedules |
 | `growth` | Actual generated TypeScript feature trees with inherited capability maps and independent arithmetic and wiring expectations | P5 G-01 at eight features in ordinary `assembly:test`; larger measurements remain optional and bounded |
 
@@ -103,11 +103,13 @@ restores only its test writer to finish cleanup through the retained owner.
 
 Workload reuses one preparation with distinct journals, scopes, signals and
 controls per run. W-01 stops held left work through its private cancellation
-signal, then performs fresh right work after physical left cleanup. W-02 admits
-64 requests across 16 instances under one shared limit of 16 without a queue;
-all admission outcomes precede release. The observed distribution is two accepted
-operations on one instance, one on each of fourteen, and none on the last. This
-distinguishes a shared limit from an accidental limit of one per instance.
+signal, then performs fresh right work after physical left cleanup. W-02 submits
+64 requests across 16 instances through a test-owned global admission schedule
+with a limit of 16 and no queue; all admission outcomes precede release. The
+observed distribution is two accepted operations on one instance, one on each of
+fourteen, and none on the last. The
+observed runner entries and active-work counts detect an unintended capacity-one
+limit per instance.
 W-03 cancels one singleton, completes the other fifteen operations, then retries
 one named cleanup failure through the same owner after discarding its first
 report. Final complete entry lists preserve duplicates for comparison with the
