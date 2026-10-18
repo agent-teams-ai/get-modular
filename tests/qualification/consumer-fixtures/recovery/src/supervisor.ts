@@ -46,7 +46,6 @@ interface Connection {
   exited: boolean;
   frozen: boolean;
   nextRequest: number;
-  stderr: string;
 }
 interface Effect {
   readonly process: ChildProcess;
@@ -75,6 +74,16 @@ function launch(value: unknown): Launch {
   requireLiveResult(operation.scope, value.payload);
   return { ...operation, claim: token(value.claim), payload: value.payload };
 }
+async function failedSpawn(process: ChildProcess, code: string): Promise<never> {
+  // A failed fork has no PID or exit event. Retain its native handle through close.
+  await new Promise<void>(resolve => {
+    process.on("error", () => {});
+    process.once("close", () => resolve());
+    process.stdout?.resume();
+    process.stderr?.resume();
+  });
+  throw failure(code);
+}
 function processEnv(temporary: string): NodeJS.ProcessEnv {
   return { ...process.env, NODE_PATH: "", NODE_OPTIONS: "", NODE_TEST_CONTEXT: undefined, NODE_USE_ENV_PROXY: "1", TMPDIR: temporary };
 }
@@ -96,6 +105,8 @@ export class Supervisor implements AsyncDisposable {
   private heldAcknowledgement: (() => void) | undefined;
   private failCleanup = false;
   private malformedResult = false;
+  private failWorkerSpawn = false;
+  private failEffectSpawn = false;
   private grants = 0;
   private launches = 0;
   private handshakes = 0;
@@ -140,23 +151,28 @@ export class Supervisor implements AsyncDisposable {
     if (this.incumbent !== undefined || this.starting) throw failure("fixture.writer.occupied");
     this.starting = true;
     const grant = freshToken();
+    const executable = this.failWorkerSpawn ? join(this.directory, "missing-worker-executable") : process.execPath;
+    this.failWorkerSpawn = false;
     let spawned: ChildProcess;
     try {
       spawned = fork(fileURLToPath(new URL("worker.js", import.meta.url)), [this.directory, this.profile, grant, pauseAt ?? ""], {
-        stdio: ["ignore", "pipe", "pipe", "ipc"], execArgv: [], env: processEnv(join(this.directory, "worker-tmp")),
+        stdio: ["ignore", "pipe", "pipe", "ipc"], execPath: executable, execArgv: [], env: processEnv(join(this.directory, "worker-tmp")),
       });
     } catch (cause) { this.starting = false; throw cause; }
-    if (spawned.pid === undefined) { this.starting = false; throw failure("fixture.worker.no-pid"); }
+    if (spawned.pid === undefined) {
+      try { return await failedSpawn(spawned, "fixture.worker.spawn-failed"); }
+      finally { this.starting = false; }
+    }
     const connection: Connection = {
       process: spawned, grant, pid: spawned.pid, ready: Promise.withResolvers<void>(), exit: Promise.withResolvers<void>(),
-      pending: new Map(), exited: false, frozen: false, nextRequest: 0, stderr: "",
+      pending: new Map(), exited: false, frozen: false, nextRequest: 0,
     };
     this.workers.add(connection);
     this.incumbent = connection;
     this.starting = false;
     this.grants += 1;
     // All event observers are installed before a command or named barrier can be released.
-    spawned.stderr?.on("data", (data: Buffer) => { connection.stderr = (connection.stderr + data.toString()).slice(-8192); });
+    spawned.stderr?.resume();
     spawned.stdout?.resume();
     spawned.on("message", (value: unknown) => this.workerMessage(connection, value));
     spawned.once("error", cause => connection.ready.reject(cause));
@@ -325,15 +341,25 @@ export class Supervisor implements AsyncDisposable {
     const path = join(this.directory, `effect-${requested.claim}.jsonl`);
     const resultMode = this.malformedResult ? "invalid-result" : "";
     this.malformedResult = false;
-    const spawned = fork(fileURLToPath(new URL("effect.js", import.meta.url)), [path, requested.scope, requested.id, requested.payload, resultMode], {
-      stdio: ["ignore", "pipe", "pipe", "ipc"], execArgv: [], env: processEnv(join(this.directory, "worker-tmp")),
-    });
-    if (spawned.pid === undefined) throw failure("fixture.effect.no-pid");
+    const executable = this.failEffectSpawn ? join(this.directory, "missing-effect-executable") : process.execPath;
+    this.failEffectSpawn = false;
+    let spawned: ChildProcess;
+    try {
+      spawned = fork(fileURLToPath(new URL("effect.js", import.meta.url)), [path, requested.scope, requested.id, requested.payload, resultMode], {
+        stdio: ["ignore", "pipe", "pipe", "ipc"], execPath: executable, execArgv: [], env: processEnv(join(this.directory, "worker-tmp")),
+      });
+    } catch (cause) { this.revoke(connection, requested); throw cause; }
+    if (spawned.pid === undefined) {
+      try { return await failedSpawn(spawned, "fixture.effect.spawn-failed"); }
+      finally { this.revoke(connection, requested); }
+    }
     const observed: Effect = {
       process: spawned, operation: requested, path, held: Promise.withResolvers<void>(), exit: Promise.withResolvers<void>(),
       finished: Promise.withResolvers<ChildWitness>(), child: { pid: spawned.pid, started: false, exited: false, code: null, signal: null },
       result: null, failureCode: undefined, artifact: undefined, cleanupDebt: false, stopRequested: false,
     };
+    // Failure can precede the worker's result waiter; retain the rejecting flight without an ambient rejection.
+    void observed.finished.promise.catch(() => {});
     this.effects.set(key(requested), observed);
     this.reservation.effect = observed;
     spawned.stdout?.resume();
@@ -361,6 +387,7 @@ export class Supervisor implements AsyncDisposable {
       } else if (message.type === "fatal") observed.finished.reject(failure("fixture.effect.failed"));
     });
     spawned.once("exit", (code, signal) => {
+      observed.held.reject(failure("fixture.effect.exited-before-handshake"));
       if (signal !== null && signal !== "SIGTERM" && signal !== "SIGKILL") {
         observed.finished.reject(failure("fixture.effect.unexpected-signal"));
       }
@@ -398,6 +425,8 @@ export class Supervisor implements AsyncDisposable {
   holdNextAcknowledgement(): void { this.holdAcknowledgement = true; }
   failNextEffectCleanup(): void { this.failCleanup = true; }
   malformNextEffectResult(): void { this.malformedResult = true; }
+  failNextWorkerSpawn(): void { this.failWorkerSpawn = true; }
+  failNextEffectSpawn(): void { this.failEffectSpawn = true; }
   async deliverHeldLaunch(): Promise<void> {
     const held = this.heldLaunch;
     if (held === undefined) throw failure("fixture.barrier.missing");

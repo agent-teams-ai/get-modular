@@ -424,6 +424,89 @@ test("live catalog: an early malformed child result remains an owned failure thr
   healthy(supervisor, ["fixture.effect.invalid-result"]);
 });
 
+test("recovery regression: settled pending dispatch resumes after canonical reconciliation", watchdog, async () => {
+  await using supervisor = await Supervisor.create("restart-pending");
+  const worker = await supervisor.start("before-claim");
+  assert.equal((await worker.submit(operation)).created, true);
+  await barrier(supervisor, worker, "before-claim");
+  await worker.configure({ fault: { stage: "rename", transition: "cancel" } });
+  await assert.rejects(worker.cancel(operation), { code: "fixture.store.injected-rename" });
+  await supervisor.wait("launches-frozen", value => value.workerPid === worker.pid);
+  await worker.release("before-claim");
+  await worker.settle();
+  assert.equal((await worker.query(operation))?.state, "pending");
+  assert.equal((await worker.status()).frozen, true);
+  physical(supervisor, 0, 0);
+  await worker.reconcile();
+  // Reconciliation itself resumes pending work; there has been no duplicate resubmission.
+  await supervisor.wait("effect-held");
+  await supervisor.complete(operation);
+  assert.equal((await terminal(supervisor, worker)).result, SUCCESS);
+  assert.equal((await worker.submit(operation)).created, false);
+  await worker.reconcile();
+  await worker.settle();
+  physical(supervisor, 1, 1);
+  await fileEffect(supervisor);
+  healthy(supervisor, ["fixture.store.frozen"]);
+});
+
+test("recovery regression: failed worker spawn closes custody before a new writer starts", watchdog, async () => {
+  await using supervisor = await Supervisor.create("record-only");
+  supervisor.failNextWorkerSpawn();
+  await assert.rejects(supervisor.start(), { code: "fixture.worker.spawn-failed" });
+  assert.equal(supervisor.counts().grants, 0);
+  const worker = await supervisor.start();
+  assert.equal(supervisor.counts().grants, 1);
+  assert.deepEqual((await worker.status()).snapshot.records, []);
+  await worker.stop();
+  physical(supervisor, 0, 0);
+  healthy(supervisor);
+});
+
+test("recovery regression: failed effect spawn releases the slot without reusing its permission", watchdog, async () => {
+  await using supervisor = await Supervisor.create("record-only");
+  const worker = await supervisor.start();
+  supervisor.failNextEffectSpawn();
+  await worker.submit(operation);
+  await worker.settle();
+  const failed = await worker.query(operation);
+  assert.ok(failed?.claim);
+  assert.equal(failed.state, "claimed");
+  assert.equal(failed.result, null);
+  assert.equal(supervisor.counts().reserved, false);
+  physical(supervisor, 0, 0);
+  await assert.rejects(worker.launchAs(worker.grant, { ...operation, claim: failed.claim, payload: "hello" }), { code: "fixture.launch.revoked" });
+  const next = makeSubmission("after-failed-spawn");
+  assert.equal((await worker.submit(next)).created, true);
+  await supervisor.wait("effect-held");
+  await supervisor.complete(next);
+  assert.equal((await terminal(supervisor, worker)).result, SUCCESS);
+  physical(supervisor, 1, 1);
+  healthy(supervisor, ["fixture.effect.spawn-failed"]);
+});
+
+test("recovery regression: child exit before acquisition settles its owned launch", watchdog, async () => {
+  await using supervisor = await Supervisor.create("record-only");
+  supervisor.holdNextLaunch();
+  const worker = await supervisor.start();
+  await worker.submit(operation);
+  await supervisor.wait("launch-held", value => value.workerPid === worker.pid);
+  const claimed = await worker.query(operation);
+  assert.ok(claimed?.claim);
+  // The actual child's exclusive open fails before its held handshake.
+  await writeFile(join(supervisor.directory, `effect-${claimed.claim}.jsonl`), "owned collision");
+  await supervisor.deliverHeldLaunch();
+  await worker.settle();
+  const observed = await supervisor.observeEffectExit(operation);
+  assert.equal(observed.child.started, false);
+  assert.equal(observed.child.exited, true);
+  assert.equal(observed.child.code, 1);
+  assert.equal(observed.child.signal, null);
+  assert.equal(observed.result, null);
+  assert.deepEqual(supervisor.counts(), { grants: 1, launches: 1, handshakes: 0, exits: 1, occupied: 0, reserved: false });
+  healthy(supervisor, ["fixture.effect.exited-before-handshake"]);
+});
+
 async function disposableStore(selected: Profile = "restart-pending", seam?: ConstructorParameters<typeof SnapshotStore>[1]) {
   const directory = await mkdtemp(join(tmpdir(), "gm-recovery-store-"));
   const store = new SnapshotStore(directory, seam);
