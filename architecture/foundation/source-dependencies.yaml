@@ -488,7 +488,6 @@ boundaries:
       - packages/resources/tests/types.ts
     allow:
       boundaries:
-        - repository.development
         - resources-contract
         - resources-implementation
         - resources-composition
@@ -681,8 +680,7 @@ boundaries:
       - packages/conformance/tests/handle-probe.mjs
       - packages/conformance/tests/types.ts
     allow:
-      boundaries:
-        - repository.development
+      boundaries: []
       packages:
         - "@get-modular/assembly"
         - "@get-modular/core"
