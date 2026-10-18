@@ -121,7 +121,7 @@ async function dispatch(accepted: StoredRecord): Promise<void> {
 }
 function schedule(value: StoredRecord): void {
   if (dispatches.has(key(value)) || closing) return;
-  const running = Promise.resolve().then(() => dispatch(value));
+  const running = Promise.resolve().then(() => dispatch(value)).finally(() => dispatches.delete(key(value)));
   dispatches.set(key(value), running);
   void running.catch(cause => emit("dispatch-error", { code: errorCode(cause), scope: value.scope, id: value.id }));
 }

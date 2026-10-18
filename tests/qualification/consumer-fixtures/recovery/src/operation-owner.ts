@@ -117,7 +117,8 @@ export class OperationOwner {
         const records: StoredRecord[] = [];
         for (const existing of actual.records) {
           const observed = await observe(existing);
-          // Retained custody supplies only facts; an unresolved claim never authorizes a retry.
+          // An effect result precedes semantic terminal recording; custody alone cannot promote it.
+          // An unresolved claim never authorizes a retry.
           records.push(record({ ...existing,
             state: existing.state === "claimed" ? "quarantined" : existing.state,
             child: observed?.child ?? existing.child, cleanupDebt: observed?.cleanupDebt ?? existing.cleanupDebt,
