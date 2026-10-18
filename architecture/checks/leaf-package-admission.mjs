@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { posix } from "node:path";
-import ts from "typescript-minimum";
+import * as ts from "typescript/unstable/ast";
+import { parseTypeScript } from "../../tests/qualification/support/typescript-project.mjs";
 import { GENERATED_PRODUCTION_PATH } from "./generated-production-source.mjs";
 import {
   assertLeafPackageTable, expectedLeafExports, expectedPeerDependencies, LEAF_PACKAGES, leafEntrySources,
@@ -25,10 +26,10 @@ const sha256 = bytes => `sha256:${createHash("sha256").update(bytes).digest("hex
 const record = value => value !== null && typeof value === "object" && !Array.isArray(value);
 
 function parseSource(path, source, forbidDynamic = true) {
-  const parsed = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true);
-  assert.equal(parsed.parseDiagnostics.length, 0,
+  const { source: parsed, diagnostics } = parseTypeScript(path, source);
+  assert.equal(diagnostics.length, 0,
     `${path} must parse as production source`);
-  const references = ts.preProcessFile(source, true, true);
+  const references = parsed;
   const specifiers = [
     ...references.referencedFiles,
     ...references.typeReferenceDirectives,
@@ -50,11 +51,11 @@ function parseSource(path, source, forbidDynamic = true) {
       && (node.expression.kind === ts.SyntaxKind.ImportKeyword
         || ts.isIdentifier(node.expression) && node.expression.text === "require")) {
       if (forbidDynamic) assert.fail(`${path} must not use dynamic import or require`);
-      assert(node.arguments.length === 1 && ts.isStringLiteralLike(node.arguments[0]),
+      assert(node.arguments.length === 1 && ts.isStringLiteralLikeNode(node.arguments[0]),
         `${path} has an unresolved dynamic import or require`);
       specifiers.push(node.arguments[0].text);
     }
-    ts.forEachChild(node, visit);
+    node.forEachChild(visit);
   }
   visit(parsed);
   return { parsed, specifiers };
@@ -84,7 +85,7 @@ function substantiveSource(parsed) {
       || ts.isArrowFunction(node)) && node.body &&
       node.body.statements?.some(statement =>
         !ts.isEmptyStatement(statement) && !ts.isDebuggerStatement(statement))) substantive = true;
-    ts.forEachChild(node, visit);
+    node.forEachChild(visit);
   }
   visit(parsed);
   return substantive;

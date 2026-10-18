@@ -10,6 +10,8 @@ import { arch, platform } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { readPackageArchive } from './support/package-archive.mjs';
+import { typeScriptPackageRoots } from './support/typescript-project.mjs';
+import { scanTree } from './support/m1-retained-observations.mjs';
 import { auditM1JavaScriptClosure } from './support/m1-javascript-closure.mjs';
 import { produceRuntimeFixtures } from './support/m3-runtime-fixture-producer.mjs';
 import { produceSemanticRuntimeFixtures } from './support/m3-semantic-runtime-fixtures.mjs';
@@ -417,6 +419,7 @@ export async function runElectronConsumer(rawInput) {
   const toolURLs = [
     import.meta.url, './m3-chromium-consumer.mjs',
     './support/package-archive.mjs', './support/m1-javascript-closure.mjs',
+    './support/typescript-project.mjs', './support/m1-retained-observations.mjs',
     './support/m3-runtime-fixture-producer.mjs', './m2-candidate/raw-document-cases.mjs',
     './support/m3-semantic-runtime-fixtures.mjs', './support/m3-semantic-runtime-executor.mjs',
     './support/m3-p500-runtime-fixtures.mjs',
@@ -426,8 +429,15 @@ export async function runElectronConsumer(rawInput) {
     ...invocationHelperNames.map(name => `./support/${name}`),
     './m2-candidate/object-descriptor-cases.mjs',
     ...descriptorHelperNames.map(name => `./support/${name}`),
-    './support/m3-cdp.mjs', './support/m3-runtime-executor.mjs', './support/m3-runtime-materializers.mjs', import.meta.resolve('tar'), import.meta.resolve('typescript-minimum'),
+    './support/m3-cdp.mjs', './support/m3-runtime-executor.mjs', './support/m3-runtime-materializers.mjs', import.meta.resolve('tar'),
   ].map(path => new URL(path, import.meta.url));
+  // TS7's parser is a modular JS API plus a native compiler, so bind both
+  // complete installed package trees instead of the former single JS bundle.
+  for (const root of typeScriptPackageRoots()) {
+    for (const entry of await scanTree(await realpath(root))) {
+      if (entry.kind === 'file') toolURLs.push(pathToFileURL(join(root, entry.path)));
+    }
+  }
   const toolIdentity = [];
   for (const url of toolURLs) toolIdentity.push({ url: url.href, sha256: sha256(await readFile(url)) });
   const executableHash = sha256(await readFile(input.absoluteelectronExecutable));

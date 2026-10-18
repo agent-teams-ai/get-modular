@@ -1,10 +1,13 @@
 import { Buffer, isUtf8 } from 'node:buffer';
-import { posix } from 'node:path';
-import ts from 'typescript-minimum';
+import { posix, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import * as ts from 'typescript/unstable/ast';
+import { SymbolFlags } from 'typescript/unstable/sync';
+import { parseTypeScript, withTypeScriptProject } from './typescript-project.mjs';
 
 // Private finite artifact profile for the direct M1 archive. The existing,
-// pinned development-only TS 5.8.3 parser understands this emitted syntax.
-// The compiler host below has no filesystem fallback, libraries or declarations.
+// pinned development-only TS7 native AST and checker understand this syntax.
+// The closed virtual project has no filesystem fallback, libraries or declarations.
 // Candidate code is never loaded, evaluated, emitted or extracted.
 //
 // Evidence: ADR-0012 archive purpose; ADR-0009/0017's five public values;
@@ -20,7 +23,7 @@ import ts from 'typescript-minimum';
 // separate obligations. No repository hashes or candidate manifest allowlists
 // determine acceptance here.
 
-const PREFIX = '/__m1_archive__/';
+const PREFIX = resolve(tmpdir(), '__m1_archive__').replaceAll('\\', '/') + '/';
 const ENTRY = 'dist/index.js';
 const DIRECT_ROOT = 'dist/composition/stage0.js';
 const GENERATED_ROOT = 'dist/composition/generated/stage1.js';
@@ -279,13 +282,20 @@ function builtinCall(node, owner, method) {
   return ts.isPropertyAccessExpression(callee) && !callee.questionDotToken
     && ts.isIdentifier(callee.expression) && callee.expression.text === owner && callee.name.text === method;
 }
+// Only the fixed trusted profile strings enter this cache; candidate syntax is
+// always parsed afresh in its closed project.
+const profileSyntax = new Map();
+function parseProfile(text) {
+  if (!profileSyntax.has(text)) profileSyntax.set(text, parseTypeScript('profile.js', text));
+  return profileSyntax.get(text);
+}
 // Compare the finite helper/capture grammar without depending on emitter
 // whitespace, comments or quote style. Candidate text is only tokenized.
 function sameSyntax(node, expected) {
   const tokens = text => {
-    const scanner = ts.createScanner(ts.ScriptTarget.ESNext, true, ts.LanguageVariant.Standard, text);
+    const scanner = ts.createScanner(true, ts.LanguageVariant.Standard, text);
     const result = [];
-    for (let kind = scanner.scan(); kind !== ts.SyntaxKind.EndOfFileToken; kind = scanner.scan()) {
+    for (let kind = scanner.scan(); kind !== ts.SyntaxKind.EndOfFile; kind = scanner.scan()) {
       result.push([kind, kind === ts.SyntaxKind.StringLiteral ? scanner.getTokenValue() : scanner.getTokenText()]);
     }
     return JSON.stringify(result);
@@ -294,9 +304,8 @@ function sameSyntax(node, expected) {
   // Equal tokens can still parse differently after a restricted-production
   // newline (for example return followed by an expression on the next line).
   const declaration = ts.isFunctionDeclaration(node);
-  const parsed = ts.createSourceFile('profile.js', declaration ? expected : `(${expected});`,
-    ts.ScriptTarget.ESNext, true, ts.ScriptKind.JS);
-  if (parsed.parseDiagnostics.length !== 0) return false;
+  const { source: parsed, diagnostics } = parseProfile(declaration ? expected : `(${expected});`);
+  if (diagnostics.length !== 0) return false;
   const statement = parsed.statements[0];
   const reference = declaration ? statement
     : statement && ts.isExpressionStatement(statement) ? unwrap(statement.expression) : undefined;
@@ -307,7 +316,7 @@ function sameSyntax(node, expected) {
       const current = stack.pop();
       result.push(current.kind);
       const children = [];
-      ts.forEachChild(current, child => { children.push(child); });
+      current.forEachChild(child => { children.push(child); });
       for (let index = children.length - 1; index >= 0; index--) stack.push(children[index]);
     }
     return result;
@@ -324,27 +333,33 @@ function resolveSpecifier(from, text) {
   requireThat(text === (relative.startsWith('.') ? relative : `./${relative}`), 'specifier');
   return target;
 }
-function visit(tree, callback, budget, tokens = false) {
+function visit(tree, callback, budget) {
   const pending = [[tree, 0]];
   while (pending.length) {
     const [node, depth] = pending.pop();
     requireThat(++budget.nodes <= MAX_NODES && depth <= MAX_DEPTH, 'limit');
     callback(node);
-    if (tokens) {
-      if (node.kind >= ts.SyntaxKind.FirstJSDocNode && node.kind <= ts.SyntaxKind.LastJSDocNode) continue;
-      for (const child of node.getChildren(tree)) pending.push([child, depth + 1]);
-    } else ts.forEachChild(node, child => { pending.push([child, depth + 1]); });
+    node.forEachChild(child => { pending.push([child, depth + 1]); });
   }
 }
 function checkComments(source, budget) {
   requireThat(!source.text.startsWith('#!'), 'directive');
-  const seen = new Set();
+  // AST literal spans tell the scanner where slash/template tokens end. This
+  // avoids mistaking comment-like string or regular-expression text for directives.
+  const literals = new Map();
   visit(source, node => {
-    const ranges = [...(ts.getLeadingCommentRanges(source.text, node.pos) ?? []),
-      ...(ts.getTrailingCommentRanges(source.text, node.end) ?? [])];
-    for (const range of ranges) {
-      if (seen.has(range.pos)) continue;
-      seen.add(range.pos);
+    if (ts.isStringLiteralLikeNode(node) || ts.isRegularExpressionLiteral(node)
+      || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
+      literals.set(node.getStart(source), node.end);
+    }
+  }, budget);
+  const scanner = ts.createScanner(false, ts.LanguageVariant.Standard, source.text);
+  for (let kind = scanner.scan(); kind !== ts.SyntaxKind.EndOfFile; kind = scanner.scan()) {
+    requireThat(++budget.nodes <= MAX_NODES, 'limit');
+    const start = scanner.getTokenStart();
+    if (literals.has(start)) { scanner.resetTokenState(literals.get(start)); continue; }
+    if (kind === ts.SyntaxKind.SingleLineCommentTrivia || kind === ts.SyntaxKind.MultiLineCommentTrivia) {
+      const range = { pos: start, end: scanner.getTokenEnd() };
       const raw = source.text.slice(range.pos, range.end);
       const body = raw.startsWith('//') ? raw.slice(2) : raw.slice(2, -2);
       // Trim each line once; adjacent greedy whitespace scans over a long
@@ -355,9 +370,9 @@ function checkComments(source, budget) {
         requireThat(!/^(?:[#@][ \t]*source(?:Mapping)?URL[ \t]*=|\/?[ \t]*<(?:reference|amd-module|amd-dependency)\b|@(?:ts-check|ts-nocheck|ts-ignore|ts-expect-error|import|typedef|type|param|returns?|global|module|namespace)\b|(?:global|globals|eslint-env|jshint)\b)/u.test(content), 'directive');
       }
     }
-  }, budget, true);
+  }
   requireThat(source.referencedFiles.length === 0 && source.typeReferenceDirectives.length === 0
-    && source.libReferenceDirectives.length === 0 && !source.hasNoDefaultLib, 'directive');
+    && source.libReferenceDirectives.length === 0, 'directive');
 }
 
 function audit(files, profile) {
@@ -384,6 +399,7 @@ function audit(files, profile) {
   }
   requireThat(files instanceof Map && files.size <= 512, 'input');
   const modules = new Map();
+  const texts = new Map();
   const calls = [];
   const budget = { nodes: 0 };
   let total = 0;
@@ -394,15 +410,29 @@ function audit(files, profile) {
     requireThat(bytes.length <= MAX_FILE && total <= MAX_TOTAL, 'limit');
     requireThat(isUtf8(bytes) && !(bytes[0] === 239 && bytes[1] === 187 && bytes[2] === 191), 'utf8');
     if (!roles.has(path)) continue; // Declaration and metadata semantics have other owners.
-    let source;
-    try { source = ts.createSourceFile(PREFIX + path, bytes.toString('utf8'), ts.ScriptTarget.ESNext, true, ts.ScriptKind.JS); }
-    catch { fail('parse'); }
-    checkComments(source, budget);
+    texts.set(PREFIX + path, bytes.toString('utf8'));
     const role = path === ENTRY && m2
       ? { ...roles.get(path), exports: new Set(publicValues) } : roles.get(path);
-    modules.set(path, { source, role, exports: new Set(), links: [] });
+    modules.set(path, { role, exports: new Set(), links: [] });
   }
   requireThat(modules.has(ENTRY), 'entry-missing');
+  return withTypeScriptProject(texts, { allowJs: true, checkJs: true }, project => {
+  const { program, checker } = project;
+  requireThat(program.getSyntacticDiagnostics().length === 0, 'parse');
+  for (const [path, module] of modules) {
+    module.source = program.getSourceFile(PREFIX + path);
+    checkComments(module.source, budget);
+    // The native resolver has no custom resolveModuleNames hook. Preserve the
+    // closed specifier check for literal dynamic imports and CommonJS requests
+    // before the stricter code-loading and global-operation checks below.
+    visit(module.source, node => {
+      if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword
+        || ts.isIdentifier(node.expression) && node.expression.text === 'require')
+        && node.arguments[0] && ts.isStringLiteralLikeNode(node.arguments[0])) {
+        resolveSpecifier(path, node.arguments[0].text);
+      }
+    }, budget);
+  }
   for (const [path, module] of modules) {
     const addExport = name => {
       requireThat(name !== 'default' && !module.exports.has(name), 'exports');
@@ -456,32 +486,12 @@ function audit(files, profile) {
     requireThat(modules.get(link.target).exports.has(link.name), 'export-missing');
   }
 
-  // All reads and resolution are restricted to these already parsed JS members.
-  const sourceAt = name => modules.get(name.slice(PREFIX.length))?.source;
-  const host = {
-    getSourceFile: name => sourceAt(name), getDefaultLibFileName: () => '',
-    getCurrentDirectory: () => PREFIX, getCanonicalFileName: name => name,
-    useCaseSensitiveFileNames: () => true, getNewLine: () => '\n',
-    fileExists: name => !!sourceAt(name), readFile: name => sourceAt(name)?.text,
-    writeFile: () => fail('checker-failed'),
-    resolveModuleNames: (names, containing) => names.map(name => {
-      const target = resolveSpecifier(containing.slice(PREFIX.length), name);
-      return modules.has(target) ? { resolvedFileName: PREFIX + target, extension: ts.Extension.Js, isExternalLibraryImport: false } : undefined;
-    }),
-  };
-  const program = ts.createProgram([...modules.keys()].map(path => PREFIX + path), {
-    allowJs: true, checkJs: true, noLib: true, types: [], noEmit: true,
-    target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext,
-    moduleResolution: ts.ModuleResolutionKind.Bundler,
-  }, host);
-  requireThat(program.getSyntacticDiagnostics().length === 0, 'parse');
-  const checker = program.getTypeChecker();
   const symbolAt = node => ts.isShorthandPropertyAssignment(node.parent)
     ? checker.getShorthandAssignmentValueSymbol(node.parent) : checker.getSymbolAtLocation(node);
   function declarationOf(symbol) {
     if (!symbol) return undefined;
-    if (symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
-    return symbol.valueDeclaration ?? symbol.declarations?.[0];
+    if (symbol.flags & SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+    return (symbol.valueDeclaration ?? symbol.declarations?.[0])?.resolve();
   }
   function origin(node, seen = new Set()) {
     node = unwrap(node);
@@ -505,7 +515,7 @@ function audit(files, profile) {
       const owner = node.parent.parent;
       let root = owner;
       while (ts.isBindingElement(root)) root = root.parent.parent;
-      if (constant(root) || ts.isParameter(root)) {
+      if (constant(root) || ts.isParameterDeclaration(root)) {
         const selector = ts.isObjectBindingPattern(node.parent) ? node.propertyName ?? node.name : undefined;
         const key = selector && ts.isComputedPropertyName(selector) ? selector.expression : undefined;
         return { kind: 'member', node,
@@ -647,7 +657,7 @@ function audit(files, profile) {
   }
   function bindingName(node) {
     const parent = node.parent;
-    return parent.name === node && (ts.isVariableDeclaration(parent) || ts.isParameter(parent)
+    return parent.name === node && (ts.isVariableDeclaration(parent) || ts.isParameterDeclaration(parent)
       || ts.isBindingElement(parent) || ts.isFunctionDeclaration(parent) || ts.isClassDeclaration(parent) || ts.isImportSpecifier(parent));
   }
   function nonReference(node) {
@@ -664,10 +674,8 @@ function audit(files, profile) {
   // the helper's collector merely by using the same identifier text.
   function bindingSyntax(actual, expected, seeds) {
     const method = ts.isMethodDeclaration(actual);
-    const source = ts.createSourceFile('facade-profile.js',
-      method ? `({${expected}});` : expected,
-      ts.ScriptTarget.ESNext, true, ts.ScriptKind.JS);
-    requireThat(source.parseDiagnostics.length === 0, 'checker-failed');
+    const { source, diagnostics } = parseProfile(method ? `({${expected}});` : expected);
+    requireThat(diagnostics.length === 0, 'checker-failed');
     const reference = method
       ? unwrap(source.statements[0].expression).properties[0] : source.statements[0];
     const bindings = new Map(seeds);
@@ -713,7 +721,7 @@ function audit(files, profile) {
       }
       const children = node => {
         const result = [];
-        ts.forEachChild(node, child => { result.push(child); });
+        node.forEachChild(child => { result.push(child); });
         return result;
       };
       const actualChildren = children(left), expectedChildren = children(right);
@@ -1131,7 +1139,7 @@ function audit(files, profile) {
     if (value.kind === 'function') return true;
     if (value.kind === 'member') return (value.name ?? staticString(value.key)) !== undefined;
     if (value.kind !== 'value') return false;
-    if (ts.isArrowFunction(value.node) || ts.isParameter(value.node)) return true;
+    if (ts.isArrowFunction(value.node) || ts.isParameterDeclaration(value.node)) return true;
     // Both branches must independently carry an allowed callable origin.
     // The work/depth bound also covers repeated conditional alias graphs.
     return ts.isConditionalExpression(value.node)
@@ -1150,6 +1158,7 @@ function audit(files, profile) {
       && (callee.text === 'String' || callee.text === 'Number'), 'call-origin');
   }
   return { modules: [...reached].sort(), exports: [...publicValues] };
+  });
 }
 
 // Historical M1 remains the default. The shared private facade and public M2

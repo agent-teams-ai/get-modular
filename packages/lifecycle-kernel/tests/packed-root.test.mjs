@@ -1,14 +1,13 @@
+import { supportedCompilers } from "../../../architecture/tooling/test-assembly-types.mjs";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { access, mkdtemp, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
-import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const require = createRequire(join(packageRoot, "../../package.json"));
 
 function run(command, args, cwd) {
   const result = spawnSync(command, args, { cwd, encoding: "utf8" });
@@ -93,8 +92,7 @@ test("candidate archive exposes the full lifecycle semantics through its public 
       // @ts-expect-error a generation is not a lease
       kernel.release(generation);
     `);
-    for (const packageName of ["typescript", "typescript-minimum"]) {
-      const compiler = join(dirname(require.resolve(`${packageName}/package.json`)), "bin/tsc");
+    for (const { path: compiler } of supportedCompilers()) {
       for (const resolution of ["NodeNext", "Bundler"]) {
         await writeFile(join(temporary, "consumer/tsconfig.json"), JSON.stringify({
           compilerOptions: {

@@ -1,3 +1,4 @@
+import { supportedCompilers } from "../architecture/tooling/test-assembly-types.mjs";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
@@ -6,7 +7,8 @@ import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 import test from "node:test";
 import Ajv from "ajv";
-import ts from "typescript-minimum";
+import * as ts from "typescript/unstable/ast";
+import { parseTypeScript } from "./qualification/support/typescript-project.mjs";
 import { parse } from "yaml";
 import { packageIdentityViolations, packageManifestInventory } from "../architecture/checks/production-artifacts.mjs";
 import { expectedLeafImporter, LEAF_PACKAGES, leafManifestPath } from "../architecture/checks/leaf-packages.mjs";
@@ -201,7 +203,8 @@ test("C0 preserves rejecting runtime package admission until K1", async () => {
 });
 
 test("pseudo-contract has one closed synchronous surface without resource callbacks", () => {
-  const source = ts.createSourceFile("contract.d.ts", declaration, ts.ScriptTarget.Latest, true);
+  const { source, diagnostics } = parseTypeScript("contract.d.ts", declaration);
+  assert.deepEqual(diagnostics, []);
   const interfaces = source.statements.filter(ts.isInterfaceDeclaration);
   const scope = interfaces.find(node => node.name.text === "OwnershipScope");
   assert.deepEqual(scope.members.map(member => member.name.text), [
@@ -212,7 +215,7 @@ test("pseudo-contract has one closed synchronous surface without resource callba
     assert.equal(ts.isImportDeclaration(node) || ts.isImportTypeNode(node), false);
     assert.equal(ts.isFunctionTypeNode(node), false, "no callback types");
     if (ts.isTypeReferenceNode(node)) assert.notEqual(node.typeName.getText(source), "Promise");
-    ts.forEachChild(node, inspect);
+    node.forEachChild(inspect);
   }
   inspect(source);
 });
@@ -257,8 +260,8 @@ scope.seal();
       },
       files: ["consumer.ts"],
     }));
-    for (const compiler of ["typescript", "typescript-minimum"]) {
-      execFileSync(process.execPath, [resolve(`node_modules/${compiler}/bin/tsc`),
+    for (const { path: compiler } of supportedCompilers()) {
+      execFileSync(process.execPath, [compiler,
         "--project", join(temp, "tsconfig.json")], { cwd: temp, stdio: "pipe" });
     }
   } finally { rmSync(temp, { recursive: true, force: true }); }

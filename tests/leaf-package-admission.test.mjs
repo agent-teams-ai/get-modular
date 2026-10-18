@@ -221,8 +221,8 @@ test("the lifecycle-kernel row keeps its reviewed tests and command chain", () =
     "lifecycle:build": "node architecture/tooling/build-leaf-package.mjs lifecycle-kernel",
     "lifecycle:typecheck":
       "node node_modules/typescript/bin/tsc -p packages/lifecycle-kernel/tsconfig.json --noEmit"
-      + " && node node_modules/typescript/bin/tsc -p packages/lifecycle-kernel/tsconfig.types.json --noEmit"
-      + " && node node_modules/typescript/bin/tsc -p packages/lifecycle-kernel/tsconfig.types.bundler.json --noEmit",
+      + " && node architecture/tooling/test-assembly-types.mjs --projects packages/lifecycle-kernel/tsconfig.types.json"
+      + " packages/lifecycle-kernel/tsconfig.types.bundler.json",
     "lifecycle:test": "node --test packages/lifecycle-kernel/tests/kernel.test.mjs",
     "lifecycle:pack": "node --test packages/lifecycle-kernel/tests/packed-root.test.mjs",
     "lifecycle:check":
@@ -243,7 +243,7 @@ test("the resources row keeps its reviewed public class, tests and command chain
   assert.deepEqual(Object.keys(resources.commands),
     ["resources:build", "resources:typecheck", "resources:test", "resources:pack", "resources:check"]);
   assert.match(resources.commands["resources:typecheck"],
-    /typescript-minimum\/bin\/tsc -p packages\/resources\/tsconfig\.types\.bundler\.json/u);
+    /test-assembly-types\.mjs --projects packages\/resources\/tsconfig\.types\.json packages\/resources\/tsconfig\.types\.bundler\.json/u);
   assert.match(resources.commands["resources:test"], /tests\/resources\/assembly-scope\.test\.mjs/u);
   assert.equal(resources.gate, "resources:check");
   for (const version of ["0.0.0", "0.1.0", "0.12.3"]) assert.match(version, resources.version);
@@ -267,7 +267,7 @@ test("the conformance row keeps its reviewed peers, tests and command chain", ()
     "conformance:build", "conformance:typecheck", "conformance:test", "conformance:pack", "conformance:check",
   ]);
   assert.match(conformance.commands["conformance:typecheck"],
-    /typescript-minimum\/bin\/tsc -p packages\/conformance\/tsconfig\.types\.bundler\.json/u);
+    /test-assembly-types\.mjs --projects packages\/conformance\/tsconfig\.types\.json packages\/conformance\/tsconfig\.types\.bundler\.json/u);
   assert.equal(conformance.commands["conformance:test"], "node --test packages/conformance/tests/conformance.test.mjs");
   assert.equal(conformance.gate, "conformance:check");
   // The gate order follows the row order, so the peer it depends on is checked first.

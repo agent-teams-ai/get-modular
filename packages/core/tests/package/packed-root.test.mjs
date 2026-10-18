@@ -57,10 +57,12 @@ test('packed M2 exposes one root across Node and TypeScript consumers', async t 
   for (const name of ['typescript', 'typescript-minimum']) {
     const manifestPath = require.resolve(`${name}/package.json`);
     const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
-    compilers.push({ name, ...await program(join(dirname(manifestPath), 'bin/tsc'), manifest.version) });
+    assert.equal(manifest.name, 'typescript');
+    assert.equal(manifest.version, '7.0.2', `${name} stays exactly pinned`);
+    if (!compilers.some(compiler => compiler.version === manifest.version)) compilers.push({ name, ...await program(join(dirname(manifestPath), 'bin/tsc'), manifest.version) });
   }
   assert.equal(compilers[0].version, '7.0.2', 'the build compiler remains pinned');
-  assert.equal(compilers[1].version, '5.8.3', 'the minimum consumer compiler is pinned separately from the build compiler');
+  assert.equal(compilers.length, 1, 'equal minimum and current versions execute once');
 
   const packContext = join(temporary, 'pack-context');
   await mkdir(packContext);

@@ -253,16 +253,16 @@ async function toolchain(ctx) {
   }
   await json(join(ctx.diagnostics, 'workspace-link-removal.json'), removed);
   const compilers = [];
-  for (const [name, version] of [['typescript', '7.0.2'], ['typescript-minimum', '5.8.3']]) {
+  for (const [name, version] of [['typescript', '7.0.2'], ['typescript-minimum', '7.0.2']]) {
     const manifestPath = await realpath(require.resolve(`${name}/package.json`));
     const manifest = JSON.parse((await readBytes(manifestPath)).toString());
     assert.equal(manifest.name, 'typescript');
     assert.equal(manifest.version, version);
     const path = await realpath(join(dirname(manifestPath), 'bin/tsc'));
     assert.ok(within(path, pnpmRoot), 'compiler in scanned pnpm closure');
-    compilers.push({ name, version, path, sha256: digest(await readBytes(path)) });
+    if (!compilers.some(compiler => compiler.version === version)) compilers.push({ name, version, path, sha256: digest(await readBytes(path)) });
   }
-  for (const name of ['tar', 'typescript-minimum', 'typescript']) {
+  for (const name of ['tar', 'typescript/unstable/sync', 'typescript/unstable/ast', 'typescript/unstable/fs']) {
     assert.ok(within(await realpath(require.resolve(name)), pnpmRoot),
       'actual runner parser/compiler dependency in pnpm closure');
   }
@@ -389,8 +389,8 @@ async function node(ctx, id) {
     outputDirectory: join(ctx.diagnostics, `${id}-execution`),
     captureDirectory: join(ctx.diagnostics, `${id}-capture`),
   });
-  assert.equal(result.verified.completed.length, 282);
-  assert.equal(new Set(result.verified.completed).size, 282);
+  assert.equal(result.verified.completed.length, 272);
+  assert.equal(new Set(result.verified.completed).size, 272);
   assert.equal(result.verified.trustedCommit, expected.runnerCommit);
   assert.equal(result.verified.sourceCommit, expected.sourceCommit);
   assert.deepEqual(result.verified.archiveIdentity, expected.archiveIdentity);
