@@ -76,7 +76,7 @@ test("T04 T18 conformance isolate accepts the readonly facet's own-property port
   assert.deepEqual(reports, []);
 });
 
-test("T28 an awaiting Assembly factory observes the identical Host cancellation reason without subscriptions", async t => {
+test("T34 T48 an awaiting Assembly factory observes the identical Host cancellation reason without subscriptions", async t => {
   const reports = []; const owner = ownerEntry(reports); const entered = Promise.withResolvers();
   const resume = Promise.withResolvers(); const attempts = []; let consumerResources;
   const consumer = implement()(consumerDeclaration, async ({ settings }, { resources }) => {

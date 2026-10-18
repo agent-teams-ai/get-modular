@@ -41,7 +41,7 @@ const sameKeys = ["currency", "region"] as const;
 void deps.settings.read(sameKeys);
 `;
 
-test("T22 T23 T24 T75 T118 every observation README TypeScript block compiles on the supported compiler set", async t => {
+test("T19 T22 T23 T24 T75 T117 every observation README TypeScript block compiles on the supported compiler set", async t => {
   const readme = await readFile(join(workspace, "packages/observation/README.md"), "utf8");
   const blocks = [...readme.matchAll(/```ts\n([\s\S]*?)```/gu)].map(match => match[1]);
   assert.ok(blocks.length >= 10, "The full README recipes must remain covered");
