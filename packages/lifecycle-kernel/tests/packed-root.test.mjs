@@ -1,4 +1,4 @@
-import { supportedCompilers } from "../../../architecture/tooling/test-assembly-types.mjs";
+import { supportedCompilers } from "./support/compilers.mjs";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { access, mkdtemp, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
@@ -92,7 +92,7 @@ test("candidate archive exposes the full lifecycle semantics through its public 
       // @ts-expect-error a generation is not a lease
       kernel.release(generation);
     `);
-    for (const { path: compiler } of supportedCompilers()) {
+    for (const { path: compiler } of await supportedCompilers()) {
       for (const resolution of ["NodeNext", "Bundler"]) {
         await writeFile(join(temporary, "consumer/tsconfig.json"), JSON.stringify({
           compilerOptions: {

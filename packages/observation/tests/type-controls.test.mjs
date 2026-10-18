@@ -30,7 +30,7 @@ async function project(directory) {
   }
   for (const name of ["assembly-contracts-types.ts", "assembly-implement-types.ts"]) {
     const source = await readFile(resolve(packageRoot, "../../tests/observation", name), "utf8");
-    await writeFile(join(directory, name), source.replaceAll("../../packages/observation/dist/index.js", "@get-modular/observation"));
+    await writeFile(join(directory, name), source);
   }
   return join(installed, "dist/features/store/types.d.ts");
 }

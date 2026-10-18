@@ -3,7 +3,7 @@
 import { declareModule, defineContract, implement, type CapabilitiesOf } from "@get-modular/assembly";
 import { required } from "@get-modular/core";
 import { scoped } from "@get-modular/resources";
-import { createStore, type ListenerError, type ReadonlyStore } from "../../packages/observation/dist/index.js";
+import { createStore, type ListenerError, type ReadonlyStore } from "@get-modular/observation";
 
 // Owner-published contract over the whole record (one contract, many consumers).
 type AppSettings = { readonly logLevel: "debug" | "info"; readonly theme: string };

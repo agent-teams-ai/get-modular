@@ -3,7 +3,7 @@
 import { declareModule, defineContract, type CapabilitiesOf, type ModuleFactory } from "@get-modular/assembly";
 import { required } from "@get-modular/core";
 import type { ModuleContext } from "@get-modular/resources";
-import { createStore, type ListenerError, type ReadonlyStore } from "../../packages/observation/dist/index.js";
+import { createStore, type ListenerError, type ReadonlyStore } from "@get-modular/observation";
 
 // Consumer-owned slice and port (the logger package owns them).
 export type LoggingSettings = { readonly logLevel: "debug" | "info" };

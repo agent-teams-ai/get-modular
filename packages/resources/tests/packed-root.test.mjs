@@ -1,4 +1,4 @@
-import { supportedCompilers } from "../../../architecture/tooling/test-assembly-types.mjs";
+import { supportedCompilers } from "./support/compilers.mjs";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { access, mkdtemp, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
@@ -97,7 +97,7 @@ test("the public archive installs one root-only ESM package with the full scope 
       void resources.setup({ name: 'x', setup: () => 1, cleanup: (_n, { signal }) => { void signal; } });
       void value; void report;
     `);
-    for (const { path: compiler } of supportedCompilers()) {
+    for (const { path: compiler } of await supportedCompilers()) {
       for (const resolution of ["NodeNext", "Bundler"]) {
         await writeFile(join(consumer, "tsconfig.json"), JSON.stringify({
           compilerOptions: {
