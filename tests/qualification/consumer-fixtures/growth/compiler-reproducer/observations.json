@@ -1,0 +1,149 @@
+{
+  "observedAt": "2026-10-17 UTC",
+  "decision": "Completed bounded investigation; no supported compiler remedy verified.",
+  "compiler": {
+    "current": "7.0.2",
+    "currentGitHead": "2bd066d87f5bafd315be9f40889d0a60b9e58e0b",
+    "minimum": "5.8.3",
+    "minimumGitHead": "68cead182cc24afdc3f1ce7c8ff5853aba14b65a",
+    "minimumRerun": false,
+    "nativeBinarySha256": "4f2de678286401759b3fb4475bafe35b8f32b4b3a07d92642bbf37eadc9b34a4"
+  },
+  "environment": {
+    "node": "26.11.1",
+    "go": "1.27.2",
+    "platform": "linux",
+    "arch": "x64"
+  },
+  "upstream": {
+    "pr": "https://github.com/microsoft/TypeScript/pull/64737",
+    "issue": "https://github.com/microsoft/TypeScript/issues/63555",
+    "observedState": "open",
+    "merged": false,
+    "head": "3200b90a617bcf9ad26543b347cabad8ff0dad14",
+    "updatedAt": "2026-10-12T06:34:18Z",
+    "sourceArchiveSha256": "034bb7bb88f1354b416f9c617a82b88af7f2344f279e9a697a73bf4276638858",
+    "candidateBinaryProduced": false,
+    "candidateTypechecksExecuted": false
+  },
+  "originalInputs": {
+    "productHead": "f1da1991119bc7c2c788f6e9542ae6543374bcf3",
+    "lockfileSha256": "c6471a718ca4f58973b17bec91e69ef59151e67aa95782d4c2dd6f4c7aae532a"
+  },
+  "files": {
+    "witness.ts.txt": {
+      "sha256": "93ea1316fa06a3b65a81b5a8ac293ee79e971584b90efd9964460fbee431d3c5",
+      "bytes": 2025
+    },
+    "control.ts.txt": {
+      "sha256": "da677c64f72ac12eeb46695f3cf593857b07dadda7ece7e609efc275b67d9fb4",
+      "bytes": 1745
+    },
+    "tsconfig.json.txt": {
+      "sha256": "fbdf14f3b663b091ca2177696346b9f6326493b3352ee0a32c2e5222bc1d80a5",
+      "bytes": 182
+    },
+    "package.json.txt": {
+      "sha256": "1239d4d885dcad42201a27ed9324f8f0f760b78700d8db9ced39a511cffe7eae",
+      "bytes": 18
+    }
+  },
+  "stages": [
+    {
+      "stage": "current-control",
+      "command": [
+        "/tmp/ato-architecture-toolchain/node-v26.11.1-linux-x64/bin/node",
+        "/workspace/scratch/df44d30dfa5e/get-modular-consumer-fixtures/node_modules/typescript/bin/tsc",
+        "-p",
+        "tsconfig.json",
+        "--extendedDiagnostics",
+        "--singleThreaded",
+        "--pretty",
+        "false"
+      ],
+      "cwd": "/workspace/scratch/df44d30dfa5e/compiler-investigation/plain-diamond-30-overlap-False",
+      "capSeconds": 10,
+      "wallSeconds": 0.4190510480038938,
+      "exit": 0,
+      "timedOut": false
+    },
+    {
+      "stage": "current-witness",
+      "command": [
+        "/tmp/ato-architecture-toolchain/node-v26.11.1-linux-x64/bin/node",
+        "/workspace/scratch/df44d30dfa5e/get-modular-consumer-fixtures/node_modules/typescript/bin/tsc",
+        "-p",
+        "tsconfig.json",
+        "--extendedDiagnostics",
+        "--singleThreaded",
+        "--pretty",
+        "false"
+      ],
+      "cwd": "/workspace/scratch/df44d30dfa5e/compiler-investigation/plain-diamond-30-overlap-True",
+      "capSeconds": 10,
+      "wallSeconds": 10.008193695997761,
+      "exit": -9,
+      "timedOut": true
+    },
+    {
+      "stage": "candidate-build",
+      "command": [
+        "/tmp/ato-polyglot-go-toolchain-20261017/go/bin/go",
+        "build",
+        "-o",
+        "/workspace/scratch/df44d30dfa5e/compiler-investigation/bin/tsc",
+        "./cmd/tsc"
+      ],
+      "cwd": "/workspace/scratch/df44d30dfa5e/compiler-investigation/upstream/microsoft-TypeScript-3200b90/tsc",
+      "capSeconds": 120,
+      "wallSeconds": 1.3183895820038742,
+      "exit": 1,
+      "timedOut": false
+    },
+    {
+      "stage": "candidate-build-no-vcs",
+      "command": [
+        "/tmp/ato-polyglot-go-toolchain-20261017/go/bin/go",
+        "build",
+        "-buildvcs=false",
+        "-o",
+        "/workspace/scratch/df44d30dfa5e/compiler-investigation/bin/tsc",
+        "./cmd/tsc"
+      ],
+      "cwd": "/workspace/scratch/df44d30dfa5e/compiler-investigation/upstream/microsoft-TypeScript-3200b90/tsc",
+      "capSeconds": 120,
+      "wallSeconds": 120.00413885700254,
+      "exit": -9,
+      "timedOut": true
+    }
+  ],
+  "supervision": {
+    "aggregateCapSeconds": 300,
+    "elapsedSeconds": 192.72563457489014,
+    "resumedAfterBuildStampingFailure": true,
+    "remainingAtResumeSeconds": 227.3666636943817,
+    "timedOut": false,
+    "workerExit": 2
+  },
+  "priorAcceptedGrowth": {
+    "passed": [
+      8,
+      100
+    ],
+    "n500": {
+      "stage": "cold",
+      "wallSeconds": 180.046857485,
+      "capSeconds": 180,
+      "status": "timeout"
+    },
+    "n1000": "not-created/not-run",
+    "shallowMapEvidence": "does not qualify accepted inherited maps"
+  },
+  "interpretation": "Overlapping empty-interface ancestry suffices for timeout without GM. Single-base control is diagnostic, not an accepted fixture replacement. Rich chain plus CapabilitiesOf also retained a timeout; one traversal is not established as the entire consumer cost.",
+  "notExecuted": [
+    "candidate witness",
+    "candidate cycle/default regressions",
+    "candidate rich-map subject",
+    "candidate accepted N500 subject"
+  ]
+}

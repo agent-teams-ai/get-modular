@@ -36,6 +36,7 @@
     "Wasmtime",
     "Waivable",
     "bivariantly",
+    "buildvcs",
     "canonicalization",
     "canonicalizer",
     "capabilitiesof",
