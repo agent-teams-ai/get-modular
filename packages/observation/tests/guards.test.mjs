@@ -217,11 +217,12 @@ describe("T58 T59 T60 [R13] the delivery context ends with the delivery task (M1
         }).on("error", reject).end();
       });
     };
-    test("T58 T59 T60 [R13] heartbeat: a timer the owner starts from a command called by a handler writes freely", { timeout: 5000 }, async () => {
+    test("T58 T59 T60 [R13] heartbeat: a timer the owner starts from a command called by a handler writes freely", { timeout: 5000 }, async (t) => {
         const reports = [];
         const host = createScope({ name: "host" });
         const connection = createStore({ server: "a", status: "idle" }, { name: "connection", resources: host.resources, reportError: (r) => { reports.push(r); return undefined; } });
         let heartbeat;
+        t.after(() => { clearInterval(heartbeat); });
         let beats = 0;
         const enough = deferred();
         const ensureConnected = () => {
@@ -238,12 +239,13 @@ describe("T58 T59 T60 [R13] the delivery context ends with the delivery task (M1
         assert.deepEqual(reports, [], "no false echo from the owner's timer");
         await host.control.close();
     });
-    test("T58 T59 T60 [R13] server: requests to a server restarted by a handler are independent user actions", async () => {
+    test("T58 T59 T60 [R13] server: requests to a server restarted by a handler are independent user actions", async (t) => {
         const reports = [];
         const host = createScope({ name: "host" });
         const settings = createStore({ port: 1, motd: "hi" }, { name: "settings", resources: host.resources, reportError: (r) => { reports.push(r); return undefined; } });
         const requestPort = (port) => { settings.set({ port }); return "accepted"; }; // the owner's command
         let server;
+        t.after(() => { server?.closeAllConnections(); server?.close(); });
         let served = 0;
         const start = () => {
             server?.close();
@@ -273,13 +275,14 @@ describe("T58 T59 T60 [R13] the delivery context ends with the delivery task (M1
         assert.deepEqual(reports, []);
         await host.control.close();
     });
-    test("T58 T59 T60 [R13] depth: independent requests through a restarted server do not accumulate cascade depth", async () => {
+    test("T58 T59 T60 [R13] depth: independent requests through a restarted server do not accumulate cascade depth", async (t) => {
         const reports = [];
         const host = createScope({ name: "host" });
         const report = (r) => { reports.push(r); return undefined; };
         const config = createStore({ listen: 0 }, { name: "config", resources: host.resources, reportError: report });
         const hits = createStore({ hits: 0 }, { name: "stats", resources: host.resources, reportError: report });
         let server;
+        t.after(() => { server?.closeAllConnections(); server?.close(); });
         const start = () => {
             server?.close();
             server = createServer((_req, res) => {

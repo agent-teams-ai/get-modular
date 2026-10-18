@@ -27,8 +27,9 @@ export const scheduleTask: TaskScheduler = (() => {
   return (callback) => timeout(callback, 0);
 })();
 export const realNow: () => number = (() => {
-  const clock = typeof clockModule?.performance?.now === "function" ? clockModule.performance : globalThis.performance;
-  return typeof clock.now === "function" ? clock.now.bind(clock) : Date.now;
+  const fallback = (globalThis as { readonly performance?: { readonly now?: () => number } }).performance;
+  const clock = typeof clockModule?.performance?.now === "function" ? clockModule.performance : fallback;
+  return typeof clock?.now === "function" ? clock.now.bind(clock) : Date.now;
 })();
 const microtask = globalThis.queueMicrotask;
 export const queueTaskMicrotask: (callback: () => void) => void =
