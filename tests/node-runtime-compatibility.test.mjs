@@ -9,7 +9,7 @@ import { resolveNpmCli, resolvePnpmCli } from "./qualification/support/npm-cli.m
 import { assertSupportedToolingNodeVersion } from "../architecture/checks/node-version.mjs";
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const packageNames = ["core", "assembly", "resources", "conformance"];
+const packageNames = ["core", "assembly", "resources", "conformance", "observation"];
 
 // The Node 24 compatibility CI consumer is outside the source workspace. Its package manager
 // must be the physically provisioned source pin, not a shim selected by cwd.
@@ -43,6 +43,8 @@ import * as core from "@get-modular/core";
 import * as assembly from "@get-modular/assembly";
 import * as resources from "@get-modular/resources";
 import * as conformance from "@get-modular/conformance";
+import * as observation from "@get-modular/observation";
+import * as observationTesting from "@get-modular/observation/testing";
 
 const require = createRequire(import.meta.url);
 for (const [name, namespace, expected] of [
@@ -50,15 +52,39 @@ for (const [name, namespace, expected] of [
   ["assembly", assembly, ["AssemblyBindingError", "assemblyFor", "declareModule", "defineContract", "entriesOf", "group", "implement", "input"]],
   ["resources", resources, ["CloseIncompleteError", "InvalidArgumentError", "ScopeClosedError", "createScope", "scoped"]],
   ["conformance", conformance, ["ConformanceError", "checkModuleLayout", "checkNamespaces", "checkWiring", "contractSuite", "describeWiring", "guardHandles", "isolate", "runContractSuite", "smoke"]],
+  ["observation", observation, ["ObservationError", "createStore"]],
 ]) {
   const specifier = "@get-modular/" + name;
   assert.deepEqual(Object.keys(namespace).sort(), expected.sort());
   assert.equal(require(specifier), namespace);
   assert.equal(import.meta.resolve(specifier), new URL("./node_modules/" + specifier + "/dist/index.js", import.meta.url).href);
-  for (const subpath of ["dist/index.js", "package.json", "unknown"]) {
+  for (const subpath of ["dist/index.js", "dist/testing.js", "package.json", "unknown"]) {
     await assert.rejects(() => import(specifier + "/" + subpath), { code: "ERR_PACKAGE_PATH_NOT_EXPORTED" });
+    assert.throws(() => require(specifier + "/" + subpath), { code: "ERR_PACKAGE_PATH_NOT_EXPORTED" });
   }
 }
+
+assert.deepEqual(Object.keys(observationTesting).sort(), ["asyncDetection", "delivered", "liveSubscriptions", "settled"]);
+assert.equal(require("@get-modular/observation/testing"), observationTesting);
+assert.equal(import.meta.resolve("@get-modular/observation/testing"),
+  new URL("./node_modules/@get-modular/observation/dist/testing.js", import.meta.url).href);
+const observationHost = resources.createScope({ name: "observation-smoke" });
+const observationReports = [];
+const store = observation.createStore({ value: 0 }, {
+  name: "smoke", resources: observationHost.resources, reportError: report => { observationReports.push(report); },
+});
+const facet = store.readonly();
+const deliveries = [];
+facet.watch(facet.read(["value"]), {
+  name: "watch", resources: observationHost.resources, onChange: snapshot => { deliveries.push(snapshot.values.value); },
+});
+store.set({ value: 42 });
+assert.deepEqual(deliveries, []);
+await observationTesting.delivered({ stores: [facet] });
+assert.deepEqual(deliveries, [42]);
+assert.deepEqual(observationReports, []);
+assert.equal((await observationHost.control.close()).complete, true);
+assert.equal(observationTesting.liveSubscriptions(facet), 0);
 
 const compatibility = { family: "exact", familyVersion: 1, token: "smoke/value/v1" };
 const provider = core.defineModule({
@@ -142,10 +168,15 @@ test("disposable installed public roots compile and assemble on the selected Nod
     assert.equal(install.status, 0, `disposable install: ${install.stdout}\n${install.stderr}`);
     for (const name of packageNames) {
       const manifest = JSON.parse(await readFile(join(consumer, "node_modules/@get-modular", name, "package.json"), "utf8"));
-      assert.deepEqual(manifest.exports, { ".": {
+      const exports = { ".": {
         import: { types: "./dist/index.d.ts", default: "./dist/index.js" },
         default: "./dist/index.js",
-      } });
+      } };
+      if (name === "observation") exports["./testing"] = {
+        import: { types: "./dist/testing.d.ts", default: "./dist/testing.js" },
+        default: "./dist/testing.js",
+      };
+      assert.deepEqual(manifest.exports, exports);
     }
     await writeFile(join(consumer, "run.mjs"), consumerSource);
     const good = run(process.execPath, ["run.mjs"], consumer);
