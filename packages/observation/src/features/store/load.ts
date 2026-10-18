@@ -131,7 +131,7 @@ export class LoadRegistration implements Registration {
     let callback: () => unknown;
     try {
       const value = await runInContext({ depth: job.depth, origin: this.origin, live: runLive },
-        async () => await this.#callbacks.loader(job.snapshot, Object.freeze({ signal: controller.signal })));
+        () => Promise.resolve(this.#callbacks.loader(job.snapshot, Object.freeze({ signal: controller.signal }))));
       callback = () => this.#callbacks.onResult(value, job.snapshot);
     } catch (cause) {
       callback = () => this.#callbacks.onError(cause, job.snapshot);
