@@ -16,7 +16,7 @@ export const origins: WeakMap<object, Origin> = new WeakMap();
 export const engines: WeakMap<object, EngineInfo> = new WeakMap();
 export function engineInfo(value: unknown): EngineInfo {
   const info = typeof value === "object" && value !== null ? engines.get(value) : undefined;
-  if (info === undefined) throw invalidArgument("not a store of this package copy");
+  if (info === undefined) {throw invalidArgument("not a store of this package copy");}
   return info;
 }
 export function originOf(candidate: unknown, token: object): Origin {

@@ -17,7 +17,7 @@ export interface Registration {
   readonly names: Set<string>;
   depth: number;
   flush(live: Live): void;
-  detach(): void;
+  readonly detach: () => void;
   release(): void;
 }
 type Cause = { readonly revision: number; readonly depth: number; readonly live: Live | undefined };
@@ -52,7 +52,7 @@ export class StoreEngine {
   get size(): number { return this.#registrations.size; }
   nextId(): number { this.#sequence += 1; return this.#sequence; }
   assertOpen(): void {
-    if (this.#closed) throw new ObservationError("observation.store.closed", `store ${this.options.name} is closed`);
+    if (this.#closed) {throw new ObservationError("observation.store.closed", `store ${this.options.name} is closed`);}
   }
   scopeNames(resources: Resources): Set<string> {
     let names = this.#namesByScope.get(resources);
@@ -61,12 +61,12 @@ export class StoreEngine {
   }
   scopeCounts(): ReadonlyMap<Resources, number> {
     const counts = new Map<Resources, number>();
-    for (const registration of this.#registrations) counts.set(registration.resources, (counts.get(registration.resources) ?? 0) + 1);
+    for (const registration of this.#registrations) {counts.set(registration.resources, (counts.get(registration.resources) ?? 0) + 1);}
     return counts;
   }
   latest(keys: readonly string[]): number {
     let revision = 0;
-    for (const key of keys) revision = Math.max(revision, this.#lastTouched.get(key) ?? 0);
+    for (const key of keys) {revision = Math.max(revision, this.#lastTouched.get(key) ?? 0);}
     return revision;
   }
   snapshot(keys: readonly string[], revision: number): RawSnapshot {
@@ -83,7 +83,7 @@ export class StoreEngine {
     let depth = 0;
     for (const key of keys) {
       const slots = this.#latestRevisionAtDepth.get(key);
-      if (slots === undefined) continue;
+      if (slots === undefined) {continue;}
       for (let candidate = MAX_CASCADE_DEPTH; candidate > depth; candidate -= 1) {
         if ((slots[candidate] ?? 0) > revision) { depth = candidate; break; }
       }
@@ -92,11 +92,11 @@ export class StoreEngine {
   }
   initialLoadDepth(keys: readonly string[]): number {
     const context = currentContext();
-    if (context === undefined) return 0;
+    if (context === undefined) {return 0;}
     let depth = context.depth;
     for (const key of keys) {
       const cause = this.#lastWriteCause.get(key);
-      if (cause?.live === context.live) depth = Math.max(depth, cause.depth);
+      if (cause?.live === context.live) {depth = Math.max(depth, cause.depth);}
     }
     return depth;
   }
@@ -116,7 +116,7 @@ export class StoreEngine {
     for (const key of registration.keys) {
       const bucket = this.#buckets.get(key);
       bucket?.delete(registration);
-      if (bucket?.size === 0) this.#buckets.delete(key);
+      if (bucket?.size === 0) {this.#buckets.delete(key);}
     }
     registration.names.delete(registration.name);
     registration.resources.signal.removeEventListener("abort", registration.detach);
@@ -127,7 +127,7 @@ export class StoreEngine {
     catch (failure) { queueTaskMicrotask(() => { throw failure; }); }
   }
   #reportFailure(name: string, revision: number, cause: unknown): void {
-    if (typeof cause !== "object" || cause === null || !reportedByStore.has(cause)) this.report(name, revision, cause);
+    if (typeof cause !== "object" || cause === null || !reportedByStore.has(cause)) {this.report(name, revision, cause);}
   }
   /** Isolate both callback execution and return inspection under its existing context window. */
   invoke(context: DeliveryContext, revision: number, callback: () => unknown): void {
@@ -135,24 +135,27 @@ export class StoreEngine {
     let result: unknown;
     try { result = runInContext(context, callback); }
     catch (cause) { this.#reportFailure(name, revision, cause); return; }
-    if (result === undefined) return;
+    if (result === undefined) {return;}
     this.report(name, revision, new ObservationError("observation.callback.returned-value", `${name} returned a value`));
     try {
       runInContext(context, () => { this.#observeReturn(result, context, revision); });
     } catch (cause) { this.#reportFailure(name, revision, cause); }
   }
   #observeReturn(result: unknown, context: DeliveryContext, revision: number): void {
-    if (result === null || (typeof result !== "object" && typeof result !== "function")) return;
+    if (result === null || (typeof result !== "object" && typeof result !== "function")) {return;}
     const then: unknown = Reflect.get(result, "then");
-    if (typeof then !== "function") return;
+    if (typeof then !== "function") {return;}
     // Capture then once. Its assimilation job re-enters the same token, including synchronous-only runtimes.
-    const observed = Promise.resolve({ then: (resolve: (value: unknown) => void, reject: (reason: unknown) => void): void => {
-      runInContext(context, () => { Reflect.apply(then, result, [resolve, reject]); });
-    } });
+    const observed = new Promise<unknown>((resolve, reject) => {
+      queueTaskMicrotask(() => {
+        try { runInContext(context, () => { Reflect.apply(then, result, [resolve, reject]); }); }
+        catch (cause) { reject(cause); }
+      });
+    });
     void observed.catch((cause: unknown) => { this.#reportFailure(context.origin.name, revision, cause); });
   }
   schedule(): void {
-    if (this.#flushScheduled) return;
+    if (this.#flushScheduled) {return;}
     this.#flushScheduled = true;
     pending.flushes += 1;
     deliveryTask((live) => { this.#flush(live); }, () => {});
@@ -160,10 +163,10 @@ export class StoreEngine {
   #flush(live: Live): void {
     this.#flushScheduled = false;
     pending.flushes -= 1;
-    const batch = [...this.#dirty].sort((a, b) => a.id - b.id);
+    const batch = [...this.#dirty].toSorted((a, b) => a.id - b.id);
     this.#dirty.clear();
     for (const registration of batch) {
-      if (this.#closed) return;
+      if (this.#closed) {return;}
       registration.flush(live);
     }
   }
@@ -173,7 +176,7 @@ export class StoreEngine {
     deliveryTask(run, () => { this.#queuedPublications -= 1; pending.flushes -= 1; });
   }
   #guard(changed: readonly Entry[], context: DeliveryContext | undefined, depth: number): void {
-    if (context === undefined) return;
+    if (context === undefined) {return;}
     let error: ObservationError | undefined;
     if (context.origin.engine === this.token && changed.some(([key]) => context.origin.keys.includes(key))) {
       error = new ObservationError("observation.delivery.echo", `${context.origin.name} changed a key of ${this.options.name} which it follows`);
@@ -191,10 +194,10 @@ export class StoreEngine {
     const nodes = new Set<object>();
     const entries = captureRecord(patch, "patch", nodes);
     for (const [key] of entries) {
-      if (!this.#keys.has(key)) throw new ObservationError("observation.keys.unknown", `unknown key: ${key}`);
+      if (!this.#keys.has(key)) {throw new ObservationError("observation.keys.unknown", `unknown key: ${key}`);}
     }
     const changed = entries.filter(([key, value]) => !Object.is(this.#values.get(key), value));
-    if (changed.length === 0) return this.counters.commits;
+    if (changed.length === 0) {return this.counters.commits;}
     const context = currentContext();
     const depth = context === undefined ? 0 : context.depth + 1;
     this.#guard(changed, context, depth);
@@ -223,12 +226,12 @@ export class StoreEngine {
     }
   }
   close(): undefined {
-    if (this.#closed) return undefined;
+    if (this.#closed) {return undefined;}
     this.#closed = true;
     this.#dirty.clear();
     this.#latestRevisionAtDepth.clear();
     this.#lastWriteCause.clear();
-    for (const registration of [...this.#registrations]) {
+    for (const registration of this.#registrations) {
       this.report(registration.name, this.counters.commits,
         new ObservationError("observation.source.closed", `store ${this.options.name} closed before ${registration.name}`));
       registration.detach();

@@ -19,16 +19,17 @@ export const asyncDetection: boolean = detection;
 export function liveSubscriptions(store: ReadonlyStore<object>, resources?: Resources): number {
   return engineInfo(store).liveIn(resources);
 }
-function checkedWait(options: WaitOptions): { readonly infos: readonly EngineInfo[] | undefined; readonly timeout: number } {
-  if (typeof options !== "object" || options === null) throw invalidArgument("wait options must be an object");
+function checkedWait(value: unknown): { readonly infos: readonly EngineInfo[] | undefined; readonly timeout: number } {
+  if (typeof value !== "object" || value === null) {throw invalidArgument("wait options must be an object");}
+  const options = value as WaitOptions;
   const timeout = options.timeoutMs ?? 5000;
-  if (typeof timeout !== "number" || !(timeout > 0)) throw invalidArgument("timeoutMs must be a positive number or Infinity");
-  if (options.signal !== undefined && !(options.signal instanceof AbortSignal)) throw invalidArgument("signal must be an AbortSignal");
-  if (options.stores !== undefined && !Array.isArray(options.stores)) throw invalidArgument("stores must be an array");
+  if (typeof timeout !== "number" || !(timeout > 0)) {throw invalidArgument("timeoutMs must be a positive number or Infinity");}
+  if (options.signal !== undefined && !(options.signal instanceof AbortSignal)) {throw invalidArgument("signal must be an AbortSignal");}
+  if (options.stores !== undefined && !Array.isArray(options.stores)) {throw invalidArgument("stores must be an array");}
   return { infos: options.stores?.map(engineInfo), timeout };
 }
 function quiet(infos: readonly EngineInfo[] | undefined, includeLoads: boolean): boolean {
-  if (infos === undefined) return pending.flushes === 0 && (!includeLoads || pending.loads === 0);
+  if (infos === undefined) {return pending.flushes === 0 && (!includeLoads || pending.loads === 0);}
   return infos.every((info) => !info.pendingFlush() && (!includeLoads || info.pendingLoads() === 0));
 }
 async function waitUntil(options: WaitOptions, includeLoads: boolean, what: string): Promise<void> {
@@ -36,7 +37,7 @@ async function waitUntil(options: WaitOptions, includeLoads: boolean, what: stri
   const deadline = realNow() + timeout;
   for (;;) {
     await new Promise<void>((resolve) => { later(resolve); });
-    if (quiet(infos, includeLoads)) return;
+    if (quiet(infos, includeLoads)) {return;}
     if (options.signal?.aborted === true) {
       throw new ObservationError("observation.testing.timeout", `${what} was abandoned: the signal aborted`, { cause: options.signal.reason });
     }

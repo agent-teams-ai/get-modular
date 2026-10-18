@@ -25,20 +25,20 @@ let head: Node | undefined;
 let tail: Node | undefined;
 function runNext(): void {
   const node = head;
-  if (node === undefined) return;
+  if (node === undefined) {return;}
   head = node.next;
   node.next = undefined;
-  if (head === undefined) tail = undefined;
+  if (head === undefined) {tail = undefined;}
   node.run();
 }
 /** Exactly one native callback per queue node, scheduled at enqueue time. */
 export function later(run: () => void): void {
   const node: Node = { run, next: undefined };
-  if (tail === undefined) head = node;
-  else tail.next = node;
+  if (tail === undefined) {head = node;}
+  else {tail.next = node;}
   tail = node;
-  if (storage === undefined) scheduleTask(runNext);
-  else storage.exit(() => { scheduleTask(runNext); });
+  if (storage === undefined) {scheduleTask(runNext);}
+  else {storage.exit(() => { scheduleTask(runNext); });}
 }
 export function deliveryTask(run: (live: Live) => void, complete: () => void): void {
   const live: Live = { open: true };

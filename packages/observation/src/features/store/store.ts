@@ -20,22 +20,24 @@ export function createStore<V extends object & Required<V> & FixedKeys<V>>(initi
     watch: (snapshot: unknown, value: unknown): undefined => {
       const spec = checkedSpec(value, ["onChange"]);
       const admission = admit(engine, snapshot, spec);
-      new WatchRegistration(engine, admission, callbackOf(spec, "onChange"));
+      const registration = new WatchRegistration(engine, admission, callbackOf(spec, "onChange"));
+      registration.subscribe();
       return undefined;
     },
     load: (snapshot: unknown, value: unknown): undefined => {
       const spec = checkedSpec(value, ["loader", "onLoading", "onResult", "onError"]);
       const admission = admit(engine, snapshot, spec);
-      new LoadRegistration(engine, admission, {
+      const registration = new LoadRegistration(engine, admission, {
         loader: callbackOf(spec, "loader"), onLoading: callbackOf(spec, "onLoading"),
         onResult: callbackOf(spec, "onResult"), onError: callbackOf(spec, "onError"),
       });
+      registration.subscribe();
       return undefined;
     },
   });
   const owner = Object.freeze({
     read: (keys: unknown) => engine.readOwner(keys), set: (patch: unknown) => engine.set(patch),
-    readonly: () => facet, close: () => engine.close(),
+    readonly: () => facet, close: (): undefined => { engine.close(); return undefined; },
   });
   engine.register(owner);
   engine.register(facet);

@@ -27,21 +27,23 @@ export class WatchRegistration implements Registration {
     this.depth = engine.missedDepth(this.keys, admission.origin.revision);
     this.#delivered = admission.origin.revision;
     this.#onChange = onChange;
-    engine.attach(this);
-    if (engine.latest(this.keys) > this.#delivered) engine.markDirty(this);
+  }
+  subscribe(): void {
+    this.#engine.attach(this);
+    if (this.#engine.latest(this.keys) > this.#delivered) {this.#engine.markDirty(this);}
   }
   readonly detach = (): void => {
-    if (!this.#attached) return;
+    if (!this.#attached) {return;}
     this.#attached = false;
     this.#engine.unlink(this);
   };
   release(): void {}
   flush(live: Live): void {
-    if (!this.#attached) return;
+    if (!this.#attached) {return;}
     const depth = this.depth;
     this.depth = 0;
     const revision = this.#engine.latest(this.keys);
-    if (revision <= this.#delivered) return;
+    if (revision <= this.#delivered) {return;}
     this.#delivered = revision;
     this.#engine.counters.deliveries += 1;
     const snapshot = this.#engine.snapshot(this.keys, revision);

@@ -11,8 +11,8 @@ export function admit(engine: StoreEngine, snapshot: unknown, spec: RawSpec): Ad
   const origin = originOf(snapshot, engine.token);
   engine.assertOpen();
   const { resources, name } = spec;
-  if (!isResources(resources)) throw invalidArgument("watch and load require resources");
-  if (typeof name !== "string" || name.length === 0) throw invalidArgument("watch and load require a non-empty name");
+  if (!isResources(resources)) {throw invalidArgument("watch and load require resources");}
+  if (typeof name !== "string" || name.length === 0) {throw invalidArgument("watch and load require a non-empty name");}
   resources.signal.throwIfAborted();
   const names = engine.scopeNames(resources);
   if (names.has(name)) {

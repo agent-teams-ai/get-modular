@@ -48,26 +48,26 @@ export class LoadRegistration implements Registration {
       setup: () => (escalate: AbortSignal) => this.#closeAndDrain(escalate),
       cleanup: (drain, { escalate }) => { this.detach(); return drain(escalate); },
     }).then(noop, (cause: unknown) => {
-      if (typeof cause === "object" && cause !== null && "code" in cause && cause.code === "resources.scope.closed") return;
+      if (typeof cause === "object" && cause !== null && "code" in cause && cause.code === "resources.scope.closed") {return;}
       engine.report(this.name, this.#lastOffered, cause);
     });
-    engine.attach(this);
-    engine.markDirty(this);
   }
+  subscribe(): void { this.#engine.attach(this); this.#engine.markDirty(this); }
+  #isOpen(): boolean { return this.#open; }
   readonly detach = (): void => {
-    if (!this.#open) return;
+    if (!this.#open) {return;}
     this.#open = false;
     this.#engine.unlink(this);
     this.#clearPending();
-    if (this.#active !== undefined) this.#abort(this.#active.controller);
+    if (this.#active !== undefined) {this.#abort(this.#active.controller);}
   };
   release(): void { void this.#scope.control.close(); }
   flush(live: Live): void {
-    if (!this.#open) return;
+    if (!this.#open) {return;}
     const revision = this.#engine.latest(this.keys);
     const depth = this.depth;
     this.depth = 0;
-    if (revision <= this.#delivered) return;
+    if (revision <= this.#delivered) {return;}
     this.#delivered = revision;
     this.#engine.counters.deliveries += 1;
     this.#offer({ revision, depth, snapshot: this.#engine.snapshot(this.keys, revision) }, live);
@@ -90,19 +90,19 @@ export class LoadRegistration implements Registration {
     return job;
   }
   #offer(job: Job, live: Live): void {
-    if (!this.#open || job.revision <= this.#lastOffered) return;
+    if (!this.#open || job.revision <= this.#lastOffered) {return;}
     this.#lastOffered = job.revision;
     this.#engine.invoke({ depth: job.depth, origin: this.origin, live }, job.revision,
       () => this.#callbacks.onLoading(job.snapshot));
     // A callback or its reporter can synchronously close the subscriber or source.
-    if (!this.#open) return;
+    if (!this.#isOpen()) {return;}
     if (this.#active === undefined) { this.#start(job); return; }
     if (this.#pending === undefined) { this.#engine.counters.loadsPending += 1; pending.loads += 1; }
     this.#pending = job;
     this.#abort(this.#active.controller);
   }
   #publish(job: Job, controller: AbortController, callback: () => unknown): void {
-    if (!this.#isCurrent(job, controller)) return;
+    if (!this.#isCurrent(job, controller)) {return;}
     this.#engine.publish((live) => {
       if (this.#isCurrent(job, controller)) {
         this.#engine.invoke({ depth: job.depth, origin: this.origin, live }, job.revision, callback);
@@ -118,14 +118,14 @@ export class LoadRegistration implements Registration {
       pending.loads -= 1;
       this.#active = undefined;
       const next = this.#clearPending();
-      if (this.#open && next !== undefined) this.#start(next);
+      if (this.#open && next !== undefined) {this.#start(next);}
     });
     this.#active = { controller, settled };
   }
   async #run(job: Job, controller: AbortController): Promise<void> {
     await Promise.resolve();
     // Also checks the current store revision: a newer commit may not have flushed yet.
-    if (!this.#isCurrent(job, controller)) return;
+    if (!this.#isCurrent(job, controller)) {return;}
     const runLive: Live = { open: true };
     this.#engine.counters.loaderCalls += 1;
     let callback: () => unknown;
@@ -142,16 +142,16 @@ export class LoadRegistration implements Registration {
   async #closeAndDrain(escalate: AbortSignal): Promise<void> {
     this.detach();
     const active = this.#active;
-    if (active === undefined) return;
+    if (active === undefined) {return;}
     let onEscalate = noop;
     const escalated = new Promise<"escalated">((resolve) => {
       onEscalate = () => { resolve("escalated"); };
-      if (escalate.aborted) onEscalate();
-      else escalate.addEventListener("abort", onEscalate, { once: true });
+      if (escalate.aborted) {onEscalate();}
+      else {escalate.addEventListener("abort", onEscalate, { once: true });}
     });
     const outcome = await Promise.race([active.settled.then(() => "drained"), escalated]);
     escalate.removeEventListener("abort", onEscalate);
-    if (outcome === "drained") return;
+    if (outcome === "drained") {return;}
     await new Promise<void>((resolve) => { later(resolve); });
     if (this.#active !== undefined) {
       throw new ObservationError("observation.load.still-running", `load ${this.name} is still running after escalation`);

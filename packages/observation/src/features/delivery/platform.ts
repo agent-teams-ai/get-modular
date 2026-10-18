@@ -20,15 +20,15 @@ const clockModule = builtin("node:perf_hooks") as {
 
 export const scheduleTask: TaskScheduler = (() => {
   const fromTimers = timers?.setImmediate;
-  if (typeof fromTimers === "function") return (callback) => Reflect.apply(fromTimers, undefined, [callback]);
+  if (typeof fromTimers === "function") {return (callback) => { Reflect.apply(fromTimers, undefined, [callback]); };}
   const immediate = (globalThis as { readonly setImmediate?: unknown }).setImmediate;
-  if (typeof immediate === "function") return (callback) => Reflect.apply(immediate, globalThis, [callback]);
+  if (typeof immediate === "function") {return (callback) => { Reflect.apply(immediate, globalThis, [callback]); };}
   const timeout = globalThis.setTimeout;
   return (callback) => timeout(callback, 0);
 })();
 export const realNow: () => number = (() => {
   const clock = typeof clockModule?.performance?.now === "function" ? clockModule.performance : globalThis.performance;
-  return typeof clock?.now === "function" ? clock.now.bind(clock) : Date.now;
+  return typeof clock.now === "function" ? clock.now.bind(clock) : Date.now;
 })();
 const microtask = globalThis.queueMicrotask;
 export const queueTaskMicrotask: (callback: () => void) => void =

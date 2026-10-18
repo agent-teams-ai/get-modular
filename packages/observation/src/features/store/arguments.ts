@@ -8,23 +8,23 @@ export type EngineOptions = {
 };
 export type RawSpec = Readonly<Record<string, unknown>>;
 export function isResources(value: unknown): value is Resources {
-  if (typeof value !== "object" || value === null) return false;
+  if (typeof value !== "object" || value === null) {return false;}
   const candidate = value as Partial<Resources>;
   return candidate.signal instanceof AbortSignal && typeof candidate.use === "function"
     && typeof candidate.child === "function" && typeof candidate.setup === "function";
 }
 export function checkedSpec(spec: unknown, callbacks: readonly string[]): RawSpec {
-  if (typeof spec !== "object" || spec === null) throw invalidArgument("a subscription requires an object spec");
+  if (typeof spec !== "object" || spec === null) {throw invalidArgument("a subscription requires an object spec");}
   const record = spec as RawSpec;
   for (const callback of callbacks) {
-    if (typeof record[callback] !== "function") throw invalidArgument(`${callback} must be a function`);
+    if (typeof record[callback] !== "function") {throw invalidArgument(`${callback} must be a function`);}
   }
   return record;
 }
 export function callbackOf(spec: RawSpec, name: string): (...args: unknown[]) => unknown {
   const callback = spec[name];
-  if (typeof callback !== "function") throw invalidArgument(`${name} must be a function`);
-  return (...args) => Reflect.apply(callback, undefined, args);
+  if (typeof callback !== "function") {throw invalidArgument(`${name} must be a function`);}
+  return (...args): unknown => { const result: unknown = Reflect.apply(callback, undefined, args); return result; };
 }
 function limit(value: unknown, fallback: number, name: string): number {
   const result = value ?? fallback;
@@ -34,11 +34,11 @@ function limit(value: unknown, fallback: number, name: string): number {
   return result;
 }
 export function checkedOptions(value: unknown): EngineOptions {
-  if (typeof value !== "object" || value === null) throw invalidArgument("options must be { name, resources, reportError }");
+  if (typeof value !== "object" || value === null) {throw invalidArgument("options must be { name, resources, reportError }");}
   const options = value as RawSpec;
   const { name, resources } = options;
-  if (typeof name !== "string" || name.length === 0) throw invalidArgument("a store requires a non-empty name");
-  if (!isResources(resources)) throw invalidArgument("a store requires resources");
+  if (typeof name !== "string" || name.length === 0) {throw invalidArgument("a store requires a non-empty name");}
+  if (!isResources(resources)) {throw invalidArgument("a store requires resources");}
   const reporter = callbackOf(options, "reportError");
   return {
     name, resources, reportError: (report) => { reporter(report); },
@@ -47,10 +47,10 @@ export function checkedOptions(value: unknown): EngineOptions {
   };
 }
 export function checkedKeys(value: unknown, known: ReadonlySet<string>): readonly string[] {
-  if (!Array.isArray(value) || value.length === 0) throw new ObservationError("observation.keys.empty", "at least one key is required");
+  if (!Array.isArray(value) || value.length === 0) {throw new ObservationError("observation.keys.empty", "at least one key is required");}
   const keys: string[] = [];
   for (const key of new Set<unknown>(value)) {
-    if (typeof key !== "string" || !known.has(key)) throw new ObservationError("observation.keys.unknown", `unknown key: ${String(key)}`);
+    if (typeof key !== "string" || !known.has(key)) {throw new ObservationError("observation.keys.unknown", `unknown key: ${String(key)}`);}
     keys.push(key);
   }
   return Object.freeze(keys);
