@@ -113,7 +113,7 @@ test('JavaScript profile admission is closed and preserves the direct default', 
 });
 
 function sealedFixture(binding = {}) {
-  return { ...identity(), ...binding, plan: { cases: fixture().expectedPlan.cases } };
+  return { ...identity(), ...binding, plan: { cases: fixture(272).expectedPlan.cases } };
 }
 
 test('versioned seals require their profile while historical direct seals remain admitted', async () => {

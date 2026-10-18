@@ -234,7 +234,7 @@ test("disposable packed consumer checks closed roots, synthetic wiring and both 
         join(consumer, "emitted", `${compilerName}-${resolution}`, "mixed-graph.js")], consumer).trim());
     }
     assert.equal(observations.length, supportedCompilers().length * 2);
-    assert.deepEqual(runtimeChecks, ["package-copy:passed", ...Array(4).fill("mixed-runtime:passed")],
+    assert.deepEqual(runtimeChecks, ["package-copy:passed", ...Array(supportedCompilers().length * 2).fill("mixed-runtime:passed")],
       "packed runtime runner completion");
     for (const [archive, { bytes }] of archiveBytes) assert.deepEqual(await readFile(archive), bytes);
     t.diagnostic(JSON.stringify({ consumerChecks: "passed", compilers: observations,
