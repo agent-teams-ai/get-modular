@@ -32,7 +32,12 @@
     "followup-check-blocked.log": "ba0510c728d265e8dfab0a389b61a8c2a59acd437aa751c30a89a4b93ff20366",
     "followup-quality-critical-test-blocked.log": "271d9cfe206db987fa54d4a9fd0d494366f8d05b5b7f000ebc1d5984a04ef039",
     "followup-sdk-growth-registry-blocked.log": "918d8424e6bd3f8ac32096109ffc2464a3dd92e275914ad25a892e7bbe6d6d78",
-    "followup-docs.log": "bdf4a6a72d64255f34dba53fb516cdca2c46c9b78e7f0e9b7f4f6ff09167609d"
+    "followup-docs.log": "bdf4a6a72d64255f34dba53fb516cdca2c46c9b78e7f0e9b7f4f6ff09167609d",
+    "ci-first-run.json": "1010c0c0b62243904d282b4dfc747c52f431c7fe08b9ac6ba199430df742ea25",
+    "ci-first-run-details.json": "ffa204c466d2c5e0e81b878c9fedcaa03791c8aff7a4c1612d1c39bda7c4a122",
+    "ci-cardinalities-node24.log": "3326ec7f23b892c348fbc3b1871b087a74faafa0d9cf9f55f44a89fea889113a",
+    "ci-cardinalities-node26.log": "13e35c05d19ee52711a2ba0a6952012d40dd1ab798a0c8efd89efa6a955321e0",
+    "ci-typescript-docs.log": "fe241754f42c6b47cd7bc6de0914d2aab1dcc80a8b1860a87735215753728eed"
   },
   "finalToolingCommit": "ea9ac84",
   "followUp": {
@@ -52,5 +57,40 @@
     "reviewReasoningEffort": "xhigh",
     "historicalFoundationLimitation": "Earlier Foundation CLI/Node runner and affected SDK entry imports initialized TypeScript 5.9.3 and scanners before command dispatch; no non-extractor project parsing is established. Original logs are preserved, not exclusive-TS7 qualification.",
     "externalEvidenceCommit": "3ec107c5b16fd849ccf4c6e90ad80823fb469e02"
+  },
+  "ciAndTypeScriptFollowUp": {
+    "implementationCommit": "f0deed0af09915717f93bda11c570a82f456907e",
+    "windowsTestFixCommit": "4b3fa554cc4cb90ed6156dddfbc63b3e9dd7c84a",
+    "cardinalityFixCommit": "c4db2cb22517034f39bc3dca2e4bf4965d219a5c",
+    "preparedReleaseCommit": "106e3b0adca10e83d7a87ba57cb73baa9ee7ca6d",
+    "externalTestedCommit": "4d10a1fb7041e44c61766400d6f1262e84c397e7",
+    "externalEvidenceCommit": "4b33245c2b454e44aac4ea6f3bb241c02f7b9c59",
+    "organizationPolicyCommit": "578f822b36f3623cfee3c29f90510afe7facb131",
+    "organizationPolicyPullRequest": 368,
+    "firstCiRun": 39119798726,
+    "firstCiHead": "30ccdf4c50a0c647eaadce4b75a764b2e587a68f",
+    "firstCiCheckout": "54d1aecb679d515049f9a3ab5c2e6cac14d30e52",
+    "ciAfterFix": "See live PR #195 checks; this retained pre-push record makes no advance success claim.",
+    "reviewModel": "gpt-6.1-sol",
+    "reviewReasoningEffort": "xhigh",
+    "files": [
+      "ci-first-run.json",
+      "ci-first-run-details.json",
+      "ci-cardinalities-node24.log",
+      "ci-cardinalities-node26.log",
+      "ci-typescript-docs.log"
+    ],
+    "organizationRequiredCiBlocks": [
+      {
+        "context": "check",
+        "job": 117658653359,
+        "reason": "Embedded API Extractor compiler 5.9.3 is below the required 7.0.2 floor."
+      },
+      {
+        "context": "docs-source-successor-v1",
+        "job": 117658705196,
+        "reason": "Existing protected source checker admission rejects scripts/check-quality-scope.mjs changes."
+      }
+    ]
   }
 }

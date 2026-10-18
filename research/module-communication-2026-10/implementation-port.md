@@ -13,8 +13,8 @@ independently verified. Merge and release eligibility remain blocked as describe
 | Current main integrated into the implementation | `47a02a90a06f121c78086c7c5f72b085c42ee7ea`, including merged PR #183 and fresh author qualification |
 | Reviewed plan predecessor | PR #185, `a0c08187845019680d9a2bc764f4010c8cc52b1a` |
 | Exact ADR-0034 predecessor merged into this branch | PR #154, `945e9a151a516ce4ce6e73b6e18893d4e5b27cfe` |
-| Current implementation | `3c4a3d96e8c71a23331297b1964ba9418c569183`, branch `feat/observation-0-1-e2e`; final package inputs from `737d842` |
-| Unpublished prepared release | `d345e14970eca4ed1c69831d2a59f4754da0b0e9`, branch `release/observation-0-1-candidate` |
+| Current implementation | `f0deed0af09915717f93bda11c570a82f456907e`, branch `feat/observation-0-1-e2e`; runtime from `737d842`, TypeScript test/manifest correction `4b3fa55` |
+| Unpublished prepared release | `106e3b0adca10e83d7a87ba57cb73baa9ee7ca6d`, branch `release/observation-0-1-candidate` |
 | External consumer | `agent-teams-ai/modularity-host-test`, `observation-0.1.0/`, branch `test/observation-0.1.0` |
 | Compiler policy successor | [ADR-0038](../../docs/decisions/0038-require-typescript-7-for-current-package-qualification.md) |
 
@@ -78,8 +78,8 @@ plain-array validation, exact future snapshot typing, late subscription depth
 and initial-load startup boundaries. A final independent review inspected the
 assertions across T01 through T119, including recovered capacity, filtered
 waits, queue interleaving, installed copy identity and real Assembly cancellation.
-It found no missing live obligation in those families. This is not a claim that
-the unexecuted operating-system matrix passed.
+It found no missing live obligation in those families. Those local reviews did
+not establish the operating-system matrix; the subsequent CI result is recorded below.
 
 The compiler migration preserves native AST, semantic type, symbol, alias and
 declaration identity checks through a closed virtual filesystem. A physical
@@ -117,7 +117,7 @@ ordering, package test dependency cycles, and an unnecessary double assertion
 through `unknown`. The last change preserves emitted public declarations and
 executable JavaScript; no assertion bridge admission or suppression was added.
 
-## Additional GPT-6.1 xhigh review and current qualification
+## Additional GPT-6.1 xhigh review
 
 The owner requested a further review while authenticating GitHub. Three new
 independent reviewers used **GPT-6.1 xhigh** with the same complete vision,
@@ -135,8 +135,8 @@ Node 26.11.1: native build, both declaration resolutions, **157 actual tests**,
 all **18 attributed mutation controls**, all **33 writer outcomes**, and installed
 packed qualification. No observation test was skipped. The run began on the
 three-file correction before it was committed as `737d842`; the package bytes
-are identical in `3c4a3d9`. Subsequent main/tooling integration changed no package
-input. The independent Node 24 follow-up is the affected runtime/process scope
+are identical in `3c4a3d9`. The main/tooling integration through that commit
+changed no package input. The independent Node 24 follow-up is the affected runtime/process scope
 listed above, plus the new exact-archive E2E below; it is not a claim that the
 whole root aggregate ran on Node 24.
 
@@ -146,6 +146,55 @@ archive hashes stayed identical; observation changed to
 The corrected candidate replaces the earlier `b281531` candidate for delivery.
 Its new consumer source is `dbb708e97a9cb20afe959d06dd85460fa0bf1349`.
 The old `accepted-972dc2b` record remains historical and unchanged.
+
+## CI corrections and TypeScript authoring
+
+The first [CI run](https://github.com/agent-teams-ai/get-modular/actions/runs/39119798726)
+checked PR head `30ccdf4` through merge checkout `54d1aec`. All 43 jobs were
+classified from their actual logs: observation passed on Linux and macOS on
+both Node lines, and Node 24 package compatibility passed. Eighteen Foundation
+lanes failed at the expected compiler preflight. Twelve Core/Assembly lanes
+and two Windows observation lanes exposed three distinct test defects; six
+aggregates correctly propagated the failures. No failure remained unexplained.
+
+| Correction | Preserved obligation | Verification |
+| --- | --- | --- |
+| `4b3fa55`: canonicalize the temporary directory before declaration attribution; migrate its owning test to `.mts` and add it to the strict compiler project and normal discovery | Exact TS2636-only attribution, all 92 negative cases per resolver and both TS2322 controls stay intact | Strict test-tooling check and declaration controls pass on Node 24/26; the integrated typecheck and all 157 observation tests pass on Node 26 |
+| `c4db2cb`: construct the current sealed fixture with 272 rows | Historical 282-row transport control and actual seal-anchor rejection remain unchanged | All 16 Core seal/transport controls pass on each Node line |
+| Same commit: derive packed runtime receipt count from the independently selected compiler count and two resolvers | Exact receipt content, independent observation count and all four removal/no-op controls remain | Combined Core/Assembly selection passes 24 actual tests per Node, with zero skips |
+
+The two single-line legacy JavaScript fixture corrections remain local because
+migrating their complete harnesses would expand the scope beyond these count
+errors. Their surrounding JavaScript is still untyped; no new helper or
+responsibility was added. The materially changed declaration test is actual
+strictly checked TypeScript, including in its package and root command routes.
+
+The owner additionally requested TypeScript for all new maintained JavaScript
+runtime code. Local agent instructions now state that requirement and link to
+[organization policy PR #368](https://github.com/agent-teams-ai/.github/pull/368).
+The common rule covers source, tests, CLI tools and helpers, uses a 7.0.2 minimum,
+requires real strict checking, and keeps concrete generated/fixture/host uses.
+It does not make historical JavaScript typed or automatically load central
+instructions into every repository. The external consumer has explicit
+AGENTS, Claude and Copilot routes too.
+
+The organization policy's actual CI has two failed required contexts:
+[`check`](https://github.com/agent-teams-ai/.github/actions/runs/39121773828/job/117658653359)
+stops the embedded 5.9.3 compiler, while
+[`docs-source-successor-v1`](https://github.com/agent-teams-ai/.github/actions/runs/39121790997/job/117658705196)
+rejects the protected source-checker change. The latter requires the existing
+separate admission route for that checker. The other four effective required
+contexts pass. Historical transition failures are not currently required by main;
+their retained controllers were not changed to make this unrelated PR green.
+
+Candidate `106e3b0` incorporates these corrections without another versioning
+step. Its production JavaScript and public declarations match the preceding
+qualified archives; only observation's package manifest scripts changed.
+A fresh offline consumer installation and frozen reproduction then passed the
+complete unchanged E2E at `4d10a1f`, retained in `accepted-4d10a1f`. The exact
+current identities and archive hashes are below. Earlier accepted records remain
+byte-identical. Fresh CI after these corrections is a separate required
+observation; this local record does not declare it green in advance.
 
 ## Initial executed checks
 
@@ -205,9 +254,10 @@ compatibility exists, not a skipped or successful gate. No packed input changed.
 The earlier Git pushes failed because HTTPS credentials were unavailable;
 automatic approval also rejected an empty replacement branch. The owner has now
 completed the official GitHub CLI device flow. Read-only API checks confirm push
-access to both repositories. The complete qualified commits can now be pushed
-and reviewed through draft PRs. This resolves the access blocker; it does not
-resolve the compiler, predecessor admission or release gates.
+access to both repositories. The implementation and consumer are open as [PR #195](https://github.com/agent-teams-ai/get-modular/pull/195)
+and [PR #20](https://github.com/agent-teams-ai/modularity-host-test/pull/20).
+This resolves the access blocker; it does not resolve the compiler, predecessor
+admission or release gates.
 
 ## Maintained CMS and consumer adoption
 
@@ -230,10 +280,12 @@ adoption and did not edit another consumer's pin automatically.
 
 ## Prepared archives
 
-All five archives were packed once from the single committed prepared release
-listed above. Pinned package versions and hashes are retained in the external
-consumer's `third_party/pins.json`; installed file bytes and physical peer
-identity are checked before the consumer runs.
+All five retained archives were packed from the single prepared release listed
+above. A fresh comparison pack reproduced four exactly; conformance had only
+the established peer-key-order variation allowed in plan Phase 3c. Its original
+pinned tested bytes remain the subject. The exact comparison is retained with
+the external evidence. Versions and hashes are in `third_party/pins.json`;
+installed file bytes and physical peer identity are checked before execution.
 
 | Package | Prepared version | SHA-256 |
 | --- | --- | --- |
@@ -241,7 +293,7 @@ identity are checked before the consumer runs.
 | Assembly | 0.6.0 | `ac96072e21d7a6a4264685c25e8c5ee487cbe0302ede58ec384d34ad4ddf8f63` |
 | Resources | 0.2.0 | `d9f6363d9c848be90c15e5d20acf07226e3b29ed55ae8af3d6ee0274e5a123d5` |
 | Conformance | 0.4.0 | `9b0b7c3bd1f64ebed48ddf6ac51782aab0cf70d72a1fb9fac99b591b3ade888b` |
-| Observation | 0.1.0 | `c48ac24d89c259bcf13088f5aa220bf3a1f8572e62a47c0928377759d4bb683a` |
+| Observation | 0.1.0 | `2a72ad3080ecf72277ab707581633391b6af28cbed36a98f8eff2306563f5c91` |
 
 Assembly depends on exact Core 0.6.0. Conformance peers are Core/Assembly
 `^0.6.0` and resources `^0.2.0`; observation has only resources `^0.2.0`.
@@ -250,9 +302,9 @@ has the separately enforced 24.21.0 minimum. No package was published.
 
 ## Exact-archive external E2E result
 
-The executed consumer commit is `dbb708e97a9cb20afe959d06dd85460fa0bf1349`.
-Evidence-only commit `3ec107c5b16fd849ccf4c6e90ad80823fb469e02` retains the complete record under
-`observation-0.1.0/evidence/accepted-dbb708e/` in the external repository.
+The executed consumer commit is `4d10a1fb7041e44c61766400d6f1262e84c397e7`.
+Evidence-only commit `4b33245c2b454e44aac4ea6f3bb241c02f7b9c59` retains the complete record under
+`observation-0.1.0/evidence/accepted-4d10a1f/` in the external repository.
 The five archives did not change during qualification.
 
 - Offline engine/peer-checked installation and offline frozen-lockfile
@@ -279,8 +331,9 @@ The corrected oracle pins every injection target, preserves strict fail rows
 and complete-close checks, and accepts exactly the supported abort carriers.
 Those first-run fixture corrections required no package change. The later
 Promise finding did require a new observation archive; the complete external
-E2E above was rerun on that exact corrected candidate without changing the
-consumer executable or its semantic oracles.
+E2E was rerun for that correction. The later TypeScript test-command migration
+changed the observation archive manifest and required the current fresh-install
+rerun. Consumer executable source and semantic oracles remain unchanged.
 
 ## Remaining gates
 
@@ -290,9 +343,10 @@ consumer executable or its semantic oracles.
    compiler migration and explicit extractor-provenance upgrade. No compatible
    release or permission to execute the old compiler is assumed.
 3. Run the unchanged complete/fast/changed and SDK-growth aggregates after that
-   dependency is resolved, and observe every Node/OS CI lane. Linux evidence is
-   not macOS/Windows evidence; the 13-minute Windows observation target remains
-   unmeasured and the 15-minute workflow timeout remains unchanged.
+   dependency is resolved, and observe every updated Node/OS CI lane. The first
+   run passed observation on Linux/macOS for both Nodes; the corrected Windows
+   lane and its 13-minute target require fresh CI. The 15-minute workflow
+   timeout remains unchanged.
 4. Obtain the existing owner decisions for merge and publication. Prepared
    versions and passing package/consumer checks do not grant release eligibility.
 

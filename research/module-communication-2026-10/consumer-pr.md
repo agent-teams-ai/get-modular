@@ -23,9 +23,9 @@ conformance smoke covers the same root and every failure/abort injection target.
 
 ## Actual results
 
-- Prepared package source: `d345e14970eca4ed1c69831d2a59f4754da0b0e9`.
-- Executed consumer source: `dbb708e97a9cb20afe959d06dd85460fa0bf1349`.
-- Evidence-only successor: `3ec107c5b16fd849ccf4c6e90ad80823fb469e02`.
+- Prepared package source: `106e3b0adca10e83d7a87ba57cb73baa9ee7ca6d`.
+- Executed consumer source: `4d10a1fb7041e44c61766400d6f1262e84c397e7`.
+- Evidence-only successor: `4b33245c2b454e44aac4ea6f3bb241c02f7b9c59`.
 - Offline strict install and frozen-lockfile reproduction passed.
 - TypeScript 7.0.2 NodeNext/Bundler passed with `skipLibCheck: false`.
 - Node 24.21.0 and 26.11.1 each passed all five connected/runtime predicates
@@ -34,8 +34,8 @@ conformance smoke covers the same root and every failure/abort injection target.
 - An independent critic verified all 25 executed-source hashes, five tarballs,
   176 installed files, 78 original writer inputs, lock/pins and actual outcomes.
 
-[Accepted record](https://github.com/agent-teams-ai/modularity-host-test/blob/3ec107c5b16fd849ccf4c6e90ad80823fb469e02/observation-0.1.0/evidence/accepted-dbb708e/RECORD.md) and
-[machine-readable result](https://github.com/agent-teams-ai/modularity-host-test/blob/3ec107c5b16fd849ccf4c6e90ad80823fb469e02/observation-0.1.0/evidence/accepted-dbb708e/result.json)
+[Accepted record](https://github.com/agent-teams-ai/modularity-host-test/blob/4b33245c2b454e44aac4ea6f3bb241c02f7b9c59/observation-0.1.0/evidence/accepted-4d10a1f/RECORD.md) and
+[machine-readable result](https://github.com/agent-teams-ai/modularity-host-test/blob/4b33245c2b454e44aac4ea6f3bb241c02f7b9c59/observation-0.1.0/evidence/accepted-4d10a1f/result.json)
 retain the command logs and the complete three-substitution harness diff.
 
 The earlier qualification corrected two fixture defects without modifying its archives: an ignored CMS
@@ -47,8 +47,15 @@ inspection in the production package. This PR retains the regenerated candidate
 and a complete rerun, with no consumer executable, semantic oracle or writer
 expectation changes. Four archives remain byte-identical; the new observation
 archive SHA-256 is
-`c48ac24d89c259bcf13088f5aa220bf3a1f8572e62a47c0928377759d4bb683a`.
-The previous accepted record remains unchanged in Git and in its own directory.
+`2a72ad3080ecf72277ab707581633391b6af28cbed36a98f8eff2306563f5c91`.
+The current refresh also incorporates the TypeScript test-command correction;
+compared with the preceding installed set, only observation's manifest bytes
+changed. Both earlier accepted records remain unchanged. A clean comparison
+pack confirms the plan's existing conformance peer-key-order exception; its
+original pinned tested archive remains the subject.
+
+Local AGENTS, Claude and Copilot routes adopt the requested TypeScript-first
+rule and link to [organization policy PR #368](https://github.com/agent-teams-ai/.github/pull/368).
 
 ## Scope
 
