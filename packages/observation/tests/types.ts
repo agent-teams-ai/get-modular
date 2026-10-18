@@ -119,3 +119,26 @@ void [widened, unrelated, wrongType, leaked, themeName, revision];
 // T41: even a report with the correct public fields lacks the private report brand.
 // @ts-expect-error the store alone ordinarily constructs a ListenerError
 hostErrors.report({ source: "settings", subscription: "x", revision: 1, cause: new Error("x") });
+
+// R24/R25: these ordinary structural inputs remain valid; runtime admission and
+// loader assimilation must preserve their scope and delivery semantics.
+class CatalogTask extends Promise<number> {
+  override then<TResult1 = number, TResult2 = never>(
+    onfulfilled?: ((value: number) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+  ): Promise<TResult1 | TResult2> {
+    return super.then(onfulfilled, onrejected);
+  }
+}
+regions.load(region, {
+  resources, name: "catalog/subclass",
+  loader: () => new CatalogTask(resolve => { resolve(1); }),
+  onLoading: () => undefined,
+  onResult: result => { const inferred: number = result; void inferred; },
+  onError: () => undefined,
+});
+const getterWatch: import("../dist/index.js").WatchSpec<typeof theme> = {
+  resources, name: "picker/accessor",
+  get onChange() { return () => undefined; },
+};
+themes.watch(theme, getterWatch);
