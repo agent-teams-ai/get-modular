@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { testAssemblyTypes } from "../../architecture/tooling/test-assembly-types.mjs";
+import { supportedCompilers, testAssemblyTypes } from "../../architecture/tooling/test-assembly-types.mjs";
 
-test("minimum and build compilers check positive and negative NodeNext and Bundler fixtures", () => {
+test("distinct supported compilers check positive and negative NodeNext and Bundler fixtures", () => {
   const observations = testAssemblyTypes();
-  assert.deepEqual(observations.map(({ resolution }) => resolution), ["NodeNext", "Bundler", "NodeNext", "Bundler"]);
+  assert.deepEqual(observations.map(({ resolution }) => resolution), supportedCompilers().flatMap(() => ["NodeNext", "Bundler"]));
 });

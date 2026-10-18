@@ -8,7 +8,7 @@ import { delimiter, dirname, join, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { CORE_DEVELOPMENT_DEPENDENCIES } from "../../architecture/checks/assembly-admission.mjs";
-import { testAssemblyTypes } from "../../architecture/tooling/test-assembly-types.mjs";
+import { supportedCompilers, testAssemblyTypes } from "../../architecture/tooling/test-assembly-types.mjs";
 import { largeLiteralSource } from "./type-scale.mjs";
 
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -233,7 +233,7 @@ test("disposable packed consumer checks closed roots, synthetic wiring and both 
       runtimeChecks.push(command(process.execPath, ["mixed-runtime.mjs",
         join(consumer, "emitted", `${compilerName}-${resolution}`, "mixed-graph.js")], consumer).trim());
     }
-    assert.equal(observations.length, 4);
+    assert.equal(observations.length, supportedCompilers().length * 2);
     assert.deepEqual(runtimeChecks, ["package-copy:passed", ...Array(4).fill("mixed-runtime:passed")],
       "packed runtime runner completion");
     for (const [archive, { bytes }] of archiveBytes) assert.deepEqual(await readFile(archive), bytes);
