@@ -14,13 +14,15 @@ async function subject(index, control) {
   const payload = { index, data: Array(50).fill(index) };
   const host = createScope({ name: `host${index}` });
   const scope = host.resources.child({ name: "subscriber" });
-  const store = createStore({ value: 0 }, { name: `store${index}`, resources: host.resources, reportError: noop });
+  const store = createStore({ value: 0, payload }, { name: `store${index}`, resources: host.resources, reportError: noop });
   const facet = store.readonly();
   const handler = () => {
     void payload.data;
     if (mode === "als-retention") timers.push(setInterval(noop, 60000));
   };
-  const reference = new WeakRef(mode === "als-retention" ? payload : handler);
+  // A closed store must release its values even when its callback was detached.
+  // The subscriber-only case keeps the store alive and therefore observes the handler.
+  const reference = new WeakRef(mode === "subscriber-closed" ? handler : payload);
   facet.watch(facet.read(["value"]), { resources: mode === "store-closed" ? subscriber.resources : scope.resources,
     name: `watch${index}`, onChange: handler });
   store.set({ value: 1 });
