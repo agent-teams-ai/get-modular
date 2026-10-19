@@ -207,8 +207,8 @@ function body(files, code) {
   const anchor = 'export function admitObjectInput(input, collector) {\n';
   edit(files, ADMISSION, anchor, `${anchor}  ${code}\n`);
 }
-function reject(files, reason, profile) {
-  assert.throws(() => auditM1JavaScriptClosure(files, profile), error => {
+async function reject(files, reason, profile) {
+  await assert.rejects(() => auditM1JavaScriptClosure(files, profile), error => {
     assert.ok(error instanceof Error);
     assert.equal(error.code, 'm1.javascript-closure.invalid');
     assert.equal(error.message, 'Invalid M1 JavaScript closure.');
@@ -218,11 +218,11 @@ function reject(files, reason, profile) {
     return true;
   });
 }
-function mutant(change, reason) {
+async function mutant(change, reason) {
   const files = baseline();
-  assert.deepEqual(auditM1JavaScriptClosure(files).exports, publicNames, 'the complete companion passes before mutation');
+  assert.deepEqual((await auditM1JavaScriptClosure(files)).exports, publicNames, 'the complete companion passes before mutation');
   change(files);
-  reject(files, reason);
+  await reject(files, reason);
 }
 
 // Only this trusted driver and auditor are loaded. Candidate bytes remain data.
@@ -235,7 +235,7 @@ import { parentPort, workerData } from 'node:worker_threads';
 import { auditM1JavaScriptClosure } from ${JSON.stringify(auditor)};
 try {
   const files = new Map(workerData.map(([path, bytes]) => [path, Buffer.from(bytes)]));
-  parentPort.postMessage({ result: auditM1JavaScriptClosure(files) });
+  parentPort.postMessage({ result: await auditM1JavaScriptClosure(files) });
 } catch (error) {
   parentPort.postMessage({ error: { isError: error instanceof Error, code: error.code,
     message: error.message, reason: error.reason, keys: Object.keys(error).sort(), cause: error.cause } });
@@ -252,7 +252,7 @@ try {
 }
 async function isolatedMutant(change, reason) {
   const files = baseline();
-  assert.deepEqual(auditM1JavaScriptClosure(files).exports, publicNames, 'the complete companion passes before mutation');
+  assert.deepEqual((await auditM1JavaScriptClosure(files)).exports, publicNames, 'the complete companion passes before mutation');
   change(files);
   assert.deepEqual(await isolatedAudit(files), { error: {
     isError: true, code: 'm1.javascript-closure.invalid', message: 'Invalid M1 JavaScript closure.',
@@ -260,22 +260,22 @@ async function isolatedMutant(change, reason) {
   } });
 }
 
-test('audits the complete direct fixture graph without mutating archive data', () => {
+test('audits the complete direct fixture graph without mutating archive data', async () => {
   const files = baseline(), copy = new Map([...files].map(([path, bytes]) => [path, Buffer.from(bytes)]));
-  assert.deepEqual(auditM1JavaScriptClosure(files), { modules: [...sources.keys()].sort(), exports: publicNames });
+  assert.deepEqual((await auditM1JavaScriptClosure(files)), { modules: [...sources.keys()].sort(), exports: publicNames });
   assert.deepEqual(files, copy);
-  assert.deepEqual(auditM1JavaScriptClosure(new Map([...files].reverse())), auditM1JavaScriptClosure(files));
+  assert.deepEqual((await auditM1JavaScriptClosure(new Map([...files].reverse()))), (await auditM1JavaScriptClosure(files)));
 });
 
-test('metadata and declaration purpose do not invent required fixture fields or type semantics', () => {
+test('metadata and declaration purpose do not invent required fixture fields or type semantics', async () => {
   const files = baseline();
   for (const path of ['package.json', 'README.md', 'LICENSE', 'dist/index.d.ts',
     'dist/features/authoring/internal.d.ts', 'dist/features/authoring/helpers.d.ts',
     'dist/features/authoring/wire-types.d.ts', 'dist/features/authoring/diagnostic-types.d.ts']) files.set(path, Buffer.from(''));
-  assert.deepEqual(auditM1JavaScriptClosure(files).modules, [...sources.keys()].sort());
+  assert.deepEqual((await auditM1JavaScriptClosure(files)).modules, [...sources.keys()].sort());
 });
 
-test('named imports, reexports, const aliases, parentheses and explicit slots preserve origins', () => {
+test('named imports, reexports, const aliases, parentheses and explicit slots preserve origins', async () => {
   const files = baseline();
   files.set(ENTRY, Buffer.from(`import { root as assembly } from './composition/stage0.js';
 const compiler = assembly;
@@ -289,49 +289,49 @@ export { forwarded as defineModule, one as required, maybe as optional, ordered 
   edit(files, ROOT, 'import { createOwnedJcs }', 'import { createOwnedJcs as makeBytes }');
   edit(files, ROOT, 'createOwnedJcs({})', '(makeBytes)({})');
   edit(files, ROOT, 'createCompositionSemantics({ canonicalizer })', 'createCompositionSemantics({ canonicalizer: canonicalizer })');
-  assert.deepEqual(auditM1JavaScriptClosure(files).exports, publicNames);
+  assert.deepEqual((await auditM1JavaScriptClosure(files)).exports, publicNames);
 });
 
-test('prose, strings, Unicode, regex and template content are not import or directive syntax', () => {
+test('prose, strings, Unicode, regex and template content are not import or directive syntax', async () => {
   const files = baseline();
   body(files, `// Host, raw decoding, require and sourceMappingURL are discussed here.
 const prose = 'Host raw conformance fixture require eval sourceMappingURL café 😀';
 const literal = '//# sourceMappingURL=private.ts';
 const template = \`import('node:fs'); // @ts-nocheck\`;
 const pattern = /sourceMappingURL|require/;`);
-  assert.deepEqual(auditM1JavaScriptClosure(files).exports, publicNames);
+  assert.deepEqual((await auditM1JavaScriptClosure(files)).exports, publicNames);
 });
 
-test('the reader never invokes a candidate function', () => {
+test('the reader never invokes a candidate function', async () => {
   const files = baseline();
   body(files, `throw new Error('This candidate function must never execute during the audit');`);
-  assert.deepEqual(auditM1JavaScriptClosure(files).exports, publicNames);
+  assert.deepEqual((await auditM1JavaScriptClosure(files)).exports, publicNames);
 });
 
-test('entry, imported modules, imported symbols and orphan contents are checked', () => {
-  mutant(files => files.delete(ENTRY), 'entry-missing');
-  mutant(files => files.delete(CANONICAL), 'module-missing');
-  mutant(files => files.delete(ORDER), 'module-missing');
-  mutant(files => edit(files, 'dist/features/diagnostics/collector.js', 'import { compareDiagnostics }', 'import { absent as compareDiagnostics }'), 'export-missing');
-  mutant(files => files.set(ORPHAN, Buffer.from('export function graphComponents(outgoing, incoming) { return { members: [], edgeVisits: 0, peakFrames: 0 }; }')), 'orphan');
-  mutant(files => files.set(ORPHAN, Buffer.from('export function graphComponents( {')), 'parse');
+test('entry, imported modules, imported symbols and orphan contents are checked', async () => {
+  await mutant(files => files.delete(ENTRY), 'entry-missing');
+  await mutant(files => files.delete(CANONICAL), 'module-missing');
+  await mutant(files => files.delete(ORDER), 'module-missing');
+  await mutant(files => edit(files, 'dist/features/diagnostics/collector.js', 'import { compareDiagnostics }', 'import { absent as compareDiagnostics }'), 'export-missing');
+  await mutant(files => files.set(ORPHAN, Buffer.from('export function graphComponents(outgoing, incoming) { return { members: [], edgeVisits: 0, peakFrames: 0 }; }')), 'orphan');
+  await mutant(files => files.set(ORPHAN, Buffer.from('export function graphComponents( {')), 'parse');
 });
 
 for (const specifier of ['node:fs', 'canonicalize', '@get-modular/conformance', '/outside.js',
   '../../outside.js', './composition/../composition/stage0.js', './composition//stage0.js',
   './composition/stage0.js?other', './composition/stage0.js#other', './composition/stage0.ts',
   './composition/%73tage0.js', String.raw`./composition\stage0.js`, String.raw`\u002e/composition/stage0.js`]) {
-  test(`rejects noncanonical or external specifier ${specifier}`, () => {
-    mutant(files => edit(files, ENTRY, './composition/stage0.js', specifier), 'specifier');
+  test(`rejects noncanonical or external specifier ${specifier}`, async () => {
+    await mutant(files => edit(files, ENTRY, './composition/stage0.js', specifier), 'specifier');
   });
 }
 
-test('fatal UTF-8 precedes parsing, including corrupt bytes inside comments', () => {
+test('fatal UTF-8 precedes parsing, including corrupt bytes inside comments', async () => {
   for (const bytes of [[0xc0, 0xaf], [0xed, 0xa0, 0x80], [0xf4, 0x90, 0x80, 0x80], [0xe2, 0x82]]) {
-    mutant(files => files.set(ORDER, Buffer.concat([files.get(ORDER), Buffer.from('\n// '), Buffer.from(bytes)])), 'utf8');
+    await mutant(files => files.set(ORDER, Buffer.concat([files.get(ORDER), Buffer.from('\n// '), Buffer.from(bytes)])), 'utf8');
   }
-  mutant(files => files.set(ORDER, Buffer.concat([Buffer.from([239, 187, 191]), files.get(ORDER)])), 'utf8');
-  mutant(files => edit(files, ADMISSION, 'return Object.freeze', 'return ) Object.freeze'), 'parse');
+  await mutant(files => files.set(ORDER, Buffer.concat([Buffer.from([239, 187, 191]), files.get(ORDER)])), 'utf8');
+  await mutant(files => edit(files, ADMISSION, 'return Object.freeze', 'return ) Object.freeze'), 'parse');
 });
 
 for (const directive of ['//# sourceMappingURL=private.js.map', '//@ sourceURL=private.ts',
@@ -339,34 +339,34 @@ for (const directive of ['//# sourceMappingURL=private.js.map', '//@ sourceURL=p
   '/// <reference types="node" />', '/// <reference lib="dom" />', '// @ts-nocheck',
   '/** @import { Host } from "host" */', '/** @typedef {import("host").Host} Host */',
   '/* global host */', '/* eslint-env node */']) {
-  test(`rejects actual directive ${directive}`, () => {
-    mutant(files => files.set(ORDER, Buffer.concat([Buffer.from(directive + '\n'), files.get(ORDER)])), 'directive');
+  test(`rejects actual directive ${directive}`, async () => {
+    await mutant(files => files.set(ORDER, Buffer.concat([Buffer.from(directive + '\n'), files.get(ORDER)])), 'directive');
   });
 }
 
-test('directives inside function trivia and at EOF cannot hide from the AST reader', () => {
-  mutant(files => body(files, '/*# sourceURL=hidden.ts */'), 'directive');
-  mutant(files => files.set(ORDER, Buffer.concat([files.get(ORDER), Buffer.from('//# sourceMappingURL=hidden.map')])), 'directive');
+test('directives inside function trivia and at EOF cannot hide from the AST reader', async () => {
+  await mutant(files => body(files, '/*# sourceURL=hidden.ts */'), 'directive');
+  await mutant(files => files.set(ORDER, Buffer.concat([files.get(ORDER), Buffer.from('//# sourceMappingURL=hidden.map')])), 'directive');
 });
 
 for (const path of ['dist/features/input-admission/raw.js', 'dist/features/host/factory.js',
   'dist/features/authoring/innocent.js', 'dist/index.js.map', 'dist/index.mjs', 'dist/index.cjs',
   'dist/features/authoring/extra.d.ts', 'src/index.ts', 'package/dist/index.js', 'fixture.json']) {
-  test(`rejects unowned archive purpose ${path}`, () => {
-    mutant(files => files.set(path, Buffer.from('export const value = 1;')), 'file-purpose');
+  test(`rejects unowned archive purpose ${path}`, async () => {
+    await mutant(files => files.set(path, Buffer.from('export const value = 1;')), 'file-purpose');
   });
 }
 
-test('reachable and renamed implementation content still needs an owned purpose', () => {
-  mutant(files => body(files, `const lifecycle = () => input;`), 'purpose');
-  mutant(files => body(files, `function activate() { return input; }`), 'purpose');
-  mutant(files => body(files, `const state = { readiness: true };`), 'purpose');
-  mutant(files => body(files, `const state = { start() { return input; } };`), 'purpose');
-  mutant(files => body(files, `const cases = { expected: input, actual: input };`), 'purpose');
-  mutant(files => body(files, `input.activate();`), 'purpose');
-  mutant(files => body(files, `new TextDecoder().decode(input);`), 'construction');
-  mutant(files => body(files, `JSON.parse(input);`), 'purpose');
-  mutant(files => {
+test('reachable and renamed implementation content still needs an owned purpose', async () => {
+  await mutant(files => body(files, `const lifecycle = () => input;`), 'purpose');
+  await mutant(files => body(files, `function activate() { return input; }`), 'purpose');
+  await mutant(files => body(files, `const state = { readiness: true };`), 'purpose');
+  await mutant(files => body(files, `const state = { start() { return input; } };`), 'purpose');
+  await mutant(files => body(files, `const cases = { expected: input, actual: input };`), 'purpose');
+  await mutant(files => body(files, `input.activate();`), 'purpose');
+  await mutant(files => body(files, `new TextDecoder().decode(input);`), 'construction');
+  await mutant(files => body(files, `JSON.parse(input);`), 'purpose');
+  await mutant(files => {
     files.set(ORPHAN, Buffer.from('export function graphComponents(outgoing, incoming) { return { readiness: true }; }'));
     edit(files, 'dist/features/composition-semantics/semantic-analysis.js', 'export function', "import { graphComponents } from './graph-components.js';\nexport function");
   }, 'purpose');
@@ -379,12 +379,12 @@ for (const code of [
   `const lifecycle = (((value) => value)); lifecycle(input);`,
   `let lifecycle = (() => input); lifecycle();`,
 ]) {
-  test(`parentheses preserve the named-arrow role restriction: ${code}`, () => {
-    mutant(files => body(files, code), 'purpose');
+  test(`parentheses preserve the named-arrow role restriction: ${code}`, async () => {
+    await mutant(files => body(files, code), 'purpose');
   });
 }
 
-test('admitted named arrows and anonymous callbacks retain their roles through parentheses', () => {
+test('admitted named arrows and anonymous callbacks retain their roles through parentheses', async () => {
   for (const code of [
     `const add = value => value; add(input);`,
     `const validate = (() => input); validate();`,
@@ -394,7 +394,7 @@ test('admitted named arrows and anonymous callbacks retain their roles through p
   ]) {
     const files = baseline();
     body(files, code);
-    assert.deepEqual(auditM1JavaScriptClosure(files).exports, publicNames, code);
+    assert.deepEqual((await auditM1JavaScriptClosure(files)).exports, publicNames, code);
   }
 });
 
@@ -410,8 +410,8 @@ for (const code of [
   `const validate = ({ activate: invoke }) => invoke(); validate(input);`,
   `function scan({ activate: invoke }) { invoke(); } scan(input);`,
 ]) {
-  test(`binding selectors retain the member-purpose restriction: ${code}`, () => {
-    mutant(files => body(files, code), 'purpose');
+  test(`binding selectors retain the member-purpose restriction: ${code}`, async () => {
+    await mutant(files => body(files, code), 'purpose');
   });
 }
 
@@ -422,12 +422,12 @@ for (const code of [
   `const { [0]: selected } = input;`,
   `const { ['pro' + input.moduleId]: selected } = input;`,
 ]) {
-  test(`unsupported computed binding selectors fail closed: ${code}`, () => {
-    mutant(files => body(files, code), 'purpose');
+  test(`unsupported computed binding selectors fail closed: ${code}`, async () => {
+    await mutant(files => body(files, code), 'purpose');
   });
 }
 
-test('admitted binding selectors preserve aliases, nesting, defaults, rest and parameter forms', () => {
+test('admitted binding selectors preserve aliases, nesting, defaults, rest and parameter forms', async () => {
   for (const code of [
     `const { profile } = input; profile.moduleId;`,
     `const { profile: selected } = input; selected.moduleId;`,
@@ -443,17 +443,17 @@ test('admitted binding selectors preserve aliases, nesting, defaults, rest and p
   ]) {
     const files = baseline();
     body(files, code);
-    assert.deepEqual(auditM1JavaScriptClosure(files).exports, publicNames, code);
+    assert.deepEqual((await auditM1JavaScriptClosure(files)).exports, publicNames, code);
   }
 });
 
-test('admitted static members and genuinely dynamic element values remain distinct', () => {
+test('admitted static members and genuinely dynamic element values remain distinct', async () => {
   const files = baseline();
   body(files, `input.profile; input['profile']; input[\`profile\`];
 const known = 'pro' + 'file'; input[known];
 const dynamic = input.moduleId; input[dynamic]; input[dynamic + ''];
 input[input.moduleId]; input.declarations[0];`);
-  assert.deepEqual(auditM1JavaScriptClosure(files).exports, publicNames);
+  assert.deepEqual((await auditM1JavaScriptClosure(files)).exports, publicNames);
 });
 
 for (const [code, reason] of [
@@ -467,56 +467,56 @@ for (const [code, reason] of [
   [`const key = 'con' + 'structor'; const load = input[key];`, 'purpose'],
   [`input['compileComposition'](input);`, 'computed-call'],
 ]) {
-  test(`rejects code loading or ambient operation: ${code}`, () => mutant(files => body(files, code), reason));
+  test(`rejects code loading or ambient operation: ${code}`, async () => await mutant(files => body(files, code), reason));
 }
 
-test('extra, default, star and namespace exports are closed', () => {
-  mutant(files => files.set(ENTRY, Buffer.concat([files.get(ENTRY), Buffer.from('\nexport const extra = 1;')])), 'exports');
-  mutant(files => files.set(ENTRY, Buffer.concat([files.get(ENTRY), Buffer.from('\nexport default compileComposition;')])), 'exports');
-  mutant(files => edit(files, AUTHORING, 'export { defineModule, required, optional, many }', 'export *'), 'exports');
-  mutant(files => edit(files, AUTHORING, 'export { defineModule, required, optional, many }', 'export * as helpers'), 'exports');
-  mutant(files => edit(files, ENTRY, 'import { root }', 'import * as root'), 'module-syntax');
-  mutant(files => files.set(ENTRY, Buffer.concat([files.get(ENTRY), Buffer.from("\nexport { root } from './composition/stage0.js';")])), 'exports');
+test('extra, default, star and namespace exports are closed', async () => {
+  await mutant(files => files.set(ENTRY, Buffer.concat([files.get(ENTRY), Buffer.from('\nexport const extra = 1;')])), 'exports');
+  await mutant(files => files.set(ENTRY, Buffer.concat([files.get(ENTRY), Buffer.from('\nexport default compileComposition;')])), 'exports');
+  await mutant(files => edit(files, AUTHORING, 'export { defineModule, required, optional, many }', 'export *'), 'exports');
+  await mutant(files => edit(files, AUTHORING, 'export { defineModule, required, optional, many }', 'export * as helpers'), 'exports');
+  await mutant(files => edit(files, ENTRY, 'import { root }', 'import * as root'), 'module-syntax');
+  await mutant(files => files.set(ENTRY, Buffer.concat([files.get(ENTRY), Buffer.from("\nexport { root } from './composition/stage0.js';")])), 'exports');
 });
 
-test('private factories cannot acquire accepted helper names through aliases', () => {
-  mutant(files => files.set(AUTHORING, Buffer.from(`export { required, optional, many } from './helpers.js';
+test('private factories cannot acquire accepted helper names through aliases', async () => {
+  await mutant(files => files.set(AUTHORING, Buffer.from(`export { required, optional, many } from './helpers.js';
 export { createOwnedJcs as defineModule } from '../canonicalization/owned-jcs/factory.js';`)), 'export-origin');
-  mutant(files => files.set(AUTHORING, Buffer.from(`import { createOwnedJcs as make } from '../canonicalization/owned-jcs/factory.js';
+  await mutant(files => files.set(AUTHORING, Buffer.from(`import { createOwnedJcs as make } from '../canonicalization/owned-jcs/factory.js';
 const renamed = make;
 export { renamed as defineModule };
 export { required, optional, many } from './helpers.js';`)), 'export-origin');
-  mutant(files => edit(files, HELPERS, 'return declaration;', 'return Object.freeze({ canonicalize: declaration });'), 'helper-contract');
-  mutant(files => edit(files, ENTRY, 'root.compileComposition', 'root'), 'public-origin');
-  mutant(files => edit(files, ROOT, 'export const root = compiler;', 'export const root = createOwnedJcs;'), 'construction');
+  await mutant(files => edit(files, HELPERS, 'return declaration;', 'return Object.freeze({ canonicalize: declaration });'), 'helper-contract');
+  await mutant(files => edit(files, ENTRY, 'root.compileComposition', 'root'), 'public-origin');
+  await mutant(files => edit(files, ROOT, 'export const root = compiler;', 'export const root = createOwnedJcs;'), 'construction');
 });
 
-test('helper construction is checked against its accepted inert contract', () => {
-  mutant(files => edit(files, HELPERS, 'return declaration;', 'return { ...declaration };'), 'helper-contract');
-  mutant(files => edit(files, HELPERS, 'return declaration;', 'declaration.kind; return declaration;'), 'helper-contract');
-  mutant(files => edit(files, HELPERS, "return { kind: 'required' };", "return Object.freeze({ kind: 'required' });"), 'helper-contract');
-  mutant(files => edit(files, HELPERS, 'min: bounds.min', 'min: 0'), 'helper-contract');
-  mutant(files => edit(files, HELPERS, 'min: bounds.min, max: bounds.max', 'max: bounds.max, min: bounds.min'), 'helper-contract');
+test('helper construction is checked against its accepted inert contract', async () => {
+  await mutant(files => edit(files, HELPERS, 'return declaration;', 'return { ...declaration };'), 'helper-contract');
+  await mutant(files => edit(files, HELPERS, 'return declaration;', 'declaration.kind; return declaration;'), 'helper-contract');
+  await mutant(files => edit(files, HELPERS, "return { kind: 'required' };", "return Object.freeze({ kind: 'required' });"), 'helper-contract');
+  await mutant(files => edit(files, HELPERS, 'min: bounds.min', 'min: 0'), 'helper-contract');
+  await mutant(files => edit(files, HELPERS, 'min: bounds.min, max: bounds.max', 'max: bounds.max, min: bounds.min'), 'helper-contract');
 });
 
-test('the six private factories remain legitimate but assembly stays literal and closed', () => {
-  mutant(files => edit(files, ROOT, 'createPlanOutput({ canonicalizer })', 'createPlanOutput({ canonicalizer: admission })'), 'construction');
-  mutant(files => edit(files, ROOT, 'createPlanOutput({ canonicalizer })', 'createPlanOutput({})'), 'construction');
-  mutant(files => edit(files, ROOT, 'const output = createPlanOutput({ canonicalizer });\nconst scanner = createOwnedRawScanner({});',
+test('the six private factories remain legitimate but assembly stays literal and closed', async () => {
+  await mutant(files => edit(files, ROOT, 'createPlanOutput({ canonicalizer })', 'createPlanOutput({ canonicalizer: admission })'), 'construction');
+  await mutant(files => edit(files, ROOT, 'createPlanOutput({ canonicalizer })', 'createPlanOutput({})'), 'construction');
+  await mutant(files => edit(files, ROOT, 'const output = createPlanOutput({ canonicalizer });\nconst scanner = createOwnedRawScanner({});',
     'const scanner = createOwnedRawScanner({});\nconst output = createPlanOutput({ canonicalizer });'), 'construction');
-  mutant(files => edit(files, CANONICAL, 'return Object.freeze({ canonicalize });', 'return Object.freeze({ canonicalize, emit: canonicalize });'), 'construction');
-  mutant(files => edit(files, CANONICAL, 'return Object.freeze({ canonicalize });', 'const value = canonicalize; return Object.freeze({ canonicalize });'), 'construction');
-  mutant(files => edit(files, ROOT, 'const compiler =', 'const extra = createOwnedJcs({});\nconst compiler ='), 'construction');
+  await mutant(files => edit(files, CANONICAL, 'return Object.freeze({ canonicalize });', 'return Object.freeze({ canonicalize, emit: canonicalize });'), 'construction');
+  await mutant(files => edit(files, CANONICAL, 'return Object.freeze({ canonicalize });', 'const value = canonicalize; return Object.freeze({ canonicalize });'), 'construction');
+  await mutant(files => edit(files, ROOT, 'const compiler =', 'const extra = createOwnedJcs({});\nconst compiler ='), 'construction');
 });
 
-test('the scanner module, construction, required slot and owned open function are mandatory', () => {
-  mutant(files => files.delete(SCANNER_FACTORY), 'module-missing');
-  mutant(files => files.delete(SCANNER), 'module-missing');
-  mutant(files => edit(files, ROOT, 'createInputAdmission({ scanner })', 'createInputAdmission({})'), 'construction');
-  mutant(files => edit(files, ROOT, 'createInputAdmission({ scanner })', 'createInputAdmission({ scanner: canonicalizer })'), 'construction');
-  mutant(files => edit(files, ROOT, 'createOwnedRawScanner({})', 'createOwnedRawScanner({ canonicalizer })'), 'construction');
-  mutant(files => edit(files, SCANNER_FACTORY, 'open: openOwnedRawTokenCursor', 'open: _deps'), 'construction');
-  mutant(files => {
+test('the scanner module, construction, required slot and owned open function are mandatory', async () => {
+  await mutant(files => files.delete(SCANNER_FACTORY), 'module-missing');
+  await mutant(files => files.delete(SCANNER), 'module-missing');
+  await mutant(files => edit(files, ROOT, 'createInputAdmission({ scanner })', 'createInputAdmission({})'), 'construction');
+  await mutant(files => edit(files, ROOT, 'createInputAdmission({ scanner })', 'createInputAdmission({ scanner: canonicalizer })'), 'construction');
+  await mutant(files => edit(files, ROOT, 'createOwnedRawScanner({})', 'createOwnedRawScanner({ canonicalizer })'), 'construction');
+  await mutant(files => edit(files, SCANNER_FACTORY, 'open: openOwnedRawTokenCursor', 'open: _deps'), 'construction');
+  await mutant(files => {
     edit(files, ROOT, 'const scanner = createOwnedRawScanner({});\n', '');
     edit(files, ROOT, 'createInputAdmission({ scanner })', 'createInputAdmission({})');
   }, 'construction');
@@ -532,53 +532,53 @@ for (const call of [
   'admitRawInput(input, collector, { ...scanner })',
   'admitObjectInput(input, collector, scanner)',
 ]) {
-  test(`raw factory forwarding preserves all three argument origins: ${call}`, () => {
-    mutant(files => edit(files, ADMISSION_FACTORY, 'admitRawInput(input, collector, scanner)', call), 'construction');
+  test(`raw factory forwarding preserves all three argument origins: ${call}`, async () => {
+    await mutant(files => edit(files, ADMISSION_FACTORY, 'admitRawInput(input, collector, scanner)', call), 'construction');
   });
 }
 
-test('the raw factory requires its synchronous forwarding arrow and captured scanner binding', () => {
+test('the raw factory requires its synchronous forwarding arrow and captured scanner binding', async () => {
   const forwarding = 'admitRawInput: (input, collector) => admitRawInput(input, collector, scanner)';
-  mutant(files => edit(files, ADMISSION_FACTORY, forwarding, 'admitRawInput'), 'construction');
-  mutant(files => edit(files, ADMISSION_FACTORY, forwarding,
+  await mutant(files => edit(files, ADMISSION_FACTORY, forwarding, 'admitRawInput'), 'construction');
+  await mutant(files => edit(files, ADMISSION_FACTORY, forwarding,
     'admitRawInput: (input, scanner) => admitRawInput(input, scanner, scanner)'), 'construction');
-  mutant(files => edit(files, ADMISSION_FACTORY, forwarding,
+  await mutant(files => edit(files, ADMISSION_FACTORY, forwarding,
     'admitRawInput: async (input, collector) => admitRawInput(input, collector, scanner)'), 'syntax-profile');
 });
 
-test('raw forwarding accepts renamed parameters, import aliases and the explicit scanner binding', () => {
+test('raw forwarding accepts renamed parameters, import aliases and the explicit scanner binding', async () => {
   const files = baseline();
   edit(files, ADMISSION_FACTORY, 'import { admitRawInput }', 'import { admitRawInput as admit }');
   edit(files, ADMISSION_FACTORY, 'createInputAdmission({ scanner })', 'createInputAdmission({ scanner: tokens })');
   edit(files, ADMISSION_FACTORY, '(input, collector) => admitRawInput(input, collector, scanner)',
     '(value, report) => (admit(value, report, tokens))');
-  assert.deepEqual(auditM1JavaScriptClosure(files).exports, publicNames);
+  assert.deepEqual((await auditM1JavaScriptClosure(files)).exports, publicNames);
 });
 
-test('top-level effects, asynchronous initialization and ambient declarations fail', () => {
-  mutant(files => files.set(ORDER, Buffer.concat([files.get(ORDER), Buffer.from('\nObject.freeze({});')])), 'top-level');
-  mutant(files => files.set(ORDER, Buffer.concat([files.get(ORDER), Buffer.from('\nawait 0;')])), 'top-level');
-  mutant(files => files.set(ORDER, Buffer.concat([files.get(ORDER), Buffer.from('\nlet state = 0;')])), 'top-level');
-  mutant(files => files.set(ORDER, Buffer.concat([files.get(ORDER), Buffer.from('\ndeclare global { var host: unknown; }')])), 'parse');
-  mutant(files => body(files, 'const Object = input;'), 'binding');
+test('top-level effects, asynchronous initialization and ambient declarations fail', async () => {
+  await mutant(files => files.set(ORDER, Buffer.concat([files.get(ORDER), Buffer.from('\nObject.freeze({});')])), 'top-level');
+  await mutant(files => files.set(ORDER, Buffer.concat([files.get(ORDER), Buffer.from('\nawait 0;')])), 'top-level');
+  await mutant(files => files.set(ORDER, Buffer.concat([files.get(ORDER), Buffer.from('\nlet state = 0;')])), 'top-level');
+  await mutant(files => files.set(ORDER, Buffer.concat([files.get(ORDER), Buffer.from('\ndeclare global { var host: unknown; }')])), 'parse');
+  await mutant(files => body(files, 'const Object = input;'), 'binding');
 });
 
-test('intrinsic capture initializers retain their exact reviewed origins', () => {
-  mutant(files => edit(files, WRAPPER, 'const getOwnDescriptor = Object.getOwnPropertyDescriptor;',
+test('intrinsic capture initializers retain their exact reviewed origins', async () => {
+  await mutant(files => edit(files, WRAPPER, 'const getOwnDescriptor = Object.getOwnPropertyDescriptor;',
     'const getOwnDescriptor = Object.getOwnPropertyDescriptors;'), 'top-level');
-  mutant(files => edit(files, BYTE_CARRIER, 'const capturedApply = Reflect.apply;',
+  await mutant(files => edit(files, BYTE_CARRIER, 'const capturedApply = Reflect.apply;',
     'const capturedApply = Object.freeze;'), 'top-level');
-  mutant(files => edit(files, SCANNER, 'const fromCharCode = String.fromCharCode;',
+  await mutant(files => edit(files, SCANNER, 'const fromCharCode = String.fromCharCode;',
     'const fromCharCode = Number.isInteger;'), 'top-level');
-  mutant(files => edit(files, BYTE_CARRIER, 'const CapturedUint8Array = Uint8Array;',
+  await mutant(files => edit(files, BYTE_CARRIER, 'const CapturedUint8Array = Uint8Array;',
     "import { defineModule as CapturedUint8Array } from '../authoring/helpers.js';"), 'top-level');
-  mutant(files => edit(files, BYTE_CARRIER,
+  await mutant(files => edit(files, BYTE_CARRIER,
     "function captureGetter(prototype, key) { const descriptor = Object.getOwnPropertyDescriptor(prototype, key); const getter = descriptor === undefined ? undefined : Reflect.get(descriptor, 'get'); if (typeof getter !== 'function') { throw new TypeError('Required byte carrier intrinsic is unavailable'); } return function capturedGetter() { const result = capturedApply(getter, this, []); return result; }; }",
     "import { defineModule as captureGetter } from '../authoring/helpers.js';"), 'top-level');
-  mutant(files => edit(files, BYTE_CARRIER,
+  await mutant(files => edit(files, BYTE_CARRIER,
     "function requiredPrototype(value) { const prototype = Object.getPrototypeOf(value); if (prototype === null || typeof prototype !== 'object') { throw new TypeError('Required byte carrier intrinsic is unavailable'); } return prototype; }",
     'function requiredPrototype(value) { return value; }'), 'construction');
-  mutant(files => edit(files, BYTE_CARRIER,
+  await mutant(files => edit(files, BYTE_CARRIER,
     "function captureMethod(prototype, key) { const method = Object.getOwnPropertyDescriptor(prototype, key)?.value; if (typeof method !== 'function') { throw new TypeError('Required byte carrier intrinsic is unavailable'); } return (receiver, ...args) => { const result = capturedApply(method, receiver, args); return result; }; }",
     'function captureMethod(prototype, key) { return prototype[key]; }'), 'construction');
 });
@@ -589,28 +589,28 @@ for (const [path, before, after] of [
   [SCANNER, 'const fromCharCode = String.fromCharCode;',
     "import { defineModule as fromCharCode } from '../../authoring/helpers.js';"],
 ]) {
-  test(`import aliases cannot replace an owned intrinsic capture in ${path}`, () => {
-    mutant(files => edit(files, path, before, after), 'top-level');
+  test(`import aliases cannot replace an owned intrinsic capture in ${path}`, async () => {
+    await mutant(files => edit(files, path, before, after), 'top-level');
   });
 }
 
-test('reviewed intrinsic captures do not authorize arbitrary applications or copies', () => {
-  mutant(files => edit(files, BYTE_CARRIER, 'usableProbe(value, 0)',
+test('reviewed intrinsic captures do not authorize arbitrary applications or copies', async () => {
+  await mutant(files => edit(files, BYTE_CARRIER, 'usableProbe(value, 0)',
     'usableProbe(value, 1)'), 'global');
-  mutant(files => edit(files, BYTE_CARRIER, 'new CapturedUint8Array(value)',
+  await mutant(files => edit(files, BYTE_CARRIER, 'new CapturedUint8Array(value)',
     'new CapturedUint8Array(value.profile)'), 'construction');
-  mutant(files => edit(files, SCANNER, 'return fromCharCode(unit);',
+  await mutant(files => edit(files, SCANNER, 'return fromCharCode(unit);',
     'const decode = fromCharCode; return decode(unit);'), 'global');
-  mutant(files => body(files, 'String.fromCharCode(65);'), 'purpose');
+  await mutant(files => body(files, 'String.fromCharCode(65);'), 'purpose');
 });
 
-test('alias cycles and malformed input fail with bounded private reasons', () => {
-  mutant(files => files.set(AUTHORING, Buffer.from(`const a = b; const b = a;
+test('alias cycles and malformed input fail with bounded private reasons', async () => {
+  await mutant(files => files.set(AUTHORING, Buffer.from(`const a = b; const b = a;
 export { a as defineModule };
 export { required, optional, many } from './helpers.js';`)), 'alias-cycle');
-  reject(null, 'input');
-  reject({ files: baseline() }, 'input');
-  mutant(files => files.set(ORDER, 'not a Buffer'), 'input');
+  await reject(null, 'input');
+  await reject({ files: baseline() }, 'input');
+  await mutant(files => files.set(ORDER, 'not a Buffer'), 'input');
 });
 
 for (const code of [
@@ -665,14 +665,14 @@ test('cumulative static text work is bounded below the individual string ceiling
   await isolatedMutant(candidate => body(candidate, [...lines, "const key16 = key15 + ''; input[key16];"].join('\n')), 'limit');
 });
 
-test('private byte budget has an inclusive boundary and is not a Core resource claim', () => {
+test('private byte budget has an inclusive boundary and is not a Core resource claim', async () => {
   const files = baseline(), original = files.get(ORDER);
   const padding = 1024 * 1024 - original.length - 4;
   files.set(ORDER, Buffer.concat([original, Buffer.from('/*' + ' '.repeat(padding) + '*/')]));
   assert.equal(files.get(ORDER).length, 1024 * 1024);
-  assert.deepEqual(auditM1JavaScriptClosure(files).exports, publicNames);
+  assert.deepEqual((await auditM1JavaScriptClosure(files)).exports, publicNames);
   files.set(ORDER, Buffer.concat([files.get(ORDER), Buffer.from(' ')]));
-  reject(files, 'limit');
+  await reject(files, 'limit');
 });
 
 for (const [before, after] of [
@@ -682,33 +682,33 @@ for (const [before, after] of [
   ["return { type: 'identity', matchesFormat, min, max };", "return { type: 'identity', matchesFormat, min: 0, max };"],
   ["return { type: 'array', min, max, item, limit };", "return { type: 'array', min, max, item };"],
 ]) {
-  test(`schema initializer helper bodies remain closed: ${before}`, () => {
-    mutant(files => edit(files, SHAPE, before, after), 'construction');
+  test(`schema initializer helper bodies remain closed: ${before}`, async () => {
+    await mutant(files => edit(files, SHAPE, before, after), 'construction');
   });
 }
 
-test('schema initialization requires owned helpers and their reviewed call arity', () => {
-  mutant(files => edit(files, SHAPE, "function record(fields) { return { type: 'record', fields }; }",
+test('schema initialization requires owned helpers and their reviewed call arity', async () => {
+  await mutant(files => edit(files, SHAPE, "function record(fields) { return { type: 'record', fields }; }",
     "import { defineModule as record } from '../authoring/helpers.js';"), 'top-level');
-  mutant(files => edit(files, SHAPE, 'record({ profileId: portable })',
+  await mutant(files => edit(files, SHAPE, 'record({ profileId: portable })',
     'record({ profileId: portable }, portable)'), 'top-level');
 });
 
-test('the successor carrier code is admitted without broadening input member purpose', () => {
+test('the successor carrier code is admitted without broadening input member purpose', async () => {
   const files = baseline();
   body(files, `input['input.invalid-byte-carrier'];`);
-  assert.deepEqual(auditM1JavaScriptClosure(files).exports, publicNames);
-  mutant(files => body(files, `input['input.install'];`), 'purpose');
+  assert.deepEqual((await auditM1JavaScriptClosure(files)).exports, publicNames);
+  await mutant(files => body(files, `input['input.install'];`), 'purpose');
 });
 
 for (const separator of ['\n', '\r\n', '\u2028', '\u2029']) {
-  test(`profiled helper return expressions survive restricted-production newline ${JSON.stringify(separator)}`, () => {
-    mutant(files => edit(files, BYTE_CARRIER, 'return prototype;', `return${separator}prototype;`), 'construction');
+  test(`profiled helper return expressions survive restricted-production newline ${JSON.stringify(separator)}`, async () => {
+    await mutant(files => edit(files, BYTE_CARRIER, 'return prototype;', `return${separator}prototype;`), 'construction');
   });
 }
 for (const update of ['++record', '--record']) {
-  test(`schema initialization cannot mutate a checked helper with ${update}`, () => {
-    mutant(files => edit(files, SHAPE, 'identity(isWellFormedUtf16, 3, 64)',
+  test(`schema initialization cannot mutate a checked helper with ${update}`, async () => {
+    await mutant(files => edit(files, SHAPE, 'identity(isWellFormedUtf16, 3, 64)',
       `identity(isWellFormedUtf16, ${update}, 64)`), 'top-level');
   });
 }
@@ -724,18 +724,18 @@ export function captureRawInput(input, sink) { const values = []; appendOwn(valu
   files.set(RAW_ADMISSION, Buffer.from("import { captureRawInput } from './raw-byte-input.js';\n" + files.get(RAW_ADMISSION)));
   return { files, path };
 }
-test('owned raw append helper admits its captured intrinsic and null-prototype descriptor', () => {
-  assert.deepEqual(auditM1JavaScriptClosure(rawAppendFixture().files).exports, publicNames);
+test('owned raw append helper admits its captured intrinsic and null-prototype descriptor', async () => {
+  assert.deepEqual((await auditM1JavaScriptClosure(rawAppendFixture().files)).exports, publicNames);
 });
 for (const [before, after, reason] of [
   ['Object.defineProperty', 'Object.freeze', 'top-level'],
   ['__proto__: null, ', '', 'construction'],
   ['defineProperty(values, values.length, descriptor);', 'values.push(value);', 'construction'],
 ]) {
-  test(`raw append helper rejects altered construction: ${after}`, () => {
+  test(`raw append helper rejects altered construction: ${after}`, async () => {
     const { files, path } = rawAppendFixture();
     edit(files, path, before, after);
-    reject(files, reason);
+    await reject(files, reason);
   });
 }
 
@@ -743,11 +743,11 @@ for (const replacement of [
   "import { defineModule as appendOwn } from '../authoring/helpers.js';",
   "import { defineModule as borrowed } from '../authoring/helpers.js'; const appendOwn = borrowed;",
 ]) {
-  test(`raw append rejects a borrowed helper: ${replacement}`, () => {
+  test(`raw append rejects a borrowed helper: ${replacement}`, async () => {
     const { files, path } = rawAppendFixture();
     const text = files.get(path).toString();
     files.set(path, Buffer.from(text.replace(/function appendOwn\(values, value\) \{[\s\S]*?\n\}/u, replacement)));
-    reject(files, 'construction');
+    await reject(files, 'construction');
   });
 }
 
@@ -759,10 +759,10 @@ for (const write of [
   '({ value: appendOwn } = { value: undefined });',
   'const borrowed = appendOwn;',
 ]) {
-  test(`raw append rejects writes and escaping references: ${write}`, () => {
+  test(`raw append rejects writes and escaping references: ${write}`, async () => {
     const { files, path } = rawAppendFixture();
     edit(files, path, 'const values = [];', `${write} const values = [];`);
-    reject(files, 'construction');
+    await reject(files, 'construction');
   });
 }
 
@@ -798,49 +798,49 @@ export const compileCompositionJson = root.compileCompositionJson;`);
   }
   return files;
 }
-function sharedMutant(profile, change, reason = 'construction') {
+async function sharedMutant(profile, change, reason = 'construction') {
   const files = sharedFixture(profile);
-  assert.deepEqual(auditM1JavaScriptClosure(files, profile).exports,
+  assert.deepEqual((await auditM1JavaScriptClosure(files, profile)).exports,
     profile === 'm2' ? m2PublicNames : publicNames, 'the shared companion passes before mutation');
   change(files);
-  reject(files, reason, profile);
+  await reject(files, reason, profile);
 }
 
-test('historical M1 remains explicit or default and does not infer the shared facade', () => {
-  assert.deepEqual(auditM1JavaScriptClosure(baseline(), 'm1'), auditM1JavaScriptClosure(baseline()));
-  reject(sharedFixture(), 'purpose');
-  reject(sharedFixture(), 'purpose', 'm1');
-  reject(sharedFixture('m2'), 'exports');
-  reject(baseline(), 'construction', 'm1-shared');
+test('historical M1 remains explicit or default and does not infer the shared facade', async () => {
+  assert.deepEqual((await auditM1JavaScriptClosure(baseline(), 'm1')), (await auditM1JavaScriptClosure(baseline())));
+  await reject(sharedFixture(), 'purpose');
+  await reject(sharedFixture(), 'purpose', 'm1');
+  await reject(sharedFixture('m2'), 'exports');
+  await reject(baseline(), 'construction', 'm1-shared');
 });
 
-test('only a trusted closed profile selects private shared or public M2', () => {
+test('only a trusted closed profile selects private shared or public M2', async () => {
   for (const profile of ['m1-shared', 'm2']) {
     const files = sharedFixture(profile);
     const copy = new Map([...files].map(([path, bytes]) => [path, Buffer.from(bytes)]));
     const expected = { modules: [...sources.keys()].sort(),
       exports: profile === 'm2' ? m2PublicNames : publicNames };
-    assert.deepEqual(auditM1JavaScriptClosure(files, profile), expected);
-    assert.deepEqual(auditM1JavaScriptClosure(new Map([...files].reverse()), profile), expected);
+    assert.deepEqual((await auditM1JavaScriptClosure(files, profile)), expected);
+    assert.deepEqual((await auditM1JavaScriptClosure(new Map([...files].reverse()), profile)), expected);
     assert.deepEqual(files, copy);
   }
-  reject(sharedFixture('m2'), 'exports', 'm1-shared');
-  reject(sharedFixture(), 'exports', 'm2');
+  await reject(sharedFixture('m2'), 'exports', 'm1-shared');
+  await reject(sharedFixture(), 'exports', 'm2');
   const files = sharedFixture();
   files.set('package.json', Buffer.from('{"profile":"m1-shared"}'));
-  reject(files, 'purpose');
+  await reject(files, 'purpose');
 });
 
-test('unknown profiles fail closed before reading candidate bytes', () => {
+test('unknown profiles fail closed before reading candidate bytes', async () => {
   for (const profile of ['', 'M2', 'm3', 'default', null, false, 2, {}, { profile: 'm2' }]) {
-    reject(sharedFixture('m2'), 'profile', profile);
-    reject(null, 'profile', profile);
+    await reject(sharedFixture('m2'), 'profile', profile);
+    await reject(null, 'profile', profile);
   }
 });
 
-test('M2 public raw export has its corresponding member and the same constructed root', () => {
+test('M2 public raw export has its corresponding member and the same constructed root', async () => {
   for (const replacement of ['root.compileComposition', 'root', 'defineModule']) {
-    sharedMutant('m2', files => {
+    await sharedMutant('m2', files => {
       if (replacement === 'defineModule') {
         edit(files, ENTRY, "import { root } from './composition/stage0.js';",
           `import { root } from './composition/stage0.js';
@@ -849,7 +849,7 @@ import { defineModule } from './features/authoring/internal.js';`);
       edit(files, ENTRY, 'root.compileCompositionJson', replacement);
     }, 'public-origin');
   }
-  sharedMutant('m2', files => {
+  await sharedMutant('m2', files => {
     edit(files, ENTRY, "import { root } from './composition/stage0.js';",
       `import { root } from './composition/stage0.js';
 import { defineModule as borrowed } from './features/authoring/internal.js';`);
@@ -857,7 +857,7 @@ import { defineModule as borrowed } from './features/authoring/internal.js';`);
   }, 'public-origin');
 });
 
-test('M2 named aliases preserve both public entry origins', () => {
+test('M2 named aliases preserve both public entry origins', async () => {
   const files = sharedFixture('m2');
   files.set(ENTRY, Buffer.from(`import { root as assembly } from './composition/stage0.js';
 const compiler = assembly;
@@ -865,11 +865,11 @@ const objectEntry = (compiler.compileComposition);
 const rawEntry = (compiler.compileCompositionJson);
 export { objectEntry as compileComposition, rawEntry as compileCompositionJson };
 export { defineModule, required, optional, many } from './features/authoring/internal.js';`));
-  assert.deepEqual(auditM1JavaScriptClosure(files, 'm2').exports, m2PublicNames);
+  assert.deepEqual((await auditM1JavaScriptClosure(files, 'm2')).exports, m2PublicNames);
 });
 
 for (const profile of ['m1-shared', 'm2']) {
-  test(`${profile} preserves binding identity while allowing local renaming`, () => {
+  test(`${profile} preserves binding identity while allowing local renaming`, async () => {
     const files = sharedFixture(profile);
     let source = sharedFacadeSource
       .replace('({ admission, semantics, output })',
@@ -882,22 +882,22 @@ for (const profile of ['m1-shared', 'm2']) {
       ['admitted', 'owned'], ['analyzed', 'result'], ['emitted', 'rendered'], ['input', 'request'],
     ]) source = source.replace(new RegExp(`\\b${before}\\b`, 'gu'), after);
     files.set(FACADE, Buffer.from(source));
-    assert.deepEqual(auditM1JavaScriptClosure(files, profile).exports,
+    assert.deepEqual((await auditM1JavaScriptClosure(files, profile)).exports,
       profile === 'm2' ? m2PublicNames : publicNames);
   });
 
-  test(`${profile} retains export, scanner, factory and member boundaries`, () => {
-    sharedMutant(profile, files => files.set(ENTRY,
+  test(`${profile} retains export, scanner, factory and member boundaries`, async () => {
+    await sharedMutant(profile, files => files.set(ENTRY,
       Buffer.concat([files.get(ENTRY), Buffer.from('\nexport const extra = 1;')])), 'exports');
-    sharedMutant(profile, files => files.delete(SCANNER), 'module-missing');
-    sharedMutant(profile, files => edit(files, ROOT,
+    await sharedMutant(profile, files => files.delete(SCANNER), 'module-missing');
+    await sharedMutant(profile, files => edit(files, ROOT,
       'createInputAdmission({ scanner })', 'createInputAdmission({ scanner: canonicalizer })'));
-    sharedMutant(profile, files => edit(files, CANONICAL,
+    await sharedMutant(profile, files => edit(files, CANONICAL,
       'return Object.freeze({ canonicalize });',
       'const value = canonicalize; return Object.freeze({ canonicalize });'));
-    sharedMutant(profile, files => body(files, 'input.compileCompositionJson;'), 'purpose');
-    sharedMutant(profile, files => body(files, 'input.admitRawInput;'), 'purpose');
-    sharedMutant(profile, files => edit(files, FACADE,
+    await sharedMutant(profile, files => body(files, 'input.compileCompositionJson;'), 'purpose');
+    await sharedMutant(profile, files => body(files, 'input.admitRawInput;'), 'purpose');
+    await sharedMutant(profile, files => edit(files, FACADE,
       'async function compile(admit) {', 'async function compile(admit) {}\nasync function extra(admit) {'),
     'purpose');
   });
@@ -936,31 +936,31 @@ for (const profile of ['m1-shared', 'm2']) {
       'const emitted = await output.emit(collector);'],
     ['const admitted = admit(collector);', 'let admitted = admit(collector);'],
   ]) {
-    test(`${profile} rejects altered shared routing: ${after}`, () => {
-      sharedMutant(profile, files => edit(files, FACADE, before, after));
+    test(`${profile} rejects altered shared routing: ${after}`, async () => {
+      await sharedMutant(profile, files => edit(files, FACADE, before, after));
     });
   }
 
-  test(`${profile} rejects computed dispatch and asynchronous admission callbacks`, () => {
-    sharedMutant(profile, files => edit(files, FACADE,
+  test(`${profile} rejects computed dispatch and asynchronous admission callbacks`, async () => {
+    await sharedMutant(profile, files => edit(files, FACADE,
       'admission.admitRawInput(input, collector)', "admission['admitRawInput'](input, collector)"),
     'computed-call');
-    sharedMutant(profile, files => edit(files, FACADE,
+    await sharedMutant(profile, files => edit(files, FACADE,
       'collector => admission.admitRawInput(input, collector)',
       'async collector => await admission.admitRawInput(input, collector)'), 'syntax-profile');
   });
 
-  test(`${profile} requires exactly one owned helper and both private methods`, () => {
-    sharedMutant(profile, files => edit(files, FACADE,
+  test(`${profile} requires exactly one owned helper and both private methods`, async () => {
+    await sharedMutant(profile, files => edit(files, FACADE,
       'async compileCompositionJson(input) {',
       'async compileCompositionJson(input) { const compile = input;'));
-    sharedMutant(profile, files => edit(files, FACADE,
+    await sharedMutant(profile, files => edit(files, FACADE,
       'return compile(collector => admission.admitRawInput(input, collector));',
       'const admission = input; return compile(collector => admission.admitRawInput(input, collector));'));
-    sharedMutant(profile, files => edit(files, FACADE,
+    await sharedMutant(profile, files => edit(files, FACADE,
       '  return Object.freeze({\n    async compileComposition(input)',
       '  const value = output;\n  return Object.freeze({\n    async compileComposition(input)'));
-    sharedMutant(profile, files => edit(files, FACADE,
+    await sharedMutant(profile, files => edit(files, FACADE,
       `    async compileCompositionJson(input) {
       return compile(collector => admission.admitRawInput(input, collector));
     },
@@ -984,7 +984,7 @@ function callableFixture(profile) {
 const computedConstructorPrefix = 'let key = "constructor"; const text = ""; const stringConstructor = text[key];';
 for (const profile of ['m1', 'm1-shared', 'm2', 'm2-generated']) {
   const expectedExports = profile.startsWith('m2') ? m2PublicNames : publicNames;
-  test(`${profile} preserves indexed data and allowed callable aliases`, () => {
+  test(`${profile} preserves indexed data and allowed callable aliases`, async () => {
     const files = callableFixture(profile);
     body(files, `const declarations = input.declarations;
 let index = 0;
@@ -1005,7 +1005,7 @@ validateAlias(input.profile);`);
     edit(files, ORDER,
       'const a = canonicalize(left.details), b = canonicalize(right.details);',
       'const invoke = (canonicalize); const a = invoke(left.details), b = invoke(right.details);');
-    assert.deepEqual(auditM1JavaScriptClosure(files, profile),
+    assert.deepEqual((await auditM1JavaScriptClosure(files, profile)),
       { modules: [...files.keys()].sort(), exports: expectedExports });
   });
 
@@ -1036,12 +1036,12 @@ validateAlias(input.profile);`);
       `${computedConstructorPrefix} const functionConstructor = stringConstructor[key]; const invoke = functionConstructor("return 1"); invoke();`, 'call-origin'],
     ['literal callees', 'const invoke = 1; invoke();', 'call-origin'],
   ]) {
-    test(`${profile} rejects ${description} in canonicalization archive bytes`, () => {
+    test(`${profile} rejects ${description} in canonicalization archive bytes`, async () => {
       const files = callableFixture(profile);
-      assert.deepEqual(auditM1JavaScriptClosure(files, profile).exports, expectedExports);
+      assert.deepEqual((await auditM1JavaScriptClosure(files, profile)).exports, expectedExports);
       const anchor = 'function canonicalize(value) {';
       edit(files, CANONICAL, anchor, `${anchor}\n  ${code}\n`);
-      reject(files, reason, profile);
+      await reject(files, reason, profile);
     });
   }
 }

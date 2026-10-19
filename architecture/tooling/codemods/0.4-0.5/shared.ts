@@ -65,50 +65,57 @@ function namespaceImports(file: CodemodFile, module: string) {
     .filter((entry): entry is NonNullable<typeof entry> => entry !== undefined);
 }
 
-function declarationsFor(identifier: Node.Identifier): readonly Node.Node[] {
-  const symbolDeclarations = safeSymbolDeclarations(identifier);
+async function declarationsFor(identifier: Node.Identifier): Promise<readonly Node.Node[]> {
+  const symbolDeclarations = await safeSymbolDeclarations(identifier);
   return symbolDeclarations.length > 0
     ? symbolDeclarations
     : fileOf(identifier).descendants(SyntaxKind.VariableDeclaration).filter(Node.isVariableDeclaration)
       .filter((declaration) => declarationName(declaration) === identifier.getText());
 }
 
-function safeSymbolDeclarations(identifier: Node.Node) {
+async function safeSymbolDeclarations(identifier: Node.Node) {
   try {
-    return symbolDeclarations(identifier);
+    return await symbolDeclarations(identifier);
   } catch {
     return [];
   }
 }
 
-function refersTo(identifier: Node.Node, target: Node.ImportSpecifier) {
-  const declarations = safeSymbolDeclarations(identifier);
+async function refersTo(identifier: Node.Node, target: Node.ImportSpecifier) {
+  const declarations = await safeSymbolDeclarations(identifier);
   if (declarations.length > 0) return declarations.some((declaration) => declaration === target);
   return identifier.getText() === imported(target);
 }
 
-function refersToNamespace(identifier: Node.Node, target: Node.Identifier) {
-  const declarations: readonly Node.Node[] = safeSymbolDeclarations(identifier);
+async function refersToNamespace(identifier: Node.Node, target: Node.Identifier) {
+  const declarations: readonly Node.Node[] = await safeSymbolDeclarations(identifier);
   if (declarations.length > 0) return declarations.some((declaration) => declaration === target || declaration === target.parent);
   return identifier.getText() === target.getText();
 }
 
-function importedIdentifier(identifier: Node.Node, name: string, module: string, { valueOnly = false } = {}) {
-  for (const entry of namedImports(fileOf(identifier), name, module)) {
-    if (valueOnly && typeOnly(entry.declaration)) continue;
-    if (refersTo(identifier, entry.specifier)) return entry;
+async function matchingNamespace(identifier: Node.Node, namespaces: readonly Node.Identifier[]): Promise<Node.Identifier | undefined> {
+  for (const entry of namespaces) {
+    if (await refersToNamespace(identifier, entry)) return entry;
   }
   return undefined;
 }
 
-function importedCall(expression: Node.Node, name: string, module: string, { valueOnly = true } = {}) {
+async function importedIdentifier(identifier: Node.Node, name: string, module: string, { valueOnly = false } = {}) {
+  for (const entry of namedImports(fileOf(identifier), name, module)) {
+    if (valueOnly && typeOnly(entry.declaration)) continue;
+    if (await refersTo(identifier, entry.specifier)) return entry;
+  }
+  return undefined;
+}
+
+async function importedCall(expression: Node.Node, name: string, module: string, { valueOnly = true } = {}) {
   if (Node.isIdentifier(expression)) {
-    const entry = importedIdentifier(expression, name, module, { valueOnly });
+    const entry = await importedIdentifier(expression, name, module, { valueOnly });
     return entry ? { local: entry.local, namespace: false } : undefined;
   }
   if (Node.isPropertyAccessExpression(expression) && expression.name.getText() === name && Node.isIdentifier(expression.expression)) {
     const namespace = expression.expression;
-    const match = namespaceImports(fileOf(expression), module).find((entry) => refersToNamespace(namespace, entry));
+    const match = await matchingNamespace(namespace, namespaceImports(fileOf(expression), module));
     return match ? { local: `${namespace.getText()}.${name}`, namespace: true } : undefined;
   }
   return undefined;
@@ -124,15 +131,15 @@ function typeArguments(node: Node.TypeReferenceNode | Node.ImportTypeNode) {
   return (node.typeArguments ?? []).map((argument) => argument.getText()).join(", ");
 }
 
-function assemblyType(typeNode: Node.TypeNode) {
+async function assemblyType(typeNode: Node.TypeNode) {
   if (Node.isTypeReferenceNode(typeNode)) {
     const name = typeNode.typeName;
     if (Node.isIdentifier(name)) {
-      return importedIdentifier(name, "Assembly", ASSEMBLY) ? { typeArguments: typeArguments(typeNode) } : undefined;
+      return await importedIdentifier(name, "Assembly", ASSEMBLY) ? { typeArguments: typeArguments(typeNode) } : undefined;
     }
     if (Node.isQualifiedName(name) && name.right.getText() === "Assembly" && Node.isIdentifier(name.left)) {
       const namespace = name.left;
-      return namespaceImports(fileOf(typeNode), ASSEMBLY).some((entry) => refersToNamespace(namespace, entry))
+      return await matchingNamespace(namespace, namespaceImports(fileOf(typeNode), ASSEMBLY)) !== undefined
         ? { typeArguments: typeArguments(typeNode) } : undefined;
     }
   }
@@ -143,8 +150,8 @@ function assemblyType(typeNode: Node.TypeNode) {
   return undefined;
 }
 
-function assemblyForCall(expression: Node.Node) {
-  if (!Node.isCallExpression(expression) || !importedCall(expression.expression, "assemblyFor", ASSEMBLY)) return undefined;
+async function assemblyForCall(expression: Node.Node) {
+  if (!Node.isCallExpression(expression) || !await importedCall(expression.expression, "assemblyFor", ASSEMBLY)) return undefined;
   return { typeArguments: (expression.typeArguments ?? []).map((argument) => argument.getText()).join(", ") };
 }
 
@@ -230,8 +237,8 @@ export function nameWouldCollide(file: CodemodFile, name: string, at: Node.Node,
   return false;
 }
 
-export function receiver(file: CodemodFile, expression: Node.Node, { inline = true } = {}): Receiver {
-  const fromCall = assemblyForCall(expression);
+export async function receiver(file: CodemodFile, expression: Node.Node, { inline = true } = {}): Promise<Receiver> {
+  const fromCall = await assemblyForCall(expression);
   if (fromCall) {
     if (!inline) return { ok: false, reason: "inline assemblyFor()" };
     const noArguments = fromCall.typeArguments === "";
@@ -240,11 +247,11 @@ export function receiver(file: CodemodFile, expression: Node.Node, { inline = tr
       : { ok: true, typeArguments: fromCall.typeArguments, inline: true };
   }
   if (!Node.isIdentifier(expression)) return { ok: false, reason: "receiver is not a local identifier" };
-  const declarations = declarationsFor(expression);
+  const declarations = await declarationsFor(expression);
   for (const declaration of declarations) {
     if (Node.isVariableDeclaration(declaration) && declarationName(declaration) === expression.getText()) {
       const initializer = declaration.initializer;
-      const initialized = initializer ? assemblyForCall(initializer) : undefined;
+      const initialized = initializer ? await assemblyForCall(initializer) : undefined;
       if (initialized) {
         const noArguments = initialized.typeArguments === "";
         if (javascript(file) && !noArguments) {
@@ -253,22 +260,22 @@ export function receiver(file: CodemodFile, expression: Node.Node, { inline = tr
         return { ok: true, typeArguments: initialized.typeArguments };
       }
       const typeNode = declaration.type;
-      const annotated = typeNode ? assemblyType(typeNode) : undefined;
+      const annotated = typeNode ? await assemblyType(typeNode) : undefined;
       if (annotated && !javascript(file)) return { ok: true, typeArguments: annotated.typeArguments };
     }
     if (Node.isParameterDeclaration(declaration) && declarationName(declaration) === expression.getText()) {
       const typeNode = declaration.type;
-      const annotated = typeNode ? assemblyType(typeNode) : undefined;
+      const annotated = typeNode ? await assemblyType(typeNode) : undefined;
       if (annotated && !javascript(file)) return { ok: true, typeArguments: annotated.typeArguments };
     }
   }
   return { ok: false, reason: "receiver does not resolve to an Assembly binding in this file" };
 }
 
-function methodName(call: Node.CallExpression): Method | undefined {
+async function methodName(call: Node.CallExpression): Promise<Method | undefined> {
   const expression = call.expression;
   if (Node.isIdentifier(expression)) {
-    const declaration = safeSymbolDeclarations(expression).find((entry) => Node.isBindingElement(entry))
+    const declaration = (await safeSymbolDeclarations(expression)).find((entry) => Node.isBindingElement(entry))
       ?? fileOf(expression).descendants(SyntaxKind.BindingElement).filter(Node.isBindingElement)
         .find((entry) => entry.name?.getText() === expression.getText()
           && ["bindFactory", "bindInput", "prepare"].includes(entry.propertyName?.getText() ?? entry.name?.getText() ?? ""));
@@ -296,18 +303,18 @@ function methodName(call: Node.CallExpression): Method | undefined {
   return undefined;
 }
 
-function runtimePicked(expression: Node.Node, file: CodemodFile) {
+async function runtimePicked(expression: Node.Node, file: CodemodFile) {
   if (Node.isConditionalExpression(expression) || Node.isBinaryExpression(expression)
     || Node.isNewExpression(expression) || Node.isSpreadElement(expression)) return true;
   if (Node.isCallExpression(expression)) {
-    return !importedCall(expression.expression, "declareModule", ASSEMBLY);
+    return !await importedCall(expression.expression, "declareModule", ASSEMBLY);
   }
   return false;
 }
 
-function scopedCall(file: CodemodFile, expression: Node.Node) {
+async function scopedCall(file: CodemodFile, expression: Node.Node) {
   if (!Node.isCallExpression(expression)) return undefined;
-  const target = importedCall(expression.expression, "scoped", RESOURCES, { valueOnly: false });
+  const target = await importedCall(expression.expression, "scoped", RESOURCES, { valueOnly: false });
   return target ? { expression, target } : undefined;
 }
 
@@ -335,7 +342,7 @@ function valueImport(file: CodemodFile, name: string, at: Node.Node) {
   return { expression: name, collision: nameWouldCollide(file, name, at) };
 }
 
-function addValueImport(file: CodemodFile, name: string, module: string) {
+async function addValueImport(file: CodemodFile, name: string, module: string) {
   const existing = namedImports(file, name, module).find((entry) => !typeOnly(entry.declaration));
   if (existing) return existing.local;
   const namespace = name === "scoped" ? namespaceImports(file, module)[0] : undefined;
@@ -348,23 +355,23 @@ function addValueImport(file: CodemodFile, name: string, module: string) {
     .find((declaration) => moduleName(declaration) === module && !typeOnly(declaration)
       && importNames(declaration).length > 0 && !namespaceName(declaration));
   if (valueImportDeclaration) {
-    file.apply([addNamedImport(file, valueImportDeclaration, name)]);
+    await file.apply([addNamedImport(file, valueImportDeclaration, name)]);
     return name;
   }
   const first = file.imports[0];
   const position = first?.getStart() ?? 0;
-  file.apply([{ start: position, end: position, text: `import { ${name} } from "${module}";\n` }]);
+  await file.apply([{ start: position, end: position, text: `import { ${name} } from "${module}";\n` }]);
   return name;
 }
 
-function entryInspection(file: CodemodFile, call: Node.CallExpression, method: Method): Site {
+async function entryInspection(file: CodemodFile, call: Node.CallExpression, method: Method): Promise<Site> {
   if (method.unsupported) {
     return {
       kind: method.name, node: call, status: "report", counted: true,
       message: `${line(call)}: ${method.name} ${method.unsupported} stays; use a direct Assembly method call`,
     };
   }
-  const qualified: Receiver = method.receiver ? receiver(file, method.receiver, { inline: false }) : { ok: false, reason: "destructured or element-access method" };
+  const qualified: Receiver = method.receiver ? await receiver(file, method.receiver, { inline: false }) : { ok: false, reason: "destructured or element-access method" };
   const args = (call.arguments ?? []);
   const site = { kind: method.name, node: call };
   if (!qualified.ok) {
@@ -372,7 +379,7 @@ function entryInspection(file: CodemodFile, call: Node.CallExpression, method: M
   }
   if (method.name === "bindInput") {
     if (args.length !== 1 || !args[0]) return { ...site, status: "report", message: `${line(call)}: bindInput with ${args.length} arguments stays; pass exactly one module declaration` };
-    if (runtimePicked(args[0], file)) return { ...site, status: "report", message: `${line(call)}: bindInput declaration stays; choose the declaration at module scope before the call` };
+    if (await runtimePicked(args[0], file)) return { ...site, status: "report", message: `${line(call)}: bindInput declaration stays; choose the declaration at module scope before the call` };
     const input = valueImport(file, "input", call);
     if (input.collision) return { ...site, status: "report", message: `${line(call)}: bindInput call stays; rename the local binding that collides with input` };
     return { ...site, status: "rewrite", replacement: `${input.expression}${generic(qualified.typeArguments)}()(${args[0].getText()})`, imports: [["input", ASSEMBLY]] };
@@ -381,7 +388,7 @@ function entryInspection(file: CodemodFile, call: Node.CallExpression, method: M
   const declaration = args[0];
   let factory = args[1];
   let adapter: string | undefined;
-  const scoped = scopedCall(file, factory);
+  const scoped = await scopedCall(file, factory);
   if (scoped) {
     const scopeArgs = (scoped.expression.arguments ?? []);
     const scope = valueImport(file, "scoped", call);
@@ -392,7 +399,7 @@ function entryInspection(file: CodemodFile, call: Node.CallExpression, method: M
     factory = scopeArgs[1];
     adapter = scope.expression;
   }
-  if (runtimePicked(declaration, file) || runtimePicked(factory, file)) {
+  if (await runtimePicked(declaration, file) || await runtimePicked(factory, file)) {
     return { ...site, status: "report", message: `${line(call)}: bindFactory declaration or factory stays; choose both at module scope before the call` };
   }
   const implement = valueImport(file, "implement", call);
@@ -411,11 +418,11 @@ function entryInspection(file: CodemodFile, call: Node.CallExpression, method: M
   };
 }
 
-export function inspectEntries(file: CodemodFile) {
+export async function inspectEntries(file: CodemodFile) {
   const sites = [];
   for (const call of file.descendants(SyntaxKind.CallExpression).filter(Node.isCallExpression)) {
-    const method = methodName(call);
-    if (method && method.name !== "prepare") sites.push(entryInspection(file, call, method));
+    const method = await methodName(call);
+    if (method && method.name !== "prepare") sites.push(await entryInspection(file, call, method));
   }
   return sites.filter((site): site is NonNullable<typeof site> => site !== undefined).sort((a, b) => a.node.getStart() - b.node.getStart());
 }
@@ -425,12 +432,12 @@ function propertyName(property: Node.ObjectLiteralElementLike) {
   return name && !Node.isComputedPropertyName(name) ? name.getText() : undefined;
 }
 
-function objectWithFactories(expression: Node.Node | undefined): boolean {
+async function objectWithFactories(expression: Node.Node | undefined): Promise<boolean> {
   if (!expression) return false;
   if (Node.isObjectLiteralExpression(expression)) return expression.properties.some((property) => propertyName(property) === "factories");
   if (Node.isIdentifier(expression)) {
-    const declaration = declarationsFor(expression).find((entry) => Node.isVariableDeclaration(entry));
-    return declaration ? objectWithFactories(declaration.initializer) : false;
+    const declaration = (await declarationsFor(expression)).find((entry) => Node.isVariableDeclaration(entry));
+    return declaration ? await objectWithFactories(declaration.initializer) : false;
   }
   return false;
 }
@@ -445,38 +452,44 @@ function unwrapExpression(expression: Node.Node | undefined): Node.Node | undefi
   return current;
 }
 
-function entryFactoryCall(call: Node.CallExpression) {
-  const method = methodName(call);
+async function entryFactoryCall(call: Node.CallExpression) {
+  const method = await methodName(call);
   if (method && ["bindFactory", "bindInput"].includes(method.name)) return true;
   const target = unwrapExpression(call.expression);
   if (!target || !Node.isCallExpression(target)) return false;
-  return ["implement", "input"].some((name) => importedCall(target.expression, name, ASSEMBLY));
+  for (const name of ["implement", "input"]) {
+    if (await importedCall(target.expression, name, ASSEMBLY)) return true;
+  }
+  return false;
 }
 
-function entryValue(expression: Node.Node | undefined): boolean {
+async function entryValue(expression: Node.Node | undefined): Promise<boolean> {
   const value = unwrapExpression(expression);
   if (!value) return false;
-  if (Node.isSpreadElement(value)) return entryValue(value.expression);
-  if (Node.isConditionalExpression(value)) return entryValue(value.whenTrue) || entryValue(value.whenFalse);
-  if (Node.isArrayLiteralExpression(value)) return value.elements.some(entryValue);
-  if (Node.isCallExpression(value)) return entryFactoryCall(value);
+  if (Node.isSpreadElement(value)) return await entryValue(value.expression);
+  if (Node.isConditionalExpression(value)) return await entryValue(value.whenTrue) || await entryValue(value.whenFalse);
+  if (Node.isArrayLiteralExpression(value)) {
+    for (const element of value.elements) if (await entryValue(element)) return true;
+    return false;
+  }
+  if (Node.isCallExpression(value)) return await entryFactoryCall(value);
   if (Node.isPropertyAccessExpression(value)) return value.name.getText() === "factories";
   if (Node.isIdentifier(value)) {
-    const declarations = declarationsFor(value);
+    const declarations = await declarationsFor(value);
     const initializers = declarations.filter((declaration) => Node.isVariableDeclaration(declaration))
       .map((declaration) => declaration.initializer).filter((entry): entry is NonNullable<typeof entry> => entry !== undefined);
-    if (initializers.some(entryValue)) return true;
+    for (const initializer of initializers) if (await entryValue(initializer)) return true;
     return /^(?:bound|entry|factor(?:y|ies)|handle|module)s?$/iu.test(value.getText());
   }
   return false;
 }
 
-function holdsHandles(property: Node.PropertyAssignment | Node.ShorthandPropertyAssignment) {
-  if (Node.isShorthandPropertyAssignment(property)) return entryValue(property.name);
-  return entryValue(property.initializer);
+async function holdsHandles(property: Node.PropertyAssignment | Node.ShorthandPropertyAssignment) {
+  if (Node.isShorthandPropertyAssignment(property)) return await entryValue(property.name);
+  return await entryValue(property.initializer);
 }
 
-function prepareInspection(file: CodemodFile, call: Node.CallExpression, method: Method): PrepareSite | undefined {
+async function prepareInspection(file: CodemodFile, call: Node.CallExpression, method: Method): Promise<PrepareSite | undefined> {
   const args = (call.arguments ?? []);
   const argument = args[0];
   const object = argument && Node.isObjectLiteralExpression(argument) ? argument : undefined;
@@ -486,12 +499,12 @@ function prepareInspection(file: CodemodFile, call: Node.CallExpression, method:
   const importsAssembly = file.imports.some((declaration) => moduleName(declaration) === ASSEMBLY);
   const narrow = importsAssembly && object && factories && roots;
   const migratedNarrow = importsAssembly && object && modules && roots;
-  const qualified: Receiver = method.receiver ? receiver(file, method.receiver, { inline: false }) : { ok: false, reason: "destructured or element-access method" };
+  const qualified: Receiver = method.receiver ? await receiver(file, method.receiver, { inline: false }) : { ok: false, reason: "destructured or element-access method" };
   const isApiShape = method.receiver && (Node.isPropertyAccessExpression(method.receiver) && method.receiver.name.getText() === "api"
     || Node.isIdentifier(method.receiver) && /^api$/iu.test(method.receiver.getText()));
   const site = {
     kind: "prepare", node: call, factories,
-    counted: factories !== undefined || objectWithFactories(argument),
+    counted: factories !== undefined || await objectWithFactories(argument),
   };
   if (method.unsupported) {
     if (!site.counted) return undefined;
@@ -520,12 +533,12 @@ function prepareInspection(file: CodemodFile, call: Node.CallExpression, method:
   return { ...site, status: "rewrite", replacement: undefined, factories };
 }
 
-export function inspectPrepare(file: CodemodFile) {
+export async function inspectPrepare(file: CodemodFile) {
   const sites = [];
   for (const call of file.descendants(SyntaxKind.CallExpression).filter(Node.isCallExpression)) {
-    const method = methodName(call);
+    const method = await methodName(call);
     if (method?.name !== "prepare") continue;
-    const inspection = prepareInspection(file, call, method);
+    const inspection = await prepareInspection(file, call, method);
     if (inspection) sites.push(inspection);
   }
   return sites.filter((site): site is NonNullable<typeof site> => site !== undefined).sort((a, b) => a.node.getStart() - b.node.getStart());
@@ -556,15 +569,15 @@ function callComments(file: CodemodFile, call: Node.CallExpression) {
   return comments;
 }
 
-function isolateTarget(file: CodemodFile, expression: Node.Node): Receiver {
-  const qualified = receiver(file, expression);
+async function isolateTarget(file: CodemodFile, expression: Node.Node): Promise<Receiver> {
+  const qualified = await receiver(file, expression);
   if (qualified.ok) return qualified;
   return { ok: false, reason: qualified.reason };
 }
 
-function isolateInspection(file: CodemodFile, call: Node.CallExpression): Site | undefined {
+async function isolateInspection(file: CodemodFile, call: Node.CallExpression): Promise<Site | undefined> {
   const expression = call.expression;
-  const importedIsolate = importedCall(expression, "isolate", CONFORMANCE);
+  const importedIsolate = await importedCall(expression, "isolate", CONFORMANCE);
   if (!importedIsolate) return undefined;
   const args = (call.arguments ?? []);
   const site = { kind: "isolate", node: call, counted: true };
@@ -575,11 +588,11 @@ function isolateInspection(file: CodemodFile, call: Node.CallExpression): Site |
   const declaration = options.properties.filter((property): property is NamedObjectProperty => !Node.isSpreadAssignment(property)).find((property) => propertyName(property) === "declaration");
   const factory = options.properties.filter((property): property is NamedObjectProperty => !Node.isSpreadAssignment(property)).find((property) => propertyName(property) === "factory");
   if (!declaration || !factory) return undefined;
-  const target = isolateTarget(file, args[0]);
+  const target = await isolateTarget(file, args[0]);
   if (!target.ok) return { ...site, status: "report", message: `${line(call)}: isolate api argument stays; use a local Assembly receiver or assemblyFor()` };
   const declarationValue = Node.isPropertyAssignment(declaration) ? declaration.initializer : declaration.name;
   const factoryValue = Node.isPropertyAssignment(factory) ? factory.initializer : factory.name;
-  if (runtimePicked(declarationValue, file) || runtimePicked(factoryValue, file)) {
+  if (await runtimePicked(declarationValue, file) || await runtimePicked(factoryValue, file)) {
     return { ...site, status: "report", message: `${line(call)}: isolate declaration or factory stays; choose both at module scope before the call` };
   }
   const implement = valueImport(file, "implement", call);
@@ -609,10 +622,10 @@ function isolateInspection(file: CodemodFile, call: Node.CallExpression): Site |
   };
 }
 
-export function inspectIsolate(file: CodemodFile) {
+export async function inspectIsolate(file: CodemodFile) {
   const sites = [];
   for (const call of file.descendants(SyntaxKind.CallExpression).filter(Node.isCallExpression)) {
-    const inspection = isolateInspection(file, call);
+    const inspection = await isolateInspection(file, call);
     if (inspection) sites.push(inspection);
   }
   return sites.filter((site): site is NonNullable<typeof site> => site !== undefined).sort((a, b) => a.node.getStart() - b.node.getStart());
@@ -625,16 +638,18 @@ function typeInspection(file: CodemodFile, name: Node.Node, original: string, ty
   return { ...site, status: "rewrite", replacement, typeArgumentsCount, importKind: kind };
 }
 
-function typeImportInspection(file: CodemodFile, declaration: Node.ImportDeclaration, specifier: Node.ImportSpecifier): Site[] | undefined {
+async function typeImportInspection(file: CodemodFile, declaration: Node.ImportDeclaration, specifier: Node.ImportSpecifier): Promise<Site[] | undefined> {
   const original = importedName(specifier);
   const replacement = TYPE_NAMES.get(original);
   if (!replacement) return undefined;
   const local = imported(specifier);
   const renameImport = !specifier.propertyName;
   const collision = renameImport && nameWouldCollide(file, replacement, specifier);
-  const references = file.descendants(SyntaxKind.Identifier).filter(Node.isIdentifier)
-    .filter((identifier) => identifier.getText() === local && refersTo(identifier, specifier)
-      && identifier !== specifier.name && identifier !== specifier.propertyName);
+  const references: Node.Identifier[] = [];
+  for (const identifier of file.descendants(SyntaxKind.Identifier).filter(Node.isIdentifier)) {
+    if (identifier.getText() === local && await refersTo(identifier, specifier)
+      && identifier !== specifier.name && identifier !== specifier.propertyName) references.push(identifier);
+  }
   return references.map((identifier) => {
     const site = { kind: "type", type: original, node: identifier, counted: true };
     if (collision) {
@@ -647,12 +662,12 @@ function typeImportInspection(file: CodemodFile, declaration: Node.ImportDeclara
   });
 }
 
-export function inspectTypes(file: CodemodFile) {
+export async function inspectTypes(file: CodemodFile) {
   const sites = [];
   for (const declaration of file.imports) {
     if (moduleName(declaration) !== ASSEMBLY) continue;
     for (const specifier of importNames(declaration)) {
-      const found = typeImportInspection(file, declaration, specifier);
+      const found = await typeImportInspection(file, declaration, specifier);
       if (found) {
         sites.push(...found);
       }
@@ -662,7 +677,7 @@ export function inspectTypes(file: CodemodFile) {
     const original = name.right.getText();
     if (!TYPE_NAMES.has(original) || !Node.isIdentifier(name.left)) continue;
     const namespace = name.left;
-    if (!namespaceImports(file, ASSEMBLY).some((entry) => refersToNamespace(namespace, entry))) continue;
+    if (await matchingNamespace(namespace, namespaceImports(file, ASSEMBLY)) === undefined) continue;
     const parent = parentOfKind(name, SyntaxKind.TypeReference);
     const reference = parent && Node.isTypeReferenceNode(parent) ? parent : undefined;
     if (reference?.typeName === name) sites.push(typeInspection(file, name.right, original, (reference.typeArguments ?? []).length, "namespace"));
@@ -677,9 +692,9 @@ export function inspectTypes(file: CodemodFile) {
   return sites.filter((site): site is NonNullable<typeof site> => site !== undefined).sort((a, b) => a.node.getStart() - b.node.getStart());
 }
 
-function reportExtras(file: CodemodFile) {
+async function reportExtras(file: CodemodFile) {
   const extras: { status: "report"; message: string }[] = [];
-  const handledFactories = new Set(inspectPrepare(file).map((site) => site.factories).filter(Boolean));
+  const handledFactories = new Set((await inspectPrepare(file)).map((site) => site.factories).filter(Boolean));
   for (const property of file.descendants(SyntaxKind.PropertyAssignment).filter(Node.isPropertyAssignment)) {
     const name = propertyName(property);
     if (name === "bindFactory" || name === "bindInput") {
@@ -700,19 +715,18 @@ function reportExtras(file: CodemodFile) {
   }
   for (const property of file.descendants(SyntaxKind.PropertyAssignment).filter(Node.isPropertyAssignment)) {
     if (handledFactories.has(property) || propertyName(property) !== "factories") continue;
-    if (holdsHandles(property)) extras.push({ status: "report", message: `${line(property)}: factories property stays; rename the helper property and its callers to modules by hand` });
+    if (await holdsHandles(property)) extras.push({ status: "report", message: `${line(property)}: factories property stays; rename the helper property and its callers to modules by hand` });
   }
   for (const property of file.descendants(SyntaxKind.ShorthandPropertyAssignment).filter(Node.isShorthandPropertyAssignment)) {
     if (handledFactories.has(property) || property.name.getText() !== "factories") continue;
-    if (holdsHandles(property)) extras.push({ status: "report", message: `${line(property)}: factories property stays; rename the helper property and its callers to modules by hand` });
+    if (await holdsHandles(property)) extras.push({ status: "report", message: `${line(property)}: factories property stays; rename the helper property and its callers to modules by hand` });
   }
   for (const identifier of file.descendants(SyntaxKind.Identifier).filter(Node.isIdentifier)) {
     if (!["BindingErrorCode", "PreparationErrorCode"].includes(identifier.getText())) continue;
-    const fromAssembly = importedIdentifier(identifier, identifier.getText(), ASSEMBLY)
-      || namespaceImports(file, ASSEMBLY).some((entry) => {
-        const parent = identifier.parent;
-        return Node.isQualifiedName(parent) && parent.right === identifier && refersToNamespace(parent.left, entry);
-      });
+    const parent = identifier.parent;
+    const fromAssembly = await importedIdentifier(identifier, identifier.getText(), ASSEMBLY)
+      || Node.isQualifiedName(parent) && parent.right === identifier
+        && await matchingNamespace(parent.left, namespaceImports(file, ASSEMBLY)) !== undefined;
     if (fromAssembly && identifier.parent.kind !== SyntaxKind.ImportSpecifier) {
       extras.push({ status: "report", message: `${line(identifier)}: ${identifier.getText()} reference stays; add assembly.bind.invalid-group and assembly.prepare.duplicate-module to exhaustive handling` });
     }
@@ -731,18 +745,18 @@ function reportExtras(file: CodemodFile) {
   return extras;
 }
 
-export function inspectAll(file: CodemodFile) {
+export async function inspectAll(file: CodemodFile) {
   return {
-    entries: inspectEntries(file),
-    prepare: inspectPrepare(file),
-    isolate: inspectIsolate(file),
-    types: inspectTypes(file),
-    extras: reportExtras(file),
+    entries: await inspectEntries(file),
+    prepare: await inspectPrepare(file),
+    isolate: await inspectIsolate(file),
+    types: await inspectTypes(file),
+    extras: await reportExtras(file),
   };
 }
 
-export function reportAll(file: CodemodFile) {
-  const inspected = inspectAll(file);
+export async function reportAll(file: CodemodFile) {
+  const inspected = await inspectAll(file);
   return [
     ...inspected.entries,
     ...inspected.prepare,
@@ -752,7 +766,7 @@ export function reportAll(file: CodemodFile) {
   ].filter((site) => site.status === "report").map((site) => site.message);
 }
 
-function applyInspections(file: CodemodFile, sites: readonly Site[], manual: Manual) {
+async function applyInspections(file: CodemodFile, sites: readonly Site[], manual: Manual) {
   let edits = 0;
   const renameImports = new Map<Node.ImportSpecifier, string>();
   const replacements: Edit[] = [];
@@ -776,20 +790,20 @@ function applyInspections(file: CodemodFile, sites: readonly Site[], manual: Man
     replacements.push(replaceNode(specifier.propertyName ?? specifier.name, replacement));
     edits += 1;
   }
-  file.apply(replacements);
+  await file.apply(replacements);
   for (const site of sites) {
     if (site.status !== "rewrite") continue;
-    for (const [name, module] of site.imports ?? []) addValueImport(file, name, module);
+    for (const [name, module] of site.imports ?? []) await addValueImport(file, name, module);
   }
   return edits;
 }
 
-export function transformEntries(file: CodemodFile, manual: Manual) {
-  return applyInspections(file, inspectEntries(file), manual);
+export async function transformEntries(file: CodemodFile, manual: Manual) {
+  return await applyInspections(file, await inspectEntries(file), manual);
 }
 
-export function transformPrepare(file: CodemodFile, manual: Manual) {
-  const sites = inspectPrepare(file);
+export async function transformPrepare(file: CodemodFile, manual: Manual) {
+  const sites = await inspectPrepare(file);
   const replacements: Edit[] = [];
   let edits = 0;
   const ordered = sites.slice().sort((a, b) => a.node.getStart() - b.node.getStart());
@@ -805,16 +819,16 @@ export function transformPrepare(file: CodemodFile, manual: Manual) {
     else replacements.push(replaceNode(property.name, "modules"));
     edits += 1;
   }
-  file.apply(replacements);
+  await file.apply(replacements);
   return edits;
 }
 
-export function transformIsolate(file: CodemodFile, manual: Manual) {
-  return applyInspections(file, inspectIsolate(file), manual);
+export async function transformIsolate(file: CodemodFile, manual: Manual) {
+  return await applyInspections(file, await inspectIsolate(file), manual);
 }
 
-export function transformTypes(file: CodemodFile, manual: Manual) {
-  return applyInspections(file, inspectTypes(file), manual);
+export async function transformTypes(file: CodemodFile, manual: Manual) {
+  return await applyInspections(file, await inspectTypes(file), manual);
 }
 
 function usedImport(file: CodemodFile, target: ImportTarget) {
@@ -846,7 +860,7 @@ export function recordImports(file: CodemodFile) {
   importsInUse.set(file, { names, bare });
 }
 
-export function transformImports(file: CodemodFile) {
+export async function transformImports(file: CodemodFile) {
   const recorded = importsInUse.get(file);
   if (!recorded) return 0;
   let edits = 0;
@@ -878,18 +892,18 @@ export function transformImports(file: CodemodFile) {
       if (clause?.name && bindings) replacements.push({ start: clause.name.end, end: bindings.end, text: "" });
     }
   }
-  file.apply(replacements);
+  await file.apply(replacements);
   return edits;
 }
 
-export function transformExtras(file: CodemodFile, manual: Manual) {
-  const extras = reportExtras(file);
+export async function transformExtras(file: CodemodFile, manual: Manual) {
+  const extras = await reportExtras(file);
   for (const extra of extras) manual(extra.message);
   return 0;
 }
 
-export function measure(file: CodemodFile) {
-  const inspected = inspectAll(file);
+export async function measure(file: CodemodFile) {
+  const inspected = await inspectAll(file);
   const sites = [...inspected.entries, ...inspected.prepare.filter((site) => site.counted), ...inspected.isolate, ...inspected.types];
   return {
     sites: sites.length,

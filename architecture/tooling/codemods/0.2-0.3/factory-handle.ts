@@ -13,7 +13,7 @@ function starLabel(declaration: syntax.ExportDeclaration) {
 
 // Only one-argument references resolved to the Assembly import are rewritten.
 /** @param {import("../project.ts").CodemodFile} file @param {(message: string) => void} manual */
-export default function transform(file: CodemodFile, manual: (message: string) => void) {
+export default async function transform(file: CodemodFile, manual: (message: string) => void) {
   let edits = 0;
   const replacements: ReturnType<typeof replaceNode>[] = [];
   const renameOrReport = (name: syntax.Node, count: number, label: string) => {
@@ -30,7 +30,7 @@ export default function transform(file: CodemodFile, manual: (message: string) =
     let kept = 0;
     for (const identifier of file.descendants(SyntaxKind.Identifier)) {
       if (identifier.getText() !== localName || identifier.parent === specifier) continue;
-      if (!symbolDeclarations(identifier).includes(specifier)) continue;
+      if (!(await symbolDeclarations(identifier)).includes(specifier)) continue;
       const parent = parentOfKind(identifier, SyntaxKind.TypeReference);
       const reference = parent && syntax.isTypeReferenceNode(parent) ? parent : undefined;
       if (reference?.typeName === identifier && (reference.typeArguments ?? []).length === 1) {
@@ -60,7 +60,7 @@ export default function transform(file: CodemodFile, manual: (message: string) =
     if (!namespace) continue;
     for (const name of file.descendants(SyntaxKind.QualifiedName).filter(syntax.isQualifiedName)) {
       if (name.right.getText() !== OLD || !syntax.isIdentifier(name.left)) continue;
-      const declarations: readonly syntax.Node[] = symbolDeclarations(name.left);
+      const declarations: readonly syntax.Node[] = await symbolDeclarations(name.left);
       if (!declarations.some(entry => entry === namespace || entry === namespace.parent)) continue;
       const parent = parentOfKind(name, SyntaxKind.TypeReference);
       const reference = parent && syntax.isTypeReferenceNode(parent) ? parent : undefined;
@@ -85,6 +85,6 @@ export default function transform(file: CodemodFile, manual: (message: string) =
         + `importers of it through this module are not rewritten, check them by hand`);
     }
   }
-  file.apply(replacements);
+  await file.apply(replacements);
   return edits;
 }

@@ -54,8 +54,8 @@ function edit(files, path, before, after) {
   files.set(path, Buffer.from(source.replace(before, after)));
 }
 
-function reject(files, profile, reason) {
-  assert.throws(() => auditM1JavaScriptClosure(files, profile), error => {
+async function reject(files, profile, reason) {
+  await assert.rejects(() => auditM1JavaScriptClosure(files, profile), error => {
     assert.equal(error.code, 'm1.javascript-closure.invalid');
     assert.equal(error.message, 'Invalid M1 JavaScript closure.');
     assert.equal(error.reason, reason);
@@ -110,104 +110,104 @@ test('explicit generated archive profile preserves the full M2 closure', async t
     modules: [...files.keys()].filter(path => path.endsWith('.js')).sort(),
     exports: publicNames,
   });
-  const good = (files, profile) =>
-    assert.deepEqual(auditM1JavaScriptClosure(files, profile), expected(files));
-  const mutant = (change, reason) => {
+  const good = async (files, profile) =>
+    assert.deepEqual((await auditM1JavaScriptClosure(files, profile)), expected(files));
+  const mutant = async (change, reason) => {
     const files = new Map(generated);
-    good(files, 'm2-generated');
+    await good(files, 'm2-generated');
     change(files);
-    reject(files, 'm2-generated', reason);
+    await reject(files, 'm2-generated', reason);
   };
 
-  await t.test('matching profiles and direct/generated/direct have no shared state', () => {
+  await t.test('matching profiles and direct/generated/direct have no shared state', async () => {
     const saved = new Map([...generated].map(([path, bytes]) => [path, Buffer.from(bytes)]));
-    good(direct, 'm2');
-    good(generated, 'm2-generated');
-    good(direct, 'm2');
-    good(new Map([...generated].reverse()), 'm2-generated');
+    await good(direct, 'm2');
+    await good(generated, 'm2-generated');
+    await good(direct, 'm2');
+    await good(new Map([...generated].reverse()), 'm2-generated');
     assert.deepEqual(generated, saved);
-    reject(generated, 'm2', 'file-purpose');
-    reject(direct, 'm2-generated', 'file-purpose');
+    await reject(generated, 'm2', 'file-purpose');
+    await reject(direct, 'm2-generated', 'file-purpose');
     for (const profile of [undefined, 'm1', 'm1-shared']) {
-      reject(generated, profile, 'file-purpose');
+      await reject(generated, profile, 'file-purpose');
     }
-    good(direct, 'm2');
+    await good(direct, 'm2');
   });
 
-  await t.test('both physical roots and fallback forwarding are rejected', () => {
-    mutant(files => files.set(DIRECT, direct.get(DIRECT)), 'file-purpose');
-    mutant(files => {
+  await t.test('both physical roots and fallback forwarding are rejected', async () => {
+    await mutant(files => files.set(DIRECT, direct.get(DIRECT)), 'file-purpose');
+    await mutant(files => {
       files.set(DIRECT, direct.get(DIRECT));
       files.set(GENERATED, Buffer.from("export { root } from '../stage0.js';\n"));
     }, 'file-purpose');
-    mutant(files => {
+    await mutant(files => {
       files.set(GENERATED, Buffer.from("export { root } from '../stage0.js';\n"));
     }, 'module-missing');
-    mutant(files => edit(files, ENTRY, './composition/generated/stage1.js',
+    await mutant(files => edit(files, ENTRY, './composition/generated/stage1.js',
       './composition/stage0.js'), 'module-missing');
   });
 
-  await t.test('all six constructions and provider origins remain mandatory', () => {
-    mutant(files => edit(files, GENERATED, 'canonicalizer: canonicalizer',
+  await t.test('all six constructions and provider origins remain mandatory', async () => {
+    await mutant(files => edit(files, GENERATED, 'canonicalizer: canonicalizer',
       'canonicalizer: scanner'), 'construction');
-    mutant(files => edit(files, GENERATED, 'scanner: scanner',
+    await mutant(files => edit(files, GENERATED, 'scanner: scanner',
       'scanner: canonicalizer'), 'construction');
-    mutant(files => edit(files, GENERATED, '{ scanner: scanner }', '{}'), 'construction');
-    mutant(files => edit(files, GENERATED, 'export const root = compiler;',
+    await mutant(files => edit(files, GENERATED, '{ scanner: scanner }', '{}'), 'construction');
+    await mutant(files => edit(files, GENERATED, 'export const root = compiler;',
       'const extra = createOwnedJcs({});\nexport const root = compiler;'), 'construction');
-    mutant(files => edit(files, GENERATED, 'export const root = compiler;',
+    await mutant(files => edit(files, GENERATED, 'export const root = compiler;',
       'export const root = canonicalizer;'), 'construction');
-    mutant(files => edit(files, CANONICAL, 'return Object.freeze({',
+    await mutant(files => edit(files, CANONICAL, 'return Object.freeze({',
       'const extra = createOwnedJcs({});\nreturn Object.freeze({'), 'construction');
   });
 
-  await t.test('unselected factories, development imports and feature purpose stay closed', () => {
-    mutant(files => files.set(
+  await t.test('unselected factories, development imports and feature purpose stay closed', async () => {
+    await mutant(files => files.set(
       'dist/features/canonicalization/witness-variant/factory.js',
       Buffer.from('export function createWitnessVariant(deps) { return deps; }\n')),
     'file-purpose');
-    mutant(files => edit(files, GENERATED,
+    await mutant(files => edit(files, GENERATED,
       '../../features/canonicalization/owned-jcs/factory.js', 'canonicalize'), 'specifier');
-    mutant(files => edit(files, GENERATED,
+    await mutant(files => edit(files, GENERATED,
       '../../features/canonicalization/owned-jcs/factory.js',
       '../../../self-composition/allowlist.js'), 'specifier');
-    mutant(files => edit(files, ADMISSION, 'export function admitObjectInput(',
+    await mutant(files => edit(files, ADMISSION, 'export function admitObjectInput(',
       'function activate() {}\nexport function admitObjectInput('), 'purpose');
   });
 
-  await t.test('refactored roles and state selectors remain owner-scoped', () => {
-    mutant(files => edit(files, ADMISSION, 'export function admitObjectInput(',
+  await t.test('refactored roles and state selectors remain owner-scoped', async () => {
+    await mutant(files => edit(files, ADMISSION, 'export function admitObjectInput(',
       'function scanRawEntry() {}\nexport function admitObjectInput('), 'purpose');
-    mutant(files => edit(files, ADMISSION, 'export function admitObjectInput(input, collector) {',
+    await mutant(files => edit(files, ADMISSION, 'export function admitObjectInput(input, collector) {',
       'export function admitObjectInput(input, collector) { input.replayBoundary;'), 'purpose');
-    mutant(files => edit(files, FACADE, 'return analyzed;',
+    await mutant(files => edit(files, FACADE, 'return analyzed;',
       'semantics.newCollector(); return analyzed;'), 'construction');
-    mutant(files => edit(files, FACADE, 'return analyzed;',
+    await mutant(files => edit(files, FACADE, 'return analyzed;',
       'return admitted;'), 'construction');
   });
 
-  await t.test('both public compiler members retain their selected facade origin', () => {
-    mutant(files => edit(files, ENTRY, 'root.compileCompositionJson',
+  await t.test('both public compiler members retain their selected facade origin', async () => {
+    await mutant(files => edit(files, ENTRY, 'root.compileCompositionJson',
       'root.compileComposition'), 'public-origin');
-    mutant(files => edit(files, ENTRY, 'root.compileCompositionJson', 'root'), 'public-origin');
-    mutant(files => edit(files, FACADE, 'admission.admitRawInput(input, collector)',
+    await mutant(files => edit(files, ENTRY, 'root.compileCompositionJson', 'root'), 'public-origin');
+    await mutant(files => edit(files, FACADE, 'admission.admitRawInput(input, collector)',
       'admission.admitObjectInput(input, collector)'), 'construction');
   });
 
-  await t.test('candidate metadata cannot select an assembly or callable profile', () => {
+  await t.test('candidate metadata cannot select an assembly or callable profile', async () => {
     for (const claimed of ['m1', 'm1-shared', 'm2', 'm2-generated']) {
       const files = new Map(generated);
       files.set('package.json', Buffer.from(JSON.stringify({
         ...manifest, profile: claimed, auditProfile: claimed,
         files: [DIRECT], exports: { '.': './dist/composition/stage0.js' },
       })));
-      good(files, 'm2-generated');
-      reject(files, 'm2', 'file-purpose');
-      reject(files, undefined, 'file-purpose');
+      await good(files, 'm2-generated');
+      await reject(files, 'm2', 'file-purpose');
+      await reject(files, undefined, 'file-purpose');
     }
     const files = new Map(direct);
     files.set('package.json', Buffer.from('{"profile":"m2-generated"}'));
-    good(files, 'm2');
-    reject(files, 'm2-generated', 'file-purpose');
+    await good(files, 'm2');
+    await reject(files, 'm2-generated', 'file-purpose');
   });
 });

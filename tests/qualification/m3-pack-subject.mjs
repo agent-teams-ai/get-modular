@@ -228,8 +228,8 @@ export async function runPackSubject(options) {
     need(packed.integrity === identity.integrity && packed.size === content.length
       && packed.shasum === hash(content, 'sha1'), 'pack.audit-identity-mismatch');
     const audited = readPackageArchive(content, identity);
-    const javascript = auditM1JavaScriptClosure(audited.files, 'm2-generated');
-    const declarations = auditM1DeclarationClosure(audited.files, 2, 'm2');
+    const javascript = (await auditM1JavaScriptClosure(audited.files, 'm2-generated'));
+    const declarations = (await auditM1DeclarationClosure(audited.files, 2, 'm2'));
     const manifest = JSON.parse(audited.files.get('package.json').toString('utf8'));
     need(manifest.name === '@get-modular/core' && manifest.type === 'module', 'pack.manifest');
     need(same(manifest.exports, {

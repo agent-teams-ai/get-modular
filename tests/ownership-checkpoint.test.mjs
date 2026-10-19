@@ -199,8 +199,8 @@ test("C0 preserves rejecting runtime package admission until K1", async () => {
   }
 });
 
-test("pseudo-contract has one closed synchronous surface without resource callbacks", () => {
-  const { source, diagnostics } = parseTypeScript("contract.d.ts", declaration);
+test("pseudo-contract has one closed synchronous surface without resource callbacks", async () => {
+  const { source, diagnostics } = await parseTypeScript("contract.d.ts", declaration);
   assert.deepEqual(diagnostics, []);
   const interfaces = source.statements.filter(ts.isInterfaceDeclaration);
   const scope = interfaces.find(node => node.name.text === "OwnershipScope");

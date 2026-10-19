@@ -43,7 +43,7 @@ function dirtyTree(directory) {
   return result.stdout.trim() === "" ? undefined : "the Git tree has uncommitted changes (commit or use --allow-dirty)";
 }
 
-export function main(argv) {
+export async function main(argv) {
   const { values, positionals } = parseArgs({
     args: argv, allowPositionals: true,
     options: { dry: { type: "boolean" }, check: { type: "boolean" }, write: { type: "boolean" }, "allow-dirty": { type: "boolean" } },
@@ -67,7 +67,7 @@ export function main(argv) {
   }
 
   const tsConfigFilePath = join(directory, "tsconfig.json");
-  const project = new CodemodProject(sourceFiles(directory).map(path => [path, readFileSync(path, "utf8")]), {
+  const project = await CodemodProject.create(sourceFiles(directory).map(path => [path, readFileSync(path, "utf8")]), {
     directory, ...(existsSync(tsConfigFilePath) ? { tsConfigFilePath } : {}),
   });
   try {
@@ -81,8 +81,8 @@ export function main(argv) {
       if (unparsable.has(file)) continue;
       const path = relative(directory, file.path);
       let edits = 0;
-      for (const transform of CODEMODS[name]) edits += transform(file, () => {}) ?? 0;
-      findings.push(...reportAll(file).map((message) => `${path}: ${message}`));
+      for (const transform of CODEMODS[name]) edits += await transform(file, () => {}) ?? 0;
+      findings.push(...(await reportAll(file)).map((message) => `${path}: ${message}`));
       if (edits === 0) continue;
       changed += 1;
       console.log(`${path}: ${edits} edit${edits === 1 ? "" : "s"}`);
@@ -93,7 +93,7 @@ export function main(argv) {
       + (mode === "write" ? "; run your typecheck" : ""));
     if (unparsable.size > 0) return 1;
     return mode === "check" && changed > 0 ? 1 : 0;
-  } finally { project.close(); }
+  } finally { await project.close(); }
 }
 
-if (import.meta.main) process.exitCode = main(process.argv.slice(2));
+if (import.meta.main) process.exitCode = await main(process.argv.slice(2));

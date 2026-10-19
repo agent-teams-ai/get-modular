@@ -157,7 +157,7 @@ test('outside seal identity binds the profile even when archive and case identit
   }), /outside plan anchor mismatch/);
 });
 
-test('closure profiles reject the other assembly path regardless of candidate metadata', () => {
+test('closure profiles reject the other assembly path regardless of candidate metadata', async () => {
   // Incomplete inert fixtures test path admission only, not archive qualification.
   for (const [profile, path, other] of [
     ['m2', 'dist/composition/stage0.js', 'm2-generated'],
@@ -167,9 +167,9 @@ test('closure profiles reject the other assembly path regardless of candidate me
       ['package.json', Buffer.from(JSON.stringify({ javascriptProfile: other }))],
       [path, Buffer.from('')],
     ]);
-    assert.throws(() => auditM1JavaScriptClosure(files, other),
+    await assert.rejects(() => auditM1JavaScriptClosure(files, other),
       error => error.code === 'm1.javascript-closure.invalid' && error.reason === 'file-purpose');
-    assert.throws(() => auditM1JavaScriptClosure(files, profile),
+    await assert.rejects(() => auditM1JavaScriptClosure(files, profile),
       error => error.code === 'm1.javascript-closure.invalid' && error.reason === 'entry-missing');
   }
 });

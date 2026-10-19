@@ -119,8 +119,8 @@ async function audit(modules, archive, profile) {
   const bytes = await readBytes(archive.path, 16 * 1024 * 1024);
   if (archive.bytes !== undefined) assert.equal(bytes.length, archive.bytes);
   const result = modules.readPackageArchive(bytes, archive.identity);
-  modules.auditM1JavaScriptClosure(result.files, profile);
-  modules.auditM1DeclarationClosure(result.files, 2, 'm2');
+  await modules.auditM1JavaScriptClosure(result.files, profile);
+  await modules.auditM1DeclarationClosure(result.files, 2, 'm2');
   const manifest = JSON.parse(result.files.get('package.json').toString('utf8'));
   assert.equal(manifest.name, '@get-modular/core');
   assert.equal(manifest.type, 'module');

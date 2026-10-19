@@ -4,12 +4,12 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { version } from 'typescript';
-import { API, type CompilerOptions, type Project } from 'typescript/unstable/sync';
+import { API, type CompilerOptions, type Project } from 'typescript/unstable/async';
 import { createVirtualFileSystem } from 'typescript/unstable/fs';
 
 // One TS7 native project over explicit inert inputs. Unknown paths return null,
 // never undefined (the API's real-filesystem fallback). No candidate is emitted.
-export function withTypeScriptProject<Result>(files: ReadonlyMap<string, string>, compilerOptions: CompilerOptions, inspect: (project: Project) => Result): Result {
+export async function withTypeScriptProject<Result>(files: ReadonlyMap<string, string>, compilerOptions: CompilerOptions, inspect: (project: Project) => Result | Promise<Result>): Promise<Result> {
   assert.equal(version, '7.0.2', 'qualification parser/checker is exactly pinned');
   const directory = resolve(tmpdir(), '__gm_typescript_project').replaceAll('\\', '/');
   const config = `${directory}/tsconfig.json`;
@@ -28,21 +28,21 @@ export function withTypeScriptProject<Result>(files: ReadonlyMap<string, string>
   typeScriptPackageRoots(); // Verify the native peer before the API resolves its platform executable.
   const api = new API({ cwd: process.cwd(), fs });
   try {
-    const snapshot = api.updateSnapshot({ openProjects: [config] });
+    const snapshot = await api.updateSnapshot({ openProjects: [config] });
     try {
       const project = snapshot.getProject(config);
       assert(project, 'the explicit compiler project must exist');
-      return inspect(project);
-    } finally { snapshot.dispose(); }
-  } finally { api.close(); }
+      return await inspect(project);
+    } finally { await snapshot.dispose(); }
+  } finally { await api.close(); }
 }
 
-export function parseTypeScript(name: string, text: string) {
+export async function parseTypeScript(name: string, text: string) {
   const path = resolve(tmpdir(), '__gm_typescript_syntax', name.replace(/^[/\\]+/u, '')).replaceAll('\\', '/');
-  return withTypeScriptProject(new Map([[path, text]]), { allowJs: true, noResolve: true }, project => {
-    const source = project.program.getSourceFile(path);
+  return withTypeScriptProject(new Map([[path, text]]), { allowJs: true, noResolve: true }, async project => {
+    const source = await project.program.getSourceFile(path);
     assert(source, 'the explicit syntax source must exist');
-    return { source, diagnostics: project.program.getSyntacticDiagnostics(path) };
+    return { source, diagnostics: await project.program.getSyntacticDiagnostics(path) };
   });
 }
 

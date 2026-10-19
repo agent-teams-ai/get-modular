@@ -263,7 +263,7 @@ async function toolchain(ctx) {
     assert.ok(within(path, pnpmRoot), 'compiler in scanned pnpm closure');
     if (!compilers.some(compiler => compiler.version === version)) compilers.push({ name, version, path, sha256: digest(await readBytes(path)) });
   }
-  for (const name of ['tar', 'typescript/unstable/sync', 'typescript/unstable/ast', 'typescript/unstable/fs']) {
+  for (const name of ['tar', 'typescript/unstable/async', 'typescript/unstable/ast', 'typescript/unstable/fs']) {
     assert.ok(within(await realpath(require.resolve(name)), pnpmRoot),
       'actual runner parser/compiler dependency in pnpm closure');
   }

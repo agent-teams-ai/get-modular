@@ -84,7 +84,7 @@ async function nativeFixture(root: string, paths: FixturePaths) {
   await put(root, paths.native, { name: `@typescript/typescript-${process.platform}-${process.arch}`, version: "7.0.2" });
   await put(root, paths.model, { name: "@microsoft/api-extractor-model", version: "7.33.10" });
   await put(root, paths.tsdoc, { name: "@microsoft/tsdoc", version: "0.16.0" });
-  for (const path of [`${compiler}/unstable/sync.js`, `${compiler}/unstable/ast.js`]) {
+  for (const path of [`${compiler}/unstable/async.js`, `${compiler}/unstable/ast.js`]) {
     await put(root, path, "throw new Error('PACKAGE_IMPLEMENTATION_MUST_NOT_LOAD');\n");
   }
 }
@@ -161,11 +161,13 @@ test("native compiler/model closure rejects mixed, aliased, stale and incomplete
       rejects(root, role, reason);
     }));
   }
-  await context.test("missing native API", async () => fixture(async (root, paths) => {
-    await nativeFixture(root, paths);
-    await rm(join(root, dirname(paths.foundation), "unstable/ast.js"));
-    rejects(root, "foundation.compiler", "native-compiler-api-unavailable");
-  }));
+  for (const entry of ["async", "ast"]) {
+    await context.test(`missing native ${entry} API`, async () => fixture(async (root, paths) => {
+      await nativeFixture(root, paths);
+      await rm(join(root, dirname(paths.foundation), `unstable/${entry}.js`));
+      rejects(root, "foundation.compiler", "native-compiler-api-unavailable");
+    }));
+  }
   await context.test("floor-compatible legacy wrapper is still refused", async () => fixture(async root => {
     rejects(root, "foundation.api-extractor", "legacy-extractor-dependency");
   }));

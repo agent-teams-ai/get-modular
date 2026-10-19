@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { version } from "typescript";
-import { API, type Checker, type Diagnostic, type Snapshot } from "typescript/unstable/sync";
+import { API, type Checker, type Diagnostic, type Snapshot } from "typescript/unstable/async";
 import { createVirtualFileSystem } from "typescript/unstable/fs";
 import * as syntax from "typescript/unstable/ast";
 
@@ -31,8 +31,15 @@ export const moduleName = (declaration: syntax.ImportDeclaration | syntax.Export
 };
 export const typeOnly = (declaration: syntax.ImportDeclaration | syntax.ExportDeclaration) => syntax.isImportDeclaration(declaration)
   ? declaration.importClause?.phaseModifier === SyntaxKind.TypeKeyword : declaration.isTypeOnly ?? false;
-export const symbolDeclarations = (node: syntax.Node) => fileOf(node).checker.getSymbolAtLocation(node)?.declarations
-  .map(handle => handle.resolve()).filter((declaration): declaration is syntax.Declaration => declaration !== undefined) ?? [];
+export async function symbolDeclarations(node: syntax.Node): Promise<syntax.Node[]> {
+  const symbol = await fileOf(node).checker.getSymbolAtLocation(node);
+  const declarations: syntax.Node[] = [];
+  for (const handle of symbol?.declarations ?? []) {
+    const declaration = await handle.resolve();
+    if (declaration !== undefined) { declarations.push(declaration); }
+  }
+  return declarations;
+}
 
 // These codemods inspect the pinned compiler's actual nodes and symbols. Text edits
 // are applied only at inspected ranges; untouched source, including trivia, stays exact.
@@ -42,7 +49,7 @@ export class CodemodProject {
   readonly #config: string;
   readonly #fs: ReturnType<typeof createVirtualFileSystem>;
   readonly #files: CodemodFile[];
-  constructor(files: Iterable<readonly [string, string]>, { directory = process.cwd(), tsConfigFilePath, isolated = false }: ProjectOptions = {}) {
+  private constructor(files: Iterable<readonly [string, string]>, { directory = process.cwd(), tsConfigFilePath, isolated = false }: ProjectOptions = {}) {
     assert.equal(version, "7.0.2", "codemods use the exact pinned TypeScript compiler");
     this.#files = [...files].map(([path, text]) => new CodemodFile(this, resolve(path), text));
     this.#config = join(resolve(directory), "__get_modular_codemod__.json").replaceAll("\\", "/");
@@ -76,31 +83,38 @@ export class CodemodProject {
     assert.equal(manifest.version, version);
     this.#api = new API({ cwd: resolve(directory), fs,
       tsserverPath: join(dirname(native), "lib", process.platform === "win32" ? "tsc.exe" : "tsc") });
-    try { this.#refresh(); } catch (error) { this.close(); throw error; }
+  }
+  static async create(files: Iterable<readonly [string, string]>, options: ProjectOptions = {}): Promise<CodemodProject> {
+    const project = new CodemodProject(files, options);
+    try { await project.#refresh(); return project; }
+    catch (error) { await project.close(); throw error; }
   }
   get files() { return this.#files; }
-  #refresh(changed?: string) {
+  async #refresh(changed?: string) {
     const previous = this.#snapshot;
-    this.#snapshot = this.#api.updateSnapshot(changed
+    this.#snapshot = await this.#api.updateSnapshot(changed
       ? { fileChanges: { changed: [changed] } } : { openProjects: [this.#config] });
     const project = this.#snapshot.getProject(this.#config);
     assert(project, "codemod project must be available");
     for (const file of this.#files) {
-      const source = project.program.getSourceFile(file.path);
+      const source = await project.program.getSourceFile(file.path);
       assert(source, `codemod source must be available: ${file.path}`);
       file.source = source;
       file.checker = project.checker;
-      file.diagnostics = project.program.getSyntacticDiagnostics(file.path);
+      file.diagnostics = await project.program.getSyntacticDiagnostics(file.path);
       documents.set(file.source, file);
     }
-    previous?.dispose();
+    await previous?.dispose();
   }
-  update(file: CodemodFile, text: string) {
+  async update(file: CodemodFile, text: string) {
     this.#fs.writeFile!(file.path, text);
     file.text = text;
-    this.#refresh(file.path);
+    await this.#refresh(file.path);
   }
-  close() { this.#snapshot?.dispose(); this.#api.close(); }
+  async close() {
+    try { await this.#snapshot?.dispose(); }
+    finally { await this.#api.close(); }
+  }
 }
 
 export class CodemodFile {
@@ -119,7 +133,7 @@ export class CodemodFile {
     this.source.forEachChild(visit);
     return found;
   }
-  apply(edits: readonly TextEdit[]) {
+  async apply(edits: readonly TextEdit[]) {
     if (edits.length === 0) { return; }
     let text = this.text;
     let boundary = text.length;
@@ -128,7 +142,7 @@ export class CodemodFile {
       text = text.slice(0, start) + replacement + text.slice(end);
       boundary = start;
     }
-    this.#project.update(this, text);
+    await this.#project.update(this, text);
   }
   save() {
     assert.equal(this.diagnostics.length, 0, `refusing to write source that does not parse: ${this.path}`);

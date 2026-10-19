@@ -117,7 +117,7 @@ function foundationCompilers(repository: NodeJS.Require): readonly [CompilerIden
       observedVersion: native.manifest.version,
     });
   }
-  for (const entry of ["typescript/unstable/sync", "typescript/unstable/ast"]) {
+  for (const entry of ["typescript/unstable/async", "typescript/unstable/ast"]) {
     try { realpathSync(foundationRequire.resolve(entry)); }
     catch { blocked("foundation.compiler", launcher.manifestPath, "native-compiler-api-unavailable", { entry }); }
   }

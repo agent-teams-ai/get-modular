@@ -110,10 +110,10 @@ function dependency(from, literal, declaration, source) {
   return declaration && target.endsWith(".js") ? `${target.slice(0, -3)}.d.ts` : target;
 }
 
-function references(path, bytes, budget) {
+async function references(path, bytes, budget) {
   need(isUtf8(bytes), "utf8");
   const declaration = path.endsWith(".d.ts");
-  const { source, diagnostics } = parseTypeScript(path, bytes.toString("utf8"));
+  const { source, diagnostics } = await parseTypeScript(path, bytes.toString("utf8"));
   need(diagnostics.length === 0, "parse");
   need(source.referencedFiles.length === 0 && source.typeReferenceDirectives.length === 0
     && source.libReferenceDirectives.length === 0, "reference-directive");
@@ -166,7 +166,7 @@ function allowedFile(path) {
  * its existing parent must be under realpath(tmpdir()), outside sourceCheckout.
  * The returned hashes describe staged bytes, not qualification or build proof.
  */
-export function stageDirectSubject({
+export async function stageDirectSubject({
   sourceCheckout, expectedSha, stagingDir, javascriptEntry, declarationEntry,
 }) {
   need(version === "7.0.2", "parser-version");
@@ -205,7 +205,7 @@ export function stageDirectSubject({
     allowedFile(path);
     const bytes = readRegular(packageRoot, join(packageRoot, path));
     retain(path, bytes);
-    for (const edge of references(path, bytes, budget)) {
+    for (const edge of await references(path, bytes, budget)) {
       need(pending.size < MAX_FILES || pending.has(edge), "closure-budget");
       pending.add(edge);
     }

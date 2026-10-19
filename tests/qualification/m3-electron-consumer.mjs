@@ -375,7 +375,7 @@ export async function runElectronConsumer(rawInput) {
   assert.ok(['linux', 'darwin'].includes(platform()), 'POSIX process groups required');
   const archive = await archiveIdentity(input);
   const runtimeRoot = publicArchiveRoot(archive.files);
-  const closure = auditM1JavaScriptClosure(archive.files, 'm2-generated');
+  const closure = (await auditM1JavaScriptClosure(archive.files, 'm2-generated'));
   const fixtures = produceRuntimeFixtures();
   const semanticFixtures = [...produceSemanticRuntimeFixtures()];
   const p500Evidence = await prepareP500Evidence();

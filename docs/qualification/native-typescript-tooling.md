@@ -62,6 +62,39 @@ its focused control distinguishes type imports and exports from runtime imports
 and exports while preserving the source text. Existing codemod output and
 idempotence cases remain required.
 
+## Current asynchronous SDK checkpoint
+
+The 35-file tooling successor to
+`c3ee89a287c61304a99d8aba355ceb23380cf046` corrects the observed native SDK
+shutdown race through the supported `typescript/unstable/async` entry. The
+internal compiler queries, closure auditors, parsers, codemods and current M3
+callers await results in their original order. Callbacks remain live until their
+result completes, followed by awaited snapshot disposal and public session
+close. Closed virtual filesystems, finite grammars, budgets, diagnostics and
+source custody checks retain their existing scope.
+
+The source checkpoint is bound by the independent integration review
+`sha256:a7ec12df37e27a51bd55786a92afe557f7a61a66fb304a7620aa1e4eff3cc8f0`.
+The helper, declaration and parser scope has a separate independent approval,
+`sha256:49fb00747c9b7d9db0d2bdcc36667b7bd1c868ffc3648417be318ab211004b48`;
+the JavaScript and codemod scopes also received independent review.
+
+| Local qualification | Recorded result |
+| --- | --- |
+| Declaration and JavaScript closure controls | All 441 pass on Node 24 and Node 26. |
+| Codemod fixtures and runner controls | All 50 fixture cases retain exact output and idempotence; the suite has 66 passes and one unchanged platform skip on each Node. |
+| Compiler ownership and floor controls | All 31 pass on each Node, including separate missing asynchronous-entry and missing AST-entry refusals. |
+| Required native tooling strict project | Passes with TypeScript 7.0.2 on both Nodes. |
+| Mixed current consumers | Both initial runs have 310 passes and five skips among 315 controls. Node 26 retains five Node-24-only skips. On Node 24, an unchanged six-control controller rerun without inherited `NODE_PATH` or `NODE_OPTIONS` covers all five initial skips, so all 315 distinct controls are covered. |
+
+The original 185 raw matrix cases and earlier synchronous-run logs remain
+historical inputs and evidence. This checkpoint does not claim a fresh retained
+historical qualification. Fixed-two transition data, original registry subjects,
+SDK predecessor inputs, HOLD and unverified-authority expectations are unchanged.
+The declared and installed Foundation remains 1.7.4 and is still refused by the
+compiler preflight. Actual native registry adoption and final head/base CI remain
+pending; these local results do not claim an aggregate gate or registry pass.
+
 ## Installed Foundation boundary
 
 Before loading Foundation, the compiler guard reads the actual installed

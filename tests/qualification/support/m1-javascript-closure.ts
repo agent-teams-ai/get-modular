@@ -2,7 +2,7 @@ import { Buffer, isUtf8 } from 'node:buffer';
 import { posix, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import * as ts from 'typescript/unstable/ast';
-import { SymbolFlags, type Symbol as CompilerSymbol } from 'typescript/unstable/sync';
+import { SymbolFlags, type Symbol as CompilerSymbol } from 'typescript/unstable/async';
 import { parseTypeScript, withTypeScriptProject } from './typescript-project.ts';
 
 // Private finite artifact profile for the direct M1 archive. The existing,
@@ -306,14 +306,17 @@ function builtinCall(node: ts.Node | undefined, owner: string, method: string): 
 }
 // Only the fixed trusted profile strings enter this cache; candidate syntax is
 // always parsed afresh in its closed project.
-const profileSyntax = new Map<string, ReturnType<typeof parseTypeScript>>();
-function parseProfile(text: string) {
-  if (!profileSyntax.has(text)) profileSyntax.set(text, parseTypeScript('profile.js', text));
-  return profileSyntax.get(text)!;
+const profileSyntax = new Map<string, Awaited<ReturnType<typeof parseTypeScript>>>();
+async function parseProfile(text: string) {
+  const cached = profileSyntax.get(text);
+  if (cached !== undefined) return cached;
+  const parsed = await parseTypeScript('profile.js', text);
+  profileSyntax.set(text, parsed);
+  return parsed;
 }
 // Compare the finite helper/capture grammar without depending on emitter
 // whitespace, comments or quote style. Candidate text is only tokenized.
-function sameSyntax(node: ts.Node, expected: string): boolean {
+async function sameSyntax(node: ts.Node, expected: string): Promise<boolean> {
   const tokens = (text: string) => {
     const scanner = ts.createScanner(true, ts.LanguageVariant.Standard, text);
     const result = [];
@@ -326,7 +329,7 @@ function sameSyntax(node: ts.Node, expected: string): boolean {
   // Equal tokens can still parse differently after a restricted-production
   // newline (for example return followed by an expression on the next line).
   const declaration = ts.isFunctionDeclaration(node);
-  const { source: parsed, diagnostics } = parseProfile(declaration ? expected : `(${expected});`);
+  const { source: parsed, diagnostics } = await parseProfile(declaration ? expected : `(${expected});`);
   if (diagnostics.length !== 0) return false;
   const statement = parsed.statements[0];
   const reference = declaration ? statement
@@ -355,21 +358,21 @@ function resolveSpecifier(from: string, text: string): string {
   requireThat(text === (relative.startsWith('.') ? relative : `./${relative}`), 'specifier');
   return target;
 }
-function visit(tree: ts.Node, callback: (node: ts.Node) => void, budget: Budget): void {
+async function visit(tree: ts.Node, callback: (node: ts.Node) => void | Promise<void>, budget: Budget): Promise<void> {
   const pending: [ts.Node, number][] = [[tree, 0]];
   while (pending.length) {
     const [node, depth] = pending.pop()!;
     requireThat(++budget.nodes <= MAX_NODES && depth <= MAX_DEPTH, 'limit');
-    callback(node);
+    await callback(node);
     node.forEachChild(child => { pending.push([child, depth + 1]); });
   }
 }
-function checkComments(source: ts.SourceFile, budget: Budget): void {
+async function checkComments(source: ts.SourceFile, budget: Budget): Promise<void> {
   requireThat(!source.text.startsWith('#!'), 'directive');
   // AST literal spans tell the scanner where slash/template tokens end. This
   // avoids mistaking comment-like string or regular-expression text for directives.
   const literals = new Map();
-  visit(source, node => {
+  await visit(source, node => {
     if (ts.isStringLiteralLikeNode(node) || ts.isRegularExpressionLiteral(node)
       || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
       literals.set(node.getStart(source), node.end);
@@ -397,7 +400,7 @@ function checkComments(source: ts.SourceFile, budget: Budget): void {
     && source.libReferenceDirectives.length === 0, 'directive');
 }
 
-function audit(files: unknown, profile: string) {
+async function audit(files: unknown, profile: string) {
   // Only the trusted caller selects this finite profile. Archive contents,
   // including metadata and the export inventory, cannot activate it.
   requireThat(profiles.has(profile), 'profile');
@@ -438,21 +441,21 @@ function audit(files: unknown, profile: string) {
     moduleRoles.set(path, role);
   }
   requireThat(moduleRoles.has(ENTRY), 'entry-missing');
-  return withTypeScriptProject(texts, { allowJs: true, checkJs: true }, project => {
+  return await withTypeScriptProject(texts, { allowJs: true, checkJs: true }, async project => {
   const { program, checker } = project;
-  requireThat(program.getSyntacticDiagnostics().length === 0, 'parse');
+  requireThat((await program.getSyntacticDiagnostics()).length === 0, 'parse');
   const modules = new Map<string, Module>();
   for (const [path, role] of moduleRoles) {
-    const source = program.getSourceFile(PREFIX + path);
+    const source = await program.getSourceFile(PREFIX + path);
     requireThat(source, 'checker-failed');
     modules.set(path, { source, role, exports: new Set(), links: [] });
   }
   for (const [path, module] of modules) {
-    checkComments(module.source, budget);
+    await checkComments(module.source, budget);
     // The native resolver has no custom resolveModuleNames hook. Preserve the
     // closed specifier check for literal dynamic imports and CommonJS requests
     // before the stricter code-loading and global-operation checks below.
-    visit(module.source, node => {
+    await visit(module.source, node => {
       if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword
         || ts.isIdentifier(node.expression) && node.expression.text === 'require')
         && node.arguments[0] && ts.isStringLiteralLikeNode(node.arguments[0])) {
@@ -513,28 +516,28 @@ function audit(files: unknown, profile: string) {
     requireThat(modules.get(link.target)!.exports.has(link.name), 'export-missing');
   }
 
-  const symbolAt = (node: ts.Node) => ts.isShorthandPropertyAssignment(node.parent)
+  const symbolAt = async (node: ts.Node) => ts.isShorthandPropertyAssignment(node.parent)
     ? checker.getShorthandAssignmentValueSymbol(node.parent) : checker.getSymbolAtLocation(node);
-  function declarationOf(symbol: CompilerSymbol | undefined): ts.Node | undefined {
+  async function declarationOf(symbol: CompilerSymbol | undefined): Promise<ts.Node | undefined> {
     if (!symbol) return undefined;
-    if (symbol.flags & SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+    if (symbol.flags & SymbolFlags.Alias) symbol = await checker.getAliasedSymbol(symbol);
     return (symbol.valueDeclaration ?? symbol.declarations?.[0])?.resolve();
   }
-  function origin(node: ts.Node | undefined, seen = new Set<ts.Node>()): Origin {
+  async function origin(node: ts.Node | undefined, seen = new Set<ts.Node>()): Promise<Origin> {
     node = unwrap(node);
     if (!node) return { kind: 'unknown' };
     requireThat(seen.size < 128 && !seen.has(node), 'alias-cycle');
     seen.add(node);
-    if (ts.isIdentifier(node)) return origin(declarationOf(symbolAt(node)), seen);
-    if (ts.isVariableDeclaration(node) && constant(node)) return origin(node.initializer, seen);
+    if (ts.isIdentifier(node)) return await origin(await declarationOf(await symbolAt(node)), seen);
+    if (ts.isVariableDeclaration(node) && constant(node)) return await origin(node.initializer, seen);
     if (ts.isFunctionDeclaration(node)) return { kind: 'function', node };
     if (ts.isClassDeclaration(node)) return { kind: 'class', node };
-    if (ts.isCallExpression(node)) return { kind: 'call', node, callee: origin(node.expression, seen) };
-    if (ts.isPropertyAccessExpression(node)) return { kind: 'member', node, name: node.name.text, base: origin(node.expression, seen) };
+    if (ts.isCallExpression(node)) return { kind: 'call', node, callee: await origin(node.expression, seen) };
+    if (ts.isPropertyAccessExpression(node)) return { kind: 'member', node, name: node.name.text, base: await origin(node.expression, seen) };
     if (ts.isElementAccessExpression(node)) {
       const key = unwrap(node.argumentExpression);
       return { kind: 'member', node, name: ts.isStringLiteral(key) ? key.text : undefined,
-        key, base: origin(node.expression, seen) };
+        key, base: await origin(node.expression, seen) };
     }
     // Destructuring preserves the selected member rather than inventing a
     // callback origin. Mutable bindings and defaults supply no callable proof.
@@ -547,32 +550,32 @@ function audit(files: unknown, profile: string) {
         const key = selector && ts.isComputedPropertyName(selector) ? selector.expression : undefined;
         return { kind: 'member', node,
           name: selector && !ts.isComputedPropertyName(selector) ? propertyName(selector) : undefined,
-          key, base: origin(owner, seen) };
+          key, base: await origin(owner, seen) };
       }
     }
     return { kind: 'value', node };
   }
-  const exported = (path: string, name: string): Origin => {
+  const exported = async (path: string, name: string): Promise<Origin> => {
     const module = modules.get(path);
     requireThat(module, 'module-missing');
-    const moduleSymbol = checker.getSymbolAtLocation(module.source);
+    const moduleSymbol = await checker.getSymbolAtLocation(module.source);
     requireThat(moduleSymbol, 'checker-failed');
-    const symbol = checker.getExportsOfModule(moduleSymbol).find(item => item.name === name);
-    const declaration = declarationOf(symbol);
+    const symbol = (await checker.getExportsOfModule(moduleSymbol)).find(item => item.name === name);
+    const declaration = await declarationOf(symbol);
     requireThat(declaration && modules.has(pathOf(declaration)), 'export-origin');
-    return origin(declaration);
+    return await origin(declaration);
   };
   const isFunction = (value: Origin, path: string, name: string): value is FunctionOrigin => value.kind === 'function' && pathOf(value.node) === path && value.node.name?.text === name;
   // This identity grants syntax only to the first owned nested declaration.
   // The complete factory and helper grammar is checked below.
-  const facade = shared ? exported(FACADE, 'createCompilerFacade') : undefined;
+  const facade = shared ? await exported(FACADE, 'createCompilerFacade') : undefined;
   const sharedHelper = facade?.kind === 'function'
     ? facade.node.body?.statements[0] : undefined;
   // AST limits do not bound repeated expansion of const expression graphs.
   // Cache unknown results too; bound visits and concatenated text per audit.
   const staticStrings = new Map<ts.Node, string | undefined>(), activeStrings = new Set<ts.Node>();
   let staticSteps = 0, staticCharacters = 0;
-  function staticString(node: ts.Node | undefined, depth = 0): string | undefined {
+  async function staticString(node: ts.Node | undefined, depth = 0): Promise<string | undefined> {
     if (!node) return undefined;
     requireThat(++staticSteps <= MAX_STATIC_STEPS, 'limit');
     node = unwrap(node);
@@ -583,10 +586,10 @@ function audit(files: unknown, profile: string) {
     let value;
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) value = node.text;
     else if (ts.isIdentifier(node)) {
-      const declaration = declarationOf(symbolAt(node));
-      if (declaration && constant(declaration)) value = staticString(declaration.initializer, depth + 1);
+      const declaration = await declarationOf(await symbolAt(node));
+      if (declaration && constant(declaration)) value = await staticString(declaration.initializer, depth + 1);
     } else if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
-      const left = staticString(node.left, depth + 1), right = staticString(node.right, depth + 1);
+      const left = await staticString(node.left, depth + 1), right = await staticString(node.right, depth + 1);
       if (left !== undefined && right !== undefined) {
         const length = left.length + right.length;
         requireThat(length <= MAX_FILE, 'limit');
@@ -606,9 +609,9 @@ function audit(files: unknown, profile: string) {
       requireThat(!captureInitializers.get(path)?.has(statement.name.text), 'top-level');
       const expected = functionProfiles.get(`${path}:${statement.name.text}`);
       if (expected !== undefined) {
-        requireThat(sameSyntax(statement, expected), 'construction');
+        requireThat(await sameSyntax(statement, expected), 'construction');
         reviewedFunctions.add(statement);
-        visit(statement, node => { reviewedNodes.add(node); }, budget);
+        await visit(statement, node => { reviewedNodes.add(node); }, budget);
       }
     }
     if (!ts.isVariableStatement(statement)) continue;
@@ -618,17 +621,17 @@ function audit(files: unknown, profile: string) {
       const expected = captureInitializers.get(path)?.get(declaration.name.text);
       if (expected === undefined) continue;
       const initializer = unwrap(declaration.initializer);
-      requireThat(initializer && constant(declaration) && sameSyntax(initializer, expected), 'top-level');
+      requireThat(initializer && constant(declaration) && await sameSyntax(initializer, expected), 'top-level');
       captures.set(declaration, { path, name: declaration.name.text });
       reviewedInitializers.add(initializer);
-      visit(initializer, node => { reviewedNodes.add(node); }, budget);
+      await visit(initializer, node => { reviewedNodes.add(node); }, budget);
     }
   }
   // Matching a spelling cannot substitute an import or borrowed helper for the
   // owned captures and the checked getter body that initialization actually uses.
-  for (const initializer of reviewedInitializers) visit(initializer, node => {
+  for (const initializer of reviewedInitializers) await visit(initializer, async node => {
     if (!ts.isIdentifier(node) || nonReference(node) || globals.has(node.text)) return;
-    const declaration = declarationOf(symbolAt(node)), capture = captures.get(declaration);
+    const declaration = await declarationOf(await symbolAt(node)), capture = captures.get(declaration);
     requireThat(capture && capture.path === pathOf(node) && capture.name === node.text
       || declaration && reviewedFunctions.has(declaration) && pathOf(declaration) === BYTE_CARRIER
         && ['requiredPrototype', 'captureGetter', 'captureMethod'].includes(nodeName(declaration) ?? ''), 'top-level');
@@ -642,30 +645,40 @@ function audit(files: unknown, profile: string) {
     if (intrinsicSelectors.has(name)) requireThat(reviewedNodes.has(node), 'purpose');
     if (name === 'at' && pathOf(node) === BYTE_CARRIER) requireThat(reviewedNodes.has(node), 'purpose');
   }
-  function inert(node: ts.Node | undefined): boolean {
+  async function inert(node: ts.Node | undefined): Promise<boolean> {
     node = unwrap(node);
     if (!node) return false;
     if (reviewedInitializers.has(node)) return true;
     if (ts.isIdentifier(node) || ts.isStringLiteral(node) || ts.isNumericLiteral(node)
       || [ts.SyntaxKind.TrueKeyword, ts.SyntaxKind.FalseKeyword, ts.SyntaxKind.NullKeyword].includes(node.kind)) return true;
-    if (ts.isPropertyAccessExpression(node)) return inert(node.expression);
-    if (ts.isArrayLiteralExpression(node)) return node.elements.every(item => !ts.isSpreadElement(item) && inert(item));
-    if (ts.isObjectLiteralExpression(node)) return node.properties.every(item =>
-      ts.isShorthandPropertyAssignment(item) || ts.isPropertyAssignment(item) && inert(item.initializer));
+    if (ts.isPropertyAccessExpression(node)) return await inert(node.expression);
+    if (ts.isArrayLiteralExpression(node)) {
+      for (const item of node.elements) if (ts.isSpreadElement(item) || !await inert(item)) return false;
+      return true;
+    }
+    if (ts.isObjectLiteralExpression(node)) {
+      for (const item of node.properties) {
+        if (!ts.isShorthandPropertyAssignment(item) && !(ts.isPropertyAssignment(item) && await inert(item.initializer))) return false;
+      }
+      return true;
+    }
     if (ts.isPrefixUnaryExpression(node)) return [ts.SyntaxKind.PlusToken, ts.SyntaxKind.MinusToken,
-      ts.SyntaxKind.ExclamationToken, ts.SyntaxKind.TildeToken].includes(node.operator) && inert(node.operand);
+      ts.SyntaxKind.ExclamationToken, ts.SyntaxKind.TildeToken].includes(node.operator) && await inert(node.operand);
     if (ts.isBinaryExpression(node)) return [ts.SyntaxKind.PlusToken, ts.SyntaxKind.MinusToken, ts.SyntaxKind.AsteriskToken,
       ts.SyntaxKind.SlashToken, ts.SyntaxKind.PercentToken, ts.SyntaxKind.AsteriskAsteriskToken].includes(node.operatorToken.kind)
-      && inert(node.left) && inert(node.right);
+      && await inert(node.left) && await inert(node.right);
     if (ts.isCallExpression(node) && !node.questionDotToken && pathOf(node) === SHAPE
       && ts.isIdentifier(unwrap(node.expression))) {
-      const target = origin(node.expression);
+      const target = await origin(node.expression);
       const contract = target.kind === 'function' && pathOf(target.node) === SHAPE
         && reviewedFunctions.has(target.node) ? shapeConstructors.get(nodeName(target.node) ?? '') : undefined;
-      if (contract && node.arguments.length >= contract[0] && node.arguments.length <= contract[1]
-        && node.arguments.every(inert)) return true;
+      if (contract && node.arguments.length >= contract[0] && node.arguments.length <= contract[1]) {
+        let admitted = true;
+        for (const argument of node.arguments) { if (!await inert(argument)) { admitted = false; break; } }
+        if (admitted) return true;
+      }
     }
-    return ts.isCallExpression(node) && builtinCall(node, 'Object', 'freeze') && node.arguments.length === 1 && inert(node.arguments[0]);
+    return ts.isCallExpression(node) && builtinCall(node, 'Object', 'freeze') && node.arguments.length === 1 && await inert(node.arguments[0]);
   }
   function nearestFunction(node: ts.Node): ts.FunctionDeclaration | ts.ArrowFunction | ts.MethodDeclaration | ts.GetAccessorDeclaration | ts.SetAccessorDeclaration | undefined {
     for (let parent = node.parent; parent; parent = parent.parent) {
@@ -674,16 +687,16 @@ function audit(files: unknown, profile: string) {
     }
     return undefined;
   }
-  function capturedApplication(call: ts.Node): call is ts.CallExpression {
+  async function capturedApplication(call: ts.Node): Promise<boolean> {
     if (!ts.isCallExpression(call) || call.questionDotToken || call.arguments.length !== 3) return false;
     const callee = unwrap(call.expression), argument = unwrap(call.arguments[0]);
     if (!argument || !ts.isIdentifier(callee) || !ts.isIdentifier(argument)) return false;
-    const apply = captures.get(declarationOf(symbolAt(callee)));
-    const target = captures.get(declarationOf(symbolAt(argument)));
+    const apply = captures.get(await declarationOf(await symbolAt(callee)));
+    const target = captures.get(await declarationOf(await symbolAt(argument)));
     const expected = target?.path === BYTE_CARRIER ? applySites.get(target.name) : undefined;
     return apply?.path === BYTE_CARRIER && apply.name === 'capturedApply' && expected !== undefined
       && pathOf(call) === BYTE_CARRIER && nodeName(nearestFunction(call)) === 'classifyByteCarrier'
-      && sameSyntax(call, expected);
+      && await sameSyntax(call, expected);
   }
   function bindingName(node: ts.Node): boolean {
     const parent = node.parent;
@@ -702,9 +715,9 @@ function audit(files: unknown, profile: string) {
   // its binding. Local spelling, comments, quotes and parentheses may vary.
   // Each invocation has its own binding map; callback scopes cannot borrow
   // the helper's collector merely by using the same identifier text.
-  function bindingSyntax(actual: ts.Node, expected: string, seeds?: ReadonlyMap<string, ts.Node | undefined>): void {
+  async function bindingSyntax(actual: ts.Node, expected: string, seeds?: ReadonlyMap<string, ts.Node | undefined>): Promise<void> {
     const method = ts.isMethodDeclaration(actual);
-    const { source, diagnostics } = parseProfile(method ? `({${expected}});` : expected);
+    const { source, diagnostics } = await parseProfile(method ? `({${expected}});` : expected);
     requireThat(diagnostics.length === 0, 'checker-failed');
     const statement = source.statements[0];
     requireThat(statement, 'checker-failed');
@@ -716,7 +729,7 @@ function audit(files: unknown, profile: string) {
       reference = object.properties[0];
     }
     const bindings = new Map(seeds);
-    function match(left: ts.Node | undefined, right: ts.Node | undefined): void {
+    async function match(left: ts.Node | undefined, right: ts.Node | undefined): Promise<void> {
       left = unwrap(left);
       right = unwrap(right);
       // A braced single-return guard has the same binding contract as the
@@ -735,7 +748,7 @@ function audit(files: unknown, profile: string) {
       if (ts.isIdentifier(left)) {
         requireThat(ts.isIdentifier(right), 'construction');
         if (bindingName(right)) {
-          const declaration = declarationOf(symbolAt(left));
+          const declaration = await declarationOf(await symbolAt(left));
           requireThat(bindingName(left) && declaration === left.parent
             && !bindings.has(right.text)
             && ![...bindings.values()].includes(declaration), 'construction');
@@ -744,7 +757,7 @@ function audit(files: unknown, profile: string) {
           requireThat(nonReference(left) && left.text === right.text, 'construction');
         } else {
           requireThat(!nonReference(left), 'construction');
-          const declaration = declarationOf(symbolAt(left));
+          const declaration = await declarationOf(await symbolAt(left));
           requireThat(bindings.has(right.text)
             ? declaration === bindings.get(right.text)
             : globals.has(right.text) && left.text === right.text && !declaration, 'construction');
@@ -764,11 +777,11 @@ function audit(files: unknown, profile: string) {
       };
       const actualChildren = children(left), expectedChildren = children(right);
       requireThat(actualChildren.length === expectedChildren.length, 'construction');
-      actualChildren.forEach((child, index) => match(child, expectedChildren[index]));
+      for (const [index, child] of actualChildren.entries()) await match(child, expectedChildren[index]);
     }
-    match(actual, reference);
+    await match(actual, reference);
   }
-  function checkCapturedReference(node: ts.Identifier, declaration: ts.Node): void {
+  async function checkCapturedReference(node: ts.Identifier, declaration: ts.Node): Promise<void> {
     if (reviewedNodes.has(node)) return;
     if (ts.isFunctionDeclaration(declaration) && pathOf(declaration) === BYTE_CARRIER
       && ['requiredPrototype', 'captureGetter', 'captureMethod'].includes(nodeName(declaration) ?? '')) fail('construction');
@@ -794,11 +807,9 @@ function audit(files: unknown, profile: string) {
       requireThat(contract && direct && use.arguments.length === contract[0]
         && contract[1].includes(nodeName(fn) ?? ''), 'global');
       if (capture.name === 'defineProperty') {
-        requireThat([
-          'defineProperty(declarations, key, { value: item.value, enumerable: true, configurable: true, writable: true })',
-          'defineProperty(declarations, key, { value: item.value, enumerable: true, configurable: true, writable: true, })',
-        ].some(expected => sameSyntax(use, expected)), 'construction');
-        const storage = origin(use.arguments[0]);
+        requireThat(await sameSyntax(use, 'defineProperty(declarations, key, { value: item.value, enumerable: true, configurable: true, writable: true })')
+          || await sameSyntax(use, 'defineProperty(declarations, key, { value: item.value, enumerable: true, configurable: true, writable: true, })'), 'construction');
+        const storage = await origin(use.arguments[0]);
         requireThat(storage.kind === 'value' && ts.isArrayLiteralExpression(storage.node)
           && storage.node.elements.length === 0 && nearestFunction(storage.node) === fn, 'construction');
       }
@@ -815,19 +826,19 @@ function audit(files: unknown, profile: string) {
       requireThat(unwrap(use.expression) === node
         && fn && nodeName(fn) === 'copyByteCarrier' && fn.parameters.length === 1 && use.arguments?.length === 1
         && argument && ts.isIdentifier(argument)
-        && declarationOf(symbolAt(argument)) === fn.parameters[0], 'construction');
+        && await declarationOf(await symbolAt(argument)) === fn.parameters[0], 'construction');
       return;
     }
     if (capture.name === 'usableProbe') {
       requireThat(direct && nodeName(fn) === 'classifyByteCarrier'
-        && sameSyntax(use, 'usableProbe(value, 0)'), 'global');
+        && await sameSyntax(use, 'usableProbe(value, 0)'), 'global');
       reviewedCalls.add(use);
       return;
     }
-    requireThat(capturedApplication(use) && (capture.name === 'capturedApply'
+    requireThat(ts.isCallExpression(use) && await capturedApplication(use) && (capture.name === 'capturedApply'
       ? unwrap(use.expression) === node : unwrap(use.arguments[0]) === node), 'global');
   }
-  function checkGlobal(node: ts.Identifier): void {
+  async function checkGlobal(node: ts.Identifier): Promise<void> {
     const name = node.text, reference = outer(node), parent = reference.parent;
     if (reviewedNodes.has(node)) return;
     if (['undefined', 'NaN', 'Infinity'].includes(name)) return;
@@ -837,14 +848,14 @@ function audit(files: unknown, profile: string) {
       while (expression.parent && (ts.isPropertyAccessExpression(expression.parent) || ts.isElementAccessExpression(expression.parent))
         && expression.parent.expression === expression) {
         const access = expression.parent;
-        parts.push(ts.isPropertyAccessExpression(access) ? access.name.text : staticString(access.argumentExpression));
+        parts.push(ts.isPropertyAccessExpression(access) ? access.name.text : await staticString(access.argumentExpression));
         requireThat(!access.questionDotToken, 'global');
         expression = access;
       }
       const call = expression.parent;
       requireThat(pathOf(node) === feature('plan-output') && parts.join('.') === 'crypto.subtle.digest'
         && ts.isCallExpression(call) && call.expression === expression && call.arguments.length === 2
-        && staticString(call.arguments[0]) === 'SHA-256' && nodeName(nearestFunction(node)) === 'emit', 'global');
+        && await staticString(call.arguments[0]) === 'SHA-256' && nodeName(nearestFunction(node)) === 'emit', 'global');
       return;
     }
     if (constructors.has(name)) {
@@ -858,11 +869,11 @@ function audit(files: unknown, profile: string) {
       return;
     }
     requireThat((ts.isPropertyAccessExpression(parent) || ts.isElementAccessExpression(parent)) && parent.expression === reference, 'global');
-    const member = ts.isPropertyAccessExpression(parent) ? parent.name.text : staticString(parent.argumentExpression);
+    const member = ts.isPropertyAccessExpression(parent) ? parent.name.text : await staticString(parent.argumentExpression);
     const shapeValues = name === 'Object' && member === 'values' && pathOf(node) === SHAPE
       && ['schemaSafeLocalPath', 'projectedShapes'].includes(nodeName(nearestFunction(node)) ?? '')
       && ts.isCallExpression(outer(parent).parent)
-      && sameSyntax(outer(parent).parent, 'Object.values(shape.variants)');
+      && await sameSyntax(outer(parent).parent, 'Object.values(shape.variants)');
     requireThat((member !== undefined && globalMembers.get(name)?.has(member) || shapeValues) && !parent.questionDotToken, 'global');
     if (member === 'prototype' || member === 'MAX_SAFE_INTEGER') {
       requireThat(!ts.isPropertyAccessExpression(parent.parent) && !ts.isElementAccessExpression(parent.parent), 'global');
@@ -885,12 +896,12 @@ function audit(files: unknown, profile: string) {
         for (const declaration of statement.declarationList.declarations) {
           requireThat(ts.isIdentifier(declaration.name) && declaration.initializer, 'top-level');
           requireThat(routing.has(path) || role.definitions.has(declaration.name.text) || ts.isIdentifier(unwrap(declaration.initializer)), 'purpose');
-          if (path !== ROOT && path !== ENTRY) requireThat(inert(declaration.initializer), 'top-level');
+          if (path !== ROOT && path !== ENTRY) requireThat(await inert(declaration.initializer), 'top-level');
         }
       } else requireThat(ts.isExpressionStatement(statement) && ts.isStringLiteral(statement.expression)
         && statement.expression.text === 'use strict', 'top-level');
     }
-    visit(source, node => {
+    await visit(source, async node => {
       requireThat(!ts.isImportEqualsDeclaration(node) && !ts.isModuleDeclaration(node) && !ts.isWithStatement(node)
         && !ts.isMetaProperty(node) && !ts.isTaggedTemplateExpression(node)
         && (!ts.isFunctionExpression(node) || reviewedNodes.has(node))
@@ -901,7 +912,7 @@ function audit(files: unknown, profile: string) {
         requireThat(path === QUEUE && node.parent === source && !node.heritageClauses, 'purpose');
         requireThat(equalNames(new Set(node.members.map(item => propertyName(nodeFieldName(item)))), words('items comparisons peakSize size less defined push take'))
           && node.members.length === 8, 'purpose');
-        for (const item of node.members) if (ts.isPropertyDeclaration(item)) requireThat(inert(item.initializer), 'purpose');
+        for (const item of node.members) if (ts.isPropertyDeclaration(item)) requireThat(await inert(item.initializer), 'purpose');
       }
       if (ts.isClassExpression(node) || ts.isSetAccessorDeclaration(node)) fail('syntax-profile');
       if (ts.isFunctionDeclaration(node)) requireThat(node.body && node.name
@@ -938,12 +949,12 @@ function audit(files: unknown, profile: string) {
         if (!['crypto', 'subtle', 'digest'].includes(node.name.text)) checkMember(propertyName(node.name), node);
       }
       if (ts.isElementAccessExpression(node)) {
-        const name = staticString(node.argumentExpression);
+        const name = await staticString(node.argumentExpression);
         if (name !== undefined) checkMember(name, node);
       }
       if (ts.isBindingElement(node) && ts.isObjectBindingPattern(node.parent) && !node.dotDotDotToken) {
         const selector = node.propertyName ?? node.name;
-        const name = selector && ts.isComputedPropertyName(selector) ? staticString(selector.expression) : propertyName(selector);
+        const name = selector && ts.isComputedPropertyName(selector) ? await staticString(selector.expression) : propertyName(selector);
         requireThat(name !== undefined, 'purpose');
         checkMember(name, node);
       }
@@ -952,9 +963,9 @@ function audit(files: unknown, profile: string) {
       if (ts.isIdentifier(node)) {
         if (bindingName(node)) {
           requireThat(!globals.has(node.text) && node.text !== 'eval' && node.text !== 'arguments', 'binding');
-          requireThat((checker.getSymbolAtLocation(node)?.declarations?.length ?? 0) === 1, 'binding');
+          requireThat(((await checker.getSymbolAtLocation(node))?.declarations?.length ?? 0) === 1, 'binding');
         } else if (!nonReference(node)) {
-          const declaration = declarationOf(symbolAt(node));
+          const declaration = await declarationOf(await symbolAt(node));
           if (path === RAW_BYTES && node.text === 'appendOwn') {
             const use = outer(node).parent;
             requireThat(declaration && reviewedFunctions.has(declaration) && pathOf(declaration) === path
@@ -964,15 +975,15 @@ function audit(files: unknown, profile: string) {
           }
           if (declaration) {
             requireThat(modules.has(pathOf(declaration)), 'global');
-            checkCapturedReference(node, declaration);
+            await checkCapturedReference(node, declaration);
           }
-          else { requireThat(globals.has(node.text), 'global'); checkGlobal(node); }
+          else { requireThat(globals.has(node.text), 'global'); await checkGlobal(node); }
         }
       }
       if (ts.isNewExpression(node)) {
-        const callee = unwrap(node.expression), resolved = origin(callee);
-        const captured = ts.isIdentifier(callee) ? captures.get(declarationOf(symbolAt(callee))) : undefined;
-        requireThat(ts.isIdentifier(callee) && constructors.has(callee.text) && !declarationOf(symbolAt(callee))
+        const callee = unwrap(node.expression), resolved = await origin(callee);
+        const captured = ts.isIdentifier(callee) ? captures.get(await declarationOf(await symbolAt(callee))) : undefined;
+        requireThat(ts.isIdentifier(callee) && constructors.has(callee.text) && !await declarationOf(await symbolAt(callee))
           || captured?.path === BYTE_CARRIER && captured.name === 'CapturedUint8Array' && path === BYTE_CARRIER
           || resolved.kind === 'class' && pathOf(resolved.node) === QUEUE && nodeName(resolved.node) === 'ReadyQueue', 'construction');
       }
@@ -982,7 +993,7 @@ function audit(files: unknown, profile: string) {
         // The current schema reader uses named functions and a tagged shape;
         // its former computed validator dispatch is no longer in the closure.
         if (ts.isElementAccessExpression(callee)) fail('computed-call');
-        const resolved = origin(callee);
+        const resolved = await origin(callee);
         calls.push({ node, resolved });
         if (factories.some(([owner, name]) => isFunction(resolved, owner, name))) {
           const use = outer(node).parent;
@@ -997,14 +1008,14 @@ function audit(files: unknown, profile: string) {
   // named import/reexport/const aliases. Reachability alone grants no purpose.
   for (const [path, module] of modules) for (const name of module.exports) {
     if (path === ENTRY || path === ROOT) continue;
-    const value = exported(path, name);
+    const value = await exported(path, name);
     if (dataExports.has(name)) {
       const keys = dataExports.get(name);
       if (keys === null) requireThat(value.kind === 'value' && ts.isNumericLiteral(value.node) && pathOf(value.node) === path, 'export-origin');
       else {
         requireThat(value.kind === 'call' && pathOf(value.node) === path && builtinCall(value.node, 'Object', 'freeze')
           && value.node.arguments.length === 1, 'export-origin');
-        const record = origin(value.node.arguments[0]);
+        const record = await origin(value.node.arguments[0]);
         requireThat(record.kind === 'value' && ts.isObjectLiteralExpression(record.node), 'export-origin');
         const props = properties(record.node);
         requireThat(equalNames(new Set(props.keys()), keys!) && [...props.values()].every(item =>
@@ -1018,7 +1029,7 @@ function audit(files: unknown, profile: string) {
     }
   }
   for (const name of ['defineModule', 'required', 'optional', 'many']) {
-    const value = exported(ENTRY, name);
+    const value = await exported(ENTRY, name);
     requireThat(isFunction(value, HELPERS, name), 'public-origin');
     const fn = value.node;
     requireThat(fn.body, 'checker-failed');
@@ -1029,26 +1040,26 @@ function audit(files: unknown, profile: string) {
     const returned = fn.body.statements[0]!;
     requireThat(ts.isReturnStatement(returned), 'checker-failed');
     const result = unwrap(returned.expression);
-    if (name === 'defineModule') requireThat(result && ts.isIdentifier(result) && declarationOf(symbolAt(result)) === fn.parameters[0], 'helper-contract');
+    if (name === 'defineModule') requireThat(result && ts.isIdentifier(result) && await declarationOf(await symbolAt(result)) === fn.parameters[0], 'helper-contract');
     else {
       requireThat(result && ts.isObjectLiteralExpression(result), 'helper-contract');
       const props = properties(result), expected = name === 'many' ? ['kind', 'min', 'max', 'order'] : ['kind'];
       requireThat(equalNames(new Set(props.keys()), new Set(expected)) && [...props.values()].every(ts.isPropertyAssignment), 'helper-contract');
-      requireThat(staticString(propertyValue(props.get('kind')!)) === name, 'helper-contract');
+      requireThat(await staticString(propertyValue(props.get('kind')!)) === name, 'helper-contract');
       if (name === 'many') {
-        requireThat(staticString(propertyValue(props.get('order')!)) === 'profile'
+        requireThat(await staticString(propertyValue(props.get('order')!)) === 'profile'
           && result.properties.indexOf(props.get('min')!) < result.properties.indexOf(props.get('max')!), 'helper-contract');
         for (const key of ['min', 'max']) {
           const read = unwrap(propertyValue(props.get(key)!));
           requireThat(read && ts.isPropertyAccessExpression(read) && !read.questionDotToken && read.name.text === key
-            && ts.isIdentifier(read.expression) && declarationOf(symbolAt(read.expression)) === fn.parameters[0], 'helper-contract');
+            && ts.isIdentifier(read.expression) && await declarationOf(await symbolAt(read.expression)) === fn.parameters[0], 'helper-contract');
         }
       }
     }
   }
 
   for (const [path, name, slots, ports] of factories) {
-    const value = exported(path, name);
+    const value = await exported(path, name);
     requireThat(isFunction(value, path, name), 'construction');
     const fn = value.node;
     requireThat(fn.body, 'checker-failed');
@@ -1072,7 +1083,7 @@ function audit(files: unknown, profile: string) {
       requireThat(slotBindings, 'checker-failed');
       requireThat(sharedHelper === fn.body.statements[0]
         && sharedHelper && ts.isFunctionDeclaration(sharedHelper), 'construction');
-      bindingSyntax(sharedHelper, `async function compile(admit) {
+      await bindingSyntax(sharedHelper, `async function compile(admit) {
         const collector = semantics.newCollector();
         const admitted = admit(collector);
         const analyzed = semantics.analyze(admitted, collector);
@@ -1095,7 +1106,7 @@ function audit(files: unknown, profile: string) {
         if (sharedFacade) {
           requireThat(slotBindings, 'checker-failed');
           const member = key === 'compileComposition' ? 'admitObjectInput' : 'admitRawInput';
-          bindingSyntax(property, `async ${key}(input) {
+          await bindingSyntax(property, `async ${key}(input) {
             return compile(collector => admission.${member}(input, collector));
           }`, new Map([
             ['compile', sharedHelper],
@@ -1110,13 +1121,13 @@ function audit(files: unknown, profile: string) {
             && !item.initializer && !item.dotDotDotToken), 'construction');
         const call = unwrap(arrow.body);
         requireThat(ts.isCallExpression(call) && !call.questionDotToken && call.arguments.length === 3
-          && isFunction(origin(call.expression), RAW_ADMISSION, 'admitRawInput'), 'construction');
+          && isFunction(await origin(call.expression), RAW_ADMISSION, 'admitRawInput'), 'construction');
         requireThat(ts.isObjectBindingPattern(parameter.name), 'checker-failed');
         const scanner = parameter.name.elements.find(item => propertyName(item.propertyName ?? item.name) === 'scanner');
         for (let index = 0; index < 3; index += 1) {
           const argument = unwrap(call.arguments[index]);
           requireThat(argument, 'checker-failed');
-          requireThat(ts.isIdentifier(argument) && declarationOf(symbolAt(argument))
+          requireThat(ts.isIdentifier(argument) && await declarationOf(await symbolAt(argument))
             === (index < 2 ? arrow.parameters[index] : scanner), 'construction');
         }
       } else {
@@ -1124,7 +1135,7 @@ function audit(files: unknown, profile: string) {
           ? 'dist/features/composition-semantics/semantic-analysis.js' : key === 'open'
             ? SCANNER : 'dist/features/input-admission/object-admission.js';
         const targetName = key === 'analyze' ? 'analyzeCompositionSemantics' : key === 'open' ? 'openOwnedRawTokenCursor' : key;
-        requireThat(isFunction(origin(propertyValue(property)), owner, targetName), 'construction');
+        requireThat(isFunction(await origin(propertyValue(property)), owner, targetName), 'construction');
       }
     }
   }
@@ -1138,17 +1149,17 @@ function audit(files: unknown, profile: string) {
       const call = unwrap(declaration.initializer);
       if (!call || !ts.isCallExpression(call)) {
         requireThat(call && ts.isIdentifier(call), 'construction');
-        const alias = origin(call);
+        const alias = await origin(call);
         requireThat(alias.kind === 'call' && built.includes(alias.node), 'construction');
         continue;
       }
       const expected = factories[built.length];
-      requireThat(expected && isFunction(origin(call.expression), expected[0], expected[1]) && call.arguments.length === 1, 'construction');
+      requireThat(expected && isFunction(await origin(call.expression), expected[0], expected[1]) && call.arguments.length === 1, 'construction');
       const props = properties(call.arguments[0]);
       requireThat(equalNames(new Set(props.keys()), new Set(expected[2])), 'construction');
       for (const [key, property] of props) {
         requireThat(!ts.isMethodDeclaration(property), 'construction');
-        const provider = origin(propertyValue(property));
+        const provider = await origin(propertyValue(property));
         const index = { canonicalizer: 0, semantics: 1, output: 2, scanner: 3, admission: 4 }[key];
         requireThat(index !== undefined && index < built.length
           && provider.kind === 'call' && provider.node === built[index], 'construction');
@@ -1156,17 +1167,17 @@ function audit(files: unknown, profile: string) {
       built.push(call);
     }
   }
-  requireThat(built.length === factories.length && exported(ROOT, 'root').node === built[5], 'construction');
-  const compilers = (m2 ? ['compileComposition', 'compileCompositionJson'] : ['compileComposition'])
-    .map(name => {
-      const compiler = exported(ENTRY, name);
+  requireThat(built.length === factories.length && (await exported(ROOT, 'root')).node === built[5], 'construction');
+  const compilers: Origin[] = [];
+  for (const name of (m2 ? ['compileComposition', 'compileCompositionJson'] : ['compileComposition'])) {
+      const compiler = await exported(ENTRY, name);
       requireThat(compiler.kind === 'member' && compiler.name === name
         && compiler.base.kind === 'call' && compiler.base.node === built[5], 'public-origin');
-      return compiler;
-    });
+      compilers.push(compiler);
+  }
   for (const statement of modules.get(ENTRY)!.source.statements) if (ts.isVariableStatement(statement)) {
     for (const declaration of statement.declarationList.declarations) {
-      const value = origin(declaration);
+      const value = await origin(declaration);
       requireThat(value.kind === 'member' && compilers.some(compiler => value.node === compiler.node)
         || value.kind === 'call' && value.node === built[5]
         || ['defineModule', 'required', 'optional', 'many'].some(name => isFunction(value, HELPERS, name)), 'public-origin');
@@ -1187,27 +1198,27 @@ function audit(files: unknown, profile: string) {
   // a callback parameter or one of the already checked conversion globals.
   // Run this after the syntax and construction checks to retain their reasons.
   let callableSteps = 0;
-  function ownedCallable(value: Origin, depth = 0): boolean {
+  async function ownedCallable(value: Origin, depth = 0): Promise<boolean> {
     requireThat(++callableSteps <= MAX_STATIC_STEPS && depth <= 64, 'limit');
     if (value.kind === 'function') return true;
-    if (value.kind === 'member') return (value.name ?? staticString(value.key)) !== undefined;
+    if (value.kind === 'member') return (value.name ?? await staticString(value.key)) !== undefined;
     if (value.kind !== 'value') return false;
     if (ts.isArrowFunction(value.node) || ts.isParameterDeclaration(value.node)) return true;
     // Both branches must independently carry an allowed callable origin.
     // The work/depth bound also covers repeated conditional alias graphs.
     return ts.isConditionalExpression(value.node)
-      && ownedCallable(origin(value.node.whenTrue), depth + 1)
-      && ownedCallable(origin(value.node.whenFalse), depth + 1);
+      && await ownedCallable(await origin(value.node.whenTrue), depth + 1)
+      && await ownedCallable(await origin(value.node.whenFalse), depth + 1);
   }
   for (const { node, resolved } of calls) {
     if (reviewedCalls.has(node)) continue;
     if (resolved.kind === 'member') {
-      requireThat((resolved.name ?? staticString(resolved.key)) !== undefined, 'computed-call');
+      requireThat((resolved.name ?? await staticString(resolved.key)) !== undefined, 'computed-call');
       continue;
     }
-    if (ownedCallable(resolved)) continue;
+    if (await ownedCallable(resolved)) continue;
     const callee = unwrap(node.expression);
-    requireThat(ts.isIdentifier(callee) && !declarationOf(symbolAt(callee))
+    requireThat(ts.isIdentifier(callee) && !await declarationOf(await symbolAt(callee))
       && (callee.text === 'String' || callee.text === 'Number'), 'call-origin');
   }
   return { modules: [...reached].sort(), exports: [...publicValues] };
@@ -1217,8 +1228,8 @@ function audit(files: unknown, profile: string) {
 // Historical M1 remains the default. The shared private facade and public M2
 // are distinct opt-in witnesses, selected by trusted qualification tooling.
 // m2-generated carries the full M2 surface with only the generated assembly.
-export function auditM1JavaScriptClosure(files: unknown, profile = 'm1') {
-  try { return audit(files, profile); }
+export async function auditM1JavaScriptClosure(files: unknown, profile = 'm1') {
+  try { return await audit(files, profile); }
   catch (error) {
     if (error instanceof InvalidClosure) throw error;
     fail('checker-failed');

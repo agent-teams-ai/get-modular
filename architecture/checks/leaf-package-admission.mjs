@@ -30,8 +30,8 @@ const SOURCE = /\.(?:[cm]?js|jsx|[cm]?ts|tsx)$/u;
 const sha256 = bytes => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const record = value => value !== null && typeof value === "object" && !Array.isArray(value);
 
-function parseSource(path, source, forbidDynamic = true) {
-  const { source: parsed, diagnostics } = parseTypeScript(path, source);
+async function parseSource(path, source, forbidDynamic = true) {
+  const { source: parsed, diagnostics } = await parseTypeScript(path, source);
   assert.equal(diagnostics.length, 0,
     `${path} must parse as production source`);
   const references = parsed;
@@ -66,8 +66,8 @@ function parseSource(path, source, forbidDynamic = true) {
   return { parsed, specifiers };
 }
 
-function assertSourceEdges(leaf, path, source) {
-  const { parsed, specifiers } = parseSource(path, source);
+async function assertSourceEdges(leaf, path, source) {
+  const { parsed, specifiers } = await parseSource(path, source);
   for (const specifier of specifiers) {
     // A declared peer is imported through its package root only.
     if (leafPeers(leaf).includes(specifier)) continue;
@@ -183,7 +183,7 @@ async function validateLeafRoot(leaf, artifacts, input) {
     const source = await readProductionSource(path);
     assert(typeof source === "string" && source.trim().length > 0,
       `${path} cannot be empty`);
-    const parsed = assertSourceEdges(leaf, path, source);
+    const parsed = await assertSourceEdges(leaf, path, source);
     if (substantiveSource(parsed)) substantive = true;
   }
   assert(substantive, `${leaf.name} requires substantive executable source`);
@@ -207,7 +207,7 @@ async function assertNoCoreOrAssemblyLeafImport(leaves, productionArtifacts, rea
     /^packages\/(?:core|assembly)\/src\//u.test(path)
       && SOURCE.test(path) && path !== GENERATED_PRODUCTION_PATH)) {
     const source = await readProductionSource(path);
-    for (const specifier of parseSource(path, source, false).specifiers) {
+    for (const specifier of (await parseSource(path, source, false)).specifiers) {
       const target = specifier.startsWith(".")
         ? posix.normalize(posix.join(posix.dirname(path), specifier)) : specifier;
       for (const leaf of leaves) {
