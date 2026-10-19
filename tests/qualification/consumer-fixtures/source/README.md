@@ -1,18 +1,126 @@
-# Selected flat source research
+# Selected flat source qualification
 
-P4 retains 26 actual-disk observations covering the selected predicates of
-A-01 through A-08. The final replay passed its positive and rejecting assertions
-with an exact packed Foundation candidate. Its report remains
-`kind: research-selected-flat-source`, `source: incomplete`,
-`adoption: unchanged`, and `nested: not-selected`.
+P4 integrates 26 actual-disk observations covering the selected predicates of
+A-01 through A-08 into the existing Assembly fixture test. `installed.ts` uses
+the exact registry development pins in the root manifest and the public
+Foundation, FMS and Get Modular conformance entries. It verifies installed
+package names and versions and records their entry resolutions and tree hashes.
+Only a successful complete scenario run returns
+`kind: installed-selected-flat-source`, `source: passed`,
+`adoption: unchanged` and `nested: not-selected`.
 
 The [fixture plan](../../../../docs/qualification/module-fixture-plan.md#p4--qualify-source-facts-through-their-existing-owners),
 [scenario catalog](../../../../docs/qualification/module-fixture-scenarios.md)
 and [Foundation acceptance table](../../../../docs/qualification/module-fixture-handoff.md#foundation-source-fact-handoff)
-own the requirements. This directory records bounded research evidence; it does
-not supersede their adoption or qualification conditions.
+own the requirements. This is the selected flat test recipe: the production
+FMS v1 authority and its governed roots are unchanged. The catalog's
+existing composition-contract reference supplies the selected A-06 surfaces;
+this test does not select every FMS v1.1 rule or a whole-repository migration.
 
-## Public route and authority
+The historical packed-candidate replay is retained below with its original
+`kind: research-selected-flat-source` and `source: incomplete`. The ordinary
+installed route does not relabel that earlier execution.
+
+## Publication checkpoint, 2026-10-18
+
+The implementation and exact development pins are prepared, but this checkpoint
+is not ready for adoption. Foundation [source PR 400](https://github.com/agent-teams-ai/engineering-foundation/pull/400)
+and [release PR 392](https://github.com/agent-teams-ai/engineering-foundation/pull/392)
+are merged. The ordinary [publication run](https://github.com/agent-teams-ai/engineering-foundation/actions/runs/39134132899)
+published Foundation 1.8.0, then failed to publish FMS 0.1.0: npm returned
+`E404`, and the existing registry reconciliation exhausted its bound with that
+version still absent. The sanitized error does not identify the underlying
+package authorization cause.
+
+The current Foundation integrity bindings use the actual downloaded 1.8.0
+archive. The FMS registry artifact, root lockfile update, frozen installation
+and final installed-source and repository gates remain pending. Neither the
+retained candidate results nor the prepared manifest pins establish a completed
+registry qualification. Resume through the ordinary release after the package
+owner resolves the publication refusal; then install the exact public versions
+and execute the existing qualification route below.
+
+## Installed publication checkpoint, 2026-10-19
+
+Accepted GM main `4609c2a323a360a584e773b57b30ada1bf1c0f3c`, merged into
+this fixture branch as `f64767080ddbb647313e116d509d563d51fb50b1`, pins native
+Foundation 1.10.0. The fixture now adds the exact public FMS 0.1.1 release. Its
+optional Foundation peer is `^1.10.0`, satisfied by the installed 1.10.0 package.
+Both current compiler aliases resolve to TypeScript 7.0.2 under that accepted
+main tooling qualification.
+
+These public packages were published by ordinary
+[Release run 39272926879, attempt 2](https://github.com/agent-teams-ai/engineering-foundation/actions/runs/39272926879/attempts/2)
+from source `aed890a6ac09762d9f487ed2624e64a873935868`. Their registry archive
+integrities are retained in the root lockfile:
+
+- FMS 0.1.1:
+  `sha512-EnnT10vXn2+oc4h1u0gTsNKhUnKJIEGso5gAUFN8KlRTQyp5/ktFPHR2Er7iES2Ps9+kEbBXEW3RaEMKp+hqdw==`.
+- Foundation 1.10.0:
+  `sha512-k1mI8y/bm6GQtge+QCkANrufyLKi0f6YZlHXCMKr4QpGb97/86j9WdYVhgG2//C2cAtSRmmHmhOtnrpdaksRpw==`.
+
+Normal `pnpm install --lockfile-only` and the following
+`pnpm install --frozen-lockfile` passed with Node 26.11.1 and pnpm 11.20.0.
+Installed package manifests and the FMS peer resolution identify those exact
+versions. Installed Docs Protocol 0.6.2 also completed `pnpm docs:info` with the
+existing consumer profile.
+
+The installed source and runtime qualification then passed on this frozen
+installation:
+
+- `pnpm assembly:typecheck` passed, including the four maintained TypeScript
+  helpers in their strict project after preparation of the public package outputs.
+- `pnpm assembly:test` passed all 102 tests, without failures, cancellations or
+  skips. The installed source result contains 26 selected observations and 16
+  complementary policy observations, with `source: passed`,
+  `adoption: unchanged` and `nested: not-selected`.
+- H-03 recorded natural process exit and close with code 0 and no signal while
+  the parent's input writer remained open. Cancellation left no publications,
+  active work or effects, released once, and returned a complete settled report.
+  Both actual resource and journal probes confirmed closed file descriptors.
+- The same Assembly run passed the existing C/L/W scenarios, both recovery
+  profiles and ordinary G-01 at N8. The separate growth source-coverage result
+  remains incomplete because its source scanner is not selected.
+- `pnpm check:changed` selected the complete `fast-full` route and passed with a
+  dedicated canonical temporary root outside worktrees.
+
+The source receipt identifies the materialized semantic tree as SHA-256
+`2dd11a2f3ba33f571021b346093bb142c47d3982b86bd1fec43233cd370b2a65`
+(38 files, 87,821 bytes) and the installed root lockfile as SHA-256
+`13238216d2a6849bd888f4f273943b649907a723a725e88c0cba2d1f39ce11d8`.
+The policy report alone still has `source: incomplete`; the separate installed
+source result supplies the selected Foundation/FMS/CMS chain.
+
+These observations qualify the released-package handoff for the selected flat
+recipe. The 2026-10-18 E404 checkpoint, retained research identities, growth
+limits and authoring records keep their original historical scope.
+
+## Installed policy enforcement
+
+The ordinary [Assembly fixture entry](../../../assembly/consumer-fixtures.test.mjs)
+also invokes `policy.ts` against the actual materialized semantic source using
+the installed Foundation public CLI. Its checked-in `source-dependencies.yaml`
+governs all of `src`, with separate application, adapter, public contract and
+composition boundaries. It declares the exact permitted sibling surfaces and
+keeps IO and Get Modular imports out of application code. A configuration-only
+edit to that YAML selects the existing fast scan.
+
+This route checks a complete independent disk inventory before its positive
+baseline, then requires specific Foundation diagnostics from real mutations:
+missing targets, forbidden sibling and non-entrypoint imports, unsupported bare
+alias/workspace/self-package forms, unknown externals, parse failures, computed
+loaders and application dependencies on composition, Get Modular or filesystem
+IO. The alias/workspace shapes are deliberately unsupported references; they do
+not qualify configured resolution for those mechanisms. Every mutation restores
+its source, and the restored tree must pass the installed policy again.
+
+These 16 policy observations complement the 26 source observations. The policy
+report alone retains `source: incomplete`: it does not establish CMS/FMS
+results. The same Assembly test then invokes `installed.ts` and requires the
+complete selected source chain before reporting its separate successful source
+result. No extra root command or test matrix is introduced.
+
+## Public source route and authority
 
 The adapter independently enumerates actual source files and directories. It
 then calls `observeSourceGraph` from the public
@@ -27,8 +135,28 @@ permitted relations and selected surfaces. These are expectations. The public
 graph and independent disk inventory provide the facts compared with them.
 `records.mjs` preserves raw parse failures, unresolved references, external
 references and runtime export coverage before calling either rule owner.
-`scenarios.mjs` mutates real files and restores them; `run-research.mjs` supplies
-the isolated public tools and existing semantic consumer materialization.
+`scenarios.mjs` mutates real files and restores them. Both `installed.ts` and
+the historical `run-research.mjs` call that same scenario runner. The former
+uses the root's installed exact registry pins; the latter supplies isolated
+research tools. Each wrapper owns its evidence status.
+
+Run the ordinary source and runtime entries with the repository's pinned Node
+and pnpm, a frozen installation, and ready public package outputs as described
+in the [parent README](../README.md#run-and-interpret-the-evidence):
+
+```sh
+node --test tests/assembly/consumer-fixtures.test.mjs
+```
+
+The first test emits the source and policy reports plus the materialized source,
+compiler, package-output and lockfile identities. The following C/L/W/H test
+delegates its source claim to that first test; it does not run the source matrix
+again. A failed or incomplete selected observation fails the source test.
+
+### Historical research identities
+
+The following table and replay record describe the earlier candidate execution,
+before the installed route. Their hashes and statuses are retained unchanged.
 
 | Authority or artifact | Identity and status |
 | --- | --- |
@@ -36,13 +164,15 @@ the isolated public tools and existing semantic consumer materialization.
 | Public research FMS package | Exact `@agent-teams/feature-module-standard@0.0.0` archive; its `STANDARD` identifies v1.1, SHA-256 `cfa088ef7396139554fe5e3bcc839271b23299c6b60c569a3a7f1cd7c9f0bc6c` |
 | Existing composition-contract reference | Git blob `bd949a9a670862fea851a7791fce772fdef3b4fc`; the flat recipe's A-06 surfaces remain selected |
 | Foundation candidate | Source head `dd2d1848102edb96dc615da37ce7c12a11a63b39`; packed from the clean, already built owner checkout |
-| Ordinary GM dependency | Published Foundation 1.7.4 remains installed and pinned; that archive has no public `./source-graph` export |
+| GM dependency at the recorded replay | Published Foundation 1.7.4 was installed and pinned; that archive had no public `./source-graph` export |
 
-The candidate still has manifest version 1.7.4. Its archive hash identifies
+The historical candidate has manifest version 1.7.4. Its archive hash identifies
 unreleased research bytes, not the published package of that version. The FMS
-kernel exposes no v1 selector. Its successful v1.1 predicates do not establish
-parity with the adopted v1 profile or authorize v1.1 adoption. This replay makes
-no Foundation merge, release or whole-repository migration claim.
+kernel identifies v1.1 and exposes no v1 selector. The historical replay claimed
+neither production FMS v1 parity nor v1.1 adoption. The installed route uses only
+the catalog's selected predicates and existing composition-contract reference;
+the production v1 authority and scope remain unchanged. The historical replay makes no
+Foundation merge, release or whole-repository migration claim.
 
 ## Selected facts and limits
 
@@ -72,7 +202,9 @@ selected predicate were available. It is separate from the rule result: a
 forbidden private edge has complete facts and a rejecting FMS diagnostic.
 `factCoverage: incomplete` prevents the adapter from claiming a rule pass when
 the selected facts are missing or unsupported. The overall adopted source
-qualification remains incomplete even when every research assertion succeeds.
+qualification was incomplete in the historical replay even when every research
+assertion succeeded. The installed wrapper reports success only for the selected
+predicates and preserves the unchanged production adoption boundary.
 
 | Row | Observations | Actual evidence and expected result |
 | --- | --- | --- |
@@ -86,10 +218,10 @@ qualification remains incomplete even when every research assertion succeeds.
 | A-08 | 4 | Extra actual runtime export yields CMS `use-case-export`; an unknown use-case export prevents a count claim; missing root yields `SOURCE_DIRECTORY_UNAVAILABLE`; a 4 MiB plus one byte source yields `SOURCE_FILE_INVALID` |
 
 The final restored tree is checked after the mutations. The source-dependency
-policy in ordinary GM checks remains separate evidence; this research does not
+policy in ordinary GM checks remains separate evidence; the fixture does not
 replace it with generated expectations or a broad repository profile.
 
-## Replay the exact artifacts
+## Replay the historical exact artifacts
 
 Use the repository's pinned Node and pnpm, ready public outputs for Core,
 Assembly, Resources and Conformance, and a new isolated tool consumer. The
@@ -137,7 +269,7 @@ harness uses the supplied installed public entrypoints and records their
 resolutions; it does not verify those installed bytes against the retained hashes
 or independently qualify the declarations with another typed consumer.
 
-## Final recorded evidence
+## Historical final recorded evidence
 
 The GM base was `2f1b33069d1942911e16824d658e3582b62da6a7`, with the four source
 adapter files identified individually in `p4-final-metadata.json`. The semantic
@@ -164,10 +296,9 @@ Foundation source `c5c179b838490ad6feeb8eb77b52740fc9069f1c`, archive SHA-256
 `c03e2ad1a2d65a41286a731101b0a097021ba93b3c2d9802cdbb26164384254e`, and report
 SHA-256 `183139704ec10d8b3b88fa7c1ac4bbb15f497323fc7a048627ae4cda20981f67`.
 
-The remaining adoption handoff needs an exact released public source-fact
-artifact and a public FMS route matching the accepted semantics, or an explicit
-separate adoption decision. Its GM owner then pins the admitted artifact and
-profile, establishes scoped parity, and integrates the applicable A checks in
-the existing Assembly entry with its exact configuration routing. This
-directory adds no ordinary automated gate for the currently missing chain.
-Runtime fixture work can continue with source qualification incomplete.
+At that replay, the remaining handoff needed exact released public source-fact
+artifacts and integration of the applicable A checks in the existing Assembly
+entry. The installed route above supplies that integration with exact development
+pins, actual observations and the existing configuration routing. Its scope is
+the catalog's selected flat predicates; production adoption and nested features
+remain separate decisions. The historical research report remains incomplete.

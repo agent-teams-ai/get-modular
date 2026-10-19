@@ -161,6 +161,5 @@ export async function runSourceScenarios(directory, tools, compile, rejectInputG
     });
   }
   assert.equal((await check()).outcome, "passed", "source restored after all mutations");
-  return { kind: "research-selected-flat-source", source: "incomplete", authority: sourceProfile.authority,
-    adoption: "unchanged", nested: "not-selected", rows };
+  return { authority: sourceProfile.authority, adoption: "unchanged", nested: "not-selected", rows };
 }

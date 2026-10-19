@@ -59,6 +59,9 @@ importers:
       '@agent-teams/engineering-foundation':
         specifier: 1.10.0
         version: 1.10.0(@types/node@24.19.1)
+      '@agent-teams/feature-module-standard':
+        specifier: 0.1.1
+        version: 0.1.1(@agent-teams/engineering-foundation@1.10.0(@types/node@24.19.1))
       '@changesets/cli':
         specifier: 'catalog:'
         version: 3.0.2
@@ -187,6 +190,15 @@ packages:
     resolution: {integrity: sha512-k1mI8y/bm6GQtge+QCkANrufyLKi0f6YZlHXCMKr4QpGb97/86j9WdYVhgG2//C2cAtSRmmHmhOtnrpdaksRpw==}
     engines: {node: ^24.18.0 || ^26.0.0, pnpm: '>=11.17.0 <12'}
     hasBin: true
+
+  '@agent-teams/feature-module-standard@0.1.1':
+    resolution: {integrity: sha512-EnnT10vXn2+oc4h1u0gTsNKhUnKJIEGso5gAUFN8KlRTQyp5/ktFPHR2Er7iES2Ps9+kEbBXEW3RaEMKp+hqdw==}
+    engines: {node: ^24.18.0 || ^26.0.0, pnpm: '>=11.17.0 <12'}
+    peerDependencies:
+      '@agent-teams/engineering-foundation': ^1.10.0
+    peerDependenciesMeta:
+      '@agent-teams/engineering-foundation':
+        optional: true
 
   '@agent-teams/repository-mutation@0.2.2':
     resolution: {integrity: sha512-4G6kkQKA7ua4z9mxxn1XNrBUgngWeQ+UufDnQ34YdYv26DZi1/pUYwGoKajFluhUNDXhvqf4fMJQu0nI6m6jdg==}
@@ -1650,6 +1662,10 @@ snapshots:
       yaml: 2.9.0
     transitivePeerDependencies:
       - '@types/node'
+
+  '@agent-teams/feature-module-standard@0.1.1(@agent-teams/engineering-foundation@1.10.0(@types/node@24.19.1))':
+    optionalDependencies:
+      '@agent-teams/engineering-foundation': 1.10.0(@types/node@24.19.1)
 
   '@agent-teams/repository-mutation@0.2.2': {}
 
