@@ -34,8 +34,12 @@ export function supportedCompilers() {
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
     assert.equal(manifest.name, "typescript");
     if (compilerName === minimum) assert.equal(manifest.version, "7.0.2");
-    const version = manifest.version.split(".").map(Number);
-    assert(version.length === 3 && version.every(Number.isSafeInteger)
+    const match = typeof manifest.version === "string"
+      ? /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/u.exec(manifest.version) : null;
+    assert.ok(match !== null && match[0] === manifest.version,
+      `${compilerName} must be a pinned stable compiler: ${manifest.version}`);
+    const version = match.slice(1).map(Number);
+    assert(version.every(Number.isSafeInteger)
       && (version[0] > 7 || version[0] === 7 && (version[1] > 0 || version[1] === 0 && version[2] >= 2)),
     `${compilerName} must meet the TypeScript 7.0.2 floor`);
     if (!compilers.some(compiler => compiler.version === manifest.version)) {

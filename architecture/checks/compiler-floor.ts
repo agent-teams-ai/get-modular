@@ -63,7 +63,7 @@ function readPackage(require: NodeJS.Require, name: string, role: string, identi
     });
   }
   const value = manifest as Partial<PackageManifest> | null;
-  if (value?.name !== identity || typeof value.version !== "string" || !stableVersion.test(value.version)) {
+  if (value?.name !== identity || typeof value.version !== "string" || stableVersion.exec(value.version)?.[0] !== value.version) {
     blocked(role, manifestPath, `${kind}-identity-invalid`, { packageName: name, observedVersion: value?.version ?? null });
   }
   return { role, manifestPath, manifest: value as PackageManifest };
@@ -83,7 +83,7 @@ function compiler(require: NodeJS.Require, name: string, role: string): Compiler
 
 function assertDependencyPin(owner: PackageIdentity, name: string, actualVersion: string): void {
   const declaredVersion = owner.manifest.dependencies?.[name];
-  if (typeof declaredVersion !== "string" || !stableVersion.test(declaredVersion) || declaredVersion !== actualVersion) {
+  if (typeof declaredVersion !== "string" || stableVersion.exec(declaredVersion)?.[0] !== declaredVersion || declaredVersion !== actualVersion) {
     blocked(owner.role, owner.manifestPath, "dependency-pin-mismatch", {
       packageName: name, declaredVersion: declaredVersion ?? null, observedVersion: actualVersion,
     });

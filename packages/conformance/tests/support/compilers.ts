@@ -20,8 +20,9 @@ export async function supportedCompilers(): Promise<readonly CompilerIdentity[]>
     assert.equal(typeof manifest.version, "string");
     const observedVersion = manifest.version as string;
     if (compilerName === "typescript-minimum") { assert.equal(manifest.version, "7.0.2"); }
-    const match = /^(\d+)\.(\d+)\.(\d+)$/u.exec(observedVersion);
-    assert.ok(match, `${compilerName} must be a pinned stable compiler: ${manifest.version}`);
+    const match = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/u.exec(observedVersion);
+    assert.ok(match !== null && match[0] === observedVersion,
+      `${compilerName} must be a pinned stable compiler: ${manifest.version}`);
     const version = match.slice(1).map(Number);
     const [major = 0, minor = 0, patch = 0] = version;
     assert.ok(version.every(Number.isSafeInteger)

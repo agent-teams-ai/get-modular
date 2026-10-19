@@ -190,6 +190,7 @@ test("invalid identity, unstable versions, missing files and dependency override
     ["wrong compiler", "extractor", { name: "other" }, "foundation.api-extractor.compiler", "compiler-identity-invalid"],
     ["prerelease", "current", { version: "7.0.2-rc.1" }, "repository.current", "compiler-identity-invalid"],
     ["malformed version", "minimum", { version: "7.00.2" }, "repository.minimum", "compiler-identity-invalid"],
+    ["trailing newline", "current", { version: "7.0.2\n" }, "repository.current", "compiler-identity-invalid"],
     ["wrong Foundation", "foundationPackage", { name: "other" }, "foundation", "package-identity-invalid"],
     ["wrong extractor", "extractorPackage", { name: "other" }, "foundation.api-extractor", "package-identity-invalid"],
     ["overridden Foundation compiler", "foundationPackage", { dependencies: { "@microsoft/api-extractor": "7.58.12", typescript: "5.9.3" } }, "foundation", "dependency-pin-mismatch"],
