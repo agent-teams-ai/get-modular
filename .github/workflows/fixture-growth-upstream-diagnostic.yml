@@ -30,8 +30,9 @@ jobs:
           pnpm assembly:build
           pnpm resources:build
           pnpm conformance:build
+          pnpm assembly:typecheck
       - name: Build the exact upstream candidate and measure the original N1000 subject once
-        run: node tests/qualification/consumer-fixtures/growth/upstream-compiler.mjs --directory "${{ runner.temp }}/gm-upstream-growth"
+        run: node tests/qualification/consumer-fixtures/growth/upstream-compiler.ts --directory "${{ runner.temp }}/gm-upstream-growth"
       - name: Verify tracked workspace integrity
         if: always()
         env:

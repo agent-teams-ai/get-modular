@@ -8,7 +8,7 @@ import { copyReadyPackages, fixtureCompiler, treeIdentity } from "../support/mat
 import { generateGrowthSource } from "./generate.mjs";
 import { expectedInventory, expectedSourcePaths } from "./oracle.mjs";
 import { applyLeafEdit, applySharedContractEdit, restoreEdit } from "./patches.mjs";
-import { readUpstreamCandidate } from "./upstream-compiler.mjs";
+import { readUpstreamCandidate } from "./upstream-compiler.ts";
 
 const ownDirectory = dirname(fileURLToPath(import.meta.url));
 const workspace = resolve(ownDirectory, "../../../..");

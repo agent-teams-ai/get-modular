@@ -18,14 +18,46 @@ const goSelection = Object.freeze({
   version: "go1.27.2",
   archiveSha256: "ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5",
 });
-const hash = bytes => createHash("sha256").update(bytes).digest("hex");
-const save = (path, value) => writeFile(path, `${JSON.stringify(value, null, 2)}\n`);
+interface CandidateManifest {
+  readonly kind: "unreleased-upstream-native-candidate";
+  readonly source: typeof upstreamSelection;
+  readonly go: typeof goSelection;
+  readonly cli: string;
+  readonly version: string;
+  readonly binarySha256: string;
+}
+interface Completion { readonly code: number | null; readonly signal: NodeJS.Signals | null }
+interface GrowthMeasurement {
+  readonly status: string;
+  readonly directory: string;
+  readonly identities: { readonly generatedSource: unknown };
+  readonly runtime: {
+    readonly graph: unknown;
+    readonly smoke: { readonly attempts: unknown; readonly factoryCalls: unknown; readonly dependencyPortReads: unknown };
+  };
+}
+interface ExperimentReport {
+  status: string;
+  claim: string;
+  selectedSize: number;
+  precedingSize: string;
+  buildCapMs: number;
+  fixtureCapsMs: { compiler: number; runtime: number; aggregate: number };
+  compiler?: CandidateManifest & { readonly manifestSha256: string };
+  directory?: string;
+  source?: unknown;
+  graph?: unknown;
+  smoke?: GrowthMeasurement["runtime"]["smoke"];
+  failure?: { readonly name: string; readonly message: string };
+}
+const hash = (bytes: Uint8Array): string => createHash("sha256").update(bytes).digest("hex");
+const save = (path: string, value: unknown): Promise<void> => writeFile(path, `${JSON.stringify(value, null, 2)}\n`);
 
 /** A build manifest is input identity, not a released package or a promotion attestation. */
-export async function readUpstreamCandidate(path) {
+export async function readUpstreamCandidate(path: string): Promise<CandidateManifest & { readonly manifestSha256: string }> {
   assert.ok(isAbsolute(path), "fixture.growth.candidate-manifest-path");
   const bytes = await readFile(path);
-  const candidate = JSON.parse(bytes);
+  const candidate = JSON.parse(bytes.toString("utf8")) as CandidateManifest;
   assert.equal(candidate.kind, "unreleased-upstream-native-candidate");
   assert.deepEqual(candidate.source, upstreamSelection);
   assert.deepEqual(candidate.go, goSelection);
@@ -35,11 +67,12 @@ export async function readUpstreamCandidate(path) {
   return { ...candidate, manifestSha256: hash(bytes) };
 }
 
-async function run(command, args, cwd, env = process.env, capture = false) {
+async function run(command: string, args: readonly string[], cwd: string,
+  env: NodeJS.ProcessEnv = process.env, capture = false): Promise<string> {
   const child = spawn(command, args, { cwd, env, stdio: ["ignore", capture ? "pipe" : "inherit", "inherit"] });
   let stdout = "";
-  if (capture) child.stdout.setEncoding("utf8").on("data", chunk => { stdout += chunk; });
-  const result = await new Promise((resolveExit, reject) => {
+  if (capture) child.stdout!.setEncoding("utf8").on("data", (chunk: string) => { stdout += chunk; });
+  const result = await new Promise<Completion>((resolveExit, reject) => {
     child.once("error", reject);
     child.once("close", (code, signal) => resolveExit({ code, signal }));
   });
@@ -48,7 +81,7 @@ async function run(command, args, cwd, env = process.env, capture = false) {
   return stdout;
 }
 
-async function download(directory, name, url, expectedSha256) {
+async function download(directory: string, name: string, url: string, expectedSha256: string) {
   const started = performance.now();
   const response = await fetch(url, { signal: AbortSignal.timeout(90000) });
   assert.equal(response.ok, true, `${url}: ${response.status}`);
@@ -59,7 +92,7 @@ async function download(directory, name, url, expectedSha256) {
   return { name, url, sha256, bytes: bytes.byteLength, wallMs: performance.now() - started };
 }
 
-async function buildWorker(directory) {
+async function buildWorker(directory: string): Promise<void> {
   assert.equal(typeof process.send, "function", "fixture.growth.external-build-supervisor-required");
   assert.equal(process.version, "v26.11.1");
   const pnpm = (await run("pnpm", ["--version"], directory, process.env, true)).trim();
@@ -93,12 +126,12 @@ async function buildWorker(directory) {
     go: goSelection, cli, version: version.slice("Version ".length), binarySha256: hash(await readFile(cli)) });
 }
 
-async function buildCandidate(directory) {
+async function buildCandidate(directory: string): Promise<void> {
   const stdout = await open(join(directory, "build.stdout.log"), "w");
   const stderr = await open(join(directory, "build.stderr.log"), "w");
   const started = performance.now();
   let expired = false;
-  let error;
+  let error: string | undefined;
   const child = spawn(process.execPath, [ownPath, "--build-worker", directory], {
     detached: true, stdio: ["ignore", stdout.fd, stderr.fd, "ipc"],
   });
@@ -106,12 +139,15 @@ async function buildCandidate(directory) {
     expired = true;
     if (child.pid !== undefined) {
       try { process.kill(-child.pid, "SIGKILL"); }
-      catch (failure) { if (failure.code !== "ESRCH") error = failure.message; }
+      catch (failure) {
+        const observed = failure as NodeJS.ErrnoException;
+        if (observed.code !== "ESRCH") error = observed.message;
+      }
     }
   }, buildCapMs);
-  let result;
+  let result: Completion;
   try {
-    result = await new Promise(resolveExit => {
+    result = await new Promise<Completion>(resolveExit => {
       child.once("error", failure => { error = failure.message; });
       child.once("close", (code, signal) => resolveExit({ code, signal }));
     });
@@ -127,17 +163,17 @@ async function buildCandidate(directory) {
 }
 
 async function hostIdentity() {
-  const cgroup = {};
-  for (const name of ["memory.max", "memory.current", "memory.peak", "memory.events"]) {
+  const cgroup = {} as Record<"memory.max" | "memory.current" | "memory.peak" | "memory.events", string>;
+  for (const name of ["memory.max", "memory.current", "memory.peak", "memory.events"] as const) {
     try { cgroup[name] = (await readFile(`/sys/fs/cgroup/${name}`, "utf8")).trim(); }
-    catch (error) { if (error.code !== "ENOENT") throw error; cgroup[name] = "not-collected"; }
+    catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; cgroup[name] = "not-collected"; }
   }
   return { node: process.version, platform: platform(), arch: arch(), release: release(), cpus: cpus().length,
     totalMemoryBytes: totalmem(), freeMemoryBytes: freemem(), availableMemoryBytes: process.availableMemory(), cgroup,
     compilerEnvironment: Object.fromEntries(["GOGC", "GOMEMLIMIT", "GOMAXPROCS"].map(name => [name, process.env[name] ?? "unset"])) };
 }
 
-async function experiment(directory) {
+async function experiment(directory: string): Promise<void> {
   assert.equal(process.version, "v26.11.1");
   assert.equal(platform(), "linux");
   assert.equal(arch(), "x64");
@@ -147,7 +183,7 @@ async function experiment(directory) {
   console.log(JSON.stringify({ event: "fixture.growth.host-before", ...host }));
   const finiteCgroup = /^\d+$/u.test(host.cgroup["memory.max"]) ? Number(host.cgroup["memory.max"]) : Infinity;
   assert.ok(Math.min(host.totalMemoryBytes, finiteCgroup) > 8 * 1024 ** 3, "fixture.growth.larger-disposable-host-required");
-  const result = { status: "running", claim: "unreleased candidate diagnostic only; no supported-pin adoption or conformance promotion",
+  const result: ExperimentReport = { status: "running", claim: "unreleased candidate diagnostic only; no supported-pin adoption or conformance promotion",
     selectedSize: 1000, precedingSize: "N500 exact-source candidate E2E retained by the delivery owner; not rerun here",
     buildCapMs, fixtureCapsMs: { compiler: 180000, runtime: 120000, aggregate: 600000 } };
   await save(join(directory, "experiment.json"), result);
@@ -157,7 +193,7 @@ async function experiment(directory) {
     result.compiler = await readUpstreamCandidate(compilerCandidate);
     console.log(JSON.stringify({ event: "fixture.growth.verified-candidate", ...result.compiler }));
     const { measureGrowth } = await import("./run.mjs");
-    const measured = await measureGrowth({ size: 1000, compilerCandidate, directoryParent: directory });
+    const measured = await measureGrowth({ size: 1000, compilerCandidate, directoryParent: directory }) as GrowthMeasurement;
     result.status = measured.status;
     result.directory = measured.directory;
     result.source = measured.identities.generatedSource;
@@ -166,7 +202,8 @@ async function experiment(directory) {
       dependencyPortReads: measured.runtime.smoke.dependencyPortReads };
   } catch (error) {
     result.status = "failed";
-    result.failure = { name: error.name, message: error.message };
+    const failure = error as Error;
+    result.failure = { name: failure.name, message: failure.message };
     throw error;
   } finally {
     await save(join(directory, "host-after.json"), await hostIdentity());
@@ -176,8 +213,8 @@ async function experiment(directory) {
 
 if (process.argv[1] && resolve(process.argv[1]) === ownPath) {
   try {
-    assert.equal(process.argv.length, 4, "Usage: node upstream-compiler.mjs --directory <new-absolute-directory>");
-    const directory = resolve(process.argv[3]);
+    assert.equal(process.argv.length, 4, "Usage: node upstream-compiler.ts --directory <new-absolute-directory>");
+    const directory = resolve(process.argv[3]!);
     if (process.argv[2] === "--build-worker") {
       try { await buildWorker(directory); }
       finally { process.disconnect?.(); }

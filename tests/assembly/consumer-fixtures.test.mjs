@@ -5,9 +5,9 @@ import { testAssemblyTypes } from "../../architecture/tooling/test-assembly-type
 import {
   fixtureCompiler, invokeFixtureNode, withSemanticConsumer,
 } from "../qualification/consumer-fixtures/support/materialize.mjs";
-import { runInstalledSourcePolicyScenarios } from "../qualification/consumer-fixtures/source/policy.mjs";
-import { runInstalledSourceScenarios } from "../qualification/consumer-fixtures/source/installed.mjs";
-import { checkHeldStartupController } from "../qualification/consumer-fixtures/authoring/transport.mjs";
+import { runInstalledSourcePolicyScenarios } from "../qualification/consumer-fixtures/source/policy.ts";
+import { runInstalledSourceScenarios } from "../qualification/consumer-fixtures/source/installed.ts";
+import { checkHeldStartupController } from "../qualification/consumer-fixtures/authoring/transport.ts";
 
 test("consumer fixtures qualify their selected flat source through installed public owners", { timeout: 600000 }, async (t) => {
   await withSemanticConsumer(async ({ directory, evidence }) => {

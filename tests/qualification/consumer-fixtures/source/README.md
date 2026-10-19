@@ -1,7 +1,7 @@
 # Selected flat source qualification
 
 P4 integrates 26 actual-disk observations covering the selected predicates of
-A-01 through A-08 into the existing Assembly fixture test. `installed.mjs` uses
+A-01 through A-08 into the existing Assembly fixture test. `installed.ts` uses
 the exact registry development pins in the root manifest and the public
 Foundation, FMS and Get Modular conformance entries. It verifies installed
 package names and versions and records their entry resolutions and tree hashes.
@@ -40,10 +40,65 @@ registry qualification. Resume through the ordinary release after the package
 owner resolves the publication refusal; then install the exact public versions
 and execute the existing qualification route below.
 
+## Installed publication checkpoint, 2026-10-19
+
+Accepted GM main `4609c2a323a360a584e773b57b30ada1bf1c0f3c`, merged into
+this fixture branch as `f64767080ddbb647313e116d509d563d51fb50b1`, pins native
+Foundation 1.10.0. The fixture now adds the exact public FMS 0.1.1 release. Its
+optional Foundation peer is `^1.10.0`, satisfied by the installed 1.10.0 package.
+Both current compiler aliases resolve to TypeScript 7.0.2 under that accepted
+main tooling qualification.
+
+These public packages were published by ordinary
+[Release run 39272926879, attempt 2](https://github.com/agent-teams-ai/engineering-foundation/actions/runs/39272926879/attempts/2)
+from source `aed890a6ac09762d9f487ed2624e64a873935868`. Their registry archive
+integrities are retained in the root lockfile:
+
+- FMS 0.1.1:
+  `sha512-EnnT10vXn2+oc4h1u0gTsNKhUnKJIEGso5gAUFN8KlRTQyp5/ktFPHR2Er7iES2Ps9+kEbBXEW3RaEMKp+hqdw==`.
+- Foundation 1.10.0:
+  `sha512-k1mI8y/bm6GQtge+QCkANrufyLKi0f6YZlHXCMKr4QpGb97/86j9WdYVhgG2//C2cAtSRmmHmhOtnrpdaksRpw==`.
+
+Normal `pnpm install --lockfile-only` and the following
+`pnpm install --frozen-lockfile` passed with Node 26.11.1 and pnpm 11.20.0.
+Installed package manifests and the FMS peer resolution identify those exact
+versions. Installed Docs Protocol 0.6.2 also completed `pnpm docs:info` with the
+existing consumer profile.
+
+The installed source and runtime qualification then passed on this frozen
+installation:
+
+- `pnpm assembly:typecheck` passed, including the four maintained TypeScript
+  helpers in their strict project after preparation of the public package outputs.
+- `pnpm assembly:test` passed all 102 tests, without failures, cancellations or
+  skips. The installed source result contains 26 selected observations and 16
+  complementary policy observations, with `source: passed`,
+  `adoption: unchanged` and `nested: not-selected`.
+- H-03 recorded natural process exit and close with code 0 and no signal while
+  the parent's input writer remained open. Cancellation left no publications,
+  active work or effects, released once, and returned a complete settled report.
+  Both actual resource and journal probes returned `EBADF`.
+- The same Assembly run passed the existing C/L/W scenarios, both recovery
+  profiles and ordinary G-01 at N8. The separate growth source-coverage result
+  remains incomplete because its source scanner is not selected.
+- `pnpm check:changed` selected the complete `fast-full` route and passed with a
+  dedicated canonical temporary root outside worktrees.
+
+The source receipt identifies the materialized semantic tree as SHA-256
+`2dd11a2f3ba33f571021b346093bb142c47d3982b86bd1fec43233cd370b2a65`
+(38 files, 87,821 bytes) and the installed root lockfile as SHA-256
+`13238216d2a6849bd888f4f273943b649907a723a725e88c0cba2d1f39ce11d8`.
+The policy report alone still has `source: incomplete`; the separate installed
+source result supplies the selected Foundation/FMS/CMS chain.
+
+These observations qualify the released-package handoff for the selected flat
+recipe. The 2026-10-18 E404 checkpoint, retained research identities, growth
+limits and authoring records keep their original historical scope.
+
 ## Installed policy enforcement
 
 The ordinary [Assembly fixture entry](../../../assembly/consumer-fixtures.test.mjs)
-also invokes `policy.mjs` against the actual materialized semantic source using
+also invokes `policy.ts` against the actual materialized semantic source using
 the installed Foundation public CLI. Its checked-in `source-dependencies.yaml`
 governs all of `src`, with separate application, adapter, public contract and
 composition boundaries. It declares the exact permitted sibling surfaces and
@@ -61,7 +116,7 @@ its source, and the restored tree must pass the installed policy again.
 
 These 16 policy observations complement the 26 source observations. The policy
 report alone retains `source: incomplete`: it does not establish CMS/FMS
-results. The same Assembly test then invokes `installed.mjs` and requires the
+results. The same Assembly test then invokes `installed.ts` and requires the
 complete selected source chain before reporting its separate successful source
 result. No extra root command or test matrix is introduced.
 
@@ -80,7 +135,7 @@ permitted relations and selected surfaces. These are expectations. The public
 graph and independent disk inventory provide the facts compared with them.
 `records.mjs` preserves raw parse failures, unresolved references, external
 references and runtime export coverage before calling either rule owner.
-`scenarios.mjs` mutates real files and restores them. Both `installed.mjs` and
+`scenarios.mjs` mutates real files and restores them. Both `installed.ts` and
 the historical `run-research.mjs` call that same scenario runner. The former
 uses the root's installed exact registry pins; the latter supplies isolated
 research tools. Each wrapper owns its evidence status.

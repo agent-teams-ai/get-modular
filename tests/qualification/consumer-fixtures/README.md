@@ -104,9 +104,13 @@ The bounded snapshot exposes identity and phase, with no factory attribution.
 | R-01–R-10 | `recovery/tests/recovery.test.ts` | [Assembly restart test](../../assembly/consumer-restart.test.mjs); one current compiler emit |
 | G-01 | Generated eight-feature tree and `growth/run.mjs` | [Assembly growth test](../../assembly/consumer-growth.test.mjs); current compiler/NodeNext, independent oracles and one full smoke |
 | W-01–W-03 | `semantic/tests/module/workload.test.ts` | Same Assembly fixture test and current runtime emit |
-| H-03 controller transport | `semantic/tests/support/held-startup-controller.ts` and `authoring/transport.mjs` | Same Assembly fixture test; actual cancellation/cleanup and natural exit with the parent writer held open |
-| Selected A-01–A-08 source predicates | `source/installed.mjs`, `source/records.mjs` and `source/scenarios.mjs` | Same Assembly fixture test; 26 actual observations through installed public Foundation, FMS and CMS |
-| Complementary A-01–A-04 and A-06 policy predicates | `source/policy.mjs` and `source/source-dependencies.yaml` | Same source test; 16 installed public Foundation CLI observations against actual files |
+| H-03 controller transport | `semantic/tests/support/held-startup-controller.ts` and `authoring/transport.ts` | Same Assembly fixture test; actual cancellation/cleanup and natural exit with the parent writer held open |
+| Selected A-01–A-08 source predicates | `source/installed.ts`, `source/records.mjs` and `source/scenarios.mjs` | Same Assembly fixture test; 26 actual observations through installed public Foundation, FMS and CMS |
+| Complementary A-01–A-04 and A-06 policy predicates | `source/policy.ts` and `source/source-dependencies.yaml` | Same source test; 16 installed public Foundation CLI observations against actual files |
+
+The four maintained runtime helpers belong to `tests/tsconfig.consumer-fixtures.json`.
+The existing `assembly:typecheck` checks them after public package outputs are prepared,
+using the same strict options as the repository's native tooling project.
 
 The owner contract suite lives in `semantic/tests/features/session/testing.ts`.
 It runs the same three success, error and cancellation cases against a typed

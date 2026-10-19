@@ -176,7 +176,7 @@ After preparing the normal public package outputs, the opt-in compiler-owner
 reproduction entry point is:
 
 ```sh
-node tests/qualification/consumer-fixtures/growth/upstream-compiler.mjs --directory /absolute/new-directory
+node tests/qualification/consumer-fixtures/growth/upstream-compiler.ts --directory /absolute/new-directory
 ```
 
 It requires the pinned Node 26.11.1 / pnpm 11.20.0, Linux x64,
