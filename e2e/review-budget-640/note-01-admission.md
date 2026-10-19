@@ -27,3 +27,4 @@ run can pick up exactly the missing work.
 - never refund claimed requests after a provider error;
 - treat upstream transport errors as retryable only within the attempt budget.
 Trigger note: re-run after provider lane lease cleanup 2026-10-19T21:06Z.
+Trigger note: re-run after stale invocation lease auto-revoked 2026-10-19T21:24Z.
