@@ -4,10 +4,11 @@ import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promi
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { createScope, type Resources } from "@get-modular/resources";
 import { createStore, ObservationError } from "../dist/index.js";
 import { delivered, liveSubscriptions, settled } from "../dist/testing.js";
+import { supportedCompilers } from "./support/compilers.mjs";
 
 function uncheckedCreate(initial: unknown, configuration: unknown): unknown {
   const value: unknown = Reflect.apply(createStore, undefined, [initial, configuration]);
@@ -154,13 +155,14 @@ interface CompilerMetadataAdapter {
 }
 
 void test("T24 T103 standalone compiler admission checks canonical metadata before implementation dispatch", async () => {
-  const actual = await import(new URL("support/compilers.mjs", import.meta.url).href) as CompilerMetadataAdapter;
-  assert.deepEqual((await actual.supportedCompilers()).map(compiler => compiler.version), ["7.0.2"]);
+  assert.deepEqual((await supportedCompilers()).map(compiler => compiler.version), ["7.0.2"]);
   const temporary = await mkdtemp(join(tmpdir(), "observation-compiler-metadata-"));
   try {
     const target = join(temporary, "support/compilers.mjs");
     await mkdir(dirname(target), { recursive: true });
     await copyFile(new URL("support/compilers.mjs", import.meta.url), target);
+    const probe = join(temporary, "compiler-metadata-probe.ts");
+    await copyFile(new URL("compiler-metadata-probe.ts", import.meta.url), probe);
     await writeFile(join(temporary, "package.json"), '{"private":true,"type":"module"}\n');
     const sentinel = join(temporary, "compiler-executed");
     const poison = `require("node:fs").writeFileSync(${JSON.stringify(sentinel)}, "executed"); throw new Error("COMPILER_IMPLEMENTATION_MUST_NOT_RUN");\n`;
@@ -175,7 +177,22 @@ void test("T24 T103 standalone compiler admission checks canonical metadata befo
       await writeFile(join(temporary, "node_modules", name, "bin/tsc"), poison);
       await writeFile(join(temporary, "node_modules", name, "implementation.cjs"), poison);
     }
-    const adapter = await import(pathToFileURL(target).href) as CompilerMetadataAdapter;
+    const { NODE_PATH: _path, NODE_OPTIONS: _options, NODE_TEST_CONTEXT: _context, ...environment } = process.env;
+    const adapter: CompilerMetadataAdapter = { supportedCompilers: async () => {
+      const result = spawnSync(process.execPath, [probe], { cwd: temporary, env: environment,
+        encoding: "utf8", timeout: 10_000 });
+      if (result.error !== undefined || result.signal !== null || result.status !== 0 || result.stderr !== "") {
+        throw new Error("compiler metadata probe failed before classification", { cause: result });
+      }
+      let response: unknown;
+      try { response = JSON.parse(result.stdout); }
+      catch (cause) { throw new Error("compiler metadata probe did not emit JSON", { cause }); }
+      if (typeof response !== "object" || response === null) {throw new Error("invalid compiler metadata probe result");}
+      const value = response as { outcome?: unknown; message?: unknown; compilers?: unknown };
+      if (value.outcome === "refused" && typeof value.message === "string") {throw new Error(value.message);}
+      if (value.outcome !== "passed" || !Array.isArray(value.compilers)) {throw new Error("unclassified compiler metadata probe result");}
+      return value.compilers as Awaited<ReturnType<CompilerMetadataAdapter["supportedCompilers"]>>;
+    } };
     for (const version of ["7.00.2", "07.0.2", "7.0.02", "8.-1.0", "7.0.2-rc.1", "7.0.2+build", "7.0.2\n", "7.0.2\r\n"]) {
       await metadata("typescript", version);
       await assert.rejects(adapter.supportedCompilers(), /must be a pinned stable compiler/u);

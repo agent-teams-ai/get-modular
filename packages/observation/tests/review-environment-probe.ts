@@ -1,4 +1,8 @@
 import assert from "node:assert/strict";
+import * as asyncHooks from "node:async_hooks";
+import * as perfHooks from "node:perf_hooks";
+import * as timers from "node:timers";
+import * as util from "node:util";
 import { createScope } from "@get-modular/resources";
 
 const mode = process.argv[2];
@@ -14,8 +18,12 @@ else {
       if (mode === "missing-detector") {return { types: {} };}
       if (mode === "missing-util") {return;}
       if (mode === "throwing-util") {throw new Error("optional facility unavailable");}
+      return util;
     }
-    return original(name);
+    if (name === "node:timers") {return timers;}
+    if (name === "node:async_hooks") {return asyncHooks;}
+    if (name === "node:perf_hooks") {return perfHooks;}
+    assert.fail(`unexpected builtin requested: ${name}`);
   };
 }
 const { createStore, ObservationError } = await import("../dist/index.js");

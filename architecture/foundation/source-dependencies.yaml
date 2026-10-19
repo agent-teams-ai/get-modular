@@ -809,6 +809,7 @@ boundaries:
       - packages/observation/tests
     entrypoints:
       - packages/observation/tests/close-reporting.test.ts
+      - packages/observation/tests/compiler-metadata-probe.ts
       - packages/observation/tests/env-probe.mjs
       - packages/observation/tests/env-setup-fake-before.mjs
       - packages/observation/tests/env-setup-fake-clock-before.mjs
@@ -845,14 +846,18 @@ boundaries:
         - "@get-modular/resources"
       builtins:
         - node:assert/strict
+        - node:async_hooks
         - node:child_process
         - node:fs/promises
         - node:http
         - node:module
         - node:os
         - node:path
+        - node:perf_hooks
         - node:test
+        - node:timers
         - node:url
+        - node:util
       runtimeReferences: []
   - id: core-development
     dependencyMode: development
