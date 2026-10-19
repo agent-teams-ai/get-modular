@@ -96,8 +96,8 @@ or skips. The workflow adapter bounds its stdout tail; earlier individual group
 counts are not reconstructed from omitted output.
 
 [CI run 39326807523, attempt 1](https://github.com/agent-teams-ai/get-modular/actions/runs/39326807523)
-completed successfully with all 43 jobs. It ran from 21:21:18 UTC to the terminal
-run update at 21:48:10 UTC on 2026-10-19. All 37 checkout-bearing jobs used
+completed successfully with all 43 jobs. It started at 21:21:18 UTC; its final
+job completed at 21:48:10 UTC on 2026-10-19. All 37 checkout-bearing jobs used
 `6494e139c614ffbc4086ff4b261746012b143a68`, whose parents are the stated base
 and head and whose tree equals the release tree. Each of the six packaging cells
 passed its strict migration project, all 26 migration tests and an actual
@@ -133,7 +133,7 @@ passed. All 51 current check runs were successful; complete paginated review,
 inline comments and review threads contained no outstanding findings. The
 complete Router's limited coverage remains stated separately above.
 
-The native public API promotion must retain its physical baseline preimages,
+The native public API promotion must retain its original baseline bytes,
 authenticated data request and actual promoted result. Its subsequent complete
 ordinary qualification must pass; the promotion result alone is not that pass.
 Only the normal public release promoter applies the Core/Assembly baseline
@@ -152,7 +152,7 @@ and the review digest is
 The installed producer manifest and public CLI bytes were independently matched
 to the authenticated public Foundation 1.10.0 archive.
 
-| Released baseline | Physical preimage SHA-256 | Promoted postimage SHA-256 |
+| Released baseline | Original bytes SHA-256 | Promoted bytes SHA-256 |
 | --- | --- | --- |
 | `architecture/public-api/core.json` | `7c9b6fdce722a2ab79243cfd6e9ac22f73b291d776abfcf0b698f292e0578d52` | `b15da5aa6e6400f3ed66578eb9dfa60b58e9646baa0e8dd1aa219f386d589e38` |
 | `architecture/public-api/assembly.json` | `6a4a9b02faa93b837e797bbbeeaaa8b0ec968cd7ab968353c4d82a17e3b74c93` | `1373635766498477ac70ba44fcbce83e0e31845c4e9b5c3a826676537649f70e` |
