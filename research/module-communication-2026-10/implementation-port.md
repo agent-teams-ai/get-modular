@@ -660,3 +660,104 @@ and six Node/OS CI cells, a fresh versioned release head with five exact archive
 consumer remain pending. The earlier `3b42d2641055c36c13ff0e2b7fae6cc02a945514` archives and
 `a32f628a11a8cd9e871d985ab09bcfbcaa708b1b` consumer input remain historical; their results are not relabelled.
 Publication remains the owner's step; accepted ADR/CMS, frozen evidence, API baselines and G1 HOLD stay unchanged.
+
+## Current execution resolution, 2026-10-19
+
+This addendum updates the execution state of the historical planning and local
+qualification checkpoints above. It preserves their original subjects, results
+and remaining-work statements as dated observations.
+
+### Native compiler prerequisite
+
+Foundation’s protected [release run 39272926879, attempt 2](https://github.com/agent-teams-ai/engineering-foundation/actions/runs/39272926879/attempts/2)
+completed on source `aed890a6ac09762d9f487ed2624e64a873935868` after its source
+correction [#413](https://github.com/agent-teams-ai/engineering-foundation/pull/413)
+and generated release [#411](https://github.com/agent-teams-ai/engineering-foundation/pull/411).
+All eight package reconciliations, signatures/provenance checks and final
+Docs/MCP npm/pnpm consumer profiles completed. The actual public Foundation
+1.10.0 archive and generated lock closure replace the active legacy compiler
+path; a version number alone was not used as evidence.
+
+Get Modular’s [native-tooling predecessor #197](https://github.com/agent-teams-ai/get-modular/pull/197)
+was normally merged into `main` as `4609c2a323a360a584e773b57b30ada1bf1c0f3c`.
+Its tree `33af20350e6b4ce1447ed058ff8ff451f19d73cc` is identical to reviewed
+source `42778e67cef3a6a82818cf5d8373d8d8a731591b`. The actual changed-selected
+whole fast route, one complete clean-clone `pnpm check`, and all 37 jobs of
+[CI run 39284534396](https://github.com/agent-teams-ai/get-modular/actions/runs/39284534396)
+passed. Two independent GPT-6.1 xhigh source reviews covered all 154 physical
+changed paths without actionable findings. The quota-limited automated review
+remains a separate incomplete observation.
+
+All four active compiler roles use TypeScript 7.0.2. Maintained native helpers
+use ordinary `.ts` and their required strict projects. Earlier shared-workspace
+exclusive-write failures remain recorded as failures; the clean same-source
+full pass does not identify their unobserved creator. No generator overwrite
+fallback or containment exception was introduced.
+
+The named native API transition remains read-only at this implementation step:
+original released Core/Assembly baselines stay unchanged, ordinary mismatch
+results remain separately retained, and qualification records
+`migrationApplied: false`. Only the existing real release promoter on the
+trusted release branch can later apply the reviewed transition. SDK activation,
+frozen historical evidence and G1 HOLD are unchanged.
+
+### Decision and plan admission
+
+ADR-0034 [#154](https://github.com/agent-teams-ai/get-modular/pull/154) was normally
+merged as `adc705cddeb806d676ca8dede0040ccf663f1d68`, with the exact reviewed
+tree `5f38dba2e8700cac20b3b66fdf72b7611f024ed0`. The seven-path refresh passed
+its actual changed-selected whole fast route, owning checks and all 37 jobs of
+[CI run 39291389842](https://github.com/agent-teams-ai/get-modular/actions/runs/39291389842).
+Independent source review covered all seven paths without actionable findings;
+ReviewRouter separately completed its two-file policy scope without findings.
+The original ADR file SHA-256 remains
+`6a28f0e1fa0dbc0379541c5ebd7fc64c0b6cb3d3b4efb6a559b9ad4c9fd74a34`;
+its separately defined canonical registry fingerprint remains
+`sha256:62653b314316c336067c18d6a4562b50042d5b548c0da93bdae18eea6ecadf95`.
+
+The reviewed planning checkpoint [#185](https://github.com/agent-teams-ai/get-modular/pull/185)
+was normally merged as `16ad9ca5503d81a0527e8f0a3f5934db6950ceb9`, with the
+exact reviewed tree `510c84fb7e163fc50a750fb8bdf78534813c778c`. Its actual
+documentation-only changed route, ownership controls and all 37 jobs of
+[CI run 39297872394](https://github.com/agent-teams-ai/get-modular/actions/runs/39297872394)
+passed. The complete independent three-file source review found no actionable
+findings. ReviewRouter's incomplete zero-of-three coverage is recorded
+separately and is not represented as approval.
+
+ADR-0034 remains the controlling observation decision. Its original compiler
+planning sentence is superseded only through the separately owner-approved
+ADR-0038 included in this implementation delivery. No accepted ADR is rewritten
+retroactively. The plan remains
+[implementation-plan.md](implementation-plan.md), read in its stated authority
+order; its historical input/version tables do not override this accepted
+support-floor correction.
+
+### Final release tuple and remaining qualification
+
+ADR-0038 section 5 and the owned minor Changesets select the actual first
+observation release tuple:
+
+| Package | Selected release version |
+| --- | --- |
+| `@get-modular/core` | `0.6.0` |
+| `@get-modular/assembly` | `0.6.0` |
+| `@get-modular/resources` | `0.2.0` |
+| `@get-modular/conformance` | `0.4.0` |
+| `@get-modular/observation` | `0.1.0` |
+
+The earlier plan’s Core/Assembly 0.5, resources 0.1.1 and conformance 0.3 tuple
+is a historical planning input. Raising the consumer compiler floor is a
+support break and therefore uses the accepted minor versions above. Core and
+Assembly remain an exact pair; observation’s first minor names the actual
+resources 0.2 peer and supplies the required resources-minor coordination.
+The private lifecycle candidate remains at its admitted 0.1.0.
+
+This implementation still requires its own final integrated repository and
+six OS/Node Observation cells. After normal implementation admission, the real
+release branch must run Changesets and the public release promoter, pass its
+current review and required CI, retain five exact archives, and run the bounded
+external TEST consumer on those bytes before release merge. Post-merge archive
+comparison and the archive-intent record follow the existing release plan.
+The old candidate archives and consumer results above remain historical.
+Publication stays with the owner under Phase 3c; this addendum authorizes no
+npm upload, dist-tag change, release tag or unattended publisher.
