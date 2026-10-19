@@ -116,6 +116,54 @@ export const LEAF_PACKAGES = Object.freeze([
     }),
     gate: "conformance:check",
   }),
+  Object.freeze({
+    id: "observation",
+    name: "@get-modular/observation",
+    root: "packages/observation",
+    publication: PUBLIC,
+    // ADR-0034: public 0.x; 0.0.0 only until the first Changesets release; 1.0.0 needs a decision.
+    version: /^0\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u,
+    peers: Object.freeze(["@get-modular/resources"]),
+    // ADR-0034 is the ADR-0012 successor decision for this row's second subpath.
+    subpaths: Object.freeze([".", "./testing"]),
+    decision: Object.freeze({
+      id: "ADR-0034",
+      path: "docs/decisions/0034-admit-the-module-change-observation-package.md",
+      fileDigest: "sha256:6a28f0e1fa0dbc0379541c5ebd7fc64c0b6cb3d3b4efb6a559b9ad4c9fd74a34",
+      immutableDigest: "sha256:62653b314316c336067c18d6a4562b50042d5b548c0da93bdae18eea6ecadf95",
+    }),
+    extension: Object.freeze({
+      id: "module-change-observation",
+      authority: "docs/decisions/0034-admit-the-module-change-observation-package.md",
+    }),
+    requiredTests: Object.freeze([
+      "packages/observation/tests/store.test.mjs",
+      "packages/observation/tests/guards.test.mjs",
+      "packages/observation/tests/mutations.test.mjs",
+      "packages/observation/tests/writer-gate.test.ts",
+      "packages/observation/tests/packed-root.test.mjs",
+    ]),
+    commands: Object.freeze({
+      "observation:build": "node architecture/tooling/build-leaf-package.mjs observation",
+      "observation:typecheck":
+        "node node_modules/typescript/bin/tsc -p packages/observation/tsconfig.json --noEmit"
+        + " && node architecture/tooling/test-assembly-types.mjs --projects packages/observation/tsconfig.types.json"
+        + " packages/observation/tsconfig.types.bundler.json packages/observation/tsconfig.test-tooling.json",
+      "observation:test": "node --test packages/observation/tests/store.test.mjs packages/observation/tests/subscriptions.test.mjs"
+        + " packages/observation/tests/load.test.mjs packages/observation/tests/guards.test.mjs"
+        + " packages/observation/tests/testing-entry.test.mjs packages/observation/tests/processes.test.mjs"
+        + " packages/observation/tests/type-controls.test.ts packages/observation/tests/close-reporting.test.ts"
+        + " packages/observation/tests/review-regressions.test.ts"
+        + " tests/observation/assembly-integration.test.mjs"
+        + " tests/observation/readme-examples.test.mjs",
+      "observation:evidence":
+        "node --test packages/observation/tests/mutations.test.mjs packages/observation/tests/writer-gate.test.ts",
+      "observation:pack": "node --test packages/observation/tests/packed-root.test.mjs",
+      "observation:check": "pnpm observation:build && pnpm observation:typecheck && pnpm observation:test"
+        + " && pnpm observation:evidence && pnpm observation:pack",
+    }),
+    gate: "observation:check",
+  }),
 ]);
 
 // Get Modular packages that any public row may declare as a peer.
@@ -124,6 +172,21 @@ const BASE_PEERS = Object.freeze(["@get-modular/core", "@get-modular/assembly"])
 // A row without `peers` has none. Only a public row declares them, and each one
 // is Core, Assembly or an earlier public row, so row order is also gate order.
 export const leafPeers = leaf => leaf.peers ?? [];
+
+// Each admitted subpath has one source entry and one ESM carrier.
+export const leafSubpaths = leaf => leaf.subpaths ?? ["."];
+const subpathFile = subpath => subpath === "." ? "index" : subpath.slice(2);
+export const expectedLeafExports = leaf => Object.fromEntries(leafSubpaths(leaf).map(subpath => {
+  const file = subpathFile(subpath);
+  return [subpath, {
+    import: { types: `./dist/${file}.d.ts`, default: `./dist/${file}.js` },
+    default: `./dist/${file}.js`,
+  }];
+}));
+export const leafEntrySources = leaf => leafSubpaths(leaf)
+  .map(subpath => `${leaf.root}/src/${subpathFile(subpath)}.ts`);
+export const leafBuildOutputs = leaf => leafSubpaths(leaf)
+  .flatMap(subpath => [`dist/${subpathFile(subpath)}.js`, `dist/${subpathFile(subpath)}.d.ts`]);
 
 // Peers are declared with the workspace caret range, which `pnpm pack` turns
 // into the caret range of the one 0.x minor in the workspace.
@@ -162,6 +225,11 @@ function identityProblem(leaf, rows, index) {
     || rows.findIndex(other => other.id === leaf.id) !== index) return "id";
   if (leaf.root !== `packages/${leaf.id}` || leaf.name !== `@get-modular/${leaf.id}`) return "root";
   if (![PRIVATE_CANDIDATE, PUBLIC].includes(leaf.publication)) return "publication";
+  if (leaf.subpaths !== undefined
+    && (leaf.publication !== PUBLIC || !Array.isArray(leaf.subpaths)
+      || leaf.subpaths[0] !== "." || new Set(leaf.subpaths).size !== leaf.subpaths.length
+      || ![...leaf.subpaths].slice(1).every(subpath => typeof subpath === "string"
+        && /^\.\/[a-z][a-z0-9-]*$/u.test(subpath) && subpath !== "./index"))) return "subpaths";
   const { version } = leaf;
   if (!(version instanceof RegExp) || version.global || version.sticky || version.multiline
     || !version.source.startsWith("^") || !version.source.endsWith("$")) return "version";

@@ -80,6 +80,11 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
       immutableDigest: "sha256:41e6d18087f5fe147b5a843b37fa5be925fa2f87cb1dc83c949a80520e7dbeb5",
     },
     {
+      id: "ADR-0034",
+      path: "docs/decisions/0034-admit-the-module-change-observation-package.md",
+      immutableDigest: "sha256:62653b314316c336067c18d6a4562b50042d5b548c0da93bdae18eea6ecadf95",
+    },
+    {
       id: "ADR-0035",
       path: "docs/decisions/0035-complete-composition-profiles-in-prepare-and-make-capabilitiesof-linear.md",
       immutableDigest: "sha256:f229a2067471f7e49e7243d8d1ba5174fab699e1fbcdb298384aaafd6a27e81d",
@@ -93,6 +98,11 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
       id: "ADR-0037",
       path: "docs/decisions/0037-pin-providers-not-completed-rows-in-the-binding-oracle.md",
       immutableDigest: "sha256:1c49f7bbfd5ec7df2dbfaefbfd58da7ea2c3583421fc22a3122acd15648718a6",
+    },
+    {
+      id: "ADR-0038",
+      path: "docs/decisions/0038-require-typescript-7-for-current-package-qualification.md",
+      immutableDigest: "sha256:f2eab8aea2b07c8b6d2b3207314da91531689fa2bb6039e9e963aee315f7fd52",
     },
   ]);
   const paths = execFileSync("git", ["ls-tree", "-r", "--name-only", checkpoint.evidence.base,
@@ -172,7 +182,7 @@ test("observations bind historical lock bytes, production importers and reviewed
     "C0 retains the CMS bytes observed at its base");
   const currentCms = readFileSync(cmsPath);
   assert.equal(digest(currentCms),
-    "sha256:e5cb510c5ea83e54a6833cc40b6ad31fc5cf8c70d9838e4e0c6923edc6f70919",
+    "sha256:c2fe582a14ff6e79620b232ca7ffc914afb0474ec21fd43f208251dd7252f4a3",
     "the current CMS successor must match its separately reviewed bytes");
   // Package versions are observations at the evidence base; later releases move the working tree.
   for (const [name, version] of Object.entries(checkpoint.evidence.packages)) {

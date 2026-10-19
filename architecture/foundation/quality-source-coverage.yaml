@@ -9,6 +9,7 @@ compilerProjects:
   - packages/lifecycle-kernel/tsconfig.json
   - packages/resources/tsconfig.json
   - packages/conformance/tsconfig.json
+  - packages/observation/tsconfig.json
 scripts:
   fast: check:fast
   full: check

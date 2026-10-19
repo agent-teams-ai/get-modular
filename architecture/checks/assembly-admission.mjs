@@ -56,6 +56,15 @@ const ASSEMBLY_MODULE_ENTRIES_REGISTRY_ENTRY = Object.freeze({
   path: ASSEMBLY_MODULE_ENTRIES_DECISION_PATH,
   immutableDigest: "sha256:2ab03f4cd3844bfe5a9673c3da719a4bd7c29a745dfb11b6d5c8f0783142e675",
 });
+export const ASSEMBLY_COMPILER_FLOOR_DECISION_PATH =
+  "docs/decisions/0038-require-typescript-7-for-current-package-qualification.md";
+const ASSEMBLY_COMPILER_FLOOR_DECISION_BYTES_DIGEST =
+  "sha256:4c5828550cf6ec58a9f5c27cb529e0748d5ce14aa0427c53910d8a48a2d7977e";
+const ASSEMBLY_COMPILER_FLOOR_REGISTRY_ENTRY = Object.freeze({
+  id: "ADR-0038",
+  path: ASSEMBLY_COMPILER_FLOOR_DECISION_PATH,
+  immutableDigest: "sha256:f2eab8aea2b07c8b6d2b3207314da91531689fa2bb6039e9e963aee315f7fd52",
+});
 // Each public pair after 0.1.0 is authenticated by its own accepted decision;
 // the manifest shape alone is not authority.
 export const ASSEMBLY_PAIR_DECISIONS = Object.freeze({
@@ -78,6 +87,11 @@ export const ASSEMBLY_PAIR_DECISIONS = Object.freeze({
     path: ASSEMBLY_MODULE_ENTRIES_DECISION_PATH,
     bytesDigest: ASSEMBLY_MODULE_ENTRIES_DECISION_BYTES_DIGEST,
     entry: ASSEMBLY_MODULE_ENTRIES_REGISTRY_ENTRY,
+  }),
+  "0.6.0": Object.freeze({
+    path: ASSEMBLY_COMPILER_FLOOR_DECISION_PATH,
+    bytesDigest: ASSEMBLY_COMPILER_FLOOR_DECISION_BYTES_DIGEST,
+    entry: ASSEMBLY_COMPILER_FLOOR_REGISTRY_ENTRY,
   }),
 });
 export const CORE_DEVELOPMENT_DEPENDENCIES = Object.freeze({

@@ -81,7 +81,7 @@ test("exposes the qualified nested FMS v1 topology consumed by Foundation", () =
       workspaceContainers: ["packages"],
       productionRoots: [
         "packages/core/src", "packages/assembly/src", "packages/lifecycle-kernel/src", "packages/resources/src",
-        "packages/conformance/src",
+        "packages/conformance/src", "packages/observation/src",
       ],
       modules: [
         {
@@ -108,6 +108,11 @@ test("exposes the qualified nested FMS v1 topology consumed by Foundation", () =
           moduleRoot: "packages/conformance",
           sourceRoot: "packages/conformance/src",
           testRoot: "packages/conformance/tests",
+        },
+        {
+          moduleRoot: "packages/observation",
+          sourceRoot: "packages/observation/src",
+          testRoot: "packages/observation/tests",
         },
       ],
     },
@@ -950,7 +955,7 @@ test("ADR-0023 and ADR-0025 admit historical private and canonical public Assemb
   }
 
   for (const [change, message] of [
-    [{ version: "0.6.0" }, /version requires historical 0\.1\.0 or public 0\.2\.0\/0\.3\.0\/0\.4\.0\/0\.5\.0 admission/u],
+    [{ version: "0.7.0" }, /version requires historical 0\.1\.0 or public 0\.2\.0\/0\.3\.0\/0\.4\.0\/0\.5\.0\/0\.6\.0 admission/u],
     [{ dependencies: {} }, /dependencies must contain only/u],
     [{ dependencies: { "@get-modular/core": "^0.1.0" } }, /dependencies must contain only/u],
     [{ dependencies: { ...manifest.dependencies, "@example/extra": "1.0.0" } },

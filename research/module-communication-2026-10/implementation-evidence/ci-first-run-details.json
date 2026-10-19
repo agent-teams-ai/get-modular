@@ -1,0 +1,1269 @@
+{
+  "format": 1,
+  "repository": "agent-teams-ai/get-modular",
+  "pullRequest": 195,
+  "runId": 39119798726,
+  "runAttempt": 1,
+  "headSha": "30ccdf4c50a0c647eaadce4b75a764b2e587a68f",
+  "checkoutMergeSha": "54d1aecb679d515049f9a3ab5c2e6cac14d30e52",
+  "checkoutBaseSha": "47a02a90a06f121c78086c7c5f72b085c42ee7ea",
+  "observedAt": "2026-10-18T10:53:19.355Z",
+  "totalJobs": 43,
+  "downloadedFailedLogs": 38,
+  "counts": {
+    "observed-success": 5,
+    "expected-compiler-floor-block": 18,
+    "assembly-deduplicated-runtime-receipts": 6,
+    "core-current-seal-fixture-cardinality": 6,
+    "windows-observation-diagnostic-path-portability": 2,
+    "aggregate-cascade": 6
+  },
+  "scope": "All completed failed jobs in the CI run; Codex excluded per owner. Classification uses source and logs without executing any compiler earlier than 7.0.2.",
+  "jobs": [
+    {
+      "id": 117652894616,
+      "name": "Node 24 package root compatibility",
+      "status": "completed",
+      "conclusion": "success",
+      "category": "observed-success"
+    },
+    {
+      "id": 117652894736,
+      "name": "check lane (windows-2025, static)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894736.log",
+      "logSha256": "63605745d2d9abf3b2cd1e13711687e1625d4bd11fabe7e0fce15d0cf8eba0ee",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "expected-compiler-floor-block",
+      "cause": "JSON-only preflight rejects foundation.api-extractor.compiler 5.9.3 before Foundation execution.",
+      "evidence": [
+        {
+          "line": 480,
+          "text": "{\"code\":\"TYPESCRIPT_COMPILER_FLOOR_BLOCKED\",\"outcome\":\"blocked\",\"minimumVersion\":\"7.0.2\",\"role\":\"foundation.api-extractor.compiler\",\"manifestPath\":\"D:\\\\a\\\\get-modular\\\\get-modular\\\\node_modules\\\\.pnpm\\\\typescript@5.9.3\\\\node_modules\\\\typescript\\\\package.json\",\"reason\":\"compiler-below-floor\",\"observedVersion\":\"5.9.3\",\"remediation\":\"A supported upstream compiler migration is required; retain the existing gates and extraction identities.\"}"
+        }
+      ]
+    },
+    {
+      "id": 117652894752,
+      "name": "check lane (windows-2025, assembly)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894752.log",
+      "logSha256": "43732ff13f7b4f3aebced24d55b82580abfdf49c06dbc80e3901e74e91a6e69d",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "assembly-deduplicated-runtime-receipts",
+      "cause": "Packed test expects four mixed-runtime receipts, while one distinct TS7 compiler across two resolvers correctly emits two. The runner-enforcement positive control then cascades.",
+      "source": [
+        "tests/assembly/packed-root.test.mjs:231-238",
+        "tests/assembly/runner-enforcement.test.mjs:33-46"
+      ],
+      "evidence": [
+        {
+          "line": 989,
+          "text": "test at tests\\assembly\\packed-root.test.mjs:106:1"
+        },
+        {
+          "line": 991,
+          "text": "  AssertionError [ERR_ASSERTION]: packed runtime runner completion"
+        },
+        {
+          "line": 1007,
+          "text": "    actual: [ 'package-copy:passed', 'mixed-runtime:passed', 'mixed-runtime:passed' ],"
+        },
+        {
+          "line": 1008,
+          "text": "    expected: [ 'package-copy:passed', 'mixed-runtime:passed', 'mixed-runtime:passed', 'mixed-runtime:passed', 'mixed-runtime:passed' ],"
+        },
+        {
+          "line": 1013,
+          "text": "test at tests\\assembly\\runner-enforcement.test.mjs:33:15"
+        },
+        {
+          "line": 1030,
+          "text": "  test at tests\\assembly\\packed-root.test.mjs:106:1"
+        },
+        {
+          "line": 1032,
+          "text": "    AssertionError [ERR_ASSERTION]: packed runtime runner completion"
+        },
+        {
+          "line": 1048,
+          "text": "      actual: [ 'package-copy:passed', 'mixed-runtime:passed', 'mixed-runtime:passed' ],"
+        }
+      ]
+    },
+    {
+      "id": 117652894760,
+      "name": "check lane (windows-2025, core)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894760.log",
+      "logSha256": "5d2bb9b4c60780e8f5a17ca08b1a53247a7310dad1a7d99d8500fa93e266c0ff",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "core-current-seal-fixture-cardinality",
+      "cause": "Current sealedFixture inherits the historical default of 282 rows; the current verifier requires 272. Two seal-anchor tests fail before reaching their intended assertion.",
+      "source": [
+        "packages/core/tests/package/runtime-node.test.mjs:115-116",
+        "packages/core/tests/qualification-support/m3-runtime-node.mjs:251"
+      ],
+      "evidence": [
+        {
+          "line": 3670,
+          "text": "test at packages\\core\\tests\\package\\runtime-node.test.mjs:119:1"
+        },
+        {
+          "line": 3672,
+          "text": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /outside plan anchor mismatch/. Input:"
+        },
+        {
+          "line": 3676,
+          "text": "    '282 !== 272\\n'"
+        },
+        {
+          "line": 3685,
+          "text": "    282 !== 272"
+        },
+        {
+          "line": 3692,
+          "text": "    expected: /outside plan anchor mismatch/,"
+        },
+        {
+          "line": 3697,
+          "text": "test at packages\\core\\tests\\package\\runtime-node.test.mjs:142:1"
+        },
+        {
+          "line": 3699,
+          "text": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /outside plan anchor mismatch/. Input:"
+        },
+        {
+          "line": 3703,
+          "text": "    '282 !== 272\\n'"
+        }
+      ]
+    },
+    {
+      "id": 117652894770,
+      "name": "check lane (windows-2025, observation)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894770.log",
+      "logSha256": "6d0cf60a46283c7f4ab3b453194608888622c686ff6b662c45851b055a73034f",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "windows-observation-diagnostic-path-portability",
+      "cause": "Known Windows diagnostic path portability failure; assigned independently to review_61_types_tooling.",
+      "evidence": [
+        {
+          "line": 656,
+          "text": "ℹ tests 157"
+        },
+        {
+          "line": 658,
+          "text": "ℹ pass 156"
+        },
+        {
+          "line": 659,
+          "text": "ℹ fail 1"
+        },
+        {
+          "line": 667,
+          "text": "test at packages\\observation\\tests\\type-controls.test.mjs:72:1"
+        },
+        {
+          "line": 669,
+          "text": "  AssertionError [ERR_ASSERTION]: ../../../../../../runneradmin/AppData/Local/Temp/observation-types-wPbLML/7.0.2-NodeNext/node_modules/@get-modular/observation/dist/features/store/types.d.ts(138,27): error TS2636: Type 'ReadonlyStore<sub-V>' is not assignable to type 'ReadonlyStore<super-V>' as implied by variance annotation."
+        },
+        {
+          "line": 684,
+          "text": "      at TestContext.<anonymous> (file:///D:/a/get-modular/get-modular/packages/observation/tests/type-controls.test.mjs:95:16)"
+        },
+        {
+          "line": 689,
+          "text": "    actual: false,"
+        },
+        {
+          "line": 690,
+          "text": "    expected: true,"
+        }
+      ]
+    },
+    {
+      "id": 117652894781,
+      "name": "check lane (ubuntu-24.04, Node 24, core)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894781.log",
+      "logSha256": "8eba68245e32ffc5b13aa5cf286cdd97f56d66d31f55ec083a159df0a2ddb801",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "core-current-seal-fixture-cardinality",
+      "cause": "Current sealedFixture inherits the historical default of 282 rows; the current verifier requires 272. Two seal-anchor tests fail before reaching their intended assertion.",
+      "source": [
+        "packages/core/tests/package/runtime-node.test.mjs:115-116",
+        "packages/core/tests/qualification-support/m3-runtime-node.mjs:251"
+      ],
+      "evidence": [
+        {
+          "line": 3760,
+          "text": "test at packages/core/tests/package/runtime-node.test.mjs:119:1"
+        },
+        {
+          "line": 3762,
+          "text": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /outside plan anchor mismatch/. Input:"
+        },
+        {
+          "line": 3766,
+          "text": "    '282 !== 272\\n'"
+        },
+        {
+          "line": 3775,
+          "text": "    282 !== 272"
+        },
+        {
+          "line": 3782,
+          "text": "    expected: /outside plan anchor mismatch/,"
+        },
+        {
+          "line": 3787,
+          "text": "test at packages/core/tests/package/runtime-node.test.mjs:142:1"
+        },
+        {
+          "line": 3789,
+          "text": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /outside plan anchor mismatch/. Input:"
+        },
+        {
+          "line": 3793,
+          "text": "    '282 !== 272\\n'"
+        }
+      ]
+    },
+    {
+      "id": 117652894814,
+      "name": "check lane (windows-2025, packaging)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894814.log",
+      "logSha256": "a330a0ee1719b114be9f7983513093b7ed8bc3aaa77d41e20abf347c60c1893f",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "expected-compiler-floor-block",
+      "cause": "JSON-only preflight rejects foundation.api-extractor.compiler 5.9.3 before Foundation execution.",
+      "evidence": [
+        {
+          "line": 619,
+          "text": "{\"code\":\"TYPESCRIPT_COMPILER_FLOOR_BLOCKED\",\"outcome\":\"blocked\",\"minimumVersion\":\"7.0.2\",\"role\":\"foundation.api-extractor.compiler\",\"manifestPath\":\"D:\\\\a\\\\get-modular\\\\get-modular\\\\node_modules\\\\.pnpm\\\\typescript@5.9.3\\\\node_modules\\\\typescript\\\\package.json\",\"reason\":\"compiler-below-floor\",\"observedVersion\":\"5.9.3\",\"remediation\":\"A supported upstream compiler migration is required; retain the existing gates and extraction identities.\"}"
+        }
+      ]
+    },
+    {
+      "id": 117652894815,
+      "name": "check lane (macos-15, assembly)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894815.log",
+      "logSha256": "9ecdf3e98ff9df9f153ea4cdcbfe82d56d2b5782bac0c42eef42b2daa470d094",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "assembly-deduplicated-runtime-receipts",
+      "cause": "Packed test expects four mixed-runtime receipts, while one distinct TS7 compiler across two resolvers correctly emits two. The runner-enforcement positive control then cascades.",
+      "source": [
+        "tests/assembly/packed-root.test.mjs:231-238",
+        "tests/assembly/runner-enforcement.test.mjs:33-46"
+      ],
+      "evidence": [
+        {
+          "line": 984,
+          "text": "test at tests/assembly/packed-root.test.mjs:106:1"
+        },
+        {
+          "line": 986,
+          "text": "  AssertionError [ERR_ASSERTION]: packed runtime runner completion"
+        },
+        {
+          "line": 1002,
+          "text": "    actual: [ 'package-copy:passed', 'mixed-runtime:passed', 'mixed-runtime:passed' ],"
+        },
+        {
+          "line": 1003,
+          "text": "    expected: [ 'package-copy:passed', 'mixed-runtime:passed', 'mixed-runtime:passed', 'mixed-runtime:passed', 'mixed-runtime:passed' ],"
+        },
+        {
+          "line": 1008,
+          "text": "test at tests/assembly/runner-enforcement.test.mjs:33:15"
+        },
+        {
+          "line": 1025,
+          "text": "  test at tests/assembly/packed-root.test.mjs:106:1"
+        },
+        {
+          "line": 1027,
+          "text": "    AssertionError [ERR_ASSERTION]: packed runtime runner completion"
+        },
+        {
+          "line": 1043,
+          "text": "      actual: [ 'package-copy:passed', 'mixed-runtime:passed', 'mixed-runtime:passed' ],"
+        }
+      ]
+    },
+    {
+      "id": 117652894822,
+      "name": "check lane (windows-2025, governance)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894822.log",
+      "logSha256": "eaa2bcc45ea017bd85d895addeec320f3404b8ba6db475d23d5bffc1f7f3cdfb",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "expected-compiler-floor-block",
+      "cause": "JSON-only preflight rejects foundation.api-extractor.compiler 5.9.3 before Foundation execution.",
+      "evidence": [
+        {
+          "line": 454,
+          "text": "{\"code\":\"TYPESCRIPT_COMPILER_FLOOR_BLOCKED\",\"outcome\":\"blocked\",\"minimumVersion\":\"7.0.2\",\"role\":\"foundation.api-extractor.compiler\",\"manifestPath\":\"D:\\\\a\\\\get-modular\\\\get-modular\\\\node_modules\\\\.pnpm\\\\typescript@5.9.3\\\\node_modules\\\\typescript\\\\package.json\",\"reason\":\"compiler-below-floor\",\"observedVersion\":\"5.9.3\",\"remediation\":\"A supported upstream compiler migration is required; retain the existing gates and extraction identities.\"}"
+        }
+      ]
+    },
+    {
+      "id": 117652894842,
+      "name": "check lane (ubuntu-24.04, Node 24, packaging)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894842.log",
+      "logSha256": "62c707184fb3c681a63bce76b024d0176c0500f0a74c131aa5a0f61df5bf8417",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "expected-compiler-floor-block",
+      "cause": "JSON-only preflight rejects foundation.api-extractor.compiler 5.9.3 before Foundation execution.",
+      "evidence": [
+        {
+          "line": 632,
+          "text": "{\"code\":\"TYPESCRIPT_COMPILER_FLOOR_BLOCKED\",\"outcome\":\"blocked\",\"minimumVersion\":\"7.0.2\",\"role\":\"foundation.api-extractor.compiler\",\"manifestPath\":\"/home/runner/work/get-modular/get-modular/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/package.json\",\"reason\":\"compiler-below-floor\",\"observedVersion\":\"5.9.3\",\"remediation\":\"A supported upstream compiler migration is required; retain the existing gates and extraction identities.\"}"
+        }
+      ]
+    },
+    {
+      "id": 117652894845,
+      "name": "check lane (macos-15, packaging)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894845.log",
+      "logSha256": "7350c1f17f74de8dfdc30bf78c5c2a4b2b1a6ba8fd9ee8e3aa1421b4b243ef3f",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "expected-compiler-floor-block",
+      "cause": "JSON-only preflight rejects foundation.api-extractor.compiler 5.9.3 before Foundation execution.",
+      "evidence": [
+        {
+          "line": 613,
+          "text": "{\"code\":\"TYPESCRIPT_COMPILER_FLOOR_BLOCKED\",\"outcome\":\"blocked\",\"minimumVersion\":\"7.0.2\",\"role\":\"foundation.api-extractor.compiler\",\"manifestPath\":\"/Users/runner/work/get-modular/get-modular/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/package.json\",\"reason\":\"compiler-below-floor\",\"observedVersion\":\"5.9.3\",\"remediation\":\"A supported upstream compiler migration is required; retain the existing gates and extraction identities.\"}"
+        }
+      ]
+    },
+    {
+      "id": 117652894851,
+      "name": "check lane (macos-15, observation)",
+      "status": "completed",
+      "conclusion": "success",
+      "category": "observed-success"
+    },
+    {
+      "id": 117652894873,
+      "name": "check lane (macos-15, Node 24, assembly)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894873.log",
+      "logSha256": "2e1cc8caf16d6e86d298442c9cec00b8a1fc9daeb9494878f8ed3a4cf2171c97",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "assembly-deduplicated-runtime-receipts",
+      "cause": "Packed test expects four mixed-runtime receipts, while one distinct TS7 compiler across two resolvers correctly emits two. The runner-enforcement positive control then cascades.",
+      "source": [
+        "tests/assembly/packed-root.test.mjs:231-238",
+        "tests/assembly/runner-enforcement.test.mjs:33-46"
+      ],
+      "evidence": [
+        {
+          "line": 992,
+          "text": "test at tests/assembly/packed-root.test.mjs:106:1"
+        },
+        {
+          "line": 994,
+          "text": "  AssertionError [ERR_ASSERTION]: packed runtime runner completion"
+        },
+        {
+          "line": 1010,
+          "text": "    actual: [ 'package-copy:passed', 'mixed-runtime:passed', 'mixed-runtime:passed' ],"
+        },
+        {
+          "line": 1011,
+          "text": "    expected: [ 'package-copy:passed', 'mixed-runtime:passed', 'mixed-runtime:passed', 'mixed-runtime:passed', 'mixed-runtime:passed' ],"
+        },
+        {
+          "line": 1016,
+          "text": "test at tests/assembly/runner-enforcement.test.mjs:33:15"
+        },
+        {
+          "line": 1033,
+          "text": "  test at tests/assembly/packed-root.test.mjs:106:1"
+        },
+        {
+          "line": 1035,
+          "text": "    AssertionError [ERR_ASSERTION]: packed runtime runner completion"
+        },
+        {
+          "line": 1051,
+          "text": "      actual: [ 'package-copy:passed', 'mixed-runtime:passed', 'mixed-runtime:passed' ],"
+        }
+      ]
+    },
+    {
+      "id": 117652894879,
+      "name": "check lane (macos-15, governance)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894879.log",
+      "logSha256": "eac756dd461c14e3f33456de1a4270f80470235eca26c89bde109d5184408bb5",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "expected-compiler-floor-block",
+      "cause": "JSON-only preflight rejects foundation.api-extractor.compiler 5.9.3 before Foundation execution.",
+      "evidence": [
+        {
+          "line": 449,
+          "text": "{\"code\":\"TYPESCRIPT_COMPILER_FLOOR_BLOCKED\",\"outcome\":\"blocked\",\"minimumVersion\":\"7.0.2\",\"role\":\"foundation.api-extractor.compiler\",\"manifestPath\":\"/Users/runner/work/get-modular/get-modular/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/package.json\",\"reason\":\"compiler-below-floor\",\"observedVersion\":\"5.9.3\",\"remediation\":\"A supported upstream compiler migration is required; retain the existing gates and extraction identities.\"}"
+        }
+      ]
+    },
+    {
+      "id": 117652894883,
+      "name": "check lane (macos-15, Node 24, static)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894883.log",
+      "logSha256": "8f55c13188b1ad475dd82bd877d0114a83a9e4f9651a9cc66c84f97a64b5258e",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "expected-compiler-floor-block",
+      "cause": "JSON-only preflight rejects foundation.api-extractor.compiler 5.9.3 before Foundation execution.",
+      "evidence": [
+        {
+          "line": 482,
+          "text": "{\"code\":\"TYPESCRIPT_COMPILER_FLOOR_BLOCKED\",\"outcome\":\"blocked\",\"minimumVersion\":\"7.0.2\",\"role\":\"foundation.api-extractor.compiler\",\"manifestPath\":\"/Users/runner/work/get-modular/get-modular/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/package.json\",\"reason\":\"compiler-below-floor\",\"observedVersion\":\"5.9.3\",\"remediation\":\"A supported upstream compiler migration is required; retain the existing gates and extraction identities.\"}"
+        }
+      ]
+    },
+    {
+      "id": 117652894890,
+      "name": "check lane (windows-2025, Node 24, assembly)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894890.log",
+      "logSha256": "b8bb3f0ad2c8bd356523578492321b48a5b856aa45264b496cf0c95233670e98",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "assembly-deduplicated-runtime-receipts",
+      "cause": "Packed test expects four mixed-runtime receipts, while one distinct TS7 compiler across two resolvers correctly emits two. The runner-enforcement positive control then cascades.",
+      "source": [
+        "tests/assembly/packed-root.test.mjs:231-238",
+        "tests/assembly/runner-enforcement.test.mjs:33-46"
+      ],
+      "evidence": [
+        {
+          "line": 995,
+          "text": "test at tests\\assembly\\packed-root.test.mjs:106:1"
+        },
+        {
+          "line": 997,
+          "text": "  AssertionError [ERR_ASSERTION]: packed runtime runner completion"
+        },
+        {
+          "line": 1013,
+          "text": "    actual: [ 'package-copy:passed', 'mixed-runtime:passed', 'mixed-runtime:passed' ],"
+        },
+        {
+          "line": 1014,
+          "text": "    expected: [ 'package-copy:passed', 'mixed-runtime:passed', 'mixed-runtime:passed', 'mixed-runtime:passed', 'mixed-runtime:passed' ],"
+        },
+        {
+          "line": 1019,
+          "text": "test at tests\\assembly\\runner-enforcement.test.mjs:33:15"
+        },
+        {
+          "line": 1036,
+          "text": "  test at tests\\assembly\\packed-root.test.mjs:106:1"
+        },
+        {
+          "line": 1038,
+          "text": "    AssertionError [ERR_ASSERTION]: packed runtime runner completion"
+        },
+        {
+          "line": 1054,
+          "text": "      actual: [ 'package-copy:passed', 'mixed-runtime:passed', 'mixed-runtime:passed' ],"
+        }
+      ]
+    },
+    {
+      "id": 117652894903,
+      "name": "check lane (windows-2025, Node 24, observation)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894903.log",
+      "logSha256": "2ab985a58e9301e8cdc77d45bf5f77365cbb27fb45f6c61108b670b4d5b927ab",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "windows-observation-diagnostic-path-portability",
+      "cause": "Known Windows diagnostic path portability failure; assigned independently to review_61_types_tooling.",
+      "evidence": [
+        {
+          "line": 663,
+          "text": "ℹ tests 157"
+        },
+        {
+          "line": 665,
+          "text": "ℹ pass 156"
+        },
+        {
+          "line": 666,
+          "text": "ℹ fail 1"
+        },
+        {
+          "line": 674,
+          "text": "test at packages\\observation\\tests\\type-controls.test.mjs:72:1"
+        },
+        {
+          "line": 676,
+          "text": "  AssertionError [ERR_ASSERTION]: ../../../../../../runneradmin/AppData/Local/Temp/observation-types-Akm608/7.0.2-NodeNext/node_modules/@get-modular/observation/dist/features/store/types.d.ts(138,27): error TS2636: Type 'ReadonlyStore<sub-V>' is not assignable to type 'ReadonlyStore<super-V>' as implied by variance annotation."
+        },
+        {
+          "line": 691,
+          "text": "      at TestContext.<anonymous> (file:///D:/a/get-modular/get-modular/packages/observation/tests/type-controls.test.mjs:95:16)"
+        },
+        {
+          "line": 696,
+          "text": "    actual: false,"
+        },
+        {
+          "line": 697,
+          "text": "    expected: true,"
+        }
+      ]
+    },
+    {
+      "id": 117652894905,
+      "name": "check lane (windows-2025, Node 24, packaging)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894905.log",
+      "logSha256": "a8482c603d8fb9bf4778fce511c6cf5aa25dab7f6e6b6b43bed8b6e3277f5fd4",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "expected-compiler-floor-block",
+      "cause": "JSON-only preflight rejects foundation.api-extractor.compiler 5.9.3 before Foundation execution.",
+      "evidence": [
+        {
+          "line": 624,
+          "text": "{\"code\":\"TYPESCRIPT_COMPILER_FLOOR_BLOCKED\",\"outcome\":\"blocked\",\"minimumVersion\":\"7.0.2\",\"role\":\"foundation.api-extractor.compiler\",\"manifestPath\":\"D:\\\\a\\\\get-modular\\\\get-modular\\\\node_modules\\\\.pnpm\\\\typescript@5.9.3\\\\node_modules\\\\typescript\\\\package.json\",\"reason\":\"compiler-below-floor\",\"observedVersion\":\"5.9.3\",\"remediation\":\"A supported upstream compiler migration is required; retain the existing gates and extraction identities.\"}"
+        }
+      ]
+    },
+    {
+      "id": 117652894906,
+      "name": "check lane (macos-15, static)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894906.log",
+      "logSha256": "aff9e2e9358cf1f1a0bb7d9c1ab876bc17d335d098531ac72a73c03cb1318e44",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "expected-compiler-floor-block",
+      "cause": "JSON-only preflight rejects foundation.api-extractor.compiler 5.9.3 before Foundation execution.",
+      "evidence": [
+        {
+          "line": 484,
+          "text": "{\"code\":\"TYPESCRIPT_COMPILER_FLOOR_BLOCKED\",\"outcome\":\"blocked\",\"minimumVersion\":\"7.0.2\",\"role\":\"foundation.api-extractor.compiler\",\"manifestPath\":\"/Users/runner/work/get-modular/get-modular/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/package.json\",\"reason\":\"compiler-below-floor\",\"observedVersion\":\"5.9.3\",\"remediation\":\"A supported upstream compiler migration is required; retain the existing gates and extraction identities.\"}"
+        }
+      ]
+    },
+    {
+      "id": 117652894918,
+      "name": "check lane (ubuntu-24.04, Node 24, observation)",
+      "status": "completed",
+      "conclusion": "success",
+      "category": "observed-success"
+    },
+    {
+      "id": 117652894936,
+      "name": "check lane (ubuntu-24.04, packaging)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894936.log",
+      "logSha256": "cb363d16408c18317fd91dd47593dbe2b658ab972c46072f0e6acb81977cada3",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "expected-compiler-floor-block",
+      "cause": "JSON-only preflight rejects foundation.api-extractor.compiler 5.9.3 before Foundation execution.",
+      "evidence": [
+        {
+          "line": 627,
+          "text": "{\"code\":\"TYPESCRIPT_COMPILER_FLOOR_BLOCKED\",\"outcome\":\"blocked\",\"minimumVersion\":\"7.0.2\",\"role\":\"foundation.api-extractor.compiler\",\"manifestPath\":\"/home/runner/work/get-modular/get-modular/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/package.json\",\"reason\":\"compiler-below-floor\",\"observedVersion\":\"5.9.3\",\"remediation\":\"A supported upstream compiler migration is required; retain the existing gates and extraction identities.\"}"
+        }
+      ]
+    },
+    {
+      "id": 117652894937,
+      "name": "check lane (windows-2025, Node 24, governance)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894937.log",
+      "logSha256": "8ad224244d8802add3b468530c2e9b288338216d12a4b188720a726d7b16b195",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "expected-compiler-floor-block",
+      "cause": "JSON-only preflight rejects foundation.api-extractor.compiler 5.9.3 before Foundation execution.",
+      "evidence": [
+        {
+          "line": 461,
+          "text": "{\"code\":\"TYPESCRIPT_COMPILER_FLOOR_BLOCKED\",\"outcome\":\"blocked\",\"minimumVersion\":\"7.0.2\",\"role\":\"foundation.api-extractor.compiler\",\"manifestPath\":\"D:\\\\a\\\\get-modular\\\\get-modular\\\\node_modules\\\\.pnpm\\\\typescript@5.9.3\\\\node_modules\\\\typescript\\\\package.json\",\"reason\":\"compiler-below-floor\",\"observedVersion\":\"5.9.3\",\"remediation\":\"A supported upstream compiler migration is required; retain the existing gates and extraction identities.\"}"
+        }
+      ]
+    },
+    {
+      "id": 117652894942,
+      "name": "check lane (windows-2025, Node 24, static)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894942.log",
+      "logSha256": "178d5121b8986527ae29bf4c88ab7c2dd211511c03ace8b96e444cda16e07fdd",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "expected-compiler-floor-block",
+      "cause": "JSON-only preflight rejects foundation.api-extractor.compiler 5.9.3 before Foundation execution.",
+      "evidence": [
+        {
+          "line": 485,
+          "text": "{\"code\":\"TYPESCRIPT_COMPILER_FLOOR_BLOCKED\",\"outcome\":\"blocked\",\"minimumVersion\":\"7.0.2\",\"role\":\"foundation.api-extractor.compiler\",\"manifestPath\":\"D:\\\\a\\\\get-modular\\\\get-modular\\\\node_modules\\\\.pnpm\\\\typescript@5.9.3\\\\node_modules\\\\typescript\\\\package.json\",\"reason\":\"compiler-below-floor\",\"observedVersion\":\"5.9.3\",\"remediation\":\"A supported upstream compiler migration is required; retain the existing gates and extraction identities.\"}"
+        }
+      ]
+    },
+    {
+      "id": 117652894954,
+      "name": "check lane (macos-15, Node 24, governance)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894954.log",
+      "logSha256": "3fad0c8fc581c4c40272ecb3da135bfaac49e0a419c7346978c274f6f8d070ce",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "expected-compiler-floor-block",
+      "cause": "JSON-only preflight rejects foundation.api-extractor.compiler 5.9.3 before Foundation execution.",
+      "evidence": [
+        {
+          "line": 457,
+          "text": "{\"code\":\"TYPESCRIPT_COMPILER_FLOOR_BLOCKED\",\"outcome\":\"blocked\",\"minimumVersion\":\"7.0.2\",\"role\":\"foundation.api-extractor.compiler\",\"manifestPath\":\"/Users/runner/work/get-modular/get-modular/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/package.json\",\"reason\":\"compiler-below-floor\",\"observedVersion\":\"5.9.3\",\"remediation\":\"A supported upstream compiler migration is required; retain the existing gates and extraction identities.\"}"
+        }
+      ]
+    },
+    {
+      "id": 117652894975,
+      "name": "check lane (macos-15, Node 24, packaging)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894975.log",
+      "logSha256": "895a041aca57c925f5c265305bdc86f42748b479600233f3f4225bffbffc5aca",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "expected-compiler-floor-block",
+      "cause": "JSON-only preflight rejects foundation.api-extractor.compiler 5.9.3 before Foundation execution.",
+      "evidence": [
+        {
+          "line": 621,
+          "text": "{\"code\":\"TYPESCRIPT_COMPILER_FLOOR_BLOCKED\",\"outcome\":\"blocked\",\"minimumVersion\":\"7.0.2\",\"role\":\"foundation.api-extractor.compiler\",\"manifestPath\":\"/Users/runner/work/get-modular/get-modular/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/package.json\",\"reason\":\"compiler-below-floor\",\"observedVersion\":\"5.9.3\",\"remediation\":\"A supported upstream compiler migration is required; retain the existing gates and extraction identities.\"}"
+        }
+      ]
+    },
+    {
+      "id": 117652894984,
+      "name": "check lane (ubuntu-24.04, governance)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894984.log",
+      "logSha256": "0a150855618df7ddde2123334d15d5546f29ef2726e7b4514e32d35d89c08489",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "expected-compiler-floor-block",
+      "cause": "JSON-only preflight rejects foundation.api-extractor.compiler 5.9.3 before Foundation execution.",
+      "evidence": [
+        {
+          "line": 463,
+          "text": "{\"code\":\"TYPESCRIPT_COMPILER_FLOOR_BLOCKED\",\"outcome\":\"blocked\",\"minimumVersion\":\"7.0.2\",\"role\":\"foundation.api-extractor.compiler\",\"manifestPath\":\"/home/runner/work/get-modular/get-modular/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/package.json\",\"reason\":\"compiler-below-floor\",\"observedVersion\":\"5.9.3\",\"remediation\":\"A supported upstream compiler migration is required; retain the existing gates and extraction identities.\"}"
+        }
+      ]
+    },
+    {
+      "id": 117652894985,
+      "name": "check lane (ubuntu-24.04, static)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894985.log",
+      "logSha256": "88f9acdd008151cfc5845921d40bc09daf92becb2509316ff990506908b01377",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "expected-compiler-floor-block",
+      "cause": "JSON-only preflight rejects foundation.api-extractor.compiler 5.9.3 before Foundation execution.",
+      "evidence": [
+        {
+          "line": 488,
+          "text": "{\"code\":\"TYPESCRIPT_COMPILER_FLOOR_BLOCKED\",\"outcome\":\"blocked\",\"minimumVersion\":\"7.0.2\",\"role\":\"foundation.api-extractor.compiler\",\"manifestPath\":\"/home/runner/work/get-modular/get-modular/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/package.json\",\"reason\":\"compiler-below-floor\",\"observedVersion\":\"5.9.3\",\"remediation\":\"A supported upstream compiler migration is required; retain the existing gates and extraction identities.\"}"
+        }
+      ]
+    },
+    {
+      "id": 117652894993,
+      "name": "check lane (ubuntu-24.04, Node 24, assembly)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652894993.log",
+      "logSha256": "0de1a6a51b667ad03d20549742dfbd61efb06ebdf0d06c928159a29499ae3f46",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "assembly-deduplicated-runtime-receipts",
+      "cause": "Packed test expects four mixed-runtime receipts, while one distinct TS7 compiler across two resolvers correctly emits two. The runner-enforcement positive control then cascades.",
+      "source": [
+        "tests/assembly/packed-root.test.mjs:231-238",
+        "tests/assembly/runner-enforcement.test.mjs:33-46"
+      ],
+      "evidence": [
+        {
+          "line": 1004,
+          "text": "test at tests/assembly/packed-root.test.mjs:106:1"
+        },
+        {
+          "line": 1006,
+          "text": "  AssertionError [ERR_ASSERTION]: packed runtime runner completion"
+        },
+        {
+          "line": 1022,
+          "text": "    actual: [ 'package-copy:passed', 'mixed-runtime:passed', 'mixed-runtime:passed' ],"
+        },
+        {
+          "line": 1023,
+          "text": "    expected: [ 'package-copy:passed', 'mixed-runtime:passed', 'mixed-runtime:passed', 'mixed-runtime:passed', 'mixed-runtime:passed' ],"
+        },
+        {
+          "line": 1028,
+          "text": "test at tests/assembly/runner-enforcement.test.mjs:33:15"
+        },
+        {
+          "line": 1045,
+          "text": "  test at tests/assembly/packed-root.test.mjs:106:1"
+        },
+        {
+          "line": 1047,
+          "text": "    AssertionError [ERR_ASSERTION]: packed runtime runner completion"
+        },
+        {
+          "line": 1063,
+          "text": "      actual: [ 'package-copy:passed', 'mixed-runtime:passed', 'mixed-runtime:passed' ],"
+        }
+      ]
+    },
+    {
+      "id": 117652895005,
+      "name": "check lane (ubuntu-24.04, core)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652895005.log",
+      "logSha256": "3ba296e79915ed06011d55be00ba5e54ab659a41893411a901ea0eb133809a29",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "core-current-seal-fixture-cardinality",
+      "cause": "Current sealedFixture inherits the historical default of 282 rows; the current verifier requires 272. Two seal-anchor tests fail before reaching their intended assertion.",
+      "source": [
+        "packages/core/tests/package/runtime-node.test.mjs:115-116",
+        "packages/core/tests/qualification-support/m3-runtime-node.mjs:251"
+      ],
+      "evidence": [
+        {
+          "line": 3749,
+          "text": "test at packages/core/tests/package/runtime-node.test.mjs:119:1"
+        },
+        {
+          "line": 3751,
+          "text": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /outside plan anchor mismatch/. Input:"
+        },
+        {
+          "line": 3755,
+          "text": "    '282 !== 272\\n'"
+        },
+        {
+          "line": 3764,
+          "text": "    282 !== 272"
+        },
+        {
+          "line": 3771,
+          "text": "    expected: /outside plan anchor mismatch/,"
+        },
+        {
+          "line": 3776,
+          "text": "test at packages/core/tests/package/runtime-node.test.mjs:142:1"
+        },
+        {
+          "line": 3778,
+          "text": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /outside plan anchor mismatch/. Input:"
+        },
+        {
+          "line": 3782,
+          "text": "    '282 !== 272\\n'"
+        }
+      ]
+    },
+    {
+      "id": 117652895006,
+      "name": "check lane (ubuntu-24.04, Node 24, governance)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652895006.log",
+      "logSha256": "9f6a1f6c49c58a46910c61d4042497ec72c939962fe7bf1fdd41b16b86f9b9e1",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "expected-compiler-floor-block",
+      "cause": "JSON-only preflight rejects foundation.api-extractor.compiler 5.9.3 before Foundation execution.",
+      "evidence": [
+        {
+          "line": 467,
+          "text": "{\"code\":\"TYPESCRIPT_COMPILER_FLOOR_BLOCKED\",\"outcome\":\"blocked\",\"minimumVersion\":\"7.0.2\",\"role\":\"foundation.api-extractor.compiler\",\"manifestPath\":\"/home/runner/work/get-modular/get-modular/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/package.json\",\"reason\":\"compiler-below-floor\",\"observedVersion\":\"5.9.3\",\"remediation\":\"A supported upstream compiler migration is required; retain the existing gates and extraction identities.\"}"
+        }
+      ]
+    },
+    {
+      "id": 117652895017,
+      "name": "check lane (macos-15, Node 24, core)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652895017.log",
+      "logSha256": "c7f7d96fecbe9f5ff1886dc6463e084d7d8e4abeb82d2938eab6c5a77bef479b",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "core-current-seal-fixture-cardinality",
+      "cause": "Current sealedFixture inherits the historical default of 282 rows; the current verifier requires 272. Two seal-anchor tests fail before reaching their intended assertion.",
+      "source": [
+        "packages/core/tests/package/runtime-node.test.mjs:115-116",
+        "packages/core/tests/qualification-support/m3-runtime-node.mjs:251"
+      ],
+      "evidence": [
+        {
+          "line": 3673,
+          "text": "test at packages/core/tests/package/runtime-node.test.mjs:119:1"
+        },
+        {
+          "line": 3675,
+          "text": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /outside plan anchor mismatch/. Input:"
+        },
+        {
+          "line": 3679,
+          "text": "    '282 !== 272\\n'"
+        },
+        {
+          "line": 3688,
+          "text": "    282 !== 272"
+        },
+        {
+          "line": 3695,
+          "text": "    expected: /outside plan anchor mismatch/,"
+        },
+        {
+          "line": 3700,
+          "text": "test at packages/core/tests/package/runtime-node.test.mjs:142:1"
+        },
+        {
+          "line": 3702,
+          "text": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /outside plan anchor mismatch/. Input:"
+        },
+        {
+          "line": 3706,
+          "text": "    '282 !== 272\\n'"
+        }
+      ]
+    },
+    {
+      "id": 117652895023,
+      "name": "check lane (ubuntu-24.04, Node 24, static)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652895023.log",
+      "logSha256": "82d77db6c1b1437effd3422f7734b0ae47af7198d049ed5139c7d84da01250d4",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "expected-compiler-floor-block",
+      "cause": "JSON-only preflight rejects foundation.api-extractor.compiler 5.9.3 before Foundation execution.",
+      "evidence": [
+        {
+          "line": 492,
+          "text": "{\"code\":\"TYPESCRIPT_COMPILER_FLOOR_BLOCKED\",\"outcome\":\"blocked\",\"minimumVersion\":\"7.0.2\",\"role\":\"foundation.api-extractor.compiler\",\"manifestPath\":\"/home/runner/work/get-modular/get-modular/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/package.json\",\"reason\":\"compiler-below-floor\",\"observedVersion\":\"5.9.3\",\"remediation\":\"A supported upstream compiler migration is required; retain the existing gates and extraction identities.\"}"
+        }
+      ]
+    },
+    {
+      "id": 117652895034,
+      "name": "check lane (windows-2025, Node 24, core)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652895034.log",
+      "logSha256": "c6fa648ca6ee565685f9152bb5617a8025369bf19257ca7c1a1bfd5b63f61595",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "core-current-seal-fixture-cardinality",
+      "cause": "Current sealedFixture inherits the historical default of 282 rows; the current verifier requires 272. Two seal-anchor tests fail before reaching their intended assertion.",
+      "source": [
+        "packages/core/tests/package/runtime-node.test.mjs:115-116",
+        "packages/core/tests/qualification-support/m3-runtime-node.mjs:251"
+      ],
+      "evidence": [
+        {
+          "line": 3675,
+          "text": "test at packages\\core\\tests\\package\\runtime-node.test.mjs:119:1"
+        },
+        {
+          "line": 3677,
+          "text": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /outside plan anchor mismatch/. Input:"
+        },
+        {
+          "line": 3681,
+          "text": "    '282 !== 272\\n'"
+        },
+        {
+          "line": 3690,
+          "text": "    282 !== 272"
+        },
+        {
+          "line": 3697,
+          "text": "    expected: /outside plan anchor mismatch/,"
+        },
+        {
+          "line": 3702,
+          "text": "test at packages\\core\\tests\\package\\runtime-node.test.mjs:142:1"
+        },
+        {
+          "line": 3704,
+          "text": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /outside plan anchor mismatch/. Input:"
+        },
+        {
+          "line": 3708,
+          "text": "    '282 !== 272\\n'"
+        }
+      ]
+    },
+    {
+      "id": 117652895067,
+      "name": "check lane (ubuntu-24.04, assembly)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652895067.log",
+      "logSha256": "8f8e6a2d1657d4785971a6de03651e395d16b8f29f86406bcf6b4b961b602000",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "assembly-deduplicated-runtime-receipts",
+      "cause": "Packed test expects four mixed-runtime receipts, while one distinct TS7 compiler across two resolvers correctly emits two. The runner-enforcement positive control then cascades.",
+      "source": [
+        "tests/assembly/packed-root.test.mjs:231-238",
+        "tests/assembly/runner-enforcement.test.mjs:33-46"
+      ],
+      "evidence": [
+        {
+          "line": 999,
+          "text": "test at tests/assembly/packed-root.test.mjs:106:1"
+        },
+        {
+          "line": 1001,
+          "text": "  AssertionError [ERR_ASSERTION]: packed runtime runner completion"
+        },
+        {
+          "line": 1017,
+          "text": "    actual: [ 'package-copy:passed', 'mixed-runtime:passed', 'mixed-runtime:passed' ],"
+        },
+        {
+          "line": 1018,
+          "text": "    expected: [ 'package-copy:passed', 'mixed-runtime:passed', 'mixed-runtime:passed', 'mixed-runtime:passed', 'mixed-runtime:passed' ],"
+        },
+        {
+          "line": 1023,
+          "text": "test at tests/assembly/runner-enforcement.test.mjs:33:15"
+        },
+        {
+          "line": 1040,
+          "text": "  test at tests/assembly/packed-root.test.mjs:106:1"
+        },
+        {
+          "line": 1042,
+          "text": "    AssertionError [ERR_ASSERTION]: packed runtime runner completion"
+        },
+        {
+          "line": 1058,
+          "text": "      actual: [ 'package-copy:passed', 'mixed-runtime:passed', 'mixed-runtime:passed' ],"
+        }
+      ]
+    },
+    {
+      "id": 117652895163,
+      "name": "check lane (ubuntu-24.04, observation)",
+      "status": "completed",
+      "conclusion": "success",
+      "category": "observed-success"
+    },
+    {
+      "id": 117652895258,
+      "name": "check lane (macos-15, Node 24, observation)",
+      "status": "completed",
+      "conclusion": "success",
+      "category": "observed-success"
+    },
+    {
+      "id": 117652895297,
+      "name": "check lane (macos-15, core)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117652895297.log",
+      "logSha256": "16762185bea7475e0a11c76702e1d4982e5219de7cde0a58775a4ea715fea63e",
+      "failedSteps": [
+        "Run check lane with its build prerequisites"
+      ],
+      "category": "core-current-seal-fixture-cardinality",
+      "cause": "Current sealedFixture inherits the historical default of 282 rows; the current verifier requires 272. Two seal-anchor tests fail before reaching their intended assertion.",
+      "source": [
+        "packages/core/tests/package/runtime-node.test.mjs:115-116",
+        "packages/core/tests/qualification-support/m3-runtime-node.mjs:251"
+      ],
+      "evidence": [
+        {
+          "line": 3670,
+          "text": "test at packages/core/tests/package/runtime-node.test.mjs:119:1"
+        },
+        {
+          "line": 3672,
+          "text": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /outside plan anchor mismatch/. Input:"
+        },
+        {
+          "line": 3676,
+          "text": "    '282 !== 272\\n'"
+        },
+        {
+          "line": 3685,
+          "text": "    282 !== 272"
+        },
+        {
+          "line": 3692,
+          "text": "    expected: /outside plan anchor mismatch/,"
+        },
+        {
+          "line": 3697,
+          "text": "test at packages/core/tests/package/runtime-node.test.mjs:142:1"
+        },
+        {
+          "line": 3699,
+          "text": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /outside plan anchor mismatch/. Input:"
+        },
+        {
+          "line": 3703,
+          "text": "    '282 !== 272\\n'"
+        }
+      ]
+    },
+    {
+      "id": 117653905111,
+      "name": "check (ubuntu-24.04)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117653905111.log",
+      "logSha256": "536fe88e5cbd145c3697ab38fabf0c04788f9a49910bc06c8f2c4449206865a0",
+      "failedSteps": [
+        "Require every check lane to succeed"
+      ],
+      "category": "aggregate-cascade",
+      "cause": "Required lane result is failure; the unchanged aggregate predicate correctly rejects it.",
+      "evidence": [
+        {
+          "line": 35,
+          "text": "  NEEDS_JSON: {"
+        },
+        {
+          "line": 37,
+          "text": "    \"result\": \"failure\","
+        },
+        {
+          "line": 43,
+          "text": "##[error]Process completed with exit code 1."
+        }
+      ]
+    },
+    {
+      "id": 117653954963,
+      "name": "check (ubuntu-24.04, Node 24)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117653954963.log",
+      "logSha256": "9829587a88458c82065e41532b9609c69ef9a1c680586b7a57639d784c99b01c",
+      "failedSteps": [
+        "Require every check lane to succeed"
+      ],
+      "category": "aggregate-cascade",
+      "cause": "Required lane result is failure; the unchanged aggregate predicate correctly rejects it.",
+      "evidence": [
+        {
+          "line": 35,
+          "text": "  NEEDS_JSON: {"
+        },
+        {
+          "line": 37,
+          "text": "    \"result\": \"failure\","
+        },
+        {
+          "line": 43,
+          "text": "##[error]Process completed with exit code 1."
+        }
+      ]
+    },
+    {
+      "id": 117654505839,
+      "name": "check (windows-2025, Node 24)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117654505839.log",
+      "logSha256": "908280ebb57cf660ace70e27ac32a6bb866db84a56301386d052fd45068d178d",
+      "failedSteps": [
+        "Require every check lane to succeed"
+      ],
+      "category": "aggregate-cascade",
+      "cause": "Required lane result is failure; the unchanged aggregate predicate correctly rejects it.",
+      "evidence": [
+        {
+          "line": 35,
+          "text": "  NEEDS_JSON: {"
+        },
+        {
+          "line": 37,
+          "text": "    \"result\": \"failure\","
+        },
+        {
+          "line": 43,
+          "text": "##[error]Process completed with exit code 1."
+        }
+      ]
+    },
+    {
+      "id": 117654584622,
+      "name": "check (windows-2025)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117654584622.log",
+      "logSha256": "4ca57e3795e4de022b2031a6d46b6cd39b47258a92335c00f43dc07b46533e0b",
+      "failedSteps": [
+        "Require every check lane to succeed"
+      ],
+      "category": "aggregate-cascade",
+      "cause": "Required lane result is failure; the unchanged aggregate predicate correctly rejects it.",
+      "evidence": [
+        {
+          "line": 35,
+          "text": "  NEEDS_JSON: {"
+        },
+        {
+          "line": 37,
+          "text": "    \"result\": \"failure\","
+        },
+        {
+          "line": 43,
+          "text": "##[error]Process completed with exit code 1."
+        }
+      ]
+    },
+    {
+      "id": 117654675797,
+      "name": "check (macos-15)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117654675797.log",
+      "logSha256": "58a6fb83409a4e509b9e8a0bd05f257cbe84ee7b46fcf2891faa324efc3f9e1a",
+      "failedSteps": [
+        "Require every check lane to succeed"
+      ],
+      "category": "aggregate-cascade",
+      "cause": "Required lane result is failure; the unchanged aggregate predicate correctly rejects it.",
+      "evidence": [
+        {
+          "line": 34,
+          "text": "  NEEDS_JSON: {"
+        },
+        {
+          "line": 36,
+          "text": "    \"result\": \"failure\","
+        },
+        {
+          "line": 42,
+          "text": "##[error]Process completed with exit code 1."
+        }
+      ]
+    },
+    {
+      "id": 117654734631,
+      "name": "check (macos-15, Node 24)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "/tmp/observation-ci-117654734631.log",
+      "logSha256": "2a276bf1bae52978219c26aa7b03ebd6b4904ac87e723154dfe79927a927c13c",
+      "failedSteps": [
+        "Require every check lane to succeed"
+      ],
+      "category": "aggregate-cascade",
+      "cause": "Required lane result is failure; the unchanged aggregate predicate correctly rejects it.",
+      "evidence": [
+        {
+          "line": 34,
+          "text": "  NEEDS_JSON: {"
+        },
+        {
+          "line": 36,
+          "text": "    \"result\": \"failure\","
+        },
+        {
+          "line": 42,
+          "text": "##[error]Process completed with exit code 1."
+        }
+      ]
+    }
+  ]
+}

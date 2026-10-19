@@ -1,0 +1,1 @@
+globalThis.setImmediate = () => 0;

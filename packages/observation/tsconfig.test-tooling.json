@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2024"],
+    "types": ["node"],
+    "allowJs": true,
+    "checkJs": false,
+    "isolatedDeclarations": false,
+    "skipLibCheck": false,
+    "noEmit": true
+  },
+  "files": ["tests/type-controls.test.ts", "tests/close-reporting.test.ts", "tests/review-regressions.test.ts", "tests/review-environment-probe.ts", "tests/writer-gate.test.ts"],
+  "include": []
+}

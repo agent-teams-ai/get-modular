@@ -5,7 +5,8 @@ import * as ts from "typescript/unstable/ast";
 import { parseTypeScript } from "../../tests/qualification/support/typescript-project.ts";
 import { GENERATED_PRODUCTION_PATH } from "./generated-production-source.mjs";
 import {
-  assertLeafPackageTable, expectedPeerDependencies, LEAF_PACKAGES, leafManifestPath, leafPeers, PUBLIC,
+  assertLeafPackageTable, expectedLeafExports, expectedPeerDependencies, LEAF_PACKAGES, leafEntrySources,
+  leafManifestPath, leafPeers, leafSubpaths, PUBLIC,
   PUBLIC_FILES, PUBLIC_PUBLISH_CONFIG, publicRepository,
 } from "./leaf-packages.mjs";
 
@@ -13,12 +14,6 @@ const PUBLICATION_FIELDS = Object.freeze([
   "bin", "browser", "main", "module", "publishConfig",
   "types", "typesVersions", "typings",
 ]);
-const ROOT_EXPORT = Object.freeze({
-  ".": {
-    import: { types: "./dist/index.d.ts", default: "./dist/index.js" },
-    default: "./dist/index.js",
-  },
-});
 const INSTALL_SCRIPTS = new Set([
   "dependencies", "install", "pnpm:devPreinstall", "postinstall", "postpack",
   "postprepare", "postpublish", "postuninstall", "preinstall", "prepack",
@@ -136,8 +131,9 @@ async function assertLeafManifest(leaf, readPackageManifest) {
     assert.equal(manifest[field], undefined,
       `${leaf.name} must not claim publication through ${field}`);
   }
-  assert.deepEqual(manifest.exports, ROOT_EXPORT,
-    `${leaf.name} requires one root-only ESM export and no deep import`);
+  assert.deepEqual(manifest.exports, expectedLeafExports(leaf), leafSubpaths(leaf).length === 1
+    ? `${leaf.name} requires one root-only ESM export and no deep import`
+    : `${leaf.name} requires exactly its row's ESM export subpaths and no deep import`);
   assert(Array.isArray(manifest.files) && manifest.files.length > 0
     && manifest.files.every(path => typeof path === "string"
       && /^(?:dist|README\.md|LICENSE|CHANGELOG\.md)(?:\/[A-Za-z0-9._/-]+)?$/u.test(path)
@@ -173,7 +169,9 @@ async function validateLeafRoot(leaf, artifacts, input) {
     `${leaf.name} rejects nested manifests`);
   await assertLeafManifest(leaf, readPackageManifest);
   const sources = artifacts.filter(path => path.startsWith(sourceRoot) && SOURCE.test(path));
-  assert(sources.includes(`${sourceRoot}index.ts`), `${leaf.name} requires src/index.ts`);
+  for (const entry of leafEntrySources(leaf)) {
+    assert(sources.includes(entry), `${leaf.name} requires ${entry.slice(leaf.root.length + 1)}`);
+  }
   assert(sources.length > 0, `${leaf.name} cannot have empty source`);
   for (const path of leaf.requiredTests) {
     assert(artifacts.includes(path), `${leaf.name} requires a real test: ${path}`);

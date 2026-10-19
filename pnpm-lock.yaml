@@ -74,6 +74,9 @@ importers:
       '@get-modular/lifecycle-kernel':
         specifier: workspace:*
         version: link:packages/lifecycle-kernel
+      '@get-modular/observation':
+        specifier: workspace:*
+        version: link:packages/observation
       '@get-modular/resources':
         specifier: workspace:*
         version: link:packages/resources
@@ -160,6 +163,12 @@ importers:
         version: 2.9.0
 
   packages/lifecycle-kernel: {}
+
+  packages/observation:
+    dependencies:
+      '@get-modular/resources':
+        specifier: workspace:^
+        version: link:../resources
 
   packages/resources: {}
 

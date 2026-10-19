@@ -1,0 +1,281 @@
+$ pnpm observation:build && pnpm observation:typecheck && pnpm observation:test && pnpm observation:evidence && pnpm observation:pack
+$ node architecture/tooling/build-leaf-package.mjs observation
+$ node node_modules/typescript/bin/tsc -p packages/observation/tsconfig.json --noEmit && node architecture/tooling/test-assembly-types.mjs --projects packages/observation/tsconfig.types.json packages/observation/tsconfig.types.bundler.json
+$ node --test packages/observation/tests/store.test.mjs packages/observation/tests/subscriptions.test.mjs packages/observation/tests/load.test.mjs packages/observation/tests/guards.test.mjs packages/observation/tests/testing-entry.test.mjs packages/observation/tests/processes.test.mjs packages/observation/tests/type-controls.test.mjs tests/observation/assembly-integration.test.mjs tests/observation/readme-examples.test.mjs
+✔ T50 T51 T54 [P18] echo: a handler that changes a key it follows fails at the first delivery, reported and thrown (18.919831ms)
+✔ T52 T53 [P19] cascade guard: shared across stores (ping-pong), legitimate chains pass, coalescing keeps the largest depth (39.353512ms)
+✔ T51 T57 [P22] asynchronous echo is caught at the first round: async command, microtask, loader body (Node) (1.97535ms)
+✔ T53 [P23] an asynchronous ping-pong across two stores stops at 64 steps (Node) (6.391274ms)
+▶ T50 T51 T53 T57 [R9] echo and cascade guards
+  ✔ T50 T51 T53 T57 [R9] a handler that changes the key it follows: one delivery, observation.delivery.echo reported once (1.26342ms)
+  ✔ T50 T51 T53 T57 [R9] C1, C2, C10: async command, queueMicrotask and loader body echo are caught at the first round (Node) (2.024174ms)
+  ✔ T50 T51 T53 T57 [R9] an asynchronous ping-pong across two stores through commands stops at 65 deliveries (Node) (7.100366ms)
+✔ T50 T51 T53 T57 [R9] echo and cascade guards (10.909072ms)
+▶ T58 T59 T60 [R13] the delivery context ends with the delivery task (M1): no false echo or cascade from work that outlives it
+  ✔ T58 T59 T60 [R13] heartbeat: a timer the owner starts from a command called by a handler writes freely (28.748632ms)
+  ✔ T58 T59 T60 [R13] server: requests to a server restarted by a handler are independent user actions (57.602168ms)
+  ✔ T58 T59 T60 [R13] depth: independent requests through a restarted server do not accumulate cascade depth (33.189009ms)
+  ✔ T58 T59 T60 [R13] C4: pagination through a load that advances the cursor it follows fails at the first page (1.508668ms)
+✔ T58 T59 T60 [R13] the delivery context ends with the delivery task (M1): no false echo or cascade from work that outlives it (121.625876ms)
+▶ T50 T51 T53 T57 T58 [R16] load result and error callbacks own a complete delivery task
+  ✔ T50 T51 T53 T57 T58 [R16] onResult: synchronous echo is rejected at the first result (1.147125ms)
+  ✔ T50 T51 T53 T57 T58 [R16] onResult: microtask echo is rejected at the first result (2.02222ms)
+  ✔ T50 T51 T53 T57 T58 [R16] onResult: nested microtasks echo is rejected at the first result (0.480953ms)
+  ✔ T50 T51 T53 T57 T58 [R16] onResult: awaited command echo is rejected at the first result (11.787623ms)
+  ✔ T50 T51 T53 T57 T58 [R16] onResult: a timer started by the callback is a later independent action (2.360969ms)
+  ✔ T50 T51 T53 T57 T58 [R16] onError: synchronous echo is rejected at the first result (0.732791ms)
+  ✔ T50 T51 T53 T57 T58 [R16] onError: microtask echo is rejected at the first result (1.444923ms)
+  ✔ T50 T51 T53 T57 T58 [R16] onError: nested microtasks echo is rejected at the first result (1.120795ms)
+  ✔ T50 T51 T53 T57 T58 [R16] onError: awaited command echo is rejected at the first result (0.815336ms)
+  ✔ T50 T51 T53 T57 T58 [R16] onError: a timer started by the callback is a later independent action (1.930142ms)
+  ✔ T50 T51 T53 T57 T58 [R16] a load callback and a watcher preserve cascade depth across stores (3.21249ms)
+✔ T50 T51 T53 T57 T58 [R16] load result and error callbacks own a complete delivery task (27.666695ms)
+✔ T21 T53 T54 T118 [R22] pre-attached watch chain rejects the first depth-65 commit (14.275532ms)
+✔ T21 T53 T54 T118 [R22] late watch chain rejects the first depth-65 commit (32.82722ms)
+✔ T53 T118 [R22] load result chain attached saved keys preserves commit depth (44.003323ms)
+✔ T53 T118 [R22] load result chain attached fresh keys preserves commit depth (21.801213ms)
+✔ T53 T118 [R22] load result chain late saved keys preserves commit depth (14.934113ms)
+✔ T53 T118 [R22] load result chain late fresh keys preserves commit depth (32.186001ms)
+✔ T53 T118 [R22] onLoading set-then-load keeps its increment (20.135873ms)
+✔ T21 T53 T54 T118 [R22] bounded catch-up provenance for old snapshots (10.586708ms)
+✔ T21 T53 T54 T118 [R22] bounded catch-up provenance for between snapshots (27.720146ms)
+✔ T21 T53 T54 T118 [R22] bounded catch-up provenance for mixed snapshots (19.995898ms)
+✔ T21 T53 T54 T118 [R22] bounded catch-up provenance for fresh snapshots (32.67416ms)
+✔ T53 T118 [R22] initial load without a new commit inherits depth 63 without increment (12.109095ms)
+✔ T53 T118 [R22] initial load without a new commit inherits depth 64 without increment (7.032543ms)
+✔ T31 T118 [R22] independent initial loads ignore old depth and argument revision (31.926876ms)
+✔ T21 T51 T54 echo rejection leaves incoming graphs unfrozen and revision unchanged (5.432728ms)
+✔ T58 T62 T68 T113 FIFO preserves each native task checkpoint and external interleaving (0.793884ms)
+✔ T50 T51 T54 T57 T58 T60 loader promise-subclass assimilation remains inside its existing live context (1.133514ms)
+✔ T50 T51 T54 T57 T58 T60 loader thenable-getter assimilation remains inside its existing live context (0.69168ms)
+✔ T50 T51 T54 T57 T58 T60 loader thenable-call assimilation remains inside its existing live context (0.937109ms)
+✔ T50 T51 T54 T57 T58 T60 loader native-constructor-echo assimilation remains inside its existing live context (4.711083ms)
+✔ T50 T51 T54 T57 T58 T60 loader native-constructor-second-read assimilation remains inside its existing live context (4.394628ms)
+✔ T50 T51 T54 T57 T58 T60 loader native-constructor-plain assimilation remains inside its existing live context (0.478249ms)
+✔ T50 T51 T54 T57 T58 T60 loader ordinary-promise assimilation remains inside its existing live context (0.590418ms)
+✔ T32 [P6] load: one active and one pending run; a stale result never publishes (20.41915ms)
+✔ T36 [P11] closing the subscriber scope during a cooperative load: complete, no debts, nothing published (3.707314ms)
+✔ T36 [P12] a load that ignores abort: escalate gives a failed debt with a code; a retry completes (2.073257ms)
+✔ T36 [P13] a load that ignores abort: abandon gives a pending debt and settled: false (1.487316ms)
+✔ T45 [P14] store.close() during a load aborts it; the drain stays in the subscriber scope (1.547707ms)
+✔ T32 [P17] load: onLoading when a newer run is queued; a result that lands after set() is dropped (1.819526ms)
+✔ T32 [P24] pagination as a loop inside one loader passes 100 pages (2.0824ms)
+▶ T36 [R6] closing while a load is still running
+  ✔ T36 [R6] subscriber scope closes, loader honors abort: abort reaches the loader, complete, no debts (4.041506ms)
+  ✔ T36 [R6] subscriber scope closes, loader ignores abort, Host escalates: failed debt with a code; a retry completes (1.219955ms)
+  ✔ T36 [R6] subscriber scope closes, loader ignores abort, Host abandons: pending debt, settled false (1.0241ms)
+  ✔ T36 [R6] store.close() during a load: abort reaches the loader; the owner closes clean; the subscriber's drain owns the debt (1.157971ms)
+✔ T36 [R6] closing while a load is still running (8.113158ms)
+▶ T32 [R7] load never shows data of older values while newer values load
+  ✔ T32 [R7] onLoading on queue; a result that lands after set() but before delivery is dropped (store revision) (1.537652ms)
+✔ T32 [R7] load never shows data of older values while newer values load (1.673727ms)
+▶ T32 T45 T58 T71 [R17] scheduled load publication stays current and is visible to testing waits
+  ✔ T32 T45 T58 T71 [R17] onResult: a commit before its queued delivery drops the old outcome (1.521278ms)
+  ✔ T32 T45 T58 T71 [R17] onResult: closing before publication drops it and drains the lane (0.907264ms)
+  ✔ T32 T45 T58 T71 [R17] onResult: escalation never turns a completed loader into a drain debt (3.347773ms)
+  ✔ T32 T45 T58 T71 [R17] onError: a commit before its queued delivery drops the old outcome (2.836675ms)
+  ✔ T32 T45 T58 T71 [R17] onError: closing before publication drops it and drains the lane (0.828385ms)
+  ✔ T32 T45 T58 T71 [R17] onError: escalation never turns a completed loader into a drain debt (0.832271ms)
+  ✔ T32 T45 T58 T71 [R17] delivered({ stores }) includes queued callbacks and their microtasks (1.17694ms)
+  ✔ T32 T45 T58 T71 [R17] delivered() includes queued callbacks and their microtasks (0.576737ms)
+✔ T32 T45 T58 T71 [R17] scheduled load publication stays current and is visible to testing waits (12.506664ms)
+✔ T40 T114 [R18] onLoading throw preserves attribution, sibling and later delivery (2.357264ms)
+✔ T40 T114 [R18] onLoading scalar preserves attribution, sibling and later delivery (3.42509ms)
+✔ T40 T114 [R18] onResult throw preserves attribution, sibling and later delivery (0.900014ms)
+✔ T40 T114 [R18] onResult scalar preserves attribution, sibling and later delivery (1.10375ms)
+✔ T40 T114 [R18] onError throw preserves attribution, sibling and later delivery (1.963923ms)
+✔ T40 T114 [R18] onError scalar preserves attribution, sibling and later delivery (0.724219ms)
+✔ T31 T65 T117 [R21] load uses newest values, only selected keys, and an owned signal (0.880875ms)
+✔ T32 T119 [R23] a pending obsolete startup is skipped before newer flush (0.950218ms)
+✔ T31 T119 [R23] first startup is rechecked after its microtask (0.91791ms)
+✔ T43 T45 T119 [R23] onLoading close by callback cannot reacquire pending work (0.953874ms)
+✔ T43 T45 T119 [R23] onLoading close by reporter cannot reacquire pending work (3.56551ms)
+✔ T34 T35 T45 T58 T113 T115 [P3 P4 R2 R19] GC subscriber-closed (210.409159ms)
+✔ T34 T35 T45 T58 T113 T115 [P3 P4 R2 R19] GC store-closed (255.983479ms)
+✔ T34 T35 T45 T58 T113 T115 [P3 P4 R2 R19] GC als-retention (206.938041ms)
+✔ T06 T57 T62 T70 T73 [R14] environment fake-before (54.522418ms)
+✔ T06 T57 T62 T70 T73 [R14] environment fake-clock-before (85.028928ms)
+✔ T06 T57 T62 T70 T73 [R14] environment no-builtin-module (73.447522ms)
+✔ T06 T57 T62 T70 T73 [R14] environment no-node (148.000254ms)
+✔ T55 T109 unhandled fire-and-forget echo exits after exactly one report (39.777089ms)
+✔ T42 T66 T109 abort-listener-unhandled surfaces an uncaught exception (45.232061ms)
+✔ T42 T66 T109 throwing-reporter surfaces an uncaught exception (53.770472ms)
+✔ T66 T109 abort listener failure leaves healthy later delivery usable (43.972ms)
+✔ T64 T114 [R18] import-idle (34.517606ms)
+✔ T64 T114 [R18] return-isolation (51.222035ms)
+✔ T21 [P21] set takes ownership: values are frozen in place; frozen nodes are not walked again (92.291242ms)
+✔ T46 [P25] the owner's read works after close; a save-on-close entry registered after createStore sees the last values (8.511337ms)
+✔ T21 T38 [P26] a failed set leaves the caller's objects unfrozen; the global limit names scope counts (13.074797ms)
+✔ T40 T47 [P15] callback failures go to reportError with the subscription name (2.589884ms)
+✔ T11 T27 [PB] a snapshot of another store or a copy is rejected with a code (0.856668ms)
+▶ T46 [R11] the owner keeps reading after close: save on close (C11)
+  ✔ T46 [R11] a resource opened before the store saves the last value in its cleanup (5.192177ms)
+✔ T46 [R11] the owner keeps reading after close: save on close (C11) (5.457205ms)
+▶ T46 [R15] save on close with an asynchronous writer (M5)
+  ✔ T46 [R15] an asyncDispose entry registered after createStore is awaited before the file closes (5.182502ms)
+✔ T46 [R15] save on close with an asynchronous writer (M5) (5.754972ms)
+✔ T14 T16 T19 T20 T21 T22 T23 T26 T28 T47 [R20] plain values, atomic patches, revisions and capabilities (5.505849ms)
+✔ T16 T21 T116 [R20] subclasses, prototype arrays and nonplain data reject before ownership transfer (3.240733ms)
+✔ T14 T17 T21 T33 T46 T47 argument ordering and closed owner creation transfer nothing (2.483835ms)
+✔ T28 T29 T117 [R21] fresh runtime values follow the declared domain after a narrowed starting snapshot (2.806073ms)
+▶ T18 T19 T29 public semantic suite on the local build
+  ✔ T18 T19 T22 T26 T29 T34 a facet catches up across await and releases with its subscriber (1.012833ms)
+  ✔ T31 T32 T36 T65 a superseded physical load drains before the newest run (2.443204ms)
+  ✔ T40 T51 T54 callback failure and echo preserve sibling delivery and exact report causes (1.126414ms)
+✔ T18 T19 T29 public semantic suite on the local build (6.932163ms)
+✔ T17 T21 T40 T48 reportError is captured once before source ownership transfer (1.744674ms)
+✔ T29 [P1] a commit between reading and subscribing is not lost (12.66353ms)
+✔ T34 [P2] the subscription is detached when its scope starts closing, before the drain finishes (4.242779ms)
+✔ T63 T104 [P5] coalescing: 10 000 commits in one task give one delivery of the newest value (31.985034ms)
+✔ T63 T104 [P7] dispatch visits only subscriptions of the changed keys (hundreds of watchers) (69.863627ms)
+✔ T37 T38 [P8] a repeated watch in a long-lived scope fails with a coded error, in that scope only (9.951312ms)
+✔ T34 [P9] the documented pattern: one child scope per request does not accumulate (37.4067ms)
+✔ T38 [P10] limits: 64 per subscriber scope by default; the owner's per-store safety limit across scopes (2.406888ms)
+✔ T43 [P20] either handler closes their shared scope and exactly one runs (0.993354ms)
+✔ T61 [P16] after subscribing, nothing is called back synchronously (1.172203ms)
+▶ T34 [R1] the subscription is released when the subscriber scope closes
+  ✔ T34 [R1] no delivery and no new load after close() is called, while the drain is still waiting (10.964575ms)
+✔ T34 [R1] the subscription is released when the subscriber scope closes (11.345508ms)
+▶ T32 T63 T104 [R3] buffers stay bounded under 10 000 rapid set calls
+  ✔ T32 T63 T104 [R3] 10 000 sets in one task: one delivery per subscription, one buffered entry per subscription (22.828171ms)
+  ✔ T32 T63 T104 [R3] 10 000 sets over 100 tasks: at most one delivery per task per subscription, the newest value (26.31237ms)
+  ✔ T32 T63 T104 [R3] 10 000 region changes while a load runs: one active, at most one pending, 2 loader calls (47.613211ms)
+✔ T32 T63 T104 [R3] buffers stay bounded under 10 000 rapid set calls (97.268777ms)
+▶ T63 T104 [R4] dispatch cost: 500 subscriptions on different keys versus one changed key
+  ✔ T63 T104 [R4] a set of one key: 1 index lookup, 1 visit, 1 callback; ten keys: 10 of each (18.527466ms)
+  ✔ T63 T104 [R4] contrast: 500 subscriptions on the same key get 500 callbacks from one set (10.20675ms)
+✔ T63 T104 [R4] dispatch cost: 500 subscriptions on different keys versus one changed key (29.119094ms)
+▶ T37 T38 [R5] repeated watch in one long-lived scope (per-request pattern)
+  ✔ T37 T38 [R5] same name: observation.subscription.duplicate-name, the first subscription stays (1.759535ms)
+  ✔ T37 T38 [R5] generated names: observation.subscriptions.limit at 64 in the leaking scope; other scopes are not affected (2.397544ms)
+  ✔ T37 T38 [R5] recommended guard: a child scope per request, closed when the request ends (10 000 requests) (245.035043ms)
+✔ T37 T38 [R5] repeated watch in one long-lived scope (per-request pattern) (249.566917ms)
+▶ T48 [R8] watch and load when resources.signal is already aborted: its reason is rethrown, nothing registered
+  ✔ T48 [R8] the scope's close was requested while the factory awaited: resources.scope.closed (0.89125ms)
+  ✔ T48 [R8] the run that constructs the module was cancelled while the factory awaited (scoped()): the Host's reason (0.784059ms)
+✔ T48 [R8] watch and load when resources.signal is already aborted: its reason is rethrown, nothing registered (1.848299ms)
+✔ T35 T38 T43 watch uses only a signal binding, supports stress limits, recovers capacity and defers new watches (34.209944ms)
+✔ T38 default store limit is exactly 8192 and detach recovers capacity (40.617131ms)
+✔ T40 T54 T114 [R18] throw return isolation keeps sibling and later delivery (1.405103ms)
+✔ T40 T54 T114 [R18] scalar return isolation keeps sibling and later delivery (0.626582ms)
+✔ T40 T54 T114 [R18] null return isolation keeps sibling and later delivery (0.721284ms)
+✔ T40 T54 T114 [R18] getter return isolation keeps sibling and later delivery (1.427206ms)
+✔ T40 T54 T114 [R18] promise return isolation keeps sibling and later delivery (0.877029ms)
+✔ T40 T54 T114 [R18] async-echo return isolation keeps sibling and later delivery (1.003008ms)
+✔ T40 T54 T114 [R18] getter-echo return isolation keeps sibling and later delivery (0.549566ms)
+✔ T40 T54 T114 [R18] then-echo return isolation keeps sibling and later delivery (0.48527ms)
+✔ T114 [R18] an observed thenable keeps the original window and permits a later timer write (11.32066ms)
+✔ T34 T40 T43 T48 onChange is captured once before admission, including callback-getter close (1.04429ms)
+✔ T34 T40 T43 T48 loader is captured once before admission, including callback-getter close (0.856578ms)
+✔ T34 T40 T43 T48 onLoading is captured once before admission, including callback-getter close (3.254032ms)
+✔ T34 T40 T43 T48 onResult is captured once before admission, including callback-getter close (0.843388ms)
+✔ T34 T40 T43 T48 onError is captured once before admission, including callback-getter close (0.582126ms)
+✔ T34 T43 watch refuses a source closed by its name getter during admission (0.788155ms)
+✔ T34 T43 watch refuses a source closed by its resources getter during admission (0.330897ms)
+✔ T34 T43 load refuses a source closed by its name getter during admission (0.364959ms)
+✔ T34 T43 load refuses a source closed by its resources getter during admission (0.335013ms)
+▶ T71 [R10] the testing entry point
+  ✔ T71 [R10] liveSubscriptions per store and per scope; settled() waits for loads, delivered() does not (10.830118ms)
+✔ T71 [R10] the testing entry point (12.365787ms)
+▶ T71 T72 [R12] the testing entry point waits only for what it is asked, and never forever
+  ✔ T71 T72 [R12] C5: delivered({ stores }) resolves while an unrelated store commits every task (5.994452ms)
+  ✔ T71 T72 [R12] C6: settled({ stores }) ignores an unrelated open long-poll; a global settled() gives up with a code (51.860551ms)
+✔ T71 T72 [R12] the testing entry point waits only for what it is asked, and never forever (58.443067ms)
+▶ T06 T68 T72 T73 [R14] the testing deadline is always on and fake timers cannot stall it (M4)
+  ✔ T06 T68 T72 T73 [R14] W1: a signal that never aborts does not switch the deadline off (201.932465ms)
+  ✔ T06 T68 T72 T73 [R14] W2: mock.timers on setImmediate, setTimeout and Date after import: deliveries and the deadline keep working (203.657779ms)
+  ✔ T06 T68 T72 T73 [R14] the detection flag tells a test preset whether async echoes are detected (Node: true) (0.377177ms)
+✔ T06 T68 T72 T73 [R14] the testing deadline is always on and fake timers cannot stall it (M4) (406.449646ms)
+✔ T47 T71 T72 testing wait validation, explicit Infinity, signal cause and default deadline (5004.719028ms)
+✔ T24 T25 T49 T103 T117 emitted declarations retain exact negative attribution and variance controls (3958.83315ms)
+ℹ TypeScript 7.0.2 NodeNext: clean baseline; variance controls; loose optional; 92 independently attributed negatives
+ℹ TypeScript 7.0.2 Bundler: clean baseline; variance controls; loose optional; 92 independently attributed negatives
+✔ T04 T07 T18 T29 T75 an Assembly required slot carries a facet and closes the consumer before its owner (29.364409ms)
+✔ T04 T18 conformance isolate accepts the readonly facet's own-property port (6.309295ms)
+✔ T34 T48 an awaiting Assembly factory observes the identical Host cancellation reason without subscriptions (7.919848ms)
+✔ T19 T22 T23 T24 T75 T117 every observation README TypeScript block compiles on the supported compiler set (942.641433ms)
+ℹ 13 README blocks: 7.0.2 NodeNext, 7.0.2 Bundler
+ℹ tests 157
+ℹ suites 16
+ℹ pass 157
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5579.826426
+$ node --test packages/observation/tests/mutations.test.mjs packages/observation/tests/writer-gate.test.mjs
+✔ T107 all eighteen archived defects fail semantic probes in isolated patched builds (256447.39685ms)
+ℹ no-key-index: caught by T63 T104 [P7] dispatch visits only subscriptions of the changed keys (hundreds of watchers); T63 T104 [R4] a set of one key: 1 index lookup, 1 visit, 1 callback; ten keys: 10 of each; T63 T104 [R4] contrast: 500 subscriptions on the same key get 500 callbacks from one set
+ℹ leak-detached: caught by T34 T35 T45 T58 T113 T115 [P3 P4 R2 R19] GC subscriber-closed; T34 T35 T45 T58 T113 T115 [P3 P4 R2 R19] GC store-closed; T34 T35 T45 T58 T113 T115 [P3 P4 R2 R19] GC als-retention
+ℹ unbounded-dirty: caught by T63 T104 [P5] coalescing: 10 000 commits in one task give one delivery of the newest value; T32 T63 T104 [R3] 10 000 sets in one task: one delivery per subscription, one buffered entry per subscription
+ℹ late-detach: caught by T34 [P2] the subscription is detached when its scope starts closing, before the drain finishes; T34 [R1] no delivery and no new load after close() is called, while the drain is still waiting
+ℹ no-name-check: caught by T37 T38 [P8] a repeated watch in a long-lived scope fails with a coded error, in that scope only; T37 T38 [R5] same name: observation.subscription.duplicate-name, the first subscription stays
+ℹ queue-loads: caught by T32 [P6] load: one active and one pending run; a stale result never publishes; T32 T63 T104 [R3] 10 000 region changes while a load runs: one active, at most one pending, 2 loader calls
+ℹ publish-stale: caught by T32 [P6] load: one active and one pending run; a stale result never publishes; T36 [P11] closing the subscriber scope during a cooperative load: complete, no debts, nothing published; T32 [R7] onLoading on queue; a result that lands after set() but before delivery is dropped (store revision)
+ℹ compare-last-offered: caught by T32 [P17] load: onLoading when a newer run is queued; a result that lands after set() is dropped; T32 [R7] onLoading on queue; a result that lands after set() but before delivery is dropped (store revision)
+ℹ no-cascade-guard: caught by T52 T53 [P19] cascade guard: shared across stores (ping-pong), legitimate chains pass, coalescing keeps the largest depth; T53 [P23] an asynchronous ping-pong across two stores stops at 64 steps (Node); T50 T51 T53 T57 [R9] an asynchronous ping-pong across two stores through commands stops at 65 deliveries (Node)
+ℹ no-loading-signal: caught by T32 [P17] load: onLoading when a newer run is queued; a result that lands after set() is dropped; T32 [R7] onLoading on queue; a result that lands after set() but before delivery is dropped (store revision)
+ℹ no-scope-limit: caught by T37 T38 [P8] a repeated watch in a long-lived scope fails with a coded error, in that scope only; T37 T38 [R5] generated names: observation.subscriptions.limit at 64 in the leaking scope; other scopes are not affected
+ℹ no-echo-guard: caught by T50 T51 T54 [P18] echo: a handler that changes a key it follows fails at the first delivery, reported and thrown; T51 T57 [P22] asynchronous echo is caught at the first round: async command, microtask, loader body (Node); T50 T51 T53 T57 [R9] a handler that changes the key it follows: one delivery, observation.delivery.echo reported once; T50 T51 T53 T57 [R9] C1, C2, C10: async command, queueMicrotask and loader body echo are caught at the first round (Node)
+ℹ no-async-context: caught by T51 T57 [P22] asynchronous echo is caught at the first round: async command, microtask, loader body (Node); T53 [P23] an asynchronous ping-pong across two stores stops at 64 steps (Node); T50 T51 T53 T57 [R9] C1, C2, C10: async command, queueMicrotask and loader body echo are caught at the first round (Node); T50 T51 T53 T57 [R9] an asynchronous ping-pong across two stores through commands stops at 65 deliveries (Node); T06 T57 T62 T70 T73 [R14] environment fake-before; T06 T57 T62 T70 T73 [R14] environment fake-clock-before; T06 T68 T72 T73 [R14] the detection flag tells a test preset whether async echoes are detected (Node: true)
+ℹ facet-read-after-close: caught by T46 [P25] the owner's read works after close; a save-on-close entry registered after createStore sees the last values; T46 [R11] a resource opened before the store saves the last value in its cleanup
+ℹ unbounded-context: caught by T58 T59 T60 [R13] server: requests to a server restarted by a handler are independent user actions; T58 T59 T60 [R13] depth: independent requests through a restarted server do not accumulate cascade depth
+ℹ global-timers-only: caught by T06 T57 T62 T70 T73 [R14] environment fake-before
+ℹ rewalk-frozen: caught by T21 [P21] set takes ownership: values are frozen in place; frozen nodes are not walked again
+ℹ retain-after-close: caught by T34 T35 T45 T58 T113 T115 [P3 P4 R2 R19] GC store-closed
+✔ T29 T75 T103 T108 archived writer references pass and every negative fails its exact gates (4069.297855ms)
+ℹ writer compile TypeScript 7.0.2 NodeNext: 4 attributed diagnostics
+ℹ writer compile TypeScript 7.0.2 Bundler: 4 attributed diagnostics
+ℹ reference/a-logger: PASS
+ℹ reference/b-catalog: PASS
+ℹ reference/c-pricing-context: PASS
+ℹ reference/d-greeter: PASS
+ℹ reference/e-async-factory: PASS
+ℹ reference/e-sessions: PASS
+ℹ reference/f-watch-and-load: PASS
+ℹ reference/g-hierarchy: PASS
+ℹ reference/h-requests: PASS
+ℹ reference/i-errors: PASS
+ℹ alternative/h-requests: PASS
+ℹ negative-b-behaviour-1/a-logger: FAIL (behaviour)
+ℹ negative-b-behaviour-1/b-catalog: FAIL (behaviour)
+ℹ negative-b-behaviour-1/c-pricing-context: FAIL (behaviour)
+ℹ negative-b-behaviour-1/d-greeter: FAIL (behaviour)
+ℹ negative-b-behaviour-1/e-async-factory: FAIL (behaviour)
+ℹ negative-b-behaviour-1/e-sessions: FAIL (rules, behaviour)
+ℹ negative-b-behaviour-1/f-watch-and-load: FAIL (behaviour)
+ℹ negative-b-behaviour-1/g-hierarchy: FAIL (behaviour)
+ℹ negative-b-behaviour-1/h-requests: FAIL (behaviour)
+ℹ negative-b-behaviour-1/i-errors: FAIL (behaviour)
+ℹ negative-b-behaviour-2/e-async-factory: FAIL (behaviour)
+ℹ negative-b-behaviour-2/g-hierarchy: FAIL (behaviour)
+ℹ negative-b-behaviour-2/h-requests: FAIL (behaviour)
+ℹ negative-b-behaviour-2/i-errors: FAIL (behaviour)
+ℹ negative-b-behaviour-3/h-requests: FAIL (behaviour)
+ℹ negative-b-behaviour-4/h-requests: FAIL (behaviour)
+ℹ negative-b-behaviour-5/e-async-factory: FAIL (behaviour)
+ℹ negative-b-behaviour-6/e-async-factory: FAIL (behaviour)
+ℹ negative-b-behaviour-7/h-requests: FAIL (behaviour)
+ℹ negative-rules-compile/a-logger: FAIL (compile)
+ℹ negative-rules-compile/b-catalog: FAIL (rules, compile)
+ℹ negative-rules-compile/d-greeter: FAIL (rules, compile)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 256508.618264
+$ node --test packages/observation/tests/packed-root.test.mjs
+✔ T02 T05 T07 T08 T09 T11 T13 T92 T97 T104 T110 T113 T117 exact archives expose two ESM entries sharing one copy (1735.953614ms)
+ℹ packed declarations TypeScript 7.0.2 NodeNext: all six fixture groups passed
+ℹ packed declarations TypeScript 7.0.2 Bundler: all six fixture groups passed
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1785.5568

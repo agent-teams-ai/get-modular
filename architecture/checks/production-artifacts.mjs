@@ -3,7 +3,7 @@ import { posix, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 
 import {
-  expectedPeerDependencies, LEAF_PACKAGES, leafManifestPath, PRIVATE_CANDIDATE, PUBLIC, PUBLIC_FILES,
+  expectedPeerDependencies, LEAF_PACKAGES, leafManifestPath, leafSubpaths, PRIVATE_CANDIDATE, PUBLIC, PUBLIC_FILES,
   PUBLIC_PUBLISH_CONFIG, publicRepository,
 } from "./leaf-packages.mjs";
 import {
@@ -23,7 +23,7 @@ export const ACCEPTED_PACKAGE_NAMES = new Set([
   ...LEAF_PACKAGES_BY_NAME.keys(),
 ]);
 export const ESM_CARRIER_PACKAGE_NAME = "@get-modular/core";
-// Every admitted leaf package uses the same single-root ESM carrier as Core.
+// Each admitted leaf uses Core's ESM carrier shape for exactly its row subpaths.
 const ESM_CARRIER_NAMES = new Set([ESM_CARRIER_PACKAGE_NAME, ...LEAF_PACKAGES_BY_NAME.keys()]);
 const PACKAGE_MANIFEST = /^packages\/(?:.+\/)?package\.json$/u;
 const PACKAGE_ROOT_MANIFEST = /^packages\/[^/]+\/package\.json$/u;
@@ -229,8 +229,8 @@ export function packageIdentityViolations(inventory) {
 
 // ADR-0023 historical private shape and ADR-0025 public shape. Authority is
 // authenticated separately by assembly-admission through its supplied reader.
-// ADR-0027, ADR-0031, ADR-0035 and ADR-0036 extend the public shape to the exact next pairs; shape is not authority.
-const PUBLIC_ASSEMBLY_VERSIONS = Object.freeze(["0.2.0", "0.3.0", "0.4.0", "0.5.0"]);
+// ADR-0027, ADR-0031, ADR-0035, ADR-0036 and ADR-0038 extend the public shape to the exact next pairs; shape is not authority.
+const PUBLIC_ASSEMBLY_VERSIONS = Object.freeze(["0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0"]);
 export function assemblyManifestViolations(manifest) {
   if (manifest?.name !== "@get-modular/assembly") return [];
   const violations = [];
@@ -252,7 +252,7 @@ export function assemblyManifestViolations(manifest) {
   }
   if (manifest.version !== "0.1.0"
     && !(PUBLIC_ASSEMBLY_VERSIONS.includes(manifest.version) && manifest.private === undefined)) {
-    violations.push("Assembly version requires historical 0.1.0 or public 0.2.0/0.3.0/0.4.0/0.5.0 admission");
+    violations.push("Assembly version requires historical 0.1.0 or public 0.2.0/0.3.0/0.4.0/0.5.0/0.6.0 admission");
   }
   if (!plainObject(manifest.dependencies)
     || Object.keys(manifest.dependencies).length !== 1
@@ -314,11 +314,9 @@ export function leafManifestViolations(manifest) {
   return violations;
 }
 
-// ADR-0012 exposes exactly one package root through one ESM target: a single
-// `.` subpath whose `import` condition carries `types` and `default`, plus a
-// sibling top-level `default` for `require(esm)`. Any other subpath, any
-// environment-specific condition and any `require` condition are prohibited.
-const EXPORT_ROOT_SUBPATH = ".";
+// ADR-0012 fixes the ESM carrier for every admitted entry. Only an explicit
+// successor decision may admit a row with additional subpaths; condition shape
+// and order remain identical for each entry.
 const EXPORT_IMPORT_CONDITIONS = Object.freeze(["types", "default"]);
 const EXPORT_ROOT_CONDITIONS = Object.freeze(["import", "default"]);
 
@@ -337,7 +335,7 @@ function relativeTarget(value, label) {
   return [];
 }
 
-function exportMapViolations(exportsField, publicationBlocked) {
+function exportMapViolations(exportsField, publicationBlocked, admittedSubpaths) {
   // A carrier without an export map has no package root at all: Node falls back
   // to directory resolution and the archive hands out its whole tree, which is
   // the opposite of exposing exactly one root. The exemption follows the
@@ -354,49 +352,57 @@ function exportMapViolations(exportsField, publicationBlocked) {
         + 'archive exposes its whole tree to deep imports'];
   }
   if (!plainObject(exportsField)) {
-    return ['exports must be an object with one "." subpath'];
+    return [admittedSubpaths.length === 1
+      ? 'exports must be an object with one "." subpath'
+      : "exports must be an object with exactly the row's admitted subpaths"];
   }
   const subpaths = Object.keys(exportsField);
-  const extraSubpaths = subpaths.filter(key => key !== EXPORT_ROOT_SUBPATH);
+  const extraSubpaths = subpaths.filter(key => !admittedSubpaths.includes(key));
   if (extraSubpaths.length > 0) {
-    return [`exports must declare no subpath beyond "." : ${extraSubpaths.join(", ")}`];
+    return [admittedSubpaths.length === 1
+      ? `exports must declare no subpath beyond "." : ${extraSubpaths.join(", ")}`
+      : `exports must declare no subpath beyond its admitted row: ${extraSubpaths.join(", ")}`];
   }
-  if (!subpaths.includes(EXPORT_ROOT_SUBPATH)) {
-    return ['exports must declare the "." subpath'];
+  for (const subpath of admittedSubpaths) {
+    if (!subpaths.includes(subpath)) return [`exports must declare the "${subpath}" subpath`];
   }
-  const root = exportsField[EXPORT_ROOT_SUBPATH];
+  return admittedSubpaths.flatMap(subpath =>
+    exportSubpathViolations(exportsField[subpath], `exports["${subpath}"]`));
+}
+
+function exportSubpathViolations(root, label) {
   if (!plainObject(root)) {
-    return ['exports["."] must be a condition object'];
+    return [`${label} must be a condition object`];
   }
   // Condition order is normative: a runtime selects the first matching key, so
   // `import` must precede the sibling `default` and `types` must precede the
   // nested `default`.
   const rootConditions = Object.keys(root);
-  const rootOrder = conditionOrderViolations(rootConditions, EXPORT_ROOT_CONDITIONS, 'exports["."]');
+  const rootOrder = conditionOrderViolations(rootConditions, EXPORT_ROOT_CONDITIONS, label);
   if (rootOrder.length > 0) return rootOrder;
   if (!plainObject(root.import)) {
-    return ['exports["."].import must be a condition object'];
+    return [`${label}.import must be a condition object`];
   }
   const importConditions = Object.keys(root.import);
   const importOrder = conditionOrderViolations(
     importConditions,
     EXPORT_IMPORT_CONDITIONS,
-    'exports["."].import',
+    `${label}.import`,
   );
   if (importOrder.length > 0) return importOrder;
 
   const targets = [
-    ...relativeTarget(root.import.types, 'exports["."].import.types'),
-    ...relativeTarget(root.import.default, 'exports["."].import.default'),
-    ...relativeTarget(root.default, 'exports["."].default'),
+    ...relativeTarget(root.import.types, `${label}.import.types`),
+    ...relativeTarget(root.import.default, `${label}.import.default`),
+    ...relativeTarget(root.default, `${label}.default`),
   ];
   if (targets.length > 0) return targets;
 
   // The sibling `default` is a second resolution path to one implementation,
   // never a second build.
   if (root.default !== root.import.default) {
-    return ['exports["."].default must resolve to the same file as '
-      + `exports["."].import.default: ${root.default} against ${root.import.default}`];
+    return [`${label}.default must resolve to the same file as `
+      + `${label}.import.default: ${root.default} against ${root.import.default}`];
   }
   return [];
 }
@@ -534,7 +540,8 @@ export function manifestCarrierViolations(inventory, { publicationBlocked = fals
         ...leafManifestViolations(entry.manifest),
         ...entry.carrierShapeViolations,
         ...(ESM_CARRIER_NAMES.has(entry.name)
-          ? exportMapViolations(entry.exportsField, publicationBlocked)
+          ? exportMapViolations(entry.exportsField, publicationBlocked,
+            entry.name === ESM_CARRIER_PACKAGE_NAME ? ["."] : leafSubpaths(LEAF_PACKAGES_BY_NAME.get(entry.name)))
           : []),
         ...(entry.moduleTypeViolation === true
           ? ['type must be "module" because the carrier is ESM-only']
