@@ -54,7 +54,7 @@ function exampleFiles(markdown, kind, name) {
 }
 
 const standardExamples = ["host", "instances", "template"];
-const guideExamples = ["project", "resources", "bind", "inputs"];
+const guideExamples = ["project", "resources", "bind", "inputs", "communication"];
 const roots = [];
 after(async () => { await Promise.all(roots.map((directory) => rm(directory, { recursive: true, force: true }))); });
 
@@ -65,7 +65,7 @@ async function compileExample(markdown, kind, name) {
   const root = await realpath(await mkdtemp(join(tmpdir(), "get-modular-standard-examples-")));
   roots.push(root);
   await mkdir(join(root, "node_modules/@get-modular"), { recursive: true });
-  for (const library of ["core", "assembly", "resources", "conformance"]) {
+  for (const library of ["core", "assembly", "resources", "conformance", "observation"]) {
     await symlink(join(workspace, "packages", library), join(root, "node_modules/@get-modular", library), "junction");
   }
   // Test blocks run on node:test.

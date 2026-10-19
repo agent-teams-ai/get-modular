@@ -16,8 +16,8 @@ owner authorization; Node.js 24.18 remains supported. Browser execution
 requires a secure context with Web Crypto; the native diagnostic runs do not
 constitute an official browser support or runtime-conformance claim.
 
-Declaration consumers require TypeScript 5.8.3 or later. The packed regression
-tests both this minimum and the pinned build compiler in `NodeNext` ESM and
+Declaration consumers require TypeScript 7.0.2 or later. The packed regression
+tests each distinct minimum and pinned build compiler in `NodeNext` ESM and
 CommonJS contexts, `Node16` ESM, and `Bundler`, with `skipLibCheck: false` and
 1,000 literal declarations in each supported mode. `Node16` CommonJS, `Node10`
 and `Classic` are unsupported and have explicit negative checks.

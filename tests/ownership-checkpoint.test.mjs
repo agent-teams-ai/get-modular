@@ -99,6 +99,11 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
       path: "docs/decisions/0037-pin-providers-not-completed-rows-in-the-binding-oracle.md",
       immutableDigest: "sha256:1c49f7bbfd5ec7df2dbfaefbfd58da7ea2c3583421fc22a3122acd15648718a6",
     },
+    {
+      id: "ADR-0038",
+      path: "docs/decisions/0038-require-typescript-7-for-current-package-qualification.md",
+      immutableDigest: "sha256:f2eab8aea2b07c8b6d2b3207314da91531689fa2bb6039e9e963aee315f7fd52",
+    },
   ]);
   const paths = execFileSync("git", ["ls-tree", "-r", "--name-only", checkpoint.evidence.base,
     "docs/decisions"], { encoding: "utf8" }).trim().split("\n");
@@ -177,7 +182,7 @@ test("observations bind historical lock bytes, production importers and reviewed
     "C0 retains the CMS bytes observed at its base");
   const currentCms = readFileSync(cmsPath);
   assert.equal(digest(currentCms),
-    "sha256:e5cb510c5ea83e54a6833cc40b6ad31fc5cf8c70d9838e4e0c6923edc6f70919",
+    "sha256:c2fe582a14ff6e79620b232ca7ffc914afb0474ec21fd43f208251dd7252f4a3",
     "the current CMS successor must match its separately reviewed bytes");
   // Package versions are observations at the evidence base; later releases move the working tree.
   for (const [name, version] of Object.entries(checkpoint.evidence.packages)) {

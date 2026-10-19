@@ -166,6 +166,11 @@
       "id": "ADR-0037",
       "path": "docs/decisions/0037-pin-providers-not-completed-rows-in-the-binding-oracle.md",
       "immutableDigest": "sha256:1c49f7bbfd5ec7df2dbfaefbfd58da7ea2c3583421fc22a3122acd15648718a6"
+    },
+    {
+      "id": "ADR-0038",
+      "path": "docs/decisions/0038-require-typescript-7-for-current-package-qualification.md",
+      "immutableDigest": "sha256:f2eab8aea2b07c8b6d2b3207314da91531689fa2bb6039e9e963aee315f7fd52"
     }
   ]
 }

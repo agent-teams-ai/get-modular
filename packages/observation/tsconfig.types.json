@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "../..",
+    "noEmit": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "isolatedDeclarations": false,
+    "skipLibCheck": false
+  },
+  "files": [
+    "tests/types.ts",
+    "tests/types-structural.ts",
+    "tests/types-traps.ts",
+    "tests/types-runtime-only.ts",
+    "tests/types-loose-optional.ts",
+    "tests/types-testing.ts",
+    "../../tests/observation/assembly-contracts-types.ts",
+    "../../tests/observation/assembly-implement-types.ts"
+  ],
+  "include": []
+}

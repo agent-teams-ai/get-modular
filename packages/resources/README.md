@@ -56,6 +56,11 @@ later. Pass `scope.resources`, never the `Scope` itself.
 - `control` closes: `close(options)` and `Symbol.asyncDispose`. Whoever holds
   it owns the scope; transfer ownership by transferring `control`.
 
+`resources.signal` is aborted when this scope or an ancestor starts closing, or
+when the run that constructs the module is cancelled before its factory settles.
+It stops acquisition, and subscriptions bound to it detach then; it never closes
+anything.
+
 Every scope and entry has an explicit, non-empty name. Names form the debt
 paths that Hosts alert on.
 
