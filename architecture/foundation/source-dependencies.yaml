@@ -820,6 +820,7 @@ boundaries:
       - architecture/tooling/build-assembly.mjs
       - architecture/tooling/build-core.mjs
       - architecture/tooling/codemods/run.mjs
+      - architecture/tooling/codemods/project.ts
       - architecture/tooling/first-core-release.mjs
       - architecture/tooling/generate-core.mjs
       - architecture/tooling/test-assembly-types.mjs
@@ -849,7 +850,6 @@ boundaries:
         - json-canonicalize
         - jsonc-parser
         - tar
-        - ts-morph
         - typescript
         - typescript-minimum
         - yaml

@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
-import { retainSdkGrowthFailure } from "./sdk-growth-failure-retention.mts";
+import { retainSdkGrowthFailure } from "./sdk-growth-failure-retention.ts";
 
 const execute = promisify(execFile);
 const sha = "8fc8242049442a6c8838146b92dc1cb029ff8280";
@@ -48,11 +48,11 @@ const publishedReport = `{
   ]
 }
 `;
-// Exact stdout of the published, SRI-verified Foundation 1.7.4 public CLI as captured
+// HISTORICAL exact stdout of the published, SRI-verified Foundation 1.7.4 public CLI as captured
 // by the owner (exit 3, signal null, installed 1.7.4; valid admission fixture, then a
-// job-owned empty-PATH Git lookup fault; cleanup passed). Embedded, not executed here.
+// job-owned empty-PATH Git lookup fault; cleanup passed). Data only, not current CLI output.
 // 674 bytes, SHA-256: 9786d7eff27418851608a667b1b3b2600956deefe6e762af497c041e7a1c5a27.
-const currentReport = `{
+const historical174Report = `{
   "reportSchemaVersion": 1,
   "foundationVersion": "1.7.4",
   "coverage": "selected",
@@ -85,11 +85,27 @@ const currentReport = `{
 `;
 async function fixture(run: (directory: string) => Promise<void>, parent = tmpdir()) {
   const directory = await realpath(await mkdtemp(join(parent, "sdk-retention-TEST-")));
-  try { await run(directory); } finally { await rm(directory, { recursive: true, force: true }); }
+  try {
+    await writeFile(join(directory, "package.json"), '{"type":"module"}\n');
+    await run(directory);
+  } finally { await rm(directory, { recursive: true, force: true }); }
 }
 const destination = (directory: string) => ({ directory, artifact: join(directory, "sdk-growth-failure.json"),
-  checkoutSha: sha, producerVersion: "1.7.4" });
+  checkoutSha: sha, producerVersion: "1.10.0" });
 const bytes = (directory: string) => readFile(destination(directory).artifact, "utf8");
+async function materializeDriver(directory: string, name: "alias-rejection.ts" | "retention.ts"): Promise<string> {
+  const support = [
+    ["../../architecture/checks/node-version.mjs", "architecture/checks/node-version.mjs"],
+    ["./sdk-growth-failure-retention.ts", "tests/qualification/sdk-growth-failure-retention.ts"],
+    [`./fixtures/sdk-growth-retention/${name}`, `tests/qualification/fixtures/sdk-growth-retention/${name}`],
+  ] as const;
+  for (const [source, path] of support) {
+    const target = join(directory, path);
+    await mkdir(dirname(target), { recursive: true });
+    await copyFile(new URL(source, import.meta.url), target);
+  }
+  return join(directory, "tests/qualification/fixtures/sdk-growth-retention", name);
+}
 async function invocation(directory: string, stdout: string, exit: number): Promise<unknown> {
   await writeFile(join(directory, "command.mjs"),
     `process.stdout.write(${JSON.stringify(stdout)}); process.stderr.write(${JSON.stringify(secret)}); process.exit(${exit});`);
@@ -98,10 +114,10 @@ async function invocation(directory: string, stdout: string, exit: number): Prom
 }
 
 // Regression: cleanup used to erase the only report after the real child exit 3.
-test("historical 1.7.2 and current 1.7.4 reports retain exact selected bytes under the current producer pin before fixture removal; no message admission", async () => {
+test("historical 1.7.2 and 1.7.4 reports retain exact selected bytes under the current producer pin before fixture removal; no message admission", async () => {
   for (const [stdout, message] of [
     [publishedReport, "An unexpected process failure occurred."],
-    [currentReport, "The process could not be started."],
+    [historical174Report, "The process could not be started."],
   ] as const) {
     await fixture(async directory => {
       const invocationRoot = join(directory, "fixture");
@@ -112,8 +128,8 @@ test("historical 1.7.2 and current 1.7.4 reports retain exact selected bytes und
       const retained = await bytes(directory);
       assert.equal(retained, JSON.stringify({ checkoutSha: sha, nodeVersion: process.version,
         capabilityId: "package.public-api-compatibility", producer: {
-          package: "@agent-teams/engineering-foundation", version: "1.7.4",
-          integrity: "sha512-BU9SqHvrPYtizl0u1J1UwGl89GmfHsKrwvExY7v8bpa2AD0C9YS71qDHIxcZU1zfzzORGk1SjJwNrPXR5MmZRA==",
+          package: "@agent-teams/engineering-foundation", version: "1.10.0",
+          integrity: "sha512-k1mI8y/bm6GQtge+QCkANrufyLKi0f6YZlHXCMKr4QpGb97/86j9WdYVhgG2//C2cAtSRmmHmhOtnrpdaksRpw==",
         }, exit: 3, transportStatus: "exit", messageOmission: "producer-safety-not-admitted",
         reportStatus: "selected", publicCapability: { outcome: "failed", code: "UNEXPECTED_PROCESS_FAILURE", retryable: false },
       }) + "\n");
@@ -272,11 +288,10 @@ test("aliased directories are rejected without creating an artifact in the canon
     if ("prohibited" in created) { t.skip(`directory alias creation prohibited: ${created.prohibited}; alias IO not exercised`); return; }
     const { alias } = created;
     assert.equal(await realpath(alias), directory);
-    const driver = join(directory, "alias-rejection.mts");
-    await writeFile(driver, `import { retainSdkGrowthFailure } from ${JSON.stringify(new URL("./sdk-growth-failure-retention.mts", import.meta.url).href)};
-await retainSdkGrowthFailure({ code: 3 }, ${JSON.stringify(destination(alias))});
-`);
-    const captured = await execute(process.execPath, [driver]);
+    const driver = await materializeDriver(directory, "alias-rejection.ts");
+    const target = destination(alias);
+    const captured = await execute(process.execPath,
+      [driver, target.directory, target.artifact, target.checkoutSha, target.producerVersion]);
     assert.equal(captured.stderr, "sdk-growth-retention-failed\n");
     assert.equal(captured.stdout, "");
     await assert.rejects(bytes(directory), { code: "ENOENT" });
@@ -302,14 +317,9 @@ test("exclusive creation and invalid destinations preserve the primary assertion
       try { assert.equal(3, 2); } catch (error) { primary = error; }
       await assert.rejects(async () => { await retainSdkGrowthFailure(result, target); throw primary; },
         error => error === primary);
-      const driver = join(directory, "retention.mts");
-      await writeFile(driver, `import assert from "node:assert/strict";
-import { retainSdkGrowthFailure } from ${JSON.stringify(new URL("./sdk-growth-failure-retention.mts", import.meta.url).href)};
-let primary; try { assert.equal(3, 2); } catch (error) { primary = error; }
-await retainSdkGrowthFailure({ code: 3, stdout: ${JSON.stringify(JSON.stringify(report))} }, ${JSON.stringify(target)});
-try { throw primary; } catch (error) { assert.equal(error, primary); }
-`);
-      const captured = await execute(process.execPath, [driver]);
+      const driver = await materializeDriver(directory, "retention.ts");
+      const captured = await execute(process.execPath,
+        [driver, target.directory, target.artifact, target.checkoutSha, target.producerVersion, JSON.stringify(report)]);
       assert.equal(captured.stderr, "sdk-growth-retention-failed\n");
       assert.equal(captured.stdout, "");
       assert.equal(await readFile(sentinel, "utf8"), "untouched");

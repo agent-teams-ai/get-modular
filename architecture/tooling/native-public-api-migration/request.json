@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "kind": "foundation:public-api-native-transition:1",
+  "releasedRoot": "historical",
+  "review": {
+    "kind": "foundation:public-api-native-migration:review:1",
+    "from": "7.58.12",
+    "to": "typescript-native/7.0.2",
+    "baselineSourceCommit": "99816e452630715558306db2370baa2af49575e6",
+    "policyDigest": "sha256:2c45409775824b1fd0c83124cb88aa2cc7bcfa913dd14440b96d3adb942fe2ba",
+    "toolDiffDigest": "sha256:f7f1310d42d07b848945c04b03830ccf4a2443787e3a409a12bd97eec18e89ea",
+    "packages": [
+      {
+        "packageName": "@get-modular/core",
+        "baselinePath": "architecture/public-api/core.json",
+        "baselineDigest": "sha256:7c9b6fdce722a2ab79243cfd6e9ac22f73b291d776abfcf0b698f292e0578d52",
+        "archiveDigest": "sha256:7943f054427282b68cd57e3f790acca62e14cbae67ea62b227f363a8d2614328",
+        "archiveIntegrity": "sha512-B7DuUnplex2C67g5OUj5e/AbgrVndH+cEPb74foNMaVWw4qdMmUt8c9pcvlrHVpcTvHBMraA0JIXYO2NI2Q+wA==",
+        "configDigest": "sha256:3a3a416b4ceb4ff438ad15d4c9ed20cce8e1ed7401fb47b434b4703d5e126f8f",
+        "releasedInputsDigest": "sha256:05319c3b0426f73ef64066884db9b2bc3564303fd6aaa9e1bb014394ad4f0ad7",
+        "nativeReleasedDigest": "sha256:4eeb030df3149239ed7572f91e5cd48b761a4e66ac95a72364c6b4e57051c733"
+      },
+      {
+        "packageName": "@get-modular/assembly",
+        "baselinePath": "architecture/public-api/assembly.json",
+        "baselineDigest": "sha256:6a4a9b02faa93b837e797bbbeeaaa8b0ec968cd7ab968353c4d82a17e3b74c93",
+        "archiveDigest": "sha256:6112f57755ff9cf3f7b3379b8f932421499cf5db3320b7e4c3aefd998ec36862",
+        "archiveIntegrity": "sha512-9huRWsDE7TZAWA4AV5D2kbC3eWjoyQrKGi0DTum9LcmuFrjDd4XR9hOYEDaq4H/9OCcOByyiJCmxCtd4DTqM5w==",
+        "configDigest": "sha256:aef2f062f04186974b2b16b64b29b9c2a209acc8f310c04398b5c6e663eecc59",
+        "releasedInputsDigest": "sha256:4eb0566426133fbfa50ddf223cd66f61cf39b4292caaa243da4be3eeeb4037c3",
+        "nativeReleasedDigest": "sha256:505ec73d758704e1b692be5d5ad8886bbd50556dea99b8dfc7209d46c591c06d"
+      }
+    ]
+  },
+  "packages": [
+    {
+      "packageName": "@get-modular/core",
+      "baselineInputPath": "baseline-core.json",
+      "archivePath": "core.tgz",
+      "configPath": "historical/packages/core/tsconfig.json"
+    },
+    {
+      "packageName": "@get-modular/assembly",
+      "baselineInputPath": "baseline-assembly.json",
+      "archivePath": "assembly.tgz",
+      "configPath": "historical/packages/assembly/tsconfig.json"
+    }
+  ],
+  "configurationFiles": [
+    {
+      "path": "tsconfig.base.json",
+      "inputPath": "historical/tsconfig.base.json"
+    }
+  ]
+}

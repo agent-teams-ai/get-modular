@@ -6,7 +6,7 @@ import test from 'node:test';
 import { runM3NodeRow } from '../qualification-support/m3-node-row.mjs';
 
 // Admission-only fixtures use nonexistent tools and archive. No candidate,
-// installation or complete Node282 inventory is executed by these tests.
+// installation or complete Node272 inventory is executed by these tests.
 async function fixture(t) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'gm-node-row-TEST-')));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -22,7 +22,7 @@ async function fixture(t) {
     archive: { path: join(root, 'archive.tgz'),
       identity: { sha256: 'c'.repeat(64), integrity: `sha512-${'A'.repeat(86)}==` } },
     toolchain: { node: program('node'), npm: program('npm'),
-      compilers: ['typescript', 'typescript-minimum'].map(name => ({ name, ...program(name) })),
+      compilers: ['typescript'].map(name => ({ name, ...program(name) })),
       closures: [{ root: join(root, 'tools'), entries: [] }] },
     outputDirectory: join(root, 'output'), captureDirectory: join(root, 'capture'),
   } };

@@ -1,3 +1,4 @@
+import { assertCompilerFloor } from "./compiler-floor.ts";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { access, readFile } from "node:fs/promises";
@@ -21,7 +22,7 @@ const CMS_PATH = "architecture/sdk-growth/evidence/consumer-module-standard.json
 const FEASIBILITY_PATH = "architecture/sdk-growth/evidence/p0-feasibility.json";
 const ROOT_CLASSIFICATION_PATH = "architecture/sdk-growth/root-classification.json";
 const CMS_SHA256 = "33b41d5babf0a431c97e8e596a56e6ec1557ba1a0b26d39bf23e13d9a19e1fbd";
-const SDK_COMMAND = "node architecture/checks/sdk-growth.mjs && node --test tests/sdk-growth.test.mjs && node tests/qualification/sdk-growth-admission.mjs && node tests/qualification/sdk-growth-packed-consumers.mjs && node tests/qualification/sdk-growth-registry-consumer.mjs";
+const SDK_COMMAND = "node architecture/checks/compiler-floor.ts && pnpm sdk-growth:typecheck && node architecture/checks/sdk-growth.mjs && node --test tests/sdk-growth.test.mjs && node tests/qualification/sdk-growth-admission.mjs && node tests/qualification/sdk-growth-packed-consumers.mjs && node tests/qualification/sdk-growth-registry-consumer.ts";
 const OBSOLETE_ACTIVE_RECORDS = Object.freeze([
   "architecture/sdk-growth/activation.json",
   "architecture/sdk-growth/evidence/completion.json",
@@ -33,8 +34,8 @@ const OBSOLETE_ACTIVE_RECORDS = Object.freeze([
 ]);
 const FOUNDATION = Object.freeze({
   package: "@agent-teams/engineering-foundation",
-  version: "1.7.4",
-  integrity: "sha512-BU9SqHvrPYtizl0u1J1UwGl89GmfHsKrwvExY7v8bpa2AD0C9YS71qDHIxcZU1zfzzORGk1SjJwNrPXR5MmZRA==",
+  version: "1.10.0",
+  integrity: "sha512-k1mI8y/bm6GQtge+QCkANrufyLKi0f6YZlHXCMKr4QpGb97/86j9WdYVhgG2//C2cAtSRmmHmhOtnrpdaksRpw==",
 });
 const RETAINED_FOUNDATION = Object.freeze({
   package: "@agent-teams/engineering-foundation",
@@ -121,6 +122,7 @@ async function validateInstalledFoundation(model) {
     fail("installed Foundation SDK authority export drifted");
   }
   const sdkTarget = manifest.exports["./sdk-growth-authority"].import;
+  assertCompilerFloor();
   const sdk = await import(pathToFileURL(join(dirname(manifestPath), sdkTarget)));
   if (typeof sdk.createSdkGrowthAuthorityVerifier !== "function") fail("installed Foundation SDK verifier is unavailable");
 }
@@ -279,7 +281,8 @@ function validateWiring(model) {
   for (const command of ["check", "check:fast"]) if (!model.packageJson.scripts?.[command]?.includes("pnpm sdk-growth:check")) fail(`${command} bypasses pending SDK guard`);
   const required = ["architecture/checks/sdk-growth.mjs", "architecture/sdk-growth", "tests/sdk-growth.test.mjs",
     "tests/qualification/sdk-growth-admission.mjs", "tests/qualification/sdk-growth-packed-consumers.mjs",
-    "tests/qualification/sdk-growth-registry-consumer.mjs"];
+    "tests/qualification/sdk-growth-registry-consumer.ts", "tests/qualification/sdk-growth-public-import.ts", "tests/qualification/sdk-growth-synthetic-predecessor.ts",
+    "tests/tsconfig.sdk-growth-registry.json"];
   for (const path of required) if (!model.workflow.fullScanPaths?.includes(path)) fail(`changed-file routing omits ${path}`);
 }
 

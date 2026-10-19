@@ -1,12 +1,32 @@
 import { Buffer, isUtf8 } from "node:buffer";
 import { readFileSync } from "node:fs";
-import { dirname, join, posix } from "node:path";
-import ts from "typescript-minimum";
+import { join, posix, resolve } from "node:path";
+import { tmpdir } from "node:os";
+import * as ts from "typescript/unstable/ast";
+import { SymbolFlags, DiagnosticCategory, type Symbol as NativeSymbol, type Type } from "typescript/unstable/async";
+import { withTypeScriptProject, typeScriptLibraryDirectory } from "./typescript-project.ts";
 
-// Private artifact qualification. The installed, pinned minimum compiler supplies
-// its public JavaScript parser/checker API; neither compiler enters Core's pack.
-const BASE = "/__gm_m1";
-const LIB = "/__gm_m1_lib";
+type Generation = 1 | 2;
+type Surface = "m1" | "m2";
+type DefinitionNode = ts.TypeAliasDeclaration | ts.InterfaceDeclaration | ts.FunctionDeclaration | ts.VariableDeclaration;
+interface Definition { module: string; name: string; node: DefinitionNode; statement: ts.Statement; kind: "type" | "value" }
+interface ImportEdge { module: string; name: string; typeOnly: boolean }
+interface ExportEdge { module?: string | undefined; name: string; typeOnly: boolean }
+interface DeclarationModule {
+  path: string;
+  ast?: ts.SourceFile | undefined;
+  definitions: Map<string, Definition>;
+  imports: Map<string, ImportEdge>;
+  exports: Map<string, ExportEdge>;
+  edges: Set<string>;
+}
+interface ResolvedExport { definition: Definition; typeOnly: boolean }
+interface PendingType { node: ts.TypeNode; substitutions: Map<ts.TypeParameterDeclaration, PendingType> }
+
+// Private artifact qualification. The installed, pinned TypeScript 7 compiler supplies
+// its explicit native snapshot/AST/checker API; neither compiler enters Core's pack.
+const BASE = resolve(tmpdir(), "__gm_m1").replaceAll("\\", "/");
+const LIB = resolve(tmpdir(), "__gm_m1_lib").replaceAll("\\", "/");
 const ROOT = "dist/index.d.ts";
 const VALUES = ["compileComposition", "defineModule", "many", "optional", "required"];
 const TYPES = ["CompileCompositionResult", "CompositionPlan", "CompositionProfile",
@@ -15,58 +35,53 @@ const LIB_NAMES = ["lib.es5.d.ts", "lib.decorators.d.ts", "lib.decorators.legacy
 const LIB_TYPES = new Set(["Array", "ReadonlyArray", "Promise", "Readonly", "Record",
   "Pick", "Omit", "Exclude", "Extract", "Partial", "Required", "NonNullable",
   "Uppercase", "Lowercase", "Capitalize", "Uncapitalize"]);
-let libraryTexts;
+let libraryTexts: readonly (readonly [string, string])[] | undefined;
 
 class InvalidDeclarations extends Error {
-  constructor(reason) {
+  readonly code: string;
+  readonly reason: string;
+  constructor(reason: string) {
     super("Invalid M1 declaration closure.");
     this.code = "declarations.invalid";
     this.reason = reason;
   }
 }
-function fail(reason) { throw new InvalidDeclarations(reason); }
-function need(condition, reason) { if (!condition) fail(reason); }
-function same(left, right) { return JSON.stringify(left) === JSON.stringify(right); }
-function modifiers(node, kind) { return node.modifiers?.some(item => item.kind === kind) ?? false; }
-function identifier(node) {
+function fail(reason: string): never { throw new InvalidDeclarations(reason); }
+function need(condition: unknown, reason: string): asserts condition { if (!condition) fail(reason); }
+function same(left: unknown, right: unknown) { return JSON.stringify(left) === JSON.stringify(right); }
+function modifiers(node: ts.Node, kind: ts.SyntaxKind) {
+  return (ts.isVariableStatement(node) || ts.isTypeAliasDeclaration(node) || ts.isInterfaceDeclaration(node)
+    || ts.isFunctionDeclaration(node) || ts.isTypeParameterDeclaration(node))
+    && (node.modifiers?.some(item => item.kind === kind) ?? false);
+}
+function identifier(node: ts.Node | undefined) {
   need(node && ts.isIdentifier(node), "syntax-profile");
   return node.text;
 }
-function walk(root, visit) {
-  const pending = [[root, 0]];
+async function walk(root: ts.Node, visit: (node: ts.Node) => void | Promise<void>) {
+  const pending: [ts.Node, number][] = [[root, 0]];
   let count = 0;
   while (pending.length) {
-    const [node, depth] = pending.pop();
+    const entry = pending.pop(); need(entry, "syntax-budget");
+    const [node, depth] = entry;
     need(++count <= 25_000 && depth <= 96, "syntax-budget");
-    visit(node);
-    ts.forEachChild(node, child => { pending.push([child, depth + 1]); });
+    await visit(node);
+    node.forEachChild(child => { pending.push([child, depth + 1]); });
   }
 }
-function source(name, text) {
-  return ts.createSourceFile(name, text, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
-}
-function hostFor(sources, resolve) {
-  return {
-    getSourceFile: name => sources.get(name),
-    readFile: name => sources.get(name)?.text,
-    fileExists: name => sources.has(name),
-    directoryExists: name => [...sources.keys()].some(file => file.startsWith(`${name}/`)),
-    getDirectories: () => [],
-    getCurrentDirectory: () => BASE,
-    getCanonicalFileName: name => name,
-    useCaseSensitiveFileNames: () => true,
-    getNewLine: () => "\n",
-    getDefaultLibFileName: () => `${LIB}/lib.es5.d.ts`,
-    realpath: name => name,
-    writeFile: () => fail("unexpected-write"),
-    resolveModuleNames: (names, containing) => names.map(name => resolve?.(name, containing)),
-    resolveTypeReferenceDirectives: names => names.map(() => undefined),
-  };
+async function declarationsOf(symbol: NativeSymbol | undefined) {
+  if (symbol === undefined) return;
+  const declarations: ts.Node[] = [];
+  for (const handle of symbol.declarations) {
+    const node = await handle.resolve(); need(node, "symbol-reference");
+    declarations.push(node);
+  }
+  return declarations;
 }
 
 // These rows transcribe the effective diagnostic contract's phase, coordinate
 // and reason algebra (ADR-0007/0018), not the candidate's declarations/catalog.
-const REASONS = [
+const REASONS: readonly (readonly [string, string, string, string])[] = [
   ["decode.invalid-json", "decode", "", "invalid-json"],
   ["decode.duplicate-key", "decode", "", "duplicate-key"],
   ["schema.unsupported-version", "schema", "", "unsupported-version"],
@@ -104,18 +119,18 @@ const LIMITS = {
   graph: ["graphEdges", "graphDepth"],
   output: ["diagnostics", "diagnosticPathSegments"],
 };
-const quote = value => JSON.stringify(value);
-const literals = values => values.map(quote).join(" | ");
-const record = (fields, readonly = true) => `{ ${Object.entries(fields)
+const quote = (value: string) => JSON.stringify(value);
+const literals = (values: readonly string[]) => values.map(quote).join(" | ");
+const record = (fields: Readonly<Record<string, string>>, readonly = true) => `{ ${Object.entries(fields)
   .map(([key, type]) => `${readonly ? "readonly " : ""}${key}: ${type};`).join(" ")} }`;
-const coordinate = names => names ? record(Object.fromEntries(names.split(" ").map(name => [name, "string"])))
+const coordinate = (names: string) => names ? record(Object.fromEntries(names.split(" ").map(name => [name, "string"])))
   : "{ readonly [key: string]: never }";
-function diagnostic(code, phase, names, details) {
+function diagnostic(code: string, phase: string, names: string, details: string) {
   return record({ code: quote(code), phase: quote(phase), path: "readonly EPath[]",
     coordinate: coordinate(names), details });
 }
 
-function contractSource(generation, surface) {
+function contractSource(generation: Generation, surface: Surface) {
   // Independent structural expectations from the closed wire contract and the
   // ADR-0006 object signature. Intersections and mapped aliases in the subject
   // may implement these shapes; file text and source hashes are not oracles.
@@ -129,7 +144,7 @@ function contractSource(generation, surface) {
   const many = record({ kind: '"many"', min: "number", max: "number", order: '"profile"' }, false);
   const profile = { kind: '"get-modular.composition-profile"', schemaVersion: "1", profileId: "string",
     roots: "readonly string[]", selections: "readonly ESelection[]", bindings: "readonly EBinding[]" };
-  const reasons = generation === 1 ? REASONS : [
+  const reasons: readonly (readonly [string, string, string, string])[] = generation === 1 ? REASONS : [
     ["input.invalid-byte-carrier", "decode", "", "not-uint8array|unusable-view|shared-storage|not-document-list"],
     ...REASONS, ["binding.duplicate-record", "binding", "implementationId slotId", "duplicate"],
   ];
@@ -246,10 +261,28 @@ function contractSource(generation, surface) {
   ].join("\n");
 }
 
-function audit(files, generation, surface) {
-  need(files instanceof Map && files.size <= 512, "input");
-  const sources = new Map();
-  const modules = new Map();
+// Resolve only actual native declaration kinds that carry a type node. Other
+// declaration handles have no type, matching the previous optional property read.
+function declarationType(node: ts.Node): ts.TypeNode | undefined {
+  if (ts.isVariableOrParameterDeclaration(node) || ts.isPropertySignatureDeclaration(node)
+    || ts.isPropertyDeclaration(node) || ts.isFunctionLikeDeclaration(node)
+    || ts.isTypeAliasDeclaration(node) || ts.isShorthandPropertyAssignment(node)) return node.type;
+  return undefined;
+}
+
+function callableSignature(definition: Definition): ts.FunctionDeclaration | ts.FunctionTypeNode {
+  const node = definition.node;
+  if (ts.isFunctionDeclaration(node)) return node;
+  need(ts.isVariableDeclaration(node) && node.type && ts.isFunctionTypeNode(node.type), "callable");
+  return node.type;
+}
+
+function isInputMap(value: unknown): value is Map<unknown, unknown> { return value instanceof Map; }
+
+async function audit(files: unknown, generation: Generation, surface: Surface) {
+  need(isInputMap(files) && files.size <= 512, "input");
+  const texts = new Map<string, string>();
+  const modules = new Map<string, DeclarationModule>();
   let bytes = 0;
   for (const [path, content] of files) {
     need(typeof path === "string" && Buffer.isBuffer(content), "input");
@@ -266,18 +299,26 @@ function audit(files, generation, surface) {
     need(!text.includes("\0"), "utf8");
     need(!/sourceMappingURL|sourceURL/u.test(text), "source-map");
     need(!/@ts-(?:ignore|expect-error|nocheck)|\/\/\/\s*<\s*(?:reference|amd-)/iu.test(text), "reference-directive");
-    const ast = source(`${BASE}/${path}`, text);
-    sources.set(ast.fileName, ast);
-    modules.set(path, { path, ast, definitions: new Map(), imports: new Map(), exports: new Map(), edges: new Set() });
+    texts.set(`${BASE}/${path}`, text);
+    modules.set(path, { path, definitions: new Map(), imports: new Map(), exports: new Map(), edges: new Set() });
   }
   need(modules.has(ROOT), "missing-root");
-  const options = { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext,
-    moduleResolution: ts.ModuleResolutionKind.Bundler, strict: true, exactOptionalPropertyTypes: true,
-    noEmit: true, noLib: true, skipLibCheck: false, types: [] };
-  const syntax = ts.createProgram([...sources.keys()], { ...options, noResolve: true }, hostFor(sources));
-  need(syntax.getSyntacticDiagnostics().length === 0, "parse");
+  if (!libraryTexts) {
+    const directory = typeScriptLibraryDirectory();
+    // Only these exact standard libraries of the pinned native compiler enter
+    // the otherwise closed virtual filesystem.
+    libraryTexts = LIB_NAMES.map(name => [name, readFileSync(join(directory, name), "utf8")]);
+  }
+  for (const [name, text] of libraryTexts) texts.set(`${LIB}/${name}`, text);
+  texts.set(`${BASE}/contract.ts`, contractSource(generation, surface));
+  return withTypeScriptProject(texts, { strict: true, exactOptionalPropertyTypes: true }, async project => {
+  const { program, checker } = project;
+  const sources = new Map<string, ts.SourceFile | undefined>();
+  for (const name of texts.keys()) sources.set(name, await program.getSourceFile(name));
+  need((await program.getSyntacticDiagnostics()).length === 0, "parse");
+  for (const [path, module] of modules) module.ast = sources.get(`${BASE}/${path}`);
 
-  function target(specifier, from) {
+  function target(specifier: string, from: string) {
     need(typeof specifier === "string" && /^(?:\.\/|\.\.\/)[A-Za-z0-9_./-]+\.js$/u.test(specifier), "module-reference");
     const js = posix.normalize(posix.join(posix.dirname(from), specifier));
     let relative = posix.relative(posix.dirname(from), js);
@@ -287,22 +328,25 @@ function audit(files, generation, surface) {
     need(modules.has(declaration), "missing-declaration");
     return declaration;
   }
-  const definitionsByStatement = new Map();
-  function add(map, name, value) {
+  const definitionsByStatement = new Map<ts.Node, Definition>();
+  function add<Value>(map: Map<string, Value>, name: string, value: Value) {
     need(!map.has(name), "duplicate-symbol");
     map.set(name, value);
   }
   for (const module of modules.values()) {
     const { ast, path } = module;
-    need(ts.isExternalModule(ast), "ambient");
+    need(ast, "parse");
+    need(ast.externalModuleIndicator !== undefined, "ambient");
+    // Native reference arrays complement the raw reference-directive refusal
+    // above, which also rejects no-default-lib before parsing.
     need(!ast.referencedFiles.length && !ast.typeReferenceDirectives.length
-      && !ast.libReferenceDirectives.length && !ast.hasNoDefaultLib, "reference-directive");
-    walk(ast, node => {
+      && !ast.libReferenceDirectives.length, "reference-directive");
+    await walk(ast, node => {
       need(!ts.isModuleDeclaration(node) && !ts.isNamespaceExportDeclaration(node), "ambient");
       need(!ts.isTypeQueryNode(node) && !(ts.isImportTypeNode(node) && node.isTypeOf), "type-query");
       need(node.kind !== ts.SyntaxKind.AnyKeyword, "any-type");
-      need(!ts.isTypeParameterDeclaration(node) || !node.default, "generic-default");
-      need(!ts.isComputedPropertyName(node) && !ts.isMethodSignature(node)
+      need(!ts.isTypeParameterDeclaration(node) || !node.defaultType, "generic-default");
+      need(!ts.isComputedPropertyName(node) && !ts.isMethodSignatureDeclaration(node)
         && !ts.isCallSignatureDeclaration(node) && !ts.isConstructSignatureDeclaration(node)
         && !ts.isConstructorTypeNode(node) && !ts.isTypePredicateNode(node), "type-syntax");
       if (ts.isFunctionTypeNode(node)) {
@@ -325,7 +369,7 @@ function audit(files, generation, surface) {
         const dependency = target(statement.moduleSpecifier.text, path);
         module.edges.add(dependency);
         for (const item of clause.namedBindings.elements) add(module.imports, identifier(item.name), {
-          module: dependency, name: identifier(item.propertyName ?? item.name), typeOnly: clause.isTypeOnly || item.isTypeOnly,
+          module: dependency, name: identifier(item.propertyName ?? item.name), typeOnly: clause.phaseModifier === ts.SyntaxKind.TypeKeyword || item.isTypeOnly,
         });
       } else if (ts.isExportDeclaration(statement)) {
         need(statement.exportClause && ts.isNamedExports(statement.exportClause) && !statement.attributes, "export-profile");
@@ -339,19 +383,24 @@ function audit(files, generation, surface) {
           module: dependency, name: identifier(item.propertyName ?? item.name), typeOnly: statement.isTypeOnly || item.isTypeOnly,
         });
       } else {
-        let node = statement;
+        let node: DefinitionNode;
         if (ts.isVariableStatement(statement)) {
           need(statement.declarationList.flags & ts.NodeFlags.Const, "callable");
           need(statement.declarationList.declarations.length === 1, "syntax-profile");
-          node = statement.declarationList.declarations[0];
+          const declaration = statement.declarationList.declarations[0];
+          need(declaration, "syntax-profile");
+          node = declaration;
           need(!node.initializer && node.type && ts.isFunctionTypeNode(node.type), "callable");
-        } else need(ts.isTypeAliasDeclaration(node) || ts.isInterfaceDeclaration(node)
-          || ts.isFunctionDeclaration(node), "syntax-profile");
+        } else {
+          need(ts.isTypeAliasDeclaration(statement) || ts.isInterfaceDeclaration(statement)
+            || ts.isFunctionDeclaration(statement), "syntax-profile");
+          node = statement;
+        }
         need(!modifiers(statement, ts.SyntaxKind.DefaultKeyword), "export-profile");
         if (ts.isFunctionDeclaration(node)) need(!node.body && node.type && !node.asteriskToken, "callable");
         const name = identifier(node.name);
         const kind = ts.isTypeAliasDeclaration(node) || ts.isInterfaceDeclaration(node) ? "type" : "value";
-        const definition = { module: path, name, node, statement, kind };
+        const definition: Definition = { module: path, name, node, statement, kind };
         add(module.definitions, name, definition);
         definitionsByStatement.set(statement, definition);
         if (modifiers(statement, ts.SyntaxKind.ExportKeyword)) add(module.exports, name, { name, typeOnly: kind === "type" });
@@ -359,26 +408,30 @@ function audit(files, generation, surface) {
     }
     for (const name of module.imports.keys()) need(!module.definitions.has(name), "duplicate-symbol");
   }
-  const reachedModules = new Set();
+  const reachedModules = new Set<string>();
   const pending = [ROOT];
   while (pending.length) {
-    const path = pending.pop();
+    const path = pending.pop(); need(path, "missing-declaration");
     if (reachedModules.has(path)) continue;
     reachedModules.add(path);
-    pending.push(...modules.get(path).edges);
+    const module = modules.get(path); need(module, "missing-declaration");
+    pending.push(...module.edges);
   }
   need(reachedModules.size === modules.size, "unreachable-module");
 
-  function exported(path, name, active = new Set()) {
+  function exported(path: string, name: string, active = new Set<string>()): ResolvedExport {
     const key = `${path}:${name}`;
     need(!active.has(key), "alias-cycle");
     active.add(key);
-    const module = modules.get(path);
+    const module = modules.get(path); need(module, "missing-declaration");
     const edge = module.exports.get(name);
     need(edge, "missing-symbol");
-    let result;
+    let result: ResolvedExport;
     if (edge.module) result = exported(edge.module, edge.name, active);
-    else if (module.definitions.has(edge.name)) result = { definition: module.definitions.get(edge.name), typeOnly: false };
+    else if (module.definitions.has(edge.name)) {
+      const definition = module.definitions.get(edge.name); need(definition, "missing-symbol");
+      result = { definition, typeOnly: false };
+    }
     else {
       const imported = module.imports.get(edge.name);
       need(imported, "missing-symbol");
@@ -390,18 +443,19 @@ function audit(files, generation, surface) {
   }
   const values = surface === "m2" ? [...VALUES, "compileCompositionJson"] : VALUES;
   const expectedNames = [...values, ...TYPES].sort();
-  need(same([...modules.get(ROOT).exports.keys()].sort(), expectedNames), "root-exports");
+  const rootModule = modules.get(ROOT); need(rootModule?.ast, "missing-root");
+  need(same([...rootModule.exports.keys()].sort(), expectedNames), "root-exports");
   const roots = expectedNames.map(name => {
     const { definition, typeOnly } = exported(ROOT, name);
     const kind = values.includes(name) ? "value" : "type";
     need(definition.kind === kind && (kind !== "value" || !typeOnly), "export-kind");
     need(definition.name === name && (name === "compileComposition" || name === "compileCompositionJson"
       ? definition.module === ROOT : definition.module.startsWith("dist/features/authoring/")), "export-origin");
-    if (kind === "type") need(!definition.node.typeParameters?.length, "public-generic");
+    if (kind === "type") need(!ts.isVariableDeclaration(definition.node) && !definition.node.typeParameters?.length, "public-generic");
     return definition;
   });
   for (const definition of roots.filter(item => item.kind === "value")) {
-    const signature = ts.isFunctionDeclaration(definition.node) ? definition.node : definition.node.type;
+    const signature = callableSignature(definition);
     const name = definition.name;
     const arity = name === "required" || name === "optional" ? 0 : 1;
     need(signature.parameters.length === arity && signature.type, "callable");
@@ -409,10 +463,11 @@ function audit(files, generation, surface) {
       && !parameter.dotDotDotToken && !parameter.initializer && identifier(parameter.name) !== "this", "callable");
     const parameters = signature.typeParameters ?? [];
     if (name === "defineModule") {
-      need(parameters.length === 1 && parameters[0].constraint && modifiers(parameters[0], ts.SyntaxKind.ConstKeyword), "helper-generic");
-      const identity = node => ts.isTypeReferenceNode(node) && ts.isIdentifier(node.typeName)
-        && node.typeName.text === parameters[0].name.text && !node.typeArguments?.length;
-      need(identity(signature.parameters[0].type) && identity(signature.type), "helper-generic");
+      const parameter = parameters[0];
+      need(parameters.length === 1 && parameter?.constraint && modifiers(parameter, ts.SyntaxKind.ConstKeyword), "helper-generic");
+      const identity = (node: ts.TypeNode | undefined) => node !== undefined && ts.isTypeReferenceNode(node) && ts.isIdentifier(node.typeName)
+        && node.typeName.text === parameter.name.text && !node.typeArguments?.length;
+      need(identity(signature.parameters[0]?.type) && identity(signature.type), "helper-generic");
     } else need(parameters.length === 0, "callable");
   }
   const rootDefinitions = new Set(roots);
@@ -422,105 +477,97 @@ function audit(files, generation, surface) {
     need(definition.kind !== "type" || definition.module !== ROOT, "declaration-owner");
   }
 
-  need(ts.version === "5.8.3", "toolchain");
-  if (!libraryTexts) {
-    const directory = dirname(ts.getDefaultLibFilePath({ target: ts.ScriptTarget.ES5 }));
-    // The only filesystem reads: three explicit standard libraries belonging to
-    // this installed compiler. No candidate or dependency resolution uses fs.
-    libraryTexts = LIB_NAMES.map(name => [name, readFileSync(join(directory, name), "utf8")]);
-  }
-  for (const [name, text] of libraryTexts) sources.set(`${LIB}/${name}`, source(`${LIB}/${name}`, text));
-  sources.set(`${BASE}/contract.ts`, source(`${BASE}/contract.ts`, contractSource(generation, surface)));
-  const host = hostFor(sources, (specifier, containing) => {
-    need(containing.startsWith(`${BASE}/`), "module-reference");
-    return { resolvedFileName: `${BASE}/${target(specifier, containing.slice(BASE.length + 1))}`,
-      extension: ts.Extension.Dts, isExternalLibraryImport: false };
-  });
-  const program = ts.createProgram([...sources.keys()], options, host);
-  const checker = program.getTypeChecker();
   if (surface === "m2") {
-    const contract = sources.get(`${BASE}/contract.ts`);
-    const carrierDeclaration = contract.statements.find(node =>
-      ts.isTypeAliasDeclaration(node) && node.name.text === "EByteCarrier");
-    const carrier = checker.getTypeFromTypeNode(carrierDeclaration.type);
-    const carrierSymbol = carrier.getSymbol();
+    const contract = sources.get(`${BASE}/contract.ts`); need(contract, "type-contract");
+    const carrierDeclaration = contract.statements.filter(ts.isTypeAliasDeclaration).find(node => node.name.text === "EByteCarrier");
+    need(carrierDeclaration, "library-type");
+    const carrier = await checker.getTypeFromTypeNode(carrierDeclaration.type); need(carrier?.isTypeReference(), "library-type");
+    const carrierSymbol = await carrier.getSymbol();
     need(carrierSymbol?.name === "Uint8Array"
-      && carrierSymbol.getDeclarations()?.every(node =>
+      && (await declarationsOf(carrierSymbol))?.every(node =>
         node.getSourceFile() === sources.get(`${LIB}/lib.es5.d.ts`)), "library-type");
-    const listDeclaration = contract.statements.find(node =>
-      ts.isTypeAliasDeclaration(node) && node.name.text === "EByteList");
-    const readonlyList = checker.getTypeFromTypeNode(listDeclaration.type);
-    const listSymbol = readonlyList.getSymbol();
-    const carrierArguments = checker.getTypeArguments(carrier);
+    const listDeclaration = contract.statements.filter(ts.isTypeAliasDeclaration).find(node => node.name.text === "EByteList");
+    need(listDeclaration, "library-type");
+    const readonlyList = await checker.getTypeFromTypeNode(listDeclaration.type); need(readonlyList?.isTypeReference(), "library-type");
+    const listSymbol = await readonlyList.getSymbol();
+    const carrierArguments = await checker.getTypeArguments(carrier);
+    const carrierTarget = await carrier.getTarget();
     // Trusted reference targets fix members and modifiers; exact instantiated
     // arguments fix the carrier contract. Verify every union/intersection leaf
     // before canonicalizing, without comparing intersected method overloads.
-    function* components(type) {
+    async function* components(type: Type): AsyncGenerator<Type> {
       const pending = [type];
-      const seen = new Set();
+      const seen = new Set<Type>();
       while (pending.length) {
-        const component = pending.pop();
+        const component = pending.pop(); need(component, "raw-input");
         if (seen.has(component)) continue;
         seen.add(component);
-        if (component.isUnion() || component.isIntersection()) pending.push(...component.types);
+        if (component.isUnionType() || component.isIntersectionType()) pending.push(...await component.getTypes());
         else yield component;
       }
     }
-    function verifyCarrier(type) {
-      for (const alternative of components(type)) {
-        need(alternative.getSymbol() === carrierSymbol && alternative.target === carrier.target,
+    async function verifyCarrier(type: Type) {
+      for await (const alternative of components(type)) {
+        need(alternative.isTypeReference() && await alternative.getSymbol() === carrierSymbol && await alternative.getTarget() === carrierTarget,
           "raw-carrier");
-        const arguments_ = checker.getTypeArguments(alternative);
+        const arguments_ = await checker.getTypeArguments(alternative);
         need(arguments_.length === carrierArguments.length
           && arguments_.every((argument, index) => argument === carrierArguments[index]), "type-contract");
       }
     }
     const raw = roots.find(item => item.name === "compileCompositionJson");
-    const signature = ts.isFunctionDeclaration(raw.node) ? raw.node : raw.node.type;
-    const inputNode = signature.parameters[0].type;
-    const input = checker.getTypeFromTypeNode(inputNode);
+    need(raw, "raw-input");
+    const signature = callableSignature(raw);
+    const inputNode = signature.parameters[0]?.type; need(inputNode, "raw-input");
+    const input = await checker.getTypeFromTypeNode(inputNode); need(input, "raw-input");
     // Verify every list/carrier component before the contract canonicalizes
     // field values; wrapper keys and modifiers remain in the semantic check.
-    for (const arm of input.isUnion() ? input.types : [input]) {
-      const declarations = checker.getPropertyOfType(arm, "declarations");
-      const profile = checker.getPropertyOfType(arm, "profile");
+    for (const arm of input.isUnionType() ? await input.getTypes() : [input]) {
+      const declarations = await checker.getPropertyOfType(arm, "declarations");
+      const profile = await checker.getPropertyOfType(arm, "profile");
       need(declarations && profile, "raw-input");
-      const list = checker.getTypeOfSymbolAtLocation(declarations, inputNode);
-      const profileType = checker.getTypeOfSymbolAtLocation(profile, inputNode);
-      verifyCarrier(profileType);
-      for (const alternative of components(list)) {
-        need(checker.isArrayType(alternative) && !checker.isTupleType(alternative), "raw-input");
-        need(alternative.getSymbol() === listSymbol && alternative.target === readonlyList.target,
+      const list = await checker.getTypeOfSymbolAtLocation(declarations, inputNode);
+      const profileType = await checker.getTypeOfSymbolAtLocation(profile, inputNode);
+      await verifyCarrier(profileType);
+      for await (const alternative of components(list)) {
+        need(await checker.isArrayType(alternative) && !await checker.isTupleType(alternative), "raw-input");
+        need(alternative.isTypeReference() && await alternative.getSymbol() === listSymbol && await alternative.getTarget() === await readonlyList.getTarget(),
           "type-contract");
-        const arguments_ = checker.getTypeArguments(alternative);
-        need(arguments_.length === 1, "raw-carrier");
-        verifyCarrier(arguments_[0]);
+        const arguments_ = await checker.getTypeArguments(alternative);
+        const argument = arguments_[0];
+        need(arguments_.length === 1 && argument, "raw-carrier");
+        await verifyCarrier(argument);
       }
       // Reject a declaration-list tuple spelled directly or through transparent
       // owned aliases. Carrier aliases and intermediate type computations are
       // governed by the nominal check and exact type contract, not their syntax.
-      const emptySubstitutions = new Map();
-      const pendingTypes = (declarations.getDeclarations() ?? []).map(node => node.type).filter(Boolean)
+      const emptySubstitutions = new Map<ts.TypeParameterDeclaration, PendingType>();
+      const pendingTypes: PendingType[] = (await declarationsOf(declarations) ?? [])
+        .map(declarationType)
+        .filter((node): node is ts.TypeNode => node !== undefined)
         .map(node => ({ node, substitutions: emptySubstitutions }));
-      const seenTypes = new Map();
+      const seenTypes = new Map<ts.TypeNode, Set<Map<ts.TypeParameterDeclaration, PendingType>>>();
       let visits = 0;
       while (pendingTypes.length) {
-        const { node, substitutions } = pendingTypes.pop();
+        const entry = pendingTypes.pop(); need(entry, "raw-input");
+        const { node, substitutions } = entry;
         let seen = seenTypes.get(node);
         if (seen?.has(substitutions)) continue;
         if (!seen) seenTypes.set(node, seen = new Set());
         seen.add(substitutions);
         need(++visits <= 25_000, "syntax-budget");
         need(!ts.isTupleTypeNode(node), "raw-input");
-        const enqueue = child => pendingTypes.push({ node: child, substitutions });
+        const enqueue = (child: ts.TypeNode) => pendingTypes.push({ node: child, substitutions });
         if (ts.isParenthesizedTypeNode(node) || ts.isTypeOperatorNode(node)) {
           enqueue(node.type);
         } else if (ts.isUnionTypeNode(node) || ts.isIntersectionTypeNode(node)) {
           for (const child of node.types) enqueue(child);
         } else if (ts.isTypeReferenceNode(node) || ts.isImportTypeNode(node)) {
-          let symbol = checker.getSymbolAtLocation(ts.isTypeReferenceNode(node) ? node.typeName : node.qualifier);
-          if (symbol?.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
-          for (const declaration of symbol?.getDeclarations() ?? []) {
+          const symbolNode = ts.isTypeReferenceNode(node) ? node.typeName : node.qualifier;
+          need(symbolNode, "symbol-reference");
+          let symbol = await checker.getSymbolAtLocation(symbolNode);
+          if (symbol && symbol.flags & SymbolFlags.Alias) symbol = await checker.getAliasedSymbol(symbol);
+          for (const declaration of await declarationsOf(symbol) ?? []) {
             if (ts.isTypeParameterDeclaration(declaration)) {
               const argument = substitutions.get(declaration);
               if (argument) pendingTypes.push(argument);
@@ -528,14 +575,14 @@ function audit(files, generation, surface) {
               && ts.isTypeAliasDeclaration(declaration)) {
               // Arguments retain their caller's scope; defaults see earlier
               // parameters. Fresh scopes distinguish visits; the budget bounds recursion.
-              const instantiated = new Map();
+              const instantiated = new Map<ts.TypeParameterDeclaration, PendingType>();
               for (const [index, parameter] of (declaration.typeParameters ?? []).entries()) {
                 const argument = node.typeArguments?.[index];
                 if (argument) {
                   instantiated.set(parameter, { node: argument, substitutions });
-                } else if (parameter.default) {
+                } else if (parameter.defaultType) {
                   instantiated.set(parameter, {
-                    node: parameter.default, substitutions: new Map(instantiated),
+                    node: parameter.defaultType, substitutions: new Map(instantiated),
                   });
                 }
               }
@@ -549,20 +596,22 @@ function audit(files, generation, surface) {
       }
     }
   }
-  need(!ts.getPreEmitDiagnostics(program).some(item => item.category === ts.DiagnosticCategory.Error), "type-contract");
-  const rootSymbol = checker.getSymbolAtLocation(modules.get(ROOT).ast);
-  need(rootSymbol && same(checker.getExportsOfModule(rootSymbol).map(item => item.name).sort(), expectedNames), "root-exports");
+  need(![...await program.getProgramDiagnostics(), ...await program.getSyntacticDiagnostics(),
+    ...await program.getBindDiagnostics(), ...await program.getSemanticDiagnostics(), ...await program.getGlobalDiagnostics()].some(item => item.category === DiagnosticCategory.Error), "type-contract");
+  const rootSymbol = await checker.getSymbolAtLocation(rootModule.ast);
+  need(rootSymbol && same((await checker.getExportsOfModule(rootSymbol)).map(item => item.name).sort(), expectedNames), "root-exports");
 
   // Follow declaration references, including uninstantiated constraints and
   // conditional branches. Structural equivalence cannot erase symbol provenance.
-  const reachedDefinitions = new Set();
+  const reachedDefinitions = new Set<Definition>();
   const work = [...roots];
-  function reference(symbol) {
+  async function reference(symbol: NativeSymbol | undefined) {
     need(symbol, "symbol-reference");
-    if (symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
-    const declarations = symbol.getDeclarations();
+    if (symbol.flags & SymbolFlags.Alias) symbol = await checker.getAliasedSymbol(symbol);
+    const declarations = await declarationsOf(symbol);
     need(declarations?.length, "symbol-reference");
-    for (let declaration of declarations) {
+    for (const resolved of declarations) {
+      let declaration: ts.Node = resolved;
       const file = declaration.getSourceFile().fileName;
       if (file.startsWith(`${LIB}/`)) {
         need(LIB_NAMES.includes(file.slice(LIB.length + 1))
@@ -577,13 +626,15 @@ function audit(files, generation, surface) {
     }
   }
   while (work.length) {
-    const definition = work.pop();
+    const definition = work.pop(); need(definition, "symbol-owner");
     if (reachedDefinitions.has(definition)) continue;
     reachedDefinitions.add(definition);
-    walk(definition.node, node => {
-      if (ts.isTypeReferenceNode(node)) reference(checker.getSymbolAtLocation(node.typeName));
-      if (ts.isExpressionWithTypeArguments(node)) reference(checker.getSymbolAtLocation(node.expression));
+    await walk(definition.node, async node => {
+      if (ts.isTypeReferenceNode(node)) await reference(await checker.getSymbolAtLocation(node.typeName));
+      if (ts.isExpressionWithTypeArguments(node)) await reference(await checker.getSymbolAtLocation(node.expression));
       if (ts.isImportTypeNode(node)) {
+        need(ts.isLiteralTypeNode(node.argument) && ts.isStringLiteral(node.argument.literal)
+          && node.qualifier && ts.isIdentifier(node.qualifier), "module-reference");
         const dependency = target(node.argument.literal.text, definition.module);
         const imported = exported(dependency, node.qualifier.text).definition;
         need(imported.kind === "type", "symbol-owner");
@@ -594,16 +645,17 @@ function audit(files, generation, surface) {
   need(reachedDefinitions.size === definitionsByStatement.size, "unreachable-symbol");
   return { modules: [...reachedModules].sort(),
     rootExports: roots.map(({ name, kind }) => ({ name, kind })) };
+  });
 }
 
 // Diagnostic generation and public surface are independent explicit selectors.
 // Historical callers keep the M1 exports even when selecting generation two.
-export function auditM1DeclarationClosure(files, generation = 1, surface = "m1") {
+export async function auditM1DeclarationClosure(files: unknown, generation: number = 1, surface: string = "m1") {
   try {
     need(generation === 1 || generation === 2, "diagnostic-generation");
     need(surface === "m1" || surface === "m2", "public-surface");
     need(surface !== "m2" || generation === 2, "diagnostic-generation");
-    return audit(files, generation, surface);
+    return await audit(files, generation, surface);
   }
   catch (error) {
     if (error instanceof InvalidDeclarations) throw error;

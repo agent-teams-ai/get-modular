@@ -8,8 +8,8 @@ import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { readPackageArchive } from '../qualification-support/support/package-archive.mjs';
-import { auditM1DeclarationClosure } from '../qualification-support/support/m1-declarations-closure.mjs';
-import { auditM1JavaScriptClosure } from '../qualification-support/support/m1-javascript-closure.mjs';
+import { auditM1DeclarationClosure } from '../qualification-support/support/m1-declarations-closure.ts';
+import { auditM1JavaScriptClosure } from '../qualification-support/support/m1-javascript-closure.ts';
 import { prepareM1PackedConsumers, m1NodeEnvironment, m2RuntimeNames as runtimeNames } from '../qualification-support/support/m1-packed-consumers.mjs';
 
 const repo = fileURLToPath(new URL('../../../../', import.meta.url));
@@ -57,10 +57,12 @@ test('packed M2 exposes one root across Node and TypeScript consumers', async t 
   for (const name of ['typescript', 'typescript-minimum']) {
     const manifestPath = require.resolve(`${name}/package.json`);
     const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
-    compilers.push({ name, ...await program(join(dirname(manifestPath), 'bin/tsc'), manifest.version) });
+    assert.equal(manifest.name, 'typescript');
+    assert.equal(manifest.version, '7.0.2', `${name} stays exactly pinned`);
+    if (!compilers.some(compiler => compiler.version === manifest.version)) compilers.push({ name, ...await program(join(dirname(manifestPath), 'bin/tsc'), manifest.version) });
   }
   assert.equal(compilers[0].version, '7.0.2', 'the build compiler remains pinned');
-  assert.equal(compilers[1].version, '5.8.3', 'the minimum consumer compiler is pinned separately from the build compiler');
+  assert.equal(compilers.length, 1, 'equal minimum and current versions execute once');
 
   const packContext = join(temporary, 'pack-context');
   await mkdir(packContext);
@@ -100,9 +102,9 @@ test('packed M2 exposes one root across Node and TypeScript consumers', async t 
   const archiveHash = hash(bytes);
   const identity = { sha256: archiveHash, integrity: packed.integrity };
   const audited = readPackageArchive(bytes, identity);
-  assert.deepEqual(auditM1JavaScriptClosure(audited.files, 'm2-generated').exports, runtimeNames,
+  assert.deepEqual((await auditM1JavaScriptClosure(audited.files, 'm2-generated')).exports, runtimeNames,
     'the physical JavaScript members have the closed M2 purpose, imports and construction');
-  assert.deepEqual(auditM1DeclarationClosure(audited.files, 2, 'm2').rootExports,
+  assert.deepEqual((await auditM1DeclarationClosure(audited.files, 2, 'm2')).rootExports,
     ['CompileCompositionResult', 'CompositionPlan', 'CompositionProfile', 'Diagnostic', 'DiagnosticCode',
       'ModuleDeclaration', 'PlanDigest'].map(name => ({ name, kind: 'type' }))
       .concat(runtimeNames.map(name => ({ name, kind: 'value' }))),

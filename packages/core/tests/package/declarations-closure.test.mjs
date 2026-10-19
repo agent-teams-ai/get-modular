@@ -1,7 +1,31 @@
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
-import { auditM1DeclarationClosure } from "../qualification-support/support/m1-declarations-closure.mjs";
+import { auditM1DeclarationClosure } from "../qualification-support/support/m1-declarations-closure.ts";
+import { parseTypeScript, withTypeScriptProject } from "../qualification-support/support/typescript-project.ts";
+
+test("the native checker resolves explicit virtual bytes and never falls back to a physical declaration", async t => {
+  const directory = mkdtempSync(join(tmpdir(), "gm-native-closed-fs-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const source = join(directory, "entry.ts").replaceAll("\\", "/");
+  const ambient = join(directory, "ambient.d.ts").replaceAll("\\", "/");
+  const declaration = "export interface Secret { readonly value: string }\n";
+  writeFileSync(ambient, declaration);
+  const files = new Map([[source, 'export type Value = import("./ambient.js").Secret;\n']]);
+  await withTypeScriptProject(files, { strict: true }, async ({ program }) => {
+    assert.equal((await program.getSourceFile(ambient)), undefined);
+    assert.deepEqual((await program.getSemanticDiagnostics(source)).map(item => item.code), [2307]);
+  });
+  files.set(ambient, declaration);
+  await withTypeScriptProject(files, { strict: true }, async ({ program }) => {
+    assert.equal((await program.getSourceFile(ambient)).text, declaration);
+    assert.deepEqual((await program.getSemanticDiagnostics(source)), []);
+  });
+  assert.ok((await parseTypeScript("invalid.js", "export const = ;")).diagnostics.length > 0);
+});
 
 const ROOT = "dist/index.d.ts";
 const WIRE = "dist/features/authoring/wire.d.ts";
@@ -137,8 +161,8 @@ function replace(files, path, before, after) {
   files.set(path, Buffer.from(text.replace(before, after)));
 }
 function append(files, path, text) { files.set(path, Buffer.concat([files.get(path), Buffer.from(text)])); }
-function reject(files, reason, generation = 1, publicSurface = "m1") {
-  assert.throws(() => auditM1DeclarationClosure(files, generation, publicSurface), error => {
+async function reject(files, reason, generation = 1, publicSurface = "m1") {
+  await assert.rejects(() => auditM1DeclarationClosure(files, generation, publicSurface), error => {
     assert.ok(error instanceof Error);
     assert.equal(error.message, "Invalid M1 declaration closure.");
     assert.equal(error.code, "declarations.invalid");
@@ -152,10 +176,10 @@ function reject(files, reason, generation = 1, publicSurface = "m1") {
 
 // Every mutation below starts with this complete, independently accepted control.
 // Main additionally applies the audit and emitted-content mutants to the real pack.
-test("complete generic/mapped declaration bytes yield module and root symbol inventories", () => {
+test("complete generic/mapped declaration bytes yield module and root symbol inventories", async () => {
   const files = fixture();
   const before = new Map([...files].map(([path, bytes]) => [path, Buffer.from(bytes)]));
-  const result = auditM1DeclarationClosure(files);
+  const result = (await auditM1DeclarationClosure(files));
   assert.deepEqual(result.modules, [...originals.keys()].sort());
   assert.deepEqual(result.rootExports, [
     ...["CompileCompositionResult", "CompositionPlan", "CompositionProfile", "Diagnostic", "DiagnosticCode",
@@ -164,10 +188,10 @@ test("complete generic/mapped declaration bytes yield module and root symbol inv
   ]);
   assert.deepEqual(files, before);
   result.modules.length = 0;
-  assert.equal(auditM1DeclarationClosure(files).modules.length, 5);
+  assert.equal((await auditM1DeclarationClosure(files)).modules.length, 5);
 });
 
-test("safe aliases, relocated owned modules and conditional/template helpers are accepted", () => {
+test("safe aliases, relocated owned modules and conditional/template helpers are accepted", async () => {
   const files = fixture();
   replace(files, SURFACE, 'export { defineModule, required, optional, many } from "./constructors.js";',
     'import { required as makeRequired } from "./constructors.js";\nexport { makeRequired as required };\n'
@@ -180,13 +204,13 @@ test("safe aliases, relocated owned modules and conditional/template helpers are
   files.set(moved, files.get(WIRE));
   files.delete(WIRE);
   for (const path of [HELPERS, SURFACE, ISSUES]) replace(files, path, '"./wire.js"', '"./nested/data.js"');
-  assert.deepEqual(auditM1DeclarationClosure(files).modules, [...files.keys()].sort());
+  assert.deepEqual((await auditM1DeclarationClosure(files)).modules, [...files.keys()].sort());
 });
 
-test("a local import type preserves a public wire reference without filesystem fallback", () => {
+test("a local import type preserves a public wire reference without filesystem fallback", async () => {
   const files = fixture();
   replace(files, ISSUES, 'readonly plan: CompositionPlan;', 'readonly plan: import("./wire.js").CompositionPlan;');
-  assert.equal(auditM1DeclarationClosure(files).rootExports.length, 12);
+  assert.equal((await auditM1DeclarationClosure(files)).rootExports.length, 12);
 });
 
 test("equivalent array representations preserve empty providers and ordinary inputs and results", async t => {
@@ -212,26 +236,30 @@ test("equivalent array representations preserve empty providers and ordinary inp
     ["equivalent compiler result array", ISSUES, 'readonly diagnostics: readonly Diagnostic[]',
       'readonly diagnostics: readonly [...Diagnostic[]]'],
   ];
-  for (const [name, path, before, after] of cases) await t.test(name, () => {
+  for (const [name, path, before, after] of cases) await t.test(name, async () => {
     const files = fixture();
     replace(files, path, before, after);
-    assert.deepEqual(auditM1DeclarationClosure(files).modules, [...originals.keys()].sort());
+    assert.deepEqual((await auditM1DeclarationClosure(files)).modules, [...originals.keys()].sort());
   });
 });
 
-test("candidate JavaScript remains inert and is left to the JavaScript closure owner", () => {
+test("candidate JavaScript remains inert and is left to the JavaScript closure owner", async () => {
   const files = fixture();
   files.set("dist/index.js", Buffer.from('throw new Error("candidate must never execute");'));
-  assert.equal(auditM1DeclarationClosure(files).modules.length, 5);
+  assert.equal((await auditM1DeclarationClosure(files)).modules.length, 5);
 });
 
 test("content mutations reject even with the same complete declaration inventory", async t => {
-  assert.equal(auditM1DeclarationClosure(fixture()).rootExports.length, 12);
+  assert.equal((await auditM1DeclarationClosure(fixture())).rootExports.length, 12);
   const cases = [
     ["extra root value", files => append(files, ROOT, '\nexport declare function harmless(): void;'), "root-exports"],
     ["extra root catalog type", files => append(files, ROOT, '\nexport type DiagnosticCatalogCode = string;'), "root-exports"],
     ["type-only helper reexport", files => replace(files, SURFACE,
       'export { defineModule, required, optional, many }', 'export type { defineModule, required, optional, many }'), "export-kind"],
+    ["type-only imported helpers cannot become value exports", files => replace(files, SURFACE,
+      'export { defineModule, required, optional, many } from "./constructors.js";',
+      'import type { defineModule, required, optional, many } from "./constructors.js";\n'
+      + 'export { defineModule, required, optional, many };'), "export-kind"],
     ["alias substitution under a helper's innocent name", files => {
       replace(files, SURFACE, 'defineModule, required, optional, many', 'defineModule, friendly as required, optional, many');
       append(files, HELPERS, '\nexport declare function friendly(): RequiredCardinality;');
@@ -387,47 +415,47 @@ test("content mutations reject even with the same complete declaration inventory
     ["any can hide a type leak", files => replace(files, HELPERS,
       'required(): RequiredCardinality', 'required(): any'), "any-type"],
   ];
-  for (const [name, edit, reason] of cases) await t.test(name, () => {
+  for (const [name, edit, reason] of cases) await t.test(name, async () => {
     const files = fixture();
     edit(files);
     assert.deepEqual([...files.keys()], [...originals.keys()], "content mutation keeps the complete file inventory");
-    reject(files, reason);
+    await reject(files, reason);
   });
 });
 
 test("declaration resolution is closed over owned bytes", async t => {
-  assert.equal(auditM1DeclarationClosure(fixture()).modules.length, 5);
+  assert.equal((await auditM1DeclarationClosure(fixture())).modules.length, 5);
   for (const specifier of ["typescript", "node:fs", "@get-modular/core", "/developer/checkout/wire.js",
     "../../../../outside.js", "./wire", "./wire.ts", "./wire.js?types", "./nested/../wire.js"]) {
-    await t.test(specifier, () => {
+    await t.test(specifier, async () => {
       const files = fixture();
       replace(files, HELPERS, '"./wire.js"', JSON.stringify(specifier));
-      reject(files, "module-reference");
+      await reject(files, "module-reference");
     });
   }
   const missing = fixture();
   missing.delete(WIRE);
-  reject(missing, "missing-declaration");
+  await reject(missing, "missing-declaration");
   const orphan = fixture();
   orphan.set("dist/features/authoring/leftover.d.ts", Buffer.from("export type Leftover = string;"));
-  reject(orphan, "unreachable-module");
+  await reject(orphan, "unreachable-module");
   const privateOwner = fixture();
   privateOwner.set("dist/features/compiler-facade/ports.d.ts", Buffer.from("export interface Friendly { readonly value: string }"));
   append(privateOwner, ROOT, '\nimport type { Friendly } from "./features/compiler-facade/ports.js";');
-  reject(privateOwner, "declaration-owner");
+  await reject(privateOwner, "declaration-owner");
   const map = fixture();
   map.set("dist/innocent.map", Buffer.from('{"sources":["../../private.ts"]}'));
-  reject(map, "source-map");
+  await reject(map, "source-map");
   const sourceArtifact = fixture();
   sourceArtifact.set("dist/features/authoring/private.ts", Buffer.from("export {};"));
-  reject(sourceArtifact, "declaration-artifact");
+  await reject(sourceArtifact, "declaration-artifact");
   const invalid = fixture();
   invalid.set(WIRE, Buffer.concat([invalid.get(WIRE), Buffer.from([0xc0, 0xaf])]));
-  reject(invalid, "utf8");
+  await reject(invalid, "utf8");
   const cycle = fixture();
   replace(cycle, SURFACE, 'export { defineModule, required, optional, many } from "./constructors.js";',
     'export { defineModule, optional, many } from "./constructors.js";\nexport { required } from "./surface.js";');
-  reject(cycle, "alias-cycle");
+  await reject(cycle, "alias-cycle");
 });
 
 function successorFixture() {
@@ -453,13 +481,13 @@ function publicM2Fixture() {
   return files;
 }
 
-test("public M2 explicitly adds only the raw compiler to historical generation two", () => {
-  const historical = auditM1DeclarationClosure(successorFixture(), 2);
+test("public M2 explicitly adds only the raw compiler to historical generation two", async () => {
+  const historical = (await auditM1DeclarationClosure(successorFixture(), 2));
   assert.equal(historical.rootExports.length, 12);
-  assert.deepEqual(auditM1DeclarationClosure(successorFixture(), 2, "m1"), historical);
+  assert.deepEqual((await auditM1DeclarationClosure(successorFixture(), 2, "m1")), historical);
   const files = publicM2Fixture();
   const before = new Map([...files].map(([path, bytes]) => [path, Buffer.from(bytes)]));
-  const result = auditM1DeclarationClosure(files, 2, "m2");
+  const result = (await auditM1DeclarationClosure(files, 2, "m2"));
   assert.equal(result.rootExports.length, 13);
   assert.deepEqual(result.rootExports, [
     ...historical.rootExports,
@@ -467,26 +495,26 @@ test("public M2 explicitly adds only the raw compiler to historical generation t
   ].sort((left, right) => left.name < right.name ? -1 : left.name > right.name ? 1 : 0));
   assert.deepEqual(result.modules, historical.modules);
   assert.deepEqual(files, before);
-  reject(files, "root-exports", 2);
-  reject(files, "root-exports");
-  reject(files, "diagnostic-generation", 1, "m2");
-  reject(successorFixture(), "root-exports", 2, "m2");
+  await reject(files, "root-exports", 2);
+  await reject(files, "root-exports");
+  await reject(files, "diagnostic-generation", 1, "m2");
+  await reject(successorFixture(), "root-exports", 2, "m2");
   const oldDiagnostics = fixture();
   append(oldDiagnostics, ROOT, `\n${rawCompiler}\n`);
-  reject(oldDiagnostics, "type-contract", 2, "m2");
+  await reject(oldDiagnostics, "type-contract", 2, "m2");
   for (const selector of ["M2", "", "m3", 2, null, {}, false]) {
-    reject(files, "public-surface", 2, selector);
+    await reject(files, "public-surface", 2, selector);
   }
 });
 
-test("public M2 accepts a function declaration and trusted carrier aliases", () => {
+test("public M2 accepts a function declaration and trusted carrier aliases", async () => {
   const files = publicM2Fixture();
   replace(files, ROOT, rawCompiler, `export declare function compileCompositionJson(input: {
   readonly declarations: ReadonlyArray<Bytes>; readonly profile: Bytes;
 }): Promise<CompileCompositionResult>;`);
   append(files, WIRE, "\nexport type Bytes = Uint8Array;\n");
   append(files, ROOT, '\nimport type { Bytes } from "./features/authoring/wire.js";\n');
-  assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
+  assert.equal((await auditM1DeclarationClosure(files, 2, "m2")).rootExports.length, 13);
 });
 
 test("public M2 follows instantiated transparent list aliases", async t => {
@@ -508,49 +536,49 @@ test("public M2 follows instantiated transparent list aliases", async t => {
   ];
   for (const [name, definitions, documents] of aliases) {
     for (const list of ["readonly Uint8Array[]", "readonly [...Uint8Array[]]", "([readonly Uint8Array[]][0])"]) {
-      await t.test(`${name}: ${list}`, () => {
+      await t.test(`${name}: ${list}`, async () => {
         const files = publicM2Fixture();
         append(files, WIRE, `\n${definitions}\nexport type Documents = ${documents};\n`.replaceAll("LIST", list));
         append(files, ROOT, '\nimport type { Documents } from "./features/authoring/wire.js";\n');
         replace(files, ROOT, rawCompiler, rawCompiler.replace("readonly Uint8Array[]", "Documents"));
-        if (name.includes("default")) reject(files, "generic-default", 2, "m2");
-        else if (list === "readonly [...Uint8Array[]]") reject(files, "raw-input", 2, "m2");
-        else assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
+        if (name.includes("default")) await reject(files, "generic-default", 2, "m2");
+        else if (list === "readonly [...Uint8Array[]]") await reject(files, "raw-input", 2, "m2");
+        else assert.equal((await auditM1DeclarationClosure(files, 2, "m2")).rootExports.length, 13);
       });
     }
   }
 });
 
-test("public M2 accepts generic readonly lists with computed carriers", () => {
+test("public M2 accepts generic readonly lists with computed carriers", async () => {
   const files = publicM2Fixture();
   append(files, WIRE, `\ntype Forward<T> = T;
   type List<T> = readonly T[];
   export type Documents = Forward<List<Forward<[Uint8Array][0]>>>;\n`);
   append(files, ROOT, '\nimport type { Documents } from "./features/authoring/wire.js";\n');
   replace(files, ROOT, rawCompiler, rawCompiler.replace("readonly Uint8Array[]", "Documents"));
-  assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
+  assert.equal((await auditM1DeclarationClosure(files, 2, "m2")).rootExports.length, 13);
 });
 
-test("public M2 accepts computed carrier and list aliases without scanning their intermediate tuples", () => {
+test("public M2 accepts computed carrier and list aliases without scanning their intermediate tuples", async () => {
   for (const list of ["readonly Bytes[]", "[readonly Bytes[]][0]"]) {
     const files = publicM2Fixture();
     append(files, WIRE, `\nexport type Bytes = [Uint8Array][0];\nexport type Documents = ${list};\n`);
     append(files, ROOT, '\nimport type { Bytes, Documents } from "./features/authoring/wire.js";\n');
     replace(files, ROOT, rawCompiler, rawCompiler
       .replace("readonly Uint8Array[]", "Documents").replace("profile: Uint8Array", "profile: Bytes"));
-    assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
+    assert.equal((await auditM1DeclarationClosure(files, 2, "m2")).rootExports.length, 13);
   }
 });
 
-test("public M2 accepts equivalent wrapper intersections", () => {
+test("public M2 accepts equivalent wrapper intersections", async () => {
   const files = publicM2Fixture();
   append(files, WIRE, "\nexport type RawInput = { readonly declarations: readonly Uint8Array[] } & { readonly profile: Uint8Array };\n");
   append(files, ROOT, '\nimport type { RawInput } from "./features/authoring/wire.js";\n');
   replace(files, ROOT, rawCompiler, "export declare const compileCompositionJson: (input: RawInput) => Promise<CompileCompositionResult>;");
-  assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
+  assert.equal((await auditM1DeclarationClosure(files, 2, "m2")).rootExports.length, 13);
 });
 
-test("public M2 accepts equivalent union wrappers and rejects a divergent arm", () => {
+test("public M2 accepts equivalent union wrappers and rejects a divergent arm", async () => {
   for (const profile of ["Uint8Array", "unknown"]) {
     const files = publicM2Fixture();
     append(files, WIRE, `\nexport type RawInput =
@@ -559,14 +587,14 @@ test("public M2 accepts equivalent union wrappers and rejects a divergent arm", 
     append(files, ROOT, '\nimport type { RawInput } from "./features/authoring/wire.js";\n');
     replace(files, ROOT, rawCompiler, "export declare const compileCompositionJson: (input: RawInput) => Promise<CompileCompositionResult>;");
     if (profile === "Uint8Array") {
-      assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
+      assert.equal((await auditM1DeclarationClosure(files, 2, "m2")).rootExports.length, 13);
     } else {
-      assert.throws(() => auditM1DeclarationClosure(files, 2, "m2"));
+      await assert.rejects(() => auditM1DeclarationClosure(files, 2, "m2"));
     }
   }
 });
 
-test("public M2 accepts distinct list aliases in equivalent union arms", () => {
+test("public M2 accepts distinct list aliases in equivalent union arms", async () => {
   const files = publicM2Fixture();
   append(files, WIRE, `\ntype Left<T> = readonly T[];
   type Right<T> = ReadonlyArray<T>;
@@ -575,10 +603,10 @@ test("public M2 accepts distinct list aliases in equivalent union arms", () => {
     | { readonly declarations: Right<Uint8Array>; readonly profile: Uint8Array };\n`);
   append(files, ROOT, '\nimport type { RawInput } from "./features/authoring/wire.js";\n');
   replace(files, ROOT, rawCompiler, "export declare const compileCompositionJson: (input: RawInput) => Promise<CompileCompositionResult>;");
-  assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
+  assert.equal((await auditM1DeclarationClosure(files, 2, "m2")).rootExports.length, 13);
 });
 
-test("public M2 accepts equivalent list unions without admitting a divergent list", () => {
+test("public M2 accepts equivalent list unions without admitting a divergent list", async () => {
   for (const right of ["ReadonlyArray<T>", "T[]", "ReadonlyArray<T> & { readonly extra?: never }"]) {
     const files = publicM2Fixture();
     append(files, WIRE, `\ntype Left<T> = readonly T[];
@@ -590,14 +618,14 @@ test("public M2 accepts equivalent list unions without admitting a divergent lis
     append(files, ROOT, '\nimport type { RawInput } from "./features/authoring/wire.js";\n');
     replace(files, ROOT, rawCompiler, "export declare const compileCompositionJson: (input: RawInput) => Promise<CompileCompositionResult>;");
     if (right === "ReadonlyArray<T>") {
-      assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
+      assert.equal((await auditM1DeclarationClosure(files, 2, "m2")).rootExports.length, 13);
     } else {
-      assert.throws(() => auditM1DeclarationClosure(files, 2, "m2"));
+      await assert.rejects(() => auditM1DeclarationClosure(files, 2, "m2"));
     }
   }
 });
 
-test("public M2 accepts equivalent carrier unions at both positions", () => {
+test("public M2 accepts equivalent carrier unions at both positions", async () => {
   for (const divergent of [false, true]) for (const position of ["profile", "declarations"]) {
     const files = publicM2Fixture();
     append(files, WIRE, `\ntype Left<T extends Uint8Array["buffer"]> = Uint8Array<T>;
@@ -607,12 +635,12 @@ test("public M2 accepts equivalent carrier unions at both positions", () => {
     replace(files, ROOT, rawCompiler, rawCompiler.replace(
       position === "profile" ? "profile: Uint8Array" : "readonly Uint8Array[]",
       position === "profile" ? "profile: Bytes" : "readonly Bytes[]"));
-    if (divergent) assert.throws(() => auditM1DeclarationClosure(files, 2, "m2"));
-    else assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
+    if (divergent) await assert.rejects(() => auditM1DeclarationClosure(files, 2, "m2"));
+    else assert.equal((await auditM1DeclarationClosure(files, 2, "m2")).rootExports.length, 13);
   }
 });
 
-test("public M2 verifies each list intersection component before normalization", () => {
+test("public M2 verifies each list intersection component before normalization", async () => {
   for (const right of [
     "ReadonlyArray<T>", "T[]", "ReadonlyArray<T> & { readonly extra?: never }",
     "ReadonlyArray<never>", "readonly [...T[]]",
@@ -628,12 +656,12 @@ test("public M2 verifies each list intersection component before normalization",
     replace(files, ROOT, rawCompiler,
       "export declare const compileCompositionJson: (input: RawInput) => Promise<CompileCompositionResult>;");
     if (right === "ReadonlyArray<T>") {
-      assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
-    } else reject(files, undefined, 2, "m2");
+      assert.equal((await auditM1DeclarationClosure(files, 2, "m2")).rootExports.length, 13);
+    } else await reject(files, undefined, 2, "m2");
   }
 });
 
-test("public M2 verifies each carrier intersection component at both positions", () => {
+test("public M2 verifies each carrier intersection component at both positions", async () => {
   for (const right of [
     "Uint8Array<T>", "Uint8Array<never>", "Uint16Array<T>",
     "Uint8Array<T> & { readonly extra?: never }",
@@ -648,12 +676,12 @@ test("public M2 verifies each carrier intersection component at both positions",
       position === "profile" ? "profile: Uint8Array" : "readonly Uint8Array[]",
       position === "profile" ? "profile: Bytes" : "readonly Bytes[]"));
     if (right === "Uint8Array<T>") {
-      assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
-    } else reject(files, undefined, 2, "m2");
+      assert.equal((await auditM1DeclarationClosure(files, 2, "m2")).rootExports.length, 13);
+    } else await reject(files, undefined, 2, "m2");
   }
 });
 
-test("public M2 normalizes verified carrier intersections within list intersections", () => {
+test("public M2 normalizes verified carrier intersections within list intersections", async () => {
   const files = publicM2Fixture();
   append(files, WIRE, `\ntype Left<T> = readonly T[];
   type Right<T> = ReadonlyArray<T>;
@@ -667,15 +695,15 @@ test("public M2 normalizes verified carrier intersections within list intersecti
   append(files, ROOT, '\nimport type { RawInput } from "./features/authoring/wire.js";\n');
   replace(files, ROOT, rawCompiler,
     "export declare const compileCompositionJson: (input: RawInput) => Promise<CompileCompositionResult>;");
-  assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
+  assert.equal((await auditM1DeclarationClosure(files, 2, "m2")).rootExports.length, 13);
 });
 
-test("public M2 accepts mapped wrappers with synthesized properties", () => {
+test("public M2 accepts mapped wrappers with synthesized properties", async () => {
   const files = publicM2Fixture();
   append(files, WIRE, '\nexport type RawInput = { readonly [K in "declarations" | "profile"]: K extends "declarations" ? readonly Uint8Array[] : Uint8Array };\n');
   append(files, ROOT, '\nimport type { RawInput } from "./features/authoring/wire.js";\n');
   replace(files, ROOT, rawCompiler, "export declare const compileCompositionJson: (input: RawInput) => Promise<CompileCompositionResult>;");
-  assert.equal(auditM1DeclarationClosure(files, 2, "m2").rootExports.length, 13);
+  assert.equal((await auditM1DeclarationClosure(files, 2, "m2")).rootExports.length, 13);
 });
 
 test("public M2 rejects raw signature and provenance mutations", async t => {
@@ -751,21 +779,21 @@ test("public M2 rejects raw signature and provenance mutations", async t => {
     ["extra value export", files => append(files, ROOT, "\nexport declare function extra(): void;\n")],
     ["extra type export", files => append(files, ROOT, "\nexport type Bytes = Uint8Array;\n")],
   ];
-  for (const [name, edit] of cases) await t.test(name, () => {
+  for (const [name, edit] of cases) await t.test(name, async () => {
     const files = publicM2Fixture();
     edit(files);
-    reject(files, undefined, 2, "m2");
+    await reject(files, undefined, 2, "m2");
   });
 });
 
 
-test("generation two accepts exactly its independent algebra and preserves M1 rejection", () => {
+test("generation two accepts exactly its independent algebra and preserves M1 rejection", async () => {
   const files = successorFixture();
-  assert.equal(auditM1DeclarationClosure(files, 2).rootExports.length, 12);
-  reject(files, "type-contract");
-  assert.throws(() => auditM1DeclarationClosure(fixture(), 2), { code: "declarations.invalid", reason: "type-contract" });
+  assert.equal((await auditM1DeclarationClosure(files, 2)).rootExports.length, 12);
+  await reject(files, "type-contract");
+  await assert.rejects(() => auditM1DeclarationClosure(fixture(), 2), { code: "declarations.invalid", reason: "type-contract" });
   for (const generation of [0, 3, "2", null, {}]) {
-    assert.throws(() => auditM1DeclarationClosure(files, generation),
+    await assert.rejects(() => auditM1DeclarationClosure(files, generation),
       { code: "declarations.invalid", reason: "diagnostic-generation" });
   }
 });
@@ -781,10 +809,10 @@ for (const [name, before, after] of [
     '"binding.duplicate-record", "binding", SlotCoordinate, Reason<"missing">'],
   ["record omitted", '\n  | RecordFor<"binding.duplicate-record", "binding", SlotCoordinate, Reason<"duplicate">>', ""],
 ]) {
-  test(`generation two rejects ${name} without relaxing the finite contract`, () => {
+  test(`generation two rejects ${name} without relaxing the finite contract`, async () => {
     const files = successorFixture();
     replace(files, ISSUES, before, after);
-    assert.throws(() => auditM1DeclarationClosure(files, 2),
+    await assert.rejects(() => auditM1DeclarationClosure(files, 2),
       { code: "declarations.invalid", reason: "type-contract" });
   });
 }

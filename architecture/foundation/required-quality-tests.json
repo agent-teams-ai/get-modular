@@ -2,14 +2,14 @@
   "schemaVersion": 1,
   "required": [
     {
-      "file": "tests/repository-agent-workflow.test.mts",
+      "file": "tests/repository-agent-workflow.test.ts",
       "names": [
         "changed workflow rejects invalid TypeScript through published Foundation"
       ],
       "kind": "test"
     },
     {
-      "file": "tests/repository-agent-workflow.test.mts",
+      "file": "tests/repository-agent-workflow.test.ts",
       "names": [
         "changed workflow escalates compiler and check configuration"
       ],
