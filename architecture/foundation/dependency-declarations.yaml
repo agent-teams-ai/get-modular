@@ -25,3 +25,4 @@ policies:
   exactRegistryDevelopmentOnlyPackages:
     - "@agent-teams/docs-protocol"
     - "@agent-teams/engineering-foundation"
+    - "@agent-teams/feature-module-standard"

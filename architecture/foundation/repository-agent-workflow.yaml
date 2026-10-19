@@ -54,11 +54,13 @@ fullScanPaths:
   - packages/observation/tsconfig.test-tooling.json
   - tests/tsconfig.tooling-node-policy.json
   - tests/tsconfig.native-tooling.json
+  - tests/tsconfig.consumer-fixtures.json
   - tests/tsconfig.repository-agent-workflow.json
   - tests/qualification/consumer-fixtures/semantic/tsconfig.types.json
   - tests/qualification/consumer-fixtures/semantic/tsconfig.runtime.json
   - tests/qualification/consumer-fixtures/semantic/tsconfig.negative.json
   - tests/qualification/consumer-fixtures/recovery/tsconfig.runtime.json
+  - tests/qualification/consumer-fixtures/source/source-dependencies.yaml
   - tests/qualification/implementation-readiness/api-authoring
   - architecture/checks/sdk-growth.mjs
   - architecture/sdk-growth
@@ -70,7 +72,6 @@ fullScanPaths:
   - tests/qualification/sdk-growth-synthetic-predecessor.ts
   - tests/tsconfig.sdk-growth-registry.json
   - architecture/checks/native-public-api-migration.ts
-  - architecture/checks/native-public-api-migration-admission.ts
   - architecture/tooling/native-public-api-migration
   - tests/native-public-api-migration.test.ts
   - tests/tsconfig.native-public-api-migration.json

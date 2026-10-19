@@ -42,7 +42,8 @@ console.log(JSON.stringify(report));
   return withSemanticConsumer(async ({ directory, evidence }) => {
     const result = invokeFixtureNode([program, directory, compiler.cli], toolsRoot, "P4 packed research", 60000);
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-    return { ...JSON.parse(result.stdout), compiler: { name: compiler.name, version: compiler.version },
+    return { kind: "research-selected-flat-source", source: "incomplete", ...JSON.parse(result.stdout),
+      compiler: { name: compiler.name, version: compiler.version },
       toolsLock: await readFile(join(toolsRoot, "pnpm-lock.yaml"), "utf8"), packageOutputs, ...evidence };
   });
 }

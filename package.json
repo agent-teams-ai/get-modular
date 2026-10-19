@@ -64,7 +64,7 @@
     "core:build": "node architecture/tooling/build-core.mjs",
     "core:test": "node --test \"packages/core/tests/**/*.test.mjs\"",
     "assembly:build": "pnpm core:build && node architecture/tooling/build-assembly.mjs",
-    "assembly:typecheck": "node node_modules/typescript/bin/tsc -p packages/assembly/tsconfig.json --noEmit",
+    "assembly:typecheck": "node node_modules/typescript/bin/tsc -p packages/assembly/tsconfig.json --noEmit && node node_modules/typescript/bin/tsc -p tests/tsconfig.consumer-fixtures.json --noEmit",
     "assembly:test": "node --test \"tests/assembly/**/*.test.mjs\" \"packages/assembly/tests/**/*.test.mjs\"",
     "release:version": "changeset version",
     "lifecycle:build": "node architecture/tooling/build-leaf-package.mjs lifecycle-kernel",
@@ -97,6 +97,7 @@
   "devDependencies": {
     "@agent-teams/docs-protocol": "0.6.2",
     "@agent-teams/engineering-foundation": "1.10.0",
+    "@agent-teams/feature-module-standard": "0.1.1",
     "@changesets/cli": "catalog:",
     "@get-modular/assembly": "workspace:*",
     "@get-modular/conformance": "workspace:*",
