@@ -1,0 +1,81 @@
+{
+  "kind": "get-modular:public-api-declaration-realization:1",
+  "scope": "New declaration/configuration data realization of unchanged released artifacts; not their original pnpm installation or a historical runtime installation.",
+  "externalDeclarationPackages": [],
+  "materialization": "Complete original Core/Assembly archives at policy roots; original Core archive as Assembly declaration dependency; exactly three original Foundation preset-package members. No npm package installation or historical code evaluation.",
+  "foundationPresetArchive": {
+    "packageName": "@agent-teams/engineering-foundation",
+    "packageVersion": "1.7.4",
+    "path": "foundation-presets-1.7.4.tgz",
+    "digest": "sha256:5eca8a985dda250f4eea98bcfd1734a6c818e5b7a869d7a5ce81cb745f72f110",
+    "integrity": "sha512-BU9SqHvrPYtizl0u1J1UwGl89GmfHsKrwvExY7v8bpa2AD0C9YS71qDHIxcZU1zfzzORGk1SjJwNrPXR5MmZRA==",
+    "members": {
+      "package.json": "sha256:fa84368ffaf33b562fe4561748dd79fac4ba4f8822deefa49343d74814886882",
+      "presets/typescript/node.json": "sha256:a9e11ee29e5fa8d269d85a66f6e9dfd294c8b60e68f3157dc4f8b2d846a5fa6b",
+      "presets/typescript/base.json": "sha256:042fe6784f78dfc94514b41ec6400a95ea514215fd599de7ab42cc9b1d08da73"
+    },
+    "origin": {
+      "verification": "Fresh public npm11.19.0 audit signatures --json --include-attestations, then existing Foundation provenance verifier; signature subject only, no runtime graph installation.",
+      "rawAuditPath": "foundation-presets-origin.json",
+      "rawAuditDigest": "sha256:acda216dc6aa3a9407631ef8ef086b4905910a36a780d68f2bd4b70001805290",
+      "sourceCommit": "dc5f7d8defb481d9d4126972d5f6d5854873c823",
+      "repository": "https://github.com/agent-teams-ai/engineering-foundation",
+      "workflow": ".github/workflows/release.yml",
+      "ref": "refs/heads/main",
+      "verifiedSubjects": 1,
+      "claim": "Recorded archive-origin verification, not a live attestation service or Core/Assembly source attestation."
+    }
+  },
+  "currentCaptures": {
+    "core": {
+      "path": "core-released-closure.json",
+      "inputs": 25,
+      "digest": "sha256:05319c3b0426f73ef64066884db9b2bc3564303fd6aaa9e1bb014394ad4f0ad7"
+    },
+    "assembly": {
+      "path": "assembly-released-closure.json",
+      "inputs": 31,
+      "digest": "sha256:4eb0566426133fbfa50ddf223cd66f61cf39b4292caaa243da4be3eeeb4037c3"
+    }
+  },
+  "qualification": {
+    "scope": "Isolated development qualification only, not current registry adoption, final source-head CI or release authority.",
+    "candidateSource": "3f5f3b303e99e4b8f919486d91d954f7f78e204d",
+    "nativeFoundationArchiveDigest": "sha256:5d4c65d925d0cb1b118e9020029bc312181478c0d0854def43bcfc529d641811",
+    "nodeVersions": [
+      "24.21.0",
+      "26.11.1"
+    ],
+    "compiler": "typescript-native/7.0.2",
+    "publicObservationDigest": "sha256:07a483d48e7b15ddda02515b6b8f853fff713f940e6ea546ef627c7b7b4488b3",
+    "toolDifferenceDigest": "sha256:f7f1310d42d07b848945c04b03830ccf4a2443787e3a409a12bd97eec18e89ea",
+    "nativeAEqualPriorAndC": true,
+    "typedDiagnostics": [],
+    "artifactDiagnostics": [],
+    "migrationApplied": false,
+    "writes": []
+  },
+  "previousRealization": {
+    "scope": "Earlier fresh frozen npm11.19 declaration-data realization, not original historical pnpm. Its observations remain history and are not current capture inputs.",
+    "custodyPath": "custody.json",
+    "custodyDigest": "sha256:e4163fcd50ef413f949612124e702b9b0d8be35c1ec4553361491904ee9730d5",
+    "dependencyManifestDigest": "sha256:cc589db210854da58d3790945de9331d5b2098988e3001b4f55defa7654a07dd",
+    "dependencyLockDigest": "sha256:85b70cd3f0044d75e20ad80d4c55ba1299af798206637ad0c4bfa74cf5a2d00a",
+    "removedCurrentInstallation": "Unneeded Foundation runtime/APIExtractor/compiler graph; no dependency-review exception or relabeled observation.",
+    "captures": {
+      "core": {
+        "path": "history/core-released-closure.json",
+        "inputs": 2104,
+        "digest": "sha256:fac53e98600ef689afd1e83b66c6e540a77d43029155f7c3d4063f840bdeff23",
+        "nativeReleasedDigest": "sha256:4eeb030df3149239ed7572f91e5cd48b761a4e66ac95a72364c6b4e57051c733"
+      },
+      "assembly": {
+        "path": "history/assembly-released-closure.json",
+        "inputs": 2110,
+        "digest": "sha256:748a4abde8241e6700967e94791a88acedafdaf0b0e0ce4f24e30ae154291cf1",
+        "nativeReleasedDigest": "sha256:505ec73d758704e1b692be5d5ad8886bbd50556dea99b8dfc7209d46c591c06d"
+      }
+    }
+  },
+  "coreAssemblyCustody": "Original registry/source-tree/release-CI observations remain in custody.json. Registry gitHead/source attestations remain absent; no new publisher authority claimed."
+}

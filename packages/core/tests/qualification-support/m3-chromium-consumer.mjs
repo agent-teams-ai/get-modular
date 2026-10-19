@@ -11,7 +11,7 @@ import { arch, platform } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { readPackageArchive } from './support/package-archive.mjs';
-import { auditM1JavaScriptClosure } from './support/m1-javascript-closure.mjs';
+import { auditM1JavaScriptClosure } from './support/m1-javascript-closure.ts';
 import { produceRuntimeFixtures } from './support/m3-runtime-fixture-producer.mjs';
 import { produceSemanticRuntimeFixtures } from './support/m3-semantic-runtime-fixtures.mjs';
 import { produceDescriptorRuntimeFixtures } from './support/m3-descriptor-runtime-fixtures.mjs';
@@ -595,7 +595,7 @@ export async function runChromiumConsumer(rawInput) {
   assert.ok(['linux', 'darwin'].includes(platform()), 'POSIX process groups required');
   const archive = await archiveIdentity(input);
   const publicRoot = publicArchiveRoot(archive.files);
-  const closure = auditM1JavaScriptClosure(archive.files, 'm2-generated');
+  const closure = (await auditM1JavaScriptClosure(archive.files, 'm2-generated'));
   const fixtures = produceRuntimeFixtures();
   const semanticFixtures = [...produceSemanticRuntimeFixtures()];
   const p500Evidence = await prepareP500Evidence();

@@ -1,0 +1,102 @@
+[
+  {
+    "path": "node_modules/@agent-teams/engineering-foundation/package.json",
+    "digest": "sha256:fa84368ffaf33b562fe4561748dd79fac4ba4f8822deefa49343d74814886882"
+  },
+  {
+    "path": "node_modules/@agent-teams/engineering-foundation/presets/typescript/base.json",
+    "digest": "sha256:042fe6784f78dfc94514b41ec6400a95ea514215fd599de7ab42cc9b1d08da73"
+  },
+  {
+    "path": "node_modules/@agent-teams/engineering-foundation/presets/typescript/node.json",
+    "digest": "sha256:a9e11ee29e5fa8d269d85a66f6e9dfd294c8b60e68f3157dc4f8b2d846a5fa6b"
+  },
+  {
+    "path": "packages/assembly/dist/composition/root.d.ts",
+    "digest": "sha256:09f28da7a05d709dd242c62c8d07eee7711d9f9f8dbc3e89aa8d08a8700fb209"
+  },
+  {
+    "path": "packages/assembly/dist/features/construction/contract.d.ts",
+    "digest": "sha256:020d140facfb367d49fef86b567e278c59e228b24f808edf553a78c5918f6171"
+  },
+  {
+    "path": "packages/assembly/dist/features/construction/derive-profile.d.ts",
+    "digest": "sha256:8d3c4da00c2a6597580c3a784c00e308742fb78581947e249f45a8ab619eaf11"
+  },
+  {
+    "path": "packages/assembly/dist/features/construction/entry.d.ts",
+    "digest": "sha256:066f18391dcd11131428fb6dd5a1e868d16c8d5f6dbc9e8cee568dcf6c1990dc"
+  },
+  {
+    "path": "packages/assembly/dist/features/construction/factory.d.ts",
+    "digest": "sha256:6d00d4f7aeac50fbbdc77aa7f657528256f5072a342a5e2cdb308afd6084ea8e"
+  },
+  {
+    "path": "packages/assembly/dist/features/construction/group.d.ts",
+    "digest": "sha256:5ab050787e2fba2246012b81c6167c2799bb60ffedc5cb92771f87c942b0ef47"
+  },
+  {
+    "path": "packages/assembly/dist/features/construction/ports.d.ts",
+    "digest": "sha256:28118bb69e04a6983711344929f6d9c770daa88265d90bb6586ed98e26702c66"
+  },
+  {
+    "path": "packages/assembly/dist/features/construction/prepare.d.ts",
+    "digest": "sha256:30004ad94f3a28f67b6c087a38fc6f2b97d89b7974b10d5e2b7989c688c85d90"
+  },
+  {
+    "path": "packages/assembly/dist/features/construction/run.d.ts",
+    "digest": "sha256:c5e5f1cd94f2dc7680aa0eef3018f44778ec9f71d1e971af963e1ef0e43d5f56"
+  },
+  {
+    "path": "packages/assembly/dist/features/construction/snapshot.d.ts",
+    "digest": "sha256:8453dc5695ab8ba1b7de319f5389d41441e3a2b1f510f40e6bc64e7fddcfc4fd"
+  },
+  {
+    "path": "packages/assembly/dist/features/construction/types.d.ts",
+    "digest": "sha256:d54d0874c5d1bf1005c5df60a58350d191d02a15523d2bc2bae695021c619d31"
+  },
+  {
+    "path": "packages/assembly/dist/index.d.ts",
+    "digest": "sha256:0ed0168d2254f4795f903bb6bb92bfb1cca4cc3260fd87af2312148e27edf64c"
+  },
+  {
+    "path": "packages/assembly/package.json",
+    "digest": "sha256:72f49c176954d23edfe996a6cd4ba1d4361be8fa6eb0f7b710f1278622561c0e"
+  },
+  {
+    "path": "packages/assembly/tsconfig.json",
+    "digest": "sha256:aef2f062f04186974b2b16b64b29b9c2a209acc8f310c04398b5c6e663eecc59"
+  },
+  {
+    "path": "packages/core/dist/features/authoring/diagnostic-types.d.ts",
+    "digest": "sha256:e9e544a0474bedb324e0b66eaa2ceebb5b39aa5740bedc29bf769892b25cbdd4"
+  },
+  {
+    "path": "packages/core/dist/features/authoring/helpers.d.ts",
+    "digest": "sha256:6134e01672cfd405fff9d64b0a9a4fd8e148c3bdd4f07f56d6a1b7a8ec36cddb"
+  },
+  {
+    "path": "packages/core/dist/features/authoring/internal.d.ts",
+    "digest": "sha256:5dfc24594cf45101e0658d91da1473b4ae1b33ccc4421e7fe2703bd17d3bd77f"
+  },
+  {
+    "path": "packages/core/dist/features/authoring/wire-types.d.ts",
+    "digest": "sha256:5c84c2bb72b4d195bb16f662e19332844049a2e6ab2c97ea9f29babb5b902b76"
+  },
+  {
+    "path": "packages/core/dist/index.d.ts",
+    "digest": "sha256:399999340720e59b1d44cc98155edee9ac9b9cdd1ef1a33bf12811f3fe0cadfb"
+  },
+  {
+    "path": "packages/core/package.json",
+    "digest": "sha256:3c2165a6bbee51ef0f5e0044abaef2c8518f6d3f6b87c70dbec19f23c3e4f4f4"
+  },
+  {
+    "path": "packages/core/tsconfig.json",
+    "digest": "sha256:3a3a416b4ceb4ff438ad15d4c9ed20cce8e1ed7401fb47b434b4703d5e126f8f"
+  },
+  {
+    "path": "tsconfig.base.json",
+    "digest": "sha256:4e658d676788183def2cab24584181631c3b5826a8520b30cc8b01e183a72085"
+  }
+]

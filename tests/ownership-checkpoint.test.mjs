@@ -1,3 +1,5 @@
+import { assertCompilerFloor } from "../architecture/checks/compiler-floor.ts";
+import { supportedCompilers } from "../architecture/tooling/test-assembly-types.mjs";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
@@ -6,7 +8,8 @@ import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 import test from "node:test";
 import Ajv from "ajv";
-import ts from "typescript-minimum";
+import * as ts from "typescript/unstable/ast";
+import { parseTypeScript } from "./qualification/support/typescript-project.ts";
 import { parse } from "yaml";
 import { packageIdentityViolations, packageManifestInventory } from "../architecture/checks/production-artifacts.mjs";
 import { expectedLeafImporter, LEAF_PACKAGES, leafManifestPath } from "../architecture/checks/leaf-packages.mjs";
@@ -26,7 +29,7 @@ test("the complete gate runs the ownership checkpoint suite with failure propaga
   assert.equal(scripts.precheck, "pnpm ownership:checkpoint:test",
     "pnpm check must run the checkpoint suite through its precheck lifecycle");
   assert.equal(scripts["ownership:checkpoint:test"],
-    "node --test tests/ownership-checkpoint.test.mjs",
+    "node architecture/checks/compiler-floor.ts && node --test tests/ownership-checkpoint.test.mjs",
     "the checkpoint script must execute the focused suite, not a no-op");
 });
 
@@ -104,6 +107,7 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
 // its real governance boundary. The independent reviewed value above prevents a
 // coordinated change to the document and registry from silently blessing itself.
 test("installed Foundation authenticates the accepted decision fingerprint", () => {
+  assertCompilerFloor();
   const report = JSON.parse(execFileSync(process.execPath, [
     resolve("node_modules/@agent-teams/engineering-foundation/dist/cli.js"),
     "check", "governance.architecture-decisions", "--consumer", process.cwd(),
@@ -195,8 +199,9 @@ test("C0 preserves rejecting runtime package admission until K1", async () => {
   }
 });
 
-test("pseudo-contract has one closed synchronous surface without resource callbacks", () => {
-  const source = ts.createSourceFile("contract.d.ts", declaration, ts.ScriptTarget.Latest, true);
+test("pseudo-contract has one closed synchronous surface without resource callbacks", async () => {
+  const { source, diagnostics } = await parseTypeScript("contract.d.ts", declaration);
+  assert.deepEqual(diagnostics, []);
   const interfaces = source.statements.filter(ts.isInterfaceDeclaration);
   const scope = interfaces.find(node => node.name.text === "OwnershipScope");
   assert.deepEqual(scope.members.map(member => member.name.text), [
@@ -207,7 +212,7 @@ test("pseudo-contract has one closed synchronous surface without resource callba
     assert.equal(ts.isImportDeclaration(node) || ts.isImportTypeNode(node), false);
     assert.equal(ts.isFunctionTypeNode(node), false, "no callback types");
     if (ts.isTypeReferenceNode(node)) assert.notEqual(node.typeName.getText(source), "Promise");
-    ts.forEachChild(node, inspect);
+    node.forEachChild(inspect);
   }
   inspect(source);
 });
@@ -252,8 +257,8 @@ scope.seal();
       },
       files: ["consumer.ts"],
     }));
-    for (const compiler of ["typescript", "typescript-minimum"]) {
-      execFileSync(process.execPath, [resolve(`node_modules/${compiler}/bin/tsc`),
+    for (const { path: compiler } of supportedCompilers()) {
+      execFileSync(process.execPath, [compiler,
         "--project", join(temp, "tsconfig.json")], { cwd: temp, stdio: "pipe" });
     }
   } finally { rmSync(temp, { recursive: true, force: true }); }

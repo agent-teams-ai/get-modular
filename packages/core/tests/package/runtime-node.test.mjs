@@ -10,7 +10,7 @@ import { digest, jsonBytes, readBytes, rowDigest, verifyM1Observations } from
 import { prepareM3RuntimeNode, verifyM3RuntimeNode } from
   '../qualification-support/m3-runtime-node.mjs';
 import { auditM1JavaScriptClosure } from
-  '../qualification-support/support/m1-javascript-closure.mjs';
+  '../qualification-support/support/m1-javascript-closure.ts';
 
 // Truthful transport fixtures: these rows describe archive guards only. They
 // neither execute a package nor purport to be the adapter's Node/TS inventory.
@@ -113,7 +113,7 @@ test('JavaScript profile admission is closed and preserves the direct default', 
 });
 
 function sealedFixture(binding = {}) {
-  return { ...identity(), ...binding, plan: { cases: fixture().expectedPlan.cases } };
+  return { ...identity(), ...binding, plan: { cases: fixture(272).expectedPlan.cases } };
 }
 
 test('versioned seals require their profile while historical direct seals remain admitted', async () => {
@@ -157,7 +157,7 @@ test('outside seal identity binds the profile even when archive and case identit
   }), /outside plan anchor mismatch/);
 });
 
-test('closure profiles reject the other assembly path regardless of candidate metadata', () => {
+test('closure profiles reject the other assembly path regardless of candidate metadata', async () => {
   // Incomplete inert fixtures test path admission only, not archive qualification.
   for (const [profile, path, other] of [
     ['m2', 'dist/composition/stage0.js', 'm2-generated'],
@@ -167,9 +167,9 @@ test('closure profiles reject the other assembly path regardless of candidate me
       ['package.json', Buffer.from(JSON.stringify({ javascriptProfile: other }))],
       [path, Buffer.from('')],
     ]);
-    assert.throws(() => auditM1JavaScriptClosure(files, other),
+    await assert.rejects(() => auditM1JavaScriptClosure(files, other),
       error => error.code === 'm1.javascript-closure.invalid' && error.reason === 'file-purpose');
-    assert.throws(() => auditM1JavaScriptClosure(files, profile),
+    await assert.rejects(() => auditM1JavaScriptClosure(files, profile),
       error => error.code === 'm1.javascript-closure.invalid' && error.reason === 'entry-missing');
   }
 });

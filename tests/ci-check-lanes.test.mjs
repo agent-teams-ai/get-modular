@@ -61,12 +61,13 @@ function validateLanes(value, manifest = packageJson) {
   assert.equal(manifest.scripts.check, baseline.map(script => `pnpm ${script}`).join(" && "), "check chain drift");
   assert.equal(manifest.scripts["runtime:preflight"],
     "node architecture/checks/node-version.mjs", "dependency-free preflight drift");
-  assert.equal(manifest.scripts["precheck:changed"], "pnpm runtime:preflight", "changed precheck drift");
+  assert.equal(manifest.scripts["precheck:changed"],
+    "pnpm runtime:preflight && node architecture/checks/compiler-floor.ts", "changed precheck drift");
   assert.equal(manifest.scripts["lockfile:peers:check"], "pnpm peers check --lockfile-only", "peer gate drift");
   assert.equal(manifest.scripts["runtime:policy:typecheck"],
-    "node node_modules/typescript/bin/tsc -p tests/tsconfig.tooling-node-policy.json --noEmit", "policy compiler drift");
+    "pnpm tooling:native:typecheck && node node_modules/typescript/bin/tsc -p tests/tsconfig.tooling-node-policy.json --noEmit", "policy compiler drift");
   assert.equal(manifest.scripts["runtime:policy:test"],
-    "node --test tests/tooling-node-policy.test.mts", "policy test drift");
+    "node --test tests/tooling-node-policy.test.ts", "policy test drift");
   // Every independent checkout validates peers before its lane payload.
   assert.deepEqual([...Object.values(primary).flat(), "lockfile:peers:check"].sort(),
     ["ownership:checkpoint:test", ...baseline.filter(script => !["runtime:preflight", "assembly:build"].includes(script))].sort());

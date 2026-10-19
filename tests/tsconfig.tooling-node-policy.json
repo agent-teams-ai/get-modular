@@ -13,6 +13,6 @@
     "checkJs": false,
     "types": []
   },
-  "files": ["tooling-node-policy.test.mts"],
+  "files": ["tooling-node-policy.test.ts"],
   "include": []
 }

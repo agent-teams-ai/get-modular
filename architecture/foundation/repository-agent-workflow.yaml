@@ -48,6 +48,7 @@ fullScanPaths:
   - packages/conformance/tsconfig.types.json
   - packages/conformance/tsconfig.types.bundler.json
   - tests/tsconfig.tooling-node-policy.json
+  - tests/tsconfig.native-tooling.json
   - tests/tsconfig.repository-agent-workflow.json
   - tests/qualification/consumer-fixtures/semantic/tsconfig.types.json
   - tests/qualification/consumer-fixtures/semantic/tsconfig.runtime.json
@@ -60,7 +61,16 @@ fullScanPaths:
   - tests/sdk-growth.test.mjs
   - tests/qualification/sdk-growth-admission.mjs
   - tests/qualification/sdk-growth-packed-consumers.mjs
-  - tests/qualification/sdk-growth-registry-consumer.mjs
+  - tests/qualification/sdk-growth-registry-consumer.ts
+  - tests/qualification/sdk-growth-public-import.ts
+  - tests/qualification/sdk-growth-synthetic-predecessor.ts
+  - tests/tsconfig.sdk-growth-registry.json
+  - architecture/checks/native-public-api-migration.ts
+  - architecture/checks/native-public-api-migration-admission.ts
+  - architecture/tooling/native-public-api-migration
+  - tests/native-public-api-migration.test.ts
+  - tests/tsconfig.native-public-api-migration.json
+  - tests/fixtures/native-public-api-ordinary-failure.ts
   - .github/workflows
   - architecture
   - docs
