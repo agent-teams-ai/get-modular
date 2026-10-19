@@ -64,8 +64,8 @@ async function assertOrdinarySchema(value: unknown): Promise<void> {
 /** Materialize only the reviewed declaration/configuration data. The original
  * preset package manifest stays exact; no historical runtime graph is installed. */
 export async function acquireHistoricalData(temporary: string): Promise<string> {
-  reportDestination(await realpath(root), join(await realpath(temporary), "inputs"), await realpath(tmpdir()));
-  const working = join(temporary, "inputs");
+  const working = join(await realpath(temporary), "inputs");
+  reportDestination(await realpath(root), working, await realpath(tmpdir()));
   await mkdir(working);
   const pinsBytes = await readInput(`${inputDirectory}/pins.json`);
   if (digest(pinsBytes) !== inputPinsDigest) {fail("copied input pins differ");}

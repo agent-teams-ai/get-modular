@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { cp, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -97,7 +97,7 @@ await test("historical staging retains exact presets and Core declarations witho
   const directory = await mkdtemp(join(tmpdir(), "gm-native-api-declarations-"));
   try {
     const requestPath = await acquireHistoricalData(directory);
-    assert.equal(requestPath, join(directory, "inputs/request.json"));
+    assert.equal(requestPath, join(await realpath(directory), "inputs/request.json"));
     const historical = join(directory, "inputs/historical");
     const preset = record(record(JSON.parse((await read(`${inputDirectory}/declaration-realization.json`)).toString("utf8")))["foundationPresetArchive"]);
     for (const [member, hash] of Object.entries(record(preset["members"]))) {
@@ -113,6 +113,21 @@ await test("historical staging retains exact presets and Core declarations witho
     assert.ok((await read(`${inputDirectory}/README.md`)).length > 0);
     await assert.rejects(readFile(join(directory, "inputs/README.md")), /ENOENT/,
       "unlisted source members must not enter the materialized namespace");
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+await test("historical staging canonicalizes an owned directory reached through a symlinked parent", async () => {
+  const directory = await realpath(await mkdtemp(join(tmpdir(), "gm-native-api-parent-")));
+  try {
+    const parent = join(directory, "physical"); await mkdir(parent);
+    const alias = join(directory, "alias");
+    await symlink(parent, alias, process.platform === "win32" ? "junction" : "dir");
+    const temporary = await mkdtemp(join(alias, "owned-"));
+    const canonical = await realpath(temporary);
+    assert.notEqual(temporary, canonical, "the fixture must exercise a noncanonical parent path");
+    const requestPath = await acquireHistoricalData(temporary);
+    assert.equal(requestPath, join(canonical, "inputs/request.json"));
+    assert.equal(await realpath(requestPath), requestPath);
+    assert.deepEqual(await readFile(requestPath), await read(`${inputDirectory}/request.json`));
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
 await test("historical staging refuses an occupied symlink namespace before any outside write", async () => {
