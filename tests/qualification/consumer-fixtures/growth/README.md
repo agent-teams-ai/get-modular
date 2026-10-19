@@ -111,3 +111,84 @@ or run. Shallow-map timings do not qualify this subject. A compiler/package owne
 must establish a provenance-bound remedy on the unchanged maps and regression
 inputs before claiming that blocker resolved. The retained investigation is a
 completed bounded result with an unresolved delivery blocker.
+
+## Compiler-owner follow-up, 2026-10-18
+
+The observations above retain their original date, inputs and limits. A separate
+600-second **build-only** budget subsequently produced the exact PR #64737
+candidate in 139.330176 seconds, using Go 1.27.2 and `-buildvcs=false -p 4`.
+The source archive SHA-256 is
+`034bb7bb88f1354b416f9c617a82b88af7f2344f279e9a697a73bf4276638858`;
+the Go archive SHA-256 is
+`ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5`.
+The resulting compiler reports `7.1.0-dev`. It is an unreleased source candidate;
+the repository's supported TypeScript 7.0.2 pin and frozen lockfile are unchanged.
+
+On this candidate, the exact empty-interface witness passed in 0.415223 seconds.
+Upstream's `TestLocal/sharedInterfaceBaseTypes` regression passed, including its
+interface/intersection, cyclic-base and generic-default cases. Existing Assembly
+public type contracts also passed; a conflicting inherited feature map still
+produced the expected TS2320 rejection.
+
+The unchanged N=100 and N=500 consumers completed all eight G-02/G-03 stages.
+N=500 took 45.208569 seconds overall: cold emit 18.547635 seconds and shared-contract
+emit 16.757879 seconds. The full smoke counted 1,001 attempts, 251,000 factory
+calls and 499,003 dependency reads. Its 3,503 source files have SHA-256
+`2a84ede0f14d1535e30c12bcc52c3e3927039dfb57d682c4778e639554e1c11d`.
+Source, generator, oracle, patches, configuration and all four copied package
+outputs match the retained supported-compiler N=500 timeout inputs. This local
+experiment used an explicitly identified candidate CLI shim; it does not attest
+to a registry package. The optional route now invokes the native candidate
+directly and verifies its binary and manifest hashes.
+
+N=1000 remains **unqualified**. Its local cold stage exited with SIGKILL before
+the 180-second deadline on an 8-GiB host. A separate memory-policy diagnostic
+confirmed a cgroup OOM kill with Go's memory limit set to 5 GiB; this setting is a
+[soft limit](https://go.dev/doc/gc-guide#Memory_limit), and that diagnostic is not
+a completed G-02 run. A package-free N=500 mapped-base
+control still took 11.866039 seconds, compared with 0.401670 seconds for an inline
+property control. Thus Get Modular helper computation is unnecessary to reproduce
+the remaining cost. The candidate's
+[non-interface-base handling](https://github.com/microsoft/TypeScript/blob/3200b90a617bcf9ad26543b347cabad8ff0dad14/tsc/internal/checker/checker.go#L17752-L17771)
+and [inherited member instantiation](https://github.com/microsoft/TypeScript/blob/3200b90a617bcf9ad26543b347cabad8ff0dad14/tsc/internal/checker/checker.go#L19522-L19569)
+suggest repeated materialization; this is an inference from source and controls,
+not a heap-profile result. Inlining properties would change the prescribed
+feature-map form and was used only as a causal control.
+
+Two disposable public Linux experiments preserved the original N=1000 profile
+and its 180/120/600-second compiler/runtime/aggregate bounds:
+
+| Run | Observed boundary | N=1000 result |
+| --- | --- | --- |
+| [39122676446](https://github.com/agent-teams-ai/get-modular/actions/runs/39122676446), commit `0299cf430716a37fd87a2842c73af57e52edd638` | Runner shutdown, shell exit 143; no candidate or stage report retained. | Unknown. |
+| [39123727842](https://github.com/agent-teams-ai/get-modular/actions/runs/39123727842), commit `0c7729d83f01833fa352ff134130f8a09e742ffd` | One explicit infrastructure retry. Stdout records 16,766,410,752 bytes RAM, four CPUs, verified candidate build success in 130.741210 seconds, then cold-stage start. Runner shutdown followed 83.941434 seconds later, before stage end. | Unknown. |
+
+Both runs skipped the subsequent integrity and artifact steps despite their
+`always()` conditions; each retained zero artifacts. The second run's cgroup
+memory counters were unavailable. These observations establish infrastructure
+interruption, not a compiler timeout, OOM diagnosis, or successful N=1000 result.
+Its verified native binary SHA-256 was
+`c2861b2b2f656ce6e6be72d527d0fec3783e95ee70aa3165bc6f6f688963cbc8`.
+Raw run/job/artifact metadata and complete job logs were read back for both runs.
+No third attempt was selected.
+
+After preparing the normal public package outputs, the opt-in compiler-owner
+reproduction entry point is:
+
+```sh
+node tests/qualification/consumer-fixtures/growth/upstream-compiler.ts --directory /absolute/new-directory
+```
+
+It requires the pinned Node 26.11.1 / pnpm 11.20.0, Linux x64,
+and an observed effective memory budget greater than 8 GiB. It downloads and
+hash-verifies the exact source and Go archives, externally supervises the separate
+600-second build, and selects only the original N=1000 measurement. Its private
+candidate manifest never replaces the default compiler route. The optional
+workflow runs solely on pushes to `test/fixture-growth-upstream-diagnostic`, with
+read-only repository permissions; it is not a new mandatory performance matrix.
+
+The compiler/package owner still needs a complete provenance-bound N=1000 report
+on unchanged maps, independent assertions and original caps, plus an explicitly
+reviewed maintainable compiler remedy. Candidate N=500 success, source-conformance
+coverage, and supported-pin adoption are separate claims. Source conformance
+remains **incomplete**, and the supported-toolchain delivery blocker remains open.

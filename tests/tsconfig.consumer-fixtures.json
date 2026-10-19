@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.native-tooling.json",
+  "files": [
+    "qualification/consumer-fixtures/authoring/transport.ts",
+    "qualification/consumer-fixtures/growth/upstream-compiler.ts",
+    "qualification/consumer-fixtures/source/installed.ts",
+    "qualification/consumer-fixtures/source/policy.ts"
+  ],
+  "include": []
+}
