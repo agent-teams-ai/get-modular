@@ -1,0 +1,83 @@
+// T24 T25 T49 T117
+// F1 (adversarial review): structural paths that lose the alias must still check the record type (type marker).
+import type { Resources } from "@get-modular/resources";
+import { createStore, type ListenerError, type ReadonlyStore, type Store } from "../dist/index.js";
+type App = { readonly theme: string; readonly region: string };
+type Unrelated = { readonly color: number };
+type WrongType = { readonly theme: number };
+declare const facet: ReadonlyStore<App>;
+declare const resources: Resources;
+declare const reportError: (report: ListenerError) => undefined;
+
+// @ts-expect-error Readonly<> unrelated
+const r1: Readonly<ReadonlyStore<Unrelated>> = facet;
+// @ts-expect-error Readonly<> wrong value type
+const r2: Readonly<ReadonlyStore<WrongType>> = facet;
+// @ts-expect-error Pick<"read"> wrong value type
+const p2: Pick<ReadonlyStore<WrongType>, "read"> = facet;
+// @ts-expect-error intersection unrelated
+const i1: ReadonlyStore<Unrelated> & { readonly tag?: string } = facet;
+type ThemeSource = { readonly read: ReadonlyStore<WrongType>["read"]; readonly watch: ReadonlyStore<WrongType>["watch"] };
+// @ts-expect-error a hand-written port of read and watch with a wrong value type
+const h1: ThemeSource = facet;
+// @ts-expect-error member type read with a wrong value type
+const m1: ReadonlyStore<WrongType>["read"] = facet.read;
+// @ts-expect-error promise of unrelated
+const g1: Promise<ReadonlyStore<Unrelated>> = Promise.resolve(facet);
+// @ts-expect-error array of wrong value type
+const g2: readonly ReadonlyStore<WrongType>[] = [facet];
+// T25 T117: the two archived p8 unsafe watch-only positives now reject with TS2322.
+// Future callbacks depend on the declared record; the historical archive remains unchanged.
+// @ts-expect-error T117 TS2322 wrong-record watch-only port
+const p1: Pick<ReadonlyStore<Unrelated>, "watch"> = facet;
+// @ts-expect-error T117 TS2322 wrong-record extracted watch
+const m2: ReadonlyStore<Unrelated>["watch"] = facet.watch;
+
+// The owner cannot hand out the writable store, even if Store ever gains watch and load.
+const store = createStore<App>({ theme: "light", region: "eu" }, { name: "s", resources, reportError });
+// @ts-expect-error Store instead of readonly()
+const leaked: ReadonlyStore<App> = store;
+// A snapshot read through a slice facet is followed through that facet, not through the wide one.
+const slice: ReadonlyStore<{ readonly theme: string }> = facet;
+// @ts-expect-error slice snapshot passed to the wide facet
+facet.watch(slice.read(["theme"]), { resources, name: "m/theme", onChange: () => undefined });
+slice.watch(slice.read(["theme"]), { resources, name: "m/theme", onChange: () => undefined });
+void [r1, r2, p1, p2, i1, h1, m1, m2, g1, g2, leaked];
+
+// T24 T49 [p3] Removing the variance annotation must preserve the marker checks.
+// @ts-expect-error varianceUnrelated record
+const varianceUnrelated: ReadonlyStore<Unrelated> = facet;
+// @ts-expect-error same key, other type
+const varianceWrong: ReadonlyStore<WrongType> = facet;
+// @ts-expect-error slice -> wide
+const varianceWide: ReadonlyStore<App> = facet as ReadonlyStore<{ readonly theme: string }>;
+void [varianceUnrelated, varianceWrong, varianceWide];
+
+// T25 T117: same-record watch-only assignments remain possible, though dependencies use the full facet.
+const sameWatch: Pick<ReadonlyStore<App>, "watch"> = facet;
+const sameMember: ReadonlyStore<App>["watch"] = facet.watch;
+void [sameWatch, sameMember];
+
+// T49 T117: writer invariance survives structural wrappers and callable-member extraction.
+type NarrowTheme = { readonly theme: "light" | "dark" };
+type BroadTheme = { readonly theme: string };
+declare const narrowWriter: Store<NarrowTheme>;
+const sameWriter: Store<NarrowTheme> = narrowWriter;
+const sameSet: Store<NarrowTheme>["set"] = narrowWriter.set;
+const samePick: Pick<Store<NarrowTheme>, "set"> = narrowWriter;
+sameSet({ theme: "dark" });
+samePick.set({ theme: "light" });
+const ordinaryRevision: number = sameWriter.set({ theme: "dark" });
+// @ts-expect-error T117 writer alias cannot widen
+const wideWriter: Store<BroadTheme> = narrowWriter;
+// @ts-expect-error T117 spread retains callable invariance
+const spreadWriter: Store<BroadTheme> = { ...narrowWriter };
+// @ts-expect-error T117 Readonly wrapper retains callable invariance
+const readonlyWriter: Readonly<Store<BroadTheme>> = narrowWriter;
+// @ts-expect-error T117 Pick retains callable invariance
+const pickedWriter: Pick<Store<BroadTheme>, "set"> = narrowWriter;
+// @ts-expect-error T117 extracted callable retains invariance
+const extractedSet: Store<BroadTheme>["set"] = narrowWriter.set;
+// @ts-expect-error T117 original set still rejects an undeclared value
+narrowWriter.set({ theme: "pink" });
+void [ordinaryRevision, wideWriter, spreadWriter, readonlyWriter, pickedWriter, extractedSet];

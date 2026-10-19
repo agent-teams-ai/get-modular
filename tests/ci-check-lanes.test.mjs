@@ -27,7 +27,7 @@ const hosts = {
 const baseline = [
   "runtime:preflight", "lockfile:peers:check", "runtime:policy:typecheck",
   "runtime:policy:test", "governance:check", "release-owned-files:check",
-  "assembly:build", "lifecycle:check", "resources:check", "conformance:check", "foundation:check", "sdk-growth:check",
+  "assembly:build", "lifecycle:check", "resources:check", "conformance:check", "observation:check", "foundation:check", "sdk-growth:check",
   "lint:typed", "docs:protocol:check", "architecture:feature-module-profile",
   "architecture:feature-module-profile:test", "core:typecheck:prepared", "core:test",
   "assembly:typecheck", "assembly:test", "contracts:check", "contracts:test",
@@ -36,6 +36,7 @@ const baseline = [
   "governance:test",
 ];
 const primary = {
+  observation: ["observation:check"],
   core: ["core:typecheck:prepared", "core:test"],
   assembly: ["assembly:typecheck", "assembly:test"],
   packaging: ["lifecycle:check", "resources:check", "conformance:check", "foundation:check", "sdk-growth:check", "lint:typed"],
@@ -129,12 +130,13 @@ function validateLanes(value, manifest = packageJson) {
       const scripts = scriptsOf(row);
       assert.equal(new Set(scripts).size, scripts.length, `${host}/${row.lane}: duplicate script`);
       assert(scripts.every(script =>
-        [...baseline, "ownership:checkpoint:test", "lifecycle:build", "resources:build", "conformance:build"].includes(script)), "unknown script");
+        [...baseline, "ownership:checkpoint:test", "lifecycle:build", "resources:build", "conformance:build", "observation:build"].includes(script)), "unknown script");
       assert(scripts.every(script => typeof manifest.scripts[script] === "string"), "undefined script");
       // Shared preparation is repeated per checkout, not counted as extra obligations.
       const setup = ["runtime:preflight", "assembly:build"];
-      // Packaging already builds every leaf package through its primary leaf checks.
-      if (row.lane !== "packaging") setup.push("lifecycle:build", "resources:build", "conformance:build");
+      for (const leaf of ["lifecycle", "resources", "conformance", "observation"]) {
+        if (!primary[row.lane].includes(`${leaf}:check`)) setup.push(`${leaf}:build`);
+      }
       if (row.lane !== "governance") setup.push("governance:check");
       assert.deepEqual(scripts.filter(script => !setup.includes(script)),
         primary[row.lane], `${host}/${row.lane}: obligations`);
@@ -148,6 +150,11 @@ function validateLanes(value, manifest = packageJson) {
       if (row.lane !== "packaging") {
         assert.equal(position("resources:build"), lifecycle + 1, "resources build follows lifecycle build");
         assert.equal(position("conformance:build"), lifecycle + 2, "conformance build follows resources build");
+        assert.equal(position(row.lane === "observation" ? "observation:check" : "observation:build"),
+          lifecycle + 3, "observation follows conformance build");
+      } else {
+        assert.equal(position("observation:build"), position("conformance:check") + 1,
+          "packaging prepares observation after conformance");
       }
       for (const script of baseline.slice(baseline.indexOf("lifecycle:check") + 1)) {
         if (scripts.includes(script)) assert(position(script) > lifecycle, `${script}: lifecycle prerequisite`);
@@ -239,6 +246,17 @@ function assertAggregate(step, cwd, dependency) {
 }
 
 test("every OS executes the independent baseline obligations with their prerequisites", () => validateLanes(workflow));
+
+test("the Node 24 consumer receives both observation entries from the default-runtime pack", () => {
+  const job = workflow.jobs["node-24-compatibility"];
+  const build = job.steps.find(step => step.name === "Build and pack libraries with the default Node 26 tooling");
+  const lines = build.run.trim().split("\n").map(line => line.trim());
+  assert.equal(lines[lines.indexOf("pnpm conformance:build") + 1], "pnpm observation:build");
+  const pack = name => `pnpm --dir packages/${name} pack --pack-destination "$RUNNER_TEMP/node24-pack"`;
+  assert.equal(lines[lines.indexOf(pack("conformance")) + 1], pack("observation"));
+  assert.equal(job["timeout-minutes"], 10);
+  assert.equal(job.steps.find(step => step.with?.["node-version"] === "24.21.0").with["node-version"], "24.21.0");
+});
 
 test("rejects missing, duplicate, unknown and reordered obligations on any OS", () => {
   for (const host of Object.keys(hosts)) {
@@ -352,7 +370,7 @@ test("the actual native lane runner passes argv in order and preserves the first
     const job = laneJob(workflow, host);
     for (const row of job.strategy.matrix.include) {
       const scripts = scriptsOf(row);
-      for (const failure of [undefined, scripts[1], scripts.at(-2)]) {
+      for (const failure of [undefined, scripts[1], scripts.at(-2), scripts.at(-1)]) {
         await rm(join(cwd, "calls.txt"), { force: true });
         const status = lane(runner(job), cwd, {
           PATH: `${cwd}${delimiter}${process.env.PATH}`, LANE_SCRIPTS: row.scripts, FAIL_SCRIPT: failure ?? "",

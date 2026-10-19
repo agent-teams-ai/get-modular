@@ -17,9 +17,9 @@
   "scripts": {
     "codemod": "node architecture/tooling/codemods/run.mjs",
     "precheck": "pnpm ownership:checkpoint:test",
-    "check": "pnpm runtime:preflight && pnpm lockfile:peers:check && pnpm runtime:policy:typecheck && pnpm runtime:policy:test && pnpm governance:check && pnpm release-owned-files:check && pnpm assembly:build && pnpm lifecycle:check && pnpm resources:check && pnpm conformance:check && pnpm foundation:check && pnpm sdk-growth:check && pnpm lint:typed && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm core:typecheck:prepared && pnpm core:test && pnpm assembly:typecheck && pnpm assembly:test && pnpm contracts:check && pnpm contracts:test && pnpm qualification:resource-profile && pnpm qualification:v1-diagnostics-protocol && pnpm qualification:v1-graph-semantics && pnpm qualification:self-composition-templates && pnpm governance:test",
+    "check": "pnpm runtime:preflight && pnpm lockfile:peers:check && pnpm runtime:policy:typecheck && pnpm runtime:policy:test && pnpm governance:check && pnpm release-owned-files:check && pnpm assembly:build && pnpm lifecycle:check && pnpm resources:check && pnpm conformance:check && pnpm observation:check && pnpm foundation:check && pnpm sdk-growth:check && pnpm lint:typed && pnpm docs:protocol:check && pnpm architecture:feature-module-profile && pnpm architecture:feature-module-profile:test && pnpm core:typecheck:prepared && pnpm core:test && pnpm assembly:typecheck && pnpm assembly:test && pnpm contracts:check && pnpm contracts:test && pnpm qualification:resource-profile && pnpm qualification:v1-diagnostics-protocol && pnpm qualification:v1-graph-semantics && pnpm qualification:self-composition-templates && pnpm governance:test",
     "check:changed": "agent-teams-foundation agent-workflow changed --consumer .",
-    "check:fast": "pnpm runtime:preflight && pnpm lockfile:peers:check && pnpm runtime:policy:typecheck && pnpm runtime:policy:test && pnpm assembly:build && pnpm lifecycle:check && pnpm resources:check && pnpm conformance:check && pnpm foundation:check && pnpm sdk-growth:check && pnpm quality:coverage:scope && pnpm architecture:feature-module-profile && pnpm quality:critical:test && pnpm docs:check && pnpm core:typecheck:prepared && pnpm core:test && pnpm assembly:typecheck && pnpm assembly:test",
+    "check:fast": "pnpm runtime:preflight && pnpm lockfile:peers:check && pnpm runtime:policy:typecheck && pnpm runtime:policy:test && pnpm assembly:build && pnpm lifecycle:check && pnpm resources:check && pnpm conformance:check && pnpm observation:check && pnpm foundation:check && pnpm sdk-growth:check && pnpm quality:coverage:scope && pnpm architecture:feature-module-profile && pnpm quality:critical:test && pnpm docs:check && pnpm core:typecheck:prepared && pnpm core:test && pnpm assembly:typecheck && pnpm assembly:test",
     "docs:changed": "pnpm docs:check && pnpm docs:quality",
     "docs:check": "agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml",
     "docs:doctor": "agent-teams-docs doctor --consumer . --profile architecture/foundation/docs-protocol.yaml",
@@ -86,7 +86,13 @@
     "sdk-growth:typecheck": "node node_modules/typescript/bin/tsc -p tests/tsconfig.sdk-growth-registry.json --noEmit",
     "foundation:migration:typecheck": "node node_modules/typescript/bin/tsc -p tests/tsconfig.native-public-api-migration.json --noEmit",
     "foundation:migration:test": "node --test tests/native-public-api-migration.test.ts",
-    "tooling:native:typecheck": "node node_modules/typescript/bin/tsc -p tests/tsconfig.native-tooling.json --noEmit"
+    "tooling:native:typecheck": "node node_modules/typescript/bin/tsc -p tests/tsconfig.native-tooling.json --noEmit",
+    "observation:build": "node architecture/tooling/build-leaf-package.mjs observation",
+    "observation:typecheck": "node node_modules/typescript/bin/tsc -p packages/observation/tsconfig.json --noEmit && node architecture/tooling/test-assembly-types.mjs --projects packages/observation/tsconfig.types.json packages/observation/tsconfig.types.bundler.json packages/observation/tsconfig.test-tooling.json",
+    "observation:test": "node --test packages/observation/tests/store.test.mjs packages/observation/tests/subscriptions.test.mjs packages/observation/tests/load.test.mjs packages/observation/tests/guards.test.mjs packages/observation/tests/testing-entry.test.mjs packages/observation/tests/processes.test.mjs packages/observation/tests/type-controls.test.ts packages/observation/tests/close-reporting.test.ts packages/observation/tests/review-regressions.test.ts tests/observation/assembly-integration.test.mjs tests/observation/readme-examples.test.mjs",
+    "observation:evidence": "node --test packages/observation/tests/mutations.test.mjs packages/observation/tests/writer-gate.test.ts",
+    "observation:pack": "node --test packages/observation/tests/packed-root.test.mjs",
+    "observation:check": "pnpm observation:build && pnpm observation:typecheck && pnpm observation:test && pnpm observation:evidence && pnpm observation:pack"
   },
   "devDependencies": {
     "@agent-teams/docs-protocol": "0.6.2",
@@ -97,6 +103,7 @@
     "@get-modular/conformance": "workspace:*",
     "@get-modular/core": "workspace:*",
     "@get-modular/lifecycle-kernel": "workspace:*",
+    "@get-modular/observation": "workspace:*",
     "@get-modular/resources": "workspace:*",
     "@types/node": "catalog:",
     "ajv": "catalog:",

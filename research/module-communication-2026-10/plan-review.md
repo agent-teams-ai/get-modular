@@ -283,6 +283,9 @@ same controlling sources and inserted the existing call into the current consume
 
 ### Completion and evidence limits
 
+This subsection records the plan-only checkpoint. Subsequent implementation and
+its separately qualified subjects are recorded in [implementation-port.md](implementation-port.md).
+
 All **nine requested Astra xhigh reviews** are complete, in three sequential rounds, with all material findings
 disposed in the operative plan. The last round's input is the SHA above; the final two corrections are root's
 post-review edits, not an assertion that every reviewer approved bytes they never saw. There is no fourth review

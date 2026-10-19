@@ -1,0 +1,245 @@
+import type { Resources } from "@get-modular/resources";
+
+/** A key of the record `V`. Declare every key of a store record: write `T | undefined`, never `?:`. */
+export type Key<V> = keyof V & string;
+/** A non-empty list of keys of `V`. */
+export type Keys<V> = readonly [Key<V>, ...Key<V>[]];
+type Primitive = string | number | boolean | bigint | symbol | null | undefined;
+/**
+ * Plain data as the store holds it: deeply read-only, because the store freezes it. Primitives stay as they are, so
+ * branded IDs such as `string & { readonly __brand: "UserId" }` survive; tuples keep their element types. Unknown
+ * stays unknown until the consumer narrows it. Values must be ordinary data, never Proxy-backed graphs.
+ */
+export type Frozen<T> = T extends Primitive ? T : T extends readonly unknown[] ? { readonly [I in keyof T]: Frozen<T[I]> } : T extends object ? { readonly [P in keyof T]: Frozen<T[P]> } : T;
+type OpenKeys<V> = { [K in keyof V]-?: {} extends Record<K, unknown> ? K : never }[keyof V];
+type FixedKeysError = { readonly "a store record needs literal keys, not an index signature": never };
+/**
+ * A non-empty record with a fixed, literal key set. Index signatures (`Record<string, X>`, `{ [id: `k${number}`]: X }`)
+ * are rejected even beside a fixed property, because the store's key set is fixed at creation.
+ */
+export type FixedKeys<V> = {} extends Record<keyof V, unknown> ? FixedKeysError : [OpenKeys<V>] extends [never] ? unknown : FixedKeysError;
+
+declare const snapshotBrand: unique symbol;
+declare const listenerErrorBrand: unique symbol;
+declare const storeValue: unique symbol;
+
+/**
+ * Frozen values of the keys you read and the revision they were read at.
+ * Only `read` and deliveries create snapshots. A copied, spread or hand-built object is rejected at run time with
+ * `observation.snapshot.foreign`.
+ */
+export type Snapshot<V, K extends keyof V = keyof V> = {
+  /** Number of the latest commit that changed one of these keys; 0 before any change. Not proof that a value differs. */
+  readonly revision: number;
+  /** Exactly the keys you read, deeply frozen. */
+  readonly values: Frozen<Pick<V, K>>;
+  /** Type-only brand: there is no such property at run time. */
+  readonly [snapshotBrand]: true;
+  /** Type-only: the record type of the facet the snapshot was read from. */
+  readonly [storeValue]: V;
+};
+
+/** Any snapshot of some keys of `V`. Used as a constraint only. */
+export type SnapshotOf<V> = {
+  readonly revision: number;
+  readonly values: { readonly [P in keyof V]?: Frozen<V[P]> };
+  readonly [snapshotBrand]: true;
+  readonly [storeValue]: V;
+};
+
+// Possible keys are not necessarily present: only a fixed occurrence in every tuple branch proves presence.
+type ContainsReadKey<K extends readonly unknown[], P> =
+  K extends readonly [infer H, ...infer R]
+    ? [H] extends [P] ? true : ContainsReadKey<R, P>
+    : false;
+type RequiredReadKeys<K extends readonly string[]> = {
+  [P in K[number]]: false extends ContainsReadKey<K, P> ? never : P;
+}[K[number]];
+type ReadSnapshot<V, K extends Keys<V>> = Omit<Snapshot<V, K[number]>, "values"> & {
+  readonly values:
+    Frozen<Pick<V, RequiredReadKeys<K> & keyof V>> &
+    Partial<Frozen<Pick<V, Exclude<K[number], RequiredReadKeys<K>>>>>;
+};
+type RequiredValueKeys<X> = {
+  [P in keyof X]-?: {} extends Pick<X, P> ? never : P;
+}[keyof X];
+// Distribute before selecting keys; each future value comes from declared V, never today's refinement.
+type FutureSnapshot<V, S extends { readonly values: object }> = S extends unknown
+  ? Omit<Snapshot<V, keyof S["values"] & keyof V>, "values"> & {
+      readonly values:
+        Snapshot<V, RequiredValueKeys<S["values"]> & keyof V>["values"] &
+        Partial<Snapshot<V, Exclude<keyof S["values"], RequiredValueKeys<S["values"]>> & keyof V>["values"]>;
+    }
+  : never;
+
+/** What `loader` receives besides the snapshot. */
+export type LoadContext = {
+  /** Aborted when a newer change supersedes this run, the store closes, or your scope starts closing. */
+  readonly signal: AbortSignal;
+};
+
+/**
+ * Lifetime shared by `watch` and `load`. A `watch` is bound to `resources.signal` and detached the moment that scope
+ * starts closing, before any cleanup runs; a `load` also opens a child scope `load:<name>` that drains its running run.
+ * A subscription buffers at most one undelivered revision; `set` visits only the subscriptions of the keys it changed.
+ */
+export type Subscription = {
+  /**
+   * Your module's scope, or a `child()` of it for work that ends earlier, such as one request. Call `watch` and
+   * `load` in the module's composition file, which receives `resources`; adapters receive values or a consumer-owned port.
+   * If `resources.signal` is already aborted, `watch` and `load` register nothing and rethrow its reason
+   * (`signal.throwIfAborted()`): `resources.scope.closed` when the scope started closing, or the Host's reason when
+   * the run that constructs your module was cancelled. Do not catch it: let the factory fail.
+   */
+  readonly resources: Resources;
+  /**
+   * Non-empty; names the subscription in reports and debt paths, by convention `"<module>/<purpose>"`. Unique per
+   * store within one scope: a second live subscription with the same name in the same `resources` throws
+   * `observation.subscription.duplicate-name`.
+   */
+  readonly name: string;
+};
+
+export type WatchSpec<S> = Subscription & {
+  /**
+   * Called in a later task with the newest values after one or more commits changed a key of the snapshot,
+   * including a commit between `read` and `watch`. Never called for the snapshot itself. Several commits
+   * may arrive as one call. Synchronous: return nothing. Never change a key this subscription follows, neither here
+   * nor in what this delivery task goes on to do (an awaited command, a microtask), neither with `set` nor through a
+   * command: the commit throws `observation.delivery.echo`. Writing your own, different store is fine. A throw goes to
+   * the owner's `reportError`, and the same subscription keeps receiving later revisions.
+   */
+  readonly onChange: (next: S) => undefined;
+};
+
+export type LoadSpec<S, T> = Subscription & {
+  /**
+   * Runs in the next task for the current values of the snapshot's keys, then again after each change.
+   * The snapshot passed to `load` only carries the keys: the first run always uses the newest values.
+   * One run at a time: a change aborts the running one and only the newest change waits.
+   * When the scope closes, the running load is aborted and drained: entry `load:<name>/drain` in the
+   * scope. A load still running after the Host escalates becomes a failed debt `observation.load.still-running`.
+   *
+   * Do not start timers, connections or servers here: work a loader starts runs in its delivery context while the run is
+   * active, so a write it makes to a key this load follows counts as an echo. Start long-lived work in the factory or in
+   * the owner's `setup`.
+   */
+  readonly loader: (next: S, context: LoadContext) => Promise<T>;
+  /**
+   * Called in the delivery task when a run for newer values is queued, the first run included, before the
+   * superseded run has settled. Drop or mark what you show for older values here. Always before this run's
+   * `onResult` or `onError`. To keep showing older data on purpose, write `() => undefined`. Synchronous.
+   */
+  readonly onLoading: (snapshot: S) => undefined;
+  /**
+   * The result of a run, delivered in a later delivery task only if no commit has touched the snapshot's keys since
+   * the run's snapshot (compared with the store immediately before the callback). Otherwise it is dropped.
+   * Synchronous: return nothing.
+   */
+  readonly onResult: (result: T, snapshot: S) => undefined;
+  /** The failure of a run, under the same rule as `onResult`. A superseded or aborted run reports nothing. Synchronous. */
+  readonly onError: (cause: unknown, snapshot: S) => undefined;
+};
+
+/**
+ * The facet other modules receive: read and follow, never write. Type a dependency only as `ReadonlyStore<Slice>`;
+ * never as `Pick`, `Omit` or member types of it. A store of a wider record serves a slice.
+ */
+export type ReadonlyStore<out V> = {
+  /** Type-only: the record type, so every structural comparison checks it. There is no such property at run time. */
+  readonly [storeValue]: V;
+  /** Frozen values of `keys` now. An unknown key throws `observation.keys.unknown`; a closed source throws `observation.store.closed`. */
+  readonly read: <const K extends Keys<V>>(keys: K) => ReadSnapshot<V, K>;
+  /**
+   * Follow every key of `snapshot`, starting at its revision: read exactly the keys you want to follow.
+   * Pass a snapshot read through this same facet. Bound to `resources.signal` (about 1 KB of heap per live watch).
+   * Returns after registering; never calls back synchronously.
+   */
+  readonly watch: <S extends SnapshotOf<V>>(snapshot: S, spec: WatchSpec<FutureSnapshot<V, S>>) => undefined;
+  /** Keep an asynchronous result in step with every key of `snapshot`: latest only, cancellable, stale results dropped. */
+  readonly load: <S extends SnapshotOf<V>, T>(snapshot: S, spec: LoadSpec<FutureSnapshot<V, S>, T>) => undefined;
+};
+
+type StorePatch<V, K extends Key<V>> = { readonly [P in K]: Frozen<V[P]> };
+
+/** The owner's facet. Keep it inside the owning module; hand out `readonly()`. Invariant in `V`. */
+export type Store<in out V> = {
+  /** Frozen values of `keys`. The owner may still read after `close`: the last values, for example to save them. */
+  readonly read: <const K extends Keys<V>>(keys: K) => ReadSnapshot<V, K>;
+  /**
+   * Commits a change of the keys in `patch`; every other key keeps its value. Returns the new revision. A patch that
+   * changes nothing (by `Object.is`) commits nothing and returns the current revision. The store takes ownership of
+   * the objects in `patch` and freezes them in place, after validating all of them: do not keep mutating them, and
+   * copy objects that belong to another module. Non-plain data throws `observation.values.not-plain`; an unknown key
+   * throws `observation.keys.unknown`. Proxy-backed values are unsupported; an available native Proxy check rejects
+   * them before reflection or ownership. Without that facility the ordinary-data input precondition still applies.
+   * A commit made from a delivery that changes a key the delivering subscription
+   * follows on this store throws `observation.delivery.echo`; a chain of more than 64 such steps across stores throws
+   * `observation.delivery.cascade`. A delivery counts synchronously, and in Node also through await and microtasks
+   * until the end of its delivery task (a loader: while its run is active); not across timers or I/O. Both are reported
+   * to this store's `reportError` first and then thrown: in a fire-and-forget continuation that becomes an unhandled
+   * rejection, which Node's default policy turns into a process exit (fail fast on a programming bug).
+   */
+  readonly set: {
+    <const K extends Key<V>>(patch: StorePatch<V, K>): number;
+    /** Type-only invariant witness, preserved when the callable member is extracted. */
+    readonly [storeValue]: (value: V) => V;
+  };
+  /** The facet to hand to other modules. The same frozen object on every call. */
+  readonly readonly: () => ReadonlyStore<V>;
+  /**
+   * Closes the store. Every live subscription is detached (a watch's signal listener is removed, a load's lane scope is
+   * closed), so a long-lived subscriber scope keeps nothing per closed source; each subscription gets one report
+   * `observation.source.closed` to `reportError`, and running loads are aborted. Then `set`, `watch`, `load` and the
+   * facet's `read` throw `observation.store.closed`; the owner's `read` keeps returning the last values.
+   * Idempotent and synchronous. Also runs when the owner's `resources` releases the entry `store:<name>`.
+   */
+  readonly close: () => undefined;
+};
+
+/**
+ * One failed callback of one subscription, as the store reports it to its owner's `reportError`.
+ * Owner side only: the owner wires `reportError` to the Host's error port. Only the store creates these reports,
+ * and the private brand prevents ordinary hand construction. A subscriber lets its handler throw and the store reports the failure.
+ */
+export type ListenerError = {
+  /** The delivering source, or the committing target store for an echo/cascade rejection. */
+  readonly source: string;
+  /** The `name` the subscriber gave to `watch` or `load`. */
+  readonly subscription: string;
+  /**
+   * The path of the subscriber's scope, for example `["host", "attempt", "acme/catalog"]`. Present once
+   * `@get-modular/resources` provides `Resources.path`.
+   */
+  readonly path?: readonly string[];
+  /**
+   * Delivered revision for callback failures; the committing target's current revision for echo/cascade
+   * rejections; the source's current revision when it closes. Rejected writes create no revision.
+   */
+  readonly revision: number;
+  /**
+   * What the handler threw, unchanged; or an ObservationError for `observation.callback.returned-value`,
+   * `observation.source.closed`, `observation.delivery.echo` or `observation.delivery.cascade`.
+   */
+  readonly cause: unknown;
+  /** Type-only brand: there is no such property at run time. */
+  readonly [listenerErrorBrand]: true;
+};
+
+export type StoreOptions = {
+  /** Non-empty. Names the store in reports (`ListenerError.source`) and debt paths. */
+  readonly name: string;
+  /** The owner's scope. The store closes when this scope releases its entry `store:<name>` (LIFO order). */
+  readonly resources: Resources;
+  /**
+   * Receives every failure of a subscriber callback (a handler that throws or returns a value) and every
+   * `observation.source.closed`. Wire it to the Host's error port, for example `deps.errors.report`. Must be
+   * synchronous and must not throw.
+   */
+  readonly reportError: (report: ListenerError) => undefined;
+  /** Live subscriptions per subscriber scope (one `resources`) on this store. Default 64; one more throws `observation.subscriptions.limit`. */
+  readonly maxSubscriptionsPerScope?: number;
+  /** Live subscriptions on this store in total, a safety net set by the owner. Default 8192; one more throws `observation.subscriptions.limit`. */
+  readonly maxSubscriptions?: number;
+};
+

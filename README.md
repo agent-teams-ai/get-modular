@@ -11,7 +11,7 @@ Node.js 26.11 is the production/default toolchain; the owner authorized this
 cutover before Node.js 26 reached LTS status. Node.js 26.10 and later 26.x and
 Node.js 24.18 and later 24.x releases remain supported, and Node.js 25 is
 unsupported. The Node.js 24 CI
-compatibility job installs Core, Assembly, resources and conformance archives built
+compatibility job installs Core, Assembly, resources, conformance and observation archives built
 on Node.js 26 in a disposable consumer and exercises their public package roots.
 Repository tooling and its pinned development dependencies run in the Node.js 26
 default check lane and in the Node.js 24 compatibility check lane.
@@ -54,6 +54,11 @@ consume both.
   Host does, smoke-checks a composition root and runs a contract suite against
   any implementation. Core, Assembly and resources are its peers. Applications
   do not install it at runtime.
+
+- [`@get-modular/observation`](packages/observation/README.md) gives modules state
+  with one writer: the owner creates a store, other modules receive a read-only
+  facet and follow the keys they read with `watch` or `load`, bound to their own
+  resource scope. Resources is its only peer; Core and Assembly do not import it.
 
 `conformance` uses the conventional protocol-testing meaning: independently
 owned fixtures prove that an implementation follows the contract. The

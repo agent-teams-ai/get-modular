@@ -1,0 +1,144 @@
+{
+  "format": 1,
+  "recordedOn": "2026-10-18",
+  "scope": "Bounded correction to the existing Core Windows lock test helper after the first ordinary-.ts CI; no production, package or writer input changes.",
+  "predecessorCi": {
+    "url": "https://github.com/agent-teams-ai/get-modular/actions/runs/39131898704",
+    "runId": 39131898704,
+    "attempt": 1,
+    "head": "bba50796e7d2e41f129dd6f3b3ed0615b43226d2",
+    "base": "47a02a90a06f121c78086c7c5f72b085c42ee7ea",
+    "actualCheckout": "3cbdcee08e842456c1eef841745438ec25a9ef62",
+    "jobs": 43,
+    "downloadedLogs": 43,
+    "confirmedCheckouts": 37,
+    "outcomes": {
+      "success": 18,
+      "foundationCompilerFloorBlocks": 18,
+      "windowsReadinessFailure": 1,
+      "aggregateFailures": 6,
+      "unclassified": 0
+    },
+    "leafLanes": {
+      "observationPassed": 6,
+      "assemblyPassed": 6,
+      "corePassed": 5,
+      "coreFailed": 1
+    },
+    "observationPerLane": {
+      "runtimePassed": 157,
+      "runtimeSkipped": 0,
+      "attributedMutations": 18,
+      "writerOutcomes": 33,
+      "strictCompiler": "7.0.2",
+      "packedChecks": "passed"
+    },
+    "windowsObservationSeconds": {
+      "24.21.0": 500,
+      "26.11.1": 460
+    },
+    "codeql": "passed",
+    "identity": "passed",
+    "codex": "ignored by owner instruction"
+  },
+  "failure": {
+    "jobUrl": "https://github.com/agent-teams-ai/get-modular/actions/runs/39131898704/job/117688599632",
+    "test": "Windows lock helper reports failed acquisition and settles without running the action",
+    "path": "packages/core/tests/qualification/production-generation.test.mjs",
+    "sourceUnchangedBetweenCiBaseAndHead": true,
+    "expected": "LockAcquisitionError with exact failed-open record and exit code 3; action is not executed.",
+    "actual": "AggregateError from readiness and teardown timeouts.",
+    "readiness": {
+      "elapsedMs": 10017,
+      "spawnedAtMs": 8,
+      "exitObserved": false,
+      "closeObserved": false,
+      "stdout": "",
+      "stderr": "",
+      "protocol": []
+    },
+    "teardown": {
+      "elapsedMs": 15026,
+      "exitObserved": false,
+      "closeObserved": false,
+      "stdout": "",
+      "stderr": "LOCK_OPENING\r\n",
+      "protocol": []
+    },
+    "sanitizedFullLogSha256": "894a4a2a4b68159bee44c25e108d059a6b762859edb70a4aad98e711af76e59e",
+    "certainty": "The old first-acknowledgment allowance was exceeded. The log does not distinguish PowerShell startup from first exception formatting and does not prove every future execution will acknowledge within 30 seconds."
+  },
+  "correction": {
+    "commit": "0edaea195399998f8f22d12b86e2c28e523589a4",
+    "path": "packages/core/tests/qualification/production-generation.test.mjs",
+    "fileGitBlob": "0695c49e45b5c158536146e1603d9c516d29b538",
+    "fileSha256": "16a2ab52afd7c7f8549078fb7ba2eaab0a27aa5a6da1b4525c066a0e0b481b29",
+    "binaryDiffFromPredecessorSha256": "31a48abd8c0c065af6c31319b73f847f8db60a0533b500d35b5086fdff2ec13c",
+    "firstAcknowledgmentMs": {
+      "before": 10000,
+      "after": 30000
+    },
+    "nativeProcessLifetimeMs": {
+      "before": 30000,
+      "after": 65000
+    },
+    "preservedDeadlinesMs": {
+      "heldLockWatchdog": 25000,
+      "naturalClose": 5000,
+      "terminatedClose": 5000
+    },
+    "unchanged": "Exact protocol and failure shape, mandatory acknowledgment, action authorization, exit code 3, duplicate/contradictory/malformed record rejection, physical close, marker cleanup and timeout-as-failure behavior.",
+    "typeScriptPolicyException": "Bounded maintenance of one existing legacy .mjs test; a full migration would materially broaden the correction. No new helper or responsibility, and no strict type-coverage claim for this file."
+  },
+  "review": {
+    "model": "gpt-6.1-sol",
+    "reasoningEffort": "xhigh",
+    "reviewer": "review_windows_lock_deadline",
+    "context": "Full owner vision and review packet, current ordinary-.ts and compiler-floor rule, applicable repository contracts, actual CI failure and preserved exact package E2E subjects.",
+    "result": "zero actionable findings",
+    "independentProtocolControlsPerNode": {
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    "nodeVersions": [
+      "24.21.0",
+      "26.11.1"
+    ],
+    "command": "node --test --test-name-pattern='^lock host' packages/core/tests/qualification/production-generation.test.mjs",
+    "nativeChildPipes": true
+  },
+  "authorValidation": {
+    "compilerMetadata": {
+      "typescript": "7.0.2",
+      "typescriptMinimum": "7.0.2"
+    },
+    "command": "node --test packages/core/tests/qualification/production-generation.test.mjs",
+    "nodeVersions": [
+      "24.21.0",
+      "26.11.1"
+    ],
+    "perNode": {
+      "total": 14,
+      "passed": 11,
+      "failed": 0,
+      "skipped": 3,
+      "cancelled": 0
+    },
+    "conditionalSkips": "Two native Windows controls on Linux and the POSIX permission control under root; unchanged and not compiler-floor skips.",
+    "logs": {
+      "windows-lock-generation-node24.log": "1b34d143db768aa349423965a44c871b91cf9a55fa3665490da72de7f4db62a9",
+      "windows-lock-generation-node26.log": "4a281305dec896f8929dd73f9fd6ce71b33c4b26ba69a2ef15978c4b8897454a"
+    },
+    "diffCheck": "passed"
+  },
+  "preservedQualification": {
+    "preparedRelease": "34bb4fae3d6a613f13cdbab9ca50b0bfdf4054e7",
+    "executedConsumer": "a145931ec4522d3a4a5cd1e06a342814a876801e",
+    "evidenceOnlySuccessor": "5de8e039cbde6c4277e6220073ab7b57d3718078",
+    "reason": "Only a non-published Core test changes after the already-reviewed ordinary-.ts source; production, manifests, build and writer inputs are unchanged.",
+    "repackNeeded": false,
+    "consumerRerunNeeded": false
+  },
+  "afterPush": "Read the corrected exact PR195 head and its fresh native Windows CI. This retained pre-push record makes no advance success claim. Existing Foundation compiler-floor and predecessor admission blocks remain."
+}

@@ -1,0 +1,652 @@
+TAP version 13
+# Subtest: Assembly admission subtracts only independently admitted paths from Core
+ok 1 - Assembly admission subtracts only independently admitted paths from Core
+  ---
+  duration_ms: 295.880079
+  type: 'test'
+  ...
+# Subtest: leaf packages remain optional when their packages and exact tooling edges are absent
+ok 2 - leaf packages remain optional when their packages and exact tooling edges are absent
+  ---
+  duration_ms: 134.293851
+  type: 'test'
+  ...
+# Subtest: Assembly admission rejects malformed manifests, dependencies and package roots
+ok 3 - Assembly admission rejects malformed manifests, dependencies and package roots
+  ---
+  duration_ms: 14.472442
+  type: 'test'
+  ...
+# Subtest: Assembly requires the exact accepted ADR-0023 and its registry entry
+ok 4 - Assembly requires the exact accepted ADR-0023 and its registry entry
+  ---
+  duration_ms: 2.331816
+  type: 'test'
+  ...
+# Subtest: current admission rejects malformed, missing, extra and redirected importers
+ok 5 - current admission rejects malformed, missing, extra and redirected importers
+  ---
+  duration_ms: 2241.840703
+  type: 'test'
+  ...
+# Subtest: lifecycle-kernel: workspace admission keeps the leaf of its publication class and declared peers
+ok 6 - lifecycle-kernel: workspace admission keeps the leaf of its publication class and declared peers
+  ---
+  duration_ms: 95.914479
+  type: 'test'
+  ...
+# Subtest: lifecycle-kernel: root edge and importer reject every additional lock edge
+ok 7 - lifecycle-kernel: root edge and importer reject every additional lock edge
+  ---
+  duration_ms: 686.825935
+  type: 'test'
+  ...
+# Subtest: resources: workspace admission keeps the leaf of its publication class and declared peers
+ok 8 - resources: workspace admission keeps the leaf of its publication class and declared peers
+  ---
+  duration_ms: 87.874519
+  type: 'test'
+  ...
+# Subtest: resources: root edge and importer reject every additional lock edge
+ok 9 - resources: root edge and importer reject every additional lock edge
+  ---
+  duration_ms: 687.924215
+  type: 'test'
+  ...
+# Subtest: conformance: workspace admission keeps the leaf of its publication class and declared peers
+ok 10 - conformance: workspace admission keeps the leaf of its publication class and declared peers
+  ---
+  duration_ms: 113.105207
+  type: 'test'
+  ...
+# Subtest: conformance: root edge and importer reject every additional lock edge
+ok 11 - conformance: root edge and importer reject every additional lock edge
+  ---
+  duration_ms: 1055.560226
+  type: 'test'
+  ...
+# Subtest: observation: workspace admission keeps the leaf of its publication class and declared peers
+ok 12 - observation: workspace admission keeps the leaf of its publication class and declared peers
+  ---
+  duration_ms: 88.259148
+  type: 'test'
+  ...
+# Subtest: observation: root edge and importer reject every additional lock edge
+ok 13 - observation: root edge and importer reject every additional lock edge
+  ---
+  duration_ms: 950.305536
+  type: 'test'
+  ...
+# Subtest: lifecycle-kernel: build output is omitted only with source and unstaged file custody
+ok 14 - lifecycle-kernel: build output is omitted only with source and unstaged file custody
+  ---
+  duration_ms: 134.949598
+  type: 'test'
+  ...
+# Subtest: resources: build output is omitted only with source and unstaged file custody
+ok 15 - resources: build output is omitted only with source and unstaged file custody
+  ---
+  duration_ms: 111.382983
+  type: 'test'
+  ...
+# Subtest: conformance: build output is omitted only with source and unstaged file custody
+ok 16 - conformance: build output is omitted only with source and unstaged file custody
+  ---
+  duration_ms: 111.979444
+  type: 'test'
+  ...
+# Subtest: observation: build output is omitted only with source and unstaged file custody
+ok 17 - observation: build output is omitted only with source and unstaged file custody
+  ---
+  duration_ms: 103.075266
+  type: 'test'
+  ...
+# Subtest: current workspace and Core manifest cannot bypass Assembly admission
+ok 18 - current workspace and Core manifest cannot bypass Assembly admission
+  ---
+  duration_ms: 54.558445
+  type: 'test'
+  ...
+# Subtest: root tooling lock upgrades admit independently and compose with historical custody
+ok 19 - root tooling lock upgrades admit independently and compose with historical custody
+  ---
+  duration_ms: 93.963575
+  type: 'test'
+  ...
+# Subtest: legacy Assembly reader still authenticates its closed historical delta
+ok 20 - legacy Assembly reader still authenticates its closed historical delta
+  ---
+  duration_ms: 74.458878
+  type: 'test'
+  ...
+# Subtest: only the historical evidence reader supplies historical lock bytes; history stays unchanged
+ok 21 - only the historical evidence reader supplies historical lock bytes; history stays unchanged
+  ---
+  duration_ms: 12.730682
+  type: 'test'
+  ...
+# Subtest: Assembly admission retains captured-index custody for every admission input
+ok 22 - Assembly admission retains captured-index custody for every admission input
+  ---
+  duration_ms: 616.49221
+  type: 'test'
+  ...
+# Subtest: public admission authenticates publication authority in current and legacy historical readers
+ok 23 - public admission authenticates publication authority in current and legacy historical readers
+  ---
+  duration_ms: 4.574067
+  type: 'test'
+  ...
+# Subtest: historical private Assembly remains admitted without publication authority
+ok 24 - historical private Assembly remains admitted without publication authority
+  ---
+  duration_ms: 124.026283
+  type: 'test'
+  ...
+# Subtest: next pair requires the exact accepted successor and retains first-release authority
+ok 25 - next pair requires the exact accepted successor and retains first-release authority
+  ---
+  duration_ms: 47.080491
+  type: 'test'
+  ...
+# Subtest: 0.3.0 pair requires the exact accepted ADR-0031 and retains earlier authority
+ok 26 - 0.3.0 pair requires the exact accepted ADR-0031 and retains earlier authority
+  ---
+  duration_ms: 39.302916
+  type: 'test'
+  ...
+# Subtest: 0.4.0 pair requires the exact accepted ADR-0035 and retains earlier authority
+ok 27 - 0.4.0 pair requires the exact accepted ADR-0035 and retains earlier authority
+  ---
+  duration_ms: 38.520601
+  type: 'test'
+  ...
+# Subtest: 0.5.0 pair requires the exact accepted ADR-0036 and retains earlier authority
+ok 28 - 0.5.0 pair requires the exact accepted ADR-0036 and retains earlier authority
+  ---
+  duration_ms: 39.17869
+  type: 'test'
+  ...
+# Subtest: 0.6.0 pair requires the exact accepted ADR-0038 and retains earlier authority
+ok 29 - 0.6.0 pair requires the exact accepted ADR-0038 and retains earlier authority
+  ---
+  duration_ms: 38.34693
+  type: 'test'
+  ...
+# Subtest: Core dist output does not require Git source custody or hide authored artifacts
+ok 30 - Core dist output does not require Git source custody or hide authored artifacts
+  ---
+  duration_ms: 238.484591
+  type: 'test'
+  ...
+# Subtest: Core dist-test output does not require Git source custody or hide authored artifacts
+ok 31 - Core dist-test output does not require Git source custody or hide authored artifacts
+  ---
+  duration_ms: 149.156184
+  type: 'test'
+  ...
+# Subtest: Core dist-stage0 output does not require Git source custody or hide authored artifacts
+ok 32 - Core dist-stage0 output does not require Git source custody or hide authored artifacts
+  ---
+  duration_ms: 159.904707
+  type: 'test'
+  ...
+# Subtest: Core dist-seed output does not require Git source custody or hide authored artifacts
+ok 33 - Core dist-seed output does not require Git source custody or hide authored artifacts
+  ---
+  duration_ms: 145.784946
+  type: 'test'
+  ...
+# Subtest: metadata schema matches runtime Windows-safe path rules
+ok 34 - metadata schema matches runtime Windows-safe path rules
+  ---
+  duration_ms: 64.661276
+  type: 'test'
+  ...
+# Subtest: qualification claims cannot be silently demoted
+ok 35 - qualification claims cannot be silently demoted
+  ---
+  duration_ms: 1.381618
+  type: 'test'
+  ...
+# Subtest: traceability is closed and bidirectional
+ok 36 - traceability is closed and bidirectional
+  ---
+  duration_ms: 1.21719
+  type: 'test'
+  ...
+# Subtest: supported Node preflight matches repository runtime custody
+ok 37 - supported Node preflight matches repository runtime custody
+  ---
+  duration_ms: 4.269025
+  type: 'test'
+  ...
+# Subtest: Node preflight executes without dependencies and recognizes a symlinked direct entry in a subprocess
+ok 38 - Node preflight executes without dependencies and recognizes a symlinked direct entry in a subprocess
+  ---
+  duration_ms: 88.02736
+  type: 'test'
+  ...
+# Subtest: missing reverse traceability fails closed
+ok 39 - missing reverse traceability fails closed
+  ---
+  duration_ms: 0.689937
+  type: 'test'
+  ...
+# Subtest: unknown authorities and non-open blockers fail closed
+ok 40 - unknown authorities and non-open blockers fail closed
+  ---
+  duration_ms: 0.434463
+  type: 'test'
+  ...
+# Subtest: authority mutation and unauthorized promotion fail closed
+ok 41 - authority mutation and unauthorized promotion fail closed
+  ---
+  duration_ms: 0.868335
+  type: 'test'
+  ...
+# Subtest: accepted authority custody closes ledger shape, paths, bytes, and ADR anchor
+ok 42 - accepted authority custody closes ledger shape, paths, bytes, and ADR anchor
+  ---
+  duration_ms: 1.884544
+  type: 'test'
+  ...
+# Subtest: open decisions admit private package source but block publication and runtime claims
+ok 43 - open decisions admit private package source but block publication and runtime claims
+  ---
+  duration_ms: 2.780881
+  type: 'test'
+  ...
+# Subtest: publication surfaces are blocked only by the publication-blocker subset
+ok 44 - publication surfaces are blocked only by the publication-blocker subset
+  ---
+  duration_ms: 1.187376
+  type: 'test'
+  ...
+# Subtest: traceability rejects publication blockers outside the active catalog
+ok 45 - traceability rejects publication blockers outside the active catalog
+  ---
+  duration_ms: 0.569296
+  type: 'test'
+  ...
+# Subtest: open-decision artifact admission is manifest-bound and fail-closed
+ok 46 - open-decision artifact admission is manifest-bound and fail-closed
+  ---
+  duration_ms: 1.618183
+  type: 'test'
+  ...
+# Subtest: qualification claims require ordered admission, evidence, and promotion
+ok 47 - qualification claims require ordered admission, evidence, and promotion
+  ---
+  duration_ms: 1.492995
+  type: 'test'
+  ...
+# Subtest: qualification custody rejects path-only, mutable, circular, and non-file evidence
+ok 48 - qualification custody rejects path-only, mutable, circular, and non-file evidence
+  ---
+  duration_ms: 1.986117
+  type: 'test'
+  ...
+# Subtest: qualification states cannot collapse source, structural, and runtime claims
+ok 49 - qualification states cannot collapse source, structural, and runtime claims
+  ---
+  duration_ms: 0.281042
+  type: 'test'
+  ...
+# Subtest: qualification claims and the authoritative profile cannot disagree
+ok 50 - qualification claims and the authoritative profile cannot disagree
+  ---
+  duration_ms: 0.408734
+  type: 'test'
+  ...
+# Subtest: tracked navigation and accepted authority custody use distinct byte sources
+ok 51 - tracked navigation and accepted authority custody use distinct byte sources
+  ---
+  duration_ms: 130.301469
+  type: 'test'
+  ...
+# Subtest: governance catalog rejects AD/AM split states from one index snapshot
+ok 52 - governance catalog rejects AD/AM split states from one index snapshot
+  ---
+  duration_ms: 84.261372
+  type: 'test'
+  ...
+# Subtest: governance catalog rejects decisions staged after its index snapshot
+ok 53 - governance catalog rejects decisions staged after its index snapshot
+  ---
+  duration_ms: 34.432524
+  type: 'test'
+  ...
+# Subtest: index snapshot custody rejects staged file-mode changes for an empty file
+ok 54 - index snapshot custody rejects staged file-mode changes for an empty file
+  ---
+  duration_ms: 48.112984
+  type: 'test'
+  ...
+# Subtest: qualification evidence uses index blobs and rejects unstaged bytes
+ok 55 - qualification evidence uses index blobs and rejects unstaged bytes
+  ---
+  duration_ms: 42.4805
+  type: 'test'
+  ...
+# Subtest: open-decision history is complete and non-decreasing
+ok 56 - open-decision history is complete and non-decreasing
+  ---
+  duration_ms: 1.339404
+  type: 'test'
+  ...
+# Subtest: open-decision history rejects a shallow repository witness
+ok 57 - open-decision history rejects a shallow repository witness
+  ---
+  duration_ms: 842.906035
+  type: 'test'
+  ...
+# Subtest: accepted authority custody rejects intent-to-add index entries
+ok 58 - accepted authority custody rejects intent-to-add index entries
+  ---
+  duration_ms: 57.011218
+  type: 'test'
+  ...
+# Subtest: index snapshot custody distinguishes intent-to-add from staged empty files
+ok 59 - index snapshot custody distinguishes intent-to-add from staged empty files
+  ---
+  duration_ms: 88.061877
+  type: 'test'
+  ...
+# Subtest: index snapshot custody rejects intent-to-add becoming fully staged
+ok 60 - index snapshot custody rejects intent-to-add becoming fully staged
+  ---
+  duration_ms: 53.937912
+  type: 'test'
+  ...
+# Subtest: index snapshot custody ignores GIT_* overrides and enforces the repository top level
+ok 61 - index snapshot custody ignores GIT_* overrides and enforces the repository top level
+  ---
+  duration_ms: 77.597667
+  type: 'test'
+  ...
+# Subtest: governance catalog rejects an untracked accepted ADR
+ok 62 - governance catalog rejects an untracked accepted ADR
+  ---
+  duration_ms: 49.480139
+  type: 'test'
+  ...
+# Subtest: accepted authority custody supports SHA-256 Git object IDs
+ok 63 - accepted authority custody supports SHA-256 Git object IDs
+  ---
+  duration_ms: 37.461478
+  type: 'test'
+  ...
+# Subtest: accepted authority bytes survive a deterministic leaf replacement race
+ok 64 - accepted authority bytes survive a deterministic leaf replacement race
+  ---
+  duration_ms: 40.278949
+  type: 'test'
+  ...
+# Subtest: tracked workspace integrity ignores mutable Git metadata
+ok 65 - tracked workspace integrity ignores mutable Git metadata
+  ---
+  duration_ms: 210.704806
+  type: 'test'
+  ...
+# Subtest: tracked workspace integrity disables Git replacement objects
+ok 66 - tracked workspace integrity disables Git replacement objects
+  ---
+  duration_ms: 66.28689
+  type: 'test'
+  ...
+# Subtest: tracked workspace integrity rejects mode and mid-scan changes
+ok 67 - tracked workspace integrity rejects mode and mid-scan changes
+  ---
+  duration_ms: 124.07707
+  type: 'test'
+  ...
+# Subtest: production artifact discovery fails closed across repository layouts
+ok 68 - production artifact discovery fails closed across repository layouts
+  ---
+  duration_ms: 2.925118
+  type: 'test'
+  ...
+# Subtest: production artifact discovery rejects staged artifacts hidden from the working tree
+ok 69 - production artifact discovery rejects staged artifacts hidden from the working tree
+  ---
+  duration_ms: 42.755018
+  type: 'test'
+  ...
+# Subtest: production artifact discovery inventories staged symlinks hidden from the working tree
+ok 70 - production artifact discovery inventories staged symlinks hidden from the working tree
+  ---
+  duration_ms: 33.498789
+  type: 'test'
+  ...
+# Subtest: production artifact discovery inventories an empty-blob staged symlink
+ok 71 - production artifact discovery inventories an empty-blob staged symlink
+  ---
+  duration_ms: 37.874508
+  type: 'test'
+  ...
+# Subtest: production artifact discovery inventories symlinks without following them
+ok 72 - production artifact discovery inventories symlinks without following them
+  ---
+  duration_ms: 3.996931
+  type: 'test'
+  ...
+# Subtest: resolved decisions require an accepted reciprocal ADR
+ok 73 - resolved decisions require an accepted reciprocal ADR
+  ---
+  duration_ms: 0.504058
+  type: 'test'
+  ...
+# Subtest: mutable revisions and unsafe paths fail closed
+ok 74 - mutable revisions and unsafe paths fail closed
+  ---
+  duration_ms: 1.083539
+  type: 'test'
+  ...
+# Subtest: nested package manifests are never an admitted identity
+ok 75 - nested package manifests are never an admitted identity
+  ---
+  duration_ms: 0.672231
+  type: 'test'
+  ...
+# Subtest: accepted carrier prohibitions hold with no publication blocker open
+ok 76 - accepted carrier prohibitions hold with no publication blocker open
+  ---
+  duration_ms: 3.093802
+  type: 'test'
+  ...
+# Subtest: observation alone admits its second curated ESM carrier
+ok 77 - observation alone admits its second curated ESM carrier
+  ---
+  duration_ms: 1.164872
+  type: 'test'
+  ...
+# Subtest: package source must not carry a generation-suffixed identifier
+ok 78 - package source must not carry a generation-suffixed identifier
+  ---
+  duration_ms: 0.438128
+  type: 'test'
+  ...
+# Subtest: the ESM carrier rules bind core, the lifecycle rule binds every identity
+ok 79 - the ESM carrier rules bind core, the lifecycle rule binds every identity
+  ---
+  duration_ms: 0.488635
+  type: 'test'
+  ...
+# Subtest: a carrier violation message separates the manifest, its fields and the reason
+ok 80 - a carrier violation message separates the manifest, its fields and the reason
+  ---
+  duration_ms: 0.164837
+  type: 'test'
+  ...
+# Subtest: the sibling default resolves to the same build, in the normative order
+ok 81 - the sibling default resolves to the same build, in the normative order
+  ---
+  duration_ms: 0.587754
+  type: 'test'
+  ...
+# Subtest: a missing production source reader fails closed
+ok 82 - a missing production source reader fails closed
+  ---
+  duration_ms: 0.150747
+  type: 'test'
+  ...
+# Subtest: a publishable carrier must declare its package root
+ok 83 - a publishable carrier must declare its package root
+  ---
+  duration_ms: 0.322125
+  type: 'test'
+  ...
+# Subtest: the files allowlist normalizes POSIX paths without erasing prohibited prefixes
+ok 84 - the files allowlist normalizes POSIX paths without erasing prohibited prefixes
+  ---
+  duration_ms: 3.155484
+  type: 'test'
+  ...
+# Subtest: the files allowlist must not name the package root
+ok 85 - the files allowlist must not name the package root
+  ---
+  duration_ms: 1.11744
+  type: 'test'
+  ...
+# Subtest: known external consumers are pending references, not accepted evidence
+ok 86 - known external consumers are pending references, not accepted evidence
+  ---
+  duration_ms: 17.635568
+  type: 'test'
+  ...
+# Subtest: readBlobBatch reads a stream above the former 16 MiB buffer
+ok 87 - readBlobBatch reads a stream above the former 16 MiB buffer
+  ---
+  duration_ms: 220.140533
+  type: 'test'
+  ...
+# Subtest: readBlobBatch fails with the byte totals when the stream passes its explicit limit
+ok 88 - readBlobBatch fails with the byte totals when the stream passes its explicit limit
+  ---
+  duration_ms: 17.487204
+  type: 'test'
+  ...
+# Subtest: parseBlobBatchOutput rejects truncated and trailing streams with byte totals
+ok 89 - parseBlobBatchOutput rejects truncated and trailing streams with byte totals
+  ---
+  duration_ms: 0.813333
+  type: 'test'
+  ...
+# Subtest: the complete gate runs the ownership checkpoint suite with failure propagation
+ok 90 - the complete gate runs the ownership checkpoint suite with failure propagation
+  ---
+  duration_ms: 1.355338
+  type: 'test'
+  ...
+# Subtest: the scoped decision is accepted and earlier accepted decisions retain exact bytes
+ok 91 - the scoped decision is accepted and earlier accepted decisions retain exact bytes
+  ---
+  duration_ms: 110.056414
+  type: 'test'
+  ...
+# Subtest: installed Foundation authenticates the accepted decision fingerprint
+ok 92 - installed Foundation authenticates the accepted decision fingerprint
+  ---
+  duration_ms: 1696.707792
+  type: 'test'
+  ...
+# Subtest: C0 schema admits the observed checkpoint and rejects premature activation
+ok 93 - C0 schema admits the observed checkpoint and rejects premature activation
+  ---
+  duration_ms: 3.335325
+  type: 'test'
+  ...
+# Subtest: observations bind historical lock bytes, production importers and reviewed CMS successor
+ok 94 - observations bind historical lock bytes, production importers and reviewed CMS successor
+  ---
+  duration_ms: 171.524679
+  type: 'test'
+  ...
+# Subtest: C0 preserves rejecting runtime package admission until K1
+ok 95 - C0 preserves rejecting runtime package admission until K1
+  ---
+  duration_ms: 18.674109
+  type: 'test'
+  ...
+# Subtest: pseudo-contract has one closed synchronous surface without resource callbacks
+ok 96 - pseudo-contract has one closed synchronous surface without resource callbacks
+  ---
+  duration_ms: 14.050978
+  type: 'test'
+  ...
+# Subtest: declarations reject forged identities, callbacks, unsafe settlement and live snapshots
+ok 97 - declarations reject forged identities, callbacks, unsafe settlement and live snapshots
+  ---
+  duration_ms: 452.31078
+  type: 'test'
+  ...
+# Subtest: canonical plan bytes match the reviewed identity independently of the checkpoint
+ok 98 - canonical plan bytes match the reviewed identity independently of the checkpoint # SKIP C0 operator plan input unavailable in this source clone
+  ---
+  duration_ms: 0.182194
+  type: 'test'
+  ...
+# Subtest: frozen C0 evidence rejects stale GM revision
+ok 99 - frozen C0 evidence rejects stale GM revision
+  ---
+  duration_ms: 0.459912
+  type: 'test'
+  ...
+# Subtest: frozen C0 evidence rejects zero GM revision
+ok 100 - frozen C0 evidence rejects zero GM revision
+  ---
+  duration_ms: 0.267713
+  type: 'test'
+  ...
+# Subtest: frozen C0 evidence rejects stale AR revision
+ok 101 - frozen C0 evidence rejects stale AR revision
+  ---
+  duration_ms: 0.145288
+  type: 'test'
+  ...
+# Subtest: frozen C0 evidence rejects zero AR revision
+ok 102 - frozen C0 evidence rejects zero AR revision
+  ---
+  duration_ms: 0.119129
+  type: 'test'
+  ...
+# Subtest: frozen C0 evidence rejects altered source digest
+ok 103 - frozen C0 evidence rejects altered source digest
+  ---
+  duration_ms: 0.198128
+  type: 'test'
+  ...
+# Subtest: frozen C0 evidence rejects altered CMS digest
+ok 104 - frozen C0 evidence rejects altered CMS digest
+  ---
+  duration_ms: 0.182004
+  type: 'test'
+  ...
+# Subtest: frozen C0 evidence rejects altered retained CMS digest
+ok 105 - frozen C0 evidence rejects altered retained CMS digest
+  ---
+  duration_ms: 0.160442
+  type: 'test'
+  ...
+# Subtest: frozen C0 evidence rejects altered profile digest
+ok 106 - frozen C0 evidence rejects altered profile digest
+  ---
+  duration_ms: 0.135073
+  type: 'test'
+  ...
+# Subtest: frozen C0 evidence rejects duplicate path with different digest
+ok 107 - frozen C0 evidence rejects duplicate path with different digest
+  ---
+  duration_ms: 0.140972
+  type: 'test'
+  ...
+1..107
+# tests 107
+# suites 0
+# pass 106
+# fail 0
+# cancelled 0
+# skipped 1
+# todo 0
+# duration_ms 8243.025735

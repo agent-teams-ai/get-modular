@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { leafPackageById } from "../checks/leaf-packages.mjs";
+import { leafBuildOutputs, leafPackageById } from "../checks/leaf-packages.mjs";
 
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const require = createRequire(join(workspace, "package.json"));
@@ -21,8 +21,7 @@ export async function buildLeafPackage(leaf) {
     if (result.status !== 0) {
       throw new Error(`${leaf.id}.build.compiler-failed:${result.status ?? result.signal}`);
     }
-    await access(join(output, "index.js"));
-    await access(join(output, "index.d.ts"));
+    for (const artifact of leafBuildOutputs(leaf)) await access(join(packageRoot, artifact));
   } catch (cause) {
     await rm(output, { recursive: true, force: true });
     throw cause;

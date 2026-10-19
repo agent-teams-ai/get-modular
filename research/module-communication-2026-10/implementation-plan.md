@@ -10,6 +10,10 @@ The owner then requested incorporation of the ten-critic API/watch study, TypeSc
 rounds of three independent plan critics. Their dispositions belong to [plan-review.md](plan-review.md).
 This is an implementation plan, not package implementation or completed admission evidence.
 
+Implementation follow-through on 2026-10-18 is recorded in [implementation-port.md](implementation-port.md),
+including the actual package and exact-archive consumer results, independent fixes and remaining aggregate blockers.
+The historical planning checkpoint and review inputs below are preserved.
+
 A fresh agent starts at section 5, Phase 0, and works through the phase cards in order. Each card names its inputs,
 outputs, commands, done criteria and stop conditions. When a source is silent, section 4 gives the default and section
 15 answers the usual questions.
@@ -192,6 +196,16 @@ The supported test set is the exact pinned minimum and exact pinned current comp
 today it has one compiler and two resolver cases, NodeNext and Bundler, with `skipLibCheck: false`. Record the
 resolved manifest version. Do not use a floating `latest`, a nightly, `npx` or `dlx` to choose a compiler.
 
+The owner's follow-up on 2026-10-18 selects ordinary `.ts` for maintained source, tests, tools and helpers.
+Use the owning package's `"type": "module"` for Node ESM; the extension choice does not replace an effective
+strict typecheck. Include every new or migrated handwritten file in the owning compiler project's actual inputs
+and existing required command. Handwritten fixture drivers also need that coverage: keep their implementations
+in checked `.ts` sources and copy them unchanged into disposable fixtures, passing variable inputs as data.
+Keep deliberate type-negative subjects separate from the positive tooling project. Existing semantic fixtures,
+generated package output and immutable evidence retain their required formats and independent expectations.
+Use the [shared TypeScript rule](https://github.com/agent-teams-ai/.github/pull/368) with the local `AGENTS.md`;
+the policy PR's existence does not itself establish organization-wide admission or legacy coverage.
+
 The repository has not completed that floor migration at `132317e`. The following is the concrete active-owner
 inventory, not permission to change immutable evidence or an observation-specific bypass:
 
@@ -279,7 +293,7 @@ default never overrides a STOP of a phase card.
 | V5 | Changesets peer behavior | an in-range patch of resources bumps nothing else; an out-of-range minor gives observation only a patch (ADR) | `pnpm changeset status --verbose` in PR 2 and the release pull request |
 | V6 | Windows time of the `observation` lane | Q2 default lane | job durations of the PR 1 CI run |
 | V7 | Expected failing gate of each writer negative | the manifest of section 9.4, taken from `raw/api-design/results/control.negative-*.txt` | the gate table that `writer-gate.test.mjs` prints |
-| V8 | Expected result of the type controls | no annotation: clean; parameter form: variance diagnostics in the changed declaration; section 8.1 supplies the new soundness controls on the supported compiler set | `type-controls.test.mjs` output; retain raw diagnostics and distinguish a compiler shift from a behavior change |
+| V8 | Expected result of the type controls | no annotation: clean; parameter form: variance diagnostics in the changed declaration; section 8.1 supplies the new soundness controls on the supported compiler set | `type-controls.test.ts` output; retain raw diagnostics and distinguish a compiler shift from a behavior change |
 | V9 | Consumers that pin the CMS | `agent-teams-ai/agent-runtime` (`architecture/consumer-module-standard/contained-turn-profile.json`, `docs/architecture/get-modular-adoption.md`) and `agent-teams-ai/modularity-host-test` (`docs/lifecycle-kernel-h04.md`) | search output, or "search unavailable; plan list used" |
 | V10 | TEST consumer location | repository `agent-teams-ai/modularity-host-test`, branch `test/observation-0.1.0`, directory `observation-0.1.0/` | repository URL and commit SHA of the run |
 | V11 | Release record directory | `research/releases/observation-0.1.0/` (the 0.5.0 train used `research/releases/0.5.0-train/`) | path in the record pull request |
@@ -543,7 +557,7 @@ packages/observation/
   tests/env-setup-no-node.mjs          1c preload: no getBuiltinModule and no global setImmediate
   tests/process-probe.mjs              1c echo-exit, abort-listener, abort-listener-unhandled, throwing-reporter, import-idle
   tests/semantic-suite.mjs             1c runSemanticSuite(observation, testing, context), as in resources
-  tests/type-controls.test.mjs         1c variance controls and loose optional properties
+  tests/type-controls.test.ts         1c variance controls and loose optional properties
   tests/mutations.test.mjs             1c mutation harness
   tests/mutations/defects.mjs          1c the 18 defects (section 9.3)
   tests/writer-gate.test.mjs           1c writer gate against the build
@@ -635,6 +649,30 @@ Cycles terminate; `__proto__` is defined with `Object.defineProperty`. Validate 
 only after every check of the call passed (echo and cascade included), then add them to the package-wide `frozenNodes`
 WeakSet so they are never walked again; count walked nodes (`walked`). At run time the key set of `initial` is the
 store's.
+
+The 2026-10-19 implementation review of PR #195's proxy counterexample clarifies the ordinary-data boundary:
+the initial/patch record and every nested object must be non-Proxy data. A transparent revocable proxy can pass
+prototype, descriptor and freeze checks and later invalidate a retained value without a revision. Three independent
+critics agreed that copying would change the accepted ownership contract and that portable reflection cannot
+prove proxy absence. Two preferred a caller precondition alone; one recommended native rejection on the supported
+Node platforms. The selected bounded correction adds that native rejection and retains the explicit fallback
+precondition. It does not introduce another value carrier or change accepted ADR bytes.
+
+Capture only [`util.types.isProxy`](https://nodejs.org/api/util.html#utiltypesisproxyvalue) from `node:util` through
+the existing structural platform boundary, when available. This is the fourth finite builtin facility; update the
+packed-source literal allowlist explicitly. No static Node import, new peer, public option or detector registry is
+added. Reject a proxy at the initial/patch root or any newly inspected node before reflection, cache admission or
+freezing, with `observation.values.not-plain`. Keep ordinary identity, cycles, shared children, holes, null-prototype
+records, `Object.is` no-op behavior and frozen-node reuse. Normalize only value reflection/freezing failures to that
+existing error code with the original cause; do not catch engine guards, resource errors, callbacks or reporters.
+
+Where the native facility is absent, ordinary values and the existing scheduling/context fallback still work, but
+the caller's non-Proxy precondition is not a universally enforceable runtime guarantee. Qualify the README's
+no-freezing-on-rejection statement for the supported ordinary graph. Unsupported traps can execute and a freeze
+failure can leave earlier supplied objects frozen; there is no rollback or cloning compensation. Finite maintained
+controls cover transparent, revocable and revoked proxies, nested inputs, zero trap calls and no sibling freezing
+or commit on supported Nodes, plus stable error code/cause and ordinary operation in the existing fallback. These
+are current regression controls, not changes to the frozen prototype or writer campaign.
 
 ### 7.2 Revisions, flush, context and guards (`store/engine.ts`, `delivery/context.ts`; core.ts 124–156, 323–403, 655–698)
 
@@ -1047,7 +1085,7 @@ p5 in the test inventory refer to these files; they are not executable paths.
 | --- | --- | --- | --- |
 | `type-tests.ts`, p3, p6, p7, p8, p9 | the six `types*.ts` files via `observation:typecheck` (7.0.2 floor/current, NodeNext and Bundler; section 2.3 deduplicates equal versions) | observation | M1 |
 | p5 GM contracts, p10 `implement` and `scoped` | `tests/observation/assembly-*-types.ts`, same typecheck | observation | M1 |
-| p7 without `exactOptionalPropertyTypes`; controls `b-no-variance-annotation` (passes) and `b-v-in-param` (TS2636) | `type-controls.test.mjs` | observation | M1 |
+| p7 without `exactOptionalPropertyTypes`; controls `b-no-variance-annotation` (passes) and `b-v-in-param` (TS2636) | `type-controls.test.ts` | observation | M1 |
 | `readme-examples` | `tests/observation/readme-examples.test.mjs` | observation | M1 |
 | P1, P15, P16, P21, P25, P26, PB; R11, R15; sketch v4 value defects | `store.test.mjs` | observation | M1 |
 | P2, P5, P7, P8, P9, P10, P20; R1, R3, R4, R5, R8; 1000 watches on one signal with an explicitly raised stress-fixture scope limit, without a process warning | `subscriptions.test.mjs` | observation | M1 |
@@ -1233,7 +1271,7 @@ compiles on the supported compiler set of section 2.3, NodeNext and Bundler, `sk
 `dist/**/*.js`: no `process.env`, no `node:` import, `getBuiltinModule` only with `"node:timers"`,
 `"node:async_hooks"` and `"node:perf_hooks"`, and the import graph of `dist/testing.js` is relative files only.
 
-`type-controls.test.mjs` copies `package.json` and `dist/**/*.d.ts` into `<tmp>/node_modules/@get-modular/observation`,
+`type-controls.test.ts` copies `package.json` and `dist/**/*.d.ts` into `<tmp>/node_modules/@get-modular/observation`,
 links resources, writes the test type files with `"../dist/index.js"` and `"../dist/testing.js"` replaced by the package
 specifiers, edits one anchor exactly once per control and compiles on the supported compiler set: without `out` in
 `ReadonlyStore<out V>`, `types-structural.ts` stays clean; with `watch` in the parameter form
@@ -1335,7 +1373,7 @@ comment above a type case) start with the row ID. Reviewers tick the IDs in the 
 | T21 | `set` validates every value first, then takes ownership and freezes in place. | `values.ts` | `t/store.test.mjs` [P21, P26]; `t/guards.test.mjs`: echo/cascade rejection leaves new patch objects unfrozen | 1 |
 | T22 | `readonly()` returns the facet other modules receive. | `store.ts` | `t/store.test.mjs` (same frozen object, own properties); `tests/observation/assembly-integration.test.mjs` | 1 |
 | T23 | The facet has `read`, `watch` and `load` and no way to write or close. | `store.ts`, `types.ts` | `t/types.ts`; `t/store.test.mjs` (no `set` or `close` at run time) | 1 |
-| T24 | The marker rejects another record through aliases, `Readonly`, intersections, containers, `Pick` and hand-written ports with `read`; a wider record serves a narrower slice. | `types.ts` | `t/types-structural.ts`; `tests/observation/assembly-implement-types.ts`; `t/type-controls.test.mjs` | 1 |
+| T24 | The marker rejects another record through aliases, `Readonly`, intersections, containers, `Pick` and hand-written ports with `read`; a wider record serves a narrower slice. | `types.ts` | `t/types-structural.ts`; `tests/observation/assembly-implement-types.ts`; `t/type-controls.test.ts` | 1 |
 | T25 | Dependencies use full `ReadonlyStore<Slice>`; the ADR's affirmative watch-only residual is a historical observation corrected as recorded in section 8.1. | `types.ts`; implementation port note | `t/types-structural.ts`: the two wrong-record p8 expectations deliberately reject under T117; same-record positives and README rule remain | 1 |
 | T26 | `read(keys)` returns the revision and the frozen values of exactly those keys. | `engine.ts` | `t/store.test.mjs` (keys, frozen, `observation.keys.empty`) | 1 |
 | T27 | Snapshots are branded: a hand-built one does not compile; a copied or foreign one fails at run time. | `types.ts`, `registry.ts` | `t/types.ts`; `t/types-runtime-only.ts`; `t/store.test.mjs` [PB] | 1 |
@@ -1360,7 +1398,7 @@ comment above a type case) start with the row ID. Reviewers tick the IDs in the 
 | T46 | After `close()`, `set`, `watch`, `load` and the facet's `read` throw `observation.store.closed`; the owner's `read` returns the last values. | `engine.ts`, `store.ts` | `t/store.test.mjs` [P25, R11, R15] | 1 |
 | T47 | Every package error is an `ObservationError` with an `observation.<area>.<reason>` code; a report keeps the handler's throw as `cause`. | `errors.ts` | `t/store.test.mjs` (a table of every thrown code; `cause` identity) | 1 |
 | T48 | An already aborted `resources.signal`: nothing registered, its reason rethrown as it is. | `admission.ts` | `t/subscriptions.test.mjs` [R8] | 1 |
-| T49 | `Store` invariant, `ReadonlyStore` covariant; the marker carries the slice check. | `types.ts` | `t/types-structural.ts`; `t/type-controls.test.mjs` | 1 |
+| T49 | `Store` invariant, `ReadonlyStore` covariant; the marker carries the slice check. | `types.ts` | `t/types-structural.ts`; `t/type-controls.test.ts` | 1 |
 | T50 | Deliveries and load runs carry a delivery context. | `context.ts` | `t/guards.test.mjs` (with T51 to T60) | 1 |
 | T51 | A live-context commit to a key the delivering subscription follows on the same store fails at once with `observation.delivery.echo`. | `engine.ts` (`set`) | `t/guards.test.mjs` [P18, P22, R9, C4]; mutation `no-echo-guard` | 1 |
 | T52 | Other live-context commits are one step deeper; outside any context depth 0; a delivery takes the largest coalesced depth. | `engine.ts`, `context.ts` | `t/guards.test.mjs` [P19] | 1 |
@@ -1510,7 +1548,7 @@ Append after the conformance row:
       "observation:test": "node --test packages/observation/tests/store.test.mjs packages/observation/tests/subscriptions.test.mjs"
         + " packages/observation/tests/load.test.mjs packages/observation/tests/guards.test.mjs"
         + " packages/observation/tests/testing-entry.test.mjs packages/observation/tests/processes.test.mjs"
-        + " packages/observation/tests/type-controls.test.mjs tests/observation/assembly-integration.test.mjs"
+        + " packages/observation/tests/type-controls.test.ts tests/observation/assembly-integration.test.mjs"
         + " tests/observation/readme-examples.test.mjs",
       "observation:evidence":
         "node --test packages/observation/tests/mutations.test.mjs packages/observation/tests/writer-gate.test.mjs",
