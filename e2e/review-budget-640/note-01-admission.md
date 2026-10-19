@@ -26,3 +26,4 @@ run can pick up exactly the missing work.
 - keep admission state per execution, never per batch;
 - never refund claimed requests after a provider error;
 - treat upstream transport errors as retryable only within the attempt budget.
+Trigger note: re-run after provider lane lease cleanup 2026-10-19T21:06Z.
