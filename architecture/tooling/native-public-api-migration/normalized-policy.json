@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "acceptedDecisionBaselinePath": "architecture/decisions/accepted-decisions.json",
+  "governanceConfigPath": "architecture/foundation/governance-architecture-decisions.yaml",
+  "changesetDirectory": ".changeset",
+  "packages": [
+    {
+      "packageName": "@get-modular/core",
+      "packageRoot": "packages/core",
+      "manifestPath": "packages/core/package.json",
+      "tsconfigPath": "packages/core/tsconfig.json",
+      "releasedBaselinePath": "architecture/public-api/core.json",
+      "entrypoints": [
+        {
+          "exportPath": ".",
+          "declarationEntryPoint": "packages/core/dist/index.d.ts"
+        }
+      ],
+      "nonTypeExports": [],
+      "approvedBreakingChanges": []
+    },
+    {
+      "packageName": "@get-modular/assembly",
+      "packageRoot": "packages/assembly",
+      "manifestPath": "packages/assembly/package.json",
+      "tsconfigPath": "packages/assembly/tsconfig.json",
+      "releasedBaselinePath": "architecture/public-api/assembly.json",
+      "entrypoints": [
+        {
+          "exportPath": ".",
+          "declarationEntryPoint": "packages/assembly/dist/index.d.ts"
+        }
+      ],
+      "nonTypeExports": [],
+      "approvedBreakingChanges": []
+    }
+  ]
+}

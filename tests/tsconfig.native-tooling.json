@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "skipLibCheck": false,
+    "allowJs": true,
+    "checkJs": false,
+    "types": [
+      "node"
+    ]
+  },
+  "files": [
+    "../architecture/checks/compiler-floor.ts",
+    "../architecture/tooling/codemods/project.ts",
+    "../architecture/tooling/codemods/0.2-0.3/factory-handle.ts",
+    "../architecture/tooling/codemods/0.4-0.5/shared.ts",
+    "qualification/support/m1-declarations-closure.ts",
+    "qualification/support/m1-javascript-closure.ts",
+    "../packages/core/tests/qualification-support/support/m1-declarations-closure.ts",
+    "../packages/core/tests/qualification-support/support/m1-javascript-closure.ts",
+    "compiler-floor.test.ts",
+    "qualification/support/typescript-project.ts",
+    "../packages/core/tests/qualification-support/support/typescript-project.ts",
+    "../packages/conformance/tests/support/compilers.ts",
+    "../packages/lifecycle-kernel/tests/support/compilers.ts",
+    "../packages/resources/tests/support/compilers.ts",
+    "native-tooling.test.ts"
+  ],
+  "include": []
+}

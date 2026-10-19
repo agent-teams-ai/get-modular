@@ -11,6 +11,32 @@ createStore<Record<string, "open" | "closed">>({}, o);
 createStore<{ readonly [id: `session-${number}`]: "open" | "closed" }>({}, o);
 // @ts-expect-error a literal key plus an index signature
 createStore<{ readonly count: number; readonly [id: string]: number }>({ count: 0 }, o);
+// @ts-expect-error an empty record has no fixed keys
+createStore<{}>({}, o);
+
+// Review #182: a fixed field must not hide an open template-pattern key set.
+type MixedNumberKeys = { readonly count: number; readonly [id: `session-${number}`]: string };
+// @ts-expect-error count is fixed, but session-* is still open
+createStore<MixedNumberKeys>({ count: 0 }, o);
+type MixedStringKeys = { readonly count: number; readonly [id: `session-${string}`]: string };
+// @ts-expect-error a fixed field does not close a string template
+createStore<MixedStringKeys>({ count: 0 }, o);
+type MixedBigIntKeys = { readonly count: number; readonly [id: `session-${bigint}`]: string };
+// @ts-expect-error a fixed field does not close a bigint template
+createStore<MixedBigIntKeys>({ count: 0 }, o);
+// @ts-expect-error a literal string key does not close a numeric index signature
+createStore<{ readonly count: number; readonly [id: number]: string }>({ count: 0 }, o);
+// @ts-expect-error a mapped union of fixed and open keys is open too
+createStore<Record<"count" | `session-${number}`, number>>({ count: 0 }, o);
+
+// Finite literal unions and templates still declare every key.
+const finiteSessions = createStore<Record<"count" | `session-${1 | 2}`, number>>({
+  count: 2, "session-1": 1, "session-2": 2,
+}, o);
+finiteSessions.set({ "session-1": finiteSessions.read(["session-2"]).values["session-2"] });
+const finiteFlags = createStore<Record<`flag-${boolean}`, boolean>>({ "flag-true": true, "flag-false": false }, o);
+finiteFlags.read(["flag-true", "flag-false"]);
+
 interface Named { readonly a: string; readonly b: number }
 createStore<Named>({ a: "x", b: 1 }, o);   // interfaces with literal keys are fine
 const lists = createStore<{ readonly ids: number[] }>({ ids: [1] }, o);

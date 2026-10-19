@@ -1,0 +1,142 @@
+▶ R16. load result and error callbacks own a complete delivery task
+  ✔ onResult: synchronous echo is rejected at the first result (5.981202ms)
+  ✖ onResult: microtask echo is rejected at the first result (2.11167ms)
+  ✖ onResult: nested microtasks echo is rejected at the first result (7.757008ms)
+  ✖ onResult: awaited command echo is rejected at the first result (1.329612ms)
+  ✔ onResult: a timer started by the callback is a later independent action (2.191928ms)
+  ✔ onError: synchronous echo is rejected at the first result (0.767336ms)
+  ✖ onError: microtask echo is rejected at the first result (0.855396ms)
+  ✖ onError: nested microtasks echo is rejected at the first result (1.793172ms)
+  ✖ onError: awaited command echo is rejected at the first result (0.659388ms)
+  ✔ onError: a timer started by the callback is a later independent action (1.864527ms)
+  ✖ a load callback and a watcher preserve cascade depth across stores (5.669023ms)
+✖ R16. load result and error callbacks own a complete delivery task (34.016525ms)
+ℹ tests 11
+ℹ suites 1
+ℹ pass 4
+ℹ fail 7
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 39.703795
+
+✖ failing tests:
+
+test at runtime-b/review-regressions.test.ts:23:7
+✖ onResult: microtask echo is rejected at the first result (2.11167ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  5 !== 1
+
+      at TestContext.<anonymous> (<restored-archive>/runtime-b/review-regressions.test.ts:49:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 5,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at runtime-b/review-regressions.test.ts:23:7
+✖ onResult: nested microtasks echo is rejected at the first result (7.757008ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  5 !== 1
+
+      at TestContext.<anonymous> (<restored-archive>/runtime-b/review-regressions.test.ts:49:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 5,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at runtime-b/review-regressions.test.ts:23:7
+✖ onResult: awaited command echo is rejected at the first result (1.329612ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  5 !== 1
+
+      at TestContext.<anonymous> (<restored-archive>/runtime-b/review-regressions.test.ts:49:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 5,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at runtime-b/review-regressions.test.ts:23:7
+✖ onError: microtask echo is rejected at the first result (0.855396ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  5 !== 1
+
+      at TestContext.<anonymous> (<restored-archive>/runtime-b/review-regressions.test.ts:49:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 5,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at runtime-b/review-regressions.test.ts:23:7
+✖ onError: nested microtasks echo is rejected at the first result (1.793172ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  5 !== 1
+
+      at TestContext.<anonymous> (<restored-archive>/runtime-b/review-regressions.test.ts:49:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 5,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at runtime-b/review-regressions.test.ts:23:7
+✖ onError: awaited command echo is rejected at the first result (0.659388ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  5 !== 1
+
+      at TestContext.<anonymous> (<restored-archive>/runtime-b/review-regressions.test.ts:49:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 5,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at runtime-b/review-regressions.test.ts:94:3
+✖ a load callback and a watcher preserve cascade depth across stores (5.669023ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  70 !== 65
+
+      at TestContext.<anonymous> (<restored-archive>/runtime-b/review-regressions.test.ts:116:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 70,
+    expected: 65,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

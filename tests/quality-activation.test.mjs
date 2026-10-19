@@ -1,3 +1,4 @@
+import { assertCompilerFloor } from "../architecture/checks/compiler-floor.ts";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -68,7 +69,7 @@ async function createFixture(mutator = () => {}) {
         "lint:typed": "agent-teams-foundation quality check --consumer .",
       },
       devDependencies: {
-        "@agent-teams/engineering-foundation": "1.7.4",
+        "@agent-teams/engineering-foundation": "1.10.0",
         oxlint: "1.83.0",
         "oxlint-tsgolint": "7.0.2001",
         typescript: "7.0.2",
@@ -186,7 +187,7 @@ async function createFixture(mutator = () => {}) {
     ["packages/assembly/src/index.ts", "export const assembly = 1;\n"],
     [
       "node_modules/@agent-teams/engineering-foundation/package.json",
-      JSON.stringify({ name: "@agent-teams/engineering-foundation", version: "1.7.4" }),
+      JSON.stringify({ name: "@agent-teams/engineering-foundation", version: "1.10.0" }),
     ],
     [
       "node_modules/@agent-teams/engineering-foundation/presets/oxlint/base.json",
@@ -219,6 +220,7 @@ function commandFailureDetails(error) {
 }
 
 async function foundationCheck(root, capability) {
+  assertCompilerFloor();
   try {
     const result = await execute(process.execPath, [
       cli,
@@ -237,6 +239,7 @@ async function foundationCheck(root, capability) {
 }
 
 async function fullQualityCheck(root) {
+  assertCompilerFloor();
   try {
     const result = await execute(process.execPath, [
       cli,
@@ -260,7 +263,7 @@ function ruleIds(report) {
 }
 
 test("activates exact published Foundation quality pins", () => {
-  assert.equal(foundationPackage.version, "1.7.4");
+  assert.equal(foundationPackage.version, "1.10.0");
   assert.equal(oxlintPackage.version, "1.83.0");
   assert.equal(typedPackage.version, "7.0.2001");
   assert.equal(typescriptPackage.version, "7.0.2");

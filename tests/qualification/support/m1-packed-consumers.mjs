@@ -278,7 +278,7 @@ export async function prepareM1PackedConsumers({ archive, workspace, toolchain, 
     assert.ok(family.every(fixture => objectSubjectCases.includes(fixture)), 'every resource fixture belongs to the shared subject cases');
   }
   const nodeCases = surface === 'm2' ? await m2NodeCaseDefinitions(objectSubjectCases) : m1NodeCaseDefinitions(objectSubjectCases);
-  const pins = [['typescript', '7.0.2'], ['typescript-minimum', '5.8.3']];
+  const pins = [['typescript', '7.0.2']];
   assert.deepEqual(toolchain.compilers.map(({ name, version }) => [name, version]), pins);
   assert.match(toolchain.node.version, /^v24\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u);
   assert.ok(Number(toolchain.node.version.split('.')[1]) >= 18, 'Node must be in >=24.18.0 <25');
@@ -485,7 +485,7 @@ export async function prepareM1PackedConsumers({ archive, workspace, toolchain, 
     ]) {
       const removed = ['Node10', 'Classic'].includes(mode);
       const code = mode === 'Node16' && extension === 'cts' ? 'TS1479'
-        : removed ? compiler.name === 'typescript-minimum' ? mode === 'Node10' ? 'TS2307' : 'TS2792' : 'TS5108' : null;
+        : removed ? 'TS5108' : null;
       await typeCase(compiler, `${mode}/${extension}`,
         `${mode}/${extension} ${code ? 'rejects unsupported resolution' : 'preserves the packed contract and 1000 literal declarations'}`,
         removed ? legacy : extension === 'cts' ? cts : mts,
@@ -501,8 +501,8 @@ export async function prepareM1PackedConsumers({ archive, workspace, toolchain, 
     const rawIds = m2RawCaseDefinitions.map(row => row.id);
     assert.deepEqual(cases.filter(row => row.kind === 'raw').map(row => row.id), rawIds);
     assert.equal(rawIds.length, 185, 'all original raw calls remain independent cases');
-    assert.equal(cases.length - rawIds.length, 97, 'M2 retains every historical prepared case');
-    assert.equal(cases.length, 282);
+    assert.equal(cases.length - rawIds.length, 87, 'M2 retains every distinct prepared case with the deduplicated compiler set');
+    assert.equal(cases.length, 272);
     assert.ok(cases.length <= MAX_M2_CASES);
   } else {
     m1CaseIds(cases);

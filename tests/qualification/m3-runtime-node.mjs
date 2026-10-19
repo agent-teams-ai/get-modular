@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { typeScriptPackageRoots } from './support/typescript-project.ts';
 import { mkdir, realpath } from 'node:fs/promises';
 import { arch, release, type, version } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -15,7 +16,7 @@ import { assertM3RuntimeIdentity, freezeRuntimeData,
 // Its files must cover the runner/checker/fixture/vector dependency closure.
 // toolchain uses the harness's node/npm/compilers records and adds closures:
 // [{root,entries}], externally authenticated scanTree inventories covering npm,
-// both complete compilers, and the runner's installed parser/tar dependencies.
+// every distinct complete compiler, and the runner's installed parser/tar dependencies.
 // These are caller trust inputs, not provenance inferred from candidate bytes.
 // javascriptProfile is a trusted preparation choice: m2 (default) or
 // m2-generated. Both use the M2 surface and diagnostic generation 2.
@@ -31,7 +32,7 @@ const support = name => fileURLToPath(new URL(`./support/${name}`, import.meta.u
 const requiredSources = [
   self, support('m3-runtime-observations.mjs'), support('m1-retained-observations.mjs'),
   support('m1-packed-consumers.mjs'), support('package-archive.mjs'),
-  support('m1-javascript-closure.mjs'), support('m1-declarations-closure.mjs'),
+  support('m1-javascript-closure.ts'), support('m1-declarations-closure.ts'), support('typescript-project.ts'),
 ];
 const sha256 = value => need(typeof value === 'string' && /^[a-f0-9]{64}$/u.test(value), 'sha256-required');
 const snapshot = value => freezeRuntimeData(JSON.parse(JSON.stringify(value)));
@@ -72,6 +73,11 @@ async function checkTrust(trustedRunner, toolchain, required = requiredSources) 
     absolute(closure.root);
     await checkTree(closure.root, closure.entries);
   }
+  for (const root of typeScriptPackageRoots()) {
+    const path = await realpath(root);
+    need(toolchain.closures.some(row => row.root === path || within(path, row.root)),
+      'native-parser-outside-closure');
+  }
   const programs = [toolchain.node, toolchain.npm, ...toolchain.compilers];
   for (const program of programs) {
     absolute(program.path); sha256(program.sha256);
@@ -81,7 +87,7 @@ async function checkTrust(trustedRunner, toolchain, required = requiredSources) 
     need(toolchain.closures.some(row => within(program.path, row.root)), 'tool-outside-closure');
   }
   assert.deepEqual(toolchain.compilers.map(({ name, version }) => [name, version]),
-    [['typescript', '7.0.2'], ['typescript-minimum', '5.8.3']]);
+    [['typescript', '7.0.2']]);
   for (const [program, name, entry] of [
     [toolchain.npm, 'npm', 'npm-cli.js'],
     ...toolchain.compilers.map(row => [row, 'typescript', 'tsc']),
@@ -103,8 +109,8 @@ async function modules() {
   // Only fixed trusted imports; no candidate-selected module path.
   const harness = await import('./support/m1-packed-consumers.mjs');
   const archive = await import('./support/package-archive.mjs');
-  const javascript = await import('./support/m1-javascript-closure.mjs');
-  const declarations = await import('./support/m1-declarations-closure.mjs');
+  const javascript = await import('./support/m1-javascript-closure.ts');
+  const declarations = await import('./support/m1-declarations-closure.ts');
   return { ...harness, ...archive, ...javascript, ...declarations };
 }
 
@@ -113,8 +119,8 @@ async function audit(modules, archive, profile) {
   const bytes = await readBytes(archive.path, 16 * 1024 * 1024);
   if (archive.bytes !== undefined) assert.equal(bytes.length, archive.bytes);
   const result = modules.readPackageArchive(bytes, archive.identity);
-  modules.auditM1JavaScriptClosure(result.files, profile);
-  modules.auditM1DeclarationClosure(result.files, 2, 'm2');
+  await modules.auditM1JavaScriptClosure(result.files, profile);
+  await modules.auditM1DeclarationClosure(result.files, 2, 'm2');
   const manifest = JSON.parse(result.files.get('package.json').toString('utf8'));
   assert.equal(manifest.name, '@get-modular/core');
   assert.equal(manifest.type, 'module');
@@ -180,8 +186,8 @@ export async function prepareM3RuntimeNode(options) {
     workspace, toolchain: input.toolchain, contextId, osEnvironment: input.osEnvironment,
     surface: 'm2', diagnosticGeneration: 2,
   });
-  assert.equal(prepared.cases.length, 282, 'complete current inventory required');
-  assert.equal(new Set(prepared.cases.map(row => row.id)).size, 282);
+  assert.equal(prepared.cases.length, 272, 'complete current inventory required');
+  assert.equal(new Set(prepared.cases.map(row => row.id)).size, 272);
   await checkTrust(input.trustedRunner, input.toolchain,
     [...requiredSources, ...prepared.trustedSources.map(row => row.path)]);
   const expected = snapshot({
@@ -242,7 +248,7 @@ export async function verifyM3RuntimeNode({ expected, sealSha256, observationsSh
   expected = snapshot(expected);
   assertM3RuntimeIdentity(expected);
   sha256(sealSha256); sha256(observationsSha256);
-  assert.equal(expected.plan.cases.length, 282);
+  assert.equal(expected.plan.cases.length, 272);
   assert.equal(digest(jsonBytes(expected)), sealSha256, 'outside plan anchor mismatch');
   assert.deepEqual(await readJson(join(expected.outputDirectory, 'seal.json')), expected);
   await checkTrust(expected.trustedRunner, expected.toolchain,

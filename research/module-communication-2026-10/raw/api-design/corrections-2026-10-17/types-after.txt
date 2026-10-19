@@ -1,0 +1,18 @@
+[b-snapshot] tsc7: OK (0 errors)
+[b-snapshot] ts5.8.3: OK (0 errors)
+
+| File:line | Expectation | tsc7 | TS 5.8.3 |
+| --- | --- | --- | --- |
+| p9-traps.b.ts:9 | index signature: the key set is fixed at createStore | TS2344 | TS2344 |
+| p9-traps.b.ts:11 | a template-pattern index signature is open too | TS2344 | TS2344 |
+| p9-traps.b.ts:13 | a literal key plus an index signature | TS2344 | TS2344 |
+| p9-traps.b.ts:15 | an empty record has no fixed keys | TS2344 | TS2344 |
+| p9-traps.b.ts:20 | count is fixed, but session-* is still open | TS2344 | TS2344 |
+| p9-traps.b.ts:23 | a fixed field does not close a string template | TS2344 | TS2344 |
+| p9-traps.b.ts:26 | a fixed field does not close a bigint template | TS2344 | TS2344 |
+| p9-traps.b.ts:28 | a literal string key does not close a numeric index signature | TS2344 | TS2344 |
+| p9-traps.b.ts:30 | a mapped union of fixed and open keys is open too | TS2344 | TS2344 |
+| p9-traps.b.ts:44 | values are deeply frozen | TS2339 | TS2339 |
+| p9-traps.b.ts:54 | a conditional spread does not compile (the patch keys must be known) | TS2345 | TS2345 |
+| p9-traps.b.ts:64 | a handler typed `: void` | TS2322 | TS2322 |
+| p9-traps.b.ts:88 | a domain type with a mutable array does not accept frozen store values (declare it readonly) | TS2345 | TS2345 |

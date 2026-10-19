@@ -1,0 +1,345 @@
+{
+  "phase": "P7",
+  "observedDate": "2026-10-17",
+  "status": "selected-exercises-passed",
+  "statuses": {
+    "runtime": "passed-selected-scenarios",
+    "packed": "not-selected",
+    "source": "incomplete",
+    "measurement": "not-selected"
+  },
+  "historicalBases": {
+    "H01": "2f1b33069d1942911e16824d658e3582b62da6a7",
+    "H02": "eec71521a8594a34ac8f614edd66e2d9af316ac0",
+    "H03": "eec71521a8594a34ac8f614edd66e2d9af316ac0"
+  },
+  "historicalBaseVerification": {
+    "checkedDate": "2026-10-18",
+    "method": "git cat-file -t and git rev-list --all on a full clone of agent-teams-ai/get-modular, plus GitHub REST GET /repos/agent-teams-ai/get-modular/commits/<sha>",
+    "H01": {
+      "status": "verified",
+      "resolution": "commit 2f1b33069d1942911e16824d658e3582b62da6a7 resolves in the published repository history (subject: test: retain borrowed journal after incomplete smoke)"
+    },
+    "H02": {
+      "status": "unverifiable-local-only",
+      "resolution": null
+    },
+    "H03": {
+      "status": "unverifiable-local-only",
+      "resolution": null
+    },
+    "note": "The P2 SHA is kept exactly as recorded; it is never replaced or inferred. It resolves in no available clone and no published GitHub commit, so it must be read as a base of the disposable exercise environment. The H-02/H-03 inputs remain identified by inputIdentity.H02H03SourceTree and the frozen manifest hashes."
+  },
+  "inputIdentity": {
+    "frozenManifest": {
+      "sha256": "094e6397f1e0881d788e3c3a01aed5ee51cf97a0644603b251a0b79e7b42d733",
+      "files": 215,
+      "verifiedUnchanged": 215,
+      "edits": []
+    },
+    "frozenFixtureInputs": {
+      "TASK.md": "1ef31500bbda5f3301002ad740e8c465ea343ddb523ebceb8bc3d7caa56713ce",
+      "package.json": "a90fc33418afa2b9cbf4768524b021135b965ecdf993457505bfae3ac44a8428",
+      "recipe/consumer-fixtures.md": "dca00dbf83669537c39a8a18c085b2f1a5beb352b7bcb02e68687261e8f053f9",
+      "recipe/module-authoring.md": "5e262696892faaf03e862a3e2744cf1e2f841548d6826f50e0c875d0bc64eee1",
+      "semantic/src/composition/semantic.root.ts": "679890e6b4bb069a21dce143a1548db2fac77093af0904a6a4a346a6468b482b",
+      "semantic/src/features/runner/adapters/outbound/test-resource.ts": "22db1b4ddea7e814d17ca0aa8fc843445d88c6b4dc6a8cc6e5ecedb6070f5769",
+      "semantic/src/features/runner/application/ports/effects.ts": "f3bfd38d1a745b2d3264fca9e8c002c40cd75029270cd436527021b524ce1fb1",
+      "semantic/src/features/runner/application/ports/release-journal.ts": "73516a05ad38c31040014ed078f21075ad5dea4c248839a4319c3db929a39c9f",
+      "semantic/src/features/runner/application/use-cases/run-job.ts": "1266424e37993b0d6bcb982d4a0000eea04b8f6e4d737fe9e7a2a5d991cf8855",
+      "semantic/src/features/runner/composition/runner-a.declaration.ts": "21d9781ad7ac82fdc7d09bcecb15fdd9214fbb4f2781602baff841482c162f84",
+      "semantic/src/features/runner/composition/runner-a.module.ts": "ae7519d2a9a72e36606f6bdb8a22708b78ef0a2ca1b6ddebb28f391aca5d4bee",
+      "semantic/src/features/runner/composition/runner.contracts.ts": "f7c042c312c3da062b6705c2e5761caf399b3bf29be7bf07adc75f2b1cebabea",
+      "semantic/src/features/runner/composition/runner.group.ts": "3db3980fb288317e4a751940a7e55da6f54f49bd9d9331e03e58e96e64e9e1a3",
+      "semantic/src/features/session/application/ports/identity.ts": "fa7faf7f24e846b1f7d175ebb9fb06f946ed35fb21da2b89afeff901349a6bdf",
+      "semantic/src/features/session/application/ports/journal.ts": "84e6a2e4f7a9315c83601af3a853dd4578e320be62abd67f0fea1ae246247aeb",
+      "semantic/src/features/session/application/ports/runner.ts": "630450fdfb7bdfe3711f03c0f63469b84f22dea2e845e6d6d0db89312299ccc9",
+      "semantic/src/features/session/application/use-cases/run-job.ts": "5f3470ceb65ff4bd54a8cdad9923c824704ed069784e92e7efbd696621546a46",
+      "semantic/src/features/session/composition/identity.declaration.ts": "292b1a0f266fd76610fa26e342ab0980e4fe1212e1825539f36ee7191e0bd035",
+      "semantic/src/features/session/composition/journal.declaration.ts": "62c539401519ac4e82ecbcf0fd79c194d93863e0ace47fc0317956157cf77531",
+      "semantic/src/features/session/composition/session.contracts.ts": "7f6523993158ba3ac9037b504c42ffd7b362b8903aa361eef4ed57194e647c15",
+      "semantic/src/features/session/composition/session.declaration.ts": "6b2fc088b04506822509d50a8c72ec91b271ed52c6f72d9b371e7a05d8b91377",
+      "semantic/src/features/session/composition/session.group.ts": "6bab6404e66107190b39b2e7cda0bdae18c8c6e1d5a9b3aa3396ba2eb6a7ecdd",
+      "semantic/src/features/session/composition/session.inputs.ts": "b991517b2f1a016b0ea9e4dae36ace1dc8f07321ddd4f45071afddd9245280c6",
+      "semantic/src/features/session/composition/session.module.ts": "dfb1a0a4b9df5d57ce5f1d52ff331595d0ed9ab16f52c67abcca9f9918fd7822",
+      "semantic/src/features/session/contracts/session.ts": "4f229735f37aa5a60e4d7daf20a8fb6fdd8b205d1d917674afbe0d031a32a25e",
+      "semantic/tests/features/session/session.wiring.ts": "37038f545768af3ca609dba34b304789ec439d81867c0c518cc4f490b2d3e5b5",
+      "semantic/tests/features/session/testing.ts": "8a1eaf56ee2d088bfeccd45d5d44fac15a6065fb4486cd390181b1b806a5af16",
+      "semantic/tests/module/packed-entry.ts": "f8827af3cb372ec35f70cc4d01727417c4347a94c203bca3b8ee72b4ea0082f0",
+      "semantic/tests/module/semantic.test.ts": "20377ce69235d78be424536967576935c3af820f474bef7fa0cf4016b4719c82",
+      "semantic/tests/negative/empty-runner.ts": "37c03277f72bf733d2f672c40313affbb11140bbb8085969b063f33304af9d1b",
+      "semantic/tests/support/attempt-owner.ts": "332f9dc2ea6722b0d1e6ee0f5db56151087f904c2b79a1e578af52d76bb28fa3",
+      "semantic/tests/support/journal.ts": "2ab0f2a29130d79c64a383516c6cc2e3757878f20adc45d97bc46a9caaed94f9",
+      "semantic/tsconfig.negative.json": "80a3b7392aa0fa30f947d2a40cb5afa14b170285120c45bd27ec20b90419616c",
+      "semantic/tsconfig.runtime.json": "ea085e6535ea2bf66ad415aa7c1b1012c454f07a1b190376ba47591d7cddf980",
+      "semantic/tsconfig.types.json": "5c4e261a8ad9a05bdefd1973f4149a5b767b7f25f2bde46e0aa7cbee932dbc0b"
+    },
+    "H02H03SourceTree": {
+      "sha256": "74959333091c0ef2bd613843b9369406e6d23935cf7fb43f8e1757028e7be368",
+      "files": 36,
+      "bytes": 65932
+    },
+    "packageOutputs": {
+      "core": {
+        "version": "0.5.0",
+        "sha256": "bff8dfb624331f19ad9afda4a935d80cd19366491a547ee66198c9d73a9046ba",
+        "files": 105,
+        "bytes": 224461
+      },
+      "assembly": {
+        "version": "0.5.0",
+        "sha256": "792830c1e704a4f7e46c305f96c23e60868b4c49b48e395a23d6baaa3c7ec5dc",
+        "files": 25,
+        "bytes": 76132
+      },
+      "resources": {
+        "version": "0.1.0",
+        "sha256": "2de88190929b93fdd9fd7842f406f8d02dd93570f47bdbb10d54c3c0bea99725",
+        "files": 13,
+        "bytes": 26272
+      },
+      "conformance": {
+        "version": "0.3.0",
+        "sha256": "75ac0c4fec429aae64407edd9cdef7d8211aaeb5ffd118ef4541571cac4f3589",
+        "files": 37,
+        "bytes": 83007
+      }
+    },
+    "samePackageOutputsForBothPackets": true,
+    "treeHashMethod": "SHA-256 over each relative path, NUL, file bytes, NUL; recursive directory entries sorted with English localeCompare, as in the fixture materializer treeIdentity.",
+    "node": "v26.11.1",
+    "typescript": "7.0.2",
+    "nodeTypes": "24.19.1",
+    "lockfileSha256": "c6471a718ca4f58973b17bec91e69ef59151e67aa95782d4c2dd6f4c7aae532a"
+  },
+  "authorPatch": {
+    "path": "author.patch",
+    "sha256": "788fa318a32fc0d0a07a9731443155808c1cf3e38ec9f3f306a19a46d94fd282",
+    "appliesTo": "Disposable H01 packet with the two B source files withheld; paths are relative to that packet.",
+    "files": [
+      {
+        "path": "semantic/tests/features/runner/runner-b.declaration.ts",
+        "sha256": "a76c326dfd0c8db6b16d671780ca3e095c5f4a27ffa4fca1c4b9597b9e6df59c"
+      },
+      {
+        "path": "semantic/tests/features/runner/runner-b.module.ts",
+        "sha256": "8deb54786f86ff0dad07ea0f39a486f8aaa3de215258cb6c1913b5a627cc4c9f"
+      },
+      {
+        "path": "semantic/tests/module/h01.test.ts",
+        "sha256": "41a9c552600d6fbf48c8cf4959a97c6aabd0658a32262f4315367fc0ee2fcab6"
+      }
+    ],
+    "permanentProviderAdded": false,
+    "additionalRepositoryTestEntry": false
+  },
+  "H01": {
+    "status": "passed",
+    "readerScope": "Task packet, supplied recipe, and installed public package declarations only; no other worktree, Git history, withheld B source, or other author reports inspected.",
+    "compiler": {
+      "version": "7.0.2",
+      "project": "semantic/tsconfig.runtime.json",
+      "runs": 1,
+      "exitCode": 0,
+      "diagnostics": []
+    },
+    "runtime": {
+      "command": "node --test --test-isolation=none --test-reporter=tap --test-name-pattern='one owner contract suite|H-01' semantic/out/tests/module/semantic.test.js semantic/out/tests/module/h01.test.js",
+      "runs": 1,
+      "exitCode": 0,
+      "tests": 2,
+      "passed": 2,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0,
+      "NODE_TEST_CONTEXT": "cleared"
+    },
+    "ownerSuite": "Unmodified success, failure and pre-effect cancellation cases passed for fake, A and B; all actual resources had complete close reports and native handle closure checks passed.",
+    "observations": [
+      "The unchanged A provider pin rejected B with conformance.wiring.mismatch and precise expected A / actual B identities.",
+      "A separately authored literal B wiring oracle passed, without deriving identities from the prepared plan.",
+      "The unchanged connected session returned left:B:hello and left:B:world, and the journal matched exactly one B acquisition, the two effect/terminal pairs and one B release.",
+      "The actual connected B instance was obtained from the public construction result; its native handle probe succeeded before close and rejected with EBADF after close.",
+      "The retained attempt owner closed the resource scope before closing its borrowed journal; the B release append succeeded and the journal probe rejected with EBADF after close."
+    ],
+    "recipeGaps": [],
+    "unexplainedGuesses": [],
+    "blocker": null
+  },
+  "H02": {
+    "status": "passed",
+    "readerScope": "Only the public error, recipe and file map; no authoring tests, injector/control code, source implementations, Git history or author report.",
+    "observation": {
+      "code": "conformance.wiring.mismatch",
+      "details": {
+        "differences": [
+          {
+            "rule": "selection",
+            "subject": "selections",
+            "expected": [
+              "fixture/runner/runner-a/default",
+              "fixture/session/identity/input",
+              "fixture/session/journal/input",
+              "fixture/session/session/default"
+            ],
+            "actual": [
+              "fixture/runner/runner-b/default",
+              "fixture/session/identity/input",
+              "fixture/session/journal/input",
+              "fixture/session/session/default"
+            ],
+            "message": "plan selections must equal pinned providers plus roots"
+          },
+          {
+            "rule": "capability-provider",
+            "subject": "fixture/session/runner",
+            "expected": [
+              "fixture/runner/runner-a/default"
+            ],
+            "actual": [],
+            "message": "pinned providers of fixture/session/runner are missing from plan selections"
+          },
+          {
+            "rule": "provided-capability",
+            "subject": "fixture/session/runner",
+            "expected": [
+              "fixture/runner/runner-a/default"
+            ],
+            "actual": [
+              "fixture/runner/runner-b/default"
+            ],
+            "message": "fixture/runner/runner-b/default provides fixture/session/runner, which the oracle does not pin to it"
+          },
+          {
+            "rule": "unlisted-row",
+            "subject": "fixture/session/session/default.runner",
+            "expected": [
+              "fixture/runner/runner-a/default"
+            ],
+            "actual": [
+              "fixture/runner/runner-b/default"
+            ],
+            "message": "unlisted plan row fixture/session/session/default.runner does not bind its single pinned provider"
+          }
+        ]
+      }
+    },
+    "diagnosis": "The public conformance check establishes a provider-selection mismatch: the plan selects runner-b where the separately authored expectation pins runner-a. The other three listed selections agree. It does not establish a Runner contract or descriptor incompatibility.",
+    "smallestRepair": "Under the supplied expectation, restore runner-a as the selected provider of fixture/session/runner and therefore as the session root's runner binding. Preserve the three selections that already agree. The four reported differences describe the same substitution and do not justify four independent repairs or changes to either runner implementation or the shared contract.",
+    "repairOwner": "Composition/provider-selection owner; preserve the correct A oracle and the three agreeing selections.",
+    "unknowns": [
+      "Which composition file or upstream input caused runner-b to be selected.",
+      "Whether selecting runner-b was intentional and the expectation is stale.",
+      "Any behavior, lifecycle, or implementation defect in either runner."
+    ],
+    "unexplainedGuesses": [],
+    "sourceEdits": [],
+    "runtimeReplays": 0
+  },
+  "H03": {
+    "status": "passed",
+    "readerScope": "Same separate fresh diagnostician; only the in-flight public owner observation, recipe and file map.",
+    "observation": {
+      "observedAt": "2026-10-17T23:27:44.971Z",
+      "deadline": "2026-10-17T23:32:44.971Z",
+      "startupState": "pending",
+      "cancellationRequested": true,
+      "identity": "p7-held-startup",
+      "phase": "stopping",
+      "ingressOpen": false,
+      "publications": 0,
+      "activeWork": 0
+    },
+    "diagnosis": "This is an in-flight stopping observation of attempt p7-held-startup. Startup is still pending after cancellation was requested. The observed ingress is closed, with zero publications and zero active work. These facts do not constitute a completed startup, stop, or cleanup result.",
+    "supportedAttribution": "The pending state belongs to the identified retained attempt. The recipe assigns per-run startup, cancellation, publication and cleanup authority to its owner; the file map names semantic/tests/support/attempt-owner.ts for that role.",
+    "unsupportedAttribution": "Neither the responsible internal component nor a faulty source location can be inferred. The observation does not establish whether construction, readiness, cancellation handling, or another awaited operation is holding startup. It does not establish a deadlock, leak, completed cancellation, or a reusable-preparation defect.",
+    "evidenceRequestedBeforeCompletion": [
+      "A settled startup outcome for this same attempt.",
+      "A completed stop/join result showing startup and accepted operations have been accounted for.",
+      "A complete cleanup report accounting for resource closure, together with evidence that the borrowed journal was closed in the required order.",
+      "A final public owner observation consistent with those results and closed ingress; the snapshot alone is insufficient."
+    ],
+    "unexplainedGuesses": [],
+    "controllerResult": {
+      "observedAt": "2026-10-17T23:27:44.971Z",
+      "completedAt": "2026-10-17T23:29:00.774Z",
+      "deadline": "2026-10-17T23:32:44.971Z",
+      "releasedByController": true,
+      "status": "passed",
+      "outcome": "cancelled",
+      "ready": false,
+      "snapshot": {
+        "identity": "p7-held-startup",
+        "phase": "closed",
+        "ingressOpen": false,
+        "publications": 0,
+        "activeWork": 0,
+        "lastReport": {
+          "complete": true,
+          "settled": true,
+          "debts": []
+        }
+      },
+      "report": {
+        "complete": true,
+        "settled": true,
+        "debts": []
+      },
+      "records": [
+        {
+          "kind": "resource-acquired",
+          "scope": "runner",
+          "id": "A",
+          "value": "A"
+        },
+        {
+          "kind": "cleanup-attempt",
+          "scope": "runner",
+          "id": "A",
+          "value": "1"
+        },
+        {
+          "kind": "resource-released",
+          "scope": "runner",
+          "id": "A",
+          "value": "A"
+        }
+      ],
+      "resourceProbe": "EBADF",
+      "journalProbe": "EBADF"
+    },
+    "diagnosticianRuntimeReplays": 0
+  },
+  "transport": {
+    "cleanupAndExitAreSeparate": true,
+    "observation": "The successful H03 cleanup receipt precedes completion of the controller stdin transport; EOF/process exit is a separate transport observation.",
+    "retainedControllerCorrection": "Pause stdin after controller release input.",
+    "retainedControllerAfterCorrectionSha256": "0bdb469375000a142044e5772bd67891598633f12d39f3475b8296e0fd777d31",
+    "replayedAfterCorrection": false,
+    "correctedControllerExitStatus": "not-collected"
+  },
+  "limits": {
+    "source": "Incomplete under then-adopted Foundation 1.7.4 and FMS v1. Separate selected flat public-kernel research with FMS v1.1 was not adopted by this exercise.",
+    "laterChanges": "These historical inputs do not qualify later P1 fixes or source-tool adoption.",
+    "extraCompilerOrRuntimeMatrix": false,
+    "productionRootAdded": false,
+    "publicApiChanged": false,
+    "generatorAdded": false,
+    "recurringGateAdded": false,
+    "packageOrDependencySnapshotRetained": false
+  },
+  "historicalEvidenceSha256": {
+    "p7-author-frozen-manifest.json": "094e6397f1e0881d788e3c3a01aed5ee51cf97a0644603b251a0b79e7b42d733",
+    "p7-author-exercise/author-report.json": "a8d3eef7e0360c9a777418a0723fe9efbadaf15b8184048ca47f2e9a15c638a4",
+    "p7-author-exercise/exercise.tap": "0f24df0deebf4aa48f0ca630214ffff727736371ac7edbcefb838a8142fc964b",
+    "p7-diagnostic-exercise/observations.json": "e7632d428a6143261ad6de810556e901fcce5e9897a4ebcadfac4427c07af986",
+    "p7-diagnostic-exercise/diagnosis.json": "3e663363b986c0014ce65078b78982acd0e03bf8efeb03fc38dc71000c6fd309",
+    "p7-h03-control-result.json": "548d1064e86aa3c3613de91d675e6f95315d25abc84fe9459619ff6540699e14",
+    "p7-exercise-receipt.json": "cf3c939db1bdb06cdae3a14cac67f057474112ac30c97d142c961938078dbb88",
+    "p7-author-exercise/compile.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "p7-diagnostic-exercise/TASK.md": "61b1c6885c6b8e23ab9dbf95dd79fa08097f5535bb3db2116e4f630d65e601b4",
+    "p7-diagnostic-exercise/recipe.md": "4066d6a0e4de85efcc837dda2e82513e9664acbd3001064329de8cb866de3c07",
+    "p7-diagnostic-exercise/file-map.json": "4fec0650cca483f2abf83261e1874fd3c1646b5169e8466737f7be607c765550"
+  }
+}

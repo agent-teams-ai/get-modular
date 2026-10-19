@@ -49,6 +49,7 @@ resource policy is the single profile described in the current contract.
 
 ## Evidence
 
+- [Current TypeScript tooling qualification](qualification/native-typescript-tooling.md) - current native compiler scope, historical input custody and the separate release handoff.
 - [Historical implementation-readiness audit](../research/implementation-readiness/report.md) - dispositions belong to the recorded historical subjects; use the current contract and roadmap for today's start conditions.
 - [Module resource scopes and foundation review](../research/module-resources-2026-10/README.md) - research and planning archive for the resources package, Assembly 0.3.0 and the foundation decisions; not an accepted decision.
 - [Train 1 release plan](../research/releases/0.3.0-train/release-plan.md) - rehearsal 3 and release PR plan for Core and Assembly 0.3.0, resources 0.1.0 and conformance 0.1.0; not an accepted decision.

@@ -38,6 +38,12 @@ or run. The bounded compiler investigation produced no verified remedy or
 compiler adoption. See the [growth fixture](growth/README.md) for exact historical
 identities, current commands and the remaining compiler-owner handoff.
 
+The [P7 authoring record](authoring/README.md) retains the selected H-01 through
+H-03 exercise results, one three-file author patch and bounded diagnoses from
+the historical P1/P2 inputs. It adds no recurring test entry or supported root.
+Its single selected author runtime invocation and actual held-startup cleanup
+are recorded separately from source coverage, which remains incomplete.
+
 ## Semantic ownership and behavior
 
 `semantic/src/composition/semantic.root.ts` is the only supported root recipe.

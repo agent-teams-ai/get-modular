@@ -6,6 +6,7 @@ import { createServer, request, type Server } from "node:http";
 import { describe, mock, test } from "node:test";
 import { createScope, scoped, type CloseReport, type ModuleContext, type Resources } from "@get-modular/resources";
 import { asyncDetection, createStore, delivered, liveSubscriptions, MAX_CASCADE_DEPTH, settled, stats, type ListenerError } from "./observation.ts";
+import { pendingWork } from "../runtime/core.ts";
 import type { FixedKeys } from "../b-snapshot/api.js";
 
 const gc = (globalThis as { readonly gc?: () => void }).gc;
@@ -82,6 +83,7 @@ describe("R1. the subscription is released when the subscriber scope closes", ()
     load.runs[0]?.release("late");
     const report = await closing;
     assert.equal(report.complete, true);
+    await settle(); // close drains the loader; its later publication must also have a chance to run
     assert.deepEqual(load.published, [], "the late result of a closed load is dropped");
   });
 });
@@ -272,6 +274,7 @@ describe("R6. closing while a load is still running", () => {
     assert.equal(load.runs[0]?.signal.aborted, true);
     assert.equal(report.complete, true);
     assert.deepEqual(debtsOf(report), []);
+    await settle();
     assert.deepEqual(load.published, [], "an aborted run reports neither result nor error");
   });
 
@@ -352,6 +355,19 @@ describe("R7. load never shows data of older values while newer values load", ()
     await settle();
     assert.deepEqual(shown, ["loading", "ready eu: eu models", "loading", "loading", "ready br: br models"],
       "eu is never shown while us loads, and the late us result is never shown");
+    // Recheck the independent publication task too: its source can change after the loader settled.
+    store.set({ region: "au" });
+    await settle();
+    assert.equal(pendingWork([store]).flushes, 0, "the au load is running with no delivery queued");
+    gates[3]?.release("au models");
+    await Promise.resolve();
+    assert.equal(pendingWork([store]).flushes, 1, "the au publication is queued before ca is committed");
+    store.set({ region: "ca" });
+    await settle();
+    assert.deepEqual(shown.slice(5), ["loading", "loading"], "the queued au result is dropped before ca is delivered");
+    gates[4]?.release("ca models");
+    await settle();
+    assert.deepEqual(shown.slice(7), ["ready ca: ca models"]);
     await module.control.close();
   });
 });
