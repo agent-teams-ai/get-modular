@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { cp, mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,6 +12,12 @@ import { acquireHistoricalData, invoke, parseReportArguments, reportDestination,
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const read = (path: string) => readFile(join(root, path));
+// Synthetic old-tool mismatch scenarios use the immutable reviewed B, even
+// after the real release baselines have been promoted to native snapshots.
+const historicalFixtureRead = (path: string) => read(
+  path === "architecture/public-api/core.json" ? `${inputDirectory}/baseline-core.json`
+    : path === "architecture/public-api/assembly.json" ? `${inputDirectory}/baseline-assembly.json` : path,
+);
 const request = record(JSON.parse((await read(`${inputDirectory}/request.json`)).toString("utf8")));
 const review = record(request["review"]);
 const empty = { errors: 0, warnings: 0, infos: 0 };
@@ -69,7 +75,7 @@ await test("exact ordinary success reads no migration files and performs no acqu
 });
 await test("exact reviewed two-package observation qualifies separately and preserves actual ordinary bytes/exit", async () => {
   const actual = ordinary(); let calls = 0;
-  const result = await qualifyOrdinaryResult({ ...actual, read, observe: async () => { calls++; return publicResult; } });
+  const result = await qualifyOrdinaryResult({ ...actual, read: historicalFixtureRead, observe: async () => { calls++; return publicResult; } });
   assert.equal(result.outcome, "named-migration-qualified"); assert.equal(calls, 1); assert.deepEqual(result.ordinary, actual.result);
 });
 await test("unrelated errors, inventory changes and malformed mismatch fields never acquire", async t => {
@@ -88,7 +94,8 @@ await test("each physical B, policy, packet and lock binding rejects drift befor
   for (const path of ["architecture/public-api/core.json", "architecture/public-api/assembly.json", "architecture/foundation/public-api-compatibility.yaml", `${inputDirectory}/request.json`, `${inputDirectory}/historical/tsconfig.base.json`, `${inputDirectory}/foundation-presets-1.7.4.tgz`, `${inputDirectory}/declaration-realization.json`, `${inputDirectory}/custody.json`]) {
     await t.test(path, async () => {
       let calls = 0;
-      await assert.rejects(qualifyOrdinaryResult({ ...ordinary(), read: async p => p === path ? Buffer.from("changed") : read(p), observe: async () => { calls++; return publicResult; } }), /reviewed input differs/);
+      await assert.rejects(qualifyOrdinaryResult({ ...ordinary(), read: async p => p === path ? Buffer.from("changed") : historicalFixtureRead(p), observe: async () => { calls++; return publicResult; } }),
+        { message: `Get Modular native API qualification: reviewed input differs: ${path}` });
       assert.equal(calls, 0);
     });
   }
@@ -142,12 +149,16 @@ await test("historical staging refuses an occupied symlink namespace before any 
 await test("real fixture file drift during observation fails with the original initial pins", async () => {
   const directory = await mkdtemp(join(tmpdir(), "gm-native-api-drift-"));
   try {
-    const snapshot = await snapshotPinnedInputs(read);
-    for (const path of snapshot.keys()) { await mkdir(dirname(join(directory, path)), { recursive: true }); await cp(join(root, path), join(directory, path)); }
-    const fixtureRead = (p: string) => readFile(join(directory, p));
+    const snapshot = await snapshotPinnedInputs(historicalFixtureRead);
+    for (const path of snapshot.keys()) {
+      await mkdir(dirname(join(directory, path)), { recursive: true });
+      await writeFile(join(directory, path), await historicalFixtureRead(path), { flag: "wx" });
+    }
+    const fixtureRead = (p: string) => readFile(join(directory, p)); let calls = 0;
     await assert.rejects(qualifyOrdinaryResult({ ...ordinary(), read: fixtureRead, observe: async () => {
-      await writeFile(join(directory, "architecture/public-api/core.json"), "changed during observation"); return publicResult;
-    } }), /input changed during qualification/);
+      calls++; await writeFile(join(directory, "architecture/public-api/core.json"), "changed during observation"); return publicResult;
+    } }), { message: "Get Modular native API qualification: input changed during qualification: architecture/public-api/core.json" });
+    assert.equal(calls, 1);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
 await test("public output cannot turn writes, partial coverage or different review into qualification", () => {
