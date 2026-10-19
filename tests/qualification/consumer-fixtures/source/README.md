@@ -77,7 +77,7 @@ installation:
 - H-03 recorded natural process exit and close with code 0 and no signal while
   the parent's input writer remained open. Cancellation left no publications,
   active work or effects, released once, and returned a complete settled report.
-  Both actual resource and journal probes returned `EBADF`.
+  Both actual resource and journal probes confirmed closed file descriptors.
 - The same Assembly run passed the existing C/L/W scenarios, both recovery
   profiles and ordinary G-01 at N8. The separate growth source-coverage result
   remains incomplete because its source scanner is not selected.
