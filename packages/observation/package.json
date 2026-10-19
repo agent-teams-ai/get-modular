@@ -1,6 +1,6 @@
 {
   "name": "@get-modular/observation",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "State with one writer, read-only facets and subscriptions owned by the subscriber's resource scope.",
   "publishConfig": {
     "access": "public",
