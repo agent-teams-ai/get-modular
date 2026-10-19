@@ -7,9 +7,10 @@ export type Keys<V> = readonly [Key<V>, ...Key<V>[]];
 type Primitive = string | number | boolean | bigint | symbol | null | undefined;
 /**
  * Plain data as the store holds it: deeply read-only, because the store freezes it. Primitives stay as they are, so
- * branded IDs such as `string & { readonly __brand: "UserId" }` survive; tuples keep their element types.
+ * branded IDs such as `string & { readonly __brand: "UserId" }` survive; tuples keep their element types. Unknown
+ * stays unknown until the consumer narrows it. Values must be ordinary data, never Proxy-backed graphs.
  */
-export type Frozen<T> = T extends Primitive ? T : T extends readonly unknown[] ? { readonly [I in keyof T]: Frozen<T[I]> } : { readonly [P in keyof T]: Frozen<T[P]> };
+export type Frozen<T> = T extends Primitive ? T : T extends readonly unknown[] ? { readonly [I in keyof T]: Frozen<T[I]> } : T extends object ? { readonly [P in keyof T]: Frozen<T[P]> } : T;
 type OpenKeys<V> = { [K in keyof V]-?: {} extends Record<K, unknown> ? K : never }[keyof V];
 type FixedKeysError = { readonly "a store record needs literal keys, not an index signature": never };
 /**
@@ -170,7 +171,9 @@ export type Store<in out V> = {
    * changes nothing (by `Object.is`) commits nothing and returns the current revision. The store takes ownership of
    * the objects in `patch` and freezes them in place, after validating all of them: do not keep mutating them, and
    * copy objects that belong to another module. Non-plain data throws `observation.values.not-plain`; an unknown key
-   * throws `observation.keys.unknown`. A commit made from a delivery that changes a key the delivering subscription
+   * throws `observation.keys.unknown`. Proxy-backed values are unsupported; an available native Proxy check rejects
+   * them before reflection or ownership. Without that facility the ordinary-data input precondition still applies.
+   * A commit made from a delivery that changes a key the delivering subscription
    * follows on this store throws `observation.delivery.echo`; a chain of more than 64 such steps across stores throws
    * `observation.delivery.cascade`. A delivery counts synchronously, and in Node also through await and microtasks
    * until the end of its delivery task (a loader: while its run is active); not across timers or I/O. Both are reported

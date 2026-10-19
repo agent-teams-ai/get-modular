@@ -1914,8 +1914,9 @@ active, its async continuations carry its echo and cascade context.
 
 Pass the child `SettingsCommands` through an ordinary required slot. It calls
 `requestRegion` in response to its own user action and checks the typed result.
-An accepted command means that the owner's commit happened; notifications
-still run in later tasks. A same-turn read of a consumer's projection may see
+An accepted command means that the owner accepted the request. An idempotent
+request may leave the value unchanged, producing no new commit or notification.
+Notifications for an effective commit still run in later tasks. A same-turn read of a consumer's projection may see
 its previous value. Use an explicit command result when the caller needs an
 immediate decision, and leave readiness policy with the Host.
 

@@ -822,6 +822,8 @@ boundaries:
       - packages/observation/tests/packed-root.test.mjs
       - packages/observation/tests/process-probe.mjs
       - packages/observation/tests/processes.test.mjs
+      - packages/observation/tests/review-environment-probe.ts
+      - packages/observation/tests/review-regressions.test.ts
       - packages/observation/tests/semantic-suite.mjs
       - packages/observation/tests/store.test.mjs
       - packages/observation/tests/subscriptions.test.mjs
@@ -836,7 +838,7 @@ boundaries:
       - packages/observation/tests/types-testing.ts
       - packages/observation/tests/types-traps.ts
       - packages/observation/tests/types.ts
-      - packages/observation/tests/writer-gate.test.mjs
+      - packages/observation/tests/writer-gate.test.ts
     allow:
       boundaries: []
       packages:

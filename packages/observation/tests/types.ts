@@ -142,3 +142,13 @@ const getterWatch: import("../dist/index.js").WatchSpec<typeof theme> = {
   get onChange() { return () => undefined; },
 };
 themes.watch(theme, getterWatch);
+
+// T26: unknown keeps nullable runtime values and still requires consumer narrowing.
+const unknownStore = createStore<{ readonly value: unknown }>({ value: null }, { name: "unknown", resources, reportError });
+unknownStore.set({ value: null });
+unknownStore.set({ value: undefined });
+const unknownValue: unknown = unknownStore.read(["value"]).values.value;
+// @ts-expect-error unknown values cannot be treated as non-null objects without narrowing
+const assumedObject: object = unknownStore.read(["value"]).values.value;
+const nullableFrozen: import("../dist/index.js").Frozen<unknown> = null;
+void [unknownValue, assumedObject, nullableFrozen];

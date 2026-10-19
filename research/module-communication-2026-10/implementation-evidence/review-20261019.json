@@ -1,0 +1,523 @@
+{
+  "schemaVersion": 1,
+  "kind": "get-modular:observation-local-review-qualification:1",
+  "recordedOn": "2026-10-19",
+  "scope": "Completed local Observation owning gates and source review, not full repository CI or release admission",
+  "source": {
+    "baseCommit": "3f5f3b303e99e4b8f919486d91d954f7f78e204d",
+    "state": "Uncommitted corrected successor; file hashes identify actual subject",
+    "currentDevelopmentPackageVersions": {
+      "core": "0.5.0",
+      "assembly": "0.5.0",
+      "resources": "0.1.0",
+      "conformance": "0.3.0",
+      "observation": "0.0.0"
+    },
+    "productionFiles": [
+      {
+        "path": "packages/observation/src/composition/root.ts",
+        "bytes": 58,
+        "sha256": "04b361d20a93f1752785c4a8791dcfee2f67eb23f0e3ccd38cf23104bac4fa46"
+      },
+      {
+        "path": "packages/observation/src/composition/testing.ts",
+        "bytes": 102,
+        "sha256": "b38df9cdca22c6be0aae4bd215281b1c5edf9374b9e2ff5270b7ae9057add320"
+      },
+      {
+        "path": "packages/observation/src/features/delivery/context.ts",
+        "bytes": 2086,
+        "sha256": "67b9746823be17047229652891e6becceb1c1a67b22ca75982d996ec10c21c84"
+      },
+      {
+        "path": "packages/observation/src/features/delivery/pending.ts",
+        "bytes": 170,
+        "sha256": "54bd8b375bed46b8f53d40e04fd739ba0369582338a362eac1c6dbb761920b98"
+      },
+      {
+        "path": "packages/observation/src/features/delivery/platform.ts",
+        "bytes": 2718,
+        "sha256": "55c154ca3ae0d2f93c2f67ddbc892563d50560a5ce0a578685c5f36c40ef8659"
+      },
+      {
+        "path": "packages/observation/src/features/errors/errors.ts",
+        "bytes": 1021,
+        "sha256": "b3a72b989a9cadc24fbed3474bff32549089b6e74ab102c73c1f156358aa2ed1"
+      },
+      {
+        "path": "packages/observation/src/features/store/admission.ts",
+        "bytes": 2089,
+        "sha256": "17657bd4afa1f2da4f911e6ca954b5b0f4678576ec0e71ede115b2c3b9a3f649"
+      },
+      {
+        "path": "packages/observation/src/features/store/arguments.ts",
+        "bytes": 3040,
+        "sha256": "7075a690a1618ae1c36cf109ec763fb304bd9d2d7db6656cd749986fbdc2ed57"
+      },
+      {
+        "path": "packages/observation/src/features/store/engine.ts",
+        "bytes": 11787,
+        "sha256": "6805c6b58ab6819107e14323f40031b8773d158098721fc086bf3cec082ed483"
+      },
+      {
+        "path": "packages/observation/src/features/store/load.ts",
+        "bytes": 7192,
+        "sha256": "8f18a6566e642fef854dcdacc49f8013b5049da0a4475f32c523755e0d73f79b"
+      },
+      {
+        "path": "packages/observation/src/features/store/registry.ts",
+        "bytes": 1674,
+        "sha256": "971652327d2ba31e11ee82946573a094899d5e7f7544c787043471073f794c1e"
+      },
+      {
+        "path": "packages/observation/src/features/store/store.ts",
+        "bytes": 2523,
+        "sha256": "6c0d12c47f91b72eda76c722513132d3f4619837669cc709b415a0884d5b96e6"
+      },
+      {
+        "path": "packages/observation/src/features/store/types.ts",
+        "bytes": 14330,
+        "sha256": "1cf342e0610c605e5d64c88e1aec9e7fcf33d75f7a8da7ccb47d4d86ef25950a"
+      },
+      {
+        "path": "packages/observation/src/features/store/values.ts",
+        "bytes": 3464,
+        "sha256": "caf72c6f0d40c02448f245c4ee45c3bd3f92155e8579865d8d97a79d83415dd8"
+      },
+      {
+        "path": "packages/observation/src/features/store/watch.ts",
+        "bytes": 2002,
+        "sha256": "b066ceccff52f89ea0785d541624e8b44d7008f68a6be20f7e9cc2883f665d45"
+      },
+      {
+        "path": "packages/observation/src/features/testing/waits.ts",
+        "bytes": 3473,
+        "sha256": "2ca283a818224cce1ffe85981c3bc98250b5fa2d374b372d2e710369aec31e6d"
+      },
+      {
+        "path": "packages/observation/src/index.ts",
+        "bytes": 392,
+        "sha256": "33a013a4fb6935dce4f3032da96b9f42eb62a4653822d5a202d5dc1f39f4be44"
+      },
+      {
+        "path": "packages/observation/src/testing.ts",
+        "bytes": 162,
+        "sha256": "5ffa720540f73c7b3f2cbc5af1b857cf2949b6e088fb93b658137445918db9fc"
+      }
+    ],
+    "selectedCorrectionFiles": [
+      {
+        "path": "packages/observation/src/features/delivery/platform.ts",
+        "bytes": 2718,
+        "sha256": "55c154ca3ae0d2f93c2f67ddbc892563d50560a5ce0a578685c5f36c40ef8659"
+      },
+      {
+        "path": "packages/observation/src/features/store/admission.ts",
+        "bytes": 2089,
+        "sha256": "17657bd4afa1f2da4f911e6ca954b5b0f4678576ec0e71ede115b2c3b9a3f649"
+      },
+      {
+        "path": "packages/observation/src/features/store/arguments.ts",
+        "bytes": 3040,
+        "sha256": "7075a690a1618ae1c36cf109ec763fb304bd9d2d7db6656cd749986fbdc2ed57"
+      },
+      {
+        "path": "packages/observation/src/features/store/store.ts",
+        "bytes": 2523,
+        "sha256": "6c0d12c47f91b72eda76c722513132d3f4619837669cc709b415a0884d5b96e6"
+      },
+      {
+        "path": "packages/observation/src/features/store/types.ts",
+        "bytes": 14330,
+        "sha256": "1cf342e0610c605e5d64c88e1aec9e7fcf33d75f7a8da7ccb47d4d86ef25950a"
+      },
+      {
+        "path": "packages/observation/src/features/store/values.ts",
+        "bytes": 3464,
+        "sha256": "caf72c6f0d40c02448f245c4ee45c3bd3f92155e8579865d8d97a79d83415dd8"
+      },
+      {
+        "path": "packages/observation/src/features/testing/waits.ts",
+        "bytes": 3473,
+        "sha256": "2ca283a818224cce1ffe85981c3bc98250b5fa2d374b372d2e710369aec31e6d"
+      },
+      {
+        "path": "packages/observation/tests/review-regressions.test.ts",
+        "bytes": 10512,
+        "sha256": "e17ade8f97d66afc75429faa1cde604e8cb291a0a1608da87a9f61649763c883"
+      },
+      {
+        "path": "packages/observation/tests/review-environment-probe.ts",
+        "bytes": 3616,
+        "sha256": "8c398ca756df223a5079f5c2ebbcf1d6a1e1995f4dd3c07b5b7d169e289adee0"
+      },
+      {
+        "path": "packages/observation/tests/types.ts",
+        "bytes": 8506,
+        "sha256": "f858dbd3e2eb1a8b3128daafaeb80c5150469844d053079e22d6e76ade086c3e"
+      },
+      {
+        "path": "packages/observation/tests/packed-root.test.mjs",
+        "bytes": 10526,
+        "sha256": "ef2ab2d2a6f52eb0adaf9b945e36818d84fcf30efac3c74b53ebc53d06e0cf7e"
+      },
+      {
+        "path": "packages/observation/tsconfig.test-tooling.json",
+        "bytes": 438,
+        "sha256": "d99e6e1fb2069cebab415d0e4b17a23847a49a2a6dcbcd70604d01d175dcc277"
+      },
+      {
+        "path": "package.json",
+        "bytes": 12636,
+        "sha256": "8a787a198a15953d9fd5ee577e035e6c29e693eaa1603697114a6a1337cf6661"
+      },
+      {
+        "path": "architecture/checks/leaf-packages.mjs",
+        "bytes": 14671,
+        "sha256": "99a674571bf715046fe6867c3d0f4caefa4ef3142f73c4747fe2cbbc34800573"
+      },
+      {
+        "path": "architecture/foundation/source-dependencies.yaml",
+        "bytes": 34251,
+        "sha256": "45efe4bc6edc49cb4c93a93deddbd74bcdacf9a0e4556ccb645ce73bbbba3cc5"
+      },
+      {
+        "path": "tests/leaf-package-admission.test.mjs",
+        "bytes": 32505,
+        "sha256": "9e986a947c916ef643ab8346f97927039035fed91990b6d75f169598de2ffafa"
+      },
+      {
+        "path": "packages/observation/tests/support/compilers.mjs",
+        "bytes": 3816,
+        "sha256": "8b83f8b144a01bffd46449a793a907e3da88a82ad2bc20567266d4ff402b9059"
+      }
+    ],
+    "writerRunner": {
+      "path": "packages/observation/tests/writer-gate.test.ts",
+      "bytes": 8964,
+      "sha256": "cc2a0e1d4ab3b0deab142adfc3663e49a339495b739d4d9d73bb6f5c0dcc6c53"
+    },
+    "reviewedDocumentationBeforeCheckpoint": [
+      {
+        "path": "tsconfig.base.json",
+        "bytes": 275,
+        "sha256": "73880b7cd2bed0bedbd1ce3d5f47a5114cb8718c3a6de0bdbd47b87259809390",
+        "binding": "Current file bytes"
+      },
+      {
+        "path": "docs/README.md",
+        "bytes": 6134,
+        "sha256": "fc118ac0d01ecd766bcaaca88521bdcb718043b0a7893fcd93e5dcda95ebcc5f",
+        "binding": "Current file bytes"
+      },
+      {
+        "path": "docs/guides/module-authoring.md",
+        "bytes": 95159,
+        "sha256": "8d9e6ced096c3259ec8d7a35a1ee3c2f15e5832ba23c95da57f8cfc4c8622cfd",
+        "binding": "Current file bytes"
+      },
+      {
+        "path": "packages/observation/README.md",
+        "bytes": 31950,
+        "sha256": "e42fbf3ef80cc0302710fa311cdc5985e4dcbc82a7dbda581fd21098025f58a4",
+        "binding": "Current file bytes"
+      },
+      {
+        "path": "research/module-communication-2026-10/implementation-plan.md",
+        "bytes": 188234,
+        "sha256": "00559a63062273179482501818144ebcc2b21d982c0777db4d353067ad7a0550",
+        "binding": "Current file bytes"
+      },
+      {
+        "path": "research/module-communication-2026-10/implementation-port.md",
+        "bytes": 51628,
+        "sha256": "46f72cbe52297194a121919fd081b8f6a5eac6a2a6b8eb45aab56bb31031fdf8",
+        "binding": "Before this qualification checkpoint append"
+      },
+      {
+        "path": "research/module-communication-2026-10/README.md",
+        "bytes": 19954,
+        "sha256": "1d75b44d13dfea21ea23cb6f171fe71cbe56a89dbec6f021967b8b233e1ce50e",
+        "binding": "Current file bytes"
+      },
+      {
+        "path": "research/module-communication-2026-10/plan-review.md",
+        "bytes": 27069,
+        "sha256": "0304ffc43688a0fa5a29257ccd47063a174bb414bb8d143c1852a1a132417d26",
+        "binding": "Current file bytes"
+      }
+    ],
+    "checkpointBinding": "The final Markdown document links to this JSON without embedding its hash. The JSON pins that document, but contains no self hash or prospective commit hash.",
+    "checkpointDocument": {
+      "path": "research/module-communication-2026-10/implementation-port.md",
+      "bytes": 54950,
+      "sha256": "ef99dfd92d66ca6abdb32c72eefc7d47d915679c0c06c10025c3d2ef3fa9a02b",
+      "binding": "Current completed append; previous documentation review remains separately bound to its original prefix"
+    }
+  },
+  "commands": {
+    "observation:build": "node architecture/tooling/build-leaf-package.mjs observation",
+    "observation:typecheck": "node node_modules/typescript/bin/tsc -p packages/observation/tsconfig.json --noEmit && node architecture/tooling/test-assembly-types.mjs --projects packages/observation/tsconfig.types.json packages/observation/tsconfig.types.bundler.json packages/observation/tsconfig.test-tooling.json",
+    "observation:test": "node --test packages/observation/tests/store.test.mjs packages/observation/tests/subscriptions.test.mjs packages/observation/tests/load.test.mjs packages/observation/tests/guards.test.mjs packages/observation/tests/testing-entry.test.mjs packages/observation/tests/processes.test.mjs packages/observation/tests/type-controls.test.ts packages/observation/tests/close-reporting.test.ts packages/observation/tests/review-regressions.test.ts tests/observation/assembly-integration.test.mjs tests/observation/readme-examples.test.mjs",
+    "observation:evidence": "node --test packages/observation/tests/mutations.test.mjs packages/observation/tests/writer-gate.test.ts",
+    "observation:pack": "node --test packages/observation/tests/packed-root.test.mjs"
+  },
+  "results": {
+    "node24": {
+      "version": "24.21.0",
+      "execution": "Five exact declared stages completed sequentially after initial aggregate-launcher refusal; later canonical correction has separate affected proof",
+      "fiveStageExitCodes": {
+        "build": 0,
+        "typecheck": 0,
+        "test": 0,
+        "evidence": 0,
+        "pack": 0
+      },
+      "runtime": {
+        "tests": 170,
+        "pass": 170,
+        "fail": 0,
+        "skip": 0
+      },
+      "evidence": {
+        "tests": 4,
+        "pass": 4,
+        "mutantsDetected": 18,
+        "writerRows": 33,
+        "deadlineRefusalControls": 2,
+        "fail": 0,
+        "skip": 0
+      },
+      "pack": {
+        "tests": 1,
+        "pass": 1,
+        "bothResolverSixFixtureGroups": true
+      },
+      "finalCanonicalFollowup": {
+        "affectedTests": 5,
+        "pass": 5,
+        "fail": 0,
+        "skip": 0,
+        "subjects": [
+          "metadata-only canonical compiler admission control",
+          "93 independently attributed public type negatives per resolver",
+          "all 33 writer rows plus two deadline/refusal controls"
+        ],
+        "requiredStrictNormalPnpmExit": 0,
+        "configuredTypedLintExit": 0
+      },
+      "interpretation": "The original complete 170-test subject precedes the two-file metadata correction; no single final 171-test Node 24 run is claimed."
+    },
+    "node26": {
+      "version": "26.11.1",
+      "execution": "Literal pnpm observation:check on final canonical source",
+      "aggregateExitCode": 0,
+      "runtime": {
+        "tests": 171,
+        "pass": 171,
+        "fail": 0,
+        "skip": 0
+      },
+      "evidence": {
+        "tests": 4,
+        "pass": 4,
+        "mutantsDetected": 18,
+        "writerRows": 33,
+        "deadlineRefusalControls": 2,
+        "fail": 0,
+        "skip": 0
+      },
+      "pack": {
+        "tests": 1,
+        "pass": 1,
+        "bothResolverSixFixtureGroups": true
+      }
+    },
+    "sharedChecks": {
+      "compilerVersion": "7.0.2",
+      "compilerAliases": [
+        "typescript",
+        "typescript-minimum"
+      ],
+      "equalAliasesRunOnce": true,
+      "resolvers": [
+        "NodeNext",
+        "Bundler"
+      ],
+      "strict": true,
+      "skipLibCheck": false,
+      "ordinaryTypeScriptRequiredTooling": true,
+      "publicTypeNegativesPerResolver": 93,
+      "readmeBlocks": 13,
+      "packedTypeFixtureGroups": 6,
+      "writerCompileAttributedDiagnosticsPerResolver": 4,
+      "writerRowsIdentical": true,
+      "writerPositiveRows": 11,
+      "writerNegativeRows": 22,
+      "unchangedWriterFixtureFiles": 75,
+      "unchangedMutationDefinitions": 18,
+      "noLegacyCompilerOrFoundationRuntimeExecution": true,
+      "legacyFoundationInput": "Foundation 1.7.4 preset JSON as data only"
+    }
+  },
+  "builtOutputCustody": {
+    "files": 212,
+    "filesByPackage": {
+      "assembly": 24,
+      "conformance": 36,
+      "core": 104,
+      "observation": 36,
+      "resources": 12
+    },
+    "fourInventoryDigests": [
+      "7fa902e5604b660595a00b3f32b62e5b74f13f6b80056e441b9afeb362e14e31",
+      "7fa902e5604b660595a00b3f32b62e5b74f13f6b80056e441b9afeb362e14e31",
+      "7fa902e5604b660595a00b3f32b62e5b74f13f6b80056e441b9afeb362e14e31",
+      "7fa902e5604b660595a00b3f32b62e5b74f13f6b80056e441b9afeb362e14e31"
+    ],
+    "allFourInventoriesByteIdentical": true,
+    "sourcePinsStableDuringTheirRecordedRuns": 233,
+    "qualificationLimit": "Local build-file comparison, not release archive or registry custody"
+  },
+  "launcherHistory": {
+    "initialOutcome": "EACCES before Observation stages; raw failure log retained",
+    "recovery": "Executable per-lane shim dispatched selected Node to pinned pnpm; authorized offline frozen scripts-disabled reconciliation used existing store",
+    "reconciliationExitCode": 0,
+    "compilerLockAndModuleMetadataFilesCompared": 834,
+    "beforeInventorySha256": "3de3df3b0f9b2089806314c08f6b4536328a3db6fea6f935e26b3ed23b5e7dfb",
+    "afterInventorySha256": "3de3df3b0f9b2089806314c08f6b4536328a3db6fea6f935e26b3ed23b5e7dfb",
+    "allComparedBytesUnchanged": true,
+    "laterNormalNode24TypecheckExit": 0,
+    "laterNormalNode26AggregateExit": 0
+  },
+  "independentSourceReviews": [
+    {
+      "role": "Independent source reviewer",
+      "scope": "runtime and types",
+      "verdict": "APPROVE before the separately reviewed canonical follow-up",
+      "originalReceiptSha256": "733d804e567a44df989360840b102fe0a7499610640e80405ceb104c9a5e7cce"
+    },
+    {
+      "role": "Independent source reviewer",
+      "scope": "documentation and inherited build configuration",
+      "verdict": "APPROVE eight files before this checkpoint append",
+      "originalReceiptSha256": "468f222e4401dfe4b62dfa9ce6774fe32a3142b3d0eedb2a5003fdc9c360c076"
+    },
+    {
+      "role": "Independent source reviewer",
+      "scope": "writer orchestration and deadlines",
+      "verdict": "APPROVE writer; canonical predicate reviewed separately",
+      "originalReceiptSha256": "d53b752e5a86a2f97536595116c7829ea5d6e59385b80d56c52061d6a31ef23f"
+    },
+    {
+      "role": "Independent source reviewer",
+      "scope": "accepted-plan completeness",
+      "verdict": "One compiler admission P2, retained as original finding",
+      "originalReceiptSha256": "ed0cc61f7f4449e4a933b9514dd366f9a97d0a75c7cf787afa3e3b88ca74b65e"
+    },
+    {
+      "role": "Independent source reviewer",
+      "scope": "canonical follow-up and completeness",
+      "verdict": "APPROVE exact two-file follow-up; P2 resolved; no remaining P1/P2 in reviewed implementation scope",
+      "originalReceiptSha256": "5084c8bc66fff63c3b11012c1cd455f013e3c86509a22e2c27278869d7a58336"
+    }
+  ],
+  "originalInputReceiptDigests": {
+    "completeOwningGateReceipt": "a44d522db0b84d4793215b96298aef7c1e970e8f1003f9c660e040d908ae6705",
+    "finalSourceMap": "a06f89f9f89a21877cf2ac37e06aa60882df8dfea0ba00550a6bb51f879bd9ad",
+    "exactCommandInventory": "1d48987cbfce3630cb9bf65a224aa21296b7a41230d610c4be61c99e9c3566ff",
+    "terminalAnalysis": "c5947de6daa8e60d82526b0ca2f96b9a20b28838042259de35b9979485e232e9",
+    "canonicalAffectedReceipt": "435008e6e96911b0c2e7d4510518c629f1547f809e5ba198f68a5b2a27bd4b36",
+    "meaning": "Original retained input record identities. Six raw logs and source pins are portable below; a digest alone cannot reconstruct an omitted original record."
+  },
+  "rawLogs": [
+    {
+      "path": "research/module-communication-2026-10/implementation-evidence/review-20261019-node24-runtime.log",
+      "bytes": 20976,
+      "sha256": "f990b4858f58b281fec0aeddd23a5fd732b94e151e3ec833a7388771abd66ea9",
+      "originalLogName": "node24-test.log",
+      "originalSha256": "f990b4858f58b281fec0aeddd23a5fd732b94e151e3ec833a7388771abd66ea9",
+      "subject": "Node 24.21.0 runtime before the two-file metadata correction",
+      "exitCode": 0
+    },
+    {
+      "path": "research/module-communication-2026-10/implementation-evidence/review-20261019-node24-evidence.log",
+      "bytes": 7054,
+      "sha256": "745ac67b2c7480f499610d659a25c83a85a417d3bc85699206a51ebb2fa925ab",
+      "originalLogName": "node24-evidence.log",
+      "originalSha256": "745ac67b2c7480f499610d659a25c83a85a417d3bc85699206a51ebb2fa925ab",
+      "subject": "Node 24.21.0 evidence before the two-file metadata correction",
+      "exitCode": 0
+    },
+    {
+      "path": "research/module-communication-2026-10/implementation-evidence/review-20261019-node24-pack.log",
+      "bytes": 408,
+      "sha256": "c14a536f6b51438010eaced780d3a9c734e2f2eecf0db89432b7c4f1be069270",
+      "originalLogName": "node24-pack.log",
+      "originalSha256": "c14a536f6b51438010eaced780d3a9c734e2f2eecf0db89432b7c4f1be069270",
+      "subject": "Node 24.21.0 packed qualification before the two-file metadata correction",
+      "exitCode": 0
+    },
+    {
+      "path": "research/module-communication-2026-10/implementation-evidence/review-20261019-node24-canonical.log",
+      "bytes": 2688,
+      "sha256": "952ef40ba63c5b4db2898d5cbfbc73eea92bdd59659dcc5aba8f851f8ac838ee",
+      "originalLogName": "canonical-affected-node24.log",
+      "originalSha256": "952ef40ba63c5b4db2898d5cbfbc73eea92bdd59659dcc5aba8f851f8ac838ee",
+      "subject": "Node 24.21.0 affected proof on the final metadata successor",
+      "exitCode": 0
+    },
+    {
+      "path": "research/module-communication-2026-10/implementation-evidence/review-20261019-node24-launcher-failure.log",
+      "bytes": 1066,
+      "sha256": "58866c7fd3ba8e2d21752a5c86821a56d6073b9aec79529a645d3de48bb4b922",
+      "originalLogName": "observation-check-node24.log",
+      "originalSha256": "58866c7fd3ba8e2d21752a5c86821a56d6073b9aec79529a645d3de48bb4b922",
+      "subject": "Initial Node24 launcher failed with EACCES before Observation stages",
+      "exitCode": null,
+      "outcome": "Launcher failed before Observation stages; numeric exit not recorded in the supplied input packet"
+    },
+    {
+      "path": "research/module-communication-2026-10/implementation-evidence/review-20261019-node26-complete.log",
+      "bytes": 29723,
+      "sha256": "c9b0d766659802e0b42cae4e8dd1bbb88fd85f5666dfedd14fa8b54cefe16a54",
+      "originalLogName": "observation-check-node26.log",
+      "originalSha256": "c9b0d766659802e0b42cae4e8dd1bbb88fd85f5666dfedd14fa8b54cefe16a54",
+      "subject": "Node 26.11.1 literal normal aggregate on final source",
+      "exitCode": 0
+    }
+  ],
+  "remainingDelivery": {
+    "mainToolingCanonicalMetadataCommit": "6d151378d4cd9cb562194f48a57091ab74e208fb",
+    "toolingRelation": "Separate main-based predecessor; seven-file correction does not replace Observation-local selector correction",
+    "order": [
+      "Actual native Foundation owner publication",
+      "Actual published version, integrity and source adoption in 13-path tooling update",
+      "Main admission of native-tooling predecessor",
+      "Separate acceptance of ADR pull request #154",
+      "Separate acceptance of plan pull request #185",
+      "Implementation pull request #195 admission after current required CI",
+      "Versioned release head and all five exact retained archives",
+      "Refreshed bounded external TEST consumer on those bytes on both Nodes",
+      "Existing owner release and publication procedure"
+    ],
+    "pending": [
+      "Current exact-source full repository and six Node/OS CI cells",
+      "Fresh release archives and external consumer qualification",
+      "Main admission and registry publication"
+    ],
+    "historicalSubjects": {
+      "preparedRelease": "3b42d2641055c36c13ff0e2b7fae6cc02a945514",
+      "externalConsumerInput": "a32f628a11a8cd9e871d985ab09bcfbcaa708b1b",
+      "disposition": "Previous evidence remains unchanged; it does not qualify corrected source"
+    },
+    "unchangedBoundaries": [
+      "Accepted ADR and CMS bytes",
+      "Frozen 185-case research inputs and writer expectations",
+      "Original Core and Assembly API baselines",
+      "G1 HOLD and false qualification, authority and release claims",
+      "No event bus, createEvent, new lifecycle authority or publisher"
+    ]
+  },
+  "checkpointReview": "Source-review verdicts apply to their recorded scopes; the independent review of this checkpoint is retained separately."
+}

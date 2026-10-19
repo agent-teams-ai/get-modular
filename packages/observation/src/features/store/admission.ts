@@ -26,8 +26,10 @@ export function admit(engine: StoreEngine, snapshot: unknown, spec: RawSpec): Ad
   }
   if (engine.size >= engine.options.maxSubscriptions) {
     const counts = engine.scopeCounts();
+    let largest = 0;
+    for (const count of counts.values()) {largest = Math.max(largest, count);}
     throw new ObservationError("observation.subscriptions.limit",
-      `${engine.options.name} already has ${engine.options.maxSubscriptions} live subscriptions (maxSubscriptions) in ${counts.size} scopes, at most ${Math.max(...counts.values())} in one; refused for this scope. A module that opens a child scope per piece of work and never closes it leaks one subscription per piece.`);
+      `${engine.options.name} already has ${engine.options.maxSubscriptions} live subscriptions (maxSubscriptions) in ${counts.size} scopes, at most ${largest} in one; refused for this scope. A module that opens a child scope per piece of work and never closes it leaks one subscription per piece.`);
   }
   return { origin, resources, name, names };
 }

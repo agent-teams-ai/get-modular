@@ -54,7 +54,7 @@ async function assertSourceRules(installed) {
     assert.doesNotMatch(source, /process\s*(?:\.\s*env|\[\s*["']env["']\s*\])/u, file);
     assert.doesNotMatch(source, /(?:from\s*|import\s*(?:\(\s*)?|require\s*\(\s*)["']node:/u, file);
     for (const match of source.matchAll(/["'](node:[^"']+)["']/gu)) {
-      assert.ok(["node:timers", "node:async_hooks", "node:perf_hooks"].includes(match[1]), `${file}: ${match[1]}`);
+      assert.ok(["node:timers", "node:async_hooks", "node:perf_hooks", "node:util"].includes(match[1]), `${file}: ${match[1]}`);
     }
   }
   const visited = new Set();

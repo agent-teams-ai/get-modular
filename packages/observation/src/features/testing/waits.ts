@@ -22,7 +22,8 @@ export function liveSubscriptions(store: ReadonlyStore<object>, resources?: Reso
 function checkedWait(value: unknown): { readonly infos: readonly EngineInfo[] | undefined; readonly timeout: number } {
   if (typeof value !== "object" || value === null) {throw invalidArgument("wait options must be an object");}
   const options = value as WaitOptions;
-  const timeout = options.timeoutMs ?? 5000;
+  const suppliedTimeout = options.timeoutMs;
+  const timeout = suppliedTimeout === undefined ? 5000 : suppliedTimeout;
   if (typeof timeout !== "number" || !(timeout > 0)) {throw invalidArgument("timeoutMs must be a positive number or Infinity");}
   if (options.signal !== undefined && !(options.signal instanceof AbortSignal)) {throw invalidArgument("signal must be an AbortSignal");}
   if (options.stores !== undefined && !Array.isArray(options.stores)) {throw invalidArgument("stores must be an array");}
@@ -37,13 +38,13 @@ async function waitUntil(options: WaitOptions, includeLoads: boolean, what: stri
   const deadline = realNow() + timeout;
   for (;;) {
     await new Promise<void>((resolve) => { later(resolve); });
-    if (quiet(infos, includeLoads)) {return;}
     if (options.signal?.aborted === true) {
       throw new ObservationError("observation.testing.timeout", `${what} was abandoned: the signal aborted`, { cause: options.signal.reason });
     }
     if (realNow() > deadline) {
       throw new ObservationError("observation.testing.timeout", `${what} did not happen within ${timeout} ms; another store may commit every task, or a load stays open (pass { stores })`);
     }
+    if (quiet(infos, includeLoads)) {return;}
   }
 }
 /** Wait through pending delivery tasks and their callback microtasks, without awaiting active loaders. */

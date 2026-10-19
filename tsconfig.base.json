@@ -6,6 +6,6 @@
     "erasableSyntaxOnly": true,
     "declaration": true,
     "types": [],
-    "skipLibCheck": true
+    "skipLibCheck": false
   }
 }

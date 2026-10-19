@@ -18,6 +18,16 @@ const clockModule = builtin("node:perf_hooks") as {
   readonly performance?: { readonly now?: () => number };
 } | undefined;
 
+/** Optional native enforcement of the caller's non-Proxy plain-data precondition. */
+export const isProxy: (value: object) => boolean = (() => {
+  try {
+    const utilities = builtin("node:util") as { readonly types?: { readonly isProxy?: unknown } } | undefined;
+    const types = utilities?.types;
+    const check = types?.isProxy;
+    return typeof check === "function" ? value => Reflect.apply(check, types, [value]) === true : () => false;
+  } catch { return () => false; }
+})();
+
 export const scheduleTask: TaskScheduler = (() => {
   const fromTimers = timers?.setImmediate;
   if (typeof fromTimers === "function") {return (callback) => { Reflect.apply(fromTimers, undefined, [callback]); };}

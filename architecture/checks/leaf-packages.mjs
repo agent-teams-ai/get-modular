@@ -140,7 +140,7 @@ export const LEAF_PACKAGES = Object.freeze([
       "packages/observation/tests/store.test.mjs",
       "packages/observation/tests/guards.test.mjs",
       "packages/observation/tests/mutations.test.mjs",
-      "packages/observation/tests/writer-gate.test.mjs",
+      "packages/observation/tests/writer-gate.test.ts",
       "packages/observation/tests/packed-root.test.mjs",
     ]),
     commands: Object.freeze({
@@ -153,10 +153,11 @@ export const LEAF_PACKAGES = Object.freeze([
         + " packages/observation/tests/load.test.mjs packages/observation/tests/guards.test.mjs"
         + " packages/observation/tests/testing-entry.test.mjs packages/observation/tests/processes.test.mjs"
         + " packages/observation/tests/type-controls.test.ts packages/observation/tests/close-reporting.test.ts"
+        + " packages/observation/tests/review-regressions.test.ts"
         + " tests/observation/assembly-integration.test.mjs"
         + " tests/observation/readme-examples.test.mjs",
       "observation:evidence":
-        "node --test packages/observation/tests/mutations.test.mjs packages/observation/tests/writer-gate.test.mjs",
+        "node --test packages/observation/tests/mutations.test.mjs packages/observation/tests/writer-gate.test.ts",
       "observation:pack": "node --test packages/observation/tests/packed-root.test.mjs",
       "observation:check": "pnpm observation:build && pnpm observation:typecheck && pnpm observation:test"
         + " && pnpm observation:evidence && pnpm observation:pack",

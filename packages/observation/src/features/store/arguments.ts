@@ -23,7 +23,7 @@ export function callbackOf(spec: RawSpec, name: string): (...args: unknown[]) =>
   return (...args): unknown => { const result: unknown = Reflect.apply(callback, undefined, args); return result; };
 }
 function limit(value: unknown, fallback: number, name: string): number {
-  const result = value ?? fallback;
+  const result = value === undefined ? fallback : value;
   if (typeof result !== "number" || !Number.isSafeInteger(result) || result < 1) {
     throw invalidArgument(`${name} must be a positive safe integer`);
   }

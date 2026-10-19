@@ -296,7 +296,7 @@ test("the observation row binds the reviewed peer, two entries and complete gate
   assert.deepEqual(expectedLeafExports(observation), twoEntryExports());
   assert.deepEqual(observation.requiredTests, [
     "packages/observation/tests/store.test.mjs", "packages/observation/tests/guards.test.mjs",
-    "packages/observation/tests/mutations.test.mjs", "packages/observation/tests/writer-gate.test.mjs",
+    "packages/observation/tests/mutations.test.mjs", "packages/observation/tests/writer-gate.test.ts",
     "packages/observation/tests/packed-root.test.mjs",
   ]);
   assert.deepEqual(Object.keys(observation.commands), [

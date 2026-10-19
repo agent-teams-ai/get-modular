@@ -20,7 +20,7 @@ Each line says what catches a violation.
 - MUST type a dependency as `ReadonlyStore<Slice>`; NEVER as `Pick`, `Omit` or member types of it (a wrong slice through `ReadonlyStore<…>`: compile error).
 - NEVER build a `ListenerError` or call the error port from a handler; let the handler throw (building one: compile error).
 - Owner: MUST hand out `store.readonly()`, never `store` (compile error), and MUST wire `reportError` to the Host's error port.
-- Owner: `set` takes ownership of the objects you pass; NEVER mutate them afterwards (they are frozen: `TypeError`), and copy objects you got from another module before passing them.
+- Owner: pass ordinary, non-Proxy records and arrays at every level, including the initial or patch record. `set` takes ownership of the objects you pass; NEVER mutate them afterwards (they are frozen: `TypeError`), and copy objects you got from another module before passing them.
 - MUST declare readonly domain types for values that come from a store (a mutable array type does not accept a frozen value: compile error), and write `watch` on concrete types, not in generic helpers.
 - Store record: declare every key; no `?:`, no index signature (compile error).
 - Tests: MUST close scopes and assert the store-wide `liveSubscriptions(facet) === 0`; wait with `delivered({ stores })` or `settled({ stores })` from `@get-modular/observation/testing`, never with a tick count. Import `/testing` only from test files.
@@ -32,7 +32,8 @@ import { createStore, type ListenerError, type ReadonlyStore, type Snapshot } fr
 import type { ModuleContext, Resources } from "@get-modular/resources";
 ```
 
-`ModuleContext` is `{ signal, resources }`, which Assembly passes to your factory: `resources` is your module's scope,
+The resources `scoped` adapter converts Assembly's `{ signal, scope }` context into `ModuleContext`,
+`{ signal, resources }`, for your module factory: `resources` is your module's scope,
 and everything registered there is released when the module closes; `signal` aborts if the run that constructs the
 module is cancelled. If your factory does not need the context, name the parameter `_context`. Call `watch` and `load`
 in the module's composition file: domain and application code never see `Resources`. The `openTicker` helper in
@@ -282,9 +283,19 @@ State versus events. A store holds state: commits coalesce, and a subscriber see
 change. A one-off fact that must not be lost (an order was placed) is an event; events come later as
 `createEvent`/`emit`/`subscribe`. Never encode an event as a store key.
 
-Ownership. `createStore` and `set` validate everything first and then take ownership of the objects you pass and
-freeze them in place; a failing call freezes nothing. Objects frozen before are not walked again. Values are plain
-data: primitives, plain objects and arrays. Copy objects that belong to another module before passing them.
+Ownership. Values are plain data: supported primitives, ordinary local objects and ordinary arrays, without
+Proxy wrappers at any level. This also applies to the initial and patch records. `createStore` and `set` validate
+the graph and all commit guards before taking ownership and freezing objects in place. For this supported
+ordinary-data domain, a rejected call freezes nothing. Previously admitted frozen objects are not walked again.
+Copy objects that belong to another module before passing them; materialize an owned plain value from a reactive
+draft or wrapper in the owning module.
+
+On supported Node 24 and 26, the native `util.types.isProxy` check rejects proxies before inspecting their
+properties or freezing any new object, using `observation.values.not-plain`. Where that native facility is
+unavailable, callers must still provide ordinary non-Proxy data: portable reflection cannot prove proxy absence.
+Detected reflection or freeze failures use the same error code and preserve their cause. Unsupported proxy traps
+can execute arbitrary code or partly freeze supplied objects; the fallback promises no rollback of those effects.
+Neither validation nor freezing copies or unwraps a proxy.
 
 Errors. Compare `code`, never the class or message. A `ListenerError` is
 `{ source, subscription, path?, revision, cause }`; `path` is the subscriber's scope path once
@@ -368,7 +379,7 @@ promises but cannot prevent block-bodied fire-and-forget work. Types do not prov
 A Host installs one copy. Stores and subscribers are trusted in-process module code. The Host controls which
 facets and command ports a plugin receives, and a subscriber's callback failures go to the source owner's
 error sink. Untrusted plugins require a runtime the Host can terminate. Observation and resources are not
-plugin SPIs, and a kept value cannot be revoked.
+plugin SPIs. A kept supported plain value is not a revocable capability; closing a store does not erase it.
 
 The load drain is a cleanup entry that waits for the package's own runs; it does not drain product traffic.
 Currentness checks compare one store's data and do not fence routes or generations. A first result or failure

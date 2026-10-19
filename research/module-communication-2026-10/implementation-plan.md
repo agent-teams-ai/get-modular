@@ -650,6 +650,30 @@ only after every check of the call passed (echo and cascade included), then add 
 WeakSet so they are never walked again; count walked nodes (`walked`). At run time the key set of `initial` is the
 store's.
 
+The 2026-10-19 implementation review of PR #195's proxy counterexample clarifies the ordinary-data boundary:
+the initial/patch record and every nested object must be non-Proxy data. A transparent revocable proxy can pass
+prototype, descriptor and freeze checks and later invalidate a retained value without a revision. Three independent
+critics agreed that copying would change the accepted ownership contract and that portable reflection cannot
+prove proxy absence. Two preferred a caller precondition alone; one recommended native rejection on the supported
+Node platforms. The selected bounded correction adds that native rejection and retains the explicit fallback
+precondition. It does not introduce another value carrier or change accepted ADR bytes.
+
+Capture only [`util.types.isProxy`](https://nodejs.org/api/util.html#utiltypesisproxyvalue) from `node:util` through
+the existing structural platform boundary, when available. This is the fourth finite builtin facility; update the
+packed-source literal allowlist explicitly. No static Node import, new peer, public option or detector registry is
+added. Reject a proxy at the initial/patch root or any newly inspected node before reflection, cache admission or
+freezing, with `observation.values.not-plain`. Keep ordinary identity, cycles, shared children, holes, null-prototype
+records, `Object.is` no-op behavior and frozen-node reuse. Normalize only value reflection/freezing failures to that
+existing error code with the original cause; do not catch engine guards, resource errors, callbacks or reporters.
+
+Where the native facility is absent, ordinary values and the existing scheduling/context fallback still work, but
+the caller's non-Proxy precondition is not a universally enforceable runtime guarantee. Qualify the README's
+no-freezing-on-rejection statement for the supported ordinary graph. Unsupported traps can execute and a freeze
+failure can leave earlier supplied objects frozen; there is no rollback or cloning compensation. Finite maintained
+controls cover transparent, revocable and revoked proxies, nested inputs, zero trap calls and no sibling freezing
+or commit on supported Nodes, plus stable error code/cause and ordinary operation in the existing fallback. These
+are current regression controls, not changes to the frozen prototype or writer campaign.
+
 ### 7.2 Revisions, flush, context and guards (`store/engine.ts`, `delivery/context.ts`; core.ts 124–156, 323–403, 655–698)
 
 `commit` counts effective commits; `lastTouched: Map<key, revision>`; a snapshot's revision is the largest `lastTouched`

@@ -45,6 +45,10 @@ probes, a runtime prototype, writer agents and adversarial reviews.
 
 ## Status
 
+This is the original research checkpoint, before the production port. See the
+[current implementation review](implementation-port.md#current-implementation-review-2026-10-19)
+and [handoff](HANDOFF.md) for the subsequent implementation and qualification work.
+
 - Research and design evidence only; nothing is implemented.
 - The rewritten observation design is proposed in ADR-0034, pending in [pull request #154](https://github.com/agent-teams-ai/get-modular/pull/154).
   The implementation brief here replaces the earlier hub-design execution briefs of pull request #153. Package

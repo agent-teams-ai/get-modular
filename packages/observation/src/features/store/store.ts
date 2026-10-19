@@ -6,7 +6,10 @@ import type { FixedKeys, Store, StoreOptions } from "./types.js";
 import { captureRecord, freezeNodes } from "./values.js";
 import { WatchRegistration } from "./watch.js";
 
-/** Own mutable state in the module's scope; hand other modules only the read-only facet. */
+/**
+ * Own ordinary non-Proxy data in the module's scope; hand other modules only the read-only facet. Objects transfer
+ * in place, so callers must not pass Proxy-backed graphs even where a native Proxy detector is unavailable.
+ */
 export function createStore<V extends object & Required<V> & FixedKeys<V>>(initial: V, options: StoreOptions): Store<V> {
   const checked = checkedOptions(options);
   const nodes = new Set<object>();

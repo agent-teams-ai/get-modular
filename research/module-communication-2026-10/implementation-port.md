@@ -1,10 +1,12 @@
 # Observation implementation and qualification record
 
-Recorded on 2026-10-18. This is the implementation record for the
+Initial checkpoint recorded on 2026-10-18. This is the implementation record for the
 [reviewed plan](implementation-plan.md), following the separate
 [plan review](plan-review.md). The implementation and its scoped local gates
-are complete. Exact release-archive consumer qualification has passed and was
-independently verified. Merge and release eligibility remain blocked as described below.
+were complete for that checkpoint. Exact release-archive consumer qualification passed and was
+independently verified for its recorded subjects. The
+[current implementation review](#current-implementation-review-2026-10-19) records the subsequent corrections
+and preserves earlier evidence separately. Earlier successful checks do not qualify a changed release subject.
 
 ## Subjects and authority
 
@@ -534,3 +536,127 @@ Core's explicit published-file inventory excludes this test. The exact candidate
 `34bb4fa`, executed consumer `a145931` and evidence successor `5de8e0` remain the
 same qualification subjects; no additional pack, release versioning or consumer
 execution is needed for this test-only correction. Earlier evidence stays intact.
+
+## Current implementation review, 2026-10-19
+
+The complete review backlog of [PR #195](https://github.com/agent-teams-ai/get-modular/pull/195) was inspected
+against `3f5f3b303e99e4b8f919486d91d954f7f78e204d`: 36 discussions, including one outdated discussion.
+The scope remains the accepted store, read facet, scoped watch/load, resource lifecycle and explicit typed
+command ports. A durable or lossless event bus is outside this release. All executed current compilers and
+parsers must meet the TypeScript 7.0.2 floor, including embedded tooling.
+
+The inspected source equals the production source of the retained prepared release
+`3b42d2641055c36c13ff0e2b7fae6cc02a945514` and release-evidence successor
+`be27b56d4688d976fcb7ce6af11e036571d8950c`. Their corresponding external input is
+`a32f628a11a8cd9e871d985ab09bcfbcaa708b1b`, with evidence successor
+`6aa173b99facb7f7c473a0d891b0176a55ab2996`. Corrections below require a new source/archive/consumer
+qualification; those earlier records cannot be relabelled as the corrected implementation.
+
+### Bounded corrections selected by review
+
+This table records the required correction, not a new whole-CI or publication claim. Final qualification must
+bind the corrected source, effective build settings and actual release archives.
+
+| Discussion | Boundary | Required correction |
+| --- | --- | --- |
+| [4307609026](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609026) | Current compiler admission | Require the complete canonical stable version string before numeric comparison, including rejection of leading zeroes and final line terminators. Preserve exact minimum 7.0.2 and distinct-version/resolver obligations. |
+| [4307609047](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609047) | Command guidance | Owner acceptance may be an idempotent no-op. It does not imply a new commit or notification. |
+| [4307609053](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609053) | `Frozen<unknown>` | Preserve `unknown`, including nullish values, instead of mapping it to the non-null `{}` type. Keep existing brands, tuples and writer invariance. |
+| [4307609063](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609063) | Current documentation index | Link OD-007's resolution through ADR-0034. Preserve the fixture handoff's explicitly historical baseline statement. |
+| [4307609066](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609066) | Testing waits | Check abort and elapsed deadline before successful quiet-state return, preserving one captured task and the abort cause. |
+| [4307609070](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609070) | Wait arguments | Only omitted/undefined timeout selects the default; explicit null must fail validation. |
+| [4307609097](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609097) | Subscription admission control | Execute a focused empty-name refusal control; a declared-only type fixture is not runtime evidence. |
+| [4307609105](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609105) | Subscription limits | Only omitted/undefined limits select defaults; explicit null must fail positive-safe-integer validation. |
+| [4307609106](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609106) | Factory context guidance | The resources `scoped` adapter converts Assembly's `{ signal, scope }` to `{ signal, resources }`. |
+| [4307609121](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609121) | Current builds | Set the actual inherited `skipLibCheck` to false as ADR-0038 requires; do not edit the accepted decision to conceal a different configuration. |
+| [4307609123](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609123) | Store-wide limit diagnostic | Compute the maximum scope count iteratively so a valid configured limit cannot trigger the VM argument-spread ceiling. |
+| [4307609126](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609126) | Writer runner watchdog | Keep the 240-second aggregate and cap each child by the remaining real deadline. A timeout or launch failure cannot count as an intended negative outcome. Preserve all 33 rows and the existing CI bounds. |
+| [4307609130](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609130) | Plain-data ownership | Apply the [three-critic decision in plan section 7.1](implementation-plan.md#71-platform-and-values-deliveryplatformts-storevaluests-corets-132139-185207-224275): native Node proxy refusal before traps/freezing, explicit ordinary-data precondition on fallback, stable reflection-failure diagnostics, unchanged in-place ownership. |
+
+The close-reporting [discussion 4307609132](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609132)
+was already fixed by `3f5f3b303e99e4b8f919486d91d954f7f78e204d`: snapshot registrations before the first
+external synchronous reporter. Its existing strict controls cover shared-scope closure, repeat close, prior
+detachment and active-load drain. The new review does not require another implementation of that fix.
+
+### Dispositions that preserve the accepted scope
+
+| Discussions | Source-backed disposition |
+| --- | --- |
+| [4307609016](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609016), [4307609128](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609128) | The frozen `negative-b-behaviour-1/e-sessions` expectation is `null`, not `[]`: it explicitly accepts any nonempty failing gate set. It is not proof of an isolated leak detector. Keep that exception and the original manifest. |
+| [4307609046](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609046) | The lifecycle test helper is inside its owning development boundary. Same-boundary imports need no additional cross-boundary entrypoint. |
+| [4307609055](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609055) | Shared-project reuse is an optional optimization without a demonstrated required-budget failure. No cache or parser-session framework is added. |
+| [4307609060](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609060) | The actual native SDK constructs `Symbol.declarations` as an array, defaulting absent protocol data to `[]`. Existing missing-symbol/node guards remain sufficient. |
+| [4307609103](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609103) | Resources links escalation before cleanup, and its `follow()` handles an already-aborted signal immediately. No delayed-abort workaround is needed. |
+| [4307609117](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609117) | OD-007's resolution already names ADR-0034's release-archive experiment and stop/rerun rule. Preserve the historical criterion and explicit resolution. |
+| [4307609138](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609138) | The CMS prose contains no invalid `resources.use` argument list, and its preceding rule already requires a name. No new CMS change or pin is needed for this optional illustration. |
+
+### Limits of the frozen writer campaign
+
+The following are real limits of archived fakes and oracles, not evidence that the production Observation
+mechanism implements those example business services incorrectly. Original task/scenario/fake/reference bytes,
+the 33 expected outcomes and their historical results remain unchanged. Additional maintained regressions must
+have their own subjects; their results cannot be credited retroactively to the frozen campaign.
+
+| Discussions | Limit |
+| --- | --- |
+| [4307609019](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609019), [4307609024](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609024), [4307609110](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609110) | The greeter, sessions and catalog behavior blocks can skip assertions when the expected capability or `current` facet is absent. The recorded campaign is not a complete runtime product-shape validator. |
+| [4307609039](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609039), [4307609079](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609079) | The logger fake ignores the threshold, and its scenario checks write count rather than the complete level/message tuple. The tested warn/debug call is above threshold. No broader logger policy coverage is claimed. |
+| [4307609084](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609084) | The pricing fake's lookup can return an inherited property for an untested key. The frozen scenario does not prove arbitrary-key validation. |
+| [4307609089](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609089) | A setup exception in the archived sessions reference can leave an empty child attached until module close. The archived successful scenario does not qualify that exceptional path. |
+| [4307609100](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609100) | The asynchronous-factory fake does not handle a direct pre-aborted call; the archived setup scenario exercises later cancellation. |
+
+### Historical evidence errata and navigation
+
+The original [CI receipt](implementation-evidence/ci-first-run.json) and its committed
+[details](implementation-evidence/ci-first-run-details.json) remain byte-identical. For
+[4307609044](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609044), read their scope
+label as **all 43 completed jobs: five successes and 38 failures**, not only failed jobs. Their explicit counts
+and job inventories already record that distinction.
+
+For [4307609092](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609092), the relative
+details link above replaces the need for the old machine's `/tmp/observation-ci-classification-details.json`.
+For [4307609140](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609140), the original
+logs belong to [run 39119798726](https://github.com/agent-teams-ai/get-modular/actions/runs/39119798726);
+each recorded job ID selects its job under that run. For example, the original
+[Windows Observation job](https://github.com/agent-teams-ai/get-modular/actions/runs/39119798726/job/117652894770)
+is distinct from any successor run. Raw `/tmp` paths are unavailable in a fresh checkout. Hosted logs remain
+subject to GitHub retention; committed excerpts and hashes do not reconstruct unavailable raw bytes.
+
+For [4307609142](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609142), the original
+manifest's `finalToolingCommit: ea9ac84` resolves to the full historical commit
+`ea9ac849f349376326bffe35086ccc0171508e0b`. It is not the current tooling head. The research README and
+plan-review completion paragraphs are explicitly labelled planning checkpoints for
+[4307609074](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609074) and
+[4307609115](https://github.com/agent-teams-ai/get-modular/pull/195#discussion_r4307609115).
+
+## Completed local qualification checkpoint, 2026-10-19
+
+The [portable checkpoint](implementation-evidence/review-20261019.json) binds the corrected uncommitted successor
+of `3f5f3b303e99e4b8f919486d91d954f7f78e204d`: all 18 production sources, 17 selected correction files,
+the writer runner, prior documentation review pins, exact commands and six unchanged raw logs.
+Independent runtime/type, writer, documentation and completeness reviews found no remaining P1/P2 in their
+source scopes after the separately reviewed canonical compiler-metadata correction. These verdicts apply to their recorded source scopes.
+
+| Subject | Completed local evidence |
+| --- | --- |
+| Node 24.21.0, before the two-file metadata correction | Five exact declared stages passed: [170 runtime tests](implementation-evidence/review-20261019-node24-runtime.log), [18 mutants and 33 writer rows plus two deadline/refusal controls](implementation-evidence/review-20261019-node24-evidence.log), and [packed qualification](implementation-evidence/review-20261019-node24-pack.log). |
+| Node 24.21.0, final metadata successor | [Five affected tests](implementation-evidence/review-20261019-node24-canonical.log) passed: inert metadata refusal, public type controls and the unchanged writer outcomes. Required normal typecheck and configured typed lint passed. This is not a single 171-test Node 24 run. |
+| Node 26.11.1, final source | The [literal normal `pnpm observation:check`](implementation-evidence/review-20261019-node26-complete.log) passed: build, strict types, 171 runtime tests, 18 mutants, 33 writer rows plus two deadline/refusal controls, and packed qualification. |
+
+Both lines retained 93 attributed public type negatives per resolver, 13 README blocks and all six packed type
+fixture groups under NodeNext and Bundler. Executed compilers were native 7.0.2, equal aliases ran once,
+and strict projects used `skipLibCheck: false`; maintained successors use ordinary `.ts` on required routes.
+Foundation 1.7.4 supplied preset JSON only: no old Foundation runtime or compiler was executed.
+The 212 built files were byte-identical at all four before/after fences; 75 writer fixtures and 18 mutation definitions stayed unchanged.
+
+The [initial Node 24 launcher failure](implementation-evidence/review-20261019-node24-launcher-failure.log)
+was a permission refusal before any Observation stage. An executable pinned launcher and authorized offline frozen,
+scripts-disabled reconciliation repaired that environment; all 834 compiler, lock and module metadata pins stayed identical.
+The separate main-tooling canonical correction is `6d151378d4cd9cb562194f48a57091ab74e208fb`.
+
+This qualifies the local Observation route only. Actual native Foundation publication and the real 13-path tooling
+adoption precede tooling-main admission, then separate #154, #185 and #195 acceptance. Current full repository
+and six Node/OS CI cells, a fresh versioned release head with five exact archives, and the refreshed external TEST
+consumer remain pending. The earlier `3b42d2641055c36c13ff0e2b7fae6cc02a945514` archives and
+`a32f628a11a8cd9e871d985ab09bcfbcaa708b1b` consumer input remain historical; their results are not relabelled.
+Publication remains the owner's step; accepted ADR/CMS, frozen evidence, API baselines and G1 HOLD stay unchanged.
