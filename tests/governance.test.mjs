@@ -315,7 +315,7 @@ test("supported Node preflight matches repository runtime custody", async () => 
     assert.match(packageJson.scripts[script], /^pnpm runtime:preflight && /u, script);
   }
   assert.equal(packageJson.scripts["check:changed"],
-    "agent-teams-foundation agent-workflow changed --consumer .");
+    "node architecture/checks/compiler-floor.ts && agent-teams-foundation agent-workflow changed --consumer .");
   assert.equal(packageJson.scripts["precheck:changed"], "pnpm runtime:preflight");
 });
 

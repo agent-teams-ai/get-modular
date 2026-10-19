@@ -10,7 +10,7 @@ import { digest, jsonBytes, readBytes, rowDigest, verifyM1Observations } from
 import { prepareM3RuntimeNode, verifyM3RuntimeNode } from
   '../qualification-support/m3-runtime-node.mjs';
 import { auditM1JavaScriptClosure } from
-  '../qualification-support/support/m1-javascript-closure.mjs';
+  '../qualification-support/support/m1-javascript-closure.ts';
 
 // Truthful transport fixtures: these rows describe archive guards only. They
 // neither execute a package nor purport to be the adapter's Node/TS inventory.
@@ -113,7 +113,7 @@ test('JavaScript profile admission is closed and preserves the direct default', 
 });
 
 function sealedFixture(binding = {}) {
-  return { ...identity(), ...binding, plan: { cases: fixture().expectedPlan.cases } };
+  return { ...identity(), ...binding, plan: { cases: fixture(272).expectedPlan.cases } };
 }
 
 test('versioned seals require their profile while historical direct seals remain admitted', async () => {

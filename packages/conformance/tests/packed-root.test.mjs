@@ -1,3 +1,4 @@
+import { supportedCompilers } from "./support/compilers.ts";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { access, cp, mkdtemp, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
@@ -143,8 +144,7 @@ test("the archive installs beside its peer archives as one root-only ESM package
       void isolate(entry, { dependencies: { db: { red: () => 1 } } });
       void built;
     `);
-    for (const packageName of ["typescript", "typescript-minimum"]) {
-      const compiler = join(dirname(require.resolve(`${packageName}/package.json`)), "bin/tsc");
+    for (const { path: compiler } of await supportedCompilers()) {
       for (const resolution of ["NodeNext", "Bundler"]) {
         await writeFile(join(consumer, "tsconfig.json"), JSON.stringify({
           compilerOptions: {

@@ -164,7 +164,9 @@ const spawnPowerShellLock = env => spawn("powershell.exe", [
   env,
   stdio: ["ignore", "pipe", "pipe"],
   windowsHide: true,
-  timeout: 30_000,
+  // Allow 30s for the first acknowledgment, then the existing 25s held-lock
+  // watchdog and both 5s close/termination phases without an earlier process kill.
+  timeout: 65_000,
 });
 
 // spawnLock is replaceable only so the host-side protocol can be exercised
@@ -260,7 +262,9 @@ async function withWindowsFileLock(path, action, spawnLock = spawnPowerShellLock
   });
   let acquisitionFailure;
   try {
-    const outcome = await bounded(ready, 10_000, () => `Windows lock child readiness timed out: ${status()}`);
+    // Native Windows CI has exceeded the former 10s first-ack allowance.
+    // Only LOCK_READY or a valid LOCK_FAILED still settles readiness.
+    const outcome = await bounded(ready, 30_000, () => `Windows lock child readiness timed out: ${status()}`);
     if (outcome.acquired) {
       assert.equal(child.exitCode, null);
       assert.equal(child.signalCode, null);

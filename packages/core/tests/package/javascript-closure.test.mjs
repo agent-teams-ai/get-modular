@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
 import test from 'node:test';
 import { Worker } from 'node:worker_threads';
-import { auditM1JavaScriptClosure } from '../qualification-support/support/m1-javascript-closure.mjs';
+import { auditM1JavaScriptClosure } from '../qualification-support/support/m1-javascript-closure.ts';
 
 const ENTRY = 'dist/index.js';
 const ROOT = 'dist/composition/stage0.js';
@@ -228,7 +228,7 @@ function mutant(change, reason) {
 // Only this trusted driver and auditor are loaded. Candidate bytes remain data.
 // The timeout is a harness escape hatch for regressions in the old resolver.
 async function isolatedAudit(files) {
-  const auditor = new URL('../../../../tests/qualification/support/m1-javascript-closure.mjs', import.meta.url).href;
+  const auditor = new URL('../../../../tests/qualification/support/m1-javascript-closure.ts', import.meta.url).href;
   const worker = new Worker(new URL('data:text/javascript,' + encodeURIComponent(`
 import { Buffer } from 'node:buffer';
 import { parentPort, workerData } from 'node:worker_threads';

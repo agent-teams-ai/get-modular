@@ -1,0 +1,10 @@
+import {
+  assemblyFor /* keep comment */
+  , } from "@get-modular/assembly";
+
+type Capabilities = Record<never, never>;
+declare const moduleDeclaration: import("@get-modular/core").ModuleDeclaration;
+const factory = async () => ({ instance: undefined, capabilities: {} });
+
+const api = assemblyFor<Capabilities>();
+export const entry = api.bindFactory(moduleDeclaration, factory);

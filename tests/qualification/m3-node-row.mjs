@@ -74,7 +74,7 @@ function validate(input) {
   const { files } = value.trustedRunner;
   const { node, npm, compilers, closures } = value.toolchain;
   need(Array.isArray(files) && files.length > 0 && files.length <= 4096
-    && Array.isArray(compilers) && compilers.length === 2
+    && Array.isArray(compilers) && compilers.length === 1
     && Array.isArray(closures) && closures.length > 0 && closures.length <= 8,
   'row-inventories');
   for (const row of files) shape(row, ['path', 'sha256']);
@@ -131,7 +131,7 @@ export async function runM3NodeRow(input) {
     observations: join(captureDirectory, 'observations-anchor.json'),
     summary: join(captureDirectory, 'summary.json'),
   });
-  const boundary = { status: 'not-claimed', scope: 'partial-Node282-only',
+  const boundary = { status: 'not-claimed', scope: 'partial-Node272-only',
     capture: 'cooperative-parent-owned', runtimeCaseId: value.runtimeCaseId,
     sourceCommit: value.sourceCommit };
   let seal, observations, phase = 'prepare';

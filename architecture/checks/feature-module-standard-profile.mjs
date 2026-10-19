@@ -34,16 +34,16 @@ const FOUNDATION_ADMISSION = Object.freeze({
   policy: SOURCE_DEPENDENCY_POLICY_PATH,
 });
 const FOUNDATION_CHECK_SCRIPT =
-  "agent-teams-foundation check && pnpm foundation:assert-dev-only && pnpm foundation:assert-registry";
+  "node architecture/checks/compiler-floor.ts && pnpm foundation:migration:typecheck && pnpm foundation:migration:test && node architecture/checks/native-public-api-migration.ts && pnpm foundation:assert-dev-only && pnpm foundation:assert-registry";
 // Leaf commands come first, so a table row can never replace a closed
 // definition below; a colliding row leaves its own admission unsatisfiable.
 const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
-  "quality:critical:test": "node architecture/checks/required-quality-tests.mjs && node node_modules/typescript/bin/tsc -p tests/tsconfig.repository-agent-workflow.json --noEmit && agent-teams-node-test --contract architecture/foundation/required-quality-tests.json -- tests/source-dependencies.test.mjs tests/quality-activation.test.mjs tests/repository-agent-workflow.test.mts",
+  "quality:critical:test": "node architecture/checks/compiler-floor.ts && node architecture/checks/required-quality-tests.mjs && node node_modules/typescript/bin/tsc -p tests/tsconfig.repository-agent-workflow.json --noEmit && agent-teams-node-test --contract architecture/foundation/required-quality-tests.json -- tests/source-dependencies.test.mjs tests/quality-activation.test.mjs tests/repository-agent-workflow.test.ts",
   ...Object.fromEntries(LEAF_PACKAGES.flatMap(leaf => Object.entries(leaf.commands))),
   "architecture:feature-module-profile":
     "node architecture/checks/feature-module-standard-profile.mjs",
   "architecture:feature-module-profile:test":
-    "pnpm quality:critical:test && node --test tests/feature-module-standard-profile.test.mjs tests/release-owned-files.test.mjs tests/public-api-compatibility.test.mjs tests/required-quality-tests.test.mjs",
+    "pnpm quality:critical:test && node --test tests/feature-module-standard-profile.test.mjs tests/release-owned-files.test.mjs tests/public-api-compatibility.test.mjs tests/required-quality-tests.test.mjs tests/compiler-floor.test.ts tests/native-tooling.test.ts",
   "core:typecheck":
     "node architecture/tooling/generate-core.mjs --typecheck",
   "core:typecheck:prepared":
@@ -58,12 +58,14 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "docs:check": "agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml",
   "docs:protocol:check": "pnpm docs:check && pnpm docs:quality",
   "docs:quality": "markdownlint-cli2 && cspell --config .cspell.json --no-progress",
-  "foundation:assert-dev-only": "agent-teams-foundation assert-dev-only",
-  "foundation:assert-registry": "agent-teams-foundation assert-registry",
+  "foundation:assert-dev-only": "node architecture/checks/compiler-floor.ts && agent-teams-foundation assert-dev-only",
+  "foundation:assert-registry": "node architecture/checks/compiler-floor.ts && agent-teams-foundation assert-registry",
   "foundation:check": FOUNDATION_CHECK_SCRIPT,
+  "foundation:migration:typecheck": "node node_modules/typescript/bin/tsc -p tests/tsconfig.native-public-api-migration.json --noEmit",
+  "foundation:migration:test": "node --test tests/native-public-api-migration.test.ts",
   "quality:coverage:scope":
-    "agent-teams-foundation quality check --consumer . --scope-only",
-  "lint:typed": "agent-teams-foundation quality check --consumer .",
+    "node architecture/checks/compiler-floor.ts && agent-teams-foundation quality check --consumer . --scope-only",
+  "lint:typed": "node architecture/checks/compiler-floor.ts && agent-teams-foundation quality check --consumer .",
   "governance:check": "node architecture/checks/governance.mjs",
   "governance:test": "node --test tests/governance.test.mjs tests/node-runtime-compatibility.test.mjs tests/assembly-admission.test.mjs tests/private-core-start.test.mjs tests/m3-start.test.mjs tests/generated-production-source.test.mjs tests/leaf-package-admission.test.mjs tests/ci-check-lanes.test.mjs tests/codemods/codemods.test.mjs",
   "qualification:resource-profile": "node tests/qualification/v1-resource-profile.mjs",
@@ -78,13 +80,15 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "runtime:preflight": "node architecture/checks/node-version.mjs",
   "precheck:changed": "pnpm runtime:preflight",
   "lockfile:peers:check": "pnpm peers check --lockfile-only",
-  "runtime:policy:typecheck": "node node_modules/typescript/bin/tsc -p tests/tsconfig.tooling-node-policy.json --noEmit",
-  "runtime:policy:test": "node --test tests/tooling-node-policy.test.mts",
-  "sdk-growth:check": "node architecture/checks/sdk-growth.mjs && node --test tests/sdk-growth.test.mjs && node tests/qualification/sdk-growth-admission.mjs && node tests/qualification/sdk-growth-packed-consumers.mjs && node tests/qualification/sdk-growth-registry-consumer.mjs",
-  "sdk-growth:admission": "node tests/qualification/sdk-growth-admission.mjs",
-  "sdk-growth:test": "node --test tests/sdk-growth.test.mjs",
+  "runtime:policy:typecheck": "pnpm tooling:native:typecheck && node node_modules/typescript/bin/tsc -p tests/tsconfig.tooling-node-policy.json --noEmit",
+  "tooling:native:typecheck": "node node_modules/typescript/bin/tsc -p tests/tsconfig.native-tooling.json --noEmit",
+  "runtime:policy:test": "node --test tests/tooling-node-policy.test.ts",
+  "sdk-growth:check": "node architecture/checks/compiler-floor.ts && pnpm sdk-growth:typecheck && node architecture/checks/sdk-growth.mjs && node --test tests/sdk-growth.test.mjs && node tests/qualification/sdk-growth-admission.mjs && node tests/qualification/sdk-growth-packed-consumers.mjs && node tests/qualification/sdk-growth-registry-consumer.ts",
+  "sdk-growth:typecheck": "node node_modules/typescript/bin/tsc -p tests/tsconfig.sdk-growth-registry.json --noEmit",
+  "sdk-growth:admission": "node architecture/checks/compiler-floor.ts && pnpm sdk-growth:typecheck && node tests/qualification/sdk-growth-admission.mjs",
+  "sdk-growth:test": "node architecture/checks/compiler-floor.ts && node --test tests/sdk-growth.test.mjs",
   "sdk-growth:pack": "node tests/qualification/sdk-growth-packed-consumers.mjs",
-  "sdk-growth:registry": "node tests/qualification/sdk-growth-registry-consumer.mjs",
+  "sdk-growth:registry": "node architecture/checks/compiler-floor.ts && pnpm sdk-growth:typecheck && node tests/qualification/sdk-growth-registry-consumer.ts",
 });
 const ROOT_SCRIPT_COMMANDS = Object.freeze({
   check: Object.freeze([

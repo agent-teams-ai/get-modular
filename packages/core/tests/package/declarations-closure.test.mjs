@@ -1,7 +1,31 @@
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
-import { auditM1DeclarationClosure } from "../qualification-support/support/m1-declarations-closure.mjs";
+import { auditM1DeclarationClosure } from "../qualification-support/support/m1-declarations-closure.ts";
+import { parseTypeScript, withTypeScriptProject } from "../qualification-support/support/typescript-project.ts";
+
+test("the native checker resolves explicit virtual bytes and never falls back to a physical declaration", t => {
+  const directory = mkdtempSync(join(tmpdir(), "gm-native-closed-fs-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const source = join(directory, "entry.ts").replaceAll("\\", "/");
+  const ambient = join(directory, "ambient.d.ts").replaceAll("\\", "/");
+  const declaration = "export interface Secret { readonly value: string }\n";
+  writeFileSync(ambient, declaration);
+  const files = new Map([[source, 'export type Value = import("./ambient.js").Secret;\n']]);
+  withTypeScriptProject(files, { strict: true }, ({ program }) => {
+    assert.equal(program.getSourceFile(ambient), undefined);
+    assert.deepEqual(program.getSemanticDiagnostics(source).map(item => item.code), [2307]);
+  });
+  files.set(ambient, declaration);
+  withTypeScriptProject(files, { strict: true }, ({ program }) => {
+    assert.equal(program.getSourceFile(ambient).text, declaration);
+    assert.deepEqual(program.getSemanticDiagnostics(source), []);
+  });
+  assert.ok(parseTypeScript("invalid.js", "export const = ;").diagnostics.length > 0);
+});
 
 const ROOT = "dist/index.d.ts";
 const WIRE = "dist/features/authoring/wire.d.ts";
@@ -232,6 +256,10 @@ test("content mutations reject even with the same complete declaration inventory
     ["extra root catalog type", files => append(files, ROOT, '\nexport type DiagnosticCatalogCode = string;'), "root-exports"],
     ["type-only helper reexport", files => replace(files, SURFACE,
       'export { defineModule, required, optional, many }', 'export type { defineModule, required, optional, many }'), "export-kind"],
+    ["type-only imported helpers cannot become value exports", files => replace(files, SURFACE,
+      'export { defineModule, required, optional, many } from "./constructors.js";',
+      'import type { defineModule, required, optional, many } from "./constructors.js";\n'
+      + 'export { defineModule, required, optional, many };'), "export-kind"],
     ["alias substitution under a helper's innocent name", files => {
       replace(files, SURFACE, 'defineModule, required, optional, many', 'defineModule, friendly as required, optional, many');
       append(files, HELPERS, '\nexport declare function friendly(): RequiredCardinality;');

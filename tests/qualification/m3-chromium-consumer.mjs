@@ -11,7 +11,7 @@ import { arch, platform } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { readPackageArchive } from './support/package-archive.mjs';
-import { auditM1JavaScriptClosure } from './support/m1-javascript-closure.mjs';
+import { auditM1JavaScriptClosure } from './support/m1-javascript-closure.ts';
 import { produceRuntimeFixtures } from './support/m3-runtime-fixture-producer.mjs';
 import { produceSemanticRuntimeFixtures } from './support/m3-semantic-runtime-fixtures.mjs';
 import { produceDescriptorRuntimeFixtures } from './support/m3-descriptor-runtime-fixtures.mjs';

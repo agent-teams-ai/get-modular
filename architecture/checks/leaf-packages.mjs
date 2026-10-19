@@ -38,8 +38,8 @@ export const LEAF_PACKAGES = Object.freeze([
       "lifecycle:build": "node architecture/tooling/build-leaf-package.mjs lifecycle-kernel",
       "lifecycle:typecheck":
         "node node_modules/typescript/bin/tsc -p packages/lifecycle-kernel/tsconfig.json --noEmit"
-        + " && node node_modules/typescript/bin/tsc -p packages/lifecycle-kernel/tsconfig.types.json --noEmit"
-        + " && node node_modules/typescript/bin/tsc -p packages/lifecycle-kernel/tsconfig.types.bundler.json --noEmit",
+        + " && node architecture/tooling/test-assembly-types.mjs --projects packages/lifecycle-kernel/tsconfig.types.json"
+        + " packages/lifecycle-kernel/tsconfig.types.bundler.json",
       "lifecycle:test": "node --test packages/lifecycle-kernel/tests/kernel.test.mjs",
       "lifecycle:pack": "node --test packages/lifecycle-kernel/tests/packed-root.test.mjs",
       "lifecycle:check":
@@ -72,10 +72,8 @@ export const LEAF_PACKAGES = Object.freeze([
       "resources:build": "node architecture/tooling/build-leaf-package.mjs resources",
       "resources:typecheck":
         "node node_modules/typescript/bin/tsc -p packages/resources/tsconfig.json --noEmit"
-        + " && node node_modules/typescript/bin/tsc -p packages/resources/tsconfig.types.json --noEmit"
-        + " && node node_modules/typescript/bin/tsc -p packages/resources/tsconfig.types.bundler.json --noEmit"
-        + " && node node_modules/typescript-minimum/bin/tsc -p packages/resources/tsconfig.types.json --noEmit"
-        + " && node node_modules/typescript-minimum/bin/tsc -p packages/resources/tsconfig.types.bundler.json --noEmit",
+        + " && node architecture/tooling/test-assembly-types.mjs --projects packages/resources/tsconfig.types.json"
+        + " packages/resources/tsconfig.types.bundler.json",
       "resources:test": "node --test packages/resources/tests/scope.test.mjs tests/resources/assembly-scope.test.mjs",
       "resources:pack": "node --test packages/resources/tests/packed-root.test.mjs",
       "resources:check":
@@ -109,10 +107,8 @@ export const LEAF_PACKAGES = Object.freeze([
       "conformance:build": "node architecture/tooling/build-leaf-package.mjs conformance",
       "conformance:typecheck":
         "node node_modules/typescript/bin/tsc -p packages/conformance/tsconfig.json --noEmit"
-        + " && node node_modules/typescript/bin/tsc -p packages/conformance/tsconfig.types.json --noEmit"
-        + " && node node_modules/typescript/bin/tsc -p packages/conformance/tsconfig.types.bundler.json --noEmit"
-        + " && node node_modules/typescript-minimum/bin/tsc -p packages/conformance/tsconfig.types.json --noEmit"
-        + " && node node_modules/typescript-minimum/bin/tsc -p packages/conformance/tsconfig.types.bundler.json --noEmit",
+        + " && node architecture/tooling/test-assembly-types.mjs --projects packages/conformance/tsconfig.types.json"
+        + " packages/conformance/tsconfig.types.bundler.json",
       "conformance:test": "node --test packages/conformance/tests/conformance.test.mjs",
       "conformance:pack": "node --test packages/conformance/tests/packed-root.test.mjs",
       "conformance:check":

@@ -5,8 +5,8 @@ import { createHash } from 'node:crypto';
 import { lstat, mkdir, readFile, readdir, realpath, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { readPackageArchive } from './support/package-archive.mjs';
-import { auditM1JavaScriptClosure } from './support/m1-javascript-closure.mjs';
-import { auditM1DeclarationClosure } from './support/m1-declarations-closure.mjs';
+import { auditM1JavaScriptClosure } from './support/m1-javascript-closure.ts';
+import { auditM1DeclarationClosure } from './support/m1-declarations-closure.ts';
 
 // Cooperative local preparation, not custody, conformance, or publication.
 // There is deliberately no consumer callback, command override, or pack handle.
