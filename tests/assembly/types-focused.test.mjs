@@ -1,15 +1,14 @@
+import { supportedCompilers } from "../../architecture/tooling/test-assembly-types.mjs";
 /// <reference types="node" />
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
-import { createRequire } from "node:module";
+import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const require = createRequire(join(workspace, "package.json"));
 const sources = {
   "shared.ts": `
 import { required } from "@get-modular/core";
@@ -65,7 +64,7 @@ export const result = assemblyFor<HostMap>().prepare({ composition, modules: lis
 `,
 };
 
-void test("focused group type failures report their codes and files on both compilers", { timeout: 600000 }, async () => {
+void test("focused group type failures report their codes and files on supported compilers", { timeout: 600000 }, async () => {
   const directory = await realpath(await mkdtemp(join(tmpdir(), "get-modular-types-focused-")));
   try {
     await mkdir(join(directory, "node_modules/@get-modular"), { recursive: true });
@@ -82,12 +81,7 @@ void test("focused group type failures report their codes and files on both comp
     }));
     for (const [name, source] of Object.entries(sources)) { await writeFile(join(directory, name), source); }
 
-    for (const compilerName of ["typescript-minimum", "typescript"]) {
-      const manifestPath = require.resolve(`${compilerName}/package.json`);
-      const manifestSource = await readFile(manifestPath, "utf8");
-      const version = /"version":\s*"([^"]+)"/u.exec(manifestSource)?.[1];
-      if (version === undefined || version.length === 0) { throw new Error(`${compilerName} must declare its version`); }
-      const compiler = join(dirname(manifestPath), "bin/tsc");
+    for (const { path: compiler, version } of supportedCompilers()) {
       for (const [module, resolution] of [["NodeNext", "NodeNext"], ["ESNext", "Bundler"]]) {
         const run = spawnSync(process.execPath, [
           compiler, "--project", join(directory, "tsconfig.json"), "--module", module,

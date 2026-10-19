@@ -1,6 +1,6 @@
-import { recordImports, transformEntries } from "./shared.mjs";
+import { recordImports, transformEntries } from "./shared.ts";
 
-/** @param {import("ts-morph").SourceFile} file  @param {(message: string) => void} manual */
+/** @param {import("../project.ts").CodemodFile} file  @param {(message: string) => void} manual */
 export default function transform(file, manual) {
   recordImports(file);
   return transformEntries(file, manual);

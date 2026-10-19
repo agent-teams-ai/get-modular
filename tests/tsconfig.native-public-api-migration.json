@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "skipLibCheck": false,
+    "allowJs": true,
+    "checkJs": false,
+    "types": ["node"]
+  },
+  "files": [
+    "../architecture/checks/native-public-api-migration.ts",
+    "../architecture/checks/native-public-api-migration-admission.ts",
+    "native-public-api-migration.test.ts",
+    "fixtures/native-public-api-ordinary-failure.ts"
+  ],
+  "include": []
+}

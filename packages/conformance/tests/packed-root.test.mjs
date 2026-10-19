@@ -1,9 +1,10 @@
+import { supportedCompilers } from "./support/compilers.ts";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { access, mkdtemp, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { access, cp, mkdtemp, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { delimiter, dirname, join, resolve } from "node:path";
+import { delimiter, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
@@ -12,8 +13,8 @@ const workspace = resolve(packageRoot, "../..");
 const require = createRequire(join(workspace, "package.json"));
 const PEERS = ["assembly", "core", "resources"];
 
-function run(command, args, cwd) {
-  const result = spawnSync(command, args, { cwd, encoding: "utf8" });
+function run(command, args, cwd, timeout) {
+  const result = spawnSync(command, args, { cwd, encoding: "utf8", timeout });
   assert.equal(result.error, undefined);
   assert.equal(result.status, 0, `${command}: ${result.stderr}\n${result.stdout}`);
   return result.stdout.trim();
@@ -38,18 +39,21 @@ async function pinnedPnpmCli() {
   throw new Error("Pinned pnpm JavaScript CLI is required; no shell/download fallback");
 }
 
-test("the archive installs beside its peer archives as one root-only ESM package", async () => {
+test("the archive installs beside its peer archives as one root-only ESM package", async (t) => {
   const temporary = await mkdtemp(join(tmpdir(), "conformance-pack-"));
   try {
     const pnpm = await pinnedPnpmCli();
     const consumer = join(temporary, "consumer");
     const sources = {};
+    const archiveDigests = {};
     for (const name of ["conformance", ...PEERS]) {
       const root = join(workspace, "packages", name);
       const filename = run(process.execPath, [pnpm, "pack", "--pack-destination", temporary], root)
         .split(/\r?\n/u).at(-1);
       assert.match(filename, /\.tgz$/u);
       const archive = resolve(temporary, filename);
+      archiveDigests[name] = Buffer.from(await globalThis.crypto.subtle.digest("SHA-256", await readFile(archive)))
+        .toString("hex");
       if (name === "conformance") {
         const entries = run("tar", ["-tzf", archive], temporary).split(/\r?\n/u).map(entry => entry.replace(/^package\//u, ""));
         assert.deepEqual(entries.filter(entry => !entry.startsWith("dist/")).sort(),
@@ -140,8 +144,7 @@ test("the archive installs beside its peer archives as one root-only ESM package
       void isolate(entry, { dependencies: { db: { red: () => 1 } } });
       void built;
     `);
-    for (const packageName of ["typescript", "typescript-minimum"]) {
-      const compiler = join(dirname(require.resolve(`${packageName}/package.json`)), "bin/tsc");
+    for (const { path: compiler } of await supportedCompilers()) {
       for (const resolution of ["NodeNext", "Bundler"]) {
         await writeFile(join(consumer, "tsconfig.json"), JSON.stringify({
           compilerOptions: {
@@ -155,6 +158,34 @@ test("the archive installs beside its peer archives as one root-only ESM package
         run(process.execPath, [compiler, "-p", "tsconfig.json"], consumer);
       }
     }
+
+    // Reuse the four extracted archives for the canonical connected consumer.
+    // Its Node declarations are separate from the existing types: [] projects.
+    const semantic = join(consumer, "semantic");
+    await cp(join(workspace, "tests/qualification/consumer-fixtures/semantic"), semantic, { recursive: true });
+    const runtimeProject = join(semantic, "tsconfig.runtime.json");
+    const runtimeConfig = JSON.parse(await readFile(runtimeProject, "utf8"));
+    assert.equal(Object.hasOwn(runtimeConfig, "extends"), false);
+    const nodeManifest = require.resolve("@types/node/package.json");
+    runtimeConfig.compilerOptions.typeRoots = [dirname(dirname(nodeManifest))];
+    await writeFile(runtimeProject, `${JSON.stringify(runtimeConfig, null, 2)}\n`);
+    const compilerManifest = require.resolve("typescript/package.json");
+    const compiler = join(dirname(compilerManifest), "bin/tsc");
+    run(process.execPath, [compiler, "-p", "tsconfig.runtime.json", "--pretty", "false"], semantic, 180000);
+    const connected = JSON.parse(run(process.execPath, ["out/tests/module/packed-entry.js"], semantic, 60000));
+    assert.equal(connected.scenario, "C-05");
+    assert.equal(connected.result, "packed:A:hello");
+    assert.equal(connected.complete, true);
+    assert.deepEqual(Object.keys(connected.resolvedPackagePaths).sort(), ["assembly", "conformance", "core", "resources"]);
+    for (const name of ["core", "assembly", "resources", "conformance"]) {
+      const installed = await realpath(join(consumer, "node_modules/@get-modular", name));
+      const entry = await realpath(fileURLToPath(connected.resolvedPackagePaths[name]));
+      const path = relative(installed, entry);
+      assert.ok(path.length > 0 && !path.startsWith("..") && !isAbsolute(path), entry);
+    }
+    t.diagnostic(JSON.stringify({ ...connected, archiveDigests,
+      compiler: JSON.parse(await readFile(compilerManifest, "utf8")).version,
+      nodeTypes: JSON.parse(await readFile(nodeManifest, "utf8")).version }));
   } finally {
     await rm(temporary, { recursive: true, force: true });
   }

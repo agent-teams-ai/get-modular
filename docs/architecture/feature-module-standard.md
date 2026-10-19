@@ -116,10 +116,10 @@ production. The first production package must atomically:
 - change the admission state to `source-admitted`;
 - enable Engineering Foundation's `architecture.source-dependencies`
   capability at `architecture/foundation/source-dependencies.yaml`; and
-- execute the pinned `@agent-teams/engineering-foundation` `1.7.4` command
+- execute the pinned `@agent-teams/engineering-foundation` `1.10.0` command
   `agent-teams-foundation check` through both the complete and fast gates.
 
-The tooling activation pins Foundation `1.7.4`. SDK growth admission remains
+The tooling activation pins native Foundation `1.10.0`. SDK growth admission remains
 explicitly pending: the active public-API capability retains schema v1 until a
 trusted external authority binds the PR base and candidate to authenticated
 released Core and Assembly artifacts. Local qualification records cannot
@@ -131,8 +131,8 @@ no waivers. Activation does not claim that existing source passes typed lint
 or establish structural or runtime conformance. Docs retains its portable
 workflow without a managed adapter or cohort binding.
 
-The Foundation 1.7.4 binding, which follows the earlier 1.7.2 migration and its
-retained records, keeps the immutable Feature Module Standard and
+The native Foundation 1.10.0 binding follows the retained 1.7.4 and 1.7.2
+records and keeps the immutable Feature Module Standard and
 Consumer Module Standard pins. The retained current Consumer Module Standard
 adds the optional ADR-0029 dynamic Host guidance; it does not expand passive
 composition or confer SDK authority. The current SDK tooling binding advances
@@ -141,7 +141,7 @@ SDK status stays pending, activation stays on hold and release eligibility stays
 false.
 
 The local changed workflow keeps the schema published with Foundation 1.7.2;
-the 1.7.4 binding does not change it.
+the native 1.10.0 binding does not change it.
 JS and TS edits select the existing project-wide `check:fast` script with
 `passPaths: false`; changed file names never become compiler arguments.
 Compiler projects and root check configuration select the same fast gate through
@@ -164,8 +164,15 @@ existing runtime helper owns this narrow version mechanism; executable selection
 and deployment policy remain with the Host.
 
 `runtime:preflight` is exactly `node architecture/checks/node-version.mjs` and
-requires no installed repository dependencies. `precheck:changed` invokes only
-`pnpm runtime:preflight`. Both full and fast gates explicitly execute
+requires no installed repository dependencies. `precheck:changed` first runs
+that guard, then reads the compiler metadata before loading Foundation. The
+`quality:coverage:scope` and `lint:typed` commands run the same compiler guard
+through their user-script hooks, before the literal public CLI commands. The pinned pnpm route explicitly
+enables user-script pre/post hooks in `.npmrc`; installation scripts remain
+disabled. Normal `pnpm` commands, explicit `pnpm run` and the existing CI lane
+runner execute those hooks. This is not a guard for arbitrary direct CLI calls
+or commands that deliberately disable hooks.
+Both full and fast gates explicitly execute
 `lockfile:peers:check`, `runtime:policy:typecheck` and `runtime:policy:test`
 after preflight and before preparation. The peer gate validates the committed
 graph with `pnpm peers check --lockfile-only`; strict frozen installation alone

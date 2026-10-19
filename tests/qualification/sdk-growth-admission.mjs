@@ -1,19 +1,34 @@
 import assert from "node:assert/strict";
+import { assertCompilerFloor, assertFoundationCompilerFloor } from "../../architecture/checks/compiler-floor.ts";
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
-import { retainSdkGrowthFailure } from "./sdk-growth-failure-retention.mts";
+import { retainSdkGrowthFailure } from "./sdk-growth-failure-retention.ts";
+import { assertLegacyProvenanceRefusal, extractNativeSyntheticPredecessor } from "./sdk-growth-synthetic-predecessor.ts";
 
 const execute = promisify(execFile);
 const workspace = resolve(import.meta.dirname, "../..");
+assertCompilerFloor(workspace);
+const { extractorVersion } = assertFoundationCompilerFloor(workspace);
 const foundationManifestPath = resolve(workspace, "node_modules/@agent-teams/engineering-foundation/package.json");
 const foundationManifest = JSON.parse(await readFile(foundationManifestPath, "utf8"));
 const foundationRoot = dirname(foundationManifestPath);
 const foundationCli = resolve(foundationRoot, foundationManifest.bin["agent-teams-foundation"]);
 const packageName = "@fixture/sdk-growth";
+const packagePolicy = {
+  packageName,
+  packageRoot: "packages/sdk",
+  manifestPath: "packages/sdk/package.json",
+  entrypoints: [{ exportPath: ".", declarationEntryPoint: "packages/sdk/dist/index.d.ts" }],
+  nonTypeExports: [],
+  tsconfigPath: "packages/sdk/tsconfig.json",
+  releasedBaselinePath: "architecture/public-api/sdk-growth.json",
+  approvedBreakingChanges: [],
+};
 const foundationModule = path => import(pathToFileURL(join(foundationRoot, path)));
 const [{ createGrowthObservation }, { createPublicApiExtractor }, { NodeChangeFingerprint }] = await Promise.all([
   foundationModule("dist/capabilities/public-api-compatibility/application/use-cases/observe-sdk-growth.js"),
@@ -30,7 +45,7 @@ const observationInvocation = Object.freeze({
   toolchainDigest: fixedDigest,
   artifactDigests: Object.freeze([fixedDigest]),
   tool: Object.freeze({ version: foundationManifest.version, artifactDigest: fixedDigest,
-    extractorVersion: foundationManifest.dependencies["@microsoft/api-extractor"] }),
+    extractorVersion }),
 });
 const cancellation = Object.freeze({ throwIfCancelled() {} });
 const fixtureGitEnv = Object.freeze({ ...process.env,
@@ -42,13 +57,13 @@ async function put(root, path, content) {
   await writeFile(join(root, path), content);
 }
 
-async function commit(root, message) {
-  await execute("git", ["add", "."], { cwd: root });
+async function commit(root, message, paths) {
+  await execute("git", ["add", "--", ...paths], { cwd: root });
   await execute("git", ["commit", "--quiet", "-m", message], { cwd: root, env: fixtureGitEnv });
 }
 
 async function commitPackages(root, message) {
-  await execute("git", ["add", "packages"], { cwd: root });
+  await execute("git", ["add", "--", "packages/sdk/package.json", "packages/sdk/dist/index.d.ts"], { cwd: root });
   await execute("git", ["commit", "--quiet", "-m", message], { cwd: root, env: fixtureGitEnv });
 }
 
@@ -92,16 +107,7 @@ async function runGrowth(root) {
 
 async function observeTypedSurface(root) {
   const manifest = JSON.parse(await readFile(join(root, "packages/sdk/package.json"), "utf8"));
-  const policy = {
-    packageName,
-    packageRoot: "packages/sdk",
-    manifestPath: "packages/sdk/package.json",
-    entrypoints: [{ exportPath: ".", declarationEntryPoint: "packages/sdk/dist/index.d.ts" }],
-    nonTypeExports: [],
-    tsconfigPath: "packages/sdk/tsconfig.json",
-    releasedBaselinePath: "architecture/public-api/sdk-growth.json",
-    approvedBreakingChanges: [],
-  };
+  const policy = packagePolicy;
   const observer = createGrowthObservation({ consumerRoot: root, workspaceManifestPath: "pnpm-workspace.yaml",
     subjects: [{ packageVersion: manifest.version, policy }] }, {
     workspace: { async read() {
@@ -231,13 +237,38 @@ acceptedBaselinePath: architecture/decisions/accepted-decisions.json
   await put(temporary, "packages/sdk/dist/index.d.ts", stableDeclaration);
   const emptySnapshot = { schemaVersion: 1, packageName, packageVersion: "0.1.0", extractorVersion: "7.58.12",
     entrypoints: [{ exportPath: ".", items: [] }] };
-  await put(temporary, "architecture/public-api/sdk-growth.json", `${JSON.stringify(emptySnapshot, null, 2)}\n`);
-  await put(temporary, "evidence/released.json", `${JSON.stringify({ typed: emptySnapshot,
-    artifact: { ...emptySnapshot, extractorVersion: "package-artifact-inventory/1" } }, null, 2)}\n`);
+  const legacyBaselineBytes = `${JSON.stringify(emptySnapshot, null, 2)}\n`;
+  const legacyReleasedBytes = `${JSON.stringify({ typed: emptySnapshot,
+    artifact: { ...emptySnapshot, extractorVersion: "package-artifact-inventory/1" } }, null, 2)}\n`;
+  await put(temporary, "architecture/public-api/sdk-growth.json", legacyBaselineBytes);
+  await put(temporary, "evidence/released.json", legacyReleasedBytes);
+  await put(temporary, "evidence/legacy-synthetic-baseline.json", legacyBaselineBytes);
+  await put(temporary, "evidence/legacy-synthetic-released.json", legacyReleasedBytes);
   await put(temporary, "evidence/decisions.json", "[]\n");
   await mkdir(join(temporary, "reports"), { recursive: true });
   await execute("git", ["init", "--quiet"], { cwd: temporary });
-  await commit(temporary, "baseline fixture");
+  await commit(temporary, "retain the legacy synthetic provenance refusal fixture", [
+    ".gitignore", "package.json", "pnpm-workspace.yaml", "pnpm-lock.yaml", "foundation.config.yaml", "policy.yaml",
+    "architecture/foundation/governance-architecture-decisions.yaml", "architecture/decisions/accepted-decisions.json",
+    "docs/decisions/README.md", ".changeset/config.json", "packages/sdk/package.json", "packages/sdk/tsconfig.json",
+    "packages/sdk/dist/index.js", "packages/sdk/dist/index.d.ts", "architecture/public-api/sdk-growth.json",
+    "evidence/released.json", "evidence/legacy-synthetic-baseline.json", "evidence/legacy-synthetic-released.json", "evidence/decisions.json",
+  ]);
+
+  // The old synthetic input remains a current refusal control. It is not
+  // relabeled as a native observation or presented as historical publication.
+  await assertLegacyProvenanceRefusal(temporary, foundationCli, foundationManifest.version);
+  const nativePredecessor = await extractNativeSyntheticPredecessor(temporary,
+    () => createPublicApiExtractor().extract(temporary, packagePolicy, "0.1.0"), extractorVersion);
+  const nativePredecessorBytes = `${JSON.stringify(nativePredecessor, null, 2)}\n`;
+  await put(temporary, "evidence/native-synthetic-predecessor.json", nativePredecessorBytes);
+  await put(temporary, "architecture/public-api/sdk-growth.json", nativePredecessorBytes);
+  await put(temporary, "evidence/released.json", `${JSON.stringify({ typed: nativePredecessor,
+    artifact: { ...nativePredecessor, extractorVersion: "package-artifact-inventory/1" } }, null, 2)}\n`);
+  await commit(temporary, "observe the distinct native synthetic predecessor", [
+    "architecture/public-api/sdk-growth.json", "evidence/released.json", "evidence/native-synthetic-predecessor.json",
+    "packages/sdk/package.json", "packages/sdk/dist/index.d.ts", "packages/sdk/dist/index.js",
+  ]);
 
   await runGrowth(temporary);
   const first = await observeTypedSurface(temporary);
@@ -281,8 +312,17 @@ acceptedBaselinePath: architecture/decisions/accepted-decisions.json
   const removal = await observeTypedSurface(temporary);
   assertTypedSymbols(removal, [], "removal");
 
+  assert.equal(await readFile(join(temporary, "evidence/legacy-synthetic-baseline.json"), "utf8"), legacyBaselineBytes);
+  assert.equal(await readFile(join(temporary, "evidence/legacy-synthetic-released.json"), "utf8"), legacyReleasedBytes);
+  assert.equal(await readFile(join(temporary, "evidence/native-synthetic-predecessor.json"), "utf8"), nativePredecessorBytes);
+
   process.stdout.write(`${JSON.stringify({ status: "passed", subject: `Foundation ${foundationManifest.version} v2 admission`,
     authority: "unverified", activation: "hold", observedTypedSurfaces: 5, observedTransitions: 4,
+    legacyProvenanceRefusals: 1, nativeSyntheticPredecessor: {
+      packageVersion: nativePredecessor.packageVersion, extractorVersion: nativePredecessor.extractorVersion,
+      sha256: createHash("sha256").update(nativePredecessorBytes).digest("hex"),
+      snapshot: nativePredecessor,
+    },
     transitionComparison: "unavailable-without-trusted-base" })}\n`);
 } finally {
   await rm(temporary, { recursive: true, force: true });

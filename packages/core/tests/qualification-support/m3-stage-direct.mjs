@@ -6,7 +6,9 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, parse, posix, relative, resolve, sep } from "node:path";
-import ts from "typescript-minimum";
+import * as ts from "typescript/unstable/ast";
+import { version } from "typescript";
+import { parseTypeScript } from "./support/typescript-project.ts";
 
 // Qualification staging only: no builds, candidate execution, packing or installs.
 // The caller owns build/source correspondence and subsequent pack-once custody.
@@ -108,15 +110,17 @@ function dependency(from, literal, declaration, source) {
   return declaration && target.endsWith(".js") ? `${target.slice(0, -3)}.d.ts` : target;
 }
 
-function references(path, bytes, budget) {
+async function references(path, bytes, budget) {
   need(isUtf8(bytes), "utf8");
   const declaration = path.endsWith(".d.ts");
-  const source = ts.createSourceFile(path, bytes.toString("utf8"),
-    ts.ScriptTarget.ESNext, true, declaration ? ts.ScriptKind.TS : ts.ScriptKind.JS);
-  need(source.parseDiagnostics.length === 0, "parse");
+  const { source, diagnostics } = await parseTypeScript(path, bytes.toString("utf8"));
+  need(diagnostics.length === 0, "parse");
   need(source.referencedFiles.length === 0 && source.typeReferenceDirectives.length === 0
-    && source.libReferenceDirectives.length === 0 && !source.hasNoDefaultLib
-    && !source.amdDependencies.length && !source.moduleName, "reference-directive");
+    && source.libReferenceDirectives.length === 0, "reference-directive");
+  for (const range of ts.getLeadingCommentRanges(source.text, 0) ?? []) {
+    const comment = source.text.slice(range.pos, range.end);
+    need(!/^\/\/\/\s*<\s*(?:reference|amd-module|amd-dependency)\b/u.test(comment), "reference-directive");
+  }
   const edges = new Set();
   const add = literal => edges.add(dependency(path, literal, declaration, source));
   const pending = [[source, 0]];
@@ -143,7 +147,7 @@ function references(path, bytes, budget) {
     if (ts.isIdentifier(node)) {
       need(!["require", "eval", "Function"].includes(node.text), "dynamic-loader");
     }
-    ts.forEachChild(node, child => { pending.push([child, depth + 1]); });
+    node.forEachChild(child => { pending.push([child, depth + 1]); });
     for (const doc of node.jsDoc ?? []) pending.push([doc, depth + 1]);
   }
   return edges;
@@ -162,10 +166,10 @@ function allowedFile(path) {
  * its existing parent must be under realpath(tmpdir()), outside sourceCheckout.
  * The returned hashes describe staged bytes, not qualification or build proof.
  */
-export function stageDirectSubject({
+export async function stageDirectSubject({
   sourceCheckout, expectedSha, stagingDir, javascriptEntry, declarationEntry,
 }) {
-  need(ts.version === "5.8.3", "parser-version");
+  need(version === "7.0.2", "parser-version");
   const source = sourceIdentity(sourceCheckout, expectedSha);
   const packageRoot = join(sourceCheckout, "packages/core");
   canonicalDirectory(packageRoot);
@@ -201,7 +205,7 @@ export function stageDirectSubject({
     allowedFile(path);
     const bytes = readRegular(packageRoot, join(packageRoot, path));
     retain(path, bytes);
-    for (const edge of references(path, bytes, budget)) {
+    for (const edge of await references(path, bytes, budget)) {
       need(pending.size < MAX_FILES || pending.has(edge), "closure-budget");
       pending.add(edge);
     }

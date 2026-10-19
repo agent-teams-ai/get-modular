@@ -5,15 +5,15 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { Project } from "ts-morph";
+import { CodemodProject } from "../../architecture/tooling/codemods/project.ts";
 import { testAssemblyTypes } from "../../architecture/tooling/test-assembly-types.mjs";
-import factoryHandle from "../../architecture/tooling/codemods/0.2-0.3/factory-handle.mjs";
+import factoryHandle from "../../architecture/tooling/codemods/0.2-0.3/factory-handle.ts";
 import entries from "../../architecture/tooling/codemods/0.4-0.5/entries.mjs";
 import prepare from "../../architecture/tooling/codemods/0.4-0.5/prepare.mjs";
 import isolate from "../../architecture/tooling/codemods/0.4-0.5/isolate.mjs";
 import typeNames from "../../architecture/tooling/codemods/0.4-0.5/type-names.mjs";
 import imports from "../../architecture/tooling/codemods/0.4-0.5/imports.mjs";
-import { reportAll } from "../../architecture/tooling/codemods/0.4-0.5/shared.mjs";
+import { reportAll } from "../../architecture/tooling/codemods/0.4-0.5/shared.ts";
 
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const runner = join(workspace, "architecture/tooling/codemods/run.mjs");
@@ -25,32 +25,67 @@ const codemods = new Map([
 const casesFor = (name) => readdirSync(join(fixtures, name)).sort();
 const read = (name, case_, file) => readFileSync(join(fixtures, name, case_, file), "utf8");
 
-function apply(text, extension = "ts", transforms = [factoryHandle]) {
-  const project = new Project({ useInMemoryFileSystem: true, skipAddingFilesFromTsConfig: true });
-  const file = project.createSourceFile(`input.${extension}`, text, { overwrite: true, allowJs: true });
-  const findings = [];
-  let edits = 0;
-  for (const transform of transforms) edits += transform(file, (message) => findings.push(message)) ?? 0;
-  return { text: file.getFullText(), edits, findings: transforms.includes(entries) ? reportAll(file) : findings };
+async function apply(text, extension = "ts", transforms = [factoryHandle]) {
+  const project = await CodemodProject.create([[resolve(tmpdir(), `codemod/input.${extension}`), text]], { directory: tmpdir(), isolated: true });
+  try {
+    const [file] = project.files;
+    assert.deepEqual(file.diagnostics, [], "codemod input must parse");
+    const findings = [];
+    let edits = 0;
+    for (const transform of transforms) edits += await transform(file, (message) => findings.push(message)) ?? 0;
+    assert.deepEqual(file.diagnostics, [], "codemod output must reparse without syntax errors");
+    return { text: file.text, edits, findings: transforms.includes(entries) ? await reportAll(file) : findings };
+  } finally { await project.close(); }
 }
 
 for (const [name, transforms] of codemods) {
   for (const case_ of casesFor(name)) {
     const inputName = readdirSync(join(fixtures, name, case_)).find((file) => /^input\.(?:ts|mjs)\.txt$/u.test(file));
     const extension = inputName.slice("input.".length, -".txt".length);
-    test(`${name} ${case_}: output matches and a second run changes nothing`, () => {
-      const result = apply(read(name, case_, inputName), extension, transforms);
+    test(`${name} ${case_}: output matches and a second run changes nothing`, async () => {
+      const result = await apply(read(name, case_, inputName), extension, transforms);
       assert.equal(result.text, read(name, case_, `output.${extension}.txt`));
       const manualPath = join(fixtures, name, case_, "manual.txt");
       const manual = existsSync(manualPath) ? read(name, case_, "manual.txt").trimEnd().split("\n") : [];
       assert.deepEqual(result.findings, manual);
-      const again = apply(result.text, extension, transforms);
+      const again = await apply(result.text, extension, transforms);
       assert.equal(again.text, result.text);
       assert.equal(again.edits, 0);
       assert.deepEqual(again.findings, manual);
     });
   }
 }
+
+test("0.4-0.5 import-tail-comment: preserves CRLF and a second run changes nothing", async () => {
+  const input = read("0.4-0.5", "import-tail-comment", "input.ts.txt").replaceAll("\n", "\r\n");
+  const expected = read("0.4-0.5", "import-tail-comment", "output.ts.txt").replaceAll("\n", "\r\n");
+  const transforms = codemods.get("0.4-0.5");
+  const result = await apply(input, "ts", transforms);
+  assert.equal(result.text, expected);
+  assert.deepEqual(result.findings, []);
+  const again = await apply(result.text, "ts", transforms);
+  assert.equal(again.text, result.text);
+  assert.equal(again.edits, 0);
+  assert.deepEqual(again.findings, []);
+});
+
+test("project: refuses to save a transformation that introduces syntax errors", async (t) => {
+  const directory = realpathSync(mkdtempSync(join(tmpdir(), "get-modular-codemod-invalid-save-")));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const path = join(directory, "input.ts");
+  const original = 'import { assemblyFor } from "@get-modular/assembly";\n';
+  writeFileSync(path, original);
+  const project = await CodemodProject.create([[path, original]], { directory, isolated: true });
+  try {
+    const [file] = project.files;
+    assert.deepEqual(file.diagnostics, []);
+    const position = original.indexOf("assemblyFor") + "assemblyFor".length;
+    await file.apply([{ start: position, end: position, text: ",," }]);
+    assert(file.diagnostics.some(diagnostic => diagnostic.code === 1003));
+    assert.throws(() => file.save(), /refusing to write source that does not parse/u);
+    assert.equal(readFileSync(path, "utf8"), original);
+  } finally { await project.close(); }
+});
 
 // 0.2-0.3 outputs target the 0.3 API, which the workspace no longer has.
 test("0.4-0.5 outputs type-check against the workspace Assembly", { timeout: 600000 }, () => {
@@ -224,15 +259,15 @@ test("runner: the checkout path in another letter case is refused on case-insens
   assert.match(result.err, /Get Modular checkout itself/u);
 });
 
-test("0.4-0.5 isolate: a kept ts-expect-error between the arguments asks for a placement check", () => {
-  const result = apply(read("0.4-0.5", "isolate-comment", "input.ts.txt").replace("a comment (a ts-expect-error directive is kept the same way)", "@ts-expect-error"),
+test("0.4-0.5 isolate: a kept ts-expect-error between the arguments asks for a placement check", async () => {
+  const result = await apply(read("0.4-0.5", "isolate-comment", "input.ts.txt").replace("a comment (a ts-expect-error directive is kept the same way)", "@ts-expect-error"),
     "ts", [isolate]);
   assert.deepEqual(result.findings, ["line 9: check the placement of @ts-expect-error after the isolate rewrite"]);
   assert.match(result.text, /\/\/ @ts-expect-error stays above the options/u);
 });
 
-test("0.4-0.5 isolate: a kept ts-ignore asks for a placement check too", () => {
-  const result = apply(read("0.4-0.5", "isolate-comment", "input.ts.txt").replace("a comment (a ts-expect-error directive is kept the same way)", "@ts-ignore"),
+test("0.4-0.5 isolate: a kept ts-ignore asks for a placement check too", async () => {
+  const result = await apply(read("0.4-0.5", "isolate-comment", "input.ts.txt").replace("a comment (a ts-expect-error directive is kept the same way)", "@ts-ignore"),
     "ts", [isolate]);
   assert.deepEqual(result.findings, ["line 9: check the placement of @ts-ignore after the isolate rewrite"]);
 });

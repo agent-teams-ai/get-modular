@@ -1,3 +1,4 @@
+import { assertCompilerFloor } from "../architecture/checks/compiler-floor.ts";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -35,6 +36,7 @@ async function withFixture(body) {
     await writeFile(join(root, "package.json"), '{"type":"module"}\n');
     const contract = { schemaVersion: 1, required: [identity], exceptions: [] };
     const invoke = async (source = ordinary, exception = undefined) => {
+      assertCompilerFloor();
       await writeFile(join(root, identity.file), source);
       await writeFile(join(root, "contract.json"), JSON.stringify({ ...contract,
         exceptions: exception === undefined ? [] : [exception] }));

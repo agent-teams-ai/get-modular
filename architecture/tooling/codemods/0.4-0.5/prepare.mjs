@@ -1,6 +1,6 @@
-import { transformPrepare } from "./shared.mjs";
+import { transformPrepare } from "./shared.ts";
 
-/** @param {import("ts-morph").SourceFile} file  @param {(message: string) => void} manual */
+/** @param {import("../project.ts").CodemodFile} file  @param {(message: string) => void} manual */
 export default function transform(file, manual) {
   return transformPrepare(file, manual);
 }
