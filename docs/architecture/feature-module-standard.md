@@ -164,8 +164,15 @@ existing runtime helper owns this narrow version mechanism; executable selection
 and deployment policy remain with the Host.
 
 `runtime:preflight` is exactly `node architecture/checks/node-version.mjs` and
-requires no installed repository dependencies. `precheck:changed` invokes only
-`pnpm runtime:preflight`. Both full and fast gates explicitly execute
+requires no installed repository dependencies. `precheck:changed` first runs
+that guard, then reads the compiler metadata before loading Foundation. The
+`quality:coverage:scope` and `lint:typed` commands run the same compiler guard
+through their user-script hooks, before the literal public CLI commands. The pinned pnpm route explicitly
+enables user-script pre/post hooks in `.npmrc`; installation scripts remain
+disabled. Normal `pnpm` commands, explicit `pnpm run` and the existing CI lane
+runner execute those hooks. This is not a guard for arbitrary direct CLI calls
+or commands that deliberately disable hooks.
+Both full and fast gates explicitly execute
 `lockfile:peers:check`, `runtime:policy:typecheck` and `runtime:policy:test`
 after preflight and before preparation. The peer gate validates the committed
 graph with `pnpm peers check --lockfile-only`; strict frozen installation alone

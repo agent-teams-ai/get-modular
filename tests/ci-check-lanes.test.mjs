@@ -61,7 +61,8 @@ function validateLanes(value, manifest = packageJson) {
   assert.equal(manifest.scripts.check, baseline.map(script => `pnpm ${script}`).join(" && "), "check chain drift");
   assert.equal(manifest.scripts["runtime:preflight"],
     "node architecture/checks/node-version.mjs", "dependency-free preflight drift");
-  assert.equal(manifest.scripts["precheck:changed"], "pnpm runtime:preflight", "changed precheck drift");
+  assert.equal(manifest.scripts["precheck:changed"],
+    "pnpm runtime:preflight && node architecture/checks/compiler-floor.ts", "changed precheck drift");
   assert.equal(manifest.scripts["lockfile:peers:check"], "pnpm peers check --lockfile-only", "peer gate drift");
   assert.equal(manifest.scripts["runtime:policy:typecheck"],
     "pnpm tooling:native:typecheck && node node_modules/typescript/bin/tsc -p tests/tsconfig.tooling-node-policy.json --noEmit", "policy compiler drift");
