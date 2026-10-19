@@ -246,13 +246,10 @@ test("Foundation CLI, mandatory runner and SDK scripts retain their commands aft
   const { scripts } = JSON.parse(await readFile(join(repository, "package.json"), "utf8")) as { readonly scripts: Readonly<Record<string, string>> };
   for (const [name, next] of [
     ["foundation:check", "pnpm foundation:migration:typecheck && pnpm foundation:migration:test && node architecture/checks/native-public-api-migration.ts"],
-    ["check:changed", "agent-teams-foundation agent-workflow changed --consumer ."],
     ["ownership:checkpoint:test", "node --test tests/ownership-checkpoint.test.mjs"],
     ["foundation:assert-dev-only", "agent-teams-foundation assert-dev-only"],
     ["foundation:assert-registry", "agent-teams-foundation assert-registry"],
     ["foundation:status", "agent-teams-foundation status"],
-    ["quality:coverage:scope", "agent-teams-foundation quality check --consumer . --scope-only"],
-    ["lint:typed", "agent-teams-foundation quality check --consumer ."],
     ["quality:critical:test", "node architecture/checks/required-quality-tests.mjs"],
     ["sdk-growth:check", "pnpm sdk-growth:typecheck && node architecture/checks/sdk-growth.mjs"],
     ["sdk-growth:test", "node --test tests/sdk-growth.test.mjs"],
@@ -261,6 +258,107 @@ test("Foundation CLI, mandatory runner and SDK scripts retain their commands aft
   ] as const) {
     assert.ok(scripts[name]?.startsWith(`node ${guard} && ${next}`), name);
   }
-  assert.equal(scripts["precheck:changed"], "pnpm runtime:preflight");
+  assert.equal(scripts["check:changed"], "agent-teams-foundation agent-workflow changed --consumer .");
+  assert.equal(scripts["quality:coverage:scope"], "agent-teams-foundation quality check --consumer . --scope-only");
+  assert.equal(scripts["lint:typed"], "agent-teams-foundation quality check --consumer .");
+  assert.equal(scripts["precheck:changed"], `pnpm runtime:preflight && node ${guard}`);
+  assert.equal(scripts["prequality:coverage:scope"], `node ${guard}`);
+  assert.equal(scripts["prelint:typed"], `node ${guard}`);
+  assert.equal(scripts["runtime:preflight"], "node architecture/checks/node-version.mjs");
+  const npmrc = await readFile(join(repository, ".npmrc"), "utf8");
+  assert.match(npmrc, /^enable-pre-post-scripts=true$/mu);
+  assert.match(npmrc, /^ignore-scripts=true$/mu);
   assert.ok(scripts["architecture:feature-module-profile:test"]?.includes("tests/compiler-floor.test.ts"));
+});
+
+
+// Copy the canonical commands, hooks and configuration. The existing checked
+// docs fixture is a CLI sentinel: its deliberate assertion proves it was reached.
+// Only the executable host shim differs by OS; no compiler/package body is loaded.
+test("pinned pnpm and the actual CI runner enforce compiler hooks before the public CLI", async context => {
+  const { scripts, packageManager } = JSON.parse(await readFile(join(repository, "package.json"), "utf8")) as {
+    readonly scripts: Readonly<Record<string, string>>; readonly packageManager: string;
+  };
+  const windows = process.platform === "win32";
+  const command = windows ? process.env["ComSpec"] ?? "cmd.exe" : "pnpm";
+  const pnpmArguments = (args: readonly string[]): string[] => windows
+    ? ["/d", "/s", "/c", `pnpm ${args.join(" ")}`] : [...args];
+  const version = spawnSync(command, pnpmArguments(["--version"]), { encoding: "utf8", timeout: 30_000 });
+  assert.ifError(version.error);
+  assert.equal(version.status, 0, version.stderr);
+  assert.equal(version.stdout.trim(), "11.20.0");
+  assert.equal(packageManager, "pnpm@11.20.0");
+  const entries = ["check:changed", "quality:coverage:scope", "lint:typed"] as const;
+  const modes = ["compatible", "below-floor", "legacy"] as const;
+  const script = (name: string): string => {
+    const value = scripts[name];
+    assert.equal(typeof value, "string", name);
+    return value!;
+  };
+  const npmrc = await readFile(join(repository, ".npmrc"), "utf8");
+  const quote = (value: string) => `'${value.replaceAll("'", "'\"'\"'")}'`;
+  for (const entry of [...entries, "nested-fast", "missing-hook-control"] as const) {
+    for (const mode of modes) {
+      if (entry === "nested-fast" && mode === "legacy"
+        || entry === "missing-hook-control" && mode !== "below-floor") continue;
+      await context.test(`${entry}: ${mode}`, async () => fixture(async (root, paths) => {
+        await nativeFixture(root, paths);
+        const fixtureScripts: Record<string, string> = {
+          "runtime:preflight": script("runtime:preflight"),
+          "check:fast": "pnpm quality:coverage:scope",
+        };
+        for (const name of entries) {
+          fixtureScripts[name] = script(name);
+          fixtureScripts[`pre${name}`] = script(`pre${name}`);
+        }
+        if (entry === "missing-hook-control") delete fixtureScripts["prequality:coverage:scope"];
+        await put(root, "package.json", { name: "gm-compiler-hook-test", private: true, type: "module",
+          packageManager, scripts: fixtureScripts });
+        await put(root, ".npmrc", npmrc);
+        await put(root, "README.md", "deliberate CLI sentinel: no heading\n");
+        const driver = "tests/fixtures/repository-agent-workflow/docs-check.ts";
+        for (const path of [guard, "architecture/checks/node-version.mjs", driver,
+          "architecture/tooling/run-ci-check-lane.mjs"]) {
+          await mkdir(dirname(join(root, path)), { recursive: true });
+          await cp(join(repository, path), join(root, path));
+        }
+        const bin = join(root, "node_modules", ".bin");
+        await mkdir(bin, { recursive: true });
+        await writeFile(join(bin, `agent-teams-foundation${windows ? ".cmd" : ""}`), windows
+          ? `@"${process.execPath}" "${join(root, driver)}" %*\r\n@exit /b %errorlevel%\r\n`
+          : `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(join(root, driver))} "$@"\n`, { mode: 0o755 });
+        if (mode === "below-floor") await change(root, paths.foundation, { version: "5.9.3" });
+        if (mode === "legacy") {
+          await change(root, paths.foundationPackage, { dependencies: { "@microsoft/api-extractor": "7.58.12" } });
+          await change(root, paths.extractor, { version: "5.9.3" });
+        }
+        // Exercise the normal alias, explicit run, unchanged CI dispatcher and
+        // nested pnpm invocation without replacing the three actual CLI routes.
+        const result = entry === "lint:typed"
+          ? spawnSync(process.execPath, [join(root, "architecture/tooling/run-ci-check-lane.mjs")], {
+            cwd: root, env: { ...process.env, LANE_SCRIPTS: "lint:typed" }, encoding: "utf8", timeout: 30_000,
+          })
+          : spawnSync(command, pnpmArguments(entry === "check:changed" ? [entry]
+            : ["run", entry === "nested-fast" ? "check:fast"
+              : entry === "missing-hook-control" ? "quality:coverage:scope" : entry]), {
+            cwd: root, encoding: "utf8", timeout: 30_000,
+          });
+        assert.ifError(result.error);
+        assert.equal(result.signal, null, result.stderr);
+        assert.notEqual(result.status, 0, "the sentinel or blocking preflight must reject");
+        if (mode === "compatible" || entry === "missing-hook-control") {
+          assert.match(result.stderr, /ERR_ASSERTION/u);
+          assert.match(result.stderr, /docs-check\.ts/u);
+          assert.doesNotMatch(result.stderr, /TYPESCRIPT_COMPILER_FLOOR_BLOCKED/u);
+          const actual = entry === "nested-fast" || entry === "missing-hook-control" ? "quality:coverage:scope" : entry;
+          assert.ok((result.stdout + result.stderr).includes(script(actual)), result.stdout + result.stderr);
+        } else {
+          assert.match(result.stderr, /TYPESCRIPT_COMPILER_FLOOR_BLOCKED/u);
+          assert.match(result.stderr, /5\.9\.3/u);
+          assert.doesNotMatch(result.stderr, /ERR_ASSERTION|PACKAGE_IMPLEMENTATION_MUST_NOT_LOAD/u);
+          if (entry === "check:changed") assert.match(result.stdout, /satisfies tooling/u);
+        }
+      }));
+    }
+  }
 });

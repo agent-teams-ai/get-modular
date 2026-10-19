@@ -28,7 +28,7 @@ export const TRACEABILITY_PATH = "docs/traceability/module-system-v1.yaml";
 
 const FOUNDATION_ADMISSION = Object.freeze({
   package: "@agent-teams/engineering-foundation",
-  version: "1.7.4",
+  version: "1.10.0",
   command: "agent-teams-foundation check",
   capability: "architecture.source-dependencies",
   policy: SOURCE_DEPENDENCY_POLICY_PATH,
@@ -64,8 +64,10 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "foundation:migration:typecheck": "node node_modules/typescript/bin/tsc -p tests/tsconfig.native-public-api-migration.json --noEmit",
   "foundation:migration:test": "node --test tests/native-public-api-migration.test.ts",
   "quality:coverage:scope":
-    "node architecture/checks/compiler-floor.ts && agent-teams-foundation quality check --consumer . --scope-only",
-  "lint:typed": "node architecture/checks/compiler-floor.ts && agent-teams-foundation quality check --consumer .",
+    "agent-teams-foundation quality check --consumer . --scope-only",
+  "prequality:coverage:scope": "node architecture/checks/compiler-floor.ts",
+  "lint:typed": "agent-teams-foundation quality check --consumer .",
+  "prelint:typed": "node architecture/checks/compiler-floor.ts",
   "governance:check": "node architecture/checks/governance.mjs",
   "governance:test": "node --test tests/governance.test.mjs tests/node-runtime-compatibility.test.mjs tests/assembly-admission.test.mjs tests/private-core-start.test.mjs tests/m3-start.test.mjs tests/generated-production-source.test.mjs tests/leaf-package-admission.test.mjs tests/ci-check-lanes.test.mjs tests/codemods/codemods.test.mjs",
   "qualification:resource-profile": "node tests/qualification/v1-resource-profile.mjs",
@@ -78,7 +80,7 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "release-owned-files:check":
     "node architecture/checks/release-owned-files.mjs",
   "runtime:preflight": "node architecture/checks/node-version.mjs",
-  "precheck:changed": "pnpm runtime:preflight",
+  "precheck:changed": "pnpm runtime:preflight && node architecture/checks/compiler-floor.ts",
   "lockfile:peers:check": "pnpm peers check --lockfile-only",
   "runtime:policy:typecheck": "pnpm tooling:native:typecheck && node node_modules/typescript/bin/tsc -p tests/tsconfig.tooling-node-policy.json --noEmit",
   "tooling:native:typecheck": "node node_modules/typescript/bin/tsc -p tests/tsconfig.native-tooling.json --noEmit",

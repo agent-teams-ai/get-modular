@@ -23,8 +23,11 @@ Use `pnpm check:changed` while editing, `pnpm check:fast` before handoff, and
 `pnpm check` as the complete gate, including the installed
 `architecture.source-dependencies` schema v3 gate (`rootPackage: true` and
 `packageRoots` for Core/Assembly) and `pnpm release-owned-files:check`.
-`runtime:preflight` remains the dependency-free Node version guard;
-`precheck:changed` invokes only that guard. Full and fast gates explicitly run
+`runtime:preflight` remains the dependency-free Node version guard.
+`precheck:changed` runs that guard, then the compiler metadata preflight.
+The quality scope and typed commands use their own compiler guard hooks; `.npmrc`
+explicitly enables user-script pre/post hooks while installation scripts stay disabled.
+Full and fast gates explicitly run
 `lockfile:peers:check`, `runtime:policy:typecheck` and `runtime:policy:test`
 before preparation.
 
