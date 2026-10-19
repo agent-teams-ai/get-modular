@@ -91,9 +91,10 @@ The original 185 raw matrix cases and earlier synchronous-run logs remain
 historical inputs and evidence. This checkpoint does not claim a fresh retained
 historical qualification. Fixed-two transition data, original registry subjects,
 SDK predecessor inputs, HOLD and unverified-authority expectations are unchanged.
-The declared and installed Foundation remains 1.7.4 and is still refused by the
-compiler preflight. Actual native registry adoption and final head/base CI remain
-pending; these local results do not claim an aggregate gate or registry pass.
+The earlier 1.7.4 installation was refused by the compiler preflight. The
+current local candidate instead binds the verified published native archive
+below. Earlier local results keep their original source identities; they do
+not claim an aggregate gate or final head/base CI for this candidate.
 
 ## Installed Foundation boundary
 
@@ -116,10 +117,40 @@ exact 0.2.0 candidate files. The original five typed observations and four
 transitions retain their incomplete-evidence, HOLD and unverified-authority
 expectations. This fixture supplies no release authority or G1 activation.
 
-The actual published native Foundation version and integrity must be adopted
-before the final current-tooling qualification. A local packed development
-candidate proves its recorded behavior and bytes; it does not establish a
-registry publication.
+### Published native artifact and local candidate
+
+The current local candidate pins the public registry package
+`@agent-teams/engineering-foundation@1.10.0` with this exact archive identity:
+
+- SHA-256: `0b9fcd6a674cc98f718ce57ee9d7c114981078a0d3a5cd0a6eaada28a3810ad8`.
+- SHA-512 SRI:
+  `sha512-k1mI8y/bm6GQtge+QCkANrufyLKi0f6YZlHXCMKr4QpGb97/86j9WdYVhgG2//C2cAtSRmmHmhOtnrpdaksRpw==`.
+- Verified source commit: `aed890a6ac09762d9f487ed2624e64a873935868`.
+
+The artifact is byte-identical to the Foundation archive that passed the real
+protected eight-package registry-install qualification in
+[Release run 39272926879](https://github.com/agent-teams-ai/engineering-foundation/actions/runs/39272926879),
+attempt 1. That attempt failed while waiting for registry visibility, before
+Foundation signature verification. It is not recorded as a successful release
+wave. The public version became visible afterwards; the retained failed
+observation remains a failure, not evidence of absence.
+
+A separate read-only npm 11.19.0 audit installed the actual public dependency
+closure with scripts disabled, verified npm signature and source provenance with
+no invalid or missing entries, and bound the verified statement to that exact
+source commit and archive SRI. The local audit evidence is retained for review;
+its receipt digest is
+`sha256:c0a08500b52ca2c270c6f0d7bacd31ef366fb357d70f10551fad190b30bcf437`.
+The installed 41-package closure includes TypeScript and its Linux native
+carrier at 7.0.2, with no legacy API Extractor. The current pnpm installation
+must independently pass the repository compiler guard before loading tooling.
+
+This evidence permits the authorized reversible local candidate preparation.
+Protected release completion and final Get Modular head/base qualification
+remain separate requirements before merge or release admission. No local
+Foundation archive is substituted for the public package. Historical 1.7.2 and
+1.7.4 CLI report literals and their exact hashes remain data-only inputs; the
+failure-retention producer now names the actual 1.10.0 pin and SRI.
 
 ## Released API transition
 
@@ -177,7 +208,8 @@ continues to own baseline write authority. A successful read-only transition
 does not replace the versioned release preflight or authorize an extra baseline
 release. The planned implementation minor provides the actual release context.
 
-This reviewed scope record leaves actual native registry adoption and final
-head/base CI pending. Exact results belong to the final PR and release
-evidence; earlier candidate checks retain their original source and artifact
-bindings.
+This local candidate records the actual native registry artifact and its
+separate cryptographic verification. Protected release closure, current
+aggregate qualification and final head/base CI are not inferred from that
+artifact record. Exact results belong to the final PR and release evidence;
+earlier candidate checks retain their original source and artifact bindings.
