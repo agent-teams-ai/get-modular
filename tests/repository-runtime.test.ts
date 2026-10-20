@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { copyFile, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, cp, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -61,10 +61,14 @@ test("Bun manager preserves explicit Node qualification and runtime tools execut
     const bin = "node_modules/@agent-teams/engineering-foundation";
     await put(root, `${bin}/package.json`, JSON.stringify({ name: "@agent-teams/engineering-foundation", version: "2.0.0", type: "module",
       bin: { "agent-teams-foundation": "observe.ts" } }));
-    await put(root, `${bin}/observe.ts`, "console.log(JSON.stringify({ bun: process.versions.bun ?? null, args: process.argv.slice(2) }));\n");
-    const tool = run(root, "node", ["architecture/tooling/runtime/command.ts", "tool", "agent-teams-foundation", "status"]);
+    await put(root, `${bin}/observe.ts`, "console.log(JSON.stringify({ bun: process.versions.bun ?? null, args: process.argv.slice(2), nodeExecutable: process.env.AGENT_TEAMS_FOUNDATION_NODE_EXECUTABLE }));\n");
+    const tool = run(root, "node", ["architecture/tooling/runtime/command.ts", "tool", "agent-teams-foundation", "status"],
+      { AGENT_TEAMS_FOUNDATION_NODE_EXECUTABLE: "untrusted-inherited-node" });
     assert.equal(tool.status, 0, tool.stderr);
-    assert.deepEqual(JSON.parse(tool.stdout), { bun: "1.4.3", args: ["status"] });
+    assert.deepEqual(JSON.parse(tool.stdout), { bun: "1.4.3", args: ["status"], nodeExecutable: await realpath(process.execPath) });
+    const wrongController = run(root, "bun", ["architecture/tooling/runtime/command.ts", "tool", "agent-teams-foundation"]);
+    assert.notEqual(wrongController.status, 0);
+    assert.match(wrongController.stderr, /runtime.foundation.requires-node-controller/u);
     const command = run(root, "node", ["architecture/tooling/runtime/command.ts", "run", "observe"]);
     assert.equal(command.status, 0, command.stderr);
     assert.equal(JSON.parse(command.stdout).bun, null, "literal Node commands must survive Bun dispatch");
@@ -120,6 +124,17 @@ test("Node rollback dispatch uses the actual installed pnpm public root export",
     const resolver = createRequire(join(target, "package.json"));
     assert.equal(resolver.resolve("pnpm"), join(packageRoot, "package.json"));
     assert.throws(() => resolver.resolve("pnpm/package.json"), { code: "ERR_PACKAGE_PATH_NOT_EXPORTED" });
+
+    await put(target, "node_modules/@agent-teams/engineering-foundation/package.json", JSON.stringify({
+      name: "@agent-teams/engineering-foundation", version: "2.0.0", type: "module",
+      bin: { "agent-teams-foundation": "observe.js" },
+    }));
+    await put(target, "node_modules/@agent-teams/engineering-foundation/observe.js",
+      'console.log(JSON.stringify({ bun: process.versions.bun ?? null, nodeExecutable: process.env.AGENT_TEAMS_FOUNDATION_NODE_EXECUTABLE }));\n');
+    const foundation = run(target, "node", ["architecture/tooling/runtime/command.ts", "tool", "agent-teams-foundation"],
+      { AGENT_TEAMS_FOUNDATION_NODE_EXECUTABLE: "untrusted-inherited-node" });
+    assert.equal(foundation.status, 0, foundation.stderr);
+    assert.deepEqual(JSON.parse(foundation.stdout), { bun: null, nodeExecutable: await realpath(process.execPath) });
 
     const args = ["architecture/tooling/runtime/command.ts", "run", "observe"];
     const control = run(target, "node", args, {

@@ -55,6 +55,26 @@ const cliBin = foundation.bin["agent-teams-foundation"];
 assert.ok(typeof cliBin === "string");
 const cli = join(dirname(foundationPath), cliBin);
 const compiler = join(dirname(require.resolve("typescript/package.json")), "bin/tsc");
+const nodeExecutable = await realpath(process.execPath);
+assert.equal(process.versions.bun, undefined, "workflow fixture controller must execute in Node");
+const bunProbe = spawnSync("bun", ["--print", "JSON.stringify({execPath:process.execPath,version:process.versions.bun})"],
+  { encoding: "utf8", timeout: 10_000, shell: false });
+assert.equal(bunProbe.error, undefined);
+assert.equal(bunProbe.status, 0, bunProbe.stderr);
+const bunIdentity: unknown = JSON.parse(bunProbe.stdout);
+assert.ok(isRecord(bunIdentity) && bunIdentity.version === "1.4.3" && typeof bunIdentity.execPath === "string");
+const bunExecutable = await realpath(bunIdentity.execPath);
+const pnpmPath = require.resolve("pnpm");
+const pnpm: unknown = JSON.parse(await readFile(pnpmPath, "utf8"));
+assert.ok(isRecord(pnpm) && pnpm.name === "pnpm" && pnpm.version === "11.20.0" && isRecord(pnpm.bin));
+const pnpmBin = pnpm.bin.pnpm;
+assert.ok(typeof pnpmBin === "string");
+const pnpmEntrypoint = await realpath(join(dirname(pnpmPath), pnpmBin));
+const pnpmProbe = spawnSync(nodeExecutable, [pnpmEntrypoint, "--pm-on-fail=ignore", "--version"],
+  { encoding: "utf8", timeout: 10_000, shell: false });
+assert.equal(pnpmProbe.error, undefined);
+assert.equal(pnpmProbe.status, 0, pnpmProbe.stderr);
+assert.equal(pnpmProbe.stdout.trim(), "11.20.0");
 const currentPolicy: unknown = parse(
   await readFile(new URL("../architecture/foundation/repository-agent-workflow.yaml", import.meta.url), "utf8"),
 );
@@ -73,6 +93,9 @@ const invalidSource = "export const answer: string = 42;\n";
 const identity = {
   // Do not let inherited Git overrides route a TEST operation to another tree.
   ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_"))),
+  AGENT_TEAMS_FOUNDATION_NODE_EXECUTABLE: nodeExecutable,
+  AGENT_TEAMS_FOUNDATION_BUN_EXECUTABLE: bunExecutable,
+  AGENT_TEAMS_FOUNDATION_PNPM_ENTRYPOINT: pnpmEntrypoint,
   GET_MODULAR_TEST_COMPILER: compiler,
   GIT_AUTHOR_NAME: "iliya",
   GIT_AUTHOR_EMAIL: "iliyazelenkog@gmail.com",

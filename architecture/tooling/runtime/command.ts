@@ -1,12 +1,12 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BUN_VERSION, PNPM_VERSION, repository, runtimeBins, selectedProfile, toolRuntime } from "./policy.ts";
 
-function run(command: string, args: string[], cwd = repository): number {
-  const result = spawnSync(command, args, { cwd, stdio: "inherit", shell: false });
+function run(command: string, args: string[], cwd = repository, environment = process.env): number {
+  const result = spawnSync(command, args, { cwd, env: environment, stdio: "inherit", shell: false });
   if (result.error) throw result.error;
   if (result.signal !== null) throw new Error(`runtime.child.signal:${result.signal}`);
   return result.status ?? 1;
@@ -67,6 +67,12 @@ export function invoke(operation: string, id: string, args: string[]): number {
     const bin = typeof manifest.bin === "string" ? manifest.bin : manifest.bin?.[id];
     if (typeof bin !== "string") throw new Error("runtime.tool.bin-unavailable");
     entry = resolve(dirname(path), bin);
+  }
+  if (id === "agent-teams-foundation") {
+    if ("bun" in process.versions) throw new Error("runtime.foundation.requires-node-controller");
+    // Foundation verifies this public Node port when its CLI runs in Bun.
+    return run(runtime, [entry, ...args], repository, { ...process.env,
+      AGENT_TEAMS_FOUNDATION_NODE_EXECUTABLE: realpathSync(process.execPath) });
   }
   return run(runtime, [entry, ...args]);
 }
