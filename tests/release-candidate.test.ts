@@ -299,7 +299,11 @@ function retainedSuccessorFixture() {
   const previous: Record<string, string> = Object.fromEntries(retainedBuildPaths.map(path => [path, execFileSync("git", ["rev-parse", `${retainedSource}:${path}`], { cwd: repositoryRoot, encoding: "utf8" }).trim()]));
   const successor: RetainedToolingSuccessor = { admission: { schemaVersion: 1, package: name, version, integrity, engines },
     qualifiedWorkspace: previousWorkspace, qualifiedLock: previousLock, currentWorkspace: stringify(workspace), currentLock: stringify(lock) };
-  const current = { ...previous, "pnpm-workspace.yaml": blob(successor.currentWorkspace), "pnpm-lock.yaml": blob(successor.currentLock) };
+  const acceptedLeaf = execFileSync("git", ["rev-parse", "ddf1e0b0053f546f12ca70190b237b4f7e78d09d:architecture/checks/leaf-packages.mjs"],
+    { cwd: repositoryRoot, encoding: "utf8" }).trim();
+  assert.equal(acceptedLeaf, "5c450cb84c9a077d7203313eb18e2eee8d24faf7");
+  const current = { ...previous, "architecture/checks/leaf-packages.mjs": acceptedLeaf,
+    "pnpm-workspace.yaml": blob(successor.currentWorkspace), "pnpm-lock.yaml": blob(successor.currentLock) };
   return { name, coordinate, currentPolicy, previousPolicy, current, previous, successor };
 }
 await test("the retained-input successor admits exactly one pinned zero-edge development leaf", () => {

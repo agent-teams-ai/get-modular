@@ -94,6 +94,46 @@ mismatch and repair the version/release evidence. Never normalize, replace or
 re-upload a published version to hide a mismatch. A future retained release can
 extend this narrow binding only with its own reviewed qualification evidence.
 
+### Accepted Resources validation input successor
+
+The accepted Resources fix `ddf1e0b0053f546f12ca70190b237b4f7e78d09d`
+changes only three validation declarations in `architecture/checks/leaf-packages.mjs`:
+its required close-reentrancy test, its strict test-tooling project and its test
+command. The release policy admits only this exact whole-file successor:
+
+| Input | Git blob | SHA-256 |
+| --- | --- | --- |
+| Historical `2cd561688bb223f944425718cc093e55ff4bc20d` | `d998b031c65e7f5065e618552f429588569c094f` | `99a674571bf715046fe6867c3d0f4caefa4ef3142f73c4747fe2cbbc34800573` |
+| Accepted `ddf1e0b0053f546f12ca70190b237b4f7e78d09d` | `5c450cb84c9a077d7203313eb18e2eee8d24faf7` | `d697d331dcff6a70884e83f4d7e47303249c8b5b83dae9316b3a7e455638ff26` |
+
+The builder reads the selected row's `root` directly and derives outputs from
+`subpaths` through `leafBuildOutputs`; those fields, build commands and all executable helpers are
+unchanged. Independently stated replacements on the real historical Git bytes
+must reproduce the complete accepted file. Any further validation, row, root,
+subpath, build or helper edit fails the whole-file identity check. The relation
+applies with or without the development dependency successor below; every other
+compiler, build and dependency input retains its existing guard.
+
+This preserves `retainedSource`, the original package-tree catalog, all retained
+archives and historical qualification records. The changed Resources source
+still rejects reuse at `0.2.0` and requires its genuine Changesets patch release.
+The focused regression first failed against the previous policy with
+`release.retained-build-input-drift`. The corrected policy then passed all seven
+npm-release tests. An isolated TEST checkout installed the previously qualified
+`@agent-teams/release-checks@0.0.0` archive with its actual pnpm resolution and SRI:
+`sha256:d5e6eb3a48ea65f900ec18060dc1bfdb46fa2c3b694d2db1b239c698329318fe`.
+Strict TypeScript 7.0.2, all seven npm-release tests, all fifteen release-candidate
+tests and the complete docs protocol gate passed. The qualification owner checked
+all seventeen copied source files before and after each command; each binding
+remained exact throughout that run. This repeated an earlier run whose individual
+commands passed but whose final source-binding assertion failed; that earlier run
+is not a qualified source receipt.
+
+This is preparatory candidate evidence. Exact current-source full CI and the
+existing public registry archive/receipt/installed-consumer qualification remain
+required after the published `0.1.0` dependency is admitted. The production
+admission integrity stays null until that actual registry evidence exists.
+
 ### Release checks development dependency successor
 
 The independent `@agent-teams/release-checks` adoption permits one bounded

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
@@ -142,6 +143,60 @@ test("qualified retained archives require their exact package trees, versions an
     assert.equal(retainedPackage(retained.name, "9.9.9", tree), undefined);
 
   }
+});
+
+test("retained inputs admit only the accepted Resources validation declaration successor", () => {
+  const historicalSource = "2cd561688bb223f944425718cc093e55ff4bc20d";
+  const acceptedSource = "ddf1e0b0053f546f12ca70190b237b4f7e78d09d";
+  const path = "architecture/checks/leaf-packages.mjs";
+  const git = (...args: string[]): string => execFileSync("git", args, { encoding: "utf8" }).trim();
+  const historical = execFileSync("git", ["show", `${historicalSource}:${path}`], { encoding: "utf8" });
+  const accepted = execFileSync("git", ["show", `${acceptedSource}:${path}`], { encoding: "utf8" });
+  const blob = (value: string): string => {
+    const bytes = Buffer.from(value);
+    return createHash("sha1").update(`blob ${bytes.byteLength}\0`).update(bytes).digest("hex");
+  };
+  assert.equal(retainedSource, historicalSource);
+  assert.equal(blob(historical), "d998b031c65e7f5065e618552f429588569c094f");
+  assert.equal(blob(accepted), "5c450cb84c9a077d7203313eb18e2eee8d24faf7");
+  let expected = historical;
+  for (const [before, after] of [
+    ['      "packages/resources/tests/scope.test.mjs",\n',
+      '      "packages/resources/tests/scope.test.mjs",\n      "packages/resources/tests/close-reentrancy.test.ts",\n'],
+    ['        + " packages/resources/tsconfig.types.bundler.json",',
+      '        + " packages/resources/tsconfig.types.bundler.json packages/resources/tsconfig.test-tooling.json",'],
+    ['      "resources:test": "node --test packages/resources/tests/scope.test.mjs tests/resources/assembly-scope.test.mjs",',
+      '      "resources:test": "node --test packages/resources/tests/scope.test.mjs packages/resources/tests/close-reentrancy.test.ts tests/resources/assembly-scope.test.mjs",'],
+  ] as const) {
+    assert.equal(expected.split(before).length, 2, "Each independently stated validation edit must occur exactly once");
+    expected = expected.replace(before, after);
+  }
+  assert.equal(accepted, expected, "The complete module changes only the three Resources validation declarations");
+  const qualified = Object.fromEntries(retainedBuildPaths.map(input => [input, git("rev-parse", `${historicalSource}:${input}`)]));
+  const policy = json(execFileSync("git", ["show", `${historicalSource}:package.json`], { encoding: "utf8" }));
+  const current = { ...qualified, [path]: blob(accepted) };
+  assertRetainedBuildInputs(current, qualified, policy, policy);
+  assert.throws(() => assertRetainedBuildInputs(current, { ...qualified, [path]: blob(`${historical}\n`) }, policy, policy), /retained-build-input-drift/u);
+  assert.throws(() => assertRetainedBuildInputs({ ...current, [path]: blob(`${accepted}\n`) }, qualified, policy, policy), /retained-build-input-drift/u);
+  for (const [name, before, after] of [
+    ["another validation edit", "packages/resources/tests/close-reentrancy.test.ts", "packages/resources/tests/unreviewed.test.ts"],
+    ["build", '"resources:build": "node architecture/tooling/build-leaf-package.mjs resources"', '"resources:build": "node foreign-build.ts"'],
+    ["root", 'root: "packages/resources"', 'root: "packages/foreign"'],
+    ["subpath", 'id: "resources",', 'id: "resources", subpaths: [".", "./extra"],'],
+    ["other row", 'id: "observation",', 'id: "unreviewed-observation",'],
+    ["helper", "export const leafBuildOutputs = leaf => leafSubpaths(leaf)", 'export const leafBuildOutputs = leaf => [".", "./extra"]'],
+    ["top-level code", "export const PUBLIC = \"public\";", "export const PUBLIC = \"public\"; process.exitCode = 1;"],
+  ] as const) {
+    const mutated = accepted.replace(before, after);
+    assert.notEqual(mutated, accepted, `The ${name} counterexample must change actual source bytes`);
+    assert.throws(() => assertRetainedBuildInputs({ ...current, [path]: blob(mutated) }, qualified, policy, policy), /retained-build-input-drift/u, name);
+  }
+  for (const input of ["tsconfig.base.json", "architecture/tooling/build-leaf-package.mjs"]) {
+    assert.throws(() => assertRetainedBuildInputs({ ...current, [input]: blob("unreviewed input") }, qualified, policy, policy), /retained-build-input-drift/u);
+  }
+  const resourcesTree = git("rev-parse", `${acceptedSource}:packages/resources`);
+  assert.equal(resourcesTree, "e25ed47a25ac93e26d1610602ddadee87fbaa883");
+  assert.throws(() => retainedPackage("@get-modular/resources", "0.2.0", resourcesTree), /retained-source-drift/u);
 });
 
 test("OIDC effects are isolated behind downloaded-byte consumer verification", async () => {

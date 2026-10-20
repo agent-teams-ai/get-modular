@@ -199,20 +199,25 @@ function assertToolingSuccessor(current: Record<string, string>, qualified: Reco
   removeExact(record(nextLock.snapshots), releaseChecksCoordinate, {});
   assert.deepEqual(nextLock, previousLock, "release.retained-lock-graph-drift");
 }
+function retainedInputMatches(path: string, current: string | undefined, qualified: string | undefined): boolean {
+  // Accepted ddf1e0b adds only Resources validation declarations. Bind the whole
+  // module so build inputs, other rows and executable helpers cannot drift.
+  return current === qualified || (path === "architecture/checks/leaf-packages.mjs" &&
+    qualified === "d998b031c65e7f5065e618552f429588569c094f" &&
+    current === "5c450cb84c9a077d7203313eb18e2eee8d24faf7");
+}
 export function assertRetainedBuildInputs(current: Record<string, string>, qualified: Record<string, string>, currentPolicy: unknown,
   qualifiedPolicy: unknown, successor?: RetainedToolingSuccessor): void {
   exactKeys(current, [...retainedBuildPaths]);
   exactKeys(qualified, [...retainedBuildPaths]);
+  for (const path of retainedBuildPaths) {
+    if (successor !== undefined && (path === "pnpm-lock.yaml" || path === "pnpm-workspace.yaml")) { continue; }
+    assert(retainedInputMatches(path, current[path], qualified[path]), `release.retained-build-input-drift:${path}`);
+  }
   if (successor !== undefined) {
-    for (const path of retainedBuildPaths) {
-      if (path !== "pnpm-lock.yaml" && path !== "pnpm-workspace.yaml") {
-        assert.equal(current[path], qualified[path], `release.retained-build-input-drift:${path}`);
-      }
-    }
     assertToolingSuccessor(current, qualified, currentPolicy, qualifiedPolicy, successor);
     return;
   }
-  assert.deepEqual(current, qualified, "release.retained-build-input-drift");
   assert.deepEqual(releaseBuildPolicy(currentPolicy), releaseBuildPolicy(qualifiedPolicy), "release.retained-build-policy-drift");
 }
 
