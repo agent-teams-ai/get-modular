@@ -29,13 +29,18 @@ function manifest(): ReleaseManifest {
 
 test("release qualification requires the complete actual CI matrix and successful exact-source jobs", () => {
   const independentNames = ["ubuntu-24.04", "macos-15", "windows-2025"].flatMap(host =>
-    ["", ", Node 24"].flatMap(runtime => [
+    ["", ", Node 24", ", Node 26 rollback"].flatMap(runtime => [
       `check (${host}${runtime})`,
       ...["core", "assembly", "packaging", "governance", "static", "observation"].map(lane => `check lane (${host}${runtime}, ${lane})`),
     ]));
   independentNames.push("Node 24 package root compatibility");
+  assert.equal(independentNames.length, 64);
   assert.deepEqual(expected, independentNames.sort());
   assertQualifiedCi(ciRun(), jobs(), expected, source);
+  for (const name of independentNames.filter(name => name.includes("Node 26 rollback"))) {
+    assert.throws(() => assertQualifiedCi(ciRun(), jobs().filter(row => row.name !== name), expected, source),
+      /release\.ci-/u, `missing rollback job: ${name}`);
+  }
   for (const mutate of [
     (rows: Record<string, unknown>[]) => { rows.pop(); },
     (rows: Record<string, unknown>[]) => { rows.push({ ...rows[0] }); },
