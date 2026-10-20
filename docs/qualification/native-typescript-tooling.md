@@ -92,7 +92,7 @@ historical inputs and evidence. This checkpoint does not claim a fresh retained
 historical qualification. Fixed-two transition data, original registry subjects,
 SDK predecessor inputs, HOLD and unverified-authority expectations are unchanged.
 The earlier 1.7.4 installation was refused by the compiler preflight. The
-current candidate binds the verified published Foundation 2.0.0 archive below. Earlier local results keep their original source identities; they do
+current candidate binds the verified published Foundation 2.0.1 archive below. Earlier local results keep their original source identities; they do
 not claim an aggregate gate or final head/base CI for this candidate.
 
 ## Installed Foundation boundary
@@ -116,7 +116,42 @@ exact 0.2.0 candidate files. The original five typed observations and four
 transitions retain their incomplete-evidence, HOLD and unverified-authority
 expectations. This fixture supplies no release authority or G1 activation.
 
+### Published tooling checkpoint, 2026-10-21
+
+Current exact development pins are Foundation 2.0.1, FMS 0.2.1 and unchanged
+Docs 0.6.3. The FMS optional peer remains `^1.8.0 || ^2.0.0`; adopted FMS v1,
+SDK pending/HOLD and mutable workflow feedback remain unchanged.
+
+[Protected release run 39511720000, attempt 1](https://github.com/agent-teams-ai/engineering-foundation/actions/runs/39511720000/attempts/1)
+published Foundation 2.0.1 and FMS 0.2.1 from exact source
+`1218dbb53369d3beb3ee5b1b7544c261bf93136c`. Foundation's actual archive binds
+SHA-256 `911978aab96560997035e2d09fdffc1fb428ffdb04817747f6af4e9bd5bf4d48`
+and SRI `sha512-Nh7jjvGz0XQXXXjDALD024a88N86digBhJIeyAkOHTGpV6O+eNJtjg+bF+J77khLxCyB4c7gB8GqwN8HxX+pkg==`.
+Docs 0.6.3 and its dependency closure remain the published artifacts from
+`4ca4ad30b1efc5e3b43a2c012348ea8afea21864`.
+
+Independent eight-package cohort reconciliation returned GO;
+`ef201-published-cohort-review/independent-final-review.json` has SHA-256
+`406dca7764dd01827a27be8bff88a94307dba0ef545aeccf1b9451e52c497d6d`.
+The separate complete published Foundation verifier passed 2,780 file checks,
+four quality CLI controls and six workflow controls across Node/Bun profiles;
+`foundation-2.0.1-postpublication-built-source/verification.json` has SHA-256
+`1c58c0590dad3510663c24deeb06c5be05be5154f517b000497808993f33b036`.
+
+Both genuine GM locks were regenerated with pinned pnpm 11.20.0 and Bun 1.4.3.
+Strict frozen pnpm lock-only admission and Bun's frozen dry run passed, with
+workspace/catalog bytes preserved. The managers retain their own peer and
+optional dependency graphs. `gm-ef201-dual-lock-generation-receipt.json` has
+SHA-256 `feb5e45ac3111a6f068e4d87b8fe3aba5c8d01c646cafaa6ec409f41e05759c5`.
+These upstream and lock-admission proofs do not qualify the new GM checkout.
+Clean Bun/Node installations, focused installed checks, full CI, M3 and packed
+qualification remain pending. The current failure-retention producer binds
+Foundation 2.0.1 and its actual SRI; captured historical CLI bytes stay exact.
+
 ### Published tooling checkpoint, 2026-10-20
+
+This dated checkpoint retains its original 2.0.0 cohort and receipts below;
+its current-state wording refers to that earlier checkpoint.
 
 Current exact development pins are Foundation 2.0.0, FMS 0.2.0 and Docs 0.6.3.
 FMS's optional Foundation peer is `^1.8.0 || ^2.0.0`; GM's adopted FMS v1

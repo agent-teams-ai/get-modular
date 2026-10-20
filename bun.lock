@@ -6,8 +6,8 @@
       "name": "@get-modular/repository",
       "devDependencies": {
         "@agent-teams/docs-protocol": "0.6.3",
-        "@agent-teams/engineering-foundation": "2.0.0",
-        "@agent-teams/feature-module-standard": "0.2.0",
+        "@agent-teams/engineering-foundation": "2.0.1",
+        "@agent-teams/feature-module-standard": "0.2.1",
         "@changesets/cli": "catalog:",
         "@get-modular/assembly": "workspace:*",
         "@get-modular/conformance": "workspace:*",
@@ -98,9 +98,9 @@
 
     "@agent-teams/document-authoring": ["@agent-teams/document-authoring@0.3.3", "", { "dependencies": { "@agent-teams/repository-mutation": "0.3.0", "ajv": "8.20.0", "yaml": "2.9.0" } }, "sha512-OBBX04LdPJ3eXYhI5AGLVUTUkHGrmVbnMx8lAybD08X4UfMmvg83j23FNS8nTsQgJUiOWgw6PggcGSBuF17XTg=="],
 
-    "@agent-teams/engineering-foundation": ["@agent-teams/engineering-foundation@2.0.0", "", { "dependencies": { "@agent-teams/document-authoring": "0.3.3", "@agent-teams/repository-mutation": "0.3.0", "@microsoft/api-extractor-model": "7.33.10", "@microsoft/tsdoc": "0.16.0", "ajv": "8.20.0", "ajv-formats": "3.0.1", "jsonc-parser": "3.3.1", "node-or-bun": "0.2.1", "oxc-parser": "0.142.0", "proper-lockfile": "4.1.2", "typescript": "7.0.2", "yaml": "2.9.0" }, "bin": { "agent-teams-node-test": "dist/node-test-cli.js", "agent-teams-foundation": "dist/cli.js" } }, "sha512-n12TlBVEyR0p9JL+3cjvCn+YukOu5wmKV2AK5Q1F44S+ULusTTNR9EyCplENsHrtAHFL3CeDhUYw/NpJmxVc9g=="],
+    "@agent-teams/engineering-foundation": ["@agent-teams/engineering-foundation@2.0.1", "", { "dependencies": { "@agent-teams/document-authoring": "0.3.3", "@agent-teams/repository-mutation": "0.3.0", "@microsoft/api-extractor-model": "7.33.10", "@microsoft/tsdoc": "0.16.0", "ajv": "8.20.0", "ajv-formats": "3.0.1", "jsonc-parser": "3.3.1", "node-or-bun": "0.2.1", "oxc-parser": "0.142.0", "proper-lockfile": "4.1.2", "typescript": "7.0.2", "yaml": "2.9.0" }, "bin": { "agent-teams-node-test": "dist/node-test-cli.js", "agent-teams-foundation": "dist/cli.js" } }, "sha512-Nh7jjvGz0XQXXXjDALD024a88N86digBhJIeyAkOHTGpV6O+eNJtjg+bF+J77khLxCyB4c7gB8GqwN8HxX+pkg=="],
 
-    "@agent-teams/feature-module-standard": ["@agent-teams/feature-module-standard@0.2.0", "", { "peerDependencies": { "@agent-teams/engineering-foundation": "^1.8.0 || ^2.0.0" }, "optionalPeers": ["@agent-teams/engineering-foundation"] }, "sha512-+aC1zgBaS66YiVG1z892E1EbcsMpP64wOs9+CwYEtdHRWmcFgJZKxzgF4b5N5ZBeBoFERpWXqtWQ5xTTaOq6EA=="],
+    "@agent-teams/feature-module-standard": ["@agent-teams/feature-module-standard@0.2.1", "", { "peerDependencies": { "@agent-teams/engineering-foundation": "^1.8.0 || ^2.0.0" }, "optionalPeers": ["@agent-teams/engineering-foundation"] }, "sha512-+JjvjmvO6+dSzRGnDYiVPI+T3oDXfcG0719W4HXYYhcQa3c4OEpVGfUKFfsXQiTmfmRHnLL3JlqWjNt0PwDC4g=="],
 
     "@agent-teams/repository-mutation": ["@agent-teams/repository-mutation@0.3.0", "", {}, "sha512-8YnGElBptCp3mMImLnkddMRgLvrYq9dqLgNKg9Ek12hGB+CWitfbri77IYsd/G+dXF4oePJQUax2iC4Xc68uZw=="],
 

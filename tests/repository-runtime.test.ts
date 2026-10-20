@@ -30,7 +30,7 @@ async function fixture(body: (root: string, temporary: string) => Promise<void>)
   try {
     const manifest = { name: "gm-runtime-test", private: true, type: "module", packageManager: `bun@${BUN_VERSION}`,
       engines: { node: ">=24.21.0 <25 || >=26.10.0 <27", bun: BUN_VERSION }, trustedDependencies: [],
-      workspaces: { packages: [], catalog: {} }, devDependencies: { "@agent-teams/engineering-foundation": "2.0.0" }, scripts: { observe: "node observe.ts" } };
+      workspaces: { packages: [], catalog: {} }, devDependencies: { "@agent-teams/engineering-foundation": "2.0.1" }, scripts: { observe: "node observe.ts" } };
     await put(root, "package.json", JSON.stringify(manifest, null, 2) + "\n");
     await put(root, ".gitignore", "node_modules/\n.get-modular-node-profile.json\n");
     await put(root, "observe.ts", "console.log(JSON.stringify({ node: process.versions.node, bun: process.versions.bun ?? null }));\n");
@@ -59,7 +59,7 @@ async function fixture(body: (root: string, temporary: string) => Promise<void>)
 test("Bun manager preserves explicit Node qualification and runtime tools execute in Bun", async () => {
   await fixture(async root => {
     const bin = "node_modules/@agent-teams/engineering-foundation";
-    await put(root, `${bin}/package.json`, JSON.stringify({ name: "@agent-teams/engineering-foundation", version: "2.0.0", type: "module",
+    await put(root, `${bin}/package.json`, JSON.stringify({ name: "@agent-teams/engineering-foundation", version: "2.0.1", type: "module",
       bin: { "agent-teams-foundation": "observe.ts" } }));
     await put(root, `${bin}/observe.ts`, "console.log(JSON.stringify({ bun: process.versions.bun ?? null, args: process.argv.slice(2), nodeExecutable: process.env.AGENT_TEAMS_FOUNDATION_NODE_EXECUTABLE }));\n");
     const tool = run(root, "node", ["architecture/tooling/runtime/command.ts", "tool", "agent-teams-foundation", "status"],
@@ -126,7 +126,7 @@ test("Node rollback dispatch uses the actual installed pnpm public root export",
     assert.throws(() => resolver.resolve("pnpm/package.json"), { code: "ERR_PACKAGE_PATH_NOT_EXPORTED" });
 
     await put(target, "node_modules/@agent-teams/engineering-foundation/package.json", JSON.stringify({
-      name: "@agent-teams/engineering-foundation", version: "2.0.0", type: "module",
+      name: "@agent-teams/engineering-foundation", version: "2.0.1", type: "module",
       bin: { "agent-teams-foundation": "observe.js" },
     }));
     await put(target, "node_modules/@agent-teams/engineering-foundation/observe.js",
@@ -166,7 +166,7 @@ test("Node dispatch refuses every changed manager projection before executing a 
     assert.equal(run(root, "node", ["architecture/tooling/runtime/dev.ts", "prepare-node", target]).status, 0);
     const sentinel = join(target, "tool-executed");
     await put(target, "node_modules/@agent-teams/engineering-foundation/package.json", JSON.stringify({
-      name: "@agent-teams/engineering-foundation", version: "2.0.0", type: "module",
+      name: "@agent-teams/engineering-foundation", version: "2.0.1", type: "module",
       bin: { "agent-teams-foundation": "sentinel.js" },
     }));
     await put(target, "node_modules/@agent-teams/engineering-foundation/sentinel.js",

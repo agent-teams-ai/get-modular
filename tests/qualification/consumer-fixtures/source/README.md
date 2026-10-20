@@ -21,13 +21,13 @@ The historical packed-candidate replay is retained below with its original
 `kind: research-selected-flat-source` and `source: incomplete`. The ordinary
 installed route does not relabel that earlier execution.
 
-## Current cohort and pending qualification, 2026-10-20
+## Current cohort and pending qualification, 2026-10-21
 
-The current root pins are Foundation 2.0.0, FMS 0.2.0 and Docs Protocol 0.6.3.
+The current root pins are Foundation 2.0.1, FMS 0.2.1 and Docs Protocol 0.6.3.
 The actual FMS optional Foundation peer `^1.8.0 || ^2.0.0` admits that exact
 Foundation pin. Published cohort reconciliation and a separate Foundation
 installed verifier passed; both real GM locks passed generation and frozen
-lock admission as described in the [tooling checkpoint](../../../../docs/qualification/native-typescript-tooling.md#published-tooling-checkpoint-2026-10-20).
+lock admission as described in the [tooling checkpoint](../../../../docs/qualification/native-typescript-tooling.md#published-tooling-checkpoint-2026-10-21).
 These observations do not qualify the current GM installed-source fixture.
 Clean GM Bun/Node installations, this selected source/runtime route, full CI,
 M3 and packed qualification remain pending for the new cohort.

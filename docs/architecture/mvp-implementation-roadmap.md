@@ -244,8 +244,8 @@ execution. This host matrix is not Core runtime-conformance evidence.
 The Node 24.21.0 and Node 26.10.0 root routes, with the exact Docs Protocol
 0.6.2 `portable-v1` closure and installed mandatory runner, were qualified by
 genuine CI on all three operating systems in PR #149 (merge `557b713`). These
-are historical observations. Current pins are Foundation 2.0.0, FMS 0.2.0 and
-Docs 0.6.3. Their [published cohort and real lock admission](../qualification/native-typescript-tooling.md#published-tooling-checkpoint-2026-10-20)
+are historical observations. Current pins are Foundation 2.0.1, FMS 0.2.1 and
+Docs 0.6.3. Their [published cohort and real lock admission](../qualification/native-typescript-tooling.md#published-tooling-checkpoint-2026-10-21)
 are verified separately; clean Get Modular installations, full CI/M3 and packed
 qualification remain pending. None is inferred from the earlier PR or from
 configuration. Exact-head gates must pass before merge; this document records

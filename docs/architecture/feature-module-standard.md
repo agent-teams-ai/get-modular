@@ -122,11 +122,11 @@ production. The first production package must atomically:
 - change the admission state to `source-admitted`;
 - enable Engineering Foundation's `architecture.source-dependencies`
   capability at `architecture/foundation/source-dependencies.yaml`; and
-- execute the pinned `@agent-teams/engineering-foundation` `2.0.0` command
+- execute the pinned `@agent-teams/engineering-foundation` `2.0.1` command
   through `node architecture/tooling/runtime/command.ts tool agent-teams-foundation check`
   in both the complete and fast gates.
 
-The current tooling pins Foundation `2.0.0`, Feature Module Standard `0.2.0`
+The current tooling pins Foundation `2.0.1`, Feature Module Standard `0.2.1`
 and Docs Protocol `0.6.3` as exact registry development dependencies. The FMS
 package update does not change this repository's adopted FMS v1 authority.
 SDK growth admission remains
@@ -143,7 +143,7 @@ workflow without a managed adapter or cohort binding.
 
 The earlier native Foundation 1.10.0 binding followed the retained 1.7.4 and
 1.7.2 records. Those archive, compiler and CLI observations remain historical
-evidence under their original identities. The current Foundation 2.0.0 binding
+evidence under their original identities. The current Foundation 2.0.1 binding
 keeps the immutable Feature Module Standard authority and the separately reviewed
 Consumer Module Standard chain. Neither publication nor a tooling pin confers
 SDK authority or completes composition qualification.
@@ -249,14 +249,15 @@ evidence. Current, previous and P0 snapshots, both retained deltas and prior
 reviews remain checked. SDK growth stays pending under its existing profile;
 this command guidance supplies none of its outstanding external authority.
 
-The current tool cohort is published and reconciled. Foundation 2.0.0 and FMS
-0.2.0 were published by successful
-[release run 39473703985, attempt 1](https://github.com/agent-teams-ai/engineering-foundation/actions/runs/39473703985/attempts/1)
-from exact source `18bc5d1c1310b9837f26ac43b16dab63a087154f`; the reconciled cohort
-also includes the actual Docs 0.6.3 archive published from its earlier release
-source. The independent cohort review and separate installed Foundation verifier
-are recorded in the [published tooling checkpoint](../qualification/native-typescript-tooling.md#published-tooling-checkpoint-2026-10-20).
-Those Foundation proofs do not qualify this Get Modular checkout.
+The current tool cohort is published and reconciled. Foundation 2.0.1 and FMS
+0.2.1 were published by successful
+[release run 39511720000, attempt 1](https://github.com/agent-teams-ai/engineering-foundation/actions/runs/39511720000/attempts/1)
+from exact source `1218dbb53369d3beb3ee5b1b7544c261bf93136c`. Docs 0.6.3 remains
+unchanged from its `4ca4ad30b1efc5e3b43a2c012348ea8afea21864` release source.
+The independent eight-package review and separate published Foundation verifier
+are recorded in the [published tooling checkpoint](../qualification/native-typescript-tooling.md#published-tooling-checkpoint-2026-10-21).
+That record also preserves the earlier Foundation 2.0.0 cohort and its receipts
+as dated history. These upstream proofs do not qualify this Get Modular checkout.
 
 Both real locks now exist. Pinned pnpm 11.20.0 generated its strict lock and
 passed frozen strict lock-only admission; Bun 1.4.3 generated `bun.lock` and
