@@ -1,0 +1,24 @@
+File: tsc-baseline
+Build ID: 47870bb1f11f37b3f3b08653ecc6176423cc01d6
+Type: cpu
+Time: 2026-10-20 11:05:56 IDT
+Duration: 1.44s, Total samples = 2.25s (156.07%)
+Showing nodes accounting for 0.29s, 12.89% of 2.25s total
+Dropped 138 nodes (cum <= 0.01s)
+Showing top 15 nodes out of 222
+      flat  flat%   sum%        cum   cum%
+         0     0%     0%      1.15s 51.11%  runtime.systemstack
+         0     0%     0%      1.03s 45.78%  runtime.gcBgMarkWorker
+         0     0%     0%      1.03s 45.78%  runtime.gcBgMarkWorker.func2
+     0.02s  0.89%  0.89%      1.03s 45.78%  runtime.gcDrain
+         0     0%  0.89%      1.01s 44.89%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).resolveStructuredTypeMembers
+     0.01s  0.44%  1.33%      0.99s 44.00%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).resolveObjectTypeMembers
+         0     0%  1.33%      0.99s 44.00%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).resolveTypeReferenceMembers
+         0     0%  1.33%      0.95s 42.22%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).getPropertiesOfObjectType (inline)
+         0     0%  1.33%      0.95s 42.22%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).getPropertiesOfType
+     0.25s 11.11% 12.44%      0.79s 35.11%  runtime.scanObject
+         0     0% 12.44%      0.67s 29.78%  runtime.gcDrainMarkWorkerIdle (inline)
+         0     0% 12.44%      0.49s 21.78%  github.com/microsoft/TypeScript/tsc/internal/core.(*singleThreadedWorkGroup).RunAndWait
+         0     0% 12.44%      0.48s 21.33%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).checkSourceElementWorker
+     0.01s  0.44% 12.89%      0.48s 21.33%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).getNamedMembers
+         0     0% 12.89%      0.48s 21.33%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).setStructuredTypeMembers

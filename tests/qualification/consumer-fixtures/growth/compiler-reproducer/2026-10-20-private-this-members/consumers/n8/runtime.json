@@ -1,0 +1,291 @@
+{
+  "size": 8,
+  "scenarios": [
+    "G-01"
+  ],
+  "sourceCoverage": "incomplete; source scanner not selected",
+  "timingsMs": {
+    "prepare": 13.858018999999999,
+    "fullSmoke": 10.026375999999999
+  },
+  "graph": {
+    "declarations": 9,
+    "entriesAndGroups": 16,
+    "bindings": 13,
+    "providerOccurrences": 13,
+    "distinctEdges": 13,
+    "pathNodes": 9,
+    "reachableDeclarations": 9
+  },
+  "seeds": [
+    {
+      "seed": 17,
+      "root": 24612,
+      "values": [
+        528,
+        562,
+        1175,
+        4717,
+        22478,
+        116017,
+        715089,
+        24612
+      ],
+      "runMs": 0.9887689999999907,
+      "closeMs": 0.2811810000000037
+    },
+    {
+      "seed": 23,
+      "root": 603377,
+      "values": [
+        714,
+        748,
+        1547,
+        6205,
+        29546,
+        152473,
+        939777,
+        603377
+      ],
+      "runMs": 0.17065100000000655,
+      "closeMs": 0.023475000000004798
+    }
+  ],
+  "smoke": {
+    "attempts": 17,
+    "factoryCalls": 80,
+    "dependencyPortReads": 115,
+    "inputReads": 17,
+    "distribution": [
+      {
+        "implementationId": "fixture/growth/f000/default",
+        "factoryCalls": 17,
+        "portReads": 15
+      },
+      {
+        "implementationId": "fixture/growth/f001/default",
+        "factoryCalls": 15,
+        "portReads": 24
+      },
+      {
+        "implementationId": "fixture/growth/f002/default",
+        "factoryCalls": 13,
+        "portReads": 27
+      },
+      {
+        "implementationId": "fixture/growth/f003/default",
+        "factoryCalls": 11,
+        "portReads": 17
+      },
+      {
+        "implementationId": "fixture/growth/f004/default",
+        "factoryCalls": 9,
+        "portReads": 7
+      },
+      {
+        "implementationId": "fixture/growth/f005/default",
+        "factoryCalls": 7,
+        "portReads": 5
+      },
+      {
+        "implementationId": "fixture/growth/f006/default",
+        "factoryCalls": 5,
+        "portReads": 3
+      },
+      {
+        "implementationId": "fixture/growth/f007/default",
+        "factoryCalls": 3,
+        "portReads": 0
+      }
+    ],
+    "steps": [
+      {
+        "inject": "none",
+        "outcome": "succeeded",
+        "closeComplete": true
+      },
+      {
+        "inject": "fail",
+        "at": "fixture/growth/f000/default",
+        "outcome": "failed",
+        "closeComplete": true
+      },
+      {
+        "inject": "abort",
+        "at": "fixture/growth/f000/default",
+        "outcome": "cancelled",
+        "closeComplete": true
+      },
+      {
+        "inject": "fail",
+        "at": "fixture/growth/f001/default",
+        "outcome": "failed",
+        "closeComplete": true
+      },
+      {
+        "inject": "abort",
+        "at": "fixture/growth/f001/default",
+        "outcome": "cancelled",
+        "closeComplete": true
+      },
+      {
+        "inject": "fail",
+        "at": "fixture/growth/f002/default",
+        "outcome": "failed",
+        "closeComplete": true
+      },
+      {
+        "inject": "abort",
+        "at": "fixture/growth/f002/default",
+        "outcome": "cancelled",
+        "closeComplete": true
+      },
+      {
+        "inject": "fail",
+        "at": "fixture/growth/f003/default",
+        "outcome": "failed",
+        "closeComplete": true
+      },
+      {
+        "inject": "abort",
+        "at": "fixture/growth/f003/default",
+        "outcome": "cancelled",
+        "closeComplete": true
+      },
+      {
+        "inject": "fail",
+        "at": "fixture/growth/f004/default",
+        "outcome": "failed",
+        "closeComplete": true
+      },
+      {
+        "inject": "abort",
+        "at": "fixture/growth/f004/default",
+        "outcome": "cancelled",
+        "closeComplete": true
+      },
+      {
+        "inject": "fail",
+        "at": "fixture/growth/f005/default",
+        "outcome": "failed",
+        "closeComplete": true
+      },
+      {
+        "inject": "abort",
+        "at": "fixture/growth/f005/default",
+        "outcome": "cancelled",
+        "closeComplete": true
+      },
+      {
+        "inject": "fail",
+        "at": "fixture/growth/f006/default",
+        "outcome": "failed",
+        "closeComplete": true
+      },
+      {
+        "inject": "abort",
+        "at": "fixture/growth/f006/default",
+        "outcome": "cancelled",
+        "closeComplete": true
+      },
+      {
+        "inject": "fail",
+        "at": "fixture/growth/f007/default",
+        "outcome": "failed",
+        "closeComplete": true
+      },
+      {
+        "inject": "abort",
+        "at": "fixture/growth/f007/default",
+        "outcome": "cancelled",
+        "closeComplete": true
+      }
+    ]
+  },
+  "wrongProvider": {
+    "root": 25484,
+    "code": "conformance.wiring.mismatch",
+    "differences": [
+      {
+        "rule": "selection",
+        "subject": "selections",
+        "expected": [
+          "fixture/growth/f000/default",
+          "fixture/growth/f001/default",
+          "fixture/growth/f002/default",
+          "fixture/growth/f003/default",
+          "fixture/growth/f004/default",
+          "fixture/growth/f005/default",
+          "fixture/growth/f006/default",
+          "fixture/growth/f007/default",
+          "fixture/growth/seed-input/default"
+        ],
+        "actual": [
+          "fixture/growth/f000/default",
+          "fixture/growth/f001/default",
+          "fixture/growth/f002/default",
+          "fixture/growth/f003/wrong",
+          "fixture/growth/f004/default",
+          "fixture/growth/f005/default",
+          "fixture/growth/f006/default",
+          "fixture/growth/f007/default",
+          "fixture/growth/seed-input/default"
+        ],
+        "message": "plan selections must equal pinned providers plus roots"
+      },
+      {
+        "rule": "capability-provider",
+        "subject": "fixture/growth/f003/value",
+        "expected": [
+          "fixture/growth/f003/default"
+        ],
+        "actual": [],
+        "message": "pinned providers of fixture/growth/f003/value are missing from plan selections"
+      },
+      {
+        "rule": "provided-capability",
+        "subject": "fixture/growth/f003/value",
+        "expected": [
+          "fixture/growth/f003/default"
+        ],
+        "actual": [
+          "fixture/growth/f003/wrong"
+        ],
+        "message": "fixture/growth/f003/wrong provides fixture/growth/f003/value, which the oracle does not pin to it"
+      },
+      {
+        "rule": "unlisted-row",
+        "subject": "fixture/growth/f004/default.p3",
+        "expected": [
+          "fixture/growth/f003/default"
+        ],
+        "actual": [
+          "fixture/growth/f003/wrong"
+        ],
+        "message": "unlisted plan row fixture/growth/f004/default.p3 does not bind its single pinned provider"
+      },
+      {
+        "rule": "unlisted-row",
+        "subject": "fixture/growth/f006/default.p3",
+        "expected": [
+          "fixture/growth/f003/default"
+        ],
+        "actual": [
+          "fixture/growth/f003/wrong"
+        ],
+        "message": "unlisted plan row fixture/growth/f006/default.p3 does not bind its single pinned provider"
+      },
+      {
+        "rule": "unlisted-row",
+        "subject": "fixture/growth/f007/default.p3",
+        "expected": [
+          "fixture/growth/f003/default"
+        ],
+        "actual": [
+          "fixture/growth/f003/wrong"
+        ],
+        "message": "unlisted plan row fixture/growth/f007/default.p3 does not bind its single pinned provider"
+      }
+    ]
+  }
+}

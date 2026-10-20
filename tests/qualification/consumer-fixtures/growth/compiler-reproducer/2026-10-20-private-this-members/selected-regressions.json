@@ -1,0 +1,28 @@
+{
+  "command": [
+    "/tmp/gm-ts-owner-20261020/selected-regressions.test",
+    "-test.run",
+    "^TestLocal$/^(fluentInterfaces|genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1|interfaceExtendsObjectIntersection|interfaceExtendsObjectIntersectionErrors|multipleBaseInterfaesWithIncompatibleProperties|sharedInterfaceBaseTypes|circularConstraintYieldsAppropriateError)\\.ts",
+    "-test.v",
+    "-test.parallel=4",
+    "-test.timeout=180s"
+  ],
+  "cwd": "/tmp/gm-ts-owner-20261020/source/microsoft-TypeScript-3200b90/tsc/internal/testrunner",
+  "wallSeconds": 3.2720914540000194,
+  "exitCode": 0,
+  "expired": false,
+  "harnessCapSeconds": 180,
+  "outerCapSeconds": 185,
+  "selectedCases": [
+    "fluentInterfaces",
+    "genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1",
+    "interfaceExtendsObjectIntersection",
+    "interfaceExtendsObjectIntersectionErrors",
+    "multipleBaseInterfaesWithIncompatibleProperties",
+    "sharedInterfaceBaseTypes",
+    "circularConstraintYieldsAppropriateError"
+  ],
+  "timeUtc": "2026-10-20T08:17:57.667642+00:00",
+  "stdoutSha256": "77266460e54ecb78d904fe0505e7627c8710e443b425771633b86dcc6ac8f173",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

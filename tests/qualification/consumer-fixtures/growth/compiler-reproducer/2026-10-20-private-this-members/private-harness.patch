@@ -1,0 +1,98 @@
+diff --git a/tests/qualification/consumer-fixtures/growth/worker.mjs b/tests/qualification/consumer-fixtures/growth/worker.mjs
+index 555c841..3969ac3 100644
+--- a/tests/qualification/consumer-fixtures/growth/worker.mjs
++++ b/tests/qualification/consumer-fixtures/growth/worker.mjs
+@@ -8,7 +8,7 @@ import { copyReadyPackages, fixtureCompiler, treeIdentity } from "../support/mat
+ import { generateGrowthSource } from "./generate.mjs";
+ import { expectedInventory, expectedSourcePaths } from "./oracle.mjs";
+ import { applyLeafEdit, applySharedContractEdit, restoreEdit } from "./patches.mjs";
+-import { readUpstreamCandidate } from "./upstream-compiler.ts";
++import { readPatchedCandidate as readUpstreamCandidate } from "./patched-compiler.ts";
+ 
+ const ownDirectory = dirname(fileURLToPath(import.meta.url));
+ const workspace = resolve(ownDirectory, "../../../..");
+diff --git a/tests/tsconfig.consumer-fixtures.json b/tests/tsconfig.consumer-fixtures.json
+index 5ae2948..c468da1 100644
+--- a/tests/tsconfig.consumer-fixtures.json
++++ b/tests/tsconfig.consumer-fixtures.json
+@@ -3,6 +3,7 @@
+   "files": [
+     "qualification/consumer-fixtures/authoring/transport.ts",
+     "qualification/consumer-fixtures/growth/upstream-compiler.ts",
++    "qualification/consumer-fixtures/growth/patched-compiler.ts",
+     "qualification/consumer-fixtures/source/installed.ts",
+     "qualification/consumer-fixtures/source/policy.ts"
+   ],
+diff --git a/tests/qualification/consumer-fixtures/growth/patched-compiler.ts b/tests/qualification/consumer-fixtures/growth/patched-compiler.ts
+new file mode 100644
+index 0000000..b97b5d8
+--- /dev/null
++++ b/tests/qualification/consumer-fixtures/growth/patched-compiler.ts
+@@ -0,0 +1,44 @@
++// Disposable compiler-owner experiment only; no supported compiler adoption.
++import assert from "node:assert/strict";
++import { createHash } from "node:crypto";
++import { readFile } from "node:fs/promises";
++import { isAbsolute } from "node:path";
++import { upstreamSelection } from "./upstream-compiler.ts";
++
++const goSelection = Object.freeze({
++  version: "go1.27.2",
++  archiveSha256: "ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5",
++});
++const expectedPatchSha256 = "3a98de8a169b239da38cbe285de2f88e498406b8bdc24eec4685d6b4809a308e";
++const expectedBinarySha256 = "061c589fd01523d69ca6bb74d74e6331b6092a14ee286bd60f11d7a51eeb9e66";
++
++interface PatchedCandidateManifest {
++  readonly kind: "private-compiler-owner-patch";
++  readonly source: typeof upstreamSelection;
++  readonly go: typeof goSelection;
++  readonly patchPath: string;
++  readonly patchSha256: string;
++  readonly cli: string;
++  readonly version: "7.1.0-dev";
++  readonly binarySha256: string;
++}
++
++const hash = (bytes: Uint8Array): string => createHash("sha256").update(bytes).digest("hex");
++
++/** Verifies the one explicitly selected private patch and native binary, without installing either. */
++export async function readPatchedCandidate(path: string): Promise<PatchedCandidateManifest & { readonly manifestSha256: string }> {
++  assert.ok(isAbsolute(path), "fixture.growth.private-manifest-path");
++  const bytes = await readFile(path);
++  const candidate = JSON.parse(bytes.toString("utf8")) as PatchedCandidateManifest;
++  assert.equal(candidate.kind, "private-compiler-owner-patch");
++  assert.deepEqual(candidate.source, upstreamSelection);
++  assert.deepEqual(candidate.go, goSelection);
++  assert.equal(candidate.version, "7.1.0-dev");
++  assert.ok(isAbsolute(candidate.patchPath), "fixture.growth.private-patch-path");
++  assert.equal(candidate.patchSha256, expectedPatchSha256, "fixture.growth.private-patch-selection");
++  assert.equal(hash(await readFile(candidate.patchPath)), expectedPatchSha256, "fixture.growth.private-patch-drift");
++  assert.ok(isAbsolute(candidate.cli), "fixture.growth.private-binary-path");
++  assert.equal(candidate.binarySha256, expectedBinarySha256, "fixture.growth.private-binary-selection");
++  assert.equal(hash(await readFile(candidate.cli)), expectedBinarySha256, "fixture.growth.private-binary-drift");
++  return { ...candidate, manifestSha256: hash(bytes) };
++}
+diff --git a/private-candidate.json b/private-candidate.json
+new file mode 100644
+index 0000000..ab351c3
+--- /dev/null
++++ b/private-candidate.json
+@@ -0,0 +1,17 @@
++{
++  "kind": "private-compiler-owner-patch",
++  "source": {
++    "repository": "microsoft/TypeScript",
++    "commit": "3200b90a617bcf9ad26543b347cabad8ff0dad14",
++    "archiveSha256": "034bb7bb88f1354b416f9c617a82b88af7f2344f279e9a697a73bf4276638858"
++  },
++  "go": {
++    "version": "go1.27.2",
++    "archiveSha256": "ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5"
++  },
++  "patchPath": "/tmp/gm-ts-owner-20261020/candidate.patch",
++  "patchSha256": "3a98de8a169b239da38cbe285de2f88e498406b8bdc24eec4685d6b4809a308e",
++  "cli": "/tmp/gm-ts-owner-20261020/tsc-patched",
++  "version": "7.1.0-dev",
++  "binarySha256": "061c589fd01523d69ca6bb74d74e6331b6092a14ee286bd60f11d7a51eeb9e66"
++}

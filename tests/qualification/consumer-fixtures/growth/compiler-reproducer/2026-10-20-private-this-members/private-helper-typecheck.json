@@ -1,0 +1,19 @@
+{
+  "kind": "private-helper-strict-typecheck",
+  "command": [
+    "/tmp/gm-completion-tools-20261020/node-v26.11.1-linux-x64/bin/node",
+    "node_modules/typescript/bin/tsc",
+    "-p",
+    "tests/tsconfig.consumer-fixtures.json",
+    "--noEmit",
+    "--pretty",
+    "false"
+  ],
+  "cwd": "/tmp/gm-patched-consumer-20261020",
+  "exit": 0,
+  "wallSeconds": 0.410561172,
+  "compilerVersion": "7.0.2",
+  "projectIncludesPrivateHelper": true,
+  "output": "",
+  "growthExecuted": false
+}

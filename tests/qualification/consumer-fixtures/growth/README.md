@@ -192,3 +192,107 @@ on unchanged maps, independent assertions and original caps, plus an explicitly
 reviewed maintainable compiler remedy. Candidate N=500 success, source-conformance
 coverage, and supported-pin adoption are separate claims. Source conformance
 remains **incomplete**, and the supported-toolchain delivery blocker remains open.
+
+## Private compiler-owner result, 2026-10-20
+
+A separate disposable experiment completed G-01 and the prescribed G-02/G-03
+series through N=1000 with a private compiler patch. The
+[evidence index](compiler-reproducer/2026-10-20-private-this-members/observations.json)
+retains the exact patch, reduced controls, profiles, selected semantic checks,
+private consumer adapter and complete measurement reports with raw logs. The
+earlier observations above retain their original dates, inputs and limits.
+
+The compiler derives from the same upstream commit
+`3200b90a617bcf9ad26543b347cabad8ff0dad14` and verified source/Go archives used
+in the 2026-10-18 follow-up. Its private patch SHA-256 is
+`3a98de8a169b239da38cbe285de2f88e498406b8bdc24eec4685d6b4809a308e`;
+the resulting native binary SHA-256 is
+`061c589fd01523d69ca6bb74d74e6331b6092a14ee286bd60f11d7a51eeb9e66`.
+The binary reports `7.1.0-dev`; the private manifest verifies its actual bytes
+and the reviewed patch bytes. The build had a separate 600-second cap. This
+compiler is a remedy candidate, with no supported-package or adoption claim.
+
+### Materialization finding and semantic scope
+
+The package-free N=200 mapped and inline controls preserve identical predecessor
+edges and the root. On the exact upstream candidate, the mapped control's sampled
+allocated space was 344.21 MB, including 248.31 MB in `addInheritedMembers`;
+the inline control recorded 84.54 MB and 18.16 MB respectively. Source inspection
+identified conservative synthetic `this` arguments for interfaces with mapped
+bases, followed by inherited member materialization for different descendant
+arguments. This is a separate cost from the overlapping-base traversal addressed
+by the upstream candidate.
+
+The private patch records a bottom-up proof only after member/base resolution
+for originating interfaces without actual local/outer type parameters or `this`
+references. It uses already proved interface bases and finalized concrete mapped
+bases, including the existing alias-argument variable check. A proved target
+reuses its own synthetic `this` argument when a descendant argument cannot affect
+its members. Classes, generic interfaces, actual polymorphic `this` and
+mapped bases whose members are still being resolved retain the existing route; no eager base resolution or
+general instantiation cache is added.
+
+With that patch, the mapped control recorded 82.86 MB of sampled allocated space,
+including 26.72 MB in `addInheritedMembers`; its profiled wall time changed from
+1.492871 to 0.462404 seconds. These are one-sample causal observations, not a
+latency guarantee. Seven existing upstream cases passed their diagnostic and
+emit baselines; six also checked type and symbol baselines, while the shared-base
+case retains its upstream `noTypesAndSymbols` directive. They cover fluent `this`,
+mapped aliases, distinct generic
+instantiations, inherited-member conflicts, shared ancestry, cycles and generic
+defaults. A focused baseline/patched counterexample also preserved captured outer
+`this`, fluent alias inheritance and a concrete mapped foreign `this`. These
+selected checks do not establish all upstream compiler behavior.
+
+### Unchanged consumer results
+
+The disposable consumer copy used Get Modular base
+`c5c314ab98c57d2c73448f0c3c9860424a993d8a`. Its only runtime adapter change
+selected a manifest explicitly marked `private-compiler-owner-patch`. The
+generator, independent oracles, fixed edits, runtime inputs and external
+supervisor were unchanged. Ready public package outputs were copied and hashed;
+generated source, configuration, compiler, outputs and isolated build information
+have their own identities in each report.
+
+G-01 first passed N=8, including its literal values, compatible wrong-provider
+rejection and complete smoke. Each larger size followed inspection of the
+preceding result. All eight G-02/G-03 stages passed at each size, including the
+unchanged incremental build, leaf edit/verification, baseline rewarm and fixed
+six-file shared-contract edit/verification. The table shows baseline roots and
+times in seconds; total time is measured by the existing parent supervisor and
+includes generation, copying, hashing and runtime work.
+
+| N | TS source files | Cold emit | Shared-contract emit | Total | Seed 17 root | Seed 23 root |
+| --- | --- | --- | --- | --- | --- | --- |
+| 100 | 703 | 1.446243 | 0.892854 | 5.868069 | 452417 | 948032 |
+| 500 | 3503 | 5.191031 | 3.548268 | 27.466654 | 750269 | 886955 |
+| 1000 | 7003 | 11.190537 | 8.044707 | 46.281343 | 869439 | 632838 |
+
+N=1000's baseline runtime stage took 8.522641 seconds. Its complete ordinary
+smoke witnessed 2,001 attempts, 1,002,000 factory calls and 1,998,003 dependency
+reads. Its baseline source SHA-256 is
+`08733408d3e304d5551df7a009cd3ea8fd2ceea879c106018a98a0f37123aea5`.
+Independent pins and both seeds passed after the prescribed edits. The original
+180-second compiler, 120-second runtime and 600-second per-size aggregate bounds
+were unchanged; no stage or aggregate deadline expired.
+
+A separate Linux `wait4` observation recorded 994,103,296 bytes for N=1000:
+the highest RSS of a waited process in the child lineage, including waited
+descendants. It is not simultaneous aggregate process-tree memory. The cgroup
+OOM and OOM-kill counters did not increase. These external observations are
+separate from the driver's uncollected RSS field and compiler memory diagnostics.
+
+### Remaining owner work
+
+The private-candidate consumer experiment is complete. The supported TypeScript
+7.0.2 growth delivery blocker remains open: this binary is neither a maintained
+compiler release nor an adopted GM toolchain. The compiler/package owner now has
+an exact patch, a reduced causal witness, selected semantic regressions and a
+complete unchanged-map N=1000 report for maintainable-fix review. A maintained
+artifact then follows its owning release process and a separate GM dependency
+adoption/qualification delivery. The existing exact-upstream command and
+supported compiler route are unchanged; the private adapter is retained only as
+evidence.
+
+This growth run selected no source scanner, so its source conformance remains
+**incomplete**. P4's selected flat source observations are a separate result.

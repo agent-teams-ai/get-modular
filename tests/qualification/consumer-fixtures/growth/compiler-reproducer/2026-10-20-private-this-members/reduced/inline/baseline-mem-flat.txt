@@ -1,0 +1,22 @@
+File: tsc-baseline
+Build ID: 47870bb1f11f37b3f3b08653ecc6176423cc01d6
+Type: alloc_space
+Time: 2026-10-20 11:05:58 IDT
+Showing nodes accounting for 58.54MB, 69.25% of 84.54MB total
+Showing top 15 nodes out of 412
+      flat  flat%   sum%        cum   cum%
+   18.16MB 21.49% 21.49%    18.16MB 21.49%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).addInheritedMembers
+    5.61MB  6.64% 28.12%     5.61MB  6.64%  slices.Grow[go.shape.[]go.shape.struct { github.com/microsoft/TypeScript/tsc/internal/ast.s github.com/microsoft/TypeScript/tsc/internal/ast.Symbol; github.com/microsoft/TypeScript/tsc/internal/ast.d github.com/microsoft/TypeScript/tsc/internal/ast.symbolData },go.shape.struct { github.com/microsoft/TypeScript/tsc/internal/ast.s github.com/microsoft/TypeScript/tsc/internal/ast.Symbol; github.com/microsoft/TypeScript/tsc/internal/ast.d github.com/microsoft/TypeScript/tsc/internal/ast.symbolData }] (inline)
+    5.07MB  5.99% 34.12%     5.07MB  5.99%  slices.Grow[go.shape.[]go.shape.struct { github.com/microsoft/TypeScript/tsc/internal/ast.PrimaryExpressionBase; github.com/microsoft/TypeScript/tsc/internal/ast.FlowNodeBase; Text string },go.shape.struct { github.com/microsoft/TypeScript/tsc/internal/ast.PrimaryExpressionBase; github.com/microsoft/TypeScript/tsc/internal/ast.FlowNodeBase; Text string }]
+    3.53MB  4.17% 38.29%     9.05MB 10.71%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).checkInheritedPropertiesAreIdentical
+    3.01MB  3.56% 41.84%     3.01MB  3.56%  github.com/microsoft/TypeScript/tsc/internal/collections.(*Set[go.shape.*github.com/microsoft/TypeScript/tsc/internal/checker.Type]).Add (inline)
+       3MB  3.55% 45.40%     8.10MB  9.58%  github.com/microsoft/TypeScript/tsc/internal/binder.(*Binder).declareSymbolEx
+       3MB  3.55% 48.95%        3MB  3.55%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).newObjectType
+    2.58MB  3.05% 52.00%     2.58MB  3.05%  slices.Grow[go.shape.[]go.shape.0f14187bcb0d005aa699ddbb5d53b7e0c4a56f5554388012726d8bac560c6895,go.shape.0f14187bcb0d005aa699ddbb5d53b7e0c4a56f5554388012726d8bac560c6895]
+    2.51MB  2.96% 54.96%     4.02MB  4.76%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).instantiateSymbolTable
+    2.50MB  2.96% 57.92%     2.50MB  2.96%  runtime.mallocgc
+    2.03MB  2.40% 60.32%     2.03MB  2.40%  slices.Grow[go.shape.[]go.shape.589b9887a0480d3642b2bb062e8af53427544c79db9d1f6a8349e93a8ce74449,go.shape.589b9887a0480d3642b2bb062e8af53427544c79db9d1f6a8349e93a8ce74449] (inline)
+       2MB  2.37% 62.69%        2MB  2.37%  slices.Grow[go.shape.[]go.shape.*uint8,go.shape.*uint8] (inline)
+       2MB  2.37% 65.06%        2MB  2.37%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).newUnionType
+       2MB  2.37% 67.43%        2MB  2.37%  github.com/microsoft/TypeScript/tsc/internal/core.(*Arena[go.shape.string]).NewSlice
+    1.54MB  1.82% 69.25%     1.54MB  1.82%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Relation).set

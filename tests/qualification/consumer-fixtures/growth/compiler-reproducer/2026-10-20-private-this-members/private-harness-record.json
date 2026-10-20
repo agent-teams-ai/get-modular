@@ -1,0 +1,128 @@
+{
+  "kind": "private-compiler-owner-consumer-harness",
+  "base": "c5c314ab98c57d2c73448f0c3c9860424a993d8a",
+  "clone": "local --no-hardlinks",
+  "claim": "disposable experiment only; no supported compiler adoption",
+  "unchanged": {
+    "package.json": {
+      "sha256": "23364aa99060205ef90fa0a964c8bea9aabe0ef5927e5e6b8e43a9b1b1f71c04",
+      "bytes": 13534
+    },
+    "pnpm-lock.yaml": {
+      "sha256": "048ead2ca34259c02790924af0935b553a644ea753a90177dc136c6bcedd8f6f",
+      "bytes": 104889
+    },
+    "tests/qualification/consumer-fixtures/support/materialize.mjs": {
+      "sha256": "499e1ea709e47f1b3b71f8b49bc1a30e393a2c8cd41be12f2d3a3659a9e57f66",
+      "bytes": 5519
+    },
+    "tests/qualification/consumer-fixtures/growth/upstream-compiler.ts": {
+      "sha256": "fa2335a5829e07c557eaafc58d33a25ec3ae94025fe223fa4aad0af516adcdb0",
+      "bytes": 12002
+    },
+    "tests/qualification/consumer-fixtures/growth/run.mjs": {
+      "sha256": "87c9aad326e70efd4d9c911e98a9a284dc0d37c13a16e4ba0e7aafb6731ece30",
+      "bytes": 7605
+    },
+    "tests/qualification/consumer-fixtures/growth/measure.mjs": {
+      "sha256": "5e5456f4a01963d8e2148d989c4e87227752a73c58672a21ed599e70d712095d",
+      "bytes": 1293
+    },
+    "tests/qualification/consumer-fixtures/growth/generate.mjs": {
+      "sha256": "ba807269b24cad47e2e0e0cdf884ba60966bbf64eca07ea1d58d61f31a798dec",
+      "bytes": 6755
+    },
+    "tests/qualification/consumer-fixtures/growth/oracle.mjs": {
+      "sha256": "37e50eb47658c5e756e2f7a7b331bb5bd73905793f50fc65f3943a2102a896c0",
+      "bytes": 2386
+    },
+    "tests/qualification/consumer-fixtures/growth/patches.mjs": {
+      "sha256": "77723921840b1024efb7361c3c7cf66c238e7d5a583260179f739f158df038a7",
+      "bytes": 2087
+    },
+    "tests/qualification/consumer-fixtures/growth/test-source/incremental-runtime.mjs.txt": {
+      "sha256": "7c984b2829a36cb8300cfe2a7d1d2c9f566ffb0da960874bbdff009c58330f8f",
+      "bytes": 2457
+    },
+    "tests/qualification/consumer-fixtures/growth/test-source/runtime.mjs.txt": {
+      "sha256": "2f3096f8145bd3e31db9ae83e9d515dee8a478c2ecb13c31aa20592921aeb492",
+      "bytes": 8400
+    },
+    "tests/qualification/consumer-fixtures/growth/test-source/wrong-provider.ts.txt": {
+      "sha256": "017bf8b8c457c53ec68998b3c6740e3a0f89416dd68094e72c7ab6544ffb7000",
+      "bytes": 849
+    }
+  },
+  "worker": {
+    "sha256": "8fea492ba4e50f746516ccba8fa37d8989c5b6219727a03e6b9c595b97607308",
+    "bytes": 11153
+  },
+  "helper": {
+    "sha256": "6423f4dc9b32159c21a8f42e2fc71721298107f580719e83f951862da1331265",
+    "bytes": 2368
+  },
+  "strictProject": {
+    "sha256": "03aed52f89d04ca4c567997f622227df07489450b3acdee5c3c56f6e5570c0f4",
+    "bytes": 394
+  },
+  "manifest": {
+    "sha256": "f7329b8d4528340835852a364d396e30c125d4441b62c346612e965a9d02a4cb",
+    "bytes": 689
+  },
+  "patch": {
+    "sha256": "3a98de8a169b239da38cbe285de2f88e498406b8bdc24eec4685d6b4809a308e",
+    "bytes": 3805
+  },
+  "binary": {
+    "sha256": "061c589fd01523d69ca6bb74d74e6331b6092a14ee286bd60f11d7a51eeb9e66",
+    "bytes": 41524518
+  },
+  "packageOutputs": {
+    "core": {
+      "sha256": "ffc4af28e836bf3eb52d83d7df666debd7d5a15ebfe1709d4c00ec1880f1122d",
+      "files": 104,
+      "bytes": 220936
+    },
+    "assembly": {
+      "sha256": "27857b3b30f6ae441691db0252d0edabdb643a4a30230060307045fefb1cac0a",
+      "files": 24,
+      "bytes": 75052
+    },
+    "resources": {
+      "sha256": "a23d985916e40a6e62fa68fea7b696735d656b9ccff2b254802fdd47656352e3",
+      "files": 12,
+      "bytes": 25336
+    },
+    "conformance": {
+      "sha256": "367c3b6acbe2f42c9ce2faf7e9b49467aaed8163b20c5a0a8d7ac5f88f0f0bc9",
+      "files": 36,
+      "bytes": 81758
+    }
+  },
+  "growthExecuted": false,
+  "harnessDiff": {
+    "sha256": "4cd73dc3c0e6fff9a06831c7e6a16bffc9f00a2f5371c7e745ca311a06dba003",
+    "bytes": 5000
+  },
+  "packagePreparationReceipt": "/tmp/gm-ts-owner-20261020/package-preparation.json",
+  "strictTypecheck": {
+    "kind": "private-helper-strict-typecheck",
+    "command": [
+      "/tmp/gm-completion-tools-20261020/node-v26.11.1-linux-x64/bin/node",
+      "node_modules/typescript/bin/tsc",
+      "-p",
+      "tests/tsconfig.consumer-fixtures.json",
+      "--noEmit",
+      "--pretty",
+      "false"
+    ],
+    "cwd": "/tmp/gm-patched-consumer-20261020",
+    "exit": 0,
+    "wallSeconds": 0.410561172,
+    "compilerVersion": "7.0.2",
+    "projectIncludesPrivateHelper": true,
+    "output": "",
+    "growthExecuted": false
+  },
+  "status": "prepared; independent review passed; public outputs copied and strict project passed; no size selected"
+}
