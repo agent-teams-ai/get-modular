@@ -91,6 +91,10 @@ paths that Hosts alert on.
 - One close flight per scope. Repeated `close()` calls join it. A call after it
   completed with debts retries the failed entries, so a cleanup that must not
   run twice guards itself.
+- The requested subtree refuses registration before abort listeners run.
+  Cleanup waits for those synchronous listeners to return, including when a
+  listener closes an ancestor. A repeated close joins the reserved flight, and
+  a pre-aborted escalation is visible from the first cleanup.
 - `cleanup` receives `{ escalate }`. Aborting the `escalate` signal you passed
   to `close` asks every cleanup of the current flight of the subtree to release
   faster. It never permits skipping a release.
