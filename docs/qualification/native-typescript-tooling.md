@@ -92,8 +92,7 @@ historical inputs and evidence. This checkpoint does not claim a fresh retained
 historical qualification. Fixed-two transition data, original registry subjects,
 SDK predecessor inputs, HOLD and unverified-authority expectations are unchanged.
 The earlier 1.7.4 installation was refused by the compiler preflight. The
-current local candidate instead binds the verified published native archive
-below. Earlier local results keep their original source identities; they do
+current candidate binds the verified published Foundation 2.0.0 archive below. Earlier local results keep their original source identities; they do
 not claim an aggregate gate or final head/base CI for this candidate.
 
 ## Installed Foundation boundary
@@ -117,7 +116,40 @@ exact 0.2.0 candidate files. The original five typed observations and four
 transitions retain their incomplete-evidence, HOLD and unverified-authority
 expectations. This fixture supplies no release authority or G1 activation.
 
-### Published native artifact and local candidate
+### Published tooling checkpoint, 2026-10-20
+
+Current exact development pins are Foundation 2.0.0, FMS 0.2.0 and Docs 0.6.3.
+FMS's optional Foundation peer is `^1.8.0 || ^2.0.0`; GM's adopted FMS v1
+identity remains unchanged. Foundation's actual archive binds:
+
+- SHA-256: `855227b2383f7a69358142ccec2bc88b601d97428104504d775524a6fdc856d3`.
+- SRI: `sha512-n12TlBVEyR0p9JL+3cjvCn+YukOu5wmKV2AK5Q1F44S+ULusTTNR9EyCplENsHrtAHFL3CeDhUYw/NpJmxVc9g==`.
+- Source: `18bc5d1c1310b9837f26ac43b16dab63a087154f`.
+
+[Protected release run 39473703985, attempt 1](https://github.com/agent-teams-ai/engineering-foundation/actions/runs/39473703985/attempts/1)
+succeeded. Independent cohort reconciliation returned GO, including the actual
+Docs 0.6.3 archive from its earlier release source; `cohort-verdict.json` has
+SHA-256 `293f074e95c22ff8425fc5ad937c50aa9b6a8af3e7b9e678da19b08242997b73`.
+The separate Foundation installed verifier passed 2,776 file checks, four CLI
+controls and six workflow controls across Node/Bun profiles; `verification.json`
+has SHA-256 `016514224f6112f21ba2f2fde305fe6db8a47fa91f7cbc7ab27a1184328d9bd7`.
+
+Both actual GM locks were generated with these pins. Pnpm 11.20.0 passed strict
+generation and frozen strict lock-only admission; Bun 1.4.3 passed generation
+and a frozen dry run with the manifest projection preserved. Receipt
+`gm-dual-lock-generation-receipt.json` has SHA-256
+`d8756838f51d1f534d4d6932275ef31158d5446dea6cb6aa60bdab8794ba2403`.
+These are Foundation verification and GM lock-admission proofs. Clean GM
+Bun/Node installations, compiler/native checks, full CI, M3 and packed
+qualification remain pending. The current failure-retention producer binds
+Foundation 2.0.0 and its actual SRI; historical CLI bytes remain unchanged.
+SDK growth stays pending/HOLD with its external proof requirements intact.
+
+### Historical 1.10.0 native artifact and local candidate
+
+The following record retains its original wording and receipt bytes. References
+to the current candidate or producer in this record mean its earlier 1.10.0
+checkpoint, not the current pins and qualification state above.
 
 The current local candidate pins the public registry package
 `@agent-teams/engineering-foundation@1.10.0` with this exact archive identity:
@@ -187,10 +219,13 @@ required by `foundation:check`; no additional release workflow is introduced.
 
 ## Verification and merge sequence
 
-The existing five CI lane groups, all six operating-system/Node combinations,
-three optional leaf admissions, public entrypoint inventories and release-owned
-file checks retain their scope. Current source changes must pass the existing
-fast and full gates with the actual installed native registry package.
+The current CI matrix has six roles on each of Ubuntu, macOS and Windows for
+default Bun, projected Node 24 compatibility and projected Node 26 rollback.
+Node 26.11.1 remains the default controller; explicit Node qualification and
+packed routes retain their separate guards. Existing leaf admissions, public
+entrypoint inventories and release-owned file checks retain their scope. The
+current cohort still needs clean Get Modular installation, fast/full and native
+CI/M3 evidence; the published Foundation verifier does not provide it.
 
 The sequence is:
 
@@ -209,7 +244,7 @@ does not replace the versioned release preflight or authorize an extra baseline
 release. The planned implementation minor provides the actual release context.
 
 This local candidate records the actual native registry artifact and its
-separate cryptographic verification. Protected release closure, current
-aggregate qualification and final head/base CI are not inferred from that
-artifact record. Exact results belong to the final PR and release evidence;
+separate cryptographic verification. Foundation protected release completion is independently verified above; Get
+Modular aggregate qualification and final head/base CI are not inferred from
+that artifact record. Exact results belong to the final PR and release evidence;
 earlier candidate checks retain their original source and artifact bindings.

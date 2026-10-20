@@ -21,6 +21,23 @@ The historical packed-candidate replay is retained below with its original
 `kind: research-selected-flat-source` and `source: incomplete`. The ordinary
 installed route does not relabel that earlier execution.
 
+## Current cohort and pending qualification, 2026-10-20
+
+The current root pins are Foundation 2.0.0, FMS 0.2.0 and Docs Protocol 0.6.3.
+The actual FMS optional Foundation peer `^1.8.0 || ^2.0.0` admits that exact
+Foundation pin. Published cohort reconciliation and a separate Foundation
+installed verifier passed; both real GM locks passed generation and frozen
+lock admission as described in the [tooling checkpoint](../../../../docs/qualification/native-typescript-tooling.md#published-tooling-checkpoint-2026-10-20).
+These observations do not qualify the current GM installed-source fixture.
+Clean GM Bun/Node installations, this selected source/runtime route, full CI,
+M3 and packed qualification remain pending for the new cohort.
+
+`installed.ts` continues to read the exact root development pins and actual
+installed package identities. The recipe's scope and production FMS v1 adoption
+are unchanged. The dated checkpoints below retain their original versions,
+commands, hashes, results and publication failures as historical evidence;
+their installed passes do not claim a rerun against the current cohort.
+
 ## Publication checkpoint, 2026-10-18
 
 The implementation and exact development pins are prepared, but this checkpoint
@@ -140,9 +157,12 @@ the historical `run-research.mjs` call that same scenario runner. The former
 uses the root's installed exact registry pins; the latter supplies isolated
 research tools. Each wrapper owns its evidence status.
 
-Run the ordinary source and runtime entries with the repository's pinned Node
-and pnpm, a frozen installation, and ready public package outputs as described
-in the [parent README](../README.md#run-and-interpret-the-evidence):
+Run the current ordinary source and runtime entries with the repository's pinned
+Node after a frozen installation through the selected [runtime profile](../../../../docs/architecture/feature-module-standard.md#repository-runtime-profiles),
+with ready public package outputs as described in the
+[parent README](../README.md#run-and-interpret-the-evidence). The default install
+is Bun-owned; Node/pnpm rollback uses its separate projected checkout. This
+test command retains explicit Node execution:
 
 ```sh
 node --test tests/assembly/consumer-fixtures.test.mjs

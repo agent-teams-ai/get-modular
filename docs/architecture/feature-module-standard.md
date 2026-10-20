@@ -122,10 +122,14 @@ production. The first production package must atomically:
 - change the admission state to `source-admitted`;
 - enable Engineering Foundation's `architecture.source-dependencies`
   capability at `architecture/foundation/source-dependencies.yaml`; and
-- execute the pinned `@agent-teams/engineering-foundation` `1.10.0` command
-  `agent-teams-foundation check` through both the complete and fast gates.
+- execute the pinned `@agent-teams/engineering-foundation` `2.0.0` command
+  through `node architecture/tooling/runtime/command.ts tool agent-teams-foundation check`
+  in both the complete and fast gates.
 
-The tooling activation pins native Foundation `1.10.0`. SDK growth admission remains
+The current tooling pins Foundation `2.0.0`, Feature Module Standard `0.2.0`
+and Docs Protocol `0.6.3` as exact registry development dependencies. The FMS
+package update does not change this repository's adopted FMS v1 authority.
+SDK growth admission remains
 explicitly pending: the active public-API capability retains schema v1 until a
 trusted external authority binds the PR base and candidate to authenticated
 released Core and Assembly artifacts. Local qualification records cannot
@@ -137,27 +141,31 @@ no waivers. Activation does not claim that existing source passes typed lint
 or establish structural or runtime conformance. Docs retains its portable
 workflow without a managed adapter or cohort binding.
 
-The native Foundation 1.10.0 binding follows the retained 1.7.4 and 1.7.2
-records and keeps the immutable Feature Module Standard and
-Consumer Module Standard pins. The retained current Consumer Module Standard
-adds the optional ADR-0029 dynamic Host guidance; it does not expand passive
-composition or confer SDK authority. The current SDK tooling binding advances
-while the earlier Foundation archive and P0 records remain historical evidence.
+The earlier native Foundation 1.10.0 binding followed the retained 1.7.4 and
+1.7.2 records. Those archive, compiler and CLI observations remain historical
+evidence under their original identities. The current Foundation 2.0.0 binding
+keeps the immutable Feature Module Standard authority and the separately reviewed
+Consumer Module Standard chain. Neither publication nor a tooling pin confers
+SDK authority or completes composition qualification.
 SDK status stays pending, activation stays on hold and release eligibility stays
 false.
 
-The local changed workflow keeps the schema published with Foundation 1.7.2;
-the native 1.10.0 binding does not change it.
-JS and TS edits select the existing project-wide `check:fast` script with
-`passPaths: false`; changed file names never become compiler arguments.
-Compiler projects and root check configuration select the same fast gate through
-explicit configuration triggers. Root Markdown-only edits retain `docs:changed`;
-the existing `docs` and `architecture` full-scan triggers remain.
-A mixed docs and code change still runs the code gate. Version 1 changed reports
-are editing feedback: their `coverage: changed` label does not claim that typed
-lint or the full gate ran. `bun run check` remains the complete required gate.
-This corrects routing inside the existing development-tooling boundary; it adds
-no production composition node, consumer adoption scope or public contract.
+The current `check:changed` script calls the published Foundation
+`agent-workflow check-changed` successor with repository-agent-workflow policy
+schema v2. The repository scope requires lint, typecheck, tests, standards and
+architecture facets; its declared `repository` check runs the complete `check`
+script. The legacy `changedChecks` code/docs mappings remain for the separately
+tested `agent-workflow changed` command; they do not describe the successor's
+coverage plan.
+
+The successor emits report schema v2 with explicit planned checks, per-path
+coverage and input custody. When a selected check passes but mutable input
+binding is unverified, its outcome is `feedback-only`, with reason
+`mutable-input-binding-unverified`. Editing feedback does not prove exclusive
+input custody, complete CI qualification or release authority. `bun run check`
+remains the complete required gate. This route stays inside the existing
+development-tooling boundary; it adds no production composition node or
+consumer adoption scope.
 
 ### Repository runtime profiles
 
@@ -227,24 +235,32 @@ primitive is supplied by the runtime. Host install projections and version
 policy remain local. Copying Foundation's complete Host runtime would duplicate
 policy and lifecycle ownership. No broad reusable runtime SPI is claimed.
 
-The current Consumer Module Standard was reviewed at upstream `300e7e1`
-(full document SHA-256
-`c2fe582a14ff6e79620b232ca7ffc914afb0474ec21fd43f208251dd7252f4a3`).
-Compared with the SDK-growth retained `24d6557a` pin, its changes add resource
-scopes, inputs, contracts, groups, observation and conformance guidance. They do
-not turn this fixed tooling seam into a composition node. The separate SDK-growth
-adoption remains pending under its existing profile; this change does not
-silently migrate or certify that unrelated pin.
+The current Consumer Module Standard review pins exact source
+`a7d8db433fb3c4187fbeab4dcec4e6d69a4f70ca`, with full-document SHA-256
+`8f92029eec9610f6f83afe6f86352557f268b1abd8e2a241f16d86f5f0eaada9`.
+Its incremental delta from reviewed `300e7e1` changes only five current GM
+verification commands to Bun. The earlier `24d6557a` to `300e7e1` composition,
+resource, contract and observation review remains authenticated historical
+evidence. Current, previous and P0 snapshots, both retained deltas and prior
+reviews remain checked. SDK growth stays pending under its existing profile;
+this command guidance supplies none of its outstanding external authority.
 
-Cutover qualification is pending: the prepared Foundation 2.0.0 dependency has
-not yet been published or bound to actual registry integrity; both real locks
-must be regenerated together after publication, including the declared pnpm
-coordinate. `bun.lock` is deliberately absent until that actual resolution is
-available, and the install wrapper reports `runtime.install.bun-lock-pending`.
-Required next checks are clean frozen Bun and isolated Node installations,
-manager/compiler-hook regressions, native OS lanes, packed qualification and the
-complete gates. The earlier Foundation 1.10.0 records above remain historical
-observations and do not prove this cutover.
+The current tool cohort is published and reconciled. Foundation 2.0.0 and FMS
+0.2.0 were published by successful
+[release run 39473703985, attempt 1](https://github.com/agent-teams-ai/engineering-foundation/actions/runs/39473703985/attempts/1)
+from exact source `18bc5d1c1310b9837f26ac43b16dab63a087154f`; the reconciled cohort
+also includes the actual Docs 0.6.3 archive published from its earlier release
+source. The independent cohort review and separate installed Foundation verifier
+are recorded in the [published tooling checkpoint](../qualification/native-typescript-tooling.md#published-tooling-checkpoint-2026-10-20).
+Those Foundation proofs do not qualify this Get Modular checkout.
+
+Both real locks now exist. Pinned pnpm 11.20.0 generated its strict lock and
+passed frozen strict lock-only admission; Bun 1.4.3 generated `bun.lock` and
+passed a frozen dry run. The root workspaces/catalog projection was preserved.
+These are lock-admission observations only. Clean Get Modular installations,
+manager/compiler-hook regressions, the six-role OS/profile matrix, M3 and packed
+qualification, and the complete gates remain pending on the candidate head.
+Earlier Foundation 1.10.0 observations do not prove this cutover.
 
 Retained Node tooling qualification used Node 26.11.1 by default, with Node
 24.21.0 compatibility. Its root/tooling policy remains
@@ -276,15 +292,16 @@ lanes on Ubuntu, macOS and Windows, including strict frozen installation,
 committed peer validation, the complete gate union and tracked workspace
 integrity. The governance lane explicitly executes policy typechecking and
 tests. The existing installed public archive compatibility lane remains
-separate. Docs Protocol is pinned exactly to `0.6.2`, the published stable
-successor declaring Node `^24.18.0 || ^26.0.0`; `0.6.0` excludes Node 26.
+separate. Docs Protocol is now pinned exactly to published `0.6.3`, declaring
+Node `^24.18.0 || ^26.0.0`; `0.6.0` excludes Node 26.
 The `portable-v1` profile and schema remain unchanged. The Node 24.21.0 and
 Node 26.10.0 root routes, with the exact Docs `0.6.2` closure, strict frozen
 installations under pnpm 11.20.0, Foundation and Docs checks and the complete
 mandatory gates, were qualified by genuine CI on all three operating systems in
-PR #149 (merge `557b713`). The Node 26.11.1 default and the Node 24.21.0
-compatibility routes are verified by the exact-head CI of each change, which must
-pass on both before merge; this document records no CI result for any head. This does not change the published packages. This mapping
+PR #149 (merge `557b713`). That historical Docs 0.6.2 closure is not evidence for
+the current cohort. Default Bun lanes on the Node 26.11.1 controller, projected
+Node 24.21.0 compatibility and projected Node 26.11.1 rollback must all pass
+exact-head CI before merge. Current Get Modular qualification is pending. This mapping
 and repository gate declare no managed cohort binding, installer authorization,
 production qualification of a product or release eligibility.
 
