@@ -77,8 +77,8 @@ qualification and runtime proof remain pending. No `self-composed-qualified`,
 conformance or `release-eligible` claim follows from implementation; generated
 publication still requires the complete M3 and packed-consumer gates.
 
-Standalone `pnpm governance:check` performs a fresh build after validating the
-accepted implementation scope against one captured Git index. After the explicit runtime, committed peer and policy gates, `pnpm check`
+Standalone `bun run governance:check` performs a fresh build after validating the
+accepted implementation scope against one captured Git index. After the explicit runtime, committed peer and policy gates, `bun run check`
 invokes this governance entry before the remaining build gates and shares its
 completed build; its later gates still run normally. Only the fixed generated root may differ from tracked
 source: governance compares its complete bytes with the fresh emission held
@@ -331,7 +331,7 @@ including separate declaration and profile raw-byte limits and
 
 The complete repository gate runs the effective resource qualification through
 `contracts:test`, which invokes the same executable proof as the separately
-available unversioned command `pnpm qualification:resource-profile`. The test
+available unversioned command `bun run qualification:resource-profile`. The test
 and evidence filenames retain their historical names for custody and
 traceability.
 

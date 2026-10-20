@@ -59,17 +59,17 @@ commands naming them do not exist until their implementation lands.
 
 | Use | Command or existing owner |
 | --- | --- |
-| Dependency-free runtime guard | `pnpm runtime:preflight` |
-| Prepare required source package outputs when absent/stale | `pnpm assembly:build`, then `pnpm resources:build`, then `pnpm conformance:build` |
+| Dependency-free runtime guard | `bun run runtime:preflight` |
+| Prepare required source package outputs when absent/stale | `bun run assembly:build`, then `bun run resources:build`, then `bun run conformance:build` |
 | Focused semantic/lifetime cases, NEW file | `node --test tests/assembly/consumer-fixtures.test.mjs` |
 | Focused restart cases, NEW file | `node --test tests/assembly/consumer-restart.test.mjs` |
-| Mandatory owner of those test entries | Existing `pnpm assembly:test` includes `tests/assembly/**/*.test.mjs` |
-| Packed archive consumer owner | Existing `pnpm conformance:pack`, through `packages/conformance/tests/packed-root.test.mjs` |
-| Fixture source dependency check | Existing `pnpm exec agent-teams-foundation check architecture.source-dependencies --consumer <disposable-consumer> --format json` with its own profile |
+| Mandatory owner of those test entries | Existing `bun run assembly:test` includes `tests/assembly/**/*.test.mjs` |
+| Packed archive consumer owner | Existing `bun run conformance:pack`, through `packages/conformance/tests/packed-root.test.mjs` |
+| Fixture source dependency check | Existing `node architecture/tooling/runtime/command.ts tool agent-teams-foundation check architecture.source-dependencies --consumer <disposable-consumer> --format json` with its own profile |
 | Integrated P4 CMS/FMS mutations and bounded P6 cases | Same `tests/assembly/consumer-fixtures.test.mjs` entry; not just the source-dependency CLI or optional growth driver |
-| Changed-input routing | `pnpm check:changed` |
-| Before handoff | `pnpm check:fast` |
-| Complete repository gate | `pnpm check` and the existing required CI contexts |
+| Changed-input routing | `bun run check:changed` |
+| Before handoff | `bun run check:fast` |
+| Complete repository gate | `bun run check` and the existing required CI contexts |
 | Optional growth measurement, NEW driver | `node tests/qualification/consumer-fixtures/growth/measure.mjs --size 100` |
 
 The preparation commands are not an instruction to rebuild before every test.
@@ -165,7 +165,7 @@ scope; do not globally route all JSON. P4 adds its exact checked-in
 `consumer-fixtures/source/source-dependencies.yaml` path to the same route.
 Other new configuration paths must be named there when introduced. Existing
 `architecture`, docs and manifest changes can select full scans.
-Before handoff, retain a valid fast result and one complete `pnpm check` result
+Before handoff, retain a valid fast result and one complete `bun run check` result
 on the final relevant inputs. Reuse a completed matching result instead of
 mechanically repeating it because two instructions name the same command.
 A narrow command does not replace the complete gate or existing OS/Node lanes.

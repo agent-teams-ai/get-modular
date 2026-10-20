@@ -373,19 +373,19 @@ test("requires profile enforcement in complete and fast gates", () => {
     "",
   );
   assert.throws(() => validate({ packageJson: missingComplete }),
-    /check must use its exact closed node architecture/tooling/runtime/command.ts run command chain/u);
+    /check must use its exact closed node architecture\/tooling\/runtime\/command\.ts run command chain/u);
 
   const missingFast = clone(packageJson);
   missingFast.scripts["check:fast"] = "node architecture/tooling/runtime/command.ts run foundation:check && node architecture/tooling/runtime/command.ts run docs:check";
   assert.throws(() => validate({ packageJson: missingFast }),
-    /check:fast must use its exact closed node architecture/tooling/runtime/command.ts run command chain/u);
+    /check:fast must use its exact closed node architecture\/tooling\/runtime\/command\.ts run command chain/u);
 
   for (const scriptName of ["check", "check:fast"]) {
     for (const prefix of [": # && ", ":; ", ": || ", ": | ", ":\n"]) {
       const bypass = clone(packageJson);
       bypass.scripts[scriptName] = `${prefix}${bypass.scripts[scriptName]}`;
       assert.throws(() => validate({ packageJson: bypass }),
-        /must use its exact closed node architecture/tooling/runtime/command.ts run command chain/u);
+        /must use its exact closed node architecture\/tooling\/runtime\/command\.ts run command chain/u);
     }
     const commands = packageJson.scripts[scriptName].split(" && ");
     for (const removed of commands) {
@@ -394,7 +394,7 @@ test("requires profile enforcement in complete and fast gates", () => {
         .filter(command => command !== removed)
         .join(" && ");
       assert.throws(() => validate({ packageJson: incomplete }),
-        /must use its exact closed node architecture/tooling/runtime/command.ts run command chain/u);
+        /must use its exact closed node architecture\/tooling\/runtime\/command\.ts run command chain/u);
     }
   }
 
@@ -461,13 +461,13 @@ test("requires profile enforcement in complete and fast gates", () => {
       [candidate[0], candidate[index]] = [candidate[index], candidate[0]];
       reordered.scripts[scriptName] = candidate.join(" && ");
       assert.throws(() => validate({ packageJson: reordered }),
-        /must use its exact closed node architecture/tooling/runtime/command.ts run command chain/u);
+        /must use its exact closed node architecture\/tooling\/runtime\/command\.ts run command chain/u);
     }
     const testsBeforeCompiler = clone(packageJson);
     [commands[2], commands[3]] = [commands[3], commands[2]];
     testsBeforeCompiler.scripts[scriptName] = commands.join(" && ");
     assert.throws(() => validate({ packageJson: testsBeforeCompiler }),
-      /must use its exact closed node architecture/tooling/runtime/command.ts run command chain/u);
+      /must use its exact closed node architecture\/tooling\/runtime\/command\.ts run command chain/u);
   }
 });
 
@@ -489,13 +489,13 @@ test("rejects Foundation before generation and redundant aggregate preparation",
     [commands[build], commands[foundation]] = [commands[foundation], commands[build]];
     reordered.scripts[scriptName] = commands.join(" && ");
     assert.throws(() => validate({ packageJson: reordered }),
-      /must use its exact closed node architecture/tooling/runtime/command.ts run command chain/u);
+      /must use its exact closed node architecture\/tooling\/runtime\/command\.ts run command chain/u);
     const redundant = clone(packageJson);
     redundant.scripts[scriptName] = redundant.scripts[scriptName].replace(
       "node architecture/tooling/runtime/command.ts run core:typecheck:prepared", "node architecture/tooling/runtime/command.ts run core:typecheck",
     );
     assert.throws(() => validate({ packageJson: redundant }),
-      /must use its exact closed node architecture/tooling/runtime/command.ts run command chain/u);
+      /must use its exact closed node architecture\/tooling\/runtime\/command\.ts run command chain/u);
   }
 });
 
@@ -635,7 +635,7 @@ test("first production package requires the Foundation source-dependency gate", 
   const missingFastGate = clone(configured);
   missingFastGate.packageJson.scripts["check:fast"] = "node architecture/tooling/runtime/command.ts run docs:check";
   assert.throws(() => validateFirstProductionPackageAdmission(missingFastGate),
-    /check:fast must use its exact closed node architecture/tooling/runtime/command.ts run command chain/u);
+    /check:fast must use its exact closed node architecture\/tooling\/runtime\/command\.ts run command chain/u);
 });
 
 test("first production package cannot use a no-op Foundation alias", () => {
@@ -872,7 +872,7 @@ test("requires the Assembly gates in dependency order in both root commands", ()
       const changed = clone(packageJson);
       changed.scripts[scriptName] = commands.filter(command => command !== removed).join(" && ");
       assert.throws(() => validate({ packageJson: changed }),
-        /must use its exact closed node architecture/tooling/runtime/command.ts run command chain/u);
+        /must use its exact closed node architecture\/tooling\/runtime\/command\.ts run command chain/u);
     }
     const reordered = clone(packageJson);
     const build = commands.indexOf(required[0]);
@@ -880,7 +880,7 @@ test("requires the Assembly gates in dependency order in both root commands", ()
     [commands[build], commands[typecheck]] = [commands[typecheck], commands[build]];
     reordered.scripts[scriptName] = commands.join(" && ");
     assert.throws(() => validate({ packageJson: reordered }),
-      /must use its exact closed node architecture/tooling/runtime/command.ts run command chain/u);
+      /must use its exact closed node architecture\/tooling\/runtime\/command\.ts run command chain/u);
   }
 });
 
