@@ -1,0 +1,14 @@
+{
+  "checker.go": {
+    "sha256": "c7426ae4914b8a724ae6d43b1cdcccffd43f08179e0d03889f30dea58f380d35",
+    "bytes": 1458316
+  },
+  "types.go": {
+    "sha256": "7d85f3474c997b863aa7e96e04910488ba197473a0550867972f60c39e4781ad",
+    "bytes": 64945
+  },
+  "candidate.patch": {
+    "sha256": "3a98de8a169b239da38cbe285de2f88e498406b8bdc24eec4685d6b4809a308e",
+    "bytes": 3805
+  }
+}

@@ -1,0 +1,37 @@
+export {};
+
+// Eligible-looking local interfaces must not rebind an enclosing class's this.
+class Owner {
+  read() {
+    type OuterMap = { readonly [K in "owner"]: this };
+    interface Base extends OuterMap {}
+    interface Derived extends Base { readonly derived: "derived" }
+    const value = null! as Derived;
+    const exact: this = value.owner;
+    // @ts-expect-error An owner is not the mapped property's containing interface.
+    const wrong: Derived = value.owner;
+    return exact;
+  }
+}
+class SpecialOwner extends Owner { readonly special = "special" }
+declare const owner: SpecialOwner;
+const exactOwner: SpecialOwner = owner.read();
+
+// A plain alias to a fluent interface must retain derived-this substitution.
+interface Fluent { self(): this }
+type FluentAlias = Fluent;
+type Marker = { readonly [K in "marker"]: "marker" };
+interface Mixed extends Marker, FluentAlias {}
+interface MixedDerived extends Mixed { readonly derived: "derived" }
+declare const mixed: MixedDerived;
+const exactDerived: MixedDerived = mixed.self();
+
+// A concrete homomorphic map's foreign this must keep its original behavior.
+interface Foreign { self(): this; readonly foreign: "foreign" }
+type Copy<T> = { readonly [K in keyof T]: T[K] };
+interface Copied extends Copy<Foreign> {}
+interface CopiedDerived extends Copied { readonly derived: "derived" }
+declare const copied: CopiedDerived;
+const exactForeign: Foreign = copied.self();
+// @ts-expect-error A mapped Foreign method does not acquire CopiedDerived's members.
+const wrongDerived: CopiedDerived = copied.self();

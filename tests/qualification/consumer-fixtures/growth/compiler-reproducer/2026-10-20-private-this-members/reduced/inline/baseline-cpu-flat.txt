@@ -1,0 +1,23 @@
+File: tsc-baseline
+Build ID: 47870bb1f11f37b3f3b08653ecc6176423cc01d6
+Type: cpu
+Time: 2026-10-20 11:05:58 IDT
+Duration: 309.88ms, Total samples = 420ms (135.54%)
+Showing nodes accounting for 210ms, 50.00% of 420ms total
+Showing top 15 nodes out of 279
+      flat  flat%   sum%        cum   cum%
+      40ms  9.52%  9.52%       90ms 21.43%  runtime.scanObject
+      30ms  7.14% 16.67%       30ms  7.14%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).getApparentType
+      20ms  4.76% 21.43%       30ms  7.14%  runtime.tryDeferToSpanScan
+      10ms  2.38% 23.81%       10ms  2.38%  github.com/microsoft/TypeScript/tsc/internal/ast.(*SymbolWithData).Initialize
+      10ms  2.38% 26.19%       10ms  2.38%  github.com/microsoft/TypeScript/tsc/internal/ast.GetSourceFileOfNode (inline)
+      10ms  2.38% 28.57%       10ms  2.38%  github.com/microsoft/TypeScript/tsc/internal/ast.IsIdentifier (inline)
+      10ms  2.38% 30.95%       10ms  2.38%  github.com/microsoft/TypeScript/tsc/internal/binder.(*Binder).addDeclarationToSymbol
+      10ms  2.38% 33.33%      110ms 26.19%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).checkTypeReferenceNode
+      10ms  2.38% 35.71%       90ms 21.43%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).checkTypeReferenceOrImport
+      10ms  2.38% 38.10%       40ms  9.52%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).getPropertiesOfType
+      10ms  2.38% 40.48%       20ms  4.76%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).getReducedType
+      10ms  2.38% 42.86%       50ms 11.90%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Relater).signaturesRelatedTo
+      10ms  2.38% 45.24%       10ms  2.38%  github.com/microsoft/TypeScript/tsc/internal/core.ComputeECMALineStartsSeq.func1
+      10ms  2.38% 47.62%       10ms  2.38%  github.com/microsoft/TypeScript/tsc/internal/parser.(*Parser).initializeClosures.1
+      10ms  2.38% 50.00%       10ms  2.38%  internal/runtime/atomic.(*UnsafePointer).Load (inline)

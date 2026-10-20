@@ -1,0 +1,58 @@
+{
+  "case": "mapped",
+  "command": [
+    "/tmp/gm-ts-owner-20261020/tsc-baseline",
+    "-p",
+    "tsconfig.json",
+    "--singleThreaded",
+    "--extendedDiagnostics",
+    "--pretty",
+    "false",
+    "--pprofDir",
+    "/tmp/gm-ts-owner-20261020/reduced/mapped/baseline-profiles"
+  ],
+  "cwd": "/tmp/gm-ts-owner-20261020/reduced/mapped",
+  "compilerSha256": "ef8430cc4a8b43f2bf661a92589a4b09f93c3ab7212086ef4ff46de5b1e05591",
+  "subject": {
+    "mode": "mapped",
+    "size": 200,
+    "compilerSubject": "package-free; mapped descriptor property vs inline property; identical inherited predecessor edges and root",
+    "sourceFiles": {
+      "witness.ts": {
+        "sha256": "9ef593e3450fbcce92cb6f31106eb124d23093d68b1b76fd02df8ade5e045887",
+        "bytes": 15054
+      },
+      "package.json": {
+        "sha256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+        "bytes": 23
+      },
+      "tsconfig.json": {
+        "sha256": "f860ca80ac13c93de8bc1a6e435f3cfd04eece2358c0462dd1928409c805b7b3",
+        "bytes": 172
+      }
+    },
+    "stageCapSeconds": 60,
+    "processObservedRssCapBytes": 2147483648,
+    "profiling": "native --pprofDir; CPU and sampled allocations; not a full Get Modular growth result"
+  },
+  "startUtc": "2026-10-20T08:05:56.432831+00:00",
+  "profiled": true,
+  "wallSeconds": 1.492871432000129,
+  "exitCode": 0,
+  "stopped": null,
+  "observedPeakRssBytes": 285294592,
+  "rusageMaxRssBytes": 286228480,
+  "endUtc": "2026-10-20T08:05:57.925724+00:00",
+  "profiles": [
+    {
+      "file": "64231-cpuprofile.pb.gz",
+      "bytes": 21172,
+      "sha256": "16d9d4ac23fee8eb7b291372957da40a5329dd7c25b23db2f9c840cf96c6cc86"
+    },
+    {
+      "file": "64231-memprofile.pb.gz",
+      "bytes": 25530,
+      "sha256": "aa7f1221dd92a75d1ce7ef93cb8463d7b92a10bbe57952d77870c5d3fe6dfffc"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "kind": "private-consumer-observation",
+  "size": 8,
+  "command": [
+    "/tmp/gm-completion-tools-20261020/node-v26.11.1-linux-x64/bin/node",
+    "--input-type=module",
+    "--eval",
+    "import {measureGrowth} from \"file:///tmp/gm-patched-consumer-20261020/tests/qualification/consumer-fixtures/growth/run.mjs\";const r=await measureGrowth({\"size\": 8, \"compilerCandidate\": \"/tmp/gm-patched-consumer-20261020/private-candidate.json\", \"directoryParent\": \"/tmp/gm-ts-owner-20261020/consumer-results\"});console.log(JSON.stringify({event:\"private.compiler-owner.complete\",size:r.size,status:r.status,directory:r.directory}));"
+  ],
+  "cwd": "/tmp/gm-patched-consumer-20261020",
+  "startUtc": "2026-10-20T08:25:19.834587+00:00",
+  "memoryBefore": {
+    "currentBytes": 6193094656,
+    "max": "8589934592",
+    "events": "low 0\nhigh 0\nmax 99343\noom 0\noom_kill 0\noom_group_kill 0\n"
+  },
+  "samplingIntervalSeconds": 0.05,
+  "rssMeaning": "Sampled sum of RSS of the owned live process tree; shared pages may count more than once. Per-process HWM is sampled while the process is alive.",
+  "compilerAndRuntimeLimits": "Existing run.mjs enforces compiler180s/runtime120s/aggregate600s unchanged.",
+  "peakTreeRssBytes": null,
+  "processes": {},
+  "exitCode": 0,
+  "wallSeconds": 1.0111083040001176,
+  "endUtc": "2026-10-20T08:25:20.845811+00:00",
+  "memoryAfter": {
+    "currentBytes": 6343499776,
+    "max": "8589934592",
+    "events": "low 0\nhigh 0\nmax 99343\noom 0\noom_kill 0\noom_group_kill 0\n"
+  },
+  "completion": {
+    "event": "private.compiler-owner.complete",
+    "size": 8,
+    "status": "passed",
+    "directory": "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-8-ySU2OX"
+  },
+  "rssUnavailable": "No readings: this environment omits /proc/pid/task/pid/children; do not interpret zero as measured RSS."
+}

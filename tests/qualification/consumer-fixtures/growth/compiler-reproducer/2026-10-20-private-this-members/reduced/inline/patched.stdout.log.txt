@@ -1,0 +1,16 @@
+Files:              64
+Lines:           57266
+Identifiers:     49845
+Symbols:         53132
+Types:           29305
+Instantiations:  27468
+Memory used:    54952K
+Memory allocs:  245506
+Config time:    0.000s
+Parse time:     0.037s
+Bind time:      0.023s
+Check time:     0.324s
+Emit time:      0.000s
+Total time:     0.388s
+Memory profile: /tmp/gm-ts-owner-20261020/reduced/inline/patched-profiles/121819-memprofile.pb.gz
+CPU profile: /tmp/gm-ts-owner-20261020/reduced/inline/patched-profiles/121819-cpuprofile.pb.gz

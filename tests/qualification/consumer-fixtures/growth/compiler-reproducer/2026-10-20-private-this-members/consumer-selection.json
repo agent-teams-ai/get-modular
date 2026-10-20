@@ -1,0 +1,17 @@
+{
+  "timeUtc": "2026-10-20T08:26:47.582610+00:00",
+  "compilerPatchSha256": "3a98de8a169b239da38cbe285de2f88e498406b8bdc24eec4685d6b4809a308e",
+  "sequence": [
+    8,
+    100,
+    500
+  ],
+  "decision": "One original scenario per size, inspect each before next; select N1000 only after complete N500 pass and memory review.",
+  "n8": "PASS full G01, memory unavailable; no rerun selected",
+  "originalCompilerRuntimeAggregateCapsSeconds": [
+    180,
+    120,
+    600
+  ],
+  "claim": "Private changed-compiler experiment; not supported TS7.0.2 adoption; original upstream >8GiB route not invoked."
+}

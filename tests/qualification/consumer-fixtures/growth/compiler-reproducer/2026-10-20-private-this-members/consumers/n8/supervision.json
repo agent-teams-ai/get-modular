@@ -1,0 +1,31 @@
+{
+  "aggregateMs": 600000,
+  "stageCapsMs": {
+    "compiler": 180000,
+    "runtime": 120000
+  },
+  "wallMs": 904.319407,
+  "expired": false,
+  "termination": {
+    "method": "observed-worker-exit",
+    "treeKillAfterExit": false
+  },
+  "observedStages": [
+    {
+      "stage": "cold",
+      "kind": "compiler",
+      "capMs": 180000,
+      "wallMs": 421.811268,
+      "status": "ended"
+    },
+    {
+      "stage": "runtime",
+      "kind": "runtime",
+      "capMs": 120000,
+      "wallMs": 143.41643299999998,
+      "status": "ended"
+    }
+  ],
+  "code": 0,
+  "signal": null
+}

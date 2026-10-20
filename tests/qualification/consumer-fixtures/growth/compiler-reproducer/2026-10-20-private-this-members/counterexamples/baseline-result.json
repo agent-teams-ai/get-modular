@@ -1,0 +1,21 @@
+{
+  "command": [
+    "/tmp/gm-ts-owner-20261020/tsc-baseline",
+    "--strict",
+    "--noEmit",
+    "--target",
+    "ES2022",
+    "--module",
+    "NodeNext",
+    "--singleThreaded",
+    "--pretty",
+    "false",
+    "negativecandidate.ts"
+  ],
+  "exitCode": 0,
+  "wallSeconds": 0.4146067110000331,
+  "stdout": "",
+  "stderr": "",
+  "capSeconds": 60,
+  "timeUtc": "2026-10-20T08:12:46.147430+00:00"
+}
