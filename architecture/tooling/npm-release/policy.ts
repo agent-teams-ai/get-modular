@@ -141,9 +141,77 @@ export function releaseBuildPolicy(value: unknown): Record<string, unknown> {
   return { packageManager: manifest.packageManager, engines: manifest.engines, devDependencies: manifest.devDependencies,
     scripts: Object.fromEntries(["core:build", "assembly:build", "resources:build", "conformance:build", "observation:build"].map(name => [name, scripts[name]])) };
 }
-export function assertRetainedBuildInputs(current: Record<string, string>, qualified: Record<string, string>, currentPolicy: unknown, qualifiedPolicy: unknown): void {
+export interface RetainedToolingSuccessor {
+  readonly admission: unknown;
+  readonly currentWorkspace: string;
+  readonly qualifiedWorkspace: string;
+  readonly currentLock: string;
+  readonly qualifiedLock: string;
+}
+const releaseChecks = "@agent-teams/release-checks";
+const releaseChecksVersion = "0.1.0";
+const releaseChecksCoordinate = `${releaseChecks}@${releaseChecksVersion}`;
+function gitBlob(source: string): string {
+  const bytes = Buffer.from(source);
+  return createHash("sha1").update(`blob ${bytes.byteLength}\0`).update(bytes).digest("hex");
+}
+function removeExact(parent: Record<string, unknown>, key: string, expected: unknown): void {
+  assert.deepEqual(parent[key], expected, `release.retained-tooling-entry:${key}`);
+  delete parent[key];
+}
+function assertToolingSuccessor(current: Record<string, string>, qualified: Record<string, string>, currentPolicy: unknown,
+  qualifiedPolicy: unknown, successor: RetainedToolingSuccessor): void {
+  const admission = record(successor.admission);
+  exactKeys(admission, ["schemaVersion", "package", "version", "integrity", "engines"]);
+  assert.equal(admission.schemaVersion, 1, "release.retained-tooling-schema");
+  assert.equal(admission.package, releaseChecks, "release.retained-tooling-package");
+  assert.equal(admission.version, releaseChecksVersion, "release.retained-tooling-version");
+  assert.notEqual(admission.integrity, null, "release.retained-tooling-qualification-pending");
+  assert.match(text(admission.integrity), /^sha512-[A-Za-z0-9+/]{86}==$/u, "release.retained-tooling-integrity");
+  assert.deepEqual(admission.engines, { node: "^24.18.0 || ^26.0.0", pnpm: ">=11.17.0 <12" }, "release.retained-tooling-engines");
+  for (const [path, before, after] of [
+    ["pnpm-workspace.yaml", successor.qualifiedWorkspace, successor.currentWorkspace],
+    ["pnpm-lock.yaml", successor.qualifiedLock, successor.currentLock],
+  ] as const) {
+    assert.equal(gitBlob(before), qualified[path], "release.retained-tooling-qualified-bytes");
+    assert.equal(gitBlob(after), current[path], "release.retained-tooling-current-bytes");
+  }
+  const previousPolicy = releaseBuildPolicy(qualifiedPolicy);
+  const nextPolicy = structuredClone(releaseBuildPolicy(currentPolicy));
+  assert.equal(record(previousPolicy.devDependencies)[releaseChecks], undefined, "release.retained-tooling-existing-dependency");
+  removeExact(record(nextPolicy.devDependencies), releaseChecks, "catalog:");
+  assert.deepEqual(nextPolicy, previousPolicy, "release.retained-build-policy-drift");
+
+  const previousWorkspace = record(parse(successor.qualifiedWorkspace));
+  const nextWorkspace = record(parse(successor.currentWorkspace));
+  assert.equal(record(previousWorkspace.catalog)[releaseChecks], undefined, "release.retained-tooling-existing-catalog");
+  removeExact(record(nextWorkspace.catalog), releaseChecks, releaseChecksVersion);
+  assert.deepEqual(nextWorkspace, previousWorkspace, "release.retained-workspace-drift");
+
+  const previousLock = record(parse(successor.qualifiedLock));
+  const nextLock = record(parse(successor.currentLock));
+  const previousPackages = record(previousLock.packages);
+  assert.equal(previousPackages[releaseChecksCoordinate], undefined, "release.retained-tooling-existing-resolution");
+  removeExact(record(record(nextLock.catalogs).default), releaseChecks, { specifier: releaseChecksVersion, version: releaseChecksVersion });
+  removeExact(record(record(record(nextLock.importers)["."]).devDependencies), releaseChecks, { specifier: "catalog:", version: releaseChecksVersion });
+  // The admitted leaf has no resolution alias, runtime, peer, optional or bundled edge.
+  removeExact(record(nextLock.packages), releaseChecksCoordinate, { resolution: { integrity: admission.integrity }, engines: admission.engines });
+  removeExact(record(nextLock.snapshots), releaseChecksCoordinate, {});
+  assert.deepEqual(nextLock, previousLock, "release.retained-lock-graph-drift");
+}
+export function assertRetainedBuildInputs(current: Record<string, string>, qualified: Record<string, string>, currentPolicy: unknown,
+  qualifiedPolicy: unknown, successor?: RetainedToolingSuccessor): void {
   exactKeys(current, [...retainedBuildPaths]);
   exactKeys(qualified, [...retainedBuildPaths]);
+  if (successor !== undefined) {
+    for (const path of retainedBuildPaths) {
+      if (path !== "pnpm-lock.yaml" && path !== "pnpm-workspace.yaml") {
+        assert.equal(current[path], qualified[path], `release.retained-build-input-drift:${path}`);
+      }
+    }
+    assertToolingSuccessor(current, qualified, currentPolicy, qualifiedPolicy, successor);
+    return;
+  }
   assert.deepEqual(current, qualified, "release.retained-build-input-drift");
   assert.deepEqual(releaseBuildPolicy(currentPolicy), releaseBuildPolicy(qualifiedPolicy), "release.retained-build-policy-drift");
 }

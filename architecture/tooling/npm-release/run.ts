@@ -96,8 +96,16 @@ async function prepare(destination: string): Promise<void> {
       currentInputs[path] = git("rev-parse", `HEAD:${path}`);
       qualifiedInputs[path] = git("rev-parse", `${retainedSource}:${path}`);
     }
-    assertRetainedBuildInputs(currentInputs, qualifiedInputs,
-      json(await readFile(join(root, "package.json"), "utf8")), json(git("show", `${retainedSource}:package.json`)));
+    const currentPolicy = json(await readFile(join(root, "package.json"), "utf8"));
+    const qualifiedPolicy = json(git("show", `${retainedSource}:package.json`));
+    const hasReleaseChecks = record(record(currentPolicy).devDependencies)["@agent-teams/release-checks"] !== undefined;
+    assertRetainedBuildInputs(currentInputs, qualifiedInputs, currentPolicy, qualifiedPolicy, hasReleaseChecks ? {
+      admission: json(await readFile(join(root, "architecture/tooling/npm-release/release-checks-adoption.json"), "utf8")),
+      currentWorkspace: await readFile(join(root, "pnpm-workspace.yaml"), "utf8"),
+      qualifiedWorkspace: run("git", ["show", `${retainedSource}:pnpm-workspace.yaml`]),
+      currentLock: await readFile(join(root, "pnpm-lock.yaml"), "utf8"),
+      qualifiedLock: run("git", ["show", `${retainedSource}:pnpm-lock.yaml`]),
+    } : undefined);
   }
   if (candidates.some(item => !item.retained)) {
     for (const script of ["assembly:build", "resources:build", "conformance:build", "observation:build"]) run("pnpm", ["run", script]);

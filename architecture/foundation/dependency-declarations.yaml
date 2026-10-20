@@ -9,6 +9,7 @@ policies:
   reservedScopes:
     - "@get-modular/"
   developmentOnlyPackages:
+    - "@agent-teams/release-checks"
     - "@types/node"
     - ajv
     - canonicalize

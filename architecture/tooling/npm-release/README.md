@@ -16,10 +16,13 @@ keeps the common npm invariant reusable while package qualification remains loca
 
 ## Normal release
 
-1. Use the existing Changesets release branch and public API baseline promotion
-   process. `pnpm release:version` retains its existing behavior. Merge the
-   reviewed version change through the normal required CI gates. Do not raise
-   versions on every main commit or publish the private candidate.
+1. Use the Changesets version branch and the
+   [checked version route](../release-candidate/README.md). Changesets 3.0.2 is
+   the sole version and dependent propagation engine. The wrapper qualifies its
+   actual candidate before the action can commit or push. The separate existing
+   public API baseline procedure retains its owner and scope. Merge the reviewed
+   version change through the normal required CI gates. Do not raise versions
+   on every main commit or publish the private candidate.
 2. A completed `CI` run on main wakes `npm release`. Preparation requires the
    exact current main source, the actual `.github/workflows/ci.yml`, and every
    expected job from that run attempt to have succeeded. Matrix job names are
@@ -91,6 +94,40 @@ mismatch and repair the version/release evidence. Never normalize, replace or
 re-upload a published version to hide a mismatch. A future retained release can
 extend this narrow binding only with its own reviewed qualification evidence.
 
+### Release checks development dependency successor
+
+The independent `@agent-teams/release-checks` adoption permits one bounded
+addition to the retained release-tooling inputs. It preserves the five source
+tree, archive and checksum records above. The complete root build commands,
+toolchain inputs and all other development dependencies remain equal to
+`2cd561688bb223f944425718cc093e55ff4bc20d`.
+
+The root development dependency must be `catalog:` and its workspace catalog
+must select exactly `0.1.0`. The lock must add exactly the matching default
+catalog record, root development importer record, package resolution and empty
+snapshot. The package resolution has only its approved SHA-512 integrity and
+exact engines. Runtime, peer and optional edges, resolution aliases, extra
+importers and unrelated graph changes reject. The checker validates these exact
+records before removing only those records for comparison of the remaining
+complete parsed workspace and lock. Git blob identities bind both supplied
+texts to the current and retained source; copied historical text cannot hide a
+different current lock.
+
+The [admission record](release-checks-adoption.json) intentionally has
+`integrity: null` while supported public version `0.1.0` is unpublished. This is
+preparation, and retained archive admission fails until the exact registry
+archive is independently qualified, its real integrity is recorded and pnpm
+generates the authoritative lock. Candidate `0.0.0` installation in a disposable
+TEST checkout proves the API integration only. The production lock has no
+invented package resolution, and this adoption must remain unmerged while its
+registry dependency is unavailable.
+
+The pending genuine Resources correction can produce a new normal Resources
+version. The other four package trees and retained archive bytes still need
+this complete retained-input check. After adoption, run the existing manual
+current-main publication dispatch and verify downloaded archives and consumers;
+an automatic same-version skip is not reconciliation proof.
+
 ## Artifact protocol and recovery
 
 The original artifact contains only `release.json` and the five package archives.
@@ -112,7 +149,7 @@ job or npm metadata alone is insufficient. After a main advance, use exact-sourc
 CI for that new main rather than replaying an older source.
 
 Focused development checks are `pnpm tooling:native:typecheck` and
-`node --test tests/npm-release.test.ts`. They are included in the normal runtime
+`node --test tests/npm-release.test.ts tests/release-candidate.test.ts`. They are included in the normal runtime
 policy gates and closed root script roster. `assembly:typecheck` also checks the
 public consumer fixture. The full repository gates and genuine Actions execution
 remain required delivery evidence; local fixtures alone do not prove npm OIDC.

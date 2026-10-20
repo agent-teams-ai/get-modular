@@ -987,6 +987,7 @@ boundaries:
       - architecture/tooling/codemods/project.ts
       - architecture/tooling/first-core-release.mjs
       - architecture/tooling/npm-release/run.ts
+      - architecture/tooling/release-candidate/run.ts
       - architecture/tooling/generate-core.mjs
       - architecture/tooling/test-assembly-types.mjs
       - tests/qualification/m2-candidate/combined-case-inventory.mjs
@@ -1005,6 +1006,7 @@ boundaries:
         - resources-public-entrypoint
       packages:
         - "@agent-teams/engineering-foundation"
+        - "@agent-teams/release-checks"
         - "@agent-teams/feature-module-standard"
         - "@get-modular/assembly"
         - "@get-modular/conformance"
