@@ -1,0 +1,109 @@
+name: npm release
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-release-main
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: >-
+      github.repository == 'agent-teams-ai/get-modular' && github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      ready: ${{ steps.prepare.outputs.ready }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@008330803749db0355799c700092d9a85fd074e9 # v6.0.9
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts --engine-strict --strict-peer-dependencies
+      - run: pnpm lockfile:peers:check
+      - id: prepare
+        name: Require exact source CI and prepare archives once
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node architecture/tooling/npm-release/run.ts prepare "$RUNNER_TEMP/npm-release"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: steps.prepare.outputs.ready == 'true'
+        with:
+          name: npm-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/npm-release
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    needs: prepare
+    if: needs.prepare.outputs.ready == 'true'
+    permissions:
+      contents: read
+      actions: write
+      id-token: write
+    uses: agent-teams-ai/.github/.github/workflows/npm-publish.yml@203ae2f318fc4202c284b3f74f3718748d121f02
+    with:
+      phase: publish
+      artifact-name: npm-release-${{ github.run_id }}-${{ github.run_attempt }}
+      environment: npm
+
+  verify:
+    needs: [prepare, publish]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@008330803749db0355799c700092d9a85fd074e9 # v6.0.9
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts --engine-strict --strict-peer-dependencies
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: npm-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/original
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: npm-release-${{ github.run_id }}-${{ github.run_attempt }}-registry
+          path: ${{ runner.temp }}/registry
+      - name: Validate receipt and install actual registry archives
+        run: node architecture/tooling/npm-release/run.ts verify "$RUNNER_TEMP/original" "$RUNNER_TEMP/registry"
+
+  promote:
+    needs: [prepare, verify]
+    permissions:
+      contents: read
+      actions: write
+      id-token: write
+    uses: agent-teams-ai/.github/.github/workflows/npm-publish.yml@203ae2f318fc4202c284b3f74f3718748d121f02
+    with:
+      phase: promote
+      artifact-name: npm-release-${{ github.run_id }}-${{ github.run_attempt }}
+      environment: npm

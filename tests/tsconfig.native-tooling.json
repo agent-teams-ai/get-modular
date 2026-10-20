@@ -31,7 +31,11 @@
     "../packages/conformance/tests/support/compilers.ts",
     "../packages/lifecycle-kernel/tests/support/compilers.ts",
     "../packages/resources/tests/support/compilers.ts",
-    "native-tooling.test.ts"
+    "native-tooling.test.ts",
+    "../architecture/tooling/npm-release/policy.ts",
+    "../architecture/tooling/npm-release/run.ts",
+    "npm-release.test.ts",
+    "../architecture/tooling/npm-release/registry.ts"
   ],
   "include": []
 }
