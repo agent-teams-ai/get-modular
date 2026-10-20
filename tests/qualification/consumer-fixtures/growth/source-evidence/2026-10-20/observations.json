@@ -1,0 +1,467 @@
+{
+  "schemaVersion": 1,
+  "kind": "bounded-growth-source-qualification",
+  "observedAt": "2026-10-20",
+  "status": "in progress: original installed source chain reaches N500 limit; first owner candidate passes N500 and reaches N1000 CLI limit; final owner remedy and released qualification pending",
+  "scope": "P5 selected flat growth source only; accepted maps, fixture policies, authority pins and limits unchanged; no compiler/runtime/generator replay",
+  "helper": {
+    "repository": "agent-teams-ai/get-modular",
+    "commit": "1229637ebc98223c3269cf5e4b4bd401f9c6f55f",
+    "path": "tests/qualification/consumer-fixtures/growth/source.ts",
+    "sha256": "9ef3fbfa996cdc3e1ecf3ad5504543e03b8aabb177d06d9bdb10e6e70443b74b"
+  },
+  "budgetsSeconds": {
+    "foundationCli": 30,
+    "positiveSourceChain": 60,
+    "externallySupervisedAggregate": 600
+  },
+  "observations": [
+    {
+      "id": "initial-n8",
+      "result": "passed",
+      "scope": "baseline, eight rejecting/permitted controls and restored baseline",
+      "receipt": "initial/n8/receipt.json",
+      "report": "initial/n8/report.json"
+    },
+    {
+      "id": "initial-series",
+      "result": "failed",
+      "scope": "N100 passed; N500 reached source60s cap; N1000 not selected",
+      "receipt": "initial/series/supervision.json",
+      "reportN100": "initial/series/n100.report.json",
+      "rawActiveN500Status": "running is a preserved interruption snapshot; timedOut=true and exitCode=-9 establish failure"
+    },
+    {
+      "id": "initial-phase-diagnostic",
+      "result": "failed",
+      "scope": "bounded attribution on same N500 source/profile; public Foundation CLI ETIMEDOUT at30s",
+      "receipt": "initial/phases/receipt.json"
+    },
+    {
+      "id": "owner-first-attribution",
+      "result": "bounded observation",
+      "scope": "temporary owner instrumentation before any maintained owner edit; no public installed qualification",
+      "receipt": "owner-first/attribution/receipt.json"
+    },
+    {
+      "id": "owner-first-n500",
+      "result": "passed",
+      "ownerCommit": "359085664d7e51cced497c30eb0e82cc68baf346",
+      "receipt": "owner-first/n500/receipt.json",
+      "report": "owner-first/n500/report.json",
+      "supportedInstalledQualification": false
+    },
+    {
+      "id": "owner-first-n1000-sandbox",
+      "result": "inconclusive",
+      "reason": "EPERM at public CLI invocation; no CLI verdict or timeout attribution",
+      "receipt": "owner-first/n1000-sandbox/receipt.json",
+      "supportedInstalledQualification": false
+    },
+    {
+      "id": "owner-first-n1000-host",
+      "result": "failed",
+      "reason": "one separately retained infrastructure retry produced public CLI ETIMEDOUT at unchanged30s; source60s deadline was not reached",
+      "receipt": "owner-first/n1000-host/receipt.json",
+      "supportedInstalledQualification": false
+    }
+  ],
+  "custody": "Copied bytes are immutable evidence. Source scripts/configurations with .txt suffix are retained data, not maintained test entries. Original trees/reports are unchanged; generated trees, dependencies and binaries are not retained here.",
+  "limitations": [
+    "The new owner root-index follow-up is not yet qualified or released.",
+    "Supported TypeScript7.0.2 large-consumer qualification remains blocked separately; source-only evidence cannot establish compiler adoption.",
+    "First-owner N1000 CLI timeout has no internal phase timings or sampled-stack attribution."
+  ],
+  "files": {
+    "initial/n8/receipt.json": {
+      "sha256": "4fbe3c4f94e07f0128e336fd6cfb7d6ed0c056f5aff17acb3ddc6a2f087dc419",
+      "bytes": 1598,
+      "original": "/tmp/gm-ts-owner-20261020/growth-source-small-retry3.receipt.json"
+    },
+    "initial/n8/report.json": {
+      "sha256": "2c3eadeda3ee94b4aa78bfe5b0e391af047e6b318aeace6c82d5a405635614df",
+      "bytes": 776142,
+      "original": "/tmp/gm-ts-owner-20261020/growth-source-small-retry3.report.json"
+    },
+    "initial/n8/stderr.log.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "original": "/tmp/gm-ts-owner-20261020/growth-source-small-retry3.stderr.log"
+    },
+    "initial/n8/stdout.log.txt": {
+      "sha256": "db9dc83b3f64108f0bb9fed7373d5435fac698859388033603574d2e56c4c0c8",
+      "bytes": 807,
+      "original": "/tmp/gm-ts-owner-20261020/growth-source-small-retry3.stdout.log"
+    },
+    "initial/series/n100.report.json": {
+      "sha256": "d0c54084e06178b8c94270137b56d530b6ab448b6ce619a1173d41d708c15e43",
+      "bytes": 994098,
+      "original": "/tmp/gm-ts-owner-20261020/growth-source-series/n100.report.json"
+    },
+    "initial/series/n100.stderr.log.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "original": "/tmp/gm-ts-owner-20261020/growth-source-series/n100.stderr.log"
+    },
+    "initial/series/n100.stdout.log.txt": {
+      "sha256": "db4d51549c859b2440eb017d3f10434cfb470ba7ec7a9ab021a8e4707eb0da31",
+      "bytes": 2541,
+      "original": "/tmp/gm-ts-owner-20261020/growth-source-series/n100.stdout.log"
+    },
+    "initial/series/n500.stderr.log.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "original": "/tmp/gm-ts-owner-20261020/growth-source-series/n500.stderr.log"
+    },
+    "initial/series/n500.stdout.log.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "original": "/tmp/gm-ts-owner-20261020/growth-source-series/n500.stdout.log"
+    },
+    "initial/series/originals-after-failure.json": {
+      "sha256": "3155500030bcdf61d6b98f506c013afa177bc1261484f5972397fcef2fe6bdb7",
+      "bytes": 315,
+      "original": "/tmp/gm-ts-owner-20261020/growth-source-series/originals-after-failure.json"
+    },
+    "initial/series/scan.mjs.txt": {
+      "sha256": "61aa2c93f26fc3c8a6d1975775b491d181e713e56c3a7edbb16f580a3947bea9",
+      "bytes": 999,
+      "original": "/tmp/gm-ts-owner-20261020/growth-source-series/scan.mjs"
+    },
+    "initial/series/supervision.json": {
+      "sha256": "260eceddd4d0842df6823870dc17a125216960123470f9f9a33915278b15a407",
+      "bytes": 8492,
+      "original": "/tmp/gm-ts-owner-20261020/growth-source-series/supervision.json"
+    },
+    "initial/phases/instrumentation.patch": {
+      "sha256": "212b33d1da61fc41872f4aebc3bd7ae321e02f7c2dce2004207bdd3175bcd905",
+      "bytes": 9846,
+      "original": "/tmp/gm-ts-owner-20261020/growth-source-phase-diagnostic/instrumentation.patch"
+    },
+    "initial/phases/phases.stderr.log.txt": {
+      "sha256": "26791365cd111ae9441e79a53d535d5c49c65c19d1b64e0103d6b3b3cef9b303",
+      "bytes": 2553,
+      "original": "/tmp/gm-ts-owner-20261020/growth-source-phase-diagnostic/phases.stderr.log"
+    },
+    "initial/phases/receipt.json": {
+      "sha256": "01eae8d0dbbb0b8c7905cffb6923447da0c1005d932b89c938cc51cb0fda736c",
+      "bytes": 2552,
+      "original": "/tmp/gm-ts-owner-20261020/growth-source-phase-diagnostic/receipt.json"
+    },
+    "initial/phases/records.mjs.txt": {
+      "sha256": "67a7bc08aa3625163de433547f626ca0317bb3fe478cd34dd1cf1c68c2a6a05e",
+      "bytes": 5246,
+      "original": "/tmp/gm-ts-owner-20261020/growth-source-phase-diagnostic/records.mjs"
+    },
+    "initial/phases/run.mjs.txt": {
+      "sha256": "a5062522c62a3ca46ebbabfedcd1c8ec446077b75acbe62cb11bb331187c05f0",
+      "bytes": 316,
+      "original": "/tmp/gm-ts-owner-20261020/growth-source-phase-diagnostic/run.mjs"
+    },
+    "initial/phases/source.ts.txt": {
+      "sha256": "70998e879be595a4e411df75a290ffe4853accde376ba46c8f622ae47457d9fc",
+      "bytes": 19478,
+      "original": "/tmp/gm-ts-owner-20261020/growth-source-phase-diagnostic/source.ts"
+    },
+    "initial/phases/stdout.log.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "original": "/tmp/gm-ts-owner-20261020/growth-source-phase-diagnostic/stdout.log"
+    },
+    "owner-first/attribution/analyze.instrumented.js.txt": {
+      "sha256": "edb52d394bf4a479daa76c926d12b4fb9adfaf58d80d435d7f752831256562f0",
+      "bytes": 11589,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/analyze.instrumented.js"
+    },
+    "owner-first/attribution/calls.stderr.log.txt": {
+      "sha256": "1a02cb45917d221eab8e8d2cf6291ec4844c9a8f7392c1f7ce639d3930a84099",
+      "bytes": 12890,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/calls.stderr.log"
+    },
+    "owner-first/attribution/hook.ts.txt": {
+      "sha256": "3a56b88b9d0f9ae8effa1a43fe79cd8155e2eaa2f5bfde10018a1a98917c8cbe",
+      "bytes": 869,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/hook.ts"
+    },
+    "owner-first/attribution/instrumentation.patch": {
+      "sha256": "a594c106542425018a434e7f62a14e5251226df15de0a7cc27581261d15b0efa",
+      "bytes": 5083,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/instrumentation.patch"
+    },
+    "owner-first/attribution/modules.json": {
+      "sha256": "120396588335e1ab5d493701336b699e0ac83002630f2bfc349d4a7e0dd1a9e3",
+      "bytes": 1373,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/modules.json"
+    },
+    "owner-first/attribution/package.json.txt": {
+      "sha256": "a90fc33418afa2b9cbf4768524b021135b965ecdf993457505bfae3ac44a8428",
+      "bytes": 33,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/package.json"
+    },
+    "owner-first/attribution/parse.instrumented.js.txt": {
+      "sha256": "13d9dc7a4c04cf6594440eb78055e68e705af25c692cdb4d8d66a9add1a9e082",
+      "bytes": 12952,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/parse.instrumented.js"
+    },
+    "owner-first/attribution/path.instrumented.js.txt": {
+      "sha256": "17316a996600b1e83b513d3b46c9cfbf77680358c189af7b914445f8ecbd914a",
+      "bytes": 3541,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/path.instrumented.js"
+    },
+    "owner-first/attribution/receipt.json": {
+      "sha256": "8114c9994a6c1f4542074e8d9ac1844820ec4efbdd8357179137a08255b46356",
+      "bytes": 4158,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/receipt.json"
+    },
+    "owner-first/attribution/stdout.log.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/stdout.log"
+    },
+    "owner-first/attribution/strict.stderr.log.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/strict.stderr.log"
+    },
+    "owner-first/attribution/strict.stdout.log.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/strict.stdout.log"
+    },
+    "owner-first/attribution/trace.ts.txt": {
+      "sha256": "408a4e3364912d7685b165016729eaf6cba5d7809589c82e237778f949074bab",
+      "bytes": 714,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/trace.ts"
+    },
+    "owner-first/attribution/tsconfig.json.txt": {
+      "sha256": "2a2815fd8ea1605abd2958343582bf48742d5c8e072f86fad536a3bbbe95fdcf",
+      "bytes": 262,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/tsconfig.json"
+    },
+    "owner-first/n500/adapter.patch": {
+      "sha256": "f7d315325698a9798df3ead02a9623e237e8f47e1782ee7ce7b07fedb916a570",
+      "bytes": 9865,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n500/adapter.patch"
+    },
+    "owner-first/n500/package.json.txt": {
+      "sha256": "1239d4d885dcad42201a27ed9324f8f0f760b78700d8db9ced39a511cffe7eae",
+      "bytes": 18,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n500/package.json"
+    },
+    "owner-first/n500/policy.ts.txt": {
+      "sha256": "4cce5cfe7f26520ce804a5a7a60859e241bf628f82c1819933cd42c011752399",
+      "bytes": 9152,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n500/policy.ts"
+    },
+    "owner-first/n500/preparation.json": {
+      "sha256": "594a427761feec48e0326c94bd224a46556a2becbf5cd3a7793ab1063ac1419d",
+      "bytes": 1180,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n500/preparation.json"
+    },
+    "owner-first/n500/receipt.json": {
+      "sha256": "5794b0820e200604b85ad6c26e1de9ec104d8e881135690d2c5b0af6826d36df",
+      "bytes": 5885,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n500/receipt.json"
+    },
+    "owner-first/n500/report.json": {
+      "sha256": "ae07747789adf5e4158c2ccd16c4e9ee559ff8f0215238a804d321aa892d431a",
+      "bytes": 4930453,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n500/report.json"
+    },
+    "owner-first/n500/run.ts.txt": {
+      "sha256": "27f5b04df2985186a72bc643eca6979c58f032bcad3746d3545c07e15dec3e2b",
+      "bytes": 1201,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n500/run.ts"
+    },
+    "owner-first/n500/source.ts.txt": {
+      "sha256": "763f9547ab8987f2791f092b49232715d0159e9dd67845c4c646a6680661a0f0",
+      "bytes": 17807,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n500/source.ts"
+    },
+    "owner-first/n500/stderr.log.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n500/stderr.log"
+    },
+    "owner-first/n500/stdout.log.txt": {
+      "sha256": "1ebad0ce44701f56800116fe811685c23f4a21f2231b83aa67aacbdb3af9fb53",
+      "bytes": 434,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n500/stdout.log"
+    },
+    "owner-first/n500/strict.receipt.json": {
+      "sha256": "c35802a47bebf2552a02b63c8a4eeb052cfa83c7529f23d00065f0e145b40fba",
+      "bytes": 1286,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n500/strict.receipt.json"
+    },
+    "owner-first/n500/strict.stderr.log.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n500/strict.stderr.log"
+    },
+    "owner-first/n500/strict.stdout.log.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n500/strict.stdout.log"
+    },
+    "owner-first/n500/supervise.py.txt": {
+      "sha256": "9574cbcd05943cc986e3f763c3e69265148c1f5fd3d306f4bfa91f5f3ba8fa86",
+      "bytes": 5972,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n500/supervise.py"
+    },
+    "owner-first/n500/tsconfig.json.txt": {
+      "sha256": "68329a9229fb855ef7761ff39ff06ed57d900b1feaa0350e57bf2ec3f9c4c05f",
+      "bytes": 282,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n500/tsconfig.json"
+    },
+    "owner-first/n1000-sandbox/adapter.patch": {
+      "sha256": "f7d315325698a9798df3ead02a9623e237e8f47e1782ee7ce7b07fedb916a570",
+      "bytes": 9865,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000/adapter.patch"
+    },
+    "owner-first/n1000-sandbox/package.json.txt": {
+      "sha256": "1239d4d885dcad42201a27ed9324f8f0f760b78700d8db9ced39a511cffe7eae",
+      "bytes": 18,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000/package.json"
+    },
+    "owner-first/n1000-sandbox/policy.ts.txt": {
+      "sha256": "4cce5cfe7f26520ce804a5a7a60859e241bf628f82c1819933cd42c011752399",
+      "bytes": 9152,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000/policy.ts"
+    },
+    "owner-first/n1000-sandbox/preparation.json": {
+      "sha256": "ea5ba0074ab4ccc3a3c40c7518a09fc2234c842c1ef21c4bc92b3470a39af421",
+      "bytes": 1319,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000/preparation.json"
+    },
+    "owner-first/n1000-sandbox/receipt.json": {
+      "sha256": "b07625143231500092cf6506635726ed1b361ee061fb082c3ce24a70ef218d24",
+      "bytes": 11283,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000/receipt.json"
+    },
+    "owner-first/n1000-sandbox/run.ts.txt": {
+      "sha256": "53365207cda2b4802e21261a4ff8d5b690a22a208296fc8576a4c1de2d19d065",
+      "bytes": 1202,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000/run.ts"
+    },
+    "owner-first/n1000-sandbox/selection.json": {
+      "sha256": "86a40a6a1aaff7437b5e7d34abf2d98cd75658d9658355a40bdb0667624b762a",
+      "bytes": 608,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000/selection.json"
+    },
+    "owner-first/n1000-sandbox/source.ts.txt": {
+      "sha256": "763f9547ab8987f2791f092b49232715d0159e9dd67845c4c646a6680661a0f0",
+      "bytes": 17807,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000/source.ts"
+    },
+    "owner-first/n1000-sandbox/stderr.log.txt": {
+      "sha256": "0c5fbcce300e5ebaad8723c9cc08aa0d2f65abcb60ed44af7fee39af730d0c59",
+      "bytes": 1504,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000/stderr.log"
+    },
+    "owner-first/n1000-sandbox/stdout.log.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000/stdout.log"
+    },
+    "owner-first/n1000-sandbox/supervise.py.txt": {
+      "sha256": "52209dbd1225c7c9fa80c8469ab5a616a3c8043b36cfbc8f90db2a70115ef56b",
+      "bytes": 12741,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000/supervise.py"
+    },
+    "owner-first/n1000-host/adapter.patch": {
+      "sha256": "f7d315325698a9798df3ead02a9623e237e8f47e1782ee7ce7b07fedb916a570",
+      "bytes": 9865,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000-retry/adapter.patch"
+    },
+    "owner-first/n1000-host/infrastructure-preflight.json": {
+      "sha256": "532a6bde20221a2149a5a394e3d5945bd470fb15fce6d79d43c0857b3fe442f5",
+      "bytes": 864,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000-retry/infrastructure-preflight.json"
+    },
+    "owner-first/n1000-host/package.json.txt": {
+      "sha256": "1239d4d885dcad42201a27ed9324f8f0f760b78700d8db9ced39a511cffe7eae",
+      "bytes": 18,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000-retry/package.json"
+    },
+    "owner-first/n1000-host/policy.ts.txt": {
+      "sha256": "4cce5cfe7f26520ce804a5a7a60859e241bf628f82c1819933cd42c011752399",
+      "bytes": 9152,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000-retry/policy.ts"
+    },
+    "owner-first/n1000-host/preparation.json": {
+      "sha256": "ea5ba0074ab4ccc3a3c40c7518a09fc2234c842c1ef21c4bc92b3470a39af421",
+      "bytes": 1319,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000-retry/preparation.json"
+    },
+    "owner-first/n1000-host/receipt.json": {
+      "sha256": "87c7f9be958e9511228b5dd132ccc120e693f9dc96cef6ed02115432997cc230",
+      "bytes": 12308,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000-retry/receipt.json"
+    },
+    "owner-first/n1000-host/run.ts.txt": {
+      "sha256": "53365207cda2b4802e21261a4ff8d5b690a22a208296fc8576a4c1de2d19d065",
+      "bytes": 1202,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000-retry/run.ts"
+    },
+    "owner-first/n1000-host/selection.json": {
+      "sha256": "86a40a6a1aaff7437b5e7d34abf2d98cd75658d9658355a40bdb0667624b762a",
+      "bytes": 608,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000-retry/selection.json"
+    },
+    "owner-first/n1000-host/source.ts.txt": {
+      "sha256": "763f9547ab8987f2791f092b49232715d0159e9dd67845c4c646a6680661a0f0",
+      "bytes": 17807,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000-retry/source.ts"
+    },
+    "owner-first/n1000-host/stderr.log.txt": {
+      "sha256": "6175ccd132c428fb5b5beb3bb24d2aa8ab219fb3b483257e7efcfc5f5a071be1",
+      "bytes": 1544,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000-retry/stderr.log"
+    },
+    "owner-first/n1000-host/stdout.log.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000-retry/stdout.log"
+    },
+    "owner-first/n1000-host/supervise.py.txt": {
+      "sha256": "93022da7fe5a4780d2a325160a1d01792f501d75775048bf18a455945ab85c01",
+      "bytes": 13354,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000-retry/supervise.py"
+    },
+    "owner-first/proposal.patch": {
+      "sha256": "8d912fd04bfda6b23476944bf7ad6d93c209466dfb3b4b5d8016a3d148c6577b",
+      "bytes": 11309,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/proposal.patch"
+    },
+    "owner-first/proposal.json": {
+      "sha256": "7f6c4a145213b54aebc5f702db78a6084a04b3c254dcf309de9f7670cd146fad",
+      "bytes": 2104,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/proposal.json"
+    },
+    "owner-first/focused.receipt.json": {
+      "sha256": "6fa0ae3536308a52c8e78a4b71204c85b9e2528f0f1f1f94a724e1e636d3eb9d",
+      "bytes": 2052,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/focused.receipt.json"
+    },
+    "owner-first/build.receipt.json": {
+      "sha256": "7bc003ffed4341cb66cab1a92f2d382a1c715ea34fc37714f9a172a0b0477bce",
+      "bytes": 1668,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/build.receipt.json"
+    },
+    "owner-first/install.receipt.json": {
+      "sha256": "a8ef7c6cc20999a9f64a2d2234fdbbfc7e8f62f7b39d8e9f515d82bde62260e0",
+      "bytes": 1670,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/install-commit.receipt.json"
+    },
+    "initial/series/n500.policy.yaml.txt": {
+      "sha256": "93aae6743d6c396e317a5e49bc3206d13a38660fc2db98a939e11e05c3a077a8",
+      "bytes": 344544,
+      "original": "/tmp/gm-ts-owner-20261020/growth-source-series/n500-copy/architecture/foundation/source-dependencies.yaml"
+    },
+    "owner-first/n1000-host/policy.yaml.txt": {
+      "sha256": "5f8df19a1d814559383bb8c5365e065fcdb5a15cd2d0c83cba47e92734cd2b30",
+      "bytes": 687044,
+      "original": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000-retry/subject/architecture/foundation/source-dependencies.yaml"
+    }
+  }
+}

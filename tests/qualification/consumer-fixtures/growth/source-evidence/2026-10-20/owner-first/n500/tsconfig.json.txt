@@ -1,0 +1,14 @@
+{
+  "extends": "/tmp/gm-growth-source-20261020/tests/tsconfig.consumer-fixtures.json",
+  "compilerOptions": {
+    "typeRoots": [
+      "/tmp/gm-growth-source-20261020/node_modules/@types"
+    ]
+  },
+  "files": [
+    "source.ts",
+    "policy.ts",
+    "run.ts"
+  ],
+  "include": []
+}

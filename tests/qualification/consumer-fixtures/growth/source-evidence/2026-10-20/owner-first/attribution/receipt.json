@@ -1,0 +1,66 @@
+{
+  "startUtc": "2026-10-20T10:45:42.595729+00:00",
+  "endUtc": "2026-10-20T10:46:12.611607+00:00",
+  "ownerBase": "66984d7a71b469acfe557131f9a95295cc6b8553",
+  "installedPublicPackage": {
+    "name": "@agent-teams/engineering-foundation",
+    "version": "1.10.0",
+    "packageRoot": "/tmp/gm-growth-source-20261020/node_modules/.pnpm/@agent-teams+engineering-foundation@1.10.0_@types+node@24.19.1/node_modules/@agent-teams/engineering-foundation"
+  },
+  "ownerSourceDeltaSincePublishedAed890a": "none in source-dependencies or feature-dependencies paths, verified git diff",
+  "subject": "/tmp/gm-ts-owner-20261020/growth-source-series/n500-copy",
+  "sourceIdentity": {
+    "sha256": "2a84ede0f14d1535e30c12bcc52c3e3927039dfb57d682c4778e639554e1c11d",
+    "files": 3503,
+    "bytes": 1267294
+  },
+  "profileBeforeSha256": "93aae6743d6c396e317a5e49bc3206d13a38660fc2db98a939e11e05c3a077a8",
+  "profileAfterSha256": "93aae6743d6c396e317a5e49bc3206d13a38660fc2db98a939e11e05c3a077a8",
+  "capSeconds": 30,
+  "command": [
+    "/tmp/gm-completion-tools-20261020/node-v26.11.1-linux-x64/bin/node",
+    "--import",
+    "/tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/hook.ts",
+    "/tmp/gm-growth-source-20261020/node_modules/.pnpm/@agent-teams+engineering-foundation@1.10.0_@types+node@24.19.1/node_modules/@agent-teams/engineering-foundation/dist/cli.js",
+    "check",
+    "architecture.source-dependencies",
+    "--consumer",
+    "/tmp/gm-ts-owner-20261020/growth-source-series/n500-copy",
+    "--format",
+    "json"
+  ],
+  "exitCode": -9,
+  "timedOut": true,
+  "wallSeconds": 30.01885416799996,
+  "termination": "SIGKILL owned live child process group",
+  "strictTooling": {
+    "exitCode": 0,
+    "typescript": "7.0.2"
+  },
+  "instrumentation": {
+    "hook.ts": "3a56b88b9d0f9ae8effa1a43fe79cd8155e2eaa2f5bfde10018a1a98917c8cbe",
+    "trace.ts": "408a4e3364912d7685b165016729eaf6cba5d7809589c82e237778f949074bab",
+    "modules.json": "120396588335e1ab5d493701336b699e0ac83002630f2bfc349d4a7e0dd1a9e3",
+    "instrumentation.patch": "a594c106542425018a434e7f62a14e5251226df15de0a7cc27581261d15b0efa",
+    "parse.instrumented.js": "13d9dc7a4c04cf6594440eb78055e68e705af25c692cdb4d8d66a9add1a9e082",
+    "analyze.instrumented.js": "edb52d394bf4a479daa76c926d12b4fb9adfaf58d80d435d7f752831256562f0",
+    "path.instrumented.js": "17316a996600b1e83b513d3b46c9cfbf77680358c189af7b914445f8ecbd914a"
+  },
+  "originalModuleHashes": {
+    "/tmp/gm-growth-source-20261020/node_modules/.pnpm/@agent-teams+engineering-foundation@1.10.0_@types+node@24.19.1/node_modules/@agent-teams/engineering-foundation/dist/capabilities/source-dependencies/adapters/inbound/configuration/parse-capability-config.js": {
+      "replacement": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/parse.instrumented.js",
+      "originalSha256": "ad989ba0c3e53cbd6640adc8c78e8e9ee6ebf986d9d8f21ffbed0cc885e9014e"
+    },
+    "/tmp/gm-growth-source-20261020/node_modules/.pnpm/@agent-teams+engineering-foundation@1.10.0_@types+node@24.19.1/node_modules/@agent-teams/engineering-foundation/dist/capabilities/source-dependencies/application/use-cases/analyze-source-dependencies.js": {
+      "replacement": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/analyze.instrumented.js",
+      "originalSha256": "8ff3373f6ba7dbbf145c75f7a731d6627d62fa0e0eb7515a5dcffe8f55a2eb54"
+    },
+    "/tmp/gm-growth-source-20261020/node_modules/.pnpm/@agent-teams+engineering-foundation@1.10.0_@types+node@24.19.1/node_modules/@agent-teams/engineering-foundation/dist/capabilities/source-dependencies/application/model/repository-path.js": {
+      "replacement": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/path.instrumented.js",
+      "originalSha256": "49ac3d1f964ee4f8c1521761154f8198897de96d36f75b9a8217e827d5ef43bd"
+    }
+  },
+  "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "phaseLogSha256": "1a02cb45917d221eab8e8d2cf6291ec4844c9a8f7392c1f7ce639d3930a84099",
+  "claim": "owner-local call attribution only; no consumer qualification, installed writes, compiler/runtime/generator replay or owner source edit"
+}

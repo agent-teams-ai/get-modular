@@ -1,0 +1,184 @@
+{
+  "startUtc": "2026-10-20T10:28:12.200064+00:00",
+  "repository": "/tmp/gm-growth-source-20261020",
+  "base": "aaac7b12b117a54e4a850e0730da5c1e99da042b",
+  "adapter": {
+    "path": "/tmp/gm-growth-source-20261020/tests/qualification/consumer-fixtures/growth/source.ts",
+    "sha256": "9ef3fbfa996cdc3e1ecf3ad5504543e03b8aabb177d06d9bdb10e6e70443b74b"
+  },
+  "sharedRecords": {
+    "path": "tests/qualification/consumer-fixtures/source/records.mjs",
+    "sha256": "fd2872981f170fc34b4fb6cd7059595ff7dc382ab081697bfdd67015d2686593"
+  },
+  "sharedPolicy": {
+    "path": "tests/qualification/consumer-fixtures/source/policy.ts",
+    "sha256": "bedfbbc76cd44420f5c37b4dd07497b3e6de277972cac19a83a28dd6d68f5b13"
+  },
+  "existingSourceProfile": {
+    "path": "tests/qualification/consumer-fixtures/source/profile.mjs",
+    "sha256": "94b0bfcef73277c55575044c31f52ea79586bb3ad25d5bc665b52453f3002d4c"
+  },
+  "lockfileSha256": "048ead2ca34259c02790924af0935b553a644ea753a90177dc136c6bcedd8f6f",
+  "budgetsSeconds": {
+    "sourceChain": 60,
+    "foundationPolicy": 30,
+    "externalAggregate": 600
+  },
+  "reusedN8": {
+    "receipt": "/tmp/gm-ts-owner-20261020/growth-source-small-retry3.receipt.json",
+    "report": "/tmp/gm-ts-owner-20261020/growth-source-small-retry3.report.json",
+    "reportSha256": "2c3eadeda3ee94b4aa78bfe5b0e391af047e6b318aeace6c82d5a405635614df"
+  },
+  "generatorCompilerRuntimeInvocations": "none; restore exact recorded before bytes in physical copies",
+  "stages": [
+    {
+      "size": 100,
+      "original": "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-100-V4q9A9",
+      "originalReportSha256": "3d051d74e295d3a4f489d11a532b942791d53598ba4248ecdc4dec33ea197677",
+      "originalFinalSource": {
+        "sha256": "7913afbe81040807fc4b27c34601802a6261d84dfec1431597e07b672a4df266",
+        "files": 703,
+        "bytes": 251526
+      },
+      "copy": "/tmp/gm-ts-owner-20261020/growth-source-series/n100-copy",
+      "restoredFiles": [
+        {
+          "path": "src/features/f003/contracts/value.ts",
+          "beforeSha256": "9e3140fe3fd7bcd0408f4e4d4f30b7061e6ff0e973c40f0cb09673063bf62364",
+          "afterSha256": "29642a237a174a04426f59d28d40c91a8a871b33efaaacabaffaa1a560eaff0b"
+        },
+        {
+          "path": "src/features/f003/composition/f003.contracts.ts",
+          "beforeSha256": "2435e0f6202d060729b1b66100972d56e4c0088f7224ca25c7f54f975e887465",
+          "afterSha256": "b582ef69a0c9a95f5b538374b21e6d9a210d5f9512cfece43cb2b832e769dba6"
+        },
+        {
+          "path": "src/features/f003/composition/value.module.ts",
+          "beforeSha256": "639e630ee67043d45fdbb9aa85d849980d806ff4d9db67ebc2e87c9bca6b7c91",
+          "afterSha256": "5a01ed9488e688a616d0167e65794c5c5d778dc3307e12132e46cc1a966cebdb"
+        },
+        {
+          "path": "src/features/f004/composition/value.module.ts",
+          "beforeSha256": "973f50cd588465bfcbd63dc0d6fd05afb1a5637cdbb3236c852746d58718a174",
+          "afterSha256": "4a9120e5d3cdd4db334f599b3837bd5d0d86b89c92034acf3909b01f68954cfb"
+        },
+        {
+          "path": "src/features/f006/composition/value.module.ts",
+          "beforeSha256": "736a3443867a9ba8a7b0ddf3c60ff7f1f3a7bf92ddeeacdaa64a9db7bdfd1130",
+          "afterSha256": "61c42526dcfe74968cd30c4ae8d564316792faf8cbab263f0dc15732ae9c4d8a"
+        },
+        {
+          "path": "src/features/f007/composition/value.module.ts",
+          "beforeSha256": "dc2c4a5e2339494eefce88e38c9f91d702b29014f2bcc2ab7ffd2eddd60e16a0",
+          "afterSha256": "5bf1fb234bc96ff6753a682c49187b57b1dd44cd5a9780f1ed85820566496611"
+        }
+      ],
+      "restoredBaseline": {
+        "sha256": "9693b8aee7640542fa0b60fad9d6aba2868b7ef1b670128aeb29da951f6520f2",
+        "files": 703,
+        "bytes": 251501
+      },
+      "adapterSha256": "9ef3fbfa996cdc3e1ecf3ad5504543e03b8aabb177d06d9bdb10e6e70443b74b",
+      "status": "passed",
+      "command": [
+        "/tmp/gm-completion-tools-20261020/node-v26.11.1-linux-x64/bin/node",
+        "/tmp/gm-ts-owner-20261020/growth-source-series/scan.mjs",
+        "/tmp/gm-ts-owner-20261020/growth-source-series/n100-copy",
+        "100",
+        "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-100-V4q9A9/report.json",
+        "/tmp/gm-ts-owner-20261020/growth-source-series/n100.report.json"
+      ],
+      "exitCode": 0,
+      "chainSeconds": 21.858282278000843,
+      "stdout": {
+        "path": "/tmp/gm-ts-owner-20261020/growth-source-series/n100.stdout.log",
+        "sha256": "db4d51549c859b2440eb017d3f10434cfb470ba7ec7a9ab021a8e4707eb0da31"
+      },
+      "stderr": {
+        "path": "/tmp/gm-ts-owner-20261020/growth-source-series/n100.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "report": {
+        "path": "/tmp/gm-ts-owner-20261020/growth-source-series/n100.report.json",
+        "sha256": "d0c54084e06178b8c94270137b56d530b6ab448b6ce619a1173d41d708c15e43"
+      },
+      "originalUnchanged": true
+    },
+    {
+      "size": 500,
+      "original": "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-500-pUOEDX",
+      "originalReportSha256": "f746426aae83fe1d6b409be07e15c6a78c45227383084b44ff5917fac659a53b",
+      "originalFinalSource": {
+        "sha256": "b262d16c1ffab944c73ebac8111a8066dd97b28ec4701863b78eacf75c333d24",
+        "files": 3503,
+        "bytes": 1267319
+      },
+      "copy": "/tmp/gm-ts-owner-20261020/growth-source-series/n500-copy",
+      "restoredFiles": [
+        {
+          "path": "src/features/f003/contracts/value.ts",
+          "beforeSha256": "9e3140fe3fd7bcd0408f4e4d4f30b7061e6ff0e973c40f0cb09673063bf62364",
+          "afterSha256": "29642a237a174a04426f59d28d40c91a8a871b33efaaacabaffaa1a560eaff0b"
+        },
+        {
+          "path": "src/features/f003/composition/f003.contracts.ts",
+          "beforeSha256": "2435e0f6202d060729b1b66100972d56e4c0088f7224ca25c7f54f975e887465",
+          "afterSha256": "b582ef69a0c9a95f5b538374b21e6d9a210d5f9512cfece43cb2b832e769dba6"
+        },
+        {
+          "path": "src/features/f003/composition/value.module.ts",
+          "beforeSha256": "639e630ee67043d45fdbb9aa85d849980d806ff4d9db67ebc2e87c9bca6b7c91",
+          "afterSha256": "5a01ed9488e688a616d0167e65794c5c5d778dc3307e12132e46cc1a966cebdb"
+        },
+        {
+          "path": "src/features/f004/composition/value.module.ts",
+          "beforeSha256": "973f50cd588465bfcbd63dc0d6fd05afb1a5637cdbb3236c852746d58718a174",
+          "afterSha256": "4a9120e5d3cdd4db334f599b3837bd5d0d86b89c92034acf3909b01f68954cfb"
+        },
+        {
+          "path": "src/features/f006/composition/value.module.ts",
+          "beforeSha256": "736a3443867a9ba8a7b0ddf3c60ff7f1f3a7bf92ddeeacdaa64a9db7bdfd1130",
+          "afterSha256": "61c42526dcfe74968cd30c4ae8d564316792faf8cbab263f0dc15732ae9c4d8a"
+        },
+        {
+          "path": "src/features/f007/composition/value.module.ts",
+          "beforeSha256": "dc2c4a5e2339494eefce88e38c9f91d702b29014f2bcc2ab7ffd2eddd60e16a0",
+          "afterSha256": "5bf1fb234bc96ff6753a682c49187b57b1dd44cd5a9780f1ed85820566496611"
+        }
+      ],
+      "restoredBaseline": {
+        "sha256": "2a84ede0f14d1535e30c12bcc52c3e3927039dfb57d682c4778e639554e1c11d",
+        "files": 3503,
+        "bytes": 1267294
+      },
+      "adapterSha256": "9ef3fbfa996cdc3e1ecf3ad5504543e03b8aabb177d06d9bdb10e6e70443b74b",
+      "status": "running",
+      "command": [
+        "/tmp/gm-completion-tools-20261020/node-v26.11.1-linux-x64/bin/node",
+        "/tmp/gm-ts-owner-20261020/growth-source-series/scan.mjs",
+        "/tmp/gm-ts-owner-20261020/growth-source-series/n500-copy",
+        "500",
+        "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-500-pUOEDX/report.json",
+        "/tmp/gm-ts-owner-20261020/growth-source-series/n500.report.json"
+      ],
+      "timedOut": true,
+      "exitCode": -9,
+      "chainSeconds": 60.07795158999943,
+      "stdout": {
+        "path": "/tmp/gm-ts-owner-20261020/growth-source-series/n500.stdout.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "path": "/tmp/gm-ts-owner-20261020/growth-source-series/n500.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ],
+  "status": "failed",
+  "wallSeconds": 157.9953047880008,
+  "failure": {
+    "type": "AssertionError",
+    "message": ""
+  },
+  "endUtc": "2026-10-20T10:30:50.195342+00:00"
+}

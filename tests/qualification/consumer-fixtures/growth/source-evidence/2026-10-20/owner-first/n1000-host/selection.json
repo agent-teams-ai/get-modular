@@ -1,0 +1,13 @@
+{
+  "order": "Independent N500 receipt/report/log/adapter/current-built-artifact audit PASS before selecting this single N1000 run",
+  "n500Receipt": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n500/receipt.json",
+  "n500ReceiptSha256": "5794b0820e200604b85ad6c26e1de9ec104d8e881135690d2c5b0af6826d36df",
+  "n500ReportSha256": "ae07747789adf5e4158c2ccd16c4e9ee559ff8f0215238a804d321aa892d431a",
+  "selectedSizes": [
+    1000
+  ],
+  "maximumSourceInvocations": 1,
+  "n500CliMs": 25537.933809000002,
+  "n500SourceChainSeconds": 39.49753249099922,
+  "n500AggregateSeconds": 46.33277219100091
+}

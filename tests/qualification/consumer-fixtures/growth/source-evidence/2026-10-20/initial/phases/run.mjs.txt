@@ -1,0 +1,5 @@
+import { writeFile } from 'node:fs/promises';
+import { checkGrowthSource } from './source.ts';
+const result = await checkGrowthSource(process.argv[2], 500);
+await writeFile(process.argv[3], JSON.stringify(result, null, 2) + '\n');
+console.log(JSON.stringify({source: result.source, sourceTree: result.sourceTree}));

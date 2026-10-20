@@ -1,0 +1,28 @@
+{
+  "kind": "host-node-spawn-preflight",
+  "status": "passed",
+  "sandboxPermissions": "require_escalated",
+  "recordedAfterUtc": "2026-10-20T11:17:57.656894+00:00",
+  "execPath": "/tmp/gm-completion-tools-20261020/node-v26.11.1-linux-x64/bin/node",
+  "childArguments": [
+    "-e",
+    "process.stdout.write(process.version)"
+  ],
+  "timeoutMs": 10000,
+  "killSignal": "SIGKILL",
+  "exitCode": 0,
+  "childResult": {
+    "status": 0,
+    "signal": null,
+    "stdout": "v26.11.1",
+    "stderr": "",
+    "error": null
+  },
+  "toolChunkId": "0826d4",
+  "originalAttempt": {
+    "receipt": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000/receipt.json",
+    "receiptSha256": "b07625143231500092cf6506635726ed1b361ee061fb082c3ce24a70ef218d24",
+    "sandboxPermissions": "use_default",
+    "result": "inconclusive spawnSync EPERM; no CLI verdict"
+  }
+}

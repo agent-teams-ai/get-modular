@@ -1,0 +1,212 @@
+from pathlib import Path
+import datetime, hashlib, json, os, shutil, signal, subprocess, time
+
+out = Path(__file__).parent
+prior = out.parent / 'candidate-n500'
+repo = Path('/tmp/gm-foundation-growth-owner-20261020')
+gm = Path('/tmp/gm-growth-source-20261020')
+original = Path('/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-1000-rpRWdr')
+subject = out / 'subject'
+head = '359085664d7e51cced497c30eb0e82cc68baf346'
+profile = repo / '.worker-tmp/profiles' / ('node-' + head)
+node = '/tmp/gm-completion-tools-20261020/node-v26.11.1-linux-x64/bin/node'
+cold = {'sha256': '08733408d3e304d5551df7a009cd3ea8fd2ceea879c106018a98a0f37123aea5', 'files': 7003, 'bytes': 2538295}
+started = time.monotonic()
+child = None
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+def tree(root):
+    digest = hashlib.sha256()
+    count = total = 0
+    for path in sorted(root.rglob('*'), key=lambda item: str(item.relative_to(root))):
+        assert not path.is_symlink(), path
+        if path.is_dir():
+            continue
+        assert path.is_file(), path
+        data = path.read_bytes()
+        digest.update(str(path.relative_to(root)).encode())
+        digest.update(b'\0')
+        digest.update(data)
+        digest.update(b'\0')
+        count += 1
+        total += len(data)
+    return {'sha256': digest.hexdigest(), 'files': count, 'bytes': total}
+
+receipt = {
+    'kind': 'source-owner-candidate-benchmark', 'status': 'running', 'size': 1000,
+    'sourceCommit': head, 'budgetsSeconds': {'foundationCli': 30, 'sourceChain': 60, 'externalAggregate': 600},
+    'startUtc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    'subject': str(subject), 'original': str(original), 'phase': 'preparation',
+    'generatorCompilerRuntimeInvocations': 'none; copy retained inputs and restore exact recorded shared-contract before bytes only',
+    'supportedInstalledQualification': False,
+}
+
+def save():
+    receipt['aggregateSeconds'] = time.monotonic() - started
+    (out / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
+
+def expire(signum, frame):
+    if child is not None and child.poll() is None:
+        os.killpg(child.pid, signal.SIGKILL)
+    raise TimeoutError('fixed 600-second external aggregate expired')
+
+signal.signal(signal.SIGALRM, expire)
+signal.alarm(600)
+try:
+    receipt['supervisorSha256'] = sha(Path(__file__))
+    n500 = json.loads((prior / 'receipt.json').read_text())
+    n500_report = json.loads((prior / 'report.json').read_text())
+    assert sha(prior / 'receipt.json') == '5794b0820e200604b85ad6c26e1de9ec104d8e881135690d2c5b0af6826d36df'
+    assert sha(prior / 'report.json') == n500['reportSha256'] == 'ae07747789adf5e4158c2ccd16c4e9ee559ff8f0215238a804d321aa892d431a'
+    assert n500['status'] == 'passed' and n500['exitCode'] == 0 and not n500['timedOut']
+    receipt['selection'] = {
+        'order': 'Independent N500 receipt/report/log/adapter/current-built-artifact audit PASS before selecting this single N1000 run',
+        'n500Receipt': str(prior / 'receipt.json'), 'n500ReceiptSha256': sha(prior / 'receipt.json'),
+        'n500ReportSha256': sha(prior / 'report.json'), 'selectedSizes': [1000], 'maximumSourceInvocations': 1,
+        'n500CliMs': n500_report['observation']['policy']['wallMs'],
+        'n500SourceChainSeconds': n500['chainSeconds'], 'n500AggregateSeconds': n500['aggregateSeconds'],
+    }
+    (out / 'selection.json').write_text(json.dumps(receipt['selection'], indent=2) + '\n')
+    assert subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=repo, text=True).strip() == head
+    assert subprocess.check_output(['git', 'status', '--porcelain'], cwd=repo, text=True) == ''
+    receipt['sourceTree'] = subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], cwd=repo, text=True).strip()
+    assert receipt['sourceTree'] == 'b057a79901a3ed533d1305df0825ebeca03b9d28'
+    receipt['profileEvidence'] = json.loads((profile / '.agent-teams-runtime-profile.json').read_text())
+    assert receipt['profileEvidence'] == n500['profileEvidence']
+    assert json.loads((out.parent / 'focused.receipt.json').read_text())['status'] == 'passed'
+
+    def tools():
+        observed = {}
+        for name, expected in n500_report['publicTools'].items():
+            package = Path(expected['entry']).parent.parent
+            observed[name] = {'manifestSha256': sha(package / 'package.json'), 'dist': tree(package / 'dist')}
+            assert observed[name] == expected['package'], name
+        return observed
+
+    receipt['publicToolArtifactsBefore'] = tools()
+    frozen = n500['frozenGmInputsBefore']
+    receipt['frozenGmInputsBefore'] = {name: sha(gm / name) for name in frozen}
+    assert receipt['frozenGmInputsBefore'] == frozen
+    receipt['originalReportBeforeSha256'] = sha(original / 'report.json')
+    assert receipt['originalReportBeforeSha256'] == 'dd2c923f4fc995a282bbbe61416c42a16224d3067ec479726a226476066c897c'
+    retained = json.loads((original / 'report.json').read_text())
+    assert retained['status'] == 'passed' and retained['size'] == 1000
+    final_source = next(stage['source'] for stage in reversed(retained['stages']) if 'source' in stage)
+    receipt['originalBefore'] = tree(original / 'src')
+    assert receipt['originalBefore'] == final_source
+    assert retained['stages'][0]['stage'] == 'cold' and retained['stages'][0]['source'] == cold
+    receipt['originalPackagesBefore'] = tree(original / 'node_modules')
+    receipt['originalManifestBeforeSha256'] = sha(original / 'package.json')
+
+    assert not subject.exists()
+    subject.mkdir()
+    shutil.copytree(original / 'src', subject / 'src', symlinks=True)
+    shutil.copytree(original / 'node_modules', subject / 'node_modules', symlinks=True)
+    shutil.copyfile(original / 'package.json', subject / 'package.json')
+    assert tree(subject / 'src') == final_source
+    assert tree(subject / 'node_modules') == receipt['originalPackagesBefore']
+    patches = retained['edits']['sharedContract']
+    assert len(patches) == 6
+    receipt['restoredFiles'] = []
+    for patch in patches:
+        relative = Path(patch['path'])
+        assert not relative.is_absolute() and '..' not in relative.parts and relative.parts[0] == 'src'
+        target = subject / relative
+        before, after = patch['before'].encode(), patch['after'].encode()
+        assert target.read_bytes() == after
+        assert hashlib.sha256(after).hexdigest() == patch['afterSha256']
+        assert hashlib.sha256(before).hexdigest() == patch['beforeSha256']
+        target.write_bytes(before)
+        receipt['restoredFiles'].append({key: patch[key] for key in ['path', 'beforeSha256', 'afterSha256']})
+    receipt['sourceBefore'] = tree(subject / 'src')
+    assert receipt['sourceBefore'] == cold
+
+    for name in ['source.ts', 'policy.ts', 'adapter.patch', 'package.json']:
+        shutil.copyfile(prior / name, out / name)
+    for name in ['source.ts', 'policy.ts', 'adapter.patch']:
+        assert sha(out / name) == n500['preparation']['inputs'][name]['sha256']
+    runner = (prior / 'run.ts').read_text()
+    assert runner.count('checkGrowthSource(process.argv[2]!, 500)') == 1
+    (out / 'run.ts').write_text(runner.replace('checkGrowthSource(process.argv[2]!, 500)', 'checkGrowthSource(process.argv[2]!, 1000)'))
+    receipt['preparation'] = {
+        'ownerCandidate': head, 'profileRoot': str(profile),
+        'frozenHelperSha256': frozen['tests/qualification/consumer-fixtures/growth/source.ts'],
+        'inputs': {name: {'sha256': sha(out / name), 'bytes': (out / name).stat().st_size}
+                   for name in ['source.ts', 'policy.ts', 'run.ts', 'adapter.patch', 'package.json']},
+        'adapterReuse': 'source.ts and policy.ts byte-identical to reviewed N500; runner changes only size literal 500 to 1000',
+        'priorStrictReceipt': str(prior / 'strict.receipt.json'), 'priorStrictReceiptSha256': sha(prior / 'strict.receipt.json'),
+        'compilerInvocations': 0,
+    }
+    (out / 'preparation.json').write_text(json.dumps(receipt['preparation'], indent=2) + '\n')
+    command = [node, str(out / 'run.ts'), str(subject), str(original / 'report.json'), str(out / 'report.json')]
+    receipt['command'] = command
+    receipt['phase'] = 'source-chain-running'
+    save()
+    environment = dict(os.environ,
+        PATH='/tmp/gm-completion-tools-20261020/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+        NODE_USE_ENV_PROXY='1', TMPDIR=str(out), TMP=str(out), TEMP=str(out))
+    chain_started = time.monotonic()
+    with (out / 'stdout.log').open('wb') as stdout, (out / 'stderr.log').open('wb') as stderr:
+        child = subprocess.Popen(command, cwd=gm, env=environment, stdout=stdout, stderr=stderr, start_new_session=True)
+        receipt['pid'] = child.pid
+        save()
+        try:
+            code = child.wait(timeout=min(60, 600 - (time.monotonic() - started)))
+            receipt['timedOut'] = False
+        except subprocess.TimeoutExpired:
+            os.killpg(child.pid, signal.SIGKILL)
+            code = child.wait()
+            receipt['timedOut'] = True
+            receipt['termination'] = 'SIGKILL owned source child process group at fixed source-chain budget'
+    receipt.update(exitCode=code, chainSeconds=time.monotonic() - chain_started, phase='custody-after')
+    receipt['sourceAfter'] = tree(subject / 'src')
+    receipt['originalAfter'] = tree(original / 'src')
+    receipt['originalReportAfterSha256'] = sha(original / 'report.json')
+    receipt['originalPackagesAfter'] = tree(original / 'node_modules')
+    receipt['originalManifestAfterSha256'] = sha(original / 'package.json')
+    receipt['copiedPackagesAfter'] = tree(subject / 'node_modules')
+    receipt['frozenGmInputsAfter'] = {name: sha(gm / name) for name in frozen}
+    receipt['publicToolArtifactsAfter'] = tools()
+    receipt['adapterInputsAfter'] = {name: sha(out / name) for name in receipt['preparation']['inputs']}
+    receipt['policyAfterSha256'] = sha(subject / 'architecture/foundation/source-dependencies.yaml')
+    assert receipt['sourceBefore'] == receipt['sourceAfter'] == cold
+    assert receipt['originalBefore'] == receipt['originalAfter'] == final_source
+    assert receipt['originalReportBeforeSha256'] == receipt['originalReportAfterSha256']
+    assert receipt['originalManifestBeforeSha256'] == receipt['originalManifestAfterSha256']
+    assert receipt['originalPackagesBefore'] == receipt['originalPackagesAfter'] == receipt['copiedPackagesAfter']
+    assert receipt['frozenGmInputsBefore'] == receipt['frozenGmInputsAfter'] == frozen
+    assert receipt['publicToolArtifactsBefore'] == receipt['publicToolArtifactsAfter']
+    assert all(receipt['adapterInputsAfter'][name] == record['sha256'] for name, record in receipt['preparation']['inputs'].items())
+    receipt['custodyUnchanged'] = True
+    assert code == 0 and not receipt['timedOut'], f'candidate exit {code}; fixed source timeout {receipt["timedOut"]}'
+    result = json.loads((out / 'report.json').read_text())
+    assert result['kind'] == 'source-owner-candidate-selected-flat-growth-source' and result['size'] == 1000
+    assert result['source'] == 'passed' and result['sourceTree'] == cold
+    observation = result['observation']
+    source = observation['source']
+    assert observation['outcome'] == 'passed' and observation['completeInventory'] is True
+    assert source['outcome'] == 'passed' and source['factCoverage'] == 'complete' and source['problems'] == []
+    assert source['fms']['ok'] is True and source['fms']['diagnostics'] == []
+    assert source['cms']['outcome'] == 'passed' and observation['topology']['outcome'] == 'passed'
+    assert observation['policy']['exit'] == 0 and observation['policy']['report']['outcome'] == 'passed'
+    assert observation['policy']['wallMs'] < 30000 and receipt['chainSeconds'] < 60
+    assert result['publicTools'] == n500_report['publicTools']
+    receipt['reportSha256'] = sha(out / 'report.json')
+    receipt['status'] = 'passed'
+    receipt['phase'] = 'complete'
+except BaseException as error:
+    receipt['status'] = 'failed'
+    receipt['error'] = repr(error)
+    raise
+finally:
+    signal.alarm(0)
+    receipt['endUtc'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    for name in ['stdout.log', 'stderr.log', 'report.json']:
+        if (out / name).is_file():
+            receipt[name + 'Sha256'] = sha(out / name)
+    save()
+    print(json.dumps({'status': receipt['status'], 'phase': receipt['phase'], 'exitCode': receipt.get('exitCode'),
+                      'timedOut': receipt.get('timedOut'), 'chainSeconds': receipt.get('chainSeconds'),
+                      'aggregateSeconds': receipt['aggregateSeconds'], 'receipt': str(out / 'receipt.json')}, indent=2), flush=True)

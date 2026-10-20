@@ -1,0 +1,41 @@
+{
+  "startUtc": "2026-10-20T10:36:56.749704+00:00",
+  "endUtc": "2026-10-20T10:37:55.345549+00:00",
+  "command": [
+    "/tmp/gm-completion-tools-20261020/node-v26.11.1-linux-x64/bin/node",
+    "/tmp/gm-ts-owner-20261020/growth-source-phase-diagnostic/run.mjs",
+    "/tmp/gm-ts-owner-20261020/growth-source-series/n500-copy",
+    "/tmp/gm-ts-owner-20261020/growth-source-phase-diagnostic/report.json"
+  ],
+  "capSeconds": 60,
+  "foundationCliCapSeconds": 30,
+  "exitCode": 1,
+  "timedOut": false,
+  "wallSeconds": 58.595884985999874,
+  "termination": "observed child exit; no process-tree kill",
+  "sourceBefore": {
+    "sha256": "2a84ede0f14d1535e30c12bcc52c3e3927039dfb57d682c4778e639554e1c11d",
+    "files": 3503,
+    "bytes": 1267294
+  },
+  "sourceAfter": {
+    "sha256": "2a84ede0f14d1535e30c12bcc52c3e3927039dfb57d682c4778e639554e1c11d",
+    "files": 3503,
+    "bytes": 1267294
+  },
+  "policyBeforeSha256": "93aae6743d6c396e317a5e49bc3206d13a38660fc2db98a939e11e05c3a077a8",
+  "policyAfterSha256": "93aae6743d6c396e317a5e49bc3206d13a38660fc2db98a939e11e05c3a077a8",
+  "frozenHelperBeforeSha256": "9ef3fbfa996cdc3e1ecf3ad5504543e03b8aabb177d06d9bdb10e6e70443b74b",
+  "frozenHelperAfterSha256": "9ef3fbfa996cdc3e1ecf3ad5504543e03b8aabb177d06d9bdb10e6e70443b74b",
+  "instrumentedHelperSha256": "70998e879be595a4e411df75a290ffe4853accde376ba46c8f622ae47457d9fc",
+  "instrumentedRecordsSha256": "67a7bc08aa3625163de433547f626ca0317bb3fe478cd34dd1cf1c68c2a6a05e",
+  "instrumentationDiffSha256": "212b33d1da61fc41872f4aebc3bd7ae321e02f7c2dce2004207bdd3175bcd905",
+  "publicExportBindings": {
+    "@agent-teams/engineering-foundation/source-graph": "file:///tmp/gm-growth-source-20261020/node_modules/.pnpm/%40agent-teams%2Bengineering-foundation%401.10.0_%40types%2Bnode%4024.19.1/node_modules/%40agent-teams/engineering-foundation/dist/source-graph.js",
+    "@agent-teams/feature-module-standard": "file:///tmp/gm-growth-source-20261020/node_modules/.pnpm/%40agent-teams%2Bfeature-module-standard%400.1.1_%40agent-teams%2Bengineering-foundation%401.10.0_%40types%2Bnode%4024.19.1_/node_modules/%40agent-teams/feature-module-standard/dist/index.js",
+    "@get-modular/conformance": "file:///tmp/gm-growth-source-20261020/packages/conformance/dist/index.js"
+  },
+  "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "phaseLogSha256": "26791365cd111ae9441e79a53d535d5c49c65c19d1b64e0103d6b3b3cef9b303",
+  "scope": "one disposable phase diagnostic; no compiler/runtime/generator; original series timeout remains failed"
+}

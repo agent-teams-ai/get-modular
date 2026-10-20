@@ -1,0 +1,33 @@
+{
+  "command": [
+    "/tmp/gm-completion-tools-20261020/node-v26.11.1-linux-x64/bin/node",
+    "tools/dev.mts",
+    "--profile",
+    "node",
+    "build"
+  ],
+  "cwd": "/tmp/gm-foundation-growth-owner-20261020",
+  "sourceCommit": "359085664d7e51cced497c30eb0e82cc68baf346",
+  "sourceTree": "b057a79901a3ed533d1305df0825ebeca03b9d28",
+  "lockSha256": "896256e3eba577d60e5e539bef77aa7dc1954a3a8e515f1f75774e5ec6af7465",
+  "startUtc": "2026-10-20T10:55:14.049455+00:00",
+  "status": "passed",
+  "tempRoot": "/var/tmp/ef-growth-tests-20261020",
+  "pid": 820246,
+  "exitCode": 0,
+  "wallSeconds": 10.046278042998892,
+  "endUtc": "2026-10-20T10:55:24.096185+00:00",
+  "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "profileEvidence": {
+    "profile": "node",
+    "sourceSha": "359085664d7e51cced497c30eb0e82cc68baf346",
+    "sourceDigest": "496a5f9cc672f438fe4765f5ea276f272382022764c6949ba4bd08b963f148f1",
+    "originalManifestSha256": "96c21c967388832053c9e5a8899eb6f286357e4662c073e44ee7ed4d2ebec0dd",
+    "derivedManifestSha256": "35320b3c153673944bac304255931c9125f83692d9fb452467c6fbb6a6629a40",
+    "originalWorkflowPolicySha256": "afe85aab51f1b49a40854aa304977747607b2269f6cd011e476d290e8e61f8cc",
+    "derivedWorkflowPolicySha256": "9175f61ed43e56a04321ee2ab4497a43ef497104dd21e08220818bc661b6eb74",
+    "originalDependencyDeclarationsPolicySha256": "9d7e59a237fc071bdf910f4c9a5b001ca9681b6a7740911e7213dc04280ca82c",
+    "derivedDependencyDeclarationsPolicySha256": "bd22dde8a604ce7ec7cda04a766284e6082ada9211daad07313923e08bfc14a2"
+  }
+}
