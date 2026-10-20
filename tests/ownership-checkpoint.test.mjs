@@ -26,8 +26,8 @@ const presentLeafRoots = () => LEAF_PACKAGES
 
 test("the complete gate runs the ownership checkpoint suite with failure propagation", () => {
   const { scripts } = JSON.parse(readFileSync("package.json", "utf8"));
-  assert.equal(scripts.precheck, "pnpm ownership:checkpoint:test",
-    "pnpm check must run the checkpoint suite through its precheck lifecycle");
+  assert.equal(scripts.precheck, "node architecture/tooling/runtime/command.ts run ownership:checkpoint:test",
+    "the complete gate must run the checkpoint suite through its precheck lifecycle");
   assert.equal(scripts["ownership:checkpoint:test"],
     "node architecture/checks/compiler-floor.ts && node --test tests/ownership-checkpoint.test.mjs",
     "the checkpoint script must execute the focused suite, not a no-op");

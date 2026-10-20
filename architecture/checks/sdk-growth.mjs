@@ -21,8 +21,35 @@ const WORKFLOW_PATH = "architecture/foundation/repository-agent-workflow.yaml";
 const CMS_PATH = "architecture/sdk-growth/evidence/consumer-module-standard.json";
 const FEASIBILITY_PATH = "architecture/sdk-growth/evidence/p0-feasibility.json";
 const ROOT_CLASSIFICATION_PATH = "architecture/sdk-growth/root-classification.json";
-const CMS_SHA256 = "33b41d5babf0a431c97e8e596a56e6ec1557ba1a0b26d39bf23e13d9a19e1fbd";
-const SDK_COMMAND = "node architecture/checks/compiler-floor.ts && pnpm sdk-growth:typecheck && node architecture/checks/sdk-growth.mjs && node --test tests/sdk-growth.test.mjs && node tests/qualification/sdk-growth-admission.mjs && node tests/qualification/sdk-growth-packed-consumers.mjs && node tests/qualification/sdk-growth-registry-consumer.ts";
+const CMS_SHA256 = "c2fe582a14ff6e79620b232ca7ffc914afb0474ec21fd43f208251dd7252f4a3";
+const P0_CMS = Object.freeze({
+  commit: "24d6557a1b04b01a3a73c64b1d9a9afd83d89c8f",
+  gitBlob: "63540f7b0420134ba685002d01770da2f213c65a",
+  sha256: "33b41d5babf0a431c97e8e596a56e6ec1557ba1a0b26d39bf23e13d9a19e1fbd",
+});
+const CMS_EVIDENCE = Object.freeze({
+  "currentDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-20261020/common-assembly.txt",
+  "previousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-20261020/previous-common-assembly.txt",
+  "deltaPath": "architecture/sdk-growth/evidence/cms-guidance-20261020/common-assembly.diff",
+  "deltaSha256": "3cc0eac2e324e1b8298370ae0649b3b39c30f285ea8b16b66f6bf0ac6e6b555f",
+  "previousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-20261020/previous-review.json",
+  "previousReviewSha256": "c7b6aae11a8be3ec39479ca3136d195780cbb2cd4b62a5baed8ac9d51cff3e0e"
+});
+const CMS_SCOPE_REVIEW = Object.freeze({
+  "scope": "sdk-growth-development-tooling",
+  "classification": "fixed-development-tooling",
+  "assemblyRuntime": "not-used",
+  "guidanceReview": "complete",
+  "qualification": "pending",
+  "activation": "hold",
+  "outstanding": [
+    "trusted-external-authority-transport-unavailable",
+    "trusted-pr-base-and-exact-candidate-binding-unavailable",
+    "authenticated-released-artifact-source-binding-unavailable",
+    "released-growth-observations-and-custody-receipts-unavailable"
+  ]
+});
+const SDK_COMMAND = "node architecture/checks/compiler-floor.ts && node architecture/tooling/runtime/command.ts run sdk-growth:typecheck && node architecture/checks/sdk-growth.mjs && node --test tests/sdk-growth.test.mjs && node tests/qualification/sdk-growth-admission.mjs && node tests/qualification/sdk-growth-packed-consumers.mjs && node tests/qualification/sdk-growth-registry-consumer.ts";
 const OBSOLETE_ACTIVE_RECORDS = Object.freeze([
   "architecture/sdk-growth/activation.json",
   "architecture/sdk-growth/evidence/completion.json",
@@ -99,10 +126,11 @@ export async function loadSdkGrowthModel(root = process.cwd()) {
     baselines: Object.fromEntries(await Promise.all(PACKAGES.map(async pkg => [pkg.packageName, await readJson(root, pkg.releasedBaselinePath)]))),
     histories: Object.fromEntries(await Promise.all(PACKAGES.map(async pkg => [pkg.packageName, await readJson(root, pkg.historyPath)]))),
     cmsReview,
-    // P0 reviewed the standard at its accepted commit; later revisions of the live document do not
-    // change that frozen observation (owner decision A, 2026-10-01).
-    cmsBytes: (await execute("git", ["show", `${cmsReview.acceptedCurrent.commit}:docs/architecture/common-assembly.md`],
-      { cwd: root, encoding: "buffer", maxBuffer: 1 << 20 })).stdout,
+    // Current guidance and frozen P0 inputs have independent identities.
+    cmsBytes: await readFile(join(root, CMS_EVIDENCE.currentDocumentPath)),
+    cmsPreviousBytes: await readFile(join(root, CMS_EVIDENCE.previousDocumentPath)),
+    cmsDeltaBytes: await readFile(join(root, CMS_EVIDENCE.deltaPath)),
+    cmsPreviousReviewBytes: await readFile(join(root, CMS_EVIDENCE.previousReviewPath)),
     feasibility: await readJson(root, FEASIBILITY_PATH),
     rootClassification: await readJson(root, ROOT_CLASSIFICATION_PATH),
     tracked,
@@ -202,33 +230,45 @@ function validatePackages(model) {
   }
 }
 
-function validateP0Evidence(model) {
+export function validateCmsGuidance(model) {
   const cms = model.cmsReview;
   same(cms.pinned, {
     commit: "669a750d8db451e04f075cdeb36576c6606fba6e",
     gitBlob: "7bf511f88d4f3547b107cad9ec85d54b009ed033",
     sha256: "e6cd8d26b4317bf5f94ddd22f6e36bf25e90548f72265d94808eaf20b947e553",
   }, "original CMS pin");
-  const previous = {
-    commit: "ac49bb3374946330ec820591f8195a22d2c90900",
-    gitBlob: "93e743d9f833b698fc3106054aafc449c6d9f8f9",
-    sha256: "d5bb71e5a700014f9f0a09b17d1f33d24b30b66c49b273c9fb65584672c51e4f",
-  };
   same(cms.acceptedCurrent, {
-    commit: "24d6557a1b04b01a3a73c64b1d9a9afd83d89c8f",
-    gitBlob: "63540f7b0420134ba685002d01770da2f213c65a",
+    commit: "300e7e1c459c08f5e271627e4ca7d2486bdf5e1f",
+    gitBlob: "ae6792543bd19acc948e177e8d55632c9d51134e",
     sha256: CMS_SHA256,
   }, "current CMS pin");
-  same(cms.delta.fromAcceptedCurrent, previous, "previous CMS pin");
-  if (cms.delta.classification !== "optional-dynamic-host-guidance" || cms.delta.changedHunks !== 2
-    || cms.delta.addedLines !== 32 || cms.delta.removedLines !== 0
-    || cms.delta.changesGetModularCompositionContract !== false
+  same(cms.delta.fromAcceptedCurrent, P0_CMS, "previous CMS pin");
+  if (cms.delta.classification !== "composition-authoring-and-observation-guidance" || cms.delta.changedHunks !== 18
+    || cms.delta.addedLines !== 988 || cms.delta.removedLines !== 48
+    || cms.delta.changesGetModularCompositionContract !== true
     || cms.delta.pinAction !== "advance-reviewed-current-pin-with-historical-pin-retained") fail("CMS delta review drifted");
-  if (createHash("sha256").update(model.cmsBytes).digest("hex") !== CMS_SHA256) fail("CMS document bytes drifted");
+  same(cms.retainedEvidence, CMS_EVIDENCE, "CMS retained evidence identity");
+  same(cms.scopeReview, CMS_SCOPE_REVIEW, "CMS scope review");
+  for (const [bytes, pin, label] of [
+    [model.cmsBytes, cms.acceptedCurrent, "CMS document bytes"],
+    [model.cmsPreviousBytes, P0_CMS, "historical CMS document bytes"],
+  ]) {
+    if (createHash("sha256").update(bytes).digest("hex") !== pin.sha256
+      || createHash("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex") !== pin.gitBlob) fail(`${label} drifted`);
+  }
+  if (createHash("sha256").update(model.cmsDeltaBytes).digest("hex") !== CMS_EVIDENCE.deltaSha256
+    || createHash("sha256").update(model.cmsPreviousReviewBytes).digest("hex") !== CMS_EVIDENCE.previousReviewSha256) {
+    fail("CMS retained delta or previous review bytes drifted");
+  }
   const evidence = model.feasibility;
   if (evidence.schemaVersion !== 1 || evidence.kind !== "g1-p0-feasibility-not-qualification"
-    || evidence.sourceCommit !== cms.acceptedCurrent.commit || evidence.disposition !== "hold"
-    || evidence.standard?.currentSha256 !== CMS_SHA256 || evidence.standard?.reviewPath !== CMS_PATH) fail("P0 disposition or standard drifted");
+    || evidence.sourceCommit !== P0_CMS.commit || evidence.disposition !== "hold"
+    || evidence.standard?.currentSha256 !== P0_CMS.sha256 || evidence.standard?.reviewPath !== CMS_PATH) fail("P0 disposition or standard drifted");
+}
+
+function validateP0Evidence(model) {
+  validateCmsGuidance(model);
+  const evidence = model.feasibility;
   if (evidence.foundation?.installedPublishedVersion !== RETAINED_FOUNDATION.version
     || evidence.foundation?.semanticC0Revision !== 6
     || evidence.foundation?.frozenConsumerPolicyLiteral !== "foundation:sdk-growth:c0:5"
@@ -278,7 +318,7 @@ function validateP0Evidence(model) {
 
 function validateWiring(model) {
   if (model.packageJson.scripts?.["sdk-growth:check"] !== SDK_COMMAND) fail("pending SDK command is missing or a no-op");
-  for (const command of ["check", "check:fast"]) if (!model.packageJson.scripts?.[command]?.includes("pnpm sdk-growth:check")) fail(`${command} bypasses pending SDK guard`);
+  for (const command of ["check", "check:fast"]) if (!model.packageJson.scripts?.[command]?.includes("node architecture/tooling/runtime/command.ts run sdk-growth:check")) fail(`${command} bypasses pending SDK guard`);
   const required = ["architecture/checks/sdk-growth.mjs", "architecture/sdk-growth", "tests/sdk-growth.test.mjs",
     "tests/qualification/sdk-growth-admission.mjs", "tests/qualification/sdk-growth-packed-consumers.mjs",
     "tests/qualification/sdk-growth-registry-consumer.ts", "tests/qualification/sdk-growth-public-import.ts", "tests/qualification/sdk-growth-synthetic-predecessor.ts",

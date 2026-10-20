@@ -39,26 +39,37 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: pnpm/action-setup@008330803749db0355799c700092d9a85fd074e9 # v6.0.9
+        with:
+          version: 11.20.0
+          run_install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ env.ROOT_CI_NODE_VERSION }}
           node-version-file: .node-version
-          cache: pnpm
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: .bun-version
+      - name: Prepare the isolated Node profile when selected
+        run: node architecture/tooling/runtime/ci.ts
       - name: Install the actual root with strict frozen policy
-        run: pnpm install --frozen-lockfile --ignore-scripts --engine-strict --strict-peer-dependencies
+        working-directory: ${{ env.GM_RUNTIME_CHECKOUT || github.workspace }}
+        run: node architecture/tooling/runtime/dev.ts install
       - name: Validate the committed peer graph
-        run: pnpm lockfile:peers:check
+        working-directory: ${{ env.GM_RUNTIME_CHECKOUT || github.workspace }}
+        run: node architecture/tooling/runtime/dev.ts peers
       - name: Run check lane with its build prerequisites
         env:
           LANE_SCRIPTS: ${{ matrix.scripts }}
           FOUNDATION_PR_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
           SDK_GROWTH_FAILURE_ARTIFACT: ${{ runner.temp }}/sdk-growth-failure.json
           SDK_GROWTH_CHECKOUT_SHA: ${{ github.sha }}
+        working-directory: ${{ env.GM_RUNTIME_CHECKOUT || github.workspace }}
         run: node architecture/tooling/run-ci-check-lane.mjs
       - name: Verify tracked workspace integrity
         env:
           EXPECTED_HEAD_SHA: ${{ github.sha }}
-        run: node architecture/checks/tracked-workspace-integrity.mjs
+        working-directory: ${{ env.GM_RUNTIME_CHECKOUT || github.workspace }}
+        run: node architecture/tooling/runtime/dev.ts verify
       # Earlier packaging failures and expected SDK exits may leave no SDK file.
       - name: Retain bounded SDK growth failure evidence
         if: failure() && matrix.lane == 'packaging'
@@ -119,6 +130,7 @@ jobs:
     timeout-minutes: 15
     env: &node24-root-runtime
       ROOT_CI_NODE_VERSION: 24.21.0
+      ROOT_CI_RUNTIME_PROFILE: node
     strategy:
       fail-fast: false
       matrix: *check-lane-matrix
@@ -165,8 +177,67 @@ jobs:
     if: always()
     steps: *check-aggregate-steps
 
+  lanes-node26-ubuntu:
+    name: check lane (ubuntu-24.04, Node 26 rollback, ${{ matrix.lane }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      ROOT_CI_NODE_VERSION: 26.11.1
+      ROOT_CI_RUNTIME_PROFILE: node
+    strategy:
+      fail-fast: false
+      matrix: *check-lane-matrix
+    steps: *check-lane-steps
+
+  check-node26-ubuntu:
+    name: check (ubuntu-24.04, Node 26 rollback)
+    runs-on: ubuntu-24.04
+    needs: [lanes-node26-ubuntu]
+    if: always()
+    steps: *check-aggregate-steps
+
+  lanes-node26-macos:
+    name: check lane (macos-15, Node 26 rollback, ${{ matrix.lane }})
+    runs-on: macos-15
+    timeout-minutes: 15
+    env:
+      ROOT_CI_NODE_VERSION: 26.11.1
+      ROOT_CI_RUNTIME_PROFILE: node
+    strategy:
+      fail-fast: false
+      matrix: *check-lane-matrix
+    steps: *check-lane-steps
+
+  check-node26-macos:
+    name: check (macos-15, Node 26 rollback)
+    runs-on: macos-15
+    needs: [lanes-node26-macos]
+    if: always()
+    steps: *check-aggregate-steps
+
+  lanes-node26-windows:
+    name: check lane (windows-2025, Node 26 rollback, ${{ matrix.lane }})
+    runs-on: windows-2025
+    timeout-minutes: 15
+    env:
+      ROOT_CI_NODE_VERSION: 26.11.1
+      ROOT_CI_RUNTIME_PROFILE: node
+    strategy:
+      fail-fast: false
+      matrix: *check-lane-matrix
+    steps: *check-lane-steps
+
+  check-node26-windows:
+    name: check (windows-2025, Node 26 rollback)
+    runs-on: windows-2025
+    needs: [lanes-node26-windows]
+    if: always()
+    steps: *check-aggregate-steps
+
   node-24-compatibility:
     name: Node 24 package root compatibility
+    env:
+      ROOT_CI_RUNTIME_PROFILE: node
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -175,13 +246,18 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: pnpm/action-setup@008330803749db0355799c700092d9a85fd074e9 # v6.0.9
+        with:
+          version: 11.20.0
+          run_install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
-          cache: pnpm
+      - name: Prepare isolated Node compatibility checkout
+        run: node architecture/tooling/runtime/ci.ts
       - name: Build and pack libraries with the default Node 26 tooling
+        working-directory: ${{ env.GM_RUNTIME_CHECKOUT }}
         run: |
-          pnpm install --frozen-lockfile --ignore-scripts
+          node architecture/tooling/runtime/dev.ts install
           pnpm peers check --lockfile-only
           pnpm assembly:build
           pnpm resources:build
@@ -204,4 +280,5 @@ jobs:
         env:
           GET_MODULAR_COMPAT_ARCHIVE_DIR: ${{ runner.temp }}/node24-pack
           GET_MODULAR_COMPAT_PNPM_CLI: ${{ runner.temp }}/node24-pnpm/node_modules/pnpm/bin/pnpm.mjs
+        working-directory: ${{ env.GM_RUNTIME_CHECKOUT }}
         run: node --no-warnings --test tests/node-runtime-compatibility.test.mjs

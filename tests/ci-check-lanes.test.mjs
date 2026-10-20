@@ -19,6 +19,9 @@ const hosts = {
   "node24-ubuntu": "ubuntu-24.04",
   "node24-macos": "macos-15",
   "node24-windows": "windows-2025",
+  "node26-ubuntu": "ubuntu-24.04",
+  "node26-macos": "macos-15",
+  "node26-windows": "windows-2025",
 };
 
 // Independent oracle retains every check/precheck obligation at 0a81957c
@@ -58,27 +61,29 @@ const runner = job => job.steps.find(step => step.env?.LANE_SCRIPTS);
 
 function validateLanes(value, manifest = packageJson) {
   assert.equal(value.defaults?.run?.shell, undefined, "payload needs the platform default shell");
-  assert.equal(manifest.scripts.precheck, "pnpm ownership:checkpoint:test", "precheck drift");
-  assert.equal(manifest.scripts.check, baseline.map(script => `pnpm ${script}`).join(" && "), "check chain drift");
+  assert.equal(manifest.scripts.precheck, "node architecture/tooling/runtime/command.ts run ownership:checkpoint:test", "precheck drift");
+  assert.equal(manifest.scripts.check, baseline.map(script => `node architecture/tooling/runtime/command.ts run ${script}`).join(" && "), "check chain drift");
   assert.equal(manifest.scripts["runtime:preflight"],
     "node architecture/checks/node-version.mjs", "dependency-free preflight drift");
   assert.equal(manifest.scripts["precheck:changed"],
-    "pnpm runtime:preflight && node architecture/checks/compiler-floor.ts", "changed precheck drift");
-  assert.equal(manifest.scripts["lockfile:peers:check"], "pnpm peers check --lockfile-only", "peer gate drift");
+    "node architecture/tooling/runtime/command.ts run runtime:preflight && node architecture/checks/compiler-floor.ts", "changed precheck drift");
+  assert.equal(manifest.scripts["lockfile:peers:check"], "node architecture/tooling/runtime/dev.ts peers", "peer gate drift");
   assert.equal(manifest.scripts["runtime:policy:typecheck"],
-    "pnpm tooling:native:typecheck && node node_modules/typescript/bin/tsc -p tests/tsconfig.tooling-node-policy.json --noEmit", "policy compiler drift");
+    "node architecture/tooling/runtime/projection-check.ts && node architecture/tooling/runtime/command.ts run tooling:native:typecheck && node node_modules/typescript/bin/tsc -p tests/tsconfig.tooling-node-policy.json --noEmit && node node_modules/typescript/bin/tsc -p tests/tsconfig.repository-runtime.json --noEmit", "policy compiler drift");
   assert.equal(manifest.scripts["runtime:policy:test"],
-    "node --test tests/tooling-node-policy.test.ts tests/npm-release.test.ts", "policy test drift");
+    "node --test tests/tooling-node-policy.test.ts tests/npm-release.test.ts tests/repository-runtime.test.ts", "policy test drift");
   // Every independent checkout validates peers before its lane payload.
   assert.deepEqual([...Object.values(primary).flat(), "lockfile:peers:check"].sort(),
     ["ownership:checkpoint:test", ...baseline.filter(script => !["runtime:preflight", "assembly:build"].includes(script))].sort());
   for (const [host, os] of Object.entries(hosts)) {
     const node24 = host.startsWith("node24-");
+    const rollback = host.startsWith("node26-");
     const job = laneJob(value, host);
     assert(job, `${host}: missing lane job`);
     assert.equal(job.name, `check lane (${os}, `
-      + (node24 ? "Node 24, " : "") + "${{ matrix.lane }})");
-    assert.deepEqual(job.env, node24 ? { ROOT_CI_NODE_VERSION: "24.21.0" } : undefined,
+      + (node24 ? "Node 24, " : rollback ? "Node 26 rollback, " : "") + "${{ matrix.lane }})");
+    assert.deepEqual(job.env, node24 ? { ROOT_CI_NODE_VERSION: "24.21.0", ROOT_CI_RUNTIME_PROFILE: "node" }
+      : rollback ? { ROOT_CI_NODE_VERSION: "26.11.1", ROOT_CI_RUNTIME_PROFILE: "node" } : undefined,
       "default runtime or candidate selection drift");
     assert.equal(job["runs-on"], os);
     assert.equal(job["timeout-minutes"], 15);
@@ -96,13 +101,16 @@ function validateLanes(value, manifest = packageJson) {
     assert.deepEqual(job.steps[2].with, {
       "node-version": "${{ env.ROOT_CI_NODE_VERSION }}",
       "node-version-file": ".node-version",
-      cache: "pnpm",
     }, "runtime selection must retain the Node 26 default and explicit Node 24 override");
-    assert.equal(job.steps.length, 8, "checkout, provisioning, install, peers, payload, integrity and failure evidence");
-    assert.equal(job.steps[3].run,
-      "pnpm install --frozen-lockfile --ignore-scripts --engine-strict --strict-peer-dependencies");
-    assert.equal(job.steps[4].run, "pnpm lockfile:peers:check",
-      "committed peer validation must follow frozen installation");
+    assert.equal(job.steps.length, 10, "checkout, provisioning, projection, install, peers, payload and integrity");
+    assert.equal(job.steps[3].uses, "oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6");
+    assert.equal(job.steps[3].with["bun-version-file"], ".bun-version");
+    assert.equal(job.steps[4].run, "node architecture/tooling/runtime/ci.ts");
+    assert.equal(job.steps[5].run, "node architecture/tooling/runtime/dev.ts install");
+    assert.equal(job.steps[6].run, "node architecture/tooling/runtime/dev.ts peers");
+    for (const step of job.steps.slice(5, 9)) {
+      assert.equal(step["working-directory"], "${{ env.GM_RUNTIME_CHECKOUT || github.workspace }}");
+    }
     for (const step of job.steps.slice(0, -1)) {
       assert.equal(step.if, undefined, "lane step must not be skipped");
       assert.equal(step["continue-on-error"], undefined);
@@ -123,7 +131,7 @@ function validateLanes(value, manifest = packageJson) {
       path: "${{ runner.temp }}/sdk-growth-failure.json", "if-no-files-found": "ignore",
     });
     const integrity = job.steps.at(-2);
-    assert.equal(integrity.run, "node architecture/checks/tracked-workspace-integrity.mjs");
+    assert.equal(integrity.run, "node architecture/tooling/runtime/dev.ts verify");
     assert.equal(integrity.env.EXPECTED_HEAD_SHA, "${{ github.sha }}");
     assert.equal(job.steps.indexOf(execution), job.steps.length - 3, "integrity must follow payload");
     for (const row of rows) {
@@ -172,7 +180,7 @@ function validateLanes(value, manifest = packageJson) {
     }
     const gate = aggregate(value, host);
     assert(gate, `${host}: missing aggregate`);
-    assert.equal(gate.name, node24 ? `check (${os}, Node 24)` : `check (${os})`, "required context");
+    assert.equal(gate.name, node24 ? `check (${os}, Node 24)` : rollback ? `check (${os}, Node 26 rollback)` : `check (${os})`, "required context");
     assert.equal(gate["runs-on"], os);
     assert.deepEqual(gate.needs, [`lanes-${host}`], "aggregate dependency omission");
     assert.equal(gate.if, "always()", "aggregate must run after failures/skips");
@@ -195,7 +203,7 @@ function shell(command, cwd, environment) {
     ? join(process.env.ProgramFiles, "Git", "bin", "bash.exe") : "bash";
   const result = spawnSync(bash, ["--noprofile", "--norc", "-e", "-c", command], {
     cwd, encoding: "utf8", timeout: 15_000,
-    env: { ...process.env, ...environment },
+    env: { ...process.env, ROOT_CI_RUNTIME_PROFILE: "bun", ...environment },
   });
   assert.ifError(result.error);
   assert.equal(result.signal, null, result.stderr);
@@ -207,7 +215,7 @@ function lane(step, cwd, environment) {
   assert.equal(command, "node");
   const result = spawnSync(process.execPath, args, {
     cwd, encoding: "utf8", timeout: 15_000,
-    env: { ...process.env, ...environment },
+    env: { ...process.env, ROOT_CI_RUNTIME_PROFILE: "bun", ...environment },
   });
   assert.ifError(result.error);
   assert.equal(result.signal, null, result.stderr);
@@ -227,10 +235,10 @@ async function prepareLane(cwd) {
     'process.exit(process.argv[3] === process.env.FAIL_SCRIPT ? 37 : 0);',
     "",
   ].join("\n");
-  await writeFile(join(cwd, "pnpm.cjs"), fake);
-  await writeFile(join(cwd, process.platform === "win32" ? "pnpm.cmd" : "pnpm"),
+  await writeFile(join(cwd, "bun.cjs"), fake);
+  await writeFile(join(cwd, process.platform === "win32" ? "bun.cmd" : "bun"),
     process.platform === "win32"
-      ? `@"${process.execPath}" "%~dp0pnpm.cjs" %*\r\n@exit /b %errorlevel%\r\n`
+      ? `@"${process.execPath}" "%~dp0bun.cjs" %*\r\n@exit /b %errorlevel%\r\n`
       : `#!/usr/bin/env node\n${fake}`, { mode: 0o755 });
 }
 
@@ -282,10 +290,10 @@ test("rejects missing, duplicate, unknown and reordered obligations on any OS", 
       job.strategy.matrix.include[0].scripts = job.strategy.matrix.include[0].scripts
         .replace("governance:check assembly:build", "assembly:build governance:check");
     });
-    mutate(job => { job.steps[4].if = "false"; });
-    mutate(job => { job.steps[3].run = "pnpm install --frozen-lockfile --ignore-scripts"; });
-    mutate(job => { job.steps[4].run = "pnpm peers check"; });
-    mutate(job => { job.steps.splice(4, 1); });
+    mutate(job => { job.steps[6].if = "false"; });
+    mutate(job => { job.steps[5].run = "bun install"; });
+    mutate(job => { job.steps[6].run = "pnpm peers check"; });
+    mutate(job => { job.steps.splice(6, 1); });
     mutate(job => { job.env = { ROOT_CI_NODE_VERSION: "26.9.9" }; });
     mutate(job => { job.steps[2].with["node-version"] = "26.9.9"; });
     mutate(job => { delete job.steps[2].with["node-version-file"]; });
@@ -319,7 +327,7 @@ test("rejects missing, duplicate, unknown and reordered obligations on any OS", 
     mutate(job => { delete runner(job).env.SDK_GROWTH_CHECKOUT_SHA; });
   }
   const drift = clone(packageJson);
-  drift.scripts.check += " && pnpm new:check";
+  drift.scripts.check += " && node architecture/tooling/runtime/command.ts run new:check";
   assert.throws(() => validateLanes(workflow, drift), /check chain drift/u);
 });
 
@@ -406,8 +414,8 @@ test("the native lane fails for a terminated child or unavailable native tool", 
     assert.notEqual(lane(step, cwd, { ...env, FAIL_SIGNAL: "1" }), 0);
     assert.deepEqual((await readFile(join(cwd, "calls.txt"), "utf8")).trim().split(/\r?\n/u).map(line => JSON.parse(line)),
       [["run", "first"]]);
-    await rm(join(cwd, "pnpm"), { force: true });
-    await rm(join(cwd, "pnpm.cmd"), { force: true });
+    await rm(join(cwd, "bun"), { force: true });
+    await rm(join(cwd, "bun.cmd"), { force: true });
     assert.notEqual(lane(step, cwd, { ...env, PATH: cwd }), 0);
   });
 });
@@ -422,4 +430,17 @@ test("the feature profile rejects removing parity tests from the complete gate",
   const omitted = clone(packageJson);
   omitted.scripts["governance:test"] = omitted.scripts["governance:test"].replace(" tests/ci-check-lanes.test.mjs", "");
   assert.throws(() => validateFeatureModuleStandardProfile({ ...inputs, packageJson: omitted }), /governance:test/u);
+});
+
+test("M3 setup preserves the Node 24 proof cells separately from the default controller pin", async () => {
+  const matrix = parse(await read(".github/workflows/m3-runtime-matrix.yml"));
+  for (const job of ["pack", "native", "collect"]) {
+    const setup = matrix.jobs[job].steps.find(step => step.uses?.startsWith("actions/setup-node@"));
+    assert.equal(setup.with["node-version-file"], ".node-version", job);
+  }
+  const node = matrix.jobs.node;
+  const setup = node.steps.find(step => step.uses?.startsWith("actions/setup-node@"));
+  assert.equal(setup.with["node-version-file"], ".node-compat-version");
+  assert.equal(await read(".node-compat-version"), "24.21.0\n");
+  assert.deepEqual(node.strategy.matrix.include.map(row => row.row), ["node-24-linux", "node-24-macos", "node-24-windows"]);
 });

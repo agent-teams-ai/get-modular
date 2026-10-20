@@ -34,7 +34,7 @@ const exampleLeaf = Object.freeze({
   requiredTests: Object.freeze(["packages/example-leaf/tests/example.test.mjs"]),
   commands: Object.freeze({
     "example:test": "node --test packages/example-leaf/tests/example.test.mjs",
-    "example:check": "pnpm example:test",
+    "example:check": "node architecture/tooling/runtime/command.ts run example:test",
   }),
   gate: "example:check",
 });
@@ -57,7 +57,7 @@ const examplePublic = Object.freeze({
   requiredTests: Object.freeze(["packages/example-public/tests/example.test.mjs"]),
   commands: Object.freeze({
     "example-public:test": "node --test packages/example-public/tests/example.test.mjs",
-    "example-public:check": "pnpm example-public:test",
+    "example-public:check": "node architecture/tooling/runtime/command.ts run example-public:test",
   }),
   gate: "example-public:check",
 });
@@ -81,7 +81,7 @@ const examplePeer = Object.freeze({
   requiredTests: Object.freeze(["packages/example-peer/tests/example.test.mjs"]),
   commands: Object.freeze({
     "example-peer:test": "node --test packages/example-peer/tests/example.test.mjs",
-    "example-peer:check": "pnpm example-peer:test",
+    "example-peer:check": "node architecture/tooling/runtime/command.ts run example-peer:test",
   }),
   gate: "example-peer:check",
 });
@@ -146,7 +146,7 @@ function fixture(leaf) {
     readPackageManifest: async () => manifestFor(leaf),
     readProductionSource: async path => sources.get(path),
     packageJson: { scripts: {
-      ...leaf.commands, check: `pnpm ${leaf.gate}`, "check:fast": `pnpm ${leaf.gate}`,
+      ...leaf.commands, check: `node architecture/tooling/runtime/command.ts run ${leaf.gate}`, "check:fast": `node architecture/tooling/runtime/command.ts run ${leaf.gate}`,
     } },
     sdkGrowthStatus: structuredClone(sdkGrowthStatus),
     leaves: ROWS,
@@ -232,7 +232,7 @@ test("the lifecycle-kernel row keeps its reviewed tests and command chain", () =
     "lifecycle:test": "node --test packages/lifecycle-kernel/tests/kernel.test.mjs",
     "lifecycle:pack": "node --test packages/lifecycle-kernel/tests/packed-root.test.mjs",
     "lifecycle:check":
-      "pnpm lifecycle:build && pnpm lifecycle:typecheck && pnpm lifecycle:test && pnpm lifecycle:pack",
+      "node architecture/tooling/runtime/command.ts run lifecycle:build && node architecture/tooling/runtime/command.ts run lifecycle:typecheck && node architecture/tooling/runtime/command.ts run lifecycle:test && node architecture/tooling/runtime/command.ts run lifecycle:pack",
   });
   assert.equal(kernel.gate, "lifecycle:check");
 });
@@ -339,15 +339,15 @@ test("the table rejects rows that would admit less than their decision requires"
     ["commands", { commands: { "example:check": "node -e 0" } }],
     ["commands", { gate: "governance:check",
       commands: { "governance:check": "node architecture/checks/governance.mjs" } }],
-    ["commands", { commands: { ...exampleLeaf.commands, "example:check": "pnpm example:test && echo ok" } }],
+    ["commands", { commands: { ...exampleLeaf.commands, "example:check": "node architecture/tooling/runtime/command.ts run example:test && echo ok" } }],
     ["commands", { commands: { "example:test": exampleLeaf.commands["example:test"],
       "governance:test": "node --test tests/governance.test.mjs",
-      "example:check": "pnpm example:test && pnpm governance:test" } }],
+      "example:check": "node architecture/tooling/runtime/command.ts run example:test && node architecture/tooling/runtime/command.ts run governance:test" } }],
     ["requiredTests", { requiredTests: [] }],
     ["requiredTests", { requiredTests: [...exampleLeaf.requiredTests, `${exampleLeaf.root}/tests/other.test.mjs`] }],
     ...[LEAF_PACKAGES[0].requiredTests[0], `${exampleLeaf.root}/tests/../../core/tests/x.test.mjs`]
       .map(path => ["requiredTests", { requiredTests: [path], commands: {
-        "example:test": `node --test ${path}`, "example:check": "pnpm example:test",
+        "example:test": `node --test ${path}`, "example:check": "node architecture/tooling/runtime/command.ts run example:test",
       } }]),
   ]) {
     const row = { ...exampleLeaf, ...change };
@@ -370,7 +370,7 @@ test("the table rejects peers that are not Core, Assembly or an earlier public r
     extension: { id: "example-later", authority: "docs/decisions/9996-later.md" },
     requiredTests: ["packages/example-later/tests/example.test.mjs"],
     commands: { "example-later:test": "node --test packages/example-later/tests/example.test.mjs",
-      "example-later:check": "pnpm example-later:test" },
+      "example-later:check": "node architecture/tooling/runtime/command.ts run example-later:test" },
     gate: "example-later:check" };
   for (const [label, rows] of [
     ["a peer on a private candidate", [...LEAF_PACKAGES, { ...exampleLeaf, peers: ["@get-modular/core"] }]],
@@ -414,8 +414,8 @@ test("every implemented row is admitted and guarded at once", async () => {
     },
     readProductionSource: async path => sources.get(path),
     packageJson: { scripts: Object.assign({}, ...ROWS.map(leaf => leaf.commands), {
-      check: ROWS.map(leaf => `pnpm ${leaf.gate}`).join(" && "),
-      "check:fast": ROWS.map(leaf => `pnpm ${leaf.gate}`).join(" && "),
+      check: ROWS.map(leaf => `node architecture/tooling/runtime/command.ts run ${leaf.gate}`).join(" && "),
+      "check:fast": ROWS.map(leaf => `node architecture/tooling/runtime/command.ts run ${leaf.gate}`).join(" && "),
     }) },
   };
   assert.deepEqual(await validateLeafPackageAdmission(input), rows.flatMap(row => row.admitted));
@@ -586,10 +586,10 @@ for (const leaf of ROWS) {
     }
     for (const command of ["check", "check:fast"]) {
       const original = input.packageJson.scripts[command];
-      input.packageJson.scripts[command] = `echo pnpm ${leaf.gate}`;
+      input.packageJson.scripts[command] = `echo node architecture/tooling/runtime/command.ts run ${leaf.gate}`;
       await assert.rejects(validateLeafPackageAdmission(input),
         new RegExp(`must execute ${leaf.gate}`, "u"));
-      input.packageJson.scripts[command] = `echo "prefix && pnpm ${leaf.gate} && suffix"`;
+      input.packageJson.scripts[command] = `echo "prefix && node architecture/tooling/runtime/command.ts run ${leaf.gate} && suffix"`;
       await assert.rejects(validateLeafPackageAdmission(input),
         new RegExp(`must execute ${leaf.gate}`, "u"));
       input.packageJson.scripts[command] = original;

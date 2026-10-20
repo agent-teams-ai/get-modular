@@ -43,7 +43,7 @@ export const LEAF_PACKAGES = Object.freeze([
       "lifecycle:test": "node --test packages/lifecycle-kernel/tests/kernel.test.mjs",
       "lifecycle:pack": "node --test packages/lifecycle-kernel/tests/packed-root.test.mjs",
       "lifecycle:check":
-        "pnpm lifecycle:build && pnpm lifecycle:typecheck && pnpm lifecycle:test && pnpm lifecycle:pack",
+        "node architecture/tooling/runtime/command.ts run lifecycle:build && node architecture/tooling/runtime/command.ts run lifecycle:typecheck && node architecture/tooling/runtime/command.ts run lifecycle:test && node architecture/tooling/runtime/command.ts run lifecycle:pack",
     }),
     gate: "lifecycle:check",
   }),
@@ -77,7 +77,7 @@ export const LEAF_PACKAGES = Object.freeze([
       "resources:test": "node --test packages/resources/tests/scope.test.mjs tests/resources/assembly-scope.test.mjs",
       "resources:pack": "node --test packages/resources/tests/packed-root.test.mjs",
       "resources:check":
-        "pnpm resources:build && pnpm resources:typecheck && pnpm resources:test && pnpm resources:pack",
+        "node architecture/tooling/runtime/command.ts run resources:build && node architecture/tooling/runtime/command.ts run resources:typecheck && node architecture/tooling/runtime/command.ts run resources:test && node architecture/tooling/runtime/command.ts run resources:pack",
     }),
     gate: "resources:check",
   }),
@@ -112,7 +112,7 @@ export const LEAF_PACKAGES = Object.freeze([
       "conformance:test": "node --test packages/conformance/tests/conformance.test.mjs",
       "conformance:pack": "node --test packages/conformance/tests/packed-root.test.mjs",
       "conformance:check":
-        "pnpm conformance:build && pnpm conformance:typecheck && pnpm conformance:test && pnpm conformance:pack",
+        "node architecture/tooling/runtime/command.ts run conformance:build && node architecture/tooling/runtime/command.ts run conformance:typecheck && node architecture/tooling/runtime/command.ts run conformance:test && node architecture/tooling/runtime/command.ts run conformance:pack",
     }),
     gate: "conformance:check",
   }),
@@ -159,8 +159,8 @@ export const LEAF_PACKAGES = Object.freeze([
       "observation:evidence":
         "node --test packages/observation/tests/mutations.test.mjs packages/observation/tests/writer-gate.test.ts",
       "observation:pack": "node --test packages/observation/tests/packed-root.test.mjs",
-      "observation:check": "pnpm observation:build && pnpm observation:typecheck && pnpm observation:test"
-        + " && pnpm observation:evidence && pnpm observation:pack",
+      "observation:check": "node architecture/tooling/runtime/command.ts run observation:build && node architecture/tooling/runtime/command.ts run observation:typecheck && node architecture/tooling/runtime/command.ts run observation:test"
+        + " && node architecture/tooling/runtime/command.ts run observation:evidence && node architecture/tooling/runtime/command.ts run observation:pack",
     }),
     gate: "observation:check",
   }),
@@ -188,7 +188,7 @@ export const leafEntrySources = leaf => leafSubpaths(leaf)
 export const leafBuildOutputs = leaf => leafSubpaths(leaf)
   .flatMap(subpath => [`dist/${subpathFile(subpath)}.js`, `dist/${subpathFile(subpath)}.d.ts`]);
 
-// Peers are declared with the workspace caret range, which `pnpm pack` turns
+// Peers are declared with the workspace caret range, which `node architecture/tooling/runtime/command.ts run pack` turns
 // into the caret range of the one 0.x minor in the workspace.
 export const PEER_SPECIFIER = "workspace:^";
 
@@ -250,7 +250,7 @@ function commandProblem(leaf) {
   const steps = names.filter(name => name !== leaf.gate);
   if (!match || steps.length === 0
     || !names.every(name => name.startsWith(match[1]) && typeof leaf.commands[name] === "string")
-    || leaf.commands[leaf.gate] !== steps.map(name => `pnpm ${name}`).join(" && ")) return "commands";
+    || leaf.commands[leaf.gate] !== steps.map(name => `node architecture/tooling/runtime/command.ts run ${name}`).join(" && ")) return "commands";
   if (!Array.isArray(leaf.requiredTests) || leaf.requiredTests.length === 0
     || !leaf.requiredTests.every(path => typeof path === "string"
       && path.startsWith(`${leaf.root}/tests/`) && !path.split("/").includes("..")

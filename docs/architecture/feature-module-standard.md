@@ -159,36 +159,119 @@ lint or the full gate ran. `pnpm check` remains the complete required gate.
 This corrects routing inside the existing development-tooling boundary; it adds
 no production composition node, consumer adoption scope or public contract.
 
-Node 26.11.1 is the repository default and production tooling choice, with
-pnpm 11.20.0. The current owner explicitly authorized this cutover before Node 26
-reached LTS status, so no LTS or further approval condition applies; accepted
-decisions that predate it are unchanged. Node 24.21.0 remains a supported
-tooling compatibility runtime. The root/tooling policy is `>=24.21.0 <25 || >=26.10.0 <27`;
-the public library policy retains the separate Node 24.18.0 floor. Node 25,
-Node 26 below 26.10.0, Node 27 and malformed versions remain rejected. The
-existing runtime helper owns this narrow version mechanism; executable selection
-and deployment policy remain with the Host.
+### Repository runtime profiles
+
+Bun 1.4.3 is the default package manager and runtime for the explicitly listed
+repository checks, Foundation and Docs CLIs. Nested package-script dispatch uses
+`architecture/tooling/runtime/command.ts`; it selects Bun throughout the default
+chain. Literal Node commands keep `node:test`, native TypeScript controls,
+Core generation/build qualification, packed consumers and release tooling on
+Node. No production package depends on these development tools.
+
+The root `workspaces` packages/catalog are a checked projection of
+`pnpm-workspace.yaml`. The latter and `pnpm-lock.yaml` remain the Node rollback
+authority. Before installing, the pinned Bun parses YAML natively and rejects a
+mismatched root projection. Both managers use genuine frozen lockfiles and disable
+dependency lifecycle scripts. Bun uses its explicit isolated linker; existing
+unknown or opposite-manager trees are rejected. `trustedDependencies: []` removes Bun's implicit
+allowlist. User-script hooks remain enabled and are checked separately from
+installation hooks by the compiler-floor regression.
+
+Run `node architecture/tooling/runtime/dev.ts install` for the default profile.
+Create Node rollback only from a clean committed checkout with
+`node architecture/tooling/runtime/dev.ts prepare-node /absolute/new/path`.
+This clones the exact source into a new external directory and projects only
+`package.json` and the two manager policies. In that directory, use
+`dev.ts install`, `dev.ts run check` and `dev.ts verify` through their full path
+`architecture/tooling/runtime/dev.ts`. The marker is routing metadata, not
+qualification evidence. Verification independently recomputes the three
+projections from Git and checks all other tracked bytes against the same head.
+A shared `node_modules`, an unknown profile or projection drift fails closed.
+
+`lockfile:peers:check` always executes the real pinned pnpm manager. The Bun
+profile creates an isolated manifest-only root for this lock-only graph check;
+it never interprets a Bun installation as pnpm evidence. pnpm itself is a declared
+catalog development dependency, so installed dispatch runs its exact CLI with
+Node and preserves argv on Windows. Initial Node installation uses only the
+provisioned pinned manager and a finite argument list.
+
+The native OS matrix keeps its required aggregate names and complete obligation
+inventory. Default lanes install Bun; Node 24 compatibility and Node 26 rollback
+lanes each have a separate projected checkout and installation. The public
+installed-archive lane stays Node. M3 also stays Node: its trusted runner
+requires a clean exact-SHA source tree and scans the actual `.pnpm` compiler/parser
+closure, so it uses the explicit `dev.ts install-node-qualification` command in
+a fresh checkout. Only that frozen installation passes the command-local
+pnpm `--pm-on-fail=ignore` manager-selection option; it preserves the original Bun source metadata
+and the existing custody checks. M3's three `node-24-*` rows run the exact
+`.node-compat-version` pin (24.21.0), while pack, native and collect controllers
+run `.node-version` (26.11.1). Each controller compares its working pin bytes
+with the exact dispatched Git source and requires that actual runtime; the
+Node 24 packed-consumer guards remain unchanged. This is a Node execution/retained-pnpm graph
+qualification route, separate from the projected rollback profile.
+CI must prove all routes on the candidate
+head; configuration alone records no successful run.
+
+This is a fixed development-tooling relationship inside `repository.development`,
+not an independently assembled capability. It creates no Core/Assembly graph
+node and has no generation/resource lifetime needing the lifecycle kernel.
+Shared-first review retains generic command/quality/workflow semantics in
+Engineering Foundation's public CLIs, with process mechanism owned by the existing
+runtime/toolchain providers. The consumer owns only its finite script roles,
+version pins, install projection and CI selection (about 350 handwritten lines).
+A possible shared runtime-role facade would belong to Foundation's process-execution
+owner (roughly 30-50 lines), with consumer script tables and pins depending on that
+port. It would add another dependency without a new invariant: generic workflow
+and quality behavior already use Foundation's public CLIs, and the process
+primitive is supplied by the runtime. Host install projections and version
+policy remain local. Copying Foundation's complete Host runtime would duplicate
+policy and lifecycle ownership. No broad reusable runtime SPI is claimed.
+
+The current Consumer Module Standard was reviewed at upstream `300e7e1`
+(full document SHA-256
+`c2fe582a14ff6e79620b232ca7ffc914afb0474ec21fd43f208251dd7252f4a3`).
+Compared with the SDK-growth retained `24d6557a` pin, its changes add resource
+scopes, inputs, contracts, groups, observation and conformance guidance. They do
+not turn this fixed tooling seam into a composition node. The separate SDK-growth
+adoption remains pending under its existing profile; this change does not
+silently migrate or certify that unrelated pin.
+
+Cutover qualification is pending: the prepared Foundation 2.0.0 dependency has
+not yet been published or bound to actual registry integrity; both real locks
+must be regenerated together after publication, including the declared pnpm
+coordinate. `bun.lock` is deliberately absent until that actual resolution is
+available, and the install wrapper reports `runtime.install.bun-lock-pending`.
+Required next checks are clean frozen Bun and isolated Node installations,
+manager/compiler-hook regressions, native OS lanes, packed qualification and the
+complete gates. The earlier Foundation 1.10.0 records above remain historical
+observations and do not prove this cutover.
+
+Retained Node tooling qualification used Node 26.11.1 by default, with Node
+24.21.0 compatibility. Its root/tooling policy remains
+`>=24.21.0 <25 || >=26.10.0 <27`; the public library policy keeps its Node 24.18.0
+floor. Node 25, Node 26 below 26.10.0, Node 27 and malformed versions remain
+rejected by the existing dependency-free version mechanism.
 
 `runtime:preflight` is exactly `node architecture/checks/node-version.mjs` and
 requires no installed repository dependencies. `precheck:changed` first runs
 that guard, then reads the compiler metadata before loading Foundation. The
 `quality:coverage:scope` and `lint:typed` commands run the same compiler guard
-through their user-script hooks, before the literal public CLI commands. The pinned pnpm route explicitly
+through their user-script hooks, before the wrapped public CLI commands. The isolated pnpm route explicitly
 enables user-script pre/post hooks in `.npmrc`; installation scripts remain
-disabled. Normal `pnpm` commands, explicit `pnpm run` and the existing CI lane
-runner execute those hooks. This is not a guard for arbitrary direct CLI calls
+disabled. Normal `bun run` commands and the isolated Node/pnpm route execute those hooks;
+the regression also invokes the CI lane runner and a nested package script. This is not a guard for arbitrary direct CLI calls
 or commands that deliberately disable hooks.
 Both full and fast gates explicitly execute
 `lockfile:peers:check`, `runtime:policy:typecheck` and `runtime:policy:test`
 after preflight and before preparation. The peer gate validates the committed
-graph with `pnpm peers check --lockfile-only`; strict frozen installation alone
+graph with the real `pnpm peers check --lockfile-only` in an isolated Node manager root; strict frozen installation alone
 does not replace it. The policy compiler gate uses the pinned TypeScript 7.0.2
 compiler and the existing strict NodeNext configuration, including
 `erasableSyntaxOnly`, `noUncheckedIndexedAccess` and
 `exactOptionalPropertyTypes`. Native Node type stripping does not replace that
 gate.
 
-The default Node 26.11.1 and Node 24.21.0 compatibility CI routes each retain six independent
+The retained Node 26.11.1 and Node 24.21.0 compatibility CI routes each used six independent
 lanes on Ubuntu, macOS and Windows, including strict frozen installation,
 committed peer validation, the complete gate union and tracked workspace
 integrity. The governance lane explicitly executes policy typechecking and

@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "skipLibCheck": false,
+    "allowJs": true,
+    "checkJs": false,
+    "types": [
+      "node"
+    ]
+  },
+  "files": [
+    "../architecture/tooling/runtime/admission.ts",
+    "../architecture/tooling/runtime/policy.ts",
+    "../architecture/tooling/runtime/command.ts",
+    "../architecture/tooling/runtime/dev.ts",
+    "../architecture/tooling/runtime/projection-check.ts",
+    "../architecture/tooling/runtime/ci.ts",
+    "repository-runtime.test.ts",
+    "qualification/support/m3-node-policy.ts"
+  ],
+  "include": []
+}

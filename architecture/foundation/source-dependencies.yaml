@@ -987,6 +987,11 @@ boundaries:
       - architecture/tooling/codemods/project.ts
       - architecture/tooling/first-core-release.mjs
       - architecture/tooling/npm-release/run.ts
+      - architecture/tooling/runtime/admission.ts
+      - architecture/tooling/runtime/command.ts
+      - architecture/tooling/runtime/dev.ts
+      - architecture/tooling/runtime/ci.ts
+      - architecture/tooling/runtime/projection-check.ts
       - architecture/tooling/generate-core.mjs
       - architecture/tooling/test-assembly-types.mjs
       - tests/qualification/m2-candidate/combined-case-inventory.mjs

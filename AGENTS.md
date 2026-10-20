@@ -19,14 +19,24 @@ For consumer composition work, read the [Consumer module standard](docs/architec
 For module authoring, read docs/guides/module-authoring.md.
 For dynamic plugin lifecycle work, read its [lifecycle-kernel decision boundary](docs/architecture/common-assembly.md#optional-dynamic-host-lifecycle-candidate) and the [candidate package contract](packages/lifecycle-kernel/README.md) before selecting a package. Static composition and passive setup do not require this candidate; product adoption and public release remain separate decisions.
 
-Use `pnpm check:changed` while editing, `pnpm check:fast` before handoff, and
-`pnpm check` as the complete gate, including the installed
+Use `bun run check:changed` while editing, `bun run check:fast` before handoff, and
+`bun run check` as the complete gate, including the installed
 `architecture.source-dependencies` schema v3 gate (`rootPackage: true` and
 `packageRoots` for Core/Assembly) and `pnpm release-owned-files:check`.
+Install with `node architecture/tooling/runtime/dev.ts install`. Bun 1.4.3 is the
+default manager and selected development-tool runtime. Explicit Node commands
+retain tests, native compiler controls, packed qualification and releases.
+For rollback, create a clean isolated checkout with
+`node architecture/tooling/runtime/dev.ts prepare-node /absolute/new/path`,
+then run that checkout's `dev.ts install` and `dev.ts run check`. Never mix managers
+in one installation. The [runtime mapping](docs/architecture/feature-module-standard.md#repository-runtime-profiles)
+owns the classification and current pending qualification.
+
 `runtime:preflight` remains the dependency-free Node version guard.
 `precheck:changed` runs that guard, then the compiler metadata preflight.
 The quality scope and typed commands use their own compiler guard hooks; `.npmrc`
-explicitly enables user-script pre/post hooks while installation scripts stay disabled.
+explicitly enables pnpm rollback hooks; Bun user-script hooks are exercised by the
+compiler-floor regressions. Installation scripts stay disabled in both profiles.
 Full and fast gates explicitly run
 `lockfile:peers:check`, `runtime:policy:typecheck` and `runtime:policy:test`
 before preparation.

@@ -483,6 +483,12 @@ conformance gates are the ones ADR-0007 and this document describe.
 
 ## Toolchain
 
+Repository manager/runtime selection follows the [runtime profiles](feature-module-standard.md#repository-runtime-profiles):
+Bun is the default manager and selected development-tool runtime; Node keeps
+compiler, test, packed qualification and release roles. This changes no public
+package runtime contract. The profile records the exact pending lock/install
+qualification instead of treating configuration as evidence.
+
 The private Core toolchain is pinned in the repository rather than chosen per
 package:
 

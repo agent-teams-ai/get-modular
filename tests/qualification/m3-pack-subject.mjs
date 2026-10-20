@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { assertM3NodePin } from './support/m3-node-policy.ts';
 import { Buffer } from 'node:buffer';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -186,12 +187,11 @@ export async function runPackSubject(options) {
       && !process.env.NODE_OPTIONS && !process.env.NODE_PATH, 'pack.controller-flags');
     await canonical(node);
     need(await realpath(process.execPath) === node, 'pack.controller-node');
-    const pinned = (await bytes(join(root, '.node-version'))).toString('utf8').trim();
-    need(/^24\.(?:18|19|[2-9]\d|\d{3,})\.\d+$/u.test(pinned)
-      && process.version === `v${pinned}`, 'pack.node-version');
     git = process.platform === 'darwin' ? '/Library/Developer/CommandLineTools/usr/bin/git'
       : process.platform === 'linux' ? '/usr/bin/git' : undefined;
     need(git, 'pack.git-platform');
+    const committedPin = await gitRun(['show', `${input.exactSourceSHA}:.node-version`]);
+    assertM3NodePin((await bytes(join(root, '.node-version'))).toString('utf8'), committedPin, process.version);
     metadata.git = { path: git, sha256: hash(await bytes(git, MAX_SOURCE)) };
     const npmRoot = dirname(dirname(npmCLI));
     need(npmCLI === join(npmRoot, 'bin', 'npm-cli.js'), 'pack.npm-cli');

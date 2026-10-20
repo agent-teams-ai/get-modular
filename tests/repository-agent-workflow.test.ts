@@ -50,7 +50,7 @@ function isReport(value: unknown): value is ChangedReport {
 const require = createRequire(import.meta.url);
 const foundationPath = require.resolve("@agent-teams/engineering-foundation/package.json");
 const foundation: unknown = JSON.parse(await readFile(foundationPath, "utf8"));
-assert.ok(isRecord(foundation) && foundation.version === "1.10.0" && isRecord(foundation.bin));
+assert.ok(isRecord(foundation) && foundation.version === "2.0.0" && isRecord(foundation.bin));
 const cliBin = foundation.bin["agent-teams-foundation"];
 assert.ok(typeof cliBin === "string");
 const cli = join(dirname(foundationPath), cliBin);
@@ -93,15 +93,17 @@ async function fixture(
 ): Promise<void> {
   // TMPDIR is supplied by the caller's disposable TEST job on verified scratch.
   const root = await realpath(await mkdtemp(join(tmpdir(), "gm-changed-workflow-TEST-")));
+  const manager = policy.packageManager === "bun" ? "bun" : "pnpm";
   try {
     const files: Record<string, string> = {
       "package.json": JSON.stringify({
         name: "get-modular-changed-workflow-test", private: true, type: "module",
+        packageManager: manager === "bun" ? "bun@1.4.3" : "pnpm@11.20.0",
         scripts: { "check:changed": "node check-fast.ts", "check:fast": "node check-fast.ts",
           check: "node check-fast.ts", "docs:changed": "node docs-check.ts" },
       }),
       ".gitignore": "node_modules/\n",
-      "AGENTS.md": "# TEST workflow\nUse pnpm check:changed, pnpm check:fast and pnpm check.\n",
+      "AGENTS.md": `# TEST workflow\nUse ${manager} run check:changed, ${manager} run check:fast and ${manager} run check.\n`,
       "CLAUDE.md": "@AGENTS.md\n",
       "GEMINI.md": "@AGENTS.md\n",
       ".github/copilot-instructions.md": "Read and follow ../AGENTS.md.\n",
@@ -118,10 +120,10 @@ async function fixture(
     for (const name of ["check-fast.ts", "docs-check.ts"]) {
       await copyFile(new URL(`./fixtures/repository-agent-workflow/${name}`, import.meta.url), join(root, name));
     }
-    // Pinned pnpm writes pnpm-lock.yaml on its first public script run. Run the existing,
+    // Prime the selected real manager before the baseline commit. Run the existing,
     // valid docs script once now so that genuine lock lives in the baseline commit instead
     // of appearing as a changed path (and a fast-full escalation) in the first measured run.
-    const primed = spawnSync("pnpm", ["docs:changed"], {
+    const primed = spawnSync(manager, ["run", "docs:changed"], {
       cwd: root, env: identity, encoding: "utf8", timeout: 60_000,
       shell: process.platform === "win32",
     });
@@ -232,4 +234,88 @@ test("changed workflow escalates compiler and check configuration", async () => 
       assert.match(codeStep(result.report).output, /TS2322/u);
     }, invalidSource);
   }
+});
+
+interface CheckChangedCustody {
+  readonly classification: "frozen-closure" | "cooperating-exclusive" | "mutable";
+  readonly binding: "qualified-host-precondition" | "unverified";
+}
+
+interface CheckChangedReport {
+  readonly reportSchemaVersion: 2;
+  readonly outcome: "passed" | "feedback-only" | "not-checked" | "uncovered" | "failed" | "cancelled" | "stale";
+  readonly reason: string;
+  readonly inputCustody: CheckChangedCustody;
+  readonly plannedChecks: readonly { readonly id: string; readonly target: string; readonly reason: string }[];
+  readonly steps: readonly { readonly id: string; readonly script: string; readonly exitCode: number | null }[];
+  readonly coverage: readonly { readonly path: string; readonly facet: string | null; readonly state: string; readonly checkIds: readonly string[] }[];
+}
+
+function isCheckChangedCustody(value: unknown): value is CheckChangedCustody {
+  return isRecord(value) &&
+    (value.classification === "frozen-closure" || value.classification === "cooperating-exclusive" || value.classification === "mutable") &&
+    (value.binding === "qualified-host-precondition" || value.binding === "unverified");
+}
+
+function isCheckChangedReport(value: unknown): value is CheckChangedReport {
+  return isRecord(value) && value.reportSchemaVersion === 2 &&
+    (value.outcome === "passed" || value.outcome === "feedback-only" || value.outcome === "not-checked" ||
+      value.outcome === "uncovered" || value.outcome === "failed" || value.outcome === "cancelled" || value.outcome === "stale") &&
+    typeof value.reason === "string" && isCheckChangedCustody(value.inputCustody) &&
+    Array.isArray(value.plannedChecks) && Array.isArray(value.steps) && Array.isArray(value.coverage);
+}
+
+function checkChanged(root: string): { readonly exit: number | null; readonly report: CheckChangedReport } {
+  const result = spawnSync(process.execPath, [
+    cli, "agent-workflow", "check-changed", "--consumer", root,
+    "--base", "refs/heads/main", "--format", "json",
+  ], { env: identity, encoding: "utf8", timeout: 120_000, maxBuffer: 2_000_000 });
+  assert.equal(result.error, undefined, result.stderr);
+  const report: unknown = JSON.parse(result.stdout);
+  assert.ok(isCheckChangedReport(report), result.stdout || result.stderr);
+  return { exit: result.status, report };
+}
+
+test("check-changed reports v2 repository coverage with unverified mutable custody", async () => {
+  await fixture(currentPolicy, async root => {
+    await put(root, "src/index.ts", 'export const answer: string = "43";\n');
+    git(root, "checkout", "-b", "test-change");
+    git(root, "add", "--all");
+    git(root, "commit", "--message", "test: change source");
+    const { exit, report } = checkChanged(root);
+    assert.equal(exit, 0, JSON.stringify(report));
+    assert.equal(report.reportSchemaVersion, 2);
+    assert.equal(report.outcome, "feedback-only", report.reason);
+    assert.equal(report.reason, "mutable-input-binding-unverified");
+    assert.equal(report.inputCustody.classification, "mutable");
+    assert.equal(report.inputCustody.binding, "unverified");
+    assert.deepEqual(report.plannedChecks.map(entry => entry.id), ["repository"]);
+    assert.ok(report.steps.some(step => step.script === "check" && step.exitCode === 0), JSON.stringify(report.steps));
+    const row = report.coverage.find(candidate => candidate.path === "src/index.ts");
+    assert.ok(row, JSON.stringify(report.coverage));
+    assert.deepEqual(row.checkIds, ["repository"]);
+  });
+});
+
+test("check-changed rejects a v1-only policy and demands the v2 migration", async () => {
+  const v1Only: Record<string, unknown> = {
+    schemaVersion: 1,
+    instructions: currentPolicy.instructions,
+    scripts: currentPolicy.scripts,
+    changedChecks: [{ id: "docs", script: "docs:changed", extensions: [".md", ".yaml", ".yml"], passPaths: false }],
+    fullScanPaths: [],
+  };
+  await fixture(v1Only, async root => {
+    await put(root, "src/index.ts", 'export const answer: string = "43";\n');
+    git(root, "checkout", "-b", "test-change");
+    git(root, "add", "--all");
+    git(root, "commit", "--message", "test: change source");
+    const result = spawnSync(process.execPath, [
+      cli, "agent-workflow", "check-changed", "--consumer", root,
+      "--base", "refs/heads/main", "--format", "json",
+    ], { env: identity, encoding: "utf8", timeout: 30_000, maxBuffer: 2_000_000 });
+    assert.equal(result.error, undefined, result.stderr);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout + result.stderr, /check-changed requires repository-agent-workflow\/v2/u);
+  });
 });

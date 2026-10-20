@@ -206,8 +206,10 @@ assigning an entire overlapping phase to each writer.
 
 Use [package scripts](../../package.json) and the
 [Foundation workflow](../../architecture/foundation/repository-agent-workflow.yaml):
-`pnpm check:changed` while editing, `pnpm check:fast` before handoff, and
-`pnpm check` for the completed change. The
+`bun run check:changed` while editing, `bun run check:fast` before handoff, and
+`bun run check` for the completed change. The [runtime profiles](feature-module-standard.md#repository-runtime-profiles)
+keep Node qualification and isolated rollback explicit; pending install evidence
+there must be completed before the cutover is delivered. The
 [CI workflow](../../.github/workflows/ci.yml) is the repository gate; its host
 matrix is not the Core runtime-conformance matrix. No package build/test command
 exists until the first package introduces it. Update the exact script chain

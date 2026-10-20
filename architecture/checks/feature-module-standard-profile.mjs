@@ -29,44 +29,44 @@ export const TRACEABILITY_PATH = "docs/traceability/module-system-v1.yaml";
 const FOUNDATION_ADMISSION = Object.freeze({
   package: "@agent-teams/engineering-foundation",
   version: "1.10.0",
-  command: "agent-teams-foundation check",
+  command: "node architecture/tooling/runtime/command.ts tool agent-teams-foundation check",
   capability: "architecture.source-dependencies",
   policy: SOURCE_DEPENDENCY_POLICY_PATH,
 });
 const FOUNDATION_CHECK_SCRIPT =
-  "node architecture/checks/compiler-floor.ts && pnpm foundation:migration:typecheck && pnpm foundation:migration:test && node architecture/checks/native-public-api-migration.ts && pnpm foundation:assert-dev-only && pnpm foundation:assert-registry";
+  "node architecture/checks/compiler-floor.ts && node architecture/tooling/runtime/command.ts run foundation:migration:typecheck && node architecture/tooling/runtime/command.ts run foundation:migration:test && node architecture/checks/native-public-api-migration.ts && node architecture/tooling/runtime/command.ts run foundation:assert-dev-only && node architecture/tooling/runtime/command.ts run foundation:assert-registry";
 // Leaf commands come first, so a table row can never replace a closed
 // definition below; a colliding row leaves its own admission unsatisfiable.
 const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
-  "quality:critical:test": "node architecture/checks/compiler-floor.ts && node architecture/checks/required-quality-tests.mjs && node node_modules/typescript/bin/tsc -p tests/tsconfig.repository-agent-workflow.json --noEmit && agent-teams-node-test --contract architecture/foundation/required-quality-tests.json -- tests/source-dependencies.test.mjs tests/quality-activation.test.mjs tests/repository-agent-workflow.test.ts",
+  "quality:critical:test": "node architecture/checks/compiler-floor.ts && node architecture/tooling/runtime/command.ts tool architecture/checks/required-quality-tests.mjs && node node_modules/typescript/bin/tsc -p tests/tsconfig.repository-agent-workflow.json --noEmit && agent-teams-node-test --contract architecture/foundation/required-quality-tests.json -- tests/source-dependencies.test.mjs tests/quality-activation.test.mjs tests/repository-agent-workflow.test.ts",
   ...Object.fromEntries(LEAF_PACKAGES.flatMap(leaf => Object.entries(leaf.commands))),
   "architecture:feature-module-profile":
-    "node architecture/checks/feature-module-standard-profile.mjs",
+    "node architecture/tooling/runtime/command.ts tool architecture/checks/feature-module-standard-profile.mjs",
   "architecture:feature-module-profile:test":
-    "pnpm quality:critical:test && node --test tests/feature-module-standard-profile.test.mjs tests/release-owned-files.test.mjs tests/public-api-compatibility.test.mjs tests/required-quality-tests.test.mjs tests/compiler-floor.test.ts tests/native-tooling.test.ts",
+    "node architecture/tooling/runtime/command.ts run quality:critical:test && node --test tests/feature-module-standard-profile.test.mjs tests/release-owned-files.test.mjs tests/public-api-compatibility.test.mjs tests/required-quality-tests.test.mjs tests/compiler-floor.test.ts tests/native-tooling.test.ts",
   "core:typecheck":
     "node architecture/tooling/generate-core.mjs --typecheck",
   "core:typecheck:prepared":
     "node node_modules/typescript/bin/tsc -p packages/core/tsconfig.typecheck.json --noEmit",
   "core:build": "node architecture/tooling/build-core.mjs",
   "core:test": 'node --test "packages/core/tests/**/*.test.mjs"',
-  "assembly:build": "pnpm core:build && node architecture/tooling/build-assembly.mjs",
+  "assembly:build": "node architecture/tooling/runtime/command.ts run core:build && node architecture/tooling/build-assembly.mjs",
   "assembly:typecheck": "node node_modules/typescript/bin/tsc -p packages/assembly/tsconfig.json --noEmit && node node_modules/typescript/bin/tsc -p tests/tsconfig.consumer-fixtures.json --noEmit",
   "assembly:test": 'node --test "tests/assembly/**/*.test.mjs" "packages/assembly/tests/**/*.test.mjs"',
-  "contracts:check": "node architecture/checks/v1-contract.mjs",
+  "contracts:check": "node architecture/tooling/runtime/command.ts tool architecture/checks/v1-contract.mjs",
   "contracts:test": "node --test tests/v1-contract.test.mjs tests/compiler-engineer-examples.test.mjs tests/implementation-clarifications.test.mjs tests/qualification/m2-candidate/generation-two-artifacts.test.mjs tests/qualification/m2-candidate/raw-carrier-oracle.test.mjs tests/qualification/m2-candidate/duplicate-record-cases.test.mjs tests/qualification/m2-candidate/duplicate-record-extended-overlaps.test.mjs tests/qualification/m2-candidate/raw-invocation-oracle.test.mjs tests/qualification/m2-candidate/duplicate-record-resources.test.mjs tests/qualification/m2-candidate/raw-document-cases.test.mjs tests/qualification/m2-candidate/mutation-evidence.test.mjs tests/qualification/m2-candidate/retained-object-descriptors.test.mjs tests/qualification/m2-candidate/combined-case-inventory.test.mjs tests/qualification/m2-candidate/boundary-source-mutations.test.mjs tests/assembly-admission-retained.test.mjs tests/m2-lock-witness.test.mjs",
-  "docs:check": "agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml",
-  "docs:protocol:check": "pnpm docs:check && pnpm docs:quality",
+  "docs:check": "node architecture/tooling/runtime/command.ts tool agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml",
+  "docs:protocol:check": "node architecture/tooling/runtime/command.ts run docs:check && node architecture/tooling/runtime/command.ts run docs:quality",
   "docs:quality": "markdownlint-cli2 && cspell --config .cspell.json --no-progress",
-  "foundation:assert-dev-only": "node architecture/checks/compiler-floor.ts && agent-teams-foundation assert-dev-only",
-  "foundation:assert-registry": "node architecture/checks/compiler-floor.ts && agent-teams-foundation assert-registry",
+  "foundation:assert-dev-only": "node architecture/checks/compiler-floor.ts && node architecture/tooling/runtime/command.ts tool agent-teams-foundation assert-dev-only",
+  "foundation:assert-registry": "node architecture/checks/compiler-floor.ts && node architecture/tooling/runtime/command.ts tool agent-teams-foundation assert-registry",
   "foundation:check": FOUNDATION_CHECK_SCRIPT,
   "foundation:migration:typecheck": "node node_modules/typescript/bin/tsc -p tests/tsconfig.native-public-api-migration.json --noEmit",
   "foundation:migration:test": "node --test tests/native-public-api-migration.test.ts",
   "quality:coverage:scope":
-    "agent-teams-foundation quality check --consumer . --scope-only",
+    "node architecture/tooling/runtime/command.ts tool agent-teams-foundation quality check --consumer . --scope-only",
   "prequality:coverage:scope": "node architecture/checks/compiler-floor.ts",
-  "lint:typed": "agent-teams-foundation quality check --consumer .",
+  "lint:typed": "node architecture/tooling/runtime/command.ts tool agent-teams-foundation quality check --consumer .",
   "prelint:typed": "node architecture/checks/compiler-floor.ts",
   "governance:check": "node architecture/checks/governance.mjs",
   "governance:test": "node --test tests/governance.test.mjs tests/node-runtime-compatibility.test.mjs tests/assembly-admission.test.mjs tests/private-core-start.test.mjs tests/m3-start.test.mjs tests/generated-production-source.test.mjs tests/leaf-package-admission.test.mjs tests/ci-check-lanes.test.mjs tests/codemods/codemods.test.mjs",
@@ -78,19 +78,19 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "qualification:self-composition-templates":
     "node --test tests/self-composition-templates.test.mjs",
   "release-owned-files:check":
-    "node architecture/checks/release-owned-files.mjs",
+    "node architecture/tooling/runtime/command.ts tool architecture/checks/release-owned-files.mjs",
   "runtime:preflight": "node architecture/checks/node-version.mjs",
-  "precheck:changed": "pnpm runtime:preflight && node architecture/checks/compiler-floor.ts",
-  "lockfile:peers:check": "pnpm peers check --lockfile-only",
-  "runtime:policy:typecheck": "pnpm tooling:native:typecheck && node node_modules/typescript/bin/tsc -p tests/tsconfig.tooling-node-policy.json --noEmit",
+  "precheck:changed": "node architecture/tooling/runtime/command.ts run runtime:preflight && node architecture/checks/compiler-floor.ts",
+  "lockfile:peers:check": "node architecture/tooling/runtime/dev.ts peers",
+  "runtime:policy:typecheck": "node architecture/tooling/runtime/projection-check.ts && node architecture/tooling/runtime/command.ts run tooling:native:typecheck && node node_modules/typescript/bin/tsc -p tests/tsconfig.tooling-node-policy.json --noEmit && node node_modules/typescript/bin/tsc -p tests/tsconfig.repository-runtime.json --noEmit",
   "tooling:native:typecheck": "node node_modules/typescript/bin/tsc -p tests/tsconfig.native-tooling.json --noEmit",
-  "runtime:policy:test": "node --test tests/tooling-node-policy.test.ts tests/npm-release.test.ts",
-  "sdk-growth:check": "node architecture/checks/compiler-floor.ts && pnpm sdk-growth:typecheck && node architecture/checks/sdk-growth.mjs && node --test tests/sdk-growth.test.mjs && node tests/qualification/sdk-growth-admission.mjs && node tests/qualification/sdk-growth-packed-consumers.mjs && node tests/qualification/sdk-growth-registry-consumer.ts",
+  "runtime:policy:test": "node --test tests/tooling-node-policy.test.ts tests/npm-release.test.ts tests/repository-runtime.test.ts",
+  "sdk-growth:check": "node architecture/checks/compiler-floor.ts && node architecture/tooling/runtime/command.ts run sdk-growth:typecheck && node architecture/checks/sdk-growth.mjs && node --test tests/sdk-growth.test.mjs && node tests/qualification/sdk-growth-admission.mjs && node tests/qualification/sdk-growth-packed-consumers.mjs && node tests/qualification/sdk-growth-registry-consumer.ts",
   "sdk-growth:typecheck": "node node_modules/typescript/bin/tsc -p tests/tsconfig.sdk-growth-registry.json --noEmit",
-  "sdk-growth:admission": "node architecture/checks/compiler-floor.ts && pnpm sdk-growth:typecheck && node tests/qualification/sdk-growth-admission.mjs",
+  "sdk-growth:admission": "node architecture/checks/compiler-floor.ts && node architecture/tooling/runtime/command.ts run sdk-growth:typecheck && node tests/qualification/sdk-growth-admission.mjs",
   "sdk-growth:test": "node architecture/checks/compiler-floor.ts && node --test tests/sdk-growth.test.mjs",
   "sdk-growth:pack": "node tests/qualification/sdk-growth-packed-consumers.mjs",
-  "sdk-growth:registry": "node architecture/checks/compiler-floor.ts && pnpm sdk-growth:typecheck && node tests/qualification/sdk-growth-registry-consumer.ts",
+  "sdk-growth:registry": "node architecture/checks/compiler-floor.ts && node architecture/tooling/runtime/command.ts run sdk-growth:typecheck && node tests/qualification/sdk-growth-registry-consumer.ts",
 });
 const ROOT_SCRIPT_COMMANDS = Object.freeze({
   check: Object.freeze([
@@ -304,8 +304,8 @@ function validateQualifiedTopology(profile) {
 
 function scriptCommands(script) {
   if (typeof script !== "string") return [];
-  const commands = script.split(" && ").map(command => command.replace(/^pnpm /u, ""));
-  const canonicalScript = commands.map(command => `pnpm ${command}`).join(" && ");
+  const commands = script.split(" && ").map(command => command.replace(/^node architecture\/tooling\/runtime\/command\.ts run /u, ""));
+  const canonicalScript = commands.map(command => `node architecture/tooling/runtime/command.ts run ${command}`).join(" && ");
   return script === canonicalScript
     && commands.every(command => /^[a-z0-9][a-z0-9:.-]*$/u.test(command))
     ? commands
@@ -327,7 +327,7 @@ function assertRequiredScriptDefinitions(packageJson) {
 function closedScriptCommands(packageJson, scriptName) {
   const commands = scriptCommands(packageJson.scripts?.[scriptName]);
   assert(JSON.stringify(commands) === JSON.stringify(ROOT_SCRIPT_COMMANDS[scriptName]),
-    `${scriptName} must use its exact closed pnpm command chain`);
+    `${scriptName} must use its exact closed node architecture/tooling/runtime/command.ts run command chain`);
   for (const command of commands) assertRequiredScript(packageJson, command);
   return commands;
 }

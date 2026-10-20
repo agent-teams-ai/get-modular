@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
+import { parse } from "yaml";
 import { fileURLToPath } from "node:url";
 import { resolveNpmCli, resolvePnpmCli } from "./qualification/support/npm-cli.mjs";
 import { assertSupportedToolingNodeVersion } from "../architecture/checks/node-version.mjs";
@@ -200,7 +201,7 @@ test("pinned pnpm rejects fresh and locked invalid peer graphs", { timeout: 1800
     // This marker must precede every pnpm invocation in the fixture, including pack.
     await writeFile(join(root, "pnpm-workspace.yaml"),
       "packages: []\nstrictPeerDependencies: true\nautoInstallPeers: false\n");
-    const expectedPnpm = JSON.parse(await readFile(join(repository, "package.json"), "utf8")).packageManager;
+    const expectedPnpm = `pnpm@${parse(await readFile(join(repository, "pnpm-workspace.yaml"), "utf8")).catalog.pnpm}`;
     assert.equal(expectedPnpm, "pnpm@11.20.0");
     const pnpm = await fixturePnpmCli();
     const version = run(process.execPath, [pnpm, "--version"], root);
@@ -254,7 +255,7 @@ test("pinned pnpm enforces dependency engines on fresh and frozen installs", { t
     await writeFile(join(root, "pnpm-workspace.yaml"), formerWorkspace);
     await writeFile(join(root, ".npmrc"), await readFile(join(repository, ".npmrc")));
 
-    const expectedPnpm = JSON.parse(await readFile(join(repository, "package.json"), "utf8")).packageManager;
+    const expectedPnpm = `pnpm@${parse(await readFile(join(repository, "pnpm-workspace.yaml"), "utf8")).catalog.pnpm}`;
     assert.equal(expectedPnpm, "pnpm@11.20.0");
     assert.match(process.version, /^v(?:24|26)\./u);
     const pnpm = await fixturePnpmCli();
