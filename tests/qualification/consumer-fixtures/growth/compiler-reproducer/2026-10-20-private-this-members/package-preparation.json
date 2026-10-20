@@ -1,0 +1,26 @@
+[
+  {
+    "script": "assembly:build",
+    "exitCode": 0,
+    "wallSeconds": 4.615257068999654,
+    "timeUtc": "2026-10-20T08:22:19.925393+00:00"
+  },
+  {
+    "script": "resources:build",
+    "exitCode": 0,
+    "wallSeconds": 1.0161925329998667,
+    "timeUtc": "2026-10-20T08:22:20.941967+00:00"
+  },
+  {
+    "script": "conformance:build",
+    "exitCode": 0,
+    "wallSeconds": 1.1162933909999992,
+    "timeUtc": "2026-10-20T08:22:22.058572+00:00"
+  },
+  {
+    "script": "assembly:typecheck",
+    "exitCode": 0,
+    "wallSeconds": 2.0470705890002137,
+    "timeUtc": "2026-10-20T08:22:24.105955+00:00"
+  }
+]

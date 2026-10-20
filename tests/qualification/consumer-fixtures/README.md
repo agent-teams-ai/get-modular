@@ -37,9 +37,14 @@ cold-compile timeout belong to earlier driver identities, before the supervision
 correction; they do not measure the current driver. The retained supported-toolchain
 series reached its unchanged 180-second cap at the accepted inherited-map N=500
 subject and did not create N=1000. A subsequent exact upstream compiler candidate
-completed all eight N=500 stages with the same source inputs. N=1000 remains
-unqualified: local memory exhaustion and two remote runner shutdowns supplied no
-successful complete measurement. The supported TypeScript pin is unchanged.
+completed all eight N=500 stages with the same source inputs. That exact upstream
+candidate supplied no complete N=1000 measurement: local memory exhaustion and
+two remote runner shutdowns retained their recorded limits. A separate
+[private compiler-owner patch experiment](growth/README.md#private-compiler-owner-result-2026-10-20)
+completed the unchanged N=100, N=500 and N=1000 series on 2026-10-20, including
+all eight stages and complete smoke. This qualifies those private-candidate
+measurements. The supported TypeScript 7.0.2 pin is unchanged, and its growth
+delivery blocker remains open pending a maintained compiler remedy and adoption.
 See the [growth fixture](growth/README.md) for the explicit optional diagnostic
 route, exact identities and the remaining compiler-owner handoff.
 

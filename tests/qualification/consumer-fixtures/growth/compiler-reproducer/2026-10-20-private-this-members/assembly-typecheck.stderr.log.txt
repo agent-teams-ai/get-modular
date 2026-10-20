@@ -1,0 +1,1 @@
+$ node node_modules/typescript/bin/tsc -p packages/assembly/tsconfig.json --noEmit && node node_modules/typescript/bin/tsc -p tests/tsconfig.consumer-fixtures.json --noEmit

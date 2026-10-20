@@ -1,0 +1,11 @@
+{
+  "question": "Does conservative synthetic this typing of mapped interface bases drive repeated ancestor member materialization?",
+  "scope": "One disposable compiler-owner causal experiment; no Get Modular source, supported compiler pin, accepted maps, ADR, or gate changes",
+  "sourceCommit": "3200b90a617bcf9ad26543b347cabad8ff0dad14",
+  "sourceArchiveSha256": "034bb7bb88f1354b416f9c617a82b88af7f2344f279e9a697a73bf4276638858",
+  "reducedStageCapSeconds": 60,
+  "buildCapSeconds": 600,
+  "investigationCapSeconds": 3600,
+  "fullN1000Selected": false,
+  "startUtc": "2026-10-20T08:01:50.725342+00:00"
+}

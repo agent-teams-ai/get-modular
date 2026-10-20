@@ -1,0 +1,73 @@
+{
+  "aggregateMs": 600000,
+  "stageCapsMs": {
+    "compiler": 180000,
+    "runtime": 120000
+  },
+  "wallMs": 46281.342576,
+  "expired": false,
+  "termination": {
+    "method": "observed-worker-exit",
+    "treeKillAfterExit": false
+  },
+  "observedStages": [
+    {
+      "stage": "cold",
+      "kind": "compiler",
+      "capMs": 180000,
+      "wallMs": 11192.472011,
+      "status": "ended"
+    },
+    {
+      "stage": "runtime",
+      "kind": "runtime",
+      "capMs": 120000,
+      "wallMs": 8523.249582,
+      "status": "ended"
+    },
+    {
+      "stage": "unchanged-incremental",
+      "kind": "compiler",
+      "capMs": 180000,
+      "wallMs": 714.4664669999984,
+      "status": "ended"
+    },
+    {
+      "stage": "leaf-edit",
+      "kind": "compiler",
+      "capMs": 180000,
+      "wallMs": 757.868902000002,
+      "status": "ended"
+    },
+    {
+      "stage": "verify-leaf",
+      "kind": "runtime",
+      "capMs": 120000,
+      "wallMs": 1386.870350000001,
+      "status": "ended"
+    },
+    {
+      "stage": "baseline-rewarm",
+      "kind": "compiler",
+      "capMs": 180000,
+      "wallMs": 1129.7841359999984,
+      "status": "ended"
+    },
+    {
+      "stage": "shared-contract-edit",
+      "kind": "compiler",
+      "capMs": 180000,
+      "wallMs": 8045.391070000005,
+      "status": "ended"
+    },
+    {
+      "stage": "verify-shared-contract",
+      "kind": "runtime",
+      "capMs": 120000,
+      "wallMs": 1247.8503720000008,
+      "status": "ended"
+    }
+  ],
+  "code": 0,
+  "signal": null
+}

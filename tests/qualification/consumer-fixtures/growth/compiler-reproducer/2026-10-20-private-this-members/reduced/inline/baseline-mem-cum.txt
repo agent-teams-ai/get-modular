@@ -1,0 +1,22 @@
+File: tsc-baseline
+Build ID: 47870bb1f11f37b3f3b08653ecc6176423cc01d6
+Type: alloc_space
+Time: 2026-10-20 11:05:58 IDT
+Showing nodes accounting for 0, 0% of 84.54MB total
+Showing top 15 nodes out of 412
+      flat  flat%   sum%        cum   cum%
+         0     0%     0%    82.04MB 97.04%  runtime.main
+         0     0%     0%    80.45MB 95.16%  github.com/microsoft/TypeScript/tsc/internal/execute.CommandLine
+         0     0%     0%    80.45MB 95.16%  github.com/microsoft/TypeScript/tsc/internal/execute.tscCompilation
+         0     0%     0%    80.45MB 95.16%  main.main
+         0     0%     0%    80.45MB 95.16%  main.runMain
+         0     0%     0%    79.29MB 93.79%  github.com/microsoft/TypeScript/tsc/internal/core.(*singleThreadedWorkGroup).RunAndWait
+         0     0%     0%    79.29MB 93.79%  github.com/microsoft/TypeScript/tsc/internal/execute.performCompilation
+         0     0%     0%    66.08MB 78.17%  github.com/microsoft/TypeScript/tsc/internal/compiler.GetDiagnosticsOfAnyProgram
+         0     0%     0%    66.08MB 78.17%  github.com/microsoft/TypeScript/tsc/internal/execute/tsc.EmitAndReportStatistics
+         0     0%     0%    66.08MB 78.17%  github.com/microsoft/TypeScript/tsc/internal/execute/tsc.EmitFilesAndReportErrors
+         0     0%     0%    65.58MB 77.57%  github.com/microsoft/TypeScript/tsc/internal/compiler.GetDiagnosticsOfAnyProgram.func1 (inline)
+         0     0%     0%    56.47MB 66.79%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).GetDiagnostics (inline)
+         0     0%     0%    56.47MB 66.79%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).checkSourceElement
+         0     0%     0%    56.47MB 66.79%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).checkSourceElementWorker
+         0     0%     0%    56.47MB 66.79%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).checkSourceElements

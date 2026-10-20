@@ -1,0 +1,59 @@
+{
+  "case": "mapped",
+  "command": [
+    "/tmp/gm-ts-owner-20261020/tsc-patched",
+    "-p",
+    "tsconfig.json",
+    "--singleThreaded",
+    "--extendedDiagnostics",
+    "--pretty",
+    "false",
+    "--pprofDir",
+    "/tmp/gm-ts-owner-20261020/reduced/mapped/patched-profiles"
+  ],
+  "cwd": "/tmp/gm-ts-owner-20261020/reduced/mapped",
+  "compilerSha256": "061c589fd01523d69ca6bb74d74e6331b6092a14ee286bd60f11d7a51eeb9e66",
+  "patchSha256": "3a98de8a169b239da38cbe285de2f88e498406b8bdc24eec4685d6b4809a308e",
+  "subject": {
+    "mode": "mapped",
+    "size": 200,
+    "compilerSubject": "package-free; mapped descriptor property vs inline property; identical inherited predecessor edges and root",
+    "sourceFiles": {
+      "witness.ts": {
+        "sha256": "9ef593e3450fbcce92cb6f31106eb124d23093d68b1b76fd02df8ade5e045887",
+        "bytes": 15054
+      },
+      "package.json": {
+        "sha256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+        "bytes": 23
+      },
+      "tsconfig.json": {
+        "sha256": "f860ca80ac13c93de8bc1a6e435f3cfd04eece2358c0462dd1928409c805b7b3",
+        "bytes": 172
+      }
+    },
+    "stageCapSeconds": 60,
+    "processObservedRssCapBytes": 2147483648,
+    "profiling": "native --pprofDir; CPU and sampled allocations; not a full Get Modular growth result"
+  },
+  "startUtc": "2026-10-20T08:17:42.110973+00:00",
+  "profiled": true,
+  "wallSeconds": 0.46240382699988913,
+  "exitCode": 0,
+  "stopped": null,
+  "observedPeakRssBytes": 97681408,
+  "rusageMaxRssBytes": 98709504,
+  "endUtc": "2026-10-20T08:17:42.573400+00:00",
+  "profiles": [
+    {
+      "file": "121788-memprofile.pb.gz",
+      "bytes": 22573,
+      "sha256": "564844ef6763e05e68c11ab2fad69417a830219e359c9aaabecbcdfbba63a5ff"
+    },
+    {
+      "file": "121788-cpuprofile.pb.gz",
+      "bytes": 16765,
+      "sha256": "207198da19ba5cc81e1681961e4ef4368aa0648e1c5b5b0cd70d4b0f2eb037c1"
+    }
+  ]
+}

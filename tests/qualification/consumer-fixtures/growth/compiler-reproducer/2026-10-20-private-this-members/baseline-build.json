@@ -1,0 +1,32 @@
+{
+  "command": [
+    "/tmp/gm-ts-owner-20261020/go-toolchain/go/bin/go",
+    "build",
+    "-buildvcs=false",
+    "-p",
+    "4",
+    "-o",
+    "/tmp/gm-ts-owner-20261020/tsc-baseline",
+    "./cmd/tsc"
+  ],
+  "cwd": "/tmp/gm-ts-owner-20261020/source/microsoft-TypeScript-3200b90/tsc",
+  "go": "go version go1.27.2 linux/amd64",
+  "goArchiveSha256": "ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5",
+  "buildWallSeconds": 184.57843078999986,
+  "preparationWallSeconds": 189.8460780349999,
+  "expired": false,
+  "exitCode": 0,
+  "caps": {
+    "question": "Does conservative synthetic this typing of mapped interface bases drive repeated ancestor member materialization?",
+    "scope": "One disposable compiler-owner causal experiment; no Get Modular source, supported compiler pin, accepted maps, ADR, or gate changes",
+    "sourceCommit": "3200b90a617bcf9ad26543b347cabad8ff0dad14",
+    "sourceArchiveSha256": "034bb7bb88f1354b416f9c617a82b88af7f2344f279e9a697a73bf4276638858",
+    "reducedStageCapSeconds": 60,
+    "buildCapSeconds": 600,
+    "investigationCapSeconds": 3600,
+    "fullN1000Selected": false,
+    "startUtc": "2026-10-20T08:01:50.725342+00:00"
+  },
+  "compilerVersion": "Version 7.1.0-dev",
+  "compilerSha256": "ef8430cc4a8b43f2bf661a92589a4b09f93c3ab7212086ef4ff46de5b1e05591"
+}

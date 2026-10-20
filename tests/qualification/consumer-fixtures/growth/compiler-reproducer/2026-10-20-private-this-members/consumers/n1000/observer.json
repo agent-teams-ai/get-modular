@@ -1,0 +1,35 @@
+{
+  "kind": "private-consumer-observation",
+  "size": 1000,
+  "command": [
+    "/tmp/gm-completion-tools-20261020/node-v26.11.1-linux-x64/bin/node",
+    "--input-type=module",
+    "--eval",
+    "import {measureGrowth} from \"file:///tmp/gm-patched-consumer-20261020/tests/qualification/consumer-fixtures/growth/run.mjs\";const r=await measureGrowth({\"size\": 1000, \"compilerCandidate\": \"/tmp/gm-patched-consumer-20261020/private-candidate.json\", \"directoryParent\": \"/tmp/gm-ts-owner-20261020/consumer-results\"});console.log(JSON.stringify({event:\"private.compiler-owner.complete\",size:r.size,status:r.status,directory:r.directory}));"
+  ],
+  "cwd": "/tmp/gm-patched-consumer-20261020",
+  "startUtc": "2026-10-20T08:29:17.930337+00:00",
+  "memoryBefore": {
+    "currentBytes": 6413185024,
+    "max": "8589934592",
+    "events": "low 0\nhigh 0\nmax 99343\noom 0\noom_kill 0\noom_group_kill 0\n"
+  },
+  "rssMeaning": "Linux wait4 rusage.ru_maxrss: highest RSS of a waited process in this child lineage, including waited descendants; not simultaneous aggregate tree memory.",
+  "compilerAndRuntimeLimits": "Existing run.mjs enforces compiler180s/runtime120s/aggregate600s unchanged.",
+  "observerVersion": 2,
+  "rusagePeakRssBytes": 994103296,
+  "exitCode": 0,
+  "wallSeconds": 46.38236011800018,
+  "endUtc": "2026-10-20T08:30:04.312802+00:00",
+  "memoryAfter": {
+    "currentBytes": 6639894528,
+    "max": "8589934592",
+    "events": "low 0\nhigh 0\nmax 99343\noom 0\noom_kill 0\noom_group_kill 0\n"
+  },
+  "completion": {
+    "event": "private.compiler-owner.complete",
+    "size": 1000,
+    "status": "passed",
+    "directory": "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-1000-rpRWdr"
+  }
+}

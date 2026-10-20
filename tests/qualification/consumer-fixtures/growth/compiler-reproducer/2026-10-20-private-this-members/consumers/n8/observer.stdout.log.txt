@@ -1,0 +1,5 @@
+{"event":"fixture.growth.stage-begin","stage":"cold","kind":"compiler","capMs":180000}
+{"event":"fixture.growth.stage-end","stage":"cold","kind":"compiler","capMs":180000,"wallMs":421.811268,"status":"ended"}
+{"event":"fixture.growth.stage-begin","stage":"runtime","kind":"runtime","capMs":120000}
+{"event":"fixture.growth.stage-end","stage":"runtime","kind":"runtime","capMs":120000,"wallMs":143.41643299999998,"status":"ended"}
+{"event":"private.compiler-owner.complete","size":8,"status":"passed","directory":"/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-8-ySU2OX"}

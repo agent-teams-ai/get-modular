@@ -1,0 +1,15 @@
+{
+  "timeUtc": "2026-10-20T08:23:44.878172+00:00",
+  "memoryMaxBytes": "8589934592",
+  "memoryCurrentBytes": 6141456384,
+  "stat": {
+    "anon": 168325120,
+    "file": 4483379200,
+    "kernel": 1488396288,
+    "file_dirty": 14336000,
+    "file_writeback": 0,
+    "inactive_file": 2134855680,
+    "active_file": 2310103040
+  },
+  "events": "low 0\nhigh 0\nmax 99343\noom 0\noom_kill 0\noom_group_kill 0\n"
+}

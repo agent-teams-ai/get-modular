@@ -1,0 +1,23 @@
+File: tsc-baseline
+Build ID: 47870bb1f11f37b3f3b08653ecc6176423cc01d6
+Type: alloc_space
+Time: 2026-10-20 11:05:57 IDT
+Showing nodes accounting for 313.65MB, 91.12% of 344.21MB total
+Dropped 191 nodes (cum <= 1.72MB)
+Showing top 15 nodes out of 205
+      flat  flat%   sum%        cum   cum%
+  248.31MB 72.14% 72.14%   248.31MB 72.14%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).addInheritedMembers
+   24.02MB  6.98% 79.12%    24.02MB  6.98%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).getNamedMembers
+   12.50MB  3.63% 82.75%    12.50MB  3.63%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).newObjectType
+    4.09MB  1.19% 83.94%     4.09MB  1.19%  slices.Grow[go.shape.[]go.shape.struct { github.com/microsoft/TypeScript/tsc/internal/ast.s github.com/microsoft/TypeScript/tsc/internal/ast.Symbol; github.com/microsoft/TypeScript/tsc/internal/ast.d github.com/microsoft/TypeScript/tsc/internal/ast.symbolData },go.shape.struct { github.com/microsoft/TypeScript/tsc/internal/ast.s github.com/microsoft/TypeScript/tsc/internal/ast.Symbol; github.com/microsoft/TypeScript/tsc/internal/ast.d github.com/microsoft/TypeScript/tsc/internal/ast.symbolData }] (inline)
+    4.07MB  1.18% 85.12%     4.07MB  1.18%  slices.Grow[go.shape.[]go.shape.struct { github.com/microsoft/TypeScript/tsc/internal/ast.PrimaryExpressionBase; github.com/microsoft/TypeScript/tsc/internal/ast.FlowNodeBase; Text string },go.shape.struct { github.com/microsoft/TypeScript/tsc/internal/ast.PrimaryExpressionBase; github.com/microsoft/TypeScript/tsc/internal/ast.FlowNodeBase; Text string }]
+    3.51MB  1.02% 86.14%     3.51MB  1.02%  github.com/microsoft/TypeScript/tsc/internal/collections.(*Set[go.shape.*github.com/microsoft/TypeScript/tsc/internal/checker.Type]).Add (inline)
+    2.54MB  0.74% 86.88%     2.54MB  0.74%  slices.Grow[go.shape.[]go.shape.589b9887a0480d3642b2bb062e8af53427544c79db9d1f6a8349e93a8ce74449,go.shape.589b9887a0480d3642b2bb062e8af53427544c79db9d1f6a8349e93a8ce74449]
+    2.50MB  0.73% 87.60%     2.50MB  0.73%  runtime.mallocgc
+    2.50MB  0.73% 88.33%     6.58MB  1.91%  github.com/microsoft/TypeScript/tsc/internal/binder.(*Binder).declareSymbolEx
+    2.04MB  0.59% 88.92%     3.55MB  1.03%  github.com/microsoft/TypeScript/tsc/internal/core.(*LinkStore[go.shape.*github.com/microsoft/TypeScript/tsc/internal/ast.Node,go.shape.struct { github.com/microsoft/TypeScript/tsc/internal/checker.resolvedType *github.com/microsoft/TypeScript/tsc/internal/checker.Type; github.com/microsoft/TypeScript/tsc/internal/checker.outerTypeParameters []*github.com/microsoft/TypeScript/tsc/internal/checker.Type }]).Get
+    2.03MB  0.59% 89.51%     2.03MB  0.59%  slices.Grow[go.shape.[]go.shape.struct { github.com/microsoft/TypeScript/tsc/internal/ast.TypeElementBase; github.com/microsoft/TypeScript/tsc/internal/ast.TypeSyntaxBase; github.com/microsoft/TypeScript/tsc/internal/ast.NodeBase; github.com/microsoft/TypeScript/tsc/internal/ast.DeclarationBase; github.com/microsoft/TypeScript/tsc/internal/ast.NamedMemberBase; Type *github.com/microsoft/TypeScript/tsc/internal/ast.Node; Initializer *github.com/microsoft/TypeScript/tsc/internal/ast.Node },go.shape.struct { github.com/microsoft/TypeScript/tsc/internal/ast.TypeElementBase; github.com/microsoft/TypeScript/tsc/internal/ast.TypeSyntaxBase; github.com/microsoft/TypeScript/tsc/internal/ast.NodeBase; github.com/microsoft/TypeScript/tsc/internal/ast.DeclarationBase; github.com/microsoft/TypeScript/tsc/internal/ast.NamedMemberBase; Type *github.com/microsoft/TypeScript/tsc/internal/ast.Node; Initializer *github.com/microsoft/TypeScript/tsc/internal/ast.Node }]
+    2.02MB  0.59% 90.10%    13.02MB  3.78%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).createTypeReferenceEx
+       2MB  0.58% 90.68%        2MB  0.58%  github.com/microsoft/TypeScript/tsc/internal/checker.newSimpleTypeMapper (inline)
+    1.01MB  0.29% 90.97%    80.77MB 23.46%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).checkInheritedPropertiesAreIdentical
+    0.52MB  0.15% 91.12%     3.52MB  1.02%  github.com/microsoft/TypeScript/tsc/internal/ast.(*SourceFile).resolveJSDoc

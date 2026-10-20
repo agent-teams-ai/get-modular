@@ -1,0 +1,10 @@
+{
+  "checker.go": {
+    "sha256": "500bb3e39a5d511bfb39f0b6205693dfd1eeb1160fb0d59207301e351cd53e7f",
+    "bytes": 1456586
+  },
+  "types.go": {
+    "sha256": "0265c1f309f28f4c6a608ea20243fe30625ba055e3b779b662dbec93172f9eb7",
+    "bytes": 64804
+  }
+}

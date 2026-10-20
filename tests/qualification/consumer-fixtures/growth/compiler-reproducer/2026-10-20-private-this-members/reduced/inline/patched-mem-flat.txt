@@ -1,0 +1,19 @@
+File: tsc-patched
+Build ID: ae720048dc3f800b262d3344c32662c7804c06a4
+Type: alloc_space
+Time: 2026-10-20 11:17:43 IDT
+Showing nodes accounting for 47.41MB, 66.54% of 71.25MB total
+Showing top 12 nodes out of 407
+      flat  flat%   sum%        cum   cum%
+   17.65MB 24.77% 24.77%    17.65MB 24.77%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).addInheritedMembers
+    5.05MB  7.08% 31.86%    10.08MB 14.14%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).checkInheritedPropertiesAreIdentical
+    4.50MB  6.32% 38.17%     4.50MB  6.32%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).newObjectType
+    3.05MB  4.29% 42.46%     3.05MB  4.29%  slices.Grow[go.shape.[]go.shape.struct { github.com/microsoft/TypeScript/tsc/internal/ast.PrimaryExpressionBase; github.com/microsoft/TypeScript/tsc/internal/ast.FlowNodeBase; Text string },go.shape.struct { github.com/microsoft/TypeScript/tsc/internal/ast.PrimaryExpressionBase; github.com/microsoft/TypeScript/tsc/internal/ast.FlowNodeBase; Text string }]
+    3.01MB  4.22% 46.68%     3.01MB  4.22%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).getNamedMembers
+    2.55MB  3.58% 50.27%     2.55MB  3.58%  slices.Grow[go.shape.[]go.shape.struct { github.com/microsoft/TypeScript/tsc/internal/ast.s github.com/microsoft/TypeScript/tsc/internal/ast.Symbol; github.com/microsoft/TypeScript/tsc/internal/ast.d github.com/microsoft/TypeScript/tsc/internal/ast.symbolData },go.shape.struct { github.com/microsoft/TypeScript/tsc/internal/ast.s github.com/microsoft/TypeScript/tsc/internal/ast.Symbol; github.com/microsoft/TypeScript/tsc/internal/ast.d github.com/microsoft/TypeScript/tsc/internal/ast.symbolData }] (inline)
+    2.51MB  3.53% 53.79%     2.51MB  3.53%  slices.Grow[go.shape.[]go.shape.struct { Loc github.com/microsoft/TypeScript/tsc/internal/core.TextRange; Nodes []*github.com/microsoft/TypeScript/tsc/internal/ast.Node },go.shape.struct { Loc github.com/microsoft/TypeScript/tsc/internal/core.TextRange; Nodes []*github.com/microsoft/TypeScript/tsc/internal/ast.Node }]
+    2.50MB  3.51% 57.31%     2.50MB  3.51%  runtime.mallocgc
+    2.01MB  2.82% 60.13%     4.05MB  5.68%  github.com/microsoft/TypeScript/tsc/internal/binder.(*Binder).declareSymbolEx
+    1.53MB  2.14% 62.27%     2.03MB  2.85%  github.com/microsoft/TypeScript/tsc/internal/core.(*LinkStore[go.shape.*github.com/microsoft/TypeScript/tsc/internal/ast.Node,go.shape.struct { github.com/microsoft/TypeScript/tsc/internal/checker.resolvedType *github.com/microsoft/TypeScript/tsc/internal/checker.Type; github.com/microsoft/TypeScript/tsc/internal/checker.outerTypeParameters []*github.com/microsoft/TypeScript/tsc/internal/checker.Type }]).Get
+    1.53MB  2.14% 64.41%     1.53MB  2.14%  slices.Grow[go.shape.[]go.shape.struct { github.com/microsoft/TypeScript/tsc/internal/ast.TypeElementBase; github.com/microsoft/TypeScript/tsc/internal/ast.TypeSyntaxBase; github.com/microsoft/TypeScript/tsc/internal/ast.NodeBase; github.com/microsoft/TypeScript/tsc/internal/ast.DeclarationBase; github.com/microsoft/TypeScript/tsc/internal/ast.NamedMemberBase; Type *github.com/microsoft/TypeScript/tsc/internal/ast.Node; Initializer *github.com/microsoft/TypeScript/tsc/internal/ast.Node },go.shape.struct { github.com/microsoft/TypeScript/tsc/internal/ast.TypeElementBase; github.com/microsoft/TypeScript/tsc/internal/ast.TypeSyntaxBase; github.com/microsoft/TypeScript/tsc/internal/ast.NodeBase; github.com/microsoft/TypeScript/tsc/internal/ast.DeclarationBase; github.com/microsoft/TypeScript/tsc/internal/ast.NamedMemberBase; Type *github.com/microsoft/TypeScript/tsc/internal/ast.Node; Initializer *github.com/microsoft/TypeScript/tsc/internal/ast.Node }]
+    1.52MB  2.13% 66.54%     1.52MB  2.13%  slices.Grow[go.shape.[]go.shape.1aaa5b9e51eef8e715eb39ffa1350a170458f350000dd3ecff08046c73cf3d25,go.shape.1aaa5b9e51eef8e715eb39ffa1350a170458f350000dd3ecff08046c73cf3d25]

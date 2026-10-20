@@ -1,0 +1,19 @@
+File: tsc-patched
+Build ID: ae720048dc3f800b262d3344c32662c7804c06a4
+Type: alloc_space
+Time: 2026-10-20 11:17:42 IDT
+Showing nodes accounting for 55.46MB, 66.93% of 82.86MB total
+Showing top 12 nodes out of 416
+      flat  flat%   sum%        cum   cum%
+   26.72MB 32.25% 32.25%    26.72MB 32.25%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).addInheritedMembers
+    4.01MB  4.84% 37.09%     4.01MB  4.84%  github.com/microsoft/TypeScript/tsc/internal/collections.(*Set[go.shape.*github.com/microsoft/TypeScript/tsc/internal/checker.Type]).Add (inline)
+    3.50MB  4.22% 41.31%     3.50MB  4.22%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).newObjectType
+    3.05MB  3.68% 45.00%     4.57MB  5.51%  github.com/microsoft/TypeScript/tsc/internal/core.(*LinkStore[go.shape.*github.com/microsoft/TypeScript/tsc/internal/ast.Node,go.shape.struct { github.com/microsoft/TypeScript/tsc/internal/checker.resolvedType *github.com/microsoft/TypeScript/tsc/internal/checker.Type; github.com/microsoft/TypeScript/tsc/internal/checker.outerTypeParameters []*github.com/microsoft/TypeScript/tsc/internal/checker.Type }]).Get
+    3.03MB  3.66% 48.65%    12.60MB 15.21%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).checkInheritedPropertiesAreIdentical
+    3.01MB  3.63% 52.28%     3.01MB  3.63%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).getNamedMembers
+    2.54MB  3.07% 55.35%     2.54MB  3.07%  slices.Grow[go.shape.[]go.shape.struct { github.com/microsoft/TypeScript/tsc/internal/ast.PrimaryExpressionBase; github.com/microsoft/TypeScript/tsc/internal/ast.FlowNodeBase; Text string },go.shape.struct { github.com/microsoft/TypeScript/tsc/internal/ast.PrimaryExpressionBase; github.com/microsoft/TypeScript/tsc/internal/ast.FlowNodeBase; Text string }]
+    2.54MB  3.06% 58.42%     2.54MB  3.06%  slices.Grow[go.shape.[]go.shape.589b9887a0480d3642b2bb062e8af53427544c79db9d1f6a8349e93a8ce74449,go.shape.589b9887a0480d3642b2bb062e8af53427544c79db9d1f6a8349e93a8ce74449] (inline)
+    2.01MB  2.42% 60.84%     3.03MB  3.65%  github.com/microsoft/TypeScript/tsc/internal/binder.(*Binder).declareSymbolEx
+       2MB  2.41% 63.25%        2MB  2.41%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).newLiteralType
+    1.53MB  1.85% 65.10%     1.53MB  1.85%  slices.Grow[go.shape.[]go.shape.1aaa5b9e51eef8e715eb39ffa1350a170458f350000dd3ecff08046c73cf3d25,go.shape.1aaa5b9e51eef8e715eb39ffa1350a170458f350000dd3ecff08046c73cf3d25]
+    1.51MB  1.83% 66.93%     1.51MB  1.83%  slices.Grow[go.shape.[]go.shape.struct { github.com/microsoft/TypeScript/tsc/internal/checker.resolvedType *github.com/microsoft/TypeScript/tsc/internal/checker.Type; github.com/microsoft/TypeScript/tsc/internal/checker.outerTypeParameters []*github.com/microsoft/TypeScript/tsc/internal/checker.Type },go.shape.struct { github.com/microsoft/TypeScript/tsc/internal/checker.resolvedType *github.com/microsoft/TypeScript/tsc/internal/checker.Type; github.com/microsoft/TypeScript/tsc/internal/checker.outerTypeParameters []*github.com/microsoft/TypeScript/tsc/internal/checker.Type }] (inline)

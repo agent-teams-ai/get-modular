@@ -1,0 +1,20 @@
+File: tsc-patched
+Build ID: ae720048dc3f800b262d3344c32662c7804c06a4
+Type: cpu
+Time: 2026-10-20 11:17:42 IDT
+Duration: 413.30ms, Total samples = 530ms (128.24%)
+Showing nodes accounting for 280ms, 52.83% of 530ms total
+Showing top 12 nodes out of 322
+      flat  flat%   sum%        cum   cum%
+      50ms  9.43%  9.43%       50ms  9.43%  runtime.tryDeferToSpanScan
+      40ms  7.55% 16.98%       50ms  9.43%  runtime.findObject
+      40ms  7.55% 24.53%       70ms 13.21%  runtime.mapaccess2_faststr
+      20ms  3.77% 28.30%       20ms  3.77%  github.com/microsoft/TypeScript/tsc/internal/ast.GetSourceFileOfNode (inline)
+      20ms  3.77% 32.08%       20ms  3.77%  internal/runtime/maps.(*ctrlGroup).setEmpty
+      20ms  3.77% 35.85%       20ms  3.77%  runtime.heapSetTypeSmallHeader
+      20ms  3.77% 39.62%       20ms  3.77%  runtime.scanObjectsSmall
+      20ms  3.77% 43.40%       20ms  3.77%  runtime.spanOf (inline)
+      20ms  3.77% 47.17%       20ms  3.77%  runtime.wbBufFlush1
+      10ms  1.89% 49.06%       10ms  1.89%  github.com/microsoft/TypeScript/tsc/internal/ast.(*Symbol).ValueDeclaration
+      10ms  1.89% 50.94%       40ms  7.55%  github.com/microsoft/TypeScript/tsc/internal/ast.visit
+      10ms  1.89% 52.83%       30ms  5.66%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).compareSymbolsWorker
