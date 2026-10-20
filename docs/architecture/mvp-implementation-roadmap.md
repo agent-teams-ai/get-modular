@@ -216,10 +216,10 @@ exists until the first package introduces it. Update the exact script chain
 and its guard together as the current contract requires; never mark a future
 command or absent subject as passed.
 
-CI runs Core, Assembly, packaging, governance and static lanes in independent
+CI runs Core, Assembly, packaging, governance, static and observation lanes in independent
 checkouts on each of Ubuntu, macOS and Windows. Node 26.11.1 is the default
 through `.node-version`; the owner authorized this cutover before Node 26 LTS
-status, and the supported Node 24.21.0 compatibility jobs use the same five-lane
+status, and the supported Node 24.21.0 compatibility jobs use the same six-lane
 matrix on all three operating systems. Every checkout performs strict frozen
 installation with lifecycle scripts disabled, followed by
 `node architecture/tooling/runtime/dev.ts peers`. Each lane runs pure runtime preflight and governance
