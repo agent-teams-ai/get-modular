@@ -65,11 +65,14 @@ test("the public archive installs one root-only ESM package with the full scope 
 
     await writeFile(join(consumer, "package.json"), '{"type":"module"}\n');
     const suiteURL = pathToFileURL(join(packageRoot, "tests/semantic-suite.mjs")).href;
+    const reentrantSuiteURL = pathToFileURL(join(packageRoot, "tests/close-reentrancy-suite.ts")).href;
     await writeFile(join(consumer, "semantic-packed.test.mjs"), `
       import test from 'node:test';
       import * as resources from '@get-modular/resources';
       import { runSemanticSuite } from ${JSON.stringify(suiteURL)};
+      import { runCloseReentrancySuite } from ${JSON.stringify(reentrantSuiteURL)};
       test('packed scope semantics', async (context) => { await runSemanticSuite(resources, context); });
+      test('packed scope close reentrancy', async (context) => { await runCloseReentrancySuite(resources, context); });
     `);
     run(process.execPath, ["--test", "semantic-packed.test.mjs"], consumer);
     await writeFile(join(consumer, "check.mjs"), `

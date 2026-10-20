@@ -43,6 +43,7 @@ fullScanPaths:
   - packages/resources/package.json
   - packages/resources/tsconfig.types.json
   - packages/resources/tsconfig.types.bundler.json
+  - packages/resources/tsconfig.test-tooling.json
   - packages/conformance/tsconfig.json
   - packages/conformance/package.json
   - packages/conformance/tsconfig.types.json
@@ -62,7 +63,6 @@ fullScanPaths:
   - tests/qualification/consumer-fixtures/recovery/tsconfig.runtime.json
   - tests/qualification/consumer-fixtures/source/source-dependencies.yaml
   - tests/qualification/implementation-readiness/api-authoring
-  - architecture/checks/sdk-growth.mjs
   - architecture/sdk-growth
   - tests/sdk-growth.test.mjs
   - tests/qualification/sdk-growth-admission.mjs

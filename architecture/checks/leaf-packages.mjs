@@ -66,6 +66,7 @@ export const LEAF_PACKAGES = Object.freeze([
     }),
     requiredTests: Object.freeze([
       "packages/resources/tests/scope.test.mjs",
+      "packages/resources/tests/close-reentrancy.test.ts",
       "packages/resources/tests/packed-root.test.mjs",
     ]),
     commands: Object.freeze({
@@ -73,8 +74,8 @@ export const LEAF_PACKAGES = Object.freeze([
       "resources:typecheck":
         "node node_modules/typescript/bin/tsc -p packages/resources/tsconfig.json --noEmit"
         + " && node architecture/tooling/test-assembly-types.mjs --projects packages/resources/tsconfig.types.json"
-        + " packages/resources/tsconfig.types.bundler.json",
-      "resources:test": "node --test packages/resources/tests/scope.test.mjs tests/resources/assembly-scope.test.mjs",
+        + " packages/resources/tsconfig.types.bundler.json packages/resources/tsconfig.test-tooling.json",
+      "resources:test": "node --test packages/resources/tests/scope.test.mjs packages/resources/tests/close-reentrancy.test.ts tests/resources/assembly-scope.test.mjs",
       "resources:pack": "node --test packages/resources/tests/packed-root.test.mjs",
       "resources:check":
         "pnpm resources:build && pnpm resources:typecheck && pnpm resources:test && pnpm resources:pack",
