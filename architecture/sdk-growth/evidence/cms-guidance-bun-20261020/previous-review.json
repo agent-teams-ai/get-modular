@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "kind": "consumer-module-standard-pin-review",
+  "repository": "agent-teams-ai/get-modular",
+  "path": "docs/architecture/common-assembly.md",
+  "anchor": "consumer-module-standard",
+  "pinned": {
+    "commit": "669a750d8db451e04f075cdeb36576c6606fba6e",
+    "gitBlob": "7bf511f88d4f3547b107cad9ec85d54b009ed033",
+    "sha256": "e6cd8d26b4317bf5f94ddd22f6e36bf25e90548f72265d94808eaf20b947e553"
+  },
+  "acceptedCurrent": {
+    "commit": "300e7e1c459c08f5e271627e4ca7d2486bdf5e1f",
+    "gitBlob": "ae6792543bd19acc948e177e8d55632c9d51134e",
+    "sha256": "c2fe582a14ff6e79620b232ca7ffc914afb0474ec21fd43f208251dd7252f4a3"
+  },
+  "delta": {
+    "classification": "composition-authoring-and-observation-guidance",
+    "fromAcceptedCurrent": {
+      "commit": "24d6557a1b04b01a3a73c64b1d9a9afd83d89c8f",
+      "gitBlob": "63540f7b0420134ba685002d01770da2f213c65a",
+      "sha256": "33b41d5babf0a431c97e8e596a56e6ec1557ba1a0b26d39bf23e13d9a19e1fbd"
+    },
+    "changedHunks": 18,
+    "removedLines": 48,
+    "addedLines": 988,
+    "semanticChanges": [
+      "ADR-0030 adds module-owned resources with Host deadlines and cleanup authority; ADR-0031 adds declared run inputs, per-run scopes and instance templates.",
+      "ADR-0032 replaces handwritten capability compatibility with contract descriptors and authoring builders; ADR-0035 completes only unambiguous required bindings.",
+      "ADR-0036 replaces bound handles with module entries and static groups; ADR-0037 independently pins providers, roots and every non-completed row.",
+      "FMS v1.1 adds optional sub-features and composition contracts; each consumer retains its own adopted FMS version.",
+      "ADR-0034 adds optional observation state with one writer, subscriber-owned signal-bound subscriptions, command ports, testing-only helpers and leak checks.",
+      "Current carrier limits, input validation and execution outcomes changed; these are real Assembly contract changes, not only optional dynamic Host guidance.",
+      "The SDK growth slice is existing development tooling using the Foundation SDK verifier and does not call Assembly authoring or runtime APIs. Its frozen P0 observation remains historical; no composition source migration is required in this slice.",
+      "Qualification and activation remain pending/hold until independent authority, exact source binding and released observation custody exist. Current guidance review cannot provide those proofs."
+    ],
+    "changesGetModularCompositionContract": true,
+    "pinAction": "advance-reviewed-current-pin-with-historical-pin-retained"
+  },
+  "retainedEvidence": {
+    "currentDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-20261020/common-assembly.txt",
+    "previousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-20261020/previous-common-assembly.txt",
+    "deltaPath": "architecture/sdk-growth/evidence/cms-guidance-20261020/common-assembly.diff",
+    "deltaSha256": "3cc0eac2e324e1b8298370ae0649b3b39c30f285ea8b16b66f6bf0ac6e6b555f",
+    "previousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-20261020/previous-review.json",
+    "previousReviewSha256": "c7b6aae11a8be3ec39479ca3136d195780cbb2cd4b62a5baed8ac9d51cff3e0e"
+  },
+  "scopeReview": {
+    "scope": "sdk-growth-development-tooling",
+    "classification": "fixed-development-tooling",
+    "assemblyRuntime": "not-used",
+    "guidanceReview": "complete",
+    "qualification": "pending",
+    "activation": "hold",
+    "outstanding": [
+      "trusted-external-authority-transport-unavailable",
+      "trusted-pr-base-and-exact-candidate-binding-unavailable",
+      "authenticated-released-artifact-source-binding-unavailable",
+      "released-growth-observations-and-custody-receipts-unavailable"
+    ]
+  }
+}

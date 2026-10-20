@@ -181,10 +181,11 @@ test("CMS guidance authenticates migrated inputs without promoting pending adopt
   await t.test("previous current pin is stale", () => rejectCms(model => {
     model.cmsReview.acceptedCurrent = { ...model.cmsReview.delta.fromAcceptedCurrent };
   }, /current CMS pin/u));
-  await t.test("composition changes cannot be denied", () => rejectCms(model => {
-    model.cmsReview.delta.changesGetModularCompositionContract = false;
+  await t.test("command-only delta cannot claim a composition contract change", () => rejectCms(model => {
+    model.cmsReview.delta.changesGetModularCompositionContract = true;
   }, /CMS delta review/u));
-  for (const field of ["cmsBytes", "cmsPreviousBytes", "cmsDeltaBytes", "cmsPreviousReviewBytes"]) {
+  for (const field of ["cmsBytes", "cmsPreviousBytes", "cmsP0Bytes", "cmsSourceBytes", "cmsDeltaBytes", "cmsPreviousReviewBytes",
+    "cmsHistoricalDeltaBytes", "cmsP0ReviewBytes"]) {
     await t.test(field, () => rejectCms(model => {
       model[field] = Buffer.from("substituted input");
     }, /CMS .*bytes/u));
@@ -195,6 +196,11 @@ test("CMS guidance authenticates migrated inputs without promoting pending adopt
   await t.test("guidance cannot activate adoption", () => rejectCms(model => {
     model.cmsReview.scopeReview.activation = "active";
   }, /CMS scope review/u));
+  await t.test("previous composition review cannot be rewritten", () => rejectCms(model => {
+    const previous = JSON.parse(model.cmsPreviousReviewBytes.toString("utf8"));
+    previous.delta.changesGetModularCompositionContract = false;
+    model.cmsPreviousReviewBytes = Buffer.from(JSON.stringify(previous));
+  }, /CMS retained delta or previous review bytes/u));
   await t.test("current review cannot rewrite historical P0", () => rejectCms(model => {
     model.feasibility.sourceCommit = model.cmsReview.acceptedCurrent.commit;
     model.feasibility.standard.currentSha256 = model.cmsReview.acceptedCurrent.sha256;
