@@ -122,7 +122,7 @@ test("Node rollback dispatch uses the actual installed pnpm public root export",
     const packageRoot = join(target, "node_modules/pnpm");
     await cp(dirname(installed), packageRoot, { recursive: true, dereference: true });
     const resolver = createRequire(join(target, "package.json"));
-    assert.equal(resolver.resolve("pnpm"), join(packageRoot, "package.json"));
+    assert.equal(resolver.resolve("pnpm"), await realpath(join(packageRoot, "package.json")));
     assert.throws(() => resolver.resolve("pnpm/package.json"), { code: "ERR_PACKAGE_PATH_NOT_EXPORTED" });
 
     await put(target, "node_modules/@agent-teams/engineering-foundation/package.json", JSON.stringify({
