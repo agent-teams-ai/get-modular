@@ -29,7 +29,11 @@ export type ScopeOptions = {
   readonly order?: "reverse" | "concurrent" | undefined;
 };
 export interface Resources {
-  /** Aborted when this scope or an ancestor starts closing; stops acquisition, never closes anything. */
+  /**
+   * Aborted when this scope or an ancestor starts closing, or when the run that constructs the module
+   * is cancelled before its factory settles. It stops acquisition, and subscriptions bound to it
+   * detach then; it never closes anything.
+   */
   readonly signal: AbortSignal;
   setup<T>(spec: SetupSpec<T>): Promise<T>;
   use<T extends AsyncDisposable | Disposable>(value: T, name: string): T;

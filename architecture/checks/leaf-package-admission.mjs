@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { posix } from "node:path";
-import ts from "typescript-minimum";
+import * as ts from "typescript/unstable/ast";
+import { parseTypeScript } from "../../tests/qualification/support/typescript-project.ts";
 import { GENERATED_PRODUCTION_PATH } from "./generated-production-source.mjs";
 import {
-  assertLeafPackageTable, expectedPeerDependencies, LEAF_PACKAGES, leafManifestPath, leafPeers, PUBLIC,
+  assertLeafPackageTable, expectedLeafExports, expectedPeerDependencies, LEAF_PACKAGES, leafEntrySources,
+  leafManifestPath, leafPeers, leafSubpaths, PUBLIC,
   PUBLIC_FILES, PUBLIC_PUBLISH_CONFIG, publicRepository,
 } from "./leaf-packages.mjs";
 
@@ -12,12 +14,6 @@ const PUBLICATION_FIELDS = Object.freeze([
   "bin", "browser", "main", "module", "publishConfig",
   "types", "typesVersions", "typings",
 ]);
-const ROOT_EXPORT = Object.freeze({
-  ".": {
-    import: { types: "./dist/index.d.ts", default: "./dist/index.js" },
-    default: "./dist/index.js",
-  },
-});
 const INSTALL_SCRIPTS = new Set([
   "dependencies", "install", "pnpm:devPreinstall", "postinstall", "postpack",
   "postprepare", "postpublish", "postuninstall", "preinstall", "prepack",
@@ -29,11 +25,11 @@ const SOURCE = /\.(?:[cm]?js|jsx|[cm]?ts|tsx)$/u;
 const sha256 = bytes => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const record = value => value !== null && typeof value === "object" && !Array.isArray(value);
 
-function parseSource(path, source, forbidDynamic = true) {
-  const parsed = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true);
-  assert.equal(parsed.parseDiagnostics.length, 0,
+async function parseSource(path, source, forbidDynamic = true) {
+  const { source: parsed, diagnostics } = await parseTypeScript(path, source);
+  assert.equal(diagnostics.length, 0,
     `${path} must parse as production source`);
-  const references = ts.preProcessFile(source, true, true);
+  const references = parsed;
   const specifiers = [
     ...references.referencedFiles,
     ...references.typeReferenceDirectives,
@@ -55,18 +51,18 @@ function parseSource(path, source, forbidDynamic = true) {
       && (node.expression.kind === ts.SyntaxKind.ImportKeyword
         || ts.isIdentifier(node.expression) && node.expression.text === "require")) {
       if (forbidDynamic) assert.fail(`${path} must not use dynamic import or require`);
-      assert(node.arguments.length === 1 && ts.isStringLiteralLike(node.arguments[0]),
+      assert(node.arguments.length === 1 && ts.isStringLiteralLikeNode(node.arguments[0]),
         `${path} has an unresolved dynamic import or require`);
       specifiers.push(node.arguments[0].text);
     }
-    ts.forEachChild(node, visit);
+    node.forEachChild(visit);
   }
   visit(parsed);
   return { parsed, specifiers };
 }
 
-function assertSourceEdges(leaf, path, source) {
-  const { parsed, specifiers } = parseSource(path, source);
+async function assertSourceEdges(leaf, path, source) {
+  const { parsed, specifiers } = await parseSource(path, source);
   for (const specifier of specifiers) {
     // A declared peer is imported through its package root only.
     if (leafPeers(leaf).includes(specifier)) continue;
@@ -89,7 +85,7 @@ function substantiveSource(parsed) {
       || ts.isArrowFunction(node)) && node.body &&
       node.body.statements?.some(statement =>
         !ts.isEmptyStatement(statement) && !ts.isDebuggerStatement(statement))) substantive = true;
-    ts.forEachChild(node, visit);
+    node.forEachChild(visit);
   }
   visit(parsed);
   return substantive;
@@ -135,8 +131,9 @@ async function assertLeafManifest(leaf, readPackageManifest) {
     assert.equal(manifest[field], undefined,
       `${leaf.name} must not claim publication through ${field}`);
   }
-  assert.deepEqual(manifest.exports, ROOT_EXPORT,
-    `${leaf.name} requires one root-only ESM export and no deep import`);
+  assert.deepEqual(manifest.exports, expectedLeafExports(leaf), leafSubpaths(leaf).length === 1
+    ? `${leaf.name} requires one root-only ESM export and no deep import`
+    : `${leaf.name} requires exactly its row's ESM export subpaths and no deep import`);
   assert(Array.isArray(manifest.files) && manifest.files.length > 0
     && manifest.files.every(path => typeof path === "string"
       && /^(?:dist|README\.md|LICENSE|CHANGELOG\.md)(?:\/[A-Za-z0-9._/-]+)?$/u.test(path)
@@ -172,7 +169,9 @@ async function validateLeafRoot(leaf, artifacts, input) {
     `${leaf.name} rejects nested manifests`);
   await assertLeafManifest(leaf, readPackageManifest);
   const sources = artifacts.filter(path => path.startsWith(sourceRoot) && SOURCE.test(path));
-  assert(sources.includes(`${sourceRoot}index.ts`), `${leaf.name} requires src/index.ts`);
+  for (const entry of leafEntrySources(leaf)) {
+    assert(sources.includes(entry), `${leaf.name} requires ${entry.slice(leaf.root.length + 1)}`);
+  }
   assert(sources.length > 0, `${leaf.name} cannot have empty source`);
   for (const path of leaf.requiredTests) {
     assert(artifacts.includes(path), `${leaf.name} requires a real test: ${path}`);
@@ -182,7 +181,7 @@ async function validateLeafRoot(leaf, artifacts, input) {
     const source = await readProductionSource(path);
     assert(typeof source === "string" && source.trim().length > 0,
       `${path} cannot be empty`);
-    const parsed = assertSourceEdges(leaf, path, source);
+    const parsed = await assertSourceEdges(leaf, path, source);
     if (substantiveSource(parsed)) substantive = true;
   }
   assert(substantive, `${leaf.name} requires substantive executable source`);
@@ -206,7 +205,7 @@ async function assertNoCoreOrAssemblyLeafImport(leaves, productionArtifacts, rea
     /^packages\/(?:core|assembly)\/src\//u.test(path)
       && SOURCE.test(path) && path !== GENERATED_PRODUCTION_PATH)) {
     const source = await readProductionSource(path);
-    for (const specifier of parseSource(path, source, false).specifiers) {
+    for (const specifier of (await parseSource(path, source, false)).specifiers) {
       const target = specifier.startsWith(".")
         ? posix.normalize(posix.join(posix.dirname(path), specifier)) : specifier;
       for (const leaf of leaves) {

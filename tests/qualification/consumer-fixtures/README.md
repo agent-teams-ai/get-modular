@@ -18,25 +18,43 @@ owns verification routes and the limits of each claim.
 The profiles share driver materialization. This is test-owned composition:
 Get Modular does not gain a Host, readiness API, work scheduler or recovery policy.
 P6 adds the W-01 through W-03 bounded workload on these same semantic owners.
-Source facts and author exercises remain separate plan
-slices. Source qualification is currently incomplete.
+Source facts and author exercises remain separate plan slices.
 
-P4 has a separate [source research replay](source/README.md): 26 selected flat
-observations use actual disk facts from an exact packed Foundation candidate,
-the existing public FMS kernel and public Get Modular conformance. The replay
-records its artifact and source hashes. The kernel identifies FMS v1.1 while the
-adopted GM profile pins v1, so this evidence preserves `source: incomplete` and
-does not add an ordinary source gate or change the installed dependency.
+P4's [installed source route](source/README.md) runs 26 selected flat observations
+through the exact registry development pins for Foundation and FMS and public
+Get Modular conformance. The same Assembly test first executes 16 complementary
+Foundation policy observations using its checked-in source profile. Both routes
+mutate actual files, require the expected diagnostics and check the restored
+tree. Only the complete selected source run reports `source: passed`.
+The production FMS v1 authority and governed roots remain unchanged; the fixture
+uses the catalog's existing selected composition-contract reference. Historical research
+reports keep their original `source: incomplete` status and artifact identities.
 
 P5's small G-01 entry runs one current TypeScript/NodeNext compilation and the
 actual generated tree's literal arithmetic, independent provider/input/root pins,
 wrong-provider mutation and complete smoke. The retained N=100 pass and N=500
 cold-compile timeout belong to earlier driver identities, before the supervision
-correction; they do not measure the current driver. The accepted inherited-map
-N=500 subject reached its unchanged 180-second cap, and N=1000 was not created
-or run. The bounded compiler investigation produced no verified remedy or
-compiler adoption. See the [growth fixture](growth/README.md) for exact historical
-identities, current commands and the remaining compiler-owner handoff.
+correction; they do not measure the current driver. The retained supported-toolchain
+series reached its unchanged 180-second cap at the accepted inherited-map N=500
+subject and did not create N=1000. A subsequent exact upstream compiler candidate
+completed all eight N=500 stages with the same source inputs. N=1000 remains
+unqualified: local memory exhaustion and two remote runner shutdowns supplied no
+successful complete measurement. The supported TypeScript pin is unchanged.
+See the [growth fixture](growth/README.md) for the explicit optional diagnostic
+route, exact identities and the remaining compiler-owner handoff.
+
+The [P7 authoring record](authoring/README.md) retains the selected H-01 through
+H-03 exercise results, one three-file author patch and bounded diagnoses from
+the historical P1/P2 inputs. It adds no recurring test entry or supported root.
+Its single selected author runtime invocation and actual held-startup cleanup
+are recorded separately from its historical source coverage, which remains
+incomplete in that authoring record.
+The current H-03 controller regression separately exercises held startup and
+physical cleanup, then requires natural child-process exit while the parent's
+stdin writer remains open. The controller closes its accepted one-shot input
+with `destroy()`; pausing that input alone does not qualify transport completion.
+This regression does not repeat the fresh diagnosis or change the historical
+authoring record.
 
 ## Semantic ownership and behavior
 
@@ -86,6 +104,13 @@ The bounded snapshot exposes identity and phase, with no factory attribution.
 | R-01–R-10 | `recovery/tests/recovery.test.ts` | [Assembly restart test](../../assembly/consumer-restart.test.mjs); one current compiler emit |
 | G-01 | Generated eight-feature tree and `growth/run.mjs` | [Assembly growth test](../../assembly/consumer-growth.test.mjs); current compiler/NodeNext, independent oracles and one full smoke |
 | W-01–W-03 | `semantic/tests/module/workload.test.ts` | Same Assembly fixture test and current runtime emit |
+| H-03 controller transport | `semantic/tests/support/held-startup-controller.ts` and `authoring/transport.ts` | Same Assembly fixture test; actual cancellation/cleanup and natural exit with the parent writer held open |
+| Selected A-01–A-08 source predicates | `source/installed.ts`, `source/records.mjs` and `source/scenarios.mjs` | Same Assembly fixture test; 26 actual observations through installed public Foundation, FMS and CMS |
+| Complementary A-01–A-04 and A-06 policy predicates | `source/policy.ts` and `source/source-dependencies.yaml` | Same source test; 16 installed public Foundation CLI observations against actual files |
+
+The four maintained runtime helpers belong to `tests/tsconfig.consumer-fixtures.json`.
+The existing `assembly:typecheck` checks them after public package outputs are prepared,
+using the same strict options as the repository's native tooling project.
 
 The owner contract suite lives in `semantic/tests/features/session/testing.ts`.
 It runs the same three success, error and cancellation cases against a typed
@@ -178,13 +203,16 @@ runs the real worker/effect scenarios. Its configuration-only changes route to
 the existing complete fast scan, alongside the three semantic projects.
 
 Reports distinguish `runtime`, `packed`, `source` and `measurement`. A successful
-Assembly run reports runtime success, delegates packed evidence to the existing
-packed owner, keeps source incomplete, and selects no measurement. Source-tree
+runtime entry reports runtime success, delegates packed evidence to the existing
+packed owner and source evidence to the separate installed-source test, and
+selects no measurement. The source test reports the selected flat result with
+`adoption: unchanged` and `nested: not-selected`. Source-tree
 hashes are recorded as `sourceTree`, separately from the source-coverage status.
 Package output hashes, compiler versions, Node declarations and lockfile identity
 identify the tested input. The packed report records archive hashes and all four
 resolved package entries inside the extracted consumer. Neither route claims a
-registry release, source-standard completion or large-tree performance.
+registry release, whole-repository source-standard completion or large-tree
+performance.
 
 These test entries are included by the existing repository gates. Use the focused
 scenario while editing, `pnpm check:changed` for the coherent diff, and retain

@@ -1,25 +1,31 @@
 // L2 and L3: environments prepared BEFORE the package loads. Run as separate processes (load order matters):
 //   node runtime-b/env-probe.ts fake-before   a fake global setImmediate that never fires, installed before import
+//   node runtime-b/env-probe.ts fake-clock-before   frozen global performance and Date clocks, installed before import
 //   node runtime-b/env-probe.ts no-node       no global setImmediate and no process.getBuiltinModule (browser-like)
 import assert from "node:assert/strict";
 
 const mode = process.argv[2];
 const realTimeout = globalThis.setTimeout;
+const realClearTimeout = globalThis.clearTimeout;
 const pause = (ms: number): Promise<void> => new Promise((resolve) => { realTimeout(resolve, ms); });
 if (mode === "fake-before") {
   (globalThis as { setImmediate: unknown }).setImmediate = (): undefined => undefined; // like a fake installed globally
+} else if (mode === "fake-clock-before") {
+  Object.defineProperty(globalThis, "performance", { value: { now: () => 0 }, configurable: true });
+  Date.now = () => 0;
 } else if (mode === "no-node") {
   delete (globalThis as { setImmediate?: unknown }).setImmediate;
   Object.defineProperty(process, "getBuiltinModule", { value: undefined, configurable: true });
 } else {
-  throw new Error("usage: node runtime-b/env-probe.ts fake-before|no-node");
+  throw new Error("usage: node runtime-b/env-probe.ts fake-before|fake-clock-before|no-node");
 }
 
 const { createScope } = await import("@get-modular/resources");
 const observation = await import("./observation.ts"); // must not throw a ReferenceError
 const host = createScope({ name: "host" });
-const store = observation.createStore<{ readonly level: number; readonly other: number }>({ level: 0, other: 0 },
-  { name: "settings", resources: host.resources, reportError: () => undefined });
+const reports: unknown[] = [];
+const store = observation.createStore<{ readonly level: number; readonly other: number; readonly cursor: number }>({ level: 0, other: 0, cursor: 0 },
+  { name: "settings", resources: host.resources, reportError: (report) => { reports.push(report.cause); } });
 const facet = store.readonly();
 const module = host.resources.child({ name: "m" });
 const seen: number[] = [];
@@ -35,7 +41,46 @@ if (mode === "no-node") {
   store.set({ other: 1 });
   await pause(50);
   assert.equal(calls, 1, "a synchronous echo is caught at the first round");
+  const thrown: unknown[] = [];
+  let loaders = 0;
+  facet.load(facet.read(["cursor"]), {
+    resources: module.resources, name: "m/loader-echo",
+    loader: async ({ values }) => {
+      loaders += 1;
+      // No user await precedes this write. The engine's own startup trampoline cannot remove its synchronous context.
+      if (loaders < 5) {
+        try { store.set({ cursor: values.cursor + 1 }); } catch (cause) { thrown.push(cause); }
+      }
+      return "loaded";
+    },
+    onLoading: () => undefined, onResult: () => undefined, onError: () => undefined,
+  });
+  await observation.settled({ stores: [facet], timeoutMs: 2_000 });
+  assert.equal(loaders, 1, "the synchronous loader echo is caught at the first run");
+  assert.equal(store.read(["cursor"]).values.cursor, 0);
+  assert.deepEqual(thrown.map((cause) => (cause as { readonly code?: unknown }).code), ["observation.delivery.echo"]);
+  assert.deepEqual(reports.map((cause) => (cause as { readonly code?: unknown }).code), ["observation.delivery.echo", "observation.delivery.echo"]);
 } else {
   assert.equal(observation.asyncDetection, true);
 }
+if (mode === "fake-clock-before") {
+  let finish!: () => void;
+  facet.load(facet.read(["cursor"]), {
+    resources: module.resources, name: "m/blocked",
+    loader: () => new Promise<void>((resolve) => { finish = resolve; }),
+    onLoading: () => undefined, onResult: () => undefined, onError: () => undefined,
+  });
+  await observation.delivered({ stores: [facet] });
+  const waiting = observation.settled({ stores: [facet], timeoutMs: 20 }).then(() => "resolved", (cause: unknown) =>
+    (cause as { readonly code?: unknown }).code);
+  let watchdog!: ReturnType<typeof setTimeout>;
+  const outcome = await Promise.race([waiting, new Promise<string>((resolve) => {
+    watchdog = realTimeout(() => { resolve("real watchdog elapsed"); }, 500);
+  })]);
+  realClearTimeout(watchdog);
+  finish(); // also release the broken version so a failing deadline regression cannot hang its test process
+  await waiting;
+  assert.equal(outcome, "observation.testing.timeout", "the builtin real clock must expire the deadline before the watchdog");
+}
+await host.control.close();
 console.log(`${mode}: import ok; delivery ok; asyncDetection ${observation.asyncDetection}`);

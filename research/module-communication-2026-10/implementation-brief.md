@@ -1,12 +1,15 @@
 # Implementation brief: `@get-modular/observation` 0.1.0
 
+<!-- cspell:words microtasks -->
+
 This brief is for the implementer of the package. It replaces the observation execution briefs of pull request #153,
 which describe the earlier hub design.
 
 ## Sources of truth
 
-1. ADR-0034, "Admit the module change observation package". It holds the normative decision, the admission
-   evidence and the known items.
+1. Proposed ADR-0034, "Admit the module change observation package", pending in
+   [pull request #154](https://github.com/agent-teams-ai/get-modular/pull/154). It holds the proposed decision, the
+   admission evidence and the known items.
 2. `raw/api-design/b-snapshot/`:
    - `api.d.ts.txt` and `testing.d.ts.txt` are the exact public types;
    - `README.md` is the package README to start from;
@@ -24,8 +27,8 @@ If an ADR sentence and the types disagree, the ADR wins. Report the difference.
 1. `packages/observation`:
    - root export and `./testing`, with the ADR-0012 carrier shape for both;
    - peer `@get-modular/resources` only, and no `dependencies`, `optionalDependencies` or `devDependencies`;
-   - no static import of a Node built-in. `AsyncLocalStorage` and `setImmediate` are reached through
-     `process.getBuiltinModule` at load, with the fallbacks in the ADR.
+   - no static import of a Node built-in. `AsyncLocalStorage`, `setImmediate` and the `./testing` monotonic clock are
+     reached through `process.getBuiltinModule` at load, with the fallbacks in the ADR.
 2. Leaf admission:
    - a row in `architecture/checks/leaf-packages.mjs` after resources;
    - the export-map checks admit exactly the root and `./testing` for this row only;
@@ -41,18 +44,32 @@ If an ADR sentence and the types disagree, the ADR wins. Report the difference.
    - rules 5, 6 and 11 as worded in the ADR;
    - the `observation.<area>.<reason>` code namespace;
    - the `./testing` import rule in the oxlint snippet, with a fixture it rejects;
-   - the `consumer-module-standard` SDK-growth evidence.
+   - update the existing live pins to the reviewed Standard bytes; preserve the frozen SDK-growth observation at
+     `architecture/sdk-growth/evidence/consumer-module-standard.json`, as the rewritten ADR requires.
 5. The `Resources.signal` documentation in resources states that it also aborts when the constructing run is
    cancelled before the factory settles, and that subscriptions bound to it detach then.
 6. A module communication section in `docs/guides/module-authoring.md`, built from
    `raw/practices/practices-catalog-v2.md` and linked from the Standard.
 7. A changeset for `@get-modular/observation` 0.1.0 (minor).
 
-## Known fixes to apply while implementing
+## Regression cases to carry into the package
 
-- `api.d.ts`: `loader` has two JSDoc blocks in a row. Merge them, or TypeScript shows only the second one.
-- `README.md` and the `Subscription.resources` JSDoc must say what rule 11 now says: `watch` and `load` are called
-  in the module's composition file, not in adapters.
+The independent review of pull request #182 found four gaps after the original suite passed. The corrected
+prototype and selected B types include these cases; retain them when implementing the package:
+
+- Echo and cascade detection through nested microtasks started by `onResult` and `onError`, with result freshness
+  checked when the callback is delivered, and no false echo from work after that delivery task. Queued callbacks
+  count as pending deliveries; cancelling them after the loader settled must not create a still-running load debt.
+- A real testing deadline when the global clocks are frozen before import. The separate pre-import scheduler
+  probe checks delivery with a fake global `setImmediate`; the combined timer and clock mock runs after import.
+- Rejection of a named property combined with an infinite template index signature, on both supported compilers.
+- Synchronous echo detection at the start of a loader when `AsyncLocalStorage` is unavailable.
+
+See [the dated correction record](raw/api-design/corrections-2026-10-17/README.md) for the executable cases and
+verification. Prototype evidence does not replace the package and packed-artifact admission gates above.
+
+## Remaining implementation notes
+
 - Carry over the abort-listener rule from the first observation research
   (`research/observation-hooks-2026-10/sketch-v4-known-defects.md`) where it still applies.
 

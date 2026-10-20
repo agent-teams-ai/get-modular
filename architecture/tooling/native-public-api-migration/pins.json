@@ -1,0 +1,31 @@
+{
+  "kind": "get-modular:public-api-native-migration-inputs:1",
+  "assets": {
+    "assembly-registry-version.json": "sha256:f8c4f5bfaf9d573d4816a01ccbb0da397740c3a37881d09dfc9003bcf024184e",
+    "assembly-released-closure.json": "sha256:4eb0566426133fbfa50ddf223cd66f61cf39b4292caaa243da4be3eeeb4037c3",
+    "assembly.tgz": "sha256:6112f57755ff9cf3f7b3379b8f932421499cf5db3320b7e4c3aefd998ec36862",
+    "baseline-assembly.json": "sha256:6a4a9b02faa93b837e797bbbeeaaa8b0ec968cd7ab968353c4d82a17e3b74c93",
+    "baseline-core.json": "sha256:7c9b6fdce722a2ab79243cfd6e9ac22f73b291d776abfcf0b698f292e0578d52",
+    "core-registry-version.json": "sha256:ea6b3ce4ad6ba12afd8c226806986ec599851e369b8580b0db79b980e53589b3",
+    "core-released-closure.json": "sha256:05319c3b0426f73ef64066884db9b2bc3564303fd6aaa9e1bb014394ad4f0ad7",
+    "core.tgz": "sha256:7943f054427282b68cd57e3f790acca62e14cbae67ea62b227f363a8d2614328",
+    "custody.json": "sha256:e4163fcd50ef413f949612124e702b9b0d8be35c1ec4553361491904ee9730d5",
+    "declaration-realization.json": "sha256:bd6540401f6e64225d89b1da7e301f8dae7d6c2024cd1022600502688385f8db",
+    "foundation-presets-1.7.4.tgz": "sha256:5eca8a985dda250f4eea98bcfd1734a6c818e5b7a869d7a5ce81cb745f72f110",
+    "foundation-presets-origin.json": "sha256:acda216dc6aa3a9407631ef8ef086b4905910a36a780d68f2bd4b70001805290",
+    "historical/packages/assembly/tsconfig.json": "sha256:aef2f062f04186974b2b16b64b29b9c2a209acc8f310c04398b5c6e663eecc59",
+    "historical/packages/core/tsconfig.json": "sha256:3a3a416b4ceb4ff438ad15d4c9ed20cce8e1ed7401fb47b434b4703d5e126f8f",
+    "historical/tsconfig.base.json": "sha256:4e658d676788183def2cab24584181631c3b5826a8520b30cc8b01e183a72085",
+    "history/assembly-released-closure.json": "sha256:748a4abde8241e6700967e94791a88acedafdaf0b0e0ce4f24e30ae154291cf1",
+    "history/core-released-closure.json": "sha256:fac53e98600ef689afd1e83b66c6e540a77d43029155f7c3d4063f840bdeff23",
+    "normalized-policy.json": "sha256:2c45409775824b1fd0c83124cb88aa2cc7bcfa913dd14440b96d3adb942fe2ba",
+    "request.json": "sha256:77f09eccc2bf1f3bedefd34f0def62743e1fd863edbfd71770b1d5ae991aeb0d",
+    "tool-diff.json": "sha256:f7f1310d42d07b848945c04b03830ccf4a2443787e3a409a12bd97eec18e89ea"
+  },
+  "fixedFiles": {
+    "foundation.config.yaml": "sha256:8fb7fa68dfa337f34652ceb6928840cd394942f50d5cea605dccf7d99e690fa8",
+    "architecture/foundation/public-api-compatibility.yaml": "sha256:b217c5f860d9ea4ace1fd9896925f652e4c92447f92963cc7609c261e33ac44b",
+    "architecture/public-api/core.json": "sha256:7c9b6fdce722a2ab79243cfd6e9ac22f73b291d776abfcf0b698f292e0578d52",
+    "architecture/public-api/assembly.json": "sha256:6a4a9b02faa93b837e797bbbeeaaa8b0ec968cd7ab968353c4d82a17e3b74c93"
+  }
+}

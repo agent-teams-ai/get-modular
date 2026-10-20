@@ -47,19 +47,35 @@ fullScanPaths:
   - packages/conformance/package.json
   - packages/conformance/tsconfig.types.json
   - packages/conformance/tsconfig.types.bundler.json
+  - packages/observation/tsconfig.json
+  - packages/observation/package.json
+  - packages/observation/tsconfig.types.json
+  - packages/observation/tsconfig.types.bundler.json
+  - packages/observation/tsconfig.test-tooling.json
   - tests/tsconfig.tooling-node-policy.json
+  - tests/tsconfig.native-tooling.json
+  - tests/tsconfig.consumer-fixtures.json
   - tests/tsconfig.repository-agent-workflow.json
   - tests/qualification/consumer-fixtures/semantic/tsconfig.types.json
   - tests/qualification/consumer-fixtures/semantic/tsconfig.runtime.json
   - tests/qualification/consumer-fixtures/semantic/tsconfig.negative.json
   - tests/qualification/consumer-fixtures/recovery/tsconfig.runtime.json
+  - tests/qualification/consumer-fixtures/source/source-dependencies.yaml
   - tests/qualification/implementation-readiness/api-authoring
   - architecture/checks/sdk-growth.mjs
   - architecture/sdk-growth
   - tests/sdk-growth.test.mjs
   - tests/qualification/sdk-growth-admission.mjs
   - tests/qualification/sdk-growth-packed-consumers.mjs
-  - tests/qualification/sdk-growth-registry-consumer.mjs
+  - tests/qualification/sdk-growth-registry-consumer.ts
+  - tests/qualification/sdk-growth-public-import.ts
+  - tests/qualification/sdk-growth-synthetic-predecessor.ts
+  - tests/tsconfig.sdk-growth-registry.json
+  - architecture/checks/native-public-api-migration.ts
+  - architecture/tooling/native-public-api-migration
+  - tests/native-public-api-migration.test.ts
+  - tests/tsconfig.native-public-api-migration.json
+  - tests/fixtures/native-public-api-ordinary-failure.ts
   - .github/workflows
   - architecture
   - docs

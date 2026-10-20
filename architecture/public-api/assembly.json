@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "packageName": "@get-modular/assembly",
-  "packageVersion": "0.5.0",
-  "extractorVersion": "7.58.12",
+  "packageVersion": "0.6.0",
+  "extractorVersion": "typescript-native/7.0.2",
   "entrypoints": [
     {
       "exportPath": ".",
@@ -250,14 +250,14 @@
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
-          "signature": "export type IsUnion<T, Whole = T> = T extends Whole ? [Whole] extends [T] ? false : true : never;"
+          "signature": "export type IsUnion<T, Whole = T> = T extends Whole ? [\n    Whole\n] extends [\n    T\n] ? false : true : never;"
         },
         {
           "canonicalReference": "@get-modular/assembly!KnownCapabilities:type",
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
-          "signature": "export type KnownCapabilities<C, M extends readonly unknown[], N> = [\n    Exclude<UsedKeysOf<M[number]> | (N[keyof N] extends infer H ? H extends {\n        readonly [uses]: infer U;\n    } ? keyof U : never : never), keyof C>\n] extends [infer Missing] ? [Missing] extends [never] ? unknown : {\n    readonly \"capabilities missing from the preparing map\": Missing;\n} : never;"
+          "signature": "export type KnownCapabilities<C, M extends readonly unknown[], N> = [\n    Exclude<UsedKeysOf<M[number]> | (N[keyof N] extends infer H ? H extends {\n        readonly [uses]: infer U;\n    } ? keyof U : never : never), keyof C>\n] extends [\n    infer Missing\n] ? [\n    Missing\n] extends [\n    never\n] ? unknown : {\n    readonly \"capabilities missing from the preparing map\": Missing;\n} : never;"
         },
         {
           "canonicalReference": "@get-modular/assembly!ModuleEntry:type",
@@ -306,7 +306,7 @@
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
-          "signature": "export type PreparedAssembly<R, N = {}> = {\n    readonly run: (...options: {} extends N ? [options?: RunOptions<N>] : [options: RunOptions<N> & {\n        readonly inputs: RunInputs<N>;\n    }]) => Promise<AssemblyOutcome<R>>;\n};"
+          "signature": "export type PreparedAssembly<R, N = {}> = {\n    readonly run: (...options: {} extends N ? [\n        options?: RunOptions<N>\n    ] : [\n        options: RunOptions<N> & {\n            readonly inputs: RunInputs<N>;\n        }\n    ]) => Promise<AssemblyOutcome<R>>;\n};"
         },
         {
           "canonicalReference": "@get-modular/assembly!ProvidedEntry:type",
@@ -411,7 +411,7 @@
           "kind": "TypeAlias",
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
-          "signature": "export type ValidDeclaration<C, D extends ModuleDeclaration> = true extends IsUnion<D> | IsUnion<D[\"slots\"]> | IsUnion<D[\"provides\"]> | (D[\"slots\"] extends infer Slots extends readonly unknown[] ? {\n    [K in keyof Slots]: IsUnion<Slots[K]>;\n}[number] : never) | (D[\"provides\"] extends infer Provides extends readonly unknown[] ? {\n    [K in keyof Provides]: IsUnion<Provides[K]>;\n}[number] : never) ? never : number extends D[\"provides\"][\"length\"] | D[\"slots\"][\"length\"] ? never : [\n    (D[\"provides\"][number] | D[\"slots\"][number] extends infer P ? P extends {\n        readonly capabilityId: infer K extends string;\n        readonly compatibility: infer T;\n    } ? string extends K ? P : true extends IsUnion<K> ? P : K extends keyof C ? [T, (K extends keyof C ? C[K] extends {\n        readonly compatibility: infer Compat;\n    } ? Compat : never : never)] extends [\n        (K extends keyof C ? C[K] extends {\n            readonly compatibility: infer Compat;\n        } ? Compat : never : never),\n        T\n    ] ? never : P : P : P : never) | (D[\"slots\"][number] extends infer S ? S extends {\n        readonly slotId: infer K extends string;\n        readonly cardinality: {\n            readonly kind: infer Q;\n        };\n    } ? string extends K ? S : true extends IsUnion<K> | IsUnion<Q> ? S : never : S : never)\n] extends [never] ? unknown : never;"
+          "signature": "export type ValidDeclaration<C, D extends ModuleDeclaration> = true extends IsUnion<D> | IsUnion<D[\"slots\"]> | IsUnion<D[\"provides\"]> | (D[\"slots\"] extends infer Slots extends readonly unknown[] ? {\n    [K in keyof Slots]: IsUnion<Slots[K]>;\n}[number] : never) | (D[\"provides\"] extends infer Provides extends readonly unknown[] ? {\n    [K in keyof Provides]: IsUnion<Provides[K]>;\n}[number] : never) ? never : number extends D[\"provides\"][\"length\"] | D[\"slots\"][\"length\"] ? never : [\n    (D[\"provides\"][number] | D[\"slots\"][number] extends infer P ? P extends {\n        readonly capabilityId: infer K extends string;\n        readonly compatibility: infer T;\n    } ? string extends K ? P : true extends IsUnion<K> ? P : K extends keyof C ? [\n        T,\n        (K extends keyof C ? C[K] extends {\n            readonly compatibility: infer Compat;\n        } ? Compat : never : never)\n    ] extends [\n        (K extends keyof C ? C[K] extends {\n            readonly compatibility: infer Compat;\n        } ? Compat : never : never),\n        T\n    ] ? never : P : P : P : never) | (D[\"slots\"][number] extends infer S ? S extends {\n        readonly slotId: infer K extends string;\n        readonly cardinality: {\n            readonly kind: infer Q;\n        };\n    } ? string extends K ? S : true extends IsUnion<K> | IsUnion<Q> ? S : never : S : never)\n] extends [\n    never\n] ? unknown : never;"
         },
         {
           "canonicalReference": "@get-modular/assembly!assemblyFor:function(1)",
@@ -460,7 +460,7 @@
           "kind": "Function",
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
-          "signature": "export declare function input<C>(): <const D extends ModuleDeclaration & {\n    readonly slots: readonly [];\n}>(declaration: D & ValidDeclaration<C, NoInfer<D>>) => InputEntry<C, D>;"
+          "signature": "export declare function input<C>(): <const D extends ModuleDeclaration & {\n    readonly slots: readonly [\n    ];\n}>(declaration: D & ValidDeclaration<C, NoInfer<D>>) => InputEntry<C, D>;"
         }
       ]
     }

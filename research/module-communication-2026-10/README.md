@@ -1,7 +1,10 @@
 # Module communication study and observation API design, 2026-10
 
-Research and design evidence only. Nothing here is implemented in `packages/`, and no build, test or release
-gate depends on these files.
+<!-- cspell:words microtask microtasks -->
+
+The original contents are research and design evidence. The production follow-through is now recorded in
+[implementation-port.md](implementation-port.md), with current status in [HANDOFF.md](HANDOFF.md).
+The research prototypes remain separate from the implemented package; historical results are not refreshed.
 
 ## What this directory is
 
@@ -42,9 +45,14 @@ probes, a runtime prototype, writer agents and adversarial reviews.
 
 ## Status
 
+This is the original research checkpoint, before the production port. See the
+[current implementation review](implementation-port.md#current-implementation-review-2026-10-19)
+and [handoff](HANDOFF.md) for the subsequent implementation and qualification work.
+
 - Research and design evidence only; nothing is implemented.
-- The observation design in ADR-0034 (pull request #154) and the execution briefs (pull request #153) predate this
-  work. They will be rewritten to this model.
+- The rewritten observation design is proposed in ADR-0034, pending in [pull request #154](https://github.com/agent-teams-ai/get-modular/pull/154).
+  The implementation brief here replaces the earlier hub-design execution briefs of pull request #153. Package
+  admission still requires the governed ADR.
 - [OD-007](../../docs/open-decisions/OD-007-module-change-observation-package.md) stays the governed open decision
   until then. This directory is evidence, not authority.
 - The earlier observation research is in [observation-hooks-2026-10](../observation-hooks-2026-10/README.md).
@@ -66,7 +74,8 @@ probes, a runtime prototype, writer agents and adversarial reviews.
 | [raw/api-design/reference/](raw/api-design/reference/) | Reference solutions for both variants, an alternative correct design, and wrong solutions that must fail the gate |
 | [raw/api-design/runtime/](raw/api-design/runtime/), [raw/api-design/runtime-b/](raw/api-design/runtime-b/) | The runtime prototype: a stub engine for both variants with its probes, and variant B probes on the real `@get-modular/resources` |
 | [raw/api-design/probes/](raw/api-design/probes/), [raw/api-design/controls/](raw/api-design/controls/) | Type probes and controls that each remove one design element |
-| [raw/api-design/results/](raw/api-design/results/) | Raw outputs of the last `run-all.sh` run. Its summary is `raw/api-design/.run-all-final.txt`; `raw/api-design/.mutations.txt` is an older mutation summary from before the second review |
+| [raw/api-design/results/](raw/api-design/results/) | Original 43-step run outputs, summarized in `raw/api-design/.run-all-final.txt`; `raw/api-design/.mutations.txt` is an older mutation summary from before the second review |
+| [raw/api-design/corrections-2026-10-17/](raw/api-design/corrections-2026-10-17/README.md) | Corrections after the independent review of pull request #182, with regression cases and separately retained verification results |
 | [raw/api-design/runs/](raw/api-design/runs/) | Writer outputs of rounds 1 to 5 with the gate results (`first-check.txt` and `final-check.txt` in round 1, `blind-check.txt` later) |
 | [raw/api-design/archive/](raw/api-design/archive/) | Earlier revisions: dropped variant C, round 1 tasks, earlier stub cores |
 | [raw/api-design/GRADING.md](raw/api-design/GRADING.md) | Hand grading of the twelve round 1 solutions |
@@ -109,7 +118,7 @@ Raw reports keep their original language; several are in Russian. They are evide
 
 ## Results in short
 
-- `tools/run-all.sh`: all 43 steps as expected. On 2026-10-17 this archive was restored with the steps below and
+- Original `tools/run-all.sh`: all 43 steps as expected. On 2026-10-17 this archive was restored with the steps below and
   run again: all 43 steps as expected, and only timing numbers differ in four result files.
 - Mutation checks: every deliberate defect is caught, 15 by the stub probes and 16 by the probes on the real
   resources package.
@@ -143,8 +152,31 @@ Raw reports keep their original language; several are in Russian. They are evide
   Rounds 4 and 5 (three runs) and `runs/r3-b-snapshot-large-1` pass 9/9 on the final gate. Rounds 4 and 5 ran before
   the third and fourth reviews, which changed mostly the README and doc comments and a few types; their outputs pass
   the final gate unchanged.
-- The fourth review found no blockers. Every earlier finding is fixed or is a known item with an owner and a trigger
-  in `b-snapshot/RATIONALE.txt`, section 13.
+- The fourth review reported no blockers. The later independent review of pull request #182 found four additional
+  gaps in the prototype and types; their corrections are recorded below. Earlier known items remain in
+  `b-snapshot/RATIONALE.txt`, section 13.
+
+## Corrections after the independent review (2026-10-17)
+
+The independent review of pull request #182 at `b43ef11468ec3fe8b46e9e09f3d667d7aad96ca8` reproduced the original
+43-step run and found four cases that it did not cover:
+
+| Gap | Corrected behavior and regression |
+| --- | --- |
+| `onResult` and `onError` lost echo and cascade context before their queued microtasks ran | Each callback has a delivery task whose context includes its complete microtask checkpoint; publication checks that the result is current immediately before the callback |
+| A fake global clock installed before import disabled the real testing deadline | `./testing` captures the `node:perf_hooks` clock through `process.getBuiltinModule` where available; the fake-clock environment probe waits for an actual timeout |
+| A fixed property hid an infinite template index signature from `FixedKeys` | Every key constituent is checked; mixed open-key records are rejected on both compilers, alongside finite-key positive cases |
+| Without `AsyncLocalStorage`, the internal startup await also lost synchronous loader context | The direct loader call enters the context after that await; the simulated non-Node probe checks an echo before the loader's first await |
+
+The corrected `tools/run-all.sh` completes all 45 steps with the expected outcomes, including 19 new runtime
+regressions. The mutation probes still reject all 15 stub-engine defects and all 16 real-resources defects. The
+stale-result probes also cover a commit between queuing a result and delivering its callback.
+
+The runtime regressions are in `runtime-b/review-regressions.test.ts`, the environment cases in
+`runtime-b/env-probe.ts`, and the type cases in `probes/p9-traps.b.ts` (each stored with the extra `.txt` suffix).
+The [dated correction record](raw/api-design/corrections-2026-10-17/README.md) gives the executed commands, results
+and limits. Original run logs and writer outputs remain unchanged; these corrections do not constitute a new writer
+round or package admission.
 
 ## Supported environments
 
@@ -221,6 +253,8 @@ This copy differs from the working originals as follows.
   instructions file and one mention of a model setting became neutral words. No finding, number or verdict changed.
 - Added: one dated archive note in `b-snapshot/RATIONALE.txt`, section 3.3, that adds the later F11 result to its
   summary of the round 2 and 3 writer runs.
+- Corrected after the independent review: the selected B types, prototype, regression cases and their current
+  documentation. `corrections-2026-10-17/` records this successor separately from the original measurements.
 - Left out: the reviewers' full copies of the API directory, copies of Get Modular sources, `node_modules`, build
   output, and the generated `.gm-main` and `.gm-resources-main` (step 3 and 4 rebuild them). Some reviewer files that
   the reports cite are not here: `critic-adv/gm05/`, the `critic-variants/` and `critic-msg/` directories, the

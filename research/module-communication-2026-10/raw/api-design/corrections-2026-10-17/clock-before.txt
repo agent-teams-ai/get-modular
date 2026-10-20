@@ -1,0 +1,20 @@
+node:internal/modules/run_main:111
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: the builtin real clock must expire the deadline before the watchdog
++ actual - expected
+
++ 'real watchdog elapsed'
+- 'observation.testing.timeout'
+
+    at <restored-archive>/runtime-b/env-probe.ts:84:10 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 'real watchdog elapsed',
+  expected: 'observation.testing.timeout',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.11.0

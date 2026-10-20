@@ -1,0 +1,134 @@
+diff --git a/semantic/tests/features/runner/runner-b.declaration.ts b/semantic/tests/features/runner/runner-b.declaration.ts
+new file mode 100644
+--- /dev/null
++++ b/semantic/tests/features/runner/runner-b.declaration.ts
+@@ -0,0 +1,11 @@
++import { declareModule } from "@get-modular/assembly";
++import { required } from "@get-modular/core";
++import { Journal, Runner } from "../../../src/features/session/composition/session.contracts.js";
++
++export const runnerBDeclaration = declareModule({
++  moduleId: "fixture/runner/runner-b",
++  implementationId: "fixture/runner/runner-b/default",
++  owner: { authority: "fixture", path: ["runner"] },
++  provides: [Runner.provide()],
++  slots: [Journal.slot("journal", required())],
++});
+diff --git a/semantic/tests/features/runner/runner-b.module.ts b/semantic/tests/features/runner/runner-b.module.ts
+new file mode 100644
+--- /dev/null
++++ b/semantic/tests/features/runner/runner-b.module.ts
+@@ -0,0 +1,18 @@
++import { implement } from "@get-modular/assembly";
++import { scoped, type ModuleContext } from "@get-modular/resources";
++import { acquireTestResource } from "../../../src/features/runner/adapters/outbound/test-resource.js";
++import { runJob } from "../../../src/features/runner/application/use-cases/run-job.js";
++import type { RunnerCapabilities } from "../../../src/features/runner/composition/runner.contracts.js";
++import { runnerBDeclaration } from "./runner-b.declaration.js";
++
++export const runnerBModule = implement<RunnerCapabilities>()(runnerBDeclaration, async (dependencies, context: ModuleContext) => {
++  const resource = await context.resources.setup({
++    name: "runner-b",
++    setup: ({ signal }) => acquireTestResource(dependencies.journal, "B", signal),
++    cleanup: value => value.release(),
++  });
++  const port: RunnerCapabilities["fixture/session/runner"]["value"] = {
++    run: request => runJob({ effects: resource, tag: "B" }, request),
++  };
++  return { instance: { probe: resource.probe }, capabilities: { "fixture/session/runner": port } };
++}, scoped);
+diff --git a/semantic/tests/module/h01.test.ts b/semantic/tests/module/h01.test.ts
+new file mode 100644
+--- /dev/null
++++ b/semantic/tests/module/h01.test.ts
+@@ -0,0 +1,90 @@
++import assert from "node:assert/strict";
++import test from "node:test";
++import { assemblyFor, group } from "@get-modular/assembly";
++import { checkWiring, type WiringOracle } from "@get-modular/conformance";
++import type { SemanticCapabilities } from "../../src/composition/semantic.root.js";
++import { identityDeclaration } from "../../src/features/session/composition/identity.declaration.js";
++import { journalDeclaration } from "../../src/features/session/composition/journal.declaration.js";
++import { sessionDeclaration } from "../../src/features/session/composition/session.declaration.js";
++import { sessionGroup } from "../../src/features/session/composition/session.group.js";
++import { identityInput, journalInput } from "../../src/features/session/composition/session.inputs.js";
++import { sessionModule } from "../../src/features/session/composition/session.module.js";
++import { runnerBDeclaration } from "../features/runner/runner-b.declaration.js";
++import { runnerBModule } from "../features/runner/runner-b.module.js";
++import { sessionWiring } from "../features/session/session.wiring.js";
++import { createAttempt } from "../support/attempt-owner.js";
++import { createFileJournal } from "../support/journal.js";
++
++// This literal expectation expresses the B substitution decision independently of
++// both the prepared composition and the unchanged A provider expectation.
++const bWiring: WiringOracle = {
++  providers: {
++    "fixture/session/identity": "fixture/session/identity/input",
++    "fixture/session/journal": "fixture/session/journal/input",
++    "fixture/session/runner": "fixture/runner/runner-b/default",
++    "fixture/session/session": "fixture/session/session/default",
++  },
++};
++const rootWiring: WiringOracle = { providers: {}, roots: ["fixture/session/session/default"] };
++
++test("H-01: independent B wiring connects two operations and releases its native resource before the borrowed journal", async () => {
++  const preparation = await assemblyFor<SemanticCapabilities>().prepare({
++    profileId: "fixture/semantic/h01-b",
++    modules: [group("runner", [runnerBModule]), sessionGroup],
++    roots: { session: sessionModule },
++    inputs: { identity: identityInput, journal: journalInput },
++  });
++  assert.equal(preparation.status, "prepared");
++  if (preparation.status !== "prepared") throw new Error("fixture.h01.preparation.failed");
++  const declarations = [runnerBDeclaration, sessionDeclaration, identityDeclaration, journalDeclaration];
++
++  assert.throws(() => checkWiring(preparation.composition, [sessionWiring, rootWiring], { declarations }), (error: unknown) => {
++    assert.ok(typeof error === "object" && error !== null && "code" in error && "details" in error);
++    assert.equal(error.code, "conformance.wiring.mismatch");
++    const details = error.details;
++    assert.ok(typeof details === "object" && details !== null && "differences" in details);
++    assert.ok(Array.isArray(details.differences));
++    assert.ok(details.differences.some((difference: unknown) => {
++      if (typeof difference !== "object" || difference === null ||
++        !("rule" in difference) || !("subject" in difference) ||
++        !("expected" in difference) || !("actual" in difference)) return false;
++      if (difference.rule !== "provided-capability" || difference.subject !== "fixture/session/runner") return false;
++      assert.deepEqual(difference.expected, ["fixture/runner/runner-a/default"]);
++      assert.deepEqual(difference.actual, ["fixture/runner/runner-b/default"]);
++      return true;
++    }));
++    return true;
++  });
++  checkWiring(preparation.composition, [bWiring, rootWiring], { declarations });
++
++  const journal = await createFileJournal();
++  await using attempt = createAttempt(preparation.prepared, "left", journal);
++  const outcome = await attempt.startup;
++  assert.equal(outcome.status, "succeeded");
++  if (outcome.status !== "succeeded") throw new Error("fixture.h01.construction.failed");
++
++  // The connected B instance exposes its real handle probe through the public
++  // construction result; the session remains the only composition root.
++  const runner = outcome.created.find(entry => entry.implementationId === "fixture/runner/runner-b/default");
++  assert.ok(runner);
++  const instance = runner.instance;
++  assert.ok(typeof instance === "object" && instance !== null && "probe" in instance);
++  assert.ok(typeof instance.probe === "function");
++  const probe = instance.probe;
++  await probe();
++  await journal.probe();
++
++  assert.equal(await outcome.roots.session.run({ id: "hello", payload: " hello ", signal: attempt.signal }), "left:B:hello");
++  assert.equal(await outcome.roots.session.run({ id: "world", payload: " world ", signal: attempt.signal }), "left:B:world");
++  assert.deepEqual(await attempt.close(), { complete: true, settled: true, debts: [] });
++  assert.deepEqual(await journal.read(), [
++    { kind: "resource-acquired", scope: "runner", id: "B", value: "B" },
++    { kind: "effect", scope: "left", id: "hello", value: "left:B:hello" },
++    { kind: "terminal", scope: "left", id: "hello", value: "left:B:hello" },
++    { kind: "effect", scope: "left", id: "world", value: "left:B:world" },
++    { kind: "terminal", scope: "left", id: "world", value: "left:B:world" },
++    { kind: "resource-released", scope: "runner", id: "B", value: "B" },
++  ]);
++  await assert.rejects(probe(), { code: "EBADF" });
++  await assert.rejects(journal.probe(), { code: "EBADF" });
++});

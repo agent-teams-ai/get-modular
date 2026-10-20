@@ -8,6 +8,7 @@ import { copyReadyPackages, fixtureCompiler, treeIdentity } from "../support/mat
 import { generateGrowthSource } from "./generate.mjs";
 import { expectedInventory, expectedSourcePaths } from "./oracle.mjs";
 import { applyLeafEdit, applySharedContractEdit, restoreEdit } from "./patches.mjs";
+import { readUpstreamCandidate } from "./upstream-compiler.ts";
 
 const ownDirectory = dirname(fileURLToPath(import.meta.url));
 const workspace = resolve(ownDirectory, "../../../..");
@@ -42,8 +43,8 @@ function exchangeStage(type, expected, stage, kind) {
   });
 }
 
-async function invoke(stage, args, cap, setup = false) {
-  const observation = { stage, setup, command: [process.execPath, ...args], cwd: directory, capMs: cap,
+async function invoke(stage, args, cap, setup = false, executable = process.execPath) {
+  const observation = { stage, setup, command: [executable, ...args], cwd: directory, capMs: cap,
     status: "running", wallMs: null, exit: null, signal: null, error: null };
   report.stages.push(observation);
   await saveReport();
@@ -59,7 +60,7 @@ async function invoke(stage, args, cap, setup = false) {
     const started = performance.now();
     // Only the parent enforces deadlines: killing a Windows wrapper here would orphan its native child.
     // File-backed logs survive a parent kill and cannot trigger spawnSync's maxBuffer wrapper termination.
-    result = spawnSync(process.execPath, args, { cwd: directory, stdio: ["ignore", stdout.fd, stderr.fd],
+    result = spawnSync(executable, args, { cwd: directory, stdio: ["ignore", stdout.fd, stderr.fd],
       env: { ...process.env, NODE_PATH: "", NODE_OPTIONS: "", NODE_TEST_CONTEXT: undefined } });
     wallMs = performance.now() - started;
     await exchangeStage("stage-end", "stage-ended", stage);
@@ -137,17 +138,19 @@ try {
   const revision = spawnSync("git", ["rev-parse", "HEAD"], { cwd: workspace, encoding: "utf8", timeout: 10000 });
   assert.equal(revision.status, 0, revision.stderr);
   report.identities.sourceHead = revision.stdout.trim();
-  const compiler = await fixtureCompiler("typescript");
-  report.identities.compiler = { ...compiler, cliSha256: hash(await readFile(compiler.cli)),
+  const candidate = process.argv[5] === undefined ? undefined : await readUpstreamCandidate(process.argv[5]);
+  const compiler = candidate ?? await fixtureCompiler("typescript");
+  report.identities.compiler = candidate ?? { ...compiler, cliSha256: hash(await readFile(compiler.cli)),
     package: await treeIdentity(resolve(dirname(compiler.cli), "..")) };
   const buildInfo = join(directory, "build-info/current.tsbuildinfo");
   if (incremental) { await mkdir(dirname(buildInfo), { recursive: true }); }
-  const compilerArgs = [compiler.cli, "-p", "tsconfig.json", "--singleThreaded", "--extendedDiagnostics", "--pretty", "false",
+  const compilerArgs = [...(candidate === undefined ? [compiler.cli] : []), "-p", "tsconfig.json", "--singleThreaded", "--extendedDiagnostics", "--pretty", "false",
     ...(incremental ? ["--incremental", "--tsBuildInfoFile", buildInfo] : [])];
   report.identities.compilerArguments = compilerArgs;
   report.identities.buildInfo = incremental ? buildInfo : "not-selected";
   async function compile(stage, setup = false) {
-    const observation = await invoke(stage, compilerArgs, budgetsMs.compiler, setup);
+    const observation = await invoke(stage, compilerArgs, budgetsMs.compiler, setup,
+      candidate === undefined ? process.execPath : compiler.cli);
     observation.source = await treeIdentity(join(directory, "src"));
     observation.output = await treeIdentity(join(directory, "out"));
     if (incremental) { observation.buildInfoSha256 = hash(await readFile(buildInfo)); }

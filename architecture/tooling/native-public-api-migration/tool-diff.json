@@ -1,0 +1,126 @@
+{
+  "kind": "foundation:public-api-native-migration:tool-diff:1",
+  "packages": [
+    {
+      "packageName": "@get-modular/assembly",
+      "from": "7.58.12",
+      "to": "typescript-native/7.0.2",
+      "entrypoints": [
+        {
+          "exportPath": ".",
+          "oldCount": 65,
+          "nativeCount": 65,
+          "removed": [],
+          "added": [],
+          "changed": [
+            {
+              "id": "@get-modular/assembly!IsUnion:type",
+              "before": {
+                "canonicalReference": "@get-modular/assembly!IsUnion:type",
+                "kind": "TypeAlias",
+                "parentReference": "@get-modular/assembly!",
+                "parentKind": "EntryPoint",
+                "signature": "export type IsUnion<T, Whole = T> = T extends Whole ? [Whole] extends [T] ? false : true : never;"
+              },
+              "after": {
+                "canonicalReference": "@get-modular/assembly!IsUnion:type",
+                "kind": "TypeAlias",
+                "parentReference": "@get-modular/assembly!",
+                "parentKind": "EntryPoint",
+                "signature": "export type IsUnion<T, Whole = T> = T extends Whole ? [\n    Whole\n] extends [\n    T\n] ? false : true : never;"
+              },
+              "structural": []
+            },
+            {
+              "id": "@get-modular/assembly!KnownCapabilities:type",
+              "before": {
+                "canonicalReference": "@get-modular/assembly!KnownCapabilities:type",
+                "kind": "TypeAlias",
+                "parentReference": "@get-modular/assembly!",
+                "parentKind": "EntryPoint",
+                "signature": "export type KnownCapabilities<C, M extends readonly unknown[], N> = [\n    Exclude<UsedKeysOf<M[number]> | (N[keyof N] extends infer H ? H extends {\n        readonly [uses]: infer U;\n    } ? keyof U : never : never), keyof C>\n] extends [infer Missing] ? [Missing] extends [never] ? unknown : {\n    readonly \"capabilities missing from the preparing map\": Missing;\n} : never;"
+              },
+              "after": {
+                "canonicalReference": "@get-modular/assembly!KnownCapabilities:type",
+                "kind": "TypeAlias",
+                "parentReference": "@get-modular/assembly!",
+                "parentKind": "EntryPoint",
+                "signature": "export type KnownCapabilities<C, M extends readonly unknown[], N> = [\n    Exclude<UsedKeysOf<M[number]> | (N[keyof N] extends infer H ? H extends {\n        readonly [uses]: infer U;\n    } ? keyof U : never : never), keyof C>\n] extends [\n    infer Missing\n] ? [\n    Missing\n] extends [\n    never\n] ? unknown : {\n    readonly \"capabilities missing from the preparing map\": Missing;\n} : never;"
+              },
+              "structural": []
+            },
+            {
+              "id": "@get-modular/assembly!PreparedAssembly:type",
+              "before": {
+                "canonicalReference": "@get-modular/assembly!PreparedAssembly:type",
+                "kind": "TypeAlias",
+                "parentReference": "@get-modular/assembly!",
+                "parentKind": "EntryPoint",
+                "signature": "export type PreparedAssembly<R, N = {}> = {\n    readonly run: (...options: {} extends N ? [options?: RunOptions<N>] : [options: RunOptions<N> & {\n        readonly inputs: RunInputs<N>;\n    }]) => Promise<AssemblyOutcome<R>>;\n};"
+              },
+              "after": {
+                "canonicalReference": "@get-modular/assembly!PreparedAssembly:type",
+                "kind": "TypeAlias",
+                "parentReference": "@get-modular/assembly!",
+                "parentKind": "EntryPoint",
+                "signature": "export type PreparedAssembly<R, N = {}> = {\n    readonly run: (...options: {} extends N ? [\n        options?: RunOptions<N>\n    ] : [\n        options: RunOptions<N> & {\n            readonly inputs: RunInputs<N>;\n        }\n    ]) => Promise<AssemblyOutcome<R>>;\n};"
+              },
+              "structural": []
+            },
+            {
+              "id": "@get-modular/assembly!ValidDeclaration:type",
+              "before": {
+                "canonicalReference": "@get-modular/assembly!ValidDeclaration:type",
+                "kind": "TypeAlias",
+                "parentReference": "@get-modular/assembly!",
+                "parentKind": "EntryPoint",
+                "signature": "export type ValidDeclaration<C, D extends ModuleDeclaration> = true extends IsUnion<D> | IsUnion<D[\"slots\"]> | IsUnion<D[\"provides\"]> | (D[\"slots\"] extends infer Slots extends readonly unknown[] ? {\n    [K in keyof Slots]: IsUnion<Slots[K]>;\n}[number] : never) | (D[\"provides\"] extends infer Provides extends readonly unknown[] ? {\n    [K in keyof Provides]: IsUnion<Provides[K]>;\n}[number] : never) ? never : number extends D[\"provides\"][\"length\"] | D[\"slots\"][\"length\"] ? never : [\n    (D[\"provides\"][number] | D[\"slots\"][number] extends infer P ? P extends {\n        readonly capabilityId: infer K extends string;\n        readonly compatibility: infer T;\n    } ? string extends K ? P : true extends IsUnion<K> ? P : K extends keyof C ? [T, (K extends keyof C ? C[K] extends {\n        readonly compatibility: infer Compat;\n    } ? Compat : never : never)] extends [\n        (K extends keyof C ? C[K] extends {\n            readonly compatibility: infer Compat;\n        } ? Compat : never : never),\n        T\n    ] ? never : P : P : P : never) | (D[\"slots\"][number] extends infer S ? S extends {\n        readonly slotId: infer K extends string;\n        readonly cardinality: {\n            readonly kind: infer Q;\n        };\n    } ? string extends K ? S : true extends IsUnion<K> | IsUnion<Q> ? S : never : S : never)\n] extends [never] ? unknown : never;"
+              },
+              "after": {
+                "canonicalReference": "@get-modular/assembly!ValidDeclaration:type",
+                "kind": "TypeAlias",
+                "parentReference": "@get-modular/assembly!",
+                "parentKind": "EntryPoint",
+                "signature": "export type ValidDeclaration<C, D extends ModuleDeclaration> = true extends IsUnion<D> | IsUnion<D[\"slots\"]> | IsUnion<D[\"provides\"]> | (D[\"slots\"] extends infer Slots extends readonly unknown[] ? {\n    [K in keyof Slots]: IsUnion<Slots[K]>;\n}[number] : never) | (D[\"provides\"] extends infer Provides extends readonly unknown[] ? {\n    [K in keyof Provides]: IsUnion<Provides[K]>;\n}[number] : never) ? never : number extends D[\"provides\"][\"length\"] | D[\"slots\"][\"length\"] ? never : [\n    (D[\"provides\"][number] | D[\"slots\"][number] extends infer P ? P extends {\n        readonly capabilityId: infer K extends string;\n        readonly compatibility: infer T;\n    } ? string extends K ? P : true extends IsUnion<K> ? P : K extends keyof C ? [\n        T,\n        (K extends keyof C ? C[K] extends {\n            readonly compatibility: infer Compat;\n        } ? Compat : never : never)\n    ] extends [\n        (K extends keyof C ? C[K] extends {\n            readonly compatibility: infer Compat;\n        } ? Compat : never : never),\n        T\n    ] ? never : P : P : P : never) | (D[\"slots\"][number] extends infer S ? S extends {\n        readonly slotId: infer K extends string;\n        readonly cardinality: {\n            readonly kind: infer Q;\n        };\n    } ? string extends K ? S : true extends IsUnion<K> | IsUnion<Q> ? S : never : S : never)\n] extends [\n    never\n] ? unknown : never;"
+              },
+              "structural": []
+            },
+            {
+              "id": "@get-modular/assembly!input:function(1)",
+              "before": {
+                "canonicalReference": "@get-modular/assembly!input:function(1)",
+                "kind": "Function",
+                "parentReference": "@get-modular/assembly!",
+                "parentKind": "EntryPoint",
+                "signature": "export declare function input<C>(): <const D extends ModuleDeclaration & {\n    readonly slots: readonly [];\n}>(declaration: D & ValidDeclaration<C, NoInfer<D>>) => InputEntry<C, D>;"
+              },
+              "after": {
+                "canonicalReference": "@get-modular/assembly!input:function(1)",
+                "kind": "Function",
+                "parentReference": "@get-modular/assembly!",
+                "parentKind": "EntryPoint",
+                "signature": "export declare function input<C>(): <const D extends ModuleDeclaration & {\n    readonly slots: readonly [\n    ];\n}>(declaration: D & ValidDeclaration<C, NoInfer<D>>) => InputEntry<C, D>;"
+              },
+              "structural": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "packageName": "@get-modular/core",
+      "from": "7.58.12",
+      "to": "typescript-native/7.0.2",
+      "entrypoints": [
+        {
+          "exportPath": ".",
+          "oldCount": 13,
+          "nativeCount": 13,
+          "removed": [],
+          "added": [],
+          "changed": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "observedAt": "2026-10-18T23:41:25.075804+00:00",
+  "scope": "Read-only current registry/retained archive identity; no package import, compiler execution, main dependency adoption, qualification or baseline write.",
+  "packages": [
+    {
+      "packageName": "@get-modular/core",
+      "packageVersion": "0.5.0",
+      "metadataUrl": "https://registry.npmjs.org/@get-modular%2fcore/0.5.0",
+      "tarballUrl": "https://registry.npmjs.org/@get-modular/core/-/core-0.5.0.tgz",
+      "archiveSha256": "7943f054427282b68cd57e3f790acca62e14cbae67ea62b227f363a8d2614328",
+      "archiveIntegrity": "sha512-B7DuUnplex2C67g5OUj5e/AbgrVndH+cEPb74foNMaVWw4qdMmUt8c9pcvlrHVpcTvHBMraA0JIXYO2NI2Q+wA==",
+      "archiveBytes": 50256,
+      "retainedArchiveEqual": true,
+      "registryGitHead": null
+    },
+    {
+      "packageName": "@get-modular/assembly",
+      "packageVersion": "0.5.0",
+      "metadataUrl": "https://registry.npmjs.org/@get-modular%2fassembly/0.5.0",
+      "tarballUrl": "https://registry.npmjs.org/@get-modular/assembly/-/assembly-0.5.0.tgz",
+      "archiveSha256": "6112f57755ff9cf3f7b3379b8f932421499cf5db3320b7e4c3aefd998ec36862",
+      "archiveIntegrity": "sha512-9huRWsDE7TZAWA4AV5D2kbC3eWjoyQrKGi0DTum9LcmuFrjDd4XR9hOYEDaq4H/9OCcOByyiJCmxCtd4DTqM5w==",
+      "archiveBytes": 28311,
+      "retainedArchiveEqual": true,
+      "registryGitHead": null
+    }
+  ],
+  "source": {
+    "repository": "agent-teams-ai/get-modular",
+    "mergedCommit": "99816e452630715558306db2370baa2af49575e6",
+    "packingCommit": "74ce8cf14695660926fdc5575d8f4d957535213a",
+    "equalTree": "8fbcefe9b8a39f20c76876be04a1e9d3c21dd55b",
+    "ci": {
+      "runId": 38965526787,
+      "attempt": 1,
+      "headSha": "74ce8cf14695660926fdc5575d8f4d957535213a",
+      "headBranch": "changeset-release/main",
+      "event": "pull_request",
+      "conclusion": "success",
+      "workflow": ".github/workflows/ci.yml"
+    }
+  },
+  "nativeObservation": {
+    "sha256": "4f53fa864b3690d920ae5e513e27b2be46217db7afff5ba045045ada5b91fe0d",
+    "toolDiffSha256": "f7f1310d42d07b848945c04b03830ccf4a2443787e3a409a12bd97eec18e89ea",
+    "foundationSource": "67a901ba71a94ead40015f803a1b39e4f71b9fe3",
+    "candidateSource": "3f5f3b303e99e4b8f919486d91d954f7f78e204d",
+    "dataClosure": "Fresh frozen npm 11.19.0 scripts-disabled declaration/configuration closure; not asserted identical to the original pnpm installation.",
+    "packageLockSha256": "85b70cd3f0044d75e20ad80d4c55ba1299af798206637ad0c4bfa74cf5a2d00a",
+    "compilerExecution": "Only native TypeScript 7.0.2 owner adapters execute. Historical Foundation and compiler packages supply data only.",
+    "sourceProvenanceLimit": "Registry gitHead and source attestations are absent. Registry archive bytes equal the source-owned retained release archives; no npm source attestation or historical upload authority is claimed."
+  }
+}

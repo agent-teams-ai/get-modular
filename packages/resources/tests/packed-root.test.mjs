@@ -1,14 +1,13 @@
+import { supportedCompilers } from "./support/compilers.ts";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { access, mkdtemp, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
-import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const require = createRequire(join(packageRoot, "../../package.json"));
 
 function run(command, args, cwd) {
   const result = spawnSync(command, args, { cwd, encoding: "utf8" });
@@ -98,8 +97,7 @@ test("the public archive installs one root-only ESM package with the full scope 
       void resources.setup({ name: 'x', setup: () => 1, cleanup: (_n, { signal }) => { void signal; } });
       void value; void report;
     `);
-    for (const packageName of ["typescript", "typescript-minimum"]) {
-      const compiler = join(dirname(require.resolve(`${packageName}/package.json`)), "bin/tsc");
+    for (const { path: compiler } of await supportedCompilers()) {
       for (const resolution of ["NodeNext", "Bundler"]) {
         await writeFile(join(consumer, "tsconfig.json"), JSON.stringify({
           compilerOptions: {

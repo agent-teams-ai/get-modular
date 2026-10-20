@@ -23,8 +23,11 @@ Use `pnpm check:changed` while editing, `pnpm check:fast` before handoff, and
 `pnpm check` as the complete gate, including the installed
 `architecture.source-dependencies` schema v3 gate (`rootPackage: true` and
 `packageRoots` for Core/Assembly) and `pnpm release-owned-files:check`.
-`runtime:preflight` remains the dependency-free Node version guard;
-`precheck:changed` invokes only that guard. Full and fast gates explicitly run
+`runtime:preflight` remains the dependency-free Node version guard.
+`precheck:changed` runs that guard, then the compiler metadata preflight.
+The quality scope and typed commands use their own compiler guard hooks; `.npmrc`
+explicitly enables user-script pre/post hooks while installation scripts stay disabled.
+Full and fast gates explicitly run
 `lockfile:peers:check`, `runtime:policy:typecheck` and `runtime:policy:test`
 before preparation.
 
@@ -95,3 +98,15 @@ or certify existing code as conformant.
 Mandatory for every change to module boundaries, capability contracts, composition, lifecycle ownership, adoption profiles or their gates: read the canonical Get Modular Consumer Module Standard (`docs/architecture/common-assembly.md#consumer-module-standard` in agent-teams-ai/get-modular). Update its current guidance/examples when shared behavior changes, and update affected consumer profiles, documentation and rejecting tests in the same delivery. Do not duplicate the standard or silently replace accepted ADR bytes.
 
 Before implementation, compare the consumer's pinned revision with the current upstream standard; review the delta and migrate the pin with its retained evidence and checks. Never silently follow a moving main revision. If migration is not yet complete, record the exact outstanding work and keep adoption pending. A task is not done with stale guidance, an unreviewed pin, or a no-op/missing enforcement command. New meaningful composition boundaries must be adopted or explicitly classified; feature-local helpers are not separate graph nodes.
+
+## TypeScript authoring
+
+Write new maintained source, tests and tooling in TypeScript 7.0.2 or newer;
+use `.ts` with the owning package's `"type": "module"` for ESM. Include that source
+in the owning strict typecheck and normal verification command. Running a file
+through Node's type stripping is not type checking.
+
+Follow the organization standard's
+[TypeScript rule](https://github.com/agent-teams-ai/.github/blob/main/docs/engineering-quality-standard.md#typescript-for-javascript-runtimes)
+for scope, migration and necessary JavaScript exceptions. Preserve generated
+package output and immutable evidence in their required formats.

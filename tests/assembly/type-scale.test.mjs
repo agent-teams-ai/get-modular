@@ -11,10 +11,10 @@ import { fragmentSource } from "./type-scale.mjs";
 
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
-// ADR-0032: 500 handles bound by 20 team maps prepare under one Host interface map. Both compilers and
-// both resolutions must accept them without TS2589. Time is reported, never asserted. The fixture checks
+// ADR-0032: 500 handles bound by 20 team maps prepare under one Host interface map. Distinct supported
+// compilers and both resolutions must accept them without TS2589. Time is reported, never asserted. The fixture checks
 // the workspace build, so packed-root and its repeated runs stay free of it.
-test("500 fragment handles prepare under one interface map on both compilers", { timeout: 600000 }, async (t) => {
+test("500 fragment handles prepare under one interface map on supported compilers", { timeout: 600000 }, async (t) => {
   const directory = await realpath(await mkdtemp(join(tmpdir(), "get-modular-type-scale-")));
   try {
     await mkdir(join(directory, "node_modules/@get-modular"), { recursive: true });
@@ -38,7 +38,7 @@ test("500 fragment handles prepare under one interface map on both compilers", {
 
 // Type-check cost budget. TypeScript 7 counters depend on the number of checkers, so the build runs
 // --singleThreaded; the counters are then deterministic. Instantiations and Types are gated at 500
-// handles, other sizes and the check time are only printed. TypeScript 5.8.3 is not gated.
+// handles; other sizes and the check time are only printed.
 const budgetTolerance = 1.05;
 const budgetFloor = 0.95;
 const budgetPath = "tests/assembly/type-scale-budget.json";

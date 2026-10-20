@@ -22,27 +22,57 @@ function passed(result, label) {
   assert.equal(result.status, 0, `${label}\n${result.stdout}\n${result.stderr}`);
 }
 
+/** Resolve the exact minimum/current compiler manifests; equal versions run once. */
+export function supportedCompilers() {
+  const { devDependencies } = require("./package.json");
+  const minimum = ["typescript-consumer-minimum", "typescript-minimum"]
+    .find((name) => Object.hasOwn(devDependencies, name));
+  assert.ok(minimum, "The repository must declare its minimum consumer compiler alias");
+  const compilers = [];
+  for (const compilerName of ["typescript", minimum]) {
+    const manifestPath = require.resolve(`${compilerName}/package.json`);
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    assert.equal(manifest.name, "typescript");
+    if (compilerName === minimum) assert.equal(manifest.version, "7.0.2");
+    const match = typeof manifest.version === "string"
+      ? /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/u.exec(manifest.version) : null;
+    assert.ok(match !== null && match[0] === manifest.version,
+      `${compilerName} must be a pinned stable compiler: ${manifest.version}`);
+    const version = match.slice(1).map(Number);
+    assert(version.every(Number.isSafeInteger)
+      && (version[0] > 7 || version[0] === 7 && (version[1] > 0 || version[1] === 0 && version[2] >= 2)),
+    `${compilerName} must meet the TypeScript 7.0.2 floor`);
+    if (!compilers.some(compiler => compiler.version === manifest.version)) {
+      compilers.push({ compilerName, version: manifest.version, path: join(dirname(manifestPath), "bin/tsc") });
+    }
+  }
+  return compilers;
+}
+
+export function testTypeScriptProjects(projects) {
+  assert(projects.length > 0 && projects.every(project => typeof project === "string"
+    && project.endsWith(".json") && !project.startsWith("-")), "Explicit project files are required");
+  for (const { path: compiler, version } of supportedCompilers()) {
+    for (const project of projects) {
+      passed(invoke(process.execPath, [compiler, "--project", resolve(project),
+        "--noEmit", "--skipLibCheck", "false", "--pretty", "false"], workspace),
+      `TypeScript ${version}: ${project}`);
+    }
+  }
+}
+
 export function testAssemblyTypes({
   directory = assembly,
   project = join(directory, "tsconfig.types.json"),
   runtimeProject,
   negativeProject,
 } = {}) {
-  const { devDependencies } = require("./package.json");
-  const minimum = ["typescript-consumer-minimum", "typescript-minimum"]
-    .find((name) => Object.hasOwn(devDependencies, name));
-  assert.ok(minimum, "The repository must declare its minimum consumer compiler alias");
   const observations = [];
-  for (const compilerName of [minimum, "typescript"]) {
-    const manifestPath = require.resolve(`${compilerName}/package.json`);
-    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-    assert.equal(manifest.name, "typescript");
-    if (compilerName === minimum) assert.equal(manifest.version, "5.8.3");
-    const compiler = join(dirname(manifestPath), "bin/tsc");
+  for (const { compilerName, version, path: compiler } of supportedCompilers()) {
     for (const [module, resolution] of [["NodeNext", "NodeNext"], ["ESNext", "Bundler"]]) {
-      const flags = ["--module", module, "--moduleResolution", resolution,
+      const flags = ["--module", module, "--moduleResolution", resolution, "--skipLibCheck", "false",
         "--erasableSyntaxOnly", "false", "--isolatedDeclarations", "false", "--pretty", "false"];
-      const label = `${compilerName}@${manifest.version} ${resolution}`;
+      const label = `${compilerName}@${version} ${resolution}`;
       passed(invoke(process.execPath, [compiler, "--project", project, ...flags], directory), label);
       if (negativeProject) {
         const result = invoke(process.execPath, [compiler, "--project", negativeProject, ...flags], directory);
@@ -56,13 +86,14 @@ export function testAssemblyTypes({
           "--noEmit", "false", "--declaration", "false", "--outDir", output], directory), label);
         passed(invoke(process.execPath, [join(output, "types-positive.js")], directory), label);
       }
-      observations.push({ compilerName, version: manifest.version, resolution });
+      observations.push({ compilerName, version, resolution });
     }
   }
   return observations;
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  if (process.argv.length !== 2) throw new Error("assembly.types.unsupported-options");
-  testAssemblyTypes();
+  if (process.argv.length === 2) testAssemblyTypes();
+  else if (process.argv[2] === "--projects") testTypeScriptProjects(process.argv.slice(3));
+  else throw new Error("assembly.types.unsupported-options");
 }

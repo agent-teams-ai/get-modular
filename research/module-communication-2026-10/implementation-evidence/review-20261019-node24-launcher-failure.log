@@ -1,0 +1,15 @@
+[EACCES] Command failed with EACCES: pnpm install
+spawnSync pnpm EACCES
+
+pnpm: Command failed with EACCES: pnpm install
+spawnSync pnpm EACCES
+    at getFinalError (file:///tmp/observation-toolchain/pnpm/package/dist/pnpm.mjs:89001:14)
+    at makeError (file:///tmp/observation-toolchain/pnpm/package/dist/pnpm.mjs:91308:21)
+    at getSyncResult (file:///tmp/observation-toolchain/pnpm/package/dist/pnpm.mjs:93152:10)
+    at spawnSubprocessSync (file:///tmp/observation-toolchain/pnpm/package/dist/pnpm.mjs:93112:14)
+    at execaCoreSync (file:///tmp/observation-toolchain/pnpm/package/dist/pnpm.mjs:93042:23)
+    at callBoundExeca (file:///tmp/observation-toolchain/pnpm/package/dist/pnpm.mjs:95570:23)
+    at boundExeca (file:///tmp/observation-toolchain/pnpm/package/dist/pnpm.mjs:95547:49)
+    at sync2 (file:///tmp/observation-toolchain/pnpm/package/dist/pnpm.mjs:95702:14)
+    at runPnpmCli (file:///tmp/observation-toolchain/pnpm/package/dist/pnpm.mjs:252538:5)
+    at runDepsStatusCheck (file:///tmp/observation-toolchain/pnpm/package/dist/pnpm.mjs:254302:7)

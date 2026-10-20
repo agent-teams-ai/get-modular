@@ -1,3 +1,5 @@
+import { assertCompilerFloor } from "../architecture/checks/compiler-floor.ts";
+import { supportedCompilers } from "../architecture/tooling/test-assembly-types.mjs";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
@@ -6,7 +8,8 @@ import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 import test from "node:test";
 import Ajv from "ajv";
-import ts from "typescript-minimum";
+import * as ts from "typescript/unstable/ast";
+import { parseTypeScript } from "./qualification/support/typescript-project.ts";
 import { parse } from "yaml";
 import { packageIdentityViolations, packageManifestInventory } from "../architecture/checks/production-artifacts.mjs";
 import { expectedLeafImporter, LEAF_PACKAGES, leafManifestPath } from "../architecture/checks/leaf-packages.mjs";
@@ -26,7 +29,7 @@ test("the complete gate runs the ownership checkpoint suite with failure propaga
   assert.equal(scripts.precheck, "pnpm ownership:checkpoint:test",
     "pnpm check must run the checkpoint suite through its precheck lifecycle");
   assert.equal(scripts["ownership:checkpoint:test"],
-    "node --test tests/ownership-checkpoint.test.mjs",
+    "node architecture/checks/compiler-floor.ts && node --test tests/ownership-checkpoint.test.mjs",
     "the checkpoint script must execute the focused suite, not a no-op");
 });
 
@@ -77,6 +80,11 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
       immutableDigest: "sha256:41e6d18087f5fe147b5a843b37fa5be925fa2f87cb1dc83c949a80520e7dbeb5",
     },
     {
+      id: "ADR-0034",
+      path: "docs/decisions/0034-admit-the-module-change-observation-package.md",
+      immutableDigest: "sha256:62653b314316c336067c18d6a4562b50042d5b548c0da93bdae18eea6ecadf95",
+    },
+    {
       id: "ADR-0035",
       path: "docs/decisions/0035-complete-composition-profiles-in-prepare-and-make-capabilitiesof-linear.md",
       immutableDigest: "sha256:f229a2067471f7e49e7243d8d1ba5174fab699e1fbcdb298384aaafd6a27e81d",
@@ -91,6 +99,11 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
       path: "docs/decisions/0037-pin-providers-not-completed-rows-in-the-binding-oracle.md",
       immutableDigest: "sha256:1c49f7bbfd5ec7df2dbfaefbfd58da7ea2c3583421fc22a3122acd15648718a6",
     },
+    {
+      id: "ADR-0038",
+      path: "docs/decisions/0038-require-typescript-7-for-current-package-qualification.md",
+      immutableDigest: "sha256:f2eab8aea2b07c8b6d2b3207314da91531689fa2bb6039e9e963aee315f7fd52",
+    },
   ]);
   const paths = execFileSync("git", ["ls-tree", "-r", "--name-only", checkpoint.evidence.base,
     "docs/decisions"], { encoding: "utf8" }).trim().split("\n");
@@ -104,6 +117,7 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
 // its real governance boundary. The independent reviewed value above prevents a
 // coordinated change to the document and registry from silently blessing itself.
 test("installed Foundation authenticates the accepted decision fingerprint", () => {
+  assertCompilerFloor();
   const report = JSON.parse(execFileSync(process.execPath, [
     resolve("node_modules/@agent-teams/engineering-foundation/dist/cli.js"),
     "check", "governance.architecture-decisions", "--consumer", process.cwd(),
@@ -168,7 +182,7 @@ test("observations bind historical lock bytes, production importers and reviewed
     "C0 retains the CMS bytes observed at its base");
   const currentCms = readFileSync(cmsPath);
   assert.equal(digest(currentCms),
-    "sha256:e5cb510c5ea83e54a6833cc40b6ad31fc5cf8c70d9838e4e0c6923edc6f70919",
+    "sha256:c2fe582a14ff6e79620b232ca7ffc914afb0474ec21fd43f208251dd7252f4a3",
     "the current CMS successor must match its separately reviewed bytes");
   // Package versions are observations at the evidence base; later releases move the working tree.
   for (const [name, version] of Object.entries(checkpoint.evidence.packages)) {
@@ -195,8 +209,9 @@ test("C0 preserves rejecting runtime package admission until K1", async () => {
   }
 });
 
-test("pseudo-contract has one closed synchronous surface without resource callbacks", () => {
-  const source = ts.createSourceFile("contract.d.ts", declaration, ts.ScriptTarget.Latest, true);
+test("pseudo-contract has one closed synchronous surface without resource callbacks", async () => {
+  const { source, diagnostics } = await parseTypeScript("contract.d.ts", declaration);
+  assert.deepEqual(diagnostics, []);
   const interfaces = source.statements.filter(ts.isInterfaceDeclaration);
   const scope = interfaces.find(node => node.name.text === "OwnershipScope");
   assert.deepEqual(scope.members.map(member => member.name.text), [
@@ -207,7 +222,7 @@ test("pseudo-contract has one closed synchronous surface without resource callba
     assert.equal(ts.isImportDeclaration(node) || ts.isImportTypeNode(node), false);
     assert.equal(ts.isFunctionTypeNode(node), false, "no callback types");
     if (ts.isTypeReferenceNode(node)) assert.notEqual(node.typeName.getText(source), "Promise");
-    ts.forEachChild(node, inspect);
+    node.forEachChild(inspect);
   }
   inspect(source);
 });
@@ -252,8 +267,8 @@ scope.seal();
       },
       files: ["consumer.ts"],
     }));
-    for (const compiler of ["typescript", "typescript-minimum"]) {
-      execFileSync(process.execPath, [resolve(`node_modules/${compiler}/bin/tsc`),
+    for (const { path: compiler } of supportedCompilers()) {
+      execFileSync(process.execPath, [compiler,
         "--project", join(temp, "tsconfig.json")], { cwd: temp, stdio: "pipe" });
     }
   } finally { rmSync(temp, { recursive: true, force: true }); }

@@ -5,7 +5,7 @@ import { jsonBytes, need, retainedLimits, verifyCaseObservations,
 // Private transport interpretation, independent of the producer. expectedPlan
 // comes from trusted preparation, never from the journal being interpreted.
 // Small inventories are useful for truthful transport unit tests; the adapter
-// separately requires the complete current 282-case harness inventory.
+// separately requires the complete current 272-case harness inventory.
 export function verifyM3RuntimeObservations({
   expectedPlan, events, anchor, observationsSha256, contextId, archive, inventory,
 }) {

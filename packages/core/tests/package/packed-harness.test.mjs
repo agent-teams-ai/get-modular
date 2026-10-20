@@ -39,7 +39,6 @@ async function fixture(t, selection = {}) {
     npm: await program('npm-cli.js', '11.0.0'),
     compilers: [
       { name: 'typescript', ...await program('tsc-current', '7.0.2') },
-      { name: 'typescript-minimum', ...await program('tsc-minimum', '5.8.3') },
     ],
   };
   const osEnvironment = process.platform === 'win32' ? { SystemRoot: process.env.SystemRoot } : {};
@@ -194,7 +193,7 @@ test('packed preparation rejects unknown surfaces and M2 with generation one bef
 for (const selection of [{}, { surface: 'm1' }, { surface: 'm1', diagnosticGeneration: 2 }]) {
   test(`historical M1 shape remains unchanged for ${JSON.stringify(selection)}`, async t => {
     const { prepared } = await fixture(t, selection);
-    assert.equal(prepared.cases.length, 97);
+    assert.equal(prepared.cases.length, 87);
     assert.equal(prepared.cases.some(row => row.kind === 'raw'), false);
     assert.deepEqual(Object.keys(prepared).sort(),
       ['archive', 'artifacts', 'cases', 'progress', 'runCase', 'toolchain', 'trustedSources']);
@@ -216,12 +215,12 @@ for (const selection of [{}, { surface: 'm1' }, { surface: 'm1', diagnosticGener
   });
 }
 
-test('M2 preparation retains 97 cases and all 185 original independent raw constructions', async t => {
+test('M2 preparation retains 87 distinct cases and all 185 original independent raw constructions', async t => {
   const { prepared } = await fixture(t, { surface: 'm2', diagnosticGeneration: 2 });
   const raw = prepared.cases.filter(row => row.kind === 'raw');
   const documents = [...rawDocumentCases()];
   const invocationIds = rawInvocationCaseIds();
-  assert.equal(prepared.cases.length, 282);
+  assert.equal(prepared.cases.length, 272);
   assert.equal(raw.length, 185);
   assert.deepEqual(raw.map(row => row.id), [
     ...documents.map(row => `raw/document/${row.caseId}`),
@@ -270,8 +269,8 @@ test('M2 preparation retains 97 cases and all 185 original independent raw const
     assert.ok(source.includes("profile: '{}'"));
     assert.ok(source.includes('compileCompositionJson(null)'));
   }
-  assert.equal(prepared.cases.filter(row => row.kind === 'typescript').length, 18);
-  for (const compiler of ['typescript', 'typescript-minimum']) {
+  assert.equal(prepared.cases.filter(row => row.kind === 'typescript').length, 9);
+  for (const compiler of ['typescript']) {
     for (const mode of ['NodeNext/mts', 'Node16/mts', 'NodeNext/cts', 'Bundler/mts']) {
       const row = prepared.cases.find(row => row.id === `typescript/${compiler}/${mode}`);
       assert.deepEqual(row.expected, { status: 0, diagnosticCodes: [] });

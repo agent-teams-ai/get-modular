@@ -78,6 +78,7 @@ done
 step pass runtime.sync-guards-without-async-context env OBSERVATION_STUB_MUTATION=no-async-context VARIANT=b-snapshot node --expose-gc --test-name-pattern="^1[89]\\." runtime/probes.test.ts
 # L2/L3: a fake global setImmediate installed before import, and a browser-like environment (separate processes).
 step pass runtime-b.env-fake-timers-before-import node runtime-b/env-probe.ts fake-before
+step pass runtime-b.env-fake-clock-before-import node runtime-b/env-probe.ts fake-clock-before
 step pass runtime-b.env-without-node-builtins node runtime-b/env-probe.ts no-node
 # N5/M3: heap per live watch and per closed source: signal binding (default), child scope, scope entry (informative).
 step pass runtime-b.watch-memory bash -c 'node --expose-gc runtime-b/measure-watch-memory.ts && OBSERVATION_STUB_WATCH_SCOPE=child node --expose-gc runtime-b/measure-watch-memory.ts && OBSERVATION_STUB_WATCH_SCOPE=entry node --expose-gc runtime-b/measure-watch-memory.ts'
@@ -86,6 +87,7 @@ step pass runtime.mutations tools/mutations.sh
 # Variant B probes against @get-modular/resources built from get-modular origin/main (.gm-resources-main).
 step pass runtime-b.typecheck bash -c 'cd runtime-b && tsc7 -p . --pretty false && ../.toolchain/node_modules/.bin/tsc -p . --pretty false'
 step pass runtime-b.probes node --expose-gc runtime-b/probes.test.ts
+step pass runtime-b.review-regressions node runtime-b/review-regressions.test.ts
 step pass runtime-b.mutations tools/mutations-b.sh
 
 # Controls: each removes one design element and must fail.

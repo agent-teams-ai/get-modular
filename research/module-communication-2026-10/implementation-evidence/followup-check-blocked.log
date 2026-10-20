@@ -1,0 +1,5 @@
+$ pnpm ownership:checkpoint:test
+$ node architecture/checks/compiler-floor.mjs && node --test tests/ownership-checkpoint.test.mjs
+{"code":"TYPESCRIPT_COMPILER_FLOOR_BLOCKED","outcome":"blocked","minimumVersion":"7.0.2","role":"foundation.api-extractor.compiler","manifestPath":"/workspace/scratch/e04865d5cacb/get-modular/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/package.json","reason":"compiler-below-floor","observedVersion":"5.9.3","remediation":"A supported upstream compiler migration is required; retain the existing gates and extraction identities."}
+[ELIFECYCLE] Command failed with exit code 1.
+[ELIFECYCLE] Command failed with exit code 1.

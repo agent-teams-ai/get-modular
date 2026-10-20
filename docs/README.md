@@ -49,13 +49,14 @@ resource policy is the single profile described in the current contract.
 
 ## Evidence
 
+- [Current TypeScript tooling qualification](qualification/native-typescript-tooling.md) - current native compiler scope, historical input custody and the separate release handoff.
 - [Historical implementation-readiness audit](../research/implementation-readiness/report.md) - dispositions belong to the recorded historical subjects; use the current contract and roadmap for today's start conditions.
 - [Module resource scopes and foundation review](../research/module-resources-2026-10/README.md) - research and planning archive for the resources package, Assembly 0.3.0 and the foundation decisions; not an accepted decision.
 - [Train 1 release plan](../research/releases/0.3.0-train/release-plan.md) - rehearsal 3 and release PR plan for Core and Assembly 0.3.0, resources 0.1.0 and conformance 0.1.0; not an accepted decision.
 - [Contract revision windows train plan](../research/contract-evolution-2026-10/README.md) - plan and briefs for Core and Assembly 0.4.0; deferred by the owner on 2026-10-10; not an accepted decision.
 - [Module DX 0.5.0 train plan](../research/module-dx-2026-10/README.md) - implementation plan of the 0.5.0 train and the Feature Module Standard v1.1 nested features draft; planning only, not an accepted decision.
 - [Module entries spike results](../research/module-entries-2026-10/README.md) - measurements and prototype diff behind the entries-and-groups design, merge experiment, port check, oxlint probes and ADR-0036 and ADR-0037 drafts; research only, not an accepted decision.
-- [Module communication study and observation API design](../research/module-communication-2026-10/README.md) - practices catalog, surveys, critiques and the tested API shape for observation (variant B, "watch what you read"); research only, not an accepted decision; OD-007 stays open.
+- [Module communication study and observation API design](../research/module-communication-2026-10/README.md) - practices catalog, surveys, critiques and the tested API shape for observation (variant B, "watch what you read"); the research remains evidence. [ADR-0034](decisions/0034-admit-the-module-change-observation-package.md) resolves OD-007; the [implementation record](../research/module-communication-2026-10/implementation-port.md) tracks implementation and release qualification separately.
 - [Module fixture implementation plan](qualification/module-fixture-plan.md) - phased public-package consumer, lifetime, restart, source-boundary and scale experiments, with exact scenarios and agent handoffs; planning only, with Agent Runtime outside the change scope.
 - [Lifecycle kernel extraction plan](../research/lifecycle-kernel-2026-09/README.md) - archived working plan behind ADR-0029; the current authority listed in its README takes precedence.
 - [Compiler engineer handbook](qualification/compiler-engineer-handbook.md) - seventeen fact derivations, partial failure rules and independent examples.

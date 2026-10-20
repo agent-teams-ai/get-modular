@@ -74,9 +74,9 @@ function inventoryAt(directory, prefix = "") {
   }).sort();
 }
 
-test("stages only reached bytes, preserving declaration-only dependencies", t => {
+test("stages only reached bytes, preserving declaration-only dependencies", async t => {
   const f = fixture(t);
-  const result = stageDirectSubject(f.options);
+  const result = (await stageDirectSubject(f.options));
   const expected = ["LICENSE", "README.md", "package.json",
     JS, DTS, root, selected, typeFile, transitiveType].sort();
   assert.deepEqual(inventoryAt(result.stagingDir), expected);
@@ -99,12 +99,12 @@ test("stages only reached bytes, preserving declaration-only dependencies", t =>
     ".": { import: { types: `./${DTS}`, default: `./${JS}` }, default: `./${JS}` },
   });
   assert.deepEqual(manifest.files, expected.filter(path => path !== "package.json"));
-  assert.throws(() => stageDirectSubject(f.options), /staging-exists/u);
+  await assert.rejects(() => stageDirectSubject(f.options), /staging-exists/u);
 });
 
 test("Windows drive-letter casing preserves checkout identity", {
   skip: process.platform !== "win32" && "Windows drive-letter spelling",
-}, t => {
+}, async t => {
   const f = fixture(t);
   assert.match(f.checkout, /^[A-Za-z]:\\/u);
   for (const [index, drive] of [
@@ -113,28 +113,28 @@ test("Windows drive-letter casing preserves checkout identity", {
     const checkout = `${drive}${f.checkout.slice(1)}`;
     assert.equal(realpathSync(checkout), checkout);
     const packageRoot = join(checkout, "packages/core");
-    const result = stageDirectSubject({
+    const result = (await stageDirectSubject({
       ...f.options, sourceCheckout: checkout,
       stagingDir: join(f.base, `direct-${index}`),
       javascriptEntry: join(packageRoot, JS), declarationEntry: join(packageRoot, DTS),
-    });
+    }));
     assert.equal(result.source.checkout, checkout);
     assert.equal(result.source.commit, f.options.expectedSha);
   }
 });
 
-test("rejects a source checkout that is a repository subdirectory", t => {
+test("rejects a source checkout that is a repository subdirectory", async t => {
   const f = fixture(t);
-  assert.throws(() => stageDirectSubject({
+  await assert.rejects(() => stageDirectSubject({
     ...f.options, sourceCheckout: f.packageRoot,
   }), /checkout-root/u);
   assert.equal(existsSync(f.options.stagingDir), false);
 });
 
-test("rejects Git reporting another checkout as the worktree", t => {
+test("rejects Git reporting another checkout as the worktree", async t => {
   const f = fixture(t), other = fixture(t);
   f.git(["config", "core.worktree", other.checkout]);
-  assert.throws(() => stageDirectSubject(f.options), /checkout-root/u);
+  await assert.rejects(() => stageDirectSubject(f.options), /checkout-root/u);
   assert.equal(existsSync(f.options.stagingDir), false);
 });
 
@@ -149,36 +149,36 @@ for (const [name, path, text] of [
   ["external declaration", typeFile, 'export type Result = import("outside").Result;'],
   ["tooling reference", JS, 'export * from "./own-profile.js";'],
 ]) {
-  test(`rejects ${name} without creating staging`, t => {
+  test(`rejects ${name} without creating staging`, async t => {
     const f = fixture(t);
     f.put(path, text);
-    assert.throws(() => stageDirectSubject(f.options));
+    await assert.rejects(() => stageDirectSubject(f.options));
     assert.equal(existsSync(f.options.stagingDir), false);
   });
 }
 
-test("rejects symlinked closure files and incorrect source identity", t => {
+test("rejects symlinked closure files and incorrect source identity", async t => {
   const f = fixture(t);
-  assert.throws(() => stageDirectSubject({ ...f.options, expectedSha: "0".repeat(40) }), /source-sha/u);
+  await assert.rejects(() => stageDirectSubject({ ...f.options, expectedSha: "0".repeat(40) }), /source-sha/u);
   rmSync(join(f.packageRoot, selected));
   symlinkSync(join(f.packageRoot, sentinel), join(f.packageRoot, selected));
-  assert.throws(() => stageDirectSubject(f.options), /symlink/u);
+  await assert.rejects(() => stageDirectSubject(f.options), /symlink/u);
   assert.equal(existsSync(f.options.stagingDir), false);
 });
 
-test("rejects dirty source and staging inside the checkout", t => {
+test("rejects dirty source and staging inside the checkout", async t => {
   const f = fixture(t);
-  assert.throws(() => stageDirectSubject({
+  await assert.rejects(() => stageDirectSubject({
     ...f.options, stagingDir: join(f.checkout, "direct"),
   }), /staging-location/u);
   f.put("README.md", "Changed source metadata\n");
-  assert.throws(() => stageDirectSubject(f.options), /dirty-source/u);
+  await assert.rejects(() => stageDirectSubject(f.options), /dirty-source/u);
 });
 
 
 test("Windows mixed-case Git routing cannot substitute source identity", {
   skip: process.platform !== "win32" && "Windows environment names are case-insensitive",
-}, t => {
+}, async t => {
   const first = fixture(t), other = fixture(t);
   other.git(["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
     "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null",
@@ -192,8 +192,8 @@ test("Windows mixed-case Git routing cannot substitute source identity", {
   try {
     process.env.Git_Dir = join(other.checkout, ".git");
     process.env.Git_Work_Tree = first.checkout;
-    assert.throws(() => stageDirectSubject({ ...first.options, expectedSha: substituted }), /source-sha/u);
-    assert.equal(stageDirectSubject(first.options).source.commit, first.options.expectedSha);
+    await assert.rejects(() => stageDirectSubject({ ...first.options, expectedSha: substituted }), /source-sha/u);
+    assert.equal((await stageDirectSubject(first.options)).source.commit, first.options.expectedSha);
   } finally {
     for (const key of Object.keys(process.env).filter(affected)) delete process.env[key];
     for (const [key, value] of previous) process.env[key] = value;
@@ -201,7 +201,7 @@ test("Windows mixed-case Git routing cannot substitute source identity", {
 });
 
 // Release metadata is copied only from tracked, clean source when allowlisted.
-test("stages the allowlisted release changelog byte-for-byte", t => {
+test("stages the allowlisted release changelog byte-for-byte", async t => {
   const f = fixture(t);
   const path = join(f.packageRoot, "package.json");
   const metadata = JSON.parse(readFileSync(path, "utf8"));
@@ -212,7 +212,7 @@ test("stages the allowlisted release changelog byte-for-byte", t => {
   f.git(["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
     "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null",
     "commit", "--quiet", "-m", "release metadata fixture"]);
-  const result = stageDirectSubject({ ...f.options, expectedSha: f.git(["rev-parse", "HEAD"]) });
+  const result = (await stageDirectSubject({ ...f.options, expectedSha: f.git(["rev-parse", "HEAD"]) }));
   assert.deepEqual(readFileSync(join(result.stagingDir, "CHANGELOG.md")),
     readFileSync(join(f.packageRoot, "CHANGELOG.md")));
   const manifest = JSON.parse(readFileSync(join(result.stagingDir, "package.json"), "utf8"));

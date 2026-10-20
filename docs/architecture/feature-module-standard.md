@@ -42,7 +42,7 @@ Initial package boundaries are owned by `ADR-0003`, which resolves `OD-001`.
 `ADR-0029` adds the optional candidate-only lifecycle kernel module and retains
 G1 public qualification and npm namespace verification as release gates.
 `ADR-0030` adds the optional public resource scope module and `ADR-0033` the
-optional public conformance module.
+optional public conformance module, and `ADR-0034` the optional public observation module.
 
 ## Local extensions
 
@@ -84,6 +84,12 @@ optional public conformance module.
   packages are the Core, Assembly and resources peers, imported by root name,
   and it imports no builtin. Its tests live in the package. Get Modular's own
   qualification stays in `tests/qualification`.
+- The observation package has the features errors, delivery, store and testing,
+  thin `src/composition/root.ts` and `src/composition/testing.ts` seams, the curated
+  root export `src/index.ts` and a second curated surface `src/testing.ts` for
+  `./testing`, the `testing` public module surface of FMS v1. Its only package is
+  the resources peer, imported by root name, and it imports no builtin. Its
+  Assembly integration tests live in root `tests/observation`.
 - No deviation from organization `v1` is declared.
 
 ## Enforcement
@@ -93,7 +99,7 @@ repository mapping, local authorities, navigation, gate wiring, and explicit
 qualification states. `pnpm governance:check` uses the same repository-wide
 production-artifact inventory. It always rejects production artifacts outside
 `packages`. Accepted ADR-0015 admits source only inside a package identity
-accepted by ADR-0003, ADR-0023, the bounded ADR-0029 successor, ADR-0030 or ADR-0033 and, on its
+accepted by ADR-0003, ADR-0023, the bounded ADR-0029 successor, ADR-0030, ADR-0033 or ADR-0034 and, on its
 own, only while that manifest is
 `private: true` and declares no publication field. Accepted ADR-0017 supersedes
 those two conditions and blocks publication surfaces only while an open
@@ -116,23 +122,23 @@ production. The first production package must atomically:
 - change the admission state to `source-admitted`;
 - enable Engineering Foundation's `architecture.source-dependencies`
   capability at `architecture/foundation/source-dependencies.yaml`; and
-- execute the pinned `@agent-teams/engineering-foundation` `1.7.4` command
+- execute the pinned `@agent-teams/engineering-foundation` `1.10.0` command
   `agent-teams-foundation check` through both the complete and fast gates.
 
-The tooling activation pins Foundation `1.7.4`. SDK growth admission remains
+The tooling activation pins native Foundation `1.10.0`. SDK growth admission remains
 explicitly pending: the active public-API capability retains schema v1 until a
 trusted external authority binds the PR base and candidate to authenticated
 released Core and Assembly artifacts. Local qualification records cannot
 activate that route. The published
 `quality.source-coverage` route uses the existing production profile and source
 policy: `quality:coverage:scope` runs in the fast gate and `lint:typed` runs in
-the complete gate. Suppression governance covers Core, Assembly, lifecycle kernel, resources and conformance source with
+the complete gate. Suppression governance covers Core, Assembly, lifecycle kernel, resources, conformance and observation source with
 no waivers. Activation does not claim that existing source passes typed lint
 or establish structural or runtime conformance. Docs retains its portable
 workflow without a managed adapter or cohort binding.
 
-The Foundation 1.7.4 binding, which follows the earlier 1.7.2 migration and its
-retained records, keeps the immutable Feature Module Standard and
+The native Foundation 1.10.0 binding follows the retained 1.7.4 and 1.7.2
+records and keeps the immutable Feature Module Standard and
 Consumer Module Standard pins. The retained current Consumer Module Standard
 adds the optional ADR-0029 dynamic Host guidance; it does not expand passive
 composition or confer SDK authority. The current SDK tooling binding advances
@@ -141,7 +147,7 @@ SDK status stays pending, activation stays on hold and release eligibility stays
 false.
 
 The local changed workflow keeps the schema published with Foundation 1.7.2;
-the 1.7.4 binding does not change it.
+the native 1.10.0 binding does not change it.
 JS and TS edits select the existing project-wide `check:fast` script with
 `passPaths: false`; changed file names never become compiler arguments.
 Compiler projects and root check configuration select the same fast gate through
@@ -164,8 +170,15 @@ existing runtime helper owns this narrow version mechanism; executable selection
 and deployment policy remain with the Host.
 
 `runtime:preflight` is exactly `node architecture/checks/node-version.mjs` and
-requires no installed repository dependencies. `precheck:changed` invokes only
-`pnpm runtime:preflight`. Both full and fast gates explicitly execute
+requires no installed repository dependencies. `precheck:changed` first runs
+that guard, then reads the compiler metadata before loading Foundation. The
+`quality:coverage:scope` and `lint:typed` commands run the same compiler guard
+through their user-script hooks, before the literal public CLI commands. The pinned pnpm route explicitly
+enables user-script pre/post hooks in `.npmrc`; installation scripts remain
+disabled. Normal `pnpm` commands, explicit `pnpm run` and the existing CI lane
+runner execute those hooks. This is not a guard for arbitrary direct CLI calls
+or commands that deliberately disable hooks.
+Both full and fast gates explicitly execute
 `lockfile:peers:check`, `runtime:policy:typecheck` and `runtime:policy:test`
 after preflight and before preparation. The peer gate validates the committed
 graph with `pnpm peers check --lockfile-only`; strict frozen installation alone
@@ -175,7 +188,7 @@ compiler and the existing strict NodeNext configuration, including
 `exactOptionalPropertyTypes`. Native Node type stripping does not replace that
 gate.
 
-The default Node 26.11.1 and Node 24.21.0 compatibility CI routes each retain five independent
+The default Node 26.11.1 and Node 24.21.0 compatibility CI routes each retain six independent
 lanes on Ubuntu, macOS and Windows, including strict frozen installation,
 committed peer validation, the complete gate union and tracked workspace
 integrity. The governance lane explicitly executes policy typechecking and
@@ -204,10 +217,10 @@ fixture exception on POSIX.
 | Installed mechanism | Applicability and enforcement | Command |
 | --- | --- | --- |
 | Root runtime and committed peers | Dependency-free preflight; explicit strict policy typecheck and tests in full/fast gates; committed peer validation after frozen installation | `pnpm runtime:preflight`, `pnpm lockfile:peers:check`, `pnpm runtime:policy:typecheck`, `pnpm runtime:policy:test` |
-| Source dependencies v3 | Root development tooling, Core, Assembly, lifecycle kernel, resources and conformance; preserve declared roots, generated output and dependency budgets | `pnpm foundation:check` |
+| Source dependencies v3 | Root development tooling, Core, Assembly, lifecycle kernel, resources, conformance and observation; preserve declared roots, generated output and dependency budgets | `pnpm foundation:check` |
 | Source coverage and typed quality | All declared compiler projects; missing inputs fail; the default unknown assertion bridge gate remains active with no admissions | `pnpm quality:coverage:scope`, `pnpm lint:typed` |
-| Suppression governance | All five production source roots, no waivers | `pnpm foundation:check` |
-| Required Node execution | Nine critical identities in two existing files; complete selected file list is bound | `pnpm quality:critical:test` |
+| Suppression governance | All six production source roots, no waivers | `pnpm foundation:check` |
+| Required Node execution | Eleven critical identities in three existing files; complete selected file list is bound | `pnpm quality:critical:test` |
 | Documentation, decisions, workflow and dependency declarations | Existing installed profiles and repository routes remain active | `pnpm foundation:check`, `pnpm docs:protocol:check` |
 | Public API compatibility | Existing v1 profiles and released baselines; baseline mutation guard retained | `pnpm foundation:check`, `pnpm release-owned-files:check` |
 | SDK growth authority | Current installed verifier and disposable qualification; activation remains pending without external authority | `pnpm sdk-growth:check` |

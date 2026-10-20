@@ -1,0 +1,14 @@
+▶ R1. the subscription is released when the subscriber scope closes
+  ✔ no delivery and no new load after close() is called, while the drain is still waiting (9.580577ms)
+✔ R1. the subscription is released when the subscriber scope closes (11.567366ms)
+▶ R6. closing while a load is still running
+  ✔ subscriber scope closes, loader honors abort: abort reaches the loader, complete, no debts (1.428138ms)
+✔ R6. closing while a load is still running (2.031726ms)
+ℹ tests 2
+ℹ suites 2
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 23.855971

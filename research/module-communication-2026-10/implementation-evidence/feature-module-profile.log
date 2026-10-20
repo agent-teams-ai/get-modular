@@ -1,0 +1,244 @@
+TAP version 13
+# Subtest: accepts the checked-in Get Modular adoption profile
+ok 1 - accepts the checked-in Get Modular adoption profile
+  ---
+  duration_ms: 2.80687
+  type: 'test'
+  ...
+# Subtest: rejects the retired snake-case consumer profile schema
+ok 2 - rejects the retired snake-case consumer profile schema
+  ---
+  duration_ms: 0.622536
+  type: 'test'
+  ...
+# Subtest: exposes the qualified nested FMS v1 topology consumed by Foundation
+ok 3 - exposes the qualified nested FMS v1 topology consumed by Foundation
+  ---
+  duration_ms: 0.764399
+  type: 'test'
+  ...
+# Subtest: rejects missing and duplicate governed module records
+ok 4 - rejects missing and duplicate governed module records
+  ---
+  duration_ms: 1.481788
+  type: 'test'
+  ...
+# Subtest: rejects wildcard and mismatched module, source, and test roots
+ok 5 - rejects wildcard and mismatched module, source, and test roots
+  ---
+  duration_ms: 1.442439
+  type: 'test'
+  ...
+# Subtest: pins the accepted Foundation and Docs source versions without age exclusions
+ok 6 - pins the accepted Foundation and Docs source versions without age exclusions
+  ---
+  duration_ms: 11.53345
+  type: 'test'
+  ...
+# Subtest: accepts exactly Foundation 1.7.4 for source and empty pre-production guard inputs
+ok 7 - accepts exactly Foundation 1.7.4 for source and empty pre-production guard inputs
+  ---
+  duration_ms: 1.129618
+  type: 'test'
+  ...
+# Subtest: rejects stale, mismatched, ranged and missing Foundation manifest pins before admission
+ok 8 - rejects stale, mismatched, ranged and missing Foundation manifest pins before admission
+  ---
+  duration_ms: 2.169281
+  type: 'test'
+  ...
+# Subtest: rejects stale and mismatched profile bindings even with the correct manifest
+ok 9 - rejects stale and mismatched profile bindings even with the correct manifest
+  ---
+  duration_ms: 8.951529
+  type: 'test'
+  ...
+# Subtest: matching manifest and profile versions cannot replace the exact Foundation candidate
+ok 10 - matching manifest and profile versions cannot replace the exact Foundation candidate
+  ---
+  duration_ms: 5.225547
+  type: 'test'
+  ...
+# Subtest: admits current Core and Assembly only with the exact Foundation 1.7.4 binding
+ok 11 - admits current Core and Assembly only with the exact Foundation 1.7.4 binding
+  ---
+  duration_ms: 5.901343
+  type: 'test'
+  ...
+# Subtest: rejects central identity and digest drift
+ok 12 - rejects central identity and digest drift
+  ---
+  duration_ms: 0.829397
+  type: 'test'
+  ...
+# Subtest: rejects silent scope and extension-authority drift
+ok 13 - rejects silent scope and extension-authority drift
+  ---
+  duration_ms: 0.468264
+  type: 'test'
+  ...
+# Subtest: accepts ordered conformance states and rejects unsupported status values
+ok 14 - accepts ordered conformance states and rejects unsupported status values
+  ---
+  duration_ms: 1.480436
+  type: 'test'
+  ...
+# Subtest: keeps source admission distinct from structural and runtime conformance
+ok 15 - keeps source admission distinct from structural and runtime conformance
+  ---
+  duration_ms: 0.448975
+  type: 'test'
+  ...
+# Subtest: requires explicit owned deviation records
+ok 16 - requires explicit owned deviation records
+  ---
+  duration_ms: 0.396086
+  type: 'test'
+  ...
+# Subtest: requires profile enforcement in complete and fast gates
+ok 17 - requires profile enforcement in complete and fast gates
+  ---
+  duration_ms: 20.792972
+  type: 'test'
+  ...
+# Subtest: docs quality ignores nested workspace node_modules, not only the root tree
+ok 18 - docs quality ignores nested workspace node_modules, not only the root tree
+  ---
+  duration_ms: 1.519184
+  type: 'test'
+  ...
+# Subtest: rejects Foundation before generation and redundant aggregate preparation
+ok 19 - rejects Foundation before generation and redundant aggregate preparation
+  ---
+  duration_ms: 0.839302
+  type: 'test'
+  ...
+# Subtest: keeps the profile reachable for humans and agents
+ok 20 - keeps the profile reachable for humans and agents
+  ---
+  duration_ms: 0.499871
+  type: 'test'
+  ...
+# Subtest: keeps an empty pre-production repository honestly not-claimed
+ok 21 - keeps an empty pre-production repository honestly not-claimed
+  ---
+  duration_ms: 0.29921
+  type: 'test'
+  ...
+# Subtest: first production package requires the Foundation source-dependency gate
+ok 22 - first production package requires the Foundation source-dependency gate
+  ---
+  duration_ms: 1.771914
+  type: 'test'
+  ...
+# Subtest: first production package cannot use a no-op Foundation alias
+ok 23 - first production package cannot use a no-op Foundation alias
+  ---
+  duration_ms: 0.334292
+  type: 'test'
+  ...
+# Subtest: rejects unknown package identities even with no active publication blockers
+ok 24 - rejects unknown package identities even with no active publication blockers
+  ---
+  duration_ms: 0.292871
+  type: 'test'
+  ...
+# Subtest: rejects publication fields on an otherwise accepted private package
+ok 25 - rejects publication fields on an otherwise accepted private package
+  ---
+  duration_ms: 0.201262
+  type: 'test'
+  ...
+# Subtest: rejects an unmanifested or nested production package root
+ok 26 - rejects an unmanifested or nested production package root
+  ---
+  duration_ms: 0.216836
+  type: 'test'
+  ...
+# Subtest: first production package rejects a package symlink
+ok 27 - first production package rejects a package symlink
+  ---
+  duration_ms: 0.101673
+  type: 'test'
+  ...
+# Subtest: production source outside packages cannot bypass first-package admission
+ok 28 - production source outside packages cannot bypass first-package admission
+  ---
+  duration_ms: 0.092729
+  type: 'test'
+  ...
+# Subtest: production artifact discovery is repository-wide and deterministic
+ok 29 - production artifact discovery is repository-wide and deterministic
+  ---
+  duration_ms: 5.655864
+  type: 'test'
+  ...
+# Subtest: production package symlink discovery does not follow targets
+ok 30 - production package symlink discovery does not follow targets
+  ---
+  duration_ms: 4.604312
+  type: 'test'
+  ...
+# Subtest: admits the accepted export map once no publication blocker remains
+ok 31 - admits the accepted export map once no publication blocker remains
+  ---
+  duration_ms: 0.612971
+  type: 'test'
+  ...
+# Subtest: publication blockers come from the traceability catalog
+ok 32 - publication blockers come from the traceability catalog
+  ---
+  duration_ms: 0.286541
+  type: 'test'
+  ...
+# Subtest: requires the Assembly gates in dependency order in both root commands
+ok 33 - requires the Assembly gates in dependency order in both root commands
+  ---
+  duration_ms: 1.294656
+  type: 'test'
+  ...
+# Subtest: ADR-0023 and ADR-0025 admit historical private and canonical public Assembly shapes
+ok 34 - ADR-0023 and ADR-0025 admit historical private and canonical public Assembly shapes
+  ---
+  duration_ms: 4.473056
+  type: 'test'
+  ...
+# Subtest: profile admission rejects a leaf manifest outside its publication class shape
+ok 35 - profile admission rejects a leaf manifest outside its publication class shape
+  ---
+  duration_ms: 5.606594
+  type: 'test'
+  ...
+# Subtest: requires exactly one historical M2 replay in the contracts gate
+ok 36 - requires exactly one historical M2 replay in the contracts gate
+  ---
+  duration_ms: 0.951671
+  type: 'test'
+  ...
+# Subtest: routes Docs through portable v3 authoring without managed activation
+ok 37 - routes Docs through portable v3 authoring without managed activation
+  ---
+  duration_ms: 4.887278
+  type: 'test'
+  ...
+# Subtest: source admission rejects removed or redirected quality.source-coverage
+ok 38 - source admission rejects removed or redirected quality.source-coverage
+  ---
+  duration_ms: 0.408664
+  type: 'test'
+  ...
+# Subtest: source admission rejects removed or redirected quality.suppression-governance
+ok 39 - source admission rejects removed or redirected quality.suppression-governance
+  ---
+  duration_ms: 0.353832
+  type: 'test'
+  ...
+1..39
+# tests 39
+# suites 0
+# pass 39
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 185.361852

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test, { after } from "node:test";
 import { fileURLToPath } from "node:url";
-import { testAssemblyTypes } from "../../architecture/tooling/test-assembly-types.mjs";
+import { supportedCompilers, testAssemblyTypes } from "../../architecture/tooling/test-assembly-types.mjs";
 
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const standard = await readFile(join(workspace, "docs/architecture/common-assembly.md"), "utf8");
@@ -54,7 +54,7 @@ function exampleFiles(markdown, kind, name) {
 }
 
 const standardExamples = ["host", "instances", "template"];
-const guideExamples = ["project", "resources", "bind", "inputs"];
+const guideExamples = ["project", "resources", "bind", "inputs", "communication"];
 const roots = [];
 after(async () => { await Promise.all(roots.map((directory) => rm(directory, { recursive: true, force: true }))); });
 
@@ -65,7 +65,7 @@ async function compileExample(markdown, kind, name) {
   const root = await realpath(await mkdtemp(join(tmpdir(), "get-modular-standard-examples-")));
   roots.push(root);
   await mkdir(join(root, "node_modules/@get-modular"), { recursive: true });
-  for (const library of ["core", "assembly", "resources", "conformance"]) {
+  for (const library of ["core", "assembly", "resources", "conformance", "observation"]) {
     await symlink(join(workspace, "packages", library), join(root, "node_modules/@get-modular", library), "junction");
   }
   // Test blocks run on node:test.
@@ -85,16 +85,16 @@ async function compileExample(markdown, kind, name) {
     strict: true, exactOptionalPropertyTypes: true, noUncheckedIndexedAccess: true,
     noEmit: true, skipLibCheck: false,
   }, files: [...files.keys()] }));
-  assert.equal(testAssemblyTypes({ directory, project }).length, 4);
+  assert.equal(testAssemblyTypes({ directory, project }).length, supportedCompilers().length * 2);
 }
 
 for (const name of standardExamples) {
-  test(`the Consumer Module Standard example ${name} compiles on both compilers`, { timeout: 600000 }, async () => {
+  test(`the Consumer Module Standard example ${name} compiles on supported compilers`, { timeout: 600000 }, async () => {
     await compileExample(standard, "consumer-standard-example", name);
   });
 }
 for (const name of guideExamples) {
-  test(`the module authoring guide example ${name} compiles on both compilers`, { timeout: 600000 }, async () => {
+  test(`the module authoring guide example ${name} compiles on supported compilers`, { timeout: 600000 }, async () => {
     await compileExample(guide, "module-authoring-example", name);
   });
 }

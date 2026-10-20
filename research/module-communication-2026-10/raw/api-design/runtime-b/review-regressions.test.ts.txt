@@ -1,0 +1,241 @@
+// Post-archive review, 2026-10-17: regressions on the selected B API and the pinned real resources package.
+//   node runtime-b/review-regressions.test.ts
+import assert from "node:assert/strict";
+import { performance } from "node:perf_hooks";
+import { describe, test } from "node:test";
+import { createScope } from "@get-modular/resources";
+import { createStore, delivered, MAX_CASCADE_DEPTH, settled, type ListenerError } from "./observation.ts";
+
+const codeOf = (error: unknown): unknown => (error as { readonly code?: unknown } | null)?.code;
+const world = (name: string) => {
+  const reports: ListenerError[] = [];
+  const host = createScope({ name: "host" });
+  const module = host.resources.child({ name: "consumer" });
+  const store = createStore<{ readonly cursor: number }>({ cursor: 0 }, {
+    name, resources: host.resources, reportError: (report) => { reports.push(report); },
+  });
+  return { host, module, store, facet: store.readonly(), reports };
+};
+
+describe("R16. load result and error callbacks own a complete delivery task", () => {
+  for (const kind of ["onResult", "onError"] as const) {
+    for (const continuation of ["synchronous", "microtask", "nested microtasks", "awaited command"] as const) {
+      test(`${kind}: ${continuation} echo is rejected at the first result`, async () => {
+        const { host, module, store, facet, reports } = world("pages");
+        const thrown: unknown[] = [];
+        let calls = 0;
+        const advance = (cursor: number): undefined => {
+          calls += 1;
+          if (calls >= 5) return undefined; // keep a broken guard finite, without making the expected result pass
+          const write = (): void => { try { store.set({ cursor: cursor + 1 }); } catch (cause) { thrown.push(cause); } };
+          if (continuation === "synchronous") write();
+          else if (continuation === "microtask") queueMicrotask(write);
+          else if (continuation === "nested microtasks") queueMicrotask(() => { queueMicrotask(() => { queueMicrotask(write); }); });
+          else {
+            const command = async (): Promise<void> => { await Promise.resolve(); await Promise.resolve(); write(); };
+            void command(); // the callback itself remains synchronous, as the public type requires
+          }
+          return undefined;
+        };
+        facet.load(facet.read(["cursor"]), {
+          resources: module.resources, name: "consumer/page",
+          loader: async () => { if (kind === "onError") throw new Error("fetch failed"); return "page"; },
+          onLoading: () => undefined,
+          onResult: (_result, { values }) => { if (kind === "onResult") advance(values.cursor); },
+          onError: (_cause, { values }) => { if (kind === "onError") advance(values.cursor); },
+        });
+        try {
+          await settled({ stores: [facet] });
+          assert.equal(calls, 1);
+          assert.equal(store.read(["cursor"]).values.cursor, 0);
+          assert.deepEqual(thrown.map(codeOf), ["observation.delivery.echo"]);
+          assert.deepEqual(reports.map((report) => [report.subscription, codeOf(report.cause)]),
+            [["consumer/page", "observation.delivery.echo"]]);
+        } finally {
+          await host.control.close();
+        }
+      });
+    }
+
+    test(`${kind}: a timer started by the callback is a later independent action`, async () => {
+      const { host, module, store, facet, reports } = world("pages");
+      const thrown: unknown[] = [];
+      let calls = 0;
+      let timerFinished!: () => void;
+      const timer = new Promise<void>((resolve) => { timerFinished = resolve; });
+      const advanceLater = (cursor: number): undefined => {
+        calls += 1;
+        if (cursor === 0) setTimeout(() => {
+          try { store.set({ cursor: 1 }); } catch (cause) { thrown.push(cause); }
+          timerFinished();
+        }, 0);
+        return undefined;
+      };
+      facet.load(facet.read(["cursor"]), {
+        resources: module.resources, name: "consumer/page",
+        loader: async () => { if (kind === "onError") throw new Error("fetch failed"); return "page"; },
+        onLoading: () => undefined,
+        onResult: (_result, { values }) => { if (kind === "onResult") advanceLater(values.cursor); },
+        onError: (_cause, { values }) => { if (kind === "onError") advanceLater(values.cursor); },
+      });
+      try {
+        await timer;
+        await settled({ stores: [facet] });
+        assert.equal(calls, 2);
+        assert.equal(store.read(["cursor"]).values.cursor, 1);
+        assert.deepEqual(thrown, []);
+        assert.deepEqual(reports, []);
+      } finally {
+        await host.control.close();
+      }
+    });
+  }
+
+  test("a load callback and a watcher preserve cascade depth across stores", async () => {
+    const one = world("one");
+    const two = world("two");
+    let attempts = 0;
+    const thrown: unknown[] = [];
+    const send = (store: typeof one.store, cursor: number): undefined => {
+      attempts += 1;
+      if (attempts > MAX_CASCADE_DEPTH + 5) return undefined;
+      try { store.set({ cursor }); } catch (cause) { thrown.push(cause); }
+      return undefined;
+    };
+    one.facet.load(one.facet.read(["cursor"]), {
+      resources: one.module.resources, name: "one/load", loader: async ({ values }) => values.cursor,
+      onLoading: () => undefined, onError: () => undefined,
+      onResult: (cursor) => { queueMicrotask(() => { queueMicrotask(() => { send(two.store, cursor + 1); }); }); },
+    });
+    two.facet.watch(two.facet.read(["cursor"]), {
+      resources: two.module.resources, name: "two/watch",
+      onChange: ({ values }) => { send(one.store, values.cursor + 1); },
+    });
+    try {
+      await settled({ stores: [one.facet, two.facet] });
+      assert.equal(attempts, MAX_CASCADE_DEPTH + 1);
+      assert.deepEqual(thrown.map(codeOf), ["observation.delivery.cascade"]);
+      assert.deepEqual([...one.reports, ...two.reports].map((report) => codeOf(report.cause)), ["observation.delivery.cascade"]);
+    } finally {
+      await one.host.control.close();
+      await two.host.control.close();
+    }
+  });
+});
+
+describe("R17. scheduled load publication stays current and is visible to testing waits", () => {
+  for (const kind of ["onResult", "onError"] as const) {
+    test(`${kind}: a commit before its queued delivery drops the old outcome`, async () => {
+      const { host, module, store, facet } = world("pages");
+      const loading: number[] = [];
+      const published: number[] = [];
+      let finish!: () => void;
+      facet.load(facet.read(["cursor"]), {
+        resources: module.resources, name: "consumer/page",
+        loader: ({ values }) => new Promise<number>((resolve, reject) => {
+          const complete = (): void => { if (kind === "onError") reject(new Error("fetch failed")); else resolve(values.cursor); };
+          if (values.cursor === 0) finish = complete;
+          else complete();
+        }),
+        onLoading: ({ values }) => { loading.push(values.cursor); },
+        onResult: (_result, { values }) => { published.push(values.cursor); },
+        onError: (_cause, { values }) => { published.push(values.cursor); },
+      });
+      try {
+        await delivered({ stores: [facet] });
+        finish();
+        await Promise.resolve(); // the loader has settled and queued its callback; its delivery has not run
+        store.set({ cursor: 1 });
+        await settled({ stores: [facet] });
+        assert.deepEqual(loading, [0, 1]);
+        assert.deepEqual(published, [1]);
+      } finally {
+        await host.control.close();
+      }
+    });
+
+    test(`${kind}: closing before publication drops it and drains the lane`, async () => {
+      const { host, module, facet } = world("pages");
+      const published: unknown[] = [];
+      let finish!: () => void;
+      facet.load(facet.read(["cursor"]), {
+        resources: module.resources, name: "consumer/page",
+        loader: () => new Promise<number>((resolve, reject) => {
+          finish = () => { if (kind === "onError") reject(new Error("fetch failed")); else resolve(1); };
+        }),
+        onLoading: () => undefined,
+        onResult: (value) => { published.push(value); },
+        onError: (cause) => { published.push(cause); },
+      });
+      try {
+        await delivered({ stores: [facet] });
+        finish();
+        await Promise.resolve();
+        const report = await module.control.close();
+        await delivered({ stores: [facet] });
+        await settled();
+        assert.equal(report.complete, true);
+        assert.deepEqual(published, []);
+      } finally {
+        await host.control.close();
+      }
+    });
+
+    test(`${kind}: escalation never turns a completed loader into a drain debt`, async () => {
+      const { host, module, facet } = world("pages");
+      let callbacks = 0;
+      let finish!: () => void;
+      facet.load(facet.read(["cursor"]), {
+        resources: module.resources, name: "consumer/page",
+        loader: () => new Promise<number>((resolve, reject) => {
+          finish = () => { if (kind === "onError") reject(new Error("fetch failed")); else resolve(1); };
+        }),
+        onLoading: () => undefined,
+        onResult: () => { callbacks += 1; },
+        onError: () => { callbacks += 1; },
+      });
+      try {
+        await delivered({ stores: [facet] });
+        finish();
+        await Promise.resolve(); // the outcome is queued for a later task
+        const closing = module.control.close({ escalate: AbortSignal.abort() });
+        // Host cleanup has Promise continuations and synchronous work before the loop returns to its timer phase.
+        for (let step = 0; step < 12; step += 1) await Promise.resolve();
+        const until = performance.now() + 5;
+        while (performance.now() < until) { /* synchronous Host cleanup work */ }
+        const report = await closing;
+        await settled({ stores: [facet] });
+        assert.equal(callbacks, 0);
+        assert.equal(report.complete, true);
+        assert.deepEqual(report.debts, [], "only an actual unfinished loader can produce observation.load.still-running");
+      } finally {
+        await host.control.close();
+      }
+    });
+  }
+
+  for (const filtered of [true, false]) {
+    test(`delivered(${filtered ? "{ stores }" : ""}) includes queued callbacks and their microtasks`, async () => {
+      const { host, module, facet } = world("pages");
+      let finish!: (value: number) => void;
+      let shown: number | undefined;
+      facet.load(facet.read(["cursor"]), {
+        resources: module.resources, name: "consumer/page",
+        loader: () => new Promise<number>((resolve) => { finish = resolve; }),
+        onLoading: () => undefined, onError: () => undefined,
+        onResult: (value) => { queueMicrotask(() => { queueMicrotask(() => { shown = value; }); }); },
+      });
+      try {
+        await delivered({ stores: [facet] });
+        // The wait's first task is queued before publication: it must inspect pending publication, not just dirty stores.
+        const waiting = delivered(filtered ? { stores: [facet] } : {});
+        finish(7);
+        await waiting;
+        assert.equal(shown, 7);
+        await settled({ stores: [facet] });
+      } finally {
+        await host.control.close();
+      }
+    });
+  }
+});

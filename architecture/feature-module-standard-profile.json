@@ -10,7 +10,7 @@
   },
   "scope": {
     "workspaceContainers": ["packages"],
-    "productionRoots": ["packages/core/src", "packages/assembly/src", "packages/lifecycle-kernel/src", "packages/resources/src", "packages/conformance/src"],
+    "productionRoots": ["packages/core/src", "packages/assembly/src", "packages/lifecycle-kernel/src", "packages/resources/src", "packages/conformance/src", "packages/observation/src"],
     "productionModules": [
       {
         "id": "core",
@@ -36,6 +36,11 @@
         "id": "conformance",
         "moduleRoot": "packages/conformance",
         "sourceRoot": "packages/conformance/src"
+      },
+      {
+        "id": "observation",
+        "moduleRoot": "packages/observation",
+        "sourceRoot": "packages/observation/src"
       }
     ]
   },
@@ -87,6 +92,14 @@
           "moduleComposition": "packages/conformance/src/composition",
           "publicEntrypoint": "packages/conformance/src/index.ts",
           "testRoot": "packages/conformance/tests"
+        },
+        {
+          "moduleRoot": "packages/observation",
+          "sourceRoot": "packages/observation/src",
+          "featuresRoot": "packages/observation/src/features",
+          "moduleComposition": "packages/observation/src/composition",
+          "publicEntrypoint": "packages/observation/src/index.ts",
+          "testRoot": "packages/observation/tests"
         }
       ]
     },
@@ -118,6 +131,10 @@
       {
         "id": "module-conformance-kit",
         "authority": "docs/decisions/0033-admit-the-module-conformance-kit.md"
+      },
+      {
+        "id": "module-change-observation",
+        "authority": "docs/decisions/0034-admit-the-module-change-observation-package.md"
       }
     ],
     "deviations": [],
@@ -136,7 +153,7 @@
       "productionRoot": "packages",
       "foundation": {
         "package": "@agent-teams/engineering-foundation",
-        "version": "1.7.4",
+        "version": "1.10.0",
         "command": "agent-teams-foundation check",
         "capability": "architecture.source-dependencies",
         "policy": "architecture/foundation/source-dependencies.yaml"
