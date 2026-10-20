@@ -13,6 +13,9 @@ import { auditM1DeclarationClosure } from './support/m1-declarations-closure.ts'
 // There is deliberately no consumer callback, command override, or pack handle.
 const MAX_FILE = 16 * 1024 * 1024;
 const MAX_SOURCE = 128 * 1024 * 1024;
+// Node 26.11.1's physical Linux x64 executable is 150,047,368 bytes.
+// Executable identity has its own finite budget; source/file budgets stay separate.
+const MAX_NODE_EXECUTABLE = 192 * 1024 * 1024;
 const GENERATED = 'packages/core/src/composition/generated/stage1.ts';
 const keys = ['repositoryRoot', 'exactSourceSHA', 'nodeExecutable', 'npmCLI', 'outputDirectory'];
 const hash = (bytes, algorithm = 'sha256', encoding = 'hex') =>
@@ -66,6 +69,9 @@ async function bytes(path, limit = MAX_FILE) {
   const result = await readFile(path);
   need(result.length <= limit, 'pack.file-budget');
   return result;
+}
+export async function readM3NodeExecutable(path) {
+  return bytes(path, MAX_NODE_EXECUTABLE);
 }
 async function put(path, value) {
   await writeFile(path, value, { flag: 'wx', mode: 0o600 });
@@ -197,7 +203,7 @@ export async function runPackSubject(options) {
     need(npmCLI === join(npmRoot, 'bin', 'npm-cli.js'), 'pack.npm-cli');
     const npmManifest = JSON.parse((await bytes(join(npmRoot, 'package.json'))).toString('utf8'));
     need(npmManifest.name === 'npm' && typeof npmManifest.version === 'string', 'pack.npm-identity');
-    metadata.node = { path: node, version: process.version, sha256: hash(await bytes(node, MAX_SOURCE)) };
+    metadata.node = { path: node, version: process.version, sha256: hash(await readM3NodeExecutable(node)) };
     metadata.npm = { path: npmCLI, version: npmManifest.version, sha256: hash(await bytes(npmCLI)) };
     need((await command(node, [npmCLI, '--version'], join(output, 'home'))).trim()
       === npmManifest.version, 'pack.npm-version');
@@ -251,7 +257,7 @@ export async function runPackSubject(options) {
     need(same(await tracked(), snapshot), 'pack.source-changed');
     need(hash(await bytes(join(root, GENERATED))) === metadata.generatedWiring.sha256, 'pack.wiring-changed');
     need(hash(await bytes(archivePath)) === identity.sha256, 'pack.archive-changed');
-    need(hash(await bytes(node, MAX_SOURCE)) === metadata.node.sha256
+    need(hash(await readM3NodeExecutable(node)) === metadata.node.sha256
       && hash(await bytes(npmCLI)) === metadata.npm.sha256, 'pack.tool-changed');
     metadata.archive = metadata.partialArchive;
     delete metadata.partialArchive;

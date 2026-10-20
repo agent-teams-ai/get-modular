@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { copyFile, cp, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { copyFile, cp, link, mkdir, mkdtemp, open, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -238,4 +239,30 @@ test("M3 retains actual Node 24 cells and binds each controller to its exact com
   assert.throws(() => assertM3NodePin("26.11.1\n", "26.11.1\n", "v24.21.0"), /m3.node.runtime-pin-mismatch/u);
   assert.throws(() => assertM3NodePin("26.11.1-rc.1\n", "26.11.1-rc.1\n", "v26.11.1-rc.1"));
   assert.throws(() => m3NodePinPath("unknown"), /m3.node.unknown-action/u);
+});
+
+test("M3 bounds physical Node bytes separately and retains file custody checks", async () => {
+  const { readM3NodeExecutable } = await import("./qualification/m3-pack-subject.mjs");
+  const executable = await realpath(process.execPath);
+  const observed = await readM3NodeExecutable(executable);
+  const actual = await readFile(executable);
+  assert.equal(observed.length, actual.length);
+  assert.equal(createHash("sha256").update(observed).digest("hex"),
+    createHash("sha256").update(actual).digest("hex"));
+  const temporary = await realpath(await mkdtemp(join(tmpdir(), "gm-m3-node-TEST-")));
+  try {
+    const candidate = join(temporary, "candidate");
+    const handle = await open(candidate, "wx");
+    try { await handle.truncate(192 * 1024 * 1024 + 1); }
+    finally { await handle.close(); }
+    await assert.rejects(readM3NodeExecutable(candidate), /pack.file/u);
+    await writeFile(candidate, "physical executable fixture");
+    await link(candidate, join(temporary, "hardlink"));
+    await assert.rejects(readM3NodeExecutable(candidate), /pack.file/u);
+    await rm(join(temporary, "hardlink"));
+    await symlink(candidate, join(temporary, "alias"), "file");
+    await assert.rejects(readM3NodeExecutable(join(temporary, "alias")), /pack.path-alias/u);
+    await assert.rejects(readM3NodeExecutable(temporary), /pack.file/u);
+    assert.deepEqual(await readM3NodeExecutable(candidate), await readFile(candidate));
+  } finally { await rm(temporary, { recursive: true, force: true }); }
 });
