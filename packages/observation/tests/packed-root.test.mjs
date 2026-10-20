@@ -1,8 +1,9 @@
+import { pinnedPnpmCli } from "../../../tests/qualification/support/pinned-pnpm.ts";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { access, mkdtemp, mkdir, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { delimiter, dirname, join, relative, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { compile, resolutions, supportedCompilers, writeProject } from "./support/compilers.mjs";
@@ -15,25 +16,6 @@ function run(command, args, cwd) {
   assert.equal(result.error, undefined);
   assert.equal(result.status, 0, `${command}: ${result.stderr}\n${result.stdout}`);
   return result.stdout.trim();
-}
-
-async function pinnedPnpmCli() {
-  const candidates = [];
-  if (process.env.npm_execpath && /pnpm\.(?:c?js|mjs)$/u.test(process.env.npm_execpath)) {
-    candidates.push(process.env.npm_execpath);
-  }
-  for (const directory of (process.env.PATH ?? "").split(delimiter)) {
-    try {
-      const target = await realpath(join(directory, "pnpm"));
-      if (/\.(?:c?js|mjs)$/u.test(target)) candidates.push(target);
-    } catch (error) {
-      if (error.code !== "ENOENT" && error.code !== "ENOTDIR") throw error;
-    }
-  }
-  for (const candidate of candidates) {
-    try { await access(candidate); return await realpath(candidate); } catch {}
-  }
-  throw new Error("Pinned pnpm JavaScript CLI is required; no shell/download fallback");
 }
 
 async function javascriptFiles(directory) {
@@ -94,7 +76,7 @@ async function checkTypes(consumer, context) {
 test("T02 T05 T07 T08 T09 T11 T13 T92 T97 T104 T110 T113 T117 exact archives expose two ESM entries sharing one copy", { timeout: 240_000 }, async context => {
   const temporary = await mkdtemp(join(tmpdir(), "observation-pack-"));
   try {
-    const pnpm = await pinnedPnpmCli();
+    const pnpm = await pinnedPnpmCli(resolve(packageRoot, "../.."));
     const consumer = join(temporary, "consumer");
     const sources = {};
     const archives = {};

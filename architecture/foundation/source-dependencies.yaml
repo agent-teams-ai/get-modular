@@ -492,6 +492,7 @@ boundaries:
         - resources-implementation
         - resources-composition
         - resources-public-entrypoint
+        - repository.development
       packages:
         - "@get-modular/resources"
       builtins:
@@ -680,7 +681,8 @@ boundaries:
       - packages/conformance/tests/handle-probe.mjs
       - packages/conformance/tests/types.ts
     allow:
-      boundaries: []
+      boundaries:
+        - repository.development
       packages:
         - "@get-modular/assembly"
         - "@get-modular/core"
@@ -841,7 +843,8 @@ boundaries:
       - packages/observation/tests/types.ts
       - packages/observation/tests/writer-gate.test.ts
     allow:
-      boundaries: []
+      boundaries:
+        - repository.development
       packages:
         - "@get-modular/resources"
       builtins:
@@ -1001,6 +1004,7 @@ boundaries:
       - tests/source-dependencies.test.mjs
       - tests/qualification/lifecycle-tool-prepare.mts
       - tests/qualification/lifecycle-qualification-contracts.mts
+      - tests/qualification/support/pinned-pnpm.ts
     allow:
       boundaries:
         - assembly-examples

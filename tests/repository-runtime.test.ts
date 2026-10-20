@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 import { assertM3NodePin, m3NodePinPath } from "./qualification/support/m3-node-policy.ts";
+import { pinnedPnpmCli } from "./qualification/support/pinned-pnpm.ts";
 import { BUN_VERSION, PNPM_VERSION, project, selectedProfile, toolRuntime } from "../architecture/tooling/runtime/policy.ts";
 
 const repository = resolve(import.meta.dirname, "..");
@@ -117,6 +118,7 @@ test("Node rollback dispatch uses the actual installed pnpm public root export",
   assert.equal(manifest.name, "pnpm");
   assert.equal(manifest.version, PNPM_VERSION);
   assert.deepEqual(manifest.exports, { ".": "./package.json" });
+  assert.equal(await pinnedPnpmCli(repository), await realpath(join(dirname(installed), manifest.bin.pnpm)));
   await fixture(async (root, temporary) => {
     const target = join(temporary, "node-profile");
     assert.equal(run(root, "node", ["architecture/tooling/runtime/dev.ts", "prepare-node", target]).status, 0);
@@ -125,6 +127,7 @@ test("Node rollback dispatch uses the actual installed pnpm public root export",
     const resolver = createRequire(join(target, "package.json"));
     assert.equal(resolver.resolve("pnpm"), await realpath(join(packageRoot, "package.json")));
     assert.throws(() => resolver.resolve("pnpm/package.json"), { code: "ERR_PACKAGE_PATH_NOT_EXPORTED" });
+    assert.equal(await pinnedPnpmCli(target), await realpath(join(packageRoot, manifest.bin.pnpm)));
 
     await put(target, "node_modules/@agent-teams/engineering-foundation/package.json", JSON.stringify({
       name: "@agent-teams/engineering-foundation", version: "2.0.1", type: "module",
@@ -152,12 +155,28 @@ test("Node rollback dispatch uses the actual installed pnpm public root export",
       const rejected = run(target, "node", args);
       assert.notEqual(rejected.status, 0);
       assert.match(rejected.stderr, /runtime.pnpm.installed-pin/u);
+      await assert.rejects(pinnedPnpmCli(target), /packed.pnpm.installed-(?:name|version|bin)/u);
     }
     await writeFile(join(packageRoot, "package.json"), JSON.stringify(manifest));
     await writeFile(join(packageRoot, manifest.bin.pnpm), "console.log('11.19.0');\n");
     const wrongCli = run(target, "node", args);
     assert.notEqual(wrongCli.status, 0);
     assert.match(wrongCli.stderr, /runtime.pnpm.installed-identity/u);
+    await assert.rejects(pinnedPnpmCli(target), /packed.pnpm.installed-identity/u);
+    for (const bin of ["../outside.mjs", "/outside.mjs", "C:/outside.mjs", "https://host/pnpm.mjs",
+      "bin/pnpm.cmd", "bin/pnpm.mjs --help", "bin/../pnpm.mjs", "bin/pnpm.mjs\n"]) {
+      await writeFile(join(packageRoot, "package.json"), JSON.stringify({ ...manifest, bin: { pnpm: bin } }));
+      await assert.rejects(pinnedPnpmCli(target), /packed.pnpm.installed-bin/u);
+    }
+    const outside = join(temporary, "outside.mjs"), marker = join(temporary, "outside-executed");
+    await writeFile(outside, `import { writeFileSync } from "node:fs"; writeFileSync(${JSON.stringify(marker)}, "ran"); console.log("11.20.0");\n`);
+    await symlink(outside, join(packageRoot, "bin/escaped.mjs"), "file");
+    await writeFile(join(packageRoot, "package.json"), JSON.stringify({ ...manifest, bin: { pnpm: "bin/escaped.mjs" } }));
+    await assert.rejects(pinnedPnpmCli(target), /packed.pnpm.installed-path/u);
+    await assert.rejects(readFile(marker), { code: "ENOENT" });
+    await mkdir(join(packageRoot, "bin/directory.mjs"));
+    await writeFile(join(packageRoot, "package.json"), JSON.stringify({ ...manifest, bin: { pnpm: "bin/directory.mjs" } }));
+    await assert.rejects(pinnedPnpmCli(target), /packed.pnpm.installed-path/u);
   });
 });
 

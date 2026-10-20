@@ -1,3 +1,4 @@
+import { pinnedPnpmCli } from "../qualification/support/pinned-pnpm.ts";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readPackageArchive } from "../qualification/support/package-archive.mjs";
@@ -33,6 +34,7 @@ test("retained Assembly manifest rejects metadata drift beyond dependency rewrit
 });
 
 async function packageManagerCli(name) {
+  if (name === "pnpm") return pinnedPnpmCli(workspace);
   const node = await realpath(process.execPath);
   const candidates = name === "npm" ? [
     join(dirname(node), "node_modules/npm/bin/npm-cli.js"),
