@@ -94,9 +94,9 @@ optional public conformance module, and `ADR-0034` the optional public observati
 
 ## Enforcement
 
-`pnpm architecture:feature-module-profile` verifies the pinned standard,
+`bun run architecture:feature-module-profile` verifies the pinned standard,
 repository mapping, local authorities, navigation, gate wiring, and explicit
-qualification states. `pnpm governance:check` uses the same repository-wide
+qualification states. `bun run governance:check` uses the same repository-wide
 production-artifact inventory. It always rejects production artifacts outside
 `packages`. Accepted ADR-0015 admits source only inside a package identity
 accepted by ADR-0003, ADR-0023, the bounded ADR-0029 successor, ADR-0030, ADR-0033 or ADR-0034 and, on its
@@ -155,7 +155,7 @@ explicit configuration triggers. Root Markdown-only edits retain `docs:changed`;
 the existing `docs` and `architecture` full-scan triggers remain.
 A mixed docs and code change still runs the code gate. Version 1 changed reports
 are editing feedback: their `coverage: changed` label does not claim that typed
-lint or the full gate ran. `pnpm check` remains the complete required gate.
+lint or the full gate ran. `bun run check` remains the complete required gate.
 This corrects routing inside the existing development-tooling boundary; it adds
 no production composition node, consumer adoption scope or public contract.
 
@@ -288,7 +288,7 @@ pass on both before merge; this document records no CI result for any head. This
 and repository gate declare no managed cohort binding, installer authorization,
 production qualification of a product or release eligibility.
 
-`pnpm quality:critical:test` runs the existing source dependency and quality
+`bun run quality:critical:test` runs the existing source dependency and quality
 activation entries through `agent-teams-node-test`. Its consumer checker binds
 the complete selected file command and the SHA-256 of the reviewed required
 identity contract. Fast and full gates execute this route; other tests retain
@@ -299,17 +299,17 @@ fixture exception on POSIX.
 
 | Installed mechanism | Applicability and enforcement | Command |
 | --- | --- | --- |
-| Root runtime and committed peers | Dependency-free preflight; explicit strict policy typecheck and tests in full/fast gates; committed peer validation after frozen installation | `pnpm runtime:preflight`, `pnpm lockfile:peers:check`, `pnpm runtime:policy:typecheck`, `pnpm runtime:policy:test` |
-| Source dependencies v3 | Root development tooling, Core, Assembly, lifecycle kernel, resources, conformance and observation; preserve declared roots, generated output and dependency budgets | `pnpm foundation:check` |
-| Source coverage and typed quality | All declared compiler projects; missing inputs fail; the default unknown assertion bridge gate remains active with no admissions | `pnpm quality:coverage:scope`, `pnpm lint:typed` |
-| Suppression governance | All six production source roots, no waivers | `pnpm foundation:check` |
-| Required Node execution | Eleven critical identities in three existing files; complete selected file list is bound | `pnpm quality:critical:test` |
-| Documentation, decisions, workflow and dependency declarations | Existing installed profiles and repository routes remain active | `pnpm foundation:check`, `pnpm docs:protocol:check` |
-| Public API compatibility | Existing v1 profiles and released baselines; baseline mutation guard retained | `pnpm foundation:check`, `pnpm release-owned-files:check` |
-| SDK growth authority | Current installed verifier and disposable qualification; activation remains pending without external authority | `pnpm sdk-growth:check` |
-| JSON schema release evolution and executable specifications | No installed release profile/catalog adopted; current immutable contracts use their existing owner gates | `pnpm contracts:check`, `pnpm governance:check` |
+| Root runtime and committed peers | Dependency-free preflight; explicit strict policy typecheck and tests in full/fast gates; committed peer validation after frozen installation | `bun run runtime:preflight`, `bun run lockfile:peers:check`, `bun run runtime:policy:typecheck`, `bun run runtime:policy:test` |
+| Source dependencies v3 | Root development tooling, Core, Assembly, lifecycle kernel, resources, conformance and observation; preserve declared roots, generated output and dependency budgets | `bun run foundation:check` |
+| Source coverage and typed quality | All declared compiler projects; missing inputs fail; the default unknown assertion bridge gate remains active with no admissions | `bun run quality:coverage:scope`, `bun run lint:typed` |
+| Suppression governance | All six production source roots, no waivers | `bun run foundation:check` |
+| Required Node execution | Eleven critical identities in three existing files; complete selected file list is bound | `bun run quality:critical:test` |
+| Documentation, decisions, workflow and dependency declarations | Existing installed profiles and repository routes remain active | `bun run foundation:check`, `bun run docs:protocol:check` |
+| Public API compatibility | Existing v1 profiles and released baselines; baseline mutation guard retained | `bun run foundation:check`, `bun run release-owned-files:check` |
+| SDK growth authority | Current installed verifier and disposable qualification; activation remains pending without external authority | `bun run sdk-growth:check` |
+| JSON schema release evolution and executable specifications | No installed release profile/catalog adopted; current immutable contracts use their existing owner gates | `bun run contracts:check`, `bun run governance:check` |
 | Protobuf, property testing and repository security capabilities | No adopted capability profiles; no protobuf production root or property-testing toolchain is declared | Review `foundation.config.yaml` and `package.json` |
-| Scaffolding, local mode and native managed processes | No requested scaffold owner, native boundary or managed adapter; registry mode remains required | `pnpm foundation:assert-registry` |
+| Scaffolding, local mode and native managed processes | No requested scaffold owner, native boundary or managed adapter; registry mode remains required | `bun run foundation:assert-registry` |
 
 The gate resolves the checked-in `foundation:check` script to that actual
 Foundation command, so replacing the script with a successful no-op cannot

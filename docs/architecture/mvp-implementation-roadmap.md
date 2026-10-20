@@ -222,7 +222,7 @@ through `.node-version`; the owner authorized this cutover before Node 26 LTS
 status, and the supported Node 24.21.0 compatibility jobs use the same five-lane
 matrix on all three operating systems. Every checkout performs strict frozen
 installation with lifecycle scripts disabled, followed by
-`pnpm lockfile:peers:check`. Each lane runs pure runtime preflight and governance
+`node architecture/tooling/runtime/dev.ts peers`. Each lane runs pure runtime preflight and governance
 before explicit builds; later checks retain the builds of Assembly and every
 leaf package. The governance lane retains the ownership checkpoint before
 runtime preflight, then explicitly runs runtime policy typechecking and tests
