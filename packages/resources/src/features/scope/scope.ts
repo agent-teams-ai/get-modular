@@ -21,6 +21,11 @@ type Flight = {
   readonly finish: (report: CloseReport) => void;
   readonly unlink: (() => void)[]; // caller escalate listeners, removed when the flight settles
 };
+type AbortNotifications = {
+  depth: number;
+  draining: boolean;
+  readonly pending: { readonly node: ScopeNode; readonly flight: Flight }[];
+};
 
 const freeze = Object.freeze;
 const COMPLETE: CloseReport = freeze({ complete: true, settled: true, debts: freeze([]) });
@@ -38,6 +43,7 @@ class ScopeNode {
   readonly #parent: ScopeNode | undefined;
   readonly #entry: Entry | undefined;
   readonly #order: Order;
+  readonly #notifications: AbortNotifications;
   readonly #setupAbort = new AbortController();
   readonly #children = new Set<ScopeNode>(); // registry: signals walk it, children never subscribe to the parent
   readonly #pending = new Set<PendingSetup>();
@@ -46,6 +52,7 @@ class ScopeNode {
   #tombstones = 0;
   #failed: Entry[] = []; // attempted and failed, in attempt order
   #requested = false;
+  #requestNotified = false;
   #detached = false;
   #flight: Flight | undefined;
 
@@ -53,6 +60,7 @@ class ScopeNode {
     this.path = freeze([...(parent?.path ?? []), name]);
     this.#parent = parent;
     this.#order = order;
+    this.#notifications = parent ? parent.#notifications : { depth: 0, draining: false, pending: [] };
     if (parent && parent.#setupAbort.signal.aborted) {
       this.#setupAbort.abort(parent.#setupAbort.signal.reason);
     }
@@ -160,9 +168,14 @@ class ScopeNode {
     if (this.#setupAbort.signal.aborted) {
       return;
     }
-    this.#setupAbort.abort(reason);
-    for (const child of this.#children) {
-      child.#abortSetups(reason);
+    this.#notifications.depth += 1;
+    try {
+      this.#setupAbort.abort(reason);
+      for (const child of this.#children) {
+        child.#abortSetups(reason);
+      }
+    } finally {
+      this.#finishNotification();
     }
   }
 
@@ -171,11 +184,44 @@ class ScopeNode {
       return;
     }
     this.#requested = true;
-    if (!this.#setupAbort.signal.aborted) {
-      this.#setupAbort.abort(new ScopeClosedError(this.path));
-    }
     for (const child of this.#children) {
       child.#request();
+    }
+  }
+
+  #abortRequested(): void {
+    if (this.#requestNotified) {
+      return;
+    }
+    this.#requestNotified = true; // a reentrant close joins without restarting this walk
+    this.#notifications.depth += 1;
+    try {
+      if (!this.#setupAbort.signal.aborted) {
+        this.#setupAbort.abort(new ScopeClosedError(this.path));
+      }
+      for (const child of this.#children) {
+        child.#abortRequested();
+      }
+    } finally {
+      this.#finishNotification();
+    }
+  }
+
+  #finishNotification(): void {
+    const notifications = this.#notifications;
+    notifications.depth -= 1;
+    if (notifications.depth !== 0 || notifications.draining) {
+      return;
+    }
+    notifications.draining = true;
+    try {
+      // Reentrant ancestor closes wait for every pending native abort listener in this tree.
+      for (const pending of notifications.pending) {
+        void pending.node.#run(pending.flight);
+      }
+    } finally {
+      notifications.pending.length = 0;
+      notifications.draining = false;
     }
   }
 
@@ -195,17 +241,18 @@ class ScopeNode {
     this.#request();
     const started = this.#flight === undefined;
     const flight = this.#flight ?? this.#open();
-    if (flight === undefined) {
-      return Promise.resolve(COMPLETE);
-    }
-    if (escalate && !flight.escalate.signal.aborted) {
+    if (flight && escalate && !flight.escalate.signal.aborted) {
       const unlink = follow(escalate, () => { this.#escalateTree(escalate.reason); });
       if (unlink !== noop) {
         flight.unlink.push(unlink);
       }
     }
+    this.#abortRequested(); // sealed subtree and published escalation precede user abort listeners
+    if (flight === undefined) {
+      return Promise.resolve(COMPLETE);
+    }
     if (started) {
-      void this.#run(flight); // after escalate is linked: the first cleanup already sees it
+      this.#start(flight); // after escalate is linked: the first cleanup already sees it
     }
     if (abandon === undefined) {
       return flight.done;
@@ -230,16 +277,26 @@ class ScopeNode {
     this.#request();
     const started = this.#flight === undefined;
     const flight = this.#flight ?? this.#open();
-    if (flight === undefined) {
-      return Promise.resolve(COMPLETE);
-    }
     if (escalated.aborted) {
       this.#escalateTree(escalated.reason);
     }
+    this.#abortRequested();
+    if (flight === undefined) {
+      return Promise.resolve(COMPLETE);
+    }
     if (started) {
-      void this.#run(flight);
+      this.#start(flight);
     }
     return flight.done;
+  }
+
+  #start(flight: Flight): void {
+    const notifications = this.#notifications;
+    if (notifications.depth > 0 || notifications.draining) {
+      notifications.pending.push({ node: this, flight });
+      return;
+    }
+    void this.#run(flight);
   }
 
   #open(): Flight | undefined {

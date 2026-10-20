@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "ESNext.Disposable", "ESNext.Promise", "DOM"],
+    "types": ["node"],
+    "allowImportingTsExtensions": true,
+    "isolatedDeclarations": false,
+    "skipLibCheck": false,
+    "noEmit": true
+  },
+  "files": ["tests/close-reentrancy.test.ts", "tests/close-reentrancy-suite.ts"],
+  "include": []
+}

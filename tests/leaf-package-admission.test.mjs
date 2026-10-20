@@ -244,6 +244,7 @@ test("the resources row keeps its reviewed public class, tests and command chain
   assert.equal(String(resources.version), "/^0\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$/u");
   assert.deepEqual(resources.requiredTests, [
     "packages/resources/tests/scope.test.mjs",
+    "packages/resources/tests/close-reentrancy.test.ts",
     "packages/resources/tests/packed-root.test.mjs",
   ]);
   assert.deepEqual(Object.keys(resources.commands),
@@ -251,7 +252,7 @@ test("the resources row keeps its reviewed public class, tests and command chain
   assert.equal(resources.commands["resources:typecheck"],
     "node node_modules/typescript/bin/tsc -p packages/resources/tsconfig.json --noEmit"
     + " && node architecture/tooling/test-assembly-types.mjs --projects packages/resources/tsconfig.types.json"
-    + " packages/resources/tsconfig.types.bundler.json");
+    + " packages/resources/tsconfig.types.bundler.json packages/resources/tsconfig.test-tooling.json");
   assert.match(resources.commands["resources:test"], /tests\/resources\/assembly-scope\.test\.mjs/u);
   assert.equal(resources.gate, "resources:check");
   for (const version of ["0.0.0", "0.1.0", "0.12.3"]) assert.match(version, resources.version);

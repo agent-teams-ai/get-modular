@@ -26,8 +26,8 @@
   "files": ["dist", "LICENSE", "README.md", "CHANGELOG.md"],
   "scripts": {
     "build": "node ../../architecture/tooling/build-leaf-package.mjs resources",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.types.json && tsc -p tsconfig.types.bundler.json",
-    "test": "node --test tests/*.test.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.types.json && tsc -p tsconfig.types.bundler.json && tsc -p tsconfig.test-tooling.json",
+    "test": "node --test tests/*.test.mjs tests/*.test.ts",
     "check": "pnpm build && pnpm typecheck && pnpm test"
   }
 }
