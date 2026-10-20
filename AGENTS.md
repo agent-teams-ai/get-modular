@@ -93,6 +93,12 @@ adoption profiles. This reference does not change pinned architecture contracts
 or certify existing code as conformant.
 <!-- agent-teams:quality-standard:end -->
 
+## Consumer Module Standard maintenance
+
+Mandatory for every change to module boundaries, capability contracts, composition, lifecycle ownership, adoption profiles or their gates: read the canonical Get Modular Consumer Module Standard (`docs/architecture/common-assembly.md#consumer-module-standard` in agent-teams-ai/get-modular). Update its current guidance/examples when shared behavior changes, and update affected consumer profiles, documentation and rejecting tests in the same delivery. Do not duplicate the standard or silently replace accepted ADR bytes.
+
+Before implementation, compare the consumer's pinned revision with the current upstream standard; review the delta and migrate the pin with its retained evidence and checks. Never silently follow a moving main revision. If migration is not yet complete, record the exact outstanding work and keep adoption pending. A task is not done with stale guidance, an unreviewed pin, or a no-op/missing enforcement command. New meaningful composition boundaries must be adopted or explicitly classified; feature-local helpers are not separate graph nodes.
+
 ## TypeScript authoring
 
 Write new maintained source, tests and tooling in TypeScript 7.0.2 or newer;
