@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 import { assertM3NodePin, m3NodePinPath } from "./qualification/support/m3-node-policy.ts";
-import { BUN_VERSION, project, selectedProfile, toolRuntime } from "../architecture/tooling/runtime/policy.ts";
+import { BUN_VERSION, PNPM_VERSION, project, selectedProfile, toolRuntime } from "../architecture/tooling/runtime/policy.ts";
 
 const repository = resolve(import.meta.dirname, "..");
 const env = { ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")
@@ -102,6 +103,45 @@ test("Node rollback derives only manager metadata in an external checkout and re
     assert.notEqual(run(root, "node", ["architecture/tooling/runtime/dev.ts", "prepare-node", target]).status, 0);
     assert.notEqual(run(root, "node", ["architecture/tooling/runtime/command.ts", "run", "observe"],
       { GET_MODULAR_RUNTIME_PROFILE: "node" }).status, 0, "Node must refuse the Bun installation root");
+  });
+});
+
+test("Node rollback dispatch uses the actual installed pnpm public root export", async () => {
+  const installed = createRequire(join(repository, "package.json")).resolve("pnpm");
+  const manifest = JSON.parse(await readFile(installed, "utf8"));
+  assert.equal(manifest.name, "pnpm");
+  assert.equal(manifest.version, PNPM_VERSION);
+  assert.deepEqual(manifest.exports, { ".": "./package.json" });
+  await fixture(async (root, temporary) => {
+    const target = join(temporary, "node-profile");
+    assert.equal(run(root, "node", ["architecture/tooling/runtime/dev.ts", "prepare-node", target]).status, 0);
+    const packageRoot = join(target, "node_modules/pnpm");
+    await cp(dirname(installed), packageRoot, { recursive: true, dereference: true });
+    const resolver = createRequire(join(target, "package.json"));
+    assert.equal(resolver.resolve("pnpm"), join(packageRoot, "package.json"));
+    assert.throws(() => resolver.resolve("pnpm/package.json"), { code: "ERR_PACKAGE_PATH_NOT_EXPORTED" });
+
+    const args = ["architecture/tooling/runtime/command.ts", "run", "observe"];
+    const control = run(target, "node", args, {
+      pnpm_config_verify_deps_before_run: "false", npm_config_offline: "true", COREPACK_ENABLE_NETWORK: "0",
+    });
+    assert.equal(control.status, 0, control.stdout + control.stderr);
+    const observation = control.stdout.trim().split(/\r?\n/u).find(line => line.startsWith("{\"node\":"));
+    assert.ok(observation, control.stdout);
+    assert.deepEqual(JSON.parse(observation), { node: process.versions.node, bun: null });
+
+    for (const mutation of [{ ...manifest, name: "other" }, { ...manifest, version: "11.19.0" },
+      { ...manifest, bin: {} }]) {
+      await writeFile(join(packageRoot, "package.json"), JSON.stringify(mutation));
+      const rejected = run(target, "node", args);
+      assert.notEqual(rejected.status, 0);
+      assert.match(rejected.stderr, /runtime.pnpm.installed-pin/u);
+    }
+    await writeFile(join(packageRoot, "package.json"), JSON.stringify(manifest));
+    await writeFile(join(packageRoot, manifest.bin.pnpm), "console.log('11.19.0');\n");
+    const wrongCli = run(target, "node", args);
+    assert.notEqual(wrongCli.status, 0);
+    assert.match(wrongCli.stderr, /runtime.pnpm.installed-identity/u);
   });
 });
 

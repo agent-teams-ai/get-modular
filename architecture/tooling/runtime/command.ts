@@ -20,11 +20,12 @@ export function pnpm(args: readonly string[], cwd = repository): number {
   // preserves argv on Windows without sending caller paths through cmd.exe.
   const require = createRequire(resolve(repository, "package.json"));
   let installed: string | undefined;
-  try { installed = require.resolve("pnpm/package.json"); }
+  // pnpm exposes its package metadata through ".", not "./package.json".
+  try { installed = require.resolve("pnpm"); }
   catch (error) { if (!(error instanceof Error) || !("code" in error) || error.code !== "MODULE_NOT_FOUND") throw error; }
   if (installed) {
     const manifest = JSON.parse(readFileSync(installed, "utf8"));
-    if (manifest.version !== PNPM_VERSION || typeof manifest.bin?.pnpm !== "string") throw new Error("runtime.pnpm.installed-pin");
+    if (manifest.name !== "pnpm" || manifest.version !== PNPM_VERSION || typeof manifest.bin?.pnpm !== "string") throw new Error("runtime.pnpm.installed-pin");
     const cli = resolve(dirname(installed), manifest.bin.pnpm);
     const observed = spawnSync("node", [cli, "--pm-on-fail=ignore", "--version"], { cwd, encoding: "utf8" });
     if (observed.error || observed.status !== 0 || observed.stdout.trim() !== PNPM_VERSION) throw new Error("runtime.pnpm.installed-identity");
