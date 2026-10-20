@@ -296,3 +296,61 @@ evidence.
 
 This growth run selected no source scanner, so its source conformance remains
 **incomplete**. P4's selected flat source observations are a separate result.
+
+## Separate growth source qualification
+
+`source.ts` supplies the source-only follow-up for the existing flat growth
+recipe. It reuses P4's independent directory inventory and `checkFlatSource`
+adapter: the installed public Foundation graph supplies actual files, resolved
+imports and runtime export facts; the public FMS kernel checks the declared
+feature surfaces; public Get Modular conformance checks the CMS layout records.
+The installed Foundation source-dependency CLI separately enforces the role,
+package and builtin policy over all of `src`. Five aggregate role boundaries
+do not replace FMS's per-feature privacy, use-edge and cycle checks.
+
+The new TEST profile separately records the reviewed current CMS at Get Modular
+commit `077434e34d75506a610bc9271f8b5b9d5718c876`,
+`docs/architecture/common-assembly.md#consumer-module-standard`, Git blob
+`ae6792543bd19acc948e177e8d55632c9d51134e`, full-document SHA-256
+`c2fe582a14ff6e79620b232ca7ffc914afb0474ec21fd43f208251dd7252f4a3`.
+The existing `compositionContracts` reference
+`bd949a9a670862fea851a7791fce772fdef3b4fc` identifies organization FMS v1.1,
+not an earlier CMS document; it remains unchanged alongside the adopted FMS v1
+and selected kernel identities.
+
+The historical P4 CMS observation at `a3a079b` / `2f1b330` was blob
+`250f312d3cae733935d0ac48ddde8502665417df`, full-document SHA-256
+`e5cb510c5ea83e54a6833cc40b6ad31fc5cf8c70d9838e4e0c6923edc6f70919`.
+Review of the delta found the optional Observation communication, scope-bound
+watch/load and disposer guidance, its testing-import restriction and linked
+checks. The flat feature maps, role and descriptor surfaces, inputs, groups and
+selected source predicates are unchanged. This follow-up changes no accepted
+ADR, production adoption or dependency pin; nested and dynamic/Observation
+consumers remain unselected. Growth's application and public-contract policy
+allows no package or builtin dependency.
+
+The ordinary Assembly entry adds one source-only N8 check and eight controls
+for the new growth mapping: public/private sibling surfaces, application imports
+of descriptors, input ownership, module-level composition permission,
+an actual type-use cycle, a use-case runtime export and application-to-Assembly
+dependency refusal. Both the owner's rejecting verdict and the overall rejection
+must accompany each required diagnostic. Existing P4 parser, computed-load,
+re-export, root, overflow and filesystem-policy cases retain their unchanged
+owner/adapter witnesses; this is not another syntax matrix.
+
+Historical large-tree qualification uses physical copies of retained subjects.
+It first verifies the actual final shared-contract-edit identity and every
+recorded `after` file, then reverses exactly the six recorded edits in the copy
+and requires the original cold source SHA, census and bytes. The source graph,
+independent disk census and complete expected `7N+3` file list must agree.
+Observed predecessor type-map imports and declaration value imports separately
+match the independent recipe; expected edges never substitute for observed
+source facts. The original consumer trees and historical reports stay immutable.
+
+The declared scanner budgets are 60 seconds per positive source chain,
+30 seconds per Foundation policy subprocess and 600 seconds for an external
+aggregate supervisor enclosing copy, restoration, hashing and scanner work.
+One retained baseline per selected size is inspected in order, without repeating
+the compiler or runtime experiments. The new source observations qualify only
+their exact copied source identities; they do not relabel historical
+`scanner: not-collected` fields or resolve the supported TS7.0.2 compiler blocker.
