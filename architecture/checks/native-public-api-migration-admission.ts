@@ -8,7 +8,7 @@ export const capabilityInventory = [
   ["architecture.source-dependencies", 3], ["documentation.local-references", 1],
   ["governance.architecture-decisions", 1], ["package.public-api-compatibility", 1],
   ["quality.source-coverage", 1], ["quality.suppression-governance", 1],
-  ["repository.agent-workflow", 1], ["workspace.dependency-declarations", 1],
+  ["repository.agent-workflow", 2], ["workspace.dependency-declarations", 1],
 ];
 export interface InvocationResult { readonly stdout: string; readonly stderr: string; readonly exitCode: number }
 export interface InputPins {
