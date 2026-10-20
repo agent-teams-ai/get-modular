@@ -30,12 +30,7 @@ fullScanPaths:
   - .cspell.json
   - .markdownlint-cli2.jsonc
   - tsconfig.base.json
-  - packages/core/package.json
-  - packages/core/tsconfig.json
-  - packages/core/tsconfig.seed.json
-  - packages/core/tsconfig.stage0.json
-  - packages/core/tsconfig.test.json
-  - packages/core/tsconfig.typecheck.json
+  - packages/core
   - packages/assembly/tsconfig.json
   - packages/assembly/package.json
   - packages/assembly/tsconfig.types.json

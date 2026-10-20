@@ -158,6 +158,10 @@ script. The legacy `changedChecks` code/docs mappings remain for the separately
 tested `agent-workflow changed` command; they do not describe the successor's
 coverage plan.
 
+The legacy full-scan list groups Core metadata under `packages/core` to retain
+all six previous metadata triggers within the 64-entry policy limit. Every
+Core descendant, including its documentation, now selects fast-full escalation.
+
 The successor emits report schema v2 with explicit planned checks, per-path
 coverage and input custody. When a selected check passes but mutable input
 binding is unverified, its outcome is `feedback-only`, with reason

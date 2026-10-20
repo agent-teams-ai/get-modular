@@ -59,6 +59,11 @@ const currentPolicy: unknown = parse(
   await readFile(new URL("../architecture/foundation/repository-agent-workflow.yaml", import.meta.url), "utf8"),
 );
 assert.ok(isRecord(currentPolicy));
+const coreMetadataPaths = [
+  "packages/core/package.json", "packages/core/tsconfig.json",
+  "packages/core/tsconfig.seed.json", "packages/core/tsconfig.stage0.json",
+  "packages/core/tsconfig.test.json", "packages/core/tsconfig.typecheck.json",
+] as const;
 const historicalPolicy = {
   ...currentPolicy,
   changedChecks: [{ id: "docs", script: "docs:changed", extensions: [".md", ".yaml", ".yml"], passPaths: false }],
@@ -165,6 +170,25 @@ function codeStep(report: ChangedReport): Step {
   return step;
 }
 
+test("full-scan roots retain Core metadata coverage within the published schema bound", async () => {
+  const schema: unknown = JSON.parse(await readFile(
+    join(dirname(foundationPath), "schemas/repository-agent-workflow/v2.schema.json"), "utf8",
+  ));
+  assert.ok(isRecord(schema) && isRecord(schema.properties) && isRecord(schema.properties.fullScanPaths));
+  const maximum = schema.properties.fullScanPaths.maxItems;
+  assert.ok(typeof maximum === "number");
+  assert.equal(maximum, 64);
+  const paths = currentPolicy.fullScanPaths;
+  assert.ok(isStrings(paths));
+  assert.equal(paths.length, 64);
+  assert.ok(paths.length <= maximum);
+  assert.equal(new Set(paths).size, paths.length);
+  assert.ok(paths.includes("packages/core"));
+  for (const path of coreMetadataPaths) {
+    assert.ok(paths.some(prefix => path === prefix || path.startsWith(`${prefix}/`)), path);
+  }
+});
+
 test("changed workflow rejects invalid TypeScript through published Foundation", async () => {
   // The real compiler control makes a vacuous fixture or recording stub fail.
   await fixture(historicalPolicy, async root => {
@@ -205,10 +229,10 @@ test("changed workflow rejects invalid TypeScript through published Foundation",
 });
 
 test("changed workflow escalates compiler and check configuration", async () => {
-  // An existing project error must be exposed after a config-only edit.
+  // Every full-scan trigger, including non-code Core files, must expose an existing project error.
   for (const path of [
-    "tsconfig.base.json", "packages/core/tsconfig.typecheck.json",
-    "packages/core/package.json",
+    "tsconfig.base.json", ...coreMetadataPaths,
+    "packages/core/README.md",
     "packages/assembly/tsconfig.json", "packages/lifecycle-kernel/tsconfig.json",
     "packages/resources/tsconfig.json", "packages/conformance/tsconfig.json",
     "tests/tsconfig.tooling-node-policy.json", ".oxlintrc.json", ".npmrc",
@@ -247,7 +271,7 @@ interface CheckChangedReport {
   readonly reason: string;
   readonly inputCustody: CheckChangedCustody;
   readonly plannedChecks: readonly { readonly id: string; readonly target: string; readonly reason: string }[];
-  readonly steps: readonly { readonly id: string; readonly script: string; readonly exitCode: number | null }[];
+  readonly steps: readonly { readonly id: string; readonly script: string; readonly exitCode: number | null; readonly qualifiedFacets: readonly string[] }[];
   readonly coverage: readonly { readonly path: string; readonly facet: string | null; readonly state: string; readonly checkIds: readonly string[] }[];
 }
 
@@ -294,28 +318,39 @@ test("check-changed reports v2 repository coverage with unverified mutable custo
     const row = report.coverage.find(candidate => candidate.path === "src/index.ts");
     assert.ok(row, JSON.stringify(report.coverage));
     assert.deepEqual(row.checkIds, ["repository"]);
+    for (const step of report.steps) assert.deepEqual(step.qualifiedFacets, []);
+    assert.ok(report.coverage.every(candidate => candidate.state !== "checked"), JSON.stringify(report.coverage));
   });
 });
 
-test("check-changed rejects a v1-only policy and demands the v2 migration", async () => {
-  const v1Only: Record<string, unknown> = {
-    schemaVersion: 1,
-    instructions: currentPolicy.instructions,
-    scripts: currentPolicy.scripts,
-    changedChecks: [{ id: "docs", script: "docs:changed", extensions: [".md", ".yaml", ".yml"], passPaths: false }],
-    fullScanPaths: [],
-  };
-  await fixture(v1Only, async root => {
-    await put(root, "src/index.ts", 'export const answer: string = "43";\n');
-    git(root, "checkout", "-b", "test-change");
-    git(root, "add", "--all");
-    git(root, "commit", "--message", "test: change source");
-    const result = spawnSync(process.execPath, [
-      cli, "agent-workflow", "check-changed", "--consumer", root,
-      "--base", "refs/heads/main", "--format", "json",
-    ], { env: identity, encoding: "utf8", timeout: 30_000, maxBuffer: 2_000_000 });
-    assert.equal(result.error, undefined, result.stderr);
-    assert.notEqual(result.status, 0);
-    assert.match(result.stdout + result.stderr, /check-changed requires repository-agent-workflow\/v2/u);
-  });
+test("check-changed rejects v1 and legacy v2 policies before executing checks", async () => {
+  for (const schemaVersion of [1, 2]) {
+    const legacy: Record<string, unknown> = {
+      schemaVersion,
+      ...(schemaVersion === 2 ? { packageManager: currentPolicy.packageManager } : {}),
+      instructions: currentPolicy.instructions,
+      scripts: currentPolicy.scripts,
+      changedChecks: [{ id: "docs", script: "docs:changed", extensions: [".md", ".yaml", ".yml"], passPaths: false }],
+      fullScanPaths: ["package.json"],
+    };
+    await fixture(legacy, async root => {
+      const marker = join(root, "check-executed");
+      await put(root, "check-fast.ts",
+        'import { writeFileSync } from "node:fs";\nwriteFileSync("check-executed", "executed");\n');
+      await put(root, "src/index.ts", 'export const answer: string = "43";\n');
+      git(root, "checkout", "-b", "test-change");
+      git(root, "add", "--all");
+      git(root, "commit", "--message", "test: change source");
+      const result = spawnSync(process.execPath, [
+        cli, "agent-workflow", "check-changed", "--consumer", root,
+        "--base", "refs/heads/main", "--format", "json",
+      ], { env: identity, encoding: "utf8", timeout: 30_000, maxBuffer: 2_000_000 });
+      assert.equal(result.error, undefined, result.stderr);
+      assert.notEqual(result.status, 0);
+      assert.match(result.stdout + result.stderr, schemaVersion === 1
+        ? /check-changed requires repository-agent-workflow\/v2/u
+        : /check-changed requires explicit repository scopes, requiredFacets, supplies and observations/u);
+      await assert.rejects(readFile(marker), { code: "ENOENT" });
+    });
+  }
 });
