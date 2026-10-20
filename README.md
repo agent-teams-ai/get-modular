@@ -87,6 +87,7 @@ generations. See the [current contract](docs/architecture/current-contract.md).
 ## Start here
 
 - [Documentation index](docs/README.md)
+- [npm publication maintainer guide](architecture/tooling/npm-release/README.md)
 - [System boundary](docs/architecture/system-boundary.md)
 - [Accepted decisions](docs/decisions/README.md)
 - [Open decisions](docs/open-decisions/README.md)
