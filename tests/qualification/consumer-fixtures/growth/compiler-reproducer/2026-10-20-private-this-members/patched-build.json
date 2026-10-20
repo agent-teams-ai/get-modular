@@ -1,0 +1,22 @@
+{
+  "command": [
+    "/tmp/gm-ts-owner-20261020/go-toolchain/go/bin/go",
+    "build",
+    "-buildvcs=false",
+    "-p",
+    "4",
+    "-o",
+    "/tmp/gm-ts-owner-20261020/tsc-patched",
+    "./cmd/tsc"
+  ],
+  "patchSha256": "3a98de8a169b239da38cbe285de2f88e498406b8bdc24eec4685d6b4809a308e",
+  "upstreamCommit": "3200b90a617bcf9ad26543b347cabad8ff0dad14",
+  "wallSeconds": 76.84689288900017,
+  "exitCode": 0,
+  "expired": false,
+  "capSeconds": 600,
+  "timeUtc": "2026-10-20T08:15:02.576596+00:00",
+  "claim": "private source patch, not an upstream or supported compiler artifact",
+  "compilerVersion": "Version 7.1.0-dev",
+  "compilerSha256": "061c589fd01523d69ca6bb74d74e6331b6092a14ee286bd60f11d7a51eeb9e66"
+}

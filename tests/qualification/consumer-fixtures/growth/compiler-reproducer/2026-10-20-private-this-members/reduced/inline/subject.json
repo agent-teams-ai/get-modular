@@ -1,0 +1,22 @@
+{
+  "mode": "inline",
+  "size": 200,
+  "compilerSubject": "package-free; mapped descriptor property vs inline property; identical inherited predecessor edges and root",
+  "sourceFiles": {
+    "witness.ts": {
+      "sha256": "4009460683995c2b6a86a6d27dd50432bbe8af12fc021b129c6fd6fec0579979",
+      "bytes": 15337
+    },
+    "package.json": {
+      "sha256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "bytes": 23
+    },
+    "tsconfig.json": {
+      "sha256": "f860ca80ac13c93de8bc1a6e435f3cfd04eece2358c0462dd1928409c805b7b3",
+      "bytes": 172
+    }
+  },
+  "stageCapSeconds": 60,
+  "processObservedRssCapBytes": 2147483648,
+  "profiling": "native --pprofDir; CPU and sampled allocations; not a full Get Modular growth result"
+}

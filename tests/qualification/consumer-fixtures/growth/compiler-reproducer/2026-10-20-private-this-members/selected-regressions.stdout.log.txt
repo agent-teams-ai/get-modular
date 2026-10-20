@@ -1,0 +1,155 @@
+=== RUN   TestLocal
+=== PAUSE TestLocal
+=== CONT  TestLocal
+=== RUN   TestLocal/circularConstraintYieldsAppropriateError.ts
+=== PAUSE TestLocal/circularConstraintYieldsAppropriateError.ts
+=== RUN   TestLocal/genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1.ts
+=== PAUSE TestLocal/genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1.ts
+=== RUN   TestLocal/multipleBaseInterfaesWithIncompatibleProperties.ts
+=== PAUSE TestLocal/multipleBaseInterfaesWithIncompatibleProperties.ts
+=== RUN   TestLocal/sharedInterfaceBaseTypes.ts
+=== PAUSE TestLocal/sharedInterfaceBaseTypes.ts
+=== RUN   TestLocal/interfaceExtendsObjectIntersection.ts
+=== PAUSE TestLocal/interfaceExtendsObjectIntersection.ts
+=== RUN   TestLocal/interfaceExtendsObjectIntersectionErrors.ts
+=== PAUSE TestLocal/interfaceExtendsObjectIntersectionErrors.ts
+=== RUN   TestLocal/fluentInterfaces.ts
+=== PAUSE TestLocal/fluentInterfaces.ts
+=== CONT  TestLocal/circularConstraintYieldsAppropriateError.ts
+=== CONT  TestLocal/interfaceExtendsObjectIntersection.ts
+=== CONT  TestLocal/fluentInterfaces.ts
+=== CONT  TestLocal/interfaceExtendsObjectIntersectionErrors.ts
+=== RUN   TestLocal/circularConstraintYieldsAppropriateError.ts/error
+=== RUN   TestLocal/fluentInterfaces.ts/error
+=== RUN   TestLocal/circularConstraintYieldsAppropriateError.ts/content_mapper
+=== RUN   TestLocal/fluentInterfaces.ts/content_mapper
+=== RUN   TestLocal/circularConstraintYieldsAppropriateError.ts/output
+=== RUN   TestLocal/fluentInterfaces.ts/output
+=== RUN   TestLocal/interfaceExtendsObjectIntersection.ts/error
+=== RUN   TestLocal/interfaceExtendsObjectIntersection.ts/content_mapper
+=== RUN   TestLocal/interfaceExtendsObjectIntersection.ts/output
+=== RUN   TestLocal/fluentInterfaces.ts/sourcemap
+=== RUN   TestLocal/fluentInterfaces.ts/sourcemap_record
+=== RUN   TestLocal/fluentInterfaces.ts/type
+=== RUN   TestLocal/circularConstraintYieldsAppropriateError.ts/sourcemap
+=== RUN   TestLocal/circularConstraintYieldsAppropriateError.ts/sourcemap_record
+=== RUN   TestLocal/circularConstraintYieldsAppropriateError.ts/type
+=== RUN   TestLocal/fluentInterfaces.ts/symbol
+=== RUN   TestLocal/circularConstraintYieldsAppropriateError.ts/symbol
+=== RUN   TestLocal/interfaceExtendsObjectIntersection.ts/sourcemap
+=== RUN   TestLocal/interfaceExtendsObjectIntersection.ts/sourcemap_record
+=== RUN   TestLocal/interfaceExtendsObjectIntersection.ts/type
+=== RUN   TestLocal/fluentInterfaces.ts/union_ordering
+=== RUN   TestLocal/fluentInterfaces.ts/source_file_parent_pointers
+=== CONT  TestLocal/sharedInterfaceBaseTypes.ts
+=== RUN   TestLocal/circularConstraintYieldsAppropriateError.ts/union_ordering
+=== RUN   TestLocal/circularConstraintYieldsAppropriateError.ts/source_file_parent_pointers
+=== CONT  TestLocal/multipleBaseInterfaesWithIncompatibleProperties.ts
+=== RUN   TestLocal/interfaceExtendsObjectIntersection.ts/symbol
+=== RUN   TestLocal/interfaceExtendsObjectIntersectionErrors.ts/error
+=== RUN   TestLocal/multipleBaseInterfaesWithIncompatibleProperties.ts/error
+=== RUN   TestLocal/multipleBaseInterfaesWithIncompatibleProperties.ts/content_mapper
+=== RUN   TestLocal/multipleBaseInterfaesWithIncompatibleProperties.ts/output
+=== RUN   TestLocal/interfaceExtendsObjectIntersection.ts/union_ordering
+=== RUN   TestLocal/interfaceExtendsObjectIntersection.ts/source_file_parent_pointers
+=== CONT  TestLocal/genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1.ts
+=== RUN   TestLocal/interfaceExtendsObjectIntersectionErrors.ts/content_mapper
+=== RUN   TestLocal/interfaceExtendsObjectIntersectionErrors.ts/output
+=== RUN   TestLocal/multipleBaseInterfaesWithIncompatibleProperties.ts/sourcemap
+=== RUN   TestLocal/multipleBaseInterfaesWithIncompatibleProperties.ts/sourcemap_record
+=== RUN   TestLocal/multipleBaseInterfaesWithIncompatibleProperties.ts/type
+=== RUN   TestLocal/multipleBaseInterfaesWithIncompatibleProperties.ts/symbol
+=== RUN   TestLocal/interfaceExtendsObjectIntersectionErrors.ts/sourcemap
+=== RUN   TestLocal/genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1.ts/error
+=== RUN   TestLocal/genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1.ts/content_mapper
+=== RUN   TestLocal/genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1.ts/output
+=== RUN   TestLocal/genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1.ts/sourcemap
+=== RUN   TestLocal/genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1.ts/sourcemap_record
+=== RUN   TestLocal/genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1.ts/type
+=== RUN   TestLocal/multipleBaseInterfaesWithIncompatibleProperties.ts/union_ordering
+=== RUN   TestLocal/multipleBaseInterfaesWithIncompatibleProperties.ts/source_file_parent_pointers
+=== RUN   TestLocal/interfaceExtendsObjectIntersectionErrors.ts/sourcemap_record
+=== RUN   TestLocal/interfaceExtendsObjectIntersectionErrors.ts/type
+=== RUN   TestLocal/genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1.ts/symbol
+=== RUN   TestLocal/interfaceExtendsObjectIntersectionErrors.ts/symbol
+=== RUN   TestLocal/genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1.ts/union_ordering
+=== RUN   TestLocal/genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1.ts/source_file_parent_pointers
+=== RUN   TestLocal/interfaceExtendsObjectIntersectionErrors.ts/union_ordering
+=== RUN   TestLocal/interfaceExtendsObjectIntersectionErrors.ts/source_file_parent_pointers
+=== RUN   TestLocal/sharedInterfaceBaseTypes.ts/error
+=== RUN   TestLocal/sharedInterfaceBaseTypes.ts/content_mapper
+=== RUN   TestLocal/sharedInterfaceBaseTypes.ts/output
+=== RUN   TestLocal/sharedInterfaceBaseTypes.ts/sourcemap
+=== RUN   TestLocal/sharedInterfaceBaseTypes.ts/sourcemap_record
+=== RUN   TestLocal/sharedInterfaceBaseTypes.ts/union_ordering
+=== RUN   TestLocal/sharedInterfaceBaseTypes.ts/source_file_parent_pointers
+--- PASS: TestLocal (2.52s)
+    --- PASS: TestLocal/fluentInterfaces.ts (0.18s)
+        --- PASS: TestLocal/fluentInterfaces.ts/error (0.00s)
+        --- PASS: TestLocal/fluentInterfaces.ts/content_mapper (0.00s)
+        --- PASS: TestLocal/fluentInterfaces.ts/output (0.00s)
+        --- PASS: TestLocal/fluentInterfaces.ts/sourcemap (0.00s)
+        --- PASS: TestLocal/fluentInterfaces.ts/sourcemap_record (0.00s)
+        --- PASS: TestLocal/fluentInterfaces.ts/type (0.00s)
+        --- PASS: TestLocal/fluentInterfaces.ts/symbol (0.00s)
+        --- PASS: TestLocal/fluentInterfaces.ts/union_ordering (0.00s)
+        --- PASS: TestLocal/fluentInterfaces.ts/source_file_parent_pointers (0.00s)
+    --- PASS: TestLocal/circularConstraintYieldsAppropriateError.ts (0.18s)
+        --- PASS: TestLocal/circularConstraintYieldsAppropriateError.ts/error (0.00s)
+        --- PASS: TestLocal/circularConstraintYieldsAppropriateError.ts/content_mapper (0.00s)
+        --- PASS: TestLocal/circularConstraintYieldsAppropriateError.ts/output (0.00s)
+        --- PASS: TestLocal/circularConstraintYieldsAppropriateError.ts/sourcemap (0.00s)
+        --- PASS: TestLocal/circularConstraintYieldsAppropriateError.ts/sourcemap_record (0.00s)
+        --- PASS: TestLocal/circularConstraintYieldsAppropriateError.ts/type (0.00s)
+        --- PASS: TestLocal/circularConstraintYieldsAppropriateError.ts/symbol (0.00s)
+        --- PASS: TestLocal/circularConstraintYieldsAppropriateError.ts/union_ordering (0.00s)
+        --- PASS: TestLocal/circularConstraintYieldsAppropriateError.ts/source_file_parent_pointers (0.00s)
+    --- PASS: TestLocal/interfaceExtendsObjectIntersection.ts (0.18s)
+        --- PASS: TestLocal/interfaceExtendsObjectIntersection.ts/error (0.00s)
+        --- PASS: TestLocal/interfaceExtendsObjectIntersection.ts/content_mapper (0.00s)
+        --- PASS: TestLocal/interfaceExtendsObjectIntersection.ts/output (0.00s)
+        --- PASS: TestLocal/interfaceExtendsObjectIntersection.ts/sourcemap (0.00s)
+        --- PASS: TestLocal/interfaceExtendsObjectIntersection.ts/sourcemap_record (0.00s)
+        --- PASS: TestLocal/interfaceExtendsObjectIntersection.ts/type (0.00s)
+        --- PASS: TestLocal/interfaceExtendsObjectIntersection.ts/symbol (0.00s)
+        --- PASS: TestLocal/interfaceExtendsObjectIntersection.ts/union_ordering (0.00s)
+        --- PASS: TestLocal/interfaceExtendsObjectIntersection.ts/source_file_parent_pointers (0.00s)
+    --- PASS: TestLocal/multipleBaseInterfaesWithIncompatibleProperties.ts (0.02s)
+        --- PASS: TestLocal/multipleBaseInterfaesWithIncompatibleProperties.ts/error (0.00s)
+        --- PASS: TestLocal/multipleBaseInterfaesWithIncompatibleProperties.ts/content_mapper (0.00s)
+        --- PASS: TestLocal/multipleBaseInterfaesWithIncompatibleProperties.ts/output (0.01s)
+        --- PASS: TestLocal/multipleBaseInterfaesWithIncompatibleProperties.ts/sourcemap (0.00s)
+        --- PASS: TestLocal/multipleBaseInterfaesWithIncompatibleProperties.ts/sourcemap_record (0.00s)
+        --- PASS: TestLocal/multipleBaseInterfaesWithIncompatibleProperties.ts/type (0.00s)
+        --- PASS: TestLocal/multipleBaseInterfaesWithIncompatibleProperties.ts/symbol (0.00s)
+        --- PASS: TestLocal/multipleBaseInterfaesWithIncompatibleProperties.ts/union_ordering (0.00s)
+        --- PASS: TestLocal/multipleBaseInterfaesWithIncompatibleProperties.ts/source_file_parent_pointers (0.00s)
+    --- PASS: TestLocal/genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1.ts (0.02s)
+        --- PASS: TestLocal/genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1.ts/error (0.00s)
+        --- PASS: TestLocal/genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1.ts/content_mapper (0.00s)
+        --- PASS: TestLocal/genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1.ts/output (0.00s)
+        --- PASS: TestLocal/genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1.ts/sourcemap (0.00s)
+        --- PASS: TestLocal/genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1.ts/sourcemap_record (0.00s)
+        --- PASS: TestLocal/genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1.ts/type (0.00s)
+        --- PASS: TestLocal/genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1.ts/symbol (0.00s)
+        --- PASS: TestLocal/genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1.ts/union_ordering (0.00s)
+        --- PASS: TestLocal/genericCallInferenceUsingThisTypeNoInvalidCacheReuseAfterMappedTypeApplication1.ts/source_file_parent_pointers (0.00s)
+    --- PASS: TestLocal/interfaceExtendsObjectIntersectionErrors.ts (0.20s)
+        --- PASS: TestLocal/interfaceExtendsObjectIntersectionErrors.ts/error (0.01s)
+        --- PASS: TestLocal/interfaceExtendsObjectIntersectionErrors.ts/content_mapper (0.00s)
+        --- PASS: TestLocal/interfaceExtendsObjectIntersectionErrors.ts/output (0.01s)
+        --- PASS: TestLocal/interfaceExtendsObjectIntersectionErrors.ts/sourcemap (0.00s)
+        --- PASS: TestLocal/interfaceExtendsObjectIntersectionErrors.ts/sourcemap_record (0.00s)
+        --- PASS: TestLocal/interfaceExtendsObjectIntersectionErrors.ts/type (0.00s)
+        --- PASS: TestLocal/interfaceExtendsObjectIntersectionErrors.ts/symbol (0.00s)
+        --- PASS: TestLocal/interfaceExtendsObjectIntersectionErrors.ts/union_ordering (0.00s)
+        --- PASS: TestLocal/interfaceExtendsObjectIntersectionErrors.ts/source_file_parent_pointers (0.00s)
+    --- PASS: TestLocal/sharedInterfaceBaseTypes.ts (0.52s)
+        --- PASS: TestLocal/sharedInterfaceBaseTypes.ts/error (0.00s)
+        --- PASS: TestLocal/sharedInterfaceBaseTypes.ts/content_mapper (0.00s)
+        --- PASS: TestLocal/sharedInterfaceBaseTypes.ts/output (0.07s)
+        --- PASS: TestLocal/sharedInterfaceBaseTypes.ts/sourcemap (0.00s)
+        --- PASS: TestLocal/sharedInterfaceBaseTypes.ts/sourcemap_record (0.00s)
+        --- PASS: TestLocal/sharedInterfaceBaseTypes.ts/union_ordering (0.00s)
+        --- PASS: TestLocal/sharedInterfaceBaseTypes.ts/source_file_parent_pointers (0.00s)
+PASS

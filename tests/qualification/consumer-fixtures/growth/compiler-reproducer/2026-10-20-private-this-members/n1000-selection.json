@@ -1,0 +1,19 @@
+{
+  "timeUtc": "2026-10-20T08:29:12.822516+00:00",
+  "nextSize": 1000,
+  "oneSample": true,
+  "premise": "Changed private candidate passes original N8, N100, N500 scenarios; N500 all eight stages pass, full smoke verified, highest waited descendant RSS below600MB and no new cgroup OOM/max events.",
+  "n500Report": "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-500-pUOEDX/report.json",
+  "n500RusagePeakRssBytes": 573145088,
+  "effectiveMemoryBytes": 8589934592,
+  "currentMemoryBytes": 6395506688,
+  "currentAnonBytes": 159498240,
+  "currentFileCacheBytes": 4689379328,
+  "compilerRuntimeAggregateCapsSeconds": [
+    180,
+    120,
+    600
+  ],
+  "originalUpstreamOver8GiBRoute": "Not invoked; its unchanged candidate and memory guard remain intact. This is a separately reviewed changed-compiler experiment.",
+  "stop": "Any failed stage stops progression; no retry or limit increase."
+}

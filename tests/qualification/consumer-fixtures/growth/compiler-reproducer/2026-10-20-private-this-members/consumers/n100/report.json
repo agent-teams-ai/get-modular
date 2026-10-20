@@ -1,0 +1,3261 @@
+{
+  "size": 100,
+  "status": "passed",
+  "scenarios": [
+    "G-02",
+    "G-03"
+  ],
+  "budgetsMs": {
+    "compiler": 180000,
+    "runtime": 120000,
+    "scanner": 0,
+    "aggregate": 600000
+  },
+  "sourceCoverage": "incomplete; source scanner not selected",
+  "scanner": "not-collected",
+  "rss": "not-collected",
+  "incrementalEdits": "fixed G-03 patches; one sample per stage",
+  "stages": [
+    {
+      "stage": "cold",
+      "setup": false,
+      "command": [
+        "/tmp/gm-ts-owner-20261020/tsc-patched",
+        "-p",
+        "tsconfig.json",
+        "--singleThreaded",
+        "--extendedDiagnostics",
+        "--pretty",
+        "false",
+        "--incremental",
+        "--tsBuildInfoFile",
+        "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-100-V4q9A9/build-info/current.tsbuildinfo"
+      ],
+      "cwd": "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-100-V4q9A9",
+      "capMs": 180000,
+      "status": "passed",
+      "wallMs": 1446.242935,
+      "exit": 0,
+      "signal": null,
+      "error": null,
+      "diagnostics": {
+        "Files": "787",
+        "Lines": "63837",
+        "Identifiers": "62173",
+        "Symbols": "152455",
+        "Types": "54709",
+        "Instantiations": "148654",
+        "Memory used": "94615K",
+        "Memory allocs": "1565639",
+        "Config time": "0.009s",
+        "BuildInfo read time": "0.000s",
+        "Parse time": "0.090s",
+        "Bind time": "0.000s",
+        "Check time": "0.442s",
+        "Emit time": "0.679s",
+        "Changes compute time": "0.034s",
+        "Total time": "1.255s"
+      },
+      "source": {
+        "sha256": "9693b8aee7640542fa0b60fad9d6aba2868b7ef1b670128aeb29da951f6520f2",
+        "files": 703,
+        "bytes": 251501
+      },
+      "output": {
+        "sha256": "ccc2b74e241374db70b224229ebafefa9d4f4e4ad7cb16ed19023a81421efa09",
+        "files": 1406,
+        "bytes": 524959
+      },
+      "buildInfoSha256": "b4d1cebbd6e761ae506e1f8f62af69dad4fa58a273b1310fb9631b9ba91cf355"
+    },
+    {
+      "stage": "runtime",
+      "setup": false,
+      "command": [
+        "/tmp/gm-completion-tools-20261020/node-v26.11.1-linux-x64/bin/node",
+        "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-100-V4q9A9/tests/runtime.mjs",
+        "100"
+      ],
+      "cwd": "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-100-V4q9A9",
+      "capMs": 120000,
+      "status": "passed",
+      "wallMs": 445.09467700000005,
+      "exit": 0,
+      "signal": null,
+      "error": null,
+      "diagnostics": {}
+    },
+    {
+      "stage": "unchanged-incremental",
+      "setup": false,
+      "command": [
+        "/tmp/gm-ts-owner-20261020/tsc-patched",
+        "-p",
+        "tsconfig.json",
+        "--singleThreaded",
+        "--extendedDiagnostics",
+        "--pretty",
+        "false",
+        "--incremental",
+        "--tsBuildInfoFile",
+        "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-100-V4q9A9/build-info/current.tsbuildinfo"
+      ],
+      "cwd": "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-100-V4q9A9",
+      "capMs": 180000,
+      "status": "passed",
+      "wallMs": 216.8856109999997,
+      "exit": 0,
+      "signal": null,
+      "error": null,
+      "diagnostics": {
+        "Files": "787",
+        "Lines": "63837",
+        "Identifiers": "62173",
+        "Symbols": "41879",
+        "Types": "85",
+        "Instantiations": "0",
+        "Memory used": "31539K",
+        "Memory allocs": "210785",
+        "Config time": "0.012s",
+        "BuildInfo read time": "0.010s",
+        "Parse time": "0.114s",
+        "Bind time": "0.000s",
+        "Check time": "0.000s",
+        "Emit time": "0.007s",
+        "Changes compute time": "0.022s",
+        "Total time": "0.167s"
+      },
+      "source": {
+        "sha256": "9693b8aee7640542fa0b60fad9d6aba2868b7ef1b670128aeb29da951f6520f2",
+        "files": 703,
+        "bytes": 251501
+      },
+      "output": {
+        "sha256": "ccc2b74e241374db70b224229ebafefa9d4f4e4ad7cb16ed19023a81421efa09",
+        "files": 1406,
+        "bytes": 524959
+      },
+      "buildInfoSha256": "b4d1cebbd6e761ae506e1f8f62af69dad4fa58a273b1310fb9631b9ba91cf355"
+    },
+    {
+      "stage": "leaf-edit",
+      "setup": false,
+      "command": [
+        "/tmp/gm-ts-owner-20261020/tsc-patched",
+        "-p",
+        "tsconfig.json",
+        "--singleThreaded",
+        "--extendedDiagnostics",
+        "--pretty",
+        "false",
+        "--incremental",
+        "--tsBuildInfoFile",
+        "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-100-V4q9A9/build-info/current.tsbuildinfo"
+      ],
+      "cwd": "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-100-V4q9A9",
+      "capMs": 180000,
+      "status": "passed",
+      "wallMs": 150.72381200000018,
+      "exit": 0,
+      "signal": null,
+      "error": null,
+      "diagnostics": {
+        "Files": "787",
+        "Lines": "63837",
+        "Identifiers": "62173",
+        "Symbols": "41879",
+        "Types": "101",
+        "Instantiations": "0",
+        "Memory used": "31557K",
+        "Memory allocs": "244757",
+        "Config time": "0.005s",
+        "BuildInfo read time": "0.005s",
+        "Parse time": "0.076s",
+        "Bind time": "0.000s",
+        "Check time": "0.000s",
+        "Emit time": "0.008s",
+        "Changes compute time": "0.025s",
+        "Total time": "0.121s"
+      },
+      "source": {
+        "sha256": "eb97fd8ce3c031fd37d6b5139716c915a511240c80374095af679ecaa20e418e",
+        "files": 703,
+        "bytes": 251505
+      },
+      "output": {
+        "sha256": "576ec9879db52cb8d814c4600a942cc4d283b874d4b3144f8ea896c4c5fd1628",
+        "files": 1406,
+        "bytes": 524963
+      },
+      "buildInfoSha256": "0ed3dc6d23512dea7116d8ccf57b93d0103a7c8b09a6eb8f057f65ca188c2ff9"
+    },
+    {
+      "stage": "verify-leaf",
+      "setup": false,
+      "command": [
+        "/tmp/gm-completion-tools-20261020/node-v26.11.1-linux-x64/bin/node",
+        "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-100-V4q9A9/tests/incremental-runtime.mjs",
+        "100",
+        "leaf"
+      ],
+      "cwd": "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-100-V4q9A9",
+      "capMs": 120000,
+      "status": "passed",
+      "wallMs": 310.4081189999997,
+      "exit": 0,
+      "signal": null,
+      "error": null,
+      "diagnostics": {}
+    },
+    {
+      "stage": "baseline-rewarm",
+      "setup": true,
+      "command": [
+        "/tmp/gm-ts-owner-20261020/tsc-patched",
+        "-p",
+        "tsconfig.json",
+        "--singleThreaded",
+        "--extendedDiagnostics",
+        "--pretty",
+        "false",
+        "--incremental",
+        "--tsBuildInfoFile",
+        "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-100-V4q9A9/build-info/current.tsbuildinfo"
+      ],
+      "cwd": "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-100-V4q9A9",
+      "capMs": 180000,
+      "status": "passed",
+      "wallMs": 160.96855400000004,
+      "exit": 0,
+      "signal": null,
+      "error": null,
+      "diagnostics": {
+        "Files": "787",
+        "Lines": "63837",
+        "Identifiers": "62173",
+        "Symbols": "41879",
+        "Types": "99",
+        "Instantiations": "0",
+        "Memory used": "31551K",
+        "Memory allocs": "244741",
+        "Config time": "0.006s",
+        "BuildInfo read time": "0.006s",
+        "Parse time": "0.072s",
+        "Bind time": "0.000s",
+        "Check time": "0.001s",
+        "Emit time": "0.013s",
+        "Changes compute time": "0.024s",
+        "Total time": "0.122s"
+      },
+      "source": {
+        "sha256": "9693b8aee7640542fa0b60fad9d6aba2868b7ef1b670128aeb29da951f6520f2",
+        "files": 703,
+        "bytes": 251501
+      },
+      "output": {
+        "sha256": "ccc2b74e241374db70b224229ebafefa9d4f4e4ad7cb16ed19023a81421efa09",
+        "files": 1406,
+        "bytes": 524959
+      },
+      "buildInfoSha256": "b4d1cebbd6e761ae506e1f8f62af69dad4fa58a273b1310fb9631b9ba91cf355"
+    },
+    {
+      "stage": "shared-contract-edit",
+      "setup": false,
+      "command": [
+        "/tmp/gm-ts-owner-20261020/tsc-patched",
+        "-p",
+        "tsconfig.json",
+        "--singleThreaded",
+        "--extendedDiagnostics",
+        "--pretty",
+        "false",
+        "--incremental",
+        "--tsBuildInfoFile",
+        "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-100-V4q9A9/build-info/current.tsbuildinfo"
+      ],
+      "cwd": "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-100-V4q9A9",
+      "capMs": 180000,
+      "status": "passed",
+      "wallMs": 892.8538339999996,
+      "exit": 0,
+      "signal": null,
+      "error": null,
+      "diagnostics": {
+        "Files": "787",
+        "Lines": "63837",
+        "Identifiers": "62173",
+        "Symbols": "131267",
+        "Types": "25732",
+        "Instantiations": "121175",
+        "Memory used": "61899K",
+        "Memory allocs": "1057300",
+        "Config time": "0.012s",
+        "BuildInfo read time": "0.006s",
+        "Parse time": "0.162s",
+        "Bind time": "0.000s",
+        "Check time": "0.019s",
+        "Emit time": "0.574s",
+        "Changes compute time": "0.037s",
+        "Total time": "0.810s"
+      },
+      "source": {
+        "sha256": "7913afbe81040807fc4b27c34601802a6261d84dfec1431597e07b672a4df266",
+        "files": 703,
+        "bytes": 251526
+      },
+      "output": {
+        "sha256": "7358a61d83a8409656353e6ecefe8df417a21dd1327e72f85d4ea7793c2ae0e6",
+        "files": 1406,
+        "bytes": 524984
+      },
+      "buildInfoSha256": "940792899c32a6d08b3ad4179eeb68fb9b0a745ff7dbd643b7912a65d9ae84eb"
+    },
+    {
+      "stage": "verify-shared-contract",
+      "setup": false,
+      "command": [
+        "/tmp/gm-completion-tools-20261020/node-v26.11.1-linux-x64/bin/node",
+        "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-100-V4q9A9/tests/incremental-runtime.mjs",
+        "100",
+        "shared-contract"
+      ],
+      "cwd": "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-100-V4q9A9",
+      "capMs": 120000,
+      "status": "passed",
+      "wallMs": 364.4979110000004,
+      "exit": 0,
+      "signal": null,
+      "error": null,
+      "diagnostics": {}
+    }
+  ],
+  "identities": {
+    "node": "v26.11.1",
+    "platform": "linux",
+    "arch": "x64",
+    "packageOutputs": {
+      "core": {
+        "version": "0.6.0",
+        "sha256": "f05d370040c925eda95fa5f3eb6a736a96940b643b4f264bb28cd78b502e3b36",
+        "files": 105,
+        "bytes": 224461
+      },
+      "assembly": {
+        "version": "0.6.0",
+        "sha256": "e83ff3a28b4d69958015b2ab6b32dea0a1bd397a91c1b9ac4bbd70c143e04a05",
+        "files": 25,
+        "bytes": 76132
+      },
+      "resources": {
+        "version": "0.2.0",
+        "sha256": "6aafcf9ec714413d1f7d881ba7c82bbe96d0a2c323edaa6d0b6a36b205464dfe",
+        "files": 13,
+        "bytes": 26431
+      },
+      "conformance": {
+        "version": "0.4.0",
+        "sha256": "15ed41a572ed59d62024f46686cdbeb35f1b7c3c9ddadb6dbe420ae36c63c88d",
+        "files": 37,
+        "bytes": 83007
+      }
+    },
+    "generatedSource": {
+      "sha256": "9693b8aee7640542fa0b60fad9d6aba2868b7ef1b670128aeb29da951f6520f2",
+      "files": 703,
+      "bytes": 251501
+    },
+    "testSource": {
+      "sha256": "59db1b61d17cd1623e83492421a7d4eff5bbc4694f0b4d4d922ecdf02df64c54",
+      "files": 3,
+      "bytes": 13243
+    },
+    "generator": "ba807269b24cad47e2e0e0cdf884ba60966bbf64eca07ea1d58d61f31a798dec",
+    "oracle": "37e50eb47658c5e756e2f7a7b331bb5bd73905793f50fc65f3943a2102a896c0",
+    "patches": "77723921840b1024efb7361c3c7cf66c238e7d5a583260179f739f158df038a7",
+    "config": "a93ad249c47bf6906790394e88d0ebf86540fe1d189e72a9021c224b02a1a498",
+    "lockfile": "048ead2ca34259c02790924af0935b553a644ea753a90177dc136c6bcedd8f6f",
+    "fixtureSource": {
+      "sha256": "f471414cc0bc759d124f84c36afc061b4a65c52a7bb08342c7f1d3c4168532b5",
+      "files": 25,
+      "bytes": 79519
+    },
+    "sourceHead": "c5c314ab98c57d2c73448f0c3c9860424a993d8a",
+    "compiler": {
+      "kind": "private-compiler-owner-patch",
+      "source": {
+        "repository": "microsoft/TypeScript",
+        "commit": "3200b90a617bcf9ad26543b347cabad8ff0dad14",
+        "archiveSha256": "034bb7bb88f1354b416f9c617a82b88af7f2344f279e9a697a73bf4276638858"
+      },
+      "go": {
+        "version": "go1.27.2",
+        "archiveSha256": "ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5"
+      },
+      "patchPath": "/tmp/gm-ts-owner-20261020/candidate.patch",
+      "patchSha256": "3a98de8a169b239da38cbe285de2f88e498406b8bdc24eec4685d6b4809a308e",
+      "cli": "/tmp/gm-ts-owner-20261020/tsc-patched",
+      "version": "7.1.0-dev",
+      "binarySha256": "061c589fd01523d69ca6bb74d74e6331b6092a14ee286bd60f11d7a51eeb9e66",
+      "manifestSha256": "f7329b8d4528340835852a364d396e30c125d4441b62c346612e965a9d02a4cb"
+    },
+    "compilerArguments": [
+      "-p",
+      "tsconfig.json",
+      "--singleThreaded",
+      "--extendedDiagnostics",
+      "--pretty",
+      "false",
+      "--incremental",
+      "--tsBuildInfoFile",
+      "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-100-V4q9A9/build-info/current.tsbuildinfo"
+    ],
+    "buildInfo": "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-100-V4q9A9/build-info/current.tsbuildinfo"
+  },
+  "inventory": {
+    "files": [
+      "src/composition/growth.root.ts",
+      "src/features/f000/application/ports/value.ts",
+      "src/features/f000/application/use-cases/read-value.ts",
+      "src/features/f000/composition/f000.contracts.ts",
+      "src/features/f000/composition/f000.group.ts",
+      "src/features/f000/composition/f000.inputs.ts",
+      "src/features/f000/composition/input.declaration.ts",
+      "src/features/f000/composition/value.declaration.ts",
+      "src/features/f000/composition/value.module.ts",
+      "src/features/f000/contracts/value.ts",
+      "src/features/f001/application/ports/value.ts",
+      "src/features/f001/application/use-cases/read-value.ts",
+      "src/features/f001/composition/f001.contracts.ts",
+      "src/features/f001/composition/f001.group.ts",
+      "src/features/f001/composition/value.declaration.ts",
+      "src/features/f001/composition/value.module.ts",
+      "src/features/f001/contracts/value.ts",
+      "src/features/f002/application/ports/value.ts",
+      "src/features/f002/application/use-cases/read-value.ts",
+      "src/features/f002/composition/f002.contracts.ts",
+      "src/features/f002/composition/f002.group.ts",
+      "src/features/f002/composition/value.declaration.ts",
+      "src/features/f002/composition/value.module.ts",
+      "src/features/f002/contracts/value.ts",
+      "src/features/f003/application/ports/value.ts",
+      "src/features/f003/application/use-cases/read-value.ts",
+      "src/features/f003/composition/f003.contracts.ts",
+      "src/features/f003/composition/f003.group.ts",
+      "src/features/f003/composition/value.declaration.ts",
+      "src/features/f003/composition/value.module.ts",
+      "src/features/f003/contracts/value.ts",
+      "src/features/f004/application/ports/value.ts",
+      "src/features/f004/application/use-cases/read-value.ts",
+      "src/features/f004/composition/f004.contracts.ts",
+      "src/features/f004/composition/f004.group.ts",
+      "src/features/f004/composition/value.declaration.ts",
+      "src/features/f004/composition/value.module.ts",
+      "src/features/f004/contracts/value.ts",
+      "src/features/f005/application/ports/value.ts",
+      "src/features/f005/application/use-cases/read-value.ts",
+      "src/features/f005/composition/f005.contracts.ts",
+      "src/features/f005/composition/f005.group.ts",
+      "src/features/f005/composition/value.declaration.ts",
+      "src/features/f005/composition/value.module.ts",
+      "src/features/f005/contracts/value.ts",
+      "src/features/f006/application/ports/value.ts",
+      "src/features/f006/application/use-cases/read-value.ts",
+      "src/features/f006/composition/f006.contracts.ts",
+      "src/features/f006/composition/f006.group.ts",
+      "src/features/f006/composition/value.declaration.ts",
+      "src/features/f006/composition/value.module.ts",
+      "src/features/f006/contracts/value.ts",
+      "src/features/f007/application/ports/value.ts",
+      "src/features/f007/application/use-cases/read-value.ts",
+      "src/features/f007/composition/f007.contracts.ts",
+      "src/features/f007/composition/f007.group.ts",
+      "src/features/f007/composition/value.declaration.ts",
+      "src/features/f007/composition/value.module.ts",
+      "src/features/f007/contracts/value.ts",
+      "src/features/f008/application/ports/value.ts",
+      "src/features/f008/application/use-cases/read-value.ts",
+      "src/features/f008/composition/f008.contracts.ts",
+      "src/features/f008/composition/f008.group.ts",
+      "src/features/f008/composition/value.declaration.ts",
+      "src/features/f008/composition/value.module.ts",
+      "src/features/f008/contracts/value.ts",
+      "src/features/f009/application/ports/value.ts",
+      "src/features/f009/application/use-cases/read-value.ts",
+      "src/features/f009/composition/f009.contracts.ts",
+      "src/features/f009/composition/f009.group.ts",
+      "src/features/f009/composition/value.declaration.ts",
+      "src/features/f009/composition/value.module.ts",
+      "src/features/f009/contracts/value.ts",
+      "src/features/f010/application/ports/value.ts",
+      "src/features/f010/application/use-cases/read-value.ts",
+      "src/features/f010/composition/f010.contracts.ts",
+      "src/features/f010/composition/f010.group.ts",
+      "src/features/f010/composition/value.declaration.ts",
+      "src/features/f010/composition/value.module.ts",
+      "src/features/f010/contracts/value.ts",
+      "src/features/f011/application/ports/value.ts",
+      "src/features/f011/application/use-cases/read-value.ts",
+      "src/features/f011/composition/f011.contracts.ts",
+      "src/features/f011/composition/f011.group.ts",
+      "src/features/f011/composition/value.declaration.ts",
+      "src/features/f011/composition/value.module.ts",
+      "src/features/f011/contracts/value.ts",
+      "src/features/f012/application/ports/value.ts",
+      "src/features/f012/application/use-cases/read-value.ts",
+      "src/features/f012/composition/f012.contracts.ts",
+      "src/features/f012/composition/f012.group.ts",
+      "src/features/f012/composition/value.declaration.ts",
+      "src/features/f012/composition/value.module.ts",
+      "src/features/f012/contracts/value.ts",
+      "src/features/f013/application/ports/value.ts",
+      "src/features/f013/application/use-cases/read-value.ts",
+      "src/features/f013/composition/f013.contracts.ts",
+      "src/features/f013/composition/f013.group.ts",
+      "src/features/f013/composition/value.declaration.ts",
+      "src/features/f013/composition/value.module.ts",
+      "src/features/f013/contracts/value.ts",
+      "src/features/f014/application/ports/value.ts",
+      "src/features/f014/application/use-cases/read-value.ts",
+      "src/features/f014/composition/f014.contracts.ts",
+      "src/features/f014/composition/f014.group.ts",
+      "src/features/f014/composition/value.declaration.ts",
+      "src/features/f014/composition/value.module.ts",
+      "src/features/f014/contracts/value.ts",
+      "src/features/f015/application/ports/value.ts",
+      "src/features/f015/application/use-cases/read-value.ts",
+      "src/features/f015/composition/f015.contracts.ts",
+      "src/features/f015/composition/f015.group.ts",
+      "src/features/f015/composition/value.declaration.ts",
+      "src/features/f015/composition/value.module.ts",
+      "src/features/f015/contracts/value.ts",
+      "src/features/f016/application/ports/value.ts",
+      "src/features/f016/application/use-cases/read-value.ts",
+      "src/features/f016/composition/f016.contracts.ts",
+      "src/features/f016/composition/f016.group.ts",
+      "src/features/f016/composition/value.declaration.ts",
+      "src/features/f016/composition/value.module.ts",
+      "src/features/f016/contracts/value.ts",
+      "src/features/f017/application/ports/value.ts",
+      "src/features/f017/application/use-cases/read-value.ts",
+      "src/features/f017/composition/f017.contracts.ts",
+      "src/features/f017/composition/f017.group.ts",
+      "src/features/f017/composition/value.declaration.ts",
+      "src/features/f017/composition/value.module.ts",
+      "src/features/f017/contracts/value.ts",
+      "src/features/f018/application/ports/value.ts",
+      "src/features/f018/application/use-cases/read-value.ts",
+      "src/features/f018/composition/f018.contracts.ts",
+      "src/features/f018/composition/f018.group.ts",
+      "src/features/f018/composition/value.declaration.ts",
+      "src/features/f018/composition/value.module.ts",
+      "src/features/f018/contracts/value.ts",
+      "src/features/f019/application/ports/value.ts",
+      "src/features/f019/application/use-cases/read-value.ts",
+      "src/features/f019/composition/f019.contracts.ts",
+      "src/features/f019/composition/f019.group.ts",
+      "src/features/f019/composition/value.declaration.ts",
+      "src/features/f019/composition/value.module.ts",
+      "src/features/f019/contracts/value.ts",
+      "src/features/f020/application/ports/value.ts",
+      "src/features/f020/application/use-cases/read-value.ts",
+      "src/features/f020/composition/f020.contracts.ts",
+      "src/features/f020/composition/f020.group.ts",
+      "src/features/f020/composition/value.declaration.ts",
+      "src/features/f020/composition/value.module.ts",
+      "src/features/f020/contracts/value.ts",
+      "src/features/f021/application/ports/value.ts",
+      "src/features/f021/application/use-cases/read-value.ts",
+      "src/features/f021/composition/f021.contracts.ts",
+      "src/features/f021/composition/f021.group.ts",
+      "src/features/f021/composition/value.declaration.ts",
+      "src/features/f021/composition/value.module.ts",
+      "src/features/f021/contracts/value.ts",
+      "src/features/f022/application/ports/value.ts",
+      "src/features/f022/application/use-cases/read-value.ts",
+      "src/features/f022/composition/f022.contracts.ts",
+      "src/features/f022/composition/f022.group.ts",
+      "src/features/f022/composition/value.declaration.ts",
+      "src/features/f022/composition/value.module.ts",
+      "src/features/f022/contracts/value.ts",
+      "src/features/f023/application/ports/value.ts",
+      "src/features/f023/application/use-cases/read-value.ts",
+      "src/features/f023/composition/f023.contracts.ts",
+      "src/features/f023/composition/f023.group.ts",
+      "src/features/f023/composition/value.declaration.ts",
+      "src/features/f023/composition/value.module.ts",
+      "src/features/f023/contracts/value.ts",
+      "src/features/f024/application/ports/value.ts",
+      "src/features/f024/application/use-cases/read-value.ts",
+      "src/features/f024/composition/f024.contracts.ts",
+      "src/features/f024/composition/f024.group.ts",
+      "src/features/f024/composition/value.declaration.ts",
+      "src/features/f024/composition/value.module.ts",
+      "src/features/f024/contracts/value.ts",
+      "src/features/f025/application/ports/value.ts",
+      "src/features/f025/application/use-cases/read-value.ts",
+      "src/features/f025/composition/f025.contracts.ts",
+      "src/features/f025/composition/f025.group.ts",
+      "src/features/f025/composition/value.declaration.ts",
+      "src/features/f025/composition/value.module.ts",
+      "src/features/f025/contracts/value.ts",
+      "src/features/f026/application/ports/value.ts",
+      "src/features/f026/application/use-cases/read-value.ts",
+      "src/features/f026/composition/f026.contracts.ts",
+      "src/features/f026/composition/f026.group.ts",
+      "src/features/f026/composition/value.declaration.ts",
+      "src/features/f026/composition/value.module.ts",
+      "src/features/f026/contracts/value.ts",
+      "src/features/f027/application/ports/value.ts",
+      "src/features/f027/application/use-cases/read-value.ts",
+      "src/features/f027/composition/f027.contracts.ts",
+      "src/features/f027/composition/f027.group.ts",
+      "src/features/f027/composition/value.declaration.ts",
+      "src/features/f027/composition/value.module.ts",
+      "src/features/f027/contracts/value.ts",
+      "src/features/f028/application/ports/value.ts",
+      "src/features/f028/application/use-cases/read-value.ts",
+      "src/features/f028/composition/f028.contracts.ts",
+      "src/features/f028/composition/f028.group.ts",
+      "src/features/f028/composition/value.declaration.ts",
+      "src/features/f028/composition/value.module.ts",
+      "src/features/f028/contracts/value.ts",
+      "src/features/f029/application/ports/value.ts",
+      "src/features/f029/application/use-cases/read-value.ts",
+      "src/features/f029/composition/f029.contracts.ts",
+      "src/features/f029/composition/f029.group.ts",
+      "src/features/f029/composition/value.declaration.ts",
+      "src/features/f029/composition/value.module.ts",
+      "src/features/f029/contracts/value.ts",
+      "src/features/f030/application/ports/value.ts",
+      "src/features/f030/application/use-cases/read-value.ts",
+      "src/features/f030/composition/f030.contracts.ts",
+      "src/features/f030/composition/f030.group.ts",
+      "src/features/f030/composition/value.declaration.ts",
+      "src/features/f030/composition/value.module.ts",
+      "src/features/f030/contracts/value.ts",
+      "src/features/f031/application/ports/value.ts",
+      "src/features/f031/application/use-cases/read-value.ts",
+      "src/features/f031/composition/f031.contracts.ts",
+      "src/features/f031/composition/f031.group.ts",
+      "src/features/f031/composition/value.declaration.ts",
+      "src/features/f031/composition/value.module.ts",
+      "src/features/f031/contracts/value.ts",
+      "src/features/f032/application/ports/value.ts",
+      "src/features/f032/application/use-cases/read-value.ts",
+      "src/features/f032/composition/f032.contracts.ts",
+      "src/features/f032/composition/f032.group.ts",
+      "src/features/f032/composition/value.declaration.ts",
+      "src/features/f032/composition/value.module.ts",
+      "src/features/f032/contracts/value.ts",
+      "src/features/f033/application/ports/value.ts",
+      "src/features/f033/application/use-cases/read-value.ts",
+      "src/features/f033/composition/f033.contracts.ts",
+      "src/features/f033/composition/f033.group.ts",
+      "src/features/f033/composition/value.declaration.ts",
+      "src/features/f033/composition/value.module.ts",
+      "src/features/f033/contracts/value.ts",
+      "src/features/f034/application/ports/value.ts",
+      "src/features/f034/application/use-cases/read-value.ts",
+      "src/features/f034/composition/f034.contracts.ts",
+      "src/features/f034/composition/f034.group.ts",
+      "src/features/f034/composition/value.declaration.ts",
+      "src/features/f034/composition/value.module.ts",
+      "src/features/f034/contracts/value.ts",
+      "src/features/f035/application/ports/value.ts",
+      "src/features/f035/application/use-cases/read-value.ts",
+      "src/features/f035/composition/f035.contracts.ts",
+      "src/features/f035/composition/f035.group.ts",
+      "src/features/f035/composition/value.declaration.ts",
+      "src/features/f035/composition/value.module.ts",
+      "src/features/f035/contracts/value.ts",
+      "src/features/f036/application/ports/value.ts",
+      "src/features/f036/application/use-cases/read-value.ts",
+      "src/features/f036/composition/f036.contracts.ts",
+      "src/features/f036/composition/f036.group.ts",
+      "src/features/f036/composition/value.declaration.ts",
+      "src/features/f036/composition/value.module.ts",
+      "src/features/f036/contracts/value.ts",
+      "src/features/f037/application/ports/value.ts",
+      "src/features/f037/application/use-cases/read-value.ts",
+      "src/features/f037/composition/f037.contracts.ts",
+      "src/features/f037/composition/f037.group.ts",
+      "src/features/f037/composition/value.declaration.ts",
+      "src/features/f037/composition/value.module.ts",
+      "src/features/f037/contracts/value.ts",
+      "src/features/f038/application/ports/value.ts",
+      "src/features/f038/application/use-cases/read-value.ts",
+      "src/features/f038/composition/f038.contracts.ts",
+      "src/features/f038/composition/f038.group.ts",
+      "src/features/f038/composition/value.declaration.ts",
+      "src/features/f038/composition/value.module.ts",
+      "src/features/f038/contracts/value.ts",
+      "src/features/f039/application/ports/value.ts",
+      "src/features/f039/application/use-cases/read-value.ts",
+      "src/features/f039/composition/f039.contracts.ts",
+      "src/features/f039/composition/f039.group.ts",
+      "src/features/f039/composition/value.declaration.ts",
+      "src/features/f039/composition/value.module.ts",
+      "src/features/f039/contracts/value.ts",
+      "src/features/f040/application/ports/value.ts",
+      "src/features/f040/application/use-cases/read-value.ts",
+      "src/features/f040/composition/f040.contracts.ts",
+      "src/features/f040/composition/f040.group.ts",
+      "src/features/f040/composition/value.declaration.ts",
+      "src/features/f040/composition/value.module.ts",
+      "src/features/f040/contracts/value.ts",
+      "src/features/f041/application/ports/value.ts",
+      "src/features/f041/application/use-cases/read-value.ts",
+      "src/features/f041/composition/f041.contracts.ts",
+      "src/features/f041/composition/f041.group.ts",
+      "src/features/f041/composition/value.declaration.ts",
+      "src/features/f041/composition/value.module.ts",
+      "src/features/f041/contracts/value.ts",
+      "src/features/f042/application/ports/value.ts",
+      "src/features/f042/application/use-cases/read-value.ts",
+      "src/features/f042/composition/f042.contracts.ts",
+      "src/features/f042/composition/f042.group.ts",
+      "src/features/f042/composition/value.declaration.ts",
+      "src/features/f042/composition/value.module.ts",
+      "src/features/f042/contracts/value.ts",
+      "src/features/f043/application/ports/value.ts",
+      "src/features/f043/application/use-cases/read-value.ts",
+      "src/features/f043/composition/f043.contracts.ts",
+      "src/features/f043/composition/f043.group.ts",
+      "src/features/f043/composition/value.declaration.ts",
+      "src/features/f043/composition/value.module.ts",
+      "src/features/f043/contracts/value.ts",
+      "src/features/f044/application/ports/value.ts",
+      "src/features/f044/application/use-cases/read-value.ts",
+      "src/features/f044/composition/f044.contracts.ts",
+      "src/features/f044/composition/f044.group.ts",
+      "src/features/f044/composition/value.declaration.ts",
+      "src/features/f044/composition/value.module.ts",
+      "src/features/f044/contracts/value.ts",
+      "src/features/f045/application/ports/value.ts",
+      "src/features/f045/application/use-cases/read-value.ts",
+      "src/features/f045/composition/f045.contracts.ts",
+      "src/features/f045/composition/f045.group.ts",
+      "src/features/f045/composition/value.declaration.ts",
+      "src/features/f045/composition/value.module.ts",
+      "src/features/f045/contracts/value.ts",
+      "src/features/f046/application/ports/value.ts",
+      "src/features/f046/application/use-cases/read-value.ts",
+      "src/features/f046/composition/f046.contracts.ts",
+      "src/features/f046/composition/f046.group.ts",
+      "src/features/f046/composition/value.declaration.ts",
+      "src/features/f046/composition/value.module.ts",
+      "src/features/f046/contracts/value.ts",
+      "src/features/f047/application/ports/value.ts",
+      "src/features/f047/application/use-cases/read-value.ts",
+      "src/features/f047/composition/f047.contracts.ts",
+      "src/features/f047/composition/f047.group.ts",
+      "src/features/f047/composition/value.declaration.ts",
+      "src/features/f047/composition/value.module.ts",
+      "src/features/f047/contracts/value.ts",
+      "src/features/f048/application/ports/value.ts",
+      "src/features/f048/application/use-cases/read-value.ts",
+      "src/features/f048/composition/f048.contracts.ts",
+      "src/features/f048/composition/f048.group.ts",
+      "src/features/f048/composition/value.declaration.ts",
+      "src/features/f048/composition/value.module.ts",
+      "src/features/f048/contracts/value.ts",
+      "src/features/f049/application/ports/value.ts",
+      "src/features/f049/application/use-cases/read-value.ts",
+      "src/features/f049/composition/f049.contracts.ts",
+      "src/features/f049/composition/f049.group.ts",
+      "src/features/f049/composition/value.declaration.ts",
+      "src/features/f049/composition/value.module.ts",
+      "src/features/f049/contracts/value.ts",
+      "src/features/f050/application/ports/value.ts",
+      "src/features/f050/application/use-cases/read-value.ts",
+      "src/features/f050/composition/f050.contracts.ts",
+      "src/features/f050/composition/f050.group.ts",
+      "src/features/f050/composition/value.declaration.ts",
+      "src/features/f050/composition/value.module.ts",
+      "src/features/f050/contracts/value.ts",
+      "src/features/f051/application/ports/value.ts",
+      "src/features/f051/application/use-cases/read-value.ts",
+      "src/features/f051/composition/f051.contracts.ts",
+      "src/features/f051/composition/f051.group.ts",
+      "src/features/f051/composition/value.declaration.ts",
+      "src/features/f051/composition/value.module.ts",
+      "src/features/f051/contracts/value.ts",
+      "src/features/f052/application/ports/value.ts",
+      "src/features/f052/application/use-cases/read-value.ts",
+      "src/features/f052/composition/f052.contracts.ts",
+      "src/features/f052/composition/f052.group.ts",
+      "src/features/f052/composition/value.declaration.ts",
+      "src/features/f052/composition/value.module.ts",
+      "src/features/f052/contracts/value.ts",
+      "src/features/f053/application/ports/value.ts",
+      "src/features/f053/application/use-cases/read-value.ts",
+      "src/features/f053/composition/f053.contracts.ts",
+      "src/features/f053/composition/f053.group.ts",
+      "src/features/f053/composition/value.declaration.ts",
+      "src/features/f053/composition/value.module.ts",
+      "src/features/f053/contracts/value.ts",
+      "src/features/f054/application/ports/value.ts",
+      "src/features/f054/application/use-cases/read-value.ts",
+      "src/features/f054/composition/f054.contracts.ts",
+      "src/features/f054/composition/f054.group.ts",
+      "src/features/f054/composition/value.declaration.ts",
+      "src/features/f054/composition/value.module.ts",
+      "src/features/f054/contracts/value.ts",
+      "src/features/f055/application/ports/value.ts",
+      "src/features/f055/application/use-cases/read-value.ts",
+      "src/features/f055/composition/f055.contracts.ts",
+      "src/features/f055/composition/f055.group.ts",
+      "src/features/f055/composition/value.declaration.ts",
+      "src/features/f055/composition/value.module.ts",
+      "src/features/f055/contracts/value.ts",
+      "src/features/f056/application/ports/value.ts",
+      "src/features/f056/application/use-cases/read-value.ts",
+      "src/features/f056/composition/f056.contracts.ts",
+      "src/features/f056/composition/f056.group.ts",
+      "src/features/f056/composition/value.declaration.ts",
+      "src/features/f056/composition/value.module.ts",
+      "src/features/f056/contracts/value.ts",
+      "src/features/f057/application/ports/value.ts",
+      "src/features/f057/application/use-cases/read-value.ts",
+      "src/features/f057/composition/f057.contracts.ts",
+      "src/features/f057/composition/f057.group.ts",
+      "src/features/f057/composition/value.declaration.ts",
+      "src/features/f057/composition/value.module.ts",
+      "src/features/f057/contracts/value.ts",
+      "src/features/f058/application/ports/value.ts",
+      "src/features/f058/application/use-cases/read-value.ts",
+      "src/features/f058/composition/f058.contracts.ts",
+      "src/features/f058/composition/f058.group.ts",
+      "src/features/f058/composition/value.declaration.ts",
+      "src/features/f058/composition/value.module.ts",
+      "src/features/f058/contracts/value.ts",
+      "src/features/f059/application/ports/value.ts",
+      "src/features/f059/application/use-cases/read-value.ts",
+      "src/features/f059/composition/f059.contracts.ts",
+      "src/features/f059/composition/f059.group.ts",
+      "src/features/f059/composition/value.declaration.ts",
+      "src/features/f059/composition/value.module.ts",
+      "src/features/f059/contracts/value.ts",
+      "src/features/f060/application/ports/value.ts",
+      "src/features/f060/application/use-cases/read-value.ts",
+      "src/features/f060/composition/f060.contracts.ts",
+      "src/features/f060/composition/f060.group.ts",
+      "src/features/f060/composition/value.declaration.ts",
+      "src/features/f060/composition/value.module.ts",
+      "src/features/f060/contracts/value.ts",
+      "src/features/f061/application/ports/value.ts",
+      "src/features/f061/application/use-cases/read-value.ts",
+      "src/features/f061/composition/f061.contracts.ts",
+      "src/features/f061/composition/f061.group.ts",
+      "src/features/f061/composition/value.declaration.ts",
+      "src/features/f061/composition/value.module.ts",
+      "src/features/f061/contracts/value.ts",
+      "src/features/f062/application/ports/value.ts",
+      "src/features/f062/application/use-cases/read-value.ts",
+      "src/features/f062/composition/f062.contracts.ts",
+      "src/features/f062/composition/f062.group.ts",
+      "src/features/f062/composition/value.declaration.ts",
+      "src/features/f062/composition/value.module.ts",
+      "src/features/f062/contracts/value.ts",
+      "src/features/f063/application/ports/value.ts",
+      "src/features/f063/application/use-cases/read-value.ts",
+      "src/features/f063/composition/f063.contracts.ts",
+      "src/features/f063/composition/f063.group.ts",
+      "src/features/f063/composition/value.declaration.ts",
+      "src/features/f063/composition/value.module.ts",
+      "src/features/f063/contracts/value.ts",
+      "src/features/f064/application/ports/value.ts",
+      "src/features/f064/application/use-cases/read-value.ts",
+      "src/features/f064/composition/f064.contracts.ts",
+      "src/features/f064/composition/f064.group.ts",
+      "src/features/f064/composition/value.declaration.ts",
+      "src/features/f064/composition/value.module.ts",
+      "src/features/f064/contracts/value.ts",
+      "src/features/f065/application/ports/value.ts",
+      "src/features/f065/application/use-cases/read-value.ts",
+      "src/features/f065/composition/f065.contracts.ts",
+      "src/features/f065/composition/f065.group.ts",
+      "src/features/f065/composition/value.declaration.ts",
+      "src/features/f065/composition/value.module.ts",
+      "src/features/f065/contracts/value.ts",
+      "src/features/f066/application/ports/value.ts",
+      "src/features/f066/application/use-cases/read-value.ts",
+      "src/features/f066/composition/f066.contracts.ts",
+      "src/features/f066/composition/f066.group.ts",
+      "src/features/f066/composition/value.declaration.ts",
+      "src/features/f066/composition/value.module.ts",
+      "src/features/f066/contracts/value.ts",
+      "src/features/f067/application/ports/value.ts",
+      "src/features/f067/application/use-cases/read-value.ts",
+      "src/features/f067/composition/f067.contracts.ts",
+      "src/features/f067/composition/f067.group.ts",
+      "src/features/f067/composition/value.declaration.ts",
+      "src/features/f067/composition/value.module.ts",
+      "src/features/f067/contracts/value.ts",
+      "src/features/f068/application/ports/value.ts",
+      "src/features/f068/application/use-cases/read-value.ts",
+      "src/features/f068/composition/f068.contracts.ts",
+      "src/features/f068/composition/f068.group.ts",
+      "src/features/f068/composition/value.declaration.ts",
+      "src/features/f068/composition/value.module.ts",
+      "src/features/f068/contracts/value.ts",
+      "src/features/f069/application/ports/value.ts",
+      "src/features/f069/application/use-cases/read-value.ts",
+      "src/features/f069/composition/f069.contracts.ts",
+      "src/features/f069/composition/f069.group.ts",
+      "src/features/f069/composition/value.declaration.ts",
+      "src/features/f069/composition/value.module.ts",
+      "src/features/f069/contracts/value.ts",
+      "src/features/f070/application/ports/value.ts",
+      "src/features/f070/application/use-cases/read-value.ts",
+      "src/features/f070/composition/f070.contracts.ts",
+      "src/features/f070/composition/f070.group.ts",
+      "src/features/f070/composition/value.declaration.ts",
+      "src/features/f070/composition/value.module.ts",
+      "src/features/f070/contracts/value.ts",
+      "src/features/f071/application/ports/value.ts",
+      "src/features/f071/application/use-cases/read-value.ts",
+      "src/features/f071/composition/f071.contracts.ts",
+      "src/features/f071/composition/f071.group.ts",
+      "src/features/f071/composition/value.declaration.ts",
+      "src/features/f071/composition/value.module.ts",
+      "src/features/f071/contracts/value.ts",
+      "src/features/f072/application/ports/value.ts",
+      "src/features/f072/application/use-cases/read-value.ts",
+      "src/features/f072/composition/f072.contracts.ts",
+      "src/features/f072/composition/f072.group.ts",
+      "src/features/f072/composition/value.declaration.ts",
+      "src/features/f072/composition/value.module.ts",
+      "src/features/f072/contracts/value.ts",
+      "src/features/f073/application/ports/value.ts",
+      "src/features/f073/application/use-cases/read-value.ts",
+      "src/features/f073/composition/f073.contracts.ts",
+      "src/features/f073/composition/f073.group.ts",
+      "src/features/f073/composition/value.declaration.ts",
+      "src/features/f073/composition/value.module.ts",
+      "src/features/f073/contracts/value.ts",
+      "src/features/f074/application/ports/value.ts",
+      "src/features/f074/application/use-cases/read-value.ts",
+      "src/features/f074/composition/f074.contracts.ts",
+      "src/features/f074/composition/f074.group.ts",
+      "src/features/f074/composition/value.declaration.ts",
+      "src/features/f074/composition/value.module.ts",
+      "src/features/f074/contracts/value.ts",
+      "src/features/f075/application/ports/value.ts",
+      "src/features/f075/application/use-cases/read-value.ts",
+      "src/features/f075/composition/f075.contracts.ts",
+      "src/features/f075/composition/f075.group.ts",
+      "src/features/f075/composition/value.declaration.ts",
+      "src/features/f075/composition/value.module.ts",
+      "src/features/f075/contracts/value.ts",
+      "src/features/f076/application/ports/value.ts",
+      "src/features/f076/application/use-cases/read-value.ts",
+      "src/features/f076/composition/f076.contracts.ts",
+      "src/features/f076/composition/f076.group.ts",
+      "src/features/f076/composition/value.declaration.ts",
+      "src/features/f076/composition/value.module.ts",
+      "src/features/f076/contracts/value.ts",
+      "src/features/f077/application/ports/value.ts",
+      "src/features/f077/application/use-cases/read-value.ts",
+      "src/features/f077/composition/f077.contracts.ts",
+      "src/features/f077/composition/f077.group.ts",
+      "src/features/f077/composition/value.declaration.ts",
+      "src/features/f077/composition/value.module.ts",
+      "src/features/f077/contracts/value.ts",
+      "src/features/f078/application/ports/value.ts",
+      "src/features/f078/application/use-cases/read-value.ts",
+      "src/features/f078/composition/f078.contracts.ts",
+      "src/features/f078/composition/f078.group.ts",
+      "src/features/f078/composition/value.declaration.ts",
+      "src/features/f078/composition/value.module.ts",
+      "src/features/f078/contracts/value.ts",
+      "src/features/f079/application/ports/value.ts",
+      "src/features/f079/application/use-cases/read-value.ts",
+      "src/features/f079/composition/f079.contracts.ts",
+      "src/features/f079/composition/f079.group.ts",
+      "src/features/f079/composition/value.declaration.ts",
+      "src/features/f079/composition/value.module.ts",
+      "src/features/f079/contracts/value.ts",
+      "src/features/f080/application/ports/value.ts",
+      "src/features/f080/application/use-cases/read-value.ts",
+      "src/features/f080/composition/f080.contracts.ts",
+      "src/features/f080/composition/f080.group.ts",
+      "src/features/f080/composition/value.declaration.ts",
+      "src/features/f080/composition/value.module.ts",
+      "src/features/f080/contracts/value.ts",
+      "src/features/f081/application/ports/value.ts",
+      "src/features/f081/application/use-cases/read-value.ts",
+      "src/features/f081/composition/f081.contracts.ts",
+      "src/features/f081/composition/f081.group.ts",
+      "src/features/f081/composition/value.declaration.ts",
+      "src/features/f081/composition/value.module.ts",
+      "src/features/f081/contracts/value.ts",
+      "src/features/f082/application/ports/value.ts",
+      "src/features/f082/application/use-cases/read-value.ts",
+      "src/features/f082/composition/f082.contracts.ts",
+      "src/features/f082/composition/f082.group.ts",
+      "src/features/f082/composition/value.declaration.ts",
+      "src/features/f082/composition/value.module.ts",
+      "src/features/f082/contracts/value.ts",
+      "src/features/f083/application/ports/value.ts",
+      "src/features/f083/application/use-cases/read-value.ts",
+      "src/features/f083/composition/f083.contracts.ts",
+      "src/features/f083/composition/f083.group.ts",
+      "src/features/f083/composition/value.declaration.ts",
+      "src/features/f083/composition/value.module.ts",
+      "src/features/f083/contracts/value.ts",
+      "src/features/f084/application/ports/value.ts",
+      "src/features/f084/application/use-cases/read-value.ts",
+      "src/features/f084/composition/f084.contracts.ts",
+      "src/features/f084/composition/f084.group.ts",
+      "src/features/f084/composition/value.declaration.ts",
+      "src/features/f084/composition/value.module.ts",
+      "src/features/f084/contracts/value.ts",
+      "src/features/f085/application/ports/value.ts",
+      "src/features/f085/application/use-cases/read-value.ts",
+      "src/features/f085/composition/f085.contracts.ts",
+      "src/features/f085/composition/f085.group.ts",
+      "src/features/f085/composition/value.declaration.ts",
+      "src/features/f085/composition/value.module.ts",
+      "src/features/f085/contracts/value.ts",
+      "src/features/f086/application/ports/value.ts",
+      "src/features/f086/application/use-cases/read-value.ts",
+      "src/features/f086/composition/f086.contracts.ts",
+      "src/features/f086/composition/f086.group.ts",
+      "src/features/f086/composition/value.declaration.ts",
+      "src/features/f086/composition/value.module.ts",
+      "src/features/f086/contracts/value.ts",
+      "src/features/f087/application/ports/value.ts",
+      "src/features/f087/application/use-cases/read-value.ts",
+      "src/features/f087/composition/f087.contracts.ts",
+      "src/features/f087/composition/f087.group.ts",
+      "src/features/f087/composition/value.declaration.ts",
+      "src/features/f087/composition/value.module.ts",
+      "src/features/f087/contracts/value.ts",
+      "src/features/f088/application/ports/value.ts",
+      "src/features/f088/application/use-cases/read-value.ts",
+      "src/features/f088/composition/f088.contracts.ts",
+      "src/features/f088/composition/f088.group.ts",
+      "src/features/f088/composition/value.declaration.ts",
+      "src/features/f088/composition/value.module.ts",
+      "src/features/f088/contracts/value.ts",
+      "src/features/f089/application/ports/value.ts",
+      "src/features/f089/application/use-cases/read-value.ts",
+      "src/features/f089/composition/f089.contracts.ts",
+      "src/features/f089/composition/f089.group.ts",
+      "src/features/f089/composition/value.declaration.ts",
+      "src/features/f089/composition/value.module.ts",
+      "src/features/f089/contracts/value.ts",
+      "src/features/f090/application/ports/value.ts",
+      "src/features/f090/application/use-cases/read-value.ts",
+      "src/features/f090/composition/f090.contracts.ts",
+      "src/features/f090/composition/f090.group.ts",
+      "src/features/f090/composition/value.declaration.ts",
+      "src/features/f090/composition/value.module.ts",
+      "src/features/f090/contracts/value.ts",
+      "src/features/f091/application/ports/value.ts",
+      "src/features/f091/application/use-cases/read-value.ts",
+      "src/features/f091/composition/f091.contracts.ts",
+      "src/features/f091/composition/f091.group.ts",
+      "src/features/f091/composition/value.declaration.ts",
+      "src/features/f091/composition/value.module.ts",
+      "src/features/f091/contracts/value.ts",
+      "src/features/f092/application/ports/value.ts",
+      "src/features/f092/application/use-cases/read-value.ts",
+      "src/features/f092/composition/f092.contracts.ts",
+      "src/features/f092/composition/f092.group.ts",
+      "src/features/f092/composition/value.declaration.ts",
+      "src/features/f092/composition/value.module.ts",
+      "src/features/f092/contracts/value.ts",
+      "src/features/f093/application/ports/value.ts",
+      "src/features/f093/application/use-cases/read-value.ts",
+      "src/features/f093/composition/f093.contracts.ts",
+      "src/features/f093/composition/f093.group.ts",
+      "src/features/f093/composition/value.declaration.ts",
+      "src/features/f093/composition/value.module.ts",
+      "src/features/f093/contracts/value.ts",
+      "src/features/f094/application/ports/value.ts",
+      "src/features/f094/application/use-cases/read-value.ts",
+      "src/features/f094/composition/f094.contracts.ts",
+      "src/features/f094/composition/f094.group.ts",
+      "src/features/f094/composition/value.declaration.ts",
+      "src/features/f094/composition/value.module.ts",
+      "src/features/f094/contracts/value.ts",
+      "src/features/f095/application/ports/value.ts",
+      "src/features/f095/application/use-cases/read-value.ts",
+      "src/features/f095/composition/f095.contracts.ts",
+      "src/features/f095/composition/f095.group.ts",
+      "src/features/f095/composition/value.declaration.ts",
+      "src/features/f095/composition/value.module.ts",
+      "src/features/f095/contracts/value.ts",
+      "src/features/f096/application/ports/value.ts",
+      "src/features/f096/application/use-cases/read-value.ts",
+      "src/features/f096/composition/f096.contracts.ts",
+      "src/features/f096/composition/f096.group.ts",
+      "src/features/f096/composition/value.declaration.ts",
+      "src/features/f096/composition/value.module.ts",
+      "src/features/f096/contracts/value.ts",
+      "src/features/f097/application/ports/value.ts",
+      "src/features/f097/application/use-cases/read-value.ts",
+      "src/features/f097/composition/f097.contracts.ts",
+      "src/features/f097/composition/f097.group.ts",
+      "src/features/f097/composition/value.declaration.ts",
+      "src/features/f097/composition/value.module.ts",
+      "src/features/f097/contracts/value.ts",
+      "src/features/f098/application/ports/value.ts",
+      "src/features/f098/application/use-cases/read-value.ts",
+      "src/features/f098/composition/f098.contracts.ts",
+      "src/features/f098/composition/f098.group.ts",
+      "src/features/f098/composition/value.declaration.ts",
+      "src/features/f098/composition/value.module.ts",
+      "src/features/f098/contracts/value.ts",
+      "src/features/f099/application/ports/value.ts",
+      "src/features/f099/application/use-cases/read-value.ts",
+      "src/features/f099/composition/f099.contracts.ts",
+      "src/features/f099/composition/f099.group.ts",
+      "src/features/f099/composition/value.declaration.ts",
+      "src/features/f099/composition/value.module.ts",
+      "src/features/f099/contracts/value.ts"
+    ],
+    "count": 703,
+    "bytes": 251501,
+    "importOccurrences": 2000,
+    "importCountingMethod": "one top-level static import per generated import line; not a source conformance scanner"
+  },
+  "compilerDiagnostics": {
+    "Files": "787",
+    "Lines": "63837",
+    "Identifiers": "62173",
+    "Symbols": "152455",
+    "Types": "54709",
+    "Instantiations": "148654",
+    "Memory used": "94615K",
+    "Memory allocs": "1565639",
+    "Config time": "0.009s",
+    "BuildInfo read time": "0.000s",
+    "Parse time": "0.090s",
+    "Bind time": "0.000s",
+    "Check time": "0.442s",
+    "Emit time": "0.679s",
+    "Changes compute time": "0.034s",
+    "Total time": "1.255s"
+  },
+  "runtime": {
+    "size": 100,
+    "scenarios": [
+      "G-02"
+    ],
+    "sourceCoverage": "incomplete; source scanner not selected",
+    "timingsMs": {
+      "prepare": 47.555402999999984,
+      "fullSmoke": 122.19937300000004
+    },
+    "graph": {
+      "declarations": 101,
+      "entriesAndGroups": 200,
+      "bindings": 197,
+      "providerOccurrences": 197,
+      "distinctEdges": 197,
+      "pathNodes": 101,
+      "reachableDeclarations": 101
+    },
+    "seeds": [
+      {
+        "seed": 17,
+        "root": 452417,
+        "values": [
+          528,
+          562,
+          1175,
+          4717,
+          22478,
+          116017,
+          715089,
+          24612,
+          309439,
+          897505,
+          671312,
+          80714,
+          974397,
+          672971,
+          618718,
+          477911,
+          431786,
+          125589,
+          235942,
+          458249,
+          549721,
+          928893,
+          404542,
+          273412,
+          229417,
+          402974,
+          899320,
+          703611,
+          982287,
+          767492,
+          671773,
+          471999,
+          444825,
+          20099,
+          944557,
+          320604,
+          25223,
+          416780,
+          3208,
+          290745,
+          174569,
+          702130,
+          925690,
+          240884,
+          904070,
+          988251,
+          22077,
+          600302,
+          550652,
+          718127,
+          384403,
+          82671,
+          581349,
+          93890,
+          772031,
+          163579,
+          647605,
+          400599,
+          260367,
+          387319,
+          65008,
+          791433,
+          173693,
+          47637,
+          729047,
+          68216,
+          186746,
+          196465,
+          420150,
+          50849,
+          102336,
+          808770,
+          165755,
+          34585,
+          398151,
+          700122,
+          335534,
+          962481,
+          704403,
+          278796,
+          462299,
+          604810,
+          85054,
+          550262,
+          27865,
+          174531,
+          609966,
+          667245,
+          401926,
+          455866,
+          488775,
+          939368,
+          460795,
+          893023,
+          759937,
+          9840,
+          928156,
+          14395,
+          318632,
+          452417
+        ],
+        "runMs": 5.536553999999967,
+        "closeMs": 0.3301330000000462
+      },
+      {
+        "seed": 23,
+        "root": 948032,
+        "values": [
+          714,
+          748,
+          1547,
+          6205,
+          29546,
+          152473,
+          939777,
+          603377,
+          974887,
+          921859,
+          133585,
+          384471,
+          192279,
+          78277,
+          923134,
+          674244,
+          562119,
+          330258,
+          163512,
+          325622,
+          982211,
+          96174,
+          729853,
+          400616,
+          114800,
+          370054,
+          717711,
+          474491,
+          133170,
+          709399,
+          70305,
+          967867,
+          528208,
+          987387,
+          516280,
+          14984,
+          646772,
+          37857,
+          951648,
+          627263,
+          717513,
+          45028,
+          7723,
+          448659,
+          528272,
+          559521,
+          353444,
+          227390,
+          785514,
+          360913,
+          667840,
+          681999,
+          842884,
+          51775,
+          82485,
+          823324,
+          968896,
+          89811,
+          491933,
+          306887,
+          593652,
+          393167,
+          349004,
+          959928,
+          867127,
+          795022,
+          43491,
+          486103,
+          125824,
+          752768,
+          234232,
+          171069,
+          248665,
+          84241,
+          673654,
+          963755,
+          360631,
+          883993,
+          43035,
+          491561,
+          744086,
+          690126,
+          482745,
+          960316,
+          999838,
+          319526,
+          221570,
+          18965,
+          442598,
+          164803,
+          571663,
+          760632,
+          591335,
+          607408,
+          12483,
+          102201,
+          302987,
+          881390,
+          423241,
+          948032
+        ],
+        "runMs": 0.9714190000000258,
+        "closeMs": 0.03751599999998234
+      }
+    ],
+    "smoke": {
+      "attempts": 201,
+      "factoryCalls": 10200,
+      "dependencyPortReads": 19803,
+      "inputReads": 201,
+      "distribution": [
+        {
+          "implementationId": "fixture/growth/f000/default",
+          "factoryCalls": 201,
+          "portReads": 199
+        },
+        {
+          "implementationId": "fixture/growth/f001/default",
+          "factoryCalls": 199,
+          "portReads": 392
+        },
+        {
+          "implementationId": "fixture/growth/f002/default",
+          "factoryCalls": 197,
+          "portReads": 579
+        },
+        {
+          "implementationId": "fixture/growth/f003/default",
+          "factoryCalls": 195,
+          "portReads": 569
+        },
+        {
+          "implementationId": "fixture/growth/f004/default",
+          "factoryCalls": 193,
+          "portReads": 559
+        },
+        {
+          "implementationId": "fixture/growth/f005/default",
+          "factoryCalls": 191,
+          "portReads": 549
+        },
+        {
+          "implementationId": "fixture/growth/f006/default",
+          "factoryCalls": 189,
+          "portReads": 539
+        },
+        {
+          "implementationId": "fixture/growth/f007/default",
+          "factoryCalls": 187,
+          "portReads": 529
+        },
+        {
+          "implementationId": "fixture/growth/f008/default",
+          "factoryCalls": 185,
+          "portReads": 519
+        },
+        {
+          "implementationId": "fixture/growth/f009/default",
+          "factoryCalls": 183,
+          "portReads": 509
+        },
+        {
+          "implementationId": "fixture/growth/f010/default",
+          "factoryCalls": 181,
+          "portReads": 499
+        },
+        {
+          "implementationId": "fixture/growth/f011/default",
+          "factoryCalls": 179,
+          "portReads": 489
+        },
+        {
+          "implementationId": "fixture/growth/f012/default",
+          "factoryCalls": 177,
+          "portReads": 479
+        },
+        {
+          "implementationId": "fixture/growth/f013/default",
+          "factoryCalls": 175,
+          "portReads": 469
+        },
+        {
+          "implementationId": "fixture/growth/f014/default",
+          "factoryCalls": 173,
+          "portReads": 459
+        },
+        {
+          "implementationId": "fixture/growth/f015/default",
+          "factoryCalls": 171,
+          "portReads": 449
+        },
+        {
+          "implementationId": "fixture/growth/f016/default",
+          "factoryCalls": 169,
+          "portReads": 439
+        },
+        {
+          "implementationId": "fixture/growth/f017/default",
+          "factoryCalls": 167,
+          "portReads": 429
+        },
+        {
+          "implementationId": "fixture/growth/f018/default",
+          "factoryCalls": 165,
+          "portReads": 419
+        },
+        {
+          "implementationId": "fixture/growth/f019/default",
+          "factoryCalls": 163,
+          "portReads": 409
+        },
+        {
+          "implementationId": "fixture/growth/f020/default",
+          "factoryCalls": 161,
+          "portReads": 399
+        },
+        {
+          "implementationId": "fixture/growth/f021/default",
+          "factoryCalls": 159,
+          "portReads": 389
+        },
+        {
+          "implementationId": "fixture/growth/f022/default",
+          "factoryCalls": 157,
+          "portReads": 379
+        },
+        {
+          "implementationId": "fixture/growth/f023/default",
+          "factoryCalls": 155,
+          "portReads": 369
+        },
+        {
+          "implementationId": "fixture/growth/f024/default",
+          "factoryCalls": 153,
+          "portReads": 359
+        },
+        {
+          "implementationId": "fixture/growth/f025/default",
+          "factoryCalls": 151,
+          "portReads": 349
+        },
+        {
+          "implementationId": "fixture/growth/f026/default",
+          "factoryCalls": 149,
+          "portReads": 339
+        },
+        {
+          "implementationId": "fixture/growth/f027/default",
+          "factoryCalls": 147,
+          "portReads": 329
+        },
+        {
+          "implementationId": "fixture/growth/f028/default",
+          "factoryCalls": 145,
+          "portReads": 319
+        },
+        {
+          "implementationId": "fixture/growth/f029/default",
+          "factoryCalls": 143,
+          "portReads": 309
+        },
+        {
+          "implementationId": "fixture/growth/f030/default",
+          "factoryCalls": 141,
+          "portReads": 299
+        },
+        {
+          "implementationId": "fixture/growth/f031/default",
+          "factoryCalls": 139,
+          "portReads": 289
+        },
+        {
+          "implementationId": "fixture/growth/f032/default",
+          "factoryCalls": 137,
+          "portReads": 279
+        },
+        {
+          "implementationId": "fixture/growth/f033/default",
+          "factoryCalls": 135,
+          "portReads": 269
+        },
+        {
+          "implementationId": "fixture/growth/f034/default",
+          "factoryCalls": 133,
+          "portReads": 259
+        },
+        {
+          "implementationId": "fixture/growth/f035/default",
+          "factoryCalls": 131,
+          "portReads": 249
+        },
+        {
+          "implementationId": "fixture/growth/f036/default",
+          "factoryCalls": 129,
+          "portReads": 239
+        },
+        {
+          "implementationId": "fixture/growth/f037/default",
+          "factoryCalls": 127,
+          "portReads": 229
+        },
+        {
+          "implementationId": "fixture/growth/f038/default",
+          "factoryCalls": 125,
+          "portReads": 219
+        },
+        {
+          "implementationId": "fixture/growth/f039/default",
+          "factoryCalls": 123,
+          "portReads": 209
+        },
+        {
+          "implementationId": "fixture/growth/f040/default",
+          "factoryCalls": 121,
+          "portReads": 199
+        },
+        {
+          "implementationId": "fixture/growth/f041/default",
+          "factoryCalls": 119,
+          "portReads": 189
+        },
+        {
+          "implementationId": "fixture/growth/f042/default",
+          "factoryCalls": 117,
+          "portReads": 179
+        },
+        {
+          "implementationId": "fixture/growth/f043/default",
+          "factoryCalls": 115,
+          "portReads": 169
+        },
+        {
+          "implementationId": "fixture/growth/f044/default",
+          "factoryCalls": 113,
+          "portReads": 159
+        },
+        {
+          "implementationId": "fixture/growth/f045/default",
+          "factoryCalls": 111,
+          "portReads": 149
+        },
+        {
+          "implementationId": "fixture/growth/f046/default",
+          "factoryCalls": 109,
+          "portReads": 139
+        },
+        {
+          "implementationId": "fixture/growth/f047/default",
+          "factoryCalls": 107,
+          "portReads": 129
+        },
+        {
+          "implementationId": "fixture/growth/f048/default",
+          "factoryCalls": 105,
+          "portReads": 119
+        },
+        {
+          "implementationId": "fixture/growth/f049/default",
+          "factoryCalls": 103,
+          "portReads": 109
+        },
+        {
+          "implementationId": "fixture/growth/f050/default",
+          "factoryCalls": 101,
+          "portReads": 99
+        },
+        {
+          "implementationId": "fixture/growth/f051/default",
+          "factoryCalls": 99,
+          "portReads": 97
+        },
+        {
+          "implementationId": "fixture/growth/f052/default",
+          "factoryCalls": 97,
+          "portReads": 95
+        },
+        {
+          "implementationId": "fixture/growth/f053/default",
+          "factoryCalls": 95,
+          "portReads": 93
+        },
+        {
+          "implementationId": "fixture/growth/f054/default",
+          "factoryCalls": 93,
+          "portReads": 91
+        },
+        {
+          "implementationId": "fixture/growth/f055/default",
+          "factoryCalls": 91,
+          "portReads": 89
+        },
+        {
+          "implementationId": "fixture/growth/f056/default",
+          "factoryCalls": 89,
+          "portReads": 87
+        },
+        {
+          "implementationId": "fixture/growth/f057/default",
+          "factoryCalls": 87,
+          "portReads": 85
+        },
+        {
+          "implementationId": "fixture/growth/f058/default",
+          "factoryCalls": 85,
+          "portReads": 83
+        },
+        {
+          "implementationId": "fixture/growth/f059/default",
+          "factoryCalls": 83,
+          "portReads": 81
+        },
+        {
+          "implementationId": "fixture/growth/f060/default",
+          "factoryCalls": 81,
+          "portReads": 79
+        },
+        {
+          "implementationId": "fixture/growth/f061/default",
+          "factoryCalls": 79,
+          "portReads": 77
+        },
+        {
+          "implementationId": "fixture/growth/f062/default",
+          "factoryCalls": 77,
+          "portReads": 75
+        },
+        {
+          "implementationId": "fixture/growth/f063/default",
+          "factoryCalls": 75,
+          "portReads": 73
+        },
+        {
+          "implementationId": "fixture/growth/f064/default",
+          "factoryCalls": 73,
+          "portReads": 71
+        },
+        {
+          "implementationId": "fixture/growth/f065/default",
+          "factoryCalls": 71,
+          "portReads": 69
+        },
+        {
+          "implementationId": "fixture/growth/f066/default",
+          "factoryCalls": 69,
+          "portReads": 67
+        },
+        {
+          "implementationId": "fixture/growth/f067/default",
+          "factoryCalls": 67,
+          "portReads": 65
+        },
+        {
+          "implementationId": "fixture/growth/f068/default",
+          "factoryCalls": 65,
+          "portReads": 63
+        },
+        {
+          "implementationId": "fixture/growth/f069/default",
+          "factoryCalls": 63,
+          "portReads": 61
+        },
+        {
+          "implementationId": "fixture/growth/f070/default",
+          "factoryCalls": 61,
+          "portReads": 59
+        },
+        {
+          "implementationId": "fixture/growth/f071/default",
+          "factoryCalls": 59,
+          "portReads": 57
+        },
+        {
+          "implementationId": "fixture/growth/f072/default",
+          "factoryCalls": 57,
+          "portReads": 55
+        },
+        {
+          "implementationId": "fixture/growth/f073/default",
+          "factoryCalls": 55,
+          "portReads": 53
+        },
+        {
+          "implementationId": "fixture/growth/f074/default",
+          "factoryCalls": 53,
+          "portReads": 51
+        },
+        {
+          "implementationId": "fixture/growth/f075/default",
+          "factoryCalls": 51,
+          "portReads": 49
+        },
+        {
+          "implementationId": "fixture/growth/f076/default",
+          "factoryCalls": 49,
+          "portReads": 47
+        },
+        {
+          "implementationId": "fixture/growth/f077/default",
+          "factoryCalls": 47,
+          "portReads": 45
+        },
+        {
+          "implementationId": "fixture/growth/f078/default",
+          "factoryCalls": 45,
+          "portReads": 43
+        },
+        {
+          "implementationId": "fixture/growth/f079/default",
+          "factoryCalls": 43,
+          "portReads": 41
+        },
+        {
+          "implementationId": "fixture/growth/f080/default",
+          "factoryCalls": 41,
+          "portReads": 39
+        },
+        {
+          "implementationId": "fixture/growth/f081/default",
+          "factoryCalls": 39,
+          "portReads": 37
+        },
+        {
+          "implementationId": "fixture/growth/f082/default",
+          "factoryCalls": 37,
+          "portReads": 35
+        },
+        {
+          "implementationId": "fixture/growth/f083/default",
+          "factoryCalls": 35,
+          "portReads": 33
+        },
+        {
+          "implementationId": "fixture/growth/f084/default",
+          "factoryCalls": 33,
+          "portReads": 31
+        },
+        {
+          "implementationId": "fixture/growth/f085/default",
+          "factoryCalls": 31,
+          "portReads": 29
+        },
+        {
+          "implementationId": "fixture/growth/f086/default",
+          "factoryCalls": 29,
+          "portReads": 27
+        },
+        {
+          "implementationId": "fixture/growth/f087/default",
+          "factoryCalls": 27,
+          "portReads": 25
+        },
+        {
+          "implementationId": "fixture/growth/f088/default",
+          "factoryCalls": 25,
+          "portReads": 23
+        },
+        {
+          "implementationId": "fixture/growth/f089/default",
+          "factoryCalls": 23,
+          "portReads": 21
+        },
+        {
+          "implementationId": "fixture/growth/f090/default",
+          "factoryCalls": 21,
+          "portReads": 19
+        },
+        {
+          "implementationId": "fixture/growth/f091/default",
+          "factoryCalls": 19,
+          "portReads": 17
+        },
+        {
+          "implementationId": "fixture/growth/f092/default",
+          "factoryCalls": 17,
+          "portReads": 15
+        },
+        {
+          "implementationId": "fixture/growth/f093/default",
+          "factoryCalls": 15,
+          "portReads": 13
+        },
+        {
+          "implementationId": "fixture/growth/f094/default",
+          "factoryCalls": 13,
+          "portReads": 11
+        },
+        {
+          "implementationId": "fixture/growth/f095/default",
+          "factoryCalls": 11,
+          "portReads": 9
+        },
+        {
+          "implementationId": "fixture/growth/f096/default",
+          "factoryCalls": 9,
+          "portReads": 7
+        },
+        {
+          "implementationId": "fixture/growth/f097/default",
+          "factoryCalls": 7,
+          "portReads": 5
+        },
+        {
+          "implementationId": "fixture/growth/f098/default",
+          "factoryCalls": 5,
+          "portReads": 3
+        },
+        {
+          "implementationId": "fixture/growth/f099/default",
+          "factoryCalls": 3,
+          "portReads": 0
+        }
+      ],
+      "steps": [
+        {
+          "inject": "none",
+          "outcome": "succeeded",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f000/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f000/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f001/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f001/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f002/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f002/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f003/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f003/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f004/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f004/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f005/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f005/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f006/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f006/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f007/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f007/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f008/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f008/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f009/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f009/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f010/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f010/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f011/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f011/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f012/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f012/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f013/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f013/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f014/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f014/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f015/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f015/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f016/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f016/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f017/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f017/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f018/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f018/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f019/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f019/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f020/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f020/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f021/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f021/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f022/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f022/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f023/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f023/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f024/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f024/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f025/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f025/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f026/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f026/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f027/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f027/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f028/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f028/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f029/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f029/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f030/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f030/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f031/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f031/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f032/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f032/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f033/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f033/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f034/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f034/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f035/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f035/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f036/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f036/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f037/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f037/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f038/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f038/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f039/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f039/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f040/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f040/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f041/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f041/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f042/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f042/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f043/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f043/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f044/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f044/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f045/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f045/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f046/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f046/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f047/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f047/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f048/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f048/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f049/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f049/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f050/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f050/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f051/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f051/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f052/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f052/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f053/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f053/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f054/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f054/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f055/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f055/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f056/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f056/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f057/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f057/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f058/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f058/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f059/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f059/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f060/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f060/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f061/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f061/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f062/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f062/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f063/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f063/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f064/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f064/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f065/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f065/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f066/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f066/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f067/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f067/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f068/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f068/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f069/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f069/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f070/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f070/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f071/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f071/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f072/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f072/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f073/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f073/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f074/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f074/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f075/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f075/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f076/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f076/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f077/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f077/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f078/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f078/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f079/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f079/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f080/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f080/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f081/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f081/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f082/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f082/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f083/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f083/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f084/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f084/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f085/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f085/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f086/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f086/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f087/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f087/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f088/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f088/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f089/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f089/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f090/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f090/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f091/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f091/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f092/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f092/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f093/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f093/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f094/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f094/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f095/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f095/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f096/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f096/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f097/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f097/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f098/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f098/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        },
+        {
+          "inject": "fail",
+          "at": "fixture/growth/f099/default",
+          "outcome": "failed",
+          "closeComplete": true
+        },
+        {
+          "inject": "abort",
+          "at": "fixture/growth/f099/default",
+          "outcome": "cancelled",
+          "closeComplete": true
+        }
+      ]
+    }
+  },
+  "edits": {
+    "leaf": [
+      {
+        "path": "src/features/f099/application/use-cases/read-value.ts",
+        "before": "import type { ValueForRead } from \"../ports/value.js\";\nexport function readValue(deps: { readonly p49: ValueForRead; readonly p98: ValueForRead }, _input: void): number {\n  return (17 * 100 + 50 * deps.p49.read() + 99 * deps.p98.read()) % 1000003;\n}\n",
+        "after": "import type { ValueForRead } from \"../ports/value.js\";\nexport function readValue(deps: { readonly p49: ValueForRead; readonly p98: ValueForRead }, _input: void): number {\n  return (17 * 100 + 1 + 50 * deps.p49.read() + 99 * deps.p98.read()) % 1000003;\n}\n",
+        "beforeSha256": "74fc6454b54a2bf607ab3fb241e96c844b15f8b058a89d6fbe45ceca915a71d4",
+        "afterSha256": "2aacb278b3e26c4fd1d30d62c3bb63d44425b363bd32c31ddaa0b2fc3144bb62"
+      }
+    ],
+    "sharedContract": [
+      {
+        "path": "src/features/f003/contracts/value.ts",
+        "before": "export interface Value { readonly read: () => number; }\n",
+        "after": "export interface Value { readonly readValue: () => number; }\n",
+        "beforeSha256": "9e3140fe3fd7bcd0408f4e4d4f30b7061e6ff0e973c40f0cb09673063bf62364",
+        "afterSha256": "29642a237a174a04426f59d28d40c91a8a871b33efaaacabaffaa1a560eaff0b"
+      },
+      {
+        "path": "src/features/f003/composition/f003.contracts.ts",
+        "before": "import { defineContract } from \"@get-modular/assembly\";\nimport type { CapabilitiesOf } from \"@get-modular/assembly\";\nimport type { Value } from \"../contracts/value.js\";\nimport type { FeatureCapabilities as F1 } from \"../../f001/composition/f001.contracts.js\";\nimport type { FeatureCapabilities as F2 } from \"../../f002/composition/f002.contracts.js\";\nexport const ValueContract = defineContract<Value>()({ id: \"fixture/growth/f003/value\", revision: 1 });\nexport interface FeatureCapabilities extends\n  F1,\n  F2,\n  CapabilitiesOf<typeof ValueContract> {}\n",
+        "after": "import { defineContract } from \"@get-modular/assembly\";\nimport type { CapabilitiesOf } from \"@get-modular/assembly\";\nimport type { Value } from \"../contracts/value.js\";\nimport type { FeatureCapabilities as F1 } from \"../../f001/composition/f001.contracts.js\";\nimport type { FeatureCapabilities as F2 } from \"../../f002/composition/f002.contracts.js\";\nexport const ValueContract = defineContract<Value>()({ id: \"fixture/growth/f003/value\", revision: 2 });\nexport interface FeatureCapabilities extends\n  F1,\n  F2,\n  CapabilitiesOf<typeof ValueContract> {}\n",
+        "beforeSha256": "2435e0f6202d060729b1b66100972d56e4c0088f7224ca25c7f54f975e887465",
+        "afterSha256": "b582ef69a0c9a95f5b538374b21e6d9a210d5f9512cfece43cb2b832e769dba6"
+      },
+      {
+        "path": "src/features/f003/composition/value.module.ts",
+        "before": "import { implement } from \"@get-modular/assembly\";\nimport type { FeatureCapabilities } from \"./f003.contracts.js\";\nimport { declaration } from \"./value.declaration.js\";\nimport { readValue } from \"../application/use-cases/read-value.js\";\nimport type { Value } from \"../contracts/value.js\";\nexport const entry = implement<FeatureCapabilities>()(declaration, async (deps) => {\n  const value = readValue({ p1: { read: () => deps.p1.read() }, p2: { read: () => deps.p2.read() } }, undefined);\n  const port: Value = { read: () => value };\n  return { instance: { value }, capabilities: { \"fixture/growth/f003/value\": port } };\n});\n",
+        "after": "import { implement } from \"@get-modular/assembly\";\nimport type { FeatureCapabilities } from \"./f003.contracts.js\";\nimport { declaration } from \"./value.declaration.js\";\nimport { readValue } from \"../application/use-cases/read-value.js\";\nimport type { Value } from \"../contracts/value.js\";\nexport const entry = implement<FeatureCapabilities>()(declaration, async (deps) => {\n  const value = readValue({ p1: { read: () => deps.p1.read() }, p2: { read: () => deps.p2.read() } }, undefined);\n  const port: Value = { readValue: () => value };\n  return { instance: { value }, capabilities: { \"fixture/growth/f003/value\": port } };\n});\n",
+        "beforeSha256": "639e630ee67043d45fdbb9aa85d849980d806ff4d9db67ebc2e87c9bca6b7c91",
+        "afterSha256": "5a01ed9488e688a616d0167e65794c5c5d778dc3307e12132e46cc1a966cebdb"
+      },
+      {
+        "path": "src/features/f004/composition/value.module.ts",
+        "before": "import { implement } from \"@get-modular/assembly\";\nimport type { FeatureCapabilities } from \"./f004.contracts.js\";\nimport { declaration } from \"./value.declaration.js\";\nimport { readValue } from \"../application/use-cases/read-value.js\";\nimport type { Value } from \"../contracts/value.js\";\nexport const entry = implement<FeatureCapabilities>()(declaration, async (deps) => {\n  const value = readValue({ p2: { read: () => deps.p2.read() }, p3: { read: () => deps.p3.read() } }, undefined);\n  const port: Value = { read: () => value };\n  return { instance: { value }, capabilities: { \"fixture/growth/f004/value\": port } };\n});\n",
+        "after": "import { implement } from \"@get-modular/assembly\";\nimport type { FeatureCapabilities } from \"./f004.contracts.js\";\nimport { declaration } from \"./value.declaration.js\";\nimport { readValue } from \"../application/use-cases/read-value.js\";\nimport type { Value } from \"../contracts/value.js\";\nexport const entry = implement<FeatureCapabilities>()(declaration, async (deps) => {\n  const value = readValue({ p2: { read: () => deps.p2.read() }, p3: { read: () => deps.p3.readValue() } }, undefined);\n  const port: Value = { read: () => value };\n  return { instance: { value }, capabilities: { \"fixture/growth/f004/value\": port } };\n});\n",
+        "beforeSha256": "973f50cd588465bfcbd63dc0d6fd05afb1a5637cdbb3236c852746d58718a174",
+        "afterSha256": "4a9120e5d3cdd4db334f599b3837bd5d0d86b89c92034acf3909b01f68954cfb"
+      },
+      {
+        "path": "src/features/f006/composition/value.module.ts",
+        "before": "import { implement } from \"@get-modular/assembly\";\nimport type { FeatureCapabilities } from \"./f006.contracts.js\";\nimport { declaration } from \"./value.declaration.js\";\nimport { readValue } from \"../application/use-cases/read-value.js\";\nimport type { Value } from \"../contracts/value.js\";\nexport const entry = implement<FeatureCapabilities>()(declaration, async (deps) => {\n  const value = readValue({ p3: { read: () => deps.p3.read() }, p5: { read: () => deps.p5.read() } }, undefined);\n  const port: Value = { read: () => value };\n  return { instance: { value }, capabilities: { \"fixture/growth/f006/value\": port } };\n});\n",
+        "after": "import { implement } from \"@get-modular/assembly\";\nimport type { FeatureCapabilities } from \"./f006.contracts.js\";\nimport { declaration } from \"./value.declaration.js\";\nimport { readValue } from \"../application/use-cases/read-value.js\";\nimport type { Value } from \"../contracts/value.js\";\nexport const entry = implement<FeatureCapabilities>()(declaration, async (deps) => {\n  const value = readValue({ p3: { read: () => deps.p3.readValue() }, p5: { read: () => deps.p5.read() } }, undefined);\n  const port: Value = { read: () => value };\n  return { instance: { value }, capabilities: { \"fixture/growth/f006/value\": port } };\n});\n",
+        "beforeSha256": "736a3443867a9ba8a7b0ddf3c60ff7f1f3a7bf92ddeeacdaa64a9db7bdfd1130",
+        "afterSha256": "61c42526dcfe74968cd30c4ae8d564316792faf8cbab263f0dc15732ae9c4d8a"
+      },
+      {
+        "path": "src/features/f007/composition/value.module.ts",
+        "before": "import { implement } from \"@get-modular/assembly\";\nimport type { FeatureCapabilities } from \"./f007.contracts.js\";\nimport { declaration } from \"./value.declaration.js\";\nimport { readValue } from \"../application/use-cases/read-value.js\";\nimport type { Value } from \"../contracts/value.js\";\nexport const entry = implement<FeatureCapabilities>()(declaration, async (deps) => {\n  const value = readValue({ p3: { read: () => deps.p3.read() }, p6: { read: () => deps.p6.read() } }, undefined);\n  const port: Value = { read: () => value };\n  return { instance: { value }, capabilities: { \"fixture/growth/f007/value\": port } };\n});\n",
+        "after": "import { implement } from \"@get-modular/assembly\";\nimport type { FeatureCapabilities } from \"./f007.contracts.js\";\nimport { declaration } from \"./value.declaration.js\";\nimport { readValue } from \"../application/use-cases/read-value.js\";\nimport type { Value } from \"../contracts/value.js\";\nexport const entry = implement<FeatureCapabilities>()(declaration, async (deps) => {\n  const value = readValue({ p3: { read: () => deps.p3.readValue() }, p6: { read: () => deps.p6.read() } }, undefined);\n  const port: Value = { read: () => value };\n  return { instance: { value }, capabilities: { \"fixture/growth/f007/value\": port } };\n});\n",
+        "beforeSha256": "dc2c4a5e2339494eefce88e38c9f91d702b29014f2bcc2ab7ffd2eddd60e16a0",
+        "afterSha256": "5bf1fb234bc96ff6753a682c49187b57b1dd44cd5a9780f1ed85820566496611"
+      }
+    ]
+  },
+  "leaf": {
+    "scenario": "G-03",
+    "variant": "leaf",
+    "observations": [
+      {
+        "seed": 17,
+        "root": 452418
+      },
+      {
+        "seed": 23,
+        "root": 948033
+      }
+    ],
+    "providerPins": "passed",
+    "complete": true,
+    "smoke": "not-repeated; baseline full smoke is the selected G-02 coverage",
+    "wallMs": 55.29993900000002
+  },
+  "sharedContract": {
+    "scenario": "G-03",
+    "variant": "shared-contract",
+    "observations": [
+      {
+        "seed": 17,
+        "root": 452417
+      },
+      {
+        "seed": 23,
+        "root": 948032
+      }
+    ],
+    "providerPins": "passed",
+    "complete": true,
+    "smoke": "not-repeated; baseline full smoke is the selected G-02 coverage",
+    "wallMs": 74.968568
+  },
+  "supervision": {
+    "aggregateMs": 600000,
+    "stageCapsMs": {
+      "compiler": 180000,
+      "runtime": 120000
+    },
+    "wallMs": 5868.068864,
+    "expired": false,
+    "termination": {
+      "method": "observed-worker-exit",
+      "treeKillAfterExit": false
+    },
+    "observedStages": [
+      {
+        "stage": "cold",
+        "kind": "compiler",
+        "capMs": 180000,
+        "wallMs": 1448.238506,
+        "status": "ended"
+      },
+      {
+        "stage": "runtime",
+        "kind": "runtime",
+        "capMs": 120000,
+        "wallMs": 452.8148510000001,
+        "status": "ended"
+      },
+      {
+        "stage": "unchanged-incremental",
+        "kind": "compiler",
+        "capMs": 180000,
+        "wallMs": 217.53598899999997,
+        "status": "ended"
+      },
+      {
+        "stage": "leaf-edit",
+        "kind": "compiler",
+        "capMs": 180000,
+        "wallMs": 151.3309280000003,
+        "status": "ended"
+      },
+      {
+        "stage": "verify-leaf",
+        "kind": "runtime",
+        "capMs": 120000,
+        "wallMs": 311.1406320000001,
+        "status": "ended"
+      },
+      {
+        "stage": "baseline-rewarm",
+        "kind": "compiler",
+        "capMs": 180000,
+        "wallMs": 161.44795000000022,
+        "status": "ended"
+      },
+      {
+        "stage": "shared-contract-edit",
+        "kind": "compiler",
+        "capMs": 180000,
+        "wallMs": 893.5589140000002,
+        "status": "ended"
+      },
+      {
+        "stage": "verify-shared-contract",
+        "kind": "runtime",
+        "capMs": 120000,
+        "wallMs": 365.0616650000002,
+        "status": "ended"
+      }
+    ],
+    "code": 0,
+    "signal": null
+  }
+}

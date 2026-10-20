@@ -1,0 +1,20 @@
+{
+  "command": [
+    "/tmp/gm-ts-owner-20261020/tsc-patched",
+    "--strict",
+    "--noEmit",
+    "--target",
+    "ES2022",
+    "--module",
+    "NodeNext",
+    "--singleThreaded",
+    "--pretty",
+    "false",
+    "negativecandidate.ts"
+  ],
+  "wallSeconds": 0.3748065439999664,
+  "exitCode": 0,
+  "stdout": "",
+  "stderr": "",
+  "capSeconds": 60
+}

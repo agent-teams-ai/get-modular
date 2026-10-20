@@ -1,0 +1,23 @@
+File: tsc-baseline
+Build ID: 47870bb1f11f37b3f3b08653ecc6176423cc01d6
+Type: cpu
+Time: 2026-10-20 11:05:58 IDT
+Duration: 309.88ms, Total samples = 420ms (135.54%)
+Showing nodes accounting for 0, 0% of 420ms total
+Showing top 15 nodes out of 279
+      flat  flat%   sum%        cum   cum%
+         0     0%     0%      260ms 61.90%  github.com/microsoft/TypeScript/tsc/internal/core.(*singleThreadedWorkGroup).RunAndWait
+         0     0%     0%      230ms 54.76%  github.com/microsoft/TypeScript/tsc/internal/execute.performCompilation
+         0     0%     0%      220ms 52.38%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).GetDiagnostics (inline)
+         0     0%     0%      220ms 52.38%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).checkSourceElement
+         0     0%     0%      220ms 52.38%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).checkSourceElementWorker
+         0     0%     0%      220ms 52.38%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).checkSourceElements
+         0     0%     0%      220ms 52.38%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).checkSourceFile
+         0     0%     0%      220ms 52.38%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).getDiagnostics
+         0     0%     0%      220ms 52.38%  github.com/microsoft/TypeScript/tsc/internal/compiler.(*Program).collectCheckerDiagnostics
+         0     0%     0%      220ms 52.38%  github.com/microsoft/TypeScript/tsc/internal/compiler.(*Program).collectCheckerDiagnosticsFromFiles
+         0     0%     0%      220ms 52.38%  github.com/microsoft/TypeScript/tsc/internal/compiler.(*Program).collectCheckerDiagnosticsFromFiles.func1
+         0     0%     0%      220ms 52.38%  github.com/microsoft/TypeScript/tsc/internal/compiler.(*Program).getBindAndCheckDiagnosticsWithChecker
+         0     0%     0%      220ms 52.38%  github.com/microsoft/TypeScript/tsc/internal/compiler.(*Program).getSemanticDiagnosticsWithChecker
+         0     0%     0%      220ms 52.38%  github.com/microsoft/TypeScript/tsc/internal/compiler.(*checkerPool).forEachCheckerGroupDo
+         0     0%     0%      220ms 52.38%  github.com/microsoft/TypeScript/tsc/internal/compiler.(*checkerPool).forEachCheckerGroupDo.func1

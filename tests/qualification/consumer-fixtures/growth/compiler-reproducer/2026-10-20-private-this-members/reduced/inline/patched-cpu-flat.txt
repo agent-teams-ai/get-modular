@@ -1,0 +1,20 @@
+File: tsc-patched
+Build ID: ae720048dc3f800b262d3344c32662c7804c06a4
+Type: cpu
+Time: 2026-10-20 11:17:42 IDT
+Duration: 426.60ms, Total samples = 560ms (131.27%)
+Showing nodes accounting for 220ms, 39.29% of 560ms total
+Showing top 12 nodes out of 310
+      flat  flat%   sum%        cum   cum%
+      50ms  8.93%  8.93%      150ms 26.79%  runtime.scanObject
+      30ms  5.36% 14.29%       50ms  8.93%  runtime.findObject
+      20ms  3.57% 17.86%       20ms  3.57%  internal/runtime/maps.(*Iter).Next
+      20ms  3.57% 21.43%       20ms  3.57%  internal/runtime/maps.ctrlGroup.matchH2
+      20ms  3.57% 25.00%       20ms  3.57%  runtime.spanOf (inline)
+      20ms  3.57% 28.57%       20ms  3.57%  runtime.tryDeferToSpanScan
+      10ms  1.79% 30.36%       10ms  1.79%  gcWriteBarrier
+      10ms  1.79% 32.14%       10ms  1.79%  github.com/microsoft/TypeScript/tsc/internal/ast.(*Node).AsIdentifier
+      10ms  1.79% 33.93%       10ms  1.79%  github.com/microsoft/TypeScript/tsc/internal/ast.(*Symbol).Parent
+      10ms  1.79% 35.71%       10ms  1.79%  github.com/microsoft/TypeScript/tsc/internal/ast.(*Symbol).ValueDeclaration
+      10ms  1.79% 37.50%       10ms  1.79%  github.com/microsoft/TypeScript/tsc/internal/ast.GetNonAssignedNameOfDeclaration
+      10ms  1.79% 39.29%       10ms  1.79%  github.com/microsoft/TypeScript/tsc/internal/ast.GetSourceFileOfNode

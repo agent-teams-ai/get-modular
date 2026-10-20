@@ -1,0 +1,16 @@
+{
+  "command": [
+    "/tmp/gm-ts-owner-20261020/go-toolchain/go/bin/go",
+    "test",
+    "-c",
+    "-o",
+    "/tmp/gm-ts-owner-20261020/selected-regressions.test",
+    "./internal/testrunner"
+  ],
+  "wallSeconds": 20.08496259100002,
+  "exitCode": 0,
+  "expired": false,
+  "capSeconds": 600,
+  "timeUtc": "2026-10-20T08:17:54.394754+00:00",
+  "patchSha256": "3a98de8a169b239da38cbe285de2f88e498406b8bdc24eec4685d6b4809a308e"
+}

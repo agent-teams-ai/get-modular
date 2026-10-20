@@ -23,6 +23,22 @@
     "research/implementation-readiness/evidence/worker-index.json",
     "tests/qualification/implementation-readiness/api-authoring/**/evidence.json"
   ],
+  "overrides": [
+    {
+      "filename": "tests/qualification/consumer-fixtures/growth/compiler-reproducer/2026-10-20-private-this-members/**/*.json",
+      "words": [
+        "hardlinks",
+        "Interfaes",
+        "memprofile",
+        "negativecandidate",
+        "noom",
+        "rusage",
+        "testrunner",
+        "UOEDX",
+        "writeback"
+      ]
+    }
+  ],
   "words": [
     "Agentic",
     "Awilix",

@@ -1,0 +1,24 @@
+File: tsc-baseline
+Build ID: 47870bb1f11f37b3f3b08653ecc6176423cc01d6
+Type: cpu
+Time: 2026-10-20 11:05:56 IDT
+Duration: 1.44s, Total samples = 2250ms (156.07%)
+Showing nodes accounting for 1290ms, 57.33% of 2250ms total
+Dropped 138 nodes (cum <= 11.25ms)
+Showing top 15 nodes out of 222
+      flat  flat%   sum%        cum   cum%
+     250ms 11.11% 11.11%      790ms 35.11%  runtime.scanObject
+     150ms  6.67% 17.78%      240ms 10.67%  runtime.tryDeferToSpanScan
+     110ms  4.89% 22.67%      160ms  7.11%  runtime.greyobject
+     100ms  4.44% 27.11%      100ms  4.44%  internal/runtime/maps.(*ctrlGroup).setEmpty (inline)
+     100ms  4.44% 31.56%      100ms  4.44%  runtime.spanClass.sizeclass (inline)
+      90ms  4.00% 35.56%       90ms  4.00%  cmpbody
+      90ms  4.00% 39.56%      240ms 10.67%  runtime.findObject
+      60ms  2.67% 42.22%       60ms  2.67%  runtime.(*mspan).base (inline)
+      60ms  2.67% 44.89%       60ms  2.67%  runtime.heapSetTypeSmallHeader (inline)
+      60ms  2.67% 47.56%       60ms  2.67%  runtime.spanOf (inline)
+      50ms  2.22% 49.78%       50ms  2.22%  runtime.(*mspan).divideByElemSize (inline)
+      50ms  2.22% 52.00%       50ms  2.22%  runtime.asyncPreempt
+      50ms  2.22% 54.22%      380ms 16.89%  runtime.mapassign_faststr
+      40ms  1.78% 56.00%      180ms  8.00%  slices.partitionCmpFunc[go.shape.*uint8]
+      30ms  1.33% 57.33%      180ms  8.00%  github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).compareSymbolsWorker

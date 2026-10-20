@@ -1,0 +1,1 @@
+{"scenario":"G-03","variant":"leaf","observations":[{"seed":17,"root":452418},{"seed":23,"root":948033}],"providerPins":"passed","complete":true,"smoke":"not-repeated; baseline full smoke is the selected G-02 coverage","wallMs":55.29993900000002}

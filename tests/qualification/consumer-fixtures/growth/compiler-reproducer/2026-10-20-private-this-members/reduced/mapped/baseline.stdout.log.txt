@@ -1,0 +1,16 @@
+Files:               64
+Lines:            57266
+Identifiers:      50245
+Symbols:          53332
+Types:            70507
+Instantiations:   31478
+Memory used:    208494K
+Memory allocs:   836703
+Config time:     0.000s
+Parse time:      0.029s
+Bind time:       0.017s
+Check time:      1.276s
+Emit time:       0.000s
+Total time:      1.326s
+Memory profile: /tmp/gm-ts-owner-20261020/reduced/mapped/baseline-profiles/64231-memprofile.pb.gz
+CPU profile: /tmp/gm-ts-owner-20261020/reduced/mapped/baseline-profiles/64231-cpuprofile.pb.gz
