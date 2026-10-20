@@ -123,7 +123,7 @@ test("disposable packed consumer checks closed roots, synthetic wiring and both 
     for (const name of ["core", "assembly"]) {
       const directory = join(workspace, "packages", name);
       const manifest = JSON.parse(await readFile(join(directory, "package.json"), "utf8"));
-      if (!retained) command(process.execPath, [pnpm, "pack", "--pack-destination", archives], directory);
+      if (!retained) command(process.execPath, [pnpm, "--pm-on-fail=ignore", "pack", "--pack-destination", archives], directory);
       const archive = retained ? await realpath(name === "assembly" ? retained : publishedCore)
         : join(archives, `${manifest.name.replace("@", "").replace("/", "-")}-${manifest.version}.tgz`);
       assert.equal((await lstat(archive)).isFile(), true);

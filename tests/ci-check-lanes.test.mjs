@@ -10,6 +10,7 @@ import { validateFeatureModuleStandardProfile } from "../architecture/checks/fea
 const root = new URL("../", import.meta.url);
 const read = path => readFile(new URL(path, root), "utf8");
 const workflow = parse(await read(".github/workflows/ci.yml"));
+const growthDiagnostic = parse(await read(".github/workflows/fixture-growth-upstream-diagnostic.yml"));
 const packageJson = JSON.parse(await read("package.json"));
 const clone = value => JSON.parse(JSON.stringify(value));
 const hosts = {
@@ -254,6 +255,53 @@ function assertAggregate(step, cwd, dependency) {
 }
 
 test("every OS executes the independent baseline obligations with their prerequisites", () => validateLanes(workflow));
+
+function validateGrowthDiagnostic(value) {
+  assert.deepEqual(value.on.push.branches, ["test/fixture-growth-upstream-diagnostic"]);
+  assert.deepEqual(value.permissions, { contents: "read" });
+  const job = value.jobs["original-n1000"];
+  assert.equal(job.env, undefined);
+  assert.equal(job.defaults, undefined);
+  assert.equal(job.steps[0].with.ref, "${{ github.sha }}");
+  assert.equal(job.steps[0].with["persist-credentials"], false);
+  assert.equal(job.steps[1].with.version, "11.20.0");
+  assert.equal(job.steps[2].with["node-version"], "26.11.1");
+  assert.equal(job.steps[3].uses, "oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6");
+  assert.deepEqual(job.steps[3].with, { "bun-version-file": ".bun-version" });
+  const prepare = job.steps[4];
+  assert.equal(prepare.if, undefined);
+  assert.equal(prepare.env, undefined);
+  assert.equal(prepare["working-directory"], undefined);
+  assert.deepEqual(prepare.run.trim().split("\n"), [
+    "node architecture/tooling/runtime/dev.ts install-node-qualification",
+    ...["lockfile:peers:check", "assembly:build", "resources:build", "conformance:build", "assembly:typecheck"]
+      .map(script => `pnpm --pm-on-fail=ignore ${script}`),
+  ]);
+  assert.equal(job.steps[5].run, 'node tests/qualification/consumer-fixtures/growth/upstream-compiler.ts --directory "${{ runner.temp }}/gm-upstream-growth"');
+  assert.equal(job.steps[6].if, "always()");
+  assert.equal(job.steps[6].env.EXPECTED_HEAD_SHA, "${{ github.sha }}");
+  assert.equal(job.steps[6].run, "node architecture/checks/tracked-workspace-integrity.mjs");
+}
+
+test("upstream growth diagnostic preserves source bytes with explicit Node qualification", () => {
+  validateGrowthDiagnostic(growthDiagnostic);
+  for (const change of [
+    job => { job.steps.splice(3, 1); },
+    job => { job.steps[3].with["bun-version-file"] = "other"; },
+    job => { job.steps[2].with["node-version"] = "24.21.0"; },
+    job => { job.env = { GET_MODULAR_RUNTIME_PROFILE: "node" }; },
+    job => { job.steps[4]["working-directory"] = "${{ runner.temp }}/projected"; },
+    job => { job.steps[4].run = job.steps[4].run.replace("install-node-qualification", "install"); },
+    job => { job.steps[4].run = job.steps[4].run.replaceAll(" --pm-on-fail=ignore", ""); },
+    job => { job.steps[4].run = job.steps[4].run.replace("pnpm --pm-on-fail=ignore assembly:typecheck\n", ""); },
+    job => { job.steps[4].if = "false"; },
+    job => { job.steps[6].env.EXPECTED_HEAD_SHA = "main"; },
+  ]) {
+    const mutant = clone(growthDiagnostic);
+    change(mutant.jobs["original-n1000"]);
+    assert.throws(() => validateGrowthDiagnostic(mutant));
+  }
+});
 
 test("the Node 24 consumer receives both observation entries from the default-runtime pack", () => {
   const job = workflow.jobs["node-24-compatibility"];

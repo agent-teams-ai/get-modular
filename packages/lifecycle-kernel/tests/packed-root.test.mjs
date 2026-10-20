@@ -39,7 +39,7 @@ test("candidate archive exposes the full lifecycle semantics through its public 
   const temporary = await mkdtemp(join(tmpdir(), "lifecycle-kernel-pack-"));
   try {
     const filename = run(process.execPath,
-      [await pinnedPnpmCli(), "pack", "--pack-destination", temporary], packageRoot)
+      [await pinnedPnpmCli(), "--pm-on-fail=ignore", "pack", "--pack-destination", temporary], packageRoot)
       .split("\n").at(-1);
     assert.match(filename, /\.tgz$/);
     const installed = join(temporary, "consumer/node_modules/@get-modular/lifecycle-kernel");

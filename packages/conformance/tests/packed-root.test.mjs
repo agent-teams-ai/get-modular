@@ -48,7 +48,7 @@ test("the archive installs beside its peer archives as one root-only ESM package
     const archiveDigests = {};
     for (const name of ["conformance", ...PEERS]) {
       const root = join(workspace, "packages", name);
-      const filename = run(process.execPath, [pnpm, "pack", "--pack-destination", temporary], root)
+      const filename = run(process.execPath, [pnpm, "--pm-on-fail=ignore", "pack", "--pack-destination", temporary], root)
         .split(/\r?\n/u).at(-1);
       assert.match(filename, /\.tgz$/u);
       const archive = resolve(temporary, filename);

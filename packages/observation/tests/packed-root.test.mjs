@@ -100,7 +100,7 @@ test("T02 T05 T07 T08 T09 T11 T13 T92 T97 T104 T110 T113 T117 exact archives exp
     const archives = {};
     for (const name of ["resources", "observation"]) {
       const root = resolve(packageRoot, "..", name);
-      const filename = run(process.execPath, [pnpm, "pack", "--pack-destination", temporary], root).split(/\r?\n/u).at(-1);
+      const filename = run(process.execPath, [pnpm, "--pm-on-fail=ignore", "pack", "--pack-destination", temporary], root).split(/\r?\n/u).at(-1);
       assert.match(filename, /\.tgz$/u);
       const archive = resolve(temporary, filename);
       archives[name] = archive;

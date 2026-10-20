@@ -40,7 +40,7 @@ try {
   const archives = [], archiveByPackage = new Map(), archivePackages = [];
   for (const surface of profile.packages) {
     const before = new Set(await readdir(temporary));
-    await pnpmCommand(["--filter", surface.packageName, "pack", "--pack-destination", temporary]);
+    await pnpmCommand(["--pm-on-fail=ignore", "--filter", surface.packageName, "pack", "--pack-destination", temporary]);
     const created = (await readdir(temporary)).filter(name => name.endsWith(".tgz") && !before.has(name));
     assert.equal(created.length, 1, `${surface.packageName} must produce one archive`);
     const archive = join(temporary, created[0]);

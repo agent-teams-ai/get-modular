@@ -39,7 +39,7 @@ test("the public archive installs one root-only ESM package with the full scope 
   const temporary = await mkdtemp(join(tmpdir(), "resources-pack-"));
   try {
     const filename = run(process.execPath,
-      [await pinnedPnpmCli(), "pack", "--pack-destination", temporary], packageRoot)
+      [await pinnedPnpmCli(), "--pm-on-fail=ignore", "pack", "--pack-destination", temporary], packageRoot)
       .split(/\r?\n/u).at(-1);
     assert.match(filename, /\.tgz$/u);
     const archive = resolve(temporary, filename);

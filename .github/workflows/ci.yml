@@ -275,7 +275,7 @@ jobs:
       - name: Provision pinned pnpm for disposable Node 24 fixtures
         run: |
           npm install --prefix "$RUNNER_TEMP/node24-pnpm" --no-save --ignore-scripts --no-audit --no-fund pnpm@11.20.0
-          node "$RUNNER_TEMP/node24-pnpm/node_modules/pnpm/bin/pnpm.mjs" --version | grep -Fx 11.20.0
+          node "$RUNNER_TEMP/node24-pnpm/node_modules/pnpm/bin/pnpm.mjs" --pm-on-fail=ignore --version | grep -Fx 11.20.0
       - name: Verify disposable installed public consumer on Node 24
         env:
           GET_MODULAR_COMPAT_ARCHIVE_DIR: ${{ runner.temp }}/node24-pack

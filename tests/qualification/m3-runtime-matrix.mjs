@@ -324,7 +324,7 @@ async function pack(ctx) {
   await json(join(ctx.diagnostics, 'trusted-runner.json'), trusted);
   const tools = await nodeAndNpm();
   const pnpmPath = await realpath(command('/usr/bin/which', ['pnpm'], repository).trim());
-  const pnpm = { path: pnpmPath, version: command(pnpmPath, ['--version'], repository).trim(),
+  const pnpm = { path: pnpmPath, version: command(pnpmPath, ['--pm-on-fail=ignore', '--version'], repository).trim(),
     sha256: digest(await readBytes(pnpmPath)) };
   assert.equal(pnpm.version, '11.20.0');
   const dependenciesRoot = await realpath(join(repository, 'node_modules/.pnpm'));

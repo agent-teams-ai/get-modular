@@ -149,7 +149,7 @@ test("disposable installed public roots compile and assemble on the selected Nod
       await mkdir(archiveDirectory);
       const pnpm = await fixturePnpmCli();
       for (const name of packageNames) {
-        const result = run(process.execPath, [pnpm, "pack", "--pack-destination", archiveDirectory],
+        const result = run(process.execPath, [pnpm, "--pm-on-fail=ignore", "pack", "--pack-destination", archiveDirectory],
           join(repository, "packages", name));
         assert.equal(result.status, 0, `${name} pack: ${result.stdout}\n${result.stderr}`);
       }
