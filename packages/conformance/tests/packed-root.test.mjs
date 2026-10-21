@@ -1,4 +1,4 @@
-import { pinnedPnpmCli } from "../../../tests/qualification/support/pinned-pnpm.ts";
+import { pinnedPnpmCli } from "./support/pinned-pnpm.ts";
 import { supportedCompilers } from "./support/compilers.ts";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";

@@ -11,6 +11,21 @@ import { pinnedPnpmCli } from "./qualification/support/pinned-pnpm.ts";
 import { BUN_VERSION, PNPM_VERSION, project, selectedProfile, toolRuntime } from "../architecture/tooling/runtime/policy.ts";
 
 const repository = resolve(import.meta.dirname, "..");
+const pnpmProbePaths = [
+  "packages/observation/tests/support/pnpm-probe.ts",
+  "packages/lifecycle-kernel/tests/support/pnpm-probe.ts",
+  "packages/resources/tests/support/pnpm-probe.ts",
+  "packages/conformance/tests/support/pnpm-probe.ts",
+];
+const pnpmResolvers = [pinnedPnpmCli, ...pnpmProbePaths.map(entry => async (root: string): Promise<string> => {
+  const result = spawnSync(await realpath(process.execPath), [join(repository, entry), root], {
+    cwd: repository, env, encoding: "utf8", shell: false, timeout: 30_000, maxBuffer: 64 * 1024,
+  });
+  assert.ifError(result.error);
+  assert.equal(result.signal, null, result.stderr);
+  assert.equal(result.status, 0, result.stderr);
+  return result.stdout.trim();
+})];
 const env = { ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")
   && key !== "GET_MODULAR_RUNTIME_PROFILE")), ROOT_CI_RUNTIME_PROFILE: "bun",
   GIT_AUTHOR_NAME: "iliya", GIT_AUTHOR_EMAIL: "iliyazelenkog@gmail.com",
@@ -32,14 +47,14 @@ async function fixture(body: (root: string, temporary: string) => Promise<void>)
   try {
     const manifest = { name: "gm-runtime-test", private: true, type: "module", packageManager: `bun@${BUN_VERSION}`,
       engines: { node: ">=24.21.0 <25 || >=26.10.0 <27", bun: BUN_VERSION }, trustedDependencies: [],
-      workspaces: { packages: [], catalog: {} }, devDependencies: { "@agent-teams/engineering-foundation": "2.0.1" }, scripts: { observe: "node observe.ts" } };
+      workspaces: { packages: [], catalog: { pnpm: PNPM_VERSION } }, devDependencies: { pnpm: "catalog:", "@agent-teams/engineering-foundation": "2.0.1" }, scripts: { observe: "node observe.ts" } };
     await put(root, "package.json", JSON.stringify(manifest, null, 2) + "\n");
     await put(root, ".gitignore", "node_modules/\n.get-modular-node-profile.json\n");
     await put(root, "observe.ts", "console.log(JSON.stringify({ node: process.versions.node, bun: process.versions.bun ?? null }));\n");
     await put(root, "architecture/foundation/repository-agent-workflow.yaml", "schemaVersion: 2\npackageManager: bun\ninstructions: {}\n");
     await put(root, "architecture/foundation/dependency-declarations.yaml", "schemaVersion: 2\npackageManager:\n  kind: bun\n  workspaceManifest: pnpm-workspace.yaml\n");
     await put(root, ".bun-version", "1.4.3\n");
-    await put(root, "pnpm-workspace.yaml", "packages: []\ncatalog: {}\n");
+    await put(root, "pnpm-workspace.yaml", `packages: []\ncatalog: {pnpm: "${PNPM_VERSION}"}\n`);
     for (const path of ["architecture/tooling/runtime/policy.ts", "architecture/tooling/runtime/command.ts",
       "architecture/tooling/runtime/dev.ts", "architecture/tooling/runtime/admission.ts",
       "architecture/tooling/runtime/projection-custody.ts",
@@ -119,7 +134,9 @@ test("Node rollback dispatch uses the actual installed pnpm public root export",
   assert.equal(manifest.name, "pnpm");
   assert.equal(manifest.version, PNPM_VERSION);
   assert.deepEqual(manifest.exports, { ".": "./package.json" });
-  assert.equal(await pinnedPnpmCli(repository), await realpath(join(dirname(installed), manifest.bin.pnpm)));
+  for (const resolvePnpm of pnpmResolvers) {
+    assert.equal(await resolvePnpm(repository), await realpath(join(dirname(installed), manifest.bin.pnpm)));
+  }
   await fixture(async (root, temporary) => {
     const target = join(temporary, "node-profile");
     assert.equal(run(root, "node", ["architecture/tooling/runtime/dev.ts", "prepare-node", target]).status, 0);
@@ -128,7 +145,9 @@ test("Node rollback dispatch uses the actual installed pnpm public root export",
     const resolver = createRequire(join(target, "package.json"));
     assert.equal(resolver.resolve("pnpm"), await realpath(join(packageRoot, "package.json")));
     assert.throws(() => resolver.resolve("pnpm/package.json"), { code: "ERR_PACKAGE_PATH_NOT_EXPORTED" });
-    assert.equal(await pinnedPnpmCli(target), await realpath(join(packageRoot, manifest.bin.pnpm)));
+    for (const resolvePnpm of pnpmResolvers) {
+      assert.equal(await resolvePnpm(target), await realpath(join(packageRoot, manifest.bin.pnpm)));
+    }
 
     await put(target, "node_modules/@agent-teams/engineering-foundation/package.json", JSON.stringify({
       name: "@agent-teams/engineering-foundation", version: "2.0.1", type: "module",
@@ -156,28 +175,34 @@ test("Node rollback dispatch uses the actual installed pnpm public root export",
       const rejected = run(target, "node", args);
       assert.notEqual(rejected.status, 0);
       assert.match(rejected.stderr, /runtime.pnpm.installed-pin/u);
-      await assert.rejects(pinnedPnpmCli(target), /packed.pnpm.installed-(?:name|version|bin)/u);
+      for (const resolvePnpm of pnpmResolvers) await assert.rejects(resolvePnpm(target), /packed.pnpm.installed-(?:name|version|bin)/u);
     }
     await writeFile(join(packageRoot, "package.json"), JSON.stringify(manifest));
     await writeFile(join(packageRoot, manifest.bin.pnpm), "console.log('11.19.0');\n");
     const wrongCli = run(target, "node", args);
     assert.notEqual(wrongCli.status, 0);
     assert.match(wrongCli.stderr, /runtime.pnpm.installed-identity/u);
-    await assert.rejects(pinnedPnpmCli(target), /packed.pnpm.installed-identity/u);
+    for (const resolvePnpm of pnpmResolvers) await assert.rejects(resolvePnpm(target), /packed.pnpm.installed-identity/u);
     for (const bin of ["../outside.mjs", "/outside.mjs", "C:/outside.mjs", "https://host/pnpm.mjs",
       "bin/pnpm.cmd", "bin/pnpm.mjs --help", "bin/../pnpm.mjs", "bin/pnpm.mjs\n"]) {
       await writeFile(join(packageRoot, "package.json"), JSON.stringify({ ...manifest, bin: { pnpm: bin } }));
-      await assert.rejects(pinnedPnpmCli(target), /packed.pnpm.installed-bin/u);
+      for (const resolvePnpm of pnpmResolvers) await assert.rejects(resolvePnpm(target), /packed.pnpm.installed-bin/u);
     }
     const outside = join(temporary, "outside.mjs"), marker = join(temporary, "outside-executed");
     await writeFile(outside, `import { writeFileSync } from "node:fs"; writeFileSync(${JSON.stringify(marker)}, "ran"); console.log("11.20.0");\n`);
     await symlink(outside, join(packageRoot, "bin/escaped.mjs"), "file");
     await writeFile(join(packageRoot, "package.json"), JSON.stringify({ ...manifest, bin: { pnpm: "bin/escaped.mjs" } }));
-    await assert.rejects(pinnedPnpmCli(target), /packed.pnpm.installed-path/u);
+    for (const resolvePnpm of pnpmResolvers) await assert.rejects(resolvePnpm(target), /packed.pnpm.installed-path/u);
     await assert.rejects(readFile(marker), { code: "ENOENT" });
     await mkdir(join(packageRoot, "bin/directory.mjs"));
     await writeFile(join(packageRoot, "package.json"), JSON.stringify({ ...manifest, bin: { pnpm: "bin/directory.mjs" } }));
-    await assert.rejects(pinnedPnpmCli(target), /packed.pnpm.installed-path/u);
+    for (const resolvePnpm of pnpmResolvers) await assert.rejects(resolvePnpm(target), /packed.pnpm.installed-path/u);
+    const source = JSON.parse(await readFile(join(target, "package.json"), "utf8"));
+    source.workspaces = { packages: [], catalog: { pnpm: `^${PNPM_VERSION}` } };
+    await writeFile(join(target, "package.json"), JSON.stringify(source));
+    assert.equal(run(target, "git", ["add", "package.json"]).status, 0);
+    assert.equal(run(target, "git", ["commit", "-m", "test: retain nonexact catalog rejection"]).status, 0);
+    for (const resolvePnpm of pnpmResolvers.slice(1)) await assert.rejects(resolvePnpm(target), /packed.pnpm.source-pin/u);
   });
 });
 
