@@ -42,6 +42,7 @@ async function fixture(body: (root: string, temporary: string) => Promise<void>)
     await put(root, "pnpm-workspace.yaml", "packages: []\ncatalog: {}\n");
     for (const path of ["architecture/tooling/runtime/policy.ts", "architecture/tooling/runtime/command.ts",
       "architecture/tooling/runtime/dev.ts", "architecture/tooling/runtime/admission.ts",
+      "architecture/tooling/runtime/projection-custody.ts",
       "architecture/checks/node-version.mjs", "architecture/checks/tracked-workspace-integrity.mjs",
       "architecture/checks/tracked-file-custody.mjs"]) {
       await mkdir(dirname(join(root, path)), { recursive: true });
