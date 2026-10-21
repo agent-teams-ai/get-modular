@@ -36,6 +36,9 @@ catalogs:
     oxlint-tsgolint:
       specifier: 7.0.2001
       version: 7.0.2001
+    pnpm:
+      specifier: 11.20.0
+      version: 11.20.0
     tar:
       specifier: 7.5.22
       version: 7.5.22
@@ -54,14 +57,14 @@ importers:
   .:
     devDependencies:
       '@agent-teams/docs-protocol':
-        specifier: 0.6.2
-        version: 0.6.2
+        specifier: 0.6.3
+        version: 0.6.3
       '@agent-teams/engineering-foundation':
-        specifier: 1.10.0
-        version: 1.10.0(@types/node@24.19.1)
+        specifier: 2.0.1
+        version: 2.0.1(@types/node@24.19.1)
       '@agent-teams/feature-module-standard':
-        specifier: 0.1.1
-        version: 0.1.1(@agent-teams/engineering-foundation@1.10.0(@types/node@24.19.1))
+        specifier: 0.2.1
+        version: 0.2.1(@agent-teams/engineering-foundation@2.0.1(@types/node@24.19.1))
       '@changesets/cli':
         specifier: 'catalog:'
         version: 3.0.2
@@ -110,6 +113,9 @@ importers:
       oxlint-tsgolint:
         specifier: 'catalog:'
         version: 7.0.2001
+      pnpm:
+        specifier: 'catalog:'
+        version: 11.20.0
       tar:
         specifier: 'catalog:'
         version: 7.5.22
@@ -177,31 +183,31 @@ importers:
 
 packages:
 
-  '@agent-teams/docs-protocol@0.6.2':
-    resolution: {integrity: sha512-kqE4pA9/V/MgbOm2nTyfRWU+CuwtAX6pB6WGQauKvvozwS4CzFfJwARTgd91R3yCf6bi5l/kU+mcAe6WVID7aA==}
+  '@agent-teams/docs-protocol@0.6.3':
+    resolution: {integrity: sha512-bBMEX5S1v+ETo7/p/JkZlYe6nzU5NJEdX87wyEkIj0WYbgJivBnhOdb4/05XHXSD4xhqIsJcrgdTiZTmNu+USA==}
     engines: {node: ^24.18.0 || ^26.0.0, pnpm: '>=11.17.0 <12'}
     hasBin: true
 
-  '@agent-teams/document-authoring@0.3.2':
-    resolution: {integrity: sha512-GzdetjP25KJfThxNk7UhtAZ28rOb6T/rTRrjYSrp2rYaEt0do5XF4pGjIVdeSzh+zXH0ULu58TZsuhOJi0Q0Mw==}
+  '@agent-teams/document-authoring@0.3.3':
+    resolution: {integrity: sha512-OBBX04LdPJ3eXYhI5AGLVUTUkHGrmVbnMx8lAybD08X4UfMmvg83j23FNS8nTsQgJUiOWgw6PggcGSBuF17XTg==}
     engines: {node: ^24.18.0 || ^26.0.0, pnpm: '>=11.17.0 <12'}
 
-  '@agent-teams/engineering-foundation@1.10.0':
-    resolution: {integrity: sha512-k1mI8y/bm6GQtge+QCkANrufyLKi0f6YZlHXCMKr4QpGb97/86j9WdYVhgG2//C2cAtSRmmHmhOtnrpdaksRpw==}
+  '@agent-teams/engineering-foundation@2.0.1':
+    resolution: {integrity: sha512-Nh7jjvGz0XQXXXjDALD024a88N86digBhJIeyAkOHTGpV6O+eNJtjg+bF+J77khLxCyB4c7gB8GqwN8HxX+pkg==}
     engines: {node: ^24.18.0 || ^26.0.0, pnpm: '>=11.17.0 <12'}
     hasBin: true
 
-  '@agent-teams/feature-module-standard@0.1.1':
-    resolution: {integrity: sha512-EnnT10vXn2+oc4h1u0gTsNKhUnKJIEGso5gAUFN8KlRTQyp5/ktFPHR2Er7iES2Ps9+kEbBXEW3RaEMKp+hqdw==}
+  '@agent-teams/feature-module-standard@0.2.1':
+    resolution: {integrity: sha512-+JjvjmvO6+dSzRGnDYiVPI+T3oDXfcG0719W4HXYYhcQa3c4OEpVGfUKFfsXQiTmfmRHnLL3JlqWjNt0PwDC4g==}
     engines: {node: ^24.18.0 || ^26.0.0, pnpm: '>=11.17.0 <12'}
     peerDependencies:
-      '@agent-teams/engineering-foundation': ^1.10.0
+      '@agent-teams/engineering-foundation': ^1.8.0 || ^2.0.0
     peerDependenciesMeta:
       '@agent-teams/engineering-foundation':
         optional: true
 
-  '@agent-teams/repository-mutation@0.2.2':
-    resolution: {integrity: sha512-4G6kkQKA7ua4z9mxxn1XNrBUgngWeQ+UufDnQ34YdYv26DZi1/pUYwGoKajFluhUNDXhvqf4fMJQu0nI6m6jdg==}
+  '@agent-teams/repository-mutation@0.3.0':
+    resolution: {integrity: sha512-8YnGElBptCp3mMImLnkddMRgLvrYq9dqLgNKg9Ek12hGB+CWitfbri77IYsd/G+dXF4oePJQUax2iC4Xc68uZw==}
     engines: {node: ^24.18.0 || ^26.0.0, pnpm: '>=11.17.0 <12'}
 
   '@changesets/apply-release-plan@8.1.0':
@@ -1490,6 +1496,11 @@ packages:
     resolution: {integrity: sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA==}
     engines: {node: '>=12'}
 
+  pnpm@11.20.0:
+    resolution: {integrity: sha512-mm8zCpW2ZEbqCI+vFSFAWooB8H/ecSTMmVjf7VLUu0NnN+ZbCPhfN7Rvy6N1CSVYrFEmK4FoRLIvY0Bu0Wa/7g==}
+    engines: {node: '>=22.13'}
+    hasBin: true
+
   proper-lockfile@4.1.2:
     resolution: {integrity: sha512-TjNPblN4BwAWMXU8s9AEz4JmQxnD1NNL7bNOY/AKUzyamc379FWASUhc/K1pL2noVb+XmZKLL68cjzLsiOAMaA==}
 
@@ -1631,25 +1642,25 @@ packages:
 
 snapshots:
 
-  '@agent-teams/docs-protocol@0.6.2':
+  '@agent-teams/docs-protocol@0.6.3':
     dependencies:
-      '@agent-teams/document-authoring': 0.3.2
-      '@agent-teams/repository-mutation': 0.2.2
+      '@agent-teams/document-authoring': 0.3.3
+      '@agent-teams/repository-mutation': 0.3.0
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)
       minisearch: 7.2.0
       yaml: 2.9.0
 
-  '@agent-teams/document-authoring@0.3.2':
+  '@agent-teams/document-authoring@0.3.3':
     dependencies:
-      '@agent-teams/repository-mutation': 0.2.2
+      '@agent-teams/repository-mutation': 0.3.0
       ajv: 8.20.0
       yaml: 2.9.0
 
-  '@agent-teams/engineering-foundation@1.10.0(@types/node@24.19.1)':
+  '@agent-teams/engineering-foundation@2.0.1(@types/node@24.19.1)':
     dependencies:
-      '@agent-teams/document-authoring': 0.3.2
-      '@agent-teams/repository-mutation': 0.2.2
+      '@agent-teams/document-authoring': 0.3.3
+      '@agent-teams/repository-mutation': 0.3.0
       '@microsoft/api-extractor-model': 7.33.10(@types/node@24.19.1)
       '@microsoft/tsdoc': 0.16.0
       ajv: 8.20.0
@@ -1663,11 +1674,11 @@ snapshots:
     transitivePeerDependencies:
       - '@types/node'
 
-  '@agent-teams/feature-module-standard@0.1.1(@agent-teams/engineering-foundation@1.10.0(@types/node@24.19.1))':
+  '@agent-teams/feature-module-standard@0.2.1(@agent-teams/engineering-foundation@2.0.1(@types/node@24.19.1))':
     optionalDependencies:
-      '@agent-teams/engineering-foundation': 1.10.0(@types/node@24.19.1)
+      '@agent-teams/engineering-foundation': 2.0.1(@types/node@24.19.1)
 
-  '@agent-teams/repository-mutation@0.2.2': {}
+  '@agent-teams/repository-mutation@0.3.0': {}
 
   '@changesets/apply-release-plan@8.1.0':
     dependencies:
@@ -2950,6 +2961,8 @@ snapshots:
   picomatch@2.3.2: {}
 
   picomatch@4.0.7: {}
+
+  pnpm@11.20.0: {}
 
   proper-lockfile@4.1.2:
     dependencies:

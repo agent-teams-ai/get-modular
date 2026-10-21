@@ -8,7 +8,7 @@ import { createServer } from 'node:http';
 import { mkdir, readFile, writeFile, rename, rm, open } from 'node:fs/promises';
 import { isAbsolute, join } from 'node:path';
 import { arch, platform } from 'node:os';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { readPackageArchive } from './support/package-archive.mjs';
 import { auditM1JavaScriptClosure } from './support/m1-javascript-closure.ts';
@@ -22,6 +22,7 @@ import { runInNewContext } from 'node:vm';
 import { Buffer } from 'node:buffer';
 import { produceInvocationRuntimeFixtures } from './support/m3-invocation-runtime-fixtures.mjs';
 import { executeInvocationRuntimeFixture } from './support/m3-invocation-runtime-executor.mjs';
+import { assertM3NativeController } from './support/m3-node-policy.ts';
 
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const json = value => `${JSON.stringify(value, null, 2)}\n`;
@@ -591,7 +592,7 @@ async function stopProcess(child, exited) {
 
 export async function runChromiumConsumer(rawInput) {
   const input = validateInput(rawInput);
-  assert.equal(Number(process.versions.node.split('.')[0]), 24, 'Node 24 required');
+  assertM3NativeController(fileURLToPath(new URL('../../', import.meta.url)), input.exactSourceSHA, process.version);
   assert.ok(['linux', 'darwin'].includes(platform()), 'POSIX process groups required');
   const archive = await archiveIdentity(input);
   const publicRoot = publicArchiveRoot(archive.files);

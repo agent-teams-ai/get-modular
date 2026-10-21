@@ -4,17 +4,19 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
+import { parse } from "yaml";
 import { fileURLToPath } from "node:url";
-import { resolveNpmCli, resolvePnpmCli } from "./qualification/support/npm-cli.mjs";
+import { resolveNpmCli } from "./qualification/support/npm-cli.mjs";
+import { pinnedPnpmCli } from "./qualification/support/pinned-pnpm.ts";
 import { assertSupportedToolingNodeVersion } from "../architecture/checks/node-version.mjs";
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageNames = ["core", "assembly", "resources", "conformance", "observation"];
 
 // The Node 24 compatibility CI consumer is outside the source workspace. Its package manager
-// must be the physically provisioned source pin, not a shim selected by cwd.
+// supplies its physical pnpm CLI explicitly; repository fixtures use the installed source pin.
 async function fixturePnpmCli() {
-  return process.env.GET_MODULAR_COMPAT_PNPM_CLI || await resolvePnpmCli();
+  return process.env.GET_MODULAR_COMPAT_PNPM_CLI || await pinnedPnpmCli(repository);
 }
 
 function run(executable, args, cwd, environment = {}) {
@@ -148,7 +150,7 @@ test("disposable installed public roots compile and assemble on the selected Nod
       await mkdir(archiveDirectory);
       const pnpm = await fixturePnpmCli();
       for (const name of packageNames) {
-        const result = run(process.execPath, [pnpm, "pack", "--pack-destination", archiveDirectory],
+        const result = run(process.execPath, [pnpm, "--pm-on-fail=ignore", "pack", "--pack-destination", archiveDirectory],
           join(repository, "packages", name));
         assert.equal(result.status, 0, `${name} pack: ${result.stdout}\n${result.stderr}`);
       }
@@ -200,7 +202,7 @@ test("pinned pnpm rejects fresh and locked invalid peer graphs", { timeout: 1800
     // This marker must precede every pnpm invocation in the fixture, including pack.
     await writeFile(join(root, "pnpm-workspace.yaml"),
       "packages: []\nstrictPeerDependencies: true\nautoInstallPeers: false\n");
-    const expectedPnpm = JSON.parse(await readFile(join(repository, "package.json"), "utf8")).packageManager;
+    const expectedPnpm = `pnpm@${parse(await readFile(join(repository, "pnpm-workspace.yaml"), "utf8")).catalog.pnpm}`;
     assert.equal(expectedPnpm, "pnpm@11.20.0");
     const pnpm = await fixturePnpmCli();
     const version = run(process.execPath, [pnpm, "--version"], root);
@@ -254,7 +256,7 @@ test("pinned pnpm enforces dependency engines on fresh and frozen installs", { t
     await writeFile(join(root, "pnpm-workspace.yaml"), formerWorkspace);
     await writeFile(join(root, ".npmrc"), await readFile(join(repository, ".npmrc")));
 
-    const expectedPnpm = JSON.parse(await readFile(join(repository, "package.json"), "utf8")).packageManager;
+    const expectedPnpm = `pnpm@${parse(await readFile(join(repository, "pnpm-workspace.yaml"), "utf8")).catalog.pnpm}`;
     assert.equal(expectedPnpm, "pnpm@11.20.0");
     assert.match(process.version, /^v(?:24|26)\./u);
     const pnpm = await fixturePnpmCli();

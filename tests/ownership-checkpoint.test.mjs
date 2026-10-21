@@ -26,8 +26,8 @@ const presentLeafRoots = () => LEAF_PACKAGES
 
 test("the complete gate runs the ownership checkpoint suite with failure propagation", () => {
   const { scripts } = JSON.parse(readFileSync("package.json", "utf8"));
-  assert.equal(scripts.precheck, "pnpm ownership:checkpoint:test",
-    "pnpm check must run the checkpoint suite through its precheck lifecycle");
+  assert.equal(scripts.precheck, "node architecture/tooling/runtime/command.ts run ownership:checkpoint:test",
+    "the complete gate must run the checkpoint suite through its precheck lifecycle");
   assert.equal(scripts["ownership:checkpoint:test"],
     "node architecture/checks/compiler-floor.ts && node --test tests/ownership-checkpoint.test.mjs",
     "the checkpoint script must execute the focused suite, not a no-op");
@@ -182,7 +182,7 @@ test("observations bind historical lock bytes, production importers and reviewed
     "C0 retains the CMS bytes observed at its base");
   const currentCms = readFileSync(cmsPath);
   assert.equal(digest(currentCms),
-    "sha256:c2fe582a14ff6e79620b232ca7ffc914afb0474ec21fd43f208251dd7252f4a3",
+    "sha256:8f92029eec9610f6f83afe6f86352557f268b1abd8e2a241f16d86f5f0eaada9",
     "the current CMS successor must match its separately reviewed bytes");
   // Package versions are observations at the evidence base; later releases move the working tree.
   for (const [name, version] of Object.entries(checkpoint.evidence.packages)) {

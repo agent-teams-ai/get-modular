@@ -34,7 +34,7 @@ function ordinary(passed = false) {
     summary: passed ? empty : { ...empty, errors: 2 },
     capabilities: names.map(capabilityId => {
       const mismatch = !passed && capabilityId === "package.public-api-compatibility";
-      return { capabilityId, capabilityConfigSchemaVersion: capabilityId === "architecture.source-dependencies" ? 3 : 1,
+      return { capabilityId, capabilityConfigSchemaVersion: capabilityId === "architecture.source-dependencies" ? 3 : capabilityId === "repository.agent-workflow" ? 2 : 1,
         outcome: mismatch ? "violations" : "passed", summary: mismatch ? { ...empty, errors: 2 } : empty, diagnostics: mismatch ? diagnostics : [] };
     }),
   };
@@ -83,6 +83,8 @@ await test("unrelated errors, inventory changes and malformed mismatch fields ne
     ["unrelated diagnostic", (r: ReturnType<typeof ordinary>["report"]) => { capability(r, 0).diagnostics.push({ ...diagnostic(r), ruleId: "unrelated" }); }],
     ["missing capability", (r: ReturnType<typeof ordinary>["report"]) => { r.capabilities.pop(); }],
     ["duplicate capability", (r: ReturnType<typeof ordinary>["report"]) => { r.capabilities.push(capability(r, 0)); }],
+    ["legacy workflow schema", (r: ReturnType<typeof ordinary>["report"]) => { capability(r, 6).capabilityConfigSchemaVersion = 1; }],
+    ["unknown workflow schema", (r: ReturnType<typeof ordinary>["report"]) => { capability(r, 6).capabilityConfigSchemaVersion = 3; }],
     ["selected coverage", (r: ReturnType<typeof ordinary>["report"]) => { r.coverage = "selected"; }],
     ["wrong anchor", (r: ReturnType<typeof ordinary>["report"]) => { diagnostic(r).location.path = "other.json"; }],
   ] as const) {await t.test(name, async () => {

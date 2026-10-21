@@ -91,7 +91,7 @@ async function fixture(run: (directory: string) => Promise<void>, parent = tmpdi
   } finally { await rm(directory, { recursive: true, force: true }); }
 }
 const destination = (directory: string) => ({ directory, artifact: join(directory, "sdk-growth-failure.json"),
-  checkoutSha: sha, producerVersion: "1.10.0" });
+  checkoutSha: sha, producerVersion: "2.0.1" });
 const bytes = (directory: string) => readFile(destination(directory).artifact, "utf8");
 async function materializeDriver(directory: string, name: "alias-rejection.ts" | "retention.ts"): Promise<string> {
   const support = [
@@ -128,8 +128,8 @@ test("historical 1.7.2 and 1.7.4 reports retain exact selected bytes under the c
       const retained = await bytes(directory);
       assert.equal(retained, JSON.stringify({ checkoutSha: sha, nodeVersion: process.version,
         capabilityId: "package.public-api-compatibility", producer: {
-          package: "@agent-teams/engineering-foundation", version: "1.10.0",
-          integrity: "sha512-k1mI8y/bm6GQtge+QCkANrufyLKi0f6YZlHXCMKr4QpGb97/86j9WdYVhgG2//C2cAtSRmmHmhOtnrpdaksRpw==",
+          package: "@agent-teams/engineering-foundation", version: "2.0.1",
+          integrity: "sha512-Nh7jjvGz0XQXXXjDALD024a88N86digBhJIeyAkOHTGpV6O+eNJtjg+bF+J77khLxCyB4c7gB8GqwN8HxX+pkg==",
         }, exit: 3, transportStatus: "exit", messageOmission: "producer-safety-not-admitted",
         reportStatus: "selected", publicCapability: { outcome: "failed", code: "UNEXPECTED_PROCESS_FAILURE", retryable: false },
       }) + "\n");

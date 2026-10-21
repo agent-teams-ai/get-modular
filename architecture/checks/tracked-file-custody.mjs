@@ -87,7 +87,7 @@ async function inspectWorkingTreePath(relativePath, repositoryRoot) {
   return { kind: "regular", path: current };
 }
 
-async function readWorkingTreeRegularFile(relativePath, repositoryRoot) {
+export async function readWorkingTreeRegularFile(relativePath, repositoryRoot) {
   const before = await inspectWorkingTreePath(relativePath, repositoryRoot);
   if (before.kind !== "regular") return before;
 
@@ -374,9 +374,14 @@ async function currentHeadCommit(repositoryRoot) {
   return oid;
 }
 
+/**
+ * @param {string} repositoryRoot
+ * @param {{ expectedHeadCommit?: string, afterFirstPass?: () => unknown,
+ * workingTreeProjections?: readonly {path: string, sourceOid: string, sourceBytes: Buffer, projectedBytes: Buffer}[] }} [options]
+ */
 export async function assertTrackedWorkspaceMatchesHead(
   repositoryRoot,
-  { expectedHeadCommit, afterFirstPass } = {},
+  { expectedHeadCommit, afterFirstPass, workingTreeProjections = [] } = {},
 ) {
   const initialHeadCommit = await currentHeadCommit(repositoryRoot);
   if (expectedHeadCommit !== undefined && initialHeadCommit !== expectedHeadCommit) {
@@ -414,6 +419,20 @@ export async function assertTrackedWorkspaceMatchesHead(
 
   const blobBytes = await readBlobBatch(repositoryRoot, expectedBlobs);
   const expectedByPath = new Map(paths.map((path, index) => [path, blobBytes[index]]));
+  // A Host may supply a finite, authenticated source-to-working representation.
+  // HEAD/index identity, regular-file modes and both read passes remain mandatory.
+  const projectedPaths = new Set();
+  for (const projection of workingTreeProjections) {
+    const original = expectedByPath.get(projection.path);
+    if (projectedPaths.has(projection.path) || !Buffer.isBuffer(original)
+      || snapshot.entries.get(projection.path)?.oid !== projection.sourceOid
+      || !Buffer.isBuffer(projection.sourceBytes) || !original.equals(projection.sourceBytes)
+      || !Buffer.isBuffer(projection.projectedBytes)) {
+      throw new Error("TRACKED_FILE_CUSTODY_FAILED: invalid source projection");
+    }
+    projectedPaths.add(projection.path);
+    expectedByPath.set(projection.path, Buffer.from(projection.projectedBytes));
+  }
   const assertWorkingTreePass = async orderedPaths => {
     for (const path of orderedPaths) {
       const workingTree = await readWorkingTreeRegularFile(path, repositoryRoot);
@@ -489,6 +508,17 @@ export async function readIndexSnapshotFile(snapshot, relativePath, label, optio
     );
   }
   return file.bytes;
+}
+
+// Source fact only: this does not admit any working-tree representation.
+export async function readIndexSnapshotBlob(snapshot, relativePath) {
+  indexSnapshotPaths(snapshot);
+  const entry = snapshot.entries.get(relativePath);
+  if (!safeRepositoryPath(relativePath) || entry?.kind !== "regular") {
+    throw new Error(`TRACKED_FILE_CUSTODY_FAILED: captured source is not regular: ${relativePath}`);
+  }
+  const { stdout } = await runGit(snapshot.repositoryRoot, ["cat-file", "blob", entry.oid]);
+  return stdout;
 }
 
 export async function historicalFileVersions(relativePath, repositoryRoot) {

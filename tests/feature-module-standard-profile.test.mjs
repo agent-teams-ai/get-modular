@@ -166,11 +166,12 @@ test("rejects wildcard and mismatched module, source, and test roots", () => {
 });
 
 // Accepted source pins; the profile gate verifies the final published archive binding.
-test("pins the accepted Foundation and Docs source versions without age exclusions", async () => {
+test("pins the accepted Foundation, FMS and Docs versions without age exclusions", async () => {
   const workspace = parse(await readFile("pnpm-workspace.yaml", "utf8"));
-  assert.equal(packageJson.devDependencies["@agent-teams/engineering-foundation"], "1.10.0");
-  assert.equal(packageJson.devDependencies["@agent-teams/docs-protocol"], "0.6.2");
-  assert.equal(profile.adoption.admission.foundation.version, "1.10.0");
+  assert.equal(packageJson.devDependencies["@agent-teams/engineering-foundation"], "2.0.1");
+  assert.equal(packageJson.devDependencies["@agent-teams/docs-protocol"], "0.6.3");
+  assert.equal(packageJson.devDependencies["@agent-teams/feature-module-standard"], "0.2.1");
+  assert.equal(profile.adoption.admission.foundation.version, "2.0.1");
   assert.equal(workspace.minimumReleaseAge, 0);
   assert.equal(workspace.minimumReleaseAgeStrict, undefined);
   assert.equal(workspace.minimumReleaseAgeExclude, undefined);
@@ -191,19 +192,32 @@ function versionAdmissionInput() {
   };
 }
 
+test("runtime policy test roster retains every reviewed test entry", () => {
+  const entries = ["tests/tooling-node-policy.test.ts", "tests/npm-release.test.ts",
+    "tests/repository-runtime.test.ts", "tests/runtime-projection-custody.test.ts"];
+  assert.equal(packageJson.scripts["runtime:policy:test"], `node --test ${entries.join(" ")}`);
+  assert.doesNotThrow(() => validate());
+  for (const missing of entries) {
+    const changed = clone(packageJson);
+    changed.scripts["runtime:policy:test"] = `node --test ${entries.filter(path => path !== missing).join(" ")}`;
+    assert.throws(() => validate({ packageJson: changed }),
+      /runtime:policy:test must use its closed command definition/u, missing);
+  }
+});
+
 // Literal counterexamples must not follow the checker or an installed package's version.
 const rejectedFoundationPins = [
-  "0.21.0", "1.0.1", "1.1.0", "1.1.1", "1.2.0", "1.4.0", "1.4.1", "1.4.2", "1.5.0", "1.5.1", "1.6.1", "1.7.0", "1.7.1", "2.0.0",
+  "0.21.0", "1.0.1", "1.1.0", "1.1.1", "1.2.0", "1.4.0", "1.4.1", "1.4.2", "1.5.0", "1.5.1", "1.6.1", "1.7.0", "1.7.1", "1.10.0",
   // Historical exact pins and all ranges remain rejected beside the current exact native pin.
-  "1.7.2", "1.7.3", "1.7.4", "1.8.0", "1.9.0",
-  "^1.7.1", "~1.7.1", "^1.7.2", "~1.7.2", "^1.7.4", "~1.7.4", "^1.10.0", "~1.10.0",
+  "1.7.2", "1.7.3", "1.7.4", "1.8.0", "1.9.0", "2.0.0",
+  "^1.7.1", "~1.7.1", "^1.7.2", "~1.7.2", "^1.7.4", "~1.7.4", "^1.10.0", "~1.10.0", "^2.0.0", "~2.0.0", "^2.0.1", "~2.0.1",
   "*", undefined,
 ];
 
-test("accepts exactly Foundation 1.10.0 for source and empty pre-production guard inputs", () => {
+test("accepts exactly Foundation 2.0.1 for source and empty pre-production guard inputs", () => {
   const input = versionAdmissionInput();
-  input.packageJson.devDependencies["@agent-teams/engineering-foundation"] = "1.10.0";
-  input.admission.foundation.version = "1.10.0";
+  input.packageJson.devDependencies["@agent-teams/engineering-foundation"] = "2.0.1";
+  input.admission.foundation.version = "2.0.1";
   assert.equal(validateFirstProductionPackageAdmission(input), SOURCE_DEPENDENCY_POLICY_PATH);
   input.productionArtifacts = [];
   input.admission.status = "pre-production";
@@ -220,7 +234,7 @@ test("rejects stale, mismatched, ranged and missing Foundation manifest pins bef
         input.admission.status = "pre-production";
       }
       assert.throws(() => validateFirstProductionPackageAdmission(input),
-        /@agent-teams\/engineering-foundation must remain pinned to 1\.10\.0/u,
+        /@agent-teams\/engineering-foundation must remain pinned to 2\.0\.1/u,
         `manifest ${String(version)}, empty inventory ${empty}`);
     }
   }
@@ -244,7 +258,7 @@ test("matching manifest and profile versions cannot replace the exact Foundation
     input.packageJson.devDependencies["@agent-teams/engineering-foundation"] = version;
     input.admission.foundation.version = version;
     assert.throws(() => validateFirstProductionPackageAdmission(input),
-      /@agent-teams\/engineering-foundation must remain pinned to 1\.10\.0/u);
+      /@agent-teams\/engineering-foundation must remain pinned to 2\.0\.1/u);
     const changed = clone(profile);
     changed.adoption.admission = input.admission;
     assert.throws(() => validate({ profile: changed, packageJson: input.packageJson }),
@@ -252,7 +266,7 @@ test("matching manifest and profile versions cannot replace the exact Foundation
   }
 });
 
-test("admits current Core and Assembly only with the exact Foundation 1.10.0 binding", async () => {
+test("admits current Core and Assembly only with the exact Foundation 2.0.1 binding", async () => {
   const manifests = new Map(await Promise.all([
     "packages/core/package.json", "packages/assembly/package.json",
   ].map(async path => [path, JSON.parse(await readFile(path, "utf8"))])));
@@ -281,7 +295,7 @@ test("admits current Core and Assembly only with the exact Foundation 1.10.0 bin
       if (binding !== "manifest") changed.admission.foundation.version = version;
       assert.throws(() => validateFirstProductionPackageAdmission(changed),
         binding === "profile" ? /Foundation admission binding does not match/u
-          : /@agent-teams\/engineering-foundation must remain pinned to 1\.10\.0/u,
+          : /@agent-teams\/engineering-foundation must remain pinned to 2\.0\.1/u,
         `Core+Assembly ${binding} ${String(version)}`);
     }
   }
@@ -369,23 +383,23 @@ test("requires explicit owned deviation records", () => {
 test("requires profile enforcement in complete and fast gates", () => {
   const missingComplete = clone(packageJson);
   missingComplete.scripts.check = missingComplete.scripts.check.replace(
-    " && pnpm architecture:feature-module-profile",
+    " && node architecture/tooling/runtime/command.ts run architecture:feature-module-profile",
     "",
   );
   assert.throws(() => validate({ packageJson: missingComplete }),
-    /check must use its exact closed pnpm command chain/u);
+    /check must use its exact closed node architecture\/tooling\/runtime\/command\.ts run command chain/u);
 
   const missingFast = clone(packageJson);
-  missingFast.scripts["check:fast"] = "pnpm foundation:check && pnpm docs:check";
+  missingFast.scripts["check:fast"] = "node architecture/tooling/runtime/command.ts run foundation:check && node architecture/tooling/runtime/command.ts run docs:check";
   assert.throws(() => validate({ packageJson: missingFast }),
-    /check:fast must use its exact closed pnpm command chain/u);
+    /check:fast must use its exact closed node architecture\/tooling\/runtime\/command\.ts run command chain/u);
 
   for (const scriptName of ["check", "check:fast"]) {
     for (const prefix of [": # && ", ":; ", ": || ", ": | ", ":\n"]) {
       const bypass = clone(packageJson);
       bypass.scripts[scriptName] = `${prefix}${bypass.scripts[scriptName]}`;
       assert.throws(() => validate({ packageJson: bypass }),
-        /must use its exact closed pnpm command chain/u);
+        /must use its exact closed node architecture\/tooling\/runtime\/command\.ts run command chain/u);
     }
     const commands = packageJson.scripts[scriptName].split(" && ");
     for (const removed of commands) {
@@ -394,7 +408,7 @@ test("requires profile enforcement in complete and fast gates", () => {
         .filter(command => command !== removed)
         .join(" && ");
       assert.throws(() => validate({ packageJson: incomplete }),
-        /must use its exact closed pnpm command chain/u);
+        /must use its exact closed node architecture\/tooling\/runtime\/command\.ts run command chain/u);
     }
   }
 
@@ -443,7 +457,7 @@ test("requires profile enforcement in complete and fast gates", () => {
   ]) {
     for (const scriptName of ["runtime:preflight", "precheck:changed"]) {
       const nested = clone(packageJson);
-      nested.scripts[scriptName] += ` && pnpm ${installedGate}`;
+      nested.scripts[scriptName] += ` && node architecture/tooling/runtime/command.ts run ${installedGate}`;
       assert.throws(() => validate({ packageJson: nested }),
         new RegExp(`${scriptName} must use its closed command definition`, "u"));
     }
@@ -452,8 +466,8 @@ test("requires profile enforcement in complete and fast gates", () => {
   for (const scriptName of ["check", "check:fast"]) {
     const commands = packageJson.scripts[scriptName].split(" && ");
     assert.deepEqual(commands.slice(0, 4), [
-      "pnpm runtime:preflight", "pnpm lockfile:peers:check",
-      "pnpm runtime:policy:typecheck", "pnpm runtime:policy:test",
+      "node architecture/tooling/runtime/command.ts run runtime:preflight", "node architecture/tooling/runtime/command.ts run lockfile:peers:check",
+      "node architecture/tooling/runtime/command.ts run runtime:policy:typecheck", "node architecture/tooling/runtime/command.ts run runtime:policy:test",
     ]);
     for (const index of [1, 2, 3]) {
       const reordered = clone(packageJson);
@@ -461,13 +475,13 @@ test("requires profile enforcement in complete and fast gates", () => {
       [candidate[0], candidate[index]] = [candidate[index], candidate[0]];
       reordered.scripts[scriptName] = candidate.join(" && ");
       assert.throws(() => validate({ packageJson: reordered }),
-        /must use its exact closed pnpm command chain/u);
+        /must use its exact closed node architecture\/tooling\/runtime\/command\.ts run command chain/u);
     }
     const testsBeforeCompiler = clone(packageJson);
     [commands[2], commands[3]] = [commands[3], commands[2]];
     testsBeforeCompiler.scripts[scriptName] = commands.join(" && ");
     assert.throws(() => validate({ packageJson: testsBeforeCompiler }),
-      /must use its exact closed pnpm command chain/u);
+      /must use its exact closed node architecture\/tooling\/runtime\/command\.ts run command chain/u);
   }
 });
 
@@ -483,19 +497,19 @@ test("rejects Foundation before generation and redundant aggregate preparation",
     const reordered = clone(packageJson);
     const commands = reordered.scripts[scriptName].split(" && ");
     const preparation = scriptName === "check" ? "governance:check" : "assembly:build";
-    const build = commands.indexOf(`pnpm ${preparation}`);
+    const build = commands.indexOf(`node architecture/tooling/runtime/command.ts run ${preparation}`);
     assert.notEqual(build, -1);
-    const foundation = commands.indexOf("pnpm foundation:check");
+    const foundation = commands.indexOf("node architecture/tooling/runtime/command.ts run foundation:check");
     [commands[build], commands[foundation]] = [commands[foundation], commands[build]];
     reordered.scripts[scriptName] = commands.join(" && ");
     assert.throws(() => validate({ packageJson: reordered }),
-      /must use its exact closed pnpm command chain/u);
+      /must use its exact closed node architecture\/tooling\/runtime\/command\.ts run command chain/u);
     const redundant = clone(packageJson);
     redundant.scripts[scriptName] = redundant.scripts[scriptName].replace(
-      "pnpm core:typecheck:prepared", "pnpm core:typecheck",
+      "node architecture/tooling/runtime/command.ts run core:typecheck:prepared", "node architecture/tooling/runtime/command.ts run core:typecheck",
     );
     assert.throws(() => validate({ packageJson: redundant }),
-      /must use its exact closed pnpm command chain/u);
+      /must use its exact closed node architecture\/tooling\/runtime\/command\.ts run command chain/u);
   }
 });
 
@@ -633,9 +647,9 @@ test("first production package requires the Foundation source-dependency gate", 
   );
 
   const missingFastGate = clone(configured);
-  missingFastGate.packageJson.scripts["check:fast"] = "pnpm docs:check";
+  missingFastGate.packageJson.scripts["check:fast"] = "node architecture/tooling/runtime/command.ts run docs:check";
   assert.throws(() => validateFirstProductionPackageAdmission(missingFastGate),
-    /check:fast must use its exact closed pnpm command chain/u);
+    /check:fast must use its exact closed node architecture\/tooling\/runtime\/command\.ts run command chain/u);
 });
 
 test("first production package cannot use a no-op Foundation alias", () => {
@@ -654,7 +668,7 @@ test("first production package cannot use a no-op Foundation alias", () => {
   }), /foundation:check must use its closed command definition/u);
 
   const commented = clone(packageJson);
-  commented.scripts["foundation:check"] = ": # && agent-teams-foundation check";
+  commented.scripts["foundation:check"] = ": # && node architecture/tooling/runtime/command.ts tool agent-teams-foundation check";
   assert.throws(() => validateFirstProductionPackageAdmission({
     publicationBlockerIds: new Set(["OD-005"]),
     productionArtifacts: ["packages/core/package.json", "packages/core/src/index.ts"],
@@ -864,7 +878,7 @@ test("publication blockers come from the traceability catalog", () => {
 });
 
 test("requires the Assembly gates in dependency order in both root commands", () => {
-  const required = ["pnpm assembly:build", "pnpm assembly:typecheck", "pnpm assembly:test"];
+  const required = ["node architecture/tooling/runtime/command.ts run assembly:build", "node architecture/tooling/runtime/command.ts run assembly:typecheck", "node architecture/tooling/runtime/command.ts run assembly:test"];
   for (const scriptName of ["check", "check:fast"]) {
     const commands = packageJson.scripts[scriptName].split(" && ");
     assert.deepEqual(commands.filter(command => required.includes(command)), required);
@@ -872,7 +886,7 @@ test("requires the Assembly gates in dependency order in both root commands", ()
       const changed = clone(packageJson);
       changed.scripts[scriptName] = commands.filter(command => command !== removed).join(" && ");
       assert.throws(() => validate({ packageJson: changed }),
-        /must use its exact closed pnpm command chain/u);
+        /must use its exact closed node architecture\/tooling\/runtime\/command\.ts run command chain/u);
     }
     const reordered = clone(packageJson);
     const build = commands.indexOf(required[0]);
@@ -880,7 +894,7 @@ test("requires the Assembly gates in dependency order in both root commands", ()
     [commands[build], commands[typecheck]] = [commands[typecheck], commands[build]];
     reordered.scripts[scriptName] = commands.join(" && ");
     assert.throws(() => validate({ packageJson: reordered }),
-      /must use its exact closed pnpm command chain/u);
+      /must use its exact closed node architecture\/tooling\/runtime\/command\.ts run command chain/u);
   }
 });
 
@@ -1064,7 +1078,7 @@ test("routes Docs through portable v3 authoring without managed activation", asy
   assert.equal(authoring.schemaVersion, 3);
   assert.equal(packageJson.devDependencies["@agent-teams/docs-protocol-agent-teams"], undefined);
   for (const [name, command] of Object.entries(packageJson.scripts)) {
-    if (name.startsWith("docs:") && command.startsWith("agent-teams-docs ")) {
+    if (name.startsWith("docs:") && command.startsWith("node architecture/tooling/runtime/command.ts tool agent-teams-docs ")) {
       assert.ok(command.endsWith("--consumer . --profile architecture/foundation/docs-protocol.yaml"), name);
     }
     assert.ok(!command.includes("agent-teams-docs-managed"), name);

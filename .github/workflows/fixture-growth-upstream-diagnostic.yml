@@ -23,14 +23,17 @@ jobs:
         with:
           node-version: 26.11.1
           cache: pnpm
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: .bun-version
       - name: Install the unchanged supported toolchain and prepare package outputs
         run: |
-          pnpm install --frozen-lockfile --ignore-scripts --engine-strict --strict-peer-dependencies
-          pnpm lockfile:peers:check
-          pnpm assembly:build
-          pnpm resources:build
-          pnpm conformance:build
-          pnpm assembly:typecheck
+          node architecture/tooling/runtime/dev.ts install-node-qualification
+          pnpm --pm-on-fail=ignore lockfile:peers:check
+          pnpm --pm-on-fail=ignore assembly:build
+          pnpm --pm-on-fail=ignore resources:build
+          pnpm --pm-on-fail=ignore conformance:build
+          pnpm --pm-on-fail=ignore assembly:typecheck
       - name: Build the exact upstream candidate and measure the original N1000 subject once
         run: node tests/qualification/consumer-fixtures/growth/upstream-compiler.ts --directory "${{ runner.temp }}/gm-upstream-growth"
       - name: Verify tracked workspace integrity

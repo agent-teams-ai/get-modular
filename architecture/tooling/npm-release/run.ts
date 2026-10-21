@@ -100,7 +100,7 @@ async function prepare(destination: string): Promise<void> {
       json(await readFile(join(root, "package.json"), "utf8")), json(git("show", `${retainedSource}:package.json`)));
   }
   if (candidates.some(item => !item.retained)) {
-    for (const script of ["assembly:build", "resources:build", "conformance:build", "observation:build"]) run("pnpm", ["run", script]);
+    for (const script of ["assembly:build", "resources:build", "conformance:build", "observation:build"]) run("pnpm", ["--pm-on-fail=ignore", "run", script]);
   }
   const entries: ReleasePackage[] = [];
   for (const item of candidates) {
@@ -111,7 +111,7 @@ async function prepare(destination: string): Promise<void> {
       await copyFile(archive, join(destination, file));
       console.log(`Retained qualified bytes: ${item.name}@${item.version}, package tree ${item.tree}`);
     } else {
-      run("pnpm", ["--dir", `packages/${item.id}`, "pack", "--pack-destination", destination]);
+      run("pnpm", ["--pm-on-fail=ignore", "--dir", `packages/${item.id}`, "pack", "--pack-destination", destination]);
     }
     entries.push({ name: item.name, version: item.version, file, ...archiveHashes(await readFile(join(destination, file))) });
   }

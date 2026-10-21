@@ -1,3 +1,4 @@
+import { pinnedPnpmCli } from "../qualification/support/pinned-pnpm.ts";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readPackageArchive } from "../qualification/support/package-archive.mjs";
@@ -33,6 +34,7 @@ test("retained Assembly manifest rejects metadata drift beyond dependency rewrit
 });
 
 async function packageManagerCli(name) {
+  if (name === "pnpm") return pinnedPnpmCli(workspace);
   const node = await realpath(process.execPath);
   const candidates = name === "npm" ? [
     join(dirname(node), "node_modules/npm/bin/npm-cli.js"),
@@ -123,7 +125,7 @@ test("disposable packed consumer checks closed roots, synthetic wiring and both 
     for (const name of ["core", "assembly"]) {
       const directory = join(workspace, "packages", name);
       const manifest = JSON.parse(await readFile(join(directory, "package.json"), "utf8"));
-      if (!retained) command(process.execPath, [pnpm, "pack", "--pack-destination", archives], directory);
+      if (!retained) command(process.execPath, [pnpm, "--pm-on-fail=ignore", "pack", "--pack-destination", archives], directory);
       const archive = retained ? await realpath(name === "assembly" ? retained : publishedCore)
         : join(archives, `${manifest.name.replace("@", "").replace("/", "-")}-${manifest.version}.tgz`);
       assert.equal((await lstat(archive)).isFile(), true);

@@ -1,3 +1,4 @@
+import { readRuntimeIndexSnapshotFile as readIndexSnapshotFile } from "../tooling/runtime/projection-custody.ts";
 import { createHash } from "node:crypto";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,7 +28,6 @@ import {
   indexSnapshotPaths,
   inspectIndexSnapshotFile,
   inspectTrackedWorkingTreeRegularFile,
-  readIndexSnapshotFile,
   safeRepositoryPath,
   safeRepositoryPathOrDirectory,
   untrackedPathsInScope,

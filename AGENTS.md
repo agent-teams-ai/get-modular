@@ -19,19 +19,29 @@ For consumer composition work, read the [Consumer module standard](docs/architec
 For module authoring, read docs/guides/module-authoring.md.
 For dynamic plugin lifecycle work, read its [lifecycle-kernel decision boundary](docs/architecture/common-assembly.md#optional-dynamic-host-lifecycle-candidate) and the [candidate package contract](packages/lifecycle-kernel/README.md) before selecting a package. Static composition and passive setup do not require this candidate; product adoption and public release remain separate decisions.
 
-Use `pnpm check:changed` while editing, `pnpm check:fast` before handoff, and
-`pnpm check` as the complete gate, including the installed
+Use `bun run check:changed` while editing, `bun run check:fast` before handoff, and
+`bun run check` as the complete gate, including the installed
 `architecture.source-dependencies` schema v3 gate (`rootPackage: true` and
-`packageRoots` for Core/Assembly) and `pnpm release-owned-files:check`.
+`packageRoots` for Core/Assembly) and `bun run release-owned-files:check`.
+Install with `node architecture/tooling/runtime/dev.ts install`. Bun 1.4.3 is the
+default manager and selected development-tool runtime. Explicit Node commands
+retain tests, native compiler controls, packed qualification and releases.
+For rollback, create a clean isolated checkout with
+`node architecture/tooling/runtime/dev.ts prepare-node /absolute/new/path`,
+then run that checkout's `dev.ts install` and `dev.ts run check`. Never mix managers
+in one installation. The [runtime mapping](docs/architecture/feature-module-standard.md#repository-runtime-profiles)
+owns the classification and current pending qualification.
+
 `runtime:preflight` remains the dependency-free Node version guard.
 `precheck:changed` runs that guard, then the compiler metadata preflight.
 The quality scope and typed commands use their own compiler guard hooks; `.npmrc`
-explicitly enables user-script pre/post hooks while installation scripts stay disabled.
+explicitly enables pnpm rollback hooks; Bun user-script hooks are exercised by the
+compiler-floor regressions. Installation scripts stay disabled in both profiles.
 Full and fast gates explicitly run
 `lockfile:peers:check`, `runtime:policy:typecheck` and `runtime:policy:test`
 before preparation.
 
-When `package.public-api-compatibility` or `pnpm release-owned-files:check`
+When `package.public-api-compatibility` or `bun run release-owned-files:check`
 fails, fix the source. Do not shrink yaml entrypoints, retarget
 `releasedBaselinePath`, or edit `architecture/public-api/` on a feature PR.
 First adoption may create `architecture/public-api/core.json` and
@@ -60,7 +70,7 @@ Use [.agents/skills/docs-authoring/SKILL.md](.agents/skills/docs-authoring/SKILL
 <!-- agent-teams-docs:route/v1 end -->
 
 Documentation is governed by the Agent Teams Docs Protocol. Create ADR and
-open-decision records through `pnpm docs:new`; qualification records are
+open-decision records through `bun run docs:new`; qualification records are
 hand-written and validated by `docs:check` and `governance:check`. Do not edit
 accepted decisions retroactively.
 
@@ -71,7 +81,7 @@ product-owned adapters outside this repository.
 
 A changeset that ships a breaking minor of a `@get-modular/*` package ends with
 a "Migration (0.N -> 0.N+1)" block: `Better:` (what the new form gives),
-`Codemod:` (`pnpm --dir <get-modular> codemod 0.N-0.N+1 <repo> --write`, or
+`Codemod:` (`node <absolute-get-modular>/architecture/tooling/codemods/run.mjs 0.N-0.N+1 <absolute-consumer-repo> --write`, or
 `none - <reason>`), `By hand:` and `Check:` (typecheck, then the composition
 smoke tests). Write a codemod under `architecture/tooling/codemods/` with
 fixtures in `tests/codemods/` for a rename, a moved import, a changed call shape

@@ -111,5 +111,20 @@ test("consumer rejects dropping an entire selected file or required identity", a
     const removedIdentity = await run(process.execPath, [checker], root);
     assert.notEqual(removedIdentity.exit, 0, removedIdentity.text);
     assert.match(removedIdentity.text, /reviewed required identities/u);
+    for (const name of [
+      "full-scan roots retain Core metadata coverage within the published schema bound",
+      "check-changed reports v2 repository coverage with unverified mutable custody",
+      "check-changed rejects v1 and legacy v2 policies before executing checks",
+    ]) {
+      const missing = JSON.parse(contract);
+      const index = missing.required.findIndex(entry => entry.file === "tests/repository-agent-workflow.test.ts"
+        && entry.names.length === 1 && entry.names[0] === name);
+      assert.notEqual(index, -1, `missing reviewed identity: ${name}`);
+      missing.required.splice(index, 1);
+      await writeFile(join(root, contractPath), JSON.stringify(missing, null, 2) + "\n");
+      const rejected = await run(process.execPath, [checker], root);
+      assert.notEqual(rejected.exit, 0, name);
+      assert.match(rejected.text, /reviewed required identities/u, name);
+    }
   });
 });

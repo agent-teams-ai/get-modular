@@ -94,9 +94,9 @@ optional public conformance module, and `ADR-0034` the optional public observati
 
 ## Enforcement
 
-`pnpm architecture:feature-module-profile` verifies the pinned standard,
+`bun run architecture:feature-module-profile` verifies the pinned standard,
 repository mapping, local authorities, navigation, gate wiring, and explicit
-qualification states. `pnpm governance:check` uses the same repository-wide
+qualification states. `bun run governance:check` uses the same repository-wide
 production-artifact inventory. It always rejects production artifacts outside
 `packages`. Accepted ADR-0015 admits source only inside a package identity
 accepted by ADR-0003, ADR-0023, the bounded ADR-0029 successor, ADR-0030, ADR-0033 or ADR-0034 and, on its
@@ -122,10 +122,14 @@ production. The first production package must atomically:
 - change the admission state to `source-admitted`;
 - enable Engineering Foundation's `architecture.source-dependencies`
   capability at `architecture/foundation/source-dependencies.yaml`; and
-- execute the pinned `@agent-teams/engineering-foundation` `1.10.0` command
-  `agent-teams-foundation check` through both the complete and fast gates.
+- execute the pinned `@agent-teams/engineering-foundation` `2.0.1` command
+  through `node architecture/tooling/runtime/command.ts tool agent-teams-foundation check`
+  in both the complete and fast gates.
 
-The tooling activation pins native Foundation `1.10.0`. SDK growth admission remains
+The current tooling pins Foundation `2.0.1`, Feature Module Standard `0.2.1`
+and Docs Protocol `0.6.3` as exact registry development dependencies. The FMS
+package update does not change this repository's adopted FMS v1 authority.
+SDK growth admission remains
 explicitly pending: the active public-API capability retains schema v1 until a
 trusted external authority binds the PR base and candidate to authenticated
 released Core and Assembly artifacts. Local qualification records cannot
@@ -137,75 +141,182 @@ no waivers. Activation does not claim that existing source passes typed lint
 or establish structural or runtime conformance. Docs retains its portable
 workflow without a managed adapter or cohort binding.
 
-The native Foundation 1.10.0 binding follows the retained 1.7.4 and 1.7.2
-records and keeps the immutable Feature Module Standard and
-Consumer Module Standard pins. The retained current Consumer Module Standard
-adds the optional ADR-0029 dynamic Host guidance; it does not expand passive
-composition or confer SDK authority. The current SDK tooling binding advances
-while the earlier Foundation archive and P0 records remain historical evidence.
+The earlier native Foundation 1.10.0 binding followed the retained 1.7.4 and
+1.7.2 records. Those archive, compiler and CLI observations remain historical
+evidence under their original identities. The current Foundation 2.0.1 binding
+keeps the immutable Feature Module Standard authority and the separately reviewed
+Consumer Module Standard chain. Neither publication nor a tooling pin confers
+SDK authority or completes composition qualification.
 SDK status stays pending, activation stays on hold and release eligibility stays
 false.
 
-The local changed workflow keeps the schema published with Foundation 1.7.2;
-the native 1.10.0 binding does not change it.
-JS and TS edits select the existing project-wide `check:fast` script with
-`passPaths: false`; changed file names never become compiler arguments.
-Compiler projects and root check configuration select the same fast gate through
-explicit configuration triggers. Root Markdown-only edits retain `docs:changed`;
-the existing `docs` and `architecture` full-scan triggers remain.
-A mixed docs and code change still runs the code gate. Version 1 changed reports
-are editing feedback: their `coverage: changed` label does not claim that typed
-lint or the full gate ran. `pnpm check` remains the complete required gate.
-This corrects routing inside the existing development-tooling boundary; it adds
-no production composition node, consumer adoption scope or public contract.
+The current `check:changed` script calls the published Foundation
+`agent-workflow check-changed` successor with repository-agent-workflow policy
+schema v2. The repository scope requires lint, typecheck, tests, standards and
+architecture facets; its declared `repository` check runs the complete `check`
+script. The legacy `changedChecks` code/docs mappings remain for the separately
+tested `agent-workflow changed` command; they do not describe the successor's
+coverage plan.
 
-Node 26.11.1 is the repository default and production tooling choice, with
-pnpm 11.20.0. The current owner explicitly authorized this cutover before Node 26
-reached LTS status, so no LTS or further approval condition applies; accepted
-decisions that predate it are unchanged. Node 24.21.0 remains a supported
-tooling compatibility runtime. The root/tooling policy is `>=24.21.0 <25 || >=26.10.0 <27`;
-the public library policy retains the separate Node 24.18.0 floor. Node 25,
-Node 26 below 26.10.0, Node 27 and malformed versions remain rejected. The
-existing runtime helper owns this narrow version mechanism; executable selection
-and deployment policy remain with the Host.
+The legacy full-scan list groups Core metadata under `packages/core` to retain
+all six previous metadata triggers within the 64-entry policy limit. Every
+Core descendant, including its documentation, now selects fast-full escalation.
+
+The successor emits report schema v2 with explicit planned checks, per-path
+coverage and input custody. When a selected check passes but mutable input
+binding is unverified, its outcome is `feedback-only`, with reason
+`mutable-input-binding-unverified`. Editing feedback does not prove exclusive
+input custody, complete CI qualification or release authority. `bun run check`
+remains the complete required gate. This route stays inside the existing
+development-tooling boundary; it adds no production composition node or
+consumer adoption scope.
+
+### Repository runtime profiles
+
+Bun 1.4.3 is the default package manager and runtime for the explicitly listed
+repository checks, Foundation and Docs CLIs. Nested package-script dispatch uses
+`architecture/tooling/runtime/command.ts`; it selects Bun throughout the default
+chain. Literal Node commands keep `node:test`, native TypeScript controls,
+Core generation/build qualification, packed consumers and release tooling on
+Node. No production package depends on these development tools.
+
+The root `workspaces` packages/catalog are a checked projection of
+`pnpm-workspace.yaml`. The latter and `pnpm-lock.yaml` remain the Node rollback
+authority. Before installing, the pinned Bun parses YAML natively and rejects a
+mismatched root projection. Both managers use genuine frozen lockfiles and disable
+dependency lifecycle scripts. Bun uses its explicit isolated linker; existing
+unknown or opposite-manager trees are rejected. `trustedDependencies: []` removes Bun's implicit
+allowlist. User-script hooks remain enabled and are checked separately from
+installation hooks by the compiler-floor regression.
+
+Run `node architecture/tooling/runtime/dev.ts install` for the default profile.
+Create Node rollback only from a clean committed checkout with
+`node architecture/tooling/runtime/dev.ts prepare-node /absolute/new/path`.
+This clones the exact source into a new external directory and projects only
+`package.json` and the two manager policies. In that directory, use
+`dev.ts install`, `dev.ts run check` and `dev.ts verify` through their full path
+`architecture/tooling/runtime/dev.ts`. The marker is routing metadata, not
+qualification evidence. Verification independently recomputes the three
+projections from Git and checks all other tracked bytes against the same head.
+A shared `node_modules`, an unknown profile or projection drift fails closed.
+
+The Host authenticates the original index objects before admitting those three
+source-derived working representations. Other authority reads retain strict
+index-to-file equality. Full verification checks the index and working files in
+two passes without restoring or writing source files. These manager projections
+belong to the existing development Host and add no production module boundary.
+
+`lockfile:peers:check` always executes the real pinned pnpm manager. The Bun
+profile creates an isolated manifest-only root for this lock-only graph check;
+it never interprets a Bun installation as pnpm evidence. pnpm itself is a declared
+catalog development dependency, so installed dispatch runs its exact CLI with
+Node and preserves argv on Windows. Initial Node installation uses only the
+provisioned pinned manager and a finite argument list.
+
+The native OS matrix keeps its required aggregate names and complete obligation
+inventory. Default lanes install Bun; Node 24 compatibility and Node 26 rollback
+lanes each have a separate projected checkout and installation. The public
+installed-archive lane stays Node. M3 also stays Node: its trusted runner
+requires a clean exact-SHA source tree and scans the actual `.pnpm` compiler/parser
+closure, so it uses the explicit `dev.ts install-node-qualification` command in
+a fresh checkout. Only that frozen installation passes the command-local
+pnpm `--pm-on-fail=ignore` manager-selection option; it preserves the original Bun source metadata
+and the existing custody checks. M3's three `node-24-*` rows run the exact
+`.node-compat-version` pin (24.21.0), while pack, native and collect controllers
+run `.node-version` (26.11.1). Each controller compares its working pin bytes
+with the exact dispatched Git source and requires that actual runtime; the
+Node 24 packed-consumer guards remain unchanged. This is a Node execution/retained-pnpm graph
+qualification route, separate from the projected rollback profile.
+CI must prove all routes on the candidate
+head; configuration alone records no successful run.
+
+This is a fixed development-tooling relationship inside `repository.development`,
+not an independently assembled capability. It creates no Core/Assembly graph
+node and has no generation/resource lifetime needing the lifecycle kernel.
+Shared-first review retains generic command/quality/workflow semantics in
+Engineering Foundation's public CLIs, with process mechanism owned by the existing
+runtime/toolchain providers. The consumer owns only its finite script roles,
+version pins, install projection and CI selection (about 350 handwritten lines).
+A possible shared runtime-role facade would belong to Foundation's process-execution
+owner (roughly 30-50 lines), with consumer script tables and pins depending on that
+port. It would add another dependency without a new invariant: generic workflow
+and quality behavior already use Foundation's public CLIs, and the process
+primitive is supplied by the runtime. Host install projections and version
+policy remain local. Copying Foundation's complete Host runtime would duplicate
+policy and lifecycle ownership. No broad reusable runtime SPI is claimed.
+
+The current Consumer Module Standard review pins exact source
+`a7d8db433fb3c4187fbeab4dcec4e6d69a4f70ca`, with full-document SHA-256
+`8f92029eec9610f6f83afe6f86352557f268b1abd8e2a241f16d86f5f0eaada9`.
+Its incremental delta from reviewed `300e7e1` changes only five current GM
+verification commands to Bun. The earlier `24d6557a` to `300e7e1` composition,
+resource, contract and observation review remains authenticated historical
+evidence. Current, previous and P0 snapshots, both retained deltas and prior
+reviews remain checked. SDK growth stays pending under its existing profile;
+this command guidance supplies none of its outstanding external authority.
+
+The current tool cohort is published and reconciled. Foundation 2.0.1 and FMS
+0.2.1 were published by successful
+[release run 39511720000, attempt 1](https://github.com/agent-teams-ai/engineering-foundation/actions/runs/39511720000/attempts/1)
+from exact source `1218dbb53369d3beb3ee5b1b7544c261bf93136c`. Docs 0.6.3 remains
+unchanged from its `4ca4ad30b1efc5e3b43a2c012348ea8afea21864` release source.
+The independent eight-package review and separate published Foundation verifier
+are recorded in the [published tooling checkpoint](../qualification/native-typescript-tooling.md#published-tooling-checkpoint-2026-10-21).
+That record also preserves the earlier Foundation 2.0.0 cohort and its receipts
+as dated history. These upstream proofs do not qualify this Get Modular checkout.
+
+Both real locks now exist. Pinned pnpm 11.20.0 generated its strict lock and
+passed frozen strict lock-only admission; Bun 1.4.3 generated `bun.lock` and
+passed a frozen dry run. The root workspaces/catalog projection was preserved.
+These are lock-admission observations only. Clean Get Modular installations,
+manager/compiler-hook regressions, the six-role OS/profile matrix, M3 and packed
+qualification, and the complete gates remain pending on the candidate head.
+Earlier Foundation 1.10.0 observations do not prove this cutover.
+
+Retained Node tooling qualification used Node 26.11.1 by default, with Node
+24.21.0 compatibility. Its root/tooling policy remains
+`>=24.21.0 <25 || >=26.10.0 <27`; the public library policy keeps its Node 24.18.0
+floor. Node 25, Node 26 below 26.10.0, Node 27 and malformed versions remain
+rejected by the existing dependency-free version mechanism.
 
 `runtime:preflight` is exactly `node architecture/checks/node-version.mjs` and
 requires no installed repository dependencies. `precheck:changed` first runs
 that guard, then reads the compiler metadata before loading Foundation. The
 `quality:coverage:scope` and `lint:typed` commands run the same compiler guard
-through their user-script hooks, before the literal public CLI commands. The pinned pnpm route explicitly
+through their user-script hooks, before the wrapped public CLI commands. The isolated pnpm route explicitly
 enables user-script pre/post hooks in `.npmrc`; installation scripts remain
-disabled. Normal `pnpm` commands, explicit `pnpm run` and the existing CI lane
-runner execute those hooks. This is not a guard for arbitrary direct CLI calls
+disabled. Normal `bun run` commands and the isolated Node/pnpm route execute those hooks;
+the regression also invokes the CI lane runner and a nested package script. This is not a guard for arbitrary direct CLI calls
 or commands that deliberately disable hooks.
 Both full and fast gates explicitly execute
 `lockfile:peers:check`, `runtime:policy:typecheck` and `runtime:policy:test`
 after preflight and before preparation. The peer gate validates the committed
-graph with `pnpm peers check --lockfile-only`; strict frozen installation alone
+graph with the real `pnpm peers check --lockfile-only` in an isolated Node manager root; strict frozen installation alone
 does not replace it. The policy compiler gate uses the pinned TypeScript 7.0.2
 compiler and the existing strict NodeNext configuration, including
 `erasableSyntaxOnly`, `noUncheckedIndexedAccess` and
 `exactOptionalPropertyTypes`. Native Node type stripping does not replace that
 gate.
 
-The default Node 26.11.1 and Node 24.21.0 compatibility CI routes each retain six independent
+The retained Node 26.11.1 and Node 24.21.0 compatibility CI routes each used six independent
 lanes on Ubuntu, macOS and Windows, including strict frozen installation,
 committed peer validation, the complete gate union and tracked workspace
 integrity. The governance lane explicitly executes policy typechecking and
 tests. The existing installed public archive compatibility lane remains
-separate. Docs Protocol is pinned exactly to `0.6.2`, the published stable
-successor declaring Node `^24.18.0 || ^26.0.0`; `0.6.0` excludes Node 26.
+separate. Docs Protocol is now pinned exactly to published `0.6.3`, declaring
+Node `^24.18.0 || ^26.0.0`; `0.6.0` excludes Node 26.
 The `portable-v1` profile and schema remain unchanged. The Node 24.21.0 and
 Node 26.10.0 root routes, with the exact Docs `0.6.2` closure, strict frozen
 installations under pnpm 11.20.0, Foundation and Docs checks and the complete
 mandatory gates, were qualified by genuine CI on all three operating systems in
-PR #149 (merge `557b713`). The Node 26.11.1 default and the Node 24.21.0
-compatibility routes are verified by the exact-head CI of each change, which must
-pass on both before merge; this document records no CI result for any head. This does not change the published packages. This mapping
+PR #149 (merge `557b713`). That historical Docs 0.6.2 closure is not evidence for
+the current cohort. Default Bun lanes on the Node 26.11.1 controller, projected
+Node 24.21.0 compatibility and projected Node 26.11.1 rollback must all pass
+exact-head CI before merge. Current Get Modular qualification is pending. This mapping
 and repository gate declare no managed cohort binding, installer authorization,
 production qualification of a product or release eligibility.
 
-`pnpm quality:critical:test` runs the existing source dependency and quality
+`bun run quality:critical:test` runs the existing source dependency and quality
 activation entries through `agent-teams-node-test`. Its consumer checker binds
 the complete selected file command and the SHA-256 of the reviewed required
 identity contract. Fast and full gates execute this route; other tests retain
@@ -216,17 +327,17 @@ fixture exception on POSIX.
 
 | Installed mechanism | Applicability and enforcement | Command |
 | --- | --- | --- |
-| Root runtime and committed peers | Dependency-free preflight; explicit strict policy typecheck and tests in full/fast gates; committed peer validation after frozen installation | `pnpm runtime:preflight`, `pnpm lockfile:peers:check`, `pnpm runtime:policy:typecheck`, `pnpm runtime:policy:test` |
-| Source dependencies v3 | Root development tooling, Core, Assembly, lifecycle kernel, resources, conformance and observation; preserve declared roots, generated output and dependency budgets | `pnpm foundation:check` |
-| Source coverage and typed quality | All declared compiler projects; missing inputs fail; the default unknown assertion bridge gate remains active with no admissions | `pnpm quality:coverage:scope`, `pnpm lint:typed` |
-| Suppression governance | All six production source roots, no waivers | `pnpm foundation:check` |
-| Required Node execution | Eleven critical identities in three existing files; complete selected file list is bound | `pnpm quality:critical:test` |
-| Documentation, decisions, workflow and dependency declarations | Existing installed profiles and repository routes remain active | `pnpm foundation:check`, `pnpm docs:protocol:check` |
-| Public API compatibility | Existing v1 profiles and released baselines; baseline mutation guard retained | `pnpm foundation:check`, `pnpm release-owned-files:check` |
-| SDK growth authority | Current installed verifier and disposable qualification; activation remains pending without external authority | `pnpm sdk-growth:check` |
-| JSON schema release evolution and executable specifications | No installed release profile/catalog adopted; current immutable contracts use their existing owner gates | `pnpm contracts:check`, `pnpm governance:check` |
+| Root runtime and committed peers | Dependency-free preflight; explicit strict policy typecheck and tests in full/fast gates; committed peer validation after frozen installation | `bun run runtime:preflight`, `bun run lockfile:peers:check`, `bun run runtime:policy:typecheck`, `bun run runtime:policy:test` |
+| Source dependencies v3 | Root development tooling, Core, Assembly, lifecycle kernel, resources, conformance and observation; preserve declared roots, generated output and dependency budgets | `bun run foundation:check` |
+| Source coverage and typed quality | All declared compiler projects; missing inputs fail; the default unknown assertion bridge gate remains active with no admissions | `bun run quality:coverage:scope`, `bun run lint:typed` |
+| Suppression governance | All six production source roots, no waivers | `bun run foundation:check` |
+| Required Node execution | Eleven critical identities in three existing files; complete selected file list is bound | `bun run quality:critical:test` |
+| Documentation, decisions, workflow and dependency declarations | Existing installed profiles and repository routes remain active | `bun run foundation:check`, `bun run docs:protocol:check` |
+| Public API compatibility | Existing v1 profiles and released baselines; baseline mutation guard retained | `bun run foundation:check`, `bun run release-owned-files:check` |
+| SDK growth authority | Current installed verifier and disposable qualification; activation remains pending without external authority | `bun run sdk-growth:check` |
+| JSON schema release evolution and executable specifications | No installed release profile/catalog adopted; current immutable contracts use their existing owner gates | `bun run contracts:check`, `bun run governance:check` |
 | Protobuf, property testing and repository security capabilities | No adopted capability profiles; no protobuf production root or property-testing toolchain is declared | Review `foundation.config.yaml` and `package.json` |
-| Scaffolding, local mode and native managed processes | No requested scaffold owner, native boundary or managed adapter; registry mode remains required | `pnpm foundation:assert-registry` |
+| Scaffolding, local mode and native managed processes | No requested scaffold owner, native boundary or managed adapter; registry mode remains required | `bun run foundation:assert-registry` |
 
 The gate resolves the checked-in `foundation:check` script to that actual
 Foundation command, so replacing the script with a successful no-op cannot

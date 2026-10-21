@@ -206,44 +206,50 @@ assigning an entire overlapping phase to each writer.
 
 Use [package scripts](../../package.json) and the
 [Foundation workflow](../../architecture/foundation/repository-agent-workflow.yaml):
-`pnpm check:changed` while editing, `pnpm check:fast` before handoff, and
-`pnpm check` for the completed change. The
+`bun run check:changed` while editing, `bun run check:fast` before handoff, and
+`bun run check` for the completed change. The [runtime profiles](feature-module-standard.md#repository-runtime-profiles)
+keep Node qualification and isolated rollback explicit; pending install evidence
+there must be completed before the cutover is delivered. The
 [CI workflow](../../.github/workflows/ci.yml) is the repository gate; its host
 matrix is not the Core runtime-conformance matrix. No package build/test command
 exists until the first package introduces it. Update the exact script chain
 and its guard together as the current contract requires; never mark a future
 command or absent subject as passed.
 
-CI runs Core, Assembly, packaging, governance and static lanes in independent
-checkouts on each of Ubuntu, macOS and Windows. Node 26.11.1 is the default
-through `.node-version`; the owner authorized this cutover before Node 26 LTS
-status, and the supported Node 24.21.0 compatibility jobs use the same five-lane
-matrix on all three operating systems. Every checkout performs strict frozen
-installation with lifecycle scripts disabled, followed by
-`pnpm lockfile:peers:check`. Each lane runs pure runtime preflight and governance
-before explicit builds; later checks retain the builds of Assembly and every
-leaf package. The governance lane retains the ownership checkpoint before
-runtime preflight, then explicitly runs runtime policy typechecking and tests
-before governance preparation.
+CI defines six roles: Core, Assembly, packaging, governance, static and
+observation. Each runs independently on Ubuntu, macOS and Windows in three
+profiles: default Bun 1.4.3, projected Node 24.21.0 compatibility and projected
+Node 26.11.1 rollback. The default lanes use Node 26.11.1 from `.node-version`
+as their controller; explicit Node commands retain compiler, test and packed
+qualification ownership. Each profile has its own checkout and installation.
+The owner authorized the Node 26 controller before its LTS status.
 
-The required `check (ubuntu-24.04)`, `check (macos-15)` and
-`check (windows-2025)` aggregates and their corresponding Node 24 aggregates
-require every lane to succeed, including rejection of skipped dependencies. The
-[lane parity tests](../../tests/ci-check-lanes.test.mjs) retain every original
-command-chain obligation as an independent oracle, add the explicit peer and
-policy obligations, validate both runtime selections, and exercise the shell
-failure boundary in disposable TEST fixtures. This is private CI tooling;
-production composition retains its existing contract. Complete OS qualification
-and measured acceleration require CI evidence on the exact head.
+Every checkout performs its selected manager's frozen installation with
+lifecycle scripts disabled, followed by
+`node architecture/tooling/runtime/dev.ts peers`. That helper runs real pinned
+pnpm peer validation without treating a Bun installation as a pnpm graph.
+Each lane runs pure runtime preflight and governance before explicit builds;
+later checks retain the builds of Assembly and every leaf package. The
+governance lane retains the ownership checkpoint before runtime preflight,
+then runtime policy typechecking and tests before governance preparation.
+
+The existing default `check (ubuntu-24.04)`, `check (macos-15)` and
+`check (windows-2025)` aggregates and the configured Node 24 and Node 26 rollback
+aggregates require every lane to succeed, including rejection of skipped
+dependencies. The [lane parity tests](../../tests/ci-check-lanes.test.mjs) retain
+the original obligations, add peer/policy gates and exercise dispatch failure
+boundaries. The separate installed-archive lane and M3 retain explicit Node
+execution. This host matrix is not Core runtime-conformance evidence.
 
 The Node 24.21.0 and Node 26.10.0 root routes, with the exact Docs Protocol
 0.6.2 `portable-v1` closure and installed mandatory runner, were qualified by
-genuine CI on all three operating systems in PR #149 (merge `557b713`). The
-Node 26.11.1 default and the Node 24.21.0 compatibility routes are verified by the
-exact-head CI of each change, which must pass on both before merge; this document
-records no CI result for any head. This does
-not change the published packages. Configured routes and public archive tests do
-not confer a managed cohort binding, installer authorization or release authority.
+genuine CI on all three operating systems in PR #149 (merge `557b713`). These
+are historical observations. Current pins are Foundation 2.0.1, FMS 0.2.1 and
+Docs 0.6.3. Their [published cohort and real lock admission](../qualification/native-typescript-tooling.md#published-tooling-checkpoint-2026-10-21)
+are verified separately; clean Get Modular installations, full CI/M3 and packed
+qualification remain pending. None is inferred from the earlier PR or from
+configuration. Exact-head gates must pass before merge; this document records
+no successful current Get Modular matrix or release-eligibility claim.
 
 A phase's implementation is complete only when its scoped behavior and focused
 checks pass. A milestone is complete only when its actual subject passes the
