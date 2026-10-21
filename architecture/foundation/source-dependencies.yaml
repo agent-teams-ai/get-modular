@@ -995,6 +995,7 @@ boundaries:
       - architecture/tooling/runtime/dev.ts
       - architecture/tooling/runtime/ci.ts
       - architecture/tooling/runtime/projection-check.ts
+      - architecture/tooling/runtime/projection-custody.ts
       - architecture/tooling/generate-core.mjs
       - architecture/tooling/test-assembly-types.mjs
       - tests/qualification/m2-candidate/combined-case-inventory.mjs

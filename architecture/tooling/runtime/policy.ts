@@ -22,12 +22,15 @@ export const runtimeEntries = new Set([
 export const runtimeBins: Readonly<Record<string, string>> = {
   "agent-teams-foundation": "@agent-teams/engineering-foundation",
   "agent-teams-docs": "@agent-teams/docs-protocol",
+  "docs-protocol": "@agent-teams/docs-protocol",
 };
 
 export function git(root: string, ...args: string[]): string {
   // Never inherit Git path overrides from an invoking qualification fixture.
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
-  return execFileSync("git", ["-C", root, ...args], { encoding: "utf8", env }).trimEnd();
+  return execFileSync("git", ["--no-replace-objects", "--literal-pathspecs", "-C", root, ...args], {
+    encoding: "utf8", env: { ...env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_SYSTEM: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" },
+  }).trimEnd();
 }
 export function project(path: typeof projectionPaths[number], source: string): string {
   if (path === "package.json") {
@@ -53,8 +56,15 @@ export function nodeMarker(root = repository): NodeMarker {
     || typeof marker.source !== "string" || typeof marker.root !== "string" || typeof marker.commit !== "string") {
     throw new Error("runtime.projection.invalid-marker");
   }
+  if (Object.keys(marker).sort().join(",") !== "commit,root,source" || !/^[a-f0-9]{40}$/u.test(marker.commit)) {
+    throw new Error("runtime.projection.invalid-marker");
+  }
   if (realpathSync(root) !== marker.root || marker.root === marker.source
     || git(root, "rev-parse", "HEAD") !== marker.commit) throw new Error("runtime.projection.wrong-root");
+  if (realpathSync(marker.source) !== marker.source
+    || git(marker.source, "rev-parse", `${marker.commit}^{commit}`) !== marker.commit) {
+    throw new Error("runtime.projection.wrong-source");
+  }
   return { source: marker.source, root: marker.root, commit: marker.commit };
 }
 export function selectedProfile(root = repository): Profile {

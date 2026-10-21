@@ -1,3 +1,4 @@
+import { readRuntimeIndexSnapshotFile as readIndexSnapshotFile } from "../tooling/runtime/projection-custody.ts";
 import { createHash } from "node:crypto";
 import { readdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -24,7 +25,6 @@ import {
   assertGitIndexSnapshotCurrent,
   captureGitIndexSnapshot,
   indexSnapshotPaths,
-  readIndexSnapshotFile,
 } from "./tracked-file-custody.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");

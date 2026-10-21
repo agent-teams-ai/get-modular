@@ -18,6 +18,8 @@
   },
   "files": [
     "../architecture/tooling/runtime/admission.ts",
+    "../architecture/tooling/runtime/projection-custody.ts",
+    "runtime-projection-custody.test.ts",
     "../architecture/tooling/runtime/policy.ts",
     "../architecture/tooling/runtime/command.ts",
     "../architecture/tooling/runtime/dev.ts",

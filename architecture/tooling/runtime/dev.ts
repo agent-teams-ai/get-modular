@@ -5,7 +5,8 @@ import { isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertSupportedToolingNodeVersion } from "../../checks/node-version.mjs";
 import { assertBun, invoke, pnpm } from "./command.ts";
-import { assertProjection, git, markerPath, nodeMarker, project, projectionPaths, repository, selectedProfile } from "./policy.ts";
+import { verifyRuntimeWorkspace } from "./projection-custody.ts";
+import { assertProjection, git, markerPath, project, projectionPaths, repository, selectedProfile } from "./policy.ts";
 
 export function prepareNode(destination: string): void {
   if (!isAbsolute(destination) || existsSync(destination)) throw new Error("runtime.projection.destination-must-be-new");
@@ -60,26 +61,12 @@ export function installNodeQualification(): number {
   execFileSync("bun", [resolve(repository, "architecture/tooling/runtime/admission.ts")], { cwd: repository, stdio: "inherit" });
   return pnpm(["--pm-on-fail=ignore", "install", "--frozen-lockfile", "--ignore-scripts", "--engine-strict", "--strict-peer-dependencies"]);
 }
-export function verify(): void {
-  if (selectedProfile() === "bun") {
-    execFileSync("node", ["architecture/checks/tracked-workspace-integrity.mjs"], { cwd: repository, stdio: "inherit" });
-    return;
-  }
-  assertProjection();
-  const marker = nodeMarker();
-  const originals = projectionPaths.map(path => ({ path,
-    original: execFileSync("git", ["-C", repository, "show", `${marker.commit}:${path}`], { encoding: "utf8" }),
-    projected: readFileSync(resolve(repository, path), "utf8"),
-  }));
-  // Only the three already validated projections are restored for the final
-  // tracked-tree comparison. Every other changed byte still fails normally.
-  try {
-    for (const item of originals) writeFileSync(resolve(repository, item.path), item.original);
-    execFileSync("node", ["architecture/checks/tracked-workspace-integrity.mjs"], { cwd: repository, stdio: "inherit" });
-  } finally {
-    for (const item of originals) writeFileSync(resolve(repository, item.path), item.projected);
-  }
+export async function verify(): Promise<void> {
+  selectedProfile();
+  await verifyRuntimeWorkspace(repository, process.env.EXPECTED_HEAD_SHA);
+  console.log("Tracked workspace integrity: passed");
 }
+
 export function peers(): number {
   if (selectedProfile() === "node") {
     assertProjection();
@@ -106,7 +93,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   if (command === "prepare-node" && args.length === 1 && args[0]) prepareNode(args[0]);
   else if (command === "install" && args.length === 0) process.exitCode = install();
   else if (command === "install-node-qualification" && args.length === 0) process.exitCode = installNodeQualification();
-  else if (command === "verify" && args.length === 0) verify();
+  else if (command === "verify" && args.length === 0) await verify();
   else if (command === "peers" && args.length === 0) process.exitCode = peers();
   else if (command === "run" && args[0]) process.exitCode = invoke("run", args[0], args.slice(1));
   else throw new Error("Usage: dev.ts prepare-node <new-absolute-path> | install | install-node-qualification | verify | peers | run <script>");
