@@ -1,7 +1,15 @@
 import { compileComposition, defineModule, many, optional, required } from "@get-modular/core";
 import type { ModuleDeclaration } from "@get-modular/core";
-import { assemblyFor, implement, input } from "@get-modular/assembly";
+import { assemblyFor, formatFailure, implement, input } from "@get-modular/assembly";
 import type { CapabilityContract, SuccessfulComposition } from "@get-modular/assembly";
+
+const diagnosticText: string = formatFailure({ ok: false, diagnostics: [] });
+void diagnosticText;
+formatFailure({ status: "failed", error: { code: "assembly.prepare.invalid-input", cause: undefined }, diagnostics: [] }, { includeAuthoringContext: true });
+// @ts-expect-error Successful compilation is not a failure input.
+formatFailure({ ok: true, plan: {} });
+// @ts-expect-error Successful preparation is not a failure input.
+formatFailure({ status: "prepared", prepared: {} });
 
 type Store = { readonly value: string };
 type Filter = { readonly apply: (value: string) => string };

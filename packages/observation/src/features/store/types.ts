@@ -118,7 +118,9 @@ export type LoadSpec<S, T> = Subscription & {
    * The snapshot passed to `load` only carries the keys: the first run always uses the newest values.
    * One run at a time: a change aborts the running one and only the newest change waits.
    * When the scope closes, the running load is aborted and drained: entry `load:<name>/drain` in the
-   * scope. A load still running after the Host escalates becomes a failed debt `observation.load.still-running`.
+   * scope. A load still running after the Host escalates reports `observation.load.still-running` to the owner's
+   * `reportError`; its drain stays pending until the loader settles, including its cleanup. The Host may stop
+   * waiting with `abandon`, which returns a pending snapshot without releasing the load's dependencies.
    *
    * Do not start timers, connections or servers here: work a loader starts runs in its delivery context while the run is
    * active, so a write it makes to a key this load follows counts as an echo. Start long-lived work in the factory or in
@@ -198,7 +200,7 @@ export type Store<in out V> = {
 };
 
 /**
- * One failed callback of one subscription, as the store reports it to its owner's `reportError`.
+ * One subscription callback failure or lifecycle report, as the store reports it to its owner's `reportError`.
  * Owner side only: the owner wires `reportError` to the Host's error port. Only the store creates these reports,
  * and the private brand prevents ordinary hand construction. A subscriber lets its handler throw and the store reports the failure.
  */
@@ -213,13 +215,16 @@ export type ListenerError = {
    */
   readonly path?: readonly string[];
   /**
-   * Delivered revision for callback failures; the committing target's current revision for echo/cascade
-   * rejections; the source's current revision when it closes. Rejected writes create no revision.
+   * Delivered revision for callback failures; the active loader's revision for a still-running report;
+   * the committing target's current revision for echo/cascade rejections; the source's current revision when it
+   * closes. Rejected writes create no revision.
    */
   readonly revision: number;
   /**
    * What the handler threw, unchanged; or an ObservationError for `observation.callback.returned-value`,
-   * `observation.source.closed`, `observation.delivery.echo` or `observation.delivery.cascade`.
+   * `observation.source.closed`, `observation.load.still-running`, `observation.delivery.echo` or
+   * `observation.delivery.cascade`. A still-running report uses the active loader's revision, even if a newer run
+   * was queued before the subscription detached.
    */
   readonly cause: unknown;
   /** Type-only brand: there is no such property at run time. */
@@ -233,8 +238,8 @@ export type StoreOptions = {
   readonly resources: Resources;
   /**
    * Receives every failure of a subscriber callback (a handler that throws or returns a value) and every
-   * `observation.source.closed`. Wire it to the Host's error port, for example `deps.errors.report`. Must be
-   * synchronous and must not throw.
+   * `observation.source.closed` or `observation.load.still-running`. Wire it to the Host's error port, for example
+   * `deps.errors.report`. Must be synchronous and must not throw. A still-running report does not end the drain.
    */
   readonly reportError: (report: ListenerError) => undefined;
   /** Live subscriptions per subscriber scope (one `resources`) on this store. Default 64; one more throws `observation.subscriptions.limit`. */

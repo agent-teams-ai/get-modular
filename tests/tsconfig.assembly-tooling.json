@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.native-tooling.json",
+  "files": [
+    "assembly/format-failure.test.ts"
+  ],
+  "include": []
+}
