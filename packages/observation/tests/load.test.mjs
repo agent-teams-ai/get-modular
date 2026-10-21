@@ -105,7 +105,9 @@ test("T32 [P17] load: onLoading when a newer run is queued; a result that lands 
     const events = [];
     const gates = [];
     startLoad(facet, module.resources, ["region"], "catalog", {
-        loader: (next) => new Promise((resolve) => { gates.push({ region: next.values.region, release: resolve }); }),
+        loader: (next) => {
+            const gate = deferred(); gates.push({ region: next.values.region, release: gate.resolve }); return gate.promise;
+        },
         onLoading: (snapshot) => { events.push(`loading ${String(snapshot.values.region)}`); return undefined; },
         onResult: (result) => { events.push(`result ${String(result)}`); return undefined; },
         onError: (cause) => { events.push(`error ${String(cause)}`); return undefined; },
@@ -237,7 +239,9 @@ describe("T32 [R7] load never shows data of older values while newer values load
         const gates = [];
         facet.load(facet.read(["region"]), {
             resources: module.resources, name: "catalog",
-            loader: ({ values }) => new Promise((resolve) => { gates.push({ region: values.region, release: resolve }); }),
+            loader: ({ values }) => {
+                const gate = deferred(); gates.push({ region: values.region, release: gate.resolve }); return gate.promise;
+            },
             onLoading: () => { shown.push("loading"); },
             onResult: (models, { values }) => { shown.push(`ready ${values.region}: ${models}`); },
             onError: () => undefined,
