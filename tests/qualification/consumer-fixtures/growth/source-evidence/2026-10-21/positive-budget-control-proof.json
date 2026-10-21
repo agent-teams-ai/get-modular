@@ -1,0 +1,7 @@
+{
+  "outcome": "passed",
+  "expected": "fixture.growth.source.positive-deadline",
+  "cleanup": "temporary consumer removed",
+  "clock": "first monotonic reading unchanged; all later readings advanced 60001ms",
+  "calls": 2
+}

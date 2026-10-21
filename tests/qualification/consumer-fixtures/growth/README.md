@@ -5,8 +5,12 @@ arithmetic and independent provider pins in the
 [G scenarios](../../../../docs/qualification/module-fixture-scenarios.md#g--a-real-file-tree-with-bounded-useful-computation).
 The [P5 plan](../../../../docs/qualification/module-fixture-plan.md) and
 [measurement handoff](../../../../docs/qualification/module-fixture-handoff.md#source-freshness-and-measurement-evidence)
-remain the authority. Source conformance is **incomplete**; this driver does not
-select a scanner or report process RSS.
+remain the authority. The separate selected-flat source series **passes** for
+N=8, 100, 500 and 1000 with the published Foundation 2.1.1 and FMS 0.2.3
+packages; see the [current source receipt](source-evidence/2026-10-21/observations.json).
+The compiler/runtime measurement driver retains its historical
+`scanner: not-collected` result and does not report process RSS. The supported
+TS7.0.2 compiler blocker remains open.
 
 ## Correctness and optional measurement
 
@@ -299,6 +303,31 @@ This growth run selected no source scanner, so its source conformance remains
 
 ## Separate growth source qualification
 
+The [2026-10-21 installed-package receipt](source-evidence/2026-10-21/observations.json)
+records the current selected-flat source **PASS**. Normal registry installation
+uses exact Foundation 2.1.1 and FMS 0.2.3 archives; npm signature verification,
+archive SHA-512 and provenance subjects bind both to release commit
+`0e0de78d4c2089be8effc37da4cfd70eab22358c`. The CMS review against current
+upstream `7131d0d` found no new delta. Immutable FMS and CMS authority bytes,
+SDK pending/hold state and production adoption remain unchanged.
+
+| Size | Source files | Resolved imports | External imports | Supervised source stage |
+| --- | --- | --- | --- | --- |
+| 8 | 59 | 109 | 51 | 4.889 s |
+| 100 | 703 | 1,397 | 603 | 1.503 s |
+| 500 | 3,503 | 6,997 | 3,003 | 7.862 s |
+| 1000 | 7,003 | 13,997 | 6,003 | 21.549 s |
+
+All cold source identities match the retained subjects. N8 includes eight
+controls and restoration. The entire supervised series completed in 36.656 s;
+the worker was reaped before its PASS receipt. Negative controls separately
+prove deadline failure, process-group kill/reap and temporary consumer cleanup.
+Four ordinary `.json.gz` reports retain 16,551,623 original bytes in 571,197
+compressed bytes, with both identities in the compact receipt. Inspect a report
+with `gzip -dc`; no custom archive tool is required. This result qualifies only
+the selected flat source scope. Historical compiler/runtime observations and
+the supported TS7.0.2 blocker retain their separate status.
+
 `source.ts` supplies the source-only follow-up for the existing flat growth
 recipe. It reuses P4's independent directory inventory and `checkFlatSource`
 adapter: the installed public Foundation graph supplies actual files, resolved
@@ -324,9 +353,9 @@ The historical P4 CMS observation at `a3a079b` / `2f1b330` was blob
 Review of the delta found the optional Observation communication, scope-bound
 watch/load and disposer guidance, its testing-import restriction and linked
 checks. The flat feature maps, role and descriptor surfaces, inputs, groups and
-selected source predicates are unchanged. This follow-up changes no accepted
-ADR, production adoption or dependency pin; nested and dynamic/Observation
-consumers remain unselected. Growth's application and public-contract policy
+selected source predicates are unchanged. The source-helper change does not alter accepted
+ADRs or production adoption. The current tooling package binding is recorded
+below; nested and dynamic/Observation consumers remain unselected. Growth's application and public-contract policy
 allows no package or builtin dependency.
 
 The ordinary Assembly entry adds one source-only N8 check and eight controls
@@ -375,6 +404,8 @@ as generated so the maintained helper is visible first; all raw diffs remain
 inspectable. Only this immutable dated evidence is excluded from CSpell because
 encoded paths and temporary directory suffixes are measured data, not prose.
 The helper, current documentation and future evidence keep their normal checks.
+The current compact JSON remains checked, with its recorded server username
+recognized as a proper name in a dated spelling override.
 
 For a new installed-package source-only series on Linux, after the existing
 package builds:

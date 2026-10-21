@@ -26,6 +26,10 @@
   ],
   "overrides": [
     {
+      "filename": "tests/qualification/consumer-fixtures/growth/source-evidence/2026-10-21/**/*.json",
+      "words": ["iliya"]
+    },
+    {
       "filename": "tests/qualification/consumer-fixtures/growth/compiler-reproducer/2026-10-20-private-this-members/**/*.json",
       "words": [
         "hardlinks",
