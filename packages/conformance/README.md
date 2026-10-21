@@ -16,7 +16,7 @@ a test supplies the expected data, including the provider decisions that
 ## Install
 
 ```sh
-npm install --save-dev @get-modular/conformance
+npm install --save-dev --save-exact @get-modular/conformance@latest
 ```
 
 Supported Node.js: `>=24.18.0 <25 || >=26.10.0 <27`. Core, Assembly and

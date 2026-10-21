@@ -65,12 +65,19 @@ owned fixtures prove that an implementation follows the contract. The
 conformance package has peer dependencies on Core, Assembly and resources; Core and
 Assembly never depend on it.
 
-Core and Assembly `0.1.0` are available from npm. Install both when the Host
-needs construction, or Core alone when it only needs a portable plan:
+Install the latest published Core and Assembly when the Host needs construction,
+or Core alone when it only needs a portable plan:
 
 ```sh
-npm install @get-modular/core@0.1.0 @get-modular/assembly@0.1.0
+npm install --save-exact @get-modular/core@latest @get-modular/assembly@latest
 ```
+
+`latest` selects the current npm release when you install; `--save-exact` records
+the resolved versions. Commit the lockfile and use a frozen install in CI.
+Review package changelogs and the consumer migration when upgrading: pre-1.0
+minor releases may break the previous API. Current installation guides use the
+release channel; accepted adoption pins and historical evidence keep their exact
+versions. See the [installation recipe](docs/guides/consumer-quickstart.md#install-the-current-release).
 
 Start with the [consumer quickstart](docs/guides/consumer-quickstart.md) and its
 [executable Host example](packages/assembly/examples/basic-host.mjs).
