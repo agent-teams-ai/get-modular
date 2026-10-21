@@ -109,6 +109,7 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
       path: "docs/decisions/0039-retain-observation-load-drain-until-its-run-settles.md",
       immutableDigest: "sha256:a87281033d7381aabd956dbf772a10b0c2f2025365a9611faed1cb7d6137707f",
     },
+    {"id": "ADR-0040", "path": "docs/decisions/0040-admit-the-core-and-assembly-0-7-diagnostic-release-pair.md", "immutableDigest": "sha256:3b157ee807f65a6d58a91ab9540232e71a9ac0df84872dad775f90869a0ed305"},
   ]);
   const paths = execFileSync("git", ["ls-tree", "-r", "--name-only", checkpoint.evidence.base,
     "docs/decisions"], { encoding: "utf8" }).trim().split("\n");

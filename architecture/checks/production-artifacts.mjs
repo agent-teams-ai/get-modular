@@ -230,7 +230,7 @@ export function packageIdentityViolations(inventory) {
 // ADR-0023 historical private shape and ADR-0025 public shape. Authority is
 // authenticated separately by assembly-admission through its supplied reader.
 // ADR-0027, ADR-0031, ADR-0035, ADR-0036 and ADR-0038 extend the public shape to the exact next pairs; shape is not authority.
-const PUBLIC_ASSEMBLY_VERSIONS = Object.freeze(["0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0"]);
+const PUBLIC_ASSEMBLY_VERSIONS = Object.freeze(["0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0", "0.7.0"]);
 export function assemblyManifestViolations(manifest) {
   if (manifest?.name !== "@get-modular/assembly") return [];
   const violations = [];

@@ -1,6 +1,6 @@
 {
   "name": "@get-modular/resources",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Ordered cooperative cleanup scopes for module instances; the Host decides when to close.",
   "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org/" },
   "repository": {
