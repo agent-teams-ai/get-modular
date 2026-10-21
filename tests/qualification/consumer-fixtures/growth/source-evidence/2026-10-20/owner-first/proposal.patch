@@ -1,0 +1,234 @@
+diff --git a/packages/engineering-foundation/src/capabilities/source-dependencies/adapters/inbound/configuration/parse-capability-config.ts b/packages/engineering-foundation/src/capabilities/source-dependencies/adapters/inbound/configuration/parse-capability-config.ts
+index 92b5a9e9..7ba64e96 100644
+--- a/packages/engineering-foundation/src/capabilities/source-dependencies/adapters/inbound/configuration/parse-capability-config.ts
++++ b/packages/engineering-foundation/src/capabilities/source-dependencies/adapters/inbound/configuration/parse-capability-config.ts
+@@ -2,6 +2,7 @@ import { compareBinaryStrings } from "../../../../../binary-string-comparator.js
+ import {
+   normalizeRepositoryPath,
+   pathIsInside,
++  portablePathIsInside,
+   portableRepositoryPathIdentity,
+   portableRepositoryPathProblem
+ } from "../../../application/model/repository-path.js";
+@@ -226,18 +227,13 @@ function validatePackageRootOverlap(policy: SourceArchitecturePolicy): void {
+ function policyPathIsInside(
+   policy: SourceArchitecturePolicy,
+   path: string,
+-  root: string
++  root: string,
++  pathIdentities: Map<string, string>
+ ): boolean {
+   if (policy.schemaVersion === 1) {
+     return pathIsInside(path, root);
+   }
+-  const pathIdentity = portableRepositoryPathIdentity(path);
+-  const rootIdentity = portableRepositoryPathIdentity(root);
+-  return (
+-    rootIdentity === "." ||
+-    pathIdentity === rootIdentity ||
+-    pathIdentity.startsWith(`${rootIdentity}/`)
+-  );
++  return portablePathIsInside(path, root, pathIdentities);
+ }
+ 
+ interface BoundaryLocationValidationInput {
+@@ -249,6 +245,7 @@ interface BoundaryLocationValidationInput {
+     readonly root: string;
+   }>;
+   readonly policy: SourceArchitecturePolicy;
++  readonly pathIdentities: Map<string, string>;
+ }
+ 
+ function validateBoundaryLocations(input: BoundaryLocationValidationInput): void {
+@@ -262,7 +259,7 @@ function validateBoundaryLocations(input: BoundaryLocationValidationInput): void
+     }
+     if (
+       !policy.governedRoots.some((governedRoot) =>
+-        policyPathIsInside(policy, root, governedRoot)
++        policyPathIsInside(policy, root, governedRoot, input.pathIdentities)
+       )
+     ) {
+       inputError(`Architecture boundary root is outside governed roots: ${root}.`);
+@@ -279,7 +276,7 @@ function validateBoundaryLocations(input: BoundaryLocationValidationInput): void
+     }
+     if (
+       !boundary.roots.some((root) =>
+-        policyPathIsInside(policy, entrypoint, root)
++        policyPathIsInside(policy, entrypoint, root, input.pathIdentities)
+       )
+     ) {
+       inputError(
+@@ -295,6 +292,7 @@ function validatePolicy(policy: SourceArchitecturePolicy): void {
+   const boundaryIds = new Set<string>();
+   const boundaryRoots = new Set<string>();
+   const boundaryEntrypoints = new Set<string>();
++  const pathIdentities = new Map<string, string>();
+   const ownedBoundaryRoots: Array<{
+     readonly boundaryId: string;
+     readonly root: string;
+@@ -320,7 +318,8 @@ function validatePolicy(policy: SourceArchitecturePolicy): void {
+       boundaryEntrypoints,
+       boundaryRoots,
+       ownedBoundaryRoots,
+-      policy
++      policy,
++      pathIdentities
+     });
+   }
+   validateBoundaryRootOverlap(policy, ownedBoundaryRoots);
+@@ -334,7 +333,7 @@ function validatePolicy(policy: SourceArchitecturePolicy): void {
+   for (const governedRoot of policy.governedRoots) {
+     if (
+       ![...boundaryRoots].some((root) =>
+-        policyPathIsInside(policy, root, governedRoot)
++        policyPathIsInside(policy, root, governedRoot, pathIdentities)
+       )
+     ) {
+       inputError(`Governed root has no architecture boundary: ${governedRoot}.`);
+diff --git a/packages/engineering-foundation/src/capabilities/source-dependencies/application/model/repository-path.ts b/packages/engineering-foundation/src/capabilities/source-dependencies/application/model/repository-path.ts
+index 9231e41a..10ef2fee 100644
+--- a/packages/engineering-foundation/src/capabilities/source-dependencies/application/model/repository-path.ts
++++ b/packages/engineering-foundation/src/capabilities/source-dependencies/application/model/repository-path.ts
+@@ -95,9 +95,26 @@ export function portableRepositoryPathProblem(path: string): string | undefined
+   return undefined;
+ }
+ 
+-export function portablePathIsInside(path: string, root: string): boolean {
+-  const pathIdentity = portableRepositoryPathIdentity(path);
+-  const rootIdentity = portableRepositoryPathIdentity(root);
++function reusedPortablePathIdentity(
++  path: string,
++  identities?: Map<string, string>
++): string {
++  const prior = identities?.get(path);
++  if (prior !== undefined) {
++    return prior;
++  }
++  const identity = portableRepositoryPathIdentity(path);
++  identities?.set(path, identity);
++  return identity;
++}
++
++export function portablePathIsInside(
++  path: string,
++  root: string,
++  identities?: Map<string, string>
++): boolean {
++  const pathIdentity = reusedPortablePathIdentity(path, identities);
++  const rootIdentity = reusedPortablePathIdentity(root, identities);
+   return (
+     rootIdentity === "." ||
+     pathIdentity === rootIdentity ||
+diff --git a/packages/engineering-foundation/src/capabilities/source-dependencies/application/policies/evaluate-source-workspace-coverage.ts b/packages/engineering-foundation/src/capabilities/source-dependencies/application/policies/evaluate-source-workspace-coverage.ts
+index b34ae751..ed183587 100644
+--- a/packages/engineering-foundation/src/capabilities/source-dependencies/application/policies/evaluate-source-workspace-coverage.ts
++++ b/packages/engineering-foundation/src/capabilities/source-dependencies/application/policies/evaluate-source-workspace-coverage.ts
+@@ -58,9 +58,10 @@ function assertBoundaryOwnership(
+   packages: readonly SourceWorkspacePackageTopology[],
+   ownership?: SourcePackageOwnership
+ ): void {
++  const pathIdentities = new Map<string, string>();
+   for (const boundary of policy.boundaries) {
+     const observedPaths = ownership === undefined ? [] : packages.flatMap((owner) =>
+-      owner.sourcePaths.filter((path) => boundary.roots.some((root) => portablePathIsInside(path, root)))
++      owner.sourcePaths.filter((path) => boundary.roots.some((root) => portablePathIsInside(path, root, pathIdentities)))
+     );
+     const paths = [...boundary.roots, ...boundary.entrypoints, ...observedPaths].toSorted(
+       compareBinaryStrings
+diff --git a/packages/engineering-foundation/src/capabilities/source-dependencies/application/use-cases/analyze-source-dependencies.ts b/packages/engineering-foundation/src/capabilities/source-dependencies/application/use-cases/analyze-source-dependencies.ts
+index e5b6cf0d..924b4cba 100644
+--- a/packages/engineering-foundation/src/capabilities/source-dependencies/application/use-cases/analyze-source-dependencies.ts
++++ b/packages/engineering-foundation/src/capabilities/source-dependencies/application/use-cases/analyze-source-dependencies.ts
+@@ -48,8 +48,8 @@ export interface AnalyzeSourceDependenciesDependencies {
+   readonly topologyInspector: SourceWorkspaceTopologyInspector;
+ }
+ 
+-function pathInside(path: string, root: string, portable: boolean): boolean {
+-  return portable ? portablePathIsInside(path, root) : pathIsInside(path, root);
++function pathInside(path: string, root: string, portable: boolean, pathIdentities?: Map<string, string>): boolean {
++  return portable ? portablePathIsInside(path, root, pathIdentities) : pathIsInside(path, root);
+ }
+ 
+ interface BoundaryMatch {
+@@ -60,24 +60,27 @@ interface BoundaryMatch {
+ function matchingBoundarySpecificity(
+   path: string,
+   boundary: ArchitectureBoundaryPolicy,
+-  portable: boolean
++  portable: boolean,
++  pathIdentities: Map<string, string>
+ ): number | undefined {
+   const matchingRoots = boundary.roots
+-    .filter((root) => pathInside(path, root, portable))
++    .filter((root) => pathInside(path, root, portable, pathIdentities))
+     .map((root) => normalizeRepositoryPath(root).length);
+   return matchingRoots.length === 0 ? undefined : Math.max(...matchingRoots);
+ }
+ 
+ function selectBoundary(
+   file: SourceFileSnapshot,
+-  policy: SourceArchitecturePolicy
++  policy: SourceArchitecturePolicy,
++  pathIdentities: Map<string, string>
+ ): ArchitectureBoundaryPolicy | undefined {
+   const matches: BoundaryMatch[] = [];
+   for (const boundary of policy.boundaries) {
+     const specificity = matchingBoundarySpecificity(
+       file.path,
+       boundary,
+-      policy.schemaVersion !== 1
++      policy.schemaVersion !== 1,
++      pathIdentities
+     );
+     if (specificity !== undefined) {
+       matches.push({ boundary, specificity });
+@@ -145,13 +148,14 @@ function classifyFiles(
+ ): readonly ClassifiedSourceFile[] {
+   const { signal, ownership } = options;
+   const classified: ClassifiedSourceFile[] = [];
++  const pathIdentities = new Map<string, string>();
+   for (const file of files) {
+     assertNotCancelled(signal);
+     const normalizedFile: SourceFileSnapshot = {
+       ...file,
+       path: normalizeRepositoryPath(file.path)
+     };
+-    const boundary = selectBoundary(normalizedFile, policy);
++    const boundary = selectBoundary(normalizedFile, policy, pathIdentities);
+     const workspacePackage = ownership === undefined
+       ? containingPackage(normalizedFile.path, packages, policy.schemaVersion !== 1)
+       : sourcePackageOwner(normalizedFile.path, packages, ownership);
+diff --git a/packages/feature-module-standard/src/features/feature-dependencies/application/check-feature-dependencies.ts b/packages/feature-module-standard/src/features/feature-dependencies/application/check-feature-dependencies.ts
+index e2f95e5e..b94a526d 100644
+--- a/packages/feature-module-standard/src/features/feature-dependencies/application/check-feature-dependencies.ts
++++ b/packages/feature-module-standard/src/features/feature-dependencies/application/check-feature-dependencies.ts
+@@ -203,8 +203,11 @@ function checkGraphs(ctx: Context, loadEdges: readonly Edge[]): void {
+     }
+   }
+   for (const node of ctx.tree.nodes) {
++    if (node.parent === undefined) {
++      continue;
++    }
+     const exposes = [...ctx.surfaces].some(([file, kinds]) => kinds.has('composition-surface') && ctx.tree.ownerOf(file) === node);
+-    if (node.parent !== undefined && exposes && !ctx.wired.has(node.id)) {
++    if (exposes && !ctx.wired.has(node.id)) {
+       ctx.problems.push(diagnostic('assembly-missing', `${node.id}: its composition surface is not wired by the feature composition of ${node.parent}.`, { path: node.root }));
+     }
+   }
+diff --git a/.changeset/quiet-growth-checks.md b/.changeset/quiet-growth-checks.md
+new file mode 100644
+index 00000000..e9d1e1fa
+--- /dev/null
++++ b/.changeset/quiet-growth-checks.md
+@@ -0,0 +1,11 @@
++---
++"@agent-teams/engineering-foundation": patch
++"@agent-teams/feature-module-standard": patch
++---
++
++Reuse portable path identities within each source-policy validation, coverage and
++classification operation instead of normalizing the same operands for every
++comparison. Preserve raw-path validation, ownership, overlap, ambiguity and
++diagnostic ordering. Skip the nested assembly-surface scan for top-level FMS
++features, where the missing-parent-assembly rule cannot apply; nested checks and
++cycle semantics remain unchanged.

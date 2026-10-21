@@ -122,10 +122,10 @@ production. The first production package must atomically:
 - change the admission state to `source-admitted`;
 - enable Engineering Foundation's `architecture.source-dependencies`
   capability at `architecture/foundation/source-dependencies.yaml`; and
-- execute the pinned `@agent-teams/engineering-foundation` `1.10.0` command
+- execute the pinned `@agent-teams/engineering-foundation` `2.1.1` command
   `agent-teams-foundation check` through both the complete and fast gates.
 
-The tooling activation pins native Foundation `1.10.0`. SDK growth admission remains
+The tooling activation pins native Foundation `2.1.1`. SDK growth admission remains
 explicitly pending: the active public-API capability retains schema v1 until a
 trusted external authority binds the PR base and candidate to authenticated
 released Core and Assembly artifacts. Local qualification records cannot
@@ -137,7 +137,7 @@ no waivers. Activation does not claim that existing source passes typed lint
 or establish structural or runtime conformance. Docs retains its portable
 workflow without a managed adapter or cohort binding.
 
-The native Foundation 1.10.0 binding follows the retained 1.7.4 and 1.7.2
+The native Foundation 2.1.1 binding follows the retained 1.10.0, 1.7.4 and 1.7.2
 records and keeps the immutable Feature Module Standard and
 Consumer Module Standard pins. The retained current Consumer Module Standard
 adds the optional ADR-0029 dynamic Host guidance; it does not expand passive
@@ -146,8 +146,20 @@ while the earlier Foundation archive and P0 records remain historical evidence.
 SDK status stays pending, activation stays on hold and release eligibility stays
 false.
 
+The current tooling migration also selects published FMS 0.2.3. Its optional
+Foundation peer admits `^1.8.0 || ^2.0.0`; the immutable FMS v1 adoption and
+selected v1.1 kernel identities stay unchanged. Foundation 2 changes its workflow
+v2 schema artifact; this consumer retains the existing v1 `changed` route and
+its source-dependency v3 policy. The intervening source-graph correction keeps
+ordinary import/export declarations with inline `type` specifiers in runtime
+mode; declaration-level `import type` and `export type` remain type-only. These
+changes do not authorize a runtime-manager or public-baseline migration. Exact
+installed-package qualification is retained in the
+[current source receipt](../../tests/qualification/consumer-fixtures/growth/source-evidence/2026-10-21/observations.json);
+current-head repository gates remain required.
+
 The local changed workflow keeps the schema published with Foundation 1.7.2;
-the native 1.10.0 binding does not change it.
+the native 2.1.1 binding does not change it.
 JS and TS edits select the existing project-wide `check:fast` script with
 `passPaths: false`; changed file names never become compiler arguments.
 Compiler projects and root check configuration select the same fast gate through

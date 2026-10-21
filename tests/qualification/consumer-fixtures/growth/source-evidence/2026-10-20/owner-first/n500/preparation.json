@@ -1,0 +1,28 @@
+{
+  "ownerCandidate": "359085664d7e51cced497c30eb0e82cc68baf346",
+  "profileRoot": "/tmp/gm-foundation-growth-owner-20261020/.worker-tmp/profiles/node-359085664d7e51cced497c30eb0e82cc68baf346",
+  "frozenHelperSha256": "9ef3fbfa996cdc3e1ecf3ad5504543e03b8aabb177d06d9bdb10e6e70443b74b",
+  "inputs": {
+    "source.ts": {
+      "sha256": "763f9547ab8987f2791f092b49232715d0159e9dd67845c4c646a6680661a0f0",
+      "bytes": 17807
+    },
+    "policy.ts": {
+      "sha256": "4cce5cfe7f26520ce804a5a7a60859e241bf628f82c1819933cd42c011752399",
+      "bytes": 9152
+    },
+    "run.ts": {
+      "sha256": "27f5b04df2985186a72bc643eca6979c58f032bcad3746d3545c07e15dec3e2b",
+      "bytes": 1201
+    },
+    "adapter.patch": {
+      "sha256": "f7d315325698a9798df3ead02a9623e237e8f47e1782ee7ce7b07fedb916a570",
+      "bytes": 9865
+    },
+    "tsconfig.json": {
+      "sha256": "68329a9229fb855ef7761ff39ff06ed57d900b1feaa0350e57bf2ec3f9c4c05f",
+      "bytes": 282
+    }
+  },
+  "scope": "source owner candidate only; unchanged selected profile, reader, topology, inventory and verdict oracles; import/CLI/provenance substitutions only, CLI wall duration observation; no installed qualification"
+}

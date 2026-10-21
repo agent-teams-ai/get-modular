@@ -1,0 +1,66 @@
+from pathlib import Path
+import datetime,hashlib,json,os,signal,subprocess,time
+out=Path(__file__).parent
+owner=out.parent
+repo=Path('/tmp/gm-foundation-growth-owner-20261020')
+gm=Path('/tmp/gm-growth-source-20261020')
+subject=Path('/tmp/gm-ts-owner-20261020/growth-source-series/n500-copy')
+original=Path('/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-500-pUOEDX')
+node='/tmp/gm-completion-tools-20261020/node-v26.11.1-linux-x64/bin/node'
+head='359085664d7e51cced497c30eb0e82cc68baf346'
+profile=repo/'.worker-tmp/profiles'/('node-'+head)
+def sha(p): return hashlib.sha256(p.read_bytes()).hexdigest()
+def tree(root):
+ h=hashlib.sha256();count=total=0
+ for path in sorted(root.rglob('*'),key=lambda p:str(p.relative_to(root))):
+  assert not path.is_symlink(),path
+  if path.is_dir():continue
+  assert path.is_file(),path
+  data=path.read_bytes();h.update(str(path.relative_to(root)).encode());h.update(b'\0');h.update(data);h.update(b'\0');count+=1;total+=len(data)
+ return {'sha256':h.hexdigest(),'files':count,'bytes':total}
+assert json.loads((owner/'focused.receipt.json').read_text())['status']=='passed'
+assert subprocess.check_output(['git','rev-parse','HEAD'],cwd=repo,text=True).strip()==head
+assert subprocess.check_output(['git','status','--porcelain'],cwd=repo,text=True)==''
+started=time.monotonic();child=None
+receipt={'kind':'source-owner-candidate-benchmark','status':'running','sourceCommit':head,'sourceTree':subprocess.check_output(['git','rev-parse','HEAD^{tree}'],cwd=repo,text=True).strip(),'profileEvidence':json.loads((profile/'.agent-teams-runtime-profile.json').read_text()),'budgetsSeconds':{'foundationCli':30,'sourceChain':60,'externalAggregate':600},'startUtc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'subject':str(subject),'original':str(original),'generatorCompilerRuntimeInvocations':'none','supportedInstalledQualification':False,'supervisorSha256':sha(Path(__file__)),'preparation':json.loads((out/'preparation.json').read_text())}
+def save():
+ receipt['aggregateSeconds']=time.monotonic()-started
+ (out/'receipt.json').write_text(json.dumps(receipt,indent=2)+'\n')
+def expire(signum,frame):
+ if child is not None and child.poll() is None:os.killpg(child.pid,signal.SIGKILL)
+ raise TimeoutError('fixed600s aggregate expired')
+signal.signal(signal.SIGALRM,expire);signal.alarm(600)
+try:
+ receipt['sourceBefore']=tree(subject/'src');assert receipt['sourceBefore']=={'sha256':'2a84ede0f14d1535e30c12bcc52c3e3927039dfb57d682c4778e639554e1c11d','files':3503,'bytes':1267294}
+ receipt['policyBeforeSha256']=sha(subject/'architecture/foundation/source-dependencies.yaml');assert receipt['policyBeforeSha256']=='93aae6743d6c396e317a5e49bc3206d13a38660fc2db98a939e11e05c3a077a8'
+ receipt['originalBefore']=tree(original/'src');receipt['originalReportBeforeSha256']=sha(original/'report.json')
+ receipt['frozenGmInputsBefore']={str(p.relative_to(gm)):sha(p) for p in [gm/'tests/qualification/consumer-fixtures/growth/source.ts',gm/'tests/qualification/consumer-fixtures/source/records.mjs',gm/'tests/qualification/consumer-fixtures/source/policy.ts',gm/'tests/qualification/consumer-fixtures/source/profile.mjs',gm/'pnpm-lock.yaml']}
+ for name,record in receipt['preparation']['inputs'].items():assert sha(out/name)==record['sha256']
+ command=[node,str(out/'run.ts'),str(subject),str(original/'report.json'),str(out/'report.json')]
+ receipt['command']=command;save()
+ env=dict(os.environ,PATH='/tmp/gm-completion-tools-20261020/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',NODE_USE_ENV_PROXY='1',TMPDIR='/var/tmp/ef-growth-tests-20261020',TMP='/var/tmp/ef-growth-tests-20261020',TEMP='/var/tmp/ef-growth-tests-20261020')
+ chainStarted=time.monotonic()
+ with (out/'stdout.log').open('wb') as stdout,(out/'stderr.log').open('wb') as stderr:
+  child=subprocess.Popen(command,cwd=gm,env=env,stdout=stdout,stderr=stderr,start_new_session=True);receipt['pid']=child.pid;save()
+  try:code=child.wait(timeout=60);receipt['timedOut']=False
+  except subprocess.TimeoutExpired:
+   os.killpg(child.pid,signal.SIGKILL);code=child.wait();receipt['timedOut']=True;receipt['termination']='SIGKILL owned child process group'
+ receipt.update(exitCode=code,chainSeconds=time.monotonic()-chainStarted)
+ receipt['sourceAfter']=tree(subject/'src');receipt['policyAfterSha256']=sha(subject/'architecture/foundation/source-dependencies.yaml')
+ receipt['originalAfter']=tree(original/'src');receipt['originalReportAfterSha256']=sha(original/'report.json')
+ receipt['frozenGmInputsAfter']={name:sha(gm/name) for name in receipt['frozenGmInputsBefore']}
+ assert receipt['sourceBefore']==receipt['sourceAfter'] and receipt['policyBeforeSha256']==receipt['policyAfterSha256']
+ assert receipt['originalBefore']==receipt['originalAfter'] and receipt['originalReportBeforeSha256']==receipt['originalReportAfterSha256']
+ assert receipt['frozenGmInputsBefore']==receipt['frozenGmInputsAfter']
+ assert code==0 and not receipt['timedOut'],f'candidate exit {code}'
+ report=json.loads((out/'report.json').read_text());assert report['kind']=='source-owner-candidate-selected-flat-growth-source' and report['source']=='passed'
+ assert report['sourceTree']==receipt['sourceBefore'] and report['observation']['outcome']=='passed' and report['observation']['completeInventory'] is True
+ assert report['observation']['source']['fms']['ok'] is True and report['observation']['source']['cms']['outcome']=='passed' and report['observation']['policy']['exit']==0 and report['observation']['topology']['outcome']=='passed'
+ receipt['reportSha256']=sha(out/'report.json');receipt['status']='passed'
+except BaseException as error:
+ receipt['status']='failed';receipt['error']=repr(error);raise
+finally:
+ signal.alarm(0);receipt['endUtc']=datetime.datetime.now(datetime.timezone.utc).isoformat()
+ for name in ['stdout.log','stderr.log']:
+  if (out/name).is_file():receipt[name+'Sha256']=sha(out/name)
+ save();print(json.dumps(receipt,indent=2),flush=True)

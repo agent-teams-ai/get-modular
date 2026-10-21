@@ -1,0 +1,344 @@
+{
+  "schemaVersion": 1,
+  "kind": "installed-selected-flat-growth-source",
+  "source": "passed",
+  "adoption": "unchanged",
+  "nested": "not-selected",
+  "scope": "Selected flat source only. Supported compiler remedy and runtime measurements retain their separate scope.",
+  "baseCommit": "c63c379d994f347eea6812c1657824ef165fe392",
+  "sourceInputs": {
+    "./source.ts": {
+      "sha256": "511ef4cb1875f3b6cde8504a32a77e5031df3653979807f9a5212b4ee543f3d0",
+      "bytes": 17193
+    },
+    "./generate.mjs": {
+      "sha256": "ba807269b24cad47e2e0e0cdf884ba60966bbf64eca07ea1d58d61f31a798dec",
+      "bytes": 6755
+    },
+    "./measure-source.ts": {
+      "sha256": "a912f5aafc91ac1f97fce1db0ceabfc94dc35fa01ba3b5db3765773323bcd7dc",
+      "bytes": 8721
+    },
+    "../source/records.mjs": {
+      "sha256": "fd2872981f170fc34b4fb6cd7059595ff7dc382ab081697bfdd67015d2686593",
+      "bytes": 4912
+    },
+    "../source/profile.mjs": {
+      "sha256": "94b0bfcef73277c55575044c31f52ea79586bb3ad25d5bc665b52453f3002d4c",
+      "bytes": 3363
+    },
+    "../source/policy.ts": {
+      "sha256": "bedfbbc76cd44420f5c37b4dd07497b3e6de277972cac19a83a28dd6d68f5b13",
+      "bytes": 8719
+    },
+    "../support/materialize.mjs": {
+      "sha256": "499e1ea709e47f1b3b71f8b49bc1a30e393a2c8cd41be12f2d3a3659a9e57f66",
+      "bytes": 5519
+    },
+    "../../../../package.json": {
+      "sha256": "f3f998d5552906cd723e99eea9ca343a14c7ce1ad2338e5a3ea0b6072ddc2d6d",
+      "bytes": 13776
+    },
+    "../../../../pnpm-lock.yaml": {
+      "sha256": "6004919e09075c99a485afce54018f2133734d28c68416631166ae9a21cd08ba",
+      "bytes": 105552
+    }
+  },
+  "sourceBinding": "Committed base plus exact qualifier source, package and lockfile byte identities; final native CI binds the review head.",
+  "upstreamCmsReview": {
+    "checkedOn": "2026-10-21",
+    "commit": "7131d0d7a6bb5dd4c3e8906ccac065c0be0e0333",
+    "gitBlob": "dad8b6280cf999d9079d3106094e5626b63d83f4",
+    "sha256": "a6dac5d303adf80be3151c6703c919b715fd880a941a4ad68e927c87a7ee5882",
+    "delta": "none"
+  },
+  "historicalColdSource": {
+    "path": "/srv/workers/adhoc/iliya/gm209-20261021/repo/tests/qualification/consumer-fixtures/growth/compiler-reproducer/2026-10-20-private-this-members/observations.json",
+    "sha256": "634e66f90a7672adfb3787dde2c318da8984a2f22cf2b43531b8a2a40c41e701"
+  },
+  "provenance": {
+    "outcome": "passed",
+    "sourceCommit": "0e0de78d4c2089be8effc37da4cfd70eab22358c",
+    "results": [
+      {
+        "name": "@agent-teams/engineering-foundation",
+        "version": "2.1.1",
+        "integrity": "sha512-NvjLwYgUILVpOHrvJwJLjG/5/vQcIPQwtDxNnUjna+Fdys5qJeZnw2IBgLlFi0sEYZ0DoZgondIBUAxiCkd9pQ==",
+        "archiveSha256": "ae3764feac21867196e27aa9b098cf9ed56ba3a252e2cb661f61c5cc3f5a3626",
+        "bytes": 1068109,
+        "expectedCommit": "0e0de78d4c2089be8effc37da4cfd70eab22358c",
+        "workflow": {
+          "ref": "refs/heads/main",
+          "repository": "https://github.com/agent-teams-ai/engineering-foundation",
+          "path": ".github/workflows/release.yml"
+        },
+        "provenanceUrl": "https://registry.npmjs.org/-/npm/v1/attestations/@agent-teams%2fengineering-foundation@2.1.1",
+        "subject": {
+          "name": "pkg:npm/%40agent-teams/engineering-foundation@2.1.1",
+          "digest": {
+            "sha512": "36f8cbc1881420b569387aef27024b8c6ff9fef41c20f430b43c4d9d48e76be15dcace6a25e667c3620180b9458b4b04619d03a198289dd201500c620a477da5"
+          }
+        },
+        "metadataSha256": "196764920f90a6b6872712062a75e3c51c514bf5481601f289ef896d735a9bbf",
+        "attestationsSha256": "5d4ebb26ab6c6e5e557ce1c284376eaee4d08456f7ca42a3ee83d50f196ab9ed",
+        "signatureVerification": "npm audit signatures"
+      },
+      {
+        "name": "@agent-teams/feature-module-standard",
+        "version": "0.2.3",
+        "integrity": "sha512-eGslMb7bki8zaaO30+aK/Kcfz+zNTcb3Xt7BtSxVGjitpbkQ0SNHErFjdOm0qU6R/r9aMVJhMRmn8uBy3nk62Q==",
+        "archiveSha256": "f0611f5d30e46ab10273a7d9e6ce7aae7d44fd87e15293c65e3b5bc161e6e5f7",
+        "bytes": 48051,
+        "expectedCommit": "0e0de78d4c2089be8effc37da4cfd70eab22358c",
+        "workflow": {
+          "ref": "refs/heads/main",
+          "repository": "https://github.com/agent-teams-ai/engineering-foundation",
+          "path": ".github/workflows/release.yml"
+        },
+        "provenanceUrl": "https://registry.npmjs.org/-/npm/v1/attestations/@agent-teams%2ffeature-module-standard@0.2.3",
+        "subject": {
+          "name": "pkg:npm/%40agent-teams/feature-module-standard@0.2.3",
+          "digest": {
+            "sha512": "786b2531bedb922f3369a3b7d3e68afca71fcfeccd4dc6f75edec1b52c551a38ada5b910d1234712b16374e9b4a94e91febf5a3152613119a7f2e072de793ad9"
+          }
+        },
+        "metadataSha256": "5728b4bc05a7a24e80cac2791e790ecdd93ca7a2cf9c713c0910346e12a5b1c8",
+        "attestationsSha256": "c9c2253f587dddcc73ab01d029b093d1aaf73dbb24a2d0cb5be02600657c5131",
+        "signatureVerification": "npm audit signatures"
+      }
+    ],
+    "npmSignatureAudit": {
+      "exit": 0,
+      "sha256": "539ea4684b22e24869bace50b48bda695776477f892861b08d51d219f0d08faf",
+      "bytes": 37
+    }
+  },
+  "supervision": {
+    "outcome": "passed",
+    "sourceMs": 60000,
+    "aggregateMs": 600000,
+    "foundationCliMs": 30000,
+    "wallMs": 36655.894664,
+    "workerPid": 3181937,
+    "stages": [
+      {
+        "size": 8,
+        "wallMs": 4889.003918
+      },
+      {
+        "size": 100,
+        "wallMs": 1502.8239290000001
+      },
+      {
+        "size": 500,
+        "wallMs": 7862.069708999999
+      },
+      {
+        "size": 1000,
+        "wallMs": 21549.305037000002
+      }
+    ],
+    "code": 0,
+    "signal": null
+  },
+  "rows": [
+    {
+      "size": 8,
+      "outcome": "passed",
+      "source": {
+        "sha256": "6adddeb461c9354758bf80f160375e0dbbc0c397ba8b84246517f2273ee6b464",
+        "files": 59,
+        "bytes": 20186
+      },
+      "sourceWallMs": 505.259082,
+      "fileCount": 59,
+      "resolvedImports": 109,
+      "externalImports": 51,
+      "runtimeImports": 56,
+      "controls": [
+        {
+          "name": "A-02 growth public predecessor surface",
+          "outcome": "passed",
+          "fmsOk": true,
+          "fmsDiagnostics": [],
+          "policyExit": 0,
+          "cmsOutcome": "passed"
+        },
+        {
+          "name": "A-02 growth private sibling application",
+          "outcome": "rejected",
+          "fmsOk": false,
+          "fmsDiagnostics": [
+            "deep-import"
+          ],
+          "policyExit": 0,
+          "cmsOutcome": "passed"
+        },
+        {
+          "name": "A-06 growth application-to-descriptor",
+          "outcome": "rejected",
+          "fmsOk": false,
+          "fmsDiagnostics": [
+            "composition-contract-layer"
+          ],
+          "policyExit": 1,
+          "cmsOutcome": "passed"
+        },
+        {
+          "name": "A-07 growth input importer removed",
+          "outcome": "rejected",
+          "fmsOk": true,
+          "fmsDiagnostics": [],
+          "policyExit": 0,
+          "cmsOutcome": "rejected"
+        },
+        {
+          "name": "A-06 growth root composition permission removed",
+          "outcome": "rejected",
+          "fmsOk": false,
+          "fmsDiagnostics": [
+            "composition-contract-layer",
+            "composition-contract-layer",
+            "composition-contract-layer",
+            "composition-contract-layer",
+            "composition-contract-layer",
+            "composition-contract-layer",
+            "composition-contract-layer",
+            "composition-contract-layer",
+            "deep-import",
+            "deep-import",
+            "deep-import",
+            "deep-import",
+            "deep-import",
+            "deep-import",
+            "deep-import",
+            "deep-import",
+            "deep-import",
+            "deep-import"
+          ],
+          "policyExit": 0,
+          "cmsOutcome": "passed"
+        },
+        {
+          "name": "A-06 growth actual type-use back-edge",
+          "outcome": "rejected",
+          "fmsOk": false,
+          "fmsDiagnostics": [
+            "feature-cycle",
+            "use-undeclared"
+          ],
+          "policyExit": 0,
+          "cmsOutcome": "passed"
+        },
+        {
+          "name": "A-08 growth extra use-case export",
+          "outcome": "rejected",
+          "fmsOk": true,
+          "fmsDiagnostics": [],
+          "policyExit": 0,
+          "cmsOutcome": "rejected"
+        },
+        {
+          "name": "A-06 growth application cannot import Assembly",
+          "outcome": "rejected",
+          "fmsOk": true,
+          "fmsDiagnostics": [],
+          "policyExit": 1,
+          "cmsOutcome": "passed"
+        }
+      ],
+      "restoration": "passed",
+      "report": {
+        "path": "n8.report.json.gz",
+        "sha256": "f91fd2271533c4b895889fe9ef0a67246549c7e7cebbee89dbb9d4fac497ced4",
+        "bytes": 29658,
+        "uncompressedSha256": "6f33aa7a164f4a3b32a7d1b5c87234212d0b106ecce0065e6f18214954b0075e",
+        "uncompressedBytes": 776174,
+        "format": "gzip"
+      }
+    },
+    {
+      "size": 100,
+      "outcome": "passed",
+      "source": {
+        "sha256": "9693b8aee7640542fa0b60fad9d6aba2868b7ef1b670128aeb29da951f6520f2",
+        "files": 703,
+        "bytes": 251501
+      },
+      "sourceWallMs": 1426.8770429999995,
+      "fileCount": 703,
+      "resolvedImports": 1397,
+      "externalImports": 603,
+      "runtimeImports": 700,
+      "controls": [],
+      "report": {
+        "path": "n100.report.json.gz",
+        "sha256": "f90ef0cc592e9f6c09c5be1f00e948f44f42e73301fdc4b2faa70f3b26db3abb",
+        "bytes": 36583,
+        "uncompressedSha256": "0251a2183cdd1c31548d095d31b7c28ee919e926a08e85498430057fde71c0f7",
+        "uncompressedBytes": 994142,
+        "format": "gzip"
+      }
+    },
+    {
+      "size": 500,
+      "outcome": "passed",
+      "source": {
+        "sha256": "2a84ede0f14d1535e30c12bcc52c3e3927039dfb57d682c4778e639554e1c11d",
+        "files": 3503,
+        "bytes": 1267294
+      },
+      "sourceWallMs": 7653.2613949999995,
+      "fileCount": 3503,
+      "resolvedImports": 6997,
+      "externalImports": 3003,
+      "runtimeImports": 3500,
+      "controls": [],
+      "report": {
+        "path": "n500.report.json.gz",
+        "sha256": "c0793d696c9271cdfce877f09a5a0fa7ed147491582973e36d6b05958109dbd8",
+        "bytes": 166719,
+        "uncompressedSha256": "8bc393e13d58489be269a54b3476ea572e141a43f9f3284e842580592c2a3dea",
+        "uncompressedBytes": 4930152,
+        "format": "gzip"
+      }
+    },
+    {
+      "size": 1000,
+      "outcome": "passed",
+      "source": {
+        "sha256": "08733408d3e304d5551df7a009cd3ea8fd2ceea879c106018a98a0f37123aea5",
+        "files": 7003,
+        "bytes": 2538295
+      },
+      "sourceWallMs": 21228.460249000003,
+      "fileCount": 7003,
+      "resolvedImports": 13997,
+      "externalImports": 6003,
+      "runtimeImports": 7000,
+      "controls": [],
+      "report": {
+        "path": "n1000.report.json.gz",
+        "sha256": "1383161ff18354107e46dc56ad7b2cfda516093232f3b9653bfe33bb2f4375e0",
+        "bytes": 338237,
+        "uncompressedSha256": "fe20229b369d76b165132fdec333ebab73a929414bf045e86b3dbfcfd256e593",
+        "uncompressedBytes": 9851155,
+        "format": "gzip"
+      }
+    }
+  ],
+  "negativeControls": [
+    {
+      "path": "deadline-control-proof.json",
+      "sha256": "ff4ec0777cbd71974e018665a0dcd53e1ca5b5879d05602ca825aed01a93cccc",
+      "bytes": 1586
+    },
+    {
+      "path": "positive-budget-control-proof.json",
+      "sha256": "bf42ca0961887916de29938925fa8bb1183cac752632ce3929b12b7f40d96363",
+      "bytes": 225
+    }
+  ],
+  "requiredRepositoryGates": "Separate final source and native CI evidence; this receipt does not declare merge readiness.",
+  "retention": "Full reports are ordinary gzip with hashes for compressed and exact original bytes. Read with gzip -dc."
+}

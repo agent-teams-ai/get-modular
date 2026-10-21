@@ -9,8 +9,8 @@ qualificationPolicyPath: architecture/sdk-growth/qualification-policy.yaml
 standardReviewPath: architecture/sdk-growth/evidence/consumer-module-standard.json
 foundation:
   package: "@agent-teams/engineering-foundation"
-  version: 1.10.0
-  integrity: "sha512-k1mI8y/bm6GQtge+QCkANrufyLKi0f6YZlHXCMKr4QpGb97/86j9WdYVhgG2//C2cAtSRmmHmhOtnrpdaksRpw=="
+  version: 2.1.1
+  integrity: "sha512-NvjLwYgUILVpOHrvJwJLjG/5/vQcIPQwtDxNnUjna+Fdys5qJeZnw2IBgLlFi0sEYZ0DoZgondIBUAxiCkd9pQ=="
 # Historical source/archive witness; never relabel it as current installation evidence.
 retainedFoundation:
   package: "@agent-teams/engineering-foundation"

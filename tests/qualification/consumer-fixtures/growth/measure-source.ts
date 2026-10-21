@@ -1,0 +1,159 @@
+import assert from "node:assert/strict";
+import { execFileSync, fork } from "node:child_process";
+import { createHash } from "node:crypto";
+import { mkdir, open, readFile, writeFile } from "node:fs/promises";
+import { isAbsolute, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { copyReadyPackages, treeIdentity } from "../support/materialize.mjs";
+import { generateGrowthSource } from "./generate.mjs";
+import { checkGrowthSource, runGrowthSourceScenarios } from "./source.ts";
+
+// Optional Linux qualification, following run.mjs's owned process-group supervisor.
+// This is source-only: it never invokes a compiler, runtime consumer or smoke run.
+const sizes = [8, 100, 500, 1000] as const;
+const sourceMs = 60000;
+const aggregateMs = 600000;
+const ownFile = fileURLToPath(import.meta.url);
+type StageMessage = { readonly type: "begin" | "end"; readonly size: number };
+type SourceIdentity = { readonly sha256: string; readonly files: number; readonly bytes: number };
+const hash = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
+
+async function exchange(type: StageMessage["type"], size: number) {
+  assert.ok(process.send, "fixture.growth.source.external-supervisor-required");
+  await new Promise<void>((resolve, reject) => {
+    const received = (message: unknown) => {
+      cleanup();
+      try { assert.deepEqual(message, { type: "armed", size }); resolve(); }
+      catch (error) { reject(error); }
+    };
+    const disconnected = () => { cleanup(); reject(new Error("fixture.growth.source.supervisor-disconnected")); };
+    const cleanup = () => { process.off("message", received); process.off("disconnect", disconnected); };
+    process.once("message", received);
+    process.once("disconnect", disconnected);
+    process.send!({ type, size }, error => { if (error) { cleanup(); reject(error); } });
+  });
+}
+
+async function worker(directory: string) {
+  const historyUrl = new URL("./compiler-reproducer/2026-10-20-private-this-members/observations.json", import.meta.url);
+  const historyBytes = await readFile(historyUrl);
+  const history = JSON.parse(historyBytes.toString("utf8")) as {
+    readonly consumers: readonly { readonly size: number; readonly source: SourceIdentity }[];
+  };
+  assert.deepEqual(history.consumers.map(item => item.size), sizes);
+  const inputPaths = ["./source.ts", "./generate.mjs", "./measure-source.ts", "../source/records.mjs",
+    "../source/profile.mjs", "../source/policy.ts", "../support/materialize.mjs",
+    "../../../../package.json", "../../../../pnpm-lock.yaml"];
+  const inputs = Object.fromEntries(await Promise.all(inputPaths.map(async path => {
+    const bytes = await readFile(new URL(path, import.meta.url));
+    return [path, { sha256: hash(bytes), bytes: bytes.byteLength }];
+  })));
+  const head = execFileSync("git", ["rev-parse", "HEAD"], {
+    cwd: fileURLToPath(new URL("../../../../", import.meta.url)), encoding: "utf8", timeout: 10000,
+  }).trim();
+  const rows = [];
+  for (const size of sizes) {
+    const subject = join(directory, `n${size}`);
+    await mkdir(subject);
+    await copyReadyPackages(subject);
+    // Historical physical subjects no longer exist. Recreate only their unchanged source bytes.
+    await generateGrowthSource(subject, size);
+    const source = await treeIdentity(join(subject, "src")) as SourceIdentity;
+    assert.deepEqual(source, history.consumers.find(item => item.size === size)!.source,
+      "fixture.growth.source.historical-cold-identity");
+    await exchange("begin", size);
+    const small = size === 8 ? await runGrowthSourceScenarios(subject) : undefined;
+    const report = small ?? await checkGrowthSource(subject, size);
+    await exchange("end", size);
+    const bytes = Buffer.from(JSON.stringify(report, null, 2) + "\n");
+    const reportPath = `n${size}.report.json`;
+    await writeFile(join(directory, reportPath), bytes);
+    rows.push({ size, source, outcome: report.observation.outcome, sourceWallMs: report.observation.wallMs,
+      controls: small?.rows.length ?? 0, publicTools: report.publicTools,
+      report: { path: reportPath, sha256: hash(bytes), bytes: bytes.byteLength } });
+    await writeFile(join(directory, "observations.json"), JSON.stringify({
+      kind: "installed-growth-source-series", history: { path: fileURLToPath(historyUrl), sha256: hash(historyBytes) },
+      node: process.version, platform: process.platform, arch: process.arch, head, inputs, rows,
+    }, null, 2) + "\n");
+  }
+}
+
+async function supervise(directory: string) {
+  assert.equal(process.platform, "linux", "fixture.growth.source.linux-qualification-only");
+  await mkdir(directory); // Refuse an existing result rather than overwriting an uncertain attempt.
+  const started = performance.now();
+  const stdout = await open(join(directory, "worker.stdout.log"), "wx");
+  const stderr = await open(join(directory, "worker.stderr.log"), "wx");
+  const child = fork(ownFile, ["--worker", directory], {
+    detached: true, execArgv: [], stdio: ["ignore", stdout.fd, stderr.fd, "ipc"],
+    env: { ...process.env, NODE_PATH: "", NODE_OPTIONS: "", NODE_TEST_CONTEXT: undefined },
+  });
+  let failure: string | undefined;
+  let active: { readonly size: number; readonly began: number } | undefined;
+  let stageTimer: ReturnType<typeof setTimeout> | undefined;
+  let completed = 0;
+  let termination: { readonly method: "process-group"; readonly signal: "SIGKILL"; readonly sent: boolean } | undefined;
+  const stages: { readonly size: number; readonly wallMs: number }[] = [];
+  const terminate = (reason: string) => {
+    failure ??= reason;
+    // The leader still owns its descendants here; never kill a reused PID after exit.
+    if (child.pid !== undefined && child.exitCode === null && child.signalCode === null) {
+      try { process.kill(-child.pid, "SIGKILL"); termination = { method: "process-group", signal: "SIGKILL", sent: true }; }
+      catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
+        termination = { method: "process-group", signal: "SIGKILL", sent: false };
+      }
+    }
+  };
+  child.on("message", (message: unknown) => {
+    if (failure) return;
+    const row = message as StageMessage;
+    if (row?.size !== sizes[completed] || !["begin", "end"].includes(row.type)) {
+      terminate("invalid stage message"); return;
+    }
+    if (row.type === "begin" && active === undefined) {
+      active = { size: row.size, began: performance.now() };
+      stageTimer = setTimeout(() => terminate(`positive source deadline: n${row.size}`), sourceMs);
+    } else if (row.type === "end" && active?.size === row.size) {
+      clearTimeout(stageTimer);
+      const wallMs = performance.now() - active.began;
+      if (wallMs > sourceMs) { terminate(`positive source deadline: n${row.size}`); return; }
+      stages.push({ size: row.size, wallMs });
+      active = undefined;
+      completed += 1;
+    } else { terminate("out-of-order stage message"); return; }
+    child.send({ type: "armed", size: row.size }, error => { if (error) terminate("stage acknowledgement failed"); });
+  });
+  const aggregateTimer = setTimeout(() => terminate("aggregate deadline"),
+    Math.max(1, aggregateMs - (performance.now() - started)));
+  let completion: { readonly code: number | null; readonly signal: NodeJS.Signals | null };
+  try {
+    completion = await new Promise(resolve => {
+      child.once("error", error => terminate(`worker error: ${error.message}`));
+      child.once("close", (code, signal) => resolve({ code, signal }));
+    });
+  } finally {
+    clearTimeout(aggregateTimer);
+    clearTimeout(stageTimer);
+    await stdout.close();
+    await stderr.close();
+  }
+  const passed = failure === undefined && completion.code === 0 && completed === sizes.length && active === undefined
+    && performance.now() - started <= aggregateMs;
+  const receipt = { outcome: passed ? "passed" : "failed", sourceMs, aggregateMs, foundationCliMs: 30000,
+    wallMs: performance.now() - started, workerPid: child.pid, termination, stages, failure, ...completion };
+  await writeFile(join(directory, "supervision.json"), JSON.stringify(receipt, null, 2) + "\n");
+  assert.ok(passed, `fixture.growth.source.failed: retained ${directory}`);
+  console.log(JSON.stringify(receipt));
+}
+
+assert.equal(process.argv.length, 4, "Usage: node measure-source.ts --directory /absolute/new-result-directory");
+const directory = process.argv[3]!;
+assert.ok(isAbsolute(directory), "fixture.growth.source.absolute-output-required");
+if (process.argv[2] === "--worker") {
+  try { await worker(directory); }
+  finally { process.disconnect?.(); }
+} else {
+  assert.equal(process.argv[2], "--directory");
+  await supervise(directory);
+}

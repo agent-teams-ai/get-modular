@@ -21,9 +21,14 @@
     "research/module-communication-2026-10/raw/**",
     "research/implementation-readiness/evidence/combined-workers.json",
     "research/implementation-readiness/evidence/worker-index.json",
-    "tests/qualification/implementation-readiness/api-authoring/**/evidence.json"
+    "tests/qualification/implementation-readiness/api-authoring/**/evidence.json",
+    "tests/qualification/consumer-fixtures/growth/source-evidence/2026-10-20/**"
   ],
   "overrides": [
+    {
+      "filename": "tests/qualification/consumer-fixtures/growth/source-evidence/2026-10-21/**/*.json",
+      "words": ["iliya"]
+    },
     {
       "filename": "tests/qualification/consumer-fixtures/growth/compiler-reproducer/2026-10-20-private-this-members/**/*.json",
       "words": [

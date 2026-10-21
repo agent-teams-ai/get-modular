@@ -1,0 +1,126 @@
+--- dist/capabilities/source-dependencies/adapters/inbound/configuration/parse-capability-config.js
++++ instrumented/parse.js
+@@ -1,3 +1,4 @@
++import { enter, leave, tick } from "file:///tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/trace.ts";
+ import { compareBinaryStrings } from "../../../../../binary-string-comparator.js";
+ import { normalizeRepositoryPath, pathIsInside, portableRepositoryPathIdentity, portableRepositoryPathProblem } from "../../../application/model/repository-path.js";
+ import { configurationInputError as inputError, ambiguousConfigurationBoundary } from "../../../application/configuration-input.js";
+@@ -87,6 +88,7 @@
+     }
+ }
+ function validateBoundaryRootOverlap(policy, ownedBoundaryRoots) {
++    enter("validateBoundaryRootOverlap"); try {
+     if (policy.schemaVersion === 1) {
+         return;
+     }
+@@ -102,6 +104,7 @@
+         }
+         priorRoots.set(root.identity, root);
+     }
++    } finally { leave("validateBoundaryRootOverlap"); }
+ }
+ function validatePortableV2Path(path, field) {
+     if (portableRepositoryPathProblem(path) !== undefined) {
+@@ -156,6 +159,7 @@
+     }
+ }
+ function policyPathIsInside(policy, path, root) {
++    tick("policyPathIsInside");
+     if (policy.schemaVersion === 1) {
+         return pathIsInside(path, root);
+     }
+@@ -166,6 +170,7 @@
+         pathIdentity.startsWith(`${rootIdentity}/`));
+ }
+ function validateBoundaryLocations(input) {
++    enter("validateBoundaryLocations:" + input.boundary.id); try {
+     const { boundary, policy } = input;
+     for (const root of boundary.roots) {
+         if (policy.schemaVersion !== 1) {
+@@ -192,8 +197,10 @@
+         }
+         input.boundaryEntrypoints.add(entrypoint);
+     }
++    } finally { leave("validateBoundaryLocations:" + input.boundary.id); }
+ }
+ function validatePolicy(policy) {
++    enter("validatePolicy"); try {
+     const governedRoots = new Set();
+     const boundaryIds = new Set();
+     const boundaryRoots = new Set();
+@@ -236,6 +243,7 @@
+             inputError(`Governed root has no architecture boundary: ${governedRoot}.`);
+         }
+     }
++    } finally { leave("validatePolicy"); }
+ }
+ function mapBoundary(value, index, version) {
+     const indexedField = `boundaries[${index}]`;
+@@ -268,6 +276,7 @@
+     return { root, version };
+ }
+ export function parseSourceArchitecturePolicy(header) {
++    enter("parseSourceArchitecturePolicy"); try {
+     const { root, version } = header;
+     const workspace = record(root["workspace"], "workspace");
+     const boundaryInput = root["boundaries"];
+@@ -296,5 +305,6 @@
+         });
+     validatePolicy(policy);
+     return policy;
++    } finally { leave("parseSourceArchitecturePolicy"); }
+ }
+ //# sourceMappingURL=parse-capability-config.js.map--- dist/capabilities/source-dependencies/application/use-cases/analyze-source-dependencies.js
++++ instrumented/analyze.js
+@@ -1,3 +1,4 @@
++import { enter, leave, tick } from "file:///tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/trace.ts";
+ import { sourcePackageOwner } from "../policies/source-package-ownership.js";
+ import { compareBinaryStrings } from "../../../../binary-string-comparator.js";
+ import { assertNotCancelled, CapabilityInputError } from "../../../../features/validation-reporting/api.js";
+@@ -16,6 +17,7 @@
+     return matchingRoots.length === 0 ? undefined : Math.max(...matchingRoots);
+ }
+ function selectBoundary(file, policy) {
++    tick("selectBoundary");
+     const matches = [];
+     for (const boundary of policy.boundaries) {
+         const specificity = matchingBoundarySpecificity(file.path, boundary, policy.schemaVersion !== 1);
+@@ -62,6 +64,7 @@
+         compareBinaryStrings(left.name, right.name))[0];
+ }
+ function classifyFiles(files, policy, packages, parser, options) {
++    enter("classifyFiles"); try {
+     const { signal, ownership } = options;
+     const classified = [];
+     for (const file of files) {
+@@ -85,6 +88,7 @@
+         });
+     }
+     return classified;
++    } finally { leave("classifyFiles"); }
+ }
+ function assertInventoryUsable(packages) {
+     const names = new Set();
+--- dist/capabilities/source-dependencies/application/model/repository-path.js
++++ instrumented/path.js
+@@ -1,3 +1,4 @@
++import { enter, leave, tick } from "file:///tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/trace.ts";
+ export function normalizeRepositoryPath(path) {
+     const portable = path.replaceAll("\\", "/");
+     const absolute = portable.startsWith("/");
+@@ -35,6 +36,7 @@
+  * deliberately retain the original case-sensitive path semantics.
+  */
+ export function portableRepositoryPathIdentity(path) {
++    tick("portableRepositoryPathIdentity");
+     return normalizeRepositoryPath(path)
+         .normalize("NFC")
+         .toLocaleLowerCase("en-US");
+@@ -83,6 +85,7 @@
+     return undefined;
+ }
+ export function portablePathIsInside(path, root) {
++    tick("portablePathIsInside");
+     const pathIdentity = portableRepositoryPathIdentity(path);
+     const rootIdentity = portableRepositoryPathIdentity(root);
+     return (rootIdentity === "." ||

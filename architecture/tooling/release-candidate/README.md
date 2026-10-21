@@ -93,8 +93,11 @@ and the existing
 retain their separate authority. A future Core/Assembly release requiring that
 promotion must qualify its concrete owning operation before it can use this
 route's complete-diff check. It currently fails closed rather than silently
-allowing arbitrary baseline edits. The native migration packet, eight-capability
-configuration and Foundation 1.10.0 pin are unchanged.
+allowing arbitrary baseline edits. The native migration packet and eight-capability
+configuration are unchanged. Preparation incorporates the separate upstream tooling
+migration to Foundation 2.1.1 and FMS 0.2.3. That migration preserves the immutable
+adoption identities and does not expand the release-checks-only retained-input
+exception or qualify current-source archives against previously published bytes.
 
 ## Qualification
 
