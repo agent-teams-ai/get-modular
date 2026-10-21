@@ -313,6 +313,7 @@ boundaries:
     entrypoints:
       - packages/assembly/src/features/construction/types.ts
       - packages/assembly/src/features/construction/factory.ts
+      - packages/assembly/src/features/construction/format-failure.ts
     allow:
       boundaries: []
       packages:

@@ -13,7 +13,7 @@ export type LoadCallbacks = {
   readonly onError: (cause: unknown, snapshot: RawSnapshot) => unknown;
 };
 type Job = { readonly snapshot: RawSnapshot; readonly revision: number; readonly depth: number };
-type Active = { readonly controller: AbortController; readonly settled: Promise<void> };
+type Active = { readonly controller: AbortController; readonly revision: number; readonly settled: Promise<void> };
 const noop = (): void => {};
 
 export class LoadRegistration implements Registration {
@@ -120,7 +120,7 @@ export class LoadRegistration implements Registration {
       const next = this.#clearPending();
       if (this.#open && next !== undefined) {this.#start(next);}
     });
-    this.#active = { controller, settled };
+    this.#active = { controller, revision: job.revision, settled };
   }
   async #run(job: Job, controller: AbortController): Promise<void> {
     await Promise.resolve();
@@ -145,18 +145,18 @@ export class LoadRegistration implements Registration {
     this.detach();
     const active = this.#active;
     if (active === undefined) {return;}
-    let onEscalate = noop;
-    const escalated = new Promise<"escalated">((resolve) => {
-      onEscalate = () => { resolve("escalated"); };
-      if (escalate.aborted) {onEscalate();}
-      else {escalate.addEventListener("abort", onEscalate, { once: true });}
-    });
-    const outcome = await Promise.race([active.settled.then(() => "drained"), escalated]);
-    escalate.removeEventListener("abort", onEscalate);
-    if (outcome === "drained") {return;}
-    await new Promise<void>((resolve) => { later(resolve); });
-    if (this.#active !== undefined) {
-      throw new ObservationError("observation.load.still-running", `load ${this.name} is still running after escalation`);
+    const onEscalate = (): void => { later(() => {
+      if (this.#active === active) {
+        this.#engine.report(this.name, active.revision,
+          new ObservationError("observation.load.still-running", `load ${this.name} is still running after escalation`));
+      }
+    }); };
+    if (escalate.aborted) {onEscalate();}
+    else {escalate.addEventListener("abort", onEscalate, { once: true });}
+    try {
+      await active.settled; // A report never releases the dependencies of a running loader.
+    } finally {
+      escalate.removeEventListener("abort", onEscalate);
     }
   }
 }

@@ -1,5 +1,6 @@
 export { assemblyFor } from "./composition/root.js";
 export { AssemblyBindingError, declareModule, defineContract, entriesOf, group, implement, input } from "./features/construction/factory.js";
+export { formatFailure } from "./features/construction/format-failure.js";
 export type {
   AnyContract, AnyEntry, AnyInputEntry, AnyModuleEntry, Assembly, AssemblyOutcome, AssemblyPreparationResult,
   AssemblyPrepareInput, BindingErrorCode, CapabilitiesOf, CapabilityBrand, CapabilityContract, CapabilitySchema,

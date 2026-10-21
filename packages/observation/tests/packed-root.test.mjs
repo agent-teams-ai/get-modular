@@ -176,6 +176,11 @@ test("T02 T05 T07 T08 T09 T11 T13 T92 T97 T104 T110 T113 T117 exact archives exp
     `);
     const semantics = run(process.execPath, ["--test", "--test-reporter=tap", "semantic-packed.test.mjs"], consumer);
     assert.match(semantics, /ok \d+ - T\d+/u, "packed archive must execute attributed semantic probes");
+    const closeReporting = (await readFile(join(packageRoot, "tests/close-reporting.test.ts"), "utf8"))
+      .replaceAll("../dist/index.js", "@get-modular/observation")
+      .replaceAll("../dist/testing.js", "@get-modular/observation/testing");
+    await writeFile(join(consumer, "close-reporting.test.ts"), closeReporting);
+    run(process.execPath, ["--test", "close-reporting.test.ts"], consumer);
     await assertSourceRules(installed);
     await checkTypes(consumer, context);
   } finally {

@@ -115,8 +115,10 @@ applies with or without the development dependency successor below; every other
 compiler, build and dependency input retains its existing guard.
 
 This preserves `retainedSource`, the original package-tree catalog, all retained
-archives and historical qualification records. The changed Resources source
-still rejects reuse at `0.2.0` and requires its genuine Changesets patch release.
+archives and historical qualification records. At the original preparation
+checkpoint, the changed Resources source rejected reuse at `0.2.0` and required
+its genuine Changesets patch release. The owning release below subsequently
+published that correction as `0.2.1`.
 The focused regression first failed against the previous policy with
 `release.retained-build-input-drift`. The corrected policy then passed all seven
 npm-release tests. An isolated TEST checkout installed the previously qualified
@@ -162,11 +164,48 @@ TEST checkout proves the API integration only. The production lock has no
 invented package resolution, and this adoption must remain unmerged while its
 registry dependency is unavailable.
 
-The pending genuine Resources correction can produce a new normal Resources
-version. The other four package trees and retained archive bytes still need
-this complete retained-input check. After adoption, run the existing manual
-current-main publication dispatch and verify downloaded archives and consumers;
-an automatic same-version skip is not reconciliation proof.
+The original Resources-only preparation retained four unchanged package trees.
+Those observations remain bound to that earlier source; the released base below
+has five new versions outside the historical retained-version catalog. After
+adoption, run the existing manual current-main publication dispatch and verify
+downloaded archives and consumers; an automatic same-version skip is not
+reconciliation proof.
+
+## Released base for prepared adoption
+
+[The owning release PR #208](https://github.com/agent-teams-ai/get-modular/pull/208)
+merged as `7131d0d7a6bb5dd4c3e8906ccac065c0be0e0333`. Its exact-source
+[CI run](https://github.com/agent-teams-ai/get-modular/actions/runs/39610900906)
+and [publication run](https://github.com/agent-teams-ai/get-modular/actions/runs/39612969025)
+completed successfully. Publication executed prepare, publish, installed-consumer
+verification and promotion. Its source-bound registry evidence records all five
+uploads; independent npm reads on 2026-10-21 confirmed each exact version,
+matching integrity and intended `latest`:
+
+| Package | Published version and `latest` |
+| --- | --- |
+| Core and Assembly | `0.7.0` |
+| Resources | `0.2.1` |
+| Conformance | `0.5.0` |
+| Observation | `0.2.0` |
+
+The preparation branch incorporates this released source, including the promoted
+API baselines, accepted decisions, package versions/changelogs and Assembly
+tooling checks. Its release-checks Host permissions remain unchanged. The
+historical archive catalog, archive bytes and checksums also remain unchanged;
+this synchronization adds no retained binding for the new versions.
+
+The released tree has only `config.json` in `.changeset/`. After the real public
+leaf installation and lock/SRI qualification, collect the official current
+Changesets plan. If it still has no releases, use the existing no-release path;
+do not create an artificial intent or reproduce the already published release.
+
+This owning publication qualifies source `7131d0d7`, not the future adoption
+source. The dependency admission remains pending. Reconcile the eventual
+adopting main through the existing manual publication route: all five current
+versions use current-source packing rather than the old retained catalog. Any
+registry-byte mismatch remains a failure; do not substitute an old manifest,
+invent integrity or broaden retained archive admission to hide it.
 
 ## Artifact protocol and recovery
 

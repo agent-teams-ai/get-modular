@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "packageName": "@get-modular/assembly",
-  "packageVersion": "0.6.0",
+  "packageVersion": "0.7.0",
   "extractorVersion": "typescript-native/7.0.2",
   "entrypoints": [
     {
@@ -440,6 +440,13 @@
           "parentReference": "@get-modular/assembly!",
           "parentKind": "EntryPoint",
           "signature": "export declare function entriesOf<const M extends readonly (AnyEntry | ModuleGroup)[]>(modules: M): readonly EntriesOf<M[number]>[];"
+        },
+        {
+          "canonicalReference": "@get-modular/assembly!formatFailure:function(1)",
+          "kind": "Function",
+          "parentReference": "@get-modular/assembly!",
+          "parentKind": "EntryPoint",
+          "signature": "export declare function formatFailure(failure: Extract<CompileCompositionResult, {\n    readonly ok: false;\n}> | Extract<AssemblyPreparationResult<never>, {\n    readonly status: \"failed\";\n}>, options?: {\n    readonly includeAuthoringContext?: boolean;\n}): string;"
         },
         {
           "canonicalReference": "@get-modular/assembly!group:function(1)",

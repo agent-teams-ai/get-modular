@@ -31,36 +31,38 @@ test("T32 [P6] load: one active and one pending run; a stale result never publis
 });
 
 test("T36 [P11] closing the subscriber scope during a cooperative load: complete, no debts, nothing published", async () => {
-    const { facet, module } = world();
+    const { facet, module, reports } = world();
     const load = cooperativeLoader();
     startLoad(facet, module.resources, ["region"], "catalog", load.handlers);
     await settle();
-    const report = await module.control.close();
+    const report = await module.control.close({ escalate: AbortSignal.abort() });
     assert.equal(report.complete, true);
     assert.deepEqual(debtsOf(report), []);
     assert.equal(load.calls[0]?.aborted, true);
     await settle();
     assert.deepEqual(load.published, [], "an aborted run reports nothing");
+    assert.deepEqual(reports, [], "a cooperative abort must not report a still-running load");
 });
 
-test("T36 [P12] a load that ignores abort: escalate gives a failed debt with a code; a retry completes", async () => {
-    const { facet, module } = world();
+test("T36 [P12] a load that ignores abort: escalate reports it while the original close keeps draining", async () => {
+    const reported = deferred();
+    const { facet, module } = world(undefined, { reportError: report => { reported.resolve(report); } });
     const load = stubbornLoader();
     startLoad(facet, module.resources, ["region"], "catalog", load.handlers);
     await settle();
     const escalate = new AbortController();
     const closing = module.control.close({ escalate: escalate.signal });
     escalate.abort();
-    const report = await closing;
-    assert.equal(report.complete, false);
-    assert.deepEqual(debtsOf(report), [
-        { path: "host/module/load:catalog/drain", state: "failed", code: "observation.load.still-running" },
+    assert.equal(codeOf((await reported.promise).cause), "observation.load.still-running");
+    const snapshot = await module.control.close({ abandon: AbortSignal.abort() });
+    assert.equal(snapshot.settled, false);
+    assert.deepEqual(debtsOf(snapshot), [
+        { path: "host/module/load:catalog/drain", state: "pending", code: undefined },
     ]);
     load.calls[0]?.gate.resolve("late");
+    assert.equal((await closing).complete, true, "the original close completes without retry");
     await settle();
     assert.deepEqual(load.published, [], "a late result after close is dropped");
-    const retry = await module.control.close();
-    assert.equal(retry.complete, true);
 });
 
 test("T36 [P13] a load that ignores abort: abandon gives a pending debt and settled: false", async () => {
@@ -103,7 +105,9 @@ test("T32 [P17] load: onLoading when a newer run is queued; a result that lands 
     const events = [];
     const gates = [];
     startLoad(facet, module.resources, ["region"], "catalog", {
-        loader: (next) => new Promise((resolve) => { gates.push({ region: next.values.region, release: resolve }); }),
+        loader: (next) => {
+            const gate = deferred(); gates.push({ region: next.values.region, release: gate.resolve }); return gate.promise;
+        },
         onLoading: (snapshot) => { events.push(`loading ${String(snapshot.values.region)}`); return undefined; },
         onResult: (result) => { events.push(`result ${String(result)}`); return undefined; },
         onError: (cause) => { events.push(`error ${String(cause)}`); return undefined; },
@@ -167,21 +171,24 @@ describe("T36 [R6] closing while a load is still running", () => {
         await settle();
         assert.deepEqual(load.published, [], "an aborted run reports neither result nor error");
     });
-    test("T36 [R6] subscriber scope closes, loader ignores abort, Host escalates: failed debt with a code; a retry completes", async () => {
-        const { facet, module } = world({ level: "info", region: "eu", theme: "light" });
+    test("T36 [R6] subscriber scope closes, loader ignores abort, Host escalates: reports and keeps draining", async () => {
+        const reported = deferred();
+        const { facet, module } = world({ level: "info", region: "eu", theme: "light" },
+          { reportError: report => { reported.resolve(report); } });
         const load = regionLoad(facet, module.resources, true);
         await settle();
         const escalate = new AbortController();
         const closing = module.control.close({ escalate: escalate.signal });
         assert.equal(load.runs[0]?.signal.aborted, true, "abort reaches the loader when the close starts");
         escalate.abort();
-        const report = await closing;
-        assert.equal(report.complete, false);
-        assert.deepEqual(debtsOf(report), [{ path: "host/module/load:catalog/drain", state: "failed", code: "observation.load.still-running" }]);
+        assert.equal(codeOf((await reported.promise).cause), "observation.load.still-running");
+        const snapshot = await module.control.close({ abandon: AbortSignal.abort() });
+        assert.equal(snapshot.settled, false);
+        assert.deepEqual(debtsOf(snapshot), [{ path: "host/module/load:catalog/drain", state: "pending", code: undefined }]);
         load.runs[0]?.release("late");
+        assert.equal((await closing).complete, true);
         await settle();
         assert.deepEqual(load.published, []);
-        assert.equal((await module.control.close()).complete, true);
     });
     test("T36 [R6] subscriber scope closes, loader ignores abort, Host abandons: pending debt, settled false", async () => {
         const { facet, module } = world({ level: "info", region: "eu", theme: "light" });
@@ -197,8 +204,12 @@ describe("T36 [R6] closing while a load is still running", () => {
         load.runs[0]?.release("late");
         assert.equal((await module.control.close()).complete, true);
     });
-    test("T36 [R6] store.close() during a load: abort reaches the loader; the owner closes clean; the subscriber's drain owns the debt", async () => {
-        const { store, facet, module, owner, reports } = world({ level: "info", region: "eu", theme: "light" });
+    test("T36 [R6] store.close() during a load: the owner closes clean while the subscriber keeps draining", async () => {
+        const reported = deferred();
+        const reports = [];
+        const { store, facet, module, owner } = world({ level: "info", region: "eu", theme: "light" }, {
+          reportError: report => { reports.push(report); if (codeOf(report.cause) === "observation.load.still-running") reported.resolve(report); },
+        });
         const load = regionLoad(facet, module.resources, true);
         await settle();
         store.close();
@@ -209,12 +220,15 @@ describe("T36 [R6] closing while a load is still running", () => {
         assert.equal(ownerReport.complete, true, "store close is synchronous and leaves no debt in the owner's scope");
         const escalate = new AbortController();
         escalate.abort();
-        const moduleReport = await module.control.close({ escalate: escalate.signal });
-        assert.deepEqual(debtsOf(moduleReport), [{ path: "host/module/load:catalog/drain", state: "failed", code: "observation.load.still-running" }]);
+        const closing = module.control.close({ escalate: escalate.signal });
+        assert.equal(codeOf((await reported.promise).cause), "observation.load.still-running");
+        const snapshot = await module.control.close({ abandon: AbortSignal.abort() });
+        assert.equal(snapshot.settled, false);
+        assert.deepEqual(debtsOf(snapshot), [{ path: "host/module/load:catalog/drain", state: "pending", code: undefined }]);
         load.runs[0]?.release("late");
+        assert.equal((await closing).complete, true);
         await settle();
         assert.deepEqual(load.published, []);
-        assert.equal((await module.control.close()).complete, true);
     });
 });
 
@@ -225,7 +239,9 @@ describe("T32 [R7] load never shows data of older values while newer values load
         const gates = [];
         facet.load(facet.read(["region"]), {
             resources: module.resources, name: "catalog",
-            loader: ({ values }) => new Promise((resolve) => { gates.push({ region: values.region, release: resolve }); }),
+            loader: ({ values }) => {
+                const gate = deferred(); gates.push({ region: values.region, release: gate.resolve }); return gate.promise;
+            },
             onLoading: () => { shown.push("loading"); },
             onResult: (models, { values }) => { shown.push(`ready ${values.region}: ${models}`); },
             onError: () => undefined,
@@ -324,8 +340,8 @@ describe("T32 T45 T58 T71 [R17] scheduled load publication stays current and is 
                 await host.control.close();
             }
         });
-        test(`T32 T45 T58 T71 [R17] ${kind}: escalation never turns a completed loader into a drain debt`, async () => {
-            const { host, module, facet } = world({ cursor: 0 });
+        test(`T32 T45 T58 T71 [R17] ${kind}: escalation never reports a completed loader as still running`, async () => {
+            const { host, module, facet, reports } = world({ cursor: 0 });
             let callbacks = 0;
             let finish;
             facet.load(facet.read(["cursor"]), {
@@ -353,7 +369,8 @@ describe("T32 T45 T58 T71 [R17] scheduled load publication stays current and is 
                 await settled({ stores: [facet] });
                 assert.equal(callbacks, 0);
                 assert.equal(report.complete, true);
-                assert.deepEqual(report.debts, [], "only an actual unfinished loader can produce observation.load.still-running");
+                assert.deepEqual(report.debts, []);
+                assert.deepEqual(reports, [], "only an actual unfinished loader can produce observation.load.still-running");
             }
             finally {
                 await host.control.close();

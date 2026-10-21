@@ -121,7 +121,7 @@ test("Assembly admission rejects malformed manifests, dependencies and package r
       { access: "public", registry: "https://registry.npmjs.org/", tag: "latest" }]
       .map(publishConfig => ({ publishConfig })),
     ...[undefined, null, {}, { type: "git", url: "https://example.com/", directory: "packages/assembly" }]
-      .map(repository => ({ repository })), { version: "0.7.0" },
+      .map(repository => ({ repository })), { version: "0.8.0" },
     ...[undefined, null, [], {}, true].map(dependencies => ({ dependencies })),
     { dependencies: { "@get-modular/core": "^0.1.0" } },
     { dependencies: { ...manifest.dependencies, extra: "1.0.0" } },
@@ -619,7 +619,7 @@ test("next pair requires the exact accepted successor and retains first-release 
     readBytes: candidate => candidate === path ? replacement : next.readBytes(candidate),
   }), /ADR-002[357]/u);
   for (const [coreVersion, assemblyVersion] of [["0.1.0", "0.2.0"], ["0.2.0", "0.1.0"],
-    ["0.7.0", "0.7.0"], ["0.4.0", "0.3.0"], ["0.3.0", "0.2.0"], ["0.2.0", "0.3.0"], ["0.2.0-rc.0", "0.2.0-rc.0"]]) {
+    ["0.8.0", "0.8.0"], ["0.7.0", "0.6.0"], ["0.6.0", "0.7.0"], ["0.4.0", "0.3.0"], ["0.3.0", "0.2.0"], ["0.2.0", "0.3.0"], ["0.2.0-rc.0", "0.2.0-rc.0"]]) {
     await assert.rejects(admit({ ...next, readPackageManifest: async path => ({
       ...JSON.parse(read(path)), version: path === ASSEMBLY_MANIFEST_PATH ? assemblyVersion : coreVersion,
     }) }), /pair|manifest violates/u);
@@ -737,32 +737,34 @@ test("0.5.0 pair requires the exact accepted ADR-0036 and retains earlier author
   }
 });
 
-test("0.6.0 pair requires the exact accepted ADR-0038 and retains earlier authority", async () => {
-  const accepted = read(ASSEMBLY_COMPILER_FLOOR_DECISION_PATH);
+for (const [version, decision] of [["0.6.0", "ADR-0038"], ["0.7.0", "ADR-0040"]]) {
+const decisionPath = ASSEMBLY_PAIR_DECISIONS[version].path;
+test(`${version} pair requires the exact accepted ${decision} and retains earlier authority`, async () => {
+  const accepted = read(decisionPath);
   // A synthetic projection without approval metadata stands for the pending decision.
   const proposed = Buffer.from(accepted.toString("utf8")
     .replace(/^status: accepted$/mu, "status: proposed")
     .replace(/^approved_by:.*\n/mu, "").replace(/^accepted_at:.*\n/mu, ""));
   const registryPath = "architecture/decisions/accepted-decisions.json";
   const registry = JSON.parse(read(registryPath));
-  const entry = registry.decisions.find(row => row.id === "ADR-0038");
-  const others = registry.decisions.filter(row => row.id !== "ADR-0038"
-    && row.path !== ASSEMBLY_COMPILER_FLOOR_DECISION_PATH);
+  const entry = registry.decisions.find(row => row.id === decision);
+  const others = registry.decisions.filter(row => row.id !== decision
+    && row.path !== decisionPath);
   const withDecisions = decisions => Buffer.from(JSON.stringify({ ...registry, decisions }));
   const next = {
     // The next Core/Assembly pair leaves every leaf package at its own version.
     readPackageManifest: async path => LEAF_PACKAGES.some(leaf => leafManifestPath(leaf) === path)
-      ? JSON.parse(read(path)) : { ...JSON.parse(read(path)), version: "0.6.0" },
+      ? JSON.parse(read(path)) : { ...JSON.parse(read(path)), version },
   };
   assert.deepEqual(await admit(next), artifacts.slice(2));
   for (const [path, replacement, message] of [
-    [ASSEMBLY_COMPILER_FLOOR_DECISION_PATH, Buffer.from(accepted.toString("utf8").replace("0.6.0", "0.7.0")),
-      /accepted ADR-0038/u],
-    [ASSEMBLY_COMPILER_FLOOR_DECISION_PATH, proposed, /accepted ADR-0038/u],
-    [registryPath, withDecisions(others), /registered ADR-0038/u],
+    [decisionPath, Buffer.from(accepted.toString("utf8").replace(version, "0.8.0")),
+      new RegExp(`accepted ${decision}`, "u")],
+    [decisionPath, proposed, new RegExp(`accepted ${decision}`, "u")],
+    [registryPath, withDecisions(others), new RegExp(`registered ${decision}`, "u")],
     [registryPath, withDecisions([...others, { ...entry, immutableDigest: "sha256:" + "0".repeat(64) }]),
-      /registered ADR-0038/u],
-    [registryPath, withDecisions([...others, entry, entry]), /registered ADR-0038/u],
+      new RegExp(`registered ${decision}`, "u")],
+    [registryPath, withDecisions([...others, entry, entry]), new RegExp(`registered ${decision}`, "u")],
     [ASSEMBLY_DECISION_PATH, Buffer.from("changed history"), /ADR-0023/u],
     [ASSEMBLY_PUBLICATION_DECISION_PATH, Buffer.from("changed first release"), /ADR-0025/u],
   ]) {
@@ -771,3 +773,5 @@ test("0.6.0 pair requires the exact accepted ADR-0038 and retains earlier author
     }), message);
   }
 });
+
+}

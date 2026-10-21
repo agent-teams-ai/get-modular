@@ -82,8 +82,11 @@ commit alone cannot hide source, config or inventory drift.
 
 ## API baseline boundary
 
-The current Resources patch needs no Core or Assembly API baseline write. This
-checked route admits no `architecture/public-api/` or contract baseline change.
+The Resources patch was published by the separate owning release described in
+[the released adoption base](../npm-release/README.md#released-base-for-prepared-adoption).
+That source also includes its own qualified Core/Assembly API promotion. The
+preparation branch preserves those upstream outputs; this checked route still
+admits no `architecture/public-api/` or contract baseline change.
 [ADR-0027](../../../docs/decisions/0027-admit-the-core-and-assembly-0-2-0-correction-pair.md)
 and the existing
 [native API transition procedure](../../../docs/qualification/native-typescript-tooling.md#released-api-transition)
@@ -106,12 +109,14 @@ also tests the narrow retained-input successor and its dependency graph,
 compiler, build and integrity rejection cases. The normal native runtime policy
 gates include these commands; type stripping alone is not typechecking.
 
-The current disposable TEST qualification installs the corrected packed `0.0.0`
+The original disposable TEST qualification installed the corrected packed `0.0.0`
 candidate with SHA-256
 `4c46ed8e2aa0cdd24e2b6b3d45acdf22f0614a777f9baccdf687f0630a55a027`
 through its public root and `/conformance` export. Actual-engine release and
 no-release fixtures accept the reader's documentation names and reject hidden
-documentation edits before and after generation. This does not certify
+documentation edits before and after generation. Those results retain their
+original source bindings; synchronizing to a later released main does not
+establish new qualification. This does not certify
 an unpublished `0.1.0` registry installation, hosted workflow execution, owner PR,
 publication, promotion or retained-archive reconciliation. Those checkpoints
 remain separate in the accepted delivery plan.

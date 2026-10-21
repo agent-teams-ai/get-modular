@@ -305,7 +305,11 @@ Thrown: `observation.argument.invalid`, `observation.keys.empty`, `observation.k
 `observation.subscription.duplicate-name`, `observation.subscriptions.limit`; thrown and reported:
 `observation.delivery.echo`, `observation.delivery.cascade`. Reported only: what a handler threw,
 `observation.callback.returned-value`, `observation.source.closed`. From `/testing`: `observation.testing.timeout`.
-A close debt: `observation.load.still-running`, when a load ignored its signal after the Host escalated.
+Reported after escalation: `observation.load.still-running`, with the active run's revision,
+when a load still ignores its signal. The drain remains pending until that loader promise,
+including its finally work, settles. Use Resources `abandon` for a bounded wait; retain the
+original close promise and the loader's dependencies. Escalation never completes this drain
+with a failed debt, and late settlement needs no cleanup retry.
 
 Testing. `@get-modular/observation/testing` exports `liveSubscriptions(facet, resources?)`, `delivered(options?)`
 (resolves when no delivery of `options.stores`, or of any store, is scheduled), `settled(options?)` (also waits for

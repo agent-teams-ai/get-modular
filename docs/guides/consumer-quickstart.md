@@ -74,6 +74,11 @@ Keep the three failure layers separate:
    invalid product. Use `phase`, `implementationId`, `cause`, `created`, and
    `returned` to apply the Host's recovery policy.
 
+`formatFailure` from `@get-modular/assembly` renders Core compilation and
+Assembly preparation failures as bounded text for a Host startup error. Retain
+the original structured failure privately. Authoring labels require explicit
+`{ includeAuthoringContext: true }` for local developer diagnostics.
+
 Unexpected infrastructure failures may reject the async call. Do not convert
 them into domain diagnostics owned by Core.
 

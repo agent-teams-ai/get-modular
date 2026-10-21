@@ -17,6 +17,10 @@ summary: Index of Get Modular architecture decisions.
 
 ## Accepted decisions
 
+- [ADR-0040: Admit the Core and Assembly 0.7 diagnostic release pair](0040-admit-the-core-and-assembly-0-7-diagnostic-release-pair.md)
+
+- [ADR-0039: Retain Observation load drain until its run settles](0039-retain-observation-load-drain-until-its-run-settles.md)
+
 - [ADR-0038: Require TypeScript 7 for current package qualification](0038-require-typescript-7-for-current-package-qualification.md)
 - [ADR-0037: Pin providers, not completed rows, in the binding oracle](0037-pin-providers-not-completed-rows-in-the-binding-oracle.md)
 
