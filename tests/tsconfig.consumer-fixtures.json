@@ -4,6 +4,7 @@
     "qualification/consumer-fixtures/authoring/transport.ts",
     "qualification/consumer-fixtures/growth/upstream-compiler.ts",
     "qualification/consumer-fixtures/growth/source.ts",
+    "qualification/consumer-fixtures/growth/measure-source.ts",
     "qualification/consumer-fixtures/source/installed.ts",
     "qualification/consumer-fixtures/source/policy.ts",
     "npm-release-consumer.ts"

@@ -375,3 +375,23 @@ as generated so the maintained helper is visible first; all raw diffs remain
 inspectable. Only this immutable dated evidence is excluded from CSpell because
 encoded paths and temporary directory suffixes are measured data, not prose.
 The helper, current documentation and future evidence keep their normal checks.
+
+For a new installed-package source-only series on Linux, after the existing
+package builds:
+
+```sh
+node tests/qualification/consumer-fixtures/growth/measure-source.ts --directory /absolute/new-result-directory
+```
+
+The typed runner reconstructs only source bytes because the original physical
+subjects are unavailable. Each generated source tree must match its retained
+cold SHA-256, census and byte count before checking. It invokes neither the
+compiler nor the runtime experiment. Its external parent supervises the owned
+process group, kills it on a 60-second source stage or 600-second aggregate
+deadline and reaps the worker before writing the result. N8 includes all eight
+controls and restoration within its source stage; the aggregate covers all four
+sizes together. This is a tighter series envelope than the original per-positive
+source and per-size aggregate limits. Failed results are retained;
+an existing output directory is refused. Raw reports stay with their compact
+hash-bound index and supervisor receipt. This optional measurement is included
+in the existing strict fixture typecheck, not added to every repository check.
