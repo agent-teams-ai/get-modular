@@ -65,10 +65,10 @@ function structuralPath(value: unknown): string | undefined {
   if (length === undefined || length === 0) {return undefined;}
   const segments: string[] = [];
   for (let index = 0; index < length; index++) {
-    const segment = own(value, String(index)), field = own(segment, "value");
-    if (own(segment, "kind") === "field" && typeof field === "string" && pathFields.has(field)) {segments.push(field);}
-    else if (own(segment, "kind") === "index" && typeof field === "number"
-      && Number.isSafeInteger(field) && field >= 0 && field <= 65_535) {segments.push(String(field));}
+    const segment = own(value, String(index)), pathValue = own(segment, "value");
+    if (own(segment, "kind") === "field" && typeof pathValue === "string" && pathFields.has(pathValue)) {segments.push(pathValue);}
+    else if (own(segment, "kind") === "index" && typeof pathValue === "number"
+      && Number.isSafeInteger(pathValue) && pathValue >= 0 && pathValue <= 65_535) {segments.push(String(pathValue));}
     else {return undefined;}
   }
   return segments.join("/");
