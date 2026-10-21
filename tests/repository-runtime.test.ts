@@ -148,8 +148,10 @@ test("bootstrap pnpm uses the real provisioned JS entry without executing shell 
     await mkdir(dirname(launcher), { recursive: true });
     // The real package is the execution subject. This poison wrapper must never run.
     await writeFile(launcher, "@echo SHELL_WRAPPER_EXECUTED & exit /b 77\r\n");
-    assert.equal(provisionedPnpmCli({ PATH: dirname(launcher) }), cli);
-    assert.equal(provisionedPnpmCli({ PATH: "", npm_execpath: cli }), cli);
+    // Windows sync/CJS resolution can retain an 8.3 spelling; compare both
+    // physical paths through the same asynchronous realpath authority.
+    assert.equal(await realpath(provisionedPnpmCli({ PATH: dirname(launcher) })), cli);
+    assert.equal(await realpath(provisionedPnpmCli({ PATH: "", npm_execpath: cli })), cli);
     assert.throws(() => provisionedPnpmCli({ PATH: "", ComSpec: launcher }), /provisioned-manifest-unavailable/u);
     // Match action-setup's real self-update layout: an old bootstrap remains
     // beside .bin while the selected real package lives under PNPM_HOME/global.
@@ -163,7 +165,7 @@ test("bootstrap pnpm uses the real provisioned JS entry without executing shell 
     const bootstrapEnvironment = { PATH: dirname(updatedLauncher), Path: dirname(updatedLauncher),
       PNPM_HOME: home, npm_execpath: "", ComSpec: updatedLauncher,
       npm_config_offline: "true", COREPACK_ENABLE_NETWORK: "0" };
-    assert.equal(provisionedPnpmCli(bootstrapEnvironment), cli);
+    assert.equal(await realpath(provisionedPnpmCli(bootstrapEnvironment)), cli);
     await writeFile(join(root, "package.json"), JSON.stringify({ name: "bootstrap-TEST", private: true,
       type: "module", packageManager: "bun@1.4.3" }));
     await writeFile(join(root, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\nsettings:\n  autoInstallPeers: true\n  excludeLinksFromLockfile: false\nimporters:\n  .: {}\n");
@@ -207,7 +209,7 @@ test("Node rollback dispatch uses the actual installed pnpm public root export",
   assert.equal(manifest.version, PNPM_VERSION);
   assert.deepEqual(manifest.exports, { ".": "./package.json" });
   for (const resolvePnpm of pnpmResolvers) {
-    assert.equal(await resolvePnpm(repository), await realpath(join(dirname(installed), manifest.bin.pnpm)));
+    assert.equal(await realpath(await resolvePnpm(repository)), await realpath(join(dirname(installed), manifest.bin.pnpm)));
   }
   await fixture(async (root, temporary) => {
     const target = join(temporary, "node-profile");
@@ -215,10 +217,10 @@ test("Node rollback dispatch uses the actual installed pnpm public root export",
     const packageRoot = join(target, "node_modules/pnpm");
     await cp(dirname(installed), packageRoot, { recursive: true, dereference: true });
     const resolver = createRequire(join(target, "package.json"));
-    assert.equal(resolver.resolve("pnpm"), await realpath(join(packageRoot, "package.json")));
+    assert.equal(await realpath(resolver.resolve("pnpm")), await realpath(join(packageRoot, "package.json")));
     assert.throws(() => resolver.resolve("pnpm/package.json"), { code: "ERR_PACKAGE_PATH_NOT_EXPORTED" });
     for (const resolvePnpm of pnpmResolvers) {
-      assert.equal(await resolvePnpm(target), await realpath(join(packageRoot, manifest.bin.pnpm)));
+      assert.equal(await realpath(await resolvePnpm(target)), await realpath(join(packageRoot, manifest.bin.pnpm)));
     }
 
     await put(target, "node_modules/@agent-teams/engineering-foundation/package.json", JSON.stringify({

@@ -517,12 +517,11 @@ test("keeps the profile reachable for humans and agents", () => {
   assert.throws(() => validate({
     docsIndex: docsIndex.replace("architecture/feature-module-standard.md", "architecture/other.md"),
   }), /documentation index must route/u);
-  assert.throws(() => validate({
-    agentInstructions: agentInstructions.replace(
-      "docs/architecture/feature-module-standard.md",
-      "docs/architecture/other.md",
-    ),
-  }), /agent navigation must route/u);
+  const withoutAgentRoute = agentInstructions.replaceAll(
+    "docs/architecture/feature-module-standard.md", "docs/architecture/other.md",
+  );
+  assert.equal(withoutAgentRoute.includes("docs/architecture/feature-module-standard.md"), false);
+  assert.throws(() => validate({ agentInstructions: withoutAgentRoute }), /agent navigation must route/u);
 });
 
 test("keeps an empty pre-production repository honestly not-claimed", () => {
