@@ -200,6 +200,12 @@ qualification evidence. Verification independently recomputes the three
 projections from Git and checks all other tracked bytes against the same head.
 A shared `node_modules`, an unknown profile or projection drift fails closed.
 
+The Host authenticates the original index objects before admitting those three
+source-derived working representations. Other authority reads retain strict
+index-to-file equality. Full verification checks the index and working files in
+two passes without restoring or writing source files. These manager projections
+belong to the existing development Host and add no production module boundary.
+
 `lockfile:peers:check` always executes the real pinned pnpm manager. The Bun
 profile creates an isolated manifest-only root for this lock-only graph check;
 it never interprets a Bun installation as pnpm evidence. pnpm itself is a declared
