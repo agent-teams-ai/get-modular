@@ -171,6 +171,11 @@
       "id": "ADR-0038",
       "path": "docs/decisions/0038-require-typescript-7-for-current-package-qualification.md",
       "immutableDigest": "sha256:f2eab8aea2b07c8b6d2b3207314da91531689fa2bb6039e9e963aee315f7fd52"
+    },
+    {
+      "id": "ADR-0039",
+      "path": "docs/decisions/0039-retain-observation-load-drain-until-its-run-settles.md",
+      "immutableDigest": "sha256:a87281033d7381aabd956dbf772a10b0c2f2025365a9611faed1cb7d6137707f"
     }
   ]
 }
