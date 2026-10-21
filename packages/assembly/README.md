@@ -132,3 +132,17 @@ The harness checks physical archive contents, installed byte equality, runtime
 and type consumers, and emits identities and observations for retention. The
 release operator separately authenticates the Core archive's registry origin;
 input hashes alone do not prove where an archive came from.
+
+## Failure text for Host diagnostics
+
+`formatFailure(failure, options?)` formats a failed Core compilation or Assembly
+preparation as bounded plain text. Keep the original structured failure privately
+when throwing a startup error, and use this text in the developer diagnostic path.
+The default includes validated Core coordinates but omits Assembly authoring labels.
+For a local developer console, `{ includeAuthoringContext: true }` adds escaped
+module, slot, group and alias context. Never send that opt-in text to public clients.
+Opaque causes, stacks, instances and capability values are not inspected.
+
+Output preserves issue order and complete lines, with at most 32 issues, eight
+candidates or duplicate occurrences per issue, and 16,384 UTF-16 code units.
+Truncation is explicit; existing structured diagnostics remain authoritative.
