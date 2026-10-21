@@ -104,6 +104,11 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
       path: "docs/decisions/0038-require-typescript-7-for-current-package-qualification.md",
       immutableDigest: "sha256:f2eab8aea2b07c8b6d2b3207314da91531689fa2bb6039e9e963aee315f7fd52",
     },
+    {
+      id: "ADR-0039",
+      path: "docs/decisions/0039-retain-observation-load-drain-until-its-run-settles.md",
+      immutableDigest: "sha256:a87281033d7381aabd956dbf772a10b0c2f2025365a9611faed1cb7d6137707f",
+    },
   ]);
   const paths = execFileSync("git", ["ls-tree", "-r", "--name-only", checkpoint.evidence.base,
     "docs/decisions"], { encoding: "utf8" }).trim().split("\n");
@@ -180,9 +185,10 @@ test("observations bind historical lock bytes, production importers and reviewed
   const historicalCms = execFileSync("git", ["show", `${checkpoint.evidence.base}:${cmsPath}`]);
   assert.equal(digest(historicalCms), checkpoint.evidence.cms.digest,
     "C0 retains the CMS bytes observed at its base");
+  // ADR-0039 adds report-and-await drain guidance; historical C0 bytes above stay frozen.
   const currentCms = readFileSync(cmsPath);
   assert.equal(digest(currentCms),
-    "sha256:c2fe582a14ff6e79620b232ca7ffc914afb0474ec21fd43f208251dd7252f4a3",
+    "sha256:a6dac5d303adf80be3151c6703c919b715fd880a941a4ad68e927c87a7ee5882",
     "the current CMS successor must match its separately reviewed bytes");
   // Package versions are observations at the evidence base; later releases move the working tree.
   for (const [name, version] of Object.entries(checkpoint.evidence.packages)) {
