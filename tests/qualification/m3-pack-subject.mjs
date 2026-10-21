@@ -196,6 +196,8 @@ export async function runPackSubject(options) {
     git = process.platform === 'darwin' ? '/Library/Developer/CommandLineTools/usr/bin/git'
       : process.platform === 'linux' ? '/usr/bin/git' : undefined;
     need(git, 'pack.git-platform');
+    need((await gitRun(['rev-parse', '--verify', 'HEAD'])).trim() === input.exactSourceSHA,
+      'pack.wrong-source');
     const committedPin = await gitRun(['show', `${input.exactSourceSHA}:.node-version`]);
     assertM3NodePin((await bytes(join(root, '.node-version'))).toString('utf8'), committedPin, process.version);
     metadata.git = { path: git, sha256: hash(await bytes(git, MAX_SOURCE)) };

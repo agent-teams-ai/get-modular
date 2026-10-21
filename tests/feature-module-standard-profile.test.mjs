@@ -192,6 +192,19 @@ function versionAdmissionInput() {
   };
 }
 
+test("runtime policy test roster retains every reviewed test entry", () => {
+  const entries = ["tests/tooling-node-policy.test.ts", "tests/npm-release.test.ts",
+    "tests/repository-runtime.test.ts", "tests/runtime-projection-custody.test.ts"];
+  assert.equal(packageJson.scripts["runtime:policy:test"], `node --test ${entries.join(" ")}`);
+  assert.doesNotThrow(() => validate());
+  for (const missing of entries) {
+    const changed = clone(packageJson);
+    changed.scripts["runtime:policy:test"] = `node --test ${entries.filter(path => path !== missing).join(" ")}`;
+    assert.throws(() => validate({ packageJson: changed }),
+      /runtime:policy:test must use its closed command definition/u, missing);
+  }
+});
+
 // Literal counterexamples must not follow the checker or an installed package's version.
 const rejectedFoundationPins = [
   "0.21.0", "1.0.1", "1.1.0", "1.1.1", "1.2.0", "1.4.0", "1.4.1", "1.4.2", "1.5.0", "1.5.1", "1.6.1", "1.7.0", "1.7.1", "1.10.0",

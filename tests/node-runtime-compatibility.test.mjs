@@ -6,16 +6,17 @@ import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 import { parse } from "yaml";
 import { fileURLToPath } from "node:url";
-import { resolveNpmCli, resolvePnpmCli } from "./qualification/support/npm-cli.mjs";
+import { resolveNpmCli } from "./qualification/support/npm-cli.mjs";
+import { pinnedPnpmCli } from "./qualification/support/pinned-pnpm.ts";
 import { assertSupportedToolingNodeVersion } from "../architecture/checks/node-version.mjs";
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageNames = ["core", "assembly", "resources", "conformance", "observation"];
 
 // The Node 24 compatibility CI consumer is outside the source workspace. Its package manager
-// must be the physically provisioned source pin, not a shim selected by cwd.
+// supplies its physical pnpm CLI explicitly; repository fixtures use the installed source pin.
 async function fixturePnpmCli() {
-  return process.env.GET_MODULAR_COMPAT_PNPM_CLI || await resolvePnpmCli();
+  return process.env.GET_MODULAR_COMPAT_PNPM_CLI || await pinnedPnpmCli(repository);
 }
 
 function run(executable, args, cwd, environment = {}) {

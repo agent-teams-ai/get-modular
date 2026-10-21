@@ -8,6 +8,19 @@ import { assertBun, invoke, pnpm } from "./command.ts";
 import { verifyRuntimeWorkspace } from "./projection-custody.ts";
 import { assertProjection, git, markerPath, project, projectionPaths, repository, selectedProfile } from "./policy.ts";
 
+function capturedBaseline(): { ref: string; oid: string } {
+  const base = process.env.GITHUB_BASE_REF ?? "main";
+  const ref = `refs/remotes/origin/${base}`;
+  git(repository, "check-ref-format", ref);
+  const record = git(repository, "for-each-ref", "--format=%(objectname) %(refname)", ref);
+  if (record === "") return { ref, oid: "" };
+  const match = /^([a-f0-9]{40}) (.+)$/u.exec(record);
+  if (!match || match[2] !== ref || git(repository, "cat-file", "-t", match[1]!) !== "commit") {
+    throw new Error("runtime.projection.invalid-source-baseline");
+  }
+  return { ref, oid: match[1]! };
+}
+
 export function prepareNode(destination: string): void {
   if (!isAbsolute(destination) || existsSync(destination)) throw new Error("runtime.projection.destination-must-be-new");
   const root = resolve(destination);
@@ -15,8 +28,19 @@ export function prepareNode(destination: string): void {
     throw new Error("runtime.projection.requires-clean-source-and-external-destination");
   }
   const commit = git(repository, "rev-parse", "HEAD");
+  const baseline = capturedBaseline();
   execFileSync("git", ["clone", "--no-hardlinks", "--no-checkout", "--local", repository, root], { stdio: "inherit" });
   execFileSync("git", ["-C", root, "checkout", "--detach", commit], { stdio: "inherit" });
+  // A local clone invents origin refs from local branches and omits the source's
+  // remote baseline. Preserve only the captured upstream fact, never local HEAD.
+  const currentBaseline = capturedBaseline();
+  if (currentBaseline.ref !== baseline.ref || currentBaseline.oid !== baseline.oid
+    || git(repository, "rev-parse", "HEAD") !== commit) {
+    throw new Error("runtime.projection.source-baseline-changed");
+  }
+  if (baseline.oid) git(root, "update-ref", baseline.ref, baseline.oid);
+  else git(root, "update-ref", "-d", baseline.ref);
+
   for (const path of projectionPaths) {
     writeFileSync(resolve(root, path), project(path, readFileSync(resolve(root, path), "utf8")));
   }

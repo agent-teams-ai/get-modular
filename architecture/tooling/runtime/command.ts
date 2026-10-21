@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
-import { dirname, resolve } from "node:path";
+import { basename, delimiter, dirname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BUN_VERSION, PNPM_VERSION, repository, runtimeBins, selectedProfile, toolRuntime } from "./policy.ts";
 
@@ -15,7 +15,81 @@ export function assertBun(): void {
   const version = spawnSync("bun", ["--version"], { encoding: "utf8", shell: false });
   if (version.error || version.status !== 0 || version.stdout.trim() !== BUN_VERSION) throw new Error(`runtime.bun.expected:${BUN_VERSION}`);
 }
+function pinnedPnpmEntry(path: string): string {
+  const manifest = JSON.parse(readFileSync(path, "utf8"));
+  const bin: unknown = manifest.bin?.pnpm;
+  if (manifest.name !== "pnpm" || manifest.version !== PNPM_VERSION || typeof bin !== "string"
+    || !/^(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_-]+\.(?:cjs|mjs|js)$/u.test(bin)) {
+    throw new Error("runtime.pnpm.installed-pin");
+  }
+  const root = realpathSync(dirname(path));
+  const cli = realpathSync(resolve(root, bin));
+  const child = relative(root, cli);
+  if (child.startsWith("..") || isAbsolute(child) || !statSync(cli).isFile()) {
+    throw new Error("runtime.pnpm.installed-pin");
+  }
+  return cli;
+}
+function assertPnpmIdentity(cli: string, cwd: string): void {
+  const observed = spawnSync(realpathSync(process.execPath), [cli, "--pm-on-fail=ignore", "--version"], {
+    cwd, encoding: "utf8", shell: false,
+  });
+  if (observed.error || observed.status !== 0 || observed.stdout.trim() !== PNPM_VERSION) {
+    throw new Error("runtime.pnpm.installed-identity");
+  }
+}
+export function provisionedPnpmCli(environment: NodeJS.ProcessEnv = process.env): string {
+  // Locate metadata beside the provisioned launcher; never execute a .cmd/.ps1
+  // wrapper or interpolate a PATH/ComSpec value into a shell command.
+  const anchors: string[] = [];
+  // The pinned action bootstraps an older pnpm, then self-update installs the
+  // selected package in this public v11 layout and writes PNPM_HOME/bin shims.
+  const home = environment.PNPM_HOME;
+  if (home && isAbsolute(home)) {
+    const global = resolve(home, "global/v11");
+    if (existsSync(global)) {
+      const entries = readdirSync(global, { withFileTypes: true });
+      if (entries.length > 64) throw new Error("runtime.pnpm.provisioned-layout-limit");
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const anchor = resolve(global, entry.name, "package.json");
+        let path: string;
+        try { path = createRequire(anchor).resolve("pnpm"); }
+        catch (error) {
+          if (!(error instanceof Error) || !("code" in error) || error.code !== "MODULE_NOT_FOUND") throw error;
+          continue;
+        }
+        const metadata = JSON.parse(readFileSync(path, "utf8"));
+        if (metadata.name === "pnpm" && metadata.version === PNPM_VERSION) return pinnedPnpmEntry(path);
+      }
+    }
+  }
+  const executable = environment.npm_execpath;
+  if (executable && isAbsolute(executable) && /^pnpm\.(?:cjs|mjs|js)$/u.test(basename(executable))) {
+    anchors.push(realpathSync(executable));
+  }
+  for (const directory of (environment.PATH ?? environment.Path ?? "").split(delimiter)) {
+    if (!isAbsolute(directory)) continue;
+    for (const name of ["pnpm", "pnpm.cmd", "pnpm.ps1", "pnpm.exe"]) {
+      const launcher = resolve(directory, name);
+      if (existsSync(launcher) && statSync(launcher).isFile()) {
+        anchors.push(realpathSync(launcher));
+      }
+    }
+  }
+  for (const anchor of anchors) {
+    let path: string;
+    try { path = createRequire(anchor).resolve("pnpm"); }
+    catch (error) {
+      if (!(error instanceof Error) || !("code" in error) || error.code !== "MODULE_NOT_FOUND") throw error;
+      continue;
+    }
+    return pinnedPnpmEntry(path);
+  }
+  throw new Error("runtime.pnpm.provisioned-manifest-unavailable");
+}
 export function pnpm(args: readonly string[], cwd = repository): number {
+  if ("bun" in process.versions) throw new Error("runtime.pnpm.requires-node-controller");
   // Once installed, invoke the declared pinned pnpm CLI through Node. This
   // preserves argv on Windows without sending caller paths through cmd.exe.
   const require = createRequire(resolve(repository, "package.json"));
@@ -24,23 +98,18 @@ export function pnpm(args: readonly string[], cwd = repository): number {
   try { installed = require.resolve("pnpm"); }
   catch (error) { if (!(error instanceof Error) || !("code" in error) || error.code !== "MODULE_NOT_FOUND") throw error; }
   if (installed) {
-    const manifest = JSON.parse(readFileSync(installed, "utf8"));
-    if (manifest.name !== "pnpm" || manifest.version !== PNPM_VERSION || typeof manifest.bin?.pnpm !== "string") throw new Error("runtime.pnpm.installed-pin");
-    const cli = resolve(dirname(installed), manifest.bin.pnpm);
-    const observed = spawnSync("node", [cli, "--pm-on-fail=ignore", "--version"], { cwd, encoding: "utf8" });
-    if (observed.error || observed.status !== 0 || observed.stdout.trim() !== PNPM_VERSION) throw new Error("runtime.pnpm.installed-identity");
-    return run("node", [cli, ...args], cwd);
+    const cli = pinnedPnpmEntry(installed);
+    assertPnpmIdentity(cli, cwd);
+    return run(realpathSync(process.execPath), [cli, ...args], cwd);
   }
   // Only initial installation and lock-only peer qualification use the
   // provisioned toolchain binary, with a finite non-interpolating argv set.
   if (!["install", "peers"].includes((args[0] === "--pm-on-fail=ignore" ? args[1] : args[0]) ?? "") || args.some(arg => !/^[A-Za-z0-9:._=-]+$/u.test(arg))) {
     throw new Error("runtime.pnpm.requires-installed-cli");
   }
-  const windows = process.platform === "win32";
-  const command = windows ? process.env.ComSpec || "cmd.exe" : "pnpm";
-  const version = spawnSync(command, windows ? ["/d", "/s", "/c", "pnpm --pm-on-fail=ignore --version"] : ["--pm-on-fail=ignore", "--version"], { encoding: "utf8", cwd });
-  if (version.error || version.status !== 0 || version.stdout.trim() !== PNPM_VERSION) throw new Error(`runtime.pnpm.expected:${PNPM_VERSION}`);
-  return run(command, windows ? ["/d", "/s", "/c", `pnpm ${args.join(" ")}`] : [...args], cwd);
+  const cli = provisionedPnpmCli();
+  assertPnpmIdentity(cli, cwd);
+  return run(realpathSync(process.execPath), [cli, ...args], cwd);
 }
 export function invoke(operation: string, id: string, args: string[]): number {
   const profile = selectedProfile();

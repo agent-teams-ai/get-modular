@@ -5,10 +5,12 @@ import { copyFile, cp, link, mkdir, mkdtemp, open, readFile, realpath, rm, symli
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import test from "node:test";
-import { assertM3NodePin, m3NodePinPath } from "./qualification/support/m3-node-policy.ts";
+import { assertM3NativeController, assertM3NodePin, m3NodePinPath } from "./qualification/support/m3-node-policy.ts";
 import { pinnedPnpmCli } from "./qualification/support/pinned-pnpm.ts";
 import { BUN_VERSION, PNPM_VERSION, project, selectedProfile, toolRuntime } from "../architecture/tooling/runtime/policy.ts";
+import { provisionedPnpmCli } from "../architecture/tooling/runtime/command.ts";
 
 const repository = resolve(import.meta.dirname, "..");
 const pnpmProbePaths = [
@@ -55,7 +57,7 @@ async function fixture(body: (root: string, temporary: string) => Promise<void>)
     await put(root, "architecture/foundation/dependency-declarations.yaml", "schemaVersion: 2\npackageManager:\n  kind: bun\n  workspaceManifest: pnpm-workspace.yaml\n");
     await put(root, ".bun-version", "1.4.3\n");
     await put(root, "pnpm-workspace.yaml", `packages: []\ncatalog: {pnpm: "${PNPM_VERSION}"}\n`);
-    for (const path of ["architecture/tooling/runtime/policy.ts", "architecture/tooling/runtime/command.ts",
+    for (const path of [".gitattributes", "architecture/tooling/runtime/policy.ts", "architecture/tooling/runtime/command.ts",
       "architecture/tooling/runtime/dev.ts", "architecture/tooling/runtime/admission.ts",
       "architecture/tooling/runtime/projection-custody.ts",
       "architecture/checks/node-version.mjs", "architecture/checks/tracked-workspace-integrity.mjs",
@@ -69,6 +71,11 @@ async function fixture(body: (root: string, temporary: string) => Promise<void>)
     }
     assert.equal(run(root, "git", ["add", "--all"]).status, 0);
     assert.equal(run(root, "git", ["commit", "-m", "test: initialize disposable runtime profile"]).status, 0);
+    assert.equal(run(root, "git", ["-c", "core.autocrlf=true", "checkout-index", "--all", "--force"]).status, 0);
+    for (const path of ["package.json", "architecture/foundation/repository-agent-workflow.yaml",
+      "architecture/foundation/dependency-declarations.yaml"]) {
+      assert.equal((await readFile(join(root, path), "utf8")).includes("\r"), false, `${path} must retain source LF attributes`);
+    }
     await body(root, temporary);
   } finally { await rm(temporary, { recursive: true, force: true }); }
 }
@@ -125,6 +132,71 @@ test("Node rollback derives only manager metadata in an external checkout and re
     assert.notEqual(run(root, "node", ["architecture/tooling/runtime/dev.ts", "prepare-node", target]).status, 0);
     assert.notEqual(run(root, "node", ["architecture/tooling/runtime/command.ts", "run", "observe"],
       { GET_MODULAR_RUNTIME_PROFILE: "node" }).status, 0, "Node must refuse the Bun installation root");
+  });
+});
+
+test("bootstrap pnpm uses the real provisioned JS entry without executing shell wrappers", async () => {
+  const installed = createRequire(join(repository, "package.json")).resolve("pnpm");
+  const manifest = JSON.parse(await readFile(installed, "utf8"));
+  assert.equal(manifest.version, PNPM_VERSION);
+  await fixture(async (root, temporary) => {
+    const prefix = join(temporary, "provisioned pnpm & literal space");
+    let packageRoot = join(prefix, "node_modules/pnpm");
+    await cp(dirname(installed), packageRoot, { recursive: true, dereference: true });
+    let cli = await realpath(join(packageRoot, manifest.bin.pnpm));
+    const launcher = join(prefix, "node_modules/.bin/pnpm.cmd");
+    await mkdir(dirname(launcher), { recursive: true });
+    // The real package is the execution subject. This poison wrapper must never run.
+    await writeFile(launcher, "@echo SHELL_WRAPPER_EXECUTED & exit /b 77\r\n");
+    assert.equal(provisionedPnpmCli({ PATH: dirname(launcher) }), cli);
+    assert.equal(provisionedPnpmCli({ PATH: "", npm_execpath: cli }), cli);
+    assert.throws(() => provisionedPnpmCli({ PATH: "", ComSpec: launcher }), /provisioned-manifest-unavailable/u);
+    // Match action-setup's real self-update layout: an old bootstrap remains
+    // beside .bin while the selected real package lives under PNPM_HOME/global.
+    const home = dirname(launcher), selected = join(home, "global/v11/owned-install/node_modules/pnpm");
+    await cp(packageRoot, selected, { recursive: true, dereference: true });
+    await writeFile(join(packageRoot, "package.json"), JSON.stringify({ ...manifest, version: "11.7.0" }));
+    packageRoot = selected; cli = await realpath(join(packageRoot, manifest.bin.pnpm));
+    const updatedLauncher = join(home, "bin/pnpm.cmd");
+    await mkdir(dirname(updatedLauncher), { recursive: true });
+    await copyFile(launcher, updatedLauncher);
+    const bootstrapEnvironment = { PATH: dirname(updatedLauncher), Path: dirname(updatedLauncher),
+      PNPM_HOME: home, npm_execpath: "", ComSpec: updatedLauncher,
+      npm_config_offline: "true", COREPACK_ENABLE_NETWORK: "0" };
+    assert.equal(provisionedPnpmCli(bootstrapEnvironment), cli);
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "bootstrap-TEST", private: true,
+      type: "module", packageManager: "bun@1.4.3" }));
+    await writeFile(join(root, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\nsettings:\n  autoInstallPeers: true\n  excludeLinksFromLockfile: false\nimporters:\n  .: {}\n");
+    const invoke = (args: string[]) => run(root, process.execPath, ["--input-type=module", "--eval",
+      `import {pnpm} from ${JSON.stringify(pathToFileURL(join(root, "architecture/tooling/runtime/command.ts")).href)}; process.exitCode=pnpm(${JSON.stringify(args)});`], bootstrapEnvironment);
+    // The fixture copy has no installed pnpm, so this exercises initial provisioning.
+    const passed = invoke(["--pm-on-fail=ignore", "peers", "check", "--lockfile-only"]);
+    assert.equal(passed.status, 0, passed.stdout + passed.stderr);
+    assert.doesNotMatch(passed.stdout + passed.stderr, /SHELL_WRAPPER_EXECUTED/u);
+    for (const args of [["--version"], ["run", "observe"], ["install", ";echo"]]) {
+      const rejected = invoke(args);
+      assert.notEqual(rejected.status, 0);
+      assert.match(rejected.stderr, /runtime.pnpm.requires-installed-cli/u);
+    }
+    for (const mutation of [{ ...manifest, version: "11.19.0" }, { ...manifest, name: "other" },
+      { ...manifest, bin: { pnpm: "../outside.mjs" } }, { ...manifest, bin: { pnpm: "bin/pnpm.cmd" } }]) {
+      await writeFile(join(packageRoot, "package.json"), JSON.stringify(mutation));
+      assert.throws(() => provisionedPnpmCli(bootstrapEnvironment), /runtime.pnpm.installed-pin/u);
+    }
+    await writeFile(join(packageRoot, "package.json"), JSON.stringify(manifest));
+    const actualCli = await readFile(cli);
+    await writeFile(cli, "console.log('11.19.0');\n");
+    const wrongCli = invoke(["peers", "check", "--lockfile-only"]);
+    assert.notEqual(wrongCli.status, 0);
+    assert.match(wrongCli.stderr, /runtime.pnpm.installed-identity/u);
+    await writeFile(cli, actualCli);
+    await put(root, "outside.mjs", "throw new Error('outside package');\n");
+    await symlink(join(root, "outside.mjs"), join(packageRoot, "bin/escaped.mjs"), "file");
+    await writeFile(join(packageRoot, "package.json"), JSON.stringify({ ...manifest, bin: { pnpm: "bin/escaped.mjs" } }));
+    assert.throws(() => provisionedPnpmCli(bootstrapEnvironment), /runtime.pnpm.installed-pin/u);
+    const global = join(home, "global/v11");
+    for (let index = 0; index < 64; index++) await mkdir(join(global, `limit-${index}`));
+    assert.throws(() => provisionedPnpmCli(bootstrapEnvironment), /runtime.pnpm.provisioned-layout-limit/u);
   });
 });
 
@@ -274,7 +346,7 @@ test("Bun admission compares both workspace representations before installation"
   });
 });
 
-test("M3 retains actual Node 24 cells and binds each controller to its exact committed pin", () => {
+test("M3 retains actual Node 24 cells and binds each controller to its exact committed pin", async () => {
   assert.equal(m3NodePinPath("node"), ".node-compat-version");
   for (const action of ["pack", "native", "collect"]) assert.equal(m3NodePinPath(action), ".node-version");
   assert.equal(assertM3NodePin("24.21.0\n", "24.21.0\n", "v24.21.0"), "24.21.0");
@@ -284,6 +356,11 @@ test("M3 retains actual Node 24 cells and binds each controller to its exact com
   assert.throws(() => assertM3NodePin("26.11.1\n", "26.11.1\n", "v24.21.0"), /m3.node.runtime-pin-mismatch/u);
   assert.throws(() => assertM3NodePin("26.11.1-rc.1\n", "26.11.1-rc.1\n", "v26.11.1-rc.1"));
   assert.throws(() => m3NodePinPath("unknown"), /m3.node.unknown-action/u);
+  const sourceCommit = run(repository, "git", ["rev-parse", "HEAD"]).stdout.trim();
+  const nativePin = (await readFile(join(repository, ".node-version"), "utf8")).trim();
+  assert.equal(assertM3NativeController(repository, sourceCommit, `v${nativePin}`), nativePin);
+  assert.throws(() => assertM3NativeController(repository, sourceCommit, "v24.21.0"), /m3.node.runtime-pin-mismatch/u);
+  assert.throws(() => assertM3NativeController(repository, "HEAD", `v${nativePin}`), /m3.node.invalid-source-commit/u);
 });
 
 test("M3 bounds physical Node bytes separately and retains file custody checks", async () => {

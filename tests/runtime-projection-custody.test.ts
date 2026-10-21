@@ -11,7 +11,7 @@ import { markerPath, project, projectionPaths } from "../architecture/tooling/ru
 
 const repository = resolve(import.meta.dirname, "..");
 const environment = { ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_"))),
-  GIT_AUTHOR_NAME: "iliya", GIT_AUTHOR_EMAIL: "iliyazelenkog@gmail.com",
+  GITHUB_BASE_REF: "main", GIT_AUTHOR_NAME: "iliya", GIT_AUTHOR_EMAIL: "iliyazelenkog@gmail.com",
   GIT_COMMITTER_NAME: "iliya", GIT_COMMITTER_EMAIL: "iliyazelenkog@gmail.com" };
 function git(root: string, ...args: string[]): string {
   return execFileSync("git", ["-C", root, ...args], { env: environment, encoding: "utf8" }).trimEnd();
@@ -30,17 +30,45 @@ async function fixture(body: (root: string) => Promise<void>): Promise<void> {
     await put(source, "ordinary.txt", "owned\n");
     await put(source, "architecture/foundation/repository-agent-workflow.yaml", "schemaVersion: 2\npackageManager: bun\n");
     await put(source, "architecture/foundation/dependency-declarations.yaml", "schemaVersion: 2\npackageManager:\n  kind: bun\n");
-    for (const path of ["architecture/tooling/runtime/policy.ts", "architecture/tooling/runtime/dev.ts",
+    for (const path of [".gitattributes", "architecture/tooling/runtime/policy.ts", "architecture/tooling/runtime/dev.ts",
       "architecture/tooling/runtime/command.ts", "architecture/tooling/runtime/projection-custody.ts",
       "architecture/checks/tracked-file-custody.mjs", "architecture/checks/node-version.mjs"]) {
       await mkdir(dirname(join(source, path)), { recursive: true });
       await copyFile(join(repository, path), join(source, path));
     }
     git(source, "init", "--initial-branch=main"); git(source, "add", "--all"); git(source, "commit", "-m", "test: projection custody source");
+    git(source, "update-ref", "refs/remotes/origin/main", "HEAD");
+    git(source, "commit", "--allow-empty", "-m", "test: proposal after upstream baseline");
+    git(source, "-c", "core.autocrlf=true", "checkout-index", "--all", "--force");
+    for (const path of projectionPaths) {
+      assert.equal((await readFile(join(source, path), "utf8")).includes("\r"), false, `${path} must retain source LF attributes`);
+    }
     execFileSync(process.execPath, ["architecture/tooling/runtime/dev.ts", "prepare-node", target], { cwd: source, env: environment });
     await body(target);
   } finally { await rm(temporary, { recursive: true, force: true }); }
 }
+
+test("Node preparation preserves the exact captured upstream baseline without inventing a missing ref", async () => {
+  await fixture(async root => {
+    const source = JSON.parse(await readFile(join(root, markerPath), "utf8")).source as string;
+    const baseline = git(source, "rev-parse", "refs/remotes/origin/main");
+    assert.notEqual(baseline, git(root, "rev-parse", "HEAD"));
+    assert.equal(git(root, "rev-parse", "refs/remotes/origin/main"), baseline);
+    assert.equal(git(root, "diff", "--name-status", "--diff-filter=ACMRTD", "origin/main...HEAD", "--"), "");
+    git(source, "update-ref", "refs/remotes/origin/main", "HEAD");
+    assert.equal(git(root, "rev-parse", "refs/remotes/origin/main"), baseline, "source ref movement must not move the captured clone baseline");
+    git(source, "update-ref", "-d", "refs/remotes/origin/main");
+    const target = join(dirname(root), "missing-baseline");
+    execFileSync(process.execPath, ["architecture/tooling/runtime/dev.ts", "prepare-node", target], { cwd: source, env: environment });
+    assert.equal(git(target, "for-each-ref", "--format=%(objectname)", "refs/remotes/origin/main"), "",
+      "local main must never be relabeled as an upstream baseline");
+    git(source, "update-ref", "refs/remotes/origin/main", git(source, "rev-parse", "HEAD:package.json"));
+    assert.throws(() => execFileSync(process.execPath, ["architecture/tooling/runtime/dev.ts", "prepare-node", join(dirname(root), "noncommit-base")],
+      { cwd: source, env: environment, stdio: "pipe" }), /runtime.projection.invalid-source-baseline/u);
+    assert.throws(() => execFileSync(process.execPath, ["architecture/tooling/runtime/dev.ts", "prepare-node", join(dirname(root), "invalid-base")],
+      { cwd: source, env: { ...environment, GITHUB_BASE_REF: "invalid ref" }, stdio: "pipe" }), /Command failed/u);
+  });
+});
 
 test("Node profile reads authenticate the exact three projections while default custody stays strict", async () => {
   await fixture(async root => {
@@ -50,6 +78,11 @@ test("Node profile reads authenticate the exact three projections while default 
     assert.deepEqual(await readRuntimeIndexSnapshotFile(sourceSnapshot, "package.json", "ordinary source"),
       await readIndexSnapshotFile(sourceSnapshot, "package.json", "strict source"));
     await verifyRuntimeWorkspace(source);
+    for (const path of projectionPaths) {
+      if (path === "package.json") { continue; }
+      const sourcePolicy = await readFile(join(source, path), "utf8");
+      assert.throws(() => project(path, sourcePolicy.replaceAll("\n", "\r\n")), /runtime.projection.source-policy/u);
+    }
     const before = await Promise.all(projectionPaths.map(path => readFile(join(root, path))));
     await assert.rejects(readIndexSnapshotFile(snapshot, "package.json", "strict manifest"), /working-tree-diverged/u);
     await assert.rejects(assertTrackedWorkspaceMatchesHead(root), /working-tree bytes/u);
