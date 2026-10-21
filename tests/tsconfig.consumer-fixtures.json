@@ -5,7 +5,8 @@
     "qualification/consumer-fixtures/growth/upstream-compiler.ts",
     "qualification/consumer-fixtures/growth/source.ts",
     "qualification/consumer-fixtures/source/installed.ts",
-    "qualification/consumer-fixtures/source/policy.ts"
+    "qualification/consumer-fixtures/source/policy.ts",
+    "npm-release-consumer.ts"
   ],
   "include": []
 }

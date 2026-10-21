@@ -654,7 +654,7 @@ for (const carrier of ["promise-subclass", "thenable-getter", "thenable-call", "
           return promise;
         }
         if (carrier === "thenable-getter") return { get then() { reads += 1; echo(); return () => {}; } };
-        return { get then() { reads += 1; return () => { echo(); }; } };
+        return { get then() { reads += 1; return resolve => { echo(); resolve("obsolete"); }; } };
       },
       onLoading: () => undefined,
       onResult: result => { results.push(result); },

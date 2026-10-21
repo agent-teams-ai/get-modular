@@ -43,6 +43,7 @@ fullScanPaths:
   - packages/resources/package.json
   - packages/resources/tsconfig.types.json
   - packages/resources/tsconfig.types.bundler.json
+  - packages/resources/tsconfig.test-tooling.json
   - packages/conformance/tsconfig.json
   - packages/conformance/package.json
   - packages/conformance/tsconfig.types.json
@@ -71,7 +72,6 @@ fullScanPaths:
   - tests/qualification/sdk-growth-public-import.ts
   - tests/qualification/sdk-growth-synthetic-predecessor.ts
   - tests/tsconfig.sdk-growth-registry.json
-  - architecture/checks/native-public-api-migration.ts
   - architecture/tooling/native-public-api-migration
   - tests/native-public-api-migration.test.ts
   - tests/tsconfig.native-public-api-migration.json

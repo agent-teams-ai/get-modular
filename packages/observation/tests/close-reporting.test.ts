@@ -59,7 +59,7 @@ test("T45 close reports every live watch when its reporter closes their shared s
   assert.equal(store.read(["value"]).values.value, 1);
 });
 
-test("T36 T45 close reports watch and active load siblings while retaining the load's physical drain", { timeout: 30_000 }, async context => {
+test("T36 T45 escalation reports the active revision and retains dependencies through the loader's finally", { timeout: 30_000 }, async context => {
   const host = createScope({ name: "close-reporting-load" });
   const run = Promise.withResolvers<number>();
   const cleanup = Promise.withResolvers<void>();
@@ -69,26 +69,37 @@ test("T36 T45 close reports watch and active load siblings while retaining the l
     await host.control.close();
   });
   const owner = host.resources.child({ name: "owner" });
+  const trace: string[] = [];
+  host.resources.use({ [Symbol.dispose]: () => { trace.push("provider:close"); } }, "provider");
   const subscriber = host.resources.child({ name: "subscriber" });
   const entered = Promise.withResolvers<AbortSignal>();
   const cleanupEntered = Promise.withResolvers<void>();
+  const stillRunning = Promise.withResolvers<ListenerError>();
   const reports: ListenerError[] = [];
   const publications: unknown[] = [];
   let closing: Promise<CloseReport> | undefined;
+  let parentClosing: Promise<CloseReport> | undefined;
+  let reporterClosing: Promise<CloseReport> | undefined;
   let closeFinished = false;
   let cleanups = 0;
   let loadings = 0;
+  let changes = 0;
   const store = createStore({ value: 0 }, {
     name: "state", resources: owner.resources,
     reportError: report => {
       reports.push(report);
-      closing ??= subscriber.control.close();
+      if (typeof report.cause === "object" && report.cause !== null && "code" in report.cause && report.cause.code === "observation.load.still-running") {
+        reporterClosing = host.control.close();
+        stillRunning.resolve(report);
+      } else {
+        closing ??= subscriber.control.close();
+      }
     },
   });
   const facet = store.readonly();
   facet.watch(facet.read(["value"]), {
     resources: subscriber.resources, name: "consumer/watch",
-    onChange: snapshot => { publications.push(snapshot); },
+    onChange: () => { changes += 1; },
   });
   facet.load(facet.read(["value"]), {
     resources: subscriber.resources, name: "consumer/load",
@@ -96,9 +107,11 @@ test("T36 T45 close reports watch and active load siblings while retaining the l
       entered.resolve(signal);
       try { return await run.promise; }
       finally {
+        trace.push("load:finally");
         cleanupEntered.resolve();
         await cleanup.promise;
         cleanups += 1;
+        trace.push("load:finished");
       }
     },
     onLoading: () => { loadings += 1; },
@@ -107,28 +120,49 @@ test("T36 T45 close reports watch and active load siblings while retaining the l
   });
   const signal = await entered.promise;
   store.set({ value: 1 });
+  await delivered({ stores: [facet] }); // revision 1 is offered while revision 0 still owns the read
+  assert.equal(changes, 1);
   store.close();
   assertClosedReports(reports, ["consumer/watch", "consumer/load"], 1);
   assert.equal(signal.aborted, true);
   assert.equal(liveSubscriptions(facet), 0);
   assert.ok(closing !== undefined);
-  const completed = closing.then(report => { closeFinished = true; return report; });
-  await delivered({ stores: [facet] });
+  parentClosing = host.control.close({ escalate: AbortSignal.abort() });
+  const completed = parentClosing.then(report => { closeFinished = true; return report; });
+  const first = await Promise.race([
+    stillRunning.promise.then(report => ({ kind: "reported", report } as const)),
+    completed.then(() => ({ kind: "premature-close" } as const)),
+  ]);
+  assert.equal(first.kind, "reported", "escalation must not finish cleanup while the loader is running");
+  if (first.kind !== "reported") {return;}
+  assert.equal(first.report.source, "state");
+  assert.equal(first.report.subscription, "consumer/load");
+  assert.equal(first.report.revision, 0, "attribute the active run, not the newer queued revision");
+  assert.equal(reporterClosing, parentClosing, "a reentrant reporter joins the same parent flight");
+  const snapshot = await host.control.close({ abandon: AbortSignal.abort() });
+  assert.equal(snapshot.settled, false);
+  assert.ok(snapshot.debts.some(debt => debt.state === "pending" && debt.path.join("/") === "close-reporting-load/subscriber/load:consumer/load/drain"));
+  assert.ok(snapshot.debts.some(debt => debt.state === "not-run" && debt.path.join("/") === "close-reporting-load/provider"));
   assert.equal(closeFinished, false, "scope close must wait for the running operation");
+  assert.deepEqual(trace, [], "the provider stays open after escalation and abandonment");
   assert.deepEqual(publications, []);
 
   run.resolve(42);
   await cleanupEntered.promise;
-  await delivered({ stores: [facet] });
   assert.equal(closeFinished, false, "the loader promise still owns its unfinished cleanup");
+  assert.deepEqual(trace, ["load:finally"]);
   cleanup.resolve();
   assert.deepEqual(await completed, { complete: true, settled: true, debts: [] });
+  assert.deepEqual(await closing, { complete: true, settled: true, debts: [] });
   await settled({ stores: [facet] });
   assert.equal(cleanups, 1);
-  assert.equal(loadings, 1);
+  assert.equal(loadings, 2);
+  assert.equal(changes, 1, "no watch delivery after the scope detached");
   assert.deepEqual(publications, []);
+  assert.deepEqual(trace, ["load:finally", "load:finished", "provider:close"]);
+  assert.equal(reports.length, 3, "repeated close and reporter reentry must not duplicate the escalation report");
 
   store.close();
-  assertClosedReports(reports, ["consumer/watch", "consumer/load"], 1);
+  assertClosedReports(reports.filter(report => report !== first.report), ["consumer/watch", "consumer/load"], 1);
   assert.deepEqual(await subscriber.control.close(), { complete: true, settled: true, debts: [] });
 });

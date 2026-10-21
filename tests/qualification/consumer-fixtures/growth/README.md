@@ -309,10 +309,10 @@ package and builtin policy over all of `src`. Five aggregate role boundaries
 do not replace FMS's per-feature privacy, use-edge and cycle checks.
 
 The new TEST profile separately records the reviewed current CMS at Get Modular
-commit `077434e34d75506a610bc9271f8b5b9d5718c876`,
+commit `7131d0d7a6bb5dd4c3e8906ccac065c0be0e0333`,
 `docs/architecture/common-assembly.md#consumer-module-standard`, Git blob
-`ae6792543bd19acc948e177e8d55632c9d51134e`, full-document SHA-256
-`c2fe582a14ff6e79620b232ca7ffc914afb0474ec21fd43f208251dd7252f4a3`.
+`dad8b6280cf999d9079d3106094e5626b63d83f4`, full-document SHA-256
+`a6dac5d303adf80be3151c6703c919b715fd880a941a4ad68e927c87a7ee5882`.
 The existing `compositionContracts` reference
 `bd949a9a670862fea851a7791fce772fdef3b4fc` identifies organization FMS v1.1,
 not an earlier CMS document; it remains unchanged alongside the adopted FMS v1
@@ -354,3 +354,24 @@ One retained baseline per selected size is inspected in order, without repeating
 the compiler or runtime experiments. The new source observations qualify only
 their exact copied source identities; they do not relabel historical
 `scanner: not-collected` fields or resolve the supported TS7.0.2 compiler blocker.
+
+The prior growth pin was `077434e34d75506a610bc9271f8b5b9d5718c876` /
+`ae6792543bd19acc948e177e8d55632c9d51134e` /
+`c2fe582a14ff6e79620b232ca7ffc914afb0474ec21fd43f208251dd7252f4a3`.
+The reviewed current delta adds ADR-0039's Observation load cleanup guidance;
+the selected flat source predicates are unchanged. This TEST pin migration
+changes no accepted ADR or production adoption profile.
+
+Completed positive observations reject after the 60-second source budget,
+including baseline, the permitted public-surface control and restoration.
+That elapsed-time check does not interrupt synchronous scanner work. Large-tree
+qualification still requires the external per-source and aggregate supervisors
+above; the ordinary N8 regression retains its existing 600-second test timeout.
+
+The dated `source-evidence/2026-10-20/` tree retains all 79 original files
+(8,069,203 bytes). Its unchanged `observations.json` indexes the exact hashes
+and byte counts of its 78 payloads. GitHub marks these generated observations
+as generated so the maintained helper is visible first; all raw diffs remain
+inspectable. Only this immutable dated evidence is excluded from CSpell because
+encoded paths and temporary directory suffixes are measured data, not prose.
+The helper, current documentation and future evidence keep their normal checks.

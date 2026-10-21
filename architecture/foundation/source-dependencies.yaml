@@ -313,6 +313,7 @@ boundaries:
     entrypoints:
       - packages/assembly/src/features/construction/types.ts
       - packages/assembly/src/features/construction/factory.ts
+      - packages/assembly/src/features/construction/format-failure.ts
     allow:
       boundaries: []
       packages:
@@ -986,6 +987,7 @@ boundaries:
       - architecture/tooling/codemods/run.mjs
       - architecture/tooling/codemods/project.ts
       - architecture/tooling/first-core-release.mjs
+      - architecture/tooling/npm-release/run.ts
       - architecture/tooling/generate-core.mjs
       - architecture/tooling/test-assembly-types.mjs
       - tests/qualification/m2-candidate/combined-case-inventory.mjs

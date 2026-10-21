@@ -6,8 +6,12 @@ import * as assembly from "@get-modular/assembly";
 import * as core from "@get-modular/core";
 
 const require = createRequire(import.meta.url);
-assert.deepEqual(Object.keys(assembly).sort(), ["AssemblyBindingError", "assemblyFor", "declareModule", "defineContract", "entriesOf", "group", "implement", "input"]);
+assert.deepEqual(Object.keys(assembly).sort(), ["AssemblyBindingError", "assemblyFor", "declareModule", "defineContract", "entriesOf", "formatFailure", "group", "implement", "input"]);
 assert.deepEqual(Object.keys(core).sort(), ["compileComposition", "compileCompositionJson", "defineModule", "many", "optional", "required"]);
+assert.match(assembly.formatFailure({ ok: false, diagnostics: [{
+  code: "binding.missing", phase: "binding", path: [],
+  coordinate: { implementationId: "packed/consumer", slotId: "value" }, details: { reason: "missing" },
+}] }), /packed\/consumer/u);
 for (const [name, namespace] of [["@get-modular/assembly", assembly], ["@get-modular/core", core]]) {
   assert.equal(require(name), namespace);
   assert.equal(fileURLToPath(import.meta.resolve(name)), join(import.meta.dirname, "node_modules", name, "dist/index.js"));

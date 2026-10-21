@@ -23,9 +23,9 @@ export const growthSourceAuthority = {
   ...sourceProfile.authority,
   reviewedCms: {
     repository: "agent-teams-ai/get-modular", path: "docs/architecture/common-assembly.md",
-    anchor: "consumer-module-standard", commit: "077434e34d75506a610bc9271f8b5b9d5718c876",
-    gitBlob: "ae6792543bd19acc948e177e8d55632c9d51134e",
-    sha256: "c2fe582a14ff6e79620b232ca7ffc914afb0474ec21fd43f208251dd7252f4a3",
+    anchor: "consumer-module-standard", commit: "7131d0d7a6bb5dd4c3e8906ccac065c0be0e0333",
+    gitBlob: "dad8b6280cf999d9079d3106094e5626b63d83f4",
+    sha256: "a6dac5d303adf80be3151c6703c919b715fd880a941a4ad68e927c87a7ee5882",
     scope: "selected flat growth source predicates; production adoption unchanged",
   },
 };
@@ -156,8 +156,13 @@ async function observe(directory: string, profile: Profile) {
   const topology = observedTopology(source.graph, profile);
   const completeInventory = JSON.stringify(source.inventory.files) === JSON.stringify(profile.requiredFiles)
     && JSON.stringify(source.graph.files) === JSON.stringify(profile.requiredFiles);
-  return { outcome: source.outcome === "passed" && policy.exit === 0 && completeInventory && topology.outcome === "passed"
-    ? "passed" : "rejected", completeInventory, source, policy, topology, wallMs: performance.now() - started };
+  const outcome = source.outcome === "passed" && policy.exit === 0 && completeInventory && topology.outcome === "passed"
+    ? "passed" : "rejected";
+  const wallMs = performance.now() - started;
+  // A completed positive cannot qualify after the source budget. Large measurements additionally
+  // require their external supervisor: an in-process timer cannot interrupt synchronous owner work.
+  if (outcome === "passed") assert.ok(wallMs <= 60000, "fixture.growth.source.positive-deadline");
+  return { outcome, completeInventory, source, policy, topology, wallMs };
 }
 
 async function publicTools() {

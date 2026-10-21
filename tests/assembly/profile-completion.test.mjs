@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { many, optional, required } from "@get-modular/core";
-import { assemblyFor, implement, input } from "@get-modular/assembly";
+import { assemblyFor, formatFailure, implement, input } from "@get-modular/assembly";
 import { binding, compile, declaration, profile, slot, synthetic } from "./fixture.mjs";
 
 // ADR-0035: prepare completes the profile from the bound entries and never guesses.
@@ -121,6 +121,10 @@ test("a completed binding with another revision is rejected by Core, not by Asse
   assert.equal(result.status, "failed");
   assert.equal(result.error.code, "assembly.prepare.core-rejected");
   assert.ok(result.diagnostics.length > 0);
+  const formatted = formatFailure(result);
+  for (const fact of ["binding.compatibility-mismatch", "synthetic/consumer", "synthetic/provider", 'slotId: "value"', "synthetic/v1", "synthetic/v2"]) {
+    assert.ok(formatted.includes(fact), fact);
+  }
   assert.deepEqual(calls, []);
 });
 

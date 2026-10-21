@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { afterEach } from "node:test";
 import { createScope as scope, scoped } from "@get-modular/resources";
 import { createStore } from "../../dist/index.js";
@@ -13,15 +14,20 @@ export const codeOf = error => error?.code;
 export const debtsOf = report => report.debts.map(debt => ({ path: debt.path.join("/"), state: debt.state,
   code: debt.state === "failed" ? codeOf(debt.cause) : undefined }));
 const scopes = [];
+const heldGates = [];
 export function createScope(options) { const result = scope(options); scopes.push(result); return result; }
 afterEach(async () => {
   const closed = scopes.splice(0);
-  await Promise.all(closed.map(item => item.control.close({ escalate: AbortSignal.abort() })));
+  // Failed assertions must still release the reads these tests deliberately held open.
+  for (const release of heldGates.splice(0)) release();
+  const reports = await Promise.all(closed.map(item => item.control.close({ escalate: AbortSignal.abort() })));
+  for (const report of reports) assert.equal(report.complete, true, "test scope cleanup must complete without debt");
   await delivered();
 });
 export function deferred() {
   let resolve; let reject;
   const promise = new Promise((ok, fail) => { resolve = ok; reject = fail; });
+  heldGates.push(resolve);
   return { promise, resolve, reject };
 }
 export function world(initial = { a: 0, b: 0, region: "r0" }, limits = {}) {
@@ -65,10 +71,12 @@ export function cooperativeLoader() {
 export function regionLoad(facet, resources, stubborn) {
   const runs = []; const published = [];
   facet.load(facet.read(["region"]), { resources, name: "catalog",
-    loader: ({ values }, { signal }) => new Promise((resolve, reject) => {
-      runs.push({ region: values.region, signal, release: resolve });
-      if (!stubborn) signal.addEventListener("abort", () => { reject(signal.reason); }, { once: true });
-    }),
+    loader: ({ values }, { signal }) => {
+      const gate = deferred();
+      runs.push({ region: values.region, signal, release: gate.resolve });
+      if (!stubborn) signal.addEventListener("abort", () => { gate.reject(signal.reason); }, { once: true });
+      return gate.promise;
+    },
     onLoading: () => undefined,
     onResult: result => { published.push(result); }, onError: cause => { published.push(`error:${String(cause)}`); },
   });
