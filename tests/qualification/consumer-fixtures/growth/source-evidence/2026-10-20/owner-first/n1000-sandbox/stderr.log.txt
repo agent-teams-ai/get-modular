@@ -1,0 +1,28 @@
+node:internal/child_process:1175
+    result.error = new ErrnoException(result.error, 'spawnSync ' + options.file);
+                   ^
+
+Error: spawnSync /tmp/gm-completion-tools-20261020/node-v26.11.1-linux-x64/bin/node EPERM
+    at Object.spawnSync (node:internal/child_process:1175:20)
+    at spawnSync (node:child_process:974:24)
+    at invokeFixtureNode (file:///tmp/gm-growth-source-20261020/tests/qualification/consumer-fixtures/support/materialize.mjs:46:18)
+    at checkInstalledSourcePolicy (file:///tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000/policy.ts:29:18)
+    at async observe (file:///tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000/source.ts:152:18)
+    at async checkGrowthSource (file:///tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000/source.ts:180:18)
+    at async file:///tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000/run.ts:4:16 {
+  errno: -1,
+  code: 'EPERM',
+  syscall: 'spawnSync /tmp/gm-completion-tools-20261020/node-v26.11.1-linux-x64/bin/node',
+  path: '/tmp/gm-completion-tools-20261020/node-v26.11.1-linux-x64/bin/node',
+  spawnargs: [
+    '/tmp/gm-foundation-growth-owner-20261020/.worker-tmp/profiles/node-359085664d7e51cced497c30eb0e82cc68baf346/packages/engineering-foundation/dist/cli.js',
+    'check',
+    'architecture.source-dependencies',
+    '--consumer',
+    '/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n1000/subject',
+    '--format',
+    'json'
+  ]
+}
+
+Node.js v26.11.1

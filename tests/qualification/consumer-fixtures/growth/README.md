@@ -5,8 +5,12 @@ arithmetic and independent provider pins in the
 [G scenarios](../../../../docs/qualification/module-fixture-scenarios.md#g--a-real-file-tree-with-bounded-useful-computation).
 The [P5 plan](../../../../docs/qualification/module-fixture-plan.md) and
 [measurement handoff](../../../../docs/qualification/module-fixture-handoff.md#source-freshness-and-measurement-evidence)
-remain the authority. Source conformance is **incomplete**; this driver does not
-select a scanner or report process RSS.
+remain the authority. The separate selected-flat source series **passes** for
+N=8, 100, 500 and 1000 with the published Foundation 2.1.1 and FMS 0.2.3
+packages; see the [current source receipt](source-evidence/2026-10-21/observations.json).
+The compiler/runtime measurement driver retains its historical
+`scanner: not-collected` result and does not report process RSS. The supported
+TS7.0.2 compiler blocker remains open.
 
 ## Correctness and optional measurement
 
@@ -296,3 +300,129 @@ evidence.
 
 This growth run selected no source scanner, so its source conformance remains
 **incomplete**. P4's selected flat source observations are a separate result.
+
+## Separate growth source qualification
+
+The [2026-10-21 installed-package receipt](source-evidence/2026-10-21/observations.json)
+records the current selected-flat source **PASS**. Normal registry installation
+uses exact Foundation 2.1.1 and FMS 0.2.3 archives; npm signature verification,
+archive SHA-512 and provenance subjects bind both to release commit
+`0e0de78d4c2089be8effc37da4cfd70eab22358c`. The CMS review against current
+upstream `7131d0d` found no new delta. Immutable FMS and CMS authority bytes,
+SDK pending/hold state and production adoption remain unchanged.
+
+| Size | Source files | Resolved imports | External imports | Supervised source stage |
+| --- | --- | --- | --- | --- |
+| 8 | 59 | 109 | 51 | 4.889 s |
+| 100 | 703 | 1,397 | 603 | 1.503 s |
+| 500 | 3,503 | 6,997 | 3,003 | 7.862 s |
+| 1000 | 7,003 | 13,997 | 6,003 | 21.549 s |
+
+All cold source identities match the retained subjects. N8 includes eight
+controls and restoration. The entire supervised series completed in 36.656 s;
+the worker was reaped before its PASS receipt. Negative controls separately
+prove deadline failure, process-group kill/reap and temporary consumer cleanup.
+Four ordinary `.json.gz` reports retain 16,551,623 original bytes in 571,197
+compressed bytes, with both identities in the compact receipt. Inspect a report
+with `gzip -dc`; no custom archive tool is required. This result qualifies only
+the selected flat source scope. Historical compiler/runtime observations and
+the supported TS7.0.2 blocker retain their separate status.
+
+`source.ts` supplies the source-only follow-up for the existing flat growth
+recipe. It reuses P4's independent directory inventory and `checkFlatSource`
+adapter: the installed public Foundation graph supplies actual files, resolved
+imports and runtime export facts; the public FMS kernel checks the declared
+feature surfaces; public Get Modular conformance checks the CMS layout records.
+The installed Foundation source-dependency CLI separately enforces the role,
+package and builtin policy over all of `src`. Five aggregate role boundaries
+do not replace FMS's per-feature privacy, use-edge and cycle checks.
+
+The new TEST profile separately records the reviewed current CMS at Get Modular
+commit `7131d0d7a6bb5dd4c3e8906ccac065c0be0e0333`,
+`docs/architecture/common-assembly.md#consumer-module-standard`, Git blob
+`dad8b6280cf999d9079d3106094e5626b63d83f4`, full-document SHA-256
+`a6dac5d303adf80be3151c6703c919b715fd880a941a4ad68e927c87a7ee5882`.
+The existing `compositionContracts` reference
+`bd949a9a670862fea851a7791fce772fdef3b4fc` identifies organization FMS v1.1,
+not an earlier CMS document; it remains unchanged alongside the adopted FMS v1
+and selected kernel identities.
+
+The historical P4 CMS observation at `a3a079b` / `2f1b330` was blob
+`250f312d3cae733935d0ac48ddde8502665417df`, full-document SHA-256
+`e5cb510c5ea83e54a6833cc40b6ad31fc5cf8c70d9838e4e0c6923edc6f70919`.
+Review of the delta found the optional Observation communication, scope-bound
+watch/load and disposer guidance, its testing-import restriction and linked
+checks. The flat feature maps, role and descriptor surfaces, inputs, groups and
+selected source predicates are unchanged. The source-helper change does not alter accepted
+ADRs or production adoption. The current tooling package binding is recorded
+below; nested and dynamic/Observation consumers remain unselected. Growth's application and public-contract policy
+allows no package or builtin dependency.
+
+The ordinary Assembly entry adds one source-only N8 check and eight controls
+for the new growth mapping: public/private sibling surfaces, application imports
+of descriptors, input ownership, module-level composition permission,
+an actual type-use cycle, a use-case runtime export and application-to-Assembly
+dependency refusal. Both the owner's rejecting verdict and the overall rejection
+must accompany each required diagnostic. Existing P4 parser, computed-load,
+re-export, root, overflow and filesystem-policy cases retain their unchanged
+owner/adapter witnesses; this is not another syntax matrix.
+
+Historical large-tree qualification uses physical copies of retained subjects.
+It first verifies the actual final shared-contract-edit identity and every
+recorded `after` file, then reverses exactly the six recorded edits in the copy
+and requires the original cold source SHA, census and bytes. The source graph,
+independent disk census and complete expected `7N+3` file list must agree.
+Observed predecessor type-map imports and declaration value imports separately
+match the independent recipe; expected edges never substitute for observed
+source facts. The original consumer trees and historical reports stay immutable.
+
+The declared scanner budgets are 60 seconds per positive source chain,
+30 seconds per Foundation policy subprocess and 600 seconds for an external
+aggregate supervisor enclosing copy, restoration, hashing and scanner work.
+One retained baseline per selected size is inspected in order, without repeating
+the compiler or runtime experiments. The new source observations qualify only
+their exact copied source identities; they do not relabel historical
+`scanner: not-collected` fields or resolve the supported TS7.0.2 compiler blocker.
+
+The prior growth pin was `077434e34d75506a610bc9271f8b5b9d5718c876` /
+`ae6792543bd19acc948e177e8d55632c9d51134e` /
+`c2fe582a14ff6e79620b232ca7ffc914afb0474ec21fd43f208251dd7252f4a3`.
+The reviewed current delta adds ADR-0039's Observation load cleanup guidance;
+the selected flat source predicates are unchanged. This TEST pin migration
+changes no accepted ADR or production adoption profile.
+
+Completed positive observations reject after the 60-second source budget,
+including baseline, the permitted public-surface control and restoration.
+That elapsed-time check does not interrupt synchronous scanner work. Large-tree
+qualification still requires the external per-source and aggregate supervisors
+above; the ordinary N8 regression retains its existing 600-second test timeout.
+
+The dated `source-evidence/2026-10-20/` tree retains all 79 original files
+(8,069,203 bytes). Its unchanged `observations.json` indexes the exact hashes
+and byte counts of its 78 payloads. GitHub marks these generated observations
+as generated so the maintained helper is visible first; all raw diffs remain
+inspectable. Only this immutable dated evidence is excluded from CSpell because
+encoded paths and temporary directory suffixes are measured data, not prose.
+The helper, current documentation and future evidence keep their normal checks.
+The current compact JSON remains checked, with its recorded server username
+recognized as a proper name in a dated spelling override.
+
+For a new installed-package source-only series on Linux, after the existing
+package builds:
+
+```sh
+node tests/qualification/consumer-fixtures/growth/measure-source.ts --directory /absolute/new-result-directory
+```
+
+The typed runner reconstructs only source bytes because the original physical
+subjects are unavailable. Each generated source tree must match its retained
+cold SHA-256, census and byte count before checking. It invokes neither the
+compiler nor the runtime experiment. Its external parent supervises the owned
+process group, kills it on a 60-second source stage or 600-second aggregate
+deadline and reaps the worker before writing the result. N8 includes all eight
+controls and restoration within its source stage; the aggregate covers all four
+sizes together. This is a tighter series envelope than the original per-positive
+source and per-size aggregate limits. Failed results are retained;
+an existing output directory is refused. Raw reports stay with their compact
+hash-bound index and supervisor receipt. This optional measurement is included
+in the existing strict fixture typecheck, not added to every repository check.

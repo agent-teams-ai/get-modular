@@ -1,0 +1,14 @@
+{
+  "/tmp/gm-growth-source-20261020/node_modules/.pnpm/@agent-teams+engineering-foundation@1.10.0_@types+node@24.19.1/node_modules/@agent-teams/engineering-foundation/dist/capabilities/source-dependencies/adapters/inbound/configuration/parse-capability-config.js": {
+    "replacement": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/parse.instrumented.js",
+    "originalSha256": "ad989ba0c3e53cbd6640adc8c78e8e9ee6ebf986d9d8f21ffbed0cc885e9014e"
+  },
+  "/tmp/gm-growth-source-20261020/node_modules/.pnpm/@agent-teams+engineering-foundation@1.10.0_@types+node@24.19.1/node_modules/@agent-teams/engineering-foundation/dist/capabilities/source-dependencies/application/use-cases/analyze-source-dependencies.js": {
+    "replacement": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/analyze.instrumented.js",
+    "originalSha256": "8ff3373f6ba7dbbf145c75f7a731d6627d62fa0e0eb7515a5dcffe8f55a2eb54"
+  },
+  "/tmp/gm-growth-source-20261020/node_modules/.pnpm/@agent-teams+engineering-foundation@1.10.0_@types+node@24.19.1/node_modules/@agent-teams/engineering-foundation/dist/capabilities/source-dependencies/application/model/repository-path.js": {
+    "replacement": "/tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/path.instrumented.js",
+    "originalSha256": "49ac3d1f964ee4f8c1521761154f8198897de96d36f75b9a8217e827d5ef43bd"
+  }
+}

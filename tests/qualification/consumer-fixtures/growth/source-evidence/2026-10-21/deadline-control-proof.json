@@ -1,0 +1,28 @@
+{
+  "outcome": "passed",
+  "purpose": "The exact supervisor kills and reaps its live owned worker at its source deadline and retains a specific failure receipt.",
+  "mutation": "Only the copied runner's sourceMs changes from 60000 to 1; canonical runner is unchanged.",
+  "sourceSha256": "a912f5aafc91ac1f97fce1db0ceabfc94dc35fa01ba3b5db3765773323bcd7dc",
+  "probeSha256": "d5d276ad7b2c904cdaab61c6e3332eb6d30761b7f8974b264605455132d00a87",
+  "workerAbsentAfterClose": true,
+  "receipt": {
+    "outcome": "failed",
+    "sourceMs": 1,
+    "aggregateMs": 600000,
+    "foundationCliMs": 30000,
+    "wallMs": 134.158406,
+    "workerPid": 2636145,
+    "termination": {
+      "method": "process-group",
+      "signal": "SIGKILL",
+      "sent": true
+    },
+    "stages": [],
+    "failure": "positive source deadline: n8",
+    "code": null,
+    "signal": "SIGKILL"
+  },
+  "exit": 1,
+  "stdout": "",
+  "stderr": "node:internal/modules/run_main:111\n    triggerUncaughtException(\n    ^\n\nAssertionError [ERR_ASSERTION]: fixture.growth.source.failed: retained /srv/workers/adhoc/iliya/gm209-20261021/evidence/deadline-control\n    at supervise (file:///srv/workers/adhoc/iliya/gm209-20261021/repo/tests/qualification/consumer-fixtures/growth/measure-source.deadline-control.ts:146:10)\n    at async file:///srv/workers/adhoc/iliya/gm209-20261021/repo/tests/qualification/consumer-fixtures/growth/measure-source.deadline-control.ts:158:3 {\n  generatedMessage: false,\n  code: 'ERR_ASSERTION',\n  actual: false,\n  expected: true,\n  operator: '==',\n  diff: 'simple'\n}\n\nNode.js v26.11.1\n"
+}

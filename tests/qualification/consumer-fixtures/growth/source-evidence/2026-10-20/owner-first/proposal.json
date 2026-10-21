@@ -1,0 +1,40 @@
+{
+  "recordedAtUtc": "2026-10-20T10:50:27.540092+00:00",
+  "ownerBase": "66984d7a71b469acfe557131f9a95295cc6b8553",
+  "branch": "perf/source-growth-checks",
+  "sourceFiles": {
+    "packages/engineering-foundation/src/capabilities/source-dependencies/adapters/inbound/configuration/parse-capability-config.ts": {
+      "sha256": "353dc62cdd456cc4b44a56e1233fa95d3c9ac0e8f431de356ea4e646ca68df88",
+      "bytes": 14146
+    },
+    "packages/engineering-foundation/src/capabilities/source-dependencies/application/model/repository-path.ts": {
+      "sha256": "a64a4df3e6ce217210fd894e79950a3d87464447a6393b28e4510ef7a3930e8f",
+      "bytes": 3627
+    },
+    "packages/engineering-foundation/src/capabilities/source-dependencies/application/policies/evaluate-source-workspace-coverage.ts": {
+      "sha256": "b675cb3786e360d7e1aa13703b08f489583f0ffea2e1441bd7a23540ba26821a",
+      "bytes": 6620
+    },
+    "packages/engineering-foundation/src/capabilities/source-dependencies/application/use-cases/analyze-source-dependencies.ts": {
+      "sha256": "88ad2d19ec1d259accc3df6e953cfe849882fcc0083eb49b821bcdd3d04faf4e",
+      "bytes": 13279
+    },
+    "packages/feature-module-standard/src/features/feature-dependencies/application/check-feature-dependencies.ts": {
+      "sha256": "66030002d3a9c1ab3e26489bbf558bd1292e6b82108af06c753dd4148a74a5ed",
+      "bytes": 13877
+    },
+    ".changeset/quiet-growth-checks.md": {
+      "sha256": "e34d3af256c6bc9cf94c3696ab9a71ccc1529d9d487d6f4376e13ba4308d8a9e",
+      "bytes": 526
+    }
+  },
+  "proposalPatchSha256": "8d912fd04bfda6b23476944bf7ad6d93c209466dfb3b4b5d8016a3d148c6577b",
+  "attributionReceipt": "attribution/receipt.json",
+  "attributionClaim": "parse validation plus pre-classification coverage normalization measured; classification same repeated predicate statically reviewed but not reached before cap",
+  "publicApiSchemaProfileChanges": "none",
+  "ownerBuildTests": "not run; awaiting independent equivalence review",
+  "releaseScope": {
+    "@agent-teams/engineering-foundation": "patch",
+    "@agent-teams/feature-module-standard": "patch"
+  }
+}

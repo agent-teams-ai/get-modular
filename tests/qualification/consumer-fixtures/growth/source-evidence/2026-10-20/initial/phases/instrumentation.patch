@@ -1,0 +1,125 @@
+--- frozen/growth/source.ts
++++ instrumented/source.ts
+@@ -1,3 +1,8 @@
++import { writeSync as writePhase } from "node:fs";
++function phase(name: string, event: string) {
++  writePhase(2, JSON.stringify({phase: name, event, monotonicMs: performance.now(), timeUtc: new Date().toISOString()}) + "\n");
++}
++const publicBindings: Record<string, string> = {"@agent-teams/engineering-foundation/source-graph": "file:///tmp/gm-growth-source-20261020/node_modules/.pnpm/%40agent-teams%2Bengineering-foundation%401.10.0_%40types%2Bnode%4024.19.1/node_modules/%40agent-teams/engineering-foundation/dist/source-graph.js", "@agent-teams/feature-module-standard": "file:///tmp/gm-growth-source-20261020/node_modules/.pnpm/%40agent-teams%2Bfeature-module-standard%400.1.1_%40agent-teams%2Bengineering-foundation%401.10.0_%40types%2Bnode%4024.19.1_/node_modules/%40agent-teams/feature-module-standard/dist/index.js", "@get-modular/conformance": "file:///tmp/gm-growth-source-20261020/packages/conformance/dist/index.js"};
+ import assert from "node:assert/strict";
+ import { createHash } from "node:crypto";
+ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+@@ -5,16 +10,16 @@
+ import { tmpdir } from "node:os";
+ import { dirname, join } from "node:path";
+ import { fileURLToPath } from "node:url";
+-import { observeSourceGraph, type SourceGraph } from "@agent-teams/engineering-foundation/source-graph";
+-import { checkFeatureModule, STANDARD, type FeatureModuleReport } from "@agent-teams/feature-module-standard";
+-import { checkModuleLayout, type ModuleLayoutReport } from "@get-modular/conformance";
+-import { checkFlatSource } from "../source/records.mjs";
+-import { sourceProfile } from "../source/profile.mjs";
+-import { checkInstalledSourcePolicy } from "../source/policy.ts";
+-import { copyReadyPackages, treeIdentity } from "../support/materialize.mjs";
+-import { generateGrowthSource } from "./generate.mjs";
+-
+-const require = createRequire(import.meta.url);
++import { observeSourceGraph, type SourceGraph } from "file:///tmp/gm-growth-source-20261020/node_modules/.pnpm/%40agent-teams%2Bengineering-foundation%401.10.0_%40types%2Bnode%4024.19.1/node_modules/%40agent-teams/engineering-foundation/dist/source-graph.js";
++import { checkFeatureModule, STANDARD, type FeatureModuleReport } from "file:///tmp/gm-growth-source-20261020/node_modules/.pnpm/%40agent-teams%2Bfeature-module-standard%400.1.1_%40agent-teams%2Bengineering-foundation%401.10.0_%40types%2Bnode%4024.19.1_/node_modules/%40agent-teams/feature-module-standard/dist/index.js";
++import { checkModuleLayout, type ModuleLayoutReport } from "file:///tmp/gm-growth-source-20261020/packages/conformance/dist/index.js";
++import { checkFlatSource } from "./records.mjs";
++import { sourceProfile } from "file:///tmp/gm-growth-source-20261020/tests/qualification/consumer-fixtures/source/profile.mjs";
++import { checkInstalledSourcePolicy } from "file:///tmp/gm-growth-source-20261020/tests/qualification/consumer-fixtures/source/policy.ts";
++import { copyReadyPackages, treeIdentity } from "file:///tmp/gm-growth-source-20261020/tests/qualification/consumer-fixtures/support/materialize.mjs";
++import { generateGrowthSource } from "file:///tmp/gm-growth-source-20261020/tests/qualification/consumer-fixtures/growth/generate.mjs";
++
++const require = createRequire("file:///tmp/gm-growth-source-20261020/tests/qualification/consumer-fixtures/growth/source.ts");
+ const compare = (left: string, right: string) => left < right ? -1 : left > right ? 1 : 0;
+ const nameOf = (index: number) => `f${String(index).padStart(3, "0")}`;
+ const digest = (bytes: string | Uint8Array) => createHash("sha256").update(bytes).digest("hex");
+@@ -150,10 +155,16 @@
+ async function observe(directory: string, profile: Profile) {
+   const started = performance.now();
+   const source: SourceObservation = await checkFlatSource(directory, {
+-    observeSourceGraph, checkFeatureModule, standard: STANDARD, checkModuleLayout,
++    observeSourceGraph: async (input: Parameters<typeof observeSourceGraph>[0]) => {
++      phase("public-source-producer", "begin"); const result = await observeSourceGraph(input); phase("public-source-producer", "end"); return result;
++    }, checkFeatureModule: (input: Parameters<typeof checkFeatureModule>[0]) => {
++      phase("FMS", "begin"); const result = checkFeatureModule(input); phase("FMS", "end"); return result;
++    }, standard: STANDARD, checkModuleLayout: (input: Parameters<typeof checkModuleLayout>[0]) => {
++      phase("CMS", "begin"); const result = checkModuleLayout(input); phase("CMS", "end"); return result;
++    },
+   }, profile);
+-  const policy = await checkInstalledSourcePolicy(directory);
+-  const topology = observedTopology(source.graph, profile);
++  phase("CLI", "begin"); const policy = await checkInstalledSourcePolicy(directory); phase("CLI", "end");
++  phase("topology", "begin"); const topology = observedTopology(source.graph, profile); phase("topology", "end");
+   const completeInventory = JSON.stringify(source.inventory.files) === JSON.stringify(profile.requiredFiles)
+     && JSON.stringify(source.graph.files) === JSON.stringify(profile.requiredFiles);
+   return { outcome: source.outcome === "passed" && policy.exit === 0 && completeInventory && topology.outcome === "passed"
+@@ -161,29 +172,31 @@
+ }
+ 
+ async function publicTools() {
+-  const rootManifest = JSON.parse(await readFile(new URL("../../../../package.json", import.meta.url), "utf8")) as {
++  phase("public-tool-identities", "begin");
++  const rootManifest = JSON.parse(await readFile(new URL("file:///tmp/gm-growth-source-20261020/package.json"), "utf8")) as {
+     readonly devDependencies: Readonly<Record<string, string>>;
+   };
+   const result: Record<string, unknown> = {};
+   for (const name of ["@agent-teams/engineering-foundation", "@agent-teams/feature-module-standard", "@get-modular/conformance"]) {
+     const entry = name === "@agent-teams/engineering-foundation" ? `${name}/source-graph` : name;
+     const manifestPath = name.startsWith("@get-modular/")
+-      ? join(dirname(dirname(fileURLToPath(import.meta.resolve(entry)))), "package.json")
++      ? join(dirname(dirname(fileURLToPath(publicBindings[entry]!))), "package.json")
+       : require.resolve(`${name}/package.json`);
+     const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as { readonly name: string; readonly version: string };
+     assert.equal(manifest.name, name);
+     if (!name.startsWith("@get-modular/")) assert.equal(manifest.version, rootManifest.devDependencies[name]);
+-    result[name] = { version: manifest.version, entry, resolution: import.meta.resolve(entry),
++    result[name] = { version: manifest.version, entry, resolution: publicBindings[entry]!,
+       package: name.startsWith("@get-modular/")
+         ? { manifestSha256: digest(await readFile(manifestPath)), dist: await treeIdentity(join(dirname(manifestPath), "dist")) }
+         : await treeIdentity(dirname(manifestPath)) };
+   }
++  phase("public-tool-identities", "end");
+   return result;
+ }
+ 
+ export async function checkGrowthSource(directory: string, size: number) {
+   const profile = profileFor(size);
+-  const before = await treeIdentity(join(directory, "src"));
++  phase("source-identity-before", "begin"); const before = await treeIdentity(join(directory, "src")); phase("source-identity-before", "end");
+   const policyProfile = await preparePolicy(directory, profile);
+   const result = await observe(directory, profile);
+   assert.equal(result.outcome, "passed", JSON.stringify(result));
+@@ -191,7 +204,7 @@
+   assert.equal(result.source.graph.edges.length, 14 * size - 3, "independent resolved import census");
+   assert.equal(result.source.graph.external.length, 6 * size + 3, "independent package import census");
+   assert.equal(result.source.graph.edges.filter(edge => edge.mode === "runtime").length, 7 * size);
+-  assert.deepEqual(await treeIdentity(join(directory, "src")), before, "scanner leaves source unchanged");
++  phase("source-identity-after", "begin"); assert.deepEqual(await treeIdentity(join(directory, "src")), before, "scanner leaves source unchanged"); phase("source-identity-after", "end");
+   return { kind: "installed-selected-flat-growth-source", source: "passed", size, authority: growthSourceAuthority,
+     adoption: "unchanged", nested: "not-selected", sourceTree: before, profile, policyProfile,
+     publicTools: await publicTools(), observation: result };
+--- unchanged/source/records.mjs
++++ instrumented/records.mjs
+@@ -1,7 +1,8 @@
++import { writeSync } from "node:fs";
+ import assert from "node:assert/strict";
+ import { lstat, readdir } from "node:fs/promises";
+ import { join } from "node:path";
+-import { sourceProfile } from "./profile.mjs";
++import { sourceProfile } from "file:///tmp/gm-growth-source-20261020/tests/qualification/consumer-fixtures/source/profile.mjs";
+ 
+ const compare = (left, right) => left < right ? -1 : left > right ? 1 : 0;
+ const useCase = path => path.includes("/application/use-cases/");
+@@ -74,7 +75,9 @@
+ export async function checkFlatSource(directory, tools, profile = sourceProfile) {
+   assert.deepEqual(tools.standard, profile.authority.researchKernel, "fixture.source.kernel-identity");
+   const graph = await tools.observeSourceGraph({ consumerRoot: directory, roots: profile.roots });
++  writeSync(2, JSON.stringify({phase: "inventory", event: "begin", monotonicMs: performance.now()}) + "\n");
+   const inventory = await sourceInventory(directory, profile.roots);
++  writeSync(2, JSON.stringify({phase: "inventory", event: "end", monotonicMs: performance.now()}) + "\n");
+   const problems = factProblems(graph, inventory, profile);
+   const facts = { graph, inventory, problems };
+   if (problems.length > 0) return { outcome: "rejected", factCoverage: "incomplete", ...facts };

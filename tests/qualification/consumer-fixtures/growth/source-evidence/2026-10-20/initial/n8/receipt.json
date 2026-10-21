@@ -1,0 +1,35 @@
+{
+  "startUtc": "2026-10-20T10:21:30.819107+00:00",
+  "endUtc": "2026-10-20T10:21:51.466665+00:00",
+  "command": [
+    "/tmp/gm-completion-tools-20261020/node-v26.11.1-linux-x64/bin/node",
+    "/tmp/gm-ts-owner-20261020/growth-source-small-program-retry3.mjs",
+    "/tmp/gm-ts-owner-20261020/growth-source-small-work-retry3",
+    "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-8-ySU2OX/report.json",
+    "/tmp/gm-ts-owner-20261020/growth-source-small-retry3.report.json"
+  ],
+  "repository": "/tmp/gm-growth-source-20261020",
+  "base": "aaac7b12b117a54e4a850e0730da5c1e99da042b",
+  "original": "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-8-ySU2OX",
+  "copy": "/tmp/gm-ts-owner-20261020/growth-source-small-work-retry3",
+  "budgetsSeconds": {
+    "sourceChain": 60,
+    "foundationPolicy": 30,
+    "externalAggregate": 600
+  },
+  "smallRunGuard": "60 seconds includes N8 baseline and all eight controls, stricter than a single positive-chain cap",
+  "exitCode": 0,
+  "timedOut": false,
+  "wallSeconds": 20.649800605000564,
+  "stageSeconds": 20.42633483999998,
+  "stdout": {
+    "path": "/tmp/gm-ts-owner-20261020/growth-source-small-retry3.stdout.log",
+    "sha256": "db9dc83b3f64108f0bb9fed7373d5435fac698859388033603574d2e56c4c0c8"
+  },
+  "stderr": {
+    "path": "/tmp/gm-ts-owner-20261020/growth-source-small-retry3.stderr.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "report": "/tmp/gm-ts-owner-20261020/growth-source-small-retry3.report.json",
+  "generatorCompilerRuntimeInvocations": "none; copied original retained N8 tree"
+}
