@@ -252,7 +252,7 @@ export function assemblyManifestViolations(manifest) {
   }
   if (manifest.version !== "0.1.0"
     && !(PUBLIC_ASSEMBLY_VERSIONS.includes(manifest.version) && manifest.private === undefined)) {
-    violations.push("Assembly version requires historical 0.1.0 or public 0.2.0/0.3.0/0.4.0/0.5.0/0.6.0 admission");
+    violations.push("Assembly version requires historical 0.1.0 or public 0.2.0/0.3.0/0.4.0/0.5.0/0.6.0/0.7.0 admission");
   }
   if (!plainObject(manifest.dependencies)
     || Object.keys(manifest.dependencies).length !== 1
