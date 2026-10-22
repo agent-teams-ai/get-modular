@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { spawnSync } from "node:child_process";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import "./qualification/sdk-growth-failure-retention.test.ts";
 
 import { loadSdkGrowthModel, validateCmsGuidance, validateSdkGrowth } from "../architecture/checks/sdk-growth.mjs";
@@ -187,15 +190,22 @@ test("CMS guidance authenticates migrated inputs without promoting pending adopt
   await t.test("previous current pin is stale", () => rejectCms(model => {
     model.cmsReview.acceptedCurrent = { ...model.cmsReview.delta.fromAcceptedCurrent };
   }, /current CMS pin/u));
-  await t.test("command-only delta cannot claim a composition contract change", () => rejectCms(model => {
-    model.cmsReview.delta.changesGetModularCompositionContract = true;
+  await t.test("lifecycle successor cannot be mislabeled command-only", () => rejectCms(model => {
+    model.cmsReview.delta.changesGetModularCompositionContract = false;
   }, /CMS delta review/u));
   for (const field of ["cmsBytes", "cmsPreviousBytes", "cmsP0Bytes", "cmsSourceBytes", "cmsDeltaBytes", "cmsPreviousReviewBytes",
-    "cmsHistoricalDeltaBytes", "cmsP0ReviewBytes"]) {
+    "cmsHistoricalDeltaBytes", "cmsP0ReviewBytes", "cms300eBytes", "cmsBunDeltaBytes", "cmsBunReviewBytes",
+    "cmsGrowthPreviousBytes", "cmsGrowthDeltaBytes", "cmsGrowthReviewBytes"]) {
     await t.test(field, () => rejectCms(model => {
       model[field] = Buffer.from("substituted input");
     }, /CMS .*bytes/u));
   }
+  await t.test("growth lifecycle adoption cannot expand", () => rejectCms(model => {
+    model.cmsReview.growthScopeReview.observation = "selected";
+  }, /growth CMS scope review/u));
+  await t.test("growth old pin cannot become current", () => rejectCms(model => {
+    model.cmsReview.acceptedCurrent = { ...model.cmsReview.growthScopeReview.previousCurrent };
+  }, /current CMS pin/u));
   await t.test("outstanding evidence cannot disappear", () => rejectCms(model => {
     model.cmsReview.scopeReview.outstanding = [];
   }, /CMS scope review/u));
@@ -204,11 +214,41 @@ test("CMS guidance authenticates migrated inputs without promoting pending adopt
   }, /CMS scope review/u));
   await t.test("previous composition review cannot be rewritten", () => rejectCms(model => {
     const previous = JSON.parse(model.cmsPreviousReviewBytes.toString("utf8"));
-    previous.delta.changesGetModularCompositionContract = false;
+    previous.delta.changesGetModularCompositionContract = true;
     model.cmsPreviousReviewBytes = Buffer.from(JSON.stringify(previous));
   }, /CMS retained delta or previous review bytes/u));
   await t.test("current review cannot rewrite historical P0", () => rejectCms(model => {
     model.feasibility.sourceCommit = model.cmsReview.acceptedCurrent.commit;
     model.feasibility.standard.currentSha256 = model.cmsReview.acceptedCurrent.sha256;
   }, /P0 disposition or standard/u));
+});
+
+// Missing retained bytes must fail during loading, before any qualification or activation decision.
+test("CMS evidence loading rejects absent current and historical inputs", async t => {
+  const root = await mkdtemp(join(tmpdir(), "gm-cms-retained-inputs-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const git = spawnSync("git", ["init", "--quiet", root], { encoding: "utf8" });
+  assert.equal(git.status, 0, git.stderr);
+  await cp("architecture", join(root, "architecture"), { recursive: true });
+  for (const path of ["package.json", "pnpm-lock.yaml", "foundation.config.yaml", "docs/architecture/common-assembly.md",
+    "packages/assembly/package.json", "packages/core/package.json"]) {
+    await mkdir(join(root, path, ".."), { recursive: true });
+    await cp(path, join(root, path));
+  }
+  validateCmsGuidance(await loadSdkGrowthModel(root));
+  const review = JSON.parse(await readFile("architecture/sdk-growth/evidence/consumer-module-standard.json", "utf8"));
+  for (const path of [review.retainedEvidence.currentDocumentPath, review.retainedEvidence.deltaPath,
+    review.retainedEvidence.previousReviewPath, review.retainedEvidence.growthPreviousDocumentPath,
+    review.retainedEvidence.growthDeltaPath, review.retainedEvidence.growthPreviousReviewPath,
+    "architecture/sdk-growth/evidence/cms-guidance-bun-20261020/common-assembly.diff",
+    "architecture/sdk-growth/evidence/cms-guidance-20261020/previous-review.json"]) {
+    await t.test(path, async () => {
+      const target = join(root, path);
+      const bytes = await readFile(target);
+      try {
+        await rm(target);
+        await assert.rejects(loadSdkGrowthModel(root), { code: "ENOENT" });
+      } finally { await writeFile(target, bytes); }
+    });
+  }
 });

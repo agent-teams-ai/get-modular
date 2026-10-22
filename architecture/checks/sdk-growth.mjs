@@ -21,11 +21,11 @@ const WORKFLOW_PATH = "architecture/foundation/repository-agent-workflow.yaml";
 const CMS_PATH = "architecture/sdk-growth/evidence/consumer-module-standard.json";
 const FEASIBILITY_PATH = "architecture/sdk-growth/evidence/p0-feasibility.json";
 const ROOT_CLASSIFICATION_PATH = "architecture/sdk-growth/root-classification.json";
-const CMS_SHA256 = "8f92029eec9610f6f83afe6f86352557f268b1abd8e2a241f16d86f5f0eaada9";
+const CMS_SHA256 = "d39806eef8e001bb1290e7d7787297ba446ae900dd1e9e217604a99ffa0350ec";
 const PREVIOUS_CMS = Object.freeze({
-  "commit": "300e7e1c459c08f5e271627e4ca7d2486bdf5e1f",
-  "gitBlob": "ae6792543bd19acc948e177e8d55632c9d51134e",
-  "sha256": "c2fe582a14ff6e79620b232ca7ffc914afb0474ec21fd43f208251dd7252f4a3"
+  "commit": "a7d8db433fb3c4187fbeab4dcec4e6d69a4f70ca",
+  "gitBlob": "1da86de15c6def505aa57e212154e4d5ee5d6042",
+  "sha256": "8f92029eec9610f6f83afe6f86352557f268b1abd8e2a241f16d86f5f0eaada9"
 });
 const P0_CMS = Object.freeze({
   commit: "24d6557a1b04b01a3a73c64b1d9a9afd83d89c8f",
@@ -33,13 +33,42 @@ const P0_CMS = Object.freeze({
   sha256: "33b41d5babf0a431c97e8e596a56e6ec1557ba1a0b26d39bf23e13d9a19e1fbd",
 });
 const CMS_EVIDENCE = Object.freeze({
-  "currentDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-bun-20261020/common-assembly.txt",
-  "previousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-20261020/common-assembly.txt",
+  "currentDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/common-assembly.txt",
+  "previousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-bun-20261020/common-assembly.txt",
   "p0DocumentPath": "architecture/sdk-growth/evidence/cms-guidance-20261020/previous-common-assembly.txt",
-  "deltaPath": "architecture/sdk-growth/evidence/cms-guidance-bun-20261020/common-assembly.diff",
-  "deltaSha256": "1bcf57cb7310df87db515147f23e06a303c3ba6306afa455d8bd97b0210c6064",
-  "previousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-bun-20261020/previous-review.json",
-  "previousReviewSha256": "c4ecc5751ba0bce47b9d99767df15d66ba61cfa12314ddda211454d75ee9c989"
+  "deltaPath": "architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/common-assembly.diff",
+  "deltaSha256": "bac7e8717a12fe59c8947c6069a27434d7bb1783ee7f70c3fbb11e9c2329e36d",
+  "previousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/previous-review.json",
+  "previousReviewSha256": "4fcb40247d8ddc525b79592e8ed39e42e9466bae63f2f97df6eb070c7b7c75e3",
+  "growthPreviousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/growth-previous-common-assembly.txt",
+  "growthDeltaPath": "architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/growth-common-assembly.diff",
+  "growthDeltaSha256": "fab73eb3c3d0ae3807e518fc03b5fbb70baebca6d60e93764a1ebc7ded4d10b0",
+  "growthPreviousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/growth-previous-source.ts.txt",
+  "growthPreviousReviewSha256": "511ef4cb1875f3b6cde8504a32a77e5031df3653979807f9a5212b4ee543f3d0"
+});
+const CMS_300E = Object.freeze({
+  "commit": "300e7e1c459c08f5e271627e4ca7d2486bdf5e1f",
+  "gitBlob": "ae6792543bd19acc948e177e8d55632c9d51134e",
+  "sha256": "c2fe582a14ff6e79620b232ca7ffc914afb0474ec21fd43f208251dd7252f4a3"
+});
+const PREVIOUS_BUN_EVIDENCE = Object.freeze({
+  documentPath: "architecture/sdk-growth/evidence/cms-guidance-20261020/common-assembly.txt",
+  deltaPath: "architecture/sdk-growth/evidence/cms-guidance-bun-20261020/common-assembly.diff",
+  deltaSha256: "1bcf57cb7310df87db515147f23e06a303c3ba6306afa455d8bd97b0210c6064",
+  reviewPath: "architecture/sdk-growth/evidence/cms-guidance-bun-20261020/previous-review.json",
+  reviewSha256: "c4ecc5751ba0bce47b9d99767df15d66ba61cfa12314ddda211454d75ee9c989",
+});
+const GROWTH_CMS_SCOPE_REVIEW = Object.freeze({
+  "previousCurrent": {
+    "commit": "7131d0d7a6bb5dd4c3e8906ccac065c0be0e0333",
+    "gitBlob": "dad8b6280cf999d9079d3106094e5626b63d83f4",
+    "sha256": "a6dac5d303adf80be3151c6703c919b715fd880a941a4ad68e927c87a7ee5882"
+  },
+  "classification": "repository-verification-command-guidance",
+  "changesSelectedFlatCompositionContract": false,
+  "observation": "not-selected",
+  "productionAdoption": "unchanged",
+  "qualification": "pending-current-subject"
 });
 const HISTORICAL_CMS_DELTA = Object.freeze({
   path: "architecture/sdk-growth/evidence/cms-guidance-20261020/common-assembly.diff",
@@ -149,6 +178,12 @@ export async function loadSdkGrowthModel(root = process.cwd()) {
     cmsPreviousReviewBytes: await readFile(join(root, CMS_EVIDENCE.previousReviewPath)),
     cmsHistoricalDeltaBytes: await readFile(join(root, HISTORICAL_CMS_DELTA.path)),
     cmsP0ReviewBytes: await readFile(join(root, P0_CMS_REVIEW.path)),
+    cms300eBytes: await readFile(join(root, PREVIOUS_BUN_EVIDENCE.documentPath)),
+    cmsBunDeltaBytes: await readFile(join(root, PREVIOUS_BUN_EVIDENCE.deltaPath)),
+    cmsBunReviewBytes: await readFile(join(root, PREVIOUS_BUN_EVIDENCE.reviewPath)),
+    cmsGrowthPreviousBytes: await readFile(join(root, CMS_EVIDENCE.growthPreviousDocumentPath)),
+    cmsGrowthDeltaBytes: await readFile(join(root, CMS_EVIDENCE.growthDeltaPath)),
+    cmsGrowthReviewBytes: await readFile(join(root, CMS_EVIDENCE.growthPreviousReviewPath)),
     feasibility: await readJson(root, FEASIBILITY_PATH),
     rootClassification: await readJson(root, ROOT_CLASSIFICATION_PATH),
     tracked,
@@ -256,21 +291,24 @@ export function validateCmsGuidance(model) {
     sha256: "e6cd8d26b4317bf5f94ddd22f6e36bf25e90548f72265d94808eaf20b947e553",
   }, "original CMS pin");
   same(cms.acceptedCurrent, {
-    commit: "a7d8db433fb3c4187fbeab4dcec4e6d69a4f70ca",
-    gitBlob: "1da86de15c6def505aa57e212154e4d5ee5d6042",
+    commit: "0c2ea846f11532b216520e0e84e19ea1abf58342",
+    gitBlob: "4bd50920f9b81d9f41456ceb3df9500b497e0453",
     sha256: CMS_SHA256,
   }, "current CMS pin");
   same(cms.delta.fromAcceptedCurrent, PREVIOUS_CMS, "previous CMS pin");
-  if (cms.delta.classification !== "repository-verification-command-guidance" || cms.delta.changedHunks !== 1
-    || cms.delta.addedLines !== 4 || cms.delta.removedLines !== 4
-    || cms.delta.changesGetModularCompositionContract !== false
+  if (cms.delta.classification !== "observation-load-drain-lifecycle-guidance" || cms.delta.changedHunks !== 1
+    || cms.delta.addedLines !== 7 || cms.delta.removedLines !== 0
+    || cms.delta.changesGetModularCompositionContract !== true
     || cms.delta.pinAction !== "advance-reviewed-current-pin-with-historical-pin-retained") fail("CMS delta review drifted");
   same(cms.retainedEvidence, CMS_EVIDENCE, "CMS retained evidence identity");
   same(cms.scopeReview, CMS_SCOPE_REVIEW, "CMS scope review");
+  same(cms.growthScopeReview, GROWTH_CMS_SCOPE_REVIEW, "growth CMS scope review");
   for (const [bytes, pin, label] of [
     [model.cmsBytes, cms.acceptedCurrent, "CMS document bytes"],
     [model.cmsPreviousBytes, PREVIOUS_CMS, "previous CMS document bytes"],
     [model.cmsP0Bytes, P0_CMS, "historical P0 CMS document bytes"],
+    [model.cms300eBytes, CMS_300E, "historical 300e CMS document bytes"],
+    [model.cmsGrowthPreviousBytes, GROWTH_CMS_SCOPE_REVIEW.previousCurrent, "growth previous CMS document bytes"],
     [model.cmsSourceBytes, cms.acceptedCurrent, "current source CMS document bytes"],
   ]) {
     if (createHash("sha256").update(bytes).digest("hex") !== pin.sha256
@@ -283,6 +321,12 @@ export function validateCmsGuidance(model) {
   if (createHash("sha256").update(model.cmsHistoricalDeltaBytes).digest("hex") !== HISTORICAL_CMS_DELTA.sha256
     || createHash("sha256").update(model.cmsP0ReviewBytes).digest("hex") !== P0_CMS_REVIEW.sha256) {
     fail("CMS historical delta or P0 review bytes drifted");
+  }
+  if (createHash("sha256").update(model.cmsBunDeltaBytes).digest("hex") !== PREVIOUS_BUN_EVIDENCE.deltaSha256
+    || createHash("sha256").update(model.cmsBunReviewBytes).digest("hex") !== PREVIOUS_BUN_EVIDENCE.reviewSha256
+    || createHash("sha256").update(model.cmsGrowthDeltaBytes).digest("hex") !== CMS_EVIDENCE.growthDeltaSha256
+    || createHash("sha256").update(model.cmsGrowthReviewBytes).digest("hex") !== CMS_EVIDENCE.growthPreviousReviewSha256) {
+    fail("CMS Bun or growth historical evidence bytes drifted");
   }
   const evidence = model.feasibility;
   if (evidence.schemaVersion !== 1 || evidence.kind !== "g1-p0-feasibility-not-qualification"
