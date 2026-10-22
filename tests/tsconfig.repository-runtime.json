@@ -26,6 +26,7 @@
     "../architecture/tooling/runtime/projection-check.ts",
     "../architecture/tooling/runtime/ci.ts",
     "repository-runtime.test.ts",
+    "m3-runtime-collection.test.ts",
     "qualification/support/m3-node-policy.ts",
     "../packages/observation/tests/support/pnpm-probe.ts",
     "../packages/lifecycle-kernel/tests/support/pnpm-probe.ts",

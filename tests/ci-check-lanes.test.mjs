@@ -72,7 +72,7 @@ function validateLanes(value, manifest = packageJson) {
   assert.equal(manifest.scripts["runtime:policy:typecheck"],
     "node architecture/tooling/runtime/projection-check.ts && node architecture/tooling/runtime/command.ts run tooling:native:typecheck && node node_modules/typescript/bin/tsc -p tests/tsconfig.tooling-node-policy.json --noEmit && node node_modules/typescript/bin/tsc -p tests/tsconfig.repository-runtime.json --noEmit", "policy compiler drift");
   assert.equal(manifest.scripts["runtime:policy:test"],
-    "node --test tests/tooling-node-policy.test.ts tests/npm-release.test.ts tests/repository-runtime.test.ts tests/runtime-projection-custody.test.ts", "policy test drift");
+    "node --test tests/tooling-node-policy.test.ts tests/npm-release.test.ts tests/repository-runtime.test.ts tests/runtime-projection-custody.test.ts tests/m3-runtime-collection.test.ts", "policy test drift");
   // Every independent checkout validates peers before its lane payload.
   assert.deepEqual([...Object.values(primary).flat(), "lockfile:peers:check"].sort(),
     ["ownership:checkpoint:test", ...baseline.filter(script => !["runtime:preflight", "assembly:build"].includes(script))].sort());

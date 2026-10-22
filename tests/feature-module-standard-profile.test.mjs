@@ -194,7 +194,8 @@ function versionAdmissionInput() {
 
 test("runtime policy test roster retains every reviewed test entry", () => {
   const entries = ["tests/tooling-node-policy.test.ts", "tests/npm-release.test.ts",
-    "tests/repository-runtime.test.ts", "tests/runtime-projection-custody.test.ts"];
+    "tests/repository-runtime.test.ts", "tests/runtime-projection-custody.test.ts",
+    "tests/m3-runtime-collection.test.ts"];
   assert.equal(packageJson.scripts["runtime:policy:test"], `node --test ${entries.join(" ")}`);
   assert.doesNotThrow(() => validate());
   for (const missing of entries) {
