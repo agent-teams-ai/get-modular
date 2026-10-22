@@ -8,7 +8,8 @@ import { promisify } from 'node:util';
 import { parse } from 'yaml';
 import { M2_EVIDENCE_LEDGER } from '../../../architecture/checks/m2-evidence.mjs';
 import { M2_ORIGINAL_DECISION, m2Digest, readCurrentM2Authority } from '../../../architecture/checks/m2-lock-witness.mjs';
-import { assertGitIndexSnapshotCurrent, readIndexSnapshotFile } from '../../../architecture/checks/tracked-file-custody.mjs';
+import { assertGitIndexSnapshotCurrent } from '../../../architecture/checks/tracked-file-custody.mjs';
+import { readRuntimeIndexSnapshotFile as readIndexSnapshotFile } from '../../../architecture/tooling/runtime/projection-custody.ts';
 
 const exec = promisify(execFile);
 const SUITES = Object.freeze(['tests/m2-start.test.mjs',

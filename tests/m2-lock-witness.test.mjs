@@ -10,7 +10,8 @@ import { validateAssemblyAdmission, createHistoricalM2EvidenceReader } from '../
 import { M2_EVIDENCE_LEDGER, validateM2StartAuthority } from '../architecture/checks/m2-evidence.mjs';
 import { M2_LOCK_DECISION, M2_LOCK_WITNESS, M2_ORIGINAL_DECISION,
   M2_LEDGER_DIGEST, m2Digest, readCurrentM2Authority } from '../architecture/checks/m2-lock-witness.mjs';
-import { captureGitIndexSnapshot, readIndexSnapshotFile, assertGitIndexSnapshotCurrent } from '../architecture/checks/tracked-file-custody.mjs';
+import { captureGitIndexSnapshot, assertGitIndexSnapshotCurrent } from '../architecture/checks/tracked-file-custody.mjs';
+import { readRuntimeIndexSnapshotFile as readIndexSnapshotFile } from '../architecture/tooling/runtime/projection-custody.ts';
 import { prepareM2EvidenceFixture, validateM2FixtureEvents } from './qualification/support/m2-evidence-fixture.mjs';
 
 const exec = promisify(execFile);
