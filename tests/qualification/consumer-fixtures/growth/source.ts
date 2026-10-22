@@ -19,31 +19,19 @@ const compare = (left: string, right: string) => left < right ? -1 : left > righ
 const nameOf = (index: number) => `f${String(index).padStart(3, "0")}`;
 const digest = (bytes: string | Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 
-export const growthSourceAuthority = {
+export const growthSourceAuthority = Object.freeze({
   ...sourceProfile.authority,
-  reviewedCms: {
+  reviewedCms: Object.freeze({
     repository: "agent-teams-ai/get-modular", path: "docs/architecture/common-assembly.md",
     anchor: "consumer-module-standard", commit: "0c2ea846f11532b216520e0e84e19ea1abf58342",
     gitBlob: "4bd50920f9b81d9f41456ceb3df9500b497e0453",
     sha256: "d39806eef8e001bb1290e7d7787297ba446ae900dd1e9e217604a99ffa0350ec",
     scope: "selected flat growth source predicates; production adoption unchanged",
-  },
-};
-
-/** The producer's provenance witness stays closed; tests bind it to the authenticated SDK review. */
-export function assertGrowthCmsAuthority(authority = growthSourceAuthority.reviewedCms): void {
-  assert.deepEqual(authority, {
-    repository: "agent-teams-ai/get-modular", path: "docs/architecture/common-assembly.md",
-    anchor: "consumer-module-standard", commit: "0c2ea846f11532b216520e0e84e19ea1abf58342",
-    gitBlob: "4bd50920f9b81d9f41456ceb3df9500b497e0453",
-    sha256: "d39806eef8e001bb1290e7d7787297ba446ae900dd1e9e217604a99ffa0350ec",
-    scope: "selected flat growth source predicates; production adoption unchanged",
-  }, "fixture.growth.source.cms-authority");
-}
+  }),
+});
 
 /** Expectations only. The graph, export facts and inventory are independently observed on disk. */
 function profileFor(size: number) {
-  assertGrowthCmsAuthority();
   assert.ok([8, 100, 500, 1000].includes(size), "fixture.growth.source.unsupported-size");
   const names = Array.from({ length: size }, (_, index) => nameOf(index));
   const roots = names.map(name => `src/features/${name}`);

@@ -6,21 +6,22 @@ import { join } from "node:path";
 import test from "node:test";
 import { runGrowthCorrectness } from "../qualification/consumer-fixtures/growth/run.mjs";
 import { readUpstreamCandidate, upstreamSelection } from "../qualification/consumer-fixtures/growth/upstream-compiler.ts";
-import { assertGrowthCmsAuthority, growthSourceAuthority, runGrowthSourceCorrectness } from "../qualification/consumer-fixtures/growth/source.ts";
+import { growthSourceAuthority, runGrowthSourceCorrectness } from "../qualification/consumer-fixtures/growth/source.ts";
 
 test("growth CMS witness matches authenticated current guidance without expanding adoption", async () => {
   const { loadSdkGrowthModel, validateCmsGuidance } = await import("../../architecture/checks/sdk-growth.mjs");
   const model = await loadSdkGrowthModel();
   validateCmsGuidance(model);
   const witness = growthSourceAuthority.reviewedCms;
-  assertGrowthCmsAuthority(witness);
-  for (const field of ["commit", "gitBlob", "sha256"]) assert.equal(witness[field], model.cmsReview.acceptedCurrent[field]);
+  assert.deepEqual(witness, {
+    repository: model.cmsReview.repository, path: model.cmsReview.path, anchor: model.cmsReview.anchor,
+    ...model.cmsReview.acceptedCurrent,
+    scope: `selected flat growth source predicates; production adoption ${model.cmsReview.growthScopeReview.productionAdoption}`,
+  });
+  assert.equal(Object.isFrozen(growthSourceAuthority), true);
+  assert.equal(Object.isFrozen(witness), true);
   assert.equal(model.cmsReview.growthScopeReview.observation, "not-selected");
   assert.equal(model.cmsReview.scopeReview.activation, "hold");
-  assert.throws(() => assertGrowthCmsAuthority({ ...witness, ...model.cmsReview.growthScopeReview.previousCurrent }),
-    /fixture\.growth\.source\.cms-authority/u);
-  assert.throws(() => assertGrowthCmsAuthority({ ...witness, scope: "production Observation adoption" }),
-    /fixture\.growth\.source\.cms-authority/u);
 });
 
 test("growth source qualifies its flat mapping through installed public owners", { timeout: 600000 }, async t => {
