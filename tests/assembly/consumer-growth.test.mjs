@@ -6,6 +6,11 @@ import { join } from "node:path";
 import test from "node:test";
 import { runGrowthCorrectness } from "../qualification/consumer-fixtures/growth/run.mjs";
 import { readUpstreamCandidate, upstreamSelection } from "../qualification/consumer-fixtures/growth/upstream-compiler.ts";
+import { runGrowthSourceCorrectness } from "../qualification/consumer-fixtures/growth/source.ts";
+
+test("growth source qualifies its flat mapping through installed public owners", { timeout: 600000 }, async t => {
+  t.diagnostic(JSON.stringify(await runGrowthSourceCorrectness()));
+});
 
 // Let the existing 600-second supervisor retain its failure report before this outer guard.
 test("G-01: the real eight-feature tree passes independent oracles and complete smoke", { timeout: 660000 }, async t => {

@@ -1,0 +1,125 @@
+--- /tmp/gm-growth-source-20261020/tests/qualification/consumer-fixtures/growth/source.ts
++++ candidate/source.ts
+@@ -1,20 +1,17 @@
+ import assert from "node:assert/strict";
+ import { createHash } from "node:crypto";
+ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+-import { createRequire } from "node:module";
+ import { tmpdir } from "node:os";
+ import { dirname, join } from "node:path";
+-import { fileURLToPath } from "node:url";
+-import { observeSourceGraph, type SourceGraph } from "@agent-teams/engineering-foundation/source-graph";
+-import { checkFeatureModule, STANDARD, type FeatureModuleReport } from "@agent-teams/feature-module-standard";
+-import { checkModuleLayout, type ModuleLayoutReport } from "@get-modular/conformance";
+-import { checkFlatSource } from "../source/records.mjs";
+-import { sourceProfile } from "../source/profile.mjs";
+-import { checkInstalledSourcePolicy } from "../source/policy.ts";
+-import { copyReadyPackages, treeIdentity } from "../support/materialize.mjs";
+-import { generateGrowthSource } from "./generate.mjs";
+-
+-const require = createRequire(import.meta.url);
++import { observeSourceGraph, type SourceGraph } from "/tmp/gm-foundation-growth-owner-20261020/.worker-tmp/profiles/node-359085664d7e51cced497c30eb0e82cc68baf346/packages/engineering-foundation/dist/source-graph.js";
++import { checkFeatureModule, STANDARD, type FeatureModuleReport } from "/tmp/gm-foundation-growth-owner-20261020/.worker-tmp/profiles/node-359085664d7e51cced497c30eb0e82cc68baf346/packages/feature-module-standard/dist/index.js";
++import { checkModuleLayout, type ModuleLayoutReport } from "/tmp/gm-growth-source-20261020/packages/conformance/dist/index.js";
++import { checkFlatSource } from "/tmp/gm-growth-source-20261020/tests/qualification/consumer-fixtures/source/records.mjs";
++import { sourceProfile } from "/tmp/gm-growth-source-20261020/tests/qualification/consumer-fixtures/source/profile.mjs";
++import { checkInstalledSourcePolicy } from "./policy.ts";
++import { copyReadyPackages, treeIdentity } from "/tmp/gm-growth-source-20261020/tests/qualification/consumer-fixtures/support/materialize.mjs";
++import { generateGrowthSource } from "/tmp/gm-growth-source-20261020/tests/qualification/consumer-fixtures/growth/generate.mjs";
++
+ const compare = (left: string, right: string) => left < right ? -1 : left > right ? 1 : 0;
+ const nameOf = (index: number) => `f${String(index).padStart(3, "0")}`;
+ const digest = (bytes: string | Uint8Array) => createHash("sha256").update(bytes).digest("hex");
+@@ -161,22 +158,17 @@
+ }
+ 
+ async function publicTools() {
+-  const rootManifest = JSON.parse(await readFile(new URL("../../../../package.json", import.meta.url), "utf8")) as {
+-    readonly devDependencies: Readonly<Record<string, string>>;
+-  };
++  const roots: Record<string, string> = {"@agent-teams/engineering-foundation": "/tmp/gm-foundation-growth-owner-20261020/.worker-tmp/profiles/node-359085664d7e51cced497c30eb0e82cc68baf346/packages/engineering-foundation", "@agent-teams/feature-module-standard": "/tmp/gm-foundation-growth-owner-20261020/.worker-tmp/profiles/node-359085664d7e51cced497c30eb0e82cc68baf346/packages/feature-module-standard", "@get-modular/conformance": "/tmp/gm-growth-source-20261020/packages/conformance"};
++  const entries: Record<string, string> = {"@agent-teams/engineering-foundation": "/tmp/gm-foundation-growth-owner-20261020/.worker-tmp/profiles/node-359085664d7e51cced497c30eb0e82cc68baf346/packages/engineering-foundation/dist/source-graph.js", "@agent-teams/feature-module-standard": "/tmp/gm-foundation-growth-owner-20261020/.worker-tmp/profiles/node-359085664d7e51cced497c30eb0e82cc68baf346/packages/feature-module-standard/dist/index.js", "@get-modular/conformance": "/tmp/gm-growth-source-20261020/packages/conformance/dist/index.js"};
+   const result: Record<string, unknown> = {};
+-  for (const name of ["@agent-teams/engineering-foundation", "@agent-teams/feature-module-standard", "@get-modular/conformance"]) {
+-    const entry = name === "@agent-teams/engineering-foundation" ? `${name}/source-graph` : name;
+-    const manifestPath = name.startsWith("@get-modular/")
+-      ? join(dirname(dirname(fileURLToPath(import.meta.resolve(entry)))), "package.json")
+-      : require.resolve(`${name}/package.json`);
++  for (const [name, root] of Object.entries(roots)) {
++    const manifestPath = join(root, "package.json");
+     const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as { readonly name: string; readonly version: string };
+     assert.equal(manifest.name, name);
+-    if (!name.startsWith("@get-modular/")) assert.equal(manifest.version, rootManifest.devDependencies[name]);
+-    result[name] = { version: manifest.version, entry, resolution: import.meta.resolve(entry),
+-      package: name.startsWith("@get-modular/")
+-        ? { manifestSha256: digest(await readFile(manifestPath)), dist: await treeIdentity(join(dirname(manifestPath), "dist")) }
+-        : await treeIdentity(dirname(manifestPath)) };
++    result[name] = { kind: name.startsWith("@agent-teams/") ? "owner-source-candidate" : "unchanged-public-workspace-output",
++      sourceCommit: name.startsWith("@agent-teams/") ? "359085664d7e51cced497c30eb0e82cc68baf346" : "7257c06f56768fd8a2d3624787a4a5ecbe3a4283",
++      version: manifest.version, entry: entries[name],
++      package: { manifestSha256: digest(await readFile(manifestPath)), dist: await treeIdentity(join(root, "dist")) } };
+   }
+   return result;
+ }
+@@ -192,7 +184,7 @@
+   assert.equal(result.source.graph.external.length, 6 * size + 3, "independent package import census");
+   assert.equal(result.source.graph.edges.filter(edge => edge.mode === "runtime").length, 7 * size);
+   assert.deepEqual(await treeIdentity(join(directory, "src")), before, "scanner leaves source unchanged");
+-  return { kind: "installed-selected-flat-growth-source", source: "passed", size, authority: growthSourceAuthority,
++  return { kind: "source-owner-candidate-selected-flat-growth-source", source: "passed", size, authority: growthSourceAuthority,
+     adoption: "unchanged", nested: "not-selected", sourceTree: before, profile, policyProfile,
+     publicTools: await publicTools(), observation: result };
+ }
+--- /tmp/gm-growth-source-20261020/tests/qualification/consumer-fixtures/source/policy.ts
++++ candidate/policy.ts
+@@ -1,15 +1,13 @@
+ import assert from "node:assert/strict";
+ import { createHash } from "node:crypto";
+ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+-import { createRequire } from "node:module";
+ import { dirname, join } from "node:path";
+-import { invokeFixtureNode } from "../support/materialize.mjs";
+-import { sourceInventory } from "./records.mjs";
+-import { sourceProfile } from "./profile.mjs";
++import { invokeFixtureNode } from "/tmp/gm-growth-source-20261020/tests/qualification/consumer-fixtures/support/materialize.mjs";
++import { sourceInventory } from "/tmp/gm-growth-source-20261020/tests/qualification/consumer-fixtures/source/records.mjs";
++import { sourceProfile } from "/tmp/gm-growth-source-20261020/tests/qualification/consumer-fixtures/source/profile.mjs";
+ 
+-const require = createRequire(import.meta.url);
+ const configurationPath = "architecture/foundation/source-dependencies.yaml";
+-const configuration = await readFile(new URL("./source-dependencies.yaml", import.meta.url));
++const configuration = await readFile(new URL("file:///tmp/gm-growth-source-20261020/tests/qualification/consumer-fixtures/source/source-dependencies.yaml"));
+ 
+ interface PolicyReport {
+   readonly outcome: unknown;
+@@ -23,10 +21,11 @@
+ 
+ /** Runs the installed public policy owner against the real disposable semantic source. */
+ export async function checkInstalledSourcePolicy(directory: string) {
+-  const manifestPath = require.resolve("@agent-teams/engineering-foundation/package.json");
++  const manifestPath = "/tmp/gm-foundation-growth-owner-20261020/.worker-tmp/profiles/node-359085664d7e51cced497c30eb0e82cc68baf346/packages/engineering-foundation/package.json";
+   const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as { readonly bin?: Readonly<Record<string, unknown>> };
+   const bin = manifest.bin?.["agent-teams-foundation"];
+   assert.equal(typeof bin, "string", "Foundation must expose its public CLI bin");
++  const started = performance.now();
+   const result = invokeFixtureNode([
+     join(dirname(manifestPath), bin as string), "check", "architecture.source-dependencies",
+     "--consumer", directory, "--format", "json",
+@@ -36,7 +35,7 @@
+   assert.equal(report.capabilities.length, 1);
+   assert.equal(report.capabilities.at(0)!.capabilityId, "architecture.source-dependencies");
+   assert.equal(result.status, report.outcome === "passed" ? 0 : 1, JSON.stringify(report));
+-  return { exit: result.status, report };
++  return { exit: result.status, report, wallMs: performance.now() - started };
+ }
+ 
+ function rejects(result: PolicyResult, suffix: string) {
+@@ -132,7 +131,7 @@
+   const restored = await checkInstalledSourcePolicy(directory);
+   assert.equal(restored.exit, 0, JSON.stringify(restored));
+   assert.deepEqual(await sourceInventory(directory, sourceProfile.roots), inventory, "P4 mutation inventory restored");
+-  const manifestPath = require.resolve("@agent-teams/engineering-foundation/package.json");
++  const manifestPath = "/tmp/gm-foundation-growth-owner-20261020/.worker-tmp/profiles/node-359085664d7e51cced497c30eb0e82cc68baf346/packages/engineering-foundation/package.json";
+   return { kind: "installed-flat-source-policy", source: "incomplete", adoption: "unchanged",
+     foundation: { version: (JSON.parse(await readFile(manifestPath, "utf8")) as { readonly version: unknown }).version, manifestPath },
+     profile: { path: "tests/qualification/consumer-fixtures/source/source-dependencies.yaml",

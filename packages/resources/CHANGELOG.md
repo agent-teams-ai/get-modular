@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1
+
+### Patch Changes
+
+- ddf1e0b: Preserve escalation and subscription detachment during reentrant scope close.
+  Reserve the close flight and apply escalation before notifying abort listeners;
+  finish synchronous abort notifications before starting cleanup, including when
+  a listener closes an ancestor during close or construction cancellation.
+  Registration is refused throughout the requested subtree before callbacks run.
+  Independent scope trees keep their existing synchronous close behavior.
+
 ## 0.2.0
 
 ### Minor Changes

@@ -75,8 +75,8 @@ const OBSOLETE_ACTIVE_RECORDS = Object.freeze([
 ]);
 const FOUNDATION = Object.freeze({
   package: "@agent-teams/engineering-foundation",
-  version: "2.0.1",
-  integrity: "sha512-Nh7jjvGz0XQXXXjDALD024a88N86digBhJIeyAkOHTGpV6O+eNJtjg+bF+J77khLxCyB4c7gB8GqwN8HxX+pkg==",
+  version: "2.1.1",
+  integrity: "sha512-NvjLwYgUILVpOHrvJwJLjG/5/vQcIPQwtDxNnUjna+Fdys5qJeZnw2IBgLlFi0sEYZ0DoZgondIBUAxiCkd9pQ==",
 });
 const RETAINED_FOUNDATION = Object.freeze({
   package: "@agent-teams/engineering-foundation",

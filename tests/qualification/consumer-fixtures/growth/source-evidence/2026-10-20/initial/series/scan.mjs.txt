@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { readFile, writeFile } from 'node:fs/promises';
+import { checkGrowthSource } from 'file:///tmp/gm-growth-source-20261020/tests/qualification/consumer-fixtures/growth/source.ts';
+const result = await checkGrowthSource(process.argv[2], Number(process.argv[3]));
+const original = JSON.parse(await readFile(process.argv[4], 'utf8'));
+assert.deepEqual(result.sourceTree, original.stages.find(item => item.stage === 'cold').source);
+await writeFile(process.argv[5], JSON.stringify(result, null, 2) + '\n');
+console.log(JSON.stringify({ size: result.size, source: result.source, sourceTree: result.sourceTree,
+    resolvedImports: result.observation.source.graph.edges.length,
+    externalImports: result.observation.source.graph.external.length,
+    features: result.observation.source.fms.features.length,
+    cms: result.observation.source.cms.report,
+    policy: result.observation.policy.report.outcome, measuredChainMs: result.observation.wallMs }));

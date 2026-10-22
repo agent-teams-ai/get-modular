@@ -11,3 +11,6 @@
 /packages/*/tests/** -linguist-detectable
 /architecture/checks/** -linguist-detectable
 /architecture/tooling/** -linguist-detectable
+
+# Retained generated observations keep their original bytes and remain inspectable.
+/tests/qualification/consumer-fixtures/growth/source-evidence/** linguist-generated=true

@@ -1,0 +1,12 @@
+import { writeSync } from "node:fs";
+const stack: string[] = [];
+const calls = new Map<string, number>();
+function write(event: string, name: string) {
+  writeSync(2, JSON.stringify({event, name, phase: stack.at(-1), monotonicMs: performance.now(), timeUtc: new Date().toISOString(), calls: Object.fromEntries(calls)}) + "\n");
+}
+export function enter(name: string) { stack.push(name); write("begin", name); }
+export function leave(name: string) { write("end", name); if (stack.pop() !== name) throw new Error("diagnostic phase mismatch"); }
+export function tick(name: string) {
+  const count = (calls.get(name) ?? 0) + 1; calls.set(name, count);
+  if (count === 1 || count % 250000 === 0) write("calls", name);
+}

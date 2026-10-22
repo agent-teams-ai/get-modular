@@ -6,8 +6,8 @@
       "name": "@get-modular/repository",
       "devDependencies": {
         "@agent-teams/docs-protocol": "0.6.3",
-        "@agent-teams/engineering-foundation": "2.0.1",
-        "@agent-teams/feature-module-standard": "0.2.1",
+        "@agent-teams/engineering-foundation": "2.1.1",
+        "@agent-teams/feature-module-standard": "0.2.3",
         "@changesets/cli": "catalog:",
         "@get-modular/assembly": "workspace:*",
         "@get-modular/conformance": "workspace:*",
@@ -33,14 +33,14 @@
     },
     "packages/assembly": {
       "name": "@get-modular/assembly",
-      "version": "0.6.0",
+      "version": "0.7.0",
       "dependencies": {
         "@get-modular/core": "workspace:*",
       },
     },
     "packages/conformance": {
       "name": "@get-modular/conformance",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "peerDependencies": {
         "@get-modular/assembly": "workspace:^",
         "@get-modular/core": "workspace:^",
@@ -49,7 +49,7 @@
     },
     "packages/core": {
       "name": "@get-modular/core",
-      "version": "0.6.0",
+      "version": "0.7.0",
       "devDependencies": {
         "ajv": "catalog:",
         "canonicalize": "catalog:",
@@ -66,14 +66,14 @@
     },
     "packages/observation": {
       "name": "@get-modular/observation",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "peerDependencies": {
         "@get-modular/resources": "workspace:^",
       },
     },
     "packages/resources": {
       "name": "@get-modular/resources",
-      "version": "0.2.0",
+      "version": "0.2.1",
     },
   },
   "catalog": {
@@ -98,9 +98,9 @@
 
     "@agent-teams/document-authoring": ["@agent-teams/document-authoring@0.3.3", "", { "dependencies": { "@agent-teams/repository-mutation": "0.3.0", "ajv": "8.20.0", "yaml": "2.9.0" } }, "sha512-OBBX04LdPJ3eXYhI5AGLVUTUkHGrmVbnMx8lAybD08X4UfMmvg83j23FNS8nTsQgJUiOWgw6PggcGSBuF17XTg=="],
 
-    "@agent-teams/engineering-foundation": ["@agent-teams/engineering-foundation@2.0.1", "", { "dependencies": { "@agent-teams/document-authoring": "0.3.3", "@agent-teams/repository-mutation": "0.3.0", "@microsoft/api-extractor-model": "7.33.10", "@microsoft/tsdoc": "0.16.0", "ajv": "8.20.0", "ajv-formats": "3.0.1", "jsonc-parser": "3.3.1", "node-or-bun": "0.2.1", "oxc-parser": "0.142.0", "proper-lockfile": "4.1.2", "typescript": "7.0.2", "yaml": "2.9.0" }, "bin": { "agent-teams-node-test": "dist/node-test-cli.js", "agent-teams-foundation": "dist/cli.js" } }, "sha512-Nh7jjvGz0XQXXXjDALD024a88N86digBhJIeyAkOHTGpV6O+eNJtjg+bF+J77khLxCyB4c7gB8GqwN8HxX+pkg=="],
+    "@agent-teams/engineering-foundation": ["@agent-teams/engineering-foundation@2.1.1", "", { "dependencies": { "@agent-teams/document-authoring": "0.3.4", "@agent-teams/repository-mutation": "0.4.0", "@microsoft/api-extractor-model": "7.33.10", "@microsoft/tsdoc": "0.16.0", "ajv": "8.20.0", "ajv-formats": "3.0.1", "jsonc-parser": "3.3.1", "node-or-bun": "0.2.1", "oxc-parser": "0.142.0", "proper-lockfile": "4.1.2", "typescript": "7.0.2", "yaml": "2.9.0" }, "bin": { "agent-teams-node-test": "dist/node-test-cli.js", "agent-teams-foundation": "dist/cli.js" } }, "sha512-NvjLwYgUILVpOHrvJwJLjG/5/vQcIPQwtDxNnUjna+Fdys5qJeZnw2IBgLlFi0sEYZ0DoZgondIBUAxiCkd9pQ=="],
 
-    "@agent-teams/feature-module-standard": ["@agent-teams/feature-module-standard@0.2.1", "", { "peerDependencies": { "@agent-teams/engineering-foundation": "^1.8.0 || ^2.0.0" }, "optionalPeers": ["@agent-teams/engineering-foundation"] }, "sha512-+JjvjmvO6+dSzRGnDYiVPI+T3oDXfcG0719W4HXYYhcQa3c4OEpVGfUKFfsXQiTmfmRHnLL3JlqWjNt0PwDC4g=="],
+    "@agent-teams/feature-module-standard": ["@agent-teams/feature-module-standard@0.2.3", "", { "peerDependencies": { "@agent-teams/engineering-foundation": "^1.8.0 || ^2.0.0" }, "optionalPeers": ["@agent-teams/engineering-foundation"] }, "sha512-eGslMb7bki8zaaO30+aK/Kcfz+zNTcb3Xt7BtSxVGjitpbkQ0SNHErFjdOm0qU6R/r9aMVJhMRmn8uBy3nk62Q=="],
 
     "@agent-teams/repository-mutation": ["@agent-teams/repository-mutation@0.3.0", "", {}, "sha512-8YnGElBptCp3mMImLnkddMRgLvrYq9dqLgNKg9Ek12hGB+CWitfbri77IYsd/G+dXF4oePJQUax2iC4Xc68uZw=="],
 
@@ -793,6 +793,10 @@
     "yallist": ["yallist@5.0.0", "", {}, "sha512-YgvUTfwqyc7UXVMrB+SImsVYSmTS8X/tSrtdNZMImM+n7+QTriRXyXim0mBrTXNeqzVF0KWGgHPeiyViFFrNDw=="],
 
     "yaml": ["yaml@2.9.0", "", { "bin": { "yaml": "bin.mjs" } }, "sha512-2AvhNX3mb8zd6Zy7INTtSpl1F15HW6Wnqj0srWlkKLcpYl/gMIMJiyuGq2KeI2YFxUPjdlB+3Lc10seMLtL4cA=="],
+
+    "@agent-teams/engineering-foundation/@agent-teams/document-authoring": ["@agent-teams/document-authoring@0.3.4", "", { "dependencies": { "@agent-teams/repository-mutation": "0.4.0", "ajv": "8.20.0", "yaml": "2.9.0" } }, "sha512-aKfZTjMM2GteYLZ9Jt8XLOgVgffx84XtgyjCoiJ+8Tn/V+mXICE3VGby6jgwrpCtDNU/td6qt5Ytlax4JLZ/KA=="],
+
+    "@agent-teams/engineering-foundation/@agent-teams/repository-mutation": ["@agent-teams/repository-mutation@0.4.0", "", {}, "sha512-vXWWH6HyiqULXm4pAydEB985sxiRVkWp8wA69OpPHbhCWp8Ldhm/Hy2nWgpRt03jp8w11gUyk21SmgvC2K9PqA=="],
 
     "@microsoft/tsdoc-config/ajv": ["ajv@8.18.0", "", { "dependencies": { "fast-deep-equal": "3.1.3", "fast-uri": "3.1.6", "json-schema-traverse": "1.0.0", "require-from-string": "2.0.2" } }, "sha512-PlXPeEWMXMZ7sPYOHqmDyCJzcfNrUr3fGNKtezX14ykXOEIvyK81d+qydx89KY5O71FKMPaQ2vBfBFI5NHR63A=="],
 

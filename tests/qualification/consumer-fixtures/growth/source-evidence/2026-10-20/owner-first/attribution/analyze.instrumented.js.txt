@@ -1,0 +1,221 @@
+import { enter, leave, tick } from "file:///tmp/gm-ts-owner-20261020/foundation-growth-owner/attribution/trace.ts";
+import { sourcePackageOwner } from "../policies/source-package-ownership.js";
+import { compareBinaryStrings } from "../../../../binary-string-comparator.js";
+import { assertNotCancelled, CapabilityInputError } from "../../../../features/validation-reporting/api.js";
+import { exactAvailablePackageExport, exactPackageExportTargetPaths } from "../../../../workspace-inventory/api.js";
+import { normalizeRepositoryPath, pathIsInside, portablePathIsInside, portableRepositoryPathIdentity } from "../model/repository-path.js";
+import { evaluateSourceDependencies } from "../policies/evaluate-source-dependencies.js";
+import { evaluateSourceWorkspaceCoverage } from "../policies/evaluate-source-workspace-coverage.js";
+import { buildObservedSourceGraph } from "./build-observed-source-graph.js";
+function pathInside(path, root, portable) {
+    return portable ? portablePathIsInside(path, root) : pathIsInside(path, root);
+}
+function matchingBoundarySpecificity(path, boundary, portable) {
+    const matchingRoots = boundary.roots
+        .filter((root) => pathInside(path, root, portable))
+        .map((root) => normalizeRepositoryPath(root).length);
+    return matchingRoots.length === 0 ? undefined : Math.max(...matchingRoots);
+}
+function selectBoundary(file, policy) {
+    tick("selectBoundary");
+    const matches = [];
+    for (const boundary of policy.boundaries) {
+        const specificity = matchingBoundarySpecificity(file.path, boundary, policy.schemaVersion !== 1);
+        if (specificity !== undefined) {
+            matches.push({ boundary, specificity });
+        }
+    }
+    if (matches.length === 0) {
+        return undefined;
+    }
+    if (policy.schemaVersion !== 1 && matches.length > 1) {
+        const candidateIds = matches
+            .map((match) => match.boundary.id)
+            .toSorted(compareBinaryStrings)
+            .join(", ");
+        throw new CapabilityInputError({
+            code: "SOURCE_BOUNDARY_AMBIGUOUS",
+            message: `Schema v2 source file matches multiple architecture boundaries: ${file.path} (${candidateIds}).`,
+            phase: "source-boundary-classification",
+            retryable: false
+        });
+    }
+    const highestSpecificity = Math.max(...matches.map((match) => match.specificity));
+    const mostSpecific = matches
+        .filter((match) => match.specificity === highestSpecificity)
+        .toSorted((left, right) => compareBinaryStrings(left.boundary.id, right.boundary.id));
+    if (mostSpecific.length > 1) {
+        const candidateIds = mostSpecific.map((match) => match.boundary.id).join(", ");
+        throw new CapabilityInputError({
+            code: "SOURCE_BOUNDARY_AMBIGUOUS",
+            message: `Source file matches multiple equally specific architecture boundaries: ${file.path} (${candidateIds}).`,
+            phase: "source-boundary-classification",
+            retryable: false
+        });
+    }
+    return mostSpecific[0]?.boundary;
+}
+function containingPackage(path, packages, portable) {
+    return packages
+        .filter((workspacePackage) => workspacePackage.rootPath === "."
+        ? true
+        : pathInside(path, workspacePackage.rootPath, portable))
+        .toSorted((left, right) => right.rootPath.length - left.rootPath.length ||
+        compareBinaryStrings(left.name, right.name))[0];
+}
+function classifyFiles(files, policy, packages, parser, options) {
+    enter("classifyFiles"); try {
+    const { signal, ownership } = options;
+    const classified = [];
+    for (const file of files) {
+        assertNotCancelled(signal);
+        const normalizedFile = {
+            ...file,
+            path: normalizeRepositoryPath(file.path)
+        };
+        const boundary = selectBoundary(normalizedFile, policy);
+        const workspacePackage = ownership === undefined
+            ? containingPackage(normalizedFile.path, packages, policy.schemaVersion !== 1)
+            : sourcePackageOwner(normalizedFile.path, packages, ownership);
+        if (boundary === undefined || workspacePackage === undefined) {
+            continue;
+        }
+        classified.push({
+            ...normalizedFile,
+            boundary,
+            workspacePackage,
+            parsed: parser.parse(normalizedFile)
+        });
+    }
+    return classified;
+    } finally { leave("classifyFiles"); }
+}
+function assertInventoryUsable(packages) {
+    const names = new Set();
+    for (const workspacePackage of packages) {
+        if (workspacePackage.name.startsWith("<unnamed:") || names.has(workspacePackage.name)) {
+            throw new CapabilityInputError({
+                code: "WORKSPACE_IDENTITY_INVALID",
+                message: "Source architecture requires unique named workspace packages.",
+                phase: "source-workspace-inventory",
+                retryable: false
+            });
+        }
+        names.add(workspacePackage.name);
+    }
+}
+function buildPackageExportBoundaries(policy, inventory, graph) {
+    if (policy.schemaVersion === 1) {
+        return new Map();
+    }
+    const packageNamesByBoundary = new Map();
+    for (const node of graph.nodes) {
+        const names = packageNamesByBoundary.get(node.boundaryId) ?? new Set();
+        names.add(node.workspacePackageName);
+        packageNamesByBoundary.set(node.boundaryId, names);
+    }
+    const nodesByPortablePath = new Map(graph.nodes.map((node) => [portableRepositoryPathIdentity(node.path), node]));
+    const mutable = new Map();
+    for (const boundary of policy.boundaries) {
+        if (boundary.packageExports.length === 0) {
+            continue;
+        }
+        const names = [...(packageNamesByBoundary.get(boundary.id) ?? [])];
+        if (names.length !== 1) {
+            throw new CapabilityInputError({
+                code: "SOURCE_EXPORT_BOUNDARY_INVALID",
+                message: `Package export claims require one exact package owner: ${boundary.id}.`,
+                phase: "source-boundary-classification",
+                retryable: false
+            });
+        }
+        const packageName = names[0];
+        const workspacePackage = inventory.packages.find(({ name }) => name === packageName);
+        if (packageName === undefined || workspacePackage === undefined) {
+            throw new CapabilityInputError({ code: "SOURCE_EXPORT_BOUNDARY_INVALID", message: `Package export claim has no workspace package owner: ${boundary.id}.`, phase: "source-boundary-classification", retryable: false });
+        }
+        const bySubpath = mutable.get(packageName) ?? new Map();
+        for (const subpath of boundary.packageExports) {
+            if (!exactAvailablePackageExport(workspacePackage.exportSurface.entries, subpath)) {
+                throw new CapabilityInputError({ code: "SOURCE_EXPORT_BOUNDARY_INVALID", message: `Package export claim is stale or not exported: ${packageName}:${subpath}.`, phase: "source-boundary-classification", retryable: false });
+            }
+            if (bySubpath.has(subpath)) {
+                throw new CapabilityInputError({ code: "SOURCE_EXPORT_BOUNDARY_INVALID", message: `Package export has duplicate boundary ownership: ${packageName}:${subpath}.`, phase: "source-boundary-classification", retryable: false });
+            }
+            for (const target of exactPackageExportTargetPaths(workspacePackage.exportSurface.entries, subpath)) {
+                const targetPath = normalizeRepositoryPath(`${workspacePackage.rootPath}/${target.slice(2)}`);
+                const observedOwner = nodesByPortablePath.get(portableRepositoryPathIdentity(targetPath));
+                if (observedOwner !== undefined && observedOwner.boundaryId !== boundary.id) {
+                    throw new CapabilityInputError({ code: "SOURCE_EXPORT_BOUNDARY_INVALID", message: `Package export claim contradicts observed source ownership: ${packageName}:${subpath}.`, phase: "source-boundary-classification", retryable: false });
+                }
+            }
+            bySubpath.set(subpath, boundary.id);
+        }
+        mutable.set(packageName, bySubpath);
+    }
+    return new Map([...mutable].map(([name, entries]) => [name, new Map(entries)]));
+}
+export async function analyzeSourceDependencies(input, dependencies) {
+    if (input.policy.schemaVersion !== 1) {
+        const topology = await dependencies.topologyInspector.inspect({
+            consumerRoot: input.consumerRoot,
+            ...(input.policy.schemaVersion === 3 ? { v3: { includeRootPackage: input.policy.includeRootPackage } } : {}),
+            workspaceManifestPath: input.policy.workspaceManifestPath,
+            packageRoots: input.policy.packageRoots,
+            governedRoots: input.policy.governedRoots,
+            boundaryRoots: input.policy.boundaries.flatMap((boundary) => boundary.roots.map((path) => ({ boundaryId: boundary.id, path }))),
+            ...(input.signal === undefined ? {} : { signal: input.signal })
+        });
+        const { inventory, packageTypeScopes, sourceFiles } = topology;
+        assertInventoryUsable(inventory.packages);
+        const coverageDiagnostics = evaluateSourceWorkspaceCoverage(input.policy, topology);
+        const classifiedFiles = classifyFiles(sourceFiles, input.policy, inventory.packages, dependencies.parser, {
+            ...(input.signal === undefined ? {} : { signal: input.signal }),
+            ...(topology.ownership === undefined ? {} : { ownership: topology.ownership })
+        });
+        const graph = buildObservedSourceGraph({
+            consumerRoot: topology.canonicalConsumerRoot,
+            consumerRootIdentity: topology.consumerRootIdentity,
+            enforceWorkspaceBindings: true,
+            enforceGeneratedManifestFences: input.policy.schemaVersion === 3,
+            inventory,
+            packageTypeScopes,
+            governedWorkspacePackageManifestPaths: new Set(topology.packages.map(({ manifestPath }) => manifestPath)),
+            allSourceFiles: sourceFiles,
+            classifiedFiles,
+            resolver: dependencies.resolver,
+            workspacePackageRootIdentities: new Map(topology.packages.map(({ filesystemIdentity, manifestPath }) => [
+                manifestPath,
+                filesystemIdentity
+            ])),
+            ...(input.signal === undefined ? {} : { signal: input.signal })
+        });
+        return [
+            ...coverageDiagnostics,
+            ...evaluateSourceDependencies({
+                policy: input.policy,
+                graph,
+                packageExportBoundaries: buildPackageExportBoundaries(input.policy, inventory, graph)
+            })
+        ];
+    }
+    const [inventory, sourceFiles] = await Promise.all([
+        dependencies.inventoryReader.read(input.consumerRoot, input.policy.workspaceManifestPath, input.signal),
+        dependencies.sourceReader.read(input.consumerRoot, input.policy.governedRoots, input.signal)
+    ]);
+    assertInventoryUsable(inventory.packages);
+    const classifiedFiles = classifyFiles(sourceFiles, input.policy, inventory.packages, dependencies.parser, input.signal === undefined ? {} : { signal: input.signal });
+    const graph = buildObservedSourceGraph({
+        consumerRoot: input.consumerRoot,
+        inventory,
+        allSourceFiles: sourceFiles,
+        classifiedFiles,
+        resolver: dependencies.resolver,
+        ...(input.signal === undefined ? {} : { signal: input.signal })
+    });
+    return evaluateSourceDependencies({
+        policy: input.policy,
+        graph
+    });
+}
+//# sourceMappingURL=analyze-source-dependencies.js.map

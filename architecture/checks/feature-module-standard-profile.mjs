@@ -28,7 +28,7 @@ export const TRACEABILITY_PATH = "docs/traceability/module-system-v1.yaml";
 
 const FOUNDATION_ADMISSION = Object.freeze({
   package: "@agent-teams/engineering-foundation",
-  version: "2.0.1",
+  version: "2.1.1",
   command: "node architecture/tooling/runtime/command.ts tool agent-teams-foundation check",
   capability: "architecture.source-dependencies",
   policy: SOURCE_DEPENDENCY_POLICY_PATH,
@@ -51,8 +51,8 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "core:build": "node architecture/tooling/build-core.mjs",
   "core:test": 'node --test "packages/core/tests/**/*.test.mjs"',
   "assembly:build": "node architecture/tooling/runtime/command.ts run core:build && node architecture/tooling/build-assembly.mjs",
-  "assembly:typecheck": "node node_modules/typescript/bin/tsc -p packages/assembly/tsconfig.json --noEmit && node node_modules/typescript/bin/tsc -p tests/tsconfig.consumer-fixtures.json --noEmit",
-  "assembly:test": 'node --test "tests/assembly/**/*.test.mjs" "packages/assembly/tests/**/*.test.mjs"',
+  "assembly:typecheck": "node node_modules/typescript/bin/tsc -p packages/assembly/tsconfig.json --noEmit && node node_modules/typescript/bin/tsc -p tests/tsconfig.consumer-fixtures.json --noEmit && node node_modules/typescript/bin/tsc -p tests/tsconfig.assembly-tooling.json --noEmit",
+  "assembly:test": "node --test \"tests/assembly/**/*.test.mjs\" \"packages/assembly/tests/**/*.test.mjs\" \"tests/assembly/**/*.test.ts\"",
   "contracts:check": "node architecture/tooling/runtime/command.ts tool architecture/checks/v1-contract.mjs",
   "contracts:test": "node --test tests/v1-contract.test.mjs tests/compiler-engineer-examples.test.mjs tests/implementation-clarifications.test.mjs tests/qualification/m2-candidate/generation-two-artifacts.test.mjs tests/qualification/m2-candidate/raw-carrier-oracle.test.mjs tests/qualification/m2-candidate/duplicate-record-cases.test.mjs tests/qualification/m2-candidate/duplicate-record-extended-overlaps.test.mjs tests/qualification/m2-candidate/raw-invocation-oracle.test.mjs tests/qualification/m2-candidate/duplicate-record-resources.test.mjs tests/qualification/m2-candidate/raw-document-cases.test.mjs tests/qualification/m2-candidate/mutation-evidence.test.mjs tests/qualification/m2-candidate/retained-object-descriptors.test.mjs tests/qualification/m2-candidate/combined-case-inventory.test.mjs tests/qualification/m2-candidate/boundary-source-mutations.test.mjs tests/assembly-admission-retained.test.mjs tests/m2-lock-witness.test.mjs",
   "docs:check": "node architecture/tooling/runtime/command.ts tool agent-teams-docs check --consumer . --profile architecture/foundation/docs-protocol.yaml",

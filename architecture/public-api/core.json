@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "packageName": "@get-modular/core",
-  "packageVersion": "0.6.0",
+  "packageVersion": "0.7.0",
   "extractorVersion": "typescript-native/7.0.2",
   "entrypoints": [
     {

@@ -1,0 +1,110 @@
+{
+  "kind": "source-owner-candidate-benchmark",
+  "status": "passed",
+  "sourceCommit": "359085664d7e51cced497c30eb0e82cc68baf346",
+  "sourceTree": "b057a79901a3ed533d1305df0825ebeca03b9d28",
+  "profileEvidence": {
+    "profile": "node",
+    "sourceSha": "359085664d7e51cced497c30eb0e82cc68baf346",
+    "sourceDigest": "496a5f9cc672f438fe4765f5ea276f272382022764c6949ba4bd08b963f148f1",
+    "originalManifestSha256": "96c21c967388832053c9e5a8899eb6f286357e4662c073e44ee7ed4d2ebec0dd",
+    "derivedManifestSha256": "35320b3c153673944bac304255931c9125f83692d9fb452467c6fbb6a6629a40",
+    "originalWorkflowPolicySha256": "afe85aab51f1b49a40854aa304977747607b2269f6cd011e476d290e8e61f8cc",
+    "derivedWorkflowPolicySha256": "9175f61ed43e56a04321ee2ab4497a43ef497104dd21e08220818bc661b6eb74",
+    "originalDependencyDeclarationsPolicySha256": "9d7e59a237fc071bdf910f4c9a5b001ca9681b6a7740911e7213dc04280ca82c",
+    "derivedDependencyDeclarationsPolicySha256": "bd22dde8a604ce7ec7cda04a766284e6082ada9211daad07313923e08bfc14a2"
+  },
+  "budgetsSeconds": {
+    "foundationCli": 30,
+    "sourceChain": 60,
+    "externalAggregate": 600
+  },
+  "startUtc": "2026-10-20T11:05:51.084499+00:00",
+  "subject": "/tmp/gm-ts-owner-20261020/growth-source-series/n500-copy",
+  "original": "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-500-pUOEDX",
+  "generatorCompilerRuntimeInvocations": "none",
+  "supportedInstalledQualification": false,
+  "supervisorSha256": "9574cbcd05943cc986e3f763c3e69265148c1f5fd3d306f4bfa91f5f3ba8fa86",
+  "preparation": {
+    "ownerCandidate": "359085664d7e51cced497c30eb0e82cc68baf346",
+    "profileRoot": "/tmp/gm-foundation-growth-owner-20261020/.worker-tmp/profiles/node-359085664d7e51cced497c30eb0e82cc68baf346",
+    "frozenHelperSha256": "9ef3fbfa996cdc3e1ecf3ad5504543e03b8aabb177d06d9bdb10e6e70443b74b",
+    "inputs": {
+      "source.ts": {
+        "sha256": "763f9547ab8987f2791f092b49232715d0159e9dd67845c4c646a6680661a0f0",
+        "bytes": 17807
+      },
+      "policy.ts": {
+        "sha256": "4cce5cfe7f26520ce804a5a7a60859e241bf628f82c1819933cd42c011752399",
+        "bytes": 9152
+      },
+      "run.ts": {
+        "sha256": "27f5b04df2985186a72bc643eca6979c58f032bcad3746d3545c07e15dec3e2b",
+        "bytes": 1201
+      },
+      "adapter.patch": {
+        "sha256": "f7d315325698a9798df3ead02a9623e237e8f47e1782ee7ce7b07fedb916a570",
+        "bytes": 9865
+      },
+      "tsconfig.json": {
+        "sha256": "68329a9229fb855ef7761ff39ff06ed57d900b1feaa0350e57bf2ec3f9c4c05f",
+        "bytes": 282
+      }
+    },
+    "scope": "source owner candidate only; unchanged selected profile, reader, topology, inventory and verdict oracles; import/CLI/provenance substitutions only, CLI wall duration observation; no installed qualification"
+  },
+  "sourceBefore": {
+    "sha256": "2a84ede0f14d1535e30c12bcc52c3e3927039dfb57d682c4778e639554e1c11d",
+    "files": 3503,
+    "bytes": 1267294
+  },
+  "policyBeforeSha256": "93aae6743d6c396e317a5e49bc3206d13a38660fc2db98a939e11e05c3a077a8",
+  "originalBefore": {
+    "sha256": "b262d16c1ffab944c73ebac8111a8066dd97b28ec4701863b78eacf75c333d24",
+    "files": 3503,
+    "bytes": 1267319
+  },
+  "originalReportBeforeSha256": "f746426aae83fe1d6b409be07e15c6a78c45227383084b44ff5917fac659a53b",
+  "frozenGmInputsBefore": {
+    "tests/qualification/consumer-fixtures/growth/source.ts": "9ef3fbfa996cdc3e1ecf3ad5504543e03b8aabb177d06d9bdb10e6e70443b74b",
+    "tests/qualification/consumer-fixtures/source/records.mjs": "fd2872981f170fc34b4fb6cd7059595ff7dc382ab081697bfdd67015d2686593",
+    "tests/qualification/consumer-fixtures/source/policy.ts": "bedfbbc76cd44420f5c37b4dd07497b3e6de277972cac19a83a28dd6d68f5b13",
+    "tests/qualification/consumer-fixtures/source/profile.mjs": "94b0bfcef73277c55575044c31f52ea79586bb3ad25d5bc665b52453f3002d4c",
+    "pnpm-lock.yaml": "048ead2ca34259c02790924af0935b553a644ea753a90177dc136c6bcedd8f6f"
+  },
+  "command": [
+    "/tmp/gm-completion-tools-20261020/node-v26.11.1-linux-x64/bin/node",
+    "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n500/run.ts",
+    "/tmp/gm-ts-owner-20261020/growth-source-series/n500-copy",
+    "/tmp/gm-ts-owner-20261020/consumer-results/gm-growth-500-pUOEDX/report.json",
+    "/tmp/gm-ts-owner-20261020/foundation-growth-owner/candidate-n500/report.json"
+  ],
+  "aggregateSeconds": 46.33277219100091,
+  "pid": 876642,
+  "timedOut": false,
+  "exitCode": 0,
+  "chainSeconds": 39.49753249099922,
+  "sourceAfter": {
+    "sha256": "2a84ede0f14d1535e30c12bcc52c3e3927039dfb57d682c4778e639554e1c11d",
+    "files": 3503,
+    "bytes": 1267294
+  },
+  "policyAfterSha256": "93aae6743d6c396e317a5e49bc3206d13a38660fc2db98a939e11e05c3a077a8",
+  "originalAfter": {
+    "sha256": "b262d16c1ffab944c73ebac8111a8066dd97b28ec4701863b78eacf75c333d24",
+    "files": 3503,
+    "bytes": 1267319
+  },
+  "originalReportAfterSha256": "f746426aae83fe1d6b409be07e15c6a78c45227383084b44ff5917fac659a53b",
+  "frozenGmInputsAfter": {
+    "tests/qualification/consumer-fixtures/growth/source.ts": "9ef3fbfa996cdc3e1ecf3ad5504543e03b8aabb177d06d9bdb10e6e70443b74b",
+    "tests/qualification/consumer-fixtures/source/records.mjs": "fd2872981f170fc34b4fb6cd7059595ff7dc382ab081697bfdd67015d2686593",
+    "tests/qualification/consumer-fixtures/source/policy.ts": "bedfbbc76cd44420f5c37b4dd07497b3e6de277972cac19a83a28dd6d68f5b13",
+    "tests/qualification/consumer-fixtures/source/profile.mjs": "94b0bfcef73277c55575044c31f52ea79586bb3ad25d5bc665b52453f3002d4c",
+    "pnpm-lock.yaml": "048ead2ca34259c02790924af0935b553a644ea753a90177dc136c6bcedd8f6f"
+  },
+  "reportSha256": "ae07747789adf5e4158c2ccd16c4e9ee559ff8f0215238a804d321aa892d431a",
+  "endUtc": "2026-10-20T11:06:37.413537+00:00",
+  "stdout.logSha256": "1ebad0ce44701f56800116fe811685c23f4a21f2231b83aa67aacbdb3af9fb53",
+  "stderr.logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

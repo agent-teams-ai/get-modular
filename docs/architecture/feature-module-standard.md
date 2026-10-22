@@ -122,11 +122,11 @@ production. The first production package must atomically:
 - change the admission state to `source-admitted`;
 - enable Engineering Foundation's `architecture.source-dependencies`
   capability at `architecture/foundation/source-dependencies.yaml`; and
-- execute the pinned `@agent-teams/engineering-foundation` `2.0.1` command
+- execute the pinned `@agent-teams/engineering-foundation` `2.1.1` command
   through `node architecture/tooling/runtime/command.ts tool agent-teams-foundation check`
   in both the complete and fast gates.
 
-The current tooling pins Foundation `2.0.1`, Feature Module Standard `0.2.1`
+The current tooling pins Foundation `2.1.1`, Feature Module Standard `0.2.3`
 and Docs Protocol `0.6.3` as exact registry development dependencies. The FMS
 package update does not change this repository's adopted FMS v1 authority.
 SDK growth admission remains
@@ -143,12 +143,23 @@ workflow without a managed adapter or cohort binding.
 
 The earlier native Foundation 1.10.0 binding followed the retained 1.7.4 and
 1.7.2 records. Those archive, compiler and CLI observations remain historical
-evidence under their original identities. The current Foundation 2.0.1 binding
+evidence under their original identities. The current Foundation 2.1.1 binding
 keeps the immutable Feature Module Standard authority and the separately reviewed
 Consumer Module Standard chain. Neither publication nor a tooling pin confers
 SDK authority or completes composition qualification.
 SDK status stays pending, activation stays on hold and release eligibility stays
 false.
+
+The interim tooling migration selects the published Foundation 2.1.1 and FMS
+0.2.3 archives. FMS retains its optional `^1.8.0 || ^2.0.0` Foundation peer and the
+immutable FMS v1 adoption and selected v1.1 identities. The source-graph correction
+keeps ordinary import/export declarations with inline `type` specifiers in runtime
+mode; declaration-level `import type` and `export type` remain type-only. The
+[retained selected-flat source receipt](../../tests/qualification/consumer-fixtures/growth/source-evidence/2026-10-21/observations.json)
+qualifies its original published package pair and source subjects. It does not
+qualify this Bun runtime migration or the current repository head. Installed Bun
+registry admission remains pending the actual successor publication and final
+consumer checks; no future package version or integrity is claimed here.
 
 The current `check:changed` script calls the published Foundation
 `agent-workflow check-changed` successor with repository-agent-workflow policy

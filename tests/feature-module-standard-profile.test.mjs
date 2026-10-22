@@ -168,10 +168,10 @@ test("rejects wildcard and mismatched module, source, and test roots", () => {
 // Accepted source pins; the profile gate verifies the final published archive binding.
 test("pins the accepted Foundation, FMS and Docs versions without age exclusions", async () => {
   const workspace = parse(await readFile("pnpm-workspace.yaml", "utf8"));
-  assert.equal(packageJson.devDependencies["@agent-teams/engineering-foundation"], "2.0.1");
+  assert.equal(packageJson.devDependencies["@agent-teams/engineering-foundation"], "2.1.1");
   assert.equal(packageJson.devDependencies["@agent-teams/docs-protocol"], "0.6.3");
-  assert.equal(packageJson.devDependencies["@agent-teams/feature-module-standard"], "0.2.1");
-  assert.equal(profile.adoption.admission.foundation.version, "2.0.1");
+  assert.equal(packageJson.devDependencies["@agent-teams/feature-module-standard"], "0.2.3");
+  assert.equal(profile.adoption.admission.foundation.version, "2.1.1");
   assert.equal(workspace.minimumReleaseAge, 0);
   assert.equal(workspace.minimumReleaseAgeStrict, undefined);
   assert.equal(workspace.minimumReleaseAgeExclude, undefined);
@@ -209,15 +209,16 @@ test("runtime policy test roster retains every reviewed test entry", () => {
 const rejectedFoundationPins = [
   "0.21.0", "1.0.1", "1.1.0", "1.1.1", "1.2.0", "1.4.0", "1.4.1", "1.4.2", "1.5.0", "1.5.1", "1.6.1", "1.7.0", "1.7.1", "1.10.0",
   // Historical exact pins and all ranges remain rejected beside the current exact native pin.
-  "1.7.2", "1.7.3", "1.7.4", "1.8.0", "1.9.0", "2.0.0",
+  "1.7.2", "1.7.3", "1.7.4", "1.8.0", "1.9.0", "2.0.0", "2.0.1", "1.10.1", "1.10.2", "2.1.0",
   "^1.7.1", "~1.7.1", "^1.7.2", "~1.7.2", "^1.7.4", "~1.7.4", "^1.10.0", "~1.10.0", "^2.0.0", "~2.0.0", "^2.0.1", "~2.0.1",
+  "^2.1.0", "~2.1.0", "^2.1.1", "~2.1.1",
   "*", undefined,
 ];
 
-test("accepts exactly Foundation 2.0.1 for source and empty pre-production guard inputs", () => {
+test("accepts exactly Foundation 2.1.1 for source and empty pre-production guard inputs", () => {
   const input = versionAdmissionInput();
-  input.packageJson.devDependencies["@agent-teams/engineering-foundation"] = "2.0.1";
-  input.admission.foundation.version = "2.0.1";
+  input.packageJson.devDependencies["@agent-teams/engineering-foundation"] = "2.1.1";
+  input.admission.foundation.version = "2.1.1";
   assert.equal(validateFirstProductionPackageAdmission(input), SOURCE_DEPENDENCY_POLICY_PATH);
   input.productionArtifacts = [];
   input.admission.status = "pre-production";
@@ -234,7 +235,7 @@ test("rejects stale, mismatched, ranged and missing Foundation manifest pins bef
         input.admission.status = "pre-production";
       }
       assert.throws(() => validateFirstProductionPackageAdmission(input),
-        /@agent-teams\/engineering-foundation must remain pinned to 2\.0\.1/u,
+        /@agent-teams\/engineering-foundation must remain pinned to 2\.1\.1/u,
         `manifest ${String(version)}, empty inventory ${empty}`);
     }
   }
@@ -258,7 +259,7 @@ test("matching manifest and profile versions cannot replace the exact Foundation
     input.packageJson.devDependencies["@agent-teams/engineering-foundation"] = version;
     input.admission.foundation.version = version;
     assert.throws(() => validateFirstProductionPackageAdmission(input),
-      /@agent-teams\/engineering-foundation must remain pinned to 2\.0\.1/u);
+      /@agent-teams\/engineering-foundation must remain pinned to 2\.1\.1/u);
     const changed = clone(profile);
     changed.adoption.admission = input.admission;
     assert.throws(() => validate({ profile: changed, packageJson: input.packageJson }),
@@ -266,7 +267,7 @@ test("matching manifest and profile versions cannot replace the exact Foundation
   }
 });
 
-test("admits current Core and Assembly only with the exact Foundation 2.0.1 binding", async () => {
+test("admits current Core and Assembly only with the exact Foundation 2.1.1 binding", async () => {
   const manifests = new Map(await Promise.all([
     "packages/core/package.json", "packages/assembly/package.json",
   ].map(async path => [path, JSON.parse(await readFile(path, "utf8"))])));
@@ -295,7 +296,7 @@ test("admits current Core and Assembly only with the exact Foundation 2.0.1 bind
       if (binding !== "manifest") changed.admission.foundation.version = version;
       assert.throws(() => validateFirstProductionPackageAdmission(changed),
         binding === "profile" ? /Foundation admission binding does not match/u
-          : /@agent-teams\/engineering-foundation must remain pinned to 2\.0\.1/u,
+          : /@agent-teams\/engineering-foundation must remain pinned to 2\.1\.1/u,
         `Core+Assembly ${binding} ${String(version)}`);
     }
   }
@@ -962,7 +963,7 @@ test("ADR-0023 and ADR-0025 admit historical private and canonical public Assemb
   }
 
   // Shape validation does not confer the separately authenticated successor authority.
-  for (const version of ["0.2.0", "0.3.0", "0.4.0", "0.5.0"]) {
+  for (const version of ["0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0", "0.7.0"]) {
     assert.deepEqual(manifestCarrierViolations(await inventory({ ...publicManifest, version })), []);
     const privateNext = manifestCarrierViolations(await inventory({ ...manifest, version }));
     assert.equal(privateNext.length, 1);
@@ -970,7 +971,7 @@ test("ADR-0023 and ADR-0025 admit historical private and canonical public Assemb
   }
 
   for (const [change, message] of [
-    [{ version: "0.7.0" }, /version requires historical 0\.1\.0 or public 0\.2\.0\/0\.3\.0\/0\.4\.0\/0\.5\.0\/0\.6\.0 admission/u],
+    [{ version: "0.8.0" }, /version requires historical 0\.1\.0 or public 0\.2\.0\/0\.3\.0\/0\.4\.0\/0\.5\.0\/0\.6\.0\/0\.7\.0 admission/u],
     [{ dependencies: {} }, /dependencies must contain only/u],
     [{ dependencies: { "@get-modular/core": "^0.1.0" } }, /dependencies must contain only/u],
     [{ dependencies: { ...manifest.dependencies, "@example/extra": "1.0.0" } },

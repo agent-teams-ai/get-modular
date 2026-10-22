@@ -68,6 +68,11 @@ const ASSEMBLY_COMPILER_FLOOR_REGISTRY_ENTRY = Object.freeze({
 // Each public pair after 0.1.0 is authenticated by its own accepted decision;
 // the manifest shape alone is not authority.
 export const ASSEMBLY_PAIR_DECISIONS = Object.freeze({
+  "0.7.0": Object.freeze({
+    path: "docs/decisions/0040-admit-the-core-and-assembly-0-7-diagnostic-release-pair.md",
+    bytesDigest: "sha256:050543c4c4d79e87b310e96602d9ea1b19d8610d67cc86ee566fd63e1807c082",
+    entry: Object.freeze({"id": "ADR-0040", "path": "docs/decisions/0040-admit-the-core-and-assembly-0-7-diagnostic-release-pair.md", "immutableDigest": "sha256:3b157ee807f65a6d58a91ab9540232e71a9ac0df84872dad775f90869a0ed305"}),
+  }),
   "0.2.0": Object.freeze({
     path: ASSEMBLY_CORRECTION_DECISION_PATH,
     bytesDigest: ASSEMBLY_CORRECTION_DECISION_BYTES_DIGEST,

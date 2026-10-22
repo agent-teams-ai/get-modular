@@ -1,0 +1,15 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { registerHooks } from "node:module";
+import { fileURLToPath } from "node:url";
+import { enter } from "./trace.ts";
+const mapping = JSON.parse(readFileSync(new URL("./modules.json", import.meta.url), "utf8")) as Record<string, {readonly replacement: string; readonly originalSha256: string}>;
+registerHooks({load(url, context, nextLoad) {
+  const result = nextLoad(url, context);
+  const selected = url.startsWith("file:") ? mapping[fileURLToPath(url)] : undefined;
+  if (!selected) return result;
+  const actual = createHash("sha256").update(readFileSync(fileURLToPath(url))).digest("hex");
+  if (actual !== selected.originalSha256) throw new Error("diagnostic original module drift");
+  return {...result, source: readFileSync(selected.replacement, "utf8")};
+}});
+enter("CLI");

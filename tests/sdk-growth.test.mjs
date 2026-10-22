@@ -150,6 +150,12 @@ test("rejects missing command and Foundation identity drift", async t => {
   await t.test("stale exact 1.7.2 literal", () => rejects(model => {
     model.packageJson.devDependencies["@agent-teams/engineering-foundation"] = "1.7.2";
   }, /exact dev dependency/u));
+  await t.test("stale exact 1.10.0 literal", () => rejects(model => {
+    model.packageJson.devDependencies["@agent-teams/engineering-foundation"] = "1.10.0";
+  }, /exact dev dependency/u));
+  await t.test("stale exact 2.1.0 literal", () => rejects(model => {
+    model.packageJson.devDependencies["@agent-teams/engineering-foundation"] = "2.1.0";
+  }, /exact dev dependency/u));
   await t.test("registry integrity", () => rejects(model => {
     model.lockText = model.lockText.replace(model.profile.foundation.integrity, "sha512-forged");
   }, /registry identity/u));
