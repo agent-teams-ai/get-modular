@@ -5,7 +5,7 @@ import { cp, mkdir, open, readFile, readdir, writeFile } from "node:fs/promises"
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { copyReadyPackages, fixtureCompiler, treeIdentity } from "../support/materialize.mjs";
-import { generateGrowthSource } from "./generate.mjs";
+import { generateGrowthSource } from "./generate.ts";
 import { expectedInventory, expectedSourcePaths } from "./oracle.mjs";
 import { applyLeafEdit, applySharedContractEdit, restoreEdit } from "./patches.mjs";
 import { readUpstreamCandidate } from "./upstream-compiler.ts";
@@ -113,6 +113,7 @@ try {
   if (size === 8) {
     await mkdir(join(directory, "tests/features/f003"), { recursive: true });
     await cp(join(ownDirectory, "test-source/wrong-provider.ts.txt"), join(directory, "tests/features/f003/wrong-provider.ts"));
+    await cp(join(ownDirectory, "test-source/aggregate-types.ts.txt"), join(directory, "tests/aggregate-types.ts"));
   }
   await cp(join(ownDirectory, "test-source/runtime.mjs.txt"), join(directory, "tests/runtime.mjs"));
   if (incremental) {
@@ -129,7 +130,7 @@ try {
   assert.deepEqual(report.inventory.files, expectedSourcePaths(size));
   report.identities.generatedSource = await treeIdentity(join(directory, "src"));
   report.identities.testSource = await treeIdentity(join(directory, "tests"));
-  report.identities.generator = hash(await readFile(join(ownDirectory, "generate.mjs")));
+  report.identities.generator = hash(await readFile(join(ownDirectory, "generate.ts")));
   report.identities.oracle = hash(await readFile(join(ownDirectory, "oracle.mjs")));
   report.identities.patches = hash(await readFile(join(ownDirectory, "patches.mjs")));
   report.identities.config = hash(await readFile(join(directory, "tsconfig.json")));

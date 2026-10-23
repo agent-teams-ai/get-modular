@@ -110,6 +110,7 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
       immutableDigest: "sha256:a87281033d7381aabd956dbf772a10b0c2f2025365a9611faed1cb7d6137707f",
     },
     {"id": "ADR-0040", "path": "docs/decisions/0040-admit-the-core-and-assembly-0-7-diagnostic-release-pair.md", "immutableDigest": "sha256:3b157ee807f65a6d58a91ab9540232e71a9ac0df84872dad775f90869a0ed305"},
+    {"id": "ADR-0041", "path": "docs/decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md", "immutableDigest": "sha256:1876caeaec5aa79bc8a007e544f9c9303dda6a6f40f82e0de6e42ac37e02fdb2"},
   ]);
   const paths = execFileSync("git", ["ls-tree", "-r", "--name-only", checkpoint.evidence.base,
     "docs/decisions"], { encoding: "utf8" }).trim().split("\n");
@@ -186,10 +187,10 @@ test("observations bind historical lock bytes, production importers and reviewed
   const historicalCms = execFileSync("git", ["show", `${checkpoint.evidence.base}:${cmsPath}`]);
   assert.equal(digest(historicalCms), checkpoint.evidence.cms.digest,
     "C0 retains the CMS bytes observed at its base");
-  // ADR-0039 adds report-and-await drain guidance; historical C0 bytes above stay frozen.
+  // ADR-0041 updates complete-map authoring; historical C0 bytes above stay frozen.
   const currentCms = readFileSync(cmsPath);
   assert.equal(digest(currentCms),
-    "sha256:a6dac5d303adf80be3151c6703c919b715fd880a941a4ad68e927c87a7ee5882",
+    "sha256:11a389b223506dc303fa986a7a37350b847013d85beb2de9d74cb8c97363e824",
     "the current CMS successor must match its separately reviewed bytes");
   // Package versions are observations at the evidence base; later releases move the working tree.
   for (const [name, version] of Object.entries(checkpoint.evidence.packages)) {
