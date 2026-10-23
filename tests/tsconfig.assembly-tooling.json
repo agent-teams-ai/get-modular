@@ -1,7 +1,8 @@
 {
   "extends": "./tsconfig.native-tooling.json",
   "files": [
-    "assembly/format-failure.test.ts"
+    "assembly/format-failure.test.ts",
+    "assembly/descriptor-aggregate.test.ts"
   ],
   "include": []
 }
