@@ -326,6 +326,16 @@ experiment does not wait for an unrelated whole-repository migration.
 
 ## P5 — Measure one real growth step at a time
 
+**Current authoring successor (2026-10-23).**
+[ADR-0041](../decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md)
+authorizes complete descriptor unions and separate predecessor map bases for
+the current G recipe. Every transitive and unused contract and early conflict
+check remains. The historical observations below stay bound to direct map
+inheritance; they neither measure nor block qualification of the new source.
+Retain fresh cold source identities and all required compiler/runtime/source
+evidence before reporting the current recipe qualified. This is not a shallow
+map substitution or a compiler patch adoption.
+
 **Observed research status (2026-10-17).** The corrected inherited-map subject
 passed at 8 and 100 features. Its 500-feature cold TypeScript compilation timed
 out after 180.047 seconds at the unchanged 180-second cap; the corrected
@@ -349,8 +359,8 @@ compiler edits and separate scanner budgets. Keep inputs outside groups.
 
 The optional command proposed for this phase is
 `node tests/qualification/consumer-fixtures/growth/measure.mjs --size 100`.
-It is **NEW and unavailable until implemented**. It consumes ready package
-outputs and reports missing preparation; it does not rebuild during each stage.
+It is implemented and consumes ready package outputs, reporting missing
+preparation rather than rebuilding during each stage.
 Only the 8-entry correctness case joins ordinary mandatory `assembly:test`.
 
 **Success oracle.** G rows pass, actual census matches the topology, complete

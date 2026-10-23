@@ -1,16 +1,21 @@
 # Growth consumer fixture
 
-This test-owned profile implements the inherited feature maps, file inventory,
+This test-owned profile implements the complete feature maps, file inventory,
 arithmetic and independent provider pins in the
 [G scenarios](../../../../docs/qualification/module-fixture-scenarios.md#g--a-real-file-tree-with-bounded-useful-computation).
 The [P5 plan](../../../../docs/qualification/module-fixture-plan.md) and
 [measurement handoff](../../../../docs/qualification/module-fixture-handoff.md#source-freshness-and-measurement-evidence)
-remain the authority. The separate selected-flat source series **passes** for
-N=8, 100, 500 and 1000 with the published Foundation 2.1.1 and FMS 0.2.3
-packages; see the [current source receipt](source-evidence/2026-10-21/observations.json).
-The compiler/runtime measurement driver retains its historical
-`scanner: not-collected` result and does not report process RSS. The supported
-TS7.0.2 compiler blocker remains open.
+remain the authority. [ADR-0041](../../../../docs/decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md)
+selects the current complete descriptor-union recipe: each predecessor union
+gets its own `CapabilitiesOf` base. The union and bases retain the same full
+contract surface, including unused keys; they are generated from one predecessor
+list and checked for parity and early conflicts. No compiler patch is selected.
+The [2026-10-21 source receipt](source-evidence/2026-10-21/observations.json)
+qualifies the earlier inherited-map source bytes only. Historical compiler
+blockers and `scanner: not-collected` fields below retain their original scope;
+they are not results for the new recipe. Current qualification requires fresh
+source and supported-compiler reports. Process RSS remains separately collected
+or explicitly `not-collected`.
 
 ## Correctness and optional measurement
 
@@ -66,7 +71,9 @@ The aggregate includes generation, copies, hashes, edits and child work. Scanner
 time is not selected. Growth is sequential: review N=100's
 report before selecting N=500, and N=500 before N=1000. The first ceiling,
 watchdog or budget failure stops progression with nonzero status and retained
-evidence. Do not raise caps, repeat a timeout, reduce smoke or flatten maps.
+evidence. Do not raise caps, repeat a timeout, reduce smoke or narrow the complete
+map surface. The ADR-0041 representation change requires its own source identities
+and qualification; it does not transfer historical timings.
 
 The retained N=100 pass and N=500 cold timeout recorded before this supervision
 correction belong to their original driver identities: `run.mjs` SHA-256
@@ -304,7 +311,8 @@ This growth run selected no source scanner, so its source conformance remains
 ## Separate growth source qualification
 
 The [2026-10-21 installed-package receipt](source-evidence/2026-10-21/observations.json)
-records the current selected-flat source **PASS**. Normal registry installation
+records the then-current selected-flat source **PASS** for its inherited-map
+bytes. Normal registry installation
 uses exact Foundation 2.1.1 and FMS 0.2.3 archives; npm signature verification,
 archive SHA-512 and provenance subjects bind both to release commit
 `0e0de78d4c2089be8effc37da4cfd70eab22358c`. The CMS review against current
@@ -337,7 +345,7 @@ The installed Foundation source-dependency CLI separately enforces the role,
 package and builtin policy over all of `src`. Five aggregate role boundaries
 do not replace FMS's per-feature privacy, use-edge and cycle checks.
 
-The new TEST profile separately records the reviewed current CMS at Get Modular
+The earlier TEST source qualification separately recorded the reviewed CMS at Get Modular
 commit `7131d0d7a6bb5dd4c3e8906ccac065c0be0e0333`,
 `docs/architecture/common-assembly.md#consumer-module-standard`, Git blob
 `dad8b6280cf999d9079d3106094e5626b63d83f4`, full-document SHA-256

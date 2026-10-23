@@ -181,6 +181,11 @@
       "id": "ADR-0040",
       "path": "docs/decisions/0040-admit-the-core-and-assembly-0-7-diagnostic-release-pair.md",
       "immutableDigest": "sha256:3b157ee807f65a6d58a91ab9540232e71a9ac0df84872dad775f90869a0ed305"
+    },
+    {
+      "id": "ADR-0041",
+      "path": "docs/decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md",
+      "immutableDigest": "sha256:1876caeaec5aa79bc8a007e544f9c9303dda6a6f40f82e0de6e42ac37e02fdb2"
     }
   ]
 }

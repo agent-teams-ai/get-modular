@@ -255,6 +255,17 @@ not a prerequisite for the flat experiment.
 
 ## Source freshness and measurement evidence
 
+The current G recipe follows
+[ADR-0041](../decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md):
+complete descriptor unions and separate mapped predecessor bases replace deep
+feature-map inheritance while retaining unused and private-child metadata.
+Capture the new generator identity and cold source hashes. Do not transfer old
+inherited-map timings, source passes or compiler-patch evidence to these bytes.
+Keep the same graph, useful computation, independent pins, fixed edits and caps;
+qualify exact keys, value/token parity and early unused conflicts before scale.
+The compiler/runtime and source reports remain separate observations of the
+same named recipe. This authoring successor adds no public API or runtime owner.
+
 Capture source head plus relevant dirty-file hashes, lockfile, package/output
 hashes, compiler versions, generator/profile/config identities and environment.
 A Git SHA alone does not identify modified outputs. A prepared object's reuse
