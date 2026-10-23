@@ -28,7 +28,7 @@ function commit(root: string, message: string): string {
   return git(root, "rev-parse", "HEAD").trim();
 }
 function changeset(root: string, id: string, requests: Record<string, string>, summary = "Exercise the accepted release fixture."): void {
-  write(root, `.changeset/${id}.md`, `---\n${Object.keys(requests).length === 0 ? "{}\n" : stringify(requests)}---\n\n${summary}\n`);
+  write(root, `.changeset/${id}.md`, `---\n${Object.keys(requests).length === 0 ? "" : stringify(requests)}---\n\n${summary}\n`);
 }
 interface FixtureOptions {
   readonly ignored?: readonly string[];
@@ -125,11 +125,13 @@ await test("no release does not invoke version or consume empty, ignored or priv
   const subject = createFixture({ ignored: ["@get-modular/observation"], privateVersioning: false });
   try {
     changeset(subject.root, "empty", {});
+    assert.match(read(subject.root, ".changeset/empty.md"), /^---\n---\n/u, "Use the engine's ordinary empty frontmatter");
     changeset(subject.root, "ignored", { "@get-modular/observation": "minor" });
     changeset(subject.root, "private", { "@get-modular/lifecycle-kernel": "minor" });
     commit(subject.root, "fixture: retained intents without release");
     const prepared = prepareRelease(subject.root);
     assert.equal(prepared.hasRelease, false);
+    assert.deepEqual(prepared.expected.intents.find(item => item.id === "empty")?.requests, []);
     const checked = versionPreparedRelease(prepared);
     assert.deepEqual(checked.observed.diff, []);
     assert.deepEqual(checked.observed.consumptions, []);
@@ -179,6 +181,7 @@ await test("a mixed actual release consumes empty housekeeping and retains ineli
   try {
     changeset(subject.root, "release", { "@get-modular/core": "patch" });
     changeset(subject.root, "empty", {});
+    assert.match(read(subject.root, ".changeset/empty.md"), /^---\n---\n/u, "Housekeeping uses the same authentic empty form beside a release");
     changeset(subject.root, "ignored", { "@get-modular/observation": "minor" });
     changeset(subject.root, "private", { "@get-modular/lifecycle-kernel": "minor" });
     commit(subject.root, "fixture: mixed participation");

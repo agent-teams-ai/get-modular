@@ -32,6 +32,9 @@ existing shared publisher pin.
    plan before versioning. Retain direct and dependent records, explicit `none`
    and absent versions, private workspace members and the complete intent
    inventory. Intent eligibility follows the qualified configuration; the Host
+   takes parsed requests from that custody-bound official collector, including
+   ordinary empty frontmatter (`---` immediately followed by its closing `---`
+   on the next line), and does not maintain a second frontmatter parser. The Host
    does not compute dependency ranges or replacement versions. The pinned
    reader's exact basename rule applies in `.changeset` and `.changeset/pre`:
    case-insensitive `README.md`, exact `AGENTS.md`, `CLAUDE.md` and `GEMINI.md`,

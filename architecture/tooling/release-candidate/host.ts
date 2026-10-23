@@ -70,20 +70,19 @@ function intents(tree: SourceTree, packages: readonly WorkspacePackage[], raw: R
   const engineIntents = array(raw["changesets"]).map(record);
   const parsed = intentFiles(tree).map(path => {
     const file = required(tree, path);
-    const match = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)([\s\S]*)$/u.exec(file.contents);
-    assert(match, `candidate.intent-format:${path}`);
-    const requests = Object.entries(record(parse(match[1] ?? "") ?? {})).map(([packageName, type]) => {
+    const id = path.slice(".changeset/".length, -3);
+    const fromEngine = engineIntents.filter(item => item["id"] === id);
+    assert.equal(fromEngine.length, 1, `candidate.complete-engine-intents:${id}`);
+    // The custody-bound official collector owns frontmatter parsing, including
+    // ordinary empty frontmatter. Bind its requests to the complete source file.
+    const requests = array(fromEngine[0]?.["releases"]).map(item => {
+      const release = record(item);
+      const packageName = text(release["name"]);
+      const type = release["type"];
       assert(type === "major" || type === "minor" || type === "patch", "candidate.intent-type");
       assert(packages.some(item => item.name === packageName), "candidate.intent-package");
       return { packageName, type } as const;
     });
-    const id = path.slice(".changeset/".length, -3);
-    const fromEngine = engineIntents.filter(item => item["id"] === id);
-    assert.equal(fromEngine.length, 1, `candidate.complete-engine-intents:${id}`);
-    assert.deepEqual(array(fromEngine[0]?.["releases"]).map(item => {
-      const release = record(item); return { packageName: release["name"], type: release["type"] };
-    }), requests, "candidate.intent-plan-request-drift");
-    assert.equal(fromEngine[0]?.["summary"], (match[2] ?? "").trim(), "candidate.intent-plan-summary-drift");
     const eligible = requests.filter(request => packages.find(item => item.name === request.packageName)?.versioning === "versioned").length;
     assert(eligible === 0 || eligible === requests.length, "candidate.mixed-intent-eligibility");
     return { id, path, digest: file.leaf.digest, participation: requests.length === 0 || eligible > 0 ? "pending" : "retained", requests } as const;
