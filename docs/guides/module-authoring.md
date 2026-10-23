@@ -601,12 +601,14 @@ export type InvoicesPort = { readonly issue: (orderId: string, cents: number) =>
 // src/features/billing/composition/billing.contracts.ts
 import { defineContract, type CapabilitiesOf } from "@get-modular/assembly";
 // Billing sees Discounts only through the republication of its parent feature.
-import type { Discounts } from "../../orders/composition/orders.contracts.js";
+import type { OrdersContracts } from "../../orders/composition/orders.contracts.js";
 import type { InvoicesPort } from "../contracts/invoices.js";
 
 export const Invoices = defineContract<InvoicesPort>()({ id: "acme/billing/invoices", revision: 1 });
-export type BillingContracts = typeof Invoices | typeof Discounts;
-export interface BillingCapabilities extends CapabilitiesOf<BillingContracts> {}
+export type BillingContracts = OrdersContracts | typeof Invoices;
+export interface BillingCapabilities extends
+  CapabilitiesOf<OrdersContracts>,
+  CapabilitiesOf<typeof Invoices> {}
 ```
 
 ```ts
