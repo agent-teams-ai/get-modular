@@ -220,6 +220,56 @@ await test("actual source and engine drift between planning and versioning fail 
   } finally { subject.dispose(); }
 });
 
+for (const mode of ["request", "summary"] as const) {
+  await test(`source intent rejects a forged collected ${mode} despite stable captured engine custody`, () => {
+    const subject = createFixture({ copiedEngine: true });
+    try {
+      changeset(subject.root, "release", { "@get-modular/resources": "patch" });
+      commit(subject.root, "fixture: independent source intent facts");
+      assert(subject.copiedEngine !== undefined);
+      cpSync(join(repositoryRoot, "tests/qualification/support/forged-changesets-status.ts"), join(subject.copiedEngine, "forged-status.ts"));
+      writeFileSync(join(subject.copiedEngine, "forged-status-mode"), mode);
+      const manifest = record(JSON.parse(readFileSync(join(subject.copiedEngine, "package.json"), "utf8")));
+      writeFileSync(join(subject.copiedEngine, "package.json"), JSON.stringify({ ...manifest, bin: { ...record(manifest["bin"]), changeset: "./forged-status.ts" } }));
+      assert.throws(() => prepareRelease(subject.root), mode === "request" ? /candidate.intent-plan-request-drift/u : /candidate.intent-plan-summary-drift/u);
+      assert(existsSync(join(subject.root, ".changeset/release.md")), "Rejection must precede versioning and intent removal");
+      assert.equal(record(JSON.parse(read(subject.root, "packages/resources/package.json")))["version"], "0.2.0");
+    } finally { subject.dispose(); }
+  });
+}
+
+await test("initial accepted-source binding rejects index-hidden edits before planning", () => {
+  const subject = createFixture();
+  try {
+    changeset(subject.root, "release", { "@get-modular/resources": "patch" });
+    commit(subject.root, "fixture: exact processed source");
+    git(subject.root, "update-index", "--assume-unchanged", "source.ts");
+    write(subject.root, "source.ts", "export const accepted = false;\n");
+    assert.equal(git(subject.root, "status", "--porcelain"), "", "Git status must actually hide this counterexample");
+    assert.throws(() => prepareRelease(subject.root), /candidate.unaccepted-source/u);
+    assert(existsSync(join(subject.root, ".changeset/release.md")));
+    assert.equal(record(JSON.parse(read(subject.root, "packages/resources/package.json")))["version"], "0.2.0");
+  } finally { subject.dispose(); }
+});
+
+await test("initial accepted-source binding preserves LF checkout and binary bytes under Windows autocrlf policy", () => {
+  const subject = createFixture();
+  try {
+    write(subject.root, ".gitattributes", "* text=auto eol=lf\n*.dat binary\n");
+    writeFileSync(join(subject.root, "fixture.dat"), Buffer.from([0, 13, 10, 255]));
+    changeset(subject.root, "empty", {});
+    commit(subject.root, "fixture: admitted LF and binary source");
+    git(subject.root, "config", "core.autocrlf", "true");
+    rmSync(join(subject.root, "source.ts"));
+    git(subject.root, "-c", "core.autocrlf=true", "checkout", "--", "source.ts");
+    assert.equal(read(subject.root, "source.ts"), "export const accepted = true;\n");
+    assert.deepEqual(readFileSync(join(subject.root, "fixture.dat")), Buffer.from([0, 13, 10, 255]));
+    const prepared = prepareRelease(subject.root);
+    assert.equal(prepared.hasRelease, false);
+    assert.deepEqual(versionPreparedRelease(prepared).observed.diff, []);
+  } finally { subject.dispose(); }
+});
+
 await test("a foreign physical root cannot replace the bound repository", () => {
   const subject = createFixture(); const foreign = createFixture();
   const retained = `${subject.root}-owned`;

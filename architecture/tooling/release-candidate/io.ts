@@ -79,6 +79,16 @@ export function historicalFile(root: string, revision: string, path: string): So
   const bytes = execFileSync("git", ["show", `${revision}:${path}`], { cwd: root, maxBuffer: 32 * 1024 * 1024 });
   return sourceFile(bytes, mode);
 }
+/** Complete immutable commit membership, reusing the existing byte/type/mode reader. */
+export function historicalSnapshot(root: string, revision: string): SourceTree {
+  assert.match(revision, /^[a-f0-9]{40}$/u, "candidate.source-identity");
+  const files: Record<string, SourceFile> = Object.create(null) as Record<string, SourceFile>;
+  for (const path of git(root, "ls-tree", "-r", "--name-only", "-z", revision).split("\0").filter(Boolean)) {
+    const file = historicalFile(root, revision, path); assert(file, "candidate.missing-historical-source");
+    files[path] = file;
+  }
+  return files;
+}
 /** Includes ignored generation output too; installed package-manager trees have separate engine custody. */
 export function snapshot(root: string): SourceTree {
   const tracked = git(root, "ls-files", "--stage", "-z").split("\0").filter(Boolean);

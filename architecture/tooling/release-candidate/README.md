@@ -25,16 +25,18 @@ the actual processed main after the action's admitted reset. The
 [npm publisher](../npm-release/README.md) retains its separate workflow and
 existing shared publisher pin.
 
-1. Require clean source and bind the actual resolved repository root, Git
+1. Require clean source whose complete initial working-tree bytes, paths, types
+   and modes match the processed commit, including index-hidden edits. Bind the actual resolved repository root, Git
    directory, source commit, installed CLI entrypoint, all installed runtime
    dependencies of that CLI, configuration and accepted file contents.
 2. Run the exact installed `changeset status` collector and freeze its complete
    plan before versioning. Retain direct and dependent records, explicit `none`
    and absent versions, private workspace members and the complete intent
    inventory. Intent eligibility follows the qualified configuration; the Host
-   takes parsed requests from that custody-bound official collector, including
-   ordinary empty frontmatter (`---` immediately followed by its closing `---`
-   on the next line), and does not maintain a second frontmatter parser. The Host
+   independently projects requests and summary from accepted source frontmatter,
+   including the ordinary empty form (`---` immediately followed by its closing
+   `---` on the next line), and compares both with the custody-bound collector.
+   A known-package request substitution or changed summary still rejects. The Host
    does not compute dependency ranges or replacement versions. The pinned
    reader's exact basename rule applies in `.changeset` and `.changeset/pre`:
    case-insensitive `README.md`, exact `AGENTS.md`, `CLAUDE.md` and `GEMINI.md`,

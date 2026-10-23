@@ -6,7 +6,7 @@ import { parse } from "yaml";
 import { checkReleaseCandidate, type CheckReport, type ExpectedInputs, type FileChange, type InputBinding,
   type ManifestSnapshot, type ObservedCandidate, type PermittedChange, type PlannedRelease, type ReleaseIntent,
   type WorkspacePackage } from "@agent-teams/release-checks";
-import { array, assertCustody, clean, custody, execute, git, historicalFile, identity, record, semantic,
+import { array, assertCustody, clean, custody, execute, git, historicalFile, historicalSnapshot, identity, record, semantic,
   snapshot, text, treeDigest, type ExecutionCustody, type SourceFile, type SourceTree } from "./io.ts";
 
 export const releaseBranch = "changeset-release/main";
@@ -70,19 +70,22 @@ function intents(tree: SourceTree, packages: readonly WorkspacePackage[], raw: R
   const engineIntents = array(raw["changesets"]).map(record);
   const parsed = intentFiles(tree).map(path => {
     const file = required(tree, path);
-    const id = path.slice(".changeset/".length, -3);
-    const fromEngine = engineIntents.filter(item => item["id"] === id);
-    assert.equal(fromEngine.length, 1, `candidate.complete-engine-intents:${id}`);
-    // The custody-bound official collector owns frontmatter parsing, including
-    // ordinary empty frontmatter. Bind its requests to the complete source file.
-    const requests = array(fromEngine[0]?.["releases"]).map(item => {
-      const release = record(item);
-      const packageName = text(release["name"]);
-      const type = release["type"];
+    // Keep an independent source projection; the official plan is not evidence
+    // that its own request and summary records agree with accepted source bytes.
+    const match = /^---\r?\n((?:[\s\S]*?\r?\n)?)---(?:\r?\n|$)([\s\S]*)$/u.exec(file.contents);
+    assert(match, `candidate.intent-format:${path}`);
+    const requests = Object.entries(record(parse(match[1] ?? "") ?? {})).map(([packageName, type]) => {
       assert(type === "major" || type === "minor" || type === "patch", "candidate.intent-type");
       assert(packages.some(item => item.name === packageName), "candidate.intent-package");
       return { packageName, type } as const;
     });
+    const id = path.slice(".changeset/".length, -3);
+    const fromEngine = engineIntents.filter(item => item["id"] === id);
+    assert.equal(fromEngine.length, 1, `candidate.complete-engine-intents:${id}`);
+    assert.deepEqual(array(fromEngine[0]?.["releases"]).map(item => {
+      const release = record(item); return { packageName: release["name"], type: release["type"] };
+    }), requests, "candidate.intent-plan-request-drift");
+    assert.equal(fromEngine[0]?.["summary"], (match[2] ?? "").trim(), "candidate.intent-plan-summary-drift");
     const eligible = requests.filter(request => packages.find(item => item.name === request.packageName)?.versioning === "versioned").length;
     assert(eligible === 0 || eligible === requests.length, "candidate.mixed-intent-eligibility");
     return { id, path, digest: file.leaf.digest, participation: requests.length === 0 || eligible > 0 ? "pending" : "retained", requests } as const;
@@ -145,6 +148,7 @@ export function prepareRelease(root: string): PreparedRelease {
   clean(root);
   const execution = custody(root);
   const before = snapshot(execution.root);
+  assert.equal(treeDigest(before), treeDigest(historicalSnapshot(execution.root, execution.source)), "candidate.unaccepted-source");
   const packages = inventory(before);
   const temporary = mkdtempSync(join(tmpdir(), "get-modular-release-plan-"));
   let rawPlan: unknown;
